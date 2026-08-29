@@ -42,6 +42,8 @@ const replaySelect = {
   accuracy: true,
   note: true,
   requestHash: true,
+  attendanceReviewState: true,
+  attendanceReviewReasonCode: true,
   createdAt: true,
   workday: {
     select: {
@@ -84,7 +86,19 @@ function responseForReplay(replay: Replay) {
         longitude: replay.longitude,
         accuracy: replay.accuracy,
         note: replay.note,
+        attendanceReviewState: replay.attendanceReviewState,
+        attendanceReviewReasonCode: replay.attendanceReviewReasonCode,
         createdAt: replay.createdAt,
+      },
+      review: {
+        state: replay.attendanceReviewState === "PENDING_REVIEW"
+          ? "PENDING_REVIEW"
+          : replay.attendanceReviewState === "LEGACY_UNKNOWN"
+            ? "LEGACY_UNKNOWN"
+            : "NOT_REQUIRED",
+        reasonCode: replay.attendanceReviewState === "PENDING_REVIEW"
+          ? replay.attendanceReviewReasonCode
+          : null,
       },
       availableActions: availableWorkdayActions(replay.workday.status),
     },
@@ -327,6 +341,7 @@ export const POST = withWorkforceCompatAuth("write", async (req, auth) => {
       data: {
         workday: result.applied.workday,
         event: result.applied.event,
+        review: result.applied.review,
         availableActions: availableWorkdayActions(
           typeof result.applied.workday.status === "string" ? result.applied.workday.status : null,
         ),

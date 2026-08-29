@@ -1247,6 +1247,8 @@ describe("POST /api/v1/mtm/week/workday", () => {
       longitude: null,
       accuracy: null,
       note: null,
+      attendanceReviewState: "NOT_REQUIRED",
+      attendanceReviewReasonCode: null,
       createdAt: new Date("2026-07-15T08:00:00.000Z"),
     } as never)
 
@@ -1260,7 +1262,11 @@ describe("POST /api/v1/mtm/week/workday", () => {
     expect(await response.json()).toMatchObject({
       success: true,
       idempotent: false,
-      data: { workday: { id: "workday-1", status: "STARTED" }, availableActions: ["PAUSE", "FINISH"] },
+      data: {
+        workday: { id: "workday-1", status: "STARTED" },
+        review: { state: "NOT_REQUIRED", reasonCode: null },
+        availableActions: ["PAUSE", "FINISH"],
+      },
     })
     expect(prisma.$transaction).toHaveBeenCalledTimes(1)
     expect(prisma.$executeRaw).toHaveBeenCalledTimes(2)

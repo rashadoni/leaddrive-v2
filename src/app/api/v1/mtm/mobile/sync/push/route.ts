@@ -2622,6 +2622,7 @@ export const POST = withMobileRls(async (req, auth) => {
             serverData = {
               workday: applied.workday,
               event: applied.event,
+              review: applied.review,
               ...(applied.idempotent ? { idempotent: true } : {}),
             }
           }

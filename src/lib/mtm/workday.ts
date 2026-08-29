@@ -34,6 +34,8 @@ export type MtmWorkdayEventInput = {
   serverReceivedAt: Date
   /** `1` is the legacy envelope, `2` supplies full client provenance. */
   schemaVersion: number
+  /** Server-derived C1 review disposition; never trusted from the client. */
+  attendanceReview: WorkforceAttendanceClaimReview
   workDateKey: string
   latitude: number | null
   longitude: number | null
@@ -47,6 +49,7 @@ export type MtmWorkdayResult =
       status: "ok"
       workday: Record<string, unknown>
       event: Record<string, unknown>
+      review: WorkforceAttendanceClaimReviewResult
       idempotent: boolean
     }
   | {
@@ -64,7 +67,7 @@ export type MtmWorkdayResult =
 
 type WorkdayDb = Pick<
   Prisma.TransactionClient,
-  "mtmAgent" | "mtmAgentWorkday" | "mtmAgentWorkdayEvent" | "$executeRaw"
+  "mtmAgent" | "mtmAgentWorkday" | "mtmAgentWorkdayEvent" | "workforceAttendanceReviewCase" | "$executeRaw"
 >
 
 type WorkdayScope = { organizationId: string; agentId: string }
@@ -98,6 +101,22 @@ const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000
 export const WORKFORCE_WORKDAY_OFFLINE_HORIZON_MS = 7 * 24 * 60 * 60 * 1000
 export const WORKFORCE_WORKDAY_LEGACY_SCHEMA_VERSION = 1
 export const WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION = 2
+/** Safe default: a claim delayed beyond ordinary sync jitter requires human review. */
+export const WORKFORCE_ATTENDANCE_REVIEW_DELAY_MS = 15 * 60 * 1000
+export const WORKFORCE_ATTENDANCE_REVIEW_POLICY_VERSION = "c1-delay-review-v1"
+
+export type WorkforceAttendanceClaimReview = {
+  state: "NOT_REQUIRED" | "PENDING_REVIEW"
+  reasonCode: "DELAYED_CLAIM" | null
+  policyVersion: string
+  claimAgeSeconds: number
+}
+
+export type WorkforceAttendanceClaimReviewResult = {
+  /** Historical events predate C1 provenance and must not be relabelled. */
+  state: "LEGACY_UNKNOWN" | WorkforceAttendanceClaimReview["state"]
+  reasonCode: "DELAYED_CLAIM" | null
+}
 
 /**
  * Keep recovery actions next to the canonical state machine instead of
@@ -138,6 +157,8 @@ const eventSelect = {
   appliedAt: true,
   schemaVersion: true,
   requestHash: true,
+  attendanceReviewState: true,
+  attendanceReviewReasonCode: true,
   latitude: true,
   longitude: true,
   accuracy: true,
@@ -181,6 +202,47 @@ function timestampIsTooFarInFuture(value: Date, now: Date): boolean {
 
 function timestampIsBeyondOfflineHorizon(value: Date, now: Date): boolean {
   return value.getTime() < now.getTime() - WORKFORCE_WORKDAY_OFFLINE_HORIZON_MS
+}
+
+/**
+ * A delayed in-window claim is evidence for a human review, not an automatic
+ * rejection or a payroll/disciplinary conclusion. The threshold is a recorded
+ * conservative default until a tenant publishes a versioned policy in C6.
+ */
+export function workforceAttendanceClaimReview(
+  claimedAt: Date,
+  serverReceivedAt: Date,
+): WorkforceAttendanceClaimReview {
+  const claimAgeSeconds = Math.max(0, Math.floor((serverReceivedAt.getTime() - claimedAt.getTime()) / 1000))
+  return claimAgeSeconds * 1000 > WORKFORCE_ATTENDANCE_REVIEW_DELAY_MS
+    ? {
+        state: "PENDING_REVIEW",
+        reasonCode: "DELAYED_CLAIM",
+        policyVersion: WORKFORCE_ATTENDANCE_REVIEW_POLICY_VERSION,
+        claimAgeSeconds,
+      }
+    : {
+        state: "NOT_REQUIRED",
+        reasonCode: null,
+        policyVersion: WORKFORCE_ATTENDANCE_REVIEW_POLICY_VERSION,
+        claimAgeSeconds,
+      }
+}
+
+function attendanceReviewResult(value: {
+  attendanceReviewState: string | null | undefined
+  attendanceReviewReasonCode: string | null
+}): WorkforceAttendanceClaimReviewResult {
+  if (value.attendanceReviewState === "LEGACY_UNKNOWN" || value.attendanceReviewState == null) {
+    return { state: "LEGACY_UNKNOWN", reasonCode: null }
+  }
+  return {
+    state: value.attendanceReviewState === "PENDING_REVIEW" ? "PENDING_REVIEW" : "NOT_REQUIRED",
+    reasonCode: value.attendanceReviewState === "PENDING_REVIEW"
+      && value.attendanceReviewReasonCode === "DELAYED_CLAIM"
+      ? "DELAYED_CLAIM"
+      : null,
+  }
 }
 
 function validSchemaVersion(value: unknown): value is number {
@@ -315,6 +377,8 @@ export function parseMtmWorkdayEvent(
   const attendance = parseAttendanceEvidence(value.attendance)
   if (attendance.error) return { input: null, error: attendance.error }
 
+  const attendanceReview = workforceAttendanceClaimReview(claimedAt, now)
+
   return {
     input: {
       action: action as MtmWorkdayAction,
@@ -326,6 +390,7 @@ export function parseMtmWorkdayEvent(
       queuedAt,
       serverReceivedAt: now,
       schemaVersion,
+      attendanceReview,
       workDateKey: currentDateKey(occurredAt, timezone),
       latitude: value.latitude == null ? null : value.latitude as number,
       longitude: value.longitude == null ? null : value.longitude as number,
@@ -374,6 +439,29 @@ export function mtmWorkdayRequestHash(scope: WorkdayScope, input: MtmWorkdayEven
     deviceEnrollmentId: input.attendance?.device?.enrollmentId ?? null,
     deviceProofFingerprint,
   })).digest("hex")
+}
+
+async function createAttendanceReviewCaseIfRequired(
+  db: WorkdayDb,
+  scope: WorkdayScope,
+  input: MtmWorkdayEventInput,
+  event: { id: string },
+): Promise<void> {
+  if (input.attendanceReview.state !== "PENDING_REVIEW") return
+  await db.workforceAttendanceReviewCase.create({
+    data: {
+      organizationId: scope.organizationId,
+      agentId: scope.agentId,
+      workdayId: input.workdayId,
+      workdayEventId: event.id,
+      status: "PENDING_REVIEW",
+      reasonCode: input.attendanceReview.reasonCode!,
+      policyVersion: input.attendanceReview.policyVersion,
+      claimAgeSeconds: input.attendanceReview.claimAgeSeconds,
+      claimedAt: input.claimedAt,
+      serverReceivedAt: input.serverReceivedAt,
+    },
+  })
 }
 
 function conflict(
@@ -474,6 +562,7 @@ export async function applyMtmWorkdayEvent(
       status: "ok",
       workday: workday as Record<string, unknown>,
       event: event as Record<string, unknown>,
+      review: attendanceReviewResult(replay),
       idempotent: true,
     }
   }
@@ -492,6 +581,8 @@ export async function applyMtmWorkdayEvent(
     appliedAt: new Date(),
     schemaVersion: input.schemaVersion,
     requestHash: mtmWorkdayRequestHash(scope, input),
+    attendanceReviewState: input.attendanceReview.state,
+    attendanceReviewReasonCode: input.attendanceReview.reasonCode,
     latitude: input.latitude,
     longitude: input.longitude,
     accuracy: input.accuracy,
@@ -540,6 +631,7 @@ export async function applyMtmWorkdayEvent(
       select: workdaySelect,
     })
     const event = await db.mtmAgentWorkdayEvent.create({ data: baseEvent, select: eventSelect })
+    await createAttendanceReviewCaseIfRequired(db, scope, input, event)
     await options.afterEvent?.({
       scope,
       input,
@@ -551,6 +643,7 @@ export async function applyMtmWorkdayEvent(
       status: "ok",
       workday: workday as Record<string, unknown>,
       event: event as Record<string, unknown>,
+      review: attendanceReviewResult(event),
       idempotent: false,
     }
   }
@@ -613,6 +706,7 @@ export async function applyMtmWorkdayEvent(
     select: workdaySelect,
   })
   const event = await db.mtmAgentWorkdayEvent.create({ data: baseEvent, select: eventSelect })
+  await createAttendanceReviewCaseIfRequired(db, scope, input, event)
   await options.afterEvent?.({
     scope,
     input,
@@ -634,6 +728,7 @@ export async function applyMtmWorkdayEvent(
     status: "ok",
     workday: updated as Record<string, unknown>,
     event: event as Record<string, unknown>,
+    review: attendanceReviewResult(event),
     idempotent: false,
   }
 }

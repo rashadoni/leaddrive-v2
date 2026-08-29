@@ -1247,6 +1247,8 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
       clientEventId: "op-hrm-only-workday",
       type: "START",
       occurredAt: new Date("2026-07-14T05:00:00.000Z"),
+      attendanceReviewState: "NOT_REQUIRED",
+      attendanceReviewReasonCode: null,
     } as never)
 
     const response = await PushPOST(makePushReq({ operations: [
@@ -1279,6 +1281,9 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
         operationId: "op-hrm-only-workday",
         status: "ok",
         serverId: "workday-hrm-only-1",
+        serverData: expect.objectContaining({
+          review: { state: "NOT_REQUIRED", reasonCode: null },
+        }),
       }),
       expect.objectContaining({
         operationId: "op-hrm-only-route",

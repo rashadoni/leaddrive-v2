@@ -100,6 +100,26 @@ describe("MTM mobile workday", () => {
     })
   })
 
+  it("marks a delayed but in-window claim for human review without rejecting it", () => {
+    const parsed = parseMtmWorkdayEvent({
+      action: "START",
+      id: "workday-1",
+      schemaVersion: 2,
+      occurredAt: "2026-07-15T07:40:00.000Z",
+      claimedAt: "2026-07-15T07:40:00.000Z",
+      capturedAt: "2026-07-15T07:39:58.000Z",
+      queuedAt: "2026-07-15T07:40:01.000Z",
+    }, "event-delayed", "Asia/Baku", new Date("2026-07-15T08:00:00.000Z"))
+
+    expect(parsed.error).toBeNull()
+    expect(parsed.input?.attendanceReview).toEqual({
+      state: "PENDING_REVIEW",
+      reasonCode: "DELAYED_CLAIM",
+      policyVersion: "c1-delay-review-v1",
+      claimAgeSeconds: 1_200,
+    })
+  })
+
   it("rejects out-of-window or internally contradictory offline provenance", () => {
     const now = new Date("2026-07-15T08:00:00.000Z")
     const olderThanSevenDays = parseMtmWorkdayEvent({
@@ -251,6 +271,47 @@ describe("MTM mobile workday", () => {
       })
       expect(db.mtmAgentWorkdayEvent.create).not.toHaveBeenCalled()
     }
+  })
+
+  it("creates an immutable pending-review case in the same workday mutation", async () => {
+    const db = makeMtmPrismaMock()
+    vi.mocked(db.mtmAgentWorkday.findFirst).mockResolvedValue(null)
+    vi.mocked(db.mtmAgentWorkday.create).mockResolvedValue(workday() as never)
+    vi.mocked(db.mtmAgentWorkdayEvent.create).mockResolvedValue({
+      id: "event-delayed",
+      workdayId: "workday-1",
+      clientEventId: "event-delayed",
+      type: "START",
+      occurredAt: new Date("2026-07-15T07:40:00.000Z"),
+      attendanceReviewState: "PENDING_REVIEW",
+      attendanceReviewReasonCode: "DELAYED_CLAIM",
+    } as never)
+    vi.mocked(db.workforceAttendanceReviewCase.create).mockResolvedValue({ id: "review-1" } as never)
+    const parsed = parseMtmWorkdayEvent({
+      action: "START",
+      id: "workday-1",
+      occurredAt: "2026-07-15T07:40:00.000Z",
+    }, "event-delayed", "Asia/Baku", new Date("2026-07-15T08:00:00.000Z"))
+
+    const result = await applyMtmWorkdayEvent(db as never, SCOPE, parsed.input!)
+
+    expect(result).toMatchObject({
+      status: "ok",
+      idempotent: false,
+      review: { state: "PENDING_REVIEW", reasonCode: "DELAYED_CLAIM" },
+    })
+    expect(db.workforceAttendanceReviewCase.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        organizationId: "org-1",
+        agentId: "agent-1",
+        workdayId: "workday-1",
+        workdayEventId: "event-delayed",
+        status: "PENDING_REVIEW",
+        reasonCode: "DELAYED_CLAIM",
+        policyVersion: "c1-delay-review-v1",
+        claimAgeSeconds: 1_200,
+      }),
+    })
   })
 
   it("runs an attendance post-event guard inside the state mutation and never reruns it for a replay", async () => {

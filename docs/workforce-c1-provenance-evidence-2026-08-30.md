@@ -51,8 +51,10 @@ It contains no `UPDATE`, `DELETE`, `TRUNCATE`, rename or backfill. Existing
 immutable events retain null unknown fields and version `1`.
 
 No automatic approval, payroll or disciplinary decision is introduced.
-`WF-C1-003` still needs an immutable claim/review case and the owner-approved
-`PENDING_REVIEW` policy. `WF-C1-005` is implemented separately in
+`WF-C1-003` is implemented in the later, separate
+[`workforce-c1-review-evidence-2026-08-30.md`](./workforce-c1-review-evidence-2026-08-30.md)
+with a narrow, reversible delayed-claim review default. `WF-C1-005` is
+implemented separately in
 [`workforce-c1-audit-projection-evidence-2026-08-30.md`](./workforce-c1-audit-projection-evidence-2026-08-30.md).
 
 ## Evidence
