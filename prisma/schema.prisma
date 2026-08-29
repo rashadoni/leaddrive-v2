@@ -192,6 +192,7 @@ model Organization {
   workforcePolicySnapshots            WorkforcePolicySnapshot[]
   workforceShiftSnapshots             WorkforceShiftSnapshot[]
   workforceSites                      WorkforceSite[]
+  workforceSiteGeofenceRevisions      WorkforceSiteGeofenceRevision[]
   workforceAttendanceExceptions       WorkforceAttendanceException[]
   workforceAttendanceReviewCases      WorkforceAttendanceReviewCase[]
   workforceTimeCorrections            WorkforceTimeCorrection[]
@@ -651,6 +652,7 @@ model User {
   workforceShiftAssignmentsAssigned   WorkforceShiftAssignment[]     @relation("WorkforceShiftAssignmentAssignedBy")
   workforceSitesCreated               WorkforceSite[]                @relation("WorkforceSiteCreatedBy")
   workforceSitesArchived              WorkforceSite[]                @relation("WorkforceSiteArchivedBy")
+  workforceSiteGeofenceRevisionsCreated WorkforceSiteGeofenceRevision[] @relation("WorkforceSiteGeofenceRevisionCreatedBy")
   workforceAttendanceExceptionsResolved WorkforceAttendanceException[] @relation("WorkforceAttendanceExceptionResolvedBy")
   workforceTimeCorrectionsActed       WorkforceTimeCorrection[]      @relation("WorkforceTimeCorrectionActor")
   workforceTimesheetApprovalsApproved WorkforceTimesheetApproval[]   @relation("WorkforceTimesheetApprovalApprovedBy")
@@ -5162,6 +5164,12 @@ enum WorkforceSiteStatus {
   ARCHIVED
 }
 
+/// C2 v1 deliberately accepts only a calibrated circle. Polygon and
+/// multi-entrance support need a new versioned geometry/snapshot contract.
+enum WorkforceSiteGeofenceKind {
+  CIRCLE
+}
+
 enum WorkforceAttendanceExceptionType {
   LATE_START
   UNDERTIME
@@ -7374,6 +7382,8 @@ model WorkforceSite {
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
 
+  geofenceRevisions WorkforceSiteGeofenceRevision[]
+
   @@unique([organizationId, id])
   @@unique([organizationId, code])
   @@index([organizationId, status, name])
@@ -7381,6 +7391,35 @@ model WorkforceSite {
   @@index([organizationId, createdByUserId])
   @@index([organizationId, archivedByUserId])
   @@map("workforce_sites")
+}
+
+/// A geofence geometry is immutable once recorded. Its effective window may
+/// be closed once by a future replacement; historical workday snapshots will
+/// store the exact revision/hash rather than consulting the current site.
+model WorkforceSiteGeofenceRevision {
+  id                   String                     @id @default(cuid())
+  organizationId       String
+  organization         Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  siteId               String
+  site                 WorkforceSite              @relation(fields: [organizationId, siteId], references: [organizationId, id], onDelete: Restrict)
+  revision             Int
+  kind                 WorkforceSiteGeofenceKind @default(CIRCLE)
+  centerLatitude       Float
+  centerLongitude      Float
+  radiusMeters         Int
+  calibrationReference String                     @db.VarChar(500)
+  definitionHash       String                     @db.VarChar(64)
+  effectiveFrom        DateTime                   @db.Date
+  effectiveTo          DateTime?                  @db.Date
+  createdByUserId      String
+  createdByUser        User                       @relation("WorkforceSiteGeofenceRevisionCreatedBy", fields: [organizationId, createdByUserId], references: [organizationId, id], onDelete: Restrict)
+  createdAt            DateTime                   @default(now())
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, siteId, revision])
+  @@index([organizationId, siteId, effectiveFrom, effectiveTo])
+  @@index([organizationId, createdByUserId, createdAt])
+  @@map("workforce_site_geofence_revisions")
 }
 
 // Versioned Workforce policy. The JSON definition is the tenant-authored

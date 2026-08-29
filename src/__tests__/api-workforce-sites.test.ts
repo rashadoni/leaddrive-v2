@@ -8,10 +8,15 @@ vi.mock("@/lib/prisma", async () => {
 vi.mock("@/lib/with-workforce-rls-auth", () => ({
   withWorkforceSessionAdminAuth: vi.fn((handler) => handler),
 }))
+vi.mock("@/lib/mtm-settings", () => ({
+  getMtmSettings: vi.fn(),
+}))
 
 import { GET, POST } from "@/app/api/v1/workforce/configuration/sites/route"
 import { POST as archivePost } from "@/app/api/v1/workforce/configuration/sites/[id]/archive/route"
+import { POST as geofencePost } from "@/app/api/v1/workforce/configuration/sites/[id]/geofences/route"
 import { prisma } from "@/lib/prisma"
+import { getMtmSettings } from "@/lib/mtm-settings"
 
 const AUTH = { orgId: "org-1", userId: "admin-1", role: "admin" }
 const site = {
@@ -38,7 +43,10 @@ function request(path: string, body?: unknown) {
   })
 }
 
-beforeEach(() => vi.clearAllMocks())
+beforeEach(() => {
+  vi.clearAllMocks()
+  vi.mocked(getMtmSettings).mockResolvedValue({ timezone: "Asia/Baku" } as never)
+})
 
 describe("Workforce site configuration API", () => {
   it("lists only tenant-scoped Workforce sites", async () => {
@@ -106,5 +114,44 @@ describe("Workforce site configuration API", () => {
       where: { id: "site-1", organizationId: "org-1", status: "ACTIVE" },
     }))
     expect(prisma.workforceSite.delete).not.toHaveBeenCalled()
+  })
+
+  it("schedules a calibrated future circle using server organization time", async () => {
+    const revision = {
+      id: "fence-1",
+      siteId: "site-1",
+      revision: 1,
+      kind: "CIRCLE",
+      centerLatitude: 40.4093,
+      centerLongitude: 49.8671,
+      radiusMeters: 75,
+      calibrationReference: "CAL-2026-01",
+      definitionHash: "a".repeat(64),
+      effectiveFrom: new Date("2026-09-01T00:00:00.000Z"),
+      effectiveTo: null,
+      createdByUserId: "admin-1",
+      createdAt: new Date("2026-08-30T00:00:00.000Z"),
+    }
+    vi.mocked(prisma.workforceSite.findFirst).mockResolvedValue({
+      id: "site-1", code: "BAKU_HQ", status: "ACTIVE",
+    } as never)
+    vi.mocked(prisma.workforceSiteGeofenceRevision.findMany).mockResolvedValue([])
+    vi.mocked(prisma.workforceSiteGeofenceRevision.create).mockResolvedValue(revision as never)
+    vi.mocked(prisma.mtmAuditLog.create).mockResolvedValue({ id: "audit-3" } as never)
+
+    const response = await geofencePost(request("/api/v1/workforce/configuration/sites/site-1/geofences", {
+      effectiveFrom: "2026-09-01",
+      centerLatitude: 40.4093,
+      centerLongitude: 49.8671,
+      radiusMeters: 75,
+      calibrationReference: "CAL-2026-01",
+    }), AUTH as never, { params: Promise.resolve({ id: "site-1" }) })
+
+    expect(response.status).toBe(201)
+    await expect(response.json()).resolves.toMatchObject({ data: { revision: { id: "fence-1" } } })
+    expect(prisma.workforceSiteGeofenceRevision.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ organizationId: "org-1", siteId: "site-1" }),
+    }))
+    expect(prisma.mtmCustomer.findFirst).not.toHaveBeenCalled()
   })
 })

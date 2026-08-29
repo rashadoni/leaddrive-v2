@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from "vitest"
 import {
   archiveWorkforceSite,
   createWorkforceSite,
+  createWorkforceSiteGeofenceRevision,
   WorkforceSiteCreateSchema,
+  WorkforceSiteGeofenceManagementError,
+  WorkforceSiteGeofenceRevisionCreateSchema,
   WorkforceSiteManagementError,
 } from "@/lib/workforce/site-management"
 import { makeMtmPrismaMock } from "./mocks/mtm-prisma"
@@ -22,6 +25,22 @@ const baseSite = {
   archivedAt: null,
   createdAt: new Date("2026-08-30T00:00:00.000Z"),
   updatedAt: new Date("2026-08-30T00:00:00.000Z"),
+}
+
+const firstRevision = {
+  id: "fence-1",
+  siteId: "site-1",
+  revision: 1,
+  kind: "CIRCLE",
+  centerLatitude: 40.4093,
+  centerLongitude: 49.8671,
+  radiusMeters: 75,
+  calibrationReference: "CAL-2026-01",
+  definitionHash: "a".repeat(64),
+  effectiveFrom: new Date("2026-09-01T00:00:00.000Z"),
+  effectiveTo: null,
+  createdByUserId: "admin-1",
+  createdAt: new Date("2026-08-30T00:00:00.000Z"),
 }
 
 describe("Workforce site management", () => {
@@ -137,5 +156,108 @@ describe("Workforce site management", () => {
       code: "WORKFORCE_SITE_ALREADY_ARCHIVED",
     })
     expect(db.workforceSite.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("creates a forward-only calibrated circle revision without auditing raw coordinates", async () => {
+    const db = makeMtmPrismaMock()
+    vi.mocked(db.workforceSite.findFirst).mockResolvedValue({
+      id: "site-1", code: "BAKU_HQ", status: "ACTIVE",
+    } as never)
+    vi.mocked(db.workforceSiteGeofenceRevision.findMany).mockResolvedValue([])
+    vi.mocked(db.workforceSiteGeofenceRevision.create).mockResolvedValue(firstRevision as never)
+    vi.mocked(db.mtmAuditLog.create).mockResolvedValue({ id: "audit-3" } as never)
+    const revision = WorkforceSiteGeofenceRevisionCreateSchema.parse({
+      effectiveFrom: "2026-09-01",
+      centerLatitude: 40.4093,
+      centerLongitude: 49.8671,
+      radiusMeters: 75,
+      calibrationReference: "CAL-2026-01",
+    })
+
+    const result = await createWorkforceSiteGeofenceRevision({
+      organizationId: "org-1",
+      siteId: "site-1",
+      createdByUserId: "admin-1",
+      revision,
+      currentDateKey: "2026-08-30",
+      audit,
+      db: db as never,
+    })
+
+    expect(result).toMatchObject({ id: "fence-1", revision: 1, kind: "CIRCLE" })
+    expect(db.workforceSiteGeofenceRevision.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        organizationId: "org-1",
+        siteId: "site-1",
+        revision: 1,
+        kind: "CIRCLE",
+        definitionHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+      }),
+    }))
+    const auditCall = vi.mocked(db.mtmAuditLog.create).mock.calls[0][0] as { data: { newData: unknown } }
+    expect(JSON.stringify(auditCall.data.newData)).not.toMatch(/latitude|longitude|CAL-2026-01/i)
+  })
+
+  it("closes the previous timeline window before appending the next revision", async () => {
+    const db = makeMtmPrismaMock()
+    const secondRevision = {
+      ...firstRevision,
+      id: "fence-2",
+      revision: 2,
+      effectiveFrom: new Date("2026-10-01T00:00:00.000Z"),
+      centerLatitude: 40.41,
+    }
+    vi.mocked(db.workforceSite.findFirst).mockResolvedValue({
+      id: "site-1", code: "BAKU_HQ", status: "ACTIVE",
+    } as never)
+    vi.mocked(db.workforceSiteGeofenceRevision.findMany).mockResolvedValue([firstRevision] as never)
+    vi.mocked(db.workforceSiteGeofenceRevision.updateMany).mockResolvedValue({ count: 1 } as never)
+    vi.mocked(db.workforceSiteGeofenceRevision.create).mockResolvedValue(secondRevision as never)
+    vi.mocked(db.mtmAuditLog.create).mockResolvedValue({ id: "audit-4" } as never)
+
+    await createWorkforceSiteGeofenceRevision({
+      organizationId: "org-1",
+      siteId: "site-1",
+      createdByUserId: "admin-1",
+      revision: WorkforceSiteGeofenceRevisionCreateSchema.parse({
+        effectiveFrom: "2026-10-01",
+        centerLatitude: 40.41,
+        centerLongitude: 49.8671,
+        radiusMeters: 80,
+        calibrationReference: "CAL-2026-02",
+      }),
+      currentDateKey: "2026-08-30",
+      audit,
+      db: db as never,
+    })
+
+    expect(db.workforceSiteGeofenceRevision.updateMany).toHaveBeenCalledWith({
+      where: { id: "fence-1", organizationId: "org-1", siteId: "site-1", effectiveTo: null },
+      data: { effectiveTo: new Date("2026-09-30T00:00:00.000Z") },
+    })
+  })
+
+  it("rejects non-future or out-of-order revisions before a write", async () => {
+    const db = makeMtmPrismaMock()
+    const revision = WorkforceSiteGeofenceRevisionCreateSchema.parse({
+      effectiveFrom: "2026-08-30",
+      centerLatitude: 40.4093,
+      centerLongitude: 49.8671,
+      radiusMeters: 75,
+      calibrationReference: "CAL-2026-01",
+    })
+
+    await expect(createWorkforceSiteGeofenceRevision({
+      organizationId: "org-1",
+      siteId: "site-1",
+      createdByUserId: "admin-1",
+      revision,
+      currentDateKey: "2026-08-30",
+      audit,
+      db: db as never,
+    })).rejects.toMatchObject<Partial<WorkforceSiteGeofenceManagementError>>({
+      code: "WORKFORCE_SITE_GEOFENCE_EFFECTIVE_DATE_NOT_FUTURE",
+    })
+    expect(db.workforceSiteGeofenceRevision.create).not.toHaveBeenCalled()
   })
 })
