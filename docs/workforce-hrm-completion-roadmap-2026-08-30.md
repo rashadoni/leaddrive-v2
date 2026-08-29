@@ -325,6 +325,7 @@ Owner roles are accountabilities, not individual names:
 | 2026-08-30T01:28:00+02:00 | C2c geofence-revision foundation | 5% | C2 27% | 11/161 | 0/15 | C2-004 foundation checkpointed: circle geometry/timeline is immutable and tenant-scoped; physical calibration and workday snapshot integration remain open |
 | 2026-08-30T01:35:00+02:00 | C2d effective site assignments | 6% | C2 36% | 12/161 | 0/15 | WF-C2-005 accepted: future primary/secondary/temporary history is tenant-scoped and auditable; historical workday resolution remains open |
 | 2026-08-30T01:48:00+02:00 | C2e ordered shift segments | 6% | C2 45% | 13/161 | 0/15 | WF-C2-006 accepted: one draft/active schedule can express 09-13 Site A and 14-18 Site B with an explicit planned break, independent of Route; workday snapshot and transitions remain open |
+| 2026-08-30T01:56:00+02:00 | C2f site-transition fact foundation | 6% | C2 45% | 13/161 | 0/15 | WF-C2-007 is partial: append-only arrival/departure claims are tenant-scoped, provenance-bound and review-safe; no unverified mobile/API path, C3 snapshot or C4 assessment is claimed |
 
 ### 6.1 Progress reporting contract
 
@@ -435,7 +436,7 @@ between office, field, remote and travel segments.
 | WF-C2-004 | P0 | PARTIAL | Backend | Add immutable effective-dated geofence revisions; v1 supports a validated circle and preserves future polygon extension | [`workforce-c2-geofence-revision-evidence-2026-08-30.md`](./workforce-c2-geofence-revision-evidence-2026-08-30.md): immutable circle/timeline foundation; historical workday snapshot awaits C2/C3 integration |
 | WF-C2-005 | P0 | DONE | Backend | Add effective-dated employee site eligibility/primary-secondary assignments | [`workforce-c2-site-assignment-evidence-2026-08-30.md`](./workforce-c2-site-assignment-evidence-2026-08-30.md): transfer and temporary-assignment tests |
 | WF-C2-006 | P0 | DONE | Backend/HR | Add ordered shift segments with mode, site, planned window, grace and proof policy reference | [`workforce-c2-shift-segment-evidence-2026-08-30.md`](./workforce-c2-shift-segment-evidence-2026-08-30.md): tenant/RLS/immutable draft timeline; C3 workday snapshot remains separate |
-| WF-C2-007 | P0 | PLANNED | Backend | Add arrival/departure/site-transition facts linked to segment and evidence assessment | Transition timeline supports multiple sites without a second workday |
+| WF-C2-007 | P0 | PARTIAL | Backend | Add arrival/departure/site-transition facts linked to segment and evidence assessment | [`workforce-c2-site-transition-evidence-2026-08-30.md`](./workforce-c2-site-transition-evidence-2026-08-30.md): immutable claim ledger; C3 snapshot/C4 assessment and public client path remain open |
 | WF-C2-008 | P1 | OWNER DECISION | HR/Legal | Define inter-site travel, paid/expected treatment, delay grace and who may alter it | OD-09 resolved; calculation rule versioned |
 | WF-C2-009 | P1 | PLANNED | Backend | Validate segment overlap, ordering, site eligibility, timezone and impossible travel at publish and action time | Structured conflict codes and tests |
 | WF-C2-010 | P1 | PLANNED | Backend | Add organization/team/site scoped APIs and permissions independent of Route customers/geofences | HRM-only tenant tests pass without Route tables/API |

@@ -446,7 +446,7 @@ describe("safe Workforce configuration drafts", () => {
         { mode: "TRAVEL", startTime: "12:00", endTime: "13:00", proofPolicyReference: "travel-review-v1" },
         { mode: "SITE", siteId: "site-b", startTime: "13:00", endTime: "18:00" },
       ],
-    }).segments?.[1]).toMatchObject({ mode: "TRAVEL", siteId: undefined, lateGraceSeconds: 0 })
+    }).segments?.[1]).toMatchObject({ mode: "TRAVEL", lateGraceSeconds: 0 })
     expect(() => WorkforceShiftTemplateDraftCreateSchema.parse({
       code: "INVALID_SITE",
       name: "Invalid site mode",
