@@ -15,6 +15,7 @@ vi.mock("@/lib/mtm-settings", () => ({
 import { GET, POST } from "@/app/api/v1/workforce/configuration/sites/route"
 import { POST as archivePost } from "@/app/api/v1/workforce/configuration/sites/[id]/archive/route"
 import { POST as geofencePost } from "@/app/api/v1/workforce/configuration/sites/[id]/geofences/route"
+import { GET as assignmentsGet, POST as assignmentsPost } from "@/app/api/v1/workforce/configuration/site-assignments/route"
 import { prisma } from "@/lib/prisma"
 import { getMtmSettings } from "@/lib/mtm-settings"
 
@@ -153,5 +154,40 @@ describe("Workforce site configuration API", () => {
       data: expect.objectContaining({ organizationId: "org-1", siteId: "site-1" }),
     }))
     expect(prisma.mtmCustomer.findFirst).not.toHaveBeenCalled()
+  })
+
+  it("lists and schedules a tenant-scoped future site assignment without Route tables", async () => {
+    const assignment = {
+      id: "assignment-1",
+      agentId: "agent-1",
+      siteId: "site-1",
+      kind: "PRIMARY",
+      effectiveFrom: new Date("2026-09-01T00:00:00.000Z"),
+      effectiveTo: null,
+      assignedByUserId: "admin-1",
+      createdAt: new Date("2026-08-30T00:00:00.000Z"),
+    }
+    vi.mocked(prisma.workforceSiteAssignment.findMany).mockResolvedValue([assignment] as never)
+    const listed = await assignmentsGet(request("/api/v1/workforce/configuration/site-assignments"), AUTH as never)
+    expect(listed.status).toBe(200)
+    await expect(listed.json()).resolves.toMatchObject({ data: { assignments: [{ id: "assignment-1" }] } })
+    expect(prisma.workforceSiteAssignment.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { organizationId: "org-1" },
+    }))
+
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "agent-1" } as never)
+    vi.mocked(prisma.workforceSite.findFirst).mockResolvedValue({ id: "site-1", status: "ACTIVE" } as never)
+    vi.mocked(prisma.workforceSiteAssignment.findMany).mockResolvedValue([])
+    vi.mocked(prisma.workforceSiteAssignment.create).mockResolvedValue(assignment as never)
+    vi.mocked(prisma.mtmAuditLog.create).mockResolvedValue({ id: "audit-4" } as never)
+    const scheduled = await assignmentsPost(request("/api/v1/workforce/configuration/site-assignments", {
+      agentId: "agent-1",
+      siteId: "site-1",
+      kind: "PRIMARY",
+      effectiveFrom: "2026-09-01",
+    }), AUTH as never)
+    expect(scheduled.status).toBe(201)
+    await expect(scheduled.json()).resolves.toMatchObject({ data: { assignment: { id: "assignment-1" } } })
+    expect(prisma.mtmRouteAssignment.create).not.toHaveBeenCalled()
   })
 })

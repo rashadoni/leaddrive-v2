@@ -3,7 +3,10 @@ import {
   archiveWorkforceSite,
   createWorkforceSite,
   createWorkforceSiteGeofenceRevision,
+  scheduleWorkforceSiteAssignment,
   WorkforceSiteCreateSchema,
+  WorkforceSiteAssignmentManagementError,
+  WorkforceSiteAssignmentScheduleSchema,
   WorkforceSiteGeofenceManagementError,
   WorkforceSiteGeofenceRevisionCreateSchema,
   WorkforceSiteManagementError,
@@ -40,6 +43,17 @@ const firstRevision = {
   effectiveFrom: new Date("2026-09-01T00:00:00.000Z"),
   effectiveTo: null,
   createdByUserId: "admin-1",
+  createdAt: new Date("2026-08-30T00:00:00.000Z"),
+}
+
+const firstAssignment = {
+  id: "assignment-1",
+  agentId: "agent-1",
+  siteId: "site-1",
+  kind: "PRIMARY",
+  effectiveFrom: new Date("2026-09-01T00:00:00.000Z"),
+  effectiveTo: null,
+  assignedByUserId: "admin-1",
   createdAt: new Date("2026-08-30T00:00:00.000Z"),
 }
 
@@ -259,5 +273,110 @@ describe("Workforce site management", () => {
       code: "WORKFORCE_SITE_GEOFENCE_EFFECTIVE_DATE_NOT_FUTURE",
     })
     expect(db.workforceSiteGeofenceRevision.create).not.toHaveBeenCalled()
+  })
+
+  it("schedules a replacement primary site from the effective-dated history", async () => {
+    const db = makeMtmPrismaMock()
+    const nextAssignment = {
+      ...firstAssignment,
+      id: "assignment-2",
+      siteId: "site-2",
+      effectiveFrom: new Date("2026-10-01T00:00:00.000Z"),
+    }
+    vi.mocked(db.mtmAgent.findFirst).mockResolvedValue({ id: "agent-1" } as never)
+    vi.mocked(db.workforceSite.findFirst).mockResolvedValue({ id: "site-2", status: "ACTIVE" } as never)
+    vi.mocked(db.workforceSiteAssignment.findMany).mockResolvedValue([firstAssignment] as never)
+    vi.mocked(db.workforceSiteAssignment.updateMany).mockResolvedValue({ count: 1 } as never)
+    vi.mocked(db.workforceSiteAssignment.create).mockResolvedValue(nextAssignment as never)
+    vi.mocked(db.mtmAuditLog.create).mockResolvedValue({ id: "audit-5" } as never)
+
+    const result = await scheduleWorkforceSiteAssignment({
+      organizationId: "org-1",
+      assignedByUserId: "admin-1",
+      assignment: WorkforceSiteAssignmentScheduleSchema.parse({
+        agentId: "agent-1",
+        siteId: "site-2",
+        kind: "PRIMARY",
+        effectiveFrom: "2026-10-01",
+      }),
+      currentDateKey: "2026-08-30",
+      audit,
+      db: db as never,
+    })
+
+    expect(result).toMatchObject({ id: "assignment-2", siteId: "site-2", kind: "PRIMARY" })
+    expect(db.workforceSiteAssignment.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "assignment-1",
+        organizationId: "org-1",
+        agentId: "agent-1",
+        kind: "PRIMARY",
+        effectiveTo: null,
+      },
+      data: { effectiveTo: new Date("2026-09-30T00:00:00.000Z") },
+    })
+    expect(db.workforceSiteAssignment.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ agentId: "agent-1", siteId: "site-2", kind: "PRIMARY" }),
+    }))
+  })
+
+  it("allows a bounded temporary site without closing the employee primary", async () => {
+    const db = makeMtmPrismaMock()
+    const temporary = {
+      ...firstAssignment,
+      id: "assignment-temp-1",
+      siteId: "site-2",
+      kind: "TEMPORARY",
+      effectiveFrom: new Date("2026-10-06T00:00:00.000Z"),
+      effectiveTo: new Date("2026-10-07T00:00:00.000Z"),
+    }
+    vi.mocked(db.mtmAgent.findFirst).mockResolvedValue({ id: "agent-1" } as never)
+    vi.mocked(db.workforceSite.findFirst).mockResolvedValue({ id: "site-2", status: "ACTIVE" } as never)
+    vi.mocked(db.workforceSiteAssignment.findMany).mockResolvedValue([])
+    vi.mocked(db.workforceSiteAssignment.create).mockResolvedValue(temporary as never)
+    vi.mocked(db.mtmAuditLog.create).mockResolvedValue({ id: "audit-6" } as never)
+
+    await expect(scheduleWorkforceSiteAssignment({
+      organizationId: "org-1",
+      assignedByUserId: "admin-1",
+      assignment: WorkforceSiteAssignmentScheduleSchema.parse({
+        agentId: "agent-1",
+        siteId: "site-2",
+        kind: "TEMPORARY",
+        effectiveFrom: "2026-10-06",
+        effectiveTo: "2026-10-07",
+      }),
+      currentDateKey: "2026-08-30",
+      audit,
+      db: db as never,
+    })).resolves.toMatchObject({ id: "assignment-temp-1", kind: "TEMPORARY" })
+    expect(db.workforceSiteAssignment.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("rejects a past assignment and an unbounded temporary assignment before a write", async () => {
+    expect(() => WorkforceSiteAssignmentScheduleSchema.parse({
+      agentId: "agent-1",
+      siteId: "site-2",
+      kind: "TEMPORARY",
+      effectiveFrom: "2026-10-06",
+    })).toThrow()
+    const db = makeMtmPrismaMock()
+    const assignment = WorkforceSiteAssignmentScheduleSchema.parse({
+      agentId: "agent-1",
+      siteId: "site-2",
+      kind: "SECONDARY",
+      effectiveFrom: "2026-08-30",
+    })
+    await expect(scheduleWorkforceSiteAssignment({
+      organizationId: "org-1",
+      assignedByUserId: "admin-1",
+      assignment,
+      currentDateKey: "2026-08-30",
+      audit,
+      db: db as never,
+    })).rejects.toMatchObject<Partial<WorkforceSiteAssignmentManagementError>>({
+      code: "WORKFORCE_SITE_ASSIGNMENT_EFFECTIVE_DATE_NOT_FUTURE",
+    })
+    expect(db.workforceSiteAssignment.create).not.toHaveBeenCalled()
   })
 })

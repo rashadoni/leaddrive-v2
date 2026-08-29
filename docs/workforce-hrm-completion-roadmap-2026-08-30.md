@@ -323,6 +323,7 @@ Owner roles are accountabilities, not individual names:
 | 2026-08-30T01:15:00+02:00 | C2a site-domain ADR | 5% | C2 18% | 10/161 | 0/15 | WF-C2-001/011 accepted: Workforce-only vocabulary and circle-v1/future-geometry boundary recorded; no tenant site or Route linkage added |
 | 2026-08-30T01:22:00+02:00 | C2b independent site lifecycle | 5% | C2 27% | 11/161 | 0/15 | WF-C2-002 accepted: tenant-scoped site create/archive and admin API are isolated from Route; geofence/assignment/segment facts remain open |
 | 2026-08-30T01:28:00+02:00 | C2c geofence-revision foundation | 5% | C2 27% | 11/161 | 0/15 | C2-004 foundation checkpointed: circle geometry/timeline is immutable and tenant-scoped; physical calibration and workday snapshot integration remain open |
+| 2026-08-30T01:35:00+02:00 | C2d effective site assignments | 6% | C2 36% | 12/161 | 0/15 | WF-C2-005 accepted: future primary/secondary/temporary history is tenant-scoped and auditable; historical workday resolution remains open |
 
 ### 6.1 Progress reporting contract
 
@@ -431,7 +432,7 @@ between office, field, remote and travel segments.
 | WF-C2-002 | P0 | DONE | Backend | Add tenant-scoped `WorkforceSite` lifecycle with code/name/timezone/address/status and responsible scope | [`workforce-c2-site-evidence-2026-08-30.md`](./workforce-c2-site-evidence-2026-08-30.md): Prisma/RLS/migration/API tests and Route-independence contract |
 | WF-C2-003 | P0 | OWNER DECISION | HR/Privacy | Approve per-site geofence calibration procedure, minimum/maximum radius and accuracy policy | OD-05 resolved with calibration evidence |
 | WF-C2-004 | P0 | PARTIAL | Backend | Add immutable effective-dated geofence revisions; v1 supports a validated circle and preserves future polygon extension | [`workforce-c2-geofence-revision-evidence-2026-08-30.md`](./workforce-c2-geofence-revision-evidence-2026-08-30.md): immutable circle/timeline foundation; historical workday snapshot awaits C2/C3 integration |
-| WF-C2-005 | P0 | PLANNED | Backend | Add effective-dated employee site eligibility/primary-secondary assignments | Transfer and temporary-assignment tests |
+| WF-C2-005 | P0 | DONE | Backend | Add effective-dated employee site eligibility/primary-secondary assignments | [`workforce-c2-site-assignment-evidence-2026-08-30.md`](./workforce-c2-site-assignment-evidence-2026-08-30.md): transfer and temporary-assignment tests |
 | WF-C2-006 | P0 | PLANNED | Backend/HR | Add ordered shift segments with mode, site, planned window, grace and proof policy reference | 09-13 Site A, 14-18 Site B is schedulable and reproducible |
 | WF-C2-007 | P0 | PLANNED | Backend | Add arrival/departure/site-transition facts linked to segment and evidence assessment | Transition timeline supports multiple sites without a second workday |
 | WF-C2-008 | P1 | OWNER DECISION | HR/Legal | Define inter-site travel, paid/expected treatment, delay grace and who may alter it | OD-09 resolved; calculation rule versioned |

@@ -39,6 +39,23 @@ export const WorkforceSiteGeofenceRevisionCreateSchema = z.object({
   calibrationReference: z.string().trim().min(1).max(500),
 }).strict()
 
+export const WorkforceSiteAssignmentScheduleSchema = z.object({
+  agentId: z.string().trim().regex(SITE_ID),
+  siteId: z.string().trim().regex(SITE_ID),
+  kind: z.enum(["PRIMARY", "SECONDARY", "TEMPORARY"]),
+  effectiveFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "effectiveFrom must be YYYY-MM-DD")
+    .refine(isDateKey, "effectiveFrom must be a real calendar date"),
+  effectiveTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "effectiveTo must be YYYY-MM-DD")
+    .refine(isDateKey, "effectiveTo must be a real calendar date").nullable().optional(),
+}).strict().superRefine((value, context) => {
+  if (value.effectiveTo != null && value.effectiveTo < value.effectiveFrom) {
+    context.addIssue({ code: "custom", path: ["effectiveTo"], message: "effectiveTo must not be earlier than effectiveFrom" })
+  }
+  if (value.kind === "TEMPORARY" && value.effectiveTo == null) {
+    context.addIssue({ code: "custom", path: ["effectiveTo"], message: "Temporary site assignment requires an end date" })
+  }
+})
+
 export class WorkforceSiteManagementError extends Error {
   constructor(
     readonly code:
@@ -59,6 +76,20 @@ export class WorkforceSiteGeofenceManagementError extends Error {
       | "WORKFORCE_SITE_GEOFENCE_SITE_ARCHIVED"
       | "WORKFORCE_SITE_GEOFENCE_EFFECTIVE_DATE_NOT_FUTURE"
       | "WORKFORCE_SITE_GEOFENCE_TIMELINE_CONFLICT",
+    message = code,
+  ) {
+    super(message)
+  }
+}
+
+export class WorkforceSiteAssignmentManagementError extends Error {
+  constructor(
+    readonly code:
+      | "WORKFORCE_SITE_ASSIGNMENT_AGENT_NOT_FOUND"
+      | "WORKFORCE_SITE_ASSIGNMENT_SITE_NOT_FOUND"
+      | "WORKFORCE_SITE_ASSIGNMENT_SITE_ARCHIVED"
+      | "WORKFORCE_SITE_ASSIGNMENT_EFFECTIVE_DATE_NOT_FUTURE"
+      | "WORKFORCE_SITE_ASSIGNMENT_TIMELINE_CONFLICT",
     message = code,
   ) {
     super(message)
@@ -96,6 +127,17 @@ const workforceSiteGeofenceRevisionSelect = {
   createdByUserId: true,
   createdAt: true,
 } satisfies Prisma.WorkforceSiteGeofenceRevisionSelect
+
+const workforceSiteAssignmentSelect = {
+  id: true,
+  agentId: true,
+  siteId: true,
+  kind: true,
+  effectiveFrom: true,
+  effectiveTo: true,
+  assignedByUserId: true,
+  createdAt: true,
+} satisfies Prisma.WorkforceSiteAssignmentSelect
 
 function siteAuditData(
   site: {
@@ -169,6 +211,24 @@ function geofenceAuditData(revision: {
     definitionHash: revision.definitionHash,
     effectiveFrom: dateKey(revision.effectiveFrom),
     effectiveTo: revision.effectiveTo == null ? null : dateKey(revision.effectiveTo),
+  }
+}
+
+function siteAssignmentAuditData(assignment: {
+  id: string
+  agentId: string
+  siteId: string
+  kind: string
+  effectiveFrom: Date
+  effectiveTo: Date | null
+}, audit: WorkforceConfigurationAuditContext): Prisma.InputJsonObject {
+  return {
+    actorUserId: audit.actorUserId,
+    agentId: assignment.agentId,
+    siteId: assignment.siteId,
+    kind: assignment.kind,
+    effectiveFrom: dateKey(assignment.effectiveFrom),
+    effectiveTo: assignment.effectiveTo == null ? null : dateKey(assignment.effectiveTo),
   }
 }
 
@@ -405,6 +465,139 @@ export async function createWorkforceSiteGeofenceRevision(input: {
       throw new WorkforceSiteGeofenceManagementError(
         "WORKFORCE_SITE_GEOFENCE_TIMELINE_CONFLICT",
         "The Workforce geofence revision timeline changed concurrently",
+      )
+    }
+    throw error
+  }
+}
+
+/**
+ * Schedule a site eligibility window from server-known organization time. The
+ * primary timeline is forward-only; secondary/temporary windows may coexist
+ * only at distinct sites. No travel compensation or attendance is inferred.
+ */
+export async function scheduleWorkforceSiteAssignment(input: {
+  organizationId: string
+  assignedByUserId: string
+  assignment: z.infer<typeof WorkforceSiteAssignmentScheduleSchema>
+  currentDateKey: string
+  audit: WorkforceConfigurationAuditContext
+  db?: PrismaClient
+}) {
+  if (!isDateKey(input.currentDateKey) || input.assignment.effectiveFrom <= input.currentDateKey) {
+    throw new WorkforceSiteAssignmentManagementError(
+      "WORKFORCE_SITE_ASSIGNMENT_EFFECTIVE_DATE_NOT_FUTURE",
+      "A Workforce site assignment must become effective after the organization current date",
+    )
+  }
+  const db = input.db ?? prisma
+  try {
+    return await db.$transaction(async (tx) => {
+      const [agent, site] = await Promise.all([
+        tx.mtmAgent.findFirst({
+          where: { id: input.assignment.agentId, organizationId: input.organizationId, status: "ACTIVE" },
+          select: { id: true },
+        }),
+        tx.workforceSite.findFirst({
+          where: { id: input.assignment.siteId, organizationId: input.organizationId },
+          select: { id: true, status: true },
+        }),
+      ])
+      if (!agent) {
+        throw new WorkforceSiteAssignmentManagementError(
+          "WORKFORCE_SITE_ASSIGNMENT_AGENT_NOT_FOUND",
+          "Active Workforce employee is unavailable",
+        )
+      }
+      if (!site) {
+        throw new WorkforceSiteAssignmentManagementError(
+          "WORKFORCE_SITE_ASSIGNMENT_SITE_NOT_FOUND",
+          "Workforce site was not found",
+        )
+      }
+      if (site.status !== "ACTIVE") {
+        throw new WorkforceSiteAssignmentManagementError(
+          "WORKFORCE_SITE_ASSIGNMENT_SITE_ARCHIVED",
+          "An active Workforce site is required for assignment",
+        )
+      }
+      const assignmentLock = [
+        "workforce-site-assignment",
+        input.organizationId,
+        input.assignment.agentId,
+        input.assignment.kind,
+        input.assignment.kind === "PRIMARY" ? "primary" : input.assignment.siteId,
+      ].join(":")
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${assignmentLock}))`
+      const sameScope = await tx.workforceSiteAssignment.findMany({
+        where: {
+          organizationId: input.organizationId,
+          agentId: input.assignment.agentId,
+          kind: input.assignment.kind,
+          ...(input.assignment.kind === "PRIMARY" ? {} : { siteId: input.assignment.siteId }),
+        },
+        orderBy: { effectiveFrom: "asc" },
+        select: workforceSiteAssignmentSelect,
+      })
+      const predecessor = sameScope.at(-1) ?? null
+      if (predecessor && input.assignment.effectiveFrom <= dateKey(predecessor.effectiveFrom)) {
+        throw new WorkforceSiteAssignmentManagementError(
+          "WORKFORCE_SITE_ASSIGNMENT_TIMELINE_CONFLICT",
+          "A Workforce site assignment must be scheduled after the latest matching assignment",
+        )
+      }
+      if (input.assignment.kind === "PRIMARY" && predecessor && predecessor.effectiveTo == null) {
+        const changed = await tx.workforceSiteAssignment.updateMany({
+          where: {
+            id: predecessor.id,
+            organizationId: input.organizationId,
+            agentId: input.assignment.agentId,
+            kind: "PRIMARY",
+            effectiveTo: null,
+          },
+          data: { effectiveTo: new Date(`${previousDateKey(input.assignment.effectiveFrom)}T00:00:00.000Z`) },
+        })
+        if (changed.count !== 1) {
+          throw new WorkforceSiteAssignmentManagementError(
+            "WORKFORCE_SITE_ASSIGNMENT_TIMELINE_CONFLICT",
+            "The preceding primary site assignment changed concurrently",
+          )
+        }
+      }
+      const assignment = await tx.workforceSiteAssignment.create({
+        data: {
+          organizationId: input.organizationId,
+          agentId: input.assignment.agentId,
+          siteId: input.assignment.siteId,
+          kind: input.assignment.kind,
+          effectiveFrom: new Date(`${input.assignment.effectiveFrom}T00:00:00.000Z`),
+          effectiveTo: input.assignment.effectiveTo == null
+            ? null
+            : new Date(`${input.assignment.effectiveTo}T00:00:00.000Z`),
+          assignedByUserId: input.assignedByUserId,
+        },
+        select: workforceSiteAssignmentSelect,
+      })
+      await tx.mtmAuditLog.create({
+        data: {
+          organizationId: input.organizationId,
+          agentId: input.assignment.agentId,
+          action: "WORKFORCE_SITE_ASSIGNMENT_SCHEDULED",
+          entity: "workforce_site_assignment",
+          entityId: assignment.id,
+          metadataKind: "workforce_configuration",
+          newData: siteAssignmentAuditData(assignment, input.audit),
+          ipAddress: input.audit.ipAddress ?? null,
+          userAgent: input.audit.userAgent ?? null,
+        },
+      })
+      return assignment
+    })
+  } catch (error) {
+    if (hasPrismaCode(error, "P2002") || hasPrismaCode(error, "P2004") || hasPrismaCode(error, "P2010")) {
+      throw new WorkforceSiteAssignmentManagementError(
+        "WORKFORCE_SITE_ASSIGNMENT_TIMELINE_CONFLICT",
+        "The Workforce site assignment timeline changed concurrently",
       )
     }
     throw error

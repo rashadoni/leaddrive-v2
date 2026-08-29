@@ -189,6 +189,7 @@ model Organization {
   workforcePolicies                   WorkforcePolicy[]
   workforceShiftTemplates             WorkforceShiftTemplate[]
   workforceShiftAssignments           WorkforceShiftAssignment[]
+  workforceSiteAssignments            WorkforceSiteAssignment[]
   workforcePolicySnapshots            WorkforcePolicySnapshot[]
   workforceShiftSnapshots             WorkforceShiftSnapshot[]
   workforceSites                      WorkforceSite[]
@@ -653,6 +654,7 @@ model User {
   workforceSitesCreated               WorkforceSite[]                @relation("WorkforceSiteCreatedBy")
   workforceSitesArchived              WorkforceSite[]                @relation("WorkforceSiteArchivedBy")
   workforceSiteGeofenceRevisionsCreated WorkforceSiteGeofenceRevision[] @relation("WorkforceSiteGeofenceRevisionCreatedBy")
+  workforceSiteAssignmentsAssigned    WorkforceSiteAssignment[]       @relation("WorkforceSiteAssignmentAssignedBy")
   workforceAttendanceExceptionsResolved WorkforceAttendanceException[] @relation("WorkforceAttendanceExceptionResolvedBy")
   workforceTimeCorrectionsActed       WorkforceTimeCorrection[]      @relation("WorkforceTimeCorrectionActor")
   workforceTimesheetApprovalsApproved WorkforceTimesheetApproval[]   @relation("WorkforceTimesheetApprovalApprovedBy")
@@ -5170,6 +5172,12 @@ enum WorkforceSiteGeofenceKind {
   CIRCLE
 }
 
+enum WorkforceSiteAssignmentKind {
+  PRIMARY
+  SECONDARY
+  TEMPORARY
+}
+
 enum WorkforceAttendanceExceptionType {
   LATE_START
   UNDERTIME
@@ -5514,6 +5522,7 @@ model MtmAgent {
   documentAssignments       MtmDocumentAssignment[]
   hrmRequests               MtmHrmRequest[]
   workforceShiftAssignments WorkforceShiftAssignment[]
+  workforceSiteAssignments  WorkforceSiteAssignment[]
   workforcePolicySnapshots  WorkforcePolicySnapshot[]
   workforceShiftSnapshots   WorkforceShiftSnapshot[]
   workforceExceptions       WorkforceAttendanceException[]
@@ -7383,6 +7392,7 @@ model WorkforceSite {
   updatedAt         DateTime            @updatedAt
 
   geofenceRevisions WorkforceSiteGeofenceRevision[]
+  assignments        WorkforceSiteAssignment[]
 
   @@unique([organizationId, id])
   @@unique([organizationId, code])
@@ -7420,6 +7430,31 @@ model WorkforceSiteGeofenceRevision {
   @@index([organizationId, siteId, effectiveFrom, effectiveTo])
   @@index([organizationId, createdByUserId, createdAt])
   @@map("workforce_site_geofence_revisions")
+}
+
+/// Effective-dated employee eligibility for one Workforce site. A later
+/// resolver/snapshot consumes this history; it never falls back to a current
+/// team/site when processing delayed workday evidence.
+model WorkforceSiteAssignment {
+  id               String                     @id @default(cuid())
+  organizationId   String
+  organization     Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentId          String
+  agent            MtmAgent                   @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  siteId           String
+  site             WorkforceSite              @relation(fields: [organizationId, siteId], references: [organizationId, id], onDelete: Restrict)
+  kind             WorkforceSiteAssignmentKind
+  effectiveFrom    DateTime                   @db.Date
+  effectiveTo      DateTime?                  @db.Date
+  assignedByUserId String
+  assignedByUser   User                       @relation("WorkforceSiteAssignmentAssignedBy", fields: [organizationId, assignedByUserId], references: [organizationId, id], onDelete: Restrict)
+  createdAt        DateTime                   @default(now())
+
+  @@unique([organizationId, id])
+  @@index([organizationId, agentId, kind, effectiveFrom, effectiveTo])
+  @@index([organizationId, siteId, kind, effectiveFrom, effectiveTo])
+  @@index([organizationId, assignedByUserId, createdAt])
+  @@map("workforce_site_assignments")
 }
 
 // Versioned Workforce policy. The JSON definition is the tenant-authored
