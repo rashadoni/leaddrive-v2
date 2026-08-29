@@ -13,6 +13,7 @@
 > [`workforce-h6-pilot-evidence.md`](./workforce-h6-pilot-evidence.md),
 > [`workforce-hrm-h0-baseline.md`](./workforce-hrm-h0-baseline.md),
 > [`workforce-c0-foundation-evidence-2026-08-30.md`](./workforce-c0-foundation-evidence-2026-08-30.md),
+> [`workforce-c1-provenance-evidence-2026-08-30.md`](./workforce-c1-provenance-evidence-2026-08-30.md),
 > [`mobile-sync-v2-workforce-contract.md`](./mobile-sync-v2-workforce-contract.md)
 
 ## 1. Purpose and honest starting point
@@ -315,6 +316,7 @@ Owner roles are accountabilities, not individual names:
 | Recorded at | Checkpoint | Overall | Current phase | Accepted tasks | Passed gates | Evidence / blocker change |
 |---|---|---:|---:|---:|---:|---|
 | 2026-08-30T00:26:11+02:00 | C0 contract/threat/data evidence | 2% | C0 50% | 4/161 | 0/15 | WF-C0-001/002/007/008 accepted; legal review, tenant-scoped production baseline and mobile-distribution gates remain open |
+| 2026-08-30T00:44:05+02:00 | C1a provenance/offline-boundary contract | 3% | C1 20% | 6/161 | 0/15 | WF-C1-001/002 accepted; changed-payload digest is partial pending C2 segment identity, claim/review and audit-projection work remain open |
 
 ### 6.1 Progress reporting contract
 
@@ -389,10 +391,10 @@ client timestamps into trusted attendance facts.
 
 | ID | Pri | Status | Owner | Task | Acceptance evidence |
 |---|---:|---|---|---|---|
-| WF-C1-001 | P0 | NEXT | Backend | Define `claimedAt`, `capturedAt`, `queuedAt`, `serverReceivedAt`, `appliedAt` and server-authoritative work date semantics | Versioned contract and parser tests |
-| WF-C1-002 | P0 | NEXT | Backend | Enforce the confirmed seven-day offline horizon in every legacy and new mutation path | Boundary, future-skew and replay tests for all adapters |
+| WF-C1-001 | P0 | DONE | Backend | Define `claimedAt`, `capturedAt`, `queuedAt`, `serverReceivedAt`, `appliedAt` and server-authoritative work date semantics | Versioned contract and parser tests |
+| WF-C1-002 | P0 | DONE | Backend | Enforce the confirmed seven-day offline horizon in every legacy and new mutation path | Boundary, future-skew and replay tests for all adapters |
 | WF-C1-003 | P0 | NEXT | Backend/HR | Route delayed/anomalous claims to `PENDING_REVIEW`; never silently manufacture an approved historical workday | Review case and immutable claim/receipt evidence |
-| WF-C1-004 | P0 | NEXT | Backend | Bind idempotency hash to actor, action, claimed time, segment, evidence references and schema version | Changed payload under one operation ID fails deterministically |
+| WF-C1-004 | P0 | PARTIAL | Backend | Bind idempotency hash to actor, action, claimed time, segment, evidence references and schema version | Changed payload under one operation ID fails deterministically; C2 segment identity is not available yet |
 | WF-C1-005 | P0 | NEXT | Backend | Make standard audit projection atomic with accepted workday/request decisions or derive it reliably from the immutable ledger | Failure-injection proves no accepted mutation lacks reconstructable audit |
 | WF-C1-006 | P1 | PLANNED | Backend/HR | Resolve policy/team/site assignment from an effective-dated employee history, not the current team after a delayed upload | Transfer-during-offline test applies historical snapshot |
 | WF-C1-007 | P1 | PLANNED | Backend | Add impossible clock/order and duplicate active-shift risk codes without breaking idempotent retries | Property/concurrency tests cover state transitions |
@@ -403,6 +405,11 @@ client timestamps into trusted attendance facts.
 **Gate C1:** no supported endpoint can convert an out-of-policy past timestamp
 into ordinary accepted attendance; every accepted fact is reproducible and
 auditable.
+
+**Current evidence:**
+[`workforce-c1-provenance-evidence-2026-08-30.md`](./workforce-c1-provenance-evidence-2026-08-30.md)
+records the C1a contract, migration and targeted test results. C1 remains open
+until the review case, atomic/reconstructable audit and segment binding exist.
 
 ### C2 — Sites, geofences, multi-branch segments and travel
 

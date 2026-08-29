@@ -32,6 +32,7 @@ import { dateInputValueInTimezone, isValidTimezone } from "@/lib/timezone"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import {
   applyMtmWorkdayEvent,
+  mtmWorkdayRequestHash,
   parseMtmWorkdayEvent,
   type MtmWorkdayEventInput,
 } from "@/lib/mtm/workday"
@@ -135,7 +136,7 @@ type OpOutcome =
     access: Exclude<Awaited<ReturnType<typeof evaluateWorkforceMobileWriteAccess>>, { allowed: true }>
   }
   | { kind: "workforce-fence-unavailable" }
-type StoredOp = { entity: string; status: string; result: unknown }
+type StoredOp = { entity: string; status: string; result: unknown; requestHash?: string | null }
 type MobileSyncOperationEnvelope = {
   operationId: string
   opType: string
@@ -292,6 +293,15 @@ function syncWorkforceMobileWriteFenceUnavailableError(operationId: string) {
   }
 }
 
+function syncWorkdayIdempotencyMismatch(operationId: string) {
+  return {
+    operationId,
+    status: "conflict" as const,
+    error: "operationId was already used for a different Workforce workday operation",
+    serverData: { code: "WORKFORCE_WORKDAY_IDEMPOTENCY_MISMATCH" },
+  }
+}
+
 function hasSyncCapability(
   auth: Pick<MobileAuthResult, "tenantCapabilities">,
   capabilityId: "route-field" | "workforce-hrm",
@@ -430,7 +440,7 @@ export const POST = withMobileRls(async (req, auth) => {
       // replay its stored result (with that agent's serverData) to this one.
       const rows = await prisma.mtmSyncOperation.findMany({
         where: { organizationId: orgId, agentId, operationId: { in: validIds } },
-        select: { operationId: true, entity: true, status: true, result: true },
+        select: { operationId: true, entity: true, status: true, requestHash: true, result: true },
       })
       for (const r of rows) known.set(r.operationId, r)
     } catch (e) {
@@ -539,6 +549,29 @@ export const POST = withMobileRls(async (req, auth) => {
         }
         if (!workforceMobileWriteAccess.allowed) {
           results.push(syncWorkforceMobileWriteFenceError(operationId, workforceMobileWriteAccess))
+          continue
+        }
+      }
+      if (prev.entity === "workdays" && typeof prev.requestHash === "string" && prev.requestHash.length > 0) {
+        // New C1 operations bind the input, not just their stored result. An
+        // exact historical retry remains valid beyond seven days, but an
+        // altered payload must not replay it as success.
+        if (entity !== "workdays" || opType !== "create") {
+          results.push(syncWorkdayIdempotencyMismatch(operationId))
+          continue
+        }
+        const replayParsed = parseMtmWorkdayEvent(
+          data,
+          operationId,
+          workdayTimezone,
+          new Date(),
+          { enforceOfflineHorizon: false },
+        )
+        if (
+          !replayParsed.input
+          || prev.requestHash !== mtmWorkdayRequestHash({ organizationId: orgId, agentId }, replayParsed.input)
+        ) {
+          results.push(syncWorkdayIdempotencyMismatch(operationId))
           continue
         }
       }
@@ -685,7 +718,7 @@ export const POST = withMobileRls(async (req, auth) => {
       if (opType !== "create") {
         validationError = `Unsupported op "${opType}" for entity "workdays"`
       } else {
-        const parsed = parseMtmWorkdayEvent(data, operationId, workdayTimezone)
+        const parsed = parseMtmWorkdayEvent(data, operationId, workdayTimezone, receivedAt)
         workdayInput = parsed.input
         validationError = parsed.error ?? undefined
       }
@@ -768,6 +801,9 @@ export const POST = withMobileRls(async (req, auth) => {
       results.push({ operationId, status: "error", error: validationError })
       continue
     }
+    const workdayRequestHash = workdayInput
+      ? mtmWorkdayRequestHash({ organizationId: orgId, agentId }, workdayInput)
+      : null
 
     // ── Process: entity write + idempotency pin in ONE transaction ───
     // Everything inside the callback must go through `tx.*` — with the RLS
@@ -2594,6 +2630,7 @@ export const POST = withMobileRls(async (req, auth) => {
             entity,
             opType,
             status: opStatus,
+            ...(workdayRequestHash ? { requestHash: workdayRequestHash } : {}),
             result,
           },
         })
@@ -2612,7 +2649,12 @@ export const POST = withMobileRls(async (req, auth) => {
 
       // One payload, three consumers: the pin above, the in-batch replay map,
       // and the response — fresh and replayed answers are identical by construction.
-      const stored: StoredOp = { entity, status: out.opStatus, result: out.result }
+      const stored: StoredOp = {
+        entity,
+        status: out.opStatus,
+        result: out.result,
+        ...(workdayRequestHash ? { requestHash: workdayRequestHash } : {}),
+      }
       known.set(operationId, stored)
       results.push(replayOf(operationId, stored))
     } catch (e: unknown) {
@@ -2636,7 +2678,7 @@ export const POST = withMobileRls(async (req, auth) => {
         try {
           const winner = await prisma.mtmSyncOperation.findFirst({
             where: { organizationId: orgId, agentId, operationId },
-            select: { operationId: true, entity: true, status: true, result: true },
+            select: { operationId: true, entity: true, status: true, requestHash: true, result: true },
           })
           if (winner) {
             known.set(winner.operationId, winner)
@@ -2647,6 +2689,15 @@ export const POST = withMobileRls(async (req, auth) => {
             const replayCapability = capabilityForSyncEntity(auth, winner.entity)
             if (!hasSyncCapability(auth, replayCapability)) {
               results.push(syncCapabilityError(operationId, replayCapability))
+              continue
+            }
+            if (
+              winner.entity === "workdays"
+              && typeof winner.requestHash === "string"
+              && winner.requestHash.length > 0
+              && (entity !== "workdays" || opType !== "create" || winner.requestHash !== workdayRequestHash)
+            ) {
+              results.push(syncWorkdayIdempotencyMismatch(operationId))
               continue
             }
             results.push(replayOf(operationId, winner))
@@ -2671,6 +2722,7 @@ export const POST = withMobileRls(async (req, auth) => {
                   entity,
                   opType,
                   status: "conflict",
+                  ...(workdayRequestHash ? { requestHash: workdayRequestHash } : {}),
                   result: stored.result as object,
                 },
               })

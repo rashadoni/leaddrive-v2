@@ -33,6 +33,7 @@ import { prisma } from "@/lib/prisma"
 import { resolveMobileAuth } from "@/lib/mobile-auth"
 import { recordMtmMobileV1SyncActivity } from "@/lib/mtm/mobile-sync-telemetry"
 import { evaluateWorkforceMobileWriteAccess } from "@/lib/workforce/mobile-write-fence"
+import { mtmWorkdayRequestHash, parseMtmWorkdayEvent } from "@/lib/mtm/workday"
 
 const ORG = "org-1"
 const AGENT_ID = "agent-1"
@@ -655,6 +656,58 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
     expect(vi.mocked(prisma.mtmVisit.create)).not.toHaveBeenCalled()
   })
 
+  it("rejects a changed workday payload for an already-pinned C1 operation", async () => {
+    const occurredAt = new Date(Date.now() - 60_000).toISOString()
+    const queuedAt = new Date(Date.now() - 30_000).toISOString()
+    const parsed = parseMtmWorkdayEvent({
+      action: "START",
+      id: "workday-pinned-1",
+      occurredAt,
+      claimedAt: occurredAt,
+      capturedAt: occurredAt,
+      queuedAt,
+      schemaVersion: 2,
+      latitude: 40.4093,
+      longitude: 49.8671,
+    }, "op-workday-payload-bound", "Asia/Baku", new Date())
+    expect(parsed.input).toBeTruthy()
+
+    vi.mocked(prisma.mtmSyncOperation.findMany).mockResolvedValue([{
+      operationId: "op-workday-payload-bound",
+      entity: "workdays",
+      status: "ok",
+      requestHash: mtmWorkdayRequestHash({ organizationId: ORG, agentId: AGENT_ID }, parsed.input!),
+      result: { serverId: "workday-pinned-1", serverData: { workday: { status: "STARTED" } } },
+    }] as never)
+
+    const response = await PushPOST(makePushReq({ operations: [{
+      operationId: "op-workday-payload-bound",
+      op: "create",
+      entity: "workdays",
+      data: {
+        action: "START",
+        id: "workday-pinned-1",
+        occurredAt,
+        claimedAt: occurredAt,
+        capturedAt: occurredAt,
+        queuedAt,
+        schemaVersion: 2,
+        latitude: 40.4093,
+        longitude: 49.8672,
+      },
+      clientTimestamp: Date.now(),
+    }] }))
+    const body = await response.json()
+
+    expect(body.results[0]).toMatchObject({
+      operationId: "op-workday-payload-bound",
+      status: "conflict",
+      serverData: { code: "WORKFORCE_WORKDAY_IDEMPOTENCY_MISMATCH" },
+    })
+    expect(prisma.mtmAgentWorkday.create).not.toHaveBeenCalled()
+    expect(prisma.mtmSyncOperation.create).not.toHaveBeenCalled()
+  })
+
   it("replays a pinned own field-session workday after Workforce is disabled", async () => {
     vi.mocked(resolveMobileAuth).mockResolvedValue({
       ...AUTH_CONTEXT,
@@ -1167,6 +1220,7 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
   })
 
   it("delivers a workday event while returning a per-operation capability error for a queued route mutation", async () => {
+    const occurredAt = new Date(Date.now() - 60_000).toISOString()
     vi.mocked(resolveMobileAuth).mockResolvedValue({
       ...AUTH_CONTEXT,
       tenantCapabilities: { routeField: false, workforceHrm: true },
@@ -1203,7 +1257,7 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
         data: {
           action: "START",
           id: "workday-hrm-only-1",
-          occurredAt: "2026-07-14T05:00:00.000Z",
+          occurredAt,
           latitude: 0,
           longitude: 0,
         },
@@ -2351,6 +2405,7 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
   })
 
   it("applies and pins an offline workday start", async () => {
+    const occurredAt = new Date(Date.now() - 60_000).toISOString()
     vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue(null)
     vi.mocked(prisma.mtmAgentWorkday.create).mockResolvedValue({
       id: "workday-mobile-1",
@@ -2383,7 +2438,7 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
         data: {
           action: "START",
           id: "workday-mobile-1",
-          occurredAt: "2026-07-14T05:00:00.000Z",
+          occurredAt,
           latitude: 0,
           longitude: 0,
         },
@@ -2468,6 +2523,7 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
   })
 
   it("returns the server workday and safe recovery actions for an offline conflict", async () => {
+    const occurredAt = new Date(Date.now() - 60_000).toISOString()
     vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({
       id: "workday-paused-1",
       workDate: new Date("2026-07-14T00:00:00.000Z"),
@@ -2492,7 +2548,7 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
         data: {
           action: "PAUSE",
           workdayId: "workday-paused-1",
-          occurredAt: "2026-07-14T06:30:00.000Z",
+          occurredAt,
         },
         clientTimestamp: Date.now(),
       }],
@@ -2520,12 +2576,13 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
   })
 
   it("replays and pins a web-origin workday event through offline sync", async () => {
+    const occurredAt = new Date(Date.now() - 60_000).toISOString()
     vi.mocked(prisma.mtmAgentWorkdayEvent.findFirst).mockResolvedValue({
       id: "event-web-1",
       workdayId: "workday-cross-channel",
       clientEventId: "event-cross-channel",
       type: "START",
-      occurredAt: new Date("2026-07-14T05:00:00.000Z"),
+      occurredAt: new Date(occurredAt),
       latitude: 0,
       longitude: 0,
       accuracy: 5,
@@ -2556,7 +2613,7 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
         data: {
           action: "START",
           id: "workday-cross-channel",
-          occurredAt: "2026-07-14T05:00:00.000Z",
+          occurredAt,
           latitude: 0,
           longitude: 0,
           accuracy: 5,

@@ -7054,6 +7054,25 @@ model MtmAgentWorkdayEvent {
   workday        MtmAgentWorkday     @relation(fields: [workdayId], references: [id], onDelete: Cascade)
   clientEventId  String?
   type           MtmWorkdayEventType
+  /// Client-declared attendance action time. `occurredAt` remains the
+  /// compatibility field and is required to equal this value for C1+ writes.
+  claimedAt      DateTime?
+  /// When the client captured the action's local evidence/context.
+  capturedAt     DateTime?
+  /// When the client placed the action in its durable outbox. Null only for
+  /// legacy v1 adapters that did not expose provenance.
+  queuedAt         DateTime?
+  /// Set only by the receiving server; never trusted from a client envelope.
+  serverReceivedAt DateTime?
+  /// Instant at which the canonical state transition was accepted in its
+  /// transaction. It remains distinct from client claim/capture time.
+  appliedAt        DateTime?
+  /// Legacy adapter writes use v1; v2 requires explicit client provenance.
+  schemaVersion    Int                 @default(1)
+  /// SHA-256 of actor/action/provenance/evidence references. This detects an
+  /// altered payload under an already-used clientEventId without storing raw
+  /// QR or device proof.
+  requestHash      String?             @db.VarChar(64)
   occurredAt     DateTime
   latitude       Float?
   longitude      Float?
@@ -7066,6 +7085,7 @@ model MtmAgentWorkdayEvent {
   @@unique([organizationId, agentId, clientEventId])
   @@unique([organizationId, id])
   @@index([organizationId, agentId, occurredAt])
+  @@index([organizationId, agentId, serverReceivedAt])
   @@index([workdayId, occurredAt])
   @@map("mtm_agent_workday_events")
 }
@@ -8006,6 +8026,9 @@ model MtmSyncOperation {
   opType         String // "create" | "update" | "delete"
   /// 'ok' | 'conflict' | 'error'
   status         String
+  /// C1 workday operations pin the canonical request digest as well as the
+  /// response, so a changed payload cannot replay an earlier result.
+  requestHash    String?      @db.VarChar(64)
   /// Full server result stored for replay on duplicate push.
   result         Json?
   processedAt    DateTime     @default(now())

@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest"
 import {
   applyMtmWorkdayEvent,
+  mtmWorkdayReplayMatches,
+  mtmWorkdayRequestHash,
   parseMtmWorkdayEvent,
   recoveryActionsForMtmWorkday,
 } from "@/lib/mtm/workday"
@@ -74,6 +76,93 @@ describe("MTM mobile workday", () => {
       qrToken: "wa1.example.signature",
       device: { enrollmentId: "enrollment-1", signature: "MEQCIFake" },
     })
+  })
+
+  it("records versioned claim/capture/queue provenance without trusting a client receipt time", () => {
+    const serverReceivedAt = new Date("2026-07-15T08:00:00.000Z")
+    const parsed = parseMtmWorkdayEvent({
+      action: "START",
+      id: "workday-1",
+      schemaVersion: 2,
+      occurredAt: "2026-07-15T07:55:00.000Z",
+      claimedAt: "2026-07-15T07:55:00.000Z",
+      capturedAt: "2026-07-15T07:54:58.000Z",
+      queuedAt: "2026-07-15T07:55:01.000Z",
+    }, "event-provenance", "Asia/Baku", serverReceivedAt)
+
+    expect(parsed.error).toBeNull()
+    expect(parsed.input).toMatchObject({
+      schemaVersion: 2,
+      claimedAt: new Date("2026-07-15T07:55:00.000Z"),
+      capturedAt: new Date("2026-07-15T07:54:58.000Z"),
+      queuedAt: new Date("2026-07-15T07:55:01.000Z"),
+      serverReceivedAt,
+    })
+  })
+
+  it("rejects out-of-window or internally contradictory offline provenance", () => {
+    const now = new Date("2026-07-15T08:00:00.000Z")
+    const olderThanSevenDays = parseMtmWorkdayEvent({
+      action: "START",
+      id: "workday-1",
+      occurredAt: "2026-07-08T07:59:59.999Z",
+    }, "event-expired", "Asia/Baku", now)
+    expect(olderThanSevenDays.input).toBeNull()
+    expect(olderThanSevenDays.error).toContain("seven-day offline horizon")
+
+    const missingQueue = parseMtmWorkdayEvent({
+      action: "START",
+      id: "workday-1",
+      schemaVersion: 2,
+      occurredAt: "2026-07-15T07:55:00.000Z",
+      claimedAt: "2026-07-15T07:55:00.000Z",
+      capturedAt: "2026-07-15T07:55:00.000Z",
+    }, "event-missing-queue", "Asia/Baku", now)
+    expect(missingQueue.input).toBeNull()
+    expect(missingQueue.error).toContain("schemaVersion 2 requires queuedAt")
+
+    const reversedQueue = parseMtmWorkdayEvent({
+      action: "START",
+      id: "workday-1",
+      schemaVersion: 2,
+      occurredAt: "2026-07-15T07:55:00.000Z",
+      claimedAt: "2026-07-15T07:55:00.000Z",
+      capturedAt: "2026-07-15T07:55:00.000Z",
+      queuedAt: "2026-07-15T07:54:59.000Z",
+    }, "event-reversed-queue", "Asia/Baku", now)
+    expect(reversedQueue.input).toBeNull()
+    expect(reversedQueue.error).toContain("must be ordered")
+  })
+
+  it("binds a C1 replay to actor, evidence references and provenance instead of only visible event fields", () => {
+    const parsed = parseMtmWorkdayEvent({
+      action: "START",
+      id: "workday-1",
+      schemaVersion: 2,
+      occurredAt: "2026-07-15T07:55:00.000Z",
+      claimedAt: "2026-07-15T07:55:00.000Z",
+      capturedAt: "2026-07-15T07:54:58.000Z",
+      queuedAt: "2026-07-15T07:55:01.000Z",
+      attendance: { qrToken: "wa1.example.signature" },
+    }, "event-hash", "Asia/Baku", new Date("2026-07-15T08:00:00.000Z"))
+    const input = parsed.input!
+    const replay = {
+      workdayId: input.workdayId,
+      type: input.action,
+      occurredAt: input.occurredAt,
+      latitude: input.latitude,
+      longitude: input.longitude,
+      accuracy: input.accuracy,
+      note: input.note,
+      requestHash: mtmWorkdayRequestHash(SCOPE, input),
+    }
+
+    expect(mtmWorkdayReplayMatches(replay, input, SCOPE)).toBe(true)
+    expect(mtmWorkdayReplayMatches(replay, {
+      ...input,
+      attendance: { qrToken: "wa1.changed.signature" },
+    }, SCOPE)).toBe(false)
+    expect(mtmWorkdayReplayMatches(replay, input)).toBe(false)
   })
 
   it("creates the shift and immutable START event together", async () => {

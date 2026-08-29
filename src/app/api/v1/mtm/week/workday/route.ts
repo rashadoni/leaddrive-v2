@@ -38,6 +38,7 @@ const replaySelect = {
   longitude: true,
   accuracy: true,
   note: true,
+  requestHash: true,
   createdAt: true,
   workday: {
     select: {
@@ -188,7 +189,8 @@ export const POST = withWorkforceCompatAuth("write", async (req, auth) => {
   const clientEventId = data.clientEventId.trim()
   const settings = await getMtmSettings(auth.orgId)
   const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
-  const parsed = parseMtmWorkdayEvent(data, clientEventId, timezone)
+  const serverReceivedAt = new Date()
+  const parsed = parseMtmWorkdayEvent(data, clientEventId, timezone, serverReceivedAt)
   const input = parsed.input
   if (!input) {
     return NextResponse.json({
@@ -206,14 +208,19 @@ export const POST = withWorkforceCompatAuth("write", async (req, auth) => {
     where: replayWhere,
     select: replaySelect,
   }) as Replay | null
-  if (existing) return mtmWorkdayReplayMatches(existing, input) ? responseForReplay(existing) : replayMismatch()
+  if (existing) {
+    return mtmWorkdayReplayMatches(existing, input, {
+      organizationId: auth.orgId,
+      agentId: actor.agentId,
+    }) ? responseForReplay(existing) : replayMismatch()
+  }
 
   // This endpoint is an online web transport. Offline/mobile events have a
   // separate authenticated sync contract; accepting a brand-new historical
   // timestamp here would let a caller fabricate an old shift. Preserve true
   // idempotent replays above, but require every new web transition to be near
   // server time.
-  if (input.occurredAt.getTime() < Date.now() - MAX_WEB_WORKDAY_EVENT_AGE_MS) {
+  if (input.claimedAt.getTime() < input.serverReceivedAt.getTime() - MAX_WEB_WORKDAY_EVENT_AGE_MS) {
     return NextResponse.json({
       error: "Workday event time is too far in the past for web submission",
       code: "MTM_WEEK_WORKDAY_INVALID",
@@ -257,7 +264,10 @@ export const POST = withWorkforceCompatAuth("write", async (req, auth) => {
         select: replaySelect,
       }) as Replay | null
       if (replay) {
-        return mtmWorkdayReplayMatches(replay, input)
+        return mtmWorkdayReplayMatches(replay, input, {
+          organizationId: auth.orgId,
+          agentId: actor.agentId!,
+        })
           ? { kind: "replay" as const, replay }
           : { kind: "mismatch" as const }
       }
@@ -372,7 +382,12 @@ export const POST = withWorkforceCompatAuth("write", async (req, auth) => {
       where: replayWhere,
       select: replaySelect,
     }).catch(() => null) as Replay | null
-    if (replay) return mtmWorkdayReplayMatches(replay, input) ? responseForReplay(replay) : replayMismatch()
+    if (replay) {
+      return mtmWorkdayReplayMatches(replay, input, {
+        organizationId: auth.orgId,
+        agentId: actor.agentId,
+      }) ? responseForReplay(replay) : replayMismatch()
+    }
     console.error("[MTM/week/workday POST]", error)
     return NextResponse.json({ error: "Failed to update workday", code: "MTM_WEEK_WORKDAY_FAILED" }, { status: 500 })
   }
