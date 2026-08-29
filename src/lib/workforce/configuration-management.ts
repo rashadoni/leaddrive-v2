@@ -20,6 +20,72 @@ const WorkforceScopeIdSchema = z.string().trim().min(1).max(191)
 const WorkforceNameSchema = z.string().trim().min(1).max(160)
 const WorkforceShiftCodeSchema = z.string().trim().min(1).max(80)
   .regex(/^[A-Za-z0-9_-]+$/, "Shift code must use letters, numbers, _ or -")
+const WorkforceLocalTimeSchema = z.string()
+  .regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, "time must be HH:mm")
+
+export const WorkforceShiftSegmentModeSchema = z.enum([
+  "SITE",
+  "REMOTE",
+  "FIELD",
+  "TRAVEL",
+  "ON_CALL",
+  "EXCEPTION",
+])
+
+export const WorkforceShiftSegmentDraftSchema = z.object({
+  mode: WorkforceShiftSegmentModeSchema,
+  siteId: WorkforceScopeIdSchema.nullable().optional(),
+  startTime: WorkforceLocalTimeSchema,
+  endTime: WorkforceLocalTimeSchema,
+  lateGraceSeconds: z.number().int().min(0).max(2 * 60 * 60).default(0),
+  proofPolicyReference: z.string().trim().min(1).max(64).nullable().optional(),
+}).strict().superRefine((value, context) => {
+  if (value.endTime <= value.startTime) {
+    context.addIssue({
+      code: "custom",
+      path: ["endTime"],
+      message: "segment endTime must be after startTime",
+    })
+  }
+  if (value.mode === "SITE" && value.siteId == null) {
+    context.addIssue({
+      code: "custom",
+      path: ["siteId"],
+      message: "SITE segment requires a Workforce site",
+    })
+  }
+  if (value.mode !== "SITE" && value.siteId != null) {
+    context.addIssue({
+      code: "custom",
+      path: ["siteId"],
+      message: "only a SITE segment may reference a Workforce site",
+    })
+  }
+})
+
+type WorkforceShiftSegmentDraft = z.infer<typeof WorkforceShiftSegmentDraftSchema>
+
+function validateShiftSegmentTimeline(
+  segments: readonly WorkforceShiftSegmentDraft[],
+  definition: z.infer<typeof WorkforceShiftDefinitionSchema>,
+): string | null {
+  let previous: WorkforceShiftSegmentDraft | null = null
+  for (const segment of segments) {
+    if (segment.startTime < definition.startTime || segment.endTime > definition.endTime) {
+      return "every segment must be inside the planned shift window"
+    }
+    if (previous && segment.startTime < previous.endTime) {
+      return "segments must be chronological and non-overlapping"
+    }
+    if ((definition.plannedBreaks ?? []).some((plannedBreak) => (
+      segment.startTime < plannedBreak.endTime && plannedBreak.startTime < segment.endTime
+    ))) {
+      return "segments must not overlap a planned break"
+    }
+    previous = segment
+  }
+  return null
+}
 
 export const WorkforcePolicyDraftCreateSchema = z.object({
   name: WorkforceNameSchema,
@@ -67,11 +133,23 @@ export const WorkforceShiftTemplateDraftCreateSchema = z.object({
   name: WorkforceNameSchema,
   teamId: WorkforceScopeIdSchema.nullable().optional(),
   definition: WorkforceShiftDefinitionSchema,
-}).strict()
+  // Omitted preserves the established single-window template contract. When
+  // supplied, a non-empty ordered list explicitly models one multi-site day.
+  segments: z.array(WorkforceShiftSegmentDraftSchema).min(1).max(24).optional(),
+}).strict().superRefine((value, context) => {
+  if (value.segments == null) return
+  const issue = validateShiftSegmentTimeline(value.segments, value.definition)
+  if (issue != null) {
+    context.addIssue({ code: "custom", path: ["segments"], message: issue })
+  }
+})
 
 export const WorkforceShiftTemplateDraftUpdateSchema = z.object({
   name: WorkforceNameSchema.optional(),
   definition: WorkforceShiftDefinitionSchema.optional(),
+  // Replaces the complete ordered draft timeline atomically; published
+  // templates never accept this mutation.
+  segments: z.array(WorkforceShiftSegmentDraftSchema).min(1).max(24).optional(),
 }).strict().superRefine((value, context) => {
   if (Object.keys(value).length === 0) {
     context.addIssue({
@@ -102,6 +180,8 @@ export class WorkforceConfigurationManagementError extends Error {
       | "WORKFORCE_CONFIGURATION_SHIFT_NOT_FOUND"
       | "WORKFORCE_CONFIGURATION_SHIFT_NOT_DRAFT"
       | "WORKFORCE_CONFIGURATION_SHIFT_ACTIVE_EXISTS"
+      | "WORKFORCE_CONFIGURATION_SHIFT_SEGMENT_INVALID"
+      | "WORKFORCE_CONFIGURATION_SHIFT_SEGMENT_SITE_INVALID"
       | "WORKFORCE_CONFIGURATION_ASSIGNMENT_AGENT_NOT_FOUND"
       | "WORKFORCE_CONFIGURATION_ASSIGNMENT_TEMPLATE_NOT_FOUND"
       | "WORKFORCE_CONFIGURATION_ASSIGNMENT_EFFECTIVE_DATE_NOT_FUTURE"
@@ -143,6 +223,20 @@ const workforceShiftTemplateSelect = {
   definitionHash: true,
   createdAt: true,
   updatedAt: true,
+  segments: {
+    orderBy: { sequence: "asc" },
+    select: {
+      id: true,
+      sequence: true,
+      mode: true,
+      siteId: true,
+      startTime: true,
+      endTime: true,
+      lateGraceSeconds: true,
+      proofPolicyReference: true,
+      createdAt: true,
+    },
+  },
 } satisfies Prisma.WorkforceShiftTemplateSelect
 
 const workforceShiftAssignmentSelect = {
@@ -215,6 +309,58 @@ function asShiftDefinition(definition: unknown): {
   }
 }
 
+function parseShiftDefinitionForSegments(definition: unknown): z.infer<typeof WorkforceShiftDefinitionSchema> {
+  const parsed = WorkforceShiftDefinitionSchema.safeParse(definition)
+  if (!parsed.success) {
+    throw new WorkforceConfigurationManagementError(
+      "WORKFORCE_CONFIGURATION_SHIFT_SEGMENT_INVALID",
+      parsed.error.issues[0]?.message ?? "Workforce shift segment requires a valid shift definition",
+    )
+  }
+  return parsed.data
+}
+
+async function assertShiftSegmentSitesAreActive(input: {
+  db: Pick<PrismaClient, "workforceSite">
+  organizationId: string
+  segments: readonly WorkforceShiftSegmentDraft[]
+}): Promise<void> {
+  const siteIds = [...new Set(input.segments.flatMap((segment) => (
+    segment.siteId == null ? [] : [segment.siteId]
+  )))]
+  if (siteIds.length === 0) return
+  const sites = await input.db.workforceSite.findMany({
+    where: {
+      organizationId: input.organizationId,
+      id: { in: siteIds },
+      status: "ACTIVE",
+    },
+    select: { id: true },
+  })
+  if (sites.length !== siteIds.length) {
+    throw new WorkforceConfigurationManagementError(
+      "WORKFORCE_CONFIGURATION_SHIFT_SEGMENT_SITE_INVALID",
+      "Every SITE segment must reference an active Workforce site in this tenant",
+    )
+  }
+}
+
+function shiftSegmentCreateData(input: {
+  organizationId: string
+  segments: readonly WorkforceShiftSegmentDraft[]
+}) {
+  return input.segments.map((segment, index) => ({
+    organizationId: input.organizationId,
+    sequence: index + 1,
+    mode: segment.mode,
+    siteId: segment.siteId ?? null,
+    startTime: segment.startTime,
+    endTime: segment.endTime,
+    lateGraceSeconds: segment.lateGraceSeconds,
+    proofPolicyReference: segment.proofPolicyReference ?? null,
+  }))
+}
+
 function isPrismaCode(error: unknown, code: string): boolean {
   return (error as { code?: unknown } | null)?.code === code
 }
@@ -271,7 +417,25 @@ function workforceShiftTemplateAuditData(input: {
   name: string
   timezone: string
   definitionHash: string
+  segments?: readonly {
+    sequence: number
+    mode: string
+    siteId: string | null
+    startTime: string
+    endTime: string
+    lateGraceSeconds: number
+    proofPolicyReference: string | null
+  }[]
 }, audit: WorkforceConfigurationAuditContext): Prisma.InputJsonObject {
+  const segments = input.segments?.map((segment) => ({
+    sequence: segment.sequence,
+    mode: segment.mode,
+    siteId: segment.siteId,
+    startTime: segment.startTime,
+    endTime: segment.endTime,
+    lateGraceSeconds: segment.lateGraceSeconds,
+    proofPolicyReference: segment.proofPolicyReference,
+  }))
   return {
     actorUserId: audit.actorUserId,
     teamId: input.teamId,
@@ -282,6 +446,11 @@ function workforceShiftTemplateAuditData(input: {
     name: input.name,
     timezone: input.timezone,
     definitionHash: input.definitionHash,
+    ...(segments === undefined ? {} : {
+      segmentCount: segments.length,
+      segmentDefinitionHash: workforceShiftDefinitionHash({ segments }),
+      segments,
+    }),
   }
 }
 
@@ -710,6 +879,19 @@ export async function createWorkforceShiftTemplateDraft(input: {
   const db = input.db ?? prisma
   const teamId = input.draft.teamId ?? null
   const definition = asShiftDefinition(input.draft.definition)
+  const segments = input.draft.segments
+  if (segments != null) {
+    const timelineIssue = validateShiftSegmentTimeline(
+      segments,
+      parseShiftDefinitionForSegments(input.draft.definition),
+    )
+    if (timelineIssue != null) {
+      throw new WorkforceConfigurationManagementError(
+        "WORKFORCE_CONFIGURATION_SHIFT_SEGMENT_INVALID",
+        timelineIssue,
+      )
+    }
+  }
   try {
     return await db.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${configurationLock([
@@ -723,6 +905,13 @@ export async function createWorkforceShiftTemplateDraft(input: {
         orderBy: { version: "desc" },
         select: { version: true },
       })
+      if (segments != null) {
+        await assertShiftSegmentSitesAreActive({
+          db: tx,
+          organizationId: input.organizationId,
+          segments,
+        })
+      }
       const shift = await tx.workforceShiftTemplate.create({
         data: {
           organizationId: input.organizationId,
@@ -738,6 +927,14 @@ export async function createWorkforceShiftTemplateDraft(input: {
           provenance: "TENANT_ADMIN",
           systemProfileVersion: null,
           createdByUserId: input.createdByUserId,
+          ...(segments == null ? {} : {
+            segments: {
+              create: shiftSegmentCreateData({
+                organizationId: input.organizationId,
+                segments,
+              }),
+            },
+          }),
         },
         select: workforceShiftTemplateSelect,
       })
@@ -811,17 +1008,7 @@ export async function updateWorkforceShiftTemplateDraft(input: {
     ])}))`
     const existing = await tx.workforceShiftTemplate.findFirst({
       where: { id: input.templateId, organizationId: input.organizationId },
-      select: {
-        id: true,
-        teamId: true,
-        code: true,
-        isDefault: true,
-        version: true,
-        status: true,
-        name: true,
-        timezone: true,
-        definitionHash: true,
-      },
+      select: workforceShiftTemplateSelect,
     })
     if (!existing) {
       throw new WorkforceConfigurationManagementError(
@@ -836,6 +1023,34 @@ export async function updateWorkforceShiftTemplateDraft(input: {
       )
     }
     const definition = input.draft.definition === undefined ? null : asShiftDefinition(input.draft.definition)
+    const requestedSegments = input.draft.segments
+    if (input.draft.definition !== undefined || requestedSegments !== undefined) {
+      const existingSegments: WorkforceShiftSegmentDraft[] = (existing.segments ?? []).map((segment) => ({
+        mode: segment.mode,
+        siteId: segment.siteId,
+        startTime: segment.startTime,
+        endTime: segment.endTime,
+        lateGraceSeconds: segment.lateGraceSeconds,
+        proofPolicyReference: segment.proofPolicyReference,
+      }))
+      const timelineIssue = validateShiftSegmentTimeline(
+        requestedSegments ?? existingSegments,
+        parseShiftDefinitionForSegments(input.draft.definition ?? existing.definition),
+      )
+      if (timelineIssue != null) {
+        throw new WorkforceConfigurationManagementError(
+          "WORKFORCE_CONFIGURATION_SHIFT_SEGMENT_INVALID",
+          timelineIssue,
+        )
+      }
+    }
+    if (requestedSegments != null) {
+      await assertShiftSegmentSitesAreActive({
+        db: tx,
+        organizationId: input.organizationId,
+        segments: requestedSegments,
+      })
+    }
     const changed = await tx.workforceShiftTemplate.updateMany({
       where: { id: input.templateId, organizationId: input.organizationId, status: "DRAFT" },
       data: {
@@ -848,6 +1063,17 @@ export async function updateWorkforceShiftTemplateDraft(input: {
         "WORKFORCE_CONFIGURATION_SHIFT_NOT_DRAFT",
         "The Workforce shift was published while this draft was being edited",
       )
+    }
+    if (requestedSegments != null) {
+      await tx.workforceShiftSegment.deleteMany({
+        where: { organizationId: input.organizationId, templateId: input.templateId },
+      })
+      await tx.workforceShiftSegment.createMany({
+        data: shiftSegmentCreateData({
+          organizationId: input.organizationId,
+          segments: requestedSegments,
+        }).map((segment) => ({ ...segment, templateId: input.templateId })),
+      })
     }
     const result = await tx.workforceShiftTemplate.findFirst({
       where: { id: input.templateId, organizationId: input.organizationId },

@@ -23,6 +23,20 @@ const shiftTemplateSelect = {
   systemProfileVersion: true,
   createdAt: true,
   updatedAt: true,
+  segments: {
+    orderBy: { sequence: "asc" },
+    select: {
+      id: true,
+      sequence: true,
+      mode: true,
+      siteId: true,
+      startTime: true,
+      endTime: true,
+      lateGraceSeconds: true,
+      proofPolicyReference: true,
+      createdAt: true,
+    },
+  },
 } as const
 
 /** Administrative inventory. Draft and published templates are explicit. */

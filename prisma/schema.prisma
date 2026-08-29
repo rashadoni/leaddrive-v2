@@ -188,6 +188,7 @@ model Organization {
   mtmHrmRequests                      MtmHrmRequest[]
   workforcePolicies                   WorkforcePolicy[]
   workforceShiftTemplates             WorkforceShiftTemplate[]
+  workforceShiftSegments              WorkforceShiftSegment[]
   workforceShiftAssignments           WorkforceShiftAssignment[]
   workforceSiteAssignments            WorkforceSiteAssignment[]
   workforcePolicySnapshots            WorkforcePolicySnapshot[]
@@ -5178,6 +5179,18 @@ enum WorkforceSiteAssignmentKind {
   TEMPORARY
 }
 
+/// A planned slice of one Workforce workday. SITE uses a tenant-owned
+/// WorkforceSite; the other modes intentionally do not imply a Route customer
+/// or continuous location tracking.
+enum WorkforceShiftSegmentMode {
+  SITE
+  REMOTE
+  FIELD
+  TRAVEL
+  ON_CALL
+  EXCEPTION
+}
+
 enum WorkforceAttendanceExceptionType {
   LATE_START
   UNDERTIME
@@ -7393,6 +7406,7 @@ model WorkforceSite {
 
   geofenceRevisions WorkforceSiteGeofenceRevision[]
   assignments        WorkforceSiteAssignment[]
+  shiftSegments      WorkforceShiftSegment[]
 
   @@unique([organizationId, id])
   @@unique([organizationId, code])
@@ -7530,6 +7544,7 @@ model WorkforceShiftTemplate {
 
   assignments WorkforceShiftAssignment[]
   snapshots   WorkforceShiftSnapshot[]
+  segments    WorkforceShiftSegment[]
 
   @@unique([organizationId, id])
   @@index([organizationId, teamId, code, status])
@@ -7537,6 +7552,32 @@ model WorkforceShiftTemplate {
   @@index([organizationId, createdByUserId])
   @@index([organizationId, activatedByUserId])
   @@map("workforce_shift_templates")
+}
+
+/// Ordered planned portions of a reusable shift. The parent draft controls
+/// mutability; once the template is ACTIVE/RETIRED these rows are immutable
+/// configuration history and later C3 snapshots copy their exact values.
+model WorkforceShiftSegment {
+  id                   String                    @id @default(cuid())
+  organizationId       String
+  organization         Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  templateId           String
+  template             WorkforceShiftTemplate    @relation(fields: [organizationId, templateId], references: [organizationId, id], onDelete: Cascade)
+  sequence             Int
+  mode                 WorkforceShiftSegmentMode
+  siteId               String?
+  site                 WorkforceSite?            @relation(fields: [organizationId, siteId], references: [organizationId, id], onDelete: Restrict)
+  startTime            String                    @db.VarChar(5)
+  endTime              String                    @db.VarChar(5)
+  lateGraceSeconds     Int                       @default(0)
+  proofPolicyReference String?                   @db.VarChar(64)
+  createdAt            DateTime                  @default(now())
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, templateId, sequence])
+  @@index([organizationId, templateId, startTime, endTime])
+  @@index([organizationId, siteId, createdAt])
+  @@map("workforce_shift_segments")
 }
 
 // Effective-dated assignment only. It never rewrites a workday snapshot.
