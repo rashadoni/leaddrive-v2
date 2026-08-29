@@ -43,6 +43,10 @@ import {
 } from "@/lib/workforce/attendance-trust"
 import { writeWorkforceSnapshotsIfReadyInTransaction } from "@/lib/workforce/snapshot-writer"
 import {
+  workforceAuditRequestMetadata,
+  writeWorkforceWorkdayAuditInTransaction,
+} from "@/lib/workforce/workday-audit"
+import {
   canApplyMobileTaskTransition,
   parseMobileTaskCreate,
   parseMobileTaskEvent,
@@ -335,6 +339,7 @@ function canMutateRouteSyncOperation(auth: { role: string }, entity: string, opT
 export const POST = withMobileRls(async (req, auth) => {
   const orgId = auth.orgId
   const agentId = auth.agentId
+  const workdayAuditMetadata = workforceAuditRequestMetadata(req.headers)
   const attendanceCapabilities = {
     qrEnabled: auth.tenantCapabilities.attendanceQr === true,
     deviceTrustEnabled: auth.tenantCapabilities.attendanceDeviceTrust === true,
@@ -2571,7 +2576,7 @@ export const POST = withMobileRls(async (req, auth) => {
         } else if (entity === "workdays" && opType === "create" && workdayInput) {
           const workforceWorkday = !isRouteFieldSessionOperation(auth, entity)
           const applied = await applyMtmWorkdayEvent(tx, { organizationId: orgId, agentId }, workdayInput, {
-            afterEvent: async ({ workday, event }) => {
+            afterEvent: async ({ workday, event, beforeWorkday }) => {
               if (!workforceWorkday) return
               const prepared = await prepareWorkforceAttendanceVerification(tx, {
                 organizationId: orgId,
@@ -2593,6 +2598,15 @@ export const POST = withMobileRls(async (req, auth) => {
                   resolutionAt: new Date(),
                 })
               }
+              await writeWorkforceWorkdayAuditInTransaction(tx, {
+                scope: { organizationId: orgId, agentId },
+                workdayInput,
+                beforeWorkday,
+                workday,
+                event,
+                channel: "mobile_sync",
+                requestMetadata: workdayAuditMetadata,
+              })
             },
           })
           if (applied.status === "conflict") {

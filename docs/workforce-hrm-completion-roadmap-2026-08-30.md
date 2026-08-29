@@ -14,6 +14,7 @@
 > [`workforce-hrm-h0-baseline.md`](./workforce-hrm-h0-baseline.md),
 > [`workforce-c0-foundation-evidence-2026-08-30.md`](./workforce-c0-foundation-evidence-2026-08-30.md),
 > [`workforce-c1-provenance-evidence-2026-08-30.md`](./workforce-c1-provenance-evidence-2026-08-30.md),
+> [`workforce-c1-audit-projection-evidence-2026-08-30.md`](./workforce-c1-audit-projection-evidence-2026-08-30.md),
 > [`mobile-sync-v2-workforce-contract.md`](./mobile-sync-v2-workforce-contract.md)
 
 ## 1. Purpose and honest starting point
@@ -317,6 +318,7 @@ Owner roles are accountabilities, not individual names:
 |---|---|---:|---:|---:|---:|---|
 | 2026-08-30T00:26:11+02:00 | C0 contract/threat/data evidence | 2% | C0 50% | 4/161 | 0/15 | WF-C0-001/002/007/008 accepted; legal review, tenant-scoped production baseline and mobile-distribution gates remain open |
 | 2026-08-30T00:44:05+02:00 | C1a provenance/offline-boundary contract | 3% | C1 20% | 6/161 | 0/15 | WF-C1-001/002 accepted; changed-payload digest is partial pending C2 segment identity, claim/review and audit-projection work remain open |
+| 2026-08-30T00:57:42+02:00 | C1b transactional audit projection | 3% | C1 30% | 7/161 | 0/15 | WF-C1-005 accepted for workday and request decisions; failure injection blocks a successful result when the audit write fails; review-case and segment binding remain open |
 
 ### 6.1 Progress reporting contract
 
@@ -395,7 +397,7 @@ client timestamps into trusted attendance facts.
 | WF-C1-002 | P0 | DONE | Backend | Enforce the confirmed seven-day offline horizon in every legacy and new mutation path | Boundary, future-skew and replay tests for all adapters |
 | WF-C1-003 | P0 | NEXT | Backend/HR | Route delayed/anomalous claims to `PENDING_REVIEW`; never silently manufacture an approved historical workday | Review case and immutable claim/receipt evidence |
 | WF-C1-004 | P0 | PARTIAL | Backend | Bind idempotency hash to actor, action, claimed time, segment, evidence references and schema version | Changed payload under one operation ID fails deterministically; C2 segment identity is not available yet |
-| WF-C1-005 | P0 | NEXT | Backend | Make standard audit projection atomic with accepted workday/request decisions or derive it reliably from the immutable ledger | Failure-injection proves no accepted mutation lacks reconstructable audit |
+| WF-C1-005 | P0 | DONE | Backend | Make standard audit projection atomic with accepted workday/request decisions or derive it reliably from the immutable ledger | Failure-injection proves no accepted mutation lacks reconstructable audit |
 | WF-C1-006 | P1 | PLANNED | Backend/HR | Resolve policy/team/site assignment from an effective-dated employee history, not the current team after a delayed upload | Transfer-during-offline test applies historical snapshot |
 | WF-C1-007 | P1 | PLANNED | Backend | Add impossible clock/order and duplicate active-shift risk codes without breaking idempotent retries | Property/concurrency tests cover state transitions |
 | WF-C1-008 | P1 | PLANNED | Backend | Return current canonical state, reason and allowed recovery actions on every conflict | Mobile/web contract tests and localized recovery UX |
@@ -409,7 +411,8 @@ auditable.
 **Current evidence:**
 [`workforce-c1-provenance-evidence-2026-08-30.md`](./workforce-c1-provenance-evidence-2026-08-30.md)
 records the C1a contract, migration and targeted test results. C1 remains open
-until the review case, atomic/reconstructable audit and segment binding exist.
+until the review case and segment binding exist; the atomic audit evidence is
+in [`workforce-c1-audit-projection-evidence-2026-08-30.md`](./workforce-c1-audit-projection-evidence-2026-08-30.md).
 
 ### C2 — Sites, geofences, multi-branch segments and travel
 

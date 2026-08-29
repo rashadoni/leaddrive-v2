@@ -2,7 +2,6 @@ import { Prisma } from "@prisma/client"
 import { NextRequest } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
-import { writeMtmAudit } from "@/lib/mtm-audit"
 import { addDateKeyDays } from "@/lib/mtm/mobile-week"
 import { lockMtmWorkdayTransitions } from "@/lib/mtm/workday"
 import {
@@ -15,6 +14,7 @@ import {
   WorkforceWorkdayFactsReplayError,
 } from "@/lib/workforce/workday-facts-replay"
 import { workforceWorkdayCorrectionFacts } from "@/lib/workforce/workday-correction-facts"
+import { workforceAuditRequestMetadata } from "@/lib/workforce/workday-audit"
 
 export const WorkforceRequestDecisionSchema = z.object({
   decision: z.enum(["APPROVED", "REJECTED"]),
@@ -111,6 +111,7 @@ function pausedSeconds(from: Date, to: Date): number {
  */
 export async function decideWorkforceRequest(context: WorkforceDecisionContext): Promise<WorkforceDecisionResult> {
   const { organizationId, userId, actor, requestId, input, includeRouteConflicts, req } = context
+  const requestAuditMetadata = req ? workforceAuditRequestMetadata(req.headers) : undefined
   if (actor.role === "AGENT") return { kind: "forbidden" }
 
   const request = await prisma.mtmHrmRequest.findFirst({
@@ -423,6 +424,28 @@ export async function decideWorkforceRequest(context: WorkforceDecisionContext):
           },
         })
       }
+      // The decision audit is part of the same transaction as the request,
+      // calendar/correction facts and notifications. An audit failure must not
+      // turn a request into an accepted HR decision without an accountable
+      // standard projection.
+      await tx.mtmAuditLog.create({
+        data: {
+          organizationId,
+          agentId: request.agentId,
+          action: "HRM_REQUEST_DECISION",
+          entity: "hrm_request",
+          entityId: request.id,
+          metadataKind: "hrm_request_decision",
+          oldData: { status: request.status },
+          newData: {
+            status: input.decision,
+            note: input.note || null,
+            conflictingRouteIds: conflictingRoutes.map((route) => route.id),
+          },
+          ipAddress: requestAuditMetadata?.ipAddress ?? null,
+          userAgent: requestAuditMetadata?.userAgent ?? null,
+        },
+      })
       return tx.mtmHrmRequest.findUnique({
         where: { id: request.id },
         select: { id: true, status: true, decisionNote: true, decidedAt: true, updatedAt: true },
@@ -443,22 +466,6 @@ export async function decideWorkforceRequest(context: WorkforceDecisionContext):
     }
     throw error
   }
-
-  await writeMtmAudit({
-    organizationId,
-    agentId: request.agentId,
-    action: "HRM_REQUEST_DECISION",
-    entity: "hrm_request",
-    entityId: request.id,
-    metadataKind: "hrm_request_decision",
-    oldData: { status: request.status },
-    newData: {
-      status: input.decision,
-      note: input.note || null,
-      conflictingRouteIds: conflictingRoutes.map((route) => route.id),
-    },
-    req,
-  }).catch((error) => console.warn("[workforce/request decision] audit failed", error))
 
   return { kind: "success", data, conflicts: conflictingRoutes, idempotent: false }
 }

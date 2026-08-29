@@ -336,7 +336,9 @@ describe("POST /api/v1/mtm/operations/hrm/[id]/decision", () => {
         expect.objectContaining({ agentId: "agent-1", routePlanningAllowed: false, source: "HRM" }),
       ]),
     })
-    expect(writeMtmAudit).toHaveBeenCalledWith(expect.objectContaining({ action: "HRM_REQUEST_DECISION" }))
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ action: "HRM_REQUEST_DECISION", metadataKind: "hrm_request_decision" }),
+    }))
   })
 
   it("keeps the legacy decision URL usable for a Workforce-only tenant", async () => {

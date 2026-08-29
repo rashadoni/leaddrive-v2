@@ -2468,6 +2468,51 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
       .toBeLessThan(vi.mocked(prisma.mtmAgentWorkday.findFirst).mock.invocationCallOrder[0])
   })
 
+  it("does not pin a successful workday sync result when its transactional audit write fails", async () => {
+    const occurredAt = new Date(Date.now() - 60_000).toISOString()
+    vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue(null)
+    vi.mocked(prisma.mtmAgentWorkday.create).mockResolvedValue({
+      id: "workday-audit-failure-1",
+      workDate: new Date(occurredAt),
+      status: "STARTED",
+      startedAt: new Date(occurredAt),
+      pausedAt: null,
+      completedAt: null,
+      totalPausedSeconds: 0,
+      startLatitude: null,
+      startLongitude: null,
+      endLatitude: null,
+      endLongitude: null,
+      createdAt: new Date(occurredAt),
+      updatedAt: new Date(occurredAt),
+    } as never)
+    vi.mocked(prisma.mtmAgentWorkdayEvent.create).mockResolvedValue({
+      id: "event-audit-failure-1",
+      workdayId: "workday-audit-failure-1",
+      clientEventId: "op-workday-audit-failure",
+      type: "START",
+      occurredAt: new Date(occurredAt),
+    } as never)
+    vi.mocked(prisma.mtmAuditLog.create).mockRejectedValue(new Error("audit storage unavailable"))
+
+    const response = await PushPOST(makePushReq({ operations: [{
+      operationId: "op-workday-audit-failure",
+      op: "create",
+      entity: "workdays",
+      data: { action: "START", id: "workday-audit-failure-1", occurredAt },
+      clientTimestamp: Date.now(),
+    }] }))
+    const body = await response.json()
+
+    expect(body.results[0]).toMatchObject({
+      operationId: "op-workday-audit-failure",
+      status: "error",
+      error: "Internal error, retry",
+    })
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledTimes(1)
+    expect(prisma.mtmSyncOperation.create).not.toHaveBeenCalled()
+  })
+
   it("allows a Routes-only field session without the Workforce write fence or side effects", async () => {
     vi.mocked(resolveMobileAuth).mockResolvedValue({
       ...AUTH_CONTEXT,

@@ -12,7 +12,6 @@ import {
   parseMtmWorkdayEvent,
 } from "@/lib/mtm/workday"
 import { availableWorkdayActions } from "@/lib/mtm/operational-week"
-import { writeMtmAudit } from "@/lib/mtm-audit"
 import {
   prepareWorkforceAttendanceVerification,
   recordWorkforceAttendanceVerification,
@@ -25,6 +24,10 @@ import {
   workforceMobileWriteFenceResponse,
 } from "@/lib/workforce/mobile-write-fence"
 import { writeWorkforceSnapshotsIfReadyInTransaction } from "@/lib/workforce/snapshot-writer"
+import {
+  workforceAuditRequestMetadata,
+  writeWorkforceWorkdayAuditInTransaction,
+} from "@/lib/workforce/workday-audit"
 
 const MAX_WEB_WORKDAY_EVENT_AGE_MS = 5 * 60 * 1000
 
@@ -93,21 +96,6 @@ function replayMismatch() {
     error: "clientEventId was already used for a different workday operation",
     code: "MTM_WEEK_WORKDAY_IDEMPOTENCY_MISMATCH",
   }, { status: 409 })
-}
-
-function workdayAuditSummary(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return { exists: false }
-  const row = value as Record<string, unknown>
-  return {
-    exists: true,
-    id: row.id ?? null,
-    workDate: row.workDate ?? null,
-    status: row.status ?? null,
-    startedAt: row.startedAt ?? null,
-    pausedAt: row.pausedAt ?? null,
-    completedAt: row.completedAt ?? null,
-    totalPausedSeconds: row.totalPausedSeconds ?? 0,
-  }
 }
 
 async function attendanceCapabilitiesForRequest(auth: {
@@ -187,6 +175,7 @@ export const POST = withWorkforceCompatAuth("write", async (req, auth) => {
     }, { status: 400 })
   }
   const clientEventId = data.clientEventId.trim()
+  const workdayAuditMetadata = workforceAuditRequestMetadata(req.headers)
   const settings = await getMtmSettings(auth.orgId)
   const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
   const serverReceivedAt = new Date()
@@ -271,29 +260,11 @@ export const POST = withWorkforceCompatAuth("write", async (req, auth) => {
           ? { kind: "replay" as const, replay }
           : { kind: "mismatch" as const }
       }
-      const before = input.action === "START"
-        ? null
-        : await tx.mtmAgentWorkday.findFirst({
-            where: {
-              id: input.workdayId,
-              organizationId: auth.orgId,
-              agentId: actor.agentId!,
-            },
-            select: {
-              id: true,
-              workDate: true,
-              status: true,
-              startedAt: true,
-              pausedAt: true,
-              completedAt: true,
-              totalPausedSeconds: true,
-            },
-          })
       const applied = await applyMtmWorkdayEvent(tx, {
         organizationId: auth.orgId,
         agentId: actor.agentId!,
       }, input, {
-        afterEvent: async ({ workday, event }) => {
+        afterEvent: async ({ workday, event, beforeWorkday }) => {
           const prepared = await prepareWorkforceAttendanceVerification(tx, {
             organizationId: auth.orgId,
             agentId: actor.agentId!,
@@ -314,9 +285,18 @@ export const POST = withWorkforceCompatAuth("write", async (req, auth) => {
               resolutionAt: new Date(),
             })
           }
+          await writeWorkforceWorkdayAuditInTransaction(tx, {
+            scope: { organizationId: auth.orgId, agentId: actor.agentId! },
+            workdayInput: input,
+            beforeWorkday,
+            workday,
+            event,
+            channel: "web",
+            requestMetadata: workdayAuditMetadata,
+          })
         },
       })
-      return { kind: "applied" as const, applied, before }
+      return { kind: "applied" as const, applied }
     })
 
     if (result.kind === "workforce-fence-denied") return workforceMobileWriteFenceResponse(result.access)
@@ -339,25 +319,6 @@ export const POST = withWorkforceCompatAuth("write", async (req, auth) => {
           ),
         },
       }, { status: 409 })
-    }
-
-    if (!result.applied.idempotent) {
-      await writeMtmAudit({
-        organizationId: auth.orgId,
-        agentId: actor.agentId,
-        action: `WORKDAY_${input.action}`,
-        entity: "workday",
-        entityId: String(result.applied.workday.id),
-        metadataKind: "workday_transition",
-        oldData: workdayAuditSummary(result.before),
-        newData: {
-          clientEventId,
-          action: input.action,
-          occurredAt: input.occurredAt.toISOString(),
-          workday: workdayAuditSummary(result.applied.workday),
-        },
-        req,
-      }).catch((error) => console.warn("[MTM/week/workday] audit failed", error))
     }
 
     return NextResponse.json({

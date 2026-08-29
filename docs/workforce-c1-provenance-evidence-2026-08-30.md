@@ -52,8 +52,8 @@ immutable events retain null unknown fields and version `1`.
 
 No automatic approval, payroll or disciplinary decision is introduced.
 `WF-C1-003` still needs an immutable claim/review case and the owner-approved
-`PENDING_REVIEW` policy. `WF-C1-005` still needs failure-injection evidence
-that every accepted decision has a reconstructable audit projection.
+`PENDING_REVIEW` policy. `WF-C1-005` is implemented separately in
+[`workforce-c1-audit-projection-evidence-2026-08-30.md`](./workforce-c1-audit-projection-evidence-2026-08-30.md).
 
 ## Evidence
 
@@ -62,6 +62,7 @@ that every accepted decision has a reconstructable audit projection.
 | `WF-C1-001` | Versioned parser contract and event provenance columns; parser unit tests cover v2 fields and server-owned receipt time. |
 | `WF-C1-002` | The shared parser is called by the week and mobile-sync workday adapters; unit/API tests cover seven-day rejection and adapter behavior. |
 | `WF-C1-004` | A changed v2 mobile payload under an already pinned operation ID returns `WORKFORCE_WORKDAY_IDEMPOTENCY_MISMATCH`; segment binding is deferred to C2. |
+| `WF-C1-005` | Standard workday audit is written inside the same transaction as the event and mobile result pin; its failure-injection evidence is in the C1b document. |
 | `WF-C1-009` | The migration contract test proves no historical rewrite; dry-run counts/reconciliation remain C13/DBA work. |
 
 ### Checks run in this worktree

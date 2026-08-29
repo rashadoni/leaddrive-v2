@@ -72,6 +72,8 @@ type WorkdayScope = { organizationId: string; agentId: string }
 export type MtmWorkdayPostEventContext = {
   scope: WorkdayScope
   input: MtmWorkdayEventInput
+  /** The disclosed state before this transition, if a workday already existed. */
+  beforeWorkday: Record<string, unknown> | null
   workday: Record<string, unknown> & {
     id: string
     agentId: string
@@ -541,6 +543,7 @@ export async function applyMtmWorkdayEvent(
     await options.afterEvent?.({
       scope,
       input,
+      beforeWorkday: null,
       workday: { ...workday, agentId: scope.agentId } as MtmWorkdayPostEventContext["workday"],
       event: event as MtmWorkdayPostEventContext["event"],
     })
@@ -613,6 +616,7 @@ export async function applyMtmWorkdayEvent(
   await options.afterEvent?.({
     scope,
     input,
+    beforeWorkday: workday as Record<string, unknown>,
     workday: { ...updated, agentId: scope.agentId } as MtmWorkdayPostEventContext["workday"],
     event: event as MtmWorkdayPostEventContext["event"],
   })
