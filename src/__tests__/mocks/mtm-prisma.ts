@@ -210,6 +210,7 @@ export interface MtmPrismaMock {
   workforcePolicy: ModelMock
   workforceShiftTemplate: ModelMock
   workforceShiftAssignment: ModelMock
+  workforceSite: ModelMock
   workforcePolicySnapshot: ModelMock
   workforceShiftSnapshot: ModelMock
   workforceAttendanceException: ModelMock
@@ -365,6 +366,7 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     workforcePolicy: makeModel(),
     workforceShiftTemplate: makeModel(),
     workforceShiftAssignment: makeModel(),
+    workforceSite: makeModel(),
     workforcePolicySnapshot: makeModel(),
     workforceShiftSnapshot: makeModel(),
     workforceAttendanceException: makeModel(),

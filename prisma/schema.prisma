@@ -191,6 +191,7 @@ model Organization {
   workforceShiftAssignments           WorkforceShiftAssignment[]
   workforcePolicySnapshots            WorkforcePolicySnapshot[]
   workforceShiftSnapshots             WorkforceShiftSnapshot[]
+  workforceSites                      WorkforceSite[]
   workforceAttendanceExceptions       WorkforceAttendanceException[]
   workforceAttendanceReviewCases      WorkforceAttendanceReviewCase[]
   workforceTimeCorrections            WorkforceTimeCorrection[]
@@ -648,6 +649,8 @@ model User {
   workforceShiftTemplatesCreated      WorkforceShiftTemplate[]       @relation("WorkforceShiftTemplateCreatedBy")
   workforceShiftTemplatesActivated    WorkforceShiftTemplate[]       @relation("WorkforceShiftTemplateActivatedBy")
   workforceShiftAssignmentsAssigned   WorkforceShiftAssignment[]     @relation("WorkforceShiftAssignmentAssignedBy")
+  workforceSitesCreated               WorkforceSite[]                @relation("WorkforceSiteCreatedBy")
+  workforceSitesArchived              WorkforceSite[]                @relation("WorkforceSiteArchivedBy")
   workforceAttendanceExceptionsResolved WorkforceAttendanceException[] @relation("WorkforceAttendanceExceptionResolvedBy")
   workforceTimeCorrectionsActed       WorkforceTimeCorrection[]      @relation("WorkforceTimeCorrectionActor")
   workforceTimesheetApprovalsApproved WorkforceTimesheetApproval[]   @relation("WorkforceTimesheetApprovalApprovedBy")
@@ -5144,6 +5147,21 @@ enum WorkforceDefinitionProvenance {
   SYSTEM_PROVISIONING
 }
 
+/// Workforce locations are not Route customers. Modes such as Field and
+/// Travel belong to a later shift segment, not an invented precise location.
+enum WorkforceSiteType {
+  OFFICE
+  WAREHOUSE
+  TEMPORARY
+  CUSTOMER
+  HOME_REMOTE
+}
+
+enum WorkforceSiteStatus {
+  ACTIVE
+  ARCHIVED
+}
+
 enum WorkforceAttendanceExceptionType {
   LATE_START
   UNDERTIME
@@ -5403,6 +5421,7 @@ model MtmTeam {
   workCalendarDays MtmWorkCalendarDay[]
   workforcePolicies WorkforcePolicy[]
   workforceShiftTemplates WorkforceShiftTemplate[]
+  workforceSitesResponsible WorkforceSite[]
   pharmacyPromotionTargets MtmPharmacyPromotionTarget[] @relation("MtmPharmacyTargetTeam")
 
   @@unique([organizationId, id])
@@ -7330,6 +7349,38 @@ model MtmHrmRequest {
   @@index([organizationId, status, submittedAt])
   @@index([correctionWorkdayId])
   @@map("mtm_hrm_requests")
+}
+
+// A tenant-owned work location/context. It deliberately has no relation to
+// Route customers or Route geofences. A site becomes operational only when a
+// later effective-dated assignment and segment/policy select it.
+model WorkforceSite {
+  id                String              @id @default(cuid())
+  organizationId    String
+  organization      Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  code              String              @db.VarChar(64)
+  name              String              @db.VarChar(160)
+  type              WorkforceSiteType
+  timezone          String              @db.VarChar(64)
+  addressLabel      String?             @db.VarChar(500)
+  responsibleTeamId String?
+  responsibleTeam   MtmTeam?            @relation(fields: [organizationId, responsibleTeamId], references: [organizationId, id], onDelete: Restrict)
+  status            WorkforceSiteStatus @default(ACTIVE)
+  createdByUserId   String
+  createdByUser     User                @relation("WorkforceSiteCreatedBy", fields: [organizationId, createdByUserId], references: [organizationId, id], onDelete: Restrict)
+  archivedByUserId  String?
+  archivedByUser    User?               @relation("WorkforceSiteArchivedBy", fields: [organizationId, archivedByUserId], references: [organizationId, id], onDelete: Restrict)
+  archivedAt        DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, code])
+  @@index([organizationId, status, name])
+  @@index([organizationId, responsibleTeamId, status])
+  @@index([organizationId, createdByUserId])
+  @@index([organizationId, archivedByUserId])
+  @@map("workforce_sites")
 }
 
 // Versioned Workforce policy. The JSON definition is the tenant-authored

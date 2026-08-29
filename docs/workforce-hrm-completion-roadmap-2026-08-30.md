@@ -321,6 +321,7 @@ Owner roles are accountabilities, not individual names:
 | 2026-08-30T00:57:42+02:00 | C1b transactional audit projection | 3% | C1 30% | 7/161 | 0/15 | WF-C1-005 accepted for workday and request decisions; failure injection blocks a successful result when the audit write fails; review-case and segment binding remain open |
 | 2026-08-30T01:11:00+02:00 | C1c delayed-claim review | 4% | C1 40% | 8/161 | 0/15 | WF-C1-003 accepted: delayed in-window claims create an immutable tenant review case; legacy evidence remains unknown; segment binding remains open |
 | 2026-08-30T01:15:00+02:00 | C2a site-domain ADR | 5% | C2 18% | 10/161 | 0/15 | WF-C2-001/011 accepted: Workforce-only vocabulary and circle-v1/future-geometry boundary recorded; no tenant site or Route linkage added |
+| 2026-08-30T01:22:00+02:00 | C2b independent site lifecycle | 5% | C2 27% | 11/161 | 0/15 | WF-C2-002 accepted: tenant-scoped site create/archive and admin API are isolated from Route; geofence/assignment/segment facts remain open |
 
 ### 6.1 Progress reporting contract
 
@@ -426,7 +427,7 @@ between office, field, remote and travel segments.
 | ID | Pri | Status | Owner | Task | Acceptance evidence |
 |---|---:|---|---|---|---|
 | WF-C2-001 | P0 | DONE | Product/HR | Approve vocabulary and site types: Site, Area, Segment, Office, Warehouse, Temporary site, Customer site, Home/Remote, Field, Travel, On-call and Exception | [`workforce-c2-site-domain-adr-2026-08-30.md`](./workforce-c2-site-domain-adr-2026-08-30.md) AZ/RU/EN glossary and module boundary |
-| WF-C2-002 | P0 | PLANNED | Backend | Add tenant-scoped `WorkforceSite` lifecycle with code/name/timezone/address/status and responsible scope | Prisma/RLS/migration/API tests; no cross-tenant relation |
+| WF-C2-002 | P0 | DONE | Backend | Add tenant-scoped `WorkforceSite` lifecycle with code/name/timezone/address/status and responsible scope | [`workforce-c2-site-evidence-2026-08-30.md`](./workforce-c2-site-evidence-2026-08-30.md): Prisma/RLS/migration/API tests and Route-independence contract |
 | WF-C2-003 | P0 | OWNER DECISION | HR/Privacy | Approve per-site geofence calibration procedure, minimum/maximum radius and accuracy policy | OD-05 resolved with calibration evidence |
 | WF-C2-004 | P0 | PLANNED | Backend | Add immutable effective-dated geofence revisions; v1 supports a validated circle and preserves future polygon extension | Historical workday retains original geofence snapshot |
 | WF-C2-005 | P0 | PLANNED | Backend | Add effective-dated employee site eligibility/primary-secondary assignments | Transfer and temporary-assignment tests |
