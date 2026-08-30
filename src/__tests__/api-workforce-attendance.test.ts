@@ -76,16 +76,30 @@ beforeEach(() => {
 
 describe("Workforce attendance H5 API boundaries", () => {
   it("lets only an attendance administrator create a QR station", async () => {
+    vi.mocked(prisma.workforceSite.findFirst).mockResolvedValue({ id: "site_1" } as never)
+    vi.mocked(prisma.workforceSiteGeofenceRevision.findFirst).mockResolvedValue({ id: "geofence_1" } as never)
     vi.mocked(prisma.workforceAttendanceQrStation.create).mockResolvedValue({
       id: "station_1",
       code: "HQ",
       name: "Head office",
       status: "ACTIVE",
       rotationSeconds: 60,
+      siteId: "site_1",
+      areaLabel: null,
+      geofenceRevisionId: "geofence_1",
+      effectiveFrom: new Date("2026-08-29T09:00:00.000Z"),
+      effectiveTo: null,
       createdAt: new Date("2026-08-29T09:00:00.000Z"),
     } as never)
 
-    const response = await callStationPost(webRequest({ code: "HQ", name: "Head office" }), ADMIN)
+    const stationBody = {
+      code: "HQ",
+      name: "Head office",
+      siteId: "site_1",
+      geofenceRevisionId: "geofence_1",
+      effectiveFrom: "2026-08-29T09:00:00.000Z",
+    }
+    const response = await callStationPost(webRequest(stationBody), ADMIN)
     expect(response.status).toBe(201)
     await expect(response.json()).resolves.toMatchObject({
       success: true,
@@ -102,14 +116,14 @@ describe("Workforce attendance H5 API boundaries", () => {
       }),
     }))
 
-    const denied = await callStationPost(webRequest({ code: "NO", name: "No" }), {
+    const denied = await callStationPost(webRequest({ ...stationBody, code: "NO", name: "No" }), {
       ...ADMIN,
       role: "user" as AuthResult["role"],
     })
     expect(denied.status).toBe(403)
     expect(await denied.json()).toMatchObject({ code: "WORKFORCE_ATTENDANCE_ADMIN_REQUIRED" })
 
-    const apiKeyDenied = await callStationPost(webRequest({ code: "KEY", name: "Key" }), {
+    const apiKeyDenied = await callStationPost(webRequest({ ...stationBody, code: "KEY", name: "Key" }), {
       ...ADMIN,
       principalType: "api_key",
     })

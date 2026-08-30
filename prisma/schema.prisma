@@ -7448,6 +7448,7 @@ model WorkforceSite {
   geofenceRevisions WorkforceSiteGeofenceRevision[]
   assignments        WorkforceSiteAssignment[]
   shiftSegments      WorkforceShiftSegment[]
+  attendanceQrStations WorkforceAttendanceQrStation[] @relation("WorkforceAttendanceQrStationSite")
 
   @@unique([organizationId, id])
   @@unique([organizationId, code])
@@ -7479,6 +7480,8 @@ model WorkforceSiteGeofenceRevision {
   createdByUserId      String
   createdByUser        User                       @relation("WorkforceSiteGeofenceRevisionCreatedBy", fields: [organizationId, createdByUserId], references: [organizationId, id], onDelete: Restrict)
   createdAt            DateTime                   @default(now())
+
+  attendanceQrStations WorkforceAttendanceQrStation[] @relation("WorkforceAttendanceQrStationGeofenceRevision")
 
   @@unique([organizationId, id])
   @@unique([organizationId, siteId, revision])
@@ -7937,6 +7940,15 @@ model WorkforceAttendanceQrStation {
   name             String
   status           WorkforceAttendanceQrStationStatus @default(ACTIVE)
   rotationSeconds  Int                                @default(60)
+  /// Legacy stations remain unbound after the additive migration and are not
+  /// eligible to issue or verify a v2 QR until recreated with this context.
+  siteId           String?
+  site             WorkforceSite?                     @relation("WorkforceAttendanceQrStationSite", fields: [organizationId, siteId], references: [organizationId, id], onDelete: Restrict)
+  areaLabel        String?                            @db.VarChar(120)
+  geofenceRevisionId String?
+  geofenceRevision WorkforceSiteGeofenceRevision?     @relation("WorkforceAttendanceQrStationGeofenceRevision", fields: [organizationId, geofenceRevisionId], references: [organizationId, id], onDelete: Restrict)
+  effectiveFrom    DateTime?
+  effectiveTo      DateTime?
   createdByUserId  String
   createdByUser    User                               @relation("WorkforceAttendanceQrStationCreatedBy", fields: [organizationId, createdByUserId], references: [organizationId, id], onDelete: Restrict)
   disabledByUserId String?
@@ -7950,6 +7962,8 @@ model WorkforceAttendanceQrStation {
   @@unique([organizationId, id])
   @@unique([organizationId, code])
   @@index([organizationId, status, createdAt])
+  @@index([organizationId, siteId, status, effectiveFrom, effectiveTo])
+  @@index([organizationId, geofenceRevisionId])
   @@index([organizationId, createdByUserId])
   @@index([organizationId, disabledByUserId])
   @@map("workforce_attendance_qr_stations")
