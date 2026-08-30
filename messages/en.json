@@ -14456,6 +14456,16 @@
       "workdayUpdated": "Workday state updated",
       "workdayConflict": "The workday changed on another device. Fresh facts are being requested; review them before retrying.",
       "workdayActionFailed": "The workday action could not be saved. Refresh and try again.",
+      "workdayRecovery": {
+        "duplicateActive": "Another workday is still open. Review the refreshed workday before trying again.",
+        "eventOrder": "This action is older than the recorded workday state. Review the refreshed timeline before retrying.",
+        "alreadyExists": "A workday already exists for this date. Review its current state.",
+        "completed": "This workday is already closed and cannot be changed.",
+        "stateChanged": "The requested action no longer matches the current workday state. Review and choose an available action.",
+        "workdayUnavailable": "The workday is no longer available. Refresh before trying again.",
+        "operationMismatch": "This retry does not match the previously recorded operation. Review the current workday before starting a new action.",
+        "refresh": "The workday changed. Refresh and review the available actions."
+      },
       "finishConfirmTitle": "Finish this workday?",
       "finishConfirmHint": "Finishing closes the active shift and records an audited end event. It cannot be resumed from this screen.",
       "finishConfirmAction": "Confirm finish",

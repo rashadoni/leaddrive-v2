@@ -10,6 +10,25 @@ export type WorkforceWorkdayTransitionRiskCode =
   | "CLAIM_BEFORE_WORKDAY_START"
   | "CLAIM_PRECEDES_ACCEPTED_EVENT"
 
+export type MtmWorkdayCanonicalState = "NOT_FOUND" | "UNKNOWN" | "STARTED" | "PAUSED" | "COMPLETED"
+
+export type MtmWorkdayRecoveryMessageKey =
+  | "duplicateActive"
+  | "eventOrder"
+  | "alreadyExists"
+  | "completed"
+  | "stateChanged"
+  | "workdayUnavailable"
+  | "operationMismatch"
+  | "refresh"
+
+export type MtmWorkdayConflictRecovery = {
+  canonicalState: MtmWorkdayCanonicalState
+  reason: { code: string; messageKey: MtmWorkdayRecoveryMessageKey }
+  allowedActions: MtmWorkdayAction[]
+  refreshRequired: true
+}
+
 /**
  * Transient H5 evidence. It is intentionally never copied into the immutable
  * workday event: QR and device material are validated inside the transaction
@@ -65,6 +84,7 @@ export type MtmWorkdayResult =
       code: string
       message: string
       workday?: Record<string, unknown>
+      recovery: MtmWorkdayConflictRecovery
       /** Signals are not guilt, discipline, or an attendance decision. */
       riskCodes?: WorkforceWorkdayTransitionRiskCode[]
       /**
@@ -136,6 +156,38 @@ export function recoveryActionsForMtmWorkday(workday: Record<string, unknown> | 
   if (workday?.status === "STARTED") return ["PAUSE", "FINISH"]
   if (workday?.status === "PAUSED") return ["RESUME", "FINISH"]
   return []
+}
+
+function canonicalWorkdayState(workday: Record<string, unknown> | null | undefined): MtmWorkdayCanonicalState {
+  if (!workday) return "NOT_FOUND"
+  if (workday.status === "STARTED" || workday.status === "PAUSED" || workday.status === "COMPLETED") {
+    return workday.status
+  }
+  return "UNKNOWN"
+}
+
+function recoveryMessageKeyForConflict(code: string): MtmWorkdayRecoveryMessageKey {
+  if (code === "MTM_WORKDAY_ACTIVE") return "duplicateActive"
+  if (code === "MTM_WORKDAY_EVENT_OUT_OF_ORDER") return "eventOrder"
+  if (code === "MTM_WORKDAY_ALREADY_EXISTS") return "alreadyExists"
+  if (code === "MTM_WORKDAY_COMPLETED") return "completed"
+  if (code === "MTM_WORKDAY_NOT_RUNNING" || code === "MTM_WORKDAY_NOT_PAUSED") return "stateChanged"
+  if (code === "MTM_WORKDAY_NOT_FOUND") return "workdayUnavailable"
+  if (code.includes("IDEMPOTENCY_MISMATCH")) return "operationMismatch"
+  return "refresh"
+}
+
+/** A transport-neutral, localizable recovery contract for every workday conflict. */
+export function recoveryForMtmWorkdayConflict(
+  code: string,
+  workday?: Record<string, unknown> | null,
+): MtmWorkdayConflictRecovery {
+  return {
+    canonicalState: canonicalWorkdayState(workday),
+    reason: { code, messageKey: recoveryMessageKeyForConflict(code) },
+    allowedActions: recoveryActionsForMtmWorkday(workday),
+    refreshRequired: true,
+  }
 }
 
 const workdaySelect = {
@@ -492,13 +544,15 @@ function conflict(
   workday?: Record<string, unknown> | null,
   riskCodes?: WorkforceWorkdayTransitionRiskCode[],
 ): MtmWorkdayResult {
+  const recovery = recoveryForMtmWorkdayConflict(code, workday)
   return {
     status: "conflict",
     code,
     message,
+    recovery,
     ...(workday ? {
       workday,
-      allowedActions: recoveryActionsForMtmWorkday(workday),
+      allowedActions: recovery.allowedActions,
     } : {}),
     ...(riskCodes && riskCodes.length > 0 ? { riskCodes } : {}),
   }

@@ -10,6 +10,7 @@ import {
   lockMtmWorkdayTransitions,
   mtmWorkdayReplayMatches,
   parseMtmWorkdayEvent,
+  recoveryForMtmWorkdayConflict,
 } from "@/lib/mtm/workday"
 import { availableWorkdayActions } from "@/lib/mtm/operational-week"
 import {
@@ -108,10 +109,13 @@ function responseForReplay(replay: Replay) {
   })
 }
 
-function replayMismatch() {
+function replayMismatch(replay?: Replay) {
+  const workday = replay?.workday ?? null
+  const recovery = recoveryForMtmWorkdayConflict("MTM_WEEK_WORKDAY_IDEMPOTENCY_MISMATCH", workday)
   return NextResponse.json({
     error: "clientEventId was already used for a different workday operation",
     code: "MTM_WEEK_WORKDAY_IDEMPOTENCY_MISMATCH",
+    data: { workday, recovery, riskCodes: [], availableActions: recovery.allowedActions },
   }, { status: 409 })
 }
 
@@ -218,7 +222,7 @@ export const POST = withWorkforceCompatAuth("write", async (req, auth) => {
     return mtmWorkdayReplayMatches(existing, input, {
       organizationId: auth.orgId,
       agentId: actor.agentId,
-    }) ? responseForReplay(existing) : replayMismatch()
+    }) ? responseForReplay(existing) : replayMismatch(existing)
   }
 
   // This endpoint is an online web transport. Offline/mobile events have a
@@ -275,7 +279,7 @@ export const POST = withWorkforceCompatAuth("write", async (req, auth) => {
           agentId: actor.agentId!,
         })
           ? { kind: "replay" as const, replay }
-          : { kind: "mismatch" as const }
+          : { kind: "mismatch" as const, replay }
       }
       const applied = await applyMtmWorkdayEvent(tx, {
         organizationId: auth.orgId,
@@ -332,17 +336,16 @@ export const POST = withWorkforceCompatAuth("write", async (req, auth) => {
       }, { status: 503 })
     }
     if (result.kind === "replay") return responseForReplay(result.replay)
-    if (result.kind === "mismatch") return replayMismatch()
+    if (result.kind === "mismatch") return replayMismatch(result.replay)
     if (result.applied.status === "conflict") {
       return NextResponse.json({
         error: result.applied.message,
         code: result.applied.code,
         data: {
           workday: result.applied.workday ?? null,
+          recovery: result.applied.recovery,
           riskCodes: result.applied.riskCodes ?? [],
-          availableActions: availableWorkdayActions(
-            typeof result.applied.workday?.status === "string" ? result.applied.workday.status : null,
-          ),
+          availableActions: result.applied.recovery.allowedActions,
         },
       }, { status: 409 })
     }
@@ -374,7 +377,7 @@ export const POST = withWorkforceCompatAuth("write", async (req, auth) => {
       return mtmWorkdayReplayMatches(replay, input, {
         organizationId: auth.orgId,
         agentId: actor.agentId,
-      }) ? responseForReplay(replay) : replayMismatch()
+      }) ? responseForReplay(replay) : replayMismatch(replay)
     }
     console.error("[MTM/week/workday POST]", error)
     return NextResponse.json({ error: "Failed to update workday", code: "MTM_WEEK_WORKDAY_FAILED" }, { status: 500 })

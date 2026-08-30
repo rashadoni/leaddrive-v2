@@ -1448,7 +1448,18 @@ describe("POST /api/v1/mtm/week/workday", () => {
       note: "different payload",
     }))
     expect(response.status).toBe(409)
-    expect(await response.json()).toMatchObject({ code: "MTM_WEEK_WORKDAY_IDEMPOTENCY_MISMATCH" })
+    expect(await response.json()).toMatchObject({
+      code: "MTM_WEEK_WORKDAY_IDEMPOTENCY_MISMATCH",
+      data: {
+        workday: { id: "workday-1", status: "STARTED" },
+        recovery: {
+          canonicalState: "STARTED",
+          reason: { messageKey: "operationMismatch" },
+          allowedActions: ["PAUSE", "FINISH"],
+          refreshRequired: true,
+        },
+      },
+    })
     expect(prisma.$transaction).not.toHaveBeenCalled()
     expect(prisma.mtmAgentWorkday.update).not.toHaveBeenCalled()
   })

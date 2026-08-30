@@ -677,8 +677,11 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
       entity: "workdays",
       status: "ok",
       requestHash: mtmWorkdayRequestHash({ organizationId: ORG, agentId: AGENT_ID }, parsed.input!),
-      result: { serverId: "workday-pinned-1", serverData: { workday: { status: "STARTED" } } },
+      result: { serverId: "workday-pinned-1", serverData: { workday: { id: "workday-pinned-1", status: "STARTED" } } },
     }] as never)
+    vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({
+      id: "workday-pinned-1", status: "STARTED", startedAt: new Date(occurredAt), pausedAt: null, completedAt: null,
+    } as never)
 
     const response = await PushPOST(makePushReq({ operations: [{
       operationId: "op-workday-payload-bound",
@@ -701,7 +704,16 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
     expect(body.results[0]).toMatchObject({
       operationId: "op-workday-payload-bound",
       status: "conflict",
-      serverData: { code: "WORKFORCE_WORKDAY_IDEMPOTENCY_MISMATCH" },
+      serverData: {
+        code: "WORKFORCE_WORKDAY_IDEMPOTENCY_MISMATCH",
+        workday: { id: "workday-pinned-1", status: "STARTED" },
+        recovery: {
+          canonicalState: "STARTED",
+          reason: { messageKey: "operationMismatch" },
+          allowedActions: ["PAUSE", "FINISH"],
+          refreshRequired: true,
+        },
+      },
     })
     expect(prisma.mtmAgentWorkday.create).not.toHaveBeenCalled()
     expect(prisma.mtmSyncOperation.create).not.toHaveBeenCalled()

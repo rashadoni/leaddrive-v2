@@ -14452,6 +14452,16 @@
       "workdayUpdated": "İş gününün vəziyyəti yeniləndi",
       "workdayConflict": "İş günü başqa cihazda dəyişib. Yeni məlumatlar sorğulanır; təkrar etməzdən əvvəl onları yoxlayın.",
       "workdayActionFailed": "İş günü əməliyyatını saxlamaq mümkün olmadı. Yeniləyib yenidən cəhd edin.",
+      "workdayRecovery": {
+        "duplicateActive": "Başqa iş günü hələ də açıqdır. Yenidən cəhd etməzdən əvvəl yenilənmiş iş gününü yoxlayın.",
+        "eventOrder": "Bu əməliyyat qeydə alınmış iş günü vəziyyətindən daha köhnədir. Təkrar etməzdən əvvəl yenilənmiş ardıcıllığı yoxlayın.",
+        "alreadyExists": "Bu tarix üçün iş günü artıq mövcuddur. Onun cari vəziyyətini yoxlayın.",
+        "completed": "Bu iş günü artıq bağlanıb və dəyişdirilə bilməz.",
+        "stateChanged": "Soruşulan əməliyyat artıq iş gününün cari vəziyyətinə uyğun deyil. Yoxlayın və əlçatan əməliyyatı seçin.",
+        "workdayUnavailable": "İş günü artıq əlçatan deyil. Yenidən cəhd etməzdən əvvəl məlumatları yeniləyin.",
+        "operationMismatch": "Təkrar cəhd əvvəl qeydə alınmış əməliyyatla uyğun gəlmir. Yeni əməliyyata başlamazdan əvvəl cari iş gününü yoxlayın.",
+        "refresh": "İş günü dəyişib. Məlumatları yeniləyin və əlçatan əməliyyatları yoxlayın."
+      },
       "finishConfirmTitle": "İş günü bitirilsin?",
       "finishConfirmHint": "Bitirmə aktiv növbəni bağlayır və audit olunan son hadisəni qeyd edir. Bu ekrandan onu davam etdirmək mümkün olmayacaq.",
       "finishConfirmAction": "Bitirməni təsdiqlə",

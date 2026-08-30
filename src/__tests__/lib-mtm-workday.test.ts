@@ -4,6 +4,7 @@ import {
   mtmWorkdayReplayMatches,
   mtmWorkdayRequestHash,
   parseMtmWorkdayEvent,
+  recoveryForMtmWorkdayConflict,
   recoveryActionsForMtmWorkday,
 } from "@/lib/mtm/workday"
 import { makeMtmPrismaMock } from "./mocks/mtm-prisma"
@@ -36,6 +37,43 @@ describe("MTM mobile workday", () => {
     expect(recoveryActionsForMtmWorkday(workday({ status: "COMPLETED" }))).toEqual([])
     expect(recoveryActionsForMtmWorkday(null)).toEqual([])
     expect(recoveryActionsForMtmWorkday({ status: "UNKNOWN" })).toEqual([])
+  })
+
+  it("maps every canonical workday conflict to a safe localizable recovery contract", () => {
+    expect(recoveryForMtmWorkdayConflict("MTM_WORKDAY_ACTIVE", workday({ status: "PAUSED" }))).toEqual({
+      canonicalState: "PAUSED",
+      reason: { code: "MTM_WORKDAY_ACTIVE", messageKey: "duplicateActive" },
+      allowedActions: ["RESUME", "FINISH"],
+      refreshRequired: true,
+    })
+    expect(recoveryForMtmWorkdayConflict("MTM_WORKDAY_EVENT_OUT_OF_ORDER", workday())).toMatchObject({
+      canonicalState: "STARTED",
+      reason: { messageKey: "eventOrder" },
+      allowedActions: ["PAUSE", "FINISH"],
+    })
+    expect(recoveryForMtmWorkdayConflict("MTM_WORKDAY_ALREADY_EXISTS", workday({ status: "COMPLETED" }))).toMatchObject({
+      canonicalState: "COMPLETED", reason: { messageKey: "alreadyExists" }, allowedActions: [],
+    })
+    expect(recoveryForMtmWorkdayConflict("MTM_WORKDAY_COMPLETED", workday({ status: "COMPLETED" }))).toMatchObject({
+      reason: { messageKey: "completed" },
+    })
+    expect(recoveryForMtmWorkdayConflict("MTM_WORKDAY_NOT_RUNNING", workday({ status: "PAUSED" }))).toMatchObject({
+      reason: { messageKey: "stateChanged" },
+    })
+    expect(recoveryForMtmWorkdayConflict("MTM_WORKDAY_NOT_PAUSED", workday())).toMatchObject({
+      reason: { messageKey: "stateChanged" },
+    })
+    expect(recoveryForMtmWorkdayConflict("MTM_WORKDAY_NOT_FOUND")).toEqual({
+      canonicalState: "NOT_FOUND",
+      reason: { code: "MTM_WORKDAY_NOT_FOUND", messageKey: "workdayUnavailable" },
+      allowedActions: [],
+      refreshRequired: true,
+    })
+    expect(recoveryForMtmWorkdayConflict("WORKFORCE_WORKDAY_IDEMPOTENCY_MISMATCH")).toMatchObject({
+      canonicalState: "NOT_FOUND",
+      reason: { messageKey: "operationMismatch" },
+      allowedActions: [],
+    })
   })
 
   it("parses an organization-local start and preserves zero coordinates", () => {
