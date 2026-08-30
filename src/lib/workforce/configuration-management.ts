@@ -169,6 +169,18 @@ export const WorkforceShiftAssignmentScheduleSchema = z.object({
   effectiveFrom: WorkforceDateKeySchema,
 }).strict()
 
+/**
+ * Read-only bulk review envelope. Applying a mass assignment needs a separate
+ * idempotent operation record and an explicit HR confirmation, so this slice
+ * intentionally stops at a deterministic impact preview.
+ */
+export const WorkforceShiftAssignmentBulkPreviewSchema = z.object({
+  agentIds: z.array(WorkforceScopeIdSchema).min(1).max(200)
+    .refine((ids) => new Set(ids).size === ids.length, "agentIds must not contain duplicates"),
+  templateId: WorkforceScopeIdSchema,
+  effectiveFrom: WorkforceDateKeySchema,
+}).strict()
+
 /** Organization-wide fallback only; team fallback awaits a historical-team contract. */
 export const WorkforceShiftDefaultScheduleSchema = z.object({
   templateId: WorkforceScopeIdSchema,
@@ -1442,6 +1454,146 @@ export async function scheduleWorkforceShiftAssignment(input: {
       )
     }
     throw error
+  }
+}
+
+export type WorkforceShiftAssignmentBulkPreviewItem = {
+  agentId: string
+  outcome: "READY" | "NO_CHANGE" | "EMPLOYEE_UNAVAILABLE" | "TEMPLATE_TEAM_MISMATCH" | "CONFLICT"
+  currentAssignmentId: string | null
+  closesAssignmentId: string | null
+}
+
+/**
+ * Computes the exact individual-assignment impact without acquiring locks or
+ * writing anything. A caller must re-run this preview immediately before any
+ * future bulk-apply operation; this result is not an authorization to mutate
+ * a schedule that may have changed since it was read.
+ */
+export async function previewWorkforceShiftAssignments(input: {
+  organizationId: string
+  preview: z.infer<typeof WorkforceShiftAssignmentBulkPreviewSchema>
+  currentDateKey: string
+  db?: PrismaClient
+}): Promise<{
+  effectiveFrom: string
+  templateId: string
+  items: WorkforceShiftAssignmentBulkPreviewItem[]
+  summary: Record<WorkforceShiftAssignmentBulkPreviewItem["outcome"], number>
+}> {
+  if (!isDateKey(input.currentDateKey)) {
+    throw new WorkforceConfigurationManagementError(
+      "WORKFORCE_CONFIGURATION_DATE_RANGE_INVALID",
+      "Workforce configuration current date is invalid",
+    )
+  }
+  if (input.preview.effectiveFrom <= input.currentDateKey) {
+    throw new WorkforceConfigurationManagementError(
+      "WORKFORCE_CONFIGURATION_ASSIGNMENT_EFFECTIVE_DATE_NOT_FUTURE",
+      "A Workforce shift assignment preview must begin after the organization current date",
+    )
+  }
+
+  const db = input.db ?? prisma
+  const template = await db.workforceShiftTemplate.findFirst({
+    where: {
+      id: input.preview.templateId,
+      organizationId: input.organizationId,
+      status: "ACTIVE",
+    },
+    select: { id: true, teamId: true },
+  })
+  if (!template) {
+    throw new WorkforceConfigurationManagementError(
+      "WORKFORCE_CONFIGURATION_ASSIGNMENT_TEMPLATE_NOT_FOUND",
+      "The published Workforce shift template is unavailable in this tenant",
+    )
+  }
+
+  const [agents, assignments] = await Promise.all([
+    db.mtmAgent.findMany({
+      where: {
+        organizationId: input.organizationId,
+        id: { in: input.preview.agentIds },
+        status: "ACTIVE",
+      },
+      select: { id: true, teamId: true },
+    }),
+    db.workforceShiftAssignment.findMany({
+      where: {
+        organizationId: input.organizationId,
+        agentId: { in: input.preview.agentIds },
+      },
+      orderBy: [{ agentId: "asc" }, { effectiveFrom: "asc" }, { id: "asc" }],
+      select: workforceShiftAssignmentSelect,
+    }),
+  ])
+  const agentsById = new Map(agents.map((agent) => [agent.id, agent]))
+  const assignmentsByAgentId = new Map<string, typeof assignments>()
+  for (const assignment of assignments) {
+    const items = assignmentsByAgentId.get(assignment.agentId) ?? []
+    items.push(assignment)
+    assignmentsByAgentId.set(assignment.agentId, items)
+  }
+
+  const summary: Record<WorkforceShiftAssignmentBulkPreviewItem["outcome"], number> = {
+    READY: 0,
+    NO_CHANGE: 0,
+    EMPLOYEE_UNAVAILABLE: 0,
+    TEMPLATE_TEAM_MISMATCH: 0,
+    CONFLICT: 0,
+  }
+  const items = input.preview.agentIds.map((agentId): WorkforceShiftAssignmentBulkPreviewItem => {
+    const agent = agentsById.get(agentId)
+    if (!agent) {
+      summary.EMPLOYEE_UNAVAILABLE += 1
+      return { agentId, outcome: "EMPLOYEE_UNAVAILABLE", currentAssignmentId: null, closesAssignmentId: null }
+    }
+    if (template.teamId != null && template.teamId !== agent.teamId) {
+      summary.TEMPLATE_TEAM_MISMATCH += 1
+      return { agentId, outcome: "TEMPLATE_TEAM_MISMATCH", currentAssignmentId: null, closesAssignmentId: null }
+    }
+
+    const agentAssignments = assignmentsByAgentId.get(agentId) ?? []
+    const covering = agentAssignments.filter((assignment) => (
+      dateKey(assignment.effectiveFrom) <= input.preview.effectiveFrom
+      && (assignment.effectiveTo == null || dateKey(assignment.effectiveTo) >= input.preview.effectiveFrom)
+    ))
+    const hasLaterAssignment = agentAssignments.some((assignment) => (
+      dateKey(assignment.effectiveFrom) > input.preview.effectiveFrom
+    ))
+    const predecessor = covering[0] ?? null
+    if (covering.length > 1 || hasLaterAssignment) {
+      summary.CONFLICT += 1
+      return {
+        agentId,
+        outcome: "CONFLICT",
+        currentAssignmentId: predecessor?.id ?? null,
+        closesAssignmentId: null,
+      }
+    }
+    if (predecessor?.templateId === template.id) {
+      summary.NO_CHANGE += 1
+      return {
+        agentId,
+        outcome: "NO_CHANGE",
+        currentAssignmentId: predecessor.id,
+        closesAssignmentId: null,
+      }
+    }
+    summary.READY += 1
+    return {
+      agentId,
+      outcome: "READY",
+      currentAssignmentId: predecessor?.id ?? null,
+      closesAssignmentId: predecessor?.id ?? null,
+    }
+  })
+  return {
+    effectiveFrom: input.preview.effectiveFrom,
+    templateId: template.id,
+    items,
+    summary,
   }
 }
 

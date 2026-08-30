@@ -22,6 +22,7 @@ vi.mock("@/lib/workforce/configuration-management", async () => {
     activateWorkforcePolicyDraft: vi.fn(),
     activateWorkforceShiftTemplateDraft: vi.fn(),
     scheduleWorkforceShiftAssignment: vi.fn(),
+    previewWorkforceShiftAssignments: vi.fn(),
     scheduleWorkforceShiftDefault: vi.fn(),
   }
 })
@@ -33,6 +34,7 @@ import { POST as createShift } from "@/app/api/v1/workforce/configuration/shifts
 import { PATCH as updateShift } from "@/app/api/v1/workforce/configuration/shifts/[id]/route"
 import { POST as activateShift } from "@/app/api/v1/workforce/configuration/shifts/[id]/activate/route"
 import { POST as scheduleAssignment } from "@/app/api/v1/workforce/configuration/assignments/route"
+import { POST as previewAssignments } from "@/app/api/v1/workforce/configuration/assignments/preview/route"
 import { POST as scheduleDefaultAssignment } from "@/app/api/v1/workforce/configuration/shifts/default/route"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { withWorkforceSessionAdminAuth } from "@/lib/with-workforce-rls-auth"
@@ -41,6 +43,7 @@ import {
   activateWorkforceShiftTemplateDraft,
   createWorkforcePolicyDraft,
   createWorkforceShiftTemplateDraft,
+  previewWorkforceShiftAssignments,
   scheduleWorkforceShiftAssignment,
   scheduleWorkforceShiftDefault,
   updateWorkforcePolicyDraft,
@@ -63,6 +66,10 @@ const callUpdateShift = updateShift as unknown as ConfigurationUpdateHandler
 const callActivatePolicy = activatePolicy as unknown as ConfigurationUpdateHandler
 const callActivateShift = activateShift as unknown as ConfigurationUpdateHandler
 const callScheduleAssignment = scheduleAssignment as unknown as (
+  request: NextRequest,
+  auth: typeof AUTH,
+) => Promise<Response>
+const callPreviewAssignments = previewAssignments as unknown as (
   request: NextRequest,
   auth: typeof AUTH,
 ) => Promise<Response>
@@ -102,6 +109,7 @@ beforeEach(() => {
   vi.mocked(activateWorkforcePolicyDraft).mockReset()
   vi.mocked(activateWorkforceShiftTemplateDraft).mockReset()
   vi.mocked(scheduleWorkforceShiftAssignment).mockReset()
+  vi.mocked(previewWorkforceShiftAssignments).mockReset()
   vi.mocked(scheduleWorkforceShiftDefault).mockReset()
   vi.mocked(getMtmSettings).mockReset()
   vi.mocked(getMtmSettings).mockResolvedValue({ timezone: "Asia/Baku" } as never)
@@ -109,7 +117,7 @@ beforeEach(() => {
 
 describe("Workforce draft configuration API", () => {
   it("binds every configuration route to the session-only Workforce admin boundary", () => {
-    expect(withWorkforceSessionAdminAuth).toHaveBeenCalledTimes(11)
+    expect(withWorkforceSessionAdminAuth).toHaveBeenCalledTimes(12)
   })
 
   it("creates only validated draft policy and shift records", async () => {
@@ -250,6 +258,31 @@ describe("Workforce draft configuration API", () => {
     }))
   })
 
+  it("provides a read-only bulk impact preview through the session-admin boundary", async () => {
+    vi.mocked(previewWorkforceShiftAssignments).mockResolvedValue({
+      effectiveFrom: "2026-09-01",
+      templateId: "shift-1",
+      items: [{ agentId: "agent-1", outcome: "READY", currentAssignmentId: null, closesAssignmentId: null }],
+      summary: { READY: 1, NO_CHANGE: 0, EMPLOYEE_UNAVAILABLE: 0, TEMPLATE_TEAM_MISMATCH: 0, CONFLICT: 0 },
+    } as never)
+
+    const response = await callPreviewAssignments(post("/api/v1/workforce/configuration/assignments/preview", {
+      agentIds: ["agent-1"], templateId: "shift-1", effectiveFrom: "2026-09-01",
+    }), AUTH)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      success: true,
+      data: { summary: { READY: 1 }, items: [{ outcome: "READY" }] },
+    })
+    expect(getMtmSettings).toHaveBeenCalledWith(AUTH.orgId)
+    expect(previewWorkforceShiftAssignments).toHaveBeenCalledWith(expect.objectContaining({
+      organizationId: AUTH.orgId,
+      preview: { agentIds: ["agent-1"], templateId: "shift-1", effectiveFrom: "2026-09-01" },
+      currentDateKey: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+    }))
+    expect(scheduleWorkforceShiftAssignment).not.toHaveBeenCalled()
+  })
   it("schedules a default only through the session-admin boundary and a server-derived date", async () => {
     vi.mocked(scheduleWorkforceShiftDefault).mockResolvedValue({
       id: "default-1", templateId: "shift-1", effectiveFrom: new Date("2026-09-01T00:00:00.000Z"),
