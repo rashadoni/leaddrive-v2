@@ -77,7 +77,7 @@ type TimesheetData = {
     completedAt: string | null
     totalPausedSeconds: number
     workedSeconds: number | null
-    calculationStatus: "WORKFORCE_TIMESHEET_SNAPSHOT_MISSING" | "WORKFORCE_TIMESHEET_CALCULATED" | "WORKFORCE_WORKDAY_HISTORY_INVALID"
+    calculationStatus: "WORKFORCE_TIMESHEET_SNAPSHOT_MISSING" | "WORKFORCE_TIMESHEET_CALCULATED" | "WORKFORCE_WORKDAY_HISTORY_INVALID" | "WORKFORCE_TIMESHEET_SNAPSHOT_READ_DISABLED"
     calculation: WorkforceTimesheetCalculationView | null
   }>
   summary: { totalWorkedSeconds: number; workdayCount: number }
@@ -125,6 +125,13 @@ type RequestsData = {
   scope: string
   timezone: string
   canDecide: boolean
+  canSubmitSelf: boolean
+  selfWorkdays: Array<{
+    id: string
+    workDate: string
+    status: "STARTED" | "PAUSED" | "COMPLETED"
+    completedAt: string | null
+  }>
   requests: WorkforceRequest[]
   nextCursor: string | null
 }
@@ -159,6 +166,11 @@ function requestTypeKey(type: WorkforceRequest["type"]): "leave" | "absence" | "
   return "correction"
 }
 
+function createSelfRequestClientId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID()
+  return "self-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2)
+}
+
 function statusTone(status: string): "default" | "secondary" | "outline" | "destructive" {
   if (status === "COMPLETED" || status === "APPROVED") return "default"
   if (status === "PAUSED" || status === "PENDING") return "secondary"
@@ -178,6 +190,8 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [conflicts, setConflicts] = useState<Record<string, RouteConflict[]>>({})
   const [savingId, setSavingId] = useState<string | null>(null)
+  const [submittingSelfRequest, setSubmittingSelfRequest] = useState(false)
+  const [cancellingSelfRequestId, setCancellingSelfRequestId] = useState<string | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
   const [timesheetQuery, setTimesheetQuery] = useState<TimesheetFilters>({ agentId: "", start: "", end: "" })
   const [timesheetFilters, setTimesheetFilters] = useState<TimesheetFilters>({ agentId: "", start: "", end: "" })
@@ -293,6 +307,57 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
     }
   }
 
+  async function submitSelfRequest(input: {
+    clientRequestId: string
+    type: "LEAVE" | "ABSENCE" | "TIME_CORRECTION"
+    startDate: string
+    endDate: string
+    reason: string
+    correctionWorkdayId?: string
+    requestedStartLocal?: string
+    requestedEndLocal?: string
+  }): Promise<{ idempotent: boolean }> {
+    setSubmittingSelfRequest(true)
+    try {
+      const response = await fetch(apiForView.requests, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          ...(organizationId ? { "x-organization-id": organizationId } : {}),
+        },
+        body: JSON.stringify(input),
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok || !result.success) throw new Error(result.error || "HTTP " + response.status)
+      toast.success(result.idempotent ? t("selfRequestAlreadySubmitted") : t("selfRequestSubmitted"))
+      setRetry((value) => value + 1)
+      return { idempotent: Boolean(result.idempotent) }
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : t("selfRequestSubmitFailed"))
+      throw cause
+    } finally {
+      setSubmittingSelfRequest(false)
+    }
+  }
+
+  async function cancelSelfRequest(request: WorkforceRequest) {
+    setCancellingSelfRequestId(request.id)
+    try {
+      const response = await fetch("/api/v1/workforce/requests/" + encodeURIComponent(request.id) + "/cancel", {
+        method: "POST",
+        headers: organizationId ? { "x-organization-id": organizationId } : {},
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok || !result.success) throw new Error(result.error || "HTTP " + response.status)
+      toast.success(result.idempotent ? t("selfRequestAlreadyCancelled") : t("selfRequestCancelled"))
+      setRetry((value) => value + 1)
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : t("selfRequestCancelFailed"))
+    } finally {
+      setCancellingSelfRequestId(null)
+    }
+  }
+
   function applyTimesheetFilters() {
     if (!timesheetFilters.start || !timesheetFilters.end || timesheetFilters.end < timesheetFilters.start) {
       toast.error(t("timesheetRangeInvalid"))
@@ -390,9 +455,13 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
           notes={notes}
           conflicts={conflicts}
           savingId={savingId}
+          submittingSelfRequest={submittingSelfRequest}
+          cancellingSelfRequestId={cancellingSelfRequestId}
           loadingMore={loadingMore}
           onNoteChange={(id, value) => setNotes((current) => ({ ...current, [id]: value }))}
           onDecide={decide}
+          onSubmitSelf={submitSelfRequest}
+          onCancelSelf={cancelSelfRequest}
           onLoadMore={loadMoreRequests}
         />
       ) : null}
@@ -494,7 +563,9 @@ function TimesheetView({ data, t, formatter, locale, appliedFilters, filters, lo
           ].filter((value): value is string => value != null)
           const unavailableReason = row.calculationStatus === "WORKFORCE_TIMESHEET_SNAPSHOT_MISSING"
             ? t("snapshotMissing")
-            : t("historyInvalid")
+            : row.calculationStatus === "WORKFORCE_TIMESHEET_SNAPSHOT_READ_DISABLED"
+              ? t("snapshotReadDisabled")
+              : t("historyInvalid")
           return <tr key={row.id}>
             <td className="whitespace-nowrap px-1 py-4 font-medium">{names.get(row.agentId) ?? t("unknownEmployee")}</td>
             <td className="whitespace-nowrap px-3 py-4">{formatter.format(new Date(`${row.date}T12:00:00`))}</td>
@@ -657,8 +728,137 @@ function TimesheetApprovalPanel({
   )
 }
 
+function SelfRequestPanel({ data, t, submitting, onSubmit }: {
+  data: RequestsData
+  t: ReturnType<typeof useTranslations>
+  submitting: boolean
+  onSubmit: (input: {
+    clientRequestId: string
+    type: "LEAVE" | "ABSENCE" | "TIME_CORRECTION"
+    startDate: string
+    endDate: string
+    reason: string
+    correctionWorkdayId?: string
+    requestedStartLocal?: string
+    requestedEndLocal?: string
+  }) => Promise<{ idempotent: boolean }>
+}) {
+  const [draft, setDraft] = useState({
+    type: "LEAVE" as "LEAVE" | "ABSENCE" | "TIME_CORRECTION",
+    startDate: "",
+    endDate: "",
+    reason: "",
+    correctionWorkdayId: "",
+    requestedStartLocal: "",
+    requestedEndLocal: "",
+  })
+  const [clientRequestId, setClientRequestId] = useState(createSelfRequestClientId)
+  const selectedWorkday = data.selfWorkdays.find((workday) => workday.id === draft.correctionWorkdayId) ?? null
+  const correction = draft.type === "TIME_CORRECTION"
+  const startDate = correction ? selectedWorkday?.workDate.slice(0, 10) ?? "" : draft.startDate
+  const endDate = correction ? selectedWorkday?.workDate.slice(0, 10) ?? "" : draft.endDate
+  const hasTimeBoundary = Boolean(draft.requestedStartLocal || draft.requestedEndLocal)
+  const ready = Boolean(draft.reason.trim() && startDate && endDate && (!correction || (selectedWorkday && hasTimeBoundary)))
+
+  async function submit() {
+    if (!ready) return
+    try {
+      await onSubmit({
+        clientRequestId,
+        type: draft.type,
+        startDate,
+        endDate,
+        reason: draft.reason.trim(),
+        ...(correction ? {
+          correctionWorkdayId: selectedWorkday?.id,
+          requestedStartLocal: draft.requestedStartLocal || undefined,
+          requestedEndLocal: draft.requestedEndLocal || undefined,
+        } : {}),
+      })
+      setDraft({
+        type: "LEAVE",
+        startDate: "",
+        endDate: "",
+        reason: "",
+        correctionWorkdayId: "",
+        requestedStartLocal: "",
+        requestedEndLocal: "",
+      })
+      setClientRequestId(createSelfRequestClientId())
+    } catch {
+      // Keep the same idempotency key and entered text so a network retry remains safe.
+    }
+  }
+
+  return <section aria-labelledby="workforce-self-request" className="border-y border-zinc-200 py-5 dark:border-zinc-700">
+    <div className="max-w-3xl">
+      <h3 id="workforce-self-request" className="text-base font-semibold">{t("selfRequestTitle")}</h3>
+      <p className="mt-1 text-sm leading-6 text-muted-foreground">{t("selfRequestHint")}</p>
+    </div>
+    <form className="mt-5 grid gap-4" onSubmit={(event) => { event.preventDefault(); void submit() }}>
+      <Select
+        id="workforce-self-request-type"
+        label={t("selfRequestType")}
+        value={draft.type}
+        onChange={(event) => setDraft((current) => ({
+          ...current,
+          type: event.target.value as "LEAVE" | "ABSENCE" | "TIME_CORRECTION",
+        }))}
+        disabled={submitting}
+        className="min-h-12"
+      >
+        <option value="LEAVE">{t("requestType.leave")}</option>
+        <option value="ABSENCE">{t("requestType.absence")}</option>
+        <option value="TIME_CORRECTION">{t("requestType.correction")}</option>
+      </Select>
+
+      {correction ? <div className="grid gap-4 md:grid-cols-2">
+        <Select
+          id="workforce-self-request-workday"
+          label={t("selfRequestWorkday")}
+          value={draft.correctionWorkdayId}
+          onChange={(event) => setDraft((current) => ({ ...current, correctionWorkdayId: event.target.value }))}
+          disabled={submitting || data.selfWorkdays.length === 0}
+          className="min-h-12"
+        >
+          <option value="">{t("selfRequestSelectWorkday")}</option>
+          {data.selfWorkdays.map((workday) => <option key={workday.id} value={workday.id}>{workday.workDate.slice(0, 10)} · {t(`status.${workday.status}`)}</option>)}
+        </Select>
+        <div className="space-y-1.5">
+          <label htmlFor="workforce-self-request-start-time" className="text-sm font-medium">{t("selfRequestStartTime", { timezone: data.timezone })}</label>
+          <Input id="workforce-self-request-start-time" type="datetime-local" value={draft.requestedStartLocal} onChange={(event) => setDraft((current) => ({ ...current, requestedStartLocal: event.target.value }))} disabled={submitting || !selectedWorkday} className="min-h-12" />
+        </div>
+        <div className="space-y-1.5 md:col-start-2">
+          <label htmlFor="workforce-self-request-end-time" className="text-sm font-medium">{t("selfRequestEndTime", { timezone: data.timezone })}</label>
+          <Input id="workforce-self-request-end-time" type="datetime-local" value={draft.requestedEndLocal} onChange={(event) => setDraft((current) => ({ ...current, requestedEndLocal: event.target.value }))} disabled={submitting || !selectedWorkday} className="min-h-12" />
+        </div>
+        {data.selfWorkdays.length === 0 ? <p className="text-sm text-muted-foreground md:col-span-2">{t("selfRequestNoWorkdays")}</p> : <p className="text-sm text-muted-foreground md:col-span-2">{t("selfRequestTimeHint")}</p>}
+      </div> : <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <label htmlFor="workforce-self-request-start-date" className="text-sm font-medium">{t("selfRequestStartDate")}</label>
+          <Input id="workforce-self-request-start-date" type="date" value={draft.startDate} onChange={(event) => setDraft((current) => ({ ...current, startDate: event.target.value, endDate: !current.endDate || current.endDate < event.target.value ? event.target.value : current.endDate }))} disabled={submitting} className="min-h-12" required />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="workforce-self-request-end-date" className="text-sm font-medium">{t("selfRequestEndDate")}</label>
+          <Input id="workforce-self-request-end-date" type="date" min={draft.startDate || undefined} value={draft.endDate} onChange={(event) => setDraft((current) => ({ ...current, endDate: event.target.value }))} disabled={submitting} className="min-h-12" required />
+        </div>
+      </div>}
+
+      <div className="space-y-1.5">
+        <label htmlFor="workforce-self-request-reason" className="text-sm font-medium">{t("selfRequestReason")}</label>
+        <Textarea id="workforce-self-request-reason" value={draft.reason} onChange={(event) => setDraft((current) => ({ ...current, reason: event.target.value }))} maxLength={1000} minLength={3} disabled={submitting} className="min-h-28" aria-describedby="workforce-self-request-reason-hint" required />
+        <p id="workforce-self-request-reason-hint" className="text-sm text-muted-foreground">{t("selfRequestReasonHint")}</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="submit" className="min-h-12" disabled={submitting || !ready}>{submitting ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <Check />}{t("selfRequestSubmit")}</Button>
+        {correction ? <span className="text-sm text-muted-foreground">{t("selfRequestPendingHint")}</span> : null}
+      </div>
+    </form>
+  </section>
+}
+
 function RequestsView({
-  data, t, formatter, locale, canDecide, notes, conflicts, savingId, loadingMore, onNoteChange, onDecide, onLoadMore,
+  data, t, formatter, locale, canDecide, notes, conflicts, savingId, submittingSelfRequest, cancellingSelfRequestId, loadingMore, onNoteChange, onDecide, onSubmitSelf, onCancelSelf, onLoadMore,
 }: {
   data: RequestsData
   t: ReturnType<typeof useTranslations>
@@ -668,9 +868,22 @@ function RequestsView({
   notes: Record<string, string>
   conflicts: Record<string, RouteConflict[]>
   savingId: string | null
+  submittingSelfRequest: boolean
+  cancellingSelfRequestId: string | null
   loadingMore: boolean
   onNoteChange: (id: string, value: string) => void
   onDecide: (request: WorkforceRequest, decision: "APPROVED" | "REJECTED", acknowledgeRouteConflicts?: boolean) => void
+  onSubmitSelf: (input: {
+    clientRequestId: string
+    type: "LEAVE" | "ABSENCE" | "TIME_CORRECTION"
+    startDate: string
+    endDate: string
+    reason: string
+    correctionWorkdayId?: string
+    requestedStartLocal?: string
+    requestedEndLocal?: string
+  }) => Promise<{ idempotent: boolean }>
+  onCancelSelf: (request: WorkforceRequest) => Promise<void>
   onLoadMore: () => void
 }) {
   const dateTimeFormatter = new Intl.DateTimeFormat(locale, {
@@ -678,16 +891,20 @@ function RequestsView({
     timeStyle: "short",
     timeZone: data.timezone,
   })
-  return <section aria-labelledby="workforce-request-list" className="border-y border-zinc-200 dark:border-zinc-700">
-    <div className="flex flex-col gap-1 px-1 py-5 sm:flex-row sm:items-baseline sm:justify-between"><div><h3 id="workforce-request-list" className="text-base font-semibold">{t("requestQueue")}</h3><p className="text-sm text-muted-foreground">{t("requestQueueHint")}</p></div><span className="text-sm text-muted-foreground">{t("requestCount", { count: data.requests.length })}</span></div>
+  return <>
+    {data.canSubmitSelf ? <SelfRequestPanel data={data} t={t} submitting={submittingSelfRequest} onSubmit={onSubmitSelf} /> : null}
+    <section aria-labelledby="workforce-request-list" className="border-y border-zinc-200 dark:border-zinc-700">
+    <div className="flex flex-col gap-1 px-1 py-5 sm:flex-row sm:items-baseline sm:justify-between"><div><h3 id="workforce-request-list" className="text-base font-semibold">{data.canSubmitSelf ? t("selfRequestHistory") : t("requestQueue")}</h3><p className="text-sm text-muted-foreground">{data.canSubmitSelf ? t("selfRequestPendingHint") : t("requestQueueHint")}</p></div><span className="text-sm text-muted-foreground">{t("requestCount", { count: data.requests.length })}</span></div>
     <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
       {data.requests.map((request) => <article key={request.id} className="py-5">
         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="font-medium">{request.agent.name}</p><Badge variant={statusTone(request.status)}>{t(`requestStatus.${request.status}`)}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{t(`requestType.${requestTypeKey(request.type)}`)} · {formatter.format(new Date(`${request.startDate.slice(0, 10)}T12:00:00`))}{request.endDate.slice(0, 10) !== request.startDate.slice(0, 10) ? ` — ${formatter.format(new Date(`${request.endDate.slice(0, 10)}T12:00:00`))}` : ""}</p><p className="mt-3 max-w-3xl text-sm leading-6">{request.reason}</p>{request.type === "TIME_CORRECTION" ? <p className="mt-2 text-sm text-muted-foreground">{t("requestedCorrection", { start: request.requestedStartAt ? dateTimeFormatter.format(new Date(request.requestedStartAt)) : t("unchanged"), end: request.requestedEndAt ? dateTimeFormatter.format(new Date(request.requestedEndAt)) : t("unchanged") })}</p> : null}{request.decisionNote ? <p className="mt-2 text-sm text-muted-foreground">{t("decisionNote")}: {request.decisionNote}</p> : null}</div><span className="inline-flex items-center gap-2 text-xs text-muted-foreground"><UserRound className="h-4 w-4" />{request.agent.role}</span></div>
         {canDecide && request.status === "PENDING" ? <div className="mt-4 grid gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-700 lg:grid-cols-[minmax(0,1fr)_auto]"><Textarea aria-label={t("decisionNoteLabel", { name: request.agent.name })} value={notes[request.id] ?? ""} onChange={(event) => onNoteChange(request.id, event.target.value)} placeholder={t("decisionNotePlaceholder")} className="min-h-24" maxLength={1000} /><div className="flex flex-wrap items-start gap-2"><Button type="button" className="min-h-12" disabled={savingId === request.id} onClick={() => onDecide(request, "APPROVED")}><Check />{t("approve")}</Button><Button type="button" variant="outline" className="min-h-12" disabled={savingId === request.id} onClick={() => onDecide(request, "REJECTED")}><X />{t("reject")}</Button></div></div> : null}
+        {data.canSubmitSelf && request.status === "PENDING" ? <div className="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-700"><Button type="button" variant="outline" className="min-h-12" disabled={cancellingSelfRequestId === request.id} onClick={() => void onCancelSelf(request)}>{cancellingSelfRequestId === request.id ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <X />}{t("selfRequestCancel")}</Button></div> : null}
         {conflicts[request.id]?.length ? <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/30"><div className="flex gap-3"><TriangleAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-300" /><div className="min-w-0"><p className="font-medium text-amber-950 dark:text-amber-100">{t("routeConflictTitle")}</p><p className="mt-1 text-sm text-amber-900/80 dark:text-amber-100/80">{t("routeConflictHint")}</p><ul className="mt-3 space-y-1 text-sm text-amber-950 dark:text-amber-100">{conflicts[request.id].map((conflict) => <li key={conflict.id}>{conflict.date.slice(0, 10)} · {conflict.name || conflict.id}</li>)}</ul><Button type="button" variant="outline" className="mt-4 min-h-12 border-amber-300 bg-amber-50 hover:bg-amber-100 dark:border-amber-800 dark:bg-transparent dark:hover:bg-amber-900/30" disabled={savingId === request.id} onClick={() => onDecide(request, "APPROVED", true)}>{savingId === request.id ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <Check />}{t("approveWithConflicts")}</Button></div></div></div> : null}
       </article>)}
       {data.requests.length === 0 ? <p className="py-12 text-center text-sm text-muted-foreground">{t("noRequests")}</p> : null}
       {data.nextCursor ? <div className="flex justify-center py-5"><Button type="button" variant="outline" className="min-h-12" disabled={loadingMore} onClick={onLoadMore}>{loadingMore ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : null}{t("loadMore")}</Button></div> : null}
     </div>
-  </section>
+    </section>
+  </>
 }
