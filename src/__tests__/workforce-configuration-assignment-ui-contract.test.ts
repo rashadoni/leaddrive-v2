@@ -45,6 +45,16 @@ describe("Workforce assignment configuration UI contract", () => {
     expect(workbench).not.toContain('"/api/v1/workforce/configuration/assignments/bulk"')
   })
 
+  it("keeps the multi-employee site review separate from site eligibility mutation", () => {
+    expect(workbench).toContain('id="workforce-bulk-site-assignment-site"')
+    expect(workbench).toContain('id="workforce-bulk-site-assignment-effective-from"')
+    expect(workbench).toContain('"/api/v1/workforce/configuration/site-assignments/preview"')
+    expect(workbench).toContain('setBulkSiteAssignmentPreview(null)')
+    expect(workbench).toContain('setBulkSiteAssignmentDraft(emptyBulkSiteAssignmentDraft())')
+    expect(workbench).toContain('bulkSiteAssignmentPreview !== null')
+    expect(workbench).not.toContain('"/api/v1/workforce/configuration/site-assignments/bulk"')
+  })
+
   it("shows and writes the immutable organization-default timeline separately", () => {
     expect(workbench).toContain('request("/api/v1/workforce/configuration/shifts/default", "GET")')
     expect(workbench).toContain('request("/api/v1/workforce/configuration/shifts/default", "POST", defaultAssignmentForm)')
@@ -79,6 +89,12 @@ describe("Workforce assignment configuration UI contract", () => {
       "discardBulkAssignmentDraft",
       "bulkAssignmentReviewOnlyHint",
       "bulkAssignmentSummary",
+      "bulkSiteAssignmentPreviewTitle",
+      "bulkSiteAssignmentPreviewHint",
+      "bulkSiteAssignmentEmployeesHint",
+      "reviewBulkSiteAssignmentDraft",
+      "bulkSiteAssignmentReviewOnlyHint",
+      "bulkSiteAssignmentSummary",
       "assignmentTimelineTitle",
       "scheduleDefaultAssignment",
       "defaultTimelineTitle",
@@ -98,6 +114,11 @@ describe("Workforce assignment configuration UI contract", () => {
       for (const outcome of ["READY", "NO_CHANGE", "EMPLOYEE_UNAVAILABLE", "TEMPLATE_TEAM_MISMATCH", "CONFLICT"]) {
         expect(outcomes?.[outcome], `${locale}.bulkAssignmentOutcome.${outcome} is missing`).toEqual(expect.any(String))
         expect((outcomes?.[outcome] as string).trim(), `${locale}.bulkAssignmentOutcome.${outcome} is empty`).not.toBe("")
+      }
+      const siteOutcomes = localized.bulkSiteAssignmentOutcome as Record<string, unknown>
+      for (const outcome of ["READY", "NO_CHANGE", "EMPLOYEE_UNAVAILABLE", "CONFLICT"]) {
+        expect(siteOutcomes?.[outcome], `${locale}.bulkSiteAssignmentOutcome.${outcome} is missing`).toEqual(expect.any(String))
+        expect((siteOutcomes?.[outcome] as string).trim(), `${locale}.bulkSiteAssignmentOutcome.${outcome} is empty`).not.toBe("")
       }
     }
   })

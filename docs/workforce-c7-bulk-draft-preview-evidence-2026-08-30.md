@@ -27,6 +27,19 @@ tenant-scoped `POST /api/v1/workforce/configuration/assignments/preview`.
 There is no bulk assignment endpoint, no publish action, no audit write and no
 change to current or historical schedules.
 
+The same read contract and browser-only discardable draft now exist for future
+site eligibility:
+`POST /api/v1/workforce/configuration/site-assignments/preview`. It accepts up
+to 200 named employees plus one active site, kind and effective window. Its
+per-employee result is `READY`, `NO_CHANGE`, `EMPLOYEE_UNAVAILABLE` or
+`CONFLICT`, matching the forward-only primary/secondary/temporary timeline
+rules. It reads active employees, the selected site and matching assignment
+history in bulk; it never opens a transaction, acquires a lock, writes an
+assignment or writes an audit entry. The web draft uses the same named employee
+selection, clears its result after any site/kind/window/employee change and
+announces only the outcome counts. A site preview can never change Route,
+attendance history or employee site eligibility.
+
 ## Verification in this worktree
 
 - PASS — targeted Vitest: `workforce-configuration-management`, API
@@ -34,12 +47,15 @@ change to current or historical schedules.
 - PASS — targeted ESLint for the changed component and UI contract test.
 - PASS — `npm run i18n:check`; AZ/RU/EN parity is complete.
 - PASS — `git diff --check`.
+- PASS — targeted site-management/API/UI/accessibility tests: **4 files, 30
+  tests**, including the no-prior-assignment, conflict and
+  unavailable-employee preview paths.
 
 ## Deliberately still open
 
-- `WF-C7-007` remains partial: bulk site assignment, durable reviewed draft,
-  idempotent publish/confirmation, recurring schedule/template semantics and
-  browser evidence are not claimed.
+- `WF-C7-007` remains partial: durable reviewed draft, idempotent
+  publish/confirmation, recurring schedule/template semantics and browser
+  evidence are not claimed.
 - NOT RUN — browser, full build, Android and load gates. They require the
   approved heavy worker/CI, not Contabo.
 
