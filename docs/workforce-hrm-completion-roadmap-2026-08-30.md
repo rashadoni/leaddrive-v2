@@ -347,6 +347,7 @@ Owner roles are accountabilities, not individual names:
 | 2026-08-30T08:22:00+02:00 | C2i geofence snapshot completion | 16% | C2 64% | 33/161 | 0/15 | WF-C2-004 accepted: validated effective circle revisions are pinned with scheduled site/eligibility context at accepted START; later site changes cannot rewrite historical evidence |
 | 2026-08-30T02:02:00+02:00 | C4a evidence-envelope contract | 7% | C4 10% | 14/161 | 0/15 | WF-C4-001 accepted: strict versioned evidence envelope and tenant-HMAC redaction exist; collection, geofence evaluation, proof verification and persistence remain open |
 | 2026-08-30T02:06:00+02:00 | C4b snapshotted circle evaluation | 7% | C4 20% | 15/161 | 0/15 | WF-C4-002 accepted: server-side Haversine evaluates the immutable 25–5,000 m circle; uncertainty at a boundary stays `UNKNOWN` and no evidence is persisted |
+| 2026-08-30T02:10:00+02:00 | C4c location-quality baseline | 8% | C4 30% | 16/161 | 0/15 | WF-C4-003 accepted: versioned action-time policy preserves stale/weak/mock/provider/permission outcomes as explainable review or unavailable states; legal/pilot activation remains blocked |
 
 **C3 phase display reconciliation (2026-08-30T08:11:00+02:00):** the C3
 register contains 11 tasks and its scope did not change. Earlier C3 ledger
@@ -516,7 +517,7 @@ without confusing evidence with identity.
 |---|---:|---|---|---|---|
 | WF-C4-001 | P0 | DONE | Backend | Define versioned evidence envelope: source, capture time, accuracy, provider/mock flags, app/device/session references and redacted payload hash | [`workforce-c4-evidence-envelope-evidence-2026-08-30.md`](./workforce-c4-evidence-envelope-evidence-2026-08-30.md): strict v1 schema and tenant-HMAC redaction contract |
 | WF-C4-002 | P0 | DONE | Backend | Evaluate distance server-side against the snapshotted geofence and return inside/outside/unknown plus distance/accuracy reason | [`workforce-c4-geofence-evaluation-evidence-2026-08-30.md`](./workforce-c4-geofence-evaluation-evidence-2026-08-30.md): server-side Haversine evaluation treats boundary uncertainty as `UNKNOWN` |
-| WF-C4-003 | P0 | PLANNED | Security/Mobile | Define maximum accuracy, freshness, mock/provider and permission-denied handling per policy | Weak GPS becomes explainable review/rejection, not silent pass |
+| WF-C4-003 | P0 | DONE | Security/Mobile | Define maximum accuracy, freshness, mock/provider and permission-denied handling per policy | [`workforce-c4-location-evidence-policy-evidence-2026-08-30.md`](./workforce-c4-location-evidence-policy-evidence-2026-08-30.md): quality signals become explainable review/unavailable states, never a silent pass |
 | WF-C4-004 | P0 | PLANNED | Backend | Link QR station to site/area and effective lifecycle; bind token to tenant/station/revision/action/expiry/nonce | Wrong site/action and relayed stale token fail |
 | WF-C4-005 | P0 | PLANNED | Backend | Compose required/optional methods per action and segment mode (`allOf`, `anyOf`, fallback/review) | Policy matrix tests cover Office/Field/Remote/Travel |
 | WF-C4-006 | P0 | PLANNED | Backend | Persist append-only evidence and assessment separately; normal reports retain verdict after raw evidence expiry | Retention test preserves semantic result without raw coordinates |
