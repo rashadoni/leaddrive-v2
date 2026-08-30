@@ -285,6 +285,12 @@ export async function appendAuthorizedWorkforceAccessGrantRevocation(input: {
   authorize: WorkforceAccessGrantAuthorization
 }): Promise<{ revocationId: string; idempotent: boolean }> {
   const draft = canonicalRevocation(input.draft)
+  await requireAuthorization({
+    authorize: input.authorize,
+    operation: "REVOKE",
+    organizationId: draft.organizationId,
+    actorUserId: draft.revokedByUserId,
+  })
   const grant = await input.db.workforceAccessGrant.findFirst({
     where: { organizationId: draft.organizationId, id: draft.grantId },
     select: GRANT_SELECT,
@@ -293,12 +299,6 @@ export async function appendAuthorizedWorkforceAccessGrantRevocation(input: {
   if (grant.effectiveFrom.getTime() !== draft.grantEffectiveFrom.getTime()) {
     throw new WorkforceAccessGrantWriterError("WORKFORCE_ACCESS_REVOCATION_GRANT_MISMATCH")
   }
-  await requireAuthorization({
-    authorize: input.authorize,
-    operation: "REVOKE",
-    organizationId: draft.organizationId,
-    actorUserId: draft.revokedByUserId,
-  })
   await input.db.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${grantLockKey(draft.organizationId, grant.principalUserId)}))`
   const data = revocationWriteData(draft)
   try {

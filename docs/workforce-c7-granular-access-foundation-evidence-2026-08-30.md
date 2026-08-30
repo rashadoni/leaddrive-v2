@@ -71,6 +71,9 @@ metadata-only audit entry in the same transaction. An operation ID is unique
 per tenant: an exact retry returns the original record, while a changed payload
 under the same ID fails closed. A revocation re-reads and matches the immutable
 grant start before writing, so a stale caller cannot revoke a different grant.
+It authorizes a revocation before looking up the requested grant or acquiring a
+lock, so an unauthorized caller cannot use a not-found or mismatch result to
+probe dormant grant identities.
 The new operation-ID migration deliberately refuses non-empty dormant storage
 instead of inventing identifiers for direct database authority rows.
 
@@ -96,7 +99,7 @@ and run access review before live enforcement can be claimed.
   fail-closed operation-ID migration; `prisma validate` passed without a
   database connection. Focused writer tests cover invalid scope/window,
   pre-grant revocation rejection, mandatory authorization, tenant-principal
-  serialization, metadata-only audit, exact replay and changed-operation
-  conflict rejection.
+  serialization, metadata-only audit, exact replay, changed-operation conflict
+  rejection and pre-lookup revocation authorization.
 - `NOT RUN` — browser role assignment, endpoint integration, database RLS
   concurrency and tenant activation require the later C7 rollout gates.

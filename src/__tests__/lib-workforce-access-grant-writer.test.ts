@@ -135,6 +135,20 @@ describe("Workforce access grant transaction writer", () => {
     }))
   })
 
+  it("does not disclose a grant or acquire a lock to an unauthorized revocation", async () => {
+    await expect(appendAuthorizedWorkforceAccessGrantRevocation({
+      db,
+      draft: revocationDraft,
+      authorize: async () => false,
+    })).rejects.toMatchObject<Partial<WorkforceAccessGrantWriterError>>({
+      code: "WORKFORCE_ACCESS_GRANT_NOT_AUTHORIZED",
+    })
+
+    expect(db.workforceAccessGrant.findFirst).not.toHaveBeenCalled()
+    expect(db.$executeRaw).not.toHaveBeenCalled()
+    expect(db.workforceAccessGrantRevocation.create).not.toHaveBeenCalled()
+  })
+
   it("rejects a missing or stale grant before an authority write", async () => {
     db.workforceAccessGrant.findFirst.mockResolvedValueOnce(null)
     await expect(appendAuthorizedWorkforceAccessGrantRevocation({ db, draft: revocationDraft, authorize: allow }))
