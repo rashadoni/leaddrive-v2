@@ -19,6 +19,7 @@
 > [`workforce-c2-schedule-safety-evidence-2026-08-30.md`](./workforce-c2-schedule-safety-evidence-2026-08-30.md),
 > [`workforce-c3-timezone-matrix-evidence-2026-08-30.md`](./workforce-c3-timezone-matrix-evidence-2026-08-30.md),
 > [`workforce-c3-bulk-preview-evidence-2026-08-30.md`](./workforce-c3-bulk-preview-evidence-2026-08-30.md),
+> [`workforce-c5-attendance-admin-ui-evidence-2026-08-30.md`](./workforce-c5-attendance-admin-ui-evidence-2026-08-30.md),
 > [`mobile-sync-v2-workforce-contract.md`](./mobile-sync-v2-workforce-contract.md)
 
 ## 1. Purpose and honest starting point
@@ -355,6 +356,7 @@ Owner roles are accountabilities, not individual names:
 | 2026-08-30T02:35:00+02:00 | C4h safe assessment explanation | 10% | C4 80% | 21/161 | 0/15 | WF-C4-009 accepted: employee/manager contract maps known evidence outcomes to recovery keys and collapses unknown internal security detail to generic review |
 | 2026-08-30T02:39:00+02:00 | C4i GPS edge matrix | 11% | C4 90% | 22/161 | 0/15 | WF-C4-010 accepted: automated matrix covers zero/boundary/stale/future/weak/mock/provider/permission outcomes with no silent acceptance |
 | 2026-08-30T08:28:00+02:00 | C2j transition/evidence link | 17% | C2 73% | 34/161 | 0/15 | WF-C2-007 accepted: arrival/departure facts require a snapshotted SITE segment and C4 evidence/assessment is tenant-FK-linked without raw proof in the transition ledger |
+| 2026-08-30T08:41:02+02:00 | C5a attendance administration UI (partial) | 21% | C5 0% | 42/161 | 0/15 | QR image display/expiry/disable and verified-device approve/revoke are visible without exposing token/key material; physical, recovery and assurance conditions remain open |
 
 **C3 phase display reconciliation (2026-08-30T08:11:00+02:00):** the C3
 register contains 11 tasks and its scope did not change. Earlier C3 ledger
@@ -549,8 +551,8 @@ remaining recoverable for legitimate employees.
 | WF-C5-004 | P0 | PLANNED | Backend/Security | Validate Android Key Attestation chain, roots, revocation, security level, challenge and app identity server-side | Software key/emulator/untrusted chain rejected or reviewed |
 | WF-C5-005 | P0 | PLANNED | Mobile/Backend | Bind Play Integrity verdict/request hash to the exact attendance action; use tiered response and no verdict cache | Tampered/replayed request tests |
 | WF-C5-006 | P0 | PLANNED | Mobile | Use local BiometricPrompt/device credential only to unlock per-use signature; no template/result leaves OS | Physical smoke and packet/log inspection |
-| WF-C5-007 | P1 | PARTIAL | Backend/Web | Complete device pending/approve/revoke/replace/lost/recovery UI with separation of duties | Old key rejected; replacement and approver are auditable |
-| WF-C5-008 | P1 | PARTIAL | Backend/Web | Complete QR station create/display/rotate/disable/emergency replacement UI linked to a site, with controller health and clock-skew state | Physical display never exposes long-lived reusable token; stale/unhealthy station fails visibly |
+| WF-C5-007 | P1 | PARTIAL | Backend/Web | Complete device pending/approve/revoke/replace/lost/recovery UI with separation of duties | [Partial UI evidence](./workforce-c5-attendance-admin-ui-evidence-2026-08-30.md): verified pending approval and active revoke are visible without proof material; replacement/lost/recovery and separation-of-duties remain open |
+| WF-C5-008 | P1 | PARTIAL | Backend/Web | Complete QR station create/display/rotate/disable/emergency replacement UI linked to a site, with controller health and clock-skew state | [Partial UI evidence](./workforce-c5-attendance-admin-ui-evidence-2026-08-30.md): short-lived server-rendered QR display/expiry/disable are visible; physical controller health, skew and replacement remain open |
 | WF-C5-009 | P1 | PLANNED | Security/Backend | Detect concurrent sessions/devices, impossible device changes and abnormal action volume; route to review | Risk events avoid raw device identifiers in general logs |
 | WF-C5-010 | P1 | OWNER DECISION | Product/HR/Security | Define site kiosk/badge/PIN mode, anti-sharing controls and emergency fallback | OD-06 resolved before kiosk implementation |
 | WF-C5-011 | P1 | PLANNED | Security | Add rate limits, nonce/challenge expiry, key/secret rotation, redaction and security event alerts | Security regression suite and runbook |

@@ -13,8 +13,12 @@ vi.mock("@/lib/mobile-auth", async () => {
   const { makeMobileAuthMock } = await import("./mocks/mobile-auth")
   return makeMobileAuthMock()
 })
+vi.mock("qrcode", () => ({
+  default: { toDataURL: vi.fn().mockResolvedValue("data:image/png;base64,attendance-qr") },
+}))
 
 import { POST as stationPost } from "@/app/api/v1/workforce/attendance/stations/route"
+import { POST as stationQrPost } from "@/app/api/v1/workforce/attendance/stations/[id]/qr/route"
 import {
   GET as mobileEnrollmentGet,
   POST as mobileEnrollmentPost,
@@ -22,6 +26,7 @@ import {
 import type { AuthResult } from "@/lib/api-auth"
 import { resolveMobileAuth } from "@/lib/mobile-auth"
 import { prisma } from "@/lib/prisma"
+import QRCode from "qrcode"
 
 const ORG = "org_1"
 const ADMIN = {
@@ -34,6 +39,8 @@ const ADMIN = {
 } satisfies AuthResult
 type StationPostHandler = (request: NextRequest, auth: AuthResult) => Promise<Response>
 const callStationPost = stationPost as unknown as StationPostHandler
+type StationQrPostHandler = (request: NextRequest, auth: AuthResult, context: { params: Promise<{ id: string }> }) => Promise<Response>
+const callStationQrPost = stationQrPost as unknown as StationQrPostHandler
 const MOBILE_AUTH = {
   orgId: ORG,
   agentId: "agent_1",
@@ -49,6 +56,14 @@ const MOBILE_AUTH = {
 
 function webRequest(body: unknown) {
   return new NextRequest("http://localhost/api/v1/workforce/attendance/stations", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  })
+}
+
+function stationQrRequest(body: unknown) {
+  return new NextRequest("http://localhost/api/v1/workforce/attendance/stations/station_1/qr", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
@@ -130,6 +145,40 @@ describe("Workforce attendance H5 API boundaries", () => {
     expect(apiKeyDenied.status).toBe(403)
     expect(await apiKeyDenied.json()).toMatchObject({ code: "WORKFORCE_ATTENDANCE_ADMIN_REQUIRED" })
     expect(prisma.workforceAttendanceQrStation.create).toHaveBeenCalledTimes(1)
+  })
+
+  it("renders the issued QR server-side without requiring the admin browser to handle token text", async () => {
+    vi.mocked(prisma.workforceAttendanceQrStation.findFirst).mockResolvedValue({
+      id: "station_1",
+      code: "HQ",
+      name: "Head office",
+      status: "ACTIVE",
+      rotationSeconds: 60,
+      siteId: "site_1",
+      areaLabel: "Reception",
+      geofenceRevisionId: "geofence_1",
+      effectiveFrom: new Date("2020-01-01T00:00:00.000Z"),
+      effectiveTo: null,
+    } as never)
+    vi.mocked(QRCode.toDataURL).mockResolvedValue("data:image/png;base64,server-rendered-qr")
+
+    const response = await callStationQrPost(stationQrRequest({ action: "START" }), ADMIN, {
+      params: Promise.resolve({ id: "station_1" }),
+    })
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      success: true,
+      data: {
+        station: { id: "station_1", name: "Head office" },
+        qrDataUrl: "data:image/png;base64,server-rendered-qr",
+      },
+    })
+    expect(QRCode.toDataURL).toHaveBeenCalledWith(expect.any(String), {
+      errorCorrectionLevel: "M",
+      margin: 1,
+      width: 256,
+    })
   })
 
   it("fails closed when the device-trust add-on is off before creating a mobile enrollment", async () => {

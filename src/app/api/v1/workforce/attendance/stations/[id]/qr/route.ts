@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import QRCode from "qrcode"
 import { prisma } from "@/lib/prisma"
 import { withWorkforceRlsAuth } from "@/lib/with-workforce-rls-auth"
 import {
@@ -29,7 +30,15 @@ export const POST = withWorkforceRlsAuth<RouteContext>("write", async (req: Next
       stationId: id,
       action: action.data,
     })
-    return NextResponse.json({ success: true, data: issued })
+    // The token remains in the established response for an approved display
+    // controller.  The server also produces an image so the administration UI
+    // never needs to render, persist or log the token as text in the browser.
+    const qrDataUrl = await QRCode.toDataURL(issued.token, {
+      errorCorrectionLevel: "M",
+      margin: 1,
+      width: 256,
+    })
+    return NextResponse.json({ success: true, data: { ...issued, qrDataUrl } })
   } catch (error) {
     if (error instanceof WorkforceAttendanceManagementError) {
       const status = error.code === "WORKFORCE_ATTENDANCE_STATION_NOT_FOUND" ? 404 : 409
