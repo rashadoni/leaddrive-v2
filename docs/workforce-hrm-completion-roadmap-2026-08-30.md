@@ -328,6 +328,7 @@ Owner roles are accountabilities, not individual names:
 | 2026-08-30T01:35:00+02:00 | C2d effective site assignments | 6% | C2 36% | 12/161 | 0/15 | WF-C2-005 accepted: future primary/secondary/temporary history is tenant-scoped and auditable; historical workday resolution remains open |
 | 2026-08-30T01:48:00+02:00 | C2e ordered shift segments | 6% | C2 45% | 13/161 | 0/15 | WF-C2-006 accepted: one draft/active schedule can express 09-13 Site A and 14-18 Site B with an explicit planned break, independent of Route; workday snapshot and transitions remain open |
 | 2026-08-30T01:56:00+02:00 | C2f site-transition fact foundation | 6% | C2 45% | 13/161 | 0/15 | WF-C2-007 is partial: append-only arrival/departure claims are tenant-scoped, provenance-bound and review-safe; no unverified mobile/API path, C3 snapshot or C4 assessment is claimed |
+| 2026-08-30T06:44:00+02:00 | C3b calendar semantics | 11% | C3 20% | 23/161 | 0/15 | WF-C3-002 accepted: Workforce-only adapter distinguishes scheduled/non-working/public holiday/closure/approved leave/absence; `/today` exposes calendar state without calling a no-show |
 | 2026-08-30T07:02:28+02:00 | C3d accepted workday schedule snapshot | 12% | C3 40% | 25/161 | 0/15 | WF-C3-008 accepted: START atomically pins calendar, ordered segments, scheduled sites/effective geofence, policy and shift facts; historical pairs remain explicitly unknowable rather than reconstructed |
 | 2026-08-30T07:16:08+02:00 | C2g schedule/site safety | 13% | C2 45% | 26/161 | 0/15 | WF-C2-009 remains partial: shift/site timezone and effective eligibility are pinned at START; transition claims bind only to the employee's snapshotted SITE segment; travel semantics remain owner-gated |
 
@@ -456,8 +457,8 @@ ordinary, night, split and exceptional days.
 
 | ID | Pri | Status | Owner | Task | Acceptance evidence |
 |---|---:|---|---|---|---|
-| WF-C3-001 | P1 | PARTIAL | Backend/Web | Finish employee/team/default shift assignment with roster lookup and effective-date preview | Admin selects a named employee; raw ID input is absent |
-| WF-C3-002 | P1 | PLANNED | Backend/HR | Add work calendar: workdays, holidays, tenant closures and employee exceptions | No-show calculation distinguishes non-working/leave/holiday |
+| WF-C3-001 | P1 | PARTIAL | Backend/Web | Finish employee/team/default shift assignment with roster lookup and effective-date preview | [`workforce-c3-assignment-roster-evidence-2026-08-30.md`](./workforce-c3-assignment-roster-evidence-2026-08-30.md): named tenant roster and direct-assignment preview; visible picker/default timeline remain open |
+| WF-C3-002 | P1 | DONE | Backend/HR | Add work calendar: workdays, holidays, tenant closures and employee exceptions | [`workforce-c3-calendar-evidence-2026-08-30.md`](./workforce-c3-calendar-evidence-2026-08-30.md): Workforce calendar resolution distinguishes non-working/leave/holiday without a Route dependency |
 | WF-C3-003 | P1 | OWNER DECISION | HR/Legal | Define paid/unpaid/manual/automatic break policy and lunch treatment | OD-07 resolved and versioned by tenant |
 | WF-C3-004 | P1 | PLANNED | Backend | Make planned breaks enforceable/calculable according to the approved policy while preserving old metadata snapshots | Baku 09-18 with 13-14 yields explainable eight-hour expectation |
 | WF-C3-005 | P1 | OWNER DECISION | HR/Legal | Define overnight work date, split shifts, minimum rest and cross-midnight correction rules | OD-08 resolved |

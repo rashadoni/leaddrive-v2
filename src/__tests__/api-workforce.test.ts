@@ -50,6 +50,8 @@ const AUTH = {
   name: "Workforce Admin",
 }
 
+type WorkdayFindManyCall = { where: Record<string, unknown> }
+
 function request(path: string, body?: unknown) {
   return new NextRequest(`http://localhost:3000${path}`, body === undefined ? {} : {
     method: "POST",
@@ -66,6 +68,7 @@ beforeEach(() => {
   vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([])
   vi.mocked(prisma.mtmAgentWorkday.findMany).mockResolvedValue([])
   vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue([])
+  vi.mocked(prisma.mtmWorkCalendarDay.findMany).mockResolvedValue([])
   vi.mocked(prisma.workforceTimeCorrection.findMany).mockResolvedValue([])
   vi.mocked(prisma.workforcePolicySnapshot.findMany).mockResolvedValue([])
   vi.mocked(prisma.workforceShiftSnapshot.findMany).mockResolvedValue([])
@@ -97,14 +100,45 @@ describe("independent Workforce read models", () => {
     expect(response.status).toBe(200)
     expect(body.data.summary).toMatchObject({ started: 1, notStarted: 1, previousOpen: 1 })
     expect(body.data.people).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: "agent-1", status: "STARTED" }),
-      expect.objectContaining({ id: "agent-2", status: "NOT_STARTED" }),
+      expect.objectContaining({ id: "agent-1", status: "STARTED", calendar: expect.objectContaining({ state: "SCHEDULED" }) }),
+      expect.objectContaining({ id: "agent-2", status: "NOT_STARTED", calendar: expect.objectContaining({ state: "SCHEDULED" }) }),
     ]))
     expect(prisma.mtmAgent.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ organizationId: "org-workforce" }),
     }))
     expect(prisma.mtmAgentWorkday.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ organizationId: "org-workforce" }),
+    }))
+  })
+
+  it("shows non-working, holiday and approved leave as distinct no-show-ineligible calendar states", async () => {
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
+      { id: "agent-1", name: "Aysel", role: "AGENT", teamId: "team-1" },
+      { id: "agent-2", name: "Murad", role: "AGENT", teamId: "team-2" },
+    ] as never)
+    vi.mocked(prisma.mtmWorkCalendarDay.findMany).mockResolvedValue([
+      {
+        id: "holiday", date: new Date("2026-08-28T00:00:00.000Z"), kind: "PUBLIC_HOLIDAY",
+        name: "Holiday", teamId: "team-1", agentId: null, movedToDate: null,
+        routePlanningAllowed: false, source: "WORKFORCE_CONFIG",
+      },
+      {
+        id: "leave", date: new Date("2026-08-28T00:00:00.000Z"), kind: "COMPANY_HOLIDAY",
+        name: "Approved leave", teamId: null, agentId: "agent-2", movedToDate: null,
+        routePlanningAllowed: false, source: "WORKFORCE_LEAVE",
+      },
+    ] as never)
+
+    const response = await todayGet(request("/api/v1/workforce/today"), AUTH as never)
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.data.people).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "agent-1", calendar: expect.objectContaining({ state: "PUBLIC_HOLIDAY", noShowEligible: false }) }),
+      expect.objectContaining({ id: "agent-2", calendar: expect.objectContaining({ state: "APPROVED_LEAVE", noShowEligible: false, excused: true }) }),
+    ]))
+    expect(prisma.mtmWorkCalendarDay.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ organizationId: "org-workforce", deletedAt: null }),
     }))
   })
 
@@ -128,7 +162,7 @@ describe("independent Workforce read models", () => {
       calculation: null,
       calculationStatus: "WORKFORCE_TIMESHEET_SNAPSHOT_MISSING",
     })])
-    const query = vi.mocked(prisma.mtmAgentWorkday.findMany).mock.calls[0][0] as any
+    const query = vi.mocked(prisma.mtmAgentWorkday.findMany).mock.calls[0][0] as WorkdayFindManyCall
     expect(query.where).toMatchObject({ organizationId: "org-workforce", agentId: { in: ["agent-1"] } })
   })
 
@@ -234,10 +268,10 @@ describe("independent Workforce read models", () => {
     const body = await response.json()
 
     expect(body.data).toMatchObject({ date: "2026-08-28", timezone: "Asia/Baku" })
-    const todayQuery = vi.mocked(prisma.mtmAgentWorkday.findMany).mock.calls[0][0] as any
-    const previousQuery = vi.mocked(prisma.mtmAgentWorkday.findMany).mock.calls[1][0] as any
-    expect(todayQuery.where.workDate).toEqual(new Date("2026-08-28T00:00:00.000Z"))
-    expect(previousQuery.where.workDate.lt).toEqual(new Date("2026-08-28T00:00:00.000Z"))
+    const todayQuery = vi.mocked(prisma.mtmAgentWorkday.findMany).mock.calls[0][0] as WorkdayFindManyCall
+    const previousQuery = vi.mocked(prisma.mtmAgentWorkday.findMany).mock.calls[1][0] as WorkdayFindManyCall
+    expect(todayQuery.where.workDate as Date).toEqual(new Date("2026-08-28T00:00:00.000Z"))
+    expect((previousQuery.where.workDate as { lt: Date }).lt).toEqual(new Date("2026-08-28T00:00:00.000Z"))
   })
 
   it("uses canonical DATE boundaries for a positive-offset timesheet", async () => {
@@ -252,7 +286,7 @@ describe("independent Workforce read models", () => {
     )
 
     expect(response.status).toBe(200)
-    const query = vi.mocked(prisma.mtmAgentWorkday.findMany).mock.calls[0][0] as any
+    const query = vi.mocked(prisma.mtmAgentWorkday.findMany).mock.calls[0][0] as WorkdayFindManyCall
     expect(query.where.workDate).toEqual({
       gte: new Date("2026-08-27T00:00:00.000Z"),
       lt: new Date("2026-08-29T00:00:00.000Z"),

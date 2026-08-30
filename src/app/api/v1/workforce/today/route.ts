@@ -5,6 +5,7 @@ import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
 import { withWorkforceRlsAuth } from "@/lib/with-workforce-rls-auth"
 import { resolveWorkforceActor } from "@/lib/workforce/actor"
+import { resolveWorkforceCalendarDay, type WorkforceCalendarOverride } from "@/lib/workforce/calendar"
 
 type WorkdayStatus = "STARTED" | "PAUSED" | "COMPLETED"
 
@@ -59,9 +60,11 @@ export const GET = withWorkforceRlsAuth("read", async (_req, auth) => {
       select: { id: true, name: true, role: true, teamId: true },
     })
     const agentIds = agents.map((agent) => agent.id)
-    const [todayWorkdays, openPreviousWorkdays]: [
+    const teamIds = [...new Set(agents.flatMap((agent) => agent.teamId ? [agent.teamId] : []))]
+    const [todayWorkdays, openPreviousWorkdays, calendarOverrides]: [
       WorkforceTodayWorkday[],
       WorkforcePreviousOpenWorkday[],
+      WorkforceCalendarOverride[],
     ] = agentIds.length > 0
       ? await Promise.all([
           prisma.mtmAgentWorkday.findMany({
@@ -78,8 +81,32 @@ export const GET = withWorkforceRlsAuth("read", async (_req, auth) => {
             orderBy: [{ workDate: "desc" }, { startedAt: "desc" }, { id: "asc" }],
             select: { id: true, agentId: true, workDate: true, status: true, startedAt: true, pausedAt: true },
           }),
+          prisma.mtmWorkCalendarDay.findMany({
+            where: {
+              organizationId: auth.orgId,
+              date: workDate,
+              deletedAt: null,
+              OR: [
+                { agentId: { in: agentIds }, teamId: null },
+                ...(teamIds.length > 0 ? [{ agentId: null, teamId: { in: teamIds } }] : []),
+                { agentId: null, teamId: null },
+              ],
+            },
+            orderBy: [{ agentId: "asc" }, { teamId: "asc" }, { id: "asc" }],
+            select: {
+              id: true,
+              date: true,
+              kind: true,
+              name: true,
+              teamId: true,
+              agentId: true,
+              movedToDate: true,
+              routePlanningAllowed: true,
+              source: true,
+            },
+          }),
         ])
-      : [[], []]
+      : [[], [], []]
     const todayByAgent = new Map(todayWorkdays.map((workday) => [workday.agentId, workday]))
     const previousByAgent = new Map<string, (typeof openPreviousWorkdays)[number]>()
     for (const workday of openPreviousWorkdays) {
@@ -88,11 +115,20 @@ export const GET = withWorkforceRlsAuth("read", async (_req, auth) => {
     const people = agents.map((agent) => {
       const workday = todayByAgent.get(agent.id)
       const previousOpenWorkday = previousByAgent.get(agent.id)
+      const calendar = resolveWorkforceCalendarDay({
+        date,
+        overrides: calendarOverrides,
+        teamId: agent.teamId,
+        agentId: agent.id,
+      })
       return {
         ...agent,
         status: (workday?.status ?? "NOT_STARTED") as WorkdayStatus | "NOT_STARTED",
         workday: workday ?? null,
         previousOpenWorkday: previousOpenWorkday ?? null,
+        // `NOT_STARTED` is a raw workday state, not a no-show. Calendar makes
+        // the distinction explicit until C6 introduces a reviewable no-show.
+        calendar,
       }
     })
     const summary = people.reduce((counts, person) => {
