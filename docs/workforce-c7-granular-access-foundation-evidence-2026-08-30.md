@@ -60,10 +60,19 @@ triggers.
 
 `src/lib/workforce/access-grant-ledger.ts` supplies the matching pure draft
 writer. It normalizes exact scopes, role/scope compatibility, bounded opaque
-identifiers, reason codes and effective windows; revocation drafts cannot
-predate their grant. It has no Prisma dependency and cannot insert a grant,
-so the database constraint remains the final guard for a future authorized
-transaction writer.
+identifiers, reason codes, stable operation IDs and effective windows;
+revocation drafts cannot predate their grant.
+
+`src/lib/workforce/access-grant-writer.ts` is the next, still-unwired
+transaction-scoped primitive. It requires a caller-provided authorization
+decision, serializes one tenant-principal with a PostgreSQL advisory transaction
+lock, creates exactly one append-only grant or revocation and records a
+metadata-only audit entry in the same transaction. An operation ID is unique
+per tenant: an exact retry returns the original record, while a changed payload
+under the same ID fails closed. A revocation re-reads and matches the immutable
+grant start before writing, so a stale caller cannot revoke a different grant.
+The new operation-ID migration deliberately refuses non-empty dormant storage
+instead of inventing identifiers for direct database authority rows.
 
 ## Deliberate rollout boundary
 
@@ -83,8 +92,11 @@ and run access review before live enforcement can be claimed.
   deny an ungranted administrator after cutover and accept an exact
   employee-scoped `TEAM_ATTENDANCE_READ` grant without a mutable team lookup.
 - `PASS` — static migration contract tests cover exact scope, role/scope
-  constraints, append-only revocation, RLS and every incompatible pair;
-  `prisma validate` passed without a database connection. Focused draft-writer
-  tests cover invalid scope/window and pre-grant revocation rejection.
+  constraints, append-only revocation, RLS, every incompatible pair and the
+  fail-closed operation-ID migration; `prisma validate` passed without a
+  database connection. Focused writer tests cover invalid scope/window,
+  pre-grant revocation rejection, mandatory authorization, tenant-principal
+  serialization, metadata-only audit, exact replay and changed-operation
+  conflict rejection.
 - `NOT RUN` — browser role assignment, endpoint integration, database RLS
-  concurrency and tenant activation require the later C7 writer/rollout gates.
+  concurrency and tenant activation require the later C7 rollout gates.

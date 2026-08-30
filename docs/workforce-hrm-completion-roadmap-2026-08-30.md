@@ -481,6 +481,8 @@ Owner roles are accountabilities, not individual names:
 
 | 2026-09-13T14:50:00+02:00 | C7 grant/revocation draft writer (partial) | 45% | C7 70% | 78/161 | 5/15 | WF-C7-002 gains a source-only draft writer that fails closed on malformed identifiers/reasons, non-exact or incompatible role scope, invalid effective windows and pre-grant revocation. It has no Prisma dependency or write path; atomic authorization/audit, endpoint rollout, initial cohort and database/RLS concurrency evidence remain open, so no completion credit is claimed. |
 
+| 2026-09-13T14:52:00+02:00 | C7 atomic access-grant transaction primitive (partial) | 45% | C7 70% | 78/161 | 5/15 | WF-C7-002 gains a caller-authorized transaction writer with per-principal advisory locking, tenant-unique operation IDs, exact replay/conflict handling, immutable grant-start matching and metadata-only audit. The additive operation-ID migration refuses non-empty dormant storage rather than inventing authority history. No endpoint, tenant rollout or grant is introduced, so no completion credit is claimed. |
+
 **C3 phase display reconciliation (2026-08-30T08:11:00+02:00):** the C3
 register contains 11 tasks and its scope did not change. Earlier C3 ledger
 display values were not calculated from the stated phase formula. The current

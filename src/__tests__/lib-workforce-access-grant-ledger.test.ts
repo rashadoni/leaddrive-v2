@@ -12,6 +12,7 @@ describe("Workforce access grant ledger drafts", () => {
     expect(createWorkforceAccessGrantDraft({
       organizationId: "org-1",
       principalUserId: "user-1",
+      operationId: "grant-op-1",
       role: "TIME_APPROVER",
       scope: { kind: "TEAM", teamId: "team-1" },
       effectiveFrom: EFFECTIVE_FROM,
@@ -21,6 +22,7 @@ describe("Workforce access grant ledger drafts", () => {
     })).toEqual({
       organizationId: "org-1",
       principalUserId: "user-1",
+      operationId: "grant-op-1",
       role: "TIME_APPROVER",
       scope: { kind: "TEAM", teamId: "team-1" },
       effectiveFrom: EFFECTIVE_FROM,
@@ -38,13 +40,17 @@ describe("Workforce access grant ledger drafts", () => {
       { role: "UNKNOWN_ROLE", scope: { kind: "ORGANIZATION" } },
     ]) {
       expect(() => createWorkforceAccessGrantDraft({
-        organizationId: "org-1", principalUserId: "user-1", effectiveFrom: EFFECTIVE_FROM,
+        organizationId: "org-1", principalUserId: "user-1", operationId: "grant-op-1", effectiveFrom: EFFECTIVE_FROM,
         grantedByUserId: "admin-1", grantReasonCode: "HR_APPOINTMENT", ...invalid,
       })).toThrow(expect.objectContaining({ code: "WORKFORCE_ACCESS_GRANT_INPUT_INVALID" } satisfies Partial<WorkforceAccessGrantLedgerError>))
     }
     expect(() => createWorkforceAccessGrantDraft({
-      organizationId: "org-1", principalUserId: "user-1", role: "HR_ADMIN", scope: { kind: "ORGANIZATION" },
+      organizationId: "org-1", principalUserId: "user-1", operationId: "grant-op-1", role: "HR_ADMIN", scope: { kind: "ORGANIZATION" },
       effectiveFrom: EFFECTIVE_FROM, effectiveUntil: EFFECTIVE_FROM, grantedByUserId: "admin-1", grantReasonCode: "HR_APPOINTMENT",
+    })).toThrow(expect.objectContaining({ code: "WORKFORCE_ACCESS_GRANT_INPUT_INVALID" }))
+    expect(() => createWorkforceAccessGrantDraft({
+      organizationId: "org-1", principalUserId: "user-1", operationId: "grant op with spaces", role: "HR_ADMIN", scope: { kind: "ORGANIZATION" },
+      effectiveFrom: EFFECTIVE_FROM, grantedByUserId: "admin-1", grantReasonCode: "HR_APPOINTMENT",
     })).toThrow(expect.objectContaining({ code: "WORKFORCE_ACCESS_GRANT_INPUT_INVALID" }))
   })
 
@@ -52,13 +58,14 @@ describe("Workforce access grant ledger drafts", () => {
     expect(createWorkforceAccessGrantRevocationDraft({
       organizationId: "org-1",
       grantId: "grant-1",
+      operationId: "revoke-op-1",
       grantEffectiveFrom: EFFECTIVE_FROM,
       revokedByUserId: "admin-2",
       revocationReasonCode: "ROLE_CHANGE",
       revokedAt: new Date("2026-09-10T09:00:00.000Z"),
     })).toMatchObject({ grantId: "grant-1", revocationReasonCode: "ROLE_CHANGE" })
     expect(() => createWorkforceAccessGrantRevocationDraft({
-      organizationId: "org-1", grantId: "grant-1", grantEffectiveFrom: EFFECTIVE_FROM,
+      organizationId: "org-1", grantId: "grant-1", operationId: "revoke-op-1", grantEffectiveFrom: EFFECTIVE_FROM,
       revokedByUserId: "admin-2", revocationReasonCode: "ROLE_CHANGE", revokedAt: new Date("2026-08-31T09:00:00.000Z"),
     })).toThrow(expect.objectContaining({ code: "WORKFORCE_ACCESS_REVOCATION_INPUT_INVALID" }))
   })

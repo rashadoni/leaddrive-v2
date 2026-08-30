@@ -7749,6 +7749,9 @@ model WorkforceAccessGrant {
   scopeAgent        MtmAgent?                @relation("WorkforceAccessGrantScopeAgent", fields: [organizationId, scopeAgentId], references: [organizationId, id], onDelete: Restrict)
   effectiveFrom     DateTime
   effectiveUntil    DateTime?
+  /// Client- or admin-supplied idempotency key. A retry must prove it names
+  /// the same immutable grant rather than creating a second authority row.
+  operationId       String                   @db.VarChar(100)
   grantedByUserId   String
   grantedByUser     User                     @relation("WorkforceAccessGrantGrantedBy", fields: [organizationId, grantedByUserId], references: [organizationId, id], onDelete: Restrict)
   grantReasonCode   String                   @db.VarChar(64)
@@ -7757,6 +7760,7 @@ model WorkforceAccessGrant {
   revocation WorkforceAccessGrantRevocation?
 
   @@unique([organizationId, id])
+  @@unique([organizationId, operationId])
   @@index([organizationId, principalUserId, effectiveFrom, effectiveUntil])
   @@index([organizationId, role, scopeKind, effectiveFrom])
   @@index([organizationId, scopeTeamId, effectiveFrom])
@@ -7775,6 +7779,8 @@ model WorkforceAccessGrantRevocation {
   organization         Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   grantId              String
   grant                WorkforceAccessGrant @relation(fields: [organizationId, grantId], references: [organizationId, id], onDelete: Restrict)
+  /// Idempotency key for one immutable revocation action.
+  operationId           String                @db.VarChar(100)
   revokedByUserId      String
   revokedByUser        User                  @relation("WorkforceAccessGrantRevokedBy", fields: [organizationId, revokedByUserId], references: [organizationId, id], onDelete: Restrict)
   revocationReasonCode String                @db.VarChar(64)
@@ -7783,6 +7789,7 @@ model WorkforceAccessGrantRevocation {
 
   @@unique([organizationId, id])
   @@unique([organizationId, grantId])
+  @@unique([organizationId, operationId])
   @@index([organizationId, revokedByUserId, revokedAt])
   @@map("workforce_access_grant_revocations")
 }

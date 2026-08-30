@@ -14,6 +14,7 @@ import {
 export type WorkforceAccessGrantDraft = {
   organizationId: string
   principalUserId: string
+  operationId: string
   role: WorkforceAccessRole
   scope: WorkforceAccessScope
   effectiveFrom: Date
@@ -25,6 +26,9 @@ export type WorkforceAccessGrantDraft = {
 export type WorkforceAccessGrantRevocationDraft = {
   organizationId: string
   grantId: string
+  operationId: string
+  /** Compared with the persisted grant before a revocation may be appended. */
+  grantEffectiveFrom: Date
   revokedByUserId: string
   revocationReasonCode: string
   revokedAt: Date
@@ -37,6 +41,7 @@ export class WorkforceAccessGrantLedgerError extends Error {
 }
 
 const REASON_CODE = /^[A-Z][A-Z0-9_]{0,63}$/
+const OPERATION_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,99}$/
 
 function opaqueId(value: unknown, code: WorkforceAccessGrantLedgerError["code"]): string {
   if (typeof value !== "string" || !value.trim() || value.length > 191 || /[\u0000-\u001f]/.test(value)) {
@@ -61,6 +66,13 @@ function canonicalInstant(value: unknown, code: WorkforceAccessGrantLedgerError[
 
 function canonicalReasonCode(value: unknown, code: WorkforceAccessGrantLedgerError["code"]): string {
   if (typeof value !== "string" || !REASON_CODE.test(value)) {
+    throw new WorkforceAccessGrantLedgerError(code)
+  }
+  return value
+}
+
+function canonicalOperationId(value: unknown, code: WorkforceAccessGrantLedgerError["code"]): string {
+  if (typeof value !== "string" || !OPERATION_ID.test(value)) {
     throw new WorkforceAccessGrantLedgerError(code)
   }
   return value
@@ -91,6 +103,7 @@ function canonicalScope(value: unknown): WorkforceAccessScope {
 export function createWorkforceAccessGrantDraft(input: {
   organizationId: unknown
   principalUserId: unknown
+  operationId: unknown
   role: unknown
   scope: unknown
   effectiveFrom: unknown
@@ -113,6 +126,7 @@ export function createWorkforceAccessGrantDraft(input: {
   return {
     organizationId: opaqueId(input.organizationId, "WORKFORCE_ACCESS_GRANT_INPUT_INVALID"),
     principalUserId: opaqueId(input.principalUserId, "WORKFORCE_ACCESS_GRANT_INPUT_INVALID"),
+    operationId: canonicalOperationId(input.operationId, "WORKFORCE_ACCESS_GRANT_INPUT_INVALID"),
     role,
     scope,
     effectiveFrom,
@@ -125,6 +139,7 @@ export function createWorkforceAccessGrantDraft(input: {
 export function createWorkforceAccessGrantRevocationDraft(input: {
   organizationId: unknown
   grantId: unknown
+  operationId: unknown
   grantEffectiveFrom: unknown
   revokedByUserId: unknown
   revocationReasonCode: unknown
@@ -138,6 +153,8 @@ export function createWorkforceAccessGrantRevocationDraft(input: {
   return {
     organizationId: opaqueId(input.organizationId, "WORKFORCE_ACCESS_REVOCATION_INPUT_INVALID"),
     grantId: opaqueId(input.grantId, "WORKFORCE_ACCESS_REVOCATION_INPUT_INVALID"),
+    operationId: canonicalOperationId(input.operationId, "WORKFORCE_ACCESS_REVOCATION_INPUT_INVALID"),
+    grantEffectiveFrom,
     revokedByUserId: opaqueId(input.revokedByUserId, "WORKFORCE_ACCESS_REVOCATION_INPUT_INVALID"),
     revocationReasonCode: canonicalReasonCode(input.revocationReasonCode, "WORKFORCE_ACCESS_REVOCATION_INPUT_INVALID"),
     revokedAt,
