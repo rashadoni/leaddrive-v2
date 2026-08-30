@@ -338,6 +338,7 @@ Owner roles are accountabilities, not individual names:
 | 2026-08-30T07:16:08+02:00 | C2g schedule/site safety | 13% | C2 45% | 26/161 | 0/15 | WF-C2-009 remains partial: shift/site timezone and effective eligibility are pinned at START; transition claims bind only to the employee's snapshotted SITE segment; travel semantics remain owner-gated |
 | 2026-08-30T07:24:00+02:00 | C1d segment-bound idempotency | 13% | C1 50% | 27/161 | 0/15 | WF-C1-004 accepted: v3 request hashes bind the snapshotted segment ID, while v1/v2 hashes remain byte-for-byte compatible with their existing replay contract |
 | 2026-08-30T07:40:00+02:00 | C1e historical team membership | 14% | C1 60% | 28/161 | 0/15 | WF-C1-006 accepted: append-only employee team facts resolve delayed workdays at start time; pre-history never falls back to mutable current team |
+| 2026-08-30T07:41:00+02:00 | C1f transition risk codes | 14% | C1 70% | 29/161 | 0/15 | WF-C1-007 accepted: duplicate-active and impossible-order attempts return non-punitive machine risk codes while exact replays retain canonical success |
 
 ### 6.1 Progress reporting contract
 
@@ -418,7 +419,7 @@ client timestamps into trusted attendance facts.
 | WF-C1-004 | P0 | DONE | Backend | Bind idempotency hash to actor, action, claimed time, segment, evidence references and schema version | [`workforce-c1-segment-idempotency-evidence-2026-08-30.md`](./workforce-c1-segment-idempotency-evidence-2026-08-30.md): v3 segment digest and pinned-schedule assertion; v1/v2 replay digest remains compatible |
 | WF-C1-005 | P0 | DONE | Backend | Make standard audit projection atomic with accepted workday/request decisions or derive it reliably from the immutable ledger | Failure-injection proves no accepted mutation lacks reconstructable audit |
 | WF-C1-006 | P1 | DONE | Backend/HR | Resolve policy/team/site assignment from an effective-dated employee history, not the current team after a delayed upload | [`workforce-c1-team-history-evidence-2026-08-30.md`](./workforce-c1-team-history-evidence-2026-08-30.md): immutable membership timeline, no pre-history guessing, and transfer-during-offline contract |
-| WF-C1-007 | P1 | PLANNED | Backend | Add impossible clock/order and duplicate active-shift risk codes without breaking idempotent retries | Property/concurrency tests cover state transitions |
+| WF-C1-007 | P1 | DONE | Backend | Add impossible clock/order and duplicate active-shift risk codes without breaking idempotent retries | [`workforce-c1-transition-risk-evidence-2026-08-30.md`](./workforce-c1-transition-risk-evidence-2026-08-30.md): review-only codes, transport contract and replay-first tests |
 | WF-C1-008 | P1 | PLANNED | Backend | Return current canonical state, reason and allowed recovery actions on every conflict | Mobile/web contract tests and localized recovery UX |
 | WF-C1-009 | P1 | PLANNED | Backend | Create additive migration/backfill plan for existing facts; unknown provenance remains `LEGACY`, never falsely attested | Dry-run counts, rollback and reconciliation checks |
 | WF-C1-010 | P1 | PLANNED | Security/QA | Add abuse tests for backdating, future time, replay, two devices, changed payload and expired app version | Negative matrix passes in CI |
@@ -438,6 +439,8 @@ The v3 segment-bound replay contract is recorded in
 [`workforce-c1-segment-idempotency-evidence-2026-08-30.md`](./workforce-c1-segment-idempotency-evidence-2026-08-30.md).
 Historical membership selection is in
 [`workforce-c1-team-history-evidence-2026-08-30.md`](./workforce-c1-team-history-evidence-2026-08-30.md).
+Transition risk codes are in
+[`workforce-c1-transition-risk-evidence-2026-08-30.md`](./workforce-c1-transition-risk-evidence-2026-08-30.md).
 
 ### C2 — Sites, geofences, multi-branch segments and travel
 

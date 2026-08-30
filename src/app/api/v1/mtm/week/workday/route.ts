@@ -339,6 +339,7 @@ export const POST = withWorkforceCompatAuth("write", async (req, auth) => {
         code: result.applied.code,
         data: {
           workday: result.applied.workday ?? null,
+          riskCodes: result.applied.riskCodes ?? [],
           availableActions: availableWorkdayActions(
             typeof result.applied.workday?.status === "string" ? result.applied.workday.status : null,
           ),

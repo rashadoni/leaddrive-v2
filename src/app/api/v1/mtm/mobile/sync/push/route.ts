@@ -2625,6 +2625,7 @@ export const POST = withMobileRls(async (req, auth) => {
             errorMsg = applied.message
             serverData = {
               code: applied.code,
+              ...(applied.riskCodes ? { riskCodes: applied.riskCodes } : {}),
               ...(applied.workday ? { workday: applied.workday } : {}),
               ...(applied.allowedActions ? { allowedActions: applied.allowedActions } : {}),
             }

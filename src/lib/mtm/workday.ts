@@ -4,6 +4,12 @@ import { currentDateKey } from "@/lib/mtm/mobile-week"
 
 export type MtmWorkdayAction = "START" | "PAUSE" | "RESUME" | "FINISH"
 
+/** Review-only machine signals for rejected state-machine attempts. */
+export type WorkforceWorkdayTransitionRiskCode =
+  | "DUPLICATE_ACTIVE_SHIFT_ATTEMPT"
+  | "CLAIM_BEFORE_WORKDAY_START"
+  | "CLAIM_PRECEDES_ACCEPTED_EVENT"
+
 /**
  * Transient H5 evidence. It is intentionally never copied into the immutable
  * workday event: QR and device material are validated inside the transaction
@@ -59,6 +65,8 @@ export type MtmWorkdayResult =
       code: string
       message: string
       workday?: Record<string, unknown>
+      /** Signals are not guilt, discipline, or an attendance decision. */
+      riskCodes?: WorkforceWorkdayTransitionRiskCode[]
       /**
        * A server-derived recovery hint for a disclosed current workday. It is
        * informational: the client must refresh before attempting another
@@ -482,6 +490,7 @@ function conflict(
   code: string,
   message: string,
   workday?: Record<string, unknown> | null,
+  riskCodes?: WorkforceWorkdayTransitionRiskCode[],
 ): MtmWorkdayResult {
   return {
     status: "conflict",
@@ -491,6 +500,7 @@ function conflict(
       workday,
       allowedActions: recoveryActionsForMtmWorkday(workday),
     } : {}),
+    ...(riskCodes && riskCodes.length > 0 ? { riskCodes } : {}),
   }
 }
 
@@ -628,7 +638,12 @@ export async function applyMtmWorkdayEvent(
       return conflict("MTM_WORKDAY_ALREADY_EXISTS", "A workday already exists for this date", sameDay as Record<string, unknown>)
     }
     if (activeWorkday) {
-      return conflict("MTM_WORKDAY_ACTIVE", "Another workday is still active", activeWorkday as Record<string, unknown>)
+      return conflict(
+        "MTM_WORKDAY_ACTIVE",
+        "Another workday is still active",
+        activeWorkday as Record<string, unknown>,
+        ["DUPLICATE_ACTIVE_SHIFT_ATTEMPT"],
+      )
     }
 
     const workday = await db.mtmAgentWorkday.create({
@@ -680,9 +695,20 @@ export async function applyMtmWorkdayEvent(
     orderBy: { occurredAt: "desc" },
     select: { occurredAt: true },
   })
-  if (input.occurredAt.getTime() < workday.startedAt.getTime() ||
-      (lastEvent && input.occurredAt.getTime() < lastEvent.occurredAt.getTime())) {
-    return conflict("MTM_WORKDAY_EVENT_OUT_OF_ORDER", "Workday event is older than the current state", workday as Record<string, unknown>)
+  const riskCodes: WorkforceWorkdayTransitionRiskCode[] = []
+  if (input.occurredAt.getTime() < workday.startedAt.getTime()) {
+    riskCodes.push("CLAIM_BEFORE_WORKDAY_START")
+  }
+  if (lastEvent && input.occurredAt.getTime() < lastEvent.occurredAt.getTime()) {
+    riskCodes.push("CLAIM_PRECEDES_ACCEPTED_EVENT")
+  }
+  if (riskCodes.length > 0) {
+    return conflict(
+      "MTM_WORKDAY_EVENT_OUT_OF_ORDER",
+      "Workday event is older than the current state",
+      workday as Record<string, unknown>,
+      riskCodes,
+    )
   }
 
   let update: Record<string, unknown>

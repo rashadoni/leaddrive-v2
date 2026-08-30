@@ -484,6 +484,51 @@ describe("MTM mobile workday", () => {
       code: "MTM_WORKDAY_EVENT_OUT_OF_ORDER",
       workday: { status: "STARTED" },
       allowedActions: ["PAUSE", "FINISH"],
+      riskCodes: ["CLAIM_PRECEDES_ACCEPTED_EVENT"],
+    })
+    expect(db.mtmAgentWorkday.update).not.toHaveBeenCalled()
+    expect(db.mtmAgentWorkdayEvent.create).not.toHaveBeenCalled()
+  })
+
+  it("returns a review-only duplicate-active-shift signal without weakening replay handling", async () => {
+    const db = makeMtmPrismaMock()
+    vi.mocked(db.mtmAgentWorkdayEvent.findFirst).mockResolvedValue(null as never)
+    vi.mocked(db.mtmAgentWorkday.findFirst)
+      .mockResolvedValueOnce(null as never)
+      .mockResolvedValueOnce(workday({ id: "active-workday", status: "PAUSED" }) as never)
+    const parsed = parseMtmWorkdayEvent({
+      action: "START",
+      id: "new-workday",
+      occurredAt: "2026-07-15T07:00:00.000Z",
+    }, "event-new-start", "Asia/Baku", new Date("2026-07-15T08:00:00.000Z"))
+
+    await expect(applyMtmWorkdayEvent(db as never, SCOPE, parsed.input!)).resolves.toMatchObject({
+      status: "conflict",
+      code: "MTM_WORKDAY_ACTIVE",
+      riskCodes: ["DUPLICATE_ACTIVE_SHIFT_ATTEMPT"],
+      allowedActions: ["RESUME", "FINISH"],
+    })
+    expect(db.mtmAgentWorkday.create).not.toHaveBeenCalled()
+    expect(db.mtmAgentWorkdayEvent.create).not.toHaveBeenCalled()
+    expect(db.workforceAttendanceReviewCase.create).not.toHaveBeenCalled()
+  })
+
+  it("distinguishes a claim before workday start from a claim before a later accepted event", async () => {
+    const db = makeMtmPrismaMock()
+    vi.mocked(db.mtmAgentWorkday.findFirst).mockResolvedValue(workday() as never)
+    vi.mocked(db.mtmAgentWorkdayEvent.findFirst)
+      .mockResolvedValueOnce(null as never)
+      .mockResolvedValueOnce({ occurredAt: new Date("2026-07-15T05:00:00.000Z") } as never)
+    const parsed = parseMtmWorkdayEvent({
+      action: "PAUSE",
+      workdayId: "workday-1",
+      occurredAt: "2026-07-15T04:59:59.000Z",
+    }, "event-before-start", "Asia/Baku", new Date("2026-07-15T08:00:00.000Z"))
+
+    await expect(applyMtmWorkdayEvent(db as never, SCOPE, parsed.input!)).resolves.toMatchObject({
+      status: "conflict",
+      code: "MTM_WORKDAY_EVENT_OUT_OF_ORDER",
+      riskCodes: ["CLAIM_BEFORE_WORKDAY_START", "CLAIM_PRECEDES_ACCEPTED_EVENT"],
     })
     expect(db.mtmAgentWorkday.update).not.toHaveBeenCalled()
     expect(db.mtmAgentWorkdayEvent.create).not.toHaveBeenCalled()
