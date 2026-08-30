@@ -37,8 +37,10 @@ employee notice, no-show/delivery job, queue, notification, auto-close,
 correction or appeal. It also does not change the legacy mutable
 `WorkforceAttendanceException` rows, schema, API or approval behavior.
 
-HR/Product must approve the taxonomy, severity/owner/SLA and the employee
-communication rule before WF-C6-001 can be complete. The durable additive
+The owner-approved recommended v1 **draft** taxonomy, non-disciplinary triage
+severity, role owner, targets and employee-visibility rule is now recorded in
+[`workforce-c6-recommended-draft-policy-evidence-2026-08-30.md`](./workforce-c6-recommended-draft-policy-evidence-2026-08-30.md).
+It remains deliberately non-active for every tenant. The durable additive
 case/decision migration and actual detector remain WF-C6-002/003 work.
 
 ## Verification

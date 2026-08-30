@@ -129,10 +129,10 @@ be recorded before the dependent phase can leave `BLOCKED`.
 | OD-04 | Office proof combination | `GEO + rotating QR` for high-assurance office actions; `GEO` or reviewed fallback for ordinary sites | C4, C5 |
 | OD-05 | Geofence shape/radius governance | Revisioned circle per site for v1; radius chosen per site after on-location calibration | C2, C4 |
 | OD-06 | Kiosk/badge support | Optional site policy, never a universal fallback | C5, C8 |
-| OD-07 | Lunch treatment | Keep actual Pause/Resume in v1; decide paid/unpaid and any auto-deduction before official timesheet use | C3, C11 |
-| OD-08 | Overnight and split shifts | Support before broad commercial rollout; define work-date attribution and rest rules with HR/legal | C3 |
-| OD-09 | Inter-branch travel | Explicit `TRAVEL` segment; owner decides whether it is paid/expected time per tenant policy | C2, C3, C11 |
-| OD-10 | Exact role separation | HR admin, scheduler, approver, location reviewer, device-security admin, export custodian | C7, C8, C10 |
+| OD-07 | Lunch treatment | **Confirmed v1:** actual Pause/Resume and no automatic deduction. Paid/unpaid treatment remains an HR/legal decision before official timesheet use. | C3, C11 |
+| OD-08 | Overnight and split shifts | **Confirmed v1 exclusion:** no overnight/split-shift calculation. Work-date/rest rules still need HR/legal approval before a later phase. | C3 |
+| OD-09 | Inter-branch travel | **Confirmed v1:** no travel-pay calculation. Existing explicit `TRAVEL` segments stay non-payroll; future paid/expected treatment remains tenant-policy work. | C2, C3, C11 |
+| OD-10 | Exact role separation | **Confirmed v1 draft:** least-privilege role vocabulary plus scheduler/time approver, time approver/team manager, evidence reviewer/device-security admin and export custodian/retention-hold incompatibilities. Durable RACI enforcement remains C7 work. | C7, C8, C10 |
 | OD-11 | Location visibility | Normal manager view shows verdict/reason, not raw coordinates; restricted drill-down only for authorized investigations | C8, C10 |
 | OD-12 | Employee monitoring legal basis/notice | Local legal/privacy sign-off and employee notice before any real location cohort | C10, C14 |
 | OD-13 | Backdated event outcome | **Recorded safe default:** older than seven days is rejected; an in-window claim received over 15 minutes after `claimedAt` becomes `PENDING_REVIEW` under `c1-delay-review-v1`. Tenant-published policy/resolution awaits C6. | C6 |
@@ -374,6 +374,8 @@ Owner roles are accountabilities, not individual names:
 | 2026-08-30T17:39:40+02:00 | C6f employee correction-response bridge (partial) | 32% | C6 10% | 64/161 | 0/15 | WF-C6-006 now records the safe own-workday correction/status bridge to C7 self-service. Formal C6 case/segment appeal lifecycle, applied schema, mobile and browser evidence remain open, so no completion credit is claimed |
 
 | 2026-08-30T20:25:00+02:00 | C6j authorized immutable case writer (partial) | 33% | C6 20% | 66/161 | 0/15 | WF-C6-002 now requires an injected authorization decision before any C6 writer lock/write, serializes the immutable case or case-decision stream with a PostgreSQL advisory transaction lock, and adds metadata-only ledger audit on a new record. Exact replay remains idempotent and unauthorised input touches neither lock nor database. No endpoint, detector, tenant policy, lifecycle activation, migration apply or case is created; focused source contracts pass and staging/browser/physical evidence remains NOT RUN |
+| 2026-08-30T18:45:00+02:00 | C6g/C7j recommended HR policy drafts | 33% | C6 20%; C7 50% | 66/161 | 0/15 | WF-C6-001 and WF-C7-001 accepted as owner-approved, source-tested v1 **drafts**: non-disciplinary exception taxonomy/triage/owner/targets/lifecycle and least-privilege incompatible-role pairs. Neither grants nor an HR policy are activated for any tenant; durable enforcement, lifecycle, migration and rollout evidence remain open |
+
 **C3 phase display reconciliation (2026-08-30T08:11:00+02:00):** the C3
 register contains 11 tasks and its scope did not change. Earlier C3 ledger
 display values were not calculated from the stated phase formula. The current
@@ -586,7 +588,7 @@ than a hidden calculation or direct data overwrite.
 
 | ID | Pri | Status | Owner | Task | Acceptance evidence |
 |---|---:|---|---|---|---|
-| WF-C6-001 | P0 | PARTIAL | HR/Product | Approve exception taxonomy, severity, owner and SLA | [`workforce-c6-exception-intake-evidence-2026-08-30.md`](./workforce-c6-exception-intake-evidence-2026-08-30.md): source baseline keeps all intake review-only and unassigned; approved taxonomy/severity/owner/SLA remains owner-gated |
+| WF-C6-001 | P0 | DONE | HR/Product | Approve exception taxonomy, severity, owner and SLA | [`workforce-c6-recommended-draft-policy-evidence-2026-08-30.md`](./workforce-c6-recommended-draft-policy-evidence-2026-08-30.md): owner-approved recommended v1 taxonomy, non-disciplinary triage severity, HR owner/escalation, business-hour targets and employee visibility are recorded as draft-only; no tenant policy is activated |
 | WF-C6-002 | P0 | PARTIAL | Backend | Create immutable exception case/decision lifecycle with deduplication and links to claim/evidence/workday/segment | [`workforce-c6-exception-case-lifecycle-evidence-2026-08-30.md`](./workforce-c6-exception-case-lifecycle-evidence-2026-08-30.md): additive immutable/RLS schema plus deterministic raw-proof-free drafts; applied transaction writer/concurrency and reviewed lifecycle remain open |
 | WF-C6-003 | P0 | PARTIAL | Backend | Generate no-show only from a published expected schedule after grace and approved leave/calendar checks | [`workforce-c6-exception-intake-evidence-2026-08-30.md`](./workforce-c6-exception-intake-evidence-2026-08-30.md): pure proposal rejects draft/unknown calendar/excused/incomplete/existing-workday cases; no detector/job/case is activated |
 | WF-C6-004 | P1 | PARTIAL | Backend/HR | Define missed checkout and stale open-shift policy: reminder, review, bounded auto-close proposal or manual correction | [`workforce-c6-exception-intake-evidence-2026-08-30.md`](./workforce-c6-exception-intake-evidence-2026-08-30.md): safe generic reminder/review proposal requires immutable schedule and complete observation; it never fabricates a finish, while policy timing/delivery/auto-close stay owner-gated |
@@ -608,8 +610,8 @@ overbroad CRM roles or mobile-only requests.
 
 | ID | Pri | Status | Owner | Task | Acceptance evidence |
 |---|---:|---|---|---|---|
-| WF-C7-001 | P1 | OWNER DECISION | HR/Security | Approve Workforce role/permission matrix and incompatible-role rules | OD-10 resolved; RACI and permission tests exist |
-| WF-C7-002 | P1 | PLANNED | Backend | Implement granular scopes: employee self, team/site manager, scheduler, time approver, evidence reviewer, device admin, export custodian, retention/legal-hold officer, pilot/rollback operator and tenant admin | Least-privilege positive/negative tests |
+| WF-C7-001 | P1 | DONE | HR/Security | Approve Workforce role/permission matrix and incompatible-role rules | [`workforce-c7-granular-access-foundation-evidence-2026-08-30.md`](./workforce-c7-granular-access-foundation-evidence-2026-08-30.md): owner-approved recommended v1 roles and incompatible-pair draft are documented and negative-tested; durable enforcement stays separate |
+| WF-C7-002 | P1 | PARTIAL | Backend | Implement granular scopes: employee self, team/site manager, scheduler, time approver, evidence reviewer, device admin, export custodian, retention/legal-hold officer, pilot/rollback operator and tenant admin | [`workforce-c7-granular-access-foundation-evidence-2026-08-30.md`](./workforce-c7-granular-access-foundation-evidence-2026-08-30.md): pure fail-closed role/scope/effective-grant contract and draft incompatible-role validation exist; durable audited grants, endpoint migration and rollout fence remain open |
 | WF-C7-003 | P1 | PLANNED | Web | Build employee/team/site directory pickers with status and effective-date context | Configuration has no typed `teamId`/employee ID workflow |
 | WF-C7-004 | P1 | PLANNED | Backend/HR | Add employment/team/site history for transfer, temporary assignment, termination and rehire | Delayed event resolves against correct historical assignment |
 | WF-C7-005 | P1 | PLANNED | Web/Mobile | Deliver self-service leave, absence and time-correction creation/cancel/history | No mobile app dependency for employee web fallback; overlap conflicts explained |
