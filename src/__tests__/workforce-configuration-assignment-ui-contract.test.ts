@@ -24,6 +24,16 @@ describe("Workforce assignment configuration UI contract", () => {
     expect(workbench).not.toContain('id="workforce-assignment-agent-id"')
   })
 
+  it("keeps the active employee roster explicitly bounded and searchable", () => {
+    expect(workbench).toContain('id="workforce-roster-search"')
+    expect(workbench).toContain('rosterLimit=200&rosterQuery=" + encodeURIComponent(rosterSearch)')
+    expect(workbench).toContain('data.roster.hasMore')
+    expect(workbench).toContain('t("rosterSearchHasMore"')
+    expect(workbench).toContain('bulkAssignmentSelections')
+    expect(workbench).toContain('bulkSiteAssignmentSelections')
+    expect(workbench).toContain('t("bulkSelectionRetainedHint")')
+  })
+
   it("keeps an on-demand, date-scoped preview separate from schedule mutation", () => {
     expect(workbench).toContain('id="workforce-assignment-preview-date"')
     expect(workbench).toContain('"/api/v1/workforce/configuration/assignments?effectiveDate=" + encodeURIComponent(assignmentPreviewDate)')
@@ -80,6 +90,16 @@ describe("Workforce assignment configuration UI contract", () => {
       "employee",
       "shiftTemplate",
       "assignmentPreviewTitle",
+      "rosterSearchLabel",
+      "rosterSearchPlaceholder",
+      "rosterSearchSubmit",
+      "rosterSearchClear",
+      "rosterSearchHint",
+      "rosterSearchHasMore",
+      "rosterSearchNoMatches",
+      "rosterSearchResults",
+      "bulkSelectionRetainedHint",
+      "bulkSelectionPeople",
       "showPreview",
       "bulkAssignmentPreviewTitle",
       "bulkAssignmentPreviewHint",

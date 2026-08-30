@@ -150,6 +150,9 @@ type ConfigurationData = {
     employees: WorkforceEmployee[]
     teams: WorkforceTeam[]
     shiftTemplates: WorkforceShiftRosterItem[]
+    query: string
+    limit: number
+    hasMore: boolean
   }
   sites: WorkforceSite[]
   siteAssignments: WorkforceSiteAssignment[]
@@ -366,10 +369,14 @@ export function WorkforceConfigurationWorkbench() {
   const [policyForm, setPolicyForm] = useState<PolicyForm>(emptyPolicyForm)
   const [shiftForm, setShiftForm] = useState<ShiftForm>(emptyShiftForm)
   const [assignmentForm, setAssignmentForm] = useState<AssignmentForm>(emptyAssignmentForm)
+  const [rosterSearchInput, setRosterSearchInput] = useState("")
+  const [rosterSearch, setRosterSearch] = useState("")
   const [bulkAssignmentDraft, setBulkAssignmentDraft] = useState<BulkAssignmentDraft>(emptyBulkAssignmentDraft)
+  const [bulkAssignmentSelections, setBulkAssignmentSelections] = useState<Record<string, WorkforceEmployee>>({})
   const [bulkAssignmentPreview, setBulkAssignmentPreview] = useState<BulkAssignmentPreview | null>(null)
   const [siteAssignmentForm, setSiteAssignmentForm] = useState<SiteAssignmentForm>(emptySiteAssignmentForm)
   const [bulkSiteAssignmentDraft, setBulkSiteAssignmentDraft] = useState<BulkSiteAssignmentDraft>(emptyBulkSiteAssignmentDraft)
+  const [bulkSiteAssignmentSelections, setBulkSiteAssignmentSelections] = useState<Record<string, WorkforceEmployee>>({})
   const [bulkSiteAssignmentPreview, setBulkSiteAssignmentPreview] = useState<BulkSiteAssignmentPreview | null>(null)
   const [siteForm, setSiteForm] = useState<SiteForm>(emptySiteForm)
   const [geofenceForm, setGeofenceForm] = useState<GeofenceForm>(emptyGeofenceForm)
@@ -415,9 +422,9 @@ export function WorkforceConfigurationWorkbench() {
       const [policyData, shiftData, assignmentData, siteData, siteAssignmentData, defaultAssignmentData] = await Promise.all([
         request("/api/v1/workforce/configuration/policies", "GET") as Promise<{ policies: WorkforcePolicy[] }>,
         request("/api/v1/workforce/configuration/shifts", "GET") as Promise<{ shifts: WorkforceShift[] }>,
-        request("/api/v1/workforce/configuration/assignments", "GET") as Promise<{
+        request("/api/v1/workforce/configuration/assignments?rosterLimit=200&rosterQuery=" + encodeURIComponent(rosterSearch), "GET") as Promise<{
           assignments: WorkforceShiftAssignment[]
-          roster: { employees: WorkforceEmployee[], teams: WorkforceTeam[], shiftTemplates: WorkforceShiftRosterItem[] }
+          roster: { employees: WorkforceEmployee[], teams: WorkforceTeam[], shiftTemplates: WorkforceShiftRosterItem[], query: string, limit: number, hasMore: boolean }
           directoryEmployees: WorkforceEmployee[]
         }>,
         request("/api/v1/workforce/configuration/sites", "GET") as Promise<{
@@ -446,7 +453,7 @@ export function WorkforceConfigurationWorkbench() {
     } finally {
       setLoading(false)
     }
-  }, [isAdministrator, organizationId, request, t])
+  }, [isAdministrator, organizationId, request, rosterSearch, t])
 
   useEffect(() => {
     void load()
@@ -494,9 +501,11 @@ export function WorkforceConfigurationWorkbench() {
     employee.team?.name ?? t("unassignedTeam"),
     t("directoryStatus." + employee.status),
   ].join(" · ")
-  const bulkAssignmentEmployeesById = useMemo(() => new Map(
-    (data?.roster.employees ?? []).map((employee) => [employee.id, employee]),
-  ), [data?.roster.employees])
+  const bulkAssignmentEmployeesById = useMemo(() => new Map<string, WorkforceEmployee>([
+    ...(data?.roster.employees ?? []).map((employee) => [employee.id, employee] as const),
+    ...Object.entries(bulkAssignmentSelections),
+    ...Object.entries(bulkSiteAssignmentSelections),
+  ]), [bulkAssignmentSelections, bulkSiteAssignmentSelections, data?.roster.employees])
   const bulkAssignmentEmployeeLabel = (agentId: string) => {
     const employee = bulkAssignmentEmployeesById.get(agentId)
     return employee ? employeeLabel(employee) : t("unavailableEmployee")
@@ -807,13 +816,44 @@ export function WorkforceConfigurationWorkbench() {
     setBulkAssignmentPreview(null)
   }
 
-  function toggleBulkAssignmentEmployee(agentId: string) {
+  function removeBulkAssignmentEmployee(agentId: string) {
+    setBulkAssignmentSelections((current) => {
+      const remaining = { ...current }
+      delete remaining[agentId]
+      return remaining
+    })
     updateBulkAssignmentDraft((current) => {
       if (current.agentIds.includes(agentId)) {
         return { ...current, agentIds: current.agentIds.filter((id) => id !== agentId) }
       }
-      if (current.agentIds.length >= 200) return current
-      return { ...current, agentIds: [...current.agentIds, agentId] }
+      return current
+    })
+  }
+
+  function toggleBulkAssignmentEmployee(employee: WorkforceEmployee) {
+    if (bulkAssignmentDraft.agentIds.includes(employee.id)) {
+      removeBulkAssignmentEmployee(employee.id)
+      return
+    }
+    if (bulkAssignmentDraft.agentIds.length >= 200) return
+    setBulkAssignmentSelections((current) => ({ ...current, [employee.id]: employee }))
+    updateBulkAssignmentDraft((current) => {
+      if (current.agentIds.includes(employee.id) || current.agentIds.length >= 200) return current
+      return { ...current, agentIds: [...current.agentIds, employee.id] }
+    })
+  }
+
+  function removeBulkSiteAssignmentEmployee(agentId: string) {
+    setBulkSiteAssignmentSelections((current) => {
+      const remaining = { ...current }
+      delete remaining[agentId]
+      return remaining
+    })
+    updateBulkSiteAssignmentDraft((current) => {
+      if (current.agentIds.includes(agentId)) {
+        return { ...current, agentIds: current.agentIds.filter((id) => id !== agentId) }
+      }
+      return current
     })
   }
 
@@ -842,13 +882,16 @@ export function WorkforceConfigurationWorkbench() {
     setBulkSiteAssignmentPreview(null)
   }
 
-  function toggleBulkSiteAssignmentEmployee(agentId: string) {
+  function toggleBulkSiteAssignmentEmployee(employee: WorkforceEmployee) {
+    if (bulkSiteAssignmentDraft.agentIds.includes(employee.id)) {
+      removeBulkSiteAssignmentEmployee(employee.id)
+      return
+    }
+    if (bulkSiteAssignmentDraft.agentIds.length >= 200) return
+    setBulkSiteAssignmentSelections((current) => ({ ...current, [employee.id]: employee }))
     updateBulkSiteAssignmentDraft((current) => {
-      if (current.agentIds.includes(agentId)) {
-        return { ...current, agentIds: current.agentIds.filter((id) => id !== agentId) }
-      }
-      if (current.agentIds.length >= 200) return current
-      return { ...current, agentIds: [...current.agentIds, agentId] }
+      if (current.agentIds.includes(employee.id) || current.agentIds.length >= 200) return current
+      return { ...current, agentIds: [...current.agentIds, employee.id] }
     })
   }
 
@@ -1082,6 +1125,12 @@ export function WorkforceConfigurationWorkbench() {
 
         <section aria-labelledby="workforce-assignment-configuration" className="border-y border-zinc-200 py-6 dark:border-zinc-700">
           <div className="flex gap-3"><CalendarClock className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" /><div><h2 id="workforce-assignment-configuration" className="text-lg font-semibold">{t("assignmentsTitle")}</h2><p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">{t("assignmentsHint")}</p></div></div>
+          <form onSubmit={(event) => { event.preventDefault(); const nextQuery = rosterSearchInput.trim(); if (nextQuery === rosterSearch) { void load() } else { setRosterSearch(nextQuery) } }} className="mt-6 flex flex-wrap items-end gap-3 rounded-md border border-zinc-200 p-4 dark:border-zinc-700" aria-describedby="workforce-roster-search-hint workforce-roster-search-status">
+            <div className="min-w-56 flex-1"><label htmlFor="workforce-roster-search" className="text-sm font-medium">{t("rosterSearchLabel")}</label><Input id="workforce-roster-search" value={rosterSearchInput} onChange={(event) => setRosterSearchInput(event.target.value)} maxLength={100} placeholder={t("rosterSearchPlaceholder")} /></div>
+            <Button type="submit" variant="outline" className="min-h-11">{t("rosterSearchSubmit")}</Button>
+            <Button type="button" variant="ghost" className="min-h-11" onClick={() => { setRosterSearchInput(""); if (rosterSearch === "") { void load() } else { setRosterSearch("") } }} disabled={rosterSearchInput.length === 0 && rosterSearch.length === 0}>{t("rosterSearchClear")}</Button>
+            <div className="w-full"><p id="workforce-roster-search-hint" className="text-sm leading-6 text-muted-foreground">{t("rosterSearchHint", { limit: data.roster.limit })}</p><p id="workforce-roster-search-status" role="status" aria-live="polite" aria-atomic="true" className="text-sm leading-6 text-muted-foreground">{data.roster.hasMore ? t("rosterSearchHasMore", { limit: data.roster.limit }) : data.roster.employees.length === 0 ? t("rosterSearchNoMatches") : t("rosterSearchResults", { count: data.roster.employees.length })}</p></div>
+          </form>
           <div className="mt-6 grid gap-8 border-t border-zinc-200 pt-6 dark:border-zinc-700 xl:grid-cols-2">
             <form onSubmit={saveAssignment} className="space-y-4" aria-labelledby="workforce-individual-assignment-title">
               <div><h3 id="workforce-individual-assignment-title" className="font-medium">{t("scheduleIndividualAssignment")}</h3><p className="mt-1 text-sm leading-6 text-muted-foreground">{t("individualAssignmentHint")}</p></div>
@@ -1111,9 +1160,9 @@ export function WorkforceConfigurationWorkbench() {
                 {data.roster.shiftTemplates.map((template) => <option key={template.id} value={template.id}>{template.name} · {template.code}</option>)}
               </Select>
               <div className="space-y-1.5"><label htmlFor="workforce-bulk-assignment-effective-from" className="text-sm font-medium">{t("effectiveFrom")}</label><Input id="workforce-bulk-assignment-effective-from" type="date" value={bulkAssignmentDraft.effectiveFrom} onChange={(event) => updateBulkAssignmentDraft((current) => ({ ...current, effectiveFrom: event.target.value }))} required /></div>
-              <div className="flex flex-wrap items-end gap-3"><Button type="submit" variant="outline" className="min-h-11" disabled={previewingBulkAssignments || data.roster.employees.length === 0 || data.roster.shiftTemplates.length === 0}>{previewingBulkAssignments ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <RefreshCw />}{t("reviewBulkAssignmentDraft")}</Button><Button type="button" variant="ghost" className="min-h-11" onClick={() => { setBulkAssignmentDraft(emptyBulkAssignmentDraft()); setBulkAssignmentPreview(null) }} disabled={previewingBulkAssignments || (bulkAssignmentDraft.agentIds.length === 0 && !bulkAssignmentDraft.templateId && !bulkAssignmentDraft.effectiveFrom)}>{t("discardBulkAssignmentDraft")}</Button></div>
+              <div className="flex flex-wrap items-end gap-3"><Button type="submit" variant="outline" className="min-h-11" disabled={previewingBulkAssignments || data.roster.employees.length === 0 || data.roster.shiftTemplates.length === 0}>{previewingBulkAssignments ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <RefreshCw />}{t("reviewBulkAssignmentDraft")}</Button><Button type="button" variant="ghost" className="min-h-11" onClick={() => { setBulkAssignmentDraft(emptyBulkAssignmentDraft()); setBulkAssignmentSelections({}); setBulkAssignmentPreview(null) }} disabled={previewingBulkAssignments || (bulkAssignmentDraft.agentIds.length === 0 && !bulkAssignmentDraft.templateId && !bulkAssignmentDraft.effectiveFrom)}>{t("discardBulkAssignmentDraft")}</Button></div>
             </div>
-            <fieldset className="border-y border-zinc-200 py-4 dark:border-zinc-700" aria-describedby="workforce-bulk-assignment-employees-hint"><legend className="px-1 text-sm font-medium">{t("bulkAssignmentEmployees", { selected: bulkAssignmentDraft.agentIds.length, maximum: 200 })}</legend><p id="workforce-bulk-assignment-employees-hint" className="mt-1 px-1 text-sm leading-6 text-muted-foreground">{t("bulkAssignmentEmployeesHint")}</p><div className="mt-4 grid max-h-72 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3" role="group" aria-label={t("bulkAssignmentEmployees", { selected: bulkAssignmentDraft.agentIds.length, maximum: 200 })}>{data.roster.employees.map((employee) => { const selected = bulkAssignmentDraft.agentIds.includes(employee.id); const maximumReached = bulkAssignmentDraft.agentIds.length >= 200; return <label key={employee.id} className="flex min-h-11 items-center gap-3 rounded-md border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700"><input id={"workforce-bulk-assignment-employee-" + employee.id} type="checkbox" checked={selected} disabled={!selected && maximumReached} onChange={() => toggleBulkAssignmentEmployee(employee.id)} className="h-4 w-4 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" /><span>{employeeLabel(employee)}</span></label> })}{data.roster.employees.length === 0 ? <p className="text-sm text-muted-foreground">{t("assignmentRosterUnavailable")}</p> : null}</div></fieldset>
+            <fieldset className="border-y border-zinc-200 py-4 dark:border-zinc-700" aria-describedby="workforce-bulk-assignment-employees-hint"><legend className="px-1 text-sm font-medium">{t("bulkAssignmentEmployees", { selected: bulkAssignmentDraft.agentIds.length, maximum: 200 })}</legend><p id="workforce-bulk-assignment-employees-hint" className="mt-1 px-1 text-sm leading-6 text-muted-foreground">{t("bulkAssignmentEmployeesHint")}</p><div className="mt-4 grid max-h-72 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3" role="group" aria-label={t("bulkAssignmentEmployees", { selected: bulkAssignmentDraft.agentIds.length, maximum: 200 })}>{data.roster.employees.map((employee) => { const selected = bulkAssignmentDraft.agentIds.includes(employee.id); const maximumReached = bulkAssignmentDraft.agentIds.length >= 200; return <label key={employee.id} className="flex min-h-11 items-center gap-3 rounded-md border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700"><input id={"workforce-bulk-assignment-employee-" + employee.id} type="checkbox" checked={selected} disabled={!selected && maximumReached} onChange={() => toggleBulkAssignmentEmployee(employee)} className="h-4 w-4 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" /><span>{employeeLabel(employee)}</span></label> })}{data.roster.employees.length === 0 ? <p className="text-sm text-muted-foreground">{t("assignmentRosterUnavailable")}</p> : null}</div>{bulkAssignmentDraft.agentIds.length > 0 ? <div className="mt-4"><p className="text-sm leading-6 text-muted-foreground">{t("bulkSelectionRetainedHint")}</p><ul className="mt-2 flex max-h-32 flex-wrap gap-2 overflow-y-auto" aria-label={t("bulkSelectionPeople")}>{bulkAssignmentDraft.agentIds.map((agentId) => <li key={agentId}><Button type="button" variant="outline" size="sm" className="min-h-9" onClick={() => removeBulkAssignmentEmployee(agentId)}>{bulkAssignmentEmployeeLabel(agentId)}<X className="h-4 w-4" aria-hidden="true" /></Button></li>)}</ul></div> : null}</fieldset>
             {bulkAssignmentPreview !== null ? <div className="border-y border-zinc-200 py-4 dark:border-zinc-700"><p role="status" aria-live="polite" aria-atomic="true" className="text-sm font-medium">{t("bulkAssignmentSummary", { ready: bulkAssignmentPreview.summary.READY, unchanged: bulkAssignmentPreview.summary.NO_CHANGE, unavailable: bulkAssignmentPreview.summary.EMPLOYEE_UNAVAILABLE, mismatch: bulkAssignmentPreview.summary.TEMPLATE_TEAM_MISMATCH, conflicts: bulkAssignmentPreview.summary.CONFLICT })}</p><div className="mt-3 flex flex-wrap gap-2">{(["READY", "NO_CHANGE", "EMPLOYEE_UNAVAILABLE", "TEMPLATE_TEAM_MISMATCH", "CONFLICT"] as const).map((outcome) => <Badge key={outcome} variant={outcome === "CONFLICT" || outcome === "EMPLOYEE_UNAVAILABLE" ? "destructive" : "outline"}>{t("bulkAssignmentOutcome." + outcome)}: {bulkAssignmentPreview.summary[outcome]}</Badge>)}</div><p className="mt-3 text-sm leading-6 text-muted-foreground">{t("bulkAssignmentReviewOnlyHint")}</p><ul className="mt-3 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">{bulkAssignmentPreview.items.map((item) => <li key={item.agentId} className="py-3 text-sm"><span className="font-medium">{bulkAssignmentEmployeeLabel(item.agentId)}</span><span className="text-muted-foreground"> · {t("bulkAssignmentOutcome." + item.outcome)}</span></li>)}</ul></div> : null}
           </form>
           <div className="mt-8 grid gap-8 border-t border-zinc-200 pt-6 dark:border-zinc-700 xl:grid-cols-2">
@@ -1169,8 +1218,8 @@ export function WorkforceConfigurationWorkbench() {
               <Select id="workforce-bulk-site-assignment-kind" label={t("siteAssignmentKind")} value={bulkSiteAssignmentDraft.kind} onChange={(event) => updateBulkSiteAssignmentDraft((current) => ({ ...current, kind: event.target.value as BulkSiteAssignmentDraft["kind"] }))}><option value="PRIMARY">{t("siteAssignmentKinds.PRIMARY")}</option><option value="SECONDARY">{t("siteAssignmentKinds.SECONDARY")}</option><option value="TEMPORARY">{t("siteAssignmentKinds.TEMPORARY")}</option></Select>
               <div className="grid gap-4 sm:grid-cols-2 xl:col-span-1"><div className="space-y-1.5"><label htmlFor="workforce-bulk-site-assignment-effective-from" className="text-sm font-medium">{t("effectiveFrom")}</label><Input id="workforce-bulk-site-assignment-effective-from" type="date" value={bulkSiteAssignmentDraft.effectiveFrom} onChange={(event) => updateBulkSiteAssignmentDraft((current) => ({ ...current, effectiveFrom: event.target.value }))} required /></div><div className="space-y-1.5"><label htmlFor="workforce-bulk-site-assignment-effective-to" className="text-sm font-medium">{t("effectiveTo")}</label><Input id="workforce-bulk-site-assignment-effective-to" type="date" min={bulkSiteAssignmentDraft.effectiveFrom || undefined} value={bulkSiteAssignmentDraft.effectiveTo} onChange={(event) => updateBulkSiteAssignmentDraft((current) => ({ ...current, effectiveTo: event.target.value }))} required={bulkSiteAssignmentDraft.kind === "TEMPORARY"} /></div></div>
             </div>
-            <fieldset className="border-y border-zinc-200 py-4 dark:border-zinc-700" aria-describedby="workforce-bulk-site-assignment-employees-hint"><legend className="px-1 text-sm font-medium">{t("bulkAssignmentEmployees", { selected: bulkSiteAssignmentDraft.agentIds.length, maximum: 200 })}</legend><p id="workforce-bulk-site-assignment-employees-hint" className="mt-1 px-1 text-sm leading-6 text-muted-foreground">{t("bulkSiteAssignmentEmployeesHint")}</p><div className="mt-4 grid max-h-72 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3" role="group" aria-label={t("bulkAssignmentEmployees", { selected: bulkSiteAssignmentDraft.agentIds.length, maximum: 200 })}>{data.roster.employees.map((employee) => { const selected = bulkSiteAssignmentDraft.agentIds.includes(employee.id); const maximumReached = bulkSiteAssignmentDraft.agentIds.length >= 200; return <label key={employee.id} className="flex min-h-11 items-center gap-3 rounded-md border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700"><input id={"workforce-bulk-site-assignment-employee-" + employee.id} type="checkbox" checked={selected} disabled={!selected && maximumReached} onChange={() => toggleBulkSiteAssignmentEmployee(employee.id)} className="h-4 w-4 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" /><span>{employeeLabel(employee)}</span></label> })}{data.roster.employees.length === 0 ? <p className="text-sm text-muted-foreground">{t("assignmentRosterUnavailable")}</p> : null}</div></fieldset>
-            <div className="flex flex-wrap gap-3"><Button type="submit" variant="outline" className="min-h-11" disabled={previewingBulkSiteAssignments || data.roster.employees.length === 0 || !data.sites.some((site) => site.status === "ACTIVE")}>{previewingBulkSiteAssignments ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <RefreshCw />}{t("reviewBulkSiteAssignmentDraft")}</Button><Button type="button" variant="ghost" className="min-h-11" onClick={() => { setBulkSiteAssignmentDraft(emptyBulkSiteAssignmentDraft()); setBulkSiteAssignmentPreview(null) }} disabled={previewingBulkSiteAssignments || (bulkSiteAssignmentDraft.agentIds.length === 0 && !bulkSiteAssignmentDraft.siteId && !bulkSiteAssignmentDraft.effectiveFrom && !bulkSiteAssignmentDraft.effectiveTo)}>{t("discardBulkAssignmentDraft")}</Button></div>
+            <fieldset className="border-y border-zinc-200 py-4 dark:border-zinc-700" aria-describedby="workforce-bulk-site-assignment-employees-hint"><legend className="px-1 text-sm font-medium">{t("bulkAssignmentEmployees", { selected: bulkSiteAssignmentDraft.agentIds.length, maximum: 200 })}</legend><p id="workforce-bulk-site-assignment-employees-hint" className="mt-1 px-1 text-sm leading-6 text-muted-foreground">{t("bulkSiteAssignmentEmployeesHint")}</p><div className="mt-4 grid max-h-72 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3" role="group" aria-label={t("bulkAssignmentEmployees", { selected: bulkSiteAssignmentDraft.agentIds.length, maximum: 200 })}>{data.roster.employees.map((employee) => { const selected = bulkSiteAssignmentDraft.agentIds.includes(employee.id); const maximumReached = bulkSiteAssignmentDraft.agentIds.length >= 200; return <label key={employee.id} className="flex min-h-11 items-center gap-3 rounded-md border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700"><input id={"workforce-bulk-site-assignment-employee-" + employee.id} type="checkbox" checked={selected} disabled={!selected && maximumReached} onChange={() => toggleBulkSiteAssignmentEmployee(employee)} className="h-4 w-4 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" /><span>{employeeLabel(employee)}</span></label> })}{data.roster.employees.length === 0 ? <p className="text-sm text-muted-foreground">{t("assignmentRosterUnavailable")}</p> : null}</div>{bulkSiteAssignmentDraft.agentIds.length > 0 ? <div className="mt-4"><p className="text-sm leading-6 text-muted-foreground">{t("bulkSelectionRetainedHint")}</p><ul className="mt-2 flex max-h-32 flex-wrap gap-2 overflow-y-auto" aria-label={t("bulkSelectionPeople")}>{bulkSiteAssignmentDraft.agentIds.map((agentId) => <li key={agentId}><Button type="button" variant="outline" size="sm" className="min-h-9" onClick={() => removeBulkSiteAssignmentEmployee(agentId)}>{bulkAssignmentEmployeeLabel(agentId)}<X className="h-4 w-4" aria-hidden="true" /></Button></li>)}</ul></div> : null}</fieldset>
+            <div className="flex flex-wrap gap-3"><Button type="submit" variant="outline" className="min-h-11" disabled={previewingBulkSiteAssignments || data.roster.employees.length === 0 || !data.sites.some((site) => site.status === "ACTIVE")}>{previewingBulkSiteAssignments ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <RefreshCw />}{t("reviewBulkSiteAssignmentDraft")}</Button><Button type="button" variant="ghost" className="min-h-11" onClick={() => { setBulkSiteAssignmentDraft(emptyBulkSiteAssignmentDraft()); setBulkSiteAssignmentSelections({}); setBulkSiteAssignmentPreview(null) }} disabled={previewingBulkSiteAssignments || (bulkSiteAssignmentDraft.agentIds.length === 0 && !bulkSiteAssignmentDraft.siteId && !bulkSiteAssignmentDraft.effectiveFrom && !bulkSiteAssignmentDraft.effectiveTo)}>{t("discardBulkAssignmentDraft")}</Button></div>
             {bulkSiteAssignmentPreview !== null ? <div className="border-y border-zinc-200 py-4 dark:border-zinc-700"><p role="status" aria-live="polite" aria-atomic="true" className="text-sm font-medium">{t("bulkSiteAssignmentSummary", { ready: bulkSiteAssignmentPreview.summary.READY, unchanged: bulkSiteAssignmentPreview.summary.NO_CHANGE, unavailable: bulkSiteAssignmentPreview.summary.EMPLOYEE_UNAVAILABLE, conflicts: bulkSiteAssignmentPreview.summary.CONFLICT })}</p><div className="mt-3 flex flex-wrap gap-2">{(["READY", "NO_CHANGE", "EMPLOYEE_UNAVAILABLE", "CONFLICT"] as const).map((outcome) => <Badge key={outcome} variant={outcome === "CONFLICT" || outcome === "EMPLOYEE_UNAVAILABLE" ? "destructive" : "outline"}>{t("bulkSiteAssignmentOutcome." + outcome)}: {bulkSiteAssignmentPreview.summary[outcome]}</Badge>)}</div><p className="mt-3 text-sm leading-6 text-muted-foreground">{t("bulkSiteAssignmentReviewOnlyHint")}</p><ul className="mt-3 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">{bulkSiteAssignmentPreview.items.map((item) => <li key={item.agentId} className="py-3 text-sm"><span className="font-medium">{bulkAssignmentEmployeeLabel(item.agentId)}</span><span className="text-muted-foreground"> · {t("bulkSiteAssignmentOutcome." + item.outcome)}</span></li>)}</ul></div> : null}
           </form>
         </section>

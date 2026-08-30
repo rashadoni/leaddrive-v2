@@ -357,6 +357,46 @@ describe("Workforce draft configuration API", () => {
     }))
   })
 
+  it("bounds named active-roster search and tells the browser to refine it", async () => {
+    vi.mocked(prisma.mtmAgent.findMany).mockReset()
+    vi.mocked(prisma.mtmAgent.findMany).mockImplementation(async (query: unknown) => {
+      const where = (query as { where?: { status?: string } }).where
+      return where?.status === "ACTIVE"
+        ? [
+            { id: "agent-1", name: "Aysel Aliyeva", email: "aysel@example.test", externalCode: "EMP-01", teamId: null, status: "ACTIVE", team: null },
+            { id: "agent-2", name: "Aydin Aliyev", email: "aydin@example.test", externalCode: "EMP-02", teamId: null, status: "ACTIVE", team: null },
+          ]
+        : []
+    })
+
+    const response = await callListAssignments(get("/api/v1/workforce/configuration/assignments?rosterLimit=1&rosterQuery=ays"), AUTH)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      success: true,
+      data: {
+        roster: {
+          employees: [{ id: "agent-1", name: "Aysel Aliyeva" }],
+          query: "ays",
+          limit: 1,
+          hasMore: true,
+        },
+      },
+    })
+    expect(prisma.mtmAgent.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: {
+        organizationId: AUTH.orgId,
+        status: "ACTIVE",
+        OR: [
+          { name: { contains: "ays", mode: "insensitive" } },
+          { email: { contains: "ays", mode: "insensitive" } },
+          { externalCode: { contains: "ays", mode: "insensitive" } },
+        ],
+      },
+      take: 2,
+    }))
+  })
+
   it("rejects an invalid effective-date preview before reading Workforce records", async () => {
     vi.mocked(prisma.workforceShiftAssignment.findMany).mockClear()
     vi.mocked(prisma.mtmAgent.findMany).mockClear()

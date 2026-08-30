@@ -73,6 +73,9 @@ const rosterTemplateSelect = {
   isDefault: true,
 } as const
 
+const ROSTER_SEARCH_LIMIT = 200
+const ROSTER_SEARCH_QUERY_MAX_LENGTH = 100
+
 /** Read-only administrative timeline; employees cannot select their own shift. */
 export const GET = withWorkforceSessionAdminAuth(async (req: NextRequest, auth) => {
   const effectiveDate = req.nextUrl.searchParams.get("effectiveDate")
@@ -80,17 +83,44 @@ export const GET = withWorkforceSessionAdminAuth(async (req: NextRequest, auth) 
     return NextResponse.json({ error: "effectiveDate must be a real YYYY-MM-DD date" }, { status: 400 })
   }
 
+  // Configuration can be used by a large tenant. Keep the picker bounded and
+  // tell the browser when it needs a narrower named search instead of silently
+  // loading or truncating the active employee roster.
+  const rosterQuery = (req.nextUrl.searchParams.get("rosterQuery") ?? "").trim()
+  if (rosterQuery.length > ROSTER_SEARCH_QUERY_MAX_LENGTH) {
+    return NextResponse.json({ error: `rosterQuery must be at most ${ROSTER_SEARCH_QUERY_MAX_LENGTH} characters` }, { status: 400 })
+  }
+  const rosterLimitRaw = req.nextUrl.searchParams.get("rosterLimit")
+  const rosterLimit = rosterLimitRaw === null ? ROSTER_SEARCH_LIMIT : Number(rosterLimitRaw)
+  if (!Number.isSafeInteger(rosterLimit) || rosterLimit < 1 || rosterLimit > ROSTER_SEARCH_LIMIT) {
+    return NextResponse.json({ error: `rosterLimit must be a whole number from 1 to ${ROSTER_SEARCH_LIMIT}` }, { status: 400 })
+  }
+  const rosterWhere = {
+    organizationId: auth.orgId,
+    status: "ACTIVE" as const,
+    ...(rosterQuery
+      ? {
+          OR: [
+            { name: { contains: rosterQuery, mode: "insensitive" as const } },
+            { email: { contains: rosterQuery, mode: "insensitive" as const } },
+            { externalCode: { contains: rosterQuery, mode: "insensitive" as const } },
+          ],
+        }
+      : {}),
+  }
+
   try {
     const previewAt = effectiveDate ? new Date(`${effectiveDate}T00:00:00.000Z`) : null
-    const [assignments, employees, directoryEmployees, teams, shiftTemplates, effectiveAssignments] = await Promise.all([
+    const [assignments, rosterMatches, directoryEmployees, teams, shiftTemplates, effectiveAssignments] = await Promise.all([
       prisma.workforceShiftAssignment.findMany({
         where: { organizationId: auth.orgId },
         orderBy: [{ agent: { name: "asc" } }, { effectiveFrom: "asc" }, { id: "asc" }],
         select: assignmentSelect,
       }),
       prisma.mtmAgent.findMany({
-        where: { organizationId: auth.orgId, status: "ACTIVE" },
+        where: rosterWhere,
         orderBy: [{ name: "asc" }, { id: "asc" }],
+        take: rosterLimit + 1,
         select: rosterEmployeeSelect,
       }),
       prisma.mtmAgent.findMany({
@@ -121,6 +151,8 @@ export const GET = withWorkforceSessionAdminAuth(async (req: NextRequest, auth) 
           })
         : Promise.resolve([]),
     ])
+    const hasMoreRosterEmployees = rosterMatches.length > rosterLimit
+    const employees = rosterMatches.slice(0, rosterLimit)
     return NextResponse.json({
       success: true,
       data: {
@@ -128,7 +160,14 @@ export const GET = withWorkforceSessionAdminAuth(async (req: NextRequest, auth) 
         // These are named, tenant-scoped picker records. The web client may
         // display an inactive team for historical context, but the write
         // service remains the authority for future-effective eligibility.
-        roster: { employees, teams, shiftTemplates },
+        roster: {
+          employees,
+          teams,
+          shiftTemplates,
+          query: rosterQuery,
+          limit: rosterLimit,
+          hasMore: hasMoreRosterEmployees,
+        },
         directoryEmployees,
         // This is a direct-assignment preview only. Team/organization default
         // resolution stays server-side; its future versioning is WF-C3-007.
