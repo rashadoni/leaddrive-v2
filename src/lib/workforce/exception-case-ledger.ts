@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto"
+import { validateWorkforceExceptionDraftDecisionAppend } from "@/lib/workforce/exception-policy-draft"
 
 /**
  * Canonical, raw-proof-free inputs for the additive C6 exception-case ledger.
@@ -33,7 +34,10 @@ export type WorkforceExceptionDecisionDraft = {
 }
 
 export class WorkforceExceptionCaseLedgerError extends Error {
-  constructor(readonly code: "WORKFORCE_EXCEPTION_CASE_INPUT_INVALID" | "WORKFORCE_EXCEPTION_DECISION_INPUT_INVALID") {
+  constructor(readonly code:
+    | "WORKFORCE_EXCEPTION_CASE_INPUT_INVALID"
+    | "WORKFORCE_EXCEPTION_DECISION_INPUT_INVALID"
+    | "WORKFORCE_EXCEPTION_DECISION_LIFECYCLE_INVALID") {
     super(code)
   }
 }
@@ -163,4 +167,29 @@ export function createWorkforceExceptionDecisionDraft(input: {
     reason,
     actorUserId: opaqueRequiredId(input.actorUserId, "WORKFORCE_EXCEPTION_DECISION_INPUT_INVALID"),
   }
+}
+
+/**
+ * Constructs a decision only after its suggested v1 lifecycle transition is
+ * valid. It remains an immutable draft: the caller supplies a complete
+ * tenant-scoped decision sequence, and no query, authorization or write is
+ * performed here.
+ */
+export function createDraftPolicyWorkforceExceptionDecisionDraft(input: {
+  organizationId: string
+  caseId: string
+  operationId: string
+  decisionCode: string
+  reason: string
+  actorUserId: string
+  priorDecisionCodes: readonly string[]
+}): WorkforceExceptionDecisionDraft {
+  const lifecycle = validateWorkforceExceptionDraftDecisionAppend({
+    priorDecisionCodes: input.priorDecisionCodes,
+    nextDecisionCode: input.decisionCode,
+  })
+  if (!lifecycle.valid) {
+    throw new WorkforceExceptionCaseLedgerError("WORKFORCE_EXCEPTION_DECISION_LIFECYCLE_INVALID")
+  }
+  return createWorkforceExceptionDecisionDraft(input)
 }

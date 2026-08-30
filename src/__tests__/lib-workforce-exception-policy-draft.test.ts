@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   evaluateWorkforceExceptionDraftLifecycle,
+  validateWorkforceExceptionDraftDecisionAppend,
   WORKFORCE_RECOMMENDED_EXCEPTION_DRAFT_POLICY_V1,
 } from "@/lib/workforce/exception-policy-draft"
 
@@ -13,7 +14,7 @@ describe("recommended Workforce exception-policy draft", () => {
       automatedOutcomes: "FORBIDDEN",
       excludedOutcomes: ["PAYROLL", "DISCIPLINARY", "BIOMETRIC_IDENTITY_DECISION"],
     })
-    expect(WORKFORCE_RECOMMENDED_EXCEPTION_DRAFT_POLICY_V1.classifications).toHaveLength(7)
+    expect(WORKFORCE_RECOMMENDED_EXCEPTION_DRAFT_POLICY_V1.classifications).toHaveLength(10)
   })
 
   it("allows a human-visible review lifecycle without an automatic resolution", () => {
@@ -46,5 +47,16 @@ describe("recommended Workforce exception-policy draft", () => {
         code: "WORKFORCE_EXCEPTION_DRAFT_DECISION_UNKNOWN",
         stage: "OPEN",
       })
+  })
+
+  it("validates a candidate append against the full prior decision sequence", () => {
+    expect(validateWorkforceExceptionDraftDecisionAppend({
+      priorDecisionCodes: ["ACKNOWLEDGE", "REQUEST_TIME_CORRECTION"],
+      nextDecisionCode: "RESOLVE_WITH_CORRECTION",
+    })).toEqual({ valid: false, code: "WORKFORCE_EXCEPTION_DRAFT_TRANSITION_INVALID", stage: "AWAITING_EMPLOYEE_RESPONSE" })
+    expect(validateWorkforceExceptionDraftDecisionAppend({
+      priorDecisionCodes: ["ACKNOWLEDGE", "REQUEST_TIME_CORRECTION", "ACKNOWLEDGE"],
+      nextDecisionCode: "RESOLVE_WITH_CORRECTION",
+    })).toEqual({ valid: true, stage: "RESOLVED" })
   })
 })

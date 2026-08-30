@@ -16,6 +16,9 @@ export const WORKFORCE_EXCEPTION_DRAFT_TYPES = [
   "LONG_PAUSE",
   "NO_SHOW",
   "MISSED_FINISH",
+  "DELAYED_CLAIM",
+  "SITE_TRANSITION_REVIEW",
+  "DEVICE_SECURITY_REVIEW",
   "ATTENDANCE_PROOF_REVIEW",
 ] as const
 
@@ -76,6 +79,9 @@ export const WORKFORCE_RECOMMENDED_EXCEPTION_DRAFT_POLICY_V1: WorkforceException
     { type: "LONG_PAUSE", triageSeverity: "ROUTINE_REVIEW", proposedAcknowledgementBusinessHours: 24, proposedResolutionBusinessHours: 72 },
     { type: "NO_SHOW", triageSeverity: "ATTENTION_REVIEW", proposedAcknowledgementBusinessHours: 8, proposedResolutionBusinessHours: 48 },
     { type: "MISSED_FINISH", triageSeverity: "ROUTINE_REVIEW", proposedAcknowledgementBusinessHours: 24, proposedResolutionBusinessHours: 72 },
+    { type: "DELAYED_CLAIM", triageSeverity: "ROUTINE_REVIEW", proposedAcknowledgementBusinessHours: 24, proposedResolutionBusinessHours: 72 },
+    { type: "SITE_TRANSITION_REVIEW", triageSeverity: "ATTENTION_REVIEW", proposedAcknowledgementBusinessHours: 8, proposedResolutionBusinessHours: 48 },
+    { type: "DEVICE_SECURITY_REVIEW", triageSeverity: "ATTENTION_REVIEW", proposedAcknowledgementBusinessHours: 8, proposedResolutionBusinessHours: 48 },
     { type: "ATTENDANCE_PROOF_REVIEW", triageSeverity: "ROUTINE_REVIEW", proposedAcknowledgementBusinessHours: 24, proposedResolutionBusinessHours: 72 },
   ],
   employeeVisibility: "REQUIRED_BEFORE_FINAL_HR_DECISION",
@@ -155,4 +161,19 @@ export function evaluateWorkforceExceptionDraftLifecycle(
     }
   }
   return { valid: true, stage }
+}
+
+/**
+ * Small append helper for a future immutable decision writer. The caller must
+ * obtain the full tenant-scoped historical decision stream first; this helper
+ * never reads storage or authorizes an actor.
+ */
+export function validateWorkforceExceptionDraftDecisionAppend(input: {
+  priorDecisionCodes: readonly string[]
+  nextDecisionCode: string
+}): WorkforceExceptionDraftLifecycleEvaluation {
+  return evaluateWorkforceExceptionDraftLifecycle([
+    ...input.priorDecisionCodes.map((decisionCode) => ({ decisionCode })),
+    { decisionCode: input.nextDecisionCode },
+  ])
 }

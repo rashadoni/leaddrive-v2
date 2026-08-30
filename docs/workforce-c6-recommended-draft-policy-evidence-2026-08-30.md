@@ -11,7 +11,8 @@ With explicit owner authorization, the source now records
 `src/lib/workforce/exception-policy-draft.ts`.
 
 - The taxonomy covers calculated deviations (`LATE_START`, `UNDERTIME`,
-  `OVERTIME`, `LONG_PAUSE`), `NO_SHOW`, `MISSED_FINISH` and a bounded
+  `OVERTIME`, `LONG_PAUSE`), `NO_SHOW`, `MISSED_FINISH`, `DELAYED_CLAIM`,
+  `SITE_TRANSITION_REVIEW`, `DEVICE_SECURITY_REVIEW` and a bounded
   `ATTENDANCE_PROOF_REVIEW` intake. It does not create a category for payroll,
   discipline or biometric identity decisions.
 - Severity is intentionally a **non-disciplinary review triage**:
@@ -27,7 +28,9 @@ With explicit owner authorization, the source now records
 - A pure lifecycle evaluator permits only human-visible review transitions:
   acknowledgement/escalation, an employee response or correction request,
   final resolution from HR review, and an explicit re-open. Unknown or invalid
-  transitions fail closed.
+  transitions fail closed. The ledger exposes a separate policy-aware draft
+  writer that validates an append against the complete supplied decision
+  sequence; generic legacy-compatible decision envelopes remain unchanged.
 
 ## Deliberate non-activation boundary
 
@@ -47,7 +50,7 @@ HR SLA or cohort rollout.
     PASS  PATH=/home/codex-alt/.local/bin:$PATH npx vitest run \
           src/__tests__/lib-workforce-exception-policy-draft.test.ts \
           src/__tests__/lib-workforce-exception-intake.test.ts --reporter=dot
-          (targeted source tests)
+          (2 files, 13 tests)
 
     PASS  targeted ESLint and `git diff --check` in this worktree.
 
