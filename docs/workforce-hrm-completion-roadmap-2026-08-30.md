@@ -620,7 +620,7 @@ from Route & Field.
 | WF-C8-005 | P1 | PLANNED | Web | Add exception workbench and employee response/appeal context | Queue meets C6 acceptance |
 | WF-C8-006 | P1 | PLANNED | Web | Add Sites/Geofences configuration with map pin, radius calibration, effective date and access scope | Changes preview impact and preserve revision history |
 | WF-C8-007 | P1 | PLANNED | Web | Add schedule/calendar/break/segment policy editor with safe defaults and validation | No raw IDs; published history is immutable |
-| WF-C8-008 | P1 | PLANNED | Web | Add proof-policy, QR station and trusted-device administration separated by permission | Ordinary scheduler cannot manage security factors unless granted |
+| WF-C8-008 | P1 | PARTIAL | Web | Add proof-policy, QR station and trusted-device administration separated by permission | [`workforce-c5-attendance-admin-ui-evidence-2026-08-30.md`](./workforce-c5-attendance-admin-ui-evidence-2026-08-30.md): named-site/effective-circle QR station creation plus device/QR lifecycle UI are administrator-only; proof-policy UI and granular separation-of-duties await C7/C5 gates |
 | WF-C8-009 | P1 | PLANNED | Web | Add restricted evidence timeline and access audit; normal view shows verdict instead of exact coordinates | OD-11 enforced |
 | WF-C8-010 | P1 | PLANNED | Web/I18n | Complete AZ/RU/EN, keyboard, focus, contrast, 200% zoom, responsive tablet/phone and error/empty states | Automated checks plus browser evidence |
 | WF-C8-011 | P2 | PLANNED | Web | Add policy/version diff, effective-date impact preview and safe rollback-to-new-version | No direct historical mutation |
