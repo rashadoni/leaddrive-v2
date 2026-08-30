@@ -58,6 +58,13 @@ all owner-approved incompatible pairs whose effective windows overlap. Both
 tables have tenant RLS, only `SELECT`/`INSERT` policies and mutation-rejection
 triggers.
 
+`src/lib/workforce/access-grant-ledger.ts` supplies the matching pure draft
+writer. It normalizes exact scopes, role/scope compatibility, bounded opaque
+identifiers, reason codes and effective windows; revocation drafts cannot
+predate their grant. It has no Prisma dependency and cannot insert a grant,
+so the database constraint remains the final guard for a future authorized
+transaction writer.
+
 ## Deliberate rollout boundary
 
 The migration creates no grant row and changes no tenant flag, role mapping or
@@ -77,7 +84,7 @@ and run access review before live enforcement can be claimed.
   employee-scoped `TEAM_ATTENDANCE_READ` grant without a mutable team lookup.
 - `PASS` — static migration contract tests cover exact scope, role/scope
   constraints, append-only revocation, RLS and every incompatible pair;
-  `prisma validate` is part of the bounded source gate.
-- `NOT RUN` — migration apply/RLS concurrency, browser role assignment,
-  accountable grant/revocation writer, tenant activation and production
-  rollout; these remain behind the normal CI/deploy and later C7 rollout gates.
+  `prisma validate` passed without a database connection. Focused draft-writer
+  tests cover invalid scope/window and pre-grant revocation rejection.
+- `NOT RUN` — browser role assignment, endpoint integration, database RLS
+  concurrency and tenant activation require the later C7 writer/rollout gates.
