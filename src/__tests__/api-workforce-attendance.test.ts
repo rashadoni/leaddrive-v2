@@ -13,6 +13,10 @@ vi.mock("@/lib/mobile-auth", async () => {
   const { makeMobileAuthMock } = await import("./mocks/mobile-auth")
   return makeMobileAuthMock()
 })
+vi.mock("@/lib/rate-limit", () => ({
+  checkRateLimit: vi.fn(() => true),
+  hashForRateLimit: vi.fn(async () => "rate-limit-fingerprint"),
+}))
 vi.mock("qrcode", () => ({
   default: { toDataURL: vi.fn().mockResolvedValue("data:image/png;base64,attendance-qr") },
 }))
@@ -23,9 +27,11 @@ import {
   GET as mobileEnrollmentGet,
   POST as mobileEnrollmentPost,
 } from "@/app/api/v1/mtm/mobile/attendance/devices/enrollments/route"
+import { POST as mobileEnrollmentProofPost } from "@/app/api/v1/mtm/mobile/attendance/devices/enrollments/[id]/proof/route"
 import type { AuthResult } from "@/lib/api-auth"
 import { resolveMobileAuth } from "@/lib/mobile-auth"
 import { prisma } from "@/lib/prisma"
+import { checkRateLimit, hashForRateLimit } from "@/lib/rate-limit"
 import QRCode from "qrcode"
 
 const ORG = "org_1"
@@ -72,6 +78,14 @@ function stationQrRequest(body: unknown) {
 
 function mobileRequest(body: unknown) {
   return new NextRequest("http://localhost/api/v1/mtm/mobile/attendance/devices/enrollments", {
+    method: "POST",
+    headers: { authorization: "Bearer test", "content-type": "application/json" },
+    body: JSON.stringify(body),
+  })
+}
+
+function mobileProofRequest(body: unknown) {
+  return new NextRequest("http://localhost/api/v1/mtm/mobile/attendance/devices/enrollments/enrollment_1/proof", {
     method: "POST",
     headers: { authorization: "Bearer test", "content-type": "application/json" },
     body: JSON.stringify(body),
@@ -242,5 +256,41 @@ describe("Workforce attendance H5 API boundaries", () => {
     })
     expect(body.data.challenge).toMatch(/^[A-Za-z0-9_-]{24,256}$/)
     expect(JSON.stringify(body)).not.toContain(publicKeySpki)
+  })
+
+  it("rate-limits QR issue and device enrollment/proof before security-sensitive database work", async () => {
+    vi.mocked(checkRateLimit).mockReturnValue(false)
+    const { publicKey } = generateKeyPairSync("ec", { namedCurve: "prime256v1" })
+    const publicKeySpki = publicKey.export({ format: "der", type: "spki" }).toString("base64")
+
+    const qr = await callStationQrPost(stationQrRequest({ action: "START" }), ADMIN, {
+      params: Promise.resolve({ id: "station_1" }),
+    })
+    expect(qr.status).toBe(429)
+    expect(qr.headers.get("Retry-After")).toBe("60")
+    await expect(qr.json()).resolves.toMatchObject({ code: "WORKFORCE_ATTENDANCE_RATE_LIMITED" })
+    expect(prisma.workforceAttendanceQrStation.findFirst).not.toHaveBeenCalled()
+
+    const enrollment = await mobileEnrollmentPost(mobileRequest({ deviceLabel: "Pixel", publicKeySpki }))
+    expect(enrollment.status).toBe(429)
+    expect(enrollment.headers.get("Retry-After")).toBe("60")
+    expect(prisma.workforceAttendanceDeviceEnrollment.create).not.toHaveBeenCalled()
+
+    const proof = await mobileEnrollmentProofPost(
+      mobileProofRequest({ challenge: "a".repeat(24), signature: "signature" }),
+      { params: Promise.resolve({ id: "enrollment_1" }) },
+    )
+    expect(proof.status).toBe(429)
+    expect(proof.headers.get("Retry-After")).toBe("60")
+    expect(prisma.workforceAttendanceDeviceEnrollmentChallenge.findFirst).not.toHaveBeenCalled()
+
+    expect(hashForRateLimit).toHaveBeenCalledTimes(3)
+    expect(vi.mocked(checkRateLimit).mock.calls.map(([key]) => key)).toEqual([
+      "workforce-attendance:QR_ISSUE:rate-limit-fingerprint",
+      "workforce-attendance:DEVICE_ENROLLMENT_START:rate-limit-fingerprint",
+      "workforce-attendance:DEVICE_ENROLLMENT_PROOF:rate-limit-fingerprint",
+    ])
+    expect(JSON.stringify(vi.mocked(checkRateLimit).mock.calls)).not.toContain(ORG)
+    expect(JSON.stringify(vi.mocked(checkRateLimit).mock.calls)).not.toContain(MOBILE_AUTH.agentId)
   })
 })

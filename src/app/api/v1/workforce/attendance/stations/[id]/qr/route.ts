@@ -7,6 +7,7 @@ import {
   WorkforceAttendanceManagementError,
 } from "@/lib/workforce/attendance-management"
 import { WorkforceAttendanceActionSchema } from "@/lib/workforce/attendance-policy"
+import { checkWorkforceAttendanceRateLimit } from "@/lib/workforce/attendance-rate-limit"
 import { requireWorkforceAttendanceAdminAddon } from "@/lib/workforce/attendance-route"
 
 type RouteContext = { params: Promise<{ id: string }> }
@@ -23,6 +24,22 @@ export const POST = withWorkforceRlsAuth<RouteContext>("write", async (req: Next
   const action = WorkforceAttendanceActionSchema.safeParse(body?.action)
   if (!action.success) {
     return NextResponse.json({ error: "A valid attendance action is required for this QR" }, { status: 400 })
+  }
+  const rate = await checkWorkforceAttendanceRateLimit({
+    operation: "QR_ISSUE",
+    organizationId: auth.orgId,
+    principalId: auth.userId,
+    resourceId: id,
+  })
+  if (!rate.allowed) {
+    return NextResponse.json({
+      error: "Attendance QR issue rate limit exceeded",
+      code: "WORKFORCE_ATTENDANCE_RATE_LIMITED",
+      retryAfterSeconds: rate.retryAfterSeconds,
+    }, {
+      status: 429,
+      headers: { "Retry-After": String(rate.retryAfterSeconds), "cache-control": "no-store" },
+    })
   }
   try {
     const issued = await issueWorkforceAttendanceQr(prisma, {
