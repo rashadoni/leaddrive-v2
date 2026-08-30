@@ -70,7 +70,7 @@ export function workforceWorkdayScheduleSnapshotHash(value: unknown): string {
 
 async function snapshotShiftSegmentsAndSites(
   tx: Prisma.TransactionClient,
-  input: { organizationId: string; templateId: string; workDate: string },
+  input: { organizationId: string; agentId: string; templateId: string; workDate: string },
 ): Promise<{ segments: Prisma.InputJsonValue; sites: Prisma.InputJsonValue }> {
   const segments = await tx.workforceShiftSegment.findMany({
     where: { organizationId: input.organizationId, templateId: input.templateId },
@@ -95,7 +95,7 @@ async function snapshotShiftSegmentsAndSites(
   }
 
   const workDate = new Date(`${input.workDate}T00:00:00.000Z`)
-  const [sites, revisions] = await Promise.all([
+  const [sites, revisions, eligibilityAssignments] = await Promise.all([
     tx.workforceSite.findMany({
       where: { organizationId: input.organizationId, id: { in: siteIds }, status: "ACTIVE" },
       select: {
@@ -129,6 +129,23 @@ async function snapshotShiftSegmentsAndSites(
         effectiveTo: true,
       },
     }),
+    tx.workforceSiteAssignment.findMany({
+      where: {
+        organizationId: input.organizationId,
+        agentId: input.agentId,
+        siteId: { in: siteIds },
+        effectiveFrom: { lte: workDate },
+        OR: [{ effectiveTo: null }, { effectiveTo: { gte: workDate } }],
+      },
+      orderBy: [{ siteId: "asc" }, { effectiveFrom: "asc" }, { id: "asc" }],
+      select: {
+        id: true,
+        siteId: true,
+        kind: true,
+        effectiveFrom: true,
+        effectiveTo: true,
+      },
+    }),
   ])
   if (sites.length !== siteIds.length || revisions.length > siteIds.length) {
     throw new WorkforceSnapshotWriterError(
@@ -137,12 +154,31 @@ async function snapshotShiftSegmentsAndSites(
     )
   }
   const revisionBySiteId = new Map(revisions.map((revision) => [revision.siteId, revision]))
+  const eligibilityBySiteId = new Map<string, typeof eligibilityAssignments>()
+  for (const assignment of eligibilityAssignments) {
+    const assignments = eligibilityBySiteId.get(assignment.siteId) ?? []
+    assignments.push(assignment)
+    eligibilityBySiteId.set(assignment.siteId, assignments)
+  }
+  if (siteIds.some((siteId) => (eligibilityBySiteId.get(siteId)?.length ?? 0) === 0)) {
+    throw new WorkforceSnapshotWriterError(
+      "WORKFORCE_SNAPSHOT_PARTIAL",
+      "Every scheduled Workforce site must be eligible for the employee on the workday date",
+    )
+  }
   return {
     segments: segments as unknown as Prisma.InputJsonValue,
     sites: sites.map((site) => {
       const revision = revisionBySiteId.get(site.id)
+      const eligibility = eligibilityBySiteId.get(site.id) ?? []
       return {
         ...site,
+        eligibilityAssignments: eligibility.map((assignment) => ({
+          id: assignment.id,
+          kind: assignment.kind,
+          effectiveFrom: dateKey(assignment.effectiveFrom),
+          effectiveTo: assignment.effectiveTo == null ? null : dateKey(assignment.effectiveTo),
+        })),
         geofenceRevision: revision == null ? null : {
           ...revision,
           effectiveFrom: dateKey(revision.effectiveFrom),
@@ -239,6 +275,7 @@ export async function writeWorkforceSnapshotsInTransaction(
 
   const scheduleContext = await snapshotShiftSegmentsAndSites(tx, {
     organizationId: input.organizationId,
+    agentId: workday.agentId,
     templateId: shift.id,
     workDate,
   })

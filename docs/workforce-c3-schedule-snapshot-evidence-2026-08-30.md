@@ -14,7 +14,8 @@ transaction as the existing policy and shift snapshots, exactly one immutable
 - the selected policy and shift snapshot IDs;
 - the ordered shift segments, including mode, site, planned window, grace and
   proof-policy reference;
-- the active scheduled sites and their effective geofence revisions; and
+- the active scheduled sites, employee eligibility assignments and their
+  effective geofence revisions; and
 - a canonical SHA-256 hash of that context.
 
 The write path is shared by the existing web workday writer and the mobile sync

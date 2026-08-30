@@ -59,6 +59,9 @@ describe("Workforce site-transition facts", () => {
     vi.mocked(prisma.workforceSiteTransition.findFirst).mockResolvedValue(null as never)
     vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({ id: input.workdayId } as never)
     vi.mocked(prisma.workforceShiftSegment.findFirst).mockResolvedValue({ id: input.segmentId } as never)
+    vi.mocked(prisma.workforceWorkdayScheduleSnapshot.findFirst).mockResolvedValue({
+      id: "schedule-snapshot-1", segments: [{ id: input.segmentId, mode: "SITE", siteId: "site-1" }],
+    } as never)
     vi.mocked(prisma.workforceSiteTransition.create).mockResolvedValue(transition(input) as never)
 
     await expect(recordWorkforceSiteTransition({
@@ -100,6 +103,9 @@ describe("Workforce site-transition facts", () => {
     vi.mocked(prisma.workforceSiteTransition.findFirst).mockResolvedValueOnce(null as never)
     vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({ id: delayed.workdayId } as never)
     vi.mocked(prisma.workforceShiftSegment.findFirst).mockResolvedValue({ id: delayed.segmentId } as never)
+    vi.mocked(prisma.workforceWorkdayScheduleSnapshot.findFirst).mockResolvedValue({
+      id: "schedule-snapshot-1", segments: [{ id: delayed.segmentId, mode: "SITE", siteId: "site-1" }],
+    } as never)
     vi.mocked(prisma.workforceSiteTransition.create).mockResolvedValue({
       ...transition(delayed),
       attendanceReviewState: "PENDING_REVIEW",
@@ -158,5 +164,23 @@ describe("Workforce site-transition facts", () => {
     })
     expect(prisma.mtmAgentWorkday.findFirst).not.toHaveBeenCalled()
     expect(prisma.workforceShiftSegment.findFirst).not.toHaveBeenCalled()
+    expect(prisma.workforceWorkdayScheduleSnapshot.findFirst).not.toHaveBeenCalled()
+  })
+
+  it("does not attach a site claim to an unsnapshotted or non-site segment", async () => {
+    const input = claim()
+    vi.mocked(prisma.workforceSiteTransition.findFirst).mockResolvedValue(null as never)
+    vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({ id: input.workdayId } as never)
+    vi.mocked(prisma.workforceShiftSegment.findFirst).mockResolvedValue({ id: input.segmentId } as never)
+    vi.mocked(prisma.workforceWorkdayScheduleSnapshot.findFirst).mockResolvedValue({
+      id: "schedule-snapshot-1", segments: [{ id: input.segmentId, mode: "REMOTE", siteId: null }],
+    } as never)
+
+    await expect(recordWorkforceSiteTransition({
+      db: prisma as never, organizationId, agentId, claim: input, now,
+    })).rejects.toMatchObject<Partial<WorkforceSiteTransitionError>>({
+      code: "WORKFORCE_SITE_TRANSITION_SEGMENT_NOT_SCHEDULED",
+    })
+    expect(prisma.workforceSiteTransition.create).not.toHaveBeenCalled()
   })
 })

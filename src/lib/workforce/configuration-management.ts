@@ -182,6 +182,7 @@ export class WorkforceConfigurationManagementError extends Error {
       | "WORKFORCE_CONFIGURATION_SHIFT_ACTIVE_EXISTS"
       | "WORKFORCE_CONFIGURATION_SHIFT_SEGMENT_INVALID"
       | "WORKFORCE_CONFIGURATION_SHIFT_SEGMENT_SITE_INVALID"
+      | "WORKFORCE_CONFIGURATION_SHIFT_SEGMENT_TIMEZONE_MISMATCH"
       | "WORKFORCE_CONFIGURATION_ASSIGNMENT_AGENT_NOT_FOUND"
       | "WORKFORCE_CONFIGURATION_ASSIGNMENT_TEMPLATE_NOT_FOUND"
       | "WORKFORCE_CONFIGURATION_ASSIGNMENT_EFFECTIVE_DATE_NOT_FUTURE"
@@ -323,6 +324,7 @@ function parseShiftDefinitionForSegments(definition: unknown): z.infer<typeof Wo
 async function assertShiftSegmentSitesAreActive(input: {
   db: Pick<PrismaClient, "workforceSite">
   organizationId: string
+  templateTimezone: string
   segments: readonly WorkforceShiftSegmentDraft[]
 }): Promise<void> {
   const siteIds = [...new Set(input.segments.flatMap((segment) => (
@@ -335,12 +337,18 @@ async function assertShiftSegmentSitesAreActive(input: {
       id: { in: siteIds },
       status: "ACTIVE",
     },
-    select: { id: true },
+    select: { id: true, timezone: true },
   })
   if (sites.length !== siteIds.length) {
     throw new WorkforceConfigurationManagementError(
       "WORKFORCE_CONFIGURATION_SHIFT_SEGMENT_SITE_INVALID",
       "Every SITE segment must reference an active Workforce site in this tenant",
+    )
+  }
+  if (sites.some((site) => site.timezone !== input.templateTimezone)) {
+    throw new WorkforceConfigurationManagementError(
+      "WORKFORCE_CONFIGURATION_SHIFT_SEGMENT_TIMEZONE_MISMATCH",
+      "Every SITE segment must use the shift timezone until cross-timezone segment semantics are approved",
     )
   }
 }
@@ -909,6 +917,7 @@ export async function createWorkforceShiftTemplateDraft(input: {
         await assertShiftSegmentSitesAreActive({
           db: tx,
           organizationId: input.organizationId,
+          templateTimezone: definition.timezone,
           segments,
         })
       }
@@ -1024,6 +1033,9 @@ export async function updateWorkforceShiftTemplateDraft(input: {
     }
     const definition = input.draft.definition === undefined ? null : asShiftDefinition(input.draft.definition)
     const requestedSegments = input.draft.segments
+    const effectiveDefinition = input.draft.definition === undefined
+      ? parseShiftDefinitionForSegments(existing.definition)
+      : parseShiftDefinitionForSegments(input.draft.definition)
     if (input.draft.definition !== undefined || requestedSegments !== undefined) {
       const existingSegments: WorkforceShiftSegmentDraft[] = (existing.segments ?? []).map((segment) => ({
         mode: segment.mode,
@@ -1035,7 +1047,7 @@ export async function updateWorkforceShiftTemplateDraft(input: {
       }))
       const timelineIssue = validateShiftSegmentTimeline(
         requestedSegments ?? existingSegments,
-        parseShiftDefinitionForSegments(input.draft.definition ?? existing.definition),
+        effectiveDefinition,
       )
       if (timelineIssue != null) {
         throw new WorkforceConfigurationManagementError(
@@ -1048,6 +1060,7 @@ export async function updateWorkforceShiftTemplateDraft(input: {
       await assertShiftSegmentSitesAreActive({
         db: tx,
         organizationId: input.organizationId,
+        templateTimezone: effectiveDefinition.timezone,
         segments: requestedSegments,
       })
     }

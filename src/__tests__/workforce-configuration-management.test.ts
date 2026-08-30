@@ -392,7 +392,9 @@ describe("safe Workforce configuration drafts", () => {
       { mode: "SITE" as const, siteId: "site-b", startTime: "14:00", endTime: "18:00", lateGraceSeconds: 15 * 60, proofPolicyReference: "office-v1" },
     ]
     vi.mocked(prisma.workforceShiftTemplate.findFirst).mockResolvedValue(null as never)
-    vi.mocked(prisma.workforceSite.findMany).mockResolvedValue([{ id: "site-a" }, { id: "site-b" }] as never)
+    vi.mocked(prisma.workforceSite.findMany).mockResolvedValue([
+      { id: "site-a", timezone: "Asia/Baku" }, { id: "site-b", timezone: "Asia/Baku" },
+    ] as never)
     vi.mocked(prisma.workforceShiftTemplate.create).mockResolvedValue({
       id: "shift-segmented",
       teamId: null,
@@ -417,7 +419,7 @@ describe("safe Workforce configuration drafts", () => {
 
     expect(prisma.workforceSite.findMany).toHaveBeenCalledWith({
       where: { organizationId, id: { in: ["site-a", "site-b"] }, status: "ACTIVE" },
-      select: { id: true },
+      select: { id: true, timezone: true },
     })
     expect(prisma.workforceShiftTemplate.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
@@ -478,6 +480,20 @@ describe("safe Workforce configuration drafts", () => {
     expect(prisma.workforceShiftTemplate.create).not.toHaveBeenCalled()
   })
 
+  it("rejects a site in another timezone until cross-timezone segment semantics are explicit", async () => {
+    vi.mocked(prisma.workforceShiftTemplate.findFirst).mockResolvedValue(null as never)
+    vi.mocked(prisma.workforceSite.findMany).mockResolvedValue([{ id: "site-berlin", timezone: "Europe/Berlin" }] as never)
+    const draft = WorkforceShiftTemplateDraftCreateSchema.parse({
+      code: "CROSS_TZ", name: "Cross timezone", definition: shiftDefinition,
+      segments: [{ mode: "SITE", siteId: "site-berlin", startTime: "09:00", endTime: "18:00" }],
+    })
+    await expect(createWorkforceShiftTemplateDraft({ organizationId, createdByUserId: userId, draft, audit }))
+      .rejects.toMatchObject<Partial<WorkforceConfigurationManagementError>>({
+        code: "WORKFORCE_CONFIGURATION_SHIFT_SEGMENT_TIMEZONE_MISMATCH",
+      })
+    expect(prisma.workforceShiftTemplate.create).not.toHaveBeenCalled()
+  })
+
   it("replaces the complete segment timeline only while the template remains a draft", async () => {
     const beforeLock = {
       id: "shift-1", teamId: null, code: "STANDARD", isDefault: false, version: 1,
@@ -505,7 +521,9 @@ describe("safe Workforce configuration drafts", () => {
       .mockResolvedValueOnce(beforeLock as never)
       .mockResolvedValueOnce(existing as never)
       .mockResolvedValueOnce(result as never)
-    vi.mocked(prisma.workforceSite.findMany).mockResolvedValue([{ id: "site-a" }, { id: "site-b" }] as never)
+    vi.mocked(prisma.workforceSite.findMany).mockResolvedValue([
+      { id: "site-a", timezone: "Asia/Baku" }, { id: "site-b", timezone: "Asia/Baku" },
+    ] as never)
     vi.mocked(prisma.workforceShiftTemplate.updateMany).mockResolvedValue({ count: 1 } as never)
     vi.mocked(prisma.workforceShiftSegment.deleteMany).mockResolvedValue({ count: 1 } as never)
     vi.mocked(prisma.workforceShiftSegment.createMany).mockResolvedValue({ count: 2 } as never)
