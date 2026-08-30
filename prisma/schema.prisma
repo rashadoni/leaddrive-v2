@@ -201,6 +201,8 @@ model Organization {
   workforceSiteGeofenceRevisions      WorkforceSiteGeofenceRevision[]
   workforceAttendanceExceptions       WorkforceAttendanceException[]
   workforceAttendanceReviewCases      WorkforceAttendanceReviewCase[]
+  workforceExceptionCases             WorkforceExceptionCase[]
+  workforceExceptionDecisions         WorkforceExceptionDecision[]
   workforceTimeCorrections            WorkforceTimeCorrection[]
   workforceTimesheetApprovals         WorkforceTimesheetApproval[]
   workforceAttendanceQrStations        WorkforceAttendanceQrStation[]
@@ -664,6 +666,7 @@ model User {
   workforceSiteGeofenceRevisionsCreated WorkforceSiteGeofenceRevision[] @relation("WorkforceSiteGeofenceRevisionCreatedBy")
   workforceSiteAssignmentsAssigned    WorkforceSiteAssignment[]       @relation("WorkforceSiteAssignmentAssignedBy")
   workforceAttendanceExceptionsResolved WorkforceAttendanceException[] @relation("WorkforceAttendanceExceptionResolvedBy")
+  workforceExceptionDecisionsActed      WorkforceExceptionDecision[]   @relation("WorkforceExceptionDecisionActor")
   workforceTimeCorrectionsActed       WorkforceTimeCorrection[]      @relation("WorkforceTimeCorrectionActor")
   workforceTimesheetApprovalsApproved WorkforceTimesheetApproval[]   @relation("WorkforceTimesheetApprovalApprovedBy")
   workforceTimesheetApprovalsCorrected WorkforceTimesheetApproval[]  @relation("WorkforceTimesheetApprovalCorrectionActor")
@@ -5587,6 +5590,7 @@ model MtmAgent {
   workforceWorkdayScheduleSnapshots WorkforceWorkdayScheduleSnapshot[]
   workforceExceptions       WorkforceAttendanceException[]
   workforceAttendanceReviewCases WorkforceAttendanceReviewCase[]
+  workforceExceptionCases   WorkforceExceptionCase[]
   workforceTimeCorrections  WorkforceTimeCorrection[]
   workforceTimesheetApprovals WorkforceTimesheetApproval[]
   workforceAttendanceDeviceEnrollments WorkforceAttendanceDeviceEnrollment[]
@@ -7170,6 +7174,7 @@ model MtmAgentWorkday {
   workforceSiteTransitions WorkforceSiteTransition[]
   workforceExceptions     WorkforceAttendanceException[]
   workforceAttendanceReviewCases WorkforceAttendanceReviewCase[]
+  workforceExceptionCases WorkforceExceptionCase[]
   workforceTimeCorrections WorkforceTimeCorrection[]
 
   @@unique([organizationId, agentId, workDate])
@@ -7221,6 +7226,7 @@ model MtmAgentWorkdayEvent {
   workforceAttendanceVerifications WorkforceAttendanceVerification[]
   workforceAttendanceEvidences WorkforceAttendanceEvidence[]
   workforceAttendanceReviewCase WorkforceAttendanceReviewCase?
+  workforceExceptionCases WorkforceExceptionCase[]
 
   @@unique([organizationId, agentId, clientEventId])
   @@unique([organizationId, id])
@@ -7258,6 +7264,66 @@ model WorkforceAttendanceReviewCase {
   @@index([organizationId, agentId, status, createdAt])
   @@index([organizationId, workdayId])
   @@map("workforce_attendance_review_cases")
+}
+
+/// Immutable C6 case envelope. It stores only tenant-scoped references to
+/// attendance facts/evidence and a detector code; raw coordinates, QR tokens,
+/// device proofs, employee explanations and mutable resolution state remain
+/// outside the case. The current lifecycle is the ordered decision ledger.
+model WorkforceExceptionCase {
+  id               String                   @id @default(cuid())
+  organizationId   String
+  organization     Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentId          String
+  agent            MtmAgent                 @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  kind             String                   @db.VarChar(64)
+  detectorVersion  String                   @db.VarChar(64)
+  deduplicationKey String                   @db.VarChar(64)
+  workdayId        String?
+  workday          MtmAgentWorkday?         @relation(fields: [organizationId, workdayId], references: [organizationId, id], onDelete: Restrict)
+  workdayEventId   String?
+  workdayEvent     MtmAgentWorkdayEvent?    @relation(fields: [organizationId, workdayEventId], references: [organizationId, id], onDelete: Restrict)
+  evidenceId       String?
+  evidence         WorkforceAttendanceEvidence? @relation(fields: [organizationId, evidenceId], references: [organizationId, id], onDelete: Restrict)
+  segmentId        String?
+  segment          WorkforceShiftSegment?   @relation(fields: [organizationId, segmentId], references: [organizationId, id], onDelete: Restrict)
+  createdAt        DateTime                  @default(now())
+
+  decisions WorkforceExceptionDecision[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, deduplicationKey])
+  @@index([organizationId, agentId, createdAt])
+  @@index([organizationId, workdayId, createdAt])
+  @@index([organizationId, workdayEventId])
+  @@index([organizationId, evidenceId])
+  @@index([organizationId, segmentId])
+  @@map("workforce_exception_cases")
+}
+
+/// One append-only accountable action in an exception case. The generic code
+/// is intentionally not a hidden HR severity/SLA/payout policy; a later
+/// tenant-approved lifecycle decides which codes can close, escalate or alter
+/// an approved timesheet. The reason is never included in notifications or
+/// ordinary timesheet exports.
+model WorkforceExceptionDecision {
+  id            String                @id @default(cuid())
+  organizationId String
+  organization  Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  caseId        String
+  exceptionCase WorkforceExceptionCase @relation(fields: [organizationId, caseId], references: [organizationId, id], onDelete: Restrict)
+  operationId   String                @db.VarChar(100)
+  decisionCode  String                @db.VarChar(64)
+  reason        String                @db.VarChar(1000)
+  actorUserId   String
+  actorUser     User                  @relation("WorkforceExceptionDecisionActor", fields: [organizationId, actorUserId], references: [organizationId, id], onDelete: Restrict)
+  createdAt     DateTime              @default(now())
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, operationId])
+  @@index([organizationId, caseId, createdAt])
+  @@index([organizationId, actorUserId, createdAt])
+  @@map("workforce_exception_decisions")
 }
 
 // Agent-to-manager conversations and broadcasts. Participants are explicit,
@@ -7650,6 +7716,7 @@ model WorkforceShiftSegment {
   createdAt            DateTime                  @default(now())
 
   transitions          WorkforceSiteTransition[]
+  workforceExceptionCases WorkforceExceptionCase[]
 
   @@unique([organizationId, id])
   @@unique([organizationId, templateId, sequence])
@@ -8118,6 +8185,7 @@ model WorkforceAttendanceEvidence {
   createdAt            DateTime                      @default(now())
 
   assessments WorkforceEvidenceAssessment[]
+  workforceExceptionCases WorkforceExceptionCase[]
 
   @@unique([organizationId, id])
   @@unique([organizationId, operationReference])

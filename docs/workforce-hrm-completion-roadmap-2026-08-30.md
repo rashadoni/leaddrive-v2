@@ -21,6 +21,7 @@
 > [`workforce-c3-bulk-preview-evidence-2026-08-30.md`](./workforce-c3-bulk-preview-evidence-2026-08-30.md),
 > [`workforce-c5-attendance-admin-ui-evidence-2026-08-30.md`](./workforce-c5-attendance-admin-ui-evidence-2026-08-30.md),
 > [`workforce-c6-exception-intake-evidence-2026-08-30.md`](./workforce-c6-exception-intake-evidence-2026-08-30.md),
+> [`workforce-c6-exception-case-lifecycle-evidence-2026-08-30.md`](./workforce-c6-exception-case-lifecycle-evidence-2026-08-30.md),
 > [`mobile-sync-v2-workforce-contract.md`](./mobile-sync-v2-workforce-contract.md)
 
 ## 1. Purpose and honest starting point
@@ -366,6 +367,7 @@ Owner roles are accountabilities, not individual names:
 | 2026-08-30T13:42:00+02:00 | C5i atomic QR emergency replacement (partial) | 31% | C5 8% | 63/161 | 0/15 | WF-C5-008 now has an MFA-gated, deliberate create-and-retire replacement that preserves the current effective site/circle binding and leaves a redacted audit trail; controller health, skew, physical display and QR relay limits remain external, so no completion credit is claimed |
 | 2026-08-30T17:07:38+02:00 | C6b safe exception/no-show intake (partial) | 32% | C6 10% | 64/161 | 0/15 | WF-C6-001/003 now have a pure review-only taxonomy/no-show proposal that requires published schedule, eligible unexcused calendar, complete no-workday observation and expired grace. It assigns no owner/severity/SLA and creates no case/job/notification, so no completion credit is claimed |
 | 2026-08-30T17:10:21+02:00 | C6c safe missed-finish intake (partial) | 32% | C6 10% | 64/161 | 0/15 | WF-C6-004 now has a pure generic-reminder/review proposal that needs an immutable schedule snapshot and complete open-workday observation, and permanently refuses to invent a finish. No policy timing, job, notification, auto-close or case is activated, so no completion credit is claimed |
+| 2026-08-30T17:16:05+02:00 | C6d immutable case/decision ledger (partial) | 32% | C6 10% | 64/161 | 0/15 | WF-C6-002 now has additive tenant/RLS/append-only schema and raw-proof-free deterministic case/decision drafts. Migration apply, owner taxonomy/RACI, transaction writer, UI and browser evidence remain open, so no completion credit is claimed |
 
 **C3 phase display reconciliation (2026-08-30T08:11:00+02:00):** the C3
 register contains 11 tasks and its scope did not change. Earlier C3 ledger
@@ -580,7 +582,7 @@ than a hidden calculation or direct data overwrite.
 | ID | Pri | Status | Owner | Task | Acceptance evidence |
 |---|---:|---|---|---|---|
 | WF-C6-001 | P0 | PARTIAL | HR/Product | Approve exception taxonomy, severity, owner and SLA | [`workforce-c6-exception-intake-evidence-2026-08-30.md`](./workforce-c6-exception-intake-evidence-2026-08-30.md): source baseline keeps all intake review-only and unassigned; approved taxonomy/severity/owner/SLA remains owner-gated |
-| WF-C6-002 | P0 | PLANNED | Backend | Create immutable exception case/decision lifecycle with deduplication and links to claim/evidence/workday/segment | Concurrent detection creates one case; resolution is append-only |
+| WF-C6-002 | P0 | PARTIAL | Backend | Create immutable exception case/decision lifecycle with deduplication and links to claim/evidence/workday/segment | [`workforce-c6-exception-case-lifecycle-evidence-2026-08-30.md`](./workforce-c6-exception-case-lifecycle-evidence-2026-08-30.md): additive immutable/RLS schema plus deterministic raw-proof-free drafts; applied transaction writer/concurrency and reviewed lifecycle remain open |
 | WF-C6-003 | P0 | PARTIAL | Backend | Generate no-show only from a published expected schedule after grace and approved leave/calendar checks | [`workforce-c6-exception-intake-evidence-2026-08-30.md`](./workforce-c6-exception-intake-evidence-2026-08-30.md): pure proposal rejects draft/unknown calendar/excused/incomplete/existing-workday cases; no detector/job/case is activated |
 | WF-C6-004 | P1 | PARTIAL | Backend/HR | Define missed checkout and stale open-shift policy: reminder, review, bounded auto-close proposal or manual correction | [`workforce-c6-exception-intake-evidence-2026-08-30.md`](./workforce-c6-exception-intake-evidence-2026-08-30.md): safe generic reminder/review proposal requires immutable schedule and complete observation; it never fabricates a finish, while policy timing/delivery/auto-close stay owner-gated |
 | WF-C6-005 | P1 | PLANNED | Web | Build exception queue with scope, risk, age, evidence completeness, employee response and next action | Manager can resolve every case without raw DB identifiers |
