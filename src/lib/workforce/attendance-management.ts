@@ -106,6 +106,7 @@ export class WorkforceAttendanceManagementError extends Error {
       | "WORKFORCE_ATTENDANCE_ENROLLMENT_PROOF_INVALID"
       | "WORKFORCE_ATTENDANCE_ENROLLMENT_CHALLENGE_INVALID"
       | "WORKFORCE_ATTENDANCE_ENROLLMENT_APPROVAL_INVALID"
+      | "WORKFORCE_ATTENDANCE_ENROLLMENT_SELF_APPROVAL_FORBIDDEN"
       | "WORKFORCE_ATTENDANCE_ENROLLMENT_REVOKE_INVALID",
     message: string = code,
   ) {
@@ -603,6 +604,25 @@ export async function approveWorkforceAttendanceDeviceEnrollment(
       throw new WorkforceAttendanceManagementError(
         "WORKFORCE_ATTENDANCE_ENROLLMENT_APPROVAL_INVALID",
         "Only a verified pending device enrollment can be approved",
+      )
+    }
+    // A Workforce administrator can also be an employee/agent.  The ordinary
+    // session/MFA gate identifies the operator, but it must not turn that
+    // operator into an approver for their own attendance factor.  A self
+    // *revoke* remains deliberately available below: removing a lost factor is
+    // a fail-safe containment action, whereas promoting a new factor is not.
+    const approverOwnsEnrollment = await tx.mtmAgent.findFirst({
+      where: {
+        id: enrollment.agentId,
+        organizationId: input.organizationId,
+        userId: input.approvedByUserId,
+      },
+      select: { id: true },
+    })
+    if (approverOwnsEnrollment) {
+      throw new WorkforceAttendanceManagementError(
+        "WORKFORCE_ATTENDANCE_ENROLLMENT_SELF_APPROVAL_FORBIDDEN",
+        "A different Workforce administrator must approve this employee's device enrollment",
       )
     }
     if (enrollment.replacesEnrollmentId) {

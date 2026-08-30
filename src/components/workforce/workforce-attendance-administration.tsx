@@ -16,10 +16,11 @@ type DeviceEnrollment = {
   id: string
   agent: { id: string; name: string } | null
   deviceLabel: string
-  status: "PENDING" | "ACTIVE" | "REVOKED"
+  status: "PENDING" | "ACTIVE" | "REVOKED" | "REPLACED"
   keyVerifiedAt: string | null
   approvedAt: string | null
   revokedAt: string | null
+  replacesEnrollmentId: string | null
   createdAt: string
 }
 
@@ -335,8 +336,12 @@ export function WorkforceAttendanceAdministration() {
 
       <div aria-labelledby="workforce-device-lifecycle-title" className="border-t border-zinc-200 pt-6 dark:border-zinc-700 xl:border-l xl:border-t-0 xl:pl-8 xl:pt-0">
         <div className="flex gap-3"><KeyRound className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" /><div><h3 id="workforce-device-lifecycle-title" className="font-medium">{t("devicesTitle")}</h3><p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{t("devicesHint")}</p></div></div>
-        {deviceError ? <p className="mt-4 text-sm text-muted-foreground" role="status">{t("deviceUnavailable", { error: deviceError })}</p> : null}
-        <div className="mt-4 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">{devices?.map((device) => <article key={device.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="font-medium">{device.deviceLabel}</p><Badge variant={deviceTone(device.status)}>{t(`deviceStatus.${device.status}`)}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{device.agent?.name || t("unknownEmployee")}</p><p className="mt-1 text-sm text-muted-foreground">{t("deviceRecordedAt", { value: dateTime.format(new Date(device.createdAt)) })}</p></div><div className="flex flex-wrap gap-2">{device.status === "PENDING" && device.keyVerifiedAt ? <Button type="button" className="min-h-11" disabled={busy !== null} onClick={() => void updateDevice(device, "approve")}>{busy === `approve:${device.id}` ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <Check />}{t("approveDevice")}</Button> : null}{device.status === "ACTIVE" ? <Button type="button" variant="outline" className="min-h-11" disabled={busy !== null} onClick={() => void updateDevice(device, "revoke")}>{busy === `revoke:${device.id}` ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <ShieldOff />}{t("revokeDevice")}</Button> : null}</div></article>)}{devices?.length === 0 ? <p className="py-5 text-sm text-muted-foreground">{t("noDevices")}</p> : null}</div>
+        {deviceError ? <p className="mt-4 text-sm text-destructive" role="alert">{t("deviceUnavailable", { error: deviceError })}</p> : null}
+        <div className="mt-4 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">{devices?.map((device) => {
+          const replaces = device.replacesEnrollmentId ? devices.find((candidate) => candidate.id === device.replacesEnrollmentId) : null
+          const replacement = devices.find((candidate) => candidate.replacesEnrollmentId === device.id) ?? null
+          return <article key={device.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="font-medium">{device.deviceLabel}</p><Badge variant={deviceTone(device.status)}>{t(`deviceStatus.${device.status}`)}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{device.agent?.name || t("unknownEmployee")}</p><p className="mt-1 text-sm text-muted-foreground">{t("deviceRecordedAt", { value: dateTime.format(new Date(device.createdAt)) })}</p>{replaces ? <p className="mt-1 text-sm text-muted-foreground">{t("deviceReplaces", { device: replaces.deviceLabel })}</p> : null}{replacement ? <p className="mt-1 text-sm text-muted-foreground">{t("deviceReplacedBy", { device: replacement.deviceLabel })}</p> : null}</div><div className="flex flex-wrap gap-2">{device.status === "PENDING" && device.keyVerifiedAt ? <Button type="button" className="min-h-11" disabled={busy !== null} onClick={() => void updateDevice(device, "approve")}>{busy === `approve:${device.id}` ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <Check />}{t("approveDevice")}</Button> : null}{device.status === "ACTIVE" ? <Button type="button" variant="outline" className="min-h-11" disabled={busy !== null} onClick={() => void updateDevice(device, "revoke")}>{busy === `revoke:${device.id}` ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <ShieldOff />}{t("revokeDevice")}</Button> : null}</div></article>
+        })}{devices?.length === 0 ? <p className="py-5 text-sm text-muted-foreground">{t("noDevices")}</p> : null}</div>
       </div>
     </div>
   </section>

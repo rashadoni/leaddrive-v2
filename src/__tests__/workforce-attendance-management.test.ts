@@ -31,7 +31,12 @@ const AUDIT = {
   userAgent: "Vitest Workforce Attendance",
 }
 
-beforeEach(() => vi.clearAllMocks())
+beforeEach(() => {
+  vi.clearAllMocks()
+  // An unlinked administrator is the ordinary approval path. Individual
+  // separation-of-duties tests override this with the linked employee row.
+  vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(undefined as never)
+})
 
 describe("Workforce attendance management", () => {
   it("issues only a short-lived QR for an active tenant station and disables it without deletion", async () => {
@@ -220,6 +225,34 @@ describe("Workforce attendance management", () => {
         newData: expect.objectContaining({ actorUserId: USER_ID, status: "ACTIVE" }),
       }),
     }))
+  })
+
+  it("requires a different administrator to approve an employee's own device enrollment", async () => {
+    vi.mocked(prisma.workforceAttendanceDeviceEnrollment.findFirst).mockResolvedValue({
+      id: "enrollment_self",
+      agentId: AGENT_ID,
+      deviceLabel: "Admin Pixel",
+      publicKeyFingerprint: "a".repeat(64),
+      status: "PENDING",
+      keyVerifiedAt: NOW,
+      replacesEnrollmentId: null,
+    } as never)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: AGENT_ID } as never)
+
+    await expect(approveWorkforceAttendanceDeviceEnrollment(prisma as never, {
+      organizationId: ORGANIZATION_ID,
+      enrollmentId: "enrollment_self",
+      approvedByUserId: USER_ID,
+      audit: AUDIT,
+      now: NOW,
+    })).rejects.toMatchObject({ code: "WORKFORCE_ATTENDANCE_ENROLLMENT_SELF_APPROVAL_FORBIDDEN" })
+
+    expect(prisma.workforceAttendanceDeviceEnrollment.updateMany).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+    expect(prisma.mtmAgent.findFirst).toHaveBeenCalledWith({
+      where: { id: AGENT_ID, organizationId: ORGANIZATION_ID, userId: USER_ID },
+      select: { id: true },
+    })
   })
 
   it("records both sides of an auditable device replacement", async () => {

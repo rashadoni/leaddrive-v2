@@ -28,7 +28,15 @@ The Workforce configuration page now contains an administrator-only
 - It lists the existing trusted-device lifecycle without public keys,
   fingerprints, attestation material or proof payloads. Only a key-verified
   pending enrollment exposes **Approve**; only an active enrollment exposes
-  **Revoke**.
+  **Report lost / revoke**. A revoke remains an immutable containment action,
+  not destructive deletion.
+- A replacement enrollment visibly names the replaced device, and the prior
+  record visibly names its replacement. `REPLACED` is a distinct terminal
+  state rather than a misleading active or revoked label.
+- A session administrator whose `MtmAgent.userId` matches the enrollment's
+  employee is rejected before a pending device can become active. A different
+  MFA-gated administrator must approve it. Self-revoke remains allowed because
+  containment of a lost factor is safer than retaining it.
 - All requests remain behind the existing Workforce attendance admin routes
   and their tenant/capability/role checks. This UI does not turn on QR, device
   trust, location, Route or an attendance policy for a tenant.
@@ -37,8 +45,10 @@ The Workforce configuration page now contains an administrator-only
 
 This does **not** complete WF-C5-007 or WF-C5-008:
 
-- no mobile enrollment, device replacement, lost/stolen workflow, recovery,
-  separation-of-duties policy, hardware attestation or physical device proof;
+- no signed mobile enrollment flow, employee self-service lost-phone request,
+  recovery factor, hardware attestation or physical device proof. The existing
+  server replacement transaction and its new review visibility do not make an
+  unsupported mobile binary available;
 - no station replacement workflow, controller health telemetry, clock-skew
   detection, kiosk hardware integration or physical display test;
 - no claim that QR, a registered device or an authenticated account proves the
@@ -50,17 +60,18 @@ pilot-ready anti-fraud control.
 
 ## Verification
 
-Latest targeted UI check, run sequentially on Contabo (Node 20):
+Latest targeted check, run sequentially on Contabo (Node 20):
 
 ```text
 PASS  npx vitest run src/__tests__/workforce-attendance-management.test.ts \
       src/__tests__/api-workforce-attendance.test.ts \
       src/__tests__/workforce-attendance-administration-ui-contract.test.ts \
       --reporter=dot
-      (3 files, 17 tests)
-PASS  npx eslint src/components/workforce/workforce-attendance-administration.tsx \
-      src/__tests__/workforce-attendance-administration-ui-contract.test.ts
-PASS  npm run i18n:check (21,198 EN leaf keys; RU/AZ missing=0, extra=0)
+      (3 files, 20 tests)
+PASS  npx eslint src/lib/workforce/attendance-management.ts \
+      src/components/workforce/workforce-attendance-administration.tsx \
+      src/__tests__/workforce-attendance-management.test.ts
+PASS  npm run i18n:check (21,281 EN leaf keys; RU/AZ missing=0, extra=0)
 PASS  git diff --check
 NOT RUN  full build, browser E2E, Android and physical QR/device checks:
          prohibited heavy/physical gates on the Contabo development host.
