@@ -8,6 +8,7 @@ import {
 } from "@/lib/workforce/attendance-management"
 import {
   requireWorkforceAttendanceAdminAddon,
+  requireWorkforceAttendanceSecurityMfa,
   workforceAttendanceRequestAuditContext,
 } from "@/lib/workforce/attendance-route"
 
@@ -45,6 +46,8 @@ export const GET = withWorkforceRlsAuth("read", async (_req: NextRequest, auth) 
 export const POST = withWorkforceRlsAuth("write", async (req: NextRequest, auth) => {
   const denied = await requireWorkforceAttendanceAdminAddon(auth.orgId, auth, "qr")
   if (denied) return denied
+  const mfaDenied = await requireWorkforceAttendanceSecurityMfa(auth.orgId, auth)
+  if (mfaDenied) return mfaDenied
   const parsed = WorkforceAttendanceStationCreateSchema.safeParse(await req.json().catch(() => ({})))
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid attendance QR station" }, { status: 400 })

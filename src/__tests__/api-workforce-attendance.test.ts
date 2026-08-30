@@ -94,6 +94,12 @@ function mobileProofRequest(body: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(prisma.user.findFirst).mockResolvedValue({
+    require2fa: true,
+    totpEnabled: true,
+    smsAuthEnabled: false,
+    verifiedPhone: null,
+  } as never)
   vi.mocked(prisma.organization.findUnique).mockResolvedValue({
     plan: "enterprise",
     addons: [],
@@ -159,6 +165,28 @@ describe("Workforce attendance H5 API boundaries", () => {
     expect(apiKeyDenied.status).toBe(403)
     expect(await apiKeyDenied.json()).toMatchObject({ code: "WORKFORCE_ATTENDANCE_ADMIN_REQUIRED" })
     expect(prisma.workforceAttendanceQrStation.create).toHaveBeenCalledTimes(1)
+  })
+
+  it("rejects QR-station creation before writes when the accountable admin has not enrolled mandatory MFA", async () => {
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({
+      require2fa: false,
+      totpEnabled: false,
+      smsAuthEnabled: false,
+      verifiedPhone: null,
+    } as never)
+
+    const response = await callStationPost(webRequest({
+      code: "HQ",
+      name: "Head office",
+      siteId: "site_1",
+      geofenceRevisionId: "geofence_1",
+      effectiveFrom: "2026-08-29T09:00:00.000Z",
+    }), ADMIN)
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toMatchObject({ code: "WORKFORCE_ATTENDANCE_MFA_REQUIRED" })
+    expect(prisma.workforceAttendanceQrStation.create).not.toHaveBeenCalled()
+    expect(prisma.workforceSite.findFirst).not.toHaveBeenCalled()
   })
 
   it("renders the issued QR server-side without requiring the admin browser to handle token text", async () => {

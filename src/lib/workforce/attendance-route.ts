@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server"
 import type { AuthResult } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
 import { clientIp } from "@/lib/request-ip"
+import { resolveTwoFactorMethod } from "@/lib/two-factor-policy"
 import {
   workforceAttendanceCapabilitiesFromTenant,
   type WorkforceAttendanceCapabilities,
@@ -47,6 +48,53 @@ export function workforceAttendanceAddonDisabled(addon: WorkforceAttendanceAddon
     code: "TENANT_CAPABILITY_DISABLED",
     capabilityId,
     capabilityStatus: "disabled",
+  }, { status: 403 })
+}
+
+/**
+ * Critical attendance controls create, issue, approve, revoke, or retire an
+ * authentication/verification factor. They require a live admin session that
+ * has a currently enrolled mandatory MFA factor. `resolveCookieSession`
+ * already rejects a session pending MFA; this fresh user lookup additionally
+ * prevents a role-only admin session from silently bypassing the Workforce
+ * policy when its factor is removed after sign-in.
+ *
+ * This deliberately does not read, reset, or expose recovery codes. MFA
+ * recovery remains on the established accountable auth path.
+ */
+export async function requireWorkforceAttendanceSecurityMfa(
+  organizationId: string,
+  auth: Pick<AuthResult, "userId" | "principalType">,
+): Promise<Response | null> {
+  if (auth.principalType !== "session") return workforceAttendanceSecurityMfaRequired()
+
+  try {
+    const user = await prisma.user.findFirst({
+      where: { id: auth.userId, organizationId, isActive: true },
+      select: {
+        require2fa: true,
+        totpEnabled: true,
+        smsAuthEnabled: true,
+        verifiedPhone: true,
+      },
+    })
+    if (!user || !user.require2fa || !resolveTwoFactorMethod(user)) {
+      return workforceAttendanceSecurityMfaRequired()
+    }
+    return null
+  } catch (error) {
+    console.error("[workforce/attendance] MFA policy lookup failed", error)
+    return NextResponse.json({
+      error: "Unable to verify Workforce attendance MFA policy.",
+      code: "WORKFORCE_ATTENDANCE_MFA_UNAVAILABLE",
+    }, { status: 503 })
+  }
+}
+
+function workforceAttendanceSecurityMfaRequired(): NextResponse {
+  return NextResponse.json({
+    error: "A mandatory enrolled MFA factor is required for this Workforce attendance security action.",
+    code: "WORKFORCE_ATTENDANCE_MFA_REQUIRED",
   }, { status: 403 })
 }
 

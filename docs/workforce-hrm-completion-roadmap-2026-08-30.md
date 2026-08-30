@@ -359,6 +359,7 @@ Owner roles are accountabilities, not individual names:
 | 2026-08-30T08:41:02+02:00 | C5a attendance administration UI (partial) | 21% | C5 0% | 42/161 | 0/15 | QR image display/expiry/disable and verified-device approve/revoke are visible without exposing token/key material; physical, recovery and assurance conditions remain open |
 | 2026-08-30T12:40:00+02:00 | C5c attendance endpoint throttling (partial) | 31% | C5 8% | 62/161 | 0/15 | WF-C5-011 has fingerprinted, endpoint-specific rate limits for QR issue and device enrollment/proof before sensitive database work; central limiting, key rotation and security-alert operations remain open, so no completion credit is claimed |
 | 2026-08-30T12:50:00+02:00 | C5d review-only security triage (partial) | 31% | C5 8% | 62/161 | 0/15 | WF-C5-009 now returns bounded aggregate prompts for concurrent trusted-device use, enrollment churn and action volume without exposing device IDs or mutating facts; formal case lifecycle, granular reviewer scope and pilot calibration remain open, so no completion credit is claimed |
+| 2026-08-30T12:42:35+02:00 | C5e attendance-security MFA gate (partial) | 31% | C5 8% | 63/161 | 0/15 | WF-C5-002 now fails closed on critical QR/device-admin mutations unless the accountable live admin has mandatory enrolled MFA; per-use/mobile step-up, hardware assurance and physical evidence remain open, so no completion credit is claimed |
 
 **C3 phase display reconciliation (2026-08-30T08:11:00+02:00):** the C3
 register contains 11 tasks and its scope did not change. Earlier C3 ledger
@@ -548,7 +549,7 @@ remaining recoverable for legitimate employees.
 | ID | Pri | Status | Owner | Task | Acceptance evidence |
 |---|---:|---|---|---|---|
 | WF-C5-001 | P0 | OWNER DECISION | Product/Security/HR | Approve assurance tiers per tenant/site/action and BYOD/company-device rules | OD-02 and OD-04 resolved |
-| WF-C5-002 | P0 | PLANNED | Security/Backend | Require HRM-specific MFA/step-up policy for critical employee/admin actions; preserve recovery codes and accountable reset | Session/auth tests; no role silently bypasses policy |
+| WF-C5-002 | P0 | PARTIAL | Security/Backend | Require HRM-specific MFA/step-up policy for critical employee/admin actions; preserve recovery codes and accountable reset | [Attendance-security MFA evidence](./workforce-c5-attendance-security-mfa-evidence-2026-08-30.md): critical QR/device-admin mutations fail closed unless the accountable live admin has an enrolled mandatory MFA factor; mobile per-use step-up remains open |
 | WF-C5-003 | P0 | PLANNED | Mobile/Security | Generate non-exportable Android Keystore keys with user-auth properties and safe rotation | Physical device proves key lifecycle |
 | WF-C5-004 | P0 | PLANNED | Backend/Security | Validate Android Key Attestation chain, roots, revocation, security level, challenge and app identity server-side | Software key/emulator/untrusted chain rejected or reviewed |
 | WF-C5-005 | P0 | PLANNED | Mobile/Backend | Bind Play Integrity verdict/request hash to the exact attendance action; use tiered response and no verdict cache | Tampered/replayed request tests |
