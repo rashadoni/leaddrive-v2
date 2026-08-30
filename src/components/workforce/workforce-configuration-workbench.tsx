@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
-import { CalendarClock, Check, Loader2, Pencil, Plus, RefreshCw, Settings2, X } from "lucide-react"
+import { CalendarClock, Check, Loader2, MapPin, Pencil, Plus, RefreshCw, Settings2, X } from "lucide-react"
 import { PageDescription } from "@/components/page-description"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -97,6 +97,20 @@ type WorkforceSiteAssignment = {
   agentId: string
   siteId: string
   kind: "PRIMARY" | "SECONDARY" | "TEMPORARY"
+  effectiveFrom: string
+  effectiveTo: string | null
+}
+
+type WorkforceSiteGeofenceRevision = {
+  id: string
+  siteId: string
+  revision: number
+  kind: "CIRCLE"
+  centerLatitude: number
+  centerLongitude: number
+  radiusMeters: number
+  calibrationReference: string
+  definitionHash: string
   effectiveFrom: string
   effectiveTo: string | null
 }
@@ -210,6 +224,23 @@ type SiteAssignmentForm = {
   effectiveTo: string
 }
 
+type SiteForm = {
+  code: string
+  name: string
+  type: "OFFICE" | "WAREHOUSE" | "TEMPORARY" | "CUSTOMER" | "HOME_REMOTE"
+  timezone: string
+  addressLabel: string
+  responsibleTeamId: string
+}
+
+type GeofenceForm = {
+  effectiveFrom: string
+  centerLatitude: string
+  centerLongitude: string
+  radiusMeters: string
+  calibrationReference: string
+}
+
 function emptyPolicyForm(): PolicyForm {
   const definition = workforceDefaultPolicyDefinition()
   return {
@@ -257,6 +288,21 @@ function emptySiteAssignmentForm(): SiteAssignmentForm {
   return { agentId: "", siteId: "", kind: "PRIMARY", effectiveFrom: "", effectiveTo: "" }
 }
 
+function emptySiteForm(): SiteForm {
+  return {
+    code: "",
+    name: "",
+    type: "OFFICE",
+    timezone: workforceDefaultShiftDefinition().timezone,
+    addressLabel: "",
+    responsibleTeamId: "",
+  }
+}
+
+function emptyGeofenceForm(): GeofenceForm {
+  return { effectiveFrom: "", centerLatitude: "", centerLongitude: "", radiusMeters: "", calibrationReference: "" }
+}
+
 function asDateKey(value: string | null): string {
   return value ? value.slice(0, 10) : ""
 }
@@ -264,6 +310,16 @@ function asDateKey(value: string | null): string {
 function integerValue(value: string): number | null {
   const parsed = Number(value)
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null
+}
+
+function finiteNumberValue(value: string): number | null {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function mapPinHref(latitude: number | null, longitude: number | null): string | null {
+  if (latitude == null || longitude == null || !Number.isFinite(latitude) || !Number.isFinite(longitude)) return null
+  return `https://www.openstreetmap.org/?mlat=${encodeURIComponent(String(latitude))}&mlon=${encodeURIComponent(String(longitude))}#map=18/${latitude}/${longitude}`
 }
 
 function messageForError(cause: unknown, fallback: string): string {
@@ -285,6 +341,11 @@ export function WorkforceConfigurationWorkbench() {
   const [bulkAssignmentDraft, setBulkAssignmentDraft] = useState<BulkAssignmentDraft>(emptyBulkAssignmentDraft)
   const [bulkAssignmentPreview, setBulkAssignmentPreview] = useState<BulkAssignmentPreview | null>(null)
   const [siteAssignmentForm, setSiteAssignmentForm] = useState<SiteAssignmentForm>(emptySiteAssignmentForm)
+  const [siteForm, setSiteForm] = useState<SiteForm>(emptySiteForm)
+  const [geofenceForm, setGeofenceForm] = useState<GeofenceForm>(emptyGeofenceForm)
+  const [selectedGeofenceSiteId, setSelectedGeofenceSiteId] = useState("")
+  const [geofenceRevisions, setGeofenceRevisions] = useState<WorkforceSiteGeofenceRevision[]>([])
+  const [geofenceError, setGeofenceError] = useState<string | null>(null)
   const [defaultAssignmentForm, setDefaultAssignmentForm] = useState<DefaultAssignmentForm>(emptyDefaultAssignmentForm)
   const [assignmentPreviewDate, setAssignmentPreviewDate] = useState("")
   const [assignmentPreview, setAssignmentPreview] = useState<WorkforceShiftAssignment[] | null>(null)
@@ -292,6 +353,9 @@ export function WorkforceConfigurationWorkbench() {
   const [savingShift, setSavingShift] = useState(false)
   const [savingAssignment, setSavingAssignment] = useState(false)
   const [savingSiteAssignment, setSavingSiteAssignment] = useState(false)
+  const [savingSite, setSavingSite] = useState(false)
+  const [savingGeofence, setSavingGeofence] = useState(false)
+  const [loadingGeofences, setLoadingGeofences] = useState(false)
   const [savingDefaultAssignment, setSavingDefaultAssignment] = useState(false)
   const [previewingAssignments, setPreviewingAssignments] = useState(false)
   const [previewingBulkAssignments, setPreviewingBulkAssignments] = useState(false)
@@ -357,6 +421,32 @@ export function WorkforceConfigurationWorkbench() {
     void load()
   }, [load])
 
+  const loadGeofenceRevisions = useCallback(async () => {
+    if (!organizationId || !selectedGeofenceSiteId) {
+      setGeofenceRevisions([])
+      setGeofenceError(null)
+      return
+    }
+    setLoadingGeofences(true)
+    setGeofenceError(null)
+    try {
+      const result = await request(
+        "/api/v1/workforce/configuration/sites/" + encodeURIComponent(selectedGeofenceSiteId) + "/geofences",
+        "GET",
+      ) as { revisions: WorkforceSiteGeofenceRevision[] }
+      setGeofenceRevisions(result.revisions)
+    } catch (cause) {
+      setGeofenceRevisions([])
+      setGeofenceError(messageForError(cause, t("geofenceLoadFailed")))
+    } finally {
+      setLoadingGeofences(false)
+    }
+  }, [organizationId, request, selectedGeofenceSiteId, t])
+
+  useEffect(() => {
+    void loadGeofenceRevisions()
+  }, [loadGeofenceRevisions])
+
   const policyFormTitle = policyForm.id ? t("editPolicyDraft") : t("newPolicyDraft")
   const shiftFormTitle = shiftForm.id ? t("editShiftDraft") : t("newShiftDraft")
   const weekdays = useMemo(() => [
@@ -385,6 +475,15 @@ export function WorkforceConfigurationWorkbench() {
     site.code,
     t("directoryStatus." + site.status),
   ].join(" · ")
+  const selectedGeofenceSite = data?.sites.find((site) => site.id === selectedGeofenceSiteId) ?? null
+  const geofenceImpactAssignments = useMemo(() => {
+    if (!data || !selectedGeofenceSiteId || !geofenceForm.effectiveFrom) return []
+    return data.siteAssignments.filter((assignment) => (
+      assignment.siteId === selectedGeofenceSiteId
+      && assignment.effectiveFrom.slice(0, 10) <= geofenceForm.effectiveFrom
+      && (assignment.effectiveTo == null || assignment.effectiveTo.slice(0, 10) >= geofenceForm.effectiveFrom)
+    ))
+  }, [data, geofenceForm.effectiveFrom, selectedGeofenceSiteId])
 
   function startPolicyEdit(policy: WorkforcePolicy) {
     const definition = policy.definition
@@ -565,6 +664,72 @@ export function WorkforceConfigurationWorkbench() {
     }
   }
 
+  async function saveSite(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!siteForm.code.trim() || !siteForm.name.trim() || !siteForm.timezone.trim()) {
+      toast.error(t("siteValidationFailed"))
+      return
+    }
+    setSavingSite(true)
+    try {
+      const result = await request("/api/v1/workforce/configuration/sites", "POST", {
+        code: siteForm.code.trim(),
+        name: siteForm.name.trim(),
+        type: siteForm.type,
+        timezone: siteForm.timezone.trim(),
+        addressLabel: siteForm.addressLabel.trim() || null,
+        responsibleTeamId: siteForm.responsibleTeamId || null,
+      }) as { site: WorkforceSite }
+      setSiteForm(emptySiteForm())
+      setSelectedGeofenceSiteId(result.site.id)
+      toast.success(t("siteSaved"))
+      await load()
+    } catch (cause) {
+      toast.error(messageForError(cause, t("saveFailed")))
+    } finally {
+      setSavingSite(false)
+    }
+  }
+
+  async function saveGeofence(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const centerLatitude = finiteNumberValue(geofenceForm.centerLatitude)
+    const centerLongitude = finiteNumberValue(geofenceForm.centerLongitude)
+    const radiusMeters = integerValue(geofenceForm.radiusMeters)
+    if (
+      !selectedGeofenceSite
+      || !geofenceForm.effectiveFrom
+      || centerLatitude == null || centerLatitude < -90 || centerLatitude > 90
+      || centerLongitude == null || centerLongitude < -180 || centerLongitude > 180
+      || radiusMeters == null || radiusMeters < 25 || radiusMeters > 5_000
+      || !geofenceForm.calibrationReference.trim()
+    ) {
+      toast.error(t("geofenceValidationFailed"))
+      return
+    }
+    setSavingGeofence(true)
+    try {
+      await request(
+        "/api/v1/workforce/configuration/sites/" + encodeURIComponent(selectedGeofenceSite.id) + "/geofences",
+        "POST",
+        {
+          effectiveFrom: geofenceForm.effectiveFrom,
+          centerLatitude,
+          centerLongitude,
+          radiusMeters,
+          calibrationReference: geofenceForm.calibrationReference.trim(),
+        },
+      )
+      setGeofenceForm(emptyGeofenceForm())
+      toast.success(t("geofenceSaved"))
+      await loadGeofenceRevisions()
+    } catch (cause) {
+      toast.error(messageForError(cause, t("saveFailed")))
+    } finally {
+      setSavingGeofence(false)
+    }
+  }
+
   async function saveDefaultAssignment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!defaultAssignmentForm.templateId || !defaultAssignmentForm.effectiveFrom) {
@@ -710,6 +875,46 @@ export function WorkforceConfigurationWorkbench() {
                 {data.sites.length === 0 ? <p className="py-3 text-sm text-muted-foreground">{t("directoryNoSites")}</p> : null}
               </div>
             </div>
+          </div>
+        </section>
+
+        <section aria-labelledby="workforce-site-geofence-configuration" className="border-y border-zinc-200 py-6 dark:border-zinc-700">
+          <div className="flex gap-3"><MapPin className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" /><div><h2 id="workforce-site-geofence-configuration" className="text-lg font-semibold">{t("sitesGeofencesTitle")}</h2><p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">{t("sitesGeofencesHint")}</p></div></div>
+          <div className="mt-6 grid gap-8 border-t border-zinc-200 pt-6 dark:border-zinc-700 xl:grid-cols-2">
+            <form onSubmit={saveSite} className="space-y-4" aria-labelledby="workforce-site-create-title">
+              <div><h3 id="workforce-site-create-title" className="font-medium">{t("newSite")}</h3><p className="mt-1 text-sm leading-6 text-muted-foreground">{t("siteFutureOnlyHint")}</p></div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5"><label htmlFor="workforce-site-code" className="text-sm font-medium">{t("siteCode")}</label><Input id="workforce-site-code" value={siteForm.code} onChange={(event) => setSiteForm((current) => ({ ...current, code: event.target.value }))} maxLength={64} required /></div>
+                <div className="space-y-1.5"><label htmlFor="workforce-site-name" className="text-sm font-medium">{t("name")}</label><Input id="workforce-site-name" value={siteForm.name} onChange={(event) => setSiteForm((current) => ({ ...current, name: event.target.value }))} maxLength={160} required /></div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Select id="workforce-site-type" label={t("siteType")} value={siteForm.type} onChange={(event) => setSiteForm((current) => ({ ...current, type: event.target.value as SiteForm["type"] }))}>
+                  {(["OFFICE", "WAREHOUSE", "TEMPORARY", "CUSTOMER", "HOME_REMOTE"] as const).map((type) => <option key={type} value={type}>{t("siteTypes." + type)}</option>)}
+                </Select>
+                <div className="space-y-1.5"><label htmlFor="workforce-site-timezone" className="text-sm font-medium">{t("timezone")}</label><Input id="workforce-site-timezone" value={siteForm.timezone} onChange={(event) => setSiteForm((current) => ({ ...current, timezone: event.target.value }))} required /></div>
+              </div>
+              <div className="space-y-1.5"><label htmlFor="workforce-site-address" className="text-sm font-medium">{t("siteAddressLabel")}</label><Input id="workforce-site-address" value={siteForm.addressLabel} onChange={(event) => setSiteForm((current) => ({ ...current, addressLabel: event.target.value }))} maxLength={500} /></div>
+              <Select id="workforce-site-responsible-team" label={t("siteResponsibleTeam")} value={siteForm.responsibleTeamId} onChange={(event) => setSiteForm((current) => ({ ...current, responsibleTeamId: event.target.value }))}>
+                <option value="">{t("organizationScope")}</option>{data.roster.teams.map((team) => <option key={team.id} value={team.id}>{team.name}{team.code ? " · " + team.code : ""} · {t(team.isActive ? "directoryStatus.ACTIVE" : "directoryStatus.INACTIVE")}</option>)}
+              </Select>
+              <Button type="submit" className="min-h-12" disabled={savingSite}>{savingSite ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <Plus />}{t("createSite")}</Button>
+            </form>
+            <form onSubmit={saveGeofence} className="space-y-4 border-t border-zinc-200 pt-6 dark:border-zinc-700 xl:border-l xl:border-t-0 xl:pl-8 xl:pt-0" aria-labelledby="workforce-geofence-revision-title">
+              <div><h3 id="workforce-geofence-revision-title" className="font-medium">{t("newGeofenceRevision")}</h3><p className="mt-1 text-sm leading-6 text-muted-foreground">{t("geofenceFutureOnlyHint")}</p></div>
+              <Select id="workforce-geofence-site" label={t("sitePicker")} value={selectedGeofenceSiteId} onChange={(event) => { setSelectedGeofenceSiteId(event.target.value); setGeofenceForm(emptyGeofenceForm()) }}>
+                <option value="">{t("selectSite")}</option>{data.sites.filter((site) => site.status === "ACTIVE").map((site) => <option key={site.id} value={site.id}>{siteLabel(site)}</option>)}
+              </Select>
+              {selectedGeofenceSite ? <>
+                <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-1.5"><label htmlFor="workforce-geofence-latitude" className="text-sm font-medium">{t("geofenceLatitude")}</label><Input id="workforce-geofence-latitude" type="number" min="-90" max="90" step="any" value={geofenceForm.centerLatitude} onChange={(event) => setGeofenceForm((current) => ({ ...current, centerLatitude: event.target.value }))} required /></div><div className="space-y-1.5"><label htmlFor="workforce-geofence-longitude" className="text-sm font-medium">{t("geofenceLongitude")}</label><Input id="workforce-geofence-longitude" type="number" min="-180" max="180" step="any" value={geofenceForm.centerLongitude} onChange={(event) => setGeofenceForm((current) => ({ ...current, centerLongitude: event.target.value }))} required /></div></div>
+                <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-1.5"><label htmlFor="workforce-geofence-radius" className="text-sm font-medium">{t("geofenceRadius")}</label><Input id="workforce-geofence-radius" type="number" min="25" max="5000" step="1" value={geofenceForm.radiusMeters} onChange={(event) => setGeofenceForm((current) => ({ ...current, radiusMeters: event.target.value }))} required /></div><div className="space-y-1.5"><label htmlFor="workforce-geofence-effective-from" className="text-sm font-medium">{t("effectiveFrom")}</label><Input id="workforce-geofence-effective-from" type="date" value={geofenceForm.effectiveFrom} onChange={(event) => setGeofenceForm((current) => ({ ...current, effectiveFrom: event.target.value }))} required /></div></div>
+                <div className="space-y-1.5"><label htmlFor="workforce-geofence-calibration" className="text-sm font-medium">{t("geofenceCalibrationReference")}</label><Input id="workforce-geofence-calibration" value={geofenceForm.calibrationReference} onChange={(event) => setGeofenceForm((current) => ({ ...current, calibrationReference: event.target.value }))} maxLength={500} required /><p className="text-xs leading-5 text-muted-foreground">{t("geofenceCalibrationHint")}</p></div>
+                {mapPinHref(finiteNumberValue(geofenceForm.centerLatitude), finiteNumberValue(geofenceForm.centerLongitude)) ? <a className="inline-flex min-h-11 items-center text-sm underline underline-offset-4" href={mapPinHref(finiteNumberValue(geofenceForm.centerLatitude), finiteNumberValue(geofenceForm.centerLongitude))!} target="_blank" rel="noreferrer">{t("openGeofenceMapPin")}</a> : null}
+                <div className="rounded-md bg-muted/50 p-3 text-sm" aria-live="polite"><p className="font-medium">{t("geofenceImpactPreview", { count: geofenceImpactAssignments.length, date: geofenceForm.effectiveFrom || "—" })}</p><p className="mt-1 text-muted-foreground">{t("geofenceImpactHint")}</p>{geofenceImpactAssignments.length > 0 ? <ul className="mt-2 list-disc pl-5 text-muted-foreground">{geofenceImpactAssignments.map((assignment) => <li key={assignment.id}>{employeeLabel(data.directoryEmployees.find((employee) => employee.id === assignment.agentId) ?? { id: assignment.agentId, name: null, email: null, externalCode: null, teamId: null, status: "INACTIVE", team: null })}</li>)}</ul> : null}</div>
+                <Button type="submit" className="min-h-12" disabled={savingGeofence}>{savingGeofence ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <MapPin />}{t("scheduleGeofenceRevision")}</Button>
+              </> : <p className="text-sm text-muted-foreground">{t("geofenceSiteRequired")}</p>}
+              {geofenceError ? <p className="text-sm text-destructive" role="alert">{geofenceError}</p> : null}
+              {selectedGeofenceSite ? <div className="border-t border-zinc-200 pt-4 dark:border-zinc-700"><h4 className="font-medium">{t("geofenceRevisionHistory")}</h4>{loadingGeofences ? <p className="mt-2 text-sm text-muted-foreground">{t("loading")}</p> : <div className="mt-3 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">{geofenceRevisions.map((revision) => <article key={revision.id} className="py-3"><div className="flex flex-wrap items-center gap-2"><Badge variant="outline">{t("version", { value: revision.revision })}</Badge><Badge variant="secondary">{t("geofenceCircle", { radius: revision.radiusMeters })}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{t("effectiveRange", { start: asDateKey(revision.effectiveFrom), end: revision.effectiveTo ? asDateKey(revision.effectiveTo) : t("openEnded") })}</p>{mapPinHref(revision.centerLatitude, revision.centerLongitude) ? <a className="mt-1 inline-flex text-sm underline underline-offset-4" href={mapPinHref(revision.centerLatitude, revision.centerLongitude)!} target="_blank" rel="noreferrer">{t("openGeofenceMapPin")}</a> : null}</article>)}{geofenceRevisions.length === 0 ? <p className="py-3 text-sm text-muted-foreground">{t("noGeofenceRevisions")}</p> : null}</div>}</div> : null}
+            </form>
           </div>
         </section>
 
