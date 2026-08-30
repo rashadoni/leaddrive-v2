@@ -41,7 +41,10 @@ import {
   recordWorkforceAttendanceVerification,
   WorkforceAttendanceTrustError,
 } from "@/lib/workforce/attendance-trust"
-import { writeWorkforceSnapshotsIfReadyInTransaction } from "@/lib/workforce/snapshot-writer"
+import {
+  assertWorkforceSnapshottedSegmentInTransaction,
+  writeWorkforceSnapshotsIfReadyInTransaction,
+} from "@/lib/workforce/snapshot-writer"
 import {
   workforceAuditRequestMetadata,
   writeWorkforceWorkdayAuditInTransaction,
@@ -2596,6 +2599,14 @@ export const POST = withMobileRls(async (req, auth) => {
                   workdayId: workday.id,
                   workday,
                   resolutionAt: new Date(),
+                })
+              }
+              if (workdayInput.segmentId) {
+                await assertWorkforceSnapshottedSegmentInTransaction(tx, {
+                  organizationId: orgId,
+                  workdayId: workday.id,
+                  agentId,
+                  segmentId: workdayInput.segmentId,
                 })
               }
               await writeWorkforceWorkdayAuditInTransaction(tx, {

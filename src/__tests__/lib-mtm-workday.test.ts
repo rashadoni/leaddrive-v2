@@ -100,6 +100,43 @@ describe("MTM mobile workday", () => {
     })
   })
 
+  it("binds a v3 request to its scheduled segment without changing legacy v2 replay hashes", () => {
+    const payload = {
+      action: "START",
+      id: "workday-1",
+      schemaVersion: 3,
+      occurredAt: "2026-07-15T07:55:00.000Z",
+      claimedAt: "2026-07-15T07:55:00.000Z",
+      capturedAt: "2026-07-15T07:54:58.000Z",
+      queuedAt: "2026-07-15T07:55:01.000Z",
+      segmentId: "segment-baku-hq",
+    }
+    const parsed = parseMtmWorkdayEvent(
+      payload,
+      "event-segment",
+      "Asia/Baku",
+      new Date("2026-07-15T08:00:00.000Z"),
+    )
+
+    expect(parsed.error).toBeNull()
+    expect(parsed.input).toMatchObject({ schemaVersion: 3, segmentId: "segment-baku-hq" })
+    expect(mtmWorkdayRequestHash(SCOPE, parsed.input!)).not.toBe(mtmWorkdayRequestHash(SCOPE, {
+      ...parsed.input!,
+      segmentId: "segment-warehouse",
+    }))
+
+    const legacy = parseMtmWorkdayEvent({ ...payload, schemaVersion: 2, segmentId: undefined }, "event-legacy", "Asia/Baku", new Date("2026-07-15T08:00:00.000Z"))
+    expect(legacy.error).toBeNull()
+    expect(mtmWorkdayRequestHash(SCOPE, legacy.input!)).toBe(mtmWorkdayRequestHash(SCOPE, {
+      ...legacy.input!,
+      segmentId: "ignored-by-v2",
+    }))
+
+    const invalidLegacySegment = parseMtmWorkdayEvent({ ...payload, schemaVersion: 2 }, "event-invalid-legacy", "Asia/Baku", new Date("2026-07-15T08:00:00.000Z"))
+    expect(invalidLegacySegment.input).toBeNull()
+    expect(invalidLegacySegment.error).toContain("schemaVersion 3")
+  })
+
   it("marks a delayed but in-window claim for human review without rejecting it", () => {
     const parsed = parseMtmWorkdayEvent({
       action: "START",

@@ -336,6 +336,7 @@ Owner roles are accountabilities, not individual names:
 | 2026-08-30T07:06:15+02:00 | C3e timezone/DST matrix | 13% | C3 50% | 26/161 | 0/15 | WF-C3-010 accepted: signed shift dates remain organization-local across leap day and UTC rollover; DST gaps/folds are refused until an explicit policy exists |
 | 2026-08-30T07:09:57+02:00 | C3f bulk assignment preview | 13% | C3 50% | 26/161 | 0/15 | WF-C3-009 remains partial: session-admin preview reports ready/no-change/conflict outcomes for up to 200 employees but cannot mass-write or claim approval semantics |
 | 2026-08-30T07:16:08+02:00 | C2g schedule/site safety | 13% | C2 45% | 26/161 | 0/15 | WF-C2-009 remains partial: shift/site timezone and effective eligibility are pinned at START; transition claims bind only to the employee's snapshotted SITE segment; travel semantics remain owner-gated |
+| 2026-08-30T07:24:00+02:00 | C1d segment-bound idempotency | 13% | C1 50% | 27/161 | 0/15 | WF-C1-004 accepted: v3 request hashes bind the snapshotted segment ID, while v1/v2 hashes remain byte-for-byte compatible with their existing replay contract |
 | 2026-08-30T07:40:00+02:00 | C1e historical team membership | 14% | C1 60% | 28/161 | 0/15 | WF-C1-006 accepted: append-only employee team facts resolve delayed workdays at start time; pre-history never falls back to mutable current team |
 
 ### 6.1 Progress reporting contract
@@ -414,7 +415,7 @@ client timestamps into trusted attendance facts.
 | WF-C1-001 | P0 | DONE | Backend | Define `claimedAt`, `capturedAt`, `queuedAt`, `serverReceivedAt`, `appliedAt` and server-authoritative work date semantics | Versioned contract and parser tests |
 | WF-C1-002 | P0 | DONE | Backend | Enforce the confirmed seven-day offline horizon in every legacy and new mutation path | Boundary, future-skew and replay tests for all adapters |
 | WF-C1-003 | P0 | DONE | Backend/HR | Route delayed/anomalous claims to `PENDING_REVIEW`; never silently manufacture an approved historical workday | [`workforce-c1-review-evidence-2026-08-30.md`](./workforce-c1-review-evidence-2026-08-30.md): immutable claim/receipt review case, explicit legacy state and targeted contracts |
-| WF-C1-004 | P0 | PARTIAL | Backend | Bind idempotency hash to actor, action, claimed time, segment, evidence references and schema version | Changed payload under one operation ID fails deterministically; C2 segment identity is not available yet |
+| WF-C1-004 | P0 | DONE | Backend | Bind idempotency hash to actor, action, claimed time, segment, evidence references and schema version | [`workforce-c1-segment-idempotency-evidence-2026-08-30.md`](./workforce-c1-segment-idempotency-evidence-2026-08-30.md): v3 segment digest and pinned-schedule assertion; v1/v2 replay digest remains compatible |
 | WF-C1-005 | P0 | DONE | Backend | Make standard audit projection atomic with accepted workday/request decisions or derive it reliably from the immutable ledger | Failure-injection proves no accepted mutation lacks reconstructable audit |
 | WF-C1-006 | P1 | DONE | Backend/HR | Resolve policy/team/site assignment from an effective-dated employee history, not the current team after a delayed upload | [`workforce-c1-team-history-evidence-2026-08-30.md`](./workforce-c1-team-history-evidence-2026-08-30.md): immutable membership timeline, no pre-history guessing, and transfer-during-offline contract |
 | WF-C1-007 | P1 | PLANNED | Backend | Add impossible clock/order and duplicate active-shift risk codes without breaking idempotent retries | Property/concurrency tests cover state transitions |
@@ -433,6 +434,8 @@ until C2 segment binding and the remaining C1 tasks exist; delayed-claim review
 is in [`workforce-c1-review-evidence-2026-08-30.md`](./workforce-c1-review-evidence-2026-08-30.md)
 and atomic audit evidence is in
 [`workforce-c1-audit-projection-evidence-2026-08-30.md`](./workforce-c1-audit-projection-evidence-2026-08-30.md).
+The v3 segment-bound replay contract is recorded in
+[`workforce-c1-segment-idempotency-evidence-2026-08-30.md`](./workforce-c1-segment-idempotency-evidence-2026-08-30.md).
 Historical membership selection is in
 [`workforce-c1-team-history-evidence-2026-08-30.md`](./workforce-c1-team-history-evidence-2026-08-30.md).
 

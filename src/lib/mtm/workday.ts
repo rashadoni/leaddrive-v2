@@ -32,8 +32,10 @@ export type MtmWorkdayEventInput = {
   queuedAt: Date | null
   /** Server receipt is assigned by the parser, never accepted from the client. */
   serverReceivedAt: Date
-  /** `1` is the legacy envelope, `2` supplies full client provenance. */
+  /** `1` is legacy, `2` supplies provenance, `3` may bind a schedule segment. */
   schemaVersion: number
+  /** v3 optional segment context, bound into the request digest when present. */
+  segmentId?: string | null
   /** Server-derived C1 review disposition; never trusted from the client. */
   attendanceReview: WorkforceAttendanceClaimReview
   workDateKey: string
@@ -100,7 +102,7 @@ const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000
 /** The owner-approved maximum age for an offline Workforce attendance claim. */
 export const WORKFORCE_WORKDAY_OFFLINE_HORIZON_MS = 7 * 24 * 60 * 60 * 1000
 export const WORKFORCE_WORKDAY_LEGACY_SCHEMA_VERSION = 1
-export const WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION = 2
+export const WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION = 3
 /** Safe default: a claim delayed beyond ordinary sync jitter requires human review. */
 export const WORKFORCE_ATTENDANCE_REVIEW_DELAY_MS = 15 * 60 * 1000
 export const WORKFORCE_ATTENDANCE_REVIEW_POLICY_VERSION = "c1-delay-review-v1"
@@ -246,7 +248,7 @@ function attendanceReviewResult(value: {
 }
 
 function validSchemaVersion(value: unknown): value is number {
-  return value === WORKFORCE_WORKDAY_LEGACY_SCHEMA_VERSION || value === WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION
+  return value === WORKFORCE_WORKDAY_LEGACY_SCHEMA_VERSION || value === 2 || value === WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION
 }
 
 function parseAttendanceEvidence(value: unknown): {
@@ -336,8 +338,19 @@ export function parseMtmWorkdayEvent(
   const claimedAt = hasExplicitValue(value, "claimedAt") ? parseTimestamp(value.claimedAt) : occurredAt
   const capturedAt = hasExplicitValue(value, "capturedAt") ? parseTimestamp(value.capturedAt) : occurredAt
   const queuedAt = hasExplicitValue(value, "queuedAt") ? parseTimestamp(value.queuedAt) : null
+  const segmentId = value.segmentId == null
+    ? null
+    : validId(value.segmentId)
+      ? value.segmentId.trim()
+      : null
   if (!claimedAt || !capturedAt || (hasExplicitValue(value, "queuedAt") && !queuedAt)) {
     return { input: null, error: "Workday provenance timestamps are invalid" }
+  }
+  if (value.segmentId != null && segmentId == null) {
+    return { input: null, error: "segmentId must be a valid Workforce segment identifier" }
+  }
+  if (segmentId != null && schemaVersion < WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION) {
+    return { input: null, error: "segmentId requires Workforce workday schemaVersion 3" }
   }
   if (claimedAt.getTime() !== occurredAt.getTime()) {
     return { input: null, error: "claimedAt must equal occurredAt for a Workforce workday event" }
@@ -357,11 +370,11 @@ export function parseMtmWorkdayEvent(
   }
   if (
     (queuedAt && (claimedAt > queuedAt || capturedAt > queuedAt))
-    || (schemaVersion === WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION && !queuedAt)
+    || (schemaVersion >= 2 && !queuedAt)
   ) {
     return {
       input: null,
-      error: "Workday provenance must be ordered and schemaVersion 2 requires queuedAt",
+      error: `Workday provenance must be ordered and schemaVersion ${schemaVersion} requires queuedAt`,
     }
   }
   if (!validCoordinatePair(value.latitude, value.longitude)) {
@@ -390,6 +403,7 @@ export function parseMtmWorkdayEvent(
       queuedAt,
       serverReceivedAt: now,
       schemaVersion,
+      segmentId,
       attendanceReview,
       workDateKey: currentDateKey(occurredAt, timezone),
       latitude: value.latitude == null ? null : value.latitude as number,
@@ -408,9 +422,8 @@ export function parseMtmWorkdayEvent(
  * the operation ID. Raw QR/device proof never enters the database through
  * this function.
  *
- * C2 will replace `segment: null` with the effective-dated segment reference;
- * keeping the reserved field in the canonical wire shape prevents a later
- * segment-aware schema from quietly weakening existing request hashing.
+ * v1/v2 payloads retain their historical digest shape. v3 adds an optional
+ * segment identity without changing replays of existing immutable facts.
  */
 export function mtmWorkdayRequestHash(scope: WorkdayScope, input: MtmWorkdayEventInput): string {
   const qrFingerprint = input.attendance?.qrToken
@@ -419,8 +432,9 @@ export function mtmWorkdayRequestHash(scope: WorkdayScope, input: MtmWorkdayEven
   const deviceProofFingerprint = input.attendance?.device
     ? createHash("sha256").update(input.attendance.device.signature).digest("hex")
     : null
+  const includesSegment = input.schemaVersion >= 3
   return createHash("sha256").update(JSON.stringify({
-    version: 2,
+    version: includesSegment ? 3 : 2,
     organizationId: scope.organizationId,
     agentId: scope.agentId,
     clientEventId: input.clientEventId,
@@ -430,7 +444,7 @@ export function mtmWorkdayRequestHash(scope: WorkdayScope, input: MtmWorkdayEven
     capturedAt: input.capturedAt.toISOString(),
     queuedAt: input.queuedAt?.toISOString() ?? null,
     schemaVersion: input.schemaVersion,
-    segment: null,
+    segment: includesSegment ? input.segmentId ?? null : null,
     latitude: input.latitude,
     longitude: input.longitude,
     accuracy: input.accuracy,

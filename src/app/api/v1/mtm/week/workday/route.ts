@@ -23,7 +23,10 @@ import {
   evaluateWorkforceMobileWriteAccess,
   workforceMobileWriteFenceResponse,
 } from "@/lib/workforce/mobile-write-fence"
-import { writeWorkforceSnapshotsIfReadyInTransaction } from "@/lib/workforce/snapshot-writer"
+import {
+  assertWorkforceSnapshottedSegmentInTransaction,
+  writeWorkforceSnapshotsIfReadyInTransaction,
+} from "@/lib/workforce/snapshot-writer"
 import {
   workforceAuditRequestMetadata,
   writeWorkforceWorkdayAuditInTransaction,
@@ -297,6 +300,14 @@ export const POST = withWorkforceCompatAuth("write", async (req, auth) => {
               workdayId: workday.id,
               workday,
               resolutionAt: new Date(),
+            })
+          }
+          if (input.segmentId) {
+            await assertWorkforceSnapshottedSegmentInTransaction(tx, {
+              organizationId: auth.orgId,
+              workdayId: workday.id,
+              agentId: actor.agentId!,
+              segmentId: input.segmentId,
             })
           }
           await writeWorkforceWorkdayAuditInTransaction(tx, {
