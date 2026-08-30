@@ -503,6 +503,7 @@ type WorkforceRetentionClient = Pick<Prisma.TransactionClient,
   | "workforcePolicy"
   | "workforceShiftTemplate"
   | "workforceShiftAssignment"
+  | "workforceShiftDefaultAssignment"
   | "workforcePolicySnapshot"
   | "workforceShiftSnapshot"
   | "workforceWorkdayScheduleSnapshot"
@@ -525,7 +526,9 @@ export async function assertTenantWorkforceRetentionClear(
     client.mtmAgentWorkdayEvent.count({ where: { organizationId: orgId } }),
     client.mtmAgentLocation.count({ where: { organizationId: orgId } }),
     client.mtmHrmRequest.count({ where: { organizationId: orgId } }),
-    client.mtmWorkCalendarDay.count({ where: { organizationId: orgId, source: "HRM" } }),
+    client.mtmWorkCalendarDay.count({
+      where: { organizationId: orgId, source: { in: ["HRM", "WORKFORCE_LEAVE", "WORKFORCE_ABSENCE"] } },
+    }),
     client.mtmAuditLog.count({
       where: {
         organizationId: orgId,
@@ -545,6 +548,7 @@ export async function assertTenantWorkforceRetentionClear(
     client.workforcePolicy.count({ where: { organizationId: orgId } }),
     client.workforceShiftTemplate.count({ where: { organizationId: orgId } }),
     client.workforceShiftAssignment.count({ where: { organizationId: orgId } }),
+    client.workforceShiftDefaultAssignment.count({ where: { organizationId: orgId } }),
     client.workforcePolicySnapshot.count({ where: { organizationId: orgId } }),
     client.workforceShiftSnapshot.count({ where: { organizationId: orgId } }),
     client.workforceWorkdayScheduleSnapshot.count({ where: { organizationId: orgId } }),

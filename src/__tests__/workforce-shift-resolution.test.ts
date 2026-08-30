@@ -164,6 +164,30 @@ describe("Workforce shift resolution", () => {
     expect(result).toMatchObject({ id: "org-default", scope: "ORGANIZATION" })
   })
 
+  it("uses a dated default timeline before the legacy isDefault compatibility fallback", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "agent-1", teamId: "team-b" } as never)
+    vi.mocked(prisma.workforceShiftDefaultAssignment.findMany).mockResolvedValue([{
+      id: "default-v2",
+      template: template("org-default-v2", null),
+    }] as never)
+
+    const result = await resolveCurrentWorkforceShift(prisma, {
+      organizationId: "org-workforce",
+      agentId: "agent-1",
+      workDate: WORK_DATE,
+      workdayStartedAt: WORKDAY_STARTED_AT,
+      resolutionAt: RESOLUTION_AT,
+    })
+
+    expect(result).toMatchObject({
+      id: "org-default-v2", scope: "ORGANIZATION", assignmentId: null, defaultAssignmentId: "default-v2",
+    })
+    expect(prisma.workforceShiftTemplate.findMany).not.toHaveBeenCalled()
+    expect(prisma.workforceShiftDefaultAssignment.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ organizationId: "org-workforce" }),
+    }))
+  })
+
   it("uses one effective-dated employee assignment before defaults and exposes its audit identity", async () => {
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "agent-1", teamId: "team-b" } as never)
     vi.mocked(prisma.workforceShiftAssignment.findMany).mockResolvedValue([

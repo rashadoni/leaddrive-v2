@@ -24,6 +24,8 @@ export type ResolvedWorkforceShiftTemplate = WorkforceShiftTemplateCandidate & {
   scope: "TEAM" | "ORGANIZATION"
   /** Null means that the selected template was an organization/team default. */
   assignmentId: string | null
+  /** Null for an explicit employee assignment or compatibility `isDefault` fallback. */
+  defaultAssignmentId: string | null
   schedule: WorkforceResolvedShift | null
 }
 
@@ -97,6 +99,7 @@ export function resolveWorkforceShiftTemplate(input: {
   currentTeamId: string | null
   template: WorkforceShiftTemplateCandidate
   assignmentId?: string | null
+  defaultAssignmentId?: string | null
 }): ResolvedWorkforceShiftTemplate {
   validateResolutionWindow(input)
 
@@ -140,6 +143,7 @@ export function resolveWorkforceShiftTemplate(input: {
     ...input.template,
     scope,
     assignmentId: input.assignmentId ?? null,
+    defaultAssignmentId: input.defaultAssignmentId ?? null,
     schedule: resolveWorkforceShiftDay({
       workDate: input.workDate,
       definition: input.template.definition,
@@ -150,15 +154,16 @@ export function resolveWorkforceShiftTemplate(input: {
 
 type WorkforceShiftResolverDb = Pick<
   PrismaClient,
-  "mtmAgent" | "workforceShiftAssignment" | "workforceShiftTemplate"
+  "mtmAgent" | "workforceShiftAssignment" | "workforceShiftDefaultAssignment" | "workforceShiftTemplate"
 >
 
 /**
  * Loads the employee's current team and resolves an effective-dated personal
- * assignment unless a caller explicitly selects a template; it otherwise
- * falls back to the active team/organization default. No active-agent filter
- * is applied: an already-started offline day must not change semantics merely
- * because the directory row was later deactivated.
+ * assignment unless a caller explicitly selects a template. It then uses the
+ * new effective-dated organization-default timeline before the compatibility
+ * `isDefault` fallback. No active-agent filter is applied: an already-started
+ * offline day must not change semantics merely because the directory row was
+ * later deactivated.
  */
 export async function resolveCurrentWorkforceShift(
   db: WorkforceShiftResolverDb,
@@ -214,11 +219,33 @@ export async function resolveCurrentWorkforceShift(
   }
   const assignment = assignments[0] ?? null
   const templateId = input.templateId ?? assignment?.templateId
+  const defaultSelections = templateId
+    ? []
+    : await db.workforceShiftDefaultAssignment.findMany({
+        where: {
+          organizationId: input.organizationId,
+          effectiveFrom: { lte: workDate },
+          OR: [{ effectiveTo: null }, { effectiveTo: { gte: workDate } }],
+        },
+        select: {
+          id: true,
+          template: { select: templateSelect },
+        },
+      })
+  if (defaultSelections.length > 1) {
+    throw new WorkforceShiftResolutionError(
+      "WORKFORCE_SHIFT_ASSIGNMENT_AMBIGUOUS",
+      "More than one Workforce default shift applies to this workday",
+    )
+  }
+  const defaultSelection = defaultSelections[0] ?? null
   const template = templateId
     ? await db.workforceShiftTemplate.findFirst({
         where: { id: templateId, organizationId: input.organizationId },
         select: templateSelect,
       })
+    : defaultSelection
+      ? defaultSelection.template
     : await (async () => {
         const defaults = await db.workforceShiftTemplate.findMany({
           where: {
@@ -248,5 +275,6 @@ export async function resolveCurrentWorkforceShift(
     currentTeamId: agent.teamId,
     template,
     assignmentId: assignment?.id ?? null,
+    defaultAssignmentId: defaultSelection?.id ?? null,
   })
 }

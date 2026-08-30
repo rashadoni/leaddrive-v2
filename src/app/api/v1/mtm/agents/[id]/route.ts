@@ -218,7 +218,13 @@ export const DELETE = withRls(async (req, auth, { params }: { params: Promise<{ 
         tx.mtmAgentWorkdayEvent.count({ where: { organizationId: orgId, agentId: id } }),
         tx.mtmAgentLocation.count({ where: { organizationId: orgId, agentId: id } }),
         tx.mtmHrmRequest.count({ where: { organizationId: orgId, agentId: id } }),
-        tx.mtmWorkCalendarDay.count({ where: { organizationId: orgId, agentId: id, source: "HRM" } }),
+        tx.mtmWorkCalendarDay.count({
+          where: {
+            organizationId: orgId,
+            agentId: id,
+            source: { in: ["HRM", "WORKFORCE_LEAVE", "WORKFORCE_ABSENCE"] },
+          },
+        }),
         tx.mtmAuditLog.count({
           where: {
             organizationId: orgId,
