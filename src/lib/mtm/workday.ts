@@ -131,6 +131,16 @@ const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000
 export const WORKFORCE_WORKDAY_OFFLINE_HORIZON_MS = 7 * 24 * 60 * 60 * 1000
 export const WORKFORCE_WORKDAY_LEGACY_SCHEMA_VERSION = 1
 export const WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION = 3
+/**
+ * Additive client-compatibility contract.  Keep this separate from the
+ * parser's human-readable error: legacy adapters consume that text, while
+ * newer mobile clients can use the structured range to recover safely.
+ */
+export const WORKFORCE_WORKDAY_SCHEMA_SUPPORT = {
+  min: WORKFORCE_WORKDAY_LEGACY_SCHEMA_VERSION,
+  max: WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION,
+  action: "UPGRADE_CLIENT",
+} as const
 /** Safe default: a claim delayed beyond ordinary sync jitter requires human review. */
 export const WORKFORCE_ATTENDANCE_REVIEW_DELAY_MS = 15 * 60 * 1000
 export const WORKFORCE_ATTENDANCE_REVIEW_POLICY_VERSION = "c1-delay-review-v1"
@@ -140,6 +150,15 @@ export type WorkforceAttendanceClaimReview = {
   reasonCode: "DELAYED_CLAIM" | null
   policyVersion: string
   claimAgeSeconds: number
+}
+
+export type MtmWorkdayEventParseResult = {
+  input: MtmWorkdayEventInput | null
+  error: string | null
+  /** Present only when the client sent an unsupported schema version. */
+  code?: "WORKFORCE_WORKDAY_SCHEMA_UNSUPPORTED"
+  /** Additive recovery data; never replaces the legacy error text. */
+  schemaSupport?: typeof WORKFORCE_WORKDAY_SCHEMA_SUPPORT
 }
 
 export type WorkforceAttendanceClaimReviewResult = {
@@ -361,7 +380,7 @@ export function parseMtmWorkdayEvent(
   timezone: string,
   now = new Date(),
   options: { enforceOfflineHorizon?: boolean } = {},
-): { input: MtmWorkdayEventInput | null; error: string | null } {
+): MtmWorkdayEventParseResult {
   if (!data || typeof data !== "object" || Array.isArray(data)) {
     return { input: null, error: "Workday event data must be an object" }
   }
@@ -391,7 +410,9 @@ export function parseMtmWorkdayEvent(
   if (!validSchemaVersion(schemaVersion)) {
     return {
       input: null,
-      error: `Unsupported Workforce workday schemaVersion; expected ${WORKFORCE_WORKDAY_LEGACY_SCHEMA_VERSION} or ${WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION}`,
+      error: `Unsupported Workforce workday schemaVersion; supported range is ${WORKFORCE_WORKDAY_SCHEMA_SUPPORT.min} through ${WORKFORCE_WORKDAY_SCHEMA_SUPPORT.max}`,
+      code: "WORKFORCE_WORKDAY_SCHEMA_UNSUPPORTED",
+      schemaSupport: WORKFORCE_WORKDAY_SCHEMA_SUPPORT,
     }
   }
 

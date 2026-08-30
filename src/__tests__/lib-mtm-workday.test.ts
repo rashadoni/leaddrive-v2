@@ -264,6 +264,10 @@ describe("MTM mobile workday", () => {
     )
     expect(unsupported.input).toBeNull()
     expect(unsupported.error).toContain("Unsupported Workforce workday schemaVersion")
+    expect(unsupported).toMatchObject({
+      code: "WORKFORCE_WORKDAY_SCHEMA_UNSUPPORTED",
+      schemaSupport: { min: 1, max: 3, action: "UPGRADE_CLIENT" },
+    })
   })
 
   it("binds a C1 replay to actor, evidence references and provenance instead of only visible event fields", () => {

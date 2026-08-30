@@ -686,6 +686,7 @@ export const POST = withMobileRls(async (req, auth) => {
     // These fail the same way on every retry, cost no DB work, and are
     // deliberately not pinned ("error" results are retryable by design).
     let validationError: string | undefined
+    let validationServerData: object | undefined
     let nextAction: NextActionInput | null = null
     let visitActionInput: ReturnType<typeof VisitActionResultSchema.parse> | null = null
     let workdayInput: MtmWorkdayEventInput | null = null
@@ -792,6 +793,12 @@ export const POST = withMobileRls(async (req, auth) => {
         const parsed = parseMtmWorkdayEvent(data, operationId, workdayTimezone, receivedAt)
         workdayInput = parsed.input
         validationError = parsed.error ?? undefined
+        validationServerData = parsed.code
+          ? {
+              code: parsed.code,
+              ...(parsed.schemaSupport ? { schemaSupport: parsed.schemaSupport } : {}),
+            }
+          : undefined
       }
     } else if (entity === "commitments") {
       if (opType !== "create") {
@@ -869,7 +876,12 @@ export const POST = withMobileRls(async (req, auth) => {
       validationError = `Unsupported entity "${entity}"`
     }
     if (validationError) {
-      results.push({ operationId, status: "error", error: validationError })
+      results.push({
+        operationId,
+        status: "error",
+        error: validationError,
+        ...(validationServerData ? { serverData: validationServerData } : {}),
+      })
       continue
     }
     const workdayRequestHash = workdayInput

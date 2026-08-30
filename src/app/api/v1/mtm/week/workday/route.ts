@@ -209,7 +209,8 @@ export const POST = withWorkforceCompatAuth("write", async (req, auth) => {
   if (!input) {
     return NextResponse.json({
       error: parsed.error ?? "Invalid workday event",
-      code: "MTM_WEEK_WORKDAY_INVALID",
+      code: parsed.code ?? "MTM_WEEK_WORKDAY_INVALID",
+      ...(parsed.schemaSupport ? { schemaSupport: parsed.schemaSupport } : {}),
     }, { status: 400 })
   }
 

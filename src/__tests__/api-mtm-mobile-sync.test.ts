@@ -660,6 +660,36 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
     }
   })
 
+  it("isolates an unsupported Workforce schema with an additive upgrade response", async () => {
+    const response = await PushPOST(makePushReq({
+      operations: [{
+        operationId: "op-workday-unsupported-schema",
+        op: "create",
+        entity: "workdays",
+        data: {
+          action: "START",
+          id: "workday-unsupported-schema",
+          occurredAt: new Date().toISOString(),
+          schemaVersion: 4,
+        },
+        clientTimestamp: Date.now(),
+      }],
+    }))
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      results: [{
+        operationId: "op-workday-unsupported-schema",
+        status: "error",
+        serverData: {
+          code: "WORKFORCE_WORKDAY_SCHEMA_UNSUPPORTED",
+          schemaSupport: { min: 1, max: 3, action: "UPGRADE_CLIENT" },
+        },
+      }],
+    })
+    expect(prisma.mtmSyncOperation.create).not.toHaveBeenCalled()
+  })
+
   it("isolates a disabled route-field operation without writing it", async () => {
     // Capability checks are intentionally operation-scoped: an old client can
     // keep a workforce operation in the same outbox batch without losing it

@@ -1264,6 +1264,29 @@ describe("POST /api/v1/mtm/week/workday", () => {
     expect(prisma.mtmAgentWorkdayEvent.create).not.toHaveBeenCalled()
   })
 
+  it("returns an additive structured upgrade response for an unsupported workday schema", async () => {
+    vi.mocked(resolveMtmRouteActor).mockResolvedValue({
+      agentId: "agent-1",
+      role: "AGENT",
+      scopedAgentIds: ["agent-1"],
+    } as never)
+
+    const response = await POST_WORKDAY(workdayRequest({
+      clientEventId: "event-unsupported-schema",
+      action: "START",
+      id: "workday-unsupported-schema",
+      occurredAt: "2026-07-15T08:00:00.000Z",
+      schemaVersion: 4,
+    }))
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toMatchObject({
+      code: "WORKFORCE_WORKDAY_SCHEMA_UNSUPPORTED",
+      schemaSupport: { min: 1, max: 3, action: "UPGRADE_CLIENT" },
+    })
+    expect(prisma.$transaction).not.toHaveBeenCalled()
+  })
+
   it("applies an agent self transition transactionally and records the immutable event", async () => {
     vi.mocked(resolveMtmRouteActor).mockResolvedValue({
       agentId: "agent-1",
