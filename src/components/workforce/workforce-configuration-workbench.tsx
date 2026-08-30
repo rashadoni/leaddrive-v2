@@ -70,6 +70,35 @@ type WorkforceEmployee = {
   email: string | null
   externalCode: string | null
   teamId: string | null
+  status: "ACTIVE" | "INACTIVE" | "SUSPENDED"
+  team: WorkforceTeam | null
+}
+
+type WorkforceTeam = {
+  id: string
+  name: string
+  code: string | null
+  isActive: boolean
+}
+
+type WorkforceSite = {
+  id: string
+  code: string
+  name: string
+  type: string
+  timezone: string
+  addressLabel: string | null
+  responsibleTeamId: string | null
+  status: "ACTIVE" | "ARCHIVED"
+}
+
+type WorkforceSiteAssignment = {
+  id: string
+  agentId: string
+  siteId: string
+  kind: "PRIMARY" | "SECONDARY" | "TEMPORARY"
+  effectiveFrom: string
+  effectiveTo: string | null
 }
 
 type WorkforceShiftRosterItem = {
@@ -105,8 +134,12 @@ type ConfigurationData = {
   assignments: WorkforceShiftAssignment[]
   roster: {
     employees: WorkforceEmployee[]
+    teams: WorkforceTeam[]
     shiftTemplates: WorkforceShiftRosterItem[]
   }
+  sites: WorkforceSite[]
+  siteAssignments: WorkforceSiteAssignment[]
+  directoryEmployees: WorkforceEmployee[]
   defaultAssignments: WorkforceShiftDefaultAssignment[]
 }
 
@@ -169,6 +202,14 @@ type DefaultAssignmentForm = {
   effectiveFrom: string
 }
 
+type SiteAssignmentForm = {
+  agentId: string
+  siteId: string
+  kind: "PRIMARY" | "SECONDARY" | "TEMPORARY"
+  effectiveFrom: string
+  effectiveTo: string
+}
+
 function emptyPolicyForm(): PolicyForm {
   const definition = workforceDefaultPolicyDefinition()
   return {
@@ -212,6 +253,10 @@ function emptyDefaultAssignmentForm(): DefaultAssignmentForm {
   return { templateId: "", effectiveFrom: "" }
 }
 
+function emptySiteAssignmentForm(): SiteAssignmentForm {
+  return { agentId: "", siteId: "", kind: "PRIMARY", effectiveFrom: "", effectiveTo: "" }
+}
+
 function asDateKey(value: string | null): string {
   return value ? value.slice(0, 10) : ""
 }
@@ -239,12 +284,14 @@ export function WorkforceConfigurationWorkbench() {
   const [assignmentForm, setAssignmentForm] = useState<AssignmentForm>(emptyAssignmentForm)
   const [bulkAssignmentDraft, setBulkAssignmentDraft] = useState<BulkAssignmentDraft>(emptyBulkAssignmentDraft)
   const [bulkAssignmentPreview, setBulkAssignmentPreview] = useState<BulkAssignmentPreview | null>(null)
+  const [siteAssignmentForm, setSiteAssignmentForm] = useState<SiteAssignmentForm>(emptySiteAssignmentForm)
   const [defaultAssignmentForm, setDefaultAssignmentForm] = useState<DefaultAssignmentForm>(emptyDefaultAssignmentForm)
   const [assignmentPreviewDate, setAssignmentPreviewDate] = useState("")
   const [assignmentPreview, setAssignmentPreview] = useState<WorkforceShiftAssignment[] | null>(null)
   const [savingPolicy, setSavingPolicy] = useState(false)
   const [savingShift, setSavingShift] = useState(false)
   const [savingAssignment, setSavingAssignment] = useState(false)
+  const [savingSiteAssignment, setSavingSiteAssignment] = useState(false)
   const [savingDefaultAssignment, setSavingDefaultAssignment] = useState(false)
   const [previewingAssignments, setPreviewingAssignments] = useState(false)
   const [previewingBulkAssignments, setPreviewingBulkAssignments] = useState(false)
@@ -270,12 +317,19 @@ export function WorkforceConfigurationWorkbench() {
     setLoading(true)
     setError(null)
     try {
-      const [policyData, shiftData, assignmentData, defaultAssignmentData] = await Promise.all([
+      const [policyData, shiftData, assignmentData, siteData, siteAssignmentData, defaultAssignmentData] = await Promise.all([
         request("/api/v1/workforce/configuration/policies", "GET") as Promise<{ policies: WorkforcePolicy[] }>,
         request("/api/v1/workforce/configuration/shifts", "GET") as Promise<{ shifts: WorkforceShift[] }>,
         request("/api/v1/workforce/configuration/assignments", "GET") as Promise<{
           assignments: WorkforceShiftAssignment[]
-          roster: { employees: WorkforceEmployee[], shiftTemplates: WorkforceShiftRosterItem[] }
+          roster: { employees: WorkforceEmployee[], teams: WorkforceTeam[], shiftTemplates: WorkforceShiftRosterItem[] }
+          directoryEmployees: WorkforceEmployee[]
+        }>,
+        request("/api/v1/workforce/configuration/sites", "GET") as Promise<{
+          sites: WorkforceSite[]
+        }>,
+        request("/api/v1/workforce/configuration/site-assignments", "GET") as Promise<{
+          assignments: WorkforceSiteAssignment[]
         }>,
         request("/api/v1/workforce/configuration/shifts/default", "GET") as Promise<{
           defaultAssignments: WorkforceShiftDefaultAssignment[]
@@ -286,6 +340,9 @@ export function WorkforceConfigurationWorkbench() {
         shifts: shiftData.shifts,
         assignments: assignmentData.assignments,
         roster: assignmentData.roster,
+        sites: siteData.sites,
+        siteAssignments: siteAssignmentData.assignments,
+        directoryEmployees: assignmentData.directoryEmployees,
         defaultAssignments: defaultAssignmentData.defaultAssignments,
       })
     } catch (cause) {
@@ -311,9 +368,11 @@ export function WorkforceConfigurationWorkbench() {
     { value: 6, key: "saturday" },
     { value: 7, key: "sunday" },
   ], [])
-  const employeeLabel = (employee: WorkforceEmployee) => (
-    employee.name || employee.email || employee.externalCode || t("unnamedEmployee")
-  )
+  const employeeLabel = (employee: WorkforceEmployee) => [
+    employee.name || employee.email || employee.externalCode || t("unnamedEmployee"),
+    employee.team?.name ?? t("unassignedTeam"),
+    t("directoryStatus." + employee.status),
+  ].join(" · ")
   const bulkAssignmentEmployeesById = useMemo(() => new Map(
     (data?.roster.employees ?? []).map((employee) => [employee.id, employee]),
   ), [data?.roster.employees])
@@ -321,6 +380,11 @@ export function WorkforceConfigurationWorkbench() {
     const employee = bulkAssignmentEmployeesById.get(agentId)
     return employee ? employeeLabel(employee) : t("unavailableEmployee")
   }
+  const siteLabel = (site: WorkforceSite) => [
+    site.name,
+    site.code,
+    t("directoryStatus." + site.status),
+  ].join(" · ")
 
   function startPolicyEdit(policy: WorkforcePolicy) {
     const definition = policy.definition
@@ -479,6 +543,28 @@ export function WorkforceConfigurationWorkbench() {
     }
   }
 
+  async function saveSiteAssignment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!siteAssignmentForm.agentId || !siteAssignmentForm.siteId || !siteAssignmentForm.effectiveFrom || (siteAssignmentForm.kind === "TEMPORARY" && !siteAssignmentForm.effectiveTo)) {
+      toast.error(t("siteAssignmentValidationFailed"))
+      return
+    }
+    setSavingSiteAssignment(true)
+    try {
+      await request("/api/v1/workforce/configuration/site-assignments", "POST", {
+        ...siteAssignmentForm,
+        effectiveTo: siteAssignmentForm.effectiveTo || null,
+      })
+      setSiteAssignmentForm(emptySiteAssignmentForm())
+      toast.success(t("siteAssignmentSaved"))
+      await load()
+    } catch (cause) {
+      toast.error(messageForError(cause, t("saveFailed")))
+    } finally {
+      setSavingSiteAssignment(false)
+    }
+  }
+
   async function saveDefaultAssignment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!defaultAssignmentForm.templateId || !defaultAssignmentForm.effectiveFrom) {
@@ -597,6 +683,36 @@ export function WorkforceConfigurationWorkbench() {
       {error ? <section className="border-y border-zinc-200 py-5 dark:border-zinc-700" role="alert"><p className="font-medium">{t("loadFailed")}</p><p className="mt-1 text-sm text-muted-foreground">{error}</p></section> : null}
 
       {data ? <>
+        <section aria-labelledby="workforce-directory" className="border-y border-zinc-200 py-6 dark:border-zinc-700">
+          <div className="flex flex-col gap-1">
+            <h2 id="workforce-directory" className="text-lg font-semibold">{t("directoryTitle")}</h2>
+            <p className="max-w-3xl text-sm leading-6 text-muted-foreground">{t("directoryHint")}</p>
+          </div>
+          <div className="mt-6 grid gap-6 border-t border-zinc-200 pt-6 dark:border-zinc-700 lg:grid-cols-3">
+            <div>
+              <h3 className="font-medium">{t("directoryTeams")}</h3>
+              <div className="mt-3 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
+                {data.roster.teams.map((team) => <article key={team.id} className="py-3"><div className="flex flex-wrap items-center gap-2"><p className="font-medium">{team.name}</p>{team.code ? <Badge variant="outline">{team.code}</Badge> : null}<Badge variant={team.isActive ? "default" : "secondary"}>{t(team.isActive ? "directoryStatus.ACTIVE" : "directoryStatus.INACTIVE")}</Badge></div></article>)}
+                {data.roster.teams.length === 0 ? <p className="py-3 text-sm text-muted-foreground">{t("directoryNoTeams")}</p> : null}
+              </div>
+            </div>
+            <div>
+              <h3 className="font-medium">{t("directoryEmployees")}</h3>
+              <div className="mt-3 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
+                {data.directoryEmployees.map((employee) => <article key={employee.id} className="py-3"><p className="font-medium">{employee.name || employee.email || employee.externalCode || t("unnamedEmployee")}</p><p className="mt-1 text-sm text-muted-foreground">{employee.team?.name ?? t("unassignedTeam")}</p><Badge className="mt-2" variant={employee.status === "ACTIVE" ? "default" : employee.status === "SUSPENDED" ? "destructive" : "secondary"}>{t("directoryStatus." + employee.status)}</Badge></article>)}
+                {data.directoryEmployees.length === 0 ? <p className="py-3 text-sm text-muted-foreground">{t("directoryNoEmployees")}</p> : null}
+              </div>
+            </div>
+            <div>
+              <h3 className="font-medium">{t("directorySites")}</h3>
+              <div className="mt-3 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
+                {data.sites.map((site) => <article key={site.id} className="py-3"><div className="flex flex-wrap items-center gap-2"><p className="font-medium">{site.name}</p><Badge variant="outline">{site.code}</Badge><Badge variant={site.status === "ACTIVE" ? "default" : "secondary"}>{t("directoryStatus." + site.status)}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{site.type} · {site.timezone}</p></article>)}
+                {data.sites.length === 0 ? <p className="py-3 text-sm text-muted-foreground">{t("directoryNoSites")}</p> : null}
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section aria-labelledby="workforce-policy-configuration" className="border-y border-zinc-200 py-6 dark:border-zinc-700">
           <div className="flex flex-col gap-1">
             <h2 id="workforce-policy-configuration" className="text-lg font-semibold">{t("policiesTitle")}</h2>
@@ -610,7 +726,7 @@ export function WorkforceConfigurationWorkbench() {
             </div>
             <div className="mt-5 grid gap-4 lg:grid-cols-2">
               <div className="space-y-1.5"><label htmlFor="workforce-policy-name" className="text-sm font-medium">{t("name")}</label><Input id="workforce-policy-name" value={policyForm.name} onChange={(event) => setPolicyForm((current) => ({ ...current, name: event.target.value }))} maxLength={160} required /></div>
-              <div className="space-y-1.5"><label htmlFor="workforce-policy-team" className="text-sm font-medium">{t("teamId")}</label><Input id="workforce-policy-team" value={policyForm.teamId} onChange={(event) => setPolicyForm((current) => ({ ...current, teamId: event.target.value }))} maxLength={191} placeholder={t("organizationScope")} disabled={Boolean(policyForm.id)} /><p className="text-xs leading-5 text-muted-foreground">{policyForm.id ? t("scopeImmutableHint") : t("teamIdHint")}</p></div>
+              <div className="space-y-1.5"><Select id="workforce-policy-team" label={t("teamScopePicker")} value={policyForm.teamId} onChange={(event) => setPolicyForm((current) => ({ ...current, teamId: event.target.value }))} disabled={Boolean(policyForm.id)}><option value="">{t("organizationScope")}</option>{data.roster.teams.map((team) => <option key={team.id} value={team.id}>{team.name}{team.code ? " · " + team.code : ""} · {t(team.isActive ? "directoryStatus.ACTIVE" : "directoryStatus.INACTIVE")}</option>)}</Select><p className="text-xs leading-5 text-muted-foreground">{policyForm.id ? t("scopeImmutableHint") : t("teamPickerHint")}</p></div>
               <div className="space-y-1.5"><label htmlFor="workforce-policy-from" className="text-sm font-medium">{t("effectiveFrom")}</label><Input id="workforce-policy-from" type="date" value={policyForm.effectiveFrom} onChange={(event) => setPolicyForm((current) => ({ ...current, effectiveFrom: event.target.value }))} required /></div>
               <div className="space-y-1.5"><label htmlFor="workforce-policy-to" className="text-sm font-medium">{t("effectiveTo")}</label><Input id="workforce-policy-to" type="date" value={policyForm.effectiveTo} onChange={(event) => setPolicyForm((current) => ({ ...current, effectiveTo: event.target.value }))} /><p className="text-xs leading-5 text-muted-foreground">{t("openEndedHint")}</p></div>
             </div>
@@ -647,7 +763,7 @@ export function WorkforceConfigurationWorkbench() {
             <div className="mt-5 grid gap-4 lg:grid-cols-2">
               <div className="space-y-1.5"><label htmlFor="workforce-shift-code" className="text-sm font-medium">{t("shiftCode")}</label><Input id="workforce-shift-code" value={shiftForm.code} onChange={(event) => setShiftForm((current) => ({ ...current, code: event.target.value }))} maxLength={80} required disabled={Boolean(shiftForm.id)} /><p className="text-xs leading-5 text-muted-foreground">{shiftForm.id ? t("scopeImmutableHint") : null}</p></div>
               <div className="space-y-1.5"><label htmlFor="workforce-shift-name" className="text-sm font-medium">{t("name")}</label><Input id="workforce-shift-name" value={shiftForm.name} onChange={(event) => setShiftForm((current) => ({ ...current, name: event.target.value }))} maxLength={160} required /></div>
-              <div className="space-y-1.5"><label htmlFor="workforce-shift-team" className="text-sm font-medium">{t("teamId")}</label><Input id="workforce-shift-team" value={shiftForm.teamId} onChange={(event) => setShiftForm((current) => ({ ...current, teamId: event.target.value }))} maxLength={191} placeholder={t("organizationScope")} disabled={Boolean(shiftForm.id)} /></div>
+              <div className="space-y-1.5"><Select id="workforce-shift-team" label={t("teamScopePicker")} value={shiftForm.teamId} onChange={(event) => setShiftForm((current) => ({ ...current, teamId: event.target.value }))} disabled={Boolean(shiftForm.id)}><option value="">{t("organizationScope")}</option>{data.roster.teams.map((team) => <option key={team.id} value={team.id}>{team.name}{team.code ? " · " + team.code : ""} · {t(team.isActive ? "directoryStatus.ACTIVE" : "directoryStatus.INACTIVE")}</option>)}</Select></div>
               <div className="space-y-1.5"><label htmlFor="workforce-shift-timezone" className="text-sm font-medium">{t("timezone")}</label><Input id="workforce-shift-timezone" value={shiftForm.timezone} onChange={(event) => setShiftForm((current) => ({ ...current, timezone: event.target.value }))} placeholder="Asia/Baku" required /></div>
               <div className="space-y-1.5"><label htmlFor="workforce-shift-start" className="text-sm font-medium">{t("shiftStart")}</label><Input id="workforce-shift-start" type="time" value={shiftForm.startTime} onChange={(event) => setShiftForm((current) => ({ ...current, startTime: event.target.value }))} required /></div>
               <div className="space-y-1.5"><label htmlFor="workforce-shift-end" className="text-sm font-medium">{t("shiftEnd")}</label><Input id="workforce-shift-end" type="time" value={shiftForm.endTime} onChange={(event) => setShiftForm((current) => ({ ...current, endTime: event.target.value }))} required /></div>
@@ -692,7 +808,7 @@ export function WorkforceConfigurationWorkbench() {
               <div><h3 id="workforce-individual-assignment-title" className="font-medium">{t("scheduleIndividualAssignment")}</h3><p className="mt-1 text-sm leading-6 text-muted-foreground">{t("individualAssignmentHint")}</p></div>
               <Select id="workforce-assignment-employee" label={t("employee")} value={assignmentForm.agentId} onChange={(event) => setAssignmentForm((current) => ({ ...current, agentId: event.target.value }))} required>
                 <option value="">{t("selectEmployee")}</option>
-                {data.roster.employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name || employee.email || employee.externalCode || t("unnamedEmployee")}</option>)}
+                {data.roster.employees.map((employee) => <option key={employee.id} value={employee.id}>{employeeLabel(employee)}</option>)}
               </Select>
               <Select id="workforce-assignment-template" label={t("shiftTemplate")} value={assignmentForm.templateId} onChange={(event) => setAssignmentForm((current) => ({ ...current, templateId: event.target.value }))} required>
                 <option value="">{t("selectShiftTemplate")}</option>
@@ -724,6 +840,48 @@ export function WorkforceConfigurationWorkbench() {
           <div className="mt-8 grid gap-8 border-t border-zinc-200 pt-6 dark:border-zinc-700 xl:grid-cols-2">
             <div><h3 className="font-medium">{t("assignmentTimelineTitle")}</h3><p className="mt-1 text-sm leading-6 text-muted-foreground">{t("assignmentTimelineHint")}</p><div className="mt-4 border-t border-zinc-200 dark:border-zinc-700">{data.assignments.map((assignment) => <article key={assignment.id} className="py-4"><p className="font-medium">{assignment.agent.name || assignment.agent.email || assignment.agent.externalCode || t("unnamedEmployee")}</p><p className="mt-1 text-sm text-muted-foreground">{assignment.template.name} · {assignment.template.code} · {t("effectiveRange", { start: asDateKey(assignment.effectiveFrom), end: assignment.effectiveTo ? asDateKey(assignment.effectiveTo) : t("openEnded") })}</p></article>)}{data.assignments.length === 0 ? <p className="py-4 text-sm text-muted-foreground">{t("noAssignments")}</p> : null}</div></div>
             <div className="border-t border-zinc-200 pt-6 dark:border-zinc-700 xl:border-l xl:border-t-0 xl:pl-8 xl:pt-0"><form onSubmit={saveDefaultAssignment} className="space-y-4" aria-labelledby="workforce-default-assignment-title"><div><h3 id="workforce-default-assignment-title" className="font-medium">{t("scheduleDefaultAssignment")}</h3><p className="mt-1 text-sm leading-6 text-muted-foreground">{t("defaultAssignmentHint")}</p></div><Select id="workforce-default-assignment-template" label={t("shiftTemplate")} value={defaultAssignmentForm.templateId} onChange={(event) => setDefaultAssignmentForm((current) => ({ ...current, templateId: event.target.value }))} required><option value="">{t("selectOrganizationShiftTemplate")}</option>{data.roster.shiftTemplates.filter((template) => template.teamId === null).map((template) => <option key={template.id} value={template.id}>{template.name} · {template.code}</option>)}</Select><div className="space-y-1.5"><label htmlFor="workforce-default-assignment-effective-from" className="text-sm font-medium">{t("effectiveFrom")}</label><Input id="workforce-default-assignment-effective-from" type="date" value={defaultAssignmentForm.effectiveFrom} onChange={(event) => setDefaultAssignmentForm((current) => ({ ...current, effectiveFrom: event.target.value }))} required /></div><Button type="submit" variant="outline" className="min-h-12" disabled={savingDefaultAssignment || !data.roster.shiftTemplates.some((template) => template.teamId === null)}>{savingDefaultAssignment ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <CalendarClock />}{t("scheduleDefaultAssignment")}</Button></form><div className="mt-6 border-t border-zinc-200 dark:border-zinc-700"><h3 className="pt-5 font-medium">{t("defaultTimelineTitle")}</h3><p className="mt-1 text-sm leading-6 text-muted-foreground">{t("defaultTimelineHint")}</p>{data.defaultAssignments.map((assignment) => <article key={assignment.id} className="py-4"><p className="font-medium">{assignment.template.name} · {assignment.template.code}</p><p className="mt-1 text-sm text-muted-foreground">{t("effectiveRange", { start: asDateKey(assignment.effectiveFrom), end: assignment.effectiveTo ? asDateKey(assignment.effectiveTo) : t("openEnded") })}</p></article>)}{data.defaultAssignments.length === 0 ? <p className="py-4 text-sm text-muted-foreground">{t("noDefaultAssignments")}</p> : null}</div></div>
+          </div>
+        </section>
+        <section aria-labelledby="workforce-site-assignment-configuration" className="border-y border-zinc-200 py-6 dark:border-zinc-700">
+          <div className="flex flex-col gap-1">
+            <h2 id="workforce-site-assignment-configuration" className="text-lg font-semibold">{t("siteAssignmentsTitle")}</h2>
+            <p className="max-w-3xl text-sm leading-6 text-muted-foreground">{t("siteAssignmentsHint")}</p>
+          </div>
+          <div className="mt-6 grid gap-8 border-t border-zinc-200 pt-6 dark:border-zinc-700 xl:grid-cols-2">
+            <form onSubmit={saveSiteAssignment} className="space-y-4" aria-labelledby="workforce-site-assignment-form">
+              <div><h3 id="workforce-site-assignment-form" className="font-medium">{t("scheduleSiteAssignment")}</h3><p className="mt-1 text-sm leading-6 text-muted-foreground">{t("siteAssignmentFutureOnlyHint")}</p></div>
+              <Select id="workforce-site-assignment-employee" label={t("employee")} value={siteAssignmentForm.agentId} onChange={(event) => setSiteAssignmentForm((current) => ({ ...current, agentId: event.target.value }))} required>
+                <option value="">{t("selectEmployee")}</option>
+                {data.roster.employees.map((employee) => <option key={employee.id} value={employee.id}>{employeeLabel(employee)}</option>)}
+              </Select>
+              <Select id="workforce-site-assignment-site" label={t("sitePicker")} value={siteAssignmentForm.siteId} onChange={(event) => setSiteAssignmentForm((current) => ({ ...current, siteId: event.target.value }))} required>
+                <option value="">{t("selectSite")}</option>
+                {data.sites.filter((site) => site.status === "ACTIVE").map((site) => <option key={site.id} value={site.id}>{siteLabel(site)}</option>)}
+              </Select>
+              <Select id="workforce-site-assignment-kind" label={t("siteAssignmentKind")} value={siteAssignmentForm.kind} onChange={(event) => setSiteAssignmentForm((current) => ({ ...current, kind: event.target.value as SiteAssignmentForm["kind"] }))}>
+                <option value="PRIMARY">{t("siteAssignmentKinds.PRIMARY")}</option>
+                <option value="SECONDARY">{t("siteAssignmentKinds.SECONDARY")}</option>
+                <option value="TEMPORARY">{t("siteAssignmentKinds.TEMPORARY")}</option>
+              </Select>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5"><label htmlFor="workforce-site-assignment-effective-from" className="text-sm font-medium">{t("effectiveFrom")}</label><Input id="workforce-site-assignment-effective-from" type="date" value={siteAssignmentForm.effectiveFrom} onChange={(event) => setSiteAssignmentForm((current) => ({ ...current, effectiveFrom: event.target.value }))} required /></div>
+                <div className="space-y-1.5"><label htmlFor="workforce-site-assignment-effective-to" className="text-sm font-medium">{t("effectiveTo")}</label><Input id="workforce-site-assignment-effective-to" type="date" min={siteAssignmentForm.effectiveFrom || undefined} value={siteAssignmentForm.effectiveTo} onChange={(event) => setSiteAssignmentForm((current) => ({ ...current, effectiveTo: event.target.value }))} required={siteAssignmentForm.kind === "TEMPORARY"} /></div>
+              </div>
+              <Button type="submit" className="min-h-12" disabled={savingSiteAssignment || data.roster.employees.length === 0 || !data.sites.some((site) => site.status === "ACTIVE")}>{savingSiteAssignment ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <CalendarClock />}{t("scheduleSiteAssignment")}</Button>
+              {data.roster.employees.length === 0 || !data.sites.some((site) => site.status === "ACTIVE") ? <p className="text-sm leading-6 text-muted-foreground">{t("siteAssignmentPickerUnavailable")}</p> : null}
+            </form>
+            <div className="border-t border-zinc-200 pt-6 dark:border-zinc-700 xl:border-l xl:border-t-0 xl:pl-8 xl:pt-0">
+              <h3 className="font-medium">{t("siteAssignmentTimelineTitle")}</h3>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">{t("siteAssignmentTimelineHint")}</p>
+              <div className="mt-4 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">
+                {data.siteAssignments.map((assignment) => {
+                  const employee = data.directoryEmployees.find((item) => item.id === assignment.agentId)
+                  const site = data.sites.find((item) => item.id === assignment.siteId)
+                  return <article key={assignment.id} className="py-4"><p className="font-medium">{employee ? employeeLabel(employee) : t("unavailableEmployee")}</p><p className="mt-1 text-sm text-muted-foreground">{site ? siteLabel(site) : t("unavailableSite")} · {t("siteAssignmentKinds." + assignment.kind)} · {t("effectiveRange", { start: asDateKey(assignment.effectiveFrom), end: assignment.effectiveTo ? asDateKey(assignment.effectiveTo) : t("openEnded") })}</p></article>
+                })}
+                {data.siteAssignments.length === 0 ? <p className="py-4 text-sm text-muted-foreground">{t("noSiteAssignments")}</p> : null}
+              </div>
+            </div>
           </div>
         </section>
       </> : null}

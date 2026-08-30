@@ -33,7 +33,7 @@ import { POST as activatePolicy } from "@/app/api/v1/workforce/configuration/pol
 import { POST as createShift } from "@/app/api/v1/workforce/configuration/shifts/route"
 import { PATCH as updateShift } from "@/app/api/v1/workforce/configuration/shifts/[id]/route"
 import { POST as activateShift } from "@/app/api/v1/workforce/configuration/shifts/[id]/activate/route"
-import { POST as scheduleAssignment } from "@/app/api/v1/workforce/configuration/assignments/route"
+import { GET as listAssignments, POST as scheduleAssignment } from "@/app/api/v1/workforce/configuration/assignments/route"
 import { POST as previewAssignments } from "@/app/api/v1/workforce/configuration/assignments/preview/route"
 import { GET as listDefaultAssignments, POST as scheduleDefaultAssignment } from "@/app/api/v1/workforce/configuration/shifts/default/route"
 import { getMtmSettings } from "@/lib/mtm-settings"
@@ -67,6 +67,10 @@ const callUpdateShift = updateShift as unknown as ConfigurationUpdateHandler
 const callActivatePolicy = activatePolicy as unknown as ConfigurationUpdateHandler
 const callActivateShift = activateShift as unknown as ConfigurationUpdateHandler
 const callScheduleAssignment = scheduleAssignment as unknown as (
+  request: NextRequest,
+  auth: typeof AUTH,
+) => Promise<Response>
+const callListAssignments = listAssignments as unknown as (
   request: NextRequest,
   auth: typeof AUTH,
 ) => Promise<Response>
@@ -292,6 +296,77 @@ describe("Workforce draft configuration API", () => {
     }))
     expect(scheduleWorkforceShiftAssignment).not.toHaveBeenCalled()
   })
+
+  it("returns a named active roster and effective-date preview without asking the web client for raw IDs", async () => {
+    const listed = {
+      id: "assignment-history",
+      agentId: "agent-1",
+      templateId: "shift-1",
+      effectiveFrom: new Date("2026-09-01T00:00:00.000Z"),
+      effectiveTo: null,
+      agent: { id: "agent-1", name: "Aysel Aliyeva", email: "aysel@example.test", externalCode: "EMP-01", teamId: null, status: "ACTIVE" },
+      template: { id: "shift-1", code: "BAKU", name: "Baku workday", timezone: "Asia/Baku", teamId: null, status: "ACTIVE", isDefault: true },
+    }
+    vi.mocked(prisma.workforceShiftAssignment.findMany)
+      .mockResolvedValueOnce([listed] as never)
+      .mockResolvedValueOnce([listed] as never)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
+      { id: "agent-1", name: "Aysel Aliyeva", email: "aysel@example.test", externalCode: "EMP-01", teamId: null, status: "ACTIVE", team: null },
+    ] as never)
+    vi.mocked(prisma.workforceShiftTemplate.findMany).mockResolvedValue([
+      { id: "shift-1", code: "BAKU", name: "Baku workday", timezone: "Asia/Baku", teamId: null, isDefault: true },
+    ] as never)
+
+    const response = await callListAssignments(get("/api/v1/workforce/configuration/assignments?effectiveDate=2026-09-01"), AUTH)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      success: true,
+      data: {
+        roster: {
+          employees: [{ id: "agent-1", name: "Aysel Aliyeva" }],
+          teams: [],
+          shiftTemplates: [{ id: "shift-1", name: "Baku workday" }],
+        },
+        directoryEmployees: [{ id: "agent-1", status: "ACTIVE" }],
+        assignments: [expect.objectContaining({ agent: expect.objectContaining({ name: "Aysel Aliyeva" }) })],
+        preview: {
+          effectiveDate: "2026-09-01",
+          assignments: [expect.objectContaining({ template: expect.objectContaining({ name: "Baku workday" }) })],
+        },
+      },
+    })
+    expect(prisma.mtmAgent.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { organizationId: AUTH.orgId, status: "ACTIVE" },
+      select: expect.objectContaining({ name: true }),
+    }))
+    expect(prisma.mtmAgent.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { organizationId: AUTH.orgId },
+      take: 250,
+      select: expect.objectContaining({ status: true, team: expect.any(Object) }),
+    }))
+    expect(prisma.mtmTeam.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { organizationId: AUTH.orgId },
+      select: expect.objectContaining({ name: true, isActive: true }),
+    }))
+    expect(prisma.workforceShiftAssignment.findMany).toHaveBeenLastCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        organizationId: AUTH.orgId,
+        effectiveFrom: { lte: new Date("2026-09-01T00:00:00.000Z") },
+      }),
+    }))
+  })
+
+  it("rejects an invalid effective-date preview before reading Workforce records", async () => {
+    vi.mocked(prisma.workforceShiftAssignment.findMany).mockClear()
+    vi.mocked(prisma.mtmAgent.findMany).mockClear()
+    const response = await callListAssignments(get("/api/v1/workforce/configuration/assignments?effectiveDate=2026-02-30"), AUTH)
+
+    expect(response.status).toBe(400)
+    expect(prisma.workforceShiftAssignment.findMany).not.toHaveBeenCalled()
+    expect(prisma.mtmAgent.findMany).not.toHaveBeenCalled()
+  })
+
   it("schedules a default only through the session-admin boundary and a server-derived date", async () => {
     vi.mocked(scheduleWorkforceShiftDefault).mockResolvedValue({
       id: "default-1", templateId: "shift-1", effectiveFrom: new Date("2026-09-01T00:00:00.000Z"),

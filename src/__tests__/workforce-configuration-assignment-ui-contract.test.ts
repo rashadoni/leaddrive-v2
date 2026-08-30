@@ -53,6 +53,17 @@ describe("Workforce assignment configuration UI contract", () => {
     expect(workbench).toContain('data.defaultAssignments.map')
   })
 
+  it("uses named team and site pickers with status and effective-date context", () => {
+    expect(workbench).toContain('id="workforce-policy-team"')
+    expect(workbench).toContain('label={t("teamScopePicker")}')
+    expect(workbench).toContain('id="workforce-site-assignment-employee"')
+    expect(workbench).toContain('id="workforce-site-assignment-site"')
+    expect(workbench).toContain('id="workforce-site-assignment-effective-from"')
+    expect(workbench).toContain('request("/api/v1/workforce/configuration/site-assignments", "POST"')
+    expect(workbench).toContain("directoryStatus.")
+    expect(workbench).not.toContain('id="workforce-policy-team" value={policyForm.teamId} onChange={(event) => setPolicyForm')
+  })
+
   it("has complete, non-empty translation copy for the visible scheduling controls", () => {
     const keys = [
       "scheduleIndividualAssignment",
@@ -71,6 +82,11 @@ describe("Workforce assignment configuration UI contract", () => {
       "assignmentTimelineTitle",
       "scheduleDefaultAssignment",
       "defaultTimelineTitle",
+      "directoryTitle",
+      "teamScopePicker",
+      "siteAssignmentsTitle",
+      "sitePicker",
+      "scheduleSiteAssignment",
     ]
     for (const locale of ["en", "az", "ru"]) {
       const localized = messages(locale)
