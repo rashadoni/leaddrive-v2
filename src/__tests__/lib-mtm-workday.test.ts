@@ -229,6 +229,43 @@ describe("MTM mobile workday", () => {
     expect(reversedQueue.error).toContain("must be ordered")
   })
 
+  it("rejects future-controlled provenance and an unsupported workday protocol version", () => {
+    const now = new Date("2026-07-15T08:00:00.000Z")
+    const base = {
+      action: "START",
+      id: "workday-1",
+      schemaVersion: 3,
+      occurredAt: "2026-07-15T08:00:00.000Z",
+      claimedAt: "2026-07-15T08:00:00.000Z",
+      capturedAt: "2026-07-15T08:00:00.000Z",
+      queuedAt: "2026-07-15T08:00:00.000Z",
+    }
+
+    for (const [field, value] of [
+      ["occurredAt", "2026-07-15T08:05:00.001Z"],
+      ["capturedAt", "2026-07-15T08:05:00.001Z"],
+      ["queuedAt", "2026-07-15T08:05:00.001Z"],
+    ] as const) {
+      const parsed = parseMtmWorkdayEvent(
+        { ...base, [field]: value },
+        `event-future-${field}`,
+        "Asia/Baku",
+        now,
+      )
+      expect(parsed.input).toBeNull()
+      expect(parsed.error).toContain("too far in the future")
+    }
+
+    const unsupported = parseMtmWorkdayEvent(
+      { ...base, schemaVersion: 4 },
+      "event-unsupported-schema",
+      "Asia/Baku",
+      now,
+    )
+    expect(unsupported.input).toBeNull()
+    expect(unsupported.error).toContain("Unsupported Workforce workday schemaVersion")
+  })
+
   it("binds a C1 replay to actor, evidence references and provenance instead of only visible event fields", () => {
     const parsed = parseMtmWorkdayEvent({
       action: "START",

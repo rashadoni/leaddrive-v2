@@ -1500,4 +1500,69 @@ describe("POST /api/v1/mtm/week/workday", () => {
     expect(prisma.mtmAgentWorkday.create).not.toHaveBeenCalled()
     expect(prisma.mtmAgentWorkdayEvent.create).not.toHaveBeenCalled()
   })
+
+  it("does not let a second permitted mobile device create another active workday", async () => {
+    const mobileAuth = {
+      orgId: ORG,
+      agentId: "agent-1",
+      userId: "agent-user",
+      role: "AGENT",
+      email: "agent@example.test",
+      name: "Agent",
+      tenantCapabilities: { routeField: false, workforceHrm: true },
+    }
+    vi.mocked(getMobileAuth).mockReturnValue(mobileAuth as never)
+    vi.mocked(resolveMobileAuth).mockResolvedValue(mobileAuth as never)
+    vi.mocked(resolveMtmRouteActor).mockResolvedValue({
+      agentId: "agent-1",
+      role: "AGENT",
+      scopedAgentIds: ["agent-1"],
+    } as never)
+    vi.mocked(prisma.mtmAgentWorkdayEvent.findFirst).mockResolvedValue(null as never)
+    vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({
+      id: "workday-device-a",
+      workDate: new Date("2026-07-15T00:00:00.000Z"),
+      status: "STARTED",
+      startedAt: new Date("2026-07-15T07:00:00.000Z"),
+      pausedAt: null,
+      completedAt: null,
+      totalPausedSeconds: 0,
+      startLatitude: null,
+      startLongitude: null,
+      endLatitude: null,
+      endLongitude: null,
+      createdAt: new Date("2026-07-15T07:00:00.000Z"),
+      updatedAt: new Date("2026-07-15T07:00:00.000Z"),
+    } as never)
+
+    const response = await POST_WORKDAY(workdayRequest({
+      clientEventId: "event-device-b-start",
+      action: "START",
+      id: "workday-device-b",
+      occurredAt: "2026-07-15T08:00:00.000Z",
+    }, { authorization: "Bearer mobile-token", "x-field-device-id": "device-b" }))
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toMatchObject({
+      code: "MTM_WORKDAY_ALREADY_EXISTS",
+      data: {
+        recovery: {
+          canonicalState: "STARTED",
+          reason: { messageKey: "alreadyExists" },
+          allowedActions: ["PAUSE", "FINISH"],
+        },
+      },
+    })
+    expect(evaluateWorkforceMobileWriteAccess).toHaveBeenNthCalledWith(1, {
+      auth: { orgId: ORG, agentId: "agent-1" },
+      deviceId: "device-b",
+    })
+    expect(evaluateWorkforceMobileWriteAccess).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      auth: { orgId: ORG, agentId: "agent-1" },
+      deviceId: "device-b",
+      tx: prisma,
+    }))
+    expect(prisma.mtmAgentWorkday.create).not.toHaveBeenCalled()
+    expect(prisma.mtmAgentWorkdayEvent.create).not.toHaveBeenCalled()
+  })
 })
