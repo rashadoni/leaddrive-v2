@@ -34,6 +34,69 @@ describe("Workforce shift definition", () => {
     })).toBeNull()
   })
 
+  it.each([
+    {
+      label: "Baku standard shift without DST",
+      workDate: "2026-08-31",
+      definition: DEFINITION,
+      start: "2026-08-31T05:00:00.000Z",
+      end: "2026-08-31T14:00:00.000Z",
+    },
+    {
+      label: "Berlin after the spring-forward gap",
+      workDate: "2026-03-29",
+      definition: { startTime: "09:00", endTime: "18:00", timezone: "Europe/Berlin", daysOfWeek: [7] },
+      start: "2026-03-29T07:00:00.000Z",
+      end: "2026-03-29T16:00:00.000Z",
+    },
+    {
+      label: "Berlin after the autumn fold",
+      workDate: "2026-10-25",
+      definition: { startTime: "09:00", endTime: "18:00", timezone: "Europe/Berlin", daysOfWeek: [7] },
+      start: "2026-10-25T08:00:00.000Z",
+      end: "2026-10-25T17:00:00.000Z",
+    },
+    {
+      label: "leap-day assignment",
+      workDate: "2028-02-29",
+      definition: { ...DEFINITION, daysOfWeek: [2] },
+      start: "2028-02-29T05:00:00.000Z",
+      end: "2028-02-29T14:00:00.000Z",
+    },
+    {
+      label: "Auckland organization date spanning the previous UTC day",
+      workDate: "2026-01-05",
+      definition: { startTime: "09:00", endTime: "18:00", timezone: "Pacific/Auckland", daysOfWeek: [1] },
+      start: "2026-01-04T20:00:00.000Z",
+      end: "2026-01-05T05:00:00.000Z",
+    },
+    {
+      label: "Los Angeles organization date ending on the next UTC day",
+      workDate: "2026-01-05",
+      definition: { startTime: "09:00", endTime: "18:00", timezone: "America/Los_Angeles", daysOfWeek: [1] },
+      start: "2026-01-05T17:00:00.000Z",
+      end: "2026-01-06T02:00:00.000Z",
+    },
+  ])("resolves $label against the organization work date", ({ workDate, definition, start, end }) => {
+    expect(resolveWorkforceShiftDay({ workDate, definition })).toMatchObject({
+      workDate,
+      timezone: definition.timezone,
+      plannedStartAt: start,
+      plannedEndAt: end,
+    })
+  })
+
+  it("refuses DST-gap and DST-fold shift endpoints until an explicit policy exists", () => {
+    expect(() => resolveWorkforceShiftDay({
+      workDate: "2026-03-29",
+      definition: { startTime: "02:30", endTime: "04:00", timezone: "Europe/Berlin", daysOfWeek: [7] },
+    })).toThrow("shift non-existent local date-time")
+    expect(() => resolveWorkforceShiftDay({
+      workDate: "2026-10-25",
+      definition: { startTime: "02:30", endTime: "04:00", timezone: "Europe/Berlin", daysOfWeek: [7] },
+    })).toThrow("shift ambiguous local date-time")
+  })
+
   it("canonicalizes the signed definition independently of object key order", () => {
     expect(workforceShiftDefinitionHash(DEFINITION)).toBe(
       workforceShiftDefinitionHash({

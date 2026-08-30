@@ -12,6 +12,7 @@ import {
   timezoneLabel,
   dateInputValueInTimezone,
   localDateTimeToUtc,
+  localDateTimeToUnambiguousUtc,
 } from "@/lib/timezone"
 
 describe("P5 timezone — isValidTimezone", () => {
@@ -191,6 +192,15 @@ describe("P5 timezone — local date-time input", () => {
       .toBe("2026-07-15T09:30:00.000Z")
     expect(() => localDateTimeToUtc("2026-07-15 09:30", "Asia/Baku")).toThrow("Invalid local date-time")
     expect(() => localDateTimeToUtc("2026-02-30T09:30", "Asia/Baku")).toThrow("Invalid local date-time")
+  })
+
+  it("can require one real instant instead of silently resolving a DST gap or fold", () => {
+    expect(localDateTimeToUnambiguousUtc("2026-03-29T09:30", "Europe/Berlin").toISOString())
+      .toBe("2026-03-29T07:30:00.000Z")
+    expect(() => localDateTimeToUnambiguousUtc("2026-03-29T02:30", "Europe/Berlin"))
+      .toThrow("Non-existent local date-time")
+    expect(() => localDateTimeToUnambiguousUtc("2026-10-25T02:30", "Europe/Berlin"))
+      .toThrow("Ambiguous local date-time")
   })
 })
 
