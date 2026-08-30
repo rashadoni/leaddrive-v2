@@ -239,6 +239,7 @@ export const DELETE = withRls(async (req, auth, { params }: { params: Promise<{ 
         tx.workforceShiftAssignment.count({ where: { organizationId: orgId, agentId: id } }),
         tx.workforcePolicySnapshot.count({ where: { organizationId: orgId, agentId: id } }),
         tx.workforceShiftSnapshot.count({ where: { organizationId: orgId, agentId: id } }),
+        tx.workforceWorkdayScheduleSnapshot.count({ where: { organizationId: orgId, agentId: id } }),
         tx.workforceAttendanceException.count({ where: { organizationId: orgId, agentId: id } }),
         tx.workforceTimeCorrection.count({ where: { organizationId: orgId, agentId: id } }),
         tx.workforceTimesheetApproval.count({ where: { organizationId: orgId, agentId: id } }),

@@ -505,6 +505,7 @@ type WorkforceRetentionClient = Pick<Prisma.TransactionClient,
   | "workforceShiftAssignment"
   | "workforcePolicySnapshot"
   | "workforceShiftSnapshot"
+  | "workforceWorkdayScheduleSnapshot"
   | "workforceAttendanceException"
   | "workforceTimeCorrection"
   | "workforceTimesheetApproval"
@@ -546,6 +547,7 @@ export async function assertTenantWorkforceRetentionClear(
     client.workforceShiftAssignment.count({ where: { organizationId: orgId } }),
     client.workforcePolicySnapshot.count({ where: { organizationId: orgId } }),
     client.workforceShiftSnapshot.count({ where: { organizationId: orgId } }),
+    client.workforceWorkdayScheduleSnapshot.count({ where: { organizationId: orgId } }),
     client.workforceAttendanceException.count({ where: { organizationId: orgId } }),
     client.workforceTimeCorrection.count({ where: { organizationId: orgId } }),
     client.workforceTimesheetApproval.count({ where: { organizationId: orgId } }),

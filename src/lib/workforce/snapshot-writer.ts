@@ -1,7 +1,9 @@
+import { createHash } from "node:crypto"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import {
   WorkforcePolicyDefinitionError,
+  canonicalWorkforcePolicyJson,
   workforcePolicySnapshotValues,
 } from "@/lib/workforce/policy-definition"
 import {
@@ -13,10 +15,13 @@ import {
   resolveCurrentWorkforceShift,
   WorkforceShiftResolutionError,
 } from "@/lib/workforce/shift-resolution"
+import { resolvePersistedWorkforceCalendarDay } from "@/lib/workforce/calendar"
 
 export type WorkforceSnapshotWriteResult =
-  | { kind: "created"; policySnapshotId: string; shiftSnapshotId: string }
-  | { kind: "already_present"; policySnapshotId: string; shiftSnapshotId: string }
+  | { kind: "created"; policySnapshotId: string; shiftSnapshotId: string; scheduleSnapshotId: string }
+  | { kind: "already_present"; policySnapshotId: string; shiftSnapshotId: string; scheduleSnapshotId: string }
+  /** Existing H3 pairs are retained as history and never reconstructed from live configuration. */
+  | { kind: "legacy_pair"; policySnapshotId: string; shiftSnapshotId: string }
   | { kind: "off_day"; workdayId: string }
 
 export type WorkforceSnapshotWriteAttemptResult = WorkforceSnapshotWriteResult | {
@@ -51,6 +56,103 @@ export class WorkforceSnapshotWriterError extends Error {
   }
 }
 
+function dateKey(value: Date): string {
+  if (!(value instanceof Date) || !Number.isFinite(value.getTime())) {
+    throw new WorkforceSnapshotWriterError("WORKFORCE_SNAPSHOT_PARTIAL", "Workforce snapshot date is invalid")
+  }
+  return value.toISOString().slice(0, 10)
+}
+
+/** Canonical hash makes the JSON schedule context tamper-evident in audits/exports. */
+export function workforceWorkdayScheduleSnapshotHash(value: unknown): string {
+  return createHash("sha256").update(canonicalWorkforcePolicyJson(value)).digest("hex")
+}
+
+async function snapshotShiftSegmentsAndSites(
+  tx: Prisma.TransactionClient,
+  input: { organizationId: string; templateId: string; workDate: string },
+): Promise<{ segments: Prisma.InputJsonValue; sites: Prisma.InputJsonValue }> {
+  const segments = await tx.workforceShiftSegment.findMany({
+    where: { organizationId: input.organizationId, templateId: input.templateId },
+    orderBy: { sequence: "asc" },
+    select: {
+      id: true,
+      sequence: true,
+      mode: true,
+      siteId: true,
+      startTime: true,
+      endTime: true,
+      lateGraceSeconds: true,
+      proofPolicyReference: true,
+    },
+  })
+  const siteIds = [...new Set(segments.flatMap((segment) => segment.siteId == null ? [] : [segment.siteId]))]
+  if (siteIds.length === 0) {
+    return {
+      segments: segments as unknown as Prisma.InputJsonValue,
+      sites: [] as Prisma.InputJsonValue,
+    }
+  }
+
+  const workDate = new Date(`${input.workDate}T00:00:00.000Z`)
+  const [sites, revisions] = await Promise.all([
+    tx.workforceSite.findMany({
+      where: { organizationId: input.organizationId, id: { in: siteIds }, status: "ACTIVE" },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        type: true,
+        timezone: true,
+        addressLabel: true,
+      },
+    }),
+    tx.workforceSiteGeofenceRevision.findMany({
+      where: {
+        organizationId: input.organizationId,
+        siteId: { in: siteIds },
+        effectiveFrom: { lte: workDate },
+        OR: [{ effectiveTo: null }, { effectiveTo: { gte: workDate } }],
+      },
+      orderBy: [{ siteId: "asc" }, { revision: "asc" }],
+      select: {
+        id: true,
+        siteId: true,
+        revision: true,
+        kind: true,
+        centerLatitude: true,
+        centerLongitude: true,
+        radiusMeters: true,
+        calibrationReference: true,
+        definitionHash: true,
+        effectiveFrom: true,
+        effectiveTo: true,
+      },
+    }),
+  ])
+  if (sites.length !== siteIds.length || revisions.length > siteIds.length) {
+    throw new WorkforceSnapshotWriterError(
+      "WORKFORCE_SNAPSHOT_PARTIAL",
+      "Every scheduled Workforce site must be active with at most one effective geofence revision",
+    )
+  }
+  const revisionBySiteId = new Map(revisions.map((revision) => [revision.siteId, revision]))
+  return {
+    segments: segments as unknown as Prisma.InputJsonValue,
+    sites: sites.map((site) => {
+      const revision = revisionBySiteId.get(site.id)
+      return {
+        ...site,
+        geofenceRevision: revision == null ? null : {
+          ...revision,
+          effectiveFrom: dateKey(revision.effectiveFrom),
+          effectiveTo: revision.effectiveTo == null ? null : dateKey(revision.effectiveTo),
+        },
+      }
+    }) as unknown as Prisma.InputJsonValue,
+  }
+}
+
 /**
  * Pins the current policy and selected/default shift for one already-visible
  * workday using the caller's transaction. Canonical START writers use this
@@ -73,7 +175,7 @@ export async function writeWorkforceSnapshotsInTransaction(
     )
   }
 
-  const [existingPolicy, existingShift] = await Promise.all([
+  const [existingPolicy, existingShift, existingSchedule] = await Promise.all([
     tx.workforcePolicySnapshot.findFirst({
       where: { organizationId: input.organizationId, workdayId: input.workdayId },
       select: { id: true },
@@ -82,22 +184,42 @@ export async function writeWorkforceSnapshotsInTransaction(
       where: { organizationId: input.organizationId, workdayId: input.workdayId },
       select: { id: true },
     }),
+    tx.workforceWorkdayScheduleSnapshot.findFirst({
+      where: { organizationId: input.organizationId, workdayId: input.workdayId },
+      select: { id: true },
+    }),
   ])
-  if (existingPolicy && existingShift) {
+  if (existingPolicy && existingShift && existingSchedule) {
     return {
       kind: "already_present" as const,
       policySnapshotId: existingPolicy.id,
       shiftSnapshotId: existingShift.id,
+      scheduleSnapshotId: existingSchedule.id,
     }
   }
-  if (existingPolicy || existingShift) {
+  if (existingPolicy && existingShift) {
+    // The pair predates C3-008. It is immutable history, not an invitation to
+    // reconstruct calendar/site context from today's mutable configuration.
+    return {
+      kind: "legacy_pair" as const,
+      policySnapshotId: existingPolicy.id,
+      shiftSnapshotId: existingShift.id,
+    }
+  }
+  if (existingPolicy || existingShift || existingSchedule) {
     throw new WorkforceSnapshotWriterError(
       "WORKFORCE_SNAPSHOT_PARTIAL",
       "Workforce workday has only one immutable snapshot",
     )
   }
 
-  const workDate = workday.workDate.toISOString().slice(0, 10)
+  const workDate = dateKey(workday.workDate)
+  const calendar = await resolvePersistedWorkforceCalendarDay(tx, {
+    organizationId: input.organizationId,
+    agentId: workday.agentId,
+    date: workDate,
+  })
+  if (!calendar.attendanceExpected) return { kind: "off_day", workdayId: workday.id }
   const policy = await resolveCurrentWorkforcePolicy(tx, {
     organizationId: input.organizationId,
     agentId: workday.agentId,
@@ -114,6 +236,12 @@ export async function writeWorkforceSnapshotsInTransaction(
     resolutionAt,
   })
   if (!shift.schedule) return { kind: "off_day", workdayId: workday.id }
+
+  const scheduleContext = await snapshotShiftSegmentsAndSites(tx, {
+    organizationId: input.organizationId,
+    templateId: shift.id,
+    workDate,
+  })
 
   const policyValues = workforcePolicySnapshotValues({
     definition: policy.definition,
@@ -153,10 +281,47 @@ export async function writeWorkforceSnapshotsInTransaction(
     },
     select: { id: true },
   })
+  const calendarSnapshot = {
+    date: calendar.date,
+    state: calendar.state,
+    calendarKind: calendar.calendarKind,
+    attendanceExpected: calendar.attendanceExpected,
+    noShowEligible: calendar.noShowEligible,
+    excused: calendar.excused,
+    source: calendar.source,
+    overrideId: calendar.overrideId,
+  }
+  const schedulePayload = {
+    schemaVersion: 1,
+    calendar: calendarSnapshot,
+    segments: scheduleContext.segments,
+    sites: scheduleContext.sites,
+    policySnapshotId: policySnapshot.id,
+    shiftSnapshotId: shiftSnapshot.id,
+  }
+  const scheduleSnapshot = await tx.workforceWorkdayScheduleSnapshot.create({
+    data: {
+      organizationId: input.organizationId,
+      workdayId: workday.id,
+      agentId: workday.agentId,
+      workDate: workDateValue,
+      policySnapshotId: policySnapshot.id,
+      shiftSnapshotId: shiftSnapshot.id,
+      schemaVersion: 1,
+      calendarState: calendar.state,
+      calendarSnapshot: calendarSnapshot as Prisma.InputJsonValue,
+      segments: scheduleContext.segments,
+      sites: scheduleContext.sites,
+      snapshotHash: workforceWorkdayScheduleSnapshotHash(schedulePayload),
+      resolvedAt: resolutionAt,
+    },
+    select: { id: true },
+  })
   return {
     kind: "created",
     policySnapshotId: policySnapshot.id,
     shiftSnapshotId: shiftSnapshot.id,
+    scheduleSnapshotId: scheduleSnapshot.id,
   }
 }
 

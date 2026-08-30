@@ -15,6 +15,7 @@
 > [`workforce-c0-foundation-evidence-2026-08-30.md`](./workforce-c0-foundation-evidence-2026-08-30.md),
 > [`workforce-c1-provenance-evidence-2026-08-30.md`](./workforce-c1-provenance-evidence-2026-08-30.md),
 > [`workforce-c1-audit-projection-evidence-2026-08-30.md`](./workforce-c1-audit-projection-evidence-2026-08-30.md),
+> [`workforce-c3-schedule-snapshot-evidence-2026-08-30.md`](./workforce-c3-schedule-snapshot-evidence-2026-08-30.md),
 > [`mobile-sync-v2-workforce-contract.md`](./mobile-sync-v2-workforce-contract.md)
 
 ## 1. Purpose and honest starting point
@@ -326,6 +327,7 @@ Owner roles are accountabilities, not individual names:
 | 2026-08-30T01:35:00+02:00 | C2d effective site assignments | 6% | C2 36% | 12/161 | 0/15 | WF-C2-005 accepted: future primary/secondary/temporary history is tenant-scoped and auditable; historical workday resolution remains open |
 | 2026-08-30T01:48:00+02:00 | C2e ordered shift segments | 6% | C2 45% | 13/161 | 0/15 | WF-C2-006 accepted: one draft/active schedule can express 09-13 Site A and 14-18 Site B with an explicit planned break, independent of Route; workday snapshot and transitions remain open |
 | 2026-08-30T01:56:00+02:00 | C2f site-transition fact foundation | 6% | C2 45% | 13/161 | 0/15 | WF-C2-007 is partial: append-only arrival/departure claims are tenant-scoped, provenance-bound and review-safe; no unverified mobile/API path, C3 snapshot or C4 assessment is claimed |
+| 2026-08-30T07:02:28+02:00 | C3d accepted workday schedule snapshot | 12% | C3 40% | 25/161 | 0/15 | WF-C3-008 accepted: START atomically pins calendar, ordered segments, scheduled sites/effective geofence, policy and shift facts; historical pairs remain explicitly unknowable rather than reconstructed |
 
 ### 6.1 Progress reporting contract
 
@@ -459,7 +461,7 @@ ordinary, night, split and exceptional days.
 | WF-C3-005 | P1 | OWNER DECISION | HR/Legal | Define overnight work date, split shifts, minimum rest and cross-midnight correction rules | OD-08 resolved |
 | WF-C3-006 | P1 | PLANNED | Backend | Extend schedule model for overnight/split segments without changing historical definition hashes | Compatibility and DST/property tests |
 | WF-C3-007 | P1 | PLANNED | Backend | Version future default-selection timeline instead of mutating a timeless `isDefault` | Future publication never changes started/closed workdays |
-| WF-C3-008 | P1 | PLANNED | Backend | Snapshot calendar, schedule, segments, sites and calculation policy atomically on accepted start/assignment | Rehydration remains deterministic after later config edits |
+| WF-C3-008 | P1 | DONE | Backend | Snapshot calendar, schedule, segments, sites and calculation policy atomically on accepted start/assignment | [`workforce-c3-schedule-snapshot-evidence-2026-08-30.md`](./workforce-c3-schedule-snapshot-evidence-2026-08-30.md): append-only, tenant-bound START snapshot; historical pairs are not reconstructed |
 | WF-C3-009 | P2 | PLANNED | HR/Web | Add bulk assignments, temporary cover, recurring templates and safe preview | Impact count/conflicts shown before publish; operation auditable |
 | WF-C3-010 | P2 | PLANNED | Backend/QA | Cover IANA timezones, DST gaps/folds, leap day and organization date rollover | Global timezone test matrix; Baku default preserved |
 | WF-C3-011 | P2 | PLANNED | HR/Product | Define shift swap/open shift/on-call requirements or explicitly exclude them per release | Scope decision recorded |
