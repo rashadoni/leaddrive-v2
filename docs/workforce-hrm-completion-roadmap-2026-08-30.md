@@ -345,6 +345,7 @@ Owner roles are accountabilities, not individual names:
 | 2026-08-30T08:11:00+02:00 | C3g visible assignment/default configuration | 17% | C3 45% | 35/161 | 0/15 | WF-C3-001 accepted: named employee/template picker, on-demand direct-assignment preview and session-admin organization-default timeline are visible; team-default timeline remains separately bounded |
 | 2026-08-30T08:16:00+02:00 | C2h independent module scopes | 16% | C2 55% | 32/161 | 0/15 | WF-C2-010 accepted: organization/team/site API surface is Workforce-scoped, session-admin protected and tested in an HRM-only tenant without Route tables/API |
 | 2026-08-30T08:22:00+02:00 | C2i geofence snapshot completion | 16% | C2 64% | 33/161 | 0/15 | WF-C2-004 accepted: validated effective circle revisions are pinned with scheduled site/eligibility context at accepted START; later site changes cannot rewrite historical evidence |
+| 2026-08-30T02:02:00+02:00 | C4a evidence-envelope contract | 7% | C4 10% | 14/161 | 0/15 | WF-C4-001 accepted: strict versioned evidence envelope and tenant-HMAC redaction exist; collection, geofence evaluation, proof verification and persistence remain open |
 
 **C3 phase display reconciliation (2026-08-30T08:11:00+02:00):** the C3
 register contains 11 tasks and its scope did not change. Earlier C3 ledger
@@ -512,7 +513,7 @@ without confusing evidence with identity.
 
 | ID | Pri | Status | Owner | Task | Acceptance evidence |
 |---|---:|---|---|---|---|
-| WF-C4-001 | P0 | PLANNED | Backend | Define versioned evidence envelope: source, capture time, accuracy, provider/mock flags, app/device/session references and redacted payload hash | Strict schema rejects incomplete/ambiguous evidence |
+| WF-C4-001 | P0 | DONE | Backend | Define versioned evidence envelope: source, capture time, accuracy, provider/mock flags, app/device/session references and redacted payload hash | [`workforce-c4-evidence-envelope-evidence-2026-08-30.md`](./workforce-c4-evidence-envelope-evidence-2026-08-30.md): strict v1 schema and tenant-HMAC redaction contract |
 | WF-C4-002 | P0 | PLANNED | Backend | Evaluate distance server-side against the snapshotted geofence and return inside/outside/unknown plus distance/accuracy reason | Boundary and missing-site tests |
 | WF-C4-003 | P0 | PLANNED | Security/Mobile | Define maximum accuracy, freshness, mock/provider and permission-denied handling per policy | Weak GPS becomes explainable review/rejection, not silent pass |
 | WF-C4-004 | P0 | PLANNED | Backend | Link QR station to site/area and effective lifecycle; bind token to tenant/station/revision/action/expiry/nonce | Wrong site/action and relayed stale token fail |
