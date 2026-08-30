@@ -9,7 +9,8 @@ type WorkforceExceptionCaseWriteData = Omit<WorkforceExceptionCaseDraft, "links"
 type StoredCase = WorkforceExceptionCaseWriteData & { id: string }
 type StoredDecision = WorkforceExceptionDecisionDraft & { id: string }
 
-type WorkforceExceptionCaseWriterDb = {
+export type WorkforceExceptionCaseWriterDb = {
+  $executeRaw: (query: TemplateStringsArray, ...values: readonly unknown[]) => Promise<unknown>
   workforceExceptionCase: {
     create: (args: { data: WorkforceExceptionCaseWriteData }) => Promise<StoredCase>
     findFirst: (args: {
@@ -27,11 +28,41 @@ type WorkforceExceptionCaseWriterDb = {
   workforceExceptionCaseLookup: {
     findFirst: (args: { where: { id: string; organizationId: string }; select: { id: true } }) => Promise<{ id: string } | null>
   }
+  mtmAuditLog: {
+    create: (args: {
+      data: {
+        organizationId: string
+        agentId: null
+        action: string
+        entity: string
+        entityId: string
+        metadataKind: string
+        newData: Record<string, unknown>
+        ipAddress: null
+        userAgent: null
+      }
+    }) => Promise<unknown>
+  }
 }
+
+export type WorkforceExceptionCaseAuthorization = (input:
+  | {
+    operation: "CASE_CREATE"
+    organizationId: string
+    agentId: string
+  }
+  | {
+    operation: "DECISION_APPEND"
+    organizationId: string
+    caseId: string
+    actorUserId: string
+  },
+) => boolean | Promise<boolean>
 
 export class WorkforceExceptionCaseWriterError extends Error {
   constructor(
     readonly code:
+      | "WORKFORCE_EXCEPTION_CASE_NOT_AUTHORIZED"
       | "WORKFORCE_EXCEPTION_CASE_WRITE_CONFLICT"
       | "WORKFORCE_EXCEPTION_DECISION_WRITE_CONFLICT"
       | "WORKFORCE_EXCEPTION_DECISION_CASE_NOT_FOUND",
@@ -43,6 +74,23 @@ export class WorkforceExceptionCaseWriterError extends Error {
 
 function isUniqueViolation(error: unknown): boolean {
   return (error as { code?: unknown } | null)?.code === "P2002"
+}
+
+async function requireAuthorization(
+  authorize: WorkforceExceptionCaseAuthorization,
+  input: Parameters<WorkforceExceptionCaseAuthorization>[0],
+): Promise<void> {
+  if (!await authorize(input)) {
+    throw new WorkforceExceptionCaseWriterError("WORKFORCE_EXCEPTION_CASE_NOT_AUTHORIZED")
+  }
+}
+
+function caseLockKey(draft: WorkforceExceptionCaseDraft): string {
+  return `workforce-exception-case:${draft.organizationId}:${draft.deduplicationKey}`
+}
+
+function decisionLockKey(draft: WorkforceExceptionDecisionDraft): string {
+  return `workforce-exception-decision:${draft.organizationId}:${draft.caseId}`
 }
 
 function sameCase(left: WorkforceExceptionCaseDraft, right: WorkforceExceptionCaseDraft): boolean {
@@ -116,22 +164,46 @@ function canonicalDecisionDraft(draft: WorkforceExceptionDecisionDraft): Workfor
 
 /**
  * A transaction-scoped persistence primitive. It deliberately has no Prisma
- * import, permission check, detector, endpoint or lifecycle transition: its
- * caller must be an already-authorized C6 service. The database migration is
- * still the final tenant/link invariant and is not applied by this source
- * slice.
+ * import, detector, endpoint or lifecycle transition: its caller supplies a
+ * tenant-scoped transaction client and an explicit C6 authorization check.
+ * The database migration is still the final tenant/link invariant and is not
+ * applied by this source slice.
  */
-export async function persistWorkforceExceptionCase(
-  db: WorkforceExceptionCaseWriterDb,
-  draft: WorkforceExceptionCaseDraft,
-): Promise<{ caseId: string; idempotent: boolean }> {
-  const canonical = canonicalCaseDraft(draft)
+export async function persistAuthorizedWorkforceExceptionCase(input: {
+  db: WorkforceExceptionCaseWriterDb
+  draft: WorkforceExceptionCaseDraft
+  authorize: WorkforceExceptionCaseAuthorization
+}): Promise<{ caseId: string; idempotent: boolean }> {
+  const canonical = canonicalCaseDraft(input.draft)
+  await requireAuthorization(input.authorize, {
+    operation: "CASE_CREATE",
+    organizationId: canonical.organizationId,
+    agentId: canonical.agentId,
+  })
+  await input.db.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${caseLockKey(canonical)}))`
   try {
-    const created = await db.workforceExceptionCase.create({ data: caseWriteData(canonical) })
+    const created = await input.db.workforceExceptionCase.create({ data: caseWriteData(canonical) })
+    await input.db.mtmAuditLog.create({
+      data: {
+        organizationId: canonical.organizationId,
+        agentId: null,
+        action: "WORKFORCE_EXCEPTION_CASE_RECORDED",
+        entity: "workforce_exception_case",
+        entityId: created.id,
+        metadataKind: "workforce_exception_lifecycle",
+        newData: {
+          deduplicationKey: canonical.deduplicationKey,
+          kind: canonical.kind,
+          detectorVersion: canonical.detectorVersion,
+        },
+        ipAddress: null,
+        userAgent: null,
+      },
+    })
     return { caseId: created.id, idempotent: false }
   } catch (error) {
     if (!isUniqueViolation(error)) throw error
-    const existing = await db.workforceExceptionCase.findFirst({
+    const existing = await input.db.workforceExceptionCase.findFirst({
       where: { organizationId: canonical.organizationId, deduplicationKey: canonical.deduplicationKey },
       select: {
         id: true,
@@ -157,14 +229,22 @@ export async function persistWorkforceExceptionCase(
 /**
  * Appends one raw-proof-free human decision envelope. A decision code does not
  * close, escalate, pay, discipline or mutate a case in this foundation; those
- * semantics remain unavailable until C6 taxonomy and C7 authorization exist.
+ * semantics remain unavailable until a tenant-approved C6 lifecycle is wired.
  */
-export async function appendWorkforceExceptionDecision(
-  db: WorkforceExceptionCaseWriterDb,
-  draft: WorkforceExceptionDecisionDraft,
-): Promise<{ decisionId: string; idempotent: boolean }> {
-  const canonical = canonicalDecisionDraft(draft)
-  const exceptionCase = await db.workforceExceptionCaseLookup.findFirst({
+export async function appendAuthorizedWorkforceExceptionDecision(input: {
+  db: WorkforceExceptionCaseWriterDb
+  draft: WorkforceExceptionDecisionDraft
+  authorize: WorkforceExceptionCaseAuthorization
+}): Promise<{ decisionId: string; idempotent: boolean }> {
+  const canonical = canonicalDecisionDraft(input.draft)
+  await requireAuthorization(input.authorize, {
+    operation: "DECISION_APPEND",
+    organizationId: canonical.organizationId,
+    caseId: canonical.caseId,
+    actorUserId: canonical.actorUserId,
+  })
+  await input.db.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${decisionLockKey(canonical)}))`
+  const exceptionCase = await input.db.workforceExceptionCaseLookup.findFirst({
     where: { id: canonical.caseId, organizationId: canonical.organizationId },
     select: { id: true },
   })
@@ -175,11 +255,28 @@ export async function appendWorkforceExceptionDecision(
     )
   }
   try {
-    const created = await db.workforceExceptionDecision.create({ data: canonical })
+    const created = await input.db.workforceExceptionDecision.create({ data: canonical })
+    await input.db.mtmAuditLog.create({
+      data: {
+        organizationId: canonical.organizationId,
+        agentId: null,
+        action: "WORKFORCE_EXCEPTION_DECISION_RECORDED",
+        entity: "workforce_exception_decision",
+        entityId: created.id,
+        metadataKind: "workforce_exception_lifecycle",
+        newData: {
+          caseId: canonical.caseId,
+          operationId: canonical.operationId,
+          decisionCode: canonical.decisionCode,
+        },
+        ipAddress: null,
+        userAgent: null,
+      },
+    })
     return { decisionId: created.id, idempotent: false }
   } catch (error) {
     if (!isUniqueViolation(error)) throw error
-    const existing = await db.workforceExceptionDecision.findFirst({
+    const existing = await input.db.workforceExceptionDecision.findFirst({
       where: { organizationId: canonical.organizationId, operationId: canonical.operationId },
       select: {
         id: true,
