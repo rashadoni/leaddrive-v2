@@ -28,4 +28,13 @@ describe("Workforce evidence and assessment migration", () => {
     expect(migration).toContain("current_setting('app.org_id', true)")
     expect(migration).not.toMatch(/"(?:latitude|longitude|accuracy)"\s+(?:FLOAT|DOUBLE|NUMERIC)/i)
   })
+
+  it("can attach evidence to an immutable site transition without weakening its tenant boundary", () => {
+    expect(schema).toContain("siteTransitionId     String?")
+    expect(schema).toContain("siteTransition       WorkforceSiteTransition?")
+    expect(migration).toContain('"siteTransitionId" TEXT')
+    expect(migration).toContain('"workforce_attendance_evidence_transition_fkey"')
+    expect(migration).toContain('REFERENCES "workforce_site_transitions"("organizationId", "id")')
+    expect(migration).toContain('"workdayEventId" IS NULL AND "siteTransitionId" IS NOT NULL')
+  })
 })
