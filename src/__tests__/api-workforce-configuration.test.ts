@@ -35,8 +35,9 @@ import { PATCH as updateShift } from "@/app/api/v1/workforce/configuration/shift
 import { POST as activateShift } from "@/app/api/v1/workforce/configuration/shifts/[id]/activate/route"
 import { POST as scheduleAssignment } from "@/app/api/v1/workforce/configuration/assignments/route"
 import { POST as previewAssignments } from "@/app/api/v1/workforce/configuration/assignments/preview/route"
-import { POST as scheduleDefaultAssignment } from "@/app/api/v1/workforce/configuration/shifts/default/route"
+import { GET as listDefaultAssignments, POST as scheduleDefaultAssignment } from "@/app/api/v1/workforce/configuration/shifts/default/route"
 import { getMtmSettings } from "@/lib/mtm-settings"
+import { prisma } from "@/lib/prisma"
 import { withWorkforceSessionAdminAuth } from "@/lib/with-workforce-rls-auth"
 import {
   activateWorkforcePolicyDraft,
@@ -77,6 +78,10 @@ const callScheduleDefaultAssignment = scheduleDefaultAssignment as unknown as (
   request: NextRequest,
   auth: typeof AUTH,
 ) => Promise<Response>
+const callListDefaultAssignments = listDefaultAssignments as unknown as (
+  request: NextRequest,
+  auth: typeof AUTH,
+) => Promise<Response>
 const policyDefinition = {
   expectedWorkSeconds: 28800,
   lateGraceSeconds: 300,
@@ -99,6 +104,10 @@ function post(path: string, body: unknown, headers: Record<string, string> = {})
   })
 }
 
+function get(path: string): NextRequest {
+  return new NextRequest(`http://localhost:3000${path}`)
+}
+
 beforeEach(() => {
   // Keep the route-construction calls intact: they prove each exported handler
   // is session-only and cannot use the API-key authorization path.
@@ -117,7 +126,7 @@ beforeEach(() => {
 
 describe("Workforce draft configuration API", () => {
   it("binds every configuration route to the session-only Workforce admin boundary", () => {
-    expect(withWorkforceSessionAdminAuth).toHaveBeenCalledTimes(12)
+    expect(withWorkforceSessionAdminAuth).toHaveBeenCalledTimes(13)
   })
 
   it("creates only validated draft policy and shift records", async () => {
@@ -300,6 +309,45 @@ describe("Workforce draft configuration API", () => {
       defaultAssignment: { templateId: "shift-1", effectiveFrom: "2026-09-01" },
       currentDateKey: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
       audit: expect.objectContaining({ actorUserId: AUTH.userId }),
+    }))
+  })
+
+  it("lists the named organization-default timeline through the session-admin boundary", async () => {
+    vi.mocked(prisma.workforceShiftDefaultAssignment.findMany).mockResolvedValue([
+      {
+        id: "default-history",
+        templateId: "shift-1",
+        effectiveFrom: new Date("2026-09-01T00:00:00.000Z"),
+        effectiveTo: null,
+        assignedByUserId: "admin-1",
+        createdAt: new Date("2026-08-30T00:00:00.000Z"),
+        template: {
+          id: "shift-1",
+          code: "BAKU",
+          name: "Baku workday",
+          timezone: "Asia/Baku",
+          teamId: null,
+          status: "ACTIVE",
+          isDefault: true,
+        },
+      },
+    ] as never)
+
+    const response = await callListDefaultAssignments(get("/api/v1/workforce/configuration/shifts/default"), AUTH)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      success: true,
+      data: {
+        defaultAssignments: [expect.objectContaining({
+          template: expect.objectContaining({ name: "Baku workday" }),
+        })],
+      },
+    })
+    expect(prisma.workforceShiftDefaultAssignment.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { organizationId: AUTH.orgId },
+      orderBy: [{ effectiveFrom: "asc" }, { id: "asc" }],
+      select: expect.objectContaining({ template: expect.any(Object) }),
     }))
   })
 })
