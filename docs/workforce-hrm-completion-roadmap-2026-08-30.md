@@ -20,6 +20,7 @@
 > [`workforce-c3-timezone-matrix-evidence-2026-08-30.md`](./workforce-c3-timezone-matrix-evidence-2026-08-30.md),
 > [`workforce-c3-bulk-preview-evidence-2026-08-30.md`](./workforce-c3-bulk-preview-evidence-2026-08-30.md),
 > [`workforce-c5-attendance-admin-ui-evidence-2026-08-30.md`](./workforce-c5-attendance-admin-ui-evidence-2026-08-30.md),
+> [`workforce-c6-exception-intake-evidence-2026-08-30.md`](./workforce-c6-exception-intake-evidence-2026-08-30.md),
 > [`mobile-sync-v2-workforce-contract.md`](./mobile-sync-v2-workforce-contract.md)
 
 ## 1. Purpose and honest starting point
@@ -363,6 +364,7 @@ Owner roles are accountabilities, not individual names:
 | 2026-08-30T12:55:00+02:00 | C5g MFA-gated mobile release control plane (partial) | 31% | C5 8% | 63/161 | 0/15 | WF-C5-002 also now fails closed before any mobile write-fence/cohort mutation unless the accountable session has mandatory enrolled MFA; read-only posture inspection remains available to the existing session-admin boundary |
 | 2026-08-30T14:30:00+02:00 | C5h device separation of duties (partial) | 31% | C5 8% | 63/161 | 0/15 | WF-C5-007 now blocks self-approval of a linked employee's pending device, retains self-revoke as lost-factor containment, and exposes replacement lineage/terminal status without key or proof disclosure; signed-mobile recovery and physical evidence remain open, so no completion credit is claimed |
 | 2026-08-30T13:42:00+02:00 | C5i atomic QR emergency replacement (partial) | 31% | C5 8% | 63/161 | 0/15 | WF-C5-008 now has an MFA-gated, deliberate create-and-retire replacement that preserves the current effective site/circle binding and leaves a redacted audit trail; controller health, skew, physical display and QR relay limits remain external, so no completion credit is claimed |
+| 2026-08-30T17:07:38+02:00 | C6b safe exception/no-show intake (partial) | 32% | C6 10% | 64/161 | 0/15 | WF-C6-001/003 now have a pure review-only taxonomy/no-show proposal that requires published schedule, eligible unexcused calendar, complete no-workday observation and expired grace. It assigns no owner/severity/SLA and creates no case/job/notification, so no completion credit is claimed |
 
 **C3 phase display reconciliation (2026-08-30T08:11:00+02:00):** the C3
 register contains 11 tasks and its scope did not change. Earlier C3 ledger
@@ -576,9 +578,9 @@ than a hidden calculation or direct data overwrite.
 
 | ID | Pri | Status | Owner | Task | Acceptance evidence |
 |---|---:|---|---|---|---|
-| WF-C6-001 | P0 | PLANNED | HR/Product | Approve exception taxonomy, severity, owner and SLA | Glossary covers no-show, missed finish, offsite, weak/mock GPS, clock, device, QR, impossible travel and missing snapshot |
+| WF-C6-001 | P0 | PARTIAL | HR/Product | Approve exception taxonomy, severity, owner and SLA | [`workforce-c6-exception-intake-evidence-2026-08-30.md`](./workforce-c6-exception-intake-evidence-2026-08-30.md): source baseline keeps all intake review-only and unassigned; approved taxonomy/severity/owner/SLA remains owner-gated |
 | WF-C6-002 | P0 | PLANNED | Backend | Create immutable exception case/decision lifecycle with deduplication and links to claim/evidence/workday/segment | Concurrent detection creates one case; resolution is append-only |
-| WF-C6-003 | P0 | PLANNED | Backend | Generate no-show only from a published expected schedule after grace and approved leave/calendar checks | No workday alone is never treated as absence on a non-working day |
+| WF-C6-003 | P0 | PARTIAL | Backend | Generate no-show only from a published expected schedule after grace and approved leave/calendar checks | [`workforce-c6-exception-intake-evidence-2026-08-30.md`](./workforce-c6-exception-intake-evidence-2026-08-30.md): pure proposal rejects draft/unknown calendar/excused/incomplete/existing-workday cases; no detector/job/case is activated |
 | WF-C6-004 | P1 | PLANNED | Backend/HR | Define missed checkout and stale open-shift policy: reminder, review, bounded auto-close proposal or manual correction | No silent fabricated finish time |
 | WF-C6-005 | P1 | PLANNED | Web | Build exception queue with scope, risk, age, evidence completeness, employee response and next action | Manager can resolve every case without raw DB identifiers |
 | WF-C6-006 | P1 | PLANNED | Web/Mobile | Let employee explain or appeal an exception and request a correction from the exact day/segment | Employee sees status/history and cannot edit accepted facts directly |
