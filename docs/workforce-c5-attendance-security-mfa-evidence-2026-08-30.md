@@ -18,11 +18,12 @@ all of the following before validation or a database write:
 - a fresh database read of the accountable user's mandatory MFA policy with an
   enrolled factor: TOTP, or SMS with a verified phone.
 
-The gate covers QR-station creation and retirement, QR issue, and trusted
-device approval or revocation. A missing user, optional MFA, an unconfigured
-factor, a non-session principal, or an MFA-policy lookup error denies the
-operation. The latter is a `503`, so an unavailable policy lookup cannot turn
-into a fail-open write.
+The gate covers QR-station creation and retirement, QR issue, trusted-device
+approval or revocation, and the high-impact mobile write-fence/cohort controls
+that can enable a pilot cohort or stop mobile attendance writes. A missing
+user, optional MFA, an unconfigured factor, a non-session principal, or an
+MFA-policy lookup error denies the operation. The latter is a `503`, so an
+unavailable policy lookup cannot turn into a fail-open write.
 
 The session resolver still rejects sessions that are pending mandatory MFA;
 the Workforce gate additionally makes the per-user enrollment requirement

@@ -8,6 +8,7 @@ import {
   WorkforceMobileWriteFenceError,
 } from "@/lib/workforce/mobile-write-fence"
 import { workforceConfigurationRequestAuditContext } from "@/lib/workforce/configuration-route"
+import { requireWorkforceAttendanceSecurityMfa } from "@/lib/workforce/attendance-route"
 
 function fenceErrorStatus(error: WorkforceMobileWriteFenceError): number {
   return error.code === "WORKFORCE_MOBILE_WRITE_FENCE_AGENT_NOT_FOUND"
@@ -23,6 +24,8 @@ function fenceErrorStatus(error: WorkforceMobileWriteFenceError): number {
  * selector for a controlled release, not an APK provenance/attestation claim.
  */
 export const PUT = withWorkforceSessionAdminAuth(async (req: NextRequest, auth) => {
+  const mfaDenied = await requireWorkforceAttendanceSecurityMfa(auth.orgId, auth)
+  if (mfaDenied) return mfaDenied
   const parsed = WorkforceMobileWriteCohortUpsertSchema.safeParse(await req.json().catch(() => ({})))
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid Workforce mobile write cohort" }, { status: 400 })
@@ -51,6 +54,8 @@ export const PUT = withWorkforceSessionAdminAuth(async (req: NextRequest, auth) 
  * The final active row cannot be disabled while the tenant is cohort-only.
  */
 export const DELETE = withWorkforceSessionAdminAuth(async (req: NextRequest, auth) => {
+  const mfaDenied = await requireWorkforceAttendanceSecurityMfa(auth.orgId, auth)
+  if (mfaDenied) return mfaDenied
   const parsed = WorkforceMobileWriteCohortDisableSchema.safeParse(await req.json().catch(() => ({})))
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid Workforce mobile write cohort" }, { status: 400 })
