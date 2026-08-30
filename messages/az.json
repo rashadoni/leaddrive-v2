@@ -23987,6 +23987,7 @@
   "reviewBulkAssignmentDraft": "Kütləvi qaralamanı yoxla",
   "discardBulkAssignmentDraft": "Lokal qaralamanı ləğv et",
   "bulkAssignmentReviewOnlyHint": "Bu yalnız oxunan ziddiyyət hesabatıdır. Kütləvi cədvəl saxlanmayıb, təsdiqlənməyib və dərc edilməyib.",
+  "bulkAssignmentSummary": "Yoxlama tamamlandı: hazır — {ready}, dəyişikliksiz — {unchanged}, əlçatan deyil — {unavailable}, komanda uyğunsuzluğu — {mismatch}, ziddiyyət — {conflicts}.",
   "bulkAssignmentOutcome": {
     "READY": "Gələcək yoxlanılmış əməliyyat üçün hazırdır",
     "NO_CHANGE": "Artıq bu növbə ilə əhatə olunur",

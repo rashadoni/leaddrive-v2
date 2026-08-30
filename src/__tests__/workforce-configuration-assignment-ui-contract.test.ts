@@ -38,6 +38,10 @@ describe("Workforce assignment configuration UI contract", () => {
     expect(workbench).toContain('setBulkAssignmentPreview(null)')
     expect(workbench).toContain('setBulkAssignmentDraft(emptyBulkAssignmentDraft())')
     expect(workbench).toContain('bulkAssignmentPreview !== null')
+    expect(workbench).toContain('aria-describedby="workforce-bulk-assignment-employees-hint"')
+    expect(workbench).toContain('role="status" aria-live="polite" aria-atomic="true"')
+    expect(workbench).toContain('t("bulkAssignmentSummary"')
+    expect(workbench).toContain('<ul className="mt-3 divide-y')
     expect(workbench).not.toContain('"/api/v1/workforce/configuration/assignments/bulk"')
   })
 
@@ -63,6 +67,7 @@ describe("Workforce assignment configuration UI contract", () => {
       "reviewBulkAssignmentDraft",
       "discardBulkAssignmentDraft",
       "bulkAssignmentReviewOnlyHint",
+      "bulkAssignmentSummary",
       "assignmentTimelineTitle",
       "scheduleDefaultAssignment",
       "defaultTimelineTitle",

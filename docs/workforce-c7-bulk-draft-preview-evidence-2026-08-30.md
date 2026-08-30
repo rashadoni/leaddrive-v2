@@ -16,6 +16,10 @@ employee plus counts for:
 - team mismatch; and
 - a conflicting future assignment.
 
+Only this concise count summary is announced to assistive technology. The
+individual outcomes are a semantic list outside the live region, so selecting
+200 employees does not enqueue 200 names for speech.
+
 The draft is React client state, not a persisted operational object. Editing an
 employee, shift or date clears the existing result. **Discard local draft**
 clears all values. The only request is the existing session-admin,

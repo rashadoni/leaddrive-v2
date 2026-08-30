@@ -23991,6 +23991,7 @@
   "reviewBulkAssignmentDraft": "Review bulk draft",
   "discardBulkAssignmentDraft": "Discard local draft",
   "bulkAssignmentReviewOnlyHint": "This is a read-only conflict report. No bulk schedule has been saved, approved or published.",
+  "bulkAssignmentSummary": "Review complete: {ready} ready, {unchanged} unchanged, {unavailable} unavailable, {mismatch} team mismatches, {conflicts} conflicts.",
   "bulkAssignmentOutcome": {
     "READY": "Ready for a future reviewed operation",
     "NO_CHANGE": "Already covered by this shift",

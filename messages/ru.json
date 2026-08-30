@@ -23991,6 +23991,7 @@
   "reviewBulkAssignmentDraft": "Проверить массовый черновик",
   "discardBulkAssignmentDraft": "Отбросить локальный черновик",
   "bulkAssignmentReviewOnlyHint": "Это отчёт о конфликтах только для чтения. Массовое расписание не сохранено, не утверждено и не опубликовано.",
+  "bulkAssignmentSummary": "Проверка завершена: готово — {ready}, без изменений — {unchanged}, недоступно — {unavailable}, несовпадений команд — {mismatch}, конфликтов — {conflicts}.",
   "bulkAssignmentOutcome": {
     "READY": "Готово для будущей проверенной операции",
     "NO_CHANGE": "Уже покрыто этой сменой",
