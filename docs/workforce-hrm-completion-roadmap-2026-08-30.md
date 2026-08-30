@@ -340,6 +340,7 @@ Owner roles are accountabilities, not individual names:
 | 2026-08-30T07:40:00+02:00 | C1e historical team membership | 14% | C1 60% | 28/161 | 0/15 | WF-C1-006 accepted: append-only employee team facts resolve delayed workdays at start time; pre-history never falls back to mutable current team |
 | 2026-08-30T07:41:00+02:00 | C1f transition risk codes | 14% | C1 70% | 29/161 | 0/15 | WF-C1-007 accepted: duplicate-active and impossible-order attempts return non-punitive machine risk codes while exact replays retain canonical success |
 | 2026-08-30T07:51:00+02:00 | C1g canonical recovery contract | 15% | C1 80% | 30/161 | 0/15 | WF-C1-008 accepted: every workday conflict has canonical state, structured reason, allowed actions and refresh contract across web/mobile adapters |
+| 2026-08-30T08:01:00+02:00 | C1h legacy-fact migration plan | 15% | C1 90% | 31/161 | 0/15 | WF-C1-009 accepted: v3 schema constraint now matches the segment-bound writer; legacy rows remain unknown, no backfill is permitted, and dry-run/reconciliation/forward-rollback procedures are recorded |
 
 ### 6.1 Progress reporting contract
 
@@ -422,7 +423,7 @@ client timestamps into trusted attendance facts.
 | WF-C1-006 | P1 | DONE | Backend/HR | Resolve policy/team/site assignment from an effective-dated employee history, not the current team after a delayed upload | [`workforce-c1-team-history-evidence-2026-08-30.md`](./workforce-c1-team-history-evidence-2026-08-30.md): immutable membership timeline, no pre-history guessing, and transfer-during-offline contract |
 | WF-C1-007 | P1 | DONE | Backend | Add impossible clock/order and duplicate active-shift risk codes without breaking idempotent retries | [`workforce-c1-transition-risk-evidence-2026-08-30.md`](./workforce-c1-transition-risk-evidence-2026-08-30.md): review-only codes, transport contract and replay-first tests |
 | WF-C1-008 | P1 | DONE | Backend | Return current canonical state, reason and allowed recovery actions on every conflict | [`workforce-c1-recovery-contract-evidence-2026-08-30.md`](./workforce-c1-recovery-contract-evidence-2026-08-30.md): structured recovery, fresh mismatch lookup and AZ/RU/EN UI mapping |
-| WF-C1-009 | P1 | PLANNED | Backend | Create additive migration/backfill plan for existing facts; unknown provenance remains `LEGACY`, never falsely attested | Dry-run counts, rollback and reconciliation checks |
+| WF-C1-009 | P1 | DONE | Backend | Create additive migration/backfill plan for existing facts; unknown provenance remains `LEGACY`, never falsely attested | [`workforce-c1-legacy-fact-migration-evidence-2026-08-30.md`](./workforce-c1-legacy-fact-migration-evidence-2026-08-30.md): v3 schema constraint, no-backfill contract, read-only count/reconciliation and forward-only rollback procedure |
 | WF-C1-010 | P1 | PLANNED | Security/QA | Add abuse tests for backdating, future time, replay, two devices, changed payload and expired app version | Negative matrix passes in CI |
 
 **Gate C1:** no supported endpoint can convert an out-of-policy past timestamp
@@ -444,6 +445,8 @@ Transition risk codes are in
 [`workforce-c1-transition-risk-evidence-2026-08-30.md`](./workforce-c1-transition-risk-evidence-2026-08-30.md).
 The canonical recovery contract is in
 [`workforce-c1-recovery-contract-evidence-2026-08-30.md`](./workforce-c1-recovery-contract-evidence-2026-08-30.md).
+The legacy-fact no-backfill and reconciliation procedure is in
+[`workforce-c1-legacy-fact-migration-evidence-2026-08-30.md`](./workforce-c1-legacy-fact-migration-evidence-2026-08-30.md).
 
 ### C2 — Sites, geofences, multi-branch segments and travel
 
