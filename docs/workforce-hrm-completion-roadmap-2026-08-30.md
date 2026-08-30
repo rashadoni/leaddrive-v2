@@ -353,6 +353,7 @@ Owner roles are accountabilities, not individual names:
 | 2026-08-30T02:28:00+02:00 | C4f encrypted evidence/assessment split | 9% | C4 60% | 19/161 | 0/15 | WF-C4-006 accepted: append-only encrypted evidence and raw-free assessments are separate; due ciphertext purge retains a report-safe verdict/receipt |
 | 2026-08-30T02:31:00+02:00 | C4g review-only risk hints | 10% | C4 70% | 20/161 | 0/15 | WF-C4-007 accepted: versioned impossible-transition and clock signals are deterministic review hints only, with no automatic guilt or decision |
 | 2026-08-30T02:35:00+02:00 | C4h safe assessment explanation | 10% | C4 80% | 21/161 | 0/15 | WF-C4-009 accepted: employee/manager contract maps known evidence outcomes to recovery keys and collapses unknown internal security detail to generic review |
+| 2026-08-30T02:39:00+02:00 | C4i GPS edge matrix | 11% | C4 90% | 22/161 | 0/15 | WF-C4-010 accepted: automated matrix covers zero/boundary/stale/future/weak/mock/provider/permission outcomes with no silent acceptance |
 
 **C3 phase display reconciliation (2026-08-30T08:11:00+02:00):** the C3
 register contains 11 tasks and its scope did not change. Earlier C3 ledger
@@ -529,7 +530,7 @@ without confusing evidence with identity.
 | WF-C4-007 | P1 | DONE | Backend | Add impossible-travel, speed, clock and site-transition risk signals as review hints, never automatic guilt | [`workforce-c4-risk-signals-evidence-2026-08-30.md`](./workforce-c4-risk-signals-evidence-2026-08-30.md): deterministic review-only rule version and no guilt/decision output |
 | WF-C4-008 | P1 | OWNER DECISION | Product/HR/Privacy | Define equitable fallback when GPS/QR/device/smartphone is unavailable, including disability and lost-phone cases: retry, kiosk/alternative proof or reviewed manual request | OD-16 resolved; every rejection code has a safe recovery action |
 | WF-C4-009 | P1 | DONE | Backend/Web | Expose assessment explanation to employee/manager without exposing secrets or raw security internals | [`workforce-c4-assessment-explanation-evidence-2026-08-30.md`](./workforce-c4-assessment-explanation-evidence-2026-08-30.md): safe presentation/recovery keys with secret-detail suppression |
-| WF-C4-010 | P1 | PLANNED | QA/Security | Test GPS edge cases: zero coordinates, boundary, stale/future timestamp, low accuracy, mock suspicion, no permission and no provider | Automated negative/edge matrix passes |
+| WF-C4-010 | P1 | DONE | QA/Security | Test GPS edge cases: zero coordinates, boundary, stale/future timestamp, low accuracy, mock suspicion, no permission and no provider | [`workforce-c4-gps-edge-matrix-evidence-2026-08-30.md`](./workforce-c4-gps-edge-matrix-evidence-2026-08-30.md): consolidated negative/edge matrix passes |
 
 **Gate C4:** every location/QR/device result names the evidence, policy and
 reason; missing or weak evidence cannot silently look verified.
