@@ -32,9 +32,18 @@ rows:
   triggers and no application update/delete grant.
 
 `src/lib/workforce/exception-case-ledger.ts` constructs strict raw-proof-free
-case and decision drafts. It has no Prisma client or live writer; its stable
-deduplication hash makes retries deterministic before a later transaction uses
+case and decision drafts. It has no Prisma client; its stable deduplication
+hash makes retries deterministic before the separate transaction writer uses
 the database uniqueness fence.
+
+`src/lib/workforce/exception-case-writer.ts` now provides the next, still
+unactivated transaction-scoped primitive: it canonicalizes a case/decision
+draft before insert, treats only an exact unique-key replay as idempotent and
+returns an explicit conflict for any changed immutable subject or decision
+under the same key. A decision also checks that its case exists in the same
+tenant. It has no endpoint, queue, detector, permission grant, lifecycle
+state, notification, payroll or disciplinary behavior; a future authorized
+C6 service must supply those separately.
 
 Segment-only no-show proposals remain permissible at this storage boundary:
 they have no accepted START snapshot yet. Their schedule detector, grace
@@ -71,6 +80,15 @@ decision semantics and browser/physical rollout evidence.
           src/__tests__/lib-workforce-exception-case-ledger.test.ts --reporter=dot
           (3 files, 9 tests)
     PASS  targeted ESLint for the new migration contract test and
+          `git diff --check`.
+
+    PASS  PATH=/home/codex-alt/.local/bin:$PATH npx vitest run \
+          src/__tests__/lib-workforce-exception-case-writer.test.ts \
+          src/__tests__/lib-workforce-exception-case-ledger.test.ts \
+          src/__tests__/migration-workforce-exception-case-lifecycle.test.ts \
+          src/__tests__/migration-workforce-exception-case-subject-integrity.test.ts --reporter=dot
+          (4 files, 13 tests)
+    PASS  targeted ESLint for the transaction writer and test, and
           `git diff --check`.
 
     NOT RUN  Prisma generate/migration apply, full typecheck/build, browser
