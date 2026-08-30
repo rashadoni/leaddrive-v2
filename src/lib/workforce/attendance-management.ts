@@ -79,6 +79,17 @@ export const WorkforceAttendanceStationCreateSchema = z.object({
   }
 })
 
+/**
+ * An emergency replacement deliberately inherits the existing station's
+ * site/geofence binding. This avoids silently moving a live station to a
+ * different office while operators contain a lost or compromised display.
+ */
+export const WorkforceAttendanceStationReplacementSchema = z.object({
+  code: z.string().trim().min(1).max(64).regex(IDENTIFIER, "Station code must use letters, numbers, _ or -"),
+  name: z.string().trim().min(1).max(120),
+  rotationSeconds: z.number().int().min(30).max(300).optional(),
+}).strict()
+
 export const WorkforceAttendanceEnrollmentCreateSchema = z.object({
   deviceLabel: z.string().trim().min(1).max(120),
   publicKeySpki: z.string().trim().min(1).max(8192),
@@ -99,6 +110,7 @@ export class WorkforceAttendanceManagementError extends Error {
       | "WORKFORCE_ATTENDANCE_STATION_SITE_INVALID"
       | "WORKFORCE_ATTENDANCE_STATION_GEOFENCE_INVALID"
       | "WORKFORCE_ATTENDANCE_STATION_NOT_EFFECTIVE"
+      | "WORKFORCE_ATTENDANCE_STATION_REPLACEMENT_INVALID"
       | "WORKFORCE_ATTENDANCE_ENROLLMENT_NOT_FOUND"
       | "WORKFORCE_ATTENDANCE_ENROLLMENT_REPLACEMENT_INVALID"
       | "WORKFORCE_ATTENDANCE_ENROLLMENT_DUPLICATE_KEY"
@@ -268,6 +280,156 @@ export async function disableWorkforceAttendanceQrStation(
       },
     })
   })
+}
+
+/**
+ * Atomically retires one active, currently effective station and creates its
+ * successor at the same site/geofence binding. It never reuses a station code
+ * or changes an existing station's physical context, so an already-issued QR
+ * is rejected as soon as the old station is disabled.
+ */
+export async function replaceWorkforceAttendanceQrStation(
+  db: PrismaClient,
+  input: {
+    organizationId: string
+    stationId: string
+    createdByUserId: string
+    audit: WorkforceAttendanceAuditContext
+    code: string
+    name: string
+    rotationSeconds?: number
+    now?: Date
+  },
+) {
+  const now = input.now ?? new Date()
+  try {
+    return await db.$transaction(async (tx) => {
+      const current = await tx.workforceAttendanceQrStation.findFirst({
+        where: { id: input.stationId, organizationId: input.organizationId },
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          status: true,
+          rotationSeconds: true,
+          siteId: true,
+          areaLabel: true,
+          geofenceRevisionId: true,
+          effectiveFrom: true,
+          effectiveTo: true,
+        },
+      })
+      if (!current) {
+        throw new WorkforceAttendanceManagementError(
+          "WORKFORCE_ATTENDANCE_STATION_NOT_FOUND",
+          "Attendance QR station was not found",
+        )
+      }
+      if (current.status !== "ACTIVE") {
+        throw new WorkforceAttendanceManagementError(
+          "WORKFORCE_ATTENDANCE_STATION_DISABLED",
+          "Attendance QR station is already disabled",
+        )
+      }
+      if (
+        current.siteId == null
+        || current.geofenceRevisionId == null
+        || current.effectiveFrom == null
+        || current.effectiveFrom > now
+        || (current.effectiveTo != null && current.effectiveTo <= now)
+      ) {
+        throw new WorkforceAttendanceManagementError(
+          "WORKFORCE_ATTENDANCE_STATION_REPLACEMENT_INVALID",
+          "Only a currently effective site-bound QR station can be replaced",
+        )
+      }
+
+      const site = await tx.workforceSite.findFirst({
+        where: { id: current.siteId, organizationId: input.organizationId, status: "ACTIVE" },
+        select: { id: true },
+      })
+      const geofence = await tx.workforceSiteGeofenceRevision.findFirst({
+        where: {
+          id: current.geofenceRevisionId,
+          organizationId: input.organizationId,
+          siteId: current.siteId,
+          effectiveFrom: { lte: now },
+          OR: [{ effectiveTo: null }, { effectiveTo: { gt: now } }],
+        },
+        select: { id: true },
+      })
+      if (!site || !geofence) {
+        throw new WorkforceAttendanceManagementError(
+          "WORKFORCE_ATTENDANCE_STATION_REPLACEMENT_INVALID",
+          "The QR station's site or calibrated circle is no longer effective",
+        )
+      }
+
+      const replacement = await tx.workforceAttendanceQrStation.create({
+        data: {
+          organizationId: input.organizationId,
+          createdByUserId: input.createdByUserId,
+          code: input.code,
+          name: input.name,
+          rotationSeconds: input.rotationSeconds ?? current.rotationSeconds,
+          siteId: current.siteId,
+          areaLabel: current.areaLabel,
+          geofenceRevisionId: current.geofenceRevisionId,
+          effectiveFrom: now,
+          effectiveTo: null,
+        },
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          status: true,
+          rotationSeconds: true,
+          siteId: true,
+          areaLabel: true,
+          geofenceRevisionId: true,
+          effectiveFrom: true,
+          effectiveTo: true,
+          createdAt: true,
+        },
+      })
+      const disabled = await tx.workforceAttendanceQrStation.updateMany({
+        where: { id: current.id, organizationId: input.organizationId, status: "ACTIVE" },
+        data: { status: "DISABLED", disabledByUserId: input.createdByUserId, disabledAt: now },
+      })
+      if (disabled.count !== 1) {
+        throw new WorkforceAttendanceManagementError(
+          "WORKFORCE_ATTENDANCE_STATION_DISABLED",
+          "Attendance QR station changed concurrently",
+        )
+      }
+      await tx.mtmAuditLog.create({
+        data: {
+          organizationId: input.organizationId,
+          agentId: null,
+          action: "WORKFORCE_ATTENDANCE_QR_STATION_REPLACED",
+          entity: "workforce_attendance_qr_station",
+          entityId: current.id,
+          metadataKind: "workforce_attendance_security",
+          oldData: attendanceAuditData(current, input.audit),
+          newData: {
+            retiredStation: attendanceAuditData({ ...current, status: "DISABLED" }, input.audit),
+            replacementStation: attendanceAuditData(replacement, input.audit),
+          },
+          ipAddress: input.audit.ipAddress ?? null,
+          userAgent: input.audit.userAgent ?? null,
+        },
+      })
+      return { retiredStationId: current.id, replacement }
+    })
+  } catch (error) {
+    if (uniqueViolation(error)) {
+      throw new WorkforceAttendanceManagementError(
+        "WORKFORCE_ATTENDANCE_STATION_CODE_DUPLICATE",
+        "This attendance QR station code already exists",
+      )
+    }
+    throw error
+  }
 }
 
 export async function issueWorkforceAttendanceQr(

@@ -62,6 +62,12 @@ type StationForm = {
   effectiveTo: string
 }
 
+type StationReplacementForm = {
+  code: string
+  name: string
+  rotationSeconds: string
+}
+
 type IssuedQr = {
   stationId: string
   qrDataUrl: string
@@ -101,6 +107,14 @@ function emptyStationForm(): StationForm {
   }
 }
 
+function stationReplacementForm(station: QrStation): StationReplacementForm {
+  return {
+    code: "",
+    name: "",
+    rotationSeconds: String(station.rotationSeconds),
+  }
+}
+
 function asDateKey(value: string | null): string {
   return value ? value.slice(0, 10) : ""
 }
@@ -127,6 +141,8 @@ export function WorkforceAttendanceAdministration() {
   const [sites, setSites] = useState<WorkforceSite[] | null>(null)
   const [geofenceRevisions, setGeofenceRevisions] = useState<WorkforceSiteGeofenceRevision[]>([])
   const [stationForm, setStationForm] = useState<StationForm>(emptyStationForm)
+  const [replacementStationId, setReplacementStationId] = useState<string | null>(null)
+  const [replacementForm, setReplacementForm] = useState<StationReplacementForm | null>(null)
   const [stationError, setStationError] = useState<string | null>(null)
   const [deviceError, setDeviceError] = useState<string | null>(null)
   const [geofenceError, setGeofenceError] = useState<string | null>(null)
@@ -250,6 +266,38 @@ export function WorkforceAttendanceAdministration() {
     }
   }
 
+  function beginStationReplacement(station: QrStation) {
+    setIssued((current) => current?.stationId === station.id ? null : current)
+    setReplacementStationId(station.id)
+    setReplacementForm(stationReplacementForm(station))
+  }
+
+  async function replaceStation(station: QrStation, event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const rotationSeconds = positiveInteger(replacementForm?.rotationSeconds ?? "")
+    if (!replacementForm?.code.trim() || !replacementForm.name.trim() || rotationSeconds == null || rotationSeconds < 30 || rotationSeconds > 300) {
+      toast.error(t("stationReplacementValidationFailed"))
+      return
+    }
+    setBusy(`replace:${station.id}`)
+    try {
+      await request(`/api/v1/workforce/attendance/stations/${encodeURIComponent(station.id)}/replace`, "POST", {
+        code: replacementForm.code.trim(),
+        name: replacementForm.name.trim(),
+        rotationSeconds,
+      })
+      setIssued((current) => current?.stationId === station.id ? null : current)
+      setReplacementStationId(null)
+      setReplacementForm(null)
+      toast.success(t("stationReplaced"))
+      await load()
+    } catch (cause) {
+      toast.error(messageForError(cause, t("stationReplaceFailed")))
+    } finally {
+      setBusy(null)
+    }
+  }
+
   async function saveStation(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const rotationSeconds = positiveInteger(stationForm.rotationSeconds)
@@ -328,8 +376,14 @@ export function WorkforceAttendanceAdministration() {
         <div className="mt-4 flex max-w-xs items-end gap-3"><Select id="workforce-qr-action" label={t("qrAction")} value={action} onChange={(event) => setAction(event.target.value as IssuedQr["action"])}><option value="START">{t("actionStart")}</option><option value="PAUSE">{t("actionPause")}</option><option value="RESUME">{t("actionResume")}</option><option value="FINISH">{t("actionFinish")}</option></Select></div>
         {stationError ? <p className="mt-4 text-sm text-muted-foreground" role="status">{t("stationUnavailable", { error: stationError })}</p> : null}
         {stations?.map((station) => <article key={station.id} className="border-b border-zinc-200 py-5 dark:border-zinc-700">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="font-medium">{station.name}</p><Badge variant={station.status === "ACTIVE" ? "default" : "outline"}>{t(`stationStatus.${station.status}`)}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{station.code} · {t("rotation", { seconds: station.rotationSeconds })}</p><p className="mt-1 text-sm text-muted-foreground">{station.areaLabel || stationSiteLabel(station.siteId)}</p></div>{station.status === "ACTIVE" ? <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" className="min-h-11" disabled={busy !== null} onClick={() => void issue(station)}>{busy === `issue:${station.id}` ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <QrCode />}{t("showQr")}</Button><Button type="button" variant="outline" className="min-h-11" disabled={busy !== null} onClick={() => void disable(station)}>{busy === `disable:${station.id}` ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <ShieldOff />}{t("disableStation")}</Button></div> : null}</div>
-          {issued?.stationId === station.id ? <div className="mt-4 flex flex-col gap-3 rounded-lg border border-zinc-200 bg-muted/30 p-4 sm:flex-row sm:items-center dark:border-zinc-700"><Image src={issued.qrDataUrl} alt={t("qrImageAlt", { station: station.name, action: t(actionMessageKey(issued.action)) })} width={192} height={192} unoptimized className="h-48 w-48 rounded bg-white p-2" /><div><p className="font-medium">{t("qrDisplayTitle")}</p><p className="mt-1 max-w-sm text-sm leading-6 text-muted-foreground">{t("qrDisplayHint")}</p><p className="mt-2 text-sm text-muted-foreground">{issuedExpiry ? t("qrExpiresAt", { value: dateTime.format(issuedExpiry) }) : "—"}</p><Button type="button" variant="outline" className="mt-4 min-h-11" disabled={busy !== null} onClick={() => void issue(station)}><RefreshCw />{t("refreshQr")}</Button></div></div> : null}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="font-medium">{station.name}</p><Badge variant={station.status === "ACTIVE" ? "default" : "outline"}>{t(`stationStatus.${station.status}`)}</Badge></div><p className="mt-1 text-sm text-muted-foreground">{station.code} · {t("rotation", { seconds: station.rotationSeconds })}</p><p className="mt-1 text-sm text-muted-foreground">{station.areaLabel || stationSiteLabel(station.siteId)}</p></div>{station.status === "ACTIVE" ? <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" className="min-h-11" disabled={busy !== null} onClick={() => void issue(station)}>{busy === `issue:${station.id}` ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <QrCode />}{t("showQr")}</Button><Button type="button" variant="outline" className="min-h-11" disabled={busy !== null} onClick={() => void beginStationReplacement(station)}><RefreshCw />{t("replaceStation")}</Button><Button type="button" variant="outline" className="min-h-11" disabled={busy !== null} onClick={() => void disable(station)}>{busy === `disable:${station.id}` ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <ShieldOff />}{t("disableStation")}</Button></div> : null}</div>
+          {replacementStationId === station.id && replacementForm ? <form onSubmit={(event) => void replaceStation(station, event)} className="mt-4 space-y-4 rounded-md border border-amber-300 bg-amber-50/50 p-4 dark:border-amber-900 dark:bg-amber-950/20" aria-labelledby={`workforce-qr-station-replace-${station.id}`}>
+            <div><h4 id={`workforce-qr-station-replace-${station.id}`} className="font-medium">{t("stationReplacementTitle", { station: station.name })}</h4><p className="mt-1 text-sm leading-6 text-muted-foreground">{t("stationReplacementHint")}</p><p className="mt-2 text-sm leading-6 text-amber-800 dark:text-amber-200">{t("stationReplacementWarning")}</p></div>
+            <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-1.5"><label htmlFor={`workforce-qr-station-replacement-code-${station.id}`} className="text-sm font-medium">{t("stationCode")}</label><Input id={`workforce-qr-station-replacement-code-${station.id}`} value={replacementForm.code} onChange={(event) => setReplacementForm((current) => current ? { ...current, code: event.target.value } : current)} maxLength={64} required /></div><div className="space-y-1.5"><label htmlFor={`workforce-qr-station-replacement-name-${station.id}`} className="text-sm font-medium">{t("stationName")}</label><Input id={`workforce-qr-station-replacement-name-${station.id}`} value={replacementForm.name} onChange={(event) => setReplacementForm((current) => current ? { ...current, name: event.target.value } : current)} maxLength={120} required /></div></div>
+            <div className="max-w-xs space-y-1.5"><label htmlFor={`workforce-qr-station-replacement-rotation-${station.id}`} className="text-sm font-medium">{t("stationRotationSeconds")}</label><Input id={`workforce-qr-station-replacement-rotation-${station.id}`} type="number" min="30" max="300" step="1" value={replacementForm.rotationSeconds} onChange={(event) => setReplacementForm((current) => current ? { ...current, rotationSeconds: event.target.value } : current)} required /></div>
+            <div className="flex flex-wrap gap-2"><Button type="submit" className="min-h-11" disabled={busy !== null}>{busy === `replace:${station.id}` ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <RefreshCw />}{t("replaceStation")}</Button><Button type="button" variant="outline" className="min-h-11" disabled={busy !== null} onClick={() => { setReplacementStationId(null); setReplacementForm(null) }}>{t("cancelStationReplacement")}</Button></div>
+          </form> : null}
+          {issued?.stationId === station.id ? <div className="mt-4 flex flex-col gap-3 rounded-lg border border-zinc-200 bg-muted/30 p-4 sm:flex-row sm:items-center dark:border-zinc-700" aria-live="polite" aria-atomic="true"><Image src={issued.qrDataUrl} alt={t("qrImageAlt", { station: station.name, action: t(actionMessageKey(issued.action)) })} width={192} height={192} unoptimized className="h-48 w-48 rounded bg-white p-2" /><div><p className="font-medium">{t("qrDisplayTitle")}</p><p className="mt-1 max-w-sm text-sm leading-6 text-muted-foreground">{t("qrDisplayHint")}</p><p className="mt-2 text-sm text-muted-foreground">{issuedExpiry ? t("qrExpiresAt", { value: dateTime.format(issuedExpiry) }) : "—"}</p><Button type="button" variant="outline" className="mt-4 min-h-11" disabled={busy !== null} onClick={() => void issue(station)}><RefreshCw />{t("refreshQr")}</Button></div></div> : null}
         </article>)}
         {stations?.length === 0 ? <p className="mt-4 text-sm text-muted-foreground">{t("noStations")}</p> : null}
       </div>

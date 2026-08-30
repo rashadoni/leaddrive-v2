@@ -23,6 +23,7 @@ vi.mock("qrcode", () => ({
 
 import { POST as stationPost } from "@/app/api/v1/workforce/attendance/stations/route"
 import { POST as stationQrPost } from "@/app/api/v1/workforce/attendance/stations/[id]/qr/route"
+import { POST as stationReplacementPost } from "@/app/api/v1/workforce/attendance/stations/[id]/replace/route"
 import {
   GET as mobileEnrollmentGet,
   POST as mobileEnrollmentPost,
@@ -47,6 +48,8 @@ type StationPostHandler = (request: NextRequest, auth: AuthResult) => Promise<Re
 const callStationPost = stationPost as unknown as StationPostHandler
 type StationQrPostHandler = (request: NextRequest, auth: AuthResult, context: { params: Promise<{ id: string }> }) => Promise<Response>
 const callStationQrPost = stationQrPost as unknown as StationQrPostHandler
+type StationReplacementPostHandler = (request: NextRequest, auth: AuthResult, context: { params: Promise<{ id: string }> }) => Promise<Response>
+const callStationReplacementPost = stationReplacementPost as unknown as StationReplacementPostHandler
 const MOBILE_AUTH = {
   orgId: ORG,
   agentId: "agent_1",
@@ -70,6 +73,14 @@ function webRequest(body: unknown) {
 
 function stationQrRequest(body: unknown) {
   return new NextRequest("http://localhost/api/v1/workforce/attendance/stations/station_1/qr", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  })
+}
+
+function stationReplacementRequest(body: unknown) {
+  return new NextRequest("http://localhost/api/v1/workforce/attendance/stations/station_old/replace", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
@@ -187,6 +198,59 @@ describe("Workforce attendance H5 API boundaries", () => {
     await expect(response.json()).resolves.toMatchObject({ code: "WORKFORCE_ATTENDANCE_MFA_REQUIRED" })
     expect(prisma.workforceAttendanceQrStation.create).not.toHaveBeenCalled()
     expect(prisma.workforceSite.findFirst).not.toHaveBeenCalled()
+  })
+
+  it("requires an MFA-gated attendance administrator to atomically replace an effective QR station", async () => {
+    vi.mocked(prisma.workforceAttendanceQrStation.findFirst).mockResolvedValue({
+      id: "station_old",
+      code: "HQ_FRONT",
+      name: "HQ front desk",
+      status: "ACTIVE",
+      rotationSeconds: 60,
+      siteId: "site_1",
+      areaLabel: "Reception",
+      geofenceRevisionId: "geofence_1",
+      effectiveFrom: new Date("2020-01-01T00:00:00.000Z"),
+      effectiveTo: null,
+    } as never)
+    vi.mocked(prisma.workforceSite.findFirst).mockResolvedValue({ id: "site_1" } as never)
+    vi.mocked(prisma.workforceSiteGeofenceRevision.findFirst).mockResolvedValue({ id: "geofence_1" } as never)
+    vi.mocked(prisma.workforceAttendanceQrStation.create).mockResolvedValue({
+      id: "station_replacement",
+      code: "HQ_FRONT_BACKUP",
+      name: "HQ front desk backup",
+      status: "ACTIVE",
+      rotationSeconds: 60,
+      siteId: "site_1",
+      areaLabel: "Reception",
+      geofenceRevisionId: "geofence_1",
+      effectiveFrom: new Date("2026-08-30T00:00:00.000Z"),
+      effectiveTo: null,
+      createdAt: new Date("2026-08-30T00:00:00.000Z"),
+    } as never)
+    vi.mocked(prisma.workforceAttendanceQrStation.updateMany).mockResolvedValue({ count: 1 } as never)
+
+    const response = await callStationReplacementPost(stationReplacementRequest({
+      code: "HQ_FRONT_BACKUP",
+      name: "HQ front desk backup",
+    }), ADMIN, { params: Promise.resolve({ id: "station_old" }) })
+
+    expect(response.status).toBe(201)
+    await expect(response.json()).resolves.toMatchObject({
+      success: true,
+      data: { retiredStationId: "station_old", replacement: { id: "station_replacement", status: "ACTIVE" } },
+    })
+    expect(prisma.workforceAttendanceQrStation.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "station_old", organizationId: ORG, status: "ACTIVE" },
+      data: expect.objectContaining({ status: "DISABLED", disabledByUserId: "admin_1" }),
+    }))
+
+    const denied = await callStationReplacementPost(stationReplacementRequest({
+      code: "NO",
+      name: "No",
+    }), { ...ADMIN, role: "user" as AuthResult["role"] }, { params: Promise.resolve({ id: "station_old" }) })
+    expect(denied.status).toBe(403)
+    expect(await denied.json()).toMatchObject({ code: "WORKFORCE_ATTENDANCE_ADMIN_REQUIRED" })
   })
 
   it("renders the issued QR server-side without requiring the admin browser to handle token text", async () => {

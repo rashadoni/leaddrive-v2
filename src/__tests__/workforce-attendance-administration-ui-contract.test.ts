@@ -38,6 +38,13 @@ describe("Workforce attendance administration UI boundary", () => {
     expect(administration).not.toContain('stationSiteLabel(station.siteId || "—")')
   })
 
+  it("makes emergency QR replacement deliberate and preserves the existing site context server-side", () => {
+    expect(administration).toContain('request(`/api/v1/workforce/attendance/stations/${encodeURIComponent(station.id)}/replace`, "POST"')
+    expect(administration).toContain('t("stationReplacementWarning")')
+    expect(administration).toContain('id={`workforce-qr-station-replacement-code-${station.id}`}')
+    expect(administration).not.toContain("geofenceRevisionId: replacementForm")
+  })
+
   it("has complete translation copy for station creation without exposing a raw site id", () => {
     const keys = [
       "newStation",
@@ -48,6 +55,14 @@ describe("Workforce attendance administration UI boundary", () => {
       "stationValidationFailed",
       "createStation",
       "stationSiteUnavailable",
+      "replaceStation",
+      "stationReplacementTitle",
+      "stationReplacementHint",
+      "stationReplacementWarning",
+      "stationReplacementValidationFailed",
+      "cancelStationReplacement",
+      "stationReplaced",
+      "stationReplaceFailed",
     ]
     for (const locale of ["en", "az", "ru"]) {
       const localized = messages(locale)

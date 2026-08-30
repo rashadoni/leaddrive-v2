@@ -13,6 +13,7 @@ import {
   disableWorkforceAttendanceQrStation,
   issueWorkforceAttendanceQr,
   proveWorkforceAttendanceDeviceEnrollment,
+  replaceWorkforceAttendanceQrStation,
   revokeWorkforceAttendanceDeviceEnrollment,
   WorkforceAttendanceManagementError,
 } from "@/lib/workforce/attendance-management"
@@ -88,6 +89,108 @@ describe("Workforce attendance management", () => {
         newData: expect.objectContaining({ actorUserId: USER_ID, status: "DISABLED" }),
       }),
     }))
+  })
+
+  it("atomically replaces an effective site-bound QR station without changing its physical context", async () => {
+    vi.mocked(prisma.workforceAttendanceQrStation.findFirst).mockResolvedValue({
+      id: "station_old",
+      code: "HQ_FRONT",
+      name: "HQ front desk",
+      status: "ACTIVE",
+      rotationSeconds: 60,
+      siteId: "site_1",
+      areaLabel: "Reception",
+      geofenceRevisionId: "geofence_1",
+      effectiveFrom: new Date("2026-08-01T00:00:00.000Z"),
+      effectiveTo: null,
+    } as never)
+    vi.mocked(prisma.workforceSite.findFirst).mockResolvedValue({ id: "site_1" } as never)
+    vi.mocked(prisma.workforceSiteGeofenceRevision.findFirst).mockResolvedValue({ id: "geofence_1" } as never)
+    vi.mocked(prisma.workforceAttendanceQrStation.create).mockResolvedValue({
+      id: "station_replacement",
+      code: "HQ_FRONT_BACKUP",
+      name: "HQ front desk backup",
+      status: "ACTIVE",
+      rotationSeconds: 90,
+      siteId: "site_1",
+      areaLabel: "Reception",
+      geofenceRevisionId: "geofence_1",
+      effectiveFrom: NOW,
+      effectiveTo: null,
+      createdAt: NOW,
+    } as never)
+    vi.mocked(prisma.workforceAttendanceQrStation.updateMany).mockResolvedValue({ count: 1 } as never)
+
+    await expect(replaceWorkforceAttendanceQrStation(prisma as never, {
+      organizationId: ORGANIZATION_ID,
+      stationId: "station_old",
+      createdByUserId: USER_ID,
+      audit: AUDIT,
+      code: "HQ_FRONT_BACKUP",
+      name: "HQ front desk backup",
+      rotationSeconds: 90,
+      now: NOW,
+    })).resolves.toMatchObject({
+      retiredStationId: "station_old",
+      replacement: { id: "station_replacement", status: "ACTIVE" },
+    })
+
+    expect(prisma.workforceAttendanceQrStation.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        organizationId: ORGANIZATION_ID,
+        createdByUserId: USER_ID,
+        code: "HQ_FRONT_BACKUP",
+        name: "HQ front desk backup",
+        rotationSeconds: 90,
+        siteId: "site_1",
+        areaLabel: "Reception",
+        geofenceRevisionId: "geofence_1",
+        effectiveFrom: NOW,
+        effectiveTo: null,
+      }),
+    }))
+    expect(prisma.workforceAttendanceQrStation.updateMany).toHaveBeenCalledWith({
+      where: { id: "station_old", organizationId: ORGANIZATION_ID, status: "ACTIVE" },
+      data: { status: "DISABLED", disabledByUserId: USER_ID, disabledAt: NOW },
+    })
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        action: "WORKFORCE_ATTENDANCE_QR_STATION_REPLACED",
+        entityId: "station_old",
+        oldData: expect.objectContaining({ code: "HQ_FRONT", status: "ACTIVE" }),
+        newData: expect.objectContaining({
+          retiredStation: expect.objectContaining({ status: "DISABLED" }),
+          replacementStation: expect.objectContaining({ code: "HQ_FRONT_BACKUP", status: "ACTIVE" }),
+        }),
+      }),
+    }))
+  })
+
+  it("refuses replacement when the prior QR station is no longer effective", async () => {
+    vi.mocked(prisma.workforceAttendanceQrStation.findFirst).mockResolvedValue({
+      id: "station_old",
+      code: "HQ_FRONT",
+      name: "HQ front desk",
+      status: "ACTIVE",
+      rotationSeconds: 60,
+      siteId: "site_1",
+      areaLabel: null,
+      geofenceRevisionId: "geofence_1",
+      effectiveFrom: new Date("2026-08-01T00:00:00.000Z"),
+      effectiveTo: NOW,
+    } as never)
+
+    await expect(replaceWorkforceAttendanceQrStation(prisma as never, {
+      organizationId: ORGANIZATION_ID,
+      stationId: "station_old",
+      createdByUserId: USER_ID,
+      audit: AUDIT,
+      code: "HQ_FRONT_BACKUP",
+      name: "HQ front desk backup",
+      now: NOW,
+    })).rejects.toMatchObject({ code: "WORKFORCE_ATTENDANCE_STATION_REPLACEMENT_INVALID" })
+    expect(prisma.workforceAttendanceQrStation.create).not.toHaveBeenCalled()
+    expect(prisma.workforceAttendanceQrStation.updateMany).not.toHaveBeenCalled()
   })
 
   it("enrolls a P-256 public key through a one-time proof before manager approval", async () => {

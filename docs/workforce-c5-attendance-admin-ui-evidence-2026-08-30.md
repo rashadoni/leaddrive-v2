@@ -25,6 +25,14 @@ The Workforce configuration page now contains an administrator-only
   but never renders, stores or logs the QR token as text.
 - A station can be disabled. This is a lifecycle action, not destructive
   deletion.
+- An MFA-gated administrator can perform an explicit **Emergency replace**
+  operation. It takes a new code/name and optional rotation only: the server
+  revalidates the retired station's active site and effective calibrated-circle
+  revision, creates a successor at exactly that binding, disables the prior
+  station and writes one redacted replacement audit record in a transaction.
+  The confirmation text makes the terminal retirement clear; it does not show
+  a QR token or accept a raw site/geofence identifier. A concurrent retirement
+  aborts the transaction instead of leaving two claimed successors.
 - It lists the existing trusted-device lifecycle without public keys,
   fingerprints, attestation material or proof payloads. Only a key-verified
   pending enrollment exposes **Approve**; only an active enrollment exposes
@@ -49,8 +57,10 @@ This does **not** complete WF-C5-007 or WF-C5-008:
   recovery factor, hardware attestation or physical device proof. The existing
   server replacement transaction and its new review visibility do not make an
   unsupported mobile binary available;
-- no station replacement workflow, controller health telemetry, clock-skew
-  detection, kiosk hardware integration or physical display test;
+- no controller health telemetry, clock-skew detection, kiosk hardware
+  integration or physical display test. The emergency replacement flow only
+  changes the server-side lifecycle and cannot prove a replacement display is
+  physically present or correctly clock-synchronised;
 - no claim that QR, a registered device or an authenticated account proves the
   named human was physically present;
 - no browser E2E, Android build, physical-device test or production deployment.
@@ -67,11 +77,14 @@ PASS  npx vitest run src/__tests__/workforce-attendance-management.test.ts \
       src/__tests__/api-workforce-attendance.test.ts \
       src/__tests__/workforce-attendance-administration-ui-contract.test.ts \
       --reporter=dot
-      (3 files, 20 tests)
+      (3 files, 24 tests)
 PASS  npx eslint src/lib/workforce/attendance-management.ts \
+      src/app/api/v1/workforce/attendance/stations/[id]/replace/route.ts \
       src/components/workforce/workforce-attendance-administration.tsx \
-      src/__tests__/workforce-attendance-management.test.ts
-PASS  npm run i18n:check (21,281 EN leaf keys; RU/AZ missing=0, extra=0)
+      src/__tests__/workforce-attendance-management.test.ts \
+      src/__tests__/api-workforce-attendance.test.ts \
+      src/__tests__/workforce-attendance-administration-ui-contract.test.ts
+PASS  npm run i18n:check (21,289 EN leaf keys; RU/AZ missing=0, extra=0)
 PASS  git diff --check
 NOT RUN  full build, browser E2E, Android and physical QR/device checks:
          prohibited heavy/physical gates on the Contabo development host.
