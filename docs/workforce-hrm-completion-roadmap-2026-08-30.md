@@ -25,6 +25,7 @@
 > [`workforce-c7-self-service-request-evidence-2026-08-30.md`](./workforce-c7-self-service-request-evidence-2026-08-30.md),
 > [`mobile-sync-v2-workforce-contract.md`](./mobile-sync-v2-workforce-contract.md),
 > [`workforce-c6-scoped-decision-api-evidence-2026-08-31.md`](./workforce-c6-scoped-decision-api-evidence-2026-08-31.md)
+> [`workforce-c7-employment-history-evidence-2026-08-30.md`](./workforce-c7-employment-history-evidence-2026-08-30.md),
 
 ## 1. Purpose and honest starting point
 
@@ -393,6 +394,7 @@ Owner roles are accountabilities, not individual names:
 
 | 2026-08-31T23:28:00+02:00 | C7u explicit scoped exception-decision permission (partial) | 36% | C7 52% | 74/161 | 0/15 | WF-C7-002 now assigns accountable exception decisions only to explicit `HR_ADMIN` or scoped `TEAM_MANAGER` grants; `TIME_APPROVER` remains denied and no role gains raw evidence, payroll, discipline or approval power. The grant ledger is still inactive, so no endpoint/tenant behavior changes and no completion credit is claimed. |
 | 2026-08-31T23:33:00+02:00 | C6s/C7v scoped immutable decision source slice (partial) | 36% | C6 20%; C7 52% | 74/161 | 0/15 | WF-C6-002 now uses a policy-aware per-case locked decision writer and session-only API, while WF-C7-002 resolves only bounded active scope grants. Missing case/grant remains indistinguishable and the current zero-grant state is default-deny. Disposable DB/RLS/concurrency, grant rollout, manager browser flow and tenant activation remain open, so no completion credit is claimed. |
+| 2026-08-30T10:26:12+02:00 | C7c explicit employment lifecycle history (partial) | 24% | C7 20% | 48/161 | 0/15 | WF-C7-004 source foundation: explicit hire/termination/rehire plus historical team/site resolver does not infer legal status from account fields; database apply/generated-client gate remains NOT RUN, so no task credit is claimed |
 
 **C3 phase display reconciliation (2026-08-30T08:11:00+02:00):** the C3
 register contains 11 tasks and its scope did not change. Earlier C3 ledger
@@ -631,7 +633,7 @@ overbroad CRM roles or mobile-only requests.
 | WF-C7-001 | P1 | DONE | HR/Security | Approve Workforce role/permission matrix and incompatible-role rules | [`workforce-c7-granular-access-foundation-evidence-2026-08-30.md`](./workforce-c7-granular-access-foundation-evidence-2026-08-30.md): owner-approved recommended v1 roles, scoped HR/team exception decision boundary and incompatible-pair draft are documented and negative-tested; durable enforcement stays separate |
 | WF-C7-002 | P1 | PARTIAL | Backend | Implement granular scopes: employee self, team/site manager, scheduler, time approver, evidence reviewer, device admin, export custodian, retention/legal-hold officer, pilot/rollback operator and tenant admin | [`workforce-c7-granular-access-foundation-evidence-2026-08-30.md`](./workforce-c7-granular-access-foundation-evidence-2026-08-30.md): pure fail-closed contract, bounded persisted-grant resolver, inert immutable grant/revocation schema, incompatible-role guard and caller-authorized writer exist; migration apply/DB concurrency, grant assignment/rollout, endpoint migration and rollout fence remain open |
 | WF-C7-003 | P1 | PLANNED | Web | Build employee/team/site directory pickers with status and effective-date context | Configuration has no typed `teamId`/employee ID workflow |
-| WF-C7-004 | P1 | PLANNED | Backend/HR | Add employment/team/site history for transfer, temporary assignment, termination and rehire | Delayed event resolves against correct historical assignment |
+| WF-C7-004 | P1 | PARTIAL | Backend/HR | Add employment/team/site history for transfer, temporary assignment, termination and rehire | Workforce C7 employment-history evidence: explicit immutable lifecycle plus historical team/site resolver; migration apply/generated-client verification remains NOT RUN |
 | WF-C7-005 | P1 | DONE | Web/Mobile | Deliver self-service leave, absence and time-correction creation/cancel/history | Workforce C7 self-service evidence: self-scoped web fallback, named workday picker, idempotency/overlap/DST/cancel tests; mobile remains C9 |
 | WF-C7-006 | P1 | PARTIAL | Web/Backend | Complete manager request decision queue, route conflict acknowledgement and immutable audit | Concurrent decision is idempotent and scoped |
 | WF-C7-007 | P1 | PLANNED | HR/Web | Add future-effective bulk schedules/sites, preview, conflict report and reversible draft before publish | Affected employee/day count and errors shown before activation |

@@ -188,6 +188,7 @@ model Organization {
   mtmHrmRequests                      MtmHrmRequest[]
   workforcePolicies                   WorkforcePolicy[]
   workforceTeamMemberships            WorkforceEmployeeTeamMembership[]
+  workforceEmploymentEvents           WorkforceEmploymentEvent[]
   workforceShiftTemplates             WorkforceShiftTemplate[]
   workforceShiftSegments              WorkforceShiftSegment[]
   workforceSiteTransitions            WorkforceSiteTransition[]
@@ -666,6 +667,7 @@ model User {
   workforceSitesArchived              WorkforceSite[]                @relation("WorkforceSiteArchivedBy")
   workforceSiteGeofenceRevisionsCreated WorkforceSiteGeofenceRevision[] @relation("WorkforceSiteGeofenceRevisionCreatedBy")
   workforceSiteAssignmentsAssigned    WorkforceSiteAssignment[]       @relation("WorkforceSiteAssignmentAssignedBy")
+  workforceEmploymentEventsRecorded   WorkforceEmploymentEvent[]      @relation("WorkforceEmploymentEventRecordedBy")
   workforceAttendanceExceptionsResolved WorkforceAttendanceException[] @relation("WorkforceAttendanceExceptionResolvedBy")
   workforceExceptionDecisionsActed      WorkforceExceptionDecision[]   @relation("WorkforceExceptionDecisionActor")
   workforceExceptionEmployeeResponsesActed WorkforceExceptionEmployeeResponse[] @relation("WorkforceExceptionEmployeeResponseActor")
@@ -5156,6 +5158,14 @@ enum WorkforceDefinitionStatus {
   RETIRED
 }
 
+/// Explicit HR lifecycle facts. A mutable employee-directory status is not
+/// interpreted as a termination, rehire or historical employment decision.
+enum WorkforceEmploymentEventKind {
+  HIRE
+  TERMINATION
+  REHIRE
+}
+
 /// Who established a Workforce policy or shift definition. Tenant-authored
 /// definitions must retain their tenant-local human actor; the explicit system
 /// variant is reserved for the audited default profile created at HRM enable.
@@ -5585,6 +5595,7 @@ model MtmAgent {
   hrmRequests               MtmHrmRequest[]
   workforceShiftAssignments WorkforceShiftAssignment[]
   workforceTeamMemberships WorkforceEmployeeTeamMembership[]
+  workforceEmploymentEvents WorkforceEmploymentEvent[]
   workforceSiteAssignments  WorkforceSiteAssignment[]
   workforceSiteTransitions  WorkforceSiteTransition[]
   workforcePolicySnapshots  WorkforcePolicySnapshot[]
@@ -5643,6 +5654,31 @@ model WorkforceEmployeeTeamMembership {
   @@index([organizationId, agentId, effectiveAt])
   @@index([organizationId, teamId, effectiveAt])
   @@map("workforce_employee_team_memberships")
+}
+
+/// Append-only HR lifecycle facts. Transfers and temporary site eligibility
+/// remain in their dedicated effective-dated timelines; this table captures
+/// only employment start/end/re-entry and never infers a termination from a
+/// mutable directory status.
+model WorkforceEmploymentEvent {
+  id               String                       @id @default(cuid())
+  organizationId   String
+  organization     Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentId          String
+  agent            MtmAgent                     @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  kind             WorkforceEmploymentEventKind
+  effectiveAt      DateTime
+  source           String                       @db.VarChar(48)
+  recordedByUserId String
+  recordedByUser   User                         @relation("WorkforceEmploymentEventRecordedBy", fields: [organizationId, recordedByUserId], references: [organizationId, id], onDelete: Restrict)
+  recordedAt       DateTime                     @default(now())
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, agentId, effectiveAt, kind])
+  @@index([organizationId, agentId, effectiveAt])
+  @@index([organizationId, effectiveAt])
+  @@index([organizationId, recordedByUserId, recordedAt])
+  @@map("workforce_employment_events")
 }
 
 // Explicit organization/team/agent calendar overrides. Weekday/weekend
