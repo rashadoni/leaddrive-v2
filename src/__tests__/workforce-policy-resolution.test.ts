@@ -42,7 +42,8 @@ function input(
     workDate: WORK_DATE,
     workdayStartedAt: WORKDAY_STARTED_AT,
     resolutionAt: RESOLUTION_AT,
-    currentTeamId: "team-b",
+    teamMembershipId: "membership-b",
+    teamIdAtWorkday: "team-b",
     policies: [],
     ...overrides,
   }
@@ -54,7 +55,7 @@ beforeEach(() => {
 })
 
 describe("Workforce policy resolution", () => {
-  it("uses the matching current team policy before the organization fallback", () => {
+  it("uses the matching historical team policy before the organization fallback", () => {
     const result = resolveWorkforcePolicy(input({
       policies: [policy("org-policy", null), policy("team-b-policy", "team-b")],
     }))
@@ -62,18 +63,20 @@ describe("Workforce policy resolution", () => {
     expect(result).toMatchObject({ id: "team-b-policy", scope: "TEAM" })
   })
 
-  it("treats a delayed offline workday as belonging to the team current at server processing", () => {
+  it("uses the team recorded at workday start rather than a later transfer", () => {
     const result = resolveWorkforcePolicy(input({
-      // The owner selected the new team B after a transfer, rather than an
-      // unrecorded historical team from when the device was offline.
       policies: [
         policy("org-policy", null),
         policy("team-a-policy", "team-a"),
         policy("team-b-policy", "team-b"),
       ],
+      teamMembershipId: "membership-a",
+      teamIdAtWorkday: "team-a",
     }))
 
-    expect(result).toMatchObject({ id: "team-b-policy", scope: "TEAM" })
+    expect(result).toMatchObject({
+      id: "team-a-policy", scope: "TEAM", teamMembershipId: "membership-a", teamIdAtWorkday: "team-a",
+    })
   })
 
   it("falls back to exactly one organization policy and fails closed on overlap", () => {
@@ -86,7 +89,7 @@ describe("Workforce policy resolution", () => {
     }))).toThrow(WorkforcePolicyResolutionError)
   })
 
-  it("uses a team policy activated after the offline workday began but before server resolution", () => {
+  it("does not let a team policy activated after workday start displace the organization fallback", () => {
     const result = resolveWorkforcePolicy(input({
       policies: [
         policy("org-policy", null),
@@ -94,7 +97,7 @@ describe("Workforce policy resolution", () => {
       ],
     }))
 
-    expect(result).toMatchObject({ id: "team-b-policy", scope: "TEAM" })
+    expect(result).toMatchObject({ id: "org-policy", scope: "ORGANIZATION" })
   })
 
   it("does not let a future-activated team policy displace the organization fallback", () => {
@@ -112,7 +115,8 @@ describe("Workforce policy resolution", () => {
     let error: unknown
     try {
       resolveWorkforcePolicy(input({
-        currentTeamId: null,
+        teamMembershipId: null,
+        teamIdAtWorkday: null,
         policies: [policy("later-org-policy", null, { activatedAt: new Date("2026-08-29T12:00:00.000Z") })],
       }))
     } catch (caught) {
@@ -123,7 +127,8 @@ describe("Workforce policy resolution", () => {
 
   it("accepts an organization policy retired after the workday began", () => {
     const result = resolveWorkforcePolicy(input({
-      currentTeamId: null,
+      teamMembershipId: null,
+      teamIdAtWorkday: null,
       policies: [policy("retired-org-policy", null, {
         status: "RETIRED",
         retiredAt: new Date("2026-08-29T10:00:00.000Z"),
@@ -133,11 +138,14 @@ describe("Workforce policy resolution", () => {
     expect(result).toMatchObject({ id: "retired-org-policy", scope: "ORGANIZATION" })
   })
 
-  it("loads relevant effective policies for the agent's current tenant-local team", async () => {
-    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: AGENT_ID, teamId: "team-b" } as never)
+  it("loads relevant effective policies for the employee's historical team membership", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: AGENT_ID } as never)
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([{
+      id: "membership-a", teamId: "team-a", effectiveAt: new Date("2026-08-29T07:00:00.000Z"),
+    }] as never)
     vi.mocked(prisma.workforcePolicy.findMany).mockResolvedValue([
       policy("org-policy", null),
-      policy("team-b-policy", "team-b"),
+      policy("team-a-policy", "team-a"),
     ] as never)
 
     const result = await resolveCurrentWorkforcePolicy(prisma, {
@@ -148,10 +156,10 @@ describe("Workforce policy resolution", () => {
       resolutionAt: RESOLUTION_AT,
     })
 
-    expect(result).toMatchObject({ id: "team-b-policy", scope: "TEAM" })
+    expect(result).toMatchObject({ id: "team-a-policy", scope: "TEAM", teamMembershipId: "membership-a" })
     expect(prisma.mtmAgent.findFirst).toHaveBeenCalledWith({
-      where: { id: AGENT_ID, organizationId: ORGANIZATION_ID, status: "ACTIVE" },
-      select: { id: true, teamId: true },
+      where: { id: AGENT_ID, organizationId: ORGANIZATION_ID },
+      select: { id: true },
     })
     expect(prisma.workforcePolicy.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({
@@ -159,8 +167,27 @@ describe("Workforce policy resolution", () => {
         status: { in: ["ACTIVE", "RETIRED"] },
         effectiveFrom: { lte: new Date("2026-08-29T00:00:00.000Z") },
         OR: [{ effectiveTo: null }, { effectiveTo: { gte: new Date("2026-08-29T00:00:00.000Z") } }],
-        AND: [{ OR: [{ teamId: null }, { teamId: "team-b" }] }],
+        AND: [{ OR: [{ teamId: null }, { teamId: "team-a" }] }],
       }),
+    }))
+  })
+
+  it("falls back safely when an older workday predates all known team history", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: AGENT_ID } as never)
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([] as never)
+    vi.mocked(prisma.workforcePolicy.findMany).mockResolvedValue([
+      policy("org-policy", null),
+    ] as never)
+
+    await expect(resolveCurrentWorkforcePolicy(prisma, {
+      organizationId: ORGANIZATION_ID,
+      agentId: AGENT_ID,
+      workDate: WORK_DATE,
+      workdayStartedAt: WORKDAY_STARTED_AT,
+      resolutionAt: RESOLUTION_AT,
+    })).resolves.toMatchObject({ scope: "ORGANIZATION", teamMembershipId: null, teamIdAtWorkday: null })
+    expect(prisma.workforcePolicy.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ AND: [{ OR: [{ teamId: null }] }] }),
     }))
   })
 

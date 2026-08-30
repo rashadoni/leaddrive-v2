@@ -49,7 +49,9 @@ export class WorkforceSnapshotWriterError extends Error {
   constructor(
     readonly code:
       | "WORKFORCE_SNAPSHOT_WORKDAY_NOT_FOUND"
-      | "WORKFORCE_SNAPSHOT_PARTIAL",
+      | "WORKFORCE_SNAPSHOT_PARTIAL"
+      | "WORKFORCE_SNAPSHOT_SEGMENT_NOT_SCHEDULED"
+      | "WORKFORCE_SNAPSHOT_TEAM_HISTORY_MISMATCH",
     message: string = code,
   ) {
     super(message)
@@ -272,6 +274,15 @@ export async function writeWorkforceSnapshotsInTransaction(
     resolutionAt,
   })
   if (!shift.schedule) return { kind: "off_day", workdayId: workday.id }
+  if (
+    policy.teamMembershipId !== shift.teamMembershipId
+    || policy.teamIdAtWorkday !== shift.teamIdAtWorkday
+  ) {
+    throw new WorkforceSnapshotWriterError(
+      "WORKFORCE_SNAPSHOT_TEAM_HISTORY_MISMATCH",
+      "Workforce policy and shift resolution must use the same historical team membership",
+    )
+  }
 
   const scheduleContext = await snapshotShiftSegmentsAndSites(tx, {
     organizationId: input.organizationId,
@@ -328,9 +339,13 @@ export async function writeWorkforceSnapshotsInTransaction(
     excused: calendar.excused,
     source: calendar.source,
     overrideId: calendar.overrideId,
+    teamMembership: {
+      id: policy.teamMembershipId,
+      teamId: policy.teamIdAtWorkday,
+    },
   }
   const schedulePayload = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     calendar: calendarSnapshot,
     segments: scheduleContext.segments,
     sites: scheduleContext.sites,
@@ -345,7 +360,7 @@ export async function writeWorkforceSnapshotsInTransaction(
       workDate: workDateValue,
       policySnapshotId: policySnapshot.id,
       shiftSnapshotId: shiftSnapshot.id,
-      schemaVersion: 1,
+      schemaVersion: 2,
       calendarState: calendar.state,
       calendarSnapshot: calendarSnapshot as Prisma.InputJsonValue,
       segments: scheduleContext.segments,

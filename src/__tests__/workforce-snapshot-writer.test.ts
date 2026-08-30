@@ -69,6 +69,9 @@ describe("Workforce snapshot writer", () => {
 
   it("creates both snapshots transactionally from the current policy and default shift", async () => {
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "agent-1", teamId: "team-b" } as never)
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([{
+      id: "membership-team-b", teamId: "team-b", effectiveAt: new Date("2026-08-31T07:00:00.000Z"),
+    }] as never)
     const policyDefinition = {
       expectedWorkSeconds: 28800,
       lateGraceSeconds: 300,
@@ -125,7 +128,11 @@ describe("Workforce snapshot writer", () => {
         policySnapshotId: "policy-snapshot-1",
         shiftSnapshotId: "shift-snapshot-1",
         calendarState: "SCHEDULED",
-        calendarSnapshot: expect.objectContaining({ noShowEligible: true }),
+        calendarSnapshot: expect.objectContaining({
+          noShowEligible: true,
+          teamMembership: { id: "membership-team-b", teamId: "team-b" },
+        }),
+        schemaVersion: 2,
         snapshotHash: expect.stringMatching(/^[a-f0-9]{64}$/),
       }),
     }))

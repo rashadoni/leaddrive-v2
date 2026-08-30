@@ -187,6 +187,7 @@ model Organization {
   mtmMediaObjects                     MtmMediaObject[]
   mtmHrmRequests                      MtmHrmRequest[]
   workforcePolicies                   WorkforcePolicy[]
+  workforceTeamMemberships            WorkforceEmployeeTeamMembership[]
   workforceShiftTemplates             WorkforceShiftTemplate[]
   workforceShiftSegments              WorkforceShiftSegment[]
   workforceSiteTransitions            WorkforceSiteTransition[]
@@ -5462,6 +5463,7 @@ model MtmTeam {
   workCalendarDays MtmWorkCalendarDay[]
   workforcePolicies WorkforcePolicy[]
   workforceShiftTemplates WorkforceShiftTemplate[]
+  workforceTeamMemberships WorkforceEmployeeTeamMembership[] @relation("WorkforceTeamMembershipTeam")
   workforceSitesResponsible WorkforceSite[]
   pharmacyPromotionTargets MtmPharmacyPromotionTarget[] @relation("MtmPharmacyTargetTeam")
 
@@ -5547,6 +5549,7 @@ model MtmAgent {
   documentAssignments       MtmDocumentAssignment[]
   hrmRequests               MtmHrmRequest[]
   workforceShiftAssignments WorkforceShiftAssignment[]
+  workforceTeamMemberships WorkforceEmployeeTeamMembership[]
   workforceSiteAssignments  WorkforceSiteAssignment[]
   workforceSiteTransitions  WorkforceSiteTransition[]
   workforcePolicySnapshots  WorkforcePolicySnapshot[]
@@ -5581,6 +5584,28 @@ model MtmAgent {
   @@index([managerId])
   @@index([teamId])
   @@map("mtm_agents")
+}
+
+/// Append-only record of an employee's team at a known server instant. The
+/// initial baseline starts only when this migration is applied; no older team
+/// history is inferred from the mutable `MtmAgent.teamId` directory field.
+model WorkforceEmployeeTeamMembership {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentId        String
+  agent          MtmAgent     @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  teamId         String?
+  team           MtmTeam?     @relation("WorkforceTeamMembershipTeam", fields: [organizationId, teamId], references: [organizationId, id], onDelete: Restrict)
+  effectiveAt    DateTime
+  source         String       @db.VarChar(48)
+  recordedAt     DateTime     @default(now())
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, agentId, effectiveAt])
+  @@index([organizationId, agentId, effectiveAt])
+  @@index([organizationId, teamId, effectiveAt])
+  @@map("workforce_employee_team_memberships")
 }
 
 // Explicit organization/team/agent calendar overrides. Weekday/weekend

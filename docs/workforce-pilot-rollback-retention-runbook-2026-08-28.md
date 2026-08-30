@@ -41,8 +41,8 @@ a stop condition, not an invitation to choose a default.
 | First trust release | Ordinary production release remains **without QR, device trust or local biometric confirmation**. The owner later requested an H5/H6 physical trust pilot; it is allowed only as a separately recorded, cohort-scoped pre-production/pilot gate with QR/device policy values, two physical devices and rollback owner. It is not global enablement. `biometricRequiredActions` stays disabled until a server-validated Android Key Attestation protocol and its trust policy are approved. |
 | Time correction authority | **Direct manager edit is permitted with a mandatory reason and immutable audit contract** (owner decision, 2026-08-28) |
 | Approved-timesheet correction | **Create a new correcting record with manager, reason and audit; never overwrite the original approved record** (owner decision, 2026-08-28) |
-| Team policy resolution | **A matching team policy replaces the organization policy** (owner decision, 2026-08-29). For an offline workday sent after an employee transfer, use the employee's **new/current team when the server processes the event** (owner decision, 2026-08-29). This deliberately does not infer a historical team from the workday date. |
-| Team shift resolution | For a **selected team-scoped default shift** sent after an employee transfer, use the employee's **new/current team when the server processes the event** (owner decision, 2026-08-29). Default selection is explicit: at most one active default per organization/team; an explicit individual assignment overrides it. |
+| Team policy resolution | **Superseded by C1-006 historical-membership contract (2026-08-30).** A matching team policy replaces the organization policy only when the latest immutable employee-team fact at workday start names that team. A workday before known history never infers a current team and may use only an applicable organization policy. |
+| Team shift resolution | **Superseded by C1-006 historical-membership contract (2026-08-30).** A team-scoped shift must match the immutable team fact at workday start; a pre-history workday cannot use a team shift. Organization defaults and explicit individual assignment precedence remain explicit. |
 | Shift definition format | First implementation uses local start/end in HH:mm, one IANA timezone and ISO weekdays (Monday = 1 through Sunday = 7). Overnight behavior remains explicitly unsupported pending a separate owner decision. |
 | Pilot cohorts | One owner-designated HRM-only tenant first. The `workforce-hrm` + `route-field` cohort is deferred until the owner selects it; tenant IDs are not recorded in source control. |
 | Supported offline horizon | **7 days** (owner decision, 2026-08-28); cursor/idempotency retention must exceed it with margin |
@@ -278,13 +278,15 @@ administrator APIs list, create and edit validated `DRAFT` policies and shift
 templates; integration API keys cannot use this configuration surface. A new
 policy or individual assignment is scheduled only for a future
 organization-local date: an active predecessor is closed on the prior date,
-and started/closed workdays and snapshots remain untouched. There is still no
-future default-selection timeline for shift templates. Each configuration write
+and started/closed workdays and snapshots remain untouched. The future
+organization-default selection timeline exists, while team-default writes stay
+separately gated. Each configuration write
 derives version/hash values and appends the actor, request metadata and
 before/after configuration hashes to the tenant audit log in the same
-transaction. The current-team policy resolver and current-team validator for an
-explicit individual assignment or selected team-scoped default shift implement
-the recorded precedence and employee-transfer decisions.
+transaction. The historical-membership policy resolver and validators for an
+explicit individual assignment or selected team-scoped shift implement the
+recorded precedence and employee-transfer decisions without reinterpreting an
+older workday from a later directory transfer.
 
 The Workforce web surface now exposes those guarded flows without turning them
 into a bulk or default-setting path. A manager selects exactly one employee and
