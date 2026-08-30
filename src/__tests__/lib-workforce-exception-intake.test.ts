@@ -3,6 +3,7 @@ import {
   WORKFORCE_EXCEPTION_INTAKE_BASELINE_V1,
   WorkforceExceptionIntakeError,
   intakeMaterializedWorkforceException,
+  proposeWorkforceMissedFinishAction,
   proposeWorkforceNoShowReview,
 } from "@/lib/workforce/exception-intake"
 
@@ -78,6 +79,65 @@ describe("Workforce exception intake", () => {
   it("rejects non-canonical clock input rather than silently applying a grace period", () => {
     expect(() => proposeWorkforceNoShowReview(noShowInput({
       asOf: "2026-08-31T05:15:00Z",
+    }))).toThrow(expect.objectContaining({
+      code: "WORKFORCE_NO_SHOW_INPUT_INVALID",
+    } satisfies Partial<WorkforceExceptionIntakeError>))
+  })
+})
+
+function missedFinishInput(overrides: Partial<Parameters<typeof proposeWorkforceMissedFinishAction>[0]> = {}) {
+  return {
+    asOf: "2026-08-31T14:30:00.000Z", // 18:30 Asia/Baku
+    workday: {
+      status: "STARTED" as const,
+      scheduleSnapshot: "IMMUTABLE" as const,
+      expectedFinishAt: "2026-08-31T14:00:00.000Z", // 18:00 Asia/Baku
+    },
+    observation: "COMPLETE" as const,
+    timing: { privateReminderAfterSeconds: 900, reviewAfterSeconds: 7_200 },
+    ...overrides,
+  }
+}
+
+describe("Workforce missed-finish intake", () => {
+  it("proposes a generic private reminder without fabricating a finish", () => {
+    expect(proposeWorkforceMissedFinishAction(missedFinishInput())).toEqual({
+      outcome: "PROPOSE_PRIVATE_REMINDER",
+      code: "WORKFORCE_MISSED_FINISH_REMINDER_DUE",
+      notificationPayload: "GENERIC_OPEN_WORKDAY_REMINDER",
+    })
+  })
+
+  it("escalates only stale, complete observations to reviewed manual correction", () => {
+    expect(proposeWorkforceMissedFinishAction(missedFinishInput({
+      asOf: "2026-08-31T16:00:00.000Z",
+    }))).toEqual({
+      outcome: "PROPOSE_REVIEW_CASE",
+      code: "WORKFORCE_MISSED_FINISH_STALE_OPEN_WORKDAY",
+      policy: WORKFORCE_EXCEPTION_INTAKE_BASELINE_V1,
+      automaticFinish: "FORBIDDEN",
+      correction: "REQUIRES_HUMAN_REVIEW",
+    })
+  })
+
+  it("does not notify or create a case from incomplete, ambiguous, early or completed state", () => {
+    expect(proposeWorkforceMissedFinishAction(missedFinishInput({
+      observation: "INCOMPLETE",
+    }))).toMatchObject({ code: "WORKFORCE_MISSED_FINISH_OBSERVATION_INCOMPLETE" })
+    expect(proposeWorkforceMissedFinishAction(missedFinishInput({
+      workday: { status: "STARTED", scheduleSnapshot: "MISSING_OR_AMBIGUOUS", expectedFinishAt: "2026-08-31T14:00:00.000Z" },
+    }))).toMatchObject({ code: "WORKFORCE_MISSED_FINISH_SNAPSHOT_UNAVAILABLE" })
+    expect(proposeWorkforceMissedFinishAction(missedFinishInput({
+      asOf: "2026-08-31T14:14:59.999Z",
+    }))).toMatchObject({ code: "WORKFORCE_MISSED_FINISH_GRACE_NOT_EXPIRED" })
+    expect(proposeWorkforceMissedFinishAction(missedFinishInput({
+      workday: { status: "COMPLETED", scheduleSnapshot: "IMMUTABLE", expectedFinishAt: "2026-08-31T14:00:00.000Z" },
+    }))).toMatchObject({ code: "WORKFORCE_MISSED_FINISH_WORKDAY_NOT_OPEN" })
+  })
+
+  it("rejects inverted reminder and review thresholds", () => {
+    expect(() => proposeWorkforceMissedFinishAction(missedFinishInput({
+      timing: { privateReminderAfterSeconds: 7_200, reviewAfterSeconds: 900 },
     }))).toThrow(expect.objectContaining({
       code: "WORKFORCE_NO_SHOW_INPUT_INVALID",
     } satisfies Partial<WorkforceExceptionIntakeError>))

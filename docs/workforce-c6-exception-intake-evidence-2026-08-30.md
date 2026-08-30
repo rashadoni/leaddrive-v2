@@ -24,12 +24,17 @@ the existing calculated deviations (`LATE_START`, `UNDERTIME`, `OVERTIME` and
   notification and cannot fabricate a start/finish fact. A later C6 lifecycle
   must perform tenant-scoped deduplication and an accountable immutable
   decision.
+- A separate missed-finish proposal uses only an immutable workday schedule
+  snapshot and a complete open-workday observation. It can propose a generic,
+  private reminder after its configured grace or a human review after a later
+  configured stale threshold. It can never generate a `FINISH` event, infer a
+  finish time or reopen a completed workday.
 
 ## Explicitly not activated
 
 This checkpoint does not configure a tenant taxonomy, severity, owner, SLA,
-employee notice, no-show job, queue, reminder, auto-close, correction or
-appeal. It also does not change the legacy mutable
+employee notice, no-show/delivery job, queue, notification, auto-close,
+correction or appeal. It also does not change the legacy mutable
 `WorkforceAttendanceException` rows, schema, API or approval behavior.
 
 HR/Product must approve the taxonomy, severity/owner/SLA and the employee

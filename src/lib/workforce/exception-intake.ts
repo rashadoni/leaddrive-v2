@@ -162,3 +162,88 @@ export function proposeWorkforceNoShowReview(
     policy: WORKFORCE_EXCEPTION_INTAKE_BASELINE_V1,
   }
 }
+
+export type WorkforceMissedFinishProposalInput = {
+  /** The moment the complete, tenant-scoped open-workday check is performed. */
+  asOf: string
+  workday: {
+    /** A completed workday is never reopened by this proposal path. */
+    status: "STARTED" | "PAUSED" | "COMPLETED"
+    /** Expected finish comes from an immutable accepted-workday snapshot. */
+    scheduleSnapshot: "IMMUTABLE" | "MISSING_OR_AMBIGUOUS"
+    expectedFinishAt: string
+  }
+  observation: "COMPLETE" | "INCOMPLETE"
+  timing: {
+    /** Eligible only after the expected finish has passed this grace. */
+    privateReminderAfterSeconds: number
+    /** Must be at or after the reminder threshold; leads to human review. */
+    reviewAfterSeconds: number
+  }
+}
+
+export type WorkforceMissedFinishProposal =
+  | {
+      outcome: "DO_NOT_ACT"
+      code:
+        | "WORKFORCE_MISSED_FINISH_WORKDAY_NOT_OPEN"
+        | "WORKFORCE_MISSED_FINISH_SNAPSHOT_UNAVAILABLE"
+        | "WORKFORCE_MISSED_FINISH_OBSERVATION_INCOMPLETE"
+        | "WORKFORCE_MISSED_FINISH_GRACE_NOT_EXPIRED"
+    }
+  | {
+      outcome: "PROPOSE_PRIVATE_REMINDER"
+      code: "WORKFORCE_MISSED_FINISH_REMINDER_DUE"
+      /** Notification delivery must use generic copy, never reasons/location. */
+      notificationPayload: "GENERIC_OPEN_WORKDAY_REMINDER"
+    }
+  | {
+      outcome: "PROPOSE_REVIEW_CASE"
+      code: "WORKFORCE_MISSED_FINISH_STALE_OPEN_WORKDAY"
+      policy: WorkforceExceptionIntakePolicy
+      automaticFinish: "FORBIDDEN"
+      correction: "REQUIRES_HUMAN_REVIEW"
+    }
+
+/**
+ * Plans a safe next step for an open workday without inventing a FINISH event.
+ * Delivery and case persistence remain separate, audited C6 services.
+ */
+export function proposeWorkforceMissedFinishAction(
+  input: WorkforceMissedFinishProposalInput,
+): WorkforceMissedFinishProposal {
+  const asOf = canonicalInstant(input.asOf)
+  const expectedFinishAt = canonicalInstant(input.workday.expectedFinishAt)
+  const privateReminderAfterSeconds = nonNegativeSeconds(input.timing.privateReminderAfterSeconds)
+  const reviewAfterSeconds = nonNegativeSeconds(input.timing.reviewAfterSeconds)
+  if (reviewAfterSeconds < privateReminderAfterSeconds) {
+    throw new WorkforceExceptionIntakeError("WORKFORCE_NO_SHOW_INPUT_INVALID")
+  }
+
+  if (input.workday.status === "COMPLETED") {
+    return { outcome: "DO_NOT_ACT", code: "WORKFORCE_MISSED_FINISH_WORKDAY_NOT_OPEN" }
+  }
+  if (input.workday.scheduleSnapshot !== "IMMUTABLE") {
+    return { outcome: "DO_NOT_ACT", code: "WORKFORCE_MISSED_FINISH_SNAPSHOT_UNAVAILABLE" }
+  }
+  if (input.observation !== "COMPLETE") {
+    return { outcome: "DO_NOT_ACT", code: "WORKFORCE_MISSED_FINISH_OBSERVATION_INCOMPLETE" }
+  }
+  if (asOf < expectedFinishAt + privateReminderAfterSeconds * 1000) {
+    return { outcome: "DO_NOT_ACT", code: "WORKFORCE_MISSED_FINISH_GRACE_NOT_EXPIRED" }
+  }
+  if (asOf < expectedFinishAt + reviewAfterSeconds * 1000) {
+    return {
+      outcome: "PROPOSE_PRIVATE_REMINDER",
+      code: "WORKFORCE_MISSED_FINISH_REMINDER_DUE",
+      notificationPayload: "GENERIC_OPEN_WORKDAY_REMINDER",
+    }
+  }
+  return {
+    outcome: "PROPOSE_REVIEW_CASE",
+    code: "WORKFORCE_MISSED_FINISH_STALE_OPEN_WORKDAY",
+    policy: WORKFORCE_EXCEPTION_INTAKE_BASELINE_V1,
+    automaticFinish: "FORBIDDEN",
+    correction: "REQUIRES_HUMAN_REVIEW",
+  }
+}
