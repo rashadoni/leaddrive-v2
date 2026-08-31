@@ -148,6 +148,39 @@ private fun WorkforceRoot(
     val cancellationAccepted = stringResource(R.string.status_cancellation_accepted)
     val cancellationQueued = stringResource(R.string.status_cancellation_queued)
     val signOutFailed = stringResource(R.string.status_sign_out_failed)
+    val deviceActionPrompts = mapOf(
+        WorkforceWorkdayAction.START to stringResource(
+            R.string.device_action_prompt,
+            stringResource(R.string.action_start),
+        ),
+        WorkforceWorkdayAction.PAUSE to stringResource(
+            R.string.device_action_prompt,
+            stringResource(R.string.action_pause),
+        ),
+        WorkforceWorkdayAction.RESUME to stringResource(
+            R.string.device_action_prompt,
+            stringResource(R.string.action_resume),
+        ),
+        WorkforceWorkdayAction.FINISH to stringResource(
+            R.string.device_action_prompt,
+            stringResource(R.string.action_finish),
+        ),
+    )
+    val deviceEnrollmentPromptTemplate = stringResource(
+        R.string.device_enrollment_prompt,
+        "__WORKFORCE_EXPIRY__",
+    )
+    val deviceLifecycleMessages = mapOf<WorkforceDeviceBindingLifecycle?, String>(
+        null to stringResource(R.string.device_state_unenrolled),
+        WorkforceDeviceBindingLifecycle.PROVISIONING to stringResource(R.string.device_state_provisioning),
+        WorkforceDeviceBindingLifecycle.PENDING_PROOF to stringResource(R.string.device_state_pending_proof),
+        WorkforceDeviceBindingLifecycle.PENDING_MANAGER_APPROVAL to stringResource(
+            R.string.device_state_pending_manager_approval,
+        ),
+        WorkforceDeviceBindingLifecycle.ACTIVE to stringResource(R.string.device_state_active),
+        WorkforceDeviceBindingLifecycle.REVOKED to stringResource(R.string.device_state_revoked),
+        WorkforceDeviceBindingLifecycle.REPLACED to stringResource(R.string.device_state_replaced),
+    )
     var reminderSettings by remember { mutableStateOf<WorkforceReminderSettings?>(null) }
     var section by remember { mutableStateOf(WorkforceSection.TODAY) }
     var restoring by remember { mutableStateOf(true) }
@@ -235,7 +268,7 @@ private fun WorkforceRoot(
                 val prepared = repository.prepareDeviceTrustedTodayAction(currentBootstrap, snapshot, action, qrToken)
                 val signature = deviceAuthenticator.authenticateAndSign(
                     prepared.signature,
-                    context.getString(R.string.device_action_prompt, context.getString(action.labelRes())),
+                    deviceActionPrompts.getValue(action),
                 )
                 repository.submitPreparedDeviceTodayAction(currentBootstrap, prepared, signature)
             }.onSuccess(::applyTodaySubmission)
@@ -252,12 +285,12 @@ private fun WorkforceRoot(
                 val pending = repository.beginDeviceEnrollment(currentBootstrap, deviceLabel)
                 val signature = deviceAuthenticator.authenticateAndSign(
                     pending.signature,
-                    context.getString(R.string.device_enrollment_prompt, pending.expiresAt),
+                    deviceEnrollmentPromptTemplate.replace("__WORKFORCE_EXPIRY__", pending.expiresAt),
                 )
                 repository.completeDeviceEnrollment(pending, signature)
             }.onSuccess {
                 deviceTrust = it
-                status = context.getString(deviceLifecycleMessage(it.lifecycle))
+                status = deviceLifecycleMessages.getValue(it.lifecycle)
             }.onFailure { status = it.employeeMessage(employeeErrorCopy) }
         }
     }
@@ -269,7 +302,7 @@ private fun WorkforceRoot(
             runCatching { repository.loadDeviceTrustState(currentBootstrap) }
                 .onSuccess {
                     deviceTrust = it
-                    status = context.getString(deviceLifecycleMessage(it.lifecycle))
+                    status = deviceLifecycleMessages.getValue(it.lifecycle)
                 }
                 .onFailure { status = it.employeeMessage(employeeErrorCopy) }
         }

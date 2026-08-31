@@ -290,9 +290,17 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   17 targeted Android source contracts, scoped ESLint and `git diff --check`
   cover typed request/calendar rendering, unknown-value fallback and no direct
   hard-coded UI text in `MainActivity.kt`.
-- `NOT RUN / pending external rerun` — Android Gradle lint/unit was run by
-  GitHub Actions on the preceding candidate and correctly failed at compile
-  time on the now-fixed `rememberSaveable { stringResource(...) }` violation.
+- `NOT RUN / pending external rerun` — Android Gradle lint/unit ran on
+  candidate `4135083e4` and correctly rejected five
+  `LocalContextGetResourceValueCall` errors. The pre-fix code read dynamic
+  device-action, enrollment and lifecycle strings through
+  `LocalContext.current.getString`, which could retain stale configuration
+  values after a locale/configuration change. The current source resolves the
+  action/lifecycle copy and an enrollment placeholder template through
+  composition-aware `stringResource` values, then substitutes the server
+  expiry only into that already-localized template. No lint baseline or
+  suppression was added. The targeted Android-foundation contract is 17/17
+  PASS, EN/AZ/RU key parity is PASS (186 keys) and `git diff --check` is PASS.
   Contabo must not substitute a local Gradle build; the next PR SHA requires
   the prescribed GitHub Android debug lint/unit gate.
 - `NOT RUN` — Android Gradle lint/unit tests, build, emulator/device tests,

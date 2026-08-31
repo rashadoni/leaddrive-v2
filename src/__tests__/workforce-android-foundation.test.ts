@@ -329,7 +329,12 @@ describe("Workforce Android foundation", () => {
     expect(activity).toContain("WorkforceEmployeeErrorCopy")
     expect(activity).toContain("is WorkforceApiException -> copy.api")
     expect(activity).not.toContain("is WorkforceApiException -> message")
-    expect(activity).toContain("context.getString(deviceLifecycleMessage(it.lifecycle))")
+    expect(activity).toContain("val deviceActionPrompts = mapOf")
+    expect(activity).toContain("val deviceEnrollmentPromptTemplate = stringResource")
+    expect(activity).toContain("val deviceLifecycleMessages = mapOf<WorkforceDeviceBindingLifecycle?, String>")
+    expect(activity).not.toContain("context.getString(R.string.device_action_prompt")
+    expect(activity).not.toContain("context.getString(R.string.device_enrollment_prompt")
+    expect(activity).not.toContain("context.getString(deviceLifecycleMessage")
     expect(activity).toContain("R.string.device_action_prompt")
     expect(activity).toContain("R.string.device_enrollment_prompt")
     for (const catalog of catalogs) {
