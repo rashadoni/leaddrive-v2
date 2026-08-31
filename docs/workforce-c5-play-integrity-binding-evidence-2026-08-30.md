@@ -19,6 +19,20 @@ failures are rejected, with only the appropriate generic `GET_LICENSED`
 recovery marker. The pure evaluator persists nothing, so no prior valid
 verdict can be used as an authorization cache for a different action.
 
+## 2026-08-31 server-verdict hardening
+
+The evaluator now also verifies the Google-decoded `requestPackageName` and
+`timestampMillis` before any app/device verdict. The timestamp must not be in
+the future and must fall inside a caller-configured, bounded 0–300-second
+freshness window. A package/hash mismatch is rejected; a stale or missing
+timestamp is rejected with a generic retry marker.
+
+The decoder boundary is runtime-validated, not merely TypeScript-typed:
+malformed nested objects, duplicate certificate digests/device labels,
+non-canonical version/timestamp values and unrecognised enum values fail
+closed. The device-label collection remains forward-compatible, but only the
+policy's known required label can reach an accepted assessment.
+
 ## Explicitly not activated
 
 There is no Play Console/Cloud project credential, Android SDK integration,
@@ -36,12 +50,13 @@ supported version matrix are approved; otherwise assessment fails closed.
 
     PASS  PATH=/home/codex-alt/.local/bin:$PATH npx vitest run \
           src/__tests__/lib-workforce-play-integrity.test.ts \
-          src/__tests__/lib-workforce-android-key-attestation.test.ts --reporter=dot
-          (2 files, 7 tests)
+          src/__tests__/lib-workforce-android-key-attestation.test.ts \
+          src/__tests__/workforce-attendance-security.test.ts --reporter=dot
+          (3 files, 12 tests)
     PASS  targeted ESLint and git diff --check
 
     NOT RUN  Google server token decode, Play Console/Cloud configuration,
-             Android Standard API request, endpoint/DB/replay integration,
-             full typecheck/build, Android Gradle/device, browser E2E, load and
-             physical anti-tamper matrix. Heavy and physical gates do not run
-             on Contabo.
+             Android Standard API request/warm-up, endpoint/DB/replay
+             integration, full typecheck/build, Android Gradle/device, browser
+             E2E, load and physical anti-tamper matrix. Heavy and physical
+             gates do not run on Contabo.
