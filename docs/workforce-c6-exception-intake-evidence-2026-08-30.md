@@ -67,6 +67,29 @@ activation must use a complete tenant-scoped no-workday query, the new
 segment-plus-date deduplication subject and the reviewed C6 lifecycle rather
 than treating this source adapter as operational evidence.
 
+### 2026-09-01 read-only candidate reader
+
+`readWorkforceNoShowCandidate` is the first server-side composition of the
+safe inputs. For one explicit employee/date/as-of instant it:
+
+- resolves the shift again at its own planned start, so a later activation
+  cannot backdate a no-show expectation;
+- resolves policy and the effective calendar against that same historical
+  instant, including append-only team membership rather than the employee's
+  later directory team;
+- checks the unique organization/employee/work-date workday row;
+- accepts only sequence-one published segments that begin at the signed shift
+  start; and
+- returns either an in-memory review draft, a non-creation proposal, or an
+  explicit not-ready result.
+
+It has a deliberately read-only Prisma surface: no case writer, audit writer,
+queue, notification, capability or tenant control is available to it. A shift
+with no matching published first segment is not assigned a made-up generic
+subject. The reader does not catch resolver/database errors as an absence;
+the eventual leased worker must record those as incomplete observations and
+write nothing.
+
 The owner-approved recommended v1 **draft** taxonomy, non-disciplinary triage
 severity, role owner, targets and employee-visibility rule is now recorded in
 [`workforce-c6-recommended-draft-policy-evidence-2026-08-30.md`](./workforce-c6-recommended-draft-policy-evidence-2026-08-30.md).
@@ -99,6 +122,13 @@ case/decision migration and actual detector remain WF-C6-002/003 work.
           `workforce-shift-resolution` (3 files, 26 tests), scoped ESLint and
           `git diff --check`. A later directory transfer cannot add its team
           calendar candidate to a past expected-workday lookup.
+
+    PASS  2026-09-01 candidate-reader re-check:
+          no-show candidate, intake, historical calendar, policy and shift
+          resolver contracts (5 files, 41 tests), scoped ESLint and
+          `git diff --check`. The reader proves review-draft, existing-workday,
+          unsegmented-template and unscheduled-weekday paths without a case or
+          audit write.
 
     NOT RUN  database migration/apply, full typecheck/build, browser E2E,
              Android, scheduler/concurrency/load and physical pilot checks:

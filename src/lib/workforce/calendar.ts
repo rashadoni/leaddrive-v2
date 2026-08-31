@@ -1,10 +1,10 @@
-import type { PrismaClient } from "@prisma/client"
-import { isDateKey } from "@/lib/mtm/mobile-week"
+import type { PrismaClient } from "@prisma/client";
+import { isDateKey } from "@/lib/mtm/mobile-week";
 import {
   resolveWorkCalendarDay,
   type WorkCalendarOverride,
-} from "@/lib/mtm/work-calendar"
-import { resolveWorkforceHistoricalTeamMembership } from "@/lib/workforce/team-membership"
+} from "@/lib/mtm/work-calendar";
+import { resolveWorkforceHistoricalTeamMembership } from "@/lib/workforce/team-membership";
 
 export type WorkforceCalendarDayState =
   | "SCHEDULED"
@@ -13,7 +13,7 @@ export type WorkforceCalendarDayState =
   | "TENANT_CLOSURE"
   | "APPROVED_LEAVE"
   | "APPROVED_ABSENCE"
-  | "PERSONAL_EXCEPTION"
+  | "PERSONAL_EXCEPTION";
 
 export type WorkforceCalendarOverride = WorkCalendarOverride & {
   /**
@@ -21,27 +21,28 @@ export type WorkforceCalendarOverride = WorkCalendarOverride & {
    * Source is only an attendance semantic when the exact Workforce request
    * writer set it; arbitrary legacy source text must not become a leave claim.
    */
-  source?: string | null
-}
+  source?: string | null;
+};
 
 export type ResolvedWorkforceCalendarDay = {
-  date: string
-  calendarKind: WorkCalendarOverride["kind"]
-  state: WorkforceCalendarDayState
-  attendanceExpected: boolean
+  date: string;
+  calendarKind: WorkCalendarOverride["kind"];
+  state: WorkforceCalendarDayState;
+  attendanceExpected: boolean;
   /** A later C6 no-show calculation can use this without treating leave or a holiday as absence. */
-  noShowEligible: boolean
-  excused: boolean
-  source: string | null
-  overrideId: string | null
-}
+  noShowEligible: boolean;
+  excused: boolean;
+  source: string | null;
+  overrideId: string | null;
+};
 
 export class WorkforceCalendarResolutionError extends Error {
   constructor(
-    readonly code: "WORKFORCE_CALENDAR_DATE_INVALID" | "WORKFORCE_CALENDAR_AGENT_NOT_FOUND",
+    readonly code:
+      "WORKFORCE_CALENDAR_DATE_INVALID" | "WORKFORCE_CALENDAR_AGENT_NOT_FOUND",
     message: string = code,
   ) {
-    super(message)
+    super(message);
   }
 }
 
@@ -50,8 +51,9 @@ function matchingOverride(
   overrides: readonly WorkforceCalendarOverride[],
 ): WorkforceCalendarOverride | null {
   return resolved.overrideId
-    ? overrides.find((override) => override.id === resolved.overrideId) ?? null
-    : null
+    ? (overrides.find((override) => override.id === resolved.overrideId) ??
+        null)
+    : null;
 }
 
 /**
@@ -60,22 +62,23 @@ function matchingOverride(
  * ignores `routePlanningAllowed` and exposes only safe HRM expectations.
  */
 export function resolveWorkforceCalendarDay(input: {
-  date: string
-  overrides: readonly WorkforceCalendarOverride[]
-  teamId?: string | null
-  agentId?: string | null
+  date: string;
+  overrides: readonly WorkforceCalendarOverride[];
+  teamId?: string | null;
+  agentId?: string | null;
 }): ResolvedWorkforceCalendarDay {
   if (!isDateKey(input.date)) {
     throw new WorkforceCalendarResolutionError(
       "WORKFORCE_CALENDAR_DATE_INVALID",
       "Workforce calendar date must be a real YYYY-MM-DD date",
-    )
+    );
   }
 
-  const resolved = resolveWorkCalendarDay(input)
-  const override = matchingOverride(resolved, input.overrides)
-  const source = override?.source ?? null
-  const personalOverride = override?.agentId === input.agentId && Boolean(input.agentId)
+  const resolved = resolveWorkCalendarDay(input);
+  const override = matchingOverride(resolved, input.overrides);
+  const source = override?.source ?? null;
+  const personalOverride =
+    override?.agentId === input.agentId && Boolean(input.agentId);
 
   if (personalOverride && source === "WORKFORCE_LEAVE") {
     return {
@@ -87,7 +90,7 @@ export function resolveWorkforceCalendarDay(input: {
       excused: true,
       source,
       overrideId: resolved.overrideId,
-    }
+    };
   }
   if (personalOverride && source === "WORKFORCE_ABSENCE") {
     return {
@@ -99,7 +102,7 @@ export function resolveWorkforceCalendarDay(input: {
       excused: true,
       source,
       overrideId: resolved.overrideId,
-    }
+    };
   }
   if (resolved.isWorkingDay) {
     return {
@@ -111,16 +114,17 @@ export function resolveWorkforceCalendarDay(input: {
       excused: false,
       source,
       overrideId: resolved.overrideId,
-    }
+    };
   }
 
-  const state: WorkforceCalendarDayState = resolved.kind === "PUBLIC_HOLIDAY"
-    ? "PUBLIC_HOLIDAY"
-    : personalOverride
-      ? "PERSONAL_EXCEPTION"
-      : resolved.kind === "COMPANY_HOLIDAY"
-        ? "TENANT_CLOSURE"
-        : "NON_WORKING"
+  const state: WorkforceCalendarDayState =
+    resolved.kind === "PUBLIC_HOLIDAY"
+      ? "PUBLIC_HOLIDAY"
+      : personalOverride
+        ? "PERSONAL_EXCEPTION"
+        : resolved.kind === "COMPANY_HOLIDAY"
+          ? "TENANT_CLOSURE"
+          : "NON_WORKING";
   return {
     date: input.date,
     calendarKind: resolved.kind,
@@ -130,21 +134,30 @@ export function resolveWorkforceCalendarDay(input: {
     excused: state === "PERSONAL_EXCEPTION",
     source,
     overrideId: resolved.overrideId,
-  }
+  };
 }
 
-type WorkforceCalendarDb = Pick<PrismaClient, "mtmAgent" | "mtmWorkCalendarDay">
-type WorkforceHistoricalCalendarDb = WorkforceCalendarDb & Pick<PrismaClient, "$queryRaw">
+type WorkforceCalendarDb = Pick<
+  PrismaClient,
+  "mtmAgent" | "mtmWorkCalendarDay"
+>;
+type WorkforceHistoricalCalendarDb = WorkforceCalendarDb &
+  Pick<PrismaClient, "$queryRaw">;
 
 function validInstant(value: Date): boolean {
-  return Number.isFinite(value.getTime())
+  return Number.isFinite(value.getTime());
 }
 
 async function resolvePersistedCalendarForTeam(
   db: Pick<PrismaClient, "mtmWorkCalendarDay">,
-  input: { organizationId: string; agentId: string; date: string; teamId: string | null },
+  input: {
+    organizationId: string;
+    agentId: string;
+    date: string;
+    teamId: string | null;
+  },
 ): Promise<ResolvedWorkforceCalendarDay> {
-  const date = new Date(`${input.date}T00:00:00.000Z`)
+  const date = new Date(`${input.date}T00:00:00.000Z`);
   const overrides = await db.mtmWorkCalendarDay.findMany({
     where: {
       organizationId: input.organizationId,
@@ -168,13 +181,13 @@ async function resolvePersistedCalendarForTeam(
       routePlanningAllowed: true,
       source: true,
     },
-  })
+  });
   return resolveWorkforceCalendarDay({
     date: input.date,
     overrides,
     teamId: input.teamId,
     agentId: input.agentId,
-  })
+  });
 }
 
 /**
@@ -190,17 +203,17 @@ export async function resolvePersistedWorkforceCalendarDay(
     throw new WorkforceCalendarResolutionError(
       "WORKFORCE_CALENDAR_DATE_INVALID",
       "Workforce calendar date must be a real YYYY-MM-DD date",
-    )
+    );
   }
   const agent = await db.mtmAgent.findFirst({
     where: { id: input.agentId, organizationId: input.organizationId },
     select: { id: true, teamId: true },
-  })
+  });
   if (!agent) {
     throw new WorkforceCalendarResolutionError(
       "WORKFORCE_CALENDAR_AGENT_NOT_FOUND",
       "Workforce employee is unavailable",
-    )
+    );
   }
 
   return resolvePersistedCalendarForTeam(db, {
@@ -208,7 +221,7 @@ export async function resolvePersistedWorkforceCalendarDay(
     agentId: agent.id,
     date: input.date,
     teamId: agent.teamId,
-  })
+  });
 }
 
 /**
@@ -220,33 +233,38 @@ export async function resolvePersistedWorkforceCalendarDay(
  */
 export async function resolveHistoricalPersistedWorkforceCalendarDay(
   db: WorkforceHistoricalCalendarDb,
-  input: { organizationId: string; agentId: string; date: string; workdayStartedAt: Date },
+  input: {
+    organizationId: string;
+    agentId: string;
+    date: string;
+    workdayStartedAt: Date;
+  },
 ): Promise<ResolvedWorkforceCalendarDay> {
   if (!isDateKey(input.date) || !validInstant(input.workdayStartedAt)) {
     throw new WorkforceCalendarResolutionError(
       "WORKFORCE_CALENDAR_DATE_INVALID",
       "Workforce historical calendar input is invalid",
-    )
+    );
   }
   const agent = await db.mtmAgent.findFirst({
     where: { id: input.agentId, organizationId: input.organizationId },
     select: { id: true },
-  })
+  });
   if (!agent) {
     throw new WorkforceCalendarResolutionError(
       "WORKFORCE_CALENDAR_AGENT_NOT_FOUND",
       "Workforce employee is unavailable",
-    )
+    );
   }
   const membership = await resolveWorkforceHistoricalTeamMembership(db, {
     organizationId: input.organizationId,
     agentId: agent.id,
     workdayStartedAt: input.workdayStartedAt,
-  })
+  });
   return resolvePersistedCalendarForTeam(db, {
     organizationId: input.organizationId,
     agentId: agent.id,
     date: input.date,
     teamId: membership?.teamId ?? null,
-  })
+  });
 }
