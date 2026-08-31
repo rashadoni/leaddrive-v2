@@ -20,6 +20,7 @@ import {
   WorkforceAttendanceTrustError,
   type WorkforceAttendanceCapabilities,
 } from "@/lib/workforce/attendance-trust"
+import { recordPreparedWorkforceLocationEvidence } from "@/lib/workforce/attendance-evidence-writer"
 import {
   evaluateWorkforceMobileWriteAccess,
   workforceMobileWriteFenceResponse,
@@ -319,6 +320,11 @@ export const POST = withWorkforceCompatAuth("write", async (req, auth) => {
           })
           if (prepared) {
             await recordWorkforceAttendanceVerification(tx, prepared, event.id)
+            await recordPreparedWorkforceLocationEvidence(tx, {
+              prepared,
+              workdayEventId: event.id,
+              principal: auth.principal,
+            })
           }
           if (input.action === "START") {
             await writeWorkforceSnapshotsIfReadyInTransaction(tx, {

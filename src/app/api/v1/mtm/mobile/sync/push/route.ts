@@ -42,6 +42,7 @@ import {
   recordWorkforceAttendanceVerification,
   WorkforceAttendanceTrustError,
 } from "@/lib/workforce/attendance-trust"
+import { recordPreparedWorkforceLocationEvidence } from "@/lib/workforce/attendance-evidence-writer"
 import {
   assertWorkforceSnapshottedSegmentInTransaction,
   writeWorkforceSnapshotsIfReadyInTransaction,
@@ -2745,6 +2746,11 @@ export const POST = withMobileRls(async (req, auth) => {
               })
               if (prepared) {
                 await recordWorkforceAttendanceVerification(tx, prepared, event.id)
+                await recordPreparedWorkforceLocationEvidence(tx, {
+                  prepared,
+                  workdayEventId: event.id,
+                  principal: "mobile",
+                })
               }
               if (workdayInput.action === "START") {
                 await writeWorkforceSnapshotsIfReadyInTransaction(tx, {

@@ -249,7 +249,13 @@ describe("Workforce attendance trust preparation", () => {
       latitude: 40.4093,
       longitude: 49.8671,
       accuracy: 12,
-    })).resolves.toMatchObject({ facts: [] })
+    })).resolves.toMatchObject({
+      facts: [],
+      locationEvidence: {
+        provider: "GPS",
+        quality: { status: "ELIGIBLE_FOR_GEOFENCE" },
+      },
+    })
 
     await expect(prepare({
       location: {

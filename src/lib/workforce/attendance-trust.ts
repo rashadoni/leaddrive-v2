@@ -13,7 +13,10 @@ import {
   type WorkforceAttendanceAction,
   type WorkforceAttendanceRequirements,
 } from "@/lib/workforce/attendance-policy"
-import { assessWorkforceLocationEvidence } from "@/lib/workforce/location-evidence-policy"
+import {
+  assessWorkforceLocationEvidence,
+  type WorkforceLocationEvidenceAssessment,
+} from "@/lib/workforce/location-evidence-policy"
 import type { WorkforceEvidenceEnvelope } from "@/lib/workforce/evidence-envelope"
 import {
   resolveCurrentWorkforcePolicy,
@@ -88,6 +91,20 @@ export type PreparedWorkforceAttendanceVerification = {
   policyVersion: number
   policyDefinitionHash: string
   facts: PreparedVerificationFact[]
+  /**
+   * Kept in memory only until the just-created immutable event gives it a
+   * durable subject. The writer encrypts it and records a raw-free quality
+   * outcome in the same surrounding transaction.
+   */
+  locationEvidence?: {
+    capturedAt: Date
+    latitude: number
+    longitude: number
+    accuracy: number
+    provider: "FUSED" | "GPS" | "NETWORK" | "PASSIVE" | "UNKNOWN"
+    isMock: boolean
+    quality: WorkforceLocationEvidenceAssessment
+  }
 }
 
 export class WorkforceAttendanceTrustError extends Error {
@@ -237,6 +254,7 @@ export async function prepareWorkforceAttendanceVerification(
 
   const evidence = normalizedEvidence(input.evidence)
   const facts: PreparedVerificationFact[] = []
+  let locationEvidence: PreparedWorkforceAttendanceVerification["locationEvidence"]
 
   if (needs.location) {
     const location = evidence.location
@@ -281,6 +299,15 @@ export async function prepareWorkforceAttendanceVerification(
         "WORKFORCE_ATTENDANCE_LOCATION_REVIEW_REQUIRED",
         "The current location sample needs reviewed fallback",
       )
+    }
+    locationEvidence = {
+      capturedAt: location.capturedAt,
+      latitude: input.event.latitude,
+      longitude: input.event.longitude,
+      accuracy: input.event.accuracy,
+      provider: location.provider,
+      isMock: location.isMock,
+      quality: locationAssessment,
     }
   }
 
@@ -417,6 +444,7 @@ export async function prepareWorkforceAttendanceVerification(
     policyVersion: policy.version,
     policyDefinitionHash: policy.definitionHash,
     facts,
+    ...(locationEvidence ? { locationEvidence } : {}),
   }
 }
 
