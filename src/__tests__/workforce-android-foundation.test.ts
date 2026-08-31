@@ -171,6 +171,12 @@ describe("Workforce Android foundation", () => {
     const api = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceApiClient.kt")
     const outbox = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceEncryptedOutbox.kt")
     const activity = read("app/src/main/java/com/leaddrive/workforce/android/MainActivity.kt")
+    const repository = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceSessionRepository.kt")
+    const catalogs = [
+      read("app/src/main/res/values/strings.xml"),
+      read("app/src/main/res/values-ru/strings.xml"),
+      read("app/src/main/res/values-az/strings.xml"),
+    ]
     expect(api).toContain('override val entity = "hrmRequests"')
     expect(api).toContain("WorkforceHrmRequestType")
     expect(api).toContain("WorkforceHrmRequestStatus")
@@ -197,6 +203,17 @@ describe("Workforce Android foundation", () => {
     expect(activity).not.toContain("emptyList() ->")
     expect(activity).not.toContain('Text("${request.type}: ${request.status}"')
     expect(activity).not.toMatch(/Log\.|println\(|Timber\./)
+    expect(repository).toContain("loadRequestLocalRecovery")
+    expect(repository).toContain("items.filter { it.domain == WorkforceOutboxDomain.HRM_REQUEST }")
+    expect(repository).toContain("data class Queued(val localRecovery: WorkforceRequestLocalRecovery)")
+    expect(activity).toContain("requestLocalRecovery")
+    expect(activity).toContain("R.string.request_local_sync_explainer")
+    for (const catalog of catalogs) {
+      expect(catalog).toContain('name="request_local_sync_explainer"')
+      expect(catalog).toContain('name="request_local_sync_pending"')
+      expect(catalog).toContain('name="request_local_sync_conflict"')
+      expect(catalog).toContain('name="request_local_sync_review"')
+    }
   })
 
   it("contains an explicit foreground-only, action-time location primitive without activating background tracking", () => {

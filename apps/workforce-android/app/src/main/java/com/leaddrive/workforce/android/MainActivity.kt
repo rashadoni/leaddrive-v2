@@ -56,6 +56,7 @@ import com.leaddrive.workforce.android.data.WorkforceHistorySnapshot
 import com.leaddrive.workforce.android.data.WorkforceHistoryDayDetail
 import com.leaddrive.workforce.android.data.WorkforceHistoryLocalRecovery
 import com.leaddrive.workforce.android.data.WorkforceHistoryReviewState
+import com.leaddrive.workforce.android.data.WorkforceRequestLocalRecovery
 import com.leaddrive.workforce.android.data.WorkforceHrmRequestDraft
 import com.leaddrive.workforce.android.data.WorkforceHrmRequestType
 import com.leaddrive.workforce.android.data.WorkforceHrmRequestStatus
@@ -134,6 +135,7 @@ private fun WorkforceRoot(
     var status by remember { mutableStateOf<String?>(null) }
     var history by remember { mutableStateOf<WorkforceHistorySnapshot?>(null) }
     var historyLocalRecovery by remember { mutableStateOf<WorkforceHistoryLocalRecovery?>(null) }
+    var requestLocalRecovery by remember { mutableStateOf<WorkforceRequestLocalRecovery?>(null) }
     var ownExceptions by remember { mutableStateOf<List<WorkforceSelfException>?>(null) }
     var recoveryItems by remember { mutableStateOf<List<WorkforceOutboxRecoveryItem>?>(null) }
     var deviceTrust by remember { mutableStateOf<WorkforceDeviceTrustState?>(null) }
@@ -248,6 +250,7 @@ private fun WorkforceRoot(
                 reminderSettings = submission.reminderSettings
                 history = null
                 historyLocalRecovery = null
+                requestLocalRecovery = null
                 ownExceptions = null
                 recoveryItems = null
                 status = null
@@ -267,6 +270,7 @@ private fun WorkforceRoot(
                     applyReminderSettings(it)
                     history = null
                     historyLocalRecovery = null
+                    requestLocalRecovery = null
                     ownExceptions = null
                     recoveryItems = null
                     deviceTrust = null
@@ -518,6 +522,7 @@ private fun WorkforceRoot(
                         applyReminderSettings(loadedToday)
                         history = null
                         historyLocalRecovery = null
+                        requestLocalRecovery = null
                         ownExceptions = null
                         recoveryItems = null
                         deviceTrust = null
@@ -533,6 +538,7 @@ private fun WorkforceRoot(
             section = section,
             history = history,
             historyLocalRecovery = historyLocalRecovery,
+            requestLocalRecovery = requestLocalRecovery,
             ownExceptions = ownExceptions,
             recoveryItems = recoveryItems,
             deviceTrust = deviceTrust,
@@ -546,10 +552,16 @@ private fun WorkforceRoot(
                 if (anchorDate != null) {
                     status = loadingHistory
                     scope.launch {
+                        // A local delivery summary is deliberately separate
+                        // from the server history request: an offline refresh
+                        // may still explain that no request fact was accepted.
+                        runCatching { repository.loadRequestLocalRecovery() }
+                            .onSuccess { requestLocalRecovery = it }
                         runCatching { repository.loadHistoryWithLocalRecovery(anchorDate) }
                             .onSuccess { loaded ->
                                 history = loaded.history
                                 historyLocalRecovery = loaded.localRecovery
+                                requestLocalRecovery = loaded.requestLocalRecovery
                                 status = null
                             }
                             .onFailure { status = it.employeeMessage(employeeErrorCopy) }
@@ -589,11 +601,12 @@ private fun WorkforceRoot(
                         .onSuccess { submission ->
                             history = null
                             historyLocalRecovery = null
+                            requestLocalRecovery = (submission as? WorkforceHrmSubmission.Queued)?.localRecovery
                             ownExceptions = null
                             recoveryItems = null
                             status = when (submission) {
-                                WorkforceHrmSubmission.ACCEPTED -> requestAccepted
-                                WorkforceHrmSubmission.QUEUED -> requestQueued
+                                WorkforceHrmSubmission.Accepted -> requestAccepted
+                                is WorkforceHrmSubmission.Queued -> requestQueued
                             }
                         }
                         .onFailure { status = it.employeeMessage(employeeErrorCopy) }
@@ -606,9 +619,10 @@ private fun WorkforceRoot(
                         .onSuccess { submission ->
                             history = null
                             historyLocalRecovery = null
+                            requestLocalRecovery = (submission as? WorkforceHrmSubmission.Queued)?.localRecovery
                             status = when (submission) {
-                                WorkforceHrmSubmission.ACCEPTED -> cancellationAccepted
-                                WorkforceHrmSubmission.QUEUED -> cancellationQueued
+                                WorkforceHrmSubmission.Accepted -> cancellationAccepted
+                                is WorkforceHrmSubmission.Queued -> cancellationQueued
                             }
                         }
                         .onFailure { status = it.employeeMessage(employeeErrorCopy) }
@@ -625,6 +639,7 @@ private fun WorkforceRoot(
                             today = null
                             history = null
                             historyLocalRecovery = null
+                            requestLocalRecovery = null
                             recoveryItems = null
                             deviceTrust = null
                             reminderSettings = null
@@ -716,6 +731,7 @@ private fun WorkforceHome(
     section: WorkforceSection,
     history: WorkforceHistorySnapshot?,
     historyLocalRecovery: WorkforceHistoryLocalRecovery?,
+    requestLocalRecovery: WorkforceRequestLocalRecovery?,
     ownExceptions: List<WorkforceSelfException>?,
     recoveryItems: List<WorkforceOutboxRecoveryItem>?,
     deviceTrust: WorkforceDeviceTrustState?,
@@ -792,6 +808,7 @@ private fun WorkforceHome(
             )
             WorkforceSection.REQUESTS -> WorkforceRequests(
                 history = history,
+                localRecovery = requestLocalRecovery,
                 ownExceptions = ownExceptions,
                 defaultDate = today?.date.orEmpty(),
                 mutationsBlocked = bootstrap.release.mutationsBlocked,
@@ -1169,6 +1186,7 @@ private fun deviceEnrollmentStatus(status: String): Int = when (status) {
 @Composable
 private fun WorkforceRequests(
     history: WorkforceHistorySnapshot?,
+    localRecovery: WorkforceRequestLocalRecovery?,
     ownExceptions: List<WorkforceSelfException>?,
     defaultDate: String,
     mutationsBlocked: Boolean,
@@ -1198,6 +1216,21 @@ private fun WorkforceRequests(
             Text(stringResource(R.string.tab_requests), style = MaterialTheme.typography.titleLarge)
             Text(stringResource(R.string.requests_explainer))
             if (mutationsBlocked) Text(stringResource(R.string.update_required_before_changes))
+            localRecovery?.takeIf { it.hasOutstanding }?.let { recovery ->
+                // This is delivery metadata only. The request list below stays
+                // server-authoritative and no pending row is assigned to a
+                // request type, date, correction, or review decision.
+                Text(stringResource(R.string.request_local_sync_explainer))
+                if (recovery.pendingCount > 0) {
+                    Text(stringResource(R.string.request_local_sync_pending, recovery.pendingCount))
+                }
+                if (recovery.conflictCount > 0) {
+                    Text(stringResource(R.string.request_local_sync_conflict, recovery.conflictCount))
+                }
+                if (recovery.reviewCount > 0) {
+                    Text(stringResource(R.string.request_local_sync_review, recovery.reviewCount))
+                }
+            }
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {

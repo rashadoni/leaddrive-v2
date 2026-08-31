@@ -88,10 +88,21 @@ class WorkforceSessionRepository(
         val session = secureStore.readSession()
             ?: throw WorkforceApiException("Your Workforce session has ended. Sign in again.", recoverable = false)
         val history = api.loadHistory(session, secureStore.installationId(), anchorDate)
+        val recoveryItems = outbox.recoveryItems(session)
         WorkforceHistoryWithLocalRecovery(
             history = history,
-            localRecovery = WorkforceHistoryLocalRecovery.from(outbox.recoveryItems(session)),
+            localRecovery = WorkforceHistoryLocalRecovery.from(recoveryItems),
+            requestLocalRecovery = WorkforceRequestLocalRecovery.from(recoveryItems),
         )
+    }
+
+    /**
+     * Reads only local request-delivery metadata. It intentionally has no
+     * request ID, date, reason or operation payload, and is safe to use when
+     * a server-history refresh fails.
+     */
+    suspend fun loadRequestLocalRecovery(): WorkforceRequestLocalRecovery = sessionMutex.withLock {
+        WorkforceRequestLocalRecovery.from(outbox.recoveryItems(requireSession()))
     }
 
     /** Read-only self-service discovery; it is never queued or made into a fact. */
@@ -132,11 +143,11 @@ class WorkforceSessionRepository(
         val operation = api.newHrmRequestOperation(draft)
         try {
             api.submitOperation(session, secureStore.installationId(), operation)
-            WorkforceHrmSubmission.ACCEPTED
+            WorkforceHrmSubmission.Accepted
         } catch (error: Throwable) {
             if (!error.isEligibleForOfflineOutbox()) throw error
             outbox.enqueue(session, operation)
-            WorkforceHrmSubmission.QUEUED
+            WorkforceHrmSubmission.Queued(WorkforceRequestLocalRecovery.from(outbox.recoveryItems(session)))
         }
     }
 
@@ -150,11 +161,11 @@ class WorkforceSessionRepository(
         val operation = api.newHrmRequestCancellation(requestId)
         try {
             api.submitOperation(session, secureStore.installationId(), operation)
-            WorkforceHrmSubmission.ACCEPTED
+            WorkforceHrmSubmission.Accepted
         } catch (error: Throwable) {
             if (!error.isEligibleForOfflineOutbox()) throw error
             outbox.enqueue(session, operation)
-            WorkforceHrmSubmission.QUEUED
+            WorkforceHrmSubmission.Queued(WorkforceRequestLocalRecovery.from(outbox.recoveryItems(session)))
         }
     }
 
@@ -475,6 +486,7 @@ sealed interface WorkforceTodaySubmission {
 data class WorkforceHistoryWithLocalRecovery(
     val history: WorkforceHistorySnapshot,
     val localRecovery: WorkforceHistoryLocalRecovery,
+    val requestLocalRecovery: WorkforceRequestLocalRecovery,
 )
 
 /** Counts only known Work Time outbox states; it carries no event/day/payload. */
@@ -503,14 +515,40 @@ data class WorkforceHistoryLocalRecovery(
     }
 }
 
+/** Counts only request-domain outbox state; it carries no request field or payload. */
+data class WorkforceRequestLocalRecovery(
+    val pendingCount: Int,
+    val conflictCount: Int,
+    val reviewCount: Int,
+) {
+    val hasOutstanding: Boolean get() = pendingCount + conflictCount + reviewCount > 0
+
+    companion object {
+        fun from(items: List<WorkforceOutboxRecoveryItem>): WorkforceRequestLocalRecovery {
+            val requests = items.filter { it.domain == WorkforceOutboxDomain.HRM_REQUEST }
+            return WorkforceRequestLocalRecovery(
+                pendingCount = requests.count {
+                    it.state == WorkforceOutboxState.QUEUED || it.state == WorkforceOutboxState.RETRY
+                },
+                conflictCount = requests.count { it.state == WorkforceOutboxState.CONFLICT },
+                reviewCount = requests.count {
+                    it.state == WorkforceOutboxState.EXPIRED
+                        || it.state == WorkforceOutboxState.REQUIRES_REVIEW
+                        || it.state == null
+                },
+            )
+        }
+    }
+}
+
 data class WorkforceReminderSettings(
     val enabled: Boolean,
     val state: WorkforceReminderState,
 )
 
-enum class WorkforceHrmSubmission {
-    ACCEPTED,
-    QUEUED,
+sealed interface WorkforceHrmSubmission {
+    data object Accepted : WorkforceHrmSubmission
+    data class Queued(val localRecovery: WorkforceRequestLocalRecovery) : WorkforceHrmSubmission
 }
 
 data class WorkforcePendingDeviceEnrollment(
