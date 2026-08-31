@@ -384,6 +384,7 @@ describe("Workforce Android foundation", () => {
     expect(api).toContain("requiresDeviceProof")
     expect(repository).toContain("revokeOwnDeviceEnrollment")
     expect(repository).toContain("private key is deleted only after the server acknowledges revocation")
+    expect(repository).toMatch(/lifecycle == WorkforceDeviceBindingLifecycle\.REVOKED[\s\S]*lifecycle == WorkforceDeviceBindingLifecycle\.REPLACED[\s\S]*deviceKeys\.delete\(binding\.keyAlias\)[\s\S]*secureStore\.clearDeviceBinding\(\)/)
     expect(repository).toContain("replacesEnrollmentId = replacesEnrollmentId")
     expect(api).toContain("still requires independent approval")
     expect(activity).toContain("R.string.device_enrollment_replace")

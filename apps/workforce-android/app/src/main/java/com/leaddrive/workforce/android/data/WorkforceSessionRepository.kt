@@ -328,6 +328,22 @@ class WorkforceSessionRepository(
                 enrollments = enrollments,
             )
         }
+        if (
+            lifecycle == WorkforceDeviceBindingLifecycle.REVOKED
+            || lifecycle == WorkforceDeviceBindingLifecycle.REPLACED
+        ) {
+            // Only an authoritative server lifecycle may retire this local
+            // private key. A missing/unknown/pending enrollment deliberately
+            // keeps it intact for recovery, while a confirmed terminal state
+            // cannot leave a now-ineligible attendance key on the device.
+            deviceKeys.delete(binding.keyAlias)
+            secureStore.clearDeviceBinding()
+            return WorkforceDeviceTrustState(
+                lifecycle = lifecycle,
+                enrollmentId = binding.enrollmentId,
+                enrollments = enrollments,
+            )
+        }
         if (lifecycle != binding.lifecycle) secureStore.writeDeviceBinding(binding.copy(lifecycle = lifecycle))
         WorkforceDeviceTrustState(
             lifecycle = lifecycle,
