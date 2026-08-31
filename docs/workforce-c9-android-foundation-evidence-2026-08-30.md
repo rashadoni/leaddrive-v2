@@ -158,9 +158,23 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   the repository's internal English lifecycle message into that UI. The server
   still remains authoritative for lifecycle state; this is localization and
   safe presentation only, not device verification evidence.
-- Remaining hard-coded server/API/recovery messages deliberately stay outside
-  this resource slice: safely localising them requires stable error codes and
-  reviewed legal/HR translation, not unreliable client-side text matching.
+- The root runtime statuses (sign-in, refresh, encrypted-outbox queue, request
+  submit/cancel, trusted-device action/enrollment/revoke and sign-out) are now
+  resource-backed in EN/AZ/RU. API failures render one of three local generic
+  outcomes (conflict, request failure or unavailable transport); the app does
+  not reflect `WorkforceApiException.message` into employee UI. Successful
+  device operations render the known local lifecycle resource instead of an
+  internal API message. This keeps recovery useful without exposing server,
+  device or request diagnostics.
+- The per-use Android biometric prompts for the exact action and device
+  enrollment are resource-backed too. The action prompt uses the existing
+  localized action label; the enrollment prompt includes only its server
+  expiry, never proof material.
+- The latest Android CI candidate exposed a Compose compiler error in a prior
+  trusted-device source line: `stringResource` was called from the non-
+  composable `rememberSaveable` initializer. The source now resolves the
+  default label before that initializer. The external Gradle rerun is still
+  required; this record does not claim a compiled Android artifact.
 
 ## Privacy-safe mobile diagnostics (`WF-C9-013`, partial)
 
@@ -239,6 +253,15 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   current/next segment selection, raw-coordinate/geofence/proof exclusion and
   the Android display-only parsing contract; scoped ESLint and
   `git diff --check` also pass.
+- `PASS` — the targeted Android-foundation source contract (17 tests), exact
+  EN/RU/AZ resource-key parity, scoped ESLint and `git diff --check` cover
+  localized generic status/error copy, absence of raw API-message reflection,
+  resource-backed device prompts and the composable-safe default device label.
+- `NOT RUN / pending external rerun` — Android Gradle lint/unit was run by
+  GitHub Actions on the preceding candidate and correctly failed at compile
+  time on the now-fixed `rememberSaveable { stringResource(...) }` violation.
+  Contabo must not substitute a local Gradle build; the next PR SHA requires
+  the prescribed GitHub Android debug lint/unit gate.
 - `NOT RUN` — Android Gradle lint/unit tests, build, emulator/device tests,
   camera/location/QR checks, notification permission/channel/delivery failure,
   TalkBack, AZ/RU/EN linguistic review, 200% font, contrast, reduced-motion

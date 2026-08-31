@@ -84,4 +84,26 @@
     <string name="device_state_active">Это доверенное устройство одобрено для подтверждения точного действия.</string>
     <string name="device_state_revoked">Это устройство отозвано и не может подтверждать учёт времени.</string>
     <string name="device_state_replaced">Это устройство заменено и не может подтверждать учёт времени.</string>
+    <string name="status_today_queued">Действие сохранено в зашифрованном outbox этого устройства. Оно будет повторяться по порядку до семи дней.</string>
+    <string name="status_refreshing_server">Обновляем данные сервера…</string>
+    <string name="status_confirming_device_action">Подтверждаем точное действие на вашем устройстве…</string>
+    <string name="status_preparing_device_enrollment">Подготавливаем защищённую регистрацию устройства…</string>
+    <string name="status_refreshing_device_trust">Обновляем статус доверенного устройства…</string>
+    <string name="status_revoking_device_trust">Отзываем это доверенное устройство…</string>
+    <string name="status_device_revoked">Доступ доверенного устройства отозван. Перед регистрацией замены обновите статус.</string>
+    <string name="status_signing_in">Выполняем вход…</string>
+    <string name="status_loading_history">Загружаем принятое сервером рабочее время…</string>
+    <string name="status_loading_recovery">Загружаем приватное состояние восстановления…</string>
+    <string name="status_submitting_request">Отправляем заявку…</string>
+    <string name="status_request_accepted">Заявка принята сервером. Обновите её статус.</string>
+    <string name="status_request_queued">Заявка сохранена в зашифрованном outbox этого устройства и будет повторяться по порядку до семи дней.</string>
+    <string name="status_cancelling_request">Отменяем заявку…</string>
+    <string name="status_cancellation_accepted">Отмена принята сервером. Обновите её статус.</string>
+    <string name="status_cancellation_queued">Отмена сохранена в зашифрованном outbox этого устройства и будет повторяться по порядку до семи дней.</string>
+    <string name="status_sign_out_failed">Не удалось безопасно завершить выход. Повторите попытку.</string>
+    <string name="device_action_prompt">Подтвердите «%1$s» для этого точного действия Workforce</string>
+    <string name="device_enrollment_prompt">Подтвердите регистрацию устройства до %1$s</string>
+    <string name="error_action_conflict">Состояние на сервере изменилось. Обновите данные перед следующим действием.</string>
+    <string name="error_request_failed">Workforce не смог завершить этот запрос. Обновите данные сервера и повторите попытку.</string>
+    <string name="error_network_unavailable">Не удалось связаться с Workforce. Локальное действие учёта времени не принято.</string>
 </resources>

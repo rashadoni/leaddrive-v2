@@ -246,6 +246,8 @@ describe("Workforce Android foundation", () => {
     expect(activity).toContain("R.string.device_revoke_dialog_title")
     expect(activity).toContain("deviceLifecycleMessage")
     expect(activity).toContain("deviceEnrollmentStatus")
+    expect(activity).toContain("val defaultDeviceLabel = stringResource")
+    expect(activity).not.toContain("mutableStateOf(stringResource")
     for (const catalog of [defaultStrings, russianStrings, azerbaijaniStrings]) {
       expect(catalog).toContain('name="device_trust_explainer"')
       expect(catalog).toContain('name="device_revoke_dialog_body"')
@@ -308,6 +310,30 @@ describe("Workforce Android foundation", () => {
     expect(reminders).toContain("R.string.notification_text")
     expect(authenticator).toContain("R.string.biometric_title")
     expect(authenticator).toContain("R.string.cancel")
+  })
+
+  it("uses localized generic status and failure copy instead of reflecting API/device messages", () => {
+    const activity = read("app/src/main/java/com/leaddrive/workforce/android/MainActivity.kt")
+    const catalogs = [
+      read("app/src/main/res/values/strings.xml"),
+      read("app/src/main/res/values-ru/strings.xml"),
+      read("app/src/main/res/values-az/strings.xml"),
+    ]
+    expect(activity).toContain("WorkforceEmployeeErrorCopy")
+    expect(activity).toContain("is WorkforceApiException -> copy.api")
+    expect(activity).not.toContain("is WorkforceApiException -> message")
+    expect(activity).toContain("context.getString(deviceLifecycleMessage(it.lifecycle))")
+    expect(activity).toContain("R.string.device_action_prompt")
+    expect(activity).toContain("R.string.device_enrollment_prompt")
+    for (const catalog of catalogs) {
+      expect(catalog).toContain('name="status_today_queued"')
+      expect(catalog).toContain('name="status_request_accepted"')
+      expect(catalog).toContain('name="error_action_conflict"')
+      expect(catalog).toContain('name="error_request_failed"')
+      expect(catalog).toContain('name="error_network_unavailable"')
+      expect(catalog).toContain('name="device_action_prompt"')
+      expect(catalog).toContain('name="device_enrollment_prompt"')
+    }
   })
 
   it("sends only bounded release and coarse device diagnostics through the existing sync observability path", () => {

@@ -84,4 +84,26 @@
     <string name="device_state_active">Bu etibarlı cihaz dəqiq əməliyyatı təsdiqləmək üçün təsdiqlənib.</string>
     <string name="device_state_revoked">Bu cihaz ləğv edilib və davamiyyəti təsdiqləyə bilməz.</string>
     <string name="device_state_replaced">Bu cihaz dəyişdirilib və davamiyyəti təsdiqləyə bilməz.</string>
+    <string name="status_today_queued">Əməliyyat bu cihazın şifrələnmiş outbox yaddaşında saxlanılıb. Yeddi günədək sıra ilə yenidən cəhd ediləcək.</string>
+    <string name="status_refreshing_server">Server məlumatı yenilənir…</string>
+    <string name="status_confirming_device_action">Bu cihazda dəqiq əməliyyat təsdiqlənir…</string>
+    <string name="status_preparing_device_enrollment">Qorunan cihaz qeydiyyatı hazırlanır…</string>
+    <string name="status_refreshing_device_trust">Etibarlı cihazın statusu yenilənir…</string>
+    <string name="status_revoking_device_trust">Bu etibarlı cihaz ləğv edilir…</string>
+    <string name="status_device_revoked">Etibarlı cihazın girişi ləğv edildi. Əvəzedicini qeydiyyatdan keçirməzdən əvvəl statusu yeniləyin.</string>
+    <string name="status_signing_in">Daxil olunur…</string>
+    <string name="status_loading_history">Server tərəfindən qəbul edilmiş iş vaxtı tarixçəsi yüklənir…</string>
+    <string name="status_loading_recovery">Məxfi bərpa vəziyyəti yüklənir…</string>
+    <string name="status_submitting_request">Sorğu göndərilir…</string>
+    <string name="status_request_accepted">Sorğu server tərəfindən qəbul edildi. Statusunu yeniləyin.</string>
+    <string name="status_request_queued">Sorğu bu cihazın şifrələnmiş outbox yaddaşında saxlanılıb və yeddi günədək sıra ilə yenidən cəhd ediləcək.</string>
+    <string name="status_cancelling_request">Sorğu ləğv edilir…</string>
+    <string name="status_cancellation_accepted">Ləğv server tərəfindən qəbul edildi. Statusunu yeniləyin.</string>
+    <string name="status_cancellation_queued">Ləğv bu cihazın şifrələnmiş outbox yaddaşında saxlanılıb və yeddi günədək sıra ilə yenidən cəhd ediləcək.</string>
+    <string name="status_sign_out_failed">Təhlükəsiz çıxış tamamlanmadı. Yenidən cəhd edin.</string>
+    <string name="device_action_prompt">Bu dəqiq Workforce əməliyyatı üçün %1$s əməliyyatını təsdiqləyin</string>
+    <string name="device_enrollment_prompt">%1$s vaxtından əvvəl bu cihazın qeydiyyatını təsdiqləyin</string>
+    <string name="error_action_conflict">Serverdəki vəziyyət dəyişib. Növbəti əməliyyatdan əvvəl məlumatı yeniləyin.</string>
+    <string name="error_request_failed">Workforce bu sorğunu tamamlaya bilmədi. Server məlumatını yeniləyin və yenidən cəhd edin.</string>
+    <string name="error_network_unavailable">Workforce ilə əlaqə yaratmaq mümkün olmadı. Lokal davamiyyət əməliyyatı qəbul edilmədi.</string>
 </resources>

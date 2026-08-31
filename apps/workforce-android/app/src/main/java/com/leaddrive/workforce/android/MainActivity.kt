@@ -121,6 +121,28 @@ private fun WorkforceRoot(
     var deviceTrust by remember { mutableStateOf<WorkforceDeviceTrustState?>(null) }
     val qrScanCancelled = stringResource(R.string.qr_scan_cancelled)
     val qrScanUnreadable = stringResource(R.string.qr_scan_unreadable)
+    val employeeErrorCopy = WorkforceEmployeeErrorCopy(
+        conflict = stringResource(R.string.error_action_conflict),
+        api = stringResource(R.string.error_request_failed),
+        network = stringResource(R.string.error_network_unavailable),
+    )
+    val queuedToday = stringResource(R.string.status_today_queued)
+    val refreshingToday = stringResource(R.string.status_refreshing_server)
+    val confirmingDeviceAction = stringResource(R.string.status_confirming_device_action)
+    val preparingDeviceEnrollment = stringResource(R.string.status_preparing_device_enrollment)
+    val refreshingDeviceTrust = stringResource(R.string.status_refreshing_device_trust)
+    val revokingDeviceTrust = stringResource(R.string.status_revoking_device_trust)
+    val deviceRevoked = stringResource(R.string.status_device_revoked)
+    val signingIn = stringResource(R.string.status_signing_in)
+    val loadingHistory = stringResource(R.string.status_loading_history)
+    val loadingRecovery = stringResource(R.string.status_loading_recovery)
+    val submittingRequest = stringResource(R.string.status_submitting_request)
+    val requestAccepted = stringResource(R.string.status_request_accepted)
+    val requestQueued = stringResource(R.string.status_request_queued)
+    val cancellingRequest = stringResource(R.string.status_cancelling_request)
+    val cancellationAccepted = stringResource(R.string.status_cancellation_accepted)
+    val cancellationQueued = stringResource(R.string.status_cancellation_queued)
+    val signOutFailed = stringResource(R.string.status_sign_out_failed)
     var reminderSettings by remember { mutableStateOf<WorkforceReminderSettings?>(null) }
     var section by remember { mutableStateOf(WorkforceSection.TODAY) }
     var restoring by remember { mutableStateOf(true) }
@@ -164,14 +186,14 @@ private fun WorkforceRoot(
                 status = null
             }
             com.leaddrive.workforce.android.data.WorkforceTodaySubmission.Queued -> {
-                status = "Saved in this device’s encrypted outbox. It will retry in order for up to seven days."
+                status = queuedToday
             }
         }
     }
 
     fun refreshToday() {
         scope.launch {
-            status = "Refreshing server state…"
+            status = refreshingToday
             runCatching { repository.loadToday() }
                 .onSuccess {
                     today = it
@@ -181,7 +203,7 @@ private fun WorkforceRoot(
                     deviceTrust = null
                     status = null
                 }
-                .onFailure { status = it.employeeMessage() }
+                .onFailure { status = it.employeeMessage(employeeErrorCopy) }
         }
     }
 
@@ -193,7 +215,7 @@ private fun WorkforceRoot(
         scope.launch {
             runCatching { repository.submitTodayAction(currentBootstrap, snapshot, action, qrToken) }
                 .onSuccess(::applyTodaySubmission)
-                .onFailure { status = it.employeeMessage() }
+                .onFailure { status = it.employeeMessage(employeeErrorCopy) }
             busyAction = null
         }
     }
@@ -202,62 +224,62 @@ private fun WorkforceRoot(
         val snapshot = today ?: return
         val currentBootstrap = bootstrap ?: return
         busyAction = action
-        status = "Confirming this exact action on your device…"
+        status = confirmingDeviceAction
         scope.launch {
             runCatching {
                 val prepared = repository.prepareDeviceTrustedTodayAction(currentBootstrap, snapshot, action, qrToken)
                 val signature = deviceAuthenticator.authenticateAndSign(
                     prepared.signature,
-                    "Confirm ${action.label.lowercase()} for this exact Workforce action",
+                    context.getString(R.string.device_action_prompt, context.getString(action.labelRes())),
                 )
                 repository.submitPreparedDeviceTodayAction(currentBootstrap, prepared, signature)
             }.onSuccess(::applyTodaySubmission)
-                .onFailure { status = it.employeeMessage() }
+                .onFailure { status = it.employeeMessage(employeeErrorCopy) }
             busyAction = null
         }
     }
 
     fun beginDeviceEnrollment(deviceLabel: String) {
         val currentBootstrap = bootstrap ?: return
-        status = "Preparing the protected device enrollment…"
+        status = preparingDeviceEnrollment
         scope.launch {
             runCatching {
                 val pending = repository.beginDeviceEnrollment(currentBootstrap, deviceLabel)
                 val signature = deviceAuthenticator.authenticateAndSign(
                     pending.signature,
-                    "Confirm this device enrollment before ${pending.expiresAt}",
+                    context.getString(R.string.device_enrollment_prompt, pending.expiresAt),
                 )
                 repository.completeDeviceEnrollment(pending, signature)
             }.onSuccess {
                 deviceTrust = it
-                status = it.message
-            }.onFailure { status = it.employeeMessage() }
+                status = context.getString(deviceLifecycleMessage(it.lifecycle))
+            }.onFailure { status = it.employeeMessage(employeeErrorCopy) }
         }
     }
 
     fun refreshDeviceTrust() {
         val currentBootstrap = bootstrap ?: return
-        status = "Refreshing trusted-device status…"
+        status = refreshingDeviceTrust
         scope.launch {
             runCatching { repository.loadDeviceTrustState(currentBootstrap) }
                 .onSuccess {
                     deviceTrust = it
-                    status = it.message
+                    status = context.getString(deviceLifecycleMessage(it.lifecycle))
                 }
-                .onFailure { status = it.employeeMessage() }
+                .onFailure { status = it.employeeMessage(employeeErrorCopy) }
         }
     }
 
     fun revokeOwnDeviceEnrollment(enrollmentId: String) {
         val currentBootstrap = bootstrap ?: return
-        status = "Revoking this trusted device…"
+        status = revokingDeviceTrust
         scope.launch {
             runCatching { repository.revokeOwnDeviceEnrollment(currentBootstrap, enrollmentId) }
                 .onSuccess {
                     deviceTrust = it
-                    status = "Trusted-device access was revoked. Refresh before enrolling a replacement."
+                    status = deviceRevoked
                 }
-                .onFailure { status = it.employeeMessage() }
+                .onFailure { status = it.employeeMessage(employeeErrorCopy) }
         }
     }
 
@@ -271,10 +293,10 @@ private fun WorkforceRoot(
                             today = it
                             applyReminderSettings(it)
                         }
-                        .onFailure { status = it.employeeMessage() }
+                        .onFailure { status = it.employeeMessage(employeeErrorCopy) }
                 }
             }
-            .onFailure { status = it.employeeMessage() }
+            .onFailure { status = it.employeeMessage(employeeErrorCopy) }
         restoring = false
     }
 
@@ -283,7 +305,7 @@ private fun WorkforceRoot(
         bootstrap == null -> WorkforceLogin(
             status = status,
             onSubmit = { input ->
-                status = "Signing in…"
+                status = signingIn
                 scope.launch {
                     runCatching {
                         val signedIn = repository.signIn(input)
@@ -297,7 +319,7 @@ private fun WorkforceRoot(
                         recoveryItems = null
                         deviceTrust = null
                         status = null
-                    }.onFailure { status = it.employeeMessage() }
+                    }.onFailure { status = it.employeeMessage(employeeErrorCopy) }
                 }
             },
         )
@@ -316,26 +338,26 @@ private fun WorkforceRoot(
             onLoadHistory = {
                 val anchorDate = today?.date
                 if (anchorDate != null) {
-                    status = "Loading accepted work-time history…"
+                    status = loadingHistory
                     scope.launch {
                         runCatching { repository.loadHistory(anchorDate) }
                             .onSuccess {
                                 history = it
                                 status = null
                             }
-                            .onFailure { status = it.employeeMessage() }
+                            .onFailure { status = it.employeeMessage(employeeErrorCopy) }
                     }
                 }
             },
             onLoadRecovery = {
-                status = "Loading private recovery state…"
+                status = loadingRecovery
                 scope.launch {
                     runCatching { repository.loadRecoveryItems() }
                         .onSuccess {
                             recoveryItems = it
                             status = null
                         }
-                        .onFailure { status = it.employeeMessage() }
+                        .onFailure { status = it.employeeMessage(employeeErrorCopy) }
                 }
             },
             onLoadDeviceTrust = ::refreshDeviceTrust,
@@ -343,32 +365,32 @@ private fun WorkforceRoot(
             onRevokeDeviceEnrollment = ::revokeOwnDeviceEnrollment,
             onSetLocalReminders = ::setLocalReminders,
             onSubmitRequest = { draft ->
-                status = "Submitting request…"
+                status = submittingRequest
                 scope.launch {
                     runCatching { repository.submitHrmRequest(bootstrap!!, draft) }
                         .onSuccess { submission ->
                             history = null
                             recoveryItems = null
                             status = when (submission) {
-                                WorkforceHrmSubmission.ACCEPTED -> "Request accepted by the server. Refresh its status."
-                                WorkforceHrmSubmission.QUEUED -> "Request is in this device’s encrypted outbox and will retry in order for up to seven days."
+                                WorkforceHrmSubmission.ACCEPTED -> requestAccepted
+                                WorkforceHrmSubmission.QUEUED -> requestQueued
                             }
                         }
-                        .onFailure { status = it.employeeMessage() }
+                        .onFailure { status = it.employeeMessage(employeeErrorCopy) }
                 }
             },
             onCancelRequest = { requestId ->
-                status = "Cancelling request…"
+                status = cancellingRequest
                 scope.launch {
                     runCatching { repository.cancelHrmRequest(bootstrap!!, requestId) }
                         .onSuccess { submission ->
                             history = null
                             status = when (submission) {
-                                WorkforceHrmSubmission.ACCEPTED -> "Cancellation accepted by the server. Refresh its status."
-                                WorkforceHrmSubmission.QUEUED -> "Cancellation is in this device’s encrypted outbox and will retry in order for up to seven days."
+                                WorkforceHrmSubmission.ACCEPTED -> cancellationAccepted
+                                WorkforceHrmSubmission.QUEUED -> cancellationQueued
                             }
                         }
-                        .onFailure { status = it.employeeMessage() }
+                        .onFailure { status = it.employeeMessage(employeeErrorCopy) }
                 }
             },
             onAction = { action ->
@@ -406,7 +428,7 @@ private fun WorkforceRoot(
                             reminderSettings = null
                             status = null
                         }
-                        .onFailure { status = "Secure sign-out could not finish. Try again." }
+                        .onFailure { status = signOutFailed }
                 }
             },
         )
@@ -647,14 +669,15 @@ private fun WorkforceHrmRequestType.localizedLabel(): String = stringResource(
 )
 
 @Composable
-private fun WorkforceWorkdayAction.localizedLabel(): String = stringResource(
-    when (this) {
-        WorkforceWorkdayAction.START -> R.string.action_start
-        WorkforceWorkdayAction.PAUSE -> R.string.action_pause
-        WorkforceWorkdayAction.RESUME -> R.string.action_resume
-        WorkforceWorkdayAction.FINISH -> R.string.action_finish
-    },
-)
+private fun WorkforceWorkdayAction.localizedLabel(): String = stringResource(labelRes())
+
+@StringRes
+private fun WorkforceWorkdayAction.labelRes(): Int = when (this) {
+    WorkforceWorkdayAction.START -> R.string.action_start
+    WorkforceWorkdayAction.PAUSE -> R.string.action_pause
+    WorkforceWorkdayAction.RESUME -> R.string.action_resume
+    WorkforceWorkdayAction.FINISH -> R.string.action_finish
+}
 
 private fun Modifier.workforceTapTarget(): Modifier = defaultMinSize(
     minWidth = 48.dp,
@@ -708,7 +731,8 @@ private fun WorkforceDeviceTrust(
     onEnroll: (String) -> Unit,
     onRevoke: (String) -> Unit,
 ) {
-    var label by rememberSaveable { mutableStateOf(stringResource(R.string.device_label_default)) }
+    val defaultDeviceLabel = stringResource(R.string.device_label_default)
+    var label by rememberSaveable { mutableStateOf(defaultDeviceLabel) }
     var revokeCandidateId by rememberSaveable { mutableStateOf<String?>(null) }
     val trustedState = state ?: run {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1099,8 +1123,14 @@ private fun Long.asWorkDuration(): String {
     return "%02d:%02d:%02d".format(hours, minutes, seconds)
 }
 
-private fun Throwable.employeeMessage(): String = when (this) {
-    is WorkforceActionConflictException -> "The server state changed. Refresh before trying another action."
-    is WorkforceApiException -> message ?: "Workforce could not complete this request."
-    else -> "Unable to reach Workforce. No attendance action was accepted locally."
+private data class WorkforceEmployeeErrorCopy(
+    val conflict: String,
+    val api: String,
+    val network: String,
+)
+
+private fun Throwable.employeeMessage(copy: WorkforceEmployeeErrorCopy): String = when (this) {
+    is WorkforceActionConflictException -> copy.conflict
+    is WorkforceApiException -> copy.api
+    else -> copy.network
 }
