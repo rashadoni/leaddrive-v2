@@ -29,10 +29,15 @@ submit an employee response under a caller-supplied agent id.
 
 The canonical writer authorizes before any advisory lock or database call,
 records only metadata-only audit fields, accepts an exact client-response retry
-and rejects a changed retry. This is still source-only: no migration has been
-applied and no employee-scoped case API or UI uses the ledger. Therefore the
-UI cannot claim a case was resolved, edit an accepted fact, suppress an
-exception, or expose another employee's evidence.
+and rejects a changed retry. `POST /api/v1/workforce/exceptions/:id/response`
+is a session-only self-service source path: it resolves the current employee,
+reads only a case matching that employee and tenant, derives the case's exact
+workday/segment server-side, and then calls the writer. A missing or another
+employee's case has one identical unavailable result, so it cannot serve as an
+ID oracle. The endpoint accepts neither explanation/proof nor a direct time
+change. No migration has been applied and no UI links to this source path.
+Therefore the UI cannot claim a case was resolved, edit an accepted fact,
+suppress an exception, or expose another employee's evidence.
 
 The later C6 lifecycle must expose this only through a self-scoped case API,
 apply the migration and disposable-DB/RLS evidence, and connect a requested
@@ -44,12 +49,13 @@ turn the existing protected request reason into raw evidence or payroll input.
     PASS  CI=true npx vitest run \
           src/__tests__/lib-workforce-exception-employee-response.test.ts \
           src/__tests__/lib-workforce-exception-employee-response-writer.test.ts \
-          src/__tests__/migration-workforce-exception-employee-responses.test.ts
-          (3 files, 9 tests)
+          src/__tests__/migration-workforce-exception-employee-responses.test.ts \
+          src/__tests__/api-workforce-exception-employee-response.test.ts
+          (4 files, 13 tests)
 
     PASS  DATABASE_URL=<nonconnecting validation URL> npx prisma validate
     PASS  targeted ESLint and git diff --check
 
-    NOT RUN  migration apply/disposable-DB RLS, employee case/appeal endpoint,
-             browser accessibility evidence, mobile UI, notification delivery,
-             full typecheck/build, staging and production tests.
+    NOT RUN  migration apply/disposable-DB RLS, employee discovery/browser
+             accessibility evidence, mobile UI, notification delivery, full
+             typecheck/build, staging and production tests.
