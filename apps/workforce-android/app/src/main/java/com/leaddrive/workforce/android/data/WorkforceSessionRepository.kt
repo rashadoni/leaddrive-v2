@@ -1,7 +1,7 @@
 package com.leaddrive.workforce.android.data
 
 import com.leaddrive.workforce.android.security.WorkforceDeviceKeyManager
-import java.security.SecureRandom
+import android.util.Base64
 import java.security.Signature
 import java.time.Instant
 import java.util.UUID
@@ -155,10 +155,11 @@ class WorkforceSessionRepository(
     }
 
     /**
-     * Creates or resumes proof of possession of a single Android Keystore key.
-     * A server response can be lost after committing the pending enrollment, so
-     * the provisional alias is retained (encrypted) and the same public key is
-     * safely re-submitted for a fresh one-time challenge on the next attempt.
+     * Creates or resumes proof of possession of one Android Keystore key. A
+     * newly created key always receives a server-issued attestation nonce
+     * before `setAttestationChallenge` runs. A lost enrollment response still
+     * retains only the encrypted alias/account boundary for its public-key
+     * proof retry; raw attestation material is never persisted locally.
      */
     suspend fun beginDeviceEnrollment(
         bootstrap: WorkforceBootstrap,
@@ -178,14 +179,14 @@ class WorkforceSessionRepository(
                 // replacement.
                 deviceKeys.delete(existing.keyAlias)
                 secureStore.clearDeviceBinding()
-                reusableOrNewDeviceKeyAlias(bootstrap)
+                reusableOrNewDeviceKeyAlias(bootstrap, session)
             }
             existing != null && existing.matches(bootstrap) ->
                 throw WorkforceApiException(
                     "Device enrollment requires a status refresh before another enrollment can start.",
                     recoverable = false,
                 )
-            else -> reusableOrNewDeviceKeyAlias(bootstrap)
+            else -> reusableOrNewDeviceKeyAlias(bootstrap, session)
         }
         val publicKeySpki = deviceKeys.publicKeyDerBase64(alias)
         val started = api.beginDeviceEnrollment(
@@ -423,15 +424,30 @@ class WorkforceSessionRepository(
         }
     }
 
-    private fun reusableOrNewDeviceKeyAlias(bootstrap: WorkforceBootstrap): String {
+    private suspend fun reusableOrNewDeviceKeyAlias(
+        bootstrap: WorkforceBootstrap,
+        session: WorkforceStoredSession,
+    ): String {
         val provisioning = secureStore.readDeviceProvisioning()
         if (provisioning != null && provisioning.matches(bootstrap)) return provisioning.keyAlias
         if (provisioning != null) {
             deviceKeys.delete(provisioning.keyAlias)
             secureStore.clearDeviceProvisioning()
         }
+        val attestation = api.beginDeviceAttestationChallenge(session, secureStore.installationId())
+        val challengeBytes = try {
+            Base64.decode(
+                attestation.challenge,
+                Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP,
+            )
+        } catch (_: IllegalArgumentException) {
+            throw WorkforceApiException("The device attestation challenge was invalid. Refresh and try again.", recoverable = true)
+        }
+        if (challengeBytes.size !in 16..128) {
+            throw WorkforceApiException("The device attestation challenge was invalid. Refresh and try again.", recoverable = true)
+        }
         val alias = "leaddrive.workforce.device.${UUID.randomUUID()}"
-        deviceKeys.createEnrollmentKey(alias, ByteArray(32).also(SecureRandom()::nextBytes))
+        deviceKeys.createEnrollmentKey(alias, challengeBytes)
         secureStore.writeDeviceProvisioning(
             WorkforceDeviceProvisioning(alias, bootstrap.organizationId, bootstrap.agentId),
         )

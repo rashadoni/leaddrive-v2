@@ -9,6 +9,7 @@ vi.mock("@/lib/prisma", async () => {
 import { prisma } from "@/lib/prisma"
 import {
   approveWorkforceAttendanceDeviceEnrollment,
+  beginWorkforceAttendanceDeviceAttestationChallenge,
   beginWorkforceAttendanceDeviceEnrollment,
   disableWorkforceAttendanceQrStation,
   issueWorkforceAttendanceQr,
@@ -254,6 +255,41 @@ describe("Workforce attendance management", () => {
     expect(prisma.workforceAttendanceDeviceEnrollment.updateMany).toHaveBeenCalledWith(expect.objectContaining({
       data: { keyVerifiedAt: NOW },
     }))
+  })
+
+  it("issues a server nonce before Android creates an attestation key and consumes an older live nonce", async () => {
+    vi.mocked(prisma.workforceAttendanceDeviceAttestationChallenge.updateMany).mockResolvedValue({ count: 1 } as never)
+    vi.mocked(prisma.workforceAttendanceDeviceAttestationChallenge.create).mockResolvedValue({ id: "attestation_1" } as never)
+
+    const issued = await beginWorkforceAttendanceDeviceAttestationChallenge(prisma as never, {
+      organizationId: ORGANIZATION_ID,
+      agentId: AGENT_ID,
+      now: NOW,
+    })
+
+    expect(issued.challenge).toMatch(/^[A-Za-z0-9_-]{24,256}$/)
+    expect(issued.expiresAt).toEqual(new Date("2026-08-29T09:05:00.000Z"))
+    expect(prisma.workforceAttendanceDeviceAttestationChallenge.updateMany).toHaveBeenCalledWith({
+      where: {
+        organizationId: ORGANIZATION_ID,
+        agentId: AGENT_ID,
+        consumedAt: null,
+        expiresAt: { gt: NOW },
+      },
+      data: { consumedAt: NOW },
+    })
+    expect(prisma.workforceAttendanceDeviceAttestationChallenge.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        organizationId: ORGANIZATION_ID,
+        agentId: AGENT_ID,
+        challengeFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+        expiresAt: new Date("2026-08-29T09:05:00.000Z"),
+      }),
+    }))
+    expect(prisma.$executeRaw).toHaveBeenCalledWith(
+      expect.arrayContaining(["SELECT pg_advisory_xact_lock(hashtext("]),
+      `workforce-attestation-preflight:${ORGANIZATION_ID}:${AGENT_ID}`,
+    )
   })
 
   it("resumes only an unverified pending enrollment after an ambiguous mobile start response", async () => {

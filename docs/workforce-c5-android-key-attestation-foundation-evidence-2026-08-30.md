@@ -56,12 +56,14 @@ to this fail-closed gate.
 
 ## Explicitly not activated
 
-The Android client still retains its certificate chain locally and only sends a
-public key until this verifier has a vetted ASN.1 implementation, live Google
-root/revocation operations, final managed-Play app identity and a reviewed
-server enrollment protocol. No device becomes trusted, no evidence is
-collected, and no biometric result/template or device ID is stored by this
-checkpoint.
+The Android client now obtains a one-time server preflight nonce before it
+creates a new key and passes those bytes directly to KeyStore. It still retains
+the certificate chain locally and only sends a public key until this verifier
+has a vetted ASN.1 implementation, live Google root/revocation operations,
+final managed-Play app identity and a reviewed server enrollment protocol.
+The preflight is not consumed by the existing enrollment endpoint, so no
+device becomes hardware-trusted, no evidence is collected, and no biometric
+result/template or device ID is stored by this checkpoint.
 
 The remaining C5-004 work is therefore material: production-grade ASN.1
 extension parsing, Google root/revocation feed operations, endpoint binding,

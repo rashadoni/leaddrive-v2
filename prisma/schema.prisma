@@ -215,6 +215,7 @@ model Organization {
   workforceAttendanceQrStations        WorkforceAttendanceQrStation[]
   workforceAttendanceDeviceEnrollments WorkforceAttendanceDeviceEnrollment[]
   workforceAttendanceDeviceChallenges  WorkforceAttendanceDeviceEnrollmentChallenge[]
+  workforceAttendanceDeviceAttestationChallenges WorkforceAttendanceDeviceAttestationChallenge[]
   workforceAttendanceVerifications     WorkforceAttendanceVerification[]
   workforceAttendanceEvidences         WorkforceAttendanceEvidence[]
   workforceEvidenceAssessments         WorkforceEvidenceAssessment[]
@@ -5691,6 +5692,7 @@ model MtmAgent {
   workforceTimeCorrections  WorkforceTimeCorrection[]
   workforceTimesheetApprovals WorkforceTimesheetApproval[]
   workforceAttendanceDeviceEnrollments WorkforceAttendanceDeviceEnrollment[]
+  workforceAttendanceDeviceAttestationChallenges WorkforceAttendanceDeviceAttestationChallenge[]
   workforceAttendanceVerifications     WorkforceAttendanceVerification[]
   pharmacyPromotionTargets  MtmPharmacyPromotionTarget[]    @relation("MtmPharmacyTargetAgent")
   managedPharmacyTargets    MtmPharmacyPromotionTarget[]    @relation("MtmPharmacyTargetManager")
@@ -8450,6 +8452,11 @@ model WorkforceAttendanceQrStation {
   @@map("workforce_attendance_qr_stations")
 }
 
+enum WorkforceAndroidAttestationSecurityLevel {
+  TRUSTED_ENVIRONMENT
+  STRONGBOX
+}
+
 // A device enrollment stores only an approved public key. Device labels are
 // operator-facing metadata, not an authentication factor; biometric templates
 // and biometric results are never stored in LeadDrive.
@@ -8462,6 +8469,12 @@ model WorkforceAttendanceDeviceEnrollment {
   deviceLabel          String
   publicKeySpki        String                                    @db.Text
   publicKeyFingerprint String                                    @db.VarChar(64)
+  // The verifier retains only a minimal accepted attestation receipt. It never
+  // stores the certificate chain, attestation challenge, biometric output or
+  // device identifiers.
+  attestationVerifiedAt DateTime?
+  attestationSecurityLevel WorkforceAndroidAttestationSecurityLevel?
+  attestationRootCertificateSha256 String?                       @db.VarChar(64)
   status               WorkforceAttendanceDeviceEnrollmentStatus @default(PENDING)
   keyVerifiedAt        DateTime?
   approvedByUserId     String?
@@ -8506,6 +8519,26 @@ model WorkforceAttendanceDeviceEnrollmentChallenge {
   @@unique([organizationId, challengeFingerprint], map: "workforce_attendance_device_challenges_challenge_key")
   @@index([organizationId, enrollmentId, expiresAt])
   @@map("workforce_attendance_device_enrollment_challenges")
+}
+
+// Server-issued before Android KeyStore creates a new enrollment key. Only a
+// tenant-scoped fingerprint is durable; the raw bytes stay in memory on the
+// client until it uploads the certificate chain to a configured verifier.
+model WorkforceAttendanceDeviceAttestationChallenge {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  organization         Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, map: "wf_attest_challenge_org_fkey")
+  agentId              String
+  agent                MtmAgent  @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Cascade, map: "wf_attest_challenge_agent_fkey")
+  challengeFingerprint String    @db.VarChar(64)
+  expiresAt            DateTime
+  consumedAt           DateTime?
+  createdAt            DateTime  @default(now())
+
+  @@unique([organizationId, id], map: "wf_attest_challenge_org_id_key")
+  @@unique([organizationId, challengeFingerprint], map: "wf_attest_challenge_fingerprint_key")
+  @@index([organizationId, agentId, expiresAt], map: "wf_attest_challenge_org_agent_expiry_idx")
+  @@map("workforce_attendance_device_attestation_challenges")
 }
 
 // Append-only proof ledger for a canonical workday event. QR nonce and device

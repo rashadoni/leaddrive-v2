@@ -7,6 +7,7 @@ import {
   verifyWorkforceDeviceSignature,
   workforceDeviceEnrollmentChallenge,
   workforceDeviceEnrollmentChallengeFingerprint,
+  workforceDeviceAttestationChallengeFingerprint,
 } from "@/lib/workforce/attendance-security"
 import { WorkforceAttendanceActionSchema, type WorkforceAttendanceAction } from "@/lib/workforce/attendance-policy"
 import { newWorkforceAttendanceEnrollmentChallenge } from "@/lib/workforce/attendance-trust"
@@ -643,6 +644,47 @@ export async function beginWorkforceAttendanceDeviceEnrollment(
     }
     throw error
   }
+}
+
+/**
+ * Issues the one-time bytes Android must embed in a freshly generated KeyStore
+ * key's attestation extension. This intentionally happens before a public key
+ * or enrollment row exists. Reissuing consumes a still-live prior challenge
+ * for the same employee; a raw challenge never reaches the database.
+ */
+export async function beginWorkforceAttendanceDeviceAttestationChallenge(
+  db: PrismaClient,
+  input: {
+    organizationId: string
+    agentId: string
+    now?: Date
+  },
+) {
+  const now = input.now ?? new Date()
+  const expiresAt = new Date(now.getTime() + ENROLLMENT_CHALLENGE_TTL_MS)
+  const challenge = newWorkforceAttendanceEnrollmentChallenge()
+  const challengeFingerprint = workforceDeviceAttestationChallengeFingerprint(input.organizationId, challenge)
+  await db.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`workforce-attestation-preflight:${input.organizationId}:${input.agentId}`}))`
+    await tx.workforceAttendanceDeviceAttestationChallenge.updateMany({
+      where: {
+        organizationId: input.organizationId,
+        agentId: input.agentId,
+        consumedAt: null,
+        expiresAt: { gt: now },
+      },
+      data: { consumedAt: now },
+    })
+    await tx.workforceAttendanceDeviceAttestationChallenge.create({
+      data: {
+        organizationId: input.organizationId,
+        agentId: input.agentId,
+        challengeFingerprint,
+        expiresAt,
+      },
+    })
+  })
+  return { challenge, expiresAt }
 }
 
 export async function proveWorkforceAttendanceDeviceEnrollment(

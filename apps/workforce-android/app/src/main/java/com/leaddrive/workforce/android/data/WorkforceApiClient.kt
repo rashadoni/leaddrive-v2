@@ -80,9 +80,33 @@ class WorkforceApiClient(
     }
 
     /**
+     * Obtains the one-time server nonce before Android creates a new KeyStore
+     * key. The raw value stays in memory and is passed directly to
+     * `setAttestationChallenge`; it is never a local preference or outbox
+     * payload.
+     */
+    suspend fun beginDeviceAttestationChallenge(
+        session: WorkforceStoredSession,
+        deviceId: String,
+    ): WorkforceDeviceAttestationChallenge = withContext(Dispatchers.IO) {
+        val response = request(
+            method = "POST",
+            path = "/api/v1/mtm/mobile/attendance/devices/enrollments/attestation-challenge",
+            token = session.token,
+            deviceId = deviceId,
+        )
+        val data = response.optJSONObject("data")
+            ?: throw WorkforceApiException("The device attestation response was incomplete.", recoverable = true)
+        WorkforceDeviceAttestationChallenge(
+            challenge = data.requiredString("challenge", "The device attestation challenge was missing."),
+            expiresAt = data.requiredString("expiresAt", "The device attestation expiry was missing."),
+        )
+    }
+
+    /**
      * Starts or resumes the server's one-time proof-of-possession challenge.
      * The Android attestation chain stays on device until the server contract
-     * has a verified validator; only the P-256 public key is sent here.
+     * has a configured verifier; only the P-256 public key is sent here.
      */
     suspend fun beginDeviceEnrollment(
         session: WorkforceStoredSession,
@@ -1060,6 +1084,12 @@ private fun JSONObject?.toWorkforceMobileRelease(): WorkforceMobileRelease {
 data class WorkforceDeviceEnrollmentStart(
     val enrollmentId: String,
     /** One-time value: retain in memory only for the immediate system prompt. */
+    val challenge: String,
+    val expiresAt: String,
+)
+
+data class WorkforceDeviceAttestationChallenge(
+    /** One-time server value: retain in memory only for KeyStore creation. */
     val challenge: String,
     val expiresAt: String,
 )

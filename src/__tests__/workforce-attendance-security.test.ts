@@ -13,7 +13,9 @@ import {
   verifyWorkforceDeviceSignature,
   workforceAttendanceQrNonceFingerprint,
   workforceDeviceAttendanceChallenge,
+  workforceDeviceAttestationChallengeFingerprint,
   workforceDeviceEnrollmentChallenge,
+  workforceDeviceEnrollmentChallengeFingerprint,
 } from "@/lib/workforce/attendance-security"
 
 const NOW = new Date("2026-08-29T09:00:00.000Z")
@@ -160,5 +162,15 @@ describe("Workforce attendance security primitives", () => {
       enrollmentId: "enrollment_1",
       challenge: "AbCdEfGhIjKlMnOpQrStUvWxYz012345",
     })).toContain("workforce-device-enrollment:v1")
+  })
+
+  it("keeps a server-first attestation nonce tenant-bound and separate from proof enrollment", () => {
+    const challenge = "AbCdEfGhIjKlMnOpQrStUvWxYz012345"
+    const attestationFingerprint = workforceDeviceAttestationChallengeFingerprint("org_1", challenge)
+    expect(attestationFingerprint).toMatch(/^[a-f0-9]{64}$/)
+    expect(attestationFingerprint).not.toEqual(workforceDeviceAttestationChallengeFingerprint("org_2", challenge))
+    expect(attestationFingerprint).not.toEqual(workforceDeviceEnrollmentChallengeFingerprint("org_1", challenge))
+    expect(() => workforceDeviceAttestationChallengeFingerprint("org_1", "short"))
+      .toThrow(WorkforceAttendanceSecurityError)
   })
 })
