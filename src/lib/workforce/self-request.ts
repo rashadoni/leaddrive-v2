@@ -18,6 +18,7 @@ export const WorkforceSelfRequestSchema = z.object({
   endDate: WorkforceDateKey,
   reason: z.string().trim().min(3).max(1000),
   correctionWorkdayId: z.string().trim().min(1).max(128).optional(),
+  exceptionCaseId: z.string().trim().min(1).max(128).optional(),
   requestedStartLocal: WorkforceLocalDateTime.optional(),
   requestedEndLocal: WorkforceLocalDateTime.optional(),
 }).strict().superRefine((value, context) => {
@@ -25,7 +26,7 @@ export const WorkforceSelfRequestSchema = z.object({
     context.addIssue({ code: "custom", path: ["endDate"], message: "date range must be 366 days or fewer" })
   }
   if (value.type !== "TIME_CORRECTION") {
-    if (value.correctionWorkdayId || value.requestedStartLocal || value.requestedEndLocal) {
+    if (value.correctionWorkdayId || value.exceptionCaseId || value.requestedStartLocal || value.requestedEndLocal) {
       context.addIssue({ code: "custom", path: ["type"], message: "correction fields are valid only for a time correction" })
     }
     return
@@ -172,11 +173,15 @@ export async function submitWorkforceSelfRequest(
   const correctionWorkdayId = context.input.type === "TIME_CORRECTION"
     ? context.input.correctionWorkdayId ?? null
     : null
+  const exceptionCaseId = context.input.type === "TIME_CORRECTION"
+    ? context.input.exceptionCaseId ?? null
+    : null
   const requestValues = {
     type: context.input.type,
     startDate,
     endDate,
     correctionWorkdayId,
+    exceptionCaseId,
     requestedStartAt,
     requestedEndAt,
     reason: context.input.reason,
@@ -196,6 +201,7 @@ export async function submitWorkforceSelfRequest(
         startDate: true,
         endDate: true,
         correctionWorkdayId: true,
+        exceptionCaseId: true,
         requestedStartAt: true,
         requestedEndAt: true,
         reason: true,
@@ -228,6 +234,26 @@ export async function submitWorkforceSelfRequest(
           "WORKFORCE_SELF_REQUEST_WORKDAY_NOT_FOUND",
           "The selected workday is not available for a time correction",
         )
+      }
+      if (exceptionCaseId) {
+        const exceptionCase = await tx.workforceExceptionCase.findFirst({
+          where: {
+            id: exceptionCaseId,
+            organizationId: context.organizationId,
+            agentId,
+            workdayId: correctionWorkdayId ?? undefined,
+          },
+          select: { id: true },
+        })
+        // Keep a missing, foreign and mismatched case indistinguishable from
+        // an unavailable correction workday. The query parameter is only a
+        // convenience hint; employee and day ownership stay server-side.
+        if (!exceptionCase) {
+          return conflict(
+            "WORKFORCE_SELF_REQUEST_WORKDAY_NOT_FOUND",
+            "The selected workday is not available for a time correction",
+          )
+        }
       }
     }
 
@@ -287,6 +313,7 @@ export async function submitWorkforceSelfRequest(
           startDate: context.input.startDate,
           endDate: context.input.endDate,
           correctionRequested: created.type === "TIME_CORRECTION",
+          exceptionCaseLinked: exceptionCaseId !== null,
         },
         ipAddress: context.audit?.ipAddress ?? null,
         userAgent: context.audit?.userAgent ?? null,

@@ -43,15 +43,18 @@ or expose another employee's evidence.
 provide the corresponding self-scoped discovery surface. It reads only the
 current employee's tenant-local case, generic type and owned workday date; it
 never reads decision reasons, location, QR/device proof, response-ledger rows
-or another employee's case. Its correction link carries an opaque owned
-workday selection into the existing protected request form. The browser may
-change that selection, but the server still requires an exact self-owned
-workday/date before it accepts a correction.
+or another employee's case. Its correction link carries opaque owned workday
+and case selections into the existing protected request form. The browser may
+change the workday or request type, which deliberately removes the case source
+hint; when it retains the prefill, the server proves the exact own case and
+workday before it records the optional immutable source link on the correction
+request. The database migration is still unapplied, so the trigger is not yet
+live.
 
-The later C6 lifecycle must apply the migration with disposable-DB/RLS
-evidence, connect the resulting correction request to the exact case response,
-and add accountable resolution. It must not turn the existing protected
-request reason into raw evidence or payroll input.
+The later C6 lifecycle must apply the migrations with disposable-DB/RLS
+evidence, connect the separate employee response ledger to an explicit
+employee action, and add accountable resolution. It must not turn the existing
+protected request reason into raw evidence or payroll input.
 
 ## Verification
 
