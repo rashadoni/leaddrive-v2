@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import {
   appendAuthorizedWorkforceExceptionDecision,
+  appendAuthorizedPolicyWorkforceExceptionDecision,
   persistAuthorizedWorkforceExceptionCase,
   WorkforceExceptionCaseWriterError,
 } from "@/lib/workforce/exception-case-writer"
@@ -38,7 +39,7 @@ const caseWriteData = {
 const db = {
   $executeRaw: vi.fn().mockResolvedValue(undefined),
   workforceExceptionCase: { create: vi.fn(), findFirst: vi.fn() },
-  workforceExceptionDecision: { create: vi.fn(), findFirst: vi.fn() },
+  workforceExceptionDecision: { create: vi.fn(), findFirst: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
   workforceExceptionCaseLookup: { findFirst: vi.fn() },
   mtmAuditLog: { create: vi.fn().mockResolvedValue({ id: "audit-1" }) },
 }
@@ -137,5 +138,51 @@ describe("Workforce immutable exception-case writer", () => {
       .rejects.toMatchObject<Partial<WorkforceExceptionCaseWriterError>>({
       code: "WORKFORCE_EXCEPTION_DECISION_WRITE_CONFLICT",
     })
+  })
+
+  it("serializes lifecycle evaluation after the case lock and keeps a completed decision retry idempotent", async () => {
+    db.workforceExceptionCaseLookup.findFirst.mockResolvedValueOnce({ id: "case-1" })
+    db.workforceExceptionDecision.findFirst.mockResolvedValueOnce(null)
+    db.workforceExceptionDecision.findMany.mockResolvedValueOnce([
+      { decisionCode: "ACKNOWLEDGE" },
+    ])
+    db.workforceExceptionDecision.create.mockResolvedValueOnce({ id: "decision-resolved" })
+    await expect(appendAuthorizedPolicyWorkforceExceptionDecision({
+      db,
+      draft: { ...decisionDraft, operationId: "decision-resolve-1", decisionCode: "RESOLVE_NO_CHANGE" },
+      authorize: allow,
+    })).resolves.toEqual({ decisionId: "decision-resolved", idempotent: false })
+    expect(db.workforceExceptionDecision.findMany).toHaveBeenCalledWith({
+      where: { organizationId: "org-1", caseId: "case-1" },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      select: { decisionCode: true },
+    })
+    expect(db.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ newData: expect.objectContaining({ policyMode: "REVIEWED_V1" }) }),
+    }))
+
+    const replay = { id: "decision-resolved", ...decisionDraft, operationId: "decision-resolve-1", decisionCode: "RESOLVE_NO_CHANGE" }
+    db.workforceExceptionCaseLookup.findFirst.mockResolvedValueOnce({ id: "case-1" })
+    db.workforceExceptionDecision.findFirst.mockResolvedValueOnce(replay)
+    await expect(appendAuthorizedPolicyWorkforceExceptionDecision({
+      db,
+      draft: { ...decisionDraft, operationId: "decision-resolve-1", decisionCode: "RESOLVE_NO_CHANGE" },
+      authorize: allow,
+    })).resolves.toEqual({ decisionId: "decision-resolved", idempotent: true })
+    expect(db.workforceExceptionDecision.findMany).toHaveBeenCalledTimes(1)
+  })
+
+  it("refuses an invalid next lifecycle transition without a decision write", async () => {
+    db.workforceExceptionCaseLookup.findFirst.mockResolvedValueOnce({ id: "case-1" })
+    db.workforceExceptionDecision.findFirst.mockResolvedValueOnce(null)
+    db.workforceExceptionDecision.findMany.mockResolvedValueOnce([
+      { decisionCode: "RESOLVE_NO_CHANGE" },
+    ])
+    await expect(appendAuthorizedPolicyWorkforceExceptionDecision({
+      db,
+      draft: { ...decisionDraft, operationId: "decision-invalid-1", decisionCode: "ACKNOWLEDGE" },
+      authorize: allow,
+    })).rejects.toMatchObject({ code: "WORKFORCE_EXCEPTION_DECISION_LIFECYCLE_INVALID" })
+    expect(db.workforceExceptionDecision.create).not.toHaveBeenCalled()
   })
 })

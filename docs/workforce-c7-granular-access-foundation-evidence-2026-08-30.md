@@ -43,12 +43,13 @@ modify a durable tenant grant.
 
 ## Deliberate rollout boundary
 
-No Prisma model, migration, UI, endpoint wrapper or existing role mapping is
-changed by this source slice. That avoids an accidental production lockout or
-an unreviewed conversion of broad legacy CRM roles. A later forward-only C7
-migration must add durable grants, record accountable grant/revoke audit,
-enforce the recorded incompatible-role rules and migrate each endpoint behind
-an explicit tenant rollout fence before it can claim enforcement.
+No migration has been applied, grant row created or existing role mapping
+replaced. The new C6 decision route is deliberately default-deny: it reads
+only an effective durable C7 grant and otherwise makes no write, so a legacy
+CRM role cannot become a hidden exception authority. A later forward-only C7
+service must assign and review the grants, migrate each endpoint behind an
+explicit tenant rollout fence and run access review before it can claim live
+enforcement.
 
 ## Verification
 

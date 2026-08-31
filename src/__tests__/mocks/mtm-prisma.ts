@@ -222,6 +222,8 @@ export interface MtmPrismaMock {
   workforceAttendanceException: ModelMock
   workforceAttendanceReviewCase: ModelMock
   workforceExceptionCase: ModelMock
+  workforceExceptionDecision: ModelMock
+  workforceAccessGrant: ModelMock
   workforceAttendanceQrStation: ModelMock
   workforceAttendanceDeviceEnrollment: ModelMock
   workforceAttendanceDeviceEnrollmentChallenge: ModelMock
@@ -385,6 +387,8 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     workforceAttendanceException: makeModel(),
     workforceAttendanceReviewCase: makeModel(),
     workforceExceptionCase: makeModel(),
+    workforceExceptionDecision: makeModel(),
+    workforceAccessGrant: makeModel(),
     workforceAttendanceQrStation: makeModel(),
     workforceAttendanceDeviceEnrollment: makeModel(),
     workforceAttendanceDeviceEnrollmentChallenge: makeModel(),
@@ -434,7 +438,6 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
   }
   mock.$transaction = vi.fn(async (
     arg: Array<Promise<unknown> | unknown> | ((tx: MtmPrismaMock) => Promise<unknown> | unknown),
-    _options?: { isolationLevel?: unknown; maxWait?: number; timeout?: number },
   ): Promise<unknown> => {
     if (Array.isArray(arg)) {
       return Promise.all(arg)

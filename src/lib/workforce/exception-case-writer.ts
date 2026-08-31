@@ -1,5 +1,6 @@
 import {
   createWorkforceExceptionCaseDraft,
+  createDraftPolicyWorkforceExceptionDecisionDraft,
   createWorkforceExceptionDecisionDraft,
   type WorkforceExceptionCaseDraft,
   type WorkforceExceptionDecisionDraft,
@@ -24,6 +25,11 @@ export type WorkforceExceptionCaseWriterDb = {
       where: { organizationId: string; operationId: string }
       select: { id: true; organizationId: true; caseId: true; operationId: true; decisionCode: true; reason: true; actorUserId: true }
     }) => Promise<StoredDecision | null>
+    findMany: (args: {
+      where: { organizationId: string; caseId: string }
+      orderBy: readonly [{ createdAt: "asc" }, { id: "asc" }]
+      select: { decisionCode: true }
+    }) => Promise<readonly { decisionCode: string }[]>
   }
   workforceExceptionCaseLookup: {
     findFirst: (args: { where: { id: string; organizationId: string }; select: { id: true } }) => Promise<{ id: string } | null>
@@ -289,6 +295,112 @@ export async function appendAuthorizedWorkforceExceptionDecision(input: {
       },
     })
     if (existing && sameDecision(existing, canonical)) return { decisionId: existing.id, idempotent: true }
+    throw new WorkforceExceptionCaseWriterError(
+      "WORKFORCE_EXCEPTION_DECISION_WRITE_CONFLICT",
+      "The Workforce exception decision operation conflicts with a different immutable action",
+    )
+  }
+}
+
+/**
+ * Appends a reviewed C6 decision only after the per-case advisory lock has
+ * made the full immutable prior stream stable. The generic writer above stays
+ * available for inactive import/reconciliation foundations; human exception
+ * resolution must use this policy-aware path so two concurrent reviewers
+ * cannot both validate incompatible lifecycle transitions from a stale read.
+ */
+export async function appendAuthorizedPolicyWorkforceExceptionDecision(input: {
+  db: WorkforceExceptionCaseWriterDb
+  draft: WorkforceExceptionDecisionDraft
+  authorize: WorkforceExceptionCaseAuthorization
+}): Promise<{ decisionId: string; idempotent: boolean }> {
+  const basic = canonicalDecisionDraft(input.draft)
+  await requireAuthorization(input.authorize, {
+    operation: "DECISION_APPEND",
+    organizationId: basic.organizationId,
+    caseId: basic.caseId,
+    actorUserId: basic.actorUserId,
+  })
+  await input.db.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${decisionLockKey(basic)}))`
+  const exceptionCase = await input.db.workforceExceptionCaseLookup.findFirst({
+    where: { id: basic.caseId, organizationId: basic.organizationId },
+    select: { id: true },
+  })
+  if (!exceptionCase) {
+    throw new WorkforceExceptionCaseWriterError(
+      "WORKFORCE_EXCEPTION_DECISION_CASE_NOT_FOUND",
+      "The Workforce exception case is unavailable in this tenant",
+    )
+  }
+
+  // Check a replay before deriving the next stage: a retried completed
+  // resolution must be idempotent rather than being interpreted as a second
+  // invalid post-resolution transition.
+  const existing = await input.db.workforceExceptionDecision.findFirst({
+    where: { organizationId: basic.organizationId, operationId: basic.operationId },
+    select: {
+      id: true,
+      organizationId: true,
+      caseId: true,
+      operationId: true,
+      decisionCode: true,
+      reason: true,
+      actorUserId: true,
+    },
+  })
+  if (existing) {
+    if (sameDecision(existing, basic)) return { decisionId: existing.id, idempotent: true }
+    throw new WorkforceExceptionCaseWriterError(
+      "WORKFORCE_EXCEPTION_DECISION_WRITE_CONFLICT",
+      "The Workforce exception decision operation conflicts with a different immutable action",
+    )
+  }
+
+  const prior = await input.db.workforceExceptionDecision.findMany({
+    where: { organizationId: basic.organizationId, caseId: basic.caseId },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    select: { decisionCode: true },
+  })
+  const canonical = createDraftPolicyWorkforceExceptionDecisionDraft({
+    ...basic,
+    priorDecisionCodes: prior.map((decision) => decision.decisionCode),
+  })
+  try {
+    const created = await input.db.workforceExceptionDecision.create({ data: canonical })
+    await input.db.mtmAuditLog.create({
+      data: {
+        organizationId: canonical.organizationId,
+        agentId: null,
+        action: "WORKFORCE_EXCEPTION_DECISION_RECORDED",
+        entity: "workforce_exception_decision",
+        entityId: created.id,
+        metadataKind: "workforce_exception_lifecycle",
+        newData: {
+          caseId: canonical.caseId,
+          operationId: canonical.operationId,
+          decisionCode: canonical.decisionCode,
+          policyMode: "REVIEWED_V1",
+        },
+        ipAddress: null,
+        userAgent: null,
+      },
+    })
+    return { decisionId: created.id, idempotent: false }
+  } catch (error) {
+    if (!isUniqueViolation(error)) throw error
+    const replay = await input.db.workforceExceptionDecision.findFirst({
+      where: { organizationId: canonical.organizationId, operationId: canonical.operationId },
+      select: {
+        id: true,
+        organizationId: true,
+        caseId: true,
+        operationId: true,
+        decisionCode: true,
+        reason: true,
+        actorUserId: true,
+      },
+    })
+    if (replay && sameDecision(replay, canonical)) return { decisionId: replay.id, idempotent: true }
     throw new WorkforceExceptionCaseWriterError(
       "WORKFORCE_EXCEPTION_DECISION_WRITE_CONFLICT",
       "The Workforce exception decision operation conflicts with a different immutable action",
