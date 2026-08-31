@@ -90,6 +90,27 @@ subject. The reader does not catch resolver/database errors as an absence;
 the eventual leased worker must record those as incomplete observations and
 write nothing.
 
+### 2026-09-01 read-only missed-finish candidate reader
+
+`readWorkforceMissedFinishCandidate` composes the existing pure
+missed-finish proposal with one exact organization/employee/workday read and
+its immutable shift snapshot. It:
+
+- accepts only the canonical open `STARTED` or `PAUSED` workday states;
+- returns no action without even reading a snapshot for an already
+  `COMPLETED` workday;
+- refuses a missing, cross-scope or malformed immutable planned-end snapshot;
+  and
+- requires explicit internal reminder/review timing from the caller rather
+  than silently choosing a global tenant policy.
+
+Its database surface has no writer, audit, case, notification, queue,
+capability or tenant-control method. An actionable result is still only an
+in-memory generic-reminder or human-review candidate; it cannot emit a
+notification, create an exception, write a correction or fabricate a
+`FINISH` fact. Durable timing selection, delivery, leases, case lifecycle
+and any auto-close policy remain deliberately inactive.
+
 The owner-approved recommended v1 **draft** taxonomy, non-disciplinary triage
 severity, role owner, targets and employee-visibility rule is now recorded in
 [`workforce-c6-recommended-draft-policy-evidence-2026-08-30.md`](./workforce-c6-recommended-draft-policy-evidence-2026-08-30.md).
@@ -129,6 +150,12 @@ case/decision migration and actual detector remain WF-C6-002/003 work.
           `git diff --check`. The reader proves review-draft, existing-workday,
           unsegmented-template and unscheduled-weekday paths without a case or
           audit write.
+
+    PASS  2026-09-01 missed-finish candidate-reader re-check:
+          missed-finish/no-show/intake contracts (3 files, 19 tests), scoped
+          ESLint and `git diff --check`. The reader proves exact open-workday
+          reminder/review candidates, completed-workday no-read/no-action and
+          missing-snapshot fail-closed outcomes, with no case/audit writer.
 
     NOT RUN  database migration/apply, full typecheck/build, browser E2E,
              Android, scheduler/concurrency/load and physical pilot checks:
