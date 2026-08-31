@@ -252,7 +252,10 @@ describe("Workforce Android foundation", () => {
     expect(capture).not.toMatch(/requestLocationUpdates|ForegroundService|ACCESS_BACKGROUND_LOCATION/i)
     expect(manifest).not.toContain("ACCESS_BACKGROUND_LOCATION")
     expect(activity).toContain("R.string.today_location_disclaimer")
+    expect(activity).toContain("if (attendance.requiresLocation(action))")
+    expect(activity).toContain("R.string.action_location_disclaimer")
     for (const catalog of catalogs) {
+      expect(catalog).toContain('name="action_location_disclaimer"')
       expect(catalog).toContain('name="status_capturing_location"')
       expect(catalog).toContain('name="error_location_permission_missing"')
       expect(catalog).toContain('name="error_location_provider_disabled"')

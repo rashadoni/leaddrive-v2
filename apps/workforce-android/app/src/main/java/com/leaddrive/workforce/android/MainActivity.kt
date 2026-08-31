@@ -1640,6 +1640,12 @@ private fun WorkforceTodayCard(
                         else -> label
                     })
                 }
+                if (attendance.requiresLocation(action)) {
+                    Text(
+                        stringResource(R.string.action_location_disclaimer, actionLabel),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }
