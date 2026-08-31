@@ -54,6 +54,7 @@ import com.leaddrive.workforce.android.data.WorkforceDeviceTrustState
 import com.leaddrive.workforce.android.data.WorkforceEncryptedOutbox
 import com.leaddrive.workforce.android.data.WorkforceHistorySnapshot
 import com.leaddrive.workforce.android.data.WorkforceHistoryDayDetail
+import com.leaddrive.workforce.android.data.WorkforceHistoryLocalRecovery
 import com.leaddrive.workforce.android.data.WorkforceHistoryReviewState
 import com.leaddrive.workforce.android.data.WorkforceHrmRequestDraft
 import com.leaddrive.workforce.android.data.WorkforceHrmRequestType
@@ -132,6 +133,7 @@ private fun WorkforceRoot(
     var today by remember { mutableStateOf<WorkforceTodaySnapshot?>(null) }
     var status by remember { mutableStateOf<String?>(null) }
     var history by remember { mutableStateOf<WorkforceHistorySnapshot?>(null) }
+    var historyLocalRecovery by remember { mutableStateOf<WorkforceHistoryLocalRecovery?>(null) }
     var ownExceptions by remember { mutableStateOf<List<WorkforceSelfException>?>(null) }
     var recoveryItems by remember { mutableStateOf<List<WorkforceOutboxRecoveryItem>?>(null) }
     var deviceTrust by remember { mutableStateOf<WorkforceDeviceTrustState?>(null) }
@@ -245,6 +247,7 @@ private fun WorkforceRoot(
                 today = submission.snapshot
                 reminderSettings = submission.reminderSettings
                 history = null
+                historyLocalRecovery = null
                 ownExceptions = null
                 recoveryItems = null
                 status = null
@@ -263,6 +266,7 @@ private fun WorkforceRoot(
                     today = it
                     applyReminderSettings(it)
                     history = null
+                    historyLocalRecovery = null
                     ownExceptions = null
                     recoveryItems = null
                     deviceTrust = null
@@ -513,6 +517,7 @@ private fun WorkforceRoot(
                         today = loadedToday
                         applyReminderSettings(loadedToday)
                         history = null
+                        historyLocalRecovery = null
                         ownExceptions = null
                         recoveryItems = null
                         deviceTrust = null
@@ -527,6 +532,7 @@ private fun WorkforceRoot(
             status = status,
             section = section,
             history = history,
+            historyLocalRecovery = historyLocalRecovery,
             ownExceptions = ownExceptions,
             recoveryItems = recoveryItems,
             deviceTrust = deviceTrust,
@@ -540,9 +546,10 @@ private fun WorkforceRoot(
                 if (anchorDate != null) {
                     status = loadingHistory
                     scope.launch {
-                        runCatching { repository.loadHistory(anchorDate) }
-                            .onSuccess {
-                                history = it
+                        runCatching { repository.loadHistoryWithLocalRecovery(anchorDate) }
+                            .onSuccess { loaded ->
+                                history = loaded.history
+                                historyLocalRecovery = loaded.localRecovery
                                 status = null
                             }
                             .onFailure { status = it.employeeMessage(employeeErrorCopy) }
@@ -581,6 +588,7 @@ private fun WorkforceRoot(
                     runCatching { repository.submitHrmRequest(bootstrap!!, draft) }
                         .onSuccess { submission ->
                             history = null
+                            historyLocalRecovery = null
                             ownExceptions = null
                             recoveryItems = null
                             status = when (submission) {
@@ -597,6 +605,7 @@ private fun WorkforceRoot(
                     runCatching { repository.cancelHrmRequest(bootstrap!!, requestId) }
                         .onSuccess { submission ->
                             history = null
+                            historyLocalRecovery = null
                             status = when (submission) {
                                 WorkforceHrmSubmission.ACCEPTED -> cancellationAccepted
                                 WorkforceHrmSubmission.QUEUED -> cancellationQueued
@@ -615,6 +624,7 @@ private fun WorkforceRoot(
                             bootstrap = null
                             today = null
                             history = null
+                            historyLocalRecovery = null
                             recoveryItems = null
                             deviceTrust = null
                             reminderSettings = null
@@ -705,6 +715,7 @@ private fun WorkforceHome(
     status: String?,
     section: WorkforceSection,
     history: WorkforceHistorySnapshot?,
+    historyLocalRecovery: WorkforceHistoryLocalRecovery?,
     ownExceptions: List<WorkforceSelfException>?,
     recoveryItems: List<WorkforceOutboxRecoveryItem>?,
     deviceTrust: WorkforceDeviceTrustState?,
@@ -776,6 +787,7 @@ private fun WorkforceHome(
             }
             WorkforceSection.HISTORY -> WorkforceHistory(
                 history = history,
+                localRecovery = historyLocalRecovery,
                 onLoad = onLoadHistory,
             )
             WorkforceSection.REQUESTS -> WorkforceRequests(
@@ -1392,6 +1404,7 @@ private fun WorkforceRequestHistoryDetail(
 @Composable
 private fun WorkforceHistory(
     history: WorkforceHistorySnapshot?,
+    localRecovery: WorkforceHistoryLocalRecovery?,
     onLoad: () -> Unit,
 ) {
     var expandedDate by rememberSaveable { mutableStateOf<String?>(null) }
@@ -1407,6 +1420,21 @@ private fun WorkforceHistory(
         item {
             Text(stringResource(R.string.tab_work_time), style = MaterialTheme.typography.titleLarge)
             Text(stringResource(R.string.history_range, history.start, history.end, history.timezone))
+            localRecovery?.takeIf { it.hasOutstanding }?.let { recovery ->
+                // These are global encrypted-outbox metadata counts, not
+                // server-accepted events. In particular, do not bind one to a
+                // day here: a local retry must never resemble an accepted fact.
+                Text(stringResource(R.string.history_local_sync_explainer))
+                if (recovery.pendingCount > 0) {
+                    Text(stringResource(R.string.history_local_sync_pending, recovery.pendingCount))
+                }
+                if (recovery.conflictCount > 0) {
+                    Text(stringResource(R.string.history_local_sync_conflict, recovery.conflictCount))
+                }
+                if (recovery.reviewCount > 0) {
+                    Text(stringResource(R.string.history_local_sync_review, recovery.reviewCount))
+                }
+            }
         }
         items(history.days, key = { it.date }) { day ->
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {

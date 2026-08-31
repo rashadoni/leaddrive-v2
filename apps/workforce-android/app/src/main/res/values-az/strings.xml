@@ -153,6 +153,10 @@
     <string name="history_empty_explainer">Tarixçə həmişə serverdən yenidən yüklənir. Gözləyən lokal müraciət qəbul edilmiş fakt kimi göstərilmir.</string>
     <string name="history_load">İş vaxtı tarixçəsini yüklə</string>
     <string name="history_range">Serverin qəbul etdiyi tarixçə: %1$s – %2$s (%3$s)</string>
+    <string name="history_local_sync_explainer">Bu cihazda İş vaxtının lokal bərpa metadatası var. Bu, qəbul edilmiş iş günü və ya davamiyyət sübutu deyil; server həqiqətini yeniləmək üçün Bərpa bölməsindən istifadə edin.</string>
+    <string name="history_local_sync_pending">Server təsdiqini gözləyən lokal İş vaxtı əməliyyatları: %1$d</string>
+    <string name="history_local_sync_conflict">Serverin yenilənməsi tələb olunan lokal İş vaxtı əməliyyatları: %1$d</string>
+    <string name="history_local_sync_review">Bərpa yoxlaması tələb olunan lokal İş vaxtı əməliyyatları: %1$d</string>
     <string name="history_calendar">Təqvim: %1$s</string>
     <string name="history_calendar_state">Təqvim vəziyyəti: %1$s</string>
     <string name="history_workday">Server iş günü: %1$s</string>

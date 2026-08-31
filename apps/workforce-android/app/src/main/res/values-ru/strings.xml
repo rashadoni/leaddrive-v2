@@ -153,6 +153,10 @@
     <string name="history_empty_explainer">История всегда заново загружается с сервера. Ожидающее локальное обращение не показывается как принятый факт.</string>
     <string name="history_load">Загрузить историю рабочего времени</string>
     <string name="history_range">Принятая сервером история: %1$s – %2$s (%3$s)</string>
+    <string name="history_local_sync_explainer">На устройстве есть локальные метаданные восстановления рабочего времени. Это не принятый рабочий день и не доказательство присутствия; обновите данные сервера в разделе «Восстановление».</string>
+    <string name="history_local_sync_pending">Локальные действия рабочего времени, ожидающие подтверждения сервера: %1$d</string>
+    <string name="history_local_sync_conflict">Локальные действия рабочего времени, требующие обновления сервера: %1$d</string>
+    <string name="history_local_sync_review">Локальные действия рабочего времени, требующие проверки восстановления: %1$d</string>
     <string name="history_calendar">Календарь: %1$s</string>
     <string name="history_calendar_state">Состояние календаря: %1$s</string>
     <string name="history_workday">Рабочий день на сервере: %1$s</string>

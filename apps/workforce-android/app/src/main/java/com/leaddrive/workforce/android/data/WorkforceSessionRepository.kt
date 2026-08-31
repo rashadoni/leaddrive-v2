@@ -79,10 +79,19 @@ class WorkforceSessionRepository(
         }
     }
 
-    suspend fun loadHistory(anchorDate: String): WorkforceHistorySnapshot = sessionMutex.withLock {
+    /**
+     * Pairs accepted server history with metadata-only local Work Time recovery
+     * state. It never decrypts an outbox payload or assigns a pending local
+     * action to a day, so a queued/conflicted action cannot look accepted.
+     */
+    suspend fun loadHistoryWithLocalRecovery(anchorDate: String): WorkforceHistoryWithLocalRecovery = sessionMutex.withLock {
         val session = secureStore.readSession()
             ?: throw WorkforceApiException("Your Workforce session has ended. Sign in again.", recoverable = false)
-        api.loadHistory(session, secureStore.installationId(), anchorDate)
+        val history = api.loadHistory(session, secureStore.installationId(), anchorDate)
+        WorkforceHistoryWithLocalRecovery(
+            history = history,
+            localRecovery = WorkforceHistoryLocalRecovery.from(outbox.recoveryItems(session)),
+        )
     }
 
     /** Read-only self-service discovery; it is never queued or made into a fact. */
@@ -461,6 +470,37 @@ sealed interface WorkforceTodaySubmission {
         val reminderSettings: WorkforceReminderSettings,
     ) : WorkforceTodaySubmission
     data object Queued : WorkforceTodaySubmission
+}
+
+data class WorkforceHistoryWithLocalRecovery(
+    val history: WorkforceHistorySnapshot,
+    val localRecovery: WorkforceHistoryLocalRecovery,
+)
+
+/** Counts only known Work Time outbox states; it carries no event/day/payload. */
+data class WorkforceHistoryLocalRecovery(
+    val pendingCount: Int,
+    val conflictCount: Int,
+    val reviewCount: Int,
+) {
+    val hasOutstanding: Boolean get() = pendingCount + conflictCount + reviewCount > 0
+
+    companion object {
+        fun from(items: List<WorkforceOutboxRecoveryItem>): WorkforceHistoryLocalRecovery {
+            val workday = items.filter { it.domain == WorkforceOutboxDomain.WORKDAY }
+            return WorkforceHistoryLocalRecovery(
+                pendingCount = workday.count {
+                    it.state == WorkforceOutboxState.QUEUED || it.state == WorkforceOutboxState.RETRY
+                },
+                conflictCount = workday.count { it.state == WorkforceOutboxState.CONFLICT },
+                reviewCount = workday.count {
+                    it.state == WorkforceOutboxState.EXPIRED
+                        || it.state == WorkforceOutboxState.REQUIRES_REVIEW
+                        || it.state == null
+                },
+            )
+        }
+    }
 }
 
 data class WorkforceReminderSettings(

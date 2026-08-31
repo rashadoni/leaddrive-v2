@@ -153,6 +153,10 @@
     <string name="history_empty_explainer">History is always reloaded from the server. A local pending claim is never presented as an accepted fact.</string>
     <string name="history_load">Load work-time history</string>
     <string name="history_range">Accepted server history: %1$s – %2$s (%3$s)</string>
+    <string name="history_local_sync_explainer">This device has local Work Time recovery metadata. It is not an accepted workday or attendance proof; use Recovery to refresh server truth.</string>
+    <string name="history_local_sync_pending">Local Work Time actions awaiting server acknowledgement: %1$d</string>
+    <string name="history_local_sync_conflict">Local Work Time actions needing a server refresh: %1$d</string>
+    <string name="history_local_sync_review">Local Work Time actions needing recovery review: %1$d</string>
     <string name="history_calendar">Calendar: %1$s</string>
     <string name="history_calendar_state">Calendar state: %1$s</string>
     <string name="history_workday">Server workday: %1$s</string>

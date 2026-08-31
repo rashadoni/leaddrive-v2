@@ -132,6 +132,7 @@ describe("Workforce Android foundation", () => {
   it("keeps Work Time history on the self-HRM server lane and labels it as accepted truth", () => {
     const api = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceApiClient.kt")
     const activity = read("app/src/main/java/com/leaddrive/workforce/android/MainActivity.kt")
+    const repository = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceSessionRepository.kt")
     const catalogs = [
       read("app/src/main/res/values/strings.xml"),
       read("app/src/main/res/values-ru/strings.xml"),
@@ -147,10 +148,22 @@ describe("Workforce Android foundation", () => {
     expect(activity).toContain("R.string.history_detail_title")
     expect(activity).toContain("R.string.history_review_pending")
     expect(activity).not.toMatch(/history.*latitude|history.*longitude|history.*reasonCode/i)
+    expect(repository).toContain("loadHistoryWithLocalRecovery")
+    expect(repository).toContain("outbox.recoveryItems(session)")
+    expect(repository).toContain("items.filter { it.domain == WorkforceOutboxDomain.WORKDAY }")
+    expect(repository).toContain("it.state == WorkforceOutboxState.CONFLICT")
+    expect(repository).not.toContain("history = WorkforceHistorySnapshot(")
+    expect(activity).toContain("historyLocalRecovery")
+    expect(activity).toContain("localRecovery = historyLocalRecovery")
+    expect(activity).toContain("R.string.history_local_sync_explainer")
     for (const catalog of catalogs) {
       expect(catalog).toContain('name="history_detail_show"')
       expect(catalog).toContain('name="history_review_pending"')
       expect(catalog).toContain('name="history_correction"')
+      expect(catalog).toContain('name="history_local_sync_explainer"')
+      expect(catalog).toContain('name="history_local_sync_pending"')
+      expect(catalog).toContain('name="history_local_sync_conflict"')
+      expect(catalog).toContain('name="history_local_sync_review"')
     }
   })
 
