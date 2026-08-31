@@ -241,6 +241,11 @@ describe("Workforce Android foundation", () => {
     const outbox = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceEncryptedOutbox.kt")
     const scanner = read("app/src/main/java/com/leaddrive/workforce/android/security/WorkforceQrScanner.kt")
     const activity = read("app/src/main/java/com/leaddrive/workforce/android/MainActivity.kt")
+    const catalogs = [
+      read("app/src/main/res/values/strings.xml"),
+      read("app/src/main/res/values-ru/strings.xml"),
+      read("app/src/main/res/values-az/strings.xml"),
+    ]
     expect(build).toContain('implementation("com.google.android.gms:play-services-code-scanner:16.1.0")')
     expect(manifest).toContain("barcode_ui")
     expect(manifest).not.toContain("android.permission.CAMERA")
@@ -258,6 +263,9 @@ describe("Workforce Android foundation", () => {
     expect(activity).toContain("R.string.today_attendance_unavailable")
     expect(activity).toContain('var password by remember { mutableStateOf("") }')
     expect(activity).not.toContain("var password by rememberSaveable")
+    expect(activity).toContain("activeQrScanAttemptId")
+    expect(activity).toContain("R.string.action_scanning")
+    for (const catalog of catalogs) expect(catalog).toContain('name="action_scanning"')
   })
 
   it("has a metadata-only recovery center with explicit safe next steps", () => {

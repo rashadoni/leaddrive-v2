@@ -41,6 +41,7 @@
     <string name="action_sending">Göndərilir…</string>
     <string name="action_scan_and_confirm">QR kodu skan edin və təsdiqləyin: %1$s</string>
     <string name="action_scan_fresh">%1$s üçün yeni QR kodunu skan edin</string>
+    <string name="action_scanning">QR skan edilir…</string>
     <string name="action_confirm_trusted">%1$s əməliyyatını etibarlı cihazda təsdiqləyin</string>
     <string name="qr_scan_cancelled">QR skanı ləğv edildi. Davamiyyət əməliyyatı göndərilmədi.</string>
     <string name="qr_scan_unreadable">Yeni QR kodu oxumaq mümkün olmadı. Davamiyyət əməliyyatı göndərilmədi.</string>

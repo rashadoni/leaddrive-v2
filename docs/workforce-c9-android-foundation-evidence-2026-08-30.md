@@ -69,6 +69,8 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   invalid or unknown-version manifest blocks attendance controls instead of
   silently degrading to an unprotected action; biometric-required actions also
   remain blocked until the trusted-device proof flow exists.
+- One in-memory action-attempt fence permits only one live scan and ignores a
+  late cancellation/failure/token callback after that attempt or logout.
 - Cancellation and unreadable-token recovery copy is resource-backed in
   EN/AZ/RU and states only that no action was sent; it does not render a QR
   token or internal scanner detail.

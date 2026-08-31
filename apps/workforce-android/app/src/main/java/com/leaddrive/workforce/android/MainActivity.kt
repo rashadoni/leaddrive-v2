@@ -199,6 +199,9 @@ private fun WorkforceRoot(
     var section by remember { mutableStateOf(WorkforceSection.TODAY) }
     var restoring by remember { mutableStateOf(true) }
     var busyAction by remember { mutableStateOf<WorkforceWorkdayAction?>(null) }
+    var scanningQrAction by remember { mutableStateOf<WorkforceWorkdayAction?>(null) }
+    var activeQrScanAttemptId by remember { mutableStateOf<Long?>(null) }
+    var nextQrScanAttemptId by remember { mutableStateOf(0L) }
     var pendingLocationPermissionAction by remember { mutableStateOf<WorkforceWorkdayAction?>(null) }
     val context = LocalContext.current
     val locationCapture = remember(context) { WorkforceActionTimeLocationCapture(context) }
@@ -208,6 +211,7 @@ private fun WorkforceRoot(
     val locationProviderDisabled = stringResource(R.string.error_location_provider_disabled)
     val locationUnavailable = stringResource(R.string.error_location_unavailable)
     val locationUnsupported = stringResource(R.string.error_location_unsupported)
+    val scanningQr = stringResource(R.string.action_scanning)
 
     fun applyReminderSettings(snapshot: WorkforceTodaySnapshot) {
         reminderSettings = repository.reminderSettings(snapshot)
@@ -312,16 +316,43 @@ private fun WorkforceRoot(
         val currentBootstrap = bootstrap ?: return
         val attendance = currentBootstrap.attendance
         if (attendance.requiresQr(action)) {
+            // A single scanner result is bound to one live UI attempt. This
+            // prevents a double tap, cancelled scanner callback or a callback
+            // arriving after logout from submitting an old QR to a new action.
+            if (activeQrScanAttemptId != null) return
+            val scanAttemptId = ++nextQrScanAttemptId
+            activeQrScanAttemptId = scanAttemptId
+            scanningQrAction = action
+            busyAction = action
+            status = scanningQr
             qrScanner.scan(
                 onToken = { token ->
-                    if (attendance.requiresDeviceProof(action)) {
-                        submitDeviceTrustedTodayAction(action, token.value, location)
-                    } else {
-                        submitTodayAction(action, token.value, location)
+                    if (activeQrScanAttemptId == scanAttemptId && scanningQrAction == action) {
+                        activeQrScanAttemptId = null
+                        scanningQrAction = null
+                        if (attendance.requiresDeviceProof(action)) {
+                            submitDeviceTrustedTodayAction(action, token.value, location)
+                        } else {
+                            submitTodayAction(action, token.value, location)
+                        }
                     }
                 },
-                onCancelled = { status = qrScanCancelled },
-                onFailure = { status = qrScanUnreadable },
+                onCancelled = {
+                    if (activeQrScanAttemptId == scanAttemptId && scanningQrAction == action) {
+                        activeQrScanAttemptId = null
+                        scanningQrAction = null
+                        if (busyAction == action) busyAction = null
+                        status = qrScanCancelled
+                    }
+                },
+                onFailure = {
+                    if (activeQrScanAttemptId == scanAttemptId && scanningQrAction == action) {
+                        activeQrScanAttemptId = null
+                        scanningQrAction = null
+                        if (busyAction == action) busyAction = null
+                        status = qrScanUnreadable
+                    }
+                },
             )
         } else if (attendance.requiresDeviceProof(action)) {
             submitDeviceTrustedTodayAction(action, location = location)
@@ -501,6 +532,7 @@ private fun WorkforceRoot(
             deviceTrust = deviceTrust,
             reminderSettings = reminderSettings,
             busyAction = busyAction,
+            scanningQrAction = scanningQrAction,
             onRefresh = ::refreshToday,
             onSelectSection = { section = it },
             onLoadHistory = {
@@ -586,6 +618,9 @@ private fun WorkforceRoot(
                             recoveryItems = null
                             deviceTrust = null
                             reminderSettings = null
+                            busyAction = null
+                            scanningQrAction = null
+                            activeQrScanAttemptId = null
                             status = null
                         }
                         .onFailure { status = signOutFailed }
@@ -675,6 +710,7 @@ private fun WorkforceHome(
     deviceTrust: WorkforceDeviceTrustState?,
     reminderSettings: WorkforceReminderSettings?,
     busyAction: WorkforceWorkdayAction?,
+    scanningQrAction: WorkforceWorkdayAction?,
     onRefresh: () -> Unit,
     onSelectSection: (WorkforceSection) -> Unit,
     onLoadHistory: () -> Unit,
@@ -725,6 +761,7 @@ private fun WorkforceHome(
                         attendance = bootstrap.attendance,
                         mutationsBlocked = bootstrap.release.mutationsBlocked,
                         busyAction = busyAction,
+                        scanningQrAction = scanningQrAction,
                         onAction = onAction,
                     )
                     WorkforceLocalReminders(
@@ -1447,6 +1484,7 @@ private fun WorkforceTodayCard(
     attendance: com.leaddrive.workforce.android.data.WorkforceAttendanceRequirements,
     mutationsBlocked: Boolean,
     busyAction: WorkforceWorkdayAction?,
+    scanningQrAction: WorkforceWorkdayAction?,
     onAction: (WorkforceWorkdayAction) -> Unit,
 ) {
     val workday = snapshot.workday
@@ -1492,7 +1530,11 @@ private fun WorkforceTodayCard(
                         attendance.requiresDeviceProof(action) -> stringResource(R.string.action_confirm_trusted, actionLabel)
                         else -> actionLabel
                     }
-                    Text(if (busyAction == action) stringResource(R.string.action_sending) else label)
+                    Text(when {
+                        scanningQrAction == action -> stringResource(R.string.action_scanning)
+                        busyAction == action -> stringResource(R.string.action_sending)
+                        else -> label
+                    })
                 }
             }
         }
