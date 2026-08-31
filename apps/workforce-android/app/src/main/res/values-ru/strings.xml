@@ -123,6 +123,7 @@
     <string name="error_action_conflict">Состояние на сервере изменилось. Обновите данные перед следующим действием.</string>
     <string name="error_request_failed">Workforce не смог завершить этот запрос. Обновите данные сервера и повторите попытку.</string>
     <string name="error_network_unavailable">Не удалось связаться с Workforce. Локальное действие учёта времени не принято.</string>
+    <string name="error_update_required">Обновите Workforce через управляемый канал Google Play вашей организации перед отправкой изменений.</string>
     <string name="today_location_disclaimer">Местоположение никогда не отслеживается в фоне. Оно запрашивается только для действия, когда этого требует активная политика tenant.</string>
     <string name="action_location_disclaimer">При выборе «%1$s» Android запросит ваше текущее местоположение только для этого действия. Это не включает фоновое отслеживание.</string>
     <string name="status_capturing_location">Проверяем местоположение для этого действия…</string>

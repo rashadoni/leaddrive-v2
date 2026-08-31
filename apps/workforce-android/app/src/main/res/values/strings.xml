@@ -123,6 +123,7 @@
     <string name="error_action_conflict">The server state changed. Refresh before trying another action.</string>
     <string name="error_request_failed">Workforce could not complete this request. Refresh server state and try again.</string>
     <string name="error_network_unavailable">Unable to reach Workforce. No attendance action was accepted locally.</string>
+    <string name="error_update_required">Update Workforce through your organization’s managed Play channel before submitting changes.</string>
     <string name="today_location_disclaimer">Location is never tracked in the background. It is requested only for an action when the active tenant policy requires it.</string>
     <string name="action_location_disclaimer">Selecting %1$s asks Android for your current location only for this action. It does not enable background location tracking.</string>
     <string name="status_capturing_location">Checking location for this action…</string>

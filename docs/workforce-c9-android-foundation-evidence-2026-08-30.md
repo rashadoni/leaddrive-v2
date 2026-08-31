@@ -162,12 +162,13 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   safe presentation only, not device verification evidence.
 - The root runtime statuses (sign-in, refresh, encrypted-outbox queue, request
   submit/cancel, trusted-device action/enrollment/revoke and sign-out) are now
-  resource-backed in EN/AZ/RU. API failures render one of three local generic
-  outcomes (conflict, request failure or unavailable transport); the app does
-  not reflect `WorkforceApiException.message` into employee UI. Successful
-  device operations render the known local lifecycle resource instead of an
-  internal API message. This keeps recovery useful without exposing server,
-  device or request diagnostics.
+  resource-backed in EN/AZ/RU. API failures render a local conflict, request
+  failure, unavailable transport or known managed-Play update outcome; the app
+  does not reflect `WorkforceApiException.message` into employee UI. The update
+  mapping accepts only the two fixed server release codes and does not expose a
+  server/platform diagnostic. Successful device operations render the known
+  local lifecycle resource instead of an internal API message. This keeps
+  recovery useful without exposing server, device or request diagnostics.
 - The per-use Android biometric prompts for the exact action and device
   enrollment are resource-backed too. The action prompt uses the existing
   localized action label; the enrollment prompt includes only its server

@@ -62,6 +62,8 @@ describe("Workforce Android foundation", () => {
     expect(activity).toContain("val updateRequiredBeforeChanges = stringResource")
     expect(activity).not.toContain("context.getString(R.string.update_required_before_changes)")
     expect(activity).toContain("R.string.today_outbox_disclaimer")
+    expect(activity).toContain("R.string.error_update_required")
+    expect(activity).toContain('"WORKFORCE_MOBILE_UPDATE_REQUIRED", "WORKFORCE_MOBILE_PLATFORM_UNSUPPORTED" -> copy.updateRequired')
     expect(repository).toContain("submitTodayAction")
   })
 
@@ -255,6 +257,7 @@ describe("Workforce Android foundation", () => {
     expect(activity).toContain("if (attendance.requiresLocation(action))")
     expect(activity).toContain("R.string.action_location_disclaimer")
     for (const catalog of catalogs) {
+      expect(catalog).toContain('name="error_update_required"')
       expect(catalog).toContain('name="action_location_disclaimer"')
       expect(catalog).toContain('name="status_capturing_location"')
       expect(catalog).toContain('name="error_location_permission_missing"')

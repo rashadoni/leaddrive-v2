@@ -145,6 +145,7 @@ private fun WorkforceRoot(
         conflict = stringResource(R.string.error_action_conflict),
         api = stringResource(R.string.error_request_failed),
         network = stringResource(R.string.error_network_unavailable),
+        updateRequired = stringResource(R.string.error_update_required),
         locationRequired = stringResource(R.string.error_location_server_required),
         locationReviewRequired = stringResource(R.string.error_location_server_review_required),
     )
@@ -1670,6 +1671,7 @@ private data class WorkforceEmployeeErrorCopy(
     val conflict: String,
     val api: String,
     val network: String,
+    val updateRequired: String,
     val locationRequired: String,
     val locationReviewRequired: String,
 )
@@ -1677,6 +1679,7 @@ private data class WorkforceEmployeeErrorCopy(
 private fun Throwable.employeeMessage(copy: WorkforceEmployeeErrorCopy): String = when (this) {
     is WorkforceActionConflictException -> copy.conflict
     is WorkforceApiException -> when (recoveryCode) {
+        "WORKFORCE_MOBILE_UPDATE_REQUIRED", "WORKFORCE_MOBILE_PLATFORM_UNSUPPORTED" -> copy.updateRequired
         "WORKFORCE_ATTENDANCE_LOCATION_REQUIRED" -> copy.locationRequired
         "WORKFORCE_ATTENDANCE_LOCATION_REVIEW_REQUIRED" -> copy.locationReviewRequired
         else -> copy.api

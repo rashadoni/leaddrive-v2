@@ -123,6 +123,7 @@
     <string name="error_action_conflict">Serverdəki vəziyyət dəyişib. Növbəti əməliyyatdan əvvəl məlumatı yeniləyin.</string>
     <string name="error_request_failed">Workforce bu sorğunu tamamlaya bilmədi. Server məlumatını yeniləyin və yenidən cəhd edin.</string>
     <string name="error_network_unavailable">Workforce ilə əlaqə yaratmaq mümkün olmadı. Lokal davamiyyət əməliyyatı qəbul edilmədi.</string>
+    <string name="error_update_required">Dəyişiklik göndərməzdən əvvəl Workforce-u təşkilatınızın idarə olunan Google Play kanalı vasitəsilə yeniləyin.</string>
     <string name="today_location_disclaimer">Məkan fon rejimində heç vaxt izlənmir. O, yalnız aktiv tenant siyasəti tələb etdikdə əməliyyat zamanı soruşulur.</string>
     <string name="action_location_disclaimer">“%1$s” seçildikdə Android cari məkanınızı yalnız bu əməliyyat üçün soruşur. Bu, fonda məkan izləməsini aktiv etmir.</string>
     <string name="status_capturing_location">Bu əməliyyat üçün məkan yoxlanılır…</string>
