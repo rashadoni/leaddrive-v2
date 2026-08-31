@@ -147,6 +147,8 @@ describe("Workforce Android foundation", () => {
     expect(activity).toContain("R.string.exception_corrections_explainer")
     expect(activity).toContain("exceptionCaseId = exception.caseId")
     expect(activity).toContain("if (correctionWorkdayId != day.workday!!.id) exceptionCaseId = \"\"")
+    expect(activity).toContain("ownExceptions.isEmpty()")
+    expect(activity).not.toContain("emptyList() ->")
     expect(activity).not.toContain('Text("${request.type}: ${request.status}"')
     expect(activity).not.toMatch(/Log\.|println\(|Timber\./)
   })
@@ -327,6 +329,7 @@ describe("Workforce Android foundation", () => {
 
   it("uses localized generic status and failure copy instead of reflecting API/device messages", () => {
     const activity = read("app/src/main/java/com/leaddrive/workforce/android/MainActivity.kt")
+    const repository = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceSessionRepository.kt")
     const catalogs = [
       read("app/src/main/res/values/strings.xml"),
       read("app/src/main/res/values-ru/strings.xml"),
@@ -343,6 +346,8 @@ describe("Workforce Android foundation", () => {
     expect(activity).not.toContain("context.getString(deviceLifecycleMessage")
     expect(activity).toContain("R.string.device_action_prompt")
     expect(activity).toContain("R.string.device_enrollment_prompt")
+    expect(repository).not.toContain("val message: String")
+    expect(repository).not.toContain("employeeMessage")
     for (const catalog of catalogs) {
       expect(catalog).toContain('name="status_today_queued"')
       expect(catalog).toContain('name="status_request_accepted"')

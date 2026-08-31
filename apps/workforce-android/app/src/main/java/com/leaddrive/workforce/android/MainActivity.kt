@@ -1025,9 +1025,9 @@ private fun WorkforceRequests(
                 Text(stringResource(R.string.exception_corrections_title), style = MaterialTheme.typography.titleMedium)
                 Text(stringResource(R.string.exception_corrections_explainer))
                 TextButton(onClick = onLoadOwnExceptions) { Text(stringResource(R.string.exception_corrections_load)) }
-                when (ownExceptions) {
-                    null -> Text(stringResource(R.string.exception_corrections_not_loaded))
-                    emptyList() -> Text(stringResource(R.string.exception_corrections_empty))
+                when {
+                    ownExceptions == null -> Text(stringResource(R.string.exception_corrections_not_loaded))
+                    ownExceptions.isEmpty() -> Text(stringResource(R.string.exception_corrections_empty))
                     else -> ownExceptions.forEach { exception ->
                         TextButton(onClick = {
                             type = WorkforceHrmRequestType.TIME_CORRECTION

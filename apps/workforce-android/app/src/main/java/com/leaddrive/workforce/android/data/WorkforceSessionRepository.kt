@@ -172,7 +172,7 @@ class WorkforceSessionRepository(
             }
             existing != null && existing.matches(bootstrap) ->
                 throw WorkforceApiException(
-                    "This device enrollment is ${existing.lifecycle.employeeLabel}. Refresh its status or ask an administrator for the replacement path.",
+                    "Device enrollment requires a status refresh before another enrollment can start.",
                     recoverable = false,
                 )
             else -> reusableOrNewDeviceKeyAlias(bootstrap)
@@ -230,7 +230,6 @@ class WorkforceSessionRepository(
         WorkforceDeviceTrustState(
             lifecycle = verified.lifecycle,
             enrollmentId = verified.enrollmentId,
-            message = "Device proof received. An administrator must approve this device before it can confirm work-time actions.",
         )
     }
 
@@ -250,7 +249,6 @@ class WorkforceSessionRepository(
                 WorkforceDeviceTrustState(
                     lifecycle = WorkforceDeviceBindingLifecycle.PROVISIONING,
                     enrollmentId = null,
-                    message = "A device key is waiting for a safe enrollment retry. Refresh or enroll again on this device.",
                     enrollments = enrollments,
                 )
             } else {
@@ -261,7 +259,6 @@ class WorkforceSessionRepository(
             return WorkforceDeviceTrustState(
                 lifecycle = null,
                 enrollmentId = null,
-                message = "This device binding belongs to another Workforce account and cannot be used here. Sign out to clear it safely.",
                 enrollments = enrollments,
             )
         }
@@ -269,7 +266,6 @@ class WorkforceSessionRepository(
             return WorkforceDeviceTrustState(
                 lifecycle = binding.lifecycle,
                 enrollmentId = binding.enrollmentId,
-                message = "Device enrollment is awaiting its local confirmation. Restart enrollment to request a fresh challenge.",
                 enrollments = enrollments,
             )
         }
@@ -278,7 +274,6 @@ class WorkforceSessionRepository(
             return WorkforceDeviceTrustState(
                 lifecycle = null,
                 enrollmentId = binding.enrollmentId,
-                message = "The server no longer recognizes this device enrollment. Ask an administrator for the replacement path.",
                 enrollments = enrollments,
             )
         }
@@ -297,7 +292,6 @@ class WorkforceSessionRepository(
             return WorkforceDeviceTrustState(
                 lifecycle = null,
                 enrollmentId = binding.enrollmentId,
-                message = "The server returned an unknown device status. Do not use it for attendance; ask an administrator for review.",
                 enrollments = enrollments,
             )
         }
@@ -305,7 +299,6 @@ class WorkforceSessionRepository(
         WorkforceDeviceTrustState(
             lifecycle = lifecycle,
             enrollmentId = binding.enrollmentId,
-            message = lifecycle.employeeMessage,
             enrollments = enrollments,
         )
     }
@@ -470,7 +463,6 @@ data class WorkforcePreparedDeviceTodayAction(
 data class WorkforceDeviceTrustState(
     val lifecycle: WorkforceDeviceBindingLifecycle?,
     val enrollmentId: String?,
-    val message: String,
     /** Metadata-only self-service containment list; it never contains keys or proofs. */
     val enrollments: List<WorkforceDeviceEnrollment> = emptyList(),
 ) {
@@ -478,7 +470,6 @@ data class WorkforceDeviceTrustState(
         fun unenrolled(enrollments: List<WorkforceDeviceEnrollment> = emptyList()) = WorkforceDeviceTrustState(
             lifecycle = null,
             enrollmentId = null,
-            message = "No trusted device is enrolled on this phone.",
             enrollments = enrollments,
         )
     }
@@ -489,26 +480,6 @@ private fun WorkforceDeviceBinding.matches(bootstrap: WorkforceBootstrap): Boole
 
 private fun WorkforceDeviceProvisioning.matches(bootstrap: WorkforceBootstrap): Boolean =
     organizationId == bootstrap.organizationId && agentId == bootstrap.agentId
-
-private val WorkforceDeviceBindingLifecycle.employeeLabel: String
-    get() = when (this) {
-        WorkforceDeviceBindingLifecycle.PROVISIONING -> "being prepared"
-        WorkforceDeviceBindingLifecycle.PENDING_PROOF -> "waiting for local confirmation"
-        WorkforceDeviceBindingLifecycle.PENDING_MANAGER_APPROVAL -> "waiting for manager approval"
-        WorkforceDeviceBindingLifecycle.ACTIVE -> "already active"
-        WorkforceDeviceBindingLifecycle.REVOKED -> "revoked"
-        WorkforceDeviceBindingLifecycle.REPLACED -> "replaced"
-    }
-
-private val WorkforceDeviceBindingLifecycle.employeeMessage: String
-    get() = when (this) {
-        WorkforceDeviceBindingLifecycle.ACTIVE -> "This trusted device is approved for exact-action confirmation."
-        WorkforceDeviceBindingLifecycle.PENDING_MANAGER_APPROVAL -> "Device proof is complete and awaits manager approval."
-        WorkforceDeviceBindingLifecycle.PENDING_PROOF -> "Device enrollment awaits a fresh local confirmation."
-        WorkforceDeviceBindingLifecycle.PROVISIONING -> "Device enrollment is waiting for a safe retry."
-        WorkforceDeviceBindingLifecycle.REVOKED -> "This device was revoked and cannot confirm attendance."
-        WorkforceDeviceBindingLifecycle.REPLACED -> "This device was replaced and cannot confirm attendance."
-    }
 
 private fun workforceDeviceEnrollmentChallenge(binding: WorkforceDeviceBinding, challenge: String): String = listOf(
     "workforce-device-enrollment:v1",

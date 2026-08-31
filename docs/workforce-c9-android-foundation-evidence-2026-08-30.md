@@ -290,8 +290,13 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   17 targeted Android source contracts, scoped ESLint and `git diff --check`
   cover typed request/calendar rendering, unknown-value fallback and no direct
   hard-coded UI text in `MainActivity.kt`.
-- `NOT RUN / pending external rerun` — Android Gradle lint/unit ran on
-  candidate `4135083e4` and correctly rejected five
+- `PASS` — the current 17 Android source contracts, scoped ESLint and
+  `git diff --check` cover the typed self-exception empty-list branch and the
+  absence of the unused device-status display-text channel in the Android data
+  model. This is source-level evidence only.
+- `PASS` — GitHub Actions Android debug lint/unit completed successfully on
+  candidate `f1e9dde44` after the repair below. Android Gradle lint/unit had
+  previously run on candidate `4135083e4` and correctly rejected five
   `LocalContextGetResourceValueCall` errors. The pre-fix code read dynamic
   device-action, enrollment and lifecycle strings through
   `LocalContext.current.getString`, which could retain stale configuration
@@ -299,10 +304,18 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   action/lifecycle copy and an enrollment placeholder template through
   composition-aware `stringResource` values, then substitutes the server
   expiry only into that already-localized template. No lint baseline or
-  suppression was added. The targeted Android-foundation contract is 17/17
-  PASS, EN/AZ/RU key parity is PASS (186 keys) and `git diff --check` is PASS.
-  Contabo must not substitute a local Gradle build; the next PR SHA requires
-  the prescribed GitHub Android debug lint/unit gate.
+  suppression was added. This Contabo worktree did not run Gradle; the
+  prescribed external gate did. The current PR candidate still requires its
+  own GitHub Android debug lint/unit result for its later mobile changes.
+- `FAIL / external` — GitHub Actions Android debug lint/unit for `26020f925`
+  stopped at Kotlin compilation before lint or unit tests: `MainActivity.kt`
+  used `emptyList()` as a `when` branch for the nullable typed exception-card
+  list, leaving its generic type ambiguous. The successor source uses the
+  typed `ownExceptions.isEmpty()` branch and has a source-contract guard.
+  This is not a passing current-SHA Android result.
+- `NOT RUN / next candidate` — the successor checkpoint requires the same
+  prescribed GitHub Android debug lint/unit gate. Contabo must not substitute
+  a local Gradle build.
 - `NOT RUN` — Android Gradle lint/unit tests, build, emulator/device tests,
   camera/location/QR checks, notification permission/channel/delivery failure,
   TalkBack, AZ/RU/EN linguistic review, 200% font, contrast, reduced-motion
