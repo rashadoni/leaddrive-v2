@@ -119,6 +119,8 @@ private fun WorkforceRoot(
     var history by remember { mutableStateOf<WorkforceHistorySnapshot?>(null) }
     var recoveryItems by remember { mutableStateOf<List<WorkforceOutboxRecoveryItem>?>(null) }
     var deviceTrust by remember { mutableStateOf<WorkforceDeviceTrustState?>(null) }
+    val qrScanCancelled = stringResource(R.string.qr_scan_cancelled)
+    val qrScanUnreadable = stringResource(R.string.qr_scan_unreadable)
     var reminderSettings by remember { mutableStateOf<WorkforceReminderSettings?>(null) }
     var section by remember { mutableStateOf(WorkforceSection.TODAY) }
     var restoring by remember { mutableStateOf(true) }
@@ -383,8 +385,8 @@ private fun WorkforceRoot(
                                 submitTodayAction(action, token.value)
                             }
                         },
-                        onCancelled = { status = "QR scan cancelled. No attendance action was sent." },
-                        onFailure = { status = "A fresh QR code could not be read. No attendance action was sent." },
+                        onCancelled = { status = qrScanCancelled },
+                        onFailure = { status = qrScanUnreadable },
                     )
                 } else if (attendance.requiresDeviceProof(action)) {
                     submitDeviceTrustedTodayAction(action)

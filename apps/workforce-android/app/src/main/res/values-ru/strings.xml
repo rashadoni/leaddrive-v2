@@ -42,6 +42,8 @@
     <string name="action_scan_and_confirm">Отсканируйте QR и подтвердите: %1$s</string>
     <string name="action_scan_fresh">Отсканируйте новый QR, чтобы: %1$s</string>
     <string name="action_confirm_trusted">Подтвердите «%1$s» на доверенном устройстве</string>
+    <string name="qr_scan_cancelled">Сканирование QR отменено. Действие учёта времени не отправлено.</string>
+    <string name="qr_scan_unreadable">Не удалось прочитать новый QR. Действие учёта времени не отправлено.</string>
     <string name="request_leave">Отпуск</string>
     <string name="request_absence">Отсутствие</string>
     <string name="request_time_correction">Коррекция времени</string>

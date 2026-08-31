@@ -42,6 +42,8 @@
     <string name="action_scan_and_confirm">Scan QR and confirm %1$s</string>
     <string name="action_scan_fresh">Scan fresh QR to %1$s</string>
     <string name="action_confirm_trusted">Confirm %1$s on trusted device</string>
+    <string name="qr_scan_cancelled">QR scan cancelled. No attendance action was sent.</string>
+    <string name="qr_scan_unreadable">A fresh QR code could not be read. No attendance action was sent.</string>
     <string name="request_leave">Leave</string>
     <string name="request_absence">Absence</string>
     <string name="request_time_correction">Time correction</string>

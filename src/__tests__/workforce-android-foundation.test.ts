@@ -240,6 +240,8 @@ describe("Workforce Android foundation", () => {
     expect(repository).toContain("revokeOwnDeviceEnrollment")
     expect(repository).toContain("private key is deleted only after the server acknowledges revocation")
     expect(activity).toContain("R.string.action_scan_and_confirm")
+    expect(activity).toContain("R.string.qr_scan_cancelled")
+    expect(activity).toContain("R.string.qr_scan_unreadable")
     expect(activity).toContain("R.string.device_trust_title")
     expect(activity).toContain("R.string.device_revoke_dialog_title")
     expect(activity).toContain("deviceLifecycleMessage")
@@ -248,6 +250,8 @@ describe("Workforce Android foundation", () => {
       expect(catalog).toContain('name="device_trust_explainer"')
       expect(catalog).toContain('name="device_revoke_dialog_body"')
       expect(catalog).toContain('name="device_state_pending_manager_approval"')
+      expect(catalog).toContain('name="qr_scan_cancelled"')
+      expect(catalog).toContain('name="qr_scan_unreadable"')
     }
   })
 
