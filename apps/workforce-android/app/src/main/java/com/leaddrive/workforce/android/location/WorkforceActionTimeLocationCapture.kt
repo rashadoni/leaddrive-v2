@@ -90,11 +90,16 @@ class WorkforceActionTimeLocationCapture(context: Context) {
                 accuracyMeters = accuracy,
                 capturedAtEpochMs = time,
                 ageMillis = ageMillis,
-                mockLocation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) isMock else isFromMockProvider,
+                isMock = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) isMock else isFromMockProvider,
                 precision = if (hasAccuracy() && accuracy <= PRECISE_ACCURACY_METERS) {
                     WorkforceLocationPrecision.PRECISE
                 } else {
                     WorkforceLocationPrecision.APPROXIMATE
+                },
+                provider = when (provider) {
+                    LocationManager.GPS_PROVIDER -> WorkforceLocationProvider.GPS
+                    LocationManager.NETWORK_PROVIDER -> WorkforceLocationProvider.NETWORK
+                    else -> WorkforceLocationProvider.UNKNOWN
                 },
             )
         }
@@ -114,8 +119,9 @@ sealed interface WorkforceActionTimeLocationResult {
         val accuracyMeters: Float,
         val capturedAtEpochMs: Long,
         val ageMillis: Long,
-        val mockLocation: Boolean,
         val precision: WorkforceLocationPrecision,
+        val provider: WorkforceLocationProvider,
+        val isMock: Boolean,
     ) : WorkforceActionTimeLocationResult
 
     data object PermissionMissing : WorkforceActionTimeLocationResult
@@ -129,4 +135,10 @@ sealed interface WorkforceActionTimeLocationResult {
 enum class WorkforceLocationPrecision {
     PRECISE,
     APPROXIMATE,
+}
+
+enum class WorkforceLocationProvider(val wireValue: String) {
+    GPS("GPS"),
+    NETWORK("NETWORK"),
+    UNKNOWN("UNKNOWN"),
 }

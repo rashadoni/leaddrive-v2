@@ -118,7 +118,12 @@
     <string name="error_action_conflict">The server state changed. Refresh before trying another action.</string>
     <string name="error_request_failed">Workforce could not complete this request. Refresh server state and try again.</string>
     <string name="error_network_unavailable">Unable to reach Workforce. No attendance action was accepted locally.</string>
-    <string name="today_location_disclaimer">Location is never tracked in the background. Action-time location remains unavailable until the published legal notice and tenant proof policy are active.</string>
+    <string name="today_location_disclaimer">Location is never tracked in the background. It is requested only for an action when the active tenant policy requires it.</string>
+    <string name="status_capturing_location">Checking location for this action…</string>
+    <string name="error_location_permission_missing">Location permission is required for this action. You can retry or use the approved review path.</string>
+    <string name="error_location_provider_disabled">Turn on a location provider, then retry this action or use the approved review path.</string>
+    <string name="error_location_unavailable">A current location could not be confirmed. No attendance action was sent.</string>
+    <string name="error_location_unsupported">This device cannot provide the required current location. Use the approved review path.</string>
     <string name="today_outbox_disclaimer">A transient transport failure can keep the same action only in this device’s encrypted, bounded outbox; it is not a server-accepted fact.</string>
     <string name="recovery_explainer">This view shows only local queue state, never request reasons, QR values, GPS or device proof.</string>
     <string name="recovery_load">Load recovery state</string>

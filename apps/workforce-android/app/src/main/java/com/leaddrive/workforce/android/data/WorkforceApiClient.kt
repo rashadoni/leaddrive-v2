@@ -240,6 +240,7 @@ class WorkforceApiClient(
         snapshot: WorkforceTodaySnapshot,
         action: WorkforceWorkdayAction,
         attendanceQrToken: String? = null,
+        attendanceLocationProof: WorkforceLocationProof? = null,
         now: Instant = Instant.now(),
     ): WorkforceWorkdayOperation {
         require(action.wireValue in snapshot.availableActions) {
@@ -268,6 +269,7 @@ class WorkforceApiClient(
                     throw WorkforceApiException("The scanned QR token was invalid. Scan a fresh code.", recoverable = false)
                 }
             },
+            attendanceLocationProof = attendanceLocationProof,
         )
     }
 
@@ -623,11 +625,12 @@ data class WorkforceWorkdayOperation(
     override val queuedAt: String,
     val attendanceQrToken: String? = null,
     val attendanceDeviceProof: WorkforceDeviceProof? = null,
+    val attendanceLocationProof: WorkforceLocationProof? = null,
 ) : WorkforceSyncOperation {
     override val domain = WorkforceOutboxDomain.WORKDAY
     override val entity = "workdays"
     override val opType = "create"
-    override val hasEphemeralProof: Boolean get() = attendanceQrToken != null || attendanceDeviceProof != null
+    override val hasEphemeralProof: Boolean get() = attendanceQrToken != null || attendanceDeviceProof != null || attendanceLocationProof != null
 
     override fun toDataJson(): JSONObject = JSONObject()
         .put("action", action.wireValue)
@@ -639,7 +642,12 @@ data class WorkforceWorkdayOperation(
         .apply {
             if (action == WorkforceWorkdayAction.START) put("id", workdayId)
             else put("workdayId", workdayId)
-            if (attendanceQrToken != null || attendanceDeviceProof != null) {
+            attendanceLocationProof?.let { location ->
+                put("latitude", location.latitude)
+                put("longitude", location.longitude)
+                put("accuracy", location.accuracyMeters)
+            }
+            if (attendanceQrToken != null || attendanceDeviceProof != null || attendanceLocationProof != null) {
                 put("attendance", JSONObject().apply {
                     attendanceQrToken?.let { put("qrToken", it) }
                     attendanceDeviceProof?.let { proof ->
@@ -648,12 +656,19 @@ data class WorkforceWorkdayOperation(
                             .put("signature", proof.signature),
                         )
                     }
+                    attendanceLocationProof?.let { location ->
+                        put("location", JSONObject()
+                            .put("capturedAt", location.capturedAt)
+                            .put("provider", location.provider)
+                            .put("isMock", location.isMock),
+                        )
+                    }
                 })
             }
         }
 
     companion object {
-        const val WORKFORCE_WORKDAY_SCHEMA_VERSION = 3
+        const val WORKFORCE_WORKDAY_SCHEMA_VERSION = 4
 
         fun fromEncryptedPayload(value: String): WorkforceStoredOperation? = runCatching {
             val json = JSONObject(value)
@@ -736,6 +751,20 @@ data class WorkforceStoredOperation(
 data class WorkforceDeviceProof(
     val enrollmentId: String,
     val signature: String,
+)
+
+/**
+ * A one-action location claim is deliberately transport-only. It shares the
+ * QR/device proof rule: a transient failure must not place raw coordinates in
+ * the encrypted outbox for a later, semantically different action.
+ */
+data class WorkforceLocationProof(
+    val latitude: Double,
+    val longitude: Double,
+    val accuracyMeters: Float,
+    val capturedAt: String,
+    val provider: String,
+    val isMock: Boolean,
 )
 
 private fun JSONObject.requiredString(name: String, message: String): String = optString(name).takeIf { it.isNotBlank() }

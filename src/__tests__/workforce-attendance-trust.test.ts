@@ -28,6 +28,9 @@ const EVENT = {
   workdayId: "workday_1",
   clientEventId: "event_1",
   occurredAt: NOW,
+  latitude: null,
+  longitude: null,
+  accuracy: null,
 }
 
 function policy(definition: Record<string, unknown>) {
@@ -226,5 +229,39 @@ describe("Workforce attendance trust preparation", () => {
       principal: "web",
       now: NOW,
     })).rejects.toMatchObject({ code: "WORKFORCE_ATTENDANCE_POLICY_INVALID" })
+  })
+
+  it("requires a fresh, quality-eligible action-time location only when the policy publishes it", async () => {
+    vi.mocked(prisma.workforcePolicy.findMany).mockResolvedValue([
+      policy({ attendance: { enforcementVersion: 1, location: { requiredActions: ["START"] } } }),
+    ] as never)
+
+    await expect(prepare()).rejects.toMatchObject({ code: "WORKFORCE_ATTENDANCE_LOCATION_REQUIRED" })
+
+    await expect(prepare({
+      location: {
+        capturedAt: NOW,
+        provider: "GPS",
+        isMock: false,
+      },
+    }, {
+      ...EVENT,
+      latitude: 40.4093,
+      longitude: 49.8671,
+      accuracy: 12,
+    })).resolves.toMatchObject({ facts: [] })
+
+    await expect(prepare({
+      location: {
+        capturedAt: NOW,
+        provider: "NETWORK",
+        isMock: false,
+      },
+    }, {
+      ...EVENT,
+      latitude: 40.4093,
+      longitude: 49.8671,
+      accuracy: 12,
+    })).rejects.toMatchObject({ code: "WORKFORCE_ATTENDANCE_LOCATION_REVIEW_REQUIRED" })
   })
 })

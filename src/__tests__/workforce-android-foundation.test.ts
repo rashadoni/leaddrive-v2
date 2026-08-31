@@ -161,6 +161,12 @@ describe("Workforce Android foundation", () => {
     const capture = read("app/src/main/java/com/leaddrive/workforce/android/location/WorkforceActionTimeLocationCapture.kt")
     const activity = read("app/src/main/java/com/leaddrive/workforce/android/MainActivity.kt")
     const api = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceApiClient.kt")
+    const repository = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceSessionRepository.kt")
+    const catalogs = [
+      read("app/src/main/res/values/strings.xml"),
+      read("app/src/main/res/values-ru/strings.xml"),
+      read("app/src/main/res/values-az/strings.xml"),
+    ]
     expect(capture).toContain("getCurrentLocation")
     expect(capture).toContain('@SuppressLint("MissingPermission")')
     expect(capture).toContain("ContextCompat.getMainExecutor(applicationContext)")
@@ -170,11 +176,27 @@ describe("Workforce Android foundation", () => {
     expect(capture).toContain("CAPTURE_TIMEOUT_MS = 15_000L")
     expect(capture).toContain("MAX_LOCATION_AGE_MS = 30_000L")
     expect(capture).toContain("No legacy last-known fallback")
+    expect(capture).toContain("isFromMockProvider")
     expect(api).toContain('optStringList("locationRequiredActions")')
     expect(api).toContain("fun requiresLocation")
+    expect(api).toContain("WORKFORCE_WORKDAY_SCHEMA_VERSION = 4")
+    expect(api).toContain('put("location", JSONObject()')
+    expect(api).toContain("data.has(\"attendance\")")
+    expect(repository).toContain("attendanceLocationProof")
+    expect(repository).toContain("place raw coordinates in the outbox")
+    expect(activity).toContain("captureLocationThenContinue")
+    expect(activity).toContain("RequestMultiplePermissions")
+    expect(activity).toContain("pendingLocationPermissionAction")
     expect(capture).not.toMatch(/requestLocationUpdates|ForegroundService|ACCESS_BACKGROUND_LOCATION/i)
     expect(manifest).not.toContain("ACCESS_BACKGROUND_LOCATION")
     expect(activity).toContain("R.string.today_location_disclaimer")
+    for (const catalog of catalogs) {
+      expect(catalog).toContain('name="status_capturing_location"')
+      expect(catalog).toContain('name="error_location_permission_missing"')
+      expect(catalog).toContain('name="error_location_provider_disabled"')
+      expect(catalog).toContain('name="error_location_unavailable"')
+      expect(catalog).toContain('name="error_location_unsupported"')
+    }
   })
 
   it("scans a fresh QR only for the immediately requested action and never persists it", () => {

@@ -257,7 +257,7 @@ describe("MTM mobile workday", () => {
     }
 
     const unsupported = parseMtmWorkdayEvent(
-      { ...base, schemaVersion: 4 },
+      { ...base, schemaVersion: 5 },
       "event-unsupported-schema",
       "Asia/Baku",
       now,
@@ -266,8 +266,48 @@ describe("MTM mobile workday", () => {
     expect(unsupported.error).toContain("Unsupported Workforce workday schemaVersion")
     expect(unsupported).toMatchObject({
       code: "WORKFORCE_WORKDAY_SCHEMA_UNSUPPORTED",
-      schemaSupport: { min: 1, max: 3, action: "UPGRADE_CLIENT" },
+      schemaSupport: { min: 1, max: 4, action: "UPGRADE_CLIENT" },
     })
+  })
+
+  it("parses v4 action-time location metadata only with a complete coordinate claim", () => {
+    const payload = {
+      action: "START",
+      id: "workday-1",
+      schemaVersion: 4,
+      occurredAt: "2026-07-15T08:00:00.000Z",
+      claimedAt: "2026-07-15T08:00:00.000Z",
+      capturedAt: "2026-07-15T08:00:00.000Z",
+      queuedAt: "2026-07-15T08:00:00.000Z",
+      latitude: 40.4093,
+      longitude: 49.8671,
+      accuracy: 12,
+      attendance: {
+        location: {
+          capturedAt: "2026-07-15T07:59:55.000Z",
+          provider: "GPS",
+          isMock: false,
+        },
+      },
+    }
+    const parsed = parseMtmWorkdayEvent(payload, "event-location-v4", "Asia/Baku", new Date("2026-07-15T08:00:00.000Z"))
+    expect(parsed.error).toBeNull()
+    expect(parsed.input?.attendance?.location).toEqual({
+      capturedAt: new Date("2026-07-15T07:59:55.000Z"),
+      provider: "GPS",
+      isMock: false,
+    })
+    expect(mtmWorkdayRequestHash(SCOPE, parsed.input!)).not.toBe(mtmWorkdayRequestHash(SCOPE, {
+      ...parsed.input!,
+      attendance: {
+        ...parsed.input!.attendance,
+        location: { ...parsed.input!.attendance!.location!, isMock: true },
+      },
+    }))
+
+    const incomplete = parseMtmWorkdayEvent({ ...payload, accuracy: undefined }, "event-location-incomplete", "Asia/Baku", new Date("2026-07-15T08:00:00.000Z"))
+    expect(incomplete.input).toBeNull()
+    expect(incomplete.error).toContain("requires latitude, longitude and accuracy")
   })
 
   it("binds a C1 replay to actor, evidence references and provenance instead of only visible event fields", () => {

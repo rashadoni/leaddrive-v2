@@ -59,6 +59,7 @@ import com.leaddrive.workforce.android.data.WorkforceHrmRequestStatus
 import com.leaddrive.workforce.android.data.WorkforceHrmSubmission
 import com.leaddrive.workforce.android.data.WorkforceSelfException
 import com.leaddrive.workforce.android.data.WorkforceLoginInput
+import com.leaddrive.workforce.android.data.WorkforceLocationProof
 import com.leaddrive.workforce.android.data.WorkforceOutboxRecoveryItem
 import com.leaddrive.workforce.android.data.WorkforceOutboxRecoveryHint
 import com.leaddrive.workforce.android.data.WorkforceOutboxDomain
@@ -73,6 +74,8 @@ import com.leaddrive.workforce.android.data.WorkforceTodaySnapshot
 import com.leaddrive.workforce.android.data.WorkforceWorkday
 import com.leaddrive.workforce.android.data.WorkforceWorkdayAction
 import com.leaddrive.workforce.android.data.WorkforceWorkdayStatus
+import com.leaddrive.workforce.android.location.WorkforceActionTimeLocationCapture
+import com.leaddrive.workforce.android.location.WorkforceActionTimeLocationResult
 import com.leaddrive.workforce.android.security.WorkforceQrScanner
 import com.leaddrive.workforce.android.security.WorkforceDeviceAuthenticator
 import com.leaddrive.workforce.android.security.WorkforceDeviceKeyManager
@@ -188,8 +191,15 @@ private fun WorkforceRoot(
     var section by remember { mutableStateOf(WorkforceSection.TODAY) }
     var restoring by remember { mutableStateOf(true) }
     var busyAction by remember { mutableStateOf<WorkforceWorkdayAction?>(null) }
+    var pendingLocationPermissionAction by remember { mutableStateOf<WorkforceWorkdayAction?>(null) }
     val context = LocalContext.current
+    val locationCapture = remember(context) { WorkforceActionTimeLocationCapture(context) }
     val updateRequiredBeforeChanges = stringResource(R.string.update_required_before_changes)
+    val capturingLocation = stringResource(R.string.status_capturing_location)
+    val locationPermissionMissing = stringResource(R.string.error_location_permission_missing)
+    val locationProviderDisabled = stringResource(R.string.error_location_provider_disabled)
+    val locationUnavailable = stringResource(R.string.error_location_unavailable)
+    val locationUnsupported = stringResource(R.string.error_location_unsupported)
 
     fun applyReminderSettings(snapshot: WorkforceTodaySnapshot) {
         reminderSettings = repository.reminderSettings(snapshot)
@@ -250,27 +260,35 @@ private fun WorkforceRoot(
         }
     }
 
-    fun submitTodayAction(action: WorkforceWorkdayAction, qrToken: String? = null) {
+    fun submitTodayAction(
+        action: WorkforceWorkdayAction,
+        qrToken: String? = null,
+        location: WorkforceLocationProof? = null,
+    ) {
         val snapshot = today ?: return
         val currentBootstrap = bootstrap ?: return
         busyAction = action
         status = null
         scope.launch {
-            runCatching { repository.submitTodayAction(currentBootstrap, snapshot, action, qrToken) }
+            runCatching { repository.submitTodayAction(currentBootstrap, snapshot, action, qrToken, location) }
                 .onSuccess(::applyTodaySubmission)
                 .onFailure { status = it.employeeMessage(employeeErrorCopy) }
             busyAction = null
         }
     }
 
-    fun submitDeviceTrustedTodayAction(action: WorkforceWorkdayAction, qrToken: String? = null) {
+    fun submitDeviceTrustedTodayAction(
+        action: WorkforceWorkdayAction,
+        qrToken: String? = null,
+        location: WorkforceLocationProof? = null,
+    ) {
         val snapshot = today ?: return
         val currentBootstrap = bootstrap ?: return
         busyAction = action
         status = confirmingDeviceAction
         scope.launch {
             runCatching {
-                val prepared = repository.prepareDeviceTrustedTodayAction(currentBootstrap, snapshot, action, qrToken)
+                val prepared = repository.prepareDeviceTrustedTodayAction(currentBootstrap, snapshot, action, qrToken, location)
                 val signature = deviceAuthenticator.authenticateAndSign(
                     prepared.signature,
                     deviceActionPrompts.getValue(action),
@@ -279,6 +297,103 @@ private fun WorkforceRoot(
             }.onSuccess(::applyTodaySubmission)
                 .onFailure { status = it.employeeMessage(employeeErrorCopy) }
             busyAction = null
+        }
+    }
+
+    fun continueAttendanceAction(action: WorkforceWorkdayAction, location: WorkforceLocationProof? = null) {
+        val currentBootstrap = bootstrap ?: return
+        val attendance = currentBootstrap.attendance
+        if (attendance.requiresQr(action)) {
+            qrScanner.scan(
+                onToken = { token ->
+                    if (attendance.requiresDeviceProof(action)) {
+                        submitDeviceTrustedTodayAction(action, token.value, location)
+                    } else {
+                        submitTodayAction(action, token.value, location)
+                    }
+                },
+                onCancelled = { status = qrScanCancelled },
+                onFailure = { status = qrScanUnreadable },
+            )
+        } else if (attendance.requiresDeviceProof(action)) {
+            submitDeviceTrustedTodayAction(action, location = location)
+        } else {
+            submitTodayAction(action, location = location)
+        }
+    }
+
+    fun captureLocationThenContinue(action: WorkforceWorkdayAction) {
+        busyAction = action
+        status = capturingLocation
+        scope.launch {
+            when (val result = locationCapture.captureCurrent()) {
+                is WorkforceActionTimeLocationResult.Captured -> {
+                    busyAction = null
+                    continueAttendanceAction(action, WorkforceLocationProof(
+                        latitude = result.latitude,
+                        longitude = result.longitude,
+                        accuracyMeters = result.accuracyMeters,
+                        capturedAt = Instant.ofEpochMilli(result.capturedAtEpochMs).toString(),
+                        provider = result.provider.wireValue,
+                        isMock = result.isMock,
+                    ))
+                }
+                WorkforceActionTimeLocationResult.PermissionMissing -> {
+                    busyAction = null
+                    status = locationPermissionMissing
+                }
+                WorkforceActionTimeLocationResult.ProviderDisabled -> {
+                    busyAction = null
+                    status = locationProviderDisabled
+                }
+                WorkforceActionTimeLocationResult.UnsupportedPlatform -> {
+                    busyAction = null
+                    status = locationUnsupported
+                }
+                WorkforceActionTimeLocationResult.TimedOut,
+                WorkforceActionTimeLocationResult.Stale,
+                WorkforceActionTimeLocationResult.Unavailable -> {
+                    busyAction = null
+                    status = locationUnavailable
+                }
+            }
+        }
+    }
+
+    val locationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { grants ->
+        val action = pendingLocationPermissionAction
+        pendingLocationPermissionAction = null
+        if (action == null) return@rememberLauncherForActivityResult
+        if (grants[Manifest.permission.ACCESS_FINE_LOCATION] == true || grants[Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
+            captureLocationThenContinue(action)
+        } else {
+            status = locationPermissionMissing
+        }
+    }
+
+    fun startAttendanceAction(action: WorkforceWorkdayAction) {
+        val currentBootstrap = bootstrap ?: return
+        if (currentBootstrap.release.mutationsBlocked) {
+            status = updateRequiredBeforeChanges
+            return
+        }
+        if (!currentBootstrap.attendance.requiresLocation(action)) {
+            continueAttendanceAction(action)
+            return
+        }
+        if (
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+            || ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        ) {
+            captureLocationThenContinue(action)
+        } else {
+            pendingLocationPermissionAction = action
+            locationPermission.launch(arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+            ))
         }
     }
 
@@ -451,27 +566,7 @@ private fun WorkforceRoot(
                 }
             },
             onAction = { action ->
-                val currentBootstrap = bootstrap!!
-                val attendance = currentBootstrap.attendance
-                if (currentBootstrap.release.mutationsBlocked) {
-                    status = updateRequiredBeforeChanges
-                } else if (attendance.requiresQr(action)) {
-                    qrScanner.scan(
-                        onToken = { token ->
-                            if (attendance.requiresDeviceProof(action)) {
-                                submitDeviceTrustedTodayAction(action, token.value)
-                            } else {
-                                submitTodayAction(action, token.value)
-                            }
-                        },
-                        onCancelled = { status = qrScanCancelled },
-                        onFailure = { status = qrScanUnreadable },
-                    )
-                } else if (attendance.requiresDeviceProof(action)) {
-                    submitDeviceTrustedTodayAction(action)
-                } else {
-                    submitTodayAction(action)
-                }
+                startAttendanceAction(action)
             },
             onSignOut = {
                 scope.launch {

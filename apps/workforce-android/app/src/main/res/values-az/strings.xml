@@ -118,7 +118,12 @@
     <string name="error_action_conflict">Serverdəki vəziyyət dəyişib. Növbəti əməliyyatdan əvvəl məlumatı yeniləyin.</string>
     <string name="error_request_failed">Workforce bu sorğunu tamamlaya bilmədi. Server məlumatını yeniləyin və yenidən cəhd edin.</string>
     <string name="error_network_unavailable">Workforce ilə əlaqə yaratmaq mümkün olmadı. Lokal davamiyyət əməliyyatı qəbul edilmədi.</string>
-    <string name="today_location_disclaimer">Məkan fon rejimində heç vaxt izlənmir. Dərc edilmiş hüquqi bildiriş və tenant sübut siyasəti aktiv olmayınca əməliyyat anı məkanı əlçatan deyil.</string>
+    <string name="today_location_disclaimer">Məkan fon rejimində heç vaxt izlənmir. O, yalnız aktiv tenant siyasəti tələb etdikdə əməliyyat zamanı soruşulur.</string>
+    <string name="status_capturing_location">Bu əməliyyat üçün məkan yoxlanılır…</string>
+    <string name="error_location_permission_missing">Bu əməliyyat üçün məkan icazəsi lazımdır. Yenidən cəhd edin və ya təsdiqlənmiş baxış yolundan istifadə edin.</string>
+    <string name="error_location_provider_disabled">Məkan xidmətini aktiv edin, sonra yenidən cəhd edin və ya təsdiqlənmiş baxış yolundan istifadə edin.</string>
+    <string name="error_location_unavailable">Cari məkanı təsdiqləmək mümkün olmadı. Davamiyyət əməliyyatı göndərilmədi.</string>
+    <string name="error_location_unsupported">Bu cihaz tələb olunan cari məkanı verə bilmir. Təsdiqlənmiş baxış yolundan istifadə edin.</string>
     <string name="today_outbox_disclaimer">Müvəqqəti əlaqə xətası həmin əməliyyatı yalnız bu cihazın şifrələnmiş, məhdud outbox yaddaşında saxlaya bilər; bu, serverin qəbul etdiyi fakt deyil.</string>
     <string name="recovery_explainer">Bu ekran yalnız lokal növbə vəziyyətini göstərir; sorğu səbəblərini, QR dəyərlərini, GPS və ya cihaz sübutunu heç vaxt göstərmir.</string>
     <string name="recovery_load">Bərpa vəziyyətini yüklə</string>

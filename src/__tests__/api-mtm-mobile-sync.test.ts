@@ -670,7 +670,7 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
           action: "START",
           id: "workday-unsupported-schema",
           occurredAt: new Date().toISOString(),
-          schemaVersion: 4,
+          schemaVersion: 5,
         },
         clientTimestamp: Date.now(),
       }],
@@ -683,7 +683,7 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
         status: "error",
         serverData: {
           code: "WORKFORCE_WORKDAY_SCHEMA_UNSUPPORTED",
-          schemaSupport: { min: 1, max: 3, action: "UPGRADE_CLIENT" },
+          schemaSupport: { min: 1, max: 4, action: "UPGRADE_CLIENT" },
         },
       }],
     })

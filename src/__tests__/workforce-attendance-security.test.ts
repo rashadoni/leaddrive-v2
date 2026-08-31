@@ -137,6 +137,23 @@ describe("Workforce attendance security primitives", () => {
       challenge: `${challenge}\naction=FINISH`,
       signatureBase64,
     })).toBe(false)
+    expect(workforceDeviceAttendanceChallenge({
+      organizationId: "org_1",
+      agentId: "agent_1",
+      enrollmentId: "enrollment_1",
+      clientEventId: "operation_1",
+      action: "START",
+      workdayId: "workday_1",
+      occurredAt: NOW,
+      location: {
+        capturedAt: NOW,
+        latitude: 40.4093,
+        longitude: 49.8671,
+        accuracy: 12,
+        provider: "GPS",
+        isMock: false,
+      },
+    })).toContain("locationCapturedAt=2026-08-29T09:00:00.000Z")
     expect(workforceDeviceEnrollmentChallenge({
       organizationId: "org_1",
       agentId: "agent_1",

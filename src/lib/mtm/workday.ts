@@ -40,6 +40,12 @@ export type MtmWorkdayAttendanceEvidence = {
     enrollmentId: string
     signature: string
   }
+  /** Exact action-time source metadata; coordinates remain the top-level v1 field. */
+  location?: {
+    capturedAt: Date
+    provider: "FUSED" | "GPS" | "NETWORK" | "PASSIVE" | "UNKNOWN"
+    isMock: boolean
+  }
 }
 
 export type MtmWorkdayEventInput = {
@@ -57,7 +63,7 @@ export type MtmWorkdayEventInput = {
   queuedAt: Date | null
   /** Server receipt is assigned by the parser, never accepted from the client. */
   serverReceivedAt: Date
-  /** `1` is legacy, `2` supplies provenance, `3` may bind a schedule segment. */
+  /** `1` is legacy, `2` supplies provenance, `3` binds a segment, `4` binds location metadata. */
   schemaVersion: number
   /** v3 optional segment context, bound into the request digest when present. */
   segmentId?: string | null
@@ -130,7 +136,8 @@ const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000
 /** The owner-approved maximum age for an offline Workforce attendance claim. */
 export const WORKFORCE_WORKDAY_OFFLINE_HORIZON_MS = 7 * 24 * 60 * 60 * 1000
 export const WORKFORCE_WORKDAY_LEGACY_SCHEMA_VERSION = 1
-export const WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION = 3
+const WORKFORCE_WORKDAY_SEGMENT_SCHEMA_VERSION = 3
+export const WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION = 4
 /**
  * Additive client-compatibility contract.  Keep this separate from the
  * parser's human-readable error: legacy adapters consume that text, while
@@ -327,7 +334,7 @@ function attendanceReviewResult(value: {
 }
 
 function validSchemaVersion(value: unknown): value is number {
-  return value === WORKFORCE_WORKDAY_LEGACY_SCHEMA_VERSION || value === 2 || value === WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION
+  return value === WORKFORCE_WORKDAY_LEGACY_SCHEMA_VERSION || value === 2 || value === 3 || value === WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION
 }
 
 function parseAttendanceEvidence(value: unknown): {
@@ -361,14 +368,35 @@ function parseAttendanceEvidence(value: unknown): {
       signature: value.signature.trim(),
     }
   }
+  const location = attendance.location
+  if (location != null && (!location || typeof location !== "object" || Array.isArray(location))) {
+    return { evidence: undefined, error: "attendance.location must be an object" }
+  }
+  let parsedLocation: MtmWorkdayAttendanceEvidence["location"]
+  if (location) {
+    const value = location as Record<string, unknown>
+    const capturedAt = parseTimestamp(value.capturedAt)
+    const provider = value.provider
+    if (!capturedAt) {
+      return { evidence: undefined, error: "attendance.location.capturedAt must be a valid timestamp" }
+    }
+    if (provider !== "FUSED" && provider !== "GPS" && provider !== "NETWORK" && provider !== "PASSIVE" && provider !== "UNKNOWN") {
+      return { evidence: undefined, error: "attendance.location.provider is invalid" }
+    }
+    if (typeof value.isMock !== "boolean") {
+      return { evidence: undefined, error: "attendance.location.isMock must be boolean" }
+    }
+    parsedLocation = { capturedAt, provider, isMock: value.isMock }
+  }
   const parsedQrToken = typeof qrToken === "string" ? qrToken.trim() : undefined
-  if (!parsedQrToken && !parsedDevice) {
-    return { evidence: undefined, error: "attendance must include qrToken or device proof" }
+  if (!parsedQrToken && !parsedDevice && !parsedLocation) {
+    return { evidence: undefined, error: "attendance must include QR, device, or location proof" }
   }
   return {
     evidence: {
       ...(parsedQrToken ? { qrToken: parsedQrToken } : {}),
       ...(parsedDevice ? { device: parsedDevice } : {}),
+      ...(parsedLocation ? { location: parsedLocation } : {}),
     },
     error: null,
   }
@@ -430,7 +458,7 @@ export function parseMtmWorkdayEvent(
   if (value.segmentId != null && segmentId == null) {
     return { input: null, error: "segmentId must be a valid Workforce segment identifier" }
   }
-  if (segmentId != null && schemaVersion < WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION) {
+  if (segmentId != null && schemaVersion < WORKFORCE_WORKDAY_SEGMENT_SCHEMA_VERSION) {
     return { input: null, error: "segmentId requires Workforce workday schemaVersion 3" }
   }
   if (claimedAt.getTime() !== occurredAt.getTime()) {
@@ -470,6 +498,14 @@ export function parseMtmWorkdayEvent(
   }
   const attendance = parseAttendanceEvidence(value.attendance)
   if (attendance.error) return { input: null, error: attendance.error }
+  if (attendance.evidence?.location && schemaVersion < 4) {
+    return { input: null, error: "attendance.location requires Workforce workday schemaVersion 4" }
+  }
+  if (attendance.evidence?.location && (
+    value.latitude == null || value.longitude == null || value.accuracy == null
+  )) {
+    return { input: null, error: "attendance.location requires latitude, longitude and accuracy" }
+  }
 
   const attendanceReview = workforceAttendanceClaimReview(claimedAt, now)
 
@@ -503,8 +539,8 @@ export function parseMtmWorkdayEvent(
  * the operation ID. Raw QR/device proof never enters the database through
  * this function.
  *
- * v1/v2 payloads retain their historical digest shape. v3 adds an optional
- * segment identity without changing replays of existing immutable facts.
+ * v1/v2 payloads retain their historical digest shape. v3 adds a segment;
+ * v4 additionally binds location-source metadata without changing old facts.
  */
 export function mtmWorkdayRequestHash(scope: WorkdayScope, input: MtmWorkdayEventInput): string {
   const qrFingerprint = input.attendance?.qrToken
@@ -514,8 +550,9 @@ export function mtmWorkdayRequestHash(scope: WorkdayScope, input: MtmWorkdayEven
     ? createHash("sha256").update(input.attendance.device.signature).digest("hex")
     : null
   const includesSegment = input.schemaVersion >= 3
+  const includesLocation = input.schemaVersion >= 4
   return createHash("sha256").update(JSON.stringify({
-    version: includesSegment ? 3 : 2,
+    version: includesLocation ? 4 : includesSegment ? 3 : 2,
     organizationId: scope.organizationId,
     agentId: scope.agentId,
     clientEventId: input.clientEventId,
@@ -533,6 +570,9 @@ export function mtmWorkdayRequestHash(scope: WorkdayScope, input: MtmWorkdayEven
     qrFingerprint,
     deviceEnrollmentId: input.attendance?.device?.enrollmentId ?? null,
     deviceProofFingerprint,
+    locationCapturedAt: includesLocation ? input.attendance?.location?.capturedAt.toISOString() ?? null : null,
+    locationProvider: includesLocation ? input.attendance?.location?.provider ?? null : null,
+    locationMock: includesLocation ? input.attendance?.location?.isMock ?? null : null,
   })).digest("hex")
 }
 
