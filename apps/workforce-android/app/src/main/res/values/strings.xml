@@ -93,6 +93,7 @@
     <string name="status_device_revoked">Trusted-device access was revoked. Refresh before enrolling a replacement.</string>
     <string name="status_signing_in">Signing in…</string>
     <string name="status_loading_history">Loading accepted work-time history…</string>
+    <string name="status_loading_exceptions">Loading your exception cards…</string>
     <string name="status_loading_recovery">Loading private recovery state…</string>
     <string name="status_submitting_request">Submitting request…</string>
     <string name="status_request_accepted">Request accepted by the server. Refresh its status.</string>
@@ -103,6 +104,17 @@
     <string name="status_sign_out_failed">Secure sign-out could not finish. Try again.</string>
     <string name="device_action_prompt">Confirm %1$s for this exact Workforce action</string>
     <string name="device_enrollment_prompt">Confirm this device enrollment before %1$s</string>
+    <string name="exception_corrections_title">Exception corrections</string>
+    <string name="exception_corrections_explainer">Select an exception only to prefill a correction for its shown workday. This does not accept, resolve or change attendance.</string>
+    <string name="exception_corrections_load">Load my exception cards</string>
+    <string name="exception_corrections_not_loaded">Load your own exception cards when you need to request a correction.</string>
+    <string name="exception_corrections_empty">No self-service exception cards are available.</string>
+    <string name="exception_correction_select">%1$s · %2$s · %3$s</string>
+    <string name="exception_correction_selected">The selected exception will be checked again by the server when you submit this correction.</string>
+    <string name="exception_type_late_start">Late start</string>
+    <string name="exception_type_delayed_claim">Delayed attendance claim</string>
+    <string name="exception_type_missing_finish">Missing finish</string>
+    <string name="exception_type_review_required">Work-time review</string>
     <string name="error_action_conflict">The server state changed. Refresh before trying another action.</string>
     <string name="error_request_failed">Workforce could not complete this request. Refresh server state and try again.</string>
     <string name="error_network_unavailable">Unable to reach Workforce. No attendance action was accepted locally.</string>

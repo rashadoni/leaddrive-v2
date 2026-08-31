@@ -76,6 +76,13 @@ class WorkforceSessionRepository(
         api.loadHistory(session, secureStore.installationId(), anchorDate)
     }
 
+    /** Read-only self-service discovery; it is never queued or made into a fact. */
+    suspend fun loadOwnExceptions(): List<WorkforceSelfException> {
+        val session = secureStore.readSession()
+            ?: throw WorkforceApiException("Your Workforce session has ended. Sign in again.", recoverable = false)
+        return api.loadOwnExceptions(session, secureStore.installationId())
+    }
+
     /**
      * Reconciles only an opt-in generic local reminder from fresh server truth.
      * It never derives a shift locally or sends a preference/notification fact

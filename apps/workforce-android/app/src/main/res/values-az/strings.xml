@@ -93,6 +93,7 @@
     <string name="status_device_revoked">Etibarlı cihazın girişi ləğv edildi. Əvəzedicini qeydiyyatdan keçirməzdən əvvəl statusu yeniləyin.</string>
     <string name="status_signing_in">Daxil olunur…</string>
     <string name="status_loading_history">Server tərəfindən qəbul edilmiş iş vaxtı tarixçəsi yüklənir…</string>
+    <string name="status_loading_exceptions">İstisna kartlarınız yüklənir…</string>
     <string name="status_loading_recovery">Məxfi bərpa vəziyyəti yüklənir…</string>
     <string name="status_submitting_request">Sorğu göndərilir…</string>
     <string name="status_request_accepted">Sorğu server tərəfindən qəbul edildi. Statusunu yeniləyin.</string>
@@ -103,6 +104,17 @@
     <string name="status_sign_out_failed">Təhlükəsiz çıxış tamamlanmadı. Yenidən cəhd edin.</string>
     <string name="device_action_prompt">Bu dəqiq Workforce əməliyyatı üçün %1$s əməliyyatını təsdiqləyin</string>
     <string name="device_enrollment_prompt">%1$s vaxtından əvvəl bu cihazın qeydiyyatını təsdiqləyin</string>
+    <string name="exception_corrections_title">İstisna düzəlişləri</string>
+    <string name="exception_corrections_explainer">İstisnanı yalnız göstərilən iş günü üçün düzəlişi əvvəlcədən doldurmaq məqsədilə seçin. Bu, davamiyyəti təsdiqləmir, həll etmir və dəyişmir.</string>
+    <string name="exception_corrections_load">İstisna kartlarımı yüklə</string>
+    <string name="exception_corrections_not_loaded">Düzəliş istəmək lazım olduqda öz istisna kartlarınızı yükləyin.</string>
+    <string name="exception_corrections_empty">Özünəxidmət üçün əlçatan istisna kartı yoxdur.</string>
+    <string name="exception_correction_select">%1$s · %2$s · %3$s</string>
+    <string name="exception_correction_selected">Bu düzəlişi göndərərkən seçilmiş istisna server tərəfindən yenidən yoxlanacaq.</string>
+    <string name="exception_type_late_start">Gec başlama</string>
+    <string name="exception_type_delayed_claim">Gecikmiş davamiyyət müraciəti</string>
+    <string name="exception_type_missing_finish">Bitirmə yoxdur</string>
+    <string name="exception_type_review_required">İş vaxtı yoxlaması</string>
     <string name="error_action_conflict">Serverdəki vəziyyət dəyişib. Növbəti əməliyyatdan əvvəl məlumatı yeniləyin.</string>
     <string name="error_request_failed">Workforce bu sorğunu tamamlaya bilmədi. Server məlumatını yeniləyin və yenidən cəhd edin.</string>
     <string name="error_network_unavailable">Workforce ilə əlaqə yaratmaq mümkün olmadı. Lokal davamiyyət əməliyyatı qəbul edilmədi.</string>

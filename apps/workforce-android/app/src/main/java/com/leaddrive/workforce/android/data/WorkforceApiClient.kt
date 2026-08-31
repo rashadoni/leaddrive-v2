@@ -293,6 +293,11 @@ class WorkforceApiClient(
             if (draft.requestedStartAt.isNullOrBlank() && draft.requestedEndAt.isNullOrBlank()) {
                 throw WorkforceApiException("Provide the requested start or finish time.", recoverable = false)
             }
+            if (draft.exceptionCaseId != null && !IDENTIFIER.matches(draft.exceptionCaseId)) {
+                throw WorkforceApiException("The Workforce exception is invalid. Refresh and choose it again.", recoverable = false)
+            }
+        } else if (draft.exceptionCaseId != null) {
+            throw WorkforceApiException("A Workforce exception can only be linked to a time correction.", recoverable = false)
         }
         val requestedStartAt = if (draft.type == WorkforceHrmRequestType.TIME_CORRECTION) {
             draft.requestedStartAt.toOptionalInstant("requested start")
@@ -313,6 +318,7 @@ class WorkforceApiClient(
             correctionWorkdayId = if (draft.type == WorkforceHrmRequestType.TIME_CORRECTION) {
                 draft.correctionWorkdayId?.trim()?.takeIf { it.isNotBlank() }
             } else null,
+            exceptionCaseId = draft.exceptionCaseId?.trim()?.takeIf { it.isNotBlank() },
             requestedStartAt = requestedStartAt?.toString(),
             requestedEndAt = requestedEndAt?.toString(),
             reason = reason,
@@ -425,6 +431,31 @@ class WorkforceApiClient(
         )
     }
 
+    /**
+     * Reads only generic cards for the signed-in employee's own exceptions.
+     * This stays separate from history so an unavailable future exception
+     * migration cannot make ordinary Work Time history unavailable.
+     */
+    suspend fun loadOwnExceptions(
+        session: WorkforceStoredSession,
+        deviceId: String,
+    ): List<WorkforceSelfException> = withContext(Dispatchers.IO) {
+        val response = request(
+            method = "GET",
+            path = "/api/v1/mtm/mobile/hrm/exceptions",
+            token = session.token,
+            deviceId = deviceId,
+        )
+        val data = response.optJSONObject("data")
+            ?: throw WorkforceApiException("The Workforce exception response was incomplete.", recoverable = true)
+        val values = data.optJSONArray("cases") ?: return@withContext emptyList()
+        buildList {
+            for (index in 0 until values.length()) {
+                values.optJSONObject(index)?.toSelfException()?.let(::add)
+            }
+        }
+    }
+
     private fun request(
         method: String,
         path: String,
@@ -527,6 +558,7 @@ data class WorkforceHrmRequestDraft(
     val endDate: String,
     val reason: String,
     val correctionWorkdayId: String? = null,
+    val exceptionCaseId: String? = null,
     val requestedStartAt: String? = null,
     val requestedEndAt: String? = null,
 )
@@ -539,6 +571,7 @@ data class WorkforceHrmRequestCreateOperation(
     val startDate: String,
     val endDate: String,
     val correctionWorkdayId: String?,
+    val exceptionCaseId: String?,
     val requestedStartAt: String?,
     val requestedEndAt: String?,
     val reason: String,
@@ -559,6 +592,7 @@ data class WorkforceHrmRequestCreateOperation(
         .put("submittedAt", submittedAt)
         .apply {
             correctionWorkdayId?.let { put("correctionWorkdayId", it) }
+            exceptionCaseId?.let { put("exceptionCaseId", it) }
             requestedStartAt?.let { put("requestedStartAt", it) }
             requestedEndAt?.let { put("requestedEndAt", it) }
         }
@@ -677,6 +711,7 @@ data class WorkforceWorkdayOperation(
             return WorkforceHrmRequestCreateOperation(
                 operationId, requestId, clientRequestId, type, startDate, endDate,
                 correctionWorkdayId,
+                data.optString("exceptionCaseId").takeIf { it.isNotBlank() },
                 requestedStartAt,
                 requestedEndAt,
                 reason, submittedAt,
@@ -829,6 +864,23 @@ private fun JSONObject.toHrmRequest(): WorkforceHrmRequest? {
         requestedEndAt = optString("requestedEndAt").takeIf { it.isNotBlank() && it != "null" },
         decisionNote = optString("decisionNote").takeIf { it.isNotBlank() && it != "null" },
         updatedAt = optString("updatedAt").takeIf { it.isNotBlank() && it != "null" },
+    )
+}
+
+private fun JSONObject.toSelfException(): WorkforceSelfException? {
+    val caseId = optString("caseId").takeIf { it.isNotBlank() && it.length <= 128 } ?: return null
+    val reference = optString("displayReference").takeIf { it.isNotBlank() && it.length <= 32 } ?: return null
+    val type = optString("type").takeIf { it.isNotBlank() && it.length <= 64 } ?: return null
+    val workdayId = optString("workdayId").takeIf { it.isNotBlank() && it.length <= 128 } ?: return null
+    val workDate = optString("workDate").takeIf { it.isNotBlank() && it.length == 10 } ?: return null
+    if (runCatching { LocalDate.parse(workDate) }.getOrNull() == null) return null
+    if (optString("availableAction") != "REQUEST_CORRECTION") return null
+    return WorkforceSelfException(
+        caseId = caseId,
+        displayReference = reference,
+        type = type,
+        workdayId = workdayId,
+        workDate = workDate,
     )
 }
 
@@ -1037,6 +1089,15 @@ data class WorkforceHistorySnapshot(
     val end: String,
     val days: List<WorkforceHistoryDay>,
     val requests: List<WorkforceHrmRequest>,
+)
+
+/** Raw proof, employee reasons and response-ledger state never enter this card. */
+data class WorkforceSelfException(
+    val caseId: String,
+    val displayReference: String,
+    val type: String,
+    val workdayId: String,
+    val workDate: String,
 )
 
 data class WorkforceHistoryDay(

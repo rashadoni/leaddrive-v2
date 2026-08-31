@@ -93,6 +93,7 @@
     <string name="status_device_revoked">Доступ доверенного устройства отозван. Перед регистрацией замены обновите статус.</string>
     <string name="status_signing_in">Выполняем вход…</string>
     <string name="status_loading_history">Загружаем принятое сервером рабочее время…</string>
+    <string name="status_loading_exceptions">Загружаем карточки исключений…</string>
     <string name="status_loading_recovery">Загружаем приватное состояние восстановления…</string>
     <string name="status_submitting_request">Отправляем заявку…</string>
     <string name="status_request_accepted">Заявка принята сервером. Обновите её статус.</string>
@@ -103,6 +104,17 @@
     <string name="status_sign_out_failed">Не удалось безопасно завершить выход. Повторите попытку.</string>
     <string name="device_action_prompt">Подтвердите «%1$s» для этого точного действия Workforce</string>
     <string name="device_enrollment_prompt">Подтвердите регистрацию устройства до %1$s</string>
+    <string name="exception_corrections_title">Коррекции по исключениям</string>
+    <string name="exception_corrections_explainer">Выберите исключение только для предзаполнения коррекции его указанного рабочего дня. Это не подтверждает, не закрывает и не меняет учёт времени.</string>
+    <string name="exception_corrections_load">Загрузить мои карточки исключений</string>
+    <string name="exception_corrections_not_loaded">Загрузите свои карточки исключений, если нужна коррекция.</string>
+    <string name="exception_corrections_empty">Нет доступных для самообслуживания карточек исключений.</string>
+    <string name="exception_correction_select">%1$s · %2$s · %3$s</string>
+    <string name="exception_correction_selected">Сервер повторно проверит выбранное исключение при отправке этой коррекции.</string>
+    <string name="exception_type_late_start">Позднее начало</string>
+    <string name="exception_type_delayed_claim">Задержанное заявление о присутствии</string>
+    <string name="exception_type_missing_finish">Нет завершения</string>
+    <string name="exception_type_review_required">Проверка учёта времени</string>
     <string name="error_action_conflict">Состояние на сервере изменилось. Обновите данные перед следующим действием.</string>
     <string name="error_request_failed">Workforce не смог завершить этот запрос. Обновите данные сервера и повторите попытку.</string>
     <string name="error_network_unavailable">Не удалось связаться с Workforce. Локальное действие учёта времени не принято.</string>

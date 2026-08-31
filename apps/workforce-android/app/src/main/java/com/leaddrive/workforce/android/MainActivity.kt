@@ -57,6 +57,7 @@ import com.leaddrive.workforce.android.data.WorkforceHrmRequestDraft
 import com.leaddrive.workforce.android.data.WorkforceHrmRequestType
 import com.leaddrive.workforce.android.data.WorkforceHrmRequestStatus
 import com.leaddrive.workforce.android.data.WorkforceHrmSubmission
+import com.leaddrive.workforce.android.data.WorkforceSelfException
 import com.leaddrive.workforce.android.data.WorkforceLoginInput
 import com.leaddrive.workforce.android.data.WorkforceOutboxRecoveryItem
 import com.leaddrive.workforce.android.data.WorkforceOutboxRecoveryHint
@@ -122,6 +123,7 @@ private fun WorkforceRoot(
     var today by remember { mutableStateOf<WorkforceTodaySnapshot?>(null) }
     var status by remember { mutableStateOf<String?>(null) }
     var history by remember { mutableStateOf<WorkforceHistorySnapshot?>(null) }
+    var ownExceptions by remember { mutableStateOf<List<WorkforceSelfException>?>(null) }
     var recoveryItems by remember { mutableStateOf<List<WorkforceOutboxRecoveryItem>?>(null) }
     var deviceTrust by remember { mutableStateOf<WorkforceDeviceTrustState?>(null) }
     val qrScanCancelled = stringResource(R.string.qr_scan_cancelled)
@@ -140,6 +142,7 @@ private fun WorkforceRoot(
     val deviceRevoked = stringResource(R.string.status_device_revoked)
     val signingIn = stringResource(R.string.status_signing_in)
     val loadingHistory = stringResource(R.string.status_loading_history)
+    val loadingOwnExceptions = stringResource(R.string.status_loading_exceptions)
     val loadingRecovery = stringResource(R.string.status_loading_recovery)
     val submittingRequest = stringResource(R.string.status_submitting_request)
     val requestAccepted = stringResource(R.string.status_request_accepted)
@@ -220,6 +223,7 @@ private fun WorkforceRoot(
                 today = submission.snapshot
                 reminderSettings = submission.reminderSettings
                 history = null
+                ownExceptions = null
                 recoveryItems = null
                 status = null
             }
@@ -237,6 +241,7 @@ private fun WorkforceRoot(
                     today = it
                     applyReminderSettings(it)
                     history = null
+                    ownExceptions = null
                     recoveryItems = null
                     deviceTrust = null
                     status = null
@@ -354,6 +359,7 @@ private fun WorkforceRoot(
                         today = loadedToday
                         applyReminderSettings(loadedToday)
                         history = null
+                        ownExceptions = null
                         recoveryItems = null
                         deviceTrust = null
                         status = null
@@ -367,6 +373,7 @@ private fun WorkforceRoot(
             status = status,
             section = section,
             history = history,
+            ownExceptions = ownExceptions,
             recoveryItems = recoveryItems,
             deviceTrust = deviceTrust,
             reminderSettings = reminderSettings,
@@ -385,6 +392,17 @@ private fun WorkforceRoot(
                             }
                             .onFailure { status = it.employeeMessage(employeeErrorCopy) }
                     }
+                }
+            },
+            onLoadOwnExceptions = {
+                status = loadingOwnExceptions
+                scope.launch {
+                    runCatching { repository.loadOwnExceptions() }
+                        .onSuccess {
+                            ownExceptions = it
+                            status = null
+                        }
+                        .onFailure { status = it.employeeMessage(employeeErrorCopy) }
                 }
             },
             onLoadRecovery = {
@@ -408,6 +426,7 @@ private fun WorkforceRoot(
                     runCatching { repository.submitHrmRequest(bootstrap!!, draft) }
                         .onSuccess { submission ->
                             history = null
+                            ownExceptions = null
                             recoveryItems = null
                             status = when (submission) {
                                 WorkforceHrmSubmission.ACCEPTED -> requestAccepted
@@ -548,6 +567,7 @@ private fun WorkforceHome(
     status: String?,
     section: WorkforceSection,
     history: WorkforceHistorySnapshot?,
+    ownExceptions: List<WorkforceSelfException>?,
     recoveryItems: List<WorkforceOutboxRecoveryItem>?,
     deviceTrust: WorkforceDeviceTrustState?,
     reminderSettings: WorkforceReminderSettings?,
@@ -555,6 +575,7 @@ private fun WorkforceHome(
     onRefresh: () -> Unit,
     onSelectSection: (WorkforceSection) -> Unit,
     onLoadHistory: () -> Unit,
+    onLoadOwnExceptions: () -> Unit,
     onLoadRecovery: () -> Unit,
     onLoadDeviceTrust: () -> Unit,
     onBeginDeviceEnrollment: (String) -> Unit,
@@ -619,9 +640,11 @@ private fun WorkforceHome(
             )
             WorkforceSection.REQUESTS -> WorkforceRequests(
                 history = history,
+                ownExceptions = ownExceptions,
                 defaultDate = today?.date.orEmpty(),
                 mutationsBlocked = bootstrap.release.mutationsBlocked,
                 onLoad = onLoadHistory,
+                onLoadOwnExceptions = onLoadOwnExceptions,
                 onSubmit = onSubmitRequest,
                 onCancel = onCancelRequest,
             )
@@ -729,6 +752,16 @@ private fun String.localizedCalendarKind(): String = stringResource(
         "MOVED_WORKDAY" -> R.string.calendar_kind_moved_workday
         "MOVED_DAY_OFF" -> R.string.calendar_kind_moved_day_off
         else -> R.string.calendar_kind_unknown
+    },
+)
+
+@Composable
+private fun String.localizedExceptionType(): String = stringResource(
+    when (this) {
+        "LATE_START" -> R.string.exception_type_late_start
+        "DELAYED_CLAIM" -> R.string.exception_type_delayed_claim
+        "MISSING_FINISH" -> R.string.exception_type_missing_finish
+        else -> R.string.exception_type_review_required
     },
 )
 
@@ -958,9 +991,11 @@ private fun deviceEnrollmentStatus(status: String): Int = when (status) {
 @Composable
 private fun WorkforceRequests(
     history: WorkforceHistorySnapshot?,
+    ownExceptions: List<WorkforceSelfException>?,
     defaultDate: String,
     mutationsBlocked: Boolean,
     onLoad: () -> Unit,
+    onLoadOwnExceptions: () -> Unit,
     onSubmit: (WorkforceHrmRequestDraft) -> Unit,
     onCancel: (String) -> Unit,
 ) {
@@ -971,6 +1006,7 @@ private fun WorkforceRequests(
     // in live memory; do not persist it in the saved-instance-state bundle.
     var reason by remember { mutableStateOf("") }
     var correctionWorkdayId by rememberSaveable { mutableStateOf("") }
+    var exceptionCaseId by rememberSaveable { mutableStateOf("") }
     var requestedStartAt by rememberSaveable { mutableStateOf("") }
     var requestedEndAt by rememberSaveable { mutableStateOf("") }
     LaunchedEffect(defaultDate) {
@@ -985,7 +1021,39 @@ private fun WorkforceRequests(
             if (mutationsBlocked) Text(stringResource(R.string.update_required_before_changes))
         }
         item {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(stringResource(R.string.exception_corrections_title), style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.exception_corrections_explainer))
+                TextButton(onClick = onLoadOwnExceptions) { Text(stringResource(R.string.exception_corrections_load)) }
+                when (ownExceptions) {
+                    null -> Text(stringResource(R.string.exception_corrections_not_loaded))
+                    emptyList() -> Text(stringResource(R.string.exception_corrections_empty))
+                    else -> ownExceptions.forEach { exception ->
+                        TextButton(onClick = {
+                            type = WorkforceHrmRequestType.TIME_CORRECTION
+                            correctionWorkdayId = exception.workdayId
+                            exceptionCaseId = exception.caseId
+                            startDate = exception.workDate
+                            endDate = exception.workDate
+                        }) {
+                            Text(
+                                stringResource(
+                                    R.string.exception_correction_select,
+                                    exception.displayReference,
+                                    exception.type.localizedExceptionType(),
+                                    exception.workDate,
+                                ),
+                            )
+                        }
+                    }
+                }
+                if (exceptionCaseId.isNotBlank()) {
+                    Text(stringResource(R.string.exception_correction_selected))
+                }
+            }
+        }
+        item {
+            Row(modifier = Modifier.fillMaxWidth().selectableGroup()) {
                 WorkforceHrmRequestType.entries.forEach { candidate ->
                     val label = candidate.localizedLabel()
                     val selected = candidate == type
@@ -997,7 +1065,10 @@ private fun WorkforceRequests(
                             role = Role.Tab
                             stateDescription = selectionState
                         },
-                        onClick = { type = candidate },
+                        onClick = {
+                            type = candidate
+                            if (candidate != WorkforceHrmRequestType.TIME_CORRECTION) exceptionCaseId = ""
+                        },
                     ) {
                         Text(if (selected) "• $label" else label)
                     }
@@ -1033,6 +1104,7 @@ private fun WorkforceRequests(
                     } else {
                         candidates.forEach { day ->
                             TextButton(onClick = {
+                                if (correctionWorkdayId != day.workday!!.id) exceptionCaseId = ""
                                 correctionWorkdayId = day.workday!!.id
                                 startDate = day.date
                                 endDate = day.date
@@ -1083,6 +1155,7 @@ private fun WorkforceRequests(
                             endDate = endDate,
                             reason = reason,
                             correctionWorkdayId = correctionWorkdayId,
+                            exceptionCaseId = exceptionCaseId.takeIf { it.isNotBlank() },
                             requestedStartAt = requestedStartAt,
                             requestedEndAt = requestedEndAt,
                         ),
