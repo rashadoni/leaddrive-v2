@@ -320,11 +320,6 @@ export const POST = withWorkforceCompatAuth("write", async (req, auth) => {
           })
           if (prepared) {
             await recordWorkforceAttendanceVerification(tx, prepared, event.id)
-            await recordPreparedWorkforceLocationEvidence(tx, {
-              prepared,
-              workdayEventId: event.id,
-              principal: auth.principal,
-            })
           }
           if (input.action === "START") {
             await writeWorkforceSnapshotsIfReadyInTransaction(tx, {
@@ -340,6 +335,15 @@ export const POST = withWorkforceCompatAuth("write", async (req, auth) => {
               workdayId: workday.id,
               agentId: actor.agentId!,
               segmentId: input.segmentId,
+            })
+          }
+          if (prepared) {
+            await recordPreparedWorkforceLocationEvidence(tx, {
+              prepared,
+              workdayEventId: event.id,
+              workdayId: workday.id,
+              occurredAt: input.occurredAt,
+              principal: auth.principal,
             })
           }
           await writeWorkforceWorkdayAuditInTransaction(tx, {

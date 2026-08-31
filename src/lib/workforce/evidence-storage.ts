@@ -19,13 +19,13 @@ type EvidenceSubject =
 /** Minimal transaction-capable delegate surface used by evidence writers. */
 export type WorkforceEvidenceStorageDb = {
   workforceAttendanceEvidence: {
-    create: (args: { data: Record<string, unknown>; select: { id: true; payloadHash: true } }) => Promise<{ id: string; payloadHash: string }>
-    findFirst: (args: { where: Record<string, unknown>; select: { id: true; payloadHash: true } }) => Promise<{ id: string; payloadHash: string } | null>
-    updateMany: (args: { where: Record<string, unknown>; data: Record<string, unknown> }) => Promise<{ count: number }>
+    create(args: { data: Record<string, unknown>; select: { id: true; payloadHash: true } }): Promise<{ id: string; payloadHash: string }>
+    findFirst(args: { where: Record<string, unknown>; select: { id: true; payloadHash: true } }): Promise<{ id: string; payloadHash: string } | null>
+    updateMany(args: { where: Record<string, unknown>; data: Record<string, unknown> }): Promise<{ count: number }>
   }
   workforceEvidenceAssessment: {
-    create: (args: { data: Record<string, unknown>; select: { id: true } }) => Promise<{ id: string }>
-    findMany: (args: Record<string, unknown>) => Promise<unknown[]>
+    create(args: { data: Record<string, unknown>; select: { id: true } }): Promise<{ id: string }>
+    findMany(args: Record<string, unknown>): Promise<unknown[]>
   }
 }
 

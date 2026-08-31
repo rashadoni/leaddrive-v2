@@ -16,6 +16,8 @@ import {
   recordWorkforceAttendanceVerification,
 } from "@/lib/workforce/attendance-trust"
 
+type AttendanceEvent = Parameters<typeof prepareWorkforceAttendanceVerification>[1]["event"]
+
 const ORGANIZATION_ID = "org_1"
 const AGENT_ID = "agent_1"
 const NOW = new Date("2026-08-29T09:00:00.000Z")
@@ -23,7 +25,7 @@ const WORKDAY = {
   workDate: new Date("2026-08-29T00:00:00.000Z"),
   startedAt: new Date("2026-08-29T08:00:00.000Z"),
 }
-const EVENT = {
+const EVENT: AttendanceEvent = {
   action: "START" as const,
   workdayId: "workday_1",
   clientEventId: "event_1",
@@ -51,7 +53,7 @@ function policy(definition: Record<string, unknown>) {
 
 function prepare(
   input: Parameters<typeof prepareWorkforceAttendanceVerification>[1]["evidence"] = undefined,
-  event = EVENT,
+  event: AttendanceEvent = EVENT,
 ) {
   return prepareWorkforceAttendanceVerification(prisma as never, {
     organizationId: ORGANIZATION_ID,
