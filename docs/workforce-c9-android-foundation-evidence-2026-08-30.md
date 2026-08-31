@@ -170,6 +170,14 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   enrollment are resource-backed too. The action prompt uses the existing
   localized action label; the enrollment prompt includes only its server
   expiry, never proof material.
+- The static employee UI around Today, Recovery, Requests, Work Time history
+  and the known workday state is now resource-backed in EN/AZ/RU. It preserves
+  the safety boundaries: the Today disclosure still says that location is not
+  background-tracked and that an outbox entry is not an accepted fact; the
+  Recovery introduction still promises metadata-only recovery; Requests still
+  distinguish a review claim from approved time or payroll. Free-form
+  reviewer notes and server-returned calendar/request values are not
+  machine-translated by the client.
 - The latest Android CI candidate exposed a Compose compiler error in a prior
   trusted-device source line: `stringResource` was called from the non-
   composable `rememberSaveable` initializer. The source now resolves the
@@ -257,6 +265,10 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   EN/RU/AZ resource-key parity, scoped ESLint and `git diff --check` cover
   localized generic status/error copy, absence of raw API-message reflection,
   resource-backed device prompts and the composable-safe default device label.
+- `PASS` — the same targeted source contract, resource-key parity, scoped
+  ESLint and `git diff --check` cover the resource-backed Today/Recovery/
+  Requests/History copy and localized known workday labels. The raw server
+  calendar/request/reviewer values remain deliberately unmodified.
 - `NOT RUN / pending external rerun` — Android Gradle lint/unit was run by
   GitHub Actions on the preceding candidate and correctly failed at compile
   time on the now-fixed `rememberSaveable { stringResource(...) }` violation.

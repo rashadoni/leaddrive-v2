@@ -570,8 +570,8 @@ private fun WorkforceHome(
                         onSetEnabled = onSetLocalReminders,
                     )
                     WorkforceScheduledContext(today.workday?.schedule?.segment)
-                    Text("Location is never tracked in the background. Action-time location remains unavailable until the published legal notice and tenant proof policy are active.")
-                    Text("A transient transport failure can keep the same action only in this device’s encrypted, bounded outbox; it is not a server-accepted fact.")
+                    Text(stringResource(R.string.today_location_disclaimer))
+                    Text(stringResource(R.string.today_outbox_disclaimer))
                     TextButton(onClick = onRefresh) { Text(stringResource(R.string.refresh_server_state)) }
                 }
             }
@@ -679,6 +679,16 @@ private fun WorkforceWorkdayAction.labelRes(): Int = when (this) {
     WorkforceWorkdayAction.FINISH -> R.string.action_finish
 }
 
+@Composable
+private fun WorkforceWorkdayStatus.localizedLabel(): String = stringResource(labelRes())
+
+@StringRes
+private fun WorkforceWorkdayStatus.labelRes(): Int = when (this) {
+    WorkforceWorkdayStatus.STARTED -> R.string.workday_state_working
+    WorkforceWorkdayStatus.PAUSED -> R.string.workday_state_paused
+    WorkforceWorkdayStatus.COMPLETED -> R.string.workday_state_completed
+}
+
 private fun Modifier.workforceTapTarget(): Modifier = defaultMinSize(
     minWidth = 48.dp,
     minHeight = 48.dp,
@@ -695,27 +705,28 @@ private fun WorkforceRecovery(
     }
     if (items == null) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Recovery", style = MaterialTheme.typography.titleLarge)
-            Text("This view shows only local queue state, never request reasons, QR values, GPS or device proof.")
-            Button(onClick = onLoad) { Text("Load recovery state") }
+            Text(stringResource(R.string.tab_recovery), style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.recovery_explainer))
+            Button(onClick = onLoad) { Text(stringResource(R.string.recovery_load)) }
         }
         return
     }
     LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
-            Text("Recovery", style = MaterialTheme.typography.titleLarge)
-            Text("Refresh server state before retrying any work-time action.")
-            TextButton(onClick = onLoad) { Text("Refresh recovery state") }
+            Text(stringResource(R.string.tab_recovery), style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.recovery_retry_explainer))
+            TextButton(onClick = onLoad) { Text(stringResource(R.string.recovery_refresh)) }
         }
         if (items.isEmpty()) {
-            item { Text("No local recovery items.") }
+            item { Text(stringResource(R.string.recovery_empty)) }
         } else {
             items(items) { item ->
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text("${item.domain}: ${item.state}", style = MaterialTheme.typography.titleSmall)
-                    Text(
-                        "Saved locally: ${Instant.ofEpochMilli(item.createdAtEpochMs).atZone(tenantZone).toLocalDateTime()}",
-                    )
+                    Text(stringResource(
+                        R.string.recovery_saved_at,
+                        Instant.ofEpochMilli(item.createdAtEpochMs).atZone(tenantZone).toLocalDateTime(),
+                    ))
                     Text(item.recoveryMessage)
                 }
             }
@@ -806,7 +817,7 @@ private fun WorkforceDeviceTrust(
                 }) { Text(stringResource(R.string.device_revoke_confirm)) }
             },
             dismissButton = {
-                TextButton(onClick = { revokeCandidateId = null }) { Text("Cancel") }
+                TextButton(onClick = { revokeCandidateId = null }) { Text(stringResource(R.string.cancel)) }
             },
         )
     }
@@ -855,8 +866,8 @@ private fun WorkforceRequests(
 
     LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
-            Text("Requests", style = MaterialTheme.typography.titleLarge)
-            Text("Leave, absence and correction requests are employee claims for review, not approved time or payroll.")
+            Text(stringResource(R.string.tab_requests), style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.requests_explainer))
             if (mutationsBlocked) Text(stringResource(R.string.update_required_before_changes))
         }
         item {
@@ -884,7 +895,7 @@ private fun WorkforceRequests(
                 value = startDate,
                 onValueChange = { startDate = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Start date (YYYY-MM-DD)") },
+                label = { Text(stringResource(R.string.request_start_date)) },
                 singleLine = true,
             )
         }
@@ -893,18 +904,18 @@ private fun WorkforceRequests(
                 value = endDate,
                 onValueChange = { endDate = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("End date (YYYY-MM-DD)") },
+                label = { Text(stringResource(R.string.request_end_date)) },
                 singleLine = true,
             )
         }
         if (type == WorkforceHrmRequestType.TIME_CORRECTION) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Choose an accepted workday to correct")
+                    Text(stringResource(R.string.request_choose_workday))
                     val candidates = history?.days?.filter { it.workday != null }.orEmpty()
                     if (candidates.isEmpty()) {
-                        Text("Load Work Time history first; do not invent a workday reference.")
-                        TextButton(onClick = onLoad) { Text("Load Work Time history") }
+                        Text(stringResource(R.string.request_history_required))
+                        TextButton(onClick = onLoad) { Text(stringResource(R.string.request_load_history)) }
                     } else {
                         candidates.forEach { day ->
                             TextButton(onClick = {
@@ -923,7 +934,7 @@ private fun WorkforceRequests(
                     value = requestedStartAt,
                     onValueChange = { requestedStartAt = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Requested start (ISO date-time, optional)") },
+                    label = { Text(stringResource(R.string.request_start_time)) },
                     singleLine = true,
                 )
             }
@@ -932,7 +943,7 @@ private fun WorkforceRequests(
                     value = requestedEndAt,
                     onValueChange = { requestedEndAt = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Requested finish (ISO date-time, optional)") },
+                    label = { Text(stringResource(R.string.request_finish_time)) },
                     singleLine = true,
                 )
             }
@@ -942,7 +953,7 @@ private fun WorkforceRequests(
                 value = reason,
                 onValueChange = { reason = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Reason (visible only to the responsible reviewers)") },
+                label = { Text(stringResource(R.string.request_reason)) },
                 minLines = 3,
             )
         }
@@ -963,26 +974,26 @@ private fun WorkforceRequests(
                         ),
                     )
                 },
-            ) { Text("Submit request") }
+            ) { Text(stringResource(R.string.request_submit)) }
         }
         item {
-            Text("Status history", style = MaterialTheme.typography.titleMedium)
-            Text("Refresh before cancelling; only pending requests are eligible.")
-            TextButton(onClick = onLoad) { Text("Refresh requests") }
+            Text(stringResource(R.string.request_status_history), style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.request_cancel_explainer))
+            TextButton(onClick = onLoad) { Text(stringResource(R.string.request_refresh)) }
         }
         if (history == null) {
-            item { Text("No server request history loaded.") }
+            item { Text(stringResource(R.string.request_history_empty)) }
         } else {
             items(history.requests, key = { it.id }) { request ->
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text("${request.type}: ${request.status}", style = MaterialTheme.typography.titleSmall)
                     Text("${request.startDate} – ${request.endDate}")
-                    request.decisionNote?.let { Text("Reviewer note: $it") }
+                    request.decisionNote?.let { Text(stringResource(R.string.request_reviewer_note, it)) }
                     if (request.status == "PENDING") {
                         TextButton(
                             enabled = !mutationsBlocked,
                             onClick = { onCancel(request.id) },
-                        ) { Text("Cancel pending request") }
+                        ) { Text(stringResource(R.string.request_cancel_pending)) }
                     }
                 }
             }
@@ -997,27 +1008,27 @@ private fun WorkforceHistory(
 ) {
     if (history == null) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Work Time", style = MaterialTheme.typography.titleLarge)
-            Text("History is always reloaded from the server. A local pending claim is never presented as an accepted fact.")
-            Button(onClick = onLoad) { Text("Load work-time history") }
+            Text(stringResource(R.string.tab_work_time), style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.history_empty_explainer))
+            Button(onClick = onLoad) { Text(stringResource(R.string.history_load)) }
         }
         return
     }
     LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
-            Text("Work Time", style = MaterialTheme.typography.titleLarge)
-            Text("Accepted server history: ${history.start} – ${history.end} (${history.timezone})")
+            Text(stringResource(R.string.tab_work_time), style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.history_range, history.start, history.end, history.timezone))
         }
         items(history.days, key = { it.date }) { day ->
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(day.date, style = MaterialTheme.typography.titleMedium)
-                day.calendarName?.let { Text("Calendar: $it") }
-                day.calendarKind?.let { Text("Calendar state: $it") }
+                day.calendarName?.let { Text(stringResource(R.string.history_calendar, it)) }
+                day.calendarKind?.let { Text(stringResource(R.string.history_calendar_state, it)) }
                 day.workday?.let { workday ->
-                    Text("Server workday: ${workday.status}")
-                    Text("Recorded worked time: ${workday.workedSeconds.asWorkDuration()}")
-                } ?: Text("No accepted workday")
-                day.activeRequestStates.forEach { Text("Request: $it") }
+                    Text(stringResource(R.string.history_workday, workday.status.localizedLabel()))
+                    Text(stringResource(R.string.history_worked, workday.workedSeconds.asWorkDuration()))
+                } ?: Text(stringResource(R.string.history_no_workday))
+                day.activeRequestStates.forEach { Text(stringResource(R.string.history_request, it)) }
             }
         }
     }
@@ -1071,16 +1082,16 @@ private fun WorkforceTodayCard(
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(stringResource(R.string.today), style = MaterialTheme.typography.titleLarge)
         when {
-            workday == null -> Text("No workday has been accepted by the server.")
+            workday == null -> Text(stringResource(R.string.today_no_workday))
             else -> WorkforceWorkdayState(workday, elapsedSeconds)
         }
         snapshot.activeWorkday?.let {
-            Text("Another active workday is recorded by the server. Finish that day before starting a new one.")
+            Text(stringResource(R.string.today_other_active))
         }
         if (attendance.status == "INVALID") {
-            Text("Attendance policy is unavailable or unsupported. Refresh or contact your administrator; no action can be sent.")
+            Text(stringResource(R.string.today_attendance_unavailable))
         } else if (allowed.isEmpty()) {
-            Text("No work-time action is available for this server state.")
+            Text(stringResource(R.string.today_no_action))
         } else {
             if (mutationsBlocked) Text(stringResource(R.string.update_required_before_changes))
             allowed.forEach { action ->
@@ -1106,14 +1117,10 @@ private fun WorkforceTodayCard(
 
 @Composable
 private fun WorkforceWorkdayState(workday: WorkforceWorkday, elapsedSeconds: Long) {
-    val state = when (workday.status) {
-        WorkforceWorkdayStatus.STARTED -> "Working"
-        WorkforceWorkdayStatus.PAUSED -> "Paused"
-        WorkforceWorkdayStatus.COMPLETED -> "Completed"
-    }
-    Text("Status: $state")
-    Text("Worked: ${elapsedSeconds.asWorkDuration()}")
-    Text("Started: ${workday.startedAt}")
+    val state = workday.status.localizedLabel()
+    Text(stringResource(R.string.workday_status, state))
+    Text(stringResource(R.string.workday_worked, elapsedSeconds.asWorkDuration()))
+    Text(stringResource(R.string.workday_started, workday.startedAt))
 }
 
 private fun Long.asWorkDuration(): String {

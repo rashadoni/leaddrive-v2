@@ -59,7 +59,9 @@ describe("Workforce Android foundation", () => {
     expect(activity).toContain("repository.restore()")
     expect(activity).toContain("repository.loadToday()")
     expect(activity).toContain("R.string.worktime_unavailable")
-    expect(activity).toContain("it is not a server-accepted fact")
+    expect(activity).toContain("val updateRequiredBeforeChanges = stringResource")
+    expect(activity).not.toContain("context.getString(R.string.update_required_before_changes)")
+    expect(activity).toContain("R.string.today_outbox_disclaimer")
     expect(repository).toContain("submitTodayAction")
   })
 
@@ -117,8 +119,8 @@ describe("Workforce Android foundation", () => {
     expect(api).toContain('"/api/v1/mtm/mobile/hrm?start=$start&end=$end"')
     expect(api).toContain("HISTORY_DAYS_BEFORE")
     expect(api).not.toContain('"/api/v1/mtm/mobile/location')
-    expect(activity).toContain("Accepted server history")
-    expect(activity).toContain("A local pending claim is never presented as an accepted fact")
+    expect(activity).toContain("R.string.history_range")
+    expect(activity).toContain("R.string.history_empty_explainer")
   })
 
   it("supports leave, absence and correction requests without putting their reason in ordinary diagnostics", () => {
@@ -131,10 +133,10 @@ describe("Workforce Android foundation", () => {
     expect(api).toContain("Requested finish must be after requested start")
     expect(api).toContain("toOptionalInstant")
     expect(outbox).toContain("HRM_REQUEST")
-    expect(activity).toContain("Leave, absence and correction requests")
-    expect(activity).toContain("Reason (visible only to the responsible reviewers)")
     expect(activity).toContain('var reason by remember { mutableStateOf("") }')
     expect(activity).not.toContain("var reason by rememberSaveable")
+    expect(activity).toContain("R.string.requests_explainer")
+    expect(activity).toContain("R.string.request_reason")
     expect(activity).not.toMatch(/Log\.|println\(|Timber\./)
   })
 
@@ -153,8 +155,7 @@ describe("Workforce Android foundation", () => {
     expect(capture).toContain("No legacy last-known fallback")
     expect(capture).not.toMatch(/requestLocationUpdates|ForegroundService|ACCESS_BACKGROUND_LOCATION/i)
     expect(manifest).not.toContain("ACCESS_BACKGROUND_LOCATION")
-    expect(activity).toContain("never tracked in the background")
-    expect(activity).toContain("legal notice and tenant proof policy are active")
+    expect(activity).toContain("R.string.today_location_disclaimer")
   })
 
   it("scans a fresh QR only for the immediately requested action and never persists it", () => {
@@ -179,7 +180,7 @@ describe("Workforce Android foundation", () => {
     expect(repository).toContain("error.isEligibleForOfflineOutbox()")
     expect(outbox).toContain("Ephemeral attendance proof cannot enter the durable outbox")
     expect(activity).toContain("R.string.action_scan_fresh")
-    expect(activity).toContain("Attendance policy is unavailable or unsupported")
+    expect(activity).toContain("R.string.today_attendance_unavailable")
     expect(activity).toContain('var password by remember { mutableStateOf("") }')
     expect(activity).not.toContain("var password by rememberSaveable")
   })
@@ -196,10 +197,9 @@ describe("Workforce Android foundation", () => {
     expect(outbox).toContain("ACCOUNT_BOUNDARY_MUTEX.withLock")
     expect(repository).toContain("loadRecoveryItems")
     expect(repository).toContain("sessionMutex.withLock")
-    expect(activity).toContain("This view shows only local queue state")
-    expect(activity).toContain("never request reasons, QR values, GPS or device proof")
     expect(activity).toContain("atZone(tenantZone)")
     expect(activity).not.toContain("ZoneId.systemDefault()")
+    expect(activity).toContain("R.string.recovery_explainer")
   })
 
   it("uses a per-use non-exportable Android key and OS-owned strong-biometric signature without handling biometric data", () => {
