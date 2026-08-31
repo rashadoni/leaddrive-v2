@@ -109,7 +109,8 @@ export const POST = withWorkforceSessionAuth<RouteContext>("write", async (req, 
         },
         // Authorization is intentionally resolved inside the serializable
         // transaction from the actual effective scoped grant above.
-        authorize: async (request) => request.organizationId === auth.orgId
+        authorize: async (request) => request.operation === "DECISION_APPEND"
+          && request.organizationId === auth.orgId
           && request.caseId === caseId
           && request.actorUserId === auth.userId,
       })

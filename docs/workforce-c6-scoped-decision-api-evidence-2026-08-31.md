@@ -46,3 +46,17 @@ grant-assignment endpoint and access review, rendered manager workbench,
 browser E2E for the new mutation, full typecheck/build, staging and pilot.
 The route is source-complete but intentionally default-deny until the durable
 grant rollout exists.
+
+## 2026-09-01 compile-gate repair
+
+The exact static CI check identified two defect-shaped TypeScript families on
+the decision route and no-show intake fixture. The decision authorization
+callback now explicitly accepts only the `DECISION_APPEND` variant before it
+reads `caseId` or `actorUserId`; a future case-create authorization request
+therefore cannot accidentally be treated as a decision authorization. The
+test fixture preserves the literal `ORGANIZATION` scope required by the
+resolved historical policy/shift contract instead of widening it to `string`.
+
+`PASS`: focused exception-intake and scoped-decision API tests (2 files / 14
+tests), scoped ESLint and `git diff --check`. The mandatory static CI rerun is
+still required for the repair's exact SHA.
