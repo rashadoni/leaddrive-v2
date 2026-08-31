@@ -37,6 +37,12 @@ the existing calculated deviations (`LATE_START`, `UNDERTIME`, `OVERTIME` and
 - Draft/unknown schedules, non-working/holiday calendar days, approved
   leave/absence, an existing workday, incomplete observation and unexpired
   grace all fail closed to `DO_NOT_CREATE`.
+- The persisted historical-calendar resolver accepts an expected-work instant
+  and reads the append-only team membership at that instant. A later transfer
+  cannot make a past no-show check pick up the employee's current team's
+  closure or holiday; missing membership history falls back only to the
+  employee and organization calendar candidates, never the mutable directory
+  team.
 - `PROPOSE_REVIEW_CASE` is not persistence. It creates neither a case nor a
   notification and cannot fabricate a start/finish fact. A later C6 lifecycle
   must perform tenant-scoped deduplication and an accountable immutable
@@ -87,6 +93,12 @@ case/decision migration and actual detector remain WF-C6-002/003 work.
           subject-integrity/new expected-date migration contracts (6 files,
           32 tests); Prisma validate/generate with a non-routable validation
           URL; scoped ESLint and `git diff --check`.
+
+    PASS  2026-09-01 historical-calendar re-check:
+          `workforce-calendar`, `workforce-policy-resolution` and
+          `workforce-shift-resolution` (3 files, 26 tests), scoped ESLint and
+          `git diff --check`. A later directory transfer cannot add its team
+          calendar candidate to a past expected-workday lookup.
 
     NOT RUN  database migration/apply, full typecheck/build, browser E2E,
              Android, scheduler/concurrency/load and physical pilot checks:

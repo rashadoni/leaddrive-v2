@@ -7,6 +7,7 @@ vi.mock("@/lib/prisma", async () => {
 
 import { prisma } from "@/lib/prisma"
 import {
+  resolveHistoricalPersistedWorkforceCalendarDay,
   resolvePersistedWorkforceCalendarDay,
   resolveWorkforceCalendarDay,
   WorkforceCalendarResolutionError,
@@ -71,6 +72,31 @@ describe("Workforce calendar semantics", () => {
         ]),
       }),
     }))
+  })
+
+  it("uses the historical team rather than a later directory transfer for a past calendar day", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "agent-1", teamId: "team-current" } as never)
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([{
+      id: "membership-history", teamId: "team-history", effectiveAt: new Date("2026-08-01T00:00:00.000Z"),
+    }] as never)
+    vi.mocked(prisma.mtmWorkCalendarDay.findMany).mockResolvedValue([] as never)
+
+    await expect(resolveHistoricalPersistedWorkforceCalendarDay(prisma as never, {
+      organizationId: "org-1",
+      agentId: "agent-1",
+      date: DATE,
+      workdayStartedAt: new Date("2026-09-01T05:00:00.000Z"),
+    })).resolves.toMatchObject({ state: "SCHEDULED", attendanceExpected: true })
+
+    const calendarQuery = vi.mocked(prisma.mtmWorkCalendarDay.findMany).mock.calls.at(-1)?.[0]
+    expect(calendarQuery).toMatchObject({
+      where: expect.objectContaining({
+        OR: expect.arrayContaining([
+          { agentId: null, teamId: "team-history" },
+        ]),
+      }),
+    })
+    expect(JSON.stringify(calendarQuery)).not.toContain("team-current")
   })
 
   it("fails closed for impossible dates and unavailable employees", async () => {

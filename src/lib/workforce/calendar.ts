@@ -4,6 +4,7 @@ import {
   resolveWorkCalendarDay,
   type WorkCalendarOverride,
 } from "@/lib/mtm/work-calendar"
+import { resolveWorkforceHistoricalTeamMembership } from "@/lib/workforce/team-membership"
 
 export type WorkforceCalendarDayState =
   | "SCHEDULED"
@@ -133,6 +134,48 @@ export function resolveWorkforceCalendarDay(input: {
 }
 
 type WorkforceCalendarDb = Pick<PrismaClient, "mtmAgent" | "mtmWorkCalendarDay">
+type WorkforceHistoricalCalendarDb = WorkforceCalendarDb & Pick<PrismaClient, "$queryRaw">
+
+function validInstant(value: Date): boolean {
+  return Number.isFinite(value.getTime())
+}
+
+async function resolvePersistedCalendarForTeam(
+  db: Pick<PrismaClient, "mtmWorkCalendarDay">,
+  input: { organizationId: string; agentId: string; date: string; teamId: string | null },
+): Promise<ResolvedWorkforceCalendarDay> {
+  const date = new Date(`${input.date}T00:00:00.000Z`)
+  const overrides = await db.mtmWorkCalendarDay.findMany({
+    where: {
+      organizationId: input.organizationId,
+      date,
+      deletedAt: null,
+      OR: [
+        { agentId: input.agentId, teamId: null },
+        ...(input.teamId ? [{ agentId: null, teamId: input.teamId }] : []),
+        { agentId: null, teamId: null },
+      ],
+    },
+    orderBy: [{ agentId: "asc" }, { teamId: "asc" }, { id: "asc" }],
+    select: {
+      id: true,
+      date: true,
+      kind: true,
+      name: true,
+      teamId: true,
+      agentId: true,
+      movedToDate: true,
+      routePlanningAllowed: true,
+      source: true,
+    },
+  })
+  return resolveWorkforceCalendarDay({
+    date: input.date,
+    overrides,
+    teamId: input.teamId,
+    agentId: input.agentId,
+  })
+}
 
 /**
  * Loads only the exact agent/team/organization candidates for a date. RLS is
@@ -160,35 +203,50 @@ export async function resolvePersistedWorkforceCalendarDay(
     )
   }
 
-  const date = new Date(`${input.date}T00:00:00.000Z`)
-  const overrides = await db.mtmWorkCalendarDay.findMany({
-    where: {
-      organizationId: input.organizationId,
-      date,
-      deletedAt: null,
-      OR: [
-        { agentId: input.agentId, teamId: null },
-        ...(agent.teamId ? [{ agentId: null, teamId: agent.teamId }] : []),
-        { agentId: null, teamId: null },
-      ],
-    },
-    orderBy: [{ agentId: "asc" }, { teamId: "asc" }, { id: "asc" }],
-    select: {
-      id: true,
-      date: true,
-      kind: true,
-      name: true,
-      teamId: true,
-      agentId: true,
-      movedToDate: true,
-      routePlanningAllowed: true,
-      source: true,
-    },
-  })
-  return resolveWorkforceCalendarDay({
-    date: input.date,
-    overrides,
-    teamId: agent.teamId,
+  return resolvePersistedCalendarForTeam(db, {
+    organizationId: input.organizationId,
     agentId: agent.id,
+    date: input.date,
+    teamId: agent.teamId,
+  })
+}
+
+/**
+ * Resolves a past calendar day against the append-only team membership known
+ * at the expected work instant. A later team transfer must not add or remove
+ * a historical team's closure/holiday from a no-show decision. When history
+ * is unavailable, this deliberately uses only employee and organization
+ * overrides; it never substitutes the mutable current directory team.
+ */
+export async function resolveHistoricalPersistedWorkforceCalendarDay(
+  db: WorkforceHistoricalCalendarDb,
+  input: { organizationId: string; agentId: string; date: string; workdayStartedAt: Date },
+): Promise<ResolvedWorkforceCalendarDay> {
+  if (!isDateKey(input.date) || !validInstant(input.workdayStartedAt)) {
+    throw new WorkforceCalendarResolutionError(
+      "WORKFORCE_CALENDAR_DATE_INVALID",
+      "Workforce historical calendar input is invalid",
+    )
+  }
+  const agent = await db.mtmAgent.findFirst({
+    where: { id: input.agentId, organizationId: input.organizationId },
+    select: { id: true },
+  })
+  if (!agent) {
+    throw new WorkforceCalendarResolutionError(
+      "WORKFORCE_CALENDAR_AGENT_NOT_FOUND",
+      "Workforce employee is unavailable",
+    )
+  }
+  const membership = await resolveWorkforceHistoricalTeamMembership(db, {
+    organizationId: input.organizationId,
+    agentId: agent.id,
+    workdayStartedAt: input.workdayStartedAt,
+  })
+  return resolvePersistedCalendarForTeam(db, {
+    organizationId: input.organizationId,
+    agentId: agent.id,
+    date: input.date,
+    teamId: membership?.teamId ?? null,
   })
 }
