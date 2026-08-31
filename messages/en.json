@@ -23701,6 +23701,8 @@
     "requestCount": "{count} requests",
     "selfRequestTitle": "Your request",
     "selfRequestHint": "Submit leave, absence or a time-correction request. It stays pending until an authorized reviewer decides it; this form does not change recorded time.",
+    "selfExceptionReview": "Review your attendance exceptions",
+    "selfExceptionReviewHint": "before requesting a correction.",
     "selfRequestType": "Request type",
     "selfRequestStartDate": "Starts",
     "selfRequestEndDate": "Ends",
@@ -23840,6 +23842,22 @@
       "NO_FURTHER_ACTION": "No further action",
       "ESCALATE_DATA_INTEGRITY_REVIEW": "Escalate data integrity review"
     }
+  },
+  "workforceMyExceptions": {
+    "title": "Your attendance exceptions",
+    "subtitle": "Review only your own attendance items and use the protected correction-request path when a recorded time needs review.",
+    "boundaryTitle": "Your review does not alter recorded time",
+    "boundaryHint": "This page shows only your own generic exception type and workday date. It never displays location, maps, QR values, device identifiers, evidence, a manager decision or another employee's data. A correction stays pending for human review.",
+    "refresh": "Refresh items",
+    "loading": "Loading your attendance exceptions",
+    "loadFailed": "Unable to load your attendance exceptions.",
+    "casesTitle": "Your items for review",
+    "casesHint": "{count} items are available for your review.",
+    "workday": "Recorded workday: {date}",
+    "raised": "Recorded for review: {date}",
+    "requestCorrection": "Request a correction",
+    "requestCorrectionHint": "Choose this recorded workday in the protected request form. A reviewer must decide it before any time fact changes.",
+    "empty": "You have no attendance exceptions available for self-service review."
   },
   "workforceConfigurationPage": {
     "title": "Work-time configuration",

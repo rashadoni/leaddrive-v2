@@ -23697,6 +23697,8 @@
     "requestCount": "{count} sorğu",
     "selfRequestTitle": "Öz sorğunuz",
     "selfRequestHint": "Məzuniyyət, işdə olmama və ya vaxt düzəlişi sorğusu göndərin. Səlahiyyətli yoxlayan qərar verənədək gözləmədə qalır; bu forma qeydə alınmış vaxtı dəyişmir.",
+    "selfExceptionReview": "İştirak istisnalarınızı yoxlayın",
+    "selfExceptionReviewHint": "düzəliş istəməzdən əvvəl.",
     "selfRequestType": "Sorğu növü",
     "selfRequestStartDate": "Başlanğıc",
     "selfRequestEndDate": "Son",
@@ -23836,6 +23838,22 @@
       "NO_FURTHER_ACTION": "Əlavə addım tələb olunmur",
       "ESCALATE_DATA_INTEGRITY_REVIEW": "Məlumat bütövlüyü yoxlamasına yönəlt"
     }
+  },
+  "workforceMyExceptions": {
+    "title": "İştirak istisnalarınız",
+    "subtitle": "Yalnız öz iştirak hallarınıza baxın və qeydə alınmış vaxt yoxlanmalıdırsa qorunan düzəliş sorğusundan istifadə edin.",
+    "boundaryTitle": "Yoxlama qeydə alınmış vaxtı dəyişmir",
+    "boundaryHint": "Bu səhifə yalnız ümumi istisna növünüzü və iş günü tarixini göstərir. Məkan, xəritələr, QR dəyərləri, cihaz identifikatorları, sübutlar, rəhbər qərarı və ya başqa işçinin məlumatları burada heç vaxt göstərilmir. Düzəliş insan yoxlaması üçün gözləmədə qalır.",
+    "refresh": "Halları yenilə",
+    "loading": "İştirak istisnalarınız yüklənir",
+    "loadFailed": "İştirak istisnalarınızı yükləmək mümkün olmadı.",
+    "casesTitle": "Yoxlama üçün hallarınız",
+    "casesHint": "Yoxlamanız üçün {count} hal əlçatandır.",
+    "workday": "Qeydə alınmış iş günü: {date}",
+    "raised": "Yoxlama üçün qeydə alınıb: {date}",
+    "requestCorrection": "Düzəliş soruş",
+    "requestCorrectionHint": "Bu iş gününü qorunan sorğu formasında seçin. İştirak faktı dəyişməzdən əvvəl səlahiyyətli yoxlayan qərar verməlidir.",
+    "empty": "Özünüyoxlama üçün əlçatan iştirak istisnanız yoxdur."
   },
   "workforceConfigurationPage": {
     "title": "İş vaxtı tənzimləməsi",

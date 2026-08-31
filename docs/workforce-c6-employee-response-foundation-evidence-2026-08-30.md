@@ -35,14 +35,23 @@ reads only a case matching that employee and tenant, derives the case's exact
 workday/segment server-side, and then calls the writer. A missing or another
 employee's case has one identical unavailable result, so it cannot serve as an
 ID oracle. The endpoint accepts neither explanation/proof nor a direct time
-change. No migration has been applied and no UI links to this source path.
-Therefore the UI cannot claim a case was resolved, edit an accepted fact,
-suppress an exception, or expose another employee's evidence.
+change. No migration has been applied, so the UI cannot offer that acknowledgement
+write, claim a case was resolved, edit an accepted fact, suppress an exception,
+or expose another employee's evidence.
 
-The later C6 lifecycle must expose this only through a self-scoped case API,
-apply the migration and disposable-DB/RLS evidence, and connect a requested
-correction through configured bounds and an accountable decision. It must not
-turn the existing protected request reason into raw evidence or payroll input.
+`GET /api/v1/workforce/exceptions/mine` and `/workforce/exceptions/mine` now
+provide the corresponding self-scoped discovery surface. It reads only the
+current employee's tenant-local case, generic type and owned workday date; it
+never reads decision reasons, location, QR/device proof, response-ledger rows
+or another employee's case. Its correction link carries an opaque owned
+workday selection into the existing protected request form. The browser may
+change that selection, but the server still requires an exact self-owned
+workday/date before it accepts a correction.
+
+The later C6 lifecycle must apply the migration with disposable-DB/RLS
+evidence, connect the resulting correction request to the exact case response,
+and add accountable resolution. It must not turn the existing protected
+request reason into raw evidence or payroll input.
 
 ## Verification
 
@@ -50,12 +59,13 @@ turn the existing protected request reason into raw evidence or payroll input.
           src/__tests__/lib-workforce-exception-employee-response.test.ts \
           src/__tests__/lib-workforce-exception-employee-response-writer.test.ts \
           src/__tests__/migration-workforce-exception-employee-responses.test.ts \
-          src/__tests__/api-workforce-exception-employee-response.test.ts
-          (4 files, 13 tests)
+          src/__tests__/api-workforce-exception-employee-response.test.ts \
+          src/__tests__/api-workforce-my-exceptions.test.ts
+          (5 files, 16 tests)
 
     PASS  DATABASE_URL=<nonconnecting validation URL> npx prisma validate
-    PASS  targeted ESLint and git diff --check
+    PASS  i18n parity (EN/RU/AZ), targeted ESLint and git diff --check
 
-    NOT RUN  migration apply/disposable-DB RLS, employee discovery/browser
-             accessibility evidence, mobile UI, notification delivery, full
-             typecheck/build, staging and production tests.
+    NOT RUN  migration apply/disposable-DB RLS, browser accessibility evidence,
+             mobile UI, notification delivery, full typecheck/build, staging
+             and production tests.
