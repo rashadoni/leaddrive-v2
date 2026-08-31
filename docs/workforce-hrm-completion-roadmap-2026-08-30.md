@@ -390,6 +390,7 @@ Owner roles are accountabilities, not individual names:
 
 | 2026-08-31T11:09:00+02:00 | C6q immutable correction-request source link | 35% | C6 20% | 72/161 | 0/15 | WF-C6-006 now records an optional immutable case source only for an employee's exact self-owned correction workday. The server, idempotency comparison and unapplied additive DB trigger reject foreign/different-day/reassigned links; normal corrections stay unlinked. 22 targeted contracts, Prisma validate, runner syntax, ESLint and diff check pass. Migration apply/RLS, visible acknowledgement, mobile, full Chromium CI, physical/staging evidence and lifecycle completion remain open; no completion credit is claimed. |
 
+| 2026-08-31T23:28:00+02:00 | C7u explicit scoped exception-decision permission (partial) | 36% | C7 52% | 74/161 | 0/15 | WF-C7-002 now assigns accountable exception decisions only to explicit `HR_ADMIN` or scoped `TEAM_MANAGER` grants; `TIME_APPROVER` remains denied and no role gains raw evidence, payroll, discipline or approval power. The grant ledger is still inactive, so no endpoint/tenant behavior changes and no completion credit is claimed. |
 **C3 phase display reconciliation (2026-08-30T08:11:00+02:00):** the C3
 register contains 11 tasks and its scope did not change. Earlier C3 ledger
 display values were not calculated from the stated phase formula. The current
@@ -634,6 +635,8 @@ overbroad CRM roles or mobile-only requests.
 | WF-C7-008 | P1 | PLANNED | Backend | Freeze approvals when unresolved blocking exceptions or snapshot gaps exist | Approval error lists exact blocking rows |
 | WF-C7-009 | P2 | PLANNED | HR | Define delegation, temporary approver and manager absence workflow | Delegation is bounded, expiring and audited |
 | WF-C7-010 | P2 | PLANNED | Security/HR | Review access and decisions periodically; disable stale privileged assignments | Access review evidence and revocation SLA |
+
+| 2026-08-31T23:28:00+02:00 | C7u explicit scoped exception-decision permission (partial) | 36% | C7 52% | 74/161 | 0/15 | WF-C7-002 now assigns accountable exception decisions only to explicit `HR_ADMIN` or scoped `TEAM_MANAGER` grants; `TIME_APPROVER` remains denied and no role gains raw evidence, payroll, discipline or approval power. The grant ledger is still inactive, so no endpoint/tenant behavior changes and no completion credit is claimed. |
 
 **Gate C7:** ordinary HR tasks use named records and least-privilege roles;
 employees can submit requests without Route or an unavailable mobile app.

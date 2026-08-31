@@ -25,6 +25,14 @@ coordinate, QR or device-proof read is absent from the ordinary role
 vocabulary entirely; it remains blocked until C10 adds a separate
 purpose/reason/audit/investigation decision.
 
+The approved management boundary now also names `TEAM_EXCEPTION_DECIDE`.
+`HR_ADMIN` may resolve a Workforce exception within an explicit organization,
+team or site grant; `TEAM_MANAGER` may do so only within its explicit team or
+site grant. Neither role receives raw evidence, payroll, disciplinary or
+approval authority from that permission. `TIME_APPROVER` remains deliberately
+separate, so the existing incompatible-role guard still prevents one person
+from combining a time approval with team management.
+
 The owner-approved recommended v1 draft also makes these role pairs
 incompatible for a future assignment flow: scheduler/time approver, time
 approver/team manager, evidence reviewer/device-security admin and export
