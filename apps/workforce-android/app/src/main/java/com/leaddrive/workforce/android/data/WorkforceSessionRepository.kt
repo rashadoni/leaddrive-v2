@@ -24,8 +24,13 @@ class WorkforceSessionRepository(
     private val sessionMutex = Mutex()
 
     suspend fun signIn(input: WorkforceLoginInput): WorkforceBootstrap = sessionMutex.withLock {
-        clearAccountBoundary()
         val login = api.login(input)
+        // Do not destroy a recoverable current session, its local key or its
+        // encrypted queue for a rejected/cancelled new sign-in. Once the
+        // server has authenticated the new account, clear that old boundary
+        // before writing any new token so no pending data or device selector
+        // can cross into the newly authenticated account.
+        clearAccountBoundary()
         val session = WorkforceStoredSession(login.token, login.organizationSlug)
         secureStore.writeSession(session)
         api.bootstrap(session, secureStore.installationId()).also { bootstrap ->
