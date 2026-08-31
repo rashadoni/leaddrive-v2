@@ -93,6 +93,17 @@ subject. The reader does not catch resolver/database errors as an absence;
 the eventual leased worker must record those as incomplete observations and
 write nothing.
 
+### 2026-09-01 bounded no-show candidate batch
+
+`readWorkforceNoShowCandidateBatch` reads at most 50 employee IDs in stable
+tenant-local order and calls the single-candidate reader sequentially. It
+returns only in-memory next-cursor metadata; the cursor is not persisted and
+is not a job lease. The batch reader intentionally has no case, audit,
+notification, queue, capability or tenant-control method, so it cannot turn a
+scheduled scan into an operational detector. An exception from a single
+candidate is propagated rather than transformed into an absence; a future
+leased worker must record that incomplete observation and write nothing.
+
 ### 2026-09-01 read-only missed-finish candidate reader
 
 `readWorkforceMissedFinishCandidate` composes the existing pure
@@ -165,6 +176,11 @@ case/decision migration and actual detector remain WF-C6-002/003 work.
           contracts (5 files, 36 tests), scoped ESLint and `git diff --check`.
           A terminated employee stops before calendar/workday lookup; unknown
           lifecycle also fails closed without a case/audit write.
+
+    PASS  2026-09-01 bounded no-show-batch re-check:
+          batch/no-show/employment contracts (3 files, 12 tests), scoped
+          ESLint and `git diff --check`. The test pins tenant scope,
+          50-row bound, stable continuation metadata and no case/audit write.
 
     NOT RUN  database migration/apply, full typecheck/build, browser E2E,
              Android, scheduler/concurrency/load and physical pilot checks:
