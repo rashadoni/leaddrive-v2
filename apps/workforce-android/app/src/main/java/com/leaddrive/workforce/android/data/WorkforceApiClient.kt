@@ -912,17 +912,37 @@ private fun JSONObject.toHrmRequest(): WorkforceHrmRequest? {
     val status = optString("status").takeIf { it.isNotBlank() } ?: return null
     val startDate = optString("startDate").takeIf { it.isNotBlank() } ?: return null
     val endDate = optString("endDate").takeIf { it.isNotBlank() } ?: return null
+    val typedStatus = WorkforceHrmRequestStatus.fromWire(status)
+    fun timestamp(key: String): String? = optString(key)
+        .takeIf { value -> value.isNotBlank() && value != "null" && runCatching { Instant.parse(value) }.isSuccess }
+    val timeline = buildList {
+        timestamp("submittedAt")?.let { add(WorkforceHrmRequestTimelineEntry(WorkforceHrmRequestTimelineEvent.SUBMITTED, it)) }
+        when (typedStatus) {
+            WorkforceHrmRequestStatus.APPROVED,
+            WorkforceHrmRequestStatus.REJECTED -> timestamp("decidedAt")?.let {
+                add(WorkforceHrmRequestTimelineEntry(WorkforceHrmRequestTimelineEvent.DECIDED, it))
+            }
+            WorkforceHrmRequestStatus.CANCELLED -> timestamp("cancelledAt")?.let {
+                add(WorkforceHrmRequestTimelineEntry(WorkforceHrmRequestTimelineEvent.CANCELLED, it))
+            }
+            else -> Unit
+        }
+    }
     return WorkforceHrmRequest(
         id = id,
         type = WorkforceHrmRequestType.fromWire(type),
-        status = WorkforceHrmRequestStatus.fromWire(status),
+        status = typedStatus,
         startDate = startDate,
         endDate = endDate,
         correctionWorkdayId = optString("correctionWorkdayId").takeIf { it.isNotBlank() && it != "null" },
         requestedStartAt = optString("requestedStartAt").takeIf { it.isNotBlank() && it != "null" },
         requestedEndAt = optString("requestedEndAt").takeIf { it.isNotBlank() && it != "null" },
-        decisionNote = optString("decisionNote").takeIf { it.isNotBlank() && it != "null" },
-        updatedAt = optString("updatedAt").takeIf { it.isNotBlank() && it != "null" },
+        // A manager decision is employee-visible, while reasons/proofs are
+        // intentionally absent from this ordinary history response. Keep a
+        // malformed future note from hiding the request's server status.
+        decisionNote = optString("decisionNote").takeIf { it.isNotBlank() && it != "null" && it.length <= 1_000 },
+        updatedAt = timestamp("updatedAt"),
+        timeline = timeline,
     )
 }
 
@@ -1210,6 +1230,18 @@ data class WorkforceHrmRequest(
     val requestedEndAt: String?,
     val decisionNote: String?,
     val updatedAt: String?,
+    val timeline: List<WorkforceHrmRequestTimelineEntry>,
+)
+
+enum class WorkforceHrmRequestTimelineEvent {
+    SUBMITTED,
+    DECIDED,
+    CANCELLED,
+}
+
+data class WorkforceHrmRequestTimelineEntry(
+    val event: WorkforceHrmRequestTimelineEvent,
+    val occurredAt: String,
 )
 
 open class WorkforceApiException(

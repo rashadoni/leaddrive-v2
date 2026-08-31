@@ -110,6 +110,21 @@ describe("GET /api/v1/mtm/mobile/hrm", () => {
       correctionStatuses: [],
     })
     expect(body.data.days[1].requests).toEqual([{ id: "request-1", type: "LEAVE", status: "PENDING" }])
+    expect(body.data.requests).toEqual([{
+      id: "request-1",
+      type: "LEAVE",
+      status: "PENDING",
+      startDate: "2026-07-17T00:00:00.000Z",
+      endDate: "2026-07-17T00:00:00.000Z",
+      correctionWorkdayId: null,
+      requestedStartAt: null,
+      requestedEndAt: null,
+      decisionNote: null,
+      submittedAt: "2026-07-16T08:00:00.000Z",
+      decidedAt: null,
+      cancelledAt: null,
+      updatedAt: "2026-07-16T08:00:00.000Z",
+    }])
     const query = vi.mocked(prisma.mtmWorkCalendarDay.findMany).mock.calls[0][0] as {
       where: {
         organizationId: string
@@ -127,5 +142,10 @@ describe("GET /api/v1/mtm/mobile/hrm", () => {
       attendanceReviewState: true,
     })
     expect(JSON.stringify(workdayQuery.select.events.select)).not.toMatch(/latitude|longitude|accuracy|note|reason/i)
+    const requestQuery = vi.mocked(prisma.mtmHrmRequest.findMany).mock.calls[0][0] as {
+      select: Record<string, boolean>
+    }
+    expect(requestQuery.select).not.toHaveProperty("reason")
+    expect(requestQuery.select).not.toHaveProperty("clientRequestId")
   })
 })

@@ -29,7 +29,6 @@ type WorkdayRow = {
 
 type HrmRequestRow = {
   id: string
-  clientRequestId: string
   type: string
   status: string
   startDate: Date
@@ -37,12 +36,37 @@ type HrmRequestRow = {
   correctionWorkdayId: string | null
   requestedStartAt: Date | null
   requestedEndAt: Date | null
-  reason: string
   decisionNote: string | null
   submittedAt: Date
   decidedAt: Date | null
   cancelledAt: Date | null
   updatedAt: Date
+}
+
+/**
+ * The employee history response is an explicit projection, rather than a
+ * serialized Prisma row. Request reasons and client idempotency keys are
+ * needed to submit safely, but do not belong in the routine mobile status
+ * read. A self-visible decision note and server timestamps remain available
+ * so an employee can understand a terminal result without seeing evidence,
+ * audit, device or transport data.
+ */
+function mobileRequestHistory(request: HrmRequestRow) {
+  return {
+    id: request.id,
+    type: request.type,
+    status: request.status,
+    startDate: request.startDate,
+    endDate: request.endDate,
+    correctionWorkdayId: request.correctionWorkdayId,
+    requestedStartAt: request.requestedStartAt,
+    requestedEndAt: request.requestedEndAt,
+    decisionNote: request.decisionNote,
+    submittedAt: request.submittedAt,
+    decidedAt: request.decidedAt,
+    cancelledAt: request.cancelledAt,
+    updatedAt: request.updatedAt,
+  }
 }
 
 function dayCount(start: string, end: string): number {
@@ -131,7 +155,6 @@ export const GET = withMobileRls(async (req, auth) => {
         take: 200,
         select: {
           id: true,
-          clientRequestId: true,
           type: true,
           status: true,
           startDate: true,
@@ -139,7 +162,6 @@ export const GET = withMobileRls(async (req, auth) => {
           correctionWorkdayId: true,
           requestedStartAt: true,
           requestedEndAt: true,
-          reason: true,
           decisionNote: true,
           submittedAt: true,
           decidedAt: true,
@@ -209,7 +231,7 @@ export const GET = withMobileRls(async (req, auth) => {
         start,
         end,
         days,
-        requests: typedRequests,
+        requests: typedRequests.map(mobileRequestHistory),
         capabilities: {
           requestLeave: true,
           requestAbsence: true,

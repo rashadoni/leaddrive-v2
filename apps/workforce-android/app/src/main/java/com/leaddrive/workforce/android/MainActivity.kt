@@ -59,6 +59,8 @@ import com.leaddrive.workforce.android.data.WorkforceHrmRequestDraft
 import com.leaddrive.workforce.android.data.WorkforceHrmRequestType
 import com.leaddrive.workforce.android.data.WorkforceHrmRequestStatus
 import com.leaddrive.workforce.android.data.WorkforceHrmSubmission
+import com.leaddrive.workforce.android.data.WorkforceHrmRequestTimelineEntry
+import com.leaddrive.workforce.android.data.WorkforceHrmRequestTimelineEvent
 import com.leaddrive.workforce.android.data.WorkforceSelfException
 import com.leaddrive.workforce.android.data.WorkforceLoginInput
 import com.leaddrive.workforce.android.data.WorkforceLocationProof
@@ -84,6 +86,8 @@ import com.leaddrive.workforce.android.security.WorkforceDeviceKeyManager
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -893,6 +897,20 @@ private fun WorkforceHistoryReviewState.localizedLabel(): String = stringResourc
 })
 
 @Composable
+private fun WorkforceHrmRequestTimelineEvent.localizedLabel(): String = stringResource(when (this) {
+    WorkforceHrmRequestTimelineEvent.SUBMITTED -> R.string.request_timeline_submitted
+    WorkforceHrmRequestTimelineEvent.DECIDED -> R.string.request_timeline_decided
+    WorkforceHrmRequestTimelineEvent.CANCELLED -> R.string.request_timeline_cancelled
+})
+
+/** Server instants stay on the tenant's Work Time clock, never device clock. */
+private fun workforceHistoryTimestamp(value: String, timezone: String): String? = runCatching {
+    Instant.parse(value)
+        .atZone(ZoneId.of(timezone))
+        .format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM))
+}.getOrNull()
+
+@Composable
 private fun WorkforceReminderState.localizedLabel(): String = stringResource(labelRes())
 
 @StringRes
@@ -1107,6 +1125,7 @@ private fun WorkforceRequests(
     onCancel: (String) -> Unit,
 ) {
     var type by remember { mutableStateOf(WorkforceHrmRequestType.LEAVE) }
+    var expandedRequestId by rememberSaveable { mutableStateOf<String?>(null) }
     var startDate by rememberSaveable { mutableStateOf(defaultDate) }
     var endDate by rememberSaveable { mutableStateOf(defaultDate) }
     // Reasons can contain sensitive employment context. Keep draft text only
@@ -1289,7 +1308,18 @@ private fun WorkforceRequests(
                         style = MaterialTheme.typography.titleSmall,
                     )
                     Text(stringResource(R.string.request_date_range, request.startDate, request.endDate))
-                    request.decisionNote?.let { Text(stringResource(R.string.request_reviewer_note, it)) }
+                    if (request.timeline.isNotEmpty() || request.decisionNote != null) {
+                        TextButton(onClick = {
+                            expandedRequestId = if (expandedRequestId == request.id) null else request.id
+                        }) {
+                            Text(stringResource(
+                                if (expandedRequestId == request.id) R.string.request_detail_hide else R.string.request_detail_show,
+                            ))
+                        }
+                        if (expandedRequestId == request.id) {
+                            WorkforceRequestHistoryDetail(request.timeline, history.timezone, request.decisionNote)
+                        }
+                    }
                     if (request.status == WorkforceHrmRequestStatus.PENDING) {
                         TextButton(
                             enabled = !mutationsBlocked,
@@ -1299,6 +1329,22 @@ private fun WorkforceRequests(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun WorkforceRequestHistoryDetail(
+    timeline: List<WorkforceHrmRequestTimelineEntry>,
+    timezone: String,
+    decisionNote: String?,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        timeline.forEach { entry ->
+            workforceHistoryTimestamp(entry.occurredAt, timezone)?.let { timestamp ->
+                Text(stringResource(R.string.request_timeline_event, entry.event.localizedLabel(), timestamp))
+            }
+        }
+        decisionNote?.let { Text(stringResource(R.string.request_reviewer_note, it)) }
     }
 }
 
@@ -1337,7 +1383,7 @@ private fun WorkforceHistory(
                                 if (expandedDate == day.date) R.string.history_detail_hide else R.string.history_detail_show,
                             ))
                         }
-                        if (expandedDate == day.date) WorkforceHistoryDayDetail(detail)
+                        if (expandedDate == day.date) WorkforceHistoryDayDetail(detail, history.timezone)
                     }
                 } ?: Text(stringResource(R.string.history_no_workday))
                 day.activeRequestStates.forEach {
@@ -1349,16 +1395,18 @@ private fun WorkforceHistory(
 }
 
 @Composable
-private fun WorkforceHistoryDayDetail(detail: WorkforceHistoryDayDetail) {
+private fun WorkforceHistoryDayDetail(detail: WorkforceHistoryDayDetail, timezone: String) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(stringResource(R.string.history_detail_title), style = MaterialTheme.typography.titleSmall)
         Text(stringResource(R.string.history_review, detail.reviewState.localizedLabel()))
         detail.events.forEach { event ->
-            Text(stringResource(
-                R.string.history_event,
-                event.action.localizedLabel(),
-                event.occurredAt,
-            ))
+            workforceHistoryTimestamp(event.occurredAt, timezone)?.let { timestamp ->
+                Text(stringResource(
+                    R.string.history_event,
+                    event.action.localizedLabel(),
+                    timestamp,
+                ))
+            }
         }
         if (detail.correctionStates.isEmpty()) {
             Text(stringResource(R.string.history_correction_none))

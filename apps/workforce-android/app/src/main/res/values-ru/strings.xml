@@ -208,6 +208,12 @@
     <string name="request_status_unknown">Требует проверки</string>
     <string name="request_summary">%1$s: %2$s</string>
     <string name="request_date_range">%1$s – %2$s</string>
+    <string name="request_detail_show">Показать детали заявки</string>
+    <string name="request_detail_hide">Скрыть детали заявки</string>
+    <string name="request_timeline_submitted">Отправлена</string>
+    <string name="request_timeline_decided">Рассмотрена</string>
+    <string name="request_timeline_cancelled">Отменена</string>
+    <string name="request_timeline_event">%1$s — %2$s</string>
     <string name="calendar_kind_working_day">Рабочий день</string>
     <string name="calendar_kind_weekend">Выходной</string>
     <string name="calendar_kind_public_holiday">Государственный праздник</string>
