@@ -209,6 +209,9 @@ describe("Workforce Android foundation", () => {
     const api = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceApiClient.kt")
     const repository = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceSessionRepository.kt")
     const activity = read("app/src/main/java/com/leaddrive/workforce/android/MainActivity.kt")
+    const defaultStrings = read("app/src/main/res/values/strings.xml")
+    const russianStrings = read("app/src/main/res/values-ru/strings.xml")
+    const azerbaijaniStrings = read("app/src/main/res/values-az/strings.xml")
     expect(build).toContain('implementation("androidx.biometric:biometric:1.1.0")')
     expect(deviceKey).toContain("setAttestationChallenge(challenge)")
     expect(deviceKey).toContain("setUserAuthenticationRequired(true)")
@@ -237,8 +240,15 @@ describe("Workforce Android foundation", () => {
     expect(repository).toContain("revokeOwnDeviceEnrollment")
     expect(repository).toContain("private key is deleted only after the server acknowledges revocation")
     expect(activity).toContain("R.string.action_scan_and_confirm")
-    expect(activity).toContain("Trusted device")
-    expect(activity).toContain("Revoke trusted device?")
+    expect(activity).toContain("R.string.device_trust_title")
+    expect(activity).toContain("R.string.device_revoke_dialog_title")
+    expect(activity).toContain("deviceLifecycleMessage")
+    expect(activity).toContain("deviceEnrollmentStatus")
+    for (const catalog of [defaultStrings, russianStrings, azerbaijaniStrings]) {
+      expect(catalog).toContain('name="device_trust_explainer"')
+      expect(catalog).toContain('name="device_revoke_dialog_body"')
+      expect(catalog).toContain('name="device_state_pending_manager_approval"')
+    }
   })
 
   it("bounds pull-request Android CI to the affected paths and cancels superseded work", () => {

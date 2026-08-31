@@ -706,31 +706,31 @@ private fun WorkforceDeviceTrust(
     onEnroll: (String) -> Unit,
     onRevoke: (String) -> Unit,
 ) {
-    var label by rememberSaveable { mutableStateOf("This Android device") }
+    var label by rememberSaveable { mutableStateOf(stringResource(R.string.device_label_default)) }
     var revokeCandidateId by rememberSaveable { mutableStateOf<String?>(null) }
     val trustedState = state ?: run {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Trusted device", style = MaterialTheme.typography.titleLarge)
-            Text("A trusted device signs only the exact work-time action you confirm. The Android system performs biometric matching; Workforce never receives a template or result.")
-            Button(onClick = onLoad) { Text("Load device status") }
+            Text(stringResource(R.string.device_trust_title), style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.device_trust_explainer))
+            Button(onClick = onLoad) { Text(stringResource(R.string.device_status_load)) }
         }
         return
     }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Trusted device", style = MaterialTheme.typography.titleLarge)
-        Text("A trusted device signs only the exact work-time action you confirm. The Android system performs biometric matching; Workforce never receives a template or result.")
-        Text(trustedState.message)
+        Text(stringResource(R.string.device_trust_title), style = MaterialTheme.typography.titleLarge)
+        Text(stringResource(R.string.device_trust_explainer))
+        Text(stringResource(deviceLifecycleMessage(trustedState.lifecycle)))
         when (trustedState.lifecycle) {
             WorkforceDeviceBindingLifecycle.ACTIVE,
             WorkforceDeviceBindingLifecycle.PENDING_MANAGER_APPROVAL -> {
-                TextButton(onClick = onLoad) { Text("Refresh device status") }
+                TextButton(onClick = onLoad) { Text(stringResource(R.string.device_status_refresh)) }
             }
             else -> {
                 OutlinedTextField(
                     value = label,
                     onValueChange = { label = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Device label") },
+                    label = { Text(stringResource(R.string.device_label)) },
                     singleLine = true,
                 )
                 Button(
@@ -740,9 +740,9 @@ private fun WorkforceDeviceTrust(
                 ) {
                     Text(
                         if (trustedState.lifecycle == WorkforceDeviceBindingLifecycle.PENDING_PROOF || trustedState.lifecycle == WorkforceDeviceBindingLifecycle.PROVISIONING) {
-                            "Resume device enrollment"
+                            stringResource(R.string.device_enrollment_resume)
                         } else {
-                            "Enroll this device"
+                            stringResource(R.string.device_enrollment_start)
                         },
                     )
                 }
@@ -752,38 +752,56 @@ private fun WorkforceDeviceTrust(
         Text(stringResource(R.string.device_uninstall_guidance))
         val revocable = trustedState.enrollments.filter { it.status == "PENDING" || it.status == "ACTIVE" }
         if (revocable.isNotEmpty()) {
-            Text("Your attendance device enrollments")
-            Text("Revoke a lost or suspected-compromised device. This is permanent for that enrollment and does not alter recorded work time.")
+            Text(stringResource(R.string.device_enrollments_title))
+            Text(stringResource(R.string.device_revoke_hint))
             revocable.forEach { enrollment ->
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("${enrollment.deviceLabel}: ${enrollment.status}")
+                    Text(stringResource(R.string.device_enrollment_status, enrollment.deviceLabel, stringResource(deviceEnrollmentStatus(enrollment.status))))
                     TextButton(
                         modifier = Modifier.workforceTapTarget(),
                         onClick = { revokeCandidateId = enrollment.id },
                     ) {
-                        Text("Revoke this device")
+                        Text(stringResource(R.string.device_revoke_action))
                     }
                 }
             }
         }
     }
     revokeCandidateId?.let { enrollmentId ->
-        val labelForCandidate = trustedState.enrollments.firstOrNull { it.id == enrollmentId }?.deviceLabel ?: "this device"
+        val labelForCandidate = trustedState.enrollments.firstOrNull { it.id == enrollmentId }?.deviceLabel ?: stringResource(R.string.device_label_fallback)
         AlertDialog(
             onDismissRequest = { revokeCandidateId = null },
-            title = { Text("Revoke trusted device?") },
-            text = { Text("${labelForCandidate} will no longer confirm Workforce actions. Recorded work time will remain unchanged.") },
+            title = { Text(stringResource(R.string.device_revoke_dialog_title)) },
+            text = { Text(stringResource(R.string.device_revoke_dialog_body, labelForCandidate)) },
             confirmButton = {
                 Button(onClick = {
                     revokeCandidateId = null
                     onRevoke(enrollmentId)
-                }) { Text("Revoke device") }
+                }) { Text(stringResource(R.string.device_revoke_confirm)) }
             },
             dismissButton = {
                 TextButton(onClick = { revokeCandidateId = null }) { Text("Cancel") }
             },
         )
     }
+}
+
+@StringRes
+private fun deviceLifecycleMessage(lifecycle: WorkforceDeviceBindingLifecycle?): Int = when (lifecycle) {
+    null -> R.string.device_state_unenrolled
+    WorkforceDeviceBindingLifecycle.PROVISIONING -> R.string.device_state_provisioning
+    WorkforceDeviceBindingLifecycle.PENDING_PROOF -> R.string.device_state_pending_proof
+    WorkforceDeviceBindingLifecycle.PENDING_MANAGER_APPROVAL -> R.string.device_state_pending_manager_approval
+    WorkforceDeviceBindingLifecycle.ACTIVE -> R.string.device_state_active
+    WorkforceDeviceBindingLifecycle.REVOKED -> R.string.device_state_revoked
+    WorkforceDeviceBindingLifecycle.REPLACED -> R.string.device_state_replaced
+}
+
+@StringRes
+private fun deviceEnrollmentStatus(status: String): Int = when (status) {
+    "PENDING" -> R.string.device_enrollment_pending
+    "ACTIVE" -> R.string.device_enrollment_active
+    else -> R.string.device_enrollment_unknown
 }
 
 @Composable

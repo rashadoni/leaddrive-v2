@@ -149,6 +149,12 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   height. Text uses standard Material typography and no fixed font scale,
   clipping or custom motion. This is source posture only, not evidence that a
   200% device font scale reflows every screen.
+- The trusted-device recovery surface now uses the same EN/AZ/RU resource
+  catalogs for its explanation, enrollment state, pending/active labels,
+  revoke confirmation and lost-device containment copy. It no longer reflects
+  the repository's internal English lifecycle message into that UI. The server
+  still remains authoritative for lifecycle state; this is localization and
+  safe presentation only, not device verification evidence.
 - Remaining hard-coded server/API/recovery messages deliberately stay outside
   this resource slice: safely localising them requires stable error codes and
   reviewed legal/HR translation, not unreliable client-side text matching.
