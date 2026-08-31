@@ -23844,6 +23844,8 @@
     "subtitle": "Yalnız öz iştirak hallarınıza baxın və qeydə alınmış vaxt yoxlanmalıdırsa qorunan düzəliş sorğusundan istifadə edin.",
     "boundaryTitle": "Yoxlama qeydə alınmış vaxtı dəyişmir",
     "boundaryHint": "Bu səhifə yalnız ümumi istisna növünüzü və iş günü tarixini göstərir. Məkan, xəritələr, QR dəyərləri, cihaz identifikatorları, sübutlar, rəhbər qərarı və ya başqa işçinin məlumatları burada heç vaxt göstərilmir. Düzəliş insan yoxlaması üçün gözləmədə qalır.",
+    "responseRecordingUnavailableTitle": "Təsdiq hələ əlçatan deyil",
+    "responseRecordingUnavailableHint": "Bu tenant üçün təsdiqlər üçün tələb olunan əməkdaş cavab qeydi hələ tətbiq edilməyib. Qeydə alınmış vaxt yoxlanmalıdırsa qorunan düzəliş sorğusundan istifadə edin; o istisnanı həll etmir və iştirak faktını dəyişmir.",
     "refresh": "Halları yenilə",
     "loading": "İştirak istisnalarınız yüklənir",
     "loadFailed": "İştirak istisnalarınızı yükləmək mümkün olmadı.",
