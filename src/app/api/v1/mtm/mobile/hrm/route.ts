@@ -20,6 +20,11 @@ type WorkdayRow = {
   pausedAt: Date | null
   completedAt: Date | null
   totalPausedSeconds: number
+  events: Array<{
+    type: string
+    occurredAt: Date
+    attendanceReviewState: "LEGACY_UNKNOWN" | "NOT_REQUIRED" | "PENDING_REVIEW"
+  }>
 }
 
 type HrmRequestRow = {
@@ -109,6 +114,15 @@ export const GET = withMobileRls(async (req, auth) => {
           pausedAt: true,
           completedAt: true,
           totalPausedSeconds: true,
+          events: {
+            orderBy: [{ occurredAt: "asc" }, { id: "asc" }],
+            take: 32,
+            select: {
+              type: true,
+              occurredAt: true,
+              attendanceReviewState: true,
+            },
+          },
         },
       }),
       prisma.mtmHrmRequest.findMany({
@@ -155,10 +169,35 @@ export const GET = withMobileRls(async (req, auth) => {
         && request.startDate.toISOString().slice(0, 10) <= date
         && request.endDate.toISOString().slice(0, 10) >= date
       ))
+      const workday = workdayByDate.get(date) ?? null
+      const correctionStatuses = workday == null
+        ? []
+        : typedRequests
+          .filter((request) => request.type === "TIME_CORRECTION" && request.correctionWorkdayId === workday.id)
+          .map((request) => request.status)
+      const reviewState = workday?.events.some((event) => event.attendanceReviewState === "PENDING_REVIEW")
+        ? "PENDING_REVIEW"
+        : workday?.events.some((event) => event.attendanceReviewState === "LEGACY_UNKNOWN")
+          ? "LEGACY_UNKNOWN"
+          : "NOT_REQUIRED"
       return {
         date,
         calendar,
-        workday: workdayByDate.get(date) ?? null,
+        workday: workday == null ? null : {
+          ...workday,
+          // This allow-list supports only an employee's own accepted event
+          // history. It deliberately excludes coordinates, notes, review
+          // reason codes, proof receipts and local/offline claims.
+          history: {
+            reviewState,
+            events: workday.events.map((event) => ({
+              action: event.type,
+              occurredAt: event.occurredAt,
+              reviewState: event.attendanceReviewState,
+            })),
+            correctionStatuses,
+          },
+        },
         requests: activeRequests.map((request) => ({ id: request.id, type: request.type, status: request.status })),
       }
     })

@@ -158,6 +158,16 @@
     <string name="history_worked">Qeydə alınan iş vaxtı: %1$s</string>
     <string name="history_no_workday">Qəbul edilmiş iş günü yoxdur</string>
     <string name="history_request">Sorğu: %1$s — %2$s</string>
+    <string name="history_detail_show">Günün təfərrüatlarını göstər</string>
+    <string name="history_detail_hide">Günün təfərrüatlarını gizlət</string>
+    <string name="history_detail_title">Qəbul edilmiş hadisə tarixçəsi</string>
+    <string name="history_review">Yoxlama statusu: %1$s</string>
+    <string name="history_review_not_required">Yoxlama tələb olunmur</string>
+    <string name="history_review_pending">Yoxlama gözləyir</string>
+    <string name="history_review_legacy_unknown">Köhnə hadisə üçün yoxlama statusu əlçatan deyil</string>
+    <string name="history_event">%1$s — %2$s</string>
+    <string name="history_correction">Düzəliş: %1$s</string>
+    <string name="history_correction_none">Düzəliş sorğusu yoxdur</string>
     <string name="today_no_workday">Server heç bir iş gününü qəbul etməyib.</string>
     <string name="today_other_active">Serverdə başqa aktiv iş günü qeydə alınıb. Keçiddən əvvəl məlumatı yeniləyin.</string>
     <string name="today_attendance_unavailable">İş vaxtı siyasəti əlçatan deyil və ya dəstəklənmir. Məlumatı yeniləyin və ya administratorla əlaqə saxlayın; əməliyyat göndərilməyəcək.</string>

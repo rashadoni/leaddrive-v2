@@ -119,11 +119,26 @@ describe("Workforce Android foundation", () => {
   it("keeps Work Time history on the self-HRM server lane and labels it as accepted truth", () => {
     const api = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceApiClient.kt")
     const activity = read("app/src/main/java/com/leaddrive/workforce/android/MainActivity.kt")
+    const catalogs = [
+      read("app/src/main/res/values/strings.xml"),
+      read("app/src/main/res/values-ru/strings.xml"),
+      read("app/src/main/res/values-az/strings.xml"),
+    ]
     expect(api).toContain('"/api/v1/mtm/mobile/hrm?start=$start&end=$end"')
     expect(api).toContain("HISTORY_DAYS_BEFORE")
     expect(api).not.toContain('"/api/v1/mtm/mobile/location')
     expect(activity).toContain("R.string.history_range")
     expect(activity).toContain("R.string.history_empty_explainer")
+    expect(api).toContain("WorkforceHistoryDayDetail")
+    expect(api).toContain('optJSONObject("history")')
+    expect(activity).toContain("R.string.history_detail_title")
+    expect(activity).toContain("R.string.history_review_pending")
+    expect(activity).not.toMatch(/history.*latitude|history.*longitude|history.*reasonCode/i)
+    for (const catalog of catalogs) {
+      expect(catalog).toContain('name="history_detail_show"')
+      expect(catalog).toContain('name="history_review_pending"')
+      expect(catalog).toContain('name="history_correction"')
+    }
   })
 
   it("supports leave, absence and correction requests without putting their reason in ordinary diagnostics", () => {

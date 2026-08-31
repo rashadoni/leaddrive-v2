@@ -53,6 +53,8 @@ import com.leaddrive.workforce.android.data.WorkforceDeviceBindingLifecycle
 import com.leaddrive.workforce.android.data.WorkforceDeviceTrustState
 import com.leaddrive.workforce.android.data.WorkforceEncryptedOutbox
 import com.leaddrive.workforce.android.data.WorkforceHistorySnapshot
+import com.leaddrive.workforce.android.data.WorkforceHistoryDayDetail
+import com.leaddrive.workforce.android.data.WorkforceHistoryReviewState
 import com.leaddrive.workforce.android.data.WorkforceHrmRequestDraft
 import com.leaddrive.workforce.android.data.WorkforceHrmRequestType
 import com.leaddrive.workforce.android.data.WorkforceHrmRequestStatus
@@ -884,6 +886,13 @@ private fun WorkforceWorkdayStatus.labelRes(): Int = when (this) {
 }
 
 @Composable
+private fun WorkforceHistoryReviewState.localizedLabel(): String = stringResource(when (this) {
+    WorkforceHistoryReviewState.NOT_REQUIRED -> R.string.history_review_not_required
+    WorkforceHistoryReviewState.PENDING_REVIEW -> R.string.history_review_pending
+    WorkforceHistoryReviewState.LEGACY_UNKNOWN -> R.string.history_review_legacy_unknown
+})
+
+@Composable
 private fun WorkforceReminderState.localizedLabel(): String = stringResource(labelRes())
 
 @StringRes
@@ -1298,6 +1307,7 @@ private fun WorkforceHistory(
     history: WorkforceHistorySnapshot?,
     onLoad: () -> Unit,
 ) {
+    var expandedDate by rememberSaveable { mutableStateOf<String?>(null) }
     if (history == null) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.tab_work_time), style = MaterialTheme.typography.titleLarge)
@@ -1319,10 +1329,42 @@ private fun WorkforceHistory(
                 day.workday?.let { workday ->
                     Text(stringResource(R.string.history_workday, workday.status.localizedLabel()))
                     Text(stringResource(R.string.history_worked, workday.workedSeconds.asWorkDuration()))
+                    day.detail?.let { detail ->
+                        TextButton(onClick = {
+                            expandedDate = if (expandedDate == day.date) null else day.date
+                        }) {
+                            Text(stringResource(
+                                if (expandedDate == day.date) R.string.history_detail_hide else R.string.history_detail_show,
+                            ))
+                        }
+                        if (expandedDate == day.date) WorkforceHistoryDayDetail(detail)
+                    }
                 } ?: Text(stringResource(R.string.history_no_workday))
                 day.activeRequestStates.forEach {
                     Text(stringResource(R.string.history_request, it.type.localizedLabel(), it.status.localizedLabel()))
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WorkforceHistoryDayDetail(detail: WorkforceHistoryDayDetail) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(stringResource(R.string.history_detail_title), style = MaterialTheme.typography.titleSmall)
+        Text(stringResource(R.string.history_review, detail.reviewState.localizedLabel()))
+        detail.events.forEach { event ->
+            Text(stringResource(
+                R.string.history_event,
+                event.action.localizedLabel(),
+                event.occurredAt,
+            ))
+        }
+        if (detail.correctionStates.isEmpty()) {
+            Text(stringResource(R.string.history_correction_none))
+        } else {
+            detail.correctionStates.forEach { status ->
+                Text(stringResource(R.string.history_correction, status.localizedLabel()))
             }
         }
     }

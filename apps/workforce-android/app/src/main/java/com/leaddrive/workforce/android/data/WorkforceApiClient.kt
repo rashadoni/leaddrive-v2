@@ -853,11 +853,13 @@ private fun JSONObject.toAttendanceRequirements(): WorkforceAttendanceRequiremen
 private fun JSONObject.toHistoryDay(): WorkforceHistoryDay? {
     val date = optString("date").takeIf { it.isNotBlank() } ?: return null
     val calendar = optJSONObject("calendar")
+    val workday = optJSONObject("workday")
     return WorkforceHistoryDay(
         date = date,
         calendarKind = calendar?.optString("kind")?.takeIf { it.isNotBlank() },
         calendarName = calendar?.optString("name")?.takeIf { it.isNotBlank() },
-        workday = optJSONObject("workday")?.toWorkday(),
+        workday = workday?.toWorkday(),
+        detail = workday?.toHistoryDayDetail(),
         activeRequestStates = optJSONArray("requests")?.let { values ->
             buildList {
                 for (index in 0 until values.length()) {
@@ -875,6 +877,33 @@ private fun JSONObject.toHistoryDay(): WorkforceHistoryDay? {
             }
         }.orEmpty(),
     )
+}
+
+/** The server decides every status; unknown values never become local facts. */
+private fun JSONObject.toHistoryDayDetail(): WorkforceHistoryDayDetail? {
+    val history = optJSONObject("history") ?: return null
+    val reviewState = WorkforceHistoryReviewState.fromWire(history.optString("reviewState")) ?: return null
+    val events = history.optJSONArray("events")?.let { values ->
+        buildList {
+            for (index in 0 until values.length()) {
+                val event = values.optJSONObject(index) ?: continue
+                val action = WorkforceWorkdayAction.fromWire(event.optString("action")) ?: continue
+                val occurredAt = event.optString("occurredAt")
+                    .takeIf { runCatching { Instant.parse(it) }.isSuccess }
+                    ?: continue
+                val eventReviewState = WorkforceHistoryReviewState.fromWire(event.optString("reviewState")) ?: continue
+                add(WorkforceHistoryEvent(action, occurredAt, eventReviewState))
+            }
+        }
+    }.orEmpty()
+    val correctionStates = history.optJSONArray("correctionStatuses")?.let { values ->
+        buildList {
+            for (index in 0 until values.length()) {
+                WorkforceHrmRequestStatus.fromWire(values.optString(index))?.let(::add)
+            }
+        }
+    }.orEmpty()
+    return WorkforceHistoryDayDetail(reviewState, events, correctionStates)
 }
 
 private fun JSONObject.toHrmRequest(): WorkforceHrmRequest? {
@@ -1138,7 +1167,31 @@ data class WorkforceHistoryDay(
     val calendarKind: String?,
     val calendarName: String?,
     val workday: WorkforceWorkday?,
+    /** Accepted, proof-safe detail; it is absent for old server responses. */
+    val detail: WorkforceHistoryDayDetail?,
     val activeRequestStates: List<WorkforceHistoryRequestState>,
+)
+
+enum class WorkforceHistoryReviewState {
+    NOT_REQUIRED,
+    PENDING_REVIEW,
+    LEGACY_UNKNOWN;
+
+    companion object {
+        fun fromWire(value: String): WorkforceHistoryReviewState? = entries.firstOrNull { it.name == value }
+    }
+}
+
+data class WorkforceHistoryEvent(
+    val action: WorkforceWorkdayAction,
+    val occurredAt: String,
+    val reviewState: WorkforceHistoryReviewState,
+)
+
+data class WorkforceHistoryDayDetail(
+    val reviewState: WorkforceHistoryReviewState,
+    val events: List<WorkforceHistoryEvent>,
+    val correctionStates: List<WorkforceHrmRequestStatus>,
 )
 
 data class WorkforceHistoryRequestState(

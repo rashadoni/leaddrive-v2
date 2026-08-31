@@ -158,6 +158,16 @@
     <string name="history_worked">Recorded worked time: %1$s</string>
     <string name="history_no_workday">No accepted workday</string>
     <string name="history_request">Request: %1$s — %2$s</string>
+    <string name="history_detail_show">Show day details</string>
+    <string name="history_detail_hide">Hide day details</string>
+    <string name="history_detail_title">Accepted event history</string>
+    <string name="history_review">Review status: %1$s</string>
+    <string name="history_review_not_required">No review required</string>
+    <string name="history_review_pending">Review pending</string>
+    <string name="history_review_legacy_unknown">Review status unavailable for a legacy event</string>
+    <string name="history_event">%1$s — %2$s</string>
+    <string name="history_correction">Correction: %1$s</string>
+    <string name="history_correction_none">No correction request</string>
     <string name="today_no_workday">No workday has been accepted by the server.</string>
     <string name="today_other_active">Another active workday is recorded by the server. Refresh before making a transition.</string>
     <string name="today_attendance_unavailable">Attendance policy is unavailable or unsupported. Refresh or contact your administrator; no action can be sent.</string>

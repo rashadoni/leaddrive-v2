@@ -158,6 +158,16 @@
     <string name="history_worked">Учтённое рабочее время: %1$s</string>
     <string name="history_no_workday">Нет принятого рабочего дня</string>
     <string name="history_request">Заявка: %1$s — %2$s</string>
+    <string name="history_detail_show">Показать детали дня</string>
+    <string name="history_detail_hide">Скрыть детали дня</string>
+    <string name="history_detail_title">Принятая история событий</string>
+    <string name="history_review">Статус проверки: %1$s</string>
+    <string name="history_review_not_required">Проверка не требуется</string>
+    <string name="history_review_pending">Проверка ожидается</string>
+    <string name="history_review_legacy_unknown">Статус проверки недоступен для старого события</string>
+    <string name="history_event">%1$s — %2$s</string>
+    <string name="history_correction">Исправление: %1$s</string>
+    <string name="history_correction_none">Нет заявки на исправление</string>
     <string name="today_no_workday">Сервер ещё не принял рабочий день.</string>
     <string name="today_other_active">На сервере записан другой активный рабочий день. Обновите данные перед переходом.</string>
     <string name="today_attendance_unavailable">Политика учёта времени недоступна или не поддерживается. Обновите данные или обратитесь к администратору; действие не будет отправлено.</string>
