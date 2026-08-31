@@ -138,7 +138,7 @@
     <string name="history_workday">Рабочий день на сервере: %1$s</string>
     <string name="history_worked">Учтённое рабочее время: %1$s</string>
     <string name="history_no_workday">Нет принятого рабочего дня</string>
-    <string name="history_request">Заявка: %1$s</string>
+    <string name="history_request">Заявка: %1$s — %2$s</string>
     <string name="today_no_workday">Сервер ещё не принял рабочий день.</string>
     <string name="today_other_active">На сервере записан другой активный рабочий день. Обновите данные перед переходом.</string>
     <string name="today_attendance_unavailable">Политика учёта времени недоступна или не поддерживается. Обновите данные или обратитесь к администратору; действие не будет отправлено.</string>
@@ -170,4 +170,20 @@
     <string name="recovery_hint_update_required">Установите утверждённое обновление Workforce перед отправкой этого защищённого ожидающего действия. Не удаляйте и не создавайте его заново.</string>
     <string name="recovery_hint_local_item_unrecoverable">Этот защищённый локальный элемент нельзя восстановить. Обновите данные сервера и при необходимости запросите коррекцию.</string>
     <string name="recovery_hint_review_required">Это действие требует проверки. Не сканируйте QR повторно и не повторяйте подтверждение устройства, пока не обновлены данные сервера.</string>
+    <string name="request_type_unknown">Неизвестная заявка</string>
+    <string name="request_status_pending">Ожидает</string>
+    <string name="request_status_approved">Одобрено</string>
+    <string name="request_status_rejected">Отклонено</string>
+    <string name="request_status_cancelled">Отменено</string>
+    <string name="request_status_unknown">Требует проверки</string>
+    <string name="request_summary">%1$s: %2$s</string>
+    <string name="request_date_range">%1$s – %2$s</string>
+    <string name="calendar_kind_working_day">Рабочий день</string>
+    <string name="calendar_kind_weekend">Выходной</string>
+    <string name="calendar_kind_public_holiday">Государственный праздник</string>
+    <string name="calendar_kind_company_holiday">Корпоративный выходной</string>
+    <string name="calendar_kind_exception_workday">Исключительный рабочий день</string>
+    <string name="calendar_kind_moved_workday">Перенесённый рабочий день</string>
+    <string name="calendar_kind_moved_day_off">Перенесённый выходной</string>
+    <string name="calendar_kind_unknown">Состояние календаря требует проверки</string>
 </resources>

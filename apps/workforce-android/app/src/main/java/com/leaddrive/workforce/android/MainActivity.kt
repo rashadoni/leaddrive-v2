@@ -55,6 +55,7 @@ import com.leaddrive.workforce.android.data.WorkforceEncryptedOutbox
 import com.leaddrive.workforce.android.data.WorkforceHistorySnapshot
 import com.leaddrive.workforce.android.data.WorkforceHrmRequestDraft
 import com.leaddrive.workforce.android.data.WorkforceHrmRequestType
+import com.leaddrive.workforce.android.data.WorkforceHrmRequestStatus
 import com.leaddrive.workforce.android.data.WorkforceHrmSubmission
 import com.leaddrive.workforce.android.data.WorkforceLoginInput
 import com.leaddrive.workforce.android.data.WorkforceOutboxRecoveryItem
@@ -664,11 +665,37 @@ private enum class WorkforceSection(@StringRes val labelRes: Int) {
 }
 
 @Composable
-private fun WorkforceHrmRequestType.localizedLabel(): String = stringResource(
+private fun WorkforceHrmRequestType?.localizedLabel(): String = stringResource(
     when (this) {
         WorkforceHrmRequestType.LEAVE -> R.string.request_leave
         WorkforceHrmRequestType.ABSENCE -> R.string.request_absence
         WorkforceHrmRequestType.TIME_CORRECTION -> R.string.request_time_correction
+        null -> R.string.request_type_unknown
+    },
+)
+
+@Composable
+private fun WorkforceHrmRequestStatus?.localizedLabel(): String = stringResource(
+    when (this) {
+        WorkforceHrmRequestStatus.PENDING -> R.string.request_status_pending
+        WorkforceHrmRequestStatus.APPROVED -> R.string.request_status_approved
+        WorkforceHrmRequestStatus.REJECTED -> R.string.request_status_rejected
+        WorkforceHrmRequestStatus.CANCELLED -> R.string.request_status_cancelled
+        null -> R.string.request_status_unknown
+    },
+)
+
+@Composable
+private fun String.localizedCalendarKind(): String = stringResource(
+    when (this) {
+        "WORKING_DAY" -> R.string.calendar_kind_working_day
+        "WEEKEND" -> R.string.calendar_kind_weekend
+        "PUBLIC_HOLIDAY" -> R.string.calendar_kind_public_holiday
+        "COMPANY_HOLIDAY" -> R.string.calendar_kind_company_holiday
+        "EXCEPTION_WORKDAY" -> R.string.calendar_kind_exception_workday
+        "MOVED_WORKDAY" -> R.string.calendar_kind_moved_workday
+        "MOVED_DAY_OFF" -> R.string.calendar_kind_moved_day_off
+        else -> R.string.calendar_kind_unknown
     },
 )
 
@@ -1040,10 +1067,17 @@ private fun WorkforceRequests(
         } else {
             items(history.requests, key = { it.id }) { request ->
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("${request.type}: ${request.status}", style = MaterialTheme.typography.titleSmall)
-                    Text("${request.startDate} – ${request.endDate}")
+                    Text(
+                        stringResource(
+                            R.string.request_summary,
+                            request.type.localizedLabel(),
+                            request.status.localizedLabel(),
+                        ),
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Text(stringResource(R.string.request_date_range, request.startDate, request.endDate))
                     request.decisionNote?.let { Text(stringResource(R.string.request_reviewer_note, it)) }
-                    if (request.status == "PENDING") {
+                    if (request.status == WorkforceHrmRequestStatus.PENDING) {
                         TextButton(
                             enabled = !mutationsBlocked,
                             onClick = { onCancel(request.id) },
@@ -1077,12 +1111,14 @@ private fun WorkforceHistory(
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(day.date, style = MaterialTheme.typography.titleMedium)
                 day.calendarName?.let { Text(stringResource(R.string.history_calendar, it)) }
-                day.calendarKind?.let { Text(stringResource(R.string.history_calendar_state, it)) }
+                day.calendarKind?.let { Text(stringResource(R.string.history_calendar_state, it.localizedCalendarKind())) }
                 day.workday?.let { workday ->
                     Text(stringResource(R.string.history_workday, workday.status.localizedLabel()))
                     Text(stringResource(R.string.history_worked, workday.workedSeconds.asWorkDuration()))
                 } ?: Text(stringResource(R.string.history_no_workday))
-                day.activeRequestStates.forEach { Text(stringResource(R.string.history_request, it)) }
+                day.activeRequestStates.forEach {
+                    Text(stringResource(R.string.history_request, it.type.localizedLabel(), it.status.localizedLabel()))
+                }
             }
         }
     }

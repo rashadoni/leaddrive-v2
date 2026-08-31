@@ -500,13 +500,24 @@ sealed interface WorkforceSyncOperation {
         .toString()
 }
 
-enum class WorkforceHrmRequestType(val wireValue: String, val label: String) {
-    LEAVE("LEAVE", "Leave"),
-    ABSENCE("ABSENCE", "Absence"),
-    TIME_CORRECTION("TIME_CORRECTION", "Time correction");
+enum class WorkforceHrmRequestType(val wireValue: String) {
+    LEAVE("LEAVE"),
+    ABSENCE("ABSENCE"),
+    TIME_CORRECTION("TIME_CORRECTION");
 
     companion object {
         fun fromWire(value: String): WorkforceHrmRequestType? = entries.firstOrNull { it.wireValue == value }
+    }
+}
+
+enum class WorkforceHrmRequestStatus {
+    PENDING,
+    APPROVED,
+    REJECTED,
+    CANCELLED;
+
+    companion object {
+        fun fromWire(value: String): WorkforceHrmRequestStatus? = entries.firstOrNull { it.name == value }
     }
 }
 
@@ -788,7 +799,12 @@ private fun JSONObject.toHistoryDay(): WorkforceHistoryDay? {
                     values.optJSONObject(index)?.let { request ->
                         val type = request.optString("type")
                         val status = request.optString("status")
-                        if (type.isNotBlank() && status.isNotBlank()) add("$type: $status")
+                        if (type.isNotBlank() && status.isNotBlank()) {
+                            add(WorkforceHistoryRequestState(
+                                type = WorkforceHrmRequestType.fromWire(type),
+                                status = WorkforceHrmRequestStatus.fromWire(status),
+                            ))
+                        }
                     }
                 }
             }
@@ -804,8 +820,8 @@ private fun JSONObject.toHrmRequest(): WorkforceHrmRequest? {
     val endDate = optString("endDate").takeIf { it.isNotBlank() } ?: return null
     return WorkforceHrmRequest(
         id = id,
-        type = type,
-        status = status,
+        type = WorkforceHrmRequestType.fromWire(type),
+        status = WorkforceHrmRequestStatus.fromWire(status),
         startDate = startDate,
         endDate = endDate,
         correctionWorkdayId = optString("correctionWorkdayId").takeIf { it.isNotBlank() && it != "null" },
@@ -949,11 +965,11 @@ data class WorkforceAttendanceRequirements(
     }
 }
 
-enum class WorkforceWorkdayAction(val wireValue: String, val label: String) {
-    START("START", "Start work"),
-    PAUSE("PAUSE", "Pause"),
-    RESUME("RESUME", "Resume"),
-    FINISH("FINISH", "Finish work");
+enum class WorkforceWorkdayAction(val wireValue: String) {
+    START("START"),
+    PAUSE("PAUSE"),
+    RESUME("RESUME"),
+    FINISH("FINISH");
 
     companion object {
         fun fromWire(value: String): WorkforceWorkdayAction? = entries.firstOrNull { it.wireValue == value }
@@ -1028,13 +1044,18 @@ data class WorkforceHistoryDay(
     val calendarKind: String?,
     val calendarName: String?,
     val workday: WorkforceWorkday?,
-    val activeRequestStates: List<String>,
+    val activeRequestStates: List<WorkforceHistoryRequestState>,
+)
+
+data class WorkforceHistoryRequestState(
+    val type: WorkforceHrmRequestType?,
+    val status: WorkforceHrmRequestStatus?,
 )
 
 data class WorkforceHrmRequest(
     val id: String,
-    val type: String,
-    val status: String,
+    val type: WorkforceHrmRequestType?,
+    val status: WorkforceHrmRequestStatus?,
     val startDate: String,
     val endDate: String,
     val correctionWorkdayId: String?,

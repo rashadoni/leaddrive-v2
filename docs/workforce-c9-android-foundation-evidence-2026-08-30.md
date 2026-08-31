@@ -185,6 +185,13 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   `Workforce action`/`Needs review`; no operation ID, ciphertext, reason, QR,
   location or proof becomes a translation input. The local data layer no
   longer stores English display text for these recovery values.
+- The mobile history parser now converts known request type/status and calendar
+  codes into typed values before Compose renders them. Known values use
+  EN/AZ/RU resources; an unknown future server value displays a generic
+  localized review state and is never cancelled locally. This prevents server
+  enum literals from becoming accidental English UI while retaining an honest
+  indication that human review may be needed. Dates and free-form reviewer
+  notes remain server facts, not translation inputs.
 - The latest Android CI candidate exposed a Compose compiler error in a prior
   trusted-device source line: `stringResource` was called from the non-
   composable `rememberSaveable` initializer. The source now resolves the
@@ -279,6 +286,10 @@ claiming Gradle, physical-device or seven-day recovery evidence.
 - `PASS` — resource-key parity, the targeted Android source contract, scoped
   ESLint and `git diff --check` cover type-only reminder/outbox recovery state,
   localized generic recovery hints and absence of data-layer display text.
+- `PASS` — complete mobile Compose text-resource guard, resource-key parity,
+  17 targeted Android source contracts, scoped ESLint and `git diff --check`
+  cover typed request/calendar rendering, unknown-value fallback and no direct
+  hard-coded UI text in `MainActivity.kt`.
 - `NOT RUN / pending external rerun` — Android Gradle lint/unit was run by
   GitHub Actions on the preceding candidate and correctly failed at compile
   time on the now-fixed `rememberSaveable { stringResource(...) }` violation.

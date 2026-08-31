@@ -129,6 +129,8 @@ describe("Workforce Android foundation", () => {
     const activity = read("app/src/main/java/com/leaddrive/workforce/android/MainActivity.kt")
     expect(api).toContain('override val entity = "hrmRequests"')
     expect(api).toContain("WorkforceHrmRequestType")
+    expect(api).toContain("WorkforceHrmRequestStatus")
+    expect(api).toContain("WorkforceHistoryRequestState")
     expect(api).toContain("MAX_HRM_REQUEST_DAYS = 366L")
     expect(api).toContain("Requested finish must be after requested start")
     expect(api).toContain("toOptionalInstant")
@@ -137,6 +139,9 @@ describe("Workforce Android foundation", () => {
     expect(activity).not.toContain("var reason by rememberSaveable")
     expect(activity).toContain("R.string.requests_explainer")
     expect(activity).toContain("R.string.request_reason")
+    expect(activity).toContain("R.string.request_summary")
+    expect(activity).toContain("R.string.request_status_unknown")
+    expect(activity).not.toContain('Text("${request.type}: ${request.status}"')
     expect(activity).not.toMatch(/Log\.|println\(|Timber\./)
   })
 

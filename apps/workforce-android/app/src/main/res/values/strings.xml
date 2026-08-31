@@ -138,7 +138,7 @@
     <string name="history_workday">Server workday: %1$s</string>
     <string name="history_worked">Recorded worked time: %1$s</string>
     <string name="history_no_workday">No accepted workday</string>
-    <string name="history_request">Request: %1$s</string>
+    <string name="history_request">Request: %1$s — %2$s</string>
     <string name="today_no_workday">No workday has been accepted by the server.</string>
     <string name="today_other_active">Another active workday is recorded by the server. Refresh before making a transition.</string>
     <string name="today_attendance_unavailable">Attendance policy is unavailable or unsupported. Refresh or contact your administrator; no action can be sent.</string>
@@ -170,4 +170,20 @@
     <string name="recovery_hint_update_required">Install the approved Workforce update before this protected pending action can be sent. Do not uninstall or recreate it.</string>
     <string name="recovery_hint_local_item_unrecoverable">This protected local item cannot be recovered. Refresh server state and request correction if needed.</string>
     <string name="recovery_hint_review_required">This action needs review. Do not rescan QR or repeat device proof until server state is refreshed.</string>
+    <string name="request_type_unknown">Unknown request</string>
+    <string name="request_status_pending">Pending</string>
+    <string name="request_status_approved">Approved</string>
+    <string name="request_status_rejected">Rejected</string>
+    <string name="request_status_cancelled">Cancelled</string>
+    <string name="request_status_unknown">Needs review</string>
+    <string name="request_summary">%1$s: %2$s</string>
+    <string name="request_date_range">%1$s – %2$s</string>
+    <string name="calendar_kind_working_day">Working day</string>
+    <string name="calendar_kind_weekend">Weekend</string>
+    <string name="calendar_kind_public_holiday">Public holiday</string>
+    <string name="calendar_kind_company_holiday">Company holiday</string>
+    <string name="calendar_kind_exception_workday">Exception workday</string>
+    <string name="calendar_kind_moved_workday">Moved workday</string>
+    <string name="calendar_kind_moved_day_off">Moved day off</string>
+    <string name="calendar_kind_unknown">Calendar state needs review</string>
 </resources>

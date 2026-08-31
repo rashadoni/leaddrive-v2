@@ -138,7 +138,7 @@
     <string name="history_workday">Server iş günü: %1$s</string>
     <string name="history_worked">Qeydə alınan iş vaxtı: %1$s</string>
     <string name="history_no_workday">Qəbul edilmiş iş günü yoxdur</string>
-    <string name="history_request">Sorğu: %1$s</string>
+    <string name="history_request">Sorğu: %1$s — %2$s</string>
     <string name="today_no_workday">Server heç bir iş gününü qəbul etməyib.</string>
     <string name="today_other_active">Serverdə başqa aktiv iş günü qeydə alınıb. Keçiddən əvvəl məlumatı yeniləyin.</string>
     <string name="today_attendance_unavailable">İş vaxtı siyasəti əlçatan deyil və ya dəstəklənmir. Məlumatı yeniləyin və ya administratorla əlaqə saxlayın; əməliyyat göndərilməyəcək.</string>
@@ -170,4 +170,20 @@
     <string name="recovery_hint_update_required">Bu qorunan gözləyən əməliyyatı göndərməzdən əvvəl təsdiqlənmiş Workforce yeniləməsini quraşdırın. Onu silməyin və yenidən yaratmayın.</string>
     <string name="recovery_hint_local_item_unrecoverable">Bu qorunan lokal elementi bərpa etmək olmur. Server məlumatını yeniləyin və lazım olduqda düzəliş soruşun.</string>
     <string name="recovery_hint_review_required">Bu əməliyyat yoxlama tələb edir. Server məlumatı yenilənənə qədər QR-ni yenidən skan etməyin və cihaz sübutunu təkrar etməyin.</string>
+    <string name="request_type_unknown">Naməlum sorğu</string>
+    <string name="request_status_pending">Gözləyir</string>
+    <string name="request_status_approved">Təsdiqlənib</string>
+    <string name="request_status_rejected">Rədd edilib</string>
+    <string name="request_status_cancelled">Ləğv edilib</string>
+    <string name="request_status_unknown">Yoxlama tələb olunur</string>
+    <string name="request_summary">%1$s: %2$s</string>
+    <string name="request_date_range">%1$s – %2$s</string>
+    <string name="calendar_kind_working_day">İş günü</string>
+    <string name="calendar_kind_weekend">Həftəsonu</string>
+    <string name="calendar_kind_public_holiday">Dövlət bayramı</string>
+    <string name="calendar_kind_company_holiday">Şirkət istirahət günü</string>
+    <string name="calendar_kind_exception_workday">İstisna iş günü</string>
+    <string name="calendar_kind_moved_workday">Köçürülmüş iş günü</string>
+    <string name="calendar_kind_moved_day_off">Köçürülmüş istirahət günü</string>
+    <string name="calendar_kind_unknown">Təqvim vəziyyəti yoxlama tələb edir</string>
 </resources>
