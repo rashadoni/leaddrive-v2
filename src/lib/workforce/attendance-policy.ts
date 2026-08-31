@@ -45,6 +45,15 @@ const DeviceTrustRequirementSchema = z.object({
 })
 
 /**
+ * A location requirement is an explicit action-time collection contract. It
+ * cannot activate background tracking or turn a client coordinate into a
+ * server attendance decision on its own.
+ */
+const LocationRequirementSchema = z.object({
+  requiredActions: RequiredActionsSchema,
+}).strict()
+
+/**
  * This is an intentionally narrow, versioned slice of WorkforcePolicy's
  * signed JSON definition.  Calculation fields remain owned by
  * policy-definition.ts; unknown policy keys remain immutable but have no
@@ -54,11 +63,12 @@ export const WorkforceAttendancePolicySchema = z.object({
   enforcementVersion: z.literal(1),
   qr: QrRequirementSchema.optional(),
   deviceTrust: DeviceTrustRequirementSchema.optional(),
+  location: LocationRequirementSchema.optional(),
 }).strict().superRefine((value, context) => {
-  if (!value.qr && !value.deviceTrust) {
+  if (!value.qr && !value.deviceTrust && !value.location) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "Attendance enforcement must require QR, device trust, or both",
+      message: "Attendance enforcement must require location, QR, device trust, or a combination",
     })
   }
   if ((value.deviceTrust?.biometricRequiredActions?.length ?? 0) > 0) {
@@ -76,6 +86,7 @@ export const WorkforceAttendancePolicySchema = z.object({
 export type WorkforceAttendancePolicy = z.infer<typeof WorkforceAttendancePolicySchema>
 
 export type WorkforceAttendanceRequirements = {
+  locationRequiredActions: ReadonlySet<WorkforceAttendanceAction>
   qrRequiredActions: ReadonlySet<WorkforceAttendanceAction>
   deviceTrustRequiredActions: ReadonlySet<WorkforceAttendanceAction>
   biometricRequiredActions: ReadonlySet<WorkforceAttendanceAction>
@@ -89,12 +100,14 @@ export type WorkforceAttendanceRequirements = {
  */
 export type WorkforceAttendancePolicyManifest = {
   enforcementVersion: 1
+  locationRequiredActions: WorkforceAttendanceAction[]
   qrRequiredActions: WorkforceAttendanceAction[]
   deviceTrustRequiredActions: WorkforceAttendanceAction[]
   biometricRequiredActions: WorkforceAttendanceAction[]
 }
 
 export const NO_WORKFORCE_ATTENDANCE_REQUIREMENTS: WorkforceAttendanceRequirements = {
+  locationRequiredActions: new Set(),
   qrRequiredActions: new Set(),
   deviceTrustRequiredActions: new Set(),
   biometricRequiredActions: new Set(),
@@ -136,6 +149,7 @@ export function workforceAttendancePolicyManifest(
 
   return {
     enforcementVersion: parsed.data.enforcementVersion,
+    locationRequiredActions: [...(parsed.data.location?.requiredActions ?? [])],
     qrRequiredActions: [...(parsed.data.qr?.requiredActions ?? [])],
     deviceTrustRequiredActions: [...(parsed.data.deviceTrust?.requiredActions ?? [])],
     biometricRequiredActions: [...(parsed.data.deviceTrust?.biometricRequiredActions ?? [])],
@@ -152,6 +166,7 @@ export function workforceAttendanceRequirements(definition: unknown): WorkforceA
   if (!manifest) return NO_WORKFORCE_ATTENDANCE_REQUIREMENTS
 
   return {
+    locationRequiredActions: new Set(manifest.locationRequiredActions),
     qrRequiredActions: new Set(manifest.qrRequiredActions),
     deviceTrustRequiredActions: new Set(manifest.deviceTrustRequiredActions),
     biometricRequiredActions: new Set(manifest.biometricRequiredActions),

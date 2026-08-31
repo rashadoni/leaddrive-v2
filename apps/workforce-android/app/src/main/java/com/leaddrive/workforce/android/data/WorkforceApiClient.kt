@@ -809,6 +809,7 @@ private fun JSONObject.toAttendanceRequirements(): WorkforceAttendanceRequiremen
     return if (status == "ACTIVE" && optInt("enforcementVersion", 0) == 1) {
         WorkforceAttendanceRequirements(
             status = status,
+            locationRequiredActions = optStringList("locationRequiredActions"),
             qrRequiredActions = qrActions,
             deviceTrustRequiredActions = optStringList("deviceTrustRequiredActions"),
             biometricRequiredActions = optStringList("biometricRequiredActions"),
@@ -990,10 +991,12 @@ data class WorkforceDeviceEnrollment(
 
 data class WorkforceAttendanceRequirements(
     val status: String,
+    val locationRequiredActions: List<String>,
     val qrRequiredActions: List<String>,
     val deviceTrustRequiredActions: List<String>,
     val biometricRequiredActions: List<String>,
 ) {
+    fun requiresLocation(action: WorkforceWorkdayAction): Boolean = action.wireValue in locationRequiredActions
     fun requiresQr(action: WorkforceWorkdayAction): Boolean = action.wireValue in qrRequiredActions
     fun requiresDeviceTrust(action: WorkforceWorkdayAction): Boolean = action.wireValue in deviceTrustRequiredActions
     fun requiresBiometric(action: WorkforceWorkdayAction): Boolean = action.wireValue in biometricRequiredActions
@@ -1003,6 +1006,7 @@ data class WorkforceAttendanceRequirements(
     companion object {
         fun unconfigured() = WorkforceAttendanceRequirements(
             status = "NOT_CONFIGURED",
+            locationRequiredActions = emptyList(),
             qrRequiredActions = emptyList(),
             deviceTrustRequiredActions = emptyList(),
             biometricRequiredActions = emptyList(),

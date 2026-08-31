@@ -446,6 +446,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
       definition: {
         attendance: {
           enforcementVersion: 1,
+          location: { requiredActions: ["START", "FINISH"] },
           qr: { requiredActions: ["START"] },
           deviceTrust: {
             requiredActions: ["START", "FINISH"],
@@ -463,6 +464,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
       status: "ACTIVE",
       enforcementVersion: 1,
       configVersion: `attendance-policy-1:4:${"a".repeat(64)}`,
+      locationRequiredActions: ["START", "FINISH"],
       qrRequiredActions: ["START"],
       deviceTrustRequiredActions: ["START", "FINISH"],
       biometricRequiredActions: [],
@@ -502,6 +504,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
       status: "INVALID",
       enforcementVersion: null,
       configVersion: `attendance-policy-invalid:1:${"b".repeat(64)}`,
+      locationRequiredActions: [],
       qrRequiredActions: [],
       deviceTrustRequiredActions: [],
       biometricRequiredActions: [],
@@ -542,6 +545,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
       status: "INVALID",
       enforcementVersion: null,
       configVersion: `attendance-policy-mismatch:2:${"c".repeat(64)}`,
+      locationRequiredActions: [],
       qrRequiredActions: [],
       deviceTrustRequiredActions: [],
       biometricRequiredActions: [],
@@ -582,6 +586,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
       status: "INVALID",
       enforcementVersion: null,
       configVersion: `attendance-policy-disabled:3:${"d".repeat(64)}`,
+      locationRequiredActions: [],
       qrRequiredActions: [],
       deviceTrustRequiredActions: [],
       biometricRequiredActions: [],

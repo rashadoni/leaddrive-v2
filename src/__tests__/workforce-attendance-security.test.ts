@@ -22,26 +22,31 @@ describe("Workforce attendance security primitives", () => {
   it("requires an explicit, internally coherent attendance policy", () => {
     expect(workforceAttendancePolicyManifest({ expectedWorkSeconds: 28_800 })).toBeNull()
     const absent = workforceAttendanceRequirements({ expectedWorkSeconds: 28_800 })
+    expect(absent.locationRequiredActions.size).toBe(0)
     expect(absent.qrRequiredActions.size).toBe(0)
     expect(absent.deviceTrustRequiredActions.size).toBe(0)
 
     const configured = workforceAttendanceRequirements({
       attendance: {
         enforcementVersion: 1,
+        location: { requiredActions: ["START", "FINISH"] },
         qr: { requiredActions: ["START", "FINISH"] },
         deviceTrust: { requiredActions: ["START", "FINISH"] },
       },
     })
+    expect(configured.locationRequiredActions).toEqual(new Set(["START", "FINISH"]))
     expect(configured.qrRequiredActions).toEqual(new Set(["START", "FINISH"]))
     expect(configured.biometricRequiredActions).toEqual(new Set())
     expect(workforceAttendancePolicyManifest({
       attendance: {
         enforcementVersion: 1,
+        location: { requiredActions: ["START", "FINISH"] },
         qr: { requiredActions: ["START", "FINISH"] },
         deviceTrust: { requiredActions: ["START", "FINISH"] },
       },
     })).toEqual({
       enforcementVersion: 1,
+      locationRequiredActions: ["START", "FINISH"],
       qrRequiredActions: ["START", "FINISH"],
       deviceTrustRequiredActions: ["START", "FINISH"],
       biometricRequiredActions: [],
@@ -66,6 +71,13 @@ describe("Workforce attendance security primitives", () => {
         },
       },
     })).toThrow(/hardware attestation/)
+
+    expect(workforceAttendancePolicyManifest({
+      attendance: {
+        enforcementVersion: 1,
+        location: { requiredActions: ["START"] },
+      },
+    })).toMatchObject({ locationRequiredActions: ["START"] })
   })
 
   it("signs a short-lived tenant-bound QR and rejects tampering, expiry, and another tenant", () => {
