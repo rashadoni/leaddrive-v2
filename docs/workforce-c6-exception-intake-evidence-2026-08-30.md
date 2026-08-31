@@ -125,6 +125,16 @@ notification, create an exception, write a correction or fabricate a
 `FINISH` fact. Durable timing selection, delivery, leases, case lifecycle
 and any auto-close policy remain deliberately inactive.
 
+### 2026-09-01 bounded missed-finish candidate batch
+
+`readWorkforceMissedFinishCandidateBatch` reads at most 50 existing
+`STARTED`/`PAUSED` workdays in stable tenant-local order, then calls the
+single-workday reader sequentially with the caller's explicit timing. Its
+cursor is in-memory continuation metadata only — not a lease, scheduled job or
+delivery record. The batch reader exposes no writer, audit, case,
+notification, queue, correction or capability method, so a generic reminder
+candidate cannot become a delivered reminder or an automatic finish.
+
 The owner-approved recommended v1 **draft** taxonomy, non-disciplinary triage
 severity, role owner, targets and employee-visibility rule is now recorded in
 [`workforce-c6-recommended-draft-policy-evidence-2026-08-30.md`](./workforce-c6-recommended-draft-policy-evidence-2026-08-30.md).
@@ -176,6 +186,11 @@ case/decision migration and actual detector remain WF-C6-002/003 work.
           contracts (5 files, 36 tests), scoped ESLint and `git diff --check`.
           A terminated employee stops before calendar/workday lookup; unknown
           lifecycle also fails closed without a case/audit write.
+
+    PASS  2026-09-01 bounded missed-finish-batch re-check:
+          missed-finish batch/reader/intake contracts (3 files, 17 tests),
+          scoped ESLint and `git diff --check`. Tenant scope, open-state
+          predicate, 50-row bound and no case/audit writer are pinned.
 
     PASS  2026-09-01 bounded no-show-batch re-check:
           batch/no-show/employment contracts (3 files, 12 tests), scoped
