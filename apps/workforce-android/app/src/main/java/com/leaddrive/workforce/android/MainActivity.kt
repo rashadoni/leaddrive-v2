@@ -135,6 +135,8 @@ private fun WorkforceRoot(
         conflict = stringResource(R.string.error_action_conflict),
         api = stringResource(R.string.error_request_failed),
         network = stringResource(R.string.error_network_unavailable),
+        locationRequired = stringResource(R.string.error_location_server_required),
+        locationReviewRequired = stringResource(R.string.error_location_server_review_required),
     )
     val queuedToday = stringResource(R.string.status_today_queued)
     val refreshingToday = stringResource(R.string.status_refreshing_server)
@@ -1426,10 +1428,16 @@ private data class WorkforceEmployeeErrorCopy(
     val conflict: String,
     val api: String,
     val network: String,
+    val locationRequired: String,
+    val locationReviewRequired: String,
 )
 
 private fun Throwable.employeeMessage(copy: WorkforceEmployeeErrorCopy): String = when (this) {
     is WorkforceActionConflictException -> copy.conflict
-    is WorkforceApiException -> copy.api
+    is WorkforceApiException -> when (recoveryCode) {
+        "WORKFORCE_ATTENDANCE_LOCATION_REQUIRED" -> copy.locationRequired
+        "WORKFORCE_ATTENDANCE_LOCATION_REVIEW_REQUIRED" -> copy.locationReviewRequired
+        else -> copy.api
+    }
     else -> copy.network
 }

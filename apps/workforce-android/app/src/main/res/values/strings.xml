@@ -124,6 +124,8 @@
     <string name="error_location_provider_disabled">Turn on a location provider, then retry this action or use the approved review path.</string>
     <string name="error_location_unavailable">A current location could not be confirmed. No attendance action was sent.</string>
     <string name="error_location_unsupported">This device cannot provide the required current location. Use the approved review path.</string>
+    <string name="error_location_server_required">A fresh location sample is required by the server for this action. Refresh and try again, or use the approved review path.</string>
+    <string name="error_location_server_review_required">This location sample needs approved review. No attendance action was accepted.</string>
     <string name="today_outbox_disclaimer">A transient transport failure can keep the same action only in this device’s encrypted, bounded outbox; it is not a server-accepted fact.</string>
     <string name="recovery_explainer">This view shows only local queue state, never request reasons, QR values, GPS or device proof.</string>
     <string name="recovery_load">Load recovery state</string>

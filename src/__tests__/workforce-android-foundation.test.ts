@@ -187,6 +187,8 @@ describe("Workforce Android foundation", () => {
     expect(activity).toContain("captureLocationThenContinue")
     expect(activity).toContain("RequestMultiplePermissions")
     expect(activity).toContain("pendingLocationPermissionAction")
+    expect(activity).toContain("WORKFORCE_ATTENDANCE_LOCATION_REQUIRED")
+    expect(activity).toContain("WORKFORCE_ATTENDANCE_LOCATION_REVIEW_REQUIRED")
     expect(capture).not.toMatch(/requestLocationUpdates|ForegroundService|ACCESS_BACKGROUND_LOCATION/i)
     expect(manifest).not.toContain("ACCESS_BACKGROUND_LOCATION")
     expect(activity).toContain("R.string.today_location_disclaimer")
@@ -196,6 +198,8 @@ describe("Workforce Android foundation", () => {
       expect(catalog).toContain('name="error_location_provider_disabled"')
       expect(catalog).toContain('name="error_location_unavailable"')
       expect(catalog).toContain('name="error_location_unsupported"')
+      expect(catalog).toContain('name="error_location_server_required"')
+      expect(catalog).toContain('name="error_location_server_review_required"')
     }
   })
 
@@ -376,7 +380,8 @@ describe("Workforce Android foundation", () => {
       read("app/src/main/res/values-az/strings.xml"),
     ]
     expect(activity).toContain("WorkforceEmployeeErrorCopy")
-    expect(activity).toContain("is WorkforceApiException -> copy.api")
+    expect(activity).toContain("is WorkforceApiException -> when (recoveryCode)")
+    expect(activity).toContain("else -> copy.api")
     expect(activity).not.toContain("is WorkforceApiException -> message")
     expect(activity).toContain("val deviceActionPrompts = mapOf")
     expect(activity).toContain("val deviceEnrollmentPromptTemplate = stringResource")
