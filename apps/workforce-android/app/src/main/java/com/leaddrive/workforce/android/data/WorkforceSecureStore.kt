@@ -25,14 +25,23 @@ class WorkforceSecureStore(context: Context) {
     fun readSession(): WorkforceStoredSession? {
         val token = decrypt(PREFERENCE_TOKEN) ?: return null
         val organizationSlug = decrypt(PREFERENCE_ORGANIZATION_SLUG) ?: return null
-        return WorkforceStoredSession(token = token, organizationSlug = organizationSlug)
+        // A v1 session predates the opaque account fence. Generate it once on
+        // upgrade rather than treating a valid session as an authenticated
+        // scope for an old outbox row; the Room migration marks those rows
+        // unscoped and they are discarded before any drain.
+        val accountScope = decrypt(PREFERENCE_ACCOUNT_SCOPE)
+            ?.takeIf { WORKFORCE_ACCOUNT_SCOPE.matches(it) }
+            ?: newAccountScope().also { writeEncrypted(PREFERENCE_ACCOUNT_SCOPE, it) }
+        return WorkforceStoredSession(token = token, organizationSlug = organizationSlug, accountScope = accountScope)
     }
 
     fun writeSession(session: WorkforceStoredSession) {
         require(session.token.isNotBlank()) { "Mobile session token is required." }
         require(session.organizationSlug.isNotBlank()) { "Organization slug is required." }
+        val accountScope = session.accountScope.takeIf { WORKFORCE_ACCOUNT_SCOPE.matches(it) } ?: newAccountScope()
         writeEncrypted(PREFERENCE_TOKEN, session.token)
         writeEncrypted(PREFERENCE_ORGANIZATION_SLUG, session.organizationSlug)
+        writeEncrypted(PREFERENCE_ACCOUNT_SCOPE, accountScope)
     }
 
     fun installationId(): String {
@@ -182,6 +191,8 @@ class WorkforceSecureStore(context: Context) {
         return generator.generateKey()
     }
 
+    private fun newAccountScope(): String = java.util.UUID.randomUUID().toString().replace("-", "")
+
     private companion object {
         const val ANDROID_KEY_STORE = "AndroidKeyStore"
         const val CIPHER_TRANSFORMATION = "AES/GCM/NoPadding"
@@ -190,6 +201,7 @@ class WorkforceSecureStore(context: Context) {
         const val PREFERENCES_NAME = "leaddrive.workforce.secure.v1"
         const val PREFERENCE_TOKEN = "token"
         const val PREFERENCE_ORGANIZATION_SLUG = "organization_slug"
+        const val PREFERENCE_ACCOUNT_SCOPE = "account_scope"
         const val PREFERENCE_INSTALLATION_ID = "installation_id"
         const val PREFERENCE_LOCAL_REMINDERS_ENABLED = "local_reminders_enabled"
         const val PREFERENCE_DEVICE_KEY_ALIAS = "device_key_alias"
@@ -208,6 +220,8 @@ class WorkforceSecureStore(context: Context) {
 data class WorkforceStoredSession(
     val token: String,
     val organizationSlug: String,
+    /** Opaque random account-bound fence; never sent to the Workforce API. */
+    val accountScope: String = "",
 )
 
 data class WorkforceDeviceBinding(

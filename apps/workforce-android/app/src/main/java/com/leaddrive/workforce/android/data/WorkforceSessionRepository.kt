@@ -145,7 +145,8 @@ class WorkforceSessionRepository(
     }
 
     suspend fun loadRecoveryItems(): List<WorkforceOutboxRecoveryItem> = sessionMutex.withLock {
-        if (secureStore.readSession() == null) emptyList() else outbox.recoveryItems()
+        val session = secureStore.readSession() ?: return@withLock emptyList()
+        outbox.recoveryItems(session)
     }
 
     /**

@@ -524,8 +524,12 @@ sealed interface WorkforceSyncOperation {
 
     fun toDataJson(): JSONObject
 
-    fun toEncryptedPayload(organizationSlug: String): String = JSONObject()
-        .put("organizationSlug", organizationSlug.trim().lowercase())
+    fun toEncryptedPayload(session: WorkforceStoredSession): String = JSONObject()
+        .put("organizationSlug", session.organizationSlug.trim().lowercase())
+        // This opaque random scope is encrypted at rest and never reaches the
+        // API. It prevents a late coroutine from replaying one employee's
+        // queued action with a later sign-in for the same tenant.
+        .put("accountScope", session.accountScope)
         .put("operationId", operationId)
         .put("entity", entity)
         .put("op", opType)
@@ -673,18 +677,19 @@ data class WorkforceWorkdayOperation(
         fun fromEncryptedPayload(value: String): WorkforceStoredOperation? = runCatching {
             val json = JSONObject(value)
             val organizationSlug = json.optString("organizationSlug").trim().lowercase()
+            val accountScope = json.optString("accountScope")
             val operationId = json.optString("operationId")
             val entity = json.optString("entity")
             val opType = json.optString("op")
             val data = json.optJSONObject("data")
-            if (organizationSlug.isBlank() || operationId.isBlank() || data == null) return null
+            if (organizationSlug.isBlank() || !WORKFORCE_ACCOUNT_SCOPE.matches(accountScope) || operationId.isBlank() || data == null) return null
             val operation = when {
                 entity == "workdays" && opType == "create" -> workdayOperationFromJson(operationId, data)
                 entity == "hrmRequests" && opType == "create" -> hrmCreateOperationFromJson(operationId, data)
                 entity == "hrmRequests" && opType == "update" -> hrmCancelOperationFromJson(operationId, data)
                 else -> null
             } ?: return null
-            WorkforceStoredOperation(organizationSlug = organizationSlug, operation = operation)
+            WorkforceStoredOperation(organizationSlug = organizationSlug, accountScope = accountScope, operation = operation)
         }.getOrNull()
 
         private fun workdayOperationFromJson(operationId: String, data: JSONObject): WorkforceWorkdayOperation? {
@@ -744,8 +749,12 @@ data class WorkforceWorkdayOperation(
 
 data class WorkforceStoredOperation(
     val organizationSlug: String,
+    val accountScope: String,
     val operation: WorkforceSyncOperation,
 )
+
+/** A random local boundary, not an organization, employee or device identifier. */
+internal val WORKFORCE_ACCOUNT_SCOPE = Regex("[a-f0-9]{32}")
 
 /** Exact-action proof: it is sent once and is never durable outbox data. */
 data class WorkforceDeviceProof(

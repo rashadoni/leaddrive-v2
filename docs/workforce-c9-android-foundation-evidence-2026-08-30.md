@@ -232,11 +232,13 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   update. The update URL is shown only after local HTTPS validation; it is not
   a redirect or a source of authority.
 - An outbox worker bootstraps before it drains. For a required update it retains
-  the existing encrypted Room rows, records a privacy-safe update-required
-  recovery state and does not consume an operation retry. After a supported
-  sign-in or restore (including an in-place update), it schedules the same
-  schema-v1 rows for normal oldest-first drain. It never decrypts them merely
-  to migrate, recreates an attendance proof or makes an accepted local fact.
+  the existing account-bound encrypted Room rows, records a privacy-safe
+  update-required recovery state and does not consume an operation retry. After
+  a supported sign-in or restore (including an in-place update), it schedules
+  those scoped rows for normal oldest-first drain. The additive v1-to-v2
+  account-fence migration deliberately removes unscoped legacy rows instead
+  of replaying them under a fresh sign-in. It never decrypts them merely to
+  migrate, recreates an attendance proof or makes an accepted local fact.
 - Device guidance is visible in EN/AZ/RU: a planned removal requires Recovery
   review first because sign-out/uninstall removes this phone's encrypted local
   session, private key and pending outbox; a lost/replaced device needs prompt
