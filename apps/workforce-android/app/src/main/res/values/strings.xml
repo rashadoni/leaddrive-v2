@@ -181,6 +181,7 @@
     <string name="recovery_hint_offline_limit_expired">The seven-day offline limit passed. Request a correction instead of retrying.</string>
     <string name="recovery_hint_update_required">Install the approved Workforce update before this protected pending action can be sent. Do not uninstall or recreate it.</string>
     <string name="recovery_hint_local_item_unrecoverable">This protected local item cannot be recovered. Refresh server state and request correction if needed.</string>
+    <string name="recovery_hint_quarantined_operation">This queued action cannot be sent. Refresh your work time and create a new request only if it is still needed.</string>
     <string name="recovery_hint_review_required">This action needs review. Do not rescan QR or repeat device proof until server state is refreshed.</string>
     <string name="request_type_unknown">Unknown request</string>
     <string name="request_status_pending">Pending</string>

@@ -181,6 +181,7 @@
     <string name="recovery_hint_offline_limit_expired">Семидневный офлайн-лимит истёк. Вместо повтора запросите коррекцию.</string>
     <string name="recovery_hint_update_required">Установите утверждённое обновление Workforce перед отправкой этого защищённого ожидающего действия. Не удаляйте и не создавайте его заново.</string>
     <string name="recovery_hint_local_item_unrecoverable">Этот защищённый локальный элемент нельзя восстановить. Обновите данные сервера и при необходимости запросите коррекцию.</string>
+    <string name="recovery_hint_quarantined_operation">Это отложенное действие нельзя отправить. Обновите рабочее время и создайте новый запрос, только если он всё ещё нужен.</string>
     <string name="recovery_hint_review_required">Это действие требует проверки. Не сканируйте QR повторно и не повторяйте подтверждение устройства, пока не обновлены данные сервера.</string>
     <string name="request_type_unknown">Неизвестная заявка</string>
     <string name="request_status_pending">Ожидает</string>

@@ -826,6 +826,7 @@ private fun WorkforceOutboxRecoveryHint.labelRes(): Int = when (this) {
     WorkforceOutboxRecoveryHint.OFFLINE_LIMIT_EXPIRED -> R.string.recovery_hint_offline_limit_expired
     WorkforceOutboxRecoveryHint.UPDATE_REQUIRED -> R.string.recovery_hint_update_required
     WorkforceOutboxRecoveryHint.LOCAL_ITEM_UNRECOVERABLE -> R.string.recovery_hint_local_item_unrecoverable
+    WorkforceOutboxRecoveryHint.QUARANTINED_OPERATION -> R.string.recovery_hint_quarantined_operation
     WorkforceOutboxRecoveryHint.REVIEW_REQUIRED -> R.string.recovery_hint_review_required
 }
 

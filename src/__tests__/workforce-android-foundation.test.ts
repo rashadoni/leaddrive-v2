@@ -202,9 +202,17 @@ describe("Workforce Android foundation", () => {
     const outbox = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceEncryptedOutbox.kt")
     const repository = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceSessionRepository.kt")
     const activity = read("app/src/main/java/com/leaddrive/workforce/android/MainActivity.kt")
+    const catalogs = [
+      read("app/src/main/res/values/strings.xml"),
+      read("app/src/main/res/values-ru/strings.xml"),
+      read("app/src/main/res/values-az/strings.xml"),
+    ]
     expect(outbox).toContain("Metadata-only recovery view")
     expect(outbox).toContain("OFFLINE_HORIZON_EXPIRED")
     expect(outbox).toContain("WorkforceOutboxRecoveryHint.OFFLINE_LIMIT_EXPIRED")
+    expect(outbox).toContain("MTM_MOBILE_SYNC_OPERATION_TOO_LARGE")
+    expect(outbox).toContain("MTM_MOBILE_SYNC_OPERATION_INVALID")
+    expect(outbox).toContain("WorkforceOutboxRecoveryHint.QUARANTINED_OPERATION")
     expect(outbox).not.toContain("Request a correction instead of retrying")
     expect(outbox).toContain("SELECT domain, state, createdAtEpochMs, detailCode FROM workforce_outbox_operations")
     expect(outbox).not.toContain("SELECT ciphertext")
@@ -215,6 +223,10 @@ describe("Workforce Android foundation", () => {
     expect(activity).not.toContain("ZoneId.systemDefault()")
     expect(activity).toContain("R.string.recovery_explainer")
     expect(activity).toContain("R.string.recovery_hint_offline_limit_expired")
+    expect(activity).toContain("R.string.recovery_hint_quarantined_operation")
+    for (const catalog of catalogs) {
+      expect(catalog).toContain('name="recovery_hint_quarantined_operation"')
+    }
   })
 
   it("uses a per-use non-exportable Android key and OS-owned strong-biometric signature without handling biometric data", () => {

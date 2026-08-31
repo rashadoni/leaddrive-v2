@@ -251,6 +251,8 @@ class WorkforceEncryptedOutbox(context: Context) {
         else -> when (code) {
             "WORKFORCE_MOBILE_UPDATE_REQUIRED" -> WorkforceOutboxRecoveryHint.UPDATE_REQUIRED
             "OUTBOX_DECRYPTION_FAILED" -> WorkforceOutboxRecoveryHint.LOCAL_ITEM_UNRECOVERABLE
+            "MTM_MOBILE_SYNC_OPERATION_INVALID",
+            "MTM_MOBILE_SYNC_OPERATION_TOO_LARGE" -> WorkforceOutboxRecoveryHint.QUARANTINED_OPERATION
             else -> WorkforceOutboxRecoveryHint.REVIEW_REQUIRED
         }
     }
@@ -282,6 +284,7 @@ enum class WorkforceOutboxRecoveryHint {
     OFFLINE_LIMIT_EXPIRED,
     UPDATE_REQUIRED,
     LOCAL_ITEM_UNRECOVERABLE,
+    QUARANTINED_OPERATION,
     REVIEW_REQUIRED,
 }
 
