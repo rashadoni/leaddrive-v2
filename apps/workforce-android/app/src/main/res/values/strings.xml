@@ -130,7 +130,7 @@
     <string name="today_outbox_disclaimer">A transient transport failure can keep the same action only in this device’s encrypted, bounded outbox; it is not a server-accepted fact.</string>
     <string name="recovery_explainer">This view shows only local queue state, never request reasons, QR values, GPS or device proof.</string>
     <string name="recovery_load">Load recovery state</string>
-    <string name="recovery_retry_explainer">Refresh server state before retrying any work-time action.</string>
+    <string name="recovery_retry_explainer">Refresh current server state before retrying any work-time action.</string>
     <string name="recovery_refresh">Refresh recovery state</string>
     <string name="recovery_empty">No local recovery items.</string>
     <string name="recovery_saved_at">Saved locally: %1$s</string>

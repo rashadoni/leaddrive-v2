@@ -130,7 +130,7 @@
     <string name="today_outbox_disclaimer">Müvəqqəti əlaqə xətası həmin əməliyyatı yalnız bu cihazın şifrələnmiş, məhdud outbox yaddaşında saxlaya bilər; bu, serverin qəbul etdiyi fakt deyil.</string>
     <string name="recovery_explainer">Bu ekran yalnız lokal növbə vəziyyətini göstərir; sorğu səbəblərini, QR dəyərlərini, GPS və ya cihaz sübutunu heç vaxt göstərmir.</string>
     <string name="recovery_load">Bərpa vəziyyətini yüklə</string>
-    <string name="recovery_retry_explainer">İş vaxtı əməliyyatını yenidən cəhd etməzdən əvvəl server məlumatını yeniləyin.</string>
+    <string name="recovery_retry_explainer">İş vaxtı əməliyyatını yenidən cəhd etməzdən əvvəl cari server məlumatını yeniləyin.</string>
     <string name="recovery_refresh">Bərpa vəziyyətini yenilə</string>
     <string name="recovery_empty">Lokal bərpa elementi yoxdur.</string>
     <string name="recovery_saved_at">Lokal saxlanıldı: %1$s</string>

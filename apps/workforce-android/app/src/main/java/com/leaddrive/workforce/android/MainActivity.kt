@@ -792,6 +792,7 @@ private fun WorkforceHome(
                 items = recoveryItems,
                 timezone = bootstrap.timezone,
                 onLoad = onLoadRecovery,
+                onRefreshServer = onRefresh,
             )
             WorkforceSection.DEVICE -> WorkforceDeviceTrust(
                 state = deviceTrust,
@@ -1001,6 +1002,7 @@ private fun WorkforceRecovery(
     items: List<WorkforceOutboxRecoveryItem>?,
     timezone: String,
     onLoad: () -> Unit,
+    onRefreshServer: () -> Unit,
 ) {
     val tenantZone = remember(timezone) {
         runCatching { ZoneId.of(timezone) }.getOrDefault(ZoneOffset.UTC)
@@ -1010,6 +1012,7 @@ private fun WorkforceRecovery(
             Text(stringResource(R.string.tab_recovery), style = MaterialTheme.typography.titleLarge)
             Text(stringResource(R.string.recovery_explainer))
             Button(onClick = onLoad) { Text(stringResource(R.string.recovery_load)) }
+            TextButton(onClick = onRefreshServer) { Text(stringResource(R.string.refresh_server_state)) }
         }
         return
     }
@@ -1017,6 +1020,7 @@ private fun WorkforceRecovery(
         item {
             Text(stringResource(R.string.tab_recovery), style = MaterialTheme.typography.titleLarge)
             Text(stringResource(R.string.recovery_retry_explainer))
+            TextButton(onClick = onRefreshServer) { Text(stringResource(R.string.refresh_server_state)) }
             TextButton(onClick = onLoad) { Text(stringResource(R.string.recovery_refresh)) }
         }
         if (items.isEmpty()) {

@@ -294,8 +294,12 @@ describe("Workforce Android foundation", () => {
     expect(activity).toContain("R.string.recovery_explainer")
     expect(activity).toContain("R.string.recovery_hint_offline_limit_expired")
     expect(activity).toContain("R.string.recovery_hint_quarantined_operation")
+    expect(activity).toContain("onRefreshServer = onRefresh")
+    expect(activity).toContain("TextButton(onClick = onRefreshServer)")
+    expect(activity).toContain("R.string.refresh_server_state")
     for (const catalog of catalogs) {
       expect(catalog).toContain('name="recovery_hint_quarantined_operation"')
+      expect(catalog).toContain('name="refresh_server_state"')
     }
   })
 

@@ -130,7 +130,7 @@
     <string name="today_outbox_disclaimer">При временном сбое связи это же действие может остаться только в зашифрованном ограниченном outbox этого устройства; оно не является фактом, принятым сервером.</string>
     <string name="recovery_explainer">Этот экран показывает только состояние локальной очереди, но не причины заявок, QR-значения, GPS или подтверждение устройства.</string>
     <string name="recovery_load">Загрузить состояние восстановления</string>
-    <string name="recovery_retry_explainer">Перед повтором действия рабочего времени обновите данные сервера.</string>
+    <string name="recovery_retry_explainer">Перед повтором действия рабочего времени обновите текущие данные сервера.</string>
     <string name="recovery_refresh">Обновить состояние восстановления</string>
     <string name="recovery_empty">Нет локальных элементов восстановления.</string>
     <string name="recovery_saved_at">Сохранено локально: %1$s</string>
