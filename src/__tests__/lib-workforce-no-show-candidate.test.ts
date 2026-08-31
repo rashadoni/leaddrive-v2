@@ -63,6 +63,9 @@ function configureCompleteCandidateRead() {
       id: "membership-historical",
       teamId: "team-historical",
       effectiveAt: new Date("2026-08-01T00:00:00.000Z"),
+      agentId: AGENT_ID,
+      eventId: "employment-hire",
+      kind: "HIRE",
     },
   ] as never);
   vi.mocked(prisma.workforceShiftAssignment.findMany).mockResolvedValue(
@@ -155,6 +158,34 @@ describe("Workforce no-show candidate reader", () => {
       outcome: "NOT_READY",
       code: "WORKFORCE_NO_SHOW_EXPECTATION_SUBJECT_UNAVAILABLE",
     });
+    expect(prisma.workforceExceptionCase.create).not.toHaveBeenCalled();
+  });
+
+  it("fails closed for a terminated employee before calendar or workday lookup", async () => {
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([
+      {
+        id: "membership-historical",
+        teamId: "team-historical",
+        effectiveAt: new Date("2026-08-31T05:00:00.000Z"),
+        agentId: AGENT_ID,
+        eventId: "employment-termination",
+        kind: "TERMINATION",
+      },
+    ] as never);
+
+    await expect(
+      readWorkforceNoShowCandidate(prisma as never, {
+        organizationId: ORGANIZATION_ID,
+        agentId: AGENT_ID,
+        workDate: WORK_DATE,
+        asOf: AS_OF,
+      }),
+    ).resolves.toEqual({
+      outcome: "NOT_READY",
+      code: "WORKFORCE_NO_SHOW_NOT_EMPLOYED_AT_EXPECTATION",
+    });
+    expect(prisma.mtmWorkCalendarDay.findMany).not.toHaveBeenCalled();
+    expect(prisma.mtmAgentWorkday.findFirst).not.toHaveBeenCalled();
     expect(prisma.workforceExceptionCase.create).not.toHaveBeenCalled();
   });
 

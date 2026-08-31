@@ -77,6 +77,9 @@ safe inputs. For one explicit employee/date/as-of instant it:
 - resolves policy and the effective calendar against that same historical
   instant, including append-only team membership rather than the employee's
   later directory team;
+- requires an explicit `HIRE` or `REHIRE` employment fact at that instant;
+  missing lifecycle is not inferred from the mutable directory and a
+  `TERMINATION` never becomes a no-show;
 - checks the unique organization/employee/work-date workday row;
 - accepts only sequence-one published segments that begin at the signed shift
   start; and
@@ -156,6 +159,12 @@ case/decision migration and actual detector remain WF-C6-002/003 work.
           ESLint and `git diff --check`. The reader proves exact open-workday
           reminder/review candidates, completed-workday no-read/no-action and
           missing-snapshot fail-closed outcomes, with no case/audit writer.
+
+    PASS  2026-09-01 employment-aware no-show re-check:
+          no-show, employment-history, historical calendar/policy/shift
+          contracts (5 files, 36 tests), scoped ESLint and `git diff --check`.
+          A terminated employee stops before calendar/workday lookup; unknown
+          lifecycle also fails closed without a case/audit write.
 
     NOT RUN  database migration/apply, full typecheck/build, browser E2E,
              Android, scheduler/concurrency/load and physical pilot checks:

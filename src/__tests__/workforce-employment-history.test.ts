@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 import { makeMtmPrismaMock } from "./mocks/mtm-prisma"
 import {
   recordWorkforceEmploymentEvent,
+  resolveWorkforceHistoricalEmployment,
   resolveWorkforceHistoricalAssignment,
   WorkforceEmploymentEventCreateSchema,
   WorkforceEmploymentHistoryError,
@@ -11,6 +12,30 @@ const ORG = "org-workforce"
 const AGENT = "agent-1"
 
 describe("Workforce employment history", () => {
+  it("returns explicit employment state without reading mutable team or site data", async () => {
+    const db = makeMtmPrismaMock()
+    vi.mocked(db.$queryRaw).mockResolvedValue([{
+      agentId: AGENT,
+      eventId: "employment-termination",
+      kind: "TERMINATION",
+      effectiveAt: new Date("2026-08-20T08:00:00.000Z"),
+    }] as never)
+
+    await expect(resolveWorkforceHistoricalEmployment(db as never, {
+      organizationId: ORG,
+      agentId: AGENT,
+      occurredAt: new Date("2026-08-25T09:00:00.000Z"),
+    })).resolves.toEqual({
+      state: "TERMINATED",
+      event: {
+        id: "employment-termination",
+        kind: "TERMINATION",
+        effectiveAt: new Date("2026-08-20T08:00:00.000Z"),
+      },
+    })
+    expect(db.workforceSiteAssignment.findMany).not.toHaveBeenCalled()
+  })
+
   it("resolves delayed work from explicit lifecycle, historical team and effective site facts", async () => {
     const db = makeMtmPrismaMock()
     vi.mocked(db.$queryRaw)

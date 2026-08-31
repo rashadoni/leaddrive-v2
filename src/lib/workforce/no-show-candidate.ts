@@ -7,6 +7,7 @@ import {
 } from "@/lib/workforce/exception-intake";
 import type { WorkforceExceptionCaseDraft } from "@/lib/workforce/exception-case-ledger";
 import { resolveHistoricalPersistedWorkforceCalendarDay } from "@/lib/workforce/calendar";
+import { resolveWorkforceHistoricalEmployment } from "@/lib/workforce/employment-history";
 import { resolveCurrentWorkforcePolicy } from "@/lib/workforce/policy-resolution";
 import { parseWorkforceShiftDefinition } from "@/lib/workforce/shift-definition";
 import { resolveCurrentWorkforceShift } from "@/lib/workforce/shift-resolution";
@@ -34,6 +35,8 @@ export type WorkforceNoShowCandidate =
       outcome: "NOT_READY";
       code:
         | "WORKFORCE_NO_SHOW_EXPECTED_SHIFT_UNSCHEDULED"
+        | "WORKFORCE_NO_SHOW_EMPLOYMENT_STATUS_UNAVAILABLE"
+        | "WORKFORCE_NO_SHOW_NOT_EMPLOYED_AT_EXPECTATION"
         | "WORKFORCE_NO_SHOW_EXPECTATION_SUBJECT_UNAVAILABLE";
     }
   | {
@@ -131,6 +134,24 @@ export async function readWorkforceNoShowCandidate(
   }
 
   const { shift, expectedStartAt } = resolvedShift;
+  const employment = await resolveWorkforceHistoricalEmployment(db, {
+    organizationId: input.organizationId,
+    agentId: input.agentId,
+    occurredAt: expectedStartAt,
+  });
+  if (!employment || employment.state === "UNKNOWN") {
+    return {
+      outcome: "NOT_READY",
+      code: "WORKFORCE_NO_SHOW_EMPLOYMENT_STATUS_UNAVAILABLE",
+    };
+  }
+  if (employment.state !== "EMPLOYED") {
+    return {
+      outcome: "NOT_READY",
+      code: "WORKFORCE_NO_SHOW_NOT_EMPLOYED_AT_EXPECTATION",
+    };
+  }
+
   const policy = await resolveCurrentWorkforcePolicy(db, {
     organizationId: input.organizationId,
     agentId: input.agentId,

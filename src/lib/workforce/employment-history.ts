@@ -51,7 +51,8 @@ export class WorkforceEmploymentHistoryError extends Error {
   }
 }
 
-type EmploymentHistoryDb = Pick<PrismaClient, "$queryRaw" | "workforceSiteAssignment">
+type WorkforceEmploymentHistoryLookupDb = Pick<PrismaClient, "$queryRaw">
+type EmploymentHistoryDb = WorkforceEmploymentHistoryLookupDb & Pick<PrismaClient, "workforceSiteAssignment">
 
 function validInstant(value: Date): boolean {
   return Number.isFinite(value.getTime())
@@ -69,17 +70,16 @@ function stateForEvent(kind: WorkforceEmploymentHistoryEvent["kind"] | null): Wo
 }
 
 /**
- * Resolves only explicit HR lifecycle, immutable team membership and
- * effective-dated Workforce-site facts. It deliberately has no fallback to a
- * mutable employee status/current team or to Route data when an old claim
- * reaches the server later.
+ * Reads only the explicit lifecycle fact effective at an instant. It must not
+ * infer employment from a mutable directory status, current team or site
+ * assignment. A missing fact is intentionally `UNKNOWN`, which lets callers
+ * fail closed rather than classify an inactive or migrated record as absent.
  */
-export async function resolveWorkforceHistoricalAssignment(
-  db: EmploymentHistoryDb,
-  input: { organizationId: string; agentId: string; occurredAt: Date; workDate: string },
-): Promise<WorkforceHistoricalAssignment | null> {
-  if (!validInstant(input.occurredAt)) throw new Error("Workforce historical assignment instant is invalid")
-  const workDate = dateKeyAsUtcDate(input.workDate)
+export async function resolveWorkforceHistoricalEmployment(
+  db: WorkforceEmploymentHistoryLookupDb,
+  input: { organizationId: string; agentId: string; occurredAt: Date },
+): Promise<WorkforceHistoricalAssignment["employment"] | null> {
+  if (!validInstant(input.occurredAt)) throw new Error("Workforce historical employment instant is invalid")
   const rows = await db.$queryRaw<Array<{
     agentId: string | null
     eventId: string | null
@@ -103,6 +103,29 @@ export async function resolveWorkforceHistoricalAssignment(
   `)
   const row = rows[0]
   if (!row?.agentId) return null
+  const event = row.eventId && row.kind && row.effectiveAt && validInstant(row.effectiveAt)
+    ? { id: row.eventId, kind: row.kind, effectiveAt: row.effectiveAt }
+    : null
+  return {
+    state: stateForEvent(event?.kind ?? null),
+    event,
+  }
+}
+
+/**
+ * Resolves only explicit HR lifecycle, immutable team membership and
+ * effective-dated Workforce-site facts. It deliberately has no fallback to a
+ * mutable employee status/current team or to Route data when an old claim
+ * reaches the server later.
+ */
+export async function resolveWorkforceHistoricalAssignment(
+  db: EmploymentHistoryDb,
+  input: { organizationId: string; agentId: string; occurredAt: Date; workDate: string },
+): Promise<WorkforceHistoricalAssignment | null> {
+  if (!validInstant(input.occurredAt)) throw new Error("Workforce historical assignment instant is invalid")
+  const workDate = dateKeyAsUtcDate(input.workDate)
+  const employment = await resolveWorkforceHistoricalEmployment(db, input)
+  if (!employment) return null
 
   const [teamMembership, siteAssignments] = await Promise.all([
     resolveWorkforceHistoricalTeamMembership(db, {
@@ -121,11 +144,8 @@ export async function resolveWorkforceHistoricalAssignment(
       select: { id: true, siteId: true, kind: true, effectiveFrom: true, effectiveTo: true },
     }),
   ])
-  const event = row.eventId && row.kind && row.effectiveAt && validInstant(row.effectiveAt)
-    ? { id: row.eventId, kind: row.kind, effectiveAt: row.effectiveAt }
-    : null
   return {
-    employment: { state: stateForEvent(event?.kind ?? null), event },
+    employment,
     teamMembership,
     siteAssignments,
   }
