@@ -29,6 +29,7 @@ import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
+import kotlin.random.Random
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -232,13 +233,23 @@ class WorkforceEncryptedOutbox(context: Context) {
                     }
                 }
             }
+            // WorkManager can wake before a database-selected jitter window.
+            // Keep returning retry while a recoverable head remains so that an
+            // early wake cannot strand it until an unrelated app action.
+            if (database.operations().nextPendingAttemptAtEpochMs() != null) {
+                retryNeeded = true
+            }
             WorkforceOutboxDrainResult(retryNeeded)
         }
     }
 
     private fun retryAt(attempt: Int, now: Long): Long {
-        val delay = (INITIAL_RETRY_MS * (1L shl (attempt - 1).coerceAtMost(8))).coerceAtMost(MAX_RETRY_MS)
-        return now + delay
+        val cappedDelay = (INITIAL_RETRY_MS * (1L shl (attempt - 1).coerceAtMost(8))).coerceAtMost(MAX_RETRY_MS)
+        // Equal jitter spreads a synchronized reconnect without allowing a
+        // zero-delay retry. The durable next-at value remains the authority;
+        // WorkManager's own backoff is an additional, not competing, guard.
+        val jitteredDelay = Random.Default.nextLong(cappedDelay / 2, cappedDelay + 1)
+        return now + jitteredDelay
     }
 
     private fun recoveryHint(state: String, code: String?): WorkforceOutboxRecoveryHint = when (state) {
@@ -338,6 +349,10 @@ interface WorkforceOutboxDao {
 
     @Query("SELECT * FROM workforce_outbox_operations WHERE domain = :domain AND state IN ('QUEUED', 'RETRY') ORDER BY createdAtEpochMs ASC LIMIT 1")
     suspend fun oldestPending(domain: String): WorkforceOutboxEntity?
+
+    /** Metadata-only earliest retry deadline; it never reads ciphertext. */
+    @Query("SELECT MIN(nextAttemptAtEpochMs) FROM workforce_outbox_operations WHERE state IN ('QUEUED', 'RETRY')")
+    suspend fun nextPendingAttemptAtEpochMs(): Long?
 
     @Query("UPDATE workforce_outbox_operations SET attemptCount = :attemptCount, nextAttemptAtEpochMs = :nextAttemptAtEpochMs, state = 'RETRY', detailCode = :detailCode WHERE operationId = :operationId")
     suspend fun retry(operationId: String, attemptCount: Int, nextAttemptAtEpochMs: Long, detailCode: String)

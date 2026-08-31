@@ -28,6 +28,14 @@ or repeat device proof; the Recovery screen shows only localized generic
 guidance. This source bridge still does not prove the signed client applies
 the policy on a supported device or prevents starvation between domains.
 
+The Android outbox also applies equal jitter inside its bounded exponential
+retry window (30 seconds through six hours). Its Room deadline remains the
+durable authority, while WorkManager remains scheduled whenever a recoverable
+head exists—even if a worker wakes before that head is due. This prevents a
+delayed head from being stranded without changing the seven-day/eight-attempt
+limit, per-domain oldest-first ordering, or the rule that QR and device proof
+are never persisted for replay.
+
 ## Verification
 
 - **PASS:** Workforce API regression rejects a synthetic response over one
