@@ -7327,6 +7327,10 @@ model WorkforceExceptionCase {
   evidence         WorkforceAttendanceEvidence? @relation(fields: [organizationId, evidenceId], references: [organizationId, id], onDelete: Restrict)
   segmentId        String?
   segment          WorkforceShiftSegment?   @relation(fields: [organizationId, segmentId], references: [organizationId, id], onDelete: Restrict)
+  // A segment-only no-show case has no accepted workday yet. The expected
+  // date makes its immutable detector subject distinct across repeated shifts
+  // without inventing a START fact or copying schedule/evidence payloads.
+  expectedWorkDate DateTime?                @db.Date
   createdAt        DateTime                  @default(now())
 
   decisions WorkforceExceptionDecision[]
@@ -7340,6 +7344,7 @@ model WorkforceExceptionCase {
   @@index([organizationId, workdayEventId])
   @@index([organizationId, evidenceId])
   @@index([organizationId, segmentId])
+  @@index([organizationId, expectedWorkDate])
   @@map("workforce_exception_cases")
 }
 

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest"
 import {
   WORKFORCE_EXCEPTION_INTAKE_BASELINE_V1,
   WorkforceExceptionIntakeError,
+  WORKFORCE_NO_SHOW_DETECTOR_VERSION,
+  createWorkforceNoShowExceptionCaseDraft,
   intakeMaterializedWorkforceException,
   proposeWorkforceMissedFinishAction,
   proposeWorkforceNoShowReview,
@@ -134,6 +136,46 @@ describe("Workforce exception intake", () => {
       calendar: { attendanceExpected: true, noShowEligible: true, excused: false },
       workdayObservation: "COMPLETE_SEARCH_NO_WORKDAY",
     })).toMatchObject({ code: "WORKFORCE_NO_SHOW_PUBLISHED_EXPECTATION_MISSED" })
+  })
+
+  it("binds a scheduled no-show case to both its published segment and exact expected day", () => {
+    const proposal = proposeWorkforceNoShowReview(noShowInput())
+    const firstDay = createWorkforceNoShowExceptionCaseDraft({
+      organizationId: "org-1",
+      agentId: "agent-1",
+      segmentId: "segment-1",
+      expectedWorkDate: "2026-08-31",
+      proposal,
+    })
+    const nextDay = createWorkforceNoShowExceptionCaseDraft({
+      organizationId: "org-1",
+      agentId: "agent-1",
+      segmentId: "segment-1",
+      expectedWorkDate: "2026-09-01",
+      proposal,
+    })
+
+    expect(firstDay).toMatchObject({
+      kind: "NO_SHOW",
+      detectorVersion: WORKFORCE_NO_SHOW_DETECTOR_VERSION,
+      links: {
+        workdayId: null,
+        workdayEventId: null,
+        evidenceId: null,
+        segmentId: "segment-1",
+        expectedWorkDate: "2026-08-31",
+      },
+    })
+    expect(nextDay?.deduplicationKey).not.toBe(firstDay?.deduplicationKey)
+    expect(createWorkforceNoShowExceptionCaseDraft({
+      organizationId: "org-1",
+      agentId: "agent-1",
+      segmentId: "segment-1",
+      expectedWorkDate: "2026-08-31",
+      proposal: proposeWorkforceNoShowReview(noShowInput({
+        workdayObservation: "WORKDAY_EXISTS",
+      })),
+    })).toBeNull()
   })
 
   it("fails closed when resolved configuration is tampered, mismatched or was not active at expected start", () => {

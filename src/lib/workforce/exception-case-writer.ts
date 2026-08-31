@@ -16,7 +16,7 @@ export type WorkforceExceptionCaseWriterDb = {
     create: (args: { data: WorkforceExceptionCaseWriteData }) => Promise<StoredCase>
     findFirst: (args: {
       where: { organizationId: string; deduplicationKey: string }
-      select: { id: true; organizationId: true; agentId: true; kind: true; detectorVersion: true; deduplicationKey: true; workdayId: true; workdayEventId: true; evidenceId: true; segmentId: true }
+      select: { id: true; organizationId: true; agentId: true; kind: true; detectorVersion: true; deduplicationKey: true; workdayId: true; workdayEventId: true; evidenceId: true; segmentId: true; expectedWorkDate: true }
     }) => Promise<StoredCase | null>
   }
   workforceExceptionDecision: {
@@ -109,6 +109,7 @@ function sameCase(left: WorkforceExceptionCaseDraft, right: WorkforceExceptionCa
     && left.links.workdayEventId === right.links.workdayEventId
     && left.links.evidenceId === right.links.evidenceId
     && left.links.segmentId === right.links.segmentId
+    && left.links.expectedWorkDate === right.links.expectedWorkDate
 }
 
 function caseWriteData(draft: WorkforceExceptionCaseDraft): WorkforceExceptionCaseWriteData {
@@ -134,6 +135,7 @@ function caseDraftFromStored(record: StoredCase): WorkforceExceptionCaseDraft {
       workdayEventId: record.workdayEventId,
       evidenceId: record.evidenceId,
       segmentId: record.segmentId,
+      expectedWorkDate: record.expectedWorkDate,
     },
   }
 }
@@ -222,6 +224,7 @@ export async function persistAuthorizedWorkforceExceptionCase(input: {
         workdayEventId: true,
         evidenceId: true,
         segmentId: true,
+        expectedWorkDate: true,
       },
     })
     if (existing && sameCase(caseDraftFromStored(existing), canonical)) return { caseId: existing.id, idempotent: true }

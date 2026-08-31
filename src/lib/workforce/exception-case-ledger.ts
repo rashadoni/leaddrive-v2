@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto"
+import { isDateKey } from "@/lib/mtm/mobile-week"
 import { validateWorkforceExceptionDraftDecisionAppend } from "@/lib/workforce/exception-policy-draft"
 
 /**
@@ -13,6 +14,12 @@ export type WorkforceExceptionCaseLinks = {
   workdayEventId?: string | null
   evidenceId?: string | null
   segmentId?: string | null
+  /**
+   * Required with a segment-only scheduled no-show. It is a date, never a
+   * client timestamp, and gives recurring template segments a stable daily
+   * detector subject before any workday fact exists.
+   */
+  expectedWorkDate?: string | null
 }
 
 export type WorkforceExceptionCaseDraft = {
@@ -66,17 +73,38 @@ function policyCode(value: string, code: WorkforceExceptionCaseLedgerError["code
   return value
 }
 
+function expectedWorkDate(value: unknown): string | null {
+  if (value == null) return null
+  if (typeof value !== "string" || !isDateKey(value)) {
+    throw new WorkforceExceptionCaseLedgerError("WORKFORCE_EXCEPTION_CASE_INPUT_INVALID")
+  }
+  return value
+}
+
 function normalizeLinks(input: WorkforceExceptionCaseLinks): Required<WorkforceExceptionCaseLinks> {
   const links = {
     workdayId: opaqueId(input.workdayId, "WORKFORCE_EXCEPTION_CASE_INPUT_INVALID"),
     workdayEventId: opaqueId(input.workdayEventId, "WORKFORCE_EXCEPTION_CASE_INPUT_INVALID"),
     evidenceId: opaqueId(input.evidenceId, "WORKFORCE_EXCEPTION_CASE_INPUT_INVALID"),
     segmentId: opaqueId(input.segmentId, "WORKFORCE_EXCEPTION_CASE_INPUT_INVALID"),
+    expectedWorkDate: expectedWorkDate(input.expectedWorkDate),
   }
   // An evidence row is deliberately supplementary: the durable database
   // contract requires a workday, event or segment that can be scoped to the
   // employee without decrypting the evidence envelope.
   if (links.workdayId == null && links.workdayEventId == null && links.segmentId == null) {
+    throw new WorkforceExceptionCaseLedgerError("WORKFORCE_EXCEPTION_CASE_INPUT_INVALID")
+  }
+  // A schedule-only subject is valid only for the exact day that was checked.
+  // The date is deliberately disallowed for concrete accepted facts, whose
+  // immutable workday/event link is already the canonical daily subject.
+  if (links.expectedWorkDate != null && links.segmentId == null) {
+    throw new WorkforceExceptionCaseLedgerError("WORKFORCE_EXCEPTION_CASE_INPUT_INVALID")
+  }
+  if (links.expectedWorkDate != null && (links.workdayId != null || links.workdayEventId != null)) {
+    throw new WorkforceExceptionCaseLedgerError("WORKFORCE_EXCEPTION_CASE_INPUT_INVALID")
+  }
+  if (links.expectedWorkDate != null && links.evidenceId != null) {
     throw new WorkforceExceptionCaseLedgerError("WORKFORCE_EXCEPTION_CASE_INPUT_INVALID")
   }
   return links

@@ -1,4 +1,8 @@
 import { workforcePolicySnapshotValues } from "@/lib/workforce/policy-definition"
+import {
+  createWorkforceExceptionCaseDraft,
+  type WorkforceExceptionCaseDraft,
+} from "@/lib/workforce/exception-case-ledger"
 import type { ResolvedWorkforcePolicy } from "@/lib/workforce/policy-resolution"
 import { isDateKey } from "@/lib/mtm/mobile-week"
 import {
@@ -129,6 +133,8 @@ export type WorkforceNoShowProposal =
       code: "WORKFORCE_NO_SHOW_PUBLISHED_EXPECTATION_MISSED"
       policy: WorkforceExceptionIntakePolicy
     }
+
+export const WORKFORCE_NO_SHOW_DETECTOR_VERSION = "workforce-no-show-v1"
 
 export class WorkforceExceptionIntakeError extends Error {
   constructor(readonly code: "WORKFORCE_EXCEPTION_TYPE_INVALID" | "WORKFORCE_NO_SHOW_INPUT_INVALID") {
@@ -308,6 +314,33 @@ export function proposeWorkforceNoShowReviewFromResolvedConfiguration(input: {
     expectedSchedule: resolvePublishedWorkforceNoShowExpectedSchedule(input.configuration),
     calendar: input.calendar,
     workdayObservation: input.workdayObservation,
+  })
+}
+
+/**
+ * Turns an already server-derived no-show proposal into an immutable C6 case
+ * subject. A scheduled absence has no accepted workday by definition, so its
+ * published segment and exact expected work date are both required. This
+ * helper cannot query configuration, write a row, notify anyone or turn the
+ * review proposal into a payroll or disciplinary outcome.
+ */
+export function createWorkforceNoShowExceptionCaseDraft(input: {
+  organizationId: string
+  agentId: string
+  segmentId: string
+  expectedWorkDate: string
+  proposal: WorkforceNoShowProposal
+}): WorkforceExceptionCaseDraft | null {
+  if (input.proposal.outcome !== "PROPOSE_REVIEW_CASE") return null
+  return createWorkforceExceptionCaseDraft({
+    organizationId: input.organizationId,
+    agentId: input.agentId,
+    kind: "NO_SHOW",
+    detectorVersion: WORKFORCE_NO_SHOW_DETECTOR_VERSION,
+    links: {
+      segmentId: input.segmentId,
+      expectedWorkDate: input.expectedWorkDate,
+    },
   })
 }
 

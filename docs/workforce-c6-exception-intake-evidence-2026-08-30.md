@@ -25,6 +25,15 @@ the existing calculated deviations (`LATE_START`, `UNDERTIME`, `OVERTIME` and
   The LeadDrive default therefore reaches this path with the approved
   09:00 Baku start and 15-minute policy grace, rather than a caller-supplied
   `PUBLISHED` flag or grace value.
+- A no-show case subject now carries both the immutable published shift
+  `segmentId` and its exact `expectedWorkDate`. That additive date is part of
+  the raw-proof-free deduplication key, so a recurring Monday shift cannot
+  cause a missed start for one date to suppress review for another date. The
+  ledger rejects an expected date without a segment and rejects mixing this
+  scheduled subject with a concrete accepted workday/event or evidence link.
+  The migration
+  preserves tenant RLS and append-only guards; it neither creates case rows
+  nor turns a proposal into an operational detector.
 - Draft/unknown schedules, non-working/holiday calendar days, approved
   leave/absence, an existing workday, incomplete observation and unexpired
   grace all fail closed to `DO_NOT_CREATE`.
@@ -48,9 +57,9 @@ correction or appeal. It also does not change the legacy mutable
 The resolved-configuration adapter is also not a scheduler, detector or
 database writer. It does not materialize a daily expected-work record, create
 an absence, insert an exception case or notify any employee/manager. A future
-activation must use a complete tenant-scoped no-workday query, durable
-deduplication and the reviewed C6 lifecycle rather than treating this source
-adapter as operational evidence.
+activation must use a complete tenant-scoped no-workday query, the new
+segment-plus-date deduplication subject and the reviewed C6 lifecycle rather
+than treating this source adapter as operational evidence.
 
 The owner-approved recommended v1 **draft** taxonomy, non-disciplinary triage
 severity, role owner, targets and employee-visibility rule is now recorded in
@@ -72,6 +81,12 @@ case/decision migration and actual detector remain WF-C6-002/003 work.
           and `git diff --check`. The adapter test covers the matching
           hash-verified Baku 09:00/15-minute configuration plus missing
           schedule, mismatched historical team and future-activation denial.
+
+    PASS  2026-09-01 expected-date case-subject re-check:
+          `lib-workforce-exception-intake`, case ledger/writer and lifecycle/
+          subject-integrity/new expected-date migration contracts (6 files,
+          32 tests); Prisma validate/generate with a non-routable validation
+          URL; scoped ESLint and `git diff --check`.
 
     NOT RUN  database migration/apply, full typecheck/build, browser E2E,
              Android, scheduler/concurrency/load and physical pilot checks:
