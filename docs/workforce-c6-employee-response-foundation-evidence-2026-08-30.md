@@ -1,7 +1,7 @@
 # Workforce C6 employee-response foundation evidence
 
 **Status:** WF-C6-006 partial
-**Date:** 2026-08-30
+**Date:** 2026-08-31
 
 ## Available employee correction path
 
@@ -18,23 +18,38 @@ contains only request metadata, not their free-text explanation.
 
 ## Explicit C6 boundary
 
-This gives the employee a safe correction route from an exact day, but it is
-not yet a formal response or appeal for `WorkforceExceptionCase`: the additive
-C6 case/decision schema has not been applied, has no transaction writer or
-employee-scoped case API, and has no segment-linked response field. Therefore
-the UI cannot claim a case was resolved, edit an accepted fact, suppress an
+The source now also contains an additive, inactive
+`WorkforceExceptionEmployeeResponse` ledger and migration. It accepts only an
+employee acknowledgement or a link to an existing `TIME_CORRECTION` request,
+never a free-text explanation or raw proof. Its database trigger requires the
+same tenant employee, exact exception case, exact workday and exact segment;
+the correction request must be the employee's request for that exact workday.
+The linked CRM user is also verified so another signed-in tenant user cannot
+submit an employee response under a caller-supplied agent id.
+
+The canonical writer authorizes before any advisory lock or database call,
+records only metadata-only audit fields, accepts an exact client-response retry
+and rejects a changed retry. This is still source-only: no migration has been
+applied and no employee-scoped case API or UI uses the ledger. Therefore the
+UI cannot claim a case was resolved, edit an accepted fact, suppress an
 exception, or expose another employee's evidence.
 
-The later C6 lifecycle must bind an employee response to the exact authorized
-case/workday/segment, preserve immutable status history, and route a requested
-correction through the configured-bounds and accountable-decision path. It
-must not turn the request reason into a raw-evidence or payroll input.
+The later C6 lifecycle must expose this only through a self-scoped case API,
+apply the migration and disposable-DB/RLS evidence, and connect a requested
+correction through configured bounds and an accountable decision. It must not
+turn the existing protected request reason into raw evidence or payroll input.
 
 ## Verification
 
-    PASS  targeted self-request/API/UI Vitest suite (3 files, 12 tests)
-    PASS  git diff --check
+    PASS  CI=true npx vitest run \
+          src/__tests__/lib-workforce-exception-employee-response.test.ts \
+          src/__tests__/lib-workforce-exception-employee-response-writer.test.ts \
+          src/__tests__/migration-workforce-exception-employee-responses.test.ts
+          (3 files, 9 tests)
 
-    NOT RUN  applied C6 lifecycle migration, employee case/appeal endpoint and
+    PASS  DATABASE_URL=<nonconnecting validation URL> npx prisma validate
+    PASS  targeted ESLint and git diff --check
+
+    NOT RUN  migration apply/disposable-DB RLS, employee case/appeal endpoint,
              browser accessibility evidence, mobile UI, notification delivery,
              full typecheck/build, staging and production tests.

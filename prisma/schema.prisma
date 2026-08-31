@@ -203,6 +203,7 @@ model Organization {
   workforceAttendanceReviewCases      WorkforceAttendanceReviewCase[]
   workforceExceptionCases             WorkforceExceptionCase[]
   workforceExceptionDecisions         WorkforceExceptionDecision[]
+  workforceExceptionEmployeeResponses WorkforceExceptionEmployeeResponse[]
   workforceTimeCorrections            WorkforceTimeCorrection[]
   workforceTimesheetApprovals         WorkforceTimesheetApproval[]
   workforceAttendanceQrStations        WorkforceAttendanceQrStation[]
@@ -667,6 +668,7 @@ model User {
   workforceSiteAssignmentsAssigned    WorkforceSiteAssignment[]       @relation("WorkforceSiteAssignmentAssignedBy")
   workforceAttendanceExceptionsResolved WorkforceAttendanceException[] @relation("WorkforceAttendanceExceptionResolvedBy")
   workforceExceptionDecisionsActed      WorkforceExceptionDecision[]   @relation("WorkforceExceptionDecisionActor")
+  workforceExceptionEmployeeResponsesActed WorkforceExceptionEmployeeResponse[] @relation("WorkforceExceptionEmployeeResponseActor")
   workforceTimeCorrectionsActed       WorkforceTimeCorrection[]      @relation("WorkforceTimeCorrectionActor")
   workforceTimesheetApprovalsApproved WorkforceTimesheetApproval[]   @relation("WorkforceTimesheetApprovalApprovedBy")
   workforceTimesheetApprovalsCorrected WorkforceTimesheetApproval[]  @relation("WorkforceTimesheetApprovalCorrectionActor")
@@ -5591,6 +5593,7 @@ model MtmAgent {
   workforceExceptions       WorkforceAttendanceException[]
   workforceAttendanceReviewCases WorkforceAttendanceReviewCase[]
   workforceExceptionCases   WorkforceExceptionCase[]
+  workforceExceptionEmployeeResponses WorkforceExceptionEmployeeResponse[]
   workforceTimeCorrections  WorkforceTimeCorrection[]
   workforceTimesheetApprovals WorkforceTimesheetApproval[]
   workforceAttendanceDeviceEnrollments WorkforceAttendanceDeviceEnrollment[]
@@ -7175,6 +7178,7 @@ model MtmAgentWorkday {
   workforceExceptions     WorkforceAttendanceException[]
   workforceAttendanceReviewCases WorkforceAttendanceReviewCase[]
   workforceExceptionCases WorkforceExceptionCase[]
+  workforceExceptionEmployeeResponses WorkforceExceptionEmployeeResponse[]
   workforceTimeCorrections WorkforceTimeCorrection[]
 
   @@unique([organizationId, agentId, workDate])
@@ -7290,6 +7294,7 @@ model WorkforceExceptionCase {
   createdAt        DateTime                  @default(now())
 
   decisions WorkforceExceptionDecision[]
+  employeeResponses WorkforceExceptionEmployeeResponse[]
 
   @@unique([organizationId, id])
   @@unique([organizationId, deduplicationKey])
@@ -7324,6 +7329,38 @@ model WorkforceExceptionDecision {
   @@index([organizationId, caseId, createdAt])
   @@index([organizationId, actorUserId, createdAt])
   @@map("workforce_exception_decisions")
+}
+
+/// Immutable employee-owned acknowledgement or correction-request link for one
+/// exact C6 case. The case ledger deliberately stores no employee free text;
+/// a correction request keeps its existing protected reason path while this
+/// ledger preserves only the accountable, tenant-scoped relationship.
+model WorkforceExceptionEmployeeResponse {
+  id                  String                   @id @default(cuid())
+  organizationId      String
+  organization        Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  caseId              String
+  exceptionCase       WorkforceExceptionCase   @relation(fields: [organizationId, caseId], references: [organizationId, id], onDelete: Restrict)
+  agentId             String
+  agent               MtmAgent                 @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  workdayId           String
+  workday             MtmAgentWorkday          @relation(fields: [organizationId, workdayId], references: [organizationId, id], onDelete: Restrict)
+  segmentId           String?
+  segment             WorkforceShiftSegment?   @relation(fields: [organizationId, segmentId], references: [organizationId, id], onDelete: Restrict)
+  correctionRequestId String?
+  correctionRequest   MtmHrmRequest?           @relation(fields: [organizationId, correctionRequestId], references: [organizationId, id], onDelete: Restrict)
+  responseCode        String                   @db.VarChar(64)
+  clientResponseId    String                   @db.VarChar(100)
+  actorUserId         String
+  actorUser           User                     @relation("WorkforceExceptionEmployeeResponseActor", fields: [organizationId, actorUserId], references: [organizationId, id], onDelete: Restrict)
+  createdAt           DateTime                 @default(now())
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, agentId, clientResponseId])
+  @@index([organizationId, caseId, createdAt])
+  @@index([organizationId, agentId, workdayId, createdAt])
+  @@index([organizationId, correctionRequestId])
+  @@map("workforce_exception_employee_responses")
 }
 
 // Agent-to-manager conversations and broadcasts. Participants are explicit,
@@ -7510,6 +7547,7 @@ model MtmHrmRequest {
   updatedAt           DateTime            @updatedAt
 
   workforceTimeCorrections WorkforceTimeCorrection[]
+  workforceExceptionEmployeeResponses WorkforceExceptionEmployeeResponse[]
 
   @@unique([organizationId, agentId, clientRequestId])
   @@unique([organizationId, id])
@@ -7717,6 +7755,7 @@ model WorkforceShiftSegment {
 
   transitions          WorkforceSiteTransition[]
   workforceExceptionCases WorkforceExceptionCase[]
+  workforceExceptionEmployeeResponses WorkforceExceptionEmployeeResponse[]
 
   @@unique([organizationId, id])
   @@unique([organizationId, templateId, sequence])
