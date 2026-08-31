@@ -5,7 +5,25 @@ import {
   intakeMaterializedWorkforceException,
   proposeWorkforceMissedFinishAction,
   proposeWorkforceNoShowReview,
+  proposeWorkforceNoShowReviewFromResolvedConfiguration,
+  resolvePublishedWorkforceNoShowExpectedSchedule,
 } from "@/lib/workforce/exception-intake"
+import { workforcePolicyDefinitionHash } from "@/lib/workforce/policy-definition"
+import { workforceShiftDefinitionHash } from "@/lib/workforce/shift-definition"
+
+const SHIFT_DEFINITION = {
+  startTime: "09:00",
+  endTime: "18:00",
+  timezone: "Asia/Baku",
+  daysOfWeek: [1, 2, 3, 4, 5],
+}
+const POLICY_DEFINITION = {
+  expectedWorkSeconds: 8 * 60 * 60,
+  lateGraceSeconds: 15 * 60,
+  undertimeToleranceSeconds: 0,
+  overtimeThresholdSeconds: 0,
+  longPauseThresholdSeconds: 60 * 60,
+}
 
 const EXPECTED_START = "2026-08-31T05:00:00.000Z" // 09:00 Asia/Baku
 
@@ -23,6 +41,54 @@ function noShowInput(overrides: Partial<Parameters<typeof proposeWorkforceNoShow
       excused: false,
     },
     workdayObservation: "COMPLETE_SEARCH_NO_WORKDAY" as const,
+    ...overrides,
+  }
+}
+
+function resolvedNoShowConfiguration(overrides: Record<string, unknown> = {}) {
+  const shift = {
+    id: "shift-1",
+    teamId: null,
+    isDefault: true,
+    version: 1,
+    status: "ACTIVE",
+    timezone: "Asia/Baku",
+    activatedAt: new Date("2026-08-01T00:00:00.000Z"),
+    retiredAt: null,
+    definition: SHIFT_DEFINITION,
+    definitionHash: workforceShiftDefinitionHash(SHIFT_DEFINITION),
+    scope: "ORGANIZATION",
+    assignmentId: null,
+    defaultAssignmentId: "default-assignment-1",
+    teamMembershipId: "membership-1",
+    teamIdAtWorkday: "team-1",
+    schedule: {
+      workDate: "2026-08-31",
+      timezone: "Asia/Baku",
+      plannedStartAt: EXPECTED_START,
+      plannedEndAt: "2026-08-31T14:00:00.000Z",
+    },
+  }
+  const policy = {
+    id: "policy-1",
+    teamId: null,
+    version: 1,
+    status: "ACTIVE",
+    name: "Baku standard",
+    effectiveFrom: new Date("2026-08-01T00:00:00.000Z"),
+    effectiveTo: null,
+    activatedAt: new Date("2026-08-01T00:00:00.000Z"),
+    retiredAt: null,
+    definition: POLICY_DEFINITION,
+    definitionHash: workforcePolicyDefinitionHash(POLICY_DEFINITION),
+    scope: "ORGANIZATION",
+    teamMembershipId: "membership-1",
+    teamIdAtWorkday: "team-1",
+  }
+  return {
+    workDate: "2026-08-31",
+    policy,
+    shift,
     ...overrides,
   }
 }
@@ -53,6 +119,47 @@ describe("Workforce exception intake", () => {
       code: "WORKFORCE_NO_SHOW_PUBLISHED_EXPECTATION_MISSED",
       policy: WORKFORCE_EXCEPTION_INTAKE_BASELINE_V1,
     })
+  })
+
+  it("derives the no-show schedule and grace only from matching published server configuration", () => {
+    const configuration = resolvedNoShowConfiguration()
+    expect(resolvePublishedWorkforceNoShowExpectedSchedule(configuration)).toEqual({
+      publication: "PUBLISHED",
+      expectedStartAt: EXPECTED_START,
+      graceSeconds: 900,
+    })
+    expect(proposeWorkforceNoShowReviewFromResolvedConfiguration({
+      asOf: "2026-08-31T05:15:00.000Z",
+      configuration,
+      calendar: { attendanceExpected: true, noShowEligible: true, excused: false },
+      workdayObservation: "COMPLETE_SEARCH_NO_WORKDAY",
+    })).toMatchObject({ code: "WORKFORCE_NO_SHOW_PUBLISHED_EXPECTATION_MISSED" })
+  })
+
+  it("fails closed when resolved configuration is tampered, mismatched or was not active at expected start", () => {
+    const scheduleMismatch = resolvedNoShowConfiguration({
+      shift: { ...resolvedNoShowConfiguration().shift, schedule: null },
+    })
+    expect(() => resolvePublishedWorkforceNoShowExpectedSchedule(scheduleMismatch)).toThrow(expect.objectContaining({
+      code: "WORKFORCE_NO_SHOW_INPUT_INVALID",
+    } satisfies Partial<WorkforceExceptionIntakeError>))
+
+    const teamMismatch = resolvedNoShowConfiguration({
+      policy: { ...resolvedNoShowConfiguration().policy, teamMembershipId: "membership-other" },
+    })
+    expect(() => resolvePublishedWorkforceNoShowExpectedSchedule(teamMismatch)).toThrow(expect.objectContaining({
+      code: "WORKFORCE_NO_SHOW_INPUT_INVALID",
+    } satisfies Partial<WorkforceExceptionIntakeError>))
+
+    const futureShift = resolvedNoShowConfiguration({
+      shift: {
+        ...resolvedNoShowConfiguration().shift,
+        activatedAt: new Date("2026-08-31T06:00:00.000Z"),
+      },
+    })
+    expect(() => resolvePublishedWorkforceNoShowExpectedSchedule(futureShift)).toThrow(expect.objectContaining({
+      code: "WORKFORCE_NO_SHOW_INPUT_INVALID",
+    } satisfies Partial<WorkforceExceptionIntakeError>))
   })
 
   it("refuses every unsafe no-show shortcut", () => {
