@@ -113,10 +113,10 @@ class WorkforceEncryptedOutbox(context: Context) {
         ACCOUNT_BOUNDARY_MUTEX.withLock {
             database.operations().recoveryRows().map {
                 WorkforceOutboxRecoveryItem(
-                    domain = WorkforceOutboxDomain.fromStored(it.domain)?.displayName ?: "Workforce action",
-                    state = WorkforceOutboxState.fromStored(it.state)?.displayName ?: "Needs review",
+                    domain = WorkforceOutboxDomain.fromStored(it.domain),
+                    state = WorkforceOutboxState.fromStored(it.state),
                     createdAtEpochMs = it.createdAtEpochMs,
-                    recoveryMessage = recoveryMessage(it.state, it.detailCode),
+                    recoveryHint = recoveryHint(it.state, it.detailCode),
                 )
             }
         }
@@ -241,17 +241,17 @@ class WorkforceEncryptedOutbox(context: Context) {
         return now + delay
     }
 
-    private fun recoveryMessage(state: String, code: String?): String = when (state) {
+    private fun recoveryHint(state: String, code: String?): WorkforceOutboxRecoveryHint = when (state) {
         WorkforceOutboxState.QUEUED.name, WorkforceOutboxState.RETRY.name ->
-            "Pending acknowledgement. Do not create another action; refresh server state first."
+            WorkforceOutboxRecoveryHint.PENDING_ACKNOWLEDGEMENT
         WorkforceOutboxState.CONFLICT.name ->
-            "Server state changed. Refresh before taking another action."
+            WorkforceOutboxRecoveryHint.CONFLICT_REFRESH
         WorkforceOutboxState.EXPIRED.name ->
-            "The seven-day offline limit passed. Request a correction instead of retrying."
+            WorkforceOutboxRecoveryHint.OFFLINE_LIMIT_EXPIRED
         else -> when (code) {
-            "WORKFORCE_MOBILE_UPDATE_REQUIRED" -> "Install the approved Workforce update before this protected pending action can be sent. Do not uninstall or recreate it."
-            "OUTBOX_DECRYPTION_FAILED" -> "This protected local item cannot be recovered. Refresh server state and request correction if needed."
-            else -> "This action needs review. Do not rescan QR or repeat device proof until server state is refreshed."
+            "WORKFORCE_MOBILE_UPDATE_REQUIRED" -> WorkforceOutboxRecoveryHint.UPDATE_REQUIRED
+            "OUTBOX_DECRYPTION_FAILED" -> WorkforceOutboxRecoveryHint.LOCAL_ITEM_UNRECOVERABLE
+            else -> WorkforceOutboxRecoveryHint.REVIEW_REQUIRED
         }
     }
 
@@ -269,11 +269,21 @@ class WorkforceEncryptedOutbox(context: Context) {
 data class WorkforceOutboxDrainResult(val retryNeeded: Boolean)
 
 data class WorkforceOutboxRecoveryItem(
-    val domain: String,
-    val state: String,
+    val domain: WorkforceOutboxDomain?,
+    val state: WorkforceOutboxState?,
     val createdAtEpochMs: Long,
-    val recoveryMessage: String,
+    val recoveryHint: WorkforceOutboxRecoveryHint,
 )
+
+/** Non-sensitive local recovery categories. Employee language belongs to UI resources. */
+enum class WorkforceOutboxRecoveryHint {
+    PENDING_ACKNOWLEDGEMENT,
+    CONFLICT_REFRESH,
+    OFFLINE_LIMIT_EXPIRED,
+    UPDATE_REQUIRED,
+    LOCAL_ITEM_UNRECOVERABLE,
+    REVIEW_REQUIRED,
+}
 
 enum class WorkforceOutboxDomain {
     WORKDAY,
@@ -283,10 +293,6 @@ enum class WorkforceOutboxDomain {
         fun fromStored(value: String): WorkforceOutboxDomain? = entries.firstOrNull { it.name == value }
     }
 
-    val displayName: String get() = when (this) {
-        WORKDAY -> "Work Time"
-        HRM_REQUEST -> "Request"
-    }
 }
 
 enum class WorkforceOutboxState {
@@ -300,12 +306,6 @@ enum class WorkforceOutboxState {
         fun fromStored(value: String): WorkforceOutboxState? = entries.firstOrNull { it.name == value }
     }
 
-    val displayName: String get() = when (this) {
-        QUEUED, RETRY -> "Pending"
-        CONFLICT -> "Conflict"
-        EXPIRED -> "Expired"
-        REQUIRES_REVIEW -> "Needs review"
-    }
 }
 
 @Entity(tableName = "workforce_outbox_operations")

@@ -149,4 +149,25 @@
     <string name="workday_status">Статус: %1$s</string>
     <string name="workday_worked">Отработано: %1$s</string>
     <string name="workday_started">Начато: %1$s</string>
+    <string name="reminder_state_disabled">Локальные напоминания на этом устройстве выключены.</string>
+    <string name="reminder_state_permission_required">Разрешите уведомления, чтобы получать общее локальное напоминание Workforce.</string>
+    <string name="reminder_state_notifications_disabled">Уведомления Workforce отключены в настройках системы, поэтому локальное напоминание не запланировано.</string>
+    <string name="reminder_state_no_approved_schedule">Нет утверждённого сервером окончания смены, поэтому устройство не будет угадывать время напоминания.</string>
+    <string name="reminder_state_window_passed">Запланированное окончание смены уже прошло. Обновите данные сервера вместо создания позднего напоминания.</string>
+    <string name="reminder_state_not_needed">Для завершённого рабочего дня локальное напоминание о незавершённой смене не нужно.</string>
+    <string name="reminder_state_scheduled">Запланировано личное локальное напоминание. В нём нет сведений о рабочем времени, площадке или подтверждении.</string>
+    <string name="recovery_domain_workday">Рабочее время</string>
+    <string name="recovery_domain_request">Заявка</string>
+    <string name="recovery_domain_unknown">Действие Workforce</string>
+    <string name="recovery_state_pending">Ожидает</string>
+    <string name="recovery_state_conflict">Конфликт</string>
+    <string name="recovery_state_expired">Срок истёк</string>
+    <string name="recovery_state_review_required">Требует проверки</string>
+    <string name="recovery_item_label">%1$s: %2$s</string>
+    <string name="recovery_hint_pending_acknowledgement">Ожидается подтверждение. Не создавайте другое действие; сначала обновите данные сервера.</string>
+    <string name="recovery_hint_conflict_refresh">Состояние на сервере изменилось. Обновите данные перед следующим действием.</string>
+    <string name="recovery_hint_offline_limit_expired">Семидневный офлайн-лимит истёк. Вместо повтора запросите коррекцию.</string>
+    <string name="recovery_hint_update_required">Установите утверждённое обновление Workforce перед отправкой этого защищённого ожидающего действия. Не удаляйте и не создавайте его заново.</string>
+    <string name="recovery_hint_local_item_unrecoverable">Этот защищённый локальный элемент нельзя восстановить. Обновите данные сервера и при необходимости запросите коррекцию.</string>
+    <string name="recovery_hint_review_required">Это действие требует проверки. Не сканируйте QR повторно и не повторяйте подтверждение устройства, пока не обновлены данные сервера.</string>
 </resources>

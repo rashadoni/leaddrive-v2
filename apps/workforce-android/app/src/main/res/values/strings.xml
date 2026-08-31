@@ -149,4 +149,25 @@
     <string name="workday_status">Status: %1$s</string>
     <string name="workday_worked">Worked: %1$s</string>
     <string name="workday_started">Started: %1$s</string>
+    <string name="reminder_state_disabled">Local reminders are off on this device.</string>
+    <string name="reminder_state_permission_required">Allow notifications to receive a generic local Workforce reminder.</string>
+    <string name="reminder_state_notifications_disabled">Notifications are disabled for Workforce in system settings, so no local reminder is scheduled.</string>
+    <string name="reminder_state_no_approved_schedule">No server-approved shift end is available, so this device will not guess a reminder time.</string>
+    <string name="reminder_state_window_passed">The planned shift end has already passed. Refresh server state instead of scheduling a late reminder.</string>
+    <string name="reminder_state_not_needed">No local missed-finish reminder is needed for this completed workday.</string>
+    <string name="reminder_state_scheduled">A private local reminder is scheduled. It contains no work-time, site or proof details.</string>
+    <string name="recovery_domain_workday">Work Time</string>
+    <string name="recovery_domain_request">Request</string>
+    <string name="recovery_domain_unknown">Workforce action</string>
+    <string name="recovery_state_pending">Pending</string>
+    <string name="recovery_state_conflict">Conflict</string>
+    <string name="recovery_state_expired">Expired</string>
+    <string name="recovery_state_review_required">Needs review</string>
+    <string name="recovery_item_label">%1$s: %2$s</string>
+    <string name="recovery_hint_pending_acknowledgement">Pending acknowledgement. Do not create another action; refresh server state first.</string>
+    <string name="recovery_hint_conflict_refresh">Server state changed. Refresh before taking another action.</string>
+    <string name="recovery_hint_offline_limit_expired">The seven-day offline limit passed. Request a correction instead of retrying.</string>
+    <string name="recovery_hint_update_required">Install the approved Workforce update before this protected pending action can be sent. Do not uninstall or recreate it.</string>
+    <string name="recovery_hint_local_item_unrecoverable">This protected local item cannot be recovered. Refresh server state and request correction if needed.</string>
+    <string name="recovery_hint_review_required">This action needs review. Do not rescan QR or repeat device proof until server state is refreshed.</string>
 </resources>

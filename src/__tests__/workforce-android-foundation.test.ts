@@ -191,7 +191,8 @@ describe("Workforce Android foundation", () => {
     const activity = read("app/src/main/java/com/leaddrive/workforce/android/MainActivity.kt")
     expect(outbox).toContain("Metadata-only recovery view")
     expect(outbox).toContain("OFFLINE_HORIZON_EXPIRED")
-    expect(outbox).toContain("Request a correction instead of retrying")
+    expect(outbox).toContain("WorkforceOutboxRecoveryHint.OFFLINE_LIMIT_EXPIRED")
+    expect(outbox).not.toContain("Request a correction instead of retrying")
     expect(outbox).toContain("SELECT domain, state, createdAtEpochMs, detailCode FROM workforce_outbox_operations")
     expect(outbox).not.toContain("SELECT ciphertext")
     expect(outbox).toContain("ACCOUNT_BOUNDARY_MUTEX.withLock")
@@ -200,6 +201,7 @@ describe("Workforce Android foundation", () => {
     expect(activity).toContain("atZone(tenantZone)")
     expect(activity).not.toContain("ZoneId.systemDefault()")
     expect(activity).toContain("R.string.recovery_explainer")
+    expect(activity).toContain("R.string.recovery_hint_offline_limit_expired")
   })
 
   it("uses a per-use non-exportable Android key and OS-owned strong-biometric signature without handling biometric data", () => {

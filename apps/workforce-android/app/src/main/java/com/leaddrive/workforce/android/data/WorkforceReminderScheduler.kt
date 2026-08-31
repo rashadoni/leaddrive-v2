@@ -95,14 +95,14 @@ class WorkforceReminderScheduler(context: Context) {
     }
 }
 
-enum class WorkforceReminderState(val employeeMessage: String) {
-    DISABLED("Local reminders are off on this device."),
-    PERMISSION_REQUIRED("Allow notifications to receive a generic local Workforce reminder."),
-    NOTIFICATIONS_DISABLED("Notifications are disabled for Workforce in system settings, so no local reminder is scheduled."),
-    NO_APPROVED_SCHEDULE("No server-approved shift end is available, so this device will not guess a reminder time."),
-    WINDOW_PASSED("The planned shift end has already passed. Refresh server state instead of scheduling a late reminder."),
-    NOT_NEEDED("No local missed-finish reminder is needed for this completed workday."),
-    SCHEDULED("A private local reminder is scheduled. It contains no work-time, site or proof details."),
+enum class WorkforceReminderState {
+    DISABLED,
+    PERMISSION_REQUIRED,
+    NOTIFICATIONS_DISABLED,
+    NO_APPROVED_SCHEDULE,
+    WINDOW_PASSED,
+    NOT_NEEDED,
+    SCHEDULED,
 }
 
 /** Displays a deliberately generic local notification after an approved end. */

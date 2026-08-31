@@ -149,4 +149,25 @@
     <string name="workday_status">Status: %1$s</string>
     <string name="workday_worked">İşlənib: %1$s</string>
     <string name="workday_started">Başlanıb: %1$s</string>
+    <string name="reminder_state_disabled">Bu cihazda lokal xatırlatmalar söndürülüb.</string>
+    <string name="reminder_state_permission_required">Ümumi lokal Workforce xatırlatmasını almaq üçün bildirişlərə icazə verin.</string>
+    <string name="reminder_state_notifications_disabled">Sistem ayarlarında Workforce bildirişləri söndürülüb, buna görə lokal xatırlatma planlaşdırılmayıb.</string>
+    <string name="reminder_state_no_approved_schedule">Server tərəfindən təsdiqlənmiş növbə sonu yoxdur, buna görə bu cihaz xatırlatma vaxtını təxmin etməyəcək.</string>
+    <string name="reminder_state_window_passed">Planlaşdırılmış növbə sonu artıq keçib. Gec xatırlatma yaratmaq əvəzinə server məlumatını yeniləyin.</string>
+    <string name="reminder_state_not_needed">Bu tamamlanmış iş günü üçün lokal buraxılmış-bitiş xatırlatması lazım deyil.</string>
+    <string name="reminder_state_scheduled">Şəxsi lokal xatırlatma planlaşdırılıb. Orada iş vaxtı, məkan və ya sübut detalları yoxdur.</string>
+    <string name="recovery_domain_workday">İş vaxtı</string>
+    <string name="recovery_domain_request">Sorğu</string>
+    <string name="recovery_domain_unknown">Workforce əməliyyatı</string>
+    <string name="recovery_state_pending">Gözləyir</string>
+    <string name="recovery_state_conflict">Münaqişə</string>
+    <string name="recovery_state_expired">Müddət bitib</string>
+    <string name="recovery_state_review_required">Yoxlama tələb olunur</string>
+    <string name="recovery_item_label">%1$s: %2$s</string>
+    <string name="recovery_hint_pending_acknowledgement">Təsdiq gözlənilir. Başqa əməliyyat yaratmayın; əvvəlcə server məlumatını yeniləyin.</string>
+    <string name="recovery_hint_conflict_refresh">Serverdəki vəziyyət dəyişib. Növbəti əməliyyatdan əvvəl məlumatı yeniləyin.</string>
+    <string name="recovery_hint_offline_limit_expired">Yeddi günlük offline limiti keçib. Yenidən cəhd etmək əvəzinə düzəliş soruşun.</string>
+    <string name="recovery_hint_update_required">Bu qorunan gözləyən əməliyyatı göndərməzdən əvvəl təsdiqlənmiş Workforce yeniləməsini quraşdırın. Onu silməyin və yenidən yaratmayın.</string>
+    <string name="recovery_hint_local_item_unrecoverable">Bu qorunan lokal elementi bərpa etmək olmur. Server məlumatını yeniləyin və lazım olduqda düzəliş soruşun.</string>
+    <string name="recovery_hint_review_required">Bu əməliyyat yoxlama tələb edir. Server məlumatı yenilənənə qədər QR-ni yenidən skan etməyin və cihaz sübutunu təkrar etməyin.</string>
 </resources>

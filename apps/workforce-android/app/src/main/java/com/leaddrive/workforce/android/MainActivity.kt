@@ -58,9 +58,13 @@ import com.leaddrive.workforce.android.data.WorkforceHrmRequestType
 import com.leaddrive.workforce.android.data.WorkforceHrmSubmission
 import com.leaddrive.workforce.android.data.WorkforceLoginInput
 import com.leaddrive.workforce.android.data.WorkforceOutboxRecoveryItem
+import com.leaddrive.workforce.android.data.WorkforceOutboxRecoveryHint
+import com.leaddrive.workforce.android.data.WorkforceOutboxDomain
+import com.leaddrive.workforce.android.data.WorkforceOutboxState
 import com.leaddrive.workforce.android.data.WorkforceRuntimeConfiguration
 import com.leaddrive.workforce.android.data.WorkforceReminderSettings
 import com.leaddrive.workforce.android.data.WorkforceReminderScheduler
+import com.leaddrive.workforce.android.data.WorkforceReminderState
 import com.leaddrive.workforce.android.data.WorkforceSecureStore
 import com.leaddrive.workforce.android.data.WorkforceSessionRepository
 import com.leaddrive.workforce.android.data.WorkforceTodaySnapshot
@@ -643,7 +647,7 @@ private fun WorkforceLocalReminders(
         if (settings == null) {
             Text(stringResource(R.string.private_reminder_refresh))
         } else {
-            Text(settings.state.employeeMessage)
+            Text(settings.state.localizedLabel())
             Button(onClick = { onSetEnabled(!settings.enabled) }) {
                 Text(stringResource(if (settings.enabled) R.string.turn_off_reminders else R.string.turn_on_reminders))
             }
@@ -689,6 +693,49 @@ private fun WorkforceWorkdayStatus.labelRes(): Int = when (this) {
     WorkforceWorkdayStatus.COMPLETED -> R.string.workday_state_completed
 }
 
+@Composable
+private fun WorkforceReminderState.localizedLabel(): String = stringResource(labelRes())
+
+@StringRes
+private fun WorkforceReminderState.labelRes(): Int = when (this) {
+    WorkforceReminderState.DISABLED -> R.string.reminder_state_disabled
+    WorkforceReminderState.PERMISSION_REQUIRED -> R.string.reminder_state_permission_required
+    WorkforceReminderState.NOTIFICATIONS_DISABLED -> R.string.reminder_state_notifications_disabled
+    WorkforceReminderState.NO_APPROVED_SCHEDULE -> R.string.reminder_state_no_approved_schedule
+    WorkforceReminderState.WINDOW_PASSED -> R.string.reminder_state_window_passed
+    WorkforceReminderState.NOT_NEEDED -> R.string.reminder_state_not_needed
+    WorkforceReminderState.SCHEDULED -> R.string.reminder_state_scheduled
+}
+
+@Composable
+private fun WorkforceOutboxDomain?.localizedLabel(): String = stringResource(
+    when (this) {
+        WorkforceOutboxDomain.WORKDAY -> R.string.recovery_domain_workday
+        WorkforceOutboxDomain.HRM_REQUEST -> R.string.recovery_domain_request
+        null -> R.string.recovery_domain_unknown
+    },
+)
+
+@Composable
+private fun WorkforceOutboxState?.localizedLabel(): String = stringResource(
+    when (this) {
+        WorkforceOutboxState.QUEUED, WorkforceOutboxState.RETRY -> R.string.recovery_state_pending
+        WorkforceOutboxState.CONFLICT -> R.string.recovery_state_conflict
+        WorkforceOutboxState.EXPIRED -> R.string.recovery_state_expired
+        WorkforceOutboxState.REQUIRES_REVIEW, null -> R.string.recovery_state_review_required
+    },
+)
+
+@StringRes
+private fun WorkforceOutboxRecoveryHint.labelRes(): Int = when (this) {
+    WorkforceOutboxRecoveryHint.PENDING_ACKNOWLEDGEMENT -> R.string.recovery_hint_pending_acknowledgement
+    WorkforceOutboxRecoveryHint.CONFLICT_REFRESH -> R.string.recovery_hint_conflict_refresh
+    WorkforceOutboxRecoveryHint.OFFLINE_LIMIT_EXPIRED -> R.string.recovery_hint_offline_limit_expired
+    WorkforceOutboxRecoveryHint.UPDATE_REQUIRED -> R.string.recovery_hint_update_required
+    WorkforceOutboxRecoveryHint.LOCAL_ITEM_UNRECOVERABLE -> R.string.recovery_hint_local_item_unrecoverable
+    WorkforceOutboxRecoveryHint.REVIEW_REQUIRED -> R.string.recovery_hint_review_required
+}
+
 private fun Modifier.workforceTapTarget(): Modifier = defaultMinSize(
     minWidth = 48.dp,
     minHeight = 48.dp,
@@ -722,12 +769,19 @@ private fun WorkforceRecovery(
         } else {
             items(items) { item ->
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("${item.domain}: ${item.state}", style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        stringResource(
+                            R.string.recovery_item_label,
+                            item.domain.localizedLabel(),
+                            item.state.localizedLabel(),
+                        ),
+                        style = MaterialTheme.typography.titleSmall,
+                    )
                     Text(stringResource(
                         R.string.recovery_saved_at,
                         Instant.ofEpochMilli(item.createdAtEpochMs).atZone(tenantZone).toLocalDateTime(),
                     ))
-                    Text(item.recoveryMessage)
+                    Text(stringResource(item.recoveryHint.labelRes()))
                 }
             }
         }
