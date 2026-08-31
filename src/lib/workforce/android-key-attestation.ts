@@ -41,7 +41,24 @@ export type WorkforceAndroidAttestationRevocation = {
   /** Must come from the current Google hardware-attestation status list. */
   source: "GOOGLE_ATTESTATION_STATUS_LIST"
   checkedAt: Date
+  /**
+   * Google publishes non-normal attestation certificates keyed by certificate
+   * serial number, not fingerprint. This is the authoritative live-feed
+   * representation. It must be refreshed under the response Cache-Control
+   * policy before a caller can pass it to the verifier.
+   */
+  revokedCertificateSerialNumbers: readonly string[]
+  /**
+   * Optional internal deny-list for an already investigated certificate. It is
+   * additive only; it never substitutes for the official serial-number list.
+   */
   revokedCertificateSha256: readonly string[]
+}
+
+export class WorkforceAndroidAttestationRevocationError extends Error {
+  constructor(readonly code: "WORKFORCE_ANDROID_ATTESTATION_STATUS_LIST_INVALID") {
+    super(code)
+  }
 }
 
 export type WorkforceAndroidAttestationPolicy = {
@@ -93,6 +110,78 @@ function fingerprint(certificateDer: Buffer): string {
 
 function validFingerprint(value: string): boolean {
   return /^[0-9a-f]{64}$/.test(value)
+}
+
+/**
+ * The official Google status list uses lower-case hexadecimal certificate
+ * serial numbers. X509Certificate may present a serial with colons and a
+ * DER-positive leading zero, so normalize both representations before a
+ * comparison. A zero serial is invalid for this status-list contract.
+ */
+function canonicalCertificateSerialNumber(value: unknown): string | null {
+  if (typeof value !== "string") return null
+  const normalized = value.replaceAll(":", "").toLowerCase()
+  if (!/^[0-9a-f]+$/.test(normalized)) return null
+  const withoutDerPadding = normalized.replace(/^0+/, "")
+  return withoutDerPadding.length > 0 ? withoutDerPadding : null
+}
+
+type GoogleAttestationStatusListEntry = {
+  status: "REVOKED" | "SUSPENDED"
+  expires?: string
+  reason?: string
+  comment?: string
+}
+
+function record(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null
+}
+
+function validOptionalIsoDate(value: unknown): boolean {
+  return value === undefined || (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value))
+}
+
+function validOptionalShortString(value: unknown, maxLength: number): boolean {
+  return value === undefined || (typeof value === "string" && value.length <= maxLength)
+}
+
+/**
+ * Parses the official Google Hardware Attestation status-list shape without
+ * fetching it. Network/cache ownership stays outside this pure conversion so
+ * a route cannot accidentally make an attestation decision from an unchecked
+ * response. Both REVOKED and SUSPENDED entries fail closed.
+ */
+export function parseWorkforceGoogleAttestationStatusList(input: { checkedAt: Date; payload: unknown }): WorkforceAndroidAttestationRevocation {
+  const statusList = record(input.payload)
+  const entries = statusList && record(statusList.entries)
+  if (!entries || Object.keys(statusList!).some((key) => key !== "entries")
+    || !(input.checkedAt instanceof Date) || Number.isNaN(input.checkedAt.getTime())) {
+    throw new WorkforceAndroidAttestationRevocationError("WORKFORCE_ANDROID_ATTESTATION_STATUS_LIST_INVALID")
+  }
+
+  const revokedCertificateSerialNumbers = Object.entries(entries).map(([serialNumber, rawEntry]) => {
+    const canonicalSerial = canonicalCertificateSerialNumber(serialNumber)
+    const entry = record(rawEntry) as GoogleAttestationStatusListEntry | null
+    if (!canonicalSerial || !entry || (entry.status !== "REVOKED" && entry.status !== "SUSPENDED")
+      || !validOptionalIsoDate(entry.expires)
+      || !validOptionalShortString(entry.reason, 64)
+      || !validOptionalShortString(entry.comment, 140)
+      || Object.keys(entry).some((key) => !["status", "expires", "reason", "comment"].includes(key))) {
+      throw new WorkforceAndroidAttestationRevocationError("WORKFORCE_ANDROID_ATTESTATION_STATUS_LIST_INVALID")
+    }
+    return canonicalSerial
+  })
+  if (new Set(revokedCertificateSerialNumbers).size !== revokedCertificateSerialNumbers.length) {
+    throw new WorkforceAndroidAttestationRevocationError("WORKFORCE_ANDROID_ATTESTATION_STATUS_LIST_INVALID")
+  }
+  return {
+    source: "GOOGLE_ATTESTATION_STATUS_LIST",
+    checkedAt: input.checkedAt,
+    revokedCertificateSerialNumbers,
+    revokedCertificateSha256: [],
+  }
 }
 
 function equalBytes(left: Buffer, right: Buffer): boolean {
@@ -160,6 +249,17 @@ function validPolicy(input: WorkforceAndroidAttestationPolicy): boolean {
     && input.application.signingCertificateSha256.every(validFingerprint)
 }
 
+function validRevocation(input: WorkforceAndroidAttestationRevocation): boolean {
+  return input.source === "GOOGLE_ATTESTATION_STATUS_LIST"
+    && input.checkedAt instanceof Date
+    && !Number.isNaN(input.checkedAt.getTime())
+    && Array.isArray(input.revokedCertificateSerialNumbers)
+    && input.revokedCertificateSerialNumbers.every((value) => canonicalCertificateSerialNumber(value) === value)
+    && new Set(input.revokedCertificateSerialNumbers).size === input.revokedCertificateSerialNumbers.length
+    && Array.isArray(input.revokedCertificateSha256)
+    && input.revokedCertificateSha256.every(validFingerprint)
+}
+
 function validClaims(input: {
   claims: WorkforceAndroidAttestationClaims
   policy: WorkforceAndroidAttestationPolicy
@@ -206,8 +306,7 @@ export function verifyWorkforceAndroidKeyAttestation(input: {
   now?: Date
 }): WorkforceAndroidAttestationResult {
   const now = input.now ?? new Date()
-  if (!validPolicy(input.policy) || input.revocation.source !== "GOOGLE_ATTESTATION_STATUS_LIST"
-    || Number.isNaN(input.revocation.checkedAt.getTime())) {
+  if (!validPolicy(input.policy) || !validRevocation(input.revocation)) {
     return { status: "REJECTED", code: "WORKFORCE_ANDROID_ATTESTATION_INPUT_INVALID" }
   }
 
@@ -226,9 +325,15 @@ export function verifyWorkforceAndroidKeyAttestation(input: {
     return { status: "REJECTED", code: "WORKFORCE_ANDROID_ATTESTATION_ROOT_UNTRUSTED" }
   }
   const revocationAgeMs = now.getTime() - input.revocation.checkedAt.getTime()
-  const revoked = new Set(input.revocation.revokedCertificateSha256.map((value) => value.toLowerCase()))
+  const revokedFingerprints = new Set(input.revocation.revokedCertificateSha256.map((value) => value.toLowerCase()))
+  const revokedSerialNumbers = new Set(input.revocation.revokedCertificateSerialNumbers)
+  const chainHasRevokedSerial = parsed.chain.some((certificate) => {
+    const serialNumber = canonicalCertificateSerialNumber(certificate.serialNumber)
+    return serialNumber == null || revokedSerialNumbers.has(serialNumber)
+  })
   if (revocationAgeMs < 0 || revocationAgeMs > input.policy.maxRevocationAgeSeconds * 1000
-    || parsed.fingerprints.some((value) => revoked.has(value))) {
+    || parsed.fingerprints.some((value) => revokedFingerprints.has(value))
+    || chainHasRevokedSerial) {
     return { status: "REJECTED", code: "WORKFORCE_ANDROID_ATTESTATION_REVOKED_OR_STALE" }
   }
 
@@ -238,7 +343,13 @@ export function verifyWorkforceAndroidKeyAttestation(input: {
   } catch {
     return { status: "REJECTED", code: "WORKFORCE_ANDROID_ATTESTATION_EXTENSION_UNAVAILABLE" }
   }
-  if (!validClaims({ claims, policy: input.policy, chainLength: parsed.chain.length })) {
+  if (
+    !validClaims({
+      claims,
+      policy: input.policy,
+      chainLength: parsed.chain.length,
+    })
+  ) {
     return { status: "REJECTED", code: "WORKFORCE_ANDROID_ATTESTATION_CLAIMS_INVALID" }
   }
   return {

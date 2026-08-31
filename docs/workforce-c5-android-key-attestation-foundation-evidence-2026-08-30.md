@@ -29,6 +29,31 @@ extension rather than trusting an arbitrary leaf extension. This matches the
 current Android guidance to validate chain signatures, trusted Google root,
 revocation and expected extension data on a separate trusted server.
 
+## 2026-08-31 standards-alignment hardening
+
+The verifier now has a strict, pure adapter for Google's official attestation
+status-list JSON. It preserves the source's lower-case certificate serial
+numbers, normalizes the equivalent X.509 serial representation (colon
+separators and a DER-positive leading zero), and rejects a chain if any
+certificate is listed as either `REVOKED` or `SUSPENDED`. The existing optional
+fingerprint deny-list is only an additive internal containment measure; it
+cannot replace the official serial-number status list.
+
+The adapter does not fetch or cache the list. A future operational owner must
+fetch `https://android.googleapis.com/attestation/status` on the server,
+honour its `Cache-Control` response policy, record the checked time without
+logging a certificate chain, and fail closed if it cannot supply a current
+valid list.
+
+The Android documentation now explicitly recommends Google's attestation
+verification **Kotlin** library rather than a custom verifier. LeadDrive's
+application server is TypeScript, so this source slice deliberately does not
+invent an ASN.1 parser or falsely label one as vetted. Before an enrollment
+endpoint can be activated, Security must select and operate a separately
+reviewed verifier boundary that uses the recommended library (or document an
+equivalently reviewed service) and returns only the minimal validated claims
+to this fail-closed gate.
+
 ## Explicitly not activated
 
 The Android client still retains its certificate chain locally and only sends a
@@ -53,11 +78,11 @@ physical device matrix. This checkpoint cannot close the C5 gate.
     PASS  PATH=/home/codex-alt/.local/bin:$PATH npx vitest run \
           src/__tests__/lib-workforce-android-key-attestation.test.ts \
           src/__tests__/workforce-attendance-security.test.ts --reporter=dot
-          (2 files, 6 tests)
+          (2 files, 7 tests)
     PASS  targeted ESLint and git diff --check
 
-    NOT RUN  ASN.1 extension implementation integration, live Google
-             root/revocation feed, endpoint/DB migration, full typecheck/build,
-             Android Gradle/device, Play Integrity, browser E2E, load and
-             physical key/biometric/QR matrix. Heavy and physical gates are not
-             run on Contabo.
+    NOT RUN  Vetted Kotlin/verifier-service integration, live Google
+             root/revocation-feed cache operation, endpoint/DB migration, full
+             typecheck/build, Android Gradle/device, Play Integrity, browser
+             E2E, load and physical key/biometric/QR matrix. Heavy and physical
+             gates are not run on Contabo.
