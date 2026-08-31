@@ -330,6 +330,10 @@ export const NO_DATA_SECTIONS: Record<string, "surface" | "config" | "bespoke" |
   workforce: "pending",
   workforce_timesheet: "pending",
   workforce_requests: "pending",
+  // This administrator-only queue is a derived, read-only lifecycle surface.
+  // It deliberately has no generic aggregate until a separately audited,
+  // capability-aware reader can preserve its evidence and HR-review boundary.
+  workforce_exceptions: "surface",
   // This is an administrator-only definition surface, not an aggregate over a
   // business record. Keep it explicitly classified until a separately scoped
   // configuration reader is useful to the voice assistant.

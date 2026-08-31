@@ -23751,6 +23751,68 @@
       "correction": "Vaxt düzəlişi"
     }
   },
+  "workforceExceptionQueue": {
+    "title": "İştirak istisnaları növbəsi",
+    "subtitle": "Dəqiq məkanı, QR-ni, cihaz sübutunu və ya işçi səbəblərini açıqlamadan qeyri-müəyyən iştirak hallarını yoxlayın.",
+    "adminOnly": "Bu yalnız oxunan istisna növbəsinə ancaq daxil olmuş tenant administratoru baxa bilər.",
+    "boundaryTitle": "Yalnız insan yoxlaması",
+    "boundaryHint": "Bu növbə iştirakı, ödənişi və ya intizam qərarını dəyişə bilməz. O yalnız törəmə yoxlama vəziyyətini göstərir: koordinatlar, xəritələr, QR dəyərləri, cihaz identifikatorları, sübut materialları, qərar səbəbləri və daxili identifikatorlar burada əlçatan deyil.",
+    "refresh": "Növbəni yenilə",
+    "loading": "İştirak istisnaları növbəsi yüklənir",
+    "loadFailed": "İştirak istisnaları növbəsini yükləmək mümkün olmadı.",
+    "casesTitle": "İstisna halları",
+    "casesHint": "İnsan yoxlaması üçün {count} hal göstərilir.",
+    "case": "Hal",
+    "employee": "İşçi",
+    "type": "Növ",
+    "severity": "Risk",
+    "age": "Yaş",
+    "stage": "Yoxlama mərhələsi",
+    "evidence": "Sübutun tamlığı",
+    "employeeResponse": "İşçi cavabı",
+    "nextAction": "Növbəti addım",
+    "empty": "Yoxlama tələb edən iştirak istisnası yoxdur.",
+    "types": {
+      "LATE_START": "Gec başlanğıc",
+      "UNDERTIME": "Az işləmə",
+      "OVERTIME": "Əlavə iş",
+      "LONG_PAUSE": "Uzun fasilə",
+      "NO_SHOW": "İşə gəlməmə",
+      "MISSED_FINISH": "İşin bitirilməsi yoxdur",
+      "DELAYED_CLAIM": "Gecikmiş sorğu",
+      "SITE_TRANSITION_REVIEW": "Məkan keçidinin yoxlanması",
+      "DEVICE_SECURITY_REVIEW": "Cihaz təhlükəsizliyinin yoxlanması",
+      "ATTENDANCE_PROOF_REVIEW": "İştirak sübutunun yoxlanması"
+    },
+    "severities": {
+      "ROUTINE_REVIEW": "Adi yoxlama",
+      "ATTENTION_REVIEW": "Diqqət tələb edir"
+    },
+    "stages": {
+      "OPEN": "Açıq",
+      "AWAITING_EMPLOYEE_RESPONSE": "İşçi cavabı gözlənilir",
+      "HR_REVIEW": "HR yoxlaması",
+      "RESOLVED": "Həll olunub",
+      "DATA_INTEGRITY_REVIEW": "Məlumat bütövlüyünün yoxlanması"
+    },
+    "evidenceStates": {
+      "NOT_REQUIRED": "Tələb olunmur",
+      "LINKED_RESTRICTED": "Bağlıdır, giriş məhduddur",
+      "MISSING_OR_UNAVAILABLE": "Yoxdur və ya əlçatan deyil"
+    },
+    "employeeResponses": {
+      "NOT_REQUESTED": "Soruşulmayıb",
+      "PENDING": "Gözlənilir",
+      "RECEIVED": "Alınıb"
+    },
+    "nextActions": {
+      "ACKNOWLEDGE_HR_REVIEW": "HR yoxlamasını təsdiqlə",
+      "WAIT_FOR_EMPLOYEE_RESPONSE": "İşçi cavabını gözlə",
+      "HUMAN_REVIEW_REQUIRED": "İnsan yoxlaması tələb olunur",
+      "NO_FURTHER_ACTION": "Əlavə addım tələb olunmur",
+      "ESCALATE_DATA_INTEGRITY_REVIEW": "Məlumat bütövlüyü yoxlamasına yönəlt"
+    }
+  },
   "workforceConfigurationPage": {
     "title": "İş vaxtı tənzimləməsi",
     "subtitle": "Audit olunan siyasət və növbə şablonları hazırlayın. Nəşr yalnız gələcəyə təsir edir və tamamlanmış iş günlərini dəyişmir.",
