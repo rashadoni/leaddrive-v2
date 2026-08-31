@@ -197,6 +197,12 @@ case/decision migration and actual detector remain WF-C6-002/003 work.
           ESLint and `git diff --check`. The test pins tenant scope,
           50-row bound, stable continuation metadata and no case/audit write.
 
+    PASS  2026-09-01 incomplete candidate-scan containment re-check:
+          no-show and missed-finish batch readers propagate a failed historical
+          candidate read and stop before a later employee/workday. They never
+          treat a partial scan as a complete absence/reminder result and still
+          expose no case or audit writer (2 files, 6 tests).
+
     NOT RUN  database migration/apply, full typecheck/build, browser E2E,
              Android, scheduler/concurrency/load and physical pilot checks:
              this source-only checkpoint has no worker/job or visible flow,
