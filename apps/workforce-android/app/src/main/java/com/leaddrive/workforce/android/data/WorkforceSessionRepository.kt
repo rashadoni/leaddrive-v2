@@ -184,6 +184,7 @@ class WorkforceSessionRepository(
     suspend fun beginDeviceEnrollment(
         bootstrap: WorkforceBootstrap,
         deviceLabel: String,
+        replacesEnrollmentId: String? = null,
     ): WorkforcePendingDeviceEnrollment = sessionMutex.withLock {
         bootstrap.requireMutableRelease()
         val session = requireSession()
@@ -214,6 +215,7 @@ class WorkforceSessionRepository(
             deviceId = secureStore.installationId(),
             deviceLabel = deviceLabel,
             publicKeySpki = publicKeySpki,
+            replacesEnrollmentId = replacesEnrollmentId,
         )
         val binding = WorkforceDeviceBinding(
             keyAlias = alias,

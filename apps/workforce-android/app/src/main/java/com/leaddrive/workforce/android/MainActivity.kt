@@ -444,12 +444,12 @@ private fun WorkforceRoot(
         }
     }
 
-    fun beginDeviceEnrollment(deviceLabel: String) {
+    fun beginDeviceEnrollment(deviceLabel: String, replacesEnrollmentId: String?) {
         val currentBootstrap = bootstrap ?: return
         status = preparingDeviceEnrollment
         scope.launch {
             runCatching {
-                val pending = repository.beginDeviceEnrollment(currentBootstrap, deviceLabel)
+                val pending = repository.beginDeviceEnrollment(currentBootstrap, deviceLabel, replacesEnrollmentId)
                 val signature = deviceAuthenticator.authenticateAndSign(
                     pending.signature,
                     deviceEnrollmentPromptTemplate.replace("__WORKFORCE_EXPIRY__", pending.expiresAt),
@@ -744,7 +744,7 @@ private fun WorkforceHome(
     onLoadOwnExceptions: () -> Unit,
     onLoadRecovery: () -> Unit,
     onLoadDeviceTrust: () -> Unit,
-    onBeginDeviceEnrollment: (String) -> Unit,
+    onBeginDeviceEnrollment: (String, String?) -> Unit,
     onRevokeDeviceEnrollment: (String) -> Unit,
     onSetLocalReminders: (Boolean) -> Unit,
     onSubmitRequest: (WorkforceHrmRequestDraft) -> Unit,
@@ -1081,7 +1081,7 @@ private fun WorkforceDeviceTrust(
     state: WorkforceDeviceTrustState?,
     mutationsBlocked: Boolean,
     onLoad: () -> Unit,
-    onEnroll: (String) -> Unit,
+    onEnroll: (String, String?) -> Unit,
     onRevoke: (String) -> Unit,
 ) {
     val defaultDeviceLabel = stringResource(R.string.device_label_default)
@@ -1094,6 +1094,21 @@ private fun WorkforceDeviceTrust(
             Button(onClick = onLoad) { Text(stringResource(R.string.device_status_load)) }
         }
         return
+    }
+    val canStartReplacement = trustedState.lifecycle !in setOf(
+        WorkforceDeviceBindingLifecycle.ACTIVE,
+        WorkforceDeviceBindingLifecycle.PENDING_PROOF,
+        WorkforceDeviceBindingLifecycle.PROVISIONING,
+        WorkforceDeviceBindingLifecycle.PENDING_MANAGER_APPROVAL,
+    )
+    val replacementCandidates = if (canStartReplacement) {
+        trustedState.enrollments.filter { it.status == "ACTIVE" && it.id != trustedState.enrollmentId }
+    } else {
+        emptyList()
+    }
+    var replacesEnrollmentId by rememberSaveable { mutableStateOf<String?>(null) }
+    val selectedReplacementId = replacesEnrollmentId?.takeIf { selected ->
+        replacementCandidates.any { it.id == selected }
     }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(stringResource(R.string.device_trust_title), style = MaterialTheme.typography.titleLarge)
@@ -1112,14 +1127,38 @@ private fun WorkforceDeviceTrust(
                     label = { Text(stringResource(R.string.device_label)) },
                     singleLine = true,
                 )
+                if (replacementCandidates.isNotEmpty()) {
+                    Text(stringResource(R.string.device_replace_explainer))
+                    replacementCandidates.forEach { enrollment ->
+                        TextButton(
+                            modifier = Modifier.workforceTapTarget(),
+                            onClick = {
+                                replacesEnrollmentId = if (selectedReplacementId == enrollment.id) null else enrollment.id
+                            },
+                        ) {
+                            Text(
+                                stringResource(
+                                    if (selectedReplacementId == enrollment.id) {
+                                        R.string.device_replace_selected
+                                    } else {
+                                        R.string.device_replace_select
+                                    },
+                                    enrollment.deviceLabel,
+                                ),
+                            )
+                        }
+                    }
+                }
                 Button(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !mutationsBlocked,
-                    onClick = { onEnroll(label) },
+                    onClick = { onEnroll(label, selectedReplacementId) },
                 ) {
                     Text(
                         if (trustedState.lifecycle == WorkforceDeviceBindingLifecycle.PENDING_PROOF || trustedState.lifecycle == WorkforceDeviceBindingLifecycle.PROVISIONING) {
                             stringResource(R.string.device_enrollment_resume)
+                        } else if (selectedReplacementId != null) {
+                            stringResource(R.string.device_enrollment_replace)
                         } else {
                             stringResource(R.string.device_enrollment_start)
                         },

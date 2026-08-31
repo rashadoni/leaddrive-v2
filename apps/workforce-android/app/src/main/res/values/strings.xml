@@ -68,6 +68,10 @@
     <string name="device_label">Device label</string>
     <string name="device_enrollment_resume">Resume device enrollment</string>
     <string name="device_enrollment_start">Enroll this device</string>
+    <string name="device_enrollment_replace">Enroll replacement device</string>
+    <string name="device_replace_explainer">Optionally select one active device to replace. The replacement still needs independent administrator approval.</string>
+    <string name="device_replace_select">Replace %1$s</string>
+    <string name="device_replace_selected">Selected to replace %1$s</string>
     <string name="device_enrollments_title">Your attendance device enrollments</string>
     <string name="device_revoke_hint">Revoke a lost or suspected-compromised device. This is permanent for that enrollment and does not alter recorded work time.</string>
     <string name="device_enrollment_status">%1$s: %2$s</string>

@@ -68,6 +68,10 @@
     <string name="device_label">Название устройства</string>
     <string name="device_enrollment_resume">Продолжить регистрацию устройства</string>
     <string name="device_enrollment_start">Зарегистрировать это устройство</string>
+    <string name="device_enrollment_replace">Зарегистрировать заменяющее устройство</string>
+    <string name="device_replace_explainer">При необходимости выберите одно активное устройство для замены. Замена всё равно требует независимого одобрения администратора.</string>
+    <string name="device_replace_select">Заменить %1$s</string>
+    <string name="device_replace_selected">Выбрано для замены: %1$s</string>
     <string name="device_enrollments_title">Ваши регистрации устройств для учёта времени</string>
     <string name="device_revoke_hint">Отзовите утерянное или предположительно скомпрометированное устройство. Это необратимо для этой регистрации и не меняет записанное рабочее время.</string>
     <string name="device_enrollment_status">%1$s: %2$s</string>

@@ -68,6 +68,10 @@
     <string name="device_label">Cihazın adı</string>
     <string name="device_enrollment_resume">Cihaz qeydiyyatını davam etdir</string>
     <string name="device_enrollment_start">Bu cihazı qeydiyyatdan keçir</string>
+    <string name="device_enrollment_replace">Əvəzedici cihazı qeydiyyatdan keçir</string>
+    <string name="device_replace_explainer">Lazım olduqda əvəz etmək üçün bir aktiv cihaz seçin. Əvəzləmə yenə də müstəqil administrator təsdiqi tələb edir.</string>
+    <string name="device_replace_select">%1$s cihazını əvəz et</string>
+    <string name="device_replace_selected">Əvəz etmək üçün seçildi: %1$s</string>
     <string name="device_enrollments_title">Davamiyyət üçün cihaz qeydiyyatlarınız</string>
     <string name="device_revoke_hint">İtirilmiş və ya komprometasiya olunduğundan şübhələnilən cihazı ləğv edin. Bu, həmin qeydiyyat üçün daimi addımdır və qeydə alınmış iş vaxtını dəyişmir.</string>
     <string name="device_enrollment_status">%1$s: %2$s</string>

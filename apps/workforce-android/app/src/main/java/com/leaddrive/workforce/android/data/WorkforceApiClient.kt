@@ -113,9 +113,13 @@ class WorkforceApiClient(
         deviceId: String,
         deviceLabel: String,
         publicKeySpki: String,
+        replacesEnrollmentId: String? = null,
     ): WorkforceDeviceEnrollmentStart = withContext(Dispatchers.IO) {
         require(deviceLabel.trim().length in 1..120) { "Choose a device label up to 120 characters." }
         require(publicKeySpki.length in 1..8_192) { "The Workforce device key is invalid." }
+        require(replacesEnrollmentId == null || replacesEnrollmentId.matches(Regex("[A-Za-z0-9_-]{1,100}"))) {
+            "The Workforce replacement device selection is invalid."
+        }
         val response = request(
             method = "POST",
             path = "/api/v1/mtm/mobile/attendance/devices/enrollments",
@@ -124,6 +128,11 @@ class WorkforceApiClient(
             body = JSONObject()
                 .put("deviceLabel", deviceLabel.trim())
                 .put("publicKeySpki", publicKeySpki)
+                .apply {
+                    // The server verifies that this is the employee's active
+                    // enrollment and still requires independent approval.
+                    replacesEnrollmentId?.let { put("replacesEnrollmentId", it) }
+                }
                 .toString(),
         )
         val data = response.optJSONObject("data")
