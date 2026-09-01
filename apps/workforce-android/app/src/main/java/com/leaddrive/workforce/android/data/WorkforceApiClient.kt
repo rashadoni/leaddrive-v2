@@ -1134,6 +1134,7 @@ data class WorkforceAttendanceRequirements(
     fun requiresQr(action: WorkforceWorkdayAction): Boolean = action.wireValue in qrRequiredActions
     fun requiresDeviceTrust(action: WorkforceWorkdayAction): Boolean = action.wireValue in deviceTrustRequiredActions
     fun requiresBiometric(action: WorkforceWorkdayAction): Boolean = action.wireValue in biometricRequiredActions
+    /** A biometric-only manifest entry must never downgrade to an unsigned action. */
     fun requiresDeviceProof(action: WorkforceWorkdayAction): Boolean =
         requiresDeviceTrust(action) || requiresBiometric(action)
 
