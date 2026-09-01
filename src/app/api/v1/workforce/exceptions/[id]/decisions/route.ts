@@ -12,6 +12,7 @@ import {
 } from "@/lib/workforce/exception-case-writer"
 import { WorkforceExceptionCaseLedgerError } from "@/lib/workforce/exception-case-ledger"
 import { resolveWorkforceHistoricalTeamMembership } from "@/lib/workforce/team-membership"
+import { workforceSensitiveResponseHeaders } from "@/lib/workforce/sensitive-response"
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -138,7 +139,13 @@ export const POST = withWorkforceSessionAuth<RouteContext>("write", async (req, 
       success: true,
       idempotent: result.idempotent,
       data: { decisionId: result.decisionId },
-    }, { status: result.idempotent ? 200 : 201 })
+    }, {
+      status: result.idempotent ? 200 : 201,
+      // A decision ID is opaque but still links an employee's exception to a
+      // privileged HR action. Keep response and intermediary retention out
+      // of the ordinary browser cache just as for the surrounding queue.
+      headers: workforceSensitiveResponseHeaders,
+    })
   } catch (error) {
     if (error instanceof WorkforceExceptionCaseLedgerError || error instanceof WorkforceExceptionCaseWriterError) {
       return lifecycleConflict(error)
