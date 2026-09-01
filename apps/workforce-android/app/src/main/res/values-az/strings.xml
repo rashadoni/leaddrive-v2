@@ -24,7 +24,7 @@
     <string name="refresh_server_state">Server məlumatını yenilə</string>
     <string name="sign_out">Çıxış et</string>
     <string name="private_reminder">Şəxsi xatırlatma</string>
-    <string name="private_reminder_explainer">Bu telefon üçün lokal və könüllü xatırlatmadır. Workforce yalnız server tərəfindən təsdiqlənmiş növbə sonundan istifadə edir və iş saatlarını təxmin etmir.</string>
+    <string name="private_reminder_explainer">Bu telefon üçün lokal və könüllü xatırlatmadır. Workforce yalnız server tərəfindən təsdiqlənmiş növbə kontekstindən istifadə edir və iş saatını və ya seqmenti təxmin etmir.</string>
     <string name="private_reminder_refresh">Könüllü xatırlatmanı yoxlamaq üçün server məlumatını yeniləyin.</string>
     <string name="scheduled_context_unavailable">Cari növbə üçün dəyişməz plan məlumatı mövcud deyil.</string>
     <string name="scheduled_context_current">Cari planlaşdırılmış hissə</string>
@@ -196,9 +196,9 @@
     <string name="reminder_state_disabled">Bu cihazda lokal xatırlatmalar söndürülüb.</string>
     <string name="reminder_state_permission_required">Ümumi lokal Workforce xatırlatmasını almaq üçün bildirişlərə icazə verin.</string>
     <string name="reminder_state_notifications_disabled">Sistem ayarlarında Workforce bildirişləri söndürülüb, buna görə lokal xatırlatma planlaşdırılmayıb.</string>
-    <string name="reminder_state_no_approved_schedule">Server tərəfindən təsdiqlənmiş növbə sonu yoxdur, buna görə bu cihaz xatırlatma vaxtını təxmin etməyəcək.</string>
-    <string name="reminder_state_window_passed">Planlaşdırılmış növbə sonu artıq keçib. Gec xatırlatma yaratmaq əvəzinə server məlumatını yeniləyin.</string>
-    <string name="reminder_state_not_needed">Bu tamamlanmış iş günü üçün lokal buraxılmış-bitiş xatırlatması lazım deyil.</string>
+    <string name="reminder_state_no_approved_schedule">Server tərəfindən təsdiqlənmiş növbə konteksti yoxdur, buna görə bu cihaz xatırlatma vaxtını təxmin etməyəcək.</string>
+    <string name="reminder_state_window_passed">Bütün təsdiqlənmiş xatırlatma vaxtları artıq keçib. Gec xatırlatma yaratmaq əvəzinə server məlumatını yeniləyin.</string>
+    <string name="reminder_state_not_needed">Bu tamamlanmış iş günü üçün lokal xatırlatma lazım deyil.</string>
     <string name="reminder_state_scheduled">Şəxsi lokal xatırlatma planlaşdırılıb. Orada iş vaxtı, məkan və ya sübut detalları yoxdur.</string>
     <string name="recovery_domain_workday">İş vaxtı</string>
     <string name="recovery_domain_request">Sorğu</string>

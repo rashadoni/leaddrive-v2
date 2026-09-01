@@ -116,29 +116,34 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   notice and tenant proof-policy activation. This does not claim a QR/GEO/
   device physical validation result.
 
-## Opt-in local missed-finish reminder (`WF-C9-011`, partial)
+## Opt-in local reminders (`WF-C9-011`, partial)
 
 - The employee must explicitly turn on the local reminder. Android 13+ asks
   for `POST_NOTIFICATIONS` only after that employee action; a denied permission
   or a system-disabled notification channel produces a safe visible state and
   schedules nothing.
-- The server's own immutable `WorkforceShiftSnapshot.plannedEndAt` is the only
-  input. The client does not use the Baku default, device timezone, a local
-  clock-derived shift, current site, segment, location, QR or device proof to
-  create a reminder. If no current approved shift end is returned, or the
-  window has passed, it cancels any prior reminder instead of guessing.
-- The single WorkManager request stores `Data.EMPTY` and a fixed generic name;
-  no workday, employee, tenant, site or proof identifier is written to local
-  WorkManager metadata. Sign-out, tenant/account change, disabling the option,
-  completed workday and stale/no-plan state cancel it.
+- The server's own immutable `WorkforceShiftSnapshot.plannedEndAt` is an input.
+  When the server has selected exactly one **next** immutable segment, it may
+  additionally return its server-resolved `startsAt`; Android does not derive
+  that instant from the Baku default, a device timezone, a local date or a
+  clock. The client does not use current site, location, QR or device proof to
+  create a reminder. If no current approved schedule context is returned, or
+  all approved windows have passed, it cancels prior reminders instead of
+  guessing.
+- Each WorkManager request stores `Data.EMPTY` and one fixed generic name;
+  no workday, employee, tenant, site, segment, location, proof or action
+  identifier is written to local WorkManager metadata. Sign-out, tenant/account
+  change, disabling the option, completed workday and stale/no-plan state
+  cancel every reminder.
 - The worker displays only “LeadDrive Workforce — Open Workforce to review
   your work-time status.” It contains no time, name, site, location, QR or
   device information. A notification failure ends the one-shot job rather than
   retrying and possibly showing a duplicate alert.
-- This is intentionally only a private **missed-finish** reminder. There is no
-  push credential, segment reminder, start reminder, server no-show action or
-  delivery receipt. Those flows remain unimplemented until an approved
-  server-side notification contract and physical-device evidence exist.
+- This is intentionally only a private **missed-finish or next-segment**
+  reminder. There is no push credential, start reminder before a workday
+  exists, server no-show action or delivery receipt. Those flows remain
+  unimplemented until an approved server-side notification contract and
+  physical-device evidence exist.
 
 ## Localisation and accessibility foundation (`WF-C9-012`, partial)
 

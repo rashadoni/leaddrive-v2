@@ -24,7 +24,7 @@
     <string name="refresh_server_state">Refresh server state</string>
     <string name="sign_out">Sign out</string>
     <string name="private_reminder">Private reminder</string>
-    <string name="private_reminder_explainer">Optional and local to this phone. Workforce schedules it only from a server-approved shift end; it never guesses office hours.</string>
+    <string name="private_reminder_explainer">Optional and local to this phone. Workforce schedules it only from server-approved shift context; it never guesses office hours or a segment.</string>
     <string name="private_reminder_refresh">Refresh server state to check the optional reminder.</string>
     <string name="scheduled_context_unavailable">No immutable current schedule context is available.</string>
     <string name="scheduled_context_current">Current scheduled segment</string>
@@ -196,9 +196,9 @@
     <string name="reminder_state_disabled">Local reminders are off on this device.</string>
     <string name="reminder_state_permission_required">Allow notifications to receive a generic local Workforce reminder.</string>
     <string name="reminder_state_notifications_disabled">Notifications are disabled for Workforce in system settings, so no local reminder is scheduled.</string>
-    <string name="reminder_state_no_approved_schedule">No server-approved shift end is available, so this device will not guess a reminder time.</string>
-    <string name="reminder_state_window_passed">The planned shift end has already passed. Refresh server state instead of scheduling a late reminder.</string>
-    <string name="reminder_state_not_needed">No local missed-finish reminder is needed for this completed workday.</string>
+    <string name="reminder_state_no_approved_schedule">No server-approved shift context is available, so this device will not guess a reminder time.</string>
+    <string name="reminder_state_window_passed">All approved reminder times have already passed. Refresh server state instead of scheduling a late reminder.</string>
+    <string name="reminder_state_not_needed">No local reminder is needed for this completed workday.</string>
     <string name="reminder_state_scheduled">A private local reminder is scheduled. It contains no work-time, site or proof details.</string>
     <string name="recovery_domain_workday">Work Time</string>
     <string name="recovery_domain_request">Request</string>

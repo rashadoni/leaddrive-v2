@@ -34,6 +34,11 @@ type MobileScheduleSegment = {
   startTime: string
   endTime: string
   siteName: string | null
+  /**
+   * Present only for the immutable server-selected next segment. It is safe
+   * planning context for a generic local reminder, never presence evidence.
+   */
+  startsAt?: Date
 }
 
 function object(value: unknown): Record<string, unknown> | null {
@@ -106,6 +111,7 @@ function mobileScheduleSegment(input: {
     startTime: selected.startTime,
     endTime: selected.endTime,
     siteName: selected.siteName,
+    ...(current ? {} : { startsAt: selected.startAt }),
   }
 }
 
@@ -128,8 +134,9 @@ function availableActions(status: WorkdaySummary["status"] | null): string[] {
 /**
  * The mobile read model is an explicit allow-list. It does not serialize
  * action coordinates, event notes, site addresses/geofences or any QR/device
- * proof. A reminder may use only the accepted immutable shift-end snapshot;
- * a displayed site/segment is planning context, never presence evidence.
+ * proof. An opt-in generic local reminder may use only an accepted immutable
+ * shift-end snapshot or a server-selected next-segment instant; a displayed
+ * site/segment is planning context, never presence evidence.
  */
 function mobileWorkdaySummary(workday: WorkdaySummary, now: Date) {
   const { workforceShiftSnapshot, workforceWorkdayScheduleSnapshot } = workday

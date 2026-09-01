@@ -866,12 +866,19 @@ private fun JSONObject.toWorkdayScheduleSegment(): WorkforceWorkdayScheduleSegme
         || !WORKFORCE_LOCAL_TIME.matches(endTime)
         || endTime <= startTime
     ) return null
+    // A NEXT segment's instant is server-resolved from the immutable snapshot.
+    // The client must not reconstruct it from a local date, timezone or clock.
+    val startsAt = if (state == "NEXT") {
+        optString("startsAt").takeIf { it.isNotBlank() && it != "null" }
+            ?.let { runCatching { Instant.parse(it) }.getOrNull()?.toString() }
+    } else null
     return WorkforceWorkdayScheduleSegment(
         state = state,
         mode = mode,
         startTime = startTime,
         endTime = endTime,
         siteName = optString("siteName").takeIf { it.isNotBlank() && it != "null" && it.length <= 160 },
+        startsAt = startsAt,
     )
 }
 
@@ -1195,6 +1202,8 @@ data class WorkforceWorkdayScheduleSegment(
     val startTime: String,
     val endTime: String,
     val siteName: String?,
+    /** Server-resolved only for a NEXT segment and only used for generic local reminders. */
+    val startsAt: String?,
 )
 
 data class WorkforceTodaySnapshot(

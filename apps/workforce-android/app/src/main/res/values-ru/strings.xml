@@ -24,7 +24,7 @@
     <string name="refresh_server_state">Обновить данные сервера</string>
     <string name="sign_out">Выйти</string>
     <string name="private_reminder">Личное напоминание</string>
-    <string name="private_reminder_explainer">Это необязательное напоминание только на этом телефоне. Workforce использует только утверждённое сервером окончание смены и не угадывает рабочие часы.</string>
+    <string name="private_reminder_explainer">Это необязательное напоминание только на этом телефоне. Workforce использует только утверждённый сервером контекст смены и не угадывает рабочие часы или сегмент.</string>
     <string name="private_reminder_refresh">Обновите данные сервера, чтобы проверить необязательное напоминание.</string>
     <string name="scheduled_context_unavailable">Нет неизменяемого контекста текущего расписания.</string>
     <string name="scheduled_context_current">Текущий запланированный сегмент</string>
@@ -196,9 +196,9 @@
     <string name="reminder_state_disabled">Локальные напоминания на этом устройстве выключены.</string>
     <string name="reminder_state_permission_required">Разрешите уведомления, чтобы получать общее локальное напоминание Workforce.</string>
     <string name="reminder_state_notifications_disabled">Уведомления Workforce отключены в настройках системы, поэтому локальное напоминание не запланировано.</string>
-    <string name="reminder_state_no_approved_schedule">Нет утверждённого сервером окончания смены, поэтому устройство не будет угадывать время напоминания.</string>
-    <string name="reminder_state_window_passed">Запланированное окончание смены уже прошло. Обновите данные сервера вместо создания позднего напоминания.</string>
-    <string name="reminder_state_not_needed">Для завершённого рабочего дня локальное напоминание о незавершённой смене не нужно.</string>
+    <string name="reminder_state_no_approved_schedule">Нет утверждённого сервером контекста смены, поэтому устройство не будет угадывать время напоминания.</string>
+    <string name="reminder_state_window_passed">Все утверждённые моменты напоминания уже прошли. Обновите данные сервера вместо создания позднего напоминания.</string>
+    <string name="reminder_state_not_needed">Для завершённого рабочего дня локальное напоминание не нужно.</string>
     <string name="reminder_state_scheduled">Запланировано личное локальное напоминание. В нём нет сведений о рабочем времени, площадке или подтверждении.</string>
     <string name="recovery_domain_workday">Рабочее время</string>
     <string name="recovery_domain_request">Заявка</string>

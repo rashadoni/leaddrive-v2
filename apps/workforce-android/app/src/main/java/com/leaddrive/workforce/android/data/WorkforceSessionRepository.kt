@@ -114,15 +114,15 @@ class WorkforceSessionRepository(
     }
 
     /**
-     * Reconciles only an opt-in generic local reminder from fresh server truth.
-     * It never derives a shift locally or sends a preference/notification fact
-     * to the API.
+     * Reconciles only opt-in generic local reminders from fresh server truth.
+     * It never derives a shift/segment locally or sends a preference or
+     * notification fact to the API.
      */
     fun reminderSettings(snapshot: WorkforceTodaySnapshot): WorkforceReminderSettings {
         val enabled = secureStore.localRemindersEnabled()
         return WorkforceReminderSettings(
             enabled = enabled,
-            state = reminderScheduler.reconcile(enabled, snapshot.workday),
+            state = reminderScheduler.reconcile(enabled, snapshot),
         )
     }
 
