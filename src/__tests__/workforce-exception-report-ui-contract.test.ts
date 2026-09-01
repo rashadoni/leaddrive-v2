@@ -28,4 +28,11 @@ describe("Workforce exception aggregate report UI contract", () => {
       expect(source).toContain("setAccessDeniedRequestKey(requestKey)")
     }
   })
+
+  it("keeps untrusted queue enums in local unavailable copy", () => {
+    for (const source of [component, queue]) {
+      expect(source).toContain('workforceExceptionQueueLabelKey(')
+      expect(source).not.toContain('t(`types.${item.type}`)')
+    }
+  })
 })

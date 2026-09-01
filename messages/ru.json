@@ -23813,35 +23813,41 @@
       "DELAYED_CLAIM": "Поздняя заявка",
       "SITE_TRANSITION_REVIEW": "Проверка перехода между площадками",
       "DEVICE_SECURITY_REVIEW": "Проверка безопасности устройства",
-      "ATTENDANCE_PROOF_REVIEW": "Проверка доказательств присутствия"
+      "ATTENDANCE_PROOF_REVIEW": "Проверка доказательств присутствия",
+      "unavailable": "Тип недоступен"
     },
     "severities": {
       "ROUTINE_REVIEW": "Обычная проверка",
-      "ATTENTION_REVIEW": "Требует внимания"
+      "ATTENTION_REVIEW": "Требует внимания",
+      "unavailable": "Оценка риска недоступна"
     },
     "stages": {
       "OPEN": "Открыт",
       "AWAITING_EMPLOYEE_RESPONSE": "Ожидается ответ сотрудника",
       "HR_REVIEW": "Проверка HR",
       "RESOLVED": "Решён",
-      "DATA_INTEGRITY_REVIEW": "Проверка целостности данных"
+      "DATA_INTEGRITY_REVIEW": "Проверка целостности данных",
+      "unavailable": "Этап проверки недоступен"
     },
     "evidenceStates": {
       "NOT_REQUIRED": "Не требуется",
       "LINKED_RESTRICTED": "Связано, ограниченный доступ",
-      "MISSING_OR_UNAVAILABLE": "Нет или недоступно"
+      "MISSING_OR_UNAVAILABLE": "Нет или недоступно",
+      "unavailable": "Статус доказательств недоступен"
     },
     "employeeResponses": {
       "NOT_REQUESTED": "Не запрошен",
       "PENDING": "Ожидается",
-      "RECEIVED": "Получен"
+      "RECEIVED": "Получен",
+      "unavailable": "Ответ сотрудника недоступен"
     },
     "nextActions": {
       "ACKNOWLEDGE_HR_REVIEW": "Подтвердить проверку HR",
       "WAIT_FOR_EMPLOYEE_RESPONSE": "Ждать ответа сотрудника",
       "HUMAN_REVIEW_REQUIRED": "Нужна проверка человеком",
       "NO_FURTHER_ACTION": "Дальнейшее действие не требуется",
-      "ESCALATE_DATA_INTEGRITY_REVIEW": "Передать на проверку целостности данных"
+      "ESCALATE_DATA_INTEGRITY_REVIEW": "Передать на проверку целостности данных",
+      "unavailable": "Следующее действие недоступно"
     }
   },
   "workforceExceptionReport": {

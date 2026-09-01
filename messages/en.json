@@ -23813,35 +23813,41 @@
       "DELAYED_CLAIM": "Delayed claim",
       "SITE_TRANSITION_REVIEW": "Site transition review",
       "DEVICE_SECURITY_REVIEW": "Device security review",
-      "ATTENDANCE_PROOF_REVIEW": "Attendance proof review"
+      "ATTENDANCE_PROOF_REVIEW": "Attendance proof review",
+      "unavailable": "Type unavailable"
     },
     "severities": {
       "ROUTINE_REVIEW": "Routine review",
-      "ATTENTION_REVIEW": "Attention review"
+      "ATTENTION_REVIEW": "Attention review",
+      "unavailable": "Risk unavailable"
     },
     "stages": {
       "OPEN": "Open",
       "AWAITING_EMPLOYEE_RESPONSE": "Awaiting employee response",
       "HR_REVIEW": "HR review",
       "RESOLVED": "Resolved",
-      "DATA_INTEGRITY_REVIEW": "Data integrity review"
+      "DATA_INTEGRITY_REVIEW": "Data integrity review",
+      "unavailable": "Review stage unavailable"
     },
     "evidenceStates": {
       "NOT_REQUIRED": "Not required",
       "LINKED_RESTRICTED": "Linked, restricted",
-      "MISSING_OR_UNAVAILABLE": "Missing or unavailable"
+      "MISSING_OR_UNAVAILABLE": "Missing or unavailable",
+      "unavailable": "Evidence state unavailable"
     },
     "employeeResponses": {
       "NOT_REQUESTED": "Not requested",
       "PENDING": "Pending",
-      "RECEIVED": "Received"
+      "RECEIVED": "Received",
+      "unavailable": "Employee response unavailable"
     },
     "nextActions": {
       "ACKNOWLEDGE_HR_REVIEW": "Acknowledge HR review",
       "WAIT_FOR_EMPLOYEE_RESPONSE": "Wait for employee response",
       "HUMAN_REVIEW_REQUIRED": "Human review required",
       "NO_FURTHER_ACTION": "No further action",
-      "ESCALATE_DATA_INTEGRITY_REVIEW": "Escalate data integrity review"
+      "ESCALATE_DATA_INTEGRITY_REVIEW": "Escalate data integrity review",
+      "unavailable": "Next action unavailable"
     }
   },
   "workforceExceptionReport": {
