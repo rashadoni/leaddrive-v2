@@ -23663,6 +23663,7 @@
     "approvedReportRangeInvalid": "Düzgün hesabat dövrü seçin: bitmə tarixi başlanğıc tarixindən əvvəl ola bilməz.",
     "approvedReportApply": "Hesabatı göstər",
     "approvedReportSourceHint": "Hər göstərici dəyişməz təsdiqlənmiş sətirlərdən yenidən hesablanır. Xam geolokasiya, QR, cihaz sübutu və əməkdaş izahatları bu hesabata daxil deyil.",
+    "approvedReportTimezone": "Hesabat tarixləri tenantın saat qurşağından istifadə edir: {timezone}.",
     "approvedReportEmployees": "Əməkdaşlar",
     "approvedReportWorkdays": "Təsdiqlənmiş iş günləri",
     "approvedReportExpected": "Gözlənilən vaxt",

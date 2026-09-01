@@ -35,8 +35,12 @@ hashes and other free text. The access audit has period and aggregate counts
 only; it does not store employee identifiers or individual metrics.
 
 The new Workforce web report uses this endpoint, a date filter and the current
-actor scope. It is a separate HRM navigation item and remains independent of
-Route & Field.
+actor scope. Its first load omits the date parameters so the server selects
+the period in the tenant timezone; the inputs are then updated to the exact
+returned start/end dates and name that timezone. A browser in a different
+timezone therefore cannot silently choose a different Baku work date on the
+initial report. Later explicit date-filter submissions remain user-selected.
+It is a separate HRM navigation item and remains independent of Route & Field.
 
 ## Explicit non-claims
 
@@ -62,6 +66,10 @@ PASS  npm run i18n:check (21,232 EN leaf keys; RU/AZ missing=0, extra=0)
 PASS  git diff --check
 PASS  2026-09-01: selected-employee grant/no-fallback and unavailable-grant
       source contracts (9 tests across report/access evaluator)
+PASS  2026-09-01: tenant-timezone initial-period contract, report aggregate
+      and immutable report builder (3 files, 12 tests; one sequential worker)
+PASS  2026-09-01: scoped ESLint for the report component/contract and
+      `npm run i18n:check` (21,465 EN leaf keys; RU/AZ missing=0, extra=0)
 NOT RUN  full TypeScript check, production build, browser E2E, staging data
          reconciliation and load tests: full/heavy gates are reserved for CI
          or an approved heavy worker on this Contabo development host.

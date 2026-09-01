@@ -45,6 +45,7 @@ type ApprovedReport = {
 }
 
 type ReportData = { timezone: string; report: ApprovedReport }
+type ReportRange = Pick<ApprovedReport, "start" | "end">
 
 function duration(value: number): string {
   const hours = Math.floor(value / 3600)
@@ -68,7 +69,10 @@ export function WorkforceApprovedReport() {
   const t = useTranslations("workforcePage")
   const defaults = useMemo(() => initialRange(), [])
   const [filters, setFilters] = useState(defaults)
-  const [applied, setApplied] = useState(defaults)
+  // The report API resolves an omitted period in the tenant timezone. Keep
+  // that first request server-authoritative rather than making an employee in
+  // another browser timezone silently select the wrong Baku work date.
+  const [applied, setApplied] = useState<ReportRange | null>(null)
   const [data, setData] = useState<ReportData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -77,15 +81,27 @@ export function WorkforceApprovedReport() {
 
   useEffect(() => {
     const controller = new AbortController()
-    const parameters = new URLSearchParams(applied)
+    const parameters = new URLSearchParams()
+    if (applied) {
+      parameters.set("start", applied.start)
+      parameters.set("end", applied.end)
+    }
     fetch("/api/v1/workforce/reports?" + parameters.toString(), {
       headers: organizationId ? { "x-organization-id": organizationId } : {},
       signal: controller.signal,
     })
       .then(async (response) => {
         const result = await response.json().catch(() => ({}))
-        if (!response.ok || !result.success) throw new Error(result.error || `HTTP ${response.status}`)
-        setData(result.data as ReportData)
+        if (!response.ok || !result.success) throw new Error("WORKFORCE_APPROVED_REPORT_LOAD_FAILED")
+        const nextData = result.data as ReportData
+        setData(nextData)
+        // Inputs remain usable after the initial response, but they must show
+        // the exact server-selected dates. Do not overwrite a later local
+        // edit while an earlier request is being cancelled/replaced.
+        setFilters((current) => {
+          if (applied && (current.start !== applied.start || current.end !== applied.end)) return current
+          return { start: nextData.report.start, end: nextData.report.end }
+        })
       })
       .catch((cause: unknown) => {
         if (cause instanceof Error && cause.name === "AbortError") return
@@ -124,6 +140,7 @@ export function WorkforceApprovedReport() {
         <div className="flex gap-2"><Button type="button" variant="outline" className="min-h-11" disabled={loading} onClick={apply}>{t("approvedReportApply")}</Button><Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("refresh")} disabled={loading} onClick={() => { setLoading(true); setError(null); setRetry((value) => value + 1) }}>{loading ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <RefreshCw />}</Button></div>
       </div>
       <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">{t("approvedReportSourceHint")}</p>
+      {data ? <p className="mt-2 text-sm text-muted-foreground">{t("approvedReportTimezone", { timezone: data.timezone })}</p> : null}
     </div>
     {error ? <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive" role="alert">{error}</div> : null}
     {loading ? <div className="flex items-center gap-2 py-12 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin motion-reduce:animate-none" />{t("approvedReportLoading")}</div> : null}
