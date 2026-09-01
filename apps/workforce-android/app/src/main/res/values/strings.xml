@@ -30,6 +30,13 @@
     <string name="scheduled_context_current">Current scheduled segment</string>
     <string name="scheduled_context_next">Next scheduled segment</string>
     <string name="scheduled_context_no_site">no scheduled site</string>
+    <string name="scheduled_context_mode_site">On site</string>
+    <string name="scheduled_context_mode_remote">Remote</string>
+    <string name="scheduled_context_mode_field">Field work</string>
+    <string name="scheduled_context_mode_travel">Travel</string>
+    <string name="scheduled_context_mode_on_call">On call</string>
+    <string name="scheduled_context_mode_exception">Exception</string>
+    <string name="scheduled_context_mode_unavailable">schedule type unavailable</string>
     <string name="scheduled_context_value">%1$s: %2$s — %3$s (%4$s–%5$s).</string>
     <string name="scheduled_context_not_presence_proof">This schedule is not proof of physical presence.</string>
     <string name="turn_on_reminders">Turn on local reminders</string>

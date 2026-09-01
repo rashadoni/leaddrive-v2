@@ -118,6 +118,11 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   action requirement; foreground GEO capture remains disabled until legal
   notice and tenant proof-policy activation. This does not claim a QR/GEO/
   device physical validation result.
+- Every allowed server segment mode (`SITE`, `REMOTE`, `FIELD`, `TRAVEL`,
+  `ON_CALL`, `EXCEPTION`) now maps through a local EN/RU/AZ resource instead
+  of exposing a lower-cased transport enum. An unknown future value renders a
+  neutral unavailable schedule-type label rather than an invented translation
+  or inferred mode.
 
 ## Opt-in local reminders (`WF-C9-011`, partial)
 

@@ -30,6 +30,13 @@
     <string name="scheduled_context_current">Текущий запланированный сегмент</string>
     <string name="scheduled_context_next">Следующий запланированный сегмент</string>
     <string name="scheduled_context_no_site">нет запланированной площадки</string>
+    <string name="scheduled_context_mode_site">На площадке</string>
+    <string name="scheduled_context_mode_remote">Удалённо</string>
+    <string name="scheduled_context_mode_field">Выездная работа</string>
+    <string name="scheduled_context_mode_travel">В пути</string>
+    <string name="scheduled_context_mode_on_call">По вызову</string>
+    <string name="scheduled_context_mode_exception">Исключение</string>
+    <string name="scheduled_context_mode_unavailable">тип расписания недоступен</string>
     <string name="scheduled_context_value">%1$s: %2$s — %3$s (%4$s–%5$s).</string>
     <string name="scheduled_context_not_presence_proof">Это расписание не является подтверждением физического присутствия.</string>
     <string name="turn_on_reminders">Включить локальные напоминания</string>

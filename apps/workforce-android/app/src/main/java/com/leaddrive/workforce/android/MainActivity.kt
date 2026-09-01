@@ -1583,15 +1583,31 @@ private fun WorkforceScheduledContext(segment: com.leaddrive.workforce.android.d
         stringResource(R.string.scheduled_context_next)
     }
     val place = segment.siteName ?: stringResource(R.string.scheduled_context_no_site)
+    val modeResource = workforceScheduleSegmentModeResource(segment.mode)
+    val mode = if (modeResource == null) {
+        stringResource(R.string.scheduled_context_mode_unavailable)
+    } else {
+        stringResource(modeResource)
+    }
     Text(stringResource(
         R.string.scheduled_context_value,
         state,
-        segment.mode.lowercase(),
+        mode,
         place,
         segment.startTime,
         segment.endTime,
     ))
     Text(stringResource(R.string.scheduled_context_not_presence_proof))
+}
+
+private fun workforceScheduleSegmentModeResource(mode: String): Int? = when (mode) {
+    "SITE" -> R.string.scheduled_context_mode_site
+    "REMOTE" -> R.string.scheduled_context_mode_remote
+    "FIELD" -> R.string.scheduled_context_mode_field
+    "TRAVEL" -> R.string.scheduled_context_mode_travel
+    "ON_CALL" -> R.string.scheduled_context_mode_on_call
+    "EXCEPTION" -> R.string.scheduled_context_mode_exception
+    else -> null
 }
 
 @Composable

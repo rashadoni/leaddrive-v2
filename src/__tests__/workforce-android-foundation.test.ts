@@ -80,9 +80,14 @@ describe("Workforce Android foundation", () => {
     expect(api).not.toContain('optString("longitude")')
     expect(activity).toContain("WorkforceScheduledContext(today.workday?.schedule?.segment)")
     expect(activity).toContain("R.string.scheduled_context_not_presence_proof")
+    expect(activity).toContain("workforceScheduleSegmentModeResource(segment.mode)")
+    expect(activity).not.toContain("segment.mode.lowercase()")
     for (const catalog of [defaultStrings, russianStrings, azerbaijaniStrings]) {
       expect(catalog).toContain('name="scheduled_context_value"')
       expect(catalog).toContain('name="scheduled_context_not_presence_proof"')
+      for (const mode of ["site", "remote", "field", "travel", "on_call", "exception", "unavailable"]) {
+        expect(catalog).toContain(`name="scheduled_context_mode_${mode}"`)
+      }
     }
   })
 

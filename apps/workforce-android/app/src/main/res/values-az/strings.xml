@@ -30,6 +30,13 @@
     <string name="scheduled_context_current">Cari planlaşdırılmış hissə</string>
     <string name="scheduled_context_next">Növbəti planlaşdırılmış hissə</string>
     <string name="scheduled_context_no_site">planlaşdırılmış məkan yoxdur</string>
+    <string name="scheduled_context_mode_site">Məkanda</string>
+    <string name="scheduled_context_mode_remote">Uzaqdan</string>
+    <string name="scheduled_context_mode_field">Sahədə iş</string>
+    <string name="scheduled_context_mode_travel">Səfərdə</string>
+    <string name="scheduled_context_mode_on_call">Növbədə</string>
+    <string name="scheduled_context_mode_exception">İstisna</string>
+    <string name="scheduled_context_mode_unavailable">növbə növü əlçatan deyil</string>
     <string name="scheduled_context_value">%1$s: %2$s — %3$s (%4$s–%5$s).</string>
     <string name="scheduled_context_not_presence_proof">Bu plan fiziki iştirakın sübutu deyil.</string>
     <string name="turn_on_reminders">Lokal xatırlatmaları aktiv et</string>
