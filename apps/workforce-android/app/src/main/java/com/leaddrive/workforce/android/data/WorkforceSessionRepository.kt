@@ -2,9 +2,16 @@ package com.leaddrive.workforce.android.data
 
 import com.leaddrive.workforce.android.security.WorkforceDeviceKeyManager
 import com.leaddrive.workforce.android.security.WorkforceEphemeralQrToken
+import com.leaddrive.workforce.android.security.WorkforcePlayIntegrityClient
 import android.util.Base64
+import android.util.Base64.NO_PADDING
+import android.util.Base64.NO_WRAP
+import android.util.Base64.URL_SAFE
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 import java.security.Signature
 import java.time.Instant
+import java.time.format.DateTimeFormatterBuilder
 import java.util.UUID
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -21,6 +28,7 @@ class WorkforceSessionRepository(
     private val outbox: WorkforceEncryptedOutbox,
     private val deviceKeys: WorkforceDeviceKeyManager,
     private val reminderScheduler: WorkforceReminderScheduler,
+    private val playIntegrity: WorkforcePlayIntegrityClient,
 ) {
     private val sessionMutex = Mutex()
 
@@ -44,6 +52,15 @@ class WorkforceSessionRepository(
         api.bootstrap(session, secureStore.installationId()).also { bootstrap ->
             if (!bootstrap.release.mutationsBlocked) outbox.resumeDrain()
         }
+    }
+
+    /**
+     * Best-effort warm-up after an authenticated server manifest. It is not an
+     * authorization decision: an action still obtains a fresh token and the
+     * server still verifies it. A failure remains fail-closed at submission.
+     */
+    suspend fun warmPlayIntegrityIfRequired(bootstrap: WorkforceBootstrap) {
+        if (bootstrap.attendance.playIntegrityRequiredActions.isNotEmpty()) playIntegrity.warmUp()
     }
 
     suspend fun loadToday(): WorkforceTodaySnapshot = sessionMutex.withLock {
@@ -408,12 +425,21 @@ class WorkforceSessionRepository(
         val session = requireSession()
         val binding = secureStore.readDeviceBinding()
             ?: throw WorkforceApiException("The trusted-device binding was cleared. Refresh before continuing.", recoverable = false)
-        if (binding.enrollmentId != prepared.enrollmentId || binding.lifecycle != WorkforceDeviceBindingLifecycle.ACTIVE) {
+        if (!binding.matches(bootstrap)
+            || binding.enrollmentId != prepared.enrollmentId
+            || binding.lifecycle != WorkforceDeviceBindingLifecycle.ACTIVE) {
             throw WorkforceApiException("This device is no longer approved for the prepared action. Refresh before continuing.", recoverable = false)
         }
-        val operation = prepared.operation.copy(
+        var operation = prepared.operation.copy(
             attendanceDeviceProof = WorkforceDeviceProof(prepared.enrollmentId, signature),
         )
+        if (bootstrap.attendance.requiresPlayIntegrity(operation.action)) {
+            operation = operation.copy(
+                attendancePlayIntegrityToken = playIntegrity.tokenFor(
+                    workforcePlayIntegrityRequestHash(bootstrap, binding, operation),
+                ),
+            )
+        }
         try {
             val accepted = api.submitTodayOperation(session, secureStore.installationId(), operation)
             WorkforceTodaySubmission.Accepted(accepted, reminderSettings(accepted))
@@ -635,6 +661,28 @@ private fun workforceDeviceAttendanceChallenge(
         add("locationMock=${location.isMock}")
     }
 }.joinToString("\n")
+
+/** Must stay byte-for-byte aligned with src/lib/workforce/play-integrity.ts. */
+private fun workforcePlayIntegrityRequestHash(
+    bootstrap: WorkforceBootstrap,
+    binding: WorkforceDeviceBinding,
+    operation: WorkforceWorkdayOperation,
+): String {
+    val identifier = Regex("[A-Za-z0-9_-]{1,100}")
+    require(identifier.matches(bootstrap.organizationId)
+        && identifier.matches(bootstrap.agentId)
+        && identifier.matches(binding.enrollmentId)
+        && identifier.matches(operation.operationId)
+        && identifier.matches(operation.workdayId)) { "The Workforce Play Integrity action identifiers are invalid." }
+    val occurredAt = PLAY_INTEGRITY_UTC.format(Instant.ofEpochMilli(Instant.parse(operation.occurredAt).toEpochMilli()))
+    val canonical = "{\"version\":1,\"organizationId\":\"${bootstrap.organizationId}\",\"agentId\":\"${bootstrap.agentId}\",\"enrollmentId\":\"${binding.enrollmentId}\",\"operationId\":\"${operation.operationId}\",\"workdayId\":\"${operation.workdayId}\",\"action\":\"${operation.action.wireValue}\",\"occurredAt\":\"$occurredAt\",\"schemaVersion\":${WorkforceWorkdayOperation.WORKFORCE_WORKDAY_SCHEMA_VERSION}}"
+    return Base64.encodeToString(
+        MessageDigest.getInstance("SHA-256").digest(canonical.toByteArray(StandardCharsets.UTF_8)),
+        URL_SAFE or NO_PADDING or NO_WRAP,
+    )
+}
+
+private val PLAY_INTEGRITY_UTC = DateTimeFormatterBuilder().appendInstant(3).toFormatter()
 
 private fun Throwable.isEligibleForOfflineOutbox(): Boolean = this is java.io.IOException
     || (this is WorkforceApiException && recoverable && recoveryCode == null)

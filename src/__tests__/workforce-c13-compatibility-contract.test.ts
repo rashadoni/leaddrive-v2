@@ -47,7 +47,7 @@ describe("Workforce C13 additive compatibility contract", () => {
 
   it("pins current/legacy schemas and refuses to fabricate historical assurance", () => {
     expect(WORKFORCE_WORKDAY_LEGACY_SCHEMA_VERSION).toBe(1)
-    expect(WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION).toBe(3)
+    expect(WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION).toBe(5)
     expect(WORKFORCE_EVIDENCE_ENVELOPE_VERSION).toBe(1)
     expect(source("prisma/schema.prisma")).toMatch(
       /attendanceReviewState\s+WorkforceAttendanceClaimReviewState\s+@default\(LEGACY_UNKNOWN\)/,
@@ -64,7 +64,7 @@ describe("Workforce C13 additive compatibility contract", () => {
     expect(WORKFORCE_SITE_TRANSITION_CLAIM_SCHEMA_VERSION).toBe(1)
     expect(WORKFORCE_MOBILE_SCHEMA_SUPPORT).toEqual({
       bootstrapResponse: { current: 1, supported: [1] },
-      workdayRequest: { preferred: 3, supported: [1, 2, 3] },
+      workdayRequest: { preferred: 5, supported: [1, 2, 3, 4, 5] },
       workdayResponse: { current: 1, supported: [1] },
       evidenceEnvelope: { preferred: 1, supported: [1] },
       siteTransitionRequest: { preferred: 1, supported: [1] },

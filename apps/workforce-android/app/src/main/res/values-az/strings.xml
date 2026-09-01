@@ -134,6 +134,8 @@
     <string name="error_location_server_required">Bu əməliyyat üçün serverə yeni məkan nümunəsi lazımdır. Yeniləyin və yenidən cəhd edin və ya təsdiqlənmiş baxış yolundan istifadə edin.</string>
     <string name="error_location_server_review_required">Bu məkan nümunəsi təsdiqlənmiş baxış tələb edir. Davamiyyət əməliyyatı qəbul edilmədi.</string>
     <string name="error_device_attestation_required">Davamiyyət üçün istifadə edilməzdən əvvəl cihaz server yoxlamasından keçməlidir. Əməliyyat qəbul edilmədi; təsdiqlənmiş baxış yolundan istifadə edin.</string>
+    <string name="error_play_integrity_required">Bu əməliyyat üçün tətbiq və cihazın yeni yoxlanması lazımdır. Yeniləyin və yenidən cəhd edin və ya təsdiqlənmiş baxış yolundan istifadə edin.</string>
+    <string name="error_play_integrity_review_required">Cihaz yoxlaması təsdiqlənmiş baxış tələb edir. Davamiyyət əməliyyatı qəbul edilmədi.</string>
     <string name="today_outbox_disclaimer">Müvəqqəti əlaqə xətası həmin əməliyyatı yalnız bu cihazın şifrələnmiş, məhdud outbox yaddaşında saxlaya bilər; bu, serverin qəbul etdiyi fakt deyil.</string>
     <string name="recovery_explainer">Bu ekran yalnız lokal növbə vəziyyətini göstərir; sorğu səbəblərini, QR dəyərlərini, GPS və ya cihaz sübutunu heç vaxt göstərmir.</string>
     <string name="recovery_load">Bərpa vəziyyətini yüklə</string>

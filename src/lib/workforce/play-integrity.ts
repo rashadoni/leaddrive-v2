@@ -197,6 +197,24 @@ export function workforcePlayIntegrityRequestHash(input: {
 }
 
 /**
+ * A decoded Play Integrity token is an ephemeral external-service response.
+ * Keep only a tenant-bound, non-reversible replay fingerprint in the
+ * append-only verification ledger; never persist, log or return its JWE.
+ */
+export function workforcePlayIntegrityTokenFingerprint(input: {
+  organizationId: string
+  token: string
+}): string {
+  if (!ID.test(input.organizationId) || typeof input.token !== "string" || !input.token.trim() || input.token.length > 20_000) {
+    throw new Error("WORKFORCE_PLAY_INTEGRITY_INPUT_INVALID")
+  }
+  return createHash("sha256")
+    .update(`workforce-play-integrity-token:v1:${input.organizationId}:`)
+    .update(input.token.trim())
+    .digest("hex")
+}
+
+/**
  * Evaluates a Google-server-decoded Standard API verdict against an exact
  * action hash. Missing/weak device integrity routes to review; token/hash/app
  * identity failures are rejected. This function persists nothing, so a valid

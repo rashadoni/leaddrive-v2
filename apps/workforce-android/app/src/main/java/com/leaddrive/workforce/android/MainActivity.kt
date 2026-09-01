@@ -85,6 +85,8 @@ import com.leaddrive.workforce.android.location.WorkforceActionTimeLocationResul
 import com.leaddrive.workforce.android.security.WorkforceDeviceAuthenticator
 import com.leaddrive.workforce.android.security.WorkforceDeviceKeyManager
 import com.leaddrive.workforce.android.security.WorkforceEphemeralQrToken
+import com.leaddrive.workforce.android.security.WorkforcePlayIntegrityClient
+import com.leaddrive.workforce.android.security.WorkforcePlayIntegrityUnavailableException
 import com.leaddrive.workforce.android.security.WorkforceQrScanner
 import java.time.Instant
 import java.time.ZoneId
@@ -106,6 +108,7 @@ class MainActivity : FragmentActivity() {
             outbox = WorkforceEncryptedOutbox(applicationContext),
             deviceKeys = deviceKeys,
             reminderScheduler = WorkforceReminderScheduler(applicationContext),
+            playIntegrity = WorkforcePlayIntegrityClient(applicationContext, configuration.playIntegrityCloudProjectNumber),
         )
         setContent {
             MaterialTheme {
@@ -150,6 +153,8 @@ private fun WorkforceRoot(
         locationRequired = stringResource(R.string.error_location_server_required),
         locationReviewRequired = stringResource(R.string.error_location_server_review_required),
         deviceAttestationRequired = stringResource(R.string.error_device_attestation_required),
+        playIntegrityRequired = stringResource(R.string.error_play_integrity_required),
+        playIntegrityReviewRequired = stringResource(R.string.error_play_integrity_review_required),
     )
     val queuedToday = stringResource(R.string.status_today_queued)
     val refreshingToday = stringResource(R.string.status_refreshing_server)
@@ -341,7 +346,7 @@ private fun WorkforceRoot(
                     if (activeQrScanAttemptId == scanAttemptId && scanningQrAction == action) {
                         activeQrScanAttemptId = null
                         scanningQrAction = null
-                        if (attendance.requiresDeviceProof(action)) {
+                        if (attendance.requiresDeviceProof(action) || attendance.requiresPlayIntegrity(action)) {
                             submitDeviceTrustedTodayAction(action, token, location)
                         } else {
                             submitTodayAction(action, token, location)
@@ -365,7 +370,7 @@ private fun WorkforceRoot(
                     }
                 },
             )
-        } else if (attendance.requiresDeviceProof(action)) {
+        } else if (attendance.requiresDeviceProof(action) || attendance.requiresPlayIntegrity(action)) {
             submitDeviceTrustedTodayAction(action, location = location)
         } else {
             submitTodayAction(action, location = location)
@@ -496,6 +501,9 @@ private fun WorkforceRoot(
             .onSuccess { restored ->
                 bootstrap = restored
                 if (restored != null) {
+                    // Warm-up is deliberately non-authoritative: a fresh token
+                    // is still requested and server-verified for each action.
+                    runCatching { repository.warmPlayIntegrityIfRequired(restored) }
                     runCatching { repository.loadToday() }
                         .onSuccess {
                             today = it
@@ -517,6 +525,7 @@ private fun WorkforceRoot(
                 scope.launch {
                     runCatching {
                         val signedIn = repository.signIn(input)
+                        runCatching { repository.warmPlayIntegrityIfRequired(signedIn) }
                         val loadedToday = repository.loadToday()
                         signedIn to loadedToday
                     }.onSuccess { (signedIn, loadedToday) ->
@@ -1631,10 +1640,10 @@ private fun WorkforceTodayCard(
                     onClick = { onAction(action) },
                 ) {
                     val label = when {
-                        attendance.requiresQr(action) && attendance.requiresDeviceProof(action) ->
+                        attendance.requiresQr(action) && (attendance.requiresDeviceProof(action) || attendance.requiresPlayIntegrity(action)) ->
                             stringResource(R.string.action_scan_and_confirm, actionLabel)
                         attendance.requiresQr(action) -> stringResource(R.string.action_scan_fresh, actionLabel)
-                        attendance.requiresDeviceProof(action) -> stringResource(R.string.action_confirm_trusted, actionLabel)
+                        attendance.requiresDeviceProof(action) || attendance.requiresPlayIntegrity(action) -> stringResource(R.string.action_confirm_trusted, actionLabel)
                         else -> actionLabel
                     }
                     Text(when {
@@ -1677,15 +1686,20 @@ private data class WorkforceEmployeeErrorCopy(
     val locationRequired: String,
     val locationReviewRequired: String,
     val deviceAttestationRequired: String,
+    val playIntegrityRequired: String,
+    val playIntegrityReviewRequired: String,
 )
 
 private fun Throwable.employeeMessage(copy: WorkforceEmployeeErrorCopy): String = when (this) {
     is WorkforceActionConflictException -> copy.conflict
+    is WorkforcePlayIntegrityUnavailableException -> copy.playIntegrityRequired
     is WorkforceApiException -> when (recoveryCode) {
         "WORKFORCE_MOBILE_UPDATE_REQUIRED", "WORKFORCE_MOBILE_PLATFORM_UNSUPPORTED" -> copy.updateRequired
         "WORKFORCE_ATTENDANCE_LOCATION_REQUIRED" -> copy.locationRequired
         "WORKFORCE_ATTENDANCE_LOCATION_REVIEW_REQUIRED" -> copy.locationReviewRequired
         "WORKFORCE_ATTENDANCE_DEVICE_ATTESTATION_REQUIRED" -> copy.deviceAttestationRequired
+        "WORKFORCE_ATTENDANCE_PLAY_INTEGRITY_REVIEW_REQUIRED" -> copy.playIntegrityReviewRequired
+        "WORKFORCE_ATTENDANCE_PLAY_INTEGRITY_REQUIRED", "WORKFORCE_ATTENDANCE_PLAY_INTEGRITY_UNAVAILABLE", "WORKFORCE_ATTENDANCE_PLAY_INTEGRITY_MOBILE_REQUIRED" -> copy.playIntegrityRequired
         else -> copy.api
     }
     else -> copy.network

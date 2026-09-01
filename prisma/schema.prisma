@@ -5317,6 +5317,7 @@ enum WorkforceAttendanceDeviceEnrollmentStatus {
 enum WorkforceAttendanceVerificationMethod {
   QR
   DEVICE_KEY
+  PLAY_INTEGRITY
 }
 
 /// Stored raw evidence may describe location, QR, device, kiosk or a manual

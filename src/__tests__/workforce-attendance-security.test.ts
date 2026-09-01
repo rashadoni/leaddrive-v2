@@ -27,6 +27,7 @@ describe("Workforce attendance security primitives", () => {
     expect(absent.locationRequiredActions.size).toBe(0)
     expect(absent.qrRequiredActions.size).toBe(0)
     expect(absent.deviceTrustRequiredActions.size).toBe(0)
+    expect(absent.playIntegrityRequiredActions.size).toBe(0)
 
     const configured = workforceAttendanceRequirements({
       attendance: {
@@ -34,17 +35,20 @@ describe("Workforce attendance security primitives", () => {
         location: { requiredActions: ["START", "FINISH"] },
         qr: { requiredActions: ["START", "FINISH"] },
         deviceTrust: { requiredActions: ["START", "FINISH"] },
+        playIntegrity: { requiredActions: ["START"] },
       },
     })
     expect(configured.locationRequiredActions).toEqual(new Set(["START", "FINISH"]))
     expect(configured.qrRequiredActions).toEqual(new Set(["START", "FINISH"]))
     expect(configured.biometricRequiredActions).toEqual(new Set())
+    expect(configured.playIntegrityRequiredActions).toEqual(new Set(["START"]))
     expect(workforceAttendancePolicyManifest({
       attendance: {
         enforcementVersion: 1,
         location: { requiredActions: ["START", "FINISH"] },
         qr: { requiredActions: ["START", "FINISH"] },
         deviceTrust: { requiredActions: ["START", "FINISH"] },
+        playIntegrity: { requiredActions: ["START"] },
       },
     })).toEqual({
       enforcementVersion: 1,
@@ -52,6 +56,7 @@ describe("Workforce attendance security primitives", () => {
       qrRequiredActions: ["START", "FINISH"],
       deviceTrustRequiredActions: ["START", "FINISH"],
       biometricRequiredActions: [],
+      playIntegrityRequiredActions: ["START"],
     })
 
     expect(() => workforceAttendanceRequirements({
@@ -73,6 +78,13 @@ describe("Workforce attendance security primitives", () => {
         },
       },
     })).toThrow(/hardware attestation/)
+
+    expect(() => workforceAttendanceRequirements({
+      attendance: {
+        enforcementVersion: 1,
+        playIntegrity: { requiredActions: ["START"] },
+      },
+    })).toThrow(/also require device trust/)
 
     expect(workforceAttendancePolicyManifest({
       attendance: {

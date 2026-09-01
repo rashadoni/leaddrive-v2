@@ -664,11 +664,13 @@ data class WorkforceWorkdayOperation(
     val attendanceQrToken: String? = null,
     val attendanceDeviceProof: WorkforceDeviceProof? = null,
     val attendanceLocationProof: WorkforceLocationProof? = null,
+    /** Ephemeral Standard API token; never accepted from encrypted outbox rows. */
+    val attendancePlayIntegrityToken: String? = null,
 ) : WorkforceSyncOperation {
     override val domain = WorkforceOutboxDomain.WORKDAY
     override val entity = "workdays"
     override val opType = "create"
-    override val hasEphemeralProof: Boolean get() = attendanceQrToken != null || attendanceDeviceProof != null || attendanceLocationProof != null
+    override val hasEphemeralProof: Boolean get() = attendanceQrToken != null || attendanceDeviceProof != null || attendanceLocationProof != null || attendancePlayIntegrityToken != null
 
     override fun toDataJson(): JSONObject = JSONObject()
         .put("action", action.wireValue)
@@ -685,7 +687,7 @@ data class WorkforceWorkdayOperation(
                 put("longitude", location.longitude)
                 put("accuracy", location.accuracyMeters)
             }
-            if (attendanceQrToken != null || attendanceDeviceProof != null || attendanceLocationProof != null) {
+            if (attendanceQrToken != null || attendanceDeviceProof != null || attendanceLocationProof != null || attendancePlayIntegrityToken != null) {
                 put("attendance", JSONObject().apply {
                     attendanceQrToken?.let { put("qrToken", it) }
                     attendanceDeviceProof?.let { proof ->
@@ -701,12 +703,15 @@ data class WorkforceWorkdayOperation(
                             .put("isMock", location.isMock),
                         )
                     }
+                    attendancePlayIntegrityToken?.let { token ->
+                        put("playIntegrity", JSONObject().put("token", token))
+                    }
                 })
             }
         }
 
     companion object {
-        const val WORKFORCE_WORKDAY_SCHEMA_VERSION = 4
+        const val WORKFORCE_WORKDAY_SCHEMA_VERSION = 5
 
         fun fromEncryptedPayload(value: String): WorkforceStoredOperation? = runCatching {
             val json = JSONObject(value)
@@ -892,6 +897,7 @@ private fun JSONObject.toAttendanceRequirements(): WorkforceAttendanceRequiremen
             qrRequiredActions = qrActions,
             deviceTrustRequiredActions = optStringList("deviceTrustRequiredActions"),
             biometricRequiredActions = optStringList("biometricRequiredActions"),
+            playIntegrityRequiredActions = optStringList("playIntegrityRequiredActions"),
         )
     } else if (status == "NOT_CONFIGURED") {
         WorkforceAttendanceRequirements.unconfigured()
@@ -1129,6 +1135,8 @@ data class WorkforceAttendanceRequirements(
     val qrRequiredActions: List<String>,
     val deviceTrustRequiredActions: List<String>,
     val biometricRequiredActions: List<String>,
+    /** Exact actions for which the APK must obtain a fresh Standard API token. */
+    val playIntegrityRequiredActions: List<String>,
 ) {
     fun requiresLocation(action: WorkforceWorkdayAction): Boolean = action.wireValue in locationRequiredActions
     fun requiresQr(action: WorkforceWorkdayAction): Boolean = action.wireValue in qrRequiredActions
@@ -1137,6 +1145,7 @@ data class WorkforceAttendanceRequirements(
     /** A biometric-only manifest entry must never downgrade to an unsigned action. */
     fun requiresDeviceProof(action: WorkforceWorkdayAction): Boolean =
         requiresDeviceTrust(action) || requiresBiometric(action)
+    fun requiresPlayIntegrity(action: WorkforceWorkdayAction): Boolean = action.wireValue in playIntegrityRequiredActions
 
     companion object {
         fun unconfigured() = WorkforceAttendanceRequirements(
@@ -1145,13 +1154,16 @@ data class WorkforceAttendanceRequirements(
             qrRequiredActions = emptyList(),
             deviceTrustRequiredActions = emptyList(),
             biometricRequiredActions = emptyList(),
+            playIntegrityRequiredActions = emptyList(),
         )
 
         fun invalid() = WorkforceAttendanceRequirements(
             status = "INVALID",
+            locationRequiredActions = emptyList(),
             qrRequiredActions = emptyList(),
             deviceTrustRequiredActions = emptyList(),
             biometricRequiredActions = emptyList(),
+            playIntegrityRequiredActions = emptyList(),
         )
     }
 }
