@@ -168,6 +168,26 @@ conclusion, payroll outcome or disciplinary result. A concurrent later START
 is recorded as a human-reviewable missed-start case rather than silently
 rewriting the historical observation.
 
+### 2026-09-01 transaction-only missed-finish review materializer
+
+`materializeAuthorizedWorkforceMissedFinishReviewCase` is the equivalent
+narrow bridge for an already existing stale open workday. Its timing remains a
+mandatory caller input — it does not select or activate a global reminder or
+review threshold. It requires `CASE_CREATE` authorization before the
+transition lock/read, then takes the canonical employee workday lock and
+re-reads the exact scoped workday and its immutable planned-end snapshot. A
+completed workday, a missing snapshot, an in-grace state and a
+private-reminder candidate all return `NOT_CREATED` with no case, audit or
+delivery side effect.
+
+Only the explicit stale review proposal can write the existing idempotent,
+raw-proof-free `MISSED_FINISH` case subject linked to that concrete workday.
+It never writes a `FINISH`, sends the generic reminder, changes a workday,
+notifies an employee, decides a case, or produces a payroll/disciplinary
+result. A later FINISH stays an immutable human-review fact; a future worker
+still needs a tenant fence, lease/cursor, monitoring, reviewed timing policy
+and employee-visible lifecycle before any operational use.
+
 ## Verification
 
     PASS  PATH=/home/codex-alt/.local/bin:$PATH npx vitest run \
@@ -237,6 +257,13 @@ rewriting the historical observation.
           authorization before the workday lock/read, re-check suppression when
           START exists, raw-proof-free idempotent case creation and no second
           audit on exact replay.
+
+    PASS  2026-09-01 missed-finish materializer re-check:
+          missed-finish materializer/candidate/intake/immutable-case-writer
+          contracts (4 files, 28 tests), scoped ESLint and `git diff --check`.
+          The matrix pins authorization before lock/read, completed-workday and
+          private-reminder suppression, a raw-proof-free workday-linked stale
+          review subject and no second audit on exact replay.
 
     NOT RUN  database migration/apply, full typecheck/build, browser E2E,
              Android, scheduler/concurrency/load and physical pilot checks:
