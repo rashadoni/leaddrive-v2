@@ -290,6 +290,8 @@ describe("Workforce Android foundation", () => {
     expect(build).toContain('implementation("com.google.android.play:integrity:1.6.0")')
     expect(build).toContain("WORKFORCE_PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER")
     expect(integrity).toContain("IntegrityManagerFactory.createStandard")
+    expect(integrity).toContain("StandardIntegrityManager.PrepareIntegrityTokenRequest")
+    expect(integrity).toContain("StandardIntegrityManager.StandardIntegrityTokenRequest")
     expect(integrity).toContain("PrepareIntegrityTokenRequest")
     expect(integrity).toContain("StandardIntegrityTokenRequest")
     expect(integrity).toContain("setRequestHash(requestHash)")

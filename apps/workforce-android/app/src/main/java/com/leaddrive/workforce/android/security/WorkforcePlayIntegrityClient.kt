@@ -1,11 +1,10 @@
 package com.leaddrive.workforce.android.security
 
 import android.content.Context
-import android.util.Base64
 import com.google.android.play.core.integrity.IntegrityManagerFactory
-import com.google.android.play.core.integrity.PrepareIntegrityTokenRequest
 import com.google.android.play.core.integrity.StandardIntegrityManager
-import com.google.android.play.core.integrity.StandardIntegrityTokenRequest
+import com.google.android.play.core.integrity.StandardIntegrityManager.PrepareIntegrityTokenRequest
+import com.google.android.play.core.integrity.StandardIntegrityManager.StandardIntegrityTokenRequest
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await

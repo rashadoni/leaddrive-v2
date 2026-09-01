@@ -69,6 +69,17 @@ device, location and Play tokens all remain excluded from the encrypted outbox.
 An Android-side unavailable/decode outcome and server reviewed fallback show
 generic EN/RU/AZ recovery copy, not a verdict, device or credential detail.
 
+### Android API import correction (2026-09-01)
+
+The first exact candidate Android CI run `33493086634` correctly rejected the
+source: in Play Integrity `1.6.0`, `PrepareIntegrityTokenRequest` and
+`StandardIntegrityTokenRequest` are nested under `StandardIntegrityManager`,
+not top-level package classes. The client now imports those nested API types,
+and its source contract pins both fully-qualified nested imports. This repair
+does not change provider warm-up, action hashing, token transport or default-off
+policy behaviour. The failed CI run is not credited; a successor Android gate
+is required.
+
 ## Explicitly not activated
 
 There is no real Play Console/Cloud credential, final app package/signing
@@ -111,7 +122,10 @@ matrix are approved. No real employee event has used it.
 
     NOT RUN  Google server token decode with a real credential, Play
              Console/Cloud configuration, final package/signing identity,
-             Android Gradle lint/unit or signed APK, full typecheck/build,
+             local Android Gradle lint/unit or signed APK, full typecheck/build,
              migration apply/disposable DB trigger validation, browser E2E,
              load, physical QR/device/biometric matrix and anti-tamper matrix.
-             Heavy and physical gates do not run on Contabo.
+             Heavy and physical gates do not run on Contabo. GitHub Android CI
+             `33493086634` failed before lint/unit because the prior imports
+             named non-existent top-level Play Integrity classes; its successor
+             remains required evidence.
