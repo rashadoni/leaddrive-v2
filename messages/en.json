@@ -24040,6 +24040,8 @@
   "defaultAssignmentHint": "Use a published organization-wide shift for employees without an individual assignment. Team defaults are intentionally managed under a separate historical-membership contract.",
   "selectOrganizationShiftTemplate": "Choose an organization-wide shift",
   "defaultAssignmentValidationFailed": "Choose an organization-wide shift and future effective date.",
+  "defaultAssignmentPublishConfirmation": "I confirm this will publish the organization-wide fallback schedule for the selected future date.",
+  "defaultAssignmentPublishConfirmationRequired": "Confirm the future organization default before publishing it.",
   "defaultAssignmentSaved": "Organization default shift scheduled.",
   "defaultTimelineTitle": "Organization default timeline",
   "defaultTimelineHint": "Each future replacement closes the prior version and is recorded in the audit trail.",

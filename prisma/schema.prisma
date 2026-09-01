@@ -194,6 +194,7 @@ model Organization {
   workforceShiftAssignments           WorkforceShiftAssignment[]
   workforceShiftAssignmentBulkOperations WorkforceShiftAssignmentBulkOperation[]
   workforceShiftDefaultAssignments    WorkforceShiftDefaultAssignment[]
+  workforceShiftDefaultOperations     WorkforceShiftDefaultOperation[]
   workforceSiteAssignments            WorkforceSiteAssignment[]
   workforceSiteAssignmentBulkOperations WorkforceSiteAssignmentBulkOperation[]
   workforcePolicySnapshots            WorkforcePolicySnapshot[]
@@ -665,6 +666,7 @@ model User {
   workforceShiftAssignmentsAssigned   WorkforceShiftAssignment[]     @relation("WorkforceShiftAssignmentAssignedBy")
   workforceShiftAssignmentBulkOperationsPublished WorkforceShiftAssignmentBulkOperation[] @relation("WorkforceShiftAssignmentBulkOperationPublishedBy")
   workforceShiftDefaultAssignmentsAssigned WorkforceShiftDefaultAssignment[] @relation("WorkforceShiftDefaultAssignmentAssignedBy")
+  workforceShiftDefaultOperationsPublished WorkforceShiftDefaultOperation[] @relation("WorkforceShiftDefaultOperationPublishedBy")
   workforceSitesCreated               WorkforceSite[]                @relation("WorkforceSiteCreatedBy")
   workforceSitesArchived              WorkforceSite[]                @relation("WorkforceSiteArchivedBy")
   workforceSiteGeofenceRevisionsCreated WorkforceSiteGeofenceRevision[] @relation("WorkforceSiteGeofenceRevisionCreatedBy")
@@ -7764,6 +7766,7 @@ model WorkforceShiftTemplate {
   assignments WorkforceShiftAssignment[]
   bulkAssignmentOperations WorkforceShiftAssignmentBulkOperation[]
   defaultAssignments WorkforceShiftDefaultAssignment[]
+  defaultOperations WorkforceShiftDefaultOperation[]
   snapshots   WorkforceShiftSnapshot[]
   segments    WorkforceShiftSegment[]
 
@@ -7915,12 +7918,38 @@ model WorkforceShiftDefaultAssignment {
   updatedAt        DateTime               @updatedAt
 
   snapshots WorkforceShiftSnapshot[]
+  publicationOperations WorkforceShiftDefaultOperation[] @relation("WorkforceShiftDefaultOperationAssignment")
 
   @@unique([organizationId, id])
   @@index([organizationId, effectiveFrom, effectiveTo])
   @@index([organizationId, templateId, effectiveFrom])
   @@index([organizationId, assignedByUserId, createdAt])
   @@map("workforce_shift_default_assignments")
+}
+
+/// Immutable retry receipt for a reviewed future organization-default shift
+/// publication. It records the timeline row selected by the server but never
+/// stores employee selections, attendance facts or proof material.
+model WorkforceShiftDefaultOperation {
+  id                  String                          @id @default(cuid())
+  organizationId      String
+  organization        Organization                    @relation(fields: [organizationId], references: [id], onDelete: Cascade, map: "workforce_shift_default_operations_organization_fkey")
+  operationId         String                          @db.VarChar(100)
+  requestHash         String                          @db.VarChar(64)
+  templateId          String
+  template            WorkforceShiftTemplate          @relation(fields: [organizationId, templateId], references: [organizationId, id], onDelete: Restrict, map: "workforce_shift_default_operations_template_fkey")
+  effectiveFrom       DateTime                        @db.Date
+  defaultAssignmentId String
+  defaultAssignment   WorkforceShiftDefaultAssignment @relation("WorkforceShiftDefaultOperationAssignment", fields: [organizationId, defaultAssignmentId], references: [organizationId, id], onDelete: Restrict, map: "workforce_shift_default_operations_assignment_fkey")
+  publishedByUserId   String
+  publishedByUser     User                            @relation("WorkforceShiftDefaultOperationPublishedBy", fields: [organizationId, publishedByUserId], references: [organizationId, id], onDelete: Restrict, map: "workforce_shift_default_operations_published_by_fkey")
+  createdAt           DateTime                        @default(now())
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, operationId])
+  @@index([organizationId, templateId, createdAt])
+  @@index([organizationId, publishedByUserId, createdAt])
+  @@map("workforce_shift_default_operations")
 }
 
 // Immutable policy inputs used for one workday's calculation. No live policy

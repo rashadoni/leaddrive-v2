@@ -74,7 +74,11 @@ describe("Workforce assignment configuration UI contract", () => {
 
   it("shows and writes the immutable organization-default timeline separately", () => {
     expect(workbench).toContain('request("/api/v1/workforce/configuration/shifts/default", "GET")')
-    expect(workbench).toContain('request("/api/v1/workforce/configuration/shifts/default", "POST", defaultAssignmentForm)')
+    expect(workbench).toContain('request("/api/v1/workforce/configuration/shifts/default", "POST", {')
+    expect(workbench).toContain('defaultAssignmentPublishConfirmed')
+    expect(workbench).toContain('defaultAssignmentPublishOperationId')
+    expect(workbench).toContain('id="workforce-default-assignment-publish-confirmation"')
+    expect(workbench).toContain('crypto.randomUUID()')
     expect(workbench).toContain('id="workforce-default-assignment-template"')
     expect(workbench).toContain('data.roster.shiftTemplates.filter((template) => template.teamId === null)')
     expect(workbench).toContain('data.defaultAssignments.map')
@@ -134,6 +138,8 @@ describe("Workforce assignment configuration UI contract", () => {
       "bulkSiteAssignmentPublished",
       "assignmentTimelineTitle",
       "scheduleDefaultAssignment",
+      "defaultAssignmentPublishConfirmation",
+      "defaultAssignmentPublishConfirmationRequired",
       "defaultTimelineTitle",
       "directoryTitle",
       "teamScopePicker",

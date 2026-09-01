@@ -97,6 +97,38 @@ template. It does not create a recurring template, alter existing workdays or
 snapshots, open attendance, calculate payroll/travel, activate a tenant flag,
 or mutate Route & Field.
 
+## Durable organization-default publication source slice (2026-09-01)
+
+The organization-wide fallback timeline has its own deliberately narrow
+publication boundary. A user chooses an active organization-scoped template
+and a future effective date, then explicitly confirms that the fallback will
+be published. The browser creates an opaque operation key only after that
+confirmation and retains it after an unknown network result, so retrying the
+same intent calls:
+
+`POST /api/v1/workforce/configuration/shifts/default`
+
+The session-only `SCHEDULE_WRITE` route derives the tenant-local current date
+on the server. One transaction locks the tenant operation key and then the
+organization-default timeline. It refuses non-future dates, team-scoped or
+inactive templates, overlapping/future windows and a changed request under an
+existing operation key. A valid replacement closes only its immediate
+predecessor and appends one future default row. An exact retry returns the
+durable first result without another timeline, audit or receipt write.
+
+`workforce_shift_default_operations` is additive, append-only and
+tenant-RLS-protected. Its receipt binds tenant, actor, opaque operation key,
+template, effective date and the resulting default-assignment ID. It contains
+no employee roster, attendance fact, location, QR, device or Route data. The
+configuration audit has the same metadata-only boundary. Route responses are
+`private, no-store` and `nosniff` because they describe a current scheduling
+decision.
+
+This adds retry-safe publication to the existing organization-default
+recurrence timeline only. It does not create a general recurrence engine,
+team-default history, payroll/travel semantics, a tenant activation, a live
+attendance fact or any Route & Field mutation.
+
 ## Verification in this worktree
 
 - PASS — targeted Vitest: `workforce-configuration-management`, API
@@ -117,16 +149,22 @@ or mutate Route & Field.
   append-only/RLS migration shape and UI confirmation: **4 files, 48 tests**.
   They cover atomic publish, aggregate-only receipt/audit, exact replay,
   stale-review refusal, session scope and operation-key retry containment.
+- PASS — organization-default publication contracts: configuration service,
+  session route, UI confirmation and both default-timeline/receipt migration
+  shapes: **5 files, 52 tests**. They cover future-only replacement, explicit
+  confirmation, server-derived date, aggregate-only receipt/audit, exact
+  replay and changed-key rejection.
 
 ## Deliberately still open
 
-- `WF-C7-007` remains partial: recurring-template/recurrence publication,
-  browser evidence and applied migration/RLS concurrency are not claimed.
+- `WF-C7-007` remains partial: general recurring-template/team-default
+  publication, browser evidence and applied migration/RLS concurrency are not
+  claimed.
 - NOT RUN — local Prisma generated-client refresh did not update the shared
   Contabo artifacts despite a zero-exit command; exact generated-client/static
   verification, full build, browser, Android and load gates require GitHub CI
   or the approved heavy worker, not Contabo.
 
-Both publish source slices remain inactive until the additive migrations, RLS
+All publish source slices remain inactive until the additive migrations, RLS
 concurrency and browser/role checks are verified through the approved release
 gates. No tenant schedule was changed by this implementation checkpoint.

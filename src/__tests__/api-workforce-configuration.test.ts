@@ -25,7 +25,7 @@ vi.mock("@/lib/workforce/configuration-management", async () => {
     scheduleWorkforceShiftAssignment: vi.fn(),
     previewWorkforceShiftAssignments: vi.fn(),
     publishWorkforceShiftAssignments: vi.fn(),
-    scheduleWorkforceShiftDefault: vi.fn(),
+    publishWorkforceShiftDefault: vi.fn(),
   }
 })
 
@@ -53,7 +53,7 @@ import {
   previewWorkforceShiftAssignments,
   publishWorkforceShiftAssignments,
   scheduleWorkforceShiftAssignment,
-  scheduleWorkforceShiftDefault,
+  publishWorkforceShiftDefault,
   updateWorkforcePolicyDraft,
   updateWorkforceShiftTemplateDraft,
 } from "@/lib/workforce/configuration-management"
@@ -135,14 +135,15 @@ beforeEach(() => {
   vi.mocked(scheduleWorkforceShiftAssignment).mockReset()
   vi.mocked(previewWorkforceShiftAssignments).mockReset()
   vi.mocked(publishWorkforceShiftAssignments).mockReset()
-  vi.mocked(scheduleWorkforceShiftDefault).mockReset()
+  vi.mocked(publishWorkforceShiftDefault).mockReset()
   vi.mocked(getMtmSettings).mockReset()
   vi.mocked(getMtmSettings).mockResolvedValue({ timezone: "Asia/Baku" } as never)
 })
 
 describe("Workforce draft configuration API", () => {
   it("binds every configuration route to an accountable Workforce session boundary", () => {
-    expect(withWorkforceSessionAdminAuth).toHaveBeenCalledTimes(13)
+    expect(withWorkforceSessionAdminAuth).toHaveBeenCalledTimes(12)
+    expect(withWorkforceSessionScheduleConfigurationAuth).toHaveBeenCalledTimes(2)
     expect(withWorkforceSessionScheduleConfigurationAuth).toHaveBeenCalledWith("SCHEDULE_WRITE", expect.any(Function))
   })
 
@@ -451,24 +452,45 @@ describe("Workforce draft configuration API", () => {
     expect(prisma.mtmAgent.findMany).not.toHaveBeenCalled()
   })
 
-  it("schedules a default only through the session-admin boundary and a server-derived date", async () => {
-    vi.mocked(scheduleWorkforceShiftDefault).mockResolvedValue({
-      id: "default-1", templateId: "shift-1", effectiveFrom: new Date("2026-09-01T00:00:00.000Z"),
+  it("publishes a confirmed default only through the session-admin boundary and a server-derived date", async () => {
+    vi.mocked(publishWorkforceShiftDefault).mockResolvedValue({
+      operationId: "default-publish-route-1",
+      templateId: "shift-1",
+      effectiveFrom: "2026-09-01",
+      defaultAssignmentId: "default-1",
+      predecessorClosed: false,
+      idempotent: false,
     } as never)
 
     const response = await callScheduleDefaultAssignment(post("/api/v1/workforce/configuration/shifts/default", {
       templateId: "shift-1",
       effectiveFrom: "2026-09-01",
+      operationId: "default-publish-route-1",
     }), AUTH)
 
     expect(response.status).toBe(201)
+    expect(response.headers.get("cache-control")).toBe("private, no-store")
     expect(getMtmSettings).toHaveBeenCalledWith(AUTH.orgId)
-    expect(scheduleWorkforceShiftDefault).toHaveBeenCalledWith(expect.objectContaining({
+    expect(publishWorkforceShiftDefault).toHaveBeenCalledWith(expect.objectContaining({
       organizationId: AUTH.orgId,
-      defaultAssignment: { templateId: "shift-1", effectiveFrom: "2026-09-01" },
+      publishedByUserId: AUTH.userId,
+      publish: {
+        templateId: "shift-1",
+        effectiveFrom: "2026-09-01",
+        operationId: "default-publish-route-1",
+      },
       currentDateKey: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
       audit: expect.objectContaining({ actorUserId: AUTH.userId }),
     }))
+  })
+
+  it("rejects an organization-default write without an opaque replay key", async () => {
+    const response = await callScheduleDefaultAssignment(post("/api/v1/workforce/configuration/shifts/default", {
+      templateId: "shift-1",
+      effectiveFrom: "2026-09-01",
+    }), AUTH)
+    expect(response.status).toBe(400)
+    expect(publishWorkforceShiftDefault).not.toHaveBeenCalled()
   })
 
   it("lists the named organization-default timeline through the session-admin boundary", async () => {

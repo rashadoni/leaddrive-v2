@@ -12,7 +12,7 @@ import {
   WorkforceShiftAssignmentBulkPublishSchema,
   WorkforcePolicyDraftCreateSchema,
   WorkforcePolicyDraftUpdateSchema,
-  WorkforceShiftDefaultScheduleSchema,
+  WorkforceShiftDefaultPublishSchema,
   WorkforceShiftAssignmentBulkPreviewSchema,
   WorkforceShiftAssignmentScheduleSchema,
   WorkforceShiftTemplateDraftCreateSchema,
@@ -23,8 +23,8 @@ import {
   createWorkforceShiftTemplateDraft,
   previewWorkforceShiftAssignments,
   publishWorkforceShiftAssignments,
+  publishWorkforceShiftDefault,
   scheduleWorkforceShiftAssignment,
-  scheduleWorkforceShiftDefault,
   updateWorkforcePolicyDraft,
   updateWorkforceShiftTemplateDraft,
 } from "@/lib/workforce/configuration-management"
@@ -910,7 +910,7 @@ describe("safe Workforce configuration drafts", () => {
     expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
   })
 
-  it("schedules a future organization default and only narrows its timeline predecessor", async () => {
+  it("publishes a reviewed default once and replays the exact durable receipt without a second timeline write", async () => {
     const predecessor = {
       id: "default-current",
       templateId: "shift-current",
@@ -925,6 +925,22 @@ describe("safe Workforce configuration drafts", () => {
       effectiveTo: null,
       assignedByUserId: userId,
     }
+    const publish = WorkforceShiftDefaultPublishSchema.parse({
+      operationId: "default-publish-retry-1",
+      templateId: "shift-next",
+      effectiveFrom: "2026-09-01",
+    })
+    const receipt = {
+      id: "default-operation-1",
+      organizationId,
+      operationId: publish.operationId,
+      requestHash: "",
+      templateId: publish.templateId,
+      effectiveFrom: created.effectiveFrom,
+      defaultAssignmentId: created.id,
+      publishedByUserId: userId,
+    }
+    vi.mocked(prisma.workforceShiftDefaultOperation.findUnique).mockResolvedValue(null as never)
     vi.mocked(prisma.workforceShiftTemplate.findFirst).mockResolvedValue({
       id: "shift-next", teamId: null, code: "STANDARD_V2", isDefault: false,
       version: 1, status: "ACTIVE", name: "Next shift", timezone: "Asia/Baku",
@@ -933,47 +949,109 @@ describe("safe Workforce configuration drafts", () => {
     vi.mocked(prisma.workforceShiftDefaultAssignment.findMany).mockResolvedValue([predecessor] as never)
     vi.mocked(prisma.workforceShiftDefaultAssignment.updateMany).mockResolvedValue({ count: 1 } as never)
     vi.mocked(prisma.workforceShiftDefaultAssignment.create).mockResolvedValue(created as never)
-    const defaultAssignment = WorkforceShiftDefaultScheduleSchema.parse({
+    vi.mocked(prisma.workforceShiftDefaultOperation.create).mockImplementation(async ({ data }: { data: typeof receipt }) => ({
+      ...receipt,
+      requestHash: data.requestHash,
+    }) as never)
+    vi.mocked(prisma.mtmAuditLog.create).mockResolvedValue({ id: "audit-default" } as never)
+
+    await expect(publishWorkforceShiftDefault({
+      organizationId,
+      publishedByUserId: userId,
+      publish,
+      currentDateKey: "2026-08-29",
+      audit,
+    })).resolves.toEqual({
+      operationId: publish.operationId,
+      templateId: publish.templateId,
+      effectiveFrom: "2026-09-01",
+      defaultAssignmentId: created.id,
+      predecessorClosed: true,
+      idempotent: false,
+    })
+    expect(prisma.workforceShiftDefaultOperation.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        organizationId,
+        operationId: publish.operationId,
+        templateId: publish.templateId,
+        effectiveFrom: created.effectiveFrom,
+        defaultAssignmentId: created.id,
+        publishedByUserId: userId,
+        requestHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+      }),
+    }))
+    const operationWrite = vi.mocked(prisma.workforceShiftDefaultOperation.create).mock.calls[0][0] as { data: unknown }
+    const publicationAudit = vi.mocked(prisma.mtmAuditLog.create).mock.calls.at(-1)?.[0] as { data: { newData: unknown } }
+    expect(JSON.stringify(operationWrite.data)).not.toMatch(/agent-|employee|latitude|longitude/i)
+    expect(JSON.stringify(publicationAudit.data.newData)).not.toMatch(/agent-|employee|latitude|longitude/i)
+
+    const inserted = vi.mocked(prisma.workforceShiftDefaultOperation.create).mock.calls[0][0] as { data: { requestHash: string } }
+    vi.clearAllMocks()
+    vi.mocked(prisma.workforceShiftDefaultOperation.findUnique).mockResolvedValue({
+      ...receipt,
+      requestHash: inserted.data.requestHash,
+    } as never)
+    await expect(publishWorkforceShiftDefault({
+      organizationId,
+      publishedByUserId: userId,
+      publish,
+      currentDateKey: "2026-08-29",
+      audit,
+    })).resolves.toMatchObject({ operationId: publish.operationId, defaultAssignmentId: created.id, idempotent: true })
+    expect(prisma.workforceShiftDefaultAssignment.create).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+
+  it("rejects a changed default publication payload under an existing operation key", async () => {
+    const publish = WorkforceShiftDefaultPublishSchema.parse({
+      operationId: "default-publish-mismatch-1",
       templateId: "shift-next",
       effectiveFrom: "2026-09-01",
     })
-
-    await expect(scheduleWorkforceShiftDefault({
+    vi.mocked(prisma.workforceShiftDefaultOperation.findUnique).mockResolvedValue({
+      id: "default-operation-2",
       organizationId,
-      defaultAssignment,
+      operationId: publish.operationId,
+      requestHash: "0".repeat(64),
+      templateId: "shift-older",
+      effectiveFrom: new Date("2026-08-31T00:00:00.000Z"),
+      defaultAssignmentId: "default-old",
+      publishedByUserId: userId,
+    } as never)
+    await expect(publishWorkforceShiftDefault({
+      organizationId,
+      publishedByUserId: userId,
+      publish,
       currentDateKey: "2026-08-29",
       audit,
-    })).resolves.toMatchObject({ id: "default-next" })
-    expect(prisma.workforceShiftDefaultAssignment.updateMany).toHaveBeenCalledWith({
-      where: { id: "default-current", organizationId },
-      data: { effectiveTo: new Date("2026-08-31T00:00:00.000Z") },
+    })).rejects.toMatchObject<Partial<WorkforceConfigurationManagementError>>({
+      code: "WORKFORCE_CONFIGURATION_DEFAULT_OPERATION_MISMATCH",
     })
-    expect(prisma.workforceShiftDefaultAssignment.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({
-        organizationId,
-        templateId: "shift-next",
-        effectiveFrom: new Date("2026-09-01T00:00:00.000Z"),
-        assignedByUserId: userId,
-      }),
-    }))
+    expect(prisma.workforceShiftDefaultAssignment.create).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
   })
 
   it("rejects a team template and a default scheduled for today", async () => {
-    const today = WorkforceShiftDefaultScheduleSchema.parse({ templateId: "shift-next", effectiveFrom: "2026-08-29" })
-    await expect(scheduleWorkforceShiftDefault({
-      organizationId, defaultAssignment: today, currentDateKey: "2026-08-29", audit,
+    const today = WorkforceShiftDefaultPublishSchema.parse({
+      operationId: "default-publish-today-1", templateId: "shift-next", effectiveFrom: "2026-08-29",
+    })
+    await expect(publishWorkforceShiftDefault({
+      organizationId, publishedByUserId: userId, publish: today, currentDateKey: "2026-08-29", audit,
     })).rejects.toMatchObject<Partial<WorkforceConfigurationManagementError>>({
       code: "WORKFORCE_CONFIGURATION_DEFAULT_EFFECTIVE_DATE_NOT_FUTURE",
     })
 
+    vi.mocked(prisma.workforceShiftDefaultOperation.findUnique).mockResolvedValue(null as never)
     vi.mocked(prisma.workforceShiftTemplate.findFirst).mockResolvedValue({
       id: "team-shift", teamId: "team-1", code: "TEAM", isDefault: false,
       version: 1, status: "ACTIVE", name: "Team shift", timezone: "Asia/Baku",
       definitionHash: workforceShiftDefinitionHash(shiftDefinition),
     } as never)
-    const teamDefault = WorkforceShiftDefaultScheduleSchema.parse({ templateId: "team-shift", effectiveFrom: "2026-09-01" })
-    await expect(scheduleWorkforceShiftDefault({
-      organizationId, defaultAssignment: teamDefault, currentDateKey: "2026-08-29", audit,
+    const teamDefault = WorkforceShiftDefaultPublishSchema.parse({
+      operationId: "default-publish-team-1", templateId: "team-shift", effectiveFrom: "2026-09-01",
+    })
+    await expect(publishWorkforceShiftDefault({
+      organizationId, publishedByUserId: userId, publish: teamDefault, currentDateKey: "2026-08-29", audit,
     })).rejects.toMatchObject<Partial<WorkforceConfigurationManagementError>>({
       code: "WORKFORCE_CONFIGURATION_DEFAULT_TEMPLATE_SCOPE_INVALID",
     })

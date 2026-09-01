@@ -198,6 +198,16 @@ export const WorkforceShiftDefaultScheduleSchema = z.object({
   effectiveFrom: WorkforceDateKeySchema,
 }).strict()
 
+/**
+ * A recurring organization-default publication changes every future
+ * unassigned employee's fallback schedule. Keep the browser operation key so
+ * an unknown network result can be retried without opening a second window.
+ */
+export const WorkforceShiftDefaultPublishSchema = WorkforceShiftDefaultScheduleSchema.and(z.object({
+  operationId: WorkforceScopeIdSchema.min(8).max(100)
+    .regex(/^[A-Za-z0-9_-]+$/, "operationId must be opaque"),
+}))
+
 export class WorkforceConfigurationManagementError extends Error {
   constructor(
     readonly code:
@@ -221,6 +231,7 @@ export class WorkforceConfigurationManagementError extends Error {
       | "WORKFORCE_CONFIGURATION_DEFAULT_TEMPLATE_SCOPE_INVALID"
       | "WORKFORCE_CONFIGURATION_DEFAULT_EFFECTIVE_DATE_NOT_FUTURE"
       | "WORKFORCE_CONFIGURATION_DEFAULT_CONFLICT"
+      | "WORKFORCE_CONFIGURATION_DEFAULT_OPERATION_MISMATCH"
       | "WORKFORCE_CONFIGURATION_TEAM_INVALID"
       | "WORKFORCE_CONFIGURATION_VERSION_CONFLICT"
       | "WORKFORCE_CONFIGURATION_DATE_RANGE_INVALID",
@@ -319,6 +330,17 @@ const workforceShiftDefaultAssignmentSelect = {
   createdAt: true,
   updatedAt: true,
 } satisfies Prisma.WorkforceShiftDefaultAssignmentSelect
+
+const workforceShiftDefaultOperationSelect = {
+  id: true,
+  organizationId: true,
+  operationId: true,
+  requestHash: true,
+  templateId: true,
+  effectiveFrom: true,
+  defaultAssignmentId: true,
+  publishedByUserId: true,
+} satisfies Prisma.WorkforceShiftDefaultOperationSelect
 
 function asDate(value: string): Date {
   return new Date(`${value}T00:00:00.000Z`)
@@ -1874,18 +1896,9 @@ export async function publishWorkforceShiftAssignments(input: {
   }
 }
 
-/**
- * Schedules an organization-wide default only for a future date. This does
- * not modify legacy `isDefault` rows: they remain a compatibility fallback
- * before the first timeline entry. A team default is deliberately rejected
- * until Workforce stores historical team membership for delayed claims.
- */
-export async function scheduleWorkforceShiftDefault(input: {
-  organizationId: string
+function assertWorkforceDefaultShiftScheduleInput(input: {
   defaultAssignment: z.infer<typeof WorkforceShiftDefaultScheduleSchema>
   currentDateKey: string
-  audit: WorkforceConfigurationAuditContext
-  db?: PrismaClient
 }) {
   if (!isDateKey(input.currentDateKey)) {
     throw new WorkforceConfigurationManagementError(
@@ -1899,115 +1912,266 @@ export async function scheduleWorkforceShiftDefault(input: {
       "A Workforce default shift must begin after the organization current date",
     )
   }
+}
 
+/**
+ * Creates one future default-timeline row under its own lock. Callers decide
+ * whether this low-level timeline mutation also needs a durable publication
+ * receipt; the HTTP path below always does.
+ */
+async function scheduleWorkforceShiftDefaultInTransaction(input: {
+  tx: Prisma.TransactionClient
+  organizationId: string
+  defaultAssignment: z.infer<typeof WorkforceShiftDefaultScheduleSchema>
+  audit: WorkforceConfigurationAuditContext
+}) {
+  const { tx } = input
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${configurationLock([
+    input.organizationId,
+    "default-shift",
+  ])}))`
+  const template = await tx.workforceShiftTemplate.findFirst({
+    where: {
+      id: input.defaultAssignment.templateId,
+      organizationId: input.organizationId,
+      status: "ACTIVE",
+    },
+    select: workforceShiftTemplateSelect,
+  })
+  if (!template) {
+    throw new WorkforceConfigurationManagementError(
+      "WORKFORCE_CONFIGURATION_DEFAULT_TEMPLATE_NOT_FOUND",
+      "The published Workforce default shift template is unavailable in this tenant",
+    )
+  }
+  if (template.teamId != null) {
+    throw new WorkforceConfigurationManagementError(
+      "WORKFORCE_CONFIGURATION_DEFAULT_TEMPLATE_SCOPE_INVALID",
+      "A team default requires a historical Workforce team-membership rule",
+    )
+  }
+
+  const defaults = await tx.workforceShiftDefaultAssignment.findMany({
+    where: { organizationId: input.organizationId },
+    orderBy: { effectiveFrom: "asc" },
+    select: workforceShiftDefaultAssignmentSelect,
+  })
+  const covering = defaults.filter((entry) => (
+    dateKey(entry.effectiveFrom) <= input.defaultAssignment.effectiveFrom
+    && (entry.effectiveTo == null || dateKey(entry.effectiveTo) >= input.defaultAssignment.effectiveFrom)
+  ))
+  const later = defaults.filter((entry) => dateKey(entry.effectiveFrom) > input.defaultAssignment.effectiveFrom)
+  if (covering.length > 1 || later.length > 0) {
+    throw new WorkforceConfigurationManagementError(
+      "WORKFORCE_CONFIGURATION_DEFAULT_CONFLICT",
+      "A conflicting Workforce default shift window already exists",
+    )
+  }
+
+  const predecessor = covering[0] ?? null
+  if (predecessor) {
+    const predecessorEffectiveTo = previousDateKey(input.defaultAssignment.effectiveFrom)
+    if (dateKey(predecessor.effectiveFrom) > predecessorEffectiveTo) {
+      throw new WorkforceConfigurationManagementError(
+        "WORKFORCE_CONFIGURATION_DEFAULT_CONFLICT",
+        "A Workforce default shift replacement cannot create an empty predecessor window",
+      )
+    }
+    const changedPredecessor = await tx.workforceShiftDefaultAssignment.updateMany({
+      where: { id: predecessor.id, organizationId: input.organizationId },
+      data: { effectiveTo: asDate(predecessorEffectiveTo) },
+    })
+    if (changedPredecessor.count !== 1) {
+      throw new WorkforceConfigurationManagementError(
+        "WORKFORCE_CONFIGURATION_DEFAULT_CONFLICT",
+        "The Workforce default predecessor changed while this replacement was being scheduled",
+      )
+    }
+    await tx.mtmAuditLog.create({
+      data: {
+        organizationId: input.organizationId,
+        agentId: null,
+        action: "WORKFORCE_SHIFT_DEFAULT_EFFECTIVE_WINDOW_CLOSED",
+        entity: "workforce_shift_default_assignment",
+        entityId: predecessor.id,
+        metadataKind: "workforce_configuration",
+        oldData: workforceShiftDefaultAssignmentAuditData(predecessor, input.audit),
+        newData: workforceShiftDefaultAssignmentAuditData({
+          ...predecessor,
+          effectiveTo: asDate(predecessorEffectiveTo),
+        }, input.audit),
+        ipAddress: input.audit.ipAddress ?? null,
+        userAgent: input.audit.userAgent ?? null,
+      },
+    })
+  }
+
+  const defaultAssignment = await tx.workforceShiftDefaultAssignment.create({
+    data: {
+      organizationId: input.organizationId,
+      templateId: template.id,
+      effectiveFrom: asDate(input.defaultAssignment.effectiveFrom),
+      effectiveTo: null,
+      assignedByUserId: input.audit.actorUserId,
+    },
+    select: workforceShiftDefaultAssignmentSelect,
+  })
+  await tx.mtmAuditLog.create({
+    data: {
+      organizationId: input.organizationId,
+      agentId: null,
+      action: "WORKFORCE_SHIFT_DEFAULT_SCHEDULED",
+      entity: "workforce_shift_default_assignment",
+      entityId: defaultAssignment.id,
+      metadataKind: "workforce_configuration",
+      oldData: predecessor == null ? undefined : workforceShiftDefaultAssignmentAuditData(predecessor, input.audit),
+      newData: workforceShiftDefaultAssignmentAuditData(defaultAssignment, input.audit),
+      ipAddress: input.audit.ipAddress ?? null,
+      userAgent: input.audit.userAgent ?? null,
+    },
+  })
+  return { defaultAssignment, predecessorClosed: predecessor != null }
+}
+
+export type WorkforceShiftDefaultPublishResult = {
+  operationId: string
+  templateId: string
+  effectiveFrom: string
+  defaultAssignmentId: string
+  predecessorClosed: boolean
+  idempotent: boolean
+}
+
+function workforceShiftDefaultPublishRequestHash(input: {
+  organizationId: string
+  publishedByUserId: string
+  publish: z.infer<typeof WorkforceShiftDefaultPublishSchema>
+}) {
+  return createHash("sha256").update(JSON.stringify({
+    version: 1,
+    organizationId: input.organizationId,
+    publishedByUserId: input.publishedByUserId,
+    operationId: input.publish.operationId,
+    templateId: input.publish.templateId,
+    effectiveFrom: input.publish.effectiveFrom,
+  })).digest("hex")
+}
+
+function workforceShiftDefaultOperationResult(input: {
+  operationId: string
+  templateId: string
+  effectiveFrom: Date
+  defaultAssignmentId: string
+  predecessorClosed: boolean
+  idempotent: boolean
+}): WorkforceShiftDefaultPublishResult {
+  return {
+    operationId: input.operationId,
+    templateId: input.templateId,
+    effectiveFrom: dateKey(input.effectiveFrom),
+    defaultAssignmentId: input.defaultAssignmentId,
+    predecessorClosed: input.predecessorClosed,
+    idempotent: input.idempotent,
+  }
+}
+
+/**
+ * Publishes one reviewed future organization-default shift with an immutable
+ * operation receipt. Retrying an unknown response returns the first result;
+ * a changed payload under the same operation key is never treated as a new
+ * recurring schedule publication.
+ */
+export async function publishWorkforceShiftDefault(input: {
+  organizationId: string
+  publishedByUserId: string
+  publish: z.infer<typeof WorkforceShiftDefaultPublishSchema>
+  currentDateKey: string
+  audit: WorkforceConfigurationAuditContext
+  db?: PrismaClient
+}): Promise<WorkforceShiftDefaultPublishResult> {
+  assertWorkforceDefaultShiftScheduleInput({
+    defaultAssignment: input.publish,
+    currentDateKey: input.currentDateKey,
+  })
   const db = input.db ?? prisma
+  const requestHash = workforceShiftDefaultPublishRequestHash(input)
   try {
     return await db.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${configurationLock([
         input.organizationId,
-        "default-shift",
+        "default-shift-publish",
+        input.publish.operationId,
       ])}))`
-      const template = await tx.workforceShiftTemplate.findFirst({
+      const existing = await tx.workforceShiftDefaultOperation.findUnique({
         where: {
-          id: input.defaultAssignment.templateId,
-          organizationId: input.organizationId,
-          status: "ACTIVE",
-        },
-        select: workforceShiftTemplateSelect,
-      })
-      if (!template) {
-        throw new WorkforceConfigurationManagementError(
-          "WORKFORCE_CONFIGURATION_DEFAULT_TEMPLATE_NOT_FOUND",
-          "The published Workforce default shift template is unavailable in this tenant",
-        )
-      }
-      if (template.teamId != null) {
-        throw new WorkforceConfigurationManagementError(
-          "WORKFORCE_CONFIGURATION_DEFAULT_TEMPLATE_SCOPE_INVALID",
-          "A team default requires a historical Workforce team-membership rule",
-        )
-      }
-
-      const defaults = await tx.workforceShiftDefaultAssignment.findMany({
-        where: { organizationId: input.organizationId },
-        orderBy: { effectiveFrom: "asc" },
-        select: workforceShiftDefaultAssignmentSelect,
-      })
-      const covering = defaults.filter((entry) => (
-        dateKey(entry.effectiveFrom) <= input.defaultAssignment.effectiveFrom
-        && (entry.effectiveTo == null || dateKey(entry.effectiveTo) >= input.defaultAssignment.effectiveFrom)
-      ))
-      const later = defaults.filter((entry) => dateKey(entry.effectiveFrom) > input.defaultAssignment.effectiveFrom)
-      if (covering.length > 1 || later.length > 0) {
-        throw new WorkforceConfigurationManagementError(
-          "WORKFORCE_CONFIGURATION_DEFAULT_CONFLICT",
-          "A conflicting Workforce default shift window already exists",
-        )
-      }
-
-      const predecessor = covering[0] ?? null
-      if (predecessor) {
-        const predecessorEffectiveTo = previousDateKey(input.defaultAssignment.effectiveFrom)
-        if (dateKey(predecessor.effectiveFrom) > predecessorEffectiveTo) {
-          throw new WorkforceConfigurationManagementError(
-            "WORKFORCE_CONFIGURATION_DEFAULT_CONFLICT",
-            "A Workforce default shift replacement cannot create an empty predecessor window",
-          )
-        }
-        const changedPredecessor = await tx.workforceShiftDefaultAssignment.updateMany({
-          where: { id: predecessor.id, organizationId: input.organizationId },
-          data: { effectiveTo: asDate(predecessorEffectiveTo) },
-        })
-        if (changedPredecessor.count !== 1) {
-          throw new WorkforceConfigurationManagementError(
-            "WORKFORCE_CONFIGURATION_DEFAULT_CONFLICT",
-            "The Workforce default predecessor changed while this replacement was being scheduled",
-          )
-        }
-        await tx.mtmAuditLog.create({
-          data: {
+          organizationId_operationId: {
             organizationId: input.organizationId,
-            agentId: null,
-            action: "WORKFORCE_SHIFT_DEFAULT_EFFECTIVE_WINDOW_CLOSED",
-            entity: "workforce_shift_default_assignment",
-            entityId: predecessor.id,
-            metadataKind: "workforce_configuration",
-            oldData: workforceShiftDefaultAssignmentAuditData(predecessor, input.audit),
-            newData: workforceShiftDefaultAssignmentAuditData({
-              ...predecessor,
-              effectiveTo: asDate(predecessorEffectiveTo),
-            }, input.audit),
-            ipAddress: input.audit.ipAddress ?? null,
-            userAgent: input.audit.userAgent ?? null,
+            operationId: input.publish.operationId,
           },
+        },
+        select: workforceShiftDefaultOperationSelect,
+      })
+      if (existing) {
+        if (
+          existing.requestHash !== requestHash
+          || existing.publishedByUserId !== input.publishedByUserId
+          || existing.templateId !== input.publish.templateId
+          || dateKey(existing.effectiveFrom) !== input.publish.effectiveFrom
+        ) {
+          throw new WorkforceConfigurationManagementError(
+            "WORKFORCE_CONFIGURATION_DEFAULT_OPERATION_MISMATCH",
+            "operationId was already used for a different Workforce default shift publication",
+          )
+        }
+        return workforceShiftDefaultOperationResult({
+          ...existing,
+          predecessorClosed: false,
+          idempotent: true,
         })
       }
 
-      const defaultAssignment = await tx.workforceShiftDefaultAssignment.create({
+      const scheduled = await scheduleWorkforceShiftDefaultInTransaction({
+        tx,
+        organizationId: input.organizationId,
+        defaultAssignment: input.publish,
+        audit: input.audit,
+      })
+      const operation = await tx.workforceShiftDefaultOperation.create({
         data: {
           organizationId: input.organizationId,
-          templateId: template.id,
-          effectiveFrom: asDate(input.defaultAssignment.effectiveFrom),
-          effectiveTo: null,
-          assignedByUserId: input.audit.actorUserId,
+          operationId: input.publish.operationId,
+          requestHash,
+          templateId: input.publish.templateId,
+          effectiveFrom: asDate(input.publish.effectiveFrom),
+          defaultAssignmentId: scheduled.defaultAssignment.id,
+          publishedByUserId: input.publishedByUserId,
         },
-        select: workforceShiftDefaultAssignmentSelect,
+        select: workforceShiftDefaultOperationSelect,
       })
       await tx.mtmAuditLog.create({
         data: {
           organizationId: input.organizationId,
           agentId: null,
-          action: "WORKFORCE_SHIFT_DEFAULT_SCHEDULED",
-          entity: "workforce_shift_default_assignment",
-          entityId: defaultAssignment.id,
+          action: "WORKFORCE_SHIFT_DEFAULT_PUBLISHED",
+          entity: "workforce_shift_default_operation",
+          entityId: operation.id,
           metadataKind: "workforce_configuration",
-          oldData: predecessor == null ? undefined : workforceShiftDefaultAssignmentAuditData(predecessor, input.audit),
-          newData: workforceShiftDefaultAssignmentAuditData(defaultAssignment, input.audit),
+          newData: {
+            actorUserId: input.audit.actorUserId,
+            operationId: operation.operationId,
+            templateId: operation.templateId,
+            effectiveFrom: dateKey(operation.effectiveFrom),
+            predecessorClosed: scheduled.predecessorClosed,
+          },
           ipAddress: input.audit.ipAddress ?? null,
           userAgent: input.audit.userAgent ?? null,
         },
       })
-      return defaultAssignment
+      return workforceShiftDefaultOperationResult({
+        ...operation,
+        predecessorClosed: scheduled.predecessorClosed,
+        idempotent: false,
+      })
     })
   } catch (error) {
     if (isWindowConstraintError(error)) {

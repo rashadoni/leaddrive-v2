@@ -24036,6 +24036,8 @@
   "defaultAssignmentHint": "Fərdi təyinatı olmayan əməkdaşlar üçün dərc olunmuş təşkilat miqyaslı növbədən istifadə edin. Komanda defoltları ayrıca tarixi üzvlük müqaviləsi ilə idarə olunur.",
   "selectOrganizationShiftTemplate": "Təşkilat miqyaslı növbə seçin",
   "defaultAssignmentValidationFailed": "Təşkilat miqyaslı növbə və gələcək qüvvəyəminmə tarixini seçin.",
+  "defaultAssignmentPublishConfirmation": "Seçilmiş gələcək tarix üçün təşkilat üzrə defolt qrafikin dərcini təsdiqləyirəm.",
+  "defaultAssignmentPublishConfirmationRequired": "Dərc etməzdən əvvəl gələcək təşkilat defoltunu təsdiqləyin.",
   "defaultAssignmentSaved": "Təşkilatın defolt növbəsi planlaşdırıldı.",
   "defaultTimelineTitle": "Təşkilat defolt zaman xətti",
   "defaultTimelineHint": "Hər gələcək əvəzləmə əvvəlki versiyanı bağlayır və audit jurnalına yazılır.",
