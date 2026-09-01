@@ -44,9 +44,12 @@ location/background-tracking service.
   domain order, has a seven-day/eight-attempt bound and removes the encryption
   key plus rows on logout or tenant switch. QR and device proofs are never
   queued; server conflicts/rejections are never an offline bypass;
-- foreground/action-time location and `USE_BIOMETRIC` permissions are declared,
-  but there is **no** `CAMERA`, `ACCESS_BACKGROUND_LOCATION`, background
-  location service or active location-capture flow;
+- when an active server manifest requires location for the exact action, the
+  employee-triggered foreground flow captures one fresh sample before that
+  one submission. It has no `CAMERA`, `ACCESS_BACKGROUND_LOCATION`, location
+  service, listener, receiver or last-known-location fallback; a missing
+  permission/provider or unavailable sample sends no action and has no offline
+  bypass;
 - QR is scanned by the managed-Play delegated scanner and sent immediately;
 - trusted-device enrollment stores only an encrypted account-bound key alias,
   public-key enrollment ID and lifecycle. An Android Keystore P-256 key signs

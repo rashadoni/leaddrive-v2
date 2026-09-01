@@ -79,12 +79,15 @@ claiming Gradle, physical-device or seven-day recovery evidence.
 
 - The manifest declares no `CAMERA` permission. It declares foreground/action-time
   location and `USE_BIOMETRIC` only; it has no background-location permission,
-  location service or active location capture flow. `WorkforceActionTimeLocationCapture` is a user-triggered
-  foreground-only `getCurrentLocation` primitive with no stale last-known
-  fallback. It rejects fixes older than 30 seconds or outside coordinate and
-  accuracy bounds, exposes the platform mock flag for later server assessment,
-  cancels after 15 seconds, and returns explicit permission/provider/platform/
-  timeout states. It is not wired until tenant proof policy is active.
+  location service, listener or receiver. When an active server manifest
+  requires location for an exact employee action, `WorkforceActionTimeLocationCapture`
+  obtains one user-triggered foreground-only `getCurrentLocation` sample with
+  no stale last-known fallback. It rejects fixes older than 30 seconds or
+  outside coordinate and accuracy bounds, exposes the platform mock flag for
+  server assessment, cancels after 15 seconds, and returns explicit permission,
+  provider, platform and timeout states. Those states send no action and have
+  no offline bypass; the flow remains inactive until a tenant publishes the
+  separate proof policy and passes its physical/privacy gates.
 - `WorkforceDeviceKeyManager` requests a challenge-bound ECDSA Android
   Keystore key, tries StrongBox where available, falls back only when the
   device reports StrongBox unavailable, and requires per-use **strong
@@ -337,9 +340,12 @@ claiming Gradle, physical-device or seven-day recovery evidence.
 
 Today submits online first; a transport/ambiguous transient failure saves the
 same immutable operation into the encrypted outbox. Explicit server rejections
-and proof/state conflicts are never queued. It does not yet capture
-action-time location or site proof. A QR-required action scans one fresh token
-and sends it immediately. A device-required action can start/resume an
+and proof/state conflicts are never queued. A location-required action captures
+one fresh foreground sample, sends it only with that immediate v4 workday
+operation, and never places raw coordinates in the encrypted outbox; the
+server applies its quality/geofence evidence boundary before accepting the
+action. A QR-required action scans one fresh token and sends it immediately.
+A device-required action can start/resume an
 encrypted account-bound enrollment, get an OS-only per-use strong-biometric
 signature, and send its device proof immediately; server truth still requires
 manager approval before that device can sign a work-time action. Neither proof
