@@ -108,7 +108,11 @@ export function WorkforceApprovedReport() {
         setError(cause instanceof Error ? cause.message : t("approvedReportLoadFailed"))
         setData(null)
       })
-      .finally(() => setLoading(false))
+      .finally(() => {
+        // A cancelled older response must not enable the filter controls while
+        // a replacement request is still loading a different approved period.
+        if (!controller.signal.aborted) setLoading(false)
+      })
     return () => controller.abort()
   }, [applied, organizationId, retry, t])
 
