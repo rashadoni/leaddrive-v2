@@ -86,6 +86,13 @@ safe inputs. For one explicit employee/date/as-of instant it:
 - returns either an in-memory review draft, a non-creation proposal, or an
   explicit not-ready result.
 
+Its deliberately narrow resolver surface includes the separately versioned
+team-default timeline. A historical team-default shift can therefore be
+resolved with the same immutable workday-start membership rule as START
+snapshotting; it is not silently skipped by the no-show reader. This only
+repairs source compatibility and still creates no case, audit, job or tenant
+effect.
+
 It has a deliberately read-only Prisma surface: no case writer, audit writer,
 queue, notification, capability or tenant control is available to it. A shift
 with no matching published first segment is not assigned a made-up generic

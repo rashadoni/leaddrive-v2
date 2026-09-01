@@ -26,6 +26,7 @@ export type WorkforceNoShowCandidateDb = Pick<
   | "workforcePolicy"
   | "workforceShiftAssignment"
   | "workforceShiftDefaultAssignment"
+  | "workforceShiftTeamDefaultAssignment"
   | "workforceShiftSegment"
   | "workforceShiftTemplate"
 >;
