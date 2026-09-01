@@ -84,6 +84,17 @@ describe("Workforce assignment configuration UI contract", () => {
     expect(workbench).toContain('data.defaultAssignments.map')
   })
 
+  it("keeps the team fallback timeline separate and tied to a named team template", () => {
+    expect(workbench).toContain('request("/api/v1/workforce/configuration/shifts/team-default", "GET")')
+    expect(workbench).toContain('request("/api/v1/workforce/configuration/shifts/team-default", "POST", {')
+    expect(workbench).toContain('id="workforce-team-default-assignment-team"')
+    expect(workbench).toContain('id="workforce-team-default-assignment-template"')
+    expect(workbench).toContain('id="workforce-team-default-assignment-publish-confirmation"')
+    expect(workbench).toContain('template.teamId === teamDefaultAssignmentForm.teamId')
+    expect(workbench).toContain('teamDefaultAssignmentPublishOperationId')
+    expect(workbench).toContain('data.teamDefaultAssignments.map')
+  })
+
   it("uses named team and site pickers with status and effective-date context", () => {
     expect(workbench).toContain('id="workforce-policy-team"')
     expect(workbench).toContain('label={t("teamScopePicker")}')
@@ -141,6 +152,16 @@ describe("Workforce assignment configuration UI contract", () => {
       "defaultAssignmentPublishConfirmation",
       "defaultAssignmentPublishConfirmationRequired",
       "defaultTimelineTitle",
+      "scheduleTeamDefaultAssignment",
+      "teamDefaultAssignmentHint",
+      "selectTeamShiftTemplate",
+      "teamDefaultAssignmentValidationFailed",
+      "teamDefaultAssignmentPublishConfirmation",
+      "teamDefaultAssignmentPublishConfirmationRequired",
+      "teamDefaultAssignmentSaved",
+      "teamDefaultTimelineTitle",
+      "teamDefaultTimelineHint",
+      "noTeamDefaultAssignments",
       "directoryTitle",
       "teamScopePicker",
       "siteAssignmentsTitle",

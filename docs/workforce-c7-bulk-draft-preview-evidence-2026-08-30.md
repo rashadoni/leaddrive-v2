@@ -126,8 +126,41 @@ decision.
 
 This adds retry-safe publication to the existing organization-default
 recurrence timeline only. It does not create a general recurrence engine,
-team-default history, payroll/travel semantics, a tenant activation, a live
+payroll/travel semantics, a tenant activation, a live
 attendance fact or any Route & Field mutation.
+
+## Durable team-default publication source slice (2026-09-01)
+
+The workbench can now publish a future fallback for one named active team,
+using only an active shift template scoped to that same team. The administrator
+chooses a future date, explicitly confirms the change, and retains a browser
+generated opaque operation key after an uncertain request so the identical
+intent can be safely retried at:
+
+`POST /api/v1/workforce/configuration/shifts/team-default`
+
+The session-only `SCHEDULE_WRITE` route derives the tenant-local current date
+on the server. In one transaction, the service locks the tenant operation key
+and the one team-default timeline. It rejects inactive/missing teams,
+inactive/mismatched templates, non-future dates, conflicting windows and
+changed-key retries. A valid replacement closes only the matching team's
+immediate predecessor and appends a new effective-dated assignment; it never
+writes a person roster or an individual shift assignment.
+
+`workforce_shift_team_default_operations` is an additive append-only,
+tenant-RLS-protected receipt. It binds tenant, actor, opaque key, team,
+template, effective date and resulting timeline assignment. The matching audit
+is metadata-only: it contains no employee roster, location, QR, device,
+evidence payload or Route data. An exact retry returns the first receipt and
+does not create another timeline row or audit record.
+
+At START snapshot resolution, the fallback is eligible only when the
+employee's immutable team membership at the workday start matches the selected
+team. The snapshot pins that team-default assignment ID and SQL rejects any
+snapshot that names more than one default/individual source. Missing
+membership does not infer a current team; it skips this fallback. No migration
+backfills membership, defaults or historical facts, and no tenant has been
+activated by this source slice.
 
 ## Verification in this worktree
 
@@ -154,12 +187,16 @@ attendance fact or any Route & Field mutation.
   shapes: **5 files, 52 tests**. They cover future-only replacement, explicit
   confirmation, server-derived date, aggregate-only receipt/audit, exact
   replay and changed-key rejection.
+- PASS — team-default timeline contracts: configuration service, session route,
+  UI contract, resolver/snapshot binding and additive migration shape: **8
+  files, 82 tests**. They cover matching team-template scope, future-only
+  replacement, exact retry, legacy membership gap fallback and one-source
+  snapshot binding.
 
 ## Deliberately still open
 
-- `WF-C7-007` remains partial: general recurring-template/team-default
-  publication, browser evidence and applied migration/RLS concurrency are not
-  claimed.
+- `WF-C7-007` remains partial: general recurring-template publication,
+  browser evidence and applied migration/RLS concurrency are not claimed.
 - NOT RUN — local Prisma generated-client refresh did not update the shared
   Contabo artifacts despite a zero-exit command; exact generated-client/static
   verification, full build, browser, Android and load gates require GitHub CI

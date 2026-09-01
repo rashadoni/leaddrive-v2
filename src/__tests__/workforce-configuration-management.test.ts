@@ -13,6 +13,7 @@ import {
   WorkforcePolicyDraftCreateSchema,
   WorkforcePolicyDraftUpdateSchema,
   WorkforceShiftDefaultPublishSchema,
+  WorkforceShiftTeamDefaultPublishSchema,
   WorkforceShiftAssignmentBulkPreviewSchema,
   WorkforceShiftAssignmentScheduleSchema,
   WorkforceShiftTemplateDraftCreateSchema,
@@ -24,6 +25,7 @@ import {
   previewWorkforceShiftAssignments,
   publishWorkforceShiftAssignments,
   publishWorkforceShiftDefault,
+  publishWorkforceShiftTeamDefault,
   scheduleWorkforceShiftAssignment,
   updateWorkforcePolicyDraft,
   updateWorkforceShiftTemplateDraft,
@@ -1028,6 +1030,126 @@ describe("safe Workforce configuration drafts", () => {
       code: "WORKFORCE_CONFIGURATION_DEFAULT_OPERATION_MISMATCH",
     })
     expect(prisma.workforceShiftDefaultAssignment.create).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+
+  it("publishes a reviewed team default against its matching immutable team scope and replays its receipt", async () => {
+    const predecessor = {
+      id: "team-default-current",
+      teamId: "team-a",
+      templateId: "team-a-current",
+      effectiveFrom: new Date("2026-08-01T00:00:00.000Z"),
+      effectiveTo: null,
+      assignedByUserId: userId,
+    }
+    const created = {
+      id: "team-default-next",
+      teamId: "team-a",
+      templateId: "team-a-next",
+      effectiveFrom: new Date("2026-09-01T00:00:00.000Z"),
+      effectiveTo: null,
+      assignedByUserId: userId,
+    }
+    const publish = WorkforceShiftTeamDefaultPublishSchema.parse({
+      operationId: "team-default-publish-retry-1",
+      teamId: "team-a",
+      templateId: "team-a-next",
+      effectiveFrom: "2026-09-01",
+    })
+    const receipt = {
+      id: "team-default-operation-1",
+      organizationId,
+      operationId: publish.operationId,
+      requestHash: "",
+      teamId: publish.teamId,
+      templateId: publish.templateId,
+      effectiveFrom: created.effectiveFrom,
+      teamDefaultAssignmentId: created.id,
+      publishedByUserId: userId,
+    }
+    vi.mocked(prisma.workforceShiftTeamDefaultOperation.findUnique).mockResolvedValue(null as never)
+    vi.mocked(prisma.mtmTeam.findFirst).mockResolvedValue({ id: "team-a" } as never)
+    vi.mocked(prisma.workforceShiftTemplate.findFirst).mockResolvedValue({
+      id: "team-a-next", teamId: "team-a", code: "TEAM_A_V2", isDefault: false,
+      version: 1, status: "ACTIVE", name: "Team A next shift", timezone: "Asia/Baku",
+      definitionHash: workforceShiftDefinitionHash(shiftDefinition),
+    } as never)
+    vi.mocked(prisma.workforceShiftTeamDefaultAssignment.findMany).mockResolvedValue([predecessor] as never)
+    vi.mocked(prisma.workforceShiftTeamDefaultAssignment.updateMany).mockResolvedValue({ count: 1 } as never)
+    vi.mocked(prisma.workforceShiftTeamDefaultAssignment.create).mockResolvedValue(created as never)
+    vi.mocked(prisma.workforceShiftTeamDefaultOperation.create).mockImplementation(async ({ data }: { data: typeof receipt }) => ({
+      ...receipt,
+      requestHash: data.requestHash,
+    }) as never)
+    vi.mocked(prisma.mtmAuditLog.create).mockResolvedValue({ id: "audit-team-default" } as never)
+
+    await expect(publishWorkforceShiftTeamDefault({
+      organizationId,
+      publishedByUserId: userId,
+      publish,
+      currentDateKey: "2026-08-29",
+      audit,
+    })).resolves.toMatchObject({
+      operationId: publish.operationId,
+      teamId: "team-a",
+      teamDefaultAssignmentId: created.id,
+      predecessorClosed: true,
+      idempotent: false,
+    })
+    expect(prisma.workforceShiftTeamDefaultAssignment.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        organizationId,
+        teamId: "team-a",
+        templateId: "team-a-next",
+        effectiveFrom: created.effectiveFrom,
+      }),
+    }))
+    const operationWrite = vi.mocked(prisma.workforceShiftTeamDefaultOperation.create).mock.calls[0][0] as { data: unknown }
+    const publicationAudit = vi.mocked(prisma.mtmAuditLog.create).mock.calls.at(-1)?.[0] as { data: { newData: unknown } }
+    expect(JSON.stringify(operationWrite.data)).not.toMatch(/agent-|employee|latitude|longitude/i)
+    expect(JSON.stringify(publicationAudit.data.newData)).not.toMatch(/agent-|employee|latitude|longitude/i)
+
+    const inserted = vi.mocked(prisma.workforceShiftTeamDefaultOperation.create).mock.calls[0][0] as { data: { requestHash: string } }
+    vi.clearAllMocks()
+    vi.mocked(prisma.workforceShiftTeamDefaultOperation.findUnique).mockResolvedValue({
+      ...receipt,
+      requestHash: inserted.data.requestHash,
+    } as never)
+    await expect(publishWorkforceShiftTeamDefault({
+      organizationId,
+      publishedByUserId: userId,
+      publish,
+      currentDateKey: "2026-08-29",
+      audit,
+    })).resolves.toMatchObject({ operationId: publish.operationId, idempotent: true })
+    expect(prisma.workforceShiftTeamDefaultAssignment.create).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+
+  it("rejects a team default template from a different team before any timeline write", async () => {
+    const publish = WorkforceShiftTeamDefaultPublishSchema.parse({
+      operationId: "team-default-scope-reject-1",
+      teamId: "team-a",
+      templateId: "team-b-template",
+      effectiveFrom: "2026-09-01",
+    })
+    vi.mocked(prisma.workforceShiftTeamDefaultOperation.findUnique).mockResolvedValue(null as never)
+    vi.mocked(prisma.mtmTeam.findFirst).mockResolvedValue({ id: "team-a" } as never)
+    vi.mocked(prisma.workforceShiftTemplate.findFirst).mockResolvedValue({
+      id: "team-b-template", teamId: "team-b", code: "TEAM_B", isDefault: false,
+      version: 1, status: "ACTIVE", name: "Team B shift", timezone: "Asia/Baku",
+      definitionHash: workforceShiftDefinitionHash(shiftDefinition),
+    } as never)
+    await expect(publishWorkforceShiftTeamDefault({
+      organizationId,
+      publishedByUserId: userId,
+      publish,
+      currentDateKey: "2026-08-29",
+      audit,
+    })).rejects.toMatchObject<Partial<WorkforceConfigurationManagementError>>({
+      code: "WORKFORCE_CONFIGURATION_TEAM_DEFAULT_TEMPLATE_SCOPE_INVALID",
+    })
+    expect(prisma.workforceShiftTeamDefaultAssignment.create).not.toHaveBeenCalled()
     expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
   })
 

@@ -26,6 +26,7 @@ vi.mock("@/lib/workforce/configuration-management", async () => {
     previewWorkforceShiftAssignments: vi.fn(),
     publishWorkforceShiftAssignments: vi.fn(),
     publishWorkforceShiftDefault: vi.fn(),
+    publishWorkforceShiftTeamDefault: vi.fn(),
   }
 })
 
@@ -39,6 +40,7 @@ import { GET as listAssignments, POST as scheduleAssignment } from "@/app/api/v1
 import { POST as previewAssignments } from "@/app/api/v1/workforce/configuration/assignments/preview/route"
 import { POST as publishAssignments } from "@/app/api/v1/workforce/configuration/assignments/bulk/publish/route"
 import { GET as listDefaultAssignments, POST as scheduleDefaultAssignment } from "@/app/api/v1/workforce/configuration/shifts/default/route"
+import { GET as listTeamDefaultAssignments, POST as scheduleTeamDefaultAssignment } from "@/app/api/v1/workforce/configuration/shifts/team-default/route"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { prisma } from "@/lib/prisma"
 import {
@@ -54,6 +56,7 @@ import {
   publishWorkforceShiftAssignments,
   scheduleWorkforceShiftAssignment,
   publishWorkforceShiftDefault,
+  publishWorkforceShiftTeamDefault,
   updateWorkforcePolicyDraft,
   updateWorkforceShiftTemplateDraft,
 } from "@/lib/workforce/configuration-management"
@@ -97,6 +100,14 @@ const callListDefaultAssignments = listDefaultAssignments as unknown as (
   request: NextRequest,
   auth: typeof AUTH,
 ) => Promise<Response>
+const callScheduleTeamDefaultAssignment = scheduleTeamDefaultAssignment as unknown as (
+  request: NextRequest,
+  auth: typeof AUTH,
+) => Promise<Response>
+const callListTeamDefaultAssignments = listTeamDefaultAssignments as unknown as (
+  request: NextRequest,
+  auth: typeof AUTH,
+) => Promise<Response>
 const policyDefinition = {
   expectedWorkSeconds: 28800,
   lateGraceSeconds: 300,
@@ -136,6 +147,7 @@ beforeEach(() => {
   vi.mocked(previewWorkforceShiftAssignments).mockReset()
   vi.mocked(publishWorkforceShiftAssignments).mockReset()
   vi.mocked(publishWorkforceShiftDefault).mockReset()
+  vi.mocked(publishWorkforceShiftTeamDefault).mockReset()
   vi.mocked(getMtmSettings).mockReset()
   vi.mocked(getMtmSettings).mockResolvedValue({ timezone: "Asia/Baku" } as never)
 })
@@ -143,7 +155,7 @@ beforeEach(() => {
 describe("Workforce draft configuration API", () => {
   it("binds every configuration route to an accountable Workforce session boundary", () => {
     expect(withWorkforceSessionAdminAuth).toHaveBeenCalledTimes(12)
-    expect(withWorkforceSessionScheduleConfigurationAuth).toHaveBeenCalledTimes(2)
+    expect(withWorkforceSessionScheduleConfigurationAuth).toHaveBeenCalledTimes(4)
     expect(withWorkforceSessionScheduleConfigurationAuth).toHaveBeenCalledWith("SCHEDULE_WRITE", expect.any(Function))
   })
 
@@ -493,6 +505,50 @@ describe("Workforce draft configuration API", () => {
     expect(publishWorkforceShiftDefault).not.toHaveBeenCalled()
   })
 
+  it("publishes a confirmed team default through the session boundary and server-derived date", async () => {
+    vi.mocked(publishWorkforceShiftTeamDefault).mockResolvedValue({
+      operationId: "team-default-route-1",
+      teamId: "team-a",
+      templateId: "team-a-shift",
+      effectiveFrom: "2026-09-01",
+      teamDefaultAssignmentId: "team-default-1",
+      predecessorClosed: false,
+      idempotent: false,
+    } as never)
+
+    const response = await callScheduleTeamDefaultAssignment(post("/api/v1/workforce/configuration/shifts/team-default", {
+      operationId: "team-default-route-1",
+      teamId: "team-a",
+      templateId: "team-a-shift",
+      effectiveFrom: "2026-09-01",
+    }), AUTH)
+
+    expect(response.status).toBe(201)
+    expect(response.headers.get("cache-control")).toBe("private, no-store")
+    expect(publishWorkforceShiftTeamDefault).toHaveBeenCalledWith(expect.objectContaining({
+      organizationId: AUTH.orgId,
+      publishedByUserId: AUTH.userId,
+      publish: {
+        operationId: "team-default-route-1",
+        teamId: "team-a",
+        templateId: "team-a-shift",
+        effectiveFrom: "2026-09-01",
+      },
+      currentDateKey: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      audit: expect.objectContaining({ actorUserId: AUTH.userId }),
+    }))
+  })
+
+  it("rejects a team-default write without an opaque replay key", async () => {
+    const response = await callScheduleTeamDefaultAssignment(post("/api/v1/workforce/configuration/shifts/team-default", {
+      teamId: "team-a",
+      templateId: "team-a-shift",
+      effectiveFrom: "2026-09-01",
+    }), AUTH)
+    expect(response.status).toBe(400)
+    expect(publishWorkforceShiftTeamDefault).not.toHaveBeenCalled()
+  })
+
   it("lists the named organization-default timeline through the session-admin boundary", async () => {
     vi.mocked(prisma.workforceShiftDefaultAssignment.findMany).mockResolvedValue([
       {
@@ -529,6 +585,35 @@ describe("Workforce draft configuration API", () => {
       where: { organizationId: AUTH.orgId },
       orderBy: [{ effectiveFrom: "asc" }, { id: "asc" }],
       select: expect.objectContaining({ template: expect.any(Object) }),
+    }))
+  })
+
+  it("lists team defaults with named team and template context through the session boundary", async () => {
+    vi.mocked(prisma.workforceShiftTeamDefaultAssignment.findMany).mockResolvedValue([{
+      id: "team-default-history",
+      teamId: "team-a",
+      templateId: "team-a-shift",
+      effectiveFrom: new Date("2026-09-01T00:00:00.000Z"),
+      effectiveTo: null,
+      assignedByUserId: "admin-1",
+      createdAt: new Date("2026-08-30T00:00:00.000Z"),
+      team: { id: "team-a", name: "Field team A", code: "A", isActive: true },
+      template: {
+        id: "team-a-shift", code: "TEAM_A", name: "Team A workday", timezone: "Asia/Baku",
+        teamId: "team-a", status: "ACTIVE", isDefault: false,
+      },
+    }] as never)
+
+    const response = await callListTeamDefaultAssignments(get("/api/v1/workforce/configuration/shifts/team-default"), AUTH)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      success: true,
+      data: { teamDefaultAssignments: [expect.objectContaining({ team: expect.objectContaining({ name: "Field team A" }) })] },
+    })
+    expect(prisma.workforceShiftTeamDefaultAssignment.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { organizationId: AUTH.orgId },
+      select: expect.objectContaining({ team: expect.any(Object), template: expect.any(Object) }),
     }))
   })
 })
