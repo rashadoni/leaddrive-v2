@@ -15,6 +15,7 @@ import {
   prepareWorkforceAttendanceVerification,
   recordWorkforceAttendanceVerification,
 } from "@/lib/workforce/attendance-trust"
+import { hasVerifiedWorkforceAttendanceAttestation } from "@/lib/workforce/attendance-attestation-receipt"
 
 type AttendanceEvent = Parameters<typeof prepareWorkforceAttendanceVerification>[1]["event"]
 
@@ -73,6 +74,24 @@ beforeEach(() => {
 })
 
 describe("Workforce attendance trust preparation", () => {
+  it("accepts only a complete non-future minimal Android attestation receipt", () => {
+    expect(hasVerifiedWorkforceAttendanceAttestation({
+      attestationVerifiedAt: new Date("2026-08-29T08:59:00.000Z"),
+      attestationSecurityLevel: "STRONGBOX",
+      attestationRootCertificateSha256: "a".repeat(64),
+    }, NOW)).toBe(true)
+    expect(hasVerifiedWorkforceAttendanceAttestation({
+      attestationVerifiedAt: new Date("2026-08-29T09:00:01.000Z"),
+      attestationSecurityLevel: "STRONGBOX",
+      attestationRootCertificateSha256: "a".repeat(64),
+    }, NOW)).toBe(false)
+    expect(hasVerifiedWorkforceAttendanceAttestation({
+      attestationVerifiedAt: NOW,
+      attestationSecurityLevel: "SOFTWARE",
+      attestationRootCertificateSha256: "not-a-root",
+    }, NOW)).toBe(false)
+  })
+
   it("keeps a policy without attendance requirements on the legacy workday path", async () => {
     vi.mocked(prisma.workforcePolicy.findMany).mockResolvedValue([
       policy({ expectedWorkSeconds: 28_800 }),
@@ -173,6 +192,9 @@ describe("Workforce attendance trust preparation", () => {
     vi.mocked(prisma.workforceAttendanceDeviceEnrollment.findFirst).mockResolvedValue({
       id: "enrollment_1",
       publicKeySpki,
+      attestationVerifiedAt: new Date("2026-08-29T08:59:00.000Z"),
+      attestationSecurityLevel: "TRUSTED_ENVIRONMENT",
+      attestationRootCertificateSha256: "b".repeat(64),
     } as never)
     const challenge = workforceDeviceAttendanceChallenge({
       organizationId: ORGANIZATION_ID,
@@ -193,6 +215,25 @@ describe("Workforce attendance trust preparation", () => {
         proofFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
       }),
     ])
+  })
+
+  it("does not treat proof of possession as Android hardware/app attestation", async () => {
+    vi.mocked(prisma.workforcePolicy.findMany).mockResolvedValue([
+      policy({ attendance: { enforcementVersion: 1, deviceTrust: { requiredActions: ["START"] } } }),
+    ] as never)
+    const { publicKey } = generateKeyPairSync("ec", { namedCurve: "prime256v1" })
+    vi.mocked(prisma.workforceAttendanceDeviceEnrollment.findFirst).mockResolvedValue({
+      id: "enrollment_unattested",
+      publicKeySpki: publicKey.export({ format: "der", type: "spki" }).toString("base64"),
+      attestationVerifiedAt: null,
+      attestationSecurityLevel: null,
+      attestationRootCertificateSha256: null,
+    } as never)
+
+    await expect(prepare({
+      device: { enrollmentId: "enrollment_unattested", signature: "a".repeat(96) },
+    })).rejects.toMatchObject({ code: "WORKFORCE_ATTENDANCE_DEVICE_ATTESTATION_REQUIRED" })
+    expect(prisma.workforceAttendanceVerification.create).not.toHaveBeenCalled()
   })
 
   it("fails closed for a missing proof, disabled capability, and unverified biometric policy", async () => {

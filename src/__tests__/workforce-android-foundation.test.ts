@@ -255,6 +255,7 @@ describe("Workforce Android foundation", () => {
     expect(activity).toContain("pendingLocationPermissionAction")
     expect(activity).toContain("WORKFORCE_ATTENDANCE_LOCATION_REQUIRED")
     expect(activity).toContain("WORKFORCE_ATTENDANCE_LOCATION_REVIEW_REQUIRED")
+    expect(activity).toContain("WORKFORCE_ATTENDANCE_DEVICE_ATTESTATION_REQUIRED")
     expect(capture).not.toMatch(/requestLocationUpdates|ForegroundService|ACCESS_BACKGROUND_LOCATION/i)
     expect(manifest).not.toContain("ACCESS_BACKGROUND_LOCATION")
     expect(activity).toContain("R.string.today_location_disclaimer")
@@ -272,6 +273,7 @@ describe("Workforce Android foundation", () => {
       expect(catalog).toContain('name="error_location_unsupported"')
       expect(catalog).toContain('name="error_location_server_required"')
       expect(catalog).toContain('name="error_location_server_review_required"')
+      expect(catalog).toContain('name="error_device_attestation_required"')
     }
   })
 

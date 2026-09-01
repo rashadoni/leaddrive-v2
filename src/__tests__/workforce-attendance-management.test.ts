@@ -334,7 +334,7 @@ describe("Workforce attendance management", () => {
     })
   })
 
-  it("requires a verified pending enrollment and atomically promotes it to active", async () => {
+  it("requires a proof-verified and attested pending enrollment before promotion", async () => {
     vi.mocked(prisma.workforceAttendanceDeviceEnrollment.findFirst).mockResolvedValue({
       id: "enrollment_1",
       agentId: AGENT_ID,
@@ -342,6 +342,9 @@ describe("Workforce attendance management", () => {
       publicKeyFingerprint: "a".repeat(64),
       status: "PENDING",
       keyVerifiedAt: NOW,
+      attestationVerifiedAt: NOW,
+      attestationSecurityLevel: "TRUSTED_ENVIRONMENT",
+      attestationRootCertificateSha256: "b".repeat(64),
       replacesEnrollmentId: null,
     } as never)
     vi.mocked(prisma.workforceAttendanceDeviceEnrollment.updateMany).mockResolvedValue({ count: 1 } as never)
@@ -374,6 +377,9 @@ describe("Workforce attendance management", () => {
       publicKeyFingerprint: "a".repeat(64),
       status: "PENDING",
       keyVerifiedAt: NOW,
+      attestationVerifiedAt: NOW,
+      attestationSecurityLevel: "TRUSTED_ENVIRONMENT",
+      attestationRootCertificateSha256: "b".repeat(64),
       replacesEnrollmentId: null,
     } as never)
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: AGENT_ID } as never)
@@ -403,6 +409,9 @@ describe("Workforce attendance management", () => {
         publicKeyFingerprint: "c".repeat(64),
         status: "PENDING",
         keyVerifiedAt: NOW,
+        attestationVerifiedAt: NOW,
+        attestationSecurityLevel: "TRUSTED_ENVIRONMENT",
+        attestationRootCertificateSha256: "b".repeat(64),
         replacesEnrollmentId: "enrollment_old",
       } as never)
       .mockResolvedValueOnce({
@@ -440,6 +449,32 @@ describe("Workforce attendance management", () => {
       }),
     }))
     expect(JSON.stringify(vi.mocked(prisma.mtmAuditLog.create).mock.calls)).not.toContain("publicKeySpki")
+  })
+
+  it("keeps a proof-verified enrollment pending until the server records attestation", async () => {
+    vi.mocked(prisma.workforceAttendanceDeviceEnrollment.findFirst).mockResolvedValue({
+      id: "enrollment_unattested",
+      agentId: AGENT_ID,
+      deviceLabel: "Pixel",
+      publicKeyFingerprint: "a".repeat(64),
+      status: "PENDING",
+      keyVerifiedAt: NOW,
+      attestationVerifiedAt: null,
+      attestationSecurityLevel: null,
+      attestationRootCertificateSha256: null,
+      replacesEnrollmentId: null,
+    } as never)
+
+    await expect(approveWorkforceAttendanceDeviceEnrollment(prisma as never, {
+      organizationId: ORGANIZATION_ID,
+      enrollmentId: "enrollment_unattested",
+      approvedByUserId: USER_ID,
+      audit: AUDIT,
+      now: NOW,
+    })).rejects.toMatchObject({ code: "WORKFORCE_ATTENDANCE_ENROLLMENT_ATTESTATION_REQUIRED" })
+    expect(prisma.mtmAgent.findFirst).not.toHaveBeenCalled()
+    expect(prisma.workforceAttendanceDeviceEnrollment.updateMany).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
   })
 
   it("revokes pending or active keys atomically and writes a redacted audit record", async () => {

@@ -149,6 +149,7 @@ private fun WorkforceRoot(
         updateRequired = stringResource(R.string.error_update_required),
         locationRequired = stringResource(R.string.error_location_server_required),
         locationReviewRequired = stringResource(R.string.error_location_server_review_required),
+        deviceAttestationRequired = stringResource(R.string.error_device_attestation_required),
     )
     val queuedToday = stringResource(R.string.status_today_queued)
     val refreshingToday = stringResource(R.string.status_refreshing_server)
@@ -1675,6 +1676,7 @@ private data class WorkforceEmployeeErrorCopy(
     val updateRequired: String,
     val locationRequired: String,
     val locationReviewRequired: String,
+    val deviceAttestationRequired: String,
 )
 
 private fun Throwable.employeeMessage(copy: WorkforceEmployeeErrorCopy): String = when (this) {
@@ -1683,6 +1685,7 @@ private fun Throwable.employeeMessage(copy: WorkforceEmployeeErrorCopy): String 
         "WORKFORCE_MOBILE_UPDATE_REQUIRED", "WORKFORCE_MOBILE_PLATFORM_UNSUPPORTED" -> copy.updateRequired
         "WORKFORCE_ATTENDANCE_LOCATION_REQUIRED" -> copy.locationRequired
         "WORKFORCE_ATTENDANCE_LOCATION_REVIEW_REQUIRED" -> copy.locationReviewRequired
+        "WORKFORCE_ATTENDANCE_DEVICE_ATTESTATION_REQUIRED" -> copy.deviceAttestationRequired
         else -> copy.api
     }
     else -> copy.network

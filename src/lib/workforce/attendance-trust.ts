@@ -13,6 +13,7 @@ import {
   type WorkforceAttendanceAction,
   type WorkforceAttendanceRequirements,
 } from "@/lib/workforce/attendance-policy"
+import { hasVerifiedWorkforceAttendanceAttestation } from "@/lib/workforce/attendance-attestation-receipt"
 import {
   assessWorkforceLocationEvidence,
   type WorkforceLocationEvidenceAssessment,
@@ -118,6 +119,7 @@ export class WorkforceAttendanceTrustError extends Error {
       | "WORKFORCE_ATTENDANCE_QR_STATION_UNAVAILABLE"
       | "WORKFORCE_ATTENDANCE_DEVICE_REQUIRED"
       | "WORKFORCE_ATTENDANCE_DEVICE_UNAVAILABLE"
+      | "WORKFORCE_ATTENDANCE_DEVICE_ATTESTATION_REQUIRED"
       | "WORKFORCE_ATTENDANCE_DEVICE_SIGNATURE_INVALID"
       | "WORKFORCE_ATTENDANCE_LOCATION_REQUIRED"
       | "WORKFORCE_ATTENDANCE_LOCATION_REVIEW_REQUIRED"
@@ -391,12 +393,28 @@ export async function prepareWorkforceAttendanceVerification(
         status: "ACTIVE",
         keyVerifiedAt: { not: null },
       },
-      select: { id: true, publicKeySpki: true },
+      select: {
+        id: true,
+        publicKeySpki: true,
+        attestationVerifiedAt: true,
+        attestationSecurityLevel: true,
+        attestationRootCertificateSha256: true,
+      },
     })
     if (!enrollment) {
       throw new WorkforceAttendanceTrustError(
         "WORKFORCE_ATTENDANCE_DEVICE_UNAVAILABLE",
         "The selected attendance device is not active for this employee",
+      )
+    }
+    if (!hasVerifiedWorkforceAttendanceAttestation(enrollment, now)) {
+      // Do not use an active proof-of-possession key as an attendance trust
+      // factor until a server verifier recorded the minimum hardware/app
+      // assurance receipt. The response names no root, certificate, device
+      // property or other attestation material.
+      throw new WorkforceAttendanceTrustError(
+        "WORKFORCE_ATTENDANCE_DEVICE_ATTESTATION_REQUIRED",
+        "The selected attendance device still needs server-verified Android key attestation",
       )
     }
     const challenge = workforceDeviceAttendanceChallenge({

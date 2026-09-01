@@ -11,6 +11,7 @@ import {
 } from "@/lib/workforce/attendance-security"
 import { WorkforceAttendanceActionSchema, type WorkforceAttendanceAction } from "@/lib/workforce/attendance-policy"
 import { newWorkforceAttendanceEnrollmentChallenge } from "@/lib/workforce/attendance-trust"
+import { hasVerifiedWorkforceAttendanceAttestation } from "@/lib/workforce/attendance-attestation-receipt"
 
 const IDENTIFIER = /^[A-Za-z0-9_-]{1,100}$/
 const ENROLLMENT_CHALLENGE_TTL_MS = 5 * 60 * 1000
@@ -119,6 +120,7 @@ export class WorkforceAttendanceManagementError extends Error {
       | "WORKFORCE_ATTENDANCE_ENROLLMENT_PROOF_INVALID"
       | "WORKFORCE_ATTENDANCE_ENROLLMENT_CHALLENGE_INVALID"
       | "WORKFORCE_ATTENDANCE_ENROLLMENT_APPROVAL_INVALID"
+      | "WORKFORCE_ATTENDANCE_ENROLLMENT_ATTESTATION_REQUIRED"
       | "WORKFORCE_ATTENDANCE_ENROLLMENT_SELF_APPROVAL_FORBIDDEN"
       | "WORKFORCE_ATTENDANCE_ENROLLMENT_REVOKE_INVALID",
     message: string = code,
@@ -795,6 +797,9 @@ export async function approveWorkforceAttendanceDeviceEnrollment(
         publicKeyFingerprint: true,
         status: true,
         keyVerifiedAt: true,
+        attestationVerifiedAt: true,
+        attestationSecurityLevel: true,
+        attestationRootCertificateSha256: true,
         replacesEnrollmentId: true,
       },
     })
@@ -808,6 +813,16 @@ export async function approveWorkforceAttendanceDeviceEnrollment(
       throw new WorkforceAttendanceManagementError(
         "WORKFORCE_ATTENDANCE_ENROLLMENT_APPROVAL_INVALID",
         "Only a verified pending device enrollment can be approved",
+      )
+    }
+    // A proof-of-possession only proves that a caller controls the supplied
+    // public key. It is not Android hardware/app assurance. Until the future
+    // reviewed verifier writes this minimal receipt, leave the enrollment
+    // pending rather than promoting an un-attested key into a trust factor.
+    if (!hasVerifiedWorkforceAttendanceAttestation(enrollment, now)) {
+      throw new WorkforceAttendanceManagementError(
+        "WORKFORCE_ATTENDANCE_ENROLLMENT_ATTESTATION_REQUIRED",
+        "This device cannot be approved until server-verified Android key attestation is available",
       )
     }
     // A Workforce administrator can also be an employee/agent.  The ordinary
