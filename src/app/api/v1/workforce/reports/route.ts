@@ -9,6 +9,7 @@ import { isAgentInWorkforceScope, resolveWorkforceActor } from "@/lib/workforce/
 import {
   buildWorkforceApprovedTimesheetReport,
 } from "@/lib/workforce/approved-timesheet-report"
+import { requireWorkforceApprovedReportAccess } from "@/lib/workforce/approved-report-access"
 import { WorkforceTimesheetApprovalError } from "@/lib/workforce/timesheet-approval"
 
 const MAX_RANGE_DAYS = 93
@@ -55,6 +56,12 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
   if (requestedAgentId && !isAgentInWorkforceScope(actor, requestedAgentId)) {
     return NextResponse.json({ error: "Forbidden", code: "WORKFORCE_SCOPE_DENIED" }, { status: 403 })
   }
+  const accessDenied = await requireWorkforceApprovedReportAccess({
+    organizationId: auth.orgId,
+    auth,
+    selectedAgentId: requestedAgentId,
+  })
+  if (accessDenied) return accessDenied
 
   const rangeStart = new Date(`${start}T00:00:00.000Z`)
   const rangeEnd = new Date(`${end}T00:00:00.000Z`)

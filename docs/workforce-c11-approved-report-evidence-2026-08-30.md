@@ -13,6 +13,15 @@ optional in-scope employee filter. It reads only immutable
 `WorkforceTimesheetApproval` rows, rebuilds their hashes before every metric,
 and rejects the entire report if even one selected approval cannot reproduce.
 
+After a tenant explicitly enables C7 granular access, the same read requires
+an effective `TEAM_ATTENDANCE_READ` grant. A selected employee is matched only
+against an exact employee scope; an all-scope aggregate requires an
+organization scope because immutable approval rows do not contain a historic
+team/site snapshot. The endpoint therefore never uses a present-day team to
+broaden a historical report, and an ungranted CRM administrator has no
+fallback. Before the flag, the existing session-administrator boundary stays
+unchanged.
+
 The aggregate and employee breakdown include approved workdays, expected and
 actual time, recorded pause time, late start, undertime, operational overtime
 and long-pause deviations. Overlapping approval views are deduplicated by
@@ -51,6 +60,8 @@ PASS  npx vitest run workforce-approved-timesheet-report,
 PASS  targeted ESLint for report service, route, component, page and tests
 PASS  npm run i18n:check (21,232 EN leaf keys; RU/AZ missing=0, extra=0)
 PASS  git diff --check
+PASS  2026-09-01: selected-employee grant/no-fallback and unavailable-grant
+      source contracts (9 tests across report/access evaluator)
 NOT RUN  full TypeScript check, production build, browser E2E, staging data
          reconciliation and load tests: full/heavy gates are reserved for CI
          or an approved heavy worker on this Contabo development host.

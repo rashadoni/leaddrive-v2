@@ -15,7 +15,7 @@ import { prisma } from "@/lib/prisma"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { buildWorkforceTimesheetApproval } from "@/lib/workforce/timesheet-approval"
 
-const AUTH = { orgId: "org-workforce", userId: "admin-1", role: "admin" }
+const AUTH = { orgId: "org-workforce", userId: "admin-1", role: "admin", principalType: "session" as const }
 const invoke = getReport as unknown as (request: NextRequest, auth: typeof AUTH) => Promise<Response>
 
 function approval() {
@@ -39,6 +39,7 @@ function approval() {
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(getMtmSettings).mockResolvedValue({ timezone: "Asia/Baku" } as never)
+  vi.mocked(prisma.organization.findUnique).mockResolvedValue({ features: [] } as never)
   vi.mocked(prisma.workforceTimesheetApproval.findMany).mockResolvedValue([])
   vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([])
 })
@@ -82,5 +83,55 @@ describe("GET /api/v1/workforce/reports", () => {
     expect(response.status).toBe(400)
     await expect(response.json()).resolves.toMatchObject({ code: "WORKFORCE_REPORT_RANGE_INVALID" })
     expect(prisma.workforceTimesheetApproval.findMany).not.toHaveBeenCalled()
+  })
+
+  it("requires an exact attendance-read grant for a selected employee after granular cutover", async () => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      features: ["workforce-granular-access-v1"],
+    } as never)
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([])
+
+    const denied = await invoke(new NextRequest("http://localhost:3000/api/v1/workforce/reports?start=2026-08-28&end=2026-08-28&agentId=agent-1"), AUTH)
+
+    expect(denied.status).toBe(403)
+    await expect(denied.json()).resolves.toMatchObject({ code: "WORKFORCE_APPROVED_REPORT_ACCESS_REQUIRED" })
+    expect(prisma.workforceAccessGrant.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ organizationId: AUTH.orgId, principalUserId: AUTH.userId }),
+      take: 201,
+    }))
+    expect(prisma.workforceTimesheetApproval.findMany).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([{
+      id: "grant_report_1",
+      organizationId: AUTH.orgId,
+      principalUserId: AUTH.userId,
+      role: "TIME_APPROVER",
+      scopeKind: "AGENT",
+      scopeTeamId: null,
+      scopeSiteId: null,
+      scopeAgentId: "agent-1",
+      effectiveFrom: new Date("2026-08-01T00:00:00.000Z"),
+      effectiveUntil: null,
+      revocation: null,
+    }] as never)
+
+    const allowed = await invoke(new NextRequest("http://localhost:3000/api/v1/workforce/reports?start=2026-08-28&end=2026-08-28&agentId=agent-1"), AUTH)
+
+    expect(allowed.status).toBe(200)
+    expect(prisma.workforceTimesheetApproval.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ organizationId: AUTH.orgId, agentId: "agent-1" }),
+    }))
+  })
+
+  it("fails closed on an unavailable approved-report authorization lookup", async () => {
+    vi.mocked(prisma.organization.findUnique).mockRejectedValueOnce(new Error("database unavailable"))
+
+    const response = await invoke(new NextRequest("http://localhost:3000/api/v1/workforce/reports?start=2026-08-28&end=2026-08-28"), AUTH)
+
+    expect(response.status).toBe(503)
+    await expect(response.json()).resolves.toMatchObject({ code: "WORKFORCE_APPROVED_REPORT_ACCESS_UNAVAILABLE" })
+    expect(prisma.workforceTimesheetApproval.findMany).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
   })
 })
