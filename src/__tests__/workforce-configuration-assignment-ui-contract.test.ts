@@ -55,14 +55,17 @@ describe("Workforce assignment configuration UI contract", () => {
     expect(workbench).not.toContain('"/api/v1/workforce/configuration/assignments/bulk"')
   })
 
-  it("keeps the multi-employee site review separate from site eligibility mutation", () => {
+  it("requires an explicit confirmation before atomically publishing a reviewed site eligibility draft", () => {
     expect(workbench).toContain('id="workforce-bulk-site-assignment-site"')
     expect(workbench).toContain('id="workforce-bulk-site-assignment-effective-from"')
     expect(workbench).toContain('"/api/v1/workforce/configuration/site-assignments/preview"')
     expect(workbench).toContain('setBulkSiteAssignmentPreview(null)')
     expect(workbench).toContain('setBulkSiteAssignmentDraft(emptyBulkSiteAssignmentDraft())')
     expect(workbench).toContain('bulkSiteAssignmentPreview !== null')
-    expect(workbench).not.toContain('"/api/v1/workforce/configuration/site-assignments/bulk"')
+    expect(workbench).toContain('"/api/v1/workforce/configuration/site-assignments/bulk/publish"')
+    expect(workbench).toContain('id="workforce-bulk-site-assignment-publish-confirm"')
+    expect(workbench).toContain('bulkSiteAssignmentPublishConfirmed')
+    expect(workbench).toContain('crypto.randomUUID()')
   })
 
   it("shows and writes the immutable organization-default timeline separately", () => {
@@ -115,6 +118,11 @@ describe("Workforce assignment configuration UI contract", () => {
       "reviewBulkSiteAssignmentDraft",
       "bulkSiteAssignmentReviewOnlyHint",
       "bulkSiteAssignmentSummary",
+      "bulkSiteAssignmentPublishConfirm",
+      "publishBulkSiteAssignment",
+      "bulkSiteAssignmentPublishBlocked",
+      "bulkSiteAssignmentPublishConfirmationRequired",
+      "bulkSiteAssignmentPublished",
       "assignmentTimelineTitle",
       "scheduleDefaultAssignment",
       "defaultTimelineTitle",

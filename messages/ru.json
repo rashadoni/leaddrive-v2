@@ -24064,6 +24064,11 @@
   "reviewBulkSiteAssignmentDraft": "Проверить массовый черновик площадки",
   "bulkSiteAssignmentReviewOnlyHint": "Это отчёт о конфликтах допуска к площадке только для чтения. Доступ сотрудника, факт посещаемости и назначение Route не изменены.",
   "bulkSiteAssignmentSummary": "Проверка завершена: готово — {ready}, без изменений — {unchanged}, недоступно — {unavailable}, конфликтов — {conflicts}.",
+  "bulkSiteAssignmentPublishConfirm": "Подтверждаю публикацию {count} проверенного будущего назначения допуска к площадке. Сервер повторно выполнит проверку перед записью.",
+  "publishBulkSiteAssignment": "Опубликовать проверенные назначения площадок",
+  "bulkSiteAssignmentPublishBlocked": "Устраните недоступность сотрудников или будущие конфликты и повторите проверку перед публикацией.",
+  "bulkSiteAssignmentPublishConfirmationRequired": "Подтвердите проверенные будущие назначения перед публикацией.",
+  "bulkSiteAssignmentPublished": "Будущие назначения площадок опубликованы: создано — {created}, без изменений — {unchanged}.",
   "bulkSiteAssignmentOutcome": {
     "READY": "Готово для будущей проверенной операции",
     "NO_CHANGE": "Уже покрыто этим допуском к площадке",

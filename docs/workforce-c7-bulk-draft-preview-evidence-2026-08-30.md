@@ -1,7 +1,7 @@
 # Workforce C7 — reversible bulk schedule draft evidence
 
 **Task:** `WF-C7-007`
-**Status:** PARTIAL — safe schedule-review slice only
+**Status:** PARTIAL — safe schedule/site review plus durable future site-publish source slice
 
 ## Delivered
 
@@ -40,6 +40,35 @@ selection, clears its result after any site/kind/window/employee change and
 announces only the outcome counts. A site preview can never change Route,
 attendance history or employee site eligibility.
 
+## Durable bulk site publish source slice (2026-09-01)
+
+The workbench now offers a separate explicit confirmation only after a fresh
+site preview has zero `CONFLICT` and `EMPLOYEE_UNAVAILABLE` results and at
+least one `READY` employee. The confirmation sends a client-generated opaque
+operation key to:
+
+`POST /api/v1/workforce/configuration/site-assignments/bulk/publish`
+
+The endpoint uses the existing Workforce-only `SITE_ASSIGNMENT_WRITE`
+permission. The server does not trust the browser preview: one transaction
+first locks the tenant operation key, then locks every employee's matching
+site-assignment timeline in sorted order, recomputes the preview, and refuses
+the entire request if any employee is no longer active or any future conflict
+appears. Only then it closes open primary predecessors and appends every ready
+future assignment. There is no partial publish result.
+
+The additive `workforce_site_assignment_bulk_operations` receipt is unique by
+tenant/operation key, hash-bound to the actor and sorted input, append-only and
+RLS-protected. It deliberately retains only site/window/kind, actor and
+aggregate requested/created/unchanged counts. It stores no employee selection
+list, GPS, QR, device proof or Route data. Its one configuration audit entry
+has the same aggregate-only boundary. An exact replay returns the stored
+counts; a changed payload under the same operation key is rejected.
+
+This is a future site-eligibility writer only. It neither publishes bulk shift
+templates nor recurring schedules, changes attendance facts, opens a workday,
+calculates travel/payroll, or mutates Route & Field.
+
 ## Verification in this worktree
 
 - PASS — targeted Vitest: `workforce-configuration-management`, API
@@ -50,14 +79,21 @@ attendance history or employee site eligibility.
 - PASS — targeted site-management/API/UI/accessibility tests: **4 files, 30
   tests**, including the no-prior-assignment, conflict and
   unavailable-employee preview paths.
+- PASS — targeted bulk-publish Vitest contracts: **5 files, 35 tests**. They
+  cover atomic two-employee publish, exact replay without a second assignment
+  or audit, stale-review refusal before every write, RLS/append-only migration
+  shape, API tenant scope and explicit web confirmation.
+- PASS — `DATABASE_URL=<non-secret placeholder> npx prisma validate`.
+- PASS — scoped ESLint and `git diff --check`.
 
 ## Deliberately still open
 
-- `WF-C7-007` remains partial: durable reviewed draft, idempotent
-  publish/confirmation, recurring schedule/template semantics and browser
-  evidence are not claimed.
-- NOT RUN — browser, full build, Android and load gates. They require the
-  approved heavy worker/CI, not Contabo.
+- `WF-C7-007` remains partial: bulk **schedule/template recurrence** publish,
+  browser evidence and applied migration/RLS concurrency are not claimed.
+- NOT RUN — local Prisma generated-client refresh did not update the shared
+  Contabo artifacts despite a zero-exit command; exact generated-client/static
+  verification, full build, browser, Android and load gates require GitHub CI
+  or the approved heavy worker, not Contabo.
 
 This slice is safe to expose as a review aid because it cannot mutate a
 schedule; a later publish workflow must re-preview inside its transaction and

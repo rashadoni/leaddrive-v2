@@ -24064,6 +24064,11 @@
   "reviewBulkSiteAssignmentDraft": "Review bulk site draft",
   "bulkSiteAssignmentReviewOnlyHint": "This is a read-only site-eligibility conflict report. No employee access, attendance record or Route assignment has changed.",
   "bulkSiteAssignmentSummary": "Review complete: {ready} ready, {unchanged} unchanged, {unavailable} unavailable, {conflicts} conflicts.",
+  "bulkSiteAssignmentPublishConfirm": "I confirm that {count} reviewed future site eligibility assignment(s) should be published. The server will review again before writing.",
+  "publishBulkSiteAssignment": "Publish reviewed site assignments",
+  "bulkSiteAssignmentPublishBlocked": "Resolve unavailable employees or future conflicts and review again before publishing.",
+  "bulkSiteAssignmentPublishConfirmationRequired": "Confirm the reviewed future assignments before publishing.",
+  "bulkSiteAssignmentPublished": "Future site assignments published: {created} created, {unchanged} unchanged.",
   "bulkSiteAssignmentOutcome": {
     "READY": "Ready for a future reviewed operation",
     "NO_CHANGE": "Already covered by this site eligibility",

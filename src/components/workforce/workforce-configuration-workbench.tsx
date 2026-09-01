@@ -251,6 +251,18 @@ type BulkSiteAssignmentPreview = {
   summary: Record<BulkSiteAssignmentOutcome, number>
 }
 
+type BulkSiteAssignmentPublishResult = {
+  operationId: string
+  siteId: string
+  kind: SiteAssignmentForm["kind"]
+  effectiveFrom: string
+  effectiveTo: string | null
+  requestedCount: number
+  createdCount: number
+  unchangedCount: number
+  idempotent: boolean
+}
+
 type SiteForm = {
   code: string
   name: string
@@ -378,6 +390,8 @@ export function WorkforceConfigurationWorkbench() {
   const [bulkSiteAssignmentDraft, setBulkSiteAssignmentDraft] = useState<BulkSiteAssignmentDraft>(emptyBulkSiteAssignmentDraft)
   const [bulkSiteAssignmentSelections, setBulkSiteAssignmentSelections] = useState<Record<string, WorkforceEmployee>>({})
   const [bulkSiteAssignmentPreview, setBulkSiteAssignmentPreview] = useState<BulkSiteAssignmentPreview | null>(null)
+  const [bulkSiteAssignmentPublishConfirmed, setBulkSiteAssignmentPublishConfirmed] = useState(false)
+  const [bulkSiteAssignmentPublishOperationId, setBulkSiteAssignmentPublishOperationId] = useState<string | null>(null)
   const [siteForm, setSiteForm] = useState<SiteForm>(emptySiteForm)
   const [geofenceForm, setGeofenceForm] = useState<GeofenceForm>(emptyGeofenceForm)
   const [selectedGeofenceSiteId, setSelectedGeofenceSiteId] = useState("")
@@ -397,6 +411,7 @@ export function WorkforceConfigurationWorkbench() {
   const [previewingAssignments, setPreviewingAssignments] = useState(false)
   const [previewingBulkAssignments, setPreviewingBulkAssignments] = useState(false)
   const [previewingBulkSiteAssignments, setPreviewingBulkSiteAssignments] = useState(false)
+  const [publishingBulkSiteAssignments, setPublishingBulkSiteAssignments] = useState(false)
   const [activating, setActivating] = useState<string | null>(null)
 
   const request = useCallback(async (path: string, method: "GET" | "POST" | "PATCH", body?: unknown) => {
@@ -880,6 +895,8 @@ export function WorkforceConfigurationWorkbench() {
   function updateBulkSiteAssignmentDraft(update: (current: BulkSiteAssignmentDraft) => BulkSiteAssignmentDraft) {
     setBulkSiteAssignmentDraft((current) => update(current))
     setBulkSiteAssignmentPreview(null)
+    setBulkSiteAssignmentPublishConfirmed(false)
+    setBulkSiteAssignmentPublishOperationId(null)
   }
 
   function toggleBulkSiteAssignmentEmployee(employee: WorkforceEmployee) {
@@ -916,10 +933,53 @@ export function WorkforceConfigurationWorkbench() {
         },
       ) as BulkSiteAssignmentPreview
       setBulkSiteAssignmentPreview(preview)
+      setBulkSiteAssignmentPublishConfirmed(false)
+      setBulkSiteAssignmentPublishOperationId(null)
     } catch (cause) {
       toast.error(messageForError(cause, t("saveFailed")))
     } finally {
       setPreviewingBulkSiteAssignments(false)
+    }
+  }
+
+  async function publishBulkSiteAssignments() {
+    if (!bulkSiteAssignmentPreview || bulkSiteAssignmentPreview.summary.CONFLICT > 0 || bulkSiteAssignmentPreview.summary.EMPLOYEE_UNAVAILABLE > 0) {
+      toast.error(t("bulkSiteAssignmentPublishBlocked"))
+      return
+    }
+    if (!bulkSiteAssignmentPublishConfirmed) {
+      toast.error(t("bulkSiteAssignmentPublishConfirmationRequired"))
+      return
+    }
+    const operationId = bulkSiteAssignmentPublishOperationId ?? crypto.randomUUID()
+    setBulkSiteAssignmentPublishOperationId(operationId)
+    setPublishingBulkSiteAssignments(true)
+    try {
+      const { operation } = await request(
+        "/api/v1/workforce/configuration/site-assignments/bulk/publish",
+        "POST",
+        {
+          ...bulkSiteAssignmentDraft,
+          effectiveTo: bulkSiteAssignmentDraft.effectiveTo || null,
+          operationId,
+        },
+      ) as { operation: BulkSiteAssignmentPublishResult }
+      toast.success(t("bulkSiteAssignmentPublished", {
+        created: operation.createdCount,
+        unchanged: operation.unchangedCount,
+      }))
+      setBulkSiteAssignmentDraft(emptyBulkSiteAssignmentDraft())
+      setBulkSiteAssignmentSelections({})
+      setBulkSiteAssignmentPreview(null)
+      setBulkSiteAssignmentPublishConfirmed(false)
+      setBulkSiteAssignmentPublishOperationId(null)
+      await load()
+    } catch (cause) {
+      // Retain the opaque operation key after an unknown network failure so a
+      // retry cannot duplicate a publish whose response was lost in transit.
+      toast.error(messageForError(cause, t("saveFailed")))
+    } finally {
+      setPublishingBulkSiteAssignments(false)
     }
   }
 
@@ -1219,8 +1279,8 @@ export function WorkforceConfigurationWorkbench() {
               <div className="grid gap-4 sm:grid-cols-2 xl:col-span-1"><div className="space-y-1.5"><label htmlFor="workforce-bulk-site-assignment-effective-from" className="text-sm font-medium">{t("effectiveFrom")}</label><Input id="workforce-bulk-site-assignment-effective-from" type="date" value={bulkSiteAssignmentDraft.effectiveFrom} onChange={(event) => updateBulkSiteAssignmentDraft((current) => ({ ...current, effectiveFrom: event.target.value }))} required /></div><div className="space-y-1.5"><label htmlFor="workforce-bulk-site-assignment-effective-to" className="text-sm font-medium">{t("effectiveTo")}</label><Input id="workforce-bulk-site-assignment-effective-to" type="date" min={bulkSiteAssignmentDraft.effectiveFrom || undefined} value={bulkSiteAssignmentDraft.effectiveTo} onChange={(event) => updateBulkSiteAssignmentDraft((current) => ({ ...current, effectiveTo: event.target.value }))} required={bulkSiteAssignmentDraft.kind === "TEMPORARY"} /></div></div>
             </div>
             <fieldset className="border-y border-zinc-200 py-4 dark:border-zinc-700" aria-describedby="workforce-bulk-site-assignment-employees-hint"><legend className="px-1 text-sm font-medium">{t("bulkAssignmentEmployees", { selected: bulkSiteAssignmentDraft.agentIds.length, maximum: 200 })}</legend><p id="workforce-bulk-site-assignment-employees-hint" className="mt-1 px-1 text-sm leading-6 text-muted-foreground">{t("bulkSiteAssignmentEmployeesHint")}</p><div className="mt-4 grid max-h-72 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3" role="group" aria-label={t("bulkAssignmentEmployees", { selected: bulkSiteAssignmentDraft.agentIds.length, maximum: 200 })}>{data.roster.employees.map((employee) => { const selected = bulkSiteAssignmentDraft.agentIds.includes(employee.id); const maximumReached = bulkSiteAssignmentDraft.agentIds.length >= 200; return <label key={employee.id} className="flex min-h-11 items-center gap-3 rounded-md border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700"><input id={"workforce-bulk-site-assignment-employee-" + employee.id} type="checkbox" checked={selected} disabled={!selected && maximumReached} onChange={() => toggleBulkSiteAssignmentEmployee(employee)} className="h-4 w-4 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" /><span>{employeeLabel(employee)}</span></label> })}{data.roster.employees.length === 0 ? <p className="text-sm text-muted-foreground">{t("assignmentRosterUnavailable")}</p> : null}</div>{bulkSiteAssignmentDraft.agentIds.length > 0 ? <div className="mt-4"><p className="text-sm leading-6 text-muted-foreground">{t("bulkSelectionRetainedHint")}</p><ul className="mt-2 flex max-h-32 flex-wrap gap-2 overflow-y-auto" aria-label={t("bulkSelectionPeople")}>{bulkSiteAssignmentDraft.agentIds.map((agentId) => <li key={agentId}><Button type="button" variant="outline" size="sm" className="min-h-9" onClick={() => removeBulkSiteAssignmentEmployee(agentId)}>{bulkAssignmentEmployeeLabel(agentId)}<X className="h-4 w-4" aria-hidden="true" /></Button></li>)}</ul></div> : null}</fieldset>
-            <div className="flex flex-wrap gap-3"><Button type="submit" variant="outline" className="min-h-11" disabled={previewingBulkSiteAssignments || data.roster.employees.length === 0 || !data.sites.some((site) => site.status === "ACTIVE")}>{previewingBulkSiteAssignments ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <RefreshCw />}{t("reviewBulkSiteAssignmentDraft")}</Button><Button type="button" variant="ghost" className="min-h-11" onClick={() => { setBulkSiteAssignmentDraft(emptyBulkSiteAssignmentDraft()); setBulkSiteAssignmentSelections({}); setBulkSiteAssignmentPreview(null) }} disabled={previewingBulkSiteAssignments || (bulkSiteAssignmentDraft.agentIds.length === 0 && !bulkSiteAssignmentDraft.siteId && !bulkSiteAssignmentDraft.effectiveFrom && !bulkSiteAssignmentDraft.effectiveTo)}>{t("discardBulkAssignmentDraft")}</Button></div>
-            {bulkSiteAssignmentPreview !== null ? <div className="border-y border-zinc-200 py-4 dark:border-zinc-700"><p role="status" aria-live="polite" aria-atomic="true" className="text-sm font-medium">{t("bulkSiteAssignmentSummary", { ready: bulkSiteAssignmentPreview.summary.READY, unchanged: bulkSiteAssignmentPreview.summary.NO_CHANGE, unavailable: bulkSiteAssignmentPreview.summary.EMPLOYEE_UNAVAILABLE, conflicts: bulkSiteAssignmentPreview.summary.CONFLICT })}</p><div className="mt-3 flex flex-wrap gap-2">{(["READY", "NO_CHANGE", "EMPLOYEE_UNAVAILABLE", "CONFLICT"] as const).map((outcome) => <Badge key={outcome} variant={outcome === "CONFLICT" || outcome === "EMPLOYEE_UNAVAILABLE" ? "destructive" : "outline"}>{t("bulkSiteAssignmentOutcome." + outcome)}: {bulkSiteAssignmentPreview.summary[outcome]}</Badge>)}</div><p className="mt-3 text-sm leading-6 text-muted-foreground">{t("bulkSiteAssignmentReviewOnlyHint")}</p><ul className="mt-3 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">{bulkSiteAssignmentPreview.items.map((item) => <li key={item.agentId} className="py-3 text-sm"><span className="font-medium">{bulkAssignmentEmployeeLabel(item.agentId)}</span><span className="text-muted-foreground"> · {t("bulkSiteAssignmentOutcome." + item.outcome)}</span></li>)}</ul></div> : null}
+            <div className="flex flex-wrap gap-3"><Button type="submit" variant="outline" className="min-h-11" disabled={previewingBulkSiteAssignments || publishingBulkSiteAssignments || data.roster.employees.length === 0 || !data.sites.some((site) => site.status === "ACTIVE")}>{previewingBulkSiteAssignments ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <RefreshCw />}{t("reviewBulkSiteAssignmentDraft")}</Button><Button type="button" variant="ghost" className="min-h-11" onClick={() => { setBulkSiteAssignmentDraft(emptyBulkSiteAssignmentDraft()); setBulkSiteAssignmentSelections({}); setBulkSiteAssignmentPreview(null); setBulkSiteAssignmentPublishConfirmed(false); setBulkSiteAssignmentPublishOperationId(null) }} disabled={previewingBulkSiteAssignments || publishingBulkSiteAssignments || (bulkSiteAssignmentDraft.agentIds.length === 0 && !bulkSiteAssignmentDraft.siteId && !bulkSiteAssignmentDraft.effectiveFrom && !bulkSiteAssignmentDraft.effectiveTo)}>{t("discardBulkAssignmentDraft")}</Button></div>
+            {bulkSiteAssignmentPreview !== null ? <div className="border-y border-zinc-200 py-4 dark:border-zinc-700"><p role="status" aria-live="polite" aria-atomic="true" className="text-sm font-medium">{t("bulkSiteAssignmentSummary", { ready: bulkSiteAssignmentPreview.summary.READY, unchanged: bulkSiteAssignmentPreview.summary.NO_CHANGE, unavailable: bulkSiteAssignmentPreview.summary.EMPLOYEE_UNAVAILABLE, conflicts: bulkSiteAssignmentPreview.summary.CONFLICT })}</p><div className="mt-3 flex flex-wrap gap-2">{(["READY", "NO_CHANGE", "EMPLOYEE_UNAVAILABLE", "CONFLICT"] as const).map((outcome) => <Badge key={outcome} variant={outcome === "CONFLICT" || outcome === "EMPLOYEE_UNAVAILABLE" ? "destructive" : "outline"}>{t("bulkSiteAssignmentOutcome." + outcome)}: {bulkSiteAssignmentPreview.summary[outcome]}</Badge>)}</div><p className="mt-3 text-sm leading-6 text-muted-foreground">{t("bulkSiteAssignmentReviewOnlyHint")}</p><ul className="mt-3 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">{bulkSiteAssignmentPreview.items.map((item) => <li key={item.agentId} className="py-3 text-sm"><span className="font-medium">{bulkAssignmentEmployeeLabel(item.agentId)}</span><span className="text-muted-foreground"> · {t("bulkSiteAssignmentOutcome." + item.outcome)}</span></li>)}</ul>{bulkSiteAssignmentPreview.summary.CONFLICT === 0 && bulkSiteAssignmentPreview.summary.EMPLOYEE_UNAVAILABLE === 0 && bulkSiteAssignmentPreview.summary.READY > 0 ? <div className="mt-4 rounded-md border border-zinc-200 p-4 dark:border-zinc-700"><label className="flex min-h-11 items-start gap-3 text-sm"><input id="workforce-bulk-site-assignment-publish-confirm" type="checkbox" checked={bulkSiteAssignmentPublishConfirmed} onChange={(event) => setBulkSiteAssignmentPublishConfirmed(event.target.checked)} disabled={publishingBulkSiteAssignments} className="mt-1 h-4 w-4 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" /><span>{t("bulkSiteAssignmentPublishConfirm", { count: bulkSiteAssignmentPreview.summary.READY })}</span></label><Button type="button" className="mt-4 min-h-12" disabled={!bulkSiteAssignmentPublishConfirmed || publishingBulkSiteAssignments} onClick={() => void publishBulkSiteAssignments()}>{publishingBulkSiteAssignments ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <Check />}{t("publishBulkSiteAssignment")}</Button></div> : <p className="mt-4 text-sm leading-6 text-muted-foreground">{t("bulkSiteAssignmentPublishBlocked")}</p>}</div> : null}
           </form>
         </section>
       </> : null}

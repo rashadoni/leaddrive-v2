@@ -194,6 +194,7 @@ model Organization {
   workforceShiftAssignments           WorkforceShiftAssignment[]
   workforceShiftDefaultAssignments    WorkforceShiftDefaultAssignment[]
   workforceSiteAssignments            WorkforceSiteAssignment[]
+  workforceSiteAssignmentBulkOperations WorkforceSiteAssignmentBulkOperation[]
   workforcePolicySnapshots            WorkforcePolicySnapshot[]
   workforceShiftSnapshots             WorkforceShiftSnapshot[]
   workforceWorkdayScheduleSnapshots   WorkforceWorkdayScheduleSnapshot[]
@@ -666,6 +667,7 @@ model User {
   workforceSitesArchived              WorkforceSite[]                @relation("WorkforceSiteArchivedBy")
   workforceSiteGeofenceRevisionsCreated WorkforceSiteGeofenceRevision[] @relation("WorkforceSiteGeofenceRevisionCreatedBy")
   workforceSiteAssignmentsAssigned    WorkforceSiteAssignment[]       @relation("WorkforceSiteAssignmentAssignedBy")
+  workforceSiteAssignmentBulkOperationsPublished WorkforceSiteAssignmentBulkOperation[] @relation("WorkforceSiteAssignmentBulkOperationPublishedBy")
   workforceAttendanceExceptionsResolved WorkforceAttendanceException[] @relation("WorkforceAttendanceExceptionResolvedBy")
   workforceExceptionDecisionsActed      WorkforceExceptionDecision[]   @relation("WorkforceExceptionDecisionActor")
   workforceExceptionEmployeeResponsesActed WorkforceExceptionEmployeeResponse[] @relation("WorkforceExceptionEmployeeResponseActor")
@@ -7588,6 +7590,7 @@ model WorkforceSite {
 
   geofenceRevisions WorkforceSiteGeofenceRevision[]
   assignments        WorkforceSiteAssignment[]
+  bulkAssignmentOperations WorkforceSiteAssignmentBulkOperation[]
   shiftSegments      WorkforceShiftSegment[]
   attendanceQrStations WorkforceAttendanceQrStation[] @relation("WorkforceAttendanceQrStationSite")
 
@@ -7654,6 +7657,35 @@ model WorkforceSiteAssignment {
   @@index([organizationId, siteId, kind, effectiveFrom, effectiveTo])
   @@index([organizationId, assignedByUserId, createdAt])
   @@map("workforce_site_assignments")
+}
+
+/// One immutable receipt for a reviewed, future-only bulk site-assignment
+/// publish. The operation intentionally stores only the selected site/window
+/// and aggregate counts; individual employee eligibility remains solely in
+/// the effective-dated assignment history.
+model WorkforceSiteAssignmentBulkOperation {
+  id                String                       @id @default(cuid())
+  organizationId    String
+  organization      Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  operationId       String                       @db.VarChar(100)
+  requestHash       String                       @db.VarChar(64)
+  siteId            String
+  site              WorkforceSite                @relation(fields: [organizationId, siteId], references: [organizationId, id], onDelete: Restrict)
+  kind              WorkforceSiteAssignmentKind
+  effectiveFrom     DateTime                     @db.Date
+  effectiveTo       DateTime?                    @db.Date
+  requestedCount    Int
+  createdCount      Int
+  unchangedCount    Int
+  publishedByUserId String
+  publishedByUser   User                         @relation("WorkforceSiteAssignmentBulkOperationPublishedBy", fields: [organizationId, publishedByUserId], references: [organizationId, id], onDelete: Restrict)
+  createdAt         DateTime                     @default(now())
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, operationId])
+  @@index([organizationId, siteId, createdAt])
+  @@index([organizationId, publishedByUserId, createdAt])
+  @@map("workforce_site_assignment_bulk_operations")
 }
 
 // Versioned Workforce policy. The JSON definition is the tenant-authored

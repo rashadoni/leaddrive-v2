@@ -24060,6 +24060,11 @@
   "reviewBulkSiteAssignmentDraft": "Kütləvi məkan qaralamasını yoxla",
   "bulkSiteAssignmentReviewOnlyHint": "Bu yalnız oxunan məkan uyğunluğu ziddiyyət hesabatıdır. Əməkdaş girişi, davamiyyət faktı və Route təyinatı dəyişməyib.",
   "bulkSiteAssignmentSummary": "Yoxlama tamamlandı: hazır — {ready}, dəyişikliksiz — {unchanged}, əlçatan deyil — {unavailable}, ziddiyyət — {conflicts}.",
+  "bulkSiteAssignmentPublishConfirm": "{count} yoxlanılmış gələcək məkan uyğunluğu təyinatının dərcini təsdiqləyirəm. Server yazmadan əvvəl yenidən yoxlayacaq.",
+  "publishBulkSiteAssignment": "Yoxlanılmış məkan təyinatlarını dərc et",
+  "bulkSiteAssignmentPublishBlocked": "Dərc etməzdən əvvəl əlçatan olmayan əməkdaşları və ya gələcək ziddiyyətləri aradan qaldırın və yenidən yoxlayın.",
+  "bulkSiteAssignmentPublishConfirmationRequired": "Dərc etməzdən əvvəl yoxlanılmış gələcək təyinatları təsdiqləyin.",
+  "bulkSiteAssignmentPublished": "Gələcək məkan təyinatları dərc edildi: {created} yaradıldı, {unchanged} dəyişikliksiz.",
   "bulkSiteAssignmentOutcome": {
     "READY": "Gələcək yoxlanılmış əməliyyat üçün hazırdır",
     "NO_CHANGE": "Artıq bu məkan uyğunluğu ilə əhatə olunur",
