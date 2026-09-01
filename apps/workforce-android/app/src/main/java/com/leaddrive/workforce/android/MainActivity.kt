@@ -90,7 +90,6 @@ import com.leaddrive.workforce.android.security.WorkforcePlayIntegrityUnavailabl
 import com.leaddrive.workforce.android.security.WorkforceQrScanner
 import java.time.Instant
 import java.time.ZoneId
-import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import kotlinx.coroutines.delay
@@ -1045,9 +1044,6 @@ private fun WorkforceRecovery(
     onLoad: () -> Unit,
     onRefreshServer: () -> Unit,
 ) {
-    val tenantZone = remember(timezone) {
-        runCatching { ZoneId.of(timezone) }.getOrDefault(ZoneOffset.UTC)
-    }
     if (items == null) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.tab_recovery), style = MaterialTheme.typography.titleLarge)
@@ -1077,10 +1073,11 @@ private fun WorkforceRecovery(
                         ),
                         style = MaterialTheme.typography.titleSmall,
                     )
-                    Text(stringResource(
-                        R.string.recovery_saved_at,
-                        Instant.ofEpochMilli(item.createdAtEpochMs).atZone(tenantZone).toLocalDateTime(),
-                    ))
+                    val savedAt = workforceHistoryTimestamp(
+                        Instant.ofEpochMilli(item.createdAtEpochMs).toString(),
+                        timezone,
+                    ) ?: stringResource(R.string.recovery_saved_at_unavailable)
+                    Text(stringResource(R.string.recovery_saved_at, savedAt))
                     Text(stringResource(item.recoveryHint.labelRes()))
                 }
             }

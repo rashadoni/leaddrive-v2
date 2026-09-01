@@ -104,6 +104,20 @@ describe("Workforce Android foundation", () => {
     for (const catalog of catalogs) expect(catalog).toContain('name="workday_started_unavailable"')
   })
 
+  it("formats Recovery metadata timestamps on the tenant clock rather than the phone clock", () => {
+    const activity = read("app/src/main/java/com/leaddrive/workforce/android/MainActivity.kt")
+    const catalogs = [
+      read("app/src/main/res/values/strings.xml"),
+      read("app/src/main/res/values-ru/strings.xml"),
+      read("app/src/main/res/values-az/strings.xml"),
+    ]
+    expect(activity).toContain("timezone = bootstrap.timezone")
+    expect(activity).toContain("private fun WorkforceRecovery(\n    items: List<WorkforceOutboxRecoveryItem>?,\n    timezone: String,")
+    expect(activity).toContain("workforceHistoryTimestamp(\n                        Instant.ofEpochMilli(item.createdAtEpochMs).toString(),\n                        timezone,")
+    expect(activity).not.toContain("ZoneId.systemDefault()")
+    for (const catalog of catalogs) expect(catalog).toContain('name="recovery_saved_at_unavailable"')
+  })
+
   it("keeps a bounded encrypted Room outbox in domain order and isolates account changes", () => {
     const rootBuild = read("build.gradle.kts")
     const build = read("app/build.gradle.kts")
@@ -384,7 +398,7 @@ describe("Workforce Android foundation", () => {
     expect(outbox).toContain("ACCOUNT_BOUNDARY_MUTEX.withLock")
     expect(repository).toContain("loadRecoveryItems")
     expect(repository).toContain("sessionMutex.withLock")
-    expect(activity).toContain("atZone(tenantZone)")
+    expect(activity).toContain("workforceHistoryTimestamp(")
     expect(activity).not.toContain("ZoneId.systemDefault()")
     expect(activity).toContain("R.string.recovery_explainer")
     expect(activity).toContain("R.string.recovery_hint_offline_limit_expired")

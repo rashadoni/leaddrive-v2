@@ -150,6 +150,7 @@
     <string name="recovery_refresh">Refresh recovery state</string>
     <string name="recovery_empty">No local recovery items.</string>
     <string name="recovery_saved_at">Saved locally: %1$s</string>
+    <string name="recovery_saved_at_unavailable">time unavailable</string>
     <string name="requests_explainer">Leave, absence and correction requests are employee claims for review, not approved time or payroll.</string>
     <string name="request_local_sync_explainer">This device has local request-delivery metadata. It is not an accepted request or review decision; use Recovery to refresh server truth.</string>
     <string name="request_local_sync_pending">Local request actions awaiting server acknowledgement: %1$d</string>

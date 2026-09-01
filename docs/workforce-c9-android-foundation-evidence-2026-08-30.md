@@ -205,6 +205,12 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   `Workforce action`/`Needs review`; no operation ID, ciphertext, reason, QR,
   location or proof becomes a translation input. The local data layer no
   longer stores English display text for these recovery values.
+- Recovery's metadata-only local enqueue timestamp now follows the same
+  server-provided tenant clock as Work Time facts. It never uses the phone
+  timezone to relabel a locally saved record; a malformed local instant or
+  invalid tenant timezone renders a localized unavailable value. This is a
+  display-only correction and does not alter queued payloads, retry ordering
+  or server attendance facts.
 - The mobile history parser now converts known request type/status and calendar
   codes into typed values before Compose renders them. Known values use
   EN/AZ/RU resources; an unknown future server value displays a generic

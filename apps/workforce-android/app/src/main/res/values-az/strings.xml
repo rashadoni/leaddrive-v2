@@ -150,6 +150,7 @@
     <string name="recovery_refresh">Bərpa vəziyyətini yenilə</string>
     <string name="recovery_empty">Lokal bərpa elementi yoxdur.</string>
     <string name="recovery_saved_at">Lokal saxlanıldı: %1$s</string>
+    <string name="recovery_saved_at_unavailable">vaxt əlçatan deyil</string>
     <string name="requests_explainer">Məzuniyyət, işdə olmama və düzəliş sorğuları yoxlama üçün əməkdaş müraciətləridir; təsdiqlənmiş vaxt və ya əməkhaqqı deyil.</string>
     <string name="request_local_sync_explainer">Bu cihazda sorğu çatdırılmasının lokal metadatası var. Bu, qəbul edilmiş sorğu və ya yoxlama qərarı deyil; server həqiqətini yeniləmək üçün Bərpa bölməsindən istifadə edin.</string>
     <string name="request_local_sync_pending">Server təsdiqini gözləyən lokal sorğu əməliyyatları: %1$d</string>

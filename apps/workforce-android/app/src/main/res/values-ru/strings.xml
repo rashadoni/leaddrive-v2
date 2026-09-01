@@ -150,6 +150,7 @@
     <string name="recovery_refresh">Обновить состояние восстановления</string>
     <string name="recovery_empty">Нет локальных элементов восстановления.</string>
     <string name="recovery_saved_at">Сохранено локально: %1$s</string>
+    <string name="recovery_saved_at_unavailable">время недоступно</string>
     <string name="requests_explainer">Заявки на отпуск, отсутствие и коррекцию — это обращения сотрудника на проверку, а не утверждённое время или зарплата.</string>
     <string name="request_local_sync_explainer">На устройстве есть локальные метаданные доставки заявок. Это не принятая заявка и не решение проверяющего; обновите данные сервера в разделе «Восстановление».</string>
     <string name="request_local_sync_pending">Локальные действия по заявкам, ожидающие подтверждения сервера: %1$d</string>
