@@ -9,8 +9,11 @@ decision:
 
 The route accepts only a bounded idempotency key, one recommended-v1 lifecycle
 decision code and a mandatory bounded reason. It reads the case's employee,
-team and optional site context inside a serializable transaction and asks the
-C7 grant resolver for `TEAM_EXCEPTION_DECIDE` on exactly that scope.
+immutable fact instant and optional persisted segment-site context inside a
+serializable transaction. For a team-scoped grant it resolves the append-only
+membership fact effective at that exact attendance instant; it never uses the
+employee's mutable directory team after a transfer. It then asks the C7 grant
+resolver for `TEAM_EXCEPTION_DECIDE` on exactly that scope.
 
 No legacy CRM admin role, API key or broad session role becomes an exception
 authority. In the current inactive-grant state the resolver returns deny, so
@@ -30,6 +33,10 @@ migration and rollout create an effective scoped grant.
   never evidence, coordinates, QR, device proof or decision reason.
 - The decision does not mutate attendance facts, timesheet approvals, payroll,
   discipline, evidence or a case row. It appends a metadata-only audit record.
+- A no-show case with no stored historical attendance instant has no derived
+  team scope. It can still be considered through an applicable organization HR
+  grant or the persisted segment-site scope, but a team manager cannot gain
+  access by a later directory transfer.
 
 ## Verification
 
@@ -46,6 +53,20 @@ grant-assignment endpoint and access review, rendered manager workbench,
 browser E2E for the new mutation, full typecheck/build, staging and pilot.
 The route is source-complete but intentionally default-deny until the durable
 grant rollout exists.
+
+## 2026-09-01 historical-team decision scope repair
+
+The decision route now selects a case's workday-event instant, or its recorded
+workday start when no event exists, and derives team scope through the existing
+immutable Workforce membership resolver in the same serializable transaction.
+A missing historical membership fails closed for a team grant. This is a source
+hardening of the inactive C7 decision path; it does not activate a grant,
+allow an HR team to decide an unscheduled no-show automatically, or change a
+case, attendance fact, pay or discipline.
+
+`PASS` — focused decision/API, historical-team and access-resolution contracts,
+scoped ESLint and `git diff --check` (recorded with this checkpoint).
+`NOT RUN` — disposable DB/RLS/concurrency, browser, staging and physical pilot.
 
 ## 2026-09-01 compile-gate repair
 
