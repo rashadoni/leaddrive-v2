@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withWorkforceSessionExceptionQueueAuth } from "@/lib/with-workforce-rls-auth"
-import { projectWorkforceExceptionQueueItem } from "@/lib/workforce/exception-queue"
+import {
+  projectWorkforceExceptionQueueItem,
+  workforceExceptionQueueEmployeeResponseState,
+} from "@/lib/workforce/exception-queue"
 
 const MAX_EXCEPTION_CASES = 250
 
@@ -24,6 +27,9 @@ export const GET = withWorkforceSessionExceptionQueueAuth(async (_req: NextReque
         evidenceId: true,
         agent: { select: { name: true } },
         decisions: { orderBy: [{ createdAt: "asc" }, { id: "asc" }], select: { decisionCode: true } },
+        // A single raw-proof-free existence row is sufficient for the queue.
+        // Do not select response text, correction IDs or employee request data.
+        employeeResponses: { take: 1, select: { id: true } },
       },
     })
     if (cases.length > MAX_EXCEPTION_CASES) {
@@ -36,16 +42,22 @@ export const GET = withWorkforceSessionExceptionQueueAuth(async (_req: NextReque
     return NextResponse.json({
       success: true,
       data: {
-        cases: cases.map((item) => projectWorkforceExceptionQueueItem({
-          displayReference: `WF-${item.id.slice(-8)}`,
-          employeeDisplayName: item.agent.name,
-          type: item.kind,
-          createdAt: item.createdAt,
-          decisionCodes: item.decisions.map((decision) => decision.decisionCode),
-          evidenceState: item.evidenceId ? "LINKED_RESTRICTED" : "NOT_REQUIRED",
-          employeeResponse: "NOT_REQUESTED",
-          now,
-        })),
+        cases: cases.map((item) => {
+          const decisionCodes = item.decisions.map((decision) => decision.decisionCode)
+          return projectWorkforceExceptionQueueItem({
+            displayReference: `WF-${item.id.slice(-8)}`,
+            employeeDisplayName: item.agent.name,
+            type: item.kind,
+            createdAt: item.createdAt,
+            decisionCodes,
+            evidenceState: item.evidenceId ? "LINKED_RESTRICTED" : "NOT_REQUIRED",
+            employeeResponse: workforceExceptionQueueEmployeeResponseState({
+              decisionCodes,
+              recordedResponseCount: item.employeeResponses.length,
+            }),
+            now,
+          })
+        }),
         disposition: "READ_ONLY_HUMAN_REVIEW_REQUIRED",
       },
     }, { headers: { "cache-control": "private, no-store", "x-content-type-options": "nosniff" } })

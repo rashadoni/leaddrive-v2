@@ -21,6 +21,10 @@ availability, employee-response state and one explicit human next action.
   `DATA_INTEGRITY_REVIEW`, never presented as resolved.
 - A received employee response returns the case to HR acknowledgement/review;
   it cannot resolve, correct, pay or discipline automatically.
+- The queue now derives `NOT_REQUESTED`, `PENDING` or `RECEIVED` from the
+  immutable decision stage plus the existence of one linked employee-response
+  record. It does not select response text, correction-request IDs, employee
+  identifiers or any raw proof.
 - Unknown type, invalid display data and a future-created case fail closed.
 - The API sends `private, no-store` and `nosniff` headers. It refuses an
   oversized review result instead of silently truncating it.
@@ -45,11 +49,11 @@ This is not a complete exception lifecycle. It intentionally has no mutable
 resolution, correction, payment or disciplinary action; no notification;
 no raw-evidence reader; no historic team/site queue (a current employee team
 must never authorize access to a historical case); and no real case-linked
-employee appeal/response write. The current field is an honest `NOT_REQUESTED`
-state until the C6-006 case/segment lifecycle is connected. A later C6/C7/C8
-slice must provide indexed immutable case scopes, granular team/site queues,
-immutable employee-visible response links and a reviewed resolution flow before
-any case can be resolved.
+employee appeal resolution. The queue now reflects an existing immutable
+employee response only as a receipt; it still exposes no acknowledgement
+content, correction reference or decision control. A later C6/C7/C8 slice must
+provide indexed immutable case scopes, granular team/site queues and a reviewed
+resolution flow before any case can be resolved.
 
 ## Verification
 
