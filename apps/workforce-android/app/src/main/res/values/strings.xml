@@ -203,6 +203,7 @@
     <string name="workday_status">Status: %1$s</string>
     <string name="workday_worked">Worked: %1$s</string>
     <string name="workday_started">Started: %1$s</string>
+    <string name="workday_started_unavailable">start time unavailable</string>
     <string name="reminder_state_disabled">Local reminders are off on this device.</string>
     <string name="reminder_state_permission_required">Allow notifications to receive a generic local Workforce reminder.</string>
     <string name="reminder_state_notifications_disabled">Notifications are disabled for Workforce in system settings, so no local reminder is scheduled.</string>

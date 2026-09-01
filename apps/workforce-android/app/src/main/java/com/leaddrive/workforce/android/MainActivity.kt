@@ -1637,7 +1637,7 @@ private fun WorkforceTodayCard(
         Text(stringResource(R.string.today), style = MaterialTheme.typography.titleLarge)
         when {
             workday == null -> Text(stringResource(R.string.today_no_workday))
-            else -> WorkforceWorkdayState(workday, elapsedSeconds)
+            else -> WorkforceWorkdayState(workday, snapshot.timezone, elapsedSeconds)
         }
         snapshot.activeWorkday?.let {
             Text(stringResource(R.string.today_other_active))
@@ -1680,11 +1680,12 @@ private fun WorkforceTodayCard(
 }
 
 @Composable
-private fun WorkforceWorkdayState(workday: WorkforceWorkday, elapsedSeconds: Long) {
+private fun WorkforceWorkdayState(workday: WorkforceWorkday, timezone: String, elapsedSeconds: Long) {
     val state = workday.status.localizedLabel()
     Text(stringResource(R.string.workday_status, state))
     Text(stringResource(R.string.workday_worked, elapsedSeconds.asWorkDuration()))
-    Text(stringResource(R.string.workday_started, workday.startedAt))
+    val startedAt = workforceHistoryTimestamp(workday.startedAt, timezone)
+    Text(stringResource(R.string.workday_started, startedAt ?: stringResource(R.string.workday_started_unavailable)))
 }
 
 private fun Long.asWorkDuration(): String {

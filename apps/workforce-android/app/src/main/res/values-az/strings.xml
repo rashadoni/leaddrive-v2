@@ -203,6 +203,7 @@
     <string name="workday_status">Status: %1$s</string>
     <string name="workday_worked">İşlənib: %1$s</string>
     <string name="workday_started">Başlanıb: %1$s</string>
+    <string name="workday_started_unavailable">başlama vaxtı əlçatan deyil</string>
     <string name="reminder_state_disabled">Bu cihazda lokal xatırlatmalar söndürülüb.</string>
     <string name="reminder_state_permission_required">Ümumi lokal Workforce xatırlatmasını almaq üçün bildirişlərə icazə verin.</string>
     <string name="reminder_state_notifications_disabled">Sistem ayarlarında Workforce bildirişləri söndürülüb, buna görə lokal xatırlatma planlaşdırılmayıb.</string>

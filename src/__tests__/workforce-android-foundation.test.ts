@@ -91,6 +91,19 @@ describe("Workforce Android foundation", () => {
     }
   })
 
+  it("formats the Today start instant on the server-provided tenant clock and never displays raw ISO input", () => {
+    const activity = read("app/src/main/java/com/leaddrive/workforce/android/MainActivity.kt")
+    const catalogs = [
+      read("app/src/main/res/values/strings.xml"),
+      read("app/src/main/res/values-ru/strings.xml"),
+      read("app/src/main/res/values-az/strings.xml"),
+    ]
+    expect(activity).toContain("WorkforceWorkdayState(workday, snapshot.timezone, elapsedSeconds)")
+    expect(activity).toContain("workforceHistoryTimestamp(workday.startedAt, timezone)")
+    expect(activity).not.toContain("R.string.workday_started, workday.startedAt")
+    for (const catalog of catalogs) expect(catalog).toContain('name="workday_started_unavailable"')
+  })
+
   it("keeps a bounded encrypted Room outbox in domain order and isolates account changes", () => {
     const rootBuild = read("build.gradle.kts")
     const build = read("app/build.gradle.kts")

@@ -123,6 +123,10 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   of exposing a lower-cased transport enum. An unknown future value renders a
   neutral unavailable schedule-type label rather than an invented translation
   or inferred mode.
+- The Today start time is formatted from its server instant in the server
+  snapshot's tenant timezone, never by device timezone or a raw ISO string.
+  Invalid instant/timezone input renders a localized unavailable value rather
+  than exposing the transport value or calculating a local replacement.
 
 ## Opt-in local reminders (`WF-C9-011`, partial)
 

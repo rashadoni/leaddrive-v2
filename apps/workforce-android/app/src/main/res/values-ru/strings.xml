@@ -203,6 +203,7 @@
     <string name="workday_status">Статус: %1$s</string>
     <string name="workday_worked">Отработано: %1$s</string>
     <string name="workday_started">Начато: %1$s</string>
+    <string name="workday_started_unavailable">время начала недоступно</string>
     <string name="reminder_state_disabled">Локальные напоминания на этом устройстве выключены.</string>
     <string name="reminder_state_permission_required">Разрешите уведомления, чтобы получать общее локальное напоминание Workforce.</string>
     <string name="reminder_state_notifications_disabled">Уведомления Workforce отключены в настройках системы, поэтому локальное напоминание не запланировано.</string>
