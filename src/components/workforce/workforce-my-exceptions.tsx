@@ -17,9 +17,10 @@ type OwnException = {
   workdayId: string
   workDate: string
   availableAction: "REQUEST_CORRECTION"
+  responseState: "UNAVAILABLE" | "NOT_ACKNOWLEDGED" | "ACKNOWLEDGED"
 }
 
-type EmployeeResponseRecording = "MIGRATION_REQUIRED"
+type EmployeeResponseRecording = "MIGRATION_REQUIRED" | "AVAILABLE"
 
 /** Employee-only projection. The server has already removed raw attendance proof. */
 export function WorkforceMyExceptions() {
@@ -31,6 +32,7 @@ export function WorkforceMyExceptions() {
   const [responseRecording, setResponseRecording] = useState<EmployeeResponseRecording | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [acknowledgingCaseId, setAcknowledgingCaseId] = useState<string | null>(null)
   const [retry, setRetry] = useState(0)
   const organizationId = session?.user?.organizationId ? String(session.user.organizationId) : ""
   const dateFormatter = useMemo(() => new Intl.DateTimeFormat(locale, { dateStyle: "medium" }), [locale])
@@ -47,7 +49,7 @@ export function WorkforceMyExceptions() {
           !response.ok
           || !body.success
           || !Array.isArray(body.data?.cases)
-          || body.data?.responseRecording !== "MIGRATION_REQUIRED"
+          || (body.data?.responseRecording !== "MIGRATION_REQUIRED" && body.data?.responseRecording !== "AVAILABLE")
         ) throw new Error("WORKFORCE_MY_EXCEPTIONS_LOAD_FAILED")
         setItems(body.data.cases)
         setResponseRecording(body.data.responseRecording)
@@ -62,6 +64,34 @@ export function WorkforceMyExceptions() {
       .finally(() => setLoading(false))
     return () => controller.abort()
   }, [organizationId, retry, t])
+
+  async function acknowledgeForReview(item: OwnException) {
+    if (responseRecording !== "AVAILABLE" || !globalThis.crypto?.randomUUID) {
+      setError(t("acknowledgeFailed"))
+      return
+    }
+    setAcknowledgingCaseId(item.caseId)
+    setError(null)
+    try {
+      const response = await fetch(`/api/v1/workforce/exceptions/${encodeURIComponent(item.caseId)}/response`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          ...(organizationId ? { "x-organization-id": organizationId } : {}),
+        },
+        body: JSON.stringify({ responseCode: "ACKNOWLEDGED", clientResponseId: globalThis.crypto.randomUUID() }),
+      })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok || !body.success || typeof body.data?.responseId !== "string") {
+        throw new Error("WORKFORCE_EXCEPTION_ACKNOWLEDGEMENT_FAILED")
+      }
+      setRetry((value) => value + 1)
+    } catch {
+      setError(t("acknowledgeFailed"))
+    } finally {
+      setAcknowledgingCaseId(null)
+    }
+  }
 
   return <section className="space-y-6">
     <PageDescription title={t("title")} description={t("subtitle")} />
@@ -78,7 +108,7 @@ export function WorkforceMyExceptions() {
       <div className="border-b border-zinc-200 p-4 dark:border-zinc-700"><h2 id="workforce-my-exceptions-list" className="font-semibold">{t("casesTitle")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("casesHint", { count: items.length })}</p></div>
       <div className="divide-y divide-zinc-200 dark:divide-zinc-700">{items.map((item) => <article key={item.caseId} className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
         <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="font-mono text-xs text-muted-foreground">{item.displayReference}</span><Badge variant="outline">{tTypes(`types.${item.type}`)}</Badge></div><p className="mt-2 text-sm font-medium">{t("workday", { date: dateFormatter.format(new Date(`${item.workDate.slice(0, 10)}T12:00:00`)) })}</p><p className="mt-1 text-xs text-muted-foreground">{t("raised", { date: dateFormatter.format(new Date(item.createdAt)) })}</p></div>
-        <div className="flex flex-col items-stretch gap-2 sm:flex-row md:flex-col"><Button asChild className="min-h-11"><Link href={`/workforce/requests?correctionWorkdayId=${encodeURIComponent(item.workdayId)}&exceptionCaseId=${encodeURIComponent(item.caseId)}`}>{t("requestCorrection")}</Link></Button><p className="max-w-72 text-xs leading-5 text-muted-foreground">{t("requestCorrectionHint")}</p></div>
+        <div className="flex flex-col items-stretch gap-2 sm:flex-row md:flex-col"><Button asChild className="min-h-11"><Link href={`/workforce/requests?correctionWorkdayId=${encodeURIComponent(item.workdayId)}&exceptionCaseId=${encodeURIComponent(item.caseId)}`}>{t("requestCorrection")}</Link></Button><p className="max-w-72 text-xs leading-5 text-muted-foreground">{t("requestCorrectionHint")}</p>{responseRecording === "AVAILABLE" && item.responseState === "NOT_ACKNOWLEDGED" ? <><Button type="button" variant="outline" className="min-h-11" disabled={acknowledgingCaseId !== null} onClick={() => void acknowledgeForReview(item)}>{acknowledgingCaseId === item.caseId ? <Loader2 className="mr-2 size-4 animate-spin motion-reduce:animate-none" /> : null}{t("acknowledgeForReview")}</Button><p className="max-w-72 text-xs leading-5 text-muted-foreground">{t("acknowledgeForReviewHint")}</p></> : null}{responseRecording === "AVAILABLE" && item.responseState === "ACKNOWLEDGED" ? <p className="max-w-72 text-xs leading-5 text-muted-foreground" role="status">{t("acknowledgedForReview")}</p> : null}</div>
       </article>)}{items.length === 0 ? <p className="px-4 py-12 text-center text-sm text-muted-foreground">{t("empty")}</p> : null}</div>
     </section> : null}
   </section>

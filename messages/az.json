@@ -23855,6 +23855,10 @@
     "raised": "Yoxlama üçün qeydə alınıb: {date}",
     "requestCorrection": "Düzəliş soruş",
     "requestCorrectionHint": "Bu iş gününü qorunan sorğu formasında seçin. İştirak faktı dəyişməzdən əvvəl səlahiyyətli yoxlayan qərar verməlidir.",
+    "acknowledgeForReview": "HR yoxlaması üçün təsdiqlə",
+    "acknowledgeForReviewHint": "Bu, halı gördüyünüzü təsdiqləyir. İstisnanı həll etmir və qeydə alınmış vaxtı dəyişmir.",
+    "acknowledgedForReview": "Təsdiqiniz HR yoxlaması üçün qeydə alınıb. Qeydə alınmış vaxt dəyişməyib.",
+    "acknowledgeFailed": "Təsdiqinizi qeydə almaq mümkün olmadı. Səhifəni yeniləyin və yenidən cəhd edin və ya qeydə alınmış vaxt yoxlanmalıdırsa düzəliş sorğusundan istifadə edin.",
     "empty": "Özünüyoxlama üçün əlçatan iştirak istisnanız yoxdur."
   },
   "workforceConfigurationPage": {

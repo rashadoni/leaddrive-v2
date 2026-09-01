@@ -23859,6 +23859,10 @@
     "raised": "Recorded for review: {date}",
     "requestCorrection": "Request a correction",
     "requestCorrectionHint": "Choose this recorded workday in the protected request form. A reviewer must decide it before any time fact changes.",
+    "acknowledgeForReview": "Acknowledge for HR review",
+    "acknowledgeForReviewHint": "This confirms that you saw the item. It does not resolve the exception or change recorded time.",
+    "acknowledgedForReview": "Your acknowledgement is recorded for HR review. Recorded time has not changed.",
+    "acknowledgeFailed": "Your acknowledgement could not be recorded. Refresh and try again, or use a correction request when recorded time needs review.",
     "empty": "You have no attendance exceptions available for self-service review."
   },
   "workforceConfigurationPage": {
