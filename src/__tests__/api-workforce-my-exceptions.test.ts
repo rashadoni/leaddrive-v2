@@ -28,6 +28,7 @@ function ownCase(overrides: Record<string, unknown> = {}) {
     id: "case-00000001",
     kind: "LATE_START",
     createdAt: new Date("2026-08-31T09:00:00.000Z"),
+    expectedWorkDate: null,
     workday: { id: "workday-1", workDate: new Date("2026-08-30T00:00:00.000Z") },
     ...overrides,
   }
@@ -76,17 +77,55 @@ describe("Workforce personal exception discovery API", () => {
       select: { features: true },
     })
     expect(findMany).toHaveBeenCalledWith({
-      where: { organizationId: "org-1", agentId: "agent-1", workdayId: { not: null } },
+      where: {
+        organizationId: "org-1",
+        agentId: "agent-1",
+        OR: [
+          { workdayId: { not: null } },
+          { kind: "NO_SHOW", workdayId: null, expectedWorkDate: { not: null } },
+        ],
+      },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: 101,
       select: {
         id: true,
         kind: true,
         createdAt: true,
+        expectedWorkDate: true,
         workday: { select: { id: true, workDate: true } },
       },
     })
     expect(withWorkforceSessionAuth).toHaveBeenCalledWith("read", expect.any(Function))
+  })
+
+  it("projects an own schedule-only no-show as view-only without inventing a workday or response path", async () => {
+    vi.mocked(resolveWorkforceActor).mockResolvedValue({ agentId: "agent-1", role: "AGENT", scopedAgentIds: ["agent-1"] })
+    organizationFindUnique.mockResolvedValue({ features: [WORKFORCE_EXCEPTION_RESPONSE_FLAG] })
+    findMany.mockResolvedValue([ownCase({
+      kind: "NO_SHOW",
+      workday: null,
+      expectedWorkDate: new Date("2026-08-31T00:00:00.000Z"),
+      employeeResponses: [{ id: "response-must-not-change-no-show-boundary" }],
+    })])
+
+    const response = await callGet(new NextRequest("http://localhost:3000/api/v1/workforce/exceptions/mine"), AUTH)
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body).toMatchObject({
+      success: true,
+      data: {
+        responseRecording: "AVAILABLE",
+        cases: [{
+          caseId: "case-00000001",
+          type: "NO_SHOW",
+          workdayId: null,
+          availableAction: "VIEW_ONLY_NO_SHOW",
+          responseState: "UNAVAILABLE",
+        }],
+      },
+    })
+    expect(JSON.stringify(body)).not.toContain("response-must-not-change-no-show-boundary")
   })
 
   it("enables only a rehearsed tenant and still emits an identifier-minimized acknowledgement state", async () => {
