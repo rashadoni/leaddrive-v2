@@ -8,6 +8,8 @@ vi.mock("@/lib/prisma", async () => {
 import { prisma } from "@/lib/prisma"
 import {
   WorkforceConfigurationManagementError,
+  WorkforceShiftAssignmentBulkPublishError,
+  WorkforceShiftAssignmentBulkPublishSchema,
   WorkforcePolicyDraftCreateSchema,
   WorkforcePolicyDraftUpdateSchema,
   WorkforceShiftDefaultScheduleSchema,
@@ -20,6 +22,7 @@ import {
   createWorkforcePolicyDraft,
   createWorkforceShiftTemplateDraft,
   previewWorkforceShiftAssignments,
+  publishWorkforceShiftAssignments,
   scheduleWorkforceShiftAssignment,
   scheduleWorkforceShiftDefault,
   updateWorkforcePolicyDraft,
@@ -786,6 +789,125 @@ describe("safe Workforce configuration drafts", () => {
       code: "WORKFORCE_CONFIGURATION_ASSIGNMENT_EFFECTIVE_DATE_NOT_FUTURE",
     })
     expect(prisma.workforceShiftTemplate.findFirst).not.toHaveBeenCalled()
+  })
+
+  it("atomically publishes a rechecked future bulk shift schedule with aggregate-only audit", async () => {
+    const operation = {
+      id: "bulk-shift-operation-1",
+      organizationId,
+      operationId: "bulk-shift-operation-1",
+      requestHash: "b".repeat(64),
+      templateId: "shift-next",
+      effectiveFrom: new Date("2026-09-01T00:00:00.000Z"),
+      requestedCount: 2,
+      createdCount: 2,
+      unchangedCount: 0,
+      publishedByUserId: userId,
+    }
+    vi.mocked(prisma.workforceShiftAssignmentBulkOperation.findUnique).mockResolvedValue(null as never)
+    vi.mocked(prisma.workforceShiftTemplate.findFirst).mockResolvedValue({ id: "shift-next", teamId: null } as never)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
+      { id: "agent-1", teamId: null },
+      { id: "agent-2", teamId: null },
+    ] as never)
+    vi.mocked(prisma.workforceShiftAssignment.findMany).mockResolvedValue([])
+    vi.mocked(prisma.workforceShiftAssignment.create).mockResolvedValue({ id: "assignment-new" } as never)
+    vi.mocked(prisma.workforceShiftAssignmentBulkOperation.create).mockResolvedValue(operation as never)
+    vi.mocked(prisma.mtmAuditLog.create).mockResolvedValue({ id: "audit-bulk-shift" } as never)
+    const publish = WorkforceShiftAssignmentBulkPublishSchema.parse({
+      operationId: "bulk-shift-operation-1",
+      agentIds: ["agent-2", "agent-1"],
+      templateId: "shift-next",
+      effectiveFrom: "2026-09-01",
+    })
+
+    await expect(publishWorkforceShiftAssignments({
+      organizationId,
+      publishedByUserId: userId,
+      publish,
+      currentDateKey: "2026-08-29",
+      audit,
+    })).resolves.toMatchObject({
+      operationId: "bulk-shift-operation-1",
+      requestedCount: 2,
+      createdCount: 2,
+      unchangedCount: 0,
+      idempotent: false,
+    })
+    expect(prisma.workforceShiftAssignment.create).toHaveBeenCalledTimes(2)
+    expect(prisma.workforceShiftAssignmentBulkOperation.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        organizationId,
+        operationId: "bulk-shift-operation-1",
+        requestedCount: 2,
+        createdCount: 2,
+        unchangedCount: 0,
+        requestHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+      }),
+    }))
+    const operationWrite = vi.mocked(prisma.workforceShiftAssignmentBulkOperation.create).mock.calls[0][0] as { data: unknown }
+    const auditWrite = vi.mocked(prisma.mtmAuditLog.create).mock.calls[0][0] as { data: { newData: unknown } }
+    expect(JSON.stringify(operationWrite.data)).not.toMatch(/agent-1|agent-2/)
+    expect(JSON.stringify(auditWrite.data.newData)).not.toMatch(/agent-1|agent-2/)
+    expect(prisma.mtmRouteAssignment.create).not.toHaveBeenCalled()
+  })
+
+  it("replays an exact bulk shift publish but rejects a stale review without writes", async () => {
+    const publish = WorkforceShiftAssignmentBulkPublishSchema.parse({
+      operationId: "bulk-shift-operation-replay",
+      agentIds: ["agent-1"],
+      templateId: "shift-next",
+      effectiveFrom: "2026-09-01",
+    })
+    const stored = {
+      id: "bulk-shift-operation-replay",
+      organizationId,
+      operationId: publish.operationId,
+      requestHash: "",
+      templateId: publish.templateId,
+      effectiveFrom: new Date("2026-09-01T00:00:00.000Z"),
+      requestedCount: 1,
+      createdCount: 1,
+      unchangedCount: 0,
+      publishedByUserId: userId,
+    }
+    vi.mocked(prisma.workforceShiftAssignmentBulkOperation.findUnique).mockResolvedValue(null as never)
+    vi.mocked(prisma.workforceShiftTemplate.findFirst).mockResolvedValue({ id: "shift-next", teamId: null } as never)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{ id: "agent-1", teamId: null }] as never)
+    vi.mocked(prisma.workforceShiftAssignment.findMany).mockResolvedValue([])
+    vi.mocked(prisma.workforceShiftAssignment.create).mockResolvedValue({ id: "assignment-new" } as never)
+    vi.mocked(prisma.workforceShiftAssignmentBulkOperation.create).mockImplementation(async ({ data }: { data: typeof stored }) => ({ ...stored, requestHash: data.requestHash }) as never)
+    vi.mocked(prisma.mtmAuditLog.create).mockResolvedValue({ id: "audit-bulk-shift" } as never)
+    await publishWorkforceShiftAssignments({ organizationId, publishedByUserId: userId, publish, currentDateKey: "2026-08-29", audit })
+    const inserted = vi.mocked(prisma.workforceShiftAssignmentBulkOperation.create).mock.calls[0][0] as { data: { requestHash: string } }
+
+    vi.clearAllMocks()
+    vi.mocked(prisma.workforceShiftAssignmentBulkOperation.findUnique).mockResolvedValue({ ...stored, requestHash: inserted.data.requestHash } as never)
+    await expect(publishWorkforceShiftAssignments({ organizationId, publishedByUserId: userId, publish, currentDateKey: "2026-08-29", audit }))
+      .resolves.toMatchObject({ operationId: publish.operationId, idempotent: true })
+    expect(prisma.workforceShiftAssignment.create).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+
+    vi.clearAllMocks()
+    vi.mocked(prisma.workforceShiftAssignmentBulkOperation.findUnique).mockResolvedValue(null as never)
+    vi.mocked(prisma.workforceShiftTemplate.findFirst).mockResolvedValue({ id: "shift-next", teamId: null } as never)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{ id: "agent-1", teamId: null }] as never)
+    vi.mocked(prisma.workforceShiftAssignment.findMany).mockResolvedValue([{
+      id: "future-conflict", agentId: "agent-1", templateId: "different",
+      effectiveFrom: new Date("2026-10-01T00:00:00.000Z"), effectiveTo: null,
+    }] as never)
+    await expect(publishWorkforceShiftAssignments({
+      organizationId,
+      publishedByUserId: userId,
+      publish: { ...publish, operationId: "bulk-shift-operation-stale" },
+      currentDateKey: "2026-08-29",
+      audit,
+    })).rejects.toMatchObject<Partial<WorkforceShiftAssignmentBulkPublishError>>({
+      code: "WORKFORCE_CONFIGURATION_ASSIGNMENT_BULK_PREVIEW_BLOCKED",
+    })
+    expect(prisma.workforceShiftAssignment.create).not.toHaveBeenCalled()
+    expect(prisma.workforceShiftAssignmentBulkOperation.create).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
   })
 
   it("schedules a future organization default and only narrows its timeline predecessor", async () => {

@@ -24016,6 +24016,11 @@
   "reviewBulkAssignmentDraft": "Kütləvi qaralamanı yoxla",
   "discardBulkAssignmentDraft": "Lokal qaralamanı ləğv et",
   "bulkAssignmentReviewOnlyHint": "Bu yalnız oxunan ziddiyyət hesabatıdır. Kütləvi cədvəl saxlanmayıb, təsdiqlənməyib və dərc edilməyib.",
+  "bulkAssignmentPublishConfirm": "Bu yalnız gələcəyə aid dəyişikliyi yoxladım və {count} hazır növbə təyinatını dərc edirəm.",
+  "publishBulkAssignment": "Yoxlanılmış növbə təyinatlarını dərc et",
+  "bulkAssignmentPublished": "Kütləvi növbə cədvəli dərc edildi: {created} yaradıldı, {unchanged} dəyişilmədi.",
+  "bulkAssignmentPublishBlocked": "Bu kütləvi növbə cədvəlini dərc etməzdən əvvəl əlçatmaz əməkdaşları, komanda uyğunsuzluqlarını və gələcək ziddiyyətləri həll edin.",
+  "bulkAssignmentPublishConfirmationRequired": "Dərc etməzdən əvvəl yoxlanılmış gələcək növbə təyinatlarını təsdiqləyin.",
   "bulkAssignmentSummary": "Yoxlama tamamlandı: hazır — {ready}, dəyişikliksiz — {unchanged}, əlçatan deyil — {unavailable}, komanda uyğunsuzluğu — {mismatch}, ziddiyyət — {conflicts}.",
   "bulkAssignmentOutcome": {
     "READY": "Gələcək yoxlanılmış əməliyyat üçün hazırdır",

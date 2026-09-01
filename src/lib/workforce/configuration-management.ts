@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { z } from "zod"
 import { isDateKey } from "@/lib/mtm/mobile-week"
@@ -181,6 +182,16 @@ export const WorkforceShiftAssignmentBulkPreviewSchema = z.object({
   effectiveFrom: WorkforceDateKeySchema,
 }).strict()
 
+/**
+ * A browser-generated opaque operation key preserves a reviewed bulk publish
+ * across an unknown network result. It is separate from the read-only preview
+ * because a publish needs an append-only idempotency receipt.
+ */
+export const WorkforceShiftAssignmentBulkPublishSchema = WorkforceShiftAssignmentBulkPreviewSchema.and(z.object({
+  operationId: WorkforceScopeIdSchema.min(8).max(100)
+    .regex(/^[A-Za-z0-9_-]+$/, "operationId must be opaque"),
+}))
+
 /** Organization-wide fallback only; team fallback awaits a historical-team contract. */
 export const WorkforceShiftDefaultScheduleSchema = z.object({
   templateId: WorkforceScopeIdSchema,
@@ -214,6 +225,19 @@ export class WorkforceConfigurationManagementError extends Error {
       | "WORKFORCE_CONFIGURATION_VERSION_CONFLICT"
       | "WORKFORCE_CONFIGURATION_DATE_RANGE_INVALID",
     message: string = code,
+  ) {
+    super(message)
+  }
+}
+
+export class WorkforceShiftAssignmentBulkPublishError extends Error {
+  constructor(
+    readonly code:
+      | "WORKFORCE_CONFIGURATION_ASSIGNMENT_BULK_OPERATION_MISMATCH"
+      | "WORKFORCE_CONFIGURATION_ASSIGNMENT_BULK_PREVIEW_BLOCKED"
+      | "WORKFORCE_CONFIGURATION_ASSIGNMENT_BULK_WRITE_CONFLICT",
+    message: string = code,
+    readonly preview?: WorkforceShiftAssignmentBulkPreview,
   ) {
     super(message)
   }
@@ -272,6 +296,19 @@ const workforceShiftAssignmentSelect = {
   createdAt: true,
   updatedAt: true,
 } satisfies Prisma.WorkforceShiftAssignmentSelect
+
+const workforceShiftAssignmentBulkOperationSelect = {
+  id: true,
+  organizationId: true,
+  operationId: true,
+  requestHash: true,
+  templateId: true,
+  effectiveFrom: true,
+  requestedCount: true,
+  createdCount: true,
+  unchangedCount: true,
+  publishedByUserId: true,
+} satisfies Prisma.WorkforceShiftAssignmentBulkOperationSelect
 
 const workforceShiftDefaultAssignmentSelect = {
   id: true,
@@ -1464,6 +1501,59 @@ export type WorkforceShiftAssignmentBulkPreviewItem = {
   closesAssignmentId: string | null
 }
 
+export type WorkforceShiftAssignmentBulkPreview = {
+  effectiveFrom: string
+  templateId: string
+  items: WorkforceShiftAssignmentBulkPreviewItem[]
+  summary: Record<WorkforceShiftAssignmentBulkPreviewItem["outcome"], number>
+}
+
+export type WorkforceShiftAssignmentBulkPublishResult = {
+  operationId: string
+  templateId: string
+  effectiveFrom: string
+  requestedCount: number
+  createdCount: number
+  unchangedCount: number
+  idempotent: boolean
+}
+
+function bulkShiftAssignmentRequestHash(input: {
+  organizationId: string
+  publishedByUserId: string
+  publish: z.infer<typeof WorkforceShiftAssignmentBulkPublishSchema>
+}): string {
+  return createHash("sha256").update(JSON.stringify({
+    version: 1,
+    organizationId: input.organizationId,
+    publishedByUserId: input.publishedByUserId,
+    operationId: input.publish.operationId,
+    agentIds: [...input.publish.agentIds].sort(),
+    templateId: input.publish.templateId,
+    effectiveFrom: input.publish.effectiveFrom,
+  })).digest("hex")
+}
+
+function bulkShiftAssignmentOperationResult(input: {
+  operationId: string
+  templateId: string
+  effectiveFrom: Date
+  requestedCount: number
+  createdCount: number
+  unchangedCount: number
+  idempotent: boolean
+}): WorkforceShiftAssignmentBulkPublishResult {
+  return {
+    operationId: input.operationId,
+    templateId: input.templateId,
+    effectiveFrom: dateKey(input.effectiveFrom),
+    requestedCount: input.requestedCount,
+    createdCount: input.createdCount,
+    unchangedCount: input.unchangedCount,
+    idempotent: input.idempotent,
+  }
+}
+
 /**
  * Computes the exact individual-assignment impact without acquiring locks or
  * writing anything. A caller must re-run this preview immediately before any
@@ -1474,13 +1564,8 @@ export async function previewWorkforceShiftAssignments(input: {
   organizationId: string
   preview: z.infer<typeof WorkforceShiftAssignmentBulkPreviewSchema>
   currentDateKey: string
-  db?: PrismaClient
-}): Promise<{
-  effectiveFrom: string
-  templateId: string
-  items: WorkforceShiftAssignmentBulkPreviewItem[]
-  summary: Record<WorkforceShiftAssignmentBulkPreviewItem["outcome"], number>
-}> {
+  db?: PrismaClient | Prisma.TransactionClient
+}): Promise<WorkforceShiftAssignmentBulkPreview> {
   if (!isDateKey(input.currentDateKey)) {
     throw new WorkforceConfigurationManagementError(
       "WORKFORCE_CONFIGURATION_DATE_RANGE_INVALID",
@@ -1604,6 +1689,188 @@ export async function previewWorkforceShiftAssignments(input: {
     templateId: template.id,
     items,
     summary,
+  }
+}
+
+/**
+ * Publishes a reviewed, future-only multi-employee shift assignment atomically.
+ * It replays the exact preview under deterministic employee timeline locks,
+ * so a stale browser review cannot partly replace a changed assignment. The
+ * durable operation record contains only aggregate counts; individual history
+ * is kept solely in immutable effective-dated assignment rows.
+ */
+export async function publishWorkforceShiftAssignments(input: {
+  organizationId: string
+  publishedByUserId: string
+  publish: z.infer<typeof WorkforceShiftAssignmentBulkPublishSchema>
+  currentDateKey: string
+  audit: WorkforceConfigurationAuditContext
+  db?: PrismaClient
+}): Promise<WorkforceShiftAssignmentBulkPublishResult> {
+  if (!isDateKey(input.currentDateKey)) {
+    throw new WorkforceConfigurationManagementError(
+      "WORKFORCE_CONFIGURATION_DATE_RANGE_INVALID",
+      "Workforce configuration current date is invalid",
+    )
+  }
+  if (input.publish.effectiveFrom <= input.currentDateKey) {
+    throw new WorkforceConfigurationManagementError(
+      "WORKFORCE_CONFIGURATION_ASSIGNMENT_EFFECTIVE_DATE_NOT_FUTURE",
+      "A Workforce bulk shift assignment must begin after the organization current date",
+    )
+  }
+
+  const db = input.db ?? prisma
+  const requestHash = bulkShiftAssignmentRequestHash(input)
+  const orderedAgentIds = [...input.publish.agentIds].sort()
+  const bulkPreview = {
+    agentIds: orderedAgentIds,
+    templateId: input.publish.templateId,
+    effectiveFrom: input.publish.effectiveFrom,
+  }
+
+  try {
+    return await db.$transaction(async (tx) => {
+      // Resolve an exact retry before reading employee timelines. An altered
+      // request with the same operationId is an explicit conflict, never a
+      // second schedule publication.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${configurationLock([
+        input.organizationId,
+        "assignment-bulk",
+        input.publish.operationId,
+      ])}))`
+      const existing = await tx.workforceShiftAssignmentBulkOperation.findUnique({
+        where: {
+          organizationId_operationId: {
+            organizationId: input.organizationId,
+            operationId: input.publish.operationId,
+          },
+        },
+        select: workforceShiftAssignmentBulkOperationSelect,
+      })
+      if (existing) {
+        if (
+          existing.requestHash !== requestHash
+          || existing.publishedByUserId !== input.publishedByUserId
+          || existing.templateId !== input.publish.templateId
+          || dateKey(existing.effectiveFrom) !== input.publish.effectiveFrom
+          || existing.requestedCount !== orderedAgentIds.length
+        ) {
+          throw new WorkforceShiftAssignmentBulkPublishError(
+            "WORKFORCE_CONFIGURATION_ASSIGNMENT_BULK_OPERATION_MISMATCH",
+            "operationId was already used for a different Workforce bulk shift assignment",
+          )
+        }
+        return bulkShiftAssignmentOperationResult({ ...existing, idempotent: true })
+      }
+
+      // Reuse exactly the individual assignment lock namespace. Stable order
+      // prevents a bulk request from deadlocking two individual HR changes.
+      for (const agentId of orderedAgentIds) {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${configurationLock([
+          input.organizationId,
+          "assignment",
+          agentId,
+        ])}))`
+      }
+
+      const preview = await previewWorkforceShiftAssignments({
+        organizationId: input.organizationId,
+        preview: bulkPreview,
+        currentDateKey: input.currentDateKey,
+        db: tx,
+      })
+      if (
+        preview.summary.CONFLICT > 0
+        || preview.summary.EMPLOYEE_UNAVAILABLE > 0
+        || preview.summary.TEMPLATE_TEAM_MISMATCH > 0
+      ) {
+        throw new WorkforceShiftAssignmentBulkPublishError(
+          "WORKFORCE_CONFIGURATION_ASSIGNMENT_BULK_PREVIEW_BLOCKED",
+          "The Workforce bulk shift assignment changed and must be reviewed again",
+          preview,
+        )
+      }
+
+      for (const item of preview.items) {
+        if (item.outcome !== "READY") continue
+        if (item.closesAssignmentId) {
+          const changed = await tx.workforceShiftAssignment.updateMany({
+            where: {
+              id: item.closesAssignmentId,
+              organizationId: input.organizationId,
+              agentId: item.agentId,
+            },
+            data: { effectiveTo: asDate(previousDateKey(input.publish.effectiveFrom)) },
+          })
+          if (changed.count !== 1) {
+            throw new WorkforceShiftAssignmentBulkPublishError(
+              "WORKFORCE_CONFIGURATION_ASSIGNMENT_BULK_WRITE_CONFLICT",
+              "A preceding Workforce shift assignment changed concurrently",
+            )
+          }
+        }
+        await tx.workforceShiftAssignment.create({
+          data: {
+            organizationId: input.organizationId,
+            agentId: item.agentId,
+            templateId: input.publish.templateId,
+            effectiveFrom: asDate(input.publish.effectiveFrom),
+            effectiveTo: null,
+            assignedByUserId: input.publishedByUserId,
+          },
+          select: workforceShiftAssignmentSelect,
+        })
+      }
+
+      const operation = await tx.workforceShiftAssignmentBulkOperation.create({
+        data: {
+          organizationId: input.organizationId,
+          operationId: input.publish.operationId,
+          requestHash,
+          templateId: input.publish.templateId,
+          effectiveFrom: asDate(input.publish.effectiveFrom),
+          requestedCount: orderedAgentIds.length,
+          createdCount: preview.summary.READY,
+          unchangedCount: preview.summary.NO_CHANGE,
+          publishedByUserId: input.publishedByUserId,
+        },
+        select: workforceShiftAssignmentBulkOperationSelect,
+      })
+      await tx.mtmAuditLog.create({
+        data: {
+          organizationId: input.organizationId,
+          agentId: null,
+          action: "WORKFORCE_SHIFT_ASSIGNMENT_BULK_PUBLISHED",
+          entity: "workforce_shift_assignment_bulk_operation",
+          entityId: operation.id,
+          metadataKind: "workforce_configuration",
+          newData: {
+            actorUserId: input.audit.actorUserId,
+            operationId: operation.operationId,
+            templateId: operation.templateId,
+            effectiveFrom: dateKey(operation.effectiveFrom),
+            requestedCount: operation.requestedCount,
+            createdCount: operation.createdCount,
+            unchangedCount: operation.unchangedCount,
+          },
+          ipAddress: input.audit.ipAddress ?? null,
+          userAgent: input.audit.userAgent ?? null,
+        },
+      })
+      return bulkShiftAssignmentOperationResult({ ...operation, idempotent: false })
+    })
+  } catch (error) {
+    if (error instanceof WorkforceConfigurationManagementError || error instanceof WorkforceShiftAssignmentBulkPublishError) {
+      throw error
+    }
+    if (isWindowConstraintError(error)) {
+      throw new WorkforceShiftAssignmentBulkPublishError(
+        "WORKFORCE_CONFIGURATION_ASSIGNMENT_BULK_WRITE_CONFLICT",
+        "The Workforce bulk shift assignment changed concurrently",
+      )
+    }
+    throw error
   }
 }
 

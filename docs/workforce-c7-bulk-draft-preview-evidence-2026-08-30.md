@@ -1,7 +1,7 @@
 # Workforce C7 — reversible bulk schedule draft evidence
 
 **Task:** `WF-C7-007`
-**Status:** PARTIAL — safe schedule/site review plus durable future site-publish source slice
+**Status:** PARTIAL — safe schedule/site review plus durable future publish source slices
 
 ## Delivered
 
@@ -22,10 +22,8 @@ individual outcomes are a semantic list outside the live region, so selecting
 
 The draft is React client state, not a persisted operational object. Editing an
 employee, shift or date clears the existing result. **Discard local draft**
-clears all values. The only request is the existing session-admin,
+clears all values. The first request is the existing session-admin,
 tenant-scoped `POST /api/v1/workforce/configuration/assignments/preview`.
-There is no bulk assignment endpoint, no publish action, no audit write and no
-change to current or historical schedules.
 
 The same read contract and browser-only discardable draft now exist for future
 site eligibility:
@@ -69,6 +67,36 @@ This is a future site-eligibility writer only. It neither publishes bulk shift
 templates nor recurring schedules, changes attendance facts, opens a workday,
 calculates travel/payroll, or mutates Route & Field.
 
+## Durable bulk shift publish source slice (2026-09-01)
+
+The same explicit-confirmation boundary now exists for a reviewed bulk shift
+assignment. The confirmation is available only after the current preview has
+zero `CONFLICT`, `EMPLOYEE_UNAVAILABLE` and `TEMPLATE_TEAM_MISMATCH` outcomes,
+and at least one `READY` employee. It sends an opaque browser operation key to:
+
+`POST /api/v1/workforce/configuration/assignments/bulk/publish`
+
+The route uses the existing Workforce-only `SCHEDULE_WRITE` permission. It
+does not trust the browser review: in one transaction the server first locks
+the operation key, then locks each selected employee's existing shift-timeline
+namespace in sorted order, recalculates the preview, and refuses the full
+publish if availability, team scope or a future conflict changed. It closes
+only the exact predecessor for each ready employee and appends the selected
+already-active template at the future date. There is no partial response.
+
+`workforce_shift_assignment_bulk_operations` is an additive append-only,
+tenant-RLS receipt, unique by tenant/operation key and hash-bound to actor,
+template, date and sorted selection. It retains only template/date, actor and
+aggregate requested/created/unchanged counts; it contains no employee list,
+location, QR, device evidence or Route data. The matching audit row has the
+same aggregate-only boundary. An exact retry returns the stored result, while
+any changed payload reusing the operation key is rejected.
+
+This source slice only publishes a future assignment to an existing active
+template. It does not create a recurring template, alter existing workdays or
+snapshots, open attendance, calculate payroll/travel, activate a tenant flag,
+or mutate Route & Field.
+
 ## Verification in this worktree
 
 - PASS — targeted Vitest: `workforce-configuration-management`, API
@@ -85,16 +113,20 @@ calculates travel/payroll, or mutates Route & Field.
   shape, API tenant scope and explicit web confirmation.
 - PASS — `DATABASE_URL=<non-secret placeholder> npx prisma validate`.
 - PASS — scoped ESLint and `git diff --check`.
+- PASS — bulk shift publish contracts: configuration service, session route,
+  append-only/RLS migration shape and UI confirmation: **4 files, 48 tests**.
+  They cover atomic publish, aggregate-only receipt/audit, exact replay,
+  stale-review refusal, session scope and operation-key retry containment.
 
 ## Deliberately still open
 
-- `WF-C7-007` remains partial: bulk **schedule/template recurrence** publish,
+- `WF-C7-007` remains partial: recurring-template/recurrence publication,
   browser evidence and applied migration/RLS concurrency are not claimed.
 - NOT RUN — local Prisma generated-client refresh did not update the shared
   Contabo artifacts despite a zero-exit command; exact generated-client/static
   verification, full build, browser, Android and load gates require GitHub CI
   or the approved heavy worker, not Contabo.
 
-This slice is safe to expose as a review aid because it cannot mutate a
-schedule; a later publish workflow must re-preview inside its transaction and
-record its durable result/audit boundary before it can be enabled.
+Both publish source slices remain inactive until the additive migrations, RLS
+concurrency and browser/role checks are verified through the approved release
+gates. No tenant schedule was changed by this implementation checkpoint.

@@ -41,7 +41,7 @@ describe("Workforce assignment configuration UI contract", () => {
     expect(workbench).toContain('assignmentPreview !== null')
   })
 
-  it("keeps the multi-employee schedule review as a discardable local draft", () => {
+  it("requires an explicit confirmation before atomically publishing a reviewed bulk shift draft", () => {
     expect(workbench).toContain('id="workforce-bulk-assignment-template"')
     expect(workbench).toContain('id="workforce-bulk-assignment-effective-from"')
     expect(workbench).toContain('"/api/v1/workforce/configuration/assignments/preview"')
@@ -52,7 +52,11 @@ describe("Workforce assignment configuration UI contract", () => {
     expect(workbench).toContain('role="status" aria-live="polite" aria-atomic="true"')
     expect(workbench).toContain('t("bulkAssignmentSummary"')
     expect(workbench).toContain('<ul className="mt-3 divide-y')
-    expect(workbench).not.toContain('"/api/v1/workforce/configuration/assignments/bulk"')
+    expect(workbench).toContain('"/api/v1/workforce/configuration/assignments/bulk/publish"')
+    expect(workbench).toContain('id="workforce-bulk-assignment-publish-confirm"')
+    expect(workbench).toContain('bulkAssignmentPublishConfirmed')
+    expect(workbench).toContain('bulkAssignmentPublishOperationId')
+    expect(workbench).toContain('crypto.randomUUID()')
   })
 
   it("requires an explicit confirmation before atomically publishing a reviewed site eligibility draft", () => {
@@ -111,6 +115,11 @@ describe("Workforce assignment configuration UI contract", () => {
       "reviewBulkAssignmentDraft",
       "discardBulkAssignmentDraft",
       "bulkAssignmentReviewOnlyHint",
+      "bulkAssignmentPublishConfirm",
+      "publishBulkAssignment",
+      "bulkAssignmentPublishBlocked",
+      "bulkAssignmentPublishConfirmationRequired",
+      "bulkAssignmentPublished",
       "bulkAssignmentSummary",
       "bulkSiteAssignmentPreviewTitle",
       "bulkSiteAssignmentPreviewHint",

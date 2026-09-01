@@ -192,6 +192,7 @@ model Organization {
   workforceShiftSegments              WorkforceShiftSegment[]
   workforceSiteTransitions            WorkforceSiteTransition[]
   workforceShiftAssignments           WorkforceShiftAssignment[]
+  workforceShiftAssignmentBulkOperations WorkforceShiftAssignmentBulkOperation[]
   workforceShiftDefaultAssignments    WorkforceShiftDefaultAssignment[]
   workforceSiteAssignments            WorkforceSiteAssignment[]
   workforceSiteAssignmentBulkOperations WorkforceSiteAssignmentBulkOperation[]
@@ -662,6 +663,7 @@ model User {
   workforceShiftTemplatesCreated      WorkforceShiftTemplate[]       @relation("WorkforceShiftTemplateCreatedBy")
   workforceShiftTemplatesActivated    WorkforceShiftTemplate[]       @relation("WorkforceShiftTemplateActivatedBy")
   workforceShiftAssignmentsAssigned   WorkforceShiftAssignment[]     @relation("WorkforceShiftAssignmentAssignedBy")
+  workforceShiftAssignmentBulkOperationsPublished WorkforceShiftAssignmentBulkOperation[] @relation("WorkforceShiftAssignmentBulkOperationPublishedBy")
   workforceShiftDefaultAssignmentsAssigned WorkforceShiftDefaultAssignment[] @relation("WorkforceShiftDefaultAssignmentAssignedBy")
   workforceSitesCreated               WorkforceSite[]                @relation("WorkforceSiteCreatedBy")
   workforceSitesArchived              WorkforceSite[]                @relation("WorkforceSiteArchivedBy")
@@ -7760,6 +7762,7 @@ model WorkforceShiftTemplate {
   updatedAt         DateTime                 @updatedAt
 
   assignments WorkforceShiftAssignment[]
+  bulkAssignmentOperations WorkforceShiftAssignmentBulkOperation[]
   defaultAssignments WorkforceShiftDefaultAssignment[]
   snapshots   WorkforceShiftSnapshot[]
   segments    WorkforceShiftSegment[]
@@ -7864,6 +7867,33 @@ model WorkforceShiftAssignment {
   @@index([organizationId, templateId, effectiveFrom])
   @@index([organizationId, assignedByUserId])
   @@map("workforce_shift_assignments")
+}
+
+/// One immutable, aggregate-only receipt for an explicitly confirmed,
+/// future-only bulk shift assignment. Individual employee choices remain in
+/// the effective-dated assignment timeline; this record supports safe retry
+/// without retaining a duplicate employee roster in a second table.
+model WorkforceShiftAssignmentBulkOperation {
+  id                String                 @id @default(cuid())
+  organizationId    String
+  organization      Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade, map: "workforce_shift_assignment_bulk_operations_organization_fkey")
+  operationId       String                 @db.VarChar(100)
+  requestHash       String                 @db.VarChar(64)
+  templateId        String
+  template          WorkforceShiftTemplate @relation(fields: [organizationId, templateId], references: [organizationId, id], onDelete: Restrict, map: "workforce_shift_assignment_bulk_operations_template_fkey")
+  effectiveFrom     DateTime               @db.Date
+  requestedCount    Int
+  createdCount      Int
+  unchangedCount    Int
+  publishedByUserId String
+  publishedByUser   User                   @relation("WorkforceShiftAssignmentBulkOperationPublishedBy", fields: [organizationId, publishedByUserId], references: [organizationId, id], onDelete: Restrict, map: "workforce_shift_assignment_bulk_operations_published_by_fkey")
+  createdAt         DateTime               @default(now())
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, operationId])
+  @@index([organizationId, templateId, createdAt])
+  @@index([organizationId, publishedByUserId, createdAt])
+  @@map("workforce_shift_assignment_bulk_operations")
 }
 
 /// Versioned organization-wide fallback selection. It is distinct from an

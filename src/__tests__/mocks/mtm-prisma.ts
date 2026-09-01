@@ -212,6 +212,7 @@ export interface MtmPrismaMock {
   workforceShiftSegment: ModelMock
   workforceSiteTransition: ModelMock
   workforceShiftAssignment: ModelMock
+  workforceShiftAssignmentBulkOperation: ModelMock
   workforceShiftDefaultAssignment: ModelMock
   workforceSite: ModelMock
   workforceSiteGeofenceRevision: ModelMock
@@ -378,6 +379,7 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     workforceShiftSegment: makeModel(),
     workforceSiteTransition: makeModel(),
     workforceShiftAssignment: makeModel(),
+    workforceShiftAssignmentBulkOperation: makeModel(),
     workforceShiftDefaultAssignment: makeModel(),
     workforceSite: makeModel(),
     workforceSiteGeofenceRevision: makeModel(),

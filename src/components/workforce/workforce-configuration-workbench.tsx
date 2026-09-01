@@ -214,6 +214,16 @@ type BulkAssignmentPreview = {
   summary: Record<BulkAssignmentOutcome, number>
 }
 
+type BulkAssignmentPublishResult = {
+  operationId: string
+  templateId: string
+  effectiveFrom: string
+  requestedCount: number
+  createdCount: number
+  unchangedCount: number
+  idempotent: boolean
+}
+
 type DefaultAssignmentForm = {
   templateId: string
   effectiveFrom: string
@@ -386,6 +396,8 @@ export function WorkforceConfigurationWorkbench() {
   const [bulkAssignmentDraft, setBulkAssignmentDraft] = useState<BulkAssignmentDraft>(emptyBulkAssignmentDraft)
   const [bulkAssignmentSelections, setBulkAssignmentSelections] = useState<Record<string, WorkforceEmployee>>({})
   const [bulkAssignmentPreview, setBulkAssignmentPreview] = useState<BulkAssignmentPreview | null>(null)
+  const [bulkAssignmentPublishConfirmed, setBulkAssignmentPublishConfirmed] = useState(false)
+  const [bulkAssignmentPublishOperationId, setBulkAssignmentPublishOperationId] = useState<string | null>(null)
   const [siteAssignmentForm, setSiteAssignmentForm] = useState<SiteAssignmentForm>(emptySiteAssignmentForm)
   const [bulkSiteAssignmentDraft, setBulkSiteAssignmentDraft] = useState<BulkSiteAssignmentDraft>(emptyBulkSiteAssignmentDraft)
   const [bulkSiteAssignmentSelections, setBulkSiteAssignmentSelections] = useState<Record<string, WorkforceEmployee>>({})
@@ -410,6 +422,7 @@ export function WorkforceConfigurationWorkbench() {
   const [savingDefaultAssignment, setSavingDefaultAssignment] = useState(false)
   const [previewingAssignments, setPreviewingAssignments] = useState(false)
   const [previewingBulkAssignments, setPreviewingBulkAssignments] = useState(false)
+  const [publishingBulkAssignments, setPublishingBulkAssignments] = useState(false)
   const [previewingBulkSiteAssignments, setPreviewingBulkSiteAssignments] = useState(false)
   const [publishingBulkSiteAssignments, setPublishingBulkSiteAssignments] = useState(false)
   const [activating, setActivating] = useState<string | null>(null)
@@ -829,6 +842,8 @@ export function WorkforceConfigurationWorkbench() {
     // former result stale; clearing it prevents a review from being mistaken
     // for an approval of a different set of employees or date.
     setBulkAssignmentPreview(null)
+    setBulkAssignmentPublishConfirmed(false)
+    setBulkAssignmentPublishOperationId(null)
   }
 
   function removeBulkAssignmentEmployee(agentId: string) {
@@ -885,10 +900,54 @@ export function WorkforceConfigurationWorkbench() {
         bulkAssignmentDraft,
       ) as BulkAssignmentPreview
       setBulkAssignmentPreview(preview)
+      setBulkAssignmentPublishConfirmed(false)
+      setBulkAssignmentPublishOperationId(null)
     } catch (cause) {
       toast.error(messageForError(cause, t("saveFailed")))
     } finally {
       setPreviewingBulkAssignments(false)
+    }
+  }
+
+  async function publishBulkAssignments() {
+    if (
+      !bulkAssignmentPreview
+      || bulkAssignmentPreview.summary.CONFLICT > 0
+      || bulkAssignmentPreview.summary.EMPLOYEE_UNAVAILABLE > 0
+      || bulkAssignmentPreview.summary.TEMPLATE_TEAM_MISMATCH > 0
+    ) {
+      toast.error(t("bulkAssignmentPublishBlocked"))
+      return
+    }
+    if (!bulkAssignmentPublishConfirmed) {
+      toast.error(t("bulkAssignmentPublishConfirmationRequired"))
+      return
+    }
+    const operationId = bulkAssignmentPublishOperationId ?? crypto.randomUUID()
+    setBulkAssignmentPublishOperationId(operationId)
+    setPublishingBulkAssignments(true)
+    try {
+      const { operation } = await request(
+        "/api/v1/workforce/configuration/assignments/bulk/publish",
+        "POST",
+        { ...bulkAssignmentDraft, operationId },
+      ) as { operation: BulkAssignmentPublishResult }
+      toast.success(t("bulkAssignmentPublished", {
+        created: operation.createdCount,
+        unchanged: operation.unchangedCount,
+      }))
+      setBulkAssignmentDraft(emptyBulkAssignmentDraft())
+      setBulkAssignmentSelections({})
+      setBulkAssignmentPreview(null)
+      setBulkAssignmentPublishConfirmed(false)
+      setBulkAssignmentPublishOperationId(null)
+      await load()
+    } catch (cause) {
+      // Preserve an opaque idempotency key if the network result is unknown.
+      // A deliberate retry therefore cannot publish the reviewed draft twice.
+      toast.error(messageForError(cause, t("saveFailed")))
+    } finally {
+      setPublishingBulkAssignments(false)
     }
   }
 
@@ -1220,10 +1279,10 @@ export function WorkforceConfigurationWorkbench() {
                 {data.roster.shiftTemplates.map((template) => <option key={template.id} value={template.id}>{template.name} · {template.code}</option>)}
               </Select>
               <div className="space-y-1.5"><label htmlFor="workforce-bulk-assignment-effective-from" className="text-sm font-medium">{t("effectiveFrom")}</label><Input id="workforce-bulk-assignment-effective-from" type="date" value={bulkAssignmentDraft.effectiveFrom} onChange={(event) => updateBulkAssignmentDraft((current) => ({ ...current, effectiveFrom: event.target.value }))} required /></div>
-              <div className="flex flex-wrap items-end gap-3"><Button type="submit" variant="outline" className="min-h-11" disabled={previewingBulkAssignments || data.roster.employees.length === 0 || data.roster.shiftTemplates.length === 0}>{previewingBulkAssignments ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <RefreshCw />}{t("reviewBulkAssignmentDraft")}</Button><Button type="button" variant="ghost" className="min-h-11" onClick={() => { setBulkAssignmentDraft(emptyBulkAssignmentDraft()); setBulkAssignmentSelections({}); setBulkAssignmentPreview(null) }} disabled={previewingBulkAssignments || (bulkAssignmentDraft.agentIds.length === 0 && !bulkAssignmentDraft.templateId && !bulkAssignmentDraft.effectiveFrom)}>{t("discardBulkAssignmentDraft")}</Button></div>
+              <div className="flex flex-wrap items-end gap-3"><Button type="submit" variant="outline" className="min-h-11" disabled={previewingBulkAssignments || publishingBulkAssignments || data.roster.employees.length === 0 || data.roster.shiftTemplates.length === 0}>{previewingBulkAssignments ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <RefreshCw />}{t("reviewBulkAssignmentDraft")}</Button><Button type="button" variant="ghost" className="min-h-11" onClick={() => { setBulkAssignmentDraft(emptyBulkAssignmentDraft()); setBulkAssignmentSelections({}); setBulkAssignmentPreview(null); setBulkAssignmentPublishConfirmed(false); setBulkAssignmentPublishOperationId(null) }} disabled={previewingBulkAssignments || publishingBulkAssignments || (bulkAssignmentDraft.agentIds.length === 0 && !bulkAssignmentDraft.templateId && !bulkAssignmentDraft.effectiveFrom)}>{t("discardBulkAssignmentDraft")}</Button></div>
             </div>
             <fieldset className="border-y border-zinc-200 py-4 dark:border-zinc-700" aria-describedby="workforce-bulk-assignment-employees-hint"><legend className="px-1 text-sm font-medium">{t("bulkAssignmentEmployees", { selected: bulkAssignmentDraft.agentIds.length, maximum: 200 })}</legend><p id="workforce-bulk-assignment-employees-hint" className="mt-1 px-1 text-sm leading-6 text-muted-foreground">{t("bulkAssignmentEmployeesHint")}</p><div className="mt-4 grid max-h-72 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3" role="group" aria-label={t("bulkAssignmentEmployees", { selected: bulkAssignmentDraft.agentIds.length, maximum: 200 })}>{data.roster.employees.map((employee) => { const selected = bulkAssignmentDraft.agentIds.includes(employee.id); const maximumReached = bulkAssignmentDraft.agentIds.length >= 200; return <label key={employee.id} className="flex min-h-11 items-center gap-3 rounded-md border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700"><input id={"workforce-bulk-assignment-employee-" + employee.id} type="checkbox" checked={selected} disabled={!selected && maximumReached} onChange={() => toggleBulkAssignmentEmployee(employee)} className="h-4 w-4 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" /><span>{employeeLabel(employee)}</span></label> })}{data.roster.employees.length === 0 ? <p className="text-sm text-muted-foreground">{t("assignmentRosterUnavailable")}</p> : null}</div>{bulkAssignmentDraft.agentIds.length > 0 ? <div className="mt-4"><p className="text-sm leading-6 text-muted-foreground">{t("bulkSelectionRetainedHint")}</p><ul className="mt-2 flex max-h-32 flex-wrap gap-2 overflow-y-auto" aria-label={t("bulkSelectionPeople")}>{bulkAssignmentDraft.agentIds.map((agentId) => <li key={agentId}><Button type="button" variant="outline" size="sm" className="min-h-9" onClick={() => removeBulkAssignmentEmployee(agentId)}>{bulkAssignmentEmployeeLabel(agentId)}<X className="h-4 w-4" aria-hidden="true" /></Button></li>)}</ul></div> : null}</fieldset>
-            {bulkAssignmentPreview !== null ? <div className="border-y border-zinc-200 py-4 dark:border-zinc-700"><p role="status" aria-live="polite" aria-atomic="true" className="text-sm font-medium">{t("bulkAssignmentSummary", { ready: bulkAssignmentPreview.summary.READY, unchanged: bulkAssignmentPreview.summary.NO_CHANGE, unavailable: bulkAssignmentPreview.summary.EMPLOYEE_UNAVAILABLE, mismatch: bulkAssignmentPreview.summary.TEMPLATE_TEAM_MISMATCH, conflicts: bulkAssignmentPreview.summary.CONFLICT })}</p><div className="mt-3 flex flex-wrap gap-2">{(["READY", "NO_CHANGE", "EMPLOYEE_UNAVAILABLE", "TEMPLATE_TEAM_MISMATCH", "CONFLICT"] as const).map((outcome) => <Badge key={outcome} variant={outcome === "CONFLICT" || outcome === "EMPLOYEE_UNAVAILABLE" ? "destructive" : "outline"}>{t("bulkAssignmentOutcome." + outcome)}: {bulkAssignmentPreview.summary[outcome]}</Badge>)}</div><p className="mt-3 text-sm leading-6 text-muted-foreground">{t("bulkAssignmentReviewOnlyHint")}</p><ul className="mt-3 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">{bulkAssignmentPreview.items.map((item) => <li key={item.agentId} className="py-3 text-sm"><span className="font-medium">{bulkAssignmentEmployeeLabel(item.agentId)}</span><span className="text-muted-foreground"> · {t("bulkAssignmentOutcome." + item.outcome)}</span></li>)}</ul></div> : null}
+            {bulkAssignmentPreview !== null ? <div className="border-y border-zinc-200 py-4 dark:border-zinc-700"><p role="status" aria-live="polite" aria-atomic="true" className="text-sm font-medium">{t("bulkAssignmentSummary", { ready: bulkAssignmentPreview.summary.READY, unchanged: bulkAssignmentPreview.summary.NO_CHANGE, unavailable: bulkAssignmentPreview.summary.EMPLOYEE_UNAVAILABLE, mismatch: bulkAssignmentPreview.summary.TEMPLATE_TEAM_MISMATCH, conflicts: bulkAssignmentPreview.summary.CONFLICT })}</p><div className="mt-3 flex flex-wrap gap-2">{(["READY", "NO_CHANGE", "EMPLOYEE_UNAVAILABLE", "TEMPLATE_TEAM_MISMATCH", "CONFLICT"] as const).map((outcome) => <Badge key={outcome} variant={outcome === "CONFLICT" || outcome === "EMPLOYEE_UNAVAILABLE" ? "destructive" : "outline"}>{t("bulkAssignmentOutcome." + outcome)}: {bulkAssignmentPreview.summary[outcome]}</Badge>)}</div><p className="mt-3 text-sm leading-6 text-muted-foreground">{t("bulkAssignmentReviewOnlyHint")}</p><ul className="mt-3 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700">{bulkAssignmentPreview.items.map((item) => <li key={item.agentId} className="py-3 text-sm"><span className="font-medium">{bulkAssignmentEmployeeLabel(item.agentId)}</span><span className="text-muted-foreground"> · {t("bulkAssignmentOutcome." + item.outcome)}</span></li>)}</ul>{bulkAssignmentPreview.summary.CONFLICT === 0 && bulkAssignmentPreview.summary.EMPLOYEE_UNAVAILABLE === 0 && bulkAssignmentPreview.summary.TEMPLATE_TEAM_MISMATCH === 0 && bulkAssignmentPreview.summary.READY > 0 ? <div className="mt-4 rounded-md border border-zinc-200 p-4 dark:border-zinc-700"><label className="flex min-h-11 items-start gap-3 text-sm"><input id="workforce-bulk-assignment-publish-confirm" type="checkbox" checked={bulkAssignmentPublishConfirmed} onChange={(event) => setBulkAssignmentPublishConfirmed(event.target.checked)} disabled={publishingBulkAssignments} className="mt-1 h-4 w-4 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" /><span>{t("bulkAssignmentPublishConfirm", { count: bulkAssignmentPreview.summary.READY })}</span></label><Button type="button" className="mt-4 min-h-12" disabled={!bulkAssignmentPublishConfirmed || publishingBulkAssignments} onClick={() => void publishBulkAssignments()}>{publishingBulkAssignments ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <Check />}{t("publishBulkAssignment")}</Button></div> : <p className="mt-4 text-sm leading-6 text-muted-foreground">{t("bulkAssignmentPublishBlocked")}</p>}</div> : null}
           </form>
           <div className="mt-8 grid gap-8 border-t border-zinc-200 pt-6 dark:border-zinc-700 xl:grid-cols-2">
             <div><h3 className="font-medium">{t("assignmentTimelineTitle")}</h3><p className="mt-1 text-sm leading-6 text-muted-foreground">{t("assignmentTimelineHint")}</p><div className="mt-4 border-t border-zinc-200 dark:border-zinc-700">{data.assignments.map((assignment) => <article key={assignment.id} className="py-4"><p className="font-medium">{assignment.agent.name || assignment.agent.email || assignment.agent.externalCode || t("unnamedEmployee")}</p><p className="mt-1 text-sm text-muted-foreground">{assignment.template.name} · {assignment.template.code} · {t("effectiveRange", { start: asDateKey(assignment.effectiveFrom), end: assignment.effectiveTo ? asDateKey(assignment.effectiveTo) : t("openEnded") })}</p></article>)}{data.assignments.length === 0 ? <p className="py-4 text-sm text-muted-foreground">{t("noAssignments")}</p> : null}</div></div>

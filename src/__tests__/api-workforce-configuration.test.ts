@@ -7,6 +7,7 @@ vi.mock("@/lib/prisma", async () => {
 })
 vi.mock("@/lib/with-workforce-rls-auth", () => ({
   withWorkforceSessionAdminAuth: vi.fn((handler) => handler),
+  withWorkforceSessionScheduleConfigurationAuth: vi.fn((_permission, handler) => handler),
 }))
 vi.mock("@/lib/mtm-settings", () => ({ getMtmSettings: vi.fn() }))
 vi.mock("@/lib/workforce/configuration-management", async () => {
@@ -23,6 +24,7 @@ vi.mock("@/lib/workforce/configuration-management", async () => {
     activateWorkforceShiftTemplateDraft: vi.fn(),
     scheduleWorkforceShiftAssignment: vi.fn(),
     previewWorkforceShiftAssignments: vi.fn(),
+    publishWorkforceShiftAssignments: vi.fn(),
     scheduleWorkforceShiftDefault: vi.fn(),
   }
 })
@@ -35,16 +37,21 @@ import { PATCH as updateShift } from "@/app/api/v1/workforce/configuration/shift
 import { POST as activateShift } from "@/app/api/v1/workforce/configuration/shifts/[id]/activate/route"
 import { GET as listAssignments, POST as scheduleAssignment } from "@/app/api/v1/workforce/configuration/assignments/route"
 import { POST as previewAssignments } from "@/app/api/v1/workforce/configuration/assignments/preview/route"
+import { POST as publishAssignments } from "@/app/api/v1/workforce/configuration/assignments/bulk/publish/route"
 import { GET as listDefaultAssignments, POST as scheduleDefaultAssignment } from "@/app/api/v1/workforce/configuration/shifts/default/route"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { prisma } from "@/lib/prisma"
-import { withWorkforceSessionAdminAuth } from "@/lib/with-workforce-rls-auth"
+import {
+  withWorkforceSessionAdminAuth,
+  withWorkforceSessionScheduleConfigurationAuth,
+} from "@/lib/with-workforce-rls-auth"
 import {
   activateWorkforcePolicyDraft,
   activateWorkforceShiftTemplateDraft,
   createWorkforcePolicyDraft,
   createWorkforceShiftTemplateDraft,
   previewWorkforceShiftAssignments,
+  publishWorkforceShiftAssignments,
   scheduleWorkforceShiftAssignment,
   scheduleWorkforceShiftDefault,
   updateWorkforcePolicyDraft,
@@ -75,6 +82,10 @@ const callListAssignments = listAssignments as unknown as (
   auth: typeof AUTH,
 ) => Promise<Response>
 const callPreviewAssignments = previewAssignments as unknown as (
+  request: NextRequest,
+  auth: typeof AUTH,
+) => Promise<Response>
+const callPublishAssignments = publishAssignments as unknown as (
   request: NextRequest,
   auth: typeof AUTH,
 ) => Promise<Response>
@@ -123,14 +134,16 @@ beforeEach(() => {
   vi.mocked(activateWorkforceShiftTemplateDraft).mockReset()
   vi.mocked(scheduleWorkforceShiftAssignment).mockReset()
   vi.mocked(previewWorkforceShiftAssignments).mockReset()
+  vi.mocked(publishWorkforceShiftAssignments).mockReset()
   vi.mocked(scheduleWorkforceShiftDefault).mockReset()
   vi.mocked(getMtmSettings).mockReset()
   vi.mocked(getMtmSettings).mockResolvedValue({ timezone: "Asia/Baku" } as never)
 })
 
 describe("Workforce draft configuration API", () => {
-  it("binds every configuration route to the session-only Workforce admin boundary", () => {
+  it("binds every configuration route to an accountable Workforce session boundary", () => {
     expect(withWorkforceSessionAdminAuth).toHaveBeenCalledTimes(13)
+    expect(withWorkforceSessionScheduleConfigurationAuth).toHaveBeenCalledWith("SCHEDULE_WRITE", expect.any(Function))
   })
 
   it("creates only validated draft policy and shift records", async () => {
@@ -295,6 +308,37 @@ describe("Workforce draft configuration API", () => {
       currentDateKey: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
     }))
     expect(scheduleWorkforceShiftAssignment).not.toHaveBeenCalled()
+  })
+
+  it("publishes a rechecked bulk shift draft only through the exact schedule write boundary", async () => {
+    vi.mocked(publishWorkforceShiftAssignments).mockResolvedValue({
+      operationId: "bulk-shift-operation-1",
+      templateId: "shift-1",
+      effectiveFrom: "2026-09-01",
+      requestedCount: 1,
+      createdCount: 1,
+      unchangedCount: 0,
+      idempotent: false,
+    } as never)
+
+    const response = await callPublishAssignments(post("/api/v1/workforce/configuration/assignments/bulk/publish", {
+      operationId: "bulk-shift-operation-1",
+      agentIds: ["agent-1"],
+      templateId: "shift-1",
+      effectiveFrom: "2026-09-01",
+    }), AUTH)
+
+    expect(response.status).toBe(201)
+    await expect(response.json()).resolves.toMatchObject({
+      success: true,
+      data: { operation: { operationId: "bulk-shift-operation-1", createdCount: 1 } },
+    })
+    expect(publishWorkforceShiftAssignments).toHaveBeenCalledWith(expect.objectContaining({
+      organizationId: AUTH.orgId,
+      publishedByUserId: AUTH.userId,
+      publish: expect.objectContaining({ operationId: "bulk-shift-operation-1", agentIds: ["agent-1"] }),
+      currentDateKey: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+    }))
   })
 
   it("returns a named active roster and effective-date preview without asking the web client for raw IDs", async () => {

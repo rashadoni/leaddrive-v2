@@ -24020,6 +24020,11 @@
   "reviewBulkAssignmentDraft": "Review bulk draft",
   "discardBulkAssignmentDraft": "Discard local draft",
   "bulkAssignmentReviewOnlyHint": "This is a read-only conflict report. No bulk schedule has been saved, approved or published.",
+  "bulkAssignmentPublishConfirm": "I reviewed this future-only change and publish {count} ready shift assignments.",
+  "publishBulkAssignment": "Publish reviewed shift assignments",
+  "bulkAssignmentPublished": "Bulk shift schedule published: {created} created, {unchanged} unchanged.",
+  "bulkAssignmentPublishBlocked": "Resolve every unavailable employee, team mismatch and future conflict before publishing this bulk shift schedule.",
+  "bulkAssignmentPublishConfirmationRequired": "Confirm the reviewed future shift assignments before publishing.",
   "bulkAssignmentSummary": "Review complete: {ready} ready, {unchanged} unchanged, {unavailable} unavailable, {mismatch} team mismatches, {conflicts} conflicts.",
   "bulkAssignmentOutcome": {
     "READY": "Ready for a future reviewed operation",
