@@ -24,16 +24,16 @@ export function WorkforceExceptionQueue() {
   const locale = useLocale()
   const t = useTranslations("workforceExceptionQueue")
   const [items, setItems] = useState<QueueItem[] | null>(null)
+  const [accessDeniedRequestKey, setAccessDeniedRequestKey] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [retry, setRetry] = useState(0)
-  const role = session?.user?.role
-  const isAdmin = role === "admin" || role === "superadmin"
   const organizationId = session?.user?.organizationId ? String(session.user.organizationId) : ""
+  const requestKey = `${organizationId}:${retry}`
+  const accessDenied = accessDeniedRequestKey === requestKey
   const ageFormatter = useMemo(() => new Intl.RelativeTimeFormat(locale, { numeric: "auto", style: "long" }), [locale])
 
   useEffect(() => {
-    if (!isAdmin) return
     const controller = new AbortController()
     fetch("/api/v1/workforce/exceptions", {
       headers: organizationId ? { "x-organization-id": organizationId } : {},
@@ -41,6 +41,15 @@ export function WorkforceExceptionQueue() {
     })
       .then(async (response) => {
         const body = await response.json().catch(() => ({}))
+        // The server is the only authority after the granular-role cutover.
+        // A non-admin with an effective TEAM_EXCEPTION_READ grant must be
+        // allowed to reach that server check; conversely an old CRM admin
+        // must not be presented as authorized after a 403.
+        if (response.status === 403) {
+          setItems(null)
+          setAccessDeniedRequestKey(requestKey)
+          return
+        }
         if (!response.ok || !body.success) throw new Error("WORKFORCE_EXCEPTION_QUEUE_LOAD_FAILED")
         setItems(body.data.cases)
       })
@@ -50,11 +59,13 @@ export function WorkforceExceptionQueue() {
           setError(t("loadFailed"))
         }
       })
-      .finally(() => setLoading(false))
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false)
+      })
     return () => controller.abort()
-  }, [isAdmin, organizationId, retry, t])
+  }, [organizationId, requestKey, t])
 
-  if (!isAdmin) {
+  if (accessDenied) {
     return <section className="space-y-6"><PageDescription title={t("title")} description={t("subtitle")} /><div className="rounded-lg border border-zinc-200 p-4 text-sm text-muted-foreground dark:border-zinc-700" role="status">{t("adminOnly")}</div></section>
   }
 

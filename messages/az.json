@@ -23780,7 +23780,7 @@
   "workforceExceptionQueue": {
     "title": "İştirak istisnaları növbəsi",
     "subtitle": "Dəqiq məkanı, QR-ni, cihaz sübutunu və ya işçi səbəblərini açıqlamadan qeyri-müəyyən iştirak hallarını yoxlayın.",
-    "adminOnly": "Bu yalnız oxunan istisna növbəsinə ancaq daxil olmuş tenant administratoru baxa bilər.",
+    "adminOnly": "Bu yalnız oxunan istisna növbəsi qüvvədə olan Workforce HR yoxlama rolunu tələb edir.",
     "boundaryTitle": "Yalnız insan yoxlaması",
     "boundaryHint": "Bu növbə iştirakı, ödənişi və ya intizam qərarını dəyişə bilməz. O yalnız törəmə yoxlama vəziyyətini göstərir: koordinatlar, xəritələr, QR dəyərləri, cihaz identifikatorları, sübut materialları, qərar səbəbləri və daxili identifikatorlar burada əlçatan deyil.",
     "viewAggregateReport": "Ümumi hesabatı aç",
@@ -23843,7 +23843,7 @@
   "workforceExceptionReport": {
     "title": "İştirak istisnaları hesabatı",
     "subtitle": "İşçi, hal, geolokasiya, QR, cihaz və ya səbəb məlumatlarını açıqlamadan saxlanılmış iştirak hallarının məhdud ümumi saylarını yoxlayın.",
-    "adminOnly": "Bu ümumi istisna hesabatı yalnız daxil olmuş tenant administratoru üçün əlçatandır.",
+    "adminOnly": "Bu ümumi istisna hesabatı qüvvədə olan Workforce HR yoxlama rolunu tələb edir.",
     "boundaryTitle": "Ümumi yoxlama, nəticə deyil",
     "boundaryHint": "Bu hesabat qeydə alınmış yoxlama hallarını ümumi növ və həyat dövrü mərhələsinə görə sayır. O fiziki mövcudluğun sübutu, işə gəlməmə qərarı, ödəniş girişi və ya intizam nəticəsi deyil. İşçi adları, hal istinadları, xam sübutlar və qərar səbəbləri istisna edilir.",
     "start": "Qeydiyyat başlanğıcı",

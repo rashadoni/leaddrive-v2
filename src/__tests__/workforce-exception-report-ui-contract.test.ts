@@ -20,4 +20,12 @@ describe("Workforce exception aggregate report UI contract", () => {
     expect(component).toContain('CASE_RECORDED_AT')
     expect(component).toContain('t("boundaryTitle")')
   })
+
+  it("defers exception-review access to the server's granular Workforce grant", () => {
+    for (const source of [component, queue]) {
+      expect(source).not.toContain('const isAdmin = role === "admin" || role === "superadmin"')
+      expect(source).toContain("if (response.status === 403)")
+      expect(source).toContain("setAccessDeniedRequestKey(requestKey)")
+    }
+  })
 })

@@ -23784,7 +23784,7 @@
   "workforceExceptionQueue": {
     "title": "Attendance exception queue",
     "subtitle": "Review uncertain attendance cases without exposing raw location, QR, device proof or employee reasons.",
-    "adminOnly": "This read-only exception queue is available only to a signed-in tenant administrator.",
+    "adminOnly": "This read-only exception queue requires an effective Workforce HR-review role.",
     "boundaryTitle": "Human review only",
     "boundaryHint": "This queue cannot change attendance, pay or discipline. It shows only a derived review state: no coordinates, maps, QR values, device identifiers, proof payloads, decision reasons or internal identifiers are available here.",
     "viewAggregateReport": "View aggregate report",
@@ -23847,7 +23847,7 @@
   "workforceExceptionReport": {
     "title": "Attendance exception report",
     "subtitle": "Review bounded aggregate counts from persisted attendance cases without exposing employee, case, location, QR, device or reason data.",
-    "adminOnly": "This aggregate exception report is available only to a signed-in tenant administrator.",
+    "adminOnly": "This aggregate exception report requires an effective Workforce HR-review role.",
     "boundaryTitle": "Aggregate review, not an outcome",
     "boundaryHint": "This report counts recorded review cases by generic type and lifecycle stage. It is not proof of physical presence, an absence decision, payroll input or a disciplinary conclusion. Employee names, case references, raw evidence and decision reasons are excluded.",
     "start": "Recorded from",

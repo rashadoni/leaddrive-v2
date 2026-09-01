@@ -47,16 +47,16 @@ export function WorkforceExceptionReport() {
   const [data, setData] = useState<ReportResponse | null>(null)
   const [draftRange, setDraftRange] = useState({ start: "", end: "" })
   const [requestedRange, setRequestedRange] = useState<{ start: string; end: string } | null>(null)
+  const [accessDeniedRequestKey, setAccessDeniedRequestKey] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [retry, setRetry] = useState(0)
-  const role = session?.user?.role
-  const isAdmin = role === "admin" || role === "superadmin"
   const organizationId = session?.user?.organizationId ? String(session.user.organizationId) : ""
+  const requestKey = `${organizationId}:${retry}`
+  const accessDenied = accessDeniedRequestKey === requestKey
   const number = useMemo(() => new Intl.NumberFormat(), [])
 
   useEffect(() => {
-    if (!isAdmin) return
     const controller = new AbortController()
     const parameters = new URLSearchParams()
     if (requestedRange) {
@@ -70,6 +70,14 @@ export function WorkforceExceptionReport() {
     })
       .then(async (response) => {
         const body = await response.json().catch(() => ({}))
+        // The matching queue route accepts a scoped Workforce grant after
+        // rollout. Do not pre-empt that server decision with a stale CRM role
+        // in the browser.
+        if (response.status === 403) {
+          setData(null)
+          setAccessDeniedRequestKey(requestKey)
+          return
+        }
         if (!response.ok || !body.success) throw new Error("WORKFORCE_EXCEPTION_REPORT_LOAD_FAILED")
         const next = body.data as ReportResponse
         setData(next)
@@ -85,7 +93,7 @@ export function WorkforceExceptionReport() {
         if (!controller.signal.aborted) setLoading(false)
       })
     return () => controller.abort()
-  }, [isAdmin, organizationId, requestedRange, retry, t])
+  }, [organizationId, requestKey, requestedRange, t])
 
   function applyRange(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -104,7 +112,7 @@ export function WorkforceExceptionReport() {
     setRetry((value) => value + 1)
   }
 
-  if (!isAdmin) {
+  if (accessDenied) {
     return <section className="space-y-6"><PageDescription title={t("title")} description={t("subtitle")} /><div className="rounded-lg border border-zinc-200 p-4 text-sm text-muted-foreground dark:border-zinc-700" role="status">{t("adminOnly")}</div></section>
   }
 
