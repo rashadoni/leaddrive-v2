@@ -37,5 +37,18 @@ class WorkforceQrScanner(private val activity: ComponentActivity) {
     }
 }
 
-/** Intentionally no toString()/persistence API: proof must be used at once. */
-class WorkforceEphemeralQrToken internal constructor(internal val value: String)
+/**
+ * Intentionally has no string/persistence API. A successful scanner callback
+ * yields one token object which can be consumed exactly once by the immediate
+ * action envelope; a retry must obtain a fresh QR value from the station.
+ */
+class WorkforceEphemeralQrToken internal constructor(value: String) {
+    private var unconsumedValue: String? = value
+
+    @Synchronized
+    internal fun consume(): String = checkNotNull(unconsumedValue) {
+        "A scanned QR can only be used once. Scan a fresh code."
+    }.also {
+        unconsumedValue = null
+    }
+}

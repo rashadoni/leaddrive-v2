@@ -1,6 +1,7 @@
 package com.leaddrive.workforce.android.data
 
 import com.leaddrive.workforce.android.security.WorkforceDeviceKeyManager
+import com.leaddrive.workforce.android.security.WorkforceEphemeralQrToken
 import android.util.Base64
 import java.security.Signature
 import java.time.Instant
@@ -55,7 +56,7 @@ class WorkforceSessionRepository(
         bootstrap: WorkforceBootstrap,
         snapshot: WorkforceTodaySnapshot,
         action: WorkforceWorkdayAction,
-        attendanceQrToken: String? = null,
+        attendanceQrToken: WorkforceEphemeralQrToken? = null,
         attendanceLocationProof: WorkforceLocationProof? = null,
     ): WorkforceTodaySubmission = sessionMutex.withLock {
         bootstrap.requireMutableRelease()
@@ -380,7 +381,7 @@ class WorkforceSessionRepository(
         bootstrap: WorkforceBootstrap,
         snapshot: WorkforceTodaySnapshot,
         action: WorkforceWorkdayAction,
-        attendanceQrToken: String? = null,
+        attendanceQrToken: WorkforceEphemeralQrToken? = null,
         attendanceLocationProof: WorkforceLocationProof? = null,
     ): WorkforcePreparedDeviceTodayAction = sessionMutex.withLock {
         bootstrap.requireMutableRelease()

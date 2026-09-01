@@ -82,9 +82,10 @@ import com.leaddrive.workforce.android.data.WorkforceWorkdayAction
 import com.leaddrive.workforce.android.data.WorkforceWorkdayStatus
 import com.leaddrive.workforce.android.location.WorkforceActionTimeLocationCapture
 import com.leaddrive.workforce.android.location.WorkforceActionTimeLocationResult
-import com.leaddrive.workforce.android.security.WorkforceQrScanner
 import com.leaddrive.workforce.android.security.WorkforceDeviceAuthenticator
 import com.leaddrive.workforce.android.security.WorkforceDeviceKeyManager
+import com.leaddrive.workforce.android.security.WorkforceEphemeralQrToken
+import com.leaddrive.workforce.android.security.WorkforceQrScanner
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
@@ -283,7 +284,7 @@ private fun WorkforceRoot(
 
     fun submitTodayAction(
         action: WorkforceWorkdayAction,
-        qrToken: String? = null,
+        qrToken: WorkforceEphemeralQrToken? = null,
         location: WorkforceLocationProof? = null,
     ) {
         val snapshot = today ?: return
@@ -300,7 +301,7 @@ private fun WorkforceRoot(
 
     fun submitDeviceTrustedTodayAction(
         action: WorkforceWorkdayAction,
-        qrToken: String? = null,
+        qrToken: WorkforceEphemeralQrToken? = null,
         location: WorkforceLocationProof? = null,
     ) {
         val snapshot = today ?: return
@@ -340,9 +341,9 @@ private fun WorkforceRoot(
                         activeQrScanAttemptId = null
                         scanningQrAction = null
                         if (attendance.requiresDeviceProof(action)) {
-                            submitDeviceTrustedTodayAction(action, token.value, location)
+                            submitDeviceTrustedTodayAction(action, token, location)
                         } else {
-                            submitTodayAction(action, token.value, location)
+                            submitTodayAction(action, token, location)
                         }
                     }
                 },

@@ -1,5 +1,6 @@
 package com.leaddrive.workforce.android.data
 
+import com.leaddrive.workforce.android.security.WorkforceEphemeralQrToken
 import java.net.HttpURLConnection
 import java.net.URI
 import java.nio.charset.StandardCharsets
@@ -272,7 +273,7 @@ class WorkforceApiClient(
     fun newTodayOperation(
         snapshot: WorkforceTodaySnapshot,
         action: WorkforceWorkdayAction,
-        attendanceQrToken: String? = null,
+        attendanceQrToken: WorkforceEphemeralQrToken? = null,
         attendanceLocationProof: WorkforceLocationProof? = null,
         now: Instant = Instant.now(),
     ): WorkforceWorkdayOperation {
@@ -297,7 +298,7 @@ class WorkforceApiClient(
             claimedAt = eventTime,
             capturedAt = eventTime,
             queuedAt = eventTime,
-            attendanceQrToken = attendanceQrToken?.trim()?.takeIf { it.isNotBlank() }?.also {
+            attendanceQrToken = attendanceQrToken?.consume()?.trim()?.takeIf { it.isNotBlank() }?.also {
                 if (it.length > MAX_QR_TOKEN_LENGTH) {
                     throw WorkforceApiException("The scanned QR token was invalid. Scan a fresh code.", recoverable = false)
                 }
