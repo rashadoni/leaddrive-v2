@@ -9,6 +9,8 @@
 // withMobileFieldSuiteRls/withMobileTenantCapabilityRls/withMtmRlsAuth/
 // withRouteFieldRlsAuth/withRouteFieldWebRlsAuth/withWorkforceHrmRlsAuth
 // withWorkforceRlsAuth/withWorkforceSessionAuth/withWorkforceSessionAdminAuth/
+// withWorkforceSessionEvidenceTimelineAuth/
+// withWorkforceSessionExceptionQueueAuth/
 // withWorkforceCompatAuth
 // (HOC factories) or an explicit runWithTenant/runWithRlsBypass.
 // A bare getOrgId/getSession/requireAuth RESOLVES the org but does
@@ -50,7 +52,7 @@ function walk(dir: string, out: string[] = []): string[] {
 }
 
 const DELIVER =
-  /withRls(?:<[^>]+>)?\(|withRlsAuth(?:<[^>]+>)?\(|withRlsSessionAuth(?:<[^>]+>)?\(|withInboxSessionWrite(?:<[^>]+>)?\(|withSocialMonitoringMutationFence(?:<[^>]+>)?\(|withSocialConnectAuth\(|withMobileRls(?:<[^>]+>)?\(|withMobileFieldSuiteRls(?:<[^>]+>)?\(|withMobileTenantCapabilityRls(?:<[^>]+>)?\(|withMtmRlsAuth(?:<[^>]+>)?\(|withRouteFieldRlsAuth(?:<[^>]+>)?\(|withRouteFieldWebRlsAuth(?:<[^>]+>)?\(|withWorkforceHrmRlsAuth(?:<[^>]+>)?\(|withWorkforceRlsAuth(?:<[^>]+>)?\(|withWorkforceSessionAuth(?:<[^>]+>)?\(|withWorkforceSessionAdminAuth(?:<[^>]+>)?\(|withWorkforceCompatAuth(?:<[^>]+>)?\(|runWithTenant|runWithRlsBypass/
+  /withRls(?:<[^>]+>)?\(|withRlsAuth(?:<[^>]+>)?\(|withRlsSessionAuth(?:<[^>]+>)?\(|withInboxSessionWrite(?:<[^>]+>)?\(|withSocialMonitoringMutationFence(?:<[^>]+>)?\(|withSocialConnectAuth\(|withMobileRls(?:<[^>]+>)?\(|withMobileFieldSuiteRls(?:<[^>]+>)?\(|withMobileTenantCapabilityRls(?:<[^>]+>)?\(|withMtmRlsAuth(?:<[^>]+>)?\(|withRouteFieldRlsAuth(?:<[^>]+>)?\(|withRouteFieldWebRlsAuth(?:<[^>]+>)?\(|withWorkforceHrmRlsAuth(?:<[^>]+>)?\(|withWorkforceRlsAuth(?:<[^>]+>)?\(|withWorkforceSessionAuth(?:<[^>]+>)?\(|withWorkforceSessionAdminAuth(?:<[^>]+>)?\(|withWorkforceSessionEvidenceTimelineAuth(?:<[^>]+>)?\(|withWorkforceSessionExceptionQueueAuth(?:<[^>]+>)?\(|withWorkforceCompatAuth(?:<[^>]+>)?\(|runWithTenant|runWithRlsBypass/
 
 describe("RLS context coverage (totality, per-handler)", () => {
   const models = orgScopedModels()

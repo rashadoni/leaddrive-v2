@@ -6,9 +6,11 @@
 ## Delivered safe projection
 
 `src/lib/workforce/exception-queue.ts` projects a case from an authorized,
-tenant-scoped read. `GET /api/v1/workforce/exceptions` now applies the
-session-admin Workforce boundary, an exact organization filter and a hard
-250-case limit. It returns only the display reference, employee display name,
+tenant-scoped read. `GET /api/v1/workforce/exceptions` now preserves the
+session-admin Workforce boundary until the explicit granular-access cutover;
+after cutover it requires an organization-scoped `HR_ADMIN` grant with
+`TEAM_EXCEPTION_READ`, an exact organization filter and a hard 250-case limit.
+It returns only the display reference, employee display name,
 approved taxonomy/triage level, age, derived lifecycle stage, evidence
 availability, employee-response state and one explicit human next action.
 
@@ -41,11 +43,13 @@ claiming it can read or resolve case data.
 
 This is not a complete exception lifecycle. It intentionally has no mutable
 resolution, correction, payment or disciplinary action; no notification;
-no raw-evidence reader; no manager-vs-HR grant model; and no real case-linked
+no raw-evidence reader; no historic team/site queue (a current employee team
+must never authorize access to a historical case); and no real case-linked
 employee appeal/response write. The current field is an honest `NOT_REQUESTED`
 state until the C6-006 case/segment lifecycle is connected. A later C6/C7/C8
-slice must provide granular grant scope, immutable employee-visible response
-links and a reviewed resolution flow before any case can be resolved.
+slice must provide indexed immutable case scopes, granular team/site queues,
+immutable employee-visible response links and a reviewed resolution flow before
+any case can be resolved.
 
 ## Verification
 
