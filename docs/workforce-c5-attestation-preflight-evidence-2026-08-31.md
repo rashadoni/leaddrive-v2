@@ -15,7 +15,9 @@ The server stores only a tenant-bound HMAC fingerprint, expiry and one-way
 consumption marker. Issuing a replacement consumes the earlier live nonce for
 the same employee. The raw nonce stays only in Android memory for KeyStore key
 creation; it is never put in encrypted preferences, Room, WorkManager or an
-audit record. The key's certificate chain remains on device.
+audit record. The app does not currently materialize the key's certificate
+chain at all: it remains in Android Keystore until a separately reviewed
+server-verifier submission protocol exists.
 
 The new migration is additive, tenant-RLS-protected and has no delete grant.
 It also reserves an immutable minimal receipt shape on an enrollment (verified

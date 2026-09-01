@@ -34,15 +34,15 @@ class WorkforceDeviceKeyManager {
             generate(alias, challenge, preferStrongBox = false)
         }
 
-        val certificateChain = KeyStore.getInstance(ANDROID_KEY_STORE).apply { load(null) }
-            .getCertificateChain(alias)
-            ?.map { Base64.encodeToString(it.encoded, Base64.NO_WRAP) }
-            .orEmpty()
-        check(certificateChain.isNotEmpty()) { "Android Keystore did not return an attestation certificate chain." }
+        // Key attestation is not a local enrollment artifact. Until the
+        // server has its separately-reviewed verifier and an atomic
+        // submission protocol, do not materialize or carry the certificate
+        // chain through application memory. A future verifier integration
+        // must read it directly from Android Keystore only for that one
+        // immediate submission, then discard it.
         return WorkforceEnrollmentKey(
             alias = alias,
             publicKeyDerBase64 = Base64.encodeToString(keyPair.public.encoded, Base64.NO_WRAP),
-            attestationCertificatesDerBase64 = certificateChain,
         )
     }
 
@@ -130,7 +130,6 @@ class WorkforceDeviceKeyManager {
 data class WorkforceEnrollmentKey(
     val alias: String,
     val publicKeyDerBase64: String,
-    val attestationCertificatesDerBase64: List<String>,
 )
 
 class WorkforceDeviceKeyUnavailableException(message: String) : IllegalStateException(message)
