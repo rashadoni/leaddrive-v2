@@ -10,7 +10,10 @@ type WorkforceExceptionCaseWriteData = Omit<WorkforceExceptionCaseDraft, "links"
 type StoredCase = WorkforceExceptionCaseWriteData & { id: string }
 type StoredDecision = WorkforceExceptionDecisionDraft & { id: string }
 
-export type WorkforceExceptionCaseWriterDb = {
+/** Smallest transaction facade needed to append an immutable case. Keeping it
+ * separate from decisions lets a detector use an actual Prisma transaction
+ * without pretending it owns the later case-lookup/decision delegates. */
+export type WorkforceExceptionCasePersistenceDb = {
   $executeRaw: (query: TemplateStringsArray, ...values: readonly unknown[]) => Promise<unknown>
   workforceExceptionCase: {
     create: (args: { data: WorkforceExceptionCaseWriteData }) => Promise<StoredCase>
@@ -18,21 +21,6 @@ export type WorkforceExceptionCaseWriterDb = {
       where: { organizationId: string; deduplicationKey: string }
       select: { id: true; organizationId: true; agentId: true; kind: true; detectorVersion: true; deduplicationKey: true; workdayId: true; workdayEventId: true; evidenceId: true; segmentId: true; expectedWorkDate: true }
     }) => Promise<StoredCase | null>
-  }
-  workforceExceptionDecision: {
-    create: (args: { data: WorkforceExceptionDecisionDraft }) => Promise<StoredDecision>
-    findFirst: (args: {
-      where: { organizationId: string; operationId: string }
-      select: { id: true; organizationId: true; caseId: true; operationId: true; decisionCode: true; reason: true; actorUserId: true }
-    }) => Promise<StoredDecision | null>
-    findMany: (args: {
-      where: { organizationId: string; caseId: string }
-      orderBy: readonly [{ createdAt: "asc" }, { id: "asc" }]
-      select: { decisionCode: true }
-    }) => Promise<readonly { decisionCode: string }[]>
-  }
-  workforceExceptionCaseLookup: {
-    findFirst: (args: { where: { id: string; organizationId: string }; select: { id: true } }) => Promise<{ id: string } | null>
   }
   mtmAuditLog: {
     create: (args: {
@@ -48,6 +36,24 @@ export type WorkforceExceptionCaseWriterDb = {
         userAgent: null
       }
     }) => Promise<unknown>
+  }
+}
+
+export type WorkforceExceptionCaseWriterDb = WorkforceExceptionCasePersistenceDb & {
+  workforceExceptionDecision: {
+    create: (args: { data: WorkforceExceptionDecisionDraft }) => Promise<StoredDecision>
+    findFirst: (args: {
+      where: { organizationId: string; operationId: string }
+      select: { id: true; organizationId: true; caseId: true; operationId: true; decisionCode: true; reason: true; actorUserId: true }
+    }) => Promise<StoredDecision | null>
+    findMany: (args: {
+      where: { organizationId: string; caseId: string }
+      orderBy: readonly [{ createdAt: "asc" }, { id: "asc" }]
+      select: { decisionCode: true }
+    }) => Promise<readonly { decisionCode: string }[]>
+  }
+  workforceExceptionCaseLookup: {
+    findFirst: (args: { where: { id: string; organizationId: string }; select: { id: true } }) => Promise<{ id: string } | null>
   }
 }
 
@@ -178,7 +184,7 @@ function canonicalDecisionDraft(draft: WorkforceExceptionDecisionDraft): Workfor
  * applied by this source slice.
  */
 export async function persistAuthorizedWorkforceExceptionCase(input: {
-  db: WorkforceExceptionCaseWriterDb
+  db: WorkforceExceptionCasePersistenceDb
   draft: WorkforceExceptionCaseDraft
   authorize: WorkforceExceptionCaseAuthorization
 }): Promise<{ caseId: string; idempotent: boolean }> {

@@ -148,6 +148,26 @@ severity, role owner, targets and employee-visibility rule is now recorded in
 It remains deliberately non-active for every tenant. The durable additive
 case/decision migration and actual detector remain WF-C6-002/003 work.
 
+### 2026-09-01 transaction-only no-show review materializer
+
+`materializeAuthorizedWorkforceNoShowReviewCase` is the first narrow bridge
+from a current candidate to the existing immutable C6 case ledger. It has no
+route, scheduler, queue, tenant-capability lookup, notification or decision
+writer. A future operational worker must still supply its own tenant fence,
+lease/cursor, monitoring and named authorization before it can call this
+transaction-only primitive.
+
+It first requires explicit `CASE_CREATE` authorization, then acquires the
+canonical `mtm-workday` transition lock for the employee and re-reads the
+complete candidate inside the caller's transaction. If a START became visible,
+or a calendar/employment/configuration input is no longer eligible, it returns
+`NOT_CREATED` and writes no case/audit. A positive result writes only the
+existing raw-proof-free `NO_SHOW` review-case draft through the idempotent C6
+writer; it does not create an attendance event, notification, employee
+conclusion, payroll outcome or disciplinary result. A concurrent later START
+is recorded as a human-reviewable missed-start case rather than silently
+rewriting the historical observation.
+
 ## Verification
 
     PASS  PATH=/home/codex-alt/.local/bin:$PATH npx vitest run \
@@ -209,6 +229,14 @@ case/decision migration and actual detector remain WF-C6-002/003 work.
           candidate read and stop before a later employee/workday. They never
           treat a partial scan as a complete absence/reminder result and still
           expose no case or audit writer (2 files, 6 tests).
+
+    PASS  2026-09-01 no-show materializer re-check:
+          candidate/materializer/immutable-case-writer/decision-route
+          contracts (4 files, 21 tests), scoped ESLint, Prisma schema
+          validation and `git diff --check`. The matrix pins
+          authorization before the workday lock/read, re-check suppression when
+          START exists, raw-proof-free idempotent case creation and no second
+          audit on exact replay.
 
     NOT RUN  database migration/apply, full typecheck/build, browser E2E,
              Android, scheduler/concurrency/load and physical pilot checks:
