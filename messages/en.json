@@ -23787,6 +23787,7 @@
     "adminOnly": "This read-only exception queue is available only to a signed-in tenant administrator.",
     "boundaryTitle": "Human review only",
     "boundaryHint": "This queue cannot change attendance, pay or discipline. It shows only a derived review state: no coordinates, maps, QR values, device identifiers, proof payloads, decision reasons or internal identifiers are available here.",
+    "viewAggregateReport": "View aggregate report",
     "refresh": "Refresh queue",
     "loading": "Loading attendance exception queue",
     "loadFailed": "Unable to load the attendance exception queue.",
@@ -23841,6 +23842,32 @@
       "HUMAN_REVIEW_REQUIRED": "Human review required",
       "NO_FURTHER_ACTION": "No further action",
       "ESCALATE_DATA_INTEGRITY_REVIEW": "Escalate data integrity review"
+    }
+  },
+  "workforceExceptionReport": {
+    "title": "Attendance exception report",
+    "subtitle": "Review bounded aggregate counts from persisted attendance cases without exposing employee, case, location, QR, device or reason data.",
+    "adminOnly": "This aggregate exception report is available only to a signed-in tenant administrator.",
+    "boundaryTitle": "Aggregate review, not an outcome",
+    "boundaryHint": "This report counts recorded review cases by generic type and lifecycle stage. It is not proof of physical presence, an absence decision, payroll input or a disciplinary conclusion. Employee names, case references, raw evidence and decision reasons are excluded.",
+    "start": "Recorded from",
+    "end": "Recorded through",
+    "apply": "Apply range",
+    "refresh": "Refresh report",
+    "backToQueue": "Exception queue",
+    "loading": "Loading attendance exception report",
+    "loadFailed": "Unable to load the attendance exception report.",
+    "rangeRequired": "Choose both recorded-case dates before applying the report range.",
+    "summaryTitle": "Recorded-case aggregate",
+    "periodHint": "Recorded from {start} through {end} in {timezone}.",
+    "recordedCaseDate": "Recorded case date",
+    "typesTitle": "Case types and review stages",
+    "typesHint": "Only aggregate counts are shown. An unrecognised or contradictory decision history is retained for data-integrity review rather than treated as resolved.",
+    "empty": "No persisted attendance cases were recorded in this date range.",
+    "metrics": {
+      "cases": "Cases",
+      "employees": "Employees represented",
+      "employeeResponsesReceived": "Employee responses received"
     }
   },
   "workforceMyExceptions": {

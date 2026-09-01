@@ -23783,6 +23783,7 @@
     "adminOnly": "Bu yalnız oxunan istisna növbəsinə ancaq daxil olmuş tenant administratoru baxa bilər.",
     "boundaryTitle": "Yalnız insan yoxlaması",
     "boundaryHint": "Bu növbə iştirakı, ödənişi və ya intizam qərarını dəyişə bilməz. O yalnız törəmə yoxlama vəziyyətini göstərir: koordinatlar, xəritələr, QR dəyərləri, cihaz identifikatorları, sübut materialları, qərar səbəbləri və daxili identifikatorlar burada əlçatan deyil.",
+    "viewAggregateReport": "Ümumi hesabatı aç",
     "refresh": "Növbəni yenilə",
     "loading": "İştirak istisnaları növbəsi yüklənir",
     "loadFailed": "İştirak istisnaları növbəsini yükləmək mümkün olmadı.",
@@ -23837,6 +23838,32 @@
       "HUMAN_REVIEW_REQUIRED": "İnsan yoxlaması tələb olunur",
       "NO_FURTHER_ACTION": "Əlavə addım tələb olunmur",
       "ESCALATE_DATA_INTEGRITY_REVIEW": "Məlumat bütövlüyü yoxlamasına yönəlt"
+    }
+  },
+  "workforceExceptionReport": {
+    "title": "İştirak istisnaları hesabatı",
+    "subtitle": "İşçi, hal, geolokasiya, QR, cihaz və ya səbəb məlumatlarını açıqlamadan saxlanılmış iştirak hallarının məhdud ümumi saylarını yoxlayın.",
+    "adminOnly": "Bu ümumi istisna hesabatı yalnız daxil olmuş tenant administratoru üçün əlçatandır.",
+    "boundaryTitle": "Ümumi yoxlama, nəticə deyil",
+    "boundaryHint": "Bu hesabat qeydə alınmış yoxlama hallarını ümumi növ və həyat dövrü mərhələsinə görə sayır. O fiziki mövcudluğun sübutu, işə gəlməmə qərarı, ödəniş girişi və ya intizam nəticəsi deyil. İşçi adları, hal istinadları, xam sübutlar və qərar səbəbləri istisna edilir.",
+    "start": "Qeydiyyat başlanğıcı",
+    "end": "Qeydiyyat sonu",
+    "apply": "Dövrü tətbiq et",
+    "refresh": "Hesabatı yenilə",
+    "backToQueue": "İstisnalar növbəsi",
+    "loading": "İştirak istisnaları hesabatı yüklənir",
+    "loadFailed": "İştirak istisnaları hesabatını yükləmək mümkün olmadı.",
+    "rangeRequired": "Hesabat dövrünü tətbiq etməzdən əvvəl halın hər iki qeydiyyat tarixini seçin.",
+    "summaryTitle": "Qeydə alınmış halların xülasəsi",
+    "periodHint": "{timezone} saat qurşağında {start}-dan {end}-dək qeydə alınıb.",
+    "recordedCaseDate": "Halın qeydiyyat tarixi",
+    "typesTitle": "Hal növləri və yoxlama mərhələləri",
+    "typesHint": "Yalnız ümumi saylar göstərilir. Tanınmayan və ya ziddiyyətli qərar tarixi həll edilmiş sayılmır, məlumat bütövlüyü yoxlamasında qalır.",
+    "empty": "Bu tarix diapazonunda saxlanılmış iştirak halı qeydə alınmayıb.",
+    "metrics": {
+      "cases": "Hallar",
+      "employees": "Xülasədəki işçilər",
+      "employeeResponsesReceived": "Alınan işçi cavabları"
     }
   },
   "workforceMyExceptions": {

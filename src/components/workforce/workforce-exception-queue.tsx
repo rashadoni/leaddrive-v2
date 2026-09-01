@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { useLocale, useTranslations } from "next-intl"
 import { Loader2, RefreshCw, ShieldAlert } from "lucide-react"
@@ -62,7 +63,7 @@ export function WorkforceExceptionQueue() {
     <section data-testid="workforce-exception-queue-boundary" aria-labelledby="workforce-exception-queue-boundary" className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
       <div className="flex gap-3"><ShieldAlert className="mt-0.5 size-5 shrink-0" aria-hidden="true" /><div><h2 id="workforce-exception-queue-boundary" className="font-semibold">{t("boundaryTitle")}</h2><p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">{t("boundaryHint")}</p></div></div>
     </section>
-    <div className="flex justify-end"><Button type="button" variant="outline" className="min-h-11" onClick={() => { setLoading(true); setError(null); setRetry((value) => value + 1) }} disabled={loading}>{loading ? <Loader2 className="mr-2 size-4 animate-spin motion-reduce:animate-none" /> : <RefreshCw className="mr-2 size-4" />}{t("refresh")}</Button></div>
+    <div className="flex flex-wrap justify-end gap-2"><Button asChild type="button" variant="outline" className="min-h-11"><Link href="/workforce/exceptions/report">{t("viewAggregateReport")}</Link></Button><Button type="button" variant="outline" className="min-h-11" onClick={() => { setLoading(true); setError(null); setRetry((value) => value + 1) }} disabled={loading}>{loading ? <Loader2 className="mr-2 size-4 animate-spin motion-reduce:animate-none" /> : <RefreshCw className="mr-2 size-4" />}{t("refresh")}</Button></div>
     {error ? <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</div> : null}
     {loading ? <div className="flex items-center gap-2 py-12 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin motion-reduce:animate-none" />{t("loading")}</div> : null}
     {items && !loading ? <section aria-labelledby="workforce-exception-queue-cases" className="rounded-lg border border-zinc-200 dark:border-zinc-700">
