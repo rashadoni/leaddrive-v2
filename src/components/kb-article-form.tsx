@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -8,6 +8,7 @@ import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from "@/components/ui/dialog"
 import { useTranslations } from "next-intl"
+import { CircleAlert, RotateCcw } from "lucide-react"
 
 interface KbCategory {
   id: string
@@ -46,6 +47,25 @@ export function KbArticleForm({ open, onOpenChange, onSaved, initialData, orgId 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
   const [categories, setCategories] = useState<KbCategory[]>([])
+  const [categoriesLoading, setCategoriesLoading] = useState(false)
+  const [categoriesError, setCategoriesError] = useState("")
+
+  const fetchCategories = useCallback(async () => {
+    setCategoriesLoading(true)
+    setCategoriesError("")
+    try {
+      const res = await fetch("/api/v1/kb-categories", {
+        headers: orgId ? { "x-organization-id": orgId } : {} as Record<string, string>,
+      })
+      const json = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(json?.error || tk("categoriesLoadFailed"))
+      setCategories(json?.data || [])
+    } catch (fetchError) {
+      setCategoriesError(fetchError instanceof Error ? fetchError.message : tk("categoriesLoadFailed"))
+    } finally {
+      setCategoriesLoading(false)
+    }
+  }, [orgId, tk])
 
   useEffect(() => {
     if (open) {
@@ -57,19 +77,18 @@ export function KbArticleForm({ open, onOpenChange, onSaved, initialData, orgId 
         tags: initialData?.tags || "",
       })
       setError("")
-      fetchCategories()
+      void fetchCategories()
     }
-  }, [open, initialData])
-
-  const fetchCategories = async () => {
-    try {
-      const res = await fetch("/api/v1/kb-categories", {
-        headers: orgId ? { "x-organization-id": orgId } : {} as Record<string, string>,
-      })
-      const json = await res.json()
-      if (json.success) setCategories(json.data)
-    } catch {}
-  }
+  }, [
+    fetchCategories,
+    initialData?.categoryId,
+    initialData?.content,
+    initialData?.id,
+    initialData?.status,
+    initialData?.tags,
+    initialData?.title,
+    open,
+  ])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -86,16 +105,16 @@ export function KbArticleForm({ open, onOpenChange, onSaved, initialData, orgId 
         },
         body: JSON.stringify({
           ...form,
-          categoryId: form.categoryId || undefined,
+          categoryId: form.categoryId || (isEdit ? null : undefined),
           tags: form.tags ? form.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
         }),
       })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || "Failed to save")
+      const json = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(json?.error || tk("saveFailed"))
       onSaved()
       onOpenChange(false)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : tk("saveFailed"))
     } finally {
       setSaving(false)
     }
@@ -110,20 +129,28 @@ export function KbArticleForm({ open, onOpenChange, onSaved, initialData, orgId 
       </DialogHeader>
       <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
         <DialogContent>
-          {error && <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded mb-3">{error}</div>}
+          {error && <div role="alert" className="mb-3 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm"><CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />{error}</div>}
           <div className="grid gap-4">
             <div>
               <Label htmlFor="title">{tc("title")} *</Label>
-              <Input id="title" value={form.title} onChange={(e) => update("title", e.target.value)} required />
+              <Input id="title" className="min-h-11" value={form.title} onChange={(e) => update("title", e.target.value)} required />
             </div>
             <div>
               <Label htmlFor="content">{tc("content")} *</Label>
               <Textarea id="content" value={form.content} onChange={(e) => update("content", e.target.value)} rows={8} required />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            {categoriesError && (
+              <div role="alert" className="flex items-center justify-between gap-2 rounded-lg border border-destructive/30 p-3 text-sm">
+                <span>{categoriesError}</span>
+                <Button type="button" variant="outline" className="min-h-11" onClick={() => void fetchCategories()}>
+                  <RotateCcw />{tk("retry")}
+                </Button>
+              </div>
+            )}
+            <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <Label htmlFor="categoryId">{tc("category")}</Label>
-                <Select value={form.categoryId} onChange={(e) => update("categoryId", e.target.value)}>
+                <Select value={form.categoryId} onChange={(e) => update("categoryId", e.target.value)} disabled={categoriesLoading} className="min-h-11">
                   <option value="">{tk("noCategory")}</option>
                   {categories.map((cat) => (
                     <option key={cat.id} value={cat.id}>{cat.name}</option>
@@ -132,7 +159,7 @@ export function KbArticleForm({ open, onOpenChange, onSaved, initialData, orgId 
               </div>
               <div>
                 <Label htmlFor="status">{tc("status")}</Label>
-                <Select value={form.status} onChange={(e) => update("status", e.target.value)}>
+                <Select value={form.status} onChange={(e) => update("status", e.target.value)} className="min-h-11">
                   <option value="draft">{tc("draft")}</option>
                   <option value="published">{tc("published")}</option>
                 </Select>
@@ -140,13 +167,13 @@ export function KbArticleForm({ open, onOpenChange, onSaved, initialData, orgId 
             </div>
             <div>
               <Label htmlFor="tags">{tc("tags")}</Label>
-              <Input id="tags" value={form.tags} onChange={(e) => update("tags", e.target.value)} placeholder="tag1, tag2, tag3" />
+              <Input id="tags" className="min-h-11" value={form.tags} onChange={(e) => update("tags", e.target.value)} placeholder={tk("tagsPlaceholder")} />
             </div>
           </div>
         </DialogContent>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{tc("cancel")}</Button>
-          <Button type="submit" disabled={saving}>{saving ? tc("saving") : isEdit ? tc("update") : tc("create")}</Button>
+          <Button type="button" variant="outline" className="min-h-11" onClick={() => onOpenChange(false)}>{tc("cancel")}</Button>
+          <Button type="submit" className="min-h-11" disabled={saving}>{saving ? tc("saving") : isEdit ? tc("update") : tc("create")}</Button>
         </DialogFooter>
       </form>
     </Dialog>

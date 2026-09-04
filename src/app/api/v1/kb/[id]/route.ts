@@ -4,9 +4,9 @@ import { prisma } from "@/lib/prisma"
 import { withRls } from "@/lib/with-rls"
 
 const updateKbArticleSchema = z.object({
-  title: z.string().optional(),
+  title: z.string().min(1).max(500).optional(),
   content: z.string().optional(),
-  categoryId: z.string().optional(),
+  categoryId: z.string().nullable().optional(),
   status: z.enum(["draft", "published"]).optional(),
   tags: z.array(z.string()).optional(),
 })
@@ -20,9 +20,20 @@ export const GET = withRls(async (_req, { orgId }, { params }: { params: Promise
       include: { category: true },
     })
     if (!article) return NextResponse.json({ error: "Not found" }, { status: 404 })
-    return NextResponse.json({ success: true, data: article })
-  } catch {
-    return NextResponse.json({ error: "Not found" }, { status: 404 })
+    const relatedArticles = await prisma.kbArticle.findMany({
+      where: {
+        organizationId: orgId,
+        id: { not: id },
+        ...(article.categoryId ? { categoryId: article.categoryId } : { categoryId: null }),
+      },
+      orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
+      take: 4,
+      select: { id: true, title: true, status: true, updatedAt: true },
+    })
+    return NextResponse.json({ success: true, data: { ...article, relatedArticles } })
+  } catch (error) {
+    console.error("[kb article GET]", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 })
 
@@ -33,6 +44,16 @@ export const PUT = withRls(async (req, { orgId }, { params }: { params: Promise<
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
 
   try {
+    if (parsed.data.categoryId) {
+      const category = await prisma.kbCategory.findFirst({
+        where: { id: parsed.data.categoryId, organizationId: orgId },
+        select: { id: true },
+      })
+      if (!category) {
+        return NextResponse.json({ error: "Category not found" }, { status: 400 })
+      }
+    }
+
     const result = await prisma.kbArticle.updateMany({
       where: { id, organizationId: orgId },
       data: parsed.data,
@@ -61,9 +82,21 @@ export const DELETE = withRls(async (_req, { orgId }, { params }: { params: Prom
   const { id } = await params
 
   try {
+    const article = await prisma.kbArticle.findFirst({
+      where: { id, organizationId: orgId },
+      select: {
+        id: true,
+        title: true,
+        content: true,
+        categoryId: true,
+        status: true,
+        tags: true,
+      },
+    })
+    if (!article) return NextResponse.json({ error: "Not found" }, { status: 404 })
     const result = await prisma.kbArticle.deleteMany({ where: { id, organizationId: orgId } })
     if (result.count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 })
-    return NextResponse.json({ success: true, data: { deleted: id } })
+    return NextResponse.json({ success: true, data: { deleted: article } })
   } catch (e) {
     console.error(e)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

@@ -1,26 +1,59 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useSession } from "next-auth/react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { KbArticleForm } from "@/components/kb-article-form"
-import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
-import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from "@/components/ui/dialog"
-import { BookOpen, Plus, Search, Eye, Pencil, Trash2, ChevronDown, ChevronRight, FileText, FolderOpen, Settings2 } from "lucide-react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { useTranslations, useLocale } from "next-intl"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { useSession } from "next-auth/react"
+import { useLocale, useTranslations } from "next-intl"
+import {
+  BookOpen,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  CircleAlert,
+  Eye,
+  FilePenLine,
+  FileText,
+  FolderOpen,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Search,
+  Settings2,
+  Trash2,
+} from "lucide-react"
+import { toast } from "sonner"
+
+import { ConfirmDialog } from "@/components/delete-confirm-dialog"
+import { HelpButton } from "@/components/help/help-button"
+import { KbArticleForm } from "@/components/kb-article-form"
+import { TourReplayButton } from "@/components/tour/tour-replay-button"
+import { useAutoTour } from "@/components/tour/tour-provider"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Input } from "@/components/ui/input"
 import { formatDate } from "@/lib/format-date"
-import { DidYouKnow } from "@/components/did-you-know"
+import { checkPermission, type Role } from "@/lib/permissions"
+import { cn } from "@/lib/utils"
+
+type ArticleStatus = "published" | "draft"
 
 interface KbArticle {
   id: string
   title: string
-  content?: string
-  categoryId?: string
-  status: "published" | "draft"
+  content?: string | null
+  categoryId?: string | null
+  category?: { id: string; name: string } | null
+  status: ArticleStatus
   viewCount: number
   helpfulCount: number
   tags: string[]
@@ -31,20 +64,43 @@ interface KbArticle {
 interface KbCategory {
   id: string
   name: string
+  parentId?: string | null
+  sortOrder?: number
   _count?: { articles: number }
 }
 
-function groupByCategory(articles: KbArticle[]): Record<string, KbArticle[]> {
-  const groups: Record<string, KbArticle[]> = {}
-  for (const a of articles) {
-    const cat = a.categoryId || "uncategorized"
-    if (!groups[cat]) groups[cat] = []
-    groups[cat].push(a)
-  }
-  return groups
+interface CategoryCoverage {
+  categoryId: string | null
+  status: ArticleStatus
+  count: number
 }
 
-function getContentPreview(content?: string): string {
+interface LibrarySummary {
+  total: number
+  published: number
+  draft: number
+  views: number
+  categories: CategoryCoverage[]
+}
+
+interface DeletedCategorySnapshot {
+  category: Pick<KbCategory, "id" | "name" | "parentId" | "sortOrder">
+  articleIds: string[]
+  childCategoryIds: string[]
+}
+
+interface DeletedArticleSnapshot {
+  id: string
+  title: string
+  content?: string | null
+  categoryId?: string | null
+  status: ArticleStatus
+  tags: string[]
+}
+
+const UNCATEGORIZED = "uncategorized"
+
+function previewContent(content?: string | null): string {
   if (!content) return ""
   const plain = content
     .replace(/#{1,6}\s/g, "")
@@ -52,374 +108,746 @@ function getContentPreview(content?: string): string {
     .replace(/\*(.+?)\*/g, "$1")
     .replace(/\[(.+?)\]\(.+?\)/g, "$1")
     .replace(/<[^>]+>/g, "")
-    .replace(/\n+/g, " ")
+    .replace(/\s+/g, " ")
     .trim()
-  return plain.length > 120 ? plain.slice(0, 120) + "..." : plain
+  return plain.length > 150 ? `${plain.slice(0, 150)}…` : plain
 }
 
-import { useAutoTour } from "@/components/tour/tour-provider"
-import { TourReplayButton } from "@/components/tour/tour-replay-button"
-import { HelpButton } from "@/components/help/help-button"
-import { PageHeader } from "@/components/page-header"
+async function responseError(response: Response, fallback: string): Promise<Error> {
+  const payload = await response.json().catch(() => null)
+  return new Error(payload?.error || fallback)
+}
 
 export default function KnowledgeBasePage() {
   const { data: session } = useSession()
   const t = useTranslations("kb")
   const tc = useTranslations("common")
-  const [articles, setArticles] = useState<KbArticle[]>([])
-  useAutoTour("knowledgeBase")
-  const [total, setTotal] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState("")
-  const [filterStatus, setFilterStatus] = useState<string>("all")
-  const [filterCategory, setFilterCategory] = useState<string>("all")
-  const [showForm, setShowForm] = useState(false)
-  const [editData, setEditData] = useState<KbArticle | undefined>()
-  const [deleteId, setDeleteId] = useState<string | null>(null)
-  const [deleteName, setDeleteName] = useState("")
-  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set())
-  const [categories, setCategories] = useState<KbCategory[]>([])
-  const [showCatManager, setShowCatManager] = useState(false)
-  const [newCatName, setNewCatName] = useState("")
-  const [catSaving, setCatSaving] = useState(false)
+  const locale = useLocale()
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const orgId = session?.user?.organizationId
+  const role = (session?.user?.role || "viewer") as Role
+  const canWrite = checkPermission(role, "kb", "write")
+  const canDelete = checkPermission(role, "kb", "delete")
 
-  const getCategoryLabel = (catId: string) => {
-    if (catId === "uncategorized") return t("noCategory")
-    const cat = categories.find(c => c.id === catId)
-    return cat?.name || catId
-  }
+  useAutoTour("knowledgeBase")
 
-  const fetchArticles = async () => {
+  const initialStatus = searchParams.get("status")
+  const [search, setSearch] = useState(searchParams.get("q") || "")
+  const [filterStatus, setFilterStatus] = useState<"all" | ArticleStatus>(
+    initialStatus === "published" || initialStatus === "draft" ? initialStatus : "all",
+  )
+  const [filterCategory, setFilterCategory] = useState(searchParams.get("category") || "all")
+  const [articles, setArticles] = useState<KbArticle[]>([])
+  const [summary, setSummary] = useState<LibrarySummary>({ total: 0, published: 0, draft: 0, views: 0, categories: [] })
+  const [categories, setCategories] = useState<KbCategory[]>([])
+  const [loading, setLoading] = useState(true)
+  const [articlesError, setArticlesError] = useState("")
+  const [categoriesError, setCategoriesError] = useState("")
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set())
+  const [showForm, setShowForm] = useState(false)
+  const [editData, setEditData] = useState<KbArticle>()
+  const [deleteArticle, setDeleteArticle] = useState<KbArticle>()
+  const [showCategoryManager, setShowCategoryManager] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState("")
+  const [categorySaving, setCategorySaving] = useState(false)
+  const [deleteCategory, setDeleteCategory] = useState<KbCategory>()
+
+  const headers = useMemo(
+    () => (orgId ? { "x-organization-id": String(orgId) } : {}) as Record<string, string>,
+    [orgId],
+  )
+
+  const fetchArticles = useCallback(async (background = false) => {
+    if (!background) setLoading(true)
+    setArticlesError("")
     try {
-      const res = await fetch("/api/v1/kb?limit=500", {
-        headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>,
-      })
-      const json = await res.json()
-      if (json.success) {
-        setArticles(json.data.articles)
-        setTotal(json.data.total)
+      const response = await fetch("/api/v1/kb?limit=500&summary=1", { headers })
+      if (!response.ok) {
+        throw await responseError(
+          response,
+          response.status === 403 ? t("permissionDenied") : t("loadFailedDescription"),
+        )
       }
-    } catch (err) { console.error(err) } finally { setLoading(false) }
-  }
+      const payload = await response.json()
+      setArticles(payload.data?.articles || [])
+      setSummary(payload.data?.summary || { total: payload.data?.total || 0, published: 0, draft: 0, views: 0, categories: [] })
+    } catch (error) {
+      setArticlesError(error instanceof Error ? error.message : t("loadFailedDescription"))
+    } finally {
+      setLoading(false)
+    }
+  }, [headers, t])
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
+    setCategoriesError("")
     try {
-      const res = await fetch("/api/v1/kb-categories", {
-        headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>,
-      })
-      const json = await res.json()
-      if (json.success) setCategories(json.data)
-    } catch {}
+      const response = await fetch("/api/v1/kb-categories", { headers })
+      if (!response.ok) throw await responseError(response, t("categoriesLoadFailed"))
+      const payload = await response.json()
+      setCategories(payload.data || [])
+    } catch (error) {
+      setCategoriesError(error instanceof Error ? error.message : t("categoriesLoadFailed"))
+    }
+  }, [headers, t])
+
+  useEffect(() => {
+    void fetchArticles()
+    void fetchCategories()
+  }, [fetchArticles, fetchCategories])
+
+  const syncFilters = useCallback((next: { q?: string; status?: "all" | ArticleStatus; category?: string }) => {
+    const query = new URLSearchParams(searchParams.toString())
+    const nextSearch = next.q ?? search
+    const nextStatus = next.status ?? filterStatus
+    const nextCategory = next.category ?? filterCategory
+    if (nextSearch.trim()) query.set("q", nextSearch.trim())
+    else query.delete("q")
+    if (nextStatus !== "all") query.set("status", nextStatus)
+    else query.delete("status")
+    if (nextCategory !== "all") query.set("category", nextCategory)
+    else query.delete("category")
+    const queryString = query.toString()
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false })
+  }, [filterCategory, filterStatus, pathname, router, search, searchParams])
+
+  const setSearchFilter = (value: string) => {
+    setSearch(value)
+    syncFilters({ q: value })
   }
 
-  useEffect(() => { fetchArticles(); fetchCategories() }, [session])
+  const setStatusFilter = (value: "all" | ArticleStatus) => {
+    setFilterStatus(value)
+    syncFilters({ status: value })
+  }
 
-  const handleDelete = async () => {
-    if (!deleteId) return
-    const res = await fetch(`/api/v1/kb/${deleteId}`, {
-      method: "DELETE",
-      headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>,
+  const setCategoryFilter = (value: string) => {
+    setFilterCategory(value)
+    syncFilters({ category: value })
+  }
+
+  const clearFilters = () => {
+    setSearch("")
+    setFilterStatus("all")
+    setFilterCategory("all")
+    const query = new URLSearchParams(searchParams.toString())
+    query.delete("q")
+    query.delete("status")
+    query.delete("category")
+    const queryString = query.toString()
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false })
+  }
+
+  const categoryLabel = useCallback((categoryId: string) => {
+    if (categoryId === UNCATEGORIZED) return t("noCategory")
+    return categories.find((category) => category.id === categoryId)?.name || t("unknownCategory")
+  }, [categories, t])
+
+  const coverageFor = useCallback((categoryId: string) => {
+    const normalized = categoryId === UNCATEGORIZED ? null : categoryId
+    const rows = summary.categories.filter((row) => row.categoryId === normalized)
+    return {
+      published: rows.find((row) => row.status === "published")?.count || 0,
+      draft: rows.find((row) => row.status === "draft")?.count || 0,
+    }
+  }, [summary.categories])
+
+  const filteredArticles = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase(locale)
+    return articles.filter((article) => {
+      if (filterStatus !== "all" && article.status !== filterStatus) return false
+      if (filterCategory !== "all" && (article.categoryId || UNCATEGORIZED) !== filterCategory) return false
+      if (!query) return true
+      return article.title.toLocaleLowerCase(locale).includes(query)
+        || article.tags.some((tag) => tag.toLocaleLowerCase(locale).includes(query))
+        || (article.content || "").toLocaleLowerCase(locale).includes(query)
     })
-    if (!res.ok) throw new Error(tc("errorDeleteFailed"))
-    fetchArticles()
+  }, [articles, filterCategory, filterStatus, locale, search])
+
+  const orderedGroups = useMemo(() => {
+    const grouped = new Map<string, KbArticle[]>()
+    for (const article of filteredArticles) {
+      const key = article.categoryId || UNCATEGORIZED
+      grouped.set(key, [...(grouped.get(key) || []), article])
+    }
+    const categoryOrder = new Map(categories.map((category, index) => [category.id, index]))
+    return [...grouped.entries()].sort(([left], [right]) => {
+      if (left === UNCATEGORIZED) return 1
+      if (right === UNCATEGORIZED) return -1
+      return (categoryOrder.get(left) ?? Number.MAX_SAFE_INTEGER) - (categoryOrder.get(right) ?? Number.MAX_SAFE_INTEGER)
+    })
+  }, [categories, filteredArticles])
+
+  const returnContext = useMemo(() => {
+    const query = new URLSearchParams(searchParams.toString())
+    if (search.trim()) query.set("q", search.trim())
+    else query.delete("q")
+    if (filterStatus !== "all") query.set("status", filterStatus)
+    else query.delete("status")
+    if (filterCategory !== "all") query.set("category", filterCategory)
+    else query.delete("category")
+    const queryString = query.toString()
+    return queryString ? `${pathname}?${queryString}` : pathname
+  }, [filterCategory, filterStatus, pathname, search, searchParams])
+  const articleHref = (articleId: string) => `/knowledge-base/${articleId}?returnTo=${encodeURIComponent(returnContext)}`
+  const hasFilters = Boolean(search.trim() || filterStatus !== "all" || filterCategory !== "all")
+
+  const refreshLibrary = async () => {
+    await Promise.all([fetchArticles(true), fetchCategories()])
+  }
+
+  const restoreArticle = async (snapshot: DeletedArticleSnapshot) => {
+    const makeRequest = (categoryId: string | null | undefined) => fetch("/api/v1/kb", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...headers },
+      body: JSON.stringify({
+        restoreId: snapshot.id,
+        title: snapshot.title,
+        content: snapshot.content || undefined,
+        categoryId: categoryId || undefined,
+        status: snapshot.status,
+        tags: snapshot.tags,
+      }),
+    })
+    let response = await makeRequest(snapshot.categoryId)
+    if (!response.ok && snapshot.categoryId) response = await makeRequest(null)
+    if (!response.ok) throw await responseError(response, t("restoreFailed"))
+    await refreshLibrary()
+    toast.success(t("articleRestored"))
+  }
+
+  const handleDeleteArticle = async () => {
+    if (!deleteArticle) return
+    const response = await fetch(`/api/v1/kb/${deleteArticle.id}`, { method: "DELETE", headers })
+    if (!response.ok) throw await responseError(response, t("articleDeleteFailed"))
+    const payload = await response.json()
+    const snapshot = payload.data?.deleted as DeletedArticleSnapshot
+    await fetchArticles(true)
+    toast.success(t("articleDeleted"), {
+      duration: 10_000,
+      action: {
+        label: t("undo"),
+        onClick: () => void restoreArticle(snapshot).catch(() => toast.error(t("restoreFailed"))),
+      },
+    })
   }
 
   const handleAddCategory = async () => {
-    if (!newCatName.trim()) return
-    setCatSaving(true)
+    const name = newCategoryName.trim()
+    if (!name) return
+    setCategorySaving(true)
     try {
-      const res = await fetch("/api/v1/kb-categories", {
+      const response = await fetch("/api/v1/kb-categories", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>),
-        },
-        body: JSON.stringify({ name: newCatName.trim() }),
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify({ name }),
       })
-      if (res.ok) {
-        setNewCatName("")
-        fetchCategories()
-      }
-    } catch {} finally { setCatSaving(false) }
+      if (!response.ok) throw await responseError(response, t("categoryCreateFailed"))
+      setNewCategoryName("")
+      await fetchCategories()
+      toast.success(t("categoryCreated"))
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("categoryCreateFailed"))
+    } finally {
+      setCategorySaving(false)
+    }
   }
 
-  const handleDeleteCategory = async (catId: string) => {
-    // Unset categoryId on articles, then delete category
-    await fetch(`/api/v1/kb-categories/${catId}`, {
-      method: "DELETE",
-      headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>,
+  const restoreCategory = async (snapshot: DeletedCategorySnapshot) => {
+    const makeRequest = (parentId: string | null | undefined) => fetch("/api/v1/kb-categories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...headers },
+      body: JSON.stringify({
+        restoreId: snapshot.category.id,
+        name: snapshot.category.name,
+        parentId: parentId || undefined,
+        sortOrder: snapshot.category.sortOrder,
+        restoreArticleIds: snapshot.articleIds,
+        restoreChildCategoryIds: snapshot.childCategoryIds,
+      }),
     })
-    fetchCategories()
-    fetchArticles()
+    let response = await makeRequest(snapshot.category.parentId)
+    if (!response.ok && snapshot.category.parentId) response = await makeRequest(null)
+    if (!response.ok) throw await responseError(response, t("restoreFailed"))
+    await refreshLibrary()
+    toast.success(t("categoryRestored"))
   }
 
-  const toggleCategory = (cat: string) => {
-    setCollapsedCategories(prev => {
-      const next = new Set(prev)
-      if (next.has(cat)) next.delete(cat); else next.add(cat)
+  const handleDeleteCategory = async () => {
+    if (!deleteCategory) return
+    const response = await fetch(`/api/v1/kb-categories/${deleteCategory.id}`, { method: "DELETE", headers })
+    if (!response.ok) throw await responseError(response, t("categoryDeleteFailed"))
+    const payload = await response.json()
+    const snapshot = payload.data?.deleted as DeletedCategorySnapshot
+    if (filterCategory === deleteCategory.id) setCategoryFilter("all")
+    await refreshLibrary()
+    toast.success(t("categoryDeleted", { count: snapshot.articleIds.length, childCount: snapshot.childCategoryIds.length }), {
+      duration: 10_000,
+      action: {
+        label: t("undo"),
+        onClick: () => void restoreCategory(snapshot).catch(() => toast.error(t("restoreFailed"))),
+      },
+    })
+  }
+
+  const toggleCategory = (categoryId: string) => {
+    setCollapsedCategories((previous) => {
+      const next = new Set(previous)
+      if (next.has(categoryId)) next.delete(categoryId)
+      else next.add(categoryId)
       return next
     })
   }
 
-  const filtered = articles.filter(a => {
-    if (filterStatus !== "all" && a.status !== filterStatus) return false
-    if (filterCategory !== "all" && (a.categoryId || "uncategorized") !== filterCategory) return false
-    if (search) {
-      const q = search.toLowerCase()
-      if (!a.title.toLowerCase().includes(q) && !a.tags.some(t => t.includes(q)) && !(a.content || "").toLowerCase().includes(q)) return false
-    }
-    return true
-  })
-
-  const published = articles.filter(a => a.status === "published").length
-  const totalViews = articles.reduce((s, a) => s + a.viewCount, 0)
-  const articleCatIds = [...new Set(articles.map(a => a.categoryId || "uncategorized"))]
-  const grouped = groupByCategory(filtered)
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
-        <div className="animate-pulse space-y-4">
-          <div className="grid gap-4 md:grid-cols-4">{[1, 2, 3, 4].map(i => <div key={i} className="h-20 bg-muted rounded-lg" />)}</div>
-          <div className="h-96 bg-muted rounded-lg" />
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <PageHeader
-        title={<>{t("title")} <TourReplayButton tourId="knowledgeBase" /> <HelpButton slug="knowledge-base" variant="label" /></>}
-        description={<p className="text-sm text-muted-foreground">{total} {t("articles")} · {published} {t("publishedArticles")} · {totalViews} {t("views")}</p>}
-        actions={
-          <>
-            <Button variant="outline" size="sm" onClick={() => setShowCatManager(true)} data-tour-id="kb-categories">
-              <Settings2 className="h-4 w-4 mr-1" /> {t("manageCategories") || "Categories"}
-            </Button>
-            <Button onClick={() => { setEditData(undefined); setShowForm(true) }} size="sm" data-tour-id="kb-new">
-              <Plus className="h-4 w-4 mr-1" /> {t("newArticle")}
-            </Button>
-          </>
-        }
-      />
-
-      <DidYouKnow page="knowledge-base" className="mb-4" />
-
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-48 max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input placeholder={t("searchPlaceholder")} value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-9" />
+    <div className="space-y-4">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h1 className="truncate text-xl font-semibold tracking-tight">{t("title")}</h1>
+            <TourReplayButton tourId="knowledgeBase" />
+            <HelpButton slug="knowledge-base" />
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">{t("pageDescription")}</p>
+          {!canWrite && <p className="mt-1 text-xs text-muted-foreground">{t("readOnlyHint")}</p>}
         </div>
-        <div className="flex items-center gap-1">
-          <Button variant={filterStatus === "all" ? "default" : "outline"} size="sm" className="h-9" onClick={() => setFilterStatus("all")}>
-            {t("filterAll")} ({total})
-          </Button>
-          <Button variant={filterStatus === "published" ? "default" : "outline"} size="sm" className="h-9" onClick={() => setFilterStatus("published")}>
-            {t("filterPublished")} ({published})
-          </Button>
-          <Button variant={filterStatus === "draft" ? "default" : "outline"} size="sm" className="h-9" onClick={() => setFilterStatus("draft")}>
-            {t("filterDrafts")} ({total - published})
-          </Button>
-        </div>
-        {(categories.length > 0 || articleCatIds.length > 1) && (
-          <select
-            value={filterCategory}
-            onChange={e => setFilterCategory(e.target.value)}
-            className="h-9 rounded-md border border-zinc-200 dark:border-zinc-700 bg-background px-2 text-sm"
-          >
-            <option value="all">{t("allCategories")}</option>
-            {categories.map(cat => (
-              <option key={cat.id} value={cat.id}>{cat.name}</option>
-            ))}
-            <option value="uncategorized">{t("noCategory")}</option>
-          </select>
+        {canWrite && (
+          <div className="flex gap-2 sm:shrink-0">
+            <Button
+              variant="outline"
+              className="min-h-11 flex-1 px-4 sm:flex-none"
+              onClick={() => setShowCategoryManager(true)}
+              data-tour-id="kb-categories"
+            >
+              <Settings2 /> {t("manageCategories")}
+            </Button>
+            <Button
+              className="min-h-11 flex-1 px-4 sm:flex-none"
+              onClick={() => { setEditData(undefined); setShowForm(true) }}
+              data-tour-id="kb-new"
+            >
+              <Plus /> {t("newArticle")}
+            </Button>
+          </div>
         )}
-      </div>
+      </header>
 
-      {/* Articles table grouped by category */}
-      <Card>
-        <CardContent className="p-0">
-          {filtered.length === 0 ? (
-            <div className="py-12 text-center text-muted-foreground">
-              <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p>{search ? t("noArticlesFound") : t("noArticles")}</p>
+      <section aria-label={t("librarySummaryLabel")} className="flex flex-wrap items-center gap-x-4 gap-y-1 border-y py-2 text-xs text-muted-foreground">
+        <span><strong className="font-semibold text-foreground">{summary.total}</strong> {t("articles")}</span>
+        <span className="inline-flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5" /> <strong className="font-semibold text-foreground">{summary.published}</strong> {t("publishedArticles")}</span>
+        <span className="inline-flex items-center gap-1"><FilePenLine className="h-3.5 w-3.5" /> <strong className="font-semibold text-foreground">{summary.draft}</strong> {t("draftArticles")}</span>
+        <span className="inline-flex items-center gap-1"><Eye className="h-3.5 w-3.5" /> <strong className="font-semibold text-foreground">{summary.views}</strong> {t("views")}</span>
+      </section>
+
+      {articlesError && articles.length > 0 && (
+        <div role="alert" className="flex flex-col gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <span className="flex items-center gap-2"><CircleAlert className="h-4 w-4 shrink-0" />{articlesError}</span>
+          <Button variant="outline" className="min-h-11 shrink-0" onClick={() => void fetchArticles(true)}><RotateCcw />{t("retry")}</Button>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
+        <aside className="hidden w-60 shrink-0 rounded-xl border bg-card p-2 lg:block" aria-label={t("categoryFilterLabel")}>
+          <CategoryFilterButton
+            active={filterCategory === "all"}
+            name={t("allCategories")}
+            total={summary.total}
+            published={summary.published}
+            draft={summary.draft}
+            onClick={() => setCategoryFilter("all")}
+          />
+          {categories.map((category) => {
+            const coverage = coverageFor(category.id)
+            return (
+              <CategoryFilterButton
+                key={category.id}
+                active={filterCategory === category.id}
+                name={category.name}
+                total={category._count?.articles || 0}
+                published={coverage.published}
+                draft={coverage.draft}
+                onClick={() => setCategoryFilter(category.id)}
+              />
+            )
+          })}
+          {(() => {
+            const coverage = coverageFor(UNCATEGORIZED)
+            const total = coverage.published + coverage.draft
+            return total > 0 ? (
+              <CategoryFilterButton
+                active={filterCategory === UNCATEGORIZED}
+                name={t("noCategory")}
+                total={total}
+                published={coverage.published}
+                draft={coverage.draft}
+                onClick={() => setCategoryFilter(UNCATEGORIZED)}
+              />
+            ) : null
+          })()}
+          {categoriesError && (
+            <div role="alert" className="mt-2 rounded-lg border border-destructive/30 p-2 text-xs">
+              <p>{categoriesError}</p>
+              <button className="mt-1 font-medium underline underline-offset-2" onClick={() => void fetchCategories()}>{t("retry")}</button>
             </div>
-          ) : filterCategory !== "all" ? (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/30">
-                  <th className="p-2 pl-4 text-left font-medium w-[45%]">{t("colTitle")}</th>
-                  <th className="p-2 text-left font-medium w-[30%]">{t("colPreview")}</th>
-                  <th className="p-2 text-center font-medium w-16">{t("colStatus")}</th>
-                  <th className="p-2 text-center font-medium w-16"><Eye className="h-3.5 w-3.5 mx-auto" /></th>
-                  <th className="p-2 text-center font-medium w-24">{t("colDate")}</th>
-                  <th className="p-2 text-right font-medium w-20 pr-4"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(article => (
-                  <ArticleRow
-                    key={article.id}
-                    article={article}
-                    onEdit={() => { setEditData(article); setShowForm(true) }}
-                    onDelete={() => { setDeleteId(article.id); setDeleteName(article.title) }}
-                  />
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            Object.entries(grouped)
-              .sort(([a], [b]) => a.localeCompare(b))
-              .map(([cat, catArticles]) => (
-                <div key={cat}>
-                  <button
-                    onClick={() => toggleCategory(cat)}
-                    className="w-full flex items-center gap-2 px-4 py-2 bg-muted/40 hover:bg-muted/60 transition-colors border-b text-left"
-                  >
-                    {collapsedCategories.has(cat)
-                      ? <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      : <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                    }
-                    <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium text-sm">{getCategoryLabel(cat)}</span>
-                    <Badge variant="secondary" className="text-[10px] ml-1">{catArticles.length}</Badge>
-                  </button>
-                  {!collapsedCategories.has(cat) && (
-                    <table className="w-full text-sm">
-                      <tbody>
-                        {catArticles.map(article => (
-                          <ArticleRow
-                            key={article.id}
-                            article={article}
-                            onEdit={() => { setEditData(article); setShowForm(true) }}
-                            onDelete={() => { setDeleteId(article.id); setDeleteName(article.title) }}
-                          />
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-              ))
           )}
-        </CardContent>
-      </Card>
+        </aside>
+
+        <main className="min-w-0 flex-1 rounded-xl border bg-card">
+          <div className="flex flex-col gap-2 border-b p-3 md:flex-row md:items-center">
+            <label className="relative min-w-0 flex-1 md:max-w-sm">
+              <span className="sr-only">{t("searchLabel")}</span>
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(event) => setSearchFilter(event.target.value)}
+                placeholder={t("searchPlaceholder")}
+                className="min-h-11 pl-9"
+              />
+            </label>
+            <label className="lg:hidden">
+              <span className="sr-only">{t("categoryFilterLabel")}</span>
+              <select
+                value={filterCategory}
+                onChange={(event) => setCategoryFilter(event.target.value)}
+                className="min-h-11 w-full rounded-lg border bg-background px-3 text-sm md:w-auto"
+              >
+                <option value="all">{t("allCategories")}</option>
+                {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+                <option value={UNCATEGORIZED}>{t("noCategory")}</option>
+              </select>
+            </label>
+            <div className="flex overflow-x-auto rounded-lg border p-0.5" role="group" aria-label={t("statusFilterLabel")}>
+              {(["all", "published", "draft"] as const).map((status) => (
+                <button
+                  key={status}
+                  type="button"
+                  aria-pressed={filterStatus === status}
+                  onClick={() => setStatusFilter(status)}
+                  className={cn(
+                    "min-h-11 shrink-0 rounded-md px-3 text-xs font-medium outline-none transition-colors motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring",
+                    filterStatus === status ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  {status === "all" ? t("filterAll") : status === "published" ? t("filterPublished") : t("filterDrafts")}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {loading ? (
+            <LibrarySkeleton />
+          ) : articlesError && articles.length === 0 ? (
+            <LibraryError error={articlesError} retryLabel={t("retry")} onRetry={() => void fetchArticles()} />
+          ) : filteredArticles.length === 0 ? (
+            <div className="flex min-h-64 flex-col items-center justify-center px-4 py-10 text-center">
+              <BookOpen className="h-8 w-8 text-muted-foreground" />
+              <h2 className="mt-3 text-base font-semibold">{hasFilters ? t("noResultsTitle") : t("emptyTitle")}</h2>
+              <p className="mt-1 max-w-md text-sm text-muted-foreground">{hasFilters ? t("noResultsDescription") : t("emptyDescription")}</p>
+              <div className="mt-4 flex flex-wrap justify-center gap-2">
+                {hasFilters && <Button variant="outline" className="min-h-11" onClick={clearFilters}>{t("clearFilters")}</Button>}
+                {canWrite && <Button className="min-h-11" onClick={() => { setEditData(undefined); setShowForm(true) }}><Plus />{t("newArticle")}</Button>}
+              </div>
+            </div>
+          ) : filterCategory === "all" ? (
+            <div>
+              {orderedGroups.map(([categoryId, groupArticles]) => {
+                const expanded = !collapsedCategories.has(categoryId)
+                const panelId = `kb-category-${categoryId}`
+                return (
+                  <section key={categoryId} aria-labelledby={`${panelId}-heading`}>
+                    <button
+                      id={`${panelId}-heading`}
+                      type="button"
+                      aria-expanded={expanded}
+                      aria-controls={panelId}
+                      onClick={() => toggleCategory(categoryId)}
+                      className="flex min-h-11 w-full items-center gap-2 border-b bg-muted/30 px-3 text-left text-sm outline-none transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                    >
+                      {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                      <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                      <span className="min-w-0 flex-1 truncate font-medium">{categoryLabel(categoryId)}</span>
+                      <Badge variant="secondary">{groupArticles.length}</Badge>
+                    </button>
+                    <div id={panelId} hidden={!expanded}>
+                      {groupArticles.map((article) => (
+                        <ArticleRow
+                          key={article.id}
+                          article={article}
+                          href={articleHref(article.id)}
+                          locale={locale}
+                          canWrite={canWrite}
+                          canDelete={canDelete}
+                          onEdit={() => { setEditData(article); setShowForm(true) }}
+                          onDelete={() => setDeleteArticle(article)}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                )
+              })}
+            </div>
+          ) : (
+            <div>
+              {filteredArticles.map((article) => (
+                <ArticleRow
+                  key={article.id}
+                  article={article}
+                  href={articleHref(article.id)}
+                  locale={locale}
+                  canWrite={canWrite}
+                  canDelete={canDelete}
+                  onEdit={() => { setEditData(article); setShowForm(true) }}
+                  onDelete={() => setDeleteArticle(article)}
+                />
+              ))}
+            </div>
+          )}
+        </main>
+      </div>
 
       <KbArticleForm
         open={showForm}
         onOpenChange={(open) => { setShowForm(open); if (!open) setEditData(undefined) }}
-        onSaved={() => { fetchArticles(); fetchCategories() }}
-        initialData={editData ? { ...editData, tags: editData.tags.join(", ") } : undefined}
+        onSaved={() => void refreshLibrary()}
+        initialData={editData ? {
+          id: editData.id,
+          title: editData.title,
+          content: editData.content || "",
+          categoryId: editData.categoryId || "",
+          status: editData.status,
+          tags: editData.tags.join(", "),
+        } : undefined}
         orgId={orgId}
       />
 
-      <DeleteConfirmDialog
-        open={!!deleteId}
-        onOpenChange={(open) => { if (!open) setDeleteId(null) }}
-        onConfirm={handleDelete}
+      <ConfirmDialog
+        open={Boolean(deleteArticle)}
+        onOpenChange={(open) => { if (!open) setDeleteArticle(undefined) }}
+        onConfirm={handleDeleteArticle}
         title={t("deleteArticle")}
-        itemName={deleteName}
+        description={deleteArticle ? t("deleteArticleDescription", { title: deleteArticle.title }) : undefined}
       />
 
-      {/* Category Management Modal */}
-      <Dialog open={showCatManager} onOpenChange={setShowCatManager}>
+      <Dialog open={showCategoryManager} onOpenChange={setShowCategoryManager}>
         <DialogHeader>
-          <DialogTitle>{t("manageCategories") || "Manage Categories"}</DialogTitle>
+          <DialogTitle>{t("manageCategories")}</DialogTitle>
         </DialogHeader>
         <DialogContent>
-          <div className="space-y-3">
-            {/* Add new category */}
-            <div className="flex gap-2">
+          <p className="mb-3 text-sm text-muted-foreground">{t("categoryManagerDescription")}</p>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <label className="min-w-0 flex-1">
+              <span className="sr-only">{t("newCategoryLabel")}</span>
               <Input
-                value={newCatName}
-                onChange={e => setNewCatName(e.target.value)}
-                placeholder={t("newCategoryPlaceholder") || "Category name..."}
-                className="flex-1"
-                onKeyDown={e => e.key === "Enter" && handleAddCategory()}
+                value={newCategoryName}
+                onChange={(event) => setNewCategoryName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault()
+                    void handleAddCategory()
+                  }
+                }}
+                placeholder={t("newCategoryPlaceholder")}
+                className="min-h-11"
               />
-              <Button size="sm" onClick={handleAddCategory} disabled={catSaving || !newCatName.trim()}>
-                <Plus className="h-4 w-4 mr-1" /> {tc("add") || "Add"}
-              </Button>
+            </label>
+            <Button className="min-h-11" onClick={() => void handleAddCategory()} disabled={categorySaving || !newCategoryName.trim()}>
+              <Plus />{categorySaving ? tc("saving") : t("addCategory")}
+            </Button>
+          </div>
+          {categoriesError && (
+            <div role="alert" className="mt-3 flex items-center justify-between gap-2 rounded-lg border border-destructive/30 p-3 text-sm">
+              <span>{categoriesError}</span>
+              <Button variant="outline" className="min-h-11" onClick={() => void fetchCategories()}>{t("retry")}</Button>
             </div>
-
-            {/* Category list */}
-            {categories.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">{t("noCategories") || "No categories yet"}</p>
-            ) : (
-              <div className="space-y-1">
-                {categories.map(cat => (
-                  <div key={cat.id} className="flex items-center justify-between px-3 py-2 rounded-md border border-zinc-200 dark:border-zinc-700 bg-muted/20 hover:bg-muted/40 transition-colors">
-                    <div className="flex items-center gap-2">
-                      <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">{cat.name}</span>
-                      {cat._count && <Badge variant="secondary" className="text-[10px]">{cat._count.articles}</Badge>}
-                    </div>
-                    <button
-                      onClick={() => handleDeleteCategory(cat.id)}
-                      className="p-1 rounded hover:bg-muted"
-                      title={tc("delete")}
-                    >
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                    </button>
-                  </div>
-                ))}
+          )}
+          <div className="mt-3 max-h-[45vh] space-y-1 overflow-y-auto">
+            {categories.length === 0 && !categoriesError ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">{t("noCategories")}</p>
+            ) : categories.map((category) => (
+              <div key={category.id} className="flex min-h-11 items-center gap-2 rounded-lg border px-3">
+                <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                <span className="min-w-0 flex-1 truncate text-sm font-medium">{category.name}</span>
+                <span className="text-xs text-muted-foreground">{t("articleCount", { count: category._count?.articles || 0 })}</span>
+                {canDelete && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-11 w-11 text-destructive hover:text-destructive"
+                    aria-label={t("deleteCategoryNamed", { name: category.name })}
+                    onClick={() => setDeleteCategory(category)}
+                  >
+                    <Trash2 />
+                  </Button>
+                )}
               </div>
-            )}
+            ))}
           </div>
         </DialogContent>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setShowCatManager(false)}>{tc("close") || tc("cancel")}</Button>
+          <Button variant="outline" className="min-h-11" onClick={() => setShowCategoryManager(false)}>{tc("close")}</Button>
         </DialogFooter>
       </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(deleteCategory)}
+        onOpenChange={(open) => { if (!open) setDeleteCategory(undefined) }}
+        onConfirm={handleDeleteCategory}
+        title={t("deleteCategory")}
+        description={deleteCategory
+          ? t("deleteCategoryDescription", {
+              name: deleteCategory.name,
+              count: deleteCategory._count?.articles || 0,
+              childCount: categories.filter((category) => category.parentId === deleteCategory.id).length,
+            })
+          : undefined}
+      />
     </div>
   )
 }
 
-function ArticleRow({ article, onEdit, onDelete }: { article: KbArticle; onEdit: () => void; onDelete: () => void }) {
-  const tc = useTranslations("common")
-  const locale = useLocale()
-  const preview = getContentPreview(article.content)
-
+function CategoryFilterButton({
+  active,
+  name,
+  total,
+  published,
+  draft,
+  onClick,
+}: {
+  active: boolean
+  name: string
+  total: number
+  published: number
+  draft: number
+  onClick: () => void
+}) {
+  const t = useTranslations("kb")
   return (
-    <tr className="border-b last:border-b-0 hover:bg-muted/20 transition-colors group">
-      <td className="p-2 pl-4">
-        <div className="flex items-center gap-2">
-          <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-          <div className="min-w-0">
-            <Link href={`/knowledge-base/${article.id}`} className="font-medium hover:text-primary truncate block">
-              {article.title}
-            </Link>
-            {article.tags.length > 0 && (
-              <div className="flex gap-1 mt-0.5">
-                {article.tags.slice(0, 3).map(tag => (
-                  <span key={tag} className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{tag}</span>
-                ))}
-                {article.tags.length > 3 && <span className="text-[10px] text-muted-foreground">+{article.tags.length - 3}</span>}
-              </div>
-            )}
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        "mb-0.5 w-full rounded-lg px-3 py-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+        active ? "bg-foreground text-background" : "hover:bg-muted",
+      )}
+    >
+      <span className="flex items-center gap-2 text-sm font-medium">
+        <span className="min-w-0 flex-1 truncate">{name}</span>
+        <span className={cn("text-xs", active ? "text-background/70" : "text-muted-foreground")}>{total}</span>
+      </span>
+      <span className={cn("mt-0.5 flex items-center gap-2 text-[11px]", active ? "text-background/70" : "text-muted-foreground")}>
+        <span className="inline-flex items-center gap-1"><CheckCircle2 className="h-3 w-3" />{t("publishedCount", { count: published })}</span>
+        <span className="inline-flex items-center gap-1"><FilePenLine className="h-3 w-3" />{t("draftCount", { count: draft })}</span>
+      </span>
+    </button>
+  )
+}
+
+function PublicationBadge({ status }: { status: ArticleStatus }) {
+  const t = useTranslations("kb")
+  const published = status === "published"
+  return (
+    <Badge variant={published ? "outline" : "secondary"} className="gap-1 whitespace-nowrap font-medium">
+      {published ? <CheckCircle2 className="h-3 w-3" /> : <FilePenLine className="h-3 w-3" />}
+      {published ? t("publishedStatus") : t("draftStatus")}
+    </Badge>
+  )
+}
+
+function ArticleRow({
+  article,
+  href,
+  locale,
+  canWrite,
+  canDelete,
+  onEdit,
+  onDelete,
+}: {
+  article: KbArticle
+  href: string
+  locale: string
+  canWrite: boolean
+  canDelete: boolean
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  const t = useTranslations("kb")
+  const tc = useTranslations("common")
+  const preview = previewContent(article.content)
+  return (
+    <article className="grid min-h-[4.25rem] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b px-3 py-2 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+      <div className="flex min-w-0 items-start gap-2">
+        <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+        <div className="min-w-0">
+          <Link href={href} className="block truncate text-sm font-medium outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring">
+            {article.title}
+          </Link>
+          {preview && <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{preview}</p>}
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground sm:hidden">
+            <PublicationBadge status={article.status} />
+            <span>{formatDate(article.updatedAt, locale, { day: "2-digit", month: "short", year: "numeric" })}</span>
           </div>
         </div>
-      </td>
-      <td className="p-2 text-xs text-muted-foreground truncate max-w-[200px]">{preview}</td>
-      <td className="p-2 text-center">
-        <span className={`inline-block w-2 h-2 rounded-full ${article.status === "published" ? "bg-green-500" : "bg-yellow-400"}`} title={article.status} />
-      </td>
-      <td className="p-2 text-center text-xs text-muted-foreground">{article.viewCount}</td>
-      <td className="p-2 text-center text-xs text-muted-foreground">{formatDate(article.updatedAt, locale, { day: "2-digit", month: "2-digit" })}</td>
-      <td className="p-2 pr-4 text-right">
-        <div className="flex items-center gap-0.5 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-          <button onClick={onEdit} className="p-1 rounded hover:bg-muted" title={tc("edit")}>
-            <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
-          </button>
-          <button onClick={onDelete} className="p-1 rounded hover:bg-muted" title={tc("delete")}>
-            <Trash2 className="h-3.5 w-3.5 text-destructive" />
-          </button>
+      </div>
+      <div className="hidden items-center gap-3 text-xs text-muted-foreground sm:flex">
+        <PublicationBadge status={article.status} />
+        <span className="inline-flex items-center gap-1"><Eye className="h-3.5 w-3.5" />{article.viewCount}</span>
+        <span className="w-24 text-right">{formatDate(article.updatedAt, locale, { day: "2-digit", month: "short", year: "numeric" })}</span>
+      </div>
+      <div className="flex justify-end">
+        {(canWrite || canDelete) ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-11 w-11" aria-label={t("articleActionsNamed", { title: article.title })}>
+                <MoreHorizontal />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link href={href}><BookOpen />{t("openArticle")}</Link>
+              </DropdownMenuItem>
+              {canWrite && <DropdownMenuItem onSelect={onEdit}><Pencil />{tc("edit")}</DropdownMenuItem>}
+              {canDelete && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={onDelete} className="text-destructive focus:text-destructive"><Trash2 />{tc("delete")}</DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <Button asChild variant="ghost" size="icon" className="h-11 w-11" aria-label={t("openArticleNamed", { title: article.title })}>
+            <Link href={href}><ChevronRight /></Link>
+          </Button>
+        )}
+      </div>
+    </article>
+  )
+}
+
+function LibrarySkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Loading" className="divide-y">
+      {[0, 1, 2, 3, 4].map((index) => (
+        <div key={index} className="flex min-h-[4.25rem] animate-pulse items-center gap-3 px-3 py-2 motion-reduce:animate-none">
+          <div className="h-4 w-4 rounded bg-muted" />
+          <div className="min-w-0 flex-1 space-y-2"><div className="h-3 w-2/5 rounded bg-muted" /><div className="h-2.5 w-3/4 rounded bg-muted" /></div>
+          <div className="h-7 w-20 rounded bg-muted" />
         </div>
-      </td>
-    </tr>
+      ))}
+    </div>
+  )
+}
+
+function LibraryError({ error, retryLabel, onRetry }: { error: string; retryLabel: string; onRetry: () => void }) {
+  const t = useTranslations("kb")
+  return (
+    <div role="alert" className="flex min-h-64 flex-col items-center justify-center px-4 py-10 text-center">
+      <CircleAlert className="h-8 w-8 text-destructive" />
+      <h2 className="mt-3 text-base font-semibold">{t("loadFailedTitle")}</h2>
+      <p className="mt-1 max-w-md text-sm text-muted-foreground">{error}</p>
+      <Button variant="outline" className="mt-4 min-h-11" onClick={onRetry}><RotateCcw />{retryLabel}</Button>
+    </div>
   )
 }

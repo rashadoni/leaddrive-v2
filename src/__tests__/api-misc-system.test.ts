@@ -5,8 +5,15 @@ import { NextRequest, NextResponse } from "next/server"
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    kbCategory: { findMany: vi.fn(), create: vi.fn(), delete: vi.fn() },
-    kbArticle: { updateMany: vi.fn() },
+    $transaction: vi.fn(),
+    kbCategory: {
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+      create: vi.fn(),
+      updateMany: vi.fn(),
+      deleteMany: vi.fn(),
+    },
+    kbArticle: { findMany: vi.fn(), updateMany: vi.fn() },
     leadAssignmentRule: { findMany: vi.fn(), create: vi.fn(), findFirst: vi.fn(), update: vi.fn(), delete: vi.fn() },
     slaPolicy: { findMany: vi.fn(), create: vi.fn(), findFirst: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn() },
     emailLog: { findUnique: vi.fn(), update: vi.fn() },
@@ -83,6 +90,10 @@ function params(id: string) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(prisma.$transaction).mockImplementation(async (callback: any) => callback({
+    kbCategory: prisma.kbCategory,
+    kbArticle: prisma.kbArticle,
+  }))
   vi.mocked(getOrgId).mockResolvedValue("org-1")
   vi.mocked(getSession).mockResolvedValue(AUTH as any)
   vi.mocked(requireAuth).mockResolvedValue(AUTH as never)
@@ -183,13 +194,49 @@ describe("KB Categories", () => {
   })
 
   it("DELETE removes category and unsets articles", async () => {
+    vi.mocked(prisma.kbCategory.findFirst).mockResolvedValue({ id: "cat1", name: "FAQ", parentId: null, sortOrder: 0 } as any)
+    vi.mocked(prisma.kbCategory.findMany).mockResolvedValue([{ id: "child1" }] as any)
+    vi.mocked(prisma.kbArticle.findMany).mockResolvedValue([{ id: "article1" }, { id: "article2" }] as any)
     vi.mocked(prisma.kbArticle.updateMany).mockResolvedValue({ count: 2 } as any)
-    vi.mocked(prisma.kbCategory.delete).mockResolvedValue({} as any)
+    vi.mocked(prisma.kbCategory.updateMany).mockResolvedValue({ count: 1 } as any)
+    vi.mocked(prisma.kbCategory.deleteMany).mockResolvedValue({ count: 1 } as any)
 
     const res = await kbCatDELETE(req("/api/v1/kb-categories/cat1", { method: "DELETE" }), params("cat1"))
     const json = await res.json()
     expect(json.success).toBe(true)
+    expect(json.data.deleted.articleIds).toEqual(["article1", "article2"])
+    expect(json.data.deleted.childCategoryIds).toEqual(["child1"])
     expect(prisma.kbArticle.updateMany).toHaveBeenCalled()
+    expect(prisma.kbCategory.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { organizationId: "org-1", parentId: "cat1" },
+      data: { parentId: null },
+    }))
+  })
+
+  it("POST restores category dependencies only inside the current tenant", async () => {
+    vi.mocked(prisma.kbCategory.create).mockResolvedValue({ id: "cat1", name: "Guides" } as any)
+    vi.mocked(prisma.kbArticle.updateMany).mockResolvedValue({ count: 2 } as any)
+    vi.mocked(prisma.kbCategory.updateMany).mockResolvedValue({ count: 1 } as any)
+
+    const res = await kbCatPOST(req("/api/v1/kb-categories", {
+      method: "POST",
+      body: JSON.stringify({
+        restoreId: "cat1",
+        name: "Guides",
+        restoreArticleIds: ["a1", "a2"],
+        restoreChildCategoryIds: ["child1"],
+      }),
+    }))
+
+    expect(res.status).toBe(201)
+    expect(prisma.kbArticle.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ organizationId: "org-1", categoryId: null }),
+      data: { categoryId: "cat1" },
+    }))
+    expect(prisma.kbCategory.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ organizationId: "org-1", parentId: null }),
+      data: { parentId: "cat1" },
+    }))
   })
 })
 
