@@ -500,8 +500,18 @@ describe("Entitlement templates API", () => {
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.templates).toHaveLength(4)
+    expect(json.permissions).toEqual({ canWrite: true })
     expect(json.templates.find((template: EntitlementTemplateMock) => template.supportLevel === "enterprise"))
       .toMatchObject({ name: "Enterprise", isActive: true })
+  })
+
+  it("exposes read-only template permissions to ticketing users", async () => {
+    db.authRole = "ticketing"
+
+    const res = await GET_TEMPLATES(req("http://localhost/api/v1/entitlement-templates"))
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ permissions: { canWrite: false } })
   })
 
   it("blocks template reads for non-support roles", async () => {
@@ -562,6 +572,29 @@ describe("Entitlement templates API", () => {
     }))
 
     expect(res.status).toBe(422)
+    expect(await res.json()).toMatchObject({ code: "TEMPLATE_ACTIVE_EMPTY" })
+    expect(replaceEntitlementTemplate).not.toHaveBeenCalled()
+  })
+
+  it("rejects duplicate milestone and severity combinations with a stable code", async () => {
+    const duplicateRule = {
+      type: "first_response",
+      name: "First response",
+      severityTier: "critical",
+      dueValue: 30,
+      dueUnit: "minutes",
+      isRequired: true,
+    }
+    const res = await PUT_TEMPLATE(jsonReq({
+      supportLevel: "standard",
+      name: "Standard",
+      description: null,
+      isActive: true,
+      definitions: [duplicateRule, { ...duplicateRule, name: "Duplicate" }],
+    }))
+
+    expect(res.status).toBe(400)
+    expect(await res.json()).toMatchObject({ code: "TEMPLATE_DUPLICATE" })
     expect(replaceEntitlementTemplate).not.toHaveBeenCalled()
   })
 })

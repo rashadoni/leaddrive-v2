@@ -85,6 +85,9 @@ export const GET = withRlsAuth("tickets", "read", async (_req, auth) => {
     return NextResponse.json({
       success: true,
       templates: await ensureEntitlementTemplates(auth.orgId),
+      permissions: {
+        canWrite: canUseEntitlementPermission(auth.role, "entitlements.write"),
+      },
       ...metadata(),
     })
   } catch (err) {
@@ -111,14 +114,14 @@ export const PUT = withRlsAuth("tickets", "write", async (req, auth) => {
   const parsed = updateTemplateSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json(
-      { error: parsed.error.issues[0]?.message ?? "Invalid request." },
+      { error: parsed.error.issues[0]?.message ?? "Invalid request.", code: "TEMPLATE_INVALID" },
       { status: 400 },
     )
   }
 
   if (parsed.data.isActive && parsed.data.definitions.length === 0) {
     return NextResponse.json(
-      { error: "Active templates require at least one milestone rule." },
+      { error: "Active templates require at least one milestone rule.", code: "TEMPLATE_ACTIVE_EMPTY" },
       { status: 422 },
     )
   }
@@ -154,6 +157,10 @@ export const PUT = withRlsAuth("tickets", "write", async (req, auth) => {
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to save support template."
-    return NextResponse.json({ error: message }, { status: 400 })
+    const duplicate = message.toLowerCase().includes("duplicate") || message.toLowerCase().includes("already exists")
+    return NextResponse.json(
+      { error: message, code: duplicate ? "TEMPLATE_DUPLICATE" : "TEMPLATE_INVALID" },
+      { status: 400 },
+    )
   }
 })
