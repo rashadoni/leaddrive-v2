@@ -93,6 +93,7 @@ beforeEach(() => {
   vi.mocked(prisma.$transaction).mockImplementation(async (callback: any) => callback({
     kbCategory: prisma.kbCategory,
     kbArticle: prisma.kbArticle,
+    slaPolicy: prisma.slaPolicy,
   }))
   vi.mocked(getOrgId).mockResolvedValue("org-1")
   vi.mocked(getSession).mockResolvedValue(AUTH as any)
@@ -322,7 +323,12 @@ describe("SLA Policies", () => {
 
   it("PUT updates policy", async () => {
     vi.mocked(prisma.slaPolicy.updateMany).mockResolvedValue({ count: 1 } as any)
-    vi.mocked(prisma.slaPolicy.findFirst).mockResolvedValue({ id: "s1", name: "Updated" } as any)
+    vi.mocked(prisma.slaPolicy.findFirst)
+      .mockResolvedValueOnce({
+        id: "s1", name: "Standard", priority: "high", firstResponseHours: 1,
+        resolutionHours: 4, businessHoursOnly: true, isActive: false,
+      } as any)
+      .mockResolvedValueOnce({ id: "s1", name: "Updated" } as any)
 
     const res = await slaPoliciesPUT(
       req("/api/v1/sla-policies/s1", { method: "PUT", body: JSON.stringify({ name: "Updated" }) }),
@@ -333,6 +339,9 @@ describe("SLA Policies", () => {
   })
 
   it("DELETE removes policy", async () => {
+    vi.mocked(prisma.slaPolicy.findFirst).mockResolvedValue({
+      id: "s1", _count: { companies: 0, entitlements: 0 },
+    } as any)
     vi.mocked(prisma.slaPolicy.deleteMany).mockResolvedValue({ count: 1 } as any)
 
     const res = await slaPoliciesDELETE(req("/api/v1/sla-policies/s1", { method: "DELETE" }), params("s1"))
@@ -341,7 +350,7 @@ describe("SLA Policies", () => {
   })
 
   it("DELETE returns 404 for missing policy", async () => {
-    vi.mocked(prisma.slaPolicy.deleteMany).mockResolvedValue({ count: 0 } as any)
+    vi.mocked(prisma.slaPolicy.findFirst).mockResolvedValue(null)
 
     const res = await slaPoliciesDELETE(req("/api/v1/sla-policies/bad", { method: "DELETE" }), params("bad"))
     expect(res.status).toBe(404)
