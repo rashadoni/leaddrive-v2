@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from "vitest"
 
 // Mock prisma
@@ -49,6 +50,9 @@ describe("autoAssignTicket", () => {
     expect(result.agentId).toBe("a2") // Bob has fewer tickets
     expect(result.agentName).toBe("Bob")
     expect(result.queueName).toBe("Tech")
+    expect(prisma.user.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ role: { in: ["admin", "manager", "agent", "support", "ticketing"] } }),
+    }))
   })
 
   it("respects maxTickets limit", async () => {

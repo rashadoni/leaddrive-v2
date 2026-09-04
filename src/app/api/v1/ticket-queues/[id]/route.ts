@@ -2,17 +2,21 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { withRlsAuth } from "@/lib/with-rls"
+import { canManageSkillRouting, normalizeRoutingSkills } from "@/lib/skill-routing/presentation"
 
 const updateQueueSchema = z.object({
-  name: z.string().min(1).max(200).optional(),
-  skills: z.array(z.string()).optional(),
+  name: z.string().trim().min(1).max(200).optional(),
+  skills: z.array(z.string().trim().min(1).max(100)).max(100).transform(normalizeRoutingSkills).optional(),
   priority: z.number().int().min(0).max(100).optional(),
   autoAssign: z.boolean().optional(),
   assignMethod: z.enum(["least_loaded", "round_robin"]).optional(),
   isActive: z.boolean().optional(),
 })
 
-export const PATCH = withRlsAuth("settings", "write", async (req: NextRequest, authResult, { params }: { params: Promise<{ id: string }> }) => {
+export const PATCH = withRlsAuth("tickets", "write", async (req: NextRequest, authResult, { params }: { params: Promise<{ id: string }> }) => {
+  if (!canManageSkillRouting(authResult.role)) {
+    return NextResponse.json({ error: "Forbidden", code: "ROUTING_WRITE_FORBIDDEN" }, { status: 403 })
+  }
   const orgId = authResult.orgId
   const { id } = await params
 
@@ -45,7 +49,10 @@ export const PATCH = withRlsAuth("settings", "write", async (req: NextRequest, a
   }
 })
 
-export const DELETE = withRlsAuth("settings", "delete", async (_req: NextRequest, authResult, { params }: { params: Promise<{ id: string }> }) => {
+export const DELETE = withRlsAuth("tickets", "write", async (_req: NextRequest, authResult, { params }: { params: Promise<{ id: string }> }) => {
+  if (!canManageSkillRouting(authResult.role)) {
+    return NextResponse.json({ error: "Forbidden", code: "ROUTING_WRITE_FORBIDDEN" }, { status: 403 })
+  }
   const orgId = authResult.orgId
   const { id } = await params
 

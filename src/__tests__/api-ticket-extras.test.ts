@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { NextResponse } from "next/server"
 
@@ -78,14 +79,42 @@ describe("GET /api/v1/ticket-queues", () => {
     const json = await res.json()
     expect(json.success).toBe(true)
     expect(json.data).toEqual(queues)
+    expect(json.permissions).toEqual({ canWrite: true })
     expect(prisma.ticketQueue.findMany).toHaveBeenCalledWith({
       where: { organizationId: "org-1" },
       orderBy: { priority: "desc" },
     })
   })
+
+  it("allows managers to read and manage routing queues", async () => {
+    vi.mocked(requireAuth).mockResolvedValue({ orgId: "org-1", userId: "manager-1", role: "manager" } as any)
+    vi.mocked(prisma.ticketQueue.findMany).mockResolvedValue([] as any)
+    const response = await GET_QUEUES(makeReq("http://localhost/api/v1/ticket-queues"))
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ permissions: { canWrite: true } })
+  })
+
+  it("lets support inspect queues without exposing write capability", async () => {
+    vi.mocked(requireAuth).mockResolvedValue({ orgId: "org-1", userId: "support-1", role: "support" } as any)
+    vi.mocked(prisma.ticketQueue.findMany).mockResolvedValue([] as any)
+    const response = await GET_QUEUES(makeReq("http://localhost/api/v1/ticket-queues"))
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ permissions: { canWrite: false } })
+  })
 })
 
 describe("POST /api/v1/ticket-queues", () => {
+  it("blocks support agents from changing routing configuration", async () => {
+    vi.mocked(requireAuth).mockResolvedValue({ orgId: "org-1", userId: "support-1", role: "support" } as any)
+    const response = await POST_QUEUE(makeReq("http://localhost/api/v1/ticket-queues", {
+      method: "POST",
+      body: JSON.stringify({ name: "Billing" }),
+    }))
+    expect(response.status).toBe(403)
+    expect(await response.json()).toMatchObject({ code: "ROUTING_WRITE_FORBIDDEN" })
+    expect(prisma.ticketQueue.create).not.toHaveBeenCalled()
+  })
+
   it("returns 400 for invalid body (missing name)", async () => {
     const res = await POST_QUEUE(makeReq("http://localhost/api/v1/ticket-queues", {
       method: "POST",
@@ -105,6 +134,16 @@ describe("POST /api/v1/ticket-queues", () => {
     const json = await res.json()
     expect(json.success).toBe(true)
     expect(json.data.name).toBe("Billing")
+  })
+
+  it("normalizes queue skills at the API boundary", async () => {
+    vi.mocked(prisma.ticketQueue.create).mockResolvedValue({ id: "q1" } as any)
+    const response = await POST_QUEUE(makeReq("http://localhost/api/v1/ticket-queues", {
+      method: "POST",
+      body: JSON.stringify({ name: " Billing ", skills: [" Billing ", "billing", "VIP"] }),
+    }))
+    expect(response.status).toBe(201)
+    expect(prisma.ticketQueue.create).toHaveBeenCalledWith({ data: expect.objectContaining({ name: "Billing", skills: ["billing", "vip"] }) })
   })
 })
 

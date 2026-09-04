@@ -15,7 +15,10 @@ interface SkillPickerProps {
   /** Admin-only: allow introducing a NEW canonical tag (queue form). Agents pick-only. */
   allowAdd?: boolean
   addPlaceholder?: string
+  addLabel?: string
   emptyHint?: string
+  ariaLabel?: string
+  disabled?: boolean
 }
 
 const norm = (s: string) => s.trim().toLowerCase()
@@ -26,7 +29,7 @@ const norm = (s: string) => s.trim().toLowerCase()
  * / "tech" can no longer diverge because agents pick, they don't type. Only the queue form (allowAdd)
  * introduces new canonical tags.
  */
-export function SkillPicker({ value, onChange, options, allowAdd = false, addPlaceholder, emptyHint }: SkillPickerProps) {
+export function SkillPicker({ value, onChange, options, allowAdd = false, addPlaceholder, addLabel, emptyHint, ariaLabel, disabled = false }: SkillPickerProps) {
   const [draft, setDraft] = useState("")
   const selected = value.map(norm)
   // Canonical options ∪ already-selected (so a skill not yet in any queue still shows + stays selected).
@@ -44,10 +47,10 @@ export function SkillPicker({ value, onChange, options, allowAdd = false, addPla
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label={ariaLabel}>
         {all.length === 0 && (
           <span className="text-xs text-muted-foreground">
-            {emptyHint || (allowAdd ? "Add a skill below." : "No skills defined yet — create a queue with skills first.")}
+            {emptyHint}
           </span>
         )}
         {all.map((skill) => {
@@ -56,9 +59,11 @@ export function SkillPicker({ value, onChange, options, allowAdd = false, addPla
             <button
               key={skill}
               type="button"
+              aria-pressed={isSel}
               onClick={() => toggle(skill)}
+              disabled={disabled}
               className={cn(
-                "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                "inline-flex min-h-11 items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition-colors motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-60",
                 isSel
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-zinc-200 dark:border-zinc-700 bg-background hover:bg-muted"
@@ -76,10 +81,11 @@ export function SkillPicker({ value, onChange, options, allowAdd = false, addPla
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add() } }}
-            placeholder={addPlaceholder || "new skill…"}
-            className="h-8 text-sm"
+            placeholder={addPlaceholder}
+            className="min-h-11 text-sm"
+            disabled={disabled}
           />
-          <Button type="button" size="sm" variant="outline" onClick={add} disabled={!draft.trim()}>Add</Button>
+          <Button type="button" variant="outline" className="min-h-11" onClick={add} disabled={disabled || !draft.trim()}>{addLabel}</Button>
         </div>
       )}
     </div>
