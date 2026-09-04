@@ -1,0 +1,83 @@
+import { readFileSync } from "fs"
+import path from "path"
+import { describe, expect, it } from "vitest"
+
+const source = (file: string) => readFileSync(path.join(process.cwd(), file), "utf8")
+
+describe("support entitlements UX contract", () => {
+  it("uses a compact desktop table and equivalent mobile list regardless of rule count", () => {
+    const page = source("src/app/(dashboard)/support/entitlements/page.tsx")
+    expect(page).toContain("function EntitlementTable")
+    expect(page).toContain('className="hidden overflow-x-auto xl:block"')
+    expect(page).toContain("function EntitlementMobileList")
+    expect(page).toContain('className="divide-y xl:hidden"')
+    expect(page).not.toContain("function EntitlementCard")
+    expect(page).not.toMatch(/text-(?:2xl|3xl|4xl)/)
+  })
+
+  it("keeps detail, create and edit in focus-preserving responsive drawers", () => {
+    const page = source("src/app/(dashboard)/support/entitlements/page.tsx")
+    expect(page).toContain("SupportTermFormSheet")
+    expect(page).toContain("EntitlementDetailSheet")
+    expect(page).toContain("!h-[100dvh] !w-full !max-w-none")
+    expect(page).toContain("candidate.getClientRects().length > 0")
+    expect(page).toContain("desktopRowRefs")
+    expect(page).toContain("mobileRowRefs")
+    expect(page).toContain("listRef.current?.focus")
+    expect(page).toContain("discardOpen")
+    expect(page).not.toContain("scrollIntoView")
+  })
+
+  it("shows milestone summary first and mounts the constructor only for the selected term", () => {
+    const page = source("src/app/(dashboard)/support/entitlements/page.tsx")
+    expect(page).toContain("<MilestoneSummary entitlement={entitlement}")
+    expect(page).toContain("milestoneEditorOpen && editable")
+    expect(page).toContain("<MilestoneEditor")
+    expect(page).not.toContain("milestoneForms")
+  })
+
+  it("collapses first-use help and limits the overview to three active exceptions", () => {
+    const page = source("src/app/(dashboard)/support/entitlements/page.tsx")
+    expect(page).toContain("<details")
+    expect(page).toContain("exceptionSummaryLabel")
+    expect(page).toContain("kpiExpiring30d")
+    expect(page).toContain("kpiNeedsAttention")
+    expect(page).toContain("kpiUncovered")
+    expect(page).not.toContain("function MetricTile")
+  })
+
+  it("consolidates all five filters into one toolbar with reset and result context", () => {
+    const page = source("src/app/(dashboard)/support/entitlements/page.tsx")
+    expect(page).toContain("function EntitlementToolbar")
+    expect(page).toContain('aria-label={t("filtersTitle")}')
+    expect(page).toContain("activeFilterCount")
+    expect(page).toContain("resultCount")
+    expect(page).toContain("riskAttention")
+  })
+
+  it("uses an explicit lifecycle dialog with impact, reason, audit and confirmation", () => {
+    const page = source("src/app/(dashboard)/support/entitlements/page.tsx")
+    const route = source("src/app/api/v1/entitlements/[id]/route.ts")
+    expect(page).toContain("function LifecycleDialog")
+    expect(page).toContain("lifecycleImpactTitle")
+    expect(page).toContain("lifecycleReasonOptional")
+    expect(page).toContain("lifecycleAuditHint")
+    expect(page).not.toContain("window.prompt")
+    expect(page).not.toContain("window.confirm")
+    expect(route).toContain("reason: parsed.data.reason?.trim()")
+  })
+
+  it("preserves permission and recovery states without decorative AI palette tropes", () => {
+    const page = source("src/app/(dashboard)/support/entitlements/page.tsx")
+    expect(page).toContain("permissions.canWrite")
+    expect(page).toContain("permissions.canActivate")
+    expect(page).toContain("permissions.canCancel")
+    expect(page).toContain("loadFailedTitle")
+    expect(page).toContain("noFilterResults")
+    expect(page).toContain('aria-busy="true"')
+    expect(page).toContain("motion-reduce:animate-none")
+    expect(page).not.toMatch(/(?:violet|purple|cyan|fuchsia|green|amber|orange|blue|red|slate)-/)
+    expect(page).not.toContain("bg-gradient")
+    expect(page).not.toContain("MotionCard")
+  })
+})
