@@ -4,20 +4,23 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { FileText, Loader2, Play, X } from "lucide-react"
+import { FileText, Loader2, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { CallRecordingPlayer } from "@/components/voip/call-recording-player"
 
 type CallJournalRecord = {
   id: string
   transcription: string | null
   recordingPlaybackUrl: string | null
+  duration: number | null
 }
 
 type CallJournalCandidate = {
   id?: unknown
   transcription?: unknown
   recordingPlaybackUrl?: unknown
+  duration?: unknown
 }
 
 export function CallJournalDetail() {
@@ -75,6 +78,7 @@ export function CallJournalDetail() {
             recordingPlaybackUrl: candidate.recordingPlaybackUrl === protectedRecordingPath
               ? protectedRecordingPath
               : null,
+            duration: typeof candidate.duration === "number" ? candidate.duration : null,
           })
         }
       } catch (error) {
@@ -99,11 +103,11 @@ export function CallJournalDetail() {
   return (
     <section
       aria-labelledby="call-journal-detail-title"
-      className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5"
+      className="rounded-lg border border-border bg-card p-4 sm:p-5"
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-orange-600 dark:bg-orange-950/30">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
             <FileText className="h-4 w-4" aria-hidden="true" />
           </span>
           <h2 id="call-journal-detail-title" className="text-base font-semibold">
@@ -121,7 +125,7 @@ export function CallJournalDetail() {
 
       {loading || (call !== null && !visibleCall) ? (
         <div role="status" aria-live="polite" className="flex min-h-24 items-center justify-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+          <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
           {t("journal.loading")}
         </div>
       ) : loadFailed ? (
@@ -157,21 +161,13 @@ export function CallJournalDetail() {
 
           <div className="rounded-lg border border-border p-4">
             <h3 className="text-sm font-medium">{t("journal.recording")}</h3>
-            {visibleCall.recordingPlaybackUrl ? (
-              <a
-                href={visibleCall.recordingPlaybackUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-input bg-background px-4 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <Play className="h-4 w-4" aria-hidden="true" />
-                {t("journal.openRecording")}
-              </a>
-            ) : (
-              <p className="mt-2 text-sm text-muted-foreground">
-                {t("journal.recordingUnavailable")}
-              </p>
-            )}
+            <div className="mt-3">
+              <CallRecordingPlayer
+                url={visibleCall.recordingPlaybackUrl}
+                callDurationSeconds={visibleCall.duration}
+                callLabel={visibleCall.id}
+              />
+            </div>
           </div>
         </div>
       )}

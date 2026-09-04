@@ -22,6 +22,7 @@ vi.mock("@/lib/prisma", () => ({
       findUnique: vi.fn(),
       findMany: vi.fn(),
       count: vi.fn(),
+      aggregate: vi.fn(),
     },
     contact: { findFirst: vi.fn() },
     lead: { findMany: vi.fn() },
@@ -187,6 +188,10 @@ beforeEach(() => {
   vi.mocked(prisma.voiceSuppression.findFirst).mockResolvedValue(null)
   vi.mocked(prisma.voiceConsent.findFirst).mockResolvedValue(null)
   vi.mocked(prisma.$executeRaw).mockResolvedValue(1 as never)
+  vi.mocked(prisma.callLog.aggregate).mockResolvedValue({
+    _avg: { duration: null },
+    _count: { duration: 0 },
+  } as never)
   vi.mocked(prisma.$queryRaw).mockResolvedValue([
     { settings: { provider: "asterisk", outboundCallDispatchPaused: false } },
   ] as never)
@@ -886,6 +891,67 @@ describe("GET /api/v1/calls", () => {
         ]),
       }),
     }))
+  })
+
+  it("returns one exact summary for the same search, direction, access, and 30-day range as the rows", async () => {
+    vi.mocked(getSession).mockResolvedValueOnce({ orgId: "org1", userId: "sales-1", role: "sales" } as any)
+    vi.mocked(getOrgId).mockResolvedValue("org1")
+    vi.mocked(prisma.callLog.findMany).mockResolvedValue([])
+    vi.mocked(prisma.callLog.count)
+      .mockResolvedValueOnce(8)
+      .mockResolvedValueOnce(5)
+      .mockResolvedValueOnce(3)
+      .mockResolvedValueOnce(2)
+    vi.mocked(prisma.callLog.aggregate).mockResolvedValue({
+      _avg: { duration: 124.6 },
+      _count: { duration: 6 },
+    } as never)
+
+    const res = await GET_CALLS(makeRequest("/api/v1/calls?summary=1&period=30d&direction=inbound&search=%2B99450"))
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(json.summary).toEqual({
+      total: 8,
+      inbound: 5,
+      outbound: 3,
+      missed: 2,
+      averageDurationSeconds: 125,
+      durationSample: 6,
+    })
+    expect(json.appliedFilter).toEqual(expect.objectContaining({
+      period: "rolling_30_days",
+      direction: "inbound",
+      search: "+99450",
+    }))
+
+    const rowWhere = vi.mocked(prisma.callLog.findMany).mock.calls[0][0]?.where
+    expect(rowWhere).toEqual(expect.objectContaining({
+      organizationId: "org1",
+      direction: "inbound",
+      createdAt: { gte: expect.any(Date), lte: expect.any(Date) },
+      OR: [
+        { fromNumber: { contains: "+99450", mode: "insensitive" } },
+        { toNumber: { contains: "+99450", mode: "insensitive" } },
+      ],
+    }))
+    expect(prisma.callLog.count).toHaveBeenCalledTimes(4)
+    expect(prisma.callLog.aggregate).toHaveBeenCalledWith({
+      where: { AND: [rowWhere, { duration: { gt: 0 } }] },
+      _avg: { duration: true },
+      _count: { duration: true },
+    })
+  })
+
+  it("rejects unsupported summary periods and directions before querying", async () => {
+    vi.mocked(getOrgId).mockResolvedValue("org1")
+
+    const badPeriod = await GET_CALLS(makeRequest("/api/v1/calls?period=year-to-date"))
+    const badDirection = await GET_CALLS(makeRequest("/api/v1/calls?direction=sideways"))
+
+    expect(badPeriod.status).toBe(400)
+    expect(badDirection.status).toBe(400)
+    expect(prisma.callLog.findMany).not.toHaveBeenCalled()
   })
 
   it("filters call history by conversationId", async () => {

@@ -716,9 +716,23 @@ export const GET = withRls(async (req, { orgId, session }) => {
   const ticketId = searchParams.get("ticketId")
   const callSid = searchParams.get("callSid")
   const id = searchParams.get("id")
-  const search = searchParams.get("search")
+  const search = searchParams.get("search")?.trim() || null
+  const period = searchParams.get("period") || "all"
+  const includeSummary = searchParams.get("summary") === "1"
   const page = Math.max(1, parseInt(searchParams.get("page") || "1"))
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "25")))
+
+  if (!new Set(["all", "30d"]).has(period)) {
+    return NextResponse.json({ error: "Invalid period" }, { status: 400 })
+  }
+  if (direction && !new Set(["inbound", "outbound"]).has(direction)) {
+    return NextResponse.json({ error: "Invalid direction" }, { status: 400 })
+  }
+
+  const generatedAt = new Date()
+  const periodFrom = period === "30d"
+    ? new Date(generatedAt.getTime() - 30 * 24 * 60 * 60 * 1000)
+    : null
 
   const where: CallLogWhereWithConversation = {
     organizationId: orgId,
@@ -733,6 +747,7 @@ export const GET = withRls(async (req, { orgId, session }) => {
   if (provider) where.provider = provider
   if (callSid) where.callSid = callSid
   if (id) where.id = id
+  if (periodFrom) where.createdAt = { gte: periodFrom, lte: generatedAt }
   if (search) {
     where.OR = [
       { fromNumber: { contains: search, mode: "insensitive" } },
@@ -741,7 +756,10 @@ export const GET = withRls(async (req, { orgId, session }) => {
   }
 
   try {
-    const [calls, total] = await Promise.all([
+    // Every summary query extends the exact same `where` used by the list.
+    // Numerators therefore cannot silently drift to an all-time or all-access
+    // scope while the visible journal is filtered.
+    const [calls, total, summaryParts] = await Promise.all([
       prisma.callLog.findMany({
         where,
         include: {
@@ -752,7 +770,44 @@ export const GET = withRls(async (req, { orgId, session }) => {
         take: limit,
       }),
       prisma.callLog.count({ where }),
+      includeSummary
+        ? Promise.all([
+            prisma.callLog.count({ where: { AND: [where, { direction: "inbound" }] } }),
+            prisma.callLog.count({ where: { AND: [where, { direction: "outbound" }] } }),
+            prisma.callLog.count({
+              where: {
+                AND: [
+                  where,
+                  { direction: "inbound" },
+                  {
+                    OR: [
+                      { status: { in: ["no-answer", "busy", "failed"] } },
+                      { providerOutcome: { in: ["no_answer", "busy", "failed"] } },
+                    ],
+                  },
+                ],
+              },
+            }),
+            prisma.callLog.aggregate({
+              where: { AND: [where, { duration: { gt: 0 } }] },
+              _avg: { duration: true },
+              _count: { duration: true },
+            }),
+          ])
+        : Promise.resolve(null),
     ])
+    const summary = summaryParts
+      ? {
+          total,
+          inbound: summaryParts[0],
+          outbound: summaryParts[1],
+          missed: summaryParts[2],
+          averageDurationSeconds: summaryParts[3]._avg.duration == null
+            ? null
+            : Math.round(summaryParts[3]._avg.duration),
+          durationSample: summaryParts[3]._count.duration,
+        }
+      : null
     const safeCalls = calls.map((call: CallLogWithContact) => ({
       ...exposeCallForClient(call),
       accessScope: callAccessScope(call),
@@ -762,6 +817,16 @@ export const GET = withRls(async (req, { orgId, session }) => {
       success: true,
       data: safeCalls,
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+      ...(summary ? {
+        summary,
+        appliedFilter: {
+          period: period === "30d" ? "rolling_30_days" : "all_time",
+          from: periodFrom?.toISOString() ?? null,
+          to: generatedAt.toISOString(),
+          direction: direction || null,
+          search,
+        },
+      } : {}),
     })
   } catch (e) {
     console.error("Call history error:", e)

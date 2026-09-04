@@ -99,9 +99,8 @@ describe("missed inbound manager queue UI", () => {
 
     expect(supportPage).toContain("isManagerOrAbove")
     expect(supportPage).toContain("<MissedInboundQueue")
-    expect(supportPage).toMatch(
-      /isManagerOrAbove\(session\?\.user\?\.role\s*\?\?\s*["']["']\)/u,
-    )
+    expect(supportPage).toContain('const role = session?.user?.role ?? ""')
+    expect(supportPage).toContain("isManagerOrAbove(role)")
     expect(inboxAlias).toContain('import VoipCallsPage from "../../support/voip/page"')
   })
 
