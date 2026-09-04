@@ -1,22 +1,59 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
+import {
+  BarChart3,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  CircleAlert,
+  Eye,
+  EyeOff,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Search,
+  Settings2,
+  Tags,
+  X,
+} from "lucide-react"
+import { toast } from "sonner"
+
+import { ConfirmDialog } from "@/components/delete-confirm-dialog"
+import { HelpButton } from "@/components/help/help-button"
+import { TourReplayButton } from "@/components/tour/tour-replay-button"
+import { useAutoTour } from "@/components/tour/tour-provider"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
+import { Textarea } from "@/components/ui/textarea"
+import { checkPermission, type Role } from "@/lib/permissions"
+import { filterCategoryTree, flattenVisibleCategoryTree } from "@/lib/ticketing/category-tree-view"
 import { cn } from "@/lib/utils"
-import { BarChart3, Check, CornerDownRight, Eye, EyeOff, GitBranch, Pencil, Plus, RotateCcw, Search, Tags, X } from "lucide-react"
-import { TourReplayButton } from "@/components/tour/tour-replay-button"
-import { HelpButton } from "@/components/help/help-button"
-import { useAutoTour } from "@/components/tour/tour-provider"
 
 type CategoryScope = "ticket" | "complaint" | "both"
+type Priority = "low" | "medium" | "high" | "critical"
 
 interface TicketCategory {
   id: string
@@ -25,7 +62,7 @@ interface TicketCategory {
   parentId: string | null
   description: string | null
   scope: CategoryScope
-  defaultPriority: string | null
+  defaultPriority: Priority | null
   isPortalVisible: boolean
   isActive: boolean
   sortOrder: number
@@ -35,6 +72,7 @@ interface TicketCategory {
 
 interface CategoryRow extends TicketCategory {
   depth: number
+  contextOnly: boolean
 }
 
 interface FormState {
@@ -42,7 +80,7 @@ interface FormState {
   slug: string
   parentId: string
   scope: CategoryScope
-  defaultPriority: string
+  defaultPriority: "" | Priority
   description: string
   isPortalVisible: boolean
   isActive: boolean
@@ -61,111 +99,141 @@ const emptyForm: FormState = {
   sortOrder: 0,
 }
 
-function flattenTree(nodes: TicketCategory[], depth = 0): CategoryRow[] {
-  return nodes.flatMap(node => [
-    { ...node, depth },
-    ...flattenTree(node.children || [], depth + 1),
-  ])
+async function responseError(response: Response, fallback: string): Promise<Error> {
+  await response.json().catch(() => null)
+  return new Error(fallback)
 }
 
 export default function TicketCategoriesPage() {
   const { data: session } = useSession()
   const t = useTranslations("ticketCategories")
+  const tc = useTranslations("common")
   const orgId = session?.user?.organizationId
+  const role = (session?.user?.role || "viewer") as Role
+  const canWrite = checkPermission(role, "tickets", "write")
+  const canDeactivate = checkPermission(role, "tickets", "delete")
   useAutoTour("ticketCategories")
 
   const [categories, setCategories] = useState<TicketCategory[]>([])
   const [tree, setTree] = useState<TicketCategory[]>([])
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState("")
+  const [loadError, setLoadError] = useState("")
+  const [actionError, setActionError] = useState("")
   const [search, setSearch] = useState("")
   const [scopeFilter, setScopeFilter] = useState<"all" | CategoryScope>("all")
   const [showInactive, setShowInactive] = useState(false)
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
+  const [editorOpen, setEditorOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(emptyForm)
+  const [initialForm, setInitialForm] = useState<FormState>(emptyForm)
+  const [saving, setSaving] = useState(false)
+  const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [discardOpen, setDiscardOpen] = useState(false)
+  const [deactivateTarget, setDeactivateTarget] = useState<TicketCategory | null>(null)
+  const [pendingFocusId, setPendingFocusId] = useState<string | null>(null)
+  const rowRefs = useRef(new Map<string, HTMLDivElement>())
 
-  const orgHeaders = useMemo<Record<string, string>>(() => {
-    const headers: Record<string, string> = {}
-    if (orgId) headers["x-organization-id"] = String(orgId)
-    return headers
-  }, [orgId])
+  const orgHeaders = useMemo<Record<string, string>>(() => (
+    orgId ? { "x-organization-id": String(orgId) } : {}
+  ), [orgId])
 
   const fetchCategories = useCallback(async () => {
     setLoading(true)
-    setError("")
+    setLoadError("")
     try {
-      const res = await fetch("/api/v1/ticket-categories?includeInactive=true", { headers: orgHeaders })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || t("loadFailed"))
-      setCategories(json.data?.categories || [])
-      setTree(json.data?.tree || [])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("loadFailed"))
+      const response = await fetch("/api/v1/ticket-categories?includeInactive=true", { headers: orgHeaders })
+      if (!response.ok) throw await responseError(response, response.status === 403 ? t("permissionDenied") : t("loadFailed"))
+      const payload = await response.json()
+      setCategories(payload.data?.categories || [])
+      setTree(payload.data?.tree || [])
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : t("loadFailed"))
     } finally {
       setLoading(false)
     }
   }, [orgHeaders, t])
 
-  useEffect(() => { fetchCategories() }, [fetchCategories])
+  useEffect(() => {
+    void fetchCategories()
+  }, [fetchCategories])
+
+  useEffect(() => {
+    if (!pendingFocusId || loading) return
+    const frame = window.requestAnimationFrame(() => {
+      rowRefs.current.get(pendingFocusId)?.focus()
+      setPendingFocusId(null)
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [loading, pendingFocusId, tree])
+
+  const dirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(initialForm), [form, initialForm])
+  const forceExpanded = Boolean(search.trim() || scopeFilter !== "all")
 
   const rows = useMemo(() => {
-    const baseRows = flattenTree(tree.length > 0 ? tree : categories)
-    const q = search.trim().toLowerCase()
-    return baseRows.filter(row => {
-      if (!showInactive && !row.isActive) return false
-      if (scopeFilter !== "all" && row.scope !== scopeFilter && row.scope !== "both") return false
-      if (!q) return true
-      return [row.name, row.slug, row.description || ""].some(value => value.toLowerCase().includes(q))
+    const query = search.trim().toLowerCase()
+    const sourceTree = tree.length > 0 ? tree : categories
+    const filteredTree = filterCategoryTree(sourceTree, (category) => {
+      if (!showInactive && !category.isActive) return false
+      if (scopeFilter !== "all" && category.scope !== scopeFilter && category.scope !== "both") return false
+      if (!query) return true
+      return [category.name, category.slug, category.description || ""].some((value) => value.toLowerCase().includes(query))
     })
-  }, [categories, tree, search, scopeFilter, showInactive])
+    return flattenVisibleCategoryTree(filteredTree, collapsedIds, forceExpanded) as CategoryRow[]
+  }, [categories, collapsedIds, forceExpanded, scopeFilter, search, showInactive, tree])
 
   const descendantsById = useMemo(() => {
     const childrenByParent = new Map<string, TicketCategory[]>()
     for (const category of categories) {
       if (!category.parentId) continue
-      const siblings = childrenByParent.get(category.parentId) || []
-      siblings.push(category)
-      childrenByParent.set(category.parentId, siblings)
+      childrenByParent.set(category.parentId, [...(childrenByParent.get(category.parentId) || []), category])
     }
-
     const collect = (categoryId: string, seen = new Set<string>()): Set<string> => {
-      const children = childrenByParent.get(categoryId) || []
-      for (const child of children) {
+      for (const child of childrenByParent.get(categoryId) || []) {
         if (seen.has(child.id)) continue
         seen.add(child.id)
         collect(child.id, seen)
       }
       return seen
     }
-
-    return new Map(categories.map(category => [category.id, collect(category.id)]))
+    return new Map(categories.map((category) => [category.id, collect(category.id)]))
   }, [categories])
 
   const stats = useMemo(() => ({
     total: categories.length,
-    roots: categories.filter(category => !category.parentId).length,
-    active: categories.filter(category => category.isActive).length,
-    portal: categories.filter(category => category.isPortalVisible).length,
-    subcategories: categories.filter(category => category.parentId).length,
+    active: categories.filter((category) => category.isActive).length,
+    portal: categories.filter((category) => category.isActive && category.isPortalVisible).length,
+    used: categories.filter((category) => (category._count?.tickets || 0) > 0).length,
   }), [categories])
 
+  const resetEditor = (next: FormState, id: string | null) => {
+    setEditingId(id)
+    setForm(next)
+    setInitialForm(next)
+    setAdvancedOpen(false)
+    setActionError("")
+    setEditorOpen(true)
+  }
+
   const startCreate = (parentId = "") => {
-    const parent = parentId ? categories.find(category => category.id === parentId) : null
-    setEditingId(null)
-    setError("")
-    setForm({
+    const parent = parentId ? categories.find((category) => category.id === parentId) : null
+    if (parentId) {
+      setCollapsedIds((current) => {
+        const next = new Set(current)
+        next.delete(parentId)
+        return next
+      })
+    }
+    resetEditor({
       ...emptyForm,
       parentId,
       scope: parent?.scope || emptyForm.scope,
       defaultPriority: parent?.defaultPriority || emptyForm.defaultPriority,
-    })
+    }, null)
   }
 
   const startEdit = (category: TicketCategory) => {
-    setEditingId(category.id)
-    setError("")
-    setForm({
+    resetEditor({
       name: category.name,
       slug: category.slug,
       parentId: category.parentId || "",
@@ -175,12 +243,22 @@ export default function TicketCategoriesPage() {
       isPortalVisible: category.isPortalVisible,
       isActive: category.isActive,
       sortOrder: category.sortOrder || 0,
-    })
+    }, category.id)
+  }
+
+  const requestEditorClose = () => {
+    if (dirty && !saving) setDiscardOpen(true)
+    else setEditorOpen(false)
+  }
+
+  const discardEditor = async () => {
+    setForm(initialForm)
+    setEditorOpen(false)
   }
 
   const setParentCategory = (parentId: string) => {
-    const parent = parentId ? categories.find(category => category.id === parentId) : null
-    setForm(current => ({
+    const parent = parentId ? categories.find((category) => category.id === parentId) : null
+    setForm((current) => ({
       ...current,
       parentId,
       scope: !editingId && parent ? parent.scope : current.scope,
@@ -188,287 +266,426 @@ export default function TicketCategoriesPage() {
     }))
   }
 
+  const expandAncestors = (categoryId: string, allCategories: TicketCategory[]) => {
+    const byId = new Map(allCategories.map((category) => [category.id, category]))
+    setCollapsedIds((current) => {
+      const next = new Set(current)
+      let cursor = byId.get(categoryId)?.parentId || null
+      while (cursor) {
+        next.delete(cursor)
+        cursor = byId.get(cursor)?.parentId || null
+      }
+      return next
+    })
+  }
+
   const saveCategory = async () => {
     if (!form.name.trim()) return
     setSaving(true)
-    setError("")
+    setActionError("")
     try {
-      const payload = {
-        name: form.name.trim(),
-        slug: form.slug.trim() || undefined,
-        parentId: form.parentId || null,
-        scope: form.scope,
-        defaultPriority: form.defaultPriority || null,
-        description: form.description.trim() || null,
-        isPortalVisible: form.isPortalVisible,
-        isActive: form.isActive,
-        sortOrder: Number(form.sortOrder) || 0,
-      }
-      const res = await fetch(editingId ? `/api/v1/ticket-categories/${editingId}` : "/api/v1/ticket-categories", {
+      const response = await fetch(editingId ? `/api/v1/ticket-categories/${editingId}` : "/api/v1/ticket-categories", {
         method: editingId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json", ...orgHeaders },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          name: form.name.trim(),
+          slug: form.slug.trim() || undefined,
+          parentId: form.parentId || null,
+          scope: form.scope,
+          defaultPriority: form.defaultPriority || null,
+          description: form.description.trim() || null,
+          isPortalVisible: form.isPortalVisible,
+          isActive: form.isActive,
+          sortOrder: Number(form.sortOrder) || 0,
+        }),
       })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || t("saveFailed"))
-      setForm(emptyForm)
-      setEditingId(null)
+      if (!response.ok) throw await responseError(
+        response,
+        response.status === 409 ? t("slugConflict") : response.status === 400 ? t("validationFailed") : t("saveFailed"),
+      )
+      const payload = await response.json()
+      const savedId = payload.data?.id as string
+      setSearch("")
+      setScopeFilter("all")
+      if (!form.isActive) setShowInactive(true)
+      setEditorOpen(false)
       await fetchCategories()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("saveFailed"))
+      expandAncestors(savedId, [...categories, payload.data])
+      setPendingFocusId(savedId)
+      toast.success(editingId ? t("updatedToast") : t("createdToast"))
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : t("saveFailed"))
     } finally {
       setSaving(false)
     }
   }
 
-  const setCategoryActive = async (category: TicketCategory, isActive: boolean) => {
-    setError("")
-    const res = await fetch(`/api/v1/ticket-categories/${category.id}`, {
+  const changeActiveState = async (category: TicketCategory, isActive: boolean) => {
+    setActionError("")
+    const response = await fetch(`/api/v1/ticket-categories/${category.id}`, {
       method: isActive ? "PATCH" : "DELETE",
       headers: isActive ? { "Content-Type": "application/json", ...orgHeaders } : orgHeaders,
       body: isActive ? JSON.stringify({ isActive: true }) : undefined,
     })
-    if (!res.ok) {
-      const json = await res.json().catch(() => ({}))
-      setError(json.error || t("saveFailed"))
-      return
-    }
+    if (!response.ok) throw await responseError(response, isActive ? t("restoreFailed") : t("deactivateFailed"))
+    if (isActive) setShowInactive(true)
     await fetchCategories()
+    setPendingFocusId(category.id)
+    toast.success(isActive ? t("restoredToast") : t("deactivatedToast"))
   }
 
-  const scopeLabel = (scope: CategoryScope) => {
-    if (scope === "complaint") return t("complaintScope")
-    if (scope === "both") return t("bothScope")
-    return t("ticketScope")
+  const handleDeactivate = async () => {
+    if (!deactivateTarget) return
+    await changeActiveState(deactivateTarget, false)
   }
+
+  const handleRestore = async (category: TicketCategory) => {
+    try {
+      await changeActiveState(category, true)
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : t("restoreFailed"))
+    }
+  }
+
+  const toggleCollapsed = (categoryId: string) => {
+    setCollapsedIds((current) => {
+      const next = new Set(current)
+      if (next.has(categoryId)) next.delete(categoryId)
+      else next.add(categoryId)
+      return next
+    })
+  }
+
+  const clearFilters = () => {
+    setSearch("")
+    setScopeFilter("all")
+    setShowInactive(false)
+  }
+
+  const scopeLabel = (scope: CategoryScope) => (
+    scope === "complaint" ? t("complaintScope") : scope === "both" ? t("bothScope") : t("ticketScope")
+  )
+  const priorityLabel = (priority: Priority | null) => (
+    priority === "low" ? t("priorityLow")
+      : priority === "medium" ? t("priorityMedium")
+        : priority === "high" ? t("priorityHigh")
+          : priority === "critical" ? t("priorityCritical")
+            : t("noDefaultPriority")
+  )
 
   const blockedParentIds = editingId ? descendantsById.get(editingId) || new Set<string>() : new Set<string>()
-  const parentOptions = categories.filter(category => category.id !== editingId && !blockedParentIds.has(category.id) && category.isActive)
-  const selectedParent = form.parentId ? categories.find(category => category.id === form.parentId) || null : null
-  const formModeLabel = selectedParent ? t("subcategory") : t("rootCategory")
+  const parentOptions = categories.filter((category) => category.id !== editingId && !blockedParentIds.has(category.id) && category.isActive)
+  const selectedParent = form.parentId ? categories.find((category) => category.id === form.parentId) || null : null
+  const hasFilters = Boolean(search.trim() || scopeFilter !== "all" || showInactive)
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <Tags className="h-6 w-6" /> {t("title")} <TourReplayButton tourId="ticketCategories" /> <HelpButton slug="tickets" variant="label" />
-          </h1>
-          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
+    <div className="space-y-4">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <Tags className="h-5 w-5 text-muted-foreground" />
+            <h1 className="truncate text-xl font-semibold tracking-tight">{t("title")}</h1>
+            <TourReplayButton tourId="ticketCategories" />
+            <HelpButton slug="tickets" />
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
+          {!canWrite && <p className="mt-1 text-xs text-muted-foreground">{t("readOnlyHint")}</p>}
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" asChild>
-            <Link href="/tickets?view=reports#ticketing-report">
-              <BarChart3 className="h-4 w-4" /> {t("viewServiceDesk")}
-            </Link>
+        <div className="flex gap-2 sm:shrink-0">
+          <Button variant="outline" asChild className="min-h-11 flex-1 px-4 sm:flex-none">
+            <Link href="/tickets?view=reports#ticketing-report"><BarChart3 />{t("viewServiceDesk")}</Link>
           </Button>
-          <Button className="gap-2" onClick={() => startCreate()}>
-            <Plus className="h-4 w-4" /> {t("newRootCategory")}
-          </Button>
+          {canWrite && <Button className="min-h-11 flex-1 px-4 sm:flex-none" onClick={() => startCreate()}><Plus />{t("newRootCategory")}</Button>}
         </div>
-      </div>
+      </header>
 
-      {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-300">
-          {error}
+      <section aria-label={t("summaryLabel")} className="flex flex-wrap items-center gap-x-4 gap-y-1 border-y py-2 text-xs text-muted-foreground">
+        <span><strong className="font-semibold text-foreground">{stats.total}</strong> {t("statsTotal")}</span>
+        <span><strong className="font-semibold text-foreground">{stats.active}</strong> {t("statsActive")}</span>
+        <span><strong className="font-semibold text-foreground">{stats.portal}</strong> {t("statsPortal")}</span>
+        <span><strong className="font-semibold text-foreground">{stats.used}</strong> {t("statsInUse")}</span>
+      </section>
+
+      {actionError && (
+        <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
+          <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+          <span className="min-w-0 flex-1">{actionError}</span>
+          <button type="button" className="min-h-11 shrink-0 rounded-lg px-2 font-medium underline underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setActionError("")}>{tc("close")}</button>
         </div>
       )}
 
-      <div className="grid overflow-hidden rounded-md border bg-background sm:grid-cols-2 lg:grid-cols-5">
-        {[
-          [t("statsTotal"), stats.total],
-          [t("statsRoots"), stats.roots],
-          [t("statsActive"), stats.active],
-          [t("statsPortal"), stats.portal],
-          [t("statsSubcategories"), stats.subcategories],
-        ].map(([label, value]) => (
-          <div key={label} className="border-b border-r p-3 lg:border-b-0">
-            <div className="text-xs text-muted-foreground">{label}</div>
-            <div className="mt-1 text-xl font-semibold">{value}</div>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <CardTitle className="text-base">{t("categoryTree")}</CardTitle>
-                <p className="mt-1 text-xs text-muted-foreground">{t("categoryTreeHint")}</p>
-              </div>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <div className="relative sm:w-56">
-                  <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("searchPlaceholder")} className="pl-9" />
-                </div>
-                <Select value={scopeFilter} onChange={(e) => setScopeFilter(e.target.value as "all" | CategoryScope)} className="sm:w-40">
-                  <option value="all">{t("allScopes")}</option>
-                  <option value="ticket">{t("ticketScope")}</option>
-                  <option value="complaint">{t("complaintScope")}</option>
-                  <option value="both">{t("bothScope")}</option>
-                </Select>
-              </div>
-            </div>
-            <label className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-              <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
-              {t("showInactive")}
-            </label>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <p className="text-sm text-muted-foreground">{t("loading")}</p>
-            ) : rows.length === 0 ? (
-              <div className="py-12 text-center">
-                <p className="font-medium">{t("noCategories")}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{t("noCategoriesHint")}</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto rounded-md border">
-                <table className="w-full min-w-[780px] text-sm">
-                  <thead className="bg-muted/50 text-xs text-muted-foreground">
-                    <tr>
-                      <th className="px-3 py-2 text-left font-medium">{t("category")}</th>
-                      <th className="px-3 py-2 text-left font-medium">{t("scopeColumn")}</th>
-                      <th className="px-3 py-2 text-left font-medium">{t("priorityColumn")}</th>
-                      <th className="px-3 py-2 text-left font-medium">{t("usageColumn")}</th>
-                      <th className="px-3 py-2 text-left font-medium">{t("visibilityColumn")}</th>
-                      <th className="px-3 py-2 text-right font-medium">{t("actions")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map(category => (
-                      <tr key={category.id} className={cn("border-t", !category.isActive && "bg-muted/30 text-muted-foreground")}>
-                        <td className="px-3 py-2">
-                          <div className="flex min-w-0 items-center gap-2" style={{ paddingLeft: `${Math.min(category.depth, 4) * 18}px` }}>
-                            {category.depth > 0 && <CornerDownRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
-                            <div className="min-w-0">
-                              <div className="flex min-w-0 items-center gap-2">
-                                <span className="truncate font-medium">{category.name}</span>
-                                <Badge variant="outline" className="shrink-0">{category.depth > 0 ? t("subcategory") : t("rootCategory")}</Badge>
-                                {!category.isActive && <Badge variant="secondary">{t("inactiveBadge")}</Badge>}
-                              </div>
-                              <div className="truncate text-xs text-muted-foreground">{category.slug}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-3 py-2"><Badge variant="outline">{scopeLabel(category.scope)}</Badge></td>
-                        <td className="px-3 py-2 text-xs">{category.defaultPriority || t("noDefaultPriority")}</td>
-                        <td className="px-3 py-2 text-xs text-muted-foreground">
-                          {t("ticketsCount", { count: category._count?.tickets || 0 })} · {t("childrenCount", { count: category._count?.children || 0 })}
-                        </td>
-                        <td className="px-3 py-2">
-                          <Badge variant={category.isPortalVisible ? "default" : "secondary"} className="gap-1">
-                            {category.isPortalVisible ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
-                            {category.isPortalVisible ? t("portalBadge") : t("internalBadge")}
-                          </Badge>
-                        </td>
-                        <td className="px-3 py-2">
-                          <div className="flex justify-end gap-1">
-                            <Button variant="ghost" size="sm" title={t("addChild")} onClick={() => startCreate(category.id)}>
-                              <Plus className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button variant="ghost" size="sm" title={t("edit")} onClick={() => startEdit(category)}>
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            {category.isActive ? (
-                              <Button variant="ghost" size="sm" title={t("deactivate")} onClick={() => setCategoryActive(category, false)}>
-                                <X className="h-3.5 w-3.5 text-destructive" />
-                              </Button>
-                            ) : (
-                              <Button variant="ghost" size="sm" title={t("restore")} onClick={() => setCategoryActive(category, true)}>
-                                <RotateCcw className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between gap-3">
-              <CardTitle className="text-base">{editingId ? t("formTitleEdit") : t("formTitleCreate")}</CardTitle>
-              <Badge variant="outline" className="shrink-0">{formModeLabel}</Badge>
-            </div>
-            {selectedParent && (
-              <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                <GitBranch className="h-3.5 w-3.5" />
-                {t("subcategoryUnder", { parent: selectedParent.name })}
-              </p>
-            )}
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-1.5">
-              <Label>{t("name")}</Label>
-              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={t("namePlaceholder")} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>{t("slug")}</Label>
-              <Input value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} placeholder={t("slugPlaceholder")} />
-              <p className="text-xs text-muted-foreground">{t("slugHelp")}</p>
-            </div>
-            <Select label={t("parent")} value={form.parentId} onChange={(e) => setParentCategory(e.target.value)}>
-              <option value="">{t("noParent")}</option>
-              {parentOptions.map(category => <option key={category.id} value={category.id}>{category.parentId ? "-- " : ""}{category.name}</option>)}
+      <main className="overflow-hidden rounded-xl border bg-card">
+        <div className="flex flex-col gap-2 border-b p-3 md:flex-row md:items-center">
+          <label className="relative min-w-0 flex-1 md:max-w-sm">
+            <span className="sr-only">{t("searchLabel")}</span>
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("searchPlaceholder")} className="min-h-11 pl-9" />
+          </label>
+          <label>
+            <span className="sr-only">{t("scopeFilterLabel")}</span>
+            <Select value={scopeFilter} onChange={(event) => setScopeFilter(event.target.value as "all" | CategoryScope)} className="min-h-11 w-full md:w-44">
+              <option value="all">{t("allScopes")}</option>
+              <option value="ticket">{t("ticketScope")}</option>
+              <option value="complaint">{t("complaintScope")}</option>
+              <option value="both">{t("bothScope")}</option>
             </Select>
-            <p className="text-xs text-muted-foreground">{selectedParent ? t("parentSelectedHelp") : t("parentRootHelp")}</p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Select label={t("scope")} value={form.scope} onChange={(e) => setForm({ ...form, scope: e.target.value as CategoryScope })}>
+          </label>
+          <label className="flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm">
+            <input type="checkbox" checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} className="h-4 w-4" />
+            {t("showInactive")}
+          </label>
+        </div>
+
+        {loading ? (
+          <div aria-busy="true" className="divide-y">
+            {[0, 1, 2, 3, 4].map((index) => (
+              <div key={index} className="flex min-h-16 animate-pulse items-center gap-3 px-3 motion-reduce:animate-none">
+                <div className="h-8 w-8 rounded bg-muted" />
+                <div className="flex-1 space-y-2"><div className="h-3 w-1/3 rounded bg-muted" /><div className="h-2.5 w-1/2 rounded bg-muted" /></div>
+              </div>
+            ))}
+          </div>
+        ) : loadError ? (
+          <div role="alert" className="flex min-h-64 flex-col items-center justify-center px-4 py-10 text-center">
+            <CircleAlert className="h-8 w-8 text-destructive" />
+            <h2 className="mt-3 text-base font-semibold">{t("loadFailedTitle")}</h2>
+            <p className="mt-1 max-w-md text-sm text-muted-foreground">{loadError}</p>
+            <Button variant="outline" className="mt-4 min-h-11" onClick={() => void fetchCategories()}><RotateCcw />{t("retry")}</Button>
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="flex min-h-64 flex-col items-center justify-center px-4 py-10 text-center">
+            <Tags className="h-8 w-8 text-muted-foreground" />
+            <h2 className="mt-3 text-base font-semibold">{hasFilters ? t("noResultsTitle") : t("noCategories")}</h2>
+            <p className="mt-1 max-w-md text-sm text-muted-foreground">{hasFilters ? t("noResultsDescription") : t("noCategoriesHint")}</p>
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              {hasFilters && <Button variant="outline" className="min-h-11" onClick={clearFilters}>{t("clearFilters")}</Button>}
+              {canWrite && <Button className="min-h-11" onClick={() => startCreate()}><Plus />{t("newRootCategory")}</Button>}
+            </div>
+          </div>
+        ) : (
+          <div role="tree" aria-label={t("categoryTree")} className="divide-y">
+            {rows.map((category) => {
+              const childCount = category.children?.length || 0
+              const hasChildren = childCount > 0
+              const expanded = !collapsedIds.has(category.id) || forceExpanded
+              return (
+                <div
+                  key={category.id}
+                  ref={(node) => { if (node) rowRefs.current.set(category.id, node); else rowRefs.current.delete(category.id) }}
+                  role="treeitem"
+                  aria-level={category.depth + 1}
+                  aria-selected={false}
+                  aria-expanded={hasChildren ? expanded : undefined}
+                  tabIndex={-1}
+                  data-category-id={category.id}
+                  className={cn(
+                    "grid min-h-[4.5rem] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:grid-cols-[minmax(0,1fr)_minmax(9rem,auto)_auto]",
+                    !category.isActive && "bg-muted/30",
+                    category.contextOnly && "bg-muted/20",
+                  )}
+                  style={{ paddingLeft: `${12 + Math.min(category.depth, 4) * 14}px` }}
+                >
+                  <div className="flex min-w-0 items-start gap-1">
+                    {hasChildren ? (
+                      <button
+                        type="button"
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+                        aria-label={expanded ? t("collapseNamed", { name: category.name }) : t("expandNamed", { name: category.name })}
+                        aria-expanded={expanded}
+                        onClick={() => toggleCollapsed(category.id)}
+                        disabled={forceExpanded}
+                      >
+                        {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                      </button>
+                    ) : <span className="h-11 w-3 shrink-0" />}
+                    <div className="min-w-0 pt-1">
+                      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                        <span className="truncate text-sm font-medium">{category.name}</span>
+                        <Badge variant={category.isActive ? "outline" : "secondary"}>{category.isActive ? t("activeBadge") : t("inactiveBadge")}</Badge>
+                        {category.contextOnly && <Badge variant="secondary">{t("parentContextBadge")}</Badge>}
+                      </div>
+                      <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                        {category.description || t("categorySummary", { scope: scopeLabel(category.scope), priority: priorityLabel(category.defaultPriority) })}
+                      </p>
+                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground sm:hidden">
+                        <span>{scopeLabel(category.scope)}</span>
+                        <span>{priorityLabel(category.defaultPriority)}</span>
+                        <span>{t("ticketsCount", { count: category._count?.tickets || 0 })}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="hidden min-w-0 text-xs text-muted-foreground sm:block">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span>{scopeLabel(category.scope)}</span>
+                      <span aria-hidden="true">·</span>
+                      <span>{priorityLabel(category.defaultPriority)}</span>
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <span>{t("ticketsCount", { count: category._count?.tickets || 0 })}</span>
+                      <span className="inline-flex items-center gap-1">
+                        {category.isPortalVisible && category.isActive ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                        {category.isPortalVisible && category.isActive ? t("portalBadge") : t("internalBadge")}
+                      </span>
+                    </div>
+                  </div>
+                  {(canWrite || (canDeactivate && category.isActive)) && <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-11 w-11" aria-label={t("actionsNamed", { name: category.name })}>
+                        <MoreHorizontal />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {canWrite && category.isActive && <DropdownMenuItem className="min-h-11" onSelect={() => startCreate(category.id)}><Plus />{t("addChild")}</DropdownMenuItem>}
+                      {canWrite && <DropdownMenuItem className="min-h-11" onSelect={() => startEdit(category)}><Pencil />{t("edit")}</DropdownMenuItem>}
+                      {canWrite && (canDeactivate || !category.isActive) && <DropdownMenuSeparator />}
+                      {category.isActive && canDeactivate ? (
+                        <DropdownMenuItem onSelect={() => setDeactivateTarget(category)} className="min-h-11 text-destructive focus:text-destructive"><X />{t("deactivate")}</DropdownMenuItem>
+                      ) : !category.isActive && canWrite ? (
+                        <DropdownMenuItem className="min-h-11" onSelect={() => void handleRestore(category)}><RotateCcw />{t("restore")}</DropdownMenuItem>
+                      ) : null}
+                    </DropdownMenuContent>
+                  </DropdownMenu>}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </main>
+
+      <Sheet open={editorOpen} onOpenChange={(open) => { if (!open) requestEditorClose() }}>
+        <SheetContent
+          side="right"
+          closeLabel={tc("close")}
+          onEscapeKeyDown={(event) => { if (dirty) { event.preventDefault(); setDiscardOpen(true) } }}
+          className="!inset-0 flex !h-[100dvh] !w-full !max-w-none flex-col gap-0 overflow-hidden border-l p-0 sm:!inset-y-0 sm:!left-auto sm:!right-0 sm:!h-full sm:!w-[34rem] sm:!max-w-[90vw] motion-reduce:transition-none"
+        >
+          <SheetHeader className="shrink-0 border-b px-5 py-4 pr-14 text-left">
+            <div className="flex items-center gap-2">
+              <SheetTitle>{editingId ? t("formTitleEdit") : t("formTitleCreate")}</SheetTitle>
+              <Badge variant="outline">{selectedParent ? t("subcategory") : t("rootCategory")}</Badge>
+            </div>
+            <SheetDescription>
+              {selectedParent ? t("subcategoryUnder", { parent: selectedParent.name }) : t("editorDescription")}
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
+            {actionError && (
+              <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
+                <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />{actionError}
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="category-name">{t("name")}</Label>
+              <Input id="category-name" autoFocus value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder={t("namePlaceholder")} className="min-h-11" />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="category-parent">{t("parent")}</Label>
+              <Select id="category-parent" value={form.parentId} onChange={(event) => setParentCategory(event.target.value)} className="min-h-11">
+                <option value="">{t("noParent")}</option>
+                {parentOptions.map((category) => <option key={category.id} value={category.id}>{category.parentId ? `— ${category.name}` : category.name}</option>)}
+              </Select>
+              <p className="text-xs text-muted-foreground">{selectedParent ? t("parentSelectedHelp") : t("parentRootHelp")}</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="category-scope">{t("scope")}</Label>
+              <Select id="category-scope" value={form.scope} onChange={(event) => setForm({ ...form, scope: event.target.value as CategoryScope })} className="min-h-11">
                 <option value="ticket">{t("ticketScope")}</option>
                 <option value="complaint">{t("complaintScope")}</option>
                 <option value="both">{t("bothScope")}</option>
               </Select>
-              <Select label={t("defaultPriority")} value={form.defaultPriority} onChange={(e) => setForm({ ...form, defaultPriority: e.target.value })}>
+              <p className="text-xs text-muted-foreground">{form.scope === "ticket" ? t("ticketScopeHelp") : form.scope === "complaint" ? t("complaintScopeHelp") : t("bothScopeHelp")}</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="category-priority">{t("defaultPriority")}</Label>
+              <Select id="category-priority" value={form.defaultPriority} onChange={(event) => setForm({ ...form, defaultPriority: event.target.value as "" | Priority })} className="min-h-11">
                 <option value="">{t("noDefaultPriority")}</option>
-                <option value="low">low</option>
-                <option value="medium">medium</option>
-                <option value="high">high</option>
-                <option value="critical">critical</option>
+                <option value="low">{t("priorityLow")}</option>
+                <option value="medium">{t("priorityMedium")}</option>
+                <option value="high">{t("priorityHigh")}</option>
+                <option value="critical">{t("priorityCritical")}</option>
               </Select>
+              <p className="text-xs text-muted-foreground">{t("priorityHelp")}</p>
             </div>
+
             <div className="space-y-1.5">
-              <Label>{t("description")}</Label>
-              <textarea
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder={t("descriptionPlaceholder")}
-                className="min-h-24 w-full rounded-lg border border-zinc-200/70 bg-card px-3 py-2 text-sm outline-none focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/20 dark:border-zinc-700/70"
-              />
+              <Label htmlFor="category-description">{t("description")}</Label>
+              <Textarea id="category-description" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder={t("descriptionPlaceholder")} rows={4} />
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-                <input type="checkbox" checked={form.isPortalVisible} onChange={(e) => setForm({ ...form, isPortalVisible: e.target.checked })} />
-                {t("portalVisible")}
+
+            <div className="space-y-2">
+              <label className="flex min-h-12 items-start gap-3 rounded-lg border p-3">
+                <input type="checkbox" checked={form.isPortalVisible} onChange={(event) => setForm({ ...form, isPortalVisible: event.target.checked })} className="mt-1 h-4 w-4" />
+                <span><span className="block text-sm font-medium">{t("portalVisible")}</span><span className="mt-0.5 block text-xs text-muted-foreground">{t("portalVisibleHelp")}</span></span>
               </label>
-              <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-                <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
-                {t("active")}
-              </label>
+              <div className="flex min-h-12 items-start gap-3 rounded-lg border p-3">
+                {form.isActive ? <Check className="mt-0.5 h-4 w-4 text-muted-foreground" /> : <X className="mt-0.5 h-4 w-4 text-muted-foreground" />}
+                <span><span className="block text-sm font-medium">{form.isActive ? t("activeBadge") : t("inactiveBadge")}</span><span className="mt-0.5 block text-xs text-muted-foreground">{t("stateManagedFromList")}</span></span>
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label>{t("sortOrder")}</Label>
-              <Input type="number" value={form.sortOrder} onChange={(e) => setForm({ ...form, sortOrder: Number(e.target.value) })} />
+
+            <div className="rounded-lg border">
+              <button
+                type="button"
+                aria-expanded={advancedOpen}
+                aria-controls="ticket-category-advanced"
+                onClick={() => setAdvancedOpen((current) => !current)}
+                className="flex min-h-11 w-full items-center gap-2 px-3 text-left text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+              >
+                <Settings2 className="h-4 w-4 text-muted-foreground" />
+                <span className="flex-1">{t("advancedOptions")}</span>
+                {advancedOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              </button>
+              <div id="ticket-category-advanced" hidden={!advancedOpen} className="space-y-4 border-t p-3">
+                <p className="text-xs text-muted-foreground">{t("advancedHelp")}</p>
+                <div className="space-y-1.5">
+                  <Label htmlFor="category-slug">{t("slug")}</Label>
+                  <Input id="category-slug" value={form.slug} onChange={(event) => setForm({ ...form, slug: event.target.value })} placeholder={t("slugPlaceholder")} className="min-h-11" />
+                  <p className="text-xs text-muted-foreground">{t("slugHelp")}</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="category-sort-order">{t("sortOrder")}</Label>
+                  <Input id="category-sort-order" type="number" value={form.sortOrder} onChange={(event) => setForm({ ...form, sortOrder: Number(event.target.value) })} className="min-h-11" />
+                  <p className="text-xs text-muted-foreground">{t("sortOrderHelp")}</p>
+                </div>
+              </div>
             </div>
-            <div className="flex gap-2 pt-1">
-              <Button onClick={saveCategory} disabled={saving || !form.name.trim()} className="flex-1">
-                <Check className="h-4 w-4" /> {editingId ? t("saveCategory") : t("createCategory")}
-              </Button>
-              {editingId && (
-                <Button variant="outline" onClick={() => startCreate()} disabled={saving}>
-                  {t("cancelEdit")}
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+
+          <SheetFooter className="shrink-0 gap-2 border-t bg-background px-5 py-4 sm:space-x-0">
+            <Button variant="outline" className="min-h-11" onClick={requestEditorClose} disabled={saving}>{tc("cancel")}</Button>
+            <Button className="min-h-11" onClick={() => void saveCategory()} disabled={saving || !form.name.trim()}>
+              <Check />{saving ? tc("saving") : editingId ? t("saveCategory") : t("createCategory")}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      <ConfirmDialog
+        open={discardOpen}
+        onOpenChange={setDiscardOpen}
+        onConfirm={discardEditor}
+        title={t("discardTitle")}
+        description={t("discardDescription")}
+        confirmLabel={t("discardAction")}
+      />
+
+      <ConfirmDialog
+        open={Boolean(deactivateTarget)}
+        onOpenChange={(open) => { if (!open) setDeactivateTarget(null) }}
+        onConfirm={handleDeactivate}
+        title={t("deactivateTitle")}
+        description={deactivateTarget ? t("deactivateDescription", {
+          name: deactivateTarget.name,
+          tickets: deactivateTarget._count?.tickets || 0,
+          children: deactivateTarget._count?.children || 0,
+        }) : undefined}
+        confirmLabel={t("deactivate")}
+      />
     </div>
   )
 }
