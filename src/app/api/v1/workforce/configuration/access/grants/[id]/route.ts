@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { withWorkforceSessionGrantManagementAuth } from "@/lib/with-workforce-rls-auth"
 import { createWorkforceAccessGrantRevocationDraft } from "@/lib/workforce/access-grant-ledger"
 import { canManageWorkforceAccessGrants } from "@/lib/workforce/access-grant-management"
+import { requireWorkforceAccessGrantRateLimit } from "@/lib/workforce/access-grant-rate-limit"
 import type { WorkforceAccessGrantReaderDb } from "@/lib/workforce/access-grant-resolution"
 import {
   appendAuthorizedWorkforceAccessGrantRevocation,
@@ -67,6 +68,12 @@ export const DELETE = withWorkforceSessionGrantManagementAuth<RouteContext>(asyn
       code: "WORKFORCE_ACCESS_REVOCATION_INVALID",
     }, { status: 400, headers: workforceSensitiveResponseHeaders })
   }
+  const rateLimited = await requireWorkforceAccessGrantRateLimit({
+    operation: "MUTATION",
+    organizationId: auth.orgId,
+    principalUserId: auth.userId,
+  })
+  if (rateLimited) return rateLimited
 
   try {
     const grant = await prisma.workforceAccessGrant.findFirst({

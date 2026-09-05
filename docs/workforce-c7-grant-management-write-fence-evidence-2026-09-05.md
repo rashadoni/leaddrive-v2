@@ -44,12 +44,16 @@ do not activate Workforce granular access for any tenant.
   recheck and metadata-only audit as grant creation. Browser revocation of
   `TENANT_ADMIN` remains outside this route, so a normal session cannot remove
   the sole bootstrap authority or create a grant/revoke escalation loop.
+- Grant and revocation mutations share a Redis-backed tenant/principal
+  budget of 12 requests per minute. Exact identities are hashed before
+  storage. Quota responses carry a bounded retry value; an unavailable or
+  unexpected shared-guard failure is a contained `503`, never a per-process
+  fallback that could weaken a multi-instance privilege boundary.
 
 ## Verification
 
-- `PASS` — focused Vitest: role boundary, ledger/writer, role matrix and
-  resolution plus grant and revocation API negative paths (`6 files / 69
-  tests`).
+- `PASS` — focused Vitest: role boundary, ledger/writer, role matrix,
+  shared grant-rate guard and grant/revocation API negative paths.
 - `PASS` — RLS route-context coverage (`1 file / 3 tests`), including the new
   session grant-management wrapper.
 - `PASS` — scoped ESLint for all changed server, writer, test and static-RLS
@@ -59,7 +63,8 @@ do not activate Workforce granular access for any tenant.
   staging, physical MFA/device verification, real grant bootstrap and
   production. The Contabo worktree runs only small sequential checks; the
   heavier or real-world evidence requires GitHub CI, the owner Mac staging
-  channel or a controlled pilot.
+  channel or a controlled pilot. `codex-heavy-run` is installed but its shared
+  host lock was unavailable before any heavy command could start.
 
 ## Explicit non-activation
 

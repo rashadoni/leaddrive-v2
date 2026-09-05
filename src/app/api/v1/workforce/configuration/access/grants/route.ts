@@ -13,6 +13,7 @@ import {
   type WorkforceAccessGrantReaderDb,
 } from "@/lib/workforce/access-grant-resolution"
 import { canManageWorkforceAccessGrants } from "@/lib/workforce/access-grant-management"
+import { requireWorkforceAccessGrantRateLimit } from "@/lib/workforce/access-grant-rate-limit"
 import {
   persistAuthorizedWorkforceAccessGrant,
   WorkforceAccessGrantWriterError,
@@ -125,6 +126,12 @@ export const POST = withWorkforceSessionGrantManagementAuth(async (req: NextRequ
       code: "WORKFORCE_ACCESS_GRANT_BOOTSTRAP_ONLY",
     }, { status: 409, headers: workforceSensitiveResponseHeaders })
   }
+  const rateLimited = await requireWorkforceAccessGrantRateLimit({
+    operation: "MUTATION",
+    organizationId: auth.orgId,
+    principalUserId: auth.userId,
+  })
+  if (rateLimited) return rateLimited
 
   try {
     if (!await activeTenantTarget({
