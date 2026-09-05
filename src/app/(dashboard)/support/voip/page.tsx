@@ -274,7 +274,7 @@ export default function VoipCallsPage() {
         <p className="mt-1 text-sm text-muted-foreground">{t("description")}</p>
       </header>
 
-      <aside data-testid="voip-connection-state" className="flex flex-col gap-3 rounded-lg border bg-card px-3 py-2 sm:flex-row sm:items-center sm:justify-between" aria-label={t("connectionStatus")}>
+      <aside data-testid="voip-connection-state" data-state={connectionState} className="flex flex-col gap-3 rounded-lg border bg-card px-3 py-2 sm:flex-row sm:items-center sm:justify-between" aria-label={t("connectionStatus")}>
         <div className="flex min-h-11 items-center gap-2" aria-live="polite">
           {connectionState === "checking" ? (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground motion-reduce:animate-none" aria-hidden="true" />

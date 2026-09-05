@@ -52,6 +52,7 @@ export function CallRecordingPlayer({
   return (
     <div data-testid="call-recording-player" data-state={state} className="min-w-[13rem] max-w-[18rem]">
       <audio
+        data-testid="call-recording-audio"
         ref={audioRef}
         controls
         preload="none"
