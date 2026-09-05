@@ -346,7 +346,7 @@ export default function AgentDesktopPage() {
       {loadError && (
         <div data-testid="agent-desktop-refresh-error" role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm">
           <span>{t("refreshFailed")}</span>
-          <Button variant="outline" size="sm" className="min-h-9" onClick={() => void loadDashboard()}>
+          <Button data-testid="agent-desktop-retry-refresh" variant="outline" size="sm" className="min-h-9" onClick={() => void loadDashboard()}>
             <RefreshCw className="h-4 w-4" aria-hidden="true" />
             {t("retry")}
           </Button>
@@ -402,6 +402,7 @@ export default function AgentDesktopPage() {
           </div>
           <div className="flex items-center gap-1">
             <Button
+              data-testid="agent-desktop-refresh"
               type="button"
               variant="ghost"
               size="icon"
