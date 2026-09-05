@@ -7,6 +7,7 @@ import { issuePortalPasswordLink } from "@/lib/portal-password-link"
 import { passwordPolicyError } from "@/lib/password-policy"
 import bcrypt from "bcryptjs"
 import { z } from "zod"
+import type { Prisma } from "@prisma/client"
 
 const portalUserProfileSchema = z.object({
   fullName: z.string().trim().min(1).max(200),
@@ -51,10 +52,11 @@ export const GET = withRlsSessionAuth(async (req, auth) => {
   const { orgId } = auth
 
   const url = new URL(req.url)
-  const filter = url.searchParams.get("filter") || "all"
-  const search = url.searchParams.get("search") || ""
+  const requestedFilter = url.searchParams.get("filter") || "all"
+  const filter = ["all", "enabled", "registered", "pending", "disabled"].includes(requestedFilter) ? requestedFilter : "all"
+  const search = (url.searchParams.get("search") || "").trim().slice(0, 120)
 
-  const where: any = { organizationId: orgId }
+  const where: Prisma.ContactWhereInput = { organizationId: orgId }
 
   if (filter === "enabled") where.portalAccessEnabled = true
   else if (filter === "registered") {
@@ -75,14 +77,16 @@ export const GET = withRlsSessionAuth(async (req, auth) => {
     ]
   }
 
-  const contacts = await prisma.contact.findMany({
+  const contactRows = await prisma.contact.findMany({
     where,
     include: { company: { select: { name: true } } },
     orderBy: [{ portalAccessEnabled: "desc" }, { portalLastLoginAt: "desc" }, { fullName: "asc" }],
-    take: PAGE_SIZE.PORTAL_USERS,
+    take: PAGE_SIZE.PORTAL_USERS + 1,
   })
+  const truncated = contactRows.length > PAGE_SIZE.PORTAL_USERS
+  const contacts = contactRows.slice(0, PAGE_SIZE.PORTAL_USERS)
 
-  const data = contacts.map((c: any) => ({
+  const data = contacts.map((c) => ({
     id: c.id,
     fullName: c.fullName,
     email: c.email,
@@ -92,6 +96,7 @@ export const GET = withRlsSessionAuth(async (req, auth) => {
     portalAccessEnabled: c.portalAccessEnabled,
     hasPassword: !!c.portalPasswordHash,
     portalLastLoginAt: c.portalLastLoginAt,
+    recoveryExpiresAt: c.portalVerificationExpires,
   }))
 
   // Stats
@@ -101,14 +106,19 @@ export const GET = withRlsSessionAuth(async (req, auth) => {
   })
 
   const totalWithEmail = allContacts.length
-  const enabled = allContacts.filter((c: any) => c.portalAccessEnabled).length
-  const registered = allContacts.filter((c: any) => c.portalAccessEnabled && c.portalPasswordHash).length
+  const enabled = allContacts.filter((c) => c.portalAccessEnabled).length
+  const registered = allContacts.filter((c) => c.portalAccessEnabled && c.portalPasswordHash).length
   const weekAgo = new Date(Date.now() - 7 * 86400000)
-  const recentLogins = allContacts.filter((c: any) => c.portalLastLoginAt && c.portalLastLoginAt > weekAgo).length
+  const recentLogins = allContacts.filter((c) => c.portalLastLoginAt && c.portalLastLoginAt > weekAgo).length
 
   return NextResponse.json({
     success: true,
-    data: { contacts: data, stats: { totalWithEmail, enabled, registered, recentLogins } },
+    data: {
+      contacts: data,
+      stats: { totalWithEmail, enabled, registered, recentLogins },
+      scope: { shown: data.length, limit: PAGE_SIZE.PORTAL_USERS, truncated },
+    },
+    permissions: { canWrite: true, role: auth.role },
   })
 })
 
@@ -120,8 +130,10 @@ async function clearPortalChatHistory(orgId: string, contactId: string) {
   if (sessions.length === 0) return 0
 
   const sessionIds = sessions.map((session: { id: string }) => session.id)
-  await prisma.aiChatMessage.deleteMany({ where: { sessionId: { in: sessionIds } } })
-  await prisma.aiChatSession.deleteMany({ where: { id: { in: sessionIds } } })
+  await prisma.$transaction([
+    prisma.aiChatMessage.deleteMany({ where: { sessionId: { in: sessionIds } } }),
+    prisma.aiChatSession.deleteMany({ where: { id: { in: sessionIds } } }),
+  ])
   return sessions.length
 }
 
@@ -139,6 +151,7 @@ async function writePortalAudit(params: {
   action: string
   contactId: string
   contactName: string
+  actorUserId: string
   details?: Record<string, string | number | boolean | null>
 }) {
   try {
@@ -149,10 +162,15 @@ async function writePortalAudit(params: {
         entityType: "contact",
         entityId: params.contactId,
         entityName: params.contactName,
-        ...(params.details ? { details: params.details } : {}),
+        details: { ...(params.details || {}), actorUserId: params.actorUserId },
       },
     })
-  } catch { /* audit delivery must not roll back an already-completed admin action */ }
+    return true
+  } catch {
+    // Access changes remain authoritative even if the secondary audit sink is
+    // unavailable, but the response must tell the UI not to claim an audit.
+    return false
+  }
 }
 
 // PATCH /api/v1/portal-users — manage one portal contact or bulk access state.
@@ -203,7 +221,10 @@ export const PATCH = withRlsSessionAuth(async (req, auth) => {
 
     if (profile) {
       if (profile.portalAccessEnabled && !profile.email) {
-        return NextResponse.json({ error: "An email address is required for portal access" }, { status: 400 })
+        return NextResponse.json({ error: "An email address is required for portal access", code: "PORTAL_EMAIL_REQUIRED" }, { status: 400 })
+      }
+      if (profile.portalAccessEnabled && !target.isActive) {
+        return NextResponse.json({ error: "Activate the CRM contact before enabling portal access", code: "PORTAL_CONTACT_INACTIVE" }, { status: 409 })
       }
       const emailChanged = target.email !== profile.email
       const accessRevoked = !profile.portalAccessEnabled || emailChanged
@@ -219,14 +240,15 @@ export const PATCH = withRlsSessionAuth(async (req, auth) => {
       })
       if (updated.count !== 1) return NextResponse.json({ error: "Contact not found" }, { status: 404 })
 
-      await writePortalAudit({
+      const auditRecorded = await writePortalAudit({
         orgId,
         action: "portal_user_updated",
         contactId,
         contactName: profile.fullName,
+        actorUserId: auth.userId,
         details: { emailChanged, accessRevoked },
       })
-      return NextResponse.json({ success: true, data: { credentialsRevoked: accessRevoked } })
+      return NextResponse.json({ success: true, data: { credentialsRevoked: accessRevoked }, auditRecorded })
     }
 
     if (sendPasswordLink || resetPassword) {
@@ -237,14 +259,15 @@ export const PATCH = withRlsSessionAuth(async (req, auth) => {
       if (!issued.ok) {
         return NextResponse.json({ error: "Password link could not be delivered" }, { status: 502 })
       }
-      await writePortalAudit({
+      const auditRecorded = await writePortalAudit({
         orgId,
         action: "portal_password_link_sent_by_admin",
         contactId,
         contactName: target.fullName,
-        details: { mode: issued.mode },
+        actorUserId: auth.userId,
+        details: { mode: issued.mode, expiresAt: issued.expiresAt },
       })
-      return NextResponse.json({ success: true, data: { mode: issued.mode } })
+      return NextResponse.json({ success: true, data: { mode: issued.mode, expiresAt: issued.expiresAt }, auditRecorded })
     }
 
     if (administratorPassword) {
@@ -269,37 +292,53 @@ export const PATCH = withRlsSessionAuth(async (req, auth) => {
       })
       if (updated.count !== 1) return NextResponse.json({ error: "Contact not found" }, { status: 404 })
 
-      await writePortalAudit({
+      const auditRecorded = await writePortalAudit({
         orgId,
         action: "portal_password_set_by_admin",
         contactId,
         contactName: target.fullName,
+        actorUserId: auth.userId,
         details: { source: "manual" },
       })
-      return NextResponse.json({ success: true })
+      return NextResponse.json({ success: true, auditRecorded })
     }
 
     if (removeFromPortal) {
-      const cleared = await clearPortalChatHistory(orgId, contactId)
-      const removed = await prisma.contact.updateMany({
-        where: { id: contactId, organizationId: orgId },
-        data: { portalAccessEnabled: false, ...revokePortalCredentials() },
+      const sessions = await prisma.aiChatSession.findMany({
+        where: { organizationId: orgId, portalUserId: contactId },
+        select: { id: true },
       })
+      const sessionIds = sessions.map((session: { id: string }) => session.id)
+      const operations = [
+        ...(sessionIds.length > 0 ? [
+          prisma.aiChatMessage.deleteMany({ where: { sessionId: { in: sessionIds } } }),
+          prisma.aiChatSession.deleteMany({ where: { id: { in: sessionIds } } }),
+        ] : []),
+        prisma.contact.updateMany({
+          where: { id: contactId, organizationId: orgId },
+          data: { portalAccessEnabled: false, ...revokePortalCredentials() },
+        }),
+      ]
+      const results = await prisma.$transaction(operations)
+      const removed = results.at(-1) as { count: number }
       if (removed.count !== 1) return NextResponse.json({ error: "Contact not found" }, { status: 404 })
-      await writePortalAudit({ orgId, action: "portal_user_removed", contactId, contactName: target.fullName, details: { cleared } })
-      return NextResponse.json({ success: true, removed: true })
+      const auditRecorded = await writePortalAudit({ orgId, action: "portal_user_removed", contactId, contactName: target.fullName, actorUserId: auth.userId, details: { cleared: sessions.length } })
+      return NextResponse.json({ success: true, removed: true, auditRecorded })
     }
 
     if (clearChatHistory) {
       const cleared = await clearPortalChatHistory(orgId, contactId)
-      await writePortalAudit({ orgId, action: "portal_chat_history_cleared", contactId, contactName: target.fullName, details: { cleared } })
-      return NextResponse.json({ success: true, cleared })
+      const auditRecorded = await writePortalAudit({ orgId, action: "portal_chat_history_cleared", contactId, contactName: target.fullName, actorUserId: auth.userId, details: { cleared } })
+      return NextResponse.json({ success: true, cleared, auditRecorded })
     }
 
-    const updateData: any = {}
+    const updateData: Prisma.ContactUpdateManyMutationInput = {}
     if (typeof portalAccessEnabled === "boolean") {
       if (portalAccessEnabled && !target.email) {
-        return NextResponse.json({ error: "An email address is required for portal access" }, { status: 400 })
+        return NextResponse.json({ error: "An email address is required for portal access", code: "PORTAL_EMAIL_REQUIRED" }, { status: 400 })
+      }
+      if (portalAccessEnabled && !target.isActive) {
+        return NextResponse.json({ error: "Activate the CRM contact before enabling portal access", code: "PORTAL_CONTACT_INACTIVE" }, { status: 409 })
       }
       updateData.portalAccessEnabled = portalAccessEnabled
       if (!portalAccessEnabled) Object.assign(updateData, revokePortalCredentials())
@@ -314,14 +353,15 @@ export const PATCH = withRlsSessionAuth(async (req, auth) => {
     })
     if (updated.count !== 1) return NextResponse.json({ error: "Contact not found" }, { status: 404 })
 
-    await writePortalAudit({
+    const auditRecorded = await writePortalAudit({
       orgId,
       action: portalAccessEnabled ? "portal_access_enabled" : "portal_access_disabled",
       contactId,
       contactName: target.fullName,
+      actorUserId: auth.userId,
     })
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, auditRecorded })
   }
 
   // Bulk action
@@ -329,11 +369,15 @@ export const PATCH = withRlsSessionAuth(async (req, auth) => {
     const enableValue = action === "enable"
     const uniqueContactIds = [...new Set(contactIds)]
     if (enableValue) {
-      const contactsWithoutEmail = await prisma.contact.count({
-        where: { id: { in: uniqueContactIds }, organizationId: orgId, email: null },
+      const ineligibleContacts = await prisma.contact.count({
+        where: {
+          id: { in: uniqueContactIds },
+          organizationId: orgId,
+          OR: [{ email: null }, { isActive: false }],
+        },
       })
-      if (contactsWithoutEmail > 0) {
-        return NextResponse.json({ error: "Every selected contact needs an email address" }, { status: 400 })
+      if (ineligibleContacts > 0) {
+        return NextResponse.json({ error: "Every selected contact must be active and have an email address", code: "PORTAL_BULK_INELIGIBLE" }, { status: 400 })
       }
     }
     const result = await prisma.contact.updateMany({
@@ -343,7 +387,15 @@ export const PATCH = withRlsSessionAuth(async (req, auth) => {
         ...(!enableValue ? revokePortalCredentials() : {}),
       },
     })
-    return NextResponse.json({ success: true, updated: result.count })
+    const auditRecorded = await writePortalAudit({
+      orgId,
+      action: enableValue ? "portal_access_bulk_enabled" : "portal_access_bulk_disabled",
+      contactId: "batch",
+      contactName: `${result.count} portal users`,
+      actorUserId: auth.userId,
+      details: { requested: uniqueContactIds.length, updated: result.count },
+    })
+    return NextResponse.json({ success: true, updated: result.count, auditRecorded })
   }
 
   return NextResponse.json({ error: "Invalid request" }, { status: 400 })

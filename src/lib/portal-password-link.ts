@@ -8,6 +8,7 @@ type PortalPasswordLinkContact = {
   organizationId: string
   fullName: string
   email: string | null
+  preferredLanguage?: string | null
   portalPasswordHash: string | null
   portalVerificationToken: string | null
   portalVerificationExpires: Date | null
@@ -16,8 +17,44 @@ type PortalPasswordLinkContact = {
 
 export type PortalPasswordLinkMode = "reset" | "activation"
 
+const portalLinkCopy = {
+  en: {
+    greeting: (name: string) => `Hello, ${name}!`,
+    resetSubject: (organization: string) => `${organization} — reset your portal password`,
+    activationSubject: (organization: string) => `${organization} — set up your portal access`,
+    resetIntro: "To set a new customer portal password for",
+    activationIntro: "To set up customer portal access for",
+    resetAction: "Reset password",
+    activationAction: "Set password",
+    expiry: "This link is valid for 24 hours and can be used only once.",
+    ignore: "If you did not request this action, you can ignore this email.",
+  },
+  ru: {
+    greeting: (name: string) => `Здравствуйте, ${name}!`,
+    resetSubject: (organization: string) => `${organization} — сброс пароля портала`,
+    activationSubject: (organization: string) => `${organization} — настройте доступ к порталу`,
+    resetIntro: "Чтобы задать новый пароль для клиентского портала",
+    activationIntro: "Чтобы настроить доступ к клиентскому порталу",
+    resetAction: "Сбросить пароль",
+    activationAction: "Настроить пароль",
+    expiry: "Ссылка действительна 24 часа и может быть использована только один раз.",
+    ignore: "Если вы не запрашивали это действие, просто проигнорируйте письмо.",
+  },
+  az: {
+    greeting: (name: string) => `Salam, ${name}!`,
+    resetSubject: (organization: string) => `${organization} — portal şifrəsini sıfırlayın`,
+    activationSubject: (organization: string) => `${organization} — portal girişini qurun`,
+    resetIntro: "Müştəri portalı üçün yeni şifrə təyin etmək üçün",
+    activationIntro: "Müştəri portalına girişi qurmaq üçün",
+    resetAction: "Şifrəni sıfırla",
+    activationAction: "Şifrəni təyin et",
+    expiry: "Bu keçid 24 saat etibarlıdır və yalnız bir dəfə istifadə edilə bilər.",
+    ignore: "Bu əməliyyatı siz istəməmisinizsə, məktubu nəzərə almayın.",
+  },
+} as const
+
 export type PortalPasswordLinkResult =
-  | { ok: true; mode: PortalPasswordLinkMode }
+  | { ok: true; mode: PortalPasswordLinkMode; expiresAt: string }
   | { ok: false; reason: "ineligible" | "delivery_failed" }
 
 function escapeHtml(value: string) {
@@ -69,13 +106,11 @@ export async function issuePortalPasswordLink(contact: PortalPasswordLinkContact
     const customerName = escapeHtml(contact.fullName)
     const safeOrganizationName = escapeHtml(organizationName)
     const reset = mode === "reset"
-    const subject = reset
-      ? `${organizationName} — сброс пароля портала`
-      : `${organizationName} — настройте доступ к порталу`
-    const actionLabel = reset ? "Сбросить пароль" : "Настроить пароль"
-    const actionIntro = reset
-      ? "Чтобы задать новый пароль для клиентского портала"
-      : "Чтобы настроить доступ к клиентскому порталу"
+    const language = contact.preferredLanguage === "en" || contact.preferredLanguage === "az" ? contact.preferredLanguage : "ru"
+    const copy = portalLinkCopy[language]
+    const subject = reset ? copy.resetSubject(organizationName) : copy.activationSubject(organizationName)
+    const actionLabel = reset ? copy.resetAction : copy.activationAction
+    const actionIntro = reset ? copy.resetIntro : copy.activationIntro
 
     deliveryOutcomeAmbiguous = true
     const result = await sendEmail({
@@ -83,23 +118,23 @@ export async function issuePortalPasswordLink(contact: PortalPasswordLinkContact
       subject,
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #1f2937;">
-          <p style="font-size: 15px;">Здравствуйте, <strong>${customerName}</strong>!</p>
+          <p style="font-size: 15px;">${copy.greeting(`<strong>${customerName}</strong>`)}</p>
           <p style="font-size: 15px;">${actionIntro} <strong>${safeOrganizationName}</strong>, перейдите по ссылке:</p>
           <p style="margin: 24px 0;"><a href="${passwordUrl}" style="color: #2563eb; text-decoration: underline; font-size: 15px;">${actionLabel}</a></p>
-          <p style="color: #6b7280; font-size: 13px;">Ссылка действительна 24 часа и может быть использована только один раз.</p>
-          <p style="color: #6b7280; font-size: 13px;">Если вы не запрашивали это действие, просто проигнорируйте письмо.</p>
+          <p style="color: #6b7280; font-size: 13px;">${copy.expiry}</p>
+          <p style="color: #6b7280; font-size: 13px;">${copy.ignore}</p>
           <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
           <p style="color: #9ca3af; font-size: 12px;">— ${safeOrganizationName}</p>
         </div>
       `,
       text: [
-        `Здравствуйте, ${contact.fullName}!`,
+        copy.greeting(contact.fullName),
         "",
         `${actionIntro} ${organizationName}, перейдите по ссылке:`,
         passwordUrl,
         "",
-        "Ссылка действительна 24 часа и может быть использована только один раз.",
-        "Если вы не запрашивали это действие, просто проигнорируйте письмо.",
+        copy.expiry,
+        copy.ignore,
         "",
         `— ${organizationName}`,
       ].join("\n"),
@@ -130,5 +165,5 @@ export async function issuePortalPasswordLink(contact: PortalPasswordLinkContact
     return { ok: false, reason: "delivery_failed" }
   }
 
-  return { ok: true, mode }
+  return { ok: true, mode, expiresAt: expires.toISOString() }
 }
