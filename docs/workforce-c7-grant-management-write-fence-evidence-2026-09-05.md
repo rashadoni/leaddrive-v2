@@ -55,12 +55,20 @@ do not activate Workforce granular access for any tenant.
   storage. Quota responses carry a bounded retry value; an unavailable or
   unexpected shared-guard failure is a contained `503`, never a per-process
   fallback that could weaken a multi-instance privilege boundary.
+- The matching active-grant inventory is bounded to 500 current, unrevoked
+  records and has the same rollout/session/MFA fence. It returns only the
+  grant reference needed for revocation, role/scope kind, effective window and
+  tenant-local display labels. Principal/scope internal IDs, operation keys,
+  reason codes, revocation history and any evidence are absent. Viewing the
+  inventory writes a counts-only access-control audit record.
 
 ## Verification
 
-- `PASS` — focused Vitest (`7 files / 54 tests`): role boundary,
-  ledger/writer replay modes, changed-payload conflicts, transactional target
-  recheck, shared grant-rate guard and grant/revocation API negative paths.
+- `PASS` — focused Vitest (`7 files / 54 tests`) before this inventory slice:
+  role boundary, ledger/writer replay modes, changed-payload conflicts,
+  transactional target recheck, shared grant-rate guard and grant/revocation
+  API negative paths. Inventory-specific verification is rerun in this
+  checkpoint before acceptance.
 - `PASS` — RLS route-context coverage (`1 file / 3 tests`), including the new
   session grant-management wrapper.
 - `PASS` — scoped ESLint for all changed server, writer, test and static-RLS
