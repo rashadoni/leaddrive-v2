@@ -62,6 +62,14 @@ do not activate Workforce granular access for any tenant.
   reason codes, revocation history and any evidence are absent. Viewing the
   inventory writes a counts-only access-control audit record.
 
+- The role-manager type-ahead endpoint requires the same session/granular
+  grant/MFA boundary. It requires a two-character search, returns at most 25
+  active tenant-local principal/team/site/agent targets, and uses the
+  inventory guard before every lookup. It supplies only the opaque value
+  needed by a future form plus its display label; its metadata-only audit
+  stores kind, query length and result count, never the typed search, name,
+  email or ID. It is a picker source, not a full directory or a grant writer.
+
 ## Verification
 
 - `PASS` — focused Vitest (`7 files / 54 tests`) before this inventory slice:
@@ -71,6 +79,8 @@ do not activate Workforce granular access for any tenant.
   checkpoint before acceptance.
 - `PASS` — RLS route-context coverage (`1 file / 3 tests`), including the new
   session grant-management wrapper.
+- `PASS` — grant-target search/API/rate/auth/RLS/log focused verification
+  (`6 files / 64 tests`).
 - `PASS` — scoped ESLint for all changed server, writer, test and static-RLS
   contract files; `git diff --check`.
 - `NOT RUN` — full TypeScript, production build, Chromium browser journey,
