@@ -23,6 +23,9 @@ describe("agent desktop UX contract", () => {
     expect(page).toContain("hidden overflow-x-auto md:block")
     expect(page).toContain("focus-visible:ring-2")
     expect(page).toContain("min-h-11")
+    expect(page).toContain('data-testid="agent-desktop-workspace"')
+    expect(page).toContain('data-testid="agent-desktop-next-case"')
+    expect(page).not.toContain("<main")
   })
 
   it("makes availability save, rollback truth and recovery explicit", () => {
@@ -32,6 +35,14 @@ describe("agent desktop UX contract", () => {
     expect(page).toContain("loadAvailability")
     expect(page).toContain("payload.data?.isAvailable !== nextValue")
     expect(page).toContain("aria-live=\"polite\"")
+    expect(page).toContain('data-testid="agent-desktop-availability-saved"')
+    expect(page).toContain('data-testid="agent-desktop-availability-error"')
+  })
+
+  it("localizes every active queue priority and status", () => {
+    const page = source("src/app/(dashboard)/support/agent-desktop/page.tsx")
+    expect(page).toContain('["critical", "urgent", "high", "medium", "low"]')
+    expect(page).toContain('"closed", "escalated"')
   })
 
   it("uses a tenant-scoped authoritative API contract and restricts team analytics", () => {

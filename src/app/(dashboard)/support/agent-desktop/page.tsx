@@ -84,6 +84,7 @@ export default function AgentDesktopPage() {
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null)
   const [availabilityLoading, setAvailabilityLoading] = useState(true)
   const [availabilitySaving, setAvailabilitySaving] = useState(false)
+  const [availabilitySaved, setAvailabilitySaved] = useState(false)
   const [availabilityRetry, setAvailabilityRetry] = useState<"load" | boolean | null>(null)
 
   const loadDashboard = useCallback(async () => {
@@ -114,6 +115,7 @@ export default function AgentDesktopPage() {
   const loadAvailability = useCallback(async () => {
     if (!sessionUserId) return
     setAvailabilityLoading(true)
+    setAvailabilitySaved(false)
     setAvailabilityRetry(null)
     try {
       const response = await fetch("/api/v1/users/me/availability", {
@@ -141,6 +143,7 @@ export default function AgentDesktopPage() {
   const saveAvailability = async (nextValue: boolean) => {
     if (availabilitySaving || availabilityLoading) return
     setAvailabilitySaving(true)
+    setAvailabilitySaved(false)
     setAvailabilityRetry(null)
     try {
       const response = await fetch("/api/v1/users/me/availability", {
@@ -158,6 +161,7 @@ export default function AgentDesktopPage() {
         return
       }
       setIsAvailable(nextValue)
+      setAvailabilitySaved(true)
       toast.success(t("availabilitySaved"))
     } catch {
       setAvailabilityRetry(nextValue)
@@ -179,12 +183,12 @@ export default function AgentDesktopPage() {
   }
 
   const priorityLabel = (priority: string) => {
-    const key = ["critical", "high", "medium", "low"].includes(priority) ? priority : "unknown"
+    const key = ["critical", "urgent", "high", "medium", "low"].includes(priority) ? priority : "unknown"
     return t(`priority.${key}`)
   }
 
   const statusLabel = (status: string) => {
-    const key = ["new", "open", "in_progress", "waiting", "resolved", "closed"].includes(status)
+    const key = ["new", "open", "in_progress", "waiting", "resolved", "closed", "escalated"].includes(status)
       ? status
       : "unknown"
     return t(`status.${key}`)
@@ -192,13 +196,13 @@ export default function AgentDesktopPage() {
 
   if (sessionStatus === "unauthenticated") {
     return (
-      <main className="mx-auto flex min-h-[50vh] max-w-xl items-center px-4 py-8">
+      <div data-testid="agent-desktop-permission" className="mx-auto flex min-h-[50vh] max-w-xl items-center px-4 py-8">
         <div className="w-full rounded-lg border bg-card p-5 text-center">
           <AlertCircle className="mx-auto h-6 w-6 text-muted-foreground" aria-hidden="true" />
           <h1 className="mt-3 text-base font-semibold">{t("permissionTitle")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{t("signInDescription")}</p>
         </div>
-      </main>
+      </div>
     )
   }
 
@@ -208,7 +212,7 @@ export default function AgentDesktopPage() {
 
   if (loadError && !data) {
     return (
-      <main className="mx-auto flex min-h-[50vh] max-w-xl items-center px-4 py-8">
+      <div data-testid="agent-desktop-load-error" className="mx-auto flex min-h-[50vh] max-w-xl items-center px-4 py-8">
         <div className="w-full rounded-lg border bg-card p-5 text-center">
           <AlertCircle className="mx-auto h-6 w-6 text-muted-foreground" aria-hidden="true" />
           <h1 className="mt-3 text-base font-semibold">
@@ -218,13 +222,13 @@ export default function AgentDesktopPage() {
             {loadError === "forbidden" ? t("permissionDescription") : t("loadFailedDescription")}
           </p>
           {loadError !== "forbidden" && (
-            <Button className="mt-4 min-h-11" onClick={() => void loadDashboard()}>
+            <Button data-testid="agent-desktop-retry-load" className="mt-4 min-h-11" onClick={() => void loadDashboard()}>
               <RefreshCw className="h-4 w-4" aria-hidden="true" />
               {t("retry")}
             </Button>
           )}
         </div>
-      </main>
+      </div>
     )
   }
 
@@ -276,7 +280,7 @@ export default function AgentDesktopPage() {
   ]
 
   return (
-    <main className="mx-auto max-w-[1120px] space-y-4 pb-8">
+    <div data-testid="agent-desktop-workspace" className="mx-auto max-w-[1120px] space-y-4 pb-8">
       <header className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -303,6 +307,7 @@ export default function AgentDesktopPage() {
             </div>
             <div className="flex min-h-11 min-w-11 items-center justify-center">
               <Switch
+                data-testid="agent-desktop-availability"
                 checked={isAvailable ?? false}
                 disabled={isAvailable == null || availabilityLoading || availabilitySaving}
                 onCheckedChange={(checked) => void saveAvailability(checked)}
@@ -314,11 +319,17 @@ export default function AgentDesktopPage() {
           </div>
           <div id="availability-status" className="text-xs" aria-live="polite">
             {availabilitySaving && <span className="text-muted-foreground">{t("availabilitySaving")}</span>}
+            {availabilitySaved && !availabilitySaving && availabilityRetry == null && (
+              <span data-testid="agent-desktop-availability-saved" className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300">
+                <Check className="h-3.5 w-3.5" aria-hidden="true" />{t("availabilitySaved")}
+              </span>
+            )}
             {availabilityRetry != null && !availabilitySaving && (
-              <span className="flex flex-wrap items-center gap-x-2 text-destructive">
+              <span data-testid="agent-desktop-availability-error" className="flex flex-wrap items-center gap-x-2 text-destructive">
                 {availabilityRetry === "load" ? t("availabilityLoadFailed") : t("availabilityUnchanged")}
                 <button
                   type="button"
+                  data-testid="agent-desktop-retry-availability"
                   className="min-h-9 rounded px-1 font-medium underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   onClick={() => availabilityRetry === "load"
                     ? void loadAvailability()
@@ -333,7 +344,7 @@ export default function AgentDesktopPage() {
       </header>
 
       {loadError && (
-        <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm">
+        <div data-testid="agent-desktop-refresh-error" role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm">
           <span>{t("refreshFailed")}</span>
           <Button variant="outline" size="sm" className="min-h-9" onClick={() => void loadDashboard()}>
             <RefreshCw className="h-4 w-4" aria-hidden="true" />
@@ -342,7 +353,7 @@ export default function AgentDesktopPage() {
         </div>
       )}
 
-      <section aria-labelledby="next-ticket-heading" className="rounded-lg border bg-card p-4">
+      <section data-testid="agent-desktop-next-case" aria-labelledby="next-ticket-heading" className="rounded-lg border bg-card p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -411,7 +422,7 @@ export default function AgentDesktopPage() {
         </div>
 
         {data.queue.tickets.length === 0 ? (
-          <div className="px-4 py-8 text-center">
+          <div data-testid="agent-desktop-empty-queue" className="px-4 py-8 text-center">
             <Check className="mx-auto h-5 w-5 text-muted-foreground" aria-hidden="true" />
             <p className="mt-2 text-sm font-medium">{t("noOpenCases")}</p>
             <p className="mt-1 text-xs text-muted-foreground">{t("noOpenCasesHint")}</p>
@@ -537,13 +548,13 @@ export default function AgentDesktopPage() {
           </Button>
         </aside>
       )}
-    </main>
+    </div>
   )
 }
 
 function AgentDesktopSkeleton({ label }: { label: string }) {
   return (
-    <main className="mx-auto max-w-[1120px] space-y-4" aria-busy="true" aria-label={label}>
+    <div data-testid="agent-desktop-loading" className="mx-auto max-w-[1120px] space-y-4" aria-busy="true" aria-label={label}>
       <div className="flex items-center justify-between border-b pb-4">
         <div className="space-y-2">
           <div className="h-6 w-48 animate-pulse rounded bg-muted motion-reduce:animate-none" />
@@ -555,6 +566,6 @@ function AgentDesktopSkeleton({ label }: { label: string }) {
         <div key={height} className="animate-pulse rounded-lg border bg-muted/30 motion-reduce:animate-none" style={{ height }} />
       ))}
       <span className="sr-only">{label}</span>
-    </main>
+    </div>
   )
 }
