@@ -102,3 +102,21 @@ evidence or payroll input.
     NOT RUN  migration apply/disposable-DB RLS, browser accessibility evidence,
              mobile UI, notification delivery, full typecheck/build, staging
              and production tests.
+
+## 2026-09-05 self-response write-budget hardening
+
+Employee acknowledgement remains a self-only, non-decisional action and does
+not add an MFA requirement. A valid bounded case reference and response schema
+now pass a shared Redis tenant/principal budget of twelve attempts per minute
+before the endpoint resolves an employee actor, reads the rollout flag, looks
+up a case or writes an audit row. Invalid input consumes nothing; an exhausted
+or unavailable guard returns a bounded no-store result and writes nothing.
+The narrowed case-reference grammar prevents an oversized/control-character
+route value from reaching actor or database reads. This does not enable the
+response feature flag, schema or employee acknowledgement workflow for any
+tenant.
+
+`PASS` — employee response guard/API/writer/self-read/auth/security-log
+contracts (6 files / 56 tests), targeted ESLint and `git diff --check`.
+`NOT RUN` — applied migration/RLS/concurrency, browser/mobile, staging and
+pilot evidence.
