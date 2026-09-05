@@ -133,12 +133,22 @@ describe("Workforce access grant transaction writer", () => {
     db.workforceAccessGrant.findFirst.mockResolvedValueOnce({ id: "grant-1", ...grantData })
     db.workforceAccessGrantRevocation.create.mockResolvedValueOnce({ id: "revocation-1", ...revocationData })
 
-    await expect(appendAuthorizedWorkforceAccessGrantRevocation({ db, draft: revocationDraft, authorize: allow }))
+    await expect(appendAuthorizedWorkforceAccessGrantRevocation({
+      db,
+      draft: revocationDraft,
+      authorize: allow,
+      audit: { ipAddress: "198.51.100.10", userAgent: "workforce-revoke-test" },
+    }))
       .resolves.toEqual({ revocationId: "revocation-1", idempotent: false })
     expect(allow).toHaveBeenCalledWith({ operation: "REVOKE", organizationId: "org-1", actorUserId: "admin-2" })
     expect(db.workforceAccessGrantRevocation.create).toHaveBeenCalledWith({ data: revocationData })
     expect(db.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ action: "WORKFORCE_ACCESS_GRANT_REVOKED", entityId: "revocation-1" }),
+      data: expect.objectContaining({
+        action: "WORKFORCE_ACCESS_GRANT_REVOKED",
+        entityId: "revocation-1",
+        ipAddress: "198.51.100.10",
+        userAgent: "workforce-revoke-test",
+      }),
     }))
   })
 

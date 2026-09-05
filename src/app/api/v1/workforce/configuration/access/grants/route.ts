@@ -10,9 +10,9 @@ import {
 import { validateWorkforceDraftRoleSet, WORKFORCE_ACCESS_ROLES } from "@/lib/workforce/access-control"
 import {
   readPersistedWorkforceAccessGrants,
-  decidePersistedWorkforceAccess,
   type WorkforceAccessGrantReaderDb,
 } from "@/lib/workforce/access-grant-resolution"
+import { canManageWorkforceAccessGrants } from "@/lib/workforce/access-grant-management"
 import {
   persistAuthorizedWorkforceAccessGrant,
   WorkforceAccessGrantWriterError,
@@ -92,22 +92,6 @@ async function activeTenantTarget(input: {
         select: { id: true },
       }))
   }
-}
-
-async function canManageWorkforceAccessGrants(input: {
-  db: WorkforceAccessGrantReaderDb
-  organizationId: string
-  userId: string
-}): Promise<boolean> {
-  const access = await decidePersistedWorkforceAccess({
-    db: input.db,
-    organizationId: input.organizationId,
-    principalUserId: input.userId,
-    selfAgentId: null,
-    permission: "ROLE_GRANT_MANAGE",
-    resource: { organizationId: input.organizationId },
-  })
-  return access.allowed
 }
 
 function missingGrantSchema(error: unknown): boolean {

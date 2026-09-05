@@ -288,6 +288,7 @@ export async function appendAuthorizedWorkforceAccessGrantRevocation(input: {
   db: WorkforceAccessGrantWriterDb
   draft: WorkforceAccessGrantRevocationDraft
   authorize: WorkforceAccessGrantAuthorization
+  audit?: WorkforceAccessGrantAuditContext
 }): Promise<{ revocationId: string; idempotent: boolean }> {
   const draft = canonicalRevocation(input.draft)
   await requireAuthorization({
@@ -322,8 +323,8 @@ export async function appendAuthorizedWorkforceAccessGrantRevocation(input: {
           revokedAt: draft.revokedAt.toISOString(),
           revocationReasonCode: draft.revocationReasonCode,
         },
-        ipAddress: null,
-        userAgent: null,
+        ipAddress: input.audit?.ipAddress ?? null,
+        userAgent: input.audit?.userAgent ?? null,
       },
     })
     return { revocationId: created.id, idempotent: false }

@@ -6,9 +6,10 @@
 
 ## Delivered boundary
 
-`POST /api/v1/workforce/configuration/access/grants` is the first deliberately
-narrow durable grant-assignment path. It is not a generic role editor and it
-does not activate Workforce granular access for any tenant.
+`POST /api/v1/workforce/configuration/access/grants` and
+`DELETE /api/v1/workforce/configuration/access/grants/:id` are deliberately
+narrow durable grant-management paths. They are not a generic role editor and
+do not activate Workforce granular access for any tenant.
 
 - It accepts only a signed-in session already behind
   `workforce-granular-access-v1` and a currently effective,
@@ -36,11 +37,19 @@ does not activate Workforce granular access for any tenant.
   existing opaque operation/reason metadata. The HTTP response returns only a
   new grant identifier and retry state: it does not expose role inventory,
   existing grants, scope details or an incompatible-role pair.
+- Revocation is append-only and server-derived from the persisted grant's exact
+  start instant; a caller cannot provide or alter that historical value. The
+  writer re-reads it under the same tenant-principal advisory lock and rejects
+  a missing or stale record. It performs the same in-transaction tenant-admin
+  recheck and metadata-only audit as grant creation. Browser revocation of
+  `TENANT_ADMIN` remains outside this route, so a normal session cannot remove
+  the sole bootstrap authority or create a grant/revoke escalation loop.
 
 ## Verification
 
 - `PASS` — focused Vitest: role boundary, ledger/writer, role matrix and
-  resolution plus the new API negative paths (`6 files / 66 tests`).
+  resolution plus grant and revocation API negative paths (`6 files / 69
+  tests`).
 - `PASS` — RLS route-context coverage (`1 file / 3 tests`), including the new
   session grant-management wrapper.
 - `PASS` — scoped ESLint for all changed server, writer, test and static-RLS
