@@ -6,11 +6,10 @@ import {
 } from "@/lib/workforce/access-grant-ledger"
 
 /**
- * Transaction-scoped persistence primitives for the dormant C7 role ledger.
- * They are deliberately not wired to an HTTP route or current authorization
- * system: a future rollout must pass its already-resolved authorization and a
- * tenant-scoped transaction client. This keeps legacy roles authoritative
- * until the tenant rollout fence is explicitly enabled.
+ * Transaction-scoped persistence primitives for the C7 role ledger. Callers
+ * must pass already-resolved authorization, a tenant-scoped transaction client
+ * and stay behind the explicit granular-access rollout fence. The writer never
+ * supplies a legacy-role fallback or grants authority by itself.
  */
 
 type WorkforceAccessGrantWriteData = {
@@ -67,8 +66,8 @@ export type WorkforceAccessGrantWriterDb = {
         entityId: string
         metadataKind: string
         newData: Record<string, unknown>
-        ipAddress: null
-        userAgent: null
+        ipAddress: string | null
+        userAgent: string | null
       }
     }) => Promise<unknown>
   }
@@ -79,6 +78,11 @@ export type WorkforceAccessGrantAuthorization = (input: {
   organizationId: string
   actorUserId: string
 }) => boolean | Promise<boolean>
+
+export type WorkforceAccessGrantAuditContext = {
+  ipAddress: string | null
+  userAgent: string | null
+}
 
 export class WorkforceAccessGrantWriterError extends Error {
   constructor(readonly code:
@@ -229,6 +233,7 @@ export async function persistAuthorizedWorkforceAccessGrant(input: {
   db: WorkforceAccessGrantWriterDb
   draft: WorkforceAccessGrantDraft
   authorize: WorkforceAccessGrantAuthorization
+  audit?: WorkforceAccessGrantAuditContext
 }): Promise<{ grantId: string; idempotent: boolean }> {
   const draft = canonicalGrant(input.draft)
   await requireAuthorization({
@@ -258,8 +263,8 @@ export async function persistAuthorizedWorkforceAccessGrant(input: {
           effectiveUntil: draft.effectiveUntil?.toISOString() ?? null,
           grantReasonCode: draft.grantReasonCode,
         },
-        ipAddress: null,
-        userAgent: null,
+        ipAddress: input.audit?.ipAddress ?? null,
+        userAgent: input.audit?.userAgent ?? null,
       },
     })
     return { grantId: created.id, idempotent: false }

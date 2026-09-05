@@ -72,7 +72,12 @@ describe("Workforce access grant transaction writer", () => {
   it("authorizes, serializes and audits one immutable grant", async () => {
     db.workforceAccessGrant.create.mockResolvedValueOnce({ id: "grant-1", ...grantData })
 
-    await expect(persistAuthorizedWorkforceAccessGrant({ db, draft: grantDraft, authorize: allow }))
+    await expect(persistAuthorizedWorkforceAccessGrant({
+      db,
+      draft: grantDraft,
+      authorize: allow,
+      audit: { ipAddress: "198.51.100.9", userAgent: "workforce-test" },
+    }))
       .resolves.toEqual({ grantId: "grant-1", idempotent: false })
 
     expect(allow).toHaveBeenCalledWith({ operation: "GRANT", organizationId: "org-1", actorUserId: "admin-1" })
@@ -83,6 +88,8 @@ describe("Workforce access grant transaction writer", () => {
         action: "WORKFORCE_ACCESS_GRANT_RECORDED",
         entityId: "grant-1",
         newData: expect.objectContaining({ operationId: "grant-op-1", role: "TIME_APPROVER" }),
+        ipAddress: "198.51.100.9",
+        userAgent: "workforce-test",
       }),
     }))
   })
