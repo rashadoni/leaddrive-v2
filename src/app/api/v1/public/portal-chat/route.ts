@@ -14,7 +14,7 @@ import { resolveAiModel } from "@/lib/ai/budget"
 const DEFAULT_SYSTEM_PROMPT = `Ты — Da Vinci, интеллектуальный движок техподдержки LeadDrive CRM.
 
 ПРАВИЛА:
-1. ВСЕГДА отвечай на РУССКОМ языке, независимо от языка клиента. Это обязательное правило.
+1. Отвечай на языке последнего сообщения клиента: Azərbaycan dili, русский или English. Не смешивай языки.
 2. Если есть контекст из базы знаний ({kb_context}), используй его в первую очередь.
 3. Будь вежливым, профессиональным, отвечай кратко и по делу.
 4. Если клиент недоволен — прояви эмпатию и сфокусируйся на решении.
@@ -370,6 +370,7 @@ export async function POST(req: NextRequest) {
   })
 
   let assistantContent: string
+  let degraded = false
 
   if (process.env.ANTHROPIC_API_KEY) {
     const startTime = Date.now()
@@ -486,6 +487,7 @@ export async function POST(req: NextRequest) {
     } catch (error) {
       console.error("Claude API error:", error)
       assistantContent = getFallbackResponse(message, user.fullName)
+      degraded = true
     }
 
     // Log interaction with latency, tokens, cost + generate alerts
@@ -505,6 +507,7 @@ export async function POST(req: NextRequest) {
     }
   } else {
     assistantContent = getFallbackResponse(message, user.fullName)
+    degraded = true
   }
 
   // Save assistant message
@@ -593,6 +596,7 @@ export async function POST(req: NextRequest) {
       escalated: shouldEscalate || (shouldCreateTicket && !!escalationTicketId),
       escalationTicketId,
       escalationTicketNumber,
+      degraded,
     },
   })
   }) // end runWithTenant (tenant-scoped handler body)
@@ -600,8 +604,16 @@ export async function POST(req: NextRequest) {
 
 function getFallbackResponse(message: string, userName: string): string {
   const lower = message.toLowerCase()
+  const isAzerbaijani = /[əğıöüşç]|salam|tiket|qiymət|kömək|müraciət/i.test(message)
+  const isEnglish = /\b(hello|help|ticket|price|issue|problem|please)\b/i.test(message)
+  if (isAzerbaijani) {
+    return `${userName}, avtomatik köməkçi hazırda tam cavab verə bilmir. Mesajınızı itirməmək üçün Dəstək müraciəti yaradın; komanda cavab verəcək.`
+  }
+  if (isEnglish) {
+    return `${userName}, the automated assistant cannot provide a complete answer right now. Create a Support ticket so the team can reply without losing your request.`
+  }
   if (lower.includes("тикет") || lower.includes("ticket") || lower.includes("tiket")) {
-    return `${userName}, для создания тикета перейдите в раздел "Тикеты". Там вы можете открыть новый запрос в техподдержку. Если вопрос срочный — выберите приоритет "Критический".`
+    return `${userName}, автоматический помощник сейчас не может дать полный ответ. Создайте обращение в Поддержку, чтобы команда ответила и запрос не потерялся.`
   }
   if (lower.includes("цена") || lower.includes("price") || lower.includes("qiymət")) {
     return `${userName}, для получения информации о ценах и специальных предложениях свяжитесь с нашим менеджером по продажам. Я не могу предоставить эту информацию.`
@@ -609,5 +621,5 @@ function getFallbackResponse(message: string, userName: string): string {
   if (lower.includes("привет") || lower.includes("hello") || lower.includes("salam")) {
     return `Здравствуйте, ${userName}! LeadDrive Support Pro к вашим услугам. Чем могу помочь?`
   }
-  return `Спасибо, ${userName}. Ваш запрос получен: "${message.slice(0, 100)}". Для более подробной помощи вы можете создать тикет в техподдержку.`
+  return `${userName}, автоматический помощник сейчас не может дать полный ответ. Создайте обращение в Поддержку, чтобы команда ответила и запрос не потерялся.`
 }

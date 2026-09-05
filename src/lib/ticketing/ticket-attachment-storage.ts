@@ -34,6 +34,7 @@ export class TicketAttachmentInputError extends Error {
     this.name = "TicketAttachmentInputError"
   }
 }
+
 /** Validate bytes once and persist a recoverable, unbound composer upload. */
 export async function storeTicketAttachment(input: {
   organizationId: string

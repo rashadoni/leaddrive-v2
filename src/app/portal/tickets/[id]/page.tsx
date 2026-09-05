@@ -1,28 +1,38 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { useLocale, useTranslations } from "next-intl"
 import { useParams, useRouter } from "next/navigation"
-import { useTranslations } from "next-intl"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  ArrowLeft,
+  CircleAlert,
+  FileText,
+  Loader2,
+  Paperclip,
+  RefreshCw,
+  Send,
+  Star,
+  Trash2,
+  Upload,
+  WifiOff,
+} from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Send, Loader2, Star, User, Headphones } from "lucide-react"
+import { formatDate } from "@/lib/format-date"
+import {
+  parsePortalReplyDraft,
+  portalReplyDraftKey,
+  serializePortalReplyDraft,
+} from "@/lib/ticketing/portal-ticket-draft"
+import { isPublicTicketStatus, isTerminalTicketStatus, publicSlaPhase } from "@/lib/ticketing/portal-ticket-presentation"
 
-interface TicketDetail {
+interface Attachment {
   id: string
-  ticketNumber: string
-  subject: string
-  description: string | null
-  status: string
-  priority: string
-  category: string
-  satisfactionRating: number | null
-  satisfactionComment: string | null
-  createdAt: string
-  updatedAt: string
-  resolvedAt: string | null
-  comments: CommentItem[]
+  commentId?: string | null
+  originalName: string
+  fileSize: number
+  mimeType: string
 }
 
 interface CommentItem {
@@ -31,311 +41,465 @@ interface CommentItem {
   isAgent: boolean
   authorName: string
   createdAt: string
+  attachments: Attachment[]
 }
 
-const STATUS_COLORS: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  new: "destructive", in_progress: "default", waiting: "secondary", resolved: "outline", closed: "outline",
+interface TicketDetail {
+  id: string
+  ticketNumber: string
+  subject: string
+  description: string | null
+  status: string
+  category: string
+  categoryRef?: { name: string; slug: string } | null
+  satisfactionRating: number | null
+  satisfactionComment: string | null
+  createdAt: string
+  updatedAt: string
+  resolvedAt: string | null
+  closedAt: string | null
+  slaDueAt: string | null
+  slaFirstResponseDueAt: string | null
+  firstResponseAt: string | null
+  comments: CommentItem[]
 }
 
-function formatDate(d: string) {
-  return new Date(d).toLocaleString(undefined, { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+function newRequestId(): string {
+  return globalThis.crypto.randomUUID()
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function uploadPortalAttachment(
+  ticketId: string,
+  file: File,
+  onProgress: (value: number) => void,
+): Promise<Attachment> {
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest()
+    request.open("POST", `/api/v1/public/portal-tickets/${encodeURIComponent(ticketId)}/files`)
+    request.upload.addEventListener("progress", (event) => {
+      if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100))
+    })
+    request.addEventListener("load", () => {
+      let body: { success?: boolean; data?: Attachment; error?: string } = {}
+      try {
+        body = JSON.parse(request.responseText) as typeof body
+      } catch {
+        body = {}
+      }
+      if (request.status >= 200 && request.status < 300 && body.success && body.data) {
+        onProgress(100)
+        resolve(body.data)
+      } else {
+        reject(new Error(body.error || "upload_failed"))
+      }
+    })
+    request.addEventListener("error", () => reject(new Error("upload_failed")))
+    request.addEventListener("abort", () => reject(new DOMException("Upload aborted", "AbortError")))
+    const formData = new FormData()
+    formData.set("file", file)
+    request.send(formData)
+  })
 }
 
 export default function PortalTicketDetailPage() {
-  const params = useParams()
+  const params = useParams<{ id: string }>()
   const router = useRouter()
-  const ticketId = params.id as string
   const t = useTranslations("portal")
-
-  const STATUS_LABELS: Record<string, string> = {
-    new: t("statusNew"),
-    in_progress: t("statusInProgress"),
-    waiting: t("statusWaiting"),
-    resolved: t("statusResolved"),
-    closed: t("statusClosed"),
-  }
-
+  const locale = useLocale()
+  const ticketId = params.id
+  const requestRef = useRef<AbortController | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [ticket, setTicket] = useState<TicketDetail | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
-
-  // Comment
+  const [refreshing, setRefreshing] = useState(false)
+  const [loadError, setLoadError] = useState("")
   const [newComment, setNewComment] = useState("")
+  const [clientRequestId, setClientRequestId] = useState(newRequestId)
+  const [draftAttachmentIds, setDraftAttachmentIds] = useState<string[]>([])
+  const [draftAttachments, setDraftAttachments] = useState<Attachment[]>([])
   const [sending, setSending] = useState(false)
-
-  // CSAT
+  const [sendError, setSendError] = useState("")
+  const [sendSuccess, setSendSuccess] = useState("")
+  const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<{ name: string; progress: number } | null>(null)
+  const [removingAttachment, setRemovingAttachment] = useState<string | null>(null)
+  const [uploadError, setUploadError] = useState("")
+  const [online, setOnline] = useState(true)
   const [csatRating, setCsatRating] = useState(0)
-  const [csatHover, setCsatHover] = useState(0)
   const [csatComment, setCsatComment] = useState("")
   const [csatSending, setCsatSending] = useState(false)
   const [csatSent, setCsatSent] = useState(false)
+  const [csatError, setCsatError] = useState("")
 
-  const fetchTicket = useCallback(async () => {
+  const statusLabel = useCallback((status: string) => {
+    if (status === "open") return t("statusOpen")
+    if (!isPublicTicketStatus(status)) return t("statusUnknown")
+    const labels = {
+      new: t("statusNew"),
+      in_progress: t("statusInProgress"),
+      waiting: t("statusWaiting"),
+      resolved: t("statusResolved"),
+      closed: t("statusClosed"),
+    }
+    return labels[status as keyof typeof labels] || t("statusUnknown")
+  }, [t])
+
+  const categoryLabel = useCallback((ticketValue: TicketDetail) => {
+    const slug = ticketValue.categoryRef?.slug || ticketValue.category
+    if (slug === "general") return t("categoryGeneral")
+    if (slug === "technical") return t("categoryTechnical")
+    if (slug === "billing") return t("categoryBilling")
+    if (slug === "feature_request") return t("categoryFeature")
+    return ticketValue.categoryRef?.name || ticketValue.category || t("categoryGeneral")
+  }, [t])
+
+  const fetchTicket = useCallback(async (initial = false) => {
+    requestRef.current?.abort()
+    const controller = new AbortController()
+    requestRef.current = controller
+    if (initial) setLoading(true)
+    else setRefreshing(true)
+    setLoadError("")
     try {
-      const res = await fetch(`/api/v1/public/portal-tickets/${ticketId}`)
-      const json = await res.json()
-      if (json.success) {
-        setTicket(json.data)
-        if (json.data.satisfactionRating) {
-          setCsatRating(json.data.satisfactionRating)
-          setCsatSent(true)
-        }
-      } else {
-        setError(json.error || t("ticketLoadError"))
+      const response = await fetch(`/api/v1/public/portal-tickets/${encodeURIComponent(ticketId)}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok || !body.success) throw new Error(t("ticketLoadError"))
+      setTicket(body.data)
+      if (body.data.satisfactionRating) {
+        setCsatRating(body.data.satisfactionRating)
+        setCsatSent(true)
+      }
+    } catch (error) {
+      if ((error as { name?: string }).name !== "AbortError") {
+        setLoadError(error instanceof Error ? error.message : t("ticketLoadError"))
+      }
+    } finally {
+      if (requestRef.current === controller) {
+        setLoading(false)
+        setRefreshing(false)
+      }
+    }
+  }, [t, ticketId])
+
+  const loadDraftAttachments = useCallback(async (ids: string[]) => {
+    if (ids.length === 0) return
+    try {
+      const response = await fetch(`/api/v1/public/portal-tickets/${encodeURIComponent(ticketId)}/files`, { cache: "no-store" })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok || !body.success) return
+      const idSet = new Set(ids)
+      setDraftAttachments((Array.isArray(body.data) ? body.data : []).filter((file: Attachment) => !file.commentId && idSet.has(file.id)))
+    } catch {
+      // The text draft remains usable even when attachment reconciliation is unavailable.
+    }
+  }, [ticketId])
+
+  useEffect(() => {
+    const draft = parsePortalReplyDraft(localStorage.getItem(portalReplyDraftKey(ticketId)))
+    if (draft) {
+      setNewComment(draft.text)
+      setClientRequestId(draft.clientRequestId)
+      setDraftAttachmentIds(draft.attachmentIds)
+      void loadDraftAttachments(draft.attachmentIds)
+    }
+    setOnline(navigator.onLine)
+    const onOnline = () => setOnline(true)
+    const onOffline = () => setOnline(false)
+    window.addEventListener("online", onOnline)
+    window.addEventListener("offline", onOffline)
+    void fetchTicket(true)
+    return () => {
+      requestRef.current?.abort()
+      window.removeEventListener("online", onOnline)
+      window.removeEventListener("offline", onOffline)
+    }
+  }, [fetchTicket, loadDraftAttachments, ticketId])
+
+  useEffect(() => {
+    const key = portalReplyDraftKey(ticketId)
+    if (!newComment.trim() && draftAttachmentIds.length === 0) {
+      localStorage.removeItem(key)
+      return
+    }
+    localStorage.setItem(key, serializePortalReplyDraft(newComment, draftAttachmentIds, clientRequestId))
+  }, [clientRequestId, draftAttachmentIds, newComment, ticketId])
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      if (!document.hidden && navigator.onLine && !sending) void fetchTicket(false)
+    }, 10_000)
+    return () => window.clearInterval(interval)
+  }, [fetchTicket, sending])
+
+  const handleUpload = async (files: FileList | null) => {
+    if (!files?.length || uploading) return
+    if (!navigator.onLine) {
+      setOnline(false)
+      setUploadError(t("offlineAttachment"))
+      return
+    }
+    setUploading(true)
+    setUploadError("")
+    try {
+      for (const file of Array.from(files).slice(0, 10 - draftAttachmentIds.length)) {
+        setUploadProgress({ name: file.name, progress: 0 })
+        const attachment = await uploadPortalAttachment(ticketId, file, (progress) => {
+          setUploadProgress({ name: file.name, progress })
+        })
+        setDraftAttachments((current) => [...current, attachment])
+        setDraftAttachmentIds((current) => [...current, attachment.id])
       }
     } catch {
-      setError(t("ticketLoadError"))
+      setUploadError(t("attachmentUploadFailed"))
     } finally {
-      setLoading(false)
+      setUploading(false)
+      setUploadProgress(null)
+      if (fileInputRef.current) fileInputRef.current.value = ""
     }
-  }, [ticketId, t])
+  }
 
-  useEffect(() => { fetchTicket() }, [fetchTicket])
-
-  // Poll for new comments every 10 seconds
-  useEffect(() => {
-    const interval = setInterval(fetchTicket, 10000)
-    return () => clearInterval(interval)
-  }, [fetchTicket])
+  const removeAttachment = async (attachment: Attachment) => {
+    if (removingAttachment) return
+    setRemovingAttachment(attachment.id)
+    setUploadError("")
+    try {
+      const response = await fetch(`/api/v1/public/portal-tickets/${encodeURIComponent(ticketId)}/files/${encodeURIComponent(attachment.id)}`, { method: "DELETE" })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok || !body.success) throw new Error(t("attachmentRemoveFailed"))
+      setDraftAttachments((current) => current.filter((file) => file.id !== attachment.id))
+      setDraftAttachmentIds((current) => current.filter((id) => id !== attachment.id))
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : t("attachmentRemoveFailed"))
+    } finally {
+      setRemovingAttachment(null)
+    }
+  }
 
   const handleSendComment = async () => {
-    if (!newComment.trim() || sending) return
+    if (!newComment.trim() || sending || uploading) return
+    if (!navigator.onLine) {
+      setOnline(false)
+      setSendError(t("offlineDraftSaved"))
+      return
+    }
     setSending(true)
+    setSendError("")
+    setSendSuccess("")
     try {
-      const res = await fetch(`/api/v1/public/portal-tickets/${ticketId}`, {
+      const response = await fetch(`/api/v1/public/portal-tickets/${encodeURIComponent(ticketId)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ comment: newComment }),
+        body: JSON.stringify({
+          comment: newComment,
+          attachmentIds: draftAttachmentIds,
+          clientRequestId,
+        }),
       })
-      const json = await res.json()
-      if (json.success) {
-        setNewComment("")
-        fetchTicket()
-      }
-    } catch { /* ignore */ } finally { setSending(false) }
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok || !body.success) throw new Error(t("replySendFailed"))
+      setNewComment("")
+      setDraftAttachments([])
+      setDraftAttachmentIds([])
+      setClientRequestId(newRequestId())
+      localStorage.removeItem(portalReplyDraftKey(ticketId))
+      setSendSuccess(isTerminalTicketStatus(ticket?.status || "") ? t("replySentReopened") : t("replySent"))
+      await fetchTicket(false)
+    } catch (error) {
+      setSendError(error instanceof Error ? error.message : t("replySendFailed"))
+    } finally {
+      setSending(false)
+    }
   }
 
   const handleSubmitCsat = async () => {
     if (csatRating === 0 || csatSending) return
     setCsatSending(true)
+    setCsatError("")
     try {
-      const res = await fetch(`/api/v1/public/portal-tickets/${ticketId}`, {
+      const response = await fetch(`/api/v1/public/portal-tickets/${encodeURIComponent(ticketId)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ satisfactionRating: csatRating, satisfactionComment: csatComment }),
       })
-      const json = await res.json()
-      if (json.success) {
-        setCsatSent(true)
-        fetchTicket()
-      }
-    } catch { /* ignore */ } finally { setCsatSending(false) }
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok || !body.success) throw new Error(t("ratingSendFailed"))
+      setCsatSent(true)
+      await fetchTicket(false)
+    } catch (error) {
+      setCsatError(error instanceof Error ? error.message : t("ratingSendFailed"))
+    } finally {
+      setCsatSending(false)
+    }
   }
 
   if (loading) {
+    return <div className="min-h-64 animate-pulse rounded-lg border bg-muted/40 motion-reduce:animate-none" aria-busy="true" aria-label={t("ticketLoading")} />
+  }
+
+  if (loadError || !ticket) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
+      <section className="flex min-h-64 flex-col items-center justify-center rounded-lg border p-5 text-center" role="alert">
+        <CircleAlert className="h-7 w-7 text-destructive" aria-hidden="true" />
+        <h1 className="mt-3 text-lg font-semibold">{t("ticketNotFound")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{loadError || t("ticketLoadError")}</p>
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          <Button variant="outline" className="min-h-11" onClick={() => void fetchTicket(true)}><RefreshCw aria-hidden="true" />{t("tryAgain")}</Button>
+          <Button variant="ghost" className="min-h-11" onClick={() => router.push("/portal/tickets")}><ArrowLeft aria-hidden="true" />{t("myTickets")}</Button>
+        </div>
+      </section>
     )
   }
 
-  if (error || !ticket) {
-    return (
-      <div className="space-y-4">
-        <Button variant="ghost" size="sm" onClick={() => router.push("/portal/tickets")}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> {t("myTickets")}
-        </Button>
-        <Card>
-          <CardContent className="py-10 text-center text-muted-foreground">
-            {error || t("ticketNotFound")}
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  const isResolved = ticket.status === "resolved" || ticket.status === "closed"
-  const canRate = isResolved && !csatSent
+  const terminal = isTerminalTicketStatus(ticket.status)
+  const sla = publicSlaPhase(ticket)
+  const canRate = terminal && !csatSent
+  const ratingLabels = [t("csatTerrible"), t("csatBad"), t("csatOk"), t("csatGood"), t("csatGreat")]
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => router.push("/portal/tickets")}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back
-        </Button>
-        <div className="flex items-center gap-2">
-          <Badge variant={STATUS_COLORS[ticket.status]}>{STATUS_LABELS[ticket.status] || ticket.status}</Badge>
-          <Badge variant="outline">{ticket.priority}</Badge>
-          <span className="text-sm text-muted-foreground font-mono">{ticket.ticketNumber}</span>
+    <div className="space-y-4">
+      <Button variant="ghost" className="min-h-11 px-3" onClick={() => router.push("/portal/tickets")}><ArrowLeft aria-hidden="true" />{t("backToTickets")}</Button>
+
+      {!online && <div className="flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm" role="status"><WifiOff className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />{t("offlineDraftSaved")}</div>}
+
+      <header className="rounded-lg border bg-background p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className="bg-muted/30">{statusLabel(ticket.status)}</Badge>
+          <span className="font-mono text-xs text-muted-foreground">{ticket.ticketNumber}</span>
         </div>
-      </div>
+        <h1 className="mt-2 text-xl font-semibold leading-7 tracking-tight">{ticket.subject}</h1>
+        <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+          <div><dt className="text-muted-foreground">{t("createdLabel")}</dt><dd className="mt-0.5">{formatDate(ticket.createdAt, locale, { dateStyle: "medium", timeStyle: "short" })}</dd></div>
+          <div><dt className="text-muted-foreground">{t("categoryLabel")}</dt><dd className="mt-0.5">{categoryLabel(ticket)}</dd></div>
+          {sla.kind !== "none" && <div className="sm:col-span-2"><dt className="text-muted-foreground">{t("serviceTarget")}</dt><dd className="mt-0.5">{sla.kind === "complete" ? t("slaComplete") : t(sla.kind === "firstResponse" ? "firstResponseTarget" : "resolutionTarget", { date: formatDate(sla.dueAt, locale, { dateStyle: "medium", timeStyle: "short" }) })}</dd></div>}
+        </dl>
+        {ticket.description && <p className="mt-4 whitespace-pre-wrap border-t pt-4 text-sm leading-6">{ticket.description}</p>}
+      </header>
 
-      {/* Ticket info */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl">{ticket.subject}</CardTitle>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span>Category: {ticket.category}</span>
-            <span>Created: {formatDate(ticket.createdAt)}</span>
-          </div>
-        </CardHeader>
-        {ticket.description && (
-          <CardContent className="pt-0">
-            <div className="p-3 bg-muted/50 rounded-lg border border-zinc-200 dark:border-zinc-700">
-              <p className="text-sm whitespace-pre-wrap">{ticket.description}</p>
-            </div>
-          </CardContent>
-        )}
-      </Card>
-
-      {/* Comments / Conversation */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Conversation ({ticket.comments.length})</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {ticket.comments.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No messages yet. Write the first one!
-            </p>
-          )}
-
-          {ticket.comments.map(comment => (
-            <div key={comment.id} className={`flex gap-3 ${comment.isAgent ? "" : "flex-row-reverse"}`}>
-              <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 ${
-                comment.isAgent
-                  ? "bg-[hsl(var(--ai-from))]/10 text-[hsl(var(--ai-from))]"
-                  : "bg-primary/10 text-primary"
-              }`}>
-                {comment.isAgent ? <Headphones className="h-4 w-4" /> : <User className="h-4 w-4" />}
-              </div>
-              <div className={`max-w-[80%] ${comment.isAgent ? "" : "text-right"}`}>
-                <div className={`inline-block p-3 rounded-lg text-sm shadow-[0_1px_3px_rgba(0,0,0,0.05)] ${
-                  comment.isAgent
-                    ? "bg-card border border-zinc-200 dark:border-zinc-700 text-foreground"
-                    : "bg-primary text-primary-foreground"
-                }`}>
-                  <p className="whitespace-pre-wrap">{comment.comment}</p>
+      <section className="rounded-lg border bg-background" aria-labelledby="portal-conversation-title">
+        <div className="flex items-center justify-between border-b px-4 py-3">
+          <h2 id="portal-conversation-title" className="text-sm font-semibold">{t("conversationTitle", { count: ticket.comments.length })}</h2>
+          {refreshing && <span className="text-xs text-muted-foreground" role="status">{t("updating")}</span>}
+        </div>
+        <div className="space-y-4 p-4">
+          {ticket.comments.length === 0 && <p className="py-4 text-center text-sm text-muted-foreground">{t("noMessages")}</p>}
+          {ticket.comments.map((comment) => (
+            <article key={comment.id} className={`flex ${comment.isAgent ? "justify-start" : "justify-end"}`}>
+              <div className="max-w-[92%] sm:max-w-[78%]">
+                <div className={`rounded-lg border px-3 py-2.5 text-sm ${comment.isAgent ? "bg-muted/30" : "bg-background"}`}>
+                  <p className="whitespace-pre-wrap leading-6">{comment.comment}</p>
+                  {comment.attachments?.length > 0 && (
+                    <div className="mt-2 space-y-1.5 border-t pt-2">
+                      {comment.attachments.map((file) => (
+                        <a key={file.id} href={`/api/v1/public/portal-tickets/${encodeURIComponent(ticketId)}/files/${encodeURIComponent(file.id)}`} className="flex min-h-11 items-center gap-2 rounded-md border px-3 py-2 text-xs hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" download>
+                          <FileText className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                          <span className="min-w-0 flex-1 truncate">{file.originalName}</span>
+                          <span className="text-muted-foreground">{formatFileSize(file.fileSize)}</span>
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className={`flex items-center gap-2 mt-1 text-xs text-muted-foreground ${comment.isAgent ? "" : "justify-end"}`}>
-                  <span>{comment.authorName}</span>
-                  <span>·</span>
-                  <span>{formatDate(comment.createdAt)}</span>
-                </div>
+                <p className={`mt-1 flex flex-wrap gap-x-2 text-xs text-muted-foreground ${comment.isAgent ? "justify-start" : "justify-end"}`}><span>{comment.authorName}</span><time dateTime={comment.createdAt}>{formatDate(comment.createdAt, locale, { dateStyle: "medium", timeStyle: "short" })}</time></p>
               </div>
-            </div>
+            </article>
           ))}
 
-          {/* Comment input */}
-          {!isResolved ? (
-            <div className="border-t pt-4 space-y-3">
-              <Textarea
-                value={newComment}
-                onChange={e => setNewComment(e.target.value)}
-                placeholder="Write a message..."
-                rows={3}
-                disabled={sending}
-                onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendComment() } }}
-              />
-              <div className="flex justify-end">
-                <Button onClick={handleSendComment} disabled={sending || !newComment.trim()}>
-                  {sending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
-                  Send
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="border-t pt-4 text-center">
-              <p className="text-sm text-muted-foreground">
-                Ticket is {ticket.status === "resolved" ? "resolved" : "closed"}.
-                If you need further help, send a message and the ticket will be reopened.
-              </p>
-              <div className="mt-3 space-y-3">
-                <Textarea
-                  value={newComment}
-                  onChange={e => setNewComment(e.target.value)}
-                  placeholder="Write a message (ticket will be reopened)..."
-                  rows={2}
-                  disabled={sending}
-                />
-                <Button variant="outline" onClick={handleSendComment} disabled={sending || !newComment.trim()}>
-                  {sending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
-                  Send and reopen
-                </Button>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* CSAT Rating */}
-      {canRate && (
-        <Card className="border-[hsl(var(--ai-from))]/20">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Star className="h-4 w-4 text-yellow-500" /> Rate support quality
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-1">
-              {[1, 2, 3, 4, 5].map(i => (
-                <button
-                  key={i}
-                  onClick={() => setCsatRating(i)}
-                  onMouseEnter={() => setCsatHover(i)}
-                  onMouseLeave={() => setCsatHover(0)}
-                  className="p-1 transition-transform hover:scale-110"
-                >
-                  <Star className={`h-8 w-8 ${
-                    i <= (csatHover || csatRating)
-                      ? "fill-yellow-400 text-yellow-400"
-                      : "text-muted-foreground"
-                  }`} />
-                </button>
-              ))}
-              {csatRating > 0 && (
-                <span className="ml-2 text-sm text-muted-foreground">
-                  {csatRating === 1 ? "Terrible" : csatRating === 2 ? "Bad" : csatRating === 3 ? "OK" : csatRating === 4 ? "Good" : "Excellent!"}
-                </span>
-              )}
-            </div>
+          <div className="border-t pt-4">
+            <h3 className="text-sm font-medium">{terminal ? t("reopenWithReply") : t("writeReply")}</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">{terminal ? t("reopenHelp") : t("replyDraftHelp")}</p>
+            {(sendError || uploadError) && <p className="mt-3 rounded-md border px-3 py-2 text-sm text-destructive" role="alert">{sendError || uploadError}</p>}
+            {sendSuccess && <p className="mt-3 rounded-md border px-3 py-2 text-sm" role="status">{sendSuccess}</p>}
             <Textarea
-              value={csatComment}
-              onChange={e => setCsatComment(e.target.value)}
-              placeholder="Comment (optional)..."
-              rows={2}
+              value={newComment}
+              onChange={(event) => setNewComment(event.target.value)}
+              onKeyDown={(event) => {
+                if ((event.ctrlKey || event.metaKey) && event.key === "Enter" && !event.nativeEvent.isComposing) {
+                  event.preventDefault()
+                  void handleSendComment()
+                }
+              }}
+              placeholder={terminal ? t("reopenPlaceholder") : t("replyPlaceholder")}
+              rows={3}
+              maxLength={5000}
+              disabled={sending}
+              className="mt-3 min-h-24 resize-y"
             />
-            <Button
-              onClick={handleSubmitCsat}
-              disabled={csatRating === 0 || csatSending}
-              className="rounded-full"
-            >
-              {csatSending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Star className="h-4 w-4 mr-1" />}
-              Submit rating
-            </Button>
-          </CardContent>
-        </Card>
+            {draftAttachments.length > 0 && (
+              <ul className="mt-2 space-y-1.5" aria-label={t("draftAttachments")}>
+                {draftAttachments.map((file) => (
+                  <li key={file.id} className="flex min-h-11 items-center gap-2 rounded-md border px-3 py-2 text-xs">
+                    <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <span className="min-w-0 flex-1 truncate">{file.originalName}</span>
+                    <span className="text-muted-foreground">{formatFileSize(file.fileSize)}</span>
+                    <button type="button" className="grid h-11 w-11 shrink-0 place-items-center rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => void removeAttachment(file)} disabled={Boolean(removingAttachment)} aria-label={t("removeAttachment", { name: file.originalName })}>
+                      {removingAttachment === file.id ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Trash2 className="h-4 w-4" aria-hidden="true" />}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {draftAttachmentIds.length > draftAttachments.length && (
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-xs" role="status">
+                <span>{t("attachmentRecoveryPending", { count: draftAttachmentIds.length - draftAttachments.length })}</span>
+                <Button type="button" variant="ghost" size="sm" onClick={() => void loadDraftAttachments(draftAttachmentIds)}>{t("tryAgain")}</Button>
+              </div>
+            )}
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <input ref={fileInputRef} id="portal-ticket-file" type="file" multiple className="sr-only" onChange={(event) => void handleUpload(event.target.files)} disabled={uploading || draftAttachmentIds.length >= 10 || !online} accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.gif,.webp,.txt,.csv" />
+                <Button type="button" variant="outline" className="min-h-11 w-full sm:w-auto" onClick={() => fileInputRef.current?.click()} disabled={uploading || draftAttachmentIds.length >= 10 || !online}>
+                  {uploading ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Upload aria-hidden="true" />}
+                  {uploading ? t("uploadingShort") : t("addAttachment")}
+                </Button>
+                {uploadProgress && <p className="mt-1 max-w-xs truncate text-[11px] text-muted-foreground" role="status" aria-live="polite">{t("uploadingAttachment", uploadProgress)}</p>}
+                <p className="mt-1 text-[11px] text-muted-foreground">{t("attachmentHelp")}</p>
+              </div>
+              <Button className="min-h-11 w-full sm:w-auto" onClick={() => void handleSendComment()} disabled={sending || uploading || !newComment.trim() || !online}>
+                {sending ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Send aria-hidden="true" />}
+                {sending ? t("sendingReply") : terminal ? t("sendAndReopen") : t("sendReply")}
+              </Button>
+            </div>
+            <p className="mt-2 hidden text-right text-[11px] text-muted-foreground sm:block">{t("sendShortcut")}</p>
+          </div>
+        </div>
+      </section>
+
+      {canRate && (
+        <section className="rounded-lg border bg-background p-4" aria-labelledby="portal-rating-title">
+          <h2 id="portal-rating-title" className="text-sm font-semibold">{t("rateSupport")}</h2>
+          <p className="mt-1 text-xs text-muted-foreground">{t("rateSupportHelp")}</p>
+          {csatError && <p className="mt-3 text-sm text-destructive" role="alert">{csatError}</p>}
+          <fieldset className="mt-3 flex flex-wrap gap-1">
+            <legend className="sr-only">{t("rateSupport")}</legend>
+            {[1, 2, 3, 4, 5].map((rating) => (
+              <label key={rating} className="cursor-pointer">
+                <input type="radio" name="portal-csat" value={rating} checked={csatRating === rating} onChange={() => setCsatRating(rating)} className="peer sr-only" aria-label={`${rating} — ${ratingLabels[rating - 1]}`} />
+                <span className="grid h-11 w-11 place-items-center rounded-md outline-none hover:bg-muted peer-focus-visible:ring-2 peer-focus-visible:ring-ring motion-reduce:transition-none">
+                  <Star className={`h-6 w-6 ${rating <= csatRating ? "fill-current" : "text-muted-foreground"}`} aria-hidden="true" />
+                </span>
+              </label>
+            ))}
+            {csatRating > 0 && <span className="self-center px-2 text-sm text-muted-foreground">{ratingLabels[csatRating - 1]}</span>}
+          </fieldset>
+          <Textarea value={csatComment} onChange={(event) => setCsatComment(event.target.value)} placeholder={t("ratingCommentPlaceholder")} rows={2} className="mt-3 min-h-20 resize-y" maxLength={2000} />
+          <Button className="mt-3 min-h-11" onClick={() => void handleSubmitCsat()} disabled={csatRating === 0 || csatSending}>{csatSending ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Star aria-hidden="true" />}{csatSending ? t("chatSubmitting") : t("chatSubmitRating")}</Button>
+        </section>
       )}
 
-      {/* Already rated */}
       {csatSent && ticket.satisfactionRating && (
-        <Card className="border-primary/20">
-          <CardContent className="py-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Your rating:</span>
-              <div className="flex items-center gap-0.5">
-                {[1, 2, 3, 4, 5].map(i => (
-                  <Star key={i} className={`h-4 w-4 ${i <= ticket.satisfactionRating! ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"}`} />
-                ))}
-              </div>
-              {ticket.satisfactionComment && (
-                <span className="text-sm text-muted-foreground ml-2">— {ticket.satisfactionComment}</span>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <section className="rounded-lg border bg-background p-4" aria-label={t("yourRating")}>
+          <p className="text-sm"><span className="text-muted-foreground">{t("yourRating")}:</span> <span className="font-medium">{ticket.satisfactionRating}/5 — {ratingLabels[ticket.satisfactionRating - 1]}</span></p>
+          {ticket.satisfactionComment && <p className="mt-1 text-sm text-muted-foreground">{ticket.satisfactionComment}</p>}
+        </section>
       )}
     </div>
   )

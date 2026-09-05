@@ -1,12 +1,17 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
+import { useLocale, useTranslations } from "next-intl"
 import { useParams } from "next/navigation"
-import { CheckCircle2, Loader2, RotateCcw } from "lucide-react"
+import { CheckCircle2, CircleAlert, Loader2, RefreshCw, RotateCcw } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { formatDate } from "@/lib/format-date"
+
+type ClosureStatus = "pending" | "confirmed" | "rejected" | "expired" | "canceled"
 
 type ClosureRequestView = {
   id: string
-  status: string
+  status: ClosureStatus
   dueAt: string
   ticket: {
     ticketNumber: string | null
@@ -18,120 +23,124 @@ type ClosureRequestView = {
 export default function TicketClosurePage() {
   const params = useParams<{ token: string }>()
   const token = params.token
+  const t = useTranslations("portal")
+  const locale = useLocale()
   const [request, setRequest] = useState<ClosureRequestView | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState<"confirm" | "reject" | null>(null)
   const [message, setMessage] = useState("")
   const [error, setError] = useState("")
 
-  useEffect(() => {
-    let mounted = true
-    async function load() {
-      try {
-        const res = await fetch(`/api/v1/public/ticket-closure/${encodeURIComponent(token)}`)
-        const json = await res.json()
-        if (!mounted) return
-        if (!res.ok || !json.success) {
-          setError(json.error || "Запрос не найден")
-          return
-        }
-        setRequest(json.data)
-      } catch {
-        if (mounted) setError("Не удалось загрузить запрос")
-      } finally {
-        if (mounted) setLoading(false)
-      }
+  const load = useCallback(async (signal?: AbortSignal) => {
+    setLoading(true)
+    setError("")
+    try {
+      const response = await fetch(`/api/v1/public/ticket-closure/${encodeURIComponent(token)}`, {
+        cache: "no-store",
+        signal,
+      })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok || !body.success) throw new Error(t("closureLoadFailed"))
+      setRequest(body.data)
+    } catch (loadError) {
+      if (loadError instanceof DOMException && loadError.name === "AbortError") return
+      setError(loadError instanceof Error ? loadError.message : t("closureLoadFailed"))
+    } finally {
+      if (!signal?.aborted) setLoading(false)
     }
-    load()
-    return () => { mounted = false }
-  }, [token])
+  }, [t, token])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void load(controller.signal)
+    return () => controller.abort()
+  }, [load])
 
   async function submit(action: "confirm" | "reject") {
+    if (submitting || request?.status !== "pending") return
     setSubmitting(action)
     setError("")
     setMessage("")
     try {
-      const res = await fetch(`/api/v1/public/ticket-closure/${encodeURIComponent(token)}`, {
+      const response = await fetch(`/api/v1/public/ticket-closure/${encodeURIComponent(token)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),
       })
-      const json = await res.json()
-      if (!res.ok || !json.success) {
-        setError(json.error || "Не удалось сохранить ответ")
-        return
-      }
-      setRequest((prev) => prev ? { ...prev, status: json.data.status, ticket: json.data.ticket || prev.ticket } : prev)
-      setMessage(action === "confirm" ? "Тикет закрыт. Спасибо за подтверждение." : "Тикет возвращен в работу.")
-    } catch {
-      setError("Не удалось сохранить ответ")
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok || !body.success) throw new Error(t("closureSaveFailed"))
+      setRequest((current) => current ? {
+        ...current,
+        status: body.data.status,
+        ticket: body.data.ticket || current.ticket,
+      } : current)
+      setMessage(action === "confirm" ? t("closureConfirmedMessage") : t("closureRejectedMessage"))
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : t("closureSaveFailed"))
     } finally {
       setSubmitting(null)
     }
   }
 
   const isPending = request?.status === "pending"
+  const statusLabel = request ? t(`closureStatus.${request.status}`) : ""
 
   return (
-    <main className="min-h-screen bg-background px-4 py-10 text-foreground">
-      <div className="mx-auto max-w-xl rounded-lg border bg-card p-6 shadow-sm">
+    <main className="grid min-h-screen place-items-center bg-background px-4 py-8 text-foreground sm:py-12">
+      <section className="w-full max-w-xl rounded-lg border bg-background p-4 sm:p-6" aria-labelledby="closure-title">
         {loading ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Загрузка
+          <div className="flex min-h-40 items-center justify-center gap-2 text-sm text-muted-foreground" aria-busy="true" aria-label={t("closureLoading")}>
+            <Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+            {t("closureLoading")}
           </div>
         ) : error && !request ? (
-          <div>
-            <h1 className="text-xl font-semibold">Запрос не найден</h1>
-            <p className="mt-2 text-sm text-muted-foreground">{error}</p>
+          <div className="py-4 text-center" role="alert">
+            <CircleAlert className="mx-auto h-7 w-7 text-muted-foreground" aria-hidden="true" />
+            <h1 id="closure-title" className="mt-3 text-xl font-semibold">{t("closureUnavailableTitle")}</h1>
+            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">{error}</p>
+            <Button variant="outline" className="mt-5 min-h-11" onClick={() => void load()}>
+              <RefreshCw aria-hidden="true" />{t("tryAgain")}
+            </Button>
           </div>
         ) : request ? (
           <div className="space-y-5">
-            <div>
-              <p className="text-sm text-muted-foreground">{request.ticket.ticketNumber || "Тикет"}</p>
-              <h1 className="mt-1 text-2xl font-semibold">Подтверждение закрытия</h1>
-              <p className="mt-3 text-sm leading-6 text-muted-foreground">{request.ticket.subject}</p>
-            </div>
+            <header>
+              <p className="text-sm text-muted-foreground">{request.ticket.ticketNumber || t("ticketFallback")}</p>
+              <h1 id="closure-title" className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">{t("closureTitle")}</h1>
+              <p className="mt-2 max-w-[65ch] text-sm leading-6 text-muted-foreground">{request.ticket.subject}</p>
+            </header>
 
-            <div className="rounded-md border bg-muted/30 p-3 text-sm">
-              <div className="flex justify-between gap-3">
-                <span className="text-muted-foreground">Статус запроса</span>
-                <span className="font-medium">{request.status}</span>
+            <dl className="divide-y rounded-md border text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
+                <dt className="text-muted-foreground">{t("closureRequestStatus")}</dt>
+                <dd className="font-medium">{statusLabel}</dd>
               </div>
-              <div className="mt-2 flex justify-between gap-3">
-                <span className="text-muted-foreground">Автозакрытие</span>
-                <span className="font-medium">{new Date(request.dueAt).toLocaleString()}</span>
+              <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
+                <dt className="text-muted-foreground">{t("closureAutoClose")}</dt>
+                <dd className="font-medium"><time dateTime={request.dueAt}>{formatDate(request.dueAt, locale, { dateStyle: "medium", timeStyle: "short" })}</time></dd>
               </div>
-            </div>
+            </dl>
 
-            {message && <p className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">{message}</p>}
-            {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+            {message && <p className="rounded-md border px-3 py-2.5 text-sm" role="status" aria-live="polite">{message}</p>}
+            {error && <p className="rounded-md border px-3 py-2.5 text-sm" role="alert">{error}</p>}
 
-            {isPending && (
+            {isPending ? (
               <div className="flex flex-col gap-2 sm:flex-row">
-                <button
-                  type="button"
-                  onClick={() => submit("confirm")}
-                  disabled={!!submitting}
-                  className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-60"
-                >
-                  {submitting === "confirm" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
-                  Закрыть тикет
-                </button>
-                <button
-                  type="button"
-                  onClick={() => submit("reject")}
-                  disabled={!!submitting}
-                  className="inline-flex h-10 items-center justify-center rounded-md border px-4 text-sm font-medium disabled:opacity-60"
-                >
-                  {submitting === "reject" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RotateCcw className="mr-2 h-4 w-4" />}
-                  Вернуть в работу
-                </button>
+                <Button className="min-h-11 sm:flex-1" onClick={() => void submit("confirm")} disabled={Boolean(submitting)}>
+                  {submitting === "confirm" ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <CheckCircle2 aria-hidden="true" />}
+                  {t("closureConfirm")}
+                </Button>
+                <Button variant="outline" className="min-h-11 sm:flex-1" onClick={() => void submit("reject")} disabled={Boolean(submitting)}>
+                  {submitting === "reject" ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <RotateCcw aria-hidden="true" />}
+                  {t("closureReject")}
+                </Button>
               </div>
+            ) : (
+              <p className="text-sm leading-6 text-muted-foreground" role="status">{t(`closureOutcome.${request.status}`)}</p>
             )}
           </div>
         ) : null}
-      </div>
+      </section>
     </main>
   )
 }

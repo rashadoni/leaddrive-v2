@@ -9,7 +9,7 @@ import {
 } from "@/lib/ticketing/closure-requests"
 
 const actionSchema = z.object({
-  action: z.enum(["confirm", "reject"]).default("confirm"),
+  action: z.enum(["confirm", "reject"]),
 })
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ token: string }> }) {

@@ -22,8 +22,8 @@ interface KbArticle {
 }
 
 async function responseError(response: Response, fallback: string): Promise<Error> {
-  const payload = await response.json().catch(() => null)
-  return new Error(payload?.error || fallback)
+  await response.body?.cancel().catch(() => undefined)
+  return new Error(fallback)
 }
 
 export default function PortalKnowledgeBasePage() {

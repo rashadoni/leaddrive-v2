@@ -1,301 +1,373 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useTranslations } from "next-intl"
-import { Card, CardContent } from "@/components/ui/card"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useLocale, useTranslations } from "next-intl"
+import { useRouter } from "next/navigation"
+import {
+  ChevronRight,
+  CircleAlert,
+  MessageSquareWarning,
+  Plus,
+  RefreshCw,
+  Search,
+  WifiOff,
+  X,
+} from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Select } from "@/components/ui/select"
-import { Plus, Search, ChevronRight, MessageSquareWarning } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { Textarea } from "@/components/ui/textarea"
+import { formatDate } from "@/lib/format-date"
+import {
+  parsePortalNewTicketDraft,
+  PORTAL_NEW_TICKET_DRAFT_KEY,
+  serializePortalNewTicketDraft,
+} from "@/lib/ticketing/portal-ticket-draft"
+import { isPublicTicketStatus, publicSlaPhase } from "@/lib/ticketing/portal-ticket-presentation"
 
 interface Ticket {
   id: string
   ticketNumber: string
   subject: string
-  description?: string
   status: string
-  priority: string
-  category?: string
+  category?: string | null
+  categoryRef?: { name: string; slug: string } | null
   createdAt: string
+  slaDueAt?: string | null
+  slaFirstResponseDueAt?: string | null
+  firstResponseAt?: string | null
 }
 
-const statusColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  new: "destructive", in_progress: "default", waiting: "secondary", resolved: "outline", closed: "outline",
+type ComplaintMeta = {
+  complaintType: "complaint" | "suggestion"
+  brand: string
+  productCategory: string
+  complaintObject: string
+  complaintObjectDetail: string
+}
+
+const EMPTY_COMPLAINT: ComplaintMeta = {
+  complaintType: "complaint",
+  brand: "",
+  productCategory: "",
+  complaintObject: "",
+  complaintObjectDetail: "",
+}
+
+function newRequestId(): string {
+  return globalThis.crypto.randomUUID()
 }
 
 export default function PortalTicketsPage() {
   const t = useTranslations("portal")
-  const [tickets, setTickets] = useState<Ticket[]>([])
+  const locale = useLocale()
   const router = useRouter()
+  const requestRef = useRef<AbortController | null>(null)
+  const [tickets, setTickets] = useState<Ticket[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [loadError, setLoadError] = useState("")
   const [showForm, setShowForm] = useState(false)
-
-  // Auto-open form if ?action=new (from chat widget "New Ticket" button)
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.location.search.includes("action=new")) {
-      setShowForm(true)
-    }
-  }, [])
   const [search, setSearch] = useState("")
   const [subject, setSubject] = useState("")
   const [description, setDescription] = useState("")
   const [category, setCategory] = useState("general")
+  const [clientRequestId, setClientRequestId] = useState(newRequestId)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState("")
-
-  // Complaints Register (optional feature, per-tenant)
+  const [formError, setFormError] = useState("")
+  const [online, setOnline] = useState(true)
   const [complaintsEnabled, setComplaintsEnabled] = useState(false)
   const [brandOptions, setBrandOptions] = useState<string[]>([])
   const [productOptions, setProductOptions] = useState<string[]>([])
   const [asComplaint, setAsComplaint] = useState(false)
-  const [complaintMeta, setComplaintMeta] = useState({
-    complaintType: "complaint" as "complaint" | "suggestion",
-    brand: "",
-    productCategory: "",
-    complaintObject: "",
-    complaintObjectDetail: "",
-  })
+  const [complaintMeta, setComplaintMeta] = useState<ComplaintMeta>(EMPTY_COMPLAINT)
 
-  const fetchTickets = async () => {
+  const statusLabel = useCallback((status: string) => {
+    if (status === "open") return t("statusOpen")
+    if (!isPublicTicketStatus(status)) return t("statusUnknown")
+    const labels = {
+      new: t("statusNew"),
+      in_progress: t("statusInProgress"),
+      waiting: t("statusWaiting"),
+      resolved: t("statusResolved"),
+      closed: t("statusClosed"),
+    }
+    return labels[status as keyof typeof labels] || t("statusUnknown")
+  }, [t])
+
+  const categoryLabel = useCallback((ticket: Ticket) => {
+    const slug = ticket.categoryRef?.slug || ticket.category
+    if (slug === "general") return t("categoryGeneral")
+    if (slug === "technical") return t("categoryTechnical")
+    if (slug === "billing") return t("categoryBilling")
+    if (slug === "feature_request") return t("categoryFeature")
+    return ticket.categoryRef?.name || ticket.category || ""
+  }, [t])
+
+  const fetchTickets = useCallback(async (initial = false) => {
+    requestRef.current?.abort()
+    const controller = new AbortController()
+    requestRef.current = controller
+    if (initial) setLoading(true)
+    else setRefreshing(true)
+    setLoadError("")
     try {
-      const res = await fetch("/api/v1/public/portal-tickets")
-      const json = await res.json()
-      if (json.success) setTickets(json.data.tickets || json.data || [])
-    } catch (err) { console.error(err) } finally { setLoading(false) }
+      const response = await fetch("/api/v1/public/portal-tickets", {
+        cache: "no-store",
+        signal: controller.signal,
+      })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok || !body.success) throw new Error(t("ticketsLoadFailed"))
+      setTickets(Array.isArray(body.data) ? body.data : [])
+    } catch (error) {
+      if ((error as { name?: string }).name !== "AbortError") {
+        setLoadError(error instanceof Error ? error.message : t("ticketsLoadFailed"))
+      }
+    } finally {
+      if (requestRef.current === controller) {
+        setLoading(false)
+        setRefreshing(false)
+      }
+    }
+  }, [t])
+
+  useEffect(() => {
+    const draft = parsePortalNewTicketDraft(localStorage.getItem(PORTAL_NEW_TICKET_DRAFT_KEY))
+    if (draft) {
+      setSubject(draft.subject)
+      setDescription(draft.description)
+      setCategory(draft.category)
+      setClientRequestId(draft.clientRequestId)
+      setShowForm(true)
+    }
+    if (window.location.search.includes("action=new")) setShowForm(true)
+    setOnline(navigator.onLine)
+    const onOnline = () => setOnline(true)
+    const onOffline = () => setOnline(false)
+    window.addEventListener("online", onOnline)
+    window.addEventListener("offline", onOffline)
+    void fetchTickets(true)
+    return () => {
+      requestRef.current?.abort()
+      window.removeEventListener("online", onOnline)
+      window.removeEventListener("offline", onOffline)
+    }
+  }, [fetchTickets])
+
+  useEffect(() => {
+    if (!subject.trim() && !description.trim()) {
+      localStorage.removeItem(PORTAL_NEW_TICKET_DRAFT_KEY)
+      return
+    }
+    localStorage.setItem(PORTAL_NEW_TICKET_DRAFT_KEY, serializePortalNewTicketDraft({
+      subject,
+      description,
+      category,
+      clientRequestId,
+    }))
+  }, [category, clientRequestId, description, subject])
+
+  useEffect(() => {
+    fetch("/api/v1/public/portal-config", { cache: "no-store" })
+      .then(async (response) => response.ok ? response.json() : Promise.reject(new Error("config")))
+      .then((body) => {
+        setComplaintsEnabled(body?.data?.features?.complaints_register === true)
+        setBrandOptions(Array.isArray(body?.data?.brands) ? body.data.brands : [])
+        setProductOptions(Array.isArray(body?.data?.productCategories) ? body.data.productCategories : [])
+      })
+      .catch(() => undefined)
+  }, [])
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      if (!document.hidden && navigator.onLine) void fetchTickets(false)
+    }, 20_000)
+    return () => window.clearInterval(interval)
+  }, [fetchTickets])
+
+  const resetDraft = () => {
+    setSubject("")
+    setDescription("")
+    setCategory("general")
+    setAsComplaint(false)
+    setComplaintMeta(EMPTY_COMPLAINT)
+    setClientRequestId(newRequestId())
+    setFormError("")
+    localStorage.removeItem(PORTAL_NEW_TICKET_DRAFT_KEY)
   }
 
-  useEffect(() => { fetchTickets() }, [])
-
-  // Load tenant config once — decides whether to show the "complaint" toggle.
-  useEffect(() => {
-    fetch("/api/v1/public/portal-config")
-      .then((r) => r.json())
-      .then((j) => {
-        if (j.success) {
-          setComplaintsEnabled(!!j.data.features?.complaints_register)
-          setBrandOptions(j.data.brands || [])
-          setProductOptions(j.data.productCategories || [])
-        }
-      })
-      .catch(() => {})
-  }, [])
-
-  // Poll for updates every 20 seconds
-  useEffect(() => {
-    const interval = setInterval(fetchTickets, 20000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleCreate = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (saving || !subject.trim()) return
+    if (!navigator.onLine) {
+      setOnline(false)
+      setFormError(t("offlineDraftSaved"))
+      return
+    }
     setSaving(true)
-    setError("")
+    setFormError("")
     try {
-      const res = await fetch("/api/v1/public/portal-tickets", {
+      const response = await fetch("/api/v1/public/portal-tickets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           subject,
           description,
           category,
-          ...(asComplaint && complaintsEnabled
-            ? {
-                isComplaint: true,
-                complaintMeta: {
-                  complaintType: complaintMeta.complaintType,
-                  brand: complaintMeta.brand || null,
-                  productCategory: complaintMeta.productCategory || null,
-                  complaintObject: complaintMeta.complaintObject || null,
-                  complaintObjectDetail: complaintMeta.complaintObjectDetail || null,
-                },
-              }
-            : {}),
+          clientRequestId,
+          ...(asComplaint && complaintsEnabled ? { isComplaint: true, complaintMeta } : {}),
         }),
       })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || "Failed to create")
-      setSubject("")
-      setDescription("")
-      setAsComplaint(false)
-      setComplaintMeta({ complaintType: "complaint", brand: "", productCategory: "", complaintObject: "", complaintObjectDetail: "" })
-      setShowForm(false)
-      fetchTickets()
-    } catch (err: any) {
-      setError(err.message)
-    } finally { setSaving(false) }
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok || !body.success || !body.data?.id) throw new Error(t("ticketCreateFailed"))
+      localStorage.removeItem(PORTAL_NEW_TICKET_DRAFT_KEY)
+      resetDraft()
+      router.push(`/portal/tickets/${body.data.id}`)
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : t("ticketCreateFailed"))
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const filtered = tickets.filter(tk =>
-    tk.subject.toLowerCase().includes(search.toLowerCase()) ||
-    tk.ticketNumber.toLowerCase().includes(search.toLowerCase())
-  )
-
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <h1 className="text-2xl font-bold">{t("myTickets")}</h1>
-        <div className="animate-pulse space-y-3">
-          {[1, 2, 3].map(i => <div key={i} className="h-20 bg-muted rounded-lg" />)}
-        </div>
-      </div>
+  const filtered = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase(locale)
+    if (!query) return tickets
+    return tickets.filter((ticket) =>
+      ticket.subject.toLocaleLowerCase(locale).includes(query)
+      || ticket.ticketNumber.toLocaleLowerCase(locale).includes(query),
     )
-  }
+  }, [locale, search, tickets])
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-4">
+      <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">{t("myTickets")}</h1>
-          <p className="text-muted-foreground text-sm mt-1">{tickets.length} ticket{tickets.length !== 1 ? "s" : ""}</p>
+          <h1 className="text-xl font-semibold tracking-tight">{t("myTickets")}</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">{t("ticketCount", { count: tickets.length })}</p>
         </div>
-        <Button onClick={() => setShowForm(!showForm)} className="rounded-full">
-          <Plus className="h-4 w-4 mr-1" /> {t("newTicket")}
+        <Button className="min-h-11" onClick={() => setShowForm((open) => !open)} aria-expanded={showForm} aria-controls="portal-new-ticket-form">
+          {showForm ? <X aria-hidden="true" /> : <Plus aria-hidden="true" />}
+          {showForm ? t("closeForm") : t("newTicket")}
         </Button>
-      </div>
+      </header>
 
-      {showForm && (
-        <Card>
-          <CardContent className="pt-4">
-            <form onSubmit={handleCreate} className="space-y-4">
-              {error && <div className="text-sm text-destructive bg-destructive/10 p-2 rounded-lg">{error}</div>}
-              <div>
-                <label className="text-sm font-medium">Subject *</label>
-                <Input value={subject} onChange={e => setSubject(e.target.value)} placeholder={t("describeIssue")} required className="mt-1" />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Category</label>
-                <Select value={category} onChange={e => setCategory(e.target.value)} className="mt-1" disabled={asComplaint}>
-                  <option value="general">{t("categoryGeneral")}</option>
-                  <option value="technical">{t("categoryTechnical")}</option>
-                  <option value="billing">{t("categoryBilling")}</option>
-                  <option value="feature_request">{t("categoryFeature")}</option>
-                </Select>
-              </div>
-              {complaintsEnabled && (
-                <label className="flex items-start gap-2 text-sm cursor-pointer p-2 -mx-2 rounded hover:bg-muted/40">
-                  <input
-                    type="checkbox"
-                    className="mt-1"
-                    checked={asComplaint}
-                    onChange={(e) => setAsComplaint(e.target.checked)}
-                  />
-                  <span>
-                    <span className="flex items-center gap-1.5 font-medium">
-                      <MessageSquareWarning className="h-3.5 w-3.5 text-amber-600" />
-                      This is a complaint about a product
-                    </span>
-                    <span className="block text-[11px] text-muted-foreground">
-                      Helps us route it to the right team (quality, sales, logistics…).
-                    </span>
-                  </span>
-                </label>
-              )}
-              {complaintsEnabled && asComplaint && (
-                <div className="rounded-lg border border-amber-200 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-900/10 p-3 space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-sm font-medium">Type</label>
-                      <Select
-                        value={complaintMeta.complaintType}
-                        onChange={(e) => setComplaintMeta((m) => ({ ...m, complaintType: e.target.value as "complaint" | "suggestion" }))}
-                        className="mt-1"
-                      >
-                        <option value="complaint">Complaint</option>
-                        <option value="suggestion">Suggestion</option>
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Brand</label>
-                      <Input
-                        list="portal-complaint-brands"
-                        value={complaintMeta.brand}
-                        onChange={(e) => setComplaintMeta((m) => ({ ...m, brand: e.target.value }))}
-                        className="mt-1"
-                        autoComplete="off"
-                      />
-                      <datalist id="portal-complaint-brands">
-                        {brandOptions.map((b) => <option key={b} value={b} />)}
-                      </datalist>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Product</label>
-                      <Input
-                        list="portal-complaint-products"
-                        value={complaintMeta.productCategory}
-                        onChange={(e) => setComplaintMeta((m) => ({ ...m, productCategory: e.target.value }))}
-                        className="mt-1"
-                        autoComplete="off"
-                      />
-                      <datalist id="portal-complaint-products">
-                        {productOptions.map((p) => <option key={p} value={p} />)}
-                      </datalist>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Issue</label>
-                      <Input
-                        value={complaintMeta.complaintObject}
-                        onChange={(e) => setComplaintMeta((m) => ({ ...m, complaintObject: e.target.value }))}
-                        placeholder="quality, delivery, price…"
-                        className="mt-1"
-                      />
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">
-                    Risk level and the handling department will be filled in by the team.
-                  </p>
-                </div>
-              )}
-              <div>
-                <label className="text-sm font-medium">Description</label>
-                <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder={t("provideDetails")} rows={4} className="mt-1" />
-              </div>
-              <div className="flex gap-2">
-                <Button type="submit" disabled={saving} className="rounded-full">{saving ? t("creating") : t("submitTicket")}</Button>
-                <Button type="button" variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+      {!online && (
+        <div className="flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm" role="status">
+          <WifiOff className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <span>{t("offlineDraftSaved")}</span>
+        </div>
       )}
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder={t("searchTickets")} value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
-      </div>
-
-      <div className="space-y-3">
-        {filtered.length === 0 ? (
-          <Card>
-            <CardContent className="py-8 text-center text-muted-foreground">
-              {tickets.length === 0 ? t("noTickets") : "No tickets match your search."}
-            </CardContent>
-          </Card>
-        ) : (
-          filtered.map(ticket => (
-            <Card key={ticket.id} className="hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => router.push(`/portal/tickets/${ticket.id}`)}>
-              <CardContent className="py-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{ticket.subject}</span>
-                      <Badge variant={statusColors[ticket.status] || "outline"}>{ticket.status.replace(/_/g, " ")}</Badge>
-                      <Badge variant="outline" className="text-xs">{ticket.priority}</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {ticket.ticketNumber} · {new Date(ticket.createdAt).toLocaleDateString()}
-                      {ticket.category ? ` · ${ticket.category}` : ""}
-                    </p>
-                  </div>
-                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+      {showForm && (
+        <section id="portal-new-ticket-form" className="rounded-lg border bg-background p-4" aria-labelledby="portal-new-ticket-title">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <h2 id="portal-new-ticket-title" className="text-sm font-semibold">{t("newTicket")}</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">{t("draftSavedHelp")}</p>
+            </div>
+            {(subject || description) && <Button type="button" variant="ghost" size="sm" onClick={resetDraft}>{t("clearDraft")}</Button>}
+          </div>
+          <form className="space-y-3" onSubmit={handleCreate}>
+            {formError && <p className="rounded-md border px-3 py-2 text-sm text-destructive" role="alert">{formError}</p>}
+            <div>
+              <label htmlFor="portal-ticket-subject" className="text-sm font-medium">{t("subjectLabel")}</label>
+              <Input id="portal-ticket-subject" value={subject} onChange={(event) => setSubject(event.target.value)} placeholder={t("describeIssue")} className="mt-1 min-h-11" maxLength={200} required />
+            </div>
+            <div>
+              <label htmlFor="portal-ticket-category" className="text-sm font-medium">{t("categoryLabel")}</label>
+              <Select id="portal-ticket-category" value={category} onChange={(event) => setCategory(event.target.value)} className="mt-1 min-h-11" disabled={asComplaint}>
+                <option value="general">{t("categoryGeneral")}</option>
+                <option value="technical">{t("categoryTechnical")}</option>
+                <option value="billing">{t("categoryBilling")}</option>
+                <option value="feature_request">{t("categoryFeature")}</option>
+              </Select>
+            </div>
+            {complaintsEnabled && (
+              <label className="flex min-h-11 cursor-pointer items-start gap-2 rounded-md border px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-ring">
+                <input type="checkbox" className="mt-1 h-4 w-4" checked={asComplaint} onChange={(event) => setAsComplaint(event.target.checked)} />
+                <span>
+                  <span className="flex items-center gap-1.5 font-medium"><MessageSquareWarning className="h-4 w-4 text-muted-foreground" aria-hidden="true" />{t("complaintToggle")}</span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">{t("complaintToggleHelp")}</span>
+                </span>
+              </label>
+            )}
+            {complaintsEnabled && asComplaint && (
+              <fieldset className="space-y-3 rounded-md border p-3">
+                <legend className="px-1 text-xs font-medium">{t("complaintDetails")}</legend>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="text-sm"><span className="font-medium">{t("complaintType")}</span><Select value={complaintMeta.complaintType} onChange={(event) => setComplaintMeta((value) => ({ ...value, complaintType: event.target.value as ComplaintMeta["complaintType"] }))} className="mt-1 min-h-11"><option value="complaint">{t("complaint")}</option><option value="suggestion">{t("suggestion")}</option></Select></label>
+                  <label className="text-sm"><span className="font-medium">{t("brandLabel")}</span><Input list="portal-brands" value={complaintMeta.brand} onChange={(event) => setComplaintMeta((value) => ({ ...value, brand: event.target.value }))} className="mt-1 min-h-11" /><datalist id="portal-brands">{brandOptions.map((brand) => <option key={brand} value={brand} />)}</datalist></label>
+                  <label className="text-sm"><span className="font-medium">{t("productLabel")}</span><Input list="portal-products" value={complaintMeta.productCategory} onChange={(event) => setComplaintMeta((value) => ({ ...value, productCategory: event.target.value }))} className="mt-1 min-h-11" /><datalist id="portal-products">{productOptions.map((product) => <option key={product} value={product} />)}</datalist></label>
+                  <label className="text-sm"><span className="font-medium">{t("issueLabel")}</span><Input value={complaintMeta.complaintObject} onChange={(event) => setComplaintMeta((value) => ({ ...value, complaintObject: event.target.value }))} className="mt-1 min-h-11" /></label>
                 </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
-      </div>
+                <p className="text-xs text-muted-foreground">{t("complaintTeamReview")}</p>
+              </fieldset>
+            )}
+            <div>
+              <label htmlFor="portal-ticket-description" className="text-sm font-medium">{t("descriptionLabel")}</label>
+              <Textarea id="portal-ticket-description" value={description} onChange={(event) => setDescription(event.target.value)} placeholder={t("provideDetails")} rows={4} className="mt-1 min-h-28 resize-y" maxLength={10_000} />
+            </div>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button type="button" variant="outline" className="min-h-11" onClick={() => setShowForm(false)}>{t("saveForLater")}</Button>
+              <Button type="submit" className="min-h-11" disabled={saving || !subject.trim() || !online}>{saving ? t("creating") : t("submitTicket")}</Button>
+            </div>
+          </form>
+        </section>
+      )}
+
+      <label className="relative block">
+        <span className="sr-only">{t("searchTickets")}</span>
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+        <Input placeholder={t("searchTickets")} value={search} onChange={(event) => setSearch(event.target.value)} className="min-h-11 pl-9" />
+      </label>
+
+      {loading ? (
+        <div className="divide-y rounded-lg border" aria-busy="true" aria-label={t("ticketsLoading")}>
+          {[0, 1, 2].map((index) => <div key={index} className="h-20 animate-pulse bg-muted/50 motion-reduce:animate-none" />)}
+        </div>
+      ) : loadError ? (
+        <section className="flex min-h-56 flex-col items-center justify-center rounded-lg border p-5 text-center" role="alert">
+          <CircleAlert className="h-7 w-7 text-destructive" aria-hidden="true" />
+          <h2 className="mt-3 text-base font-semibold">{t("ticketsUnavailable")}</h2>
+          <p className="mt-1 max-w-md text-sm text-muted-foreground">{loadError}</p>
+          <Button variant="outline" className="mt-4 min-h-11" onClick={() => void fetchTickets(true)}><RefreshCw aria-hidden="true" />{t("tryAgain")}</Button>
+        </section>
+      ) : filtered.length === 0 ? (
+        <section className="flex min-h-56 flex-col items-center justify-center rounded-lg border p-5 text-center">
+          <h2 className="text-base font-semibold">{tickets.length === 0 ? t("noTicketsTitle") : t("noTicketResults")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{tickets.length === 0 ? t("noTicketsDescription") : t("changeTicketSearch")}</p>
+          {tickets.length === 0 && <Button className="mt-4 min-h-11" onClick={() => setShowForm(true)}><Plus aria-hidden="true" />{t("newTicket")}</Button>}
+        </section>
+      ) : (
+        <div className="divide-y overflow-hidden rounded-lg border bg-background" aria-busy={refreshing}>
+          {filtered.map((ticket) => {
+            const sla = publicSlaPhase(ticket)
+            return (
+              <button key={ticket.id} type="button" onClick={() => router.push(`/portal/tickets/${ticket.id}`)} className="grid min-h-20 w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 text-left outline-none transition-colors hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none">
+                <span className="min-w-0">
+                  <span className="flex min-w-0 flex-wrap items-center gap-2">
+                    <span className="truncate text-sm font-medium">{ticket.subject}</span>
+                    <Badge variant="outline" className="bg-muted/30">{statusLabel(ticket.status)}</Badge>
+                  </span>
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    {ticket.ticketNumber} · {formatDate(ticket.createdAt, locale, { day: "2-digit", month: "short", year: "numeric" })}
+                    {categoryLabel(ticket) ? ` · ${categoryLabel(ticket)}` : ""}
+                  </span>
+                  {sla.kind !== "none" && (
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                      {sla.kind === "complete" ? t("slaComplete") : t(sla.kind === "firstResponse" ? "firstResponseTarget" : "resolutionTarget", { date: formatDate(sla.dueAt, locale, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) })}
+                    </span>
+                  )}
+                </span>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+              </button>
+            )
+          })}
+        </div>
+      )}
+      <p className="sr-only" aria-live="polite">{refreshing ? t("ticketsRefreshing") : ""}</p>
     </div>
   )
 }
