@@ -81,3 +81,20 @@ resolved historical policy/shift contract instead of widening it to `string`.
 `PASS`: focused exception-intake and scoped-decision API tests (2 files / 14
 tests), scoped ESLint and `git diff --check`. The mandatory static CI rerun is
 still required for the repair's exact SHA.
+
+## 2026-09-05 MFA and shared rate fence
+
+An exception decision changes the accountable review stream for an employee's
+attendance record, so the endpoint now first requires the existing live,
+mandatory Workforce MFA gate. After the case identifier and request schema are
+valid, and before any case, historical-team, grant or decision lookup, it uses
+a shared Redis tenant/principal budget of twelve decision attempts per minute.
+Malformed requests do not consume that budget; quota exhaustion and a
+rate-guard/hash outage return bounded no-store `429`/`503` responses and write
+nothing. This does not activate a tenant grant, change a decision vocabulary,
+or create a payroll/disciplinary outcome.
+
+`PASS` — exception decision guard/API/ledger/response/auth/security-log
+contracts (7 files / 65 tests), targeted ESLint and `git diff --check`.
+`NOT RUN` — applied migration/RLS/serializable concurrency, browser, staging,
+physical MFA and pilot evidence.

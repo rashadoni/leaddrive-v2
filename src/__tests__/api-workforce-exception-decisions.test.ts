@@ -8,9 +8,17 @@ vi.mock("@/lib/prisma", async () => {
 vi.mock("@/lib/with-workforce-rls-auth", () => ({
   withWorkforceSessionAuth: vi.fn((_action, handler) => handler),
 }))
+vi.mock("@/lib/workforce/attendance-route", () => ({
+  requireWorkforceAttendanceSecurityMfa: vi.fn(),
+}))
+vi.mock("@/lib/workforce/exception-decision-rate-limit", () => ({
+  requireWorkforceExceptionDecisionRateLimit: vi.fn(),
+}))
 
 import { POST } from "@/app/api/v1/workforce/exceptions/[id]/decisions/route"
 import { prisma } from "@/lib/prisma"
+import { requireWorkforceAttendanceSecurityMfa } from "@/lib/workforce/attendance-route"
+import { requireWorkforceExceptionDecisionRateLimit } from "@/lib/workforce/exception-decision-rate-limit"
 
 const auth = { orgId: "org_1", userId: "user_1", role: "admin" }
 type Handler = (req: NextRequest, auth: typeof auth, context: { params: Promise<{ id: string }> }) => Promise<Response>
@@ -48,6 +56,8 @@ const grantRow = {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(requireWorkforceAttendanceSecurityMfa).mockResolvedValue(null)
+  vi.mocked(requireWorkforceExceptionDecisionRateLimit).mockResolvedValue(null)
   vi.mocked(prisma.workforceExceptionCase.findFirst).mockResolvedValue(caseRow as never)
   vi.mocked(prisma.$queryRaw).mockResolvedValue([{
     id: "membership_1",
@@ -84,6 +94,10 @@ describe("Workforce scoped exception-decision API", () => {
         workday: { select: { startedAt: true } },
       }),
     }))
+    expect(requireWorkforceAttendanceSecurityMfa).toHaveBeenCalledWith("org_1", auth)
+    expect(requireWorkforceExceptionDecisionRateLimit).toHaveBeenCalledWith({
+      organizationId: "org_1", principalUserId: "user_1",
+    })
   })
 
   it("never substitutes a current directory team when historical membership is unavailable", async () => {
@@ -116,5 +130,36 @@ describe("Workforce scoped exception-decision API", () => {
     expect(response.status).toBe(400)
     expect(prisma.workforceExceptionCase.findFirst).not.toHaveBeenCalled()
     expect(prisma.workforceAccessGrant.findMany).not.toHaveBeenCalled()
+    expect(requireWorkforceExceptionDecisionRateLimit).not.toHaveBeenCalled()
+  })
+
+  it("stops before case/grant lookup when mandatory MFA is unavailable or denied", async () => {
+    vi.mocked(requireWorkforceAttendanceSecurityMfa).mockResolvedValueOnce(new Response(null, { status: 403 }) as never)
+
+    const response = await callPost(request({
+      operationId: "decision-op-mfa-denied",
+      decisionCode: "ACKNOWLEDGE",
+      reason: "Review requires active MFA.",
+    }), auth, { params: Promise.resolve({ id: "case_1" }) })
+
+    expect(response.status).toBe(403)
+    expect(requireWorkforceExceptionDecisionRateLimit).not.toHaveBeenCalled()
+    expect(prisma.workforceExceptionCase.findFirst).not.toHaveBeenCalled()
+    expect(prisma.workforceAccessGrant.findMany).not.toHaveBeenCalled()
+  })
+
+  it("stops before case/grant lookup when the shared decision guard denies or is unavailable", async () => {
+    vi.mocked(requireWorkforceExceptionDecisionRateLimit).mockResolvedValueOnce(new Response(null, { status: 429 }) as never)
+
+    const response = await callPost(request({
+      operationId: "decision-op-rate-limited",
+      decisionCode: "ACKNOWLEDGE",
+      reason: "Review remains pending.",
+    }), auth, { params: Promise.resolve({ id: "case_1" }) })
+
+    expect(response.status).toBe(429)
+    expect(prisma.workforceExceptionCase.findFirst).not.toHaveBeenCalled()
+    expect(prisma.workforceAccessGrant.findMany).not.toHaveBeenCalled()
+    expect(prisma.workforceExceptionDecision.create).not.toHaveBeenCalled()
   })
 })
