@@ -34,6 +34,9 @@ describe("VoIP workspace UX contract", () => {
     expect(page).toContain("min-h-11")
     expect(page).not.toMatch(/text-(?:3xl|4xl)/)
     expect(page).not.toMatch(/text-(?:violet|purple|blue|green)-600/)
+    expect(page).toContain('data-testid="voip-workspace"')
+    expect(page).toContain('data-testid="voip-call-timeline"')
+    expect(page).not.toContain("<main")
   })
 
   it("uses a native inline recording control with explicit lifecycle and recovery", () => {
@@ -45,6 +48,8 @@ describe("VoIP workspace UX contract", () => {
     expect(player).toContain("recordingLoading")
     expect(player).toContain("recordingError")
     expect(player).toContain("audio.load()")
+    expect(player).toContain('data-testid="call-recording-player"')
+    expect(player).toContain('data-testid="call-recording-retry"')
   })
 
   it("keeps connection truth visible without exposing admin tests to agents", () => {

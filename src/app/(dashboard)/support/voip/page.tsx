@@ -228,13 +228,13 @@ export default function VoipCallsPage() {
 
   if (sessionStatus === "unauthenticated") {
     return (
-      <main className="mx-auto flex min-h-[50vh] max-w-xl items-center px-4 py-8">
+      <div data-testid="voip-permission-state" className="mx-auto flex min-h-[50vh] max-w-xl items-center px-4 py-8">
         <div className="w-full rounded-lg border bg-card p-5 text-center">
           <AlertCircle className="mx-auto h-6 w-6 text-muted-foreground" aria-hidden="true" />
           <h1 className="mt-3 text-base font-semibold">{t("permissionTitle")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{t("permissionDescription")}</p>
         </div>
-      </main>
+      </div>
     )
   }
 
@@ -245,7 +245,7 @@ export default function VoipCallsPage() {
   if (loadError && !summary && calls.length === 0) {
     const forbidden = loadError === "forbidden"
     return (
-      <main className="mx-auto flex min-h-[50vh] max-w-xl items-center px-4 py-8">
+      <div data-testid="voip-load-error" className="mx-auto flex min-h-[50vh] max-w-xl items-center px-4 py-8">
         <div className="w-full rounded-lg border bg-card p-5 text-center">
           <AlertCircle className="mx-auto h-6 w-6 text-muted-foreground" aria-hidden="true" />
           <h1 className="mt-3 text-base font-semibold">{forbidden ? t("permissionTitle") : t("loadFailedTitle")}</h1>
@@ -253,18 +253,18 @@ export default function VoipCallsPage() {
             {forbidden ? t("permissionDescription") : t("loadFailedDescription")}
           </p>
           {!forbidden && (
-            <Button className="mt-4 min-h-11" onClick={() => setRetryVersion((value) => value + 1)}>
+            <Button data-testid="voip-retry-load" className="mt-4 min-h-11" onClick={() => setRetryVersion((value) => value + 1)}>
               <RefreshCw className="h-4 w-4" aria-hidden="true" />
               {t("retry")}
             </Button>
           )}
         </div>
-      </main>
+      </div>
     )
   }
 
   return (
-    <main className="mx-auto max-w-[1180px] space-y-4 pb-8">
+    <div data-testid="voip-workspace" className="mx-auto max-w-[1180px] space-y-4 pb-8">
       <header className="border-b pb-4">
         <div className="flex items-center gap-2">
           <Phone className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
@@ -274,7 +274,7 @@ export default function VoipCallsPage() {
         <p className="mt-1 text-sm text-muted-foreground">{t("description")}</p>
       </header>
 
-      <aside className="flex flex-col gap-3 rounded-lg border bg-card px-3 py-2 sm:flex-row sm:items-center sm:justify-between" aria-label={t("connectionStatus")}>
+      <aside data-testid="voip-connection-state" className="flex flex-col gap-3 rounded-lg border bg-card px-3 py-2 sm:flex-row sm:items-center sm:justify-between" aria-label={t("connectionStatus")}>
         <div className="flex min-h-11 items-center gap-2" aria-live="polite">
           {connectionState === "checking" ? (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground motion-reduce:animate-none" aria-hidden="true" />
@@ -291,7 +291,7 @@ export default function VoipCallsPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" className="min-h-11" onClick={() => void checkConnection()} disabled={connectionState === "checking"}>
+          <Button data-testid="voip-retry-connection" variant="outline" size="sm" className="min-h-11" onClick={() => void checkConnection()} disabled={connectionState === "checking"}>
             <RefreshCw className="h-4 w-4" aria-hidden="true" />
             {canManageConnection ? t("testConnection") : t("refreshConnection")}
           </Button>
@@ -306,13 +306,13 @@ export default function VoipCallsPage() {
         </div>
       </aside>
 
-      <section aria-labelledby="call-summary-heading" className="rounded-lg border bg-card">
+      <section data-testid="voip-summary" aria-labelledby="call-summary-heading" className="rounded-lg border bg-card">
         <div className="flex items-center justify-between gap-2 border-b px-4 py-2.5">
           <div>
             <h2 id="call-summary-heading" className="text-sm font-semibold">{t("summaryTitle")}</h2>
             <p className="text-xs text-muted-foreground">{t("rolling30Days")}</p>
           </div>
-          <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" disabled={loading} onClick={() => setRetryVersion((value) => value + 1)} aria-label={t("refreshCalls")}>
+          <Button data-testid="voip-refresh-calls" type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" disabled={loading} onClick={() => setRetryVersion((value) => value + 1)} aria-label={t("refreshCalls")}>
             <RefreshCw className={cn("h-4 w-4", loading && "animate-spin motion-reduce:animate-none")} aria-hidden="true" />
           </Button>
         </div>
@@ -339,7 +339,7 @@ export default function VoipCallsPage() {
         <CallJournalDetail />
       </Suspense>
 
-      <section aria-labelledby="call-timeline-heading" className="rounded-lg border bg-card">
+      <section data-testid="voip-call-timeline" aria-labelledby="call-timeline-heading" className="rounded-lg border bg-card">
         <div className="border-b px-4 py-3">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
@@ -351,6 +351,7 @@ export default function VoipCallsPage() {
                 <span className="sr-only">{t("searchLabel")}</span>
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                 <Input
+                  data-testid="voip-search"
                   value={searchInput}
                   onChange={(event) => setSearchInput(event.target.value)}
                   placeholder={t("searchPlaceholder")}
@@ -378,9 +379,9 @@ export default function VoipCallsPage() {
         </div>
 
         {loadError && summary && (
-          <div role="alert" className="m-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm">
+          <div data-testid="voip-refresh-error" role="alert" className="m-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm">
             <span>{t("refreshFailed")}</span>
-            <Button variant="outline" size="sm" className="min-h-9" onClick={() => setRetryVersion((value) => value + 1)}>
+            <Button data-testid="voip-retry-refresh" variant="outline" size="sm" className="min-h-9" onClick={() => setRetryVersion((value) => value + 1)}>
               {t("retry")}
             </Button>
           </div>
@@ -389,12 +390,12 @@ export default function VoipCallsPage() {
         {loading && calls.length === 0 ? (
           <CallRowsSkeleton label={t("loadingCalls")} />
         ) : calls.length === 0 ? (
-          <div className="px-4 py-10 text-center">
+          <div data-testid={hasFilters ? "voip-no-results" : "voip-empty-state"} className="px-4 py-10 text-center">
             <Headphones className="mx-auto h-6 w-6 text-muted-foreground" aria-hidden="true" />
             <p className="mt-2 text-sm font-medium">{hasFilters ? t("noMatchingCalls") : t("noCalls")}</p>
             <p className="mt-1 text-xs text-muted-foreground">{hasFilters ? t("noMatchingCallsHint") : t("noCallsHint")}</p>
             {hasFilters && (
-              <Button type="button" variant="outline" size="sm" className="mt-3 min-h-11" onClick={() => { setSearchInput(""); setSearchQuery(""); setDirectionFilter(""); setPage(1) }}>
+              <Button data-testid="voip-clear-filters" type="button" variant="outline" size="sm" className="mt-3 min-h-11" onClick={() => { setSearchInput(""); setSearchQuery(""); setDirectionFilter(""); setPage(1) }}>
                 {t("clearFilters")}
               </Button>
             )}
@@ -434,7 +435,7 @@ export default function VoipCallsPage() {
           </nav>
         )}
       </section>
-    </main>
+    </div>
   )
 }
 
@@ -544,14 +545,14 @@ function CallActions({ call, phoneNumber, canCallBack, canOpenContacts }: { call
 
 function VoipSkeleton({ label }: { label: string }) {
   return (
-    <main className="mx-auto max-w-[1180px] space-y-4" aria-busy="true" aria-label={label}>
+    <div data-testid="voip-loading" className="mx-auto max-w-[1180px] space-y-4" aria-busy="true" aria-label={label}>
       <div className="space-y-2 border-b pb-4">
         <div className="h-6 w-48 animate-pulse rounded bg-muted motion-reduce:animate-none" />
         <div className="h-4 w-72 max-w-[80vw] animate-pulse rounded bg-muted motion-reduce:animate-none" />
       </div>
       {[64, 126, 320].map((height) => <div key={height} className="animate-pulse rounded-lg border bg-muted/30 motion-reduce:animate-none" style={{ height }} />)}
       <span className="sr-only">{label}</span>
-    </main>
+    </div>
   )
 }
 

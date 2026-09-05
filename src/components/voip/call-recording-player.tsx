@@ -27,7 +27,7 @@ export function CallRecordingPlayer({
   const [mediaDuration, setMediaDuration] = useState<number | null>(null)
 
   if (!url) {
-    return <span className="text-xs text-muted-foreground">{t("recordingUnavailable")}</span>
+    return <span data-testid="call-recording-unavailable" className="text-xs text-muted-foreground">{t("recordingUnavailable")}</span>
   }
 
   const retry = () => {
@@ -50,7 +50,7 @@ export function CallRecordingPlayer({
             : t("recordingReady")
 
   return (
-    <div className="min-w-[13rem] max-w-[18rem]">
+    <div data-testid="call-recording-player" data-state={state} className="min-w-[13rem] max-w-[18rem]">
       <audio
         ref={audioRef}
         controls
@@ -73,7 +73,7 @@ export function CallRecordingPlayer({
       <div className="mt-1 flex min-h-6 items-center justify-between gap-2 text-xs text-muted-foreground" aria-live="polite">
         <span>{status} · {durationLabel(mediaDuration ?? callDurationSeconds)}</span>
         {state === "error" && (
-          <Button type="button" variant="ghost" size="sm" className="min-h-11 px-2" onClick={retry}>
+          <Button data-testid="call-recording-retry" type="button" variant="ghost" size="sm" className="min-h-11 px-2" onClick={retry}>
             <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
             {t("retry")}
           </Button>
