@@ -127,9 +127,9 @@ export function KbArticleForm({ open, onOpenChange, onSaved, initialData, orgId 
       <DialogHeader>
         <DialogTitle>{isEdit ? tf("editArticle") : tf("addArticle")}</DialogTitle>
       </DialogHeader>
-      <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+      <form data-testid="knowledge-article-form" onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
         <DialogContent>
-          {error && <div role="alert" className="mb-3 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm"><CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />{error}</div>}
+          {error && <div data-testid="knowledge-article-save-error" role="alert" className="mb-3 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm"><CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />{error}</div>}
           <div className="grid gap-4">
             <div>
               <Label htmlFor="title">{tc("title")} *</Label>
@@ -142,7 +142,7 @@ export function KbArticleForm({ open, onOpenChange, onSaved, initialData, orgId 
             {categoriesError && (
               <div role="alert" className="flex items-center justify-between gap-2 rounded-lg border border-destructive/30 p-3 text-sm">
                 <span>{categoriesError}</span>
-                <Button type="button" variant="outline" className="min-h-11" onClick={() => void fetchCategories()}>
+                <Button data-testid="knowledge-article-categories-retry" type="button" variant="outline" className="min-h-11" onClick={() => void fetchCategories()}>
                   <RotateCcw />{tk("retry")}
                 </Button>
               </div>
@@ -173,7 +173,7 @@ export function KbArticleForm({ open, onOpenChange, onSaved, initialData, orgId 
         </DialogContent>
         <DialogFooter>
           <Button type="button" variant="outline" className="min-h-11" onClick={() => onOpenChange(false)}>{tc("cancel")}</Button>
-          <Button type="submit" className="min-h-11" disabled={saving}>{saving ? tc("saving") : isEdit ? tc("update") : tc("create")}</Button>
+          <Button data-testid="knowledge-article-submit" type="submit" className="min-h-11" disabled={saving}>{saving ? tc("saving") : isEdit ? tc("update") : tc("create")}</Button>
         </DialogFooter>
       </form>
     </Dialog>

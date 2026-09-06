@@ -91,6 +91,7 @@ export default function KbArticleDetailPage() {
   const [article, setArticle] = useState<KbArticle | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState("")
+  const [loadErrorRetryable, setLoadErrorRetryable] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -105,6 +106,7 @@ export default function KbArticleDetailPage() {
     if (!params.id) return
     if (!background) setLoading(true)
     setLoadError("")
+    setLoadErrorRetryable(true)
     setNotFound(false)
     try {
       const response = await fetch(`/api/v1/kb/${params.id}`, { headers })
@@ -113,7 +115,10 @@ export default function KbArticleDetailPage() {
         setArticle(null)
         return
       }
-      if (!response.ok) throw await responseError(response, t("articleLoadFailed"))
+      if (!response.ok) {
+        setLoadErrorRetryable(response.status !== 403)
+        throw await responseError(response, response.status === 403 ? t("permissionDenied") : t("articleLoadFailed"))
+      }
       const payload = await response.json()
       setArticle({ ...payload.data, relatedArticles: payload.data?.relatedArticles || [] })
     } catch (error) {
@@ -178,7 +183,7 @@ export default function KbArticleDetailPage() {
 
   if (loading) {
     return (
-      <div aria-busy="true" className="space-y-4">
+      <div data-testid="knowledge-article-loading" aria-busy="true" className="space-y-4">
         <div className="h-11 w-48 animate-pulse rounded-lg bg-muted motion-reduce:animate-none" />
         <div className="h-24 animate-pulse rounded-xl bg-muted motion-reduce:animate-none" />
         <div className="h-72 animate-pulse rounded-xl bg-muted motion-reduce:animate-none" />
@@ -188,7 +193,7 @@ export default function KbArticleDetailPage() {
 
   if (loadError || notFound || !article) {
     return (
-      <div className="space-y-4">
+      <div data-testid="knowledge-article-load-error" data-state={loadError ? "error" : "not-found"} className="space-y-4">
         <Button asChild variant="ghost" className="min-h-11 px-3">
           <Link href={returnTo}><ArrowLeft />{t("backToLibrary")}</Link>
         </Button>
@@ -196,7 +201,7 @@ export default function KbArticleDetailPage() {
           {loadError ? <CircleAlert className="h-8 w-8 text-destructive" /> : <BookOpen className="h-8 w-8 text-muted-foreground" />}
           <h1 className="mt-3 text-lg font-semibold">{loadError ? t("loadFailedTitle") : t("articleNotFound")}</h1>
           <p className="mt-1 max-w-md text-sm text-muted-foreground">{loadError || t("articleNotFoundDescription")}</p>
-          {loadError && <Button variant="outline" className="mt-4 min-h-11" onClick={() => void fetchArticle()}><RotateCcw />{t("retry")}</Button>}
+          {loadError && loadErrorRetryable && <Button data-testid="knowledge-article-load-retry" variant="outline" className="mt-4 min-h-11" onClick={() => void fetchArticle()}><RotateCcw />{t("retry")}</Button>}
         </div>
       </div>
     )
@@ -206,9 +211,9 @@ export default function KbArticleDetailPage() {
   const isPublished = article.status === "published"
 
   return (
-    <div className="space-y-4">
+    <div data-testid="knowledge-article-workspace" data-state="ready" className="space-y-4">
       <Button asChild variant="ghost" className="min-h-11 px-3">
-        <Link href={returnTo}><ArrowLeft />{t("backToLibrary")}</Link>
+          <Link data-testid="knowledge-article-back" href={returnTo}><ArrowLeft />{t("backToLibrary")}</Link>
       </Button>
 
       <header className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-start sm:justify-between">
@@ -218,7 +223,7 @@ export default function KbArticleDetailPage() {
             <HelpButton slug="kb-article-detail" />
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <Badge variant={isPublished ? "outline" : "secondary"} className="gap-1">
+            <Badge data-testid="knowledge-article-status" data-status={article.status} variant={isPublished ? "outline" : "secondary"} className="gap-1">
               {isPublished ? <CheckCircle2 className="h-3 w-3" /> : <FilePenLine className="h-3 w-3" />}
               {isPublished ? t("publishedStatus") : t("draftStatus")}
             </Badge>
@@ -230,12 +235,12 @@ export default function KbArticleDetailPage() {
         {(canWrite || canDelete) && (
           <div className="flex flex-wrap gap-2 sm:shrink-0">
             {canWrite && (
-              <Button variant="outline" className="min-h-11 flex-1 px-4 sm:flex-none" onClick={() => setPublicationOpen(true)}>
+              <Button data-testid="knowledge-article-publication" variant="outline" className="min-h-11 flex-1 px-4 sm:flex-none" onClick={() => setPublicationOpen(true)}>
                 {isPublished ? <FilePenLine /> : <CheckCircle2 />}
                 {isPublished ? t("moveToDraft") : t("publishArticle")}
               </Button>
             )}
-            {canWrite && <Button variant="outline" className="min-h-11 flex-1 px-4 sm:flex-none" onClick={() => setEditOpen(true)}><Pencil />{tc("edit")}</Button>}
+            {canWrite && <Button data-testid="knowledge-article-edit" variant="outline" className="min-h-11 flex-1 px-4 sm:flex-none" onClick={() => setEditOpen(true)}><Pencil />{tc("edit")}</Button>}
             {canDelete && <Button variant="outline" className="min-h-11 px-4 text-destructive hover:text-destructive" onClick={() => setDeleteOpen(true)}><Trash2 />{tc("delete")}</Button>}
           </div>
         )}
@@ -249,7 +254,7 @@ export default function KbArticleDetailPage() {
       </section>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start">
-        <article className="min-w-0 rounded-xl border bg-card p-4 sm:p-6">
+        <article data-testid="knowledge-article-content" className="min-w-0 rounded-xl border bg-card p-4 sm:p-6">
           {article.content ? (
             <div
               className="prose prose-sm max-w-[72ch] dark:prose-invert"

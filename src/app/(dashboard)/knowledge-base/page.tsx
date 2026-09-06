@@ -144,7 +144,9 @@ export default function KnowledgeBasePage() {
   const [categories, setCategories] = useState<KbCategory[]>([])
   const [loading, setLoading] = useState(true)
   const [articlesError, setArticlesError] = useState("")
+  const [articlesErrorRetryable, setArticlesErrorRetryable] = useState(true)
   const [categoriesError, setCategoriesError] = useState("")
+  const [categoriesErrorRetryable, setCategoriesErrorRetryable] = useState(true)
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set())
   const [showForm, setShowForm] = useState(false)
   const [editData, setEditData] = useState<KbArticle>()
@@ -162,9 +164,11 @@ export default function KnowledgeBasePage() {
   const fetchArticles = useCallback(async (background = false) => {
     if (!background) setLoading(true)
     setArticlesError("")
+    setArticlesErrorRetryable(true)
     try {
       const response = await fetch("/api/v1/kb?limit=500&summary=1", { headers })
       if (!response.ok) {
+        setArticlesErrorRetryable(response.status !== 403)
         throw await responseError(
           response,
           response.status === 403 ? t("permissionDenied") : t("loadFailedDescription"),
@@ -182,9 +186,13 @@ export default function KnowledgeBasePage() {
 
   const fetchCategories = useCallback(async () => {
     setCategoriesError("")
+    setCategoriesErrorRetryable(true)
     try {
       const response = await fetch("/api/v1/kb-categories", { headers })
-      if (!response.ok) throw await responseError(response, t("categoriesLoadFailed"))
+      if (!response.ok) {
+        setCategoriesErrorRetryable(response.status !== 403)
+        throw await responseError(response, response.status === 403 ? t("permissionDenied") : t("categoriesLoadFailed"))
+      }
       const payload = await response.json()
       setCategories(payload.data || [])
     } catch (error) {
@@ -400,8 +408,10 @@ export default function KnowledgeBasePage() {
     })
   }
 
+  const workspaceState = loading ? "loading" : articlesError && articles.length === 0 ? "error" : "ready"
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-testid="knowledge-base-workspace" data-state={workspaceState}>
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -415,6 +425,7 @@ export default function KnowledgeBasePage() {
         {canWrite && (
           <div className="flex gap-2 sm:shrink-0">
             <Button
+              data-testid="knowledge-base-manage-categories"
               variant="outline"
               className="min-h-11 flex-1 px-4 sm:flex-none"
               onClick={() => setShowCategoryManager(true)}
@@ -423,6 +434,7 @@ export default function KnowledgeBasePage() {
               <Settings2 /> {t("manageCategories")}
             </Button>
             <Button
+              data-testid="knowledge-base-new-article"
               className="min-h-11 flex-1 px-4 sm:flex-none"
               onClick={() => { setEditData(undefined); setShowForm(true) }}
               data-tour-id="kb-new"
@@ -443,7 +455,7 @@ export default function KnowledgeBasePage() {
       {articlesError && articles.length > 0 && (
         <div role="alert" className="flex flex-col gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
           <span className="flex items-center gap-2"><CircleAlert className="h-4 w-4 shrink-0" />{articlesError}</span>
-          <Button variant="outline" className="min-h-11 shrink-0" onClick={() => void fetchArticles(true)}><RotateCcw />{t("retry")}</Button>
+          {articlesErrorRetryable && <Button data-testid="knowledge-base-stale-retry" variant="outline" className="min-h-11 shrink-0" onClick={() => void fetchArticles(true)}><RotateCcw />{t("retry")}</Button>}
         </div>
       )}
 
@@ -486,19 +498,20 @@ export default function KnowledgeBasePage() {
             ) : null
           })()}
           {categoriesError && (
-            <div role="alert" className="mt-2 rounded-lg border border-destructive/30 p-2 text-xs">
+            <div data-testid="knowledge-base-categories-error" role="alert" className="mt-2 rounded-lg border border-destructive/30 p-2 text-xs">
               <p>{categoriesError}</p>
-              <button className="mt-1 font-medium underline underline-offset-2" onClick={() => void fetchCategories()}>{t("retry")}</button>
+              {categoriesErrorRetryable && <button data-testid="knowledge-base-categories-retry" className="mt-1 min-h-11 font-medium underline underline-offset-2" onClick={() => void fetchCategories()}>{t("retry")}</button>}
             </div>
           )}
         </aside>
 
-        <main className="min-w-0 flex-1 rounded-xl border bg-card">
+        <section className="min-w-0 flex-1 rounded-xl border bg-card" aria-label={t("librarySummaryLabel")}>
           <div className="flex flex-col gap-2 border-b p-3 md:flex-row md:items-center">
             <label className="relative min-w-0 flex-1 md:max-w-sm">
               <span className="sr-only">{t("searchLabel")}</span>
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
+                data-testid="knowledge-base-search"
                 value={search}
                 onChange={(event) => setSearchFilter(event.target.value)}
                 placeholder={t("searchPlaceholder")}
@@ -508,6 +521,7 @@ export default function KnowledgeBasePage() {
             <label className="lg:hidden">
               <span className="sr-only">{t("categoryFilterLabel")}</span>
               <select
+                data-testid="knowledge-base-category-select"
                 value={filterCategory}
                 onChange={(event) => setCategoryFilter(event.target.value)}
                 className="min-h-11 w-full rounded-lg border bg-background px-3 text-sm md:w-auto"
@@ -523,6 +537,7 @@ export default function KnowledgeBasePage() {
                   key={status}
                   type="button"
                   aria-pressed={filterStatus === status}
+                  data-testid={`knowledge-base-status-${status}`}
                   onClick={() => setStatusFilter(status)}
                   className={cn(
                     "min-h-11 shrink-0 rounded-md px-3 text-xs font-medium outline-none transition-colors motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -538,15 +553,15 @@ export default function KnowledgeBasePage() {
           {loading ? (
             <LibrarySkeleton />
           ) : articlesError && articles.length === 0 ? (
-            <LibraryError error={articlesError} retryLabel={t("retry")} onRetry={() => void fetchArticles()} />
+            <LibraryError error={articlesError} retryLabel={t("retry")} retryable={articlesErrorRetryable} onRetry={() => void fetchArticles()} />
           ) : filteredArticles.length === 0 ? (
-            <div className="flex min-h-64 flex-col items-center justify-center px-4 py-10 text-center">
+            <div data-testid="knowledge-base-empty-state" className="flex min-h-64 flex-col items-center justify-center px-4 py-10 text-center">
               <BookOpen className="h-8 w-8 text-muted-foreground" />
               <h2 className="mt-3 text-base font-semibold">{hasFilters ? t("noResultsTitle") : t("emptyTitle")}</h2>
               <p className="mt-1 max-w-md text-sm text-muted-foreground">{hasFilters ? t("noResultsDescription") : t("emptyDescription")}</p>
               <div className="mt-4 flex flex-wrap justify-center gap-2">
-                {hasFilters && <Button variant="outline" className="min-h-11" onClick={clearFilters}>{t("clearFilters")}</Button>}
-                {canWrite && <Button className="min-h-11" onClick={() => { setEditData(undefined); setShowForm(true) }}><Plus />{t("newArticle")}</Button>}
+                {hasFilters && <Button data-testid="knowledge-base-clear-filters" variant="outline" className="min-h-11" onClick={clearFilters}>{t("clearFilters")}</Button>}
+                {canWrite && <Button data-testid="knowledge-base-empty-create" className="min-h-11" onClick={() => { setEditData(undefined); setShowForm(true) }}><Plus />{t("newArticle")}</Button>}
               </div>
             </div>
           ) : filterCategory === "all" ? (
@@ -561,6 +576,7 @@ export default function KnowledgeBasePage() {
                       type="button"
                       aria-expanded={expanded}
                       aria-controls={panelId}
+                      data-testid="knowledge-base-category-toggle"
                       onClick={() => toggleCategory(categoryId)}
                       className="flex min-h-11 w-full items-center gap-2 border-b bg-muted/30 px-3 text-left text-sm outline-none transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                     >
@@ -603,7 +619,7 @@ export default function KnowledgeBasePage() {
               ))}
             </div>
           )}
-        </main>
+        </section>
       </div>
 
       <KbArticleForm
@@ -656,9 +672,9 @@ export default function KnowledgeBasePage() {
             </Button>
           </div>
           {categoriesError && (
-            <div role="alert" className="mt-3 flex items-center justify-between gap-2 rounded-lg border border-destructive/30 p-3 text-sm">
+            <div data-testid="knowledge-base-category-manager-error" role="alert" className="mt-3 flex items-center justify-between gap-2 rounded-lg border border-destructive/30 p-3 text-sm">
               <span>{categoriesError}</span>
-              <Button variant="outline" className="min-h-11" onClick={() => void fetchCategories()}>{t("retry")}</Button>
+              {categoriesErrorRetryable && <Button data-testid="knowledge-base-category-manager-retry" variant="outline" className="min-h-11" onClick={() => void fetchCategories()}>{t("retry")}</Button>}
             </div>
           )}
           <div className="mt-3 max-h-[45vh] space-y-1 overflow-y-auto">
@@ -776,7 +792,7 @@ function ArticleRow({
   const tc = useTranslations("common")
   const preview = previewContent(article.content)
   return (
-    <article className="grid min-h-[4.25rem] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b px-3 py-2 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+    <article data-testid="knowledge-base-article-row" data-article-id={article.id} className="grid min-h-[4.25rem] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b px-3 py-2 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
       <div className="flex min-w-0 items-start gap-2">
         <FileText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
         <div className="min-w-0">
@@ -799,7 +815,7 @@ function ArticleRow({
         {(canWrite || canDelete) ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-11 w-11" aria-label={t("articleActionsNamed", { title: article.title })}>
+              <Button data-testid="knowledge-base-article-actions" variant="ghost" size="icon" className="h-11 w-11" aria-label={t("articleActionsNamed", { title: article.title })}>
                 <MoreHorizontal />
               </Button>
             </DropdownMenuTrigger>
@@ -828,7 +844,7 @@ function ArticleRow({
 
 function LibrarySkeleton() {
   return (
-    <div aria-busy="true" aria-label="Loading" className="divide-y">
+    <div data-testid="knowledge-base-loading" aria-busy="true" aria-label="Loading" className="divide-y">
       {[0, 1, 2, 3, 4].map((index) => (
         <div key={index} className="flex min-h-[4.25rem] animate-pulse items-center gap-3 px-3 py-2 motion-reduce:animate-none">
           <div className="h-4 w-4 rounded bg-muted" />
@@ -840,14 +856,14 @@ function LibrarySkeleton() {
   )
 }
 
-function LibraryError({ error, retryLabel, onRetry }: { error: string; retryLabel: string; onRetry: () => void }) {
+function LibraryError({ error, retryLabel, retryable, onRetry }: { error: string; retryLabel: string; retryable: boolean; onRetry: () => void }) {
   const t = useTranslations("kb")
   return (
-    <div role="alert" className="flex min-h-64 flex-col items-center justify-center px-4 py-10 text-center">
+    <div data-testid="knowledge-base-load-error" role="alert" className="flex min-h-64 flex-col items-center justify-center px-4 py-10 text-center">
       <CircleAlert className="h-8 w-8 text-destructive" />
       <h2 className="mt-3 text-base font-semibold">{t("loadFailedTitle")}</h2>
       <p className="mt-1 max-w-md text-sm text-muted-foreground">{error}</p>
-      <Button variant="outline" className="mt-4 min-h-11" onClick={onRetry}><RotateCcw />{retryLabel}</Button>
+      {retryable && <Button data-testid="knowledge-base-load-retry" variant="outline" className="mt-4 min-h-11" onClick={onRetry}><RotateCcw />{retryLabel}</Button>}
     </div>
   )
 }

@@ -107,7 +107,7 @@ export default function PortalKnowledgeBasePage() {
 
   if (selectedArticle) {
     return (
-      <div className="space-y-4">
+      <div data-testid="portal-knowledge-article" data-state="ready" className="space-y-4">
         <Button variant="ghost" className="min-h-11 px-3" onClick={() => { setSelectedArticle(null); setArticleError("") }}>
           <ArrowLeft />{t("backToArticles")}
         </Button>
@@ -132,7 +132,11 @@ export default function PortalKnowledgeBasePage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div
+      data-testid="portal-knowledge-workspace"
+      data-state={loading ? "loading" : loadError ? "error" : articleLoading ? "article-loading" : articleError ? "article-error" : "ready"}
+      className="space-y-4"
+    >
       <header>
         <div className="flex items-center gap-2">
           <BookOpen className="h-5 w-5 text-muted-foreground" />
@@ -145,7 +149,7 @@ export default function PortalKnowledgeBasePage() {
         <label className="relative min-w-0 flex-1">
           <span className="sr-only">{t("searchArticles")}</span>
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder={t("searchArticles")} value={search} onChange={(event) => setSearch(event.target.value)} className="min-h-11 pl-9" />
+          <Input data-testid="portal-knowledge-search" placeholder={t("searchArticles")} value={search} onChange={(event) => setSearch(event.target.value)} className="min-h-11 pl-9" />
         </label>
         {categories.length > 0 && (
           <label>
@@ -159,7 +163,7 @@ export default function PortalKnowledgeBasePage() {
       </div>
 
       {loading ? (
-        <div aria-busy="true" className="divide-y rounded-xl border">
+        <div data-testid="portal-knowledge-loading" aria-busy="true" className="divide-y rounded-xl border">
           {[0, 1, 2, 3].map((index) => (
             <div key={index} className="flex min-h-20 animate-pulse items-center gap-3 px-4 motion-reduce:animate-none">
               <div className="h-4 w-4 rounded bg-muted" />
@@ -168,16 +172,16 @@ export default function PortalKnowledgeBasePage() {
           ))}
         </div>
       ) : loadError ? (
-        <div role="alert" className="flex min-h-64 flex-col items-center justify-center rounded-xl border px-4 py-10 text-center">
+        <div data-testid="portal-knowledge-load-error" role="alert" className="flex min-h-64 flex-col items-center justify-center rounded-xl border px-4 py-10 text-center">
           <CircleAlert className="h-8 w-8 text-destructive" />
           <h2 className="mt-3 text-base font-semibold">{t("knowledgeBaseUnavailable")}</h2>
           <p className="mt-1 max-w-md text-sm text-muted-foreground">{loadError}</p>
-          <Button variant="outline" className="mt-4 min-h-11" onClick={() => void fetchArticles()}><RotateCcw />{t("tryAgain")}</Button>
+          <Button data-testid="portal-knowledge-load-retry" variant="outline" className="mt-4 min-h-11" onClick={() => void fetchArticles()}><RotateCcw />{t("tryAgain")}</Button>
         </div>
       ) : articleLoading ? (
-        <div aria-busy="true" className="min-h-64 animate-pulse rounded-xl border bg-muted/30 motion-reduce:animate-none" />
+        <div data-testid="portal-knowledge-article-loading" aria-busy="true" className="min-h-64 animate-pulse rounded-xl border bg-muted/30 motion-reduce:animate-none" />
       ) : articleError ? (
-        <div role="alert" className="flex min-h-64 flex-col items-center justify-center rounded-xl border px-4 py-10 text-center">
+        <div data-testid="portal-knowledge-article-error" role="alert" className="flex min-h-64 flex-col items-center justify-center rounded-xl border px-4 py-10 text-center">
           <CircleAlert className="h-8 w-8 text-destructive" />
           <h2 className="mt-3 text-base font-semibold">{t("articleUnavailable")}</h2>
           <p className="mt-1 max-w-md text-sm text-muted-foreground">{articleError}</p>
@@ -187,18 +191,20 @@ export default function PortalKnowledgeBasePage() {
           </div>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex min-h-64 flex-col items-center justify-center rounded-xl border px-4 py-10 text-center">
+        <div data-testid="portal-knowledge-empty-state" className="flex min-h-64 flex-col items-center justify-center rounded-xl border px-4 py-10 text-center">
           <BookOpen className="h-8 w-8 text-muted-foreground" />
           <h2 className="mt-3 text-base font-semibold">{articles.length === 0 ? t("noPublishedArticles") : t("noArticles")}</h2>
           <p className="mt-1 max-w-md text-sm text-muted-foreground">{articles.length === 0 ? t("noPublishedArticlesDescription") : t("changeArticleSearch")}</p>
-          {articles.length > 0 && <Button variant="outline" className="mt-4 min-h-11" onClick={resetFilters}>{t("clearArticleFilters")}</Button>}
+          {articles.length > 0 && <Button data-testid="portal-knowledge-clear-filters" variant="outline" className="mt-4 min-h-11" onClick={resetFilters}>{t("clearArticleFilters")}</Button>}
         </div>
       ) : (
-        <div className="divide-y rounded-xl border bg-card">
+        <div data-testid="portal-knowledge-list" className="divide-y rounded-xl border bg-card">
           {filtered.map((article) => (
             <button
               key={article.id}
               type="button"
+              data-testid="portal-knowledge-article-row"
+              data-article-id={article.id}
               onClick={() => void viewArticle(article.id)}
               className="flex min-h-20 w-full items-center gap-3 px-4 py-3 text-left outline-none transition-colors first:rounded-t-xl last:rounded-b-xl hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
             >

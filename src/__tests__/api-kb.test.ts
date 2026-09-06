@@ -72,7 +72,11 @@ describe("GET /api/v1/kb", () => {
     await GET(makeRequest("http://localhost/api/v1/kb?search=reset"))
 
     const call = vi.mocked(prisma.kbArticle.findMany).mock.calls[0][0] as any
-    expect(call.where.title).toEqual({ contains: "reset", mode: "insensitive" })
+    expect(call.where.OR).toEqual([
+      { title: { contains: "reset", mode: "insensitive" } },
+      { content: { contains: "reset", mode: "insensitive" } },
+      { tags: { has: "reset" } },
+    ])
   })
 
   it("applies status filter", async () => {
@@ -271,7 +275,7 @@ describe("DELETE /api/v1/kb/:id", () => {
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.success).toBe(true)
-    expect(body.data.deleted).toBe("a1")
+    expect(body.data.deleted).toEqual(expect.objectContaining({ id: "a1", organizationId: "org-1" }))
   })
 
   it("returns 404 when article not found for deletion", async () => {

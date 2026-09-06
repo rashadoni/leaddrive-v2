@@ -44,6 +44,11 @@ describe("knowledge base UX contract", () => {
     expect(page).toContain("readOnlyHint")
     expect(page).toContain("fetchArticles(true)")
     expect(page).toContain("fetchCategories()")
+    expect(page).toContain('data-testid="knowledge-base-workspace"')
+    expect(page).toContain('data-testid="knowledge-base-load-error"')
+    expect(page).toContain('data-testid="knowledge-base-categories-error"')
+    expect(page).toContain("articlesErrorRetryable")
+    expect(page).toContain("categoriesErrorRetryable")
   })
 
   it("preserves list context across detail navigation and exposes related content", () => {
@@ -53,6 +58,9 @@ describe("knowledge base UX contract", () => {
     expect(detail).toContain("safeReturnPath")
     expect(detail).toContain("relatedArticles")
     expect(detail).toContain("returnTo")
+    expect(detail).toContain('data-testid="knowledge-article-workspace"')
+    expect(detail).toContain('data-testid="knowledge-article-content"')
+    expect(detail).toContain("loadErrorRetryable")
   })
 
   it("shows dependency impact and supports undo for article and category deletion", () => {
@@ -90,5 +98,14 @@ describe("knowledge base UX contract", () => {
     expect(portal).toContain('<button\n              key={article.id}')
     expect(portal).toContain("knowledgeBaseUnavailable")
     expect(portal).toContain("pendingArticleId")
+    expect(portal).toContain('data-testid="portal-knowledge-workspace"')
+    expect(portal).toContain('data-testid="portal-knowledge-article-row"')
+  })
+
+  it("does not create a nested main landmark inside the dashboard shell", () => {
+    const page = source("src/app/(dashboard)/knowledge-base/page.tsx")
+    const detail = source("src/app/(dashboard)/knowledge-base/[id]/page.tsx")
+    expect(page).not.toContain("<main")
+    expect(detail).not.toContain("<main")
   })
 })
