@@ -63,8 +63,9 @@ describe("VoIP workspace UX contract", () => {
 
   it("gates callback and contact navigation actions by their actual permissions", () => {
     const page = source("src/app/(dashboard)/support/voip/page.tsx")
-    expect(page).toContain('checkPermission(role, "voip", "write")')
-    expect(page).toContain('checkPermission(role, "contacts", "read")')
+    expect(page).toContain('const permissionRole = (role || "viewer") as Role')
+    expect(page).toContain('checkPermission(permissionRole, "voip", "write")')
+    expect(page).toContain('checkPermission(permissionRole, "contacts", "read")')
     expect(page).toContain("safePhone && canCallBack")
     expect(page).toContain("call.contactId && canOpenContacts")
   })

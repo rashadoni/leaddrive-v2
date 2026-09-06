@@ -30,7 +30,7 @@ import { MissedInboundQueue } from "@/components/voip/missed-inbound-queue"
 import { formatDateTime } from "@/lib/format-date"
 import { cn } from "@/lib/utils"
 import { isAdmin, isManagerOrAbove } from "@/lib/constants"
-import { checkPermission } from "@/lib/permissions"
+import { checkPermission, type Role } from "@/lib/permissions"
 import { dialFailureDiagnostic, formatDialDiagnostic } from "@/lib/calls/dial-diagnostics"
 import { CALL_DISPOSITION_I18N_KEYS, isCallDisposition } from "@/lib/calls/disposition"
 
@@ -103,9 +103,10 @@ export default function VoipCallsPage() {
   const tc = useTranslations("common")
   const locale = useLocale()
   const role = session?.user?.role ?? ""
+  const permissionRole = (role || "viewer") as Role
   const canManageConnection = isAdmin(role)
-  const canCallBack = checkPermission(role, "voip", "write")
-  const canOpenContacts = checkPermission(role, "contacts", "read")
+  const canCallBack = checkPermission(permissionRole, "voip", "write")
+  const canOpenContacts = checkPermission(permissionRole, "contacts", "read")
 
   const [calls, setCalls] = useState<CallLog[]>([])
   const [summary, setSummary] = useState<CallSummary | null>(null)
