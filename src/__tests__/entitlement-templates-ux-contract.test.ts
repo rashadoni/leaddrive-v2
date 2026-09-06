@@ -12,6 +12,8 @@ describe("entitlement templates UX contract", () => {
     expect(page).toContain("window.sessionStorage.setItem(storageKey(orgId, activeLevel), JSON.stringify(draft))")
     expect(page).toContain("readStoredDraft(level) ?? saved")
     expect(page).toContain("window.sessionStorage.removeItem(storageKey(orgId, activeLevel))")
+    expect(page).toContain("draftLevels.includes(level)")
+    expect(page).toContain('data-draft={stored ? "true" : "false"}')
   })
 
   it("uses compact rows with one progressively disclosed editor and one sticky save bar", () => {
@@ -22,6 +24,7 @@ describe("entitlement templates UX contract", () => {
     expect(page).toContain('className="sticky bottom-3')
     expect(page).not.toContain("pb-20")
     expect(page).not.toContain("<Card")
+    expect(page).not.toContain('<main className="min-w-0 space-y-4">')
   })
 
   it("previews the resulting timeline and explains ordering before save", () => {

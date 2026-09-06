@@ -177,6 +177,7 @@ export default function EntitlementTemplatesPage() {
   const [templates, setTemplates] = useState<EntitlementTemplate[]>([])
   const [permissions, setPermissions] = useState<TemplatePermissions>({ canWrite: false })
   const [activeLevel, setActiveLevel] = useState<SupportLevel>("standard")
+  const [draftLevels, setDraftLevels] = useState<SupportLevel[]>([])
   const [draft, setDraft] = useState<TemplateDraft>(() => emptyDraft("standard", te))
   const [baseline, setBaseline] = useState<TemplateDraft>(() => emptyDraft("standard", te))
   const [expandedRuleKey, setExpandedRuleKey] = useState<string | null>(null)
@@ -184,6 +185,7 @@ export default function EntitlementTemplatesPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  const [errorRetryable, setErrorRetryable] = useState(true)
 
   const activeTemplate = useMemo(
     () => templates.find((template) => template.supportLevel === activeLevel) ?? null,
@@ -202,18 +204,22 @@ export default function EntitlementTemplatesPage() {
   }, [orgId])
 
   const loadTemplates = useCallback(async () => {
+    let retryable = true
     setLoading(true)
     setError("")
+    setErrorRetryable(true)
     try {
       const response = await fetch("/api/v1/entitlement-templates")
       const payload = await response.json().catch(() => null)
       if (!response.ok || !payload || !Array.isArray(payload.templates)) {
+        retryable = response.status !== 403
         throw new Error(response.status === 403 ? t("permissionDenied") : t("loadFailed"))
       }
       const nextTemplates = payload.templates as EntitlementTemplate[]
       const nextActive = nextTemplates.find((template) => template.supportLevel === "standard") ?? nextTemplates[0]
       setTemplates(nextTemplates)
       setPermissions(payload.permissions ?? { canWrite: false })
+      setDraftLevels(SUPPORT_LEVELS.filter((level) => Boolean(readStoredDraft(level))))
       if (nextActive) {
         const saved = toDraft(nextActive, te)
         setActiveLevel(nextActive.supportLevel)
@@ -222,6 +228,7 @@ export default function EntitlementTemplatesPage() {
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : t("loadFailed"))
+      setErrorRetryable(retryable)
     } finally {
       setLoading(false)
     }
@@ -235,8 +242,13 @@ export default function EntitlementTemplatesPage() {
     if (loading || !orgId || !permissions.canWrite || typeof window === "undefined") return
     try {
       const key = storageKey(orgId, activeLevel)
-      if (isDirty) window.sessionStorage.setItem(key, JSON.stringify(draft))
-      else window.sessionStorage.removeItem(key)
+      if (isDirty) {
+        window.sessionStorage.setItem(key, JSON.stringify(draft))
+        setDraftLevels((current) => current.includes(activeLevel) ? current : [...current, activeLevel])
+      } else {
+        window.sessionStorage.removeItem(key)
+        setDraftLevels((current) => current.filter((level) => level !== activeLevel))
+      }
     } catch {
       // Editing continues in memory when browser storage is unavailable.
     }
@@ -247,6 +259,7 @@ export default function EntitlementTemplatesPage() {
     if (orgId && permissions.canWrite && isDirty && typeof window !== "undefined") {
       try {
         window.sessionStorage.setItem(storageKey(orgId, activeLevel), JSON.stringify(draft))
+        setDraftLevels((current) => current.includes(activeLevel) ? current : [...current, activeLevel])
       } catch {
         // The in-memory draft remains available if browser storage is unavailable.
       }
@@ -258,6 +271,7 @@ export default function EntitlementTemplatesPage() {
     setDraft(readStoredDraft(level) ?? saved)
     setExpandedRuleKey(null)
     setError("")
+    setErrorRetryable(true)
   }
 
   const updateDraft = (patch: Partial<TemplateDraft>) => {
@@ -307,6 +321,8 @@ export default function EntitlementTemplatesPage() {
     setBaseline(saved)
     setExpandedRuleKey(null)
     setError("")
+    setErrorRetryable(true)
+    setDraftLevels((current) => current.filter((level) => level !== activeLevel))
     if (orgId && typeof window !== "undefined") {
       try { window.sessionStorage.removeItem(storageKey(orgId, activeLevel)) } catch { /* no-op */ }
     }
@@ -320,6 +336,7 @@ export default function EntitlementTemplatesPage() {
     }
     setSaving(true)
     setError("")
+    setErrorRetryable(true)
     try {
       const response = await fetch("/api/v1/entitlement-templates", {
         method: "PUT",
@@ -336,6 +353,7 @@ export default function EntitlementTemplatesPage() {
       })
       const payload = await response.json().catch(() => null)
       if (!response.ok) {
+        setErrorRetryable(response.status !== 403)
         const message = response.status === 403
           ? t("permissionDenied")
           : payload?.code === "TEMPLATE_DUPLICATE"
@@ -355,6 +373,7 @@ export default function EntitlementTemplatesPage() {
       setDraft(savedDraft)
       setBaseline(savedDraft)
       setExpandedRuleKey(null)
+      setDraftLevels((current) => current.filter((level) => level !== activeLevel))
       toast.success(t("savedToast"))
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : t("saveFailed")
@@ -376,7 +395,12 @@ export default function EntitlementTemplatesPage() {
           : t("draftSavedLocally")
 
   return (
-    <div className="space-y-4">
+    <div
+      className="space-y-4"
+      data-testid="entitlement-templates-workspace"
+      data-state={loading ? "loading" : templates.length === 0 ? "error" : "ready"}
+      data-permission={permissions.canWrite ? "write" : "read-only"}
+    >
       <header className="flex items-start gap-3">
         <Settings2 className="mt-0.5 h-5 w-5 text-muted-foreground" />
         <div className="min-w-0 flex-1">
@@ -385,15 +409,15 @@ export default function EntitlementTemplatesPage() {
         </div>
       </header>
 
-      {error && templates.length > 0 && <div role="alert" className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm"><AlertCircle className="h-4 w-4 shrink-0 text-destructive" /><span className="min-w-0 flex-1">{error}</span></div>}
+      {error && templates.length > 0 && <div role="alert" className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm" data-testid="entitlement-templates-save-error"><AlertCircle className="h-4 w-4 shrink-0 text-destructive" /><span className="min-w-0 flex-1">{error}</span></div>}
 
       <nav aria-label={t("levels")} className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="tablist">
         {SUPPORT_LEVELS.map((level) => {
           const template = templates.find((item) => item.supportLevel === level)
           const selected = level === activeLevel
-          const stored = selected && isDirty
+          const stored = draftLevels.includes(level) || (selected && isDirty)
           return (
-            <button key={level} type="button" role="tab" aria-selected={selected} className={`min-h-12 rounded-lg border px-3 py-2 text-left text-sm transition-colors motion-reduce:transition-none ${selected ? "border-foreground bg-muted/30" : "hover:bg-muted/30"}`} onClick={() => selectTemplate(level)} disabled={loading}>
+            <button key={level} type="button" role="tab" aria-selected={selected} className={`min-h-12 rounded-lg border px-3 py-2 text-left text-sm transition-colors motion-reduce:transition-none ${selected ? "border-foreground bg-muted/30" : "hover:bg-muted/30"}`} onClick={() => selectTemplate(level)} disabled={loading} data-testid={`entitlement-template-tab-${level}`} data-draft={stored ? "true" : "false"}>
               <span className="flex items-center justify-between gap-2"><span className="font-medium">{te(`supportLevels.${level}`)}</span><span className="text-xs text-muted-foreground">{template?.definitions.length ?? 0}</span></span>
               <span className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">{stored ? <><Clock3 className="h-3 w-3" />{t("draft")}</> : template?.isActive ? <><CheckCircle2 className="h-3 w-3" />{t("active")}</> : t("inactive")}</span>
             </button>
@@ -402,12 +426,12 @@ export default function EntitlementTemplatesPage() {
       </nav>
 
       {loading ? (
-        <div aria-busy="true" className="space-y-3 rounded-xl border p-4">{Array.from({ length: 5 }, (_, index) => <div key={index} className="h-14 animate-pulse rounded bg-muted/30 motion-reduce:animate-none" />)}</div>
+        <div aria-busy="true" className="space-y-3 rounded-xl border p-4" data-testid="entitlement-templates-loading">{Array.from({ length: 5 }, (_, index) => <div key={index} className="h-14 animate-pulse rounded bg-muted/30 motion-reduce:animate-none" />)}</div>
       ) : templates.length === 0 ? (
-        <div role="alert" className="flex min-h-64 flex-col items-center justify-center rounded-xl border p-6 text-center"><AlertCircle className="h-8 w-8 text-destructive" /><h2 className="mt-3 text-base font-semibold">{t("loadFailedTitle")}</h2><p className="mt-1 text-sm text-muted-foreground">{error || t("loadFailed")}</p><Button variant="outline" className="mt-4 min-h-11" onClick={() => void loadTemplates()}><RotateCcw />{t("retry")}</Button></div>
+        <div role="alert" className="flex min-h-64 flex-col items-center justify-center rounded-xl border p-6 text-center" data-testid="entitlement-templates-load-error"><AlertCircle className="h-8 w-8 text-destructive" /><h2 className="mt-3 text-base font-semibold">{t("loadFailedTitle")}</h2><p className="mt-1 text-sm text-muted-foreground">{error || t("loadFailed")}</p>{errorRetryable && <Button variant="outline" className="mt-4 min-h-11" onClick={() => void loadTemplates()} data-testid="entitlement-templates-load-retry"><RotateCcw />{t("retry")}</Button>}</div>
       ) : (
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
-          <main className="min-w-0 space-y-4">
+          <section className="min-w-0 space-y-4" aria-label={t("editorTitle", { level: te(`supportLevels.${activeLevel}`) })}>
             <section aria-labelledby="template-meta-title" className="rounded-xl border bg-card p-4">
               <div className="mb-3 flex items-center justify-between gap-3"><h2 id="template-meta-title" className="text-base font-semibold">{t("editorTitle", { level: te(`supportLevels.${activeLevel}`) })}</h2>{isDirty && <Badge variant="secondary" className="gap-1"><Clock3 className="h-3 w-3" />{t("draft")}</Badge>}</div>
               <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
@@ -420,24 +444,24 @@ export default function EntitlementTemplatesPage() {
             <section aria-labelledby="template-rules-title" className="rounded-xl border bg-card p-3 sm:p-4">
               <div className="flex items-start justify-between gap-3">
                 <div><h2 id="template-rules-title" className="text-base font-semibold">{t("rules")}</h2><p className="mt-0.5 text-xs text-muted-foreground">{t("orderHint")}</p></div>
-                {permissions.canWrite && <Button type="button" variant="outline" className="min-h-11" onClick={addDefinition} disabled={draft.definitions.length >= 30}><Plus />{t("addRule")}</Button>}
+                {permissions.canWrite && <Button type="button" variant="outline" className="min-h-11" onClick={addDefinition} disabled={draft.definitions.length >= 30} data-testid="entitlement-template-add-rule"><Plus />{t("addRule")}</Button>}
               </div>
               <div className="mt-3 divide-y rounded-lg border">
                 {draft.definitions.map((definition, index) => {
                   const expanded = definition.key === expandedRuleKey
                   return (
-                    <article key={definition.key}>
+                    <article key={definition.key} data-testid="entitlement-template-rule" data-rule-key={definition.key}>
                       <div className="flex items-center gap-1 p-2">
-                        <button type="button" className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-left hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-expanded={expanded} aria-controls={`template-rule-${index}`} onClick={() => setExpandedRuleKey(expanded ? null : definition.key)}>
+                        <button type="button" className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-left hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-expanded={expanded} aria-controls={`template-rule-${index}`} onClick={() => setExpandedRuleKey(expanded ? null : definition.key)} data-testid={`entitlement-template-rule-toggle-${definition.key}`}>
                           <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none ${expanded ? "rotate-180" : ""}`} />
                           <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{definition.name || t("unnamedRule")}</span><span className="block truncate text-xs text-muted-foreground">{te(`milestoneTypes.${definition.type}`)} · {te(`severityScopes.${definition.severityTier}`)} · {definition.dueValue} {te(`dueUnitsShort.${definition.dueUnit}`)}</span></span>
                           <Badge variant="outline" className="hidden sm:inline-flex">{definition.isRequired ? t("required") : t("optional")}</Badge>
                         </button>
                         {permissions.canWrite && <>
-                          <Button type="button" variant="ghost" size="icon" className="h-11 w-11" aria-label={t("moveUpNamed", { name: definition.name || t("unnamedRule") })} onClick={() => moveDefinition(index, -1)} disabled={index === 0}><ArrowUp /></Button>
-                          <Button type="button" variant="ghost" size="icon" className="h-11 w-11" aria-label={t("moveDownNamed", { name: definition.name || t("unnamedRule") })} onClick={() => moveDefinition(index, 1)} disabled={index === draft.definitions.length - 1}><ArrowDown /></Button>
-                          <Button type="button" variant="ghost" size="icon" className="hidden h-11 w-11 sm:inline-flex" aria-label={t("editRuleNamed", { name: definition.name || t("unnamedRule") })} onClick={() => setExpandedRuleKey(definition.key)}><Pencil /></Button>
-                          <Button type="button" variant="ghost" size="icon" className="h-11 w-11" aria-label={t("deleteRuleNamed", { name: definition.name || t("unnamedRule") })} onClick={() => setDeleteRuleTarget(definition)}><Trash2 /></Button>
+                          <Button type="button" variant="ghost" size="icon" className="h-11 w-11" aria-label={t("moveUpNamed", { name: definition.name || t("unnamedRule") })} onClick={() => moveDefinition(index, -1)} disabled={index === 0} data-testid={`entitlement-template-rule-up-${definition.key}`}><ArrowUp /></Button>
+                          <Button type="button" variant="ghost" size="icon" className="h-11 w-11" aria-label={t("moveDownNamed", { name: definition.name || t("unnamedRule") })} onClick={() => moveDefinition(index, 1)} disabled={index === draft.definitions.length - 1} data-testid={`entitlement-template-rule-down-${definition.key}`}><ArrowDown /></Button>
+                          <Button type="button" variant="ghost" size="icon" className="hidden h-11 w-11 sm:inline-flex" aria-label={t("editRuleNamed", { name: definition.name || t("unnamedRule") })} onClick={() => setExpandedRuleKey(definition.key)} data-testid={`entitlement-template-rule-edit-${definition.key}`}><Pencil /></Button>
+                          <Button type="button" variant="ghost" size="icon" className="h-11 w-11" aria-label={t("deleteRuleNamed", { name: definition.name || t("unnamedRule") })} onClick={() => setDeleteRuleTarget(definition)} data-testid={`entitlement-template-rule-delete-${definition.key}`}><Trash2 /></Button>
                         </>}
                       </div>
                       {expanded && (
@@ -454,19 +478,19 @@ export default function EntitlementTemplatesPage() {
                     </article>
                   )
                 })}
-                {draft.definitions.length === 0 && <div className="p-4 text-sm text-muted-foreground">{t("emptyRules")}</div>}
+                {draft.definitions.length === 0 && <div className="p-4 text-sm text-muted-foreground" data-testid="entitlement-template-empty-rules">{t("emptyRules")}</div>}
               </div>
             </section>
-          </main>
+          </section>
 
           <TemplatePreview draft={draft} t={t} te={te} />
         </div>
       )}
 
       {!loading && templates.length > 0 && (
-        <div className="sticky bottom-3 z-20 flex flex-col gap-2 rounded-xl border bg-background/95 p-3 shadow-lg backdrop-blur sm:flex-row sm:items-center">
-          <div className="min-w-0 flex-1"><p className="text-sm font-medium">{isDirty ? t("unsavedTitle") : t("savedTitle")}</p><p className={`text-xs ${draftIssue && isDirty ? "text-destructive" : "text-muted-foreground"}`}>{statusText}</p></div>
-          {permissions.canWrite && <div className="flex gap-2"><Button type="button" variant="outline" className="min-h-11 flex-1 sm:flex-none" onClick={discardDraft} disabled={!isDirty || saving}>{t("discard")}</Button><Button type="button" className="min-h-11 flex-1 sm:flex-none" onClick={saveTemplate} disabled={!isDirty || Boolean(draftIssue) || saving}>{saving ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <Save />}{t("save")}</Button></div>}
+        <div className="sticky bottom-3 z-20 flex flex-col gap-2 rounded-xl border bg-background/95 p-3 shadow-lg backdrop-blur sm:flex-row sm:items-center" data-testid="entitlement-template-save-bar" data-dirty={isDirty ? "true" : "false"}>
+          <div className="min-w-0 flex-1"><p className="text-sm font-medium">{isDirty ? t("unsavedTitle") : t("savedTitle")}</p><p className={`text-xs ${draftIssue && isDirty ? "text-destructive" : "text-muted-foreground"}`} data-testid="entitlement-template-status">{statusText}</p></div>
+          {permissions.canWrite && <div className="flex gap-2"><Button type="button" variant="outline" className="min-h-11 flex-1 sm:flex-none" onClick={discardDraft} disabled={!isDirty || saving} data-testid="entitlement-template-discard">{t("discard")}</Button><Button type="button" className="min-h-11 flex-1 sm:flex-none" onClick={saveTemplate} disabled={!isDirty || Boolean(draftIssue) || saving} data-testid="entitlement-template-save">{saving ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <Save />}{t("save")}</Button></div>}
         </div>
       )}
 
@@ -485,7 +509,7 @@ function RuleEditor({ id, definition, index, disabled, t, te, onChange }: {
   onChange: (patch: Partial<TemplateRuleDraft>) => void
 }) {
   return (
-    <div id={id} className="grid gap-3 border-t bg-muted/10 p-3 sm:grid-cols-2">
+    <div id={id} className="grid gap-3 border-t bg-muted/10 p-3 sm:grid-cols-2" data-testid="entitlement-template-rule-editor">
       <div className="space-y-1"><Label htmlFor={`${id}-name`}>{t("ruleName")}</Label><Input id={`${id}-name`} value={definition.name} onChange={(event) => onChange({ name: event.target.value })} className="min-h-11" disabled={disabled} data-dialog-initial-focus /></div>
       <Select label={t("milestoneType")} value={definition.type} onChange={(event) => onChange({ type: asMilestoneType(event.target.value), name: te(`milestoneTypes.${asMilestoneType(event.target.value)}`) })} className="min-h-11" disabled={disabled}>{MILESTONE_TYPES.map((type) => <option key={type} value={type}>{te(`milestoneTypes.${type}`)}</option>)}</Select>
       <Select label={t("severity")} value={definition.severityTier} onChange={(event) => onChange({ severityTier: asSeverityScope(event.target.value) })} className="min-h-11" disabled={disabled}>{MILESTONE_SEVERITY_SCOPES.map((severity) => <option key={severity} value={severity}>{te(`severityScopes.${severity}`)}</option>)}</Select>
@@ -511,7 +535,7 @@ function TemplatePreview({ draft, t, te }: {
   }).sort((left, right) => left.seconds - right.seconds || left.index - right.index)
   const required = draft.definitions.filter((definition) => definition.isRequired).length
   return (
-    <aside aria-labelledby="template-preview-title" className="h-fit rounded-xl border bg-card p-4 xl:sticky xl:top-4">
+    <aside aria-labelledby="template-preview-title" className="h-fit rounded-xl border bg-card p-4 xl:sticky xl:top-4" data-testid="entitlement-template-preview">
       <h2 id="template-preview-title" className="text-base font-semibold">{t("previewTitle")}</h2>
       <p className="mt-1 text-sm text-muted-foreground">{t("previewSummary", { total: draft.definitions.length, required })}</p>
       {!draft.isActive && <p className="mt-3 rounded-lg border bg-muted/20 p-3 text-sm">{t("previewInactive")}</p>}

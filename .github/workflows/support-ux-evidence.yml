@@ -922,7 +922,7 @@ jobs:
             fi
           fi
           node scripts/support-ux-browser-evidence.mjs || capture_status=$?
-          if [ "$capture_status" -ne 0 ] || [ "$service_desk_flow_status" -ne 0 ] || [ "$complaint_flow_status" -ne 0 ] || [ "$agent_desktop_flow_status" -ne 0 ] || [ "$voip_flow_status" -ne 0 ] || [ "$knowledge_base_flow_status" -ne 0 ] || [ "$ticket_categories_flow_status" -ne 0 ] || [ "$sla_policies_flow_status" -ne 0 ] || [ "$entitlements_flow_status" -ne 0 ] || [ "$skill_routing_flow_status" -ne 0 ] || [ "$agent_calendar_flow_status" -ne 0 ] || [ "$escalation_rules_flow_status" -ne 0 ] || [ "$macros_flow_status" -ne 0 ] || [ "$portal_users_flow_status" -ne 0 ] || [ "$support_ai_settings_flow_status" -ne 0 ] || [ "$customer_portal_flow_status" -ne 0 ] || [ "$support_navigation_flow_status" -ne 0 ]; then
+          if [ "$capture_status" -ne 0 ] || [ "$service_desk_flow_status" -ne 0 ] || [ "$complaint_flow_status" -ne 0 ] || [ "$agent_desktop_flow_status" -ne 0 ] || [ "$voip_flow_status" -ne 0 ] || [ "$knowledge_base_flow_status" -ne 0 ] || [ "$ticket_categories_flow_status" -ne 0 ] || [ "$sla_policies_flow_status" -ne 0 ] || [ "$entitlements_flow_status" -ne 0 ] || [ "$entitlement_templates_flow_status" -ne 0 ] || [ "$skill_routing_flow_status" -ne 0 ] || [ "$agent_calendar_flow_status" -ne 0 ] || [ "$escalation_rules_flow_status" -ne 0 ] || [ "$macros_flow_status" -ne 0 ] || [ "$portal_users_flow_status" -ne 0 ] || [ "$support_ai_settings_flow_status" -ne 0 ] || [ "$customer_portal_flow_status" -ne 0 ] || [ "$support_navigation_flow_status" -ne 0 ]; then
             if [ "$SUPPORT_EVIDENCE_TARGET_MODE" = "ephemeral" ]; then
               tail -n 400 /tmp/support-ux-evidence-app.log
             fi
