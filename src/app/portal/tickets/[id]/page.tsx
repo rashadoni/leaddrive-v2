@@ -342,17 +342,17 @@ export default function PortalTicketDetailPage() {
   }
 
   if (loading) {
-    return <div className="min-h-64 animate-pulse rounded-lg border bg-muted/40 motion-reduce:animate-none" aria-busy="true" aria-label={t("ticketLoading")} />
+    return <div data-testid="portal-ticket-workspace" data-state="loading" className="min-h-64 animate-pulse rounded-lg border bg-muted/40 motion-reduce:animate-none" aria-busy="true" aria-label={t("ticketLoading")} />
   }
 
   if (loadError || !ticket) {
     return (
-      <section className="flex min-h-64 flex-col items-center justify-center rounded-lg border p-5 text-center" role="alert">
+      <section data-testid="portal-ticket-workspace" data-state="error" className="flex min-h-64 flex-col items-center justify-center rounded-lg border p-5 text-center" role="alert">
         <CircleAlert className="h-7 w-7 text-destructive" aria-hidden="true" />
         <h1 className="mt-3 text-lg font-semibold">{t("ticketNotFound")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{loadError || t("ticketLoadError")}</p>
         <div className="mt-4 flex flex-wrap justify-center gap-2">
-          <Button variant="outline" className="min-h-11" onClick={() => void fetchTicket(true)}><RefreshCw aria-hidden="true" />{t("tryAgain")}</Button>
+          <Button data-testid="portal-ticket-retry" variant="outline" className="min-h-11" onClick={() => void fetchTicket(true)}><RefreshCw aria-hidden="true" />{t("tryAgain")}</Button>
           <Button variant="ghost" className="min-h-11" onClick={() => router.push("/portal/tickets")}><ArrowLeft aria-hidden="true" />{t("myTickets")}</Button>
         </div>
       </section>
@@ -365,10 +365,10 @@ export default function PortalTicketDetailPage() {
   const ratingLabels = [t("csatTerrible"), t("csatBad"), t("csatOk"), t("csatGood"), t("csatGreat")]
 
   return (
-    <div className="space-y-4">
+    <div data-testid="portal-ticket-workspace" data-state={refreshing ? "refreshing" : "ready"} data-status={ticket.status} data-terminal={terminal} data-online={online} className="space-y-4">
       <Button variant="ghost" className="min-h-11 px-3" onClick={() => router.push("/portal/tickets")}><ArrowLeft aria-hidden="true" />{t("backToTickets")}</Button>
 
-      {!online && <div className="flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm" role="status"><WifiOff className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />{t("offlineDraftSaved")}</div>}
+      {!online && <div data-testid="portal-ticket-offline" className="flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm" role="status"><WifiOff className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />{t("offlineDraftSaved")}</div>}
 
       <header className="rounded-lg border bg-background p-4">
         <div className="flex flex-wrap items-center gap-2">
@@ -384,7 +384,7 @@ export default function PortalTicketDetailPage() {
         {ticket.description && <p className="mt-4 whitespace-pre-wrap border-t pt-4 text-sm leading-6">{ticket.description}</p>}
       </header>
 
-      <section className="rounded-lg border bg-background" aria-labelledby="portal-conversation-title">
+      <section data-testid="portal-ticket-conversation" className="rounded-lg border bg-background" aria-labelledby="portal-conversation-title">
         <div className="flex items-center justify-between border-b px-4 py-3">
           <h2 id="portal-conversation-title" className="text-sm font-semibold">{t("conversationTitle", { count: ticket.comments.length })}</h2>
           {refreshing && <span className="text-xs text-muted-foreground" role="status">{t("updating")}</span>}
@@ -416,9 +416,10 @@ export default function PortalTicketDetailPage() {
           <div className="border-t pt-4">
             <h3 className="text-sm font-medium">{terminal ? t("reopenWithReply") : t("writeReply")}</h3>
             <p className="mt-0.5 text-xs text-muted-foreground">{terminal ? t("reopenHelp") : t("replyDraftHelp")}</p>
-            {(sendError || uploadError) && <p className="mt-3 rounded-md border px-3 py-2 text-sm text-destructive" role="alert">{sendError || uploadError}</p>}
-            {sendSuccess && <p className="mt-3 rounded-md border px-3 py-2 text-sm" role="status">{sendSuccess}</p>}
+            {(sendError || uploadError) && <p data-testid="portal-ticket-mutation-error" className="mt-3 rounded-md border px-3 py-2 text-sm text-destructive" role="alert">{sendError || uploadError}</p>}
+            {sendSuccess && <p data-testid="portal-ticket-send-success" className="mt-3 rounded-md border px-3 py-2 text-sm" role="status">{sendSuccess}</p>}
             <Textarea
+              data-testid="portal-ticket-reply"
               value={newComment}
               onChange={(event) => setNewComment(event.target.value)}
               onKeyDown={(event) => {
@@ -455,15 +456,15 @@ export default function PortalTicketDetailPage() {
             )}
             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <input ref={fileInputRef} id="portal-ticket-file" type="file" multiple className="sr-only" onChange={(event) => void handleUpload(event.target.files)} disabled={uploading || draftAttachmentIds.length >= 10 || !online} accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.gif,.webp,.txt,.csv" />
+                <input ref={fileInputRef} id="portal-ticket-file" data-testid="portal-ticket-file" type="file" multiple className="sr-only" onChange={(event) => void handleUpload(event.target.files)} disabled={uploading || draftAttachmentIds.length >= 10 || !online} accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.gif,.webp,.txt,.csv" />
                 <Button type="button" variant="outline" className="min-h-11 w-full sm:w-auto" onClick={() => fileInputRef.current?.click()} disabled={uploading || draftAttachmentIds.length >= 10 || !online}>
                   {uploading ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Upload aria-hidden="true" />}
                   {uploading ? t("uploadingShort") : t("addAttachment")}
                 </Button>
-                {uploadProgress && <p className="mt-1 max-w-xs truncate text-[11px] text-muted-foreground" role="status" aria-live="polite">{t("uploadingAttachment", uploadProgress)}</p>}
+                {uploadProgress && <p data-testid="portal-ticket-upload-progress" className="mt-1 max-w-xs truncate text-[11px] text-muted-foreground" role="status" aria-live="polite">{t("uploadingAttachment", uploadProgress)}</p>}
                 <p className="mt-1 text-[11px] text-muted-foreground">{t("attachmentHelp")}</p>
               </div>
-              <Button className="min-h-11 w-full sm:w-auto" onClick={() => void handleSendComment()} disabled={sending || uploading || !newComment.trim() || !online}>
+              <Button data-testid="portal-ticket-send" className="min-h-11 w-full sm:w-auto" onClick={() => void handleSendComment()} disabled={sending || uploading || !newComment.trim() || !online}>
                 {sending ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Send aria-hidden="true" />}
                 {sending ? t("sendingReply") : terminal ? t("sendAndReopen") : t("sendReply")}
               </Button>

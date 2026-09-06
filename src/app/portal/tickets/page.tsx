@@ -241,27 +241,32 @@ export default function PortalTicketsPage() {
   }, [locale, search, tickets])
 
   return (
-    <div className="space-y-4">
+    <div
+      className="space-y-4"
+      data-testid="portal-tickets-workspace"
+      data-state={loading ? "loading" : loadError ? "error" : refreshing ? "refreshing" : "ready"}
+      data-online={online}
+    >
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">{t("myTickets")}</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">{t("ticketCount", { count: tickets.length })}</p>
         </div>
-        <Button className="min-h-11" onClick={() => setShowForm((open) => !open)} aria-expanded={showForm} aria-controls="portal-new-ticket-form">
+        <Button data-testid="portal-new-ticket-toggle" className="min-h-11" onClick={() => setShowForm((open) => !open)} aria-expanded={showForm} aria-controls="portal-new-ticket-form">
           {showForm ? <X aria-hidden="true" /> : <Plus aria-hidden="true" />}
           {showForm ? t("closeForm") : t("newTicket")}
         </Button>
       </header>
 
       {!online && (
-        <div className="flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm" role="status">
+        <div data-testid="portal-tickets-offline" className="flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm" role="status">
           <WifiOff className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           <span>{t("offlineDraftSaved")}</span>
         </div>
       )}
 
       {showForm && (
-        <section id="portal-new-ticket-form" className="rounded-lg border bg-background p-4" aria-labelledby="portal-new-ticket-title">
+        <section id="portal-new-ticket-form" data-testid="portal-new-ticket-form" className="rounded-lg border bg-background p-4" aria-labelledby="portal-new-ticket-title">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <h2 id="portal-new-ticket-title" className="text-sm font-semibold">{t("newTicket")}</h2>
@@ -270,10 +275,10 @@ export default function PortalTicketsPage() {
             {(subject || description) && <Button type="button" variant="ghost" size="sm" onClick={resetDraft}>{t("clearDraft")}</Button>}
           </div>
           <form className="space-y-3" onSubmit={handleCreate}>
-            {formError && <p className="rounded-md border px-3 py-2 text-sm text-destructive" role="alert">{formError}</p>}
+            {formError && <p data-testid="portal-new-ticket-error" className="rounded-md border px-3 py-2 text-sm text-destructive" role="alert">{formError}</p>}
             <div>
               <label htmlFor="portal-ticket-subject" className="text-sm font-medium">{t("subjectLabel")}</label>
-              <Input id="portal-ticket-subject" value={subject} onChange={(event) => setSubject(event.target.value)} placeholder={t("describeIssue")} className="mt-1 min-h-11" maxLength={200} required />
+              <Input id="portal-ticket-subject" data-testid="portal-new-ticket-subject" value={subject} onChange={(event) => setSubject(event.target.value)} placeholder={t("describeIssue")} className="mt-1 min-h-11" maxLength={200} required />
             </div>
             <div>
               <label htmlFor="portal-ticket-category" className="text-sm font-medium">{t("categoryLabel")}</label>
@@ -307,11 +312,11 @@ export default function PortalTicketsPage() {
             )}
             <div>
               <label htmlFor="portal-ticket-description" className="text-sm font-medium">{t("descriptionLabel")}</label>
-              <Textarea id="portal-ticket-description" value={description} onChange={(event) => setDescription(event.target.value)} placeholder={t("provideDetails")} rows={4} className="mt-1 min-h-28 resize-y" maxLength={10_000} />
+              <Textarea id="portal-ticket-description" data-testid="portal-new-ticket-description" value={description} onChange={(event) => setDescription(event.target.value)} placeholder={t("provideDetails")} rows={4} className="mt-1 min-h-28 resize-y" maxLength={10_000} />
             </div>
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <Button type="button" variant="outline" className="min-h-11" onClick={() => setShowForm(false)}>{t("saveForLater")}</Button>
-              <Button type="submit" className="min-h-11" disabled={saving || !subject.trim() || !online}>{saving ? t("creating") : t("submitTicket")}</Button>
+              <Button data-testid="portal-new-ticket-submit" type="submit" className="min-h-11" disabled={saving || !subject.trim() || !online}>{saving ? t("creating") : t("submitTicket")}</Button>
             </div>
           </form>
         </section>
@@ -320,32 +325,32 @@ export default function PortalTicketsPage() {
       <label className="relative block">
         <span className="sr-only">{t("searchTickets")}</span>
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-        <Input placeholder={t("searchTickets")} value={search} onChange={(event) => setSearch(event.target.value)} className="min-h-11 pl-9" />
+        <Input data-testid="portal-tickets-search" placeholder={t("searchTickets")} value={search} onChange={(event) => setSearch(event.target.value)} className="min-h-11 pl-9" />
       </label>
 
       {loading ? (
-        <div className="divide-y rounded-lg border" aria-busy="true" aria-label={t("ticketsLoading")}>
+        <div data-testid="portal-tickets-loading" className="divide-y rounded-lg border" aria-busy="true" aria-label={t("ticketsLoading")}>
           {[0, 1, 2].map((index) => <div key={index} className="h-20 animate-pulse bg-muted/50 motion-reduce:animate-none" />)}
         </div>
       ) : loadError ? (
-        <section className="flex min-h-56 flex-col items-center justify-center rounded-lg border p-5 text-center" role="alert">
+        <section data-testid="portal-tickets-error" className="flex min-h-56 flex-col items-center justify-center rounded-lg border p-5 text-center" role="alert">
           <CircleAlert className="h-7 w-7 text-destructive" aria-hidden="true" />
           <h2 className="mt-3 text-base font-semibold">{t("ticketsUnavailable")}</h2>
           <p className="mt-1 max-w-md text-sm text-muted-foreground">{loadError}</p>
-          <Button variant="outline" className="mt-4 min-h-11" onClick={() => void fetchTickets(true)}><RefreshCw aria-hidden="true" />{t("tryAgain")}</Button>
+          <Button data-testid="portal-tickets-retry" variant="outline" className="mt-4 min-h-11" onClick={() => void fetchTickets(true)}><RefreshCw aria-hidden="true" />{t("tryAgain")}</Button>
         </section>
       ) : filtered.length === 0 ? (
-        <section className="flex min-h-56 flex-col items-center justify-center rounded-lg border p-5 text-center">
+        <section data-testid="portal-tickets-empty-state" data-kind={tickets.length === 0 ? "empty" : "filtered"} className="flex min-h-56 flex-col items-center justify-center rounded-lg border p-5 text-center">
           <h2 className="text-base font-semibold">{tickets.length === 0 ? t("noTicketsTitle") : t("noTicketResults")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{tickets.length === 0 ? t("noTicketsDescription") : t("changeTicketSearch")}</p>
           {tickets.length === 0 && <Button className="mt-4 min-h-11" onClick={() => setShowForm(true)}><Plus aria-hidden="true" />{t("newTicket")}</Button>}
         </section>
       ) : (
-        <div className="divide-y overflow-hidden rounded-lg border bg-background" aria-busy={refreshing}>
+        <div data-testid="portal-tickets-list" className="divide-y overflow-hidden rounded-lg border bg-background" aria-busy={refreshing}>
           {filtered.map((ticket) => {
             const sla = publicSlaPhase(ticket)
             return (
-              <button key={ticket.id} type="button" onClick={() => router.push(`/portal/tickets/${ticket.id}`)} className="grid min-h-20 w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 text-left outline-none transition-colors hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none">
+              <button key={ticket.id} data-testid="portal-ticket-row" data-ticket-id={ticket.id} type="button" onClick={() => router.push(`/portal/tickets/${ticket.id}`)} className="grid min-h-20 w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 text-left outline-none transition-colors hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none">
                 <span className="min-w-0">
                   <span className="flex min-w-0 flex-wrap items-center gap-2">
                     <span className="truncate text-sm font-medium">{ticket.subject}</span>

@@ -86,19 +86,19 @@ export default function TicketClosurePage() {
   const statusLabel = request ? t(`closureStatus.${request.status}`) : ""
 
   return (
-    <main className="grid min-h-screen place-items-center bg-background px-4 py-8 text-foreground sm:py-12">
+    <main data-testid="ticket-closure-workspace" data-state={loading ? "loading" : error && !request ? "error" : "ready"} data-status={request?.status || "unknown"} className="grid min-h-screen place-items-center bg-background px-4 py-8 text-foreground sm:py-12">
       <section className="w-full max-w-xl rounded-lg border bg-background p-4 sm:p-6" aria-labelledby="closure-title">
         {loading ? (
-          <div className="flex min-h-40 items-center justify-center gap-2 text-sm text-muted-foreground" aria-busy="true" aria-label={t("closureLoading")}>
+          <div data-testid="ticket-closure-loading" className="flex min-h-40 items-center justify-center gap-2 text-sm text-muted-foreground" aria-busy="true" aria-label={t("closureLoading")}>
             <Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
             {t("closureLoading")}
           </div>
         ) : error && !request ? (
-          <div className="py-4 text-center" role="alert">
+          <div data-testid="ticket-closure-error" className="py-4 text-center" role="alert">
             <CircleAlert className="mx-auto h-7 w-7 text-muted-foreground" aria-hidden="true" />
             <h1 id="closure-title" className="mt-3 text-xl font-semibold">{t("closureUnavailableTitle")}</h1>
             <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">{error}</p>
-            <Button variant="outline" className="mt-5 min-h-11" onClick={() => void load()}>
+            <Button data-testid="ticket-closure-retry" variant="outline" className="mt-5 min-h-11" onClick={() => void load()}>
               <RefreshCw aria-hidden="true" />{t("tryAgain")}
             </Button>
           </div>
@@ -121,22 +121,22 @@ export default function TicketClosurePage() {
               </div>
             </dl>
 
-            {message && <p className="rounded-md border px-3 py-2.5 text-sm" role="status" aria-live="polite">{message}</p>}
-            {error && <p className="rounded-md border px-3 py-2.5 text-sm" role="alert">{error}</p>}
+            {message && <p data-testid="ticket-closure-success" className="rounded-md border px-3 py-2.5 text-sm" role="status" aria-live="polite">{message}</p>}
+            {error && <p data-testid="ticket-closure-save-error" className="rounded-md border px-3 py-2.5 text-sm" role="alert">{error}</p>}
 
             {isPending ? (
               <div className="flex flex-col gap-2 sm:flex-row">
-                <Button className="min-h-11 sm:flex-1" onClick={() => void submit("confirm")} disabled={Boolean(submitting)}>
+                <Button data-testid="ticket-closure-confirm" className="min-h-11 sm:flex-1" onClick={() => void submit("confirm")} disabled={Boolean(submitting)}>
                   {submitting === "confirm" ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <CheckCircle2 aria-hidden="true" />}
                   {t("closureConfirm")}
                 </Button>
-                <Button variant="outline" className="min-h-11 sm:flex-1" onClick={() => void submit("reject")} disabled={Boolean(submitting)}>
+                <Button data-testid="ticket-closure-reject" variant="outline" className="min-h-11 sm:flex-1" onClick={() => void submit("reject")} disabled={Boolean(submitting)}>
                   {submitting === "reject" ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <RotateCcw aria-hidden="true" />}
                   {t("closureReject")}
                 </Button>
               </div>
             ) : (
-              <p className="text-sm leading-6 text-muted-foreground" role="status">{t(`closureOutcome.${request.status}`)}</p>
+              <p data-testid="ticket-closure-outcome" className="text-sm leading-6 text-muted-foreground" role="status">{t(`closureOutcome.${request.status}`)}</p>
             )}
           </div>
         ) : null}

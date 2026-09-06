@@ -158,38 +158,38 @@ export default function PortalChatPage() {
   }
 
   if (availability === "loading") {
-    return <div className="grid min-h-[40dvh] place-items-center" aria-busy="true" aria-label={t("chatLoading")}><Loader2 className="h-6 w-6 animate-spin text-muted-foreground motion-reduce:animate-none" aria-hidden="true" /></div>
+    return <div data-testid="portal-chat-workspace" data-state="loading" className="grid min-h-[40dvh] place-items-center" aria-busy="true" aria-label={t("chatLoading")}><Loader2 className="h-6 w-6 animate-spin text-muted-foreground motion-reduce:animate-none" aria-hidden="true" /></div>
   }
 
   if (availability === "disabled" || availability === "unavailable") {
     const unavailable = availability === "unavailable"
     return (
-      <section className="mx-auto max-w-xl rounded-lg border bg-background p-5 text-center" role={unavailable ? "alert" : "status"}>
+      <section data-testid="portal-chat-workspace" data-state={availability} className="mx-auto max-w-xl rounded-lg border bg-background p-5 text-center" role={unavailable ? "alert" : "status"}>
         {unavailable ? <CircleAlert className="mx-auto h-7 w-7 text-muted-foreground" aria-hidden="true" /> : <Bot className="mx-auto h-7 w-7 text-muted-foreground" aria-hidden="true" />}
         <h1 className="mt-3 text-xl font-semibold">{unavailable ? t("chatStatusUnavailableTitle") : t("chatUnavailableTitle")}</h1>
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">{unavailable ? t("chatStatusUnavailableDesc") : t("chatUnavailableDesc")}</p>
         <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-center">
-          <Button variant="outline" className="min-h-11" onClick={() => void loadAvailability()}><RefreshCw aria-hidden="true" />{t("tryAgain")}</Button>
-          <Button className="min-h-11" onClick={() => openManualTicket(retryMessage)}><TicketPlus aria-hidden="true" />{t("createManualTicket")}</Button>
+          <Button data-testid="portal-chat-retry-availability" variant="outline" className="min-h-11" onClick={() => void loadAvailability()}><RefreshCw aria-hidden="true" />{t("tryAgain")}</Button>
+          <Button data-testid="portal-chat-manual-ticket" className="min-h-11" onClick={() => openManualTicket(retryMessage)}><TicketPlus aria-hidden="true" />{t("createManualTicket")}</Button>
         </div>
       </section>
     )
   }
 
   return (
-    <div className="flex min-h-[calc(100dvh-11rem)] flex-col gap-3">
+    <div data-testid="portal-chat-workspace" data-state="enabled" data-online={online} className="flex min-h-[calc(100dvh-11rem)] flex-col gap-3">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">{t("chatTitle")}</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">{t("chatDesc")}</p>
         </div>
-        <Button variant="outline" className="min-h-11" onClick={() => openManualTicket()}><Headphones aria-hidden="true" />{t("manualSupport")}</Button>
+        <Button data-testid="portal-chat-manual-ticket" variant="outline" className="min-h-11" onClick={() => openManualTicket()}><Headphones aria-hidden="true" />{t("manualSupport")}</Button>
       </header>
 
-      {!online && <div className="flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm" role="status"><WifiOff className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />{t("chatOffline")}</div>}
+      {!online && <div data-testid="portal-chat-offline" className="flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm" role="status"><WifiOff className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />{t("chatOffline")}</div>}
 
       <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-background" aria-label={t("chatTitle")}>
-        <div ref={scrollRef} className="min-h-48 flex-1 space-y-4 overflow-y-auto overscroll-contain p-3 sm:p-4" role="log" aria-live="polite" aria-relevant="additions text">
+        <div ref={scrollRef} data-testid="portal-chat-log" className="min-h-48 flex-1 space-y-4 overflow-y-auto overscroll-contain p-3 sm:p-4" role="log" aria-live="polite" aria-relevant="additions text">
           {messages.length === 0 && (
             <div className="grid min-h-48 place-items-center text-center text-muted-foreground">
               <div><Bot className="mx-auto h-8 w-8" aria-hidden="true" /><p className="mt-3 text-sm">{t("chatEmpty")}</p><p className="mt-1 text-xs">{t("chatEmptyHint")}</p></div>
@@ -223,10 +223,10 @@ export default function PortalChatPage() {
         </div>
 
         {(sendError || retryMessage) && (
-          <div className="flex flex-col gap-2 border-t px-3 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between" role="alert">
+            <div data-testid="portal-chat-send-error" className="flex flex-col gap-2 border-t px-3 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between" role="alert">
             <span>{sendError || t("chatRequestNotSent")}</span>
             <div className="flex gap-2">
-              {retryMessage && online && <Button variant="outline" size="sm" className="min-h-11" onClick={() => void handleSend(retryMessage, false)} disabled={sending}><RefreshCw aria-hidden="true" />{t("tryAgain")}</Button>}
+              {retryMessage && online && <Button data-testid="portal-chat-retry-send" variant="outline" size="sm" className="min-h-11" onClick={() => void handleSend(retryMessage, false)} disabled={sending}><RefreshCw aria-hidden="true" />{t("tryAgain")}</Button>}
               <Button variant="ghost" size="sm" className="min-h-11" onClick={() => openManualTicket(retryMessage)}><TicketPlus aria-hidden="true" />{t("manualSupport")}</Button>
             </div>
           </div>
@@ -236,14 +236,14 @@ export default function PortalChatPage() {
           <div className="flex items-end gap-2">
             <label className="min-w-0 flex-1">
               <span className="sr-only">{t("chatPlaceholder")}</span>
-              <Textarea value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => {
+              <Textarea data-testid="portal-chat-input" value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => {
                 if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
                   event.preventDefault()
                   void handleSend()
                 }
               }} placeholder={t("chatPlaceholder")} rows={2} maxLength={5000} disabled={sending} className="max-h-36 min-h-11 resize-none" />
             </label>
-            <Button type="submit" size="icon" className="h-11 w-11 shrink-0" disabled={sending || !input.trim() || !online} aria-label={t("sendReply")}><Send aria-hidden="true" /></Button>
+            <Button data-testid="portal-chat-send" type="submit" size="icon" className="h-11 w-11 shrink-0" disabled={sending || !input.trim() || !online} aria-label={t("sendReply")}><Send aria-hidden="true" /></Button>
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground">{t("chatComposerHelp")}</p>
         </form>
