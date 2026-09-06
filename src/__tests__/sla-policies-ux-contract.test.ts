@@ -60,6 +60,9 @@ describe("SLA policies UX contract", () => {
     expect(page).toContain("permissionDenied")
     expect(page).toContain("readOnlyHint")
     expect(page).toContain("fetchPolicies()")
+    expect(page).toContain('data-testid="sla-policies-workspace"')
+    expect(page).toContain("loadErrorRetryable")
+    expect(page).toContain("actionErrorRetryable")
   })
 
   it("is touch-safe and avoids generic decorative palette patterns", () => {
@@ -72,5 +75,17 @@ describe("SLA policies UX contract", () => {
     expect(files).not.toMatch(/(?:violet|purple|cyan|fuchsia)-/)
     expect(files).not.toContain("bg-gradient")
     expect(files).not.toContain("ColorStatCard")
+  })
+
+  it("avoids a nested main landmark and exposes stable matrix/form states", () => {
+    const page = source("src/app/(dashboard)/settings/sla-policies/page.tsx")
+    const form = source("src/components/sla-policy-form.tsx")
+    expect(page).not.toContain("<main")
+    expect(page).toContain('data-testid="sla-policies-matrix"')
+    expect(page).toContain('data-testid="sla-policies-mobile-list"')
+    expect(page).toContain('data-testid="sla-policy-row"')
+    expect(form).toContain('data-testid="sla-policy-form"')
+    expect(form).toContain('data-testid="sla-policy-validation-error"')
+    expect(form).toContain('data-testid="sla-policy-preview"')
   })
 })

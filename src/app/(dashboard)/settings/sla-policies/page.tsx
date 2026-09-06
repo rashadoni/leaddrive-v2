@@ -65,7 +65,9 @@ export default function SlaPoliciesPage() {
   const [policies, setPolicies] = useState<SlaPolicy[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState("")
+  const [loadErrorRetryable, setLoadErrorRetryable] = useState(true)
   const [actionError, setActionError] = useState("")
+  const [actionErrorRetryable, setActionErrorRetryable] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editData, setEditData] = useState<SlaPolicy>()
   const [deleteTarget, setDeleteTarget] = useState<SlaPolicy>()
@@ -76,14 +78,20 @@ export default function SlaPoliciesPage() {
   )
 
   const fetchPolicies = useCallback(async (background = false) => {
-    if (background) setActionError("")
+    if (background) {
+      setActionError("")
+      setActionErrorRetryable(true)
+    }
     else {
       setLoading(true)
       setLoadError("")
+      setLoadErrorRetryable(true)
     }
     try {
       const response = await fetch("/api/v1/sla-policies", { headers })
       if (!response.ok) {
+        if (background) setActionErrorRetryable(response.status !== 403)
+        else setLoadErrorRetryable(response.status !== 403)
         throw new Error(response.status === 403 ? t("permissionDenied") : t("loadFailedDescription"))
       }
       const payload = await response.json()
@@ -140,8 +148,10 @@ export default function SlaPoliciesPage() {
   const missingLabels = coverage.missing.map(priorityLabel).join(", ")
   const conflictLabels = coverage.conflicts.map(priorityLabel).join(", ")
 
+  const workspaceState = loading ? "loading" : loadError ? "error" : "ready"
+
   return (
-    <div className="space-y-4">
+    <div data-testid="sla-policies-workspace" data-state={workspaceState} className="space-y-4">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -153,7 +163,7 @@ export default function SlaPoliciesPage() {
           <p className="mt-1 text-sm text-muted-foreground">{t("description")}</p>
           {!canWrite && <p className="mt-1 text-xs text-muted-foreground">{t("readOnlyHint")}</p>}
         </div>
-        {canWrite && <Button className="min-h-11 px-4 sm:shrink-0" onClick={startCreate}><Plus />{t("addPolicy")}</Button>}
+        {canWrite && <Button data-testid="sla-policies-create" className="min-h-11 px-4 sm:shrink-0" onClick={startCreate}><Plus />{t("addPolicy")}</Button>}
       </header>
 
       <section aria-label={t("summaryLabel")} className="flex flex-wrap items-center gap-x-4 gap-y-1 border-y py-2 text-xs text-muted-foreground">
@@ -177,35 +187,35 @@ export default function SlaPoliciesPage() {
         </div>
       )}
       {actionError && (
-        <div role="alert" className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
+        <div data-testid="sla-policies-refresh-error" role="alert" className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
           <CircleAlert className="h-4 w-4 shrink-0 text-destructive" />
           <span className="min-w-0 flex-1">{actionError}</span>
-          <Button variant="outline" className="min-h-11" onClick={() => void fetchPolicies(true)}><RotateCcw />{t("retry")}</Button>
+          {actionErrorRetryable && <Button data-testid="sla-policies-refresh-retry" variant="outline" className="min-h-11" onClick={() => void fetchPolicies(true)}><RotateCcw />{t("retry")}</Button>}
         </div>
       )}
 
-      <main className="overflow-hidden rounded-xl border bg-card" aria-label={t("matrixLabel")}>
+      <section className="overflow-hidden rounded-xl border bg-card" aria-label={t("matrixLabel")}>
         {loading ? (
-          <div aria-busy="true" className="divide-y">
+          <div data-testid="sla-policies-loading" aria-busy="true" className="divide-y">
             {[0, 1, 2, 3].map((index) => <div key={index} className="h-20 animate-pulse bg-muted/30 motion-reduce:animate-none" />)}
           </div>
         ) : loadError ? (
-          <div role="alert" className="flex min-h-64 flex-col items-center justify-center px-4 py-10 text-center">
+          <div data-testid="sla-policies-load-error" role="alert" className="flex min-h-64 flex-col items-center justify-center px-4 py-10 text-center">
             <CircleAlert className="h-8 w-8 text-destructive" />
             <h2 className="mt-3 text-base font-semibold">{t("loadFailedTitle")}</h2>
             <p className="mt-1 max-w-md text-sm text-muted-foreground">{loadError}</p>
-            <Button variant="outline" className="mt-4 min-h-11" onClick={() => void fetchPolicies()}><RotateCcw />{t("retry")}</Button>
+            {loadErrorRetryable && <Button data-testid="sla-policies-load-retry" variant="outline" className="mt-4 min-h-11" onClick={() => void fetchPolicies()}><RotateCcw />{t("retry")}</Button>}
           </div>
         ) : policies.length === 0 ? (
-          <div className="flex min-h-64 flex-col items-center justify-center px-4 py-10 text-center">
+          <div data-testid="sla-policies-empty-state" className="flex min-h-64 flex-col items-center justify-center px-4 py-10 text-center">
             <Clock className="h-8 w-8 text-muted-foreground" />
             <h2 className="mt-3 text-base font-semibold">{t("emptyTitle")}</h2>
             <p className="mt-1 max-w-md text-sm text-muted-foreground">{t("emptyDescription")}</p>
-            {canWrite && <Button className="mt-4 min-h-11" onClick={startCreate}><Plus />{t("addPolicy")}</Button>}
+            {canWrite && <Button data-testid="sla-policies-empty-create" className="mt-4 min-h-11" onClick={startCreate}><Plus />{t("addPolicy")}</Button>}
           </div>
         ) : (
           <>
-            <div className="hidden overflow-x-auto md:block">
+            <div data-testid="sla-policies-matrix" className="hidden overflow-x-auto md:block">
               <table className="w-full min-w-[760px] text-sm">
                 <thead className="border-b bg-muted/30 text-xs text-muted-foreground">
                   <tr>
@@ -232,7 +242,7 @@ export default function SlaPoliciesPage() {
                 ))}
               </table>
             </div>
-            <div className="divide-y md:hidden">
+            <div data-testid="sla-policies-mobile-list" className="divide-y md:hidden">
               {SLA_POLICY_PRIORITIES.map((priority) => (
                 <PolicyMobileGroup
                   key={priority}
@@ -248,7 +258,7 @@ export default function SlaPoliciesPage() {
             </div>
           </>
         )}
-      </main>
+      </section>
 
       <SlaPolicyForm
         open={showForm}
@@ -290,15 +300,16 @@ function PolicyActions({ policy, canWrite, canDelete, onEdit, onDelete }: Omit<P
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-11 w-11" aria-label={t("actionsNamed", { name: policy.name })}><MoreHorizontal /></Button>
+        <Button data-testid={`sla-policy-actions-${policy.id}`} variant="ghost" size="icon" className="h-11 w-11" aria-label={t("actionsNamed", { name: policy.name })}><MoreHorizontal /></Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {canWrite && <DropdownMenuItem className="min-h-11" onSelect={() => onEdit(policy)}><Pencil />{t("editAction")}</DropdownMenuItem>}
+        {canWrite && <DropdownMenuItem data-testid={`sla-policy-edit-${policy.id}`} className="min-h-11" onSelect={() => onEdit(policy)}><Pencil />{t("editAction")}</DropdownMenuItem>}
         {canWrite && canDelete && <DropdownMenuSeparator />}
         {canDelete && (
           <DropdownMenuItem
             className="min-h-11 text-destructive focus:text-destructive"
             disabled={blocked}
+            data-testid={`sla-policy-delete-${policy.id}`}
             onSelect={() => onDelete(policy)}
           >
             <Trash2 />{blocked ? t("deleteBlockedAction") : t("deleteAction")}
@@ -336,7 +347,7 @@ function PolicyTableGroup({ policies, priorityLabel, formatDuration, canWrite, c
   return (
     <tbody className="border-b last:border-b-0">
       {policies.map((policy, index) => (
-        <tr key={policy.id} className={!policy.isActive ? "bg-muted/20 text-muted-foreground" : undefined}>
+        <tr key={policy.id} data-testid="sla-policy-row" data-policy-id={policy.id} data-active={policy.isActive ? "true" : "false"} className={!policy.isActive ? "bg-muted/20 text-muted-foreground" : undefined}>
           {index === 0 && <th scope="rowgroup" rowSpan={policies.length} className="px-3 py-3 text-left align-top font-medium">{priorityLabel}</th>}
           <td className="px-3 py-3"><div className="font-medium">{policy.name}</div><div className="mt-1"><StatusBadge active={policy.isActive} /></div></td>
           <td className="px-3 py-3 font-medium tabular-nums">{formatDuration(policy.firstResponseHours)}</td>
@@ -358,7 +369,7 @@ function PolicyMobileGroup({ policies, priorityLabel, formatDuration, canWrite, 
       {policies.length === 0 ? <p className="mt-2 text-xs text-muted-foreground">{t("unconfiguredPriority")}</p> : (
         <div className="mt-2 space-y-2">
           {policies.map((policy) => (
-            <article key={policy.id} className="rounded-lg border p-3">
+            <article key={policy.id} data-testid="sla-policy-row" data-policy-id={policy.id} data-active={policy.isActive ? "true" : "false"} className="rounded-lg border p-3">
               <div className="flex items-start gap-2">
                 <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{policy.name}</p><div className="mt-1"><StatusBadge active={policy.isActive} /></div></div>
                 <PolicyActions policy={policy} canWrite={canWrite} canDelete={canDelete} onEdit={onEdit} onDelete={onDelete} />

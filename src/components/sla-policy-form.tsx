@@ -193,10 +193,10 @@ export function SlaPolicyForm({
       <DialogHeader>
         <DialogTitle>{isEdit ? t("editTitle") : t("createTitle")}</DialogTitle>
       </DialogHeader>
-      <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <form data-testid="sla-policy-form" onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <DialogContent>
           {saveError && (
-            <div role="alert" className="mb-4 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
+            <div data-testid="sla-policy-save-error" role="alert" className="mb-4 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
               <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />{saveError}
             </div>
           )}
@@ -227,6 +227,7 @@ export function SlaPolicyForm({
                 minutesLabel={t("responseMinutesInput")}
                 hourUnit={t("hourUnit")}
                 minuteUnit={t("minuteUnit")}
+                testIdPrefix="sla-response"
                 onHours={(value) => update("responseHours", value)}
                 onMinutes={(value) => update("responseMinutes", value)}
               />
@@ -239,29 +240,30 @@ export function SlaPolicyForm({
                 minutesLabel={t("resolutionMinutesInput")}
                 hourUnit={t("hourUnit")}
                 minuteUnit={t("minuteUnit")}
+                testIdPrefix="sla-resolution"
                 onHours={(value) => update("resolutionHours", value)}
                 onMinutes={(value) => update("resolutionMinutes", value)}
               />
             </div>
 
             {validationMessage && (
-              <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/30 p-3 text-sm text-destructive">
+              <div data-testid="sla-policy-validation-error" role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/30 p-3 text-sm text-destructive">
                 <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" />{validationMessage}
               </div>
             )}
 
             <div className="grid gap-2 sm:grid-cols-2">
               <label className="flex min-h-12 items-start gap-3 rounded-lg border p-3">
-                <input type="checkbox" checked={form.businessHoursOnly} onChange={(event) => update("businessHoursOnly", event.target.checked)} className="mt-1 h-4 w-4" />
+                <input data-testid="sla-policy-business-hours" type="checkbox" checked={form.businessHoursOnly} onChange={(event) => update("businessHoursOnly", event.target.checked)} className="mt-1 h-4 w-4" />
                 <span><span className="block text-sm font-medium">{t("businessHoursOnlyLabel")}</span><span className="mt-0.5 block text-xs text-muted-foreground">{t("businessHoursOnlyHelp")}</span></span>
               </label>
               <label className="flex min-h-12 items-start gap-3 rounded-lg border p-3">
-                <input type="checkbox" checked={form.isActive} onChange={(event) => update("isActive", event.target.checked)} className="mt-1 h-4 w-4" />
+                <input data-testid="sla-policy-active" type="checkbox" checked={form.isActive} onChange={(event) => update("isActive", event.target.checked)} className="mt-1 h-4 w-4" />
                 <span><span className="block text-sm font-medium">{t("activeStatus")}</span><span className="mt-0.5 block text-xs text-muted-foreground">{t("activeHelp")}</span></span>
               </label>
             </div>
 
-            <section aria-labelledby="sla-preview-title" className="rounded-xl border bg-muted/20 p-3">
+            <section data-testid="sla-policy-preview" aria-labelledby="sla-preview-title" className="rounded-xl border bg-muted/20 p-3">
               <h3 id="sla-preview-title" className="flex items-center gap-2 text-sm font-semibold"><Clock className="h-4 w-4 text-muted-foreground" />{t("previewTitle")}</h3>
               <ul className="mt-2 space-y-1.5 text-xs text-muted-foreground" aria-live="polite">
                 {previewItems.map((item) => {
@@ -274,7 +276,7 @@ export function SlaPolicyForm({
         </DialogContent>
         <DialogFooter>
           <Button type="button" variant="outline" className="min-h-11" onClick={() => onOpenChange(false)} disabled={saving}>{tc("cancel")}</Button>
-          <Button type="submit" className="min-h-11" disabled={saving || Boolean(validationMessage) || !form.name.trim()}>
+          <Button data-testid="sla-policy-submit" type="submit" className="min-h-11" disabled={saving || Boolean(validationMessage) || !form.name.trim()}>
             {saving ? tc("saving") : isEdit ? tc("update") : tc("create")}
           </Button>
         </DialogFooter>
@@ -292,6 +294,7 @@ function TimeTarget({
   minutesLabel,
   hourUnit,
   minuteUnit,
+  testIdPrefix,
   onHours,
   onMinutes,
 }: {
@@ -303,6 +306,7 @@ function TimeTarget({
   minutesLabel: string
   hourUnit: string
   minuteUnit: string
+  testIdPrefix: string
   onHours: (value: number) => void
   onMinutes: (value: number) => void
 }) {
@@ -312,11 +316,11 @@ function TimeTarget({
       <div className="mt-1 grid grid-cols-2 gap-2">
         <label className="space-y-1">
           <span className="text-xs text-muted-foreground">{hourUnit}</span>
-          <Input aria-label={hoursLabel} type="number" min="0" max="8760" step="1" value={hours} onChange={(event) => onHours(clampInteger(event.target.value, 8760))} className="min-h-11" />
+          <Input data-testid={`${testIdPrefix}-hours`} aria-label={hoursLabel} type="number" min="0" max="8760" step="1" value={hours} onChange={(event) => onHours(clampInteger(event.target.value, 8760))} className="min-h-11" />
         </label>
         <label className="space-y-1">
           <span className="text-xs text-muted-foreground">{minuteUnit}</span>
-          <Input aria-label={minutesLabel} type="number" min="0" max="59" step="1" value={minutes} onChange={(event) => onMinutes(clampInteger(event.target.value, 59))} className="min-h-11" />
+          <Input data-testid={`${testIdPrefix}-minutes`} aria-label={minutesLabel} type="number" min="0" max="59" step="1" value={minutes} onChange={(event) => onMinutes(clampInteger(event.target.value, 59))} className="min-h-11" />
         </label>
       </div>
       <p className="mt-2 text-xs text-muted-foreground">{help}</p>
