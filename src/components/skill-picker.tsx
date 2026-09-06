@@ -47,7 +47,7 @@ export function SkillPicker({ value, onChange, options, allowAdd = false, addPla
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label={ariaLabel}>
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label={ariaLabel} data-testid="skill-picker-options">
         {all.length === 0 && (
           <span className="text-xs text-muted-foreground">
             {emptyHint}
@@ -62,6 +62,8 @@ export function SkillPicker({ value, onChange, options, allowAdd = false, addPla
               aria-pressed={isSel}
               onClick={() => toggle(skill)}
               disabled={disabled}
+              data-testid="skill-picker-option"
+              data-skill={skill}
               className={cn(
                 "inline-flex min-h-11 items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition-colors motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-60",
                 isSel

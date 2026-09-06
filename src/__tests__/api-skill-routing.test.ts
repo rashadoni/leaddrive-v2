@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { NextResponse } from "next/server"
+
+type TestAuth = { orgId: string; userId: string; role: string }
+let auth: TestAuth = { orgId: "org-1", userId: "manager-1", role: "manager" }
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -9,16 +11,17 @@ vi.mock("@/lib/prisma", () => ({
   logAudit: vi.fn().mockResolvedValue(undefined),
 }))
 
-vi.mock("@/lib/api-auth", () => ({
-  getOrgId: vi.fn(),
-  getSession: vi.fn().mockResolvedValue(null),
-  requireAuth: vi.fn(),
-  requireSessionAuth: vi.fn(),
-  isAuthError: vi.fn().mockImplementation((result: unknown) => result instanceof NextResponse),
+vi.mock("@/lib/permissions", () => ({
+  checkPermission: vi.fn(),
+}))
+
+vi.mock("@/lib/with-rls", () => ({
+  withRlsSessionAuth: (handler: (request: Request, actor: TestAuth) => Promise<Response>) =>
+    (request: Request) => handler(request, auth),
 }))
 
 import { GET, PATCH } from "@/app/api/v1/skill-routing/agents/route"
-import { requireSessionAuth } from "@/lib/api-auth"
+import { checkPermission } from "@/lib/permissions"
 import { logAudit, prisma } from "@/lib/prisma"
 
 const request = (init?: RequestInit) => new Request("http://localhost/api/v1/skill-routing/agents", init) as never
@@ -26,7 +29,8 @@ const request = (init?: RequestInit) => new Request("http://localhost/api/v1/ski
 describe("skill routing agents API", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(requireSessionAuth).mockResolvedValue({ orgId: "org-1", userId: "manager-1", role: "manager" } as never)
+    auth = { orgId: "org-1", userId: "manager-1", role: "manager" }
+    vi.mocked(checkPermission).mockReturnValue(true)
     vi.mocked(prisma.user.findMany).mockResolvedValue([] as never)
   })
 
@@ -39,7 +43,7 @@ describe("skill routing agents API", () => {
   })
 
   it("keeps support agents read-only even when they can write tickets", async () => {
-    vi.mocked(requireSessionAuth).mockResolvedValue({ orgId: "org-1", userId: "support-1", role: "support" } as never)
+    auth = { orgId: "org-1", userId: "support-1", role: "support" }
     const response = await PATCH(request({ method: "PATCH", body: JSON.stringify({ agentIds: ["a1"], skills: ["billing"], mode: "add" }) }))
     expect(response.status).toBe(403)
     expect(await response.json()).toMatchObject({ code: "ROUTING_WRITE_FORBIDDEN" })

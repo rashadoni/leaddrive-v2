@@ -30,38 +30,52 @@ export default function SkillRoutingPage() {
   const [agentsLoading, setAgentsLoading] = useState(true)
   const [queuesError, setQueuesError] = useState("")
   const [agentsError, setAgentsError] = useState("")
+  const [queuesErrorRetryable, setQueuesErrorRetryable] = useState(true)
+  const [agentsErrorRetryable, setAgentsErrorRetryable] = useState(true)
   const [queueCanWrite, setQueueCanWrite] = useState(false)
   const [agentCanWrite, setAgentCanWrite] = useState(false)
 
   const loadQueues = useCallback(async () => {
+    let retryable = true
     setQueuesLoading(true)
     setQueuesError("")
+    setQueuesErrorRetryable(true)
     try {
       const response = await fetch("/api/v1/ticket-queues")
       const payload = await response.json().catch(() => null)
-      if (!response.ok || !Array.isArray(payload?.data)) throw new Error(t("queuesLoadFailed"))
+      if (!response.ok || !Array.isArray(payload?.data)) {
+        retryable = response.status !== 403
+        throw new Error(response.status === 403 ? t("permissionDenied") : t("queuesLoadFailed"))
+      }
       setQueues(payload.data)
       setQueueCanWrite(Boolean(payload.permissions?.canWrite))
-    } catch {
-      setQueuesError(t("queuesLoadFailed"))
+    } catch (caught) {
+      setQueuesError(caught instanceof Error ? caught.message : t("queuesLoadFailed"))
+      setQueuesErrorRetryable(retryable)
     } finally {
       setQueuesLoading(false)
     }
   }, [t])
 
   const loadAgents = useCallback(async () => {
+    let retryable = true
     setAgentsLoading(true)
     setAgentsError("")
+    setAgentsErrorRetryable(true)
     try {
       const response = await fetch("/api/v1/skill-routing/agents", {
         headers: { "x-skill-routing-view": "routing" },
       })
       const payload = await response.json().catch(() => null)
-      if (!response.ok || !Array.isArray(payload?.data)) throw new Error(t("agentsLoadFailed"))
+      if (!response.ok || !Array.isArray(payload?.data)) {
+        retryable = response.status !== 403
+        throw new Error(response.status === 403 ? t("permissionDenied") : t("agentsLoadFailed"))
+      }
       setAgents(payload.data)
       setAgentCanWrite(Boolean(payload.permissions?.canWrite))
-    } catch {
-      setAgentsError(t("agentsLoadFailed"))
+    } catch (caught) {
+      setAgentsError(caught instanceof Error ? caught.message : t("agentsLoadFailed"))
+      setAgentsErrorRetryable(retryable)
     } finally {
       setAgentsLoading(false)
     }
@@ -95,7 +109,11 @@ export default function SkillRoutingPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div
+      className="space-y-4"
+      data-testid="skill-routing-workspace"
+      data-state={queuesLoading || agentsLoading ? "loading" : queuesError && agentsError ? "error" : partial ? "partial" : "ready"}
+    >
       <header className="flex items-start gap-3">
         <Network className="mt-0.5 h-5 w-5 text-muted-foreground" />
         <div className="min-w-0 flex-1">
@@ -109,27 +127,27 @@ export default function SkillRoutingPage() {
         <p className="pb-2 text-muted-foreground">{t("howItWorksBody")}</p>
       </details>
 
-      <section aria-label={t("coverageTitle")} className="grid divide-y rounded-xl border bg-card sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-        <div className="p-3"><p className="text-lg font-semibold tabular-nums">{coverage.activeQueues.length}</p><p className="text-xs text-muted-foreground">{t("activeQueuesSummary")}</p></div>
-        <div className="p-3"><p className="text-lg font-semibold tabular-nums">{coverage.uncoveredQueues.length}</p><p className="text-xs text-muted-foreground">{t("uncoveredQueuesSummary")}</p></div>
-        <div className="p-3"><p className="text-lg font-semibold tabular-nums">{coverage.agentsWithoutSkills.length}</p><p className="text-xs text-muted-foreground">{t("agentsWithoutSkillsSummary")}</p></div>
+      <section aria-label={t("coverageTitle")} className="grid divide-y rounded-xl border bg-card sm:grid-cols-3 sm:divide-x sm:divide-y-0" data-testid="skill-routing-coverage">
+        <div className="p-3"><p className="text-lg font-semibold tabular-nums" data-testid="skill-routing-active-queues">{coverage.activeQueues.length}</p><p className="text-xs text-muted-foreground">{t("activeQueuesSummary")}</p></div>
+        <div className="p-3"><p className="text-lg font-semibold tabular-nums" data-testid="skill-routing-queues-uncovered">{coverage.uncoveredQueues.length}</p><p className="text-xs text-muted-foreground">{t("uncoveredQueuesSummary")}</p></div>
+        <div className="p-3"><p className="text-lg font-semibold tabular-nums" data-testid="skill-routing-agents-without-skills">{coverage.agentsWithoutSkills.length}</p><p className="text-xs text-muted-foreground">{t("agentsWithoutSkillsSummary")}</p></div>
       </section>
 
-      {partial && <div role="status" className="flex items-start gap-2 rounded-lg border p-3 text-sm"><AlertCircle className="mt-0.5 h-4 w-4 text-muted-foreground" /><div><p className="font-medium">{t("partialDataTitle")}</p><p className="text-muted-foreground">{queuesError ? t("partialQueuesMissing") : t("partialAgentsMissing")}</p></div></div>}
+      {partial && <div role="status" className="flex items-start gap-2 rounded-lg border p-3 text-sm" data-testid="skill-routing-partial"><AlertCircle className="mt-0.5 h-4 w-4 text-muted-foreground" /><div><p className="font-medium">{t("partialDataTitle")}</p><p className="text-muted-foreground">{queuesError ? t("partialQueuesMissing") : t("partialAgentsMissing")}</p></div></div>}
 
-      {!queueCanWrite && !agentCanWrite && !queuesLoading && !agentsLoading && !queuesError && !agentsError && <p className="rounded-lg border p-3 text-sm text-muted-foreground">{t("readOnlyHint")}</p>}
+      {!queueCanWrite && !agentCanWrite && !queuesLoading && !agentsLoading && !queuesError && !agentsError && <p className="rounded-lg border p-3 text-sm text-muted-foreground" data-testid="skill-routing-read-only">{t("readOnlyHint")}</p>}
 
       <div className="grid grid-cols-2 gap-2 lg:hidden" role="tablist" aria-label={t("mobileViews")}>
-        <Button type="button" role="tab" aria-selected={mobileView === "queues"} variant={mobileView === "queues" ? "secondary" : "outline"} className="min-h-11" onClick={() => setMobileView("queues")}>{t("queuesTab")}</Button>
-        <Button type="button" role="tab" aria-selected={mobileView === "agents"} variant={mobileView === "agents" ? "secondary" : "outline"} className="min-h-11" onClick={() => setMobileView("agents")}>{t("agentsTab")}</Button>
+        <Button type="button" role="tab" aria-selected={mobileView === "queues"} variant={mobileView === "queues" ? "secondary" : "outline"} className="min-h-11" onClick={() => setMobileView("queues")} data-testid="skill-routing-tab-queues">{t("queuesTab")}</Button>
+        <Button type="button" role="tab" aria-selected={mobileView === "agents"} variant={mobileView === "agents" ? "secondary" : "outline"} className="min-h-11" onClick={() => setMobileView("agents")} data-testid="skill-routing-tab-agents">{t("agentsTab")}</Button>
       </div>
 
       <div className="grid items-start gap-4 lg:grid-cols-[22rem_minmax(0,1fr)]">
         <div data-tour-id="sr-queues" className={mobileView === "queues" ? "block" : "hidden lg:block"}>
-          <QueueManager queues={queues} agents={agents} selectedQueueId={selectedQueueId} canWrite={queueCanWrite} loading={queuesLoading} error={queuesError} onSelect={selectQueue} onRetry={() => void loadQueues()} onQueuesChange={setQueues} onReload={() => void loadQueues()} />
+          <QueueManager queues={queues} agents={agents} selectedQueueId={selectedQueueId} canWrite={queueCanWrite} loading={queuesLoading} error={queuesError} errorRetryable={queuesErrorRetryable} onSelect={selectQueue} onRetry={() => void loadQueues()} onQueuesChange={setQueues} onReload={() => void loadQueues()} />
         </div>
         <div data-tour-id="sr-agents" className={mobileView === "agents" ? "block" : "hidden lg:block"}>
-          <AgentSkillsManager agents={agents} selectedQueue={selectedQueue} availableSkills={availableSkills} canWrite={agentCanWrite} loading={agentsLoading} error={agentsError} onRetry={() => void loadAgents()} onAgentsChange={setAgents} />
+          <AgentSkillsManager agents={agents} selectedQueue={selectedQueue} availableSkills={availableSkills} canWrite={agentCanWrite} loading={agentsLoading} error={agentsError} errorRetryable={agentsErrorRetryable} onRetry={() => void loadAgents()} onAgentsChange={setAgents} />
         </div>
       </div>
     </div>

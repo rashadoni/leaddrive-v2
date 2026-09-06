@@ -600,6 +600,67 @@ jobs:
             src/__tests__/support-ux-performance-contract.test.ts \
             src/__tests__/support-ux-anti-pattern-scan.test.ts
 
+      - name: Validate section-scoped Skill Routing evidence
+        if: ${{ inputs.scenarios != 'all' && contains(inputs.scenarios, 'skill-routing') }}
+        env:
+          SUPPORT_UX_SCAN_ROOTS: >-
+            src/app/(dashboard)/support/skill-routing,
+            src/components/support/agent-skills-manager.tsx,
+            src/components/support/queue-manager.tsx,
+            src/components/skill-picker.tsx
+        run: |
+          node --check scripts/support-ux-browser-evidence.mjs
+          node --check scripts/support-ux-skill-routing-flow-evidence.mjs
+          node --check scripts/support-ux-screenshot.mjs
+          node --check scripts/support-ux-visual-compare.mjs
+          node --check scripts/support-ux-performance-compare.mjs
+          npm run support:ux:scan
+          npm run i18n:check
+          npx eslint \
+            scripts/support-ux-browser-evidence.mjs \
+            scripts/support-ux-skill-routing-flow-evidence.mjs \
+            scripts/support-ux-screenshot.mjs \
+            scripts/support-ux-visual-compare.mjs \
+            scripts/support-ux-performance-compare.mjs \
+            scripts/check-support-ux-anti-patterns.mjs \
+            scripts/seed-support-ux-evidence.ts \
+            src/app/\(dashboard\)/support/skill-routing/page.tsx \
+            src/app/api/v1/skill-routing/agents/route.ts \
+            src/app/api/v1/ticket-queues/route.ts \
+            src/app/api/v1/ticket-queues/\[id\]/route.ts \
+            src/components/support/agent-skills-manager.tsx \
+            src/components/support/queue-manager.tsx \
+            src/components/skill-picker.tsx \
+            src/lib/skill-routing/presentation.ts \
+            src/lib/ticketing/auto-assign.ts \
+            src/__tests__/api-skill-routing.test.ts \
+            src/__tests__/api-ticket-assignees.test.ts \
+            src/__tests__/api-ticket-extras.test.ts \
+            src/__tests__/auto-assign.test.ts \
+            src/__tests__/skill-routing-presentation.test.ts \
+            src/__tests__/skill-routing-ux-contract.test.ts \
+            src/__tests__/support-ux-skill-routing-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+          npx vitest run \
+            src/__tests__/api-skill-routing.test.ts \
+            src/__tests__/api-ticket-assignees.test.ts \
+            src/__tests__/api-ticket-extras.test.ts \
+            src/__tests__/auto-assign.test.ts \
+            src/__tests__/skill-routing-presentation.test.ts \
+            src/__tests__/skill-routing-ux-contract.test.ts \
+            src/__tests__/support-ux-skill-routing-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+
       - name: Validate evidence contract and scoped source
         if: ${{ inputs.scenarios == 'all' }}
         run: |
