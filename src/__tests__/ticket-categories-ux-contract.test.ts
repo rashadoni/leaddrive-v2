@@ -65,6 +65,9 @@ describe("ticket categories UX contract", () => {
     expect(page).toContain("readOnlyHint")
     expect(page).toContain("discardOpen")
     expect(page).toContain("fetchCategories()")
+    expect(page).toContain('data-testid="ticket-categories-workspace"')
+    expect(page).toContain('data-testid="ticket-categories-load-error"')
+    expect(page).toContain("loadErrorRetryable")
   })
 
   it("avoids decorative AI palette patterns and keeps primary controls touch-safe", () => {
@@ -73,5 +76,13 @@ describe("ticket categories UX contract", () => {
     expect(page).toContain("motion-reduce:animate-none")
     expect(page).not.toMatch(/(?:violet|purple|cyan|fuchsia)-/)
     expect(page).not.toContain("bg-gradient")
+  })
+
+  it("avoids a nested main landmark and keeps lifecycle rows focusable after state changes", () => {
+    const page = source("src/app/(dashboard)/settings/ticket-categories/page.tsx")
+    expect(page).not.toContain("<main")
+    expect(page).toContain("setShowInactive(true)")
+    expect(page).toContain('data-testid="ticket-category-row"')
+    expect(page).toContain("data-active={category.isActive")
   })
 })

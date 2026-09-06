@@ -118,6 +118,7 @@ export default function TicketCategoriesPage() {
   const [tree, setTree] = useState<TicketCategory[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState("")
+  const [loadErrorRetryable, setLoadErrorRetryable] = useState(true)
   const [actionError, setActionError] = useState("")
   const [search, setSearch] = useState("")
   const [scopeFilter, setScopeFilter] = useState<"all" | CategoryScope>("all")
@@ -141,9 +142,13 @@ export default function TicketCategoriesPage() {
   const fetchCategories = useCallback(async () => {
     setLoading(true)
     setLoadError("")
+    setLoadErrorRetryable(true)
     try {
       const response = await fetch("/api/v1/ticket-categories?includeInactive=true", { headers: orgHeaders })
-      if (!response.ok) throw await responseError(response, response.status === 403 ? t("permissionDenied") : t("loadFailed"))
+      if (!response.ok) {
+        setLoadErrorRetryable(response.status !== 403)
+        throw await responseError(response, response.status === 403 ? t("permissionDenied") : t("loadFailed"))
+      }
       const payload = await response.json()
       setCategories(payload.data?.categories || [])
       setTree(payload.data?.tree || [])
@@ -328,7 +333,7 @@ export default function TicketCategoriesPage() {
       body: isActive ? JSON.stringify({ isActive: true }) : undefined,
     })
     if (!response.ok) throw await responseError(response, isActive ? t("restoreFailed") : t("deactivateFailed"))
-    if (isActive) setShowInactive(true)
+    setShowInactive(true)
     await fetchCategories()
     setPendingFocusId(category.id)
     toast.success(isActive ? t("restoredToast") : t("deactivatedToast"))
@@ -378,8 +383,10 @@ export default function TicketCategoriesPage() {
   const selectedParent = form.parentId ? categories.find((category) => category.id === form.parentId) || null : null
   const hasFilters = Boolean(search.trim() || scopeFilter !== "all" || showInactive)
 
+  const workspaceState = loading ? "loading" : loadError ? "error" : "ready"
+
   return (
-    <div className="space-y-4">
+    <div data-testid="ticket-categories-workspace" data-state={workspaceState} className="space-y-4">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -395,7 +402,7 @@ export default function TicketCategoriesPage() {
           <Button variant="outline" asChild className="min-h-11 flex-1 px-4 sm:flex-none">
             <Link href="/tickets?view=reports#ticketing-report"><BarChart3 />{t("viewServiceDesk")}</Link>
           </Button>
-          {canWrite && <Button className="min-h-11 flex-1 px-4 sm:flex-none" onClick={() => startCreate()}><Plus />{t("newRootCategory")}</Button>}
+          {canWrite && <Button data-testid="ticket-categories-new-root" className="min-h-11 flex-1 px-4 sm:flex-none" onClick={() => startCreate()}><Plus />{t("newRootCategory")}</Button>}
         </div>
       </header>
 
@@ -407,23 +414,23 @@ export default function TicketCategoriesPage() {
       </section>
 
       {actionError && (
-        <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
+        <div data-testid="ticket-categories-action-error" role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
           <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
           <span className="min-w-0 flex-1">{actionError}</span>
           <button type="button" className="min-h-11 shrink-0 rounded-lg px-2 font-medium underline underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setActionError("")}>{tc("close")}</button>
         </div>
       )}
 
-      <main className="overflow-hidden rounded-xl border bg-card">
+      <section aria-label={t("categoryTree")} className="overflow-hidden rounded-xl border bg-card">
         <div className="flex flex-col gap-2 border-b p-3 md:flex-row md:items-center">
           <label className="relative min-w-0 flex-1 md:max-w-sm">
             <span className="sr-only">{t("searchLabel")}</span>
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("searchPlaceholder")} className="min-h-11 pl-9" />
+            <Input data-testid="ticket-categories-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("searchPlaceholder")} className="min-h-11 pl-9" />
           </label>
           <label>
             <span className="sr-only">{t("scopeFilterLabel")}</span>
-            <Select value={scopeFilter} onChange={(event) => setScopeFilter(event.target.value as "all" | CategoryScope)} className="min-h-11 w-full md:w-44">
+            <Select data-testid="ticket-categories-scope" value={scopeFilter} onChange={(event) => setScopeFilter(event.target.value as "all" | CategoryScope)} className="min-h-11 w-full md:w-44">
               <option value="all">{t("allScopes")}</option>
               <option value="ticket">{t("ticketScope")}</option>
               <option value="complaint">{t("complaintScope")}</option>
@@ -431,13 +438,13 @@ export default function TicketCategoriesPage() {
             </Select>
           </label>
           <label className="flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm">
-            <input type="checkbox" checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} className="h-4 w-4" />
+            <input data-testid="ticket-categories-show-inactive" type="checkbox" checked={showInactive} onChange={(event) => setShowInactive(event.target.checked)} className="h-4 w-4" />
             {t("showInactive")}
           </label>
         </div>
 
         {loading ? (
-          <div aria-busy="true" className="divide-y">
+          <div data-testid="ticket-categories-loading" aria-busy="true" className="divide-y">
             {[0, 1, 2, 3, 4].map((index) => (
               <div key={index} className="flex min-h-16 animate-pulse items-center gap-3 px-3 motion-reduce:animate-none">
                 <div className="h-8 w-8 rounded bg-muted" />
@@ -446,24 +453,24 @@ export default function TicketCategoriesPage() {
             ))}
           </div>
         ) : loadError ? (
-          <div role="alert" className="flex min-h-64 flex-col items-center justify-center px-4 py-10 text-center">
+          <div data-testid="ticket-categories-load-error" role="alert" className="flex min-h-64 flex-col items-center justify-center px-4 py-10 text-center">
             <CircleAlert className="h-8 w-8 text-destructive" />
             <h2 className="mt-3 text-base font-semibold">{t("loadFailedTitle")}</h2>
             <p className="mt-1 max-w-md text-sm text-muted-foreground">{loadError}</p>
-            <Button variant="outline" className="mt-4 min-h-11" onClick={() => void fetchCategories()}><RotateCcw />{t("retry")}</Button>
+            {loadErrorRetryable && <Button data-testid="ticket-categories-load-retry" variant="outline" className="mt-4 min-h-11" onClick={() => void fetchCategories()}><RotateCcw />{t("retry")}</Button>}
           </div>
         ) : rows.length === 0 ? (
-          <div className="flex min-h-64 flex-col items-center justify-center px-4 py-10 text-center">
+          <div data-testid="ticket-categories-empty-state" className="flex min-h-64 flex-col items-center justify-center px-4 py-10 text-center">
             <Tags className="h-8 w-8 text-muted-foreground" />
             <h2 className="mt-3 text-base font-semibold">{hasFilters ? t("noResultsTitle") : t("noCategories")}</h2>
             <p className="mt-1 max-w-md text-sm text-muted-foreground">{hasFilters ? t("noResultsDescription") : t("noCategoriesHint")}</p>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
-              {hasFilters && <Button variant="outline" className="min-h-11" onClick={clearFilters}>{t("clearFilters")}</Button>}
-              {canWrite && <Button className="min-h-11" onClick={() => startCreate()}><Plus />{t("newRootCategory")}</Button>}
+              {hasFilters && <Button data-testid="ticket-categories-clear-filters" variant="outline" className="min-h-11" onClick={clearFilters}>{t("clearFilters")}</Button>}
+              {canWrite && <Button data-testid="ticket-categories-empty-create" className="min-h-11" onClick={() => startCreate()}><Plus />{t("newRootCategory")}</Button>}
             </div>
           </div>
         ) : (
-          <div role="tree" aria-label={t("categoryTree")} className="divide-y">
+          <div data-testid="ticket-categories-tree" role="tree" aria-label={t("categoryTree")} className="divide-y">
             {rows.map((category) => {
               const childCount = category.children?.length || 0
               const hasChildren = childCount > 0
@@ -478,6 +485,8 @@ export default function TicketCategoriesPage() {
                   aria-expanded={hasChildren ? expanded : undefined}
                   tabIndex={-1}
                   data-category-id={category.id}
+                  data-testid="ticket-category-row"
+                  data-active={category.isActive ? "true" : "false"}
                   className={cn(
                     "grid min-h-[4.5rem] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:grid-cols-[minmax(0,1fr)_minmax(9rem,auto)_auto]",
                     !category.isActive && "bg-muted/30",
@@ -492,6 +501,7 @@ export default function TicketCategoriesPage() {
                         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
                         aria-label={expanded ? t("collapseNamed", { name: category.name }) : t("expandNamed", { name: category.name })}
                         aria-expanded={expanded}
+                        data-testid={`ticket-category-toggle-${category.id}`}
                         onClick={() => toggleCollapsed(category.id)}
                         disabled={forceExpanded}
                       >
@@ -530,18 +540,18 @@ export default function TicketCategoriesPage() {
                   </div>
                   {(canWrite || (canDeactivate && category.isActive)) && <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-11 w-11" aria-label={t("actionsNamed", { name: category.name })}>
+                      <Button data-testid={`ticket-category-actions-${category.id}`} variant="ghost" size="icon" className="h-11 w-11" aria-label={t("actionsNamed", { name: category.name })}>
                         <MoreHorizontal />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      {canWrite && category.isActive && <DropdownMenuItem className="min-h-11" onSelect={() => startCreate(category.id)}><Plus />{t("addChild")}</DropdownMenuItem>}
-                      {canWrite && <DropdownMenuItem className="min-h-11" onSelect={() => startEdit(category)}><Pencil />{t("edit")}</DropdownMenuItem>}
+                      {canWrite && category.isActive && <DropdownMenuItem data-testid={`ticket-category-add-child-${category.id}`} className="min-h-11" onSelect={() => startCreate(category.id)}><Plus />{t("addChild")}</DropdownMenuItem>}
+                      {canWrite && <DropdownMenuItem data-testid={`ticket-category-edit-${category.id}`} className="min-h-11" onSelect={() => startEdit(category)}><Pencil />{t("edit")}</DropdownMenuItem>}
                       {canWrite && (canDeactivate || !category.isActive) && <DropdownMenuSeparator />}
                       {category.isActive && canDeactivate ? (
-                        <DropdownMenuItem onSelect={() => setDeactivateTarget(category)} className="min-h-11 text-destructive focus:text-destructive"><X />{t("deactivate")}</DropdownMenuItem>
+                        <DropdownMenuItem data-testid={`ticket-category-deactivate-${category.id}`} onSelect={() => setDeactivateTarget(category)} className="min-h-11 text-destructive focus:text-destructive"><X />{t("deactivate")}</DropdownMenuItem>
                       ) : !category.isActive && canWrite ? (
-                        <DropdownMenuItem className="min-h-11" onSelect={() => void handleRestore(category)}><RotateCcw />{t("restore")}</DropdownMenuItem>
+                        <DropdownMenuItem data-testid={`ticket-category-restore-${category.id}`} className="min-h-11" onSelect={() => void handleRestore(category)}><RotateCcw />{t("restore")}</DropdownMenuItem>
                       ) : null}
                     </DropdownMenuContent>
                   </DropdownMenu>}
@@ -550,10 +560,11 @@ export default function TicketCategoriesPage() {
             })}
           </div>
         )}
-      </main>
+      </section>
 
       <Sheet open={editorOpen} onOpenChange={(open) => { if (!open) requestEditorClose() }}>
         <SheetContent
+          data-testid="ticket-category-editor"
           side="right"
           closeLabel={tc("close")}
           onEscapeKeyDown={(event) => { if (dirty) { event.preventDefault(); setDiscardOpen(true) } }}
@@ -571,7 +582,7 @@ export default function TicketCategoriesPage() {
 
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
             {actionError && (
-              <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
+              <div data-testid="ticket-category-save-error" role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
                 <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />{actionError}
               </div>
             )}
@@ -632,6 +643,7 @@ export default function TicketCategoriesPage() {
               <button
                 type="button"
                 aria-expanded={advancedOpen}
+                data-testid="ticket-category-advanced-toggle"
                 aria-controls="ticket-category-advanced"
                 onClick={() => setAdvancedOpen((current) => !current)}
                 className="flex min-h-11 w-full items-center gap-2 px-3 text-left text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
@@ -658,7 +670,7 @@ export default function TicketCategoriesPage() {
 
           <SheetFooter className="shrink-0 gap-2 border-t bg-background px-5 py-4 sm:space-x-0">
             <Button variant="outline" className="min-h-11" onClick={requestEditorClose} disabled={saving}>{tc("cancel")}</Button>
-            <Button className="min-h-11" onClick={() => void saveCategory()} disabled={saving || !form.name.trim()}>
+            <Button data-testid="ticket-category-save" className="min-h-11" onClick={() => void saveCategory()} disabled={saving || !form.name.trim()}>
               <Check />{saving ? tc("saving") : editingId ? t("saveCategory") : t("createCategory")}
             </Button>
           </SheetFooter>
