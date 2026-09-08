@@ -698,7 +698,6 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
       clientTimestamp: Date.now(),
     }] }))
     const body = await response.json()
-
     expect(body.results[0]).toMatchObject({
       operationId: "op-workday-payload-bound",
       status: "conflict",
@@ -2498,7 +2497,7 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
       type: "START",
       occurredAt: new Date(occurredAt),
     } as never)
-    vi.mocked(prisma.mtmAuditLog.create).mockRejectedValue(new Error("audit storage unavailable"))
+    vi.mocked(prisma.mtmAuditLog.create).mockRejectedValueOnce(new Error("audit storage unavailable"))
 
     const response = await PushPOST(makePushReq({ operations: [{
       operationId: "op-workday-audit-failure",
@@ -2519,6 +2518,7 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
   })
 
   it("allows a Routes-only field session without the Workforce write fence or side effects", async () => {
+    const occurredAt = new Date(Date.now() - 60_000).toISOString()
     vi.mocked(resolveMobileAuth).mockResolvedValue({
       ...AUTH_CONTEXT,
       tenantCapabilities: { routeField: true, workforceHrm: false },
@@ -2554,12 +2554,11 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
       data: {
         action: "START",
         id: "route-session-1",
-        occurredAt: "2026-07-14T05:00:00.000Z",
+        occurredAt,
       },
       clientTimestamp: Date.now(),
     }] }))
     const body = await response.json()
-
     expect(body.results[0]).toMatchObject({
       operationId: "op-route-session-start",
       status: "ok",
