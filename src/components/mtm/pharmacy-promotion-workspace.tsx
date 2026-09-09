@@ -56,7 +56,9 @@ import { PharmacyPromotionAgentCapture } from "@/components/mtm/pharmacy-promoti
 import { PharmacyPromotionCampaignAdmin } from "@/components/mtm/pharmacy-promotion-campaign-admin"
 import { PharmacyPromotionDefinitionAdmin } from "@/components/mtm/pharmacy-promotion-definition-admin"
 import { HelpButton } from "@/components/help/help-button"
+import { useSession } from "next-auth/react"
 import { MtmWorkflowGuide } from "@/components/mtm/mtm-workflow-guide"
+import { mtmViewerKey } from "@/lib/mtm/viewer-key"
 import {
   PHARMACY_PROMOTION_SECONDARY_COLUMNS,
   pharmacyPromotionColumnsFromParam,
@@ -629,6 +631,8 @@ function ReviewDialog({ rows, open, onOpenChange, onApplied }: {
 
 export function PharmacyPromotionWorkspace() {
   const t = useTranslations("mtmPharmacyPromotions")
+  const tGuideCommon = useTranslations("mtmCommon")
+  const { data: guideSession } = useSession()
   const locale = useLocale()
   const router = useRouter()
   const pathname = usePathname()
@@ -1129,6 +1133,9 @@ export function PharmacyPromotionWorkspace() {
       ) : null}
 
       <MtmWorkflowGuide
+        dismissId="promotions-clarity-guide"
+        viewerKey={mtmViewerKey(guideSession)}
+        dismissLabel={tGuideCommon("hintDismiss")}
         title={t("clarityGuide.title")}
         description={t("clarityGuide.description")}
         steps={availableViews.map((candidate) => ({
