@@ -49,6 +49,16 @@ vi.mock("@/lib/prisma", () => ({
     },
     webhook: { updateMany: vi.fn() },
     $transaction: vi.fn(),
+    // Модели, которые трогает передача незакрытой работы при обезличивании
+    // пользователя (src/lib/user-work-handover.ts). Без них tx.deal.updateMany
+    // — undefined, и падение выглядело бы как поломка авторизации.
+    deal: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    lead: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    ticket: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    task: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    projectTask: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    project: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    division: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
   },
 }))
 

@@ -1,30 +1,34 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { NextResponse } from "next/server"
 
-vi.mock("@/lib/prisma", () => ({
-  logAudit: vi.fn(),
-  prisma: {
-    user: {
-      findMany: vi.fn(),
-      findFirst: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn(),
-    },
-    pipeline: {
-      findMany: vi.fn(),
-      findFirst: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      updateMany: vi.fn(),
-      delete: vi.fn(),
-    },
-    customField: {
-      findMany: vi.fn(),
-      create: vi.fn(),
-    },
-  },
-}))
+vi.mock("@/lib/prisma", () => {
+  const model = () => ({
+    findMany: vi.fn(),
+    findFirst: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+    delete: vi.fn(),
+  })
+  const prisma: Record<string, unknown> = {
+    user: model(),
+    pipeline: model(),
+    customField: model(),
+    // Модели, которые трогает передача незакрытой работы при обезличивании.
+    deal: model(),
+    lead: model(),
+    ticket: model(),
+    task: model(),
+    projectTask: model(),
+    project: model(),
+    division: model(),
+  }
+  // Колбэк получает тот же мок-клиент: тесты продолжают видеть вызовы
+  // update/updateMany там же, где и раньше, без отдельного tx-двойника.
+  prisma.$transaction = vi.fn(async (fn: unknown) =>
+    typeof fn === "function" ? (fn as (tx: unknown) => unknown)(prisma) : fn)
+  return { logAudit: vi.fn(), prisma }
+})
 
 vi.mock("@/lib/api-auth", () => ({
   getOrgId: vi.fn(),
