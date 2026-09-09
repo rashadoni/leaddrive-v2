@@ -1,12 +1,58 @@
 import { describe, it, expect, vi } from "vitest"
 import { handOverOpenWork, isEmptyHandover } from "@/lib/user-work-handover"
 
-function makeTx() {
+/**
+ * Тесты проверяют ПОВЕДЕНИЕ, а не форму запроса.
+ *
+ * Прежняя версия ассертила, что в `where` присутствуют строки "won"/"lost".
+ * Она оставалась зелёной ровно в том сценарии, где терялись данные: у
+ * организации со стадиями `Qazanıldı` / `Uduzdu` поиск этих подстрок не
+ * совпадает ни с чем, фильтр не отсекает ничего, и все закрытые сделки
+ * уезжают к админу. Тест, который нельзя провалить настоящей поломкой, —
+ * не тест, поэтому здесь мини-движок `where` и настоящие строки.
+ */
+type Row = Record<string, unknown>
+
+function matchesLeaf(cond: unknown, value: unknown): boolean {
+  if (cond === null || typeof cond !== "object") return value === cond
+  const c = cond as Record<string, unknown>
+  if ("in" in c) return (c.in as unknown[]).includes(value)
+  if ("equals" in c) {
+    const a = c.equals
+    if (c.mode === "insensitive" && typeof a === "string" && typeof value === "string") {
+      return a.toLowerCase() === value.toLowerCase()
+    }
+    return a === value
+  }
+  throw new Error(`мини-движок не знает условия: ${JSON.stringify(cond)}`)
+}
+
+function matches(where: Row, row: Row): boolean {
+  for (const [key, cond] of Object.entries(where)) {
+    if (key === "NOT") {
+      const clauses = Array.isArray(cond) ? cond : [cond]
+      // Prisma: NOT-массив исключает строку, если она подходит под ЛЮБОЕ из условий.
+      if (clauses.some((cl) => matches(cl as Row, row))) return false
+      continue
+    }
+    if (!matchesLeaf(cond, row[key])) return false
+  }
+  return true
+}
+
+function makeTx(data: Record<string, Row[]> = {}) {
   const calls: Record<string, unknown[]> = {}
+  const survivors: Record<string, Row[]> = {}
   const model = (name: string) => ({
-    updateMany: vi.fn(async (args: unknown) => {
+    updateMany: vi.fn(async (args: { where: Row; data: Row }) => {
       calls[name] = [...(calls[name] ?? []), args]
-      return { count: 1 }
+      const rows = data[name]
+      // Без набора данных модель не проверяется по существу — тест смотрит на
+      // сам факт вызова, поэтому отвечаем как заглушка: одна затронутая строка.
+      if (!rows) return { count: 1 }
+      const hit = rows.filter((r) => matches(args.where, r))
+      survivors[name] = rows.filter((r) => !matches(args.where, r))
+      return { count: hit.length }
     }),
   })
   const tx = {
@@ -18,10 +64,17 @@ function makeTx() {
     project: model("project"),
     division: model("division"),
   }
-  return { tx, calls }
+  return { tx, calls, survivors }
 }
 
-const ARGS = { orgId: "org-1", fromUserId: "leaving", toUserId: "admin-1" }
+const ARGS = {
+  orgId: "org-1",
+  fromUserId: "leaving",
+  toUserId: "admin-1",
+  closedStages: ["WON", "CLOSED_WON", "LOST", "Qazanıldı", "Uduzdu"],
+}
+
+const base = { organizationId: "org-1", assignedTo: "leaving" }
 
 describe("передача незакрытой работы", () => {
   it("переносит всё перечисленное на администратора, а не на кого попало", async () => {
@@ -45,17 +98,36 @@ describe("передача незакрытой работы", () => {
     }
   })
 
-  it("не трогает закрытые сделки — и ловит CLOSED_WON, а не только WON", async () => {
-    // Ловушка из реальных данных: на проде рядом живут WON, CLOSED_WON и LOST,
-    // регистр смешанный. Список из двух значений пропустил бы CLOSED_WON и
-    // передал бы сотню закрытых сделок вместе с открытыми.
-    const { tx, calls } = makeTx()
-    await handOverOpenWork(tx as never, ARGS)
-    const where = (calls.deal[0] as { where: { NOT: { stage: { contains: string; mode: string } }[] } }).where
-    const patterns = where.NOT.map((n) => n.stage.contains)
-    expect(patterns).toContain("won")
-    expect(patterns).toContain("lost")
-    for (const n of where.NOT) expect(n.stage.mode).toBe("insensitive")
+  it("оставляет закрытые сделки прежнему владельцу — на любом языке воронки", async () => {
+    // Регрессия, ради которой этот файл переписан: воронка настраивается на
+    // организацию, и «закрыто» может быть написано не по-английски.
+    const { tx, survivors } = makeTx({
+      deal: [
+        { ...base, stage: "Qazanıldı" },
+        { ...base, stage: "Uduzdu" },
+        { ...base, stage: "CLOSED_WON" },
+        { ...base, stage: "LOST" },
+        { ...base, stage: "Danışıqlar" },
+      ],
+    })
+    const counts = await handOverOpenWork(tx as never, ARGS)
+    expect(counts.deals, "передать можно только открытую сделку").toBe(1)
+    expect(survivors.deal.map((r) => r.stage)).toEqual(["Qazanıldı", "Uduzdu", "CLOSED_WON", "LOST"])
+  })
+
+  it("не пропускает CLOSED_WON мимо WON", async () => {
+    // Исходная ловушка из реальных данных: рядом живут WON и CLOSED_WON.
+    const { tx } = makeTx({ deal: [{ ...base, stage: "CLOSED_WON" }] })
+    const counts = await handOverOpenWork(tx as never, ARGS)
+    expect(counts.deals).toBe(0)
+  })
+
+  it("без словаря стадий не отсекает ничего, но и не проглатывает всё", async () => {
+    // Пустой словарь = «закрытых стадий у организации нет». Тогда открытая
+    // сделка обязана перейти: `in: []` не должен превратиться в «исключить всё».
+    const { tx } = makeTx({ deal: [{ ...base, stage: "Новая" }] })
+    const counts = await handOverOpenWork(tx as never, { ...ARGS, closedStages: [] })
+    expect(counts.deals).toBe(1)
   })
 
   it("отличает открытое от закрытого по отметке времени, а не по строке статуса", async () => {
@@ -73,9 +145,21 @@ describe("передача незакрытой работы", () => {
     await handOverOpenWork(tx as never, ARGS)
     expect((calls.project[0] as { data: Record<string, unknown> }).data).toEqual({ managerId: "admin-1" })
     expect((calls.division[0] as { data: Record<string, unknown> }).data).toEqual({ headUserId: "admin-1" })
-    // У проекта и подразделения нет «закрытого» состояния: ответственный нужен
-    // всегда, поэтому фильтра по завершённости здесь быть не должно.
-    expect((calls.project[0] as { where: Record<string, unknown> }).where).not.toHaveProperty("completedAt")
+  })
+
+  it("не переписывает руководителя у завершённых проектов", async () => {
+    // Иначе отчёт по руководителям за прошлый период меняется задним числом.
+    const pbase = { organizationId: "org-1", managerId: "leaving" }
+    const { tx, survivors } = makeTx({
+      project: [
+        { ...pbase, status: "completed" },
+        { ...pbase, status: "Cancelled" },
+        { ...pbase, status: "active" },
+      ],
+    })
+    const counts = await handOverOpenWork(tx as never, ARGS)
+    expect(counts.projects).toBe(1)
+    expect(survivors.project.map((r) => r.status)).toEqual(["completed", "Cancelled"])
   })
 
   it("считает пустую передачу пустой", () => {

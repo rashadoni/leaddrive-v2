@@ -22,23 +22,26 @@ import type { Prisma } from "@prisma/client"
  *
  * Что НЕ передаём:
  *   • закрытое — у него нет будущего, а перенос исказил бы отчёты по
- *     владельцам за прошлые периоды;
+ *     владельцам за прошлые периоды. Что считать закрытым, решает НЕ этот
+ *     файл: список написаний приходит из `orgStageVocabulary(orgId)`, то есть
+ *     из воронки самой организации. Захардкоженные `WON`/`LOST` — и поиск
+ *     подстрок "won"/"lost" тоже — на организации со стадиями `Qazanıldı`,
+ *     `Uduzdu` или `Отказ` не совпадают ни с чем, и тогда фильтр молча
+ *     пропускает В передачу все закрытые сделки за все годы. Прежний владелец
+ *     при этом нигде не сохраняется: откатить нельзя;
  *   • авторство — «кто создал», «кто подписал», «кто утвердил». Это факт о
  *     прошлом, передавать его некому и незачем; оно остаётся на надгробии.
  */
 
-/**
- * Терминальные стадии сделки.
- *
- * Сравнение НЕ со списком значений: на проде вокабуляр смешанный — рядом живут
- * `WON`, `CLOSED_WON`, `LOST` и строчный `lead`. Список из двух значений молча
- * пропустил бы `CLOSED_WON`, а вместе с ним и десятки закрытых сделок в
- * передачу. Поэтому ищем подстроку без учёта регистра.
- */
-const DEAL_TERMINAL_PATTERNS = ["won", "lost"]
-
 /** Терминальные статусы лида. Здесь вокабуляр стабильно строчный. */
 const LEAD_TERMINAL_STATUSES = ["converted", "lost"]
+
+/**
+ * Терминальные статусы проекта (`Project.status`: planning, active, on_hold,
+ * completed, cancelled). Сравнение поштучно и без учёта регистра — как у лида,
+ * потому что `in` в Prisma регистрозависим.
+ */
+const PROJECT_TERMINAL_STATUSES = ["completed", "cancelled"]
 
 export interface HandoverCounts {
   deals: number
@@ -61,7 +64,12 @@ export function isEmptyHandover(counts: HandoverCounts): boolean {
  */
 export async function handOverOpenWork(
   tx: Prisma.TransactionClient,
-  { orgId, fromUserId, toUserId }: { orgId: string; fromUserId: string; toUserId: string },
+  {
+    orgId,
+    fromUserId,
+    toUserId,
+    closedStages,
+  }: { orgId: string; fromUserId: string; toUserId: string; closedStages: string[] },
 ): Promise<HandoverCounts> {
   const scope = { organizationId: orgId }
 
@@ -71,9 +79,11 @@ export async function handOverOpenWork(
     where: {
       ...scope,
       assignedTo: fromUserId,
-      NOT: DEAL_TERMINAL_PATTERNS.map((p) => ({
-        stage: { contains: p, mode: "insensitive" as const },
-      })),
+      // Пустой словарь значит «ни одна стадия этой организации не помечена
+      // закрытой» — тогда исключать нечего. Это НЕ то же самое, что
+      // «исключить всё»: `in: []` не совпадает ни с чем, и `NOT` от него
+      // пропустил бы вообще все сделки.
+      ...(closedStages.length > 0 ? { NOT: { stage: { in: closedStages } } } : {}),
     },
     data: { assignedTo: toUserId },
   })
@@ -108,10 +118,18 @@ export async function handOverOpenWork(
     data: { assignedTo: toUserId },
   })
 
-  // Проект без руководителя и подразделение без главы — это не «история»,
-  // а дыра в ответственности: у них по определению есть будущее.
+  // Подразделение без главы — это не «история», а дыра в ответственности.
+  // У проекта состояние завершённости ЕСТЬ (`completed`, `cancelled`), и на
+  // него распространяется общее правило файла: закрытое не передаём, иначе
+  // отчёт по руководителям за прошлый период меняется задним числом.
   const projects = await tx.project.updateMany({
-    where: { ...scope, managerId: fromUserId },
+    where: {
+      ...scope,
+      managerId: fromUserId,
+      NOT: PROJECT_TERMINAL_STATUSES.map((s) => ({
+        status: { equals: s, mode: "insensitive" as const },
+      })),
+    },
     data: { managerId: toUserId },
   })
 
