@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
+import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 
 const read = (path: string) => readFileSync(path, "utf8")
@@ -45,31 +46,35 @@ describe("credential-bearing operator documentation", () => {
     expect(evidence).toContain("[REDACTED_CALENDAR_TOKEN]")
   })
 
-  it("keeps the tracked legacy snapshot free of credential material", () => {
-    const users = JSON.parse(read("scripts/v1-data/users.json")) as Array<Record<string, unknown>>
-    const portalUsers = JSON.parse(read("scripts/v1-data/portal_users.json")) as Array<Record<string, unknown>>
-    const smtpSettings = JSON.parse(read("scripts/v1-data/smtp_settings.json")) as Array<Record<string, unknown>>
-    const channels = JSON.parse(read("scripts/v1-data/channel_configs.json")) as Array<Record<string, unknown>>
+  // Раньше здесь проверялось, что в снимке v1 нет паролей и токенов. Снимок
+  // удалён из репозитория целиком, и проверять в нём больше нечего — но
+  // утверждение стало сильнее, а не слабее: не «в данных нет учёток», а
+  // «данных нет».
+  //
+  // Почему это важнее прежней формулировки. Тот тест сторожил учётные данные и
+  // молчал про личные: в снимке лежали 577 живых контактов с именами, рабочей
+  // почтой и телефонами, и он проходил зелёным. Пароли были вычищены, люди —
+  // нет.
+  it("keeps no legacy personal-data snapshot in the repository", () => {
+    const gone = [
+      "scripts/v1-data",
+      "migration_data",
+      "cost_model_migration_data",
+      "public/data/company_details.json",
+      "public/data/pricing_data.json",
+    ]
+    for (const rel of gone) {
+      expect(existsSync(join(process.cwd(), rel)), `${rel} снова в репозитории`).toBe(false)
+    }
+  })
+
+  it("keeps the v1 importer stripping credentials, snapshot or not", () => {
+    // Импортёр остаётся: им ещё могут воспользоваться, подложив выгрузку извне.
+    // Его обязанность обнулять учётные данные от удаления снимка не исчезла.
     const importer = read("scripts/import-v1.ts")
-
-    for (const user of users) {
-      expect(user.password_hash).toBeNull()
-      expect(user.totp_secret).toBeNull()
-      expect(user.calendar_token).toBeNull()
-    }
-    for (const user of portalUsers) expect(user.password_hash).toBeNull()
-    for (const settings of smtpSettings) expect(settings.smtp_password).toBeNull()
-    for (const channel of channels) {
-      expect(channel.bot_token).toBeNull()
-      expect(channel.api_key).toBeNull()
-      expect(channel.webhook_url).toBeNull()
-      expect(channel.is_active).toBe(0)
-    }
-
     expect(importer).toContain("botToken: null")
     expect(importer).toContain("webhookUrl: null")
     expect(importer).toContain("apiKey: null")
     expect(importer).toContain("isActive: false")
-    expect(importer).not.toContain("botToken: toStr((ch as any).bot_token)")
   })
 })

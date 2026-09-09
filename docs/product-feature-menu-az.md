@@ -271,21 +271,27 @@ Sovdelesme <-- Qiymet profili <-- Emeliyyat jurnali
 | 14 | Qaranlik tema | — | ★★☆☆☆ | Dark mode |
 | 15 | Qlobal axtaris | — | ★★★☆☆ | Butun obyektler uzre axtaris |
 | 16 | Adaptiv dizayn | — | ★★☆☆☆ | Mobilden isleyir |
-| 17 | Tarif planlari | — | ★★★★☆ | 4 seviyye: Starter -> Business -> Professional -> Enterprise |
+| 17 | Tarif planlari | — | ★★★★☆ | 3 seviyye: Starter -> Professional -> Enterprise |
 
 ---
 
 ## PLAN BOLUSDURULMESI
 
-| Plan | Daxildir |
-|------|----------|
-| **Starter** | Sirketler, Kontaktlar, Sovdelesmeler (Kanban + Detal), Lidler, Tapsiriglar, Mehsullar |
-| **Business** | + Tiketler, Bilik bazasi, Muqavileler, Agent masaustu, Teqvim, Rollar, SLA |
-| **Professional** | + Fakturalar, Kampaniyalar, Seqmentler, Sablonlar, Email jurnali, ROI, Da Vinci Skorinq, Yollar, Tedbirler, Hesabatlar, Avtomatlasdirmalar, Lid qaydalari, Web-to-Lead, Layiheler |
-| **Enterprise** | + Qiymetlendirme, Rentabellik, Budceleme, Maliyye, Inbox, Portal istifadecileri, SMTP, Xususi saheler, Panel parametrleri, Faktura parametrleri, Kanallar, Budce konfiq, Satis proqnozu |
-| **Her zaman pulsuz** | Panel, Parametrler, Billinq, Tehlukesizlik, Istifadeciler, Audit jurnali, Bildirisler, Da Vinci Merkezi |
+> Heqiqet menbeyi — bazadaki `plan_templates` cedveli, bu fayl deyil. Asagida
+> onun 9 sentyabr 2026-ci ilde prodla tutuşdurulmus veziyyeti. Mehsulda
+> **Business** plani yoxdur: ne `src/lib/tenant-plans.ts`-de, ne de bazada.
 
----
+| Plan | Modullar |
+|------|----------|
+| **Starter** | crm, sales, settings |
+| **Professional** | + contracts, marketing, omnichannel, support, finance, analytics, whatsapp, complaints_register, **ai** · elaveler: ai, channels |
+| **Enterprise** | + social, voip, mtm, portal, events, health, insurance, public-sector, media, energy · elaveler: ai, channels, finance, mtm, voip |
+
+**Da Vinci ve AI agent — Professional-dan.** Sahibin 9 sentyabr 2026 qerari;
+mehsul artiq bele isleyir: `ai` Professional-da hem modul, hem elavedir.
+
+**`sales` her planda mecburidir.** Sovdelesmeler, lidler ve teklifler orada
+yasayir; onsuz tenant satis hunisini tamamile itirir.
 
 ## YEKUNLAR
 
