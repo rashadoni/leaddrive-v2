@@ -33,7 +33,9 @@ import {
 import { toast } from "sonner"
 import { PageDescription } from "@/components/page-description"
 import { HelpButton } from "@/components/help/help-button"
+import { useSession } from "next-auth/react"
 import { MtmWorkflowGuide } from "@/components/mtm/mtm-workflow-guide"
+import { mtmViewerKey } from "@/lib/mtm/viewer-key"
 import {
   ContactTransferDialog,
   type ContactTransferAgent,
@@ -262,6 +264,8 @@ function statusVariant(status: string): "success" | "warning" | "outline" {
 
 export function MtmContactExplorer() {
   const t = useTranslations("mtmContactExplorer")
+  const tGuideCommon = useTranslations("mtmCommon")
+  const { data: guideSession } = useSession()
   const locale = useLocale()
   const router = useRouter()
   const pathname = usePathname()
@@ -658,6 +662,9 @@ export function MtmContactExplorer() {
       </div>
 
       <MtmWorkflowGuide
+        dismissId="contacts-clarity-guide"
+        viewerKey={mtmViewerKey(guideSession)}
+        dismissLabel={tGuideCommon("hintDismiss")}
         title={t("clarityGuide.title")}
         description={t("clarityGuide.description")}
         steps={[
