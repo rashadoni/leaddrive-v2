@@ -165,6 +165,7 @@ describe("account-security management is browser-session-only", () => {
       role: "viewer",
       isActive: true,
       passwordChangedAt: null,
+      anonymizedAt: null,
     }
     vi.mocked(prisma.user.findFirst)
       .mockResolvedValueOnce(null)
@@ -185,6 +186,8 @@ describe("account-security management is browser-session-only", () => {
       ...targetUser,
       ...data,
     }) as never)
+    // Оставлен намеренно: если удаление вернётся, ассерт ниже поймает это
+    // не по отсутствию мока, а по самому факту вызова.
     vi.mocked(prisma.user.delete).mockResolvedValue(targetUser as never)
 
     vi.mocked(prisma.apiKey.findMany).mockResolvedValue([])
@@ -214,7 +217,16 @@ describe("account-security management is browser-session-only", () => {
     expect(requireSessionAuth).toHaveBeenCalledTimes(accountManagementAttempts().length)
     expect(requireAuth).not.toHaveBeenCalled()
     expect(prisma.user.create).toHaveBeenCalledOnce()
-    expect(prisma.user.delete).toHaveBeenCalledOnce()
+    // Пользователь больше не удаляется физически: на него ссылаются четыре
+    // таблицы под триггером «только добавление», и удаление отвергается
+    // базой. Вместо этого строка обезличивается — см.
+    // src/lib/user-anonymization.ts.
+    expect(prisma.user.delete).not.toHaveBeenCalled()
+    const anonymising = vi.mocked(prisma.user.update).mock.calls.filter(
+      ([args]) => (args?.data as Record<string, unknown> | undefined)?.anonymizedAt,
+    )
+    expect(anonymising).toHaveLength(1)
+    expect((anonymising[0][0].data as Record<string, unknown>).isActive).toBe(false)
     expect(prisma.apiKey.create).toHaveBeenCalledOnce()
     expect(prisma.apiKey.update).toHaveBeenCalledTimes(2)
   })
