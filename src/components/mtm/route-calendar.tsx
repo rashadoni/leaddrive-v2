@@ -254,10 +254,12 @@ export function MtmRouteCalendar({
           const calendarDay = workCalendarEnforced
             ? resolveWorkCalendarDay({ date: key, overrides: workCalendarOverrides ?? [] })
             : null
+          // Through the shared status dictionary (A5), not two new strings of
+          // its own: `dayKind` already distinguishes a public holiday from a
+          // company one and from a moved day off, and inventing "non-working
+          // day" here would collapse all three into the vaguest of them.
           const closedReason = calendarDay && !calendarDay.routePlanningAllowed
-            ? calendarDay.source === "WEEKEND_DEFAULT"
-              ? t("calendarWeekend")
-              : calendarDay.name || t("calendarClosedDay")
+            ? calendarDay.name || mtmStatusLabel(statusT, "dayKind", calendarDay.kind)
             : null
           return (
             <div

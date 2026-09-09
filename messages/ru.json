@@ -12113,9 +12113,7 @@
     },
     "calendarMore": "+ещё {n}",
     "weekAgentSearch": "Найти сотрудника",
-    "weekAgentsHidden": "Скрыто строк: {count} — поиском или как QA-аккаунты",
-    "calendarWeekend": "Выходной",
-    "calendarClosedDay": "Нерабочий день"
+    "weekAgentsHidden": "Скрыто строк: {count} — поиском или как QA-аккаунты"
   },
   "mtmOperationsPage": {
     "title": "Операционный центр поля",
