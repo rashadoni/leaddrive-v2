@@ -38,7 +38,9 @@ import {
 } from "lucide-react"
 import { PageDescription } from "@/components/page-description"
 import { HelpButton } from "@/components/help/help-button"
+import { useSession } from "next-auth/react"
 import { MtmWorkflowGuide } from "@/components/mtm/mtm-workflow-guide"
+import { mtmViewerKey } from "@/lib/mtm/viewer-key"
 import { MtmCustomerForm } from "@/components/mtm/customer-form"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { Button } from "@/components/ui/button"
@@ -324,6 +326,8 @@ function FacetSelect({
 
 export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
   const t = useTranslations("mtmCustomers")
+  const tGuideCommon = useTranslations("mtmCommon")
+  const { data: guideSession } = useSession()
   const tx = useTranslations("mtmCustomers")
   const locale = useLocale()
   const router = useRouter()
@@ -1039,6 +1043,9 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
       </div>
 
       <MtmWorkflowGuide
+        dismissId="organizations-clarity-guide"
+        viewerKey={mtmViewerKey(guideSession)}
+        dismissLabel={tGuideCommon("hintDismiss")}
         title={tx("explorer.clarityGuide.title")}
         description={tx("explorer.clarityGuide.description")}
         steps={[
