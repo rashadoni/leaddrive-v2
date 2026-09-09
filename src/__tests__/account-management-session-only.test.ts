@@ -62,6 +62,14 @@ vi.mock("@/lib/prisma", () => ({
   },
 }))
 
+// Роут читает словарь стадий организации, чтобы не передать вместе с открытой
+// работой закрытые сделки. Здесь проверяется не он, поэтому отдаём пустой
+// словарь: «закрытых стадий нет» — фильтр тогда ничего не отсекает, и тест
+// остаётся про обезличивание, а не про воронку.
+vi.mock("@/lib/deal-stage-vocabulary", () => ({
+  orgStageVocabulary: vi.fn(async () => ({ wonStages: [], lostStages: [], closedStages: [] })),
+}))
+
 vi.mock("@/lib/plan-limits", () => ({
   checkUserLimit: vi.fn(async () => ({ allowed: true })),
 }))
