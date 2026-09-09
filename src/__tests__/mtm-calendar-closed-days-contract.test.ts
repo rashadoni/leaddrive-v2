@@ -23,9 +23,25 @@ describe("closed days on the route calendar", () => {
   })
 
   it("names the reason instead of leaving the cell merely grey", () => {
-    expect(calendar).toContain('t("calendarWeekend")')
-    expect(calendar).toContain('calendarDay.name || t("calendarClosedDay")')
     expect(calendar).toContain('data-testid="mtm-calendar-closed-reason"')
+  })
+
+  it("takes the wording from the shared status dictionary, not its own strings", () => {
+    // A5 exists so one enum has one label. Two private keys here would have
+    // collapsed PUBLIC_HOLIDAY, COMPANY_HOLIDAY and MOVED_DAY_OFF into a
+    // single "non-working day" — vaguer than what the dictionary already says.
+    expect(calendar).toContain('mtmStatusLabel(statusT, "dayKind", calendarDay.kind)')
+    const dropped: string[] = []
+    for (const locale of ["en", "ru", "az"]) {
+      const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"))
+      for (const key of ["calendarWeekend", "calendarClosedDay"]) {
+        if (messages.mtmRoutesPage?.[key] !== undefined) dropped.push(`${locale}.${key}`)
+      }
+      for (const kind of ["WEEKEND", "PUBLIC_HOLIDAY", "MOVED_DAY_OFF"]) {
+        if (typeof messages.mtmStatus?.dayKind?.[kind] !== "string") dropped.push(`${locale}.dayKind.${kind}`)
+      }
+    }
+    expect(dropped).toEqual([])
   })
 
   it("prefers the override's own name over the generic label", () => {
@@ -53,14 +69,5 @@ describe("closed days on the route calendar", () => {
     expect(page).toContain("setWorkCalendarOverrides(result?.success && Array.isArray(result.data?.days) ? result.data.days : [])")
   })
 
-  it("has both labels in every language", () => {
-    const missing: string[] = []
-    for (const locale of ["en", "ru", "az"]) {
-      const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"))
-      for (const key of ["calendarWeekend", "calendarClosedDay"]) {
-        if (typeof messages.mtmRoutesPage?.[key] !== "string") missing.push(`${locale}.${key}`)
-      }
-    }
-    expect(missing).toEqual([])
-  })
+
 })
