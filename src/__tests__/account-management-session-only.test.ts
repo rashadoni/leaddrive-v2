@@ -49,7 +49,25 @@ vi.mock("@/lib/prisma", () => ({
     },
     webhook: { updateMany: vi.fn() },
     $transaction: vi.fn(),
+    // Модели, которые трогает передача незакрытой работы при обезличивании
+    // пользователя (src/lib/user-work-handover.ts). Без них tx.deal.updateMany
+    // — undefined, и падение выглядело бы как поломка авторизации.
+    deal: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    lead: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    ticket: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    task: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    projectTask: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    project: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    division: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
   },
+}))
+
+// Роут читает словарь стадий организации, чтобы не передать вместе с открытой
+// работой закрытые сделки. Здесь проверяется не он, поэтому отдаём пустой
+// словарь: «закрытых стадий нет» — фильтр тогда ничего не отсекает, и тест
+// остаётся про обезличивание, а не про воронку.
+vi.mock("@/lib/deal-stage-vocabulary", () => ({
+  orgStageVocabulary: vi.fn(async () => ({ wonStages: [], lostStages: [], closedStages: [] })),
 }))
 
 vi.mock("@/lib/plan-limits", () => ({

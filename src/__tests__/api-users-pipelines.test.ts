@@ -1,30 +1,34 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { NextResponse } from "next/server"
 
-vi.mock("@/lib/prisma", () => ({
-  logAudit: vi.fn(),
-  prisma: {
-    user: {
-      findMany: vi.fn(),
-      findFirst: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn(),
-    },
-    pipeline: {
-      findMany: vi.fn(),
-      findFirst: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      updateMany: vi.fn(),
-      delete: vi.fn(),
-    },
-    customField: {
-      findMany: vi.fn(),
-      create: vi.fn(),
-    },
-  },
-}))
+vi.mock("@/lib/prisma", () => {
+  const model = () => ({
+    findMany: vi.fn(),
+    findFirst: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+    delete: vi.fn(),
+  })
+  const prisma: Record<string, unknown> = {
+    user: model(),
+    pipeline: model(),
+    customField: model(),
+    // Модели, которые трогает передача незакрытой работы при обезличивании.
+    deal: model(),
+    lead: model(),
+    ticket: model(),
+    task: model(),
+    projectTask: model(),
+    project: model(),
+    division: model(),
+  }
+  // Колбэк получает тот же мок-клиент: тесты продолжают видеть вызовы
+  // update/updateMany там же, где и раньше, без отдельного tx-двойника.
+  prisma.$transaction = vi.fn(async (fn: unknown) =>
+    typeof fn === "function" ? (fn as (tx: unknown) => unknown)(prisma) : fn)
+  return { logAudit: vi.fn(), prisma }
+})
 
 vi.mock("@/lib/api-auth", () => ({
   getOrgId: vi.fn(),
@@ -35,6 +39,14 @@ vi.mock("@/lib/api-auth", () => ({
   moduleDisabledResponse: vi.fn((moduleId: string) =>
     NextResponse.json({ error: "Forbidden", message: `Module "${moduleId}" is not enabled.` }, { status: 403 })),
   isAuthError: vi.fn().mockImplementation((result: any) => result instanceof NextResponse),
+}))
+
+// Роут читает словарь стадий организации, чтобы не передать вместе с открытой
+// работой закрытые сделки. Здесь проверяется не он, поэтому отдаём пустой
+// словарь: «закрытых стадий нет» — фильтр тогда ничего не отсекает, и тест
+// остаётся про обезличивание, а не про воронку.
+vi.mock("@/lib/deal-stage-vocabulary", () => ({
+  orgStageVocabulary: vi.fn(async () => ({ wonStages: [], lostStages: [], closedStages: [] })),
 }))
 
 vi.mock("@/lib/plan-limits", () => ({
