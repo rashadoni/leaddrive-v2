@@ -432,8 +432,79 @@ export const GET = withMobileRls(async (req, auth) => {
       ? issueRouteFieldPlanningTargetPage(context, { phase: "customer" })
       : null
 
+  // Doctors are scanned in two phases, so an empty `direct` page is not the
+  // end of the list — `nextPage` still points at the customer-assigned phase.
+  // Explaining emptiness there would say "no assignments" to an agent whose
+  // second phase is about to return people. Only an exhausted search speaks.
+  let contactEligibility: { reason: MtmFieldEligibilityReason } | null = null
+  if (targets.length === 0 && nextPage === null && !Boolean(search)) {
+    const [agentRow, eligibleTotal] = await Promise.all([
+      prisma.mtmAgent.findFirst({
+        where: { id: actor.agentId, organizationId: auth.orgId },
+        select: { teamId: true },
+      }),
+      // Both arms, without the caller's filters: doctors stay assignment-only
+      // by design, so "any eligible source" means an assignment of either
+      // shape — the contact's own, or the workplace's customer.
+      prisma.mtmContact.count({
+        where: {
+          organizationId: auth.orgId,
+          deletedAt: null,
+          status: "ACTIVE",
+          type: "DOCTOR",
+          OR: [
+            { agentAssignments: { some: directAssignment } },
+            {
+              workplaces: {
+                some: {
+                  ...activeWorkplaceWindow(routeDate),
+                  customer: {
+                    organizationId: auth.orgId,
+                    deletedAt: null,
+                    status: "ACTIVE",
+                    agentAssignments: { some: directAssignment },
+                  },
+                },
+              },
+            },
+          ],
+        },
+      }),
+    ])
+    const calendarOverrides = settings.enforceWorkCalendarForRoutes
+      ? await prisma.mtmWorkCalendarDay.findMany({
+          where: {
+            organizationId: auth.orgId,
+            date: routeDate,
+            deletedAt: null,
+            OR: [
+              { teamId: null, agentId: null },
+              ...(agentRow?.teamId ? [{ teamId: agentRow.teamId, agentId: null }] : []),
+              { teamId: null, agentId: actor.agentId },
+            ],
+          },
+          select: {
+            id: true, date: true, kind: true, name: true,
+            teamId: true, agentId: true, movedToDate: true, routePlanningAllowed: true,
+          },
+        })
+      : []
+    contactEligibility = {
+      reason: fieldEligibilityEmptyReason({
+        date: routeDate,
+        dateKey: date,
+        workCalendarEnforced: settings.enforceWorkCalendarForRoutes,
+        calendarOverrides: calendarOverrides as WorkCalendarOverride[],
+        teamId: agentRow?.teamId ?? null,
+        agentId: actor.agentId,
+        hasAnyEligibleSource: eligibleTotal > 0,
+        narrowedByTerritory: eligibleTotal > 0,
+      }),
+    }
+  }
+
   return noStoreJson({
     success: true,
-    data: { targets, nextPage, limit, date, timezone },
+    data: { targets, nextPage, limit, date, timezone, eligibility: contactEligibility },
   })
 }, { requiredCapability: "route-field" })
