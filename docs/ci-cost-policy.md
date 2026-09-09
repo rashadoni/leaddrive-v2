@@ -1,5 +1,28 @@
 # CI cost policy
 
+## Current state (2026-09-09)
+
+The repository moved to the public GitHub account `rashadoni/leaddrive-v2`.
+GitHub is now the single source of code, pull requests, CI and production
+delivery. Everything below about the Contabo self-hosted pool and the Azure
+DevOps pipelines is **retained as history, not as instructions** — that
+capacity is retired.
+
+Current routing, enforced by `scripts/ci/check-github-runner-policy.mjs`:
+
+| Work | Runner |
+|---|---|
+| Every standard build, test and check | `ubuntu-24.04` (GitHub-hosted, free on a public repository) |
+| PBX control-plane cutover only | `[self-hosted, fanum-pbx-vpn]` |
+| Native macOS/iOS, **if one ever exists** | `[self-hosted, macOS, ARM64, leaddrive-mac-local]` on the owner's physical Mac |
+
+`runs-on: macos-*` is prohibited outright, and `ubuntu-latest` is rejected in
+favour of the pinned `ubuntu-24.04`. The repository has no Swift/Xcode target as
+of this date, so no Mac runner is registered.
+
+The billing history below is why the macOS ban is absolute: it is what the old
+arrangement actually cost.
+
 ## Why this document exists
 
 The authenticated account billing page was checked on 2026-09-08 for September
@@ -45,8 +68,10 @@ events in 24 hours — the allowance was gone before noon.
 2. **Documentation is free.** `**/*.md`, `docs/**` and `.agents/**` no longer
    start `pr-checks.yml` at all. Do not add a code change to a docs PR to make
    CI run.
-3. **No new macOS jobs.** If a job needs more than 8 GiB, raise it with the owner
-   instead of reaching for `runs-on: macos-*`.
+3. **No new macOS jobs, and pin the Linux image.** `runs-on: macos-*` is
+   rejected by `scripts/ci/check-github-runner-policy.mjs`, and so is any
+   GitHub-hosted Linux image other than the pinned `ubuntu-24.04`. If a job
+   needs more than the standard runner, raise it with the owner.
 4. **New `pull_request` workflows need two guards**: a `paths:` filter narrower
    than the whole repository, and a `concurrency:` group with
    `cancel-in-progress: true`. `social-monitoring-queue-e2e.yml` and
@@ -73,7 +98,13 @@ events in 24 hours — the allowance was gone before noon.
   host. Self-hosted minutes are not metered, so the job's cost is the VPS
   itself (~EUR 16.52/month) rather than ~$77 of macOS minutes.
 
-## Self-hosted runners
+## Self-hosted runners (historical — Contabo pool, retired 2026-09-09)
+
+> Retired. The pool below was decommissioned when the repository returned to
+> public GitHub; its labels are now rejected by the runner-policy check. Kept
+> for the measurements and the reasoning, which still explain why jobs are
+> shaped the way they are.
+
 
 | Runner | Labels | Purpose |
 |---|---|---|
