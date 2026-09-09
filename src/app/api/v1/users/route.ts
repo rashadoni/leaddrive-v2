@@ -61,7 +61,12 @@ export const GET = withRlsAuth("users", "read", async (_req, authResult) => {
 
   try {
     const users = await prisma.user.findMany({
-      where: { organizationId: orgId },
+      // Обезличенных здесь быть не должно: для админа они удалены, и увидеть
+      // в списке сотрудников строку «Удалённый пользователь» — это выглядеть
+      // как несработавшее удаление. По `id` они по-прежнему разрешаются
+      // (GET /users/[id]), потому что журналы соответствия на них ссылаются
+      // и должны показывать субъекта, а не пустоту.
+      where: { organizationId: orgId, anonymizedAt: null },
       select: administrative ? USER_ADMIN_SELECT : USER_ROSTER_SELECT,
       orderBy: { name: "asc" },
     })
