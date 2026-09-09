@@ -57,30 +57,54 @@ describe("dashboard AI launcher placement", () => {
     expect(panel).toContain("aria-label={uiText.title}")
   })
 
-  // `ai` and `orb` are separate because they are no longer the same answer:
-  // while the hero owns a Da Vinci field the floating button is a second door
-  // to one room, but the voice orb is a different modality and stays.
+  // Таблица переписана после решения владельца убрать оранжевую строку и
+  // плавающую кнопку со всех внутренних страниц. Теперь у строки ровно одно
+  // место — главная с выключенным приветствием, — а плавающей кнопки нет
+  // нигде. Голосовой шар не трогали: другая модальность, закрыт списком
+  // пилота. На MTM он снова плавает, потому что встроенная посадка держалась
+  // на слоте внутри строки поиска, а строки там больше нет.
   it.each([
-    { name: "MTM root", pathname: "/mtm", childrenReady: true, moduleBlocked: false, hideContentSearch: false, heroCommandVisible: false, visible: true, ai: false, orb: false },
-    { name: "MTM workflow", pathname: "/mtm/routes", childrenReady: true, moduleBlocked: false, hideContentSearch: false, heroCommandVisible: false, visible: true, ai: false, orb: false },
-    { name: "blocked MTM", pathname: "/mtm/routes", childrenReady: true, moduleBlocked: true, hideContentSearch: false, heroCommandVisible: false, visible: false, ai: true, orb: true },
+    { name: "MTM root", pathname: "/mtm", childrenReady: true, moduleBlocked: false, hideContentSearch: false, heroCommandVisible: false, visible: false, ai: false, orb: true },
+    { name: "MTM workflow", pathname: "/mtm/routes", childrenReady: true, moduleBlocked: false, hideContentSearch: false, heroCommandVisible: false, visible: false, ai: false, orb: true },
+    { name: "blocked MTM", pathname: "/mtm/routes", childrenReady: true, moduleBlocked: true, hideContentSearch: false, heroCommandVisible: false, visible: false, ai: false, orb: true },
     { name: "hydrating MTM", pathname: "/mtm", childrenReady: false, moduleBlocked: false, hideContentSearch: false, heroCommandVisible: false, visible: false, ai: false, orb: false },
-    { name: "leaderboard", pathname: "/leaderboard", childrenReady: true, moduleBlocked: false, hideContentSearch: true, heroCommandVisible: false, visible: false, ai: true, orb: true },
-    // The greeting widget is on: the hero's field is the entry point, so the
-    // floating button goes and the shared bar stays hidden.
+    { name: "leaderboard", pathname: "/leaderboard", childrenReady: true, moduleBlocked: false, hideContentSearch: true, heroCommandVisible: false, visible: false, ai: false, orb: true },
+    // Приветствие включено: поле в нём и есть вход, строка не нужна.
     { name: "dashboard with hero", pathname: "/dashboard", childrenReady: true, moduleBlocked: false, hideContentSearch: true, heroCommandVisible: true, visible: false, ai: false, orb: true },
-    // The tenant switched the greeting off: the shared bar comes back and the
-    // floating button with it. Losing every in-flow entry would be the bug.
-    { name: "dashboard without hero", pathname: "/dashboard", childrenReady: true, moduleBlocked: false, hideContentSearch: false, heroCommandVisible: false, visible: true, ai: true, orb: true },
-    // A blocked module renders no hero at all, so the fallback must survive
-    // even if the flag is still set from the previous render.
-    { name: "blocked dashboard", pathname: "/dashboard", childrenReady: true, moduleBlocked: true, hideContentSearch: true, heroCommandVisible: true, visible: false, ai: true, orb: true },
-    { name: "regular page", pathname: "/customers", childrenReady: true, moduleBlocked: false, hideContentSearch: false, heroCommandVisible: false, visible: true, ai: true, orb: true },
+    // Единственный случай, когда строка появляется: тенант выключил
+    // приветствие, и без строки на главной не осталось бы входа из потока.
+    { name: "dashboard without hero", pathname: "/dashboard", childrenReady: true, moduleBlocked: false, hideContentSearch: false, heroCommandVisible: false, visible: true, ai: false, orb: true },
+    { name: "blocked dashboard", pathname: "/dashboard", childrenReady: true, moduleBlocked: true, hideContentSearch: true, heroCommandVisible: true, visible: false, ai: false, orb: true },
+    // Обычная внутренняя страница — то, на что жаловался владелец: ни строки,
+    // ни кнопки.
+    { name: "regular page", pathname: "/customers", childrenReady: true, moduleBlocked: false, hideContentSearch: false, heroCommandVisible: false, visible: false, ai: false, orb: true },
   ])("keeps $name assistant entry points intentional", ({ ai, orb, visible, ...input }) => {
     expect(dashboardAssistantVisibility(input)).toEqual({
       contentSearchVisible: visible,
       showFloatingAiLauncher: ai,
       showFloatingVoiceOrb: orb,
     })
+  })
+
+  it("never shows the floating Da Vinci button, on any page", () => {
+    // Негативный якорь. Без него таблица выше «зелёная» и при возврате кнопки
+    // на одной ветке условия: строк много, забыть одну легко.
+    const paths = ["/dashboard", "/customers", "/mtm", "/mtm/routes", "/leaderboard", "/invoices"]
+    for (const pathname of paths) {
+      for (const moduleBlocked of [false, true]) {
+        for (const heroCommandVisible of [false, true]) {
+          const v = dashboardAssistantVisibility({ pathname, childrenReady: true, moduleBlocked, hideContentSearch: false, heroCommandVisible })
+          expect(v.showFloatingAiLauncher).toBe(false)
+        }
+      }
+    }
+  })
+
+  it("keeps the shared search bar off every page except the dashboard", () => {
+    for (const pathname of ["/customers", "/deals", "/mtm", "/leaderboard", "/invoices", "/tickets"]) {
+      expect(
+        dashboardAssistantVisibility({ pathname, childrenReady: true, moduleBlocked: false, hideContentSearch: false, heroCommandVisible: false }).contentSearchVisible,
+      ).toBe(false)
+    }
   })
 })

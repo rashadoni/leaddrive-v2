@@ -24,27 +24,32 @@ export function dashboardAssistantVisibility({
   heroCommandVisible = false,
 }: DashboardAssistantVisibilityInput): DashboardAssistantVisibility {
   const isMtmRoute = pathname === "/mtm" || pathname.startsWith("/mtm/")
-  const contentSearchVisible = childrenReady && !moduleBlocked && !hideContentSearch
-  // Regular MTM work surfaces already have an in-flow AI entry point and use
-  // sticky controls near the screen edge. Keep both floating assistants away
-  // from those actions. A blocked MTM page has no in-flow search, so restore
-  // the floating launchers after session hydration instead of stranding AI.
-  const showFloatingAssistants = !isMtmRoute || (childrenReady && !contentSearchVisible)
+  const isDashboardHome = pathname === "/dashboard"
 
-  // The dashboard hero's command field opens the same Da Vinci panel as the
-  // floating button, so while it is on screen the button is a second door to
-  // one room — the duplication the owner objected to. The voice orb stays: it
-  // is a different modality, and it is pilot-gated so it renders nothing for
-  // almost everyone.
+  // Решение владельца: ни оранжевой строки поиска, ни плавающей кнопки на
+  // внутренних страницах быть не должно. На главной есть поле Da Vinci в
+  // приветствии, и его достаточно; советник, кроме того, открывается из
+  // бокового меню на любой странице.
   //
-  // Keyed on the field actually being visible, not on the route: the hero is a
-  // switchable widget now, and a tenant who turns the greeting off must keep a
-  // way to reach the assistant.
-  const heroOwnsTheAssistant = heroCommandVisible && !moduleBlocked
+  // Поэтому общая строка живёт ТОЛЬКО на главной и только как замена полю —
+  // когда виджет приветствия выключен тенантом. Без этой оговорки тот, кто
+  // выключил приветствие, остался бы вообще без входа в советника из потока
+  // страницы; ровно это и защищал прежний фолбэк.
+  const contentSearchVisible =
+    childrenReady && !moduleBlocked && isDashboardHome && !hideContentSearch
+
+  // Голосовой шар — другая модальность и он закрыт списком пилота, поэтому
+  // остаётся. Его прежняя встроенная посадка держалась на строке поиска
+  // (слот dashboard-voice-assistant-slot внутри неё): там, где строки больше
+  // нет, шару некуда встраиваться, и он снова плавает.
+  const showFloatingAssistants = !isMtmRoute || (childrenReady && !contentSearchVisible)
 
   return {
     contentSearchVisible,
-    showFloatingAiLauncher: showFloatingAssistants && !heroOwnsTheAssistant,
+    // Поле оставлено, а не удалено: панель советника по-прежнему смонтирована
+    // и слушает событие davinci:open от строки поиска. Это единственный
+    // выключатель, если владелец захочет кнопку обратно.
+    showFloatingAiLauncher: false,
     showFloatingVoiceOrb: showFloatingAssistants,
   }
 }
