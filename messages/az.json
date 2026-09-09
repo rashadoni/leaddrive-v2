@@ -10240,7 +10240,12 @@
     "actionHistory": "Ziyarətlər",
     "sortActivity": "Fəallığa görə",
     "sortLastSeen": "Son fəallıq",
-    "moreActions": "Digər əməliyyatlar"
+    "moreActions": "Digər əməliyyatlar",
+    "presencePausedSince": "{time}-dan fasilədə",
+    "presencePaused": "Fasilədə",
+    "presenceFinishedAt": "Gün {time}-da bitdi",
+    "presenceFinished": "Gün bitdi",
+    "presenceNotStarted": "Gün başlamayıb"
   },
   "mtmContactExplorer": {
     "title": "Sahə komandasının kontaktları",

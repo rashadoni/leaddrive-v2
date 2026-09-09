@@ -10240,7 +10240,12 @@
     "actionHistory": "Визиты",
     "sortActivity": "По активности",
     "sortLastSeen": "Последняя активность",
-    "moreActions": "Другие действия"
+    "moreActions": "Другие действия",
+    "presencePausedSince": "Перерыв с {time}",
+    "presencePaused": "На перерыве",
+    "presenceFinishedAt": "День завершён в {time}",
+    "presenceFinished": "День завершён",
+    "presenceNotStarted": "День не начат"
   },
   "mtmContactExplorer": {
     "title": "Контакты полевой команды",
