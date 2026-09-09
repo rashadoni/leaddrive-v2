@@ -13670,7 +13670,7 @@
     "authoritative": "Authoritative",
     "nonAuthoritative": "Not authoritative",
     "unsignedPolicy": "Formula not approved",
-    "approvedPolicy": "{code} · version {version}",
+    "approvedPolicy": "{name} · version {version}",
     "exportCsv": "Export CSV",
     "exportFailed": "Could not export this report.",
     "exportStaleSnapshot": "The calculation changed before export. The report has been refreshed; try again.",

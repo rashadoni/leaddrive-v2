@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
+import { mtmKpiPolicyName, mtmKpiPolicyNameIsCode } from "@/lib/mtm/kpi-policy-name"
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -100,6 +101,9 @@ type ExplainableKpiReport = {
     policy?: {
       id: string
       code: string
+      nameRu?: string | null
+      nameAz?: string | null
+      nameEn?: string | null
       version: number
       definitionHash: string
       approvalReference: string
@@ -1103,7 +1107,7 @@ export function ExplainableKpiDashboard({ orgId, className }: ExplainableKpiDash
               </Badge>
             ) : null}
             {report ? <Badge id={authorityStatusId} variant={report.formula.authoritative ? "info" : "warning"}>{t(report.formula.completeness === "COMPLETE" ? "complete" : "partial")} · {t(report.formula.authoritative ? "authoritative" : report.formula.authorityReason === "UNSIGNED_POLICY" ? "unsignedPolicy" : "nonAuthoritative")}</Badge> : null}
-            {report?.formula.policy ? <Badge variant="outline" title={report.formula.policy.approvalReference}>{t("approvedPolicy", { code: report.formula.policy.code, version: report.formula.policy.version })}</Badge> : null}
+            {report?.formula.policy ? <Badge variant="outline" title={mtmKpiPolicyNameIsCode(report.formula.policy, locale) ? report.formula.policy.approvalReference : `${report.formula.policy.code} · ${report.formula.policy.approvalReference}`}>{t("approvedPolicy", { name: mtmKpiPolicyName(report.formula.policy, locale), version: report.formula.policy.version })}</Badge> : null}
             <Button type="button" variant="outline" size="sm" className="min-h-11 sm:min-h-8" onClick={() => void exportCsv()} disabled={!report || !report.formula.authoritative || exportBusy || invalidRange || recalculating} title={report && !report.formula.authoritative ? t("exportUnavailablePartial") : undefined} aria-describedby={report && !report.formula.authoritative ? authorityStatusId : undefined}>
               {exportBusy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
               {t("exportCsv")}
