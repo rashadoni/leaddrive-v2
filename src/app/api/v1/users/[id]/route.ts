@@ -6,6 +6,7 @@ import { withRlsSessionAuth } from "@/lib/with-rls"
 import { getAssignableRoleIds } from "@/lib/org-roles"
 import { checkPermission, isAdmin } from "@/lib/permissions"
 import { USER_ADMIN_SELECT, USER_ROSTER_SELECT } from "@/lib/user-directory-projection"
+import { buildUserAnonymizationData } from "@/lib/user-anonymization"
 import { moduleDisabledResponse, orgHasModule } from "@/lib/api-auth"
 
 const updateUserSchema = z.object({
@@ -228,8 +229,20 @@ export const DELETE = withRlsSessionAuth(async (_req: NextRequest, authResult, {
       where: { id, organizationId: orgId },
     })
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 })
+    if (user.anonymizedAt) return NextResponse.json({ error: "User not found" }, { status: 404 })
 
-    await prisma.user.delete({ where: { id } })
+    // Не `delete`. Пользователя нельзя удалить физически: на него ссылаются
+    // четыре таблицы под триггером «только добавление»
+    // (forecast_snapshots, compliance_audit_log, entitlement_audit_events,
+    // pipeline_stage_transitions), а связи объявлены `onDelete: SetNull` —
+    // то есть удаление обязано их ОБНОВИТЬ, и триггер это отвергает.
+    // Админ видел «Internal server error», причина в лог не выходила.
+    // Подробнее и о том, почему обход триггера был бы хуже — в
+    // `src/lib/user-anonymization.ts`.
+    await prisma.user.update({
+      where: { id },
+      data: buildUserAnonymizationData(id),
+    })
     return NextResponse.json({ success: true })
   } catch (e) {
     console.error("Users API error:", e)
