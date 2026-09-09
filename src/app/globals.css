@@ -1,0 +1,1524 @@
+@import "tailwindcss";
+
+/* dark: utilities fire under html.dark EXCEPT inside a .force-light subtree —
+   used by the light-locked board page so embedded shared components (tasks
+   table, operational report, task modal) stay light regardless of app theme. */
+@custom-variant dark (&:where(.dark, .dark *):not(:where(.force-light, .force-light *)));
+
+@layer base {
+  /* .force-light re-applies the light theme variables on a subtree (nearest-
+     ancestor var resolution beats html.dark / html[data-wallpaper][data-wallpaper-scope="dashboard"]). */
+  :root, .force-light {
+    /* Salesforce Agentforce-inspired palette */
+    --background: 228 20% 96%;          /* #F3F4F7 — light gray workspace */
+    --foreground: 213 27% 14%;          /* #1A2332 — deep dark text */
+    --card: 0 0% 100%;                  /* #FFFFFF — pure white cards */
+    --card-foreground: 213 27% 14%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 213 27% 14%;
+    --primary: 20 90% 48%;             /* #EA580C — brand orange */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 228 20% 96%;           /* #F3F4F7 */
+    --secondary-foreground: 213 27% 14%;
+    --muted: 228 16% 94%;              /* #ECEDF1 */
+    --muted-foreground: 215 13% 44%;   /* #5F6B7A */
+    --accent: 265 48% 55%;             /* #7D55C7 — AI lavender */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 92%;             /* #EAEAEA */
+    --input: 220 13% 92%;
+    --ring: 20 90% 48%;               /* brand orange for focus rings */
+    --radius: 0.625rem;
+
+    /* Sidebar — deep navy (restored per user; was #191c23 charcoal after the
+       HubSpot-style redesign, now back to the pre-redesign #001E3C navy). */
+    --sidebar-bg: 210 100% 12%;        /* #001E3C deep navy */
+    --sidebar-text: 210 20% 75%;
+    --sidebar-text-active: 0 0% 100%;
+    --sidebar-hover: 210 55% 18%;      /* slightly lighter navy */
+    --sidebar-active: 210 55% 22%;     /* active item bg */
+
+    /* AI accent colors */
+    --ai-from: 265 48% 55%;           /* #7D55C7 */
+    --ai-to: 261 100% 71%;            /* #9B6CFF */
+
+    /* Glassmorphism */
+    --glass-blur: 12px;
+
+    /* Status dots */
+    --status-dot-size: 8px;
+
+    /* Emil Kowalski — custom easing curves (stronger than built-in) */
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+    --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .dark {
+    --background: 215 28% 8%;          /* Deep dark background */
+    --foreground: 210 20% 92%;
+    --card: 215 25% 12%;
+    --card-foreground: 210 20% 92%;
+    --popover: 215 25% 12%;
+    --popover-foreground: 210 20% 92%;
+    --primary: 20 90% 48%;            /* brand orange (dark) */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 215 25% 16%;
+    --secondary-foreground: 210 20% 92%;
+    --muted: 215 25% 16%;
+    --muted-foreground: 215 13% 55%;
+    --accent: 265 60% 60%;            /* Lighter AI purple for dark */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 20% 92%;
+    --border: 215 25% 20%;
+    --input: 215 25% 20%;
+    --ring: 20 90% 48%;
+
+    /* sidebar stays deep navy in dark mode too (it's always one dark colour) */
+    --sidebar-bg: 210 100% 10%;
+    --sidebar-hover: 210 55% 16%;
+    --sidebar-active: 210 55% 20%;
+    --ai-from: 265 55% 62%;
+    --ai-to: 261 100% 75%;
+  }
+}
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-sidebar-bg: hsl(var(--sidebar-bg));
+  --color-sidebar-hover: hsl(var(--sidebar-hover));
+  --color-sidebar-active: hsl(var(--sidebar-active));
+  --color-ai-from: hsl(var(--ai-from));
+  --color-ai-to: hsl(var(--ai-to));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --radius: 0.625rem;
+  --font-sans: "Inter", "Arial", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  --animate-shimmer-slide: shimmer-slide var(--speed) ease-in-out infinite alternate;
+  --animate-spin-around: spin-around calc(var(--speed) * 2) infinite linear;
+  @keyframes spin-around {
+  0% {
+    transform: translateZ(0) rotate(0);
+    }
+  15%, 35% {
+    transform: translateZ(0) rotate(90deg);
+    }
+  65%, 85% {
+    transform: translateZ(0) rotate(270deg);
+    }
+  100% {
+    transform: translateZ(0) rotate(360deg);
+    }
+  }
+  @keyframes shimmer-slide {
+  to {
+    transform: translate(calc(100cqw - 100%), 0);
+    }
+  }
+  --animate-gradient: gradient 8s linear infinite;
+  @keyframes gradient {
+  to {
+    backgroundPosition: var(--bg-size) 0;
+    }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+}
+
+@keyframes monitoring-progress-sweep {
+  0% {
+    opacity: 0.2;
+    transform: translateX(-120%);
+  }
+  40% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0.2;
+    transform: translateX(220%);
+  }
+}
+
+@layer utilities {
+  .monitoring-progress-sweep {
+    animation: monitoring-progress-sweep 1.8s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .monitoring-progress-sweep {
+      animation: none;
+      opacity: 0.45;
+      transform: translateX(50%);
+    }
+  }
+}
+
+/* Thin horizontal scrollbar for tab bars */
+.scrollbar-thin::-webkit-scrollbar {
+  height: 3px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 2px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+/* Sidebar scrollbar — the sidebar is ALWAYS dark (bg-sidebar-bg), so the thumb
+   must be a subtle light-on-dark tint, NOT the theme's light `--border` token
+   (which rendered as a bright white line between the dark sidebar and a dark
+   page area, e.g. the KPI Arena). */
+.sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+}
+.sidebar-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 2px;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+/* Sidebar gradient — HubSpot 2025 style: deep navy top → charcoal bottom */
+.bg-sidebar-bg {
+  background: linear-gradient(
+    180deg,
+    hsl(224 30% 9%) 0%,
+    hsl(220 14% 13%) 100%
+  ) !important;
+}
+
+/* Entrance animations */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-in-up {
+  animation: fade-in-up 0.3s ease-out;
+}
+.stagger-children > * {
+  animation: fade-in-up 0.3s ease-out both;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 60ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 120ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 180ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 240ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 300ms; }
+
+/* Time Machine heatmap flash animations */
+@keyframes budget-flash-green {
+  0% { background-color: rgba(34, 197, 94, 0.35); }
+  100% { background-color: transparent; }
+}
+@keyframes budget-flash-red {
+  0% { background-color: rgba(239, 68, 68, 0.35); }
+  100% { background-color: transparent; }
+}
+@keyframes budget-flash-yellow {
+  0% { background-color: rgba(250, 204, 21, 0.35); }
+  100% { background-color: transparent; }
+}
+.animate-budget-flash-green { animation: budget-flash-green 1.5s ease-out; }
+.animate-budget-flash-red { animation: budget-flash-red 1.5s ease-out; }
+.animate-budget-flash-yellow { animation: budget-flash-yellow 1.5s ease-out; }
+
+/* A ticket that just ARRIVED (detected by the list poll) blinks a few times to catch the agent's
+   eye, then settles into a persistent orange (brand) tint + left accent that STAYS until the agent
+   opens the ticket (no timeout — cleared on open, see openTicket()). The blink pulses above the
+   resting tint so the row is visibly orange both during and after the animation. */
+@keyframes ticket-new-blink {
+  0%, 100% { background-color: rgba(249, 115, 22, 0.12); }
+  50% { background-color: rgba(249, 115, 22, 0.34); }
+}
+.ticket-new-blink { animation: ticket-new-blink 1.1s ease-in-out 5; background-color: rgba(249, 115, 22, 0.12); }
+/* Orange left accent. box-shadow on a <tr> is ignored under border-collapse (Tailwind v4 Preflight),
+   so the row variant puts it on the first cell; the kanban card is a <div> and takes it directly. */
+div.ticket-new-blink { box-shadow: inset 3px 0 0 0 rgb(249, 115, 22); }
+tr.ticket-new-blink > td:first-child { box-shadow: inset 3px 0 0 0 rgb(249, 115, 22); }
+@media (prefers-reduced-motion: reduce) {
+  /* Respect reduced-motion: drop the blink, keep the static tint + accent so it's still noticeable. */
+  .ticket-new-blink { animation: none; }
+}
+
+/* ── Border Beam ── */
+@property --border-beam-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes border-beam-spin {
+  from { --border-beam-angle: 0deg; }
+  to { --border-beam-angle: 360deg; }
+}
+
+/* ── Meteors ── */
+@keyframes meteor {
+  0% { transform: rotate(215deg) translateX(0); opacity: 1; }
+  70% { opacity: 1; }
+  100% { transform: rotate(215deg) translateX(-500px); opacity: 0; }
+}
+.animate-meteor { animation: meteor 5s linear infinite; }
+
+/* ── Scroll-triggered fade-in ── */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-slide-up {
+  animation: slide-up 0.6s ease-out both;
+}
+
+/* ── Gradient divider ── */
+.gradient-divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, #7D55C7, #9B6CFF, transparent);
+  opacity: 0.3;
+}
+
+/* ── Pulse glow ── */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4); }
+  50% { box-shadow: 0 0 20px 5px rgba(139, 92, 246, 0.2); }
+}
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* ── Card hover lift ── */
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+}
+
+/* ── AI accent border (left glow) ── */
+.ai-accent {
+  border-left: 3px solid hsl(var(--ai-to));
+}
+
+/* ── AI glow effect ── */
+.ai-glow {
+  box-shadow: 0 0 16px 4px hsl(var(--ai-from) / 0.18),
+              0 0 4px 1px hsl(var(--ai-to) / 0.10);
+  transition: box-shadow 0.3s ease;
+}
+.ai-glow:hover {
+  box-shadow: 0 0 24px 6px hsl(var(--ai-from) / 0.25),
+              0 0 8px 2px hsl(var(--ai-to) / 0.15);
+}
+
+/* ── Glassmorphism panel ── */
+.glass-panel {
+  background: hsl(var(--card) / 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid hsl(var(--border) / 0.4);
+}
+
+/* ── AI card — glassmorphism + accent + glow combo ── */
+.ai-card {
+  background: hsl(var(--card) / 0.85);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid hsl(var(--border) / 0.4);
+  border-left: 3px solid hsl(var(--ai-to));
+  box-shadow: 0 0 16px 4px hsl(var(--ai-from) / 0.12);
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+}
+.ai-card:hover {
+  box-shadow: 0 0 24px 6px hsl(var(--ai-from) / 0.20);
+  transform: translateY(-1px);
+}
+
+/* ── AI gradient border (purple left border via ::before) ── */
+.ai-gradient-border {
+  position: relative;
+  overflow: hidden;
+}
+.ai-gradient-border::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, hsl(var(--ai-from)), hsl(var(--ai-to)));
+  border-radius: 0 2px 2px 0;
+}
+
+/* ── AI pulse dot for status indicators ── */
+.ai-pulse-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: hsl(var(--ai-from));
+  animation: ai-pulse 2s ease-in-out infinite;
+}
+@keyframes ai-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 hsl(var(--ai-from) / 0.4); }
+  50% { opacity: 0.8; box-shadow: 0 0 0 6px hsl(var(--ai-from) / 0); }
+}
+
+/* ── Live Wallpaper Mode ── */
+/* Tailwind v4 bg-* utilities use hsl(var(--card)) not var(--color-card),
+   so we must override the utilities directly. */
+html[data-wallpaper][data-wallpaper-scope="dashboard"] {
+  --card: 215 25% 12%;
+  --card-foreground: 0 0% 95%;
+  --popover: 215 25% 10%;
+  --popover-foreground: 0 0% 95%;
+  --foreground: 0 0% 100%;
+  --primary: 20 90% 48%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 215 25% 16%;
+  --secondary-foreground: 0 0% 90%;
+  --muted: 215 25% 20%;
+  --muted-foreground: 210 15% 70%;
+  --accent: 265 60% 60%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 215 20% 30%;
+  --input: 215 20% 30%;
+  --ring: 20 90% 48%;
+  /* sidebar stays deep navy here too (always one dark colour) */
+  --sidebar-bg: 210 100% 10%;
+  --sidebar-hover: 210 55% 16%;
+  --sidebar-active: 210 55% 20%;
+}
+
+/* Wallpaper: transparent body/main + semi-transparent cards via alpha */
+html[data-wallpaper][data-wallpaper-scope="dashboard"] body,
+html[data-wallpaper][data-wallpaper-scope="dashboard"] main {
+  background-color: transparent !important;
+}
+
+/* Smooth transition when entering/leaving wallpaper mode */
+.bg-card, .bg-sidebar-bg, .bg-popover, main, header {
+  transition: background-color 0.5s ease, color 0.4s ease, border-color 0.4s ease;
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .bg-card {
+  background-color: hsl(210 18% 14% / 0.80) !important;
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .bg-popover {
+  background-color: hsl(215 25% 10% / 0.88) !important;
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .bg-muted,
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .bg-muted\/50,
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .bg-muted\/60 {
+  background-color: hsl(215 25% 20% / 0.3) !important;
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .bg-secondary {
+  background-color: hsl(215 25% 16% / 0.4) !important;
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .bg-background {
+  background-color: transparent !important;
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .bg-sidebar-bg {
+  background-color: hsl(215 35% 8% / 0.5) !important;
+  backdrop-filter: blur(28px) saturate(1.25) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(1.25) !important;
+}
+
+/* The global header is a .bg-card too, but it is shell, not a widget: it goes
+   as translucent as the sidebar so the video runs edge to edge behind it. */
+html[data-wallpaper][data-wallpaper-scope="dashboard"] header.bg-card {
+  background-color: hsl(215 35% 8% / 0.4) !important;
+  border-color: hsl(0 0% 100% / 0.12) !important;
+  box-shadow: none !important;
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .border-border\/60,
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .border-border\/40,
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .border-border {
+  border-color: hsl(0 0% 100% / 0.18) !important;
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .text-foreground {
+  color: hsl(0 0% 100%) !important;
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .text-muted-foreground {
+  color: hsl(210 15% 70%) !important;
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .text-card-foreground {
+  color: hsl(0 0% 95%) !important;
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .shadow-\[0_1px_3px_rgba\(0\,0\,0\,0\.05\)\],
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .shadow-\[0_1px_3px_rgba\(0\,0\,0\,0\.04\)\] {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Wallpaper: keep buttons visible and opaque */
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .bg-primary {
+  background-color: hsl(210 96% 45%) !important;
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .bg-destructive {
+  background-color: hsl(0 84% 55%) !important;
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] button.bg-primary,
+html[data-wallpaper][data-wallpaper-scope="dashboard"] button.bg-destructive,
+html[data-wallpaper][data-wallpaper-scope="dashboard"] a.bg-primary {
+  backdrop-filter: none !important;
+}
+
+/* Wallpaper: input fields need solid dark background */
+html[data-wallpaper][data-wallpaper-scope="dashboard"] input,
+html[data-wallpaper][data-wallpaper-scope="dashboard"] select,
+html[data-wallpaper][data-wallpaper-scope="dashboard"] textarea {
+  background-color: hsl(215 25% 12% / 0.85) !important;
+  color: hsl(0 0% 95%) !important;
+  border-color: hsl(0 0% 100% / 0.2) !important;
+}
+
+/* Wallpaper: dialog/modal overlay */
+html[data-wallpaper][data-wallpaper-scope="dashboard"] [role="dialog"],
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .bg-card\/80 {
+  background-color: hsl(215 25% 12% / 0.90) !important;
+}
+
+/* Under live wallpaper the Smart AI Search bar drops the bright orange and blends
+   into the dark glass theme (matching the dashboard cards), because the orange
+   plate fought the wallpaper look — the only real bug there was the unreadable
+   field. So: dark glass plate + a slightly-lighter readable field + light text.
+   (On non-wallpaper pages the bar keeps its orange variant-C look.) */
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .ai-search-bar {
+  background-color: hsl(210 18% 14% / 0.85) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3) !important;
+}
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .ai-search-field {
+  background-color: hsl(215 25% 24% / 0.6) !important;
+  box-shadow: none !important;
+}
+html[data-wallpaper][data-wallpaper-scope="dashboard"] input.ai-search-input {
+  background-color: transparent !important;
+  color: hsl(0 0% 96%) !important;
+  border-color: transparent !important;
+}
+html[data-wallpaper][data-wallpaper-scope="dashboard"] input.ai-search-input::placeholder {
+  color: hsl(210 15% 74%) !important;
+}
+/* Kill the residual brand-orange controls under wallpaper: the field's search
+   icon goes light, and the submit button becomes a dark-glass pill with light
+   text (no orange text/icon). */
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .ai-search-field svg {
+  color: hsl(210 15% 74%) !important;
+}
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .ai-search-btn {
+  background-color: hsl(215 25% 30% / 0.75) !important;
+  color: hsl(0 0% 96%) !important;
+  box-shadow: none !important;
+}
+
+/* Dashboard bento cards: compact dark glass widgets inspired by the CRM mockup.
+   This is dashboard-scoped so other modules keep their regular card treatment. */
+.dashboard-bento {
+  --dash-panel: 222 42% 12%;
+  --dash-panel-strong: 225 48% 8%;
+  --dash-panel-soft: 218 34% 18%;
+  --dash-line: 202 72% 72%;
+  --dash-glow: 190 95% 60%;
+  --dash-text: 210 40% 96%;
+  --dash-muted: 212 22% 74%;
+}
+
+/* Dashboard opening canvas — the route motif turns the reference image's
+   light trails into a product-native visual, while the content stays factual. */
+.dashboard-welcome {
+  --welcome-ink: oklch(0.96 0.012 244);
+  --welcome-muted: oklch(0.78 0.035 245);
+  --welcome-line: oklch(0.73 0.07 235 / 0.28);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid var(--welcome-line);
+  border-radius: 24px;
+  color: var(--welcome-ink);
+  background:
+    radial-gradient(circle at 14% 8%, oklch(0.62 0.12 236 / 0.28), transparent 38%),
+    radial-gradient(circle at 78% 116%, oklch(0.64 0.19 37 / 0.23), transparent 42%),
+    linear-gradient(128deg, oklch(0.25 0.065 251), oklch(0.18 0.052 258) 58%, oklch(0.16 0.04 269));
+  box-shadow: 0 24px 70px oklch(0.12 0.04 255 / 0.28);
+  animation: dashboard-welcome-enter 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.dashboard-welcome::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.28;
+  background-image:
+    linear-gradient(oklch(0.86 0.03 240 / 0.09) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.86 0.03 240 / 0.09) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: linear-gradient(90deg, black, transparent 78%);
+}
+
+.dashboard-welcome-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(310px, 0.72fr);
+  min-height: 430px;
+}
+
+.dashboard-welcome-main {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  padding: 40px 44px 36px;
+}
+
+.dashboard-welcome-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  color: var(--welcome-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.dashboard-welcome-copy {
+  display: grid;
+  gap: 10px;
+  padding-top: 28px;
+}
+
+.dashboard-welcome-copy h1 {
+  max-width: 18ch;
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.045em;
+}
+
+.dashboard-welcome-copy p {
+  max-width: 62ch;
+  color: var(--welcome-muted);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.dashboard-welcome-command {
+  display: grid;
+  gap: 8px;
+  margin-top: 28px;
+}
+
+.dashboard-welcome-command > label {
+  color: var(--welcome-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.dashboard-welcome-command > div {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid oklch(0.88 0.02 240 / 0.18);
+  border-radius: 16px;
+  padding: 4px 4px 4px 16px;
+  background: oklch(0.94 0.018 238 / 0.09);
+  transition: border-color 180ms cubic-bezier(0.25, 1, 0.5, 1), background-color 180ms cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.dashboard-welcome-command > div:focus-within {
+  border-color: oklch(0.76 0.18 46 / 0.72);
+  background: oklch(0.94 0.018 238 / 0.13);
+}
+
+.dashboard-welcome-command svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: oklch(0.76 0.17 46);
+}
+
+.dashboard-welcome-command input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  color: var(--welcome-ink);
+  background: transparent;
+  font-size: 1rem;
+}
+
+.dashboard-welcome-command input::placeholder {
+  color: oklch(0.7 0.032 245);
+}
+
+.dashboard-welcome-command button {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 13px;
+  color: oklch(0.98 0.01 40);
+  background: oklch(0.66 0.21 42);
+  transition: transform 120ms cubic-bezier(0.25, 1, 0.5, 1), background-color 120ms cubic-bezier(0.25, 1, 0.5, 1), opacity 120ms cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.dashboard-welcome-command button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.dashboard-welcome-command button:not(:disabled):active {
+  transform: scale(0.95);
+}
+
+.dashboard-welcome-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 16px;
+}
+
+.dashboard-welcome-action {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid oklch(0.9 0.02 240 / 0.2);
+  border-radius: 999px;
+  padding: 0 16px;
+  color: var(--welcome-ink);
+  background: oklch(0.92 0.018 238 / 0.07);
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: transform 150ms cubic-bezier(0.25, 1, 0.5, 1), border-color 150ms cubic-bezier(0.25, 1, 0.5, 1), background-color 150ms cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.dashboard-welcome-action--primary {
+  border-color: transparent;
+  color: oklch(0.98 0.01 40);
+  background: oklch(0.66 0.21 42);
+}
+
+.dashboard-welcome-action svg {
+  width: 16px;
+  height: 16px;
+}
+
+.dashboard-welcome-brief {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  border-inline-start: 1px solid var(--welcome-line);
+  padding: 38px 32px 32px;
+  background: oklch(0.14 0.035 263 / 0.58);
+}
+
+.dashboard-welcome-brief-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboard-welcome-brief-heading > span {
+  display: inline-flex;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid oklch(0.76 0.17 46 / 0.34);
+  border-radius: 14px;
+  color: oklch(0.81 0.17 49);
+  background: oklch(0.66 0.18 44 / 0.13);
+}
+
+.dashboard-welcome-brief-heading svg {
+  width: 20px;
+  height: 20px;
+}
+
+.dashboard-welcome-brief-heading p {
+  color: oklch(0.8 0.11 48);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dashboard-welcome-brief-heading h2 {
+  padding-top: 2px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.dashboard-welcome-brief ol {
+  display: grid;
+  gap: 0;
+  padding-top: 22px;
+}
+
+.dashboard-welcome-brief li {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 12px;
+  border-top: 1px solid var(--welcome-line);
+  padding: 16px 0;
+}
+
+.dashboard-welcome-brief li > span {
+  color: oklch(0.73 0.17 45);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.dashboard-welcome-brief li > p {
+  color: oklch(0.86 0.025 244);
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+.dashboard-welcome-brief-action {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: auto;
+  border-top: 1px solid var(--welcome-line);
+  padding-top: 18px;
+  color: oklch(0.85 0.14 48);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: start;
+}
+
+.dashboard-welcome-brief-action svg {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  transition: transform 180ms cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.dashboard-welcome-route {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: -1;
+  height: 74%;
+  pointer-events: none;
+  opacity: 0.75;
+}
+
+.dashboard-welcome-route svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.dashboard-welcome-route path {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.dashboard-welcome-route-shadow {
+  stroke: oklch(0.62 0.23 31 / 0.28);
+  stroke-width: 26;
+  filter: blur(12px);
+}
+
+.dashboard-welcome-route-line {
+  stroke: oklch(0.72 0.22 41 / 0.72);
+  stroke-width: 2;
+  stroke-dasharray: 7 10;
+}
+
+.dashboard-welcome-tools {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 16px;
+}
+
+.dashboard-welcome-tools > :first-child {
+  min-width: 0;
+  flex: 1;
+}
+
+.dashboard-welcome-help {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+}
+
+/* The strip scrolls horizontally and used to end in a hard cut exactly where
+   the help controls begin — a chip sliced mid-word, immediately followed by
+   two differently-coloured buttons. It read as one chip that had escaped the
+   row and changed colour. Fade the overflow instead, so a partly visible chip
+   looks cut off on purpose. */
+.dashboard-bento-app-strip {
+  mask-image: linear-gradient(90deg, black calc(100% - 28px), transparent);
+  -webkit-mask-image: linear-gradient(90deg, black calc(100% - 28px), transparent);
+}
+
+/* And make the two controls at the end belong to the row: on the wallpaper
+   they were the only orange and the only grey text on a dark glass row, which
+   is why they read as a defect rather than as help. */
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-help > * {
+  border-radius: 999px;
+  border: 1px solid hsl(0 0% 100% / 0.14) !important;
+  padding: 6px 12px;
+  background: hsl(220 40% 8% / 0.46) !important;
+  color: hsl(0 0% 100% / 0.85) !important;
+  backdrop-filter: blur(16px) saturate(1.1);
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-help > *:hover {
+  color: hsl(0 0% 100%) !important;
+  border-color: hsl(0 0% 100% / 0.24) !important;
+}
+
+.dashboard-welcome--loading {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(310px, 0.72fr);
+  min-height: 430px;
+}
+
+.dashboard-welcome-loading-main,
+.dashboard-welcome-loading-brief {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 42px;
+}
+
+.dashboard-welcome-loading-brief {
+  border-inline-start: 1px solid var(--welcome-line);
+  background: oklch(0.14 0.035 263 / 0.38);
+}
+
+.dashboard-welcome-loading-line,
+.dashboard-welcome-loading-brief > span {
+  display: block;
+  border-radius: 10px;
+  background: oklch(0.86 0.025 244 / 0.12);
+  animation: dashboard-welcome-pulse 1.4s ease-in-out infinite alternate;
+}
+
+.dashboard-welcome-loading-line--meta { width: 32%; height: 28px; }
+.dashboard-welcome-loading-line--title { width: 58%; height: 46px; margin-top: 10px; }
+.dashboard-welcome-loading-line--copy { width: 76%; height: 18px; }
+.dashboard-welcome-loading-line--command { width: 100%; height: 52px; margin-top: 4px; }
+
+.dashboard-welcome-loading-brief > span:first-child { width: 68%; height: 42px; }
+.dashboard-welcome-loading-brief > span:not(:first-child) { width: 100%; height: 54px; }
+
+@keyframes dashboard-welcome-enter {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes dashboard-welcome-pulse {
+  from { opacity: 0.48; }
+  to { opacity: 0.9; }
+}
+
+@media (hover: hover) {
+  .dashboard-welcome-action:hover {
+    border-color: oklch(0.78 0.12 45 / 0.55);
+    background: oklch(0.94 0.025 55 / 0.13);
+    transform: translateY(-1px);
+  }
+
+  .dashboard-welcome-action--primary:hover,
+  .dashboard-welcome-command button:not(:disabled):hover {
+    background: oklch(0.7 0.21 43);
+  }
+
+  .dashboard-welcome-brief-action:hover svg {
+    transform: translateX(4px);
+  }
+}
+
+.dashboard-welcome :is(a, button, input):focus-visible {
+  outline: 2px solid oklch(0.8 0.18 47);
+  outline-offset: 3px;
+}
+
+/* ── Under the live wallpaper the hero is not a card ──────────────────────
+   The video IS the visual. The greeting, the Da Vinci field and the briefing
+   float straight over it (launcher-home style): no plate, no blur behind the
+   text, the hero bleeds to the edges of <main> and fills the first screen so
+   the widgets start just below the fold. Only the controls get glass, so
+   they stay readable on bright frames. */
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome {
+  --welcome-ink: hsl(0 0% 100%);
+  --welcome-muted: hsl(0 0% 100% / 0.82);
+  --welcome-line: hsl(0 0% 100% / 0.16);
+  --welcome-glass: hsl(220 40% 7% / 0.86);
+  --welcome-glass-strong: hsl(220 40% 7% / 0.93);
+  --welcome-main-pad: 12px;
+  --welcome-peek: 84px;
+  margin: calc(-1 * var(--welcome-main-pad)) calc(-1 * var(--welcome-main-pad)) 0;
+  min-height: calc(100dvh - 3.5rem - var(--welcome-main-pad) - var(--welcome-peek));
+  border: 0;
+  border-radius: 0;
+  /* A soft, wide scrim behind the text column only: bright frames (ocean foam,
+     snow) otherwise swallow the date line. The video stays fully visible
+     everywhere else. */
+  background: radial-gradient(ellipse 58% 64% at 34% 52%, hsl(220 40% 6% / 0.34), transparent 72%);
+  box-shadow: none;
+  backdrop-filter: none;
+  text-shadow: 0 1px 2px hsl(0 0% 0% / 0.5), 0 8px 32px hsl(0 0% 0% / 0.4);
+}
+
+@media (min-width: 640px) {
+  html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome {
+    --welcome-main-pad: 16px;
+  }
+}
+
+@media (min-width: 1024px) {
+  html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome {
+    --welcome-main-pad: 32px;
+  }
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome::before,
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-route {
+  display: none;
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-grid,
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome--loading {
+  min-height: inherit;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  align-items: center;
+  gap: 40px;
+  padding: 40px clamp(20px, 4vw, 56px);
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-main,
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-loading-main {
+  width: 100%;
+  max-width: 720px;
+  margin-inline: auto;
+  padding: 0;
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-meta {
+  color: var(--welcome-muted);
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-copy {
+  padding-top: 10px;
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-copy h1 {
+  max-width: none;
+  font-size: clamp(2.5rem, 4.4vw, 3.6rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-copy p {
+  color: var(--welcome-muted);
+  font-size: 1.05rem;
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-command > label {
+  color: var(--welcome-muted);
+}
+
+/* Glass belongs to the controls only. Text inside them must not inherit the
+   hero's readability shadow. */
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-command > div,
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-action,
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-brief,
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-loading-brief {
+  text-shadow: none;
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-command > div {
+  min-height: 64px;
+  border-color: hsl(0 0% 100% / 0.18);
+  border-radius: 20px;
+  padding: 6px 6px 6px 20px;
+  background: var(--welcome-glass);
+  box-shadow: 0 20px 50px hsl(0 0% 0% / 0.28), inset 0 1px 0 hsl(0 0% 100% / 0.12);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-command > div:focus-within {
+  border-color: hsl(0 0% 100% / 0.42);
+  background: var(--welcome-glass-strong);
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-command svg {
+  color: hsl(0 0% 100% / 0.8);
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-command input {
+  border-color: transparent !important;
+  color: var(--welcome-ink) !important;
+  background: transparent !important;
+  font-size: 1.05rem;
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-command input::placeholder {
+  color: hsl(0 0% 100% / 0.62) !important;
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-command button {
+  width: 50px;
+  height: 50px;
+  border-radius: 15px;
+}
+
+/* Glass on a bright frame reads as glare, not as a control. The owner's
+   reference has these controls near-solid, not translucent: at 0.42 the video
+   showed through and the labels lost contrast on bright frames. They are
+   filled with the dark ground at 0.86 so a control reads as a control.
+   The primary action keeps its orange: exactly one thing here should pull the
+   eye. */
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-action {
+  border-color: hsl(0 0% 100% / 0.16);
+  background: hsl(220 40% 7% / 0.86);
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.08);
+  backdrop-filter: blur(16px) saturate(1.1);
+  -webkit-backdrop-filter: blur(16px) saturate(1.1);
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-bento-app-chip {
+  background: hsl(220 40% 7% / 0.86) !important;
+  border-color: hsl(0 0% 100% / 0.14) !important;
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.07) !important;
+  color: hsl(0 0% 100% / 0.9) !important;
+  backdrop-filter: blur(16px) saturate(1.1);
+}
+
+/* Only the briefing is enabled: it should read as one panel, centred, rather
+   than as a right-hand column with an empty half beside it. */
+.dashboard-welcome--brief-only .dashboard-welcome-grid {
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 0;
+}
+
+.dashboard-welcome--brief-only .dashboard-welcome-brief {
+  border-inline-start: 0;
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome--brief-only {
+  --welcome-peek: 0px;
+  min-height: 0;
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome--brief-only .dashboard-welcome-grid {
+  max-width: 760px;
+  margin-inline: auto;
+  padding-block: 28px;
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-action--primary {
+  border-color: transparent;
+  background: oklch(0.66 0.21 42);
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-brief,
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-loading-brief {
+  align-self: center;
+  border: 1px solid hsl(0 0% 100% / 0.16);
+  border-radius: 24px;
+  padding: 26px 26px 22px;
+  background: var(--welcome-glass);
+  box-shadow: 0 24px 60px hsl(0 0% 0% / 0.3), inset 0 1px 0 hsl(0 0% 100% / 0.12);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-brief li > p {
+  color: hsl(0 0% 100% / 0.9);
+}
+
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-brief li,
+html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-brief-action {
+  border-color: hsl(0 0% 100% / 0.14);
+}
+
+@media (max-width: 1100px) {
+  html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome {
+    --welcome-peek: 0px;
+    min-height: 0;
+  }
+
+  html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-grid,
+  html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome--loading {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    padding: 48px clamp(16px, 4vw, 40px) 24px;
+  }
+
+  html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-brief,
+  html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-loading-brief {
+    width: 100%;
+    max-width: 720px;
+    min-height: 0;
+    margin-inline: auto;
+    border-block-start: 1px solid hsl(0 0% 100% / 0.16);
+  }
+}
+
+@media (max-width: 720px) {
+  html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-grid,
+  html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome--loading {
+    padding: 32px 16px 20px;
+  }
+
+  html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-copy h1 {
+    font-size: 2.1rem;
+  }
+}
+
+@media (max-width: 1100px) {
+  .dashboard-welcome-grid,
+  .dashboard-welcome--loading {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-welcome-brief,
+  .dashboard-welcome-loading-brief {
+    border-block-start: 1px solid var(--welcome-line);
+    border-inline-start: 0;
+  }
+
+  .dashboard-welcome-brief {
+    min-height: 320px;
+  }
+}
+
+@media (max-width: 720px) {
+  .dashboard-welcome {
+    border-radius: 20px;
+  }
+
+  .dashboard-welcome-main,
+  .dashboard-welcome-loading-main {
+    padding: 28px 22px 24px;
+  }
+
+  .dashboard-welcome-copy h1 {
+    font-size: 2rem;
+  }
+
+  .dashboard-welcome-command > div {
+    padding-inline-start: 13px;
+  }
+
+  .dashboard-welcome-action {
+    width: 100%;
+    padding-inline: 14px;
+  }
+
+  .dashboard-welcome-actions {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+  }
+
+  .dashboard-welcome-action:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .dashboard-welcome-brief,
+  .dashboard-welcome-loading-brief {
+    min-height: 0;
+    padding: 28px 22px 24px;
+  }
+
+  .dashboard-welcome-tools {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .dashboard-welcome-tools > :first-child {
+    width: 100%;
+  }
+
+  .dashboard-welcome-route {
+    opacity: 0.34;
+    transform: translateX(34%);
+  }
+}
+
+@media (max-width: 380px) {
+  .dashboard-welcome-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-welcome-action:last-child {
+    grid-column: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-welcome,
+  .dashboard-welcome-loading-line,
+  .dashboard-welcome-loading-brief > span {
+    animation-duration: 0.01ms;
+  }
+}
+
+.dashboard-bento-app-strip {
+  scrollbar-width: none;
+}
+
+.dashboard-bento-app-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.dashboard-bento-app-chip {
+  background:
+    linear-gradient(180deg, hsl(216 32% 22% / 0.92), hsl(217 36% 15% / 0.88)) !important;
+  border-color: hsl(var(--dash-line) / 0.24) !important;
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.08), 0 8px 22px hsl(216 65% 5% / 0.22);
+  color: hsl(var(--dash-text)) !important;
+  backdrop-filter: blur(14px) saturate(1.18);
+}
+
+.dashboard-bento-tip {
+  border-radius: 18px !important;
+  background:
+    radial-gradient(circle at 0% 0%, hsl(198 100% 55% / 0.24), transparent 36%),
+    linear-gradient(135deg, hsl(var(--dash-panel) / 0.88), hsl(var(--dash-panel-strong) / 0.86)) !important;
+  border-color: hsl(var(--dash-line) / 0.28) !important;
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.09), 0 16px 45px hsl(216 70% 5% / 0.24) !important;
+}
+
+.dashboard-bento-card,
+.dashboard-kpi-card {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 16px !important;
+  border-color: hsl(var(--dash-line) / 0.34) !important;
+  background:
+    radial-gradient(circle at 14% 0%, hsl(196 100% 58% / 0.16), transparent 34%),
+    linear-gradient(180deg, hsl(var(--dash-panel) / 0.98), hsl(var(--dash-panel-strong) / 0.98)) !important;
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.10),
+    inset 0 -1px 0 hsl(202 90% 72% / 0.06),
+    0 18px 42px hsl(220 72% 4% / 0.34) !important;
+  color: hsl(var(--dash-text)) !important;
+  backdrop-filter: blur(10px) saturate(1.1);
+}
+
+.dashboard-bento-card::before,
+.dashboard-kpi-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, hsl(0 0% 100% / 0.08), transparent 18%, transparent 84%, hsl(0 0% 100% / 0.035)),
+    linear-gradient(180deg, hsl(0 0% 100% / 0.045), transparent 38%);
+  opacity: 0.62;
+}
+
+.dashboard-bento-card > *,
+.dashboard-kpi-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.dashboard-risk-row + .dashboard-risk-row {
+  border-top: 1px solid hsl(var(--dash-line) / 0.16);
+}
+
+.dashboard-risk-row--critical {
+  --risk-accent: 0 78% 62%;
+}
+
+.dashboard-risk-row--warning {
+  --risk-accent: 39 92% 58%;
+}
+
+.dashboard-risk-row .dashboard-risk-icon {
+  color: hsl(var(--risk-accent));
+}
+
+.dashboard-risk-row .dashboard-risk-metric {
+  border-color: hsl(var(--risk-accent) / 0.32) !important;
+  background-color: hsl(var(--risk-accent) / 0.14);
+  color: hsl(var(--risk-accent));
+}
+
+.dashboard-bento-card:hover,
+.dashboard-kpi-card:hover {
+  border-color: hsl(var(--dash-glow) / 0.68) !important;
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.12),
+    0 0 0 1px hsl(var(--dash-glow) / 0.10),
+    0 22px 58px hsl(217 74% 4% / 0.36) !important;
+  transform: translateY(-1px);
+}
+
+.dashboard-bento-card .text-muted-foreground,
+.dashboard-kpi-card .text-muted-foreground,
+.dashboard-bento-card .text-card-foreground,
+.dashboard-kpi-card .text-card-foreground,
+.dashboard-bento-tip .text-muted-foreground {
+  color: hsl(var(--dash-muted)) !important;
+}
+
+.dashboard-bento .dashboard-bento-card .text-foreground,
+.dashboard-bento .dashboard-kpi-card .text-foreground {
+  color: hsl(var(--dash-text)) !important;
+}
+
+.dashboard-bento .bg-muted,
+.dashboard-bento .bg-muted\/50,
+.dashboard-bento .bg-muted\/60 {
+  background-color: hsl(var(--dash-panel-soft) / 0.76) !important;
+}
+
+.dashboard-bento .border-zinc-100,
+.dashboard-bento .border-zinc-200,
+.dashboard-bento .border-zinc-700,
+.dashboard-bento .border-zinc-800 {
+  border-color: hsl(var(--dash-line) / 0.22) !important;
+}
+
+.dashboard-bento .recharts-cartesian-axis-tick text,
+.dashboard-bento .recharts-text {
+  fill: hsl(var(--dash-muted)) !important;
+}
+
+.dashboard-bento .recharts-tooltip-wrapper {
+  color: hsl(222 35% 12%);
+}
+
+.dashboard-bento-flow [data-dashboard-widget] {
+  min-width: 0;
+}
+
+@media (max-width: 767px) {
+  .dashboard-bento-tip p {
+    white-space: normal;
+  }
+}
+
+/* Abstract gradient wallpaper (CSS-only, 0KB) */
+@keyframes wallpaper-gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.wallpaper-abstract-gradient {
+  background: linear-gradient(-45deg, #0f172a, #1e1b4b, #172554, #0c4a6e, #1e1b4b);
+  background-size: 400% 400%;
+  animation: wallpaper-gradient-shift 20s ease infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wallpaper-abstract-gradient { animation: none; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Touch-safe hover utilities */
+@media (hover: hover) and (pointer: fine) {
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    transition: transform 200ms var(--ease-out);
+  }
+}
+/* Contract editor alignment (toolbar Phase 1) — the ONLY classes
+   sanitizeContractBody's ta-* hook lets into a stored body. */
+.ta-left { text-align: left; }
+.ta-center { text-align: center; }
+.ta-right { text-align: right; }
+.ta-justify { text-align: justify; }

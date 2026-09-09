@@ -1,0 +1,269 @@
+=== Progress Log Started: Thu Mar 19 17:13:55 +04 2026 ===
+Project: LeadDrive CRM v2 Feature Parity
+Architecture: Next.js 16 App Router + Prisma + PostgreSQL + shadcn/ui
+Pattern: Dialog modal forms (company-form.tsx), API [id] routes (companies/[id]/route.ts)
+Key: All entities use organizationId for multi-tenant, getOrgId() for auth
+Prisma models: 41 models in schema.prisma
+Form pattern: useState + fetch POST/PUT + onSaved callback + initialData for edit
+API [id] pattern: async params Promise<{id:string}>, updateMany for org-scoped updates, deleteMany for safe delete
+
+
+=== Phase 1 COMPLETED: Thu Mar 19 17:23:10 +04 2026 ===
+Created 6 form components: contract-form, offer-form, kb-article-form, campaign-form, segment-form, journey-form
+Created 6 API [id] routes: contracts, offers, kb, campaigns, segments, journeys
+Added POST to segments and journeys APIs (were GET-only)
+Rewrote 6 pages with form integration + edit/delete actions
+Build: PASSED
+
+
+=== ALL 8 PHASES COMPLETED: Thu Mar 19 17:45:58 +04 2026 ===
+
+Phase 1 (DONE): 6 CRUD forms + 6 API [id] routes + 6 pages wired
+- ContractForm, OfferForm, KbArticleForm, CampaignForm, SegmentForm, JourneyForm
+- Added POST to segments and journeys APIs
+- All pages have edit/delete buttons with confirmation
+
+Phase 2 (DONE): Email Templates + AI Config
+- Email Templates: API (GET/POST), [id] route (GET/PUT/DELETE), form, settings page
+- AI Config: form, [id] route, POST added to configs API, page updated with New Agent/Edit/Delete
+
+Phase 3 (DONE): Lead Conversion + Reports
+- Lead conversion API: POST /leads/{id}/convert creates Contact + Company + Deal in transaction
+- LeadConvertDialog component, wired to leads page with green arrow icon
+- Reports page: real data from /api/v1/reports with 6 report cards
+
+Phase 4 (DONE): Notifications
+- API: GET (list + unread count), PATCH (mark read)
+- NotificationBell component with dropdown, polling every 30s
+- createNotification() helper in src/lib/notifications.ts
+- Integrated into header (replaced static Bell icon)
+
+Phase 5 (DONE): Inbox + Email
+- ChannelMessage model added to Prisma schema
+- Inbox API rewritten: real ChannelMessage queries, threaded conversations
+- Inbox page: conversation list, message thread, reply functionality
+- Campaign send endpoint: POST /campaigns/{id}/send
+- renderTemplate() added to email.ts
+
+Phase 6 (DONE): Workflow Engine
+- src/lib/workflow-engine.ts: executeWorkflows(), condition evaluation, 4 action types (notify, create_task, update_field, auto_assign)
+- Workflow form + [id] route
+- Settings/workflows page wired with CRUD
+
+Phase 7 (DONE): Settings forms
+- 4 settings CRUD: Currencies, Custom Fields, Channels, SLA Policies
+- Each has: form component, [id] API route, page with DataTable + edit/delete
+
+Phase 8 (DONE): Detail pages
+- contracts/[id], offers/[id], knowledge-base/[id], campaigns/[id]
+
+Total files created: ~50+ new files
+Build: PASSES
+
+
+=== Creatio Redesign Phase (2026-03-23) ===
+
+E1 (DONE): Communication Action Buttons on Deal Detail
+- Added 4 Creatio-style colored circular buttons: Phone (green), Email (orange), WhatsApp (emerald), Chat (blue)
+- File: src/app/(dashboard)/deals/[id]/page.tsx
+- Contact card redesigned: phone/email as text + action buttons below
+
+E2+E3 (DONE): Engagement Tab + Email Nurturing
+- New API: src/app/api/v1/deals/[id]/engagement/route.ts
+  - Aggregates activities by type for deal's contact (last 3 months)
+  - Email metrics from EmailLog (sent/opened/clicked/bounced + rates)
+  - Monthly chart data for both activity and email dynamics
+- New component: src/components/deals/engagement-tab.tsx
+  - 5 activity KPI cards (calls/emails/meetings/notes/tasks)
+  - Activity Dynamics stacked AreaChart
+  - Email Nurturing: sent/open-rate/click-rate/bounced
+  - Email Dynamics LineChart
+- Added "Engagement" tab to deal detail
+
+Also in this session:
+- Agent Calendar: connected to real data (tickets/tasks/events/activities)
+- All-day section for items without specific time
+- Smart Today panel (summary for all-day, individual for timed)
+- Tickets: status filter tabs, pipeline on detail, sequential numbering, count fix
+- Events: fixed add/delete/resend bugs (missing await), beautiful invitation email
+- Pricing: rounding fix
+- 2FA: full TOTP setup/verify/disable flow
+- Forgot password: org SMTP integration
+- Pipeline translation: Воронка продаж (ru) / Proses axını (az)
+- AI brain icon for FAB button
+
+Build: PASSES | Deploy: SUCCESS
+
+E4 (DONE): Next Best Offers Widget
+- Component: src/components/deals/next-best-offers.tsx
+- Shows top 3 products with relevance %, card layout with amber gradient
+- 6 IT products seeded in production DB
+- Fetches from /api/v1/products
+
+E9 (DONE): Predictive Scoring Widget
+- Added under confidence slider: formula = confidence*0.85 + probability*0.15
+- Visual: percentage + trend arrow
+
+E6 (DONE): Contact Detail — KPI Cards + Communication Buttons
+- 4 KPI cards: Email, Phone, Last Contact, Activities
+- Communication buttons: Phone (green), Email (orange), WhatsApp (emerald)
+- File: src/app/(dashboard)/contacts/[id]/page.tsx
+
+E5 (DONE): Full Activity Timeline
+- Component: src/components/deals/activity-timeline.tsx
+- Fetches activities + comments, filter pills, vertical timeline
+- Replaced placeholder stub
+
+E7 (DONE): Contact Engagement Tab
+- API: src/app/api/v1/contacts/[id]/engagement/route.ts
+- Activity breakdown + email nurturing metrics
+- Inline component on contacts/[id]/page.tsx
+
+E8 (DONE): Tabs Reorganization
+- 7 tabs: Overview | Activity | Contact Roles | Competitors | Team | Engagement | History
+
+E10 (DONE): History Tab
+- Component: src/components/deals/deal-history.tsx
+- Stage changes, audit log, vertical timeline
+
+=== CREATIO REDESIGN PLAN COMPLETE ===
+All 10 tasks (E1-E10) done. 470+ lines of new code. 7 new files created.
+
+E4 (DONE): Next Best Offers — AI scoring + clickable modal + Add to Deal
+E5 (DONE): Activity Timeline — filter pills, vertical timeline
+E6 (DONE): Contact KPIs + Communication Buttons
+E7 (DONE): Contact Engagement Tab
+E8 (DONE): Tabs Reorganization — 7 tabs on deal detail
+E9 (DONE): Predictive Scoring
+E10 (DONE): History Tab
+Products page (DONE): /products with CRUD, detail page /products/[id], sidebar nav
+At Risk deals widget (DONE): Dashboard shows deals with predictive < 40%
+AI recommend fix (DONE): removed contact relation from Deal queries
+
+=== NEXT SESSION: Visual Overhaul S1-S8 ===
+User wants: синие/красные/зелёные цвета, НЕ плагиат Creatio, свой уникальный стиль
+Plan:
+S1: Sidebar restyle — белый с цветными иконками по группам + accent bar
+S2: Header — gradient white→light blue
+S3: KPI cards — gradient backgrounds
+S4: List pages — colored icon headers
+S5: Detail pages — 2-column layout
+S6: Tables — zebra striping + hover
+S7: Empty states — illustrations
+S8: Buttons — gradient primary
+2026-03-25 02:18 | Phase 1 FP&A DONE: B1-01..B1-10 + B1-TEST all green. Schema: forecastAmount/costModelKey/isAutoActual on BudgetLine. Analytics API: auto-actuals from cost model via resolveCostModelKey(). Page: 5 KPI cards (Plan/Forecast/Actual/Variance/YE Projection), 3-column Budget|Forecast|Actual table, Forecast column inline edit in Lines tab, Cost Model key dropdown per line, TemplateSeedButton assigns costModelKeys. TypeScript clean, build passed.
+2026-03-25 02:39 | Phase 2-4 FP&A DONE: BudgetSection + BudgetForecastEntry models. Sections API (/api/budgeting/sections). Forecast API (/api/budgeting/forecast). Forecast engine (src/lib/budgeting/forecast.ts). P&L tab with drill-down panel. Forecast tab (12-month ComposedChart). Waterfall chart component. Excel export (/api/budgeting/export). 7 tabs total: Обзор|P&L|Прогноз|Статьи|Факт|Планы|Сравнение. TS clean, build passed 15m.
+Wed Mar 25 17:56:58 +04 2026
+
+=== BUDGETING MODULE STATUS — March 25, 2026 ===
+
+WHAT'S DONE:
+- Full budgeting module deployed at /budgeting with 5 tabs: Рабочая область, P&L, Прогноз, Сравнение, Планы
+- 2 plans: Q1 2026 (Факт) and Q2 2026 (Бюджет компании)
+- Data sources: Revenue forecast from Excel (Sales forecast 2026.xlsx), Expense facts from /profitability (cost model)
+- Revenue facts from pricing_profiles (616,367/mo real sales, NOT serviceRevenues 673,625)
+- i18n: 3 languages (ru/en/az), useTranslations connected
+- ForecastTab: monthly matrix with inline edit, BudgetForecastEntry in DB
+- WorkspaceTab: editable grid (Plan/Fact/Variance), no Forecast column
+- KPIs: margin-based (ОТКЛОНЕНИЕ = margin actual - margin plan, ИСПОЛНЕНИЕ = margin%)
+- Charts: separate expense and revenue bar charts
+- Hardening: approved plan lock, negative validation, period validation, duplicate prevention
+
+NEXT TASK — RESTRUCTURE EXPENSE LINES:
+Current problem: Budget shows expenses by SERVICE (Daimi IT, InfoSec, ERP, etc.) which are serviceCosts from cost model.
+These include overhead distributed into each service. But user wants to see REAL cost structure like on /profitability:
+
+1. Admin Overhead (197,655 ₼/mo) — with sub-items:
+   - Ofis icarəsi: 30,000
+   - İşçi sığortası: 5,480
+   - Mobil rabitə: 4,110
+   - LMS Platforma: 4,917
+   - Treninqlər: 20,833
+   - AI Lisenziyaları: 374
+   - Maşın amortizasiyası: 2,500
+   - Maşın cari xərcləri: 1,200
+   - Laptop xərci: 8,500
+   - İnternet: 439
+   - Team building: 10,000
+   - BackOffice (17 ppl.): 109,302
+
+2. Technical Infrastructure (98,662 ₼/mo):
+   - Cortex/Crowdstrike: 41,667
+   - MS Lisenziya: 6,800
+   - Service Desk: 4,917
+   - Palo Alto: 6,333
+   - PAM: 3,333
+   - Firewall amort: 1,548
+   - Cloud servers: 20,000 (→ assigned to cloud service)
+   - Other tech items...
+
+3. Direct Labor Costs (348,889 ₼/mo):
+   - IT dept: 80,880
+   - InfoSec: 59,087
+   - ERP: 26,045
+   - GRC: 26,798
+   - PM: 23,156
+   - HelpDesk: 132,922
+
+4. Risk + Misc:
+   - Misc: 4,363
+   - Risk reserve: 22,032
+
+TOTAL monthly expense = 645,206 ₼ (matches /profitability TOTAL COST/MONTH)
+
+WHAT NEEDS TO BE DONE:
+1. Schema: Add parent/child relationship to BudgetLine (or BudgetSection groups)
+   - Option A: Add parentId to BudgetLine for nested structure
+   - Option B: Use BudgetSection as group header + BudgetLine as children
+2. Delete current serviceCost-based expense lines from both plans
+3. Create new expense lines matching /profitability structure (overhead items + dept labor + tech infra)
+4. Update ForecastTab to show nested/grouped expenses
+5. Update WorkspaceTab to show collapsible groups
+6. Populate BudgetForecastEntry for new expense categories
+7. Populate BudgetActual for Q1 (3 months) and Q2 (1 month)
+8. Add "attach expense" / "add sub-item" capability in UI
+
+KEY FILES:
+- src/app/(dashboard)/budgeting/page.tsx — main UI (WorkspaceTab, ForecastTab)
+- src/app/api/budgeting/analytics/route.ts — analytics with margin-based KPIs
+- src/app/api/budgeting/forecast/route.ts — forecast CRUD (with lineType)
+- src/lib/budgeting/types.ts — BudgetLine, BudgetForecastEntry (has lineType field)
+- prisma/schema.prisma — BudgetLine, BudgetForecastEntry, BudgetSection, BudgetActual
+- messages/ru.json, en.json, az.json — translations (budgeting section ~120 keys)
+
+DATA SOURCES:
+- /profitability → overhead_costs table (18 items with category, label, amount, isAnnual, isAdmin, targetService)
+- /profitability → cost_employees table (department, grossSalary)
+- Excel: /Users/rashadoni/Documents/Copy of Sales forecast 2026.xlsx (revenue forecast by service by month)
+- pricing_profiles table → real monthly revenue per client (total 616,367/mo)
+
+DB IDs:
+- Org: cmmxg74k10000td3rr37dl6am
+- Q1 plan: cmn5mgp3e0011td7zvtks4fd0
+- Q2 plan: cmn5mdcxr0001td7zlo5q141p
+
+SERVER:
+- Production: PM2 process leaddrive-v2, port 3001
+- Deploy: local build → rsync standalone → pm2 restart
+- DB: see .env for connection string
+2026-03-25 18:19 | DONE: Restructure expense lines in budgeting. Added parentId self-relation to BudgetLine (schema + migration). Updated types, API GET (nested children), POST/PUT (parentId). Created seed script with hardcoded production values (Admin Overhead 197,655 + Tech Infra 98,662 + Direct Labor 348,889 + Risk+Misc 26,395 = 671,601/mo). WorkspaceTab: collapsible group headers with colored dots, chevrons, sub-items indented, add sub-item form inline. Build passed.
+
+=== [2026-03-28 11:51] Security Audit #2 — 25 vulnerabilities fixed ===
+CRITICAL:
+- IDOR: Added findFirst guards to tasks, pricing profiles, additional-sales, payables, overhead, invoices, funds (all [id] routes now verify orgId before update/delete)
+- WhatsApp webhook: Added HMAC-SHA256 signature verification (X-Hub-Signature-256)
+- Telegram webhook: Added X-Telegram-Bot-Api-Secret-Token header verification
+
+HIGH:
+- Portal registration: Fixed email enumeration (all responses now return same generic 200)
+- AI prompt injection: Added sanitizeForPrompt() to portal-chat and WhatsApp AI (strips CRLF, control chars, caps length)
+- XSS email template editor: Added sanitizeRichHtml() to innerHTML assignments
+- e.message disclosure: Replaced all remaining instances in pricing/cost-model routes
+
+MEDIUM:
+- Pagination: Added take:50/100 to portal KB and ticket endpoints
+- Event email: Escaped event.name in HTML + subject CRLF
+- Rate limiter: Documented limitations, added MAX_STORE_SIZE cap + eviction
+
+Deployed to production: build OK, rsync, PM2 restart, health check 307
+

@@ -1,0 +1,30 @@
+# LeadDrive PostgreSQL 16 logical-decoding baseline.
+#
+# This file is documentation, not an include file. Merge reviewed values into
+# the managed database parameter group or postgresql.conf. wal_level,
+# max_replication_slots, and max_wal_senders require a planned restart.
+# Capacity values must be reconciled with available disk, peak write rate,
+# backup/PITR requirements, and every other replication consumer.
+
+wal_level = logical
+
+# One LeadDrive slot, room for controlled replacement/failover, and existing
+# physical/logical consumers. Never lower this below the number of live slots.
+max_replication_slots = 10
+max_wal_senders = 10
+
+# A finite cap prevents an offline connector from exhausting the primary disk.
+# 8 GiB is the initial floor, not a substitute for sizing or slot-lag alerts.
+max_slot_wal_keep_size = '8GB'
+
+# Keep a bounded recent WAL cushion for short disconnects. Long recovery uses
+# the source event store/archive, never an unlimited slot on the primary.
+wal_keep_size = '1GB'
+wal_sender_timeout = '60s'
+
+# Logical decoding retains WAL independently from checkpoint tuning. These are
+# example production baselines and still require database-owner capacity review.
+max_wal_size = '4GB'
+min_wal_size = '1GB'
+checkpoint_timeout = '15min'
+checkpoint_completion_target = 0.9

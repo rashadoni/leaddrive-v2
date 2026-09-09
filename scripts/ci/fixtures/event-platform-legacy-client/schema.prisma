@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../../../node_modules/.event-platform-legacy-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Frozen pre-pilot client surface. Money is deliberately Float here: the
+// compatibility probe must prove the previous generated client works after the
+// database columns become NUMERIC(18,4).
+model Organization {
+  id   String @id @default(cuid())
+  name String
+  slug String @unique
+
+  @@map("organizations")
+}
+
+model Fund {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  currency       String   @default("AZN")
+  targetAmount   Float?
+  currentBalance Float    @default(0)
+  color          String?
+  isActive       Boolean  @default(true)
+  createdBy      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+  @@map("funds")
+}
+
+model FundTransaction {
+  id             String   @id @default(cuid())
+  organizationId String
+  fundId         String
+  type           String
+  amount         Float
+  description    String?
+  relatedType    String?
+  relatedId      String?
+  createdBy      String?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([fundId])
+  @@map("fund_transactions")
+}

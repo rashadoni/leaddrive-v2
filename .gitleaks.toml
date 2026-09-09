@@ -1,0 +1,60 @@
+title = "LeadDrive secret scanning"
+
+# Keep the upstream detector set. False positives must be suppressed narrowly
+# (an exact path, commit, or `gitleaks:allow` marker), never by excluding all
+# tests or generated files from future scans.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Synthetic organization assignment idempotency keys used by route tests"
+regexTarget = "secret"
+regexes = [
+  '''^organization-assignment-20260722-001$''',
+  '''^organization-unassign-20260722-001$''',
+]
+
+[[allowlists]]
+description = "Synthetic effect lease UUIDs used only by event-platform PostgreSQL integration tests"
+paths = ['''^scripts/ci/test-event-platform-migrations\.mjs$''']
+regexTarget = "secret"
+regexes = ['''^018f7b34-9bb9-7b32-8de8-1fbb4feeb3b[1-5]$''']
+
+[[allowlists]]
+description = "Reviewed immutable checksum of the production secrets-backup script"
+condition = "AND"
+paths = [
+  '''^scripts/backup/commission-production-backup\.sh$''',
+  '''^scripts/backup/report-production-readiness\.sh$''',
+  '''^scripts/server-deploy\.sh$''',
+]
+regexTarget = "secret"
+regexes = ['''^16d4bf083ad2549cd34e1bd89a53ee958f1625605235fe5370c8acecc401de99$''']
+
+[[allowlists]]
+description = "Synthetic PII encryption key used only by the restored-secret proof test"
+condition = "AND"
+paths = ['''^src/__tests__/backup-restored-secret-proof\.test\.ts$''']
+regexTarget = "secret"
+regexes = ['''^0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef$''']
+
+[[allowlists]]
+description = "Public rolling period identifier in the Support agent desktop API response"
+condition = "AND"
+paths = ['''^src/app/api/v1/support/agent-desktop/route\.ts$''']
+regexTarget = "secret"
+regexes = ['''^rolling_30_days$''']
+
+[[allowlists]]
+description = "Public rolling period identifier in the Support agent desktop UI contract"
+condition = "AND"
+paths = ['''^src/app/\(dashboard\)/support/agent-desktop/page\.tsx$''']
+regexTarget = "secret"
+regexes = ['''^rolling_30_days$''']
+
+[[allowlists]]
+description = "Public rolling period identifier in the Support agent desktop API test"
+condition = "AND"
+paths = ['''^src/__tests__/api-agent-desktop\.test\.ts$''']
+regexTarget = "secret"
+regexes = ['''^rolling_30_days$''']

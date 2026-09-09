@@ -1,0 +1,19 @@
+{
+  "formulaVersion": "SWM_PLAN_GPS_V1",
+  "generatedAt": "2026-07-15T08:00:00.000Z",
+  "filter": { "visitType": "ALL", "brandId": null },
+  "planPoints": [
+    { "routePointId": "rp-a", "agentId": "agent-a", "agentName": "Agent A", "customerId": "org-a", "customerName": "Clinic A", "contactId": "contact-a", "date": "2026-07-13", "visitType": "INDEPENDENT", "brandIds": ["brand-a"], "completed": true },
+    { "routePointId": "rp-b", "agentId": "agent-a", "agentName": "Agent A", "customerId": "org-b", "customerName": "Clinic B", "contactId": "contact-b", "date": "2026-07-13", "visitType": "DOUBLE", "brandIds": ["brand-b"], "completed": true },
+    { "routePointId": "rp-c", "agentId": "agent-b", "agentName": "Agent B", "customerId": "org-c", "customerName": "Pharmacy C", "contactId": null, "date": "2026-07-14", "visitType": "INDEPENDENT", "brandIds": ["brand-a"], "completed": false }
+  ],
+  "visits": [
+    { "visitId": "visit-a", "agentId": "agent-a", "agentName": "Agent A", "customerId": "org-a", "customerName": "Clinic A", "contactId": "contact-a", "routePointId": "rp-a", "date": "2026-07-13", "visitType": "INDEPENDENT", "brandIds": ["brand-a"], "completed": true, "gpsConfirmed": true },
+    { "visitId": "visit-b", "agentId": "agent-a", "agentName": "Agent A", "customerId": "org-b", "customerName": "Clinic B", "contactId": "contact-b", "routePointId": "rp-b", "date": "2026-07-13", "visitType": "DOUBLE", "brandIds": ["brand-b"], "completed": true, "gpsConfirmed": false },
+    { "visitId": "visit-c", "agentId": "agent-b", "agentName": "Agent B", "customerId": "org-x", "customerName": "Clinic X", "contactId": "contact-x", "routePointId": null, "date": "2026-07-14", "visitType": "INDEPENDENT", "brandIds": ["brand-a"], "completed": true, "gpsConfirmed": true }
+  ],
+  "expected": {
+    "plan": { "numerator": 2, "denominator": 3, "percentage": 66.7 },
+    "gps": { "numerator": 2, "denominator": 3, "percentage": 66.7 }
+  }
+}

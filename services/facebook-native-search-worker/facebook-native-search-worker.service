@@ -1,0 +1,29 @@
+[Unit]
+Description=LeadDrive Facebook native search worker
+Documentation=file:/home/codex-alt/services/leaddrive-facebook-native-search-worker/README.md
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=codex-alt
+Group=codex-alt
+WorkingDirectory=/home/codex-alt/services/leaddrive-facebook-native-search-worker
+Environment=PYTHONUNBUFFERED=1
+ExecStartPre=/usr/bin/curl --fail --silent --show-error http://127.0.0.1:9222/json/version
+ExecStart=/home/codex-alt/services/leaddrive-facebook-browser/venv/bin/python /home/codex-alt/services/leaddrive-facebook-native-search-worker/main.py --config /home/codex-alt/services/leaddrive-facebook-native-search-worker/config.json
+Restart=on-failure
+RestartSec=60
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/codex-alt/services/leaddrive-facebook-native-search-worker/state
+LockPersonality=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,200 @@
+[
+  {
+    "id": 8,
+    "category": "cloud",
+    "label": "Bulud serverləri",
+    "amount": 20000.0,
+    "is_annual": 0,
+    "has_vat": 1,
+    "sort_order": 1,
+    "notes": "AZN/ay, ƏDV xaric",
+    "is_admin": 0
+  },
+  {
+    "id": 9,
+    "category": "rent",
+    "label": "Ofis icarəsi",
+    "amount": 30000.0,
+    "is_annual": 0,
+    "has_vat": 1,
+    "sort_order": 2,
+    "notes": "AZN/ay birbaşa",
+    "is_admin": 1
+  },
+  {
+    "id": 10,
+    "category": "insurance",
+    "label": "Sığorta (işçi başına)",
+    "amount": 40.0,
+    "is_annual": 0,
+    "has_vat": 0,
+    "sort_order": 3,
+    "notes": "×işçi sayı",
+    "is_admin": 1
+  },
+  {
+    "id": 11,
+    "category": "mobile",
+    "label": "Mobil rabitə (işçi başına)",
+    "amount": 30.0,
+    "is_annual": 0,
+    "has_vat": 0,
+    "sort_order": 4,
+    "notes": "×işçi sayı",
+    "is_admin": 1
+  },
+  {
+    "id": 12,
+    "category": "cortex",
+    "label": "Cortex/Crowdstrike",
+    "amount": 500000.0,
+    "is_annual": 1,
+    "has_vat": 1,
+    "sort_order": 5,
+    "notes": "İllik, ƏDV xaric",
+    "is_admin": 0
+  },
+  {
+    "id": 13,
+    "category": "ms_license",
+    "label": "MS Lisenziya",
+    "amount": 6800.0,
+    "is_annual": 0,
+    "has_vat": 1,
+    "sort_order": 6,
+    "notes": "AZN/ay, ƏDV xaric",
+    "is_admin": 0
+  },
+  {
+    "id": 14,
+    "category": "service_desk",
+    "label": "Service Desk",
+    "amount": 50000.0,
+    "is_annual": 1,
+    "has_vat": 1,
+    "sort_order": 7,
+    "notes": "İllik, ƏDV xaric",
+    "is_admin": 0
+  },
+  {
+    "id": 15,
+    "category": "car_amort",
+    "label": "Maşın amortizasiyası",
+    "amount": 2500.0,
+    "is_annual": 0,
+    "has_vat": 0,
+    "sort_order": 8,
+    "notes": "CAPEX 150k÷60 ay",
+    "is_admin": 1
+  },
+  {
+    "id": 16,
+    "category": "car_expense",
+    "label": "Maşın cari xərcləri",
+    "amount": 1200.0,
+    "is_annual": 0,
+    "has_vat": 0,
+    "sort_order": 9,
+    "notes": "Benzin+servis",
+    "is_admin": 1
+  },
+  {
+    "id": 17,
+    "category": "fw_amort",
+    "label": "Firewall amortizasiyası",
+    "amount": 1547.62,
+    "is_annual": 0,
+    "has_vat": 0,
+    "sort_order": 10,
+    "notes": "CAPEX 130k÷84 ay",
+    "is_admin": 1
+  },
+  {
+    "id": 18,
+    "category": "fw_license",
+    "label": "Firewall Palo Alto lisenziya",
+    "amount": 76000.0,
+    "is_annual": 1,
+    "has_vat": 1,
+    "sort_order": 11,
+    "notes": "İllik, ƏDV xaric",
+    "is_admin": 0
+  },
+  {
+    "id": 19,
+    "category": "pam",
+    "label": "PAM lisenziya",
+    "amount": 40000.0,
+    "is_annual": 1,
+    "has_vat": 1,
+    "sort_order": 12,
+    "notes": "İllik, ƏDV xaric",
+    "is_admin": 0
+  },
+  {
+    "id": 20,
+    "category": "lms",
+    "label": "LMS platforma",
+    "amount": 50000.0,
+    "is_annual": 1,
+    "has_vat": 1,
+    "sort_order": 13,
+    "notes": "İllik, ƏDV xaric",
+    "is_admin": 0
+  },
+  {
+    "id": 21,
+    "category": "training",
+    "label": "Treninqlər",
+    "amount": 250000.0,
+    "is_annual": 1,
+    "has_vat": 1,
+    "sort_order": 14,
+    "notes": "İllik, ƏDV yoxdur",
+    "is_admin": 1
+  },
+  {
+    "id": 22,
+    "category": "ai_license",
+    "label": "AI lisenziyaları",
+    "amount": 3800.0,
+    "is_annual": 1,
+    "has_vat": 1,
+    "sort_order": 15,
+    "notes": "İllik, ƏDV xaric",
+    "is_admin": 1
+  },
+  {
+    "id": 23,
+    "category": "laptop",
+    "label": "Laptop xərci",
+    "amount": 8500.0,
+    "is_annual": 0,
+    "has_vat": 0,
+    "sort_order": 16,
+    "notes": "AZN/ay sabit",
+    "is_admin": 1
+  },
+  {
+    "id": 24,
+    "category": "internet",
+    "label": "İnternet xərci",
+    "amount": 439.0,
+    "is_annual": 0,
+    "has_vat": 0,
+    "sort_order": 17,
+    "notes": "AZN/ay sabit",
+    "is_admin": 1
+  },
+  {
+    "id": 25,
+    "category": "team_building",
+    "label": "Team building",
+    "amount": 120000.0,
+    "is_annual": 1,
+    "has_vat": 0,
+    "sort_order": 18,
+    "notes": "İllik, ƏDV yoxdur",
+    "is_admin": 1
+  }
+]

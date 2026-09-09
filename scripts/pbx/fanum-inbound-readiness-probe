@@ -1,0 +1,141 @@
+#!/usr/bin/env bash
+# Read-only inventory for wiring inbound Asterisk ringing into LeadDrive.
+#
+# The probe deliberately writes no files, changes no service state, reloads no
+# dialplan and originates no call. It emits only service state, SHA-256 digests,
+# fixed capability flags, config paths and redacted dialplan structure. It never
+# reads or prints an environment file.
+set -Eeuo pipefail
+umask 077
+export LC_ALL=C
+
+fail() {
+  printf 'fanum-inbound-readiness-probe: %s\n' "$1" >&2
+  exit 1
+}
+
+[ "$(id -u)" = "0" ] || fail "must run as root"
+[ "$#" -eq 0 ] || fail "takes no arguments"
+
+for tool in asterisk awk find grep id sed sha256sum sort systemctl; do
+  command -v "$tool" >/dev/null || fail "required tool is missing: $tool"
+done
+
+redact_stream() {
+  # Dialplan output is structural evidence, not a data export. Remove URLs,
+  # provider destinations, credential-shaped assignments and every digit so a
+  # DID, extension, address or customer number cannot leave the station.
+  sed -E \
+    -e 's#(https?|wss?)://[^[:space:],;)]+#<url>#gI' \
+    -e 's#(PJSIP|SIP|IAX2)/[^, )]+#\1/<party>#gI' \
+    -e 's#([[:alnum:]_]*(TOKEN|SECRET|PASSWORD|PASS|KEY)[[:alnum:]_]*[[:space:]]*[=:][[:space:]]*)[^, )]+#\1<redacted>#gI' \
+    -e 's/[0-9]/#/g'
+}
+
+digest_regular_file() {
+  local label="$1"
+  local path="$2"
+  local digest
+
+  if [ ! -f "$path" ] || [ -L "$path" ]; then
+    printf '%s=missing\n' "$label"
+    return 0
+  fi
+  digest="$(sha256sum "$path" | awk '{print $1}')"
+  printf '%s_sha256=%s\n' "$label" "$digest"
+}
+
+service_state="$(systemctl is-active asterisk 2>/dev/null || true)"
+printf 'asterisk_service=%s\n' "$service_state"
+[ "$service_state" = "active" ] || fail "asterisk is not active"
+
+voice_state="$(systemctl is-active fanum-voice 2>/dev/null || true)"
+printf 'fanum_voice_service=%s\n' "$voice_state"
+[ "$voice_state" = "active" ] || fail "fanum-voice is not active"
+digest_regular_file "fanum_voice_core" "/opt/fanum-voice/fanum-voice-core.py"
+
+version_report="$(asterisk -rx "core show version" 2>&1)" \
+  || fail "cannot read the Asterisk version"
+printf 'asterisk_version='
+printf '%s\n' "$version_report" | awk 'NR == 1 { print; exit }' | redact_stream
+
+endpoint_report="$(asterisk -rx "pjsip show endpoint fanum-provider" 2>&1)" \
+  || fail "cannot inspect endpoint fanum-provider"
+provider_context="$(
+  printf '%s\n' "$endpoint_report" \
+    | awk -F ':' '
+        tolower($1) ~ /^[[:space:]]*context[[:space:]]*$/ {
+          value = $2
+          sub(/^[[:space:]]+/, "", value)
+          sub(/[[:space:]]+$/, "", value)
+          print value
+          exit
+        }
+      '
+)"
+[ -n "$provider_context" ] || fail "fanum-provider has no readable inbound context"
+printf '%s' "$provider_context" | grep -qE '^[A-Za-z0-9_.-]+$' \
+  || fail "fanum-provider context has an unsafe shape"
+printf 'provider_context=%s\n' "$provider_context" | redact_stream
+
+show_dialplan_structure() {
+  local context="$1"
+  local report
+
+  report="$(asterisk -rx "dialplan show $context" 2>&1)" \
+    || fail "cannot inspect dialplan context: $context"
+  printf 'dialplan_context=%s\n' "$context" | redact_stream
+  printf '%s\n' "$report" \
+    | awk '
+        {
+          line = tolower($0)
+          if (line ~ /context .*created by/ || line ~ /agi\(/ ||
+              line ~ /stasis\(/ || line ~ /queue\(/ ||
+              line ~ /gosub\(/ || line ~ /goto\(/ || line ~ /dial\(/ ||
+              line ~ /answer\(/ || line ~ /hangup\(/ ||
+              line ~ /mixmonitor\(/) print
+        }
+      ' \
+    | redact_stream
+}
+
+show_dialplan_structure "$provider_context"
+show_dialplan_structure "fanum-answered-evidence"
+show_dialplan_structure "fanum-terminal-evidence"
+
+printf 'asterisk_config_references:\n'
+for needle in "[$provider_context]" "[fanum-answered-evidence]" "[fanum-terminal-evidence]"; do
+  while IFS= read -r path; do
+    [ -n "$path" ] && printf '  %s\n' "$path"
+  done < <(grep -RIlF --include='*.conf' -- "$needle" /etc/asterisk 2>/dev/null | sort || true)
+done
+
+digest_regular_file "extensions_fanum" "/etc/asterisk/extensions_fanum.conf"
+
+agi_count=0
+while IFS= read -r agi_path; do
+  [ -n "$agi_path" ] || continue
+  agi_count=$((agi_count + 1))
+  printf 'agi_path=%s\n' "$agi_path"
+  digest_regular_file "agi_${agi_count}" "$agi_path"
+  for capability in ringing answered terminal unknown_no_redial; do
+    if grep -Fq -- "$capability" "$agi_path"; then
+      printf 'agi_%s_has_%s=yes\n' "$agi_count" "$capability"
+    else
+      printf 'agi_%s_has_%s=no\n' "$agi_count" "$capability"
+    fi
+  done
+  if grep -Fq -- "/api/internal/asterisk/call-lifecycle" "$agi_path"; then
+    printf 'agi_%s_has_human_lifecycle_path=yes\n' "$agi_count"
+  else
+    printf 'agi_%s_has_human_lifecycle_path=no\n' "$agi_count"
+  fi
+done < <(
+  for root in /var/lib/asterisk/agi-bin /usr/share/asterisk/agi-bin /usr/local/sbin /var/lib/fanum-pbx-coordinator-deploy; do
+    [ -d "$root" ] || continue
+    find "$root" -maxdepth 2 -type f -name 'fanum-pbx-event-agi.py' -print
+  done | sort -u
+)
+[ "$agi_count" -gt 0 ] || fail "fanum-pbx-event-agi.py was not found"
+
+printf 'readiness probe complete; no file, service, or call was changed\n'

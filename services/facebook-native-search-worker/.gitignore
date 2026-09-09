@@ -1,0 +1,6 @@
+config.json
+secrets/
+state/
+__pycache__/
+tests/__pycache__/
+*.pyc

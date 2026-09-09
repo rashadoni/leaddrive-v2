@@ -1,0 +1,67 @@
+[
+  {
+    "name": "Pre-deploy AI-call safety preflight",
+    "script": "production-06.sh",
+    "afterPromotion": false
+  },
+  {
+    "name": "Deploy atomically on production",
+    "script": "production-11.sh",
+    "afterPromotion": false
+  },
+  {
+    "name": "Verify Social Monitoring queue scheduler",
+    "script": "production-12.sh",
+    "afterPromotion": false
+  },
+  {
+    "name": "Verify callback commitment scheduler",
+    "script": "production-13.sh",
+    "afterPromotion": false
+  },
+  {
+    "name": "Verify the MTM route day-close scheduler",
+    "script": "production-14.sh",
+    "afterPromotion": false
+  },
+  {
+    "name": "Verify missed inbound reconciliation scheduler",
+    "script": "production-15.sh",
+    "afterPromotion": false
+  },
+  {
+    "name": "Verify the AI-call queue scheduler",
+    "script": "production-16.sh",
+    "afterPromotion": true
+  },
+  {
+    "name": "Verify the Chatwoot inbound backstop scheduler",
+    "script": "production-17.sh",
+    "afterPromotion": true
+  },
+  {
+    "name": "Verify tenant isolation coverage",
+    "script": "production-18.sh",
+    "afterPromotion": true
+  },
+  {
+    "name": "Verify MTM mobile sync retention scheduler",
+    "script": "production-19.sh",
+    "afterPromotion": true
+  },
+  {
+    "name": "Post-deploy ping (public DB-path probe)",
+    "script": "production-21.sh",
+    "afterPromotion": true
+  },
+  {
+    "name": "Post-deploy revision check (is the new bundle actually serving?)",
+    "script": "production-22.sh",
+    "afterPromotion": true
+  },
+  {
+    "name": "Post-deploy feature smoke (login page + hashed assets)",
+    "script": "production-23.sh",
+    "afterPromotion": true
+  }
+]

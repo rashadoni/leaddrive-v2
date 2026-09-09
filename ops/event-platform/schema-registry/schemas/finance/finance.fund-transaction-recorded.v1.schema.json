@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:leaddrive:schema:finance.fund-transaction-recorded:v1",
+  "title": "Finance fund transaction recorded event v1",
+  "allOf": [
+    { "$ref": "urn:leaddrive:schema:event-envelope:v1" },
+    {
+      "type": "object",
+      "properties": {
+        "type": { "const": "finance.fund-transaction-recorded.v1" },
+        "dataschema": { "const": "urn:leaddrive:schema:finance.fund-transaction-recorded:v1" },
+        "aggregatetype": { "const": "fund" },
+        "classification": { "const": "confidential" },
+        "data": { "$ref": "#/$defs/data" }
+      }
+    }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 191,
+      "pattern": "^[^\\s:]+$"
+    },
+    "currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "money": {
+      "type": "string",
+      "pattern": "^-?(?:0|[1-9][0-9]{0,13})\\.[0-9]{4}$"
+    },
+    "nonNegativeMoney": {
+      "type": "string",
+      "pattern": "^(?:0|[1-9][0-9]{0,13})\\.[0-9]{4}$"
+    },
+    "positiveMoney": {
+      "allOf": [
+        { "$ref": "#/$defs/nonNegativeMoney" },
+        { "not": { "const": "0.0000" } }
+      ]
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fundId",
+        "transactionId",
+        "transactionType",
+        "amount",
+        "signedDelta",
+        "currency"
+      ],
+      "properties": {
+        "fundId": { "$ref": "#/$defs/identifier" },
+        "transactionId": { "$ref": "#/$defs/identifier" },
+        "transactionType": {
+          "enum": ["deposit", "withdrawal", "transfer_in", "transfer_out", "auto_allocation"]
+        },
+        "amount": { "$ref": "#/$defs/positiveMoney" },
+        "signedDelta": {
+          "allOf": [
+            { "$ref": "#/$defs/money" },
+            { "not": { "const": "0.0000" } }
+          ]
+        },
+        "resultingBalance": { "$ref": "#/$defs/nonNegativeMoney" },
+        "currency": { "$ref": "#/$defs/currency" },
+        "relatedType": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "relatedId": { "$ref": "#/$defs/identifier" },
+        "legacyBootstrap": { "type": "boolean" },
+        "legacyCompatibilityWrite": { "type": "boolean" }
+      }
+    }
+  }
+}

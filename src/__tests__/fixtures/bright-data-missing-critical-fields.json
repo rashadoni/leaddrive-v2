@@ -1,0 +1,21 @@
+{
+  "fixtureVersion": "bright-data-missing-critical-v1",
+  "instagramPost": {
+    "post_id": null,
+    "content_id": null,
+    "shortcode": null
+  },
+  "instagramComment": {
+    "comment_id": null
+  },
+  "facebookComment": {
+    "comment_text": null
+  },
+  "facebookReply": {
+    "reply": true,
+    "parent_comment_id": null
+  },
+  "tiktokComment": {
+    "post_id": null
+  }
+}

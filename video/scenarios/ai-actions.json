@@ -1,0 +1,139 @@
+{
+  "ai-actions": {
+    "route": "/ai/actions",
+    "group": {
+      "ru": "AI",
+      "en": "AI",
+      "az": "AI"
+    },
+    "title": {
+      "ru": "AI-советник",
+      "en": "AI Advisor",
+      "az": "AI məsləhətçi"
+    },
+    "goal": {
+      "ru": "Показать, как каждый день находить риск, проверять доказательства и отправлять безопасный следующий шаг в очередь согласования.",
+      "en": "Show how to find each day's risk, review evidence, and send a safe next step into approval.",
+      "az": "Gündəlik riski tapmağı, sübutu yoxlamağı və təhlükəsiz növbəti addımı təsdiq növbəsinə göndərməyi göstərmək."
+    },
+    "scenes": [
+      {
+        "target": "kpis",
+        "action": "hover",
+        "heading": {
+          "ru": "Начинаем с верхней сводки",
+          "en": "Start with the top summary",
+          "az": "Yuxarı xülasədən başlayın"
+        },
+        "body": {
+          "ru": "Курсор проходит по открытым рискам, критичным сигналам, деньгам под риском и действиям на согласовании. Так пользователь сразу понимает масштаб дня.",
+          "en": "The cursor moves across open risks, critical signals, money at risk, and pending actions so the user understands the day's scale immediately.",
+          "az": "Kursor açıq risklər, kritik siqnallar, risk altında məbləğ və təsdiq gözləyən əməliyyatlar üzərindən keçir ki, istifadəçi günün miqyasını dərhal anlasın."
+        }
+      },
+      {
+        "target": "rail",
+        "action": "click",
+        "heading": {
+          "ru": "Выбираем риск слева",
+          "en": "Select a risk on the left",
+          "az": "Solda riski seçin"
+        },
+        "body": {
+          "ru": "Курсор кликает первый критичный сигнал. Это открывает детальную карточку справа без перехода на другую страницу.",
+          "en": "The cursor clicks the first critical signal. The detail card opens on the right without leaving the page.",
+          "az": "Kursor ilk kritik siqnalı klikləyir. Detal kartı səhifədən çıxmadan sağda açılır."
+        }
+      },
+      {
+        "target": "detail",
+        "action": "hover",
+        "heading": {
+          "ru": "Проверяем доказательства",
+          "en": "Review the evidence",
+          "az": "Sübutları yoxlayın"
+        },
+        "body": {
+          "ru": "Показываем причину риска, факты, источник, dry-run preview и что будет создано или изменено после согласования.",
+          "en": "Show the reason, facts, source, dry-run preview, and what will be created or changed after approval.",
+          "az": "Risk səbəbini, faktları, mənbəni, dry-run ön baxışını və təsdiqdən sonra nəyin yaranacağını və ya dəyişəcəyini göstərin."
+        }
+      },
+      {
+        "target": "queueButton",
+        "action": "click",
+        "heading": {
+          "ru": "Добавляем действие в очередь",
+          "en": "Queue the action",
+          "az": "Əməliyyatı növbəyə əlavə edin"
+        },
+        "body": {
+          "ru": "Курсор нажимает Добавить в очередь. Это не отправка клиенту: действие переходит на ручную проверку.",
+          "en": "The cursor clicks Queue action. This is not a customer send; it moves the action into manual review.",
+          "az": "Kursor Növbəyə əlavə et düyməsini klikləyir. Bu müştəriyə göndəriş deyil; əməliyyat əl ilə yoxlamaya keçir."
+        }
+      },
+      {
+        "target": "ask",
+        "action": "click",
+        "heading": {
+          "ru": "Переходим в Спросить",
+          "en": "Move to Ask",
+          "az": "Soruş tabına keçin"
+        },
+        "body": {
+          "ru": "Курсор открывает вкладку Спросить и выбирает сценарий Деньги под риском. Advisor фильтрует сигналы и отвечает с источниками.",
+          "en": "The cursor opens Ask and chooses Money risk. Advisor filters signals and answers with sources.",
+          "az": "Kursor Soruş tabını açır və Pul riski ssenarisini seçir. Advisor siqnalları süzür və mənbələrlə cavab verir."
+        }
+      },
+      {
+        "target": "modules",
+        "action": "click",
+        "heading": {
+          "ru": "Проверяем покрытие модулей",
+          "en": "Check module coverage",
+          "az": "Modul əhatəsini yoxlayın"
+        },
+        "body": {
+          "ru": "Курсор открывает Модули. Здесь видно, какие источники активны, где нет прав и почему некоторые сигналы могут отсутствовать.",
+          "en": "The cursor opens Modules. This shows which sources are active, permission-blocked, or missing signals.",
+          "az": "Kursor Modullar bölməsini açır. Burada hansı mənbələrin aktiv, icazə ilə bloklu və ya siqnalsız olduğu görünür."
+        }
+      },
+      {
+        "target": "queue",
+        "action": "click",
+        "heading": {
+          "ru": "Одобряем в очереди",
+          "en": "Approve in the queue",
+          "az": "Növbədə təsdiqləyin"
+        },
+        "body": {
+          "ru": "Курсор открывает Очередь, показывает доказательства, предпросмотр действия и кнопки одобрить или отклонить.",
+          "en": "The cursor opens Queue, shows evidence, action preview, and approve or reject controls.",
+          "az": "Kursor Növbəni açır, sübutu, əməliyyat ön baxışını və təsdiq/rədd düymələrini göstərir."
+        }
+      },
+      {
+        "target": "history",
+        "action": "click",
+        "heading": {
+          "ru": "Завершаем историей",
+          "en": "Finish with history",
+          "az": "Tarixçə ilə bitirin"
+        },
+        "body": {
+          "ru": "Курсор открывает Историю. Пользователь видит, что решения и статус исполнения остаются в аудите.",
+          "en": "The cursor opens History. The user sees that decisions and execution status remain auditable.",
+          "az": "Kursor Tarixçəni açır. İstifadəçi qərarların və icra statusunun auditdə qaldığını görür."
+        }
+      }
+    ],
+    "outcome": {
+      "ru": "Пользователь понимает полный цикл: сводка риска, выбор сигнала, проверка доказательств, безопасная очередь согласования и аудит результата.",
+      "en": "The user understands the full cycle: risk summary, signal selection, evidence review, safe approval queue, and result audit.",
+      "az": "İstifadəçi tam dövrü anlayır: risk xülasəsi, siqnal seçimi, sübut yoxlaması, təhlükəsiz təsdiq növbəsi və nəticə auditi."
+    }
+  }
+}

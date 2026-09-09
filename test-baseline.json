@@ -1,0 +1,22 @@
+{
+  "knownFailingFiles": [
+    "src/__tests__/api-social-brand-protection.test.ts",
+    "src/__tests__/api-social-convert-to-lead.test.ts",
+    "src/__tests__/api-social-legal-reports.test.ts",
+    "src/__tests__/lead-ai-call-action-ui.test.ts",
+    "src/__tests__/lib-ai-advisor-query.test.ts",
+    "src/__tests__/lib-mtm-coverage-snapshot.test.ts",
+    "src/__tests__/lib-mtm-location-history.test.ts",
+    "src/__tests__/lib-social-discovery-auto-review-report.test.ts",
+    "src/__tests__/lib-social-discovery-review.test.ts",
+    "src/__tests__/lib-social-relevance-evaluator.test.ts",
+    "src/__tests__/lib-social-subject-relevance.test.ts",
+    "src/__tests__/migration-mtm-task-recurrence-schedule.test.ts",
+    "src/__tests__/mtm-operational-week-base-coverage-ui-contract.test.ts",
+    "src/__tests__/mtm-organization-grid-ui-contract.test.ts",
+    "src/__tests__/mtm-pharmacy-promotion-workspace-role-ux-contract.test.ts",
+    "src/__tests__/mtm-route-builder-filters-ui-contract.test.ts",
+    "src/__tests__/mtm-route-customer-prefill-ui-contract.test.ts",
+    "src/__tests__/zeytunpharm-swissmed-evidence-seed.test.ts"
+  ]
+}

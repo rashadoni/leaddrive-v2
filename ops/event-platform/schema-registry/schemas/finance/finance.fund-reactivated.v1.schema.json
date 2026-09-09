@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:leaddrive:schema:finance.fund-reactivated:v1",
+  "title": "Finance fund reactivated event v1",
+  "allOf": [
+    { "$ref": "urn:leaddrive:schema:event-envelope:v1" },
+    {
+      "type": "object",
+      "properties": {
+        "type": { "const": "finance.fund-reactivated.v1" },
+        "dataschema": { "const": "urn:leaddrive:schema:finance.fund-reactivated:v1" },
+        "aggregatetype": { "const": "fund" },
+        "classification": { "const": "confidential" },
+        "data": { "$ref": "#/$defs/data" }
+      }
+    }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 191,
+      "pattern": "^[^\\s:]+$"
+    },
+    "nonNegativeMoney": {
+      "type": "string",
+      "pattern": "^(?:0|[1-9][0-9]{0,13})\\.[0-9]{4}$"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fundId", "changedFields", "name", "currency", "isActive"],
+      "properties": {
+        "fundId": { "$ref": "#/$defs/identifier" },
+        "changedFields": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "contains": { "const": "isActive" },
+          "items": {
+            "enum": ["name", "description", "targetAmount", "currency", "color", "isActive"]
+          }
+        },
+        "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "description": {
+          "oneOf": [
+            { "type": "string", "maxLength": 1000 },
+            { "type": "null" }
+          ]
+        },
+        "targetAmount": {
+          "oneOf": [
+            { "$ref": "#/$defs/nonNegativeMoney" },
+            { "type": "null" }
+          ]
+        },
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+        "color": {
+          "oneOf": [
+            { "type": "string", "maxLength": 20 },
+            { "type": "null" }
+          ]
+        },
+        "isActive": { "const": true },
+        "legacyCompatibilityWrite": { "type": "boolean" }
+      }
+    }
+  }
+}

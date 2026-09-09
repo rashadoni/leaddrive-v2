@@ -1,0 +1,482 @@
+[
+  {
+    "id": 263,
+    "name": "AFF",
+    "category": "client",
+    "user_count": 94,
+    "cost_code": "",
+    "group_name": "Separated"
+  },
+  {
+    "id": 186,
+    "name": "Aac",
+    "category": "client",
+    "user_count": 60,
+    "cost_code": "",
+    "group_name": "Azmade"
+  },
+  {
+    "id": 9,
+    "name": "Afigroup",
+    "category": "client",
+    "user_count": 57,
+    "cost_code": "AFIGROUP",
+    "group_name": "AFI"
+  },
+  {
+    "id": 62,
+    "name": "Agec",
+    "category": "client",
+    "user_count": 17,
+    "cost_code": "AGEC",
+    "group_name": "Separated"
+  },
+  {
+    "id": 28,
+    "name": "Agf",
+    "category": "client",
+    "user_count": 68,
+    "cost_code": "",
+    "group_name": "Separated"
+  },
+  {
+    "id": 74,
+    "name": "Aghdamcityhotel",
+    "category": "client",
+    "user_count": 30,
+    "cost_code": "",
+    "group_name": "Tabia"
+  },
+  {
+    "id": 26,
+    "name": "Agrarco",
+    "category": "client",
+    "user_count": 103,
+    "cost_code": "AGRARCO",
+    "group_name": "AFI"
+  },
+  {
+    "id": 132,
+    "name": "Apc",
+    "category": "client",
+    "user_count": 131,
+    "cost_code": "APC",
+    "group_name": "Separated"
+  },
+  {
+    "id": 92,
+    "name": "Atsfood",
+    "category": "client",
+    "user_count": 251,
+    "cost_code": "ATSFOOD",
+    "group_name": "Novex"
+  },
+  {
+    "id": 140,
+    "name": "Azbadam",
+    "category": "client",
+    "user_count": 19,
+    "cost_code": "",
+    "group_name": "AFI"
+  },
+  {
+    "id": 34,
+    "name": "Azertexnolayn",
+    "category": "client",
+    "user_count": 395,
+    "cost_code": "AZERTEXNOLAYN",
+    "group_name": "Azmade"
+  },
+  {
+    "id": 37,
+    "name": "Azmade",
+    "category": "client",
+    "user_count": 36,
+    "cost_code": "AZMADE",
+    "group_name": "Azmade"
+  },
+  {
+    "id": 138,
+    "name": "Azrose",
+    "category": "client",
+    "user_count": 19,
+    "cost_code": "",
+    "group_name": "AFI"
+  },
+  {
+    "id": 21,
+    "name": "Azərşəkər",
+    "category": "client",
+    "user_count": 98,
+    "cost_code": "AZƏRŞƏKƏR",
+    "group_name": "Azersheker"
+  },
+  {
+    "id": 70,
+    "name": "Badamdarhotelandresidences",
+    "category": "client",
+    "user_count": 63,
+    "cost_code": "",
+    "group_name": "Tabia"
+  },
+  {
+    "id": 287,
+    "name": "Centralpoint",
+    "category": "client",
+    "user_count": 10,
+    "cost_code": "",
+    "group_name": "Tabia"
+  },
+  {
+    "id": 76,
+    "name": "Chenotpalacegabala",
+    "category": "client",
+    "user_count": 1,
+    "cost_code": "CHENOT",
+    "group_name": "Tabia"
+  },
+  {
+    "id": 146,
+    "name": "Chinarhotel",
+    "category": "client",
+    "user_count": 61,
+    "cost_code": "CHINARHOTEL",
+    "group_name": "Tabia"
+  },
+  {
+    "id": 88,
+    "name": "Designbureau",
+    "category": "client",
+    "user_count": 1,
+    "cost_code": "DESIGNBUREAU",
+    "group_name": "PMD"
+  },
+  {
+    "id": 93,
+    "name": "Dostagropark",
+    "category": "client",
+    "user_count": 16,
+    "cost_code": "DOSTAGROPARK",
+    "group_name": "Separated"
+  },
+  {
+    "id": 128,
+    "name": "Edenagro",
+    "category": "client",
+    "user_count": 136,
+    "cost_code": "EDENAGRO",
+    "group_name": "Azersheker"
+  },
+  {
+    "id": 71,
+    "name": "Excelsior",
+    "category": "client",
+    "user_count": 29,
+    "cost_code": "EXCELSIOR",
+    "group_name": "Tabia"
+  },
+  {
+    "id": 13,
+    "name": "Fmg",
+    "category": "client",
+    "user_count": 202,
+    "cost_code": "FMG",
+    "group_name": "PMD"
+  },
+  {
+    "id": 69,
+    "name": "Foton",
+    "category": "client",
+    "user_count": 90,
+    "cost_code": "FOTON",
+    "group_name": "Separated"
+  },
+  {
+    "id": 10,
+    "name": "Galaolives",
+    "category": "client",
+    "user_count": 2,
+    "cost_code": "",
+    "group_name": "AFI"
+  },
+  {
+    "id": 57,
+    "name": "Garabaghotel",
+    "category": "client",
+    "user_count": 50,
+    "cost_code": "GARABAGH",
+    "group_name": "Tabia"
+  },
+  {
+    "id": 56,
+    "name": "Gashalti",
+    "category": "client",
+    "user_count": 55,
+    "cost_code": "GASHALTI",
+    "group_name": "Tabia"
+  },
+  {
+    "id": 58,
+    "name": "Goygolresort",
+    "category": "client",
+    "user_count": 7,
+    "cost_code": "GOYGOL",
+    "group_name": "Tabia"
+  },
+  {
+    "id": 8,
+    "name": "Grandagro",
+    "category": "client",
+    "user_count": 74,
+    "cost_code": "GRANDAGRO",
+    "group_name": "AFI"
+  },
+  {
+    "id": 184,
+    "name": "Grandagroinvitro",
+    "category": "client",
+    "user_count": 74,
+    "cost_code": "",
+    "group_name": "AFI"
+  },
+  {
+    "id": 45,
+    "name": "Grandlogistics",
+    "category": "client",
+    "user_count": 1,
+    "cost_code": "GRANDLOGISTICS",
+    "group_name": "PMD"
+  },
+  {
+    "id": 118,
+    "name": "Greenplant",
+    "category": "client",
+    "user_count": 33,
+    "cost_code": "",
+    "group_name": "AFI"
+  },
+  {
+    "id": 72,
+    "name": "Hgibaku",
+    "category": "client",
+    "user_count": 55,
+    "cost_code": "",
+    "group_name": "Tabia"
+  },
+  {
+    "id": 15,
+    "name": "Ibk",
+    "category": "client",
+    "user_count": 23,
+    "cost_code": "IBK",
+    "group_name": "Separated"
+  },
+  {
+    "id": 84,
+    "name": "Jollyjoker",
+    "category": "client",
+    "user_count": 1,
+    "cost_code": "",
+    "group_name": ""
+  },
+  {
+    "id": 36,
+    "name": "Lankaransprings",
+    "category": "client",
+    "user_count": 80,
+    "cost_code": "LANKARANSPRINGS",
+    "group_name": "Tabia"
+  },
+  {
+    "id": 41,
+    "name": "Lecheq",
+    "category": "client",
+    "user_count": 19,
+    "cost_code": "",
+    "group_name": "AFI"
+  },
+  {
+    "id": 119,
+    "name": "Lkz",
+    "category": "client",
+    "user_count": 9,
+    "cost_code": "",
+    "group_name": "Novex"
+  },
+  {
+    "id": 121,
+    "name": "Lls",
+    "category": "client",
+    "user_count": 18,
+    "cost_code": "",
+    "group_name": "Azmade"
+  },
+  {
+    "id": 32,
+    "name": "Mars Overseas",
+    "category": "client",
+    "user_count": 351,
+    "cost_code": "MARS OVERSEAS",
+    "group_name": ""
+  },
+  {
+    "id": 171,
+    "name": "Mergroup",
+    "category": "client",
+    "user_count": 1,
+    "cost_code": "",
+    "group_name": "PMD"
+  },
+  {
+    "id": 160,
+    "name": "Novexagro",
+    "category": "client",
+    "user_count": 1,
+    "cost_code": "NOVEX",
+    "group_name": "Novex"
+  },
+  {
+    "id": 94,
+    "name": "Paulaner-brauhaus-baku",
+    "category": "client",
+    "user_count": 22,
+    "cost_code": "PAULANER-BRAUHAUS-BAKU",
+    "group_name": "Tabia"
+  },
+  {
+    "id": 7,
+    "name": "Pmd",
+    "category": "client",
+    "user_count": 1,
+    "cost_code": "PMD",
+    "group_name": ""
+  },
+  {
+    "id": 30,
+    "name": "Pmdgroup",
+    "category": "client",
+    "user_count": 1,
+    "cost_code": "PMDGROUP",
+    "group_name": "PMD"
+  },
+  {
+    "id": 144,
+    "name": "Pmdprojects",
+    "category": "client",
+    "user_count": 300,
+    "cost_code": "PMDPROJECTS",
+    "group_name": "PMD"
+  },
+  {
+    "id": 163,
+    "name": "Qalaalti Resort",
+    "category": "client",
+    "user_count": 50,
+    "cost_code": "QALAALTI",
+    "group_name": "Tabia"
+  },
+  {
+    "id": 59,
+    "name": "Qkz",
+    "category": "client",
+    "user_count": 25,
+    "cost_code": "QKZ",
+    "group_name": "Novex"
+  },
+  {
+    "id": 114,
+    "name": "Qubakz",
+    "category": "client",
+    "user_count": 11,
+    "cost_code": "",
+    "group_name": "Novex"
+  },
+  {
+    "id": 102,
+    "name": "Ramadaplazagence",
+    "category": "client",
+    "user_count": 41,
+    "cost_code": "RAMADA",
+    "group_name": "Tabia"
+  },
+  {
+    "id": 289,
+    "name": "Revery",
+    "category": "client",
+    "user_count": 28,
+    "cost_code": "",
+    "group_name": "Separated"
+  },
+  {
+    "id": 18,
+    "name": "Scandens",
+    "category": "client",
+    "user_count": 69,
+    "cost_code": "SCANDENS",
+    "group_name": "Separated"
+  },
+  {
+    "id": 77,
+    "name": "Shamakhipalace",
+    "category": "client",
+    "user_count": 54,
+    "cost_code": "",
+    "group_name": "Tabia"
+  },
+  {
+    "id": 130,
+    "name": "Shamkiragropark",
+    "category": "client",
+    "user_count": 31,
+    "cost_code": "",
+    "group_name": "AFI"
+  },
+  {
+    "id": 78,
+    "name": "Sparkbeton",
+    "category": "client",
+    "user_count": 49,
+    "cost_code": "SPARKBETON",
+    "group_name": "Azmade"
+  },
+  {
+    "id": 105,
+    "name": "Synergia",
+    "category": "client",
+    "user_count": 28,
+    "cost_code": "SYNERGIA",
+    "group_name": "Separated"
+  },
+  {
+    "id": 31,
+    "name": "Tabia",
+    "category": "client",
+    "user_count": 66,
+    "cost_code": "TABIA",
+    "group_name": "Tabia"
+  },
+  {
+    "id": 173,
+    "name": "Zafarbaglari",
+    "category": "client",
+    "user_count": 31,
+    "cost_code": "",
+    "group_name": "AFI"
+  },
+  {
+    "id": 5,
+    "name": "Zeytunpharma",
+    "category": "client",
+    "user_count": 350,
+    "cost_code": "ZEYTUNPHARMA",
+    "group_name": "Separated"
+  },
+  {
+    "id": 46,
+    "name": "Ztp",
+    "category": "client",
+    "user_count": 78,
+    "cost_code": "ZTP",
+    "group_name": "Azmade"
+  }
+]

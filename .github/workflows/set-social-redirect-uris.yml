@@ -1,0 +1,102 @@
+name: Set social redirect URIs on prod
+
+# Operator job: append the NON-SECRET Instagram-Login / TikTok OAuth redirect
+# URIs to the canonical production app env (only when missing) and restart PM2 with
+# the updated environment, so the OAuth start routes stop 500-ing on a missing
+# redirect URI. App ids / secrets are NOT touched here: Instagram App ID+Secret
+# are entered per-tenant in the channel card UI (encrypted in the DB), and
+# TikTok's client key/secret must be added to the canonical app env separately.
+#
+# Idempotent — an already-present key is left untouched (values are printed,
+# they are not secrets). Dispatch-only and serialized with deployments.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  set-env:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Setup pinned production SSH
+        uses: ./.github/actions/setup-production-ssh
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server-host: ${{ secrets.SERVER_HOST }}
+          known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+
+      - name: Append redirect URIs and restart PM2
+        run: |
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          APP_DIR="/opt/leaddrive-v2"
+          APP_ENV_FILE="${APP_ENV_FILE:-/etc/leaddrive/app.env}"
+          ENV="$APP_ENV_FILE"
+          ENV_DIR="$(dirname -- "$ENV")"
+          APP_ENV_LOCK_FILE="${APP_ENV_LOCK_FILE:-/run/lock/leaddrive-app-env.lock}"
+          [ -d "$ENV_DIR" ] && [ ! -L "$ENV_DIR" ] || { echo "FATAL: app env parent $ENV_DIR missing or is a symlink"; exit 1; }
+          [ "$(stat -c '%U:%G' "$ENV_DIR")" = "root:root" ] || { echo "FATAL: app env parent must be owned by root:root"; exit 1; }
+          ENV_DIR_MODE="$(stat -c '%a' "$ENV_DIR")"
+          (( (8#$ENV_DIR_MODE & 8#022) == 0 )) || { echo "FATAL: app env parent must not be group- or world-writable"; exit 1; }
+          [ -f "$ENV" ] && [ ! -L "$ENV" ] || { echo "FATAL: canonical app env $ENV missing or is a symlink"; exit 1; }
+          [ "$(stat -c '%U:%G:%a' "$ENV")" = "root:root:600" ] || { echo "FATAL: canonical app env must be root:root mode 0600"; exit 1; }
+          [ -d "$(dirname -- "$APP_ENV_LOCK_FILE")" ] || { echo "FATAL: app-env lock parent missing"; exit 1; }
+          exec 9>"$APP_ENV_LOCK_FILE"
+          flock -w 120 9 || { echo "FATAL: another canonical app-env update is running"; exit 1; }
+          ENV_STAGE="$(mktemp "$ENV_DIR/.app.env.social-redirect.XXXXXX")"
+          cleanup() { [ -z "${ENV_STAGE:-}" ] || rm -f -- "$ENV_STAGE"; }
+          trap cleanup EXIT
+          cp --preserve=mode,ownership "$ENV" "$ENV_STAGE"
+
+          IG_URI="https://app.leaddrivecrm.org/api/v1/social/oauth/instagram/callback"
+          TT_URI="https://app.leaddrivecrm.org/api/v1/social/oauth/tiktok/callback"
+
+          changed=0
+          ensure_env() {
+            local key="$1" value="$2"
+            if grep -Eq "^[[:space:]]*(export[[:space:]]+)?${key}=" "$ENV_STAGE"; then
+              echo "$key already set — left untouched"
+            else
+              printf '\n%s=%s\n' "$key" "$value" >> "$ENV_STAGE"
+              echo "$key appended"
+              changed=1
+            fi
+          }
+          ensure_env INSTAGRAM_REDIRECT_URI "$IG_URI"
+          ensure_env TIKTOK_REDIRECT_URI "$TT_URI"
+
+          if [ "$changed" = "1" ]; then
+            # ENV_STAGE lives in $ENV_DIR, so this is an atomic replacement of
+            # the real canonical app env rather than a write through a symlink.
+            mv -f "$ENV_STAGE" "$ENV"
+            ENV_STAGE=""
+            echo "--- resulting values (non-secret) ---"
+            grep -E "^(INSTAGRAM_REDIRECT_URI|TIKTOK_REDIRECT_URI)=" "$ENV" || true
+            # PM2 inherited its env at start; --update-env merges the current
+            # shell env over it, so export exactly the keys we appended.
+            export INSTAGRAM_REDIRECT_URI="$IG_URI" TIKTOK_REDIRECT_URI="$TT_URI"
+            pm2 restart leaddrive-v2 --update-env
+            echo "--- health ---"
+            sleep 12
+            curl -sS -o /dev/null -w "ping HTTP %{http_code}\n" --max-time 15 \
+              "https://app.leaddrivecrm.org/api/v1/ping" || true
+          else
+            echo "--- resulting values (non-secret) ---"
+            grep -E "^(INSTAGRAM_REDIRECT_URI|TIKTOK_REDIRECT_URI)=" "$ENV" || true
+            echo "No changes — PM2 restart skipped"
+          fi
+          REMOTE
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

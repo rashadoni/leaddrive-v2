@@ -1,0 +1,46 @@
+{
+  "url": "https://www.facebook.com/example/posts/POST123/",
+  "post_id": "facebook-post-test-123",
+  "shortcode": "POST123",
+  "content": "Synthetic Facebook video post for contract testing",
+  "date_posted": "2026-07-13T12:15:00.000Z",
+  "timestamp": "2026-07-13T12:15:00.000Z",
+  "profile_id": "facebook-profile-test-1",
+  "profile_handle": "synthetic_page",
+  "user_handle": "synthetic_page",
+  "user_username_raw": "Synthetic Page",
+  "user_url": "https://www.facebook.com/synthetic_page",
+  "page_logo": "https://cdn.example.test/facebook-avatar.jpg",
+  "post_type": "Post",
+  "likes": 238,
+  "num_comments": 14,
+  "num_shares": 9,
+  "video_view_count": 2400,
+  "play_count": null,
+  "post_image": "https://cdn.example.test/facebook-cover.jpg",
+  "attachments": [
+    {
+      "id": "facebook-video-test-1",
+      "type": "video",
+      "url": "https://www.facebook.com/reel/VIDEO123/",
+      "video_length": "125767",
+      "source_type": null,
+      "attachment_url": "https://cdn.example.test/facebook-video-page",
+      "video_url": "https://cdn.example.test/facebook-video.mp4",
+      "thumbnail_url": "https://cdn.example.test/facebook-video-cover.jpg"
+    },
+    {
+      "id": "facebook-audio-test-1",
+      "type": "audio",
+      "url": "https://cdn.example.test/facebook-audio.mp4",
+      "video_length": null,
+      "source_type": "audio/mp4",
+      "attachment_url": null,
+      "video_url": null,
+      "thumbnail_url": null
+    }
+  ],
+  "input": {
+    "url": "https://www.facebook.com/example/posts/POST123/"
+  }
+}

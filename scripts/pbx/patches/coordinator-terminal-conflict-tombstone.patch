@@ -1,0 +1,147 @@
+Stop retrying evidence callbacks the CRM has permanently refused.  A 409 on
+the provider_unknown/provider_connected routes means the call already holds a
+CONFLICTING terminal truth in the CRM; that state is claimed exactly once and
+matching replays return 200, so the 409 can never succeed on a retry.  The
+live coordinator retried one such row every ~5 minutes forever (288
+"callback retained ... status=409" journal lines per day).
+
+Applies to /usr/local/lib/fanum-voice/fanum_pbx_coordinator.py on the PBX.
+
+  before: 2edfb84f12487fcd0a1b7d23c161ec829ea431b164be756b208fbddc05516a15
+  after:  c81d7b047b49b69e9dbe2430793f5f27eea13dff3254e2cfcea15ee09f25f681
+
+The `before` digest is the dial-diagnostics build
+(coordinator-dial-diagnostics.patch), live on the PBX since 2026-08-26 — the
+owner deployed it while this patch was being prepared, so the owner's next
+single deploy takes live straight to the `after` digest with just the
+tombstone (a three-block diff).  Rolled forward together with this patch
+(same PR): PAYLOAD_DIGESTS in scripts/pbx/fanum-pbx-stage (coordinator line),
+EXPECTED_COORDINATOR_SHA256 inside the wrapper
+(cutover-wrapper-terminal-conflict-pin.patch), EXPECTED_PBX_WRAPPER_SHA256 in
+.github/workflows/set-voice-provider-registry-cutover.yml and
+src/__tests__/voice-provider-registry-cutover-workflow.test.ts.
+
+The tombstone is deliberately narrow and fail-closed:
+
+  - only the two evidence routes; ai_result/human_lifecycle 409s keep the
+    existing retry behavior until their conflict semantics get their own
+    review;
+  - only when the response body is byte-for-byte the CRM's own verdict
+    {"success":false,"analysisStatus":"conflict"} (route.ts
+    conflictingTerminalResult, the sole 409 source on that path); an
+    unreadable, empty, or extended body stays retryable;
+  - the outbox row is never deleted: delivered_at stops the retry loop while
+    last_error_type='terminal_conflict' and last_http_status=409 retain the
+    verdict (mark_delivered clears those columns, so tombstones stay
+    distinguishable from accepted deliveries);
+  - attempts is incremented like mark_delivered does, keeping the
+    "attempts = HTTP sends" invariant (deliberate deviation from the reviewed
+    design note, recorded here);
+  - the payload-hash guard makes the settle race-safe: a concurrent settle or
+    a changed payload leaves the row alone and nothing is logged.
+
+Verified offline (no calls placed): station bundle suite keeps an identical
+failure fingerprint before/after the change; the updated contract suite adds
+six tombstone tests (exact-body tombstone with full audit row, raised-vs-
+returned HTTPError paths, fail-closed non-exact bodies, non-evidence routes
+untouched, hash-guarded single settle); test_candidate_payload.py still
+passes.  The stuck live row settles itself on the first due drain tick after
+deploy — no manual sqlite surgery.
+
+--- fanum_pbx_coordinator.py (candidate 2edfb84f)
++++ fanum_pbx_coordinator.py (candidate c81d7b04)
+@@ -1450,6 +1450,35 @@
+             )
+             connection.commit()
+
++    def mark_terminal_conflict(self, event: OutboxEvent, delivered_at: str | None = None) -> bool:
++        """Tombstone an undelivered event the CRM permanently refused with a
++        terminal-conflict verdict.  The row stays for audit: delivered_at
++        stops the retry loop while last_error_type/last_http_status retain the
++        409 evidence that mark_delivered would clear.  Returns True only when
++        this call settled the row; a concurrent settle or a changed payload
++        leaves the row to its owner."""
++        with self.connect() as connection:
++            connection.execute("BEGIN IMMEDIATE")
++            row = connection.execute(
++                "SELECT payload_hash FROM callback_outbox WHERE event_id = ?", (event.event_id,)
++            ).fetchone()
++            expected_hash = hashlib.sha256(event.payload_json.encode("utf-8")).hexdigest()
++            if row is None or not hmac.compare_digest(row["payload_hash"], expected_hash):
++                connection.rollback()
++                return False
++            cursor = connection.execute(
++                """
++                UPDATE callback_outbox
++                   SET delivered_at = ?, attempts = attempts + 1,
++                       last_error_type = 'terminal_conflict', last_http_status = 409
++                 WHERE event_id = ? AND delivered_at IS NULL
++                """,
++                (delivered_at or utc_now(), event.event_id),
++            )
++            changed = cursor.rowcount == 1
++            connection.commit()
++            return changed
++
+     def outbox_row(self, event_id: str) -> sqlite3.Row | None:
+         with self.connect() as connection:
+             return connection.execute(
+@@ -1562,6 +1591,24 @@
+             return AriResult("unknown", None)
+
+
++def is_terminal_evidence_conflict(route: str, status_code: object, body: object) -> bool:
++    """True only for the CRM's own permanent 409 verdict on an evidence route.
++
++    The CRM claims a terminal outcome exactly once and answers matching
++    evidence replays with 200, so this exact conflict body can never succeed
++    on a retry.  Anything else — other routes, other statuses, unreadable or
++    non-exact bodies — stays retryable (fail closed)."""
++    if route not in ("provider_connected", "provider_unknown"):
++        return False
++    if status_code != 409 or not isinstance(body, bytes) or len(body) > 65_536:
++        return False
++    try:
++        payload = json.loads(body.decode("utf-8"))
++    except (UnicodeDecodeError, json.JSONDecodeError):
++        return False
++    return payload == {"success": False, "analysisStatus": "conflict"}
++
++
+ class CallbackDelivery:
+     def __init__(
+         self,
+@@ -1619,6 +1666,14 @@
+                 if len(response_body) > 65_536:
+                     raise ContractError("callback_response_too_large")
+                 if not 200 <= status_code < 300:
++                    if is_terminal_evidence_conflict(event.route, status_code, response_body):
++                        if self.store.mark_terminal_conflict(event):
++                            stats["delivered"] += 1
++                            logging.warning(
++                                "PBX callback tombstoned route=%s reason=terminal_conflict status=409",
++                                event.route,
++                            )
++                        continue
+                     raise urllib.error.HTTPError(url, status_code, "callback rejected", {}, None)
+                 if event.route == "provider_connected":
+                     try:
+@@ -1644,6 +1699,18 @@
+                 stats["delivered"] += 1
+                 logging.info("PBX callback delivered route=%s", event.route)
+             except urllib.error.HTTPError as error:
++                try:
++                    error_body = error.read(65_537)
++                except Exception:
++                    error_body = None
++                if is_terminal_evidence_conflict(event.route, error.code, error_body):
++                    if self.store.mark_terminal_conflict(event):
++                        stats["delivered"] += 1
++                        logging.warning(
++                            "PBX callback tombstoned route=%s reason=terminal_conflict status=409",
++                            event.route,
++                        )
++                    continue
+                 delay = self.retry_delay(event.attempts)
+                 self.store.mark_retry(
+                     event, now=timestamp, error_type="HTTPError", http_status=error.code,

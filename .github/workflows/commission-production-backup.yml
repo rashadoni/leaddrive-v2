@@ -1,0 +1,337 @@
+name: Commission production backup
+
+# Mutating, dispatch-only recovery control. Every run is bound to the current
+# main SHA, serialized with deployment, and audited through the production
+# environment. Private age identity material is never accepted as an input.
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: "Bounded commissioning stage"
+        required: true
+        type: choice
+        options:
+          - install-backup-tools
+          - activate-backup-encryption
+          - run-bootstrap-backup
+          - certify-bootstrap-restore
+          - run-verified-backup
+          - certify-offline-restore
+      expected_main_sha:
+        description: "Exact current 40-character main SHA"
+        required: true
+        type: string
+      confirmation:
+        description: "Exact operation-specific confirmation phrase from the runbook"
+        required: true
+        type: string
+      recipient_sha256:
+        description: "SHA-256 of the exact public age recipient; never enter the private identity"
+        required: false
+        type: string
+      key_custody_attestation:
+        description: "Exact two-copy/independent-decrypt attestation from the runbook"
+        required: false
+        type: string
+      evidence_ref:
+        description: "Non-secret ticket or offline evidence reference"
+        required: false
+        type: string
+      evidence_at_utc:
+        description: "Exact signed-evidence timestamp in UTC RFC3339 format"
+        required: false
+        type: string
+      offline_operator:
+        description: "Independent operator identifier; must differ from the Actions actor"
+        required: false
+        type: string
+      candidate_sha256:
+        description: "Candidate digest emitted by run-verified-backup"
+        required: false
+        type: string
+      offline_evidence_bundle_base64:
+        description: "Base64 bundle emitted by an offline verifier; contains no private key"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  commission:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    environment: production
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+    steps:
+      - name: Checkout dispatched revision
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Require independently protected production environment
+        uses: ./.github/actions/assert-production-environment-protection
+        with:
+          github-token: ${{ github.token }}
+
+      - name: Bind operation to the exact current main revision
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+          IN_OPERATION: ${{ inputs.operation }}
+          IN_CONFIRMATION: ${{ inputs.confirmation }}
+          IN_RECIPIENT_SHA256: ${{ inputs.recipient_sha256 }}
+          IN_KEY_ATTESTATION: ${{ inputs.key_custody_attestation }}
+          IN_EVIDENCE_REF: ${{ inputs.evidence_ref }}
+          IN_EVIDENCE_AT: ${{ inputs.evidence_at_utc }}
+          IN_OFFLINE_OPERATOR: ${{ inputs.offline_operator }}
+          IN_CANDIDATE_SHA256: ${{ inputs.candidate_sha256 }}
+          IN_OFFLINE_EVIDENCE_BUNDLE: ${{ inputs.offline_evidence_bundle_base64 }}
+        run: |
+          set -euo pipefail
+          [ "$GITHUB_REF" = "refs/heads/main" ] || {
+            echo "::error::Production commissioning may only be dispatched from main"
+            exit 1
+          }
+          SHA_RE='^[0-9a-f]{40}$'
+          [[ "$EXPECTED_MAIN_SHA" =~ $SHA_RE ]] || {
+            echo "::error::expected_main_sha must be an exact lowercase 40-character SHA"
+            exit 1
+          }
+          git fetch --no-tags --depth=1 origin refs/heads/main
+          CURRENT_MAIN_SHA="$(git rev-parse FETCH_HEAD)"
+          [ "$GITHUB_SHA" = "$CURRENT_MAIN_SHA" ] \
+            && [ "$EXPECTED_MAIN_SHA" = "$CURRENT_MAIN_SHA" ] || {
+              echo "::error::Dispatch revision is not the exact current main head"
+              exit 1
+            }
+
+          case "$IN_OPERATION" in
+            install-backup-tools)
+              EXPECTED_CONFIRMATION="INSTALL_PINNED_BACKUP_TOOLS_AND_EXTEND_LOG_RETENTION_ON_13_140_132_245" ;;
+            activate-backup-encryption)
+              EXPECTED_CONFIRMATION="ENABLE_AGE_BACKUPS_ON_13_140_132_245" ;;
+            run-bootstrap-backup)
+              EXPECTED_CONFIRMATION="CREATE_BOOTSTRAP_BACKUP_ON_13_140_132_245" ;;
+            certify-bootstrap-restore)
+              EXPECTED_CONFIRMATION="CERTIFY_BOOTSTRAP_RESTORE_ON_13_140_132_245" ;;
+            run-verified-backup)
+              EXPECTED_CONFIRMATION="CREATE_FULL_RECOVERY_BACKUP_ON_13_140_132_245" ;;
+            certify-offline-restore)
+              EXPECTED_CONFIRMATION="CERTIFY_FULL_RECOVERY_ON_13_140_132_245" ;;
+            *)
+              echo "::error::Unsupported commissioning operation"
+              exit 1 ;;
+          esac
+          [ "$IN_CONFIRMATION" = "$EXPECTED_CONFIRMATION" ] || {
+            echo "::error::Exact operation confirmation does not match"
+            exit 1
+          }
+
+          EMPTY_FIELDS="$IN_RECIPIENT_SHA256$IN_KEY_ATTESTATION$IN_EVIDENCE_REF$IN_EVIDENCE_AT$IN_OFFLINE_OPERATOR$IN_CANDIDATE_SHA256$IN_OFFLINE_EVIDENCE_BUNDLE"
+          if [ "$IN_OPERATION" = "install-backup-tools" ]; then
+            [ -z "$EMPTY_FIELDS" ] || {
+              echo "::error::Tool installation does not accept key or evidence inputs"
+              exit 1
+            }
+          else
+            [[ "$IN_RECIPIENT_SHA256" =~ ^[0-9a-f]{64}$ ]] || {
+              echo "::error::recipient_sha256 must be an exact lowercase SHA-256"
+              exit 1
+            }
+          fi
+
+          if [ "$IN_OPERATION" = "activate-backup-encryption" ] \
+            || [ "$IN_OPERATION" = "certify-bootstrap-restore" ] \
+            || [ "$IN_OPERATION" = "certify-offline-restore" ]; then
+            [ "$IN_KEY_ATTESTATION" = "TWO_READABLE_OFFLINE_COPIES_AND_INDEPENDENT_DECRYPT_CONFIRMED" ] || {
+              echo "::error::Offline-key custody attestation is missing"
+              exit 1
+            }
+            [[ "$IN_EVIDENCE_REF" =~ ^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$ ]] || {
+              echo "::error::evidence_ref has an unsafe shape"
+              exit 1
+            }
+            [[ "$IN_EVIDENCE_AT" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]] || {
+              echo "::error::evidence_at_utc must use exact UTC RFC3339 seconds"
+              exit 1
+            }
+            [[ "$IN_OFFLINE_OPERATOR" =~ ^[A-Za-z0-9][A-Za-z0-9_.@-]{0,79}$ ]] || {
+              echo "::error::offline_operator has an unsafe shape"
+              exit 1
+            }
+            [ "${IN_OFFLINE_OPERATOR,,}" != "${GITHUB_ACTOR,,}" ] || {
+              echo "::error::Offline verification must be performed by an independent operator"
+              exit 1
+            }
+          fi
+
+          if [ "$IN_OPERATION" = "activate-backup-encryption" ]; then
+            [ -z "$IN_CANDIDATE_SHA256" ] || {
+              echo "::error::Activation may not claim a completed archive restore"
+              exit 1
+            }
+            [[ "$IN_OFFLINE_EVIDENCE_BUNDLE" =~ ^[A-Za-z0-9+/=]+$ ]] \
+              && [ "${#IN_OFFLINE_EVIDENCE_BUNDLE}" -le 60000 ] || {
+                echo "::error::Signed key-custody evidence bundle is missing or invalid"
+                exit 1
+              }
+          elif [ "$IN_OPERATION" = "run-bootstrap-backup" ] \
+            || [ "$IN_OPERATION" = "run-verified-backup" ]; then
+            [ -z "$IN_KEY_ATTESTATION$IN_EVIDENCE_REF$IN_EVIDENCE_AT$IN_OFFLINE_OPERATOR$IN_CANDIDATE_SHA256$IN_OFFLINE_EVIDENCE_BUNDLE" ] || {
+              echo "::error::Backup creation accepts only recipient_sha256"
+              exit 1
+            }
+          elif [ "$IN_OPERATION" = "certify-bootstrap-restore" ] \
+            || [ "$IN_OPERATION" = "certify-offline-restore" ]; then
+            [[ "$IN_CANDIDATE_SHA256" =~ ^[0-9a-f]{64}$ ]] || {
+                echo "::error::Candidate digest is required"
+                exit 1
+              }
+            [[ "$IN_OFFLINE_EVIDENCE_BUNDLE" =~ ^[A-Za-z0-9+/=]+$ ]] \
+              && [ "${#IN_OFFLINE_EVIDENCE_BUNDLE}" -le 60000 ] || {
+                echo "::error::Signed archive-restore evidence bundle is missing or invalid"
+                exit 1
+              }
+          fi
+
+      - name: Setup pinned production SSH
+        uses: ./.github/actions/setup-production-ssh
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server-host: ${{ secrets.SERVER_HOST }}
+          known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+
+      - name: Create protected remote input stage
+        run: |
+          set -euo pipefail
+          REMOTE_STAGE_DIR="$(ssh -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            'set -euo pipefail; [ "$(id -u)" = 0 ]; umask 077; stage="$(mktemp -d /var/tmp/leaddrive-backup-commission-stage.XXXXXXXXXXXX)"; chmod 0700 "$stage"; [ "$(stat -c "%U:%G:%a" "$stage")" = root:root:700 ]; printf "%s" "$stage"')"
+          [[ "$REMOTE_STAGE_DIR" =~ ^/var/tmp/leaddrive-backup-commission-stage\.[A-Za-z0-9]{6,64}$ ]] || {
+            echo "::error::Production host returned an unsafe commissioning stage path"
+            exit 1
+          }
+          printf 'REMOTE_STAGE_DIR=%s\n' "$REMOTE_STAGE_DIR" >>"$GITHUB_ENV"
+
+      - name: Stage signed offline evidence and verifier allowlist
+        if: ${{ inputs.operation == 'activate-backup-encryption' || inputs.operation == 'certify-bootstrap-restore' || inputs.operation == 'certify-offline-restore' }}
+        env:
+          EVIDENCE_BUNDLE_BASE64: ${{ inputs.offline_evidence_bundle_base64 }}
+          OFFLINE_ALLOWED_SIGNERS: ${{ secrets.BACKUP_OFFLINE_ALLOWED_SIGNERS }}
+        run: |
+          set -euo pipefail
+          STAGE_DIR="$RUNNER_TEMP/leaddrive-backup-evidence-$GITHUB_RUN_ID"
+          install -d -m 0700 "$STAGE_DIR"
+          printf '%s' "$EVIDENCE_BUNDLE_BASE64" \
+            | base64 --decode >"$STAGE_DIR/evidence.tar"
+          ENTRIES="$(tar -tf "$STAGE_DIR/evidence.tar")"
+          [ "$ENTRIES" = $'evidence.env\nevidence.env.sig' ] || {
+            echo "::error::Offline evidence bundle has an unexpected layout"
+            exit 1
+          }
+          tar -tvf "$STAGE_DIR/evidence.tar" \
+            | awk '$1 !~ /^-/ { unsafe=1 } END { exit unsafe }' || {
+              echo "::error::Offline evidence bundle contains a link or special file"
+              exit 1
+            }
+          printf '%s\n' "$OFFLINE_ALLOWED_SIGNERS" >"$STAGE_DIR/allowed_signers"
+          awk '
+            NF != 3 || $1 !~ /^[A-Za-z0-9][A-Za-z0-9_.@-]{0,79}$/ \
+              || $2 != "ssh-ed25519" || $3 !~ /^AAAA[A-Za-z0-9+\/=]+$/ { bad=1 }
+            END { if (NR < 1 || bad) exit 1 }
+          ' "$STAGE_DIR/allowed_signers" || {
+            echo "::error::BACKUP_OFFLINE_ALLOWED_SIGNERS must contain strict principal/key records"
+            exit 1
+          }
+          chmod 0600 "$STAGE_DIR/evidence.tar" "$STAGE_DIR/allowed_signers"
+          scp -i ~/.ssh/deploy_key \
+            "$STAGE_DIR/evidence.tar" \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:"$REMOTE_STAGE_DIR/evidence.tar"
+          scp -i ~/.ssh/deploy_key \
+            "$STAGE_DIR/allowed_signers" \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:"$REMOTE_STAGE_DIR/allowed-signers"
+
+      - name: Stage exact-main backup programs
+        if: ${{ inputs.operation == 'run-bootstrap-backup' || inputs.operation == 'run-verified-backup' }}
+        run: |
+          set -euo pipefail
+          STAGE_DIR="$RUNNER_TEMP/leaddrive-backup-code-$GITHUB_RUN_ID"
+          install -d -m 0700 "$STAGE_DIR"
+          LC_ALL=C sort -cu ops/backup/recovery-program-set.files
+          mapfile -t RECOVERY_PROGRAM_FILES < ops/backup/recovery-program-set.files
+          scripts/backup/hash-recovery-db-contract.sh --manifest "$GITHUB_WORKSPACE" \
+            >"$STAGE_DIR/recovery-db-contract.tsv"
+          RECOVERY_DB_CONTRACT_SHA="$(sha256sum "$STAGE_DIR/recovery-db-contract.tsv" | awk '{print $1}')"
+          [ "$RECOVERY_DB_CONTRACT_SHA" = \
+            "$(scripts/backup/hash-recovery-db-contract.sh "$GITHUB_WORKSPACE")" ] || {
+            echo "::error::Recovery DB contract manifest is inconsistent"
+            exit 1
+          }
+          [[ "$RECOVERY_DB_CONTRACT_SHA" =~ ^[0-9a-f]{64}$ ]] || {
+            echo "::error::Recovery DB contract digest is invalid"
+            exit 1
+          }
+          printf '%s\n' "$RECOVERY_DB_CONTRACT_SHA" >"$STAGE_DIR/recovery-db-contract.sha256"
+          tar -C . -cf "$STAGE_DIR/backup-code.tar" \
+            ops/backup/recovery-program-set.files \
+            "${RECOVERY_PROGRAM_FILES[@]}" \
+            -C "$STAGE_DIR" recovery-db-contract.tsv recovery-db-contract.sha256
+          EXPECTED_ENTRIES="$(printf '%s\n' \
+            ops/backup/recovery-program-set.files \
+            "${RECOVERY_PROGRAM_FILES[@]}" \
+            recovery-db-contract.tsv \
+            recovery-db-contract.sha256)"
+          [ "$(tar -tf "$STAGE_DIR/backup-code.tar")" = "$EXPECTED_ENTRIES" ] || {
+            echo "::error::Exact-main backup program bundle has an unexpected layout"
+            exit 1
+          }
+          EXPECTED_SET_SHA="$(scripts/backup/hash-recovery-program-set.sh "$GITHUB_WORKSPACE")"
+          [[ "$EXPECTED_SET_SHA" =~ ^[0-9a-f]{64}$ ]] || {
+            echo "::error::Recovery program set digest is invalid"
+            exit 1
+          }
+          chmod 0600 "$STAGE_DIR/backup-code.tar"
+          scp -i ~/.ssh/deploy_key \
+            "$STAGE_DIR/backup-code.tar" \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:"$REMOTE_STAGE_DIR/backup-code.tar"
+
+      - name: Execute one bounded commissioning stage
+        env:
+          OPERATION: ${{ inputs.operation }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+          RECIPIENT_SHA256: ${{ inputs.recipient_sha256 }}
+          KEY_ATTESTATION: ${{ inputs.key_custody_attestation }}
+          EVIDENCE_REF: ${{ inputs.evidence_ref }}
+          EVIDENCE_AT: ${{ inputs.evidence_at_utc }}
+          OFFLINE_OPERATOR: ${{ inputs.offline_operator }}
+          CANDIDATE_SHA256: ${{ inputs.candidate_sha256 }}
+        run: |
+          set -euo pipefail
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 \
+            -o ServerAliveCountMax=4 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            'bash -s' -- \
+            "$OPERATION" "$CONFIRMATION" "$EXPECTED_MAIN_SHA" \
+            "$GITHUB_ACTOR" "$GITHUB_RUN_ID" "$RECIPIENT_SHA256" \
+            "$KEY_ATTESTATION" "$EVIDENCE_REF" "$EVIDENCE_AT" \
+            "$OFFLINE_OPERATOR" "$CANDIDATE_SHA256" "$REMOTE_STAGE_DIR" \
+            < scripts/backup/commission-production-backup.sh
+
+      - name: Cleanup
+        if: always()
+        run: |
+          if [ -f ~/.ssh/deploy_key ]; then
+            if [[ "${REMOTE_STAGE_DIR:-}" =~ ^/var/tmp/leaddrive-backup-commission-stage\.[A-Za-z0-9]{6,64}$ ]]; then
+              ssh -o ConnectTimeout=15 -i ~/.ssh/deploy_key \
+                ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+                "rm -rf -- '$REMOTE_STAGE_DIR'" >/dev/null 2>&1 || true
+            fi
+          fi
+          rm -f ~/.ssh/deploy_key
+          rm -rf -- "$RUNNER_TEMP/leaddrive-backup-evidence-$GITHUB_RUN_ID"
+          rm -rf -- "$RUNNER_TEMP/leaddrive-backup-code-$GITHUB_RUN_ID"

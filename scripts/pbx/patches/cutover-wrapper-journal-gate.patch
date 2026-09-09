@@ -1,0 +1,46 @@
+Stop failing the cutover on an error this host logs no matter what.
+
+Applied on top of cutover-wrapper-dialplan-gate.patch.
+
+With the dialplan gate fixed the cutover finished the switch, passed every
+live verification, and failed on `service_logged_error_after_cutover`. That
+gate asks whether the coordinator, nginx or Asterisk logged anything at error
+priority during the cutover window. What they logged was this, four times:
+
+  asterisk: radcli: rc_read_config: can't open
+  /etc/radiusclient-ng/radiusclient.conf: No such file or directory
+
+Asterisk on this host loads a RADIUS module whose client configuration was
+never installed, and it says so at error level on every single start.
+
+The journal proves it is unrelated to the cutover rather than merely looking
+unrelated. Two Asterisk starts happened inside that window: 04:42:13 with the
+cutover configuration in place, and 04:42:23 with the original configuration
+restored by the rollback. Both logged the identical lines. A message that
+survives its own rollback is a property of the installation, not evidence
+that the switch broke something -- and since the gate runs after every start,
+it could never pass here.
+
+Excluding that one file name is the narrowest correction available: any other
+error from any of the three services, including any other radcli error, still
+fails the cutover closed. Under `set -o pipefail` the filtered case stays
+closed too -- when nothing survives the filter the pipeline exits non-zero and
+the gate simply does not fire.
+
+The alternative was making the assumption true instead of the check: install
+the missing radiusclient.conf, or noload the RADIUS modules. Both change live
+PBX configuration outside the reviewed wrapper, which is exactly what the
+wrapper exists to prevent, and neither is required for a working call path.
+
+  before: d287b837b85c3b595d265908fa0cd56b422a1df4f92339373949df3bb1fea1c0
+  after:  a57672374a640ce3f3efb8164f1b0085c81afb6706e6a704001a56ee84176a47
+
+--- a/fanum-pbx-coordinator-deploy
++++ b/fanum-pbx-coordinator-deploy
+@@ -3302,7 +3302,8 @@
+ if journalctl -u fanum-pbx-coordinator.service -u nginx.service -u asterisk.service \
+-  --since "$journal_since" --priority=err --no-pager --quiet | grep -q .; then
++  --since "$journal_since" --priority=err --no-pager --quiet \
++  | grep -Fv 'radiusclient-ng/radiusclient.conf' | grep -q .; then
+   fail "service_logged_error_after_cutover"
+ fi

@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "plugins": []
+  },
+  "include": [
+    "src/types/next-auth.d.ts",
+    "src/lib/social/**/*.ts",
+    "src/app/api/v1/social/**/*.ts",
+    "src/app/api/v1/webhooks/meta-social/**/*.ts",
+    "src/app/api/cron/social-monitoring/**/*.ts",
+    "src/app/api/webhooks/meta/**/*.ts",
+    "src/app/(dashboard)/social-monitoring/page.tsx",
+    "src/components/social/**/*.tsx",
+    "src/__tests__/**/*social*.test.ts",
+    "src/__tests__/**/*monitoring*.test.ts",
+    "src/__tests__/**/*tiktok*.test.ts"
+  ],
+  "exclude": ["node_modules"]
+}

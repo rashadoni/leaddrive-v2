@@ -1,0 +1,9 @@
+[{"id":2,"department":"IT","position":"NetAdmin","count":8,"net_salary":3538.82,"gross_salary":4114.91,"super_gross":4835.02,"in_overhead":0,"notes":""}, 
+ {"id":3,"department":"InfoSec","position":"InfoSec Engineer","count":12,"net_salary":3603.9,"gross_salary":4190.58,"super_gross":4923.93,"in_overhead":0,"notes":""}, 
+ {"id":4,"department":"IT","position":"Zəng Mərkəzi","count":4,"net_salary":1737.28,"gross_salary":2020.09,"super_gross":2373.61,"in_overhead":0,"notes":""}, 
+ {"id":5,"department":"ERP","position":"ERP Specialist","count":6,"net_salary":3177.18,"gross_salary":3694.4,"super_gross":4340.91,"in_overhead":0,"notes":""}, 
+ {"id":6,"department":"PM","position":"Project Manager","count":5,"net_salary":3389.6,"gross_salary":3941.4,"super_gross":4631.14,"in_overhead":0,"notes":""}, 
+ {"id":8,"department":"HelpDesk","position":"HelpDesk Operator","count":56,"net_salary":1737.28,"gross_salary":2020.09,"super_gross":2373.61,"in_overhead":0,"notes":""}, 
+ {"id":11,"department":"BackOffice","position":"Direktor, muavinler, kommersiya(6), HR(2), maliyye(2), admin(2), surucu(2), tedaruk(1)","count":17,"net_salary":4705.88,"gross_salary":5471.95,"super_gross":6429.54,"in_overhead":1,"notes":"Cem NET=80000 butun BackOffice. net_salary = 80000/17 = per-person"}, 
+ {"id":7,"department":"GRC","position":"GRC Specialist","count":8,"net_salary":2451.76,"gross_salary":2850.88,"super_gross":3349.78,"in_overhead":0,"notes":""}, 
+ {"id":1,"department":"IT","position":"SysAdmin","count":8,"net_salary":2992.22,"gross_salary":3479.33,"super_gross":4088.21,"in_overhead":0,"notes":""}]

@@ -1,0 +1,36 @@
+export const MTM_ROUTE_AUDIT_ACTION = {
+  ROUTE_CREATE: "ROUTE_CREATE",
+  ROUTE_UPDATE: "ROUTE_UPDATE",
+  ROUTE_PUBLISH: "ROUTE_PUBLISH",
+  ROUTE_START: "ROUTE_START",
+  /** Machine-driven: the day ended with the route still open. */
+  ROUTE_DAY_CLOSE: "ROUTE_DAY_CLOSE",
+  ROUTE_ASSIGNMENT_CHANGE: "ROUTE_ASSIGNMENT_CHANGE",
+  ROUTE_REMOVAL_REQUEST: "ROUTE_REMOVAL_REQUEST",
+  ROUTE_REMOVAL_DECISION: "ROUTE_REMOVAL_DECISION",
+  ROUTE_ADDITION_REQUEST: "ROUTE_ADDITION_REQUEST",
+  ROUTE_ADDITION_DECISION: "ROUTE_ADDITION_DECISION",
+  ROUTE_CONFLICT_OVERRIDE: "ROUTE_CONFLICT_OVERRIDE",
+  ROUTE_TRAVEL_PREVIEW: "ROUTE_TRAVEL_PREVIEW",
+  VISIT_POLICY_CHANGE: "VISIT_POLICY_CHANGE",
+  VISIT_COMPLETE: "VISIT_COMPLETE",
+  CUSTOMER_CREATE_REQUEST: "CUSTOMER_CREATE_REQUEST",
+  CUSTOMER_CREATE_DECISION: "CUSTOMER_CREATE_DECISION",
+  IMPORT_APPLY: "IMPORT_APPLY",
+  IMPORT_ROLLBACK: "IMPORT_ROLLBACK",
+} as const
+
+export type MtmRouteAuditAction =
+  (typeof MTM_ROUTE_AUDIT_ACTION)[keyof typeof MTM_ROUTE_AUDIT_ACTION]
+
+/**
+ * Phase 1 retention contract. Audit rows and applied import summaries are
+ * durable business evidence. Transient files/errors have bounded retention.
+ */
+export const MTM_ROUTE_RETENTION = {
+  auditLogDays: null,
+  appliedImportSummaryDays: null,
+  importSourceFileDays: 90,
+  importErrorFileDays: 90,
+  rejectedUploadDays: 30,
+} as const

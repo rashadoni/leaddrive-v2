@@ -1,0 +1,26 @@
+{
+  "url": "https://www.instagram.com/reel/REEL123/",
+  "post_id": "reel-test-123",
+  "content_id": "reel-content-test-123",
+  "shortcode": "REEL123",
+  "description": "Synthetic reel for contract testing",
+  "date_posted": "2026-07-13T11:45:00.000Z",
+  "timestamp": "2026-07-13T11:45:00.000Z",
+  "user_posted": "synthetic_brand",
+  "user_profile_url": "https://www.instagram.com/synthetic_brand/",
+  "profile_image_link": "https://cdn.example.test/avatar.jpg",
+  "product_type": "clips",
+  "likes": 240,
+  "num_comments": 17,
+  "views": null,
+  "video_play_count": null,
+  "length": "46.79999923706055",
+  "video_url": "https://cdn.example.test/reel.mp4",
+  "thumbnail": "https://cdn.example.test/reel-cover.jpg",
+  "audio_url": "https://cdn.example.test/reel-audio.mp4",
+  "hashtags": ["synthetic"],
+  "top_comments": [],
+  "input": {
+    "url": "https://www.instagram.com/reel/REEL123/"
+  }
+}

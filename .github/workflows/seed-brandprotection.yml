@@ -1,0 +1,179 @@
+name: Seed brandprotection tenant
+
+# Manually-triggered operator job: provisions the brandprotection tenant on
+# the shared prod server and clones the social-monitoring settings from a
+# source tenant. Runs scripts/seeds/brandprotection.mjs ON THE SERVER (the
+# deploy tarball ships scripts/seeds/*.mjs into .next/standalone/scripts/),
+# with DATABASE_URL/NEXTAUTH_SECRET read from /etc/leaddrive/app.env there.
+#
+# The admin password is GENERATED ON THE SERVER and written to
+# /root/leaddrive-credentials/<slug>-admin.pass (directory 0700, file 0600) —
+# it never appears in logs. It is regenerated only for a first provision, an
+# explicit reset. Landing workflow code never provisions customer state.
+
+on:
+  workflow_dispatch:
+    inputs:
+      from:
+        description: "Source tenant slug to clone settings from"
+        required: true
+        default: "leaddrive"
+      slug:
+        description: "New tenant slug"
+        required: true
+        default: "brandprotection"
+      email:
+        description: "Admin email for the new tenant"
+        required: true
+        default: "admin@brandprotection.leaddrivecrm.org"
+      brand_protection_only:
+        description: "Force brand-protection-only mode"
+        required: true
+        type: choice
+        default: "inherit"
+        options: ["inherit", "1", "0"]
+      reset_password:
+        description: "Reset the admin password to a fresh generated value"
+        required: true
+        type: choice
+        default: "no"
+        options: ["no", "yes"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Validate inputs
+        env:
+          IN_FROM: ${{ inputs.from || 'leaddrive' }}
+          IN_SLUG: ${{ inputs.slug || 'brandprotection' }}
+          IN_EMAIL: ${{ inputs.email || 'admin@brandprotection.leaddrivecrm.org' }}
+        run: |
+          SLUG_RE='^[a-z0-9]([a-z0-9-]{0,78}[a-z0-9])?$'
+          EMAIL_RE='^[A-Za-z0-9._+-]+@[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$'
+          [[ "$IN_FROM" =~ $SLUG_RE ]] || { echo "FATAL: source slug has an unexpected shape"; exit 1; }
+          [[ "$IN_SLUG" =~ $SLUG_RE ]] || { echo "FATAL: target slug has an unexpected shape"; exit 1; }
+          [[ "$IN_EMAIL" =~ $EMAIL_RE ]] || { echo "FATAL: admin email has an unexpected shape"; exit 1; }
+
+      - name: Setup pinned production SSH
+        uses: ./.github/actions/setup-production-ssh
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server-host: ${{ secrets.SERVER_HOST }}
+          known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+
+      # The deploy tarball also ships scripts/seeds/, but that copy is only as
+      # fresh as the last deploy — upload the checked-out seed so this workflow
+      # never waits on a deploy to pick up seed fixes.
+      - name: Upload fresh seed to server
+        run: |
+          ssh -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "mkdir -p /opt/leaddrive-v2/.next/standalone/scripts/seeds"
+          scp -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
+            scripts/_rls.mjs scripts/password-policy.mjs \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/leaddrive-v2/.next/standalone/scripts/
+          scp -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
+            scripts/seeds/brandprotection.mjs \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/leaddrive-v2/.next/standalone/scripts/seeds/brandprotection.mjs
+
+      - name: Run seed on server
+        env:
+          SEED_FROM: ${{ inputs.from || 'leaddrive' }}
+          SEED_SLUG: ${{ inputs.slug || 'brandprotection' }}
+          SEED_EMAIL: ${{ inputs.email || 'admin@brandprotection.leaddrivecrm.org' }}
+          SEED_BPO: ${{ inputs.brand_protection_only || 'inherit' }}
+          # Password regeneration requires the explicit dispatch choice.
+          SEED_REGEN: ${{ inputs.reset_password == 'yes' && '1' || '0' }}
+        run: |
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "SEED_FROM='$SEED_FROM' SEED_SLUG='$SEED_SLUG' SEED_EMAIL='$SEED_EMAIL' SEED_BPO='$SEED_BPO' SEED_REGEN='$SEED_REGEN' bash -s" <<'REMOTE'
+          set -euo pipefail
+          APP_DIR="/opt/leaddrive-v2"
+          APP_ENV_FILE="${APP_ENV_FILE:-/etc/leaddrive/app.env}"
+          SEED="$APP_DIR/.next/standalone/scripts/seeds/brandprotection.mjs"
+          POLICY="$APP_DIR/.next/standalone/scripts/password-policy.mjs"
+          [ -f "$SEED" ] || { echo "FATAL: $SEED missing — deploy main first (tarball ships scripts/seeds/)"; exit 1; }
+          [ -f "$POLICY" ] || { echo "FATAL: $POLICY missing"; exit 1; }
+          [ -f "$APP_ENV_FILE" ] || { echo "FATAL: canonical app env missing"; exit 1; }
+
+          # Tolerant KEY=VALUE reader (same semantics as server-deploy.sh):
+          # strips optional export prefix and surrounding quotes.
+          read_env() {
+            sed -n "s/^[[:space:]]*\(export[[:space:]]\+\)\?$1[[:space:]]*=[[:space:]]*//p" "$APP_ENV_FILE" \
+              | head -1 | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'\$/\1/"
+          }
+          DATABASE_URL="$(read_env DATABASE_URL)"
+          NEXTAUTH_SECRET="$(read_env NEXTAUTH_SECRET)"
+          [ -n "$DATABASE_URL" ] || { echo "FATAL: DATABASE_URL not found in canonical app env"; exit 1; }
+          [ -n "$NEXTAUTH_SECRET" ] || { echo "FATAL: NEXTAUTH_SECRET not found in canonical app env"; exit 1; }
+
+          generate_password() {
+            POLICY_PATH="$POLICY" node --input-type=module <<'NODE'
+          import crypto from "node:crypto"
+          import { pathToFileURL } from "node:url"
+          const policy = await import(pathToFileURL(process.env.POLICY_PATH).href)
+          const password = policy.generateStrongTemporaryPassword(crypto.randomBytes)
+          const error = policy.passwordPolicyError(password)
+          if (error) throw new Error(`Generated password rejected: ${error}`)
+          process.stdout.write(password)
+          NODE
+          }
+
+          PASS_DIR="/root/leaddrive-credentials"
+          install -d -m 700 "$PASS_DIR"
+          PASS_FILE="$PASS_DIR/${SEED_SLUG}-admin.pass"
+          RESET_ADMIN_PASSWORD=0
+          if [ "$SEED_REGEN" = "1" ]; then
+            PASSWORD="$(generate_password)"
+            umask 077
+            printf '%s\n' "$PASSWORD" > "$PASS_FILE"
+            chmod 600 "$PASS_FILE"
+            RESET_ADMIN_PASSWORD=1
+            echo "Reset admin credential written to $PASS_FILE"
+          elif [ -f "$PASS_FILE" ]; then
+            # $() strips the trailing newline, so the password passed to node is clean.
+            PASSWORD="$(cat "$PASS_FILE")"
+            echo "Reusing existing admin credential from $PASS_FILE"
+          else
+            PASSWORD="$(generate_password)"
+            umask 077
+            printf '%s\n' "$PASSWORD" > "$PASS_FILE"
+            chmod 600 "$PASS_FILE"
+            RESET_ADMIN_PASSWORD=1
+            echo "Generated admin credential at $PASS_FILE"
+          fi
+
+          BPO_FLAG=""
+          [ "$SEED_BPO" = "1" ] && BPO_FLAG="--brand-protection-only=1"
+          [ "$SEED_BPO" = "0" ] && BPO_FLAG="--brand-protection-only=0"
+
+          cd "$APP_DIR"
+          DATABASE_URL="$DATABASE_URL" NEXTAUTH_SECRET="$NEXTAUTH_SECRET" \
+          RESET_ADMIN_PASSWORD="$RESET_ADMIN_PASSWORD" CONFIRM_PROD=1 SEED_PASSWORD="$PASSWORD" \
+            node "$SEED" \
+              --from="$SEED_FROM" --slug="$SEED_SLUG" \
+              --email="$SEED_EMAIL" \
+              $BPO_FLAG
+
+          echo "--- smoke ---"
+          curl -sS -o /dev/null -w "ping HTTP %{http_code}\n" --max-time 15 \
+            "https://${SEED_SLUG}.leaddrivecrm.org/api/v1/ping" || true
+          REMOTE
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

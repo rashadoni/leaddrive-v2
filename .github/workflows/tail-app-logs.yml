@@ -1,0 +1,168 @@
+name: Inspect production safely
+
+# Read-only diagnostics: print the tail of the leaddrive-v2 PM2 error log,
+# report backup-gate readiness with every configured value redacted, or list
+# bounded log-source metadata without reading any log contents.
+# Dispatch-only: editing this workflow must not create an implicit production
+# connection.
+
+on:
+  workflow_dispatch:
+    inputs:
+      view:
+        description: "Read-only diagnostic to run"
+        required: true
+        default: "logs"
+        type: choice
+        options:
+          - logs
+          - backup-readiness
+          - backup-log-inventory
+      lines:
+        description: "How many log lines to tail"
+        required: false
+        default: "200"
+      expected_main_sha:
+        description: "Exact current 40-character main SHA"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  tail:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: production
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+    steps:
+      - name: Checkout dispatched revision
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+      - name: Require independently protected production environment
+        uses: ./.github/actions/assert-production-environment-protection
+        with:
+          github-token: ${{ github.token }}
+      - name: Bind diagnostic to the exact current main revision
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+        run: |
+          set -euo pipefail
+          [ "$GITHUB_REF" = "refs/heads/main" ] || {
+            echo "::error::Production diagnostics may only be dispatched from main"
+            exit 1
+          }
+          [[ "$EXPECTED_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "::error::expected_main_sha must be an exact lowercase Git SHA"
+            exit 1
+          }
+          git fetch --no-tags --depth=1 origin refs/heads/main
+          CURRENT_MAIN_SHA="$(git rev-parse FETCH_HEAD)"
+          [ "$GITHUB_SHA" = "$CURRENT_MAIN_SHA" ] \
+            && [ "$EXPECTED_MAIN_SHA" = "$CURRENT_MAIN_SHA" ] || {
+              echo "::error::Dispatch revision is not the exact current main head"
+              exit 1
+            }
+      # Inputs become part of a remote command line — reject anything outside the
+      # strict shape before it gets near a shell (F-37). The value is
+      # interpolated into a quoted string the REMOTE shell parses, so a single
+      # quote in it closes the quoting and the rest runs as root on production.
+      - name: Validate inputs
+        env:
+          IN_LINES: ${{ inputs.lines }}
+        run: |
+          set -euo pipefail
+          LINES_RE='^[0-9]{1,5}$'
+          [[ "$IN_LINES" =~ $LINES_RE ]] \
+            || { echo "FATAL: lines must be 1-5 digits"; exit 1; }
+          [ "$IN_LINES" -ge 1 ] && [ "$IN_LINES" -le 1000 ] \
+            || { echo "FATAL: lines must be between 1 and 1000"; exit 1; }
+
+      - name: Setup pinned production SSH
+        uses: ./.github/actions/setup-production-ssh
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server-host: ${{ secrets.SERVER_HOST }}
+          known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+      - name: Tail PM2 logs
+        if: ${{ inputs.view == 'logs' }}
+        env:
+          LINES: ${{ inputs.lines || '200' }}
+        run: |
+          ssh -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "LINES='$LINES' bash -s" <<'REMOTE'
+          set -uo pipefail
+          echo "=== pm2 status ==="
+          pm2 jlist 2>/dev/null | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{JSON.parse(s).forEach(p=>console.log(p.name, p.pm2_env.status, 'restarts='+p.pm2_env.restart_time, 'uptime='+new Date(p.pm2_env.pm_uptime).toISOString()))}catch(e){console.log('(jlist parse failed)')}})" 2>/dev/null || pm2 status 2>/dev/null | head -20
+          echo ""
+          echo "=== last $LINES error-log lines (leaddrive-v2) ==="
+          pm2 logs leaddrive-v2 --err --lines "$LINES" --nostream 2>/dev/null | tail -"$LINES"
+          REMOTE
+      - name: Report PostgreSQL backup readiness
+        if: ${{ inputs.view == 'backup-readiness' }}
+        run: |
+          ssh -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            'bash -s' < scripts/backup/report-production-readiness.sh
+      - name: Inventory backup log sources without reading contents
+        if: ${{ inputs.view == 'backup-log-inventory' }}
+        run: |
+          ssh -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            'bash -s' <<'REMOTE'
+          set -euo pipefail
+          export LC_ALL=C
+
+          echo "=== host ==="
+          hostname
+          uname -srmo
+
+          echo "=== PM2 log authorities ==="
+          pm2 jlist 2>/dev/null | node -e '
+            let input = ""
+            process.stdin.on("data", chunk => { input += chunk })
+            process.stdin.on("end", () => {
+              const app = JSON.parse(input).find(item => item.name === "leaddrive-v2")
+              if (!app) throw new Error("leaddrive-v2 PM2 process is absent")
+              for (const key of ["pm_out_log_path", "pm_err_log_path"]) {
+                const value = app.pm2_env?.[key]
+                if (typeof value !== "string" || !value.startsWith("/")) {
+                  throw new Error(`unsafe or missing ${key}`)
+                }
+                console.log(`${key}=${value}`)
+              }
+            })
+          '
+
+          echo "=== /var/log top-level metadata ==="
+          find /var/log -xdev -mindepth 1 -maxdepth 1 \
+            -printf '%y\t%m\t%u:%g\t%s\t%p\n' | sort | sed -n '1,240p'
+
+          echo "=== reviewed candidate directories ==="
+          for directory in \
+            /var/lib/leaddrive-v2-logs \
+            /var/log/nginx \
+            /var/log/postgresql \
+            /var/log/letsencrypt \
+            /var/log/journal; do
+            if [ ! -e "$directory" ]; then
+              echo "MISSING $directory"
+              continue
+            fi
+            stat -c 'ROOT\t%F\t%a\t%U:%G\t%s\t%n' "$directory"
+            find "$directory" -xdev -mindepth 1 -maxdepth 1 \
+              -printf 'ENTRY\t%y\t%m\t%u:%g\t%s\t%p\n' | sort | sed -n '1,240p'
+          done
+
+          echo "=== persistent journal capacity ==="
+          journalctl --disk-usage
+          REMOTE
+      - name: Cleanup
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

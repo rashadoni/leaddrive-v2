@@ -1,0 +1,1316 @@
+[
+  {
+    "id": 128,
+    "company_id": 5,
+    "company_code": "ZEYTUN",
+    "service_type": "erp",
+    "monthly_revenue": 690.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 130,
+    "company_id": 5,
+    "company_code": "ZEYTUN",
+    "service_type": "helpdesk",
+    "monthly_revenue": 6600.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 129,
+    "company_id": 5,
+    "company_code": "ZEYTUN",
+    "service_type": "infosec",
+    "monthly_revenue": 20178.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 127,
+    "company_id": 5,
+    "company_code": "ZEYTUN",
+    "service_type": "permanent_it",
+    "monthly_revenue": 27500.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 77,
+    "company_id": 7,
+    "company_code": "Pmd",
+    "service_type": "helpdesk",
+    "monthly_revenue": 12760.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 76,
+    "company_id": 7,
+    "company_code": "Pmd",
+    "service_type": "infosec",
+    "monthly_revenue": 706.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 75,
+    "company_id": 7,
+    "company_code": "Pmd",
+    "service_type": "permanent_it",
+    "monthly_revenue": 2534.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 199,
+    "company_id": 9,
+    "company_code": "Afigroup",
+    "service_type": "helpdesk",
+    "monthly_revenue": 4000.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 198,
+    "company_id": 9,
+    "company_code": "Afigroup",
+    "service_type": "infosec",
+    "monthly_revenue": 21260.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 197,
+    "company_id": 9,
+    "company_code": "Afigroup",
+    "service_type": "permanent_it",
+    "monthly_revenue": 24741.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 82,
+    "company_id": 13,
+    "company_code": "FMG",
+    "service_type": "erp",
+    "monthly_revenue": 309.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 84,
+    "company_id": 13,
+    "company_code": "FMG",
+    "service_type": "helpdesk",
+    "monthly_revenue": 12760.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 83,
+    "company_id": 13,
+    "company_code": "FMG",
+    "service_type": "infosec",
+    "monthly_revenue": 2078.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 81,
+    "company_id": 13,
+    "company_code": "FMG",
+    "service_type": "permanent_it",
+    "monthly_revenue": 11853.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 123,
+    "company_id": 15,
+    "company_code": "IBK",
+    "service_type": "permanent_it",
+    "monthly_revenue": 565.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 125,
+    "company_id": 18,
+    "company_code": "SCANDENS",
+    "service_type": "erp",
+    "monthly_revenue": 1100.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 126,
+    "company_id": 18,
+    "company_code": "SCANDENS",
+    "service_type": "infosec",
+    "monthly_revenue": 4501.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 124,
+    "company_id": 18,
+    "company_code": "SCANDENS",
+    "service_type": "permanent_it",
+    "monthly_revenue": 4371.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 98,
+    "company_id": 21,
+    "company_code": "Azərşəkər",
+    "service_type": "erp",
+    "monthly_revenue": 309.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 100,
+    "company_id": 21,
+    "company_code": "Azərşəkər",
+    "service_type": "helpdesk",
+    "monthly_revenue": 600.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 99,
+    "company_id": 21,
+    "company_code": "Azərşəkər",
+    "service_type": "infosec",
+    "monthly_revenue": 662.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 97,
+    "company_id": 21,
+    "company_code": "Azərşəkər",
+    "service_type": "permanent_it",
+    "monthly_revenue": 2441.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 80,
+    "company_id": 30,
+    "company_code": "PMDG",
+    "service_type": "helpdesk",
+    "monthly_revenue": 8800.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 79,
+    "company_id": 30,
+    "company_code": "PMDG",
+    "service_type": "infosec",
+    "monthly_revenue": 1596.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 78,
+    "company_id": 30,
+    "company_code": "PMDG",
+    "service_type": "permanent_it",
+    "monthly_revenue": 3104.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 181,
+    "company_id": 31,
+    "company_code": "TABIA",
+    "service_type": "erp",
+    "monthly_revenue": 1232.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 183,
+    "company_id": 31,
+    "company_code": "TABIA",
+    "service_type": "grc",
+    "monthly_revenue": 155.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 182,
+    "company_id": 31,
+    "company_code": "TABIA",
+    "service_type": "infosec",
+    "monthly_revenue": 3664.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 180,
+    "company_id": 31,
+    "company_code": "TABIA",
+    "service_type": "permanent_it",
+    "monthly_revenue": 5758.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 184,
+    "company_id": 31,
+    "company_code": "TABIA",
+    "service_type": "projects",
+    "monthly_revenue": 839.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 132,
+    "company_id": 36,
+    "company_code": "Lankaransprings",
+    "service_type": "erp",
+    "monthly_revenue": 3296.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 134,
+    "company_id": 36,
+    "company_code": "Lankaransprings",
+    "service_type": "grc",
+    "monthly_revenue": 300.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 133,
+    "company_id": 36,
+    "company_code": "Lankaransprings",
+    "service_type": "infosec",
+    "monthly_revenue": 10354.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 131,
+    "company_id": 36,
+    "company_code": "Lankaransprings",
+    "service_type": "permanent_it",
+    "monthly_revenue": 13705.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 135,
+    "company_id": 36,
+    "company_code": "Lankaransprings",
+    "service_type": "projects",
+    "monthly_revenue": 839.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 116,
+    "company_id": 37,
+    "company_code": "Azmade",
+    "service_type": "erp",
+    "monthly_revenue": 325.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 118,
+    "company_id": 37,
+    "company_code": "Azmade",
+    "service_type": "helpdesk",
+    "monthly_revenue": 14091.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 117,
+    "company_id": 37,
+    "company_code": "Azmade",
+    "service_type": "infosec",
+    "monthly_revenue": 21028.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 115,
+    "company_id": 37,
+    "company_code": "Azmade",
+    "service_type": "permanent_it",
+    "monthly_revenue": 32806.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 87,
+    "company_id": 45,
+    "company_code": "Grandlogistics",
+    "service_type": "helpdesk",
+    "monthly_revenue": 2200.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 86,
+    "company_id": 45,
+    "company_code": "Grandlogistics",
+    "service_type": "infosec",
+    "monthly_revenue": 187.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 85,
+    "company_id": 45,
+    "company_code": "Grandlogistics",
+    "service_type": "permanent_it",
+    "monthly_revenue": 613.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 152,
+    "company_id": 56,
+    "company_code": "Gashalti",
+    "service_type": "erp",
+    "monthly_revenue": 2447.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 154,
+    "company_id": 56,
+    "company_code": "Gashalti",
+    "service_type": "grc",
+    "monthly_revenue": 125.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 153,
+    "company_id": 56,
+    "company_code": "Gashalti",
+    "service_type": "infosec",
+    "monthly_revenue": 3921.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 151,
+    "company_id": 56,
+    "company_code": "Gashalti",
+    "service_type": "permanent_it",
+    "monthly_revenue": 4883.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 155,
+    "company_id": 56,
+    "company_code": "Gashalti",
+    "service_type": "projects",
+    "monthly_revenue": 839.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 157,
+    "company_id": 57,
+    "company_code": "GARABAGH",
+    "service_type": "erp",
+    "monthly_revenue": 2503.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 159,
+    "company_id": 57,
+    "company_code": "GARABAGH",
+    "service_type": "grc",
+    "monthly_revenue": 125.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 158,
+    "company_id": 57,
+    "company_code": "GARABAGH",
+    "service_type": "infosec",
+    "monthly_revenue": 4222.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 156,
+    "company_id": 57,
+    "company_code": "GARABAGH",
+    "service_type": "permanent_it",
+    "monthly_revenue": 5278.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 160,
+    "company_id": 57,
+    "company_code": "GARABAGH",
+    "service_type": "projects",
+    "monthly_revenue": 839.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 177,
+    "company_id": 58,
+    "company_code": "GOYGOL",
+    "service_type": "erp",
+    "monthly_revenue": 39.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 179,
+    "company_id": 58,
+    "company_code": "GOYGOL",
+    "service_type": "grc",
+    "monthly_revenue": 10.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 178,
+    "company_id": 58,
+    "company_code": "GOYGOL",
+    "service_type": "infosec",
+    "monthly_revenue": 292.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 176,
+    "company_id": 58,
+    "company_code": "GOYGOL",
+    "service_type": "permanent_it",
+    "monthly_revenue": 414.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 111,
+    "company_id": 62,
+    "company_code": "AGEC",
+    "service_type": "helpdesk",
+    "monthly_revenue": 720.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 110,
+    "company_id": 62,
+    "company_code": "AGEC",
+    "service_type": "infosec",
+    "monthly_revenue": 146.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 109,
+    "company_id": 62,
+    "company_code": "AGEC",
+    "service_type": "permanent_it",
+    "monthly_revenue": 1070.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 187,
+    "company_id": 69,
+    "company_code": "FOTON",
+    "service_type": "helpdesk",
+    "monthly_revenue": 1820.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 186,
+    "company_id": 69,
+    "company_code": "FOTON",
+    "service_type": "infosec",
+    "monthly_revenue": 979.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 185,
+    "company_id": 69,
+    "company_code": "FOTON",
+    "service_type": "permanent_it",
+    "monthly_revenue": 1723.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 167,
+    "company_id": 71,
+    "company_code": "Excelsior",
+    "service_type": "erp",
+    "monthly_revenue": 1966.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 169,
+    "company_id": 71,
+    "company_code": "Excelsior",
+    "service_type": "grc",
+    "monthly_revenue": 50.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 168,
+    "company_id": 71,
+    "company_code": "Excelsior",
+    "service_type": "infosec",
+    "monthly_revenue": 2372.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 166,
+    "company_id": 71,
+    "company_code": "Excelsior",
+    "service_type": "permanent_it",
+    "monthly_revenue": 2928.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 170,
+    "company_id": 71,
+    "company_code": "Excelsior",
+    "service_type": "projects",
+    "monthly_revenue": 839.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 190,
+    "company_id": 72,
+    "company_code": "Hgibaku",
+    "service_type": "erp",
+    "monthly_revenue": 1271.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 192,
+    "company_id": 72,
+    "company_code": "Hgibaku",
+    "service_type": "helpdesk",
+    "monthly_revenue": 2200.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 191,
+    "company_id": 72,
+    "company_code": "Hgibaku",
+    "service_type": "infosec",
+    "monthly_revenue": 3417.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 189,
+    "company_id": 72,
+    "company_code": "Hgibaku",
+    "service_type": "permanent_it",
+    "monthly_revenue": 5113.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 194,
+    "company_id": 74,
+    "company_code": "Aghdamcityhotel",
+    "service_type": "erp",
+    "monthly_revenue": 1065.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 196,
+    "company_id": 74,
+    "company_code": "Aghdamcityhotel",
+    "service_type": "helpdesk",
+    "monthly_revenue": 1000.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 195,
+    "company_id": 74,
+    "company_code": "Aghdamcityhotel",
+    "service_type": "infosec",
+    "monthly_revenue": 823.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 193,
+    "company_id": 74,
+    "company_code": "Aghdamcityhotel",
+    "service_type": "permanent_it",
+    "monthly_revenue": 1112.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 147,
+    "company_id": 76,
+    "company_code": "CHENOT",
+    "service_type": "erp",
+    "monthly_revenue": 2523.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 149,
+    "company_id": 76,
+    "company_code": "CHENOT",
+    "service_type": "grc",
+    "monthly_revenue": 125.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 148,
+    "company_id": 76,
+    "company_code": "CHENOT",
+    "service_type": "infosec",
+    "monthly_revenue": 4508.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 146,
+    "company_id": 76,
+    "company_code": "CHENOT",
+    "service_type": "permanent_it",
+    "monthly_revenue": 5687.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 150,
+    "company_id": 76,
+    "company_code": "CHENOT",
+    "service_type": "projects",
+    "monthly_revenue": 839.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 162,
+    "company_id": 77,
+    "company_code": "Shamakhipalace",
+    "service_type": "erp",
+    "monthly_revenue": 2021.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 164,
+    "company_id": 77,
+    "company_code": "Shamakhipalace",
+    "service_type": "grc",
+    "monthly_revenue": 75.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 163,
+    "company_id": 77,
+    "company_code": "Shamakhipalace",
+    "service_type": "infosec",
+    "monthly_revenue": 2447.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 161,
+    "company_id": 77,
+    "company_code": "Shamakhipalace",
+    "service_type": "permanent_it",
+    "monthly_revenue": 3026.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 165,
+    "company_id": 77,
+    "company_code": "Shamakhipalace",
+    "service_type": "projects",
+    "monthly_revenue": 839.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 202,
+    "company_id": 79,
+    "company_code": "Lmh",
+    "service_type": "helpdesk",
+    "monthly_revenue": 6600.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 201,
+    "company_id": 79,
+    "company_code": "Lmh",
+    "service_type": "infosec",
+    "monthly_revenue": 12222.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 200,
+    "company_id": 79,
+    "company_code": "Lmh",
+    "service_type": "permanent_it",
+    "monthly_revenue": 10320.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 93,
+    "company_id": 84,
+    "company_code": "Jollyjoker",
+    "service_type": "helpdesk",
+    "monthly_revenue": 720.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 92,
+    "company_id": 84,
+    "company_code": "Jollyjoker",
+    "service_type": "infosec",
+    "monthly_revenue": 65.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 91,
+    "company_id": 84,
+    "company_code": "Jollyjoker",
+    "service_type": "permanent_it",
+    "monthly_revenue": 215.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 90,
+    "company_id": 88,
+    "company_code": "Designbureau",
+    "service_type": "helpdesk",
+    "monthly_revenue": 2000.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 89,
+    "company_id": 88,
+    "company_code": "Designbureau",
+    "service_type": "infosec",
+    "monthly_revenue": 336.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 88,
+    "company_id": 88,
+    "company_code": "Designbureau",
+    "service_type": "permanent_it",
+    "monthly_revenue": 664.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 188,
+    "company_id": 93,
+    "company_code": "DOST",
+    "service_type": "permanent_it",
+    "monthly_revenue": 1954.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 172,
+    "company_id": 94,
+    "company_code": "Paulaner-brauhaus-baku",
+    "service_type": "erp",
+    "monthly_revenue": 715.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 174,
+    "company_id": 94,
+    "company_code": "Paulaner-brauhaus-baku",
+    "service_type": "grc",
+    "monthly_revenue": 25.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 173,
+    "company_id": 94,
+    "company_code": "Paulaner-brauhaus-baku",
+    "service_type": "infosec",
+    "monthly_revenue": 378.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 171,
+    "company_id": 94,
+    "company_code": "Paulaner-brauhaus-baku",
+    "service_type": "permanent_it",
+    "monthly_revenue": 1149.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 175,
+    "company_id": 94,
+    "company_code": "Paulaner-brauhaus-baku",
+    "service_type": "projects",
+    "monthly_revenue": 839.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 213,
+    "company_id": 95,
+    "company_code": "BES",
+    "service_type": "erp",
+    "monthly_revenue": 2256.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 215,
+    "company_id": 95,
+    "company_code": "BES",
+    "service_type": "grc",
+    "monthly_revenue": 135.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 214,
+    "company_id": 95,
+    "company_code": "BES",
+    "service_type": "infosec",
+    "monthly_revenue": 8530.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 212,
+    "company_id": 95,
+    "company_code": "BES",
+    "service_type": "permanent_it",
+    "monthly_revenue": 12002.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 216,
+    "company_id": 95,
+    "company_code": "BES",
+    "service_type": "projects",
+    "monthly_revenue": 839.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 204,
+    "company_id": 102,
+    "company_code": "RAMADA",
+    "service_type": "erp",
+    "monthly_revenue": 1169.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 206,
+    "company_id": 102,
+    "company_code": "RAMADA",
+    "service_type": "helpdesk",
+    "monthly_revenue": 2200.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 205,
+    "company_id": 102,
+    "company_code": "RAMADA",
+    "service_type": "infosec",
+    "monthly_revenue": 1847.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 203,
+    "company_id": 102,
+    "company_code": "RAMADA",
+    "service_type": "permanent_it",
+    "monthly_revenue": 2785.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 114,
+    "company_id": 105,
+    "company_code": "SYNERGIA",
+    "service_type": "helpdesk",
+    "monthly_revenue": 1220.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 113,
+    "company_id": 105,
+    "company_code": "SYNERGIA",
+    "service_type": "infosec",
+    "monthly_revenue": 913.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 112,
+    "company_id": 105,
+    "company_code": "SYNERGIA",
+    "service_type": "permanent_it",
+    "monthly_revenue": 1164.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 102,
+    "company_id": 127,
+    "company_code": "CPC",
+    "service_type": "erp",
+    "monthly_revenue": 309.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 104,
+    "company_id": 127,
+    "company_code": "CPC",
+    "service_type": "helpdesk",
+    "monthly_revenue": 600.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 103,
+    "company_id": 127,
+    "company_code": "CPC",
+    "service_type": "infosec",
+    "monthly_revenue": 662.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 101,
+    "company_id": 127,
+    "company_code": "CPC",
+    "service_type": "permanent_it",
+    "monthly_revenue": 2441.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 106,
+    "company_id": 128,
+    "company_code": "EDENAGRO",
+    "service_type": "erp",
+    "monthly_revenue": 309.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 108,
+    "company_id": 128,
+    "company_code": "EDENAGRO",
+    "service_type": "helpdesk",
+    "monthly_revenue": 900.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 107,
+    "company_id": 128,
+    "company_code": "EDENAGRO",
+    "service_type": "infosec",
+    "monthly_revenue": 398.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 105,
+    "company_id": 128,
+    "company_code": "EDENAGRO",
+    "service_type": "permanent_it",
+    "monthly_revenue": 1402.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 142,
+    "company_id": 146,
+    "company_code": "Chinarhotel",
+    "service_type": "erp",
+    "monthly_revenue": 2758.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 144,
+    "company_id": 146,
+    "company_code": "Chinarhotel",
+    "service_type": "grc",
+    "monthly_revenue": 135.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 143,
+    "company_id": 146,
+    "company_code": "Chinarhotel",
+    "service_type": "infosec",
+    "monthly_revenue": 6001.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 141,
+    "company_id": 146,
+    "company_code": "Chinarhotel",
+    "service_type": "permanent_it",
+    "monthly_revenue": 7705.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 145,
+    "company_id": 146,
+    "company_code": "Chinarhotel",
+    "service_type": "projects",
+    "monthly_revenue": 839.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 120,
+    "company_id": 160,
+    "company_code": "NOVEX",
+    "service_type": "erp",
+    "monthly_revenue": 506.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 122,
+    "company_id": 160,
+    "company_code": "NOVEX",
+    "service_type": "helpdesk",
+    "monthly_revenue": 13600.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 121,
+    "company_id": 160,
+    "company_code": "NOVEX",
+    "service_type": "infosec",
+    "monthly_revenue": 21858.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 119,
+    "company_id": 160,
+    "company_code": "NOVEX",
+    "service_type": "permanent_it",
+    "monthly_revenue": 32518.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 137,
+    "company_id": 163,
+    "company_code": "QALAALTI",
+    "service_type": "erp",
+    "monthly_revenue": 2758.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 139,
+    "company_id": 163,
+    "company_code": "QALAALTI",
+    "service_type": "grc",
+    "monthly_revenue": 135.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 138,
+    "company_id": 163,
+    "company_code": "QALAALTI",
+    "service_type": "infosec",
+    "monthly_revenue": 6103.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 136,
+    "company_id": 163,
+    "company_code": "QALAALTI",
+    "service_type": "permanent_it",
+    "monthly_revenue": 7859.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 140,
+    "company_id": 163,
+    "company_code": "QALAALTI",
+    "service_type": "projects",
+    "monthly_revenue": 839.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 96,
+    "company_id": 171,
+    "company_code": "Mergroup",
+    "service_type": "helpdesk",
+    "monthly_revenue": 1080.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 95,
+    "company_id": 171,
+    "company_code": "Mergroup",
+    "service_type": "infosec",
+    "monthly_revenue": 84.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 94,
+    "company_id": 171,
+    "company_code": "Mergroup",
+    "service_type": "permanent_it",
+    "monthly_revenue": 336.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 218,
+    "company_id": 287,
+    "company_code": "Central point",
+    "service_type": "erp",
+    "monthly_revenue": 1141.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 220,
+    "company_id": 287,
+    "company_code": "Central point",
+    "service_type": "helpdesk",
+    "monthly_revenue": 720.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 219,
+    "company_id": 287,
+    "company_code": "Central point",
+    "service_type": "infosec",
+    "monthly_revenue": 1369.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 217,
+    "company_id": 287,
+    "company_code": "Central point",
+    "service_type": "permanent_it",
+    "monthly_revenue": 1768.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 209,
+    "company_id": 288,
+    "company_code": "DASTAN",
+    "service_type": "helpdesk",
+    "monthly_revenue": 600.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 208,
+    "company_id": 288,
+    "company_code": "DASTAN",
+    "service_type": "infosec",
+    "monthly_revenue": 174.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 207,
+    "company_id": 288,
+    "company_code": "DASTAN",
+    "service_type": "permanent_it",
+    "monthly_revenue": 258.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 211,
+    "company_id": 289,
+    "company_code": "REVERY",
+    "service_type": "infosec",
+    "monthly_revenue": 1506.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  },
+  {
+    "id": 210,
+    "company_id": 289,
+    "company_code": "REVERY",
+    "service_type": "permanent_it",
+    "monthly_revenue": 1888.0,
+    "is_active": 1,
+    "notes": "Excel budget data"
+  }
+]

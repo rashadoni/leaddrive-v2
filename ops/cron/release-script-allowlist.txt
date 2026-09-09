@@ -1,0 +1,6 @@
+cron-attribution-drain.sh
+cron-attribution-recompute.sh
+cron-cdp-identity-scan.sh
+cron-cdp-profile-refresh.sh
+cron-customer-insights-snapshot.sh
+cron-trigger.sh

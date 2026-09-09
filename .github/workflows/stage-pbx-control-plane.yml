@@ -1,0 +1,20 @@
+name: Stage PBX control plane (retired)
+
+# Retired by the Gemini-only voice cutover. This workflow intentionally has no
+# checkout, secret, SSH, upload, or staging step. A future PBX staging workflow
+# must be reviewed against the deployed Gemini runtime instead of reviving the
+# former OpenAI environment payload.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  retired:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refuse the retired staging path
+        run: |
+          echo "::error::Legacy PBX control-plane staging is retired; use a reviewed Gemini-native workflow."
+          exit 1

@@ -1,0 +1,367 @@
+name: Set voice-pilot env on prod
+
+# Operator job: atomically deliver the Gemini Live browser-voice credential,
+# fail-closed provider selector, pilot allowlist, and budget to production.
+#
+# The pilot allowlist deliberately lives in env rather than in the database:
+# `PATCH /api/v1/settings/ai-features` can already flip org feature flags and
+# `UserPreference` rows are written by their own owner, so a DB-backed flag
+# would be a grant the grantee could issue to themselves. Changing who has
+# voice therefore requires an operator action, which is the point.
+#
+# Usage: add repo secrets, then dispatch this workflow.
+#   GEMINI_API_KEY       — server-side Google AI key used only to mint tokens
+#   VOICE_PILOT_ORG_ID   — the single organisation enrolled in the pilot
+#   VOICE_PILOT_USER_IDS — comma-separated user ids inside that organisation
+#
+# Optional overrides (safe defaults ship in src/lib/ai/voice/config.ts):
+#   VOICE_MONTHLY_MINUTES, VOICE_MAX_SESSION_SECONDS, VOICE_MAX_TOOL_CALLS
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  set-secret:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Require the protected production branch
+        run: |
+          [ "$GITHUB_REF" = "refs/heads/main" ] || {
+            echo "::error::Gemini activation must be dispatched from refs/heads/main"; exit 1;
+          }
+
+      - name: Checkout the Gemini-only revision
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install pinned dependencies
+        run: npm ci
+
+      - name: Prove constrained-token setup and same-token resumption
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_LIVE_SETUP_PROBE: "1"
+          GEMINI_LIVE_RESUMPTION_PROBE: "1"
+        run: npx vitest run src/__tests__/gemini-live-provider-probe.test.ts
+
+      - name: Setup pinned production SSH
+        uses: ./.github/actions/setup-production-ssh
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server-host: ${{ secrets.SERVER_HOST }}
+          known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+
+      - name: Write voice env vars and restart PM2
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          VOICE_PILOT_ORG_ID: ${{ secrets.VOICE_PILOT_ORG_ID }}
+          VOICE_PILOT_USER_IDS: ${{ secrets.VOICE_PILOT_USER_IDS }}
+          VOICE_MONTHLY_MINUTES: ${{ secrets.VOICE_MONTHLY_MINUTES }}
+        run: |
+          set -euo pipefail
+          [ -n "$GEMINI_API_KEY" ] || { echo "::error::GEMINI_API_KEY secret is empty"; exit 1; }
+          [ -n "$VOICE_PILOT_ORG_ID" ] || { echo "::error::VOICE_PILOT_ORG_ID secret is empty"; exit 1; }
+          REMOTE_SHA="$(ssh -o BatchMode=yes -o ConnectTimeout=30 -o IdentitiesOnly=yes \
+            -o UserKnownHostsFile=~/.ssh/known_hosts -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            'tr -d "\r\n" < /opt/leaddrive-v2/.next/standalone/.deploy-sha')"
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ && "$REMOTE_SHA" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "::error::Local or deployed SHA marker is invalid"; exit 1;
+          }
+          [ "$REMOTE_SHA" = "$GITHUB_SHA" ] || {
+            echo "::error::Gemini activation revision is not the currently deployed revision"; exit 1;
+          }
+          LOCAL_STAGE="$(mktemp -d)"
+          REMOTE_STATE_ROOT="$(
+            ssh -o BatchMode=yes -o ConnectTimeout=30 -o IdentitiesOnly=yes \
+              -o UserKnownHostsFile=~/.ssh/known_hosts -i ~/.ssh/deploy_key \
+              ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} 'bash -s' <<'REMOTE'
+            set -euo pipefail
+            APP_ENV_FILE="${APP_ENV_FILE:-/etc/leaddrive/app.env}"
+            APP_ENV_DIR="$(dirname -- "$APP_ENV_FILE")"
+            assert_root_owned_nonwritable_directory() {
+              local label="$1" directory="$2" mode
+              [ -d "$directory" ] && [ ! -L "$directory" ] || {
+                echo "FATAL: $label must be a real directory" >&2; exit 1;
+              }
+              [ "$(stat -c '%U:%G' "$directory")" = "root:root" ] || {
+                echo "FATAL: $label must be owned by root:root" >&2; exit 1;
+              }
+              mode="$(stat -c '%a' "$directory")"
+              (( (8#$mode & 8#022) == 0 )) || {
+                echo "FATAL: $label must not be group- or world-writable" >&2; exit 1;
+              }
+            }
+            assert_secure_existing_or_parent() {
+              local label="$1" path="$2" candidate parent
+              candidate="$path"
+              while [ ! -e "$candidate" ] && [ ! -L "$candidate" ]; do
+                parent="$(dirname -- "$candidate")"
+                [ "$parent" != "$candidate" ] || {
+                  echo "FATAL: cannot find an existing parent for $label" >&2; exit 1;
+                }
+                candidate="$parent"
+              done
+              assert_root_owned_nonwritable_directory "$label parent" "$candidate"
+            }
+            read_app_env_value() {
+              local name="$1" value
+              value="$(sed -nE "s/^[[:space:]]*(export[[:space:]]+)?${name}[[:space:]]*=[[:space:]]*(.*)$/\\2/p" "$APP_ENV_FILE" | tail -1 | tr -d '\r')"
+              value="${value#\"}"; value="${value%\"}"
+              value="${value#\'}"; value="${value%\'}"
+              printf '%s' "$value"
+            }
+            [ -d "$APP_ENV_DIR" ] && [ ! -L "$APP_ENV_DIR" ] || {
+              echo "FATAL: canonical app env parent is missing or is a symlink" >&2
+              exit 1
+            }
+            assert_root_owned_nonwritable_directory "canonical app env parent" "$APP_ENV_DIR"
+            [ -f "$APP_ENV_FILE" ] && [ ! -L "$APP_ENV_FILE" ] || {
+              echo "FATAL: canonical app env is missing or is a symlink" >&2
+              exit 1
+            }
+            [ "$(stat -c '%U:%G:%a' "$APP_ENV_FILE")" = "root:root:600" ] || {
+              echo "FATAL: canonical app env must be root:root mode 0600" >&2
+              exit 1
+            }
+            runtime_root="$(read_app_env_value LEADDRIVE_RUNTIME_DIR)"
+            runtime_root="${runtime_root:-/var/lib/leaddrive-v2}"
+            case "$runtime_root" in /*) ;; *) echo "FATAL: LEADDRIVE_RUNTIME_DIR must be absolute" >&2; exit 1 ;; esac
+            runtime_root="$(realpath -m -- "$runtime_root")"
+            case "$runtime_root" in
+              /|/var|/var/lib|/var/log|/etc|/usr|/usr/local|/opt|/tmp|/tmp/*|/var/tmp|/var/tmp/*|/run|/run/*|/dev|/dev/*|/proc|/proc/*|/sys|/sys/*|/opt/leaddrive-v2|/opt/leaddrive-v2/*)
+                echo "FATAL: LEADDRIVE_RUNTIME_DIR must be a dedicated external directory" >&2; exit 1 ;;
+            esac
+            runtime_state_root="$(realpath -m -- "$runtime_root/state")"
+            [ "$runtime_state_root" = "$runtime_root/state" ] || {
+              echo "FATAL: canonical runtime state root must not resolve through a symlink" >&2; exit 1;
+            }
+            configured="$(read_app_env_value VOICE_OPERATOR_STATE_DIR)"
+            configured="${configured:-$runtime_state_root/operator}"
+            case "$configured" in /*) ;; *) echo "FATAL: VOICE_OPERATOR_STATE_DIR must be absolute" >&2; exit 1 ;; esac
+            configured="$(realpath -m -- "$configured")"
+            [[ "$configured" =~ ^/[A-Za-z0-9._/-]+$ ]] || {
+              echo "FATAL: VOICE_OPERATOR_STATE_DIR contains unsafe characters" >&2; exit 1;
+            }
+            case "$configured" in "$runtime_state_root"/*) ;; *)
+              echo "FATAL: VOICE_OPERATOR_STATE_DIR must stay inside the canonical runtime state root" >&2; exit 1 ;;
+            esac
+            assert_secure_existing_or_parent "voice operator state directory" "$configured"
+            printf '%s' "$configured"
+          REMOTE
+          )"
+          [[ "$REMOTE_STATE_ROOT" =~ ^/[A-Za-z0-9._/-]+$ ]] || {
+            echo "::error::Production returned an invalid voice operator state path"; exit 1;
+          }
+          REMOTE_STAGE="$REMOTE_STATE_ROOT/voice-env-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          cleanup() {
+            ssh -o BatchMode=yes -o ConnectTimeout=10 -o IdentitiesOnly=yes \
+              -o UserKnownHostsFile=~/.ssh/known_hosts -i ~/.ssh/deploy_key \
+              ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+              "rm -f '$REMOTE_STAGE/gemini-key' '$REMOTE_STAGE/pilot-org' \
+                '$REMOTE_STAGE/pilot-users' '$REMOTE_STAGE/monthly-minutes' \
+                '$REMOTE_STAGE/app.env.candidate' '$REMOTE_STAGE/app.env.backup'; \
+               rmdir '$REMOTE_STAGE' 2>/dev/null || true" >/dev/null 2>&1 || true
+            rm -f "$LOCAL_STAGE/gemini-key" "$LOCAL_STAGE/pilot-org" \
+              "$LOCAL_STAGE/pilot-users" "$LOCAL_STAGE/monthly-minutes"
+            rmdir "$LOCAL_STAGE" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          chmod 700 "$LOCAL_STAGE"
+          printf '%s' "$GEMINI_API_KEY" > "$LOCAL_STAGE/gemini-key"
+          printf '%s' "$VOICE_PILOT_ORG_ID" > "$LOCAL_STAGE/pilot-org"
+          printf '%s' "$VOICE_PILOT_USER_IDS" > "$LOCAL_STAGE/pilot-users"
+          printf '%s' "$VOICE_MONTHLY_MINUTES" > "$LOCAL_STAGE/monthly-minutes"
+          chmod 600 "$LOCAL_STAGE"/*
+
+          ssh -o BatchMode=yes -o ConnectTimeout=30 -o ServerAliveInterval=15 \
+            -o IdentitiesOnly=yes -o UserKnownHostsFile=~/.ssh/known_hosts -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "bash -s -- '$REMOTE_STATE_ROOT' '$REMOTE_STAGE'" <<'REMOTE'
+          set -euo pipefail
+          STATE_ROOT="$1"
+          STAGE="$2"
+          if [ -e "$STATE_ROOT" ] || [ -L "$STATE_ROOT" ]; then
+            [ -d "$STATE_ROOT" ] && [ ! -L "$STATE_ROOT" ] || {
+              echo "FATAL: voice operator state directory must be a real directory" >&2; exit 1;
+            }
+            [ "$(stat -c '%U:%G' "$STATE_ROOT")" = "root:root" ] || {
+              echo "FATAL: voice operator state directory must be owned by root:root" >&2; exit 1;
+            }
+            STATE_MODE="$(stat -c '%a' "$STATE_ROOT")"
+            (( (8#$STATE_MODE & 8#022) == 0 )) || {
+              echo "FATAL: voice operator state directory must not be group- or world-writable" >&2; exit 1;
+            }
+          else
+            install -d -m 0750 "$STATE_ROOT"
+          fi
+          [ -d "$STATE_ROOT" ] && [ ! -L "$STATE_ROOT" ] || {
+            echo "FATAL: voice operator state directory creation failed" >&2; exit 1;
+          }
+          [ "$(stat -c '%U:%G' "$STATE_ROOT")" = "root:root" ] || {
+            echo "FATAL: voice operator state directory must be owned by root:root" >&2; exit 1;
+          }
+          STATE_MODE="$(stat -c '%a' "$STATE_ROOT")"
+          (( (8#$STATE_MODE & 8#022) == 0 )) || {
+            echo "FATAL: voice operator state directory must not be group- or world-writable" >&2; exit 1;
+          }
+          install -d -m 0700 "$STAGE"
+          [ "$(stat -c '%U:%G:%a' "$STAGE")" = "root:root:700" ] || {
+            echo "FATAL: voice env staging directory must be root:root mode 0700" >&2; exit 1;
+          }
+          REMOTE
+          scp -o BatchMode=yes -o ConnectTimeout=30 -o IdentitiesOnly=yes \
+            -o UserKnownHostsFile=~/.ssh/known_hosts -i ~/.ssh/deploy_key "$LOCAL_STAGE"/* \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:"$REMOTE_STAGE/"
+          ssh -o BatchMode=yes -o ConnectTimeout=30 -o ServerAliveInterval=15 \
+            -o IdentitiesOnly=yes -o UserKnownHostsFile=~/.ssh/known_hosts -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "bash -s -- '$REMOTE_STAGE'" <<'REMOTE'
+          set -euo pipefail
+          STAGE="$1"
+          APP_DIR="/opt/leaddrive-v2"
+          APP_ENV_FILE="${APP_ENV_FILE:-/etc/leaddrive/app.env}"
+          ENV="$APP_ENV_FILE"
+          ENV_DIR="$(dirname -- "$ENV")"
+          APP_ENV_LOCK_FILE="${APP_ENV_LOCK_FILE:-/run/lock/leaddrive-app-env.lock}"
+          CANDIDATE="$STAGE/app.env.candidate"
+          BACKUP="$STAGE/app.env.backup"
+          ENV_NEXT=""
+          ROLLBACK_NEXT=""
+          cleanup() {
+            rm -f -- "$STAGE/gemini-key" "$STAGE/pilot-org" "$STAGE/pilot-users" "$STAGE/monthly-minutes" "$CANDIDATE" "$BACKUP"
+            [ -z "$ENV_NEXT" ] || rm -f -- "$ENV_NEXT"
+            [ -z "$ROLLBACK_NEXT" ] || rm -f -- "$ROLLBACK_NEXT"
+            rmdir "$STAGE" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          [ -d "$ENV_DIR" ] && [ ! -L "$ENV_DIR" ] || { echo "FATAL: app env parent $ENV_DIR missing or is a symlink"; exit 1; }
+          [ "$(stat -c '%U:%G' "$ENV_DIR")" = "root:root" ] || { echo "FATAL: app env parent must be owned by root:root"; exit 1; }
+          ENV_DIR_MODE="$(stat -c '%a' "$ENV_DIR")"
+          (( (8#$ENV_DIR_MODE & 8#022) == 0 )) || { echo "FATAL: app env parent must not be group- or world-writable"; exit 1; }
+          [ -f "$ENV" ] && [ ! -L "$ENV" ] || { echo "FATAL: canonical app env $ENV missing or is a symlink"; exit 1; }
+          [ "$(stat -c '%U:%G:%a' "$ENV")" = "root:root:600" ] || { echo "FATAL: canonical app env must be root:root mode 0600"; exit 1; }
+          [ -d "$STAGE" ] && [ ! -L "$STAGE" ] || { echo "FATAL: voice env staging directory missing or is a symlink"; exit 1; }
+          [ "$(stat -c '%U:%G:%a' "$STAGE")" = "root:root:700" ] || { echo "FATAL: voice env staging directory must be root:root mode 0700"; exit 1; }
+          [ -d "$(dirname -- "$APP_ENV_LOCK_FILE")" ] || { echo "FATAL: app-env lock parent missing"; exit 1; }
+          exec 9>"$APP_ENV_LOCK_FILE"
+          flock -w 120 9 || { echo "FATAL: another canonical app-env update is running"; exit 1; }
+          GEMINI_API_KEY="$(< "$STAGE/gemini-key")"
+          VOICE_PILOT_ORG_ID="$(< "$STAGE/pilot-org")"
+          VOICE_PILOT_USER_IDS="$(< "$STAGE/pilot-users")"
+          VOICE_MONTHLY_MINUTES="$(< "$STAGE/monthly-minutes")"
+          [ -n "$GEMINI_API_KEY" ] || { echo "FATAL: GEMINI_API_KEY secret is empty"; exit 1; }
+          [ -n "$VOICE_PILOT_ORG_ID" ] || { echo "FATAL: VOICE_PILOT_ORG_ID secret is empty"; exit 1; }
+          for value in "$GEMINI_API_KEY" "$VOICE_PILOT_ORG_ID" "$VOICE_PILOT_USER_IDS" "$VOICE_MONTHLY_MINUTES"; do
+            [[ "$value" != *$'\n'* && "$value" != *$'\r'* ]] || { echo "FATAL: voice env values must be single-line"; exit 1; }
+          done
+          cp -p "$ENV" "$BACKUP"
+          cp -p "$ENV" "$CANDIDATE"
+
+          read_env_value() {
+            local file="$1" name="$2" value first last
+            value="$(sed -nE "s/^[[:space:]]*(export[[:space:]]+)?${name}[[:space:]]*=[[:space:]]*(.*)$/\2/p" "$file" | tail -1 | tr -d '\r')"
+            if [ "${#value}" -ge 2 ]; then
+              first="${value:0:1}"
+              last="${value: -1}"
+              if { [ "$first" = '"' ] && [ "$last" = '"' ]; } || { [ "$first" = "'" ] && [ "$last" = "'" ]; }; then
+                value="${value:1:${#value}-2}"
+              fi
+            fi
+            printf '%s' "$value"
+          }
+
+          write_var() {
+            local name="$1" value="$2"
+            sed -i "/^[[:space:]]*\(export[[:space:]]\+\)\?${name}=/d" "$CANDIDATE"
+            [ -z "$value" ] || printf '%s=%s\n' "$name" "$value" >> "$CANDIDATE"
+          }
+
+          write_var GEMINI_API_KEY "$GEMINI_API_KEY"
+          write_var VOICE_REALTIME_PROVIDER "gemini_live"
+          write_var VOICE_PILOT_ORG_ID "$VOICE_PILOT_ORG_ID"
+          if [ -n "$VOICE_PILOT_USER_IDS" ]; then
+            write_var VOICE_PILOT_USER_IDS "$VOICE_PILOT_USER_IDS"
+          else
+            VOICE_PILOT_USER_IDS="$(read_env_value "$CANDIDATE" VOICE_PILOT_USER_IDS)"
+          fi
+          # Empty optional workflow secrets preserve the currently installed
+          # production values instead of deleting them and falling to defaults.
+          if [ -n "$VOICE_MONTHLY_MINUTES" ]; then
+            write_var VOICE_MONTHLY_MINUTES "$VOICE_MONTHLY_MINUTES"
+          else
+            VOICE_MONTHLY_MINUTES="$(read_env_value "$CANDIDATE" VOICE_MONTHLY_MINUTES)"
+          fi
+          VOICE_MAX_SESSION_SECONDS="$(read_env_value "$CANDIDATE" VOICE_MAX_SESSION_SECONDS)"
+          VOICE_MAX_TOOL_CALLS="$(read_env_value "$CANDIDATE" VOICE_MAX_TOOL_CALLS)"
+          # Retire browser-assistant settings from the old OpenAI handshake.
+          for legacy in VOICE_REALTIME_MODEL VOICE_REALTIME_VOICE VOICE_REALTIME_TRANSCRIPTION_MODEL; do
+            write_var "$legacy" ""
+          done
+
+          # The staging file must share the app-env parent so mv is an atomic
+          # replacement of the canonical file, never a write into the checkout.
+          ENV_NEXT="$(mktemp "$ENV_DIR/.app.env.voice-next.XXXXXX")"
+          install -m "$(stat -c %a "$ENV")" -o "$(stat -c %u "$ENV")" -g "$(stat -c %g "$ENV")" \
+            "$CANDIDATE" "$ENV_NEXT"
+          mv -f "$ENV_NEXT" "$ENV"
+          ENV_NEXT=""
+
+          # PM2 --update-env consumes this shell's exported environment; it does
+          # not parse the app env file. Export exactly the values installed above.
+          export GEMINI_API_KEY
+          export VOICE_REALTIME_PROVIDER="gemini_live"
+          export VOICE_PILOT_ORG_ID VOICE_PILOT_USER_IDS VOICE_MONTHLY_MINUTES
+          export VOICE_MAX_SESSION_SECONDS VOICE_MAX_TOOL_CALLS
+          export VOICE_REALTIME_MODEL=""
+          export VOICE_REALTIME_VOICE=""
+          export VOICE_REALTIME_TRANSCRIPTION_MODEL=""
+
+          rollback() {
+            ROLLBACK_NEXT="$(mktemp "$ENV_DIR/.app.env.voice-rollback.XXXXXX")"
+            install -m "$(stat -c %a "$BACKUP")" -o "$(stat -c %u "$BACKUP")" -g "$(stat -c %g "$BACKUP")" \
+              "$BACKUP" "$ROLLBACK_NEXT"
+            mv -f "$ROLLBACK_NEXT" "$ENV"
+            ROLLBACK_NEXT=""
+            for name in GEMINI_API_KEY VOICE_REALTIME_PROVIDER VOICE_PILOT_ORG_ID \
+              VOICE_PILOT_USER_IDS VOICE_MONTHLY_MINUTES VOICE_MAX_SESSION_SECONDS \
+              VOICE_MAX_TOOL_CALLS VOICE_REALTIME_MODEL \
+              VOICE_REALTIME_VOICE VOICE_REALTIME_TRANSCRIPTION_MODEL; do
+              export "$name=$(read_env_value "$BACKUP" "$name")"
+            done
+            pm2 restart leaddrive-v2 --update-env >/dev/null 2>&1 || true
+          }
+
+          pm2 restart leaddrive-v2 --update-env >/dev/null || { rollback; echo "FATAL: PM2 restart failed; env rolled back"; exit 1; }
+          PID="$(pm2 pid leaddrive-v2 | tail -1)"
+          [ -n "$PID" ] && [ "$PID" != "0" ] || { rollback; echo "FATAL: PM2 process is not running; env rolled back"; exit 1; }
+          tr '\0' '\n' < "/proc/$PID/environ" | grep -qx 'VOICE_REALTIME_PROVIDER=gemini_live' || {
+            rollback; echo "FATAL: PM2 did not inherit VOICE_REALTIME_PROVIDER=gemini_live; env rolled back"; exit 1;
+          }
+          tr '\0' '\n' < "/proc/$PID/environ" | grep -q '^GEMINI_API_KEY=.' || {
+            rollback; echo "FATAL: PM2 did not inherit GEMINI_API_KEY; env rolled back"; exit 1;
+          }
+          HEALTHY=false
+          for attempt in 1 2 3 4 5; do
+            if curl -fsS --max-time 10 http://127.0.0.1:3001/api/v1/ping >/dev/null; then
+              HEALTHY=true
+              break
+            fi
+            [ "$attempt" -lt 5 ] && sleep 3
+          done
+          [ "$HEALTHY" = true ] || { rollback; echo "FATAL: health probe failed; env rolled back"; exit 1; }
+          echo "Gemini Live env installed atomically; PM2 provider and key presence verified"
+          REMOTE

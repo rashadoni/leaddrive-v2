@@ -1,0 +1,45 @@
+Rebuild the reviewed wrapper from the bundle with every correction at once.
+
+  before: c36aa4343f8fda11ac1a9c445de70a1c659590e7690fe2019647da3e1593f63f
+  after:  27bbeb907627095090623dd5cb97bd08b0740239c466976850f4bb4d23212fbf
+
+This supersedes the three sequential patches that were applied to the running
+wrapper during the incident -- 8088-predicate, dialplan-gate and journal-gate.
+Those took the live file from c36aa434 to a5767237 one at a time, under time
+pressure, while calls were down. This takes the *bundle* copy from the same
+starting point to a wrapper that carries all three plus the new dialplan
+transform digest, so the reviewed artifact and production stop disagreeing.
+
+The three corrections are byte-identical to the live ones; only the transform
+pin is new here, which is why the digest differs from a5767237.
+
+## What went in
+
+  1. verify_no_tcp_listener 8088 -> verify_no_tcp_listener_owned_by 8088 asterisk
+     Asterisk's readiness proof demanded an empty 8088 while nginx's proof
+     demanded nginx on it, in the same call, so the gate could never pass.
+  2. the authorize-AGI check now asks for fanum-correlated-dial-gate
+     It was searching fanum-observed-place-call, which does not contain that
+     line -- dialplan show prints one context and does not expand a Gosub.
+  3. the post-cutover journal gate ignores radiusclient-ng/radiusclient.conf
+     This host logs that at error level on every Asterisk start, including the
+     start the rollback itself performs.
+  4. EXPECTED_DIALPLAN_TRANSFORM_SHA256 -> 2ef60581…
+     The generator now derives the route mode instead of hard-coding "human";
+     see dialplan-transform-route-mode.patch.
+
+## Verification
+
+The bundle's own suite passes in full after the reconciliation: 112 of 112,
+including the static contract test that hashes the reviewed payload and the
+transform test that pinned the old hard-coded route mode. The coordinator in
+the bundle now hashes to 9ac291ac…, byte-for-byte the file production is
+already running -- the strongest available evidence that the bundle and the
+live host are the same code rather than merely similar.
+
+## Still required before staging
+
+The staging workflow assembles the payload from the bundle on the operator's
+own machine, not from the copy on the production host that was reconciled here.
+Those two must be made identical first, or staging will refuse the payload on a
+digest mismatch. That is the one remaining step, and it needs that machine.

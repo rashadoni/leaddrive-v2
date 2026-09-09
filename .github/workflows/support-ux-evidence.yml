@@ -1,0 +1,267 @@
+name: Support UX evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_mode:
+        description: Use an isolated CI tenant or an explicitly configured non-production host
+        required: true
+        type: choice
+        default: ephemeral
+        options:
+          - ephemeral
+          - remote
+      roles:
+        description: Comma-separated role set
+        required: true
+        default: agent,manager,admin,customer
+      locales:
+        description: Comma-separated locale set
+        required: true
+        default: az,ru,en
+      themes:
+        description: Comma-separated theme set
+        required: true
+        default: light,dark
+      viewports:
+        description: Comma-separated viewport set
+        required: true
+        default: desktop,tablet,narrow-tablet,mobile
+      data_profile:
+        description: Fixture profile label (empty, typical, high, 0, 5, 50, 500)
+        required: true
+        default: typical
+      visual_mode:
+        description: Capture a new baseline or compare with a previous artifact
+        required: true
+        type: choice
+        default: capture
+        options:
+          - capture
+          - compare
+      baseline_run_id:
+        description: Actions run ID containing the baseline artifact (required for compare)
+        required: false
+        type: string
+      baseline_artifact_name:
+        description: Exact baseline artifact name (required for compare)
+        required: false
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: support-ux-evidence-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: support_ux_evidence
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ephemeral-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d support_ux_evidence"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      SUPPORT_EVIDENCE_TARGET_MODE: ${{ inputs.target_mode }}
+      SCREENSHOT_BASE_URL: ${{ inputs.target_mode == 'ephemeral' && 'http://127.0.0.1:3000' || secrets.SUPPORT_EVIDENCE_BASE_URL }}
+      CONFIRM_REMOTE_SCREENSHOT: ${{ inputs.target_mode == 'ephemeral' && '' || secrets.SUPPORT_EVIDENCE_HOST }}
+      SCREENSHOT_DEMO_ORG: ${{ inputs.target_mode == 'ephemeral' && 'Northstar Support Lab' || secrets.SUPPORT_EVIDENCE_DEMO_ORG }}
+      SUPPORT_EVIDENCE_COMMIT: ${{ github.sha }}
+      SUPPORT_EVIDENCE_OUTPUT_DIR: artifacts/support-ux/${{ github.sha }}
+      SUPPORT_EVIDENCE_ROLES: ${{ inputs.roles }}
+      SUPPORT_EVIDENCE_LOCALES: ${{ inputs.locales }}
+      SUPPORT_EVIDENCE_THEMES: ${{ inputs.themes }}
+      SUPPORT_EVIDENCE_VIEWPORTS: ${{ inputs.viewports }}
+      SUPPORT_EVIDENCE_DATA_PROFILE: ${{ inputs.data_profile }}
+      SUPPORT_EVIDENCE_REQUIRE_BASELINE: ${{ inputs.visual_mode == 'compare' }}
+      SUPPORT_EVIDENCE_BASELINE_DIR: ${{ inputs.visual_mode == 'compare' && 'artifacts/support-ux-baseline' || '' }}
+      SUPPORT_EVIDENCE_AGENT_EMAIL: ${{ inputs.target_mode == 'ephemeral' && 'agent@support-evidence.invalid' || secrets.SUPPORT_EVIDENCE_AGENT_EMAIL }}
+      SUPPORT_EVIDENCE_AGENT_PASSWORD: ${{ secrets.SUPPORT_EVIDENCE_AGENT_PASSWORD }}
+      SUPPORT_EVIDENCE_MANAGER_EMAIL: ${{ inputs.target_mode == 'ephemeral' && 'manager@support-evidence.invalid' || secrets.SUPPORT_EVIDENCE_MANAGER_EMAIL }}
+      SUPPORT_EVIDENCE_MANAGER_PASSWORD: ${{ secrets.SUPPORT_EVIDENCE_MANAGER_PASSWORD }}
+      SUPPORT_EVIDENCE_ADMIN_EMAIL: ${{ inputs.target_mode == 'ephemeral' && 'admin@support-evidence.invalid' || secrets.SUPPORT_EVIDENCE_ADMIN_EMAIL }}
+      SUPPORT_EVIDENCE_ADMIN_PASSWORD: ${{ secrets.SUPPORT_EVIDENCE_ADMIN_PASSWORD }}
+      SUPPORT_EVIDENCE_PORTAL_EMAIL: ${{ inputs.target_mode == 'ephemeral' && 'customer@support-evidence.invalid' || secrets.SUPPORT_EVIDENCE_PORTAL_EMAIL }}
+      SUPPORT_EVIDENCE_PORTAL_PASSWORD: ${{ secrets.SUPPORT_EVIDENCE_PORTAL_PASSWORD }}
+      SUPPORT_EVIDENCE_PORTAL_SLUG: ${{ inputs.target_mode == 'ephemeral' && 'support-evidence' || secrets.SUPPORT_EVIDENCE_PORTAL_SLUG }}
+      SUPPORT_EVIDENCE_TICKET_ID: ${{ inputs.target_mode == 'ephemeral' && '' || secrets.SUPPORT_EVIDENCE_TICKET_ID }}
+      SUPPORT_EVIDENCE_COMPLAINT_ID: ${{ inputs.target_mode == 'ephemeral' && '' || secrets.SUPPORT_EVIDENCE_COMPLAINT_ID }}
+      SUPPORT_EVIDENCE_PORTAL_TICKET_ID: ${{ inputs.target_mode == 'ephemeral' && '' || secrets.SUPPORT_EVIDENCE_PORTAL_TICKET_ID }}
+      SUPPORT_EVIDENCE_CLOSURE_TOKEN: ${{ inputs.target_mode == 'ephemeral' && '' || secrets.SUPPORT_EVIDENCE_CLOSURE_TOKEN }}
+      ADMIN_DATABASE_URL: postgresql://postgres:ephemeral-only@127.0.0.1:5432/support_ux_evidence
+      DATABASE_URL: postgresql://postgres:ephemeral-only@127.0.0.1:5432/support_ux_evidence
+      NEXTAUTH_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+      APP_URL: http://127.0.0.1:3000
+      AUTH_TRUST_HOST: "true"
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Validate visual comparison inputs
+        if: ${{ inputs.visual_mode == 'compare' }}
+        env:
+          BASELINE_RUN_ID: ${{ inputs.baseline_run_id }}
+          BASELINE_ARTIFACT_NAME: ${{ inputs.baseline_artifact_name }}
+        run: |
+          test -n "$BASELINE_RUN_ID"
+          test -n "$BASELINE_ARTIFACT_NAME"
+
+      - name: Download SHA-bound visual baseline
+        if: ${{ inputs.visual_mode == 'compare' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.baseline_artifact_name }}
+          path: artifacts/support-ux-baseline
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.baseline_run_id }}
+
+      - name: Validate evidence infrastructure
+        run: |
+          node --check scripts/support-ux-browser-evidence.mjs
+          npm run i18n:check
+          npx eslint \
+            scripts/support-ux-browser-evidence.mjs \
+            scripts/seed-support-ux-evidence.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts
+          npx vitest run \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts
+
+      - name: Validate secret-managed demo passwords
+        shell: bash
+        run: |
+          for name in \
+            SUPPORT_EVIDENCE_AGENT_PASSWORD \
+            SUPPORT_EVIDENCE_MANAGER_PASSWORD \
+            SUPPORT_EVIDENCE_ADMIN_PASSWORD \
+            SUPPORT_EVIDENCE_PORTAL_PASSWORD; do
+            value="${!name}"
+            test -n "$value" || { echo "Missing required GitHub Secret: $name"; exit 1; }
+            echo "::add-mask::$value"
+          done
+
+      - name: Generate masked ephemeral application secrets
+        if: ${{ inputs.target_mode == 'ephemeral' }}
+        shell: bash
+        run: |
+          auth_secret="$(openssl rand -hex 32)Aa1!"
+          tenant_pii_key="$(openssl rand -hex 32)"
+          echo "::add-mask::$auth_secret"
+          echo "::add-mask::$tenant_pii_key"
+          printf '%s=%s\n' NEXTAUTH_SECRET "$auth_secret" >> "$GITHUB_ENV"
+          printf '%s=%s\n' TENANT_PII_MASTER_KEY "$tenant_pii_key" >> "$GITHUB_ENV"
+
+      - name: Create isolated demo tenant and fixtures
+        if: ${{ inputs.target_mode == 'ephemeral' }}
+        env:
+          CI: "true"
+          NODE_ENV: test
+          SUPPORT_EVIDENCE_SEED_CONFIRM: ephemeral-support-ux-v1
+          SUPPORT_EVIDENCE_FIXTURE_MANIFEST: /tmp/support-ux-evidence-fixtures.json
+        shell: bash
+        run: |
+          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
+            -c 'CREATE EXTENSION IF NOT EXISTS vector'
+          npx prisma db push --skip-generate
+          npx prisma generate
+          npx tsx scripts/seed-support-ux-evidence.ts
+
+          closure_token="$(jq -er '.fixtures.closureToken' "$SUPPORT_EVIDENCE_FIXTURE_MANIFEST")"
+          echo "::add-mask::$closure_token"
+          printf '%s=%s\n' SUPPORT_EVIDENCE_TICKET_ID "$(jq -er '.fixtures.ticketId' "$SUPPORT_EVIDENCE_FIXTURE_MANIFEST")" >> "$GITHUB_ENV"
+          printf '%s=%s\n' SUPPORT_EVIDENCE_COMPLAINT_ID "$(jq -er '.fixtures.complaintId' "$SUPPORT_EVIDENCE_FIXTURE_MANIFEST")" >> "$GITHUB_ENV"
+          printf '%s=%s\n' SUPPORT_EVIDENCE_PORTAL_TICKET_ID "$(jq -er '.fixtures.portalTicketId' "$SUPPORT_EVIDENCE_FIXTURE_MANIFEST")" >> "$GITHUB_ENV"
+          printf '%s=%s\n' SUPPORT_EVIDENCE_CLOSURE_TOKEN "$closure_token" >> "$GITHUB_ENV"
+          rm -f "$SUPPORT_EVIDENCE_FIXTURE_MANIFEST"
+
+      - name: Validate remote non-production evidence configuration
+        if: ${{ inputs.target_mode == 'remote' }}
+        shell: bash
+        run: |
+          for name in \
+            SCREENSHOT_BASE_URL CONFIRM_REMOTE_SCREENSHOT SCREENSHOT_DEMO_ORG \
+            SUPPORT_EVIDENCE_AGENT_EMAIL SUPPORT_EVIDENCE_AGENT_PASSWORD \
+            SUPPORT_EVIDENCE_MANAGER_EMAIL SUPPORT_EVIDENCE_MANAGER_PASSWORD \
+            SUPPORT_EVIDENCE_ADMIN_EMAIL SUPPORT_EVIDENCE_ADMIN_PASSWORD \
+            SUPPORT_EVIDENCE_PORTAL_EMAIL SUPPORT_EVIDENCE_PORTAL_PASSWORD \
+            SUPPORT_EVIDENCE_PORTAL_SLUG SUPPORT_EVIDENCE_TICKET_ID \
+            SUPPORT_EVIDENCE_COMPLAINT_ID SUPPORT_EVIDENCE_PORTAL_TICKET_ID \
+            SUPPORT_EVIDENCE_CLOSURE_TOKEN; do
+            test -n "${!name}" || { echo "Missing required GitHub Secret: $name"; exit 1; }
+          done
+          case "$SCREENSHOT_BASE_URL" in
+            *leaddrivecrm.org*|*13.140.132.245*|*46.224.171.53*) echo "Production targets are forbidden for Support UX evidence"; exit 1 ;;
+          esac
+
+      - run: npx playwright install --with-deps chromium
+
+      - name: Capture Support UX evidence
+        shell: bash
+        run: |
+          app_pid=""
+          cleanup() {
+            if [ -n "$app_pid" ]; then
+              kill "$app_pid" 2>/dev/null || true
+              wait "$app_pid" 2>/dev/null || true
+            fi
+          }
+          trap cleanup EXIT
+
+          if [ "$SUPPORT_EVIDENCE_TARGET_MODE" = "ephemeral" ]; then
+            npx next dev --hostname 127.0.0.1 --port 3000 > /tmp/support-ux-evidence-app.log 2>&1 &
+            app_pid=$!
+            for attempt in $(seq 1 90); do
+              if curl -fsS --max-time 5 http://127.0.0.1:3000/api/v1/ping >/dev/null; then
+                break
+              fi
+              if ! kill -0 "$app_pid" 2>/dev/null; then
+                sed -n '1,240p' /tmp/support-ux-evidence-app.log
+                exit 1
+              fi
+              if [ "$attempt" -eq 90 ]; then
+                sed -n '1,240p' /tmp/support-ux-evidence-app.log
+                exit 1
+              fi
+              sleep 1
+            done
+          fi
+
+          if ! node scripts/support-ux-browser-evidence.mjs; then
+            if [ "$SUPPORT_EVIDENCE_TARGET_MODE" = "ephemeral" ]; then
+              sed -n '1,240p' /tmp/support-ux-evidence-app.log
+            fi
+            exit 1
+          fi
+
+      - name: Upload non-secret evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: support-ux-evidence-${{ github.sha }}-${{ inputs.data_profile }}-${{ inputs.visual_mode }}
+          path: artifacts/support-ux/${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 30

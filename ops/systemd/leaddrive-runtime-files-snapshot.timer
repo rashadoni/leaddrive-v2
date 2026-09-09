@@ -1,0 +1,12 @@
+[Unit]
+Description=Snapshot LeadDrive authoritative runtime files every night
+
+[Timer]
+OnCalendar=*-*-* 04:15:00 UTC
+RandomizedDelaySec=30m
+Persistent=true
+AccuracySec=5m
+Unit=leaddrive-runtime-files-snapshot.service
+
+[Install]
+WantedBy=timers.target

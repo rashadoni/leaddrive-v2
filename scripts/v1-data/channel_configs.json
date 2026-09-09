@@ -1,0 +1,3 @@
+[{"id":1,"channel_type":"sms","config_name":"Test SMS","bot_token":null,"webhook_url":null,"api_key":null,"phone_number":null,"is_active":0,"created_by":11,"created_at":"2026-03-17T23:31:48.297255","updated_at":"2026-03-17T23:31:48.297255"},
+ {"id":2,"channel_type":"telegram","config_name":"Telegram Bot","bot_token":null,"webhook_url":null,"api_key":null,"phone_number":null,"is_active":0,"created_by":11,"created_at":"2026-03-17T23:40:14.574388","updated_at":"2026-03-17T23:40:14.574388"},
+ {"id":3,"channel_type":"email","config_name":"Email SMTP","bot_token":null,"webhook_url":null,"api_key":null,"phone_number":null,"is_active":0,"created_by":11,"created_at":"2026-03-17T23:41:23.9984","updated_at":"2026-03-17T23:41:23.9984"}]

@@ -1,0 +1,12 @@
+[Unit]
+Description=Run LeadDrive PostgreSQL backup every night
+
+[Timer]
+OnCalendar=*-*-* 02:15:00 UTC
+RandomizedDelaySec=15m
+Persistent=true
+AccuracySec=1m
+Unit=leaddrive-postgres-backup.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,5 @@
+[{"id":30,"name":"Website → Azar","conditions":"{\"source\": \"website\"}","assign_to":5,"assign_method":"direct","priority":20,"is_active":1,"created_at":"2026-03-14T14:18:30"}, 
+ {"id":31,"name":"Referral → Azar","conditions":"{\"source\":\"referral\"}","assign_to":5,"assign_method":"direct","priority":9,"is_active":1,"created_at":"2026-03-14T14:18:30"}, 
+ {"id":32,"name":"Social media → Azar","conditions":"{\"source\":\"social_media\"}","assign_to":5,"assign_method":"direct","priority":8,"is_active":1,"created_at":"2026-03-14T14:18:30"}, 
+ {"id":33,"name":"High priority → Azar","conditions":"{\"priority\":\"high\"}","assign_to":5,"assign_method":"direct","priority":7,"is_active":1,"created_at":"2026-03-14T14:18:30"}, 
+ {"id":34,"name":"Остальные → Round Robin","conditions":"{}","assign_to":null,"assign_method":"round_robin","priority":1,"is_active":1,"created_at":"2026-03-14T14:18:30"}]

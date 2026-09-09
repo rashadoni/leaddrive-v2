@@ -1,0 +1,84 @@
+Stop the receive loop stalling, and stop resampling the AI's voice.
+
+Applies to /opt/fanum-voice/fanum-voice-core.py on the PBX. Two independent
+fixes, applied in order:
+
+  before:         75be01e068ad1dc87db9aed7626d162750a836199a99b76417cc404ca2c27fb7
+  after queue:    4dc8aa9205766c634a317de1261e4fbe79bafd8f3e881df216f275aaebc889e4
+  after mu-law:   7e8a92f2d8e0f2b3e42812de0545e76b4036f4faf1383477eb69ec2ccd16d4ed
+
+This file is not part of the reviewed cutover bundle and no wrapper pins it.
+
+## The AI fell silent on long answers
+
+The thread that reads Realtime events is also the thread that answers the
+server's websocket pings, and OpenAI drops the connection when a pong is late.
+
+The model emits a finished answer far faster than a phone line plays it, so
+~40 ms audio deltas pile up in output_queue. At maxsize=600 that queue holds
+roughly 24 seconds of speech. Any longer answer -- exactly what a complex
+question produces -- filled it, every further put blocked up to a full second,
+the loop stopped reading, the ping went unanswered, and the socket died
+mid-sentence. Short answers always worked, which is why it looked like the model
+freezing on hard questions.
+
+Proved by holding a separate idle Realtime websocket open from the same host for
+75 seconds: it answered every 20-second ping and never dropped, so the network
+and OpenAI were fine and the drops were ours.
+
+## The voice was raspy and thin
+
+The session was negotiated as 24 kHz PCM while the phone path is 8 kHz, so every
+reply was squeezed 24000 -> 8000 by audioop.ratecv -- linear interpolation with
+no anti-alias filter, which folds everything above 4 kHz back into the voice
+band.
+
+PCM cannot be negotiated lower; the API answers "Invalid
+'session.audio.output.format.rate': ... Expected a value >= 24000". G.711 mu-law
+is 8 kHz by definition and is accepted, and it is what the trunk already
+carries, so the resampling disappears on both legs and the uplink drops to a
+quarter of the bytes. Both facts were confirmed against the live API before
+changing anything.
+
+--- a/fanum-voice-core.py
++++ b/fanum-voice-core.py
+@@ -745,8 +745,8 @@
+-    INPUT_RATE = 24000
+-    OUTPUT_RATE = 24000
++    INPUT_RATE = 8000
++    OUTPUT_RATE = 8000
+@@ -758,1 +758,1 @@
+-        self.output_queue = queue.Queue(maxsize=600)
++        self.output_queue = queue.Queue(maxsize=6000)
+@@ -841,1 +841,1 @@
+-                        "format": {"type": "audio/pcm", "rate": self.INPUT_RATE},
++                        "format": {"type": "audio/pcmu"},
+@@ -850,1 +850,1 @@
+-                        "format": {"type": "audio/pcm", "rate": self.OUTPUT_RATE},
++                        "format": {"type": "audio/pcmu"},
+@@ -1080,1 +1080,1 @@
+-                    "audio": base64.b64encode(payload).decode(),
++                    "audio": base64.b64encode(audioop.lin2ulaw(payload, 2)).decode(),
+@@ -1240,1 +1240,1 @@
+-                        "audio": base64.b64encode(payload).decode(),
++                        "audio": base64.b64encode(audioop.lin2ulaw(payload, 2)).decode(),
+@@ -1694,1 +1694,2 @@
+-                        pcm24 = base64.b64decode(event.get("delta") or "", validate=True)
++                        pcm24 = audioop.ulaw2lin(
++                            base64.b64decode(event.get("delta") or "", validate=True), 2)
+@@ -1714,1 +1714,1 @@
+-                            self.output_queue.put((generation, item_id, pcm24), timeout=1)
++                            self.output_queue.put((generation, item_id, pcm24), timeout=0.1)
+@@ -1840,1 +1840,1 @@
+-                for pos in range(0, len(pcm24), 960):
++                for pos in range(0, len(pcm24), 320):
+@@ -1845,1 +1845,1 @@
+-                            chunk24 = pcm24[pos:pos + 960]
++                            chunk24 = pcm24[pos:pos + 320]
+@@ -1858,1 +1858,1 @@
+-                        played = len(chunk24) / 48
++                        played = len(chunk24) / 16
+
+Playback pacing is derived from these two constants: 20 ms is 320 bytes of
+8 kHz 16-bit audio, and there are 16 bytes per millisecond. Getting either wrong
+sends audio faster than real time and the line breaks up.

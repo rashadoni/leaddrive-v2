@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://leaddrivecrm.org/sitemap.xml
+
+# Disallow admin/dashboard areas
+Disallow: /api/
+Disallow: /login
+Disallow: /register
+Disallow: /settings/
+Disallow: /portal/

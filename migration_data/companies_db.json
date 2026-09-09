@@ -1,0 +1,2402 @@
+[
+  {
+    "id": 192,
+    "name": "A2z",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "a2z.az",
+    "industry": ""
+  },
+  {
+    "id": 263,
+    "name": "AFF",
+    "group_name": "Separated",
+    "category": "client",
+    "user_count": 94,
+    "cost_code": "",
+    "domain": "aff.az",
+    "industry": ""
+  },
+  {
+    "id": 186,
+    "name": "Aac",
+    "group_name": "Azmade",
+    "category": "client",
+    "user_count": 60,
+    "cost_code": "",
+    "domain": "aac.az",
+    "industry": ""
+  },
+  {
+    "id": 152,
+    "name": "Abv",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "abv.az",
+    "industry": ""
+  },
+  {
+    "id": 124,
+    "name": "Ad-livestock",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "ad-livestock.az",
+    "industry": ""
+  },
+  {
+    "id": 234,
+    "name": "Ada",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "ada.edu.az",
+    "industry": ""
+  },
+  {
+    "id": 276,
+    "name": "Aem-elektron",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "aem-elektron.az",
+    "industry": ""
+  },
+  {
+    "id": 9,
+    "name": "Afigroup",
+    "group_name": "AFI",
+    "category": "client",
+    "user_count": 57,
+    "cost_code": "AFIGROUP",
+    "domain": "afigroup.az",
+    "industry": ""
+  },
+  {
+    "id": 142,
+    "name": "Afs",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "afs.az",
+    "industry": ""
+  },
+  {
+    "id": 62,
+    "name": "Agec",
+    "group_name": "Separated",
+    "category": "client",
+    "user_count": 17,
+    "cost_code": "AGEC",
+    "domain": "agec.az",
+    "industry": ""
+  },
+  {
+    "id": 28,
+    "name": "Agf",
+    "group_name": "Separated",
+    "category": "client",
+    "user_count": 68,
+    "cost_code": "",
+    "domain": "agf.az",
+    "industry": ""
+  },
+  {
+    "id": 74,
+    "name": "Aghdamcityhotel",
+    "group_name": "Tabia",
+    "category": "client",
+    "user_count": 30,
+    "cost_code": "",
+    "domain": "aghdamcityhotel.az",
+    "industry": ""
+  },
+  {
+    "id": 26,
+    "name": "Agrarco",
+    "group_name": "AFI",
+    "category": "client",
+    "user_count": 103,
+    "cost_code": "AGRARCO",
+    "domain": "agrarco.az",
+    "industry": ""
+  },
+  {
+    "id": 194,
+    "name": "Agrodairy",
+    "group_name": "",
+    "category": "prospect",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "agrodairy.az",
+    "industry": ""
+  },
+  {
+    "id": 83,
+    "name": "Agrofoodinvest",
+    "group_name": "",
+    "category": "prospect",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "agrofoodinvest.az",
+    "industry": ""
+  },
+  {
+    "id": 259,
+    "name": "Agroteso",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "agroteso.az",
+    "industry": ""
+  },
+  {
+    "id": 253,
+    "name": "Agrotradesupply",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "agrotradesupply.az",
+    "industry": ""
+  },
+  {
+    "id": 116,
+    "name": "Agrowestdc",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "agrowestdc.az",
+    "industry": ""
+  },
+  {
+    "id": 216,
+    "name": "Ahik",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "ahik.org",
+    "industry": ""
+  },
+  {
+    "id": 208,
+    "name": "Akbis",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "akbis.az",
+    "industry": ""
+  },
+  {
+    "id": 271,
+    "name": "Alarna",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "alarna.az",
+    "industry": ""
+  },
+  {
+    "id": 39,
+    "name": "Altezza",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "altezza.org",
+    "industry": ""
+  },
+  {
+    "id": 209,
+    "name": "Altium",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "altium.net",
+    "industry": ""
+  },
+  {
+    "id": 240,
+    "name": "Amadeus",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "amadeus.com",
+    "industry": ""
+  },
+  {
+    "id": 66,
+    "name": "Amburan",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "amburan.com",
+    "industry": ""
+  },
+  {
+    "id": 132,
+    "name": "Apc",
+    "group_name": "Separated",
+    "category": "client",
+    "user_count": 131,
+    "cost_code": "APC",
+    "domain": "apc.az",
+    "industry": ""
+  },
+  {
+    "id": 147,
+    "name": "Aqrovest",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "aqrovest.az",
+    "industry": ""
+  },
+  {
+    "id": 220,
+    "name": "Aqualink",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "aqualink.az",
+    "industry": ""
+  },
+  {
+    "id": 239,
+    "name": "Aris",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "aris.az",
+    "industry": ""
+  },
+  {
+    "id": 99,
+    "name": "Astrazeneca",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "astrazeneca.com",
+    "industry": ""
+  },
+  {
+    "id": 108,
+    "name": "Asystems",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "asystems.as",
+    "industry": ""
+  },
+  {
+    "id": 251,
+    "name": "Atatexnologiya",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "atatexnologiya.az",
+    "industry": ""
+  },
+  {
+    "id": 165,
+    "name": "Ateshgah",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "ateshgah.com",
+    "industry": ""
+  },
+  {
+    "id": 226,
+    "name": "Atlasservices",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "atlasservices.az",
+    "industry": ""
+  },
+  {
+    "id": 92,
+    "name": "Atsfood",
+    "group_name": "Novex",
+    "category": "client",
+    "user_count": 251,
+    "cost_code": "ATSFOOD",
+    "domain": "atsfood.az",
+    "industry": ""
+  },
+  {
+    "id": 222,
+    "name": "Autodesk",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "autodesk.com",
+    "industry": ""
+  },
+  {
+    "id": 225,
+    "name": "Avisec",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "avisec.az",
+    "industry": ""
+  },
+  {
+    "id": 154,
+    "name": "Axata",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "axata.com.tr",
+    "industry": ""
+  },
+  {
+    "id": 191,
+    "name": "Az-net",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "az-net.az",
+    "industry": ""
+  },
+  {
+    "id": 140,
+    "name": "Azbadam",
+    "group_name": "AFI",
+    "category": "client",
+    "user_count": 19,
+    "cost_code": "",
+    "domain": "azbadam.az",
+    "industry": ""
+  },
+  {
+    "id": 82,
+    "name": "Azercell",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "azercell.com",
+    "industry": ""
+  },
+  {
+    "id": 61,
+    "name": "Azerconnect",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "azerconnect.az",
+    "industry": ""
+  },
+  {
+    "id": 60,
+    "name": "Azertelecom",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "azertelecom.az",
+    "industry": ""
+  },
+  {
+    "id": 34,
+    "name": "Azertexnolayn",
+    "group_name": "Azmade",
+    "category": "client",
+    "user_count": 395,
+    "cost_code": "AZERTEXNOLAYN",
+    "domain": "azertexnolayn.com",
+    "industry": ""
+  },
+  {
+    "id": 260,
+    "name": "Azetel",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "azetel.az",
+    "industry": ""
+  },
+  {
+    "id": 50,
+    "name": "Azeurotel",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "azeurotel.az",
+    "industry": ""
+  },
+  {
+    "id": 236,
+    "name": "Azevt",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "azevt.com",
+    "industry": ""
+  },
+  {
+    "id": 247,
+    "name": "Azintech",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "azintech.az",
+    "industry": ""
+  },
+  {
+    "id": 245,
+    "name": "Azintelecom",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "azintelecom.az",
+    "industry": ""
+  },
+  {
+    "id": 156,
+    "name": "Azintelnet",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "azintelnet.az",
+    "industry": ""
+  },
+  {
+    "id": 126,
+    "name": "Azintex",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "azintex.com",
+    "industry": ""
+  },
+  {
+    "id": 37,
+    "name": "Azmade",
+    "group_name": "Azmade",
+    "category": "client",
+    "user_count": 36,
+    "cost_code": "AZMADE",
+    "domain": "azmade.az",
+    "industry": ""
+  },
+  {
+    "id": 125,
+    "name": "Azmeqa",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "azmeqa.net",
+    "industry": ""
+  },
+  {
+    "id": 138,
+    "name": "Azrose",
+    "group_name": "AFI",
+    "category": "client",
+    "user_count": 19,
+    "cost_code": "",
+    "domain": "azrose.az",
+    "industry": ""
+  },
+  {
+    "id": 48,
+    "name": "Aztelekom",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "aztelekom.az",
+    "industry": ""
+  },
+  {
+    "id": 44,
+    "name": "Azza",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "azza.az",
+    "industry": ""
+  },
+  {
+    "id": 21,
+    "name": "Azərşəkər",
+    "group_name": "Azersheker",
+    "category": "client",
+    "user_count": 98,
+    "cost_code": "AZƏRŞƏKƏR",
+    "domain": "azsf.az",
+    "industry": ""
+  },
+  {
+    "id": 70,
+    "name": "Badamdarhotelandresidences",
+    "group_name": "Tabia",
+    "category": "client",
+    "user_count": 63,
+    "cost_code": "",
+    "domain": "badamdarhotelandresidences.az",
+    "industry": ""
+  },
+  {
+    "id": 153,
+    "name": "Bakcell",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "bakcell.com",
+    "industry": ""
+  },
+  {
+    "id": 141,
+    "name": "Baltech",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "baltech.com.tr",
+    "industry": ""
+  },
+  {
+    "id": 95,
+    "name": "Bestcomp",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "BES",
+    "domain": "bestcomp.net",
+    "industry": ""
+  },
+  {
+    "id": 47,
+    "name": "Bhc",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "bhc.az",
+    "industry": ""
+  },
+  {
+    "id": 131,
+    "name": "Bhr",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "bhr.az",
+    "industry": ""
+  },
+  {
+    "id": 280,
+    "name": "Bl-sw",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "bl-sw.com",
+    "industry": ""
+  },
+  {
+    "id": 187,
+    "name": "Blink-bi",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "blink-bi.az",
+    "industry": ""
+  },
+  {
+    "id": 168,
+    "name": "Bnbsecurity",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "bnbsecurity.az",
+    "industry": ""
+  },
+  {
+    "id": 199,
+    "name": "Brandup",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "brandup.az",
+    "industry": ""
+  },
+  {
+    "id": 198,
+    "name": "Buz-cloud",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "buz-cloud.com",
+    "industry": ""
+  },
+  {
+    "id": 117,
+    "name": "Caspel",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "caspel.com",
+    "industry": ""
+  },
+  {
+    "id": 287,
+    "name": "Centralpoint",
+    "group_name": "Tabia",
+    "category": "client",
+    "user_count": 10,
+    "cost_code": "",
+    "domain": null,
+    "industry": ""
+  },
+  {
+    "id": 76,
+    "name": "Chenotpalacegabala",
+    "group_name": "Tabia",
+    "category": "client",
+    "user_count": 1,
+    "cost_code": "CHENOT",
+    "domain": "chenotpalacegabala.com",
+    "industry": ""
+  },
+  {
+    "id": 146,
+    "name": "Chinarhotel",
+    "group_name": "Tabia",
+    "category": "client",
+    "user_count": 61,
+    "cost_code": "CHINARHOTEL",
+    "domain": "chinarhotel.az",
+    "industry": ""
+  },
+  {
+    "id": 244,
+    "name": "Citrustech",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "citrustech.az",
+    "industry": ""
+  },
+  {
+    "id": 203,
+    "name": "Clf",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "clf.az",
+    "industry": ""
+  },
+  {
+    "id": 214,
+    "name": "Codelab",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "codelab.az",
+    "industry": ""
+  },
+  {
+    "id": 100,
+    "name": "Competo",
+    "group_name": "",
+    "category": "prospect",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "competo.io",
+    "industry": ""
+  },
+  {
+    "id": 155,
+    "name": "Cozumyazilim",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "cozumyazilim.com.tr",
+    "industry": ""
+  },
+  {
+    "id": 127,
+    "name": "Cpccom",
+    "group_name": "",
+    "category": "inactive",
+    "user_count": 0,
+    "cost_code": "CPC",
+    "domain": "cpccom.az",
+    "industry": ""
+  },
+  {
+    "id": 33,
+    "name": "Crocusoft",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "crocusoft.com",
+    "industry": ""
+  },
+  {
+    "id": 157,
+    "name": "Crowdstrike",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "crowdstrike.com",
+    "industry": ""
+  },
+  {
+    "id": 150,
+    "name": "Cubics",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "cubics.technology",
+    "industry": ""
+  },
+  {
+    "id": 181,
+    "name": "Cyberark",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "cyberark.com",
+    "industry": ""
+  },
+  {
+    "id": 183,
+    "name": "Cyberpoint",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "cyberpoint.az",
+    "industry": ""
+  },
+  {
+    "id": 42,
+    "name": "Cybervision",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "cybervision.az",
+    "industry": ""
+  },
+  {
+    "id": 81,
+    "name": "Cypho",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "cypho.io",
+    "industry": ""
+  },
+  {
+    "id": 288,
+    "name": "Dastan",
+    "group_name": "",
+    "category": "inactive",
+    "user_count": 10,
+    "cost_code": "",
+    "domain": null,
+    "industry": ""
+  },
+  {
+    "id": 112,
+    "name": "Datalab",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "datalab.az",
+    "industry": ""
+  },
+  {
+    "id": 91,
+    "name": "Delta-telecom",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "delta-telecom.net",
+    "industry": ""
+  },
+  {
+    "id": 88,
+    "name": "Designbureau",
+    "group_name": "PMD",
+    "category": "client",
+    "user_count": 1,
+    "cost_code": "DESIGNBUREAU",
+    "domain": "designbureau.az",
+    "industry": ""
+  },
+  {
+    "id": 89,
+    "name": "Divi",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "divi.az",
+    "industry": ""
+  },
+  {
+    "id": 90,
+    "name": "Dividc",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "dividc.com",
+    "industry": ""
+  },
+  {
+    "id": 93,
+    "name": "Dostagropark",
+    "group_name": "Separated",
+    "category": "client",
+    "user_count": 16,
+    "cost_code": "DOSTAGROPARK",
+    "domain": "dostagropark.com",
+    "industry": ""
+  },
+  {
+    "id": 128,
+    "name": "Edenagro",
+    "group_name": "Azersheker",
+    "category": "client",
+    "user_count": 136,
+    "cost_code": "EDENAGRO",
+    "domain": "edenagro.az",
+    "industry": ""
+  },
+  {
+    "id": 213,
+    "name": "Engitech",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "engitech.az",
+    "industry": ""
+  },
+  {
+    "id": 158,
+    "name": "Entegra",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "entegra.az",
+    "industry": ""
+  },
+  {
+    "id": 193,
+    "name": "Erc",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "erc.international",
+    "industry": ""
+  },
+  {
+    "id": 223,
+    "name": "Estet",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "estet.az",
+    "industry": ""
+  },
+  {
+    "id": 71,
+    "name": "Excelsior",
+    "group_name": "Tabia",
+    "category": "client",
+    "user_count": 29,
+    "cost_code": "EXCELSIOR",
+    "domain": "excelsior.az",
+    "industry": ""
+  },
+  {
+    "id": 17,
+    "name": "Feniks",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "feniks.az",
+    "industry": ""
+  },
+  {
+    "id": 13,
+    "name": "Fmg",
+    "group_name": "PMD",
+    "category": "client",
+    "user_count": 202,
+    "cost_code": "FMG",
+    "domain": "fmg.az",
+    "industry": ""
+  },
+  {
+    "id": 4,
+    "name": "Fortinet",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "fortinet.com",
+    "industry": ""
+  },
+  {
+    "id": 69,
+    "name": "Foton",
+    "group_name": "Separated",
+    "category": "client",
+    "user_count": 90,
+    "cost_code": "FOTON",
+    "domain": "foton.az",
+    "industry": ""
+  },
+  {
+    "id": 258,
+    "name": "Frazex",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "frazex.com",
+    "industry": ""
+  },
+  {
+    "id": 242,
+    "name": "Futuregroup",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "futuregroup.fi",
+    "industry": ""
+  },
+  {
+    "id": 261,
+    "name": "Futurelab",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "futurelab.az",
+    "industry": ""
+  },
+  {
+    "id": 10,
+    "name": "Galaolives",
+    "group_name": "AFI",
+    "category": "client",
+    "user_count": 2,
+    "cost_code": "",
+    "domain": "galaolives.az",
+    "industry": ""
+  },
+  {
+    "id": 169,
+    "name": "Galeriteknik",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "galeriteknik.com",
+    "industry": ""
+  },
+  {
+    "id": 57,
+    "name": "Garabaghotel",
+    "group_name": "Tabia",
+    "category": "client",
+    "user_count": 50,
+    "cost_code": "GARABAGH",
+    "domain": "garabaghotel.az",
+    "industry": ""
+  },
+  {
+    "id": 56,
+    "name": "Gashalti",
+    "group_name": "Tabia",
+    "category": "client",
+    "user_count": 55,
+    "cost_code": "GASHALTI",
+    "domain": "gashalti.az",
+    "industry": ""
+  },
+  {
+    "id": 134,
+    "name": "Gct",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "gct.az",
+    "industry": ""
+  },
+  {
+    "id": 180,
+    "name": "Gentech",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "gentech.az",
+    "industry": ""
+  },
+  {
+    "id": 164,
+    "name": "Ghbaku",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "ghbaku.com",
+    "industry": ""
+  },
+  {
+    "id": 25,
+    "name": "Giltex",
+    "group_name": "",
+    "category": "prospect",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "giltex.az",
+    "industry": ""
+  },
+  {
+    "id": 110,
+    "name": "Global-textile",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "global-textile.com",
+    "industry": ""
+  },
+  {
+    "id": 58,
+    "name": "Goygolresort",
+    "group_name": "Tabia",
+    "category": "client",
+    "user_count": 7,
+    "cost_code": "GOYGOL",
+    "domain": "goygolresort.az",
+    "industry": ""
+  },
+  {
+    "id": 166,
+    "name": "Gps",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "gps.az",
+    "industry": ""
+  },
+  {
+    "id": 8,
+    "name": "Grandagro",
+    "group_name": "AFI",
+    "category": "client",
+    "user_count": 74,
+    "cost_code": "GRANDAGRO",
+    "domain": "grandagro.az",
+    "industry": ""
+  },
+  {
+    "id": 184,
+    "name": "Grandagroinvitro",
+    "group_name": "AFI",
+    "category": "client",
+    "user_count": 74,
+    "cost_code": "",
+    "domain": "grandagroinvitro.az",
+    "industry": ""
+  },
+  {
+    "id": 45,
+    "name": "Grandlogistics",
+    "group_name": "PMD",
+    "category": "client",
+    "user_count": 1,
+    "cost_code": "GRANDLOGISTICS",
+    "domain": "grandlogistics.az",
+    "industry": ""
+  },
+  {
+    "id": 118,
+    "name": "Greenplant",
+    "group_name": "AFI",
+    "category": "client",
+    "user_count": 33,
+    "cost_code": "",
+    "domain": "greenplant.az",
+    "industry": ""
+  },
+  {
+    "id": 122,
+    "name": "Gsn",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "gsn.az",
+    "industry": ""
+  },
+  {
+    "id": 235,
+    "name": "Gsp",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "gsp.az",
+    "industry": ""
+  },
+  {
+    "id": 256,
+    "name": "Gtc",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "gtc.a",
+    "industry": ""
+  },
+  {
+    "id": 228,
+    "name": "Gts",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "gts.az",
+    "industry": ""
+  },
+  {
+    "id": 24,
+    "name": "Hcl",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "hcl.com",
+    "industry": ""
+  },
+  {
+    "id": 2,
+    "name": "Hcl-software",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "hcl-software.com",
+    "industry": ""
+  },
+  {
+    "id": 262,
+    "name": "Hesy",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "hesy.com",
+    "industry": ""
+  },
+  {
+    "id": 72,
+    "name": "Hgibaku",
+    "group_name": "Tabia",
+    "category": "client",
+    "user_count": 55,
+    "cost_code": "",
+    "domain": "hgibaku.com",
+    "industry": ""
+  },
+  {
+    "id": 188,
+    "name": "Hikvision",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "hikvision.com",
+    "industry": ""
+  },
+  {
+    "id": 210,
+    "name": "Hostimul",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "hostimul.com",
+    "industry": ""
+  },
+  {
+    "id": 49,
+    "name": "Hrsinternational",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "hrsinternational.com",
+    "industry": ""
+  },
+  {
+    "id": 275,
+    "name": "Huawei",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "huawei.com",
+    "industry": ""
+  },
+  {
+    "id": 15,
+    "name": "Ibk",
+    "group_name": "Separated",
+    "category": "client",
+    "user_count": 23,
+    "cost_code": "IBK",
+    "domain": "ibk.az",
+    "industry": ""
+  },
+  {
+    "id": 283,
+    "name": "Iitd",
+    "group_name": "",
+    "category": "",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "iitd.az",
+    "industry": ""
+  },
+  {
+    "id": 284,
+    "name": "Iitd",
+    "group_name": "",
+    "category": "",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "iitd.io",
+    "industry": ""
+  },
+  {
+    "id": 211,
+    "name": "Ilkconstruction",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "ilkconstruction.com",
+    "industry": ""
+  },
+  {
+    "id": 204,
+    "name": "Inbit",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "inbit.az",
+    "industry": ""
+  },
+  {
+    "id": 135,
+    "name": "Itechgroup",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "itechgroup.az",
+    "industry": ""
+  },
+  {
+    "id": 246,
+    "name": "Itsolutions",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "itsolutions.az",
+    "industry": ""
+  },
+  {
+    "id": 84,
+    "name": "Jollyjoker",
+    "group_name": "",
+    "category": "client",
+    "user_count": 1,
+    "cost_code": "",
+    "domain": "jollyjoker.az",
+    "industry": ""
+  },
+  {
+    "id": 36,
+    "name": "Lankaransprings",
+    "group_name": "Tabia",
+    "category": "client",
+    "user_count": 80,
+    "cost_code": "LANKARANSPRINGS",
+    "domain": "lankaransprings.az",
+    "industry": ""
+  },
+  {
+    "id": 41,
+    "name": "Lecheq",
+    "group_name": "AFI",
+    "category": "client",
+    "user_count": 19,
+    "cost_code": "",
+    "domain": "lecheq.az",
+    "industry": ""
+  },
+  {
+    "id": 80,
+    "name": "Lenovo",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "lenovo.com",
+    "industry": ""
+  },
+  {
+    "id": 119,
+    "name": "Lkz",
+    "group_name": "Novex",
+    "category": "client",
+    "user_count": 9,
+    "cost_code": "",
+    "domain": "lkz.az",
+    "industry": ""
+  },
+  {
+    "id": 121,
+    "name": "Lls",
+    "group_name": "Azmade",
+    "category": "client",
+    "user_count": 18,
+    "cost_code": "",
+    "domain": "lls.az",
+    "industry": ""
+  },
+  {
+    "id": 79,
+    "name": "Lmh",
+    "group_name": "Novex",
+    "category": "inactive",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "lmh.az",
+    "industry": ""
+  },
+  {
+    "id": 285,
+    "name": "Mail",
+    "group_name": "",
+    "category": "",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "mail.support.microsoft.com",
+    "industry": ""
+  },
+  {
+    "id": 32,
+    "name": "Mars Overseas",
+    "group_name": "",
+    "category": "client",
+    "user_count": 351,
+    "cost_code": "MARS OVERSEAS",
+    "domain": "totalbeverage.group",
+    "industry": ""
+  },
+  {
+    "id": 167,
+    "name": "Megasoft",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "megasoft.az",
+    "industry": ""
+  },
+  {
+    "id": 252,
+    "name": "Mepsan",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "mepsan.com.tr",
+    "industry": ""
+  },
+  {
+    "id": 171,
+    "name": "Mergroup",
+    "group_name": "PMD",
+    "category": "client",
+    "user_count": 1,
+    "cost_code": "",
+    "domain": "mergroup.az",
+    "industry": ""
+  },
+  {
+    "id": 282,
+    "name": "Messaging",
+    "group_name": "",
+    "category": "",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "messaging.microsoft.com",
+    "industry": ""
+  },
+  {
+    "id": 139,
+    "name": "Mga",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "mga.az",
+    "industry": ""
+  },
+  {
+    "id": 3,
+    "name": "Microsoft",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "microsoft.com",
+    "industry": ""
+  },
+  {
+    "id": 206,
+    "name": "Mikenopa",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "mikenopa.com",
+    "industry": ""
+  },
+  {
+    "id": 161,
+    "name": "Mikromax",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "mikromax.com.tr",
+    "industry": ""
+  },
+  {
+    "id": 115,
+    "name": "Milla",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "milla.az",
+    "industry": ""
+  },
+  {
+    "id": 11,
+    "name": "Mmem5",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "mmem5.com",
+    "industry": ""
+  },
+  {
+    "id": 107,
+    "name": "Monetri",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "monetri.az",
+    "industry": ""
+  },
+  {
+    "id": 111,
+    "name": "Mont",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "mont.com",
+    "industry": ""
+  },
+  {
+    "id": 16,
+    "name": "Muk",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "muk.az",
+    "industry": ""
+  },
+  {
+    "id": 176,
+    "name": "Neosystem",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "neosystem.az",
+    "industry": ""
+  },
+  {
+    "id": 238,
+    "name": "Netcad",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "netcad.com",
+    "industry": ""
+  },
+  {
+    "id": 233,
+    "name": "Nmsoft",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "nmsoft.az",
+    "industry": ""
+  },
+  {
+    "id": 174,
+    "name": "Novco",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "novco.com",
+    "industry": ""
+  },
+  {
+    "id": 113,
+    "name": "Noventiq",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "noventiq.com",
+    "industry": ""
+  },
+  {
+    "id": 160,
+    "name": "Novexagro",
+    "group_name": "Novex",
+    "category": "client",
+    "user_count": 1,
+    "cost_code": "NOVEX",
+    "domain": "novexagro.az",
+    "industry": ""
+  },
+  {
+    "id": 205,
+    "name": "Oberig-it",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "oberig-it.com",
+    "industry": ""
+  },
+  {
+    "id": 243,
+    "name": "Ocaqsport",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "ocaqsport.az",
+    "industry": ""
+  },
+  {
+    "id": 273,
+    "name": "Optima",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "optima.az",
+    "industry": ""
+  },
+  {
+    "id": 172,
+    "name": "Osys",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "osys.az",
+    "industry": ""
+  },
+  {
+    "id": 67,
+    "name": "Owasp",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "owasp.org",
+    "industry": ""
+  },
+  {
+    "id": 1,
+    "name": "Paloaltonetworks",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "paloaltonetworks.com",
+    "industry": ""
+  },
+  {
+    "id": 221,
+    "name": "Pasha-holding",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "pasha-holding.az",
+    "industry": ""
+  },
+  {
+    "id": 136,
+    "name": "Pasha-insurance",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "pasha-insurance.az",
+    "industry": ""
+  },
+  {
+    "id": 230,
+    "name": "Pasha-life",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "pasha-life.az",
+    "industry": ""
+  },
+  {
+    "id": 96,
+    "name": "Pasha-technology",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "pasha-technology.com",
+    "industry": ""
+  },
+  {
+    "id": 40,
+    "name": "Pashabank",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "pashabank.az",
+    "industry": ""
+  },
+  {
+    "id": 27,
+    "name": "Pashamalls",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 18,
+    "cost_code": "LLS",
+    "domain": "pashamalls.az",
+    "industry": ""
+  },
+  {
+    "id": 137,
+    "name": "Pashaproperty",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "pashaproperty.az",
+    "industry": ""
+  },
+  {
+    "id": 202,
+    "name": "Pashatravel",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "pashatravel.az",
+    "industry": ""
+  },
+  {
+    "id": 207,
+    "name": "Patco",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "patco.az",
+    "industry": ""
+  },
+  {
+    "id": 94,
+    "name": "Paulaner-brauhaus-baku",
+    "group_name": "Tabia",
+    "category": "client",
+    "user_count": 22,
+    "cost_code": "PAULANER-BRAUHAUS-BAKU",
+    "domain": "paulaner-brauhaus-baku.com",
+    "industry": ""
+  },
+  {
+    "id": 7,
+    "name": "Pmd",
+    "group_name": "",
+    "category": "client",
+    "user_count": 1,
+    "cost_code": "PMD",
+    "domain": "pmd.az",
+    "industry": ""
+  },
+  {
+    "id": 30,
+    "name": "Pmdgroup",
+    "group_name": "PMD",
+    "category": "client",
+    "user_count": 1,
+    "cost_code": "PMDGROUP",
+    "domain": "pmdgroup.az",
+    "industry": ""
+  },
+  {
+    "id": 144,
+    "name": "Pmdprojects",
+    "group_name": "PMD",
+    "category": "client",
+    "user_count": 300,
+    "cost_code": "PMDPROJECTS",
+    "domain": "pmdprojects.az",
+    "industry": ""
+  },
+  {
+    "id": 123,
+    "name": "Pre",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "pre.az",
+    "industry": ""
+  },
+  {
+    "id": 255,
+    "name": "Presight",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "presight.ai",
+    "industry": ""
+  },
+  {
+    "id": 277,
+    "name": "Primecotton",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "primecotton.az",
+    "industry": ""
+  },
+  {
+    "id": 224,
+    "name": "Printshop",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "printshop.az",
+    "industry": ""
+  },
+  {
+    "id": 177,
+    "name": "Prokuria",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "prokuria.com",
+    "industry": ""
+  },
+  {
+    "id": 170,
+    "name": "Promisegroup",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "promisegroup.com",
+    "industry": ""
+  },
+  {
+    "id": 163,
+    "name": "Qalaalti Resort",
+    "group_name": "Tabia",
+    "category": "client",
+    "user_count": 50,
+    "cost_code": "QALAALTI",
+    "domain": "qalaalti.az",
+    "industry": ""
+  },
+  {
+    "id": 59,
+    "name": "Qkz",
+    "group_name": "Novex",
+    "category": "client",
+    "user_count": 25,
+    "cost_code": "QKZ",
+    "domain": "qkz.az",
+    "industry": ""
+  },
+  {
+    "id": 114,
+    "name": "Qubakz",
+    "group_name": "Novex",
+    "category": "client",
+    "user_count": 11,
+    "cost_code": "",
+    "domain": "qubakz.az",
+    "industry": ""
+  },
+  {
+    "id": 217,
+    "name": "Rabalon",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "rabalon.com",
+    "industry": ""
+  },
+  {
+    "id": 218,
+    "name": "Rahatbina",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "rahatbina.az",
+    "industry": ""
+  },
+  {
+    "id": 102,
+    "name": "Ramadaplazagence",
+    "group_name": "Tabia",
+    "category": "client",
+    "user_count": 41,
+    "cost_code": "RAMADA",
+    "domain": "ramadaplazagence.com",
+    "industry": ""
+  },
+  {
+    "id": 29,
+    "name": "Rdm",
+    "group_name": "",
+    "category": "prospect",
+    "user_count": 0,
+    "cost_code": "RDM",
+    "domain": "rdm.az",
+    "industry": ""
+  },
+  {
+    "id": 178,
+    "name": "Respectsolution",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "respectsolution.com",
+    "industry": ""
+  },
+  {
+    "id": 289,
+    "name": "Revery",
+    "group_name": "Separated",
+    "category": "client",
+    "user_count": 28,
+    "cost_code": "",
+    "domain": null,
+    "industry": ""
+  },
+  {
+    "id": 53,
+    "name": "Risk",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "risk.az",
+    "industry": ""
+  },
+  {
+    "id": 281,
+    "name": "Sabacrops",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "sabacrops.az",
+    "industry": ""
+  },
+  {
+    "id": 65,
+    "name": "Saffron",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 94,
+    "cost_code": "AFF",
+    "domain": "saffron.az",
+    "industry": ""
+  },
+  {
+    "id": 248,
+    "name": "Saralgroup",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "saralgroup.az",
+    "industry": ""
+  },
+  {
+    "id": 18,
+    "name": "Scandens",
+    "group_name": "Separated",
+    "category": "client",
+    "user_count": 69,
+    "cost_code": "SCANDENS",
+    "domain": "scandens.az",
+    "industry": ""
+  },
+  {
+    "id": 98,
+    "name": "Seabak",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "seabak.com",
+    "industry": ""
+  },
+  {
+    "id": 148,
+    "name": "Selnet",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "selnet.az",
+    "industry": ""
+  },
+  {
+    "id": 77,
+    "name": "Shamakhipalace",
+    "group_name": "Tabia",
+    "category": "client",
+    "user_count": 54,
+    "cost_code": "",
+    "domain": "shamakhipalace.az",
+    "industry": ""
+  },
+  {
+    "id": 130,
+    "name": "Shamkiragropark",
+    "group_name": "AFI",
+    "category": "client",
+    "user_count": 31,
+    "cost_code": "",
+    "domain": "shamkiragropark.az",
+    "industry": ""
+  },
+  {
+    "id": 196,
+    "name": "Singu",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "singu.com",
+    "industry": ""
+  },
+  {
+    "id": 64,
+    "name": "Smarthost",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "smarthost.az",
+    "industry": ""
+  },
+  {
+    "id": 197,
+    "name": "Smartsolutions",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "smartsolutions.az",
+    "industry": ""
+  },
+  {
+    "id": 227,
+    "name": "Soapeople",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "soapeople.com",
+    "industry": ""
+  },
+  {
+    "id": 78,
+    "name": "Sparkbeton",
+    "group_name": "Azmade",
+    "category": "client",
+    "user_count": 49,
+    "cost_code": "SPARKBETON",
+    "domain": "sparkbeton.com",
+    "industry": ""
+  },
+  {
+    "id": 68,
+    "name": "Stell-tech",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "stell-tech.com",
+    "industry": ""
+  },
+  {
+    "id": 43,
+    "name": "Stp",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "stp.az",
+    "industry": ""
+  },
+  {
+    "id": 159,
+    "name": "Sugovushanhotel",
+    "group_name": "",
+    "category": "prospect",
+    "user_count": 1,
+    "cost_code": "",
+    "domain": "sugovushanhotel.az",
+    "industry": ""
+  },
+  {
+    "id": 286,
+    "name": "Swtravel",
+    "group_name": "",
+    "category": "",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "swtravel.az",
+    "industry": ""
+  },
+  {
+    "id": 105,
+    "name": "Synergia",
+    "group_name": "Separated",
+    "category": "client",
+    "user_count": 28,
+    "cost_code": "SYNERGIA",
+    "domain": "synergia.az",
+    "industry": ""
+  },
+  {
+    "id": 31,
+    "name": "Tabia",
+    "group_name": "Tabia",
+    "category": "client",
+    "user_count": 66,
+    "cost_code": "TABIA",
+    "domain": "tabia.az",
+    "industry": ""
+  },
+  {
+    "id": 101,
+    "name": "Tbg",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "tbg.az",
+    "industry": ""
+  },
+  {
+    "id": 215,
+    "name": "Technofusion",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "technofusion.az",
+    "industry": ""
+  },
+  {
+    "id": 23,
+    "name": "Techprodc",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "techprodc.com",
+    "industry": ""
+  },
+  {
+    "id": 109,
+    "name": "Textilehorizon",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "textilehorizon.az",
+    "industry": ""
+  },
+  {
+    "id": 237,
+    "name": "Tniconsultancy",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "tniconsultancy.com",
+    "industry": ""
+  },
+  {
+    "id": 249,
+    "name": "Ucc",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "ucc.az",
+    "industry": ""
+  },
+  {
+    "id": 232,
+    "name": "Uniser",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "uniser.az",
+    "industry": ""
+  },
+  {
+    "id": 143,
+    "name": "Upsystems",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "upsystems.az",
+    "industry": ""
+  },
+  {
+    "id": 87,
+    "name": "Urc",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "urc.az",
+    "industry": ""
+  },
+  {
+    "id": 200,
+    "name": "Uyumsoft",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "uyumsoft.com",
+    "industry": ""
+  },
+  {
+    "id": 185,
+    "name": "V-erticalas",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "v-erticalas.com",
+    "industry": ""
+  },
+  {
+    "id": 120,
+    "name": "Veeam",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "veeam.com",
+    "industry": ""
+  },
+  {
+    "id": 195,
+    "name": "Velistech",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "velistech.com",
+    "industry": ""
+  },
+  {
+    "id": 54,
+    "name": "Vertex",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "vertex.ws",
+    "industry": ""
+  },
+  {
+    "id": 179,
+    "name": "Wyndham",
+    "group_name": "",
+    "category": "partner",
+    "user_count": 0,
+    "cost_code": "",
+    "domain": "wyndham.com",
+    "industry": ""
+  },
+  {
+    "id": 212,
+    "name": "Yevlakhcityhotel",
+    "group_name": "",
+    "category": "prospect",
+    "user_count": 10,
+    "cost_code": "",
+    "domain": "yevlakhcityhotel.az",
+    "industry": ""
+  },
+  {
+    "id": 173,
+    "name": "Zafarbaglari",
+    "group_name": "AFI",
+    "category": "client",
+    "user_count": 31,
+    "cost_code": "",
+    "domain": "zafarbaglari.az",
+    "industry": ""
+  },
+  {
+    "id": 5,
+    "name": "Zeytunpharma",
+    "group_name": "Separated",
+    "category": "client",
+    "user_count": 350,
+    "cost_code": "ZEYTUNPHARMA",
+    "domain": "zeytunpharma.az",
+    "industry": ""
+  },
+  {
+    "id": 46,
+    "name": "Ztp",
+    "group_name": "Azmade",
+    "category": "client",
+    "user_count": 78,
+    "cost_code": "ZTP",
+    "domain": "ztp.az",
+    "industry": ""
+  }
+]

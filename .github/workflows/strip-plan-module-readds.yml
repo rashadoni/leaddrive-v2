@@ -1,0 +1,117 @@
+name: Strip plan-module re-adds
+
+# Manually-triggered operator job: removes the plan-module ids that the broken
+# backfill-base-modules deploy loop re-added into `Organization.features` of
+# EDITOR-AUTHORITATIVE tenants (explicit OFF markers in the `modules` column).
+# See scripts/strip-plan-module-readds.mjs for the full background — the loop
+# itself is fixed in server-deploy.sh (grep-based version probe) and in the
+# backfill (editor-authoritative skip); this job repairs the data damage.
+#
+# Deliberately DISPATCH-ONLY (no push trigger): the strip must run AFTER the
+# deploy carrying the fixed backfill has completed, otherwise an in-flight
+# deploy with the OLD backfill could re-add the ids right back. The operator
+# (or Claude) dispatches it once the fix deploy is green.
+#
+# Same SSH mechanics as repair-module-visibility.yml: fresh script scp'd up,
+# DATABASE_URL read from the server's .env. Dry-run by default.
+
+on:
+  workflow_dispatch:
+    inputs:
+      slug:
+        description: "Tenant slug to strip (empty = ALL editor-authoritative tenants)"
+        required: false
+        default: "brandprotection"
+      execute:
+        description: "Write changes (no = dry-run report only)"
+        required: true
+        type: choice
+        default: "no"
+        options: ["no", "yes"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  strip:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # Inputs become part of a remote command line — reject anything outside the
+      # strict shape before it gets near a shell. Verbatim from
+      # set-tenant-user-password.yml, which already does this; F-37.
+      #
+      # The value is interpolated into "SLUG='$SLUG' bash -s", so a single quote
+      # in it closes the quoting and the rest runs as root on production.
+      - name: Validate inputs
+        env:
+          IN_SLUG: ${{ inputs.slug }}
+        run: |
+          SLUG_RE='^[a-z0-9]([a-z0-9-]{0,78}[a-z0-9])?$'
+          [[ "$IN_SLUG" =~ $SLUG_RE ]] \
+            || { echo "FATAL: slug has an unexpected shape"; exit 1; }
+
+
+      - name: Setup pinned production SSH
+        uses: ./.github/actions/setup-production-ssh
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server-host: ${{ secrets.SERVER_HOST }}
+          known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+
+      - name: Upload fresh script to server
+        run: |
+          ssh -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "mkdir -p /opt/leaddrive-v2/.next/standalone/scripts"
+          scp -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
+            scripts/_rls.mjs \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/leaddrive-v2/.next/standalone/scripts/_rls.mjs
+          scp -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
+            scripts/strip-plan-module-readds.mjs \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/leaddrive-v2/.next/standalone/scripts/strip-plan-module-readds.mjs
+
+      - name: Run strip on server
+        env:
+          # NO fallback on slug: an EMPTY slug is meaningful (= all eligible
+          # tenants) — same rule as repair-module-visibility.yml.
+          STRIP_SLUG: ${{ inputs.slug }}
+          STRIP_EXECUTE: ${{ inputs.execute || 'no' }}
+        run: |
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "STRIP_SLUG='$STRIP_SLUG' STRIP_EXECUTE='$STRIP_EXECUTE' bash -s" <<'REMOTE'
+          set -euo pipefail
+          APP_DIR="/opt/leaddrive-v2"
+          APP_ENV_FILE="${APP_ENV_FILE:-/etc/leaddrive/app.env}"
+          SCRIPT="$APP_DIR/.next/standalone/scripts/strip-plan-module-readds.mjs"
+          [ -f "$SCRIPT" ] || { echo "FATAL: $SCRIPT missing"; exit 1; }
+          [ -f "$APP_ENV_FILE" ] || { echo "FATAL: canonical app env missing"; exit 1; }
+
+          # Tolerant KEY=VALUE reader (same semantics as server-deploy.sh).
+          read_env() {
+            sed -n "s/^[[:space:]]*\(export[[:space:]]\+\)\?$1[[:space:]]*=[[:space:]]*//p" "$APP_ENV_FILE" \
+              | head -1 | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'\$/\1/"
+          }
+          DATABASE_URL="$(read_env DATABASE_URL)"
+          [ -n "$DATABASE_URL" ] || { echo "FATAL: DATABASE_URL not found in canonical app env"; exit 1; }
+
+          cd "$APP_DIR"
+          SLUG_FLAG=""
+          [ -n "$STRIP_SLUG" ] && SLUG_FLAG="--slug=$STRIP_SLUG"
+          EXEC_FLAG=""
+          [ "$STRIP_EXECUTE" = "yes" ] && EXEC_FLAG="--execute"
+          DATABASE_URL="$DATABASE_URL" node "$SCRIPT" $SLUG_FLAG $EXEC_FLAG
+          REMOTE
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

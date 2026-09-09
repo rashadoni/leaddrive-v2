@@ -1,0 +1,23 @@
+# PM2 writes the application log with no rotation of any kind. On 2026-08-25
+# /var/lib/leaddrive-v2-logs/error.log had reached 64 MB and was still growing: an
+# unbounded file on the same filesystem as the database data directory.
+#
+# copytruncate, not create: PM2 holds the descriptor open and does not reopen on
+# rename, so `create` would leave it writing into the rotated file forever.
+#
+# The naming is load-bearing, not cosmetic. ship-logs.sh recovers the lines
+# written between its last run and the rotation by reading "<file>.1", so
+# `dateext` — which would produce error.log-20260825 — must stay off, and
+# `delaycompress` must stay on so that file is still plain text when the shipper
+# reaches it. Match this to /etc/logrotate.d/nginx, which already behaves so.
+/var/lib/leaddrive-v2-logs/*.log {
+    daily
+    rotate 14
+    size 50M
+    copytruncate
+    missingok
+    notifempty
+    compress
+    delaycompress
+    su root root
+}

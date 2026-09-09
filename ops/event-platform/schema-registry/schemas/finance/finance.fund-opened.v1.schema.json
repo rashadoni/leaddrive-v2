@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:leaddrive:schema:finance.fund-opened:v1",
+  "title": "Finance fund opened event v1",
+  "allOf": [
+    { "$ref": "urn:leaddrive:schema:event-envelope:v1" },
+    {
+      "type": "object",
+      "properties": {
+        "type": { "const": "finance.fund-opened.v1" },
+        "dataschema": { "const": "urn:leaddrive:schema:finance.fund-opened:v1" },
+        "aggregatetype": { "const": "fund" },
+        "classification": { "const": "confidential" },
+        "data": { "$ref": "#/$defs/data" }
+      }
+    }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 191,
+      "pattern": "^[^\\s:]+$"
+    },
+    "currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "money": {
+      "type": "string",
+      "pattern": "^-?(?:0|[1-9][0-9]{0,13})\\.[0-9]{4}$"
+    },
+    "nonNegativeMoney": {
+      "type": "string",
+      "pattern": "^(?:0|[1-9][0-9]{0,13})\\.[0-9]{4}$"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fundId", "currency", "openingBalance"],
+      "properties": {
+        "fundId": { "$ref": "#/$defs/identifier" },
+        "currency": { "$ref": "#/$defs/currency" },
+        "openingBalance": { "$ref": "#/$defs/nonNegativeMoney" },
+        "storedBalance": { "$ref": "#/$defs/nonNegativeMoney" },
+        "signedLegacyTransactionTotal": { "$ref": "#/$defs/money" },
+        "legacyTransactionCount": { "type": "integer", "minimum": 0 },
+        "targetAmount": {
+          "oneOf": [
+            { "$ref": "#/$defs/nonNegativeMoney" },
+            { "type": "null" }
+          ]
+        },
+        "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "description": {
+          "oneOf": [
+            { "type": "string", "maxLength": 1000 },
+            { "type": "null" }
+          ]
+        },
+        "color": {
+          "oneOf": [
+            { "type": "string", "maxLength": 20 },
+            { "type": "null" }
+          ]
+        },
+        "isActive": { "type": "boolean" },
+        "legacyBootstrap": { "type": "boolean" },
+        "legacyCompatibilityWrite": { "type": "boolean" }
+      }
+    }
+  }
+}

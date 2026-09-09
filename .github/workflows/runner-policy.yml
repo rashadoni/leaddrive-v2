@@ -1,0 +1,28 @@
+name: Runner policy
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+      - "scripts/ci/check-github-runner-policy.mjs"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/**"
+      - "scripts/ci/check-github-runner-policy.mjs"
+
+concurrency:
+  group: runner-policy-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  enforce:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject paid hosted macOS runners
+        run: node scripts/ci/check-github-runner-policy.mjs

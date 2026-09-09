@@ -1,0 +1,200 @@
+import { MtmAgentRole, MtmAgentStatus, Prisma } from "@prisma/client"
+import { NextResponse } from "next/server"
+import { prisma } from "@/lib/prisma"
+import { getMobileAuth } from "@/lib/mobile-auth"
+import { withRls } from "@/lib/with-rls"
+import bcrypt from "bcryptjs"
+import { AgentCreateSchema, parseBody } from "@/lib/mtm-validators"
+import { writeMtmAudit } from "@/lib/mtm-audit"
+import { resolveAgentScope, isValidMtmAgentRole } from "@/lib/mtm/territory-scope"
+import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
+import type { RlsAuth } from "@/lib/with-rls"
+import { checkPermission } from "@/lib/permissions"
+import { passwordPolicyError } from "@/lib/password-policy"
+
+const AGENT_RESPONSE_SELECT = {
+  id: true,
+  organizationId: true,
+  userId: true,
+  name: true,
+  email: true,
+  phone: true,
+  externalCode: true,
+  role: true,
+  status: true,
+  canPlanOwnRoutes: true,
+  canSelfPublishRoutes: true,
+  avatar: true,
+  teamId: true,
+  managerId: true,
+  isOnline: true,
+  lastSeenAt: true,
+  createdAt: true,
+  updatedAt: true,
+  manager: { select: { id: true, name: true } },
+  team: { select: { id: true, name: true, region: { select: { id: true, name: true } } } },
+} satisfies Prisma.MtmAgentSelect
+
+async function canManageAgents({ orgId, session }: RlsAuth): Promise<boolean> {
+  // Agent credentials and authorization links are privileged web operations.
+  // Mobile JWTs and API keys reach withRls without a browser session and fail.
+  if (!session) return false
+  if (checkPermission(session.role, "mtm", "admin")) return true
+  const actor = await resolveMtmRouteActor(prisma, {
+    organizationId: orgId,
+    userId: session.userId,
+    webRole: session.role,
+  })
+  return actor?.role === "ADMIN"
+}
+
+function agentAdministrationDenied() {
+  return NextResponse.json(
+    { error: "Web administrator access required", code: "MTM_AGENT_ADMIN_REQUIRED" },
+    { status: 403 },
+  )
+}
+
+export const GET = withRls(async (req, auth) => {
+  const { orgId, session } = auth
+  if (session && !checkPermission(session.role, "mtm", "read")) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+  const { searchParams } = new URL(req.url)
+  const status = searchParams.get("status") || ""
+  const role = searchParams.get("role") || ""
+  const page = Math.max(1, parseInt(searchParams.get("page") || "1"))
+  const limit = Math.min(200, Math.max(1, parseInt(searchParams.get("limit") || "50")))
+
+  try {
+    const where: Prisma.MtmAgentWhereInput = { organizationId: orgId }
+    if (Object.values(MtmAgentStatus).includes(status as MtmAgentStatus)) where.status = status as MtmAgentStatus
+    if (Object.values(MtmAgentRole).includes(role as MtmAgentRole)) where.role = role as MtmAgentRole
+
+    // M4-5: territory-scope enforcement for mobile callers.
+    // Web admin panel (cookie auth, no mobile JWT) sees all agents in the org.
+    // Mobile callers (MANAGER/SUPERVISOR) are scoped to their team/region.
+    // AGENT callers see only themselves.
+    const mobileAuth = getMobileAuth(req)
+    if (mobileAuth?.agentId) {
+      const callerAgent = await prisma.mtmAgent.findFirst({
+        where: { id: mobileAuth.agentId, organizationId: orgId },
+        select: { id: true, role: true },
+      })
+      if (callerAgent) {
+        const role = isValidMtmAgentRole(callerAgent.role)
+          ? callerAgent.role
+          // Unrecognised DB role → fail-safe: restrict to self-only (AGENT semantics).
+          // Widening to org-wide on a malformed role claim would invert least-privilege.
+          : "AGENT"
+
+        const scope = await resolveAgentScope(prisma, {
+          agentId: callerAgent.id,
+          organizationId: orgId,
+          role,
+        })
+        // null = ADMIN → no extra filter; string[] → restrict to those agents
+        if (scope.agentIds !== null) {
+          where.id = { in: scope.agentIds }
+        }
+      } else {
+        // The mobile principal disappeared between the wrapper's revocation
+        // check and this query. Do not widen that race to organization-wide.
+        where.id = { in: [] }
+      }
+    }
+
+    const [agents, total] = await Promise.all([
+      prisma.mtmAgent.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { name: "asc" },
+        select: AGENT_RESPONSE_SELECT,
+      }),
+      prisma.mtmAgent.count({ where }),
+    ])
+
+    return NextResponse.json({ success: true, data: { agents, total, page, limit } })
+  } catch (e) {
+    console.error("[MTM/agents GET]", e)
+    return NextResponse.json({ error: "Failed to load agents" }, { status: 500 })
+  }
+})
+
+export const POST = withRls(async (req, auth) => {
+  const { orgId } = auth
+  try {
+    if (!await canManageAgents(auth)) return agentAdministrationDenied()
+
+    const raw = await req.json()
+    const parsed = parseBody(AgentCreateSchema, raw)
+    if (!parsed.ok) return parsed.response
+    const body = parsed.data
+
+    if (body.userId) {
+      const linkedUser = await prisma.user.findFirst({
+        where: { id: body.userId, organizationId: orgId, isActive: true },
+        select: { id: true },
+      })
+      if (!linkedUser) {
+        return NextResponse.json({ error: "Linked user not found in this organization" }, { status: 400 })
+      }
+    }
+    if (body.managerId) {
+      const manager = await prisma.mtmAgent.findFirst({
+        where: { id: body.managerId, organizationId: orgId },
+        select: { id: true },
+      })
+      if (!manager) {
+        return NextResponse.json({ error: "Manager not found in this organization" }, { status: 400 })
+      }
+    }
+
+    // Hash password if provided (for mobile app login)
+    let passwordHash: string | null = null
+    if (body.password) {
+      const passwordError = passwordPolicyError(body.password)
+      if (passwordError) return NextResponse.json({ error: passwordError }, { status: 400 })
+      passwordHash = await bcrypt.hash(body.password, 12)
+    }
+
+    const agent = await prisma.mtmAgent.create({
+      data: {
+        organizationId: orgId,
+        name: body.name,
+        externalCode: body.externalCode ?? null,
+        email: body.email ?? null,
+        phone: body.phone ?? null,
+        passwordHash,
+        role: body.role ?? "AGENT",
+        canPlanOwnRoutes: body.canPlanOwnRoutes ?? true,
+        canSelfPublishRoutes: body.canSelfPublishRoutes ?? false,
+        managerId: body.managerId ?? null,
+        userId: body.userId ?? null,
+      },
+      select: AGENT_RESPONSE_SELECT,
+    })
+
+    await writeMtmAudit({
+      organizationId: orgId,
+      agentId: agent.id,
+      action: "AGENT_CREATE",
+      entity: "agent",
+      entityId: agent.id,
+      metadataKind: "agent_create",
+      newData: {
+        name: agent.name,
+        email: agent.email,
+        role: agent.role,
+        canPlanOwnRoutes: agent.canPlanOwnRoutes,
+        canSelfPublishRoutes: agent.canSelfPublishRoutes,
+      },
+      req,
+    }).catch((e) => console.warn("[MTM/agents POST] audit failed", e))
+
+    return NextResponse.json({ success: true, data: agent }, { status: 201 })
+  } catch (e: unknown) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Failed to create agent" }, { status: 400 })
+  }
+})

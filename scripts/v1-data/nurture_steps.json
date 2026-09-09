@@ -1,0 +1,10 @@
+[{"id":1,"sequence_id":1,"step_order":1,"delay_days":0,"action_type":"email","template_id":null,"task_title":"Welcome to LeadDrive CRM","task_description":"","is_active":1}, 
+ {"id":2,"sequence_id":1,"step_order":2,"delay_days":3,"action_type":"email","template_id":null,"task_title":"Getting started guide","task_description":"","is_active":1}, 
+ {"id":3,"sequence_id":1,"step_order":3,"delay_days":7,"action_type":"task","template_id":null,"task_title":"Follow up call","task_description":"","is_active":1}, 
+ {"id":4,"sequence_id":2,"step_order":1,"delay_days":0,"action_type":"email","template_id":null,"task_title":"Welcome to LeadDrive CRM","task_description":"","is_active":1}, 
+ {"id":5,"sequence_id":2,"step_order":2,"delay_days":3,"action_type":"email","template_id":null,"task_title":"Getting started guide","task_description":"","is_active":1}, 
+ {"id":6,"sequence_id":3,"step_order":1,"delay_days":0,"action_type":"email","template_id":null,"task_title":"We miss you","task_description":"","is_active":1}, 
+ {"id":7,"sequence_id":2,"step_order":3,"delay_days":7,"action_type":"task","template_id":null,"task_title":"Follow up call","task_description":"","is_active":1}, 
+ {"id":8,"sequence_id":3,"step_order":2,"delay_days":5,"action_type":"email","template_id":null,"task_title":"Special offer","task_description":"","is_active":1}, 
+ {"id":9,"sequence_id":4,"step_order":1,"delay_days":0,"action_type":"email","template_id":null,"task_title":"We miss you","task_description":"","is_active":1}, 
+ {"id":10,"sequence_id":4,"step_order":2,"delay_days":5,"action_type":"email","template_id":null,"task_title":"Special offer","task_description":"","is_active":1}]

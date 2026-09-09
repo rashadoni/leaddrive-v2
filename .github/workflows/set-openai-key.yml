@@ -1,0 +1,74 @@
+name: Set OpenAI key on prod
+
+# Operator job: deliver OPENAI_API_KEY from GitHub repo secrets to the prod
+# deployment's .env, then restart PM2 with the updated environment. Mirrors
+# set-social-app-secrets.yml — used when the operator's IP is fail2ban-banned
+# and for future key rotation. The secret never appears in logs.
+#
+# Usage: add repo secret OPENAI_API_KEY, then dispatch this workflow.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  set-secret:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Setup pinned production SSH
+        uses: ./.github/actions/setup-production-ssh
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server-host: ${{ secrets.SERVER_HOST }}
+          known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+
+      - name: Write OPENAI_API_KEY to canonical app env and restart PM2
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "OPENAI_API_KEY='$OPENAI_API_KEY' bash -s" <<'REMOTE'
+          set -euo pipefail
+          APP_DIR="/opt/leaddrive-v2"
+          APP_ENV_FILE="${APP_ENV_FILE:-/etc/leaddrive/app.env}"
+          ENV="$APP_ENV_FILE"
+          ENV_DIR="$(dirname -- "$ENV")"
+          APP_ENV_LOCK_FILE="${APP_ENV_LOCK_FILE:-/run/lock/leaddrive-app-env.lock}"
+          [ -d "$ENV_DIR" ] && [ ! -L "$ENV_DIR" ] || { echo "FATAL: app env parent $ENV_DIR missing or is a symlink"; exit 1; }
+          [ "$(stat -c '%U:%G' "$ENV_DIR")" = "root:root" ] || { echo "FATAL: app env parent must be owned by root:root"; exit 1; }
+          ENV_DIR_MODE="$(stat -c '%a' "$ENV_DIR")"
+          (( (8#$ENV_DIR_MODE & 8#022) == 0 )) || { echo "FATAL: app env parent must not be group- or world-writable"; exit 1; }
+          [ -f "$ENV" ] && [ ! -L "$ENV" ] || { echo "FATAL: canonical app env $ENV missing or is a symlink"; exit 1; }
+          [ "$(stat -c '%U:%G:%a' "$ENV")" = "root:root:600" ] || { echo "FATAL: canonical app env must be root:root mode 0600"; exit 1; }
+          [ -d "$(dirname -- "$APP_ENV_LOCK_FILE")" ] || { echo "FATAL: app-env lock parent missing"; exit 1; }
+          exec 9>"$APP_ENV_LOCK_FILE"
+          flock -w 120 9 || { echo "FATAL: another canonical app-env update is running"; exit 1; }
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "OPENAI_API_KEY: secret not set — nothing to do"
+            exit 0
+          fi
+          # Replace-or-append so key rotation works; the staging file shares
+          # the canonical env directory, so the final rename is atomic.
+          ENV_STAGE="$(mktemp "$ENV_DIR/.app.env.openai.XXXXXX")"
+          cleanup() { [ -z "${ENV_STAGE:-}" ] || rm -f -- "$ENV_STAGE"; }
+          trap cleanup EXIT
+          cp --preserve=mode,ownership "$ENV" "$ENV_STAGE"
+          sed -i "/^[[:space:]]*\(export[[:space:]]\+\)\?OPENAI_API_KEY=/d" "$ENV_STAGE"
+          printf 'OPENAI_API_KEY=%s\n' "$OPENAI_API_KEY" >> "$ENV_STAGE"
+          mv -f "$ENV_STAGE" "$ENV"
+          ENV_STAGE=""
+          echo "OPENAI_API_KEY: written to canonical app env"
+          export OPENAI_API_KEY
+          pm2 restart leaddrive-v2 --update-env >/dev/null
+          echo "pm2 restarted"
+          REMOTE

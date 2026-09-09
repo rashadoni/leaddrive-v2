@@ -1,0 +1,43 @@
+Fix the cutover wrapper's self-contradictory readiness gate.
+
+`cutover_runtime_ready` proves three services at once:
+
+  wait_for_cutover_asterisk_ready   -> requires verify_no_tcp_listener 8088
+  wait_for_coordinator_ready
+  wait_for_nginx_ready              -> requires nginx listening on 0.0.0.0:8088
+
+The first demands port 8088 be empty; the third demands nginx be on it. Both
+run inside the same call, so once the cutover starts nginx the function can
+never return 0. That is why the cutover reached the real switch, replaced every
+config, started all three services, and then failed the closing re-sample with
+`cutover_listener_set_not_exact` and rolled back. The gate is unsatisfiable by
+construction, not by any property of this host.
+
+The check exists to prove Asterisk has vacated the plain-HTTP port, and the
+bundle already carries the predicate that says exactly that -- the wrapper uses
+`verify_no_tcp_listener_owned_by 8088 asterisk` in its own state vocabulary at
+line 1363. That is the correction.
+
+Nothing is weakened. `verify_exact_tcp_listener` asserts a listener count of
+exactly one, at the exact local address, owned by the expected process name and
+MainPID, so `wait_for_nginx_ready` alone still proves 8088 is held by nginx and
+by nothing else. The relaxed predicate only stops Asterisk's proof from being
+falsified by nginx doing its job.
+
+  before: c36aa4343f8fda11ac1a9c445de70a1c659590e7690fe2019647da3e1593f63f
+  after:  98e9261e6cf3ed66e1bedea187a2a91b418afc2ceb7355241125eddaf9fc16c5
+
+Applied to /usr/local/sbin/fanum-pbx-coordinator-deploy, which the cutover
+workflow pins by digest; both pins are rolled forward in the same commit.
+
+--- a/fanum-pbx-coordinator-deploy
++++ b/fanum-pbx-coordinator-deploy
+@@ -1507,7 +1507,7 @@
+     main_pid="$(systemctl show asterisk.service --property=MainPID --value 2>/dev/null)"
+     if systemctl is-active --quiet asterisk.service \
+       && verify_exact_tcp_listener 8089 127.0.0.1:8089 "$main_pid" asterisk \
+-      && verify_no_tcp_listener 8088; then
++      && verify_no_tcp_listener_owned_by 8088 asterisk; then
+       return 0
+     fi
+     wait_count=$((wait_count + 1))

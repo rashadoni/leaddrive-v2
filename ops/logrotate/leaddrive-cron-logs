@@ -1,0 +1,20 @@
+# Crontab lines redirect into /var/log/leaddrive-*.log and nothing rotated them.
+# On 2026-08-25 leaddrive-resilience-cron.log had reached 245 MB. These files sit
+# on the same filesystem as the PostgreSQL data directory, so unbounded growth is
+# an availability problem, not a tidiness one.
+#
+# Written by root's cron redirects, so `create` is safe here — no long-lived
+# process holds the descriptor. delaycompress keeps ".1" plain text for
+# ship-logs.sh, which reads it to recover the lines written between its last run
+# and the rotation.
+/var/log/leaddrive-*.log {
+    daily
+    rotate 14
+    size 50M
+    missingok
+    notifempty
+    compress
+    delaycompress
+    su root root
+    create 0640 root adm
+}

@@ -1,0 +1,101 @@
+[
+  {
+    "id": 11,
+    "department": "BackOffice",
+    "position": "Direktor, muavinler, kommersiya(6), HR(2), maliyye(2), admin(2), surucu(2), tedaruk(1)",
+    "count": 17,
+    "net_salary": 4705.88,
+    "gross_salary": 5471.95,
+    "super_gross": 6429.54,
+    "in_overhead": 1,
+    "notes": "Cem NET=80000 butun BackOffice. net_salary = 80000/17 = per-person"
+  },
+  {
+    "id": 17,
+    "department": "ERP",
+    "position": "ERP komanda",
+    "count": 6,
+    "net_salary": 3176.84,
+    "gross_salary": 3694.0,
+    "super_gross": 4340.45,
+    "in_overhead": 0,
+    "notes": ""
+  },
+  {
+    "id": 19,
+    "department": "GRC",
+    "position": "GRC komanda",
+    "count": 8,
+    "net_salary": 2448.42,
+    "gross_salary": 2847.0,
+    "super_gross": 3345.22,
+    "in_overhead": 1,
+    "notes": "Overhead-ə daxildir"
+  },
+  {
+    "id": 12,
+    "department": "HelpDesk",
+    "position": "HelpDesk mühəndis",
+    "count": 56,
+    "net_salary": 1735.26,
+    "gross_salary": 2017.75,
+    "super_gross": 2370.86,
+    "in_overhead": 0,
+    "notes": ""
+  },
+  {
+    "id": 13,
+    "department": "IT",
+    "position": "SysAdmin",
+    "count": 8,
+    "net_salary": 2992.03,
+    "gross_salary": 3479.11,
+    "super_gross": 4087.95,
+    "in_overhead": 0,
+    "notes": ""
+  },
+  {
+    "id": 14,
+    "department": "IT",
+    "position": "NetAdmin",
+    "count": 8,
+    "net_salary": 3536.35,
+    "gross_salary": 4112.03,
+    "super_gross": 4831.64,
+    "in_overhead": 0,
+    "notes": ""
+  },
+  {
+    "id": 16,
+    "department": "IT",
+    "position": "Zəng Mərkəzi",
+    "count": 4,
+    "net_salary": 1735.26,
+    "gross_salary": 2017.75,
+    "super_gross": 2370.86,
+    "in_overhead": 0,
+    "notes": "IT-yə daxildir"
+  },
+  {
+    "id": 15,
+    "department": "InfoSec",
+    "position": "InfoSec mütəxəssis",
+    "count": 12,
+    "net_salary": 3601.65,
+    "gross_salary": 4187.97,
+    "super_gross": 4920.86,
+    "in_overhead": 0,
+    "notes": ""
+  },
+  {
+    "id": 18,
+    "department": "PM",
+    "position": "PM komanda",
+    "count": 5,
+    "net_salary": 3388.4,
+    "gross_salary": 3940.0,
+    "super_gross": 4629.5,
+    "in_overhead": 0,
+    "notes": ""
+  }
+]

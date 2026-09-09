@@ -1,0 +1,18 @@
+-- Вывод scripts/rls/audit-tenant-delete-cascade.sql на боевой базе, 2026-08-27,
+-- после миграции 20260827090000_tenant_delete_cascades.
+-- Было 83 таблицы без каскада (свидетельство от 2026-08-26) → стало 10.
+-- Свидетельство к ISMS-12 разд. 4 и находке F-24.
+
+        orphan_table         |    why_it_survives
+-----------------------------+------------------------
+ budget_lines                | no FK to organizations
+ channel_configs             | no FK to organizations
+ compliance_audit_log        | no FK to organizations
+ contract_redlines           | no FK to organizations
+ kb_categories               | no FK to organizations
+ pricing_categories          | no FK to organizations
+ pricing_groups              | no FK to organizations
+ project_tasks               | no FK to organizations
+ task_collaborators          | no FK to organizations
+ tickets                     | no FK to organizations
+(10 rows)

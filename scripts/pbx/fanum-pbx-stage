@@ -1,0 +1,196 @@
+#!/usr/bin/env bash
+# Root-only staging for the Fanum PBX control plane.
+#
+# Deliberately inert: this script installs the nginx package, leaves it
+# stopped, and places reviewed files into the directories the reviewed cutover
+# wrapper reads. It never starts or reloads Asterisk, nginx or the coordinator,
+# never runs the cutover wrapper, never touches the dialplan, and never
+# originates a call.
+#
+# It takes no arguments. Every input is read from one fixed inbox and accepted
+# only if its SHA-256 matches a digest baked in below, so a caller with
+# passwordless sudo on this one path cannot use it to write arbitrary content
+# anywhere. The three site-specific files cannot be hashed in advance and are
+# instead accepted only in a strictly validated shape.
+#
+# Re-running is safe: an already-correct destination is left untouched.
+set -Eeuo pipefail
+umask 077
+export LC_ALL=C
+
+readonly INBOX="/var/lib/fanum-pbx-stage-inbox"
+readonly STAGE_DIR="/var/lib/fanum-pbx-coordinator-deploy"
+readonly TLS_STAGE_DIR="$STAGE_DIR/tls"
+readonly COORDINATOR_ENV="/etc/fanum-pbx-coordinator.env"
+readonly ACTIVE_CUTOVER_MARKER="/var/lib/fanum-pbx-coordinator-active-cutover"
+
+fail() { printf 'fanum-pbx-stage: %s\n' "$1" >&2; exit 1; }
+
+readonly NL=$'\n'
+
+# --- reviewed payload digests -------------------------------------------------
+# Taken from the reviewed control-plane bundle and cross-checked against the
+# digests the cutover wrapper itself demands.
+readonly PAYLOAD_DIGESTS="\
+c81d7b047b49b69e9dbe2430793f5f27eea13dff3254e2cfcea15ee09f25f681  fanum_pbx_coordinator.py
+115f72533809a653cc2f60748ea6209ed51b9a39a5da459d1070202c7a6a4895  fanum-pbx-event-agi.py
+80048e0215405755648be76c7b680eb96c5f2f21b36ff0cf18fdc27c14fac093  extensions-fanum-terminal-events.conf
+d80aeb79635da86d34872824f609b1843f15919730457d701f2f163fe12cca9a  fanum-pbx-coordinator.service
+37826c2a03cd046dc2b2d928c8650a0c0e4863e87ef15b37ea2f441f06c4feec  fanum_http_conf_transform.py
+2ef60581e316084aa143bd7b4b7d1a785026b98b939790dddc7cb21605fd439a  fanum_dialplan_transform.py
+6dd80018929d7965df36865f7d59326fd7da82f2182bc78ad46d971a1fd46ffa  nginx-fanum-root.conf
+5cd237142b3d1d129136b03f75b433dcabc1628fff6e3974c2f6cbe462e8898c  nginx-fanum-ari-proxy.conf
+9b8797595f450361c413b97c889dee67993b4c095e3887b29509a8552b99ebe6  fanum_crm_source_acl.py
+015c522d0325eb228de51981029c7c9ba7ca7bc0745f33ecf7fd703cc3ed542b  fanum-pbx-operation-fence
+f0b6c557b1489e89a6ebcb37c22e48bd1c35f4c37976d51694cebe5966199d16  asterisk-fanum-operation-fence.conf
+f0b6c557b1489e89a6ebcb37c22e48bd1c35f4c37976d51694cebe5966199d16  nginx-fanum-operation-fence.conf"
+
+# Digests of the reviewed TLS material, in the same list form as the payload
+# above. These identify files; none of them is itself a credential.
+readonly TLS_DIGESTS="\
+fc6095fa7fe4717bd72490e5f2781b3e914fadc319298accac19c370dc700db3  server.pem
+5d951cd798f82e9275d9c4c384076cbb1edc41773d99db6ecde2361326ad82d7  server.key
+e9b00c72a527ae396f44756181f77561e765d2580bbc343da7760b2775a4cf34  ca.pem"
+
+# Only these keys may appear in the coordinator environment. An unknown key is
+# refused rather than ignored: this file is read by a service running beside
+# Asterisk.
+readonly ALLOWED_ENV_KEYS="\
+FANUM_PBX_COORDINATOR_HOST FANUM_PBX_COORDINATOR_PORT FANUM_INTERNAL_ARI_URL \
+FANUM_PBX_COORDINATOR_DB FANUM_PBX_EVIDENCE_SPOOL FANUM_PBX_AUTH_SOCKET \
+VOICE_CRM_RUNTIME_URL VOICE_CRM_RESULT_URL VOICE_CRM_HUMAN_LIFECYCLE_URL \
+VOICE_CRM_RUNTIME_TOKEN FANUM_CALLBACK_RETRY_BASE_SECONDS \
+FANUM_CALLBACK_RETRY_MAX_SECONDS"
+
+# --- preconditions ------------------------------------------------------------
+[ "$(id -u)" = "0" ] || fail "must run as root"
+[ "$#" -eq 0 ] || fail "takes no arguments"
+
+# Staging must never disturb a live control plane. If a cutover generation is
+# active, the operator has to roll it back with the reviewed cutover wrapper
+# first; overwriting staged inputs underneath it would invalidate its backups.
+if [ -e "$ACTIVE_CUTOVER_MARKER" ]; then
+  fail "an active cutover generation exists; refusing to stage"
+fi
+
+for tool in sha256sum install stat systemctl apt-get; do
+  command -v "$tool" >/dev/null || fail "required tool is missing: $tool"
+done
+
+require_regular() {
+  [ -f "$1" ] && [ ! -L "$1" ] || fail "not a regular file: $1"
+}
+
+digest_of() { sha256sum "$1" | awk '{print $1}'; }
+
+verify_digest() {
+  local path="$1" want="$2" got
+  require_regular "$path"
+  got="$(digest_of "$path")"
+  [ "$got" = "$want" ] || fail "digest mismatch for $(basename "$path")"
+}
+
+# Install only when the destination differs, so a re-run is a no-op.
+place() {
+  local src="$1" dest="$2" owner="$3" mode="$4"
+  if [ -e "$dest" ] && [ ! -L "$dest" ] && [ -f "$dest" ] \
+    && [ "$(digest_of "$dest")" = "$(digest_of "$src")" ] \
+    && [ "$(stat -c '%U:%G %a' "$dest")" = "$owner $mode" ]; then
+    printf 'unchanged  %s\n' "$dest"
+    return 0
+  fi
+  install -o "${owner%%:*}" -g "${owner##*:}" -m "$mode" "$src" "$dest"
+  printf 'staged     %s\n' "$dest"
+}
+
+[ -d "$INBOX" ] && [ ! -L "$INBOX" ] || fail "inbox is missing: $INBOX"
+
+# --- 1. reviewed payload ------------------------------------------------------
+install -d -o root -g root -m 0700 "$STAGE_DIR"
+
+while read -r want name; do
+  [ -n "$name" ] || continue
+  verify_digest "$INBOX/payload/$name" "$want"
+  place "$INBOX/payload/$name" "$STAGE_DIR/$name" "root:root" 0644
+done <<< "$PAYLOAD_DIGESTS"
+
+# A stray file in the stage directory is not inert: the cutover wrapper reads
+# this directory, so anything unexpected here is refused rather than ignored.
+while IFS= read -r present; do
+  [ -n "$present" ] || continue
+  [ "$present" = "tls" ] && continue
+  # Every digest line ends in "  <name>", so the list is wrapped in newlines
+  # before matching. Without the trailing newline only the final name in the
+  # list can ever match and every other reviewed file looks unexpected.
+  case "$NL$PAYLOAD_DIGESTS$NL" in
+    *"  $present$NL"*) continue ;;
+  esac
+  fail "unexpected entry in stage directory: $present"
+done < <(ls -A "$STAGE_DIR")
+
+# --- 2. TLS material ----------------------------------------------------------
+install -d -o root -g root -m 0700 "$TLS_STAGE_DIR"
+
+while read -r want name; do
+  [ -n "$name" ] || continue
+  verify_digest "$INBOX/tls/$name" "$want"
+done <<< "$TLS_DIGESTS"
+
+place "$INBOX/tls/server.pem" "$TLS_STAGE_DIR/server.pem" "root:root" 0644
+place "$INBOX/tls/server.key" "$TLS_STAGE_DIR/server.key" "root:root" 0600
+place "$INBOX/tls/ca.pem"     "$TLS_STAGE_DIR/ca.pem"     "root:root" 0644
+
+# --- 3. site-specific configuration -------------------------------------------
+# These three cannot be hashed in advance, so each is accepted only in an
+# exactly specified shape. Nothing here is echoed: the token and the approved
+# source address stay out of the output.
+acl="$INBOX/conf/crm-source-access.conf"
+require_regular "$acl"
+[ "$(wc -l < "$acl")" -eq 2 ] || fail "source ACL must be exactly two lines"
+grep -qE '^allow ([0-9]{1,3}\.){3}[0-9]{1,3}/32;$' "$acl" \
+  || fail "source ACL must allow exactly one IPv4 host with a /32 prefix"
+grep -qxF 'deny all;' "$acl" || fail "source ACL must end with deny all;"
+place "$acl" "$TLS_STAGE_DIR/crm-source-access.conf" "root:root" 0600
+
+origin="$INBOX/conf/crm-callback-origin"
+require_regular "$origin"
+[ "$(wc -l < "$origin")" -eq 1 ] || fail "callback origin must be exactly one line"
+grep -qE '^https://[A-Za-z0-9.-]+(:[0-9]{1,5})?$' "$origin" \
+  || fail "callback origin must be a single https origin"
+place "$origin" "$TLS_STAGE_DIR/crm-callback-origin" "root:root" 0600
+
+env_src="$INBOX/conf/fanum-pbx-coordinator.env"
+require_regular "$env_src"
+if grep -qE '^(VOICE_ENGINE|OPENAI_API_KEY|OPENAI_REALTIME_MODEL)=' "$env_src"; then
+  fail "legacy OpenAI voice configuration is retired"
+fi
+while IFS= read -r line; do
+  case "$line" in ""|"#"*) continue ;; esac
+  printf '%s' "$line" | grep -qE '^[A-Z_][A-Z0-9_]*=' \
+    || fail "coordinator environment has a malformed line"
+  key="${line%%=*}"
+  case " $ALLOWED_ENV_KEYS " in
+    *" $key "*) ;;
+    *) fail "coordinator environment has an unexpected key: $key" ;;
+  esac
+done < "$env_src"
+for required in VOICE_CRM_RUNTIME_TOKEN VOICE_CRM_RESULT_URL VOICE_CRM_HUMAN_LIFECYCLE_URL; do
+  grep -qE "^$required=." "$env_src" || fail "coordinator environment is missing $required"
+done
+getent group asterisk >/dev/null || fail "asterisk group is missing"
+place "$env_src" "$COORDINATOR_ENV" "root:asterisk" 0640
+
+# --- 4. nginx package, left stopped -------------------------------------------
+# The reviewed cutover wrapper starts nginx itself, with TLS, at the end of its
+# own verification. Staging only makes the binary present.
+if ! command -v nginx >/dev/null; then
+  DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends nginx >/dev/null
+  printf 'installed  nginx package\n'
+else
+  printf 'unchanged  nginx package\n'
+fi
+systemctl disable --now nginx >/dev/null 2>&1 || true
+[ "$(systemctl is-active nginx 2>/dev/null | head -1)" != "active" ] \
+  || fail "nginx is active after staging; refusing to leave it running"
+
+printf 'staging complete; no service was started and no call was placed\n'

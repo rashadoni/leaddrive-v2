@@ -1,0 +1,111 @@
+# dependencies
+# both forms: the trailing-slash pattern matches only directories, so a
+# worktree-convenience symlink named node_modules would slip into commits
+node_modules
+node_modules/
+/.pnp
+.pnp.*
+
+# next.js
+.next/
+.next-old/
+/out/
+/build
+
+# serwist service-worker build artifact (swDest in next.config.ts). Regenerated
+# from src/sw.ts on every `next build`; committing it caused stale-SW deploys and
+# parallel-session D/M churn. The CI deploy regenerates + copies it into standalone.
+public/sw.js
+public/sw.js.map
+
+# env
+.env
+.env.local
+.env.production
+.mcp.json
+
+# misc
+.DS_Store
+*.pem
+*.tsbuildinfo
+next-env.d.ts
+.vercel
+
+# debug
+npm-debug.log*
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.fuse_hidden*
+Thumbs.db
+~$*
+
+.claude/worktrees/
+.claude/scheduled_tasks.lock
+
+# Test artifacts
+.playwright-cli/
+
+# Generated images (Nano-Banana MCP)
+public/generated/*
+!public/generated/.gitkeep
+
+# Mutable runtime data — never source-controlled. Production moves these
+# outside the checkout; locally they are test artifacts or operator state.
+/public/uploads
+/uploads
+/logs
+/help-videos
+/.backfill-plan-features-v1-done
+/.backfill-base-modules.log
+/.backfill-base-modules-v2-done
+/.voice-provider-registry-cutover.lock
+
+# Graphify knowledge graph
+graphify-out/
+.graphify-venv/
+
+# Non-project files
+.graphifyignore
+.obsidian/
+entities.json
+mempalace.yaml
+
+# Generated assets (logo concepts, brand exports — local design work)
+generated/
+# ...except the build-revision constant: the deploy overwrites it before the
+# build, but it must exist in the tree or the app and its tests cannot resolve
+# the import at all.
+!src/generated/
+!src/generated/build-sha.ts
+
+# Sales/pricing documents (committed separately or shared via Drive)
+leaddrive-pricing-offer*.pdf
+leaddrive-pricing-offer*.xlsx
+proposals/
+
+# Ephemeral demo/dev HTML pages
+public/ai-shelf-demo.html
+
+# Marketing assets not part of the codebase
+docs/meta-app-icon-1024.png
+
+# Per-machine Claude Code permission state — local, not shared with the team
+# (was accidentally tracked once; added here so future allow-rule grants
+# don't slip into security commits as audit-log noise).
+.claude/settings.local.json
+.claude/launch.json
+
+# Python bytecode cache
+__pycache__/
+
+# Commercial-offer / KPI binaries — keep pricing out of git history (2026-06-15)
+KPI-Marketing-IT-Security-GRC-2026.xlsx
+LeadDrive-CRM-Kommersiya-Teklifi.xlsx
+LeadDrive-CRM-Kommersiya-Teklifi-FIXED.xlsx
+
+# Help-video recorder scratch (scene audio cache, regenerated on every run)
+video/.tmp-guides/

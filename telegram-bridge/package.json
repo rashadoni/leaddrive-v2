@@ -1,0 +1,12 @@
+{
+  "name": "leaddrive-telegram-bridge",
+  "version": "1.0.0",
+  "description": "Telegram → Claude Code bridge for LeadDrive",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js"
+  },
+  "dependencies": {
+    "node-telegram-bot-api": "^1.2.0"
+  }
+}

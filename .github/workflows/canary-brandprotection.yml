@@ -1,0 +1,251 @@
+name: Canary (brandprotection Bright Data live)
+
+# Operator workflow for the bounded Bright Data live canary on the
+# brandprotection tenant, per docs/BRIGHTDATA-TIKTOK-CANARY-RUNBOOK.md.
+# One dispatch per step. Read-only steps (audit, evidence) need no confirm;
+# every spend/write/routing step requires confirm == "brandprotection".
+# The whole scripts/canary dir is uploaded, so steps can be iterated on a
+# branch and dispatched with ref=<branch> without redeploying.
+#
+# Steps:
+#   audit        read-only pre-flight (route plans, proofs, policy, blast radius)
+#   enable       DB writes: create+verify Bright Data proofs + set bounded paid policy
+#   routing-on   app env: ENFORCE_USD_BUDGETS=1 + LIVE_ROUTING=1 + tenant allowlist=<org>; pm2 restart
+#   evidence     read-only: provider ledger + observation invariants
+#   routing-off  app env: LIVE_ROUTING=0 + clear allowlist; pm2 restart (teardown part 1)
+#   disable      DB writes: policy manualRunsEnabled=false, emergencyStopped=true, caps 0 (teardown part 2)
+
+on:
+  workflow_dispatch:
+    inputs:
+      step:
+        description: "Canary step"
+        required: true
+        type: choice
+        options: [audit, source-coverage-audit, provider-reject-diag, bd-snapshot-ids, scenario-bd-coverage, enable, raise-limits, normalize-source-budgets, hide-legacy-comments, release-stale-reservations, wake-stale-sources, routing-on, run-target, run-enrich, run-comments, run-instagram-araz, run-facebook-araz, run-facebook-comments-araz, run-youtube-bravo, run-free-web-news-all, evidence, routing-off, disable]
+        default: audit
+      confirm:
+        description: "Type 'brandprotection' to authorize write/spend/routing steps"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Guard write/spend steps behind confirm
+        env:
+          STEP: ${{ inputs.step }}
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          case "$STEP" in
+            audit|source-coverage-audit|provider-reject-diag|bd-snapshot-ids|scenario-bd-coverage|evidence) echo "read-only step: $STEP" ;;
+            enable|raise-limits|normalize-source-budgets|hide-legacy-comments|release-stale-reservations|wake-stale-sources|routing-on|run-target|run-enrich|run-comments|run-instagram-araz|run-facebook-araz|run-facebook-comments-araz|run-youtube-bravo|run-free-web-news-all|routing-off|disable)
+              if [ "$CONFIRM" != "brandprotection" ]; then
+                echo "::error::step '$STEP' requires confirm=brandprotection"; exit 1
+              fi
+              echo "authorized write/routing step: $STEP" ;;
+            *) echo "::error::unknown step $STEP"; exit 1 ;;
+          esac
+
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup pinned production SSH
+        uses: ./.github/actions/setup-production-ssh
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server-host: ${{ secrets.SERVER_HOST }}
+          known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+
+      - name: Upload fresh scripts to server
+        run: |
+          ssh -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "mkdir -p /opt/leaddrive-v2/.next/standalone/scripts/canary"
+          scp -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
+            scripts/_rls.mjs \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/leaddrive-v2/.next/standalone/scripts/
+          scp -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
+            scripts/canary/*.mjs \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/leaddrive-v2/.next/standalone/scripts/canary/
+
+      - name: Run step on server
+        env:
+          STEP: ${{ inputs.step }}
+        run: |
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "STEP='$STEP' bash -s" <<'REMOTE'
+          set -euo pipefail
+          APP_DIR="/opt/leaddrive-v2"
+          APP_ENV_FILE="${APP_ENV_FILE:-/etc/leaddrive/app.env}"
+          ENV="$APP_ENV_FILE"
+          ENV_DIR="$(dirname -- "$ENV")"
+          APP_ENV_LOCK_FILE="${APP_ENV_LOCK_FILE:-/run/lock/leaddrive-app-env.lock}"
+          CANARY="$APP_DIR/.next/standalone/scripts/canary"
+          [ -d "$ENV_DIR" ] && [ ! -L "$ENV_DIR" ] || { echo "FATAL: app env parent $ENV_DIR missing or is a symlink"; exit 1; }
+          [ "$(stat -c '%U:%G' "$ENV_DIR")" = "root:root" ] || { echo "FATAL: app env parent must be owned by root:root"; exit 1; }
+          ENV_DIR_MODE="$(stat -c '%a' "$ENV_DIR")"
+          (( (8#$ENV_DIR_MODE & 8#022) == 0 )) || { echo "FATAL: app env parent must not be group- or world-writable"; exit 1; }
+          [ -f "$ENV" ] && [ ! -L "$ENV" ] || { echo "FATAL: canonical app env $ENV missing or is a symlink"; exit 1; }
+          [ "$(stat -c '%U:%G:%a' "$ENV")" = "root:root:600" ] || { echo "FATAL: canonical app env must be root:root mode 0600"; exit 1; }
+          [ -d "$(dirname -- "$APP_ENV_LOCK_FILE")" ] || { echo "FATAL: app-env lock parent missing"; exit 1; }
+          exec 9>"$APP_ENV_LOCK_FILE"
+          flock -w 120 9 || { echo "FATAL: another canonical app-env update is running"; exit 1; }
+          read_env() {
+            sed -n "s/^[[:space:]]*\(export[[:space:]]\+\)\?$1[[:space:]]*=[[:space:]]*//p" "$ENV" \
+              | head -1 | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'\$/\1/"
+          }
+          DATABASE_URL="$(read_env DATABASE_URL)"
+          [ -n "$DATABASE_URL" ] || { echo "FATAL: DATABASE_URL not found in canonical app env"; exit 1; }
+
+          set_env_var() {  # atomic replace-or-append; value never echoed
+            local key="$1" val="$2"
+            local stage
+            stage="$(mktemp "$ENV_DIR/.app.env.canary.XXXXXX")"
+            if ! cp --preserve=mode,ownership "$ENV" "$stage" \
+              || ! sed -i "/^[[:space:]]*\(export[[:space:]]\+\)\?$key=/d" "$stage" \
+              || ! printf '%s=%s\n' "$key" "$val" >> "$stage" \
+              || ! mv -f "$stage" "$ENV"; then
+              rm -f -- "$stage"
+              return 1
+            fi
+            echo "  set $key"
+          }
+
+          case "$STEP" in
+            audit|source-coverage-audit|provider-reject-diag|bd-snapshot-ids|scenario-bd-coverage|enable|raise-limits|normalize-source-budgets|hide-legacy-comments|release-stale-reservations|wake-stale-sources|evidence|disable)
+              if [ "$STEP" = "evidence" ]; then
+                echo "--- app process env flags (from /proc, values 0/1 only) ---"
+                APP_PID="$(pm2 pid leaddrive-v2 2>/dev/null | tail -1)"
+                if [ -n "$APP_PID" ] && [ -r "/proc/$APP_PID/environ" ]; then
+                  tr '\0' '\n' < "/proc/$APP_PID/environ" \
+                    | grep -E '^SOCIAL_(MONITORING_ENFORCE_USD_BUDGETS|BRIGHT_DATA_LIVE_ROUTING)=' || echo "  (flags NOT in app env)"
+                  tr '\0' '\n' < "/proc/$APP_PID/environ" \
+                    | grep -q '^SOCIAL_BRIGHT_DATA_LIVE_TENANT_IDS=..*' && echo "SOCIAL_BRIGHT_DATA_LIVE_TENANT_IDS=<set>" || echo "SOCIAL_BRIGHT_DATA_LIVE_TENANT_IDS=<empty/unset>"
+                  echo "pm2 pid=$APP_PID uptime: $(ps -o etime= -p "$APP_PID" | tr -d ' ')"
+                else
+                  echo "  pm2 pid not found or environ unreadable"
+                fi
+                echo "--- crontab entries (social/monitoring) ---"
+                crontab -l 2>/dev/null | grep -E "social|monitoring" || echo "  (none in root crontab)"
+              fi
+              DATABASE_URL="$DATABASE_URL" node "$CANARY/$STEP.mjs"
+              ;;
+            routing-on)
+              ORG="$(DATABASE_URL="$DATABASE_URL" node "$CANARY/print-org-id.mjs")"
+              [ -n "$ORG" ] || { echo "FATAL: could not resolve org id"; exit 1; }
+              set_env_var SOCIAL_MONITORING_ENFORCE_USD_BUDGETS 1
+              set_env_var SOCIAL_BRIGHT_DATA_LIVE_ROUTING 1
+              set_env_var SOCIAL_BRIGHT_DATA_LIVE_TENANT_IDS "$ORG"
+              # PM2 --update-env reads the CURRENT SHELL env, not .env (same
+              # pattern as set-openai-key.yml) — export before restarting.
+              export SOCIAL_MONITORING_ENFORCE_USD_BUDGETS=1
+              export SOCIAL_BRIGHT_DATA_LIVE_ROUTING=1
+              export SOCIAL_BRIGHT_DATA_LIVE_TENANT_IDS="$ORG"
+              pm2 restart leaddrive-v2 --update-env >/dev/null
+              echo "routing ON (brandprotection only); pm2 restarted"
+              ;;
+            routing-off)
+              set_env_var SOCIAL_BRIGHT_DATA_LIVE_ROUTING 0
+              set_env_var SOCIAL_BRIGHT_DATA_LIVE_TENANT_IDS ""
+              export SOCIAL_BRIGHT_DATA_LIVE_ROUTING=0
+              export SOCIAL_BRIGHT_DATA_LIVE_TENANT_IDS=""
+              pm2 restart leaddrive-v2 --update-env >/dev/null
+              echo "routing OFF; allowlist cleared; pm2 restarted"
+              ;;
+            run-free-web-news-all)
+              CRON_SECRET="$(read_env CRON_SECRET)"
+              [ -n "$CRON_SECRET" ] || { echo "FATAL: CRON_SECRET not found in canonical app env"; exit 1; }
+              RESPONSE="$(curl --fail-with-body --silent --show-error --max-time 1800 \
+                -H "x-cron-secret: $CRON_SECRET" \
+                -X POST \
+                "https://brandprotection.leaddrivecrm.org/api/cron/social-web-news?organizationSlug=brandprotection")"
+              unset CRON_SECRET
+              printf '%s' "$RESPONSE" | node -e '
+                let raw = "";
+                process.stdin.on("data", chunk => { raw += chunk });
+                process.stdin.on("end", () => {
+                  const payload = JSON.parse(raw);
+                  const data = payload.data || {};
+                  console.log(JSON.stringify({
+                    success: payload.success,
+                    activeWebScenarioCount: data.activeWebScenarioCount,
+                    selectedSourceCount: data.selectedSourceCount,
+                    coveredScenarioCount: data.coveredScenarioCount,
+                    missingScenarios: data.missingScenarios,
+                    failed: data.failed,
+                    totals: data.totals,
+                    results: data.results,
+                  }, null, 2));
+                  if (payload.success !== true) process.exit(1);
+                });
+              '
+              ;;
+            run-target|run-enrich|run-comments|run-instagram-araz|run-facebook-araz|run-facebook-comments-araz|run-youtube-bravo)
+              echo "$STEP is executed through the authenticated public API in the next step"
+              ;;
+            *) echo "unknown step $STEP"; exit 1 ;;
+          esac
+          REMOTE
+
+      - name: Run bounded target capability through authenticated API
+        if: inputs.step == 'run-target' || inputs.step == 'run-enrich' || inputs.step == 'run-comments' || inputs.step == 'run-instagram-araz' || inputs.step == 'run-facebook-araz' || inputs.step == 'run-facebook-comments-araz' || inputs.step == 'run-youtube-bravo'
+        env:
+          PASSWORD: ${{ secrets.BRANDPROTECTION_CANARY_ADMIN_PASSWORD }}
+          STEP: ${{ inputs.step }}
+        run: |
+          set -euo pipefail
+          [ -n "$PASSWORD" ] || { echo "::error::Canary admin password secret is not configured"; exit 1; }
+          BASE_URL="https://brandprotection.leaddrivecrm.org"
+          COOKIE_JAR="$(mktemp)"
+          RESPONSE_FILE="$(mktemp)"
+          trap 'rm -f "$COOKIE_JAR" "$RESPONSE_FILE"' EXIT
+          CSRF="$(curl --fail --silent --show-error --cookie-jar "$COOKIE_JAR" "$BASE_URL/api/auth/csrf" | jq -r '.csrfToken')"
+          LOGIN="$(curl --fail --silent --show-error --cookie "$COOKIE_JAR" --cookie-jar "$COOKIE_JAR" \
+            -H 'X-Auth-Return-Redirect: 1' \
+            --data-urlencode "csrfToken=$CSRF" \
+            --data-urlencode 'email=admin@brandprotection.leaddrivecrm.org' \
+            --data-urlencode "password=$PASSWORD" \
+            --data-urlencode 'organizationSlug=brandprotection' \
+            --data-urlencode "callbackUrl=$BASE_URL/social-monitoring?canary=run-target" \
+            "$BASE_URL/api/auth/callback/credentials")"
+          unset PASSWORD
+          LOGIN_URL="$(jq -r '.url // empty' <<<"$LOGIN")"
+          [ -n "$LOGIN_URL" ] && [[ "$LOGIN_URL" != *"error="* ]] || { echo "::error::Canary admin authentication failed"; exit 1; }
+          case "$STEP" in
+            run-target) SOURCE_ID='cmrlscyhx0036506ruferpk9c'; PAYLOAD='{"maxTotalChargeUsd":0.5}' ;;
+            run-enrich) SOURCE_ID='cmrlscyhx0036506ruferpk9c'; PAYLOAD='{"maxTotalChargeUsd":0.5,"onlyCapability":"ENRICH_CONTENT"}' ;;
+            run-comments) SOURCE_ID='cmrlscyhx0036506ruferpk9c'; PAYLOAD='{"maxTotalChargeUsd":0.5,"onlyCapability":"READ_EXTERNAL_COMMENTS"}' ;;
+            run-instagram-araz) SOURCE_ID='cmrlxizy8001750sl0uphau4h'; PAYLOAD='{"maxTotalChargeUsd":0.5}' ;;
+            run-facebook-araz) SOURCE_ID='cmrlxizyb001950sl4544j3eo'; PAYLOAD='{"maxTotalChargeUsd":0.5}' ;;
+            run-facebook-comments-araz) SOURCE_ID='cmrlxizyb001950sl4544j3eo'; PAYLOAD='{"maxTotalChargeUsd":0.5,"onlyCapability":"READ_EXTERNAL_COMMENTS"}' ;;
+            # Official API only: no Bright Data/Apify routing or USD cap.
+            run-youtube-bravo) SOURCE_ID='cmrva9wte005s500szjhtvkrz'; PAYLOAD='{"onlyCapability":"READ_EXTERNAL_COMMENTS"}' ;;
+          esac
+          HTTP_STATUS="$(curl --silent --show-error --max-time 540 --output "$RESPONSE_FILE" --write-out '%{http_code}' \
+            --cookie "$COOKIE_JAR" -H 'Content-Type: application/json' -X POST \
+            --data "$PAYLOAD" \
+            "$BASE_URL/api/v1/social/monitoring-sources/$SOURCE_ID/run")"
+          if jq -e . "$RESPONSE_FILE" >/dev/null 2>&1; then
+            jq '{success, error, data: {runId: .data.runId, status: .data.status, foundCount: .data.foundCount, newCount: .data.newCount, duplicateCount: .data.duplicateCount, error: .data.error}}' "$RESPONSE_FILE"
+            [ "$HTTP_STATUS" = "200" ] && [ "$(jq -r '.success' "$RESPONSE_FILE")" = "true" ] || exit 1
+          else
+            echo "::error::API returned non-JSON response (HTTP $HTTP_STATUS)"
+            head -c 500 "$RESPONSE_FILE"
+            echo
+            exit 1
+          fi
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
