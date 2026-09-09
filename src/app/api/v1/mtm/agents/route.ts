@@ -9,6 +9,7 @@ import { writeMtmAudit } from "@/lib/mtm-audit"
 import { resolveAgentScope, isValidMtmAgentRole } from "@/lib/mtm/territory-scope"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { mtmAgentPresence } from "@/lib/mtm/agent-day-state"
+import { mtmWorkdayPauses, serializeMtmWorkdayPauses } from "@/lib/mtm/workday-pauses"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
@@ -126,7 +127,8 @@ export const GET = withRls(async (req, auth) => {
     // the workday query fail, the manager still needs the list of people. A
     // missing row already means "not started", so degrading costs one label,
     // while a 500 costs the whole screen.
-    const dayByAgent = new Map<string, { status: "STARTED" | "PAUSED" | "COMPLETED"; startedAt: Date; pausedAt: Date | null; completedAt: Date | null }>()
+    const breaksByAgent = new Map<string, Array<{ from: string; to: string | null }>>()
+    const dayByAgent = new Map<string, { id: string; status: "STARTED" | "PAUSED" | "COMPLETED"; startedAt: Date; pausedAt: Date | null; completedAt: Date | null }>()
     if (agents.length) {
       try {
         const settings = await getMtmSettings(orgId)
@@ -134,9 +136,34 @@ export const GET = withRls(async (req, auth) => {
         const workDate = new Date(`${currentDateKey(new Date(), timezone)}T00:00:00.000Z`)
         const days = await prisma.mtmAgentWorkday.findMany({
           where: { organizationId: orgId, workDate, agentId: { in: agents.map((agent) => agent.id) } },
-          select: { agentId: true, status: true, startedAt: true, pausedAt: true, completedAt: true },
+          select: { id: true, agentId: true, status: true, startedAt: true, pausedAt: true, completedAt: true },
         })
         for (const day of days) dayByAgent.set(day.agentId, day)
+
+        // The segments themselves (A7 tail): "on a break" answers what, "two
+        // breaks, 45 minutes" answers how the day actually went. The server
+        // already reconstructs them for the phone's GPS history; the web had
+        // no way to ask. One query for the page's workdays, not per row.
+        if (days.length) {
+          const events = await prisma.mtmAgentWorkdayEvent.findMany({
+            where: {
+              organizationId: orgId,
+              workdayId: { in: days.map((day) => day.id) },
+              type: { in: ["PAUSE", "RESUME", "FINISH"] },
+            },
+            orderBy: { occurredAt: "asc" },
+            select: { workdayId: true, type: true, occurredAt: true },
+          })
+          const byWorkday = new Map<string, Array<{ type: string; occurredAt: Date }>>()
+          for (const event of events) {
+            const list = byWorkday.get(event.workdayId) ?? []
+            list.push({ type: event.type, occurredAt: event.occurredAt })
+            byWorkday.set(event.workdayId, list)
+          }
+          for (const day of days) {
+            breaksByAgent.set(day.agentId, serializeMtmWorkdayPauses(mtmWorkdayPauses(byWorkday.get(day.id) ?? [])))
+          }
+        }
       } catch (presenceError) {
         console.error("[MTM/agents GET] presence unavailable", presenceError)
       }
@@ -145,7 +172,11 @@ export const GET = withRls(async (req, auth) => {
     return NextResponse.json({
       success: true,
       data: {
-        agents: agents.map((agent) => ({ ...agent, presence: mtmAgentPresence(dayByAgent.get(agent.id)) })),
+        agents: agents.map((agent) => ({
+          ...agent,
+          presence: mtmAgentPresence(dayByAgent.get(agent.id)),
+          breaks: breaksByAgent.get(agent.id) ?? [],
+        })),
         total,
         page,
         limit,

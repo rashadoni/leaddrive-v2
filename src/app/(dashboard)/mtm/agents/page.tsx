@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 import { useLocale, useTranslations } from "next-intl"
 import { formatTime } from "@/lib/format-date"
+import { mtmWorkdayBreakSummary } from "@/lib/mtm/workday-break-summary"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
 import { PageDescription } from "@/components/page-description"
 import { HelpButton } from "@/components/help/help-button"
@@ -166,6 +167,7 @@ export default function MtmAgentsPage() {
 
   const renderCard = (agent: any) => {
     const presence = presenceText(agent)
+    const breaks = mtmWorkdayBreakSummary(agent?.breaks, new Date())
     const stat = statsByAgent[agent.id]
     const phone = digits(agent.phone)
     return (
@@ -179,6 +181,14 @@ export default function MtmAgentsPage() {
           </div>
           <div className="flex-1 min-w-0">
             <a href={`/mtm/visits?agentId=${agent.id}`} className="font-medium text-sm truncate hover:underline block">{agent.name}</a>
+            {breaks.count > 0 ? (
+              // The segments, not just the state: two twenty-minute breaks and
+              // one two-hour break read the same as "on a break" and are very
+              // different days (A7 tail).
+              <div className="text-[10px] text-muted-foreground" data-testid="mtm-agent-breaks">
+                {t("breaksSummary", { count: breaks.count, minutes: breaks.minutes })}
+              </div>
+            ) : null}
             <div className={`text-[11px] ${presence.tone === "working" ? "text-green-600 dark:text-green-400" : presence.tone === "paused" ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>{presence.text}</div>
           </div>
           <div className="flex gap-1 shrink-0">
