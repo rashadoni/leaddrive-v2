@@ -271,21 +271,30 @@ Deal <---- Pricing Profile <---- Transaction Log
 | 14 | Dark Mode | — | ★★☆☆☆ | Dark theme |
 | 15 | Global Search | — | ★★★☆☆ | Search across all entities |
 | 16 | Responsive Design | — | ★★☆☆☆ | Works on mobile |
-| 17 | Plan-based Feature Gating | — | ★★★★☆ | 4 tiers: Starter -> Business -> Professional -> Enterprise |
+| 17 | Plan-based Feature Gating | — | ★★★★☆ | 3 tiers: Starter -> Professional -> Enterprise |
 
 ---
 
 ## PLAN DISTRIBUTION
 
-| Plan | Includes |
-|------|----------|
-| **Starter** | Companies, Contacts, Deals (Kanban + Detail), Leads, Tasks, Products |
-| **Business** | + Tickets, Knowledge Base, Contracts, Agent Desktop, Agent Calendar, Roles, SLA |
-| **Professional** | + Invoices, Campaigns, Segments, Email Templates, Email Log, Campaign ROI, Da Vinci Scoring, Journeys, Events, Reports, Workflows, Lead Rules, Web-to-Lead, Projects |
-| **Enterprise** | + Pricing, Profitability, Budgeting, Finance, Inbox, Portal Users, SMTP, Custom Fields, Dashboard Settings, Invoice Settings, Channels, Budget Config, Sales Forecast |
-| **Always Free** | Dashboard, Settings, Billing, Security, Users, Audit Log, Notifications, Da Vinci Command Center |
+> The source of truth is the `plan_templates` table in the database, not this
+> file. Below is its state as verified against production on 9 September 2026.
+> There is no **Business** plan in the product: neither in
+> `src/lib/tenant-plans.ts` nor in the database. It was described here but
+> never existed.
 
----
+| Plan | Modules |
+|------|---------|
+| **Starter** | crm, sales, settings |
+| **Professional** | + contracts, marketing, omnichannel, support, finance, analytics, whatsapp, complaints_register, **ai** · addons: ai, channels |
+| **Enterprise** | + social, voip, mtm, portal, events, health, insurance, public-sector, media, energy · addons: ai, channels, finance, mtm, voip |
+
+**Da Vinci and the AI agent ship from Professional.** Owner decision of
+9 September 2026, and it matches what the product already does: `ai` is on
+Professional both as a module and as an addon.
+
+**`sales` is mandatory in every plan.** Deals, leads and quotes live in it;
+without it a tenant loses the pipeline entirely.
 
 ## SUMMARY
 
