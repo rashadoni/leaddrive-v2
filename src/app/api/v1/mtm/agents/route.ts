@@ -8,13 +8,14 @@ import { AgentCreateSchema, parseBody } from "@/lib/mtm-validators"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { resolveAgentScope, isValidMtmAgentRole } from "@/lib/mtm/territory-scope"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
-import { mtmAgentPresence } from "@/lib/mtm/agent-day-state"
+import { mtmAgentPresence, type MtmAgentPresence } from "@/lib/mtm/agent-day-state"
 import { mtmWorkdayPauses, serializeMtmWorkdayPauses } from "@/lib/mtm/workday-pauses"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
 import type { RlsAuth } from "@/lib/with-rls"
 import { checkPermission } from "@/lib/permissions"
+import { isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
 import { passwordPolicyError } from "@/lib/password-policy"
 
 const AGENT_RESPONSE_SELECT = {
@@ -58,6 +59,47 @@ function agentAdministrationDenied() {
     { error: "Web administrator access required", code: "MTM_AGENT_ADMIN_REQUIRED" },
     { status: 403 },
   )
+}
+
+/**
+ * Момент ухода на перерыв и момент закрытия дня — это данные о персонале.
+ *
+ * Те же колонки через штатный эндпоинт «Персонал/сегодня» роль без права
+ * `workforce` не получает вовсе (403), а при выключенном платном модуле
+ * `workforce-hrm` остальные экраны рабочий день прячут. Здесь они уезжали мимо
+ * обеих проверок: у списка агентов был единственный гейт — чтение MTM.
+ *
+ * Грубое состояние (работает / на перерыве / день закрыт) остаётся всем, у
+ * кого есть доступ к MTM: ради него A7 и делался — человек на обеде не должен
+ * выглядеть пропавшим. Уходят только моменты времени и разбивка перерывов.
+ */
+async function mayReadWorkdayTimes(auth: RlsAuth): Promise<boolean> {
+  const { orgId, session } = auth
+  // Мобильные токены и ключи интеграций приходят без сессии. Права «Персонала»
+  // у них нет, а значит нет и времён — по всей их территории разом.
+  if (!session) return false
+  if (!checkPermission(session.role, "workforce", "read")) return false
+  try {
+    const organization = await prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { plan: true, addons: true, features: true, modules: true },
+    })
+    return !!organization && isTenantCapabilityEnabled("workforce-hrm", organization)
+  } catch (error) {
+    // Fail closed: не смогли подтвердить возможность — времена не отдаём.
+    console.error("[MTM/agents GET] workforce capability lookup failed", error)
+    return false
+  }
+}
+
+/** То же состояние, но без моментов времени. */
+function withoutTimes(presence: MtmAgentPresence): MtmAgentPresence {
+  switch (presence.kind) {
+    case "working": return { kind: "working", since: null }
+    case "paused": return { kind: "paused", since: null }
+    case "finished": return { kind: "finished", at: null }
+    default: return presence
+  }
 }
 
 export const GET = withRls(async (req, auth) => {
@@ -169,14 +211,19 @@ export const GET = withRls(async (req, auth) => {
       }
     }
 
+    const showTimes = await mayReadWorkdayTimes(auth)
+
     return NextResponse.json({
       success: true,
       data: {
-        agents: agents.map((agent) => ({
-          ...agent,
-          presence: mtmAgentPresence(dayByAgent.get(agent.id)),
-          breaks: breaksByAgent.get(agent.id) ?? [],
-        })),
+        agents: agents.map((agent) => {
+          const presence = mtmAgentPresence(dayByAgent.get(agent.id))
+          return {
+            ...agent,
+            presence: showTimes ? presence : withoutTimes(presence),
+            breaks: showTimes ? (breaksByAgent.get(agent.id) ?? []) : [],
+          }
+        }),
         total,
         page,
         limit,

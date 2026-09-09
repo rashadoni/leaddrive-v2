@@ -87,7 +87,17 @@ export default function MtmAgentsPage() {
     if (presence?.kind === "finished") {
       return { text: presence.at ? t("presenceFinishedAt", { time: at(presence.at) }) : t("presenceFinished"), tone: "quiet" }
     }
-    if (presence?.kind === "not-started") return { text: t("presenceNotStarted"), tone: "quiet" }
+    // Отсутствие записи рабочего дня НЕ объясняет молчание, поэтому оно не
+    // должно перебивать живую точку. Записи закономерно нет у руководителей и
+    // супервайзеров — они делятся геопозицией другим механизмом, который смены
+    // не создаёт, — и у любого агента после полуночи: день не закрывается сам,
+    // второй начать нельзя, а точки продолжают писаться в старую запись.
+    // Свежая точка — это факт; «день не начат» — вывод из отсутствия строки,
+    // и факт сильнее вывода. Иначе счётчик «Онлайн» в шапке считает по GPS и
+    // показывает троих, пока все три карточки уверяют, что никто не начинал.
+    if (presence?.kind === "not-started" && !isOnline(a)) {
+      return { text: t("presenceNotStarted"), tone: "quiet" }
+    }
     return { text: lastSeenText(a), tone: isOnline(a) ? "working" : "quiet" }
   }
 
@@ -177,7 +187,7 @@ export default function MtmAgentsPage() {
             {agent.avatar
               ? <img src={agent.avatar} alt="" className="h-10 w-10 rounded-full object-cover" />
               : <div className="h-10 w-10 rounded-full bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center text-cyan-700 dark:text-cyan-400 font-semibold">{agent.name?.charAt(0)?.toUpperCase()}</div>}
-            <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card ${presence.tone === "working" ? "bg-green-500" : presence.tone === "paused" ? "bg-amber-500" : "bg-muted-foreground/40"}`} title={presence.text} />
+            <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card ${presence.tone === "working" ? "bg-green-500" : presence.tone === "paused" ? "bg-amber-500" : "bg-muted-foreground/40"}`} title={`${presence.text} · ${lastSeenText(agent)}`} />
           </div>
           <div className="flex-1 min-w-0">
             <a href={`/mtm/visits?agentId=${agent.id}`} className="font-medium text-sm truncate hover:underline block">{agent.name}</a>
