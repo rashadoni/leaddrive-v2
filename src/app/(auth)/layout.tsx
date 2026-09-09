@@ -40,7 +40,7 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
           preload="auto"
           className="h-full w-full object-cover"
         >
-          <source src="/wallpapers/alpine-v3.mp4" type="video/mp4" />
+          <source src="/wallpapers/alpine-v4.mp4" type="video/mp4" />
         </video>
       </div>
       <div className="relative z-[2] flex min-h-screen items-center justify-center p-4">

@@ -9,32 +9,59 @@
 
 | файл | сцена | источник | лицензия |
 |---|---|---|---|
-| `alpine-v3.mp4` | облачное море на рассвете, пики по краям | сгенерировано для LeadDrive 2026-09-08, Seedance (ByteDance) через Virale, оплачено с баланса компании | генерация по нашему заказу, промпт ниже |
+| `alpine-v4.mp4` | рассвет над облачным морем, снежный гребень справа | сгенерировано для LeadDrive 2026-09-09, **Hailuo MiniMax H3**, оплачено с баланса владельца (120 кредитов) | генерация по нашему заказу, промпт ниже |
 | `night-city.mp4` | ночной город с дрона | [Pexels 5538825](https://www.pexels.com/video/5538825/) | Pexels License — бесплатно, в т.ч. коммерчески, атрибуция не требуется |
 | `ocean.mp4` | волны с высоты | [Pexels 9722148](https://www.pexels.com/video/9722148/) | Pexels License |
 | `autumn-forest.mp4` | осенний лес, проезд | [Pexels 5864844](https://www.pexels.com/video/5864844/) | Pexels License |
 
-## Промпт `alpine-v3.mp4`
+## Промпт `alpine-v4.mp4`
 
-Text-to-video, **без опорного изображения** — это принципиально, см. ниже.
+Text-to-video, **без опорного изображения**. 2K, 10 с, 16:9. Скачано кнопкой
+«Without Watermark» — см. предупреждение ниже.
 
 ```
-Slow aerial drone flight above a vast sea of clouds at first light.
-Two dark ridgelines rise through the cloud layer at the far left and
-far right of the frame, leaving the middle of the frame empty soft
-cloud. The camera drifts forward almost imperceptibly. Sun very low on
-the horizon, pale gold and soft blue, muted desaturated palette, low
-contrast, heavy atmospheric haze. Serene, cinematic, wide landscape.
-No text, no watermark, no people, no buildings, no birds, no fast
-motion, no camera shake.
+Aerial drone shot above a sea of clouds at sunrise. The cloud layer has
+strong relief — ridges, valleys and canyons of cloud. Vivid warm gold and
+pink on the sunlit tops, deep saturated blue and violet in the shadowed
+hollows. Snow-capped dark rock ridges break through near the left and right
+edges, clear blue sky above with rich colour. Bold saturated colour, vibrant,
+high colour separation between the warm lit areas and the cool shadows. Slow
+forward drift, almost still. No text, no watermark, no people, no buildings,
+no birds, no fast motion, no timelapse, no camera shake.
 ```
 
-Постобработка: петля замкнута кроссфейдом (хвост наезжает на голову, 1 с),
-`+faststart`, без звука. 1920×1080, 24 fps, 9 с, 1.58 МБ.
+Постобработка: 2560×1440 → 1920×1080 (lanczos), звуковая дорожка удалена,
+петля замкнута кроссфейдом (хвост на голову, 1 с), `+faststart`.
+219 кадров, 9.125 с, 2.7 МБ. Цвет НЕ правился — см. ниже почему.
+
+### Про «high colour separation»
+
+Предыдущий ролик (`alpine-v3`) владелец забраковал словами «мало цветов».
+Замер объяснил причину, и она оказалась не в насыщенности: два главных тона
+занимали **71%** кадра — персиковый заливал почти всё. У обоев, которые
+нравились до этого, тот же показатель был 48%.
+
+Виноват был промпт: в нём стояло «muted desaturated palette, low contrast» —
+я просил это ради читаемости белого текста на карточках и увёл картинку в
+монотон. Замена этих слов на «vivid», «bold saturated» и, главное,
+**«high colour separation»** дала 50% — попадание в эталон.
+
+Насыщенность поднимать не стали. Проверка показала потолок: на ×1.75 средняя
+насыщенность **падает** (158 → 154), а выжигание в белое удваивается до 14%.
+Выгорают подсвеченные верхушки облаков — то есть середина кадра, где лежат
+карточки дашборда и белый текст.
+
+## ⚠️ Hailuo: `_video_raw_` — это НЕ версия без знака
+
+Адрес, который отдаёт плеер на hailuoai.video, содержит `_video_watermark_`.
+Соблазнительно взять соседний с `_video_raw_` — **он тоже со знаком**,
+проверено покадрово. Чистый файл появляется только после нажатия
+«Download → Without Watermark» и лежит по пути `.../user/multi_chat_file/...`.
+Проверять надо всегда по кадрам, а не по имени файла.
 
 ## Почему это заменило прежний файл
 
-Предыдущие `alpine.mp4` и `alpine-v2.mp4` были сгенерированы Hailuo/MiniMax
+Первые `alpine.mp4` и `alpine-v2.mp4` были сгенерированы Hailuo/MiniMax
 **из скриншота интерфейса Creatio** как опорного кадра — то есть выведены из
 чужого ассета, права на который у нас отсутствуют. В истории репозитория этот
 файл какое-то время назывался прямо `alpine-creatio.mp4`. Практический риск
@@ -55,8 +82,8 @@ motion, no camera shake.
 - **Новое имя при замене содержимого.** Service worker кэширует `.mp4` по
   CacheFirst с продлением срока при каждом обращении: у того, кто заходит хотя
   бы раз в сутки, старое видео по прежнему URL не протухнет никогда. Плюс
-  Cloudflare держит свою копию. Поэтому `alpine-v2` → `alpine-v3`, а не
-  перезапись.
+  Cloudflare держит свою копию. Поэтому каждая замена получает новое имя
+  (`alpine` → `-v2` → `-v3` → `-v4`), а не перезаписывает предыдущее.
 - **Идентификатор обоев менять нельзя.** `id: "alpine"` лежит у пользователей
   в localStorage (`leaddrive-wallpaper`); сменишь — у всех слетит выбор.
   Меняется только подпись в `messages/*.json` и `src/contexts/wallpaper-context.tsx`.
