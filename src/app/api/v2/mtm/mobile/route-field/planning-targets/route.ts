@@ -5,7 +5,12 @@ import { withMobileRls } from "@/lib/with-mobile-rls"
 import { requireMobilePermission } from "@/lib/mtm/mobile-capabilities"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { activeFieldAssignmentWindow } from "@/lib/mtm/field-scope"
-import { eligibleFieldCustomerWhere } from "@/lib/mtm/field-eligibility"
+import {
+  eligibleFieldCustomerWhere,
+  fieldEligibilityEmptyReason,
+  type MtmFieldEligibilityReason,
+} from "@/lib/mtm/field-eligibility"
+import type { WorkCalendarOverride } from "@/lib/mtm/work-calendar"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey, isDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
@@ -288,6 +293,65 @@ export const GET = withMobileRls(async (req, auth) => {
     const nextPage = rows.length > limit && last
       ? issueRouteFieldPlanningTargetPage(context, { phase: "organization", last: { name: last.name, id: last.id } })
       : null
+    // Why the list is empty, when the answer is honest. Runs only on the empty
+    // path, so the extra reads never touch the common one (A2).
+    //
+    // Deliberately silent when the caller's own filters could explain it: a
+    // search or a type that matched nothing is not "no assignments" and not
+    // "territory", and the shared vocabulary has no word for it. A wrong
+    // reason sends the agent to a manager over a typo; no reason lets the
+    // screen say the plain thing.
+    const callerNarrowed = Boolean(search || organizationKind || objectType)
+    let eligibility: { reason: MtmFieldEligibilityReason } | null = null
+    if (pageRows.length === 0 && !page && !callerNarrowed) {
+      const [agentRow, eligibleTotal] = await Promise.all([
+        prisma.mtmAgent.findFirst({
+          where: { id: actor.agentId, organizationId: auth.orgId },
+          select: { teamId: true },
+        }),
+        prisma.mtmCustomer.count({
+          where: {
+            organizationId: auth.orgId,
+            deletedAt: null,
+            status: "ACTIVE",
+            AND: [eligibleFieldCustomerWhere({ agentId: actor.agentId, date: routeDate })],
+          },
+        }),
+      ])
+      const calendarOverrides = settings.enforceWorkCalendarForRoutes
+        ? await prisma.mtmWorkCalendarDay.findMany({
+            where: {
+              organizationId: auth.orgId,
+              date: routeDate,
+              deletedAt: null,
+              OR: [
+                { teamId: null, agentId: null },
+                ...(agentRow?.teamId ? [{ teamId: agentRow.teamId, agentId: null }] : []),
+                { teamId: null, agentId: actor.agentId },
+              ],
+            },
+            select: {
+              id: true, date: true, kind: true, name: true,
+              teamId: true, agentId: true, movedToDate: true, routePlanningAllowed: true,
+            },
+          })
+        : []
+      eligibility = {
+        reason: fieldEligibilityEmptyReason({
+          date: routeDate,
+          dateKey: date,
+          workCalendarEnforced: settings.enforceWorkCalendarForRoutes,
+          calendarOverrides: calendarOverrides as WorkCalendarOverride[],
+          teamId: agentRow?.teamId ?? null,
+          agentId: actor.agentId,
+          hasAnyEligibleSource: eligibleTotal > 0,
+          // Nothing the caller typed narrowed this, so a non-empty eligible
+          // set that still shows nothing was narrowed by scope.
+          narrowedByTerritory: eligibleTotal > 0,
+        }),
+      }
+    }
+
     return noStoreJson({
       success: true,
       data: {
@@ -301,6 +365,7 @@ export const GET = withMobileRls(async (req, auth) => {
         limit,
         date,
         timezone,
+        eligibility,
       },
     })
   }
