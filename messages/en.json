@@ -12113,9 +12113,7 @@
     },
     "calendarMore": "+{n} more",
     "weekAgentSearch": "Find an agent",
-    "weekAgentsHidden": "{count} rows hidden by the search or as QA accounts",
-    "calendarWeekend": "Weekend",
-    "calendarClosedDay": "Non-working day"
+    "weekAgentsHidden": "{count} rows hidden by the search or as QA accounts"
   },
   "mtmOperationsPage": {
     "title": "Field operations center",
