@@ -13,10 +13,10 @@ export interface WallpaperDef {
 export const WALLPAPERS: WallpaperDef[] = [
   {
     id: "alpine",
-    label: "Above the Clouds",
-    labelRu: "Над облаками",
+    label: "Sunrise Above the Clouds",
+    labelRu: "Рассвет над облаками",
     type: "video",
-    src: "/wallpapers/alpine-v3.mp4",
+    src: "/wallpapers/alpine-v4.mp4",
   },
   {
     id: "night-city",
