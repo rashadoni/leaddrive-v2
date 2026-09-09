@@ -167,8 +167,14 @@ jobs:
     # other. Marking a PR ready fires `ready_for_review` and the gate runs
     # before the merge it guards.
     if: ${{ github.event_name == 'push' || github.event.pull_request.draft == false }}
+    # 60, а не 45: 2026-09-09 один прогон занял 44.7 минуты и умер по таймауту,
+    # не напечатав ни строки — а пустой лог от убитого компилятора неотличим от
+    # чистого прогона, ровно та ловушка, от которой написан check-typecheck-gate.
+    # Медиана 9.8 минуты, так что запас нужен не среднему прогону, а тяжёлой
+    # ветке. Это бюджет на зависание, а не цель по скорости: снижать его,
+    # чтобы «быстрее краснело», нельзя.
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
