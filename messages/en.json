@@ -10245,7 +10245,8 @@
     "presencePaused": "On a break",
     "presenceFinishedAt": "Day finished at {time}",
     "presenceFinished": "Day finished",
-    "presenceNotStarted": "Day not started"
+    "presenceNotStarted": "Day not started",
+    "breaksSummary": "Breaks: {count} · {minutes} min"
   },
   "mtmContactExplorer": {
     "title": "Field team contacts",
