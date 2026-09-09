@@ -153,7 +153,10 @@ describe("GET /api/v1/mtm/agents", () => {
     mockAgentAdministrator()
     // Общая фабрика мока отвечает только на свою пятиполевую выборку; гейт
     // «Персонала» берёт четыре поля, поэтому строку подкладываем явно.
-    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+    // Именно Once: mockResolvedValue переживает clearAllMocks и подменил бы
+    // общую фабрику до конца файла — dashboard, analytics и leaderboard тогда
+    // получают чужую строку организации и падают с 403.
+    vi.mocked(prisma.organization.findUnique).mockResolvedValueOnce({
       plan: "enterprise", addons: [], features: ["workforce-hrm"], modules: { "workforce-hrm": true },
     } as any)
     vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{ id: "a1", name: "Agent 1" }] as any)
@@ -175,7 +178,10 @@ describe("GET /api/v1/mtm/agents", () => {
     vi.mocked(isTenantCapabilityEnabled).mockReturnValue(false)
     // Общая фабрика мока отвечает только на свою пятиполевую выборку; гейт
     // «Персонала» берёт четыре поля, поэтому строку подкладываем явно.
-    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+    // Именно Once: mockResolvedValue переживает clearAllMocks и подменил бы
+    // общую фабрику до конца файла — dashboard, analytics и leaderboard тогда
+    // получают чужую строку организации и падают с 403.
+    vi.mocked(prisma.organization.findUnique).mockResolvedValueOnce({
       plan: "enterprise", addons: [], features: ["workforce-hrm"], modules: { "workforce-hrm": true },
     } as any)
     vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{ id: "a1", name: "Agent 1" }] as any)
