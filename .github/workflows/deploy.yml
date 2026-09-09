@@ -96,7 +96,7 @@ jobs:
   dispatch_input_preflight:
     name: Validate manual deployment inputs
     if: ${{ github.event_name == 'workflow_dispatch' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Reject ambiguous deployment input
         env:
@@ -158,7 +158,7 @@ jobs:
     # must never create a concurrent build while production is being restored.
     if: ${{ always() && !(github.event_name == 'workflow_dispatch' && inputs.recovery_sha != '') && (github.event_name != 'workflow_dispatch' || needs.dispatch_input_preflight.result == 'success') && (inputs.deployment_mode != 'recovery-bootstrap-resume' || needs.resume_build_admission.result == 'success') }}
     needs: [dispatch_input_preflight, resume_build_admission]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     services:
       event-platform-postgres:
@@ -400,7 +400,7 @@ jobs:
     name: Approve historical bootstrap-resume build
     if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.deployment_mode == 'recovery-bootstrap-resume' && needs.dispatch_input_preflight.result == 'success' }}
     needs: [dispatch_input_preflight]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       actions: read
     environment:
@@ -858,7 +858,7 @@ jobs:
     # after both direct prerequisites succeeded.
     if: ${{ always() && needs.checks.result == 'success' && needs.build.result == 'success' && !(github.event_name == 'workflow_dispatch' && inputs.recovery_sha != '') }}
     needs: [checks, build]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       actions: read
@@ -1737,7 +1737,7 @@ jobs:
     name: Recover verified retained production artifact
     if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.recovery_sha != '' && needs.dispatch_input_preflight.result == 'success' }}
     needs: [dispatch_input_preflight]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       actions: read

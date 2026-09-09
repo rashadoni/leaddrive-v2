@@ -30,6 +30,18 @@ for (const name of files) {
     if (/runs-on\s*:/i.test(line) && /leaddrive-(?:ci|ci-light|typecheck)\b/i.test(line)) {
       errors.push(`${name}:${index + 1}: legacy Contabo CI runner label is prohibited`);
     }
+
+    // GitHub-hosted Linux must name one explicit image. `ubuntu-latest` is a
+    // moving alias: when GitHub repoints it at the next LTS, every job in the
+    // repository changes base image on the same day, with no commit to bisect.
+    // The Contabo pool is gone, so this is the only Linux capacity we have —
+    // keep it reproducible.
+    const hostedUbuntu = line.match(/runs-on\s*:\s*["']?(ubuntu-[A-Za-z0-9.-]+)["']?\s*$/i);
+    if (hostedUbuntu && hostedUbuntu[1].toLowerCase() !== "ubuntu-24.04") {
+      errors.push(
+        `${name}:${index + 1}: GitHub-hosted Linux must be pinned to ubuntu-24.04, found ${hostedUbuntu[1]}`,
+      );
+    }
   });
 }
 
