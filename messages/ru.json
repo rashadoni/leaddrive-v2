@@ -10245,7 +10245,8 @@
     "presencePaused": "На перерыве",
     "presenceFinishedAt": "День завершён в {time}",
     "presenceFinished": "День завершён",
-    "presenceNotStarted": "День не начат"
+    "presenceNotStarted": "День не начат",
+    "breaksSummary": "Перерывов: {count} · {minutes} мин"
   },
   "mtmContactExplorer": {
     "title": "Контакты полевой команды",

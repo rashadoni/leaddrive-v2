@@ -10245,7 +10245,8 @@
     "presencePaused": "Fasilədə",
     "presenceFinishedAt": "Gün {time}-da bitdi",
     "presenceFinished": "Gün bitdi",
-    "presenceNotStarted": "Gün başlamayıb"
+    "presenceNotStarted": "Gün başlamayıb",
+    "breaksSummary": "Fasilə: {count} · {minutes} dəq"
   },
   "mtmContactExplorer": {
     "title": "Sahə komandasının kontaktları",
