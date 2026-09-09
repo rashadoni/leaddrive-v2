@@ -1,0 +1,24 @@
+Roll the wrapper's EXPECTED_COORDINATOR_SHA256 forward to the coordinator
+build that carries dial diagnostics AND the 409 terminal-conflict tombstone
+(see coordinator-terminal-conflict-tombstone.patch).  One line changes;
+everything else in the wrapper is byte-identical.
+
+Applies to /usr/local/sbin/fanum-voice-deploy on the PBX.
+
+  before: 451833bd5f8c4916e73204e99788cefa6639dc7aace20928abb25e148b0b4613
+  after:  03b1b54bc45bf4f8f8b722045aa8bf5fd42d00e6b47b8bada78c30162de4dce2
+
+The `before` digest is the dial-diagnostics wrapper
+(cutover-wrapper-dial-diagnostics-pin.patch), live on the PBX since
+2026-08-26; the owner's next single deploy replaces it with the `after`
+wrapper (whose only delta is this same line 12).  The `after` digest is what
+EXPECTED_PBX_WRAPPER_SHA256 in
+.github/workflows/set-voice-provider-registry-cutover.yml demands; both were
+rolled forward in the same PR, so the workflow refuses to run a stale wrapper
+against the new coordinator payload and vice versa.
+
+--- fanum-voice-deploy (451833bd)
++++ fanum-voice-deploy (03b1b54b)
+@@ -12 +12 @@
+-readonly EXPECTED_COORDINATOR_SHA256="2edfb84f12487fcd0a1b7d23c161ec829ea431b164be756b208fbddc05516a15"
++readonly EXPECTED_COORDINATOR_SHA256="c81d7b047b49b69e9dbe2430793f5f27eea13dff3254e2cfcea15ee09f25f681"

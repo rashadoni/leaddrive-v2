@@ -1,0 +1,46 @@
+[Unit]
+Description=LeadDrive encrypted snapshot of authoritative runtime files
+Documentation=file:/opt/leaddrive-v2/docs/BACKUP_RUNBOOK.md
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+EnvironmentFile=/etc/leaddrive/backup.env
+ExecStart=/usr/local/lib/leaddrive-v2/ops/current/backup/snapshot-runtime-files.sh
+UMask=0077
+StateDirectory=leaddrive-runtime-files-snapshot
+StateDirectoryMode=0700
+RuntimeDirectory=leaddrive-runtime-files-snapshot
+RuntimeDirectoryMode=0700
+TimeoutStartSec=8h
+Nice=15
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+MemoryHigh=768M
+MemoryMax=1G
+MemorySwapMax=0
+
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+ReadOnlyPaths=-/etc/leaddrive /var/lib/leaddrive-v2
+ReadWritePaths=/var/lib/leaddrive-runtime-files-snapshot /run/leaddrive-runtime-files-snapshot
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

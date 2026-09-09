@@ -1,0 +1,39 @@
+# Asterisk рядом с работающим 3CX на том же сервере.
+#
+# ВАЖНО — порты разведены намеренно:
+#   3CX уже держит 5060/5061 и свой RTP-диапазон. Asterisk посажен на 5070
+#   и RTP 20000-20200, чтобы они физически не пересекались. Перед первым
+#   запуском проверить, что порты свободны:
+#       ss -lunp | grep -E '5070|8089'
+#       ss -lunp | grep -E '2000[0-9]'
+#
+# network_mode: host — обязателен. SIP и RTP плохо живут за NAT докера:
+# порт-маппинг ломает SDP, и звук уходит в никуда.
+
+services:
+  asterisk:
+    image: andrius/asterisk:20-current
+    container_name: leaddrive-asterisk
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      # Читается из .env рядом с этим файлом. .env в git НЕ коммитим.
+      TRUNK_PASSWORD: ${TRUNK_PASSWORD:?нужен пароль SIP-транка, см. README}
+      WEBRTC_PASSWORD: ${WEBRTC_PASSWORD:?нужен пароль softphone-экстеншена}
+      EXTERNAL_IP: ${EXTERNAL_IP:-185.161.225.131}
+    volumes:
+      - ./etc:/etc/asterisk/templates:ro
+      - ./entrypoint.sh:/entrypoint.sh:ro
+      - asterisk-spool:/var/spool/asterisk
+      - asterisk-log:/var/log/asterisk
+      - ./certs:/etc/asterisk/keys:ro
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
+    healthcheck:
+      test: ["CMD", "asterisk", "-rx", "core show version"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  asterisk-spool:
+  asterisk-log:

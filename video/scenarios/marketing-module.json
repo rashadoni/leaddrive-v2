@@ -1,0 +1,2542 @@
+{
+  "cdp-insights": {
+    "route": "/cdp/insights",
+    "group": {
+      "ru": "Маркетинг",
+      "en": "Marketing",
+      "az": "Marketinq"
+    },
+    "title": {
+      "ru": "Customer Insights",
+      "en": "Customer Insights",
+      "az": "Müştəri analitikası"
+    },
+    "goal": {
+      "ru": "Понять аудиторию до запуска кампании: кто клиент, что он делал, насколько он ценен и какое действие имеет смысл дальше.",
+      "en": "Understand the audience before launching a campaign: who the customer is, what they have done, how valuable they are, and which next action makes sense.",
+      "az": "Kampaniyaya başlamazdan əvvəl auditoriyanı anlamaq: müştəri kimdir, nə edib, dəyəri nə qədərdir və növbəti hansı addım məntiqlidir."
+    },
+    "scenes": [
+      {
+        "heading": {
+          "ru": "Начинаем не с рассылки, а с данных",
+          "en": "Start with data, not with a send",
+          "az": "Göndərişdən yox, datadan başlayırıq"
+        },
+        "body": {
+          "ru": "Откройте Customer Insights. Здесь маркетолог видит не просто список email-адресов, а клиентские профили: активность, источник, историю касаний, покупки и последние сигналы.",
+          "en": "Open Customer Insights. Here the marketer sees more than a list of email addresses: customer profiles, activity, source, touch history, purchases, and recent signals.",
+          "az": "Customer Insights bölməsini açın. Burada marketoloq sadəcə email siyahısı deyil, müştəri profillərini, aktivliyi, mənbəni, təmas tarixçəsini, alışları və son siqnalları görür."
+        },
+        "why": {
+          "ru": "Если начать с данных, кампания будет адресной, а не массовым шумом.",
+          "en": "When you start with data, the campaign becomes targeted instead of becoming mass noise.",
+          "az": "Datadan başlayanda kampaniya kütləvi səs-küy deyil, ünvanlı kommunikasiya olur."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Смотрим ключевые показатели",
+          "en": "Review the key indicators",
+          "az": "Əsas göstəricilərə baxırıq"
+        },
+        "body": {
+          "ru": "Проверьте общее число профилей, активность, вовлеченность, ценность клиента и свежие события. Эти цифры показывают, где есть рост, риск или спящий сегмент.",
+          "en": "Check total profiles, activity, engagement, customer value, and recent events. These numbers show where there is growth, risk, or a sleeping segment.",
+          "az": "Ümumi profil sayını, aktivliyi, cəlb olunmanı, müştəri dəyərini və son hadisələri yoxlayın. Bu rəqəmlər harada artım, risk və ya passiv seqment olduğunu göstərir."
+        },
+        "why": {
+          "ru": "Маркетолог покупает этот модуль ради решений: кому продавать, кого возвращать и кого не трогать сейчас.",
+          "en": "Marketers buy this module for decisions: who to sell to, who to win back, and who not to touch right now.",
+          "az": "Marketoloq bu modulu qərar üçün alır: kimə satmaq, kimi geri qaytarmaq və kimə indi toxunmamaq lazımdır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Открываем профиль клиента",
+          "en": "Open a customer profile",
+          "az": "Müştəri profilini açırıq"
+        },
+        "body": {
+          "ru": "Откройте строку клиента и посмотрите email, телефон, компанию, историю кампаний, обращения и последние действия. Это объясняет не только кто клиент, но и почему он важен.",
+          "en": "Open a customer row and review email, phone, company, campaign history, support cases, and latest actions. This explains not only who the customer is, but why they matter.",
+          "az": "Müştəri sətrini açın və email, telefon, şirkət, kampaniya tarixçəsi, müraciətlər və son hərəkətlərə baxın. Bu, müştərinin kim olduğunu və niyə vacib olduğunu izah edir."
+        },
+        "why": {
+          "ru": "Без контекста легко отправить неправильное сообщение правильному человеку.",
+          "en": "Without context, it is easy to send the wrong message to the right person.",
+          "az": "Kontekst olmadan düzgün insana yanlış mesaj göndərmək çox asandır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Принимаем маркетинговое решение",
+          "en": "Make a marketing decision",
+          "az": "Marketinq qərarı veririk"
+        },
+        "body": {
+          "ru": "Активного клиента можно включить в upsell. Клиента без реакции — в реактивацию. Клиента после жалобы — исключить из агрессивной продажи и отправить сервисный follow-up.",
+          "en": "An active customer can go into upsell. A silent customer can go into reactivation. A customer after a complaint should be excluded from aggressive selling and receive a service follow-up.",
+          "az": "Aktiv müştərini upsell seqmentinə əlavə etmək olar. Reaksiya verməyən müştəri reaktivasiya üçün uyğundur. Şikayətdən sonra müştərini aqressiv satışdan çıxarıb servis follow-up göndərmək lazımdır."
+        },
+        "why": {
+          "ru": "Один и тот же контакт может требовать разных действий в разные моменты.",
+          "en": "The same contact may need different actions at different moments.",
+          "az": "Eyni kontakt müxtəlif vaxtlarda fərqli addım tələb edə bilər."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Переходим к сегменту",
+          "en": "Move into a segment",
+          "az": "Seqmentə keçirik"
+        },
+        "body": {
+          "ru": "После анализа создайте аудиторию в Segments: например, активные клиенты с высоким интересом или клиенты, которые давно не возвращались.",
+          "en": "After the analysis, create an audience in Segments: for example, active customers with high interest or customers who have not returned for a long time.",
+          "az": "Analizdən sonra Segments bölməsində auditoriya yaradın: məsələn, yüksək maraqlı aktiv müştərilər və ya uzun müddət qayıtmayan müştərilər."
+        },
+        "why": {
+          "ru": "Insights отвечает на вопрос 'кого выбрать', а Segments превращает ответ в рабочую аудиторию.",
+          "en": "Insights answers who to choose; Segments turns that answer into a working audience.",
+          "az": "Insights “kimi seçək?” sualına cavab verir, Segments isə bu cavabı işlək auditoriyaya çevirir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Связываем данные с воронкой",
+          "en": "Connect data to the funnel",
+          "az": "Datanı voronkaya bağlayırıq"
+        },
+        "body": {
+          "ru": "Дальше эта аудитория уходит в Campaigns, Journeys, Surveys или Loyalty. Так маркетинг начинается с понимания клиента, а заканчивается измеримым действием.",
+          "en": "Next, this audience goes to Campaigns, Journeys, Surveys, or Loyalty. Marketing starts with customer understanding and ends with a measurable action.",
+          "az": "Sonra bu auditoriya Campaigns, Journeys, Surveys və ya Loyalty bölmələrinə gedir. Marketinq müştərini anlamaqla başlayır və ölçülə bilən addımla bitir."
+        },
+        "why": {
+          "ru": "Customer Insights — старт всей маркетинговой системы LeadDrive.",
+          "en": "Customer Insights is the starting point of the entire LeadDrive marketing system.",
+          "az": "Customer Insights LeadDrive marketinq sisteminin başlanğıc nöqtəsidir."
+        }
+      }
+    ],
+    "outcome": {
+      "ru": "Маркетолог понимает, какую аудиторию выбрать, почему она важна и какой следующий шаг запустить.",
+      "en": "The marketer understands which audience to choose, why it matters, and which next action to launch.",
+      "az": "Marketoloq hansı auditoriyanı seçəcəyini, bunun niyə vacib olduğunu və hansı növbəti addımı işə salacağını anlayır."
+    }
+  },
+  "cdp-merge-queue": {
+    "route": "/cdp/merge-queue",
+    "group": {
+      "ru": "Маркетинг",
+      "en": "Marketing",
+      "az": "Marketinq"
+    },
+    "title": {
+      "ru": "Identity Merge Queue",
+      "en": "Identity Merge Queue",
+      "az": "Profil birləşdirmə növbəsi"
+    },
+    "goal": {
+      "ru": "Очистить клиентскую базу от дублей, чтобы кампании, сегменты и ROI считались корректно.",
+      "en": "Clean duplicate customer profiles so campaigns, segments, and ROI are calculated correctly.",
+      "az": "Kampaniyaların, seqmentlərin və ROI hesablamalarının düzgün olması üçün müştəri bazasını dublikat profillərdən təmizləmək."
+    },
+    "scenes": [
+      {
+        "heading": {
+          "ru": "Открываем очередь дублей",
+          "en": "Open the duplicate queue",
+          "az": "Dublikat növbəsini açırıq"
+        },
+        "body": {
+          "ru": "Перейдите в Identity Merge Queue. Система показывает пары профилей, которые похожи по email, телефону, имени или истории активности.",
+          "en": "Go to Identity Merge Queue. The system shows profile pairs that look similar by email, phone, name, or activity history.",
+          "az": "Identity Merge Queue bölməsinə keçin. Sistem email, telefon, ad və ya aktivlik tarixçəsinə görə oxşar profil cütlərini göstərir."
+        },
+        "why": {
+          "ru": "Дубли портят маркетинг: один клиент получает два письма, а аналитика считает его как двух людей.",
+          "en": "Duplicates damage marketing: one customer receives two messages, and analytics counts one person as two.",
+          "az": "Dublikatlar marketinqi korlayır: bir müştəri iki mesaj alır, analitika isə bir insanı iki nəfər kimi sayır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Сравниваем две стороны",
+          "en": "Compare both sides",
+          "az": "Hər iki tərəfi müqayisə edirik"
+        },
+        "body": {
+          "ru": "Посмотрите основной профиль и кандидата на объединение. Сравните имя, email, телефон, компанию, заказы и последние касания.",
+          "en": "Review the main profile and the merge candidate. Compare name, email, phone, company, orders, and recent touches.",
+          "az": "Əsas profili və birləşdirmə namizədini yoxlayın. Ad, email, telefon, şirkət, sifarişlər və son təmasları müqayisə edin."
+        },
+        "why": {
+          "ru": "Match score помогает, но финальное решение должно быть осознанным.",
+          "en": "Match score helps, but the final decision must be deliberate.",
+          "az": "Match score kömək edir, amma yekun qərar düşünülmüş olmalıdır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Проверяем риск ошибки",
+          "en": "Check the error risk",
+          "az": "Səhv riskini yoxlayırıq"
+        },
+        "body": {
+          "ru": "Если совпадает только имя, но разные компании и телефоны — это может быть ложный дубль. Если совпадают email и история, объединение безопаснее.",
+          "en": "If only the name matches but companies and phones differ, it may be a false duplicate. If email and history match, merging is safer.",
+          "az": "Yalnız ad uyğun gəlirsə, amma şirkət və telefon fərqlidirsə, bu yanlış dublikat ola bilər. Email və tarixçə üst-üstə düşürsə, birləşdirmə daha təhlükəsizdir."
+        },
+        "why": {
+          "ru": "Неправильное объединение может смешать чужие данные и испортить сегменты.",
+          "en": "A wrong merge can mix another person’s data and damage segments.",
+          "az": "Yanlış birləşdirmə başqa şəxsin datasını qarışdıra və seqmentləri poza bilər."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Принимаем решение",
+          "en": "Make the decision",
+          "az": "Qərar veririk"
+        },
+        "body": {
+          "ru": "Нажмите merge, если это один клиент. Нажмите reject, если это разные люди. Так очередь постепенно очищается.",
+          "en": "Click merge if it is one customer. Click reject if they are different people. This gradually cleans the queue.",
+          "az": "Bu eyni müştəridirsə merge edin. Fərqli insanlardırsa reject seçin. Beləliklə növbə mərhələli təmizlənir."
+        },
+        "why": {
+          "ru": "Маркетолог защищает качество базы до запуска автоматизации.",
+          "en": "The marketer protects data quality before automation starts.",
+          "az": "Marketoloq avtomatlaşdırmadan əvvəl baza keyfiyyətini qoruyur."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Понимаем влияние на кампании",
+          "en": "Understand the campaign impact",
+          "az": "Kampaniyalara təsiri anlayırıq"
+        },
+        "body": {
+          "ru": "После очистки сегменты становятся точнее, campaigns не дублируют отправку, а surveys и loyalty видят одну историю клиента.",
+          "en": "After cleanup, segments become more accurate, campaigns do not send duplicates, and surveys and loyalty see one customer history.",
+          "az": "Təmizlikdən sonra seqmentlər dəqiqləşir, campaigns təkrar göndəriş etmir, surveys və loyalty isə müştərinin vahid tarixçəsini görür."
+        },
+        "why": {
+          "ru": "Чистые профили — фундамент хорошего персонального маркетинга.",
+          "en": "Clean profiles are the foundation of good personal marketing.",
+          "az": "Təmiz profillər yaxşı fərdiləşdirilmiş marketinqin əsasını təşkil edir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Дальше запускаем аудитории",
+          "en": "Then launch audiences",
+          "az": "Sonra auditoriyaları işə salırıq"
+        },
+        "body": {
+          "ru": "После проверки дублей переходите к Customer Insights и Segments, чтобы уже на чистых данных собирать кампании и journeys.",
+          "en": "After duplicate review, move to Customer Insights and Segments to build campaigns and journeys on clean data.",
+          "az": "Dublikat yoxlamasından sonra Customer Insights və Segments bölmələrinə keçin ki, kampaniya və journey-lər təmiz data üzərində qurulsun."
+        },
+        "why": {
+          "ru": "Data quality — это не техническая задача, а условие нормальной конверсии.",
+          "en": "Data quality is not a technical chore; it is a requirement for normal conversion.",
+          "az": "Data keyfiyyəti texniki xırdalıq deyil, normal konversiya üçün şərtdir."
+        }
+      }
+    ],
+    "outcome": {
+      "ru": "База стала чище, а маркетинговые аудитории и метрики надежнее.",
+      "en": "The database is cleaner, and marketing audiences and metrics are more reliable.",
+      "az": "Baza daha təmiz olur, marketinq auditoriyaları və metrikaları daha etibarlı hesablanır."
+    }
+  },
+  "campaigns": {
+    "route": "/campaigns",
+    "group": {
+      "ru": "Маркетинг",
+      "en": "Marketing",
+      "az": "Marketinq"
+    },
+    "title": {
+      "ru": "Campaigns",
+      "en": "Campaigns",
+      "az": "Kampaniyalar"
+    },
+    "goal": {
+      "ru": "Запустить маркетинговую коммуникацию: выбрать аудиторию, сообщение, шаблон и измерить результат.",
+      "en": "Launch a marketing communication: choose the audience, message, template, and measure the result.",
+      "az": "Marketinq kommunikasiyasını işə salmaq: auditoriyanı, mesajı, şablonu seçmək və nəticəni ölçmək."
+    },
+    "scenes": [
+      {
+        "heading": {
+          "ru": "Открываем рабочий стол кампаний",
+          "en": "Open the campaign workspace",
+          "az": "Kampaniya iş masasını açırıq"
+        },
+        "body": {
+          "ru": "В Campaigns видны все кампании: черновики, запланированные, отправляемые и завершенные. Сначала оцените статусы и последние результаты.",
+          "en": "Campaigns shows every campaign: drafts, scheduled, sending, and completed. Start by checking statuses and recent results.",
+          "az": "Campaigns bölməsində bütün kampaniyalar görünür: qaralamalar, planlananlar, göndərilənlər və tamamlananlar. Əvvəlcə statuslara və son nəticələrə baxın."
+        },
+        "why": {
+          "ru": "Маркетолог должен видеть, что уже идет, а что только готовится.",
+          "en": "The marketer must see what is already running and what is still being prepared.",
+          "az": "Marketoloq nəyin artıq getdiyini, nəyin isə hələ hazırlandığını görməlidir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Создаем кампанию с целью",
+          "en": "Create a campaign with a goal",
+          "az": "Məqsədli kampaniya yaradırıq"
+        },
+        "body": {
+          "ru": "Нажмите создание кампании. Укажите название, цель, канал, тему письма и описание. Цель должна объяснять, что измеряем: лиды, регистрации, клики или выручку.",
+          "en": "Create a campaign. Enter name, goal, channel, subject, and description. The goal should explain what you measure: leads, registrations, clicks, or revenue.",
+          "az": "Kampaniya yaradın. Ad, məqsəd, kanal, mövzu və təsvir daxil edin. Məqsəd nəyi ölçdüyünüzü izah etməlidir: lead-lər, qeydiyyatlar, kliklər və ya gəlir."
+        },
+        "why": {
+          "ru": "Без цели кампания превращается в рассылку ради рассылки.",
+          "en": "Without a goal, a campaign becomes a send for the sake of sending.",
+          "az": "Məqsəd yoxdursa, kampaniya sadəcə göndəriş naminə göndərişə çevrilir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Выбираем правильную аудиторию",
+          "en": "Choose the right audience",
+          "az": "Düzgün auditoriyanı seçirik"
+        },
+        "body": {
+          "ru": "Выберите сегмент, список контактов или фильтр. Проверьте размер аудитории и исключите тех, кому это сообщение сейчас не подходит.",
+          "en": "Select a segment, contact list, or filter. Check audience size and exclude people for whom this message is not relevant right now.",
+          "az": "Seqment, kontakt siyahısı və ya filtr seçin. Auditoriya ölçüsünü yoxlayın və bu mesajın indi uyğun olmadığı insanları çıxarın."
+        },
+        "why": {
+          "ru": "Сильная кампания начинается не с текста, а с точной аудитории.",
+          "en": "A strong campaign starts with the exact audience, not with the text.",
+          "az": "Güclü kampaniya mətndən yox, dəqiq auditoriyadan başlayır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Подключаем шаблон и CTA",
+          "en": "Attach the template and CTA",
+          "az": "Şablon və CTA əlavə edirik"
+        },
+        "body": {
+          "ru": "Выберите email template, проверьте тему, preheader, текст, кнопку и ссылку. Если кампания ведет на лендинг, ссылка должна быть правильной.",
+          "en": "Choose an email template and review the subject, preheader, body, button, and link. If the campaign leads to a landing page, the link must be correct.",
+          "az": "Email template seçin və mövzu, preheader, mətn, düymə və linki yoxlayın. Kampaniya landing page-ə aparırsa, link mütləq düzgün olmalıdır."
+        },
+        "why": {
+          "ru": "Один неправильный CTA может испортить всю конверсию.",
+          "en": "One wrong CTA can ruin the whole conversion.",
+          "az": "Bir səhv CTA bütün konversiyanı poza bilər."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Проверяем перед запуском",
+          "en": "Check before launch",
+          "az": "Startdan əvvəl yoxlayırıq"
+        },
+        "body": {
+          "ru": "Сделайте preview или тестовую отправку. Посмотрите письмо как получатель: понятно ли предложение, видна ли кнопка, нет ли лишних переменных.",
+          "en": "Use preview or send a test. Look at the email as a recipient: is the offer clear, is the button visible, are there any broken variables?",
+          "az": "Preview edin və ya test göndərişi edin. Məktuba alıcı kimi baxın: təklif aydındırmı, düymə görünürmü, artıq dəyişənlər qalmayıbmı?"
+        },
+        "why": {
+          "ru": "Массовую ошибку дешевле поймать до отправки.",
+          "en": "A mass mistake is cheaper to catch before sending.",
+          "az": "Kütləvi səhvi göndərişdən əvvəl tutmaq daha ucuzdur."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Читаем результат",
+          "en": "Read the result",
+          "az": "Nəticəni oxuyuruq"
+        },
+        "body": {
+          "ru": "После отправки смотрите sent, open rate, click rate, leads, budget и дальше переходите в Campaign ROI для финансового результата.",
+          "en": "After sending, review sent, open rate, click rate, leads, and budget, then move to Campaign ROI for the financial result.",
+          "az": "Göndərişdən sonra sent, open rate, click rate, lead-lər və budget göstəricilərinə baxın, sonra maliyyə nəticəsi üçün Campaign ROI bölməsinə keçin."
+        },
+        "why": {
+          "ru": "Campaigns связывает идею, аудиторию, сообщение и измеримый результат.",
+          "en": "Campaigns connects idea, audience, message, and measurable result.",
+          "az": "Campaigns ideyanı, auditoriyanı, mesajı və ölçülə bilən nəticəni birləşdirir."
+        }
+      }
+    ],
+    "outcome": {
+      "ru": "Кампания готова к запуску или анализу: понятно кому отправляем, зачем и какой результат ждем.",
+      "en": "The campaign is ready to launch or analyze: it is clear who receives it, why it is sent, and what result is expected.",
+      "az": "Kampaniya işə salınmağa və ya analizə hazırdır: kimə göndərildiyi, niyə göndərildiyi və hansı nəticənin gözləndiyi aydındır."
+    }
+  },
+  "segments": {
+    "route": "/segments",
+    "group": {
+      "ru": "Маркетинг",
+      "en": "Marketing",
+      "az": "Marketinq"
+    },
+    "title": {
+      "ru": "Segments",
+      "en": "Segments",
+      "az": "Seqmentlər"
+    },
+    "goal": {
+      "ru": "Собрать точную аудиторию для campaigns, journeys, surveys и loyalty.",
+      "en": "Build an exact audience for campaigns, journeys, surveys, and loyalty.",
+      "az": "Campaigns, journeys, surveys və loyalty üçün dəqiq auditoriya qurmaq."
+    },
+    "scenes": [
+      {
+        "heading": {
+          "ru": "Открываем аудитории",
+          "en": "Open audiences",
+          "az": "Auditoriyaları açırıq"
+        },
+        "body": {
+          "ru": "В Segments маркетолог отвечает на главный вопрос: кому именно мы сейчас хотим говорить? Здесь видны сохраненные аудитории и их размер.",
+          "en": "In Segments, the marketer answers the main question: who exactly do we want to talk to now? Saved audiences and their size are visible here.",
+          "az": "Segments bölməsində marketoloq əsas suala cavab verir: indi dəqiq kiminlə danışmaq istəyirik? Burada saxlanmış auditoriyalar və onların ölçüsü görünür."
+        },
+        "why": {
+          "ru": "Сегмент защищает кампанию от нерелевантной отправки.",
+          "en": "A segment protects the campaign from irrelevant sending.",
+          "az": "Seqment kampaniyanı uyğunsuz göndərişdən qoruyur."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Создаем новый сегмент",
+          "en": "Create a new segment",
+          "az": "Yeni seqment yaradırıq"
+        },
+        "body": {
+          "ru": "Выберите сущность: contacts, companies или leads. Назовите сегмент так, чтобы команда понимала его бизнес-смысл.",
+          "en": "Choose the entity: contacts, companies, or leads. Name the segment so the team understands its business meaning.",
+          "az": "Obyekti seçin: contacts, companies və ya leads. Seqmentə elə ad verin ki, komanda onun biznes mənasını başa düşsün."
+        },
+        "why": {
+          "ru": "Название должно объяснять аудиторию, а не только дату создания.",
+          "en": "The name should explain the audience, not only the creation date.",
+          "az": "Ad yalnız yaradılma tarixini deyil, auditoriyanı izah etməlidir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Добавляем условия",
+          "en": "Add conditions",
+          "az": "Şərtlər əlavə edirik"
+        },
+        "body": {
+          "ru": "Настройте фильтры: источник, город, статус, последняя активность, сумма покупок, участие в кампании или оценка интереса.",
+          "en": "Configure filters: source, city, status, last activity, purchase amount, campaign participation, or interest score.",
+          "az": "Filtrləri qurun: mənbə, şəhər, status, son aktivlik, alış məbləği, kampaniyada iştirak və ya maraq skoru."
+        },
+        "why": {
+          "ru": "Чем точнее условия, тем меньше шума в коммуникации.",
+          "en": "The more precise the conditions, the less noise in communication.",
+          "az": "Şərtlər nə qədər dəqiqdirsə, kommunikasiyada səs-küy o qədər az olur."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Проверяем размер аудитории",
+          "en": "Check audience size",
+          "az": "Auditoriya ölçüsünü yoxlayırıq"
+        },
+        "body": {
+          "ru": "Посмотрите preview записей и количество людей. Если аудитория слишком широкая, добавьте фильтр. Если слишком узкая — ослабьте условие.",
+          "en": "Review the record preview and the number of people. If the audience is too broad, add a filter. If it is too narrow, loosen a condition.",
+          "az": "Qeydlərin preview-sinə və insan sayına baxın. Auditoriya çox genişdirsə, filtr əlavə edin. Çox dardırsa, şərti yumşaldın."
+        },
+        "why": {
+          "ru": "Размер сегмента должен соответствовать цели кампании.",
+          "en": "Segment size must match the campaign goal.",
+          "az": "Seqment ölçüsü kampaniya məqsədinə uyğun olmalıdır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Используем сегмент дальше",
+          "en": "Use the segment next",
+          "az": "Seqmenti növbəti addımda istifadə edirik"
+        },
+        "body": {
+          "ru": "Сегмент можно выбрать в Campaigns, использовать как trigger в Journeys, отправить опрос или дать loyalty promo.",
+          "en": "The segment can be selected in Campaigns, used as a trigger in Journeys, sent a survey, or given a loyalty promo.",
+          "az": "Seqment Campaigns-də seçilə, Journeys-də trigger kimi istifadə oluna, sorğu göndərilə və ya loyalty promo verilə bilər."
+        },
+        "why": {
+          "ru": "Один хороший сегмент работает сразу в нескольких инструментах.",
+          "en": "One good segment works across several tools at once.",
+          "az": "Bir yaxşı seqment eyni anda bir neçə alətdə işləyir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Обновляем по данным",
+          "en": "Refresh it with data",
+          "az": "Datanı yeniləyirik"
+        },
+        "body": {
+          "ru": "Возвращайтесь к сегментам после кампаний и customer insights: данные меняются, и аудитория должна оставаться актуальной.",
+          "en": "Return to segments after campaigns and customer insights. Data changes, so the audience must stay current.",
+          "az": "Campaigns və Customer Insights-dan sonra seqmentlərə qayıdın. Data dəyişir, auditoriya da aktual qalmalıdır."
+        },
+        "why": {
+          "ru": "Сегмент — это живое правило, а не разовый список.",
+          "en": "A segment is a living rule, not a one-time list.",
+          "az": "Seqment birdəfəlik siyahı deyil, yaşayan qaydadır."
+        }
+      }
+    ],
+    "outcome": {
+      "ru": "Создана аудитория с понятной логикой и готовым применением в маркетинговой воронке.",
+      "en": "An audience is created with clear logic and a ready use case in the marketing funnel.",
+      "az": "Marketinq voronkasında istifadəyə hazır, aydın məntiqə malik auditoriya yaradılır."
+    }
+  },
+  "loyalty-builder": {
+    "route": "/loyalty/builder",
+    "group": {
+      "ru": "Маркетинг",
+      "en": "Marketing",
+      "az": "Marketinq"
+    },
+    "title": {
+      "ru": "Loyalty Builder",
+      "en": "Loyalty Builder",
+      "az": "Loyallıq konstruktoru"
+    },
+    "goal": {
+      "ru": "Собрать программу лояльности целиком: уровни, начисления, награды и preview до запуска.",
+      "en": "Build the full loyalty program: tiers, earning rules, rewards, and preview before launch.",
+      "az": "Loyallıq proqramını tam qurmaq: səviyyələr, bal toplama qaydaları, mükafatlar və startdan əvvəl preview."
+    },
+    "scenes": [
+      {
+        "heading": {
+          "ru": "Открываем конструктор программы",
+          "en": "Open the program builder",
+          "az": "Proqram konstruktorunu açırıq"
+        },
+        "body": {
+          "ru": "Loyalty Builder показывает программу лояльности как единый продукт, а не набор разрозненных настроек.",
+          "en": "Loyalty Builder shows the loyalty program as one product, not a collection of separate settings.",
+          "az": "Loyalty Builder loyallıq proqramını ayrı-ayrı ayarlar toplusu kimi yox, vahid məhsul kimi göstərir."
+        },
+        "why": {
+          "ru": "Маркетолог покупает loyalty ради повторных покупок и удержания.",
+          "en": "Marketers buy loyalty for repeat purchases and retention.",
+          "az": "Marketoloq loyalty-ni təkrar alışlar və müştərini saxlamaq üçün alır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Настраиваем основу",
+          "en": "Configure the foundation",
+          "az": "Əsas bazanı qururuq"
+        },
+        "body": {
+          "ru": "Проверьте название, статус, видимость в портале и базовую механику: как клиент видит свои баллы и уровень.",
+          "en": "Check name, status, portal visibility, and the base mechanic: how the customer sees points and tier.",
+          "az": "Adı, statusu, portal görünürlüğünü və əsas mexanikanı yoxlayın: müştəri balını və səviyyəsini necə görür."
+        },
+        "why": {
+          "ru": "Если механика непонятна клиенту, он не будет в ней участвовать.",
+          "en": "If the mechanic is unclear to customers, they will not participate.",
+          "az": "Mexanika müştəriyə aydın deyilsə, o proqramda iştirak etməyəcək."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Переходим по вкладкам",
+          "en": "Move through the tabs",
+          "az": "Tablar üzrə keçirik"
+        },
+        "body": {
+          "ru": "Откройте tiers, earn rules, rewards и promos. Покажите, что программа состоит из статуса, правил начисления и стимулов.",
+          "en": "Open tiers, earn rules, rewards, and promos. Show that the program consists of status, earning logic, and incentives.",
+          "az": "Tiers, earn rules, rewards və promos tablarını açın. Proqramın statusdan, bal toplama məntiqindən və stimullardan ibarət olduğunu göstərin."
+        },
+        "why": {
+          "ru": "Каждая часть отвечает за отдельный мотив поведения клиента.",
+          "en": "Each part motivates a different customer behavior.",
+          "az": "Hər hissə müştərinin fərqli davranışını motivasiya edir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Проверяем preview",
+          "en": "Check the preview",
+          "az": "Preview-ni yoxlayırıq"
+        },
+        "body": {
+          "ru": "Используйте preview, чтобы увидеть программу глазами участника: сколько баллов, какой уровень, какие награды доступны.",
+          "en": "Use preview to see the program as a member: points, current tier, and available rewards.",
+          "az": "Preview ilə proqramı iştirakçı gözü ilə görün: ballar, cari səviyyə və mövcud mükafatlar."
+        },
+        "why": {
+          "ru": "Preview показывает, выглядит ли программа убедительно до запуска.",
+          "en": "Preview shows whether the program feels convincing before launch.",
+          "az": "Preview proqramın startdan əvvəl inandırıcı görünüb-görünmədiyini göstərir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Связываем с dashboard",
+          "en": "Connect it to the dashboard",
+          "az": "Dashboard-a bağlayırıq"
+        },
+        "body": {
+          "ru": "После запуска результат смотрится в Loyalty Dashboard: участники, активность, уровни и движение баллов.",
+          "en": "After launch, results are checked in Loyalty Dashboard: members, activity, tiers, and point movement.",
+          "az": "Startdan sonra nəticələr Loyalty Dashboard-da izlənir: iştirakçılar, aktivlik, səviyyələr və bal hərəkəti."
+        },
+        "why": {
+          "ru": "Builder запускает программу, dashboard показывает, работает ли она.",
+          "en": "Builder launches the program; dashboard shows whether it works.",
+          "az": "Builder proqramı işə salır, dashboard isə onun işləyib-işləmədiyini göstərir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Дальше запускаем коммуникации",
+          "en": "Then launch communications",
+          "az": "Sonra kommunikasiya başlayır"
+        },
+        "body": {
+          "ru": "Используйте Campaigns и Journeys, чтобы объяснить клиентам программу, уровни и промокоды.",
+          "en": "Use Campaigns and Journeys to explain the program, tiers, and promo codes to customers.",
+          "az": "Müştərilərə proqramı, səviyyələri və promo kodları izah etmək üçün Campaigns və Journeys istifadə edin."
+        },
+        "why": {
+          "ru": "Лояльность должна быть не только настроена, но и понятна аудитории.",
+          "en": "Loyalty must not only be configured; it must be understood by the audience.",
+          "az": "Loyallıq yalnız qurulmamalı, auditoriya tərəfindən başa düşülməlidir."
+        }
+      }
+    ],
+    "outcome": {
+      "ru": "Программа лояльности собрана как понятная система удержания, а не как набор настроек.",
+      "en": "The loyalty program is built as a clear retention system, not as a set of disconnected settings.",
+      "az": "Loyallıq proqramı pərakəndə ayarlar kimi yox, aydın retention sistemi kimi qurulur."
+    }
+  },
+  "loyalty-dashboard": {
+    "route": "/loyalty/dashboard",
+    "group": {
+      "ru": "Маркетинг",
+      "en": "Marketing",
+      "az": "Marketinq"
+    },
+    "title": {
+      "ru": "Loyalty Dashboard",
+      "en": "Loyalty Dashboard",
+      "az": "Loyallıq paneli"
+    },
+    "goal": {
+      "ru": "Понять, работает ли программа лояльности: участники, уровни, баллы и активность.",
+      "en": "Understand whether the loyalty program is working: members, tiers, points, and activity.",
+      "az": "Loyallıq proqramının işləyib-işləmədiyini anlamaq: iştirakçılar, səviyyələr, ballar və aktivlik."
+    },
+    "scenes": [
+      {
+        "heading": {
+          "ru": "Открываем здоровье программы",
+          "en": "Open program health",
+          "az": "Proqramın sağlamlığını açırıq"
+        },
+        "body": {
+          "ru": "Dashboard отвечает не на вопрос 'настроена ли программа', а на вопрос 'вовлекает ли она клиентов'.",
+          "en": "The dashboard does not only answer whether the program is configured. It answers whether customers are actually engaging with it.",
+          "az": "Dashboard yalnız proqramın qurulub-qurulmadığını göstərmir. O, müştərilərin proqramla həqiqətən işləyib-işləmədiyini göstərir."
+        },
+        "why": {
+          "ru": "Маркетологу нужны сигналы удержания, а не только конфигурация.",
+          "en": "Marketing needs retention signals, not only settings.",
+          "az": "Marketinqə yalnız ayarlar yox, retention siqnalları lazımdır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Смотрим KPI",
+          "en": "Read the KPIs",
+          "az": "KPI-ları oxuyuruq"
+        },
+        "body": {
+          "ru": "Проверьте участников, активных участников, начисленные баллы, списания и распределение по уровням.",
+          "en": "Check members, active members, earned points, redeemed points, and tier distribution.",
+          "az": "İştirakçıları, aktiv iştirakçıları, toplanmış balları, xərclənmiş balları və səviyyələr üzrə bölgünü yoxlayın."
+        },
+        "why": {
+          "ru": "Эти показатели показывают, движется ли клиент по программе.",
+          "en": "These metrics show whether customers are moving through the program.",
+          "az": "Bu göstəricilər müştərinin proqram daxilində irəliləyib-irəliləmədiyini göstərir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Ищем слабые места",
+          "en": "Find weak spots",
+          "az": "Zəif yerləri tapırıq"
+        },
+        "body": {
+          "ru": "Если большинство клиентов остается на базовом уровне, пороги могут быть слишком высокими или коммуникация слабой.",
+          "en": "If most customers stay on the base tier, thresholds may be too high or communication may be weak.",
+          "az": "Əksər müştərilər baza səviyyəsində qalırsa, limitlər çox yüksək və ya kommunikasiya zəif ola bilər."
+        },
+        "why": {
+          "ru": "Dashboard помогает менять механику, а не гадать.",
+          "en": "The dashboard helps you change mechanics instead of guessing.",
+          "az": "Dashboard təxmin etmək əvəzinə mexanikanı dəyişməyə kömək edir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Открываем участников",
+          "en": "Open member groups",
+          "az": "İştirakçı qruplarını açırıq"
+        },
+        "body": {
+          "ru": "Найдите клиентов с большим балансом, высокой активностью или наоборот с остановкой активности.",
+          "en": "Find customers with high balances, high activity, or stalled activity.",
+          "az": "Balansı yüksək, aktivliyi çox və ya aktivliyi dayanmış müştəriləri tapın."
+        },
+        "why": {
+          "ru": "Это аудитории для реактивации, бонуса или upsell.",
+          "en": "These are audiences for reactivation, bonus offers, or upsell.",
+          "az": "Bunlar reaktivasiya, bonus təklifi və ya upsell üçün hazır auditoriyalardır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Принимаем действие",
+          "en": "Choose the next action",
+          "az": "Növbəti addımı seçirik"
+        },
+        "body": {
+          "ru": "Отправьте promo code, запустите campaign или проверьте earn rules, если поведение не такое, как ожидали.",
+          "en": "Send a promo code, launch a campaign, or review earn rules if behavior is not what you expected.",
+          "az": "Davranış gözlədiyiniz kimi deyilsə, promo kod göndərin, kampaniya başladın və ya earn rules qaydalarını yoxlayın."
+        },
+        "why": {
+          "ru": "Хороший dashboard всегда ведет к действию.",
+          "en": "A good dashboard always leads to an action.",
+          "az": "Yaxşı dashboard həmişə konkret addıma aparır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Связываем с ROI",
+          "en": "Connect loyalty to revenue",
+          "az": "Loyallığı gəlirlə bağlayırıq"
+        },
+        "body": {
+          "ru": "Лояльность должна влиять на повторные покупки и retention, поэтому ее результаты нужно сравнивать с выручкой.",
+          "en": "Loyalty should affect repeat purchases and retention, so compare its results with revenue.",
+          "az": "Loyallıq təkrar alışlara və retention-a təsir etməlidir, buna görə nəticələri gəlirlə müqayisə edin."
+        },
+        "why": {
+          "ru": "Программа ценна, если она удерживает и возвращает клиентов.",
+          "en": "The program is valuable only when it keeps customers and brings them back.",
+          "az": "Proqram müştərini saxlayır və geri qaytarırsa, dəyərlidir."
+        }
+      }
+    ],
+    "outcome": {
+      "ru": "Маркетолог понимает, кого удерживать, какие правила менять и какие кампании запускать.",
+      "en": "The marketer understands whom to retain, which rules to adjust, and which campaigns to launch.",
+      "az": "Marketoloq kimi saxlamaq, hansı qaydaları dəyişmək və hansı kampaniyaları işə salmaq lazım olduğunu anlayır."
+    }
+  },
+  "loyalty-tiers": {
+    "route": "/loyalty/tiers",
+    "group": {
+      "ru": "Маркетинг",
+      "en": "Marketing",
+      "az": "Marketinq"
+    },
+    "title": {
+      "ru": "Loyalty Tiers",
+      "en": "Loyalty Tiers",
+      "az": "Loyallıq səviyyələri"
+    },
+    "goal": {
+      "ru": "Настроить уровни статуса, которые мотивируют клиента расти и возвращаться.",
+      "en": "Configure status tiers that motivate customers to grow and return.",
+      "az": "Müştərini böyüməyə və qayıtmağa motivasiya edən status səviyyələrini qurmaq."
+    },
+    "scenes": [
+      {
+        "heading": {
+          "ru": "Открываем уровни",
+          "en": "Open tier settings",
+          "az": "Səviyyə ayarlarını açırıq"
+        },
+        "body": {
+          "ru": "Tiers превращают программу лояльности в лестницу: базовый клиент, активный клиент, лучший клиент.",
+          "en": "Loyalty Tiers defines the status ladder: base, silver, gold, VIP, or any model your business uses.",
+          "az": "Loyalty Tiers status pillələrini müəyyən edir: base, silver, gold, VIP və ya biznesinizin istifadə etdiyi hər hansı model."
+        },
+        "why": {
+          "ru": "Клиенту легче участвовать, когда он понимает следующий уровень.",
+          "en": "Tiers turn loyalty from points into motivation.",
+          "az": "Səviyyələr loyallığı sadəcə baldan motivasiyaya çevirir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Проверяем порядок",
+          "en": "Set thresholds",
+          "az": "Limitləri təyin edirik"
+        },
+        "body": {
+          "ru": "Посмотрите список уровней, цвета, пороги и порядок. Уровни должны идти логично от простого к премиальному.",
+          "en": "Define how many points, purchases, or revenue a customer needs to reach each tier.",
+          "az": "Hər səviyyəyə çatmaq üçün müştərinin neçə bal, alış və ya gəlir yaratmalı olduğunu təyin edin."
+        },
+        "why": {
+          "ru": "Сломанный порядок делает программу непонятной.",
+          "en": "Thresholds must be ambitious but reachable.",
+          "az": "Limitlər iddialı olmalı, amma çatılabilir qalmalıdır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Редактируем tier",
+          "en": "Describe benefits",
+          "az": "Üstünlükləri yazırıq"
+        },
+        "body": {
+          "ru": "Измените название, минимальные баллы, цвет и описание. Название должно быть понятным клиенту, а не только администратору.",
+          "en": "Add benefits for each tier: bonus points, early access, personal offers, or service priority.",
+          "az": "Hər səviyyəyə üstünlüklər əlavə edin: bonus ballar, erkən giriş, şəxsi təkliflər və ya servis prioriteti."
+        },
+        "why": {
+          "ru": "Уровень — это часть мотивации и бренда.",
+          "en": "Customers move upward only when the next tier feels worth it.",
+          "az": "Növbəti səviyyə dəyərli görünməsə, müştəri yuxarı qalxmaq istəməyəcək."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Проверяем пороги",
+          "en": "Check the customer view",
+          "az": "Müştəri görünüşünü yoxlayırıq"
+        },
+        "body": {
+          "ru": "Убедитесь, что пороги не пересекаются и достижимы. Если порог слишком высокий, клиенты не будут двигаться.",
+          "en": "Preview how tiers are shown to a member: current status, next threshold, and available benefits.",
+          "az": "Səviyyələrin iştirakçıya necə göründüyünü preview edin: cari status, növbəti limit və mövcud üstünlüklər."
+        },
+        "why": {
+          "ru": "Порог должен стимулировать, а не демотивировать.",
+          "en": "A tier is effective only if the customer understands the path.",
+          "az": "Müştəri yolu başa düşürsə, səviyyə sistemi işləyir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Смотрим отображение",
+          "en": "Link tiers to campaigns",
+          "az": "Səviyyələri kampaniyalara bağlayırıq"
+        },
+        "body": {
+          "ru": "Проверьте, как tier виден в dashboard и профиле участника. Команда должна быстро понимать статус клиента.",
+          "en": "Use segments and campaigns to congratulate customers after an upgrade or motivate those close to the next tier.",
+          "az": "Yüksələn müştəriləri təbrik etmək və növbəti səviyyəyə yaxın olanları motivasiya etmək üçün segments və campaigns istifadə edin."
+        },
+        "why": {
+          "ru": "Tiers используются не только в маркетинге, но и в обслуживании.",
+          "en": "Status changes are strong moments for marketing communication.",
+          "az": "Status dəyişikliyi marketinq kommunikasiyası üçün güclü andır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Дальше настраиваем начисления",
+          "en": "Review performance",
+          "az": "Performansı yoxlayırıq"
+        },
+        "body": {
+          "ru": "После tiers перейдите в Earn Rules, чтобы определить, за какие действия клиент будет продвигаться.",
+          "en": "After launch, look at the dashboard: where customers accumulate, where they drop, and which benefits drive movement.",
+          "az": "Startdan sonra dashboard-a baxın: müştərilər harada yığılır, harada dayanır və hansı üstünlüklər hərəkət yaradır."
+        },
+        "why": {
+          "ru": "Уровни без правил начисления не создают поведение.",
+          "en": "Tier design should evolve with real behavior.",
+          "az": "Səviyyə dizaynı real davranışa görə inkişaf etməlidir."
+        }
+      }
+    ],
+    "outcome": {
+      "ru": "Уровни лояльности стали понятными, достижимыми и пригодными для мотивации клиента.",
+      "en": "The tier model becomes a clear ladder: what the customer needs to do and what they receive in return.",
+      "az": "Səviyyə modeli aydın pilləkənə çevrilir: müştəri nə etməlidir və əvəzində nə alır."
+    }
+  },
+  "loyalty-earn-rules": {
+    "route": "/loyalty/earn-rules",
+    "group": {
+      "ru": "Маркетинг",
+      "en": "Marketing",
+      "az": "Marketinq"
+    },
+    "title": {
+      "ru": "Loyalty Earn Rules",
+      "en": "Loyalty Earn Rules",
+      "az": "Bal toplama qaydaları"
+    },
+    "goal": {
+      "ru": "Определить, за какие действия клиент получает баллы и как ограничить начисления.",
+      "en": "Define which customer actions earn points and how much each action is worth.",
+      "az": "Müştərinin hansı hərəkətlərə görə bal qazandığını və hər hərəkətin nə qədər dəyərli olduğunu təyin etmək."
+    },
+    "scenes": [
+      {
+        "heading": {
+          "ru": "Открываем правила начисления",
+          "en": "Open earn rules",
+          "az": "Earn rules bölməsini açırıq"
+        },
+        "body": {
+          "ru": "Earn Rules отвечают за поведение: покупка, регистрация, участие, событие или ручное начисление.",
+          "en": "Earn Rules controls how customers collect points: purchases, visits, referrals, birthdays, or campaign actions.",
+          "az": "Earn Rules müştərinin necə bal topladığını idarə edir: alışlar, ziyarətlər, referallar, ad günləri və ya kampaniya hərəkətləri."
+        },
+        "why": {
+          "ru": "Правила должны мотивировать нужные действия, а не просто раздавать баллы.",
+          "en": "Points should reward behavior that matters to the business.",
+          "az": "Ballar biznes üçün vacib davranışı mükafatlandırmalıdır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Создаем правило",
+          "en": "Choose the trigger",
+          "az": "Trigger seçirik"
+        },
+        "body": {
+          "ru": "Выберите trigger, название, количество баллов и статус активности. Сразу подумайте, какое поведение бизнес хочет усилить.",
+          "en": "Select the event that gives points. It can be an order, a specific product, a visit, or a marketing action.",
+          "az": "Bal verən hadisəni seçin. Bu sifariş, konkret məhsul, ziyarət və ya marketinq hərəkəti ola bilər."
+        },
+        "why": {
+          "ru": "Каждое правило должно иметь бизнес-причину.",
+          "en": "The trigger defines what behavior you are training customers to repeat.",
+          "az": "Trigger müştərinin hansı davranışı təkrarlamasını istədiyinizi müəyyən edir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Настраиваем лимиты",
+          "en": "Set the value",
+          "az": "Dəyəri təyin edirik"
+        },
+        "body": {
+          "ru": "Добавьте ограничения: период, максимум начислений, минимальная сумма или условия участия.",
+          "en": "Define points, multiplier, limits, and validity. Avoid rules that make rewards too cheap or impossible to reach.",
+          "az": "Balı, multiplikatoru, limitləri və qüvvədə olma müddətini təyin edin. Mükafatı çox ucuz və ya əlçatmaz edən qaydalardan qaçın."
+        },
+        "why": {
+          "ru": "Лимиты защищают от случайного или повторного начисления.",
+          "en": "Economics must be healthy for both customer and business.",
+          "az": "İqtisadi məntiq həm müştəri, həm biznes üçün sağlam olmalıdır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Проверяем пример",
+          "en": "Add conditions",
+          "az": "Şərtlər əlavə edirik"
+        },
+        "body": {
+          "ru": "Проговорите простой сценарий: клиент совершил покупку на сумму, правило начислило конкретное число баллов.",
+          "en": "Limit rules by product, segment, tier, date, or channel when needed.",
+          "az": "Lazım olduqda qaydaları məhsul, seqment, səviyyə, tarix və ya kanal üzrə məhdudlaşdırın."
+        },
+        "why": {
+          "ru": "Если пример нельзя объяснить за 10 секунд, правило слишком сложное.",
+          "en": "Conditions prevent accidental over-rewarding.",
+          "az": "Şərtlər təsadüfi artıq mükafatlandırmanın qarşısını alır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Связываем с tiers",
+          "en": "Test the scenario",
+          "az": "Ssenarini test edirik"
+        },
+        "body": {
+          "ru": "Начисления двигают клиента по уровням. Проверьте, что правила помогают достигать tiers с разумной скоростью.",
+          "en": "Run through a sample customer action and check whether the expected points are calculated.",
+          "az": "Nümunə müştəri hərəkətini yoxlayın və gözlənilən balların hesablandığını təsdiqləyin."
+        },
+        "why": {
+          "ru": "Earn rules и tiers должны работать как одна система.",
+          "en": "Rule mistakes become expensive when many transactions start using them.",
+          "az": "Qayda səhvləri çox tranzaksiya işə düşəndə baha başa gəlir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Дальше измеряем активность",
+          "en": "Measure behavior change",
+          "az": "Davranış dəyişikliyini ölçürük"
+        },
+        "body": {
+          "ru": "После запуска смотрите Loyalty Dashboard: какие правила реально используются и где клиенты перестают участвовать.",
+          "en": "After launch, compare activity and repeat purchases before and after the rule.",
+          "az": "Startdan sonra qaydadan əvvəl və sonra aktivliyi və təkrar alışları müqayisə edin."
+        },
+        "why": {
+          "ru": "Правило ценно только тогда, когда оно меняет поведение клиента.",
+          "en": "Earn rules are useful only if they change customer behavior.",
+          "az": "Earn rules yalnız müştəri davranışını dəyişəndə faydalıdır."
+        }
+      }
+    ],
+    "outcome": {
+      "ru": "Правила начисления стали понятными, ограниченными и связанными с ростом клиента по уровням.",
+      "en": "The business has clear earning rules that reward the behavior it wants to grow.",
+      "az": "Biznes artırmaq istədiyi davranışı mükafatlandıran aydın bal toplama qaydalarına sahib olur."
+    }
+  },
+  "loyalty-promo-codes": {
+    "route": "/loyalty/promo-codes",
+    "group": {
+      "ru": "Маркетинг",
+      "en": "Marketing",
+      "az": "Marketinq"
+    },
+    "title": {
+      "ru": "Loyalty Promo Codes",
+      "en": "Loyalty Promo Codes",
+      "az": "Loyallıq promo kodları"
+    },
+    "goal": {
+      "ru": "Создать контролируемый стимул для удержания, реактивации или кампании.",
+      "en": "Create promo codes that reward the right audience without losing control over budget and rules.",
+      "az": "Büdcə və qaydalar üzərində nəzarəti itirmədən düzgün auditoriyanı mükafatlandıran promo kodlar yaratmaq."
+    },
+    "scenes": [
+      {
+        "heading": {
+          "ru": "Открываем промокоды",
+          "en": "Open promo codes",
+          "az": "Promo kodları açırıq"
+        },
+        "body": {
+          "ru": "Promo Codes показывает активные, использованные и истекшие коды. Начните с цели: удержание, возврат, подарок или кампания.",
+          "en": "Promo Codes is where marketers create targeted incentives for loyalty members, campaigns, or reactivation.",
+          "az": "Promo Codes marketoloqun loyalty iştirakçıları, kampaniyalar və ya reaktivasiya üçün hədəfli stimul yaratdığı yerdir."
+        },
+        "why": {
+          "ru": "Промокод без цели становится просто скидкой.",
+          "en": "Discounts work best when they are controlled and measurable.",
+          "az": "Endirimlər nəzarətli və ölçülə bilən olanda daha yaxşı işləyir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Создаем код",
+          "en": "Define the offer",
+          "az": "Təklifi müəyyən edirik"
+        },
+        "body": {
+          "ru": "Укажите название, сам код, тип выгоды, срок действия и статус. Код должен быть понятным для команды и клиента.",
+          "en": "Choose the code, discount type, value, validity dates, and whether it is single-use or reusable.",
+          "az": "Kodu, endirim tipini, dəyəri, qüvvədə olma tarixlərini və onun birdəfəlik yoxsa təkrar istifadə edilən olduğunu seçin."
+        },
+        "why": {
+          "ru": "Хорошее название помогает потом читать аналитику.",
+          "en": "A clear offer prevents confusion for both customer and team.",
+          "az": "Aydın təklif həm müştəri, həm komanda üçün qarışıqlığın qarşısını alır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Ставим ограничения",
+          "en": "Limit the audience",
+          "az": "Auditoriyanı məhdudlaşdırırıq"
+        },
+        "body": {
+          "ru": "Ограничьте использование по количеству, времени, сегменту или одному клиенту. Это сохраняет бюджет кампании.",
+          "en": "Attach the promo to a segment, tier, campaign, or journey so it reaches only the intended people.",
+          "az": "Promo kodu seqmentə, səviyyəyə, kampaniyaya və ya journey-yə bağlayın ki, yalnız nəzərdə tutulan insanlara çatsın."
+        },
+        "why": {
+          "ru": "Контроль условий важнее размера скидки.",
+          "en": "Open-ended promos can burn budget quickly.",
+          "az": "Açıq promo kodlar büdcəni sürətlə yandıra bilər."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Используем в коммуникации",
+          "en": "Check redemption rules",
+          "az": "İstifadə qaydalarını yoxlayırıq"
+        },
+        "body": {
+          "ru": "Промокод можно отправить через Campaigns, добавить в Journey или дать вручную через поддержку.",
+          "en": "Review minimum order, product restrictions, maximum redemptions, and expiry behavior.",
+          "az": "Minimum sifariş, məhsul məhdudiyyətləri, maksimum istifadə sayı və bitmə davranışını yoxlayın."
+        },
+        "why": {
+          "ru": "Один код может работать в нескольких точках контакта.",
+          "en": "The business rule must match the promise in the message.",
+          "az": "Biznes qaydası mesajdakı vədə uyğun olmalıdır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Проверяем использование",
+          "en": "Send it through the right channel",
+          "az": "Doğru kanaldan göndəririk"
+        },
+        "body": {
+          "ru": "Смотрите счетчики: сколько раз код применили, истек ли срок и не превышены ли лимиты.",
+          "en": "Use Campaigns, Journeys, or POS communication depending on the audience and timing.",
+          "az": "Auditoriya və vaxta görə Campaigns, Journeys və ya POS kommunikasiyasından istifadə edin."
+        },
+        "why": {
+          "ru": "Так маркетолог понимает, сработал ли стимул.",
+          "en": "A good promo needs the right moment, not only the right discount.",
+          "az": "Yaxşı promo yalnız düzgün endirim yox, düzgün an tələb edir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Дальше смотрим результат",
+          "en": "Measure redemption",
+          "az": "İstifadəni ölçürük"
+        },
+        "body": {
+          "ru": "Сравните использование промокода с кампанией, сегментом и повторными покупками.",
+          "en": "Track redemptions, revenue, repeat purchase, and whether the promo created incremental activity.",
+          "az": "İstifadələri, gəliri, təkrar alışları və promo kodun əlavə aktivlik yaradıb-yaratmadığını izləyin."
+        },
+        "why": {
+          "ru": "Промокод должен измерять реакцию, а не только уменьшать цену.",
+          "en": "Promo performance should be judged by behavior and revenue, not only by claims.",
+          "az": "Promo performansı yalnız istifadə sayına yox, davranışa və gəlirə görə qiymətləndirilməlidir."
+        }
+      }
+    ],
+    "outcome": {
+      "ru": "Промокод имеет цель, срок, ограничения и понятную аналитику использования.",
+      "en": "A promo code is ready with audience, benefit, limits, and tracking logic.",
+      "az": "Promo kod auditoriya, üstünlük, limitlər və izləmə məntiqi ilə hazırdır."
+    }
+  },
+  "loyalty-pos": {
+    "route": "/loyalty/pos",
+    "group": {
+      "ru": "Маркетинг",
+      "en": "Marketing",
+      "az": "Marketinq"
+    },
+    "title": {
+      "ru": "Loyalty POS",
+      "en": "Loyalty POS",
+      "az": "Loyallıq POS"
+    },
+    "goal": {
+      "ru": "Показать, как программа лояльности работает в реальной точке контакта: начислить или списать баллы.",
+      "en": "Use loyalty at the point of sale: identify the customer, apply points, and record the transaction.",
+      "az": "Satış nöqtəsində loyallıqdan istifadə etmək: müştərini tanımaq, balları tətbiq etmək və tranzaksiyanı yazmaq."
+    },
+    "scenes": [
+      {
+        "heading": {
+          "ru": "Открываем рабочее место POS",
+          "en": "Open the POS flow",
+          "az": "POS axınını açırıq"
+        },
+        "body": {
+          "ru": "Loyalty POS нужен кассиру, оператору или сотруднику точки обслуживания. Здесь программа лояльности встречается с реальным клиентом.",
+          "en": "Loyalty POS is the operational screen where a cashier or store user applies loyalty during a real purchase.",
+          "az": "Loyalty POS kassirin və ya mağaza istifadəçisinin real alış zamanı loyalty tətbiq etdiyi əməliyyat ekranıdır."
+        },
+        "why": {
+          "ru": "Лояльность должна работать не только в отчетах, но и в момент покупки.",
+          "en": "Marketing value becomes real when it reaches the checkout.",
+          "az": "Marketinq dəyəri kassaya çatanda real nəticəyə çevrilir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Находим участника",
+          "en": "Identify the customer",
+          "az": "Müştərini tanıyırıq"
+        },
+        "body": {
+          "ru": "Найдите клиента по QR, телефону или идентификатору. Проверьте имя, текущий tier и баланс баллов.",
+          "en": "Find the customer by phone, QR, card, or account identifier. Check name, balance, and current tier.",
+          "az": "Müştərini telefon, QR, kart və ya hesab identifikatoru ilə tapın. Adı, balansı və cari səviyyəni yoxlayın."
+        },
+        "why": {
+          "ru": "Перед операцией важно убедиться, что открыт правильный клиент.",
+          "en": "Accurate identification prevents points from going to the wrong profile.",
+          "az": "Dəqiq identifikasiya balların yanlış profilə düşməsinin qarşısını alır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Показываем баланс и историю",
+          "en": "Review available benefits",
+          "az": "Mövcud üstünlüklərə baxırıq"
+        },
+        "body": {
+          "ru": "Посмотрите доступные баллы, уровень и последние операции. Это помогает объяснить клиенту, откуда взялся баланс.",
+          "en": "Show available rewards, discounts, or promo codes before the transaction is completed.",
+          "az": "Tranzaksiya tamamlanmazdan əvvəl mövcud mükafatları, endirimləri və promo kodları göstərin."
+        },
+        "why": {
+          "ru": "Прозрачность повышает доверие к программе.",
+          "en": "The customer should understand what can be used now.",
+          "az": "Müştəri indi nədən istifadə edə biləcəyini anlamalıdır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Начисляем баллы",
+          "en": "Apply points or reward",
+          "az": "Bal və ya mükafat tətbiq edirik"
+        },
+        "body": {
+          "ru": "Введите сумму покупки или действие, начислите баллы и подтвердите операцию. Баланс должен обновиться сразу.",
+          "en": "Apply the selected reward or redeem points according to the rule. Confirm the new balance before saving.",
+          "az": "Seçilmiş mükafatı tətbiq edin və ya qaydaya uyğun bal xərcləyin. Yadda saxlamadan əvvəl yeni balansı təsdiqləyin."
+        },
+        "why": {
+          "ru": "Клиент видит мгновенную пользу от участия.",
+          "en": "Checkout mistakes directly affect customer trust.",
+          "az": "Kassadakı səhv müştəri etibarına birbaşa təsir edir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Списываем или применяем бонус",
+          "en": "Record the purchase",
+          "az": "Alışı qeyd edirik"
+        },
+        "body": {
+          "ru": "Если клиент использует бонус, выполните списание и проверьте остаток. История должна сохранить операцию.",
+          "en": "Save the transaction with amount, points earned or redeemed, and the staff action.",
+          "az": "Tranzaksiyanı məbləğ, qazanılan və ya xərclənən ballar və əməkdaş hərəkəti ilə yadda saxlayın."
+        },
+        "why": {
+          "ru": "Списание должно быть контролируемым и понятным.",
+          "en": "This creates the history used later by dashboard, segments, and campaigns.",
+          "az": "Bu tarixçə sonradan dashboard, segments və campaigns tərəfindən istifadə olunur."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Дальше анализируем в dashboard",
+          "en": "Use POS data in marketing",
+          "az": "POS datasını marketinqdə istifadə edirik"
+        },
+        "body": {
+          "ru": "Операции POS попадают в историю программы, а маркетолог смотрит общую активность в Loyalty Dashboard.",
+          "en": "After purchases, marketers can segment by store behavior, reward usage, and repeat visits.",
+          "az": "Alışlardan sonra marketoloqlar mağaza davranışı, mükafat istifadəsi və təkrar ziyarətlər üzrə seqment qura bilərlər."
+        },
+        "why": {
+          "ru": "POS связывает офлайн-контакт с маркетинговой аналитикой.",
+          "en": "POS closes the loop between loyalty promise and real purchase behavior.",
+          "az": "POS loyalty vədi ilə real alış davranışı arasındakı dövrəni bağlayır."
+        }
+      }
+    ],
+    "outcome": {
+      "ru": "Клиент найден, операция проведена, баланс обновлен, а действие попало в историю лояльности.",
+      "en": "Cashier and marketer see the same loyalty event: customer, points, reward, and purchase context.",
+      "az": "Kassir və marketoloq eyni loyalty hadisəsini görür: müştəri, ballar, mükafat və alış konteksti."
+    }
+  },
+  "email-templates": {
+    "route": "/email-templates",
+    "group": {
+      "ru": "Маркетинг",
+      "en": "Marketing",
+      "az": "Marketinq"
+    },
+    "title": {
+      "ru": "Email Templates",
+      "en": "Email Templates",
+      "az": "Email şablonları"
+    },
+    "goal": {
+      "ru": "Создать письмо, которое можно безопасно использовать в campaigns, journeys, events и surveys.",
+      "en": "Create reusable email templates that campaigns and journeys can send without rewriting the same message every time.",
+      "az": "Campaigns və journeys-də eyni mesajı hər dəfə yenidən yazmadan istifadə edilən email şablonları yaratmaq."
+    },
+    "scenes": [
+      {
+        "heading": {
+          "ru": "Открываем библиотеку шаблонов",
+          "en": "Open the template library",
+          "az": "Şablon kitabxanasını açırıq"
+        },
+        "body": {
+          "ru": "Email Templates хранит письма, которые команда использует повторно: кампании, приглашения, напоминания и follow-up.",
+          "en": "Email Templates is the library for campaign emails, journey messages, service follow-ups, and reactivation offers.",
+          "az": "Email Templates kampaniya məktubları, journey mesajları, servis follow-up-ları və reaktivasiya təklifləri üçün kitabxanadır."
+        },
+        "why": {
+          "ru": "Шаблон экономит время и снижает риск ошибки перед массовой отправкой.",
+          "en": "Templates keep marketing consistent and faster to launch.",
+          "az": "Şablonlar marketinqi ardıcıl saxlayır və startı sürətləndirir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Создаем шаблон",
+          "en": "Create a template with purpose",
+          "az": "Məqsədli şablon yaradırıq"
+        },
+        "body": {
+          "ru": "Укажите название, категорию, тему и preheader. Тема должна объяснять ценность письма до открытия.",
+          "en": "Name the template by use case: welcome, promo, webinar invite, renewal reminder, or win-back.",
+          "az": "Şablona istifadə məqsədinə görə ad verin: welcome, promo, webinar dəvəti, renewal xatırlatması və ya win-back."
+        },
+        "why": {
+          "ru": "Открытие начинается с темы и первых слов.",
+          "en": "A useful name helps the team choose the right message later.",
+          "az": "Faydalı ad komandaya sonradan düzgün mesajı seçməyə kömək edir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Собираем структуру письма",
+          "en": "Write the structure",
+          "az": "Strukturu yazırıq"
+        },
+        "body": {
+          "ru": "Добавьте заголовок, короткое объяснение, основной CTA, ссылку и при необходимости изображение.",
+          "en": "Check subject, preheader, opening, offer, proof, CTA, and footer. The reader should understand the value quickly.",
+          "az": "Mövzu, preheader, giriş, təklif, sübut, CTA və footer hissələrini yoxlayın. Oxucu dəyəri tez anlamalıdır."
+        },
+        "why": {
+          "ru": "Письмо должно вести к одному понятному действию.",
+          "en": "Good email copy reduces hesitation before the click.",
+          "az": "Yaxşı email mətni klikdən əvvəl tərəddüdü azaldır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Добавляем персонализацию",
+          "en": "Add personalization",
+          "az": "Fərdiləşdirmə əlavə edirik"
+        },
+        "body": {
+          "ru": "Используйте переменные: имя клиента, компания, ссылка, промокод или данные события.",
+          "en": "Use variables for name, company, product, points, or segment-specific details, then check fallbacks.",
+          "az": "Ad, şirkət, məhsul, bal və ya seqmentə aid məlumatlar üçün dəyişənlərdən istifadə edin, sonra fallback-ləri yoxlayın."
+        },
+        "why": {
+          "ru": "Персонализация повышает релевантность, если данные качественные.",
+          "en": "Personalization is useful only when broken variables do not reach customers.",
+          "az": "Fərdiləşdirmə yalnız qırıq dəyişənlər müştəriyə getməyəndə faydalıdır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Проверяем preview",
+          "en": "Preview and test",
+          "az": "Preview və test edirik"
+        },
+        "body": {
+          "ru": "Посмотрите письмо перед сохранением: не сломаны ли переменные, виден ли CTA, понятно ли предложение.",
+          "en": "Open preview, send a test email, and check mobile readability, button visibility, and links.",
+          "az": "Preview açın, test email göndərin və mobil oxunuşu, düymənin görünməsini və linkləri yoxlayın."
+        },
+        "why": {
+          "ru": "Preview ловит ошибки до того, как письмо попадет в кампанию.",
+          "en": "Most template mistakes are visible before the campaign is sent.",
+          "az": "Şablon səhvlərinin çoxu kampaniya göndərilməzdən əvvəl görünür."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Используем в воронке",
+          "en": "Use it in campaigns",
+          "az": "Kampaniyalarda istifadə edirik"
+        },
+        "body": {
+          "ru": "Дальше шаблон выбирается в Campaigns, Journeys, Events или Survey invites.",
+          "en": "Attach the template to Campaigns or Journeys and measure open rate, clicks, leads, and revenue.",
+          "az": "Şablonu Campaigns və ya Journeys-ə bağlayın, open rate, kliklər, lead-lər və gəliri ölçün."
+        },
+        "why": {
+          "ru": "Один хороший шаблон ускоряет всю маркетинговую команду.",
+          "en": "A template is valuable when it becomes a repeatable conversion asset.",
+          "az": "Şablon təkrar istifadə edilən konversiya aktivinə çevriləndə dəyərlidir."
+        }
+      }
+    ],
+    "outcome": {
+      "ru": "Готов повторно используемый email-шаблон с понятной целью, CTA и preview.",
+      "en": "The team has a reusable template with clear structure, variables, CTA, and preview quality.",
+      "az": "Komandada aydın struktur, dəyişənlər, CTA və preview keyfiyyəti olan təkrar istifadə edilə bilən şablon var."
+    }
+  },
+  "email-log": {
+    "route": "/email-log",
+    "group": {
+      "ru": "Маркетинг",
+      "en": "Marketing",
+      "az": "Marketinq"
+    },
+    "title": {
+      "ru": "Email Log",
+      "en": "Email Log",
+      "az": "Email jurnalı"
+    },
+    "goal": {
+      "ru": "Проверить историю отправки и понять, письмо доставлено, упало или не ушло.",
+      "en": "Audit what was sent, to whom, when, and with what delivery result.",
+      "az": "Nə göndərildiyini, kimə, nə vaxt göndərildiyini və çatdırılma nəticəsini audit etmək."
+    },
+    "scenes": [
+      {
+        "heading": {
+          "ru": "Открываем журнал писем",
+          "en": "Open delivery history",
+          "az": "Göndəriş tarixçəsini açırıq"
+        },
+        "body": {
+          "ru": "Email Log — это не редактор. Это доказательство отправки и диагностика доставляемости.",
+          "en": "Email Log shows sent messages, recipients, timestamps, status, and related campaign or template.",
+          "az": "Email Log göndərilən mesajları, alıcıları, vaxtı, statusu və bağlı kampaniya və ya şablonu göstərir."
+        },
+        "why": {
+          "ru": "Когда клиент говорит 'письмо не пришло', нужен факт, а не догадка.",
+          "en": "Marketing must be able to audit delivery, not only create messages.",
+          "az": "Marketinq yalnız mesaj yaratmamalı, çatdırılmanı da audit edə bilməlidir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Смотрим список",
+          "en": "Filter the log",
+          "az": "Jurnalı filtrləyirik"
+        },
+        "body": {
+          "ru": "Проверьте direction, recipient, subject, status и дату. Эти поля быстро показывают, что произошло с письмом.",
+          "en": "Filter by campaign, recipient, status, date, or template to find the exact communication.",
+          "az": "Dəqiq kommunikasiyanı tapmaq üçün kampaniya, alıcı, status, tarix və ya şablon üzrə filtr edin."
+        },
+        "why": {
+          "ru": "Статус письма объясняет, где искать проблему.",
+          "en": "Fast filtering reduces time spent investigating complaints or missing emails.",
+          "az": "Sürətli filtr şikayətləri və çatmayan email-ləri araşdırma vaxtını azaldır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Фильтруем ошибки",
+          "en": "Read statuses",
+          "az": "Statusları oxuyuruq"
+        },
+        "body": {
+          "ru": "Выберите failed или bounced, чтобы увидеть письма с проблемами доставки.",
+          "en": "Check sent, delivered, opened, clicked, bounced, failed, or unsubscribed events when available.",
+          "az": "Mövcud olduqda sent, delivered, opened, clicked, bounced, failed və ya unsubscribed hadisələrini yoxlayın."
+        },
+        "why": {
+          "ru": "Падение open rate может быть проблемой доставки, а не текста.",
+          "en": "Each status tells a different operational story.",
+          "az": "Hər status fərqli əməliyyat hekayəsi danışır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Открываем запись",
+          "en": "Open a message detail",
+          "az": "Mesaj detalını açırıq"
+        },
+        "body": {
+          "ru": "Посмотрите детали: кому отправлено, из какой кампании, какой статус и когда событие произошло.",
+          "en": "Review the recipient, subject, template, payload variables, and any provider response.",
+          "az": "Alıcını, mövzunu, şablonu, göndərilən dəyişənləri və provider cavabını yoxlayın."
+        },
+        "why": {
+          "ru": "Одна запись помогает расследовать конкретную жалобу.",
+          "en": "Details help separate content issues from delivery issues.",
+          "az": "Detallar məzmun problemini çatdırılma problemindən ayırmağa kömək edir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Понимаем действие",
+          "en": "Fix the cause",
+          "az": "Səbəbi düzəldirik"
+        },
+        "body": {
+          "ru": "Если bounced — проверьте адрес. Если failed — проверьте канал и настройки. Если delivered — проблема может быть уже в inbox клиента.",
+          "en": "If there are failures, fix bad addresses, broken variables, blocked domains, or template problems before sending again.",
+          "az": "Failure varsa, yenidən göndərməzdən əvvəl səhv ünvanları, qırıq dəyişənləri, bloklanan domenləri və şablon problemlərini düzəldin."
+        },
+        "why": {
+          "ru": "Разные статусы требуют разных действий.",
+          "en": "Repeating the same send without fixing the cause damages reputation.",
+          "az": "Səbəbi düzəltmədən təkrar göndəriş reputasiyanı zədələyir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Связываем с кампаниями",
+          "en": "Use the log as proof",
+          "az": "Jurnalı sübut kimi istifadə edirik"
+        },
+        "body": {
+          "ru": "После диагностики возвращайтесь в Campaigns и Email Templates, чтобы исправить проблему перед следующей отправкой.",
+          "en": "When sales or support asks whether a message was sent, the log provides the factual answer.",
+          "az": "Satış və ya support mesajın göndərilib-göndərilmədiyini soruşanda jurnal faktiki cavabı verir."
+        },
+        "why": {
+          "ru": "Email Log помогает улучшать маркетинг по фактам.",
+          "en": "A reliable log keeps marketing, sales, and service aligned.",
+          "az": "Etibarlı jurnal marketinq, satış və servisi eyni xəttdə saxlayır."
+        }
+      }
+    ],
+    "outcome": {
+      "ru": "Маркетолог видит, ушло ли письмо, какой у него статус и что исправлять дальше.",
+      "en": "The marketer can prove delivery status, find errors, and understand communication history.",
+      "az": "Marketoloq çatdırılma statusunu sübut edə, səhvləri tapa və kommunikasiya tarixçəsini anlaya bilir."
+    }
+  },
+  "attribution-models": {
+    "route": "/attribution/models",
+    "group": {
+      "ru": "Маркетинг",
+      "en": "Marketing",
+      "az": "Marketinq"
+    },
+    "title": {
+      "ru": "Attribution Models",
+      "en": "Attribution Models",
+      "az": "Attribution modelləri"
+    },
+    "goal": {
+      "ru": "Определить, как распределять вклад выручки между маркетинговыми касаниями.",
+      "en": "Choose how marketing credit is assigned across touches before a lead, deal, or purchase.",
+      "az": "Lead, deal və ya alışdan əvvəl marketinq təmaslarına kreditin necə bölündüyünü seçmək."
+    },
+    "scenes": [
+      {
+        "heading": {
+          "ru": "Открываем модели атрибуции",
+          "en": "Open attribution settings",
+          "az": "Attribution ayarlarını açırıq"
+        },
+        "body": {
+          "ru": "Клиент может увидеть письмо, перейти на лендинг, прийти на событие и только потом купить. Attribution отвечает, кому засчитать вклад.",
+          "en": "Attribution Models defines how LeadDrive gives credit to marketing touches across the customer path.",
+          "az": "Attribution Models LeadDrive-ın müştəri yolundakı marketinq təmaslarına krediti necə verdiyini təyin edir."
+        },
+        "why": {
+          "ru": "Без модели спор о маркетинговом результате остается субъективным.",
+          "en": "Without attribution, teams argue about which channel created the result.",
+          "az": "Attribution olmadan komandalar nəticəni hansı kanalın yaratdığı barədə mübahisə edir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Выбираем тип модели",
+          "en": "Compare model types",
+          "az": "Model tiplərini müqayisə edirik"
+        },
+        "body": {
+          "ru": "Посмотрите first touch, last touch, linear или custom. Каждая модель по-разному распределяет ценность касаний.",
+          "en": "Review first touch, last touch, linear, time decay, or custom logic depending on your sales cycle.",
+          "az": "Satış dövrünüzə görə first touch, last touch, linear, time decay və ya custom məntiqi yoxlayın."
+        },
+        "why": {
+          "ru": "Выбор модели меняет ROI кампаний.",
+          "en": "Different models answer different business questions.",
+          "az": "Fərqli modellər fərqli biznes suallarına cavab verir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Создаем или редактируем модель",
+          "en": "Pick the decision lens",
+          "az": "Qərar prizmasını seçirik"
+        },
+        "body": {
+          "ru": "Укажите название, окно атрибуции и веса. Окно показывает, сколько времени после касания оно еще считается значимым.",
+          "en": "Use first touch for acquisition source, last touch for conversion driver, and linear for multi-step influence.",
+          "az": "Acquisition mənbəyi üçün first touch, konversiya sürücüsü üçün last touch, çox addımlı təsir üçün linear istifadə edin."
+        },
+        "why": {
+          "ru": "Слишком длинное окно завышает вклад, слишком короткое — теряет влияние.",
+          "en": "The model should match the decision you want to make.",
+          "az": "Model vermək istədiyiniz qərara uyğun olmalıdır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Разбираем пример",
+          "en": "Apply the model",
+          "az": "Modeli tətbiq edirik"
+        },
+        "body": {
+          "ru": "Письмо создало интерес, лендинг объяснил ценность, событие усилило доверие, сделка закрылась позже.",
+          "en": "Save the selected model and use it consistently in ROI reports and campaign analysis.",
+          "az": "Seçilmiş modeli yadda saxlayın və onu ROI hesabatlarında və kampaniya analizində ardıcıl istifadə edin."
+        },
+        "why": {
+          "ru": "Маркетинг часто работает цепочкой, а не одним касанием.",
+          "en": "Changing models mid-analysis makes numbers hard to trust.",
+          "az": "Analiz zamanı modeli dəyişmək rəqəmlərə etibarı azaldır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Проверяем влияние на ROI",
+          "en": "Explain the impact",
+          "az": "Təsiri izah edirik"
+        },
+        "body": {
+          "ru": "После настройки откройте Campaign ROI и посмотрите, как модель меняет attributed revenue.",
+          "en": "Show the team how the same campaign can look stronger or weaker under another model.",
+          "az": "Eyni kampaniyanın başqa modeldə daha güclü və ya zəif görünə biləcəyini komandaya göstərin."
+        },
+        "why": {
+          "ru": "Модель должна быть понятной бизнесу и продажам.",
+          "en": "Attribution is a decision framework, not an absolute truth.",
+          "az": "Attribution mütləq həqiqət deyil, qərar çərçivəsidir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Фиксируем правило команды",
+          "en": "Move to ROI",
+          "az": "ROI-yə keçirik"
+        },
+        "body": {
+          "ru": "Используйте одну согласованную модель для регулярной отчетности, чтобы сравнения были честными.",
+          "en": "After choosing the model, evaluate budget and revenue in Campaign ROI.",
+          "az": "Model seçildikdən sonra büdcə və gəliri Campaign ROI bölməsində qiymətləndirin."
+        },
+        "why": {
+          "ru": "Attribution — это правило доверия к маркетинговым цифрам.",
+          "en": "Attribution gives meaning to ROI calculations.",
+          "az": "Attribution ROI hesablamalarına məna verir."
+        }
+      }
+    ],
+    "outcome": {
+      "ru": "Команда понимает, как считается вклад маркетинга в выручку и почему ROI выглядит именно так.",
+      "en": "The team understands which attribution logic is being used and how it changes campaign evaluation.",
+      "az": "Komanda hansı attribution məntiqinin istifadə olunduğunu və bunun kampaniya qiymətləndirməsini necə dəyişdiyini anlayır."
+    }
+  },
+  "campaign-roi": {
+    "route": "/campaign-roi",
+    "group": {
+      "ru": "Маркетинг",
+      "en": "Marketing",
+      "az": "Marketinq"
+    },
+    "title": {
+      "ru": "Campaign ROI",
+      "en": "Campaign ROI",
+      "az": "Kampaniya ROI"
+    },
+    "goal": {
+      "ru": "Понять финансовый результат кампаний: бюджет, выручка, сделки и окупаемость.",
+      "en": "Compare campaign cost with leads, revenue, conversion, and return.",
+      "az": "Kampaniya xərcini lead-lər, gəlir, konversiya və qaytarma ilə müqayisə etmək."
+    },
+    "scenes": [
+      {
+        "heading": {
+          "ru": "Открываем финансовую правду маркетинга",
+          "en": "Open the ROI view",
+          "az": "ROI görünüşünü açırıq"
+        },
+        "body": {
+          "ru": "Campaign ROI показывает не только отправки и клики, а вклад кампаний в сделки, выручку и возврат бюджета.",
+          "en": "Campaign ROI connects spend, campaign performance, leads, opportunities, and revenue.",
+          "az": "Campaign ROI xərci, kampaniya performansını, lead-ləri, imkanları və gəliri birləşdirir."
+        },
+        "why": {
+          "ru": "Маркетинг покупают ради результата, а не ради активности.",
+          "en": "Marketing budget should be managed by return, not by activity volume alone.",
+          "az": "Marketinq büdcəsi təkcə aktivlik həcminə yox, qaytarıma görə idarə olunmalıdır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Смотрим главные KPI",
+          "en": "Check cost and results",
+          "az": "Xərc və nəticələri yoxlayırıq"
+        },
+        "body": {
+          "ru": "Проверьте spend, attributed revenue, ROI, deals, leads и conversion. Эти цифры показывают, что окупается.",
+          "en": "Review budget, spend, impressions or sends, leads, conversion, pipeline, and closed revenue.",
+          "az": "Büdcə, xərc, impressions və ya sends, lead-lər, konversiya, pipeline və bağlanmış gəlirə baxın."
+        },
+        "why": {
+          "ru": "Клики важны, но бизнес спрашивает про деньги.",
+          "en": "Cost without outcome is not enough to judge performance.",
+          "az": "Nəticə olmadan xərc performansı qiymətləndirmək üçün kifayət deyil."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Выбираем кампанию или период",
+          "en": "Compare campaigns",
+          "az": "Kampaniyaları müqayisə edirik"
+        },
+        "body": {
+          "ru": "Отфильтруйте конкретную кампанию, канал или период, чтобы не смешивать разные инициативы.",
+          "en": "Find campaigns with high spend and weak conversion, and campaigns with lower spend but strong revenue.",
+          "az": "Xərci yüksək, konversiyası zəif kampaniyaları və xərci az, gəliri güclü kampaniyaları tapın."
+        },
+        "why": {
+          "ru": "ROI должен сравнивать сопоставимые активности.",
+          "en": "The best budget decisions usually come from comparison.",
+          "az": "Ən yaxşı büdcə qərarları adətən müqayisədən çıxır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Открываем детализацию",
+          "en": "Read attribution context",
+          "az": "Attribution kontekstini oxuyuruq"
+        },
+        "body": {
+          "ru": "Посмотрите, какие клиенты, сделки или касания связаны с результатом кампании.",
+          "en": "Check which attribution model is used so the team understands why credit is assigned this way.",
+          "az": "Hansı attribution modelinin istifadə olunduğunu yoxlayın ki, komanda kreditin niyə belə bölündüyünü başa düşsün."
+        },
+        "why": {
+          "ru": "Детализация объясняет, почему число появилось в отчете.",
+          "en": "ROI numbers depend on the attribution lens.",
+          "az": "ROI rəqəmləri attribution prizmasından asılıdır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Принимаем решение",
+          "en": "Choose an action",
+          "az": "Addım seçirik"
+        },
+        "body": {
+          "ru": "Прибыльную кампанию можно масштабировать. Слабую — остановить, изменить аудиторию, оффер или лендинг.",
+          "en": "Increase budget, pause the campaign, change audience, improve the landing page, or test a new offer.",
+          "az": "Büdcəni artırın, kampaniyanı dayandırın, auditoriyanı dəyişin, landing page-i yaxşılaşdırın və ya yeni təklif test edin."
+        },
+        "why": {
+          "ru": "ROI должен вести к управлению бюджетом.",
+          "en": "ROI analysis should lead to a concrete budget or conversion decision.",
+          "az": "ROI analizi konkret büdcə və ya konversiya qərarına aparmalıdır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Связываем с attribution",
+          "en": "Report the result",
+          "az": "Nəticəni hesabatlaşdırırıq"
+        },
+        "body": {
+          "ru": "Если результат спорный, проверьте Attribution Models: именно они задают правило распределения выручки.",
+          "en": "Use ROI numbers to explain what marketing produced for sales and revenue.",
+          "az": "Marketinqin satış və gəlir üçün nə yaratdığını izah etmək üçün ROI rəqəmlərindən istifadə edin."
+        },
+        "why": {
+          "ru": "Campaign ROI и Attribution Models должны читаться вместе.",
+          "en": "This is the language executives use to evaluate marketing.",
+          "az": "Rəhbərlik marketinqi bu dildə qiymətləndirir."
+        }
+      }
+    ],
+    "outcome": {
+      "ru": "Маркетолог видит, какие кампании окупаются, а какие нужно изменить или остановить.",
+      "en": "The marketer can defend which campaigns deserve more budget and which should be stopped or changed.",
+      "az": "Marketoloq hansı kampaniyaya daha çox büdcə vermək, hansını dayandırmaq və ya dəyişmək lazım olduğunu əsaslandıra bilir."
+    }
+  },
+  "ai-scoring": {
+    "route": "/ai-scoring",
+    "group": {
+      "ru": "Маркетинг",
+      "en": "Marketing",
+      "az": "Marketinq"
+    },
+    "title": {
+      "ru": "Da Vinci Scoring",
+      "en": "Da Vinci Scoring",
+      "az": "Da Vinci skorinq"
+    },
+    "goal": {
+      "ru": "Приоритизировать лиды, контакты или аккаунты по вероятности интереса и следующего действия.",
+      "en": "Prioritize leads, accounts, or customers by likelihood, intent, and marketing value.",
+      "az": "Lead-ləri, account-ları və ya müştəriləri ehtimal, niyyət və marketinq dəyərinə görə prioritetləşdirmək."
+    },
+    "scenes": [
+      {
+        "heading": {
+          "ru": "Открываем AI scoring",
+          "en": "Open scoring",
+          "az": "Skorinqi açırıq"
+        },
+        "body": {
+          "ru": "Когда в базе много контактов, маркетологу нужно понять, кто готов к следующему шагу, а кого лучше прогревать.",
+          "en": "Da Vinci Scoring ranks records using signals such as behavior, engagement, source, profile fit, and recent activity.",
+          "az": "Da Vinci Scoring davranış, cəlb olunma, mənbə, profil uyğunluğu və son aktivlik kimi siqnallarla qeydləri sıralayır."
+        },
+        "why": {
+          "ru": "Приоритет экономит время команды и бюджет кампаний.",
+          "en": "Not every lead deserves the same urgency.",
+          "az": "Hər lead eyni təcili diqqətə layiq deyil."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Смотрим score",
+          "en": "Review score bands",
+          "az": "Skor aralıqlarına baxırıq"
+        },
+        "body": {
+          "ru": "Проверьте список объектов со score и причинами оценки. Высокий score означает больше сигналов интереса.",
+          "en": "Look at hot, warm, cold, or risk groups and compare how many records sit in each band.",
+          "az": "Hot, warm, cold və ya risk qruplarına baxın və hər aralıqda neçə qeyd olduğunu müqayisə edin."
+        },
+        "why": {
+          "ru": "Важно видеть не только число, но и объяснение.",
+          "en": "Bands make prioritization easy for marketing and sales.",
+          "az": "Aralıqlar marketinq və satış üçün prioritetləşdirməni asanlaşdırır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Открываем карточку",
+          "en": "Open the explanation",
+          "az": "İzahı açırıq"
+        },
+        "body": {
+          "ru": "Посмотрите источник, активность, историю кампаний, ответы и поведение. Это объясняет, почему score высокий или низкий.",
+          "en": "Check why a record received its score: campaign clicks, page visits, deal activity, inactivity, or negative signals.",
+          "az": "Qeydin niyə bu skoru aldığını yoxlayın: kampaniya klikləri, səhifə ziyarətləri, deal aktivliyi, passivlik və ya mənfi siqnallar."
+        },
+        "why": {
+          "ru": "AI должен помогать решению, а не быть черным ящиком.",
+          "en": "A score is useful only when the team trusts the reason behind it.",
+          "az": "Komanda səbəbə güvənirsə, skor faydalı olur."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Фильтруем аудиторию",
+          "en": "Take the right action",
+          "az": "Düzgün addımı atırıq"
+        },
+        "body": {
+          "ru": "Выберите объекты с высоким score для sales handoff, upsell или горячей кампании.",
+          "en": "Send hot records to sales, place warm records into nurturing, and use reactivation for inactive customers.",
+          "az": "Hot qeydləri satışa göndərin, warm qeydləri nurturing-ə qoyun, passiv müştərilər üçün reaktivasiya istifadə edin."
+        },
+        "why": {
+          "ru": "Не вся база одинаково готова к продаже.",
+          "en": "The score should route work, not just decorate a list.",
+          "az": "Skor sadəcə siyahını bəzəməməli, işi yönləndirməlidir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Работаем с низким score",
+          "en": "Tune the inputs",
+          "az": "Giriş siqnallarını tənzimləyirik"
+        },
+        "body": {
+          "ru": "Низкий score не означает забыть клиента. Это сигнал для nurturing, образовательного контента или другой частоты коммуникации.",
+          "en": "If scores do not match reality, review weights, signal freshness, and which events are counted.",
+          "az": "Skorlar reallığa uyğun gəlmirsə, çəkiləri, siqnalın yeniliyini və hansı hadisələrin sayıldığını yoxlayın."
+        },
+        "why": {
+          "ru": "Холодная аудитория требует другого сообщения.",
+          "en": "Scoring must reflect your sales and marketing motion.",
+          "az": "Skorinq sizin satış və marketinq hərəkətinizi əks etdirməlidir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Передаем дальше",
+          "en": "Measure conversion",
+          "az": "Konversiyanı ölçürük"
+        },
+        "body": {
+          "ru": "Используйте результат в Segments, Campaigns, Journeys или Account Engagement.",
+          "en": "Compare conversion rates by score band to see whether the model predicts real outcomes.",
+          "az": "Modelin real nəticələri proqnozlaşdırıb-proqnozlaşdırmadığını görmək üçün skor aralıqları üzrə konversiyanı müqayisə edin."
+        },
+        "why": {
+          "ru": "Da Vinci Scoring помогает выбрать следующий лучший шаг.",
+          "en": "The best scoring system proves itself through conversion.",
+          "az": "Ən yaxşı skorinq sistemi özünü konversiya ilə sübut edir."
+        }
+      }
+    ],
+    "outcome": {
+      "ru": "Маркетолог выбирает аудиторию по вероятности результата, а не по догадке.",
+      "en": "The team knows which records deserve immediate action and why the score was assigned.",
+      "az": "Komanda hansı qeydlərin dərhal diqqət tələb etdiyini və skorun niyə verildiyini bilir."
+    }
+  },
+  "journeys": {
+    "route": "/journeys",
+    "group": {
+      "ru": "Маркетинг",
+      "en": "Marketing",
+      "az": "Marketinq"
+    },
+    "title": {
+      "ru": "Journeys",
+      "en": "Journeys",
+      "az": "Journey-lər"
+    },
+    "goal": {
+      "ru": "Построить автоматическую цепочку коммуникаций, которая реагирует на поведение клиента.",
+      "en": "Build automated customer paths that react to behavior and move people toward the next best action.",
+      "az": "Davranışa reaksiya verən və müştərini növbəti ən doğru addıma aparan avtomatlaşdırılmış yollar qurmaq."
+    },
+    "scenes": [
+      {
+        "heading": {
+          "ru": "Открываем автоматизацию",
+          "en": "Open the journey board",
+          "az": "Journey lövhəsini açırıq"
+        },
+        "body": {
+          "ru": "Campaign — это отправка. Journey — это сценарий, который ведет клиента по шагам и реагирует на его действия.",
+          "en": "Journeys shows automated flows such as welcome, nurture, reactivation, renewal, and post-purchase sequences.",
+          "az": "Journeys welcome, nurture, reaktivasiya, renewal və alışdan sonrakı ardıcıllıq kimi avtomatlaşdırılmış axınları göstərir."
+        },
+        "why": {
+          "ru": "Маркетинг должен работать не только в день рассылки.",
+          "en": "Automation turns one-time campaigns into continuous customer movement.",
+          "az": "Avtomatlaşdırma birdəfəlik kampaniyanı davamlı müştəri hərəkətinə çevirir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Создаем journey",
+          "en": "Choose the trigger",
+          "az": "Trigger seçirik"
+        },
+        "body": {
+          "ru": "Задайте название и trigger: новый лид, вход в сегмент, регистрация на событие или другое действие.",
+          "en": "Start with a clear event: new lead, segment entry, form submission, purchase, inactivity, or loyalty tier change.",
+          "az": "Aydın hadisə ilə başlayın: yeni lead, seqmentə daxil olma, form göndərişi, alış, passivlik və ya loyalty səviyyə dəyişikliyi."
+        },
+        "why": {
+          "ru": "Trigger определяет, когда автоматизация начинается.",
+          "en": "The trigger decides when the journey should begin.",
+          "az": "Trigger journey-nin nə vaxt başlamalı olduğunu müəyyən edir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Добавляем первый шаг",
+          "en": "Add conditions",
+          "az": "Şərtlər əlavə edirik"
+        },
+        "body": {
+          "ru": "Добавьте email, задачу или ожидание. Первый шаг должен быть связан с контекстом клиента.",
+          "en": "Use conditions to split the path by score, segment, channel, purchase history, or engagement.",
+          "az": "Yolu skor, seqment, kanal, alış tarixçəsi və ya cəlb olunmaya görə bölmək üçün şərtlərdən istifadə edin."
+        },
+        "why": {
+          "ru": "Автоматизация должна выглядеть как помощь, а не случайная отправка.",
+          "en": "Good journeys adapt instead of sending the same message to everyone.",
+          "az": "Yaxşı journey hamıya eyni mesaj göndərmir, davranışa uyğunlaşır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Строим ветвление",
+          "en": "Place messages and waits",
+          "az": "Mesaj və gözləmə addımları qoyuruq"
+        },
+        "body": {
+          "ru": "Добавьте условие: открыл письмо, кликнул, не ответил, зарегистрировался. Для каждого поведения задайте следующий шаг.",
+          "en": "Add email, task, notification, or delay steps. Give the customer time to react before the next touch.",
+          "az": "Email, task, notification və ya delay addımları əlavə edin. Növbəti təmasdan əvvəl müştəriyə reaksiya vermək üçün vaxt verin."
+        },
+        "why": {
+          "ru": "Ветвление делает journey персональным.",
+          "en": "Timing is as important as the message itself.",
+          "az": "Vaxtlama mesajın özü qədər vacibdir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Тестируем перед запуском",
+          "en": "Define exits",
+          "az": "Çıxışları müəyyən edirik"
+        },
+        "body": {
+          "ru": "Проверьте логику, задержки, шаблоны и аудиторию. Ошибка в journey повторяется автоматически, поэтому тест обязателен.",
+          "en": "Stop the journey when the customer converts, unsubscribes, becomes a deal, or enters another priority flow.",
+          "az": "Müştəri konvertasiya edəndə, unsubscribe edəndə, deal-ə çevriləndə və ya başqa prioritet axına daxil olanda journey-ni dayandırın."
+        },
+        "why": {
+          "ru": "Автоматизация масштабирует как хорошее, так и плохое.",
+          "en": "Exit rules prevent over-communication.",
+          "az": "Çıxış qaydaları artıq kommunikasiya riskini azaldır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Измеряем результат",
+          "en": "Measure the path",
+          "az": "Axını ölçürük"
+        },
+        "body": {
+          "ru": "После запуска смотрите переходы по шагам, реакции и конечную конверсию.",
+          "en": "Track entry count, step drop-off, clicks, conversions, revenue, and where people get stuck.",
+          "az": "Giriş sayını, addım üzrə düşmələri, klikləri, konversiyaları, gəliri və insanların harada ilişdiyini izləyin."
+        },
+        "why": {
+          "ru": "Journey ценен, если ведет клиента к измеримому действию.",
+          "en": "A journey should improve with every run.",
+          "az": "Journey hər işə düşdükcə yaxşılaşmalıdır."
+        }
+      }
+    ],
+    "outcome": {
+      "ru": "Создана логика автоматической коммуникации с триггером, условиями и результатом.",
+      "en": "A journey is designed with trigger, conditions, messages, wait steps, and measurable exit criteria.",
+      "az": "Journey trigger, şərtlər, mesajlar, gözləmə addımları və ölçülə bilən çıxış meyarları ilə hazırlanır."
+    }
+  },
+  "events": {
+    "route": "/events",
+    "group": {
+      "ru": "Маркетинг",
+      "en": "Marketing",
+      "az": "Marketinq"
+    },
+    "title": {
+      "ru": "Events",
+      "en": "Events",
+      "az": "Tədbirlər"
+    },
+    "goal": {
+      "ru": "Управлять мероприятиями как частью маркетинговой воронки: регистрация, участники, приглашения и follow-up.",
+      "en": "Plan and manage marketing events, registrations, attendance, and follow-up.",
+      "az": "Marketinq tədbirlərini, qeydiyyatları, iştirakları və follow-up-ları planlamaq və idarə etmək."
+    },
+    "scenes": [
+      {
+        "heading": {
+          "ru": "Открываем мероприятия",
+          "en": "Open event management",
+          "az": "Tədbir idarəetməsini açırıq"
+        },
+        "body": {
+          "ru": "Events показывает вебинары, презентации, встречи и другие активности, которые создают лиды и вовлеченность.",
+          "en": "Events is where webinars, demos, conferences, workshops, and customer meetings are organized.",
+          "az": "Events webinar, demo, konfrans, workshop və müştəri görüşlərinin təşkil edildiyi bölmədir."
+        },
+        "why": {
+          "ru": "Мероприятие должно быть связано с CRM, а не жить в отдельной таблице.",
+          "en": "Events create high-intent signals that campaigns alone often cannot produce.",
+          "az": "Tədbirlər kampaniyaların təkbaşına yaratmadığı yüksək niyyət siqnalları yaradır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Создаем событие",
+          "en": "Create the event",
+          "az": "Tədbir yaradırıq"
+        },
+        "body": {
+          "ru": "Укажите название, дату, формат, лимит участников и описание. Название должно быть понятно и в приглашении, и в отчете.",
+          "en": "Enter title, date, location or online link, owner, description, and target audience.",
+          "az": "Başlıq, tarix, məkan və ya online link, məsul şəxs, təsvir və hədəf auditoriyanı daxil edin."
+        },
+        "why": {
+          "ru": "Событие начинается с четкого обещания аудитории.",
+          "en": "Operational clarity prevents confusion before launch.",
+          "az": "Əməliyyat aydınlığı startdan əvvəl qarışıqlığın qarşısını alır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Получаем ссылку регистрации",
+          "en": "Connect registration",
+          "az": "Qeydiyyatı bağlayırıq"
+        },
+        "body": {
+          "ru": "Проверьте публичную ссылку, форму и то, какие данные собираются при регистрации.",
+          "en": "Use a landing page or form so registrations become leads or contacts with source tracking.",
+          "az": "Qeydiyyatların source izləməsi ilə lead və ya contact-a çevrilməsi üçün landing page və ya form istifadə edin."
+        },
+        "why": {
+          "ru": "Регистрация — это точка конверсии мероприятия.",
+          "en": "Registration data must enter CRM, not stay in a spreadsheet.",
+          "az": "Qeydiyyat datası cədvəldə qalmamalı, CRM-ə düşməlidir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Работаем с участниками",
+          "en": "Promote the event",
+          "az": "Tədbiri tanıdırıq"
+        },
+        "body": {
+          "ru": "Откройте список участников: зарегистрирован, подтвержден, пришел или нет. Здесь видно, кого нужно догнать напоминанием.",
+          "en": "Launch campaigns and journeys for invitations, reminders, last-call messages, and confirmations.",
+          "az": "Dəvətlər, xatırlatmalar, son çağırış mesajları və təsdiqlər üçün campaigns və journeys işə salın."
+        },
+        "why": {
+          "ru": "Участники — будущие лиды, клиенты или аудитория follow-up.",
+          "en": "Attendance depends heavily on reminder quality.",
+          "az": "İştirak çox vaxt xatırlatma keyfiyyətindən asılıdır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Связываем с коммуникациями",
+          "en": "Track attendance",
+          "az": "İştirakı izləyirik"
+        },
+        "body": {
+          "ru": "Используйте Campaigns для приглашения, Email Templates для писем, Journeys для напоминаний и follow-up.",
+          "en": "Mark who registered, attended, missed, asked questions, or requested a demo.",
+          "az": "Kimin qeydiyyatdan keçdiyini, iştirak etdiyini, gəlmədiyini, sual verdiyini və ya demo istədiyini qeyd edin."
+        },
+        "why": {
+          "ru": "Мероприятие работает лучше как часть цепочки.",
+          "en": "Attendance behavior is a strong segmentation signal.",
+          "az": "İştirak davranışı güclü seqmentasiya siqnalıdır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Смотрим результат",
+          "en": "Follow up after the event",
+          "az": "Tədbirdən sonra follow-up edirik"
+        },
+        "body": {
+          "ru": "После события анализируйте регистрации, посещаемость и последующие лиды или сделки.",
+          "en": "Send recordings, offers, surveys, or sales tasks based on attendee behavior.",
+          "az": "İştirakçı davranışına əsasən qeydlər, təkliflər, sorğular və ya satış task-ları göndərin."
+        },
+        "why": {
+          "ru": "Events должен приносить измеримый интерес.",
+          "en": "The event creates value only when follow-up converts interest into action.",
+          "az": "Tədbir yalnız follow-up marağı hərəkətə çevirdikdə dəyər yaradır."
+        }
+      }
+    ],
+    "outcome": {
+      "ru": "Событие подготовлено, ссылка регистрации готова, участники и follow-up контролируются.",
+      "en": "The event has a clear audience, registration path, attendance tracking, and post-event action plan.",
+      "az": "Tədbirin aydın auditoriyası, qeydiyyat yolu, iştirak izləməsi və tədbirdən sonrakı fəaliyyət planı var."
+    }
+  },
+  "landing-pages": {
+    "route": "/pages",
+    "group": {
+      "ru": "Маркетинг",
+      "en": "Marketing",
+      "az": "Marketinq"
+    },
+    "title": {
+      "ru": "Landing Pages",
+      "en": "Landing Pages",
+      "az": "Landing səhifələr"
+    },
+    "goal": {
+      "ru": "Создать и улучшать страницы, где маркетинговое обещание превращается в заявку.",
+      "en": "Create landing pages that convert traffic into leads, registrations, or campaign actions.",
+      "az": "Trafiki lead-lərə, qeydiyyatlara və ya kampaniya hərəkətlərinə çevirən landing səhifələr yaratmaq."
+    },
+    "scenes": [
+      {
+        "heading": {
+          "ru": "Открываем лендинги",
+          "en": "Open landing pages",
+          "az": "Landing səhifələri açırıq"
+        },
+        "body": {
+          "ru": "Landing Pages — это не просто конструктор. Это источник лидов для кампаний, вебинаров, демо-заявок и офферов.",
+          "en": "Landing Pages shows pages used for webinars, demo requests, service offers, and campaign-specific conversion.",
+          "az": "Landing Pages webinar, demo sorğusu, xidmət təklifi və kampaniyaya xüsusi konversiya üçün istifadə olunan səhifələri göstərir."
+        },
+        "why": {
+          "ru": "Маркетологу важно не создать страницу, а получить конверсию.",
+          "en": "A campaign needs a destination built for one action.",
+          "az": "Kampaniyaya bir konkret addım üçün qurulmuş istiqamət lazımdır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Читаем карточки страниц",
+          "en": "Create or edit a page",
+          "az": "Səhifə yaradır və ya redaktə edirik"
+        },
+        "body": {
+          "ru": "Посмотрите статус, просмотры, лиды и CVR. Если просмотров много, а лидов мало — проблема в оффере, форме или CTA.",
+          "en": "Open an existing page or create a new one. Check title, URL slug, status, and the main offer.",
+          "az": "Mövcud səhifəni açın və ya yenisini yaradın. Başlığı, URL slug-u, statusu və əsas təklifi yoxlayın."
+        },
+        "why": {
+          "ru": "Метрики сразу показывают, какую страницу нужно улучшать.",
+          "en": "The page must clearly say what the visitor gets.",
+          "az": "Səhifə ziyarətçinin nə əldə edəcəyini aydın deməlidir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Открываем редактор",
+          "en": "Build the conversion block",
+          "az": "Konversiya blokunu qururuq"
+        },
+        "body": {
+          "ru": "Нажмите редактировать. Проверьте hero, ценность, доказательства, форму и кнопку. Страница должна вести к одному действию.",
+          "en": "Add form fields, CTA button, trust proof, and short supporting copy. Keep the path simple.",
+          "az": "Forma sahələri, CTA düyməsi, etibar sübutu və qısa dəstəkləyici mətn əlavə edin. Yolu sadə saxlayın."
+        },
+        "why": {
+          "ru": "Лендинг продает фокусом, а не количеством блоков.",
+          "en": "Every extra distraction can lower conversion.",
+          "az": "Hər artıq yayındırıcı element konversiyanı azalda bilər."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Проверяем форму",
+          "en": "Preview before publishing",
+          "az": "Publikasiyadan əvvəl preview edirik"
+        },
+        "body": {
+          "ru": "Убедитесь, что форма собирает нужные поля и не спрашивает лишнего. Чем тяжелее форма, тем ниже конверсия.",
+          "en": "Check desktop and mobile layout, form behavior, required fields, and thank-you state.",
+          "az": "Desktop və mobil görünüşü, form davranışını, məcburi sahələri və thank-you vəziyyətini yoxlayın."
+        },
+        "why": {
+          "ru": "Форма — место, где интерес превращается в лид.",
+          "en": "Landing errors waste paid and organic traffic.",
+          "az": "Landing səhvləri ödənişli və orqanik trafiki boşa xərcləyir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Открываем заявки",
+          "en": "Publish and connect campaigns",
+          "az": "Yayımlayır və kampaniyaya bağlayırıq"
+        },
+        "body": {
+          "ru": "Перейдите во вкладку заявок. Здесь видно, кто оставил форму и какая страница дала результат.",
+          "en": "Publish the page and use the link in campaigns, events, journeys, ads, or social posts.",
+          "az": "Səhifəni yayımlayın və linki campaigns, events, journeys, reklamlar və ya sosial postlarda istifadə edin."
+        },
+        "why": {
+          "ru": "Маркетолог должен видеть не только страницу, но и лиды после нее.",
+          "en": "The landing page is where interest becomes a measurable lead.",
+          "az": "Landing səhifə marağın ölçülə bilən lead-ə çevrildiyi yerdir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Управляем публикацией",
+          "en": "Measure conversion",
+          "az": "Konversiyanı ölçürük"
+        },
+        "body": {
+          "ru": "Публикуйте, снимайте с публикации и улучшайте страницы по CVR. Слабую страницу нужно менять до масштабирования трафика.",
+          "en": "Review views, leads, conversion rate, and which campaign or source created the submissions.",
+          "az": "Baxışları, lead-ləri, conversion rate-i və müraciətləri hansı kampaniya və ya mənbənin yaratdığını yoxlayın."
+        },
+        "why": {
+          "ru": "Landing Pages связывает кампанию, форму и измеримую конверсию.",
+          "en": "Landing performance tells you whether the offer and traffic match.",
+          "az": "Landing performansı təkliflə trafikin uyğun olub-olmadığını göstərir."
+        }
+      }
+    ],
+    "outcome": {
+      "ru": "Маркетолог понимает, какая страница конвертирует, что исправлять и где смотреть заявки.",
+      "en": "The landing page has a clear offer, form, CTA, publication status, and measurable conversion path.",
+      "az": "Landing səhifədə aydın təklif, forma, CTA, publikasiya statusu və ölçülə bilən konversiya yolu var."
+    }
+  },
+  "surveys": {
+    "route": "/surveys",
+    "group": {
+      "ru": "Маркетинг",
+      "en": "Marketing",
+      "az": "Marketinq"
+    },
+    "title": {
+      "ru": "Surveys and NPS",
+      "en": "Surveys and NPS",
+      "az": "Sorğular və NPS"
+    },
+    "goal": {
+      "ru": "Собрать обратную связь, понять NPS и превратить оценку клиента в действие.",
+      "en": "Collect feedback through NPS, CSAT, CES, or custom surveys and turn answers into action.",
+      "az": "NPS, CSAT, CES və ya xüsusi sorğularla feedback toplamaq və cavabları fəaliyyətə çevirmək."
+    },
+    "scenes": [
+      {
+        "heading": {
+          "ru": "Открываем опросы",
+          "en": "Open surveys",
+          "az": "Sorğuları açırıq"
+        },
+        "body": {
+          "ru": "Surveys and NPS нужен не ради формы. Он помогает понять, где клиент доволен, где сомневается и где готов уйти.",
+          "en": "Surveys collects customer feedback: satisfaction, effort, recommendation, product feedback, or service quality.",
+          "az": "Surveys müştəri feedback-i toplayır: məmnunluq, effort, tövsiyə ehtimalı, məhsul rəyi və ya servis keyfiyyəti."
+        },
+        "why": {
+          "ru": "Обратная связь должна влиять на удержание и продукт.",
+          "en": "Marketing needs customer truth, not only campaign metrics.",
+          "az": "Marketinqə yalnız kampaniya metrikaları yox, müştərinin real fikri lazımdır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Читаем карточку опроса",
+          "en": "Choose survey type",
+          "az": "Sorğu tipini seçirik"
+        },
+        "body": {
+          "ru": "Посмотрите ответы, promoters, NPS, статус и тип опроса. Низкий NPS — это сигнал риска, а не просто красное число.",
+          "en": "Use NPS for loyalty, CSAT for satisfaction, CES for effort, or a custom survey for specific research.",
+          "az": "Loyallıq üçün NPS, məmnunluq üçün CSAT, effort üçün CES və konkret araşdırma üçün custom survey istifadə edin."
+        },
+        "why": {
+          "ru": "Маркетолог должен понимать, какие клиенты требуют реакции.",
+          "en": "The question type must match the decision you want to make.",
+          "az": "Sual tipi vermək istədiyiniz qərara uyğun olmalıdır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Создаем новый опрос",
+          "en": "Set audience and channel",
+          "az": "Auditoriya və kanal seçirik"
+        },
+        "body": {
+          "ru": "Выберите тип: NPS, CSAT, CES или свой опрос. Укажите вопрос, шкалу и дополнительные вопросы.",
+          "en": "Send surveys to the right segment after a purchase, ticket, event, campaign, or onboarding step.",
+          "az": "Sorğunu alışdan, ticket-dən, tədbirdən, kampaniyadan və ya onboarding addımından sonra düzgün seqmentə göndərin."
+        },
+        "why": {
+          "ru": "Тип опроса должен соответствовать цели: лояльность, удовлетворенность или усилие клиента.",
+          "en": "Feedback is most useful when it is asked at the right moment.",
+          "az": "Feedback düzgün anda soruşulanda ən faydalı olur."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Распространяем опрос",
+          "en": "Read the score",
+          "az": "Skoru oxuyuruq"
+        },
+        "body": {
+          "ru": "Скопируйте ссылку, откройте публичную форму или отправьте приглашение. Опрос можно встроить в campaign или journey.",
+          "en": "Watch responses, promoters, passives, detractors, average score, and written comments.",
+          "az": "Cavabları, promouterləri, passivləri, detractor-ları, orta skoru və yazılı şərhləri izləyin."
+        },
+        "why": {
+          "ru": "Опрос работает только тогда, когда доходит до правильной аудитории.",
+          "en": "The score shows trend; comments explain the reason.",
+          "az": "Skor trendi göstərir, şərhlər isə səbəbi izah edir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Анализируем ответы",
+          "en": "Trigger follow-up",
+          "az": "Follow-up başladırıq"
+        },
+        "body": {
+          "ru": "Смотрите promoters, passives и detractors. Для detractors нужен follow-up, задача или отдельный сегмент риска.",
+          "en": "Send detractors to support, promoters to referral or review campaigns, and passives to education or product content.",
+          "az": "Detractor-ları support-a, promouterləri referral və ya review kampaniyasına, passivləri isə maarifləndirici və ya product kontentə yönləndirin."
+        },
+        "why": {
+          "ru": "Негативная оценка без реакции только фиксирует проблему.",
+          "en": "Feedback only matters when it changes what the team does next.",
+          "az": "Feedback komandanın növbəti addımını dəyişəndə dəyərli olur."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Закрываем цикл",
+          "en": "Track improvement",
+          "az": "Yaxşılaşmanı izləyirik"
+        },
+        "body": {
+          "ru": "Свяжите результат с Journeys, Campaigns или Support: поблагодарить promoters, вернуть passives, обработать detractors.",
+          "en": "Compare scores over time and by segment, campaign, product, or service team.",
+          "az": "Skorları zaman üzrə, seqment, kampaniya, məhsul və ya servis komandası üzrə müqayisə edin."
+        },
+        "why": {
+          "ru": "Surveys ценен, когда обратная связь превращается в действие.",
+          "en": "Surveys turn customer voice into a measurable improvement loop.",
+          "az": "Sorğular müştəri səsini ölçülə bilən yaxşılaşma dövrəsinə çevirir."
+        }
+      }
+    ],
+    "outcome": {
+      "ru": "Опрос создан, распространен, а результаты дают понятные действия по клиентам.",
+      "en": "The survey has a clear question, audience, distribution method, and follow-up logic for each response type.",
+      "az": "Sorğunun aydın sualı, auditoriyası, göndəriş metodu və hər cavab tipi üçün follow-up məntiqi var."
+    }
+  },
+  "account-engagement": {
+    "route": "/accounts/engagement",
+    "group": {
+      "ru": "Маркетинг",
+      "en": "Marketing",
+      "az": "Marketinq"
+    },
+    "title": {
+      "ru": "Account Engagement",
+      "en": "Account Engagement",
+      "az": "Account cəlb olunması"
+    },
+    "goal": {
+      "ru": "Понять, какие компании проявляют интерес, и передать продажам готовые аккаунты.",
+      "en": "Understand engagement at account level so ABM and B2B campaigns focus on the right companies.",
+      "az": "ABM və B2B kampaniyalarının düzgün şirkətlərə fokuslanması üçün account səviyyəsində cəlb olunmanı anlamaq."
+    },
+    "scenes": [
+      {
+        "heading": {
+          "ru": "Открываем ABM-экран",
+          "en": "Open account engagement",
+          "az": "Account engagement açırıq"
+        },
+        "body": {
+          "ru": "В B2B маркетинге важен не только контакт. Account Engagement показывает интерес на уровне компании.",
+          "en": "Account Engagement groups marketing activity by company instead of only by individual contact.",
+          "az": "Account Engagement marketinq aktivliyini yalnız fərdi contact üzrə yox, şirkət üzrə qruplaşdırır."
+        },
+        "why": {
+          "ru": "Покупает не один email-адрес, а организация с несколькими участниками.",
+          "en": "In B2B, several people from one company can signal the same buying intent.",
+          "az": "B2B-də bir şirkətdən bir neçə insan eyni alış niyyətini göstərə bilər."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Смотрим список аккаунтов",
+          "en": "Review account signals",
+          "az": "Account siqnallarını yoxlayırıq"
+        },
+        "body": {
+          "ru": "Проверьте engagement score, intent, активность, последние сигналы и стадию.",
+          "en": "Check visits, campaign clicks, form submissions, event attendance, email engagement, and recent contact activity.",
+          "az": "Ziyarətlərə, kampaniya kliklərinə, form göndərişlərinə, tədbir iştirakına, email engagement-a və son contact aktivliyinə baxın."
+        },
+        "why": {
+          "ru": "Score помогает увидеть, где интерес уже сформирован.",
+          "en": "Account-level signals reveal demand that one contact alone may not show.",
+          "az": "Account səviyyəli siqnallar tək contact-ın göstərmədiyi tələbi üzə çıxarır."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Фильтруем приоритет",
+          "en": "Compare accounts",
+          "az": "Account-ları müqayisə edirik"
+        },
+        "body": {
+          "ru": "Выберите компании с высоким intent или падающей активностью. Это две разные задачи: продажа и реактивация.",
+          "en": "Sort by engagement score, recent activity, target fit, or pipeline value.",
+          "az": "Engagement skoru, son aktivlik, target uyğunluğu və ya pipeline dəyərinə görə sıralayın."
+        },
+        "why": {
+          "ru": "ABM требует приоритета, иначе команда распыляется.",
+          "en": "ABM needs prioritization across companies, not only a list of leads.",
+          "az": "ABM yalnız lead siyahısı deyil, şirkətlər üzrə prioritetləşdirmə tələb edir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Открываем детали",
+          "en": "Open the account detail",
+          "az": "Account detalını açırıq"
+        },
+        "body": {
+          "ru": "В detail drawer смотрите контакты, касания, кампании, события и следующие действия.",
+          "en": "Review people, roles, touches, campaign history, open opportunities, and next recommended action.",
+          "az": "İnsanları, rolları, təmasları, kampaniya tarixçəsini, açıq imkanları və tövsiyə olunan növbəti addımı yoxlayın."
+        },
+        "why": {
+          "ru": "Контекст объясняет, почему аккаунт важен именно сейчас.",
+          "en": "The detail view turns signals into a coordinated play.",
+          "az": "Detal görünüşü siqnalları koordinasiyalı plana çevirir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Выбираем действие",
+          "en": "Coordinate with sales",
+          "az": "Satışla koordinasiya edirik"
+        },
+        "body": {
+          "ru": "Можно передать sales, создать задачу, запустить ABM campaign или добавить компанию в segment.",
+          "en": "Create a sales task, launch an account-specific campaign, or move the account into a journey.",
+          "az": "Satış task-ı yaradın, account-a xüsusi kampaniya başladın və ya account-u journey-yə daxil edin."
+        },
+        "why": {
+          "ru": "Маркетинг должен передавать не холодные имена, а доказанный интерес.",
+          "en": "Marketing engagement is strongest when sales follows up at the right moment.",
+          "az": "Marketinq engagement-ı satış düzgün anda follow-up edəndə daha güclü olur."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Связываем маркетинг и продажи",
+          "en": "Measure account movement",
+          "az": "Account hərəkətini ölçürük"
+        },
+        "body": {
+          "ru": "Account Engagement дает продажам общую картину: кто интересовался, чем, когда и какой следующий шаг логичен.",
+          "en": "Track whether engaged accounts become meetings, opportunities, pipeline, and revenue.",
+          "az": "Cəlb olunmuş account-ların görüşə, opportunity-yə, pipeline-a və gəlirə çevrilib-çevrilmədiyini izləyin."
+        },
+        "why": {
+          "ru": "Это превращает маркетинг в источник готовых коммерческих возможностей.",
+          "en": "Account Engagement links ABM effort to real B2B growth.",
+          "az": "Account Engagement ABM əməyini real B2B artımı ilə bağlayır."
+        }
+      }
+    ],
+    "outcome": {
+      "ru": "Выбран аккаунт с доказанным интересом и понятным следующим действием для маркетинга или продаж.",
+      "en": "The marketer knows which accounts are active, which are warming up, and which need coordinated sales action.",
+      "az": "Marketoloq hansı account-ların aktiv, hansılarının isinməkdə olduğunu və hansılar üçün satışla koordinasiyalı addım lazım olduğunu bilir."
+    }
+  }
+}

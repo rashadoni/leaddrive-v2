@@ -1,0 +1,3 @@
+# The worker connects to the separately installed Chrome for Testing over CDP.
+# Do not run `playwright install`; no second browser is required.
+playwright==1.61.0

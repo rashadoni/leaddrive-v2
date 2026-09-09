@@ -1,0 +1,136 @@
+{
+  "apiVersion": "event-platform.leaddrive.io/v1",
+  "kind": "KafkaTopicCatalog",
+  "status": "template-not-applied",
+  "environmentToken": "<env>",
+  "automaticTopicCreation": false,
+  "defaults": {
+    "replicationFactor": 3,
+    "config": {
+      "min.insync.replicas": "2",
+      "unclean.leader.election.enable": "false",
+      "compression.type": "producer",
+      "message.timestamp.type": "CreateTime"
+    }
+  },
+  "topicFamilies": [
+    {
+      "kind": "events",
+      "nameTemplate": "ld.<env>.<domain>.events.v1",
+      "partitionsFromDomain": true,
+      "retentionMsFromDomain": true,
+      "config": {
+        "cleanup.policy": "delete"
+      }
+    },
+    {
+      "kind": "replay",
+      "nameTemplate": "ld.<env>.<domain>.replay.v1",
+      "partitionsFromDomain": true,
+      "retentionMs": 1209600000,
+      "config": {
+        "cleanup.policy": "delete"
+      }
+    },
+    {
+      "kind": "quarantine",
+      "nameTemplate": "ld.<env>.<domain>.quarantine.v1",
+      "partitions": 6,
+      "retentionMs": 7776000000,
+      "config": {
+        "cleanup.policy": "delete"
+      }
+    }
+  ],
+  "domains": [
+    { "name": "ai", "owner": "automation-platform", "partitions": 12, "eventRetentionMs": 7776000000 },
+    { "name": "analytics", "owner": "analytics-platform", "partitions": 24, "eventRetentionMs": 7776000000 },
+    { "name": "commerce", "owner": "commerce-platform", "partitions": 24, "eventRetentionMs": 7776000000 },
+    { "name": "contracts", "owner": "contracts-platform", "partitions": 12, "eventRetentionMs": 7776000000 },
+    { "name": "crm", "owner": "crm-platform", "partitions": 24, "eventRetentionMs": 7776000000 },
+    { "name": "data-cloud", "owner": "data-cloud-platform", "partitions": 48, "eventRetentionMs": 7776000000 },
+    { "name": "education", "owner": "education-cloud", "partitions": 12, "eventRetentionMs": 7776000000 },
+    { "name": "energy", "owner": "energy-cloud", "partitions": 24, "eventRetentionMs": 7776000000 },
+    { "name": "finance", "owner": "finance-platform", "partitions": 24, "eventRetentionMs": 7776000000 },
+    { "name": "financial-services", "owner": "financial-services-cloud", "partitions": 12, "eventRetentionMs": 7776000000 },
+    { "name": "health", "owner": "health-cloud", "partitions": 12, "eventRetentionMs": 7776000000 },
+    { "name": "insurance", "owner": "insurance-cloud", "partitions": 12, "eventRetentionMs": 7776000000 },
+    { "name": "loyalty", "owner": "loyalty-platform", "partitions": 24, "eventRetentionMs": 7776000000 },
+    { "name": "marketing", "owner": "marketing-platform", "partitions": 24, "eventRetentionMs": 7776000000 },
+    { "name": "media", "owner": "media-cloud", "partitions": 24, "eventRetentionMs": 7776000000 },
+    { "name": "mtm", "owner": "field-platform", "partitions": 48, "eventRetentionMs": 7776000000 },
+    { "name": "nonprofit", "owner": "nonprofit-cloud", "partitions": 12, "eventRetentionMs": 7776000000 },
+    { "name": "omnichannel", "owner": "communications-platform", "partitions": 48, "eventRetentionMs": 7776000000 },
+    { "name": "public-sector", "owner": "public-sector-cloud", "partitions": 12, "eventRetentionMs": 7776000000 },
+    { "name": "revenue-recognition", "owner": "finance-platform", "partitions": 12, "eventRetentionMs": 7776000000 },
+    { "name": "sales", "owner": "sales-platform", "partitions": 24, "eventRetentionMs": 7776000000 },
+    { "name": "settings", "owner": "platform-foundations", "partitions": 12, "eventRetentionMs": 7776000000 },
+    { "name": "sms-otp", "owner": "identity-platform", "partitions": 12, "eventRetentionMs": 7776000000 },
+    { "name": "social", "owner": "social-platform", "partitions": 24, "eventRetentionMs": 7776000000 },
+    { "name": "support", "owner": "support-platform", "partitions": 24, "eventRetentionMs": 7776000000 },
+    { "name": "tpm", "owner": "trade-promotion-platform", "partitions": 24, "eventRetentionMs": 7776000000 },
+    { "name": "voip", "owner": "telephony-platform", "partitions": 24, "eventRetentionMs": 7776000000 }
+  ],
+  "controlTopics": [
+    {
+      "name": "ld.<env>.event-platform.replay-control.v1",
+      "owner": "event-platform",
+      "partitions": 6,
+      "replicationFactor": 3,
+      "config": {
+        "cleanup.policy": "compact",
+        "min.insync.replicas": "2",
+        "unclean.leader.election.enable": "false",
+        "delete.retention.ms": "86400000"
+      }
+    },
+    {
+      "name": "ld.<env>.event-platform.replay-audit.v1",
+      "owner": "event-platform",
+      "partitions": 12,
+      "replicationFactor": 3,
+      "config": {
+        "cleanup.policy": "delete",
+        "retention.ms": "31536000000",
+        "min.insync.replicas": "2",
+        "unclean.leader.election.enable": "false"
+      }
+    },
+    {
+      "name": "ld.<env>.effects.requests.v1",
+      "owner": "effect-platform",
+      "partitions": 24,
+      "replicationFactor": 3,
+      "config": {
+        "cleanup.policy": "delete",
+        "retention.ms": "7776000000",
+        "min.insync.replicas": "2",
+        "unclean.leader.election.enable": "false"
+      }
+    },
+    {
+      "name": "ld.<env>.effects.results.v1",
+      "owner": "effect-platform",
+      "partitions": 24,
+      "replicationFactor": 3,
+      "config": {
+        "cleanup.policy": "delete",
+        "retention.ms": "31536000000",
+        "min.insync.replicas": "2",
+        "unclean.leader.election.enable": "false"
+      }
+    },
+    {
+      "name": "ld.<env>.security.audit.v1",
+      "owner": "security-platform",
+      "partitions": 12,
+      "replicationFactor": 3,
+      "config": {
+        "cleanup.policy": "delete",
+        "retention.ms": "31536000000",
+        "min.insync.replicas": "2",
+        "unclean.leader.election.enable": "false"
+      }
+    }
+  ]
+}

@@ -1,0 +1,281 @@
+name: SwissMed MTM Browser Evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Deployed tenant origin
+        required: true
+        default: https://app.leaddrivecrm.org
+        type: choice
+        options:
+          - https://app.leaddrivecrm.org
+      organization_slug:
+        description: Tenant slug used by the credentials provider
+        required: true
+        default: leaddrive
+        type: choice
+        options:
+          - leaddrive
+      roles:
+        description: Single principal to exercise per bounded production run
+        required: true
+        default: admin
+        type: choice
+        options:
+          - admin
+          - agent
+      viewports:
+        description: Single viewport to capture per bounded production run
+        required: true
+        default: desktop
+        type: choice
+        options:
+          - desktop
+          - tablet
+          - tablet-landscape
+          - phone
+      scenario_batch:
+        description: Bounded SWM scenario batch (nine references maximum)
+        required: true
+        default: planning
+        type: choice
+        options:
+          - planning
+          - records
+          - routes-guide
+      refresh_fixtures:
+        description: Refresh only the dedicated [QA-SWISSMED] fixtures before capture
+        required: true
+        default: false
+        type: boolean
+      fixture_confirmation:
+        description: Exact tenant-bound confirmation; required only when refreshing fixtures
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  evidence:
+    name: Capture one bounded authenticated SWM evidence batch
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment: production
+    env:
+      MTM_EVIDENCE_BASE_URL: ${{ inputs.base_url }}
+      MTM_EVIDENCE_ORG_SLUG: ${{ inputs.organization_slug }}
+      MTM_EVIDENCE_ROLES: ${{ inputs.roles }}
+      MTM_EVIDENCE_VIEWPORTS: ${{ inputs.viewports }}
+      MTM_EVIDENCE_SCENARIO_BATCH: ${{ inputs.scenario_batch }}
+      MTM_EVIDENCE_REFRESH_FIXTURES: ${{ inputs.refresh_fixtures }}
+      MTM_EVIDENCE_FIXTURE_CONFIRMATION: ${{ inputs.fixture_confirmation }}
+      MTM_EVIDENCE_OUTPUT_DIR: artifacts/swissmed-mtm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Validate locked production target and secret-managed test principals
+        shell: bash
+        env:
+          MTM_EVIDENCE_ADMIN_EMAIL: ${{ secrets.MTM_EVIDENCE_ADMIN_EMAIL }}
+          MTM_EVIDENCE_ADMIN_PASSWORD: ${{ secrets.MTM_EVIDENCE_ADMIN_PASSWORD }}
+          MTM_EVIDENCE_AGENT_EMAIL: ${{ secrets.MTM_EVIDENCE_AGENT_EMAIL }}
+          MTM_EVIDENCE_AGENT_PASSWORD: ${{ secrets.MTM_EVIDENCE_AGENT_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ "$MTM_EVIDENCE_BASE_URL" != "https://app.leaddrivecrm.org" ]] || [[ "$MTM_EVIDENCE_ORG_SLUG" != "leaddrive" ]]; then
+            echo "::error::This workflow is locked to the current leaddrive acceptance tenant"
+            exit 1
+          fi
+          case "$MTM_EVIDENCE_ROLES" in
+            admin|agent) ;;
+            *) echo "::error::Production evidence requires exactly one role"; exit 1 ;;
+          esac
+          case "$MTM_EVIDENCE_VIEWPORTS" in
+            desktop|tablet|tablet-landscape|phone) ;;
+            *) echo "::error::Production evidence requires exactly one viewport"; exit 1 ;;
+          esac
+          case "$MTM_EVIDENCE_SCENARIO_BATCH" in
+            planning|records|routes-guide) ;;
+            *) echo "::error::Production evidence requires one bounded scenario batch"; exit 1 ;;
+          esac
+          if [[ "$MTM_EVIDENCE_ROLES" == *admin* ]] && { [[ -z "$MTM_EVIDENCE_ADMIN_EMAIL" ]] || [[ -z "$MTM_EVIDENCE_ADMIN_PASSWORD" ]]; }; then
+            echo "::error::Configure MTM_EVIDENCE_ADMIN_EMAIL and MTM_EVIDENCE_ADMIN_PASSWORD"
+            exit 1
+          fi
+          if [[ "$MTM_EVIDENCE_ROLES" == *agent* ]] && { [[ -z "$MTM_EVIDENCE_AGENT_EMAIL" ]] || [[ -z "$MTM_EVIDENCE_AGENT_PASSWORD" ]]; }; then
+            echo "::error::Configure MTM_EVIDENCE_AGENT_EMAIL and MTM_EVIDENCE_AGENT_PASSWORD"
+            exit 1
+          fi
+          if [[ "$MTM_EVIDENCE_ADMIN_EMAIL" != "qa.swissmed.admin@leaddrivecrm.org" ]] || [[ "$MTM_EVIDENCE_AGENT_EMAIL" != "qa.swissmed.agent@leaddrivecrm.org" ]]; then
+            echo "::error::Use only the dedicated leaddrive SwissMed QA principals"
+            exit 1
+          fi
+          if [[ "$MTM_EVIDENCE_REFRESH_FIXTURES" == "true" ]]; then
+            if [[ "$MTM_EVIDENCE_FIXTURE_CONFIRMATION" != "leaddrive-swissmed-evidence" ]]; then
+              echo "::error::Fixture refresh requires the exact leaddrive-swissmed-evidence confirmation"
+              exit 1
+            fi
+            if [[ "$MTM_EVIDENCE_ADMIN_PASSWORD" != "$MTM_EVIDENCE_AGENT_PASSWORD" ]]; then
+              echo "::error::Fixture refresh requires one shared generated QA password"
+              exit 1
+            fi
+            if (( ${#MTM_EVIDENCE_ADMIN_PASSWORD} < 24 )); then
+              echo "::error::Fixture refresh password must contain at least 24 characters"
+              exit 1
+            fi
+          fi
+
+      - name: Refresh scoped SwissMed QA fixtures
+        if: ${{ inputs.refresh_fixtures }}
+        shell: bash
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SERVER_SSH_KNOWN_HOSTS: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+          MTM_EVIDENCE_ADMIN_EMAIL: ${{ secrets.MTM_EVIDENCE_ADMIN_EMAIL }}
+          MTM_EVIDENCE_ADMIN_PASSWORD: ${{ secrets.MTM_EVIDENCE_ADMIN_PASSWORD }}
+          MTM_EVIDENCE_AGENT_EMAIL: ${{ secrets.MTM_EVIDENCE_AGENT_EMAIL }}
+          MTM_EVIDENCE_AGENT_PASSWORD: ${{ secrets.MTM_EVIDENCE_AGENT_PASSWORD }}
+        run: |
+          set -euo pipefail
+          APP_DIR="/opt/leaddrive-v2"
+          SEED_RELATIVE="scripts/seeds/zeytunpharm-swissmed-evidence.mjs"
+          SSH_DIR="$RUNNER_TEMP/swissmed-mtm-ssh"
+          PASSWORD_FILE="$RUNNER_TEMP/swissmed-mtm-password"
+          REMOTE_DIR=""
+          REMOTE_PASSWORD_FILE=""
+          [[ -n "$SERVER_HOST" && -n "$SERVER_USER" && -n "$SSH_PRIVATE_KEY" && -n "$SERVER_SSH_KNOWN_HOSTS" ]] || {
+            echo "::error::Production SSH configuration is incomplete"
+            exit 1
+          }
+          [ "$SERVER_HOST" = "13.140.132.245" ] || {
+            echo "::error::SERVER_HOST is not the reviewed production host"
+            exit 1
+          }
+          mkdir -p "$SSH_DIR"
+          chmod 700 "$SSH_DIR"
+          umask 077
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$SSH_DIR/deploy_key"
+          printf '%s\n' "$SERVER_SSH_KNOWN_HOSTS" > "$SSH_DIR/known_hosts"
+          chmod 600 "$SSH_DIR/deploy_key" "$SSH_DIR/known_hosts"
+          ssh-keygen -F "$SERVER_HOST" -f "$SSH_DIR/known_hosts" >/dev/null || {
+            echo "::error::Pinned known_hosts does not contain the production server"
+            exit 1
+          }
+          printf '%s' "$MTM_EVIDENCE_ADMIN_PASSWORD" > "$PASSWORD_FILE"
+          chmod 600 "$PASSWORD_FILE"
+          EXPECTED_SEED_SHA="$(sha256sum "$SEED_RELATIVE" | cut -d' ' -f1)"
+          SSH_OPTIONS=(
+            -o BatchMode=yes
+            -o ConnectTimeout=30
+            -o IdentitiesOnly=yes
+            -o ServerAliveInterval=15
+            -o ServerAliveCountMax=2
+            -o UserKnownHostsFile="$SSH_DIR/known_hosts"
+            -i "$SSH_DIR/deploy_key"
+          )
+          cleanup() {
+            if [[ "$REMOTE_DIR" =~ ^/tmp/swissmed-mtm\.[A-Za-z0-9]{8}$ && "$REMOTE_PASSWORD_FILE" == "$REMOTE_DIR/password" ]]; then
+              ssh "${SSH_OPTIONS[@]}" "$SERVER_USER@$SERVER_HOST" \
+                "rm -f '$REMOTE_PASSWORD_FILE'; rmdir '$REMOTE_DIR' 2>/dev/null || true" >/dev/null 2>&1 || true
+            fi
+            rm -f "$PASSWORD_FILE" "$SSH_DIR/deploy_key" "$SSH_DIR/known_hosts"
+            rmdir "$SSH_DIR" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          REMOTE_DIR="$(ssh "${SSH_OPTIONS[@]}" "$SERVER_USER@$SERVER_HOST" \
+            'umask 077; mktemp -d /tmp/swissmed-mtm.XXXXXXXX')"
+          [[ "$REMOTE_DIR" =~ ^/tmp/swissmed-mtm\.[A-Za-z0-9]{8}$ ]] || {
+            echo "::error::Production server returned an invalid temporary directory"
+            exit 1
+          }
+          REMOTE_PASSWORD_FILE="$REMOTE_DIR/password"
+          scp "${SSH_OPTIONS[@]}" "$PASSWORD_FILE" "$SERVER_USER@$SERVER_HOST:$REMOTE_PASSWORD_FILE"
+          ssh "${SSH_OPTIONS[@]}" "$SERVER_USER@$SERVER_HOST" \
+            "chmod 600 '$REMOTE_PASSWORD_FILE'"
+          ssh "${SSH_OPTIONS[@]}" "$SERVER_USER@$SERVER_HOST" 'bash -s' -- \
+            "$MTM_EVIDENCE_ORG_SLUG" \
+            "$MTM_EVIDENCE_FIXTURE_CONFIRMATION" \
+            "$MTM_EVIDENCE_ADMIN_EMAIL" \
+            "$MTM_EVIDENCE_AGENT_EMAIL" \
+            "$EXPECTED_SEED_SHA" \
+            "$REMOTE_PASSWORD_FILE" <<'REMOTE'
+          set -euo pipefail
+          APP_DIR="/opt/leaddrive-v2"
+          APP_ENV_FILE="${APP_ENV_FILE:-/etc/leaddrive/app.env}"
+          SEED="$APP_DIR/.next/standalone/scripts/seeds/zeytunpharm-swissmed-evidence.mjs"
+          organization_slug="$1"
+          confirmation="$2"
+          admin_email="$3"
+          agent_email="$4"
+          expected_seed_sha="$5"
+          password_file="$6"
+          password_dir="${password_file%/*}"
+          trap 'rm -f "$password_file"; rmdir "$password_dir" 2>/dev/null || true' EXIT
+          [[ -f "$SEED" ]] || { echo "FATAL: deployed SwissMed evidence seed is missing"; exit 1; }
+          actual_seed_sha="$(sha256sum "$SEED" | cut -d' ' -f1)"
+          [[ "$actual_seed_sha" == "$expected_seed_sha" ]] || {
+            echo "FATAL: deployed seed does not match the reviewed workflow revision; deploy main first"
+            exit 1
+          }
+          [[ -f "$APP_ENV_FILE" && ! -L "$APP_ENV_FILE" ]] || { echo "FATAL: canonical app env is missing or is a symlink"; exit 1; }
+          chmod 600 "$password_file"
+          password="$(<"$password_file")"
+          rm -f "$password_file"
+          cd "$APP_DIR/.next/standalone"
+          env \
+            CONFIRM_PROD="$confirmation" \
+            MTM_EVIDENCE_ORG_SLUG="$organization_slug" \
+            MTM_EVIDENCE_ADMIN_EMAIL="$admin_email" \
+            MTM_EVIDENCE_AGENT_EMAIL="$agent_email" \
+            MTM_EVIDENCE_PASSWORD="$password" \
+            node --env-file="$APP_ENV_FILE" "$SEED"
+          REMOTE
+
+      - name: Cleanup fixture access files
+        if: always()
+        shell: bash
+        run: |
+          rm -f \
+            "$RUNNER_TEMP/swissmed-mtm-password" \
+            "$RUNNER_TEMP/swissmed-mtm-ssh/deploy_key" \
+            "$RUNNER_TEMP/swissmed-mtm-ssh/known_hosts"
+          rmdir "$RUNNER_TEMP/swissmed-mtm-ssh" 2>/dev/null || true
+
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Capture browser evidence
+        env:
+          MTM_EVIDENCE_ADMIN_EMAIL: ${{ secrets.MTM_EVIDENCE_ADMIN_EMAIL }}
+          MTM_EVIDENCE_ADMIN_PASSWORD: ${{ secrets.MTM_EVIDENCE_ADMIN_PASSWORD }}
+          MTM_EVIDENCE_AGENT_EMAIL: ${{ secrets.MTM_EVIDENCE_AGENT_EMAIL }}
+          MTM_EVIDENCE_AGENT_PASSWORD: ${{ secrets.MTM_EVIDENCE_AGENT_PASSWORD }}
+        run: node scripts/swissmed-mtm-browser-evidence.mjs
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: swissmed-mtm-browser-evidence-${{ github.run_id }}
+          path: artifacts/swissmed-mtm
+          if-no-files-found: warn
+          retention-days: 30

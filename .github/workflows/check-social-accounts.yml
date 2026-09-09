@@ -1,0 +1,93 @@
+name: Check tenant social accounts
+
+# Read-only diagnostic: lists a tenant's connected social accounts, channel
+# configs (names only) and monitoring-source coverage on prod, so an operator
+# can verify what a channel connect actually produced. No tokens or secrets
+# are printed. It is dispatch-only because it uploads a reviewed helper into
+# the live tree before running the read-only query.
+
+on:
+  workflow_dispatch:
+    inputs:
+      slug:
+        description: "Tenant slug to inspect"
+        required: true
+        default: "brandprotection"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # Inputs become part of a remote command line — reject anything outside the
+      # strict shape before it gets near a shell (F-37). The value is
+      # interpolated into a quoted string the REMOTE shell parses, so a single
+      # quote in it closes the quoting and the rest runs as root on production.
+      - name: Validate inputs
+        env:
+          IN_SLUG: ${{ inputs.slug }}
+        run: |
+          SLUG_RE='^[a-z0-9]([a-z0-9-]{0,78}[a-z0-9])?$'
+          [[ "$IN_SLUG" =~ $SLUG_RE ]] \
+            || { echo "FATAL: slug has an unexpected shape"; exit 1; }
+
+
+      # Fresh copies so this never waits on a deploy (same pattern as the
+      # seed/repair workflows).
+      - name: Setup pinned production SSH
+        uses: ./.github/actions/setup-production-ssh
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server-host: ${{ secrets.SERVER_HOST }}
+          known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+
+      - name: Upload fresh script to server
+        run: |
+          ssh -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "mkdir -p /opt/leaddrive-v2/.next/standalone/scripts"
+          scp -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
+            scripts/_rls.mjs scripts/check-social-accounts.mjs \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/leaddrive-v2/.next/standalone/scripts/
+
+      - name: Run check on server (read-only)
+        env:
+          CHECK_SLUG: ${{ inputs.slug || 'brandprotection' }}
+        run: |
+          ssh -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "CHECK_SLUG='$CHECK_SLUG' bash -s" <<'REMOTE'
+          set -euo pipefail
+          APP_DIR="/opt/leaddrive-v2"
+          APP_ENV_FILE="${APP_ENV_FILE:-/etc/leaddrive/app.env}"
+          SCRIPT="$APP_DIR/.next/standalone/scripts/check-social-accounts.mjs"
+          [ -f "$APP_ENV_FILE" ] || { echo "FATAL: canonical app env missing"; exit 1; }
+          read_env() {
+            sed -n "s/^[[:space:]]*\(export[[:space:]]\+\)\?$1[[:space:]]*=[[:space:]]*//p" "$APP_ENV_FILE" \
+              | head -1 | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'\$/\1/"
+          }
+          DATABASE_URL="$(read_env DATABASE_URL)"
+          NEXTAUTH_SECRET="$(read_env NEXTAUTH_SECRET)"
+          APIFY_API_TOKEN="$(read_env APIFY_API_TOKEN)"
+          YOUTUBE_API_KEY="$(read_env YOUTUBE_API_KEY)"
+          [ -n "$DATABASE_URL" ] || { echo "FATAL: DATABASE_URL not found in canonical app env"; exit 1; }
+          DATABASE_URL="$DATABASE_URL" \
+            NEXTAUTH_SECRET="$NEXTAUTH_SECRET" \
+            APIFY_API_TOKEN="$APIFY_API_TOKEN" \
+            YOUTUBE_API_KEY="$YOUTUBE_API_KEY" \
+            node "$SCRIPT" --slug="$CHECK_SLUG"
+          REMOTE
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

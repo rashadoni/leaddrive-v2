@@ -1,0 +1,121 @@
+name: Repair tenant module visibility
+
+# Manually-triggered operator job: reconciles a tenant's `Organization.modules`
+# JSON column with its authoritative `Organization.features` array, so modules
+# a superadmin toggled OFF in /admin/tenants/<id>/edit stop being re-granted by
+# stale column entries (written by Advisor Suite activation / capability
+# grants before the reconcile-on-save fix shipped).
+#
+# Runs scripts/repair-tenant-module-visibility.mjs ON THE SERVER with
+# DATABASE_URL read from /etc/leaddrive/app.env (same mechanics as
+# seed-brandprotection.yml). The fresh script is scp'd up, so this workflow
+# never waits on a deploy to pick up script fixes.
+#
+# Dry-run by default. It is dispatch-only and shares the production-deploy lock;
+# landing workflow code must never repair customer state as a side effect.
+
+on:
+  workflow_dispatch:
+    inputs:
+      slug:
+        description: "Tenant slug to repair (empty = ALL tenants)"
+        required: false
+        default: "brandprotection"
+      execute:
+        description: "Write changes (no = dry-run report only)"
+        required: true
+        type: choice
+        default: "no"
+        options: ["no", "yes"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # Inputs become part of a remote command line — reject anything outside the
+      # strict shape before it gets near a shell. Verbatim from
+      # set-tenant-user-password.yml, which already does this; F-37.
+      #
+      # The value is interpolated into "SLUG='$SLUG' bash -s", so a single quote
+      # in it closes the quoting and the rest runs as root on production.
+      - name: Validate inputs
+        env:
+          IN_SLUG: ${{ inputs.slug }}
+        run: |
+          SLUG_RE='^[a-z0-9]([a-z0-9-]{0,78}[a-z0-9])?$'
+          [[ "$IN_SLUG" =~ $SLUG_RE ]] \
+            || { echo "FATAL: slug has an unexpected shape"; exit 1; }
+
+
+      - name: Setup pinned production SSH
+        uses: ./.github/actions/setup-production-ssh
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server-host: ${{ secrets.SERVER_HOST }}
+          known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+
+      # The deploy tarball ships scripts/, but that copy is only as fresh as
+      # the last deploy — upload the checked-out script so this workflow never
+      # waits on a deploy (same pattern as seed-brandprotection.yml).
+      - name: Upload fresh script to server
+        run: |
+          ssh -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "mkdir -p /opt/leaddrive-v2/.next/standalone/scripts"
+          scp -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
+            scripts/_rls.mjs \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/leaddrive-v2/.next/standalone/scripts/_rls.mjs
+          scp -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
+            scripts/repair-tenant-module-visibility.mjs \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/leaddrive-v2/.next/standalone/scripts/repair-tenant-module-visibility.mjs
+
+      - name: Run repair on server
+        env:
+          # NO fallback on slug: an EMPTY slug is meaningful (= ALL tenants) and
+          # `|| 'default'` would silently rescope a fleet-wide dispatch to one
+          # tenant. The dispatch default lives on the input itself.
+          REPAIR_SLUG: ${{ inputs.slug }}
+          REPAIR_EXECUTE: ${{ inputs.execute || 'no' }}
+        run: |
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "REPAIR_SLUG='$REPAIR_SLUG' REPAIR_EXECUTE='$REPAIR_EXECUTE' bash -s" <<'REMOTE'
+          set -euo pipefail
+          APP_DIR="/opt/leaddrive-v2"
+          APP_ENV_FILE="${APP_ENV_FILE:-/etc/leaddrive/app.env}"
+          SCRIPT="$APP_DIR/.next/standalone/scripts/repair-tenant-module-visibility.mjs"
+          [ -f "$SCRIPT" ] || { echo "FATAL: $SCRIPT missing"; exit 1; }
+          [ -f "$APP_ENV_FILE" ] || { echo "FATAL: canonical app env missing"; exit 1; }
+
+          # Tolerant KEY=VALUE reader (same semantics as server-deploy.sh):
+          # strips optional export prefix and surrounding quotes.
+          read_env() {
+            sed -n "s/^[[:space:]]*\(export[[:space:]]\+\)\?$1[[:space:]]*=[[:space:]]*//p" "$APP_ENV_FILE" \
+              | head -1 | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'\$/\1/"
+          }
+          DATABASE_URL="$(read_env DATABASE_URL)"
+          [ -n "$DATABASE_URL" ] || { echo "FATAL: DATABASE_URL not found in canonical app env"; exit 1; }
+
+          cd "$APP_DIR"
+          SLUG_FLAG=""
+          [ -n "$REPAIR_SLUG" ] && SLUG_FLAG="--slug=$REPAIR_SLUG"
+          EXEC_FLAG=""
+          [ "$REPAIR_EXECUTE" = "yes" ] && EXEC_FLAG="--execute"
+          DATABASE_URL="$DATABASE_URL" node "$SCRIPT" $SLUG_FLAG $EXEC_FLAG
+          REMOTE
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

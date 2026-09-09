@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "social-provider-control-v2",
+  "datasetVersion": "example-2026-07-13",
+  "items": [
+    {
+      "id": "instagram-en-acme-001",
+      "platform": "instagram",
+      "locale": "en",
+      "contentKind": "POST",
+      "query": "Acme Robotics",
+      "expectedUrls": [
+        "https://instagram.com/p/EXAMPLE1",
+        "https://instagram.com/reel/EXAMPLE2"
+      ],
+      "requiredCapabilities": [
+        "DISCOVER_URLS",
+        "ENRICH_CONTENT",
+        "READ_COMMENTS",
+        "READ_MEDIA",
+        "UPDATE_METRICS"
+      ],
+      "expectedCommentIds": [
+        "example-comment-1",
+        "example-reply-1"
+      ],
+      "providerVisibleCommentIds": [
+        "example-comment-1"
+      ],
+      "expectedMediaKinds": [
+        "VIDEO",
+        "THUMBNAIL"
+      ],
+      "providerVisibleMediaKinds": [
+        "VIDEO",
+        "THUMBNAIL"
+      ],
+      "expectedMetricFields": [
+        "views",
+        "likes",
+        "comments"
+      ]
+    }
+  ]
+}

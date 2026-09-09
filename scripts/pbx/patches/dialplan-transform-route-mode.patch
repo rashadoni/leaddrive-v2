@@ -1,0 +1,71 @@
+Make the generator emit the corrected route mode, not just the generated file.
+
+Applies to fanum_dialplan_transform.py in the reviewed control-plane bundle.
+
+  before: cdea344dd8c526509a2d83e69638a7745a40da2ab1c66357f739331da9d7500f
+  after:  2ef60581e316084aa143bd7b4b7d1a785026b98b939790dddc7cb21605fd439a
+
+  Computed 2026-08-19 by applying the three edits below to the bundle copy on
+  the PBX and hashing the result. It matches the value fanum-pbx-stage already
+  pins, which means the digest rolled forward in the reconciliation was taken
+  from exactly this change and nothing else -- the one link in that chain the
+  repository could not previously check.
+
+## Why this exists
+
+dialplan-route-mode.patch fixed the live /etc/asterisk/extensions_fanum.conf so
+AI calls stopped declaring themselves "human" and being refused authorization.
+But that file is generated: this transform writes it during every cutover, and
+it hard-codes the mode per context. So the next `pause-and-deploy-pbx` would
+regenerate the broken form and AI calls would stop again -- with no error
+anywhere, because from the wrapper's point of view everything verified.
+
+Fixing the generated file without fixing the generator is the kind of repair
+that looks finished and quietly expires.
+
+## The change
+
+`_transform_context` is called twice, once per outbound context, and stamps a
+fixed mode into each. The CRM only ever dials the tenant's one configured
+context and switches the *answered* context instead, so the human context has
+to derive the mode from the call rather than assert it. The AI context keeps
+its literal "ai": nothing reaches it except an explicitly AI-routed call.
+
+`verify_fanum` counts the same string it wrote, so it has to expect the derived
+form for the human context or the transform rejects its own output.
+
+--- a/fanum_dialplan_transform.py
++++ b/fanum_dialplan_transform.py
+@@
++DERIVED_HUMAN_MODE = '${IF($["${FANUM_CALL_MODE}"="ai"]?ai:human)}'
++
++
+ def build_main(text: str) -> str:
+@@ -142,1 +145,4 @@
+-        indent + "same => n,Set(FANUM_ROUTE_MODE=" + mode + ")" + newline,
++        indent
++        + "same => n,Set(FANUM_ROUTE_MODE="
++        + (DERIVED_HUMAN_MODE if mode == "human" else mode)
++        + ")" + newline,
+@@ -193,1 +199,2 @@
+-        if block.count(f"Set(FANUM_ROUTE_MODE={mode})") != 1:
++        expected_mode = DERIVED_HUMAN_MODE if mode == "human" else mode
++        if block.count(f"Set(FANUM_ROUTE_MODE={expected_mode})") != 1:
+
+## How to apply
+
+Apply the two hunks plus the constant to the bundle copy, then:
+
+1. `python3 -c "import fanum_dialplan_transform"` to confirm it still parses,
+   and run the bundle's own transform tests if they are present.
+2. Compute the new sha256 and record it as `after:` above.  [done 2026-08-19]
+3. Roll that digest forward in the cutover wrapper's
+   EXPECTED_DIALPLAN_TRANSFORM_SHA256, which changes the wrapper's own digest,
+   which must then be rolled forward in `scripts/pbx/fanum-pbx-stage`
+   (PAYLOAD_DIGESTS) and in EXPECTED_PBX_WRAPPER_SHA256 in
+   `.github/workflows/set-voice-provider-registry-cutover.yml` and its test.
+4. Re-stage, re-cut over on a quiet window, and place one test call before
+   declaring it good.
+
+Step 3 is the whole reason this is fiddly: every pinned digest is nested inside
+the next one. Do them in that order and each check passes on the first run.

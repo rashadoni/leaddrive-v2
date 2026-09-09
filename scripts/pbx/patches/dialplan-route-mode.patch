@@ -1,0 +1,43 @@
+Derive the declared route mode from the call, not from which context dialled.
+
+Applies to /etc/asterisk/extensions_fanum.conf on the PBX, applied live with
+`dialplan reload` (no restart).
+
+  before: 762dea271e18505315c893a610802c69ef3b480679340ce2199d829030097438
+  after:  d24bae7a69b6ecfea982608fcd23a3e90b5c708dfa57a2630fa616956efaac13
+
+This is the defect that stopped every AI call after the cutover.
+
+The gate compares the route mode the dialplan declares against the call_mode in
+the HMAC-signed registry row, and refuses the dial when they disagree. The
+reviewed design gives each mode its own outbound context -- [fanum-outbound]
+declares `human`, [fanum-ai-outbound] declares `ai` -- and the file says so
+outright: "Normal CRM calls continue to use [fanum-outbound]."
+
+The CRM has only ever dialled through the tenant's one configured context. For
+an AI call it switches the *answered* context to fanum-ai-bridge and leaves the
+outbound context alone. So every AI call went out through [fanum-outbound],
+declared itself `human`, contradicted its own registry row, was refused
+authorization, and hung up with cause 21 before dialling. Before the cutover
+there was no gate, so the mismatch had nothing to contradict and calls worked.
+
+Deriving the mode from the inherited __FANUM_CALL_MODE the CRM already sets
+makes the declaration describe the call that is actually being placed. Authority
+does not move: the coordinator still checks the declared mode against the signed
+durable row, so a forged or absent mode still fails closed, and an uncorrelated
+call still falls through to the preserved legacy path.
+
+The permanent fix belongs in fanum_dialplan_transform.py, which generates this
+file and hard-codes the mode per context; until that is re-staged, a cutover
+re-run regenerates the broken form. See docs/pbx-live-divergence.md.
+
+--- a/extensions_fanum.conf
++++ b/extensions_fanum.conf
+@@ -8,7 +8,7 @@
+ [fanum-outbound]
+ exten => _X.,1,NoOp(Fanum SIP outbound: ${EXTEN})
+  same => n,Set(FANUM_DIAL_TARGET=PJSIP/${EXTEN}@fanum-provider)
+- same => n,Set(FANUM_ROUTE_MODE=human)
++ same => n,Set(FANUM_ROUTE_MODE=${IF($["${FANUM_CALL_MODE}"="ai"]?ai:human)})
+  same => n,Goto(fanum-observed-place-call,${EXTEN},1)
+  same => n,Hangup()

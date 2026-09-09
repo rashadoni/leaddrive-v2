@@ -1,0 +1,39 @@
+# ISO/IEC 27001:2022, Приложение A, контроль 8.8 «Управление техническими
+# уязвимостями»: организация обязана своевременно получать информацию об
+# уязвимостях используемых компонентов. Находка F-04 в
+# docs/isms/ISMS-02-gap-analysis.md.
+#
+# Обновления сгруппированы намеренно: сопровождением занимается один человек,
+# и поток из тридцати отдельных PR приведёт к тому, что их перестанут читать —
+# то есть контроль будет существовать на бумаге и не работать. Группировка
+# оставляет несколько осмысленных PR в неделю, а обновления безопасности
+# приходят отдельным потоком и не тонут в рутине.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      # Рутина: патчи и минорные версии — одним PR.
+      routine:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+      # Уязвимости: отдельной группой, чтобы их было видно.
+      security:
+        applies-to: security-updates
+        patterns: ["*"]
+    labels: ["dependencies"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    groups:
+      actions:
+        patterns: ["*"]
+    labels: ["dependencies", "ci"]

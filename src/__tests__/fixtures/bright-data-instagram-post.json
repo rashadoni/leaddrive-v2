@@ -1,0 +1,41 @@
+{
+  "url": "https://www.instagram.com/p/TEST123/",
+  "post_id": "post-test-123",
+  "content_id": "content-test-123",
+  "shortcode": "TEST123",
+  "description": "Synthetic product launch post for contract testing",
+  "date_posted": "2026-07-13T10:30:00.000Z",
+  "timestamp": "2026-07-13T10:30:00.000Z",
+  "user_posted": "synthetic_brand",
+  "user_posted_id": "user-test-1",
+  "profile_url": "https://www.instagram.com/synthetic_brand/",
+  "profile_image_link": "https://cdn.example.test/avatar.jpg",
+  "content_type": "Carousel",
+  "product_type": "carousel_container",
+  "likes": 125,
+  "num_comments": 9,
+  "thumbnail": "https://cdn.example.test/cover.jpg",
+  "post_content": [
+    {
+      "id": "media-test-1",
+      "index": 0,
+      "type": "Image",
+      "url": "https://cdn.example.test/image-1.jpg",
+      "alt_text": "Synthetic product image"
+    },
+    {
+      "id": "media-test-2",
+      "index": 1,
+      "type": "Video",
+      "url": "https://cdn.example.test/video-1.mp4",
+      "alt_text": "Synthetic product video"
+    }
+  ],
+  "images": [
+    { "id": "media-test-1", "url": "https://cdn.example.test/image-1.jpg" }
+  ],
+  "photos": ["https://cdn.example.test/image-1.jpg"],
+  "videos_duration": [12.5],
+  "audio_url": null,
+  "latest_comments": []
+}

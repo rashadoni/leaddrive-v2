@@ -1,0 +1,112 @@
+{
+  "inbox-automation": {
+    "route": "/inbox/automation",
+    "group": {
+      "ru": "Omni-Channel",
+      "en": "Omni-Channel",
+      "az": "Omni-Channel"
+    },
+    "title": {
+      "ru": "Inbox Automation",
+      "en": "Inbox Automation",
+      "az": "Inbox avtomatlaşdırması"
+    },
+    "goal": {
+      "ru": "Создать первый безопасный маршрут: новое входящее сообщение попадает в правильную очередь, но клиент не получает случайный ответ.",
+      "en": "Create the first safe route: a new inbound message goes to the right queue, without accidentally replying to the customer.",
+      "az": "İlk təhlükəsiz marşrutu yaradın: yeni gələn mesaj düzgün növbəyə düşür, amma müştəriyə təsadüfi cavab getmir."
+    },
+    "scenes": [
+      {
+        "heading": {
+          "ru": "Сначала смотрим обзор",
+          "en": "Start with the overview",
+          "az": "Əvvəl icmala baxın"
+        },
+        "body": {
+          "ru": "Откройте Omni-Channel → Автоматизация. На обзоре проверьте четыре вещи: есть ли очереди команды, сколько сценариев уже создано, какой триггер используется и выключен ли live-режим.",
+          "en": "Open Omni-Channel → Automation. In the overview, check four things: whether team queues exist, how many scenarios are already created, which trigger is used, and whether live mode is off.",
+          "az": "Omni-Channel → Avtomatlaşdırma bölməsini açın. İcmalda dörd şeyi yoxlayın: komanda növbəsi varmı, neçə ssenari yaradılıb, hansı trigger işləyir və live rejim sönülüdürmü."
+        },
+        "why": {
+          "ru": "Так вы понимаете, что настройка ещё безопасна и не отвечает реальным клиентам.",
+          "en": "This confirms the setup is still safe and is not replying to real customers.",
+          "az": "Bu, ayarın hələ təhlükəsiz olduğunu və real müştərilərə cavab göndərmədiyini təsdiqləyir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Создаём или выбираем очередь",
+          "en": "Create or choose a queue",
+          "az": "Növbə yaradın və ya seçin"
+        },
+        "body": {
+          "ru": "Перейдите в Сборка. Если очередь ещё не создана, добавьте простую очередь, например Поддержка или Продажи. Это будет место, куда LeadDrive отправит новый диалог.",
+          "en": "Go to Builder. If no queue exists yet, add a simple queue such as Support or Sales. This is where LeadDrive will send the new conversation.",
+          "az": "Qurucu bölməsinə keçin. Hələ növbə yoxdursa, Dəstək və ya Satış kimi sadə növbə əlavə edin. LeadDrive yeni söhbəti ora yönləndirəcək."
+        },
+        "why": {
+          "ru": "Первый сценарий должен не отвечать автоматически, а аккуратно передавать диалог команде.",
+          "en": "The first scenario should not answer automatically; it should route the conversation to a team.",
+          "az": "İlk ssenari avtomatik cavab verməməlidir; söhbəti komandaya yönləndirməlidir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Собираем простой сценарий",
+          "en": "Build a simple scenario",
+          "az": "Sadə ssenari qurun"
+        },
+        "body": {
+          "ru": "Назовите сценарий понятно, оставьте его на паузе, выберите нужные каналы и добавьте одно действие: Назначить в очередь. Preview должен показать путь message_inbound → очередь → end.",
+          "en": "Give the scenario a clear name, keep it paused, choose the target channels, and add one action: Assign to queue. The preview should show message_inbound → queue → end.",
+          "az": "Ssenariyə aydın ad verin, onu fasilədə saxlayın, kanalları seçin və bir əməliyyat əlavə edin: Növbəyə təyin et. Preview message_inbound → növbə → end yolunu göstərməlidir."
+        },
+        "why": {
+          "ru": "Один шаг легче проверить. AI-ответы и шаблонные ответы лучше добавлять после теста.",
+          "en": "One step is easier to verify. AI replies and fixed replies are better added after the test.",
+          "az": "Bir addımı yoxlamaq daha asandır. AI cavabı və sabit cavabları testdən sonra əlavə etmək daha düzgündür."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Проверяем через тестовое сообщение",
+          "en": "Verify with one test message",
+          "az": "Bir test mesajı ilə yoxlayın"
+        },
+        "body": {
+          "ru": "Сохраните сценарий и отправьте одно контролируемое входящее сообщение из выбранного канала. Затем откройте Запуски и проверьте статус, диалог, текущий node и количество выполненных шагов.",
+          "en": "Save the scenario and send one controlled inbound message from the selected channel. Then open Runs and check the status, conversation, current node, and completed step count.",
+          "az": "Ssenarini saxlayın və seçilmiş kanaldan bir kontrollu gələn mesaj göndərin. Sonra İcralar bölməsində statusu, söhbəti, cari node-u və tamamlanan addım sayını yoxlayın."
+        },
+        "why": {
+          "ru": "Журнал запусков показывает, что реально произошло, а не только то, что было нарисовано в настройке.",
+          "en": "The run log shows what actually happened, not just what was drawn in the setup.",
+          "az": "İcra jurnalı yalnız ayarda görünəni yox, realda nə baş verdiyini göstərir."
+        }
+      },
+      {
+        "heading": {
+          "ru": "Включаем live только после проверки",
+          "en": "Enable live only after verification",
+          "az": "Live rejimi yalnız yoxlamadan sonra açın"
+        },
+        "body": {
+          "ru": "Когда тест прошёл правильно, можно перевести сценарий из паузы в активный режим и отдельно включить live. Если нужен ответ клиенту, сначала добавьте его как следующий шаг и снова проверьте через Запуски.",
+          "en": "When the test is correct, move the scenario from paused to active and enable live separately. If the customer should receive a reply, add it as the next step and verify again in Runs.",
+          "az": "Test düzgün keçəndə ssenarini fasilədən aktiv rejimə keçirin və live rejimi ayrıca açın. Müştəriyə cavab lazımdırsa, onu növbəti addım kimi əlavə edin və İcralarda yenidən yoxlayın."
+        },
+        "why": {
+          "ru": "Live-режим — это отдельный ответственный шаг, а не обычное сохранение формы.",
+          "en": "Live mode is a separate responsible step, not just saving a form.",
+          "az": "Live rejim ayrıca məsuliyyətli addımdır, sadəcə formu saxlamaq deyil."
+        }
+      }
+    ],
+    "outcome": {
+      "ru": "В итоге у вас есть понятный и безопасный сценарий: входящее сообщение уходит в нужную очередь, команда видит диалог, а live-ответы включаются только после проверки.",
+      "en": "The result is a clear and safe scenario: the inbound message goes to the right queue, the team sees the conversation, and live replies are enabled only after verification.",
+      "az": "Nəticədə aydın və təhlükəsiz ssenari hazırdır: gələn mesaj düzgün növbəyə düşür, komanda söhbəti görür və live cavablar yalnız yoxlamadan sonra açılır."
+    }
+  }
+}

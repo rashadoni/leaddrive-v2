@@ -1,0 +1,54 @@
+[Unit]
+Description=LeadDrive encrypted off-box log shipping
+Documentation=file:/opt/leaddrive-v2/docs/isms/ISMS-02-gap-analysis.md
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=leaddrive-backup
+Group=leaddrive-backup
+# Reading another unit's journal requires membership in systemd-journal; the
+# backup user has no such rights by default. Without this line the journal
+# export silently produces empty files.
+# adm owns the nginx logs (www-data:adm 0640). Without it the access log — the
+# only record of who reached which endpoint from where — is skipped, and the run
+# still reports success.
+SupplementaryGroups=systemd-journal adm
+EnvironmentFile=/etc/leaddrive/backup.env
+LoadCredential=log-evidence-genesis:/etc/leaddrive/backup-evidence/log-evidence-genesis.env
+ExecStart=/usr/local/lib/leaddrive-v2/ops/current/backup/ship-logs.sh
+UMask=0077
+StateDirectory=leaddrive-log-ship
+StateDirectoryMode=0750
+RuntimeDirectory=leaddrive-log-ship
+RuntimeDirectoryMode=0750
+TimeoutStartSec=30m
+Nice=15
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+MemorySwapMax=0
+
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+ReadOnlyPaths=-/etc/leaddrive -/var/lib/leaddrive-v2-logs -/var/log/nginx -/var/log/postgresql -/var/log/leaddrive-resilience-cron.log
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

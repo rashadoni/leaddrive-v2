@@ -1,0 +1,91 @@
+Release the coordinator's locks around the synchronous ARI originate, and stop
+the originate from failing silently.
+
+Applies to /usr/local/lib/fanum-voice/fanum_pbx_coordinator.py on the PBX.
+
+  before: c029001b9da375939af9aed893ad24177b2642a36a218c6a78c8b7cd884f6db6
+  after:  9ac291ac5152940e302d1cb1060b0dc3c5ab0c1b4a69125c4a6c69dba4e8a1f6
+
+The `before` digest is the reviewed bundle's, which the cutover wrapper pins as
+EXPECTED_COORDINATOR_SHA256 and the staging wrapper lists in PAYLOAD_DIGESTS.
+Both pins must be rolled forward before the next cutover or staging run --
+see docs/pbx-live-divergence.md.
+
+## Defect one: the originate deadlocked its own authorization
+
+`put()` held `safety_lock` (and the per-call lock) across
+`self.ari.originate(...)`. That call is synchronous and does not return until
+the dialplan has finished with the channel. The dialplan's first act on the new
+channel is to ask this same coordinator, over the unix socket and therefore on
+another thread, whether the dial is authorized -- and that handler takes
+`safety_lock` too. `safety_lock` is an RLock, which is reentrant only for the
+thread that holds it, so the authorization waited for a lock the originate
+thread could not release until the authorization it was waiting on had been
+answered. After the AGI's two-second budget expired the gate refused and the
+channel hung up before dialling.
+
+Symptom: the CRM reported the attempt accepted, the registry row stayed
+`accepted` with `dial_authorized=0`, Asterisk logged nothing, no CDR was written
+(Asterisk does not write CDRs for calls that never connect), and the phone never
+rang.
+
+The row is still FULL-committed before the ARI side effect and a duplicate PUT
+still returns 200 without originating, so the at-most-once fence is unchanged.
+
+## Defect two: every originate failure was silent
+
+`except Exception: return AriResult("unknown", None)` discarded the reason, and
+an "unknown" result does not change the attempt row. So a failed dial produced
+no journal line, no state change, and a success response to the CRM. The three
+added log lines are what finally identified the dial as succeeding, which moved
+the search to the dialplan gate -- see dialplan-route-mode.patch.
+
+--- a/fanum_pbx_coordinator.py
++++ b/fanum_pbx_coordinator.py
+@@ -1704,17 +1704,26 @@
+         with self.safety_lock:
+             if not self.healthy.is_set():
+                 raise ContractError("coordinator_unhealthy", 503)
+             with self._lock(normalized):
+                 attempt, created = self.store.prepare_attempt(normalized, fingerprint, call_mode)
+                 if not created:
+                     return attempt, 200
+-                # The accepted row was FULL-committed before this first and only
+-                # ARI side effect. A crash/timeout keeps the at-most-once fence.
+-                result = self.ari.originate(authorization, normalized, canonical)
++        # The accepted row was FULL-committed above, before this first and only
++        # ARI side effect, so a crash/timeout keeps the at-most-once fence and a
++        # duplicate PUT still returns 200 without originating.
++        #
++        # No lock may be held here. This originate blocks until the dialplan
++        # completes, and the dialplan's first act is to ask this coordinator --
++        # over the unix socket, on another thread -- whether the dial is
++        # authorized. Holding safety_lock across the call made that request wait
++        # for a lock this thread could not release until the request it was
++        # waiting on had been answered, so the gate always timed out and hung up
++        # before dialling.
++        result = self.ari.originate(authorization, normalized, canonical)
++        with self.safety_lock:
++            with self._lock(normalized):
+                 if result.kind == "definite_rejection":
+                     attempt = self.store.mark_definite_rejection(normalized)
+                 else:
+                     refreshed = self.store.get_attempt(normalized)
+                     assert refreshed is not None
+                     attempt = refreshed
+                 return attempt, 201
+@@ -1520,10 +1529,16 @@
++            logging.info("PBX originate status=%s url=%s", status_code, self.base_url)
+             return AriResult("accepted" if 200 <= status_code < 300 else "unknown", status_code)
+         except urllib.error.HTTPError as error:
++            logging.error("PBX originate http error status=%s", error.code)
+             if error.code in DEFINITE_ARI_REJECTION_STATUSES:
+                 return AriResult("definite_rejection", error.code)
+             return AriResult("unknown", error.code)
+-        except Exception:
++        except Exception as error:
++            logging.error(
++                "PBX originate transport failure error=%s detail=%s url=%s",
++                type(error).__name__, error, self.base_url,
++            )
+             return AriResult("unknown", None)

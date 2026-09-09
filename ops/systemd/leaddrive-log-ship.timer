@@ -1,0 +1,15 @@
+[Unit]
+Description=Ship LeadDrive logs off the production host every hour
+
+[Timer]
+# Hourly, not daily: the window between runs is exactly how long a log line
+# stays deletable by whoever holds the box. An hour is a deliberate trade
+# against object count, not a default.
+OnCalendar=hourly
+RandomizedDelaySec=5m
+Persistent=true
+AccuracySec=1m
+Unit=leaddrive-log-ship.service
+
+[Install]
+WantedBy=timers.target

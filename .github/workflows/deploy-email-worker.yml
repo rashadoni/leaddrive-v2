@@ -1,0 +1,84 @@
+name: Deploy Email Worker
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-email-worker
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy Cloudflare Email Worker
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Resolve deployment account
+        id: cloudflare-account
+        env:
+          CONFIGURED_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || {
+            echo "::error::CLOUDFLARE_API_TOKEN is not configured"
+            exit 1
+          }
+
+          if [[ "$CONFIGURED_ACCOUNT_ID" =~ ^[0-9a-f]{32}$ ]]; then
+            ACCOUNT_ID="$CONFIGURED_ACCOUNT_ID"
+          else
+            RESPONSE="$(
+              curl --fail-with-body --silent --show-error \
+                -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+                https://api.cloudflare.com/client/v4/accounts
+            )"
+            ACCOUNT_COUNT="$(jq -r '.result | length' <<<"$RESPONSE")"
+            [ "$ACCOUNT_COUNT" = "1" ] || {
+              echo "::error::The token must be restricted to exactly one Cloudflare account; found $ACCOUNT_COUNT"
+              exit 1
+            }
+            ACCOUNT_ID="$(jq -r '.result[0].id' <<<"$RESPONSE")"
+          fi
+
+          [[ "$ACCOUNT_ID" =~ ^[0-9a-f]{32}$ ]] || {
+            echo "::error::Cloudflare returned an invalid account ID"
+            exit 1
+          }
+          echo "account_id=$ACCOUNT_ID" >> "$GITHUB_OUTPUT"
+          echo "::notice::Resolved Cloudflare account ID: $ACCOUNT_ID"
+
+      - name: Deploy ld-email-inbound
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ steps.cloudflare-account.outputs.account_id }}
+          workingDirectory: workers
+          wranglerVersion: "4.114.0"
+          command: deploy
+
+      - name: Promote uploaded version to active deployment
+        working-directory: workers
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ steps.cloudflare-account.outputs.account_id }}
+        run: |
+          VERSIONS_JSON="$(npx --yes wrangler@4.114.0 versions list --json)"
+          VERSION_ID="$(jq -r 'max_by(.created_on).id // empty' <<<"$VERSIONS_JSON")"
+          [[ "$VERSION_ID" =~ ^[0-9a-f-]{36}$ ]] || {
+            echo "::error::Wrangler did not return a valid latest Worker version"
+            exit 1
+          }
+
+          npx --yes wrangler@4.114.0 versions deploy \
+            "$VERSION_ID@100%" \
+            --name ld-email-inbound \
+            --message "GitHub Actions ${GITHUB_SHA}" \
+            -y
+          echo "::notice::Active Worker version: $VERSION_ID"

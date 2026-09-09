@@ -1,0 +1,20 @@
+[
+  "prisma/schema.prisma",
+  "prisma/migrations/20260801160000_social_monitoring_server_run_queue/**",
+  "scripts/social-monitoring-server-queue-e2e.mjs",
+  "messages/*.json",
+  "src/app/(dashboard)/social-monitoring/**",
+  "src/app/api/cron/social-monitoring-run-jobs/**",
+  "src/app/api/v1/social/monitoring-run-jobs/**",
+  "src/__tests__/api-social-monitoring-*.test.ts",
+  "src/__tests__/lib-social-*.test.ts",
+  "src/__tests__/social-monitoring-*.test.ts",
+  "src/auth.ts",
+  "src/components/social/monitoring-profile-list.tsx",
+  "src/components/social/monitoring-source-watchlist.tsx",
+  "src/lib/social/**",
+  "src/lib/prisma.ts",
+  "src/lib/rls-context.ts",
+  "src/lib/with-rls.ts",
+  ".github/workflows/social-monitoring-queue-e2e.yml"
+]

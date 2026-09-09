@@ -1,0 +1,793 @@
+name: Set PBX registry cutover on production
+
+# Manual staged operator for the single voice pilot tenant. Dispatch is first
+# fenced in both PM2 and the Asterisk config under the same database lock used
+# by call preparation. The integrated PBX operation preflights the pinned host
+# and reviewed root wrapper before pausing, then keeps this concurrency lock
+# through the no-call TLS/terminal-observer cutover. Transport staging and
+# registry enablement remain separate;
+# each performs an authenticated TLS/ARI/HMAC read-only proof and places no
+# call. Queue execution and automatic finality reconciliation remain disabled.
+#
+# verify-pbx-access answers one question before anything is committed: can this
+# runner reach the PBX at all? A PBX reachable only from an operator VPN would
+# strand the integrated operation, so the probe performs the same pinned-host
+# and wrapper-hash preflight and then stops. It pauses nothing, writes nothing,
+# and restarts nothing.
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: "Run one reviewed stage; calls remain paused until resume"
+        required: true
+        type: choice
+        default: disable
+        options:
+          - disable
+          - verify-pbx-access
+          - pause
+          - pause-and-deploy-pbx
+          - stage-transport
+          - enable
+          - resume
+      confirmation:
+        description: "Type the exact confirmation phrase for the selected stage"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  # Serialize with the normal production deploy and its health checks.
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  cutover:
+    name: Transactional PBX registry switch
+    # The PBX answers only inside the operator network, so a GitHub-hosted
+    # runner times out before it can reach it. This job runs on a runner that
+    # sits inside that network; the deploy keys stay in repository secrets and
+    # never leave the runner.
+    runs-on: [self-hosted, fanum-pbx-vpn]
+    timeout-minutes: 25
+    environment: production
+    steps:
+      - name: Checkout operator code
+        uses: actions/checkout@v6
+
+      - name: Validate explicit operator confirmation
+        env:
+          OPERATION: ${{ inputs.operation }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          case "$OPERATION" in
+            verify-pbx-access) EXPECTED="VERIFY_PBX_ACCESS" ;;
+            pause) EXPECTED="PAUSE_PBX_CALL_DISPATCH" ;;
+            pause-and-deploy-pbx) EXPECTED="PAUSE_AND_DEPLOY_PBX" ;;
+            stage-transport) EXPECTED="STAGE_PBX_REGISTRY_TRANSPORT" ;;
+            enable) EXPECTED="ENABLE_PBX_REGISTRY" ;;
+            resume) EXPECTED="RESUME_PBX_CALL_DISPATCH" ;;
+            disable) EXPECTED="DISABLE_PBX_REGISTRY" ;;
+            *) echo "::error::Unsupported operation"; exit 1 ;;
+          esac
+          [ "$CONFIRMATION" = "$EXPECTED" ] || {
+            echo "::error::Confirmation does not match the selected operation"
+            exit 1
+          }
+          echo "Operator confirmation accepted"
+
+      - name: Setup SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_SSH_KNOWN_HOSTS: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          [ "$SERVER_HOST" = "13.140.132.245" ] || {
+            echo "::error::SERVER_HOST is not the reviewed production host"
+            exit 1
+          }
+          # A self-hosted runner has a real home directory. Writing key material
+          # and a pinned known_hosts into ~/.ssh would overwrite the operator's
+          # own SSH configuration, so everything lives in the per-job temporary
+          # directory. RUNNER_TEMP is a plain environment variable: the runner
+          # context it comes from is not available to a job-level env block, and
+          # referencing it there makes the whole workflow undispatchable.
+          SSH_DIR="$RUNNER_TEMP/cutover-ssh"
+          echo "SSH_DIR=$SSH_DIR" >> "$GITHUB_ENV"
+          mkdir -p "$SSH_DIR"
+          chmod 700 "$SSH_DIR"
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$SSH_DIR"/deploy_key
+          chmod 600 "$SSH_DIR"/deploy_key
+          [ -n "$SERVER_SSH_KNOWN_HOSTS" ] || { echo "::error::Pinned SSH host key is missing"; exit 1; }
+          printf '%s\n' "$SERVER_SSH_KNOWN_HOSTS" > "$SSH_DIR"/known_hosts
+          chmod 600 "$SSH_DIR"/known_hosts
+          ssh-keygen -F "$SERVER_HOST" -f "$SSH_DIR"/known_hosts >/dev/null || {
+            echo "::error::Pinned SSH host key does not match the production host"
+            exit 1
+          }
+
+      - name: Install ephemeral operator script
+        # verify-pbx-access never reaches the operator, so it must not touch
+        # the production application directory at all.
+        if: inputs.operation != 'verify-pbx-access'
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          set -euo pipefail
+          REMOTE_DIR="/opt/leaddrive-v2/.next/standalone/scripts/operator"
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -o IdentitiesOnly=yes -o UserKnownHostsFile="$SSH_DIR"/known_hosts -i "$SSH_DIR"/deploy_key \
+            "$SERVER_USER@$SERVER_HOST" "mkdir -p '$REMOTE_DIR'"
+          scp -o ConnectTimeout=30 -o IdentitiesOnly=yes -o UserKnownHostsFile="$SSH_DIR"/known_hosts -i "$SSH_DIR"/deploy_key \
+            .github/scripts/voice-provider-registry-cutover.mjs \
+            "$SERVER_USER@$SERVER_HOST:$REMOTE_DIR/voice-provider-registry-cutover.mjs"
+
+      - name: Preflight pinned PBX access and reviewed wrapper
+        if: >-
+          inputs.operation == 'pause-and-deploy-pbx'
+          || inputs.operation == 'verify-pbx-access'
+        env:
+          PBX_SSH_PRIVATE_KEY: ${{ secrets.PBX_SSH_PRIVATE_KEY }}
+          PBX_HOST: ${{ secrets.PBX_HOST }}
+          PBX_USER: ${{ secrets.PBX_USER }}
+          PBX_SSH_KNOWN_HOSTS: ${{ secrets.PBX_SSH_KNOWN_HOSTS }}
+          EXPECTED_PBX_WRAPPER_SHA256: 03b1b54bc45bf4f8f8b722045aa8bf5fd42d00e6b47b8bada78c30162de4dce2
+        run: |
+          set -euo pipefail
+          [ -n "$PBX_SSH_PRIVATE_KEY" ] || { echo "::error::PBX deploy key is missing"; exit 1; }
+          [ -n "$PBX_HOST" ] || { echo "::error::PBX host is missing"; exit 1; }
+          [ -n "$PBX_USER" ] || { echo "::error::PBX user is missing"; exit 1; }
+          [ -n "$PBX_SSH_KNOWN_HOSTS" ] || { echo "::error::Pinned PBX SSH host key is missing"; exit 1; }
+          printf '%s\n' "$PBX_SSH_PRIVATE_KEY" > "$SSH_DIR"/pbx_deploy_key
+          printf '%s\n' "$PBX_SSH_KNOWN_HOSTS" > "$SSH_DIR"/pbx_known_hosts
+          chmod 600 "$SSH_DIR"/pbx_deploy_key "$SSH_DIR"/pbx_known_hosts
+          ssh-keygen -F "$PBX_HOST" -f "$SSH_DIR"/pbx_known_hosts >/dev/null || {
+            echo "::error::Pinned PBX SSH host key does not match the PBX host"
+            exit 1
+          }
+          actual="$(ssh -o BatchMode=yes -o ConnectTimeout=30 -o IdentitiesOnly=yes \
+            -o UserKnownHostsFile="$SSH_DIR/pbx_known_hosts" \
+            -i "$SSH_DIR/pbx_deploy_key" "$PBX_USER@$PBX_HOST" \
+            "sha256sum /usr/local/sbin/fanum-voice-deploy" | awk '{print $1}')"
+          [ "$actual" = "$EXPECTED_PBX_WRAPPER_SHA256" ] || {
+            echo "::error::PBX deploy wrapper does not match the reviewed artifact"
+            exit 1
+          }
+
+      - name: Report PBX staging capability
+        # Read-only. Answers whether the deploy identity can stage the control
+        # plane at all: a sudoers rule scoped to the wrapper alone would make
+        # unattended staging impossible, and that must be known before a
+        # maintenance window rather than halfway through one.
+        #
+        # always(): the report is most needed exactly when the preflight failed,
+        # and a step placed after a failed one is skipped by default. Placing it
+        # after the wrapper-hash check but running it regardless keeps the key
+        # material available while still explaining a failure.
+        if: always() && inputs.operation == 'verify-pbx-access'
+        continue-on-error: true
+        env:
+          PBX_HOST: ${{ secrets.PBX_HOST }}
+          PBX_USER: ${{ secrets.PBX_USER }}
+        run: |
+          set -euo pipefail
+          report="$(ssh -o BatchMode=yes -o ConnectTimeout=30 -o IdentitiesOnly=yes \
+            -o UserKnownHostsFile="$SSH_DIR/pbx_known_hosts" \
+            -i "$SSH_DIR/pbx_deploy_key" "$PBX_USER@$PBX_HOST" 'bash -s' <<'PROBE'
+          # systemctl prints the state and still exits non-zero for anything
+          # that is not active, so a naive "|| echo unknown" appends a second
+          # line and corrupts the value. Take the state it printed.
+          state() { systemctl is-active "$1" 2>/dev/null | head -1; }
+          echo "asterisk_active=$(state asterisk)"
+          echo "nginx_installed=$(command -v nginx >/dev/null && echo yes || echo no)"
+          echo "nginx_active=$(state nginx)"
+          echo "stage_dir_present=$(test -d /var/lib/fanum-pbx-coordinator-deploy && echo yes || echo no)"
+          echo "tls_stage_present=$(test -d /var/lib/fanum-pbx-coordinator-deploy/tls && echo yes || echo no)"
+          echo "coordinator_env_present=$(test -f /etc/fanum-pbx-coordinator.env && echo yes || echo no)"
+          echo "wrapper_mode=$(stat -c '%U:%G %a' /usr/local/sbin/fanum-voice-deploy 2>/dev/null || echo missing)"
+          echo "--- passwordless sudo grants ---"
+          sudo -n -l 2>&1 | sed -n '1,25p'
+          PROBE
+          )"
+          # GitHub masks secret values, but a sudoers banner can still echo an
+          # address that is not stored as a secret.
+          printf '%s\n' "$report" \
+            | sed -E 's/[0-9]{1,3}(\.[0-9]{1,3}){3}/<addr>/g' \
+            | sed -E 's/(may run the following commands on )[^:]+/\1<host>/' \
+            | sed -E 's/(Matching Defaults entries for [^ ]+ on )[^:]+/\1<host>/'
+
+      - name: Diagnose the last cutover attempt
+        # Read-only. The cutover now completes the switch and fails on
+        # service_logged_error_after_cutover, which reports only that one of the
+        # three services logged at error level and never which line. That exact
+        # journal query leads here, so the answer does not cost another window.
+        if: always() && inputs.operation == 'verify-pbx-access'
+        continue-on-error: true
+        env:
+          PBX_HOST: ${{ secrets.PBX_HOST }}
+          PBX_USER: ${{ secrets.PBX_USER }}
+        run: |
+          set -euo pipefail
+          report="$(ssh -o BatchMode=yes -o ConnectTimeout=30 -o IdentitiesOnly=yes \
+            -o UserKnownHostsFile="$SSH_DIR/pbx_known_hosts" \
+            -i "$SSH_DIR/pbx_deploy_key" "$PBX_USER@$PBX_HOST" 'bash -s' <<'PROBE'
+          state() { systemctl is-active "$1" 2>/dev/null | head -1; }
+          echo "=== service states ==="
+          for unit in asterisk fanum-pbx-coordinator nginx fanum-voice fanum-ari-tunnel; do
+            printf '%s=%s restarts=%s result=%s exit=%s\n' "$unit" "$(state "$unit")" \
+              "$(systemctl show "$unit" -p NRestarts --value 2>/dev/null)" \
+              "$(systemctl show "$unit" -p Result --value 2>/dev/null)" \
+              "$(systemctl show "$unit" -p ExecMainStatus --value 2>/dev/null)"
+          done
+          echo
+          echo "=== error-level lines the cutover gate reads, last hour ==="
+          journalctl -u fanum-pbx-coordinator.service -u nginx.service -u asterisk.service \
+            --since '-60 min' --priority=err --no-pager 2>&1 | tail -40
+          echo
+          echo "=== coordinator journal, last hour ==="
+          journalctl -u fanum-pbx-coordinator.service --since '-60 min' --no-pager 2>&1 \
+            | tail -25
+          echo
+          echo "=== asterisk journal, last hour ==="
+          journalctl -u asterisk.service --since '-60 min' --no-pager 2>&1 | tail -25
+          echo
+          echo "=== authorization socket ==="
+          sock=/run/fanum-pbx-coordinator/authorize.sock
+          if [ -e "$sock" ]; then stat -c '%n %U:%G %a %F' "$sock"; else echo "absent"; fi
+          echo
+          echo "=== listeners on the control ports ==="
+          (ss -lntp 2>/dev/null || netstat -lntp 2>/dev/null) \
+            | grep -E ':(8088|8089|8091)\b' || echo "none"
+          echo
+          echo "=== coordinator unit file, exec and environment ==="
+          systemctl cat fanum-pbx-coordinator.service 2>/dev/null \
+            | grep -iE 'ExecStart|EnvironmentFile|User=|Group=|Restart' | head -8
+          PROBE
+          )"
+          printf '%s\n' "$report" \
+            | sed -E 's/[0-9]{1,3}(\.[0-9]{1,3}){3}/<addr>/g' \
+            | sed -E 's/[+]?[0-9]{9,15}/<number>/g' \
+            | cut -c1-200
+
+      - name: Apply switch with automatic rollback
+        # The reachability probe stops here on purpose: it must never pause
+        # dispatch, touch the database, or restart the application.
+        if: inputs.operation != 'verify-pbx-access'
+        env:
+          OPERATION: ${{ inputs.operation }}
+          EXPECTED_SHA: ${{ github.sha }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          set -euo pipefail
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -o IdentitiesOnly=yes -o UserKnownHostsFile="$SSH_DIR"/known_hosts -i "$SSH_DIR"/deploy_key \
+            "$SERVER_USER@$SERVER_HOST" "OPERATION='$OPERATION' EXPECTED_SHA='$EXPECTED_SHA' bash -s" <<'REMOTE'
+          set -Eeuo pipefail
+
+          APP_DIR="/opt/leaddrive-v2"
+          NODE_DIR="$APP_DIR/.next/standalone"
+          APP_ENV_FILE="${APP_ENV_FILE:-/etc/leaddrive/app.env}"
+          ENV_FILE="$APP_ENV_FILE"
+          ENV_DIR="$(dirname -- "$ENV_FILE")"
+          STATE_DIR=""
+          RUNTIME_ROOT=""
+          RUNTIME_STATE_ROOT=""
+          APP_ENV_LOCK_FILE="${APP_ENV_LOCK_FILE:-/run/lock/leaddrive-app-env.lock}"
+          OPERATOR="$NODE_DIR/scripts/operator/voice-provider-registry-cutover.mjs"
+          PM2_PROCESS="leaddrive-v2"
+          HEALTH_URL="http://127.0.0.1:3001/api/v1/ping"
+          LOCK_FILE=""
+          # The deploy pipeline writes this marker inside the standalone bundle
+          # it swaps atomically, so the proof travels with the running code.
+          DEPLOY_SHA_FILE="$NODE_DIR/.deploy-sha"
+
+          case "$OPERATION" in
+            pause|pause-and-deploy-pbx)
+              DB_SETTING=pause; TARGET_STATE=true
+              EXPECTED_PROVIDER=dynamic; EXPECTED_PAUSE=true; APPLY_DB=true ;;
+            stage-transport)
+              DB_SETTING=registry; TARGET_STATE=true
+              EXPECTED_PROVIDER=false; EXPECTED_PAUSE=true; APPLY_DB=true ;;
+            enable)
+              DB_SETTING=registry; TARGET_STATE=true
+              EXPECTED_PROVIDER=true; EXPECTED_PAUSE=true; APPLY_DB=false ;;
+            resume)
+              DB_SETTING=pause; TARGET_STATE=false
+              EXPECTED_PROVIDER=dynamic; EXPECTED_PAUSE=false; APPLY_DB=true ;;
+            disable)
+              DB_SETTING=registry; TARGET_STATE=false
+              EXPECTED_PROVIDER=false; EXPECTED_PAUSE=true; APPLY_DB=true ;;
+            *) echo "FATAL: unsupported operation"; exit 1 ;;
+          esac
+
+          assert_root_owned_nonwritable_directory() {
+            local label="$1" directory="$2" mode
+            [ -d "$directory" ] && [ ! -L "$directory" ] || {
+              echo "FATAL: $label must be a real directory"; exit 1;
+            }
+            [ "$(stat -c '%U:%G' "$directory")" = "root:root" ] || {
+              echo "FATAL: $label must be owned by root:root"; exit 1;
+            }
+            mode="$(stat -c '%a' "$directory")"
+            (( (8#$mode & 8#022) == 0 )) || {
+              echo "FATAL: $label must not be group- or world-writable"; exit 1;
+            }
+          }
+          assert_secure_existing_or_parent() {
+            local label="$1" path="$2" candidate parent
+            candidate="$path"
+            while [ ! -e "$candidate" ] && [ ! -L "$candidate" ]; do
+              parent="$(dirname -- "$candidate")"
+              [ "$parent" != "$candidate" ] || {
+                echo "FATAL: cannot find an existing parent for $label"; exit 1;
+              }
+              candidate="$parent"
+            done
+            assert_root_owned_nonwritable_directory "$label parent" "$candidate"
+          }
+          [ -d "$ENV_DIR" ] && [ ! -L "$ENV_DIR" ] || { echo "FATAL: app env parent $ENV_DIR missing or is a symlink"; exit 1; }
+          [ "$(stat -c '%U:%G' "$ENV_DIR")" = "root:root" ] || { echo "FATAL: app env parent must be owned by root:root"; exit 1; }
+          ENV_DIR_MODE="$(stat -c '%a' "$ENV_DIR")"
+          (( (8#$ENV_DIR_MODE & 8#022) == 0 )) || { echo "FATAL: app env parent must not be group- or world-writable"; exit 1; }
+          [ -f "$ENV_FILE" ] && [ ! -L "$ENV_FILE" ] || { echo "FATAL: canonical app env is missing or is a symlink"; exit 1; }
+          [ "$(stat -c '%U:%G:%a' "$ENV_FILE")" = "root:root:600" ] || { echo "FATAL: canonical app env must be root:root mode 0600"; exit 1; }
+          [ -d "$(dirname -- "$APP_ENV_LOCK_FILE")" ] || { echo "FATAL: app-env lock parent missing"; exit 1; }
+          exec 8>"$APP_ENV_LOCK_FILE"
+          flock -w 120 8 || { echo "FATAL: another canonical app-env update is running"; exit 1; }
+          read_env_value() {
+            local file="$1" key="$2" value
+            value="$(sed -nE "s/^[[:space:]]*(export[[:space:]]+)?${key}[[:space:]]*=[[:space:]]*(.*)$/\2/p" "$file" | tail -1 | tr -d '\r')"
+            value="${value#\"}"; value="${value%\"}"
+            value="${value#\'}"; value="${value%\'}"
+            printf '%s' "$value"
+          }
+          RUNTIME_ROOT="$(read_env_value "$ENV_FILE" LEADDRIVE_RUNTIME_DIR)"
+          RUNTIME_ROOT="${RUNTIME_ROOT:-/var/lib/leaddrive-v2}"
+          case "$RUNTIME_ROOT" in /*) ;; *) echo "FATAL: LEADDRIVE_RUNTIME_DIR must be absolute"; exit 1 ;; esac
+          RUNTIME_ROOT="$(realpath -m -- "$RUNTIME_ROOT")"
+          case "$RUNTIME_ROOT" in
+            /|/var|/var/lib|/var/log|/etc|/usr|/usr/local|/opt|/tmp|/tmp/*|/var/tmp|/var/tmp/*|/run|/run/*|/dev|/dev/*|/proc|/proc/*|/sys|/sys/*|/opt/leaddrive-v2|/opt/leaddrive-v2/*)
+              echo "FATAL: LEADDRIVE_RUNTIME_DIR must be a dedicated external directory"; exit 1 ;;
+          esac
+          RUNTIME_STATE_ROOT="$(realpath -m -- "$RUNTIME_ROOT/state")"
+          [ "$RUNTIME_STATE_ROOT" = "$RUNTIME_ROOT/state" ] || {
+            echo "FATAL: canonical runtime state root must not resolve through a symlink"; exit 1;
+          }
+          STATE_DIR="$(read_env_value "$ENV_FILE" VOICE_OPERATOR_STATE_DIR)"
+          STATE_DIR="${STATE_DIR:-$RUNTIME_STATE_ROOT/operator}"
+          case "$STATE_DIR" in /*) ;; *) echo "FATAL: VOICE_OPERATOR_STATE_DIR must be absolute"; exit 1 ;; esac
+          STATE_DIR="$(realpath -m -- "$STATE_DIR")"
+          [[ "$STATE_DIR" =~ ^/[A-Za-z0-9._/-]+$ ]] || {
+            echo "FATAL: VOICE_OPERATOR_STATE_DIR contains unsafe characters"; exit 1;
+          }
+          case "$STATE_DIR" in "$RUNTIME_STATE_ROOT"/*) ;; *)
+            echo "FATAL: VOICE_OPERATOR_STATE_DIR must stay inside the canonical runtime state root"; exit 1 ;;
+          esac
+          assert_secure_existing_or_parent "voice operator state directory" "$STATE_DIR"
+          LOCK_FILE="$STATE_DIR/voice-provider-registry-cutover.lock"
+          [ -f "$DEPLOY_SHA_FILE" ] || { echo "FATAL: deployed revision proof is missing"; exit 1; }
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "FATAL: reviewed revision is invalid"; exit 1; }
+          [ "$(tr -d '[:space:]' < "$DEPLOY_SHA_FILE")" = "$EXPECTED_SHA" ] || {
+            echo "FATAL: production does not run the reviewed voice safety revision"
+            exit 1
+          }
+          [ -f "$OPERATOR" ] || { echo "FATAL: operator script is missing"; exit 1; }
+          [ -d "$NODE_DIR/node_modules/@prisma/client" ] || { echo "FATAL: production Prisma runtime is missing"; exit 1; }
+          command -v flock >/dev/null || { echo "FATAL: flock is unavailable"; exit 1; }
+          command -v pm2 >/dev/null || { echo "FATAL: PM2 is unavailable"; exit 1; }
+          command -v curl >/dev/null || { echo "FATAL: curl is unavailable"; exit 1; }
+
+          [ ! -L "$STATE_DIR" ] || { echo "FATAL: voice operator state directory must not be a symlink"; exit 1; }
+          install -d -m 0700 "$STATE_DIR"
+          exec 9>"$LOCK_FILE"
+          flock -n 9 || { echo "FATAL: another voice registry operation is running"; exit 1; }
+
+          STATE_FILE="$(mktemp "$STATE_DIR/voice-registry-db-state.XXXXXX")"
+          ENV_BACKUP="$(mktemp "$STATE_DIR/voice-registry-env-backup.XXXXXX")"
+          chmod 600 "$STATE_FILE" "$ENV_BACKUP"
+          PRESERVE_RECOVERY=false
+          CONTROL_HEADER_FILE=""
+          ENV_WRITE_STAGE=""
+          cleanup_recovery_files() {
+            if [ -n "$CONTROL_HEADER_FILE" ]; then rm -f -- "$CONTROL_HEADER_FILE"; fi
+            if [ -n "$ENV_WRITE_STAGE" ]; then rm -f -- "$ENV_WRITE_STAGE"; fi
+            if [ "$PRESERVE_RECOVERY" = false ]; then
+              rm -f -- "$STATE_FILE" "$ENV_BACKUP"
+            fi
+          }
+          trap cleanup_recovery_files EXIT
+          cp --preserve=mode,ownership "$ENV_FILE" "$ENV_BACKUP"
+
+          read_flag() {
+            local file="$1" key="$2" value count
+            count="$(grep -Ec "^[[:space:]]*(export[[:space:]]+)?${key}[[:space:]]*=" "$file" || true)"
+            [ "$count" -le 1 ] || return 2
+            value="$(sed -nE "s/^[[:space:]]*(export[[:space:]]+)?${key}[[:space:]]*=[[:space:]]*(.*)$/\\2/p" "$file" | tail -1)"
+            value="${value#\"}"; value="${value%\"}"
+            value="${value#\'}"; value="${value%\'}"
+            printf '%s' "$value"
+          }
+
+          OLD_PROVIDER_FLAG="$(read_flag "$ENV_BACKUP" VOICE_PROVIDER_ATTEMPT_REGISTRY_ENABLED)" || {
+            echo "FATAL: existing provider registry flag is ambiguous"
+            exit 1
+          }
+          case "$OLD_PROVIDER_FLAG" in
+            true|false) OLD_RUNTIME_FLAG="$OLD_PROVIDER_FLAG" ;;
+            "") OLD_RUNTIME_FLAG=false ;;
+            *) echo "FATAL: existing provider registry flag is invalid"; exit 1 ;;
+          esac
+          OLD_PAUSE_FLAG="$(read_flag "$ENV_BACKUP" VOICE_OUTBOUND_CALL_DISPATCH_PAUSED)" || {
+            echo "FATAL: existing outbound dispatch pause is ambiguous"
+            exit 1
+          }
+          case "$OLD_PAUSE_FLAG" in
+            true|false) OLD_RUNTIME_PAUSE="$OLD_PAUSE_FLAG" ;;
+            "") OLD_RUNTIME_PAUSE=false ;;
+            *) echo "FATAL: existing outbound dispatch pause is invalid"; exit 1 ;;
+          esac
+
+          assert_automation_off() {
+            local queue finality
+            queue="$(read_flag "$ENV_FILE" VOICE_CALL_QUEUE_EXECUTION_ENABLED)" || return 1
+            finality="$(read_flag "$ENV_FILE" VOICE_PROVIDER_FINALITY_RECONCILIATION_ENABLED)" || return 1
+            case "${queue,,}" in true|1|yes|on) return 1 ;; esac
+            case "${finality,,}" in true|1|yes|on) return 1 ;; esac
+
+            local pid
+            pid="$(pm2 pid "$PM2_PROCESS" 2>/dev/null | tail -1)"
+            [[ "$pid" =~ ^[0-9]+$ ]] && [ "$pid" -gt 0 ] && [ -r "/proc/$pid/environ" ] || return 1
+            if tr '\0' '\n' < "/proc/$pid/environ" \
+              | grep -Eq '^VOICE_(CALL_QUEUE_EXECUTION_ENABLED|PROVIDER_FINALITY_RECONCILIATION_ENABLED)=(true|1|yes|on)$'; then
+              return 1
+            fi
+          }
+
+          read_process_flag() {
+            local pid="$1" key="$2" count value
+            count="$(tr '\0' '\n' < "/proc/$pid/environ" \
+              | grep -Ec "^${key}=" || true)"
+            # A duplicated gate is ambiguous and must still fail closed. An
+            # absent gate is the pre-cutover bootstrap state and means false,
+            # matching read_flag() on the environment file: without this the
+            # very first pause can never run on a host that has no voice gates.
+            [ "$count" -le 1 ] || return 1
+            if [ "$count" -eq 0 ]; then printf 'false'; return 0; fi
+            value="$(tr '\0' '\n' < "/proc/$pid/environ" \
+              | sed -n "s/^${key}=//p")"
+            printf '%s' "$value"
+          }
+
+          assert_runtime_flags() {
+            local expected_provider="$1" expected_pause="$2" pids pid provider pause queue finality count=0
+            mapfile -t pids < <(pm2 pid "$PM2_PROCESS" 2>/dev/null | grep -E '^[0-9]+$' || true)
+            [ "${#pids[@]}" -eq 1 ] || return 1
+            for pid in "${pids[@]}"; do
+              [ "$pid" -gt 0 ] && [ -r "/proc/$pid/environ" ] || return 1
+              provider="$(read_process_flag "$pid" VOICE_PROVIDER_ATTEMPT_REGISTRY_ENABLED)" || return 1
+              pause="$(read_process_flag "$pid" VOICE_OUTBOUND_CALL_DISPATCH_PAUSED)" || return 1
+              queue="$(read_process_flag "$pid" VOICE_CALL_QUEUE_EXECUTION_ENABLED)" || return 1
+              finality="$(read_process_flag "$pid" VOICE_PROVIDER_FINALITY_RECONCILIATION_ENABLED)" || return 1
+              [ "$provider" = "$expected_provider" ] || return 1
+              [ "$pause" = "$expected_pause" ] || return 1
+              [ "$queue" = false ] || return 1
+              [ "$finality" = false ] || return 1
+              count=$((count + 1))
+            done
+            [ "$count" -eq 1 ]
+          }
+
+          # An absent gate is the pre-cutover state and means false, exactly as
+          # read_flag() and read_process_flag() already treat it. Comparing the
+          # raw empty read against "false" made the final assertion fail on a
+          # host whose gates had never been written, and it failed silently:
+          # these helpers had no message, so the stage aborted into its rollback
+          # without printing a single line.
+          assert_file_flag() {
+            local key="$1" expected="$2" actual
+            actual="$(read_flag "$ENV_FILE" "$key")" || {
+              echo "FATAL: $key is ambiguous in the environment file"
+              return 1
+            }
+            [ -n "$actual" ] || actual=false
+            [ "$actual" = "$expected" ] && return 0
+            echo "FATAL: $key is '$actual' in the environment file, expected '$expected'"
+            return 1
+          }
+
+          assert_file_provider_flag() {
+            assert_file_flag VOICE_PROVIDER_ATTEMPT_REGISTRY_ENABLED "$1"
+          }
+
+          assert_file_pause_flag() {
+            assert_file_flag VOICE_OUTBOUND_CALL_DISPATCH_PAUSED "$1"
+          }
+
+          health_check() {
+            local attempt code
+            for attempt in $(seq 1 12); do
+              code="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+                --max-time 10 "$HEALTH_URL" || true)"
+              if [ "$code" = "200" ]; then
+                echo "Application health verified"
+                return 0
+              fi
+              [ "$attempt" -eq 12 ] || sleep 3
+            done
+            return 1
+          }
+
+          install_voice_flag() {
+            local key="$1" value="$2" stage
+            stage="$(mktemp "$ENV_DIR/.app.env.voice-registry-stage.XXXXXX")"
+            ENV_WRITE_STAGE="$stage"
+            if ! cp --preserve=mode,ownership "$ENV_FILE" "$stage" \
+              || ! sed -i "/^[[:space:]]*\(export[[:space:]]\+\)\?${key}[[:space:]]*=/d" "$stage" \
+              || ! printf '%s=%s\n' "$key" "$value" >> "$stage" \
+              || ! mv -f "$stage" "$ENV_FILE"; then
+              rm -f -- "$stage"
+              ENV_WRITE_STAGE=""
+              return 1
+            fi
+            ENV_WRITE_STAGE=""
+            sync -f "$ENV_FILE"
+            sync -f "$ENV_DIR"
+          }
+
+          restart_safely() {
+            local provider_flag="$1" pause_flag="$2"
+            export VOICE_PROVIDER_ATTEMPT_REGISTRY_ENABLED="$provider_flag"
+            export VOICE_OUTBOUND_CALL_DISPATCH_PAUSED="$pause_flag"
+            export VOICE_CALL_QUEUE_EXECUTION_ENABLED=false
+            export VOICE_PROVIDER_FINALITY_RECONCILIATION_ENABLED=false
+            pm2 restart "$PM2_PROCESS" --update-env >/dev/null
+            health_check
+            if ! assert_runtime_flags "$provider_flag" "$pause_flag"; then
+              echo "FATAL: PM2 runtime voice gates do not match the requested safe state"
+              return 1
+            fi
+          }
+
+          ROLLBACK_REQUIRED=false
+          rollback() {
+            local rollback_failed=false restore_stage
+            echo "Cutover failed; restoring protected database and environment state"
+
+            if [ -s "$STATE_FILE" ]; then
+              if ! (
+                cd "$NODE_DIR"
+                CUTOVER_ACTION=rollback \
+                CUTOVER_SETTING="$DB_SETTING" \
+                CUTOVER_TARGET="$TARGET_STATE" \
+                CUTOVER_ENV_FILE="$ENV_BACKUP" \
+                CUTOVER_STATE_FILE="$STATE_FILE" \
+                  node "$OPERATOR"
+              ); then
+                rollback_failed=true
+              fi
+            fi
+
+            restore_stage="$(mktemp "$ENV_DIR/.app.env.voice-registry-restore.XXXXXX")"
+            ENV_WRITE_STAGE="$restore_stage"
+            if cp --preserve=mode,ownership "$ENV_BACKUP" "$restore_stage" \
+              && mv -f "$restore_stage" "$ENV_FILE" \
+              && sync -f "$ENV_FILE" \
+              && sync -f "$ENV_DIR"; then
+              ENV_WRITE_STAGE=""
+              :
+            else
+              rollback_failed=true
+            fi
+
+            if ! restart_safely "$OLD_RUNTIME_FLAG" "$OLD_RUNTIME_PAUSE"; then
+              rollback_failed=true
+            fi
+
+            if [ "$rollback_failed" = true ]; then
+              echo "FATAL: automatic rollback is incomplete; protected recovery files were retained"
+              return 1
+            fi
+            echo "Database, environment, and application process were restored"
+            return 0
+          }
+
+          on_error() {
+            local exit_code="${1:-1}"
+            trap - ERR INT TERM
+            set +e
+            if [ "$ROLLBACK_REQUIRED" = true ]; then
+              if rollback; then
+                :
+              else
+                PRESERVE_RECOVERY=true
+              fi
+            fi
+            exit "$exit_code"
+          }
+          trap 'on_error $?' ERR
+          trap 'on_error 130' INT TERM
+
+          assert_automation_off || {
+            echo "FATAL: queue execution and finality reconciliation must be disabled in file and process"
+            exit 1
+          }
+
+          CURRENT_PROVIDER="$(read_flag "$ENV_FILE" VOICE_PROVIDER_ATTEMPT_REGISTRY_ENABLED)" || exit 1
+          CURRENT_PAUSE="$(read_flag "$ENV_FILE" VOICE_OUTBOUND_CALL_DISPATCH_PAUSED)" || exit 1
+          [ -n "$CURRENT_PROVIDER" ] || CURRENT_PROVIDER=false
+          [ -n "$CURRENT_PAUSE" ] || CURRENT_PAUSE=false
+          case "$CURRENT_PROVIDER:$CURRENT_PAUSE" in
+            false:false|false:true|true:true) ;;
+            *) echo "FATAL: existing voice cutover state is unsafe or ambiguous"; exit 1 ;;
+          esac
+          assert_runtime_flags "$CURRENT_PROVIDER" "$CURRENT_PAUSE" || {
+            echo "FATAL: PM2 voice gates do not match the environment file"
+            exit 1
+          }
+
+          probe_control_plane() {
+            local token code
+            token="$(read_flag "$ENV_FILE" FANUM_VOICE_RUNTIME_TOKEN)" || return 1
+            [ "${#token}" -ge 16 ] && [ "${#token}" -le 4096 ] || return 1
+            case "$token" in *[![:graph:]]*) return 1 ;; esac
+            CONTROL_HEADER_FILE="$(mktemp "$STATE_DIR/voice-control-header.XXXXXX")" || return 1
+            chmod 600 "$CONTROL_HEADER_FILE"
+            printf 'Authorization: Bearer %s\n' "$token" > "$CONTROL_HEADER_FILE"
+            unset token
+            code="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+              --max-time 25 -X POST \
+              --header "@$CONTROL_HEADER_FILE" \
+              "http://127.0.0.1:3001/api/internal/voice-agent/control-plane-test" || true)"
+            rm -f -- "$CONTROL_HEADER_FILE"
+            CONTROL_HEADER_FILE=""
+            [ "$code" = 200 ]
+          }
+
+          verify_db_setting() {
+            local setting="$1" target="$2"
+            echo "operator: verifying $setting=$target"
+            (
+              cd "$NODE_DIR"
+              CUTOVER_ACTION=verify-capability \
+              CUTOVER_SETTING="$setting" \
+              CUTOVER_TARGET="$target" \
+              CUTOVER_ENV_FILE="$ENV_FILE" \
+              CUTOVER_STATE_FILE="$STATE_FILE" \
+                node "$OPERATOR" 2>&1
+            )
+          }
+
+          case "$OPERATION" in
+            pause|pause-and-deploy-pbx)
+              [ "$CURRENT_PAUSE" = false ] || {
+                echo "FATAL: dispatch is already paused"; exit 1;
+              }
+              if [ "$CURRENT_PROVIDER" = true ]; then verify_db_setting registry true; fi
+              EXPECTED_PROVIDER="$CURRENT_PROVIDER"
+              ROLLBACK_REQUIRED=true
+              install_voice_flag VOICE_OUTBOUND_CALL_DISPATCH_PAUSED true
+              restart_safely "$CURRENT_PROVIDER" true
+              ;;
+            stage-transport|enable|resume|disable)
+              [ "$CURRENT_PAUSE" = true ] || {
+                echo "FATAL: this operation requires durable dispatch maintenance"; exit 1;
+              }
+              verify_db_setting pause true
+              ;;
+          esac
+
+          if [ "$OPERATION" = stage-transport ]; then
+            [ "$CURRENT_PROVIDER" = false ] || { echo "FATAL: staging requires global registry off"; exit 1; }
+          elif [ "$OPERATION" = enable ]; then
+            [ "$CURRENT_PROVIDER" = false ] || { echo "FATAL: enable requires global registry off"; exit 1; }
+            verify_db_setting registry true
+            probe_control_plane || { echo "FATAL: staged TLS/HMAC proof failed"; exit 1; }
+            ROLLBACK_REQUIRED=true
+            install_voice_flag VOICE_PROVIDER_ATTEMPT_REGISTRY_ENABLED true
+            restart_safely true true
+            probe_control_plane || { echo "FATAL: enabled TLS/HMAC proof failed"; exit 1; }
+          elif [ "$OPERATION" = resume ]; then
+            EXPECTED_PROVIDER="$CURRENT_PROVIDER"
+            if [ "$CURRENT_PROVIDER" = true ]; then
+              verify_db_setting registry true
+              probe_control_plane || { echo "FATAL: final TLS/HMAC proof failed"; exit 1; }
+            else
+              verify_db_setting registry false
+            fi
+          elif [ "$OPERATION" = disable ]; then
+            ROLLBACK_REQUIRED=true
+            if [ "$CURRENT_PROVIDER" = true ]; then
+              install_voice_flag VOICE_PROVIDER_ATTEMPT_REGISTRY_ENABLED false
+              restart_safely false true
+              CURRENT_PROVIDER=false
+            fi
+          fi
+
+          if [ "$APPLY_DB" = true ]; then
+            ROLLBACK_REQUIRED=true
+            # A stage once failed here with no output at all, which left no way
+            # to tell whether the operator had even started. The markers bound
+            # the call and stderr is folded in so its own diagnosis survives.
+            echo "operator: applying $DB_SETTING"
+            (
+              cd "$NODE_DIR"
+              CUTOVER_ACTION=apply \
+              CUTOVER_SETTING="$DB_SETTING" \
+              CUTOVER_COMPANION_REGISTRY="$CURRENT_PROVIDER" \
+              CUTOVER_TARGET="$TARGET_STATE" \
+              CUTOVER_ENV_FILE="$ENV_FILE" \
+              CUTOVER_STATE_FILE="$STATE_FILE" \
+                node "$OPERATOR" 2>&1
+            )
+            echo "operator: applied $DB_SETTING"
+          fi
+
+          case "$OPERATION" in
+            pause|pause-and-deploy-pbx)
+              verify_db_setting pause true ;;
+            stage-transport)
+              verify_db_setting registry true
+              probe_control_plane || { echo "FATAL: staged TLS/HMAC proof failed"; exit 1; } ;;
+            enable)
+              verify_db_setting registry true ;;
+            resume)
+              install_voice_flag VOICE_OUTBOUND_CALL_DISPATCH_PAUSED false
+              restart_safely "$CURRENT_PROVIDER" false
+              verify_db_setting pause false ;;
+            disable)
+              verify_db_setting registry false ;;
+          esac
+
+          assert_file_provider_flag "$EXPECTED_PROVIDER"
+          assert_file_pause_flag "$EXPECTED_PAUSE"
+          assert_runtime_flags "$EXPECTED_PROVIDER" "$EXPECTED_PAUSE"
+
+          ROLLBACK_REQUIRED=false
+          rm -f -- "$STATE_FILE" "$ENV_BACKUP"
+          trap - ERR INT TERM
+          echo "PBX registry stage completed and verified; calls_placed=0"
+          REMOTE
+
+      - name: Run no-call PBX TLS and terminal-observer cutover while CRM stays paused
+        if: inputs.operation == 'pause-and-deploy-pbx'
+        env:
+          PBX_HOST: ${{ secrets.PBX_HOST }}
+          PBX_USER: ${{ secrets.PBX_USER }}
+          REVIEWED_CRM_SHA: ${{ github.sha }}
+          EXPECTED_PBX_WRAPPER_SHA256: 03b1b54bc45bf4f8f8b722045aa8bf5fd42d00e6b47b8bada78c30162de4dce2
+        run: |
+          set -euo pipefail
+          [ -n "$PBX_USER" ] || { echo "::error::PBX user is missing"; exit 1; }
+          SSH=(ssh -o BatchMode=yes -o ConnectTimeout=30 -o ServerAliveInterval=15 \
+            -o IdentitiesOnly=yes -o UserKnownHostsFile="$SSH_DIR/pbx_known_hosts" \
+            -i "$SSH_DIR/pbx_deploy_key" "$PBX_USER@$PBX_HOST")
+          REMOTE_WRAPPER=/usr/local/sbin/fanum-voice-deploy
+          actual="$("${SSH[@]}" "sha256sum '$REMOTE_WRAPPER'" | awk '{print $1}')"
+          [ "$actual" = "$EXPECTED_PBX_WRAPPER_SHA256" ] || {
+            echo "::error::PBX deploy wrapper does not match the reviewed artifact"
+            exit 1
+          }
+          "${SSH[@]}" "sudo -n '$REMOTE_WRAPPER' --install-boot-fence"
+          printf '%s\n' "$REVIEWED_CRM_SHA" \
+            | "${SSH[@]}" "sudo -n '$REMOTE_WRAPPER' --stage-crm-deployment-sha"
+          "${SSH[@]}" "sudo -n '$REMOTE_WRAPPER'"
+          echo "PBX no-call cutover completed under the production deployment lock; calls_placed=0"
+
+      - name: Cleanup operator access material
+        if: always()
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          if [ -f "$SSH_DIR"/deploy_key ] && [ -n "${SERVER_HOST:-}" ] && [ -n "${SERVER_USER:-}" ]; then
+            ssh -o ConnectTimeout=10 -o ServerAliveInterval=5 -o IdentitiesOnly=yes -o UserKnownHostsFile="$SSH_DIR"/known_hosts -i "$SSH_DIR"/deploy_key \
+              "$SERVER_USER@$SERVER_HOST" \
+              "rm -f /opt/leaddrive-v2/.next/standalone/scripts/operator/voice-provider-registry-cutover.mjs" \
+              >/dev/null 2>&1 || true
+          fi
+          rm -f "$SSH_DIR"/deploy_key "$SSH_DIR"/pbx_deploy_key "$SSH_DIR"/pbx_known_hosts

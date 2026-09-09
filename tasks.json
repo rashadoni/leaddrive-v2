@@ -1,0 +1,688 @@
+{
+  "tasks": [
+    {
+      "id": "1a",
+      "description": "ContractForm + API [id] + wire contracts page",
+      "priority": 1,
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "1b",
+      "description": "OfferForm + API [id] + wire offers page",
+      "priority": 2,
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "1c",
+      "description": "KbArticleForm + API [id] + wire knowledge-base page",
+      "priority": 3,
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "1d",
+      "description": "CampaignForm + API [id] + wire campaigns page",
+      "priority": 4,
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "1e",
+      "description": "SegmentForm + API [id] + wire segments page",
+      "priority": 5,
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "1f",
+      "description": "JourneyForm + API [id] + wire journeys page",
+      "priority": 6,
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "2a",
+      "description": "Email Templates API + UI + form",
+      "priority": 7,
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "2b",
+      "description": "AI Config management form + API [id]",
+      "priority": 8,
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "3a",
+      "description": "Lead Conversion (lead -> contact + company + deal)",
+      "priority": 9,
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "3b",
+      "description": "Reports page with real data from Prisma",
+      "priority": 10,
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "4a",
+      "description": "Notifications API + bell UI + createNotification helper",
+      "priority": 11,
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "4b",
+      "description": "Notification triggers in CRUD API routes",
+      "priority": 12,
+      "dependencies": [
+        "4a"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "5a",
+      "description": "ChannelMessage Prisma model + migration",
+      "priority": 13,
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "5b",
+      "description": "Inbox rewrite with real ChannelMessage data",
+      "priority": 14,
+      "dependencies": [
+        "5a"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "5c",
+      "description": "Email sending service + campaign send endpoint",
+      "priority": 15,
+      "dependencies": [
+        "2a",
+        "5a"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "6a",
+      "description": "Workflow execution engine",
+      "priority": 16,
+      "dependencies": [
+        "4a"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "6b",
+      "description": "Workflow form + API [id]",
+      "priority": 17,
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "7a",
+      "description": "Settings CRUD forms (Currencies, Custom Fields, Channels, SLA)",
+      "priority": 18,
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "7b",
+      "description": "Customer Portal (auth, tickets, KB, AI chat)",
+      "priority": 19,
+      "dependencies": [
+        "1c",
+        "5a"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "8a",
+      "description": "Detail pages (contracts, offers, KB, campaigns)",
+      "priority": 20,
+      "dependencies": [
+        "1a",
+        "1b",
+        "1c",
+        "1d"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "8b",
+      "description": "Dashboard layout customization",
+      "priority": 21,
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "8c",
+      "description": "Final polish (Web-to-Lead, Lead Rules, Billing)",
+      "priority": 22,
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "P1",
+      "description": "Pricing v2: Add Prisma models (PricingGroup, PricingProfile, PricingCategory, PricingProfileCategory, PricingService, AdditionalSale) + db push",
+      "priority": 23,
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "P2",
+      "description": "Pricing v2: Migration script JSON→PostgreSQL (59 companies, 7 groups, 11 categories, 12 unit types)",
+      "priority": 24,
+      "dependencies": [
+        "P1"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "P3",
+      "description": "Pricing v2: Core API routes — profiles CRUD, categories, services, unit-types",
+      "priority": 25,
+      "dependencies": [
+        "P1"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "P4",
+      "description": "Pricing v2: Additional Sales API (GET/POST/PUT/DELETE)",
+      "priority": 26,
+      "dependencies": [
+        "P1"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "P5",
+      "description": "Pricing v2: Backward-compat /api/v1/pricing/data route (DB→old format)",
+      "priority": 27,
+      "dependencies": [
+        "P3"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "P6",
+      "description": "Pricing v2: Refactor pricing page data fetching to use DB-backed API",
+      "priority": 28,
+      "dependencies": [
+        "P5"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "P7",
+      "description": "Pricing v2: Editor — add category button + add service form with unit type selector (12 types)",
+      "priority": 29,
+      "dependencies": [
+        "P3",
+        "P6"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "P8",
+      "description": "Pricing v2: Editor — delete categories and services with confirmation",
+      "priority": 30,
+      "dependencies": [
+        "P7"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "P9",
+      "description": "Pricing v2: New tab 'Допродажи' — table, filters, add form (recurring/one-time), history",
+      "priority": 31,
+      "dependencies": [
+        "P4",
+        "P6"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "P10",
+      "description": "Pricing v2: Company detail page — Pricing tab (profile, services, additional sales)",
+      "priority": 32,
+      "dependencies": [
+        "P3",
+        "P4"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "P11",
+      "description": "Pricing v2: Deals integration — 'Add to Pricing' button on WON deals + API",
+      "priority": 33,
+      "dependencies": [
+        "P4",
+        "P10"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "P12",
+      "description": "Pricing v2: Refactor Excel export to read from DB",
+      "priority": 34,
+      "dependencies": [
+        "P5"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "P13",
+      "description": "Pricing v2: Cleanup — remove old file-based routes, archive JSON, update types",
+      "priority": 35,
+      "dependencies": [
+        "P6",
+        "P7",
+        "P9",
+        "P12"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "C1",
+      "description": "Deal Detail full page: pipeline chevrons, colored KPI cards, competitors table, predictive scoring, tags",
+      "priority": 36,
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "C2",
+      "description": "Company Detail full page: unified timeline feed, KPI cards, tags",
+      "priority": 37,
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "C3",
+      "description": "Ticket Detail full page: SLA countdown timer, Escalate/Assign to me buttons, unified communication timeline, related KB articles + status pipeline + filter tabs",
+      "priority": 38,
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "C4",
+      "description": "Dashboard visual improvements: circular gauges in Reports, funnel pyramid visualization, KPI card style upgrade",
+      "priority": 39,
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "C5",
+      "description": "Global Tags system: Prisma Tag model + relations, tag-input UI component, tags API",
+      "priority": 40,
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "C6",
+      "description": "AI floating assistant panel: global slide-in AI chat available on every page",
+      "priority": 41,
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "E1",
+      "description": "Deal Detail: Communication action buttons (Phone, Email, WhatsApp, Chat) in Creatio style",
+      "priority": 42,
+      "dependencies": [
+        "C1"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "E2",
+      "description": "Deal Detail: Engagement tab with activity metrics + site visit dynamics chart",
+      "priority": 43,
+      "dependencies": [
+        "E1"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "E3",
+      "description": "Deal Detail: Email Nurturing section (send/open/click rates + dynamics chart)",
+      "priority": 44,
+      "dependencies": [
+        "E2"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "E4",
+      "description": "Deal Detail: Next Best Offers widget in left sidebar",
+      "priority": 45,
+      "dependencies": [
+        "E1"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "E5",
+      "description": "Deal Detail: Full Activity Timeline tab (activities + emails + comments, filters, log activity)",
+      "priority": 46,
+      "dependencies": [
+        "E2"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "E6",
+      "description": "Contact Detail: KPI cards + Communication action buttons",
+      "priority": 47,
+      "dependencies": [
+        "E1"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "E7",
+      "description": "Contact Detail: Engagement tab (email history + activity summary + chart)",
+      "priority": 48,
+      "dependencies": [
+        "E2"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "E8",
+      "description": "Deal Detail: Tabs reorganization Creatio-style (Overview/Activity/Sales/Products/History/Engagement)",
+      "priority": 49,
+      "dependencies": [
+        "E2",
+        "E5"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "E9",
+      "description": "Deal Detail: Predictive Scoring widget under confidence slider",
+      "priority": 50,
+      "dependencies": [
+        "E1"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "E10",
+      "description": "Deal Detail: History tab enhancement (stage changes, value changes, audit log)",
+      "priority": 51,
+      "dependencies": [
+        "E8"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "B1-01",
+      "description": "FP&A Schema: add forecastAmount Float, costModelKey String?, isAutoActual Boolean to BudgetLine + BudgetActual; run prisma db push",
+      "priority": 52,
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "B1-02",
+      "description": "FP&A Cost model mapping config: create src/lib/budgeting/cost-model-map.ts mapping standard categories to cost model keys (grandTotalG, deptCosts, serviceRevenues)",
+      "priority": 53,
+      "dependencies": [
+        "B1-01"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "B1-03",
+      "description": "FP&A Analytics API: update /api/budgeting/analytics to auto-populate actuals from loadAndCompute() when isAutoActual=true, merge with manual actuals",
+      "priority": 54,
+      "dependencies": [
+        "B1-02"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "B1-04",
+      "description": "FP&A Types: update src/lib/budgeting/types.ts for forecastAmount, costModelKey, isAutoActual, BudgetAnalytics.autoActualTotal",
+      "priority": 55,
+      "dependencies": [
+        "B1-01"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "B1-05",
+      "description": "FP&A API routes: update lines/route.ts and lines/[id]/route.ts to accept forecastAmount and costModelKey fields",
+      "priority": 56,
+      "dependencies": [
+        "B1-01"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "B1-06",
+      "description": "FP&A Hooks: update hooks.ts — add forecastAmount to CreateBudgetLineInput, add useBudgetForecastUpdate mutation",
+      "priority": 57,
+      "dependencies": [
+        "B1-04",
+        "B1-05"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "B1-07",
+      "description": "FP&A Overview tab redesign: 5 KPI cards (Plan/Forecast/Actual/Variance/YE Projection) + 3-column Budget|Forecast|Actual table replacing current 2-column",
+      "priority": 58,
+      "dependencies": [
+        "B1-06"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "B1-08",
+      "description": "FP&A Lines tab: add inline Forecast column with editable input, save on blur, show delta vs plan in color",
+      "priority": 59,
+      "dependencies": [
+        "B1-06"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "B1-09",
+      "description": "FP&A Cost model mapping UI: in Lines tab, add 'Link to cost model' dropdown per line using COST_MODEL_MAP keys",
+      "priority": 60,
+      "dependencies": [
+        "B1-02",
+        "B1-06"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "B1-10",
+      "description": "FP&A Template seed: update TemplateSeedButton to assign costModelKey to matching categories, set isAutoActual=true for expense lines",
+      "priority": 61,
+      "dependencies": [
+        "B1-02"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "B1-TEST",
+      "description": "FP&A Phase 1 test: curl tests for analytics API auto-actuals, verify 3-column table renders, build passes",
+      "priority": 62,
+      "dependencies": [
+        "B1-07",
+        "B1-08",
+        "B1-09",
+        "B1-10"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "B2-01",
+      "description": "FP&A P&L Schema: add BudgetSection model (id, planId, name, sectionType: revenue|expense|gross_profit|ebitda, sortOrder) + prisma db push",
+      "priority": 63,
+      "dependencies": [
+        "B1-01"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "B2-02",
+      "description": "FP&A Sections API: /api/budgeting/sections GET?planId + POST + [id] PUT/DELETE",
+      "priority": 64,
+      "dependencies": [
+        "B2-01"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "B2-03",
+      "description": "FP&A P&L view: add P&L tab to budgeting page with sections as accordion groups, subtotals per section, gross profit + EBITDA calculated rows",
+      "priority": 65,
+      "dependencies": [
+        "B2-02"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "B2-04",
+      "description": "FP&A Drill-down panel: clicking a category row in P&L view opens slide-in panel showing cost model breakdown (employees, overhead, services)",
+      "priority": 66,
+      "dependencies": [
+        "B2-03"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "B2-TEST",
+      "description": "FP&A Phase 2 test: curl test sections API, verify P&L tab renders sections + subtotals, drill-down panel opens",
+      "priority": 67,
+      "dependencies": [
+        "B2-04"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "B3-01",
+      "description": "FP&A Forecast Schema: add BudgetForecastEntry model (id, planId, orgId, month Int, year Int, category, forecastAmount) + prisma db push",
+      "priority": 68,
+      "dependencies": [
+        "B1-01"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "B3-02",
+      "description": "FP&A Forecast API: /api/budgeting/forecast GET?planId + POST (bulk upsert monthly entries)",
+      "priority": 69,
+      "dependencies": [
+        "B3-01"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "B3-03",
+      "description": "FP&A Forecast engine: src/lib/budgeting/forecast.ts — linear extrapolation from actuals YTD to full-year projection, returns 12-month array",
+      "priority": 70,
+      "dependencies": [
+        "B3-02"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "B3-04",
+      "description": "FP&A Прогноз tab: monthly bar chart (plan vs forecast vs actual), year-end projection KPI, confidence band shading for forecast months",
+      "priority": 71,
+      "dependencies": [
+        "B3-03"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "B3-05",
+      "description": "FP&A Сравнение tab upgrade: multi-plan grouped bar chart using Recharts, plan selector checkboxes",
+      "priority": 72,
+      "dependencies": [
+        "B3-02"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "B3-TEST",
+      "description": "FP&A Phase 3 test: verify forecast API returns 12 months, chart renders, year-end projection matches manual calc",
+      "priority": 73,
+      "dependencies": [
+        "B3-04",
+        "B3-05"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "B4-01",
+      "description": "FP&A Waterfall chart: add WaterfallChart component using Recharts ComposedChart showing budget→variances→actual flow",
+      "priority": 74,
+      "dependencies": [
+        "B1-07"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "B4-02",
+      "description": "FP&A Materiality threshold: add threshold filter (hide variances < N%) to Overview and P&L tabs, configurable via slider",
+      "priority": 75,
+      "dependencies": [
+        "B2-03"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "B4-03",
+      "description": "FP&A AI narrative: add 'Сгенерировать анализ' button on Overview tab, calls /api/ai/budget-narrative with analytics data, renders markdown summary",
+      "priority": 76,
+      "dependencies": [
+        "B1-07"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "B4-04",
+      "description": "FP&A Excel export: /api/budgeting/export?planId= returns xlsx with 3 sheets (Overview, Lines, Actuals) using exceljs",
+      "priority": 77,
+      "dependencies": [
+        "B1-07"
+      ],
+      "status": "done"
+    },
+    {
+      "id": "B4-05",
+      "description": "FP&A Bug fixes: add actual editing (PUT /api/budgeting/actuals/[id]), prevent duplicate plans (unique index on orgId+name+year+month)",
+      "priority": 78,
+      "dependencies": [],
+      "status": "done"
+    },
+    {
+      "id": "B4-TEST",
+      "description": "FP&A Phase 4 test: waterfall chart renders, Excel download works, duplicate plan prevention, build passes",
+      "priority": 79,
+      "dependencies": [
+        "B4-01",
+        "B4-02",
+        "B4-03",
+        "B4-04",
+        "B4-05"
+      ],
+      "status": "done"
+    }
+  ]
+}

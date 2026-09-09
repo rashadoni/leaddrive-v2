@@ -1,0 +1,16 @@
+name = "ld-email-inbound"
+main = "email-inbound.js"
+compatibility_date = "2025-01-01"
+workers_dev = false
+preview_urls = false
+
+# No external deps — the worker ships an inline MIME parser so a clean
+# `wrangler deploy` works without `npm install`.
+#
+# Secrets (put via CLI, NEVER commit):
+#   wrangler secret put CF_INBOUND_SECRET
+#
+# Public vars (OK to keep here):
+[vars]
+API_URL = "https://app.leaddrivecrm.org"
+FALLBACK_INBOX = "rashadrahimov@gmail.com"

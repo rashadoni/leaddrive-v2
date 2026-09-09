@@ -1,0 +1,24 @@
+{
+  "cdpUrl": "http://127.0.0.1:9222",
+  "jobsUrl": "https://brandprotection.leaddrivecrm.org/api/v1/social/providers/facebook-native-search/jobs",
+  "resultsUrl": "https://brandprotection.leaddrivecrm.org/api/v1/social/providers/facebook-native-search/results",
+  "apiTokenFile": "/home/codex-alt/services/leaddrive-facebook-native-search-worker/secrets/api-token",
+  "stateDatabase": "/home/codex-alt/services/leaddrive-facebook-native-search-worker/state/worker.sqlite3",
+  "lockFile": "/home/codex-alt/services/leaddrive-facebook-native-search-worker/state/worker.lock",
+  "limits": {
+    "minScrolls": 8,
+    "maxScrolls": 8,
+    "stagnantScrollsAfterMinimum": 2,
+    "maxQueriesPerCycle": 1,
+    "maxQueriesPerHour": 2,
+    "maxQueriesPerDay": 8,
+    "maxItemsPerQuery": 25,
+    "maxDeliveryRunsPerCycle": 50,
+    "queryDelaySeconds": 1800,
+    "queryJitterSeconds": 120,
+    "scrollWaitSeconds": 3,
+    "cycleIntervalSeconds": 900,
+    "navigationTimeoutSeconds": 60,
+    "httpTimeoutSeconds": 30
+  }
+}

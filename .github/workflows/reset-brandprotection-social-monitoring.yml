@@ -1,0 +1,121 @@
+name: Reset Brand Protection social monitoring
+
+# Operator-only clean-slate reset for the dedicated Brand Protection tenant.
+# Dry-run is the default. Execute requires the exact confirmation phrase and
+# preserves CRM finance, provider credentials/configuration, scenarios,
+# monitored subjects, independent source definitions and minimal PURGED
+# provider tombstones required for late callbacks, plus an immutable aggregate
+# financial snapshot on the reset boundary.
+
+on:
+  workflow_dispatch:
+    inputs:
+      execute:
+        description: "Apply the reset (no = read-only dry-run)"
+        required: true
+        type: choice
+        default: "no"
+        options: ["no", "yes"]
+      confirm:
+        description: "For execute, type: reset-brandprotection-scenario-monitoring"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Validate authorization
+        env:
+          RESET_EXECUTE: ${{ inputs.execute || 'no' }}
+          RESET_CONFIRM: ${{ inputs.confirm || '' }}
+        run: |
+          case "$RESET_EXECUTE" in
+            no|yes) ;;
+            *) echo "::error::Invalid execute value"; exit 1 ;;
+          esac
+          case "$RESET_CONFIRM" in
+            ""|reset-brandprotection-scenario-monitoring) ;;
+            *) echo "::error::Invalid confirmation value"; exit 1 ;;
+          esac
+          if [ "$RESET_EXECUTE" = "yes" ] \
+            && [ "$RESET_CONFIRM" != "reset-brandprotection-scenario-monitoring" ]; then
+            echo "::error::Execute requires the exact confirmation phrase"
+            exit 1
+          fi
+
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup pinned production SSH
+        uses: ./.github/actions/setup-production-ssh
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server-host: ${{ secrets.SERVER_HOST }}
+          known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+
+      - name: Upload fresh reset script
+        run: |
+          ssh -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "mkdir -p /opt/leaddrive-v2/.next/standalone/scripts"
+          scp -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
+            scripts/_rls.mjs \
+            scripts/reset-brandprotection-scenario-monitoring.mjs \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/leaddrive-v2/.next/standalone/scripts/
+
+      - name: Run reset
+        env:
+          RESET_EXECUTE: ${{ inputs.execute || 'no' }}
+          RESET_CONFIRM: ${{ inputs.confirm || '' }}
+        run: |
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "RESET_EXECUTE='$RESET_EXECUTE' RESET_CONFIRM='$RESET_CONFIRM' bash -s" <<'REMOTE'
+          set -euo pipefail
+          APP_DIR="/opt/leaddrive-v2"
+          APP_ENV_FILE="${APP_ENV_FILE:-/etc/leaddrive/app.env}"
+          SCRIPT="$APP_DIR/.next/standalone/scripts/reset-brandprotection-scenario-monitoring.mjs"
+          [ -f "$SCRIPT" ] || { echo "FATAL: $SCRIPT missing"; exit 1; }
+          [ -f "$APP_ENV_FILE" ] || { echo "FATAL: canonical app env missing"; exit 1; }
+
+          read_env() {
+            sed -n "s/^[[:space:]]*\(export[[:space:]]\+\)\?$1[[:space:]]*=[[:space:]]*//p" "$APP_ENV_FILE" \
+              | head -1 | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'\$/\1/"
+          }
+          DATABASE_URL="$(read_env DATABASE_URL)"
+          [ -n "$DATABASE_URL" ] || { echo "FATAL: DATABASE_URL not found in canonical app env"; exit 1; }
+          APIFY_API_TOKEN="$(read_env APIFY_API_TOKEN)"
+          BRIGHT_DATA_API_TOKEN="$(read_env BRIGHT_DATA_API_TOKEN)"
+          NEXTAUTH_SECRET="$(read_env NEXTAUTH_SECRET)"
+          if [ "$RESET_EXECUTE" = "yes" ] && [ -z "$NEXTAUTH_SECRET" ]; then
+            echo "FATAL: NEXTAUTH_SECRET not found in canonical app env"
+            exit 1
+          fi
+
+          EXEC_FLAGS=()
+          if [ "$RESET_EXECUTE" = "yes" ]; then
+            EXEC_FLAGS=(
+              "--execute"
+              "--confirm=$RESET_CONFIRM"
+            )
+          fi
+          DATABASE_URL="$DATABASE_URL" \
+            APIFY_API_TOKEN="$APIFY_API_TOKEN" \
+            BRIGHT_DATA_API_TOKEN="$BRIGHT_DATA_API_TOKEN" \
+            NEXTAUTH_SECRET="$NEXTAUTH_SECRET" \
+            node "$SCRIPT" "${EXEC_FLAGS[@]}"
+          REMOTE
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

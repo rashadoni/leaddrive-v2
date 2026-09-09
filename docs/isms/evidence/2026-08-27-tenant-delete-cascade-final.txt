@@ -1,0 +1,10 @@
+-- scripts/rls/audit-tenant-delete-cascade.sql на боевой базе, 2026-08-27,
+-- после обеих миграций (20260827090000 и ...140000_part2).
+-- Путь: 83 (2026-08-26) → 10 → 3. Свидетельство к ISMS-12 разд. 4, находка F-24.
+
+      orphan_table       |    why_it_survives
+-------------------------+------------------------
+ compliance_audit_log    | no FK to organizations
+ pricing_categories      | no FK to organizations
+ pricing_groups          | no FK to organizations
+(3 rows)

@@ -1,0 +1,53 @@
+name: Tenant delete cascade recovery
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/tenant-delete-cascade-recovery.yml"
+      - "prisma/migrations/20260827090000_tenant_delete_cascades/migration.sql"
+      - "prisma/verification/tenant-delete-cascade-artifact-state.sql"
+      - "scripts/ci/test-tenant-delete-cascade-migration.sh"
+      - "scripts/rls/audit-orphan-tenant-rows.sql"
+      - "scripts/rls/audit-tenant-delete-cascade.sql"
+      - "scripts/server-deploy.sh"
+      - "src/__tests__/tenant-delete-cascade-postcondition.test.ts"
+
+concurrency:
+  # Superseded pushes must not keep paid runners busy.
+  group: tenant-delete-cascade-recovery-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: tenant_cascade_test
+        # Random host port: the runners share one machine, and a fixed 5432
+        # would collide with the other Postgres-backed jobs.
+        ports:
+          - 5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d tenant_cascade_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TENANT_CASCADE_TEST_CONFIRM: drop-local-tenant-cascade-test-schema
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Exercise migration against historical orphan data
+        env:
+          TENANT_CASCADE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/tenant_cascade_test
+        run: bash scripts/ci/test-tenant-delete-cascade-migration.sh

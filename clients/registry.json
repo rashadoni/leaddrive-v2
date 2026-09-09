@@ -1,0 +1,78 @@
+{
+  "clients": {
+    "leaddrive": {
+      "name": "LeadDrive Inc.",
+      "server": "13.140.132.245",
+      "sshUser": "root",
+      "sshKey": "~/.ssh/id_ed25519",
+      "domain": "app.leaddrivecrm.org",
+      "marketingDomain": "leaddrivecrm.org",
+      "appDir": "/opt/leaddrive-v2",
+      "port": 3001,
+      "pm2Name": "leaddrive-v2",
+      "status": "active",
+      "notes": "Основной инстанс — LeadDrive Inc., Warsaw"
+    },
+    "zeytunpharm": {
+      "name": "Zeytuun Pharmaceuticals",
+      "server": "13.140.132.245",
+      "sshUser": "root",
+      "sshKey": "~/.ssh/id_ed25519",
+      "domain": "zeytunpharm.leaddrivecrm.org",
+      "appDir": "/opt/leaddrive-v2",
+      "port": 3001,
+      "pm2Name": "leaddrive-v2",
+      "status": "active",
+      "notes": "Tenant на shared инстансе LeadDrive; production slug: zeytun. Branded hostname zeytunpharm currently needs an explicit hostname-to-tenant alias before authenticated use."
+    },
+    "afigroup": {
+      "name": "Agro Food Investment",
+      "server": "13.140.132.245",
+      "sshUser": "root",
+      "sshKey": "~/.ssh/id_ed25519",
+      "domain": "afigroup.leaddrivecrm.org",
+      "appDir": "/opt/leaddrive-v2",
+      "port": 3001,
+      "pm2Name": "leaddrive-v2",
+      "status": "active",
+      "notes": "Demo-tenant на shared инстансе LeadDrive для презентации CEO AFI. 11 дочек, demo-seed: scripts/seeds/afigroup.mjs"
+    },
+    "mars": {
+      "name": "Mars Overseas Baku (demo)",
+      "server": "13.140.132.245",
+      "sshUser": "root",
+      "sshKey": "~/.ssh/id_ed25519",
+      "domain": "mars.leaddrivecrm.org",
+      "appDir": "/opt/leaddrive-v2",
+      "port": 3001,
+      "pm2Name": "leaddrive-v2",
+      "status": "demo",
+      "notes": "Pepsi-bottler MTM demo tenant for Mars Overseas Baku sales pitch (M0-6 / M1-6). Provisioned via scripts/seeds/mars.mjs. NOT a paying customer — transient demo. Access credentials must be rotated before every presentation and shared only through the approved password manager; never store them in this registry. Walkthrough: docs/mars-playbook.md. IMPORTANT: scripts/ dir not synced by CI — if re-seeding, copy mars.mjs and the shared password-policy helper to the server first or run locally with prod DATABASE_URL. Seeded identities use @mars.leaddrivecrm.org."
+    },
+    "fanum": {
+      "name": "Fanum Tech",
+      "server": "187.124.189.139",
+      "sshUser": "root",
+      "sshKey": "~/.ssh/id_ed25519_hostinger",
+      "domain": "fanum.tech",
+      "marketingDomain": "fanum.tech",
+      "appDir": "/opt/leaddrive-v2",
+      "port": 3001,
+      "pm2Name": "leaddrive-client",
+      "status": "active",
+      "notes": "Hostinger KVM 2, клиент Fanum Tech"
+    },
+    "brandprotection": {
+      "name": "Brand Protection",
+      "server": "13.140.132.245",
+      "sshUser": "root",
+      "sshKey": "~/.ssh/id_ed25519",
+      "domain": "brandprotection.leaddrivecrm.org",
+      "appDir": "/opt/leaddrive-v2",
+      "port": 3001,
+      "pm2Name": "leaddrive-v2",
+      "status": "active",
+      "notes": "Brand-protection tenant на shared инстансе LeadDrive (slug: brandprotection). Соц-мониторинг: внешние страницы + комментарии, AI-ответы, юр. досье. Provisioning + перенос настроек из исходного тенанта: scripts/seeds/brandprotection.mjs (--from=<slug>). Runbook: docs/brandprotection-tenant.md. IMPORTANT: scripts/ dir not synced by CI — copy the seed to the server first or run locally with prod DATABASE_URL + NEXTAUTH_SECRET."
+    }
+  }
+}

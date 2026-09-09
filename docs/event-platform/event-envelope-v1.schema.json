@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:leaddrive:schema:event-envelope:v1",
+  "title": "LeadDrive canonical domain event envelope v1",
+  "description": "CloudEvents 1.0-compatible envelope for canonical LeadDrive domain events. Kafka record keys are defined separately by the architecture.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "specversion",
+    "id",
+    "source",
+    "type",
+    "time",
+    "datacontenttype",
+    "dataschema",
+    "organizationid",
+    "aggregatetype",
+    "aggregateid",
+    "aggregateversion",
+    "correlationid",
+    "producer",
+    "producerversion",
+    "classification",
+    "data"
+  ],
+  "properties": {
+    "specversion": {
+      "const": "1.0",
+      "description": "CloudEvents specification version."
+    },
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Globally stable event UUID, generated once at command commit and preserved during replay."
+    },
+    "source": {
+      "type": "string",
+      "format": "uri-reference",
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "Stable URI identifying the owning LeadDrive producer/domain."
+    },
+    "type": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 160,
+      "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*\\.v[1-9][0-9]*$",
+      "description": "Past-tense, domain-qualified, versioned event type such as finance.fund-deposit-recorded.v1."
+    },
+    "time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC RFC 3339 business occurrence time; not an ordering guarantee."
+    },
+    "datacontenttype": {
+      "const": "application/json",
+      "description": "Payload media type for envelope v1."
+    },
+    "dataschema": {
+      "type": "string",
+      "format": "uri-reference",
+      "minLength": 1,
+      "maxLength": 512,
+      "description": "Immutable schema-registry subject and version reference for data."
+    },
+    "organizationid": {
+      "$ref": "#/$defs/opaqueIdentifier",
+      "description": "Mandatory LeadDrive tenant identifier derived from the authorized transaction context."
+    },
+    "aggregatetype": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Stable aggregate contract name."
+    },
+    "aggregateid": {
+      "$ref": "#/$defs/opaqueIdentifier",
+      "description": "Opaque aggregate identifier; may be a UUID, CUID, or migrated stable identifier."
+    },
+    "aggregateversion": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Monotonic sequence within one organization/aggregate type/aggregate ID stream."
+    },
+    "correlationid": {
+      "$ref": "#/$defs/opaqueIdentifier",
+      "description": "Stable identifier joining one end-to-end business operation."
+    },
+    "causationid": {
+      "$ref": "#/$defs/opaqueIdentifier",
+      "description": "Identifier of the command or event that directly caused this event."
+    },
+    "traceparent": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$",
+      "description": "W3C traceparent value without optional tracestate."
+    },
+    "producer": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Stable producer/service name."
+    },
+    "producerversion": {
+      "type": "string",
+      "minLength": 7,
+      "maxLength": 100,
+      "pattern": "^[A-Za-z0-9._+-]+$",
+      "description": "Immutable build or Git SHA that produced the event."
+    },
+    "classification": {
+      "type": "string",
+      "enum": ["public", "internal", "confidential", "restricted"],
+      "description": "Highest data classification present in the event."
+    },
+    "subjectref": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "^[^\\s]+$",
+      "description": "Optional non-PII reference used for privacy and retention workflows."
+    },
+    "data": {
+      "type": "object",
+      "description": "Schema-validated and minimized domain payload. Secrets and unrestricted binary content are forbidden."
+    }
+  },
+  "$defs": {
+    "opaqueIdentifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 191,
+      "pattern": "^[^\\s:]+$"
+    }
+  },
+  "examples": [
+    {
+      "specversion": "1.0",
+      "id": "018f7b34-9bb9-7b32-8de8-1fbb4feeb331",
+      "source": "urn:leaddrive:finance",
+      "type": "finance.fund-transaction-recorded.v1",
+      "time": "2026-09-01T12:34:56.000Z",
+      "datacontenttype": "application/json",
+      "dataschema": "urn:leaddrive:schema:finance.fund-transaction-recorded:v1",
+      "organizationid": "org_01J7R3FKST4SWP19GZZ4BMSP8A",
+      "aggregatetype": "fund",
+      "aggregateid": "fund_01J7R3J5VP9E8NB6Y6HTWRF1A2",
+      "aggregateversion": 42,
+      "correlationid": "corr_01J7R3P8VB3QZR72PAQF109KKT",
+      "causationid": "cmd_01J7R3NQ9RK4M9H6AK7C29TQNB",
+      "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+      "producer": "finance-api",
+      "producerversion": "62a949aa0",
+      "classification": "confidential",
+      "subjectref": "fund/fund_01J7R3J5VP9E8NB6Y6HTWRF1A2",
+      "data": {
+        "fundId": "fund_01J7R3J5VP9E8NB6Y6HTWRF1A2",
+        "transactionId": "txn_01J7R3SPTRJWQCEJ51E6E0A12S",
+        "transactionType": "deposit",
+        "amount": "1500.0000",
+        "signedDelta": "1500.0000",
+        "resultingBalance": "98000.0000",
+        "currency": "EUR"
+      }
+    }
+  ]
+}

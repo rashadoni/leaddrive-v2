@@ -1,0 +1,24 @@
+[Unit]
+Description=Deliver durable Fanum inbound browser lifecycle events
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py
+
+[Service]
+Type=oneshot
+User=asterisk
+Group=asterisk
+UMask=0077
+ExecStart=/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py --drain-spool
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ReadOnlyPaths=/etc/fanum-pbx-coordinator.env
+ReadWritePaths=/var/spool/fanum-inbound-browser-events
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+LockPersonality=yes
+MemoryDenyWriteExecute=yes

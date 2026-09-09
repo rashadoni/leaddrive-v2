@@ -1,0 +1,56 @@
+Carry the raw dial-failure evidence (DIALSTATUS + Q.850 cause) in the
+coordinator's ai_result callback, so an operator can read WHY an outbound AI
+dial failed from the CRM call card instead of capturing trunk traffic.
+
+Applies to /usr/local/lib/fanum-voice/fanum_pbx_coordinator.py on the PBX.
+
+  before: 9ac291ac5152940e302d1cb1060b0dc3c5ab0c1b4a69125c4a6c69dba4e8a1f6
+  after:  2edfb84f12487fcd0a1b7d23c161ec829ea431b164be756b208fbddc05516a15
+
+Rolled forward together with this patch (same PR):
+  - PAYLOAD_DIGESTS in scripts/pbx/fanum-pbx-stage (coordinator line);
+  - EXPECTED_COORDINATOR_SHA256 inside /usr/local/sbin/fanum-voice-deploy on
+    the PBX (line 12; new wrapper digest
+    451833bd5f8c4916e73204e99788cefa6639dc7aace20928abb25e148b0b4613);
+  - EXPECTED_PBX_WRAPPER_SHA256 in
+    .github/workflows/set-voice-provider-registry-cutover.yml and
+    src/__tests__/voice-provider-registry-cutover-workflow.test.ts.
+
+DEPLOY ORDER: the CRM side (optional dialStatus/hangupCause in the strict
+call-result contract, migration 20260826120000_call_dial_failure_diagnostics)
+must be live in production BEFORE this coordinator build sends its first
+callback — voiceAgentCallResultSchema is .strict(), so an old CRM would 400
+every non-connected ai_result.
+
+Why this is safe against the outbox conflict fence: outbox rows are inserted
+once per deterministic event_id, and duplicate terminal evidence returns early
+(state == 'terminal' comparison) before _insert_outbox, so a row enqueued by
+the old build is never re-hashed against the new payload shape. The gate-abort
+ai_result is deliberately unchanged: a gate abort has no dial evidence.
+
+Verified offline against a temp sqlite state store (no calls placed): failed
+terminal enqueues {..., "dialStatus": "CHANUNAVAIL", "hangupCause": "1"};
+cause-only evidence omits dialStatus instead of sending ""; duplicate
+redelivery leaves the outbox row untouched; connected terminals still enqueue
+nothing.
+
+--- fanum_pbx_coordinator.py (live 9ac291ac)
++++ fanum_pbx_coordinator.py (candidate 2edfb84f)
+@@ -1357,6 +1357,17 @@
+                         "providerOutcome": outcome,
+                         "turns": [],
+                     }
++                    # The raw evidence behind the collapsed outcome, so the CRM
++                    # can show WHY the dial failed (e.g. CHANUNAVAIL / Q.850 1)
++                    # without a trunk capture. Empty values are omitted, not
++                    # sent as "": the CRM contract accepts only non-empty
++                    # tokens, and gate aborts have no dial evidence at all.
++                    dial_status = str(canonical.get("dialStatus") or "")
++                    if dial_status:
++                        payload["dialStatus"] = dial_status
++                    hangup_cause = str(canonical.get("hangupCause") or "")
++                    if hangup_cause:
++                        payload["hangupCause"] = hangup_cause
+                     route = "ai_result"
+                 else:
+                     payload = None

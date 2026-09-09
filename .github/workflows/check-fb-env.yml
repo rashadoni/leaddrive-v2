@@ -1,0 +1,62 @@
+name: Check social OAuth env
+
+# Read-only diagnostic: prints whether the shared social OAuth apps
+# (Facebook/Meta, Instagram-Login, TikTok) are configured in the prod
+# deployment's .env — app ids / client keys / redirect URIs only.
+# Secrets are NEVER printed (presence reported as yes/no). Production access
+# is dispatch-only: editing an operator workflow must never contact production.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Setup pinned production SSH
+        uses: ./.github/actions/setup-production-ssh
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server-host: ${{ secrets.SERVER_HOST }}
+          known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+      - name: Read social OAuth env on server (read-only, secrets hidden)
+        run: |
+          ssh -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          ENV="${APP_ENV_FILE:-/etc/leaddrive/app.env}"
+          [ -f "$ENV" ] || { echo "NO canonical app env FOUND"; exit 0; }
+
+          # Tolerant KEY=VALUE reader: optional export prefix, strips quotes.
+          read_env() {
+            grep -E "^[[:space:]]*(export[[:space:]]+)?$1=" "$ENV" | head -1 \
+              | sed -E 's/^[^=]*=//' | tr -d '"'"'"''
+          }
+          has_env() {
+            grep -Eq "^[[:space:]]*(export[[:space:]]+)?$1=.+" "$ENV" && echo yes || echo no
+          }
+
+          echo "--- Facebook / Meta OAuth env (App Secret hidden) ---"
+          echo "FACEBOOK_APP_ID        = $(read_env FACEBOOK_APP_ID)"
+          echo "FACEBOOK_REDIRECT_URI  = $(read_env FACEBOOK_REDIRECT_URI)"
+          echo "FACEBOOK_APP_SECRET set= $(has_env FACEBOOK_APP_SECRET)"
+          echo ""
+          echo "--- Instagram-Login OAuth env (App Secret hidden) ---"
+          echo "INSTAGRAM_APP_ID        = $(read_env INSTAGRAM_APP_ID)"
+          echo "INSTAGRAM_REDIRECT_URI  = $(read_env INSTAGRAM_REDIRECT_URI)"
+          echo "INSTAGRAM_APP_SECRET set= $(has_env INSTAGRAM_APP_SECRET)"
+          echo ""
+          echo "--- TikTok Login Kit env (Client Secret hidden) ---"
+          echo "TIKTOK_CLIENT_KEY       = $(read_env TIKTOK_CLIENT_KEY)"
+          echo "TIKTOK_REDIRECT_URI     = $(read_env TIKTOK_REDIRECT_URI)"
+          echo "TIKTOK_CLIENT_SECRET set= $(has_env TIKTOK_CLIENT_SECRET)"
+          REMOTE
+      - name: Cleanup
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

@@ -1,0 +1,99 @@
+{
+  "apiVersion": "event-platform.leaddrive.io/v1",
+  "kind": "JsonSchemaSubjectCatalog",
+  "status": "template-not-registered",
+  "schemaType": "JSON",
+  "normalize": true,
+  "defaultCompatibility": "BACKWARD_TRANSITIVE",
+  "subjects": [
+    {
+      "subject": "leaddrive.event-envelope.v1-value",
+      "schemaId": "urn:leaddrive:schema:event-envelope:v1",
+      "schemaFile": "../../../docs/event-platform/event-envelope-v1.schema.json",
+      "owner": "event-platform",
+      "classification": "restricted",
+      "compatibility": "BACKWARD_TRANSITIVE",
+      "references": []
+    },
+    {
+      "subject": "finance.fund-opened.v1-value",
+      "eventType": "finance.fund-opened.v1",
+      "schemaId": "urn:leaddrive:schema:finance.fund-opened:v1",
+      "schemaFile": "schemas/finance/finance.fund-opened.v1.schema.json",
+      "owner": "finance-platform",
+      "classification": "confidential",
+      "compatibility": "BACKWARD_TRANSITIVE",
+      "references": [
+        {
+          "name": "urn:leaddrive:schema:event-envelope:v1",
+          "subject": "leaddrive.event-envelope.v1-value",
+          "version": 1
+        }
+      ]
+    },
+    {
+      "subject": "finance.fund-transaction-recorded.v1-value",
+      "eventType": "finance.fund-transaction-recorded.v1",
+      "schemaId": "urn:leaddrive:schema:finance.fund-transaction-recorded:v1",
+      "schemaFile": "schemas/finance/finance.fund-transaction-recorded.v1.schema.json",
+      "owner": "finance-platform",
+      "classification": "confidential",
+      "compatibility": "BACKWARD_TRANSITIVE",
+      "references": [
+        {
+          "name": "urn:leaddrive:schema:event-envelope:v1",
+          "subject": "leaddrive.event-envelope.v1-value",
+          "version": 1
+        }
+      ]
+    },
+    {
+      "subject": "finance.fund-metadata-updated.v1-value",
+      "eventType": "finance.fund-metadata-updated.v1",
+      "schemaId": "urn:leaddrive:schema:finance.fund-metadata-updated:v1",
+      "schemaFile": "schemas/finance/finance.fund-metadata-updated.v1.schema.json",
+      "owner": "finance-platform",
+      "classification": "confidential",
+      "compatibility": "BACKWARD_TRANSITIVE",
+      "references": [
+        {
+          "name": "urn:leaddrive:schema:event-envelope:v1",
+          "subject": "leaddrive.event-envelope.v1-value",
+          "version": 1
+        }
+      ]
+    },
+    {
+      "subject": "finance.fund-archived.v1-value",
+      "eventType": "finance.fund-archived.v1",
+      "schemaId": "urn:leaddrive:schema:finance.fund-archived:v1",
+      "schemaFile": "schemas/finance/finance.fund-archived.v1.schema.json",
+      "owner": "finance-platform",
+      "classification": "confidential",
+      "compatibility": "BACKWARD_TRANSITIVE",
+      "references": [
+        {
+          "name": "urn:leaddrive:schema:event-envelope:v1",
+          "subject": "leaddrive.event-envelope.v1-value",
+          "version": 1
+        }
+      ]
+    },
+    {
+      "subject": "finance.fund-reactivated.v1-value",
+      "eventType": "finance.fund-reactivated.v1",
+      "schemaId": "urn:leaddrive:schema:finance.fund-reactivated:v1",
+      "schemaFile": "schemas/finance/finance.fund-reactivated.v1.schema.json",
+      "owner": "finance-platform",
+      "classification": "confidential",
+      "compatibility": "BACKWARD_TRANSITIVE",
+      "references": [
+        {
+          "name": "urn:leaddrive:schema:event-envelope:v1",
+          "subject": "leaddrive.event-envelope.v1-value",
+          "version": 1
+        }
+      ]
+    }
+  ]
+}

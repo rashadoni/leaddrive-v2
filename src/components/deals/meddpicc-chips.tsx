@@ -1,0 +1,59 @@
+"use client"
+
+/**
+ * D2 (Creatio 10X roadmap) — compact MEDDPICC letter chips for deal lists:
+ * 8 letters, each colored by its block's score (red 1-2 / yellow 3 / green
+ * 4-5, muted when unscored). Tooltip carries the block name + score.
+ */
+import { useTranslations } from "next-intl"
+import { cn } from "@/lib/utils"
+import {
+  MEDDPICC_BLOCKS,
+  MEDDPICC_LETTERS,
+  parseMeddpicc,
+  scoreBucket,
+} from "@/lib/meddpicc"
+
+// Hue mapping (red/amber/emerald) must stay in sync with STATUS_STYLES and
+// BUCKET_BTN in deal-meddpicc.tsx — Tailwind needs literal class strings, so
+// the three surfaces keep their own maps on purpose.
+const BUCKET_CHIP: Record<string, string> = {
+  none: "bg-muted text-muted-foreground/60",
+  red: "bg-red-500/90 text-white",
+  yellow: "bg-amber-500/90 text-white",
+  green: "bg-emerald-500/90 text-white",
+}
+
+export function MeddpiccChips({
+  meddpicc,
+  className,
+  hideWhenEmpty = false,
+}: {
+  meddpicc: unknown
+  className?: string
+  /** Kanban cards drop the row entirely when nothing is scored; the list keeps the muted letters as an "unassessed" cue. */
+  hideWhenEmpty?: boolean
+}) {
+  const t = useTranslations("meddpicc")
+  const data = parseMeddpicc(meddpicc)
+  if (hideWhenEmpty && Object.keys(data).length === 0) return null
+  return (
+    <span className={cn("inline-flex gap-0.5", className)}>
+      {MEDDPICC_BLOCKS.map((key) => {
+        const score = data[key]?.score
+        return (
+          <span
+            key={key}
+            title={`${t(`block_${key}`)}${score !== undefined ? `: ${score}/5` : ""}`}
+            className={cn(
+              "inline-flex h-4 w-4 min-w-4 shrink-0 items-center justify-center rounded text-[10px] font-bold leading-none",
+              BUCKET_CHIP[scoreBucket(score)],
+            )}
+          >
+            {MEDDPICC_LETTERS[key]}
+          </span>
+        )
+      })}
+    </span>
+  )
+}

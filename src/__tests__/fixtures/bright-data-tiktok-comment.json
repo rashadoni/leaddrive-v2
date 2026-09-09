@@ -1,0 +1,17 @@
+{
+  "url": "https://www.tiktok.com/@synthetic_creator/video/7660000000000000001",
+  "post_url": "https://www.tiktok.com/@synthetic_creator/video/7660000000000000001",
+  "post_id": "7660000000000000001",
+  "post_date_created": "2026-07-13T10:30:00.000Z",
+  "date_created": "2026-07-13T10:35:00.000Z",
+  "comment_text": "Synthetic TikTok comment fixture",
+  "num_likes": 6,
+  "num_replies": 2,
+  "commenter_user_name": "synthetic_viewer",
+  "commenter_id": "tiktok-user-test-1",
+  "commenter_url": "https://www.tiktok.com/@synthetic_viewer",
+  "comment_id": "tiktok-comment-test-1",
+  "comment_url": "https://www.tiktok.com/@synthetic_creator/video/7660000000000000001?comment=1",
+  "replies": [],
+  "timestamp": "2026-07-13T10:36:00.000Z"
+}

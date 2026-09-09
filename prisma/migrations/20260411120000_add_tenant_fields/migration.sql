@@ -1,0 +1,8 @@
+-- AlterTable
+ALTER TABLE "organizations" ADD COLUMN IF NOT EXISTS "features" JSONB NOT NULL DEFAULT '[]';
+ALTER TABLE "organizations" ADD COLUMN IF NOT EXISTS "branding" JSONB NOT NULL DEFAULT '{}';
+ALTER TABLE "organizations" ADD COLUMN IF NOT EXISTS "isActive" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "organizations" ADD COLUMN IF NOT EXISTS "serverType" TEXT NOT NULL DEFAULT 'shared';
+ALTER TABLE "organizations" ADD COLUMN IF NOT EXISTS "serverIp" TEXT;
+ALTER TABLE "organizations" ADD COLUMN IF NOT EXISTS "provisionedAt" TIMESTAMP(3);
+ALTER TABLE "organizations" ADD COLUMN IF NOT EXISTS "provisionedBy" TEXT;

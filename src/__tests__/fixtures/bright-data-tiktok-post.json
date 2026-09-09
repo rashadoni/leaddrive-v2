@@ -1,0 +1,28 @@
+{
+  "url": "https://www.tiktok.com/@synthetic_creator/video/7660000000000000001",
+  "post_id": "7660000000000000001",
+  "description": "Synthetic TikTok monitoring fixture",
+  "create_time": "2026-07-13T10:30:00.000Z",
+  "digg_count": 321,
+  "share_count": "24",
+  "collect_count": 45,
+  "comment_count": 18,
+  "play_count": 4500,
+  "video_duration": 37,
+  "profile_id": "tiktok-profile-test-1",
+  "profile_username": "synthetic_creator",
+  "profile_url": "https://www.tiktok.com/@synthetic_creator",
+  "profile_avatar": "https://cdn.example.test/tiktok-avatar.jpg",
+  "preview_image": "https://cdn.example.test/tiktok-cover.jpg",
+  "post_type": "video",
+  "shortcode": "7660000000000000001",
+  "width": 576,
+  "video_url": "https://cdn.example.test/tiktok-video.mp4",
+  "music": {
+    "id": "tiktok-music-test-1",
+    "playurl": "https://cdn.example.test/tiktok-audio.mp3",
+    "title": "Synthetic Sound"
+  },
+  "carousel_images": null,
+  "timestamp": "2026-07-13T10:31:00.000Z"
+}

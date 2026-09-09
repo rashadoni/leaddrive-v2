@@ -1,0 +1,90 @@
+name: Require 2FA for privileged accounts
+
+# Manually-triggered operator job. Sets the per-user `require2fa` flag on every
+# account holding the admin or superadmin role — the same flag an administrator
+# would tick in the Users UI, applied without relying on anyone remembering.
+#
+# Finding F-05, option A, in docs/isms/ISMS-02-gap-analysis.md. This does NOT
+# reintroduce role-inferred MFA: commit 0a8f87477 removed that deliberately and
+# the decision stands.
+#
+# Defaults to a dry run. The run log itself is the ISMS evidence — it records
+# who ran it, when, and how many accounts changed, without exposing a user list.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dry-run lists the accounts; apply writes the flag"
+        required: true
+        default: "dry-run"
+        type: choice
+        options:
+          - dry-run
+          - apply
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  require-2fa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup pinned production SSH
+        uses: ./.github/actions/setup-production-ssh
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server-host: ${{ secrets.SERVER_HOST }}
+          known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+
+      # Upload the checked-out copy rather than trusting the one shipped by the
+      # last deploy — same reasoning as set-tenant-user-password.yml.
+      - name: Upload script to server
+        run: |
+          ssh -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "mkdir -p /opt/leaddrive-v2/.next/standalone/scripts"
+          scp -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
+            scripts/_rls.mjs scripts/require-admin-2fa.mjs \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/leaddrive-v2/.next/standalone/scripts/
+
+      - name: Run on server
+        env:
+          RUN_MODE: ${{ inputs.mode }}
+        run: |
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "RUN_MODE='$RUN_MODE' bash -s" <<'REMOTE'
+          set -euo pipefail
+          APP_DIR="/opt/leaddrive-v2"
+          APP_ENV_FILE="${APP_ENV_FILE:-/etc/leaddrive/app.env}"
+          SCRIPT="$APP_DIR/.next/standalone/scripts/require-admin-2fa.mjs"
+          [ -f "$SCRIPT" ] || { echo "FATAL: $SCRIPT missing"; exit 1; }
+          [ -f "$APP_ENV_FILE" ] || { echo "FATAL: canonical app env missing"; exit 1; }
+
+          read_env() {
+            sed -n "s/^[[:space:]]*\(export[[:space:]]\+\)\?$1[[:space:]]*=[[:space:]]*//p" "$APP_ENV_FILE" \
+              | head -1 | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'\$/\1/"
+          }
+          DATABASE_URL="$(read_env DATABASE_URL)"
+          [ -n "$DATABASE_URL" ] || { echo "FATAL: DATABASE_URL not found in canonical app env"; exit 1; }
+
+          if [ "$RUN_MODE" = "apply" ]; then APPLY=1; else APPLY=0; fi
+
+          cd "$APP_DIR"
+          DATABASE_URL="$DATABASE_URL" CONFIRM_PROD=1 APPLY="$APPLY" \
+            node "$SCRIPT"
+          REMOTE
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

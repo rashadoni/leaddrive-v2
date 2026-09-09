@@ -1,0 +1,15 @@
+{
+  "url": "https://www.instagram.com/p/TEST123/",
+  "comment_user": "synthetic_user",
+  "comment_user_url": "https://www.instagram.com/synthetic_user/",
+  "comment_date": "2026-07-13T11:15:00.000Z",
+  "comment": "Synthetic comment for contract testing",
+  "likes_number": 4,
+  "replies_number": 2,
+  "post_url": "https://www.instagram.com/p/TEST123/",
+  "comment_id": "comment-test-1",
+  "timestamp": "2026-07-13T11:15:00.000Z",
+  "input": {
+    "url": "https://www.instagram.com/p/TEST123/"
+  }
+}

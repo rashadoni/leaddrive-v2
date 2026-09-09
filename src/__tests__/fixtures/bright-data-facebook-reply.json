@@ -1,0 +1,25 @@
+{
+  "comment_id": "facebook-reply-test-1",
+  "comment_link": "https://www.facebook.com/example/posts/POST123/?comment_id=REPLY1",
+  "comment_text": "Synthetic Facebook reply for contract testing",
+  "commentator_profile": null,
+  "commentator_profile_url": "https://www.facebook.com/synthetic_replier",
+  "date_created": "2026-07-13T12:31:00.000Z",
+  "num_likes": 2,
+  "num_replies": 0,
+  "parent_comment_id": "facebook-comment-test-1",
+  "post_id": "facebook-post-test-123",
+  "post_url": "https://www.facebook.com/example/posts/POST123/",
+  "reply": true,
+  "source_type": "comment",
+  "subtype": "reply",
+  "timestamp": "2026-07-13T12:31:00.000Z",
+  "type": "comment",
+  "url": "https://www.facebook.com/example/posts/POST123/",
+  "user_id": "facebook-user-test-2",
+  "user_name": "Synthetic Replier",
+  "attached_images": null,
+  "input": {
+    "url": "https://www.facebook.com/example/posts/POST123/"
+  }
+}

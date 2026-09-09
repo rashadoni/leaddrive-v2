@@ -1,0 +1,13 @@
+[Unit]
+Description=Retry Fanum inbound browser lifecycle delivery
+
+[Timer]
+OnBootSec=30s
+OnUnitInactiveSec=10s
+AccuracySec=1s
+RandomizedDelaySec=2s
+Persistent=true
+Unit=fanum-inbound-browser-spool.service
+
+[Install]
+WantedBy=timers.target

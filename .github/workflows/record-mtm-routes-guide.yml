@@ -1,0 +1,185 @@
+name: Record detailed MTM Routes guide (AZ)
+
+on:
+  workflow_dispatch:
+    inputs:
+      fixture_confirmation:
+        description: Exact confirmation required to reset only the dedicated SwissMed QA fixtures
+        required: true
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    name: Record and validate the Azerbaijani Routes guide
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    environment: production
+    env:
+      GUIDE_BASE_URL: https://app.leaddrivecrm.org
+      GUIDE_ORGANIZATION_SLUG: leaddrive
+      MTM_EVIDENCE_SCENARIO_BATCH: routes-guide
+      MTM_EVIDENCE_ROLES: admin
+      MTM_EVIDENCE_VIEWPORTS: desktop
+      MTM_EVIDENCE_OUTPUT_DIR: artifacts/mtm-routes-guide/preflight
+
+    steps:
+      - name: Checkout reviewed guide source
+        uses: actions/checkout@v6
+
+      - name: Validate locked target, QA principals and confirmation
+        shell: bash
+        env:
+          FIXTURE_CONFIRMATION: ${{ inputs.fixture_confirmation }}
+          MTM_EVIDENCE_ADMIN_EMAIL: ${{ secrets.MTM_EVIDENCE_ADMIN_EMAIL }}
+          MTM_EVIDENCE_ADMIN_PASSWORD: ${{ secrets.MTM_EVIDENCE_ADMIN_PASSWORD }}
+          MTM_EVIDENCE_AGENT_EMAIL: ${{ secrets.MTM_EVIDENCE_AGENT_EMAIL }}
+          MTM_EVIDENCE_AGENT_PASSWORD: ${{ secrets.MTM_EVIDENCE_AGENT_PASSWORD }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          set -euo pipefail
+          [[ "$GUIDE_BASE_URL" == "https://app.leaddrivecrm.org" ]] || { echo "::error::Guide target is locked"; exit 1; }
+          [[ "$GUIDE_ORGANIZATION_SLUG" == "leaddrive" ]] || { echo "::error::Guide organization is locked"; exit 1; }
+          [[ "$FIXTURE_CONFIRMATION" == "leaddrive-swissmed-evidence" ]] || { echo "::error::Exact QA fixture confirmation is required"; exit 1; }
+          [[ "$MTM_EVIDENCE_ADMIN_EMAIL" == "qa.swissmed.admin@leaddrivecrm.org" ]] || { echo "::error::Unexpected admin principal"; exit 1; }
+          [[ "$MTM_EVIDENCE_AGENT_EMAIL" == "qa.swissmed.agent@leaddrivecrm.org" ]] || { echo "::error::Unexpected agent principal"; exit 1; }
+          [[ "$MTM_EVIDENCE_ADMIN_PASSWORD" == "$MTM_EVIDENCE_AGENT_PASSWORD" && ${#MTM_EVIDENCE_ADMIN_PASSWORD} -ge 24 ]] || { echo "::error::QA principal password guard failed"; exit 1; }
+          [[ -n "$GEMINI_API_KEY" ]] || { echo "::error::GEMINI_API_KEY is required for Azerbaijani narration"; exit 1; }
+
+      - name: Restore only dedicated SwissMed QA fixtures before capture
+        shell: bash
+        env:
+          MTM_EVIDENCE_ORG_SLUG: ${{ env.GUIDE_ORGANIZATION_SLUG }}
+          MTM_EVIDENCE_FIXTURE_CONFIRMATION: ${{ inputs.fixture_confirmation }}
+          MTM_EVIDENCE_ADMIN_EMAIL: ${{ secrets.MTM_EVIDENCE_ADMIN_EMAIL }}
+          MTM_EVIDENCE_ADMIN_PASSWORD: ${{ secrets.MTM_EVIDENCE_ADMIN_PASSWORD }}
+          MTM_EVIDENCE_AGENT_EMAIL: ${{ secrets.MTM_EVIDENCE_AGENT_EMAIL }}
+          MTM_EVIDENCE_AGENT_PASSWORD: ${{ secrets.MTM_EVIDENCE_AGENT_PASSWORD }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SERVER_SSH_KNOWN_HOSTS: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+        run: bash scripts/ci/refresh-swissmed-mtm-fixtures.sh
+
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Install browser and media tools on the ephemeral runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v ffmpeg >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y ffmpeg
+          fi
+          npx playwright install --with-deps chromium
+
+      - name: Prove the live Routes path end to end before recording
+        env:
+          MTM_EVIDENCE_BASE_URL: ${{ env.GUIDE_BASE_URL }}
+          MTM_EVIDENCE_ORG_SLUG: ${{ env.GUIDE_ORGANIZATION_SLUG }}
+          MTM_EVIDENCE_ADMIN_EMAIL: ${{ secrets.MTM_EVIDENCE_ADMIN_EMAIL }}
+          MTM_EVIDENCE_ADMIN_PASSWORD: ${{ secrets.MTM_EVIDENCE_ADMIN_PASSWORD }}
+        run: node scripts/swissmed-mtm-browser-evidence.mjs
+
+      - name: Reset dedicated QA fixtures after preflight for a clean recording
+        shell: bash
+        env:
+          MTM_EVIDENCE_ORG_SLUG: ${{ env.GUIDE_ORGANIZATION_SLUG }}
+          MTM_EVIDENCE_FIXTURE_CONFIRMATION: ${{ inputs.fixture_confirmation }}
+          MTM_EVIDENCE_ADMIN_EMAIL: ${{ secrets.MTM_EVIDENCE_ADMIN_EMAIL }}
+          MTM_EVIDENCE_ADMIN_PASSWORD: ${{ secrets.MTM_EVIDENCE_ADMIN_PASSWORD }}
+          MTM_EVIDENCE_AGENT_EMAIL: ${{ secrets.MTM_EVIDENCE_AGENT_EMAIL }}
+          MTM_EVIDENCE_AGENT_PASSWORD: ${{ secrets.MTM_EVIDENCE_AGENT_PASSWORD }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SERVER_SSH_KNOWN_HOSTS: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+        run: bash scripts/ci/refresh-swissmed-mtm-fixtures.sh
+
+      - name: Record the complete Azerbaijani Routes guide
+        env:
+          CONFIRM_REMOTE_HELP_VIDEO: app.leaddrivecrm.org
+          ALLOW_MUTATIONS: "1"
+          HELP_VIDEO_EMAIL: ${{ secrets.MTM_EVIDENCE_ADMIN_EMAIL }}
+          HELP_VIDEO_PASSWORD: ${{ secrets.MTM_EVIDENCE_ADMIN_PASSWORD }}
+          HELP_VIDEO_ORG_SLUG: ${{ env.GUIDE_ORGANIZATION_SLUG }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_TTS_MODEL: gemini-2.5-flash-preview-tts
+          GEMINI_TTS_VOICE: Kore
+          FORCE: "1"
+          CLEAN: "1"
+        run: node scripts/produce-guides.mjs "$GUIDE_BASE_URL" az mtm-routes
+
+      - name: Verify duration, audio, silence and representative frames
+        shell: bash
+        run: |
+          set -euo pipefail
+          video="video/player/mtm-routes.az.VOICE.mp4"
+          poster="video/player/mtm-routes.az.poster.jpg"
+          artifacts="artifacts/mtm-routes-guide/quality"
+          mkdir -p "$artifacts/frames"
+          test -s "$video"
+          test -s "$poster"
+          ffprobe -v error \
+            -show_entries format=duration:stream=codec_type,width,height \
+            -of json "$video" > "$artifacts/ffprobe.json"
+          duration="$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$video")"
+          awk -v duration="$duration" 'BEGIN { exit !(duration >= 600 && duration <= 1200) }' || {
+            echo "::error::The detailed guide must be 10–20 minutes; got ${duration}s"
+            exit 1
+          }
+          ffmpeg -hide_banner -i "$video" -af silencedetect=noise=-40dB:d=2.5 -f null - 2>&1 | tee "$artifacts/silencedetect.log"
+          if grep -q "silence_start" "$artifacts/silencedetect.log"; then
+            echo "::error::Found a silent gap of at least 2.5 seconds"
+            exit 1
+          fi
+          for part in 0.15 0.45 0.75 0.92; do
+            timestamp="$(awk -v duration="$duration" -v part="$part" 'BEGIN { printf "%.3f", duration * part }')"
+            ffmpeg -hide_banner -loglevel error -ss "$timestamp" -i "$video" -frames:v 1 -q:v 2 "$artifacts/frames/${part}.jpg"
+          done
+
+      - name: Restore only dedicated SwissMed QA fixtures after capture
+        if: always()
+        shell: bash
+        env:
+          MTM_EVIDENCE_ORG_SLUG: ${{ env.GUIDE_ORGANIZATION_SLUG }}
+          MTM_EVIDENCE_FIXTURE_CONFIRMATION: ${{ inputs.fixture_confirmation }}
+          MTM_EVIDENCE_ADMIN_EMAIL: ${{ secrets.MTM_EVIDENCE_ADMIN_EMAIL }}
+          MTM_EVIDENCE_ADMIN_PASSWORD: ${{ secrets.MTM_EVIDENCE_ADMIN_PASSWORD }}
+          MTM_EVIDENCE_AGENT_EMAIL: ${{ secrets.MTM_EVIDENCE_AGENT_EMAIL }}
+          MTM_EVIDENCE_AGENT_PASSWORD: ${{ secrets.MTM_EVIDENCE_AGENT_PASSWORD }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SERVER_SSH_KNOWN_HOSTS: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+        run: bash scripts/ci/refresh-swissmed-mtm-fixtures.sh
+
+      - name: Upload review frames and verification evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mtm-routes-az-guide-evidence-${{ github.run_id }}
+          path: |
+            video/player/mtm-routes.az.poster.jpg
+            artifacts/mtm-routes-guide
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload unpublished guide candidate
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mtm-routes-az-guide-candidate-${{ github.run_id }}
+          path: |
+            video/player/mtm-routes.az.VOICE.mp4
+            video/player/mtm-routes.az.poster.jpg
+          if-no-files-found: warn
+          retention-days: 30

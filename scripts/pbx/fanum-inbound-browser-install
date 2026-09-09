@@ -1,0 +1,457 @@
+#!/usr/bin/env bash
+# Install the exact-DID inbound browser gate on the Fanum station.
+#
+# The exact selector is read only from a root-owned station-local file and is
+# never accepted as an argument or printed.  A reviewed transformer preserves
+# the existing five-step wildcard byte-for-byte and adds one exact route whose
+# CRM-facing destination is a fixed non-sensitive alias.
+# Asterisk is reloaded, never restarted, and this script cannot originate a
+# call.  Any failed post-install proof restores every file it changed.
+set -Eeuo pipefail
+umask 077
+export LC_ALL=C
+
+readonly SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+readonly HELPER_SRC="$SOURCE_DIR/fanum-inbound-browser-agi.py"
+readonly TRANSFORM_SRC="$SOURCE_DIR/fanum-inbound-dialplan-transform.py"
+readonly DIALPLAN_SRC="$SOURCE_DIR/fanum-inbound-browser.conf"
+readonly SERVICE_SRC="$SOURCE_DIR/payload/fanum-inbound-browser-spool.service"
+readonly TIMER_SRC="$SOURCE_DIR/payload/fanum-inbound-browser-spool.timer"
+
+readonly HELPER_DST="/usr/local/lib/fanum-voice/fanum-inbound-browser-agi.py"
+readonly DIALPLAN_DST="/etc/asterisk/fanum-inbound-browser.conf"
+readonly SERVICE_DST="/etc/systemd/system/fanum-inbound-browser-spool.service"
+readonly TIMER_DST="/etc/systemd/system/fanum-inbound-browser-spool.timer"
+readonly EXTENSIONS_FANUM="/etc/asterisk/extensions_fanum.conf"
+readonly EXTENSIONS_ROOT="/etc/asterisk/extensions.conf"
+readonly AI_CORE="/opt/fanum-voice/fanum-voice-core.py"
+readonly COORDINATOR_ENV="/etc/fanum-pbx-coordinator.env"
+readonly INBOUND_SELECTOR="/etc/fanum-inbound-browser.did"
+readonly SPOOL_DIR="/var/spool/fanum-inbound-browser-events"
+readonly STATE_DIR="/var/lib/fanum-inbound-browser"
+readonly STATE_FILE="$STATE_DIR/install.state"
+readonly INCLUDE_LINE='#include "fanum-inbound-browser.conf"'
+
+# Station evidence captured by the read-only probe immediately before this
+# bundle was written.  Drift refuses the install before the first write.
+readonly EXPECTED_EXTENSIONS_FANUM_SHA256="01f0c25f28d3fddd8c13ca3d4d902cfeb7c9bf3a29388df9ff317274f923f983"
+readonly EXPECTED_AI_CORE_SHA256="4523505b86afa4ea493ef99d7556f94fd3838f32be4b99c19ed76132aa5e3a3a"
+
+# Filled from the reviewed repository files.  Site configuration is never part
+# of this list.
+readonly EXPECTED_HELPER_SHA256="f73dc69993a3f8f94d87edc771af07cd59ac0dd48537db7562357f7ce48b325d"
+readonly EXPECTED_TRANSFORM_SHA256="463836fd6902434b6809a5106908377bba9a2b8a3de330d221ecf71ba49472b9"
+readonly EXPECTED_DIALPLAN_SHA256="54d669c8ecd5980d713ffb32ef3368f03ef3a71c22028be57beebb210f12a67e"
+readonly EXPECTED_SERVICE_SHA256="133014e6229cbcf1bc6ff4a131eac5ad9975e9f9d696ef18a5d337ac9d4a778f"
+readonly EXPECTED_TIMER_SHA256="a6522acabc29b5f098eab6f6793569aa0a6b67a5ab34e4d60ad34fc58783f01b"
+
+fail() { printf 'fanum-inbound-browser-install: %s\n' "$1" >&2; exit 1; }
+digest_of() { sha256sum "$1" | awk '{print $1}'; }
+
+loaded_context_fingerprint() {
+  local context="" report="" command_status=""
+  {
+    context="from-fanum-provider"
+    report="$(asterisk -rx "dialplan show $context" 2>&1)" || return 1
+    printf '%s\0%s\0%s\0' "$context" 0 "$report"
+    for context in fanum-inbound-browser fanum-inbound-browser-terminal; do
+      if report="$(asterisk -rx "dialplan show $context" 2>&1)"; then
+        command_status=0
+      else
+        command_status=$?
+      fi
+      printf '%s\0%s\0%s\0' "$context" "$command_status" "$report"
+    done
+  } | sha256sum | awk '{print $1}'
+}
+
+require_regular() {
+  [ -f "$1" ] && [ ! -L "$1" ] || fail "required regular file is missing"
+}
+
+verify_digest() {
+  local path="$1" expected="$2"
+  require_regular "$path"
+  [ "$(digest_of "$path")" = "$expected" ] || fail "reviewed bundle digest mismatch"
+}
+
+[ "$(id -u)" = "0" ] || fail "must run as root"
+[ "$#" -eq 0 ] || fail "takes no arguments"
+
+for tool in asterisk awk cmp cp date dirname grep head install python3 rm rmdir runuser sha256sum sort ss stat systemctl; do
+  command -v "$tool" >/dev/null || fail "required station tool is missing"
+done
+
+verify_digest "$HELPER_SRC" "$EXPECTED_HELPER_SHA256"
+verify_digest "$TRANSFORM_SRC" "$EXPECTED_TRANSFORM_SHA256"
+verify_digest "$DIALPLAN_SRC" "$EXPECTED_DIALPLAN_SHA256"
+verify_digest "$SERVICE_SRC" "$EXPECTED_SERVICE_SHA256"
+verify_digest "$TIMER_SRC" "$EXPECTED_TIMER_SHA256"
+
+for path in "$EXTENSIONS_FANUM" "$EXTENSIONS_ROOT" "$AI_CORE" "$COORDINATOR_ENV" "$INBOUND_SELECTOR"; do
+  require_regular "$path"
+done
+[ "$(stat -c '%U:%G %a' "$INBOUND_SELECTOR")" = "root:root 600" ] \
+  || fail "inbound selector has unsafe ownership"
+python3 "$TRANSFORM_SRC" --verify-selector "$INBOUND_SELECTOR" \
+  || fail "inbound selector is invalid"
+
+extensions_owner="$(stat -c '%U' "$EXTENSIONS_FANUM")"
+extensions_group="$(stat -c '%G' "$EXTENSIONS_FANUM")"
+extensions_mode="$(stat -c '%a' "$EXTENSIONS_FANUM")"
+for identity in "$extensions_owner" "$extensions_group"; do
+  printf '%s\n' "$identity" | grep -Eq '^[A-Za-z_][A-Za-z0-9_-]*$' \
+    || fail "dialplan ownership has an unsafe shape"
+done
+printf '%s\n' "$extensions_mode" | grep -Eq '^[0-7]{3,4}$' \
+  || fail "dialplan mode has an unsafe shape"
+
+systemctl is-active --quiet asterisk || fail "asterisk is not active"
+systemctl is-active --quiet fanum-voice || fail "fanum voice is not active"
+systemctl is-active --quiet fanum-softphone-bridge || fail "browser bridge is not active"
+systemctl is-active --quiet fanum-softphone-tunnel || fail "browser tunnel is not active"
+asterisk -rx "core show application AudioSocket" 2>/dev/null \
+  | grep -Fq 'AudioSocket(' \
+  || fail "Asterisk AudioSocket is unavailable"
+ss -ltnH 2>/dev/null | grep -Eq '127\.0\.0\.1:9093|\[::1\]:9093' \
+  || fail "browser bridge is not listening on loopback"
+
+readonly AI_BEFORE="$(digest_of "$AI_CORE")"
+[ "$AI_BEFORE" = "$EXPECTED_AI_CORE_SHA256" ] || fail "AI core drifted from probe evidence"
+python3 "$HELPER_SRC" --self-check || fail "station callback configuration is invalid"
+python3 "$HELPER_SRC" --preflight || fail "authenticated CRM route preflight failed"
+loaded_contexts_before_sha256="$(loaded_context_fingerprint)" \
+  || fail "could not fingerprint loaded dialplan contexts"
+[[ "$loaded_contexts_before_sha256" =~ ^[0-9a-f]{64}$ ]] \
+  || fail "loaded dialplan fingerprint is invalid"
+readonly loaded_contexts_before_sha256
+
+current_extensions_digest="$(digest_of "$EXTENSIONS_FANUM")"
+install_mode="fresh"
+if [ "$current_extensions_digest" = "$EXPECTED_EXTENSIONS_FANUM_SHA256" ] && [ -e "$STATE_FILE" ]; then
+  require_regular "$STATE_FILE"
+  [ "$(stat -c '%U:%G %a' "$STATE_FILE")" = "root:root 600" ] \
+    || fail "installed generation marker has unsafe ownership"
+  expected_original_digest="$({
+    awk -F= '$1 == "ORIGINAL_SHA256" && $2 ~ /^[0-9a-f]{64}$/ { print $2 }' "$STATE_FILE"
+  } | head -1)"
+  [ "$expected_original_digest" = "$EXPECTED_EXTENSIONS_FANUM_SHA256" ] \
+    || fail "installed generation marker does not match probe evidence"
+  # A coordinator generation can restore the exact pinned base dialplan.
+  # Reapply only from that known digest, never from unknown drift.
+  install_mode="reapply"
+elif [ "$current_extensions_digest" != "$EXPECTED_EXTENSIONS_FANUM_SHA256" ]; then
+  require_regular "$STATE_FILE"
+  [ "$(stat -c '%U:%G %a' "$STATE_FILE")" = "root:root 600" ] \
+    || fail "installed generation marker has unsafe ownership"
+  expected_installed_digest="$({
+    awk -F= '$1 == "INSTALLED_SHA256" && $2 ~ /^[0-9a-f]{64}$/ { print $2 }' "$STATE_FILE"
+  } | head -1)"
+  [ -n "$expected_installed_digest" ] \
+    && [ "$current_extensions_digest" = "$expected_installed_digest" ] \
+    || fail "dialplan drifted from the installed generation"
+  python3 "$TRANSFORM_SRC" --verify "$EXTENSIONS_FANUM" "$INBOUND_SELECTOR" \
+    || fail "installed provider route is not exact"
+  install_mode="refresh"
+fi
+
+include_count="$(grep -Fxc "$INCLUDE_LINE" "$EXTENSIONS_ROOT" || true)"
+case "$include_count" in
+  0|1) ;;
+  *) fail "browser dialplan include is duplicated" ;;
+esac
+if [ "$install_mode" = "fresh" ] && [ "$include_count" != "0" ]; then
+  fail "browser dialplan include exists without an installed generation"
+fi
+
+for path in "$HELPER_DST" "$DIALPLAN_DST" "$SERVICE_DST" "$TIMER_DST"; do
+  if [ -e "$path" ] && { [ ! -f "$path" ] || [ -L "$path" ]; }; then
+    fail "destination has an unsafe file type"
+  fi
+  if [ "$install_mode" = "fresh" ] && [ -e "$path" ]; then
+    fail "destination exists without an installed generation"
+  fi
+done
+
+readonly STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+readonly BACKUP_DIR="/var/backups/fanum-inbound-browser/$STAMP"
+readonly CANDIDATE="$BACKUP_DIR/extensions_fanum.candidate"
+readonly helper_directory="$(dirname "$HELPER_DST")"
+install -d -o root -g root -m 0700 "$BACKUP_DIR"
+
+backup_file() {
+  local path="$1" name="$2"
+  if [ -f "$path" ] && [ ! -L "$path" ]; then
+    cp -p -- "$path" "$BACKUP_DIR/$name"
+  else
+    : > "$BACKUP_DIR/$name.absent"
+  fi
+}
+
+backup_directory() {
+  local path="$1" name="$2"
+  if [ -d "$path" ] && [ ! -L "$path" ]; then
+    stat -c '%u %g %a' -- "$path" > "$BACKUP_DIR/$name.directory"
+  elif [ ! -e "$path" ] && [ ! -L "$path" ]; then
+    : > "$BACKUP_DIR/$name.absent"
+  else
+    fail "runtime directory has an unsafe file type"
+  fi
+}
+
+restore_file() {
+  local path="$1" name="$2"
+  if [ -f "$BACKUP_DIR/$name" ]; then
+    cp -p -- "$BACKUP_DIR/$name" "$path"
+  elif [ -f "$BACKUP_DIR/$name.absent" ]; then
+    rm -f -- "$path"
+  else
+    return 1
+  fi
+}
+
+verify_restored_file() {
+  local path="$1" name="$2"
+  if [ -f "$BACKUP_DIR/$name" ]; then
+    [ -f "$path" ] \
+      && [ ! -L "$path" ] \
+      && [ "$(digest_of "$path")" = "$(digest_of "$BACKUP_DIR/$name")" ]
+  elif [ -f "$BACKUP_DIR/$name.absent" ]; then
+    [ ! -e "$path" ] && [ ! -L "$path" ]
+  else
+    return 1
+  fi
+}
+
+restore_directory() {
+  local path="$1" name="$2" owner="" group="" mode="" extra=""
+  if [ -f "$BACKUP_DIR/$name.directory" ]; then
+    read -r owner group mode extra < "$BACKUP_DIR/$name.directory" || return 1
+    [[ "$owner" =~ ^[0-9]+$ ]] \
+      && [[ "$group" =~ ^[0-9]+$ ]] \
+      && [[ "$mode" =~ ^[0-7]{3,4}$ ]] \
+      && [ -z "$extra" ] \
+      || return 1
+    if [ -e "$path" ] || [ -L "$path" ]; then
+      [ -d "$path" ] && [ ! -L "$path" ] || return 1
+    fi
+    install -d -o "$owner" -g "$group" -m "$mode" "$path"
+  elif [ -f "$BACKUP_DIR/$name.absent" ]; then
+    if [ ! -e "$path" ] && [ ! -L "$path" ]; then
+      return 0
+    fi
+    [ -d "$path" ] && [ ! -L "$path" ] && rmdir -- "$path"
+  else
+    return 1
+  fi
+}
+
+verify_restored_directory() {
+  local path="$1" name="$2" expected=""
+  if [ -f "$BACKUP_DIR/$name.directory" ]; then
+    expected="$(<"$BACKUP_DIR/$name.directory")"
+    [ -d "$path" ] \
+      && [ ! -L "$path" ] \
+      && [ "$(stat -c '%u %g %a' -- "$path")" = "$expected" ]
+  elif [ -f "$BACKUP_DIR/$name.absent" ]; then
+    [ ! -e "$path" ] && [ ! -L "$path" ]
+  else
+    return 1
+  fi
+}
+
+backup_directory "$helper_directory" helper_directory
+backup_directory "$SPOOL_DIR" spool_directory
+backup_directory "$STATE_DIR" state_directory
+backup_file "$EXTENSIONS_FANUM" extensions_fanum.conf
+backup_file "$EXTENSIONS_ROOT" extensions.conf
+backup_file "$HELPER_DST" fanum-inbound-browser-agi.py
+backup_file "$DIALPLAN_DST" fanum-inbound-browser.conf
+backup_file "$SERVICE_DST" fanum-inbound-browser-spool.service
+backup_file "$TIMER_DST" fanum-inbound-browser-spool.timer
+backup_file "$STATE_FILE" install.state
+
+timer_was_enabled="$(systemctl is-enabled fanum-inbound-browser-spool.timer 2>/dev/null || true)"
+timer_was_active="$(systemctl is-active fanum-inbound-browser-spool.timer 2>/dev/null || true)"
+changed=0
+success=0
+
+rollback() {
+  local status="${1:-1}"
+  local rollback_failed=0
+  local loaded_contexts_after_sha256=""
+  local timer_is_enabled=""
+  local timer_is_active=""
+  trap - EXIT INT TERM
+  if [ "$status" -eq 0 ]; then
+    status=1
+  fi
+  if [ "$changed" != "1" ]; then
+    printf 'fanum-inbound-browser-install: aborted before station changes; no call was placed\n' >&2
+    exit "$status"
+  fi
+
+  # Quiesce the installed timer before replacing its unit and executable.  The
+  # final enabled/active checks below, rather than these best-effort commands,
+  # decide whether its original state was recovered.
+  systemctl stop fanum-inbound-browser-spool.timer >/dev/null 2>&1 || true
+  if [ "$timer_was_enabled" != "enabled" ]; then
+    systemctl disable fanum-inbound-browser-spool.timer >/dev/null 2>&1 || true
+  fi
+
+  restore_file "$EXTENSIONS_FANUM" extensions_fanum.conf || rollback_failed=1
+  restore_file "$EXTENSIONS_ROOT" extensions.conf || rollback_failed=1
+  restore_file "$HELPER_DST" fanum-inbound-browser-agi.py || rollback_failed=1
+  restore_file "$DIALPLAN_DST" fanum-inbound-browser.conf || rollback_failed=1
+  restore_file "$SERVICE_DST" fanum-inbound-browser-spool.service || rollback_failed=1
+  restore_file "$TIMER_DST" fanum-inbound-browser-spool.timer || rollback_failed=1
+  restore_file "$STATE_FILE" install.state || rollback_failed=1
+  restore_directory "$helper_directory" helper_directory || rollback_failed=1
+  restore_directory "$SPOOL_DIR" spool_directory || rollback_failed=1
+  restore_directory "$STATE_DIR" state_directory || rollback_failed=1
+
+  systemctl daemon-reload >/dev/null 2>&1 || rollback_failed=1
+  if [ "$timer_was_enabled" = "enabled" ]; then
+    systemctl enable fanum-inbound-browser-spool.timer >/dev/null 2>&1 \
+      || rollback_failed=1
+  fi
+  if [ "$timer_was_active" = "active" ]; then
+    systemctl restart fanum-inbound-browser-spool.timer >/dev/null 2>&1 \
+      || rollback_failed=1
+  else
+    systemctl stop fanum-inbound-browser-spool.timer >/dev/null 2>&1 || true
+  fi
+  asterisk -rx "dialplan reload" >/dev/null 2>&1 || rollback_failed=1
+
+  verify_restored_file "$EXTENSIONS_FANUM" extensions_fanum.conf || rollback_failed=1
+  verify_restored_file "$EXTENSIONS_ROOT" extensions.conf || rollback_failed=1
+  verify_restored_file "$HELPER_DST" fanum-inbound-browser-agi.py || rollback_failed=1
+  verify_restored_file "$DIALPLAN_DST" fanum-inbound-browser.conf || rollback_failed=1
+  verify_restored_file "$SERVICE_DST" fanum-inbound-browser-spool.service || rollback_failed=1
+  verify_restored_file "$TIMER_DST" fanum-inbound-browser-spool.timer || rollback_failed=1
+  verify_restored_file "$STATE_FILE" install.state || rollback_failed=1
+  verify_restored_directory "$helper_directory" helper_directory || rollback_failed=1
+  verify_restored_directory "$SPOOL_DIR" spool_directory || rollback_failed=1
+  verify_restored_directory "$STATE_DIR" state_directory || rollback_failed=1
+
+  timer_is_enabled="$(
+    systemctl is-enabled fanum-inbound-browser-spool.timer 2>/dev/null || true
+  )"
+  timer_is_active="$(
+    systemctl is-active fanum-inbound-browser-spool.timer 2>/dev/null || true
+  )"
+  [ "$timer_is_enabled" = "$timer_was_enabled" ] || rollback_failed=1
+  [ "$timer_is_active" = "$timer_was_active" ] || rollback_failed=1
+
+  loaded_contexts_after_sha256="$(loaded_context_fingerprint)" \
+    || rollback_failed=1
+  [[ "$loaded_contexts_after_sha256" =~ ^[0-9a-f]{64}$ ]] \
+    || rollback_failed=1
+  [ "$loaded_contexts_after_sha256" = "$loaded_contexts_before_sha256" ] \
+    || rollback_failed=1
+
+  if [ "$rollback_failed" = "0" ]; then
+    printf 'fanum-inbound-browser-install: rolled back; no call was placed\n' >&2
+  else
+    printf 'fanum-inbound-browser-install: rollback incomplete; manual recovery required; no call was placed\n' >&2
+  fi
+  exit "$status"
+}
+on_exit() {
+  local status="$?"
+  if [ "$success" = "1" ]; then
+    return
+  fi
+  rollback "$status"
+}
+trap on_exit EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+if [ "$install_mode" = "fresh" ] || [ "$install_mode" = "reapply" ]; then
+  python3 "$TRANSFORM_SRC" --install "$EXTENSIONS_FANUM" "$INBOUND_SELECTOR" "$CANDIDATE"
+  require_regular "$CANDIDATE"
+fi
+
+changed=1
+if [ -e "$helper_directory" ]; then
+  [ -d "$helper_directory" ] && [ ! -L "$helper_directory" ] \
+    || fail "helper directory has an unsafe file type"
+else
+  install -d -o root -g asterisk -m 0750 "$helper_directory"
+fi
+install -d -o asterisk -g asterisk -m 0700 "$SPOOL_DIR"
+install -d -o root -g root -m 0700 "$STATE_DIR"
+
+install -o root -g asterisk -m 0750 "$HELPER_SRC" "$HELPER_DST"
+install -o root -g asterisk -m 0640 "$DIALPLAN_SRC" "$DIALPLAN_DST"
+install -o root -g root -m 0644 "$SERVICE_SRC" "$SERVICE_DST"
+install -o root -g root -m 0644 "$TIMER_SRC" "$TIMER_DST"
+if [ "$install_mode" = "fresh" ] || [ "$install_mode" = "reapply" ]; then
+  install -o "$extensions_owner" -g "$extensions_group" -m "$extensions_mode" \
+    "$CANDIDATE" "$EXTENSIONS_FANUM"
+fi
+if [ "$include_count" = "0" ]; then
+  printf '\n%s\n' "$INCLUDE_LINE" >> "$EXTENSIONS_ROOT"
+fi
+
+systemctl daemon-reload
+systemctl enable fanum-inbound-browser-spool.timer >/dev/null
+# restart is intentional: enable --now leaves an already-running old timer
+# untouched, which previously made a station installer report a false success.
+systemctl restart fanum-inbound-browser-spool.timer
+asterisk -rx "dialplan reload" >/dev/null
+
+python3 "$TRANSFORM_SRC" --verify "$EXTENSIONS_FANUM" "$INBOUND_SELECTOR"
+runuser -u asterisk -- "$HELPER_DST" --self-check
+systemctl is-active --quiet fanum-inbound-browser-spool.timer
+systemctl is-active --quiet fanum-softphone-bridge
+systemctl is-active --quiet fanum-softphone-tunnel
+ss -ltnH 2>/dev/null | grep -Eq '127\.0\.0\.1:9093|\[::1\]:9093'
+
+provider_report="$(asterisk -rx "dialplan show from-fanum-provider" 2>&1)"
+printf '%s\n' "$provider_report" | python3 "$TRANSFORM_SRC" --verify-loaded "$INBOUND_SELECTOR" -
+provider_config_references=()
+mapfile -t provider_config_references < <(
+  grep -rIlF --include='*.conf' -- '[from-fanum-provider]' /etc/asterisk 2>/dev/null | sort
+)
+[ "${#provider_config_references[@]}" -eq 1 ] \
+  && [ "${provider_config_references[0]}" = "$EXTENSIONS_FANUM" ] \
+  || fail "provider context has competing configuration sources"
+browser_report="$(asterisk -rx "dialplan show fanum-inbound-browser" 2>&1)" \
+  || fail "could not read the loaded browser route"
+terminal_report="$(asterisk -rx "dialplan show fanum-inbound-browser-terminal" 2>&1)" \
+  || fail "could not read the loaded browser terminal route"
+printf '%s\n%s\n' "$browser_report" "$terminal_report" \
+  | python3 "$TRANSFORM_SRC" --verify-browser-loaded -
+browser_config_references=()
+terminal_config_references=()
+mapfile -t browser_config_references < <(
+  grep -rIlF --include='*.conf' -- '[fanum-inbound-browser]' /etc/asterisk 2>/dev/null \
+    | sort
+)
+mapfile -t terminal_config_references < <(
+  grep -rIlF --include='*.conf' -- '[fanum-inbound-browser-terminal]' /etc/asterisk \
+    2>/dev/null | sort
+)
+[ "${#browser_config_references[@]}" -eq 1 ] \
+  && [ "${browser_config_references[0]}" = "$DIALPLAN_DST" ] \
+  && [ "${#terminal_config_references[@]}" -eq 1 ] \
+  && [ "${terminal_config_references[0]}" = "$DIALPLAN_DST" ] \
+  || fail "browser contexts have competing configuration sources"
+ai_report="$(asterisk -rx "dialplan show fanum-ai-bridge" 2>&1)"
+printf '%s\n' "$ai_report" | grep -Fq 'AudioSocket('
+
+readonly AI_AFTER="$(digest_of "$AI_CORE")"
+[ "$AI_AFTER" = "$AI_BEFORE" ] || fail "AI core changed during install"
+systemctl is-active --quiet fanum-voice
+
+installed_extensions_digest="$(digest_of "$EXTENSIONS_FANUM")"
+state_candidate="$BACKUP_DIR/install.state.new"
+printf 'VERSION=2\nORIGINAL_SHA256=%s\nINSTALLED_SHA256=%s\n' \
+  "$EXPECTED_EXTENSIONS_FANUM_SHA256" "$installed_extensions_digest" > "$state_candidate"
+install -o root -g root -m 0600 "$state_candidate" "$STATE_FILE"
+
+success=1
+trap - EXIT INT TERM
+printf 'inbound browser route installed; selector stayed local; no call was placed\n'

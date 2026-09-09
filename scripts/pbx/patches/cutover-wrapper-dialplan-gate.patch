@@ -1,0 +1,44 @@
+Look for the authorization gate in the context that actually contains it.
+
+Applied on top of cutover-wrapper-8088-predicate.patch.
+
+With the listener gate fixed the cutover got all the way to the live
+verification block and failed there with `live_dialplan_gate_missing`. That
+check is unsatisfiable for the same reason the last one was:
+
+  asterisk -rx "dialplan show fanum-observed-place-call" > dialplan-observed.txt
+  grep -Fq 'fanum-pbx-event-agi.py,authorize' dialplan-observed.txt
+
+`dialplan show <context>` prints one context. The authorize AGI is not in
+`fanum-observed-place-call` -- it is in `fanum-correlated-dial-gate`, which
+`fanum-observed-place-call` reaches through Gosub, and a Gosub target is not
+expanded in the output. The string can never appear in that file.
+
+Auditing the whole post-switch block, this is the only impossible assertion
+left in it. The other four all name the context their string lives in:
+
+  U(fanum-answered-evidence^s^1)   in fanum-observed-place-call   correct
+  fanum-observed-place-call        in fanum-outbound / -ai-       correct
+  fanum-pbx-event-agi.py,terminal  in fanum-terminal-evidence     correct
+  ...,gate-aborted                 in fanum-terminal-evidence     correct
+
+The fix asks Asterisk for the gate context instead, in the same shape the
+block already uses for `fanum-terminal-evidence` two checks below. The
+property being proved is unchanged and still fail-closed: the live dialplan
+must call the authorize AGI, and now the check can observe it.
+
+  before: 98e9261e6cf3ed66e1bedea187a2a91b418afc2ceb7355241125eddaf9fc16c5
+  after:  d287b837b85c3b595d265908fa0cd56b422a1df4f92339373949df3bb1fea1c0
+
+--- a/fanum-pbx-coordinator-deploy
++++ b/fanum-pbx-coordinator-deploy
+@@ -3281,7 +3281,8 @@
+ asterisk -rx "dialplan show fanum-observed-place-call" \
+   > "$snapshot_dir/dialplan-observed.txt" 2>/dev/null \
+   || fail "live_observed_dialplan_missing"
+-grep -Fq 'fanum-pbx-event-agi.py,authorize' "$snapshot_dir/dialplan-observed.txt" \
++asterisk -rx "dialplan show fanum-correlated-dial-gate" 2>/dev/null \
++  | grep -Fq 'fanum-pbx-event-agi.py,authorize' \
+   || fail "live_dialplan_gate_missing"
+ grep -Fq 'U(fanum-answered-evidence^s^1)' "$snapshot_dir/dialplan-observed.txt" \
+   || fail "live_answer_hook_missing"

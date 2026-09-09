@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LeadDrive · Contract Editor — design mockup</title>
+<style>
+  :root{
+    --brand:#EA580C; --brand-600:#DC4F08; --brand-50:#FFF3EC; --brand-100:#FFE4D3;
+    --ink:#0F172A; --muted:#64748B; --line:#E5E9F0; --line-2:#EEF1F6;
+    --bg:#F6F7F9; --paper:#FFFFFF; --ok:#16A34A; --warn:#D97706; --risk:#DC2626;
+    --shadow:0 1px 2px rgba(15,23,42,.06),0 8px 24px rgba(15,23,42,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+    background:var(--bg);color:var(--ink);font-size:13px;-webkit-font-smoothing:antialiased}
+  .app{display:flex;flex-direction:column;height:100vh}
+
+  /* ─── Top bar ─── */
+  .topbar{display:flex;align-items:center;gap:14px;padding:10px 16px;background:var(--paper);
+    border-bottom:1px solid var(--line);min-height:56px}
+  .iconbtn{width:32px;height:32px;border:1px solid var(--line);border-radius:9px;background:#fff;
+    display:flex;align-items:center;justify-content:center;color:var(--muted);cursor:pointer}
+  .doc-id{display:flex;flex-direction:column;line-height:1.25}
+  .doc-id .t{font-weight:650;font-size:14px;letter-spacing:-.01em}
+  .doc-id .s{color:var(--muted);font-size:11.5px;display:flex;gap:8px;align-items:center}
+  .badge{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;
+    font-size:11px;font-weight:600}
+  .badge.pending{background:#FEF3C7;color:#92400E}
+  .badge.saved{background:#ECFDF5;color:#047857}
+  .spacer{flex:1}
+  .toolgroup{display:flex;align-items:center;gap:2px;padding:3px;background:#F3F5F8;border-radius:10px}
+  .tool{height:28px;min-width:28px;padding:0 8px;border-radius:7px;border:0;background:transparent;
+    color:#475569;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;cursor:pointer}
+  .tool:hover{background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+  .tool.on{background:#fff;color:var(--brand);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  .tool .ph{font-style:italic;font-weight:700}
+  .divider{width:1px;height:20px;background:var(--line);margin:0 4px}
+  .btn{height:34px;padding:0 14px;border-radius:9px;font-size:13px;font-weight:650;cursor:pointer;
+    display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:#fff;color:#334155}
+  .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff;box-shadow:0 1px 2px rgba(234,88,12,.35)}
+  .btn.ghost{border-color:transparent;background:transparent}
+
+  /* ─── Body 3-pane ─── */
+  .body{flex:1;display:flex;min-height:0}
+  .rail{width:248px;background:var(--paper);border-right:1px solid var(--line);
+    display:flex;flex-direction:column;min-height:0}
+  .rail .head{padding:12px 14px 8px;font-size:11px;font-weight:700;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
+  .rail .add{color:var(--brand);font-weight:700;cursor:pointer;font-size:11.5px}
+  .toc{padding:2px 8px 10px;overflow:auto}
+  .toc a{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;color:#334155;
+    text-decoration:none;font-weight:550;font-size:12.5px;position:relative}
+  .toc a .n{width:18px;height:18px;border-radius:5px;background:#EEF1F6;color:#64748B;font-size:10.5px;
+    display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
+  .toc a.active{background:var(--brand-50);color:var(--brand-600)}
+  .toc a.active .n{background:var(--brand);color:#fff}
+  .toc a .risk-dot{position:absolute;right:10px;width:7px;height:7px;border-radius:50%;background:var(--risk)}
+  .toc a .warn-dot{position:absolute;right:10px;width:7px;height:7px;border-radius:50%;background:var(--warn)}
+  .rail .libcard{margin:auto 12px 12px;border:1px dashed var(--line);border-radius:10px;padding:11px;
+    background:#FAFBFC}
+  .libcard .lt{font-weight:650;font-size:12px;margin-bottom:3px}
+  .libcard .ls{color:var(--muted);font-size:11px;line-height:1.4}
+
+  /* ─── Canvas ─── */
+  .canvas{flex:1;overflow:auto;padding:26px;display:flex;justify-content:center;background:
+    radial-gradient(120% 60% at 50% 0,#fbfbfd 0,var(--bg) 60%)}
+  .paper{width:720px;background:var(--paper);border:1px solid var(--line);border-radius:6px;
+    box-shadow:var(--shadow);padding:54px 64px 70px;font-family:Georgia,"Times New Roman",serif;
+    color:#1B2433;line-height:1.7;align-self:flex-start}
+  .paper h1{font-size:21px;text-align:center;letter-spacing:.02em;margin:0 0 4px}
+  .paper .sub{text-align:center;color:#8A93A3;font-size:12px;font-family:-apple-system,sans-serif;margin-bottom:26px}
+  .paper h2{font-size:14px;text-transform:uppercase;letter-spacing:.05em;margin:24px 0 8px;
+    font-family:-apple-system,sans-serif;color:#0F172A}
+  .paper p{margin:0 0 12px;font-size:14px;text-align:justify}
+  .var{background:var(--brand-50);border:1px solid var(--brand-100);color:var(--brand-600);
+    border-radius:5px;padding:0 5px;font-family:-apple-system,sans-serif;font-size:12.5px;font-weight:600;white-space:nowrap}
+  .ins{color:#067647;background:#E7F8EF;text-decoration:none;border-radius:3px;padding:0 2px}
+  .del{color:#B42318;background:#FEECEB;text-decoration:line-through;border-radius:3px;padding:0 2px}
+  .sel{background:rgba(234,88,12,.07);border-left:3px solid var(--brand);
+    margin:0 -16px 12px;padding:8px 13px;border-radius:0 8px 8px 0;position:relative}
+  .cmt-pin{position:absolute;right:-86px;top:6px;width:74px;font-family:-apple-system,sans-serif;
+    background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:10.5px;
+    color:#475569;box-shadow:var(--shadow);line-height:1.35}
+  .cmt-pin b{color:var(--ink);font-size:10.5px}
+  .pagefoot{position:absolute;left:0;right:0;bottom:18px;text-align:center;color:#B7BECC;font-size:10.5px;
+    font-family:-apple-system,sans-serif}
+
+  /* ─── Right panel ─── */
+  .right{width:316px;background:var(--paper);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+  .tabs{display:flex;gap:2px;padding:8px;border-bottom:1px solid var(--line)}
+  .tab{flex:1;height:30px;border-radius:8px;border:0;background:transparent;color:#64748B;font-weight:650;
+    font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px}
+  .tab.on{background:var(--brand-50);color:var(--brand-600)}
+  .rpanel{padding:14px;overflow:auto}
+  .aihdr{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+  .aihdr .spark{width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,#FB923C,#EA580C);
+    color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px}
+  .aihdr .at{font-weight:700;font-size:13px}
+  .aihdr .as{color:var(--muted);font-size:11px}
+  .score{display:flex;align-items:center;gap:12px;margin:12px 0;padding:12px;border:1px solid var(--line);
+    border-radius:11px;background:#FCFCFD}
+  .ring{width:54px;height:54px;border-radius:50%;background:conic-gradient(var(--warn) 0 62%,#EDF0F4 62% 100%);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .ring .in{width:42px;height:42px;border-radius:50%;background:#fff;display:flex;flex-direction:column;
+    align-items:center;justify-content:center}
+  .ring .in b{font-size:15px;line-height:1}
+  .ring .in span{font-size:9px;color:var(--muted)}
+  .score .lab b{font-size:13px}
+  .score .lab div{color:var(--muted);font-size:11px;margin-top:2px;line-height:1.4}
+  .finding{border:1px solid var(--line);border-radius:10px;padding:10px 11px;margin-bottom:8px}
+  .finding .fh{display:flex;align-items:center;gap:7px;font-weight:650;font-size:12.5px}
+  .finding .pill{font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:999px;text-transform:uppercase;letter-spacing:.03em}
+  .pill.high{background:#FEECEB;color:#B42318}.pill.med{background:#FEF3C7;color:#92400E}.pill.low{background:#EEF1F6;color:#475569}
+  .finding p{margin:6px 0 9px;color:#475569;font-size:11.5px;line-height:1.5}
+  .finding .acts{display:flex;gap:7px}
+  .mini{height:27px;padding:0 10px;border-radius:7px;font-size:11.5px;font-weight:650;cursor:pointer;border:1px solid var(--line);background:#fff;color:#334155}
+  .mini.brand{background:var(--brand);border-color:var(--brand);color:#fff}
+
+  /* customization peek */
+  .gearwrap{position:relative}
+  .drawer{position:absolute;right:0;top:42px;width:300px;background:#fff;border:1px solid var(--line);
+    border-radius:14px;box-shadow:0 12px 40px rgba(15,23,42,.18);padding:14px;z-index:9}
+  .drawer .dt{font-weight:700;font-size:12.5px;display:flex;align-items:center;gap:7px;margin-bottom:3px}
+  .drawer .dd{color:var(--muted);font-size:11px;margin-bottom:11px}
+  .row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line-2)}
+  .row .rl{font-weight:600;font-size:12px}.row .rv{color:var(--muted);font-size:11.5px;display:flex;align-items:center;gap:6px}
+  .swatch{width:14px;height:14px;border-radius:4px;border:1px solid rgba(0,0,0,.1)}
+  .tag{font-size:10px;font-weight:700;color:var(--brand);background:var(--brand-50);padding:2px 7px;border-radius:999px}
+  .chev{color:#C2C9D6}
+  .callout{margin-top:11px;background:var(--brand-50);border:1px solid var(--brand-100);border-radius:10px;
+    padding:9px 11px;font-size:11px;color:var(--brand-600);line-height:1.45}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="iconbtn">←</div>
+    <div class="doc-id">
+      <div class="t">Master Services Agreement — Acme Corp</div>
+      <div class="s"><span>CT-2026-0114</span> · <span class="badge pending">● Pending approval</span> · <span class="badge saved">✓ Saved</span> · v4</div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <!-- formatting cluster -->
+    <div class="toolgroup">
+      <button class="tool"><b>B</b></button>
+      <button class="tool"><i>I</i></button>
+      <button class="tool" style="text-decoration:underline">U</button>
+      <span class="divider"></span>
+      <button class="tool">H1</button>
+      <button class="tool">H2</button>
+      <button class="tool">≔ List</button>
+      <span class="divider"></span>
+      <button class="tool"><span class="ph">{ }</span> Variable</button>
+      <button class="tool">＋ Clause</button>
+      <button class="tool on">⇄ Track changes</button>
+    </div>
+
+    <span class="divider"></span>
+    <button class="btn ghost">⬇ Export</button>
+    <button class="btn primary">Send for approval</button>
+    <div class="gearwrap">
+      <button class="btn">•••</button>
+      <!-- CUSTOMIZATION DRAWER (the client-config differentiator) -->
+      <div class="drawer">
+        <div class="dt">⚙ Workspace editor settings <span class="tag">PER CLIENT</span></div>
+        <div class="dd">Each organization configures its own document standard — deeper than logo/colors.</div>
+        <div class="row"><span class="rl">Document theme</span><span class="rv">Georgia · A4 · 1″</span></div>
+        <div class="row"><span class="rl">Brand & letterhead</span><span class="rv"><span class="swatch" style="background:#EA580C"></span> Acme <span class="chev">›</span></span></div>
+        <div class="row"><span class="rl">Clause library</span><span class="rv">42 approved <span class="chev">›</span></span></div>
+        <div class="row"><span class="rl">Templates</span><span class="rv">7 <span class="chev">›</span></span></div>
+        <div class="row"><span class="rl">Merge variables</span><span class="rv">18 fields <span class="chev">›</span></span></div>
+        <div class="row"><span class="rl">Approval & signature rules</span><span class="rv">2-step <span class="chev">›</span></span></div>
+        <div class="callout">Stored per <b>Organization</b> — same engine, every client gets their own fonts, clauses, templates &amp; variables without a code change.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div class="body">
+
+    <!-- LEFT: clause navigator -->
+    <div class="rail">
+      <div class="head"><span>Document outline</span><span class="add">＋ Insert</span></div>
+      <div class="toc">
+        <a><span class="n">1</span> Parties &amp; Recitals</a>
+        <a><span class="n">2</span> Definitions</a>
+        <a class="active"><span class="n">3</span> Term &amp; Renewal <span class="warn-dot"></span></a>
+        <a><span class="n">4</span> Fees &amp; Payment</a>
+        <a><span class="n">5</span> Confidentiality</a>
+        <a><span class="n">6</span> Liability &amp; Indemnity <span class="risk-dot"></span></a>
+        <a><span class="n">7</span> Termination</a>
+        <a><span class="n">8</span> Governing Law</a>
+        <a><span class="n">9</span> Signatures</a>
+      </div>
+      <div class="libcard">
+        <div class="lt">＋ Clause library</div>
+        <div class="ls">Drag an approved clause from your workspace library into the document. 42 clauses available.</div>
+      </div>
+    </div>
+
+    <!-- CENTER: document canvas -->
+    <div class="canvas">
+      <div class="paper">
+        <h1>MASTER SERVICES AGREEMENT</h1>
+        <div class="sub">This Agreement is entered into as of <span class="var">{{ effective_date }}</span></div>
+
+        <p>This Master Services Agreement (the “Agreement”) is made between <span class="var">{{ provider_name }}</span>, a company organized under the laws of <span class="var">{{ provider_jurisdiction }}</span> (“Provider”), and <span class="var">{{ counterparty_name }}</span> (“Client”).</p>
+
+        <h2>3. Term &amp; Renewal</h2>
+        <div class="sel">
+          <p style="margin:0">The initial term shall commence on the Effective Date and continue for a period of <span class="del">one (1) year</span> <span class="ins">two (2) years</span>, and shall thereafter <span class="ins">automatically</span> renew for successive <span class="var">{{ renewal_period }}</span> terms unless either party gives <span class="del">30</span> <span class="ins">60</span> days’ written notice.</p>
+          <div class="cmt-pin"><b>Legal · you</b><br/>Match renewal notice to MSA standard (60d).</div>
+        </div>
+
+        <p>Upon expiry of the then-current term, fees for the renewal term shall be adjusted in accordance with <span class="var">{{ price_index }}</span>, not to exceed <span class="var">{{ cap_pct }}</span> per annum.</p>
+
+        <h2>4. Fees &amp; Payment</h2>
+        <p>Client shall pay the fees set out in <span class="var">{{ order_form_ref }}</span> within <span class="var">{{ payment_terms_days }}</span> days of a valid invoice. Late amounts accrue interest at <span class="var">{{ late_interest }}</span>.</p>
+
+        <div class="pagefoot">Page 1 of 6  ·  CT-2026-0114  ·  generated from workspace template “MSA · Standard”</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: AI / variables / versions -->
+    <div class="right">
+      <div class="tabs">
+        <button class="tab on">✦ AI review</button>
+        <button class="tab">{ } Variables</button>
+        <button class="tab">⟲ Versions</button>
+      </div>
+      <div class="rpanel">
+        <div class="aihdr">
+          <div class="spark">✦</div>
+          <div><div class="at">Contract Agent</div><div class="as">Sonnet · clause + risk analysis</div></div>
+        </div>
+
+        <div class="score">
+          <div class="ring"><div class="in"><b>62</b><span>RISK</span></div></div>
+          <div class="lab"><b>Medium risk</b><div>3 deviations from your playbook. 1 high, 1 medium, 1 missing clause.</div></div>
+        </div>
+
+        <div class="finding">
+          <div class="fh"><span class="pill high">High</span> Uncapped liability</div>
+          <p>§6 indemnity has no aggregate cap. Playbook requires a 12-month-fees cap. Insert standard limitation clause.</p>
+          <div class="acts"><button class="mini brand">Apply suggested clause</button><button class="mini">Jump to §6</button></div>
+        </div>
+
+        <div class="finding">
+          <div class="fh"><span class="pill med">Medium</span> Auto-renewal notice</div>
+          <p>§3 renewal notice (60d) differs from your standard (30d). Confirm intended or revert.</p>
+          <div class="acts"><button class="mini brand">Accept change</button><button class="mini">Revert</button></div>
+        </div>
+
+        <div class="finding">
+          <div class="fh"><span class="pill low">Missing</span> Data-processing addendum</div>
+          <p>No DPA referenced. Required for clients in regulated regions. Add from library.</p>
+          <div class="acts"><button class="mini brand">＋ Insert DPA</button></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

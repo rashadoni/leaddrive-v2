@@ -1,0 +1,49 @@
+name: Setup pinned LeadDrive production SSH
+description: Refuse unknown hosts and install the reviewed production key material.
+
+inputs:
+  ssh-private-key:
+    description: Root deployment key from GitHub Actions secrets
+    required: true
+  server-host:
+    description: Registered production host from GitHub Actions secrets
+    required: true
+  known-hosts:
+    description: Independently pinned known_hosts records
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        DEPLOY_SSH_KEY: ${{ inputs.ssh-private-key }}
+        SERVER_HOST: ${{ inputs.server-host }}
+        SERVER_SSH_KNOWN_HOSTS: ${{ inputs.known-hosts }}
+        EXPECTED_PRODUCTION_HOST: "13.140.132.245"
+      run: |
+        set -euo pipefail
+        [ "$SERVER_HOST" = "$EXPECTED_PRODUCTION_HOST" ] || {
+          echo "::error::SERVER_HOST is not the reviewed production host"
+          exit 1
+        }
+        test -n "$DEPLOY_SSH_KEY" || { echo "::error::SSH_PRIVATE_KEY is empty"; exit 1; }
+        test -n "$SERVER_SSH_KNOWN_HOSTS" || { echo "::error::SERVER_SSH_KNOWN_HOSTS is empty"; exit 1; }
+        umask 077
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+        printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+        printf '%s\n' "$SERVER_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+        chmod 600 ~/.ssh/deploy_key ~/.ssh/known_hosts
+        ssh-keygen -F "$SERVER_HOST" -f ~/.ssh/known_hosts >/dev/null || {
+          echo "::error::Pinned known_hosts does not contain SERVER_HOST"
+          exit 1
+        }
+        cat > ~/.ssh/config <<'SSHCFG'
+        Host *
+          StrictHostKeyChecking yes
+          UserKnownHostsFile ~/.ssh/known_hosts
+          IdentitiesOnly yes
+          BatchMode yes
+        SSHCFG
+        chmod 600 ~/.ssh/config

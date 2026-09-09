@@ -1,0 +1,62 @@
+name: Assert production environment protection
+description: Refuse production access unless GitHub enforces an exact main branch policy.
+
+inputs:
+  github-token:
+    description: Token with Actions read permission for this repository.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # This used to also demand a required_reviewers rule with prevent_self_review.
+    # GitHub only offers that for private repositories on Enterprise, so on this
+    # plan it could never be satisfied: it did not protect production, it made
+    # every path to production impassable. Its replacement is layer 2 of
+    # docs/DELIVERY-ARCHITECTURE.md — an agent that did not write the change
+    # reviews every pull request. The branch policy below still stands, and it
+    # is what keeps production buildable only from main.
+    - name: Require an exact main branch policy
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: |
+        set -euo pipefail
+
+        policy="$(
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            "repos/${GITHUB_REPOSITORY}/environments/production"
+        )" || {
+          echo "::error::Cannot inspect GitHub production-environment protection; refusing production access"
+          exit 1
+        }
+
+        custom_branch_policy_enabled="$(
+          jq -r '
+            .deployment_branch_policy != null
+            and .deployment_branch_policy.custom_branch_policies == true
+          ' <<<"$policy"
+        )"
+        [ "$custom_branch_policy_enabled" = true ] || {
+          echo "::error::GitHub production environment needs a custom deployment branch policy"
+          exit 1
+        }
+
+        branch_policies="$(
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            "repos/${GITHUB_REPOSITORY}/environments/production/deployment-branch-policies"
+        )" || {
+          echo "::error::Cannot inspect GitHub production deployment branch policies; refusing production access"
+          exit 1
+        }
+        jq -e '
+          (.branch_policies | length == 1)
+          and (.branch_policies[0].name == "main")
+        ' <<<"$branch_policies" >/dev/null || {
+          echo "::error::GitHub production environment must allow exactly the main branch"
+          exit 1
+        }
+
+        echo "::notice::GitHub production environment allows exactly the main branch"
