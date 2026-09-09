@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 import { useLocale, useTranslations } from "next-intl"
+import { formatTime } from "@/lib/format-date"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
 import { PageDescription } from "@/components/page-description"
 import { HelpButton } from "@/components/help/help-button"
@@ -75,8 +76,10 @@ export default function MtmAgentsPage() {
   // "last seen" stays for the case where nothing else explains the silence.
   const presenceText = (a: any): { text: string; tone: "working" | "paused" | "quiet" } => {
     const presence = a?.presence
-    const at = (value: string | null) =>
-      value ? new Date(value).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" }) : ""
+    // Through the shared helper, not toLocaleTimeString: the C2 gate exists
+    // because the root-locale fallback cannot be trusted to give Azerbaijani
+    // the 24-hour clock it needs.
+    const at = (value: string | null) => (value ? formatTime(value, locale) : "")
     if (presence?.kind === "paused") {
       return { text: presence.since ? t("presencePausedSince", { time: at(presence.since) }) : t("presencePaused"), tone: "paused" }
     }
