@@ -1522,3 +1522,42 @@ html[data-wallpaper][data-wallpaper-scope="dashboard"] .dashboard-welcome-brief-
 .ta-center { text-align: center; }
 .ta-right { text-align: right; }
 .ta-justify { text-align: justify; }
+
+/* ── Поиск по разделу ─────────────────────────────────────────────────────
+   Владелец: «во многих разделах поиск совсем незаметный, клиенты не могут
+   его найти». Поле собрано вручную на полусотне страниц и ещё раз внутри
+   DataTable, но разметка везде одна: иконка Search, сразу за ней input.
+   Поэтому здесь одно правило, а не полсотни правок по файлам. Зацепку
+   `lucide-search` ставит сама библиотека — createLucideIcon пишет
+   `lucide-${kebab(iconName)}`, это не наш класс, и он не потеряется, когда
+   кто-то перепишет утилиты Tailwind на конкретной странице.
+
+   Почему поле терялось: рабочая область светло-серая (--background,
+   #F3F4F7), поле было того же тона, а его граница — --border с контрастом
+   около 8%. Рядом с такими же серыми фильтрами оно читалось как ещё один
+   фильтр, а не как место для ввода. Теперь белая подложка, видимая граница,
+   оранжевая лупа и заметное кольцо фокуса.
+
+   Область действия — main. В сайдбаре свой поиск на тёмном фоне: белое поле
+   с оранжевой лупой было бы там дырой. Исключён и .ai-search-input — у
+   строки советника своя раскраска, в том числе поверх обоев.
+
+   Правило намеренно вне @layer: в Tailwind v4 неслоёное правило выигрывает у
+   утилит, поэтому !important не нужен. */
+main .lucide-search + input:not(.ai-search-input) {
+  background-color: hsl(var(--card));
+  border-color: hsl(var(--muted-foreground) / 0.32);
+  box-shadow: 0 1px 2px hsl(213 27% 14% / 0.06);
+}
+main .lucide-search + input:not(.ai-search-input):hover {
+  border-color: hsl(var(--muted-foreground) / 0.5);
+}
+main .lucide-search + input:not(.ai-search-input):focus,
+main .lucide-search + input:not(.ai-search-input):focus-visible {
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.16);
+  outline: none;
+}
+main .lucide-search:has(+ input:not(.ai-search-input)) {
+  color: hsl(var(--primary));
+}
