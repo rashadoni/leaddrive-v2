@@ -13670,7 +13670,7 @@
     "authoritative": "Rəsmi hesablama",
     "nonAuthoritative": "Rəsmi olmayan hesablama",
     "unsignedPolicy": "Formula təsdiqlənməyib",
-    "approvedPolicy": "{code} · versiya {version}",
+    "approvedPolicy": "{name} · versiya {version}",
     "exportCsv": "CSV ixracı",
     "exportFailed": "Hesabatı ixrac etmək mümkün olmadı.",
     "exportStaleSnapshot": "Hesablama ixracdan əvvəl dəyişdi. Hesabat yeniləndi; yenidən cəhd edin.",
