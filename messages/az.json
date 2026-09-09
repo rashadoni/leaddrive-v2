@@ -12113,7 +12113,9 @@
     },
     "calendarMore": "+daha {n}",
     "weekAgentSearch": "Əməkdaş tapın",
-    "weekAgentsHidden": "Gizlədilən sətir: {count} — axtarış və ya QA hesabları"
+    "weekAgentsHidden": "Gizlədilən sətir: {count} — axtarış və ya QA hesabları",
+    "calendarWeekend": "İstirahət günü",
+    "calendarClosedDay": "Qeyri-iş günü"
   },
   "mtmOperationsPage": {
     "title": "Sahə əməliyyat mərkəzi",
