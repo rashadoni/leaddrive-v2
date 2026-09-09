@@ -9,6 +9,7 @@ import { useLocale, useTranslations } from "next-intl"
 import { HelpButton } from "@/components/help/help-button"
 import { MtmRouteBuilder } from "@/components/mtm/route-builder"
 import { MtmRouteCalendar } from "@/components/mtm/route-calendar"
+import type { WorkCalendarOverride } from "@/lib/mtm/work-calendar"
 import { MtmRouteWeekPlan } from "@/components/mtm/route-week-plan"
 import { MtmRoutePlanningMatrix } from "@/components/mtm/route-planning-matrix"
 import { MtmRouteApprovalQueue } from "@/components/mtm/route-approval-queue"
@@ -150,6 +151,8 @@ export default function MtmRoutesPage() {
   const [excelOpen, setExcelOpen] = useState(false)
   const [customerRequestRouteId, setCustomerRequestRouteId] = useState<string | undefined>()
   const [timezone, setTimezone] = useState("Asia/Baku")
+  const [workCalendarEnforced, setWorkCalendarEnforced] = useState(false)
+  const [workCalendarOverrides, setWorkCalendarOverrides] = useState<WorkCalendarOverride[]>([])
   const [plannerContext, setPlannerContext] = useState<MtmRoutePlannerContext>(() => emptyMtmRoutePlannerContext())
   const [plannerContextReady, setPlannerContextReady] = useState(false)
   useEffect(() => { setCalendarMonth(new Date()) }, [])
@@ -454,17 +457,49 @@ export default function MtmRoutesPage() {
   useEffect(() => {
     const controller = new AbortController()
     setTimezone("Asia/Baku")
+    setWorkCalendarEnforced(false)
     fetch("/api/v1/mtm/settings", {
       headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>,
       signal: controller.signal,
     })
       .then((response) => response.json())
       .then((result) => {
-        if (!controller.signal.aborted && result.success && typeof result.data?.timezone === "string") setTimezone(result.data.timezone)
+        if (controller.signal.aborted || !result.success) return
+        if (typeof result.data?.timezone === "string") setTimezone(result.data.timezone)
+        setWorkCalendarEnforced(result.data?.enforceWorkCalendarForRoutes === true)
       })
       .catch(() => undefined)
     return () => controller.abort()
   }, [orgId])
+
+  // Overrides for the visible grid. Shading degrades to nothing on failure:
+  // the endpoint sits behind the Workforce HRM module, and a tenant without it
+  // must still get a working calendar rather than a 403 turned into a blank
+  // screen. Empty overrides simply mean "weekends only".
+  useEffect(() => {
+    if (!orgId || !workCalendarEnforced || !calendarMonth) {
+      setWorkCalendarOverrides([])
+      return
+    }
+    const controller = new AbortController()
+    const first = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1)
+    const start = new Date(first)
+    start.setDate(start.getDate() - 7)
+    const endExclusive = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1)
+    endExclusive.setDate(endExclusive.getDate() + 7)
+    const key = (value: Date) => `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`
+    fetch(`/api/v1/mtm/work-calendar?start=${key(start)}&endExclusive=${key(endExclusive)}`, {
+      headers: { "x-organization-id": String(orgId) },
+      signal: controller.signal,
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((result) => {
+        if (controller.signal.aborted) return
+        setWorkCalendarOverrides(result?.success && Array.isArray(result.data?.days) ? result.data.days : [])
+      })
+      .catch(() => undefined)
+    return () => controller.abort()
+  }, [orgId, calendarMonth, workCalendarEnforced])
 
   useEffect(() => {
     if (!requestedRouteId || routes.length === 0) return
@@ -1037,6 +1072,8 @@ export default function MtmRoutesPage() {
         <MtmRouteCalendar
           routes={calendarRoutes}
           month={calendarMonth}
+          workCalendarOverrides={workCalendarOverrides}
+          workCalendarEnforced={workCalendarEnforced}
           selectedDate={plannerContext.date}
           locale={locale}
           loading={calendarLoading}
