@@ -123,10 +123,16 @@ describe("GET /api/v2/mtm/mobile/route-field/planning-targets", () => {
       objectType: "CLINIC",
     })
     const serializedWhere = JSON.stringify(firstArgs.where)
-    expect(serializedWhere).toContain('"agentId":"agent-1"')
+    // A2: the planner asks the same scope as the write validator — an
+    // assignment OR an actionable route. It used to ask for assignments only,
+    // so it offered strictly less than the server accepts. Both arms must be
+    // in the query, and both must stay bound to this agent and this date.
+    expect(serializedWhere).toContain('"agentId":{"in":["agent-1"]}')
     expect(serializedWhere).toContain('"effectiveFrom":{"lte":"2026-08-30T00:00:00.000Z"}')
     expect(serializedWhere).toContain('"effectiveTo":{"gt":"2026-08-30T00:00:00.000Z"}')
-    for (const ignoredFilter of ["ownerAgentId", "include", "routePoints"]) {
+    expect(serializedWhere).toContain('"status":{"in":["PLANNED","IN_PROGRESS","INCOMPLETE"]}')
+    expect(serializedWhere).toContain('"role":{"not":"OBSERVER"}')
+    for (const ignoredFilter of ["ownerAgentId", "include"]) {
       expect(serializedWhere).not.toContain(ignoredFilter)
     }
     expect(firstArgs.take).toBe(2)

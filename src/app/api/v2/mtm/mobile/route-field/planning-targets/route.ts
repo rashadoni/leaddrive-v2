@@ -5,6 +5,7 @@ import { withMobileRls } from "@/lib/with-mobile-rls"
 import { requireMobilePermission } from "@/lib/mtm/mobile-capabilities"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
 import { activeFieldAssignmentWindow } from "@/lib/mtm/field-scope"
+import { eligibleFieldCustomerWhere } from "@/lib/mtm/field-eligibility"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey, isDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
@@ -247,9 +248,15 @@ export const GET = withMobileRls(async (req, auth) => {
   const assignmentWindow = activeFieldAssignmentWindow(routeDate)
 
   if (kind === "organization") {
-    const filters: Prisma.MtmCustomerWhereInput[] = [{
-      agentAssignments: { some: { agentId: actor.agentId, ...assignmentWindow } },
-    }]
+    // The same scope the write validator uses (A2: one source of "points this
+    // agent may work on"). Filtering on assignments alone made the planner
+    // offer strictly LESS than the server accepts: a customer reachable
+    // through an actionable route saves fine but never appeared in the list.
+    // Doctors stay assignment-only on purpose — see the note in
+    // validateMtmMobileRouteTargetEligibility — and that branch is untouched.
+    const filters: Prisma.MtmCustomerWhereInput[] = [
+      eligibleFieldCustomerWhere({ agentId: actor.agentId, date: routeDate }),
+    ]
     const afterPage = customerKeysetFilter(page)
     if (afterPage) filters.push(afterPage)
     if (search) {
