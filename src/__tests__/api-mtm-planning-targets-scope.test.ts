@@ -35,6 +35,28 @@ describe("A2: one eligibility scope for organizations", () => {
     expect(organizationBranch).not.toContain("agentAssignments: { some: { agentId: actor.agentId")
   })
 
+  it("explains an empty list only when the caller's own filters cannot", () => {
+    // A search or a type that matched nothing is neither "no assignments" nor
+    // "territory", and the shared vocabulary has no word for it. Guessing one
+    // sends the agent to a manager over a typo; staying silent lets the screen
+    // say the plain thing instead.
+    const planner = readFileSync(PLANNER, "utf8")
+    expect(planner).toContain("const callerNarrowed = Boolean(search || organizationKind || objectType)")
+    expect(planner).toContain("if (pageRows.length === 0 && !page && !callerNarrowed)")
+    expect(planner).toContain("fieldEligibilityEmptyReason({")
+    expect(planner).toContain("eligibility,")
+  })
+
+  it("pays for the explanation only on the empty page", () => {
+    // The extra agent, count and calendar reads sit inside the empty branch:
+    // the common path is a list a field agent opens dozens of times a day.
+    const planner = readFileSync(PLANNER, "utf8")
+    const branch = planner.slice(planner.indexOf("const callerNarrowed"), planner.indexOf("return noStoreJson({\n      success: true,\n      data: {\n        targets:"))
+    for (const query of ["prisma.mtmAgent.findFirst", "prisma.mtmCustomer.count", "prisma.mtmWorkCalendarDay.findMany"]) {
+      expect(branch, `${query} must stay inside the empty branch`).toContain(query)
+    }
+  })
+
   it("leaves doctors assignment-only, as the validator says out loud", () => {
     // Widening this one would grant a write the interface never offered — the
     // validator's own note, and the reason the contact phases are untouched.
