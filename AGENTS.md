@@ -163,45 +163,64 @@ been merged into `main`, do not deploy them as an incidental step.
 
 ## CI cost policy
 
-GitHub Actions is metered. As checked on September 8, the account's $100 Actions
-budget is a warning, not a hard stop (`Stop usage = No`), and billed usage is
-$121.17. Historical macOS typechecks dominated the bill; current typechecks run
-on the dedicated self-hosted Linux runner. Every push to an open pull request
-is a `synchronize` event that starts a fresh run.
+CI runs on **GitHub-hosted Linux in the public repository
+`rashadoni/leaddrive-v2`**. Standard runners are free for public repositories,
+so PR checks no longer compete for a metered minute budget. What made the old
+bill was `macos-*`: of the $121.17 charged in September 2026, $84.41 was macOS
+and $36.76 Linux. That is why the macOS ban below is absolute and machine-checked.
+
+The Contabo CI pool and the Azure DevOps pipelines that briefly replaced it are
+retired. Their labels (`leaddrive-ci`, `leaddrive-typecheck`,
+`leaddrive-ci-light`) must never reappear in a workflow.
+
+- **Every GitHub-hosted job pins `runs-on: ubuntu-24.04`.** Not `ubuntu-latest`:
+  that alias moves to the next LTS on GitHub's schedule, changing every job's
+  base image on a day with no commit to bisect.
+- **Never add `runs-on: macos-*`.** Not for a native check, not temporarily, not
+  behind a label gate. Real native macOS/iOS work goes on the owner's physical
+  Mac under `runs-on: [self-hosted, macOS, ARM64, leaddrive-mac-local]` with a
+  `timeout-minutes`. As of 2026-09-09 the repository has no Swift/Xcode target,
+  so no Mac runner is registered — if you think you need one, raise it first.
+- `scripts/ci/check-github-runner-policy.mjs` enforces all of the above and is a
+  required check. Run it locally before touching a workflow.
+- The one remaining self-hosted runner is `[self-hosted, fanum-pbx-vpn]`, used
+  only by `set-voice-provider-registry-cutover.yml` because it needs the PBX
+  VPN. Do not route anything else to it and never put a production credential on
+  a workflow you have just relabelled.
+
+Cost is no longer the binding constraint; **wall-clock and review noise are**.
+Keep the guards that exist:
 
 - **Open pull requests as drafts and keep them draft while iterating.** The
-  expensive `static-checks` and `typecheck` jobs skip drafts. Mark the PR ready for review when
-  the branch is finished; that fires `ready_for_review` and the gate runs once,
-  before the merge it guards.
+  expensive `static-checks` and `typecheck` jobs skip drafts. Mark the PR ready
+  for review when the branch is finished; that fires `ready_for_review` and the
+  gate runs once, before the merge it guards.
 - Documentation-only changes (`**/*.md`, `docs/**`, `.agents/**`) do not start
   `pr-checks.yml`. Do not add code to a docs PR to make CI run.
-- Do not add `runs-on: macos-*` to any new job. If something needs more than
-  8 GiB, raise it with the owner.
 - Any new `pull_request` workflow must declare a `paths:` filter narrower than
   the whole repository **and** a `concurrency:` group with
-  `cancel-in-progress: true`.
+  `cancel-in-progress: true`, so a new push cancels the previous run.
+  **One exception, and only one:** a workflow whose check is *required* on
+  `main` must not be path-filtered. GitHub marks a required context satisfied
+  only when a check run reports it, so a path-filtered required check leaves
+  every PR outside its paths stuck on "Expected — waiting for status". That is
+  why `runner-policy.yml` runs on every pull request. If you make a check
+  required, remove its `paths:` filter in the same change.
 - Do not remove these guards to make a check run sooner. Ask instead.
 
-- The expensive `typecheck` now runs on the dedicated self-hosted box
-  (`runs-on: [self-hosted, linux, x64, leaddrive-typecheck]`, one runner only).
-  Do not move it back to `macos-*`, do not relabel it, and never place a
-  production credential on that host or in a workflow targeting those labels.
-- **Every other `pull_request` job runs there too**, under
-  `runs-on: [self-hosted, linux, x64, leaddrive-ci]`, except short
-  `agent-review` and secret scans: those use the existing runner 4 under
-  `leaddrive-ci-light`. Never route installs, Prisma generation, tests or
-  builds to the light runner. The included minutes are
-  gone within days of each month, so `ubuntu-latest` on a PR job is paid time.
-  Do not use `ubuntu-*` for a new `pull_request` job. Exceptions, on purpose:
-  the label-gated `production-build` proof and all of `deploy.yml` (production
-  SSH key) stay GitHub-hosted.
-- The runners share one host. A job must not claim a fixed port or a fixed
-  `/tmp` path: publish service ports as `- 5432` and read the assigned port
-  from `job.services.<id>.ports['5432']` in a step (job-level `env` cannot
-  see it), bind the app under test to a free port, and keep scratch files in
-  `$RUNNER_TEMP`. Nothing that needs `sudo`/`apt` (e.g. `playwright install
-  --with-deps`) works there; ask for the host dependency instead. Copy the
-  pattern from `pr-checks.yml` `static-checks` or `social-monitoring-queue-e2e.yml`.
+Because the repository is public:
+
+- **Never use `pull_request_target`.** It runs with the base repository's
+  secrets against untrusted head code. Plain `pull_request` does not hand
+  secrets to fork PRs, which is what keeps `ANTHROPIC_API_KEY` and
+  `NEXTAUTH_SECRET` safe in `agent-review.yml` and `pr-checks.yml`.
+- Fork pull requests must stay gated behind "Require approval for all external
+  contributors" in Settings -> Actions.
+- Treat every value in the `production` environment as production-grade. Nothing
+  reads it except `deploy.yml` and the operational `workflow_dispatch` jobs.
+
+Check Billing -> Actions usage by SKU weekly. **Any macOS SKU appearing at all
+is an incident** — find the workflow that produced it and report it.
 
 Measured numbers and the reasoning are in `docs/ci-cost-policy.md`.
 
