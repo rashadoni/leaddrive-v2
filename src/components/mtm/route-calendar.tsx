@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { CalendarDays, ChevronLeft, ChevronRight, MapPin, Plus, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { MtmRouteRecord } from "@/components/mtm/route-types"
+import { resolveWorkCalendarDay, type WorkCalendarOverride } from "@/lib/mtm/work-calendar"
 import { formatDate } from "@/lib/format-date"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
 import { isPastMtmCalendarDay } from "@/lib/mtm/calendar-day-tone"
@@ -12,6 +13,10 @@ import { isPastMtmCalendarDay } from "@/lib/mtm/calendar-day-tone"
 interface RouteCalendarProps {
   routes: MtmRouteRecord[]
   month: Date | null
+  /** Overrides for the visible grid; empty when the tenant has none or the request failed. */
+  workCalendarOverrides?: readonly WorkCalendarOverride[]
+  /** `enforceWorkCalendarForRoutes`. Off means a weekend blocks nothing, so shading it would be a lie. */
+  workCalendarEnforced?: boolean
   selectedDate?: string | null
   locale: string
   loading: boolean
@@ -72,6 +77,8 @@ function routeTone(status: MtmRouteRecord["status"]) {
 export function MtmRouteCalendar({
   routes,
   month,
+  workCalendarOverrides,
+  workCalendarEnforced,
   selectedDate: selectedDateProp,
   locale,
   loading,
@@ -240,6 +247,18 @@ export function MtmRouteCalendar({
           const isCurrentMonth = day.date.getMonth() === month.getMonth()
           const isToday = key === todayKey
           const isPastDay = isCurrentMonth && isPastMtmCalendarDay(day.date)
+          // A weekend blocks nothing while `enforceWorkCalendarForRoutes` is
+          // off, so shading it would invent a rule the server does not apply
+          // (C6/RUX-404). The reason is shown, never just the grey: "closed"
+          // without a why is the complaint this task exists to fix.
+          const calendarDay = workCalendarEnforced
+            ? resolveWorkCalendarDay({ date: key, overrides: workCalendarOverrides ?? [] })
+            : null
+          const closedReason = calendarDay && !calendarDay.routePlanningAllowed
+            ? calendarDay.source === "WEEKEND_DEFAULT"
+              ? t("calendarWeekend")
+              : calendarDay.name || t("calendarClosedDay")
+            : null
           return (
             <div
               key={key}
@@ -248,7 +267,9 @@ export function MtmRouteCalendar({
               data-past-day={isPastDay ? "true" : "false"}
               // C6: день, который уже прошёл, — не поверхность для планирования.
               // Приглушить его дешевле, чем заставлять читать даты.
-              className={`group min-h-32 border-b border-r border-zinc-200 p-1.5 last:border-r-0 dark:border-zinc-700 xl:min-h-28 ${isCurrentMonth ? (isPastDay ? "bg-card opacity-60" : "bg-card") : "bg-muted/30 text-muted-foreground/50"}`}
+              data-closed-day={closedReason ? "true" : "false"}
+              title={closedReason ?? undefined}
+              className={`group min-h-32 border-b border-r border-zinc-200 p-1.5 last:border-r-0 dark:border-zinc-700 xl:min-h-28 ${isCurrentMonth ? (closedReason ? "bg-muted/40" : isPastDay ? "bg-card opacity-60" : "bg-card") : "bg-muted/30 text-muted-foreground/50"}`}
             >
               <div className="mb-1 flex min-h-9 items-center justify-between gap-1">
                 <span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${isToday ? "bg-primary text-primary-foreground" : ""}`}>{day.date.getDate()}</span>
@@ -258,6 +279,14 @@ export function MtmRouteCalendar({
                   </Button>
                 ) : null}
               </div>
+              {closedReason && isCurrentMonth ? (
+                // The reason is visible, not only in `title`: a tooltip does
+                // not exist on a tablet, and this task is about the manager
+                // knowing WHY a day is grey.
+                <div className="mb-1 truncate text-[10px] font-medium uppercase tracking-wide text-muted-foreground" data-testid="mtm-calendar-closed-reason">
+                  {closedReason}
+                </div>
+              ) : null}
               <div className="space-y-1.5">
                 {day.routes.slice(0, 3).map((route) => (
                   <button
