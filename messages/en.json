@@ -10240,7 +10240,12 @@
     "actionHistory": "Visits",
     "sortActivity": "Most active",
     "sortLastSeen": "Last seen",
-    "moreActions": "More actions"
+    "moreActions": "More actions",
+    "presencePausedSince": "On a break since {time}",
+    "presencePaused": "On a break",
+    "presenceFinishedAt": "Day finished at {time}",
+    "presenceFinished": "Day finished",
+    "presenceNotStarted": "Day not started"
   },
   "mtmContactExplorer": {
     "title": "Field team contacts",

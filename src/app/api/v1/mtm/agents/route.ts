@@ -8,6 +8,10 @@ import { AgentCreateSchema, parseBody } from "@/lib/mtm-validators"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { resolveAgentScope, isValidMtmAgentRole } from "@/lib/mtm/territory-scope"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
+import { mtmAgentPresence } from "@/lib/mtm/agent-day-state"
+import { getMtmSettings } from "@/lib/mtm-settings"
+import { currentDateKey } from "@/lib/mtm/mobile-week"
+import { isValidTimezone } from "@/lib/timezone"
 import type { RlsAuth } from "@/lib/with-rls"
 import { checkPermission } from "@/lib/permissions"
 import { passwordPolicyError } from "@/lib/password-policy"
@@ -115,7 +119,38 @@ export const GET = withRls(async (req, auth) => {
       prisma.mtmAgent.count({ where }),
     ])
 
-    return NextResponse.json({ success: true, data: { agents, total, page, limit } })
+    // A break stops GPS by design (A7), so the list's «last seen» dot fades on
+    // someone who is simply at lunch. One query for the page's agents — not per
+    // row — puts the workday's own state next to them.
+    // Presence is an enrichment, not the point of this endpoint: if settings or
+    // the workday query fail, the manager still needs the list of people. A
+    // missing row already means "not started", so degrading costs one label,
+    // while a 500 costs the whole screen.
+    const dayByAgent = new Map<string, { status: "STARTED" | "PAUSED" | "COMPLETED"; startedAt: Date; pausedAt: Date | null; completedAt: Date | null }>()
+    if (agents.length) {
+      try {
+        const settings = await getMtmSettings(orgId)
+        const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
+        const workDate = new Date(`${currentDateKey(new Date(), timezone)}T00:00:00.000Z`)
+        const days = await prisma.mtmAgentWorkday.findMany({
+          where: { organizationId: orgId, workDate, agentId: { in: agents.map((agent) => agent.id) } },
+          select: { agentId: true, status: true, startedAt: true, pausedAt: true, completedAt: true },
+        })
+        for (const day of days) dayByAgent.set(day.agentId, day)
+      } catch (presenceError) {
+        console.error("[MTM/agents GET] presence unavailable", presenceError)
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        agents: agents.map((agent) => ({ ...agent, presence: mtmAgentPresence(dayByAgent.get(agent.id)) })),
+        total,
+        page,
+        limit,
+      },
+    })
   } catch (e) {
     console.error("[MTM/agents GET]", e)
     return NextResponse.json({ error: "Failed to load agents" }, { status: 500 })
