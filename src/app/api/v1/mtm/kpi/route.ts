@@ -201,6 +201,12 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, session) => {
     ? {
         id: policyRow.id,
         code: policyRow.code,
+        // The three names exist on every policy and were not being sent, so the
+        // dashboard had nothing to show but the code (task T14). The reader
+        // picks by locale; the server stays locale-agnostic.
+        nameRu: policyRow.nameRu,
+        nameAz: policyRow.nameAz,
+        nameEn: policyRow.nameEn,
         version: policyRow.version,
         definitionHash: policyRow.definitionHash,
         approvalReference: policyRow.approvalReference!,

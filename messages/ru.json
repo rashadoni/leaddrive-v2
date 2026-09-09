@@ -13670,7 +13670,7 @@
     "authoritative": "Официальный расчёт",
     "nonAuthoritative": "Неофициальный расчёт",
     "unsignedPolicy": "Формула не утверждена",
-    "approvedPolicy": "{code} · версия {version}",
+    "approvedPolicy": "{name} · версия {version}",
     "exportCsv": "Экспорт CSV",
     "exportFailed": "Не удалось экспортировать отчёт.",
     "exportStaleSnapshot": "Расчёт изменился до экспорта. Отчёт обновлён — повторите попытку.",
