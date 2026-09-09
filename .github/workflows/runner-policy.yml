@@ -1,10 +1,14 @@
 name: Runner policy
 
 on:
+  # Deliberately no `paths:` filter on pull_request. This is a *required* check,
+  # and GitHub only counts a required context as satisfied once a check run
+  # reports it: a path-filtered workflow simply never reports on a PR that
+  # misses its paths, leaving every such PR blocked on "Expected — waiting for
+  # status". The job is a two-minute file scan on a free public runner, so
+  # running it on every PR is cheaper than the footgun. The push trigger keeps
+  # its filter, because push runs gate nothing.
   pull_request:
-    paths:
-      - ".github/workflows/**"
-      - "scripts/ci/check-github-runner-policy.mjs"
   push:
     branches: [main]
     paths:
@@ -20,6 +24,8 @@ permissions:
 
 jobs:
   enforce:
+    # Named so the required-check context reads `runner-policy`, not `enforce`.
+    name: runner-policy
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     steps:
