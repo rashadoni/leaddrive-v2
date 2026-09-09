@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { toast } from "sonner"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
+import { formatTime } from "@/lib/format-date"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
 import { PageDescription } from "@/components/page-description"
 import { HelpButton } from "@/components/help/help-button"
@@ -32,6 +33,7 @@ const ONLINE_WINDOW_MS = 10 * 60 * 1000
 export default function MtmAgentsPage() {
   const { data: session } = useSession()
   const t = useTranslations("mtmAgents")
+  const locale = useLocale()
   const ts = useTranslations("mtmStatus")
   const [agents, setAgents] = useState<any[]>([])
   const [statsByAgent, setStatsByAgent] = useState<Record<string, { visits: number; eff: number }>>({})
@@ -69,6 +71,25 @@ export default function MtmAgentsPage() {
   const now = Date.now()
   const seenMs = (a: any) => (a.lastSeenAt ? now - new Date(a.lastSeenAt).getTime() : Infinity)
   const isOnline = (a: any) => seenMs(a) < ONLINE_WINDOW_MS
+  // A break and a dead phone both stop GPS; only one of them is a reason to
+  // call the rep. The workday's own state answers that, so it goes first and
+  // "last seen" stays for the case where nothing else explains the silence.
+  const presenceText = (a: any): { text: string; tone: "working" | "paused" | "quiet" } => {
+    const presence = a?.presence
+    // Through the shared helper, not toLocaleTimeString: the C2 gate exists
+    // because the root-locale fallback cannot be trusted to give Azerbaijani
+    // the 24-hour clock it needs.
+    const at = (value: string | null) => (value ? formatTime(value, locale) : "")
+    if (presence?.kind === "paused") {
+      return { text: presence.since ? t("presencePausedSince", { time: at(presence.since) }) : t("presencePaused"), tone: "paused" }
+    }
+    if (presence?.kind === "finished") {
+      return { text: presence.at ? t("presenceFinishedAt", { time: at(presence.at) }) : t("presenceFinished"), tone: "quiet" }
+    }
+    if (presence?.kind === "not-started") return { text: t("presenceNotStarted"), tone: "quiet" }
+    return { text: lastSeenText(a), tone: isOnline(a) ? "working" : "quiet" }
+  }
+
   const lastSeenText = (a: any) => {
     const ms = seenMs(a)
     if (!isFinite(ms)) return t("neverSeen")
@@ -144,7 +165,7 @@ export default function MtmAgentsPage() {
   const statusLabel = (value: string) => mtmStatusLabel(ts, "agentStatus", value)
 
   const renderCard = (agent: any) => {
-    const online = isOnline(agent)
+    const presence = presenceText(agent)
     const stat = statsByAgent[agent.id]
     const phone = digits(agent.phone)
     return (
@@ -154,11 +175,11 @@ export default function MtmAgentsPage() {
             {agent.avatar
               ? <img src={agent.avatar} alt="" className="h-10 w-10 rounded-full object-cover" />
               : <div className="h-10 w-10 rounded-full bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center text-cyan-700 dark:text-cyan-400 font-semibold">{agent.name?.charAt(0)?.toUpperCase()}</div>}
-            <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card ${online ? "bg-green-500" : "bg-muted-foreground/40"}`} title={lastSeenText(agent)} />
+            <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card ${presence.tone === "working" ? "bg-green-500" : presence.tone === "paused" ? "bg-amber-500" : "bg-muted-foreground/40"}`} title={presence.text} />
           </div>
           <div className="flex-1 min-w-0">
             <a href={`/mtm/visits?agentId=${agent.id}`} className="font-medium text-sm truncate hover:underline block">{agent.name}</a>
-            <div className={`text-[11px] ${online ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}`}>{lastSeenText(agent)}</div>
+            <div className={`text-[11px] ${presence.tone === "working" ? "text-green-600 dark:text-green-400" : presence.tone === "paused" ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>{presence.text}</div>
           </div>
           <div className="flex gap-1 shrink-0">
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditData(agent); setFormOpen(true) }}><Pencil className="h-3.5 w-3.5" /></Button>

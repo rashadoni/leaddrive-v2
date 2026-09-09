@@ -117,6 +117,38 @@ describe("GET /api/v1/mtm/agents", () => {
     expect(json.data.limit).toBe(50)
   })
 
+  it("says an agent is on a break instead of letting them fade to grey", async () => {
+    // A break stops GPS by design (A7), so `lastSeenAt` goes stale on someone
+    // who is simply at lunch — indistinguishable from a dead phone until the
+    // workday's own state reaches the list.
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{ id: "a1", name: "Agent 1" }] as any)
+    vi.mocked(prisma.mtmAgent.count).mockResolvedValue(1)
+    vi.mocked(prisma.mtmAgentWorkday.findMany).mockResolvedValue([
+      { agentId: "a1", status: "PAUSED", startedAt: new Date("2026-09-09T05:00:00Z"), pausedAt: new Date("2026-09-09T10:05:00Z"), completedAt: null },
+    ] as any)
+
+    const res = await ListAgents(makeReq("/api/v1/mtm/agents"))
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.data.agents[0].presence).toEqual({ kind: "paused", since: "2026-09-09T10:05:00.000Z" })
+  })
+
+  it("still lists people when presence cannot be resolved", async () => {
+    // The list is the point of this endpoint; presence is an enrichment. A
+    // failing workday query must cost one label, not the whole screen.
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{ id: "a1", name: "Agent 1" }] as any)
+    vi.mocked(prisma.mtmAgent.count).mockResolvedValue(1)
+    vi.mocked(prisma.mtmAgentWorkday.findMany).mockRejectedValue(new Error("workday unavailable"))
+
+    const res = await ListAgents(makeReq("/api/v1/mtm/agents"))
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.data.agents).toHaveLength(1)
+    expect(json.data.agents[0].presence).toEqual({ kind: "not-started" })
+  })
+
   it("filters by status and role", async () => {
     vi.mocked(getOrgId).mockResolvedValue(ORG)
     vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([])
