@@ -153,6 +153,10 @@ export default function MtmRoutesPage() {
   const [timezone, setTimezone] = useState("Asia/Baku")
   const [workCalendarEnforced, setWorkCalendarEnforced] = useState(false)
   const [workCalendarOverrides, setWorkCalendarOverrides] = useState<WorkCalendarOverride[]>([])
+  // Загружены ли исключения на самом деле. Пустой список сам по себе не
+  // отличает «у тенанта их нет» от «запрос не вернулся»: полевому агенту этот
+  // эндпоинт отказывает по роли всегда.
+  const [workCalendarKnown, setWorkCalendarKnown] = useState(false)
   const [plannerContext, setPlannerContext] = useState<MtmRoutePlannerContext>(() => emptyMtmRoutePlannerContext())
   const [plannerContextReady, setPlannerContextReady] = useState(false)
   useEffect(() => { setCalendarMonth(new Date()) }, [])
@@ -479,8 +483,12 @@ export default function MtmRoutesPage() {
   useEffect(() => {
     if (!orgId || !workCalendarEnforced || !calendarMonth) {
       setWorkCalendarOverrides([])
+      setWorkCalendarKnown(false)
       return
     }
+    // Сбрасываем на каждый месяц: иначе прежние данные секунду выдаются за
+    // данные нового месяца, и та же суббота успевает мигнуть выходным.
+    setWorkCalendarKnown(false)
     const controller = new AbortController()
     const first = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1)
     const start = new Date(first)
@@ -495,7 +503,11 @@ export default function MtmRoutesPage() {
       .then((response) => (response.ok ? response.json() : null))
       .then((result) => {
         if (controller.signal.aborted) return
-        setWorkCalendarOverrides(result?.success && Array.isArray(result.data?.days) ? result.data.days : [])
+        const ok = result?.success === true && Array.isArray(result.data?.days)
+        setWorkCalendarOverrides(ok ? result.data.days : [])
+        // Только успех делает пустой список утверждением. Отказ по роли и
+        // сетевая ошибка оставляют «не знаю».
+        setWorkCalendarKnown(ok)
       })
       .catch(() => undefined)
     return () => controller.abort()
@@ -1073,6 +1085,7 @@ export default function MtmRoutesPage() {
           routes={calendarRoutes}
           month={calendarMonth}
           workCalendarOverrides={workCalendarOverrides}
+          workCalendarKnown={workCalendarKnown}
           workCalendarEnforced={workCalendarEnforced}
           selectedDate={plannerContext.date}
           locale={locale}

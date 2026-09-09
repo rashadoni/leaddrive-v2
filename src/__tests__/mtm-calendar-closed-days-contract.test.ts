@@ -62,11 +62,29 @@ describe("closed days on the route calendar", () => {
     expect(workday.routePlanningAllowed).toBe(true)
   })
 
-  it("keeps a failed override request from blanking the calendar", () => {
+  it("keeps a failed override request from blanking the calendar — or shading it", () => {
     // The endpoint sits behind the Workforce HRM module; a tenant without it
-    // gets 403, and that must cost the shading, not the calendar.
+    // gets 403, and so does every field agent, by role, every single time.
+    // That must cost the shading — and it must not cost the truth: an empty
+    // override list means "this tenant has none" ONLY when the request came
+    // back. Before, a 403 fell through to weekend defaults and the grid said
+    // "day off" about a Saturday the server would happily accept a route on.
     expect(page).toContain("response.ok ? response.json() : null")
-    expect(page).toContain("setWorkCalendarOverrides(result?.success && Array.isArray(result.data?.days) ? result.data.days : [])")
+    // Success is the only thing that turns an empty list into an assertion.
+    expect(page).toContain("setWorkCalendarKnown(ok)")
+    expect(page).toContain("workCalendarKnown={workCalendarKnown}")
+    // And the grid asks before it answers.
+    expect(calendar).toContain("workCalendarEnforced && workCalendarKnown")
+  })
+
+  it("forgets last month's overrides before it has this month's", () => {
+    // Without the reset the previous month's list is briefly presented as this
+    // month's, and the same Saturday flashes as a day off on every switch.
+    const effect = page.slice(
+      page.indexOf("if (!orgId || !workCalendarEnforced || !calendarMonth)"),
+      page.indexOf("fetch(`/api/v1/mtm/work-calendar"),
+    )
+    expect(effect).toContain("setWorkCalendarKnown(false)")
   })
 
 
