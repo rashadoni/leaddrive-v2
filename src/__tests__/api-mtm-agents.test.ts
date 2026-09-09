@@ -15,6 +15,14 @@ vi.mock("@/lib/api-auth", () => ({
 
 vi.mock("@/lib/mtm/route-permissions", () => ({ resolveMtmRouteActor: vi.fn() }))
 
+// Возможность тенанта решается по плану, аддонам и модулям — собирать здесь
+// правдоподобную строку организации значило бы тестировать биллинг, а не гейт.
+// Подменяем один предикат, остальной модуль настоящий.
+vi.mock("@/lib/tenant-capabilities", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tenant-capabilities")>()),
+  isTenantCapabilityEnabled: vi.fn(() => true),
+}))
+
 vi.mock("@/lib/mobile-auth", async () => {
   const { makeMobileAuthMock } = await import("./mocks/mobile-auth")
   return makeMobileAuthMock()
@@ -33,6 +41,7 @@ import { prisma } from "@/lib/prisma"
 import { getOrgId, getSession, requireAuth } from "@/lib/api-auth"
 import { getMobileAuth, resolveMobileAuth } from "@/lib/mobile-auth"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
+import { isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
 
 const ORG = "org-1"
 
@@ -58,6 +67,7 @@ beforeEach(() => {
   vi.mocked(resolveMtmRouteActor).mockResolvedValue(null)
   vi.mocked(getMobileAuth).mockReturnValue(null)
   vi.mocked(resolveMobileAuth).mockResolvedValue(null)
+  vi.mocked(isTenantCapabilityEnabled).mockReturnValue(true)
 })
 
 function mockAgentAdministrator() {
@@ -131,7 +141,53 @@ describe("GET /api/v1/mtm/agents", () => {
     const res = await ListAgents(makeReq("/api/v1/mtm/agents"))
     expect(res.status).toBe(200)
     const json = await res.json()
+    // Состояние — да, момент — нет: у этого вызова нет браузерной сессии, то
+    // есть это мобильный токен или ключ интеграции. Права на «Персонал» у них
+    // нет, а «на перерыве» без времени по-прежнему спасает от серой точки.
+    expect(json.data.agents[0].presence).toEqual({ kind: "paused", since: null })
+    expect(json.data.agents[0].breaks).toEqual([])
+  })
+
+  it("отдаёт моменты перерыва тому, у кого есть право на «Персонал»", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    mockAgentAdministrator()
+    // Общая фабрика мока отвечает только на свою пятиполевую выборку; гейт
+    // «Персонала» берёт четыре поля, поэтому строку подкладываем явно.
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      plan: "enterprise", addons: [], features: ["workforce-hrm"], modules: { "workforce-hrm": true },
+    } as any)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{ id: "a1", name: "Agent 1" }] as any)
+    vi.mocked(prisma.mtmAgent.count).mockResolvedValue(1)
+    vi.mocked(prisma.mtmAgentWorkday.findMany).mockResolvedValue([
+      { agentId: "a1", status: "PAUSED", startedAt: new Date("2026-09-09T05:00:00Z"), pausedAt: new Date("2026-09-09T10:05:00Z"), completedAt: null },
+    ] as any)
+
+    const res = await ListAgents(makeReq("/api/v1/mtm/agents"))
+    const json = await res.json()
     expect(json.data.agents[0].presence).toEqual({ kind: "paused", since: "2026-09-09T10:05:00.000Z" })
+  })
+
+  it("не отдаёт моменты, когда платный модуль выключен", async () => {
+    // Остальные экраны рабочий день при выключенном workforce-hrm прячут.
+    // Этот отдавал его мимо проверки.
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    mockAgentAdministrator()
+    vi.mocked(isTenantCapabilityEnabled).mockReturnValue(false)
+    // Общая фабрика мока отвечает только на свою пятиполевую выборку; гейт
+    // «Персонала» берёт четыре поля, поэтому строку подкладываем явно.
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      plan: "enterprise", addons: [], features: ["workforce-hrm"], modules: { "workforce-hrm": true },
+    } as any)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{ id: "a1", name: "Agent 1" }] as any)
+    vi.mocked(prisma.mtmAgent.count).mockResolvedValue(1)
+    vi.mocked(prisma.mtmAgentWorkday.findMany).mockResolvedValue([
+      { agentId: "a1", status: "COMPLETED", startedAt: new Date("2026-09-09T05:00:00Z"), pausedAt: null, completedAt: new Date("2026-09-09T14:00:00Z") },
+    ] as any)
+
+    const res = await ListAgents(makeReq("/api/v1/mtm/agents"))
+    const json = await res.json()
+    expect(json.data.agents[0].presence).toEqual({ kind: "finished", at: null })
+    expect(json.data.agents[0].breaks).toEqual([])
   })
 
   it("still lists people when presence cannot be resolved", async () => {
