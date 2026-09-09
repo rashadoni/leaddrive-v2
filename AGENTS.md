@@ -200,6 +200,12 @@ Keep the guards that exist:
 - Any new `pull_request` workflow must declare a `paths:` filter narrower than
   the whole repository **and** a `concurrency:` group with
   `cancel-in-progress: true`, so a new push cancels the previous run.
+  **One exception, and only one:** a workflow whose check is *required* on
+  `main` must not be path-filtered. GitHub marks a required context satisfied
+  only when a check run reports it, so a path-filtered required check leaves
+  every PR outside its paths stuck on "Expected — waiting for status". That is
+  why `runner-policy.yml` runs on every pull request. If you make a check
+  required, remove its `paths:` filter in the same change.
 - Do not remove these guards to make a check run sooner. Ask instead.
 
 Because the repository is public:
