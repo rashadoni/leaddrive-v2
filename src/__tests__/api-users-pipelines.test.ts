@@ -213,16 +213,33 @@ describe("PUT /api/v1/users/[id]", () => {
 })
 
 describe("DELETE /api/v1/users/[id]", () => {
-  it("deletes user successfully", async () => {
-    vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: "u1" } as any)
-    vi.mocked(prisma.user.delete).mockResolvedValue({} as any)
+  it("anonymises the user instead of deleting the row", async () => {
+    // Физического удаления здесь быть не может: четыре таблицы под триггером
+    // «только добавление» ссылаются на пользователя через onDelete: SetNull,
+    // и удаление обязано их обновить — триггер это отвергает.
+    // Полный разбор в src/lib/user-anonymization.ts.
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: "u1", anonymizedAt: null } as any)
+    vi.mocked(prisma.user.update).mockResolvedValue({} as any)
     const res = await DELETE_USER(
       makeReq("http://localhost/api/v1/users/u1", { method: "DELETE" }),
       makeParams("u1"),
     )
     expect(res.status).toBe(200)
-    const json = await res.json()
-    expect(json.success).toBe(true)
+    expect((await res.json()).success).toBe(true)
+    expect(prisma.user.delete).not.toHaveBeenCalled()
+    expect(prisma.user.update).toHaveBeenCalledOnce()
+  })
+
+  it("reports an already anonymised user as not found", async () => {
+    // Иначе повторное «удаление» затирало бы метку заново и выглядело как
+    // успешная операция над тем, чего уже нет.
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: "u1", anonymizedAt: new Date() } as any)
+    const res = await DELETE_USER(
+      makeReq("http://localhost/api/v1/users/u1", { method: "DELETE" }),
+      makeParams("u1"),
+    )
+    expect(res.status).toBe(404)
+    expect(prisma.user.update).not.toHaveBeenCalled()
   })
 })
 
