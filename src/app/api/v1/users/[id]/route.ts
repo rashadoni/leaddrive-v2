@@ -7,6 +7,8 @@ import { getAssignableRoleIds } from "@/lib/org-roles"
 import { checkPermission, isAdmin } from "@/lib/permissions"
 import { USER_ADMIN_SELECT, USER_ROSTER_SELECT } from "@/lib/user-directory-projection"
 import { buildUserAnonymizationData } from "@/lib/user-anonymization"
+import { handOverOpenWork } from "@/lib/user-work-handover"
+import { orgStageVocabulary } from "@/lib/deal-stage-vocabulary"
 import { moduleDisabledResponse, orgHasModule } from "@/lib/api-auth"
 
 const updateUserSchema = z.object({
@@ -239,11 +241,33 @@ export const DELETE = withRlsSessionAuth(async (_req: NextRequest, authResult, {
     // Админ видел «Internal server error», причина в лог не выходила.
     // Подробнее и о том, почему обход триггера был бы хуже — в
     // `src/lib/user-anonymization.ts`.
-    await prisma.user.update({
-      where: { id },
-      data: buildUserAnonymizationData(id),
+    // Обезличивание и передача работы — одной транзакцией. Порознь можно
+    // получить обезличенного владельца с непереданными сделками: строка уже
+    // надгробие, а работа всё ещё закреплена за ним и не видна никому.
+    // Словарь стадий читаем ДО транзакции: он делает три собственных запроса,
+    // и внутри `$transaction` это было бы второе соединение при открытой
+    // транзакции. Хелпер и сам просит звать его раз на запрос.
+    const { closedStages } = await orgStageVocabulary(orgId)
+
+    const handover = await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id },
+        data: buildUserAnonymizationData(id),
+      })
+      // Получатель — администратор, выполняющий удаление. Линии подчинения в
+      // модели нет (у User нет ни managerId, ни divisionId), вычислить
+      // «руководителя» не из чего, а придумывать его — гадание.
+      return handOverOpenWork(tx, {
+        orgId,
+        fromUserId: id,
+        toUserId: authResult.userId,
+        closedStages,
+      })
     })
-    return NextResponse.json({ success: true })
+
+    // Счётчик возвращается, чтобы админ увидел, что именно к нему перешло:
+    // молчаливая передача десятков сделок — это сюрприз, а не удобство.
+    return NextResponse.json({ success: true, handover })
   } catch (e) {
     console.error("Users API error:", e)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
