@@ -15,6 +15,14 @@ interface RouteCalendarProps {
   month: Date | null
   /** Overrides for the visible grid; empty when the tenant has none or the request failed. */
   workCalendarOverrides?: readonly WorkCalendarOverride[]
+  /**
+   * Whether the overrides above are actually known. Empty means two different
+   * things — "this tenant has none" and "the request never came back" — and the
+   * grid must not turn the second into a confident "day off". A field agent is
+   * refused this endpoint by role every time, so for them it is always the
+   * second; everyone else sees the first paint and every month switch.
+   */
+  workCalendarKnown?: boolean
   /** `enforceWorkCalendarForRoutes`. Off means a weekend blocks nothing, so shading it would be a lie. */
   workCalendarEnforced?: boolean
   selectedDate?: string | null
@@ -79,6 +87,7 @@ export function MtmRouteCalendar({
   month,
   workCalendarOverrides,
   workCalendarEnforced,
+  workCalendarKnown,
   selectedDate: selectedDateProp,
   locale,
   loading,
@@ -251,7 +260,11 @@ export function MtmRouteCalendar({
           // off, so shading it would invent a rule the server does not apply
           // (C6/RUX-404). The reason is shown, never just the grey: "closed"
           // without a why is the complaint this task exists to fix.
-          const calendarDay = workCalendarEnforced
+          // Отсутствие данных — это «не знаю», а не «выходной». Пока
+          // исключения не загружены (или эндпоинт отказал по роли), день не
+          // подписывается: перенесённая рабочая суббота иначе выглядит
+          // нерабочей, хотя сервер планировать на неё разрешает.
+          const calendarDay = workCalendarEnforced && workCalendarKnown
             ? resolveWorkCalendarDay({ date: key, overrides: workCalendarOverrides ?? [] })
             : null
           // Through the shared status dictionary (A5), not two new strings of
