@@ -21,7 +21,7 @@ describe("proxy matcher security boundary", () => {
   it.each([
     "/marketing/crm-dashboard.png",
     "/icons/icon-192.png",
-    "/wallpapers/alpine-v3.mp4",
+    "/wallpapers/alpine-v4.mp4",
     "/uploads/contracts/document.pdf",
     "/favicon.ico",
   ])("bypasses only a concrete public asset path: %s", (pathname) => {
