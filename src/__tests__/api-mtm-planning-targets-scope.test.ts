@@ -57,6 +57,26 @@ describe("A2: one eligibility scope for organizations", () => {
     }
   })
 
+  it("explains an empty doctor list only when both phases are exhausted", () => {
+    // Doctors are scanned in two phases. An empty `direct` page still points
+    // at the customer-assigned phase, so explaining it there would tell an
+    // agent "no assignments" moments before the second phase returns people.
+    const planner = readFileSync(PLANNER, "utf8")
+    expect(planner).toContain("if (targets.length === 0 && nextPage === null && !Boolean(search))")
+    expect(planner).toContain("eligibility: contactEligibility")
+  })
+
+  it("counts both assignment shapes when asking whether the agent has anyone", () => {
+    // Assignment-only for doctors means either shape: the contact's own, or
+    // the workplace's customer. Counting one arm would report "no assignments"
+    // to an agent who holds the other.
+    const planner = readFileSync(PLANNER, "utf8")
+    const branch = planner.slice(planner.indexOf("let contactEligibility"), planner.indexOf("return noStoreJson({\n    success: true,"))
+    expect(branch).toContain("{ agentAssignments: { some: directAssignment } }")
+    expect(branch).toContain("agentAssignments: { some: directAssignment },")
+    expect(branch).toContain("prisma.mtmContact.count")
+  })
+
   it("leaves doctors assignment-only, as the validator says out loud", () => {
     // Widening this one would grant a write the interface never offered — the
     // validator's own note, and the reason the contact phases are untouched.
