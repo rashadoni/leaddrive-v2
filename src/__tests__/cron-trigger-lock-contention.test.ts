@@ -186,10 +186,17 @@ describe("deploy workflow scheduler verification", () => {
       "      - name: Deploy atomically on production\n",
     )
     expect(deployJob).toBeDefined()
-    // The recovery job has its own orchestration. Keep this assertion scoped
-    // to deploy's post-release probes so recovery setup steps cannot be
-    // mistaken for production smoke checks.
-    const [afterDeploy] = deployJob.split("\n  recovery:\n")
+    // Other jobs have their own orchestration. Keep this assertion scoped to
+    // deploy's post-release probes so their setup steps cannot be mistaken for
+    // production smoke checks.
+    //
+    // The boundary is "the next job", not the name of whichever job currently
+    // follows. Cutting at a literal `recovery:` made the scope depend on file
+    // order: a job added between deploy and recovery was swept in, and the
+    // failure read as "your step is not decoupled" when the step was not a
+    // post-deploy probe at all. Job headers are the only two-space keys under
+    // `jobs:`; everything inside a job is indented deeper.
+    const [afterDeploy] = deployJob.split(/\n {2}[A-Za-z_][A-Za-z0-9_-]*:\n/)
     const steps = afterDeploy.split("\n      - name: ").slice(1)
     expect(steps.length).toBeGreaterThanOrEqual(11)
     for (const step of steps) {
