@@ -26,6 +26,14 @@ interface RouteWeekPlanProps {
 interface RouteAgent {
   id: string
   name: string
+  /**
+   * Carried by all three sources of this grid's rows (audit C7). Without it on
+   * every source, filtering by team would drop the agents who reached the week
+   * through a route rather than through the agent list — silently, which is
+   * the worst way for a filter to be wrong.
+   */
+  teamId?: string | null
+  team?: { id: string; name: string } | null
 }
 
 interface AgentsState {
@@ -166,11 +174,12 @@ export function MtmRouteWeekPlan({
   }, [orgId, rangeRetryVersion, refreshVersion, weekStart])
 
   const [agentSearch, setAgentSearch] = useState("")
+  const [agentTeamId, setAgentTeamId] = useState("")
   const { agents: availableAgents, loading: agentsLoading } = agentsState
   const { routes: routesForWeek, loading: rangeLoading, error: rangeError } = rangeState
 
   const allAgents = useMemo(() => {
-    const byId = new Map<string, { id: string; name: string }>()
+    const byId = new Map<string, RouteAgent>()
     for (const agent of availableAgents) byId.set(agent.id, agent)
     for (const route of routesForWeek) {
       if (route.agent?.id) byId.set(route.agent.id, route.agent)
@@ -184,9 +193,22 @@ export function MtmRouteWeekPlan({
   // C7: QA-аккаунты занимали строки между живыми людьми, а найти одного
   // сотрудника среди сорока можно было только прокруткой (RUX-602).
   const agents = useMemo(
-    () => visibleWeekPlanAgents(allAgents, { search: agentSearch }),
-    [agentSearch, allAgents],
+    () => visibleWeekPlanAgents(allAgents, { search: agentSearch, teamId: agentTeamId || null }),
+    [agentSearch, agentTeamId, allAgents],
   )
+
+  // Only teams that actually have a row here: offering a team with nobody in
+  // this week would answer "nobody matches" to a question the manager never
+  // really asked.
+  const teams = useMemo(() => {
+    const byId = new Map<string, string>()
+    for (const agent of allAgents) {
+      if (agent.team?.id && agent.team.name) byId.set(agent.team.id, agent.team.name)
+    }
+    return [...byId.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }, [allAgents])
   const hiddenCount = allAgents.length - agents.length
 
   const routesByAgentAndDate = useMemo(() => {
@@ -234,6 +256,20 @@ export function MtmRouteWeekPlan({
             aria-label={t("weekAgentSearch")}
             className="min-h-11 w-full rounded-lg border border-zinc-200 bg-background px-3 text-sm dark:border-zinc-700 sm:w-56"
           />
+          {teams.length > 1 ? (
+            <select
+              data-testid="mtm-week-team-filter"
+              value={agentTeamId}
+              onChange={(event) => setAgentTeamId(event.target.value)}
+              aria-label={t("weekTeamFilter")}
+              className="min-h-11 w-full rounded-lg border border-zinc-200 bg-background px-3 text-sm dark:border-zinc-700 sm:w-44"
+            >
+              <option value="">{t("weekTeamAll")}</option>
+              {teams.map((team) => (
+                <option key={team.id} value={team.id}>{team.name}</option>
+              ))}
+            </select>
+          ) : null}
           <Button variant="ghost" size="icon" className="min-h-11 min-w-11" onClick={() => moveWeek(-1)} title={t("previousWeek")} aria-label={t("previousWeek")}>
             <ChevronLeft className="h-4 w-4" />
           </Button>

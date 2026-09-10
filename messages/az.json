@@ -12112,7 +12112,9 @@
     },
     "calendarMore": "+daha {n}",
     "weekAgentSearch": "Əməkdaş tapın",
-    "weekAgentsHidden": "Gizlədilən sətir: {count} — axtarış və ya QA hesabları"
+    "weekAgentsHidden": "Gizlədilən sətir: {count} — axtarış və ya QA hesabları",
+    "weekTeamFilter": "Komandaya görə süzgəc",
+    "weekTeamAll": "Bütün komandalar"
   },
   "mtmOperationsPage": {
     "title": "Sahə əməliyyat mərkəzi",
