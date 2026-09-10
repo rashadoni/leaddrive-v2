@@ -206,6 +206,70 @@ Statuses: **DONE**, **IN PROGRESS**, **NEXT**, **PLANNED**, **BLOCKED**.
 | RUX-902 | P1 | PLANNED | Re-test the Azerbaijani Routes flow end to end immediately before capture | No broken step is hidden in the guide |
 | RUX-903 | P1 | BLOCKED | Produce detailed Azerbaijani end-to-end web guide | Voiceover requires user-provided audio or explicitly approved external provider |
 
+### Phase 10 — Field UX audit 2026-09-05
+
+Rows for every task of `docs/mtm-field-ux-audit-plan-2026-09-05.md`, which is
+the audit's own tracker. **That file's section 0.1 is the source of truth for
+status**; this table is a roadmap-side index into it and is regenerated from it
+rather than edited by hand. Where the two disagree, section 0.1 wins.
+
+Statuses here carry one distinction the rest of this roadmap does not need:
+**MERGED** means the code is in `main` and in the shipped APK, but nobody has
+seen it run on a device. In this plan that is not "done" — the audit exists
+because eleven of its findings were things tests could not see.
+
+| ID | Pri | Status | Task | Acceptance evidence |
+|---|---:|---|---|---|
+| RUX-1001 | P0 | DONE | Store missing customer coordinates as absent, never as 0,0 (A1) | Closed in section 0.1 of the plan |
+| RUX-1002 | P0 | DONE | One source of "points this agent may work on" (A2) | Closed in section 0.1 of the plan |
+| RUX-1003 | P0 | DONE | Close or mark unfinished routes instead of leaving them in progress (A3) | Closed in section 0.1 of the plan |
+| RUX-1004 | P0 | DONE | Generate alerts as localized keys, not English sentences (A4) | Closed in section 0.1 of the plan |
+| RUX-1005 | P0 | DONE | One status dictionary for web and app (A5) | Closed in section 0.1 of the plan |
+| RUX-1006 | P0 | DONE | Explicit check-in error contract (A6) | Closed in section 0.1 of the plan |
+| RUX-1007 | P0 | DONE | Workday breaks: reject GPS taken on a pause, show the segments (A7) | Closed in section 0.1 of the plan |
+| RUX-1008 | P0 | DONE | Unplanned visit reports every outcome (B1) | Closed in section 0.1 of the plan |
+| RUX-1009 | P0 | DONE | Distance to a point without coordinates (B2) | Closed in section 0.1 of the plan |
+| RUX-1010 | P0 | DONE | "Day finished at HH:MM" after End day (B3) | Closed in section 0.1 of the plan |
+| RUX-1011 | P0 | MERGED | Offline is detected and shown (B4) | Merged to `main` and in the APK; device acceptance not run (D1) |
+| RUX-1012 | P0 | MERGED | Day card carries the route status and opens (B5) | Merged to `main` and in the APK; device acceptance not run (D1) |
+| RUX-1013 | P1 | MERGED | Week as a strip of seven, one day open (B6) | Merged to `main` and in the APK; device acceptance not run (D1) |
+| RUX-1014 | P1 | MERGED | Today fits one screen (B7) | Merged to `main` and in the APK; device acceptance not run (D1) |
+| RUX-1015 | P1 | MERGED | Self planner asks only what it can answer (B8) | Merged to `main` and in the APK; device acceptance not run (D1) |
+| RUX-1016 | P1 | MERGED | Route screen without a route (B9) | Merged to `main` and in the APK; device acceptance not run (D1) |
+| RUX-1017 | P1 | MERGED | Tasks state facts, not advice (B10) | Merged to `main` and in the APK; device acceptance not run (D1) |
+| RUX-1018 | P2 | MERGED | More and Profile stop repeating their neighbours (B11) | Merged to `main` and in the APK; device acceptance not run (D1) |
+| RUX-1019 | P2 | DONE | Sync centre in the user's words (B12) | Closed in section 0.1 of the plan |
+| RUX-1020 | P1 | DONE | Azerbaijani uppercase keeps İ (B13) | Closed in section 0.1 of the plan |
+| RUX-1021 | P1 | DONE | Russian plural forms (B14) | Closed in section 0.1 of the plan |
+| RUX-1022 | P1 | DONE | No raw enum values on screen (B15) | Closed in section 0.1 of the plan |
+| RUX-1023 | P1 | MERGED | GPS map without the API-key watermark (B16) | Merged to `main` and in the APK; device acceptance not run (D1) |
+| RUX-1024 | P2 | MERGED | End-day confirmation in the app's own dialog (B17) | Merged to `main` and in the APK; device acceptance not run (D1) |
+| RUX-1025 | P2 | MERGED | Accessible names and readable tab captions (B18) | Merged to `main` and in the APK; device acceptance not run (D1) |
+| RUX-1026 | P1 | PLANNED | Tablet layout from 600 dp (B19) | Open; the remaining tails are listed in section 0.1 |
+| RUX-1027 | P1 | MERGED | Sign-in above the fold (B20) | Merged to `main` and in the APK; device acceptance not run (D1) |
+| RUX-1028 | P2 | MERGED | Visit history opens from the screen that lists it (B21) | Merged to `main` and in the APK; device acceptance not run (D1) |
+| RUX-1029 | P2 | DONE | Only a handset build becomes a release (B22) | Closed in section 0.1 of the plan |
+| RUX-1030 | P0 | PLANNED | No customer name in product copy (C1) | Open; the remaining tails are listed in section 0.1 |
+| RUX-1031 | P0 | DONE | Dates only through the shared helper (C2) | Closed in section 0.1 of the plan |
+| RUX-1032 | P1 | DONE | Page language from the locale (C3) | Closed in section 0.1 of the plan |
+| RUX-1033 | P0 | DONE | "Not finished" on the web (C4) | Closed in section 0.1 of the plan |
+| RUX-1034 | P1 | PLANNED | First screen belongs to the work, not the chrome (C5) | Open; the remaining tails are listed in section 0.1 |
+| RUX-1035 | P1 | DONE | Calendar cells (C6) | Closed in section 0.1 of the plan |
+| RUX-1036 | P1 | PLANNED | Team week: search, QA accounts, team filter (C7) | Open; the remaining tails are listed in section 0.1 |
+| RUX-1037 | P1 | PLANNED | Planner rough edges (C8) | Open; the remaining tails are listed in section 0.1 |
+| RUX-1038 | P2 | BLOCKED | One view indicator (C9) | Waiting on the owner: adb tunnel for D1, one answer each for C9 and C13 |
+| RUX-1039 | P1 | DONE | Route card (C10) | Closed in section 0.1 of the plan |
+| RUX-1040 | P1 | DONE | Task counters from one source (C11) | Closed in section 0.1 of the plan |
+| RUX-1041 | P1 | DONE | No internal vocabulary on user screens (C12) | Closed in section 0.1 of the plan |
+| RUX-1042 | P2 | BLOCKED | Agent leaderboard (C13) | Waiting on the owner: adb tunnel for D1, one answer each for C9 and C13 |
+| RUX-1043 | P2 | DONE | Delete out of the primary menu (C14) | Closed in section 0.1 of the plan |
+| RUX-1044 | P1 | PLANNED | Tablet width 834 (C15) | Open; the remaining tails are listed in section 0.1 |
+| RUX-1045 | P2 | DONE | Small things that add up (C16) | Closed in section 0.1 of the plan |
+| RUX-1046 | P1 | BLOCKED | Mobile end-to-end over adb (D1) | Waiting on the owner: adb tunnel for D1, one answer each for C9 and C13 |
+| RUX-1047 | P1 | IN PROGRESS | Web runs (D2) | First pass done 2026-09-10 in the owner's browser; C15 width still unverified |
+| RUX-1048 | P1 | DONE | Documents (D3) | This section, plus the check-in error contract already in `mtm-mobile-update-spec-2026-07-11.md` §2.4 |
+
+
 ## 4. Evidence ledger
 
 | Date | Commit / run | Surface | Result | What it proves | Still not proved |
