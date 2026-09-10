@@ -1466,7 +1466,7 @@ export function MtmRouteBuilder({
             : t("saveDraft")
 
   return (
-    <section data-testid="mtm-route-builder" className="flex min-h-0 max-h-dvh flex-col overflow-hidden border-y border-zinc-200 bg-card dark:border-zinc-700 md:max-h-[min(52rem,calc(100dvh-2rem))]">
+    <section data-testid="mtm-route-builder" className="flex min-h-0 max-h-dvh flex-col overflow-hidden border-y border-zinc-200 bg-card dark:border-zinc-700 min-[900px]:max-h-[min(52rem,calc(100dvh-2rem))]">
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-zinc-200 px-4 py-2 dark:border-zinc-700">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
