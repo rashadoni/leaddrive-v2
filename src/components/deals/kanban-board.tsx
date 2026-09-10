@@ -3,7 +3,8 @@
 import { useState, useCallback, useRef, useEffect } from "react"
 import { motion } from "framer-motion"
 import { DealCard } from "./deal-card"
-import { cn, fmtAmount } from "@/lib/utils"
+import { cn } from "@/lib/utils"
+import { bucketByCurrency, leadBucket, formatBucket } from "@/lib/deal-money"
 import { InfoHint } from "@/components/info-hint"
 import { canonicalDealStage } from "@/lib/deal-stage-normalization"
 
@@ -142,7 +143,12 @@ export function KanbanBoard({ stages, deals, onDealClick, onDealMove, onQuickAdd
     <div className="grid grid-cols-6 gap-3 w-full">
       {stages.map((stage, stageIdx) => {
         const stageDeals = deals.filter((d) => d.stage === stage.name)
-        const total = stageDeals.reduce((s, d) => s + d.valueAmount, 0)
+        // Итог колонки раньше был `fmtAmount(сумма всех valueAmount)`: он
+        // складывал доллары с манатами и подписывал результат символом валюты
+        // по умолчанию (USD из env) — отсюда «$» в шапках над карточками,
+        // которые сами показывали AZN.
+        const stageBuckets = bucketByCurrency(stageDeals)
+        const { primary: stageTotal, extras: stageExtras } = leadBucket(stageBuckets)
         const isDropping = dropTarget === stage.name
 
         return (
@@ -169,9 +175,15 @@ export function KanbanBoard({ stages, deals, onDealClick, onDealMove, onQuickAdd
                   {stageDeals.length}
                 </span>
               </div>
-              {total > 0 && (
-                <p className="text-[11px] text-muted-foreground mt-0.5 pl-4 tabular-nums">
-                  {fmtAmount(total)}
+              {stageTotal.value > 0 && (
+                <p
+                  className="text-[11px] text-muted-foreground mt-0.5 pl-4 tabular-nums"
+                  title={stageBuckets.map((b) => formatBucket(b)).join(" · ")}
+                >
+                  {formatBucket(stageTotal)}
+                  {stageExtras.length > 0 && (
+                    <span className="ml-1 text-muted-foreground/70">+{stageExtras.length}</span>
+                  )}
                 </p>
               )}
             </div>

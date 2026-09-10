@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 import { MiniLineChart, MiniDonut } from "@/components/charts/mini-charts"
 import { canonicalDealStage } from "@/lib/deal-stage-normalization"
+import { getCurrencySymbol } from "@/lib/currency"
 import {
   TrendingUp,
   TrendingDown,
@@ -52,6 +53,9 @@ interface DealsAnalyticsProps {
   wonValue: number
   lostCount: number
   wonCount: number
+  /** Валюта, в которой номинирована воронка. Раньше символ был вшит в
+   *  `fmtCurrency` — экран подписывал манатом любые деньги, включая доллары. */
+  currency?: string
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────
@@ -62,8 +66,8 @@ function fmt(n: number): string {
   return n.toFixed(0)
 }
 
-function fmtCurrency(n: number): string {
-  return `\u20BC${fmt(n)}`
+function fmtCurrency(n: number, currency?: string): string {
+  return `${getCurrencySymbol(currency)}${fmt(n)}`
 }
 
 function daysBetween(a: string, b: string): number {
@@ -132,7 +136,7 @@ const PRIORITY_COLORS: Record<string, string> = {
 
 // ── Component ───────────────────────────────────────────────────────────
 
-export function DealsAnalytics({ deals, pipelineValue, wonValue, lostCount, wonCount }: DealsAnalyticsProps) {
+export function DealsAnalytics({ deals, pipelineValue, wonValue, lostCount, wonCount, currency }: DealsAnalyticsProps) {
   const t = useTranslations("dealsAnalytics")
   const months = t("monthsShort").split(",")
   const analytics = useMemo(() => {
@@ -195,15 +199,15 @@ export function DealsAnalytics({ deals, pipelineValue, wonValue, lostCount, wonC
   const kpis = [
     {
       label: t("pipelineValue"),
-      value: fmtCurrency(pipelineValue),
-      change: pipelineValue > 0 ? "+22%" : null,
+      value: fmtCurrency(pipelineValue, currency),
+      change: null,
       up: true,
       icon: DollarSign,
       iconBg: "bg-violet-500/15 text-violet-500",
     },
     {
       label: t("won"),
-      value: fmtCurrency(wonValue),
+      value: fmtCurrency(wonValue, currency),
       sub: `${wonCount} ${t("deals")}`,
       change: null,
       up: true,
@@ -213,7 +217,7 @@ export function DealsAnalytics({ deals, pipelineValue, wonValue, lostCount, wonC
     {
       label: t("conversion"),
       value: `${analytics.conversionRate.toFixed(1)}%`,
-      change: analytics.conversionRate > 0 ? "+5.1%" : null,
+      change: null,
       up: true,
       icon: Percent,
       iconBg: "bg-blue-500/15 text-blue-500",
@@ -221,22 +225,22 @@ export function DealsAnalytics({ deals, pipelineValue, wonValue, lostCount, wonC
     {
       label: t("avgCycle"),
       value: `${analytics.avgCycle} ${t("days")}`,
-      change: analytics.avgCycle > 0 ? `-3 ${t("days")}` : null,
+      change: null,
       up: true,
       icon: Clock,
       iconBg: "bg-amber-500/15 text-amber-500",
     },
     {
       label: t("avgValue"),
-      value: fmtCurrency(analytics.avgValue),
-      change: analytics.avgValue > 0 ? "+8%" : null,
+      value: fmtCurrency(analytics.avgValue, currency),
+      change: null,
       up: true,
       icon: BarChart3,
       iconBg: "bg-cyan-500/15 text-cyan-500",
     },
     {
       label: t("aiForecast"),
-      value: fmtCurrency(analytics.forecastValue),
+      value: fmtCurrency(analytics.forecastValue, currency),
       change: null,
       up: true,
       icon: Brain,
@@ -348,7 +352,7 @@ export function DealsAnalytics({ deals, pipelineValue, wonValue, lostCount, wonC
           </div>
           <p className="text-xs text-muted-foreground mb-3">
             {t("expectedForecast")}{" "}
-            <span className="font-semibold text-foreground">{fmtCurrency(analytics.forecastValue)}</span>
+            <span className="font-semibold text-foreground">{fmtCurrency(analytics.forecastValue, currency)}</span>
           </p>
           <div className="mb-3">
             <MiniLineChart data={deals.length > 0 ? deals.slice(-12).map(d => d.value) : FORECAST_DATA_EMPTY} color="stroke-fuchsia-400" />
@@ -363,11 +367,11 @@ export function DealsAnalytics({ deals, pipelineValue, wonValue, lostCount, wonC
           </div>
           <div className="mt-4 grid grid-cols-3 gap-2 text-center">
             <div>
-              <div className="text-lg font-bold">{fmtCurrency(pipelineValue)}</div>
+              <div className="text-lg font-bold">{fmtCurrency(pipelineValue, currency)}</div>
               <div className="text-[10px] text-muted-foreground">{t("current")}</div>
             </div>
             <div>
-              <div className="text-lg font-bold text-fuchsia-400">{fmtCurrency(analytics.forecastValue)}</div>
+              <div className="text-lg font-bold text-fuchsia-400">{fmtCurrency(analytics.forecastValue, currency)}</div>
               <div className="text-[10px] text-muted-foreground">{t("forecast")}</div>
             </div>
             <div>
