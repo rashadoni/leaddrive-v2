@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 import { MeddpiccChips } from "@/components/deals/meddpicc-chips"
 import { Plus, Loader2 } from "lucide-react"
-import { formatBucket } from "@/lib/deal-money"
+import { formatAmount } from "@/lib/deal-money"
 
 interface DealCardProps {
   deal: {
@@ -147,7 +147,7 @@ export function DealCard({ deal, onClick, onDragStart, onDragEnd, isDragging, ro
         <div className="flex items-center justify-between mt-1.5 pl-4">
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-semibold text-primary">
-              {formatBucket({ currency: deal.currency, value: deal.valueAmount || 0, count: 1 })}
+              {formatAmount(deal.valueAmount || 0, deal.currency)}
             </span>
             {deal.probability > 0 && (
               <span className={cn(

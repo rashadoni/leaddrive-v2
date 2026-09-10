@@ -27,7 +27,7 @@ import { parseMeddpicc, summarizeMeddpicc } from "@/lib/meddpicc"
 import { toast } from "sonner"
 import { canonicalDealStage } from "@/lib/deal-stage-normalization"
 import { InfoHint } from "@/components/info-hint"
-import { bucketByCurrency, leadBucket, formatBucket, formatExtras, weightedForCurrency } from "@/lib/deal-money"
+import { bucketByCurrency, leadBucket, formatBucket, formatExtras, weightedForCurrency, currencyOf } from "@/lib/deal-money"
 
 interface Deal {
   id: string
@@ -366,12 +366,10 @@ export default function DealsPage() {
     fetchDeals()
   }
 
-  const totalValue = deals.reduce((s, d) => s + d.valueAmount, 0)
   // Карточки «Выиграно»/«Проиграно» над канбаном: по смыслу стадии, иначе
   // самая крупная сделка организации (CLOSED_WON) в сумму не попадает, а
   // конверсия во вкладке «Аналитика» считается от заниженного знаменателя.
   const wonDeals = deals.filter(d => canonicalDealStage(d.stage) === "WON")
-  const wonValue = wonDeals.reduce((s, d) => s + d.valueAmount, 0)
   const lostCount = deals.filter(d => canonicalDealStage(d.stage) === "LOST").length
 
   // Деньги на этом экране группируются по валюте и НИКОГДА не складываются
@@ -400,8 +398,20 @@ export default function DealsPage() {
   const weightedValue = pipelineSummary?.byCurrency?.length
     ? pipelineSummary.byCurrency.find(b => b.currency === pipelinePrimary.currency)?.weighted ?? 0
     : weightedForCurrency(openDeals, pipelinePrimary.currency)
-  const { primary: wonPrimary } = leadBucket(bucketByCurrency(wonDeals), pipelinePrimary.currency)
+  const { primary: wonPrimary, extras: wonExtras } = leadBucket(bucketByCurrency(wonDeals), pipelinePrimary.currency)
+  const wonExtrasLabel = formatExtras(wonExtras)
   const openCount = pipelineBuckets.reduce((n, b) => n + b.count, 0)
+
+  // Вкладка «Аналитика» строит все свои графики из одного массива сделок.
+  // Отдать ей смесь валют — значит снова показать сумму, которой нет; поэтому
+  // она видит только главную валюту, а под KPI пишется, сколько сделок из-за
+  // этого не попало в расчёт.
+  const analyticsDeals = useMemo(
+    () => deals.filter(d => currencyOf(d) === pipelinePrimary.currency),
+    [deals, pipelinePrimary.currency],
+  )
+  const analyticsExcluded = deals.length - analyticsDeals.length
+  const analyticsLostCount = analyticsDeals.filter(d => canonicalDealStage(d.stage) === "LOST").length
 
   const stageNames = useMemo(() => {
     const names = [...new Set(deals.map(d => d.stage))]
@@ -422,13 +432,28 @@ export default function DealsPage() {
     return stageNames.map((name: string) => {
       const server = fromServer.get(name)
       const stageDeals = deals.filter(d => d.stage === name)
+      if (server) {
+        // Открытая стадия: сумма серверная, то есть по всей воронке — но она
+        // сложена по всем валютам, поэтому показываем её только когда валюта
+        // на доске одна.
+        return { name, count: server.count, value: server.value, currency: pipelinePrimary.currency, showMoney: singleCurrency }
+      }
+      // Закрытая стадия: сервер её не считает. Берём загруженные сделки и —
+      // это важно — её СОБСТВЕННУЮ валюту: выигранная сделка в долларах,
+      // подписанная манатом главной воронки, это ровно тот дефект, который
+      // здесь чинится.
+      const stageBuckets = bucketByCurrency(stageDeals)
+      const { primary } = leadBucket(stageBuckets, pipelinePrimary.currency)
       return {
         name,
-        count: server?.count ?? stageDeals.length,
-        value: server?.value ?? leadBucket(bucketByCurrency(stageDeals), pipelinePrimary.currency).primary.value,
+        count: stageDeals.length,
+        value: primary.value,
+        currency: primary.currency,
+        showMoney: stageBuckets.length <= 1,
       }
     })
-  }, [stageNames, deals, pipelineSummary, pipelinePrimary.currency])
+  }, [stageNames, deals, pipelineSummary, pipelinePrimary.currency, singleCurrency])
+  const legendTotalCount = legendStages.reduce((n, stage) => n + stage.count, 0)
 
   const getStageLabel = (stage: string) => {
     const s = STAGES.find((st: any) => st.key === stage)
@@ -576,8 +601,13 @@ export default function DealsPage() {
                     {t("statWon")}
                     <InfoHint text={t("hintWonValue")} size={12} />
                   </p>
-                  <p className="mt-0.5 text-lg font-semibold leading-tight tabular-nums text-emerald-600 dark:text-emerald-400">
+                  <p className="mt-0.5 flex items-center gap-1 text-lg font-semibold leading-tight tabular-nums text-emerald-600 dark:text-emerald-400">
                     {formatBucket(wonPrimary)}
+                    {wonExtrasLabel && (
+                      <span className="text-xs font-normal text-muted-foreground" title={wonExtrasLabel}>
+                        {wonExtrasLabel}
+                      </span>
+                    )}
                   </p>
                 </div>
                 <div>
@@ -593,8 +623,7 @@ export default function DealsPage() {
             </div>
 
             {pipelineSummary && pipelineSummary.byStage.length > 0 && (
-              <>
-                <div className="mt-4 flex h-2.5 gap-0.5 overflow-hidden rounded-full bg-muted">
+              <div className="mt-4 flex h-2.5 gap-0.5 overflow-hidden rounded-full bg-muted">
                   {pipelineSummary.byStage.map((s: any) => {
                     // На доске с одной валютой полоса показывает доли по
                     // деньгам. Если валют несколько, складывать их нельзя —
@@ -619,50 +648,55 @@ export default function DealsPage() {
                           : `${stageInfo?.label || s.name}: ${s.count}`}
                       />
                     )
-                  })}
-                </div>
-                {/* Легенда полосы — она же фильтр по стадиям. Отдельной
-                    полосы чипов над доской больше нет: те же названия и те же
-                    числа стояли на экране дважды. */}
-                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-                  <button
-                    type="button"
-                    onClick={() => setStageFilter("all")}
-                    className={cn(
-                      "rounded-full px-2.5 py-1 text-xs transition-colors",
-                      stageFilter === "all"
-                        ? "bg-foreground text-background font-medium"
-                        : "text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    {tc("all")} <span className="tabular-nums">{deals.length}</span>
-                  </button>
-                  {legendStages.map((stage) => {
-                    const stageInfo = STAGES.find((st: any) => st.key === stage.name)
-                    const active = stageFilter === stage.name
-                    return (
-                      <button
-                        key={stage.name}
-                        type="button"
-                        onClick={() => setStageFilter(active ? "all" : stage.name)}
-                        className={cn(
-                          "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition-colors",
-                          active ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground",
-                        )}
-                      >
-                        <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: stageInfo?.color || STAGE_COLORS.LEAD }} />
-                        <span className="truncate">{stageInfo?.label || stage.name}</span>
-                        {singleCurrency && stage.value > 0 && (
-                          <span className="font-semibold text-foreground tabular-nums">
-                            {formatBucket({ currency: pipelinePrimary.currency, value: stage.value, count: stage.count })}
-                          </span>
-                        )}
-                        <span className="tabular-nums">· {stage.count}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </>
+                })}
+              </div>
+            )}
+
+            {/* Легенда полосы — она же единственный фильтр по стадиям.
+                Рисуется отдельно от полосы: полоса живёт из серверной сводки
+                по ОТКРЫТЫМ сделкам, и когда открытых нет (всё закрыто, либо
+                так отработало правило видимости), фильтр вместе с полосой
+                исчезал с экрана — а сброс фильтра, восстановленного из
+                сохранённого представления, нажать было бы нечем. */}
+            {legendStages.length > 0 && (
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+                <button
+                  type="button"
+                  onClick={() => setStageFilter("all")}
+                  className={cn(
+                    "rounded-full px-2.5 py-1 text-xs transition-colors",
+                    stageFilter === "all"
+                      ? "bg-foreground text-background font-medium"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {tc("all")} <span className="tabular-nums">{legendTotalCount}</span>
+                </button>
+                {legendStages.map((stage) => {
+                  const stageInfo = STAGES.find((st: any) => st.key === stage.name)
+                  const active = stageFilter === stage.name
+                  return (
+                    <button
+                      key={stage.name}
+                      type="button"
+                      onClick={() => setStageFilter(active ? "all" : stage.name)}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition-colors",
+                        active ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: stageInfo?.color || STAGE_COLORS.LEAD }} />
+                      <span className="truncate">{stageInfo?.label || stage.name}</span>
+                      {stage.showMoney && stage.value > 0 && (
+                        <span className="font-semibold text-foreground tabular-nums">
+                          {formatBucket({ currency: stage.currency, value: stage.value, count: stage.count })}
+                        </span>
+                      )}
+                      <span className="tabular-nums">· {stage.count}</span>
+                    </button>
+                  )
+              })}
+            </div>
             )}
           </div>
 
@@ -755,7 +789,7 @@ export default function DealsPage() {
       {/* ── Content ── */}
       {tab === "analytics" ? (
         <DealsAnalytics
-          deals={deals.map(d => ({
+          deals={analyticsDeals.map(d => ({
             id: d.id,
             title: d.name,
             value: d.valueAmount,
@@ -765,11 +799,12 @@ export default function DealsPage() {
             expectedCloseDate: d.expectedClose || undefined,
             createdAt: d.createdAt,
           }))}
-          pipelineValue={totalValue}
-          wonValue={wonValue}
-          lostCount={lostCount}
-          wonCount={wonDeals.length}
+          pipelineValue={pipelinePrimary.value}
+          wonValue={wonPrimary.value}
+          lostCount={analyticsLostCount}
+          wonCount={wonPrimary.count}
           currency={pipelinePrimary.currency}
+          excludedNote={analyticsExcluded > 0 ? t("mixedCurrencyHint") : null}
         />
       ) : tab === "list" ? (
         /* ── LIST VIEW ── */

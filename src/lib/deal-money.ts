@@ -29,6 +29,11 @@ export interface MoneyRow {
   currency?: string | null
 }
 
+/** The currency a row belongs to — one rule, used by every grouping here. */
+export function currencyOf(row: MoneyRow, fallback: string = DEFAULT_CURRENCY): string {
+  return (row.currency || fallback).toUpperCase()
+}
+
 /**
  * One bucket per currency, largest first. Ties break on count and then on the
  * code itself so the order is stable across renders (React keys, and a total
@@ -37,7 +42,7 @@ export interface MoneyRow {
 export function bucketByCurrency(rows: MoneyRow[], fallback: string = DEFAULT_CURRENCY): MoneyBucket[] {
   const byCode = new Map<string, MoneyBucket>()
   for (const row of rows) {
-    const currency = (row.currency || fallback).toUpperCase()
+    const currency = currencyOf(row, fallback)
     const value = Number.isFinite(row.valueAmount) ? row.valueAmount : 0
     const bucket = byCode.get(currency)
     if (bucket) {
@@ -94,9 +99,24 @@ export function weightedForCurrency(
   const want = currency.toUpperCase()
   let sum = 0
   for (const row of rows) {
-    if ((row.currency || fallback).toUpperCase() !== want) continue
+    if (currencyOf(row, fallback) !== want) continue
     const value = Number.isFinite(row.valueAmount) ? row.valueAmount : 0
     sum += value * ((row.probability || 0) / 100)
   }
   return Math.round(sum)
+}
+
+/**
+ * One deal's own amount. Unlike `formatBucket` this keeps the cents: a total
+ * of many deals reads better rounded, but a single card showing 1 500,50 as
+ * "1 501" is telling the user the wrong number about one specific deal.
+ * `valueAmount` is Decimal(18,4) in the database.
+ */
+export function formatAmount(value: number, currency?: string | null): string {
+  const amount = Number.isFinite(value) ? value : 0
+  const rounded = Math.round(amount * 100) / 100
+  const text = Number.isInteger(rounded)
+    ? rounded.toLocaleString()
+    : rounded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return `${text} ${getCurrencySymbol(currency || undefined)}`
 }
