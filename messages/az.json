@@ -12112,7 +12112,10 @@
     "weekAgentSearch": "Əməkdaş tapın",
     "weekAgentsHidden": "Gizlədilən sətir: {count} — axtarış və ya QA hesabları",
     "weekTeamFilter": "Komandaya görə süzgəc",
-    "weekTeamAll": "Bütün komandalar"
+    "weekTeamAll": "Bütün komandalar",
+    "discardBuilderTitle": "Bu marşrutdan imtina edilsin?",
+    "discardBuilderBody": "{count} müştəri seçilib və hələ heç nə saxlanmayıb. Bağlasanız, onlar itəcək.",
+    "discardBuilderConfirm": "İmtina et"
   },
   "mtmOperationsPage": {
     "title": "Sahə əməliyyat mərkəzi",

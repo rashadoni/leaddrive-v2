@@ -12112,7 +12112,10 @@
     "weekAgentSearch": "Найти сотрудника",
     "weekAgentsHidden": "Скрыто строк: {count} — поиском или как QA-аккаунты",
     "weekTeamFilter": "Фильтр по команде",
-    "weekTeamAll": "Все команды"
+    "weekTeamAll": "Все команды",
+    "discardBuilderTitle": "Отменить этот маршрут?",
+    "discardBuilderBody": "Выбрано клиентов: {count}, и пока ничего не сохранено. Закрытие их потеряет.",
+    "discardBuilderConfirm": "Отменить"
   },
   "mtmOperationsPage": {
     "title": "Операционный центр поля",

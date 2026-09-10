@@ -12112,7 +12112,10 @@
     "weekAgentSearch": "Find an agent",
     "weekAgentsHidden": "{count} rows hidden by the search or as QA accounts",
     "weekTeamFilter": "Filter by team",
-    "weekTeamAll": "All teams"
+    "weekTeamAll": "All teams",
+    "discardBuilderTitle": "Discard this route?",
+    "discardBuilderBody": "{count} customers are selected and nothing is saved yet. Closing loses them.",
+    "discardBuilderConfirm": "Discard"
   },
   "mtmOperationsPage": {
     "title": "Field operations center",
