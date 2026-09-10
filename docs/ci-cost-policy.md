@@ -58,6 +58,40 @@ What was never deliberate is how *often* it ran. `pull_request` fires
 a dozen macOS runs. With several agents pushing in parallel — 81 `pull_request`
 events in 24 hours — the allowance was gone before noon.
 
+## Where the storage goes
+
+Minutes are a flow; storage is a stock. That difference is what made the alert
+of 2026-09-10 confusing — GitHub reported 100% of the Actions storage allowance
+consumed on an account that had not built anything for two days.
+
+Every production release uploads `leaddrive-prod-<sha>.tar.gz`, roughly 400 MB,
+and it stays for its `retention-days` whether or not anyone touches the
+repository again. What was measured on 2026-09-10:
+
+| Account | Live artifacts (all repos) | Period |
+|---|---:|---|
+| `rashadrahimov` (pre-migration) | 16.7 GB / 449 — of which `leaddrive-v2` 15.0 GB / 349 | Aug 11 – Sep 8 |
+| `rashadoni` (post-migration) | 13.3 GB / 33, all `leaddrive-v2` releases | Sep 9 – Sep 10 |
+
+The included allowance is 2 GB; the overage rate is $0.25 per GB-month. The old
+account had simply stopped emptying. The new one was filling at ~7.6 GB/day —
+nineteen releases a day, because several agent sessions merge in parallel — and
+at thirty days' retention that converges on ~230 GB, or roughly $57/month to
+retain build output nobody reads.
+
+**A rollback horizon must be counted in releases, not in days.** Days looked
+safe when a release was a daily event; it is not a bound at all when the release
+rate is set by other people's merges. The `artifact_retention` job in
+`deploy.yml` keeps the newest twenty and deletes the rest after every successful
+deploy, so the shelf holds ~8 GB no matter how busy the day was. The horizon is
+also not the only one: `scripts/server-deploy.sh` keeps `MAX_BACKUPS=5`
+unpacked releases on production itself, and a rollback to those never reaches
+GitHub.
+
+One billing subtlety worth knowing before deleting anything in a panic: storage
+is billed in GB-hours already accrued. Deleting frees the shelf going forward,
+but does not remove what the current cycle has already counted.
+
 ## The rules
 
 1. **Iterate in draft.** Both `static-checks` and `typecheck` skip draft pull requests. Mark the
@@ -79,6 +113,11 @@ events in 24 hours — the allowance was gone before noon.
    superseded pushes kept paid runners busy until they finished on their own.
 5. **Do not remove these guards** to make a check run sooner. If a gate is in the
    way, say so and ask.
+6. **Bound artifact retention by count, not by calendar.** Anything that uploads
+   a large artifact on every merge must have a keeper that trims it to the
+   newest N; `retention-days` alone is a ceiling for an idle repository, not a
+   bound for a busy one. Raising N is a one-digit change — silently widening it
+   to "30 days" is not.
 
 ## What is deliberately not done
 
