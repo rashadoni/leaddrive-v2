@@ -414,11 +414,20 @@ export default function DealsPage() {
   const analyticsLostCount = analyticsDeals.filter(d => canonicalDealStage(d.stage) === "LOST").length
 
   const stageNames = useMemo(() => {
-    const names = [...new Set(deals.map(d => d.stage))]
-    return STAGES.length > 0
-      ? STAGES.map((s: any) => s.key).filter((k: string) => names.includes(k))
-      : names
-  }, [deals, STAGES])
+    // Стадии воронки в её порядке — и следом те, что встречаются в данных, но
+    // в воронке не описаны. Раньше вторые отбрасывались, и сделка в такой
+    // стадии исчезала с экрана целиком: колонки для неё на доске нет, чипа
+    // фильтра тоже не было. На проде это два реальных случая — `lead` строчными
+    // рядом с `LEAD` и `CLOSED_WON` рядом с `WON`: сумма чипов давала 17 при
+    // 19 сделках в заголовке, а у сегмента полосы не было подписи.
+    const present = [...new Set([
+      ...deals.map(d => d.stage),
+      ...((pipelineSummary?.byStage || []).map((s: any) => s.name)),
+    ])]
+    if (STAGES.length === 0) return present
+    const defined = STAGES.map((s: any) => s.key).filter((k: string) => present.includes(k))
+    return [...defined, ...present.filter((name: string) => !defined.includes(name))]
+  }, [deals, STAGES, pipelineSummary])
 
   // Стадии перечислялись на экране трижды: чипы фильтра, полоса и подпись под
   // ней. Осталось одно место — легенда под полосой, она же и фильтр. Открытые
@@ -499,7 +508,10 @@ export default function DealsPage() {
           </p>
         </div>
 
-        {/* Segmented tab control */}
+        {/* Вкладки и действия — одна группа: при переносе на узком экране они
+            уезжают вниз вместе и остаются прижатыми вправо, а не оставляют
+            дыру посередине строки. */}
+        <div className="flex flex-wrap items-center gap-2 ml-auto">
         <div className="flex border border-zinc-200 dark:border-zinc-700 rounded-lg p-1 bg-muted/30 w-fit">
           {tabs.map(({ mode, Icon, label, tourId }) => (
             <button
@@ -520,7 +532,7 @@ export default function DealsPage() {
         </div>
 
         {/* Right controls */}
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="flex items-center gap-2">
           {pipelines.length > 1 && (
             <select
               data-tour-id="deals-pipeline-select"
@@ -557,6 +569,7 @@ export default function DealsPage() {
             <Plus className="h-4 w-4" />
             {t("newDeal")}
           </button>
+        </div>
         </div>
       </div>
 
