@@ -94,6 +94,22 @@ const nextConfig: NextConfig = {
         message: /require function is used in a way in which dependencies cannot be statically extracted/,
       },
     ]
+    // zod@4 ships `"sideEffects": false`, but its barrel entry
+    // (node_modules/zod/v4/classic/external.js) registers the English locale at
+    // import time: `config(en())`. webpack believes the package flag, skips the
+    // barrel as a pure re-export chain, and the locale is never registered — so
+    // in a production build EVERY zod issue falls back to the bare string
+    // "Invalid input", with no field and no reason. `next dev` does not
+    // tree-shake, so this is invisible until the artifact is on prod: on
+    // 2026-09-10 the admin could not create a tenant because /api/v1/admin/tenants
+    // answered "Invalid input" and named neither the field nor what was wrong.
+    // Marking zod's modules side-effectful keeps the barrel in the graph.
+    // Verified with a minimal webpack build: without this rule the message is
+    // "Invalid input", with it "Invalid input: expected string, received undefined".
+    config.module.rules.push({
+      test: /[\\/]node_modules[\\/]zod[\\/]/,
+      sideEffects: true,
+    })
     return config
   },
 
