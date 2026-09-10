@@ -26,11 +26,26 @@ import { resolveWorkCalendarDay, type WorkCalendarOverride } from "@/lib/mtm/wor
 import { addDateKeyDays, isDateKey } from "@/lib/mtm/mobile-week"
 import { enqueueMtmRouteNotification } from "@/lib/mtm/route-notification-outbox"
 
+/**
+ * The agent fields every route path hands to the screen.
+ *
+ * `teamId` and `team` travel with the name because the team week builds its
+ * rows from three sources and filters over the result (audit C7). A source
+ * without a team is not a row without a team — it is a row the filter would
+ * throw away, and the manager would never learn it existed.
+ */
+const routeAgentSelect = {
+  id: true,
+  name: true,
+  teamId: true,
+  team: { select: { id: true, name: true } },
+} as const
+
 const routeInclude = {
-  agent: { select: { id: true, name: true } },
+  agent: { select: routeAgentSelect },
   assignments: {
     where: { removedAt: null },
-    include: { agent: { select: { id: true, name: true, role: true } } },
+    include: { agent: { select: { ...routeAgentSelect, role: true } } },
     orderBy: { assignedAt: "asc" as const },
   },
   changeRequests: {
