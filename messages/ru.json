@@ -12112,7 +12112,9 @@
     },
     "calendarMore": "+ещё {n}",
     "weekAgentSearch": "Найти сотрудника",
-    "weekAgentsHidden": "Скрыто строк: {count} — поиском или как QA-аккаунты"
+    "weekAgentsHidden": "Скрыто строк: {count} — поиском или как QA-аккаунты",
+    "weekTeamFilter": "Фильтр по команде",
+    "weekTeamAll": "Все команды"
   },
   "mtmOperationsPage": {
     "title": "Операционный центр поля",
