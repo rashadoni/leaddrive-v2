@@ -1750,99 +1750,6 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-  artifact_retention:
-    name: Cap retained deploy artifacts
-    # Хранилище артефактов — это склад, а не месячный расход. Каждый релиз
-    # кладёт туда ~400 МБ, и они лежат весь `retention-days` независимо от
-    # того, пользуется кто-то репозиторием или нет: 8 сентября 2026 на старом
-    # аккаунте набралось 16,7 ГБ артефактов при включённых 2 ГБ, хотя после
-    # переезда там не собиралось уже ничего.
-    #
-    # Горизонт отката правильнее мерить релизами, а не сутками. Откатываются на
-    # один-два назад, а не на месяц, зато число релизов в сутки от нас не
-    # зависит — его задают чужие мержи (9–10 сентября вышло девятнадцать в
-    # сутки, то есть тридцать дней хранения — это ~230 ГБ). Поэтому здесь
-    # удерживается последние KEEP штук: склад перестаёт зависеть от темпа.
-    #
-    # И это второй эшелон, а не единственный: ближайшие пять релизов лежат
-    # распакованными на самом проде (`scripts/server-deploy.sh`,
-    # `MAX_BACKUPS=5`), и откат на них в GitHub не ходит вовсе.
-    if: ${{ always() && needs.deploy.result == 'success' }}
-    needs: [deploy]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    permissions:
-      # Ровно одно право и никакого `contents`: джоба удаляет артефакты и
-      # больше ничего — исходники она не читает и checkout не делает.
-      actions: write
-    concurrency:
-      # Уборка идемпотентна, но два одновременных прохода печатали бы 404 друг
-      # на друга. Начатый не отменяем: он занимает секунды.
-      group: deploy-artifact-retention
-      cancel-in-progress: false
-    steps:
-      - name: Delete superseded deploy artifacts
-        # Выкатка к этому моменту уже прошла и здорова. Уборка после неё не
-        # имеет права покрасить релиз — отсюда `continue-on-error`.
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          # Запас на откат, в релизах. Меняется одной цифрой; почему счёт, а не
-          # срок — см. комментарий к джобе.
-          KEEP: "20"
-        run: |
-          set -uo pipefail
-
-          live="$RUNNER_TEMP/prod-artifacts.tsv"
-          # Свежие сверху. `created_at` — ISO-8601 в UTC, поэтому обычная
-          # лексикографическая сортировка совпадает с хронологической.
-          # `pipefail` здесь существенный: оборвавшийся `gh` дал бы неполный
-          # список, а неполный список — это удаление живых артефактов.
-          gh api --paginate "repos/$REPO/actions/artifacts?per_page=100" \
-            --jq '.artifacts[]
-                  | select(.expired == false)
-                  | select(.name | startswith("leaddrive-prod-"))
-                  | [.created_at, .id, .name]
-                  | @tsv' \
-            | sort -r > "$live" || {
-              echo "::warning::не удалось перечислить артефакты — уборка пропущена"
-              exit 0
-            }
-
-          total=$(wc -l < "$live" | tr -d ' ')
-          echo "::notice::живых артефактов выкатки: $total, оставляем последние $KEEP"
-          if [ "$total" -le "$KEEP" ]; then
-            echo "удалять нечего"
-            exit 0
-          fi
-
-          doomed="$RUNNER_TEMP/prod-artifacts-doomed.tsv"
-          tail -n +$((KEEP + 1)) "$live" > "$doomed"
-
-          deleted=0
-          failed=0
-          while IFS=$'\t' read -r created id name; do
-            # Подтяжки поверх ремня. Артефакт текущей выкатки — самый свежий и
-            # в хвост списка попасть не может. Если он всё же тут, значит наше
-            # представление о порядке неверно, и тогда нельзя удалять НИЧЕГО.
-            if [ "$name" = "leaddrive-prod-${DEPLOY_TARGET_SHA}" ]; then
-              echo "::error::артефакт текущей выкатки $name оказался в списке на удаление — уборка остановлена"
-              exit 1
-            fi
-            if gh api -X DELETE "repos/$REPO/actions/artifacts/$id" --silent 2>/dev/null; then
-              deleted=$((deleted + 1))
-            else
-              failed=$((failed + 1))
-              echo "::warning::не удалось удалить $name ($id)"
-            fi
-          done < "$doomed"
-
-          echo "::notice::удалено $deleted, не удалось $failed, осталось $((total - deleted))"
-          if [ "$deleted" -eq 0 ] && [ "$failed" -gt 0 ]; then
-            echo "::warning::не удалён ни один артефакт — проверь, что джобе действительно выдано право actions: write"
-          fi
-
   recovery:
     name: Recover verified retained production artifact
     if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.recovery_sha != '' && needs.dispatch_input_preflight.result == 'success' }}
@@ -2058,3 +1965,96 @@ jobs:
           rm -f "/tmp/leaddrive-recovery-artifact/leaddrive-prod-${RECOVERY_SHA}.tar.gz"
           rmdir /tmp/leaddrive-recovery-artifact 2>/dev/null || true
           rm -f ~/.ssh/deploy_key ~/.ssh/known_hosts ~/.ssh/config
+
+  artifact_retention:
+    name: Cap retained deploy artifacts
+    # Хранилище артефактов — это склад, а не месячный расход. Каждый релиз
+    # кладёт туда ~400 МБ, и они лежат весь `retention-days` независимо от
+    # того, пользуется кто-то репозиторием или нет: 8 сентября 2026 на старом
+    # аккаунте набралось 16,7 ГБ артефактов при включённых 2 ГБ, хотя после
+    # переезда там не собиралось уже ничего.
+    #
+    # Горизонт отката правильнее мерить релизами, а не сутками. Откатываются на
+    # один-два назад, а не на месяц, зато число релизов в сутки от нас не
+    # зависит — его задают чужие мержи (9–10 сентября вышло девятнадцать в
+    # сутки, то есть тридцать дней хранения — это ~230 ГБ). Поэтому здесь
+    # удерживается последние KEEP штук: склад перестаёт зависеть от темпа.
+    #
+    # И это второй эшелон, а не единственный: ближайшие пять релизов лежат
+    # распакованными на самом проде (`scripts/server-deploy.sh`,
+    # `MAX_BACKUPS=5`), и откат на них в GitHub не ходит вовсе.
+    if: ${{ always() && needs.deploy.result == 'success' }}
+    needs: [deploy]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      # Ровно одно право и никакого `contents`: джоба удаляет артефакты и
+      # больше ничего — исходники она не читает и checkout не делает.
+      actions: write
+    concurrency:
+      # Уборка идемпотентна, но два одновременных прохода печатали бы 404 друг
+      # на друга. Начатый не отменяем: он занимает секунды.
+      group: deploy-artifact-retention
+      cancel-in-progress: false
+    steps:
+      - name: Delete superseded deploy artifacts
+        # Выкатка к этому моменту уже прошла и здорова. Уборка после неё не
+        # имеет права покрасить релиз — отсюда `continue-on-error`.
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          # Запас на откат, в релизах. Меняется одной цифрой; почему счёт, а не
+          # срок — см. комментарий к джобе.
+          KEEP: "20"
+        run: |
+          set -uo pipefail
+
+          live="$RUNNER_TEMP/prod-artifacts.tsv"
+          # Свежие сверху. `created_at` — ISO-8601 в UTC, поэтому обычная
+          # лексикографическая сортировка совпадает с хронологической.
+          # `pipefail` здесь существенный: оборвавшийся `gh` дал бы неполный
+          # список, а неполный список — это удаление живых артефактов.
+          gh api --paginate "repos/$REPO/actions/artifacts?per_page=100" \
+            --jq '.artifacts[]
+                  | select(.expired == false)
+                  | select(.name | startswith("leaddrive-prod-"))
+                  | [.created_at, .id, .name]
+                  | @tsv' \
+            | sort -r > "$live" || {
+              echo "::warning::не удалось перечислить артефакты — уборка пропущена"
+              exit 0
+            }
+
+          total=$(wc -l < "$live" | tr -d ' ')
+          echo "::notice::живых артефактов выкатки: $total, оставляем последние $KEEP"
+          if [ "$total" -le "$KEEP" ]; then
+            echo "удалять нечего"
+            exit 0
+          fi
+
+          doomed="$RUNNER_TEMP/prod-artifacts-doomed.tsv"
+          tail -n +$((KEEP + 1)) "$live" > "$doomed"
+
+          deleted=0
+          failed=0
+          while IFS=$'\t' read -r created id name; do
+            # Подтяжки поверх ремня. Артефакт текущей выкатки — самый свежий и
+            # в хвост списка попасть не может. Если он всё же тут, значит наше
+            # представление о порядке неверно, и тогда нельзя удалять НИЧЕГО.
+            if [ "$name" = "leaddrive-prod-${DEPLOY_TARGET_SHA}" ]; then
+              echo "::error::артефакт текущей выкатки $name оказался в списке на удаление — уборка остановлена"
+              exit 1
+            fi
+            if gh api -X DELETE "repos/$REPO/actions/artifacts/$id" --silent 2>/dev/null; then
+              deleted=$((deleted + 1))
+            else
+              failed=$((failed + 1))
+              echo "::warning::не удалось удалить $name ($id)"
+            fi
+          done < "$doomed"
+
+          echo "::notice::удалено $deleted, не удалось $failed, осталось $((total - deleted))"
+          if [ "$deleted" -eq 0 ] && [ "$failed" -gt 0 ]; then
+            echo "::warning::не удалён ни один артефакт — проверь, что джобе действительно выдано право actions: write"
+          fi
