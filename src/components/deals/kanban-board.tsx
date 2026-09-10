@@ -1,12 +1,28 @@
 "use client"
 
 import { useState, useCallback, useRef, useEffect } from "react"
+import { useTranslations } from "next-intl"
 import { motion } from "framer-motion"
 import { DealCard } from "./deal-card"
 import { cn } from "@/lib/utils"
 import { bucketByCurrency, leadBucket, formatBucket } from "@/lib/deal-money"
 import { InfoHint } from "@/components/info-hint"
 import { canonicalDealStage } from "@/lib/deal-stage-normalization"
+
+/**
+ * Цвет стадии с прозрачностью — только для честного `#rrggbb`.
+ *
+ * Цвет стадии приходит из настроек воронки, то есть из данных тенанта, и
+ * может оказаться чем угодно: именем CSS-цвета, пустой строкой, мусором.
+ * Приклеивать альфу к такой строке нельзя — получится невалидный цвет и
+ * колонка останется без фона. Поэтому подмешиваем только когда формат
+ * распознан, а иначе возвращаем undefined и стиль просто не ставится.
+ */
+function tint(color: string | undefined, alpha: number): string | undefined {
+  if (!color || !/^#[0-9a-f]{6}$/i.test(color)) return undefined
+  const hex = Math.round(Math.min(1, Math.max(0, alpha)) * 255).toString(16).padStart(2, "0")
+  return `${color}${hex}`
+}
 
 interface Stage {
   name: string
@@ -42,6 +58,10 @@ interface KanbanBoardProps {
 }
 
 export function KanbanBoard({ stages, deals, onDealClick, onDealMove, onQuickAddTask, rottingDays = 14 }: KanbanBoardProps) {
+  // Пустая колонка подписывалась английским «No deals» посреди
+  // азербайджанского интерфейса — строка была вшита в разметку.
+  const t = useTranslations("deals")
+  const emptyLabel = t("noDeals")
   const [dragDealId, setDragDealId] = useState<string | null>(null)
   const [dropTarget, setDropTarget] = useState<string | null>(null)
 
@@ -171,7 +191,12 @@ export function KanbanBoard({ stages, deals, onDealClick, onDealMove, onQuickAdd
                 />
                 <span className="text-xs font-semibold truncate">{stage.displayName}</span>
                 {stage.hint && <InfoHint text={stage.hint} size={12} />}
-                <span className="text-xs text-muted-foreground font-medium ml-auto tabular-nums">
+                {/* Счётчик в цвете стадии: единственное место, где цвет что-то
+                    значит, раньше сжималось до точки в два пикселя. */}
+                <span
+                  className="ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-semibold tabular-nums"
+                  style={{ backgroundColor: tint(stage.color, 0.12), color: stage.color }}
+                >
                   {stageDeals.length}
                 </span>
               </div>
@@ -182,7 +207,11 @@ export function KanbanBoard({ stages, deals, onDealClick, onDealMove, onQuickAdd
                 >
                   {formatBucket(stageTotal)}
                   {stageExtras.length > 0 && (
-                    <span className="ml-1 text-muted-foreground/70">+{stageExtras.length}</span>
+                    // «+1» рядом с суммой читалось как «ещё одна сделка».
+                    // Это другая валюта, поэтому показываем саму сумму.
+                    <span className="ml-1.5 text-muted-foreground/70">
+                      + {stageExtras.map((b) => formatBucket(b)).join(" + ")}
+                    </span>
                   )}
                 </p>
               )}
@@ -198,15 +227,19 @@ export function KanbanBoard({ stages, deals, onDealClick, onDealMove, onQuickAdd
                 visible; drag-time page auto-scroll handles reaching far cards. */}
             <div
               className={cn(
-                "min-h-[200px] flex-1 space-y-2 rounded-xl border p-2 transition-all duration-200",
+                "min-h-[200px] flex-1 space-y-2 overflow-hidden rounded-xl border border-t-[3px] p-2 transition-all duration-200",
                 isDropping
                   ? "border-primary/40 bg-primary/5 ring-2 ring-primary/30 ring-dashed"
-                  : "border-zinc-200 bg-muted/20 hover:bg-muted/30 dark:border-zinc-700",
-                // Подсветка колонки по смыслу стадии: организация, назвавшая
-                // победную колонку по-своему, теряла зелёный фон.
-                !isDropping && canonicalDealStage(stage.name) === "WON" && "bg-green-50/30 dark:bg-green-950/10",
-                !isDropping && canonicalDealStage(stage.name) === "LOST" && "bg-red-50/30 dark:bg-red-950/10",
+                  : "border-zinc-200 hover:bg-muted/30 dark:border-zinc-700",
               )}
+              // Колонка держит цвет своей стадии: полоса сверху и очень слабый
+              // фон. Раньше цвет жил только в двухпиксельной точке заголовка, а
+              // выделены фоном были лишь «выиграно» и «проиграно» — остальные
+              // четыре колонки не отличались друг от друга ничем.
+              style={isDropping ? undefined : {
+                borderTopColor: stage.color,
+                backgroundColor: tint(stage.color, 0.04),
+              }}
               onDragOver={(e) => handleDragOver(e, stage.name)}
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, stage.name)}
@@ -225,8 +258,8 @@ export function KanbanBoard({ stages, deals, onDealClick, onDealMove, onQuickAdd
               ))}
 
               {stageDeals.length === 0 && (
-                <div className="flex h-[80px] items-center justify-center text-[11px] text-muted-foreground/50">
-                  No deals
+                <div className="m-1 flex h-[72px] items-center justify-center rounded-lg border border-dashed border-zinc-200 text-[11px] text-muted-foreground/50 dark:border-zinc-700">
+                  {emptyLabel}
                 </div>
               )}
             </div>
