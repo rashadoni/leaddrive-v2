@@ -13245,7 +13245,17 @@
     "tooltipVisits": "Vizitlər",
     "tooltipTasks": "Tapşırıqlar",
     "tooltipPhotos": "Fotolar",
-    "pointsSuffix": "xal"
+    "pointsSuffix": "xal",
+    "colAgent": "Əməkdaş",
+    "colVisits": "Ziyarətlər",
+    "colTasks": "Tapşırıqlar tamam",
+    "colPhotos": "Fotolar təsdiqlənib",
+    "colScore": "Bal",
+    "sortBy": "Sıralama: {column}",
+    "sortedBy": "Sıralandı: {column}",
+    "openBreakdown": "KPI təhlilini aç: {name}",
+    "top3FromRanking": "Cədvəlin sıralamasından asılı olmayaraq reytinqə görə",
+    "breakdownUnavailable": "KPI təhlili hazırda əlçatan deyil."
   },
   "mtmDashboardPage": {
     "welcomeBack": "Xoş gəldiniz, {name}!",
