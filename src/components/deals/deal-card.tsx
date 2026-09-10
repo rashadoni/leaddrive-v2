@@ -156,8 +156,14 @@ export function DealCard({ deal, onClick, onDragStart, onDragEnd, isDragging, ro
     >
       <div
         className={cn(
-          "rounded-lg border border-l-[3px] border-zinc-200 dark:border-zinc-700 bg-card p-2.5 shadow-[0_1px_2px_rgba(24,32,50,0.05)] transition-all",
-          "hover:shadow-[0_4px_12px_rgba(24,32,50,0.10)]",
+          // Карточка должна выглядеть предметом, который можно взять и
+          // перетащить. До этого у неё была только светло-серая рамка и тень
+          // на наведении — в покое она сливалась с фоном колонки и читалась
+          // как строка списка, а не как карточка.
+          "rounded-xl border border-l-[3px] border-zinc-200/90 dark:border-zinc-700 bg-card p-3 transition-all",
+          "shadow-[0_1px_3px_rgba(16,24,40,0.10),0_1px_2px_rgba(16,24,40,0.06)]",
+          "dark:shadow-[0_1px_3px_rgba(0,0,0,0.45)]",
+          "hover:shadow-[0_8px_16px_-4px_rgba(16,24,40,0.14),0_3px_6px_-3px_rgba(16,24,40,0.08)]",
           onClick && "cursor-pointer",
           isDragging && "opacity-50 ring-2 ring-primary",
           STALE_EDGE[tier],
