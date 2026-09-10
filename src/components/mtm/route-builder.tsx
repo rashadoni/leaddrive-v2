@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
+import { ConfirmDialog } from "@/components/delete-confirm-dialog"
 import { toast } from "sonner"
 import {
   AlertTriangle,
@@ -438,6 +439,25 @@ export function MtmRouteBuilder({
   const [primaryAgentId, setPrimaryAgentId] = useState("")
   const [participantIds, setParticipantIds] = useState<string[]>([])
   const [stops, setStops] = useState<Stop[]>([])
+  /** Asked before a non-empty selection is thrown away (audit C8). */
+  const [discardOpen, setDiscardOpen] = useState(false)
+
+  /**
+   * Closing with customers chosen used to lose them silently.
+   *
+   * Verified on production 2026-09-10: one customer selected, "Ləğv et", the
+   * planner gone, no dialog. Autosave restores a draft afterwards, which is
+   * why this was survivable rather than fatal — but the audit already caught
+   * the restore bringing back an older draft, so "it recovers" is not an
+   * argument for not asking. An empty planner still closes on one press.
+   */
+  const requestClose = () => {
+    if (stops.length > 0) {
+      setDiscardOpen(true)
+      return
+    }
+    onClose()
+  }
   const [agents, setAgents] = useState<Agent[]>([])
   const [candidateResults, setCandidateResults] = useState<Candidate[]>([])
   const [candidateFacets, setCandidateFacets] = useState<CandidateFacets>(emptyCandidateFacets)
@@ -1480,7 +1500,7 @@ export function MtmRouteBuilder({
           </div>
           <p className="mt-0.5 truncate text-xs text-muted-foreground">{t("builderSubtitle")}</p>
         </div>
-        <Button type="button" variant="ghost" size="icon" data-testid="mtm-route-builder-close" onClick={onClose} title={t("closeBuilder")} aria-label={t("closeBuilder")}>
+        <Button type="button" variant="ghost" size="icon" data-testid="mtm-route-builder-close" onClick={requestClose} title={t("closeBuilder")} aria-label={t("closeBuilder")}>
           <X className="h-4 w-4" />
         </Button>
       </div>
@@ -2160,7 +2180,7 @@ export function MtmRouteBuilder({
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-2">
                         <span className="block min-w-0 flex-1 truncate text-sm font-medium">{candidate.name}</span>
-                        <span className="shrink-0 border border-zinc-200 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground dark:border-zinc-700">
+                        <span className="shrink-0 border border-zinc-200 px-1.5 py-0.5 text-xs font-medium text-muted-foreground dark:border-zinc-700">
                           {candidate.category}
                         </span>
                       </span>
@@ -2181,7 +2201,7 @@ export function MtmRouteBuilder({
                         <span aria-hidden="true">·</span>
                         <span className="truncate text-muted-foreground">{availabilityPeriod}</span>
                       </span>
-                      <span className="mt-0.5 flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">
+                      <span className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-muted-foreground">
                         <span>{candidate.lastVisitAt ? t("lastVisitValue", { date: candidate.lastVisitAt.slice(0, 10) }) : t("noLastVisit")}</span>
                         {candidate.plannedRoute ? <span className="text-amber-700 dark:text-amber-300">{t("alreadyPlanned", { date: candidate.plannedRoute.date })}</span> : null}
                         {candidate.coverage ? <span className="font-medium text-amber-800 dark:text-amber-300" title={candidate.coverage.explanation.summary[coverageLocale]}>{t("candidateCoverageGap", { value: candidate.coverage.uncoveredMoi })}</span> : null}
@@ -2503,6 +2523,14 @@ export function MtmRouteBuilder({
         ) : null}
       </div>
 
+      <ConfirmDialog
+        open={discardOpen}
+        onOpenChange={setDiscardOpen}
+        onConfirm={async () => { onClose() }}
+        title={t("discardBuilderTitle")}
+        description={t("discardBuilderBody", { count: stops.length })}
+        confirmLabel={t("discardBuilderConfirm")}
+      />
       <div data-testid="mtm-route-builder-actions" className="sticky bottom-0 z-20 flex shrink-0 items-center justify-end gap-2 border-t border-zinc-200 bg-card px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-6px_18px_rgba(15,23,42,0.06)] dark:border-zinc-700 sm:px-4">
         <div id="route-builder-next-action" className="hidden min-w-0 items-start gap-2 text-sm sm:flex sm:flex-1" role="status" aria-live="polite">
           <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
@@ -2537,7 +2565,7 @@ export function MtmRouteBuilder({
               <span className="hidden sm:inline">{activeStep === 3 ? t("editCustomersAction") : t("backAction")}</span>
             </Button>
           ) : null}
-          <Button type="button" variant="ghost" className="hidden min-h-11 sm:inline-flex" data-testid="mtm-route-builder-cancel" onClick={onClose}>{t("cancelBuilder")}</Button>
+          <Button type="button" variant="ghost" className="hidden min-h-11 sm:inline-flex" data-testid="mtm-route-builder-cancel" onClick={requestClose}>{t("cancelBuilder")}</Button>
           {canPublishFromBuilder && activeStep === 3 ? (
             <Button
               type="button"
