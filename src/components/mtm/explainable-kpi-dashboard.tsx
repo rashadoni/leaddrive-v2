@@ -1098,7 +1098,7 @@ export function ExplainableKpiDashboard({ orgId, className }: ExplainableKpiDash
           </div>
 
           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-            {report ? <Badge variant="outline">{t("formulaVersion", { version: report.formula.version })}</Badge> : null}
+            {report ? <Badge variant="outline" title={t("formulaCodeHint", { code: report.formula.version })}>{t("formulaName")}</Badge> : null}
             {freshnessLabel ? (
               <Badge variant={sourceFreshness === "CURRENT" ? "success" : sourceFreshness === "LATE" ? "warning" : sourceFreshness === "NO_SOURCE" ? "destructive" : "outline"}>
                 <Clock3 className="mr-1 h-3 w-3" />

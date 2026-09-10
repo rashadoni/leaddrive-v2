@@ -13664,7 +13664,6 @@
     "ready": "Calculated",
     "recalculating": "Recalculating",
     "loading": "Loading explainable KPI",
-    "formulaVersion": "Formula {version}",
     "sourceCurrent": "Scoped source cohort changed recently",
     "sourceLate": "No scoped source changes for 15+ min",
     "sourceHistorical": "Closed historical period",
@@ -13809,7 +13808,9 @@
     "workdayNotRecorded": "Workday not recorded",
     "workdayUnknown": "Unknown workday state",
     "workdayRecord": "Workday record",
-    "noGpsDays": "No completed visits to group by employee and day."
+    "noGpsDays": "No completed visits to group by employee and day.",
+    "formulaName": "Plan and GPS, version 1",
+    "formulaCodeHint": "Calculation code: {code}"
   },
   "mtmPharmacyPromotions": {
     "eyebrow": "Pharmacy operations",

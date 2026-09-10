@@ -13664,7 +13664,6 @@
     "ready": "Hesablanıb",
     "recalculating": "Yenidən hesablanır",
     "loading": "İzahlı KPI yüklənir",
-    "formulaVersion": "Formula {version}",
     "sourceCurrent": "Əlçatan mənbə qrupu yaxın vaxtda dəyişib",
     "sourceLate": "Əlçatan mənbə qrupu 15 dəqiqədən çoxdur dəyişməyib",
     "sourceHistorical": "Bağlanmış tarixi dövr",
@@ -13809,7 +13808,9 @@
     "workdayNotRecorded": "İş günü qeydə alınmayıb",
     "workdayUnknown": "İş gününün vəziyyəti məlum deyil",
     "workdayRecord": "İş günü qeydi",
-    "noGpsDays": "Əməkdaş və gün üzrə qruplaşdırılacaq tamamlanmış vizit yoxdur."
+    "noGpsDays": "Əməkdaş və gün üzrə qruplaşdırılacaq tamamlanmış vizit yoxdur.",
+    "formulaName": "Plan və GPS, versiya 1",
+    "formulaCodeHint": "Hesablama kodu: {code}"
   },
   "mtmPharmacyPromotions": {
     "eyebrow": "Aptek əməliyyatları",
