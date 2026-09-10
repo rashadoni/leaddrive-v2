@@ -12,7 +12,7 @@ import { MotionPage, MotionCard } from "@/components/ui/motion"
 import {
   ArrowLeft, Pencil, Trash2, AlertCircle, Tag, Plus, X,
   CheckCircle2, Clock, Loader2, Hourglass, Timer, Mail, PhoneOutgoing,
-  ListChecks, MessagesSquare, Gauge, Layers3,
+  Layers3,
 } from "lucide-react"
 import { GradientKpiChip } from "@/components/crm/gradient-kpi-chip"
 import { DealCustomerDetails } from "@/components/deals/deal-customer-details"
@@ -465,16 +465,19 @@ export default function DealDetailPage() {
 
   // Header toolbar anchors: the feed lives inside a tab, so switch first,
   // then scroll on the next frame when the target is laid out.
-  const scrollToAnchor = (anchorId: string) => {
-    if (anchorId === "deal-feed") setRightTab("feed")
-    // Вкладки остаются смонтированными под `hidden`, поэтому scrollIntoView по
-    // элементу скрытой вкладки не делает ничего. Якорь шагов переехал в
-    // «Обзор» — переключаем на него, иначе кнопка в шапке молча не работает.
-    if (anchorId === "deal-next-steps") setRightTab("overview")
-    requestAnimationFrame(() =>
-      document.getElementById(anchorId)?.scrollIntoView({ behavior: "smooth", block: "start" }),
-    )
-  }
+  /*
+   * Ряд якорей под заголовком («Следующие шаги», «Лента», «Оценка») убран.
+   * Каждая его кнопка вела туда, куда и так один клик:
+   *   — «Лента» использовала ТОТ ЖЕ ключ перевода, что и вкладка «Лента»,
+   *     и делала ровно то же самое — переключала на неё;
+   *   — «Следующие шаги» указывали на блок, который теперь стоит в открытой
+   *     по умолчанию вкладке «Обзор», прямо под данными клиента;
+   *   — «Оценка» вела в карточку ИИ-прогноза, которая на широком экране
+   *     всегда видна в правой рейке.
+   * Третий способ навигации рядом со вкладками и рейками — не удобство, а
+   * ещё одна строка, которую надо прочитать, чтобы понять, что читать её
+   * было незачем.
+   */
 
   const stageTranslations: Record<string, string> = {
     LEAD: t("stageLead"),
@@ -696,26 +699,10 @@ export default function DealDetailPage() {
               </Badge>
             )}
           </div>
-          {/* Tags + toolbar anchors */}
+          {/* Tags */}
           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
             <Tag className="h-3 w-3 text-muted-foreground flex-shrink-0" />
             <TagsInput tags={deal.tags || []} onChange={saveTags} addTagLabel={t("addTag")} />
-          </div>
-          <div className="flex items-center gap-4 mt-2">
-            {[
-              { id: "deal-next-steps", label: tc("nextSteps"), icon: ListChecks },
-              { id: "deal-feed", label: t("toolbarFeed"), icon: MessagesSquare },
-              { id: "deal-scores", label: t("toolbarScores"), icon: Gauge },
-            ].map(({ id: anchorId, label, icon: Icon }) => (
-              <button
-                key={anchorId}
-                type="button"
-                onClick={() => scrollToAnchor(anchorId)}
-                className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-primary transition-colors"
-              >
-                <Icon className="h-3.5 w-3.5" /> {label}
-              </button>
-            ))}
           </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -770,7 +757,7 @@ export default function DealDetailPage() {
           <AdvisorRecordWidget entityType="deal" entityId={id} orgId={orgId} />
 
           {/* AI Prediction */}
-          <div data-tour-id="deal-ai-prediction" id="deal-scores" className="scroll-mt-20">
+          <div data-tour-id="deal-ai-prediction">
             <AiPredictionCard dealId={id} orgId={orgId} />
           </div>
 
@@ -833,7 +820,7 @@ export default function DealDetailPage() {
           {/* Следующие шаги стояли в левой рейке, третьей карточкой под
               «Лучшими предложениями»: по бокам набиралось три колонки, а в
               середине оставались два коротких блока и пустота под ними. */}
-          <div id="deal-next-steps" className="scroll-mt-20">
+          <div>
             <CollapsibleSection title={`${tc("nextSteps")} · ${nextSteps.filter(s => s.status !== "completed").length}`}>
               <NextStepsWidget
                 dealId={id}
@@ -876,7 +863,7 @@ export default function DealDetailPage() {
           </div>
 
           {/* Unified Timeline */}
-          <div data-tour-id="deal-timeline" id="deal-feed" className="scroll-mt-20 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-4">
+          <div data-tour-id="deal-timeline" className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-4">
             <ActivityTimeline key={timelineKey} dealId={id} orgId={orgId} />
           </div>
           </div>
