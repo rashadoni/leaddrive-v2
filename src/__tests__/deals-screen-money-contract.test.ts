@@ -69,6 +69,14 @@ describe("nothing on the screen is labelled with a currency it is not in", () =>
     expect(page).not.toMatch(/const wonValue = wonDeals\.reduce/)
   })
 
+  it("does not drop deals whose stage the pipeline never defined", () => {
+    // На проде такие есть: `lead` строчными рядом с `LEAD` и `CLOSED_WON`
+    // рядом с `WON`. Колонки на доске у них нет, и раньше не было и чипа —
+    // две сделки были невидимы, а сумма чипов не сходилась с заголовком.
+    expect(page).toContain("...present.filter((name: string) => !defined.includes(name))")
+    expect(page).not.toMatch(/return STAGES\.length > 0\s*\n\s*\? STAGES\.map/)
+  })
+
   it("counts the reset chip from the same numbers as the stage chips", () => {
     // «Все 200» рядом со стадиями, суммирующимися в 340, — это две разные
     // выборки в одной строке.
