@@ -13245,7 +13245,17 @@
     "tooltipVisits": "Визиты",
     "tooltipTasks": "Задачи",
     "tooltipPhotos": "Фото",
-    "pointsSuffix": "очк."
+    "pointsSuffix": "очк.",
+    "colAgent": "Сотрудник",
+    "colVisits": "Визиты",
+    "colTasks": "Задачи выполнены",
+    "colPhotos": "Фото приняты",
+    "colScore": "Баллы",
+    "sortBy": "Сортировать по: {column}",
+    "sortedBy": "Отсортировано по: {column}",
+    "openBreakdown": "Открыть разбор KPI: {name}",
+    "top3FromRanking": "По рейтингу, независимо от сортировки таблицы",
+    "breakdownUnavailable": "Разбор KPI сейчас недоступен."
   },
   "mtmDashboardPage": {
     "welcomeBack": "С возвращением, {name}!",
