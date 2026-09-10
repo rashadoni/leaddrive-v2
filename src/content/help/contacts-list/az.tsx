@@ -2,7 +2,7 @@
 
 /**
  * Contacts (list) — help article (Azerbaijani).
- * Əhatə edir: /contacts/list səhifəsi — kontakt bazasının siyahısı.
+ * Əhatə edir: /contacts səhifəsi — kontakt bazasının siyahısı.
  * Statistika kartları, Əlaqə (engagement) icmalı, axtarış/filtr/sıralama,
  * cədvəldə sətirdaxili redaktə, sətrə klikləyib kartı açmaq, kütləvi
  * əməliyyat paneli, saxlanmış görünüşlər, CSV idxal, yeni kontakt.
