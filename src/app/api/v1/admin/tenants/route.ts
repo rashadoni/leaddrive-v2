@@ -10,11 +10,23 @@ import { createDnsRecord, isCloudflareConfigured } from "@/lib/cloudflare-dns"
 import { logAudit } from "@/lib/prisma"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { runWithRlsBypass } from "@/lib/rls-context"
+import { firstIssueMessage } from "@/lib/zod-issue-message"
 import { execFile } from "child_process"
 import path from "path"
 import { z } from "zod"
 
 const TENANT_DEMO_SEED_CONFIRMATION = "tenant-demo-seed-v1"
+
+/**
+ * Admins type `acme.az` into the wizard's website box. The input is
+ * `type="url"`, but a browser only enforces that on a native form submit and
+ * the wizard posts with fetch — so a scheme-less host reached this schema and
+ * failed the whole tenant. A missing scheme is not a mistake worth rejecting a
+ * tenant for: assume https and validate what that produces.
+ */
+function withHttpsScheme(value: string): string {
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(value) ? value : `https://${value}`
+}
 
 // Optional custom scaffolding passed from the new-tenant wizard (Phase 2). Unknown keys
 // in the request body are stripped by zod; absent fields → provisionTenant uses DEFAULT_*.
@@ -31,7 +43,9 @@ const provisioningV2Schema = z.object({
     name: z.string().trim().min(1).max(160),
     legalName: z.string().trim().max(240).optional(),
     description: z.string().trim().max(4000).optional(),
-    website: z.string().trim().url().optional(),
+    // httpUrl(), not url(): a bare `.url()` also accepts `javascript://…`, and
+    // this value is stored on the brand profile and rendered back as a link.
+    website: z.string().trim().min(1).transform(withHttpsScheme).pipe(z.httpUrl()).optional(),
     aliases: z.array(z.string().trim().min(1).max(160)).max(100).optional(),
     languages: z.array(z.string().trim().min(2).max(32)).max(20).optional(),
     geographies: z.array(z.string().trim().min(2).max(80)).max(50).optional(),
@@ -159,13 +173,17 @@ export async function POST(req: NextRequest) {
     }
 
     // Validate optional custom scaffolding (stages / task types / event types / currencies)
+    // and the wizard's brand/channel/provider input. Both rejections name the
+    // field: the wizard posts five steps' worth of input in one request, so a
+    // message that says only what is wrong — not where — leaves the admin
+    // re-checking every box on the form.
     const scaffolding = scaffoldingSchema.safeParse(body)
     if (!scaffolding.success) {
-      return NextResponse.json({ error: scaffolding.error.issues[0].message }, { status: 400 })
+      return NextResponse.json({ error: firstIssueMessage(scaffolding.error) }, { status: 400 })
     }
     const provisioningV2 = provisioningV2Schema.safeParse(body)
     if (!provisioningV2.success) {
-      return NextResponse.json({ error: provisioningV2.error.issues[0].message }, { status: 400 })
+      return NextResponse.json({ error: firstIssueMessage(provisioningV2.error) }, { status: 400 })
     }
 
     // Provision
