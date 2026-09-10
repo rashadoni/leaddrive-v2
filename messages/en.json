@@ -12112,7 +12112,9 @@
     },
     "calendarMore": "+{n} more",
     "weekAgentSearch": "Find an agent",
-    "weekAgentsHidden": "{count} rows hidden by the search or as QA accounts"
+    "weekAgentsHidden": "{count} rows hidden by the search or as QA accounts",
+    "weekTeamFilter": "Filter by team",
+    "weekTeamAll": "All teams"
   },
   "mtmOperationsPage": {
     "title": "Field operations center",
