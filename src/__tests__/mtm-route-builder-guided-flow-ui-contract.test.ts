@@ -169,12 +169,16 @@ describe("MTM guided route builder UI contract", () => {
   })
 
   it("keeps the compact customer workflow in one visible workspace", () => {
-    expect(routesPage).toContain('maxHeightClassName="max-h-dvh md:max-h-[min(52rem,calc(100dvh-2rem))]"')
+    // The width at which the planner stops being a sheet moved from `md`
+    // (768) to 900 for task C15 — at the 834 px the audit measured it was
+    // opening as a floating card. The number itself, and the fact that all
+    // three places agree on it, is pinned by `mtm-planner-fullscreen-tablet`.
+    expect(routesPage).toContain('maxHeightClassName="max-h-dvh min-[900px]:max-h-[min(52rem,calc(100dvh-2rem))]"')
     expect(routesPage).toContain("mobileFullscreen")
-    expect(routesPage).toContain('mobileFullscreenBreakpoint="md"')
+    expect(routesPage).toContain('mobileFullscreenBreakpoint="tablet"')
     expect(routesPage).toContain('className="min-h-0 overflow-hidden"')
     expect(builder).toContain('className="flex min-h-0 max-h-dvh flex-col overflow-hidden')
-    expect(builder).toContain("md:max-h-[min(52rem,calc(100dvh-2rem))]")
+    expect(builder).toContain("min-[900px]:max-h-[min(52rem,calc(100dvh-2rem))]")
     expect(routesPage).not.toContain('maxHeightClassName="h-[calc(100dvh-1rem)]')
     expect(builder).toContain("inlineAssignmentOpen && canManageAssignments ?")
     expect(builder).toContain("canManageAssignments && candidateTotal > 0")

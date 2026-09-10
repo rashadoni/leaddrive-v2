@@ -24,10 +24,15 @@ describe("MTM route planner master-detail UI contract", () => {
   it("keeps keyboard focus in the review flow and uses the full phone surface through the tablet breakpoint", () => {
     expect(builder).toContain('ref={reviewHeadingRef} tabIndex={-1}')
     expect(builder).toContain('reviewHeadingRef.current?.focus({ preventScroll: true })')
-    expect(routesPage).toContain('mobileFullscreenBreakpoint="md"')
-    expect(routesPage).toContain('maxHeightClassName="max-h-dvh md:max-h-[min(52rem,calc(100dvh-2rem))]"')
-    expect(dialog).toContain('mobileFullscreenBreakpoint?: "sm" | "md"')
-    expect(dialog).toContain('"items-stretch p-0 md:items-center md:p-4"')
-    expect(dialog).toContain('"rounded-none md:rounded-lg"')
+    // The breakpoint itself moved from `md` (768) to 900 for task C15: at the
+    // 834 px the audit measured, the planner opened as a floating card where a
+    // sheet was needed. What that width is, and that all three places agree on
+    // it, is pinned by `mtm-planner-fullscreen-tablet`; this contract only
+    // needs the planner to still claim the whole surface below it.
+    expect(routesPage).toContain('mobileFullscreenBreakpoint="tablet"')
+    expect(routesPage).toContain('maxHeightClassName="max-h-dvh min-[900px]:max-h-[min(52rem,calc(100dvh-2rem))]"')
+    expect(dialog).toContain('mobileFullscreenBreakpoint?: "sm" | "md" | "tablet"')
+    expect(dialog).toContain('"items-stretch p-0 min-[900px]:items-center min-[900px]:p-4"')
+    expect(dialog).toContain('"rounded-none min-[900px]:rounded-lg"')
   })
 })
