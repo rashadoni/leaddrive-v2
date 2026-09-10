@@ -18,7 +18,7 @@ const HELP_VIDEO_ENTRIES_RAW = [
   { slug: "deals", routes: ["/deals"] },
   { slug: "deal-detail", routes: ["/deals/*"] },
   { slug: "companies", routes: ["/companies"] },
-  { slug: "contacts", routes: ["/contacts", "/contacts/list"], helpSlugs: ["contacts", "contacts-list"] },
+  { slug: "contacts", routes: ["/contacts", "/contacts/segments"], helpSlugs: ["contacts-list", "contacts"] },
   { slug: "boards", routes: ["/boards"] },
   { slug: "products", routes: ["/products"] },
   { slug: "notifications", routes: ["/notifications"] },

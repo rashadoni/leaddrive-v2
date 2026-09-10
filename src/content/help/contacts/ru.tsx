@@ -32,7 +32,7 @@ export default function ContactsHelpRu() {
         <p>
           Заголовок — <strong>Аналитика сегментов</strong>. Справа вверху три кнопки:{" "}
           <HelpKey>Список контактов</HelpKey> ведёт к полной таблице контактов (
-          <code className="bg-muted px-1 rounded">/contacts/list</code>),{" "}
+          <code className="bg-muted px-1 rounded">/contacts</code>),{" "}
           <HelpKey>Обновить</HelpKey> пересчитывает показатели, а <HelpKey>CSV</HelpKey>{" "}
           выгружает разбивку по категории / источнику / бренду в файл. Ниже идут карточки и
           диаграммы.
@@ -188,7 +188,7 @@ export default function ContactsHelpRu() {
             <HelpKey>Список контактов</HelpKey>.
           </p>
           <HelpCallout kind="see" label="Что вы увидите">
-            Страница переходит к списку контактов (<code className="bg-muted px-1 rounded">/contacts/list</code>),
+            Страница переходит к списку контактов (<code className="bg-muted px-1 rounded">/contacts</code>),
             где можно открыть и отредактировать каждый контакт.
           </HelpCallout>
         </HelpStep>
