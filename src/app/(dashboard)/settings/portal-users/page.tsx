@@ -329,7 +329,7 @@ export default function PortalUsersPage() {
                 <>
                   <p className="mx-auto mt-2 max-w-xl text-sm leading-6">{t("portalNoContactsHint")}</p>
                   <Button asChild variant="outline" size="sm" className="mt-4">
-                    <Link href="/contacts/list">{t("portalNoContactsAction")}</Link>
+                    <Link href="/contacts">{t("portalNoContactsAction")}</Link>
                   </Button>
                 </>
               )}

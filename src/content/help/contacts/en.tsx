@@ -32,7 +32,7 @@ export default function ContactsHelpEn() {
         <p>
           The heading is <strong>Segment insights</strong>. Top-right has three buttons:{" "}
           <HelpKey>Contact list</HelpKey> takes you to the full contact table (
-          <code className="bg-muted px-1 rounded">/contacts/list</code>),{" "}
+          <code className="bg-muted px-1 rounded">/contacts</code>),{" "}
           <HelpKey>Refresh</HelpKey> recomputes the metrics, and <HelpKey>CSV</HelpKey>{" "}
           downloads the category / source / brand breakdown as a file. Below that come the
           cards and charts.
@@ -188,7 +188,7 @@ export default function ContactsHelpEn() {
             <HelpKey>Contact list</HelpKey> button.
           </p>
           <HelpCallout kind="see" label="What you'll see">
-            The page moves to the contact list (<code className="bg-muted px-1 rounded">/contacts/list</code>),
+            The page moves to the contact list (<code className="bg-muted px-1 rounded">/contacts</code>),
             where you can open and edit each contact.
           </HelpCallout>
         </HelpStep>
