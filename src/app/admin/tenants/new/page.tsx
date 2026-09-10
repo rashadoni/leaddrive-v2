@@ -30,6 +30,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
 import { MODULE_REGISTRY, type ModuleId, withRequiredModules } from "@/lib/modules"
+import { locateFieldError } from "./field-errors"
 
 type PlanOpt = {
   key: string
@@ -324,7 +325,17 @@ export default function NewTenantPage() {
         }),
       })
       const body = await response.json()
-      if (!response.ok) throw new Error(body.error || "Tenant provisioning failed")
+      if (!response.ok) {
+        // A rejected field is worth more than a rejected request: name the box
+        // in the wizard's own words and open the step that holds it.
+        const located = typeof body.error === "string" ? locateFieldError(body.error) : null
+        if (located) setStep(located.step)
+        throw new Error(
+          located
+            ? `${STEPS[located.step].label} → ${located.field}: ${located.reason}`
+            : body.error || "Tenant provisioning failed",
+        )
+      }
       setResult(body.data)
     } catch (provisionError) {
       setError((provisionError as Error).message || "Network error")

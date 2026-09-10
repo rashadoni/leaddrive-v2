@@ -612,6 +612,15 @@ jobs:
           echo "CSS files: $CSS_COUNT, JS files: $JS_COUNT"
           [ "$CSS_COUNT" -gt 0 ] || { echo "::error::No CSS files in build"; exit 1; }
           [ "$JS_COUNT" -gt 0 ] || { echo "::error::No JS files in build"; exit 1; }
+          # zod@4 declares itself side-effect-free while its barrel registers the
+          # English locale at import time, so a tree-shaken build silently loses
+          # every validation message and answers a bare "Invalid input" instead
+          # (2026-09-10: tenant provisioning, field unnamed). next.config.ts keeps
+          # the barrel in the graph; this asserts the artifact actually has it.
+          grep -rqs --include='*.js' 'Invalid input: expected' .next/server || {
+            echo "::error::zod locale missing from the server bundle — validation errors would degrade to a bare \"Invalid input\""
+            exit 1
+          }
           # The cache is not deployable content. Reclaim its disk before the
           # standalone copy and tarball are created on the 14 GB runner disk.
           rm -rf -- .next/cache
