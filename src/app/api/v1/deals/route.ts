@@ -100,7 +100,7 @@ export const GET = withRls(async (req, { orgId, session }) => {
     )
     const allActiveDeals = await prisma.deal.findMany({
       where: activeDealsWhere,
-      select: { stage: true, valueAmount: true, probability: true },
+      select: { stage: true, valueAmount: true, probability: true, currency: true },
     })
     const totalPipeline = allActiveDeals.reduce((s: number, d: any) => s + decimalToNumber(d.valueAmount), 0)
     const weightedPipeline = allActiveDeals.reduce((s: number, d: any) => s + decimalToNumber(d.valueAmount) * ((d.probability || 0) / 100), 0)
@@ -115,6 +115,22 @@ export const GET = withRls(async (req, { orgId, session }) => {
       stageMap[d.stage].weighted += v * ((d.probability || 0) / 100)
     }
 
+    // Same open deals, grouped by the currency they are actually denominated
+    // in. `total` above adds every valueAmount regardless of currency and the
+    // screen then prints one symbol on the result, so on a mixed board that
+    // number is not money in any currency. The client leads with the largest
+    // bucket and names the rest; see `src/lib/deal-money.ts` for why we group
+    // instead of converting.
+    const currencyMap: Record<string, { count: number; value: number; weighted: number }> = {}
+    for (const d of allActiveDeals) {
+      const code = (d.currency || DEFAULT_CURRENCY).toUpperCase()
+      if (!currencyMap[code]) currencyMap[code] = { count: 0, value: 0, weighted: 0 }
+      const v = decimalToNumber(d.valueAmount)
+      currencyMap[code].count++
+      currencyMap[code].value += v
+      currencyMap[code].weighted += v * ((d.probability || 0) / 100)
+    }
+
     const pipelineSummary = {
       total: totalPipeline,
       weighted: Math.round(weightedPipeline),
@@ -123,6 +139,14 @@ export const GET = withRls(async (req, { orgId, session }) => {
         ...data,
         weighted: Math.round(data.weighted),
       })),
+      byCurrency: Object.entries(currencyMap)
+        .map(([currency, data]) => ({
+          currency,
+          count: data.count,
+          value: Math.round(data.value),
+          weighted: Math.round(data.weighted),
+        }))
+        .sort((a, b) => b.value - a.value || b.count - a.count || a.currency.localeCompare(b.currency)),
     }
 
     const fieldPerms = await getFieldPermissions(orgId, role, "deal")
