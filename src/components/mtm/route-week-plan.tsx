@@ -280,7 +280,13 @@ export function MtmRouteWeekPlan({
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      {/*
+        C7 tail: at tablet width Saturday and Sunday were cut off with nothing
+        saying so, and a manager read the week as five days. `scroll-hint-x`
+        uncovers a shadow only on the side that actually has more — see the
+        utility in globals.css for why it needs no listener.
+      */}
+      <div data-testid="mtm-week-scroller" className="scroll-hint-x overflow-x-auto">
         <div className="min-w-[880px]">
           <div className="grid grid-cols-[180px_repeat(7,minmax(100px,1fr))] border-b border-zinc-200 bg-muted/30 text-xs dark:border-zinc-700">
             <div className="sticky left-0 z-20 flex items-center gap-2 border-r border-zinc-200 bg-muted px-3 py-2 font-medium dark:border-zinc-700">

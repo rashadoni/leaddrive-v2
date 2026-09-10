@@ -172,6 +172,30 @@
 }
 
 @layer utilities {
+  /*
+   * A hint that a horizontally scrollable area has more to the right.
+   *
+   * Field UX audit 2026-09-05, tail of task C7: the team week is a seven-day
+   * grid inside `overflow-x-auto`, and at tablet width Saturday and Sunday were
+   * cut off with nothing saying so — a manager read the week as five days.
+   *
+   * The `local`/`scroll` pair is what makes this honest without a listener: the
+   * covering gradients scroll WITH the content, so a shadow is only uncovered
+   * on the side that actually has more, and it corrects itself on resize and
+   * on every scroll without a single line of JavaScript.
+   */
+  .scroll-hint-x {
+    background-image:
+      linear-gradient(to right, hsl(var(--card)) 40%, hsl(var(--card) / 0)),
+      linear-gradient(to left, hsl(var(--card)) 40%, hsl(var(--card) / 0)),
+      linear-gradient(to right, hsl(var(--foreground) / 0.16), hsl(var(--foreground) / 0)),
+      linear-gradient(to left, hsl(var(--foreground) / 0.16), hsl(var(--foreground) / 0));
+    background-position: left center, right center, left center, right center;
+    background-repeat: no-repeat;
+    background-size: 28px 100%, 28px 100%, 14px 100%, 14px 100%;
+    background-attachment: local, local, scroll, scroll;
+  }
+
   .monitoring-progress-sweep {
     animation: monitoring-progress-sweep 1.8s cubic-bezier(0.25, 1, 0.5, 1) infinite;
   }
