@@ -30,7 +30,16 @@ const TYPE_CONFIG: Record<string, { icon: any; bg: string; text: string; labelKe
   comment: { icon: MessageSquare, bg: "bg-muted", text: "text-muted-foreground", labelKey: "actTypeComment" },
 }
 
-const ACTIVITY_TYPES = ["call", "email", "meeting", "note", "task"] as const
+/*
+ * Типы, которые МОЖНО завести с этой формы. «Задача» отсюда убрана: она
+ * писала в `Activity`, а не в `Task`, то есть выглядела задачей, но не имела
+ * ни галочки, ни срока, ни ответственного и никогда не появлялась в модуле
+ * «Задачи». Задачи заводятся быстрым добавлением на карточке канбана.
+ *
+ * В `TYPE_CONFIG` и в фильтрах `task` остаётся: записи этого типа уже лежат
+ * в базе, и их надо уметь показать и отфильтровать.
+ */
+const ACTIVITY_TYPES = ["call", "email", "meeting", "note"] as const
 
 export function ActivityTimeline({ dealId, orgId }: { dealId: string; orgId?: string }) {
   const tc = useTranslations("common")
@@ -142,8 +151,12 @@ export function ActivityTimeline({ dealId, orgId }: { dealId: string; orgId?: st
       {/* Add activity form */}
       {showForm && (
         <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4 space-y-3">
-          {/* Type selector */}
-          <div className="flex gap-1.5">
+          {/* Заголовок отделяет журнал от панели отправки наверху: там письмо
+              уходит клиенту, здесь фиксируется то, что уже произошло. */}
+          <p className="text-xs font-semibold text-muted-foreground">{tc("actLogEntry")}</p>
+          {/* Type selector. `flex-wrap` — пятая кнопка вылезала за правый край
+              карточки и обрезалась. */}
+          <div className="flex flex-wrap gap-1.5">
             {ACTIVITY_TYPES.map(t => {
               const config = TYPE_CONFIG[t]
               const Icon = config.icon

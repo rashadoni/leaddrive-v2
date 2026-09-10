@@ -672,9 +672,7 @@ export default function DealDetailPage() {
             })()}
             onActivityAdded={() => setTimelineKey(k => k + 1)}
             labels={{
-              notePlaceholder: tc("addDealNote"),
-              note: tc("actTypeNote"),
-              email: tc("actTypeEmail"),
+              email: tc("sendEmailAction"),
               send: tc("send"),
             }}
           />
