@@ -181,22 +181,6 @@ describe("Azerbaijani wording matches the page title", () => {
 })
 
 describe("deal detail keeps its weight in the middle", () => {
-  it("puts next steps in the content column, not in the left rail", () => {
-    // Слева набиралась третья карточка подряд, а середина оставалась пустой
-    // ниже двух коротких блоков.
-    const leftRail = detail.indexOf("[grid-area:left]")
-    const mainColumn = detail.indexOf("[grid-area:main]")
-    const nextSteps = detail.indexOf(`${"$"}{tc("nextSteps")} · `)
-    expect(leftRail).toBeGreaterThan(0)
-    expect(mainColumn).toBeGreaterThan(leftRail)
-    expect(nextSteps).toBeGreaterThan(mainColumn)
-  })
-
-  it("renders it bare inside the section, not as a card within a card", () => {
-    expect(detail).toContain("bare?: boolean")
-    expect(detail).toMatch(/bare \? "space-y-2" :/)
-  })
-
   it("has no second navigation row saying what the tabs already say", () => {
     // Ряд якорей под заголовком дублировал вкладки: кнопка «Лента» брала ТОТ
     // ЖЕ ключ перевода, что и вкладка «Лента», и делала ровно то же самое.
@@ -206,5 +190,24 @@ describe("deal detail keeps its weight in the middle", () => {
     expect(detail).not.toContain("toolbarScores")
     // Вкладка «Лента» остаётся — ключ живёт только у неё.
     expect(detail).toContain('{ id: "feed" as const, label: t("toolbarFeed") }')
+  })
+
+  it("keeps one place for what has to be done, and it is not this page", () => {
+    /*
+     * Блок «Следующие шаги» с карточки убран по решению владельца: на одном
+     * экране стояли и он, и «Лента», у которой среди типов активности есть
+     * «Задача». Две записи об одном деле в двух разных таблицах (`Task` и
+     * `Activity`), не знающие друг о друге.
+     *
+     * Сами задачи никуда не делись: их создаёт быстрое добавление на карточке
+     * канбана (POST того же `next-steps`), по ним горит светофор на карточке,
+     * и они видны в модуле «Задачи». Исчез только второй ввод.
+     */
+    expect(detail).not.toContain("NextStepsWidget")
+    expect(detail).not.toContain("fetchNextSteps")
+    const board = readFileSync("src/components/deals/kanban-board.tsx", "utf8")
+    expect(board).toContain("onQuickAddTask")
+    const card = readFileSync("src/components/deals/deal-card.tsx", "utf8")
+    expect(card).toContain("onQuickAddTask")
   })
 })
