@@ -784,8 +784,17 @@ export default function MtmRoutesPage() {
           <Route className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
           <div className="min-w-0">
             <h1 className="text-lg font-semibold leading-6 text-foreground">{t("title")}</h1>
-            <p className="text-sm leading-5 text-muted-foreground">{t("subtitle")}</p>
           </div>
+          {/*
+            Audit W-05 / task C5. Measured on the owner's screen at 1470x675:
+            the first row of data began at y=312, so 46 % of the window was
+            spent before anything to work with. Part of that was this line,
+            and it was the fourth place saying the same thing — the module tab
+            strip already highlights "Marşrutlar", the heading repeats it, and
+            the help article behind this button explains the page properly.
+            The Definition of Done puts the explanation behind "?", which is
+            where it now lives.
+          */}
           <HelpButton slug="mtm-routes" className="shrink-0" />
         </div>
         <div data-testid="mtm-route-toolbar" className="flex w-full min-w-0 flex-col gap-2 md:flex-row md:items-center xl:w-auto">
