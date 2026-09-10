@@ -109,3 +109,8 @@ LeadDrive-CRM-Kommersiya-Teklifi-FIXED.xlsx
 
 # Help-video recorder scratch (scene audio cache, regenerated on every run)
 video/.tmp-guides/
+
+# Кэш компиляции vitest: TMPDIR указывают сюда, чтобы обойти EACCES на
+# общем /tmp. Один пропущенный `rm -rf` — и `git add -A` уносит в коммит
+# 561 бинарный файл кэша V8 (так и случилось в #56).
+.tmp-vitest/
