@@ -154,7 +154,13 @@ export default function ProductsPage() {
       await fetchProducts()
     } catch (err) {
       console.error(err)
-      toast.error(editItem ? tc("errorUpdateFailed") : tc("errorCreateFailed"))
+      // Сервер объясняет отказ («Unsupported currency», «expected string,
+      // received null»), а экран это сообщение строил и выбрасывал, показывая
+      // одно и то же «Не удалось создать» на любую причину. Пользователю
+      // оставалось гадать, какое поле не так.
+      const reason = err instanceof Error && err.message ? err.message : ""
+      const base = editItem ? tc("errorUpdateFailed") : tc("errorCreateFailed")
+      toast.error(reason ? `${base}: ${reason}` : base)
     } finally { setSaving(false) }
   }
 

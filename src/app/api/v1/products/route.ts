@@ -13,7 +13,13 @@ const productCurrencySchema = z.string()
 
 const createSchema = z.object({
   name: z.string().min(1),
-  description: z.string().optional(),
+  // Форма продукта шлёт `description: description || null`, то есть при пустом
+  // поле — null. `.optional()` принимает string | undefined, но НЕ null,
+  // поэтому создать продукт без описания было нельзя вовсе: 400 «Invalid
+  // input: expected string, received null», а экран показывал глухое
+  // «Не удалось создать». Обновление того же продукта при этом работало —
+  // в `updateSchema` поле всегда было nullable. Колонка в базе тоже nullable.
+  description: z.string().nullable().optional(),
   category: z.string().default("service"),
   sku: z.string().max(64).nullable().optional(),
   productType: z.enum(LINE_TYPES).default("other"),
