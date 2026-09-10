@@ -148,6 +148,8 @@ describe("Azerbaijani wording matches the page title", () => {
     const az = JSON.parse(readFileSync("messages/az.json", "utf8"))
     expect(az.deals.title).toBe("Satış boru xətti")
     expect(az.deals.statPipelineValue).not.toContain("Huni")
+    // Тот же показатель на вкладке «Аналитика» — того же экрана.
+    expect(az.dealsAnalytics.pipelineValue).not.toContain("Huni")
     // Ключи, осиротевшие вместе с удалёнными карточками метрик и полосой
     // чипов: мёртвая строка переживает любую смену терминологии молча.
     expect(az.deals.pipelineBar).toBeUndefined()
