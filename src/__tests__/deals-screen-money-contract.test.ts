@@ -41,7 +41,46 @@ describe("currency symbols come from the data, not from a literal", () => {
 
   it("prints a symbol on the deal card instead of the raw ISO code", () => {
     expect(card).not.toMatch(/\$\{deal\.currency\}/)
-    expect(card).toContain("formatBucket({ currency: deal.currency")
+    expect(card).toContain("formatAmount(deal.valueAmount || 0, deal.currency)")
+  })
+})
+
+describe("nothing on the screen is labelled with a currency it is not in", () => {
+  it("gives every legend chip the currency of its own stage", () => {
+    // Закрытые стадии сервер не считает: их суммы берутся из загруженных
+    // сделок. Подписать выигранный доллар манатом главной воронки — это тот
+    // же дефект, только на 300 пикселей правее.
+    expect(page).toContain("{formatBucket({ currency: stage.currency, value: stage.value, count: stage.count })}")
+    expect(page).toContain("showMoney: stageBuckets.length <= 1")
+  })
+
+  it("says out loud when Won hides money in another currency", () => {
+    expect(page).toContain("wonExtrasLabel")
+  })
+
+  it("hands the analytics tab one currency, not a mix", () => {
+    // Все графики там строятся из одного массива; смесь валют снова дала бы
+    // сумму, которой нет — только под уверенным символом.
+    expect(page).toContain("deals={analyticsDeals.map(")
+    expect(page).toContain("pipelineValue={pipelinePrimary.value}")
+    expect(page).toContain("excludedNote={analyticsExcluded > 0")
+    // Старые кросс-валютные суммы удалены, а не оставлены под рукой.
+    expect(page).not.toMatch(/const totalValue = deals\.reduce/)
+    expect(page).not.toMatch(/const wonValue = wonDeals\.reduce/)
+  })
+
+  it("counts the reset chip from the same numbers as the stage chips", () => {
+    // «Все 200» рядом со стадиями, суммирующимися в 340, — это две разные
+    // выборки в одной строке.
+    expect(page).toContain("{legendTotalCount}")
+    expect(page).toContain("const legendTotalCount = legendStages.reduce(")
+  })
+
+  it("keeps the stage filter on screen when the open pipeline is empty", () => {
+    // Полоса живёт из серверной сводки по открытым сделкам. Если фильтр
+    // рисовать вместе с ней, при пустой открытой воронке сбросить стадию,
+    // восстановленную из сохранённого представления, будет нечем.
+    expect(page).toContain("{legendStages.length > 0 && (")
   })
 })
 
@@ -109,7 +148,11 @@ describe("Azerbaijani wording matches the page title", () => {
     const az = JSON.parse(readFileSync("messages/az.json", "utf8"))
     expect(az.deals.title).toBe("Satış boru xətti")
     expect(az.deals.statPipelineValue).not.toContain("Huni")
-    expect(az.deals.pipelineBar).not.toContain("Huni")
+    // Ключи, осиротевшие вместе с удалёнными карточками метрик и полосой
+    // чипов: мёртвая строка переживает любую смену терминологии молча.
+    expect(az.deals.pipelineBar).toBeUndefined()
+    expect(az.deals.statTotal).toBeUndefined()
+    expect(az.deals.hintTotalDeals).toBeUndefined()
   })
 
   it("explains a mixed-currency board in every language", () => {

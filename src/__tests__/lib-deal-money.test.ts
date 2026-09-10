@@ -5,6 +5,7 @@ import {
   formatBucket,
   formatExtras,
   weightedForCurrency,
+  formatAmount,
   type MoneyRow,
 } from "@/lib/deal-money"
 
@@ -76,8 +77,8 @@ describe("leadBucket", () => {
 
 describe("formatting", () => {
   it("takes the symbol from the bucket, not from the default currency", () => {
-    expect(formatBucket({ currency: "AZN", value: 1_735_782, count: 19 })).toBe("1,735,782 ₼")
-    expect(formatBucket({ currency: "USD", value: 312_000, count: 2 })).toBe("312,000 $")
+    expect(formatBucket({ currency: "AZN", value: 1_735_782, count: 19 })).toBe(`${(1735782).toLocaleString()} ₼`)
+    expect(formatBucket({ currency: "USD", value: 312_000, count: 2 })).toBe(`${(312000).toLocaleString()} $`)
   })
 
   it("says nothing extra when the board holds a single currency", () => {
@@ -86,7 +87,7 @@ describe("formatting", () => {
   })
 
   it("names every other currency with its own count", () => {
-    expect(formatExtras([{ currency: "AZN", value: 8_000, count: 1 }])).toBe("+ 8,000 ₼ · 1")
+    expect(formatExtras([{ currency: "AZN", value: 8_000, count: 1 }])).toBe(`+ ${(8000).toLocaleString()} ₼ · 1`)
   })
 })
 
@@ -105,5 +106,21 @@ describe("weightedForCurrency", () => {
     const rows = [{ valueAmount: 1_000, currency: null, probability: 50 }]
     expect(bucketByCurrency(rows, "AZN")[0].currency).toBe("AZN")
     expect(weightedForCurrency(rows, "AZN", "AZN")).toBe(500)
+  })
+})
+
+describe("formatAmount — one deal, not a total", () => {
+  it("keeps the cents a single card is showing", () => {
+    // `valueAmount` — Decimal(18,4). Округление до целого в карточке говорит
+    // пользователю неверное число про конкретную сделку, а не про сумму.
+    expect(formatAmount(1_500.5, "AZN")).toBe(`${(1500.5).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₼`)
+  })
+
+  it("does not put .00 on a round amount", () => {
+    expect(formatAmount(12_000, "USD")).toBe(`${(12000).toLocaleString()} $`)
+  })
+
+  it("falls back to the default symbol only when the deal has no currency", () => {
+    expect(formatAmount(10, null)).toContain("10")
   })
 })

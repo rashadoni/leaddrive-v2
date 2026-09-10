@@ -22,8 +22,6 @@ import {
   Shield,
   Zap,
   Target,
-  ArrowUpRight,
-  ArrowDownRight,
   CheckCircle2,
   XCircle,
   AlertTriangle,
@@ -56,6 +54,10 @@ interface DealsAnalyticsProps {
   /** Валюта, в которой номинирована воронка. Раньше символ был вшит в
    *  `fmtCurrency` — экран подписывал манатом любые деньги, включая доллары. */
   currency?: string
+  /** Текст под KPI, если часть сделок в расчёт не попала: сюда приходят
+   *  только сделки главной валюты, потому что все графики строятся из одного
+   *  массива и смесь валют дала бы сумму, которой не существует. */
+  excludedNote?: string | null
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────
@@ -136,7 +138,7 @@ const PRIORITY_COLORS: Record<string, string> = {
 
 // ── Component ───────────────────────────────────────────────────────────
 
-export function DealsAnalytics({ deals, pipelineValue, wonValue, lostCount, wonCount, currency }: DealsAnalyticsProps) {
+export function DealsAnalytics({ deals, pipelineValue, wonValue, lostCount, wonCount, currency, excludedNote }: DealsAnalyticsProps) {
   const t = useTranslations("dealsAnalytics")
   const months = t("monthsShort").split(",")
   const analytics = useMemo(() => {
@@ -200,8 +202,6 @@ export function DealsAnalytics({ deals, pipelineValue, wonValue, lostCount, wonC
     {
       label: t("pipelineValue"),
       value: fmtCurrency(pipelineValue, currency),
-      change: null,
-      up: true,
       icon: DollarSign,
       iconBg: "bg-violet-500/15 text-violet-500",
     },
@@ -209,40 +209,30 @@ export function DealsAnalytics({ deals, pipelineValue, wonValue, lostCount, wonC
       label: t("won"),
       value: fmtCurrency(wonValue, currency),
       sub: `${wonCount} ${t("deals")}`,
-      change: null,
-      up: true,
       icon: Trophy,
       iconBg: "bg-emerald-500/15 text-emerald-500",
     },
     {
       label: t("conversion"),
       value: `${analytics.conversionRate.toFixed(1)}%`,
-      change: null,
-      up: true,
       icon: Percent,
       iconBg: "bg-blue-500/15 text-blue-500",
     },
     {
       label: t("avgCycle"),
       value: `${analytics.avgCycle} ${t("days")}`,
-      change: null,
-      up: true,
       icon: Clock,
       iconBg: "bg-amber-500/15 text-amber-500",
     },
     {
       label: t("avgValue"),
       value: fmtCurrency(analytics.avgValue, currency),
-      change: null,
-      up: true,
       icon: BarChart3,
       iconBg: "bg-cyan-500/15 text-cyan-500",
     },
     {
       label: t("aiForecast"),
       value: fmtCurrency(analytics.forecastValue, currency),
-      change: null,
-      up: true,
       icon: Brain,
       iconBg: "bg-fuchsia-500/15 text-fuchsia-500",
     },
@@ -278,18 +268,14 @@ export function DealsAnalytics({ deals, pipelineValue, wonValue, lostCount, wonC
               </div>
             </div>
             <div className="text-xl font-bold">{kpi.value}</div>
-            <div className="flex items-center gap-1.5">
-              {kpi.change && (
-                <span className={cn("flex items-center text-xs font-medium", kpi.up ? "text-emerald-500" : "text-red-500")}>
-                  {kpi.up ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                  {kpi.change}
-                </span>
-              )}
-              {kpi.sub && <span className="text-xs text-muted-foreground">{kpi.sub}</span>}
-            </div>
+            {kpi.sub && <span className="text-xs text-muted-foreground">{kpi.sub}</span>}
           </div>
         ))}
       </div>
+
+      {excludedNote && (
+        <p className="text-xs text-muted-foreground">{excludedNote}</p>
+      )}
 
       {/* ── Row 1 ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
