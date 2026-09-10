@@ -97,6 +97,47 @@ describe("POST /api/v1/products", () => {
     expect(body.error).toBeDefined()
   })
 
+  it("accepts a null description — the form sends one for every empty field", async () => {
+    /*
+     * Форма шлёт `description: description || null`. Схема создания требовала
+     * строку, поэтому продукт без описания создать было НЕЛЬЗЯ: 400 «expected
+     * string, received null», а экран показывал глухое «Не удалось создать».
+     * Обновление того же продукта работало — там поле всегда было nullable.
+     * Воспроизведено на проде 2026-09-10.
+     */
+    vi.mocked(prisma.product.create).mockResolvedValue({ id: "p9", name: "No description" } as any)
+
+    const res = await POST(makeRequest("http://localhost/api/v1/products", {
+      method: "POST",
+      body: JSON.stringify({
+        name: "No description",
+        description: null,
+        category: "service",
+        price: 0,
+        currency: "USD",
+        isActive: true,
+        features: [],
+        tags: [],
+        sku: null,
+        productType: "subscription",
+      }),
+    }))
+
+    expect(res.status).toBe(201)
+    expect(prisma.product.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ description: null }) }),
+    )
+  })
+
+  it("still refuses a description that is neither text nor null", async () => {
+    // Негативный якорь: nullable — это не «любой тип».
+    const res = await POST(makeRequest("http://localhost/api/v1/products", {
+      method: "POST",
+      body: JSON.stringify({ name: "Bad description", description: 42 }),
+    }))
+    expect(res.status).toBe(400)
+    expect(prisma.product.create).not.toHaveBeenCalled()
+  })
   it.each([-1, 1_000_000_000])("rejects an invalid product price (%s)", async (price) => {
     const res = await POST(makeRequest("http://localhost/api/v1/products", {
       method: "POST",
