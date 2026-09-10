@@ -68,7 +68,15 @@ interface DialogProps {
   /** Use an edge-to-edge surface on narrow screens. */
   mobileFullscreen?: boolean
   /** The breakpoint from which a mobile fullscreen surface becomes a centered dialog. */
-  mobileFullscreenBreakpoint?: "sm" | "md"
+  /**
+   * Below this width the dialog stops being a dialog and takes the screen.
+   *
+   * `tablet` is 900 px and exists for one measured reason (audit C15): a
+   * 834 px tablet held the route planner as a floating card with an inset,
+   * where a sheet was needed. `md` is 768 and left 834 on the wrong side of
+   * the line by 66 px.
+   */
+  mobileFullscreenBreakpoint?: "sm" | "md" | "tablet"
 }
 
 export function Dialog({ open, onOpenChange, children, widthClassName = "max-w-[40rem]", maxHeightClassName = "max-h-[85vh]", hideClose = false, mobileFullscreen = false, mobileFullscreenBreakpoint = "sm" }: DialogProps) {
@@ -185,14 +193,18 @@ export function Dialog({ open, onOpenChange, children, widthClassName = "max-w-[
   if (!open) return null
   const fullscreenRootClassName = !mobileFullscreen
     ? "items-center p-4"
-    : mobileFullscreenBreakpoint === "md"
-      ? "items-stretch p-0 md:items-center md:p-4"
-      : "items-stretch p-0 sm:items-center sm:p-4"
+    : mobileFullscreenBreakpoint === "tablet"
+      ? "items-stretch p-0 min-[900px]:items-center min-[900px]:p-4"
+      : mobileFullscreenBreakpoint === "md"
+        ? "items-stretch p-0 md:items-center md:p-4"
+        : "items-stretch p-0 sm:items-center sm:p-4"
   const fullscreenSurfaceClassName = !mobileFullscreen
     ? "rounded-lg"
-    : mobileFullscreenBreakpoint === "md"
-      ? "rounded-none md:rounded-lg"
-      : "rounded-none sm:rounded-lg"
+    : mobileFullscreenBreakpoint === "tablet"
+      ? "rounded-none min-[900px]:rounded-lg"
+      : mobileFullscreenBreakpoint === "md"
+        ? "rounded-none md:rounded-lg"
+        : "rounded-none sm:rounded-lg"
 
   return (
     <DialogA11yContext.Provider value={a11yContext}>
