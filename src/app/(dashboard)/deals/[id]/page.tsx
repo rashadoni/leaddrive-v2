@@ -3,15 +3,13 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { useTranslations, useLocale } from "next-intl"
-import { motion } from "framer-motion"
-import { formatDate } from "@/lib/format-date"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { MotionPage, MotionCard } from "@/components/ui/motion"
+import { MotionPage } from "@/components/ui/motion"
 import {
-  ArrowLeft, Pencil, Trash2, AlertCircle, Tag, Plus, X,
-  CheckCircle2, Clock, Loader2, Hourglass, Timer, Mail, PhoneOutgoing,
+  ArrowLeft, Pencil, Trash2, AlertCircle, Tag, X,
+  Loader2, Hourglass, Timer, Mail, PhoneOutgoing,
   Layers3,
 } from "lucide-react"
 import { GradientKpiChip } from "@/components/crm/gradient-kpi-chip"
@@ -36,7 +34,6 @@ import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
 import { STAGE_COLORS } from "@/lib/constants"
-import { toast } from "sonner"
 
 const FALLBACK_STAGE_STYLES = [
   { key: "LEAD",        color: STAGE_COLORS.LEAD,        bg: "bg-indigo-500" },
@@ -275,163 +272,6 @@ function AiPredictionCard({ dealId, orgId }: { dealId: string; orgId?: string })
 }
 
 // ── Next Steps widget ──
-function NextStepsWidget({ dealId, orgId, steps, fetchSteps, bare }: {
-  dealId: string; orgId?: string
-  steps: Array<{ id: string; title: string; status: string; dueDate: string | null; completedAt: string | null }>
-  fetchSteps: () => void
-  /** Внутри CollapsibleSection: рамку и заголовок рисует секция, иначе
-   *  получится карточка в карточке с двумя заголовками подряд. */
-  bare?: boolean
-}) {
-  const tc = useTranslations("common")
-  const locale = useLocale()
-  const [newTitle, setNewTitle] = useState("")
-  const [deletingStepId, setDeletingStepId] = useState<string | null>(null)
-  const [stepToDelete, setStepToDelete] = useState<{ id: string; title: string } | null>(null)
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...(orgId ? { "x-organization-id": orgId } : {} as Record<string, string>),
-  }
-
-  const pending = steps.filter(s => s.status !== "completed")
-  const completed = steps.filter(s => s.status === "completed")
-
-  const completeStep = async (stepId: string) => {
-    const res = await fetch(`/api/v1/deals/${dealId}/next-steps`, {
-      method: "PUT", headers,
-      body: JSON.stringify({ taskId: stepId, status: "completed" }),
-    })
-    if (!res.ok) {
-      toast.error(tc("errorUpdateFailed"))
-      return
-    }
-    fetchSteps()
-  }
-
-  const addStep = async () => {
-    if (!newTitle.trim()) return
-    const res = await fetch(`/api/v1/deals/${dealId}/next-steps`, {
-      method: "POST", headers,
-      body: JSON.stringify({ title: newTitle.trim() }),
-    })
-    if (!res.ok) {
-      toast.error(tc("errorCreateFailed"))
-      return
-    }
-    setNewTitle("")
-    fetchSteps()
-  }
-
-  const deleteStep = async (stepId: string) => {
-    setDeletingStepId(stepId)
-    try {
-      const res = await fetch(`/api/v1/deals/${dealId}/next-steps`, {
-        method: "DELETE", headers,
-        body: JSON.stringify({ taskId: stepId }),
-      })
-      if (!res.ok) {
-        throw new Error(tc("errorDeleteFailed"))
-      }
-      await fetchSteps()
-    } catch (err) {
-      console.error(err)
-      throw err
-    } finally {
-      setDeletingStepId(null)
-    }
-  }
-
-  return (
-    <div className={bare ? "space-y-2" : "rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-4 space-y-2"}>
-      {!bare && (
-        <div className="flex items-center gap-2 mb-1">
-          <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-semibold">{tc("nextSteps")}</span>
-          <span className="text-xs text-muted-foreground bg-muted rounded-full px-2 py-0.5">{pending.length}</span>
-        </div>
-      )}
-
-      {pending.map(step => (
-        <motion.div
-          key={step.id}
-          initial={{ opacity: 0, x: -8 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="flex items-center gap-2.5 py-1.5"
-        >
-          <button
-            className="h-4.5 w-4.5 rounded-full border-2 border-zinc-200 dark:border-zinc-700 hover:border-primary hover:bg-primary/10 flex-shrink-0 transition-colors"
-            onClick={() => completeStep(step.id)}
-          />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm truncate">{step.title}</p>
-            {step.dueDate && (
-              <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                {formatDate(step.dueDate, locale)}
-              </p>
-            )}
-          </div>
-          <button
-            type="button"
-            aria-label={tc("delete")}
-            title={tc("delete")}
-            disabled={deletingStepId === step.id}
-            onClick={() => setStepToDelete({ id: step.id, title: step.title })}
-            className="rounded-md p-1 text-muted-foreground/60 hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 dark:hover:bg-red-950/30"
-          >
-            {deletingStepId === step.id
-              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              : <Trash2 className="h-3.5 w-3.5" />}
-          </button>
-        </motion.div>
-      ))}
-
-      {completed.length > 0 && (
-        <div className="pt-1.5 space-y-0.5">
-          {completed.slice(0, 3).map(step => (
-            <div key={step.id} className="flex items-center gap-2.5 py-1 opacity-60">
-              <CheckCircle2 className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
-              <p className="flex-1 text-xs line-through truncate">{step.title}</p>
-              <button
-                type="button"
-                aria-label={tc("delete")}
-                title={tc("delete")}
-                disabled={deletingStepId === step.id}
-                onClick={() => setStepToDelete({ id: step.id, title: step.title })}
-                className="rounded-md p-1 text-muted-foreground hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 dark:hover:bg-red-950/30"
-              >
-                {deletingStepId === step.id
-                  ? <Loader2 className="h-3 w-3 animate-spin" />
-                  : <Trash2 className="h-3 w-3" />}
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="flex gap-2 pt-1">
-        <input
-          className="flex-1 h-8 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-ring/30"
-          placeholder={tc("addNextStep")}
-          value={newTitle}
-          onChange={e => setNewTitle(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter") addStep() }}
-        />
-        <Button size="sm" variant="outline" disabled={!newTitle.trim()} onClick={addStep} className="h-8 px-2.5">
-          <Plus className="h-3.5 w-3.5" />
-        </Button>
-      </div>
-
-      <DeleteConfirmDialog
-        open={stepToDelete !== null}
-        onOpenChange={(open) => { if (!open) setStepToDelete(null) }}
-        onConfirm={() => stepToDelete ? deleteStep(stepToDelete.id) : Promise.resolve()}
-        itemName={stepToDelete?.title}
-      />
-    </div>
-  )
-}
-
 // ── Main page ──
 export default function DealDetailPage() {
   const t = useTranslations("deals")
@@ -447,7 +287,6 @@ export default function DealDetailPage() {
   const [loading, setLoading] = useState(true)
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
-  const [nextSteps, setNextSteps] = useState<Array<{ id: string; title: string; status: string; dueDate: string | null; completedAt: string | null }>>([])
   const [timelineKey, setTimelineKey] = useState(0)
   const [offersCount, setOffersCount] = useState(0)
   const [invoicesCount, setInvoicesCount] = useState(0)
@@ -507,13 +346,6 @@ export default function DealDetailPage() {
     finally { setLoading(false) }
   }
 
-  const fetchNextSteps = async () => {
-    try {
-      const res = await fetch(`/api/v1/deals/${id}/next-steps`, { headers })
-      const json = await res.json()
-      if (json.success) setNextSteps(json.data || [])
-    } catch (err) { console.error(err) }
-  }
 
   const fetchCounts = async () => {
     try {
@@ -554,7 +386,7 @@ export default function DealDetailPage() {
     } catch {}
   }
 
-  useEffect(() => { if (session) { fetchDeal(); fetchNextSteps(); fetchCounts() } }, [session, id])
+  useEffect(() => { if (session) { fetchDeal(); fetchCounts() } }, [session, id])
   useEffect(() => { if (session) fetchActivityCounts() }, [session, id, timelineKey])
   useEffect(() => { if (deal?.pipelineId) fetchPipelineStages(deal.pipelineId) }, [deal?.pipelineId])
 
@@ -817,20 +649,6 @@ export default function DealDetailPage() {
             </CollapsibleSection>
           )}
 
-          {/* Следующие шаги стояли в левой рейке, третьей карточкой под
-              «Лучшими предложениями»: по бокам набиралось три колонки, а в
-              середине оставались два коротких блока и пустота под ними. */}
-          <div>
-            <CollapsibleSection title={`${tc("nextSteps")} · ${nextSteps.filter(s => s.status !== "completed").length}`}>
-              <NextStepsWidget
-                dealId={id}
-                orgId={orgId}
-                steps={nextSteps}
-                fetchSteps={fetchNextSteps}
-                bare
-              />
-            </CollapsibleSection>
-          </div>
           </div>
 
           {/* Tab: Feed */}
