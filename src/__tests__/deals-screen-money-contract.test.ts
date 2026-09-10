@@ -17,6 +17,7 @@ const kanban = readFileSync("src/components/deals/kanban-board.tsx", "utf8")
 const card = readFileSync("src/components/deals/deal-card.tsx", "utf8")
 const analytics = readFileSync("src/components/deals/deals-analytics.tsx", "utf8")
 const route = readFileSync("src/app/api/v1/deals/route.ts", "utf8")
+const detail = readFileSync("src/app/(dashboard)/deals/[id]/page.tsx", "utf8")
 
 describe("currency symbols come from the data, not from a literal", () => {
   it("has no hardcoded manat sign left on the deals screen", () => {
@@ -176,5 +177,30 @@ describe("Azerbaijani wording matches the page title", () => {
       const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"))
       expect(messages.deals.mixedCurrencyHint).toBeTruthy()
     }
+  })
+})
+
+describe("deal detail keeps its weight in the middle", () => {
+  it("puts next steps in the content column, not in the left rail", () => {
+    // Слева набиралась третья карточка подряд, а середина оставалась пустой
+    // ниже двух коротких блоков.
+    const leftRail = detail.indexOf("[grid-area:left]")
+    const mainColumn = detail.indexOf("[grid-area:main]")
+    const nextSteps = detail.indexOf('id="deal-next-steps"')
+    expect(leftRail).toBeGreaterThan(0)
+    expect(mainColumn).toBeGreaterThan(leftRail)
+    expect(nextSteps).toBeGreaterThan(mainColumn)
+  })
+
+  it("renders it bare inside the section, not as a card within a card", () => {
+    expect(detail).toContain("bare?: boolean")
+    expect(detail).toMatch(/bare \? "space-y-2" :/)
+  })
+
+  it("opens the tab the anchor now lives on", () => {
+    // Обе вкладки остаются смонтированными под `hidden`: scrollIntoView по
+    // скрытому элементу молча ничего не делает, и кнопка в шапке выглядит
+    // сломанной.
+    expect(detail).toContain('if (anchorId === "deal-next-steps") setRightTab("overview")')
   })
 })

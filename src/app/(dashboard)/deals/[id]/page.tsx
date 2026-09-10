@@ -275,10 +275,13 @@ function AiPredictionCard({ dealId, orgId }: { dealId: string; orgId?: string })
 }
 
 // ── Next Steps widget ──
-function NextStepsWidget({ dealId, orgId, steps, fetchSteps }: {
+function NextStepsWidget({ dealId, orgId, steps, fetchSteps, bare }: {
   dealId: string; orgId?: string
   steps: Array<{ id: string; title: string; status: string; dueDate: string | null; completedAt: string | null }>
   fetchSteps: () => void
+  /** Внутри CollapsibleSection: рамку и заголовок рисует секция, иначе
+   *  получится карточка в карточке с двумя заголовками подряд. */
+  bare?: boolean
 }) {
   const tc = useTranslations("common")
   const locale = useLocale()
@@ -339,12 +342,14 @@ function NextStepsWidget({ dealId, orgId, steps, fetchSteps }: {
   }
 
   return (
-    <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-4 space-y-2">
-      <div className="flex items-center gap-2 mb-1">
-        <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm font-semibold">{tc("nextSteps")}</span>
-        <span className="text-xs text-muted-foreground bg-muted rounded-full px-2 py-0.5">{pending.length}</span>
-      </div>
+    <div className={bare ? "space-y-2" : "rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-4 space-y-2"}>
+      {!bare && (
+        <div className="flex items-center gap-2 mb-1">
+          <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-semibold">{tc("nextSteps")}</span>
+          <span className="text-xs text-muted-foreground bg-muted rounded-full px-2 py-0.5">{pending.length}</span>
+        </div>
+      )}
 
       {pending.map(step => (
         <motion.div
@@ -462,6 +467,10 @@ export default function DealDetailPage() {
   // then scroll on the next frame when the target is laid out.
   const scrollToAnchor = (anchorId: string) => {
     if (anchorId === "deal-feed") setRightTab("feed")
+    // Вкладки остаются смонтированными под `hidden`, поэтому scrollIntoView по
+    // элементу скрытой вкладки не делает ничего. Якорь шагов переехал в
+    // «Обзор» — переключаем на него, иначе кнопка в шапке молча не работает.
+    if (anchorId === "deal-next-steps") setRightTab("overview")
     requestAnimationFrame(() =>
       document.getElementById(anchorId)?.scrollIntoView({ behavior: "smooth", block: "start" }),
     )
@@ -754,16 +763,6 @@ export default function DealDetailPage() {
 
           {/* Next Best Offers — right after record info, as in the Creatio reference */}
           <NextBestOffers dealId={id} orgId={orgId} />
-
-          {/* Next Steps */}
-          <div id="deal-next-steps" className="scroll-mt-20">
-            <NextStepsWidget
-              dealId={id}
-              orgId={orgId}
-              steps={nextSteps}
-              fetchSteps={fetchNextSteps}
-            />
-          </div>
         </div>
 
         {/* AI RAIL — 3rd column on xl, below the left rail otherwise */}
@@ -830,6 +829,21 @@ export default function DealDetailPage() {
               <DealCustomerDetails contact={deal.contact} company={deal.company} orgId={orgId} bare />
             </CollapsibleSection>
           )}
+
+          {/* Следующие шаги стояли в левой рейке, третьей карточкой под
+              «Лучшими предложениями»: по бокам набиралось три колонки, а в
+              середине оставались два коротких блока и пустота под ними. */}
+          <div id="deal-next-steps" className="scroll-mt-20">
+            <CollapsibleSection title={`${tc("nextSteps")} · ${nextSteps.filter(s => s.status !== "completed").length}`}>
+              <NextStepsWidget
+                dealId={id}
+                orgId={orgId}
+                steps={nextSteps}
+                fetchSteps={fetchNextSteps}
+                bare
+              />
+            </CollapsibleSection>
+          </div>
           </div>
 
           {/* Tab: Feed */}
