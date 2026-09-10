@@ -49,10 +49,23 @@ describe("the accent colour belongs to the action", () => {
   })
 })
 
+describe("a card looks like something you can pick up", () => {
+  it("carries a shadow at rest, not only on hover", () => {
+    // Владелец: «карточки какие-то безрамочные стали и теней нет». В покое
+    // была только светло-серая рамка — карточка сливалась с фоном колонки.
+    expect(card).toContain("shadow-[0_1px_3px_rgba(16,24,40,0.10),0_1px_2px_rgba(16,24,40,0.06)]")
+    expect(card).toContain("dark:shadow-")
+  })
+
+  it("lifts further under the cursor", () => {
+    expect(card).toMatch(/hover:shadow-\[0_8px_16px/)
+  })
+})
+
 describe("each column carries its own stage colour", () => {
   it("paints the column, not just a two-pixel dot", () => {
     expect(board).toContain("borderTopColor: stage.color")
-    expect(board).toContain("backgroundColor: tint(stage.color, 0.04)")
+    expect(board).toMatch(/backgroundColor: tint\(stage\.color, 0\.\d+\)/)
   })
 
   it("refuses to build a colour it cannot parse", () => {

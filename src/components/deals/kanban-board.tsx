@@ -227,7 +227,7 @@ export function KanbanBoard({ stages, deals, onDealClick, onDealMove, onQuickAdd
                 visible; drag-time page auto-scroll handles reaching far cards. */}
             <div
               className={cn(
-                "min-h-[200px] flex-1 space-y-2 overflow-hidden rounded-xl border border-t-[3px] p-2 transition-all duration-200",
+                "min-h-[200px] flex-1 space-y-2.5 overflow-hidden rounded-xl border border-t-[3px] p-2.5 transition-all duration-200",
                 isDropping
                   ? "border-primary/40 bg-primary/5 ring-2 ring-primary/30 ring-dashed"
                   : "border-zinc-200 hover:bg-muted/30 dark:border-zinc-700",
@@ -238,7 +238,7 @@ export function KanbanBoard({ stages, deals, onDealClick, onDealMove, onQuickAdd
               // четыре колонки не отличались друг от друга ничем.
               style={isDropping ? undefined : {
                 borderTopColor: stage.color,
-                backgroundColor: tint(stage.color, 0.04),
+                backgroundColor: tint(stage.color, 0.07),
               }}
               onDragOver={(e) => handleDragOver(e, stage.name)}
               onDragLeave={handleDragLeave}
