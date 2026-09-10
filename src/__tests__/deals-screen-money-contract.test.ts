@@ -150,6 +150,12 @@ describe("Azerbaijani wording matches the page title", () => {
     expect(az.deals.statPipelineValue).not.toContain("Huni")
     // Тот же показатель на вкладке «Аналитика» — того же экрана.
     expect(az.dealsAnalytics.pipelineValue).not.toContain("Huni")
+    // Шаг тура сам себе противоречил: заголовок «Fərqli hunilər» над текстом,
+    // где то же самое названо «satış boru xətti».
+    expect(az.tour.deals.pipelineTitle).not.toContain("huni")
+    for (const key of ["pipelineCategory", "daysInFunnel", "kpiDaysInFunnel"] as const) {
+      expect(az.deals[key].toLowerCase()).not.toContain("huni")
+    }
     // Ключи, осиротевшие вместе с удалёнными карточками метрик и полосой
     // чипов: мёртвая строка переживает любую смену терминологии молча.
     expect(az.deals.pipelineBar).toBeUndefined()
