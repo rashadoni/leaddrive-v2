@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 import { MeddpiccChips } from "@/components/deals/meddpicc-chips"
 import { Plus, Loader2 } from "lucide-react"
+import { formatBucket } from "@/lib/deal-money"
 
 interface DealCardProps {
   deal: {
@@ -75,6 +76,14 @@ export function DealCard({ deal, onClick, onDragStart, onDragEnd, isDragging, ro
     return () => document.removeEventListener("mousedown", onDocMouseDown)
   }, [quickAdd])
 
+  // «Royal Park» с подзаголовком «Royal park» — это не два факта, а один,
+  // набранный дважды в разном регистре. Подпись показывается, только когда
+  // компания добавляет что-то к названию сделки.
+  const companyLine =
+    deal.company && deal.company.trim().toLowerCase() !== deal.name.trim().toLowerCase()
+      ? deal.company
+      : null
+
   const light = getTrafficLight(deal)
   const rotting = isRotting(deal.stageChangedAt, rottingDays)
 
@@ -129,8 +138,8 @@ export function DealCard({ deal, onClick, onDragStart, onDragEnd, isDragging, ro
           />
           <div className="flex-1 min-w-0">
             <p className="font-medium text-xs leading-tight truncate">{deal.name}</p>
-            {deal.company && (
-              <p className="text-[10px] text-muted-foreground truncate mt-0.5">{deal.company}</p>
+            {companyLine && (
+              <p className="text-[10px] text-muted-foreground truncate mt-0.5">{companyLine}</p>
             )}
           </div>
         </div>
@@ -138,7 +147,7 @@ export function DealCard({ deal, onClick, onDragStart, onDragEnd, isDragging, ro
         <div className="flex items-center justify-between mt-1.5 pl-4">
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-semibold text-primary">
-              {deal.valueAmount ? `${deal.valueAmount.toLocaleString()} ${deal.currency}` : `0 ${deal.currency}`}
+              {formatBucket({ currency: deal.currency, value: deal.valueAmount || 0, count: 1 })}
             </span>
             {deal.probability > 0 && (
               <span className={cn(

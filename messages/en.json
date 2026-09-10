@@ -2035,6 +2035,7 @@
     "nbaTicketAttentionReason": "Priority {priority}, open {days} days. Needs attention.",
     "pipelineBar": "Pipeline",
     "weightedBar": "Weighted",
+    "mixedCurrencyHint": "Deals in this pipeline are held in more than one currency. Amounts are grouped by currency and never converted — no exchange rates are maintained.",
     "weightedTooltip": "weighted",
     "engTitle": "Engagement",
     "engNoData": "No engagement data available",
