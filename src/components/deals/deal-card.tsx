@@ -41,17 +41,53 @@ function getTrafficLight(deal: DealCardProps["deal"]): TrafficLight {
   return "green"
 }
 
-function isRotting(stageChangedAt: string | null | undefined, days: number): boolean {
-  if (!stageChangedAt) return false
-  const changed = new Date(stageChangedAt).getTime()
-  const now = Date.now()
-  return (now - changed) / 86400000 > days
+/**
+ * Застой рисуется не «есть/нет», а по степени.
+ *
+ * Раньше любая сделка старше порога заливалась розовым целиком. На живой
+ * доске в стадиях лежат месяцами, поэтому розовыми были почти все карточки —
+ * сигнал, который срабатывает на десяти карточках из двенадцати, перестаёт
+ * быть сигналом, а доска читается как «всё горит». Порог не трогаем (это
+ * настройка организации), меняется только громкость: тонкая полоса слева,
+ * цвет которой зависит от того, во сколько раз превышен порог.
+ */
+type StaleTier = "none" | "warn" | "high" | "critical"
+
+function staleDays(stageChangedAt: string | null | undefined): number | null {
+  if (!stageChangedAt) return null
+  return Math.floor((Date.now() - new Date(stageChangedAt).getTime()) / 86400000)
 }
 
+function staleTier(days: number | null, threshold: number): StaleTier {
+  if (days === null || threshold <= 0 || days <= threshold) return "none"
+  if (days > threshold * 4) return "critical"
+  if (days > threshold * 2) return "high"
+  return "warn"
+}
+
+const STALE_EDGE: Record<StaleTier, string> = {
+  none: "border-l-transparent",
+  warn: "border-l-amber-300 dark:border-l-amber-500/60",
+  high: "border-l-orange-400 dark:border-l-orange-500/70",
+  critical: "border-l-red-500 dark:border-l-red-500/80",
+}
+
+const STALE_TEXT: Record<StaleTier, string> = {
+  none: "",
+  warn: "text-muted-foreground",
+  high: "text-orange-600 dark:text-orange-400",
+  critical: "text-red-600 dark:text-red-400 font-medium",
+}
+
+// Жёлтый — это «задачи не назначено», состояние по умолчанию у большинства
+// карточек. Заливкой оно читалось как предупреждение и складывалось с двумя
+// другими тревожными сигналами на той же карточке, поэтому теперь это пустое
+// кольцо. Красный (просроченная задача) больше не пульсирует: цвета хватает,
+// а пульсация на доске из двадцати карточек не даёт смотреть ни на что.
 const TRAFFIC_DOTS: Record<TrafficLight, string> = {
-  green: "bg-green-500",
-  red: "bg-red-500 animate-pulse",
-  yellow: "bg-amber-400",
+  green: "bg-emerald-500",
+  red: "bg-red-500",
+  yellow: "bg-transparent ring-1 ring-inset ring-zinc-300 dark:ring-zinc-600",
 }
 
 export function DealCard({ deal, onClick, onDragStart, onDragEnd, isDragging, rottingDays = 14, onQuickAddTask }: DealCardProps) {
@@ -85,7 +121,8 @@ export function DealCard({ deal, onClick, onDragStart, onDragEnd, isDragging, ro
       : null
 
   const light = getTrafficLight(deal)
-  const rotting = isRotting(deal.stageChangedAt, rottingDays)
+  const daysStale = staleDays(deal.stageChangedAt)
+  const tier = staleTier(daysStale, rottingDays)
 
   const TRAFFIC_TITLES: Record<TrafficLight, string> = {
     green: t("trafficTaskScheduled"),
@@ -119,11 +156,17 @@ export function DealCard({ deal, onClick, onDragStart, onDragEnd, isDragging, ro
     >
       <div
         className={cn(
-          "rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-2.5 transition-all",
+          // Карточка должна выглядеть предметом, который можно взять и
+          // перетащить. До этого у неё была только светло-серая рамка и тень
+          // на наведении — в покое она сливалась с фоном колонки и читалась
+          // как строка списка, а не как карточка.
+          "rounded-xl border border-l-[3px] border-zinc-200/90 dark:border-zinc-700 bg-card p-3 transition-all",
+          "shadow-[0_1px_3px_rgba(16,24,40,0.10),0_1px_2px_rgba(16,24,40,0.06)]",
+          "dark:shadow-[0_1px_3px_rgba(0,0,0,0.45)]",
+          "hover:shadow-[0_8px_16px_-4px_rgba(16,24,40,0.14),0_3px_6px_-3px_rgba(16,24,40,0.08)]",
           onClick && "cursor-pointer",
           isDragging && "opacity-50 ring-2 ring-primary",
-          rotting && "bg-red-50/40 dark:bg-red-950/10 border-red-200/50 dark:border-red-800/30",
-          !rotting && "hover:shadow-sm",
+          STALE_EDGE[tier],
         )}
         onClick={onClick}
         draggable
@@ -146,7 +189,10 @@ export function DealCard({ deal, onClick, onDragStart, onDragEnd, isDragging, ro
 
         <div className="flex items-center justify-between mt-1.5 pl-4">
           <div className="flex items-center gap-1.5">
-            <span className="text-xs font-semibold text-primary">
+            {/* Сумма была оранжевой на каждой карточке — тем же цветом, что и
+                кнопка действия и полоса стадий: три разные вещи одним акцентом.
+                Деньги здесь — данные, а не действие. */}
+            <span className="text-xs font-semibold tabular-nums">
               {formatAmount(deal.valueAmount || 0, deal.currency)}
             </span>
             {deal.probability > 0 && (
@@ -169,14 +215,14 @@ export function DealCard({ deal, onClick, onDragStart, onDragEnd, isDragging, ro
 
         {/* D2 — MEDDPICC chips; the component hides itself while unscored */}
         {deal.meddpicc != null && (
-          <MeddpiccChips meddpicc={deal.meddpicc} hideWhenEmpty className="mt-1.5 flex flex-wrap" />
+          <MeddpiccChips meddpicc={deal.meddpicc} hideWhenEmpty compact className="mt-1.5 ml-4" />
         )}
 
         {/* Rotting indicator */}
-        {rotting && (
+        {tier !== "none" && daysStale !== null && (
           <div className="mt-1.5 pl-4">
-            <span className="text-[10px] text-red-500 dark:text-red-400 font-medium">
-              {t("daysStale", { days: Math.floor((Date.now() - new Date(deal.stageChangedAt!).getTime()) / 86400000) })}
+            <span className={cn("text-[10px]", STALE_TEXT[tier])}>
+              {t("daysStale", { days: daysStale })}
             </span>
           </div>
         )}
