@@ -186,7 +186,7 @@ describe("deal detail keeps its weight in the middle", () => {
     // ниже двух коротких блоков.
     const leftRail = detail.indexOf("[grid-area:left]")
     const mainColumn = detail.indexOf("[grid-area:main]")
-    const nextSteps = detail.indexOf('id="deal-next-steps"')
+    const nextSteps = detail.indexOf(`${"$"}{tc("nextSteps")} · `)
     expect(leftRail).toBeGreaterThan(0)
     expect(mainColumn).toBeGreaterThan(leftRail)
     expect(nextSteps).toBeGreaterThan(mainColumn)
@@ -197,10 +197,14 @@ describe("deal detail keeps its weight in the middle", () => {
     expect(detail).toMatch(/bare \? "space-y-2" :/)
   })
 
-  it("opens the tab the anchor now lives on", () => {
-    // Обе вкладки остаются смонтированными под `hidden`: scrollIntoView по
-    // скрытому элементу молча ничего не делает, и кнопка в шапке выглядит
-    // сломанной.
-    expect(detail).toContain('if (anchorId === "deal-next-steps") setRightTab("overview")')
+  it("has no second navigation row saying what the tabs already say", () => {
+    // Ряд якорей под заголовком дублировал вкладки: кнопка «Лента» брала ТОТ
+    // ЖЕ ключ перевода, что и вкладка «Лента», и делала ровно то же самое.
+    expect(detail).not.toContain("scrollToAnchor")
+    expect(detail).not.toContain('id="deal-feed"')
+    expect(detail).not.toContain('id="deal-scores"')
+    expect(detail).not.toContain("toolbarScores")
+    // Вкладка «Лента» остаётся — ключ живёт только у неё.
+    expect(detail).toContain('{ id: "feed" as const, label: t("toolbarFeed") }')
   })
 })
