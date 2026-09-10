@@ -2,7 +2,7 @@
 
 /**
  * Contacts (list) — help article (English).
- * Covers: /contacts/list — the contact-database list. Stat cards, the
+ * Covers: /contacts — the contact-database list. Stat cards, the
  * Engagement overview, search/filter/sort, in-line table editing,
  * single-click to open a record, the bulk-action bar, saved views,
  * CSV import and adding a contact. The contact-record tabs

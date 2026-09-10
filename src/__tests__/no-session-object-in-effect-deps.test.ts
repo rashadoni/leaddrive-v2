@@ -38,7 +38,7 @@ const GRANDFATHERED = new Set([
   "src/app/(dashboard)/companies/[id]/page.tsx",
   "src/app/(dashboard)/companies/page.tsx",
   "src/app/(dashboard)/contacts/[id]/page.tsx",
-  "src/app/(dashboard)/contacts/list/page.tsx",
+  "src/app/(dashboard)/contacts/page.tsx",
   "src/app/(dashboard)/contracts/[id]/page.tsx",
   "src/app/(dashboard)/contracts/page.tsx",
   "src/app/(dashboard)/deals/[id]/page.tsx",

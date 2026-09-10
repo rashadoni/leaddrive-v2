@@ -32,7 +32,7 @@ export default function ContactsHelpAz() {
         <p>
           Başlıq <strong>Seqment analitikası</strong>-dır. Sağ üstdə üç düymə var:{" "}
           <HelpKey>Kontakt siyahısı</HelpKey> sizi tam kontakt cədvəlinə (
-          <code className="bg-muted px-1 rounded">/contacts/list</code>) aparır,{" "}
+          <code className="bg-muted px-1 rounded">/contacts</code>) aparır,{" "}
           <HelpKey>Yenilə</HelpKey> say-göstəriciləri yenidən hesablayır,{" "}
           <HelpKey>CSV</HelpKey> isə kateqoriya / mənbə / brend bölgüsünü fayl kimi yükləyir.
           Aşağıda kartlar və diaqramlar gəlir.
@@ -185,7 +185,7 @@ export default function ContactsHelpAz() {
             ilə tam cədvələ keçin.
           </p>
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-            Səhifə kontakt siyahısına (<code className="bg-muted px-1 rounded">/contacts/list</code>)
+            Səhifə kontakt siyahısına (<code className="bg-muted px-1 rounded">/contacts</code>)
             keçir, orada hər kontaktı açıb redaktə edə bilərsiniz.
           </HelpCallout>
         </HelpStep>
