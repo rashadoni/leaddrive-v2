@@ -6,9 +6,8 @@ import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { useStageLabel } from "@/lib/status-labels"
 import { Button } from "@/components/ui/button"
-import { ColorStatCard } from "@/components/color-stat-card"
 import { KanbanBoard } from "@/components/deals/kanban-board"
-import { Handshake, Plus, TrendingUp, TrendingDown, BarChart3, Columns3, List, Sparkles, X, Loader2, Search, Pencil, Trash2, Calendar, CheckSquare, Square, MinusSquare, FileText } from "lucide-react"
+import { Handshake, Plus, BarChart3, Columns3, List, Sparkles, X, Loader2, Search, Pencil, Trash2, Calendar, CheckSquare, Square, MinusSquare, FileText } from "lucide-react"
 import { EntityBulkBar } from "@/components/entity-bulk-bar"
 import { UserPicker } from "@/components/user-picker"
 import { SavedViewBar, type SavedView } from "@/components/saved-view-bar"
@@ -27,6 +26,8 @@ import { MeddpiccChips } from "@/components/deals/meddpicc-chips"
 import { parseMeddpicc, summarizeMeddpicc } from "@/lib/meddpicc"
 import { toast } from "sonner"
 import { canonicalDealStage } from "@/lib/deal-stage-normalization"
+import { InfoHint } from "@/components/info-hint"
+import { bucketByCurrency, leadBucket, formatBucket, formatExtras, weightedForCurrency, currencyOf } from "@/lib/deal-money"
 
 interface Deal {
   id: string
@@ -70,7 +71,12 @@ export default function DealsPage() {
   const [aiError, setAiError] = useState<string | null>(null)
   const [pipelines, setPipelines] = useState<any[]>([])
   const [selectedPipelineId, setSelectedPipelineId] = useState<string>("")
-  const [pipelineSummary, setPipelineSummary] = useState<{ total: number; weighted: number; byStage: any[] } | null>(null)
+  const [pipelineSummary, setPipelineSummary] = useState<{
+    total: number
+    weighted: number
+    byStage: any[]
+    byCurrency?: { currency: string; count: number; value: number; weighted: number }[]
+  } | null>(null)
   // Roadmap #20 — saved-view integration. Declared AFTER selectedPipelineId
   // (architect P0 fix — the useState below was in the TDZ when this
   // useMemo factory referenced it; first render would crash with
@@ -360,13 +366,52 @@ export default function DealsPage() {
     fetchDeals()
   }
 
-  const totalValue = deals.reduce((s, d) => s + d.valueAmount, 0)
   // Карточки «Выиграно»/«Проиграно» над канбаном: по смыслу стадии, иначе
   // самая крупная сделка организации (CLOSED_WON) в сумму не попадает, а
   // конверсия во вкладке «Аналитика» считается от заниженного знаменателя.
   const wonDeals = deals.filter(d => canonicalDealStage(d.stage) === "WON")
-  const wonValue = wonDeals.reduce((s, d) => s + d.valueAmount, 0)
   const lostCount = deals.filter(d => canonicalDealStage(d.stage) === "LOST").length
+
+  // Деньги на этом экране группируются по валюте и НИКОГДА не складываются
+  // между валютами: доска с 12 000 USD и 8 000 AZN складывала их в одно
+  // число под знаком маната — числа, которого нет ни в одной валюте.
+  // Почему группируем, а не переводим по курсу — `src/lib/deal-money.ts`.
+  const openDeals = useMemo(
+    () => deals.filter(d => {
+      const canonical = canonicalDealStage(d.stage)
+      return canonical !== "WON" && canonical !== "LOST"
+    }),
+    [deals],
+  )
+  // Сервер считает сводку по ВСЕЙ воронке, а `deals` — это страница на 200
+  // записей. Поэтому ведущая цифра берётся из сводки, а клиентский расчёт
+  // остаётся запасным путём для ответа без `byCurrency` (старый кэш SW).
+  const pipelineBuckets = useMemo(
+    () => (pipelineSummary?.byCurrency?.length
+      ? pipelineSummary.byCurrency.map(b => ({ currency: b.currency, value: b.value, count: b.count }))
+      : bucketByCurrency(openDeals)),
+    [pipelineSummary, openDeals],
+  )
+  const { primary: pipelinePrimary, extras: pipelineExtras } = leadBucket(pipelineBuckets)
+  const pipelineExtrasLabel = formatExtras(pipelineExtras)
+  const singleCurrency = pipelineBuckets.length <= 1
+  const weightedValue = pipelineSummary?.byCurrency?.length
+    ? pipelineSummary.byCurrency.find(b => b.currency === pipelinePrimary.currency)?.weighted ?? 0
+    : weightedForCurrency(openDeals, pipelinePrimary.currency)
+  const { primary: wonPrimary, extras: wonExtras } = leadBucket(bucketByCurrency(wonDeals), pipelinePrimary.currency)
+  const wonExtrasLabel = formatExtras(wonExtras)
+  const openCount = pipelineBuckets.reduce((n, b) => n + b.count, 0)
+
+  // Вкладка «Аналитика» строит все свои графики из одного массива сделок.
+  // Отдать ей смесь валют — значит снова показать сумму, которой нет; поэтому
+  // она видит только главную валюту, а под KPI пишется, сколько сделок из-за
+  // этого не попало в расчёт.
+  const analyticsDeals = useMemo(
+    () => deals.filter(d => currencyOf(d) === pipelinePrimary.currency),
+    [deals, pipelinePrimary.currency],
+  )
+  const analyticsExcluded = deals.length - analyticsDeals.length
+  const analyticsLostCount = analyticsDeals.filter(d => canonicalDealStage(d.stage) === "LOST").length
 
   const stageNames = useMemo(() => {
     const names = [...new Set(deals.map(d => d.stage))]
@@ -374,6 +419,41 @@ export default function DealsPage() {
       ? STAGES.map((s: any) => s.key).filter((k: string) => names.includes(k))
       : names
   }, [deals, STAGES])
+
+  // Стадии перечислялись на экране трижды: чипы фильтра, полоса и подпись под
+  // ней. Осталось одно место — легенда под полосой, она же и фильтр. Открытые
+  // стадии берут сумму из серверной сводки (она считает всю воронку, а не
+  // страницу на 200 записей); закрытые — из загруженных сделок, ровно как
+  // считались карточки «Выиграно» и «Проиграно» до этой правки.
+  const legendStages = useMemo(() => {
+    const fromServer = new Map<string, { value: number; count: number }>(
+      (pipelineSummary?.byStage || []).map((s: any) => [s.name, { value: s.value, count: s.count }]),
+    )
+    return stageNames.map((name: string) => {
+      const server = fromServer.get(name)
+      const stageDeals = deals.filter(d => d.stage === name)
+      if (server) {
+        // Открытая стадия: сумма серверная, то есть по всей воронке — но она
+        // сложена по всем валютам, поэтому показываем её только когда валюта
+        // на доске одна.
+        return { name, count: server.count, value: server.value, currency: pipelinePrimary.currency, showMoney: singleCurrency }
+      }
+      // Закрытая стадия: сервер её не считает. Берём загруженные сделки и —
+      // это важно — её СОБСТВЕННУЮ валюту: выигранная сделка в долларах,
+      // подписанная манатом главной воронки, это ровно тот дефект, который
+      // здесь чинится.
+      const stageBuckets = bucketByCurrency(stageDeals)
+      const { primary } = leadBucket(stageBuckets, pipelinePrimary.currency)
+      return {
+        name,
+        count: stageDeals.length,
+        value: primary.value,
+        currency: primary.currency,
+        showMoney: stageBuckets.length <= 1,
+      }
+    })
+  }, [stageNames, deals, pipelineSummary, pipelinePrimary.currency, singleCurrency])
+  const legendTotalCount = legendStages.reduce((n, stage) => n + stage.count, 0)
 
   const getStageLabel = (stage: string) => {
     const s = STAGES.find((st: any) => st.key === stage)
@@ -403,9 +483,12 @@ export default function DealsPage() {
   return (
     <div className={"space-y-5"}>
 
-      {/* ── Header ── */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
+      {/* ── Заголовок, режим просмотра и действия — одной строкой ──
+           Раньше это были две полосы поверх ещё пяти: до первой сделки экран
+           показывал только органы управления. Заголовок держит строку слева,
+           переключатель режима идёт следом, действия прижаты вправо. */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             {t("title")}
             <TourReplayButton tourId="deals" />
@@ -415,10 +498,7 @@ export default function DealsPage() {
             {t("totalDeals", { count: deals.length })}
           </p>
         </div>
-      </div>
 
-      {/* ── Tabs + Controls ── */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
         {/* Segmented tab control */}
         <div className="flex border border-zinc-200 dark:border-zinc-700 rounded-lg p-1 bg-muted/30 w-fit">
           {tabs.map(({ mode, Icon, label, tourId }) => (
@@ -440,7 +520,7 @@ export default function DealsPage() {
         </div>
 
         {/* Right controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 ml-auto">
           {pipelines.length > 1 && (
             <select
               data-tour-id="deals-pipeline-select"
@@ -482,11 +562,148 @@ export default function DealsPage() {
 
       <DidYouKnow page="deals" className="mb-1" />
 
-      {/* ── Search + Stage filter (kanban/list only) ── */}
+      {/* ── Сводка воронки и строка поиска ──
+          До первой сделки экран показывал семь горизонтальных полос: заголовок,
+          вкладки, поиск, чипы стадий, кнопку ИИ, четыре карточки метрик, полосу
+          воронки и подпись под ней. Осталось две — карточка сводки (одна
+          главная цифра, три вспомогательных, полоса и легенда, она же фильтр по
+          стадиям) и строка поиска. Блок общий для доски и списка: фильтр по
+          стадиям нужен обоим режимам. */}
       {(tab === "kanban" || tab === "list") && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1 max-w-sm">
+        <>
+          <div data-tour-id="deals-summary" className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-4 sm:p-5">
+            <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
+              <div className="min-w-0">
+                <p className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {t("statPipelineValue")}
+                  <InfoHint text={t("hintPipelineValue")} size={12} />
+                </p>
+                <p className="mt-1 text-3xl sm:text-4xl font-semibold leading-none tracking-tight tabular-nums">
+                  {formatBucket(pipelinePrimary)}
+                </p>
+                {pipelineExtrasLabel && (
+                  <p className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground tabular-nums">
+                    {pipelineExtrasLabel}
+                    <InfoHint text={t("mixedCurrencyHint")} size={12} />
+                  </p>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-end gap-x-7 gap-y-3 sm:ml-auto">
+                <div>
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{t("weightedBar")}</p>
+                  <p className="mt-0.5 text-lg font-semibold leading-tight tabular-nums">
+                    {formatBucket({ currency: pipelinePrimary.currency, value: weightedValue, count: pipelinePrimary.count })}
+                  </p>
+                </div>
+                <div>
+                  <p className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    {t("statWon")}
+                    <InfoHint text={t("hintWonValue")} size={12} />
+                  </p>
+                  <p className="mt-0.5 flex items-center gap-1 text-lg font-semibold leading-tight tabular-nums text-emerald-600 dark:text-emerald-400">
+                    {formatBucket(wonPrimary)}
+                    {wonExtrasLabel && (
+                      <span className="text-xs font-normal text-muted-foreground" title={wonExtrasLabel}>
+                        {wonExtrasLabel}
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <div>
+                  <p className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    {t("statLost")}
+                    <InfoHint text={t("hintLostCount")} size={12} />
+                  </p>
+                  <p className="mt-0.5 text-lg font-semibold leading-tight tabular-nums text-red-600 dark:text-red-400">
+                    {lostCount}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {pipelineSummary && pipelineSummary.byStage.length > 0 && (
+              <div className="mt-4 flex h-2.5 gap-0.5 overflow-hidden rounded-full bg-muted">
+                  {pipelineSummary.byStage.map((s: any) => {
+                    // На доске с одной валютой полоса показывает доли по
+                    // деньгам. Если валют несколько, складывать их нельзя —
+                    // тогда доли считаются по числу сделок, и легенда рядом
+                    // перестаёт называть суммы.
+                    const pct = singleCurrency
+                      ? (pipelineSummary.total > 0 ? (s.value / pipelineSummary.total) * 100 : 0)
+                      : (openCount > 0 ? (s.count / openCount) * 100 : 0)
+                    const stageInfo = STAGES.find((st: any) => st.key === s.name)
+                    const money = formatBucket({ currency: pipelinePrimary.currency, value: s.value, count: s.count })
+                    const weighted = formatBucket({ currency: pipelinePrimary.currency, value: s.weighted, count: s.count })
+                    return (
+                      <div
+                        key={s.name}
+                        className="h-full rounded-sm transition-all"
+                        style={{
+                          width: `${Math.max(pct, 2)}%`,
+                          backgroundColor: stageInfo?.color || STAGE_COLORS.LEAD,
+                        }}
+                        title={singleCurrency
+                          ? `${stageInfo?.label || s.name}: ${money} (${t("weightedTooltip")} ${weighted})`
+                          : `${stageInfo?.label || s.name}: ${s.count}`}
+                      />
+                    )
+                })}
+              </div>
+            )}
+
+            {/* Легенда полосы — она же единственный фильтр по стадиям.
+                Рисуется отдельно от полосы: полоса живёт из серверной сводки
+                по ОТКРЫТЫМ сделкам, и когда открытых нет (всё закрыто, либо
+                так отработало правило видимости), фильтр вместе с полосой
+                исчезал с экрана — а сброс фильтра, восстановленного из
+                сохранённого представления, нажать было бы нечем. */}
+            {legendStages.length > 0 && (
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+                <button
+                  type="button"
+                  onClick={() => setStageFilter("all")}
+                  className={cn(
+                    "rounded-full px-2.5 py-1 text-xs transition-colors",
+                    stageFilter === "all"
+                      ? "bg-foreground text-background font-medium"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {tc("all")} <span className="tabular-nums">{legendTotalCount}</span>
+                </button>
+                {legendStages.map((stage) => {
+                  const stageInfo = STAGES.find((st: any) => st.key === stage.name)
+                  const active = stageFilter === stage.name
+                  return (
+                    <button
+                      key={stage.name}
+                      type="button"
+                      onClick={() => setStageFilter(active ? "all" : stage.name)}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition-colors",
+                        active ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: stageInfo?.color || STAGE_COLORS.LEAD }} />
+                      <span className="truncate">{stageInfo?.label || stage.name}</span>
+                      {stage.showMoney && stage.value > 0 && (
+                        <span className="font-semibold text-foreground tabular-nums">
+                          {formatBucket({ currency: stage.currency, value: stage.value, count: stage.count })}
+                        </span>
+                      )}
+                      <span className="tabular-nums">· {stage.count}</span>
+                    </button>
+                  )
+              })}
+            </div>
+            )}
+          </div>
+
+          {/* Поиск, фильтр по предложениям и счётчик — одна строка. Полоса
+              чипов стадий, которая стояла под ней, уехала в легенду сводки. */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative w-[260px] max-w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
                 type="text"
@@ -512,42 +729,14 @@ export default function DealsPage() {
               </span>
             )}
           </div>
-
-          {/* Stage filter pills */}
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setStageFilter("all")}
-              className={cn(
-                "rounded-full border border-zinc-200 dark:border-zinc-700 text-sm px-3 py-1 transition-all",
-                stageFilter === "all"
-                  ? "bg-foreground text-background border-foreground"
-                  : "border-zinc-200 dark:border-zinc-700 text-muted-foreground hover:border-foreground/40 hover:text-foreground"
-              )}
-            >
-              {tc("all")} ({deals.length})
-            </button>
-            {stageNames.map((stage: string) => {
-              const count = deals.filter(d => d.stage === stage).length
-              return (
-                <button
-                  key={stage}
-                  onClick={() => setStageFilter(stageFilter === stage ? "all" : stage)}
-                  className={cn(
-                    "rounded-full border border-zinc-200 dark:border-zinc-700 text-sm px-3 py-1 transition-all",
-                    stageFilter === stage
-                      ? "bg-foreground text-background border-foreground"
-                      : "border-zinc-200 dark:border-zinc-700 text-muted-foreground hover:border-foreground/40 hover:text-foreground"
-                  )}
-                >
-                  {getStageLabel(stage)} ({count})
-                </button>
-              )
-            })}
-          </div>
-        </div>
+        </>
       )}
 
-      {/* ── Da Vinci AI button ── */}
+      {/* ── Da Vinci AI button ──
+           Только на вкладке «Аналитика»: на канбане фиолетовая кнопка была
+           третьим конкурирующим акцентом рядом с оранжевой «Новая сделка» и
+           цветной полосой стадий, а звала она именно в аналитику. */}
+      {tab === "analytics" && (
       <div className="flex flex-wrap gap-2">
         <Button
           size="sm"
@@ -565,9 +754,10 @@ export default function DealsPage() {
           Da Vinci {tc("analytics").toLowerCase()}
         </Button>
       </div>
+      )}
 
       {/* ── Da Vinci AI result card ── */}
-      {aiOpen && (
+      {aiOpen && tab === "analytics" && (
         <div className="rounded-xl border border-[hsl(var(--ai-from))]/20 bg-card p-5">
           <div className="flex justify-between items-center mb-3">
             <div className="flex items-center gap-2">
@@ -599,7 +789,7 @@ export default function DealsPage() {
       {/* ── Content ── */}
       {tab === "analytics" ? (
         <DealsAnalytics
-          deals={deals.map(d => ({
+          deals={analyticsDeals.map(d => ({
             id: d.id,
             title: d.name,
             value: d.valueAmount,
@@ -609,10 +799,12 @@ export default function DealsPage() {
             expectedCloseDate: d.expectedClose || undefined,
             createdAt: d.createdAt,
           }))}
-          pipelineValue={totalValue}
-          wonValue={wonValue}
-          lostCount={lostCount}
-          wonCount={wonDeals.length}
+          pipelineValue={pipelinePrimary.value}
+          wonValue={wonPrimary.value}
+          lostCount={analyticsLostCount}
+          wonCount={wonPrimary.count}
+          currency={pipelinePrimary.currency}
+          excludedNote={analyticsExcluded > 0 ? t("mixedCurrencyHint") : null}
         />
       ) : tab === "list" ? (
         /* ── LIST VIEW ── */
@@ -960,59 +1152,6 @@ export default function DealsPage() {
       ) : (
         /* ── KANBAN VIEW ── */
         <>
-          <div data-tour-id="deals-summary" className="grid grid-cols-2 sm:grid-cols-4 gap-3 stagger-children">
-            <ColorStatCard label={t("statTotal")} value={filteredDeals.length} icon={<Handshake className="h-4 w-4" />} hint={t("hintTotalDeals")} />
-            <ColorStatCard label={t("statPipelineValue")} value={`${totalValue.toLocaleString()} ₼`} icon={<TrendingUp className="h-4 w-4" />} hint={t("hintPipelineValue")} />
-            <ColorStatCard label={t("statWon")} value={`${wonValue.toLocaleString()} ₼`} icon={<TrendingUp className="h-4 w-4" />} hint={t("hintWonValue")} />
-            <ColorStatCard label={t("statLost")} value={lostCount} icon={<TrendingDown className="h-4 w-4" />} hint={t("hintLostCount")} />
-          </div>
-
-          {/* Weighted Pipeline Bar */}
-          {pipelineSummary && pipelineSummary.total > 0 && (
-            <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-3">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-4">
-                  <div>
-                    <span className="text-xs text-muted-foreground">{t("pipelineBar")}</span>
-                    <p className="text-sm font-bold">{pipelineSummary.total.toLocaleString()} ₼</p>
-                  </div>
-                  <div>
-                    <span className="text-xs text-muted-foreground">{t("weightedBar")}</span>
-                    <p className="text-sm font-bold text-primary">{pipelineSummary.weighted.toLocaleString()} ₼</p>
-                  </div>
-                </div>
-              </div>
-              <div className="flex h-3 rounded-full overflow-hidden bg-muted gap-0.5">
-                {pipelineSummary.byStage.map((s: any) => {
-                  const pct = pipelineSummary.total > 0 ? (s.value / pipelineSummary.total) * 100 : 0
-                  const stageInfo = STAGES.find((st: any) => st.key === s.name)
-                  return (
-                    <div
-                      key={s.name}
-                      className="h-full rounded-sm transition-all"
-                      style={{
-                        width: `${Math.max(pct, 2)}%`,
-                        backgroundColor: stageInfo?.color || STAGE_COLORS.LEAD,
-                      }}
-                      title={`${stageInfo?.label || s.name}: ${s.value.toLocaleString()} ₼ (${t("weightedTooltip")} ${s.weighted.toLocaleString()} ₼)`}
-                    />
-                  )
-                })}
-              </div>
-              <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5">
-                {pipelineSummary.byStage.map((s: any) => {
-                  const stageInfo = STAGES.find((st: any) => st.key === s.name)
-                  return (
-                    <div key={s.name} className="flex items-center gap-1">
-                      <div className="h-2 w-2 rounded-sm" style={{ backgroundColor: stageInfo?.color || STAGE_COLORS.LEAD }} />
-                      <span className="text-[9px] text-muted-foreground">{stageInfo?.label || s.name} ({s.count})</span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
           {moveError && (
             <div className="mb-3 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800/30 px-4 py-2.5 text-sm text-red-700 dark:text-red-400">
               <span className="flex-1">{moveError}</span>
