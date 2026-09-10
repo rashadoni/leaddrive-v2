@@ -17,8 +17,17 @@ describe("deal quick actions", () => {
     expect(dealPageSource).not.toContain("onTaskAdded=")
   })
 
-  it("uses note-specific copy in the remaining quick action", () => {
-    expect(quickActionSource).toContain("labels.notePlaceholder")
-    expect(dealPageSource).toContain('notePlaceholder: tc("addDealNote")')
+  it("has nothing left to duplicate: the bar only sends email", () => {
+    /*
+     * Прежняя редакция этого теста сторожила «заметочную» копирайтинг-пару
+     * `labels.notePlaceholder` / `addDealNote`. Вкладки «Заметка» больше нет:
+     * она слала тот же `POST /api/v1/activities`, что и форма в ленте, только
+     * без описания. Осталось одно действие, и проверять надо его.
+     */
+    expect(quickActionSource).not.toContain("labels.notePlaceholder")
+    expect(quickActionSource).not.toContain("labels.note")
+    expect(dealPageSource).not.toContain("addDealNote")
+    expect(quickActionSource).toContain("labels.email")
+    expect(quickActionSource).toContain("/send-email")
   })
 })
