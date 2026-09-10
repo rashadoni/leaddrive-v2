@@ -838,10 +838,10 @@ export default function MtmRoutesPage() {
         open={builderOpen}
         onOpenChange={(open) => { if (!open) closeRouteBuilder() }}
         widthClassName="max-w-6xl"
-        maxHeightClassName="max-h-dvh md:max-h-[min(52rem,calc(100dvh-2rem))]"
+        maxHeightClassName="max-h-dvh min-[900px]:max-h-[min(52rem,calc(100dvh-2rem))]"
         hideClose
         mobileFullscreen
-        mobileFullscreenBreakpoint="md"
+        mobileFullscreenBreakpoint="tablet"
       >
         <DialogTitle className="sr-only">{editData ? t("builderEditTitle") : t("builderNewTitle")}</DialogTitle>
         <div data-testid="mtm-route-builder-dialog" className="min-h-0 overflow-hidden">
