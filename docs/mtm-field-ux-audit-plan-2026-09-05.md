@@ -301,7 +301,8 @@ https://claude.ai/code/artifact/24018303-754d-41bc-aeb4-3af0ea5b0bf1
 ### Эпик C — Веб `/mtm/*` · закрыто 9 из 16
 
 - [ ] **C1** Имя клиента из текстов продукта — P0 · [leaddrive-v2 #1086](https://github.com/rashadrahimov/leaddrive-v2/pull/1086) · S-sprint1 · сверено с кодом 2026-09-06
-  - **хвост:** Вне приёмочной строки C1: комментарии в src/lib/social/* (condolence-post-signal.ts, monitoring-profiles.ts, apify-async-adapter.ts, automatic-review-triage.ts, monitoring-subjects.ts) и…
+  - Хвост снят: комментарии в `src/lib/social/*` имени клиента больше не несут — проверено 2026-09-10, гейт `product-copy-client-names` покрывает `src/lib` целиком и зелёный.
+  - Хвост закрыт: `SWM_PLAN_GPS_V1` уходил на экран аналитики бейджем «Formula SWM_PLAN_GPS_V1» (W-11). Две беды сразу: идентификатор там, где место названию, и приставка из инициалов клиента — то самое, ради чего C1 и заведена. Бейдж теперь называет расчёт словами на трёх языках, код переехал в подсказку, рядом с бейджем политики, который так работает с T14. Саму константу не переименовывал: по ней сравнивает API, и её несут уже записанные строки аудита — переименование переписало бы историю, до которой не дотянуться.
   - **хвост:** Подтверждение тестов только локальное: в теле PR #1086 указано, что CI был заблокирован биллингом GitHub; отдельного зелёного прогона pr-checks по этому PR нет.
   - **хвост:** scripts/ (swissmed-mtm-browser-evidence.mjs, seeds/zeytunpharm-swissmed-evidence.mjs) и .github/workflows/swissmed-mtm-browser-evidence.yml имя клиента сохраняют — это QA-инфраструктура вне…
 - [x] **C2** Даты только через хелпер — P0 · [leaddrive-v2 #1087](https://github.com/rashadrahimov/leaddrive-v2/pull/1087) · S-sprint1 · сверено с кодом 2026-09-06 · S-plan · хвосты сняты 2026-09-08
