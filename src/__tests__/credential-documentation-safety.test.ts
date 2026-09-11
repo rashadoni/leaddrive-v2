@@ -62,6 +62,11 @@ describe("credential-bearing operator documentation", () => {
       "cost_model_migration_data",
       "public/data/company_details.json",
       "public/data/pricing_data.json",
+      // 2026-09-11: юрлица клиентов переехали в runtime-каталог прода, а
+      // таблица «код → имя» не читалась ничем — обе удалены из дерева и
+      // вычищены из истории публичного репозитория.
+      "public/data/company_legal_names.json",
+      "public/data/pricing_crm_mapping.json",
     ]
     for (const rel of gone) {
       expect(existsSync(join(process.cwd(), rel)), `${rel} снова в репозитории`).toBe(false)
