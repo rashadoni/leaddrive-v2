@@ -56,7 +56,15 @@ const typecheck = jobBlock(prChecks, "typecheck")
  */
 describe("pr-checks static-checks is redundant on a main push", () => {
   it("runs for ready pull requests and is triggered when a draft becomes ready", () => {
-    expect(jobIf(staticChecks)).toBe("${{ github.event_name == 'pull_request' && github.event.pull_request.draft == false }}")
+    // С 2026-09-11 к условию добавлен `pr-scope`: static-checks стал
+    // обязательной проверкой main, поэтому workflow стартует на каждом PR, а
+    // для PR только с документацией джоба пропускается через детектор.
+    // Пропуск засчитывается как успех — поэтому сам детектор тоже обязателен
+    // (см. scripts/ci/configure-main-protection.sh).
+    expect(jobIf(staticChecks)).toBe(
+      "${{ github.event_name == 'pull_request' && github.event.pull_request.draft == false && needs.pr-scope.outputs.code == 'true' }}",
+    )
+    expect(staticChecks).toMatch(/^ {4}needs: pr-scope$/m)
     expect(prChecks).toMatch(/types:\s*\[[^\]]*ready_for_review[^\]]*\]/)
   })
 
