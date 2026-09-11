@@ -6,6 +6,7 @@ import { runWithTenant } from "@/lib/rls-context"
 import { whatsappChannelCredentialsError } from "@/lib/channels/whatsapp-config-validation"
 import { isTikTokChatwootChannelConfig, syncTikTokDmConnectionForChannelConfig, tiktokChannelConfigSettings } from "@/lib/channels/platform-connections"
 import { publicChannelConfig } from "@/lib/channels/public-channel-config"
+import { channelIdsClaimedElsewhere } from "@/lib/channels/inbound-claim"
 import { emailIntakeSettingsError } from "@/lib/ticketing/email-intake"
 import { validateChatwootBaseUrl } from "@/lib/chatwoot"
 
@@ -65,9 +66,10 @@ export async function GET(
         where: { id, organizationId: orgId },
       })
       if (!channel) return NextResponse.json({ error: "Not found" }, { status: 404 })
+      const claimedElsewhere = await channelIdsClaimedElsewhere(orgId, [channel])
       return NextResponse.json({
         success: true,
-        data: publicChannelConfig(channel),
+        data: { ...publicChannelConfig(channel), claimedElsewhere: claimedElsewhere.has(channel.id) },
       })
     } catch {
       return NextResponse.json({ error: "Not found" }, { status: 404 })
@@ -165,9 +167,10 @@ export async function PUT(
           console.error("[channels PUT] TikTok ChannelConnection sync failed", error)
         })
       }
+      const claimedElsewhere = updated ? await channelIdsClaimedElsewhere(orgId, [updated]) : new Set<string>()
       return NextResponse.json({
         success: true,
-        data: updated ? publicChannelConfig(updated) : null,
+        data: updated ? { ...publicChannelConfig(updated), claimedElsewhere: claimedElsewhere.has(updated.id) } : null,
       })
     } catch (e) {
       console.error(e)

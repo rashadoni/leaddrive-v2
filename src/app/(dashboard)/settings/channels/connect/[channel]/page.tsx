@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { Suspense, useEffect, useMemo, useState } from "react"
-import { useLocale } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { useSession } from "next-auth/react"
 import {
   ArrowLeft,
@@ -99,6 +99,8 @@ interface ChannelConfigSummary {
   hasBusinessAccountId?: boolean
   hasVerifyToken?: boolean
   hasAppSecret?: boolean
+  /** Another workspace's claim on this pageId wins inbound routing (computed by the channels API). */
+  claimedElsewhere?: boolean
 }
 
 type ChannelFetchError = "moduleDisabled" | "requestFailed"
@@ -2515,6 +2517,7 @@ function ChannelConnectInner() {
   const searchParams = useSearchParams()
   const { data: session } = useSession()
   const loc = localeKey(useLocale())
+  const ts = useTranslations("settings")
   const c = loc === "ru" ? copy.ru : loc === "az" ? copy.az : copy.en
   const guide = useMemo(() => getGuide(String(params.channel || ""), loc), [params.channel, loc])
   const initialMode = searchParams.get("mode") === "existing" ? "existing" : "new"
@@ -2721,10 +2724,12 @@ function ChannelConnectInner() {
         // A stored, wired Page that is switched off or unsubscribed IS connected — it just does not
         // deliver. Calling that "still not connected" would send the user back through an OAuth that
         // has nothing left to fix.
-        : oauthWiredForThisChannel
-          && (oauthBannerRowState === "paused" || oauthBannerRowState === "needsReconnect")
-          ? c.oauthNotDeliveringTitle
-          : c.oauthPartialTitle
+        : oauthWiredForThisChannel && oauthBannerRowState === "claimedElsewhere"
+          ? ts("channelClaimedElsewhere.title")
+          : oauthWiredForThisChannel
+            && (oauthBannerRowState === "paused" || oauthBannerRowState === "needsReconnect")
+            ? c.oauthNotDeliveringTitle
+            : c.oauthPartialTitle
   const oauthBannerDesc =
     oauthBannerTone === "pending"
       ? (channelsError ? c.oauthUnverifiedDesc : c.oauthCheckingDesc)
@@ -2736,11 +2741,14 @@ function ChannelConnectInner() {
           ? (guide?.formChannelId === "instagram"
               ? c.oauthNoInstagramDesc.replace("{pages}", String(oauthPageCount))
               : c.oauthNoPageDesc)
-          // Word-for-word the sentence the form prints for this state (lib/channels/connection-reason),
-          // so the two elements cannot drift into describing one row two ways.
-          : oauthBannerRowState && oauthBannerRowState !== "live"
-            ? metaConnectionReason(loc, oauthBannerRowState)
-            : c.oauthNoChannelRowDesc
+          // Word-for-word the sentence the form prints for this state (lib/channels/connection-reason,
+          // or the messages key for claimedElsewhere), so the two elements cannot drift into describing
+          // one row two ways. The tenant learns that another workspace won the routing, never which one.
+          : oauthBannerRowState === "claimedElsewhere"
+            ? ts("channelClaimedElsewhere.reason")
+            : oauthBannerRowState && oauthBannerRowState !== "live"
+              ? metaConnectionReason(loc, oauthBannerRowState)
+              : c.oauthNoChannelRowDesc
 
   if (!guide) {
     return (

@@ -93,6 +93,21 @@ const rows: Row[] = [
     state: "needsReconnect",
   },
   {
+    name: "another workspace's older claim wins the webhook's routing — wired, on, subscribed, and receives nothing",
+    channel: { ...liveMetaRow, channelType: "instagram", claimedElsewhere: true },
+    state: "claimedElsewhere",
+  },
+  {
+    name: "the API checked and found no winning claim elsewhere",
+    channel: { ...liveMetaRow, claimedElsewhere: false },
+    state: "live",
+  },
+  {
+    name: "claimedElsewhere is a Meta routing fact — a non-Meta row is never demoted by it",
+    channel: { channelType: "telegram", isActive: true, claimedElsewhere: true },
+    state: "live",
+  },
+  {
     name: "channel type casing does not smuggle a Meta row past the check",
     channel: { ...liveMetaRow, channelType: "Facebook", hasAccessToken: false },
     state: "draft",
@@ -172,6 +187,16 @@ describe("channelConnectionState", () => {
       isActive: false,
       settings: { inboxSubscribed: false },
     })).toBe("paused")
+    // Claimed elsewhere AND unsubscribed: re-running OAuth cannot bring the DMs here while another
+    // workspace's claim wins, so the claim is what the user hears about — and it sends them to support.
+    expect(channelConnectionState({
+      ...liveMetaRow,
+      claimedElsewhere: true,
+      settings: { inboxSubscribed: false },
+    })).toBe("claimedElsewhere")
+    // An unwired or switched-off row still gets the fix it can act on first.
+    expect(channelConnectionState({ ...liveMetaRow, hasAccessToken: false, claimedElsewhere: true })).toBe("draft")
+    expect(channelConnectionState({ ...liveMetaRow, isActive: false, claimedElsewhere: true })).toBe("paused")
   })
 })
 

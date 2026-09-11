@@ -38,6 +38,8 @@ interface ChannelInitialData extends Partial<ChannelConfigFormData> {
   hasPhoneNumberId?: boolean
   hasBusinessAccountId?: boolean
   hasVerifyToken?: boolean
+  /** Another workspace's claim on this pageId wins inbound routing (computed by the channels API). */
+  claimedElsewhere?: boolean
   hasAppSecret?: boolean
   hasWebhookSecret?: boolean
 }
@@ -817,6 +819,7 @@ export function ChannelConfigForm({
 }: ChannelConfigFormProps) {
   const tf = useTranslations("forms")
   const tc = useTranslations("common")
+  const ts = useTranslations("settings")
   const locale = (useLocale() as Loc) || "en"
   const c = localCopy[locale] ?? localCopy.en
   const whatsappCallbackUrl = whatsappWebhookUrl(orgSlug)
@@ -861,6 +864,9 @@ export function ChannelConfigForm({
   const [smsTestNumber, setSmsTestNumber] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  // The save succeeded, but the webhook will deliver this account's DMs to another workspace. Held on
+  // screen until acknowledged: navigating straight to the catalog is how the warning got missed before.
+  const [savedClaimedElsewhere, setSavedClaimedElsewhere] = useState(false)
   const [activeSetupStepIndex, setActiveSetupStepIndex] = useState(0)
   // Is one-click OAuth actually connectable for this tenant? Same gate the Social Monitoring connect
   // tiles use: an unconfigured provider answers the start route with a JSON 500, which in a browser
@@ -923,6 +929,7 @@ export function ChannelConfigForm({
       setSmsTestResult(null)
       setSmsTestNumber("")
       setError("")
+      setSavedClaimedElsewhere(false)
       setActiveSetupStepIndex(0)
     }
   }, [open, initialData])
@@ -992,6 +999,10 @@ export function ChannelConfigForm({
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || tc("failedToSave"))
+      if (json?.data?.claimedElsewhere === true) {
+        setSavedClaimedElsewhere(true)
+        return
+      }
       onSaved()
       onOpenChange(false)
     } catch (err: unknown) {
@@ -1050,20 +1061,23 @@ export function ChannelConfigForm({
     isActive: initialData?.isActive,
     hasAccessToken: initialData?.hasAccessToken,
     settings: initialData?.settings,
+    claimedElsewhere: initialData?.claimedElsewhere,
   })
   const metaConnectionLive = isMetaChannel && isEdit && metaConnectionState === "live"
   // Each non-live state has a different fix, and the user cannot guess which one applies: an
-  // unfinished OAuth, a channel someone switched off, and a subscription Meta refused all look
-  // identical from the outside.
+  // unfinished OAuth, a channel someone switched off, a subscription Meta refused, and an account another
+  // workspace connected first all look identical from the outside.
   const metaConnectionMessage = metaConnectionLive
     ? c.metaStateConnected.replace("{page}", initialData?.pageId || "")
     : !isEdit
       ? c.metaStateNew
       : metaConnectionState === "paused"
         ? c.metaStatePaused
-        : metaConnectionState === "needsReconnect"
-          ? c.metaStateReconnect
-          : c.metaStateDraft
+        : metaConnectionState === "claimedElsewhere"
+          ? ts("channelClaimedElsewhere.reason")
+          : metaConnectionState === "needsReconnect"
+            ? c.metaStateReconnect
+            : c.metaStateDraft
   const hasStoredChatwootWebhookSecret = form.channelType === "chatwoot" && isEdit && initialData?.hasWebhookSecret
   const credentialStateHint = (isStored?: boolean) => (isStored ? c.storedCredentialHint : c.missingCredentialHint)
   const moveToSetupStep = (index: number) => {
@@ -2264,12 +2278,38 @@ export function ChannelConfigForm({
             </label>
           </div>
         </DialogContent>
+        {savedClaimedElsewhere && (
+          <div
+            role="alert"
+            data-testid="channel-claimed-elsewhere-warning"
+            className="mx-5 mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800"
+          >
+            <p className="font-medium">{ts("channelClaimedElsewhere.savedTitle")}</p>
+            <p className="mt-1 text-xs leading-5 text-amber-700">{ts("channelClaimedElsewhere.hint")}</p>
+          </div>
+        )}
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{tc("cancel")}</Button>
-          <Button id="channelSubmitButton" type="submit" disabled={saving} className="gap-1.5">
-            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-            {saving ? tc("saving") : isEdit ? tc("save") : tc("create")}
-          </Button>
+          {savedClaimedElsewhere ? (
+            // The row is already saved: a second submit here would create a duplicate, so the only way
+            // forward is to acknowledge.
+            <Button
+              type="button"
+              onClick={() => {
+                onSaved()
+                onOpenChange(false)
+              }}
+            >
+              {ts("channelClaimedElsewhere.acknowledge")}
+            </Button>
+          ) : (
+            <>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{tc("cancel")}</Button>
+              <Button id="channelSubmitButton" type="submit" disabled={saving} className="gap-1.5">
+                {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+                {saving ? tc("saving") : isEdit ? tc("save") : tc("create")}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </form>
     </>

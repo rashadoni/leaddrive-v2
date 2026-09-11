@@ -4298,6 +4298,15 @@
     "rolesDesc": "İstifadəçi rolları və girişi idarə edin",
     "channels": "Kanallar",
     "channelsDesc": "Rabitə kanallarını konfiqurasiya edin",
+    "channelClaimedElsewhere": {
+      "badge": "Mesajlar başqa yerə gedir",
+      "status": "Mesajlar başqa iş sahəsinə gedir",
+      "hint": "Bu hesabı daha əvvəl başqa bir LeadDrive iş sahəsi qoşub, hesabın gələn mesajları isə onu ilk qoşan iş sahəsinə gedir — bura gəlməyəcək. Yenidən qoşulmaq bunu dəyişməyəcək. Hesabın bu iş sahəsinə köçürülməsi üçün LeadDrive dəstəyinə yazın.",
+      "reason": "Qoşulub, amma gələn mesajlar başqa iş sahəsinə gedir. Bu hesabı daha əvvəl başqa bir LeadDrive iş sahəsi qoşub, mesajlar isə onu ilk qoşan iş sahəsinə gedir. Yenidən qoşulmaq bunu dəyişməyəcək — hesabın bura köçürülməsi üçün LeadDrive dəstəyinə yazın.",
+      "title": "Qoşulub, amma mesajlar başqa iş sahəsinə gedir",
+      "savedTitle": "Saxlanıldı, amma mesajlar başqa iş sahəsinə gedəcək",
+      "acknowledge": "Aydındır"
+    },
     "aiRoutingTitle": "Kanallar üzrə AI cavablar",
     "aiRoutingDesc": "Gələn mesajlara kim cavab versin: AI yoxsa agent. WhatsApp siz Agent seçənə qədər standart olaraq AI istifadə edir.",
     "aiRoutingComingSoon": "tezliklə",

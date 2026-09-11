@@ -7,6 +7,7 @@ import { isIgLogin } from "@/lib/social/tenant-meta-app"
 import { runWithTenant, runWithRlsBypass } from "@/lib/rls-context"
 import { createHmac, timingSafeEqual } from "crypto"
 import type { ChannelConfig } from "@prisma/client"
+import { rankInboundChannels, reportInboundAmbiguity } from "@/lib/social/inbound-channel-ranking"
 import {
   handleInstagramInboundAudio,
   parseInstagramAttachment,
@@ -129,11 +130,14 @@ export async function POST(req: NextRequest) {
     for (const entry of body.entry || []) {
       // IG-Login webhook: entry.id is the IG business account id; messaging[].recipient.id matches it.
       // Resolve the per-tenant Instagram-Login ChannelConfig by pageId (= the IG user id stored at
-      // connect). Prefer the igLogin row if both an IG-Login and a legacy FB-Login row exist.
+      // connect). Prefer the igLogin row if both an IG-Login and a legacy FB-Login row exist; between
+      // claimants of the same surface the OLDEST claim wins — the same total order as webhooks/facebook
+      // (lib/social/inbound-channel-ranking.ts), so a later tenant cannot capture the DMs by pasting the
+      // public account id, and the settings screen can tell a losing tenant so.
       const igAccountId = entry.id
       const recipientId = (entry.messaging || [])[0]?.recipient?.id
       // RLS: this lookup IS the org resolution (IG account id is an external identifier) → bypass scope.
-      const candidates = await runWithRlsBypass(() =>
+      const candidates: ChannelConfig[] = await runWithRlsBypass(() =>
         prisma.channelConfig.findMany({
           where: {
             ...orgScope,
@@ -141,13 +145,12 @@ export async function POST(req: NextRequest) {
             isActive: true,
             pageId: { in: [igAccountId, recipientId].filter(Boolean) as string[] },
           },
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
         })
       )
-      const channel =
-        candidates.find((c: ChannelConfig) => {
-          const s = c.settings as Record<string, unknown> | null
-          return s && typeof s === "object" && (s as { igLogin?: boolean }).igLogin === true
-        }) || candidates[0]
+      const ranked = rankInboundChannels(Array.isArray(candidates) ? candidates : [], "instagram", "instagramLogin")
+      reportInboundAmbiguity("[IG Webhook]", String(igAccountId), "instagram", ranked, "instagramLogin")
+      const channel = ranked[0]
       if (!channel) {
         console.warn(`[IG Webhook] unresolved IG entry — entry.id=${igAccountId} recipient=${recipientId ?? "?"}`)
         continue

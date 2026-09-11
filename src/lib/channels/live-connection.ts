@@ -27,6 +27,13 @@
  * inbound messages for the same reason a switched-off Page row does. A `paused` badge on it is not a
  * new rule, it is the rule the transport already enforces.
  *
+ * A fourth fact comes from OUTSIDE the row, and is Meta-specific: `claimedElsewhere`. A pageId is public and
+ * several organizations can hold an active row for it; the webhooks route a contested id to the OLDEST claim
+ * (lib/social/inbound-channel-ranking.ts). A row that loses that ranking to another workspace is wired, on,
+ * subscribed — and receives nothing. The server computes the boolean with the webhooks' own order
+ * (lib/channels/inbound-claim.ts) and ships only the boolean; this module reads it. Absent means "not
+ * checked", which keeps the historical meaning, same as the `inboxSubscribed` rule above.
+ *
  * KNOWN LIMITATION 1 (deliberately out of scope, tracked separately): a page access token that Meta or
  * the page owner revoked still reads as live here. Unlike WhatsApp, the FB/IG rows carry no
  * `lastValidatedAt` and there is no validation endpoint wired for them, so nothing in the product can
@@ -58,15 +65,19 @@ export type ChannelConnectionInput = {
   /** `publicChannelConfig` never ships the raw token — it ships this boolean instead. */
   hasAccessToken?: boolean | null
   settings?: unknown
+  /** Set by the channels API: another workspace's claim on this pageId wins inbound routing. */
+  claimedElsewhere?: boolean | null
 }
 
 /**
  * `live`          — the row can actually receive and send.
  * `draft`         — saved, but Meta never returned a Page: no pageId and/or no page token.
  * `paused`        — wired, but `isActive` is off, so the inbound resolver cannot see it.
+ * `claimedElsewhere` — wired and active, but another workspace claimed this pageId first, so the webhook
+ *                     delivers its DMs there. Only support can resolve it (the tenant cannot see who).
  * `needsReconnect`— wired and active, but the Meta webhook subscribe explicitly failed.
  */
-export type ChannelConnectionState = "live" | "draft" | "paused" | "needsReconnect"
+export type ChannelConnectionState = "live" | "draft" | "paused" | "claimedElsewhere" | "needsReconnect"
 
 /**
  * `settings.inboxSubscribed` as a tri-state: `true` / `false` / `undefined` (flag absent).
@@ -90,6 +101,8 @@ export function channelConnectionState(channel: ChannelConnectionInput): Channel
   // Deliberately below the wiring check: a row that is both unwired and switched off is a draft, and
   // sending that user to a toggle would send them to a screen that cannot help them.
   if (channel.isActive === false) return "paused"
+  // Above needsReconnect: re-running OAuth cannot help while another workspace's claim wins the routing.
+  if (channel.claimedElsewhere === true) return "claimedElsewhere"
   if (metaInboxSubscribedFlag(channel.settings) === false) return "needsReconnect"
   return "live"
 }
