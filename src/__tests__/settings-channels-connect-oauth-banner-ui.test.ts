@@ -97,6 +97,7 @@ type ApiChannel = {
   isActive: boolean
   settings?: Record<string, unknown> | null
   hasAccessToken?: boolean
+  claimedElsewhere?: boolean
 }
 
 /** A page row exactly as the OAuth callback + publicChannelConfig produce it. */
@@ -294,6 +295,20 @@ describe("Meta OAuth return banner", () => {
       expect(tone()).toBe("warning")
       expect(bannerTitle()).not.toContain("Channel connected")
       expect(bannerReason()).toContain("holds no channel")
+    })
+
+    it("does not congratulate an account another workspace connected first — its DMs go there", async () => {
+      // 2026-09-11: Fanumsec connected @leaddrive.az, LeadDrive Inc.'s June claim kept winning the webhook,
+      // and this banner said "Channel connected". The API now ships `claimedElsewhere` (the boolean only).
+      await renderConnect(
+        "instagram",
+        "stage=connect&mode=existing&connected=facebook&pages=1&ig=1",
+        [{ ...wiredInstagramRow, claimedElsewhere: true }],
+      )
+      expect(tone()).toBe("warning")
+      expect(bannerTitle()).toBe("channelClaimedElsewhere.title")
+      expect(bannerReason()).toBe("channelClaimedElsewhere.reason")
+      expect(formState()).toBe(bannerReason())
     })
 
     it("keeps the wired-but-not-delivering case out of the send-a-message wording", async () => {

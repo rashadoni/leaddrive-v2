@@ -72,7 +72,12 @@ interface ChannelConfig {
   hasPhoneNumberId?: boolean
   hasVerifyToken?: boolean
   hasAppSecret?: boolean
+  /** Another workspace's claim on this pageId wins inbound routing (computed by the channels API). */
+  claimedElsewhere?: boolean
 }
+
+/** `settings.channelClaimedElsewhere.*` from messages — the one state whose copy lives in next-intl. */
+type ClaimedElsewhereCopy = { badge: string; status: string; hint: string }
 
 type LocaleKey = "en" | "ru" | "az"
 type CatalogTab = "all" | "business" | "calls" | "sms" | "email" | "live"
@@ -1441,25 +1446,30 @@ function channelLabel(channel: ChannelConfig) {
  * and each needs a different action from the user: nothing came back from Meta (draft → finish the
  * OAuth), the row is switched off (paused → switch it on), or Meta refused the message subscription
  * (needsReconnect → re-run OAuth and grant the messaging permission). Labelling all three "Draft"
- * would send two of the three users to the wrong fix.
+ * would send two of the three users to the wrong fix. A fourth, claimedElsewhere, has no fix the user can
+ * apply at all: another workspace connected the same account first and the webhook routes to it, so the
+ * copy sends them to support instead of to a button.
  */
-function cardBrokenBadge(c: (typeof copy)[LocaleKey], state: ChannelConnectionState) {
+function cardBrokenBadge(c: (typeof copy)[LocaleKey], state: ChannelConnectionState, claimed: ClaimedElsewhereCopy) {
   if (state === "draft") return c.cardDraftBadge
   if (state === "paused") return c.cardPausedBadge
+  if (state === "claimedElsewhere") return claimed.badge
   if (state === "needsReconnect") return c.cardReconnectBadge
   return null
 }
 
-function cardBrokenStatus(c: (typeof copy)[LocaleKey], state: ChannelConnectionState) {
+function cardBrokenStatus(c: (typeof copy)[LocaleKey], state: ChannelConnectionState, claimed: ClaimedElsewhereCopy) {
   if (state === "draft") return c.cardDraftStatus
   if (state === "paused") return c.cardPausedStatus
+  if (state === "claimedElsewhere") return claimed.status
   if (state === "needsReconnect") return c.cardReconnectStatus
   return null
 }
 
-function cardBrokenHint(c: (typeof copy)[LocaleKey], state: ChannelConnectionState) {
+function cardBrokenHint(c: (typeof copy)[LocaleKey], state: ChannelConnectionState, claimed: ClaimedElsewhereCopy) {
   if (state === "draft") return c.cardDraftHint
   if (state === "paused") return c.cardPausedHint
+  if (state === "claimedElsewhere") return claimed.hint
   if (state === "needsReconnect") return c.cardReconnectHint
   return null
 }
@@ -1487,6 +1497,11 @@ function ChannelsPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const c = copy[locale]
+  const claimedCopy: ClaimedElsewhereCopy = {
+    badge: t("channelClaimedElsewhere.badge"),
+    status: t("channelClaimedElsewhere.status"),
+    hint: t("channelClaimedElsewhere.hint"),
+  }
   useAutoTour("channels")
 
   const [channels, setChannels] = useState<ChannelConfig[]>([])
@@ -2262,9 +2277,9 @@ function ChannelsPageInner() {
                       const connectionState = connected ? channelConnectionState(connected) : null
                       const connectionLive = connectionState === "live"
                       const connectionBroken = Boolean(connected) && !connectionLive
-                      const brokenBadge = connectionState ? cardBrokenBadge(c, connectionState) : null
-                      const brokenStatus = connectionState ? cardBrokenStatus(c, connectionState) : null
-                      const brokenHint = connectionState ? cardBrokenHint(c, connectionState) : null
+                      const brokenBadge = connectionState ? cardBrokenBadge(c, connectionState, claimedCopy) : null
+                      const brokenStatus = connectionState ? cardBrokenStatus(c, connectionState, claimedCopy) : null
+                      const brokenHint = connectionState ? cardBrokenHint(c, connectionState, claimedCopy) : null
                       const guideHref = guideHrefForCard(card)
                       const Icon = card.icon
                       return (
@@ -2534,7 +2549,7 @@ function ChannelsPageInner() {
                     // instead). It used to wear an unconditional "Connected" badge, i.e. the exact
                     // claim the card above had already stopped making about that same row.
                     const rowState = channelConnectionState(channel)
-                    const rowBrokenBadge = cardBrokenBadge(c, rowState)
+                    const rowBrokenBadge = cardBrokenBadge(c, rowState, claimedCopy)
                     return (
                     <article
                       key={channel.id}

@@ -5,9 +5,13 @@ import { notifyConversationRecipients } from "@/lib/social/notify-recipients"
 import { isIgLogin } from "@/lib/social/tenant-meta-app"
 import { resolveMetaSenderName } from "@/lib/social/meta-sender-profile"
 import { runWithTenant, runWithRlsBypass } from "@/lib/rls-context"
-import { sanitizeLog } from "@/lib/sanitize"
 import type { ChannelConfig } from "@prisma/client"
 import { createHmac, timingSafeEqual } from "crypto"
+import {
+  rankInboundChannels,
+  reportInboundAmbiguity,
+  type MetaSurface,
+} from "@/lib/social/inbound-channel-ranking"
 import {
   handleInstagramInboundAudio,
   parseInstagramAttachment,
@@ -80,83 +84,11 @@ function verifyFacebookSignature(rawBody: string, signatureHeader: string | null
   }
 }
 
-type MetaSurface = "facebook" | "instagram"
-
 /**
- * Deterministic inbound-channel resolution for a pageId.
+ * Deterministic inbound-channel resolution for a pageId. The order itself (and why it is oldest-claim-first)
+ * lives in `lib/social/inbound-channel-ranking.ts`, shared with /api/v1/webhooks/instagram and with the
+ * channel settings screen that warns a tenant whose claim loses.
  *
- * `pageId` (a FB Page id or an IG business-account id) is PUBLIC and NOT unique across tenants: two
- * organizations can each hold an ACTIVE ChannelConfig for the same one. Confirmed on prod 2026-08-26 —
- * IG business account `17841410801241198` is claimed by BOTH `leaddrive` (channelType=instagram) and
- * `brandprotection` (channelType=instagram, settings.igLogin=true). On the shared-LeadDrive-app path
- * (no `?t=`) `orgScope` is empty by design — the shared app is the signer and the payload names no
- * org — so WHICH claimant receives the DM is a tenant-isolation decision. It must not be left to an
- * unordered `findFirst` scan (no ORDER BY → the planner returns whatever row it reaches first, which
- * can flip on a VACUUM, an index build, or a plan change).
- *
- * The ranking below is a TOTAL order, so the winner never depends on scan order:
- *  1. Non-IG-Login rows first. An Instagram-Login ("Path B") row belongs to the tenant's SEPARATE
- *     IG-Login Meta app, whose deliveries land on /api/v1/webhooks/instagram — which mirrors this rule
- *     by PREFERRING igLogin rows. De-preferred rather than excluded: a pageId claimed ONLY by an
- *     igLogin row still ingests (with a warning) instead of silently dropping the message.
- *  2. `channelType` matching the payload surface (object:instagram → instagram rows), so an IG DM
- *     doesn't land on a facebook row (and its Page token) while an instagram row for the same id exists.
- *  3. Oldest `createdAt` first — the FIRST org to connect the page wins. Deliberately NOT newest-first:
- *     pageId is typed by hand into the channel form (no OAuth proof of ownership), so "newest claim
- *     wins" would let tenant B capture tenant A's inbound DMs by pasting A's public Page ID. A later
- *     claimant cannot back-date a row.
- *  4. `id` as the final tiebreak, so rows created in the same millisecond still order.
- */
-function inboundRank(row: ChannelConfig, platform: MetaSurface): [number, number, number, string] {
-  return [
-    isIgLogin(row.settings) ? 1 : 0,
-    row.channelType === platform ? 0 : 1,
-    row.createdAt ? new Date(row.createdAt).getTime() : 0,
-    row.id ?? "",
-  ]
-}
-
-function rankInboundChannels(rows: ChannelConfig[], platform: MetaSurface): ChannelConfig[] {
-  return [...rows].sort((a, b) => {
-    const ra = inboundRank(a, platform)
-    const rb = inboundRank(b, platform)
-    for (let i = 0; i < ra.length; i++) {
-      if (ra[i] < rb[i]) return -1
-      if (ra[i] > rb[i]) return 1
-    }
-    return 0
-  })
-}
-
-/**
- * Make a contested pageId LOUD. Ambiguity here is a cross-tenant routing hazard, and the old
- * `findFirst` resolved it silently — the wrong tenant could have been reading another's DMs for
- * months with nothing in the logs. Names every claimant (org + config + surface) and the winner.
- * Ids only, never tokens.
- */
-function reportInboundAmbiguity(pageId: string, platform: MetaSurface, ranked: ChannelConfig[]): void {
-  const safePageId = sanitizeLog(String(pageId))
-  if (ranked.length > 1) {
-    const orgs = new Set(ranked.map((r) => r.organizationId))
-    const claims = ranked
-      .map((r) => `org=${r.organizationId} config=${r.id} type=${r.channelType}${isIgLogin(r.settings) ? " igLogin" : ""}`)
-      .join(" | ")
-    console.warn(
-      `[FB Webhook] AMBIGUOUS pageId=${safePageId} (${platform}) — ${ranked.length} active channel configs across ${orgs.size} org(s) claim it: ${claims}. ` +
-        `Routed to org=${ranked[0].organizationId} config=${ranked[0].id} by deterministic order (non-igLogin → channelType=${platform} → oldest createdAt → id). ` +
-        `${orgs.size > 1 ? "CROSS-TENANT: only one of these orgs owns this page — deactivate the stale claim." : "Same-org duplicate — deactivate the unused config."}`,
-    )
-    return
-  }
-  if (ranked.length === 1 && isIgLogin(ranked[0].settings)) {
-    console.warn(
-      `[FB Webhook] pageId=${safePageId} (${platform}) is claimed ONLY by an Instagram-Login row ` +
-        `(org=${ranked[0].organizationId} config=${ranked[0].id}) — that surface delivers to /api/v1/webhooks/instagram. Ingesting anyway; check the connection.`,
-    )
-  }
-}
-
-/**
  * RLS: this lookup IS the org resolution (pageId is an external identifier) → runs under bypass.
  * Everything downstream of it runs inside `runWithTenant(channel.organizationId)`.
  */
@@ -180,8 +112,8 @@ async function resolveInboundChannel({
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     }),
   )
-  const ranked = rankInboundChannels(Array.isArray(rows) ? rows : [], platform)
-  reportInboundAmbiguity(pageId, platform, ranked)
+  const ranked = rankInboundChannels(Array.isArray(rows) ? rows : [], platform, "facebookLogin")
+  reportInboundAmbiguity("[FB Webhook]", pageId, platform, ranked, "facebookLogin")
   return ranked[0] ?? null
 }
 

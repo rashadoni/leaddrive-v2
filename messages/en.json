@@ -4298,6 +4298,15 @@
     "rolesDesc": "Manage user roles and access",
     "channels": "Channels",
     "channelsDesc": "Configure communication channels",
+    "channelClaimedElsewhere": {
+      "badge": "Messages go elsewhere",
+      "status": "Messages go to another workspace",
+      "hint": "Another LeadDrive workspace connected this account first, and incoming messages for an account go to the workspace that connected it first, so none will arrive here. Reconnecting will not change that. Contact LeadDrive support to have the account moved to this workspace.",
+      "reason": "Connected, but incoming messages go to another workspace. Another LeadDrive workspace connected this account first, and messages go to the workspace that connected it first. Reconnecting will not change that — contact LeadDrive support to have the account moved to this workspace.",
+      "title": "Connected, but messages go to another workspace",
+      "savedTitle": "Saved, but messages will go to another workspace",
+      "acknowledge": "Got it"
+    },
     "aiRoutingTitle": "AI replies per channel",
     "aiRoutingDesc": "Choose who answers incoming messages: AI or a human agent. WhatsApp uses AI by default until you switch it to Agent.",
     "aiRoutingComingSoon": "soon",

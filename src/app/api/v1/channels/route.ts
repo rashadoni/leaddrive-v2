@@ -7,6 +7,7 @@ import { runWithTenant } from "@/lib/rls-context"
 import { whatsappChannelCredentialsError } from "@/lib/channels/whatsapp-config-validation"
 import { isTikTokChatwootChannelConfig, syncTikTokDmConnectionForChannelConfig, tiktokChannelConfigSettings } from "@/lib/channels/platform-connections"
 import { publicChannelConfig } from "@/lib/channels/public-channel-config"
+import { channelIdsClaimedElsewhere } from "@/lib/channels/inbound-claim"
 import { emailIntakeSettingsError } from "@/lib/ticketing/email-intake"
 import { validateChatwootBaseUrl } from "@/lib/chatwoot"
 
@@ -89,7 +90,13 @@ export async function GET(req: NextRequest) {
         },
       }) as ChannelListRow[]
 
-      const safeChannels = channels.map((channel) => publicChannelConfig(channel))
+      // A Facebook/Instagram row whose pageId another workspace claimed first delivers nothing here —
+      // the card must not call it connected. Only the boolean crosses the tenant boundary.
+      const claimedElsewhere = await channelIdsClaimedElsewhere(orgId, channels)
+      const safeChannels = channels.map((channel) => ({
+        ...publicChannelConfig(channel),
+        claimedElsewhere: claimedElsewhere.has(channel.id),
+      }))
 
       return NextResponse.json({ success: true, data: safeChannels })
     } catch (e) {
@@ -198,9 +205,10 @@ export async function POST(req: NextRequest) {
       await syncTikTokDmConnectionForChannelConfig(channel).catch((error) => {
         console.error("[channels POST] TikTok ChannelConnection sync failed", error)
       })
+      const claimedElsewhere = await channelIdsClaimedElsewhere(orgId, [channel])
       return NextResponse.json({
         success: true,
-        data: publicChannelConfig(channel),
+        data: { ...publicChannelConfig(channel), claimedElsewhere: claimedElsewhere.has(channel.id) },
       }, { status: 201 })
     } catch (e) {
       console.error(e)

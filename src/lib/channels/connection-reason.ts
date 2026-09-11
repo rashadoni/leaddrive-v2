@@ -15,8 +15,14 @@ import type { ChannelConnectionState } from "./live-connection"
 
 export type ChannelReasonLocale = "en" | "ru" | "az"
 
-/** Every state except `live` — a live row needs no explanation, it needs a confirmation. */
-export type ChannelBrokenState = Exclude<ChannelConnectionState, "live">
+/**
+ * Every state except `live` — a live row needs no explanation, it needs a confirmation.
+ *
+ * `claimedElsewhere` is not in this table: its wording lives in `messages/*.json` under
+ * `settings.channelClaimedElsewhere` (checked by scripts/check-translations.js), and all three screens read
+ * that one key — so it keeps the same one-sentence-one-place property through next-intl instead.
+ */
+export type ChannelBrokenState = Exclude<ChannelConnectionState, "live" | "claimedElsewhere">
 
 const META_CONNECTION_REASON: Record<ChannelReasonLocale, Record<ChannelBrokenState, string>> = {
   en: {

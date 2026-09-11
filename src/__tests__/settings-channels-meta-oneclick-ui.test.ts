@@ -132,6 +132,7 @@ type ApiChannel = {
   isActive: boolean
   settings?: Record<string, unknown> | null
   hasAccessToken?: boolean
+  claimedElsewhere?: boolean
 }
 
 /** A page row exactly as the OAuth callback + publicChannelConfig produce it. */
@@ -264,6 +265,34 @@ describe("Channel catalog — what the screen claims about a Meta channel", () =
       leftover?.querySelector<HTMLElement>('[data-testid="channel-row-broken-badge"]')?.textContent,
     ).toContain("Draft")
     // Exactly one of the two rows is a working connection.
+    expect(activeCount()).toContain("1 active")
+  })
+
+  it("does not call a page connected when another workspace's older claim receives its messages", async () => {
+    // 2026-09-11: Fanumsec's card said «Подключено» while the webhook delivered every DM to the workspace
+    // that had claimed the same account in June. The API marks such a row `claimedElsewhere` — a boolean,
+    // never who — and the card must send the user to support rather than to a button that cannot help.
+    await renderCatalog([{ ...wiredFacebookPage, claimedElsewhere: true }])
+    expect(connectedBadge("facebook")).toBeNull()
+    expect(brokenBadge("facebook")?.textContent).toContain("channelClaimedElsewhere.badge")
+    expect(card("facebook")?.textContent).toContain("channelClaimedElsewhere.status")
+    expect(card("facebook")?.textContent).toContain("channelClaimedElsewhere.hint")
+    expect(activeCount()).toContain("0 active")
+  })
+
+  it("does not badge a claimed-elsewhere page in the other-channels list connected", async () => {
+    // Prod today: one workspace holds several Messenger pages, some of which an older workspace also claims.
+    await renderCatalog([
+      wiredFacebookPage,
+      { ...wiredFacebookPage, id: "fb-contested", configName: "Contested Page", pageId: "5566778899", claimedElsewhere: true },
+    ])
+    expect(connectedBadge("facebook")?.textContent).toContain("Connected")
+    const contested = container.querySelector<HTMLElement>('[data-testid="channel-row-fb-contested"]')
+    expect(contested).not.toBeNull()
+    expect(contested?.querySelector('[data-testid="channel-row-connected-badge"]')).toBeNull()
+    expect(
+      contested?.querySelector<HTMLElement>('[data-testid="channel-row-broken-badge"]')?.textContent,
+    ).toContain("channelClaimedElsewhere.badge")
     expect(activeCount()).toContain("1 active")
   })
 
@@ -403,6 +432,56 @@ describe("Channel form — what it tells the user about the same row", () => {
 
     await renderForm({ id: "fb", channelType: "facebook", configName: "Acme", pageId: "1122334455", isActive: true, hasAccessToken: true, settings: { inboxSubscribed: false } })
     expect(stateText()).toContain("Meta refused the message subscription")
+
+    await renderForm({ id: "fb", channelType: "facebook", configName: "Acme", pageId: "1122334455", isActive: true, hasAccessToken: true, settings: { inboxSubscribed: true }, claimedElsewhere: true })
+    expect(stateText()).toBe("channelClaimedElsewhere.reason")
+  })
+
+  it("holds a save whose account is claimed by another workspace on screen until the user acknowledges it", async () => {
+    // The connect page navigates to the catalog on save; the warning must not flash by on the way out.
+    vi.stubGlobal("fetch", vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        providers: { facebook: true, instagram: true },
+        success: true,
+        data: { id: "fb", channelType: "facebook", pageId: "1122334455", isActive: true, claimedElsewhere: true },
+      }),
+    })))
+    const onSaved = vi.fn()
+    const onOpenChange = vi.fn()
+    await act(async () => {
+      root.render(createElement(ChannelConfigForm, {
+        open: true,
+        variant: "inline",
+        onOpenChange,
+        onSaved,
+        orgId: "org-1",
+        lockChannelType: true,
+        initialData: { id: "fb", channelType: "facebook", configName: "Acme", pageId: "1122334455", isActive: true, hasAccessToken: true },
+      }))
+    })
+    await flushMicrotasks()
+    const form = container.querySelector("form")
+    expect(form).not.toBeNull()
+    await act(async () => {
+      form?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))
+    })
+    await flushMicrotasks()
+
+    const warning = container.querySelector<HTMLElement>('[data-testid="channel-claimed-elsewhere-warning"]')
+    expect(warning?.textContent).toContain("channelClaimedElsewhere.savedTitle")
+    expect(warning?.textContent).toContain("channelClaimedElsewhere.hint")
+    expect(onSaved).not.toHaveBeenCalled()
+    // The row already exists, so a second submit is not offered — it would create a duplicate.
+    expect(container.querySelector("#channelSubmitButton")).toBeNull()
+
+    const acknowledge = [...container.querySelectorAll("button")].find((b) => b.textContent === "channelClaimedElsewhere.acknowledge")
+    await act(async () => {
+      acknowledge?.click()
+    })
+    expect(onSaved).toHaveBeenCalledTimes(1)
+    expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
   it("asks a Model A tenant for no Meta secrets at all", async () => {
