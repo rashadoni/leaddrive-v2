@@ -5,8 +5,35 @@ import type { PricingAdjustments } from "@/lib/pricing"
 import { prisma } from "@/lib/prisma"
 import fs from "fs"
 import path from "path"
+import { resolveRuntimePaths } from "@/lib/runtime-paths"
 
-const LEGAL_FILE = path.join(process.cwd(), "public", "data", "company_legal_names.json")
+/*
+ * Справочник юрлиц клиентов для выгрузки цен — это данные тенанта, а не код.
+ * До 2026-09-11 он лежал в `public/data/company_legal_names.json`, то есть в
+ * публичном репозитории: названия юрлиц реальных клиентов видел любой, кто
+ * открывал GitHub. Теперь файл живёт в runtime-каталоге прода
+ * (`$LEADDRIVE_RUNTIME_DIR/state/pricing/`), который переживает выкатки и в
+ * артефакт не попадает.
+ *
+ * Названия компаний в базе для этого не годятся: там короткие имена
+ * («Garabaghotel»), а в отчёте нужно юрлицо («YENİ GƏNCƏ HOTEL COMPANY MMC»).
+ * Если файла нет — как и раньше, генератор подставит «КОД MMC».
+ */
+function legalNamesFile(): string {
+  return path.join(resolveRuntimePaths().runtimeRoot, "state", "pricing", "company_legal_names.json")
+}
+
+function loadLegalNames(): Record<string, string> {
+  try {
+    return JSON.parse(fs.readFileSync(legalNamesFile(), "utf-8"))
+  } catch (err) {
+    // Отсутствие файла — штатный случай (любой тенант, кроме одного, и любая
+    // локальная сборка), им логи не засоряем. Всё остальное — сломанный JSON
+    // или права — стоит увидеть.
+    if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") console.error(err)
+    return {}
+  }
+}
 
 async function loadPricingDataFromDB(orgId: string) {
   const profiles = await prisma.pricingProfile.findMany({
@@ -53,8 +80,7 @@ export const POST = withRls(async (req, { orgId }) => {
     const adjustments: PricingAdjustments | null = body.adjustments || null
     const effectiveDate: string | null = body.effective_date || null
     const data = await loadPricingDataFromDB(orgId)
-    let legal: Record<string, string> = {}
-    try { legal = JSON.parse(fs.readFileSync(LEGAL_FILE, "utf-8")) } catch (err) { console.error(err) }
+    const legal = loadLegalNames()
     let buffer: Buffer; let filename: string
     if (template === "2") { buffer = await generateTemplate2(data, legal, adjustments, effectiveDate); filename = "SALES_Report.xlsx" }
     else if (template === "budget" || template === "3") { buffer = await generateBudgetPL(data, legal, adjustments, effectiveDate); filename = "Budget_PL.xlsx" }
