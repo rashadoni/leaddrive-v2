@@ -413,19 +413,41 @@ assert.ok(
 // assertion that only forbids the old gate would let someone delete the new one
 // and leave the repository with neither. So the replacement is asserted to
 // exist, by name, together with the script that makes it a required check.
-const agentReviewWorkflow = await readText(".github/workflows/agent-review.yml")
-const agentReviewScript = await readText(".github/scripts/agent-review.mjs")
+//
+// 2026-09-11: the replacement is no longer `agent-review`. The owner dropped it —
+// without an ANTHROPIC_API_KEY it reported green on every PR by design, and it
+// was the ONLY required context, so tests and typecheck were not required at
+// all. What is required now is what GitHub itself runs. The principle above
+// still holds and is asserted below: the gate must exist, must run on every
+// pull request, and must be what main actually requires.
+const prChecksWorkflow = await readText(".github/workflows/pr-checks.yml")
 const mainProtectionScript = await readText("scripts/ci/configure-main-protection.sh")
-// "Runs on every pull request" means no path filter of either sign. The fourth
-// agent review pointed out that checking only `paths:` would let a
-// `paths-ignore:` slip through, and it was right.
+const requiredContexts = ["pr-scope", "static-checks", "typecheck", "runner-policy", "scan"]
+// "Runs on every pull request" means no path filter of either sign on the
+// pull_request trigger. The fourth agent review pointed out that checking only
+// `paths:` would let a `paths-ignore:` slip through, and it was right.
+const prTrigger = prChecksWorkflow.slice(
+  prChecksWorkflow.indexOf("  pull_request:"),
+  prChecksWorkflow.indexOf("  push:"),
+)
 assert.ok(
-  agentReviewWorkflow.includes("name: agent-review")
-    && agentReviewWorkflow.includes("pull_request")
-    && !/^\s+paths(-ignore)?:/mu.test(agentReviewWorkflow)
-    && agentReviewScript.includes("report_review")
-    && mainProtectionScript.includes('"contexts": ["agent-review"]'),
-  "layer 2 must keep existing: an agent-review job that runs on every pull request, its reviewer, and the script that makes it required on main",
+  prTrigger.length > 0 && !/^\s+paths(-ignore)?:/mu.test(prTrigger),
+  "pr-checks must start on every pull request: its jobs are required, and a check that never starts leaves a PR unmergeable for ever",
+)
+// The heavy jobs may be skipped for documentation-only PRs, but only through
+// pr-scope — and pr-scope must itself be required, because a failed detector
+// skips its dependants and GitHub counts a skip as a pass.
+assert.ok(
+  prChecksWorkflow.includes("  pr-scope:")
+    && /static-checks:\n    needs: pr-scope/u.test(prChecksWorkflow)
+    && /typecheck:[\s\S]{0,1200}?\n    needs: pr-scope/u.test(prChecksWorkflow)
+    && (prChecksWorkflow.match(/needs\.pr-scope\.outputs\.code == 'true'/g) ?? []).length === 2,
+  "static-checks and typecheck may skip only via pr-scope",
+)
+assert.ok(
+  requiredContexts.every((context) => mainProtectionScript.includes(`"${context}"`))
+    && !mainProtectionScript.includes('"agent-review"'),
+  "main must require the checks GitHub actually runs — pr-scope, static-checks, typecheck, runner-policy, scan — and not the retired agent-review",
 )
 assert.ok(
   (githubDeploy.match(/GitHub production environment must allow exactly the main branch/g) ?? []).length === 3

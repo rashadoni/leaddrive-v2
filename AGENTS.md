@@ -30,9 +30,12 @@ commits, verification, and user-facing status.
 file on anything about how a change reaches production.** Four layers, in short:
 
 1. `main` accepts pull requests only. No direct push.
-2. Every pull request is reviewed by an agent that did not write it
-   (`agent-review`, the one required check). Reviewing your own work does not
-   count.
+2. Every pull request passes the checks GitHub itself runs, all required on
+   `main`: `pr-scope`, `static-checks`, `typecheck`, `runner-policy`, `scan`.
+   The `agent-review` check was retired on 2026-09-11 by the owner: without an
+   `ANTHROPIC_API_KEY` it reported green on every PR by design, and it was the
+   only required context, so tests and typecheck were not required at all. Do
+   not bring it back or add a paid AI reviewer to CI in its place.
 3. Production deploys only from `main`, with the atomic swap, health check and
    rollback that already exist.
 4. Before merging anything a user will see, show the owner a short plain-language
@@ -100,7 +103,7 @@ Report the outcome, not each step. "Merged #1102, deployed, /api/v1/ping ok"
 is the whole update the owner wants.
 
 That authorization now runs through `docs/DELIVERY-ARCHITECTURE.md`: carry the
-change yourself, but merge only once `agent-review` is green, and for anything a
+change yourself, but merge only once the five required checks are green, and for anything a
 user will see, get the owner's go-ahead on the short list first. Neither step is
 a request for permission to work — they are part of the work.
 
@@ -212,8 +215,8 @@ Because the repository is public:
 
 - **Never use `pull_request_target`.** It runs with the base repository's
   secrets against untrusted head code. Plain `pull_request` does not hand
-  secrets to fork PRs, which is what keeps `ANTHROPIC_API_KEY` and
-  `NEXTAUTH_SECRET` safe in `agent-review.yml` and `pr-checks.yml`.
+  secrets to fork PRs, which is what keeps `NEXTAUTH_SECRET` safe in
+  `pr-checks.yml`.
 - Fork pull requests must stay gated behind "Require approval for all external
   contributors" in Settings -> Actions.
 - Treat every value in the `production` environment as production-grade. Nothing
