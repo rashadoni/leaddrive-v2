@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { upsertSocialConversation } from "@/lib/facebook"
 import { notifyConversationRecipients } from "@/lib/social/notify-recipients"
+import { resolveMetaSenderName } from "@/lib/social/meta-sender-profile"
+import { isIgLogin } from "@/lib/social/tenant-meta-app"
 import { runWithTenant, runWithRlsBypass } from "@/lib/rls-context"
 import { createHmac, timingSafeEqual } from "crypto"
 import type { ChannelConfig } from "@prisma/client"
@@ -176,8 +178,12 @@ export async function POST(req: NextRequest) {
           if (duplicate) continue
         }
 
+        const senderName = await resolveMetaSenderName({
+          organizationId: channel.organizationId, platform: "instagram", senderId,
+          token: channel.apiKey, igLogin: isIgLogin(channel.settings),
+        })
         const conv = await upsertSocialConversation(
-          channel.organizationId, "instagram", senderId, senderId, text, channel.id,
+          channel.organizationId, "instagram", senderId, senderName, text, channel.id,
         )
 
         const messageMetadata = { senderId, igAccountId, platform: "instagram", igLogin: true }

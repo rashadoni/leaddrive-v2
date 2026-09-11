@@ -8,6 +8,8 @@ import { sendTelegramMedia } from "@/lib/telegram-media"
 import { sendChatwootMessage } from "@/lib/chatwoot"
 import { sendFacebookMessage, sendInstagramMessage } from "@/lib/facebook"
 import { sendVkMessage } from "@/lib/vkontakte"
+import { sendInstagramLoginMessage } from "@/lib/social/instagram-login"
+import { isIgLogin } from "@/lib/social/tenant-meta-app"
 import { ensureConversation } from "@/lib/inbox-ensure-conversation"
 import { isImageMime } from "@/lib/inbox-attachment"
 import { resolveChannelConnection } from "@/lib/channels/platform-connections"
@@ -500,12 +502,16 @@ export async function sendConversationReply(opts: SendConversationReplyOptions):
       case "facebook":
       case "instagram": {
         const config = channelConfigId
-          ? await prisma.channelConfig.findFirst({ where: { id: channelConfigId, organizationId: orgId, channelType: channel, isActive: true }, select: { apiKey: true } })
-          : await prisma.channelConfig.findFirst({ where: { organizationId: orgId, channelType: channel, isActive: true }, select: { apiKey: true } })
+          ? await prisma.channelConfig.findFirst({ where: { id: channelConfigId, organizationId: orgId, channelType: channel, isActive: true }, select: { apiKey: true, settings: true } })
+          : await prisma.channelConfig.findFirst({ where: { organizationId: orgId, channelType: channel, isActive: true }, select: { apiKey: true, settings: true } })
         if (!config?.apiKey) return { success: false, statusCode: 400, error: `${channel} не настроен` }
+        // An Instagram-Login token only works against graph.instagram.com; a Facebook-Login page
+        // token only against graph.facebook.com. The webhook's AI auto-reply already splits this way.
         const ok = channel === "facebook"
           ? await sendFacebookMessage(to, body, config.apiKey, orgId)
-          : await sendInstagramMessage(to, body, config.apiKey, orgId)
+          : isIgLogin(config.settings)
+            ? await sendInstagramLoginMessage(to, body, config.apiKey)
+            : await sendInstagramMessage(to, body, config.apiKey, orgId)
         status = ok ? "delivered" : "failed"
         if (!ok) errorMsg = `${channel} send failed`
         break

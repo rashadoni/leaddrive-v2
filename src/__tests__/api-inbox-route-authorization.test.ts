@@ -128,6 +128,41 @@ describe("POST /api/v1/inbox operator authorization", () => {
     }))
   })
 
+  // Instagram Direct replies from the inbox were rejected outright ("Invalid option: expected one of
+  // email|telegram|sms|whatsapp|tiktok|web-chat") — seen on prod 2026-09-11. The composer's `to` for a
+  // Meta thread is the display name (@username), never a sendable id, so the IGSID/PSID and the
+  // receiving channel must come from the stored conversation.
+  it.each(["instagram", "facebook", "vkontakte"] as const)(
+    "sends a %s reply to the conversation's own sender id and channel, not the client's to",
+    async (channel) => {
+      state.findConversation.mockResolvedValue({ externalId: "1318586653085202", channelConfigId: "cfg-ig" })
+
+      const response = await POST(request({ channel, to: "@customer_display_name", deliveryIdempotencyKey: undefined }))
+
+      expect(response.status).toBe(201)
+      expect(state.findConversation).toHaveBeenCalledWith({
+        where: { id: "conv-1", organizationId: "org-1", platform: channel, deletedAt: null },
+        select: { externalId: true, channelConfigId: true },
+      })
+      expect(state.sendConversationReply).toHaveBeenCalledWith(expect.objectContaining({
+        organizationId: "org-1",
+        channel,
+        to: "1318586653085202",
+        channelConfigId: "cfg-ig",
+        conversationId: "conv-1",
+      }))
+    },
+  )
+
+  it("refuses an Instagram reply with no conversation instead of guessing a recipient", async () => {
+    state.sanitizeOwnedRefs.mockResolvedValue({ conversationId: null })
+
+    const response = await POST(request({ channel: "instagram", conversationId: undefined, deliveryIdempotencyKey: undefined }))
+
+    expect(response.status).toBe(400)
+    expect(state.sendConversationReply).not.toHaveBeenCalled()
+  })
+
   it("fails closed when the selected local id is not a live tenant TikTok conversation", async () => {
     state.findConversation.mockResolvedValue(null)
 
