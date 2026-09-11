@@ -781,7 +781,7 @@ const sendMessageSchema = z.object({
   subject: z.string().nullable().optional(),
   contactId: z.string().nullable().optional(),
   leadId: z.string().nullable().optional(), // set when sending from a lead card (Slice 3b lead timeline)
-  channel: z.enum(["email", "telegram", "sms", "whatsapp", "tiktok", "web-chat"]).default("email"),
+  channel: z.enum(["email", "telegram", "sms", "whatsapp", "tiktok", "facebook", "instagram", "vkontakte", "web-chat"]).default("email"),
   // Media SEND (Slice 3b): the /uploads/inbox/<org>/ URL the composer uploaded; validated + read
   // server-side (org from session, never trusted as a path). WhatsApp/Telegram only.
   attachmentUrl: z.string().optional(),
@@ -792,6 +792,9 @@ const sendMessageSchema = z.object({
 }).refine((d) => d.body.trim().length > 0 || !!d.attachmentUrl, {
   message: "Message text or an attachment is required",
 })
+
+/** Channels whose reply recipient + sending channel come from the stored conversation, not the client. */
+const CONVERSATION_BOUND_CHANNELS: ReadonlySet<string> = new Set(["tiktok", "facebook", "instagram", "vkontakte"])
 
 export const POST = withInboxSessionWrite(async (req, authSession) => {
   const orgId = authSession.orgId
@@ -825,20 +828,24 @@ export const POST = withInboxSessionWrite(async (req, authSession) => {
   const conversationId = owned.conversationId
   const leadId = owned.leadId
 
-  // Chatwoot's transport recipient is a server-owned property of the selected
-  // tenant conversation. Never let a browser pair conversation A's local id
-  // (and ledger/audit trail) with conversation B's external Chatwoot id.
+  // For TikTok (Chatwoot), Facebook, Instagram and VK the transport recipient
+  // (Chatwoot conversation id / PSID / IGSID / VK peer id) and the channel that
+  // received the thread are server-owned properties of the selected tenant
+  // conversation. Never let a browser pair conversation A's local id (and
+  // ledger/audit trail) with conversation B's external recipient — and never
+  // send an Instagram reply through a different account's token than the one
+  // the customer wrote to. The composer's `to` for these is the display name.
   let replyTo = to
   let boundChannelConfigId: string | null | undefined
-  if (channel === "tiktok") {
+  if (CONVERSATION_BOUND_CHANNELS.has(channel)) {
     if (!conversationId) {
-      return NextResponse.json({ error: "A TikTok conversation is required" }, { status: 400 })
+      return NextResponse.json({ error: `A ${channel} conversation is required` }, { status: 400 })
     }
     const boundConversation = await prisma.socialConversation.findFirst({
       where: {
         id: conversationId,
         organizationId: orgId,
-        platform: "tiktok",
+        platform: channel,
         deletedAt: null,
       },
       select: { externalId: true, channelConfigId: true },

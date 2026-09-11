@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { upsertSocialConversation } from "@/lib/facebook"
 import { notifyConversationRecipients } from "@/lib/social/notify-recipients"
 import { isIgLogin } from "@/lib/social/tenant-meta-app"
+import { resolveMetaSenderName } from "@/lib/social/meta-sender-profile"
 import { runWithTenant, runWithRlsBypass } from "@/lib/rls-context"
 import { sanitizeLog } from "@/lib/sanitize"
 import type { ChannelConfig } from "@prisma/client"
@@ -298,9 +299,13 @@ export async function POST(req: NextRequest) {
           if (duplicate) continue
         }
 
+        const senderName = await resolveMetaSenderName({
+          organizationId: channel.organizationId, platform, senderId,
+          token: channel.apiKey, igLogin: isIgLogin(channel.settings),
+        })
         const conv = await upsertSocialConversation(
           channel.organizationId, platform, senderId,
-          senderId, text, channel.id
+          senderName, text, channel.id
         )
 
         const messageMetadata = { senderId, pageId, platform }
