@@ -9,31 +9,45 @@
 # What it configures on `main`:
 #   - changes arrive only through a pull request (no direct push, no force push,
 #     no branch deletion)
-#   - `agent-review` must be green before merge
+#   - the checks GitHub itself runs must be green before merge: `pr-scope`,
+#     `static-checks`, `typecheck`, `runner-policy`, `scan`
 #   - no required approvals: the owner works alone, and a rule nobody can
 #     satisfy is how production became undeployable in the first place
+#
+# 2026-09-11, решение владельца: обязательная проверка `agent-review` снята
+# вместе со своим workflow. Её завели, когда искали, как сэкономить на старом
+# аккаунте, и без секрета `ANTHROPIC_API_KEY` она намеренно зеленела вхолостую.
+# Хуже того, она была ЕДИНСТВЕННОЙ обязательной: тесты и тайпчек обязательными
+# не были вовсе, и красный PR проходил гейт. Теперь обязательно то, что
+# реально проверяет код.
 #
 # Usage:  bash scripts/ci/configure-main-protection.sh [owner/repo]
 set -euo pipefail
 
-REPO="${1:-rashadrahimov/leaddrive-v2}"
+REPO="${1:-rashadoni/leaddrive-v2}"
 BRANCH="${BRANCH:-main}"
 
 command -v gh >/dev/null || { echo "gh is required" >&2; exit 1; }
 
 echo "Configuring branch protection on ${REPO}@${BRANCH}"
 
-# `required_status_checks.contexts` is deliberately just agent-review: it is the
-# one check that runs for every pull request, including documentation-only ones.
-# The heavy jobs keep their path filters, and requiring a check that never
-# starts would leave such a pull request unmergeable for ever.
+# Каждый из пяти контекстов обязан появляться на КАЖДОМ PR, иначе PR вне его
+# путей навсегда повиснет на «Expected — waiting for status». Поэтому:
+#   - `pr-checks.yml` запускается без path-фильтров, а тяжёлые `static-checks`
+#     и `typecheck` пропускаются через `pr-scope`, если PR — только документация
+#     (пропуск засчитывается как успех);
+#   - `pr-scope` сам обязателен: упади он — зависимые джобы пропустились бы,
+#     и пропуск открыл бы main для любого кода;
+#   - `runner-policy` и `scan` (gitleaks) и так идут на каждом PR в main.
+# Path-фильтрованные workflow (social-monitoring, tenant-delete) обязательными
+# быть не могут и не являются.
 gh api -X PUT "repos/${REPO}/branches/${BRANCH}/protection" \
   -H "Accept: application/vnd.github+json" \
   --input - <<'JSON'
 {
   "required_status_checks": {
     "strict": false,
-    "contexts": ["agent-review"]
+    "contexts": ["pr-scope", "static-checks", "typecheck", "runner-policy", "scan"]
   },
   "enforce_admins": false,
   "required_pull_request_reviews": null,
