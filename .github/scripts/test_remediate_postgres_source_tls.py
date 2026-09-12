@@ -140,6 +140,35 @@ class DecisionTests(unittest.TestCase):
         ):
             self.assertFalse(MAINTENANCE._require_reviewed_invocation())
 
+    def test_unapproved_reviewed_artifact_reports_only_sanitized_stage(self) -> None:
+        authority = MAINTENANCE.FileAuthority(uid=0, gid=0, mode=0o555)
+        with mock.patch.object(
+            MAINTENANCE,
+            "_read_regular_file",
+            side_effect=[(b"different-script", authority), (None, None)],
+        ):
+            with self.assertRaises(MAINTENANCE.SafeMaintenanceError) as raised:
+                MAINTENANCE._require_reviewed_invocation()
+        self.assertEqual(raised.exception.code, "invocation-script-unapproved")
+
+    def test_unapproved_commissioned_unit_reports_only_sanitized_stage(self) -> None:
+        script = b"reviewed-script"
+        authority = MAINTENANCE.FileAuthority(uid=0, gid=0, mode=0o555)
+        approved = {MAINTENANCE.hashlib.sha256(script).hexdigest()}
+        with (
+            mock.patch.object(
+                MAINTENANCE,
+                "_read_regular_file",
+                side_effect=[(script, authority), (b"different-unit", authority)],
+            ),
+            mock.patch.object(
+                MAINTENANCE, "APPROVED_BACKUP_SCRIPT_SHA256", approved
+            ),
+        ):
+            with self.assertRaises(MAINTENANCE.SafeMaintenanceError) as raised:
+                MAINTENANCE._require_reviewed_invocation()
+        self.assertEqual(raised.exception.code, "invocation-unit-unapproved")
+
     @mock.patch.object(MAINTENANCE.os, "open", side_effect=FileNotFoundError)
     def test_precommission_state_does_not_require_backup_lock(
         self, _open: mock.Mock
