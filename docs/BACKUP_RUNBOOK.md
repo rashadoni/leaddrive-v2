@@ -304,8 +304,9 @@ Healthchecks.io URL только из GitHub environment secrets
 `RUNTIME_FILES_HEALTHCHECK_URL`, `LOG_SHIP_HEALTHCHECK_URL`, атомарно заменяет
 только эти четыре значения в root-only `/etc/leaddrive/backup.env` и не
 запускает backup, timer, Kafka consumer или replay. Операция отказывается
-работать, если любой recovery service активен, URL отсутствует, повторяется или
-не является точным `https://hc-ping.com/<uuid>`.
+работать, если любой recovery service активен, любой recovery timer не
+`disabled/inactive`, URL отсутствует, повторяется или не является точным
+`https://hc-ping.com/<uuid>`.
 
 1. `install-backup-tools` — confirmation
    `INSTALL_PINNED_BACKUP_TOOLS_AND_EXTEND_LOG_RETENTION_ON_13_140_132_245`.

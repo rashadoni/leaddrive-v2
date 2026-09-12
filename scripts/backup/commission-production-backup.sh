@@ -399,7 +399,7 @@ assert_root_file() {
 }
 
 configure_monitoring_urls() {
-  local owner mode key value service state
+  local owner mode key value service state timer load_state enabled_state active_state
   local -A seen_urls=()
   local -a monitoring_keys=(
     BACKUP_HEALTHCHECK_URL
@@ -421,6 +421,16 @@ configure_monitoring_urls() {
       inactive|failed|unknown) ;;
       *) fatal "recovery services must be inactive before monitoring configuration" ;;
     esac
+  done
+  for timer in "$BACKUP_TIMER" "$SECRETS_TIMER" "$RUNTIME_FILES_TIMER" "$LOG_TIMER"; do
+    load_state="$(systemctl show --property=LoadState --value "$timer" 2>/dev/null || true)"
+    [ "$load_state" != "not-found" ] || continue
+    [ "$load_state" = "loaded" ] \
+      || fatal "recovery timers must be absent or loaded before monitoring configuration"
+    enabled_state="$(systemctl is-enabled "$timer" 2>/dev/null || true)"
+    active_state="$(systemctl is-active "$timer" 2>/dev/null || true)"
+    [ "$enabled_state:$active_state" = "disabled:inactive" ] \
+      || fatal "recovery timers must be disabled and inactive before monitoring configuration"
   done
 
   assert_root_directory "/etc" /etc

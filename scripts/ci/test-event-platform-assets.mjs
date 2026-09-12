@@ -638,6 +638,7 @@ for (const requiredCommissionGuard of [
   'assert_confirmation "CONFIGURE_BACKUP_MONITORING_ON_13_140_132_245"',
   'INCOMING_MONITORING_CONFIG="$REMOTE_INPUT_STAGE/healthchecks.env"',
   "every recovery job must use a distinct Healthchecks.io check",
+  "recovery timers must be disabled and inactive before monitoring configuration",
   "monitoring configuration changed unrelated backup settings",
   "configured four distinct Healthchecks.io dead-man URLs; values redacted",
 ]) {
