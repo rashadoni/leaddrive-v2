@@ -129,6 +129,17 @@ pilot migration, and when an operator explicitly sets
 ever-growing ledger. All checks are read-only and fail the release instead of
 rewriting evidence.
 
+The no-additional-cost continuous recovery proof is
+`.github/workflows/event-recovery-audit.yml`. It runs once per day and on
+manual dispatch, is serialized with production deployment, requires the live
+artifact SHA to equal current `main`, and executes the same deep postcondition
+under PostgreSQL `default_transaction_read_only=on`. A replay therefore cannot
+enqueue effects, rewrite a projection, or move Kafka offsets. The receipt
+contains aggregate counts only; a mismatch fails the workflow without exposing
+tenant payloads. This proves that the Fund pilot can be rebuilt from the
+canonical PostgreSQL event authority. It does not claim that Kafka transport is
+active or that modules without a complete event ledger can be replayed.
+
 ## What it does not protect yet
 
 - There is no live Kafka history or consumer offset to rewind today.
