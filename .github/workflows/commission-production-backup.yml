@@ -312,14 +312,24 @@ jobs:
           CANDIDATE_SHA256: ${{ inputs.candidate_sha256 }}
         run: |
           set -euo pipefail
-          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 \
-            -o ServerAliveCountMax=4 -i ~/.ssh/deploy_key \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
-            'bash -s' -- \
+          # OpenSSH joins its command arguments into one remote shell string.
+          # Passing the values as separate local argv entries therefore drops
+          # empty inputs and shifts the server-side positional parameters.
+          # Quote every value into one explicit command so empty optional
+          # evidence fields remain present and untrusted text stays inert.
+          REMOTE_COMMAND="bash -s --"
+          for ARG in \
             "$OPERATION" "$CONFIRMATION" "$EXPECTED_MAIN_SHA" \
             "$GITHUB_ACTOR" "$GITHUB_RUN_ID" "$RECIPIENT_SHA256" \
             "$KEY_ATTESTATION" "$EVIDENCE_REF" "$EVIDENCE_AT" \
-            "$OFFLINE_OPERATOR" "$CANDIDATE_SHA256" "$REMOTE_STAGE_DIR" \
+            "$OFFLINE_OPERATOR" "$CANDIDATE_SHA256" "$REMOTE_STAGE_DIR"; do
+            printf -v QUOTED_ARG '%q' "$ARG"
+            REMOTE_COMMAND+=" $QUOTED_ARG"
+          done
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 \
+            -o ServerAliveCountMax=4 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "$REMOTE_COMMAND" \
             < scripts/backup/commission-production-backup.sh
 
       - name: Cleanup

@@ -524,12 +524,21 @@ for (const requiredWorkflowGuard of [
   "ops/backup/recovery-program-set.files",
   "hash-recovery-program-set.sh",
   '"$STAGE_DIR/backup-code.tar"',
+  'REMOTE_COMMAND="bash -s --"',
+  "printf -v QUOTED_ARG '%q' \"$ARG\"",
+  'REMOTE_COMMAND+=" $QUOTED_ARG"',
+  '"$REMOTE_COMMAND"',
 ]) {
   assert.ok(
     backupCommissionWorkflow.includes(requiredWorkflowGuard),
     `production backup commissioning workflow guard is missing: ${requiredWorkflowGuard}`,
   )
 }
+assert.equal(
+  backupCommissionWorkflow.includes("'bash -s' --"),
+  false,
+  "commissioning must not pass optional inputs as separate ssh argv entries because OpenSSH drops empty positional arguments",
+)
 assert.equal(
   /^ {2}push:/mu.test(backupCommissionWorkflow),
   false,
