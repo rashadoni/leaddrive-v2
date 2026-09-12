@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs"
 import path from "node:path"
 import ts from "typescript"
 
-const roots = [
+const defaultRoots = [
   "src/app/(dashboard)/tickets",
   "src/app/(dashboard)/complaints",
   "src/app/(dashboard)/support/agent-desktop",
@@ -37,6 +37,12 @@ const roots = [
   "src/components/tickets",
   "src/components/voip",
 ]
+
+const requestedRoots = (process.env.SUPPORT_UX_SCAN_ROOTS ?? "")
+  .split(",")
+  .map((root) => root.trim())
+  .filter(Boolean)
+const roots = requestedRoots.length > 0 ? requestedRoots : defaultRoots
 
 const files = []
 function collect(target) {
