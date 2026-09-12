@@ -45,7 +45,7 @@ export class WorkforceExceptionQueueError extends Error {
   }
 }
 
-const CLASSIFICATION_BY_TYPE = new Map(
+const CLASSIFICATION_BY_TYPE = new Map<string, WorkforceExceptionDraftClassification>(
   WORKFORCE_RECOMMENDED_EXCEPTION_DRAFT_POLICY_V1.classifications.map((classification) => [classification.type, classification]),
 )
 
