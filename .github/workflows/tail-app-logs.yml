@@ -1,8 +1,9 @@
 name: Inspect production safely
 
 # Read-only diagnostics: print the tail of the leaddrive-v2 PM2 error log,
-# report backup-gate readiness with every configured value redacted, or list
-# bounded log-source metadata without reading any log contents.
+# report backup-gate readiness with every configured value redacted, inspect
+# anonymized PostgreSQL TLS metadata, or list bounded log-source metadata
+# without reading any log contents.
 # Dispatch-only: editing this workflow must not create an implicit production
 # connection.
 
@@ -18,6 +19,7 @@ on:
           - logs
           - backup-readiness
           - backup-log-inventory
+          - postgres-tls-metadata
       lines:
         description: "How many log lines to tail"
         required: false
@@ -110,6 +112,48 @@ jobs:
           ssh -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
             'bash -s' < scripts/backup/report-production-readiness.sh
+      - name: Inspect anonymized PostgreSQL TLS metadata
+        if: ${{ inputs.view == 'postgres-tls-metadata' }}
+        run: |
+          set -euo pipefail
+          export LC_ALL=C
+          set +e
+          DIAGNOSTIC_OUTPUT="$(
+            ssh -T -o ConnectTimeout=30 -o LogLevel=ERROR -i ~/.ssh/deploy_key \
+              ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+              'PYTHONDONTWRITEBYTECODE=1 python3 -I -' \
+              < .github/scripts/inspect_postgres_tls_metadata.py 2>/dev/null
+          )"
+          DIAGNOSTIC_STATUS=$?
+          set -e
+
+          mapfile -t DIAGNOSTIC_LINES <<<"$DIAGNOSTIC_OUTPUT"
+          LINE_RE='^endpoint=(source|restore-scratch) address_type=(local|private|public|unknown) provider=(self-hosted|azure-postgresql|gcp-cloud-sql|digitalocean|aws-rds|aiven|supabase|neon|render|railway|heroku|contabo|unknown) port=([1-9][0-9]{0,4}|invalid) tls=(available|not-supported|unreachable|handshake-failed|protocol-error|not-applicable|not-tested) issuer=(self-signed|unavailable|(public-ca|private-or-untrusted):(lets-encrypt|digicert|amazon-trust-services|google-trust-services|sectigo|aiven|digitalocean|microsoft|globalsign|entrust|other)) san_dns=([0-9]+|unavailable) san_ip=([0-9]+|unavailable) san_wildcard=([0-9]+|unavailable) san_endpoint_match=(yes|no|unknown|unavailable) fingerprint_sha256_prefix=([0-9a-f]{12}|unavailable)$'
+          [ "${#DIAGNOSTIC_LINES[@]}" -eq 2 ] \
+            && [[ "${DIAGNOSTIC_LINES[0]}" =~ $LINE_RE ]] \
+            && [[ "${DIAGNOSTIC_LINES[1]}" =~ $LINE_RE ]] \
+            && [[ "${DIAGNOSTIC_LINES[0]}" == endpoint=source\ * ]] \
+            && [[ "${DIAGNOSTIC_LINES[1]}" == endpoint=restore-scratch\ * ]] || {
+              echo "::error::Anonymized diagnostic output failed schema validation"
+              exit 1
+            }
+
+          for line in "${DIAGNOSTIC_LINES[@]}"; do
+            port="${line#* port=}"
+            port="${port%% *}"
+            [ "$port" = invalid ] || {
+              [ "$port" -ge 1 ] && [ "$port" -le 65535 ] || {
+                echo "::error::Anonymized diagnostic output contained an invalid port"
+                exit 1
+              }
+            }
+          done
+
+          printf '%s\n' "${DIAGNOSTIC_LINES[@]}"
+          [ "$DIAGNOSTIC_STATUS" -eq 0 ] || {
+            echo "::error::Production diagnostic did not complete"
+            exit "$DIAGNOSTIC_STATUS"
+          }
       - name: Inventory backup log sources without reading contents
         if: ${{ inputs.view == 'backup-log-inventory' }}
         run: |
