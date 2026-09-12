@@ -266,8 +266,6 @@ describe("Workforce attendance H5 API boundaries", () => {
       effectiveFrom: new Date("2020-01-01T00:00:00.000Z"),
       effectiveTo: null,
     } as never)
-    vi.mocked(QRCode.toDataURL).mockResolvedValue("data:image/png;base64,server-rendered-qr")
-
     const response = await callStationQrPost(stationQrRequest({ action: "START" }), ADMIN, {
       params: Promise.resolve({ id: "station_1" }),
     })
@@ -277,7 +275,7 @@ describe("Workforce attendance H5 API boundaries", () => {
       success: true,
       data: {
         station: { id: "station_1", name: "Head office" },
-        qrDataUrl: "data:image/png;base64,server-rendered-qr",
+        qrDataUrl: "data:image/png;base64,attendance-qr",
       },
     })
     expect(QRCode.toDataURL).toHaveBeenCalledWith(expect.any(String), {
