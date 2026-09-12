@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { withRlsAuth } from "@/lib/with-rls"
 import { sendWhatsAppMessage } from "@/lib/whatsapp"
@@ -15,7 +16,14 @@ function asJsonObject(value: unknown): JsonObject {
 const commentSchema = z.object({
   comment: z.string().min(1).max(5000),
   isInternal: z.boolean().default(false),
+  attachmentIds: z.array(z.string().min(1)).max(10).default([]),
+  clientRequestId: z.string().uuid().optional(),
+}).refine((value) => new Set(value.attachmentIds).size === value.attachmentIds.length, {
+  message: "Duplicate attachment IDs are not allowed",
+  path: ["attachmentIds"],
 })
+
+class AttachmentConflictError extends Error {}
 
 export const POST = withRlsAuth("tickets", "write", async (req, auth, { params }: { params: Promise<{ id: string }> }) => {
   const { orgId, userId } = auth
@@ -30,18 +38,134 @@ export const POST = withRlsAuth("tickets", "write", async (req, auth, { params }
     where: { id: ticketId, organizationId: orgId },
   })
   if (!ticket) return NextResponse.json({ error: "Ticket not found" }, { status: 404 })
+  if (ticket.status === "closed") {
+    return NextResponse.json({ error: "ticket_closed", errorKey: "ticketClosed" }, { status: 409 })
+  }
 
-  const comment = await prisma.ticketComment.create({
-    data: {
-      ticketId,
-      userId,
-      comment: parsed.data.comment,
-      isInternal: parsed.data.isInternal,
-    },
-  })
+  const createComment = async () => {
+    // Keep the legacy API contract for integrations that do not yet send an
+    // idempotency key or attachments. The first-party composer always uses the
+    // transaction-safe branch below.
+    if (!parsed.data.clientRequestId && parsed.data.attachmentIds.length === 0) {
+      return {
+        comment: await prisma.ticketComment.create({
+          data: {
+            ticketId,
+            userId,
+            comment: parsed.data.comment,
+            isInternal: parsed.data.isInternal,
+          },
+        }),
+        replayed: false,
+      }
+    }
+
+    return prisma.$transaction(async (tx) => {
+      if (parsed.data.clientRequestId) {
+        const existing = await tx.ticketComment.findUnique({
+          where: {
+            ticketId_clientRequestId: {
+              ticketId,
+              clientRequestId: parsed.data.clientRequestId,
+            },
+          },
+          include: { attachments: true },
+        })
+        if (existing) {
+          if (
+            existing.userId !== userId
+            || existing.comment !== parsed.data.comment
+            || existing.isInternal !== parsed.data.isInternal
+          ) {
+            throw new AttachmentConflictError("Request key was already used for different content")
+          }
+          return { comment: existing, replayed: true }
+        }
+      }
+
+      if (parsed.data.attachmentIds.length > 0) {
+        const available = await tx.ticketAttachment.count({
+          where: {
+            id: { in: parsed.data.attachmentIds },
+            organizationId: orgId,
+            ticketId,
+            commentId: null,
+            uploadedBy: userId,
+          },
+        })
+        if (available !== parsed.data.attachmentIds.length) {
+          throw new AttachmentConflictError("One or more attachments are unavailable")
+        }
+      }
+
+      const created = await tx.ticketComment.create({
+        data: {
+          ticketId,
+          userId,
+          comment: parsed.data.comment,
+          isInternal: parsed.data.isInternal,
+          clientRequestId: parsed.data.clientRequestId,
+        },
+      })
+
+      if (parsed.data.attachmentIds.length > 0) {
+        const attached = await tx.ticketAttachment.updateMany({
+          where: {
+            id: { in: parsed.data.attachmentIds },
+            organizationId: orgId,
+            ticketId,
+            commentId: null,
+            uploadedBy: userId,
+          },
+          data: { commentId: created.id },
+        })
+        if (attached.count !== parsed.data.attachmentIds.length) {
+          throw new AttachmentConflictError("One or more attachments changed before send")
+        }
+      }
+
+      return {
+        comment: await tx.ticketComment.findUniqueOrThrow({
+          where: { id: created.id },
+          include: { attachments: true },
+        }),
+        replayed: false,
+      }
+    })
+  }
+
+  let result: Awaited<ReturnType<typeof createComment>>
+  try {
+    result = await createComment()
+  } catch (error) {
+    if (error instanceof AttachmentConflictError) {
+      return NextResponse.json({ error: error.message, errorKey: "attachmentConflict" }, { status: 409 })
+    }
+    if (parsed.data.clientRequestId && error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      const existing = await prisma.ticketComment.findUnique({
+        where: { ticketId_clientRequestId: { ticketId, clientRequestId: parsed.data.clientRequestId } },
+        include: { attachments: true },
+      })
+      if (
+        existing
+        && existing.userId === userId
+        && existing.comment === parsed.data.comment
+        && existing.isInternal === parsed.data.isInternal
+      ) {
+        result = { comment: existing, replayed: true }
+      } else {
+        return NextResponse.json({ error: "Duplicate request conflict", errorKey: "duplicateRequestConflict" }, { status: 409 })
+      }
+    } else {
+      console.error("[ticket-comments POST]", error)
+      return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    }
+  }
+
+  const { comment, replayed } = result
 
   // Notify ticket assignee about new comment (if commenter is not the assignee)
-  if (ticket.assignedTo && ticket.assignedTo !== userId) {
+  if (!replayed && ticket.assignedTo && ticket.assignedTo !== userId) {
     createNotification({
       organizationId: orgId,
       userId: ticket.assignedTo,
@@ -56,7 +180,7 @@ export const POST = withRlsAuth("tickets", "write", async (req, auth, { params }
   }
 
   // Update firstResponseAt if this is the first staff response
-  if (!ticket.firstResponseAt && !parsed.data.isInternal) {
+  if (!replayed && !ticket.firstResponseAt && !parsed.data.isInternal) {
     const firstResponseAt = new Date()
     await prisma.ticket.updateMany({
       where: { id: ticketId, organizationId: orgId },
@@ -77,7 +201,7 @@ export const POST = withRlsAuth("tickets", "write", async (req, auth, { params }
   }
 
   // Send reply to WhatsApp if ticket originated from WhatsApp and comment is not internal
-  if (!parsed.data.isInternal && ticket.tags && (ticket.tags as string[]).includes("whatsapp")) {
+  if (!replayed && !parsed.data.isInternal && ticket.tags && (ticket.tags as string[]).includes("whatsapp")) {
     try {
       // Extract phone number from ticket description (format: "+994512060838")
       const phoneMatch = ticket.description?.match(/\+(\d{10,15})/)
@@ -128,5 +252,5 @@ export const POST = withRlsAuth("tickets", "write", async (req, auth, { params }
     }
   }
 
-  return NextResponse.json({ success: true, data: comment }, { status: 201 })
+  return NextResponse.json({ success: true, data: comment, replayed }, { status: replayed ? 200 : 201 })
 })

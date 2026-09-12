@@ -7,6 +7,7 @@
  * pin is not "bad input rejected" — it is "a signed-in member cannot entitle
  * their own tenant to a module nobody sold them".
  */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { NextResponse } from "next/server"
 
@@ -28,10 +29,15 @@ vi.mock("@/lib/org-features", () => ({
   setOrgFeatureFlag: vi.fn(),
 }))
 
-import { PATCH } from "@/app/api/v1/settings/ai-features/route"
+vi.mock("@/lib/ai/support-settings-access", () => ({
+  hasSupportAiSettingsEntitlement: vi.fn(),
+}))
+
+import { GET, PATCH } from "@/app/api/v1/settings/ai-features/route"
 import { prisma, logAudit } from "@/lib/prisma"
 import { requireAuth } from "@/lib/api-auth"
 import { setOrgFeatureFlag } from "@/lib/org-features"
+import { hasSupportAiSettingsEntitlement } from "@/lib/ai/support-settings-access"
 import {
   AI_AUTOMATION_FLAGS,
   INBOX_TOGGLE_FLAGS,
@@ -53,6 +59,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(requireAuth).mockResolvedValue(MOCK_ADMIN as any)
   vi.mocked(prisma.organization.findUnique).mockResolvedValue({ features: [] } as any)
+  vi.mocked(hasSupportAiSettingsEntitlement).mockResolvedValue(true)
 })
 
 // ── Allowlist (pure) ─────────────────────────────────────────────────────────
@@ -153,5 +160,62 @@ describe("PATCH /api/v1/settings/ai-features", () => {
     const res = await PATCH(patch({ feature: "ai_daily_briefing", action: "remove" }))
     expect(res.status).toBe(200)
     expect(setOrgFeatureFlag).toHaveBeenCalledWith("org-1", "ai_daily_briefing", false)
+  })
+
+  it("requires both paid module grants before changing the Support switch", async () => {
+    vi.mocked(hasSupportAiSettingsEntitlement).mockResolvedValue(false)
+
+    const res = await PATCH(patch({ feature: "supportAiDisabled", action: "add" }))
+
+    expect(res.status).toBe(403)
+    expect(setOrgFeatureFlag).not.toHaveBeenCalled()
+    expect(logAudit).not.toHaveBeenCalled()
+  })
+
+  it("records previous/new Support state and preserves the Omnichannel flag", async () => {
+    vi.mocked(prisma.organization.findUnique)
+      .mockResolvedValueOnce({ features: ["support", "ai", "aiAutoReply"] } as any)
+      .mockResolvedValueOnce({ features: ["support", "ai", "aiAutoReply", "supportAiDisabled"] } as any)
+
+    const res = await PATCH(patch({ feature: "supportAiDisabled", action: "add" }))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.data.features).toContain("aiAutoReply")
+    expect(logAudit).toHaveBeenCalledWith(
+      "org-1",
+      "feature_flag_enabled",
+      "organization",
+      "org-1",
+      "supportAiDisabled",
+      {
+        userId: "user-1",
+        oldValue: { supportAiEnabled: true },
+        newValue: { supportAiEnabled: false },
+      },
+    )
+  })
+
+  it("does not create a duplicate audit entry for an idempotent retry", async () => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({ features: ["supportAiDisabled"] } as any)
+
+    const res = await PATCH(patch({ feature: "supportAiDisabled", action: "add" }))
+
+    expect(res.status).toBe(200)
+    expect(setOrgFeatureFlag).toHaveBeenCalledTimes(1)
+    expect(logAudit).not.toHaveBeenCalled()
+  })
+})
+
+describe("GET /api/v1/settings/ai-features", () => {
+  it("lets a Support operator read feature state through AI read permission", async () => {
+    vi.mocked(requireAuth).mockResolvedValue({ ...MOCK_ADMIN, role: "support" } as any)
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({ features: ["support", "ai"] } as any)
+
+    const response = await GET(new Request("http://localhost/api/v1/settings/ai-features") as any)
+
+    expect(response.status).toBe(200)
+    expect(requireAuth).toHaveBeenCalledWith(expect.anything(), "ai", "read")
+    expect(await response.json()).toEqual({ data: { features: ["support", "ai"] } })
   })
 })
