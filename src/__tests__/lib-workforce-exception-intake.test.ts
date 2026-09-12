@@ -9,6 +9,7 @@ import {
   proposeWorkforceNoShowReview,
   proposeWorkforceNoShowReviewFromResolvedConfiguration,
   resolvePublishedWorkforceNoShowExpectedSchedule,
+  type WorkforceResolvedNoShowConfiguration,
 } from "@/lib/workforce/exception-intake"
 import { workforcePolicyDefinitionHash } from "@/lib/workforce/policy-definition"
 import { workforceShiftDefinitionHash } from "@/lib/workforce/shift-definition"
@@ -47,7 +48,7 @@ function noShowInput(overrides: Partial<Parameters<typeof proposeWorkforceNoShow
   }
 }
 
-function resolvedNoShowConfiguration(overrides: Record<string, unknown> = {}) {
+function resolvedNoShowConfiguration(overrides: Partial<WorkforceResolvedNoShowConfiguration> = {}): WorkforceResolvedNoShowConfiguration {
   const shift = {
     id: "shift-1",
     teamId: null,
@@ -59,7 +60,7 @@ function resolvedNoShowConfiguration(overrides: Record<string, unknown> = {}) {
     retiredAt: null,
     definition: SHIFT_DEFINITION,
     definitionHash: workforceShiftDefinitionHash(SHIFT_DEFINITION),
-    scope: "ORGANIZATION",
+    scope: "ORGANIZATION" as const,
     assignmentId: null,
     defaultAssignmentId: "default-assignment-1",
     teamMembershipId: "membership-1",
@@ -83,7 +84,7 @@ function resolvedNoShowConfiguration(overrides: Record<string, unknown> = {}) {
     retiredAt: null,
     definition: POLICY_DEFINITION,
     definitionHash: workforcePolicyDefinitionHash(POLICY_DEFINITION),
-    scope: "ORGANIZATION",
+    scope: "ORGANIZATION" as const,
     teamMembershipId: "membership-1",
     teamIdAtWorkday: "team-1",
   }

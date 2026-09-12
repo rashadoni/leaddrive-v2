@@ -6,7 +6,7 @@ vi.mock("@/lib/prisma", async () => {
   return { prisma: makeMtmPrismaMock() }
 })
 vi.mock("@/lib/with-workforce-rls-auth", () => ({
-  withWorkforceSessionAdminAuth: vi.fn((handler) => handler),
+  withWorkforceSessionEmploymentConfigurationAuth: vi.fn((handler) => handler),
 }))
 vi.mock("@/lib/workforce/employment-history", async () => {
   const actual = await vi.importActual<typeof import("@/lib/workforce/employment-history")>("@/lib/workforce/employment-history")
