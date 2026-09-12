@@ -1,14 +1,40 @@
 import { NextResponse } from "next/server"
 import ExcelJS from "exceljs"
+import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { EXPORT_HEADERS, complaintToExportRow } from "@/lib/complaints-mapper"
-import { withRls } from "@/lib/with-rls"
+import { withRlsAuth } from "@/lib/with-rls"
 
-export const GET = withRls(async (_req, { orgId }) => {
+export const GET = withRlsAuth("tickets", "read", async (req, { orgId }) => {
+  const searchParams = new URL(req.url).searchParams
+  const status = searchParams.get("status") || ""
+  const brand = searchParams.get("brand") || ""
+  const riskLevel = searchParams.get("riskLevel") || ""
+  const productCategory = searchParams.get("productCategory") || ""
+  const q = searchParams.get("q") || ""
+  const where: Prisma.TicketWhereInput = {
+    organizationId: orgId,
+    complaintMeta: brand || riskLevel || productCategory
+      ? {
+          ...(brand ? { brand } : {}),
+          ...(riskLevel ? { riskLevel } : {}),
+          ...(productCategory ? { productCategory } : {}),
+        }
+      : { isNot: null },
+    ...(status ? { status } : {}),
+    ...(q ? { OR: [
+      { subject: { contains: q, mode: "insensitive" } },
+      { description: { contains: q, mode: "insensitive" } },
+    ] } : {}),
+  }
 
   const tickets = await prisma.ticket.findMany({
-    where: { organizationId: orgId, complaintMeta: { isNot: null } },
-    include: { complaintMeta: true, comments: { orderBy: { createdAt: "asc" } } },
+    where,
+    include: {
+      complaintMeta: true,
+      comments: { orderBy: { createdAt: "asc" } },
+      contact: { select: { fullName: true, phone: true } },
+    },
     orderBy: { createdAt: "asc" },
   })
 
@@ -22,7 +48,7 @@ export const GET = withRls(async (_req, { orgId }) => {
     const response = t.comments.find((c: { isInternal: boolean }) => !c.isInternal)?.comment || null
     const row = complaintToExportRow({
       externalRegistryNumber: m.externalRegistryNumber,
-      customerName: null,
+      customerName: t.contact?.fullName || null,
       requestDate: t.createdAt,
       source: t.source,
       complaintType: (m.complaintType as "complaint" | "suggestion") || "complaint",
@@ -31,7 +57,7 @@ export const GET = withRls(async (_req, { orgId }) => {
       productCategory: m.productCategory,
       complaintObject: m.complaintObject,
       complaintObjectDetail: m.complaintObjectDetail,
-      phone: null,
+      phone: t.contact?.phone || null,
       content: t.description || "",
       responsibleDepartment: m.responsibleDepartment,
       response,
@@ -39,17 +65,6 @@ export const GET = withRls(async (_req, { orgId }) => {
       riskLevel: (m.riskLevel as "low" | "medium" | "high" | null) ?? null,
       priority: ((t.priority as "low" | "medium" | "high" | "urgent") || "medium"),
     })
-
-    // Backfill customerName/phone from the contact if linked
-    if (t.contactId) {
-      const c = await prisma.contact.findFirst({
-        where: { id: t.contactId },
-        select: { fullName: true, phone: true },
-      })
-      row[1] = c?.fullName || null
-      row[12] = c?.phone || null
-    }
-
     ws.addRow(row)
   }
 

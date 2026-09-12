@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { withRls } from "@/lib/with-rls"
+import { withRlsAuth } from "@/lib/with-rls"
 
 // Returns distinct values for cascading selects on the complaint form.
 // Query params narrow downstream facets:
@@ -10,7 +10,7 @@ import { withRls } from "@/lib/with-rls"
 //   /facets?brand=X&productionArea=Y&productCategory=Z → complaintObjects
 //
 // Always returns { brands, productionAreas, productCategories, complaintObjects, departments }.
-export const GET = withRls(async (req, { orgId }) => {
+export const GET = withRlsAuth("tickets", "read", async (req, { orgId }) => {
   const sp = new URL(req.url).searchParams
   const brand = sp.get("brand") || undefined
   const productionArea = sp.get("productionArea") || undefined
