@@ -575,6 +575,15 @@ try {
           const viewport = viewports[viewportName]
           const expectsTouch = viewportName !== "desktop"
           const context = await browser.newContext({ baseURL: baseUrl, viewport, locale, colorScheme: theme, reducedMotion: "reduce", hasTouch: expectsTouch })
+          await context.route("**/api/v1/public/csp-report", async (route) => {
+            const request = route.request()
+            const url = new URL(request.url())
+            if (request.method() !== "POST" || url.origin !== baseUrl) {
+              await route.continue()
+              return
+            }
+            await route.fulfill({ status: 204, body: "" })
+          })
           await context.addCookies([{ name: "NEXT_LOCALE", value: locale, domain: hostname, path: "/" }])
           try {
             const portalUser = await authenticate(context, role)

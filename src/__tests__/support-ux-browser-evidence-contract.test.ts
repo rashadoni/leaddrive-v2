@@ -344,6 +344,15 @@ describe("Support UX browser evidence contract", () => {
     expect(screenshotHelper).toContain('!== "development"');
   });
 
+  it("keeps CSP telemetry out of the audit without hiding application failures", () => {
+    expect(runner).toContain('context.route("**/api/v1/public/csp-report"');
+    expect(runner).toContain('request.method() !== "POST" || url.origin !== baseUrl');
+    expect(runner).toContain('route.fulfill({ status: 204, body: "" })');
+    expect(runner).toContain("response.status() >= 400");
+    expect(runner).toContain('errors.push("http:" + response.status() + ":" + url.pathname)');
+    expect(runner).not.toContain('context.route("**/api/v1/**"');
+  });
+
   it("rejects unsupported matrices and never reports blocked or empty evidence as green", () => {
     expect(runner).toContain("requireKnownSelection");
     expect(runner).toContain('result.status !== "passed"');
