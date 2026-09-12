@@ -205,6 +205,9 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
   const preselectedCorrectionWorkdayId = view === "requests"
     ? searchParams.get("correctionWorkdayId")
     : null
+  const preselectedExceptionCaseId = view === "requests"
+    ? searchParams.get("exceptionCaseId")
+    : null
 
   useEffect(() => {
     let cancelled = false
@@ -319,6 +322,7 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
     endDate: string
     reason: string
     correctionWorkdayId?: string
+    exceptionCaseId?: string
     requestedStartLocal?: string
     requestedEndLocal?: string
   }): Promise<{ idempotent: boolean }> {
@@ -464,6 +468,7 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
           cancellingSelfRequestId={cancellingSelfRequestId}
           loadingMore={loadingMore}
           preselectedCorrectionWorkdayId={preselectedCorrectionWorkdayId}
+          preselectedExceptionCaseId={preselectedExceptionCaseId}
           onNoteChange={(id, value) => setNotes((current) => ({ ...current, [id]: value }))}
           onDecide={decide}
           onSubmitSelf={submitSelfRequest}
@@ -734,11 +739,12 @@ function TimesheetApprovalPanel({
   )
 }
 
-function SelfRequestPanel({ data, t, submitting, preselectedCorrectionWorkdayId, onSubmit }: {
+function SelfRequestPanel({ data, t, submitting, preselectedCorrectionWorkdayId, preselectedExceptionCaseId, onSubmit }: {
   data: RequestsData
   t: ReturnType<typeof useTranslations>
   submitting: boolean
   preselectedCorrectionWorkdayId: string | null
+  preselectedExceptionCaseId: string | null
   onSubmit: (input: {
     clientRequestId: string
     type: "LEAVE" | "ABSENCE" | "TIME_CORRECTION"
@@ -746,6 +752,7 @@ function SelfRequestPanel({ data, t, submitting, preselectedCorrectionWorkdayId,
     endDate: string
     reason: string
     correctionWorkdayId?: string
+    exceptionCaseId?: string
     requestedStartLocal?: string
     requestedEndLocal?: string
   }) => Promise<{ idempotent: boolean }>
@@ -766,6 +773,9 @@ function SelfRequestPanel({ data, t, submitting, preselectedCorrectionWorkdayId,
     : ""
   const selectedWorkdayId = draft.correctionWorkdayId || prefilledWorkdayId
   const requestType = draft.type === "LEAVE" && prefilledWorkdayId ? "TIME_CORRECTION" : draft.type
+  const exceptionCaseId = !prefillDismissed && prefilledWorkdayId && preselectedExceptionCaseId
+    ? preselectedExceptionCaseId
+    : undefined
   const selectedWorkday = data.selfWorkdays.find((workday) => workday.id === selectedWorkdayId) ?? null
   const correction = requestType === "TIME_CORRECTION"
   const startDate = correction ? selectedWorkday?.workDate.slice(0, 10) ?? "" : draft.startDate
@@ -784,6 +794,7 @@ function SelfRequestPanel({ data, t, submitting, preselectedCorrectionWorkdayId,
         reason: draft.reason.trim(),
         ...(correction ? {
           correctionWorkdayId: selectedWorkday?.id,
+          ...(exceptionCaseId ? { exceptionCaseId } : {}),
           requestedStartLocal: draft.requestedStartLocal || undefined,
           requestedEndLocal: draft.requestedEndLocal || undefined,
         } : {}),
@@ -879,7 +890,7 @@ function SelfRequestPanel({ data, t, submitting, preselectedCorrectionWorkdayId,
 }
 
 function RequestsView({
-  data, t, formatter, locale, canDecide, notes, conflicts, savingId, submittingSelfRequest, cancellingSelfRequestId, loadingMore, preselectedCorrectionWorkdayId, onNoteChange, onDecide, onSubmitSelf, onCancelSelf, onLoadMore,
+  data, t, formatter, locale, canDecide, notes, conflicts, savingId, submittingSelfRequest, cancellingSelfRequestId, loadingMore, preselectedCorrectionWorkdayId, preselectedExceptionCaseId, onNoteChange, onDecide, onSubmitSelf, onCancelSelf, onLoadMore,
 }: {
   data: RequestsData
   t: ReturnType<typeof useTranslations>
@@ -893,6 +904,7 @@ function RequestsView({
   cancellingSelfRequestId: string | null
   loadingMore: boolean
   preselectedCorrectionWorkdayId: string | null
+  preselectedExceptionCaseId: string | null
   onNoteChange: (id: string, value: string) => void
   onDecide: (request: WorkforceRequest, decision: "APPROVED" | "REJECTED", acknowledgeRouteConflicts?: boolean) => void
   onSubmitSelf: (input: {
@@ -902,6 +914,7 @@ function RequestsView({
     endDate: string
     reason: string
     correctionWorkdayId?: string
+    exceptionCaseId?: string
     requestedStartLocal?: string
     requestedEndLocal?: string
   }) => Promise<{ idempotent: boolean }>
@@ -914,7 +927,7 @@ function RequestsView({
     timeZone: data.timezone,
   })
   return <>
-    {data.canSubmitSelf ? <SelfRequestPanel data={data} t={t} submitting={submittingSelfRequest} preselectedCorrectionWorkdayId={preselectedCorrectionWorkdayId} onSubmit={onSubmitSelf} /> : null}
+    {data.canSubmitSelf ? <SelfRequestPanel data={data} t={t} submitting={submittingSelfRequest} preselectedCorrectionWorkdayId={preselectedCorrectionWorkdayId} preselectedExceptionCaseId={preselectedExceptionCaseId} onSubmit={onSubmitSelf} /> : null}
     <section aria-labelledby="workforce-request-list" className="border-y border-zinc-200 dark:border-zinc-700">
     <div className="flex flex-col gap-1 px-1 py-5 sm:flex-row sm:items-baseline sm:justify-between"><div><h3 id="workforce-request-list" className="text-base font-semibold">{data.canSubmitSelf ? t("selfRequestHistory") : t("requestQueue")}</h3><p className="text-sm text-muted-foreground">{data.canSubmitSelf ? t("selfRequestPendingHint") : t("requestQueueHint")}</p></div><span className="text-sm text-muted-foreground">{t("requestCount", { count: data.requests.length })}</span></div>
     <div className="divide-y divide-zinc-200 dark:divide-zinc-700">

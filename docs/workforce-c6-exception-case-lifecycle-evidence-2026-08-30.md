@@ -49,6 +49,15 @@ has no endpoint, queue, detector, live permission grant, lifecycle state,
 notification, payroll or disciplinary behavior; a future authorized C6
 service must supply those separately.
 
+The source now also contains a separate policy-aware writer and a
+session-only `/api/v1/workforce/exceptions/:id/decisions` route. It resolves
+only active C7 `TEAM_EXCEPTION_DECIDE` grants against the exact case employee,
+team and optional site inside its serializable transaction. The lifecycle is
+evaluated only after the writer's per-case advisory lock; exact retries remain
+idempotent and changed operation payloads fail closed. No durable C7 grant is
+currently applied, so this route is default-deny and cannot activate a tenant
+workflow by itself.
+
 After the owner-approved recommended v1 draft policy, the ledger also offers
 `createDraftPolicyWorkforceExceptionDecisionDraft`. This opt-in pure adapter
 validates a candidate append against the complete caller-supplied decision
@@ -64,18 +73,20 @@ the approved C6 policy/RACI exists.
 
 ## Explicitly not activated
 
-No tenant policy activation, endpoint, queue, detector, employee
-notification/appeal UI, manager authorization, migration apply or legacy-row
-conversion is enabled. The recommended v1 taxonomy/triage/owner/targets and
-draft decision vocabulary are recorded separately, but have no operational
-tenant effect. The existing
+No tenant policy activation, detector, employee notification/appeal UI,
+durable grant assignment, migration apply or legacy-row conversion is enabled.
+The new source route needs an applied C7 grant before it can write; the
+recommended v1 taxonomy/triage/owner/targets and decision vocabulary still
+have no tenant effect without that separate rollout. The existing
 `WorkforceAttendanceException` table and timesheet approval behavior are
 unchanged. No case may be treated as a payroll or disciplinary outcome.
 
-The following remains required before WF-C6-002 can become `DONE`: owner
-taxonomy/RACI, a forward-only applied migration, tenant-scoped transaction
-writer with conflict/retry evidence, employee-visible lifecycle, reviewed
-decision semantics and browser/physical rollout evidence.
+The following remains required before WF-C6-002 can become `DONE`: a
+forward-only applied migration and disposable-DB transaction/concurrency
+evidence, audited C7 grant assignment/rollout, employee-visible lifecycle,
+reviewed tenant decision semantics and browser/physical rollout evidence. The
+source writer and route are deliberately not activation mechanisms and do not
+satisfy those environment or human gates.
 
 ## Verification
 

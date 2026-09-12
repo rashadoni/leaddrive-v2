@@ -34,6 +34,7 @@ function requestRecord(overrides: Record<string, unknown> = {}) {
     startDate: new Date("2026-09-01T00:00:00.000Z"),
     endDate: new Date("2026-09-02T00:00:00.000Z"),
     correctionWorkdayId: null,
+    exceptionCaseId: null,
     requestedStartAt: null,
     requestedEndAt: null,
     reason: "Annual leave request",
@@ -84,9 +85,11 @@ describe("Workforce employee self-service requests", () => {
 
   it("binds a correction request to the employee's exact workday and organization-local time", async () => {
     vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({ id: "workday-1" } as never)
+    vi.mocked(prisma.workforceExceptionCase.findFirst).mockResolvedValue({ id: "case-1" } as never)
     vi.mocked(prisma.mtmHrmRequest.create).mockResolvedValue(requestRecord({
       type: "TIME_CORRECTION",
       correctionWorkdayId: "workday-1",
+      exceptionCaseId: "case-1",
       requestedStartAt: new Date("2026-08-28T05:00:00.000Z"),
       requestedEndAt: null,
     }) as never)
@@ -100,6 +103,7 @@ describe("Workforce employee self-service requests", () => {
         startDate: "2026-08-28",
         endDate: "2026-08-28",
         correctionWorkdayId: "workday-1",
+        exceptionCaseId: "case-1",
         requestedStartLocal: "2026-08-28T09:00",
         reason: "Clock-in needs correction",
       }),
@@ -118,10 +122,25 @@ describe("Workforce employee self-service requests", () => {
     })
     expect(prisma.mtmHrmRequest.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
+        exceptionCaseId: "case-1",
         requestedStartAt: new Date("2026-08-28T05:00:00.000Z"),
         requestedEndAt: null,
       }),
     }))
+    expect(prisma.workforceExceptionCase.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: "case-1",
+        organizationId: ORGANIZATION_ID,
+        agentId: "agent-1",
+        workdayId: "workday-1",
+      },
+      select: { id: true },
+    })
+    expect(JSON.stringify(vi.mocked(prisma.mtmAuditLog.create).mock.calls)).not.toContain("case-1")
+  })
+
+  it("rejects a case source hint on a non-correction request", () => {
+    expect(() => input({ exceptionCaseId: "case-1" })).toThrow("correction fields are valid only for a time correction")
   })
 
   it("returns an exact client request retry but rejects changed details under the same id", async () => {
@@ -164,6 +183,62 @@ describe("Workforce employee self-service requests", () => {
     })).resolves.toMatchObject({
       kind: "conflict",
       code: "WORKFORCE_SELF_REQUEST_WORKDAY_NOT_FOUND",
+    })
+    expect(prisma.mtmHrmRequest.create).not.toHaveBeenCalled()
+  })
+
+  it("does not link a correction to a missing, foreign or different-day exception case", async () => {
+    vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({ id: "workday-1" } as never)
+    vi.mocked(prisma.workforceExceptionCase.findFirst).mockResolvedValue(null as never)
+
+    await expect(submitWorkforceSelfRequest({
+      organizationId: ORGANIZATION_ID,
+      actor: ACTOR,
+      input: input({
+        clientRequestId: "exception-case-key-123",
+        type: "TIME_CORRECTION",
+        startDate: "2026-08-28",
+        endDate: "2026-08-28",
+        correctionWorkdayId: "workday-1",
+        exceptionCaseId: "case-not-owned-by-employee",
+        requestedEndLocal: "2026-08-28T18:00",
+        reason: "Clock-out needs correction",
+      }),
+      timezone: "Asia/Baku",
+    })).resolves.toMatchObject({
+      kind: "conflict",
+      code: "WORKFORCE_SELF_REQUEST_WORKDAY_NOT_FOUND",
+    })
+    expect(prisma.mtmHrmRequest.create).not.toHaveBeenCalled()
+  })
+
+  it("treats a changed exception source under the same request key as a non-retry", async () => {
+    vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue(requestRecord({
+      type: "TIME_CORRECTION",
+      startDate: new Date("2026-08-28T00:00:00.000Z"),
+      endDate: new Date("2026-08-28T00:00:00.000Z"),
+      correctionWorkdayId: "workday-1",
+      exceptionCaseId: "case-1",
+      requestedStartAt: new Date("2026-08-28T05:00:00.000Z"),
+      reason: "Clock-in needs correction",
+    }) as never)
+
+    await expect(submitWorkforceSelfRequest({
+      organizationId: ORGANIZATION_ID,
+      actor: ACTOR,
+      input: input({
+        type: "TIME_CORRECTION",
+        startDate: "2026-08-28",
+        endDate: "2026-08-28",
+        correctionWorkdayId: "workday-1",
+        exceptionCaseId: "case-2",
+        requestedStartLocal: "2026-08-28T09:00",
+        reason: "Clock-in needs correction",
+      }),
+      timezone: "Asia/Baku",
+    })).resolves.toMatchObject({
+      kind: "conflict",
+      code: "WORKFORCE_SELF_REQUEST_IDEMPOTENCY_MISMATCH",
     })
     expect(prisma.mtmHrmRequest.create).not.toHaveBeenCalled()
   })
