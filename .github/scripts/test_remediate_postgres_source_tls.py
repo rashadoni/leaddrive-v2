@@ -124,6 +124,30 @@ class EnvironmentTests(unittest.TestCase):
 
 
 class DecisionTests(unittest.TestCase):
+    def test_reviewed_artifact_without_commissioned_unit_is_allowed(self) -> None:
+        script = b"reviewed-script"
+        authority = MAINTENANCE.FileAuthority(uid=0, gid=0, mode=0o555)
+        approved = {MAINTENANCE.hashlib.sha256(script).hexdigest()}
+        with (
+            mock.patch.object(
+                MAINTENANCE,
+                "_read_regular_file",
+                side_effect=[(script, authority), (None, None)],
+            ),
+            mock.patch.object(
+                MAINTENANCE, "APPROVED_BACKUP_SCRIPT_SHA256", approved
+            ),
+        ):
+            self.assertFalse(MAINTENANCE._require_reviewed_invocation())
+
+    @mock.patch.object(MAINTENANCE.os, "open", side_effect=FileNotFoundError)
+    def test_precommission_state_does_not_require_backup_lock(
+        self, _open: mock.Mock
+    ) -> None:
+        self.assertIsNone(MAINTENANCE._acquire_backup_lock(required=False))
+        with self.assertRaises(MAINTENANCE.SafeMaintenanceError):
+            MAINTENANCE._acquire_backup_lock(required=True)
+
     @mock.patch.object(MAINTENANCE, "_verify_full")
     @mock.patch.object(MAINTENANCE, "_require_pgpass_match")
     @mock.patch.object(
@@ -247,7 +271,7 @@ class OutputTests(unittest.TestCase):
         output.assert_called_once_with(
             "source_tls_maintenance operation=apply status=applied "
             "pg_restart=no service_restart=no effective_verify_full=yes "
-            "rollback_snapshot=retained"
+            "rollback_snapshot=retained failure_stage=none"
         )
 
     @mock.patch.object(MAINTENANCE, "apply", side_effect=RuntimeError("secret-host"))
@@ -261,7 +285,22 @@ class OutputTests(unittest.TestCase):
             rendered,
             "source_tls_maintenance operation=apply status=failed "
             "pg_restart=no service_restart=no effective_verify_full=unknown "
-            "rollback_snapshot=unknown",
+            "rollback_snapshot=unknown failure_stage=internal",
+        )
+
+    @mock.patch.object(
+        MAINTENANCE,
+        "apply",
+        side_effect=MAINTENANCE.SafeMaintenanceError("pgpass"),
+    )
+    def test_failure_output_exposes_only_allowlisted_stage(self, _apply: mock.Mock) -> None:
+        with mock.patch("builtins.print") as output:
+            status = MAINTENANCE.main(["apply"])
+        self.assertEqual(status, 1)
+        output.assert_called_once_with(
+            "source_tls_maintenance operation=apply status=failed "
+            "pg_restart=no service_restart=no effective_verify_full=unknown "
+            "rollback_snapshot=unknown failure_stage=pgpass"
         )
 
 

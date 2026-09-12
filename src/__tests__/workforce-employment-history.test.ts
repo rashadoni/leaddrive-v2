@@ -95,10 +95,11 @@ describe("Workforce employment history", () => {
       effectiveAt: "2026-09-01T09:00:00.000Z",
     })
     vi.mocked(db.mtmAgent.findFirst).mockResolvedValue({ id: AGENT } as never)
-    vi.mocked(db.workforceEmploymentEvent.findFirst).mockResolvedValue(null)
-    vi.mocked(db.workforceEmploymentEvent.create).mockResolvedValue({
+    vi.mocked(db.$queryRaw)
+      .mockResolvedValueOnce([] as never)
+      .mockResolvedValueOnce([{
       id: "employment-hire", kind: "HIRE", effectiveAt: eventInput.effectiveAt, source: "HR_RECORDED", recordedAt: new Date(),
-    } as never)
+      }] as never)
     vi.mocked(db.mtmAuditLog.create).mockResolvedValue({ id: "audit-employment" } as never)
 
     const result = await recordWorkforceEmploymentEvent({
@@ -110,9 +111,7 @@ describe("Workforce employment history", () => {
     })
 
     expect(result).toMatchObject({ id: "employment-hire", kind: "HIRE", source: "HR_RECORDED" })
-    expect(db.workforceEmploymentEvent.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ organizationId: ORG, agentId: AGENT, recordedByUserId: "admin-1" }),
-    }))
+    expect(db.$queryRaw).toHaveBeenCalledTimes(2)
     expect(db.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
         action: "WORKFORCE_EMPLOYMENT_EVENT_RECORDED",
@@ -124,7 +123,7 @@ describe("Workforce employment history", () => {
   it("refuses a rehire before a termination and refuses a backdated insertion", async () => {
     const db = makeMtmPrismaMock()
     vi.mocked(db.mtmAgent.findFirst).mockResolvedValue({ id: AGENT } as never)
-    vi.mocked(db.workforceEmploymentEvent.findFirst).mockResolvedValue(null)
+    vi.mocked(db.$queryRaw).mockResolvedValueOnce([] as never)
 
     await expect(recordWorkforceEmploymentEvent({
       organizationId: ORG,
@@ -136,9 +135,9 @@ describe("Workforce employment history", () => {
       code: "WORKFORCE_EMPLOYMENT_EVENT_TRANSITION_INVALID",
     })
 
-    vi.mocked(db.workforceEmploymentEvent.findFirst).mockResolvedValue({
+    vi.mocked(db.$queryRaw).mockResolvedValueOnce([{
       id: "employment-hire", kind: "HIRE", effectiveAt: new Date("2026-09-02T09:00:00.000Z"),
-    } as never)
+    }] as never)
     await expect(recordWorkforceEmploymentEvent({
       organizationId: ORG,
       recordedByUserId: "admin-1",

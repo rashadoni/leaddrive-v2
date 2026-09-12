@@ -1,4 +1,5 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
+import { randomUUID } from "node:crypto"
 import { z } from "zod"
 import { isDateKey } from "@/lib/mtm/mobile-week"
 import { resolveWorkforceHistoricalTeamMembership, type WorkforceHistoricalTeamMembership } from "@/lib/workforce/team-membership"
@@ -182,11 +183,19 @@ export async function recordWorkforceEmploymentEvent(
         "The Workforce employee is not available in this tenant",
       )
     }
-    const previous = await tx.workforceEmploymentEvent.findFirst({
-      where: { organizationId: input.organizationId, agentId: input.event.agentId },
-      orderBy: [{ effectiveAt: "desc" }, { id: "desc" }],
-      select: { id: true, kind: true, effectiveAt: true },
-    })
+    const [previous] = await tx.$queryRaw<Array<{
+      id: string
+      kind: WorkforceEmploymentHistoryEvent["kind"]
+      effectiveAt: Date
+    }>>(Prisma.sql`
+      SELECT "id", "kind", "effectiveAt"
+      FROM "workforce_employment_events"
+      WHERE "organizationId" = ${input.organizationId}
+        AND "agentId" = ${input.event.agentId}
+      ORDER BY "effectiveAt" DESC, "id" DESC
+      LIMIT 1
+      FOR UPDATE
+    `)
     if (previous && input.event.effectiveAt.getTime() <= previous.effectiveAt.getTime()) {
       throw new WorkforceEmploymentHistoryError(
         "WORKFORCE_EMPLOYMENT_EVENT_ORDER_INVALID",
@@ -206,17 +215,17 @@ export async function recordWorkforceEmploymentEvent(
         "The requested employment lifecycle transition is not valid after the last recorded event",
       )
     }
-    const event = await tx.workforceEmploymentEvent.create({
-      data: {
-        organizationId: input.organizationId,
-        agentId: input.event.agentId,
-        kind: input.event.kind,
-        effectiveAt: input.event.effectiveAt,
-        source: "HR_RECORDED",
-        recordedByUserId: input.recordedByUserId,
-      },
-      select: { id: true, kind: true, effectiveAt: true, source: true, recordedAt: true },
-    })
+    const [event] = await tx.$queryRaw<Array<WorkforceEmploymentHistoryEvent>>(Prisma.sql`
+      INSERT INTO "workforce_employment_events" (
+        "id", "organizationId", "agentId", "kind", "effectiveAt", "source", "recordedByUserId"
+      ) VALUES (
+        ${randomUUID()}, ${input.organizationId}, ${input.event.agentId},
+        ${input.event.kind}::"WorkforceEmploymentEventKind", ${input.event.effectiveAt},
+        'HR_RECORDED', ${input.recordedByUserId}
+      )
+      RETURNING "id", "kind", "effectiveAt", "source", "recordedAt"
+    `)
+    if (!event) throw new Error("Workforce employment event insert returned no row")
     await tx.mtmAuditLog.create({
       data: {
         organizationId: input.organizationId,
