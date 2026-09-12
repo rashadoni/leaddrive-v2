@@ -1,14 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 
-const { transaction, findFirst } = vi.hoisted(() => ({
+const { transaction, findFirst, organizationFindUnique } = vi.hoisted(() => ({
   transaction: vi.fn(async (callback: (tx: unknown) => unknown) => callback({})),
   findFirst: vi.fn(),
+  organizationFindUnique: vi.fn(),
 }))
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: transaction,
+    organization: { findUnique: organizationFindUnique },
     workforceExceptionCase: { findFirst },
   },
 }))
@@ -30,6 +32,7 @@ import {
   appendAuthorizedWorkforceExceptionEmployeeResponse,
   WorkforceExceptionEmployeeResponseWriterError,
 } from "@/lib/workforce/exception-employee-response-writer"
+import { WORKFORCE_EXCEPTION_RESPONSE_FLAG } from "@/lib/workforce/exception-response-rollout"
 
 const AUTH = { orgId: "org-1", userId: "user-1", role: "sales" }
 const callPost = POST as unknown as (
@@ -48,6 +51,8 @@ function request(body: unknown): NextRequest {
 
 beforeEach(() => {
   findFirst.mockReset()
+  organizationFindUnique.mockReset()
+  organizationFindUnique.mockResolvedValue({ features: [WORKFORCE_EXCEPTION_RESPONSE_FLAG] })
   transaction.mockClear()
   vi.mocked(resolveWorkforceActor).mockReset()
   vi.mocked(appendAuthorizedWorkforceExceptionEmployeeResponse).mockReset()
@@ -66,6 +71,8 @@ describe("Workforce employee exception response API", () => {
     }), AUTH, { params: Promise.resolve({ id: "case-1" }) })
 
     expect(response.status).toBe(201)
+    expect(response.headers.get("cache-control")).toBe("private, no-store")
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff")
     await expect(response.json()).resolves.toEqual({ success: true, idempotent: false, data: { responseId: "response-1" } })
     expect(findFirst).toHaveBeenCalledWith({
       where: { organizationId: "org-1", id: "case-1", agentId: "agent-1", workdayId: { not: null } },
@@ -83,6 +90,24 @@ describe("Workforce employee exception response API", () => {
       }),
     }))
     expect(withWorkforceSessionAuth).toHaveBeenCalledWith("write", expect.any(Function))
+  })
+
+  it("keeps the acknowledgement writer fenced until the tenant rollout is explicitly enabled", async () => {
+    vi.mocked(resolveWorkforceActor).mockResolvedValue({ agentId: "agent-1", role: "AGENT", scopedAgentIds: ["agent-1"] })
+    organizationFindUnique.mockResolvedValue({ features: [] })
+
+    const response = await callPost(request({ responseCode: "ACKNOWLEDGED", clientResponseId: "response-client-disabled" }), AUTH, {
+      params: Promise.resolve({ id: "case-1" }),
+    })
+
+    expect(response.status).toBe(409)
+    expect(response.headers.get("cache-control")).toBe("private, no-store")
+    await expect(response.json()).resolves.toEqual({
+      error: "Employee exception acknowledgement is not available for this organization",
+      code: "WORKFORCE_EXCEPTION_RESPONSE_MIGRATION_REQUIRED",
+    })
+    expect(findFirst).not.toHaveBeenCalled()
+    expect(appendAuthorizedWorkforceExceptionEmployeeResponse).not.toHaveBeenCalled()
   })
 
   it("does not use an unavailable or another employee's case as an id oracle", async () => {
