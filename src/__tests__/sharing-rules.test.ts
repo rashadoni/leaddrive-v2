@@ -10,6 +10,10 @@ vi.mock("@/lib/prisma", () => ({
 import { applyRecordFilter } from "@/lib/sharing-rules"
 import { prisma } from "@/lib/prisma"
 
+function ownershipConditions(result: object): unknown[] {
+  return (result as { OR: unknown[] }).OR
+}
+
 describe("applyRecordFilter", () => {
   const orgId = "org-1"
   const userId = "user-1"
@@ -35,8 +39,8 @@ describe("applyRecordFilter", () => {
 
     const result = await applyRecordFilter(orgId, userId, "sales", "task", baseWhere)
     expect(result).toHaveProperty("OR")
-    expect(result.OR).toContainEqual({ assignedTo: userId })
-    expect(result.OR).toContainEqual({ createdBy: userId })
+    expect(ownershipConditions(result)).toContainEqual({ assignedTo: userId })
+    expect(ownershipConditions(result)).toContainEqual({ createdBy: userId })
     expect(result.organizationId).toBe(orgId)
     expect(result.status).toBe("active")
   })
@@ -56,7 +60,7 @@ describe("applyRecordFilter", () => {
 
     const result = await applyRecordFilter(orgId, userId, "sales", "lead", baseWhere)
 
-    expect(result.OR).toEqual([{ assignedTo: userId }])
+    expect(ownershipConditions(result)).toEqual([{ assignedTo: userId }])
     expect(JSON.stringify(result)).not.toContain("createdBy")
   })
 
@@ -65,19 +69,31 @@ describe("applyRecordFilter", () => {
 
     const result = await applyRecordFilter(orgId, userId, "sales", "deal", baseWhere)
 
-    expect(result.OR).toEqual([{ assignedTo: userId }, { assignedTo: null }])
+    expect(ownershipConditions(result)).toEqual([{ assignedTo: userId }, { assignedTo: null }])
     expect(JSON.stringify(result)).not.toContain("createdBy")
+  })
+
+  it("keeps ownerless tickets visible as a claimable shared intake queue", async () => {
+    vi.mocked(prisma.sharingRule.findMany).mockResolvedValue([])
+
+    const result = await applyRecordFilter(orgId, userId, "support", "ticket", baseWhere)
+
+    expect(ownershipConditions(result)).toEqual([
+      { assignedTo: userId },
+      { createdBy: userId },
+      { assignedTo: null },
+    ])
   })
 
   it("shares leads by assignee without referencing a missing createdBy column", async () => {
     vi.mocked(prisma.sharingRule.findMany).mockResolvedValue([
-      { id: "r1", ruleType: "role", targetRole: "sales", sourceRole: "manager", isActive: true } as any,
+      { id: "r1", ruleType: "role", targetRole: "sales", sourceRole: "manager", isActive: true } as never,
     ])
-    vi.mocked(prisma.user.findMany).mockResolvedValue([{ id: "mgr-1" } as any])
+    vi.mocked(prisma.user.findMany).mockResolvedValue([{ id: "mgr-1" } as never])
 
     const result = await applyRecordFilter(orgId, userId, "sales", "lead", baseWhere)
 
-    expect(result.OR).toEqual([
+    expect(ownershipConditions(result)).toEqual([
       { assignedTo: userId },
       { OR: [{ assignedTo: { in: ["mgr-1"] } }] },
     ])
@@ -85,7 +101,7 @@ describe("applyRecordFilter", () => {
 
   it("rule type 'all' grants full access to everyone", async () => {
     vi.mocked(prisma.sharingRule.findMany).mockResolvedValue([
-      { id: "r1", ruleType: "all", isActive: true } as any,
+      { id: "r1", ruleType: "all", isActive: true } as never,
     ])
 
     const result = await applyRecordFilter(orgId, userId, "support", "deal", baseWhere)
@@ -94,16 +110,16 @@ describe("applyRecordFilter", () => {
 
   it("role-based rule adds source user records to OR conditions", async () => {
     vi.mocked(prisma.sharingRule.findMany).mockResolvedValue([
-      { id: "r1", ruleType: "role", targetRole: "sales", sourceRole: "manager", isActive: true } as any,
+      { id: "r1", ruleType: "role", targetRole: "sales", sourceRole: "manager", isActive: true } as never,
     ])
     vi.mocked(prisma.user.findMany).mockResolvedValue([
-      { id: "mgr-1" } as any,
-      { id: "mgr-2" } as any,
+      { id: "mgr-1" } as never,
+      { id: "mgr-2" } as never,
     ])
 
     const result = await applyRecordFilter(orgId, userId, "sales", "task", baseWhere)
-    expect(result.OR).toHaveLength(3) // own assigned + own created + manager records
-    expect(result.OR[2]).toEqual({
+    expect(ownershipConditions(result)).toHaveLength(3) // own assigned + own created + manager records
+    expect(ownershipConditions(result)[2]).toEqual({
       OR: [
         { assignedTo: { in: ["mgr-1", "mgr-2"] } },
         { createdBy: { in: ["mgr-1", "mgr-2"] } },
@@ -113,12 +129,12 @@ describe("applyRecordFilter", () => {
 
   it("role-based rule for different targetRole is ignored", async () => {
     vi.mocked(prisma.sharingRule.findMany).mockResolvedValue([
-      { id: "r1", ruleType: "role", targetRole: "support", sourceRole: "sales", isActive: true } as any,
+      { id: "r1", ruleType: "role", targetRole: "support", sourceRole: "sales", isActive: true } as never,
     ])
 
     const result = await applyRecordFilter(orgId, userId, "sales", "task", baseWhere)
     // Rule targetRole=support doesn't match user role=sales, so only own records
-    expect(result.OR).toHaveLength(2)
+    expect(ownershipConditions(result)).toHaveLength(2)
   })
 
   it("preserves all original baseWhere conditions", async () => {
@@ -130,7 +146,7 @@ describe("applyRecordFilter", () => {
     expect(result.status).toBe("open")
     expect(result.priority).toBe("high")
     expect(result.category).toBe("billing")
-    expect(result.OR).toBeDefined()
+    expect(ownershipConditions(result)).toBeDefined()
   })
 
   it("conjoins ownership with an existing search OR instead of replacing it", async () => {
