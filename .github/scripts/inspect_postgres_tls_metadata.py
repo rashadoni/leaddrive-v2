@@ -155,7 +155,8 @@ class SourceSanResult:
     dns_san_count: str
     san_matches_server_name: str
     san_resolves_local: str
-    verify_full_with_san: str
+    verify_full_at_source_endpoint: str
+    verify_full_via_san_name: str
     remediation_without_restart: str
 
 
@@ -165,6 +166,10 @@ class ScratchLaunchResult:
     launch_mechanism: str
     definition: str
     runtime_state: str
+    cluster_probe: str
+    docker_probe: str
+    compose_probe: str
+    systemd_probe: str
 
 
 EMPTY_CERTIFICATE = CertificateMetadata(
@@ -603,7 +608,8 @@ def inspect_source_san(config: dict[str, str]) -> SourceSanResult:
         dns_san_count="unavailable",
         san_matches_server_name="unavailable",
         san_resolves_local="unavailable",
-        verify_full_with_san="unavailable",
+        verify_full_at_source_endpoint="unavailable",
+        verify_full_via_san_name="unavailable",
         remediation_without_restart="not-proven",
     )
     try:
@@ -636,7 +642,8 @@ def inspect_source_san(config: dict[str, str]) -> SourceSanResult:
             dns_san_count=dns_count,
             san_matches_server_name="unavailable",
             san_resolves_local="unavailable",
-            verify_full_with_san="unavailable",
+            verify_full_at_source_endpoint="unavailable",
+            verify_full_via_san_name="unavailable",
             remediation_without_restart="not-proven",
         )
 
@@ -646,26 +653,39 @@ def inspect_source_san(config: dict[str, str]) -> SourceSanResult:
     matches_server_name = "yes" if matching_server_names else "no"
     verification_name = matching_server_names[0] if matching_server_names else san
     resolves_local = _name_resolves_to_local(verification_name)
-    verifies = "unavailable"
+    verifies_at_source = _verify_full_with_presented_certificate(
+        host, port, verification_name, certificate_der
+    )
+    verifies_via_name = "unavailable"
     if resolves_local == "yes":
         try:
             verification_host = normalize_host(verification_name)
         except SafeDiagnosticError:
             verification_host = None
         if verification_host is not None:
-            verifies = _verify_full_with_presented_certificate(
+            verifies_via_name = _verify_full_with_presented_certificate(
                 verification_host, port, verification_name, certificate_der
             )
-    remediation = (
-        "proven"
-        if matches_server_name == "yes" and resolves_local == "yes" and verifies == "yes"
-        else "not-proven"
-    )
+    if (
+        matches_server_name == "yes"
+        and resolves_local == "yes"
+        and verifies_via_name == "yes"
+    ):
+        remediation = "direct-dns"
+    elif (
+        matches_server_name == "yes"
+        and resolves_local == "yes"
+        and verifies_at_source == "yes"
+    ):
+        remediation = "client-hostaddr-required"
+    else:
+        remediation = "not-proven"
     return SourceSanResult(
         dns_san_count=dns_count,
         san_matches_server_name=matches_server_name,
         san_resolves_local=resolves_local,
-        verify_full_with_san=verifies,
+        verify_full_at_source_endpoint=verifies_at_source,
+        verify_full_via_san_name=verifies_via_name,
         remediation_without_restart=remediation,
     )
 
@@ -716,6 +736,8 @@ def _detect_postgresql_cluster(port: int) -> tuple[bool, str, bool]:
             continue
         if port_pattern.search(contents):
             return True, "stopped", True
+    if executable is None:
+        return False, "absent", True
     return False, "absent", command_succeeded or root.exists()
 
 
@@ -871,7 +893,16 @@ def inspect_scratch_launch(config: dict[str, str]) -> ScratchLaunchResult:
             config["VERIFY_PGPORT"], allow_default=False
         )
     except (KeyError, SafeDiagnosticError):
-        return ScratchLaunchResult("invalid", "unknown", "unknown", "unknown")
+        return ScratchLaunchResult(
+            "invalid",
+            "unknown",
+            "unknown",
+            "unknown",
+            "unknown",
+            "unknown",
+            "unknown",
+            "unknown",
+        )
 
     mechanisms: set[str] = set()
     states: list[str] = []
@@ -925,7 +956,19 @@ def inspect_scratch_launch(config: dict[str, str]) -> ScratchLaunchResult:
         runtime_state = "absent"
     else:
         runtime_state = "unknown"
-    return ScratchLaunchResult(printable_port, mechanism, definition, runtime_state)
+    def probe_state(found: bool, inspected: bool) -> str:
+        return "present" if found else ("absent" if inspected else "unknown")
+
+    return ScratchLaunchResult(
+        printable_port,
+        mechanism,
+        definition,
+        runtime_state,
+        probe_state(cluster_found, cluster_inspected),
+        probe_state(bool(docker_mechanisms), docker_inspected),
+        probe_state(compose_found, compose_inspected),
+        probe_state(systemd_found, systemd_inspected),
+    )
 
 
 def inspect_endpoint(endpoint: str, raw_host: str, raw_port: str) -> EndpointResult:
@@ -1049,7 +1092,8 @@ def empty_source_san_result() -> SourceSanResult:
         dns_san_count="unavailable",
         san_matches_server_name="unavailable",
         san_resolves_local="unavailable",
-        verify_full_with_san="unavailable",
+        verify_full_at_source_endpoint="unavailable",
+        verify_full_via_san_name="unavailable",
         remediation_without_restart="not-proven",
     )
 
@@ -1060,6 +1104,10 @@ def empty_scratch_launch_result() -> ScratchLaunchResult:
         launch_mechanism="unknown",
         definition="unknown",
         runtime_state="unknown",
+        cluster_probe="unknown",
+        docker_probe="unknown",
+        compose_probe="unknown",
+        systemd_probe="unknown",
     )
 
 
@@ -1071,17 +1119,24 @@ def format_source_san_result(result: SourceSanResult) -> str:
         for value in (
             result.san_matches_server_name,
             result.san_resolves_local,
-            result.verify_full_with_san,
+            result.verify_full_at_source_endpoint,
+            result.verify_full_via_san_name,
         )
     ):
         raise SafeDiagnosticError
-    if result.remediation_without_restart not in {"proven", "not-proven"}:
+    if result.remediation_without_restart not in {
+        "direct-dns",
+        "client-hostaddr-required",
+        "not-proven",
+    }:
         raise SafeDiagnosticError
     return (
         f"source_san dns_san_count={result.dns_san_count} "
         f"san_matches_server_name={result.san_matches_server_name} "
         f"san_resolves_local={result.san_resolves_local} "
-        f"verify_full_with_san={result.verify_full_with_san} "
+        "verify_full_at_source_endpoint="
+        f"{result.verify_full_at_source_endpoint} "
+        f"verify_full_via_san_name={result.verify_full_via_san_name} "
         "remediation_without_postgres_restart="
         f"{result.remediation_without_restart}"
     )
@@ -1097,11 +1152,25 @@ def format_scratch_launch_result(result: ScratchLaunchResult) -> str:
         raise SafeDiagnosticError
     if result.runtime_state not in SCRATCH_RUNTIME_STATES:
         raise SafeDiagnosticError
+    if any(
+        value not in SCRATCH_DEFINITION_STATES
+        for value in (
+            result.cluster_probe,
+            result.docker_probe,
+            result.compose_probe,
+            result.systemd_probe,
+        )
+    ):
+        raise SafeDiagnosticError
     return (
         f"scratch port={result.port} "
         f"launch_mechanism={result.launch_mechanism} "
         f"definition={result.definition} "
-        f"runtime_state={result.runtime_state}"
+        f"runtime_state={result.runtime_state} "
+        f"cluster_probe={result.cluster_probe} "
+        f"docker_probe={result.docker_probe} "
+        f"compose_probe={result.compose_probe} "
+        f"systemd_probe={result.systemd_probe}"
     )
 
 
