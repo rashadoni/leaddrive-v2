@@ -3,7 +3,12 @@ import {
   archiveWorkforceSite,
   createWorkforceSite,
   createWorkforceSiteGeofenceRevision,
+  previewWorkforceSiteAssignments,
+  publishWorkforceSiteAssignments,
   scheduleWorkforceSiteAssignment,
+  WorkforceSiteAssignmentBulkPublishError,
+  WorkforceSiteAssignmentBulkPublishSchema,
+  WorkforceSiteAssignmentBulkPreviewSchema,
   WorkforceSiteCreateSchema,
   WorkforceSiteAssignmentManagementError,
   WorkforceSiteAssignmentScheduleSchema,
@@ -351,6 +356,190 @@ describe("Workforce site management", () => {
       db: db as never,
     })).resolves.toMatchObject({ id: "assignment-temp-1", kind: "TEMPORARY" })
     expect(db.workforceSiteAssignment.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("reviews a bounded multi-employee site draft without writing assignments or audit", async () => {
+    const db = makeMtmPrismaMock()
+    const laterPrimary = {
+      ...firstAssignment,
+      id: "assignment-later",
+      agentId: "agent-2",
+      siteId: "site-2",
+      effectiveFrom: new Date("2026-11-01T00:00:00.000Z"),
+    }
+    vi.mocked(db.workforceSite.findFirst).mockResolvedValue({ id: "site-1", status: "ACTIVE" } as never)
+    vi.mocked(db.mtmAgent.findMany).mockResolvedValue([{ id: "agent-1" }, { id: "agent-2" }] as never)
+    vi.mocked(db.workforceSiteAssignment.findMany).mockResolvedValue([firstAssignment, laterPrimary] as never)
+
+    const result = await previewWorkforceSiteAssignments({
+      organizationId: "org-1",
+      preview: WorkforceSiteAssignmentBulkPreviewSchema.parse({
+        agentIds: ["agent-1", "agent-2", "agent-missing"],
+        siteId: "site-1",
+        kind: "PRIMARY",
+        effectiveFrom: "2026-10-01",
+      }),
+      currentDateKey: "2026-08-30",
+      db: db as never,
+    })
+
+    expect(result).toMatchObject({
+      effectiveFrom: "2026-10-01",
+      siteId: "site-1",
+      summary: { READY: 0, NO_CHANGE: 1, EMPLOYEE_UNAVAILABLE: 1, CONFLICT: 1 },
+      items: [
+        { agentId: "agent-1", outcome: "NO_CHANGE" },
+        { agentId: "agent-2", outcome: "CONFLICT" },
+        { agentId: "agent-missing", outcome: "EMPLOYEE_UNAVAILABLE" },
+      ],
+    })
+    expect(db.workforceSiteAssignment.create).not.toHaveBeenCalled()
+    expect(db.workforceSiteAssignment.updateMany).not.toHaveBeenCalled()
+    expect(db.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+
+  it("atomically publishes a reviewed future bulk site window with aggregate-only audit", async () => {
+    const db = makeMtmPrismaMock()
+    const nextOperation = {
+      id: "bulk-operation-1",
+      organizationId: "org-1",
+      operationId: "bulk-site-operation-1",
+      requestHash: "b".repeat(64),
+      siteId: "site-2",
+      kind: "PRIMARY",
+      effectiveFrom: new Date("2026-10-01T00:00:00.000Z"),
+      effectiveTo: null,
+      requestedCount: 2,
+      createdCount: 2,
+      unchangedCount: 0,
+      publishedByUserId: "admin-1",
+    }
+    vi.mocked(db.workforceSiteAssignmentBulkOperation.findUnique).mockResolvedValue(null as never)
+    vi.mocked(db.workforceSite.findFirst).mockResolvedValue({ id: "site-2", status: "ACTIVE" } as never)
+    vi.mocked(db.mtmAgent.findMany).mockResolvedValue([{ id: "agent-1" }, { id: "agent-2" }] as never)
+    vi.mocked(db.workforceSiteAssignment.findMany).mockResolvedValue([firstAssignment] as never)
+    vi.mocked(db.workforceSiteAssignment.updateMany).mockResolvedValue({ count: 1 } as never)
+    vi.mocked(db.workforceSiteAssignment.create).mockResolvedValue({ id: "assignment-new" } as never)
+    vi.mocked(db.workforceSiteAssignmentBulkOperation.create).mockResolvedValue(nextOperation as never)
+    vi.mocked(db.mtmAuditLog.create).mockResolvedValue({ id: "audit-bulk-1" } as never)
+
+    const result = await publishWorkforceSiteAssignments({
+      organizationId: "org-1",
+      publishedByUserId: "admin-1",
+      publish: WorkforceSiteAssignmentBulkPublishSchema.parse({
+        operationId: "bulk-site-operation-1",
+        agentIds: ["agent-2", "agent-1"],
+        siteId: "site-2",
+        kind: "PRIMARY",
+        effectiveFrom: "2026-10-01",
+      }),
+      currentDateKey: "2026-08-30",
+      audit,
+      db: db as never,
+    })
+
+    expect(result).toEqual(expect.objectContaining({
+      operationId: "bulk-site-operation-1",
+      requestedCount: 2,
+      createdCount: 2,
+      unchangedCount: 0,
+      idempotent: false,
+    }))
+    expect(db.workforceSiteAssignment.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ id: "assignment-1", agentId: "agent-1", effectiveTo: null }),
+    }))
+    expect(db.workforceSiteAssignment.create).toHaveBeenCalledTimes(2)
+    expect(db.workforceSiteAssignmentBulkOperation.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        organizationId: "org-1",
+        operationId: "bulk-site-operation-1",
+        requestedCount: 2,
+        createdCount: 2,
+        unchangedCount: 0,
+        requestHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+      }),
+    }))
+    const operationWrite = vi.mocked(db.workforceSiteAssignmentBulkOperation.create).mock.calls[0][0] as { data: unknown }
+    const auditWrite = vi.mocked(db.mtmAuditLog.create).mock.calls[0][0] as { data: { newData: unknown } }
+    expect(JSON.stringify(operationWrite.data)).not.toMatch(/agent-1|agent-2/)
+    expect(JSON.stringify(auditWrite.data.newData)).not.toMatch(/agent-1|agent-2/)
+    expect(db.mtmRouteAssignment.create).not.toHaveBeenCalled()
+  })
+
+  it("replays an exact persisted bulk publish without a second assignment or audit", async () => {
+    const db = makeMtmPrismaMock()
+    const stored = {
+      id: "bulk-operation-1",
+      organizationId: "org-1",
+      operationId: "bulk-site-operation-1",
+      requestHash: "",
+      siteId: "site-2",
+      kind: "PRIMARY",
+      effectiveFrom: new Date("2026-10-01T00:00:00.000Z"),
+      effectiveTo: null,
+      requestedCount: 1,
+      createdCount: 1,
+      unchangedCount: 0,
+      publishedByUserId: "admin-1",
+    }
+    const publish = WorkforceSiteAssignmentBulkPublishSchema.parse({
+      operationId: "bulk-site-operation-1",
+      agentIds: ["agent-1"],
+      siteId: "site-2",
+      kind: "PRIMARY",
+      effectiveFrom: "2026-10-01",
+    })
+    // Build a first result to pin the exact canonical request hash rather
+    // than duplicating the implementation's private hash construction.
+    vi.mocked(db.workforceSiteAssignmentBulkOperation.findUnique).mockResolvedValue(null as never)
+    vi.mocked(db.workforceSite.findFirst).mockResolvedValue({ id: "site-2", status: "ACTIVE" } as never)
+    vi.mocked(db.mtmAgent.findMany).mockResolvedValue([{ id: "agent-1" }] as never)
+    vi.mocked(db.workforceSiteAssignment.findMany).mockResolvedValue([])
+    vi.mocked(db.workforceSiteAssignment.create).mockResolvedValue({ id: "assignment-new" } as never)
+    vi.mocked(db.workforceSiteAssignmentBulkOperation.create).mockImplementation(async ({ data }: { data: typeof stored }) => ({ ...stored, requestHash: data.requestHash }) as never)
+    vi.mocked(db.mtmAuditLog.create).mockResolvedValue({ id: "audit-bulk-2" } as never)
+    await publishWorkforceSiteAssignments({ organizationId: "org-1", publishedByUserId: "admin-1", publish, currentDateKey: "2026-08-30", audit, db: db as never })
+    const inserted = vi.mocked(db.workforceSiteAssignmentBulkOperation.create).mock.calls[0][0] as { data: { requestHash: string } }
+    vi.clearAllMocks()
+    vi.mocked(db.workforceSiteAssignmentBulkOperation.findUnique).mockResolvedValue({ ...stored, requestHash: inserted.data.requestHash } as never)
+
+    await expect(publishWorkforceSiteAssignments({ organizationId: "org-1", publishedByUserId: "admin-1", publish, currentDateKey: "2026-08-30", audit, db: db as never }))
+      .resolves.toMatchObject({ operationId: "bulk-site-operation-1", idempotent: true })
+    expect(db.workforceSiteAssignment.create).not.toHaveBeenCalled()
+    expect(db.workforceSiteAssignmentBulkOperation.create).not.toHaveBeenCalled()
+    expect(db.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+
+  it("refuses a stale bulk review before any assignment, receipt or audit write", async () => {
+    const db = makeMtmPrismaMock()
+    vi.mocked(db.workforceSiteAssignmentBulkOperation.findUnique).mockResolvedValue(null as never)
+    vi.mocked(db.workforceSite.findFirst).mockResolvedValue({ id: "site-2", status: "ACTIVE" } as never)
+    vi.mocked(db.mtmAgent.findMany).mockResolvedValue([{ id: "agent-1" }] as never)
+    vi.mocked(db.workforceSiteAssignment.findMany).mockResolvedValue([{
+      ...firstAssignment,
+      siteId: "site-3",
+      effectiveFrom: new Date("2026-11-01T00:00:00.000Z"),
+    }] as never)
+
+    await expect(publishWorkforceSiteAssignments({
+      organizationId: "org-1",
+      publishedByUserId: "admin-1",
+      publish: WorkforceSiteAssignmentBulkPublishSchema.parse({
+        operationId: "bulk-site-operation-2",
+        agentIds: ["agent-1", "agent-missing"],
+        siteId: "site-2",
+        kind: "PRIMARY",
+        effectiveFrom: "2026-10-01",
+      }),
+      currentDateKey: "2026-08-30",
+      audit,
+      db: db as never,
+    })).rejects.toMatchObject<Partial<WorkforceSiteAssignmentBulkPublishError>>({
+      code: "WORKFORCE_SITE_ASSIGNMENT_BULK_PREVIEW_BLOCKED",
+    })
+    expect(db.workforceSiteAssignment.create).not.toHaveBeenCalled()
+    expect(db.workforceSiteAssignmentBulkOperation.create).not.toHaveBeenCalled()
+    expect(db.mtmAuditLog.create).not.toHaveBeenCalled()
   })
 
   it("rejects a past assignment and an unbounded temporary assignment before a write", async () => {

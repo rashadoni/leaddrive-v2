@@ -41,7 +41,7 @@ describe("Workforce assignment configuration UI contract", () => {
     expect(workbench).toContain('assignmentPreview !== null')
   })
 
-  it("keeps the multi-employee schedule review as a discardable local draft", () => {
+  it("requires an explicit confirmation before atomically publishing a reviewed bulk shift draft", () => {
     expect(workbench).toContain('id="workforce-bulk-assignment-template"')
     expect(workbench).toContain('id="workforce-bulk-assignment-effective-from"')
     expect(workbench).toContain('"/api/v1/workforce/configuration/assignments/preview"')
@@ -52,25 +52,47 @@ describe("Workforce assignment configuration UI contract", () => {
     expect(workbench).toContain('role="status" aria-live="polite" aria-atomic="true"')
     expect(workbench).toContain('t("bulkAssignmentSummary"')
     expect(workbench).toContain('<ul className="mt-3 divide-y')
-    expect(workbench).not.toContain('"/api/v1/workforce/configuration/assignments/bulk"')
+    expect(workbench).toContain('"/api/v1/workforce/configuration/assignments/bulk/publish"')
+    expect(workbench).toContain('id="workforce-bulk-assignment-publish-confirm"')
+    expect(workbench).toContain('bulkAssignmentPublishConfirmed')
+    expect(workbench).toContain('bulkAssignmentPublishOperationId')
+    expect(workbench).toContain('crypto.randomUUID()')
   })
 
-  it("keeps the multi-employee site review separate from site eligibility mutation", () => {
+  it("requires an explicit confirmation before atomically publishing a reviewed site eligibility draft", () => {
     expect(workbench).toContain('id="workforce-bulk-site-assignment-site"')
     expect(workbench).toContain('id="workforce-bulk-site-assignment-effective-from"')
     expect(workbench).toContain('"/api/v1/workforce/configuration/site-assignments/preview"')
     expect(workbench).toContain('setBulkSiteAssignmentPreview(null)')
     expect(workbench).toContain('setBulkSiteAssignmentDraft(emptyBulkSiteAssignmentDraft())')
     expect(workbench).toContain('bulkSiteAssignmentPreview !== null')
-    expect(workbench).not.toContain('"/api/v1/workforce/configuration/site-assignments/bulk"')
+    expect(workbench).toContain('"/api/v1/workforce/configuration/site-assignments/bulk/publish"')
+    expect(workbench).toContain('id="workforce-bulk-site-assignment-publish-confirm"')
+    expect(workbench).toContain('bulkSiteAssignmentPublishConfirmed')
+    expect(workbench).toContain('crypto.randomUUID()')
   })
 
   it("shows and writes the immutable organization-default timeline separately", () => {
     expect(workbench).toContain('request("/api/v1/workforce/configuration/shifts/default", "GET")')
-    expect(workbench).toContain('request("/api/v1/workforce/configuration/shifts/default", "POST", defaultAssignmentForm)')
+    expect(workbench).toContain('request("/api/v1/workforce/configuration/shifts/default", "POST", {')
+    expect(workbench).toContain('defaultAssignmentPublishConfirmed')
+    expect(workbench).toContain('defaultAssignmentPublishOperationId')
+    expect(workbench).toContain('id="workforce-default-assignment-publish-confirmation"')
+    expect(workbench).toContain('crypto.randomUUID()')
     expect(workbench).toContain('id="workforce-default-assignment-template"')
     expect(workbench).toContain('data.roster.shiftTemplates.filter((template) => template.teamId === null)')
     expect(workbench).toContain('data.defaultAssignments.map')
+  })
+
+  it("keeps the team fallback timeline separate and tied to a named team template", () => {
+    expect(workbench).toContain('request("/api/v1/workforce/configuration/shifts/team-default", "GET")')
+    expect(workbench).toContain('request("/api/v1/workforce/configuration/shifts/team-default", "POST", {')
+    expect(workbench).toContain('id="workforce-team-default-assignment-team"')
+    expect(workbench).toContain('id="workforce-team-default-assignment-template"')
+    expect(workbench).toContain('id="workforce-team-default-assignment-publish-confirmation"')
+    expect(workbench).toContain('template.teamId === teamDefaultAssignmentForm.teamId')
+    expect(workbench).toContain('teamDefaultAssignmentPublishOperationId')
+    expect(workbench).toContain('data.teamDefaultAssignments.map')
   })
 
   it("uses named team and site pickers with status and effective-date context", () => {
@@ -108,6 +130,11 @@ describe("Workforce assignment configuration UI contract", () => {
       "reviewBulkAssignmentDraft",
       "discardBulkAssignmentDraft",
       "bulkAssignmentReviewOnlyHint",
+      "bulkAssignmentPublishConfirm",
+      "publishBulkAssignment",
+      "bulkAssignmentPublishBlocked",
+      "bulkAssignmentPublishConfirmationRequired",
+      "bulkAssignmentPublished",
       "bulkAssignmentSummary",
       "bulkSiteAssignmentPreviewTitle",
       "bulkSiteAssignmentPreviewHint",
@@ -115,9 +142,26 @@ describe("Workforce assignment configuration UI contract", () => {
       "reviewBulkSiteAssignmentDraft",
       "bulkSiteAssignmentReviewOnlyHint",
       "bulkSiteAssignmentSummary",
+      "bulkSiteAssignmentPublishConfirm",
+      "publishBulkSiteAssignment",
+      "bulkSiteAssignmentPublishBlocked",
+      "bulkSiteAssignmentPublishConfirmationRequired",
+      "bulkSiteAssignmentPublished",
       "assignmentTimelineTitle",
       "scheduleDefaultAssignment",
+      "defaultAssignmentPublishConfirmation",
+      "defaultAssignmentPublishConfirmationRequired",
       "defaultTimelineTitle",
+      "scheduleTeamDefaultAssignment",
+      "teamDefaultAssignmentHint",
+      "selectTeamShiftTemplate",
+      "teamDefaultAssignmentValidationFailed",
+      "teamDefaultAssignmentPublishConfirmation",
+      "teamDefaultAssignmentPublishConfirmationRequired",
+      "teamDefaultAssignmentSaved",
+      "teamDefaultTimelineTitle",
+      "teamDefaultTimelineHint",
+      "noTeamDefaultAssignments",
       "directoryTitle",
       "teamScopePicker",
       "siteAssignmentsTitle",
