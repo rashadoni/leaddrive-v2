@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 
 vi.mock("@/lib/prisma", async () => {
@@ -46,7 +46,13 @@ function request(path: string, body?: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date("2026-08-30T08:00:00.000Z"))
   vi.mocked(getMtmSettings).mockResolvedValue({ timezone: "Asia/Baku" } as never)
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 describe("Workforce site configuration API", () => {
