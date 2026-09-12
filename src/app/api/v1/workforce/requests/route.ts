@@ -156,6 +156,9 @@ export const POST = withWorkforceSessionAuth("write", async (req: NextRequest, a
       audit: requestAuditContext(req),
     })
     if (result.kind === "forbidden") return workforceScopeDenied()
+    if (result.kind === "not_found") {
+      return NextResponse.json({ error: "Not found" }, { status: 404 })
+    }
     if (result.kind === "conflict") {
       return NextResponse.json({
         error: result.message,
