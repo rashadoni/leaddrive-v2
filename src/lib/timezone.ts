@@ -232,6 +232,8 @@ function isSameLocalMinute(
   candidate: Date,
   timezone: string,
 ): boolean {
+  // Machine comparison only: this is not user-facing localized date output.
+  // eslint-disable-next-line no-restricted-syntax
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: timezone,
     calendar: "iso8601",
