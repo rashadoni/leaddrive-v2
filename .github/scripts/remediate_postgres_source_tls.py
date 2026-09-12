@@ -82,6 +82,11 @@ class SafeMaintenanceError(Exception):
         {
             "configuration",
             "invocation",
+            "invocation-script-read",
+            "invocation-script-missing",
+            "invocation-script-unapproved",
+            "invocation-unit-read",
+            "invocation-unit-unapproved",
             "scheduler",
             "backup-lock",
             "file-safety",
@@ -532,22 +537,28 @@ def _require_pgpass_match(config: dict[str, str], server_name: str, port: int) -
 
 
 def _require_reviewed_invocation() -> bool:
-    script, _ = _read_regular_file(
-        ACTIVE_BACKUP_SCRIPT_PATH, maximum_bytes=256 * 1024, required=False
-    )
-    service, _ = _read_regular_file(
-        ACTIVE_BACKUP_SERVICE_PATH, maximum_bytes=32 * 1024, required=False
-    )
+    try:
+        script, _ = _read_regular_file(
+            ACTIVE_BACKUP_SCRIPT_PATH, maximum_bytes=256 * 1024, required=False
+        )
+    except SafeMaintenanceError as exc:
+        raise SafeMaintenanceError("invocation-script-read") from exc
+    try:
+        service, _ = _read_regular_file(
+            ACTIVE_BACKUP_SERVICE_PATH, maximum_bytes=32 * 1024, required=False
+        )
+    except SafeMaintenanceError as exc:
+        raise SafeMaintenanceError("invocation-unit-read") from exc
     if script is None:
         if service is None:
             return False
-        raise SafeMaintenanceError
+        raise SafeMaintenanceError("invocation-script-missing")
     if hashlib.sha256(script).hexdigest() not in APPROVED_BACKUP_SCRIPT_SHA256:
-        raise SafeMaintenanceError
+        raise SafeMaintenanceError("invocation-script-unapproved")
     if service is None:
         return False
     if hashlib.sha256(service).hexdigest() != APPROVED_BACKUP_SERVICE_SHA256:
-        raise SafeMaintenanceError
+        raise SafeMaintenanceError("invocation-unit-unapproved")
     return True
 
 
@@ -852,6 +863,10 @@ def apply() -> str:
         raise SafeMaintenanceError("file-safety") from exc
     try:
         commissioned_invocation = _require_reviewed_invocation()
+    except SafeMaintenanceError as exc:
+        if exc.code.startswith("invocation-"):
+            raise
+        raise SafeMaintenanceError("invocation") from exc
     except Exception as exc:
         raise SafeMaintenanceError("invocation") from exc
     try:
