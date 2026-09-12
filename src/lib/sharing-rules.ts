@@ -1,17 +1,26 @@
 import { prisma } from "@/lib/prisma"
 import { isManagerOrAbove } from "@/lib/constants"
 
+type OwnershipCondition = Record<string, unknown>
+
 /**
  * Apply record-level sharing rules to a Prisma where clause.
  * Admin/Manager see everything. Others see own records + shared via rules.
  */
+export function applyRecordFilter<TWhere extends object>(
+  orgId: string,
+  userId: string,
+  role: string,
+  entityType: string,
+  baseWhere: TWhere,
+): Promise<TWhere>
 export async function applyRecordFilter(
   orgId: string,
   userId: string,
   role: string,
   entityType: string,
-  baseWhere: any
-) {
+  baseWhere: object,
+): Promise<object> {
   if (isManagerOrAbove(role)) return baseWhere
 
   // Company and Contact currently have no record-owner columns. They are
@@ -24,9 +33,11 @@ export async function applyRecordFilter(
     where: { organizationId: orgId, entityType, isActive: true },
   })
 
-  // Default: see own records (assigned or created). Ownerless deals remain a
-  // shared intake queue, but ownerless leads are manager-only: SMM leads must
-  // be assigned by the load balancer before a salesperson can see them.
+  // Default: see own records (assigned or created). Ownerless deals and
+  // tickets remain shared intake queues. Agents must be able to see an
+  // unassigned ticket before the atomic "take next" action can claim it;
+  // ownerless leads remain manager-only because the SMM load balancer assigns
+  // those before sales users may work them.
   // Lead and Deal have an owner (`assignedTo`) but no `createdBy` column.
   // Passing `createdBy` to Prisma makes their list endpoints fail at runtime.
   // Manual lead creation assigns the creator as owner, so ownership filtering
@@ -46,10 +57,12 @@ export async function applyRecordFilter(
     const createdBy = Array.isArray(ownerIds)
       ? { createdBy: { in: ownerIds } }
       : { createdBy: ownerIds }
-    return [assignedTo, createdBy]
+    return entityType === "ticket" && !Array.isArray(ownerIds)
+      ? [assignedTo, createdBy, { assignedTo: null }]
+      : [assignedTo, createdBy]
   }
 
-  const orConditions: any[] = ownershipConditions(userId)
+  const orConditions: OwnershipCondition[] = ownershipConditions(userId)
 
   const applyOwnershipConditions = () => {
     // Prisma's `OR` is a single object key. Spreading the ownership filter over
@@ -75,7 +88,7 @@ export async function applyRecordFilter(
           where: { organizationId: orgId, role: rule.sourceRole },
           select: { id: true },
         })
-        const sourceIds = sourceUsers.map((u: any) => u.id)
+        const sourceIds = sourceUsers.map((user: { id: string }) => user.id)
         orConditions.push({ OR: ownershipConditions(sourceIds) })
       }
     }
