@@ -1,22 +1,21 @@
 import { NextResponse } from "next/server"
 import { prisma, logAudit } from "@/lib/prisma"
-import { withRls, withRlsAuth } from "@/lib/with-rls"
+import { withRlsAuth } from "@/lib/with-rls"
 import { setOrgFeatureFlag } from "@/lib/org-features"
 import { featureFlagsToArray } from "@/lib/modules"
 import { isToggleableFeatureFlag } from "@/lib/ai-feature-flags"
+import { SUPPORT_AI_DISABLED_FEATURE } from "@/lib/ai/feature-keys"
+import { hasSupportAiSettingsEntitlement } from "@/lib/ai/support-settings-access"
 
 /**
  * GET /api/v1/settings/ai-features — list current features
  * PATCH /api/v1/settings/ai-features — add/remove a feature flag
  *
- * GET intentionally stays on `withRls` rather than matching PATCH's
- * `withRlsAuth("settings", …)`: reading your own org's flag list is what the
- * inbox chatbot-rules and social-monitoring pages do to render their toggles,
- * and every role below admin has `settings: []` in ROLE_PERMISSIONS — gating
- * the read would blank those pages for managers. The asymmetry is the point,
- * not an oversight.
+ * GET is intentionally authorized as an AI read rather than a settings read:
+ * non-admin Support/Omnichannel screens need their own organization's feature
+ * state to hide disabled AI actions, while PATCH remains admin-only.
  */
-export const GET = withRls(async (_req, { orgId }) => {
+export const GET = withRlsAuth("ai", "read", async (_req, { orgId }) => {
   const org = await prisma.organization.findUnique({
     where: { id: orgId },
     select: { features: true },
@@ -56,17 +55,40 @@ export const PATCH = withRlsAuth("settings", "write", async (req, auth) => {
     )
   }
 
-  // Atomic toggle — no read-modify-write race (two concurrent saves can't drop a flag).
-  await setOrgFeatureFlag(orgId, feature, action === "add")
+  if (
+    feature === SUPPORT_AI_DISABLED_FEATURE
+    && !(await hasSupportAiSettingsEntitlement(orgId))
+  ) {
+    return NextResponse.json({ error: "Support and AI add-ons required" }, { status: 403 })
+  }
 
-  await logAudit(
-    orgId,
-    action === "add" ? "feature_flag_enabled" : "feature_flag_disabled",
-    "organization",
-    orgId,
-    feature,
-    { userId: auth.userId },
-  )
+  const before = await prisma.organization.findUnique({
+    where: { id: orgId },
+    select: { features: true },
+  })
+  const previousFeatures = featureFlagsToArray(before?.features)
+  const previouslyPresent = previousFeatures.includes(feature)
+  const shouldBePresent = action === "add"
+
+  // Atomic toggle — no read-modify-write race (two concurrent saves can't drop a flag).
+  await setOrgFeatureFlag(orgId, feature, shouldBePresent)
+
+  if (previouslyPresent !== shouldBePresent) {
+    const supportState = feature === SUPPORT_AI_DISABLED_FEATURE
+      ? {
+          oldValue: { supportAiEnabled: !previouslyPresent },
+          newValue: { supportAiEnabled: !shouldBePresent },
+        }
+      : {}
+    await logAudit(
+      orgId,
+      shouldBePresent ? "feature_flag_enabled" : "feature_flag_disabled",
+      "organization",
+      orgId,
+      feature,
+      { userId: auth.userId, ...supportState },
+    )
+  }
 
   const org = await prisma.organization.findUnique({
     where: { id: orgId },
