@@ -124,7 +124,7 @@ export const POST = withWorkforceSessionAuth<EmployeeExceptionResponseRouteConte
     if (responseConstraint(error)) {
       return NextResponse.json({ error: "This exception is unavailable for that employee response", code: "WORKFORCE_EXCEPTION_RESPONSE_LINK_INVALID" }, { status: 409 })
     }
-    console.error("[workforce/exceptions response POST]", error)
+    logWorkforceSensitiveOperationFailure({ operation: "review-exception-response-write" })
     return NextResponse.json({ error: "Failed to record Workforce exception response" }, { status: 500 })
   }
 })
