@@ -38,6 +38,9 @@ describe("Support UX evidence seed safety contract", () => {
     expect(seed).toContain('const DEMO_ORGANIZATION = "Northstar Support Lab"')
     expect(seed).toContain('const DEMO_SLUG = "support-evidence"')
     expect(seed).toContain("@support-evidence.invalid")
+    expect(seed).toContain('"analytics", "voip", "ai", "complaints_register"')
+    expect(seed).toContain("analytics: true")
+    expect(seed).not.toContain("reports: true")
     for (const model of [
       "organization", "user", "contact", "ticketQueue", "ticketCategory",
       "slaPolicy", "ticket", "complaintMeta", "ticketComment", "kbArticle",
@@ -46,6 +49,7 @@ describe("Support UX evidence seed safety contract", () => {
     ]) {
       expect(seed).toContain(`prisma.${model}.`)
     }
+    expect(seed).toContain("index % 5 === 0 ? null")
   })
 
   it("keeps the fixture manifest private and removes it before artifact upload", () => {
@@ -55,5 +59,17 @@ describe("Support UX evidence seed safety contract", () => {
     expect(workflow.indexOf('rm -f "$SUPPORT_EVIDENCE_FIXTURE_MANIFEST"')).toBeLessThan(
       workflow.indexOf("Upload non-secret evidence"),
     )
+  })
+
+  it("supports a genuine empty ticket profile for section-scoped list evidence", () => {
+    expect(seed).toContain("if (count === 0)")
+    expect(seed).toContain("fixtures: {}")
+    expect(workflow).toContain(".fixtures.ticketId // empty")
+    expect(workflow).toContain(".fixtures.complaintId // empty")
+    expect(workflow).toContain(".fixtures.portalTicketId // empty")
+    expect(workflow).toContain(".fixtures.kbArticleId // empty")
+    expect(workflow).toContain(".fixtures.ticketCategoryId // empty")
+    expect(workflow).toContain(".fixtures.slaPolicyId // empty")
+    expect(workflow).toContain(".fixtures.entitlementId // empty")
   })
 })

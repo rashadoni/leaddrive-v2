@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { decimalToNumber } from "@/lib/prisma-decimal"
 import { withRls } from "@/lib/with-rls"
+import { orgStageVocabulary } from "@/lib/deal-stage-vocabulary"
 
 export const GET = withRls(async (_req, { orgId }, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
@@ -15,6 +16,8 @@ export const GET = withRls(async (_req, { orgId }, { params }: { params: Promise
   })
 
   if (!ticket) return NextResponse.json({ error: "Ticket not found" }, { status: 404 })
+
+  const { wonStages, closedStages } = await orgStageVocabulary(orgId)
 
   const [recentTickets, recentActivity, openDeals, lifetimeValue] = await Promise.all([
     // Recent tickets by same contact (excluding current)
@@ -40,7 +43,7 @@ export const GET = withRls(async (_req, { orgId }, { params }: { params: Promise
     // Open deals for this company
     ticket.companyId
       ? prisma.deal.findMany({
-          where: { organizationId: orgId, companyId: ticket.companyId, status: { not: "lost" } },
+          where: { organizationId: orgId, companyId: ticket.companyId, stage: { notIn: closedStages } },
           select: { id: true, name: true, valueAmount: true, stage: true, currency: true }, // valueAmount normalized below
           orderBy: { createdAt: "desc" },
           take: 5,
@@ -50,7 +53,7 @@ export const GET = withRls(async (_req, { orgId }, { params }: { params: Promise
     // Lifetime value (sum of won deals)
     ticket.companyId
       ? prisma.deal.aggregate({
-          where: { organizationId: orgId, companyId: ticket.companyId, status: "won" },
+          where: { organizationId: orgId, companyId: ticket.companyId, stage: { in: wonStages } },
           _sum: { valueAmount: true },
         })
       : null,
@@ -63,7 +66,7 @@ export const GET = withRls(async (_req, { orgId }, { params }: { params: Promise
       company: ticket.company,
       recentTickets,
       recentActivity,
-      openDeals: (openDeals as any[]).map((d) => ({ ...d, valueAmount: decimalToNumber(d.valueAmount) })),
+      openDeals: openDeals.map((deal) => ({ ...deal, valueAmount: decimalToNumber(deal.valueAmount) })),
       lifetimeValue: decimalToNumber(lifetimeValue?._sum?.valueAmount),
     },
   })

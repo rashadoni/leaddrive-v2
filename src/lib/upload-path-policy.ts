@@ -18,6 +18,7 @@ export const PROXIED_UPLOAD_SUBDIRS = [
   "social-logos",
   "avatars",
   "tasks",
+  "tickets",
 ] as const
 
 export type ProxiedUploadSubdir = typeof PROXIED_UPLOAD_SUBDIRS[number]
