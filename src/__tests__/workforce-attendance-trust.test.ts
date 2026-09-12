@@ -14,7 +14,6 @@ import {
 import {
   prepareWorkforceAttendanceVerification,
   recordWorkforceAttendanceVerification,
-  WorkforceAttendanceTrustError,
 } from "@/lib/workforce/attendance-trust"
 
 const ORGANIZATION_ID = "org_1"
@@ -87,6 +86,9 @@ describe("Workforce attendance trust preparation", () => {
     const token = mintWorkforceAttendanceQr({
       organizationId: ORGANIZATION_ID,
       stationId: "station_1",
+      siteId: "site_1",
+      geofenceRevisionId: "geofence_1",
+      action: "START",
       expiresAt: new Date("2026-08-29T09:01:00.000Z"),
       now: NOW,
     })
@@ -108,6 +110,12 @@ describe("Workforce attendance trust preparation", () => {
         stationId: "station_1",
       }),
     })
+    expect(prisma.workforceAttendanceQrStation.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        siteId: "site_1",
+        geofenceRevisionId: "geofence_1",
+      }),
+    }))
   })
 
   it("rejects a current QR when the submitted work-time action is historical", async () => {
@@ -117,6 +125,9 @@ describe("Workforce attendance trust preparation", () => {
     const token = mintWorkforceAttendanceQr({
       organizationId: ORGANIZATION_ID,
       stationId: "station_1",
+      siteId: "site_1",
+      geofenceRevisionId: "geofence_1",
+      action: "START",
       expiresAt: new Date("2026-08-29T09:01:00.000Z"),
       now: NOW,
     })
@@ -125,6 +136,26 @@ describe("Workforce attendance trust preparation", () => {
       ...EVENT,
       occurredAt: new Date("2026-08-01T09:00:00.000Z"),
     })).rejects.toMatchObject({ code: "WORKFORCE_ATTENDANCE_QR_EVENT_TIME_INVALID" })
+    expect(prisma.workforceAttendanceQrStation.findFirst).not.toHaveBeenCalled()
+  })
+
+  it("rejects a valid current QR if it was minted for another attendance action", async () => {
+    vi.mocked(prisma.workforcePolicy.findMany).mockResolvedValue([
+      policy({ attendance: { enforcementVersion: 1, qr: { requiredActions: ["START"] } } }),
+    ] as never)
+    const token = mintWorkforceAttendanceQr({
+      organizationId: ORGANIZATION_ID,
+      stationId: "station_1",
+      siteId: "site_1",
+      geofenceRevisionId: "geofence_1",
+      action: "FINISH",
+      expiresAt: new Date("2026-08-29T09:01:00.000Z"),
+      now: NOW,
+    })
+
+    await expect(prepare({ qrToken: token })).rejects.toMatchObject({
+      code: "WORKFORCE_ATTENDANCE_QR_CONTEXT_INVALID",
+    })
     expect(prisma.workforceAttendanceQrStation.findFirst).not.toHaveBeenCalled()
   })
 

@@ -8,6 +8,7 @@ import {
   workforceDeviceEnrollmentChallenge,
   workforceDeviceEnrollmentChallengeFingerprint,
 } from "@/lib/workforce/attendance-security"
+import { WorkforceAttendanceActionSchema, type WorkforceAttendanceAction } from "@/lib/workforce/attendance-policy"
 import { newWorkforceAttendanceEnrollmentChallenge } from "@/lib/workforce/attendance-trust"
 
 const IDENTIFIER = /^[A-Za-z0-9_-]{1,100}$/
@@ -31,6 +32,11 @@ function attendanceAuditData(input: {
   publicKeyFingerprint?: string
   status: string
   rotationSeconds?: number
+  siteId?: string | null
+  geofenceRevisionId?: string | null
+  areaLabel?: string | null
+  effectiveFrom?: Date | null
+  effectiveTo?: Date | null
   replacesEnrollmentId?: string | null
 }, audit: WorkforceAttendanceAuditContext): Prisma.InputJsonObject {
   return {
@@ -41,6 +47,11 @@ function attendanceAuditData(input: {
     ...(input.deviceLabel === undefined ? {} : { deviceLabel: input.deviceLabel }),
     ...(input.publicKeyFingerprint === undefined ? {} : { publicKeyFingerprint: input.publicKeyFingerprint }),
     ...(input.rotationSeconds === undefined ? {} : { rotationSeconds: input.rotationSeconds }),
+    ...(input.siteId === undefined ? {} : { siteId: input.siteId }),
+    ...(input.geofenceRevisionId === undefined ? {} : { geofenceRevisionId: input.geofenceRevisionId }),
+    ...(input.areaLabel === undefined ? {} : { areaLabel: input.areaLabel }),
+    ...(input.effectiveFrom === undefined ? {} : { effectiveFrom: input.effectiveFrom?.toISOString() ?? null }),
+    ...(input.effectiveTo === undefined ? {} : { effectiveTo: input.effectiveTo?.toISOString() ?? null }),
     ...(input.replacesEnrollmentId === undefined ? {} : { replacesEnrollmentId: input.replacesEnrollmentId }),
     status: input.status,
   }
@@ -50,7 +61,23 @@ export const WorkforceAttendanceStationCreateSchema = z.object({
   code: z.string().trim().min(1).max(64).regex(IDENTIFIER, "Station code must use letters, numbers, _ or -"),
   name: z.string().trim().min(1).max(120),
   rotationSeconds: z.number().int().min(30).max(300).optional(),
-}).strict()
+  siteId: z.string().trim().regex(IDENTIFIER),
+  /** Named sub-area is Workforce-local descriptive context, not geometry. */
+  areaLabel: z.string().trim().min(1).max(120).nullable().optional(),
+  geofenceRevisionId: z.string().trim().regex(IDENTIFIER),
+  effectiveFrom: z.coerce.date(),
+  effectiveTo: z.coerce.date().nullable().optional(),
+}).strict().superRefine((value, context) => {
+  if (Number.isNaN(value.effectiveFrom.getTime())) {
+    context.addIssue({ code: "custom", path: ["effectiveFrom"], message: "effectiveFrom must be a valid timestamp" })
+  }
+  if (value.effectiveTo != null && Number.isNaN(value.effectiveTo.getTime())) {
+    context.addIssue({ code: "custom", path: ["effectiveTo"], message: "effectiveTo must be a valid timestamp" })
+  }
+  if (value.effectiveTo != null && value.effectiveTo <= value.effectiveFrom) {
+    context.addIssue({ code: "custom", path: ["effectiveTo"], message: "effectiveTo must be after effectiveFrom" })
+  }
+})
 
 export const WorkforceAttendanceEnrollmentCreateSchema = z.object({
   deviceLabel: z.string().trim().min(1).max(120),
@@ -69,6 +96,9 @@ export class WorkforceAttendanceManagementError extends Error {
       | "WORKFORCE_ATTENDANCE_STATION_NOT_FOUND"
       | "WORKFORCE_ATTENDANCE_STATION_DISABLED"
       | "WORKFORCE_ATTENDANCE_STATION_CODE_DUPLICATE"
+      | "WORKFORCE_ATTENDANCE_STATION_SITE_INVALID"
+      | "WORKFORCE_ATTENDANCE_STATION_GEOFENCE_INVALID"
+      | "WORKFORCE_ATTENDANCE_STATION_NOT_EFFECTIVE"
       | "WORKFORCE_ATTENDANCE_ENROLLMENT_NOT_FOUND"
       | "WORKFORCE_ATTENDANCE_ENROLLMENT_REPLACEMENT_INVALID"
       | "WORKFORCE_ATTENDANCE_ENROLLMENT_DUPLICATE_KEY"
@@ -96,10 +126,41 @@ export async function createWorkforceAttendanceQrStation(
     code: string
     name: string
     rotationSeconds?: number
+    siteId: string
+    areaLabel?: string | null
+    geofenceRevisionId: string
+    effectiveFrom: Date
+    effectiveTo?: Date | null
   },
 ) {
   try {
     return await db.$transaction(async (tx) => {
+      const site = await tx.workforceSite.findFirst({
+        where: { id: input.siteId, organizationId: input.organizationId, status: "ACTIVE" },
+        select: { id: true },
+      })
+      if (!site) {
+        throw new WorkforceAttendanceManagementError(
+          "WORKFORCE_ATTENDANCE_STATION_SITE_INVALID",
+          "The Workforce site is unavailable for this QR station",
+        )
+      }
+      const geofence = await tx.workforceSiteGeofenceRevision.findFirst({
+        where: {
+          id: input.geofenceRevisionId,
+          organizationId: input.organizationId,
+          siteId: input.siteId,
+          effectiveFrom: { lte: input.effectiveFrom },
+          OR: [{ effectiveTo: null }, { effectiveTo: { gt: input.effectiveFrom } }],
+        },
+        select: { id: true },
+      })
+      if (!geofence) {
+        throw new WorkforceAttendanceManagementError(
+          "WORKFORCE_ATTENDANCE_STATION_GEOFENCE_INVALID",
+          "The selected site geofence revision is unavailable for this QR station",
+        )
+      }
       const station = await tx.workforceAttendanceQrStation.create({
         data: {
           organizationId: input.organizationId,
@@ -107,6 +168,11 @@ export async function createWorkforceAttendanceQrStation(
           code: input.code,
           name: input.name,
           rotationSeconds: input.rotationSeconds ?? 60,
+          siteId: input.siteId,
+          areaLabel: input.areaLabel ?? null,
+          geofenceRevisionId: input.geofenceRevisionId,
+          effectiveFrom: input.effectiveFrom,
+          effectiveTo: input.effectiveTo ?? null,
         },
         select: {
           id: true,
@@ -114,6 +180,11 @@ export async function createWorkforceAttendanceQrStation(
           name: true,
           status: true,
           rotationSeconds: true,
+          siteId: true,
+          areaLabel: true,
+          geofenceRevisionId: true,
+          effectiveFrom: true,
+          effectiveTo: true,
           createdAt: true,
         },
       })
@@ -200,11 +271,36 @@ export async function disableWorkforceAttendanceQrStation(
 
 export async function issueWorkforceAttendanceQr(
   db: PrismaClient,
-  input: { organizationId: string; stationId: string; now?: Date },
+  input: { organizationId: string; stationId: string; action: WorkforceAttendanceAction; now?: Date },
 ) {
+  const now = input.now ?? new Date()
+  if (!WorkforceAttendanceActionSchema.safeParse(input.action).success) {
+    throw new WorkforceAttendanceManagementError(
+      "WORKFORCE_ATTENDANCE_STATION_NOT_EFFECTIVE",
+      "Attendance QR action is invalid",
+    )
+  }
   const station = await db.workforceAttendanceQrStation.findFirst({
-    where: { id: input.stationId, organizationId: input.organizationId },
-    select: { id: true, code: true, name: true, status: true, rotationSeconds: true },
+    where: {
+      id: input.stationId,
+      organizationId: input.organizationId,
+      siteId: { not: null },
+      geofenceRevisionId: { not: null },
+      effectiveFrom: { lte: now },
+      OR: [{ effectiveTo: null }, { effectiveTo: { gt: now } }],
+    },
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      status: true,
+      rotationSeconds: true,
+      siteId: true,
+      areaLabel: true,
+      geofenceRevisionId: true,
+      effectiveFrom: true,
+      effectiveTo: true,
+    },
   })
   if (!station) {
     throw new WorkforceAttendanceManagementError(
@@ -218,13 +314,31 @@ export async function issueWorkforceAttendanceQr(
       "Attendance QR station is disabled",
     )
   }
-  const now = input.now ?? new Date()
+  if (station.siteId == null || station.geofenceRevisionId == null) {
+    throw new WorkforceAttendanceManagementError(
+      "WORKFORCE_ATTENDANCE_STATION_NOT_EFFECTIVE",
+      "Attendance QR station is not bound to an active site revision",
+    )
+  }
   const expiresAt = new Date(now.getTime() + station.rotationSeconds * 1000)
   return {
-    station: { id: station.id, code: station.code, name: station.name, rotationSeconds: station.rotationSeconds },
+    station: {
+      id: station.id,
+      code: station.code,
+      name: station.name,
+      rotationSeconds: station.rotationSeconds,
+      siteId: station.siteId,
+      areaLabel: station.areaLabel,
+      geofenceRevisionId: station.geofenceRevisionId,
+      effectiveFrom: station.effectiveFrom,
+      effectiveTo: station.effectiveTo,
+    },
     token: mintWorkforceAttendanceQr({
       organizationId: input.organizationId,
       stationId: station.id,
+      siteId: station.siteId,
+      geofenceRevisionId: station.geofenceRevisionId,
+      action: input.action,
       now,
       expiresAt,
     }),

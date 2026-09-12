@@ -12,7 +12,7 @@ import {
   type WorkforceAttendanceAction,
 } from "@/lib/workforce/attendance-policy"
 
-const QR_VERSION = "wa1"
+const QR_VERSION = "wa2"
 const QR_MAX_LIFETIME_SECONDS = 5 * 60
 const QR_CLOCK_SKEW_SECONDS = 60
 const DEVICE_KEY_ALGORITHM = "ECDSA_P256_SHA256" as const
@@ -22,6 +22,9 @@ export type WorkforceDeviceKeyAlgorithm = typeof DEVICE_KEY_ALGORITHM
 
 export type WorkforceAttendanceQrPayload = {
   stationId: string
+  siteId: string
+  geofenceRevisionId: string
+  action: WorkforceAttendanceAction
   nonce: string
   issuedAt: Date
   expiresAt: Date
@@ -68,6 +71,9 @@ function qrSignature(payloadSegment: string, organizationId: string): string {
 
 function qrPayloadJson(input: {
   stationId: string
+  siteId: string
+  geofenceRevisionId: string
+  action: WorkforceAttendanceAction
   nonce: string
   issuedAtSeconds: number
   expiresAtSeconds: number
@@ -75,8 +81,11 @@ function qrPayloadJson(input: {
   // Fixed field order is part of the signed wire contract.  Do not sign an
   // arbitrary JSON object whose serialisation could differ across runtimes.
   return JSON.stringify({
-    v: 1,
+    v: 2,
     s: input.stationId,
+    t: input.siteId,
+    g: input.geofenceRevisionId,
+    a: input.action,
     n: input.nonce,
     i: input.issuedAtSeconds,
     e: input.expiresAtSeconds,
@@ -87,11 +96,19 @@ function qrPayloadJson(input: {
 export function mintWorkforceAttendanceQr(input: {
   organizationId: string
   stationId: string
+  siteId: string
+  geofenceRevisionId: string
+  action: WorkforceAttendanceAction
   expiresAt: Date
   now?: Date
 }): string {
   requireIdentifier(input.organizationId, "organizationId")
   requireIdentifier(input.stationId, "stationId")
+  requireIdentifier(input.siteId, "siteId")
+  requireIdentifier(input.geofenceRevisionId, "geofenceRevisionId")
+  if (!WorkforceAttendanceActionSchema.safeParse(input.action).success) {
+    throw new WorkforceAttendanceSecurityError("WORKFORCE_ATTENDANCE_QR_INVALID", "action is invalid")
+  }
   const now = input.now ?? new Date()
   const issuedAtSeconds = Math.floor(now.getTime() / 1000)
   const expiresAtSeconds = Math.floor(input.expiresAt.getTime() / 1000)
@@ -108,6 +125,9 @@ export function mintWorkforceAttendanceQr(input: {
   const nonce = b64url(randomBytes(24))
   const payload = b64url(Buffer.from(qrPayloadJson({
     stationId: input.stationId,
+    siteId: input.siteId,
+    geofenceRevisionId: input.geofenceRevisionId,
+    action: input.action,
     nonce,
     issuedAtSeconds,
     expiresAtSeconds,
@@ -117,6 +137,9 @@ export function mintWorkforceAttendanceQr(input: {
 
 function parseQrPayload(payloadSegment: string): {
   stationId: string
+  siteId: string
+  geofenceRevisionId: string
+  action: WorkforceAttendanceAction
   nonce: string
   issuedAtSeconds: number
   expiresAtSeconds: number
@@ -136,8 +159,11 @@ function parseQrPayload(payloadSegment: string): {
   }
   const payload = value as Record<string, unknown>
   if (
-    payload.v !== 1
+    payload.v !== 2
     || typeof payload.s !== "string"
+    || typeof payload.t !== "string"
+    || typeof payload.g !== "string"
+    || !WorkforceAttendanceActionSchema.safeParse(payload.a).success
     || typeof payload.n !== "string"
     || !/^[A-Za-z0-9_-]{16,128}$/.test(payload.n)
     || !Number.isSafeInteger(payload.i)
@@ -146,8 +172,13 @@ function parseQrPayload(payloadSegment: string): {
     throw new WorkforceAttendanceSecurityError("WORKFORCE_ATTENDANCE_QR_INVALID")
   }
   requireIdentifier(payload.s, "stationId")
+  requireIdentifier(payload.t, "siteId")
+  requireIdentifier(payload.g, "geofenceRevisionId")
   return {
     stationId: payload.s,
+    siteId: payload.t,
+    geofenceRevisionId: payload.g,
+    action: payload.a as WorkforceAttendanceAction,
     nonce: payload.n,
     issuedAtSeconds: payload.i as number,
     expiresAtSeconds: payload.e as number,
@@ -169,7 +200,8 @@ export function verifyWorkforceAttendanceQr(input: {
   if (parts.length !== 3 || parts[0] !== QR_VERSION || !/^[a-f0-9]{64}$/i.test(parts[2] ?? "")) {
     throw new WorkforceAttendanceSecurityError("WORKFORCE_ATTENDANCE_QR_INVALID")
   }
-  const [_, payloadSegment, suppliedSignature] = parts
+  const payloadSegment = parts[1]!
+  const suppliedSignature = parts[2]!
   const expectedSignature = Buffer.from(qrSignature(payloadSegment!, input.organizationId), "hex")
   const actualSignature = Buffer.from(suppliedSignature!, "hex")
   if (
@@ -192,6 +224,9 @@ export function verifyWorkforceAttendanceQr(input: {
 
   return {
     stationId: payload.stationId,
+    siteId: payload.siteId,
+    geofenceRevisionId: payload.geofenceRevisionId,
+    action: payload.action,
     nonce: payload.nonce,
     issuedAt: new Date(payload.issuedAtSeconds * 1000),
     expiresAt: new Date(payload.expiresAtSeconds * 1000),

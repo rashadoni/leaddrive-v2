@@ -207,6 +207,8 @@ model Organization {
   workforceAttendanceDeviceEnrollments WorkforceAttendanceDeviceEnrollment[]
   workforceAttendanceDeviceChallenges  WorkforceAttendanceDeviceEnrollmentChallenge[]
   workforceAttendanceVerifications     WorkforceAttendanceVerification[]
+  workforceAttendanceEvidences         WorkforceAttendanceEvidence[]
+  workforceEvidenceAssessments         WorkforceEvidenceAssessment[]
   workforceMobileWriteFence            WorkforceMobileWriteFence?
   mtmPharmacyPromotionTypes           MtmPharmacyPromotionType[]
   mtmPharmacyPromotions               MtmPharmacyPromotion[]
@@ -5256,6 +5258,34 @@ enum WorkforceAttendanceVerificationMethod {
   DEVICE_KEY
 }
 
+/// Stored raw evidence may describe location, QR, device, kiosk or a manual
+/// fallback. Raw coordinates exist only inside the encrypted evidence column.
+enum WorkforceEvidenceCaptureSource {
+  LOCATION
+  QR
+  DEVICE
+  KIOSK
+  MANUAL
+}
+
+enum WorkforceEvidenceAssessmentKind {
+  GEOFENCE
+  LOCATION_QUALITY
+  PROOF_POLICY
+}
+
+/// The assessment kind plus reason codes define semantics. None of these
+/// values by itself is a payroll, disciplinary or identity decision.
+enum WorkforceEvidenceAssessmentVerdict {
+  INSIDE
+  OUTSIDE
+  UNKNOWN
+  ELIGIBLE
+  REVIEW_REQUIRED
+  UNAVAILABLE
+  SATISFIED
+}
+
 /// Server-owned mobile mutation posture. An absent row remains legacy-safe;
 /// a tenant administrator must explicitly move to cohort-only or frozen mode.
 enum WorkforceMobileWriteFenceMode {
@@ -7189,6 +7219,7 @@ model MtmAgentWorkdayEvent {
   createdAt      DateTime            @default(now())
 
   workforceAttendanceVerifications WorkforceAttendanceVerification[]
+  workforceAttendanceEvidences WorkforceAttendanceEvidence[]
   workforceAttendanceReviewCase WorkforceAttendanceReviewCase?
 
   @@unique([organizationId, agentId, clientEventId])
@@ -7448,6 +7479,7 @@ model WorkforceSite {
   geofenceRevisions WorkforceSiteGeofenceRevision[]
   assignments        WorkforceSiteAssignment[]
   shiftSegments      WorkforceShiftSegment[]
+  attendanceQrStations WorkforceAttendanceQrStation[] @relation("WorkforceAttendanceQrStationSite")
 
   @@unique([organizationId, id])
   @@unique([organizationId, code])
@@ -7479,6 +7511,8 @@ model WorkforceSiteGeofenceRevision {
   createdByUserId      String
   createdByUser        User                       @relation("WorkforceSiteGeofenceRevisionCreatedBy", fields: [organizationId, createdByUserId], references: [organizationId, id], onDelete: Restrict)
   createdAt            DateTime                   @default(now())
+
+  attendanceQrStations WorkforceAttendanceQrStation[] @relation("WorkforceAttendanceQrStationGeofenceRevision")
 
   @@unique([organizationId, id])
   @@unique([organizationId, siteId, revision])
@@ -7650,6 +7684,8 @@ model WorkforceSiteTransition {
   attendanceReviewState WorkforceAttendanceClaimReviewState @default(NOT_REQUIRED)
   attendanceReviewReasonCode String?              @db.VarChar(64)
   createdAt          DateTime                     @default(now())
+
+  workforceAttendanceEvidences WorkforceAttendanceEvidence[]
 
   @@unique([organizationId, id])
   @@unique([organizationId, agentId, clientTransitionId])
@@ -7937,6 +7973,15 @@ model WorkforceAttendanceQrStation {
   name             String
   status           WorkforceAttendanceQrStationStatus @default(ACTIVE)
   rotationSeconds  Int                                @default(60)
+  /// Legacy stations remain unbound after the additive migration and are not
+  /// eligible to issue or verify a v2 QR until recreated with this context.
+  siteId           String?
+  site             WorkforceSite?                     @relation("WorkforceAttendanceQrStationSite", fields: [organizationId, siteId], references: [organizationId, id], onDelete: Restrict)
+  areaLabel        String?                            @db.VarChar(120)
+  geofenceRevisionId String?
+  geofenceRevision WorkforceSiteGeofenceRevision?     @relation("WorkforceAttendanceQrStationGeofenceRevision", fields: [organizationId, geofenceRevisionId], references: [organizationId, id], onDelete: Restrict)
+  effectiveFrom    DateTime?
+  effectiveTo      DateTime?
   createdByUserId  String
   createdByUser    User                               @relation("WorkforceAttendanceQrStationCreatedBy", fields: [organizationId, createdByUserId], references: [organizationId, id], onDelete: Restrict)
   disabledByUserId String?
@@ -7950,6 +7995,8 @@ model WorkforceAttendanceQrStation {
   @@unique([organizationId, id])
   @@unique([organizationId, code])
   @@index([organizationId, status, createdAt])
+  @@index([organizationId, siteId, status, effectiveFrom, effectiveTo])
+  @@index([organizationId, geofenceRevisionId])
   @@index([organizationId, createdByUserId])
   @@index([organizationId, disabledByUserId])
   @@map("workforce_attendance_qr_stations")
@@ -8046,6 +8093,64 @@ model WorkforceAttendanceVerification {
   @@index([organizationId, stationId, verifiedAt])
   @@index([organizationId, deviceEnrollmentId, verifiedAt])
   @@map("workforce_attendance_verifications")
+}
+
+/// Append-only encrypted source evidence for exactly one canonical Workforce
+/// workday event or site transition. The receipt/assessment paths never need
+/// to decrypt raw coordinates, QR tokens or device material.
+model WorkforceAttendanceEvidence {
+  id                   String                        @id @default(cuid())
+  organizationId       String
+  organization         Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workdayEventId       String?
+  workdayEvent         MtmAgentWorkdayEvent?         @relation(fields: [organizationId, workdayEventId], references: [organizationId, id], onDelete: Restrict)
+  siteTransitionId     String?
+  siteTransition       WorkforceSiteTransition?      @relation(fields: [organizationId, siteTransitionId], references: [organizationId, id], onDelete: Restrict)
+  operationReference   String                        @db.VarChar(191)
+  source               WorkforceEvidenceCaptureSource
+  schemaVersion        Int
+  capturedAt           DateTime
+  payloadHash          String                        @db.VarChar(64)
+  redactedReceipt      Json
+  rawEnvelopeCiphertext String?                      @db.Text
+  rawExpiresAt         DateTime
+  rawPurgedAt          DateTime?
+  createdAt            DateTime                      @default(now())
+
+  assessments WorkforceEvidenceAssessment[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, operationReference])
+  @@index([organizationId, workdayEventId, capturedAt])
+  @@index([organizationId, siteTransitionId, capturedAt])
+  @@index([organizationId, rawExpiresAt, rawPurgedAt])
+  @@map("workforce_attendance_evidence")
+}
+
+/// Immutable derived outcome for one evidence record. It contains no raw
+/// coordinates/ciphertext, so normal reports can preserve a verdict after the
+/// raw evidence is purged under the retention policy.
+model WorkforceEvidenceAssessment {
+  id                  String                             @id @default(cuid())
+  organizationId      String
+  organization        Organization                       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  evidenceId          String
+  evidence            WorkforceAttendanceEvidence       @relation(fields: [organizationId, evidenceId], references: [organizationId, id], onDelete: Restrict)
+  kind                WorkforceEvidenceAssessmentKind
+  assessorVersion     String                             @db.VarChar(64)
+  verdict             WorkforceEvidenceAssessmentVerdict
+  reasonCodes         Json
+  geofenceRevisionId  String?                            @db.VarChar(191)
+  distanceMeters      Float?
+  accuracyMeters      Float?
+  assessedAt          DateTime
+  createdAt           DateTime                           @default(now())
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, evidenceId, kind, assessorVersion])
+  @@index([organizationId, evidenceId, assessedAt])
+  @@index([organizationId, kind, verdict, assessedAt])
+  @@map("workforce_evidence_assessments")
 }
 
 /// A tenant-scoped emergency/drain fence for mobile Workforce mutations.

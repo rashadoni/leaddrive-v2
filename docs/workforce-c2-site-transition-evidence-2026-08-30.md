@@ -2,9 +2,9 @@
 
 > **Checkpoint:** `WF-C2-007` foundation — 2026-08-30
 >
-> **Status:** partial. The immutable claim ledger is implemented; C4 must add
-> evidence collection/assessment and C3 must snapshot the resolved segment for
-> an accepted workday before this becomes a complete attendance decision flow.
+> **Status:** implementation evidence for `WF-C2-007`. The immutable claim
+> ledger is segment-snapshot-bound and C4 evidence/assessment records can now
+> reference it; the C2 gate remains open for independent owner decisions.
 
 ## Delivered contract
 
@@ -26,39 +26,39 @@
 - The transaction also writes an ordinary tenant audit projection. No claim is
   reported as a location verdict or a payroll result.
 
+## Segment and assessment linkage completion
+
+An accepted transition now requires the same workday's immutable schedule
+snapshot to contain the claimed `SITE` segment.  A later shift edit, employee
+transfer or site assignment change therefore cannot make an old transition
+appear to belong to a different segment.
+
+`WorkforceAttendanceEvidence` has an exclusive subject relation to either a
+workday event or a `WorkforceSiteTransition`, enforced with composite tenant
+foreign keys.  Its append-only `WorkforceEvidenceAssessment` records derived
+geofence/quality/policy outcomes without copying raw coordinates or ciphertext.
+After raw evidence expires, the transition-linked redacted receipt and derived
+assessment remain explainable while the exact payload is purged.
+
 ## Explicit boundary
 
 This table deliberately stores **no** latitude/longitude, raw QR, device
-signature, biometric value or Route customer/Route geofence reference. C4 must
-attach method-specific evidence and an independent server assessment. C3-008
-must snapshot the resolved segment/site/policy at the accepted action. There is
-also no public transition route or mobile-sync entity yet: exposing a client
-claim before the C4 proof policy and C9 mobile contract would create a false
-appearance of verified physical presence.
+signature, biometric value or Route customer/Route geofence reference. The
+ledger and assessment link do not themselves prove physical presence or human
+identity. There is still no public transition route or mobile-sync entity:
+exposing a client claim before the C5/C9 proof-policy and mobile contracts
+would create a false appearance of verified physical presence.
 
 ## Verification
 
 Passed on Contabo as small sequential checks:
 
-```text
-npx vitest run src/__tests__/workforce-site-transition-facts.test.ts \
-  src/__tests__/migration-workforce-site-transitions.test.ts \
-  src/__tests__/mocks/mtm-prisma.test.ts \
-  --pool=forks --maxWorkers=1
-
-3 files passed, 13 tests passed
-
-npx eslint src/lib/workforce/site-transition-facts.ts \
-  src/__tests__/workforce-site-transition-facts.test.ts \
-  src/__tests__/migration-workforce-site-transitions.test.ts
-PASS
-
-DATABASE_URL=<inert> npx prisma validate --schema=prisma/schema.prisma
-Prisma schema is valid
-
-git diff --check
-PASS
-```
+- `PASS` — serial targeted Vitest: `workforce-site-transition-facts`,
+  `workforce-evidence-storage`, `migration-workforce-site-transitions`, and
+  `migration-workforce-evidence-assessments`: **13 tests passed**.  It covers
+  scheduled segment binding, bounded/replay-safe transition facts,
+  transition-evidence foreign key and raw-free assessment linkage.
+- `PASS` — `git diff --check`.
 
 ## Not run
 
