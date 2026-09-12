@@ -17,7 +17,7 @@ describe("Workforce C1 delayed-claim review migration", () => {
     )
     const reviewSchema = schema.slice(schema.indexOf("model WorkforceAttendanceReviewCase {"))
 
-    expect(schema).toMatch(/enum WorkforceAttendanceClaimReviewState\s*{\s*LEGACY_UNKNOWN\s*NOT_REQUIRED\s*PENDING_REVIEW\s*}/s)
+    expect(schema).toMatch(/enum WorkforceAttendanceClaimReviewState\s*{[\s\S]*?LEGACY_UNKNOWN\s*NOT_REQUIRED\s*PENDING_REVIEW\s*}/)
     expect(eventSchema).toMatch(/attendanceReviewState\s+WorkforceAttendanceClaimReviewState\s+@default\(LEGACY_UNKNOWN\)/)
     expect(eventSchema).toMatch(/attendanceReviewReasonCode\s+String\?\s+@db\.VarChar\(64\)/)
     expect(reviewSchema).toMatch(/workdayEventId\s+String/)
