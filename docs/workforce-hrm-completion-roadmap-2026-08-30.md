@@ -320,6 +320,10 @@ Owner roles are accountabilities, not individual names:
 | 2026-08-30T00:44:05+02:00 | C1a provenance/offline-boundary contract | 3% | C1 20% | 6/161 | 0/15 | WF-C1-001/002 accepted; changed-payload digest is partial pending C2 segment identity, claim/review and audit-projection work remain open |
 | 2026-08-30T00:57:42+02:00 | C1b transactional audit projection | 3% | C1 30% | 7/161 | 0/15 | WF-C1-005 accepted for workday and request decisions; failure injection blocks a successful result when the audit write fails; review-case and segment binding remain open |
 | 2026-08-30T01:11:00+02:00 | C1c delayed-claim review | 4% | C1 40% | 8/161 | 0/15 | WF-C1-003 accepted: delayed in-window claims create an immutable tenant review case; legacy evidence remains unknown; segment binding remains open |
+| 2026-08-30T01:15:00+02:00 | C2a site-domain ADR | 5% | C2 18% | 10/161 | 0/15 | WF-C2-001/011 accepted: Workforce-only vocabulary and circle-v1/future-geometry boundary recorded; no tenant site or Route linkage added |
+| 2026-08-30T01:22:00+02:00 | C2b independent site lifecycle | 5% | C2 27% | 11/161 | 0/15 | WF-C2-002 accepted: tenant-scoped site create/archive and admin API are isolated from Route; geofence/assignment/segment facts remain open |
+| 2026-08-30T01:28:00+02:00 | C2c geofence-revision foundation | 5% | C2 27% | 11/161 | 0/15 | C2-004 foundation checkpointed: circle geometry/timeline is immutable and tenant-scoped; physical calibration and workday snapshot integration remain open |
+| 2026-08-30T01:35:00+02:00 | C2d effective site assignments | 6% | C2 36% | 12/161 | 0/15 | WF-C2-005 accepted: future primary/secondary/temporary history is tenant-scoped and auditable; historical workday resolution remains open |
 
 ### 6.1 Progress reporting contract
 
@@ -424,17 +428,17 @@ between office, field, remote and travel segments.
 
 | ID | Pri | Status | Owner | Task | Acceptance evidence |
 |---|---:|---|---|---|---|
-| WF-C2-001 | P0 | PLANNED | Product/HR | Approve vocabulary and site types: Site, Area, Segment, Office, Warehouse, Temporary site, Customer site, Home/Remote, Field, Travel, On-call and Exception | AZ/RU/EN glossary and domain ADR |
-| WF-C2-002 | P0 | PLANNED | Backend | Add tenant-scoped `WorkforceSite` lifecycle with code/name/timezone/address/status and responsible scope | Prisma/RLS/migration/API tests; no cross-tenant relation |
+| WF-C2-001 | P0 | DONE | Product/HR | Approve vocabulary and site types: Site, Area, Segment, Office, Warehouse, Temporary site, Customer site, Home/Remote, Field, Travel, On-call and Exception | [`workforce-c2-site-domain-adr-2026-08-30.md`](./workforce-c2-site-domain-adr-2026-08-30.md) AZ/RU/EN glossary and module boundary |
+| WF-C2-002 | P0 | DONE | Backend | Add tenant-scoped `WorkforceSite` lifecycle with code/name/timezone/address/status and responsible scope | [`workforce-c2-site-evidence-2026-08-30.md`](./workforce-c2-site-evidence-2026-08-30.md): Prisma/RLS/migration/API tests and Route-independence contract |
 | WF-C2-003 | P0 | OWNER DECISION | HR/Privacy | Approve per-site geofence calibration procedure, minimum/maximum radius and accuracy policy | OD-05 resolved with calibration evidence |
-| WF-C2-004 | P0 | PLANNED | Backend | Add immutable effective-dated geofence revisions; v1 supports a validated circle and preserves future polygon extension | Historical workday retains original geofence snapshot |
-| WF-C2-005 | P0 | PLANNED | Backend | Add effective-dated employee site eligibility/primary-secondary assignments | Transfer and temporary-assignment tests |
+| WF-C2-004 | P0 | PARTIAL | Backend | Add immutable effective-dated geofence revisions; v1 supports a validated circle and preserves future polygon extension | [`workforce-c2-geofence-revision-evidence-2026-08-30.md`](./workforce-c2-geofence-revision-evidence-2026-08-30.md): immutable circle/timeline foundation; historical workday snapshot awaits C2/C3 integration |
+| WF-C2-005 | P0 | DONE | Backend | Add effective-dated employee site eligibility/primary-secondary assignments | [`workforce-c2-site-assignment-evidence-2026-08-30.md`](./workforce-c2-site-assignment-evidence-2026-08-30.md): transfer and temporary-assignment tests |
 | WF-C2-006 | P0 | PLANNED | Backend/HR | Add ordered shift segments with mode, site, planned window, grace and proof policy reference | 09-13 Site A, 14-18 Site B is schedulable and reproducible |
 | WF-C2-007 | P0 | PLANNED | Backend | Add arrival/departure/site-transition facts linked to segment and evidence assessment | Transition timeline supports multiple sites without a second workday |
 | WF-C2-008 | P1 | OWNER DECISION | HR/Legal | Define inter-site travel, paid/expected treatment, delay grace and who may alter it | OD-09 resolved; calculation rule versioned |
 | WF-C2-009 | P1 | PLANNED | Backend | Validate segment overlap, ordering, site eligibility, timezone and impossible travel at publish and action time | Structured conflict codes and tests |
 | WF-C2-010 | P1 | PLANNED | Backend | Add organization/team/site scoped APIs and permissions independent of Route customers/geofences | HRM-only tenant tests pass without Route tables/API |
-| WF-C2-011 | P2 | PLANNED | Product/Backend | Reserve versioned extension for polygon/multi-entrance/large-campus zones without forcing it into v1 | ADR documents compatibility boundary |
+| WF-C2-011 | P2 | DONE | Product/Backend | Reserve versioned extension for polygon/multi-entrance/large-campus zones without forcing it into v1 | [`workforce-c2-site-domain-adr-2026-08-30.md`](./workforce-c2-site-domain-adr-2026-08-30.md) documents the circle-v1 compatibility boundary |
 
 **Gate C2:** the system can schedule, snapshot and explain a multi-site day
 without using Route customer geofences or inventing a second workday.
