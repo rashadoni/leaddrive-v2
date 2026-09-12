@@ -4,6 +4,31 @@ import { currentDateKey } from "@/lib/mtm/mobile-week"
 
 export type MtmWorkdayAction = "START" | "PAUSE" | "RESUME" | "FINISH"
 
+/** Review-only machine signals for rejected state-machine attempts. */
+export type WorkforceWorkdayTransitionRiskCode =
+  | "DUPLICATE_ACTIVE_SHIFT_ATTEMPT"
+  | "CLAIM_BEFORE_WORKDAY_START"
+  | "CLAIM_PRECEDES_ACCEPTED_EVENT"
+
+export type MtmWorkdayCanonicalState = "NOT_FOUND" | "UNKNOWN" | "STARTED" | "PAUSED" | "COMPLETED"
+
+export type MtmWorkdayRecoveryMessageKey =
+  | "duplicateActive"
+  | "eventOrder"
+  | "alreadyExists"
+  | "completed"
+  | "stateChanged"
+  | "workdayUnavailable"
+  | "operationMismatch"
+  | "refresh"
+
+export type MtmWorkdayConflictRecovery = {
+  canonicalState: MtmWorkdayCanonicalState
+  reason: { code: string; messageKey: MtmWorkdayRecoveryMessageKey }
+  allowedActions: MtmWorkdayAction[]
+  refreshRequired: true
+}
+
 /**
  * Transient H5 evidence. It is intentionally never copied into the immutable
  * workday event: QR and device material are validated inside the transaction
@@ -32,8 +57,10 @@ export type MtmWorkdayEventInput = {
   queuedAt: Date | null
   /** Server receipt is assigned by the parser, never accepted from the client. */
   serverReceivedAt: Date
-  /** `1` is the legacy envelope, `2` supplies full client provenance. */
+  /** `1` is legacy, `2` supplies provenance, `3` may bind a schedule segment. */
   schemaVersion: number
+  /** v3 optional segment context, bound into the request digest when present. */
+  segmentId?: string | null
   /** Server-derived C1 review disposition; never trusted from the client. */
   attendanceReview: WorkforceAttendanceClaimReview
   workDateKey: string
@@ -57,6 +84,9 @@ export type MtmWorkdayResult =
       code: string
       message: string
       workday?: Record<string, unknown>
+      recovery: MtmWorkdayConflictRecovery
+      /** Signals are not guilt, discipline, or an attendance decision. */
+      riskCodes?: WorkforceWorkdayTransitionRiskCode[]
       /**
        * A server-derived recovery hint for a disclosed current workday. It is
        * informational: the client must refresh before attempting another
@@ -100,7 +130,7 @@ const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000
 /** The owner-approved maximum age for an offline Workforce attendance claim. */
 export const WORKFORCE_WORKDAY_OFFLINE_HORIZON_MS = 7 * 24 * 60 * 60 * 1000
 export const WORKFORCE_WORKDAY_LEGACY_SCHEMA_VERSION = 1
-export const WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION = 2
+export const WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION = 3
 /** Safe default: a claim delayed beyond ordinary sync jitter requires human review. */
 export const WORKFORCE_ATTENDANCE_REVIEW_DELAY_MS = 15 * 60 * 1000
 export const WORKFORCE_ATTENDANCE_REVIEW_POLICY_VERSION = "c1-delay-review-v1"
@@ -126,6 +156,38 @@ export function recoveryActionsForMtmWorkday(workday: Record<string, unknown> | 
   if (workday?.status === "STARTED") return ["PAUSE", "FINISH"]
   if (workday?.status === "PAUSED") return ["RESUME", "FINISH"]
   return []
+}
+
+function canonicalWorkdayState(workday: Record<string, unknown> | null | undefined): MtmWorkdayCanonicalState {
+  if (!workday) return "NOT_FOUND"
+  if (workday.status === "STARTED" || workday.status === "PAUSED" || workday.status === "COMPLETED") {
+    return workday.status
+  }
+  return "UNKNOWN"
+}
+
+function recoveryMessageKeyForConflict(code: string): MtmWorkdayRecoveryMessageKey {
+  if (code === "MTM_WORKDAY_ACTIVE") return "duplicateActive"
+  if (code === "MTM_WORKDAY_EVENT_OUT_OF_ORDER") return "eventOrder"
+  if (code === "MTM_WORKDAY_ALREADY_EXISTS") return "alreadyExists"
+  if (code === "MTM_WORKDAY_COMPLETED") return "completed"
+  if (code === "MTM_WORKDAY_NOT_RUNNING" || code === "MTM_WORKDAY_NOT_PAUSED") return "stateChanged"
+  if (code === "MTM_WORKDAY_NOT_FOUND") return "workdayUnavailable"
+  if (code.includes("IDEMPOTENCY_MISMATCH")) return "operationMismatch"
+  return "refresh"
+}
+
+/** A transport-neutral, localizable recovery contract for every workday conflict. */
+export function recoveryForMtmWorkdayConflict(
+  code: string,
+  workday?: Record<string, unknown> | null,
+): MtmWorkdayConflictRecovery {
+  return {
+    canonicalState: canonicalWorkdayState(workday),
+    reason: { code, messageKey: recoveryMessageKeyForConflict(code) },
+    allowedActions: recoveryActionsForMtmWorkday(workday),
+    refreshRequired: true,
+  }
 }
 
 const workdaySelect = {
@@ -246,7 +308,7 @@ function attendanceReviewResult(value: {
 }
 
 function validSchemaVersion(value: unknown): value is number {
-  return value === WORKFORCE_WORKDAY_LEGACY_SCHEMA_VERSION || value === WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION
+  return value === WORKFORCE_WORKDAY_LEGACY_SCHEMA_VERSION || value === 2 || value === WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION
 }
 
 function parseAttendanceEvidence(value: unknown): {
@@ -336,8 +398,19 @@ export function parseMtmWorkdayEvent(
   const claimedAt = hasExplicitValue(value, "claimedAt") ? parseTimestamp(value.claimedAt) : occurredAt
   const capturedAt = hasExplicitValue(value, "capturedAt") ? parseTimestamp(value.capturedAt) : occurredAt
   const queuedAt = hasExplicitValue(value, "queuedAt") ? parseTimestamp(value.queuedAt) : null
+  const segmentId = value.segmentId == null
+    ? null
+    : validId(value.segmentId)
+      ? value.segmentId.trim()
+      : null
   if (!claimedAt || !capturedAt || (hasExplicitValue(value, "queuedAt") && !queuedAt)) {
     return { input: null, error: "Workday provenance timestamps are invalid" }
+  }
+  if (value.segmentId != null && segmentId == null) {
+    return { input: null, error: "segmentId must be a valid Workforce segment identifier" }
+  }
+  if (segmentId != null && schemaVersion < WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION) {
+    return { input: null, error: "segmentId requires Workforce workday schemaVersion 3" }
   }
   if (claimedAt.getTime() !== occurredAt.getTime()) {
     return { input: null, error: "claimedAt must equal occurredAt for a Workforce workday event" }
@@ -357,11 +430,11 @@ export function parseMtmWorkdayEvent(
   }
   if (
     (queuedAt && (claimedAt > queuedAt || capturedAt > queuedAt))
-    || (schemaVersion === WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION && !queuedAt)
+    || (schemaVersion >= 2 && !queuedAt)
   ) {
     return {
       input: null,
-      error: "Workday provenance must be ordered and schemaVersion 2 requires queuedAt",
+      error: `Workday provenance must be ordered and schemaVersion ${schemaVersion} requires queuedAt`,
     }
   }
   if (!validCoordinatePair(value.latitude, value.longitude)) {
@@ -390,6 +463,7 @@ export function parseMtmWorkdayEvent(
       queuedAt,
       serverReceivedAt: now,
       schemaVersion,
+      segmentId,
       attendanceReview,
       workDateKey: currentDateKey(occurredAt, timezone),
       latitude: value.latitude == null ? null : value.latitude as number,
@@ -408,9 +482,8 @@ export function parseMtmWorkdayEvent(
  * the operation ID. Raw QR/device proof never enters the database through
  * this function.
  *
- * C2 will replace `segment: null` with the effective-dated segment reference;
- * keeping the reserved field in the canonical wire shape prevents a later
- * segment-aware schema from quietly weakening existing request hashing.
+ * v1/v2 payloads retain their historical digest shape. v3 adds an optional
+ * segment identity without changing replays of existing immutable facts.
  */
 export function mtmWorkdayRequestHash(scope: WorkdayScope, input: MtmWorkdayEventInput): string {
   const qrFingerprint = input.attendance?.qrToken
@@ -419,8 +492,9 @@ export function mtmWorkdayRequestHash(scope: WorkdayScope, input: MtmWorkdayEven
   const deviceProofFingerprint = input.attendance?.device
     ? createHash("sha256").update(input.attendance.device.signature).digest("hex")
     : null
+  const includesSegment = input.schemaVersion >= 3
   return createHash("sha256").update(JSON.stringify({
-    version: 2,
+    version: includesSegment ? 3 : 2,
     organizationId: scope.organizationId,
     agentId: scope.agentId,
     clientEventId: input.clientEventId,
@@ -430,7 +504,7 @@ export function mtmWorkdayRequestHash(scope: WorkdayScope, input: MtmWorkdayEven
     capturedAt: input.capturedAt.toISOString(),
     queuedAt: input.queuedAt?.toISOString() ?? null,
     schemaVersion: input.schemaVersion,
-    segment: null,
+    segment: includesSegment ? input.segmentId ?? null : null,
     latitude: input.latitude,
     longitude: input.longitude,
     accuracy: input.accuracy,
@@ -468,15 +542,19 @@ function conflict(
   code: string,
   message: string,
   workday?: Record<string, unknown> | null,
+  riskCodes?: WorkforceWorkdayTransitionRiskCode[],
 ): MtmWorkdayResult {
+  const recovery = recoveryForMtmWorkdayConflict(code, workday)
   return {
     status: "conflict",
     code,
     message,
+    recovery,
     ...(workday ? {
       workday,
-      allowedActions: recoveryActionsForMtmWorkday(workday),
+      allowedActions: recovery.allowedActions,
     } : {}),
+    ...(riskCodes && riskCodes.length > 0 ? { riskCodes } : {}),
   }
 }
 
@@ -614,7 +692,12 @@ export async function applyMtmWorkdayEvent(
       return conflict("MTM_WORKDAY_ALREADY_EXISTS", "A workday already exists for this date", sameDay as Record<string, unknown>)
     }
     if (activeWorkday) {
-      return conflict("MTM_WORKDAY_ACTIVE", "Another workday is still active", activeWorkday as Record<string, unknown>)
+      return conflict(
+        "MTM_WORKDAY_ACTIVE",
+        "Another workday is still active",
+        activeWorkday as Record<string, unknown>,
+        ["DUPLICATE_ACTIVE_SHIFT_ATTEMPT"],
+      )
     }
 
     const workday = await db.mtmAgentWorkday.create({
@@ -666,9 +749,20 @@ export async function applyMtmWorkdayEvent(
     orderBy: { occurredAt: "desc" },
     select: { occurredAt: true },
   })
-  if (input.occurredAt.getTime() < workday.startedAt.getTime() ||
-      (lastEvent && input.occurredAt.getTime() < lastEvent.occurredAt.getTime())) {
-    return conflict("MTM_WORKDAY_EVENT_OUT_OF_ORDER", "Workday event is older than the current state", workday as Record<string, unknown>)
+  const riskCodes: WorkforceWorkdayTransitionRiskCode[] = []
+  if (input.occurredAt.getTime() < workday.startedAt.getTime()) {
+    riskCodes.push("CLAIM_BEFORE_WORKDAY_START")
+  }
+  if (lastEvent && input.occurredAt.getTime() < lastEvent.occurredAt.getTime()) {
+    riskCodes.push("CLAIM_PRECEDES_ACCEPTED_EVENT")
+  }
+  if (riskCodes.length > 0) {
+    return conflict(
+      "MTM_WORKDAY_EVENT_OUT_OF_ORDER",
+      "Workday event is older than the current state",
+      workday as Record<string, unknown>,
+      riskCodes,
+    )
   }
 
   let update: Record<string, unknown>

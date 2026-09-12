@@ -34,6 +34,7 @@ import {
   applyMtmWorkdayEvent,
   mtmWorkdayRequestHash,
   parseMtmWorkdayEvent,
+  recoveryForMtmWorkdayConflict,
   type MtmWorkdayEventInput,
 } from "@/lib/mtm/workday"
 import {
@@ -41,7 +42,10 @@ import {
   recordWorkforceAttendanceVerification,
   WorkforceAttendanceTrustError,
 } from "@/lib/workforce/attendance-trust"
-import { writeWorkforceSnapshotsIfReadyInTransaction } from "@/lib/workforce/snapshot-writer"
+import {
+  assertWorkforceSnapshottedSegmentInTransaction,
+  writeWorkforceSnapshotsIfReadyInTransaction,
+} from "@/lib/workforce/snapshot-writer"
 import {
   workforceAuditRequestMetadata,
   writeWorkforceWorkdayAuditInTransaction,
@@ -297,12 +301,41 @@ function syncWorkforceMobileWriteFenceUnavailableError(operationId: string) {
   }
 }
 
-function syncWorkdayIdempotencyMismatch(operationId: string) {
+function workdayFromStoredSyncResult(result: unknown): Record<string, unknown> | null {
+  if (!result || typeof result !== "object" || Array.isArray(result)) return null
+  const serverData = (result as { serverData?: unknown }).serverData
+  if (!serverData || typeof serverData !== "object" || Array.isArray(serverData)) return null
+  const workday = (serverData as { workday?: unknown }).workday
+  return workday && typeof workday === "object" && !Array.isArray(workday)
+    ? workday as Record<string, unknown>
+    : null
+}
+
+async function syncWorkdayIdempotencyMismatch(input: {
+  operationId: string
+  organizationId: string
+  agentId: string
+  storedResult: unknown
+}) {
+  const storedWorkday = workdayFromStoredSyncResult(input.storedResult)
+  const workdayId = typeof storedWorkday?.id === "string" ? storedWorkday.id : null
+  const workday = workdayId
+    ? await prisma.mtmAgentWorkday.findFirst({
+        where: { id: workdayId, organizationId: input.organizationId, agentId: input.agentId },
+        select: { id: true, status: true, startedAt: true, pausedAt: true, completedAt: true },
+      }) as Record<string, unknown> | null
+    : null
+  const recovery = recoveryForMtmWorkdayConflict("WORKFORCE_WORKDAY_IDEMPOTENCY_MISMATCH", workday)
   return {
-    operationId,
+    operationId: input.operationId,
     status: "conflict" as const,
     error: "operationId was already used for a different Workforce workday operation",
-    serverData: { code: "WORKFORCE_WORKDAY_IDEMPOTENCY_MISMATCH" },
+    serverData: {
+      code: "WORKFORCE_WORKDAY_IDEMPOTENCY_MISMATCH",
+      ...(workday ? { workday } : {}),
+      recovery,
+      allowedActions: recovery.allowedActions,
+    },
   }
 }
 
@@ -562,7 +595,9 @@ export const POST = withMobileRls(async (req, auth) => {
         // exact historical retry remains valid beyond seven days, but an
         // altered payload must not replay it as success.
         if (entity !== "workdays" || opType !== "create") {
-          results.push(syncWorkdayIdempotencyMismatch(operationId))
+          results.push(await syncWorkdayIdempotencyMismatch({
+            operationId, organizationId: orgId, agentId, storedResult: prev.result,
+          }))
           continue
         }
         const replayParsed = parseMtmWorkdayEvent(
@@ -576,7 +611,9 @@ export const POST = withMobileRls(async (req, auth) => {
           !replayParsed.input
           || prev.requestHash !== mtmWorkdayRequestHash({ organizationId: orgId, agentId }, replayParsed.input)
         ) {
-          results.push(syncWorkdayIdempotencyMismatch(operationId))
+          results.push(await syncWorkdayIdempotencyMismatch({
+            operationId, organizationId: orgId, agentId, storedResult: prev.result,
+          }))
           continue
         }
       }
@@ -2598,6 +2635,14 @@ export const POST = withMobileRls(async (req, auth) => {
                   resolutionAt: new Date(),
                 })
               }
+              if (workdayInput.segmentId) {
+                await assertWorkforceSnapshottedSegmentInTransaction(tx, {
+                  organizationId: orgId,
+                  workdayId: workday.id,
+                  agentId,
+                  segmentId: workdayInput.segmentId,
+                })
+              }
               await writeWorkforceWorkdayAuditInTransaction(tx, {
                 scope: { organizationId: orgId, agentId },
                 workdayInput,
@@ -2614,6 +2659,8 @@ export const POST = withMobileRls(async (req, auth) => {
             errorMsg = applied.message
             serverData = {
               code: applied.code,
+              recovery: applied.recovery,
+              ...(applied.riskCodes ? { riskCodes: applied.riskCodes } : {}),
               ...(applied.workday ? { workday: applied.workday } : {}),
               ...(applied.allowedActions ? { allowedActions: applied.allowedActions } : {}),
             }
@@ -2712,7 +2759,9 @@ export const POST = withMobileRls(async (req, auth) => {
               && winner.requestHash.length > 0
               && (entity !== "workdays" || opType !== "create" || winner.requestHash !== workdayRequestHash)
             ) {
-              results.push(syncWorkdayIdempotencyMismatch(operationId))
+              results.push(await syncWorkdayIdempotencyMismatch({
+                operationId, organizationId: orgId, agentId, storedResult: winner.result,
+              }))
               continue
             }
             results.push(replayOf(operationId, winner))

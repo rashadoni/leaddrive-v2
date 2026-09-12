@@ -9,6 +9,8 @@ import { prisma } from "@/lib/prisma"
 import { workforcePolicyDefinitionHash } from "@/lib/workforce/policy-definition"
 import { workforceShiftDefinitionHash } from "@/lib/workforce/shift-definition"
 import {
+  assertWorkforceSnapshottedSegmentInTransaction,
+  workforceScheduledSnapshotSegment,
   writeWorkforceSnapshots,
   writeWorkforceSnapshotsIfReadyInTransaction,
   writeWorkforceSnapshotsInTransaction,
@@ -31,6 +33,35 @@ beforeEach(() => {
 })
 
 describe("Workforce snapshot writer", () => {
+  it("recognizes only a segment pinned on the employee's schedule snapshot", async () => {
+    const segments = [
+      { id: "segment-remote", mode: "REMOTE", siteId: null },
+      { id: "segment-baku-hq", mode: "SITE", siteId: "site-baku-hq" },
+    ]
+    expect(workforceScheduledSnapshotSegment(segments, "segment-baku-hq")).toEqual({
+      id: "segment-baku-hq", mode: "SITE", siteId: "site-baku-hq",
+    })
+    expect(workforceScheduledSnapshotSegment(segments, "segment-unplanned")).toBeNull()
+
+    vi.mocked(prisma.workforceWorkdayScheduleSnapshot.findFirst).mockResolvedValue({ segments } as never)
+    await expect(assertWorkforceSnapshottedSegmentInTransaction(prisma as never, {
+      organizationId: "org-workforce",
+      workdayId: "workday-1",
+      agentId: "agent-1",
+      segmentId: "segment-baku-hq",
+    })).resolves.toBeUndefined()
+
+    vi.mocked(prisma.workforceWorkdayScheduleSnapshot.findFirst).mockResolvedValue({
+      segments: [{ id: "segment-other-agent", mode: "SITE", siteId: "site-baku-hq" }],
+    } as never)
+    await expect(assertWorkforceSnapshottedSegmentInTransaction(prisma as never, {
+      organizationId: "org-workforce",
+      workdayId: "workday-1",
+      agentId: "agent-1",
+      segmentId: "segment-baku-hq",
+    })).rejects.toMatchObject({ code: "WORKFORCE_SNAPSHOT_SEGMENT_NOT_SCHEDULED" })
+  })
+
   it("preserves a pre-C3-008 immutable pair without reconstructing live configuration", async () => {
     vi.mocked(prisma.workforcePolicySnapshot.findFirst).mockResolvedValue({ id: "policy-snapshot-1" } as never)
     vi.mocked(prisma.workforceShiftSnapshot.findFirst).mockResolvedValue({ id: "shift-snapshot-1" } as never)

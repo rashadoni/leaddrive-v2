@@ -70,6 +70,7 @@ export async function writeWorkforceWorkdayAuditInTransaction(
         clientEventId: workdayInput.clientEventId,
         action: workdayInput.action,
         schemaVersion: workdayInput.schemaVersion,
+        segmentId: workdayInput.segmentId ?? null,
         claimedAt: workdayInput.claimedAt.toISOString(),
         capturedAt: workdayInput.capturedAt.toISOString(),
         queuedAt: workdayInput.queuedAt?.toISOString() ?? null,

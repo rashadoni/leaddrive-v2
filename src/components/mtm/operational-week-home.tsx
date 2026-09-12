@@ -82,6 +82,16 @@ const CANCELLATION_REASONS = [
   "DUPLICATE_PLAN",
   "OTHER",
 ] as const
+const WORKDAY_RECOVERY_MESSAGE_KEYS = new Set([
+  "duplicateActive",
+  "eventOrder",
+  "alreadyExists",
+  "completed",
+  "stateChanged",
+  "workdayUnavailable",
+  "operationMismatch",
+  "refresh",
+])
 
 interface WeekQuery {
   date: string
@@ -1362,14 +1372,27 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
         }),
       })
       if (!response.ok || !isOperationalWeekWorkdayMutationEnvelope(result)) {
-        if (response.status === 409) throw new Error("STATE_CONFLICT")
+        if (response.status === 409) {
+          const recovery = record(record(record(result).data).recovery)
+          const messageKey = firstString(record(recovery.reason), "messageKey")
+          const safeMessageKey = messageKey && WORKDAY_RECOVERY_MESSAGE_KEYS.has(messageKey)
+            ? messageKey
+            : "refresh"
+          throw new Error(`STATE_CONFLICT:${safeMessageKey}`)
+        }
         throw new Error(firstString(record(result), "error", "message") || "ACTION_FAILED")
       }
       toast.success(t("workdayUpdated"))
       setRefreshToken((value) => value + 1)
     } catch (error) {
-      const conflict = error instanceof Error && error.message === "STATE_CONFLICT"
-      setWorkdayError(conflict ? t("workdayConflict") : t("workdayActionFailed"))
+      const conflictMessage = error instanceof Error && error.message.startsWith("STATE_CONFLICT:")
+        ? error.message.slice("STATE_CONFLICT:".length)
+        : null
+      const conflict = Boolean(conflictMessage)
+      const recoveryKey = conflictMessage && WORKDAY_RECOVERY_MESSAGE_KEYS.has(conflictMessage)
+        ? conflictMessage
+        : "refresh"
+      setWorkdayError(conflict ? t(`workdayRecovery.${recoveryKey}` as never) : t("workdayActionFailed"))
       if (conflict) setRefreshToken((value) => value + 1)
     } finally {
       setMutatingAction(null)

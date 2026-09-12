@@ -336,7 +336,20 @@ Owner roles are accountabilities, not individual names:
 | 2026-08-30T07:06:15+02:00 | C3e timezone/DST matrix | 13% | C3 50% | 26/161 | 0/15 | WF-C3-010 accepted: signed shift dates remain organization-local across leap day and UTC rollover; DST gaps/folds are refused until an explicit policy exists |
 | 2026-08-30T07:09:57+02:00 | C3f bulk assignment preview | 13% | C3 50% | 26/161 | 0/15 | WF-C3-009 remains partial: session-admin preview reports ready/no-change/conflict outcomes for up to 200 employees but cannot mass-write or claim approval semantics |
 | 2026-08-30T07:16:08+02:00 | C2g schedule/site safety | 13% | C2 45% | 26/161 | 0/15 | WF-C2-009 remains partial: shift/site timezone and effective eligibility are pinned at START; transition claims bind only to the employee's snapshotted SITE segment; travel semantics remain owner-gated |
+| 2026-08-30T07:24:00+02:00 | C1d segment-bound idempotency | 13% | C1 50% | 27/161 | 0/15 | WF-C1-004 accepted: v3 request hashes bind the snapshotted segment ID, while v1/v2 hashes remain byte-for-byte compatible with their existing replay contract |
 | 2026-08-30T07:40:00+02:00 | C1e historical team membership | 14% | C1 60% | 28/161 | 0/15 | WF-C1-006 accepted: append-only employee team facts resolve delayed workdays at start time; pre-history never falls back to mutable current team |
+| 2026-08-30T07:41:00+02:00 | C1f transition risk codes | 14% | C1 70% | 29/161 | 0/15 | WF-C1-007 accepted: duplicate-active and impossible-order attempts return non-punitive machine risk codes while exact replays retain canonical success |
+| 2026-08-30T07:51:00+02:00 | C1g canonical recovery contract | 15% | C1 80% | 30/161 | 0/15 | WF-C1-008 accepted: every workday conflict has canonical state, structured reason, allowed actions and refresh contract across web/mobile adapters |
+| 2026-08-30T08:01:00+02:00 | C1h legacy-fact migration plan | 15% | C1 90% | 31/161 | 0/15 | WF-C1-009 accepted: v3 schema constraint now matches the segment-bound writer; legacy rows remain unknown, no backfill is permitted, and dry-run/reconciliation/forward-rollback procedures are recorded |
+| 2026-08-30T08:08:00+02:00 | C1i abuse matrix (partial) | 15% | C1 90% | 31/161 | 0/15 | Backdate/future/replay/changed-payload and second-device state-integrity cases pass; binary app-version enforcement remains owner- and mobile-app-gated, so WF-C1-010 receives no artificial credit |
+| 2026-08-30T08:11:00+02:00 | C3g visible assignment/default configuration | 17% | C3 45% | 35/161 | 0/15 | WF-C3-001 accepted: named employee/template picker, on-demand direct-assignment preview and session-admin organization-default timeline are visible; team-default timeline remains separately bounded |
+
+**C3 phase display reconciliation (2026-08-30T08:11:00+02:00):** the C3
+register contains 11 tasks and its scope did not change. Earlier C3 ledger
+display values were not calculated from the stated phase formula. The current
+row uses the live register: 5 accepted tasks / 11 = **45%**. The overall
+accepted-task denominator remains 161, so this is a display correction rather
+than a hidden scope or completion change.
 
 ### 6.1 Progress reporting contract
 
@@ -414,13 +427,13 @@ client timestamps into trusted attendance facts.
 | WF-C1-001 | P0 | DONE | Backend | Define `claimedAt`, `capturedAt`, `queuedAt`, `serverReceivedAt`, `appliedAt` and server-authoritative work date semantics | Versioned contract and parser tests |
 | WF-C1-002 | P0 | DONE | Backend | Enforce the confirmed seven-day offline horizon in every legacy and new mutation path | Boundary, future-skew and replay tests for all adapters |
 | WF-C1-003 | P0 | DONE | Backend/HR | Route delayed/anomalous claims to `PENDING_REVIEW`; never silently manufacture an approved historical workday | [`workforce-c1-review-evidence-2026-08-30.md`](./workforce-c1-review-evidence-2026-08-30.md): immutable claim/receipt review case, explicit legacy state and targeted contracts |
-| WF-C1-004 | P0 | PARTIAL | Backend | Bind idempotency hash to actor, action, claimed time, segment, evidence references and schema version | Changed payload under one operation ID fails deterministically; C2 segment identity is not available yet |
+| WF-C1-004 | P0 | DONE | Backend | Bind idempotency hash to actor, action, claimed time, segment, evidence references and schema version | [`workforce-c1-segment-idempotency-evidence-2026-08-30.md`](./workforce-c1-segment-idempotency-evidence-2026-08-30.md): v3 segment digest and pinned-schedule assertion; v1/v2 replay digest remains compatible |
 | WF-C1-005 | P0 | DONE | Backend | Make standard audit projection atomic with accepted workday/request decisions or derive it reliably from the immutable ledger | Failure-injection proves no accepted mutation lacks reconstructable audit |
 | WF-C1-006 | P1 | DONE | Backend/HR | Resolve policy/team/site assignment from an effective-dated employee history, not the current team after a delayed upload | [`workforce-c1-team-history-evidence-2026-08-30.md`](./workforce-c1-team-history-evidence-2026-08-30.md): immutable membership timeline, no pre-history guessing, and transfer-during-offline contract |
-| WF-C1-007 | P1 | PLANNED | Backend | Add impossible clock/order and duplicate active-shift risk codes without breaking idempotent retries | Property/concurrency tests cover state transitions |
-| WF-C1-008 | P1 | PLANNED | Backend | Return current canonical state, reason and allowed recovery actions on every conflict | Mobile/web contract tests and localized recovery UX |
-| WF-C1-009 | P1 | PLANNED | Backend | Create additive migration/backfill plan for existing facts; unknown provenance remains `LEGACY`, never falsely attested | Dry-run counts, rollback and reconciliation checks |
-| WF-C1-010 | P1 | PLANNED | Security/QA | Add abuse tests for backdating, future time, replay, two devices, changed payload and expired app version | Negative matrix passes in CI |
+| WF-C1-007 | P1 | DONE | Backend | Add impossible clock/order and duplicate active-shift risk codes without breaking idempotent retries | [`workforce-c1-transition-risk-evidence-2026-08-30.md`](./workforce-c1-transition-risk-evidence-2026-08-30.md): review-only codes, transport contract and replay-first tests |
+| WF-C1-008 | P1 | DONE | Backend | Return current canonical state, reason and allowed recovery actions on every conflict | [`workforce-c1-recovery-contract-evidence-2026-08-30.md`](./workforce-c1-recovery-contract-evidence-2026-08-30.md): structured recovery, fresh mismatch lookup and AZ/RU/EN UI mapping |
+| WF-C1-009 | P1 | DONE | Backend | Create additive migration/backfill plan for existing facts; unknown provenance remains `LEGACY`, never falsely attested | [`workforce-c1-legacy-fact-migration-evidence-2026-08-30.md`](./workforce-c1-legacy-fact-migration-evidence-2026-08-30.md): v3 schema constraint, no-backfill contract, read-only count/reconciliation and forward-only rollback procedure |
+| WF-C1-010 | P1 | PARTIAL | Security/QA | Add abuse tests for backdating, future time, replay, two devices, changed payload and expired app version | [`workforce-c1-abuse-matrix-evidence-2026-08-30.md`](./workforce-c1-abuse-matrix-evidence-2026-08-30.md): all server-side cases pass; expired binary-version enforcement awaits OD-01/OD-15 and the real mobile app |
 
 **Gate C1:** no supported endpoint can convert an out-of-policy past timestamp
 into ordinary accepted attendance; every accepted fact is reproducible and
@@ -433,8 +446,18 @@ until C2 segment binding and the remaining C1 tasks exist; delayed-claim review
 is in [`workforce-c1-review-evidence-2026-08-30.md`](./workforce-c1-review-evidence-2026-08-30.md)
 and atomic audit evidence is in
 [`workforce-c1-audit-projection-evidence-2026-08-30.md`](./workforce-c1-audit-projection-evidence-2026-08-30.md).
+The v3 segment-bound replay contract is recorded in
+[`workforce-c1-segment-idempotency-evidence-2026-08-30.md`](./workforce-c1-segment-idempotency-evidence-2026-08-30.md).
 Historical membership selection is in
 [`workforce-c1-team-history-evidence-2026-08-30.md`](./workforce-c1-team-history-evidence-2026-08-30.md).
+Transition risk codes are in
+[`workforce-c1-transition-risk-evidence-2026-08-30.md`](./workforce-c1-transition-risk-evidence-2026-08-30.md).
+The canonical recovery contract is in
+[`workforce-c1-recovery-contract-evidence-2026-08-30.md`](./workforce-c1-recovery-contract-evidence-2026-08-30.md).
+The legacy-fact no-backfill and reconciliation procedure is in
+[`workforce-c1-legacy-fact-migration-evidence-2026-08-30.md`](./workforce-c1-legacy-fact-migration-evidence-2026-08-30.md).
+The C1 abuse matrix and its explicit app-version boundary are in
+[`workforce-c1-abuse-matrix-evidence-2026-08-30.md`](./workforce-c1-abuse-matrix-evidence-2026-08-30.md).
 
 ### C2 — Sites, geofences, multi-branch segments and travel
 
@@ -465,7 +488,7 @@ ordinary, night, split and exceptional days.
 
 | ID | Pri | Status | Owner | Task | Acceptance evidence |
 |---|---:|---|---|---|---|
-| WF-C3-001 | P1 | PARTIAL | Backend/Web | Finish employee/team/default shift assignment with roster lookup and effective-date preview | [`workforce-c3-assignment-roster-evidence-2026-08-30.md`](./workforce-c3-assignment-roster-evidence-2026-08-30.md): named tenant roster and direct-assignment preview; visible picker/default timeline remain open |
+| WF-C3-001 | P1 | DONE | Backend/Web | Finish employee/team/default shift assignment with roster lookup and effective-date preview | [`workforce-c3-assignment-roster-evidence-2026-08-30.md`](./workforce-c3-assignment-roster-evidence-2026-08-30.md): named roster picker, direct-assignment date preview and separately versioned organization-default timeline; team-default timelines remain separately scoped |
 | WF-C3-002 | P1 | DONE | Backend/HR | Add work calendar: workdays, holidays, tenant closures and employee exceptions | [`workforce-c3-calendar-evidence-2026-08-30.md`](./workforce-c3-calendar-evidence-2026-08-30.md): Workforce calendar resolution distinguishes non-working/leave/holiday without a Route dependency |
 | WF-C3-003 | P1 | OWNER DECISION | HR/Legal | Define paid/unpaid/manual/automatic break policy and lunch treatment | OD-07 resolved and versioned by tenant |
 | WF-C3-004 | P1 | PLANNED | Backend | Make planned breaks enforceable/calculable according to the approved policy while preserving old metadata snapshots | Baku 09-18 with 13-14 yields explainable eight-hour expectation |

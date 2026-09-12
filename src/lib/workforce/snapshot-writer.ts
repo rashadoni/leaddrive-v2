@@ -70,6 +70,46 @@ export function workforceWorkdayScheduleSnapshotHash(value: unknown): string {
   return createHash("sha256").update(canonicalWorkforcePolicyJson(value)).digest("hex")
 }
 
+export function workforceScheduledSnapshotSegment(
+  value: unknown,
+  segmentId: string,
+): { id: string; mode: string; siteId: string | null } | null {
+  if (!Array.isArray(value)) return null
+  for (const candidate of value) {
+    if (candidate == null || typeof candidate !== "object") continue
+    const segment = candidate as { id?: unknown; mode?: unknown; siteId?: unknown }
+    if (
+      segment.id === segmentId
+      && typeof segment.mode === "string"
+      && (typeof segment.siteId === "string" || segment.siteId === null)
+    ) {
+      return { id: segment.id, mode: segment.mode, siteId: segment.siteId }
+    }
+  }
+  return null
+}
+
+/** Rejects a v3 claimed segment unless this employee workday already pinned it. */
+export async function assertWorkforceSnapshottedSegmentInTransaction(
+  tx: Prisma.TransactionClient,
+  input: { organizationId: string; workdayId: string; agentId: string; segmentId: string },
+): Promise<void> {
+  const scheduleSnapshot = await tx.workforceWorkdayScheduleSnapshot.findFirst({
+    where: {
+      organizationId: input.organizationId,
+      workdayId: input.workdayId,
+      agentId: input.agentId,
+    },
+    select: { segments: true },
+  })
+  if (!scheduleSnapshot || !workforceScheduledSnapshotSegment(scheduleSnapshot.segments, input.segmentId)) {
+    throw new WorkforceSnapshotWriterError(
+      "WORKFORCE_SNAPSHOT_SEGMENT_NOT_SCHEDULED",
+      "The claimed Workforce segment is not scheduled for this employee workday",
+    )
+  }
+}
+
 async function snapshotShiftSegmentsAndSites(
   tx: Prisma.TransactionClient,
   input: { organizationId: string; agentId: string; templateId: string; workDate: string },

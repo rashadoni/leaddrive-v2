@@ -6,6 +6,7 @@ import {
   WORKFORCE_WORKDAY_OFFLINE_HORIZON_MS,
   workforceAttendanceClaimReview,
 } from "@/lib/mtm/workday"
+import { workforceScheduledSnapshotSegment } from "@/lib/workforce/snapshot-writer"
 
 const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000
 const ID = z.string().trim().min(1).max(100)
@@ -156,17 +157,6 @@ function transitionAuditData(
   }
 }
 
-function isScheduledSiteSegment(value: unknown, segmentId: string): boolean {
-  if (!Array.isArray(value)) return false
-  return value.some((segment) => (
-    segment != null
-    && typeof segment === "object"
-    && (segment as { id?: unknown }).id === segmentId
-    && (segment as { mode?: unknown }).mode === "SITE"
-    && typeof (segment as { siteId?: unknown }).siteId === "string"
-  ))
-}
-
 /**
  * Adds a claimed arrival/departure fact without deciding that the employee was
  * physically present. The later C4 assessment owns location/QR/device proof;
@@ -247,7 +237,10 @@ export async function recordWorkforceSiteTransition(input: {
           "The Workforce shift segment is unavailable in this tenant",
         )
       }
-      if (!scheduleSnapshot || !isScheduledSiteSegment(scheduleSnapshot.segments, input.claim.segmentId)) {
+      const scheduledSegment = scheduleSnapshot == null
+        ? null
+        : workforceScheduledSnapshotSegment(scheduleSnapshot.segments, input.claim.segmentId)
+      if (!scheduledSegment || scheduledSegment.mode !== "SITE" || scheduledSegment.siteId == null) {
         throw new WorkforceSiteTransitionError(
           "WORKFORCE_SITE_TRANSITION_SEGMENT_NOT_SCHEDULED",
           "The Workforce site transition segment is not scheduled for this employee workday",

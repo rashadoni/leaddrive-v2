@@ -4,6 +4,7 @@ import {
   mtmWorkdayReplayMatches,
   mtmWorkdayRequestHash,
   parseMtmWorkdayEvent,
+  recoveryForMtmWorkdayConflict,
   recoveryActionsForMtmWorkday,
 } from "@/lib/mtm/workday"
 import { makeMtmPrismaMock } from "./mocks/mtm-prisma"
@@ -36,6 +37,43 @@ describe("MTM mobile workday", () => {
     expect(recoveryActionsForMtmWorkday(workday({ status: "COMPLETED" }))).toEqual([])
     expect(recoveryActionsForMtmWorkday(null)).toEqual([])
     expect(recoveryActionsForMtmWorkday({ status: "UNKNOWN" })).toEqual([])
+  })
+
+  it("maps every canonical workday conflict to a safe localizable recovery contract", () => {
+    expect(recoveryForMtmWorkdayConflict("MTM_WORKDAY_ACTIVE", workday({ status: "PAUSED" }))).toEqual({
+      canonicalState: "PAUSED",
+      reason: { code: "MTM_WORKDAY_ACTIVE", messageKey: "duplicateActive" },
+      allowedActions: ["RESUME", "FINISH"],
+      refreshRequired: true,
+    })
+    expect(recoveryForMtmWorkdayConflict("MTM_WORKDAY_EVENT_OUT_OF_ORDER", workday())).toMatchObject({
+      canonicalState: "STARTED",
+      reason: { messageKey: "eventOrder" },
+      allowedActions: ["PAUSE", "FINISH"],
+    })
+    expect(recoveryForMtmWorkdayConflict("MTM_WORKDAY_ALREADY_EXISTS", workday({ status: "COMPLETED" }))).toMatchObject({
+      canonicalState: "COMPLETED", reason: { messageKey: "alreadyExists" }, allowedActions: [],
+    })
+    expect(recoveryForMtmWorkdayConflict("MTM_WORKDAY_COMPLETED", workday({ status: "COMPLETED" }))).toMatchObject({
+      reason: { messageKey: "completed" },
+    })
+    expect(recoveryForMtmWorkdayConflict("MTM_WORKDAY_NOT_RUNNING", workday({ status: "PAUSED" }))).toMatchObject({
+      reason: { messageKey: "stateChanged" },
+    })
+    expect(recoveryForMtmWorkdayConflict("MTM_WORKDAY_NOT_PAUSED", workday())).toMatchObject({
+      reason: { messageKey: "stateChanged" },
+    })
+    expect(recoveryForMtmWorkdayConflict("MTM_WORKDAY_NOT_FOUND")).toEqual({
+      canonicalState: "NOT_FOUND",
+      reason: { code: "MTM_WORKDAY_NOT_FOUND", messageKey: "workdayUnavailable" },
+      allowedActions: [],
+      refreshRequired: true,
+    })
+    expect(recoveryForMtmWorkdayConflict("WORKFORCE_WORKDAY_IDEMPOTENCY_MISMATCH")).toMatchObject({
+      canonicalState: "NOT_FOUND",
+      reason: { messageKey: "operationMismatch" },
+      allowedActions: [],
+    })
   })
 
   it("parses an organization-local start and preserves zero coordinates", () => {
@@ -100,6 +138,43 @@ describe("MTM mobile workday", () => {
     })
   })
 
+  it("binds a v3 request to its scheduled segment without changing legacy v2 replay hashes", () => {
+    const payload = {
+      action: "START",
+      id: "workday-1",
+      schemaVersion: 3,
+      occurredAt: "2026-07-15T07:55:00.000Z",
+      claimedAt: "2026-07-15T07:55:00.000Z",
+      capturedAt: "2026-07-15T07:54:58.000Z",
+      queuedAt: "2026-07-15T07:55:01.000Z",
+      segmentId: "segment-baku-hq",
+    }
+    const parsed = parseMtmWorkdayEvent(
+      payload,
+      "event-segment",
+      "Asia/Baku",
+      new Date("2026-07-15T08:00:00.000Z"),
+    )
+
+    expect(parsed.error).toBeNull()
+    expect(parsed.input).toMatchObject({ schemaVersion: 3, segmentId: "segment-baku-hq" })
+    expect(mtmWorkdayRequestHash(SCOPE, parsed.input!)).not.toBe(mtmWorkdayRequestHash(SCOPE, {
+      ...parsed.input!,
+      segmentId: "segment-warehouse",
+    }))
+
+    const legacy = parseMtmWorkdayEvent({ ...payload, schemaVersion: 2, segmentId: undefined }, "event-legacy", "Asia/Baku", new Date("2026-07-15T08:00:00.000Z"))
+    expect(legacy.error).toBeNull()
+    expect(mtmWorkdayRequestHash(SCOPE, legacy.input!)).toBe(mtmWorkdayRequestHash(SCOPE, {
+      ...legacy.input!,
+      segmentId: "ignored-by-v2",
+    }))
+
+    const invalidLegacySegment = parseMtmWorkdayEvent({ ...payload, schemaVersion: 2 }, "event-invalid-legacy", "Asia/Baku", new Date("2026-07-15T08:00:00.000Z"))
+    expect(invalidLegacySegment.input).toBeNull()
+    expect(invalidLegacySegment.error).toContain("schemaVersion 3")
+  })
+
   it("marks a delayed but in-window claim for human review without rejecting it", () => {
     const parsed = parseMtmWorkdayEvent({
       action: "START",
@@ -152,6 +227,43 @@ describe("MTM mobile workday", () => {
     }, "event-reversed-queue", "Asia/Baku", now)
     expect(reversedQueue.input).toBeNull()
     expect(reversedQueue.error).toContain("must be ordered")
+  })
+
+  it("rejects future-controlled provenance and an unsupported workday protocol version", () => {
+    const now = new Date("2026-07-15T08:00:00.000Z")
+    const base = {
+      action: "START",
+      id: "workday-1",
+      schemaVersion: 3,
+      occurredAt: "2026-07-15T08:00:00.000Z",
+      claimedAt: "2026-07-15T08:00:00.000Z",
+      capturedAt: "2026-07-15T08:00:00.000Z",
+      queuedAt: "2026-07-15T08:00:00.000Z",
+    }
+
+    for (const [field, value] of [
+      ["occurredAt", "2026-07-15T08:05:00.001Z"],
+      ["capturedAt", "2026-07-15T08:05:00.001Z"],
+      ["queuedAt", "2026-07-15T08:05:00.001Z"],
+    ] as const) {
+      const parsed = parseMtmWorkdayEvent(
+        { ...base, [field]: value },
+        `event-future-${field}`,
+        "Asia/Baku",
+        now,
+      )
+      expect(parsed.input).toBeNull()
+      expect(parsed.error).toContain("too far in the future")
+    }
+
+    const unsupported = parseMtmWorkdayEvent(
+      { ...base, schemaVersion: 4 },
+      "event-unsupported-schema",
+      "Asia/Baku",
+      now,
+    )
+    expect(unsupported.input).toBeNull()
+    expect(unsupported.error).toContain("Unsupported Workforce workday schemaVersion")
   })
 
   it("binds a C1 replay to actor, evidence references and provenance instead of only visible event fields", () => {
@@ -447,6 +559,51 @@ describe("MTM mobile workday", () => {
       code: "MTM_WORKDAY_EVENT_OUT_OF_ORDER",
       workday: { status: "STARTED" },
       allowedActions: ["PAUSE", "FINISH"],
+      riskCodes: ["CLAIM_PRECEDES_ACCEPTED_EVENT"],
+    })
+    expect(db.mtmAgentWorkday.update).not.toHaveBeenCalled()
+    expect(db.mtmAgentWorkdayEvent.create).not.toHaveBeenCalled()
+  })
+
+  it("returns a review-only duplicate-active-shift signal without weakening replay handling", async () => {
+    const db = makeMtmPrismaMock()
+    vi.mocked(db.mtmAgentWorkdayEvent.findFirst).mockResolvedValue(null as never)
+    vi.mocked(db.mtmAgentWorkday.findFirst)
+      .mockResolvedValueOnce(null as never)
+      .mockResolvedValueOnce(workday({ id: "active-workday", status: "PAUSED" }) as never)
+    const parsed = parseMtmWorkdayEvent({
+      action: "START",
+      id: "new-workday",
+      occurredAt: "2026-07-15T07:00:00.000Z",
+    }, "event-new-start", "Asia/Baku", new Date("2026-07-15T08:00:00.000Z"))
+
+    await expect(applyMtmWorkdayEvent(db as never, SCOPE, parsed.input!)).resolves.toMatchObject({
+      status: "conflict",
+      code: "MTM_WORKDAY_ACTIVE",
+      riskCodes: ["DUPLICATE_ACTIVE_SHIFT_ATTEMPT"],
+      allowedActions: ["RESUME", "FINISH"],
+    })
+    expect(db.mtmAgentWorkday.create).not.toHaveBeenCalled()
+    expect(db.mtmAgentWorkdayEvent.create).not.toHaveBeenCalled()
+    expect(db.workforceAttendanceReviewCase.create).not.toHaveBeenCalled()
+  })
+
+  it("distinguishes a claim before workday start from a claim before a later accepted event", async () => {
+    const db = makeMtmPrismaMock()
+    vi.mocked(db.mtmAgentWorkday.findFirst).mockResolvedValue(workday() as never)
+    vi.mocked(db.mtmAgentWorkdayEvent.findFirst)
+      .mockResolvedValueOnce(null as never)
+      .mockResolvedValueOnce({ occurredAt: new Date("2026-07-15T05:00:00.000Z") } as never)
+    const parsed = parseMtmWorkdayEvent({
+      action: "PAUSE",
+      workdayId: "workday-1",
+      occurredAt: "2026-07-15T04:59:59.000Z",
+    }, "event-before-start", "Asia/Baku", new Date("2026-07-15T08:00:00.000Z"))
+
+    await expect(applyMtmWorkdayEvent(db as never, SCOPE, parsed.input!)).resolves.toMatchObject({
+      status: "conflict",
+      code: "MTM_WORKDAY_EVENT_OUT_OF_ORDER",
+      riskCodes: ["CLAIM_BEFORE_WORKDAY_START", "CLAIM_PRECEDES_ACCEPTED_EVENT"],
     })
     expect(db.mtmAgentWorkday.update).not.toHaveBeenCalled()
     expect(db.mtmAgentWorkdayEvent.create).not.toHaveBeenCalled()
