@@ -10,6 +10,7 @@ import {
 import {
   appendAuthorizedPolicyWorkforceExceptionDecision,
   WorkforceExceptionCaseWriterError,
+  type WorkforceExceptionCaseWriterDb,
 } from "@/lib/workforce/exception-case-writer"
 import { WorkforceExceptionCaseLedgerError } from "@/lib/workforce/exception-case-ledger"
 
@@ -99,7 +100,7 @@ export const POST = withWorkforceSessionAuth<RouteContext>("write", async (req, 
             findFirst: (args) => tx.workforceExceptionCase.findFirst(args),
           },
           mtmAuditLog: tx.mtmAuditLog,
-        },
+        } as unknown as WorkforceExceptionCaseWriterDb,
         draft: {
           organizationId: auth.orgId,
           caseId,
