@@ -8,7 +8,7 @@
 SET lock_timeout = '3s';
 
 ALTER TABLE "mtm_agent_workday_events"
-  DROP CONSTRAINT "mtm_agent_workday_events_schema_version_check";
+  DROP CONSTRAINT IF EXISTS "mtm_agent_workday_events_schema_version_check";
 
 ALTER TABLE "mtm_agent_workday_events"
   ADD CONSTRAINT "mtm_agent_workday_events_schema_version_check"
