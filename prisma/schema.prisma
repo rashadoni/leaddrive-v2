@@ -194,6 +194,7 @@ model Organization {
   workforceSiteAssignments            WorkforceSiteAssignment[]
   workforcePolicySnapshots            WorkforcePolicySnapshot[]
   workforceShiftSnapshots             WorkforceShiftSnapshot[]
+  workforceWorkdayScheduleSnapshots   WorkforceWorkdayScheduleSnapshot[]
   workforceSites                      WorkforceSite[]
   workforceSiteGeofenceRevisions      WorkforceSiteGeofenceRevision[]
   workforceAttendanceExceptions       WorkforceAttendanceException[]
@@ -5548,6 +5549,7 @@ model MtmAgent {
   workforceSiteTransitions  WorkforceSiteTransition[]
   workforcePolicySnapshots  WorkforcePolicySnapshot[]
   workforceShiftSnapshots   WorkforceShiftSnapshot[]
+  workforceWorkdayScheduleSnapshots WorkforceWorkdayScheduleSnapshot[]
   workforceExceptions       WorkforceAttendanceException[]
   workforceAttendanceReviewCases WorkforceAttendanceReviewCase[]
   workforceTimeCorrections  WorkforceTimeCorrection[]
@@ -7107,6 +7109,7 @@ model MtmAgentWorkday {
   locations          MtmAgentLocation[]
   workforcePolicySnapshot WorkforcePolicySnapshot?       @relation("WorkforcePolicySnapshotWorkday")
   workforceShiftSnapshot  WorkforceShiftSnapshot?        @relation("WorkforceShiftSnapshotWorkday")
+  workforceWorkdayScheduleSnapshot WorkforceWorkdayScheduleSnapshot? @relation("WorkforceWorkdayScheduleSnapshotWorkday")
   workforceSiteTransitions WorkforceSiteTransition[]
   workforceExceptions     WorkforceAttendanceException[]
   workforceAttendanceReviewCases WorkforceAttendanceReviewCase[]
@@ -7680,6 +7683,7 @@ model WorkforcePolicySnapshot {
   createdAt                DateTime            @default(now())
 
   exceptions WorkforceAttendanceException[]
+  scheduleSnapshots WorkforceWorkdayScheduleSnapshot[] @relation("WorkforceSchedulePolicySnapshot")
 
   @@unique([organizationId, id])
   @@unique([organizationId, workdayId])
@@ -7713,12 +7717,46 @@ model WorkforceShiftSnapshot {
   createdAt         DateTime               @default(now())
 
   exceptions WorkforceAttendanceException[]
+  scheduleSnapshots WorkforceWorkdayScheduleSnapshot[] @relation("WorkforceScheduleShiftSnapshot")
 
   @@unique([organizationId, id])
   @@unique([organizationId, workdayId])
   @@index([organizationId, agentId, workDate])
   @@index([organizationId, templateId, templateVersion])
   @@map("workforce_shift_snapshots")
+}
+
+/// Complete workday schedule/evidence context, captured with the calculation
+/// snapshots at accepted START. JSON keeps the ordered segment/site revisions
+/// self-contained so subsequent calendar/site edits cannot alter history.
+model WorkforceWorkdayScheduleSnapshot {
+  id               String                   @id @default(cuid())
+  organizationId   String
+  organization     Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workdayId        String
+  workday          MtmAgentWorkday          @relation("WorkforceWorkdayScheduleSnapshotWorkday", fields: [organizationId, workdayId], references: [organizationId, id], onDelete: Restrict)
+  agentId          String
+  agent            MtmAgent                 @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  workDate         DateTime                 @db.Date
+  policySnapshotId String
+  policySnapshot   WorkforcePolicySnapshot  @relation("WorkforceSchedulePolicySnapshot", fields: [organizationId, policySnapshotId], references: [organizationId, id], onDelete: Restrict)
+  shiftSnapshotId  String
+  shiftSnapshot    WorkforceShiftSnapshot   @relation("WorkforceScheduleShiftSnapshot", fields: [organizationId, shiftSnapshotId], references: [organizationId, id], onDelete: Restrict)
+  schemaVersion    Int                      @default(1)
+  calendarState    String                   @db.VarChar(48)
+  calendarSnapshot Json
+  segments         Json
+  sites            Json
+  snapshotHash     String                   @db.VarChar(64)
+  resolvedAt       DateTime
+  createdAt        DateTime                 @default(now())
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, workdayId])
+  @@index([organizationId, agentId, workDate])
+  @@index([organizationId, policySnapshotId])
+  @@index([organizationId, shiftSnapshotId])
+  @@map("workforce_workday_schedule_snapshots")
 }
 
 // Materialized calculation deviation. Resolution metadata is mutable, but its

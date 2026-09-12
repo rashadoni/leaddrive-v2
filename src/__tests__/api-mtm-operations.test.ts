@@ -332,8 +332,8 @@ describe("POST /api/v1/mtm/operations/hrm/[id]/decision", () => {
     expect(response.status).toBe(200)
     expect(prisma.mtmWorkCalendarDay.createMany).toHaveBeenCalledWith({
       data: expect.arrayContaining([
-        expect.objectContaining({ agentId: "agent-1", routePlanningAllowed: false, source: "HRM" }),
-        expect.objectContaining({ agentId: "agent-1", routePlanningAllowed: false, source: "HRM" }),
+        expect.objectContaining({ agentId: "agent-1", routePlanningAllowed: false, source: "WORKFORCE_LEAVE" }),
+        expect.objectContaining({ agentId: "agent-1", routePlanningAllowed: false, source: "WORKFORCE_LEAVE" }),
       ]),
     })
     expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({

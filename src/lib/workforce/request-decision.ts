@@ -201,6 +201,7 @@ export async function decideWorkforceRequest(context: WorkforceDecisionContext):
         })
         const existingByDate = new Map(existing.map((day) => [day.date.toISOString().slice(0, 10), day.id]))
         const calendarName = request.type === "LEAVE" ? "Approved leave" : "Approved absence"
+        const calendarSource = request.type === "LEAVE" ? "WORKFORCE_LEAVE" : "WORKFORCE_ABSENCE"
         for (const key of keys) {
           const existingId = existingByDate.get(key)
           if (!existingId) continue
@@ -210,7 +211,7 @@ export async function decideWorkforceRequest(context: WorkforceDecisionContext):
               kind: "COMPANY_HOLIDAY",
               name: calendarName,
               routePlanningAllowed: false,
-              source: "HRM",
+              source: calendarSource,
               updatedBy: userId,
             },
           })
@@ -225,7 +226,7 @@ export async function decideWorkforceRequest(context: WorkforceDecisionContext):
               name: calendarName,
               agentId: request.agentId,
               routePlanningAllowed: false,
-              source: "HRM",
+              source: calendarSource,
               createdBy: userId,
               updatedBy: userId,
             })),

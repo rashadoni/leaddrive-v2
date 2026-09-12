@@ -57,6 +57,7 @@ export class WorkforceSiteTransitionError extends Error {
     readonly code:
       | "WORKFORCE_SITE_TRANSITION_WORKDAY_NOT_FOUND"
       | "WORKFORCE_SITE_TRANSITION_SEGMENT_NOT_FOUND"
+      | "WORKFORCE_SITE_TRANSITION_SEGMENT_NOT_SCHEDULED"
       | "WORKFORCE_SITE_TRANSITION_OFFLINE_HORIZON"
       | "WORKFORCE_SITE_TRANSITION_FUTURE_TIME"
       | "WORKFORCE_SITE_TRANSITION_IDEMPOTENCY_MISMATCH"
@@ -73,6 +74,7 @@ type TransitionDb = Pick<
   | "$executeRaw"
   | "mtmAgentWorkday"
   | "workforceShiftSegment"
+  | "workforceWorkdayScheduleSnapshot"
   | "workforceSiteTransition"
   | "mtmAuditLog"
 >
@@ -154,6 +156,17 @@ function transitionAuditData(
   }
 }
 
+function isScheduledSiteSegment(value: unknown, segmentId: string): boolean {
+  if (!Array.isArray(value)) return false
+  return value.some((segment) => (
+    segment != null
+    && typeof segment === "object"
+    && (segment as { id?: unknown }).id === segmentId
+    && (segment as { mode?: unknown }).mode === "SITE"
+    && typeof (segment as { siteId?: unknown }).siteId === "string"
+  ))
+}
+
 /**
  * Adds a claimed arrival/departure fact without deciding that the employee was
  * physically present. The later C4 assessment owns location/QR/device proof;
@@ -200,7 +213,7 @@ export async function recordWorkforceSiteTransition(input: {
         return { status: "recorded", transition: replay as Record<string, unknown>, idempotent: true }
       }
 
-      const [workday, segment] = await Promise.all([
+      const [workday, segment, scheduleSnapshot] = await Promise.all([
         tx.mtmAgentWorkday.findFirst({
           where: {
             id: input.claim.workdayId,
@@ -213,6 +226,14 @@ export async function recordWorkforceSiteTransition(input: {
           where: { id: input.claim.segmentId, organizationId: input.organizationId },
           select: { id: true },
         }),
+        tx.workforceWorkdayScheduleSnapshot.findFirst({
+          where: {
+            organizationId: input.organizationId,
+            workdayId: input.claim.workdayId,
+            agentId: input.agentId,
+          },
+          select: { id: true, segments: true },
+        }),
       ])
       if (!workday) {
         throw new WorkforceSiteTransitionError(
@@ -224,6 +245,12 @@ export async function recordWorkforceSiteTransition(input: {
         throw new WorkforceSiteTransitionError(
           "WORKFORCE_SITE_TRANSITION_SEGMENT_NOT_FOUND",
           "The Workforce shift segment is unavailable in this tenant",
+        )
+      }
+      if (!scheduleSnapshot || !isScheduledSiteSegment(scheduleSnapshot.segments, input.claim.segmentId)) {
+        throw new WorkforceSiteTransitionError(
+          "WORKFORCE_SITE_TRANSITION_SEGMENT_NOT_SCHEDULED",
+          "The Workforce site transition segment is not scheduled for this employee workday",
         )
       }
 
