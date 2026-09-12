@@ -7,7 +7,7 @@ import {
 } from "@/lib/workforce/exception-case-ledger"
 
 type WorkforceExceptionCaseWriteData = Omit<WorkforceExceptionCaseDraft, "links"> & WorkforceExceptionCaseDraft["links"]
-type StoredCase = WorkforceExceptionCaseWriteData & { id: string }
+type StoredCase = Omit<WorkforceExceptionCaseWriteData, "expectedWorkDate"> & { id: string; expectedWorkDate: string | Date | null }
 type StoredDecision = WorkforceExceptionDecisionDraft & { id: string }
 
 export type WorkforceExceptionCaseWriterDb = {
@@ -135,7 +135,9 @@ function caseDraftFromStored(record: StoredCase): WorkforceExceptionCaseDraft {
       workdayEventId: record.workdayEventId,
       evidenceId: record.evidenceId,
       segmentId: record.segmentId,
-      expectedWorkDate: record.expectedWorkDate,
+      expectedWorkDate: record.expectedWorkDate instanceof Date
+        ? record.expectedWorkDate.toISOString().slice(0, 10)
+        : record.expectedWorkDate,
     },
   }
 }

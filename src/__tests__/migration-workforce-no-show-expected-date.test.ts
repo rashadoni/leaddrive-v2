@@ -10,7 +10,9 @@ const migration = readFileSync(join(
 describe("Workforce C6 no-show expected-date migration", () => {
   it("adds an additive immutable expected date only for a segment-only subject", () => {
     expect(migration).toContain('ADD COLUMN "expectedWorkDate" DATE')
-    expect(migration).toContain('"expectedWorkDate" IS NULL OR (')
+    expect(migration).toContain('(\"expectedWorkDate\" IS NOT NULL) = (')
+    expect(migration).toContain('"kind" = \'NO_SHOW\'')
+    expect(migration).toContain('Existing schedule-only NO_SHOW cases need an explicit expected work date')
     expect(migration).toContain('"segmentId" IS NOT NULL')
     expect(migration).toContain('"workdayId" IS NULL')
     expect(migration).toContain('"workdayEventId" IS NULL')

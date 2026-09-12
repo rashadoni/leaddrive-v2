@@ -175,6 +175,48 @@ export function withWorkforceSessionScheduleConfigurationAuth<C = unknown>(
   })
   return wrapped as WrappedWorkforceRouteHandler<C>
 }
+
+/**
+ * Employment lifecycle is an organization-wide HR fact. After granular
+ * access cutover, a generic CRM administrator is insufficient and the exact
+ * Workforce HR grant becomes authoritative.
+ */
+export function withWorkforceSessionEmploymentConfigurationAuth<C = unknown>(
+  handler: (req: NextRequest, auth: AuthResult, ctx: C) => Promise<Response> | Response,
+) {
+  const wrapped = withRlsSessionAuth<C>(async (req, auth, ctx) => {
+    try {
+      const organization = await prisma.organization.findUnique({
+        where: { id: auth.orgId },
+        select: { plan: true, addons: true, features: true, modules: true },
+      })
+      if (!organization || !isTenantCapabilityEnabled("workforce-hrm", organization)) {
+        return workforceCapabilityDisabled()
+      }
+      if (!workforceGranularAccessEnabled(organization.features)) {
+        return isWorkforcePolicyAdministrator(auth.role)
+          ? handler(req, auth, ctx)
+          : workforcePolicyAdminDenied()
+      }
+      const access = await decidePersistedWorkforceAccess({
+        db: prisma,
+        organizationId: auth.orgId,
+        principalUserId: auth.userId,
+        selfAgentId: null,
+        permission: "WORKFORCE_EMPLOYMENT_MANAGE",
+        resource: { organizationId: auth.orgId },
+      })
+      return access.allowed ? handler(req, auth, ctx) : workforceGranularAccessDenied()
+    } catch (error) {
+      console.error("[withWorkforceSessionEmploymentConfigurationAuth] authorization lookup failed", error)
+      return NextResponse.json({
+        error: "Unable to verify Workforce employment-history access.",
+        code: "WORKFORCE_GRANULAR_ACCESS_UNAVAILABLE",
+      }, { status: 503 })
+    }
+  })
+  return wrapped as WrappedWorkforceRouteHandler<C>
+}
 /**
  * Controlled C7 cutover for the tenant-wide, raw-proof-free exception queue.
  *

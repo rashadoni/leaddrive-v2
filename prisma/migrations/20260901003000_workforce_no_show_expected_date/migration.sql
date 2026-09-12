@@ -8,14 +8,32 @@ SET lock_timeout = '3s';
 ALTER TABLE "workforce_exception_cases"
   ADD COLUMN "expectedWorkDate" DATE;
 
-ALTER TABLE "workforce_exception_cases"
-  ADD CONSTRAINT "workforce_exception_cases_expected_date_segment_check"
-    CHECK ("expectedWorkDate" IS NULL OR (
-      "segmentId" IS NOT NULL
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM "workforce_exception_cases"
+    WHERE "kind" = 'NO_SHOW'
+      AND "segmentId" IS NOT NULL
       AND "workdayId" IS NULL
       AND "workdayEventId" IS NULL
       AND "evidenceId" IS NULL
-    ));
+  ) THEN
+    RAISE EXCEPTION 'Existing schedule-only NO_SHOW cases need an explicit expected work date before this migration can continue';
+  END IF;
+END;
+$$;
+
+ALTER TABLE "workforce_exception_cases"
+  ADD CONSTRAINT "workforce_exception_cases_expected_date_segment_check"
+    CHECK (
+      ("expectedWorkDate" IS NOT NULL) = (
+        "kind" = 'NO_SHOW'
+        AND "segmentId" IS NOT NULL
+        AND "workdayId" IS NULL
+        AND "workdayEventId" IS NULL
+        AND "evidenceId" IS NULL
+      )
+    );
 
 CREATE INDEX "workforce_exception_cases_org_expected_date_idx"
   ON "workforce_exception_cases"("organizationId", "expectedWorkDate");

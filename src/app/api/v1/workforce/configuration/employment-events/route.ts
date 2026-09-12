@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { isDateKey } from "@/lib/mtm/mobile-week"
 import { prisma } from "@/lib/prisma"
-import { withWorkforceSessionAdminAuth } from "@/lib/with-workforce-rls-auth"
+import { withWorkforceSessionEmploymentConfigurationAuth } from "@/lib/with-workforce-rls-auth"
 import { workforceConfigurationRequestAuditContext } from "@/lib/workforce/configuration-route"
 import {
   recordWorkforceEmploymentEvent,
@@ -18,7 +18,7 @@ const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/
  * A result of UNKNOWN is intentional and must not be replaced by current
  * directory status, team or Route assignment data.
  */
-export const GET = withWorkforceSessionAdminAuth(async (req: NextRequest, auth) => {
+export const GET = withWorkforceSessionEmploymentConfigurationAuth(async (req: NextRequest, auth) => {
   const agentId = req.nextUrl.searchParams.get("agentId")
   const occurredAtRaw = req.nextUrl.searchParams.get("occurredAt")
   const workDate = req.nextUrl.searchParams.get("workDate")
@@ -45,7 +45,7 @@ export const GET = withWorkforceSessionAdminAuth(async (req: NextRequest, auth) 
 })
 
 /** Appends one explicit HR lifecycle fact; existing facts cannot be edited. */
-export const POST = withWorkforceSessionAdminAuth(async (req: NextRequest, auth) => {
+export const POST = withWorkforceSessionEmploymentConfigurationAuth(async (req: NextRequest, auth) => {
   const parsed = WorkforceEmploymentEventCreateSchema.safeParse(await req.json().catch(() => ({})))
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid Workforce employment event" }, { status: 400 })
