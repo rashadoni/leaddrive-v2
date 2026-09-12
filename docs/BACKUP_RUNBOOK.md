@@ -296,6 +296,18 @@ certify заново на новом SHA. Изменение recovery-byte по�
 реализован. Незаполненные поля workflow должны оставаться пустыми. Ни один шаг
 не принимает private age/signing key.
 
+Перед шестью recovery-стадиями выполняется отдельная подготовительная операция
+`configure-monitoring-urls` с confirmation
+`CONFIGURE_BACKUP_MONITORING_ON_13_140_132_245`. Она получает четыре разные
+Healthchecks.io URL только из GitHub environment secrets
+`BACKUP_HEALTHCHECK_URL`, `SECRETS_HEALTHCHECK_URL`,
+`RUNTIME_FILES_HEALTHCHECK_URL`, `LOG_SHIP_HEALTHCHECK_URL`, атомарно заменяет
+только эти четыре значения в root-only `/etc/leaddrive/backup.env` и не
+запускает backup, timer, Kafka consumer или replay. Операция отказывается
+работать, если любой recovery service активен, любой recovery timer не
+`disabled/inactive`, URL отсутствует, повторяется или не является точным
+`https://hc-ping.com/<uuid>`.
+
 1. `install-backup-tools` — confirmation
    `INSTALL_PINNED_BACKUP_TOOLS_AND_EXTEND_LOG_RETENTION_ON_13_140_132_245`.
    Стадия выключает **все четыре** recovery timer, устанавливает закреплённые
@@ -385,6 +397,11 @@ certify заново на новом SHA. Изменение recovery-byte по�
 проверить все evidence fields):
 
 ```bash
+gh workflow run commission-production-backup.yml --ref main \
+  -f operation=configure-monitoring-urls \
+  -f expected_main_sha="$MAIN_SHA" \
+  -f confirmation=CONFIGURE_BACKUP_MONITORING_ON_13_140_132_245
+
 gh workflow run commission-production-backup.yml --ref main \
   -f operation=install-backup-tools \
   -f expected_main_sha="$MAIN_SHA" \

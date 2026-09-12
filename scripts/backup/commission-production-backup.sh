@@ -54,6 +54,7 @@ OPS_RELEASES_DIR="/usr/local/lib/leaddrive-v2/ops/releases"
 INCOMING_EVIDENCE_BUNDLE=""
 INCOMING_ALLOWED_SIGNERS=""
 INCOMING_CODE_BUNDLE=""
+INCOMING_MONITORING_CONFIG=""
 
 TOOLS_ROOT="/usr/local/lib/leaddrive-backup/tools"
 AGE_VERSION="1.3.2"
@@ -261,7 +262,7 @@ cleanup() {
   fi
   if [ -n "$ENV_STAGE" ]; then
     case "$ENV_STAGE" in
-      /etc/leaddrive/.backup.env.age-stage.*|/etc/leaddrive/.backup.env.lock-stage.*|/etc/leaddrive/.backup.env.log-retention-stage.*) unlink -- "$ENV_STAGE" ;;
+      /etc/leaddrive/.backup.env.age-stage.*|/etc/leaddrive/.backup.env.lock-stage.*|/etc/leaddrive/.backup.env.log-retention-stage.*|/etc/leaddrive/.backup.env.monitoring-stage.*) unlink -- "$ENV_STAGE" ;;
     esac
   fi
   if [ -n "$MARKER_STAGE" ]; then
@@ -309,6 +310,7 @@ flock -n 9 || fatal "another backup commissioning operation is active"
 INCOMING_EVIDENCE_BUNDLE="$REMOTE_INPUT_STAGE/evidence.tar"
 INCOMING_ALLOWED_SIGNERS="$REMOTE_INPUT_STAGE/allowed-signers"
 INCOMING_CODE_BUNDLE="$REMOTE_INPUT_STAGE/backup-code.tar"
+INCOMING_MONITORING_CONFIG="$REMOTE_INPUT_STAGE/healthchecks.env"
 
 trim_value() {
   local value="$1"
@@ -394,6 +396,106 @@ assert_root_file() {
   [ "$(stat -c '%u' "$file")" = "0" ] || fatal "$label must be root-owned"
   mode="$(stat -c '%a' "$file")"
   (( (8#$mode & 8#022) == 0 )) || fatal "$label must not be group/world writable"
+}
+
+configure_monitoring_urls() {
+  local owner mode key value service state timer load_state enabled_state active_state
+  local -A seen_urls=()
+  local -a monitoring_keys=(
+    BACKUP_HEALTHCHECK_URL
+    SECRETS_HEALTHCHECK_URL
+    RUNTIME_FILES_HEALTHCHECK_URL
+    LOG_SHIP_HEALTHCHECK_URL
+  )
+
+  assert_confirmation "CONFIGURE_BACKUP_MONITORING_ON_13_140_132_245"
+  [ -z "$EXPECTED_RECIPIENT_SHA256$KEY_CUSTODY_ATTESTATION$EVIDENCE_REF$EVIDENCE_AT_UTC$OFFLINE_OPERATOR$EXPECTED_CANDIDATE_SHA256" ] \
+    || fatal "monitoring configuration does not accept key or evidence inputs"
+
+  # Updating the common environment while a recovery runner is reading it
+  # would create a split monitoring state. This bounded operation never starts
+  # or stops a unit; it simply refuses to run until all four are inactive.
+  for service in "$BACKUP_SERVICE" "$SECRETS_SERVICE" "$RUNTIME_FILES_SERVICE" "$LOG_SERVICE"; do
+    state="$(systemctl is-active "$service" 2>/dev/null || true)"
+    case "$state" in
+      inactive|failed|unknown) ;;
+      *) fatal "recovery services must be inactive before monitoring configuration" ;;
+    esac
+  done
+  for timer in "$BACKUP_TIMER" "$SECRETS_TIMER" "$RUNTIME_FILES_TIMER" "$LOG_TIMER"; do
+    load_state="$(systemctl show --property=LoadState --value "$timer" 2>/dev/null || true)"
+    [ "$load_state" != "not-found" ] || continue
+    [ "$load_state" = "loaded" ] \
+      || fatal "recovery timers must be absent or loaded before monitoring configuration"
+    enabled_state="$(systemctl is-enabled "$timer" 2>/dev/null || true)"
+    active_state="$(systemctl is-active "$timer" 2>/dev/null || true)"
+    [ "$enabled_state:$active_state" = "disabled:inactive" ] \
+      || fatal "recovery timers must be disabled and inactive before monitoring configuration"
+  done
+
+  assert_root_directory "/etc" /etc
+  assert_root_directory "/etc/leaddrive" /etc/leaddrive
+  assert_root_file "canonical backup environment" "$BACKUP_ENV_FILE"
+  owner="$(stat -c '%U:%G' "$BACKUP_ENV_FILE")"
+  mode="$(stat -c '%a' "$BACKUP_ENV_FILE")"
+  { [ "$owner:$mode" = "root:root:600" ] \
+      || [ "$owner:$mode" = "root:leaddrive-backup:640" ]; } \
+    || fatal "canonical backup environment ownership or mode is unsafe"
+  [ -z "$(read_unique_value BACKUP_ENV_FILE)" ] \
+    || fatal "backup environment may not redirect BACKUP_ENV_FILE"
+
+  assert_root_file "staged Healthchecks.io configuration" "$INCOMING_MONITORING_CONFIG"
+  [ "$(stat -c '%U:%G:%a' "$INCOMING_MONITORING_CONFIG")" = "root:root:600" ] \
+    && [ "$(realpath -e -- "$INCOMING_MONITORING_CONFIG")" = "$INCOMING_MONITORING_CONFIG" ] \
+    || fatal "staged monitoring configuration must be canonical root:root mode 0600"
+  awk -F= '
+    NF != 2 { bad=1; next }
+    $1 !~ /^(BACKUP_HEALTHCHECK_URL|SECRETS_HEALTHCHECK_URL|RUNTIME_FILES_HEALTHCHECK_URL|LOG_SHIP_HEALTHCHECK_URL)$/ { bad=1; next }
+    seen[$1]++ { if (seen[$1] > 1) bad=1 }
+    END { if (NR != 4 || length(seen) != 4 || bad) exit 1 }
+  ' "$INCOMING_MONITORING_CONFIG" \
+    || fatal "staged monitoring configuration must contain exactly four unique supported keys"
+
+  for key in "${monitoring_keys[@]}"; do
+    value="$(read_unique_value_from "$INCOMING_MONITORING_CONFIG" "$key")"
+    [[ "$value" =~ ^https://hc-ping\.com/[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$ ]] \
+      || fatal "$key is not an exact Healthchecks.io hc-ping URL"
+    [ -z "${seen_urls[$value]:-}" ] \
+      || fatal "every recovery job must use a distinct Healthchecks.io check"
+    seen_urls[$value]=1
+    # Reject duplicate existing definitions before any write.
+    read_unique_value "$key" >/dev/null
+  done
+
+  ENV_STAGE="$(mktemp /etc/leaddrive/.backup.env.monitoring-stage.XXXXXX)"
+  awk '
+    /^[[:space:]]*(export[[:space:]]+)?(BACKUP_HEALTHCHECK_URL|SECRETS_HEALTHCHECK_URL|RUNTIME_FILES_HEALTHCHECK_URL|LOG_SHIP_HEALTHCHECK_URL)[[:space:]]*=/ { next }
+    { print }
+  ' "$BACKUP_ENV_FILE" >"$ENV_STAGE"
+  for key in "${monitoring_keys[@]}"; do
+    value="$(read_unique_value_from "$INCOMING_MONITORING_CONFIG" "$key")"
+    printf '%s=%s\n' "$key" "$value" >>"$ENV_STAGE"
+  done
+  chown --reference="$BACKUP_ENV_FILE" "$ENV_STAGE"
+  chmod --reference="$BACKUP_ENV_FILE" "$ENV_STAGE"
+
+  for key in "${monitoring_keys[@]}"; do
+    [ "$(read_unique_value_from "$ENV_STAGE" "$key")" = \
+      "$(read_unique_value_from "$INCOMING_MONITORING_CONFIG" "$key")" ] \
+      || fatal "staged monitoring configuration did not pin $key"
+  done
+  cmp -s \
+    <(awk '!/^[[:space:]]*(export[[:space:]]+)?(BACKUP_HEALTHCHECK_URL|SECRETS_HEALTHCHECK_URL|RUNTIME_FILES_HEALTHCHECK_URL|LOG_SHIP_HEALTHCHECK_URL)[[:space:]]*=/' "$BACKUP_ENV_FILE") \
+    <(awk '!/^[[:space:]]*(export[[:space:]]+)?(BACKUP_HEALTHCHECK_URL|SECRETS_HEALTHCHECK_URL|RUNTIME_FILES_HEALTHCHECK_URL|LOG_SHIP_HEALTHCHECK_URL)[[:space:]]*=/' "$ENV_STAGE") \
+    || fatal "monitoring configuration changed unrelated backup settings"
+
+  sync -f -- "$ENV_STAGE" /etc/leaddrive \
+    || fatal "cannot flush staged monitoring configuration"
+  mv -- "$ENV_STAGE" "$BACKUP_ENV_FILE"
+  ENV_STAGE=""
+  sync -f -- "$BACKUP_ENV_FILE" /etc/leaddrive \
+    || fatal "cannot durably commit monitoring configuration"
+  log "configured four distinct Healthchecks.io dead-man URLs; values redacted"
 }
 
 ensure_root_directory() {
@@ -3323,6 +3425,7 @@ certify_offline_restore() {
 recover_commission_runner_fence
 
 case "$OPERATION" in
+  configure-monitoring-urls) configure_monitoring_urls ;;
   install-backup-tools) install_tools ;;
   activate-backup-encryption) activate_encryption ;;
   run-bootstrap-backup|run-verified-backup) run_verified_backup ;;
