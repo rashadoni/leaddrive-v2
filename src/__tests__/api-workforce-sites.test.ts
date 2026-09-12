@@ -7,6 +7,7 @@ vi.mock("@/lib/prisma", async () => {
 })
 vi.mock("@/lib/with-workforce-rls-auth", () => ({
   withWorkforceSessionAdminAuth: vi.fn((handler) => handler),
+  withWorkforceSessionScheduleConfigurationAuth: vi.fn((_permission, handler) => handler),
 }))
 vi.mock("@/lib/mtm-settings", () => ({
   getMtmSettings: vi.fn(),
@@ -16,6 +17,8 @@ import { GET, POST } from "@/app/api/v1/workforce/configuration/sites/route"
 import { POST as archivePost } from "@/app/api/v1/workforce/configuration/sites/[id]/archive/route"
 import { POST as geofencePost } from "@/app/api/v1/workforce/configuration/sites/[id]/geofences/route"
 import { GET as assignmentsGet, POST as assignmentsPost } from "@/app/api/v1/workforce/configuration/site-assignments/route"
+import { POST as previewAssignmentsPost } from "@/app/api/v1/workforce/configuration/site-assignments/preview/route"
+import { POST as publishAssignmentsPost } from "@/app/api/v1/workforce/configuration/site-assignments/bulk/publish/route"
 import { prisma } from "@/lib/prisma"
 import { getMtmSettings } from "@/lib/mtm-settings"
 
@@ -28,6 +31,10 @@ type SiteMutationHandler = (
 ) => Promise<Response>
 const callArchiveSite = archivePost as unknown as SiteMutationHandler
 const callCreateGeofence = geofencePost as unknown as SiteMutationHandler
+const callPublishAssignmentsPost = publishAssignmentsPost as unknown as (
+  request: NextRequest,
+  auth: typeof AUTH,
+) => Promise<Response>
 const site = {
   id: "site-1",
   code: "BAKU_HQ",
@@ -76,6 +83,67 @@ describe("Workforce site configuration API", () => {
     }))
     expect(prisma.mtmCustomer.findMany).not.toHaveBeenCalled()
     expect(prisma.mtmRoute.findMany).not.toHaveBeenCalled()
+  })
+
+  it("returns a tenant-scoped read-only bulk site-assignment preview", async () => {
+    vi.mocked(prisma.workforceSite.findFirst).mockResolvedValue({ id: "site-1", status: "ACTIVE" } as never)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{ id: "agent-1" }] as never)
+    vi.mocked(prisma.workforceSiteAssignment.findMany).mockResolvedValue([])
+
+    const response = await previewAssignmentsPost(request("/api/v1/workforce/configuration/site-assignments/preview", {
+      agentIds: ["agent-1"],
+      siteId: "site-1",
+      kind: "PRIMARY",
+      effectiveFrom: "2026-09-01",
+    }), AUTH as never)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      success: true,
+      data: { siteId: "site-1", summary: { READY: 1 }, items: [{ agentId: "agent-1", outcome: "READY" }] },
+    })
+    expect(prisma.workforceSiteAssignment.create).not.toHaveBeenCalled()
+    expect(prisma.workforceSiteAssignment.updateMany).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+
+  it("publishes a rechecked bulk site window only through the exact site-assignment write boundary", async () => {
+    const operation = {
+      id: "bulk-operation-1",
+      organizationId: "org-1",
+      operationId: "bulk-site-operation-1",
+      requestHash: "b".repeat(64),
+      siteId: "site-1",
+      kind: "PRIMARY",
+      effectiveFrom: new Date("2026-09-01T00:00:00.000Z"),
+      effectiveTo: null,
+      requestedCount: 1,
+      createdCount: 1,
+      unchangedCount: 0,
+      publishedByUserId: "admin-1",
+    }
+    vi.mocked(prisma.workforceSiteAssignmentBulkOperation.findUnique).mockResolvedValue(null as never)
+    vi.mocked(prisma.workforceSite.findFirst).mockResolvedValue({ id: "site-1", status: "ACTIVE" } as never)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{ id: "agent-1" }] as never)
+    vi.mocked(prisma.workforceSiteAssignment.findMany).mockResolvedValue([])
+    vi.mocked(prisma.workforceSiteAssignment.create).mockResolvedValue({ id: "assignment-1" } as never)
+    vi.mocked(prisma.workforceSiteAssignmentBulkOperation.create).mockResolvedValue(operation as never)
+    vi.mocked(prisma.mtmAuditLog.create).mockResolvedValue({ id: "audit-bulk-1" } as never)
+
+    const response = await callPublishAssignmentsPost(request("/api/v1/workforce/configuration/site-assignments/bulk/publish", {
+      operationId: "bulk-site-operation-1",
+      agentIds: ["agent-1"],
+      siteId: "site-1",
+      kind: "PRIMARY",
+      effectiveFrom: "2026-09-01",
+    }), AUTH)
+
+    expect(response.status).toBe(201)
+    await expect(response.json()).resolves.toMatchObject({ data: { operation: { operationId: "bulk-site-operation-1", createdCount: 1 } } })
+    expect(prisma.workforceSiteAssignmentBulkOperation.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ organizationId: "org-1", publishedByUserId: "admin-1", requestedCount: 1 }),
+    }))
+    expect(prisma.mtmRouteAssignment.create).not.toHaveBeenCalled()
   })
 
   it("creates a site without turning it into attendance or a Route location", async () => {

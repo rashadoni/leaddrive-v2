@@ -130,17 +130,20 @@ describe("Workforce snapshot writer", () => {
       definition: policyDefinition,
       definitionHash: workforcePolicyDefinitionHash(policyDefinition),
     }] as never)
-    vi.mocked(prisma.workforceShiftTemplate.findMany).mockResolvedValue([{
-      id: "shift-template-1",
-      teamId: "team-b",
-      isDefault: true,
-      version: 1,
-      status: "ACTIVE",
-      timezone: "Asia/Baku",
-      activatedAt: new Date("2026-08-01T00:00:00.000Z"),
-      retiredAt: null,
-      definition: shiftDefinition,
-      definitionHash: workforceShiftDefinitionHash(shiftDefinition),
+    vi.mocked(prisma.workforceShiftTeamDefaultAssignment.findMany).mockResolvedValue([{
+      id: "team-default-assignment-1",
+      template: {
+        id: "shift-template-1",
+        teamId: "team-b",
+        isDefault: false,
+        version: 1,
+        status: "ACTIVE",
+        timezone: "Asia/Baku",
+        activatedAt: new Date("2026-08-01T00:00:00.000Z"),
+        retiredAt: null,
+        definition: shiftDefinition,
+        definitionHash: workforceShiftDefinitionHash(shiftDefinition),
+      },
     }] as never)
     vi.mocked(prisma.workforcePolicySnapshot.create).mockResolvedValue({ id: "policy-snapshot-1" } as never)
     vi.mocked(prisma.workforceShiftSnapshot.create).mockResolvedValue({ id: "shift-snapshot-1" } as never)
@@ -152,7 +155,11 @@ describe("Workforce snapshot writer", () => {
     })).resolves.toMatchObject({ kind: "created" })
     expect(prisma.workforcePolicySnapshot.create).toHaveBeenCalled()
     expect(prisma.workforceShiftSnapshot.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ definition: shiftDefinition }),
+      data: expect.objectContaining({
+        definition: shiftDefinition,
+        defaultAssignmentId: null,
+        teamDefaultAssignmentId: "team-default-assignment-1",
+      }),
     }))
     expect(prisma.workforceWorkdayScheduleSnapshot.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
