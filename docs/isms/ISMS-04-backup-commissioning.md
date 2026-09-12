@@ -216,7 +216,7 @@ BACKUP_AGE_RECIPIENT=age1...
 ```
 
 Проверить остальные обязательные переменные, которые требует скрипт:
-`PGHOST`, `PGDATABASE`, `PGUSER`, `PGPASSFILE`, `BACKUP_EXPECTED_DB_ROLE`,
+`PGHOST`, `PGHOSTADDR`, `PGDATABASE`, `PGUSER`, `PGPASSFILE`, `BACKUP_EXPECTED_DB_ROLE`,
 `BACKUP_S3_ENDPOINT`, `BACKUP_HEALTHCHECK_URL`.
 
 Права на файл — только root. Перед включением timers пройти commissioning

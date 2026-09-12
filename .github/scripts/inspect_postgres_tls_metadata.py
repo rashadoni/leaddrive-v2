@@ -2,7 +2,7 @@
 """Emit only anonymized PostgreSQL endpoint and TLS metadata.
 
 The production workflow streams this file to ``python3 -`` over SSH. It reads
-four allowlisted keys from the fixed backup environment without evaluating the
+seven allowlisted keys from the fixed backup environment without evaluating the
 file, performs DNS/TCP/PostgreSQL TLS negotiation without authenticating, and
 prints exactly two schema-constrained lines. Raw addresses, certificate names,
 configuration values, credentials, URLs, and exception messages are never
@@ -30,7 +30,18 @@ from typing import Iterable
 
 
 CONFIG_PATH = Path("/etc/leaddrive/backup.env")
-CONFIG_KEYS = frozenset({"PGHOST", "PGPORT", "VERIFY_PGHOST", "VERIFY_PGPORT"})
+SOURCE_CA_PATH = Path("/etc/leaddrive/managed-postgres-ca.crt")
+CONFIG_KEYS = frozenset(
+    {
+        "PGHOST",
+        "PGHOSTADDR",
+        "PGPORT",
+        "PGSSLMODE",
+        "PGSSLROOTCERT",
+        "VERIFY_PGHOST",
+        "VERIFY_PGPORT",
+    }
+)
 MAX_CONFIG_BYTES = 64 * 1024
 CONNECT_TIMEOUT_SECONDS = 6
 POSTGRES_SSL_REQUEST = struct.pack("!II", 8, 80877103)
@@ -157,6 +168,8 @@ class SourceSanResult:
     san_resolves_local: str
     verify_full_at_source_endpoint: str
     verify_full_via_san_name: str
+    client_hostaddr_configured: str
+    effective_verify_full: str
     remediation_without_restart: str
 
 
@@ -603,6 +616,32 @@ def _verify_full_with_presented_certificate(
     return "yes" if state == "available" else "no"
 
 
+def _source_ca_matches(certificate_der: bytes, config: dict[str, str]) -> bool:
+    if config.get("PGSSLMODE") != "verify-full":
+        return False
+    if config.get("PGSSLROOTCERT") != str(SOURCE_CA_PATH):
+        return False
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(SOURCE_CA_PATH, flags)
+    except OSError:
+        return False
+    try:
+        metadata = os.fstat(fd)
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or metadata.st_uid != 0
+            or metadata.st_size > 256 * 1024
+            or stat.S_IMODE(metadata.st_mode) & 0o022
+        ):
+            return False
+        payload = os.read(fd, 256 * 1024 + 1)
+    finally:
+        os.close(fd)
+    expected = ssl.DER_cert_to_PEM_cert(certificate_der).encode("ascii").strip()
+    return payload.strip() == expected
+
+
 def inspect_source_san(config: dict[str, str]) -> SourceSanResult:
     unavailable = SourceSanResult(
         dns_san_count="unavailable",
@@ -610,20 +649,24 @@ def inspect_source_san(config: dict[str, str]) -> SourceSanResult:
         san_resolves_local="unavailable",
         verify_full_at_source_endpoint="unavailable",
         verify_full_via_san_name="unavailable",
+        client_hostaddr_configured="unavailable",
+        effective_verify_full="unavailable",
         remediation_without_restart="not-proven",
     )
     try:
-        host = normalize_host(config["PGHOST"])
+        identity_host = normalize_host(config["PGHOST"])
+        configured_hostaddr = config.get("PGHOSTADDR", "")
+        route_host = normalize_host(configured_hostaddr or config["PGHOST"])
         port, _ = normalize_port(config["PGPORT"], allow_default=True)
     except (KeyError, SafeDiagnosticError):
         return unavailable
-    if host.kind == "unix":
+    if identity_host.kind == "unix" or route_host.kind == "unix":
         return unavailable
 
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     context.check_hostname = False
     context.verify_mode = ssl.CERT_NONE
-    tls_state, secured = _postgres_tls_socket(host, port, context)
+    tls_state, secured = _postgres_tls_socket(route_host, port, context)
     if tls_state != "available" or secured is None:
         return unavailable
     try:
@@ -644,6 +687,8 @@ def inspect_source_san(config: dict[str, str]) -> SourceSanResult:
             san_resolves_local="unavailable",
             verify_full_at_source_endpoint="unavailable",
             verify_full_via_san_name="unavailable",
+            client_hostaddr_configured=("yes" if configured_hostaddr else "no"),
+            effective_verify_full="unavailable",
             remediation_without_restart="not-proven",
         )
 
@@ -654,7 +699,7 @@ def inspect_source_san(config: dict[str, str]) -> SourceSanResult:
     verification_name = matching_server_names[0] if matching_server_names else san
     resolves_local = _name_resolves_to_local(verification_name)
     verifies_at_source = _verify_full_with_presented_certificate(
-        host, port, verification_name, certificate_der
+        route_host, port, verification_name, certificate_der
     )
     verifies_via_name = "unavailable"
     if resolves_local == "yes":
@@ -666,6 +711,12 @@ def inspect_source_san(config: dict[str, str]) -> SourceSanResult:
             verifies_via_name = _verify_full_with_presented_certificate(
                 verification_host, port, verification_name, certificate_der
             )
+    client_hostaddr_configured = "yes" if configured_hostaddr else "no"
+    effective_verify_full = "no"
+    if identity_host.kind == "dns" and _source_ca_matches(certificate_der, config):
+        effective_verify_full = _verify_full_with_presented_certificate(
+            route_host, port, identity_host.value, certificate_der
+        )
     if (
         matches_server_name == "yes"
         and resolves_local == "yes"
@@ -686,6 +737,8 @@ def inspect_source_san(config: dict[str, str]) -> SourceSanResult:
         san_resolves_local=resolves_local,
         verify_full_at_source_endpoint=verifies_at_source,
         verify_full_via_san_name=verifies_via_name,
+        client_hostaddr_configured=client_hostaddr_configured,
+        effective_verify_full=effective_verify_full,
         remediation_without_restart=remediation,
     )
 
@@ -1094,6 +1147,8 @@ def empty_source_san_result() -> SourceSanResult:
         san_resolves_local="unavailable",
         verify_full_at_source_endpoint="unavailable",
         verify_full_via_san_name="unavailable",
+        client_hostaddr_configured="unavailable",
+        effective_verify_full="unavailable",
         remediation_without_restart="not-proven",
     )
 
@@ -1121,6 +1176,8 @@ def format_source_san_result(result: SourceSanResult) -> str:
             result.san_resolves_local,
             result.verify_full_at_source_endpoint,
             result.verify_full_via_san_name,
+            result.client_hostaddr_configured,
+            result.effective_verify_full,
         )
     ):
         raise SafeDiagnosticError
@@ -1137,6 +1194,8 @@ def format_source_san_result(result: SourceSanResult) -> str:
         "verify_full_at_source_endpoint="
         f"{result.verify_full_at_source_endpoint} "
         f"verify_full_via_san_name={result.verify_full_via_san_name} "
+        f"client_hostaddr_configured={result.client_hostaddr_configured} "
+        f"effective_verify_full={result.effective_verify_full} "
         "remediation_without_postgres_restart="
         f"{result.remediation_without_restart}"
     )
@@ -1185,7 +1244,9 @@ def main() -> int:
 
     try:
         results = (
-            inspect_endpoint("source", config["PGHOST"], config["PGPORT"]),
+            inspect_endpoint(
+                "source", config.get("PGHOSTADDR") or config["PGHOST"], config["PGPORT"]
+            ),
             inspect_endpoint(
                 "restore-scratch", config["VERIFY_PGHOST"], config["VERIFY_PGPORT"]
             ),

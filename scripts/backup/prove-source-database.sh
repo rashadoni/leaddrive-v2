@@ -20,7 +20,7 @@ set -a
 source "$BACKUP_ENV_FILE"
 set +a
 
-for name in PGHOST PGDATABASE PGUSER PGPASSFILE BACKUP_EXPECTED_DB_ROLE; do
+for name in PGHOST PGHOSTADDR PGDATABASE PGUSER PGPASSFILE BACKUP_EXPECTED_DB_ROLE; do
   [ -n "${!name:-}" ] || {
     printf '%s is required for backup source proof\n' "$name" >&2
     exit 1
@@ -31,7 +31,7 @@ done
   exit 1
 }
 
-export PGHOST PGDATABASE PGUSER PGPASSFILE
+export PGHOST PGHOSTADDR PGDATABASE PGUSER PGPASSFILE
 export PGPORT="${PGPORT:-5432}"
 export PGCONNECT_TIMEOUT="${PGCONNECT_TIMEOUT:-10}"
 export PGSSLMODE="${PGSSLMODE:-verify-full}"

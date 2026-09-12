@@ -162,6 +162,7 @@ for retention_policy in \
 done
 
 require_env PGHOST
+require_env PGHOSTADDR
 require_env PGDATABASE
 require_env PGUSER
 require_env PGPASSFILE
@@ -175,7 +176,7 @@ PGSSLMODE="${PGSSLMODE:-verify-full}"
 [[ "$PGCONNECT_TIMEOUT" =~ ^[0-9]+$ ]] \
   && [ "$PGCONNECT_TIMEOUT" -ge 1 ] && [ "$PGCONNECT_TIMEOUT" -le 30 ] \
   || fatal "PGCONNECT_TIMEOUT must be between 1 and 30 seconds"
-export PGHOST PGPORT PGDATABASE PGUSER PGPASSFILE PGCONNECT_TIMEOUT PGSSLMODE PGSSLROOTCERT
+export PGHOST PGHOSTADDR PGPORT PGDATABASE PGUSER PGPASSFILE PGCONNECT_TIMEOUT PGSSLMODE PGSSLROOTCERT
 
 assert_root_connection_file "PGPASSFILE" "$PGPASSFILE" password
 assert_root_connection_file "PGSSLROOTCERT" "$PGSSLROOTCERT" ca
