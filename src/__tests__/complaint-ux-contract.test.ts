@@ -17,6 +17,8 @@ describe("complaint workspace UX contract", () => {
     expect(page).toContain("exportError")
     expect(page).toContain("fetchError")
     expect(page).toContain("hideResultCount")
+    expect(page).toContain("document.title = localizedDocumentTitle")
+    expect(page).toContain("currentRegistryPath !== registryPath")
     expect(page).toContain('data-testid="complaints-workspace"')
     expect(page).toContain('data-testid="complaints-empty-state"')
   })
@@ -44,6 +46,7 @@ describe("complaint workspace UX contract", () => {
     expect(page).toContain("comment.attachments?.map")
     expect(page).toContain("clientRequestId")
     expect(page).toContain("ConfirmDialog")
+    expect(page).toContain('className="grid grid-cols-2 gap-x-3 gap-y-2')
     expect(page).toContain('data-testid="complaint-detail-workspace"')
   })
 

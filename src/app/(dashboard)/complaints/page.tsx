@@ -108,16 +108,22 @@ export default function ComplaintsPage() {
     return complaintRegistryPath(params)
   }, [filters])
   const childHref = useCallback((path: string) => complaintChildHref(path, registryPath), [registryPath])
+  const localizedDocumentTitle = `${t("title")} · LeadDrive CRM`
   const headers = useMemo<Record<string, string>>(
     (): Record<string, string> => orgId ? { "x-organization-id": String(orgId) } : {},
     [orgId],
   )
 
   useEffect(() => {
+    document.title = localizedDocumentTitle
+  }, [localizedDocumentTitle, searchParams])
+
+  useEffect(() => {
     const timeout = window.setTimeout(() => setRequestFilters(filters), 250)
-    router.replace(registryPath, { scroll: false })
+    const currentRegistryPath = complaintRegistryPath(new URLSearchParams(searchParams.toString()))
+    if (currentRegistryPath !== registryPath) router.replace(registryPath, { scroll: false })
     return () => window.clearTimeout(timeout)
-  }, [filters, registryPath, router])
+  }, [filters, registryPath, router, searchParams])
 
   const fetchRows = useCallback(async (signal?: AbortSignal) => {
     const params = new URLSearchParams({ limit: "200" })

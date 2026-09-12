@@ -308,16 +308,16 @@ export default function ComplaintDetailPage({ params }: { params: Promise<{ id: 
         </div>
       </section>
 
-      <section className="grid gap-3 rounded-xl border bg-card p-3 sm:grid-cols-2 lg:grid-cols-4" aria-label={t("caseOverview")}>
+      <section className="grid grid-cols-2 gap-x-3 gap-y-2 rounded-xl border bg-card p-3 lg:grid-cols-4" aria-label={t("caseOverview")}>
         <Overview icon={<UserRound className="h-4 w-4" />} label={t("fieldAssignee")} value={data.assigneeName || t("unassigned")} />
         <Overview icon={<Clock className="h-4 w-4" />} label={t("deadline")} value={deadline ? deadline.toLocaleString(dateLocale) : t("noDeadline")} alert={overdue} />
         <Overview label={t("fieldDepartment")} value={meta?.responsibleDepartment || "—"} />
         <Overview label={t("fieldPriority")} value={priorityLabel(data.priority)} />
-        <div className="flex gap-2 sm:col-span-2 lg:col-span-4">
+        <div className="col-span-2 flex gap-2 lg:col-span-4">
           <Select data-testid="complaint-assignee-select" aria-label={t("fieldAssignee")} value={assignee} onChange={event => setAssignee(event.target.value)} className="h-11 min-w-0 flex-1 sm:h-9"><option value="">{t("unassigned")}</option>{users.map(user => <option key={user.id} value={user.id}>{user.name || user.email}</option>)}</Select>
           <Button data-testid="complaint-assignee-save" variant="outline" size="sm" className="h-11 shrink-0 sm:h-9" disabled={actionPending === "assignee" || assignee === (data.assignedTo || "")} onClick={() => void changeAssignee()}>{actionPending === "assignee" && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />}{t("saveOwner")}</Button>
         </div>
-        {usersError && <div role="alert" className="flex items-center justify-between gap-2 text-xs text-amber-800 dark:text-amber-300 sm:col-span-2 lg:col-span-4"><span>{usersError}</span><Button variant="outline" size="sm" className="h-11 sm:h-9" onClick={() => void fetchUsers()}>{t("retry")}</Button></div>}
+        {usersError && <div role="alert" className="col-span-2 flex items-center justify-between gap-2 text-xs text-amber-800 dark:text-amber-300 lg:col-span-4"><span>{usersError}</span><Button variant="outline" size="sm" className="h-11 sm:h-9" onClick={() => void fetchUsers()}>{t("retry")}</Button></div>}
       </section>
 
       <section className="rounded-xl border bg-card p-4" aria-labelledby="complaint-conversation-title">
