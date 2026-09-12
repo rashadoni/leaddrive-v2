@@ -66,7 +66,7 @@ export class WorkforceExceptionCaseWriterError extends Error {
       | "WORKFORCE_EXCEPTION_CASE_WRITE_CONFLICT"
       | "WORKFORCE_EXCEPTION_DECISION_WRITE_CONFLICT"
       | "WORKFORCE_EXCEPTION_DECISION_CASE_NOT_FOUND",
-    message = code,
+    message: string = code,
   ) {
     super(message)
   }
