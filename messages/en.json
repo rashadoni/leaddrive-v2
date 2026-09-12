@@ -23784,9 +23784,10 @@
   "workforceExceptionQueue": {
     "title": "Attendance exception queue",
     "subtitle": "Review uncertain attendance cases without exposing raw location, QR, device proof or employee reasons.",
-    "adminOnly": "This read-only exception queue is available only to a signed-in tenant administrator.",
+    "adminOnly": "This read-only exception queue requires an effective Workforce HR-review role.",
     "boundaryTitle": "Human review only",
     "boundaryHint": "This queue cannot change attendance, pay or discipline. It shows only a derived review state: no coordinates, maps, QR values, device identifiers, proof payloads, decision reasons or internal identifiers are available here.",
+    "viewAggregateReport": "View aggregate report",
     "refresh": "Refresh queue",
     "loading": "Loading attendance exception queue",
     "loadFailed": "Unable to load the attendance exception queue.",
@@ -23812,35 +23813,67 @@
       "DELAYED_CLAIM": "Delayed claim",
       "SITE_TRANSITION_REVIEW": "Site transition review",
       "DEVICE_SECURITY_REVIEW": "Device security review",
-      "ATTENDANCE_PROOF_REVIEW": "Attendance proof review"
+      "ATTENDANCE_PROOF_REVIEW": "Attendance proof review",
+      "unavailable": "Type unavailable"
     },
     "severities": {
       "ROUTINE_REVIEW": "Routine review",
-      "ATTENTION_REVIEW": "Attention review"
+      "ATTENTION_REVIEW": "Attention review",
+      "unavailable": "Risk unavailable"
     },
     "stages": {
       "OPEN": "Open",
       "AWAITING_EMPLOYEE_RESPONSE": "Awaiting employee response",
       "HR_REVIEW": "HR review",
       "RESOLVED": "Resolved",
-      "DATA_INTEGRITY_REVIEW": "Data integrity review"
+      "DATA_INTEGRITY_REVIEW": "Data integrity review",
+      "unavailable": "Review stage unavailable"
     },
     "evidenceStates": {
       "NOT_REQUIRED": "Not required",
       "LINKED_RESTRICTED": "Linked, restricted",
-      "MISSING_OR_UNAVAILABLE": "Missing or unavailable"
+      "MISSING_OR_UNAVAILABLE": "Missing or unavailable",
+      "unavailable": "Evidence state unavailable"
     },
     "employeeResponses": {
       "NOT_REQUESTED": "Not requested",
       "PENDING": "Pending",
-      "RECEIVED": "Received"
+      "RECEIVED": "Received",
+      "unavailable": "Employee response unavailable"
     },
     "nextActions": {
       "ACKNOWLEDGE_HR_REVIEW": "Acknowledge HR review",
       "WAIT_FOR_EMPLOYEE_RESPONSE": "Wait for employee response",
       "HUMAN_REVIEW_REQUIRED": "Human review required",
       "NO_FURTHER_ACTION": "No further action",
-      "ESCALATE_DATA_INTEGRITY_REVIEW": "Escalate data integrity review"
+      "ESCALATE_DATA_INTEGRITY_REVIEW": "Escalate data integrity review",
+      "unavailable": "Next action unavailable"
+    }
+  },
+  "workforceExceptionReport": {
+    "title": "Attendance exception report",
+    "subtitle": "Review bounded aggregate counts from persisted attendance cases without exposing employee, case, location, QR, device or reason data.",
+    "adminOnly": "This aggregate exception report requires an effective Workforce HR-review role.",
+    "boundaryTitle": "Aggregate review, not an outcome",
+    "boundaryHint": "This report counts recorded review cases by generic type and lifecycle stage. It is not proof of physical presence, an absence decision, payroll input or a disciplinary conclusion. Employee names, case references, raw evidence and decision reasons are excluded.",
+    "start": "Recorded from",
+    "end": "Recorded through",
+    "apply": "Apply range",
+    "refresh": "Refresh report",
+    "backToQueue": "Exception queue",
+    "loading": "Loading attendance exception report",
+    "loadFailed": "Unable to load the attendance exception report.",
+    "rangeRequired": "Choose both recorded-case dates before applying the report range.",
+    "summaryTitle": "Recorded-case aggregate",
+    "periodHint": "Recorded from {start} through {end} in {timezone}.",
+    "recordedCaseDate": "Recorded case date",
+    "typesTitle": "Case types and review stages",
+    "typesHint": "Only aggregate counts are shown. An unrecognised or contradictory decision history is retained for data-integrity review rather than treated as resolved.",
+    "empty": "No persisted attendance cases were recorded in this date range.",
+    "metrics": {
+      "cases": "Cases",
+      "employees": "Employees represented",
+      "employeeResponsesReceived": "Employee responses received"
     }
   },
   "workforceMyExceptions": {
@@ -23859,6 +23892,10 @@
     "raised": "Recorded for review: {date}",
     "requestCorrection": "Request a correction",
     "requestCorrectionHint": "Choose this recorded workday in the protected request form. A reviewer must decide it before any time fact changes.",
+    "acknowledgeForReview": "Acknowledge for HR review",
+    "acknowledgeForReviewHint": "This confirms that you saw the item. It does not resolve the exception or change recorded time.",
+    "acknowledgedForReview": "Your acknowledgement is recorded for HR review. Recorded time has not changed.",
+    "acknowledgeFailed": "Your acknowledgement could not be recorded. Refresh and try again, or use a correction request when recorded time needs review.",
     "empty": "You have no attendance exceptions available for self-service review."
   },
   "workforceConfigurationPage": {

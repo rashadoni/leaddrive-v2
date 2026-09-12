@@ -1,9 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 
-const findMany = vi.hoisted(() => vi.fn())
+const { findMany, organizationFindUnique } = vi.hoisted(() => ({
+  findMany: vi.fn(),
+  organizationFindUnique: vi.fn(),
+}))
 
-vi.mock("@/lib/prisma", () => ({ prisma: { workforceExceptionCase: { findMany } } }))
+vi.mock("@/lib/prisma", () => ({ prisma: {
+  organization: { findUnique: organizationFindUnique },
+  workforceExceptionCase: { findMany },
+} }))
 vi.mock("@/lib/with-workforce-rls-auth", () => ({
   withWorkforceSessionAuth: vi.fn((_action, handler) => handler),
 }))
@@ -12,6 +18,7 @@ vi.mock("@/lib/workforce/actor", () => ({ resolveWorkforceActor: vi.fn() }))
 import { GET } from "@/app/api/v1/workforce/exceptions/mine/route"
 import { withWorkforceSessionAuth } from "@/lib/with-workforce-rls-auth"
 import { resolveWorkforceActor } from "@/lib/workforce/actor"
+import { WORKFORCE_EXCEPTION_RESPONSE_FLAG } from "@/lib/workforce/exception-response-rollout"
 
 const AUTH = { orgId: "org-1", userId: "user-1", role: "sales" }
 const callGet = GET as unknown as (request: NextRequest, auth: typeof AUTH) => Promise<Response>
@@ -28,6 +35,8 @@ function ownCase(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   findMany.mockReset()
+  organizationFindUnique.mockReset()
+  organizationFindUnique.mockResolvedValue({ features: [] })
   vi.mocked(resolveWorkforceActor).mockReset()
 })
 
@@ -62,6 +71,10 @@ describe("Workforce personal exception discovery API", () => {
       },
     })
     expect(JSON.stringify(body)).not.toMatch(/RAW_LOCATION|RAW_QR|RAW_DEVICE|RAW_REASON/)
+    expect(organizationFindUnique).toHaveBeenCalledWith({
+      where: { id: "org-1" },
+      select: { features: true },
+    })
     expect(findMany).toHaveBeenCalledWith({
       where: { organizationId: "org-1", agentId: "agent-1", workdayId: { not: null } },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -74,6 +87,37 @@ describe("Workforce personal exception discovery API", () => {
       },
     })
     expect(withWorkforceSessionAuth).toHaveBeenCalledWith("read", expect.any(Function))
+  })
+
+  it("enables only a rehearsed tenant and still emits an identifier-minimized acknowledgement state", async () => {
+    vi.mocked(resolveWorkforceActor).mockResolvedValue({ agentId: "agent-1", role: "AGENT", scopedAgentIds: ["agent-1"] })
+    organizationFindUnique.mockResolvedValue({ features: [WORKFORCE_EXCEPTION_RESPONSE_FLAG] })
+    findMany.mockResolvedValue([ownCase({
+      employeeResponses: [{ id: "response-internal-only", correctionRequestId: "request-internal-only" }],
+    })])
+
+    const response = await callGet(new NextRequest("http://localhost:3000/api/v1/workforce/exceptions/mine"), AUTH)
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body).toMatchObject({
+      success: true,
+      data: {
+        responseRecording: "AVAILABLE",
+        cases: [{ caseId: "case-00000001", responseState: "ACKNOWLEDGED" }],
+      },
+    })
+    expect(JSON.stringify(body)).not.toContain("response-internal-only")
+    expect(JSON.stringify(body)).not.toContain("request-internal-only")
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
+      select: expect.objectContaining({
+        employeeResponses: {
+          take: 1,
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          select: { id: true },
+        },
+      }),
+    }))
   })
 
   it("denies a non-employee before querying cases", async () => {

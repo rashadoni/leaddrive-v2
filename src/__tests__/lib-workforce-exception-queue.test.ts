@@ -4,6 +4,7 @@ import {
   WorkforceExceptionQueueError,
   workforceExceptionQueueEmployeeResponseState,
 } from "@/lib/workforce/exception-queue"
+import { workforceExceptionQueueLabelKey, workforceExceptionQueueLabelValues } from "@/lib/workforce/exception-queue-labels"
 
 const BASE = {
   displayReference: "WF-CASE-2026-0001",
@@ -74,5 +75,16 @@ describe("workforceExceptionQueueEmployeeResponseState", () => {
       decisionCodes: ["ACKNOWLEDGE"],
       recordedResponseCount: 0,
     })).toBe("NOT_REQUESTED")
+  })
+})
+
+describe("workforceExceptionQueueLabelKey", () => {
+  it("maps only the reviewed queue taxonomy and fails closed for a future transport value", () => {
+    for (const [group, values] of Object.entries(workforceExceptionQueueLabelValues)) {
+      for (const value of values) {
+        expect(workforceExceptionQueueLabelKey(group as keyof typeof workforceExceptionQueueLabelValues, value)).toBe(`${group}.${value}`)
+      }
+      expect(workforceExceptionQueueLabelKey(group as keyof typeof workforceExceptionQueueLabelValues, "FUTURE_OR_MALFORMED")).toBe(`${group}.unavailable`)
+    }
   })
 })

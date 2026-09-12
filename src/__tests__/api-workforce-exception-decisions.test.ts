@@ -69,6 +69,8 @@ describe("Workforce scoped exception-decision API", () => {
       reason: "Review started by the manager.",
     }), auth, { params: Promise.resolve({ id: "case_1" }) })
     expect(response.status).toBe(201)
+    expect(response.headers.get("cache-control")).toBe("private, no-store")
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff")
     await expect(response.json()).resolves.toEqual({ success: true, idempotent: false, data: { decisionId: "decision_1" } })
     expect(prisma.workforceAccessGrant.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ organizationId: "org_1", principalUserId: "user_1" }),
