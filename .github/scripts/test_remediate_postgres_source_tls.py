@@ -247,7 +247,7 @@ class OutputTests(unittest.TestCase):
         output.assert_called_once_with(
             "source_tls_maintenance operation=apply status=applied "
             "pg_restart=no service_restart=no effective_verify_full=yes "
-            "rollback_snapshot=retained"
+            "rollback_snapshot=retained failure_stage=none"
         )
 
     @mock.patch.object(MAINTENANCE, "apply", side_effect=RuntimeError("secret-host"))
@@ -261,7 +261,22 @@ class OutputTests(unittest.TestCase):
             rendered,
             "source_tls_maintenance operation=apply status=failed "
             "pg_restart=no service_restart=no effective_verify_full=unknown "
-            "rollback_snapshot=unknown",
+            "rollback_snapshot=unknown failure_stage=internal",
+        )
+
+    @mock.patch.object(
+        MAINTENANCE,
+        "apply",
+        side_effect=MAINTENANCE.SafeMaintenanceError("pgpass"),
+    )
+    def test_failure_output_exposes_only_allowlisted_stage(self, _apply: mock.Mock) -> None:
+        with mock.patch("builtins.print") as output:
+            status = MAINTENANCE.main(["apply"])
+        self.assertEqual(status, 1)
+        output.assert_called_once_with(
+            "source_tls_maintenance operation=apply status=failed "
+            "pg_restart=no service_restart=no effective_verify_full=unknown "
+            "rollback_snapshot=unknown failure_stage=pgpass"
         )
 
 
