@@ -69,6 +69,7 @@ const SUBDIR_READ_MODULE = new Map<string, Module>([
   ["contracts", "contracts"],
   ["contract-images", "contracts"],
   ["tasks", "tasks"],
+  ["tickets", "tickets"],
   ["email-images", "campaigns"],
   ["web-chat", "inbox"],
   ["whatsapp", "inbox"],
@@ -428,6 +429,20 @@ const authenticatedGET = withRlsSessionAuth(async (_req, auth, { params }: Route
       select: { id: true },
     })
     if (!ta) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 })
+    }
+  } else if (subdir === "tickets") {
+    // TicketAttachment owns bare filenames and is always resolved inside the
+    // authenticated tenant before any bytes are read from disk.
+    const fileName = parts[1] ?? ""
+    if (!fileName) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 })
+    }
+    const attachment = await prisma.ticketAttachment.findFirst({
+      where: { fileName, organizationId: auth.orgId },
+      select: { id: true },
+    })
+    if (!attachment) {
       return NextResponse.json({ error: "Not found" }, { status: 404 })
     }
   }

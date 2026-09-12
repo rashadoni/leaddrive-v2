@@ -2270,6 +2270,7 @@ model Ticket {
   updatedAt             DateTime        @updatedAt
 
   comments        TicketComment[]
+  attachments     TicketAttachment[]
   callLogs        CallLog[]
   complaintMeta   ComplaintMeta?
   closureRequests TicketClosureRequest[]
@@ -2416,15 +2417,41 @@ model ChatbotRule {
 }
 
 model TicketComment {
-  id         String   @id @default(cuid())
-  ticketId   String
-  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  userId     String?
-  comment    String
-  isInternal Boolean  @default(false)
-  createdAt  DateTime @default(now())
+  id              String             @id @default(cuid())
+  ticketId        String
+  ticket          Ticket             @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId          String?
+  comment         String
+  isInternal      Boolean            @default(false)
+  clientRequestId String?
+  createdAt       DateTime           @default(now())
+  attachments     TicketAttachment[]
 
+  @@unique([ticketId, clientRequestId])
   @@map("ticket_comments")
+}
+
+// Ticket attachments are uploaded before send, then atomically bound to the
+// resulting comment. A null commentId is a recoverable composer draft.
+model TicketAttachment {
+  id             String         @id @default(cuid())
+  organizationId String
+  ticketId       String
+  ticket         Ticket         @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  commentId      String?
+  comment        TicketComment? @relation(fields: [commentId], references: [id], onDelete: SetNull)
+  fileName       String
+  originalName   String
+  fileSize       Int
+  mimeType       String
+  uploadedBy     String?
+  createdAt      DateTime       @default(now())
+
+  @@unique([organizationId, fileName])
+  @@index([ticketId])
+  @@index([commentId])
+  @@index([organizationId, ticketId, commentId])
+  @@map("ticket_attachments")
 }
 
 model ComplaintMeta {

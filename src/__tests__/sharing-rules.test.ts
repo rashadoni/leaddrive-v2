@@ -69,11 +69,23 @@ describe("applyRecordFilter", () => {
     expect(JSON.stringify(result)).not.toContain("createdBy")
   })
 
+  it("keeps ownerless tickets visible as a claimable shared intake queue", async () => {
+    vi.mocked(prisma.sharingRule.findMany).mockResolvedValue([])
+
+    const result = await applyRecordFilter(orgId, userId, "support", "ticket", baseWhere)
+
+    expect(result.OR).toEqual([
+      { assignedTo: userId },
+      { createdBy: userId },
+      { assignedTo: null },
+    ])
+  })
+
   it("shares leads by assignee without referencing a missing createdBy column", async () => {
     vi.mocked(prisma.sharingRule.findMany).mockResolvedValue([
-      { id: "r1", ruleType: "role", targetRole: "sales", sourceRole: "manager", isActive: true } as any,
+      { id: "r1", ruleType: "role", targetRole: "sales", sourceRole: "manager", isActive: true } as never,
     ])
-    vi.mocked(prisma.user.findMany).mockResolvedValue([{ id: "mgr-1" } as any])
+    vi.mocked(prisma.user.findMany).mockResolvedValue([{ id: "mgr-1" } as never])
 
     const result = await applyRecordFilter(orgId, userId, "sales", "lead", baseWhere)
 
@@ -85,7 +97,7 @@ describe("applyRecordFilter", () => {
 
   it("rule type 'all' grants full access to everyone", async () => {
     vi.mocked(prisma.sharingRule.findMany).mockResolvedValue([
-      { id: "r1", ruleType: "all", isActive: true } as any,
+      { id: "r1", ruleType: "all", isActive: true } as never,
     ])
 
     const result = await applyRecordFilter(orgId, userId, "support", "deal", baseWhere)
@@ -94,11 +106,11 @@ describe("applyRecordFilter", () => {
 
   it("role-based rule adds source user records to OR conditions", async () => {
     vi.mocked(prisma.sharingRule.findMany).mockResolvedValue([
-      { id: "r1", ruleType: "role", targetRole: "sales", sourceRole: "manager", isActive: true } as any,
+      { id: "r1", ruleType: "role", targetRole: "sales", sourceRole: "manager", isActive: true } as never,
     ])
     vi.mocked(prisma.user.findMany).mockResolvedValue([
-      { id: "mgr-1" } as any,
-      { id: "mgr-2" } as any,
+      { id: "mgr-1" } as never,
+      { id: "mgr-2" } as never,
     ])
 
     const result = await applyRecordFilter(orgId, userId, "sales", "task", baseWhere)
@@ -113,7 +125,7 @@ describe("applyRecordFilter", () => {
 
   it("role-based rule for different targetRole is ignored", async () => {
     vi.mocked(prisma.sharingRule.findMany).mockResolvedValue([
-      { id: "r1", ruleType: "role", targetRole: "support", sourceRole: "sales", isActive: true } as any,
+      { id: "r1", ruleType: "role", targetRole: "support", sourceRole: "sales", isActive: true } as never,
     ])
 
     const result = await applyRecordFilter(orgId, userId, "sales", "task", baseWhere)

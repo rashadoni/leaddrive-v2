@@ -484,7 +484,7 @@ describe("GET /api/v1/tickets/:id", () => {
     vi.mocked(prisma.ticket.findFirst).mockResolvedValue(ticket as any)
     vi.mocked(prisma.user.findMany).mockResolvedValue([{ id: "u1", name: "Agent", email: "a@b.com" }] as any)
     vi.mocked(prisma.company.findFirst).mockResolvedValue({ id: "c1", name: "Acme" } as any)
-    vi.mocked(prisma.contact.findFirst).mockResolvedValue({ id: "ct1", fullName: "John", email: "j@b.com" } as any)
+    vi.mocked(prisma.contact.findFirst).mockResolvedValue({ id: "ct1", fullName: "John", email: "j@b.com", preferredLanguage: "az" } as any)
 
     const res = await GET_BY_ID(makeRequest("http://localhost/api/v1/tickets/tk1"), makeParams("tk1"))
     expect(res.status).toBe(200)
@@ -493,6 +493,11 @@ describe("GET /api/v1/tickets/:id", () => {
     expect(body.data.companyName).toBe("Acme")
     expect(body.data.assigneeName).toBe("Agent")
     expect(body.data.comments[0].userName).toBe("Agent")
+    expect(body.data.contactPreferredLanguage).toBe("az")
+    expect(prisma.contact.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "ct1" },
+      select: expect.objectContaining({ preferredLanguage: true }),
+    }))
   })
 
   it("returns 404 when ticket not found", async () => {

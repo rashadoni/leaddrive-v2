@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { AlertTriangle, ArrowRight, CheckSquare, Clock, CornerDownRight, FileText, Inbox, Layers, Loader2, Search, Settings2, ShieldCheck, TrendingUp, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -46,6 +46,20 @@ const REPORT_FILTER_KEYS: (keyof ReportFilterState)[] = [
   "sla",
   "supportLevel",
   "slaPolicyId",
+  "entitlementStatus",
+  "milestoneType",
+  "milestoneState",
+]
+
+const ADVANCED_REPORT_FILTER_KEYS: (keyof ReportFilterState)[] = [
+  "from",
+  "to",
+  "companyId",
+  "categoryId",
+  "assigneeId",
+  "source",
+  "slaPolicyId",
+  "supportLevel",
   "entitlementStatus",
   "milestoneType",
   "milestoneState",
@@ -236,29 +250,43 @@ function activeFilterCount(filters: ReportFilterState) {
   }).length
 }
 
+function activeAdvancedFilterCount(filters: ReportFilterState) {
+  return ADVANCED_REPORT_FILTER_KEYS.filter(key => {
+    const value = filters[key]?.trim()
+    return value && value !== DEFAULT_FILTER_STATE[key] && value !== "all"
+  }).length
+}
+
 function csvCell(value: unknown) {
   if (value === null || value === undefined) return ""
   const text = String(value).replace(/"/g, '""')
   return /[",\n\r]/.test(text) ? `"${text}"` : text
 }
 
-function formatHours(hours: number) {
-  if (!hours || hours <= 0) return "0h"
-  if (hours < 1) return `${Math.round(hours * 60)}m`
-  return `${hours >= 10 ? Math.round(hours) : hours.toFixed(1)}h`
+function formatHours(hours: number, t: ReturnType<typeof useTranslations>) {
+  if (!hours || hours <= 0) return t("durationHours", { count: 0 })
+  if (hours < 1) return t("durationMinutes", { count: Math.round(hours * 60) })
+  return t("durationHours", { count: hours >= 10 ? Math.round(hours) : Number(hours.toFixed(1)) })
 }
 
-function formatMinutes(minutes: number) {
-  if (!minutes || minutes <= 0) return "0m"
-  if (minutes >= 60) return formatHours(minutes / 60)
-  return `${minutes >= 10 ? Math.round(minutes) : minutes.toFixed(1)}m`
+function formatMinutes(minutes: number, t: ReturnType<typeof useTranslations>) {
+  if (!minutes || minutes <= 0) return t("durationMinutes", { count: 0 })
+  if (minutes >= 60) return formatHours(minutes / 60, t)
+  return t("durationMinutes", { count: minutes >= 10 ? Math.round(minutes) : Number(minutes.toFixed(1)) })
 }
 
-function sourceLabel(source: string | null, unknownLabel: string) {
-  if (!source || source === "unknown") return unknownLabel
-  if (source === "whatsapp") return "WhatsApp"
-  if (source === "web_chat") return "Web chat"
-  return source.replace(/_/g, " ")
+function sourceLabel(source: string | null, t: ReturnType<typeof useTranslations>) {
+  const key = source ? ({
+    whatsapp: "sourceWhatsapp",
+    web_chat: "sourceWebChat",
+    email: "sourceEmail",
+    portal: "sourcePortal",
+    agent: "sourceAgent",
+    facebook: "sourceFacebook",
+    instagram: "sourceInstagram",
+    telegram: "sourceTelegram",
+  } as Record<string, string>)[source] : undefined
+  return key ? t(key) : t("unknownLabel")
 }
 
 function priorityTone(priority: string) {
@@ -283,7 +311,7 @@ function statusLabel(status: string, t: ReturnType<typeof useTranslations>) {
   if (status === "escalated") return t("ticketEscalated")
   if (status === "resolved") return t("ticketResolved")
   if (status === "closed") return t("ticketClosed")
-  return status.replace(/_/g, " ")
+  return t("unknownLabel")
 }
 
 function priorityLabel(priority: string, t: ReturnType<typeof useTranslations>) {
@@ -291,7 +319,7 @@ function priorityLabel(priority: string, t: ReturnType<typeof useTranslations>) 
   if (priority === "high") return t("priorityHigh")
   if (priority === "medium") return t("priorityMedium")
   if (priority === "low") return t("priorityLow")
-  return priority
+  return t("unknownLabel")
 }
 
 function slaStateLabel(state: string, t: ReturnType<typeof useTranslations>) {
@@ -301,7 +329,7 @@ function slaStateLabel(state: string, t: ReturnType<typeof useTranslations>) {
   if (state === "pending_closure") return t("slaFilterPendingClosure")
   if (state === "reopened") return t("slaFilterReopened")
   if (state === "compliant") return t("slaFilterCompliant")
-  return state.replace(/_/g, " ")
+  return t("unknownLabel")
 }
 
 function supportLevelLabel(level: string, t: ReturnType<typeof useTranslations>) {
@@ -309,7 +337,7 @@ function supportLevelLabel(level: string, t: ReturnType<typeof useTranslations>)
   if (level === "standard") return t("supportLevelStandard")
   if (level === "premium") return t("supportLevelPremium")
   if (level === "enterprise") return t("supportLevelEnterprise")
-  return level
+  return t("unknownLabel")
 }
 
 function entitlementStatusLabel(status: string, t: ReturnType<typeof useTranslations>) {
@@ -318,7 +346,7 @@ function entitlementStatusLabel(status: string, t: ReturnType<typeof useTranslat
   if (status === "suspended") return t("entitlementStatusSuspended")
   if (status === "expired") return t("entitlementStatusExpired")
   if (status === "cancelled") return t("entitlementStatusCancelled")
-  return status.replace(/_/g, " ")
+  return t("unknownLabel")
 }
 
 function milestoneTypeLabel(type: string, t: ReturnType<typeof useTranslations>) {
@@ -327,7 +355,7 @@ function milestoneTypeLabel(type: string, t: ReturnType<typeof useTranslations>)
   if (type === "workaround_delivered") return t("milestoneTypeWorkaroundDelivered")
   if (type === "resolution") return t("milestoneTypeResolution")
   if (type === "escalation") return t("milestoneTypeEscalation")
-  return type.replace(/_/g, " ")
+  return t("unknownLabel")
 }
 
 function milestoneStateLabel(state: string, t: ReturnType<typeof useTranslations>) {
@@ -336,7 +364,7 @@ function milestoneStateLabel(state: string, t: ReturnType<typeof useTranslations
   if (state === "met") return t("milestoneStateMet")
   if (state === "missed") return t("milestoneStateMissed")
   if (state === "waived") return t("milestoneStateWaived")
-  return state.replace(/_/g, " ")
+  return t("unknownLabel")
 }
 
 function requesterLabel(
@@ -347,13 +375,14 @@ function requesterLabel(
     source?: string | null
     channel?: string | null
   },
-  unknownLabel: string,
+  t: ReturnType<typeof useTranslations>,
 ) {
-  return requester.requesterName || requester.requesterEmail || requester.requesterPhone || sourceLabel(requester.source || requester.channel || null, unknownLabel)
+  return requester.requesterName || requester.requesterEmail || requester.requesterPhone || sourceLabel(requester.source || requester.channel || null, t)
 }
 
 export function TicketingReport({ orgId }: { orgId?: string }) {
   const t = useTranslations("reports")
+  const locale = useLocale()
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -362,9 +391,13 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
   const [filters, setFilters] = useState<ReportFilterState>(() => readFilterState(searchParams))
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
+  const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(() => activeAdvancedFilterCount(readFilterState(searchParams)) > 0)
 
   useEffect(() => {
-    setFilters(readFilterState(searchParams))
+    const nextFilters = readFilterState(searchParams)
+    setFilters(nextFilters)
+    if (activeAdvancedFilterCount(nextFilters) > 0) setAdvancedFiltersOpen(true)
   }, [searchKey, searchParams])
 
   useEffect(() => {
@@ -379,7 +412,8 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
           headers: orgId ? { "x-organization-id": orgId } : undefined,
         })
         const json = await res.json() as ReportsResponse
-        if (!cancelled) setServiceDesk(json.success ? json.data?.serviceDesk || null : null)
+        if (!res.ok || !json.success || !json.data?.serviceDesk) throw new Error("service_desk_report_load_failed")
+        if (!cancelled) setServiceDesk(json.data.serviceDesk)
       } catch {
         if (!cancelled) {
           setServiceDesk(null)
@@ -395,7 +429,7 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
     return () => {
       cancelled = true
     }
-  }, [orgId, searchKey, searchParams])
+  }, [orgId, reloadKey, searchKey, searchParams])
 
   function updateFilter(key: keyof ReportFilterState, value: string) {
     setFilters(prev => ({
@@ -416,6 +450,7 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
 
   function handleReset() {
     setFilters(DEFAULT_FILTER_STATE)
+    setAdvancedFiltersOpen(false)
     const next = new URLSearchParams(searchParams.toString())
     REPORT_FILTER_KEYS.forEach(key => next.delete(key))
     if (pathname.endsWith("/tickets") && !next.get("view")) next.set("view", "reports")
@@ -424,9 +459,9 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
 
   if (loading) {
     return (
-      <Card data-tour-id="tickets-report">
+      <Card data-testid="ticketing-report-loading" data-tour-id="tickets-report" role="status">
         <CardContent className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
           {t("loading")}
         </CardContent>
       </Card>
@@ -435,9 +470,14 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
 
   if (failed || !serviceDesk) {
     return (
-      <Card data-tour-id="tickets-report">
-        <CardContent className="py-8 text-sm text-muted-foreground">
-          {failed ? t("failedToLoad") : t("noData")}
+      <Card data-testid={failed ? "ticketing-report-error" : "ticketing-report-empty"} data-tour-id="tickets-report" role={failed ? "alert" : "status"}>
+        <CardContent className="flex flex-col items-start gap-3 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+          <span>{failed ? t("failedToLoad") : t("noData")}</span>
+          {failed && (
+            <Button data-testid="ticketing-report-retry" type="button" size="sm" variant="outline" className="h-11 sm:h-9" onClick={() => setReloadKey((value) => value + 1)}>
+              {t("retry")}
+            </Button>
+          )}
         </CardContent>
       </Card>
     )
@@ -450,7 +490,9 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
   const requesterMax = Math.max(...serviceDesk.requesterBreakdown.map(row => row.count), 1)
   const throughputMax = Math.max(...serviceDesk.throughput.flatMap(row => [row.created, row.resolved, row.closed]), 1)
   const unknownLabel = t("unknownLabel")
-  const appliedFilterCount = activeFilterCount(readFilterState(searchParams))
+  const appliedFilters = readFilterState(searchParams)
+  const appliedFilterCount = activeFilterCount(appliedFilters)
+  const appliedAdvancedFilterCount = activeAdvancedFilterCount(appliedFilters)
   const categoryOptions = serviceDesk.filterOptions?.categories || serviceDesk.byCategory
   const companyOptions = serviceDesk.filterOptions?.companies || []
   const agentOptions = serviceDesk.filterOptions?.agents || []
@@ -481,21 +523,23 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
   }
 
   const metrics = [
-    { label: t("activeTickets"), value: serviceDesk.totals.active.toLocaleString(), icon: <Inbox className="h-4 w-4" />, tone: "text-blue-600" },
-    { label: t("slaCompliance"), value: `${serviceDesk.totals.slaComplianceRate}%`, icon: <ShieldCheck className="h-4 w-4" />, tone: "text-green-600" },
-    { label: t("slaBreached"), value: serviceDesk.totals.slaBreached.toLocaleString(), icon: <AlertTriangle className="h-4 w-4" />, tone: "text-red-600" },
-    { label: t("slaAtRisk"), value: serviceDesk.totals.slaAtRisk.toLocaleString(), icon: <Clock className="h-4 w-4" />, tone: "text-amber-600" },
-    { label: t("firstResponseBreached"), value: serviceDesk.totals.firstResponseBreached.toLocaleString(), icon: <FileText className="h-4 w-4" />, tone: "text-red-600" },
-    { label: t("pendingClosure"), value: serviceDesk.totals.pendingClosure.toLocaleString(), icon: <CheckSquare className="h-4 w-4" />, tone: "text-indigo-600" },
-    { label: t("reopenedTickets"), value: serviceDesk.totals.reopened.toLocaleString(), icon: <ArrowRight className="h-4 w-4" />, tone: "text-orange-600" },
-    { label: t("avgResolutionHours"), value: formatHours(serviceDesk.totals.avgResolutionHours), icon: <Clock className="h-4 w-4" />, tone: "text-slate-700 dark:text-slate-300" },
-    { label: t("avgFirstResponseMinutes"), value: formatMinutes(serviceDesk.totals.avgFirstResponseMinutes), icon: <FileText className="h-4 w-4" />, tone: "text-slate-700 dark:text-slate-300" },
-    { label: t("autoClosedLast30"), value: serviceDesk.totals.autoClosedLast30.toLocaleString(), icon: <ShieldCheck className="h-4 w-4" />, tone: "text-slate-700 dark:text-slate-300" },
+    { label: t("activeTickets"), value: serviceDesk.totals.active.toLocaleString(locale), icon: <Inbox className="h-4 w-4" />, tone: "text-foreground" },
+    { label: t("slaCompliance"), value: `${serviceDesk.totals.slaComplianceRate}%`, icon: <ShieldCheck className="h-4 w-4" />, tone: "text-foreground" },
+    { label: t("slaBreached"), value: serviceDesk.totals.slaBreached.toLocaleString(locale), icon: <AlertTriangle className="h-4 w-4" />, tone: "text-red-700 dark:text-red-300" },
+    { label: t("slaAtRisk"), value: serviceDesk.totals.slaAtRisk.toLocaleString(locale), icon: <Clock className="h-4 w-4" />, tone: "text-amber-700 dark:text-amber-300" },
+    { label: t("firstResponseBreached"), value: serviceDesk.totals.firstResponseBreached.toLocaleString(locale), icon: <FileText className="h-4 w-4" />, tone: "text-red-700 dark:text-red-300" },
+    { label: t("pendingClosure"), value: serviceDesk.totals.pendingClosure.toLocaleString(locale), icon: <CheckSquare className="h-4 w-4" />, tone: "text-muted-foreground" },
+    { label: t("reopenedTickets"), value: serviceDesk.totals.reopened.toLocaleString(locale), icon: <ArrowRight className="h-4 w-4" />, tone: "text-muted-foreground" },
+    { label: t("avgResolutionHours"), value: formatHours(serviceDesk.totals.avgResolutionHours, t), icon: <Clock className="h-4 w-4" />, tone: "text-muted-foreground" },
+    { label: t("avgFirstResponseMinutes"), value: formatMinutes(serviceDesk.totals.avgFirstResponseMinutes, t), icon: <FileText className="h-4 w-4" />, tone: "text-muted-foreground" },
+    { label: t("autoClosedLast30"), value: serviceDesk.totals.autoClosedLast30.toLocaleString(locale), icon: <ShieldCheck className="h-4 w-4" />, tone: "text-muted-foreground" },
   ]
+  const primaryMetrics = metrics.slice(0, 4)
+  const secondaryMetrics = metrics.slice(4)
   const entitlementMetrics = entitlementReport ? [
     {
       label: t("activeSupportTerms"),
-      value: entitlementReport.totals.activeSupportTerms.toLocaleString(),
+      value: entitlementReport.totals.activeSupportTerms.toLocaleString(locale),
       hint: t("activeSupportTermsHint"),
       href: drillHref({ entitlementStatus: "active" }),
       icon: <ShieldCheck className="h-4 w-4" />,
@@ -503,7 +547,7 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
     },
     {
       label: t("expiringSupportTerms30d"),
-      value: entitlementReport.totals.expiringSupportTerms30d.toLocaleString(),
+      value: entitlementReport.totals.expiringSupportTerms30d.toLocaleString(locale),
       hint: t("expiringSupportTermsHint"),
       href: drillHref({ entitlementStatus: "active" }),
       icon: <Clock className="h-4 w-4" />,
@@ -511,7 +555,7 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
     },
     {
       label: t("overdueMilestones"),
-      value: entitlementReport.totals.overdueMilestones.toLocaleString(),
+      value: entitlementReport.totals.overdueMilestones.toLocaleString(locale),
       hint: t("overdueMilestonesHint"),
       href: drillHref({ milestoneState: "in_progress" }),
       icon: <AlertTriangle className="h-4 w-4" />,
@@ -519,7 +563,7 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
     },
     {
       label: t("atRiskMilestones"),
-      value: entitlementReport.totals.atRiskMilestones.toLocaleString(),
+      value: entitlementReport.totals.atRiskMilestones.toLocaleString(locale),
       hint: t("atRiskMilestonesHint"),
       href: drillHref({ milestoneState: "in_progress" }),
       icon: <Clock className="h-4 w-4" />,
@@ -527,7 +571,7 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
     },
     {
       label: t("missedMilestones30d"),
-      value: entitlementReport.totals.missedMilestones30d.toLocaleString(),
+      value: entitlementReport.totals.missedMilestones30d.toLocaleString(locale),
       hint: t("missedMilestonesHint"),
       href: drillHref({ milestoneState: "missed" }),
       icon: <TrendingUp className="h-4 w-4" />,
@@ -547,8 +591,8 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
       [t("firstResponseBreached"), serviceDesk.totals.firstResponseBreached],
       [t("pendingClosure"), serviceDesk.totals.pendingClosure],
       [t("reopenedTickets"), serviceDesk.totals.reopened],
-      [t("avgResolutionHours"), formatHours(serviceDesk.totals.avgResolutionHours)],
-      [t("avgFirstResponseMinutes"), formatMinutes(serviceDesk.totals.avgFirstResponseMinutes)],
+      [t("avgResolutionHours"), formatHours(serviceDesk.totals.avgResolutionHours, t)],
+      [t("avgFirstResponseMinutes"), formatMinutes(serviceDesk.totals.avgFirstResponseMinutes, t)],
       [],
       [t("serviceDeskThroughput"), t("createdShort"), t("resolvedShort"), t("closedShort")],
       ...serviceDesk.throughput.map(row => [row.date, row.created, row.resolved, row.closed]),
@@ -557,7 +601,7 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
       ...serviceDesk.requesterBreakdown.map(row => [
         row.label,
         row.email || row.phone || "",
-        sourceLabel(row.source, unknownLabel),
+        sourceLabel(row.source, t),
         row.active,
         row.count,
       ]),
@@ -620,7 +664,7 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
   }
 
   return (
-    <Card id="ticketing-report" data-tour-id="tickets-report">
+    <Card id="ticketing-report" data-testid="ticketing-report-workspace" data-tour-id="tickets-report">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -664,36 +708,6 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
               <option value="custom">{t("periodCustom")}</option>
             </Select>
 
-            <Select label={t("companyFilter")} value={filters.companyId} onChange={event => updateFilter("companyId", event.target.value)} className="h-9 rounded-md text-sm">
-              <option value="">{t("allCompanies")}</option>
-              {companyOptions.map(company => (
-                <option key={company.id} value={company.id}>{company.name}</option>
-              ))}
-            </Select>
-
-            <Select label={t("categoryFilter")} value={filters.categoryId} onChange={event => updateFilter("categoryId", event.target.value)} className="h-9 rounded-md text-sm">
-              <option value="">{t("allCategories")}</option>
-              {categoryOptions.map(category => (
-                <option key={category.id || category.slug || category.name} value={category.id || ""}>
-                  {"  ".repeat(Math.min(category.depth || 0, 4))}{category.name}
-                </option>
-              ))}
-            </Select>
-
-            <Select label={t("agentFilter")} value={filters.assigneeId} onChange={event => updateFilter("assigneeId", event.target.value)} className="h-9 rounded-md text-sm">
-              <option value="">{t("allAgents")}</option>
-              {agentOptions.map(agent => (
-                <option key={agent.id} value={agent.id}>{agent.name || agent.email}</option>
-              ))}
-            </Select>
-
-            <Select label={t("sourceFilter")} value={filters.source} onChange={event => updateFilter("source", event.target.value)} className="h-9 rounded-md text-sm">
-              <option value="">{t("allSources")}</option>
-              {sourceOptions.map(source => (
-                <option key={source} value={source}>{sourceLabel(source, unknownLabel)}</option>
-              ))}
-            </Select>
-
             <Select label={t("statusFilter")} value={filters.status} onChange={event => updateFilter("status", event.target.value)} className="h-9 rounded-md text-sm">
               <option value="">{t("allStatuses")}</option>
               {statusOptions.map(status => (
@@ -714,52 +728,101 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
                 <option key={state} value={state}>{slaStateLabel(state, t)}</option>
               ))}
             </Select>
-
-            <Select label={t("slaPolicyFilter")} value={filters.slaPolicyId} onChange={event => updateFilter("slaPolicyId", event.target.value)} className="h-9 rounded-md text-sm">
-              <option value="">{t("allSlaPolicies")}</option>
-              {slaPolicyOptions.map(policy => (
-                <option key={policy.id} value={policy.id}>{policy.name}</option>
-              ))}
-            </Select>
-
-            <Select label={t("supportLevelFilter")} value={filters.supportLevel} onChange={event => updateFilter("supportLevel", event.target.value)} className="h-9 rounded-md text-sm">
-              <option value="">{t("allSupportLevels")}</option>
-              {supportLevelOptions.map(level => (
-                <option key={level} value={level}>{supportLevelLabel(level, t)}</option>
-              ))}
-            </Select>
-
-            <Select label={t("entitlementStatusFilter")} value={filters.entitlementStatus} onChange={event => updateFilter("entitlementStatus", event.target.value)} className="h-9 rounded-md text-sm">
-              <option value="">{t("allEntitlementStatuses")}</option>
-              {entitlementStatusOptions.map(status => (
-                <option key={status} value={status}>{entitlementStatusLabel(status, t)}</option>
-              ))}
-            </Select>
-
-            <Select label={t("milestoneTypeFilter")} value={filters.milestoneType} onChange={event => updateFilter("milestoneType", event.target.value)} className="h-9 rounded-md text-sm">
-              <option value="">{t("allMilestoneTypes")}</option>
-              {milestoneTypeOptions.map(type => (
-                <option key={type} value={type}>{milestoneTypeLabel(type, t)}</option>
-              ))}
-            </Select>
-
-            <Select label={t("milestoneStateFilter")} value={filters.milestoneState} onChange={event => updateFilter("milestoneState", event.target.value)} className="h-9 rounded-md text-sm">
-              <option value="">{t("allMilestoneStates")}</option>
-              {milestoneStateOptions.map(state => (
-                <option key={state} value={state}>{milestoneStateLabel(state, t)}</option>
-              ))}
-            </Select>
-
-            <label className="space-y-1">
-              <span className="text-xs font-medium text-muted-foreground">{t("fromDate")}</span>
-              <Input type="date" value={filters.from} onChange={event => updateFilter("from", event.target.value)} className="h-9 text-sm" />
-            </label>
-
-            <label className="space-y-1">
-              <span className="text-xs font-medium text-muted-foreground">{t("toDate")}</span>
-              <Input type="date" value={filters.to} onChange={event => updateFilter("to", event.target.value)} className="h-9 text-sm" />
-            </label>
           </div>
+
+          <details
+            data-testid="ticketing-report-advanced-filters"
+            className="mt-3 border-t pt-2"
+            open={advancedFiltersOpen}
+            onToggle={event => setAdvancedFiltersOpen(event.currentTarget.open)}
+          >
+            <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-md px-2 text-sm font-medium text-foreground hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-9">
+              <Settings2 className="h-3.5 w-3.5 text-muted-foreground" />
+              <span>{t("advancedReportFilters")}</span>
+              {appliedAdvancedFilterCount > 0 && (
+                <Badge variant="secondary" className="ml-auto h-6 px-2 text-xs">
+                  {t("filtersActiveCount", { count: appliedAdvancedFilterCount })}
+                </Badge>
+              )}
+            </summary>
+
+            <div className="mt-2 grid gap-2 border-t pt-3 md:grid-cols-2 xl:grid-cols-5">
+              <Select label={t("companyFilter")} value={filters.companyId} onChange={event => updateFilter("companyId", event.target.value)} className="h-9 rounded-md text-sm">
+                <option value="">{t("allCompanies")}</option>
+                {companyOptions.map(company => (
+                  <option key={company.id} value={company.id}>{company.name}</option>
+                ))}
+              </Select>
+
+              <Select label={t("categoryFilter")} value={filters.categoryId} onChange={event => updateFilter("categoryId", event.target.value)} className="h-9 rounded-md text-sm">
+                <option value="">{t("allCategories")}</option>
+                {categoryOptions.map(category => (
+                  <option key={category.id || category.slug || category.name} value={category.id || ""}>
+                    {"  ".repeat(Math.min(category.depth || 0, 4))}{category.name}
+                  </option>
+                ))}
+              </Select>
+
+              <Select label={t("agentFilter")} value={filters.assigneeId} onChange={event => updateFilter("assigneeId", event.target.value)} className="h-9 rounded-md text-sm">
+                <option value="">{t("allAgents")}</option>
+                {agentOptions.map(agent => (
+                  <option key={agent.id} value={agent.id}>{agent.name || agent.email}</option>
+                ))}
+              </Select>
+
+              <Select label={t("sourceFilter")} value={filters.source} onChange={event => updateFilter("source", event.target.value)} className="h-9 rounded-md text-sm">
+                <option value="">{t("allSources")}</option>
+                {sourceOptions.map(source => (
+                  <option key={source} value={source}>{sourceLabel(source, t)}</option>
+                ))}
+              </Select>
+
+              <Select label={t("slaPolicyFilter")} value={filters.slaPolicyId} onChange={event => updateFilter("slaPolicyId", event.target.value)} className="h-9 rounded-md text-sm">
+                <option value="">{t("allSlaPolicies")}</option>
+                {slaPolicyOptions.map(policy => (
+                  <option key={policy.id} value={policy.id}>{policy.name}</option>
+                ))}
+              </Select>
+
+              <Select label={t("supportLevelFilter")} value={filters.supportLevel} onChange={event => updateFilter("supportLevel", event.target.value)} className="h-9 rounded-md text-sm">
+                <option value="">{t("allSupportLevels")}</option>
+                {supportLevelOptions.map(level => (
+                  <option key={level} value={level}>{supportLevelLabel(level, t)}</option>
+                ))}
+              </Select>
+
+              <Select label={t("entitlementStatusFilter")} value={filters.entitlementStatus} onChange={event => updateFilter("entitlementStatus", event.target.value)} className="h-9 rounded-md text-sm">
+                <option value="">{t("allEntitlementStatuses")}</option>
+                {entitlementStatusOptions.map(status => (
+                  <option key={status} value={status}>{entitlementStatusLabel(status, t)}</option>
+                ))}
+              </Select>
+
+              <Select label={t("milestoneTypeFilter")} value={filters.milestoneType} onChange={event => updateFilter("milestoneType", event.target.value)} className="h-9 rounded-md text-sm">
+                <option value="">{t("allMilestoneTypes")}</option>
+                {milestoneTypeOptions.map(type => (
+                  <option key={type} value={type}>{milestoneTypeLabel(type, t)}</option>
+                ))}
+              </Select>
+
+              <Select label={t("milestoneStateFilter")} value={filters.milestoneState} onChange={event => updateFilter("milestoneState", event.target.value)} className="h-9 rounded-md text-sm">
+                <option value="">{t("allMilestoneStates")}</option>
+                {milestoneStateOptions.map(state => (
+                  <option key={state} value={state}>{milestoneStateLabel(state, t)}</option>
+                ))}
+              </Select>
+
+              <label className="space-y-1">
+                <span className="text-xs font-medium text-muted-foreground">{t("fromDate")}</span>
+                <Input type="date" value={filters.from} onChange={event => updateFilter("from", event.target.value)} className="h-9 text-sm" />
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-xs font-medium text-muted-foreground">{t("toDate")}</span>
+                <Input type="date" value={filters.to} onChange={event => updateFilter("to", event.target.value)} className="h-9 text-sm" />
+              </label>
+            </div>
+          </details>
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Button type="submit" size="sm">
@@ -778,8 +841,8 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
           </div>
         </form>
 
-        <div className="grid overflow-hidden rounded-md border bg-background sm:grid-cols-2 lg:grid-cols-5">
-          {metrics.map(metric => (
+        <div className="grid overflow-hidden rounded-md border bg-background sm:grid-cols-2 lg:grid-cols-4">
+          {primaryMetrics.map(metric => (
             <div key={metric.label} className="min-h-[82px] border-b border-r p-3 last:border-r-0">
               <div className={cn("mb-2 flex items-center gap-1.5 text-xs font-medium", metric.tone)}>
                 {metric.icon}
@@ -789,6 +852,25 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
             </div>
           ))}
         </div>
+
+        <details data-testid="ticketing-report-secondary-metrics" className="rounded-md border bg-background">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-3 text-sm font-medium hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-9">
+            <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
+            {t("additionalReportMetrics")}
+            <Badge variant="outline" className="ml-auto h-6 px-2 text-xs">{secondaryMetrics.length}</Badge>
+          </summary>
+          <div className="grid border-t sm:grid-cols-2 lg:grid-cols-3">
+            {secondaryMetrics.map(metric => (
+              <div key={metric.label} className="border-b border-r px-3 py-2.5 last:border-r-0">
+                <div className={cn("mb-1 flex items-center gap-1.5 text-xs font-medium", metric.tone)}>
+                  {metric.icon}
+                  <span className="truncate">{metric.label}</span>
+                </div>
+                <div className="text-lg font-semibold tracking-tight">{metric.value}</div>
+              </div>
+            ))}
+          </div>
+        </details>
 
         {entitlementReport && (
           <section className="rounded-md border bg-background">
@@ -809,14 +891,14 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
                 <Link
                   key={metric.label}
                   href={metric.href}
-                  className="min-h-[96px] border-b border-r p-3 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="min-h-[96px] border-b border-r p-3 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
                 >
                   <div className={cn("mb-2 flex items-center gap-1.5 text-xs font-medium", metric.tone)}>
                     {metric.icon}
                     <span className="truncate">{metric.label}</span>
                   </div>
                   <div className="text-xl font-bold tracking-tight">{metric.value}</div>
-                  <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">{metric.hint}</p>
+                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{metric.hint}</p>
                 </Link>
               ))}
             </div>
@@ -829,7 +911,7 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
               <h3 className="text-sm font-semibold">{t("serviceDeskThroughput")}</h3>
               <p className="text-xs text-muted-foreground">{t("serviceDeskThroughputHint")}</p>
             </div>
-            <Badge variant="outline" className="shrink-0 text-[10px]">{t("reportWindow14d")}</Badge>
+            <Badge variant="outline" className="shrink-0 text-xs">{t("reportWindow14d")}</Badge>
           </div>
           <div className="grid grid-cols-7 gap-1.5 sm:grid-cols-[repeat(14,minmax(0,1fr))]">
             {serviceDesk.throughput.map(row => {
@@ -843,12 +925,12 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
                     <span className="w-1.5 rounded-sm bg-emerald-500/75" style={{ height: `${resolvedHeight}px` }} title={`${t("resolvedShort")}: ${row.resolved}`} />
                     <span className="w-1.5 rounded-sm bg-slate-500/75" style={{ height: `${closedHeight}px` }} title={`${t("closedShort")}: ${row.closed}`} />
                   </div>
-                  <span className="truncate text-[10px] text-muted-foreground">{row.date.slice(5)}</span>
+                  <span className="truncate text-xs text-muted-foreground">{row.date.slice(5)}</span>
                 </div>
               )
             })}
           </div>
-          <div className="mt-3 flex flex-wrap gap-3 text-[11px] text-muted-foreground">
+          <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-blue-500/75" />{t("createdShort")}</span>
             <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-emerald-500/75" />{t("resolvedShort")}</span>
             <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-slate-500/75" />{t("closedShort")}</span>
@@ -863,11 +945,16 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
                   <h3 className="text-sm font-semibold">{t("companyRiskTable")}</h3>
                   <p className="text-xs text-muted-foreground">{t("companyRiskHint")}</p>
                 </div>
-                <Badge variant="outline" className="text-[10px]">{t("topRiskCustomers")}</Badge>
+                <Badge variant="outline" className="text-xs">{t("topRiskCustomers")}</Badge>
               </div>
-              <div className="overflow-x-auto">
+              <div
+                className="overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                role="region"
+                aria-label={t("companyRiskTable")}
+                tabIndex={0}
+              >
                 <div className="min-w-[720px]">
-                  <div className="grid grid-cols-[minmax(180px,1.5fr)_100px_140px_72px_72px_72px_88px] border-t bg-muted/30 px-3 py-2 text-[11px] font-medium text-muted-foreground">
+                  <div className="grid grid-cols-[minmax(180px,1.5fr)_100px_140px_72px_72px_72px_88px] border-t bg-muted/30 px-3 py-2 text-xs font-medium text-muted-foreground">
                     <span>{t("colCompany")}</span>
                     <span>{t("supportLevel")}</span>
                     <span>{t("slaPolicy")}</span>
@@ -880,18 +967,18 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
                     <Link
                       key={row.entitlementId}
                       href={drillHref({ companyId: row.companyId, supportLevel: row.supportLevel })}
-                      className="grid grid-cols-[minmax(180px,1.5fr)_100px_140px_72px_72px_72px_88px] border-t px-3 py-2 text-xs transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="grid grid-cols-[minmax(180px,1.5fr)_100px_140px_72px_72px_72px_88px] border-t px-3 py-2 text-xs transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
                     >
                       <span className="min-w-0">
                         <span className="block truncate font-medium">{row.companyName}</span>
-                        <span className="block truncate text-[11px] text-muted-foreground">{entitlementStatusLabel(row.status, t)}</span>
+                        <span className="block truncate text-xs text-muted-foreground">{entitlementStatusLabel(row.status, t)}</span>
                       </span>
                       <span className="truncate">{supportLevelLabel(row.supportLevel, t)}</span>
                       <span className="truncate text-muted-foreground">{row.slaPolicyName}</span>
                       <span className="text-right">{row.activeTickets}</span>
                       <span className={cn("text-right font-medium", row.overdue > 0 && "text-red-600")}>{row.overdue}</span>
                       <span className={cn("text-right font-medium", row.atRisk > 0 && "text-orange-600")}>{row.atRisk}</span>
-                      <span className="text-right text-muted-foreground">{row.nextDueAt ? new Date(row.nextDueAt).toLocaleDateString() : "-"}</span>
+                      <span className="text-right text-muted-foreground">{row.nextDueAt ? new Date(row.nextDueAt).toLocaleDateString(locale) : "-"}</span>
                     </Link>
                   )) : (
                     <p className="border-t px-3 py-4 text-xs text-muted-foreground">{t("noCompanyRisk")}</p>
@@ -905,7 +992,7 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
                 <h3 className="text-sm font-semibold">{t("supportLevelComparison")}</h3>
                 <p className="text-xs text-muted-foreground">{t("supportLevelComparisonHint")}</p>
               </div>
-              <div className="grid grid-cols-[minmax(0,1fr)_48px_48px_48px_48px] border-t bg-muted/30 px-3 py-2 text-[11px] font-medium text-muted-foreground">
+              <div className="grid grid-cols-[minmax(0,1fr)_48px_48px_48px_48px] border-t bg-muted/30 px-3 py-2 text-xs font-medium text-muted-foreground">
                 <span>{t("supportLevel")}</span>
                 <span className="text-right">{t("termsShort")}</span>
                 <span className="text-right">{t("ticketsShort")}</span>
@@ -916,7 +1003,7 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
                 <Link
                   key={row.supportLevel}
                   href={drillHref({ supportLevel: row.supportLevel })}
-                  className="grid grid-cols-[minmax(0,1fr)_48px_48px_48px_48px] border-t px-3 py-2 text-xs transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="grid grid-cols-[minmax(0,1fr)_48px_48px_48px_48px] border-t px-3 py-2 text-xs transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
                 >
                   <span className="truncate font-medium">{supportLevelLabel(row.supportLevel, t)}</span>
                   <span className="text-right">{row.activeTerms || row.terms}</span>
@@ -936,33 +1023,33 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
                 <h3 className="text-sm font-semibold">{t("milestoneDrilldown")}</h3>
                 <p className="text-xs text-muted-foreground">{t("milestoneDrilldownHint")}</p>
               </div>
-              <Badge variant="outline" className="text-[10px]">{t("showingTopMilestones", { count: entitlementReport.milestoneDrilldown.length })}</Badge>
+              <Badge variant="outline" className="text-xs">{t("showingTopMilestones", { count: entitlementReport.milestoneDrilldown.length })}</Badge>
             </div>
             <div className="grid divide-y">
               {entitlementReport.milestoneDrilldown.slice(0, 8).map(row => (
                 <Link
                   key={row.id}
                   href={`/tickets/${row.ticketId}`}
-                  className="grid gap-2 px-3 py-2 text-xs transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:grid-cols-[96px_minmax(0,1fr)_150px_120px_96px]"
+                  className="grid gap-2 px-3 py-2 text-xs transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none sm:grid-cols-[96px_minmax(0,1fr)_150px_120px_96px]"
                 >
                   <span className="font-semibold text-primary">{row.ticketNumber}</span>
                   <span className="min-w-0">
                     <span className="block truncate">{row.subject}</span>
-                    <span className="block truncate text-[11px] text-muted-foreground">{row.companyName} · {supportLevelLabel(row.supportLevel, t)}</span>
+                    <span className="block truncate text-xs text-muted-foreground">{row.companyName} · {supportLevelLabel(row.supportLevel, t)}</span>
                   </span>
                   <span className="truncate text-muted-foreground">{milestoneTypeLabel(row.milestoneType, t)}</span>
                   <span className={cn("font-medium", row.milestoneStatus === "missed" ? "text-red-600" : "text-orange-600")}>
                     {milestoneStateLabel(row.milestoneStatus, t)}
                   </span>
-                  <span className="text-muted-foreground sm:text-right">{new Date(row.dueAt).toLocaleDateString()}</span>
+                  <span className="text-muted-foreground sm:text-right">{new Date(row.dueAt).toLocaleDateString(locale)}</span>
                 </Link>
               ))}
             </div>
           </section>
         )}
 
-        <div className="grid gap-5 lg:grid-cols-3">
-          <section className="space-y-3">
+        <div className="grid min-w-0 gap-5 lg:grid-cols-3">
+          <section className="min-w-0 space-y-3">
             <div>
               <h3 className="text-sm font-semibold">{t("backlogAging")}</h3>
               <p className="text-xs text-muted-foreground">{t("backlogAgingHint")}</p>
@@ -984,11 +1071,11 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
               <div className="space-y-2">
                 {serviceDesk.byPriority.map(row => (
                   <div key={row.priority} className="flex items-center gap-2 text-xs">
-                    <Badge className={cn("h-5 min-w-16 justify-center px-1.5 text-[10px] uppercase", priorityTone(row.priority))}>
-                      {row.priority}
+                    <Badge className={cn("h-5 min-w-16 justify-center px-1.5 text-xs uppercase", priorityTone(row.priority))}>
+                      {priorityLabel(row.priority, t)}
                     </Badge>
                     <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                      <div className="h-full rounded-full bg-orange-500/70" style={{ width: `${(row.count / priorityMax) * 100}%` }} />
+                      <div className="h-full rounded-full bg-primary/70" style={{ width: `${(row.count / priorityMax) * 100}%` }} />
                     </div>
                     <span className="w-8 text-right font-medium">{row.count}</span>
                   </div>
@@ -997,8 +1084,8 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
             </div>
           </section>
 
-          <section className="space-y-3">
-            <div className="flex items-start justify-between gap-2">
+          <section className="min-w-0 space-y-3">
+            <div className="flex flex-col items-start gap-2 sm:flex-row sm:justify-between">
               <div>
                 <h3 className="text-sm font-semibold">{t("byCategory")}</h3>
                 <p className="text-xs text-muted-foreground">{t("categoryReportHint")}</p>
@@ -1022,11 +1109,11 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
                           {depth > 0 && <CornerDownRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
                           <span className="truncate font-medium">{row.name}</span>
                         </div>
-                        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
-                          <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
+                          <Badge variant="outline" className="h-5 px-1.5 text-xs">
                             {isSubcategory ? t("subcategory") : t("rootCategory")}
                           </Badge>
-                          <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                          <Badge variant="secondary" className="h-5 px-1.5 text-xs">
                             {scopeLabel(row.scope, t)}
                           </Badge>
                           <span className="text-muted-foreground">
@@ -1038,7 +1125,7 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
                         </div>
                       </div>
                       <div className="h-2 w-20 shrink-0 overflow-hidden rounded-full bg-muted">
-                        <div className="h-full rounded-full bg-blue-500/70" style={{ width: `${(row.count / categoryMax) * 100}%` }} />
+                        <div className="h-full rounded-full bg-primary/70" style={{ width: `${(row.count / categoryMax) * 100}%` }} />
                       </div>
                       <span className="w-8 text-right font-medium">{row.count}</span>
                     </div>
@@ -1054,9 +1141,9 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
               <div className="space-y-2">
                 {serviceDesk.bySource.length > 0 ? serviceDesk.bySource.map(row => (
                   <div key={row.source} className="flex items-center gap-2 text-xs">
-                    <span className="min-w-0 flex-1 truncate capitalize">{sourceLabel(row.source, unknownLabel)}</span>
+                    <span className="min-w-0 flex-1 truncate capitalize">{sourceLabel(row.source, t)}</span>
                     <div className="h-2 w-24 overflow-hidden rounded-full bg-muted">
-                      <div className="h-full rounded-full bg-green-500/70" style={{ width: `${(row.count / sourceMax) * 100}%` }} />
+                      <div className="h-full rounded-full bg-primary/70" style={{ width: `${(row.count / sourceMax) * 100}%` }} />
                     </div>
                     <span className="w-8 text-right font-medium">{row.count}</span>
                   </div>
@@ -1075,17 +1162,17 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="truncate font-medium">{row.label}</p>
-                        <p className="truncate text-[11px] text-muted-foreground">{row.email || row.phone || sourceLabel(row.source, unknownLabel)}</p>
+                        <p className="truncate text-xs text-muted-foreground">{row.email || row.phone || sourceLabel(row.source, t)}</p>
                       </div>
-                      <Badge variant="outline" className="h-5 shrink-0 px-1.5 text-[10px]">
-                        {sourceLabel(row.source, unknownLabel)}
+                      <Badge variant="outline" className="h-5 shrink-0 px-1.5 text-xs">
+                        {sourceLabel(row.source, t)}
                       </Badge>
                     </div>
                     <div className="mt-2 flex items-center gap-2">
                       <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                        <div className="h-full rounded-full bg-indigo-500/70" style={{ width: `${(row.count / requesterMax) * 100}%` }} />
+                        <div className="h-full rounded-full bg-primary/70" style={{ width: `${(row.count / requesterMax) * 100}%` }} />
                       </div>
-                      <span className="w-28 text-right text-[11px] text-muted-foreground">
+                      <span className="w-28 text-right text-xs text-muted-foreground">
                         {t("activeShort")}: {row.active} · {t("ticketsShort")}: {row.count}
                       </span>
                     </div>
@@ -1097,7 +1184,7 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
             </div>
           </section>
 
-          <section className="space-y-4">
+          <section className="min-w-0 space-y-4">
             <div>
               <h3 className="text-sm font-semibold">{t("latestBreaches")}</h3>
               <p className="text-xs text-muted-foreground">{t("latestBreachesHint")}</p>
@@ -1106,18 +1193,18 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
               {serviceDesk.latestBreaches.length > 0 ? serviceDesk.latestBreaches.map(ticket => (
                 <div key={ticket.id} className="rounded-md border border-red-200/70 bg-red-50/60 p-2 dark:border-red-900/50 dark:bg-red-950/10">
                   <div className="flex items-center justify-between gap-2">
-                    <Link href={`/tickets/${ticket.id}`} className="truncate text-xs font-semibold text-red-800 hover:underline dark:text-red-200">
+                    <Link href={`/tickets/${ticket.id}`} className="inline-flex min-h-11 items-center truncate text-xs font-semibold text-red-800 hover:underline dark:text-red-200 sm:min-h-6">
                       {ticket.ticketNumber}
                     </Link>
-                    <Badge className={cn("h-5 px-1.5 text-[10px] uppercase", priorityTone(ticket.priority))}>{ticket.priority}</Badge>
+                    <Badge className={cn("h-5 px-1.5 text-xs uppercase", priorityTone(ticket.priority))}>{priorityLabel(ticket.priority, t)}</Badge>
                   </div>
                   <p className="mt-1 truncate text-xs">{ticket.subject}</p>
-                  <p className="mt-1 truncate text-[11px] text-muted-foreground">
-                    {t("fromLabel")}: {requesterLabel(ticket, unknownLabel)} · {sourceLabel(ticket.source, unknownLabel)}
+                  <p className="mt-1 truncate text-xs text-muted-foreground">
+                    {t("fromLabel")}: {requesterLabel(ticket, t)} · {sourceLabel(ticket.source, t)}
                   </p>
-                  <div className="mt-1 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                  <div className="mt-1 flex items-center justify-between gap-2 text-xs text-muted-foreground">
                     <span className="truncate">{ticket.assigneeName || t("unassigned")}</span>
-                    <span>{t("dueLabel")}: {ticket.dueAt ? new Date(ticket.dueAt).toLocaleDateString() : "-"}</span>
+                    <span>{t("dueLabel")}: {ticket.dueAt ? new Date(ticket.dueAt).toLocaleDateString(locale) : "-"}</span>
                   </div>
                 </div>
               )) : (
@@ -1131,14 +1218,14 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
                 {serviceDesk.closureQueue.length > 0 ? serviceDesk.closureQueue.map(item => (
                   <div key={item.id} className="rounded-md border p-2">
                     <div className="flex items-center justify-between gap-2 text-xs">
-                      <Link href={`/tickets/${item.ticket.id}`} className="truncate font-semibold text-primary hover:underline">
+                      <Link href={`/tickets/${item.ticket.id}`} className="inline-flex min-h-11 items-center truncate font-semibold text-primary hover:underline sm:min-h-6">
                         {item.ticket.ticketNumber}
                       </Link>
-                      <span className="shrink-0 text-muted-foreground">{new Date(item.dueAt).toLocaleDateString()}</span>
+                      <span className="shrink-0 text-muted-foreground">{new Date(item.dueAt).toLocaleDateString(locale)}</span>
                     </div>
                     <p className="mt-1 truncate text-xs">{item.ticket.subject}</p>
-                    <p className="mt-1 truncate text-[11px] text-muted-foreground">
-                      {t("fromLabel")}: {requesterLabel({ ...item.ticket, channel: item.channel }, unknownLabel)}
+                    <p className="mt-1 truncate text-xs text-muted-foreground">
+                      {t("fromLabel")}: {requesterLabel({ ...item.ticket, channel: item.channel }, t)}
                     </p>
                   </div>
                 )) : (
@@ -1150,18 +1237,18 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
         </div>
 
         <div className="overflow-hidden rounded-md border">
-          <div className="grid grid-cols-[minmax(0,1fr)_64px_72px_88px] bg-muted/50 px-3 py-2 text-[11px] font-medium text-muted-foreground">
+          <div className="grid grid-cols-[minmax(0,1fr)_42px_50px_56px] bg-muted/50 px-3 py-2 text-xs font-medium text-muted-foreground sm:grid-cols-[minmax(0,1fr)_64px_72px_88px]">
             <span>{t("agent")}</span>
             <span className="text-right">{t("activeShort")}</span>
             <span className="text-right">{t("resolvedShort")}</span>
             <span className="text-right">{t("avgShort")}</span>
           </div>
           {serviceDesk.agentPerformance.length > 0 ? serviceDesk.agentPerformance.map(agent => (
-            <div key={agent.agentId || "unassigned"} className="grid grid-cols-[minmax(0,1fr)_64px_72px_88px] border-t px-3 py-2 text-xs">
+            <div key={agent.agentId || "unassigned"} className="grid grid-cols-[minmax(0,1fr)_42px_50px_56px] border-t px-3 py-2 text-xs sm:grid-cols-[minmax(0,1fr)_64px_72px_88px]">
               <span className="truncate font-medium">{agent.agentId ? agent.agentName : t("unassigned")}</span>
               <span className="text-right">{agent.active}</span>
               <span className="text-right">{agent.resolved}</span>
-              <span className="text-right">{formatHours(agent.avgResolutionHours)}</span>
+              <span className="text-right">{formatHours(agent.avgResolutionHours, t)}</span>
             </div>
           )) : (
             <p className="border-t px-3 py-3 text-xs text-muted-foreground">{t("noAgentData")}</p>
