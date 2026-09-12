@@ -27,6 +27,8 @@ export type ResolvedWorkforceShiftTemplate = WorkforceShiftTemplateCandidate & {
   assignmentId: string | null
   /** Null for an explicit employee assignment or compatibility `isDefault` fallback. */
   defaultAssignmentId: string | null
+  /** Null unless the selected fallback is a historical-team default timeline row. */
+  teamDefaultAssignmentId: string | null
   /** Known team membership at workday start; null is an intentional legacy gap. */
   teamMembershipId: string | null
   teamIdAtWorkday: string | null
@@ -105,6 +107,7 @@ export function resolveWorkforceShiftTemplate(input: {
   template: WorkforceShiftTemplateCandidate
   assignmentId?: string | null
   defaultAssignmentId?: string | null
+  teamDefaultAssignmentId?: string | null
 }): ResolvedWorkforceShiftTemplate {
   validateResolutionWindow(input)
 
@@ -140,6 +143,7 @@ export function resolveWorkforceShiftTemplate(input: {
     scope,
     assignmentId: input.assignmentId ?? null,
     defaultAssignmentId: input.defaultAssignmentId ?? null,
+    teamDefaultAssignmentId: input.teamDefaultAssignmentId ?? null,
     teamMembershipId: input.teamMembershipId,
     teamIdAtWorkday: input.teamIdAtWorkday,
     schedule: resolveWorkforceShiftDay({
@@ -152,15 +156,17 @@ export function resolveWorkforceShiftTemplate(input: {
 
 type WorkforceShiftResolverDb = Pick<
   PrismaClient,
-  "$queryRaw" | "mtmAgent" | "workforceShiftAssignment" | "workforceShiftDefaultAssignment" | "workforceShiftTemplate"
+  "$queryRaw" | "mtmAgent" | "workforceShiftAssignment" | "workforceShiftDefaultAssignment"
+  | "workforceShiftTeamDefaultAssignment" | "workforceShiftTemplate"
 >
 
 /**
  * Resolves an effective-dated personal assignment unless a caller explicitly
  * selects a template. Team-scoped selection uses the immutable membership at
- * workday start, then the organization-default timeline and legacy `isDefault`
- * fallback. No active-agent filter is applied: delayed facts must not change
- * merely because the directory row was later deactivated or transferred.
+ * workday start, then the team-default and organization-default timelines and
+ * finally the legacy `isDefault` fallback. No active-agent filter is applied:
+ * delayed facts must not change merely because the directory row was later
+ * deactivated or transferred.
  */
 export async function resolveCurrentWorkforceShift(
   db: WorkforceShiftResolverDb,
@@ -221,6 +227,27 @@ export async function resolveCurrentWorkforceShift(
   }
   const assignment = assignments[0] ?? null
   const templateId = input.templateId ?? assignment?.templateId
+  const teamDefaultSelections = templateId || membership?.teamId == null
+    ? []
+    : await db.workforceShiftTeamDefaultAssignment.findMany({
+        where: {
+          organizationId: input.organizationId,
+          teamId: membership.teamId,
+          effectiveFrom: { lte: workDate },
+          OR: [{ effectiveTo: null }, { effectiveTo: { gte: workDate } }],
+        },
+        select: {
+          id: true,
+          template: { select: templateSelect },
+        },
+      })
+  if (teamDefaultSelections.length > 1) {
+    throw new WorkforceShiftResolutionError(
+      "WORKFORCE_SHIFT_ASSIGNMENT_AMBIGUOUS",
+      "More than one Workforce team default shift applies to this workday",
+    )
+  }
+  const teamDefaultSelection = teamDefaultSelections[0] ?? null
   const defaultSelections = templateId
     ? []
     : await db.workforceShiftDefaultAssignment.findMany({
@@ -246,7 +273,9 @@ export async function resolveCurrentWorkforceShift(
         where: { id: templateId, organizationId: input.organizationId },
         select: templateSelect,
       })
-    : defaultSelection
+    : teamDefaultSelection
+      ? teamDefaultSelection.template
+      : defaultSelection
       ? defaultSelection.template
     : await (async () => {
         const defaults = await db.workforceShiftTemplate.findMany({
@@ -277,6 +306,7 @@ export async function resolveCurrentWorkforceShift(
     teamIdAtWorkday: membership?.teamId ?? null,
     template,
     assignmentId: assignment?.id ?? null,
-    defaultAssignmentId: defaultSelection?.id ?? null,
+    defaultAssignmentId: teamDefaultSelection == null ? defaultSelection?.id ?? null : null,
+    teamDefaultAssignmentId: teamDefaultSelection?.id ?? null,
   })
 }

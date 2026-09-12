@@ -203,6 +203,65 @@ describe("Workforce shift resolution", () => {
     }))
   })
 
+  it("prefers a dated team default for immutable workday-start membership before the organization timeline", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "agent-1" } as never)
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([{
+      id: "membership-a", teamId: "team-a", effectiveAt: new Date("2026-08-31T07:00:00.000Z"),
+    }] as never)
+    vi.mocked(prisma.workforceShiftTeamDefaultAssignment.findMany).mockResolvedValue([{
+      id: "team-default-v1",
+      template: template("team-a-default-v1", "team-a"),
+    }] as never)
+    vi.mocked(prisma.workforceShiftDefaultAssignment.findMany).mockResolvedValue([{
+      id: "org-default-v1",
+      template: template("org-default-v1", null),
+    }] as never)
+
+    const result = await resolveCurrentWorkforceShift(prisma, {
+      organizationId: "org-workforce",
+      agentId: "agent-1",
+      workDate: WORK_DATE,
+      workdayStartedAt: WORKDAY_STARTED_AT,
+      resolutionAt: RESOLUTION_AT,
+    })
+
+    expect(result).toMatchObject({
+      id: "team-a-default-v1",
+      scope: "TEAM",
+      defaultAssignmentId: null,
+      teamDefaultAssignmentId: "team-default-v1",
+      teamMembershipId: "membership-a",
+    })
+    expect(prisma.workforceShiftTeamDefaultAssignment.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ organizationId: "org-workforce", teamId: "team-a" }),
+    }))
+  })
+
+  it("falls back to the organization timeline when immutable team membership is absent", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "agent-1" } as never)
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([] as never)
+    vi.mocked(prisma.workforceShiftDefaultAssignment.findMany).mockResolvedValue([{
+      id: "org-default-v1",
+      template: template("org-default-v1", null),
+    }] as never)
+
+    const result = await resolveCurrentWorkforceShift(prisma, {
+      organizationId: "org-workforce",
+      agentId: "agent-1",
+      workDate: WORK_DATE,
+      workdayStartedAt: WORKDAY_STARTED_AT,
+      resolutionAt: RESOLUTION_AT,
+    })
+
+    expect(result).toMatchObject({
+      id: "org-default-v1",
+      defaultAssignmentId: "org-default-v1",
+      teamDefaultAssignmentId: null,
+      teamMembershipId: null,
+    })
+    expect(prisma.workforceShiftTeamDefaultAssignment.findMany).not.toHaveBeenCalled()
+  })
+
   it("uses one effective-dated employee assignment before defaults and exposes its audit identity", async () => {
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "agent-1" } as never)
     vi.mocked(prisma.$queryRaw).mockResolvedValue([{
