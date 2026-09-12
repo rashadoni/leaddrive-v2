@@ -19,6 +19,7 @@ describe("Service Desk mutating flow evidence contract", () => {
     expect(flow).toContain("assertDemoTenant")
     expect(workflow).toContain("interaction_mode:")
     expect(workflow).toContain("SUPPORT_EVIDENCE_INTERACTION_MODE")
+    expect(flow).toContain('serviceWorkers: "block"')
   })
 
   it("proves the reference queue interactions instead of declaring click counts", () => {

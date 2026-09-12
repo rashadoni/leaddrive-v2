@@ -129,6 +129,11 @@ const context = await browser.newContext({
   colorScheme: theme,
   reducedMotion: "reduce",
   hasTouch: viewportName !== "desktop",
+  // Playwright cannot intercept requests already claimed by a Service Worker.
+  // These disposable mutation flows deliberately synthesize GET failures, so
+  // keep the worker out of this test context instead of silently testing cached
+  // success responses.
+  serviceWorkers: "block",
 })
 await context.addCookies([{ name: "NEXT_LOCALE", value: locale, domain: hostname, path: "/" }])
 await context.addInitScript((activeTheme) => localStorage.setItem("theme", activeTheme), theme)
