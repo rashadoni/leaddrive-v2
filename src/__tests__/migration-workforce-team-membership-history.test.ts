@@ -27,6 +27,8 @@ describe("Workforce employee team-membership history migration", () => {
     expect(migration).toContain("workforce_validate_workday_schedule_snapshot")
     expect(migration).toContain('"effectiveAt" <= workday_row."startedAt"')
     expect(migration).toContain('ALTER COLUMN "schemaVersion" SET DEFAULT 2')
+    expect(migration).toContain('DROP CONSTRAINT IF EXISTS "workforce_workday_schedule_snapshots_shape_check"')
+    expect(migration).toContain('ADD CONSTRAINT "workforce_workday_schedule_snapshots_shape_check" CHECK')
     expect(migration).toContain("ENABLE ROW LEVEL SECURITY")
     expect(migration).toContain("FORCE ROW LEVEL SECURITY")
   })

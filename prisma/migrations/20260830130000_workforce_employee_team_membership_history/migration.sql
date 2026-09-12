@@ -268,7 +268,7 @@ CREATE OR REPLACE TRIGGER workforce_shift_snapshots_validate_insert
 -- Schedule snapshot v2 makes the membership used by policy/shift selection
 -- inspectable. v1 rows are immutable legacy history and remain untouched.
 ALTER TABLE "workforce_workday_schedule_snapshots"
-  DROP CONSTRAINT "workforce_workday_schedule_snapshots_shape_check";
+  DROP CONSTRAINT IF EXISTS "workforce_workday_schedule_snapshots_shape_check";
 ALTER TABLE "workforce_workday_schedule_snapshots"
   ALTER COLUMN "schemaVersion" SET DEFAULT 2;
 ALTER TABLE "workforce_workday_schedule_snapshots"
