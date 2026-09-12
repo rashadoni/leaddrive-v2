@@ -82,7 +82,6 @@ export default async function RootLayout({
   // Field UX audit 2026-09-05 (W-03): the document language drives screen
   // readers, hyphenation and spell-check, so it follows the request locale
   // (x-locale from the proxy, ru/az/en) instead of a hard-coded "en".
-  const locale = await getLocale()
 
   return (
     <html lang={locale} suppressHydrationWarning>
