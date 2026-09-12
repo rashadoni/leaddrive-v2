@@ -15,6 +15,18 @@ on:
         description: Comma-separated role set
         required: true
         default: agent,manager,admin,customer
+      scenarios:
+        description: Comma-separated scenario IDs, or all
+        required: true
+        default: service-desk,service-desk-kanban,service-desk-reports,ticket-detail
+      interaction_mode:
+        description: Read-only capture or disposable Support workflow mutations
+        required: true
+        type: choice
+        default: read-only
+        options:
+          - read-only
+          - mutating
       locales:
         description: Comma-separated locale set
         required: true
@@ -31,6 +43,15 @@ on:
         description: Fixture profile label (empty, typical, high, 0, 5, 50, 500)
         required: true
         default: typical
+      sample_count:
+        description: One load for matrix coverage, three for inspection, seven for comparable p75 evidence
+        required: true
+        type: choice
+        default: "3"
+        options:
+          - "1"
+          - "3"
+          - "7"
       visual_mode:
         description: Capture a new baseline or compare with a previous artifact
         required: true
@@ -76,16 +97,20 @@ jobs:
           --health-retries 20
     env:
       SUPPORT_EVIDENCE_TARGET_MODE: ${{ inputs.target_mode }}
-      SCREENSHOT_BASE_URL: ${{ inputs.target_mode == 'ephemeral' && 'http://127.0.0.1:3000' || secrets.SUPPORT_EVIDENCE_BASE_URL }}
+      SUPPORT_EVIDENCE_APP_MODE: ${{ inputs.target_mode == 'ephemeral' && 'production' || 'remote' }}
+      SCREENSHOT_BASE_URL: ${{ inputs.target_mode == 'ephemeral' && 'http://localhost:3000' || secrets.SUPPORT_EVIDENCE_BASE_URL }}
       CONFIRM_REMOTE_SCREENSHOT: ${{ inputs.target_mode == 'ephemeral' && '' || secrets.SUPPORT_EVIDENCE_HOST }}
       SCREENSHOT_DEMO_ORG: ${{ inputs.target_mode == 'ephemeral' && 'Northstar Support Lab' || secrets.SUPPORT_EVIDENCE_DEMO_ORG }}
       SUPPORT_EVIDENCE_COMMIT: ${{ github.sha }}
       SUPPORT_EVIDENCE_OUTPUT_DIR: artifacts/support-ux/${{ github.sha }}
       SUPPORT_EVIDENCE_ROLES: ${{ inputs.roles }}
+      SUPPORT_EVIDENCE_SCENARIOS: ${{ inputs.scenarios }}
+      SUPPORT_EVIDENCE_INTERACTION_MODE: ${{ inputs.interaction_mode }}
       SUPPORT_EVIDENCE_LOCALES: ${{ inputs.locales }}
       SUPPORT_EVIDENCE_THEMES: ${{ inputs.themes }}
       SUPPORT_EVIDENCE_VIEWPORTS: ${{ inputs.viewports }}
       SUPPORT_EVIDENCE_DATA_PROFILE: ${{ inputs.data_profile }}
+      SUPPORT_EVIDENCE_SAMPLE_COUNT: ${{ inputs.sample_count }}
       SUPPORT_EVIDENCE_REQUIRE_BASELINE: ${{ inputs.visual_mode == 'compare' }}
       SUPPORT_EVIDENCE_BASELINE_DIR: ${{ inputs.visual_mode == 'compare' && 'artifacts/support-ux-baseline' || '' }}
       SUPPORT_EVIDENCE_AGENT_EMAIL: ${{ inputs.target_mode == 'ephemeral' && 'agent@support-evidence.invalid' || secrets.SUPPORT_EVIDENCE_AGENT_EMAIL }}
@@ -100,12 +125,13 @@ jobs:
       SUPPORT_EVIDENCE_TICKET_ID: ${{ inputs.target_mode == 'ephemeral' && '' || secrets.SUPPORT_EVIDENCE_TICKET_ID }}
       SUPPORT_EVIDENCE_COMPLAINT_ID: ${{ inputs.target_mode == 'ephemeral' && '' || secrets.SUPPORT_EVIDENCE_COMPLAINT_ID }}
       SUPPORT_EVIDENCE_PORTAL_TICKET_ID: ${{ inputs.target_mode == 'ephemeral' && '' || secrets.SUPPORT_EVIDENCE_PORTAL_TICKET_ID }}
+      SUPPORT_EVIDENCE_KB_ARTICLE_ID: ${{ inputs.target_mode == 'ephemeral' && '' || secrets.SUPPORT_EVIDENCE_KB_ARTICLE_ID }}
       SUPPORT_EVIDENCE_CLOSURE_TOKEN: ${{ inputs.target_mode == 'ephemeral' && '' || secrets.SUPPORT_EVIDENCE_CLOSURE_TOKEN }}
       ADMIN_DATABASE_URL: postgresql://postgres:ephemeral-only@127.0.0.1:5432/support_ux_evidence
       DATABASE_URL: postgresql://postgres:ephemeral-only@127.0.0.1:5432/support_ux_evidence
-      NEXTAUTH_URL: http://127.0.0.1:3000
-      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
-      APP_URL: http://127.0.0.1:3000
+      NEXTAUTH_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      APP_URL: http://localhost:3000
       AUTH_TRUST_HOST: "true"
 
     steps:
@@ -116,7 +142,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
       - run: npm ci
 
@@ -138,18 +163,169 @@ jobs:
           github-token: ${{ github.token }}
           run-id: ${{ inputs.baseline_run_id }}
 
-      - name: Validate evidence infrastructure
+      - name: Validate section-scoped Service Desk evidence
+        if: ${{ inputs.scenarios != 'all' }}
+        env:
+          SUPPORT_UX_SCAN_ROOTS: >-
+            src/app/(dashboard)/tickets,
+            src/app/(dashboard)/support/ai-settings,
+            src/components/ticket-form.tsx,
+            src/components/tickets,
+            src/components/support/support-page-shell.tsx,
+            src/components/data-table.tsx,
+            src/components/delete-confirm-dialog.tsx
         run: |
           node --check scripts/support-ux-browser-evidence.mjs
+          node --check scripts/support-ux-service-desk-flow-evidence.mjs
+          node --check scripts/support-ux-screenshot.mjs
+          node --check scripts/support-ux-visual-compare.mjs
+          node --check scripts/support-ux-performance-compare.mjs
+          npm run support:ux:scan
           npm run i18n:check
           npx eslint \
             scripts/support-ux-browser-evidence.mjs \
+            scripts/support-ux-service-desk-flow-evidence.mjs \
+            scripts/support-ux-screenshot.mjs \
+            scripts/support-ux-visual-compare.mjs \
+            scripts/support-ux-performance-compare.mjs \
+            scripts/check-support-ux-anti-patterns.mjs \
             scripts/seed-support-ux-evidence.ts \
             src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-service-desk-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/ticket-workspace-localization-contract.test.ts \
+            src/__tests__/ticket-form-accessibility-contract.test.ts
+          npx vitest run \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-service-desk-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/ticket-workspace-localization-contract.test.ts \
+            src/__tests__/ticket-form-accessibility-contract.test.ts
+
+      - name: Validate evidence contract and scoped source
+        if: ${{ inputs.scenarios == 'all' }}
+        run: |
+          node --check scripts/support-ux-browser-evidence.mjs
+          node --check scripts/support-ux-service-desk-flow-evidence.mjs
+          node --check scripts/support-ux-complaint-flow-evidence.mjs
+          node --check scripts/support-ux-agent-desktop-flow-evidence.mjs
+          node --check scripts/support-ux-voip-flow-evidence.mjs
+          node --check scripts/support-ux-knowledge-base-flow-evidence.mjs
+          node --check scripts/support-ux-ticket-categories-flow-evidence.mjs
+          node --check scripts/support-ux-sla-policies-flow-evidence.mjs
+          node --check scripts/support-ux-entitlements-flow-evidence.mjs
+          node --check scripts/support-ux-entitlement-templates-flow-evidence.mjs
+          node --check scripts/support-ux-skill-routing-flow-evidence.mjs
+          node --check scripts/support-ux-agent-calendar-flow-evidence.mjs
+          node --check scripts/support-ux-escalation-rules-flow-evidence.mjs
+          node --check scripts/support-ux-macros-flow-evidence.mjs
+          node --check scripts/support-ux-portal-users-flow-evidence.mjs
+          node --check scripts/support-ux-ai-settings-flow-evidence.mjs
+          node --check scripts/support-ux-customer-portal-flow-evidence.mjs
+          node --check scripts/support-ux-navigation-flow-evidence.mjs
+          node --check scripts/support-ux-screenshot.mjs
+          node --check scripts/support-ux-visual-compare.mjs
+          node --check scripts/support-ux-performance-compare.mjs
+          npm run support:ux:scan
+          npm run i18n:check
+          npx eslint \
+            scripts/support-ux-browser-evidence.mjs \
+            scripts/support-ux-service-desk-flow-evidence.mjs \
+            scripts/support-ux-complaint-flow-evidence.mjs \
+            scripts/support-ux-agent-desktop-flow-evidence.mjs \
+            scripts/support-ux-voip-flow-evidence.mjs \
+            scripts/support-ux-knowledge-base-flow-evidence.mjs \
+            scripts/support-ux-ticket-categories-flow-evidence.mjs \
+            scripts/support-ux-sla-policies-flow-evidence.mjs \
+            scripts/support-ux-entitlements-flow-evidence.mjs \
+            scripts/support-ux-entitlement-templates-flow-evidence.mjs \
+            scripts/support-ux-skill-routing-flow-evidence.mjs \
+            scripts/support-ux-agent-calendar-flow-evidence.mjs \
+            scripts/support-ux-escalation-rules-flow-evidence.mjs \
+            scripts/support-ux-macros-flow-evidence.mjs \
+            scripts/support-ux-portal-users-flow-evidence.mjs \
+            scripts/support-ux-ai-settings-flow-evidence.mjs \
+            scripts/support-ux-customer-portal-flow-evidence.mjs \
+            scripts/support-ux-navigation-flow-evidence.mjs \
+            scripts/support-ux-screenshot.mjs \
+            scripts/support-ux-visual-compare.mjs \
+            scripts/support-ux-performance-compare.mjs \
+            scripts/check-support-ux-anti-patterns.mjs \
+            scripts/seed-support-ux-evidence.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-service-desk-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-complaint-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-agent-desktop-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-voip-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-knowledge-base-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-ticket-categories-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-sla-policies-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-entitlements-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-entitlement-templates-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-skill-routing-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-agent-calendar-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-escalation-rules-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-macros-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-portal-users-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-ai-settings-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-customer-portal-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-navigation-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-page-shell-contract.test.ts \
+            src/__tests__/support-ux-form-control-contract.test.ts \
+            src/__tests__/support-ux-friendly-error-contract.test.ts \
+            src/__tests__/ticket-workspace-localization-contract.test.ts \
+            src/__tests__/ticket-form-accessibility-contract.test.ts \
+            src/__tests__/complaint-ux-contract.test.ts \
+            src/__tests__/customer-support-portal-ux-contract.test.ts \
+            src/__tests__/data-table-keyboard-contract.test.ts \
+            src/__tests__/voip-business-hours-ui.test.ts \
+            src/__tests__/voip-ux-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts \
             src/__tests__/support-ux-evidence-seed-contract.test.ts
           npx vitest run \
             src/__tests__/support-ux-browser-evidence-contract.test.ts \
-            src/__tests__/support-ux-evidence-seed-contract.test.ts
+            src/__tests__/support-ux-service-desk-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-complaint-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-agent-desktop-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-voip-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-knowledge-base-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-ticket-categories-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-sla-policies-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-entitlements-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-entitlement-templates-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-skill-routing-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-agent-calendar-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-escalation-rules-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-macros-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-portal-users-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-ai-settings-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-customer-portal-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-navigation-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-page-shell-contract.test.ts \
+            src/__tests__/support-ux-form-control-contract.test.ts \
+            src/__tests__/support-ux-friendly-error-contract.test.ts \
+            src/__tests__/ticket-workspace-localization-contract.test.ts \
+            src/__tests__/ticket-form-accessibility-contract.test.ts \
+            src/__tests__/complaint-ux-contract.test.ts \
+            src/__tests__/customer-support-portal-ux-contract.test.ts \
+            src/__tests__/data-table-keyboard-contract.test.ts \
+            src/__tests__/voip-business-hours-ui.test.ts \
+            src/__tests__/voip-ux-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts
 
       - name: Validate secret-managed demo passwords
         shell: bash
@@ -184,17 +360,23 @@ jobs:
           SUPPORT_EVIDENCE_FIXTURE_MANIFEST: /tmp/support-ux-evidence-fixtures.json
         shell: bash
         run: |
-          psql "$ADMIN_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
-            -c 'CREATE EXTENSION IF NOT EXISTS vector'
+          docker exec "${{ job.services.postgres.id }}" \
+            psql -U postgres -d support_ux_evidence -X -v ON_ERROR_STOP=1 \
+              -c 'CREATE EXTENSION IF NOT EXISTS vector'
           npx prisma db push --skip-generate
           npx prisma generate
           npx tsx scripts/seed-support-ux-evidence.ts
 
-          closure_token="$(jq -er '.fixtures.closureToken' "$SUPPORT_EVIDENCE_FIXTURE_MANIFEST")"
+          closure_token="$(jq -r '.fixtures.closureToken // empty' "$SUPPORT_EVIDENCE_FIXTURE_MANIFEST")"
           echo "::add-mask::$closure_token"
-          printf '%s=%s\n' SUPPORT_EVIDENCE_TICKET_ID "$(jq -er '.fixtures.ticketId' "$SUPPORT_EVIDENCE_FIXTURE_MANIFEST")" >> "$GITHUB_ENV"
-          printf '%s=%s\n' SUPPORT_EVIDENCE_COMPLAINT_ID "$(jq -er '.fixtures.complaintId' "$SUPPORT_EVIDENCE_FIXTURE_MANIFEST")" >> "$GITHUB_ENV"
-          printf '%s=%s\n' SUPPORT_EVIDENCE_PORTAL_TICKET_ID "$(jq -er '.fixtures.portalTicketId' "$SUPPORT_EVIDENCE_FIXTURE_MANIFEST")" >> "$GITHUB_ENV"
+          printf '%s=%s\n' SUPPORT_EVIDENCE_ORGANIZATION_ID "$(jq -r '.organization.id // empty' "$SUPPORT_EVIDENCE_FIXTURE_MANIFEST")" >> "$GITHUB_ENV"
+          printf '%s=%s\n' SUPPORT_EVIDENCE_TICKET_ID "$(jq -r '.fixtures.ticketId // empty' "$SUPPORT_EVIDENCE_FIXTURE_MANIFEST")" >> "$GITHUB_ENV"
+          printf '%s=%s\n' SUPPORT_EVIDENCE_COMPLAINT_ID "$(jq -r '.fixtures.complaintId // empty' "$SUPPORT_EVIDENCE_FIXTURE_MANIFEST")" >> "$GITHUB_ENV"
+          printf '%s=%s\n' SUPPORT_EVIDENCE_PORTAL_TICKET_ID "$(jq -r '.fixtures.portalTicketId // empty' "$SUPPORT_EVIDENCE_FIXTURE_MANIFEST")" >> "$GITHUB_ENV"
+          printf '%s=%s\n' SUPPORT_EVIDENCE_KB_ARTICLE_ID "$(jq -r '.fixtures.kbArticleId // empty' "$SUPPORT_EVIDENCE_FIXTURE_MANIFEST")" >> "$GITHUB_ENV"
+          printf '%s=%s\n' SUPPORT_EVIDENCE_TICKET_CATEGORY_ID "$(jq -r '.fixtures.ticketCategoryId // empty' "$SUPPORT_EVIDENCE_FIXTURE_MANIFEST")" >> "$GITHUB_ENV"
+          printf '%s=%s\n' SUPPORT_EVIDENCE_SLA_POLICY_ID "$(jq -r '.fixtures.slaPolicyId // empty' "$SUPPORT_EVIDENCE_FIXTURE_MANIFEST")" >> "$GITHUB_ENV"
+          printf '%s=%s\n' SUPPORT_EVIDENCE_ENTITLEMENT_ID "$(jq -r '.fixtures.entitlementId // empty' "$SUPPORT_EVIDENCE_FIXTURE_MANIFEST")" >> "$GITHUB_ENV"
           printf '%s=%s\n' SUPPORT_EVIDENCE_CLOSURE_TOKEN "$closure_token" >> "$GITHUB_ENV"
           rm -f "$SUPPORT_EVIDENCE_FIXTURE_MANIFEST"
 
@@ -210,6 +392,7 @@ jobs:
             SUPPORT_EVIDENCE_PORTAL_EMAIL SUPPORT_EVIDENCE_PORTAL_PASSWORD \
             SUPPORT_EVIDENCE_PORTAL_SLUG SUPPORT_EVIDENCE_TICKET_ID \
             SUPPORT_EVIDENCE_COMPLAINT_ID SUPPORT_EVIDENCE_PORTAL_TICKET_ID \
+            SUPPORT_EVIDENCE_KB_ARTICLE_ID \
             SUPPORT_EVIDENCE_CLOSURE_TOKEN; do
             test -n "${!name}" || { echo "Missing required GitHub Secret: $name"; exit 1; }
           done
@@ -217,10 +400,29 @@ jobs:
             *leaddrivecrm.org*|*13.140.132.245*|*46.224.171.53*) echo "Production targets are forbidden for Support UX evidence"; exit 1 ;;
           esac
 
-      - run: npx playwright install --with-deps chromium
+      - name: Install Chromium on the ephemeral hosted runner
+        run: npx playwright install --with-deps chromium
+
+      - name: Build isolated production-mode evidence application
+        if: ${{ inputs.target_mode == 'ephemeral' }}
+        env:
+          NODE_ENV: production
+          NEXT_TELEMETRY_DISABLED: "1"
+          NODE_OPTIONS: --max-old-space-size=8192
+          NEXT_BUILD_CPUS: "1"
+          NEXT_WEBPACK_PARALLELISM: "1"
+          NEXT_PUBLIC_CARTO_BASEMAPS_API_KEY: ${{ secrets.CARTO_BASEMAPS_API_KEY }}
+        run: |
+          npx next build --webpack
+          mkdir -p .next/standalone/.next
+          cp -R .next/static .next/standalone/.next/static
+          cp -R public .next/standalone/public
 
       - name: Capture Support UX evidence
         shell: bash
+        env:
+          LEADDRIVE_RUNTIME_DIR: ${{ runner.temp }}/leaddrive-support-ux-runtime-${{ github.run_id }}-${{ github.run_attempt }}
+          LEADDRIVE_LOG_DIR: ${{ runner.temp }}/leaddrive-support-ux-logs-${{ github.run_id }}-${{ github.run_attempt }}
         run: |
           app_pid=""
           cleanup() {
@@ -232,7 +434,8 @@ jobs:
           trap cleanup EXIT
 
           if [ "$SUPPORT_EVIDENCE_TARGET_MODE" = "ephemeral" ]; then
-            npx next dev --hostname 127.0.0.1 --port 3000 > /tmp/support-ux-evidence-app.log 2>&1 &
+            HOSTNAME=127.0.0.1 PORT=3000 NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
+              node .next/standalone/server.js > /tmp/support-ux-evidence-app.log 2>&1 &
             app_pid=$!
             for attempt in $(seq 1 90); do
               if curl -fsS --max-time 5 http://127.0.0.1:3000/api/v1/ping >/dev/null; then
@@ -250,9 +453,137 @@ jobs:
             done
           fi
 
-          if ! node scripts/support-ux-browser-evidence.mjs; then
+          capture_status=0
+          service_desk_flow_status=0
+          complaint_flow_status=0
+          agent_desktop_flow_status=0
+          voip_flow_status=0
+          knowledge_base_flow_status=0
+          ticket_categories_flow_status=0
+          sla_policies_flow_status=0
+          entitlements_flow_status=0
+          entitlement_templates_flow_status=0
+          skill_routing_flow_status=0
+          agent_calendar_flow_status=0
+          escalation_rules_flow_status=0
+          macros_flow_status=0
+          portal_users_flow_status=0
+          support_ai_settings_flow_status=0
+          customer_portal_flow_status=0
+          support_navigation_flow_status=0
+          if [ "$SUPPORT_EVIDENCE_INTERACTION_MODE" = "mutating" ]; then
+            if [ "$SUPPORT_EVIDENCE_TARGET_MODE" != "ephemeral" ]; then
+              echo "Mutating evidence is restricted to the ephemeral target"
+              service_desk_flow_status=1
+              complaint_flow_status=1
+              agent_desktop_flow_status=1
+              voip_flow_status=1
+              knowledge_base_flow_status=1
+              ticket_categories_flow_status=1
+              sla_policies_flow_status=1
+              entitlements_flow_status=1
+              entitlement_templates_flow_status=1
+              skill_routing_flow_status=1
+              agent_calendar_flow_status=1
+              escalation_rules_flow_status=1
+              macros_flow_status=1
+              portal_users_flow_status=1
+              support_ai_settings_flow_status=1
+              customer_portal_flow_status=1
+              support_navigation_flow_status=1
+            else
+              selected=",${SUPPORT_EVIDENCE_SCENARIOS},"
+              case "$selected" in
+                *,all,*|*,service-desk,*|*,ticket-detail,*|*,service-desk-kanban,*|*,service-desk-reports,*)
+                  node scripts/support-ux-service-desk-flow-evidence.mjs || service_desk_flow_status=$?
+                  ;;
+              esac
+              case "$selected" in
+                *,all,*|*,complaints,*|*,complaint-new,*|*,complaint-import,*|*,complaint-detail,*)
+                  node scripts/support-ux-complaint-flow-evidence.mjs || complaint_flow_status=$?
+                  ;;
+              esac
+              case "$selected" in
+                *,all,*|*,agent-desktop,*)
+                  node scripts/support-ux-agent-desktop-flow-evidence.mjs || agent_desktop_flow_status=$?
+                  ;;
+              esac
+              case "$selected" in
+                *,all,*|*,voip,*)
+                  node scripts/support-ux-voip-flow-evidence.mjs || voip_flow_status=$?
+                  ;;
+              esac
+              case "$selected" in
+                *,all,*|*,knowledge-base,*|*,knowledge-article,*|*,portal-knowledge,*)
+                  node scripts/support-ux-knowledge-base-flow-evidence.mjs || knowledge_base_flow_status=$?
+                  ;;
+              esac
+              case "$selected" in
+                *,all,*|*,ticket-categories,*)
+                  node scripts/support-ux-ticket-categories-flow-evidence.mjs || ticket_categories_flow_status=$?
+                  ;;
+              esac
+              case "$selected" in
+                *,all,*|*,sla-policies,*)
+                  node scripts/support-ux-sla-policies-flow-evidence.mjs || sla_policies_flow_status=$?
+                  ;;
+              esac
+              case "$selected" in
+                *,all,*|*,support-entitlements,*)
+                  node scripts/support-ux-entitlements-flow-evidence.mjs || entitlements_flow_status=$?
+                  ;;
+              esac
+              case "$selected" in
+                *,all,*|*,entitlement-templates,*)
+                  node scripts/support-ux-entitlement-templates-flow-evidence.mjs || entitlement_templates_flow_status=$?
+                  ;;
+              esac
+              case "$selected" in
+                *,all,*|*,skill-routing,*)
+                  node scripts/support-ux-skill-routing-flow-evidence.mjs || skill_routing_flow_status=$?
+                  ;;
+              esac
+              case "$selected" in
+                *,all,*|*,agent-calendar,*)
+                  node scripts/support-ux-agent-calendar-flow-evidence.mjs || agent_calendar_flow_status=$?
+                  ;;
+              esac
+              case "$selected" in
+                *,all,*|*,escalation-rules,*)
+                  node scripts/support-ux-escalation-rules-flow-evidence.mjs || escalation_rules_flow_status=$?
+                  ;;
+              esac
+              case "$selected" in
+                *,all,*|*,macros,*)
+                  node scripts/support-ux-macros-flow-evidence.mjs || macros_flow_status=$?
+                  ;;
+              esac
+              case "$selected" in
+                *,all,*|*,portal-users,*)
+                  node scripts/support-ux-portal-users-flow-evidence.mjs || portal_users_flow_status=$?
+                  ;;
+              esac
+              case "$selected" in
+                *,all,*|*,support-ai-settings,*)
+                  node scripts/support-ux-ai-settings-flow-evidence.mjs || support_ai_settings_flow_status=$?
+                  ;;
+              esac
+              case "$selected" in
+                *,all,*|*,portal-tickets,*|*,portal-ticket-detail,*|*,portal-chat,*|*,ticket-closure,*)
+                  node scripts/support-ux-customer-portal-flow-evidence.mjs || customer_portal_flow_status=$?
+                  ;;
+              esac
+              case "$selected" in
+                *,all,*|*,support-navigation,*)
+                  node scripts/support-ux-navigation-flow-evidence.mjs || support_navigation_flow_status=$?
+                  ;;
+              esac
+            fi
+          fi
+          node scripts/support-ux-browser-evidence.mjs || capture_status=$?
+          if [ "$capture_status" -ne 0 ] || [ "$service_desk_flow_status" -ne 0 ] || [ "$complaint_flow_status" -ne 0 ] || [ "$agent_desktop_flow_status" -ne 0 ] || [ "$voip_flow_status" -ne 0 ] || [ "$knowledge_base_flow_status" -ne 0 ] || [ "$ticket_categories_flow_status" -ne 0 ] || [ "$sla_policies_flow_status" -ne 0 ] || [ "$entitlements_flow_status" -ne 0 ] || [ "$skill_routing_flow_status" -ne 0 ] || [ "$agent_calendar_flow_status" -ne 0 ] || [ "$escalation_rules_flow_status" -ne 0 ] || [ "$macros_flow_status" -ne 0 ] || [ "$portal_users_flow_status" -ne 0 ] || [ "$support_ai_settings_flow_status" -ne 0 ] || [ "$customer_portal_flow_status" -ne 0 ] || [ "$support_navigation_flow_status" -ne 0 ]; then
             if [ "$SUPPORT_EVIDENCE_TARGET_MODE" = "ephemeral" ]; then
-              sed -n '1,240p' /tmp/support-ux-evidence-app.log
+              tail -n 400 /tmp/support-ux-evidence-app.log
             fi
             exit 1
           fi

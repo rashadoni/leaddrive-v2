@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, useId } from "react"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,13 +16,43 @@ interface TicketFormProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSaved: () => void
-  initialData?: Record<string, any>
+  initialData?: TicketFormInitialData
   orgId?: string
+}
+
+interface TicketFormInitialData {
+  id?: string
+  subject?: string
+  description?: string
+  priority?: string
+  category?: string
+  status?: string
+  contactId?: string
+  companyId?: string
+  assignedTo?: string
+  complaintMeta?: unknown
 }
 
 interface OptionItem {
   id: string
   label: string
+}
+
+function optionItems(payload: unknown, collectionKey: string | null, labelKeys: string[]): OptionItem[] {
+  if (!payload || typeof payload !== "object") return []
+  const rootData = (payload as Record<string, unknown>).data
+  const collection = collectionKey && rootData && typeof rootData === "object" && !Array.isArray(rootData)
+    ? (rootData as Record<string, unknown>)[collectionKey]
+    : rootData
+  if (!Array.isArray(collection)) return []
+
+  return collection.flatMap((entry) => {
+    if (!entry || typeof entry !== "object") return []
+    const record = entry as Record<string, unknown>
+    if (typeof record.id !== "string") return []
+    const label = labelKeys.map((key) => record[key]).find((value) => typeof value === "string" && value.trim())
+    return typeof label === "string" ? [{ id: record.id, label }] : []
+  })
 }
 
 export function TicketForm({ open, onOpenChange, onSaved, initialData, orgId }: TicketFormProps) {
@@ -31,6 +61,7 @@ export function TicketForm({ open, onOpenChange, onSaved, initialData, orgId }: 
   const tt = useTranslations("tickets")
   const ta = useTranslations("aiSettings")
   const isEdit = !!initialData?.id
+  const fieldPrefix = useId()
   const [form, setForm] = useState({
     subject: initialData?.subject || "",
     description: initialData?.description || "",
@@ -130,20 +161,14 @@ export function TicketForm({ open, onOpenChange, onSaved, initialData, orgId }: 
 
     try {
       const [companiesRes, contactsRes, usersRes] = await Promise.all([
-        fetch("/api/v1/companies?limit=200", { headers }).then(r => r.json()).catch(() => ({ data: { companies: [] } })),
-        fetch("/api/v1/contacts?limit=200", { headers }).then(r => r.json()).catch(() => ({ data: { contacts: [] } })),
-        fetch("/api/v1/users", { headers }).then(r => r.json()).catch(() => ({ data: [] })),
+        fetch("/api/v1/companies?limit=200", { headers }).then(async r => await r.json() as unknown).catch(() => null),
+        fetch("/api/v1/contacts?limit=200", { headers }).then(async r => await r.json() as unknown).catch(() => null),
+        fetch("/api/v1/skill-routing/agents", { headers }).then(async r => await r.json() as unknown).catch(() => null),
       ])
 
-      setCompanies(
-        (companiesRes.data?.companies || companiesRes.data || []).map((c: any) => ({ id: c.id, label: c.name }))
-      )
-      setContacts(
-        (contactsRes.data?.contacts || contactsRes.data || []).map((c: any) => ({ id: c.id, label: c.fullName || c.email }))
-      )
-      setUsers(
-        (usersRes.data || []).map((u: any) => ({ id: u.id, label: u.name || u.fullName || u.email }))
-      )
+      setCompanies(optionItems(companiesRes, "companies", ["name"]))
+      setContacts(optionItems(contactsRes, "contacts", ["fullName", "email"]))
+      setUsers(optionItems(usersRes, null, ["name", "fullName", "email"]))
     } catch {
       // Ignore — dropdowns will just be empty
     }
@@ -155,7 +180,7 @@ export function TicketForm({ open, onOpenChange, onSaved, initialData, orgId }: 
     setError("")
     try {
       const url = isEdit ? `/api/v1/tickets/${initialData!.id}` : "/api/v1/tickets"
-      const payload: Record<string, any> = {
+      const payload: Record<string, unknown> = {
         subject: form.subject,
         description: form.description,
         priority: form.priority,
@@ -173,12 +198,12 @@ export function TicketForm({ open, onOpenChange, onSaved, initialData, orgId }: 
         headers: { "Content-Type": "application/json", ...(orgId ? { "x-organization-id": orgId } : {} as Record<string, string>) },
         body: JSON.stringify(payload),
       })
-      if (!res.ok) throw new Error((await res.json()).error || "Failed")
+      if (!res.ok) throw new Error(isEdit ? tc("errorUpdateFailed") : tc("errorCreateFailed"))
 
       // If user toggled "This is a complaint" on creation, attach ComplaintMeta via the convert endpoint.
       if (!isEdit && asComplaint) {
-        const created = await res.json()
-        const newId = created?.data?.id
+        const created = await res.json() as { data?: { id?: unknown } }
+        const newId = typeof created.data?.id === "string" ? created.data.id : null
         if (newId) {
           await fetch(`/api/v1/tickets/${newId}/convert-to-complaint`, {
             method: "POST",
@@ -199,7 +224,11 @@ export function TicketForm({ open, onOpenChange, onSaved, initialData, orgId }: 
 
       onSaved()
       onOpenChange(false)
-    } catch (err: any) { setError(err.message) } finally { setSaving(false) }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : isEdit ? tc("errorUpdateFailed") : tc("errorCreateFailed"))
+    } finally {
+      setSaving(false)
+    }
   }
 
   const u = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
@@ -209,12 +238,12 @@ export function TicketForm({ open, onOpenChange, onSaved, initialData, orgId }: 
       <DialogHeader><DialogTitle>{isEdit ? t("editTicket") : t("newTicket")}</DialogTitle></DialogHeader>
       <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
         <DialogContent>
-          {error && <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded mb-3">{error}</div>}
+          {error && <div role="alert" className="mb-3 rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-900/20 dark:text-red-300">{error}</div>}
           <div className="grid gap-4">
-            <div><Label>{tc("subject")} *</Label><Input value={form.subject} onChange={e => u("subject", e.target.value)} onBlur={tryAiCategorize} required />{aiCategorizing && <p className="text-[10px] text-muted-foreground mt-1 animate-pulse">{ta("aiClassifying")}</p>}</div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>{tc("priority")}</Label><Select value={form.priority} onChange={e => u("priority", e.target.value)}><option value="low">{tc("priorityLow")}</option><option value="medium">{tc("priorityMedium")}</option><option value="high">{tc("priorityHigh")}</option><option value="critical">{tc("priorityCritical")}</option></Select></div>
-              <div><Label>{tc("category")}</Label><Select value={form.category} onChange={e => u("category", e.target.value)} disabled={asComplaint || !!initialData?.complaintMeta}><option value="general">{tt("categoryGeneral")}</option><option value="technical">{tt("categoryTechnical")}</option><option value="billing">{tt("categoryBilling")}</option><option value="feature_request">{tt("categoryFeatureRequest")}</option>{(asComplaint || initialData?.category === "complaint") && <option value="complaint">{tt("categoryComplaint")}</option>}</Select></div>
+            <div><Label htmlFor={`${fieldPrefix}-subject`}>{tc("subject")} *</Label><Input id={`${fieldPrefix}-subject`} className="h-11 sm:h-9" value={form.subject} onChange={e => u("subject", e.target.value)} onBlur={tryAiCategorize} required />{aiCategorizing && <p className="mt-1 animate-pulse text-[10px] text-muted-foreground motion-reduce:animate-none">{ta("aiClassifying")}</p>}</div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div><Label htmlFor={`${fieldPrefix}-priority`}>{tc("priority")}</Label><Select data-testid="ticket-form-priority" id={`${fieldPrefix}-priority`} className="h-11 sm:h-9" value={form.priority} onChange={e => u("priority", e.target.value)}><option value="low">{tc("priorityLow")}</option><option value="medium">{tc("priorityMedium")}</option><option value="high">{tc("priorityHigh")}</option><option value="critical">{tc("priorityCritical")}</option></Select></div>
+              <div><Label htmlFor={`${fieldPrefix}-category`}>{tc("category")}</Label><Select id={`${fieldPrefix}-category`} className="h-11 sm:h-9" value={form.category} onChange={e => u("category", e.target.value)} disabled={asComplaint || !!initialData?.complaintMeta}><option value="general">{tt("categoryGeneral")}</option><option value="technical">{tt("categoryTechnical")}</option><option value="billing">{tt("categoryBilling")}</option><option value="feature_request">{tt("categoryFeatureRequest")}</option>{(asComplaint || initialData?.category === "complaint") && <option value="complaint">{tt("categoryComplaint")}</option>}</Select></div>
             </div>
             {!isEdit && (
               <label className="flex items-start gap-2 text-sm cursor-pointer p-2 -mx-2 rounded hover:bg-muted/40">
@@ -237,10 +266,12 @@ export function TicketForm({ open, onOpenChange, onSaved, initialData, orgId }: 
             )}
             {!isEdit && asComplaint && (
               <div className="rounded-lg border border-amber-200 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-900/10 p-3 space-y-3">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
-                    <Label>{t("complaintType")}</Label>
+                    <Label htmlFor={`${fieldPrefix}-complaint-type`}>{t("complaintType")}</Label>
                     <Select
+                      id={`${fieldPrefix}-complaint-type`}
+                      className="h-11 sm:h-9"
                       value={complaintMeta.complaintType}
                       onChange={(e) => setComplaintMeta((m) => ({ ...m, complaintType: e.target.value as "complaint" | "suggestion" }))}
                     >
@@ -249,8 +280,10 @@ export function TicketForm({ open, onOpenChange, onSaved, initialData, orgId }: 
                     </Select>
                   </div>
                   <div>
-                    <Label>{t("riskLevel")}</Label>
+                    <Label htmlFor={`${fieldPrefix}-risk-level`}>{t("riskLevel")}</Label>
                     <Select
+                      id={`${fieldPrefix}-risk-level`}
+                      className="h-11 sm:h-9"
                       value={complaintMeta.riskLevel}
                       onChange={(e) => setComplaintMeta((m) => ({ ...m, riskLevel: e.target.value as "low" | "medium" | "high" }))}
                     >
@@ -260,20 +293,22 @@ export function TicketForm({ open, onOpenChange, onSaved, initialData, orgId }: 
                     </Select>
                   </div>
                   <div>
-                    <Label>{t("complaintBrand")}</Label>
-                    <Input value={complaintMeta.brand} onChange={(e) => setComplaintMeta((m) => ({ ...m, brand: e.target.value }))} />
+                    <Label htmlFor={`${fieldPrefix}-complaint-brand`}>{t("complaintBrand")}</Label>
+                    <Input id={`${fieldPrefix}-complaint-brand`} className="h-11 sm:h-9" value={complaintMeta.brand} onChange={(e) => setComplaintMeta((m) => ({ ...m, brand: e.target.value }))} />
                   </div>
                   <div>
-                    <Label>{t("productCategory")}</Label>
-                    <Input value={complaintMeta.productCategory} onChange={(e) => setComplaintMeta((m) => ({ ...m, productCategory: e.target.value }))} />
+                    <Label htmlFor={`${fieldPrefix}-product-category`}>{t("productCategory")}</Label>
+                    <Input id={`${fieldPrefix}-product-category`} className="h-11 sm:h-9" value={complaintMeta.productCategory} onChange={(e) => setComplaintMeta((m) => ({ ...m, productCategory: e.target.value }))} />
                   </div>
                   <div>
-                    <Label>{t("complaintObject")}</Label>
-                    <Input value={complaintMeta.complaintObject} onChange={(e) => setComplaintMeta((m) => ({ ...m, complaintObject: e.target.value }))} />
+                    <Label htmlFor={`${fieldPrefix}-complaint-object`}>{t("complaintObject")}</Label>
+                    <Input id={`${fieldPrefix}-complaint-object`} className="h-11 sm:h-9" value={complaintMeta.complaintObject} onChange={(e) => setComplaintMeta((m) => ({ ...m, complaintObject: e.target.value }))} />
                   </div>
                   <div>
-                    <Label>{t("responsibleDepartment")}</Label>
+                    <Label htmlFor={`${fieldPrefix}-responsible-department`}>{t("responsibleDepartment")}</Label>
                     <Input
+                      id={`${fieldPrefix}-responsible-department`}
+                      className="h-11 sm:h-9"
                       value={complaintMeta.responsibleDepartment}
                       onChange={(e) => setComplaintMeta((m) => ({ ...m, responsibleDepartment: e.target.value }))}
                       placeholder={t("responsibleDepartmentPlaceholder")}
@@ -286,37 +321,37 @@ export function TicketForm({ open, onOpenChange, onSaved, initialData, orgId }: 
               </div>
             )}
             {isEdit && (
-              <div><Label>{tc("status")}</Label><Select value={form.status} onChange={e => u("status", e.target.value)}><option value="new">{tt("statusNew")}</option><option value="in_progress">{tt("statusInProgress")}</option><option value="waiting">{tt("statusWaiting")}</option><option value="resolved">{tt("statusResolved")}</option><option value="closed">{tt("statusClosed")}</option></Select></div>
+              <div><Label htmlFor={`${fieldPrefix}-status`}>{tc("status")}</Label><Select id={`${fieldPrefix}-status`} className="h-11 sm:h-9" value={form.status} onChange={e => u("status", e.target.value)}><option value="new">{tt("statusNew")}</option><option value="in_progress">{tt("statusInProgress")}</option><option value="waiting">{tt("statusWaiting")}</option><option value="resolved">{tt("statusResolved")}</option><option value="closed">{tt("statusClosed")}</option></Select></div>
             )}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <Label>{tc("company")}</Label>
-                <Select value={form.companyId} onChange={e => u("companyId", e.target.value)}>
-                  <option value="">— None —</option>
+                <Label htmlFor={`${fieldPrefix}-company`}>{tc("company")}</Label>
+                <Select id={`${fieldPrefix}-company`} className="h-11 sm:h-9" value={form.companyId} onChange={e => u("companyId", e.target.value)}>
+                  <option value="">— {tc("none")} —</option>
                   {companies.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
                 </Select>
               </div>
               <div>
-                <Label>Contact</Label>
-                <Select value={form.contactId} onChange={e => u("contactId", e.target.value)}>
-                  <option value="">— None —</option>
+                <Label htmlFor={`${fieldPrefix}-contact`}>{tc("contact")}</Label>
+                <Select id={`${fieldPrefix}-contact`} className="h-11 sm:h-9" value={form.contactId} onChange={e => u("contactId", e.target.value)}>
+                  <option value="">— {tc("none")} —</option>
                   {contacts.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
                 </Select>
               </div>
             </div>
             <div>
-              <Label>{tc("assigned")}</Label>
-              <Select value={form.assignedTo} onChange={e => u("assignedTo", e.target.value)}>
-                <option value="">— Unassigned —</option>
+              <Label htmlFor={`${fieldPrefix}-assigned`}>{tc("assigned")}</Label>
+              <Select id={`${fieldPrefix}-assigned`} className="h-11 sm:h-9" value={form.assignedTo} onChange={e => u("assignedTo", e.target.value)}>
+                <option value="">— {tc("unassigned")} —</option>
                 {users.map(u => <option key={u.id} value={u.id}>{u.label}</option>)}
               </Select>
             </div>
-            <div><Label>{tc("description")}</Label><Textarea value={form.description} onChange={e => u("description", e.target.value)} rows={4} /></div>
+            <div><Label htmlFor={`${fieldPrefix}-description`}>{tc("description")}</Label><Textarea id={`${fieldPrefix}-description`} value={form.description} onChange={e => u("description", e.target.value)} rows={4} /></div>
           </div>
         </DialogContent>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{tc("cancel")}</Button>
-          <Button type="submit" disabled={saving}>{saving ? tc("saving") : isEdit ? tc("update") : tc("create")}</Button>
+          <Button type="button" variant="outline" className="h-11 sm:h-9" onClick={() => onOpenChange(false)}>{tc("cancel")}</Button>
+          <Button data-testid="ticket-form-submit" type="submit" className="h-11 sm:h-9" disabled={saving}>{saving ? tc("saving") : isEdit ? tc("update") : tc("create")}</Button>
         </DialogFooter>
       </form>
     </Dialog>
