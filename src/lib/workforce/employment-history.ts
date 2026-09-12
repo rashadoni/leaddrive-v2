@@ -45,7 +45,7 @@ export class WorkforceEmploymentHistoryError extends Error {
       | "WORKFORCE_EMPLOYMENT_AGENT_NOT_FOUND"
       | "WORKFORCE_EMPLOYMENT_EVENT_ORDER_INVALID"
       | "WORKFORCE_EMPLOYMENT_EVENT_TRANSITION_INVALID",
-    message = code,
+    message: string = code,
   ) {
     super(message)
   }
@@ -170,7 +170,7 @@ export async function recordWorkforceEmploymentEvent(
   input: RecordEmploymentHistoryContext,
 ): Promise<WorkforceEmploymentHistoryEvent> {
   const db = input.db ?? prisma
-  return db.$transaction(async (tx) => {
+  return db.$transaction(async (tx: Prisma.TransactionClient) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"workforce-employment:" + input.organizationId + ":" + input.event.agentId}))`
     const agent = await tx.mtmAgent.findFirst({
       where: { organizationId: input.organizationId, id: input.event.agentId },
