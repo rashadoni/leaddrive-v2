@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import type { Prisma } from "@prisma/client"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 
@@ -20,7 +21,21 @@ export type MtmWorkdayEventInput = {
   action: MtmWorkdayAction
   workdayId: string
   clientEventId: string
+  /**
+   * Compatibility event time. C1 defines it as the employee's claimed action
+   * time; its newer explicit alias `claimedAt` must be exactly the same
+   * instant so a client cannot provide two competing business times.
+   */
   occurredAt: Date
+  claimedAt: Date
+  capturedAt: Date
+  queuedAt: Date | null
+  /** Server receipt is assigned by the parser, never accepted from the client. */
+  serverReceivedAt: Date
+  /** `1` is the legacy envelope, `2` supplies full client provenance. */
+  schemaVersion: number
+  /** Server-derived C1 review disposition; never trusted from the client. */
+  attendanceReview: WorkforceAttendanceClaimReview
   workDateKey: string
   latitude: number | null
   longitude: number | null
@@ -34,6 +49,7 @@ export type MtmWorkdayResult =
       status: "ok"
       workday: Record<string, unknown>
       event: Record<string, unknown>
+      review: WorkforceAttendanceClaimReviewResult
       idempotent: boolean
     }
   | {
@@ -51,7 +67,7 @@ export type MtmWorkdayResult =
 
 type WorkdayDb = Pick<
   Prisma.TransactionClient,
-  "mtmAgent" | "mtmAgentWorkday" | "mtmAgentWorkdayEvent" | "$executeRaw"
+  "mtmAgent" | "mtmAgentWorkday" | "mtmAgentWorkdayEvent" | "workforceAttendanceReviewCase" | "$executeRaw"
 >
 
 type WorkdayScope = { organizationId: string; agentId: string }
@@ -59,6 +75,8 @@ type WorkdayScope = { organizationId: string; agentId: string }
 export type MtmWorkdayPostEventContext = {
   scope: WorkdayScope
   input: MtmWorkdayEventInput
+  /** The disclosed state before this transition, if a workday already existed. */
+  beforeWorkday: Record<string, unknown> | null
   workday: Record<string, unknown> & {
     id: string
     agentId: string
@@ -79,6 +97,26 @@ export type MtmWorkdayApplyOptions = {
 
 const WORKDAY_ACTIONS = new Set<MtmWorkdayAction>(["START", "PAUSE", "RESUME", "FINISH"])
 const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000
+/** The owner-approved maximum age for an offline Workforce attendance claim. */
+export const WORKFORCE_WORKDAY_OFFLINE_HORIZON_MS = 7 * 24 * 60 * 60 * 1000
+export const WORKFORCE_WORKDAY_LEGACY_SCHEMA_VERSION = 1
+export const WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION = 2
+/** Safe default: a claim delayed beyond ordinary sync jitter requires human review. */
+export const WORKFORCE_ATTENDANCE_REVIEW_DELAY_MS = 15 * 60 * 1000
+export const WORKFORCE_ATTENDANCE_REVIEW_POLICY_VERSION = "c1-delay-review-v1"
+
+export type WorkforceAttendanceClaimReview = {
+  state: "NOT_REQUIRED" | "PENDING_REVIEW"
+  reasonCode: "DELAYED_CLAIM" | null
+  policyVersion: string
+  claimAgeSeconds: number
+}
+
+export type WorkforceAttendanceClaimReviewResult = {
+  /** Historical events predate C1 provenance and must not be relabelled. */
+  state: "LEGACY_UNKNOWN" | WorkforceAttendanceClaimReview["state"]
+  reasonCode: "DELAYED_CLAIM" | null
+}
 
 /**
  * Keep recovery actions next to the canonical state machine instead of
@@ -112,6 +150,15 @@ const eventSelect = {
   clientEventId: true,
   type: true,
   occurredAt: true,
+  claimedAt: true,
+  capturedAt: true,
+  queuedAt: true,
+  serverReceivedAt: true,
+  appliedAt: true,
+  schemaVersion: true,
+  requestHash: true,
+  attendanceReviewState: true,
+  attendanceReviewReasonCode: true,
   latitude: true,
   longitude: true,
   accuracy: true,
@@ -136,6 +183,70 @@ function validCoordinatePair(latitude: unknown, longitude: unknown): boolean {
 
 function validId(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0 && value.length <= 100
+}
+
+function parseTimestamp(value: unknown): Date | null {
+  const parsed = typeof value === "string" || typeof value === "number"
+    ? new Date(value)
+    : new Date(Number.NaN)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+function hasExplicitValue(value: Record<string, unknown>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(value, key) && value[key] != null
+}
+
+function timestampIsTooFarInFuture(value: Date, now: Date): boolean {
+  return value.getTime() > now.getTime() + MAX_CLOCK_SKEW_MS
+}
+
+function timestampIsBeyondOfflineHorizon(value: Date, now: Date): boolean {
+  return value.getTime() < now.getTime() - WORKFORCE_WORKDAY_OFFLINE_HORIZON_MS
+}
+
+/**
+ * A delayed in-window claim is evidence for a human review, not an automatic
+ * rejection or a payroll/disciplinary conclusion. The threshold is a recorded
+ * conservative default until a tenant publishes a versioned policy in C6.
+ */
+export function workforceAttendanceClaimReview(
+  claimedAt: Date,
+  serverReceivedAt: Date,
+): WorkforceAttendanceClaimReview {
+  const claimAgeSeconds = Math.max(0, Math.floor((serverReceivedAt.getTime() - claimedAt.getTime()) / 1000))
+  return claimAgeSeconds * 1000 > WORKFORCE_ATTENDANCE_REVIEW_DELAY_MS
+    ? {
+        state: "PENDING_REVIEW",
+        reasonCode: "DELAYED_CLAIM",
+        policyVersion: WORKFORCE_ATTENDANCE_REVIEW_POLICY_VERSION,
+        claimAgeSeconds,
+      }
+    : {
+        state: "NOT_REQUIRED",
+        reasonCode: null,
+        policyVersion: WORKFORCE_ATTENDANCE_REVIEW_POLICY_VERSION,
+        claimAgeSeconds,
+      }
+}
+
+function attendanceReviewResult(value: {
+  attendanceReviewState: string | null | undefined
+  attendanceReviewReasonCode: string | null
+}): WorkforceAttendanceClaimReviewResult {
+  if (value.attendanceReviewState === "LEGACY_UNKNOWN" || value.attendanceReviewState == null) {
+    return { state: "LEGACY_UNKNOWN", reasonCode: null }
+  }
+  return {
+    state: value.attendanceReviewState === "PENDING_REVIEW" ? "PENDING_REVIEW" : "NOT_REQUIRED",
+    reasonCode: value.attendanceReviewState === "PENDING_REVIEW"
+      && value.attendanceReviewReasonCode === "DELAYED_CLAIM"
+      ? "DELAYED_CLAIM"
+      : null,
+  }
+}
+
+function validSchemaVersion(value: unknown): value is number {
+  return value === WORKFORCE_WORKDAY_LEGACY_SCHEMA_VERSION || value === WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION
 }
 
 function parseAttendanceEvidence(value: unknown): {
@@ -187,6 +298,7 @@ export function parseMtmWorkdayEvent(
   clientEventId: string,
   timezone: string,
   now = new Date(),
+  options: { enforceOfflineHorizon?: boolean } = {},
 ): { input: MtmWorkdayEventInput | null; error: string | null } {
   if (!data || typeof data !== "object" || Array.isArray(data)) {
     return { input: null, error: "Workday event data must be an object" }
@@ -203,14 +315,54 @@ export function parseMtmWorkdayEvent(
       error: action === "START" ? "data.id required for workday start" : "data.workdayId required for workday transition",
     }
   }
-  const occurredAt = typeof value.occurredAt === "string" || typeof value.occurredAt === "number"
-    ? new Date(value.occurredAt)
-    : new Date(Number.NaN)
-  if (Number.isNaN(occurredAt.getTime())) {
+  const occurredAt = parseTimestamp(value.occurredAt)
+  if (!occurredAt) {
     return { input: null, error: "Valid data.occurredAt is required" }
   }
-  if (occurredAt.getTime() > now.getTime() + MAX_CLOCK_SKEW_MS) {
+  if (timestampIsTooFarInFuture(occurredAt, now)) {
     return { input: null, error: "Workday event time is too far in the future" }
+  }
+
+  const schemaVersion = value.schemaVersion == null
+    ? WORKFORCE_WORKDAY_LEGACY_SCHEMA_VERSION
+    : value.schemaVersion
+  if (!validSchemaVersion(schemaVersion)) {
+    return {
+      input: null,
+      error: `Unsupported Workforce workday schemaVersion; expected ${WORKFORCE_WORKDAY_LEGACY_SCHEMA_VERSION} or ${WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION}`,
+    }
+  }
+
+  const claimedAt = hasExplicitValue(value, "claimedAt") ? parseTimestamp(value.claimedAt) : occurredAt
+  const capturedAt = hasExplicitValue(value, "capturedAt") ? parseTimestamp(value.capturedAt) : occurredAt
+  const queuedAt = hasExplicitValue(value, "queuedAt") ? parseTimestamp(value.queuedAt) : null
+  if (!claimedAt || !capturedAt || (hasExplicitValue(value, "queuedAt") && !queuedAt)) {
+    return { input: null, error: "Workday provenance timestamps are invalid" }
+  }
+  if (claimedAt.getTime() !== occurredAt.getTime()) {
+    return { input: null, error: "claimedAt must equal occurredAt for a Workforce workday event" }
+  }
+  if (
+    timestampIsTooFarInFuture(claimedAt, now)
+    || timestampIsTooFarInFuture(capturedAt, now)
+    || (queuedAt && timestampIsTooFarInFuture(queuedAt, now))
+  ) {
+    return { input: null, error: "Workday provenance time is too far in the future" }
+  }
+  if (options.enforceOfflineHorizon !== false && timestampIsBeyondOfflineHorizon(claimedAt, now)) {
+    return {
+      input: null,
+      error: "Workday event is beyond the supported seven-day offline horizon",
+    }
+  }
+  if (
+    (queuedAt && (claimedAt > queuedAt || capturedAt > queuedAt))
+    || (schemaVersion === WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION && !queuedAt)
+  ) {
+    return {
+      input: null,
+      error: "Workday provenance must be ordered and schemaVersion 2 requires queuedAt",
+    }
   }
   if (!validCoordinatePair(value.latitude, value.longitude)) {
     return { input: null, error: "Valid latitude and longitude are required together" }
@@ -225,12 +377,20 @@ export function parseMtmWorkdayEvent(
   const attendance = parseAttendanceEvidence(value.attendance)
   if (attendance.error) return { input: null, error: attendance.error }
 
+  const attendanceReview = workforceAttendanceClaimReview(claimedAt, now)
+
   return {
     input: {
       action: action as MtmWorkdayAction,
       workdayId,
       clientEventId,
       occurredAt,
+      claimedAt,
+      capturedAt,
+      queuedAt,
+      serverReceivedAt: now,
+      schemaVersion,
+      attendanceReview,
       workDateKey: currentDateKey(occurredAt, timezone),
       latitude: value.latitude == null ? null : value.latitude as number,
       longitude: value.longitude == null ? null : value.longitude as number,
@@ -240,6 +400,68 @@ export function parseMtmWorkdayEvent(
     },
     error: null,
   }
+}
+
+/**
+ * Canonical digest for a new workday mutation. It binds the authenticated
+ * actor, action, client times, schema and non-reversible evidence digests to
+ * the operation ID. Raw QR/device proof never enters the database through
+ * this function.
+ *
+ * C2 will replace `segment: null` with the effective-dated segment reference;
+ * keeping the reserved field in the canonical wire shape prevents a later
+ * segment-aware schema from quietly weakening existing request hashing.
+ */
+export function mtmWorkdayRequestHash(scope: WorkdayScope, input: MtmWorkdayEventInput): string {
+  const qrFingerprint = input.attendance?.qrToken
+    ? createHash("sha256").update(input.attendance.qrToken).digest("hex")
+    : null
+  const deviceProofFingerprint = input.attendance?.device
+    ? createHash("sha256").update(input.attendance.device.signature).digest("hex")
+    : null
+  return createHash("sha256").update(JSON.stringify({
+    version: 2,
+    organizationId: scope.organizationId,
+    agentId: scope.agentId,
+    clientEventId: input.clientEventId,
+    action: input.action,
+    workdayId: input.workdayId,
+    claimedAt: input.claimedAt.toISOString(),
+    capturedAt: input.capturedAt.toISOString(),
+    queuedAt: input.queuedAt?.toISOString() ?? null,
+    schemaVersion: input.schemaVersion,
+    segment: null,
+    latitude: input.latitude,
+    longitude: input.longitude,
+    accuracy: input.accuracy,
+    note: input.note,
+    qrFingerprint,
+    deviceEnrollmentId: input.attendance?.device?.enrollmentId ?? null,
+    deviceProofFingerprint,
+  })).digest("hex")
+}
+
+async function createAttendanceReviewCaseIfRequired(
+  db: WorkdayDb,
+  scope: WorkdayScope,
+  input: MtmWorkdayEventInput,
+  event: { id: string },
+): Promise<void> {
+  if (input.attendanceReview.state !== "PENDING_REVIEW") return
+  await db.workforceAttendanceReviewCase.create({
+    data: {
+      organizationId: scope.organizationId,
+      agentId: scope.agentId,
+      workdayId: input.workdayId,
+      workdayEventId: event.id,
+      status: "PENDING_REVIEW",
+      reasonCode: input.attendanceReview.reasonCode!,
+      policyVersion: input.attendanceReview.policyVersion,
+      claimAgeSeconds: input.attendanceReview.claimAgeSeconds,
+      claimedAt: input.claimedAt,
+      serverReceivedAt: input.serverReceivedAt,
+    },
+  })
 }
 
 function conflict(
@@ -267,9 +489,16 @@ export function mtmWorkdayReplayMatches(
     longitude: number | null
     accuracy: number | null
     note: string | null
+    requestHash?: string | null
   },
   input: MtmWorkdayEventInput,
+  scope?: WorkdayScope,
 ): boolean {
+  if (typeof replay.requestHash === "string" && replay.requestHash.length > 0) {
+    // A C1-provenance event must never fall back to the weaker legacy field
+    // comparison merely because a transport omitted one newer field.
+    return scope != null && replay.requestHash === mtmWorkdayRequestHash(scope, input)
+  }
   // H5 proof material is deliberately absent. A true replay must remain
   // possible after its QR expires, because the canonical event already owns
   // the result and proof ledger; clientEventId still rejects a changed event.
@@ -322,7 +551,7 @@ export async function applyMtmWorkdayEvent(
     select: replayEventSelect,
   })
   if (replay) {
-    if (!mtmWorkdayReplayMatches(replay, input)) {
+    if (!mtmWorkdayReplayMatches(replay, input, scope)) {
       return conflict(
         "MTM_WORKDAY_IDEMPOTENCY_MISMATCH",
         "clientEventId was already used for a different workday operation",
@@ -333,6 +562,7 @@ export async function applyMtmWorkdayEvent(
       status: "ok",
       workday: workday as Record<string, unknown>,
       event: event as Record<string, unknown>,
+      review: attendanceReviewResult(replay),
       idempotent: true,
     }
   }
@@ -344,6 +574,15 @@ export async function applyMtmWorkdayEvent(
     clientEventId: input.clientEventId,
     type: input.action,
     occurredAt: input.occurredAt,
+    claimedAt: input.claimedAt,
+    capturedAt: input.capturedAt,
+    queuedAt: input.queuedAt,
+    serverReceivedAt: input.serverReceivedAt,
+    appliedAt: new Date(),
+    schemaVersion: input.schemaVersion,
+    requestHash: mtmWorkdayRequestHash(scope, input),
+    attendanceReviewState: input.attendanceReview.state,
+    attendanceReviewReasonCode: input.attendanceReview.reasonCode,
     latitude: input.latitude,
     longitude: input.longitude,
     accuracy: input.accuracy,
@@ -392,9 +631,11 @@ export async function applyMtmWorkdayEvent(
       select: workdaySelect,
     })
     const event = await db.mtmAgentWorkdayEvent.create({ data: baseEvent, select: eventSelect })
+    await createAttendanceReviewCaseIfRequired(db, scope, input, event)
     await options.afterEvent?.({
       scope,
       input,
+      beforeWorkday: null,
       workday: { ...workday, agentId: scope.agentId } as MtmWorkdayPostEventContext["workday"],
       event: event as MtmWorkdayPostEventContext["event"],
     })
@@ -402,6 +643,7 @@ export async function applyMtmWorkdayEvent(
       status: "ok",
       workday: workday as Record<string, unknown>,
       event: event as Record<string, unknown>,
+      review: attendanceReviewResult(event),
       idempotent: false,
     }
   }
@@ -464,9 +706,11 @@ export async function applyMtmWorkdayEvent(
     select: workdaySelect,
   })
   const event = await db.mtmAgentWorkdayEvent.create({ data: baseEvent, select: eventSelect })
+  await createAttendanceReviewCaseIfRequired(db, scope, input, event)
   await options.afterEvent?.({
     scope,
     input,
+    beforeWorkday: workday as Record<string, unknown>,
     workday: { ...updated, agentId: scope.agentId } as MtmWorkdayPostEventContext["workday"],
     event: event as MtmWorkdayPostEventContext["event"],
   })
@@ -484,6 +728,7 @@ export async function applyMtmWorkdayEvent(
     status: "ok",
     workday: updated as Record<string, unknown>,
     event: event as Record<string, unknown>,
+    review: attendanceReviewResult(event),
     idempotent: false,
   }
 }

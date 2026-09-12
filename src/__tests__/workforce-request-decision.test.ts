@@ -4,10 +4,8 @@ vi.mock("@/lib/prisma", async () => {
   const { makeMtmPrismaMock } = await import("./mocks/mtm-prisma")
   return { prisma: makeMtmPrismaMock() }
 })
-vi.mock("@/lib/mtm-audit", () => ({ writeMtmAudit: vi.fn().mockResolvedValue(undefined) }))
 
 import { prisma } from "@/lib/prisma"
-import { writeMtmAudit } from "@/lib/mtm-audit"
 import { decideWorkforceRequest } from "@/lib/workforce/request-decision"
 
 const PENDING_CORRECTION = {
@@ -174,9 +172,13 @@ describe("decideWorkforceRequest time corrections", () => {
         },
       },
     })
-    expect(writeMtmAudit).toHaveBeenCalledWith(expect.objectContaining({
-      action: "HRM_REQUEST_DECISION",
-      entityId: "request-1",
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        action: "HRM_REQUEST_DECISION",
+        entity: "hrm_request",
+        entityId: "request-1",
+        metadataKind: "hrm_request_decision",
+      }),
     }))
   })
 
@@ -242,7 +244,7 @@ describe("decideWorkforceRequest time corrections", () => {
       includeRouteConflicts: false,
     })).rejects.toThrow("audit unavailable")
 
-    expect(writeMtmAudit).not.toHaveBeenCalled()
+    expect(prisma.mtmHrmRequest.findUnique).not.toHaveBeenCalled()
   })
 
   it("does not accept a correction when its immutable ledger write fails", async () => {
@@ -269,6 +271,31 @@ describe("decideWorkforceRequest time corrections", () => {
 
     expect(prisma.mtmAgentWorkday.update).not.toHaveBeenCalled()
     expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
-    expect(writeMtmAudit).not.toHaveBeenCalled()
+  })
+
+  it("does not accept a request decision when its standard audit projection fails", async () => {
+    const leaveRequest = {
+      ...PENDING_CORRECTION,
+      type: "LEAVE",
+      correctionWorkdayId: null,
+      requestedStartAt: null,
+      requestedEndAt: null,
+    }
+    vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue(leaveRequest as never)
+    vi.mocked(prisma.mtmAuditLog.create).mockRejectedValue(new Error("request audit unavailable"))
+
+    await expect(decideWorkforceRequest({
+      organizationId: "org-workforce",
+      userId: "manager-1",
+      actor: { agentId: null, role: "MANAGER", scopedAgentIds: null },
+      requestId: "request-1",
+      input: { decision: "REJECTED", note: "Insufficient evidence" },
+      includeRouteConflicts: false,
+    })).rejects.toThrow("request audit unavailable")
+
+    expect(prisma.mtmHrmRequest.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "request-1", organizationId: "org-workforce", status: "PENDING" },
+    }))
+    expect(prisma.mtmHrmRequest.findUnique).not.toHaveBeenCalled()
   })
 })

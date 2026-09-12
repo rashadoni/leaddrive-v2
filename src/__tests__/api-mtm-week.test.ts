@@ -1247,6 +1247,8 @@ describe("POST /api/v1/mtm/week/workday", () => {
       longitude: null,
       accuracy: null,
       note: null,
+      attendanceReviewState: "NOT_REQUIRED",
+      attendanceReviewReasonCode: null,
       createdAt: new Date("2026-07-15T08:00:00.000Z"),
     } as never)
 
@@ -1260,7 +1262,11 @@ describe("POST /api/v1/mtm/week/workday", () => {
     expect(await response.json()).toMatchObject({
       success: true,
       idempotent: false,
-      data: { workday: { id: "workday-1", status: "STARTED" }, availableActions: ["PAUSE", "FINISH"] },
+      data: {
+        workday: { id: "workday-1", status: "STARTED" },
+        review: { state: "NOT_REQUIRED", reasonCode: null },
+        availableActions: ["PAUSE", "FINISH"],
+      },
     })
     expect(prisma.$transaction).toHaveBeenCalledTimes(1)
     expect(prisma.$executeRaw).toHaveBeenCalledTimes(2)
@@ -1283,17 +1289,21 @@ describe("POST /api/v1/mtm/week/workday", () => {
     // A published policy must still be consulted, so it can fail closed rather
     // than being bypassed by toggling its entitlement off.
     expect(prisma.workforcePolicy.findMany).toHaveBeenCalled()
-    expect(writeMtmAudit).toHaveBeenCalledWith(expect.objectContaining({
-      action: "WORKDAY_START",
-      oldData: { exists: false },
-      newData: expect.objectContaining({
-        clientEventId: "event-1",
-        action: "START",
-        workday: expect.objectContaining({ exists: true, id: "workday-1", status: "STARTED" }),
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        action: "WORKDAY_START",
+        metadataKind: "workday_transition",
+        oldData: { exists: false },
+        newData: expect.objectContaining({
+          channel: "web",
+          clientEventId: "event-1",
+          action: "START",
+          workday: expect.objectContaining({ exists: true, id: "workday-1", status: "STARTED" }),
+        }),
       }),
     }))
-    const audit = vi.mocked(writeMtmAudit).mock.calls[0][0] as any
-    expect(JSON.stringify({ oldData: audit.oldData, newData: audit.newData }))
+    const audit = vi.mocked(prisma.mtmAuditLog.create).mock.calls[0][0] as { data: unknown }
+    expect(JSON.stringify(audit.data))
       .not.toMatch(/latitude|longitude|accuracy|battery/i)
   })
 

@@ -192,6 +192,7 @@ model Organization {
   workforcePolicySnapshots            WorkforcePolicySnapshot[]
   workforceShiftSnapshots             WorkforceShiftSnapshot[]
   workforceAttendanceExceptions       WorkforceAttendanceException[]
+  workforceAttendanceReviewCases      WorkforceAttendanceReviewCase[]
   workforceTimeCorrections            WorkforceTimeCorrection[]
   workforceTimesheetApprovals         WorkforceTimesheetApproval[]
   workforceAttendanceQrStations        WorkforceAttendanceQrStation[]
@@ -5156,6 +5157,18 @@ enum WorkforceAttendanceExceptionStatus {
   RESOLVED
 }
 
+/// An immutable workday event is either legacy-unknown, ordinary or explicitly
+/// awaiting a human review. It is not a payroll/disciplinary decision.
+enum WorkforceAttendanceClaimReviewState {
+  LEGACY_UNKNOWN
+  NOT_REQUIRED
+  PENDING_REVIEW
+}
+
+enum WorkforceAttendanceReviewCaseStatus {
+  PENDING_REVIEW
+}
+
 enum WorkforceTimeCorrectionSource {
   DIRECT_MANAGER
   REQUEST_APPROVAL
@@ -5477,6 +5490,7 @@ model MtmAgent {
   workforcePolicySnapshots  WorkforcePolicySnapshot[]
   workforceShiftSnapshots   WorkforceShiftSnapshot[]
   workforceExceptions       WorkforceAttendanceException[]
+  workforceAttendanceReviewCases WorkforceAttendanceReviewCase[]
   workforceTimeCorrections  WorkforceTimeCorrection[]
   workforceTimesheetApprovals WorkforceTimesheetApproval[]
   workforceAttendanceDeviceEnrollments WorkforceAttendanceDeviceEnrollment[]
@@ -7035,6 +7049,7 @@ model MtmAgentWorkday {
   workforcePolicySnapshot WorkforcePolicySnapshot?       @relation("WorkforcePolicySnapshotWorkday")
   workforceShiftSnapshot  WorkforceShiftSnapshot?        @relation("WorkforceShiftSnapshotWorkday")
   workforceExceptions     WorkforceAttendanceException[]
+  workforceAttendanceReviewCases WorkforceAttendanceReviewCase[]
   workforceTimeCorrections WorkforceTimeCorrection[]
 
   @@unique([organizationId, agentId, workDate])
@@ -7054,6 +7069,28 @@ model MtmAgentWorkdayEvent {
   workday        MtmAgentWorkday     @relation(fields: [workdayId], references: [id], onDelete: Cascade)
   clientEventId  String?
   type           MtmWorkdayEventType
+  /// Client-declared attendance action time. `occurredAt` remains the
+  /// compatibility field and is required to equal this value for C1+ writes.
+  claimedAt      DateTime?
+  /// When the client captured the action's local evidence/context.
+  capturedAt     DateTime?
+  /// When the client placed the action in its durable outbox. Null only for
+  /// legacy v1 adapters that did not expose provenance.
+  queuedAt         DateTime?
+  /// Set only by the receiving server; never trusted from a client envelope.
+  serverReceivedAt DateTime?
+  /// Instant at which the canonical state transition was accepted in its
+  /// transaction. It remains distinct from client claim/capture time.
+  appliedAt        DateTime?
+  /// Legacy adapter writes use v1; v2 requires explicit client provenance.
+  schemaVersion    Int                 @default(1)
+  /// SHA-256 of actor/action/provenance/evidence references. This detects an
+  /// altered payload under an already-used clientEventId without storing raw
+  /// QR or device proof.
+  requestHash      String?             @db.VarChar(64)
+  /// C1 review state derived only by the server from claim/receipt evidence.
+  attendanceReviewState WorkforceAttendanceClaimReviewState @default(LEGACY_UNKNOWN)
+  attendanceReviewReasonCode String?   @db.VarChar(64)
   occurredAt     DateTime
   latitude       Float?
   longitude      Float?
@@ -7062,12 +7099,44 @@ model MtmAgentWorkdayEvent {
   createdAt      DateTime            @default(now())
 
   workforceAttendanceVerifications WorkforceAttendanceVerification[]
+  workforceAttendanceReviewCase WorkforceAttendanceReviewCase?
 
   @@unique([organizationId, agentId, clientEventId])
   @@unique([organizationId, id])
   @@index([organizationId, agentId, occurredAt])
+  @@index([organizationId, agentId, serverReceivedAt])
+  @@index([organizationId, agentId, attendanceReviewState, serverReceivedAt])
   @@index([workdayId, occurredAt])
   @@map("mtm_agent_workday_events")
+}
+
+/// A separate, tenant-scoped review queue for a server-identified attendance
+/// claim risk. It references immutable workday provenance; no raw location,
+/// token, device signature or biometric material is copied into the case.
+model WorkforceAttendanceReviewCase {
+  id                String                              @id @default(cuid())
+  organizationId    String
+  organization      Organization                        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentId           String
+  agent             MtmAgent                            @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  workdayId         String
+  workday           MtmAgentWorkday                     @relation(fields: [organizationId, workdayId], references: [organizationId, id], onDelete: Restrict)
+  workdayEventId    String
+  workdayEvent      MtmAgentWorkdayEvent                @relation(fields: [organizationId, workdayEventId], references: [organizationId, id], onDelete: Restrict)
+  status            WorkforceAttendanceReviewCaseStatus @default(PENDING_REVIEW)
+  reasonCode        String                              @db.VarChar(64)
+  policyVersion     String                              @db.VarChar(64)
+  claimAgeSeconds   Int
+  claimedAt         DateTime
+  serverReceivedAt  DateTime
+  createdAt         DateTime                            @default(now())
+  updatedAt         DateTime                            @updatedAt
+
+  @@unique([organizationId, workdayEventId])
+  @@unique([organizationId, id])
+  @@index([organizationId, agentId, status, createdAt])
+  @@index([organizationId, workdayId])
+  @@map("workforce_attendance_review_cases")
 }
 
 // Agent-to-manager conversations and broadcasts. Participants are explicit,
@@ -8006,6 +8075,9 @@ model MtmSyncOperation {
   opType         String // "create" | "update" | "delete"
   /// 'ok' | 'conflict' | 'error'
   status         String
+  /// C1 workday operations pin the canonical request digest as well as the
+  /// response, so a changed payload cannot replay an earlier result.
+  requestHash    String?      @db.VarChar(64)
   /// Full server result stored for replay on duplicate push.
   result         Json?
   processedAt    DateTime     @default(now())

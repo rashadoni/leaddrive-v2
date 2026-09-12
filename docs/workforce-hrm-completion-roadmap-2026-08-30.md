@@ -13,6 +13,8 @@
 > [`workforce-h6-pilot-evidence.md`](./workforce-h6-pilot-evidence.md),
 > [`workforce-hrm-h0-baseline.md`](./workforce-hrm-h0-baseline.md),
 > [`workforce-c0-foundation-evidence-2026-08-30.md`](./workforce-c0-foundation-evidence-2026-08-30.md),
+> [`workforce-c1-provenance-evidence-2026-08-30.md`](./workforce-c1-provenance-evidence-2026-08-30.md),
+> [`workforce-c1-audit-projection-evidence-2026-08-30.md`](./workforce-c1-audit-projection-evidence-2026-08-30.md),
 > [`mobile-sync-v2-workforce-contract.md`](./mobile-sync-v2-workforce-contract.md)
 
 ## 1. Purpose and honest starting point
@@ -126,7 +128,7 @@ be recorded before the dependent phase can leave `BLOCKED`.
 | OD-10 | Exact role separation | HR admin, scheduler, approver, location reviewer, device-security admin, export custodian | C7, C8, C10 |
 | OD-11 | Location visibility | Normal manager view shows verdict/reason, not raw coordinates; restricted drill-down only for authorized investigations | C8, C10 |
 | OD-12 | Employee monitoring legal basis/notice | Local legal/privacy sign-off and employee notice before any real location cohort | C10, C14 |
-| OD-13 | Backdated event outcome | Older than policy window is rejected; within 7 days but risk-triggered becomes `PENDING_REVIEW` | C1, C6 |
+| OD-13 | Backdated event outcome | **Recorded safe default:** older than seven days is rejected; an in-window claim received over 15 minutes after `claimedAt` becomes `PENDING_REVIEW` under `c1-delay-review-v1`. Tenant-published policy/resolution awaits C6. | C6 |
 | OD-14 | Pilot population and observation window | Named small LeadDrive cohort, two physical devices, at least one full payroll-like reporting cycle without using results for payroll | C14 |
 | OD-15 | Supported app version window | Minimum/maximum version, forced-update policy and offline drain period | C9, C13, C14 |
 | OD-16 | Equitable non-mobile fallback | Site kiosk/badge or reviewed web/manual exception for no smartphone, disability, lost phone or unavailable GPS; never a permanent unreviewed bypass | C4, C5, C8, C14 |
@@ -315,6 +317,9 @@ Owner roles are accountabilities, not individual names:
 | Recorded at | Checkpoint | Overall | Current phase | Accepted tasks | Passed gates | Evidence / blocker change |
 |---|---|---:|---:|---:|---:|---|
 | 2026-08-30T00:26:11+02:00 | C0 contract/threat/data evidence | 2% | C0 50% | 4/161 | 0/15 | WF-C0-001/002/007/008 accepted; legal review, tenant-scoped production baseline and mobile-distribution gates remain open |
+| 2026-08-30T00:44:05+02:00 | C1a provenance/offline-boundary contract | 3% | C1 20% | 6/161 | 0/15 | WF-C1-001/002 accepted; changed-payload digest is partial pending C2 segment identity, claim/review and audit-projection work remain open |
+| 2026-08-30T00:57:42+02:00 | C1b transactional audit projection | 3% | C1 30% | 7/161 | 0/15 | WF-C1-005 accepted for workday and request decisions; failure injection blocks a successful result when the audit write fails; review-case and segment binding remain open |
+| 2026-08-30T01:11:00+02:00 | C1c delayed-claim review | 4% | C1 40% | 8/161 | 0/15 | WF-C1-003 accepted: delayed in-window claims create an immutable tenant review case; legacy evidence remains unknown; segment binding remains open |
 
 ### 6.1 Progress reporting contract
 
@@ -389,11 +394,11 @@ client timestamps into trusted attendance facts.
 
 | ID | Pri | Status | Owner | Task | Acceptance evidence |
 |---|---:|---|---|---|---|
-| WF-C1-001 | P0 | NEXT | Backend | Define `claimedAt`, `capturedAt`, `queuedAt`, `serverReceivedAt`, `appliedAt` and server-authoritative work date semantics | Versioned contract and parser tests |
-| WF-C1-002 | P0 | NEXT | Backend | Enforce the confirmed seven-day offline horizon in every legacy and new mutation path | Boundary, future-skew and replay tests for all adapters |
-| WF-C1-003 | P0 | NEXT | Backend/HR | Route delayed/anomalous claims to `PENDING_REVIEW`; never silently manufacture an approved historical workday | Review case and immutable claim/receipt evidence |
-| WF-C1-004 | P0 | NEXT | Backend | Bind idempotency hash to actor, action, claimed time, segment, evidence references and schema version | Changed payload under one operation ID fails deterministically |
-| WF-C1-005 | P0 | NEXT | Backend | Make standard audit projection atomic with accepted workday/request decisions or derive it reliably from the immutable ledger | Failure-injection proves no accepted mutation lacks reconstructable audit |
+| WF-C1-001 | P0 | DONE | Backend | Define `claimedAt`, `capturedAt`, `queuedAt`, `serverReceivedAt`, `appliedAt` and server-authoritative work date semantics | Versioned contract and parser tests |
+| WF-C1-002 | P0 | DONE | Backend | Enforce the confirmed seven-day offline horizon in every legacy and new mutation path | Boundary, future-skew and replay tests for all adapters |
+| WF-C1-003 | P0 | DONE | Backend/HR | Route delayed/anomalous claims to `PENDING_REVIEW`; never silently manufacture an approved historical workday | [`workforce-c1-review-evidence-2026-08-30.md`](./workforce-c1-review-evidence-2026-08-30.md): immutable claim/receipt review case, explicit legacy state and targeted contracts |
+| WF-C1-004 | P0 | PARTIAL | Backend | Bind idempotency hash to actor, action, claimed time, segment, evidence references and schema version | Changed payload under one operation ID fails deterministically; C2 segment identity is not available yet |
+| WF-C1-005 | P0 | DONE | Backend | Make standard audit projection atomic with accepted workday/request decisions or derive it reliably from the immutable ledger | Failure-injection proves no accepted mutation lacks reconstructable audit |
 | WF-C1-006 | P1 | PLANNED | Backend/HR | Resolve policy/team/site assignment from an effective-dated employee history, not the current team after a delayed upload | Transfer-during-offline test applies historical snapshot |
 | WF-C1-007 | P1 | PLANNED | Backend | Add impossible clock/order and duplicate active-shift risk codes without breaking idempotent retries | Property/concurrency tests cover state transitions |
 | WF-C1-008 | P1 | PLANNED | Backend | Return current canonical state, reason and allowed recovery actions on every conflict | Mobile/web contract tests and localized recovery UX |
@@ -403,6 +408,14 @@ client timestamps into trusted attendance facts.
 **Gate C1:** no supported endpoint can convert an out-of-policy past timestamp
 into ordinary accepted attendance; every accepted fact is reproducible and
 auditable.
+
+**Current evidence:**
+[`workforce-c1-provenance-evidence-2026-08-30.md`](./workforce-c1-provenance-evidence-2026-08-30.md)
+records the C1a contract, migration and targeted test results. C1 remains open
+until C2 segment binding and the remaining C1 tasks exist; delayed-claim review
+is in [`workforce-c1-review-evidence-2026-08-30.md`](./workforce-c1-review-evidence-2026-08-30.md)
+and atomic audit evidence is in
+[`workforce-c1-audit-projection-evidence-2026-08-30.md`](./workforce-c1-audit-projection-evidence-2026-08-30.md).
 
 ### C2 — Sites, geofences, multi-branch segments and travel
 
