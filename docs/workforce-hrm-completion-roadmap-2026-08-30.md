@@ -16,12 +16,7 @@
 > [`workforce-c1-provenance-evidence-2026-08-30.md`](./workforce-c1-provenance-evidence-2026-08-30.md),
 > [`workforce-c1-audit-projection-evidence-2026-08-30.md`](./workforce-c1-audit-projection-evidence-2026-08-30.md),
 > [`workforce-c3-schedule-snapshot-evidence-2026-08-30.md`](./workforce-c3-schedule-snapshot-evidence-2026-08-30.md),
-<<<<<<< HEAD
-=======
-> [`workforce-c3-timezone-matrix-evidence-2026-08-30.md`](./workforce-c3-timezone-matrix-evidence-2026-08-30.md),
-> [`workforce-c3-bulk-preview-evidence-2026-08-30.md`](./workforce-c3-bulk-preview-evidence-2026-08-30.md),
 > [`workforce-c2-schedule-safety-evidence-2026-08-30.md`](./workforce-c2-schedule-safety-evidence-2026-08-30.md),
->>>>>>> 5ff557ed0 (feat(workforce): bind site transitions to schedule context)
 > [`mobile-sync-v2-workforce-contract.md`](./mobile-sync-v2-workforce-contract.md)
 
 ## 1. Purpose and honest starting point
