@@ -25,11 +25,11 @@ past attendance is not guessed.
 
 ## Deliberate limit
 
-New **team** default timelines are rejected. The current repository has no
-immutable historical team-membership fact for a delayed workday, and using the
-employee's current team would silently alter old semantics. Existing legacy
-team-default compatibility remains unchanged; a later task must add the
-historical-team contract before team default timelines can be enabled.
+New **team** default timelines remain rejected in this checkpoint. C1-006 now
+adds an immutable historical team-membership fact for new workdays, but the
+organization-default table is intentionally not broadened incidentally: team
+timeline write semantics, authorization and migration guards require their own
+review. Existing legacy team-default compatibility remains unchanged.
 
 The new table is included in the tenant-retention preflight. Calendar leave
 source markers added in C3-002 are also covered by the retention fence.

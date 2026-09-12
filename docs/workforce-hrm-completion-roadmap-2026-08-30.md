@@ -18,6 +18,7 @@
 > [`workforce-c3-schedule-snapshot-evidence-2026-08-30.md`](./workforce-c3-schedule-snapshot-evidence-2026-08-30.md),
 > [`workforce-c2-schedule-safety-evidence-2026-08-30.md`](./workforce-c2-schedule-safety-evidence-2026-08-30.md),
 > [`workforce-c3-timezone-matrix-evidence-2026-08-30.md`](./workforce-c3-timezone-matrix-evidence-2026-08-30.md),
+> [`workforce-c3-bulk-preview-evidence-2026-08-30.md`](./workforce-c3-bulk-preview-evidence-2026-08-30.md),
 > [`mobile-sync-v2-workforce-contract.md`](./mobile-sync-v2-workforce-contract.md)
 
 ## 1. Purpose and honest starting point
@@ -333,7 +334,9 @@ Owner roles are accountabilities, not individual names:
 | 2026-08-30T06:52:00+02:00 | C3c default-shift timeline | 12% | C3 30% | 24/161 | 0/15 | WF-C3-007 accepted: future organization-default selection is RLS/audit/snapshot-bound; legacy `isDefault` is retained without historical backfill and new team defaults await immutable team history |
 | 2026-08-30T07:02:28+02:00 | C3d accepted workday schedule snapshot | 12% | C3 40% | 25/161 | 0/15 | WF-C3-008 accepted: START atomically pins calendar, ordered segments, scheduled sites/effective geofence, policy and shift facts; historical pairs remain explicitly unknowable rather than reconstructed |
 | 2026-08-30T07:06:15+02:00 | C3e timezone/DST matrix | 13% | C3 50% | 26/161 | 0/15 | WF-C3-010 accepted: signed shift dates remain organization-local across leap day and UTC rollover; DST gaps/folds are refused until an explicit policy exists |
+| 2026-08-30T07:09:57+02:00 | C3f bulk assignment preview | 13% | C3 50% | 26/161 | 0/15 | WF-C3-009 remains partial: session-admin preview reports ready/no-change/conflict outcomes for up to 200 employees but cannot mass-write or claim approval semantics |
 | 2026-08-30T07:16:08+02:00 | C2g schedule/site safety | 13% | C2 45% | 26/161 | 0/15 | WF-C2-009 remains partial: shift/site timezone and effective eligibility are pinned at START; transition claims bind only to the employee's snapshotted SITE segment; travel semantics remain owner-gated |
+| 2026-08-30T07:40:00+02:00 | C1e historical team membership | 14% | C1 60% | 28/161 | 0/15 | WF-C1-006 accepted: append-only employee team facts resolve delayed workdays at start time; pre-history never falls back to mutable current team |
 
 ### 6.1 Progress reporting contract
 
@@ -413,7 +416,7 @@ client timestamps into trusted attendance facts.
 | WF-C1-003 | P0 | DONE | Backend/HR | Route delayed/anomalous claims to `PENDING_REVIEW`; never silently manufacture an approved historical workday | [`workforce-c1-review-evidence-2026-08-30.md`](./workforce-c1-review-evidence-2026-08-30.md): immutable claim/receipt review case, explicit legacy state and targeted contracts |
 | WF-C1-004 | P0 | PARTIAL | Backend | Bind idempotency hash to actor, action, claimed time, segment, evidence references and schema version | Changed payload under one operation ID fails deterministically; C2 segment identity is not available yet |
 | WF-C1-005 | P0 | DONE | Backend | Make standard audit projection atomic with accepted workday/request decisions or derive it reliably from the immutable ledger | Failure-injection proves no accepted mutation lacks reconstructable audit |
-| WF-C1-006 | P1 | PLANNED | Backend/HR | Resolve policy/team/site assignment from an effective-dated employee history, not the current team after a delayed upload | Transfer-during-offline test applies historical snapshot |
+| WF-C1-006 | P1 | DONE | Backend/HR | Resolve policy/team/site assignment from an effective-dated employee history, not the current team after a delayed upload | [`workforce-c1-team-history-evidence-2026-08-30.md`](./workforce-c1-team-history-evidence-2026-08-30.md): immutable membership timeline, no pre-history guessing, and transfer-during-offline contract |
 | WF-C1-007 | P1 | PLANNED | Backend | Add impossible clock/order and duplicate active-shift risk codes without breaking idempotent retries | Property/concurrency tests cover state transitions |
 | WF-C1-008 | P1 | PLANNED | Backend | Return current canonical state, reason and allowed recovery actions on every conflict | Mobile/web contract tests and localized recovery UX |
 | WF-C1-009 | P1 | PLANNED | Backend | Create additive migration/backfill plan for existing facts; unknown provenance remains `LEGACY`, never falsely attested | Dry-run counts, rollback and reconciliation checks |
@@ -430,6 +433,8 @@ until C2 segment binding and the remaining C1 tasks exist; delayed-claim review
 is in [`workforce-c1-review-evidence-2026-08-30.md`](./workforce-c1-review-evidence-2026-08-30.md)
 and atomic audit evidence is in
 [`workforce-c1-audit-projection-evidence-2026-08-30.md`](./workforce-c1-audit-projection-evidence-2026-08-30.md).
+Historical membership selection is in
+[`workforce-c1-team-history-evidence-2026-08-30.md`](./workforce-c1-team-history-evidence-2026-08-30.md).
 
 ### C2 — Sites, geofences, multi-branch segments and travel
 
@@ -468,7 +473,7 @@ ordinary, night, split and exceptional days.
 | WF-C3-006 | P1 | PLANNED | Backend | Extend schedule model for overnight/split segments without changing historical definition hashes | Compatibility and DST/property tests |
 | WF-C3-007 | P1 | DONE | Backend | Version future default-selection timeline instead of mutating a timeless `isDefault` | [`workforce-c3-default-timeline-evidence-2026-08-30.md`](./workforce-c3-default-timeline-evidence-2026-08-30.md): RLS/audit/snapshot-bound organization timeline; team defaults remain safely unavailable without historical membership |
 | WF-C3-008 | P1 | DONE | Backend | Snapshot calendar, schedule, segments, sites and calculation policy atomically on accepted start/assignment | [`workforce-c3-schedule-snapshot-evidence-2026-08-30.md`](./workforce-c3-schedule-snapshot-evidence-2026-08-30.md): append-only, tenant-bound START snapshot; historical pairs are not reconstructed |
-| WF-C3-009 | P2 | PLANNED | HR/Web | Add bulk assignments, temporary cover, recurring templates and safe preview | Impact count/conflicts shown before publish; operation auditable |
+| WF-C3-009 | P2 | PARTIAL | HR/Web | Add bulk assignments, temporary cover, recurring templates and safe preview | [`workforce-c3-bulk-preview-evidence-2026-08-30.md`](./workforce-c3-bulk-preview-evidence-2026-08-30.md): read-only 200-person impact preview; bulk apply/cover/recurrence remain deliberately unavailable |
 | WF-C3-010 | P2 | DONE | Backend/QA | Cover IANA timezones, DST gaps/folds, leap day and organization date rollover | [`workforce-c3-timezone-matrix-evidence-2026-08-30.md`](./workforce-c3-timezone-matrix-evidence-2026-08-30.md): Baku unchanged; gap/fold endpoints refuse silent interpretation |
 | WF-C3-011 | P2 | PLANNED | HR/Product | Define shift swap/open shift/on-call requirements or explicitly exclude them per release | Scope decision recorded |
 

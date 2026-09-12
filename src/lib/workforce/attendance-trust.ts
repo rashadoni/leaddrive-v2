@@ -63,6 +63,7 @@ type AttendanceTrustDb = Pick<
   | "workforceAttendanceQrStation"
   | "workforceAttendanceDeviceEnrollment"
   | "workforceAttendanceVerification"
+  | "$queryRaw"
 >
 
 type PreparedVerificationFact = {

@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@prisma/client"
 import { isDateKey } from "@/lib/mtm/mobile-week"
+import { resolveWorkforceHistoricalTeamMembership } from "@/lib/workforce/team-membership"
 
 export type WorkforcePolicyCandidate = {
   id: string
@@ -16,8 +17,10 @@ export type WorkforcePolicyCandidate = {
 }
 
 export type ResolvedWorkforcePolicy = WorkforcePolicyCandidate & {
-  /** The current employee team wins over the organization fallback. */
+  /** The team known at workday start wins over the organization fallback. */
   scope: "TEAM" | "ORGANIZATION"
+  teamMembershipId: string | null
+  teamIdAtWorkday: string | null
 }
 
 export class WorkforcePolicyResolutionError extends Error {
@@ -53,7 +56,7 @@ function validInstant(value: Date | null): value is Date {
   return value instanceof Date && Number.isFinite(value.getTime())
 }
 
-function isHistoricalOrganizationPolicy(
+function isHistoricalPolicy(
   policy: WorkforcePolicyCandidate,
   workdayStartedAt: Date,
 ): boolean {
@@ -66,18 +69,11 @@ function isHistoricalOrganizationPolicy(
   )
 }
 
-function isCurrentTeamPolicy(
-  policy: WorkforcePolicyCandidate,
-  resolutionAt: Date,
-): boolean {
-  return policy.status === "ACTIVE"
-    && validInstant(policy.activatedAt)
-    && policy.activatedAt.getTime() <= resolutionAt.getTime()
-}
-
 function onePolicy(
   candidates: readonly WorkforcePolicyCandidate[],
   scope: "TEAM" | "ORGANIZATION",
+  teamMembershipId: string | null,
+  teamIdAtWorkday: string | null,
 ): ResolvedWorkforcePolicy | null {
   if (candidates.length === 0) return null
   if (candidates.length !== 1) {
@@ -86,21 +82,21 @@ function onePolicy(
       `More than one applicable ${scope.toLowerCase()} Workforce policy applies`,
     )
   }
-  return { ...candidates[0]!, scope }
+  return { ...candidates[0]!, scope, teamMembershipId, teamIdAtWorkday }
 }
 
 /**
- * Resolves an already-loaded policy set. The owner selected two explicit
- * rules: a matching team policy overrides the organization policy, and a
- * delayed offline workday uses the employee's current team when the server
- * processes it. The function intentionally has no historical-team fallback.
+ * Resolves an already-loaded policy set against an immutable team membership
+ * known at workday start. Missing membership history deliberately falls back
+ * only to organization policy; it never substitutes the mutable current team.
  */
 export function resolveWorkforcePolicy(input: {
   workDate: string
   workdayStartedAt: Date
   /** Server-supplied instant: client timestamps cannot activate a policy early. */
   resolutionAt: Date
-  currentTeamId: string | null
+  teamMembershipId: string | null
+  teamIdAtWorkday: string | null
   policies: readonly WorkforcePolicyCandidate[]
 }): ResolvedWorkforcePolicy {
   if (!isDateKey(input.workDate)) {
@@ -122,16 +118,16 @@ export function resolveWorkforcePolicy(input: {
     )
   }
   const effective = input.policies.filter((policy) => isEffectiveOn(policy, input.workDate))
-  const teamPolicy = input.currentTeamId == null
+  const teamPolicy = input.teamIdAtWorkday == null
     ? null
     : onePolicy(effective.filter((policy) => (
-      policy.teamId === input.currentTeamId && isCurrentTeamPolicy(policy, input.resolutionAt)
-    )), "TEAM")
+      policy.teamId === input.teamIdAtWorkday && isHistoricalPolicy(policy, input.workdayStartedAt)
+    )), "TEAM", input.teamMembershipId, input.teamIdAtWorkday)
   if (teamPolicy) return teamPolicy
 
   const organizationPolicy = onePolicy(effective.filter((policy) => (
-    policy.teamId === null && isHistoricalOrganizationPolicy(policy, input.workdayStartedAt)
-  )), "ORGANIZATION")
+    policy.teamId === null && isHistoricalPolicy(policy, input.workdayStartedAt)
+  )), "ORGANIZATION", input.teamMembershipId, input.teamIdAtWorkday)
   if (organizationPolicy) return organizationPolicy
   throw new WorkforcePolicyResolutionError(
     "WORKFORCE_POLICY_MISSING",
@@ -139,12 +135,12 @@ export function resolveWorkforcePolicy(input: {
   )
 }
 
-type WorkforcePolicyResolverDb = Pick<PrismaClient, "mtmAgent" | "workforcePolicy">
+type WorkforcePolicyResolverDb = Pick<PrismaClient, "mtmAgent" | "workforcePolicy" | "$queryRaw">
 
 /**
- * Loads the agent's current team at server processing time. A matching team
- * policy must be active now; organization candidates retain the historical
- * workday eligibility rule. Snapshot writers must persist the returned policy;
+ * Resolves team policy from the membership timeline at workday start. The
+ * directory row only proves the employee exists; it cannot rewrite a delayed
+ * attendance fact after a transfer. Snapshot writers persist the result and
  * later timesheet reads never invoke this live resolver.
  */
 export async function resolveCurrentWorkforcePolicy(
@@ -177,22 +173,27 @@ export async function resolveCurrentWorkforcePolicy(
   }
   const workDate = new Date(`${input.workDate}T00:00:00.000Z`)
   const agent = await db.mtmAgent.findFirst({
-    where: { id: input.agentId, organizationId: input.organizationId, status: "ACTIVE" },
-    select: { id: true, teamId: true },
+    where: { id: input.agentId, organizationId: input.organizationId },
+    select: { id: true },
   })
   if (!agent) {
     throw new WorkforcePolicyResolutionError(
       "WORKFORCE_POLICY_AGENT_NOT_FOUND",
-      "Active Workforce employee is unavailable",
+      "Workforce employee is unavailable",
     )
   }
+  const membership = await resolveWorkforceHistoricalTeamMembership(db, {
+    organizationId: input.organizationId,
+    agentId: input.agentId,
+    workdayStartedAt: input.workdayStartedAt,
+  })
   const policies = await db.workforcePolicy.findMany({
     where: {
       organizationId: input.organizationId,
       status: { in: ["ACTIVE", "RETIRED"] },
       effectiveFrom: { lte: workDate },
       OR: [{ effectiveTo: null }, { effectiveTo: { gte: workDate } }],
-      AND: [{ OR: [{ teamId: null }, ...(agent.teamId ? [{ teamId: agent.teamId }] : [])] }],
+      AND: [{ OR: [{ teamId: null }, ...(membership?.teamId ? [{ teamId: membership.teamId }] : [])] }],
     },
     select: {
       id: true,
@@ -212,7 +213,8 @@ export async function resolveCurrentWorkforcePolicy(
     workDate: input.workDate,
     workdayStartedAt: input.workdayStartedAt,
     resolutionAt: input.resolutionAt,
-    currentTeamId: agent.teamId,
+    teamMembershipId: membership?.id ?? null,
+    teamIdAtWorkday: membership?.teamId ?? null,
     policies,
   })
 }

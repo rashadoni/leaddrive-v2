@@ -11,6 +11,7 @@ import {
   WorkforcePolicyDraftCreateSchema,
   WorkforcePolicyDraftUpdateSchema,
   WorkforceShiftDefaultScheduleSchema,
+  WorkforceShiftAssignmentBulkPreviewSchema,
   WorkforceShiftAssignmentScheduleSchema,
   WorkforceShiftTemplateDraftCreateSchema,
   WorkforceShiftTemplateDraftUpdateSchema,
@@ -18,6 +19,7 @@ import {
   activateWorkforceShiftTemplateDraft,
   createWorkforcePolicyDraft,
   createWorkforceShiftTemplateDraft,
+  previewWorkforceShiftAssignments,
   scheduleWorkforceShiftAssignment,
   scheduleWorkforceShiftDefault,
   updateWorkforcePolicyDraft,
@@ -716,6 +718,74 @@ describe("safe Workforce configuration drafts", () => {
       code: "WORKFORCE_CONFIGURATION_ASSIGNMENT_EFFECTIVE_DATE_NOT_FUTURE",
     })
     expect(prisma.workforceShiftAssignment.create).not.toHaveBeenCalled()
+  })
+
+  it("previews a mixed bulk assignment without acquiring a lock or writing schedule history", async () => {
+    vi.mocked(prisma.workforceShiftTemplate.findFirst).mockResolvedValue({ id: "shift-next", teamId: "team-a" } as never)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
+      { id: "agent-ready", teamId: "team-a" },
+      { id: "agent-wrong-team", teamId: "team-b" },
+      { id: "agent-conflict", teamId: "team-a" },
+      { id: "agent-same-day", teamId: "team-a" },
+    ] as never)
+    vi.mocked(prisma.workforceShiftAssignment.findMany).mockResolvedValue([
+      {
+        id: "assignment-current", agentId: "agent-ready", templateId: "shift-current",
+        effectiveFrom: new Date("2026-08-01T00:00:00.000Z"), effectiveTo: null,
+      },
+      {
+        id: "assignment-later", agentId: "agent-conflict", templateId: "shift-later",
+        effectiveFrom: new Date("2026-10-01T00:00:00.000Z"), effectiveTo: null,
+      },
+      {
+        id: "assignment-same-day", agentId: "agent-same-day", templateId: "shift-other",
+        effectiveFrom: new Date("2026-09-01T00:00:00.000Z"), effectiveTo: null,
+      },
+    ] as never)
+    const preview = WorkforceShiftAssignmentBulkPreviewSchema.parse({
+      agentIds: ["agent-ready", "agent-wrong-team", "agent-missing", "agent-conflict", "agent-same-day"],
+      templateId: "shift-next",
+      effectiveFrom: "2026-09-01",
+    })
+
+    await expect(previewWorkforceShiftAssignments({
+      organizationId,
+      preview,
+      currentDateKey: "2026-08-29",
+    })).resolves.toEqual({
+      effectiveFrom: "2026-09-01",
+      templateId: "shift-next",
+      items: [
+        { agentId: "agent-ready", outcome: "READY", currentAssignmentId: "assignment-current", closesAssignmentId: "assignment-current" },
+        { agentId: "agent-wrong-team", outcome: "TEMPLATE_TEAM_MISMATCH", currentAssignmentId: null, closesAssignmentId: null },
+        { agentId: "agent-missing", outcome: "EMPLOYEE_UNAVAILABLE", currentAssignmentId: null, closesAssignmentId: null },
+        { agentId: "agent-conflict", outcome: "CONFLICT", currentAssignmentId: null, closesAssignmentId: null },
+        { agentId: "agent-same-day", outcome: "CONFLICT", currentAssignmentId: "assignment-same-day", closesAssignmentId: null },
+      ],
+      summary: {
+        READY: 1,
+        NO_CHANGE: 0,
+        EMPLOYEE_UNAVAILABLE: 1,
+        TEMPLATE_TEAM_MISMATCH: 1,
+        CONFLICT: 2,
+      },
+    })
+    expect(prisma.$executeRaw).not.toHaveBeenCalled()
+    expect(prisma.workforceShiftAssignment.create).not.toHaveBeenCalled()
+    expect(prisma.workforceShiftAssignment.updateMany).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+
+  it("rejects a bulk preview that would start today before reading tenant records", async () => {
+    const preview = WorkforceShiftAssignmentBulkPreviewSchema.parse({
+      agentIds: ["agent-1"], templateId: "shift-next", effectiveFrom: "2026-08-29",
+    })
+    await expect(previewWorkforceShiftAssignments({
+      organizationId, preview, currentDateKey: "2026-08-29",
+    })).rejects.toMatchObject<Partial<WorkforceConfigurationManagementError>>({
+      code: "WORKFORCE_CONFIGURATION_ASSIGNMENT_EFFECTIVE_DATE_NOT_FUTURE",
+    })
+    expect(prisma.workforceShiftTemplate.findFirst).not.toHaveBeenCalled()
   })
 
   it("schedules a future organization default and only narrows its timeline predecessor", async () => {

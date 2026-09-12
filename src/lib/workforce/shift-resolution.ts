@@ -6,6 +6,7 @@ import {
   workforceShiftDefinitionHash,
   type WorkforceResolvedShift,
 } from "@/lib/workforce/shift-definition"
+import { resolveWorkforceHistoricalTeamMembership } from "@/lib/workforce/team-membership"
 
 export type WorkforceShiftTemplateCandidate = {
   id: string
@@ -26,6 +27,9 @@ export type ResolvedWorkforceShiftTemplate = WorkforceShiftTemplateCandidate & {
   assignmentId: string | null
   /** Null for an explicit employee assignment or compatibility `isDefault` fallback. */
   defaultAssignmentId: string | null
+  /** Known team membership at workday start; null is an intentional legacy gap. */
+  teamMembershipId: string | null
+  teamIdAtWorkday: string | null
   schedule: WorkforceResolvedShift | null
 }
 
@@ -75,7 +79,7 @@ function validateResolutionWindow(input: {
   }
 }
 
-function isHistoricalOrganizationTemplate(
+function isHistoricalTemplate(
   template: WorkforceShiftTemplateCandidate,
   workdayStartedAt: Date,
 ): boolean {
@@ -96,7 +100,8 @@ export function resolveWorkforceShiftTemplate(input: {
   workDate: string
   workdayStartedAt: Date
   resolutionAt: Date
-  currentTeamId: string | null
+  teamMembershipId: string | null
+  teamIdAtWorkday: string | null
   template: WorkforceShiftTemplateCandidate
   assignmentId?: string | null
   defaultAssignmentId?: string | null
@@ -105,26 +110,17 @@ export function resolveWorkforceShiftTemplate(input: {
 
   const scope = input.template.teamId === null ? "ORGANIZATION" : "TEAM"
   if (scope === "TEAM") {
-    if (input.template.teamId !== input.currentTeamId) {
+    if (input.template.teamId !== input.teamIdAtWorkday) {
       throw new WorkforceShiftResolutionError(
         "WORKFORCE_SHIFT_TEAM_MISMATCH",
-        "Team-scoped Workforce shift must match the employee current team at server processing",
+        "Team-scoped Workforce shift must match the employee team at workday start",
       )
     }
-    if (
-      input.template.status !== "ACTIVE"
-      || !validInstant(input.template.activatedAt)
-      || input.template.activatedAt.getTime() > input.resolutionAt.getTime()
-    ) {
-      throw new WorkforceShiftResolutionError(
-        "WORKFORCE_SHIFT_TEMPLATE_INACTIVE",
-        "Team-scoped Workforce shift must be active at server processing",
-      )
-    }
-  } else if (!isHistoricalOrganizationTemplate(input.template, input.workdayStartedAt)) {
+  }
+  if (!isHistoricalTemplate(input.template, input.workdayStartedAt)) {
     throw new WorkforceShiftResolutionError(
       "WORKFORCE_SHIFT_TEMPLATE_INACTIVE",
-      "Organization Workforce shift must be active for the workday start",
+      "Workforce shift must be active for the workday start",
     )
   }
 
@@ -144,6 +140,8 @@ export function resolveWorkforceShiftTemplate(input: {
     scope,
     assignmentId: input.assignmentId ?? null,
     defaultAssignmentId: input.defaultAssignmentId ?? null,
+    teamMembershipId: input.teamMembershipId,
+    teamIdAtWorkday: input.teamIdAtWorkday,
     schedule: resolveWorkforceShiftDay({
       workDate: input.workDate,
       definition: input.template.definition,
@@ -154,16 +152,15 @@ export function resolveWorkforceShiftTemplate(input: {
 
 type WorkforceShiftResolverDb = Pick<
   PrismaClient,
-  "mtmAgent" | "workforceShiftAssignment" | "workforceShiftDefaultAssignment" | "workforceShiftTemplate"
+  "$queryRaw" | "mtmAgent" | "workforceShiftAssignment" | "workforceShiftDefaultAssignment" | "workforceShiftTemplate"
 >
 
 /**
- * Loads the employee's current team and resolves an effective-dated personal
- * assignment unless a caller explicitly selects a template. It then uses the
- * new effective-dated organization-default timeline before the compatibility
- * `isDefault` fallback. No active-agent filter is applied: an already-started
- * offline day must not change semantics merely because the directory row was
- * later deactivated.
+ * Resolves an effective-dated personal assignment unless a caller explicitly
+ * selects a template. Team-scoped selection uses the immutable membership at
+ * workday start, then the organization-default timeline and legacy `isDefault`
+ * fallback. No active-agent filter is applied: delayed facts must not change
+ * merely because the directory row was later deactivated or transferred.
  */
 export async function resolveCurrentWorkforceShift(
   db: WorkforceShiftResolverDb,
@@ -179,7 +176,7 @@ export async function resolveCurrentWorkforceShift(
   validateResolutionWindow(input)
   const agent = await db.mtmAgent.findFirst({
     where: { id: input.agentId, organizationId: input.organizationId },
-    select: { id: true, teamId: true },
+    select: { id: true },
   })
   if (!agent) {
     throw new WorkforceShiftResolutionError(
@@ -187,6 +184,11 @@ export async function resolveCurrentWorkforceShift(
       "Workforce employee is unavailable",
     )
   }
+  const membership = await resolveWorkforceHistoricalTeamMembership(db, {
+    organizationId: input.organizationId,
+    agentId: input.agentId,
+    workdayStartedAt: input.workdayStartedAt,
+  })
   const templateSelect = {
     id: true,
     teamId: true,
@@ -250,14 +252,13 @@ export async function resolveCurrentWorkforceShift(
         const defaults = await db.workforceShiftTemplate.findMany({
           where: {
             organizationId: input.organizationId,
-            status: "ACTIVE",
+            status: { in: ["ACTIVE", "RETIRED"] },
             isDefault: true,
-            activatedAt: { lte: input.resolutionAt },
-            OR: [{ teamId: null }, ...(agent.teamId ? [{ teamId: agent.teamId }] : [])],
+            OR: [{ teamId: null }, ...(membership?.teamId ? [{ teamId: membership.teamId }] : [])],
           },
           select: templateSelect,
         })
-        return defaults.find((candidate) => candidate.teamId === agent.teamId)
+        return defaults.find((candidate) => candidate.teamId === membership?.teamId)
           ?? defaults.find((candidate) => candidate.teamId === null)
       })()
   if (!template) {
@@ -272,7 +273,8 @@ export async function resolveCurrentWorkforceShift(
     workDate: input.workDate,
     workdayStartedAt: input.workdayStartedAt,
     resolutionAt: input.resolutionAt,
-    currentTeamId: agent.teamId,
+    teamMembershipId: membership?.id ?? null,
+    teamIdAtWorkday: membership?.teamId ?? null,
     template,
     assignmentId: assignment?.id ?? null,
     defaultAssignmentId: defaultSelection?.id ?? null,
