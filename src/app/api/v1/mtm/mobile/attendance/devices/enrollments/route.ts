@@ -7,6 +7,7 @@ import {
   WorkforceAttendanceEnrollmentCreateSchema,
   WorkforceAttendanceManagementError,
 } from "@/lib/workforce/attendance-management"
+import { checkWorkforceAttendanceRateLimit } from "@/lib/workforce/attendance-rate-limit"
 import { workforceAttendanceAddonDisabled } from "@/lib/workforce/attendance-route"
 
 /** Lists only the authenticated employee's audit-safe enrollment lifecycle. */
@@ -49,6 +50,21 @@ export const POST = withMobileRls(async (req: NextRequest, auth) => {
   const parsed = WorkforceAttendanceEnrollmentCreateSchema.safeParse(await req.json().catch(() => ({})))
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid attendance device enrollment" }, { status: 400 })
+  }
+  const rate = await checkWorkforceAttendanceRateLimit({
+    operation: "DEVICE_ENROLLMENT_START",
+    organizationId: auth.orgId,
+    principalId: auth.agentId,
+  })
+  if (!rate.allowed) {
+    return NextResponse.json({
+      error: "Attendance device enrollment rate limit exceeded",
+      code: "WORKFORCE_ATTENDANCE_RATE_LIMITED",
+      retryAfterSeconds: rate.retryAfterSeconds,
+    }, {
+      status: 429,
+      headers: { "Retry-After": String(rate.retryAfterSeconds), "cache-control": "no-store" },
+    })
   }
   try {
     const result = await beginWorkforceAttendanceDeviceEnrollment(prisma, {

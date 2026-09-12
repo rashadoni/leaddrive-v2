@@ -7,6 +7,7 @@ import {
 } from "@/lib/workforce/attendance-management"
 import {
   requireWorkforceAttendanceAdminAddon,
+  requireWorkforceAttendanceSecurityMfa,
   workforceAttendanceRequestAuditContext,
 } from "@/lib/workforce/attendance-route"
 
@@ -16,6 +17,8 @@ type RouteContext = { params: Promise<{ id: string }> }
 export const POST = withWorkforceRlsAuth<RouteContext>("write", async (req: NextRequest, auth, { params }) => {
   const denied = await requireWorkforceAttendanceAdminAddon(auth.orgId, auth, "deviceTrust")
   if (denied) return denied
+  const mfaDenied = await requireWorkforceAttendanceSecurityMfa(auth.orgId, auth)
+  if (mfaDenied) return mfaDenied
   const { id } = await params
   if (!/^[A-Za-z0-9_-]{1,100}$/.test(id)) {
     return NextResponse.json({ error: "Invalid attendance device enrollment id" }, { status: 400 })

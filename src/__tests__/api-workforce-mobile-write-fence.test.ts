@@ -4,6 +4,9 @@ import { NextRequest } from "next/server"
 vi.mock("@/lib/with-workforce-rls-auth", () => ({
   withWorkforceSessionAdminAuth: vi.fn((handler) => handler),
 }))
+vi.mock("@/lib/workforce/attendance-route", () => ({
+  requireWorkforceAttendanceSecurityMfa: vi.fn(async () => null),
+}))
 vi.mock("@/lib/workforce/mobile-write-fence", async () => {
   const actual = await vi.importActual<typeof import("@/lib/workforce/mobile-write-fence")>(
     "@/lib/workforce/mobile-write-fence",
@@ -20,6 +23,7 @@ vi.mock("@/lib/workforce/mobile-write-fence", async () => {
 import { GET, PUT as putFence } from "@/app/api/v1/workforce/configuration/mobile-write-fence/route"
 import { DELETE, PUT as putCohort } from "@/app/api/v1/workforce/configuration/mobile-write-fence/cohorts/route"
 import { withWorkforceSessionAdminAuth } from "@/lib/with-workforce-rls-auth"
+import { requireWorkforceAttendanceSecurityMfa } from "@/lib/workforce/attendance-route"
 import {
   disableWorkforceMobileWriteCohort,
   getWorkforceMobileWriteFenceConfiguration,
@@ -51,6 +55,8 @@ beforeEach(() => {
   vi.mocked(setWorkforceMobileWriteFence).mockReset()
   vi.mocked(upsertWorkforceMobileWriteCohort).mockReset()
   vi.mocked(disableWorkforceMobileWriteCohort).mockReset()
+  vi.mocked(requireWorkforceAttendanceSecurityMfa).mockReset()
+  vi.mocked(requireWorkforceAttendanceSecurityMfa).mockResolvedValue(null)
   vi.mocked(getWorkforceMobileWriteFenceConfiguration).mockResolvedValue({
     fence: { mode: "LEGACY_ALLOWED", updatedByUserId: null, createdAt: null, updatedAt: null },
     cohorts: [],
@@ -92,6 +98,7 @@ describe("Workforce mobile write fence configuration API", () => {
       data: { fence: { mode: "LEGACY_ALLOWED" }, cohorts: [] },
     })
     expect(getWorkforceMobileWriteFenceConfiguration).toHaveBeenCalledWith(AUTH.orgId)
+    expect(requireWorkforceAttendanceSecurityMfa).not.toHaveBeenCalled()
   })
 
   it("validates and audits an explicit release-posture change", async () => {
@@ -112,6 +119,24 @@ describe("Workforce mobile write fence configuration API", () => {
         userAgent: "workforce-fence-test",
       }),
     }))
+    expect(requireWorkforceAttendanceSecurityMfa).toHaveBeenCalledWith(AUTH.orgId, AUTH)
+  })
+
+  it("fails closed before parsing or control-plane writes when required MFA is unavailable", async () => {
+    const { NextResponse } = await import("next/server")
+    vi.mocked(requireWorkforceAttendanceSecurityMfa).mockResolvedValue(NextResponse.json({
+      code: "WORKFORCE_ATTENDANCE_MFA_REQUIRED",
+    }, { status: 403 }))
+
+    const response = await (putFence as unknown as Handler)(request(
+      "PUT",
+      "/api/v1/workforce/configuration/mobile-write-fence",
+      { mode: "FROZEN" },
+    ), AUTH)
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toMatchObject({ code: "WORKFORCE_ATTENDANCE_MFA_REQUIRED" })
+    expect(setWorkforceMobileWriteFence).not.toHaveBeenCalled()
   })
 
   it("does not pass an unchecked mode or cohort body to the service", async () => {

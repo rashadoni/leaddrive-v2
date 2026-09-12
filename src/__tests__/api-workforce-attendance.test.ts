@@ -13,15 +13,27 @@ vi.mock("@/lib/mobile-auth", async () => {
   const { makeMobileAuthMock } = await import("./mocks/mobile-auth")
   return makeMobileAuthMock()
 })
+vi.mock("@/lib/rate-limit", () => ({
+  checkRateLimit: vi.fn(() => true),
+  hashForRateLimit: vi.fn(async () => "rate-limit-fingerprint"),
+}))
+vi.mock("qrcode", () => ({
+  default: { toDataURL: vi.fn().mockResolvedValue("data:image/png;base64,attendance-qr") },
+}))
 
 import { POST as stationPost } from "@/app/api/v1/workforce/attendance/stations/route"
+import { POST as stationQrPost } from "@/app/api/v1/workforce/attendance/stations/[id]/qr/route"
+import { POST as stationReplacementPost } from "@/app/api/v1/workforce/attendance/stations/[id]/replace/route"
 import {
   GET as mobileEnrollmentGet,
   POST as mobileEnrollmentPost,
 } from "@/app/api/v1/mtm/mobile/attendance/devices/enrollments/route"
+import { POST as mobileEnrollmentProofPost } from "@/app/api/v1/mtm/mobile/attendance/devices/enrollments/[id]/proof/route"
 import type { AuthResult } from "@/lib/api-auth"
 import { resolveMobileAuth } from "@/lib/mobile-auth"
 import { prisma } from "@/lib/prisma"
+import { checkRateLimit, hashForRateLimit } from "@/lib/rate-limit"
+import QRCode from "qrcode"
 
 const ORG = "org_1"
 const ADMIN = {
@@ -34,6 +46,10 @@ const ADMIN = {
 } satisfies AuthResult
 type StationPostHandler = (request: NextRequest, auth: AuthResult) => Promise<Response>
 const callStationPost = stationPost as unknown as StationPostHandler
+type StationQrPostHandler = (request: NextRequest, auth: AuthResult, context: { params: Promise<{ id: string }> }) => Promise<Response>
+const callStationQrPost = stationQrPost as unknown as StationQrPostHandler
+type StationReplacementPostHandler = (request: NextRequest, auth: AuthResult, context: { params: Promise<{ id: string }> }) => Promise<Response>
+const callStationReplacementPost = stationReplacementPost as unknown as StationReplacementPostHandler
 const MOBILE_AUTH = {
   orgId: ORG,
   agentId: "agent_1",
@@ -55,6 +71,22 @@ function webRequest(body: unknown) {
   })
 }
 
+function stationQrRequest(body: unknown) {
+  return new NextRequest("http://localhost/api/v1/workforce/attendance/stations/station_1/qr", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  })
+}
+
+function stationReplacementRequest(body: unknown) {
+  return new NextRequest("http://localhost/api/v1/workforce/attendance/stations/station_old/replace", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  })
+}
+
 function mobileRequest(body: unknown) {
   return new NextRequest("http://localhost/api/v1/mtm/mobile/attendance/devices/enrollments", {
     method: "POST",
@@ -63,8 +95,22 @@ function mobileRequest(body: unknown) {
   })
 }
 
+function mobileProofRequest(body: unknown) {
+  return new NextRequest("http://localhost/api/v1/mtm/mobile/attendance/devices/enrollments/enrollment_1/proof", {
+    method: "POST",
+    headers: { authorization: "Bearer test", "content-type": "application/json" },
+    body: JSON.stringify(body),
+  })
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(prisma.user.findFirst).mockResolvedValue({
+    require2fa: true,
+    totpEnabled: true,
+    smsAuthEnabled: false,
+    verifiedPhone: null,
+  } as never)
   vi.mocked(prisma.organization.findUnique).mockResolvedValue({
     plan: "enterprise",
     addons: [],
@@ -132,6 +178,113 @@ describe("Workforce attendance H5 API boundaries", () => {
     expect(prisma.workforceAttendanceQrStation.create).toHaveBeenCalledTimes(1)
   })
 
+  it("rejects QR-station creation before writes when the accountable admin has not enrolled mandatory MFA", async () => {
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({
+      require2fa: false,
+      totpEnabled: false,
+      smsAuthEnabled: false,
+      verifiedPhone: null,
+    } as never)
+
+    const response = await callStationPost(webRequest({
+      code: "HQ",
+      name: "Head office",
+      siteId: "site_1",
+      geofenceRevisionId: "geofence_1",
+      effectiveFrom: "2026-08-29T09:00:00.000Z",
+    }), ADMIN)
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toMatchObject({ code: "WORKFORCE_ATTENDANCE_MFA_REQUIRED" })
+    expect(prisma.workforceAttendanceQrStation.create).not.toHaveBeenCalled()
+    expect(prisma.workforceSite.findFirst).not.toHaveBeenCalled()
+  })
+
+  it("requires an MFA-gated attendance administrator to atomically replace an effective QR station", async () => {
+    vi.mocked(prisma.workforceAttendanceQrStation.findFirst).mockResolvedValue({
+      id: "station_old",
+      code: "HQ_FRONT",
+      name: "HQ front desk",
+      status: "ACTIVE",
+      rotationSeconds: 60,
+      siteId: "site_1",
+      areaLabel: "Reception",
+      geofenceRevisionId: "geofence_1",
+      effectiveFrom: new Date("2020-01-01T00:00:00.000Z"),
+      effectiveTo: null,
+    } as never)
+    vi.mocked(prisma.workforceSite.findFirst).mockResolvedValue({ id: "site_1" } as never)
+    vi.mocked(prisma.workforceSiteGeofenceRevision.findFirst).mockResolvedValue({ id: "geofence_1" } as never)
+    vi.mocked(prisma.workforceAttendanceQrStation.create).mockResolvedValue({
+      id: "station_replacement",
+      code: "HQ_FRONT_BACKUP",
+      name: "HQ front desk backup",
+      status: "ACTIVE",
+      rotationSeconds: 60,
+      siteId: "site_1",
+      areaLabel: "Reception",
+      geofenceRevisionId: "geofence_1",
+      effectiveFrom: new Date("2026-08-30T00:00:00.000Z"),
+      effectiveTo: null,
+      createdAt: new Date("2026-08-30T00:00:00.000Z"),
+    } as never)
+    vi.mocked(prisma.workforceAttendanceQrStation.updateMany).mockResolvedValue({ count: 1 } as never)
+
+    const response = await callStationReplacementPost(stationReplacementRequest({
+      code: "HQ_FRONT_BACKUP",
+      name: "HQ front desk backup",
+    }), ADMIN, { params: Promise.resolve({ id: "station_old" }) })
+
+    expect(response.status).toBe(201)
+    await expect(response.json()).resolves.toMatchObject({
+      success: true,
+      data: { retiredStationId: "station_old", replacement: { id: "station_replacement", status: "ACTIVE" } },
+    })
+    expect(prisma.workforceAttendanceQrStation.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "station_old", organizationId: ORG, status: "ACTIVE" },
+      data: expect.objectContaining({ status: "DISABLED", disabledByUserId: "admin_1" }),
+    }))
+
+    const denied = await callStationReplacementPost(stationReplacementRequest({
+      code: "NO",
+      name: "No",
+    }), { ...ADMIN, role: "user" as AuthResult["role"] }, { params: Promise.resolve({ id: "station_old" }) })
+    expect(denied.status).toBe(403)
+    expect(await denied.json()).toMatchObject({ code: "WORKFORCE_ATTENDANCE_ADMIN_REQUIRED" })
+  })
+
+  it("renders the issued QR server-side without requiring the admin browser to handle token text", async () => {
+    vi.mocked(prisma.workforceAttendanceQrStation.findFirst).mockResolvedValue({
+      id: "station_1",
+      code: "HQ",
+      name: "Head office",
+      status: "ACTIVE",
+      rotationSeconds: 60,
+      siteId: "site_1",
+      areaLabel: "Reception",
+      geofenceRevisionId: "geofence_1",
+      effectiveFrom: new Date("2020-01-01T00:00:00.000Z"),
+      effectiveTo: null,
+    } as never)
+    const response = await callStationQrPost(stationQrRequest({ action: "START" }), ADMIN, {
+      params: Promise.resolve({ id: "station_1" }),
+    })
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      success: true,
+      data: {
+        station: { id: "station_1", name: "Head office" },
+        qrDataUrl: "data:image/png;base64,attendance-qr",
+      },
+    })
+    expect(QRCode.toDataURL).toHaveBeenCalledWith(expect.any(String), {
+      errorCorrectionLevel: "M",
+      margin: 1,
+      width: 256,
+    })
+  })
+
   it("fails closed when the device-trust add-on is off before creating a mobile enrollment", async () => {
     vi.mocked(resolveMobileAuth).mockResolvedValue({
       ...MOBILE_AUTH,
@@ -193,5 +346,41 @@ describe("Workforce attendance H5 API boundaries", () => {
     })
     expect(body.data.challenge).toMatch(/^[A-Za-z0-9_-]{24,256}$/)
     expect(JSON.stringify(body)).not.toContain(publicKeySpki)
+  })
+
+  it("rate-limits QR issue and device enrollment/proof before security-sensitive database work", async () => {
+    vi.mocked(checkRateLimit).mockReturnValue(false)
+    const { publicKey } = generateKeyPairSync("ec", { namedCurve: "prime256v1" })
+    const publicKeySpki = publicKey.export({ format: "der", type: "spki" }).toString("base64")
+
+    const qr = await callStationQrPost(stationQrRequest({ action: "START" }), ADMIN, {
+      params: Promise.resolve({ id: "station_1" }),
+    })
+    expect(qr.status).toBe(429)
+    expect(qr.headers.get("Retry-After")).toBe("60")
+    await expect(qr.json()).resolves.toMatchObject({ code: "WORKFORCE_ATTENDANCE_RATE_LIMITED" })
+    expect(prisma.workforceAttendanceQrStation.findFirst).not.toHaveBeenCalled()
+
+    const enrollment = await mobileEnrollmentPost(mobileRequest({ deviceLabel: "Pixel", publicKeySpki }))
+    expect(enrollment.status).toBe(429)
+    expect(enrollment.headers.get("Retry-After")).toBe("60")
+    expect(prisma.workforceAttendanceDeviceEnrollment.create).not.toHaveBeenCalled()
+
+    const proof = await mobileEnrollmentProofPost(
+      mobileProofRequest({ challenge: "a".repeat(24), signature: "signature" }),
+      { params: Promise.resolve({ id: "enrollment_1" }) },
+    )
+    expect(proof.status).toBe(429)
+    expect(proof.headers.get("Retry-After")).toBe("60")
+    expect(prisma.workforceAttendanceDeviceEnrollmentChallenge.findFirst).not.toHaveBeenCalled()
+
+    expect(hashForRateLimit).toHaveBeenCalledTimes(3)
+    expect(vi.mocked(checkRateLimit).mock.calls.map(([key]) => key)).toEqual([
+      "workforce-attendance:QR_ISSUE:rate-limit-fingerprint",
+      "workforce-attendance:DEVICE_ENROLLMENT_START:rate-limit-fingerprint",
+      "workforce-attendance:DEVICE_ENROLLMENT_PROOF:rate-limit-fingerprint",
+    ])
+    expect(JSON.stringify(vi.mocked(checkRateLimit).mock.calls)).not.toContain(ORG)
+    expect(JSON.stringify(vi.mocked(checkRateLimit).mock.calls)).not.toContain(MOBILE_AUTH.agentId)
   })
 })

@@ -7,6 +7,7 @@ import {
   WorkforceAttendanceEnrollmentProofSchema,
   WorkforceAttendanceManagementError,
 } from "@/lib/workforce/attendance-management"
+import { checkWorkforceAttendanceRateLimit } from "@/lib/workforce/attendance-rate-limit"
 import { workforceAttendanceAddonDisabled } from "@/lib/workforce/attendance-route"
 
 type RouteContext = { params: Promise<{ id: string }> }
@@ -25,6 +26,22 @@ export const POST = withMobileRls<RouteContext>(async (req: NextRequest, auth, {
   const parsed = WorkforceAttendanceEnrollmentProofSchema.safeParse(await req.json().catch(() => ({})))
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid attendance device proof" }, { status: 400 })
+  }
+  const rate = await checkWorkforceAttendanceRateLimit({
+    operation: "DEVICE_ENROLLMENT_PROOF",
+    organizationId: auth.orgId,
+    principalId: auth.agentId,
+    resourceId: id,
+  })
+  if (!rate.allowed) {
+    return NextResponse.json({
+      error: "Attendance device proof rate limit exceeded",
+      code: "WORKFORCE_ATTENDANCE_RATE_LIMITED",
+      retryAfterSeconds: rate.retryAfterSeconds,
+    }, {
+      status: 429,
+      headers: { "Retry-After": String(rate.retryAfterSeconds), "cache-control": "no-store" },
+    })
   }
   try {
     const enrollment = await proveWorkforceAttendanceDeviceEnrollment(prisma, {

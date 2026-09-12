@@ -7,6 +7,7 @@ import {
   WorkforceMobileWriteFenceUpdateSchema,
 } from "@/lib/workforce/mobile-write-fence"
 import { workforceConfigurationRequestAuditContext } from "@/lib/workforce/configuration-route"
+import { requireWorkforceAttendanceSecurityMfa } from "@/lib/workforce/attendance-route"
 
 function isMissingFenceSchema(error: unknown): boolean {
   return !!error && typeof error === "object" && "code" in error
@@ -44,6 +45,8 @@ export const GET = withWorkforceSessionAdminAuth(async (_req: NextRequest, auth)
  * by the additive migration or by merely reading this endpoint.
  */
 export const PUT = withWorkforceSessionAdminAuth(async (req: NextRequest, auth) => {
+  const mfaDenied = await requireWorkforceAttendanceSecurityMfa(auth.orgId, auth)
+  if (mfaDenied) return mfaDenied
   const parsed = WorkforceMobileWriteFenceUpdateSchema.safeParse(await req.json().catch(() => ({})))
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid Workforce mobile write fence" }, { status: 400 })
