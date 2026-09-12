@@ -1,0 +1,177 @@
+name: Event recovery audit
+
+# Zero-additional-cost production proof for the PostgreSQL event authority.
+# The audit is serialized with deployment and runs the immutable SQL shipped in
+# the live artifact. PostgreSQL is forced read-only before the SQL is parsed, so
+# replay verification cannot enqueue effects, alter projections, or move Kafka
+# offsets.
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "37 2 * * *"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deep-replay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    environment: production
+    steps:
+      - name: Checkout current main
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Require protected production route
+        uses: ./.github/actions/assert-production-environment-protection
+        with:
+          github-token: ${{ github.token }}
+
+      - name: Bind audit to current main
+        run: |
+          set -euo pipefail
+          [ "$GITHUB_REF" = "refs/heads/main" ] || {
+            echo "::error::Event recovery audit may run only from main"
+            exit 1
+          }
+          git fetch --no-tags --depth=1 origin refs/heads/main
+          CURRENT_MAIN_SHA="$(git rev-parse FETCH_HEAD)"
+          [ "$GITHUB_SHA" = "$CURRENT_MAIN_SHA" ] || {
+            echo "::error::Scheduled revision is no longer current main"
+            exit 1
+          }
+
+      - name: Setup pinned production SSH
+        uses: ./.github/actions/setup-production-ssh
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server-host: ${{ secrets.SERVER_HOST }}
+          known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+
+      - name: Run effects-fenced deep replay audit
+        env:
+          EXPECTED_DEPLOY_SHA: ${{ github.sha }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          set -euo pipefail
+          ssh -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
+            "$SERVER_USER@$SERVER_HOST" \
+            "EXPECTED_DEPLOY_SHA='$EXPECTED_DEPLOY_SHA' bash -s" <<'REMOTE'
+          set -euo pipefail
+          export LC_ALL=C
+
+          APP_DIR=/opt/leaddrive-v2
+          STANDALONE="$APP_DIR/.next/standalone"
+          DEPLOY_SHA_FILE="$STANDALONE/.deploy-sha"
+          POSTCONDITIONS_SQL="$STANDALONE/scripts/event-platform-postconditions.sql"
+          MIGRATION_ENV_FILE=/etc/leaddrive/migration.env
+
+          [[ "$EXPECTED_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "FATAL: expected deploy SHA is malformed"
+            exit 1
+          }
+          [ -f "$DEPLOY_SHA_FILE" ] && [ ! -L "$DEPLOY_SHA_FILE" ] || {
+            echo "FATAL: immutable production deploy marker is missing or symlinked"
+            exit 1
+          }
+          DEPLOYED_SHA="$(tr -d '\r\n' < "$DEPLOY_SHA_FILE")"
+          [ "$DEPLOYED_SHA" = "$EXPECTED_DEPLOY_SHA" ] || {
+            echo "FATAL: production artifact $DEPLOYED_SHA is not current main $EXPECTED_DEPLOY_SHA"
+            exit 1
+          }
+          [ -f "$POSTCONDITIONS_SQL" ] && [ ! -L "$POSTCONDITIONS_SQL" ] || {
+            echo "FATAL: production event-platform postcondition is missing or symlinked"
+            exit 1
+          }
+          [ -f "$MIGRATION_ENV_FILE" ] && [ ! -L "$MIGRATION_ENV_FILE" ] \
+            && [ "$(stat -c '%U:%G:%a' "$MIGRATION_ENV_FILE")" = root:root:600 ] || {
+              echo "FATAL: canonical migration environment is absent or unsafe"
+              exit 1
+            }
+
+          trim_value() {
+            local value="$1"
+            value="${value#"${value%%[![:space:]]*}"}"
+            value="${value%"${value##*[![:space:]]}"}"
+            printf '%s' "$value"
+          }
+
+          read_static_env_value() {
+            local file="$1" target="$2" line key value first last
+            local matches=0 resolved=""
+            while IFS= read -r line || [ -n "$line" ]; do
+              line="${line%$'\r'}"
+              line="$(trim_value "$line")"
+              [ -n "$line" ] || continue
+              [[ "$line" == \#* ]] && continue
+              if [[ "$line" == export[[:space:]]* ]]; then
+                line="$(trim_value "${line#export}")"
+              fi
+              [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*=(.*)$ ]] || continue
+              key="${BASH_REMATCH[1]}"
+              [ "$key" = "$target" ] || continue
+              matches=$((matches + 1))
+              [ "$matches" -eq 1 ] || return 2
+              value="$(trim_value "${BASH_REMATCH[2]}")"
+              if [ "${#value}" -ge 2 ]; then
+                first="${value:0:1}"
+                last="${value: -1}"
+                if { [ "$first" = '"' ] && [ "$last" = '"' ]; } \
+                    || { [ "$first" = "'" ] && [ "$last" = "'" ]; }; then
+                  value="${value:1:${#value}-2}"
+                fi
+              fi
+              resolved="$value"
+            done < "$file"
+            [ "$matches" -eq 1 ] || return 3
+            printf '%s' "$resolved"
+          }
+
+          MIGRATION_DATABASE_URL="$(
+            read_static_env_value "$MIGRATION_ENV_FILE" MIGRATION_DATABASE_URL
+          )" || {
+            echo "FATAL: migration database URL is absent or duplicated"
+            exit 1
+          }
+          [ -n "$MIGRATION_DATABASE_URL" ] || {
+            echo "FATAL: migration database URL is empty"
+            exit 1
+          }
+
+          echo "production_artifact_sha=$DEPLOYED_SHA"
+          echo "audit_mode=deep-read-only-effects-fenced"
+          PGOPTIONS='-c default_transaction_read_only=on -c app.event_platform_force_deep=on -c statement_timeout=0 -c lock_timeout=5s' \
+            timeout 2100 psql "$MIGRATION_DATABASE_URL" -X -qAt -v ON_ERROR_STOP=1 \
+              -f "$POSTCONDITIONS_SQL"
+
+          PGOPTIONS='-c default_transaction_read_only=on -c statement_timeout=120s -c lock_timeout=5s' \
+            timeout 150 psql "$MIGRATION_DATABASE_URL" -X -qAt -v ON_ERROR_STOP=1 <<'SQL'
+          BEGIN TRANSACTION READ ONLY;
+          SELECT json_build_object(
+            'domainEvents', (SELECT count(*) FROM public.domain_events),
+            'eventOutbox', (SELECT count(*) FROM public.event_outbox),
+            'aggregateStreams', (SELECT count(*) FROM public.event_aggregate_heads),
+            'fundStreams', (SELECT count(*) FROM public.event_aggregate_heads WHERE "aggregateType" = 'fund'),
+            'consumerReceipts', (SELECT count(*) FROM public.consumer_inbox),
+            'unsafeReplayBuilds', (
+              SELECT count(*) FROM public.projection_builds
+               WHERE mode IN ('shadow', 'replay') AND NOT "effectsFenced"
+            )
+          );
+          COMMIT;
+          SQL
+          echo "event_recovery_audit=PASS"
+          REMOTE
+
+      - name: Cleanup SSH material
+        if: always()
+        run: rm -f ~/.ssh/deploy_key ~/.ssh/known_hosts ~/.ssh/config

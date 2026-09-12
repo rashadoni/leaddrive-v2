@@ -260,6 +260,7 @@ const serverDeploy = await readText("scripts/server-deploy.sh")
 const buildInfoRoute = await readText("src/app/api/v1/public/build-info/route.ts")
 const eventPlatformReadme = await readText("docs/event-platform/README.md")
 const recoveryRunbook = await readText("docs/event-platform/PROJECTION_RECOVERY_RUNBOOK.md")
+const recoveryAuditWorkflow = await readText(".github/workflows/event-recovery-audit.yml")
 const backupRunbook = await readText("docs/BACKUP_RUNBOOK.md")
 const deploymentGuide = await readText("docs/DEPLOYMENT.md")
 const legacyClientProbe = await readText("scripts/event-platform-legacy-client-probe.mjs")
@@ -474,6 +475,33 @@ assert.ok(
     && productionInspection.includes("workflow_dispatch")
     && !/^ {2}push:/mu.test(productionInspection),
   "backup readiness must be a dispatch-only, pinned-SSH, read-only production diagnostic",
+)
+for (const requiredRecoveryAuditGuard of [
+  "schedule:",
+  "workflow_dispatch: {}",
+  "environment: production",
+  "group: production-deploy",
+  "cancel-in-progress: false",
+  "./.github/actions/assert-production-environment-protection",
+  "./.github/actions/setup-production-ssh",
+  "production artifact $DEPLOYED_SHA is not current main $EXPECTED_DEPLOY_SHA",
+  "default_transaction_read_only=on",
+  "app.event_platform_force_deep=on",
+  "event-platform-postconditions.sql",
+  "unsafeReplayBuilds",
+  "event_recovery_audit=PASS",
+]) {
+  assert.ok(
+    recoveryAuditWorkflow.includes(requiredRecoveryAuditGuard),
+    `event recovery audit guard is missing: ${requiredRecoveryAuditGuard}`,
+  )
+}
+assert.ok(
+  recoveryAuditWorkflow.indexOf("assert-production-environment-protection")
+      < recoveryAuditWorkflow.indexOf("setup-production-ssh")
+    && recoveryAuditWorkflow.indexOf("default_transaction_read_only=on")
+      < recoveryAuditWorkflow.indexOf('psql "$MIGRATION_DATABASE_URL"'),
+  "scheduled recovery audit must validate production admission and force read-only mode before deep replay",
 )
 for (const requiredWorkflowGuard of [
   "workflow_dispatch:",
