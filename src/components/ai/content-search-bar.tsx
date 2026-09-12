@@ -57,7 +57,7 @@ const HINTS: Record<string, { prefix: string; items: string[] }> = {
 
 const ROTATE_MS = 3500
 
-export function ContentSearchBar() {
+export function ContentSearchBar({ compact = false }: { compact?: boolean }) {
   const t = useTranslations("common")
   const locale = useLocale()
   const hints = HINTS[locale] ?? HINTS.en
@@ -70,7 +70,7 @@ export function ContentSearchBar() {
 
   useEffect(() => {
     // Pause rotation while the user is focused or has typed something.
-    if (focused || q || hints.items.length <= 1) return
+    if (compact || focused || q || hints.items.length <= 1 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
     const id = setInterval(() => {
       setIdx((cur) => {
         let next = cur
@@ -79,7 +79,7 @@ export function ContentSearchBar() {
       })
     }, ROTATE_MS)
     return () => clearInterval(id)
-  }, [focused, q, hints.items.length])
+  }, [compact, focused, q, hints.items.length])
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -92,14 +92,18 @@ export function ContentSearchBar() {
   return (
     <form
       onSubmit={submit}
-      className="ai-search-bar mb-6 flex w-full items-center gap-3 rounded-2xl bg-primary p-3 pl-4 shadow-lg shadow-primary/35"
+      className={compact
+        ? "ai-search-bar support-ai-search mb-3 flex min-h-11 w-full items-center gap-2 rounded-lg border bg-card px-1.5 focus-within:ring-2 focus-within:ring-ring/30"
+        : "ai-search-bar mb-6 flex w-full items-center gap-3 rounded-2xl bg-primary p-3 pl-4 shadow-lg shadow-primary/35"}
     >
-      <Sparkles className="h-6 w-6 shrink-0 text-primary-foreground" aria-hidden="true" />
+      <Sparkles className={compact ? "ml-1 h-4 w-4 shrink-0 text-muted-foreground" : "h-6 w-6 shrink-0 text-primary-foreground"} aria-hidden="true" />
       {/* SOLID white field punched into the orange plate. Explicit bg-white +
           dark text (NOT theme tokens) so it stays a bright, obviously-writable
           field on every page — incl. the dashboard's dark glassmorphism over the
           live wallpaper, where bg-background/text-foreground go dark and blend. */}
-      <div className="ai-search-field flex min-w-0 flex-1 items-center gap-2 rounded-xl bg-white px-3.5 py-2.5 ring-1 ring-black/5 focus-within:ring-2 focus-within:ring-white">
+      <div className={compact
+        ? "ai-search-field flex min-h-9 min-w-0 flex-1 items-center gap-2 rounded-md bg-background px-2"
+        : "ai-search-field flex min-w-0 flex-1 items-center gap-2 rounded-xl bg-white px-3.5 py-2.5 ring-1 ring-black/5 focus-within:ring-2 focus-within:ring-white"}>
         <Search className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
         <input
           value={q}
@@ -108,13 +112,17 @@ export function ContentSearchBar() {
           onBlur={() => setFocused(false)}
           placeholder={`${hints.prefix} «${hints.items[idx]}»`}
           aria-label={t("aiSearch")}
-          className="ai-search-input min-w-0 flex-1 bg-transparent text-base font-medium text-zinc-900 placeholder:font-normal placeholder:text-zinc-500 focus:outline-none"
+          className={compact
+            ? "ai-search-input min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+            : "ai-search-input min-w-0 flex-1 bg-transparent text-base font-medium text-zinc-900 placeholder:font-normal placeholder:text-zinc-500 focus:outline-none"}
         />
       </div>
       <button
         type="submit"
         aria-label={t("aiSearch")}
-        className="ai-search-btn flex shrink-0 items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-primary shadow-sm transition-all hover:bg-zinc-50 active:scale-[0.98]"
+        className={compact
+          ? "ai-search-btn flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none sm:h-9 sm:w-auto sm:px-3"
+          : "ai-search-btn flex shrink-0 items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-[#9a3412] shadow-sm transition-all hover:bg-zinc-50 active:scale-[0.98] motion-reduce:transition-none"}
       >
         <Search className="h-4 w-4" aria-hidden="true" />
         <span className="hidden sm:inline">{t("aiSearch")}</span>

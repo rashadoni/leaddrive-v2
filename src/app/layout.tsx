@@ -32,7 +32,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
   themeColor: "#001E3C",
 }
 
@@ -74,6 +73,7 @@ export default async function RootLayout({
   children: React.ReactNode
 }>) {
   const hdrs = await headers()
+  const locale = await getLocale()
   const messages = messagesForClient(
     hdrs.get("x-request-pathname"),
     await getMessages() as AbstractIntlMessages,
@@ -91,7 +91,7 @@ export default async function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className="font-sans antialiased" nonce={nonce}>
+      <body className="font-sans antialiased">
         {/* @ts-expect-error nonce prop supported at runtime */}
         <NextIntlClientProvider messages={messages} nonce={nonce}>
           <Providers nonce={nonce}>{children}</Providers>

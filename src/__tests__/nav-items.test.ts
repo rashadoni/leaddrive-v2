@@ -251,26 +251,34 @@ describe("nav grouping", () => {
     expect(matchNavItem("/social-monitoring")?.module).toBe("social")
   })
 
-  it("keeps ticket settings as the final block inside the Support group", () => {
-    const supportHrefs = navItems.filter((i) => i.group === "Support").map((i) => i.href)
-    const ticketSettingsHrefs = [
+  it("keeps all 15 Support destinations in Work, Team, and Rules order", () => {
+    const supportItems = navItems.filter((i) => i.group === "Support")
+    const supportHrefs = supportItems.map((i) => i.href)
+    expect(supportHrefs).toEqual([
+      "/tickets",
+      "/complaints",
+      "/support/agent-desktop",
+      "/support/voip",
+      "/knowledge-base",
+      "/support/skill-routing",
+      "/support/calendar",
+      "/settings/portal-users",
       "/settings/ticket-categories",
       "/settings/sla-policies",
       "/support/entitlements",
       "/settings/entitlement-templates",
-      "/support/skill-routing",
-      "/support/calendar",
       "/settings/escalation",
       "/settings/macros",
-      "/settings/portal-users",
       "/support/ai-settings",
-    ]
-
-    expect(supportHrefs.slice(-ticketSettingsHrefs.length)).toEqual(ticketSettingsHrefs)
+    ])
+    expect(supportItems.map((item) => item.supportSection)).toEqual([
+      "work", "work", "work", "work", "work",
+      "team", "team", "team",
+      "rules", "rules", "rules", "rules", "rules", "rules", "rules",
+    ])
     // Telephony setup moved to the Settings group — owners looked for it there.
     expect(supportHrefs).not.toContain("/settings/voip")
     expect(navItems.find((i) => i.href === "/settings/voip")?.group).toBe("Settings")
-    expect(supportHrefs.indexOf("/knowledge-base")).toBeLessThan(supportHrefs.indexOf("/settings/ticket-categories"))
     expect(new Set(supportHrefs).size).toBe(supportHrefs.length)
   })
 
@@ -295,6 +303,16 @@ describe("nav grouping", () => {
   it("keeps Support AI settings behind the AI add-on", () => {
     expect(canAccessModule("tier-5", "/support/ai-settings", [])).toBe(false)
     expect(canAccessModule("tier-5", "/support/ai-settings", ["ai"])).toBe(true)
+  })
+
+  it("shows Support AI settings only to an authorized role with both modules", () => {
+    const hrefs = (role: "admin" | "manager", modules: Record<string, boolean>) =>
+      accessibleNavItems({ plan: "tier-25", role, modules }).map((item) => item.href)
+
+    expect(hrefs("admin", { support: true, ai: true })).toContain("/support/ai-settings")
+    expect(hrefs("manager", { support: true, ai: true })).not.toContain("/support/ai-settings")
+    expect(hrefs("admin", { support: true })).not.toContain("/support/ai-settings")
+    expect(hrefs("admin", { ai: true })).not.toContain("/support/ai-settings")
   })
 
   it("places all 9 contract items under the Contracts Control group (not CRM)", () => {

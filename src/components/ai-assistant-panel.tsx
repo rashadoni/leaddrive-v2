@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useCallback, useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Bot, X, Send, Loader2, Sparkles, Trash2, Brain, CheckCircle2, XCircle, Clock, Maximize2, Minimize2 } from "lucide-react"
@@ -31,7 +31,7 @@ interface Message {
 
 // Tool labels are locale-keyed inside UI_TEXT.toolLabels
 
-const UI_TEXT: Record<string, { title: string; subtitle: string; greeting: string; placeholder: string; suggestions: string[]; approve: string; reject: string; approved: string; rejected: string; executed: string; failed: string; pending: string; connectionError: string; capabilityDisabled: string; tooManyRequests: string; configurationMissing: string; noResponse: string; toolLabels: Record<string, string>; search: SearchUiText }> = {
+const UI_TEXT: Record<string, { title: string; subtitle: string; greeting: string; placeholder: string; suggestions: string[]; approve: string; reject: string; approved: string; rejected: string; executed: string; failed: string; pending: string; connectionError: string; capabilityDisabled: string; tooManyRequests: string; configurationMissing: string; noResponse: string; collapse: string; expand: string; clear: string; close: string; send: string; recipient: string; fields: string; unknownAction: string; toolLabels: Record<string, string>; search: SearchUiText }> = {
   en: {
     title: "Da Vinci",
     subtitle: "Da Vinci AI",
@@ -50,6 +50,14 @@ const UI_TEXT: Record<string, { title: string; subtitle: string; greeting: strin
     tooManyRequests: "Too many Da Vinci requests. Please try again in a minute.",
     configurationMissing: "Da Vinci is not configured for this organization yet. Ask an admin to check AI settings.",
     noResponse: "No response",
+    collapse: "Collapse panel",
+    expand: "Expand panel",
+    clear: "Clear conversation",
+    close: "Close Da Vinci",
+    send: "Send message",
+    recipient: "To",
+    fields: "Fields",
+    unknownAction: "Action",
     toolLabels: { add_note: "Note", log_activity: "Activity", create_task: "Task", update_deal_stage: "Deal stage", create_ticket: "Ticket", create_deal: "Deal", send_email: "Email", update_contact: "Contact" },
     search: {
       results: "{count} results",
@@ -78,6 +86,14 @@ const UI_TEXT: Record<string, { title: string; subtitle: string; greeting: strin
     tooManyRequests: "Слишком много запросов к Da Vinci. Попробуйте еще раз через минуту.",
     configurationMissing: "Da Vinci еще не настроен для этой организации. Попросите администратора проверить AI-настройки.",
     noResponse: "Нет ответа",
+    collapse: "Свернуть панель",
+    expand: "Развернуть панель",
+    clear: "Очистить диалог",
+    close: "Закрыть Da Vinci",
+    send: "Отправить сообщение",
+    recipient: "Кому",
+    fields: "Поля",
+    unknownAction: "Действие",
     toolLabels: { add_note: "Заметка", log_activity: "Активность", create_task: "Задача", update_deal_stage: "Стадия сделки", create_ticket: "Тикет", create_deal: "Сделка", send_email: "Email", update_contact: "Контакт" },
     search: {
       results: "{count} результатов",
@@ -106,6 +122,14 @@ const UI_TEXT: Record<string, { title: string; subtitle: string; greeting: strin
     tooManyRequests: "Da Vinci üçün çox sorğu göndərildi. Bir dəqiqə sonra yenidən cəhd edin.",
     configurationMissing: "Da Vinci bu təşkilat üçün hələ qurulmayıb. Admin AI ayarlarını yoxlamalıdır.",
     noResponse: "Cavab yoxdur",
+    collapse: "Paneli yığ",
+    expand: "Paneli genişləndir",
+    clear: "Söhbəti təmizlə",
+    close: "Da Vinci-ni bağla",
+    send: "Mesajı göndər",
+    recipient: "Kimə",
+    fields: "Sahələr",
+    unknownAction: "Əməliyyat",
     toolLabels: { add_note: "Qeyd", log_activity: "Fəaliyyət", create_task: "Tapşırıq", update_deal_stage: "Sövdələşmə mərhələsi", create_ticket: "Bilet", create_deal: "Sövdələşmə", send_email: "Email", update_contact: "Kontakt" },
     search: {
       results: "{count} nəticə",
@@ -136,7 +160,7 @@ function displayAiError(raw: unknown, uiText: typeof UI_TEXT["ru"]) {
   if (/Too many Da Vinci requests/i.test(message)) return uiText.tooManyRequests
   if (/Da Vinci AI requires configuration|ANTHROPIC_API_KEY/i.test(message)) return uiText.configurationMissing
   if (/Unauthorized/i.test(message)) return uiText.connectionError
-  return message.replace(/^Error:\s*/i, "")
+  return uiText.connectionError
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -149,7 +173,7 @@ function ActionCard({ action, t, onApprove, onReject }: {
   onApprove: () => void
   onReject: () => void
 }) {
-  const label = t.toolLabels?.[action.tool] || action.tool
+  const label = t.toolLabels?.[action.tool] || t.unknownAction
 
   if (action.status === "executed") {
     return (
@@ -176,15 +200,15 @@ function ActionCard({ action, t, onApprove, onReject }: {
         <Clock className="h-3.5 w-3.5 text-amber-500 shrink-0" />
         <span className="text-amber-700 dark:text-amber-400 font-medium">{t.pending}: {label}</span>
       </div>
-      <div className="text-[11px] text-muted-foreground pl-5.5">
-        {action.tool === "send_email" && typeof action.input.to === "string" && <span>To: {action.input.to}</span>}
-        {action.tool === "update_contact" && <span>Fields: {Object.keys(asRecord(action.input.fields)).join(", ")}</span>}
+      <div className="pl-5.5 text-xs text-muted-foreground">
+        {action.tool === "send_email" && typeof action.input.to === "string" && <span>{t.recipient}: {action.input.to}</span>}
+        {action.tool === "update_contact" && <span>{t.fields}: {Object.keys(asRecord(action.input.fields)).length}</span>}
       </div>
       <div className="flex gap-1.5 pl-5.5">
-        <Button size="sm" variant="outline" className="h-6 text-[11px] px-2 text-emerald-600 border-emerald-300 hover:bg-emerald-50" onClick={onApprove}>
+        <Button size="sm" variant="outline" className="h-11 border-emerald-300 px-2 text-xs text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 sm:h-9" onClick={onApprove}>
           {t.approve}
         </Button>
-        <Button size="sm" variant="outline" className="h-6 text-[11px] px-2 text-red-600 border-red-300 hover:bg-red-50" onClick={onReject}>
+        <Button size="sm" variant="outline" className="h-11 border-red-300 px-2 text-xs text-red-700 hover:bg-red-50 dark:text-red-300 sm:h-9" onClick={onReject}>
           {t.reject}
         </Button>
       </div>
@@ -207,6 +231,7 @@ export function AiAssistantPanel({ showFloatingLauncher = true }: AiAssistantPan
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
   const [locale, setLocale] = useState("ru")
+  const launcherRef = useRef<HTMLButtonElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -215,12 +240,27 @@ export function AiAssistantPanel({ showFloatingLauncher = true }: AiAssistantPan
   const uiText = UI_TEXT[locale] || UI_TEXT.ru
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" })
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    bottomRef.current?.scrollIntoView({ behavior: reduced ? "auto" : "smooth" })
   }, [messages])
 
   useEffect(() => {
     if (open) inputRef.current?.focus()
   }, [open])
+
+  const closePanel = useCallback(() => {
+    setOpen(false)
+    window.requestAnimationFrame(() => launcherRef.current?.focus())
+  }, [])
+
+  useEffect(() => {
+    if (!open) return
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closePanel()
+    }
+    window.addEventListener("keydown", handleEscape)
+    return () => window.removeEventListener("keydown", handleEscape)
+  }, [closePanel, open])
 
   const handleApproveAction = async (msgId: string, actionIndex: number, decision: "approve" | "reject") => {
     const msg = messages.find(m => m.id === msgId)
@@ -321,44 +361,53 @@ export function AiAssistantPanel({ showFloatingLauncher = true }: AiAssistantPan
       {/* FAB Button */}
       {!open && showFloatingLauncher && (
         <button
+          ref={launcherRef}
+          type="button"
           onClick={() => setOpen(true)}
           data-testid="ai-assistant-launcher"
           aria-label={uiText.title}
-          className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-gradient-to-br from-[hsl(var(--ai-from))] to-[hsl(var(--ai-to))] text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 flex items-center justify-center group animate-pulse-glow"
+          className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full border bg-primary text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
         >
-          <Brain className="h-6 w-6 group-hover:scale-110 transition-transform" />
+          <Brain className="h-6 w-6" />
         </button>
       )}
 
       {/* Panel */}
       {open && (
-        <div className={`fixed right-0 top-0 bottom-0 z-50 ${expanded ? "w-[min(760px,94vw)]" : "w-[380px]"} glass-panel shadow-2xl flex flex-col animate-in slide-in-from-right duration-200 ai-glow transition-[width]`}>
+        <aside
+          role="dialog"
+          aria-modal="false"
+          aria-label={uiText.title}
+          className={`fixed bottom-0 right-0 top-0 z-50 flex max-w-full flex-col border-l bg-background shadow-lg transition-[width] motion-reduce:transition-none ${expanded ? "w-[min(760px,94vw)]" : "w-[380px]"}`}
+        >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-[hsl(var(--ai-from))] to-[hsl(var(--ai-to))] text-white">
+          <div className="flex items-center justify-between border-b bg-muted/40 px-3 py-2">
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <Bot className="h-5 w-5" />
               </div>
               <div>
                 <h3 className="text-sm font-semibold">{uiText.title}</h3>
-                <p className="text-[10px] opacity-80">{uiText.subtitle}</p>
+                <p className="text-xs text-muted-foreground">{uiText.subtitle}</p>
               </div>
             </div>
             <div className="flex gap-1">
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-white/70 hover:text-white hover:bg-white/20"
+              <Button type="button" variant="ghost" size="icon" className="h-11 w-11 text-muted-foreground sm:h-9 sm:w-9"
                 onClick={() => setExpanded(e => !e)}
-                aria-label={expanded ? "Collapse" : "Expand"}
-                title={expanded ? "Collapse" : "Expand"}>
+                aria-label={expanded ? uiText.collapse : uiText.expand}
+                title={expanded ? uiText.collapse : uiText.expand}>
                 {expanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
               </Button>
               {messages.length > 0 && (
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-white/70 hover:text-white hover:bg-white/20"
+                <Button type="button" variant="ghost" size="icon" className="h-11 w-11 text-muted-foreground sm:h-9 sm:w-9"
+                  aria-label={uiText.clear}
                   onClick={() => setMessages([])}>
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               )}
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-white/70 hover:text-white hover:bg-white/20"
-                onClick={() => setOpen(false)}>
+              <Button type="button" variant="ghost" size="icon" className="h-11 w-11 text-muted-foreground sm:h-9 sm:w-9"
+                aria-label={uiText.close}
+                onClick={closePanel}>
                 <X className="h-4 w-4" />
               </Button>
             </div>
@@ -368,17 +417,18 @@ export function AiAssistantPanel({ showFloatingLauncher = true }: AiAssistantPan
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full text-center px-6">
-                <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-[hsl(var(--ai-from))]/10 to-[hsl(var(--ai-to))]/10 flex items-center justify-center mb-4 ai-glow">
-                  <Sparkles className="h-8 w-8 text-[hsl(var(--ai-from))]" />
+                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-muted text-primary">
+                  <Sparkles className="h-7 w-7" />
                 </div>
-                <h4 className="text-sm font-semibold mb-1">{uiText.title} Assistant</h4>
+                <h4 className="mb-1 text-sm font-semibold">{uiText.title}</h4>
                 <p className="text-xs text-muted-foreground mb-4">{uiText.greeting}</p>
                 <div className="space-y-2 w-full">
                   {uiText.suggestions.map(q => (
                     <button
                       key={q}
+                      type="button"
                       onClick={() => { setInput(q); setTimeout(sendMessage, 100) }}
-                      className="w-full text-left text-xs px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 hover:bg-muted/50 transition-colors text-muted-foreground hover:text-foreground"
+                      className="min-h-11 w-full rounded-lg border px-3 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
                     >
                       {q}
                     </button>
@@ -393,18 +443,18 @@ export function AiAssistantPanel({ showFloatingLauncher = true }: AiAssistantPan
                   <div className={`rounded-2xl px-3.5 py-2.5 text-sm ${
                     msg.role === "user"
                       ? "bg-primary text-primary-foreground rounded-br-md"
-                      : "bg-card border border-[hsl(var(--ai-from))]/20 rounded-bl-md"
+                      : "rounded-bl-md border bg-card"
                   }`}>
                     {msg.role === "user" ? (
                       <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
                     ) : (
                       <div
-                        className="leading-relaxed text-sm text-foreground [&_strong]:font-semibold [&_strong]:text-foreground [&_h3]:mb-1.5 [&_h3]:mt-3 [&_h3]:text-base [&_h3]:font-bold [&_h3]:text-foreground [&_h4]:mt-2 [&_h4]:text-sm [&_h4]:font-semibold [&_h4]:text-foreground [&_ul]:my-1.5 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5 [&_li]:marker:text-[hsl(var(--ai-from))] [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-xs [&_code]:text-foreground [&_table]:my-2 [&_table]:w-full [&_table]:border-collapse [&_table]:text-xs [&_th]:border-b [&_th]:border-[hsl(var(--ai-from))]/25 [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:font-semibold [&_th]:text-foreground [&_td]:border-b [&_td]:border-[hsl(var(--ai-from))]/10 [&_td]:px-2 [&_td]:py-1 [&_td]:align-top [&_td]:text-foreground"
+                        className="text-sm leading-relaxed text-foreground [&_strong]:font-semibold [&_strong]:text-foreground [&_h3]:mb-1.5 [&_h3]:mt-3 [&_h3]:text-base [&_h3]:font-bold [&_h3]:text-foreground [&_h4]:mt-2 [&_h4]:text-sm [&_h4]:font-semibold [&_h4]:text-foreground [&_ul]:my-1.5 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5 [&_li]:marker:text-primary [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-xs [&_code]:text-foreground [&_table]:my-2 [&_table]:w-full [&_table]:border-collapse [&_table]:text-xs [&_th]:border-b [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:font-semibold [&_th]:text-foreground [&_td]:border-b [&_td]:px-2 [&_td]:py-1 [&_td]:align-top [&_td]:text-foreground"
                         dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(markdownToHtml(msg.content)) }}
                       />
                     )}
-                    <p className={`text-[10px] mt-1 ${msg.role === "user" ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
-                      {msg.timestamp.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                    <p className={`mt-1 text-xs ${msg.role === "user" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                      {msg.timestamp.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}
                     </p>
                   </div>
                   {/* Smart AI Search — read-only result table (navigation only) */}
@@ -443,7 +493,7 @@ export function AiAssistantPanel({ showFloatingLauncher = true }: AiAssistantPan
               <div className="flex justify-start">
                 <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin text-[hsl(var(--ai-from))]" />
+                    <Loader2 className="h-4 w-4 animate-spin text-primary motion-reduce:animate-none" />
                     <span className="text-xs text-muted-foreground">{t("thinking")}</span>
                   </div>
                 </div>
@@ -461,13 +511,16 @@ export function AiAssistantPanel({ showFloatingLauncher = true }: AiAssistantPan
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
                 placeholder={uiText.placeholder}
+                aria-label={uiText.placeholder}
                 rows={1}
-                className="flex-1 resize-none rounded-xl border border-zinc-200 dark:border-zinc-700 px-3 py-2.5 text-sm bg-muted/30 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="min-h-11 flex-1 resize-none rounded-xl border bg-muted/30 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                 disabled={loading}
               />
               <Button
                 size="icon"
-                className="h-10 w-10 rounded-full bg-gradient-to-br from-[hsl(var(--ai-from))] to-[hsl(var(--ai-to))] hover:opacity-90"
+                type="button"
+                aria-label={uiText.send}
+                className="h-11 w-11 rounded-full"
                 onClick={() => sendMessage()}
                 disabled={loading || !input.trim()}
               >
@@ -475,7 +528,7 @@ export function AiAssistantPanel({ showFloatingLauncher = true }: AiAssistantPan
               </Button>
             </div>
           </div>
-        </div>
+        </aside>
       )}
     </>
   )

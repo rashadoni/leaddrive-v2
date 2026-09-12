@@ -9,10 +9,12 @@ import {
   NAV_ACTIVE_ICON,
   NAV_ACTIVE_BAR,
   RAW_LOCATION_CHANGE_EVENT,
+  SUPPORT_NAV_SECTION_ORDER,
   accessibleNavItems,
   navItemPathname,
   activeNavBase,
   type NavItem,
+  type SupportNavSection,
 } from "@/lib/nav-items"
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react"
 import { Logo } from "@/components/logo"
@@ -81,6 +83,11 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
   const [isNarrowViewport, setIsNarrowViewport] = useState(false)
   const t = useTranslations("nav")
   const { newTicketCount } = useTicketBadge()
+  const accessibleItems = useMemo(
+    () => accessibleNavItems(org),
+    [org],
+  )
+  const webChatEnabled = accessibleItems.some((item) => item.href === "/inbox")
   const [webChatUnread, setWebChatUnread] = useState(0)
   const [inboxNotifCount, setInboxNotifCount] = useState(0)
   const prevUnread = useRef(0)
@@ -171,8 +178,13 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
         }
       } catch {}
     }
-    tick()
-    const id = setInterval(tick, 30000)
+    let webChatId: ReturnType<typeof setInterval> | undefined
+    if (webChatEnabled) {
+      tick()
+      webChatId = setInterval(tick, 30000)
+    } else {
+      setWebChatUnread(0)
+    }
 
     // Inbox notification badge — unread inbox_message notifications for this user (the assignee + the
     // collaborators fan-out). 20s poll so the menu badge tracks the bell without much extra load.
@@ -190,8 +202,13 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
     const onInboxRead = () => pollInboxNotif()
     window.addEventListener("inbox-notifs-read", onInboxRead)
 
-    return () => { cancelled = true; clearInterval(id); clearInterval(inboxId); window.removeEventListener("inbox-notifs-read", onInboxRead) }
-  }, [])
+    return () => {
+      cancelled = true
+      if (webChatId) clearInterval(webChatId)
+      clearInterval(inboxId)
+      window.removeEventListener("inbox-notifs-read", onInboxRead)
+    }
+  }, [webChatEnabled])
 
   // Filter sidebar items by org modules/features/plan. The gate logic lives in
   // `accessibleNavItems` (@/lib/nav-items) so the sidebar, App Launcher, Cmd+K
@@ -199,10 +216,6 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
   // sees every item; everyone else is subject to `hasModule` + feature flags.
   //
   // Memoized — prevents re-filtering ~113 items on every badge-polling re-render (30s/60s)
-  const accessibleItems = useMemo(
-    () => accessibleNavItems(org),
-    [org]
-  )
   const groups = useMemo(
     () => [...new Set(accessibleItems.map((item) => item.group))],
     [accessibleItems]
@@ -257,7 +270,8 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
     return accessibleItems.filter((item) => {
       const label = t(item.tKey).toLowerCase()
       const groupLabel = t(`groups.${item.group}`).toLowerCase()
-      return label.includes(q) || groupLabel.includes(q)
+      const sectionLabel = item.supportSection ? t(`supportSections.${item.supportSection}`).toLowerCase() : ""
+      return label.includes(q) || groupLabel.includes(q) || sectionLabel.includes(q)
     })
   }, [searchQuery, accessibleItems, t])
 
@@ -314,6 +328,32 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
   const [openGroups, setOpenGroups] = useState<Set<string>>(
     () => new Set(activeGroup ? [activeGroup] : [])
   )
+  const [openSupportSections, setOpenSupportSections] = useState<Set<SupportNavSection>>(() => new Set(["work"]))
+  const [supportSectionsHydrated, setSupportSectionsHydrated] = useState(false)
+
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("support-nav-open-sections") || "[]") as unknown
+      if (Array.isArray(stored)) {
+        const valid = stored.filter((value): value is SupportNavSection => SUPPORT_NAV_SECTION_ORDER.includes(value as SupportNavSection))
+        setOpenSupportSections(new Set(valid.length > 0 ? valid : ["work"]))
+      }
+    } catch {
+      setOpenSupportSections(new Set(["work"]))
+    } finally {
+      setSupportSectionsHydrated(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!supportSectionsHydrated) return
+    localStorage.setItem("support-nav-open-sections", JSON.stringify([...openSupportSections]))
+  }, [openSupportSections, supportSectionsHydrated])
+
+  const activeSupportSection = useMemo(() => {
+    if (!activeBase) return null
+    return accessibleItems.find((item) => navItemPathname(item.href) === activeBase)?.supportSection || null
+  }, [accessibleItems, activeBase])
 
   // When the route changes: collapse the accordion back to ONLY the active
   // section's group, closing any groups the user manually opened. This is what
@@ -348,23 +388,80 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
     })
   }
   const effectiveCollapsed = collapsed || isNarrowViewport
+  const toggleSupportSection = (section: SupportNavSection) => {
+    setOpenSupportSections((previous) => {
+      const next = new Set(previous)
+      if (next.has(section) && activeSupportSection !== section) next.delete(section)
+      else next.add(section)
+      return next
+    })
+  }
+  const renderSidebarItem = (item: NavItem) => {
+    const isActive = isItemActive(item)
+    const Icon = item.icon
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        prefetch={false}
+        data-testid="sidebar-nav-item"
+        data-nav-href={item.href}
+        data-nav-active={isActive ? "true" : undefined}
+        onClick={(event) => navigateRawHref(event, item.href)}
+        className={cn(
+          "relative flex min-h-9 items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition-colors duration-150 motion-reduce:transition-none",
+          isActive
+            ? cn("font-medium text-white bg-white/[0.12] before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-[3px] before:rounded-r", NAV_ACTIVE_BAR)
+            : "text-white/60 hover:bg-white/[0.06] hover:text-white/90"
+        )}
+        title={effectiveCollapsed ? t(item.tKey) : undefined}
+      >
+        <div className={cn(
+          "relative flex h-6 w-6 items-center justify-center rounded-md shrink-0 transition-colors motion-reduce:transition-none",
+          isActive ? NAV_ACTIVE_ICON : "text-white/40"
+        )}>
+          <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+          {item.href === "/tickets" && newTicketCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 h-4 min-w-[16px] rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-bold px-1">
+              {newTicketCount > 99 ? "99+" : newTicketCount}
+            </span>
+          )}
+          {item.href === "/inbox/web-chat" && webChatUnread > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 h-4 min-w-[16px] rounded-full bg-primary text-white text-[10px] flex items-center justify-center font-bold px-1">
+              {webChatUnread > 99 ? "99+" : webChatUnread}
+            </span>
+          )}
+          {item.href === "/inbox" && inboxNotifCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 h-4 min-w-[16px] rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-bold px-1">
+              {inboxNotifCount > 99 ? "99+" : inboxNotifCount}
+            </span>
+          )}
+        </div>
+        {!effectiveCollapsed && <span>{t(item.tKey)}</span>}
+      </Link>
+    )
+  }
   // ─────────────────────────────────────────────────────────────────────────
 
   return (
     <aside
+      data-testid="sidebar"
       className={cn(
-        "flex flex-col bg-sidebar-bg backdrop-blur-xl transition-[width,padding] duration-200",
-        effectiveCollapsed ? "w-16" : "w-64"
+        "flex flex-col overflow-hidden bg-sidebar-bg backdrop-blur-xl transition-[width,padding] duration-200",
+        effectiveCollapsed ? "w-16" : "w-16 lg:w-64"
       )}
     >
       {/* Logo header */}
       <div className="flex h-14 items-center justify-between border-b border-white/10 px-4">
-        <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+        <Link href="/dashboard" aria-label={`LeadDrive · ${t("dashboard")}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <Logo collapsed={effectiveCollapsed} size="sm" sidebar />
         </Link>
         {!isNarrowViewport && (
           <button
+            type="button"
             onClick={() => setCollapsed(!collapsed)}
+            aria-label={collapsed ? t("expand") : t("collapse")}
+            title={collapsed ? t("expand") : t("collapse")}
             className="rounded-lg p-1.5 text-white/50 hover:bg-white/10 hover:text-white transition-colors"
           >
             <ChevronLeft className={cn("h-4 w-4 transition-transform", collapsed && "rotate-180")} />
@@ -378,6 +475,7 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40 pointer-events-none" />
             <input
+              data-testid="sidebar-search"
               ref={searchInputRef}
               type="text"
               value={searchQuery}
@@ -435,6 +533,8 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
                     key={item.href}
                     href={item.href}
                     prefetch={false}
+                    data-testid="sidebar-search-result"
+                    data-nav-href={item.href}
                     data-nav-active={isActive ? "true" : undefined}
                     onClick={(event) => {
                       setSearchQuery("")
@@ -499,6 +599,8 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
               {!effectiveCollapsed ? (
                 <button
                   type="button"
+                  data-testid="sidebar-group-toggle"
+                  data-group={group}
                   aria-expanded={openGroups.has(group)}
                   onClick={() => toggleGroup(group)}
                   className={cn(
@@ -528,52 +630,33 @@ export function Sidebar({ org, sessionLoaded = true }: SidebarProps) {
                 )}
               >
                 <div className="overflow-hidden">
-                  {(sidebarItemsByGroup.get(group) ?? [])
-                    .map((item) => {
-                      const isActive = isItemActive(item)
-                      const Icon = item.icon
-                      const iconColor = NAV_ACTIVE_ICON
-                      const activeBar = NAV_ACTIVE_BAR
-                      return (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          prefetch={false}
-                          data-nav-active={isActive ? "true" : undefined}
-                          onClick={(event) => navigateRawHref(event, item.href)}
-                          className={cn(
-                            "relative flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition-all duration-150",
-                            isActive
-                              ? cn("font-medium text-white bg-white/[0.12] before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-[3px] before:rounded-r", activeBar)
-                              : "text-white/60 hover:bg-white/[0.06] hover:text-white/90"
-                          )}
-                          title={effectiveCollapsed ? t(item.tKey) : undefined}
-                        >
-                          <div className={cn(
-                            "relative flex h-6 w-6 items-center justify-center rounded-md shrink-0 transition-all",
-                            isActive ? iconColor : "text-white/40"
-                          )}>
-                            <Icon className="h-3.5 w-3.5" />
-                            {item.href === "/tickets" && newTicketCount > 0 && (
-                              <span className="absolute -top-1.5 -right-1.5 h-4 min-w-[16px] rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-bold px-1">
-                                {newTicketCount > 99 ? "99+" : newTicketCount}
-                              </span>
-                            )}
-                            {item.href === "/inbox/web-chat" && webChatUnread > 0 && (
-                              <span className="absolute -top-1.5 -right-1.5 h-4 min-w-[16px] rounded-full bg-primary text-white text-[10px] flex items-center justify-center font-bold px-1">
-                                {webChatUnread > 99 ? "99+" : webChatUnread}
-                              </span>
-                            )}
-                            {item.href === "/inbox" && inboxNotifCount > 0 && (
-                              <span className="absolute -top-1.5 -right-1.5 h-4 min-w-[16px] rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-bold px-1">
-                                {inboxNotifCount > 99 ? "99+" : inboxNotifCount}
-                              </span>
-                            )}
-                          </div>
-                          {!effectiveCollapsed && <span>{t(item.tKey)}</span>}
-                        </Link>
-                      )
-                    })}
+                  {group === "Support" && !effectiveCollapsed ? (
+                    <div data-testid="support-navigation-sections" className="space-y-1">
+                      {SUPPORT_NAV_SECTION_ORDER.map((section) => {
+                        const sectionItems = (sidebarItemsByGroup.get(group) ?? []).filter((item) => item.supportSection === section)
+                        if (sectionItems.length === 0) return null
+                        const sectionOpen = openSupportSections.has(section) || activeSupportSection === section
+                        return (
+                          <section key={section} data-testid="support-navigation-section" data-section={section}>
+                            <button
+                              type="button"
+                              data-testid="support-navigation-section-toggle"
+                              data-section={section}
+                              aria-expanded={sectionOpen}
+                              onClick={() => toggleSupportSection(section)}
+                              className="flex min-h-9 w-full items-center justify-between rounded-md px-3 py-1 text-[11px] font-medium text-white/55 outline-none transition-colors hover:bg-white/[0.05] hover:text-white/80 focus-visible:ring-2 focus-visible:ring-white/60 motion-reduce:transition-none"
+                            >
+                              <span>{t(`supportSections.${section}`)}</span>
+                              <ChevronRight className={cn("h-3 w-3 transition-transform motion-reduce:transition-none", sectionOpen && "rotate-90")} aria-hidden="true" />
+                            </button>
+                            <div className={cn("grid transition-[grid-template-rows] duration-150 motion-reduce:transition-none", sectionOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
+                              <div className="overflow-hidden pl-1">{sectionItems.map(renderSidebarItem)}</div>
+                            </div>
+                          </section>
+                        )
+                      })}
+                    </div>
+                  ) : (sidebarItemsByGroup.get(group) ?? []).map(renderSidebarItem)}
                 </div>
               </div>
             </div>
