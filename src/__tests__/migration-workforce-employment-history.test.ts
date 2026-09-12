@@ -8,12 +8,16 @@ const migration = readFileSync(join(
   root,
   "prisma/migrations/20260830150000_workforce_employment_history/migration.sql",
 ), "utf8")
+const employmentHistory = readFileSync(join(root, "src/lib/workforce/employment-history.ts"), "utf8")
 
 describe("Workforce employment history migration", () => {
   it("adds append-only, tenant-scoped lifecycle facts without deriving them from directory status", () => {
     expect(schema).toContain("enum WorkforceEmploymentEventKind")
     expect(schema).toContain("model WorkforceEmploymentEvent {")
     expect(schema).toContain("workforceEmploymentEvents WorkforceEmploymentEvent[]")
+    expect(schema).toMatch(/model WorkforceEmploymentEvent \{[\s\S]*@@ignore\s*\}/)
+    expect(employmentHistory).toContain('INSERT INTO "workforce_employment_events"')
+    expect(employmentHistory).not.toContain("tx.workforceEmploymentEvent")
     expect(migration).toContain('CREATE TABLE "workforce_employment_events"')
     expect(migration).toContain('CREATE TYPE "WorkforceEmploymentEventKind"')
     expect(migration).toContain("workforce_reject_employment_event_mutation")

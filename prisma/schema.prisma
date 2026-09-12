@@ -188,7 +188,7 @@ model Organization {
   mtmHrmRequests                      MtmHrmRequest[]
   workforcePolicies                   WorkforcePolicy[]
   workforceTeamMemberships            WorkforceEmployeeTeamMembership[]
-  workforceEmploymentEvents           WorkforceEmploymentEvent[]
+  workforceEmploymentEvents           WorkforceEmploymentEvent[] @ignore
   workforceShiftTemplates             WorkforceShiftTemplate[]
   workforceShiftSegments              WorkforceShiftSegment[]
   workforceSiteTransitions            WorkforceSiteTransition[]
@@ -676,7 +676,7 @@ model User {
   workforceSitesArchived              WorkforceSite[]                @relation("WorkforceSiteArchivedBy")
   workforceSiteGeofenceRevisionsCreated WorkforceSiteGeofenceRevision[] @relation("WorkforceSiteGeofenceRevisionCreatedBy")
   workforceSiteAssignmentsAssigned    WorkforceSiteAssignment[]       @relation("WorkforceSiteAssignmentAssignedBy")
-  workforceEmploymentEventsRecorded   WorkforceEmploymentEvent[]      @relation("WorkforceEmploymentEventRecordedBy")
+  workforceEmploymentEventsRecorded   WorkforceEmploymentEvent[]      @relation("WorkforceEmploymentEventRecordedBy") @ignore
   workforceSiteAssignmentBulkOperationsPublished WorkforceSiteAssignmentBulkOperation[] @relation("WorkforceSiteAssignmentBulkOperationPublishedBy")
   workforceAttendanceExceptionsResolved WorkforceAttendanceException[] @relation("WorkforceAttendanceExceptionResolvedBy")
   workforceExceptionDecisionsActed      WorkforceExceptionDecision[]   @relation("WorkforceExceptionDecisionActor")
@@ -5634,7 +5634,7 @@ model MtmAgent {
   hrmRequests               MtmHrmRequest[]
   workforceShiftAssignments WorkforceShiftAssignment[]
   workforceTeamMemberships WorkforceEmployeeTeamMembership[]
-  workforceEmploymentEvents WorkforceEmploymentEvent[]
+  workforceEmploymentEvents WorkforceEmploymentEvent[] @ignore
   workforceSiteAssignments  WorkforceSiteAssignment[]
   workforceSiteTransitions  WorkforceSiteTransition[]
   workforcePolicySnapshots  WorkforcePolicySnapshot[]
@@ -5718,6 +5718,10 @@ model WorkforceEmploymentEvent {
   @@index([organizationId, effectiveAt])
   @@index([organizationId, recordedByUserId, recordedAt])
   @@map("workforce_employment_events")
+  // Kept as migration-documented storage but excluded from the generated
+  // client: adding another delegate tips this repository's extended Prisma
+  // client beyond TypeScript's inference budget. Access stays explicit SQL.
+  @@ignore
 }
 
 // Explicit organization/team/agent calendar overrides. Weekday/weekend
