@@ -30,7 +30,7 @@ type EvidenceDb = {
 export class WorkforceEvidenceStorageError extends Error {
   constructor(
     readonly code: "WORKFORCE_EVIDENCE_OPERATION_CONFLICT" | "WORKFORCE_EVIDENCE_ASSESSMENT_INVALID",
-    message = code,
+    message: string = code,
   ) {
     super(message)
   }

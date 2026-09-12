@@ -140,7 +140,7 @@ export const WORKFORCE_PROOF_POLICY_BASELINE_V1: WorkforceProofPolicy = {
 export class WorkforceProofPolicyError extends Error {
   constructor(
     readonly code: "WORKFORCE_PROOF_POLICY_INVALID" | "WORKFORCE_PROOF_RULE_MISSING",
-    message = code,
+    message: string = code,
   ) {
     super(message)
   }
