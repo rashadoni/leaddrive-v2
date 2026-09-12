@@ -161,6 +161,11 @@ export function SupportAiSettingsClient() {
     void save(false)
   }
 
+  const retrySave = () => {
+    const retryEnabled = notice?.retryEnabled
+    if (typeof retryEnabled === "boolean") void save(retryEnabled)
+  }
+
   const formatDate = (value: string) => {
     const date = new Date(value)
     if (Number.isNaN(date.getTime())) return value
@@ -209,7 +214,7 @@ export function SupportAiSettingsClient() {
       {notice && (
         <div role="status" aria-live="polite" className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${notice.kind === "error" ? "border-destructive/40 text-destructive" : ""}`} data-testid="support-ai-settings-notice" data-kind={notice.kind}>
           <span className="flex-1">{notice.text}</span>
-          {notice.retryEnabled !== null && <Button type="button" variant="outline" className="min-h-10" onClick={() => void save(notice.retryEnabled)} disabled={saving} data-testid="support-ai-settings-save-retry"><RefreshCw aria-hidden="true" />{t("retry")}</Button>}
+          {notice.retryEnabled !== null && <Button type="button" variant="outline" className="min-h-10" onClick={retrySave} disabled={saving} data-testid="support-ai-settings-save-retry"><RefreshCw aria-hidden="true" />{t("retry")}</Button>}
         </div>
       )}
 

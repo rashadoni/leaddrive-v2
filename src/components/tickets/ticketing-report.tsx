@@ -489,7 +489,6 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
   const priorityMax = Math.max(...serviceDesk.byPriority.map(row => row.count), 1)
   const requesterMax = Math.max(...serviceDesk.requesterBreakdown.map(row => row.count), 1)
   const throughputMax = Math.max(...serviceDesk.throughput.flatMap(row => [row.created, row.resolved, row.closed]), 1)
-  const unknownLabel = t("unknownLabel")
   const appliedFilters = readFilterState(searchParams)
   const appliedFilterCount = activeFilterCount(appliedFilters)
   const appliedAdvancedFilterCount = activeAdvancedFilterCount(appliedFilters)
@@ -612,7 +611,7 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
         ticket.subject,
         ticket.priority,
         ticket.assigneeName || t("unassigned"),
-        requesterLabel(ticket, unknownLabel),
+        requesterLabel(ticket, t),
         ticket.dueAt || "",
       ]),
       [],
@@ -620,7 +619,7 @@ export function TicketingReport({ orgId }: { orgId?: string }) {
       ...serviceDesk.closureQueue.map(item => [
         item.ticket.ticketNumber,
         item.ticket.subject,
-        requesterLabel({ ...item.ticket, channel: item.channel }, unknownLabel),
+        requesterLabel({ ...item.ticket, channel: item.channel }, t),
         item.dueAt,
       ]),
       [],
