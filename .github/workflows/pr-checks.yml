@@ -306,8 +306,11 @@ jobs:
           NEXT_BUILD_CPUS: "1"
           NEXT_WEBPACK_PARALLELISM: "1"
           LEADDRIVE_COLD_PRODUCTION_BUILD: "1"
-          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+          # The PR build only needs deterministic non-empty auth configuration
+          # while Next collects route data. Never expose the live runtime
+          # signing key to unmerged repository code.
+          NEXTAUTH_SECRET: build-only-${{ github.sha }}
+          NEXTAUTH_URL: https://build.invalid
           NEXT_PUBLIC_CARTO_BASEMAPS_API_KEY: ${{ secrets.CARTO_BASEMAPS_API_KEY }}
 
       - name: Verify production build outputs
