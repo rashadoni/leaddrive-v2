@@ -33,6 +33,7 @@ import { withRlsAuth, withRlsSessionAuth } from "@/lib/with-rls"
 import {
   withWorkforceRlsAuth,
   withWorkforceSessionAdminAuth,
+  withWorkforceSessionEmploymentConfigurationAuth,
   withWorkforceSessionExceptionQueueAuth,
   withWorkforceSessionScheduleConfigurationAuth,
 } from "@/lib/with-workforce-rls-auth"
@@ -65,6 +66,38 @@ describe("withWorkforceSessionScheduleConfigurationAuth", () => {
     const response = await withWorkforceSessionScheduleConfigurationAuth("SITE_ASSIGNMENT_WRITE", handler)(request())
     expect(response.status).toBe(403)
     expect(handler).not.toHaveBeenCalled()
+  })
+})
+describe("withWorkforceSessionEmploymentConfigurationAuth", () => {
+  it("uses the legacy admin boundary before granular cutover", async () => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      plan: "enterprise", addons: [], features: ["workforce-hrm"], modules: { "workforce-hrm": true },
+    } as never)
+    const handler = vi.fn(async () => NextResponse.json({ success: true }))
+    sessionRole.value = "admin"
+    expect((await withWorkforceSessionEmploymentConfigurationAuth(handler)(request())).status).toBe(200)
+    sessionRole.value = "manager"
+    expect((await withWorkforceSessionEmploymentConfigurationAuth(handler)(request())).status).toBe(403)
+  })
+
+  it("requires an organization HR grant after granular cutover", async () => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      plan: "enterprise", addons: [], features: ["workforce-hrm", "workforce-granular-access-v1"], modules: { "workforce-hrm": true },
+    } as never)
+    const handler = vi.fn(async () => NextResponse.json({ success: true }))
+    sessionRole.value = "admin"
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([])
+    expect((await withWorkforceSessionEmploymentConfigurationAuth(handler)(request())).status).toBe(403)
+    expect(handler).not.toHaveBeenCalled()
+
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([{
+      id: "employment-grant", organizationId: "org-1", principalUserId: "user-1", role: "HR_ADMIN",
+      scopeKind: "ORGANIZATION", scopeTeamId: null, scopeSiteId: null, scopeAgentId: null,
+      effectiveFrom: new Date("2026-08-01T00:00:00.000Z"), effectiveUntil: null, revocation: null,
+    }] as never)
+    sessionRole.value = "sales"
+    expect((await withWorkforceSessionEmploymentConfigurationAuth(handler)(request())).status).toBe(200)
+    expect(handler).toHaveBeenCalledTimes(1)
   })
 })
 describe("withWorkforceRlsAuth", () => {

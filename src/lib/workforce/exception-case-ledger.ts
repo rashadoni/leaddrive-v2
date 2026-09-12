@@ -81,7 +81,7 @@ function expectedWorkDate(value: unknown): string | null {
   return value
 }
 
-function normalizeLinks(input: WorkforceExceptionCaseLinks): Required<WorkforceExceptionCaseLinks> {
+function normalizeLinks(input: WorkforceExceptionCaseLinks, kind?: string): Required<WorkforceExceptionCaseLinks> {
   const links = {
     workdayId: opaqueId(input.workdayId, "WORKFORCE_EXCEPTION_CASE_INPUT_INVALID"),
     workdayEventId: opaqueId(input.workdayEventId, "WORKFORCE_EXCEPTION_CASE_INPUT_INVALID"),
@@ -107,6 +107,13 @@ function normalizeLinks(input: WorkforceExceptionCaseLinks): Required<WorkforceE
   if (links.expectedWorkDate != null && links.evidenceId != null) {
     throw new WorkforceExceptionCaseLedgerError("WORKFORCE_EXCEPTION_CASE_INPUT_INVALID")
   }
+  const segmentOnly = links.segmentId != null
+    && links.workdayId == null
+    && links.workdayEventId == null
+    && links.evidenceId == null
+  if ((kind === "NO_SHOW" && segmentOnly) !== (links.expectedWorkDate != null)) {
+    throw new WorkforceExceptionCaseLedgerError("WORKFORCE_EXCEPTION_CASE_INPUT_INVALID")
+  }
   return links
 }
 
@@ -129,7 +136,7 @@ export function workforceExceptionCaseDeduplicationKey(input: {
   if (typeof input.detectorVersion !== "string" || !DETECTOR_VERSION.test(input.detectorVersion)) {
     throw new WorkforceExceptionCaseLedgerError("WORKFORCE_EXCEPTION_CASE_INPUT_INVALID")
   }
-  const links = normalizeLinks(input.links)
+  const links = normalizeLinks(input.links, kind)
   return createHash("sha256").update(JSON.stringify({
     version: 1,
     organizationId,
@@ -153,7 +160,7 @@ export function createWorkforceExceptionCaseDraft(input: {
   if (typeof input.detectorVersion !== "string" || !DETECTOR_VERSION.test(input.detectorVersion)) {
     throw new WorkforceExceptionCaseLedgerError("WORKFORCE_EXCEPTION_CASE_INPUT_INVALID")
   }
-  const links = normalizeLinks(input.links)
+  const links = normalizeLinks(input.links, kind)
   return {
     organizationId,
     agentId,

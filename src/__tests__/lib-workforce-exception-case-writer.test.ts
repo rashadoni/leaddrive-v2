@@ -96,6 +96,22 @@ describe("Workforce immutable exception-case writer", () => {
     })
   })
 
+  it("normalizes a Prisma DATE value when recognizing an exact no-show retry", async () => {
+    const noShow = createWorkforceExceptionCaseDraft({
+      organizationId: "org-1", agentId: "agent-1", kind: "NO_SHOW", detectorVersion: "workforce-no-show-v1",
+      links: { segmentId: "segment-1", expectedWorkDate: "2026-09-01" },
+    })
+    db.workforceExceptionCase.create.mockRejectedValueOnce({ code: "P2002" })
+    db.workforceExceptionCase.findFirst.mockResolvedValueOnce({
+      id: "case-no-show", organizationId: noShow.organizationId, agentId: noShow.agentId,
+      kind: noShow.kind, detectorVersion: noShow.detectorVersion, deduplicationKey: noShow.deduplicationKey,
+      workdayId: null, workdayEventId: null, evidenceId: null, segmentId: "segment-1",
+      expectedWorkDate: new Date("2026-09-01T00:00:00.000Z"),
+    })
+    await expect(persistAuthorizedWorkforceExceptionCase({ db, draft: noShow, authorize: allow }))
+      .resolves.toEqual({ caseId: "case-no-show", idempotent: true })
+  })
+
   it("requires a tenant-scoped case and appends only an exact replayable decision envelope", async () => {
     db.workforceExceptionCaseLookup.findFirst.mockResolvedValueOnce(null)
     await expect(appendAuthorizedWorkforceExceptionDecision({ db, draft: decisionDraft, authorize: allow }))

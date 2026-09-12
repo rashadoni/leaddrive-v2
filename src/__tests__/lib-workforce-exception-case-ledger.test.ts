@@ -63,6 +63,14 @@ describe("Workforce exception case ledger drafts", () => {
     })
     expect(nextDay.deduplicationKey).not.toBe(firstDay.deduplicationKey)
     expect(() => createWorkforceExceptionCaseDraft({
+      organizationId: "org-1", agentId: "agent-1", kind: "NO_SHOW", detectorVersion: "workforce-no-show-v1",
+      links: { segmentId: "segment-1" },
+    })).toThrow(expect.objectContaining({ code: "WORKFORCE_EXCEPTION_CASE_INPUT_INVALID" }))
+    expect(() => createWorkforceExceptionCaseDraft({
+      organizationId: "org-1", agentId: "agent-1", kind: "DELAYED_CLAIM", detectorVersion: "delay-v1",
+      links: { segmentId: "segment-1", expectedWorkDate: "2026-08-31" },
+    })).toThrow(expect.objectContaining({ code: "WORKFORCE_EXCEPTION_CASE_INPUT_INVALID" }))
+    expect(() => createWorkforceExceptionCaseDraft({
       ...CASE,
       links: { workdayId: "day-1", segmentId: "segment-1", expectedWorkDate: "2026-08-31" },
     })).toThrow(expect.objectContaining({ code: "WORKFORCE_EXCEPTION_CASE_INPUT_INVALID" }))
