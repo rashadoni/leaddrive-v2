@@ -89,7 +89,9 @@ describe("Support UX browser evidence contract", () => {
     expect(runner).toContain("SUPPORT_EVIDENCE_SCENARIOS");
     expect(runner).toContain("selectedScenarioIds.has(item.id)");
     expect(workflow).toContain("scenarios:");
-    expect(workflow).toContain("default: all");
+    expect(workflow).toContain(
+      "default: service-desk,service-desk-kanban,service-desk-reports,ticket-detail",
+    );
   });
 
   it("uses the narrow sidebar width before client viewport effects run", () => {
@@ -267,10 +269,11 @@ describe("Support UX browser evidence contract", () => {
     expect(workflow).toContain("support-ux-performance-contract.test.ts");
     expect(workflow).toContain("support-ux-visual-compare.test.ts");
     expect(workflow).toContain("scripts/support-ux-visual-compare.mjs");
-    expect(workflow).toContain("npx playwright install chromium");
-    expect(workflow).not.toContain("playwright install --with-deps");
+    expect(workflow).toContain("runs-on: ubuntu-24.04");
+    expect(workflow).not.toContain("leaddrive-builder");
+    expect(workflow).toContain("npx playwright install --with-deps chromium");
     expect(workflow).not.toMatch(/\bsudo\b/);
-    expect(workflow).toContain("npm run build");
+    expect(workflow).toContain("npx next build --webpack");
     expect(workflow).toContain("node .next/standalone/server.js");
     expect(workflow).toContain("cp -R .next/static .next/standalone/.next/static");
     expect(workflow).toContain("cp -R public .next/standalone/public");

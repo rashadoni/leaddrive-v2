@@ -18,7 +18,7 @@ on:
       scenarios:
         description: Comma-separated scenario IDs, or all
         required: true
-        default: all
+        default: service-desk,service-desk-kanban,service-desk-reports,ticket-detail
       interaction_mode:
         description: Read-only capture or disposable Support workflow mutations
         required: true
@@ -168,6 +168,7 @@ jobs:
         env:
           SUPPORT_UX_SCAN_ROOTS: >-
             src/app/(dashboard)/tickets,
+            src/app/(dashboard)/support/ai-settings,
             src/components/ticket-form.tsx,
             src/components/tickets,
             src/components/support/support-page-shell.tsx,
@@ -399,16 +400,20 @@ jobs:
             *leaddrivecrm.org*|*13.140.132.245*|*46.224.171.53*) echo "Production targets are forbidden for Support UX evidence"; exit 1 ;;
           esac
 
-      - name: Install Chromium without host package mutation
-        run: npx playwright install chromium
+      - name: Install Chromium on the ephemeral hosted runner
+        run: npx playwright install --with-deps chromium
 
       - name: Build isolated production-mode evidence application
         if: ${{ inputs.target_mode == 'ephemeral' }}
         env:
           NODE_ENV: production
           NEXT_TELEMETRY_DISABLED: "1"
+          NODE_OPTIONS: --max-old-space-size=8192
+          NEXT_BUILD_CPUS: "1"
+          NEXT_WEBPACK_PARALLELISM: "1"
+          NEXT_PUBLIC_CARTO_BASEMAPS_API_KEY: ${{ secrets.CARTO_BASEMAPS_API_KEY }}
         run: |
-          npm run build
+          npx next build --webpack
           mkdir -p .next/standalone/.next
           cp -R .next/static .next/standalone/.next/static
           cp -R public .next/standalone/public
