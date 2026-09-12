@@ -12,6 +12,7 @@ on:
         required: true
         type: choice
         options:
+          - configure-monitoring-urls
           - install-backup-tools
           - activate-backup-encryption
           - run-bootstrap-backup
@@ -110,6 +111,8 @@ jobs:
             }
 
           case "$IN_OPERATION" in
+            configure-monitoring-urls)
+              EXPECTED_CONFIRMATION="CONFIGURE_BACKUP_MONITORING_ON_13_140_132_245" ;;
             install-backup-tools)
               EXPECTED_CONFIRMATION="INSTALL_PINNED_BACKUP_TOOLS_AND_EXTEND_LOG_RETENTION_ON_13_140_132_245" ;;
             activate-backup-encryption)
@@ -132,9 +135,10 @@ jobs:
           }
 
           EMPTY_FIELDS="$IN_RECIPIENT_SHA256$IN_KEY_ATTESTATION$IN_EVIDENCE_REF$IN_EVIDENCE_AT$IN_OFFLINE_OPERATOR$IN_CANDIDATE_SHA256$IN_OFFLINE_EVIDENCE_BUNDLE"
-          if [ "$IN_OPERATION" = "install-backup-tools" ]; then
+          if [ "$IN_OPERATION" = "configure-monitoring-urls" ] \
+            || [ "$IN_OPERATION" = "install-backup-tools" ]; then
             [ -z "$EMPTY_FIELDS" ] || {
-              echo "::error::Tool installation does not accept key or evidence inputs"
+              echo "::error::This operation does not accept key or evidence inputs"
               exit 1
             }
           else
@@ -216,6 +220,42 @@ jobs:
             exit 1
           }
           printf 'REMOTE_STAGE_DIR=%s\n' "$REMOTE_STAGE_DIR" >>"$GITHUB_ENV"
+
+      - name: Stage dead-man monitoring URLs without logging them
+        if: ${{ inputs.operation == 'configure-monitoring-urls' }}
+        env:
+          BACKUP_HEALTHCHECK_URL: ${{ secrets.BACKUP_HEALTHCHECK_URL }}
+          SECRETS_HEALTHCHECK_URL: ${{ secrets.SECRETS_HEALTHCHECK_URL }}
+          RUNTIME_FILES_HEALTHCHECK_URL: ${{ secrets.RUNTIME_FILES_HEALTHCHECK_URL }}
+          LOG_SHIP_HEALTHCHECK_URL: ${{ secrets.LOG_SHIP_HEALTHCHECK_URL }}
+        run: |
+          set -euo pipefail
+          URL_STAGE="$RUNNER_TEMP/leaddrive-healthchecks-$GITHUB_RUN_ID.env"
+          install -m 0600 /dev/null "$URL_STAGE"
+          declare -A SEEN_URLS=()
+          for KEY in \
+            BACKUP_HEALTHCHECK_URL SECRETS_HEALTHCHECK_URL \
+            RUNTIME_FILES_HEALTHCHECK_URL LOG_SHIP_HEALTHCHECK_URL; do
+            VALUE="${!KEY:-}"
+            [[ "$VALUE" =~ ^https://hc-ping\.com/[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$ ]] || {
+              echo "::error::$KEY is missing or is not an exact Healthchecks.io hc-ping URL"
+              exit 1
+            }
+            [ -z "${SEEN_URLS[$VALUE]:-}" ] || {
+              echo "::error::Every recovery job must use a distinct Healthchecks.io check"
+              exit 1
+            }
+            SEEN_URLS[$VALUE]=1
+            printf '%s=%s\n' "$KEY" "$VALUE" >>"$URL_STAGE"
+          done
+          [ "$(wc -l <"$URL_STAGE")" -eq 4 ] || {
+            echo "::error::Monitoring URL stage must contain exactly four records"
+            exit 1
+          }
+          scp -i ~/.ssh/deploy_key \
+            "$URL_STAGE" \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:"$REMOTE_STAGE_DIR/healthchecks.env"
+          rm -f -- "$URL_STAGE"
 
       - name: Stage signed offline evidence and verifier allowlist
         if: ${{ inputs.operation == 'activate-backup-encryption' || inputs.operation == 'certify-bootstrap-restore' || inputs.operation == 'certify-offline-restore' }}
@@ -345,3 +385,4 @@ jobs:
           rm -f ~/.ssh/deploy_key
           rm -rf -- "$RUNNER_TEMP/leaddrive-backup-evidence-$GITHUB_RUN_ID"
           rm -rf -- "$RUNNER_TEMP/leaddrive-backup-code-$GITHUB_RUN_ID"
+          rm -f -- "$RUNNER_TEMP/leaddrive-healthchecks-$GITHUB_RUN_ID.env"
