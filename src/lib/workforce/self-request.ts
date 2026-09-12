@@ -103,6 +103,7 @@ function sameSubmission(
     startDate: Date
     endDate: Date
     correctionWorkdayId: string | null
+    exceptionCaseId: string | null
     requestedStartAt: Date | null
     requestedEndAt: Date | null
     reason: string
@@ -112,6 +113,7 @@ function sameSubmission(
     startDate: Date
     endDate: Date
     correctionWorkdayId: string | null
+    exceptionCaseId: string | null
     requestedStartAt: Date | null
     requestedEndAt: Date | null
     reason: string
@@ -121,6 +123,7 @@ function sameSubmission(
     && record.startDate.getTime() === input.startDate.getTime()
     && record.endDate.getTime() === input.endDate.getTime()
     && record.correctionWorkdayId === input.correctionWorkdayId
+    && record.exceptionCaseId === input.exceptionCaseId
     && sameInstant(record.requestedStartAt, input.requestedStartAt)
     && sameInstant(record.requestedEndAt, input.requestedEndAt)
     && record.reason === input.reason
