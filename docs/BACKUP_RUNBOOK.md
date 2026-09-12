@@ -165,6 +165,9 @@ membership count `0`; app-role остаётся `rolbypassrls=f`.
    `/etc/leaddrive/backup.env`, заполнить значения и выставить
    `root:leaddrive-backup 0640`. Pgpass-файлы — `root:leaddrive-backup 0640`
    либо принадлежат service user и имеют `0600`.
+   Для source TLS `PGHOST` задаёт имя, проверяемое сертификатом, а обязательный
+   числовой `PGHOSTADDR` — отдельно проверенный сетевой маршрут к тому же
+   endpoint. Не подменять `verify-full` режимом без проверки имени.
 4. Создать внешний monitor с окном 26 часов и реальным каналом оповещения.
 5. Убедиться, что firewall разрешает runner только private DB/scratch endpoints,
    DNS, Hetzner S3 и monitor endpoint.
