@@ -1,7 +1,7 @@
 # Workforce exception-review grant UI evidence
 
-**Tasks:** `WF-C7-002`, `WF-C8-005`  
-**Date:** 2026-09-01  
+**Tasks:** `WF-C7-002`, `WF-C8-005`
+**Date:** 2026-09-01
 **Scope:** source and targeted-contract validation in the dedicated Contabo
 development worktree. This is not browser, assistive-technology, staging,
 tenant-rollout or production evidence.
