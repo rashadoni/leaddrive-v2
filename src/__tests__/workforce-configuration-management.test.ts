@@ -10,6 +10,7 @@ import {
   WorkforceConfigurationManagementError,
   WorkforcePolicyDraftCreateSchema,
   WorkforcePolicyDraftUpdateSchema,
+  WorkforceShiftDefaultScheduleSchema,
   WorkforceShiftAssignmentScheduleSchema,
   WorkforceShiftTemplateDraftCreateSchema,
   WorkforceShiftTemplateDraftUpdateSchema,
@@ -18,6 +19,7 @@ import {
   createWorkforcePolicyDraft,
   createWorkforceShiftTemplateDraft,
   scheduleWorkforceShiftAssignment,
+  scheduleWorkforceShiftDefault,
   updateWorkforcePolicyDraft,
   updateWorkforceShiftTemplateDraft,
 } from "@/lib/workforce/configuration-management"
@@ -714,5 +716,75 @@ describe("safe Workforce configuration drafts", () => {
       code: "WORKFORCE_CONFIGURATION_ASSIGNMENT_EFFECTIVE_DATE_NOT_FUTURE",
     })
     expect(prisma.workforceShiftAssignment.create).not.toHaveBeenCalled()
+  })
+
+  it("schedules a future organization default and only narrows its timeline predecessor", async () => {
+    const predecessor = {
+      id: "default-current",
+      templateId: "shift-current",
+      effectiveFrom: new Date("2026-08-01T00:00:00.000Z"),
+      effectiveTo: null,
+      assignedByUserId: userId,
+    }
+    const created = {
+      id: "default-next",
+      templateId: "shift-next",
+      effectiveFrom: new Date("2026-09-01T00:00:00.000Z"),
+      effectiveTo: null,
+      assignedByUserId: userId,
+    }
+    vi.mocked(prisma.workforceShiftTemplate.findFirst).mockResolvedValue({
+      id: "shift-next", teamId: null, code: "STANDARD_V2", isDefault: false,
+      version: 1, status: "ACTIVE", name: "Next shift", timezone: "Asia/Baku",
+      definitionHash: workforceShiftDefinitionHash(shiftDefinition),
+    } as never)
+    vi.mocked(prisma.workforceShiftDefaultAssignment.findMany).mockResolvedValue([predecessor] as never)
+    vi.mocked(prisma.workforceShiftDefaultAssignment.updateMany).mockResolvedValue({ count: 1 } as never)
+    vi.mocked(prisma.workforceShiftDefaultAssignment.create).mockResolvedValue(created as never)
+    const defaultAssignment = WorkforceShiftDefaultScheduleSchema.parse({
+      templateId: "shift-next",
+      effectiveFrom: "2026-09-01",
+    })
+
+    await expect(scheduleWorkforceShiftDefault({
+      organizationId,
+      defaultAssignment,
+      currentDateKey: "2026-08-29",
+      audit,
+    })).resolves.toMatchObject({ id: "default-next" })
+    expect(prisma.workforceShiftDefaultAssignment.updateMany).toHaveBeenCalledWith({
+      where: { id: "default-current", organizationId },
+      data: { effectiveTo: new Date("2026-08-31T00:00:00.000Z") },
+    })
+    expect(prisma.workforceShiftDefaultAssignment.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        organizationId,
+        templateId: "shift-next",
+        effectiveFrom: new Date("2026-09-01T00:00:00.000Z"),
+        assignedByUserId: userId,
+      }),
+    }))
+  })
+
+  it("rejects a team template and a default scheduled for today", async () => {
+    const today = WorkforceShiftDefaultScheduleSchema.parse({ templateId: "shift-next", effectiveFrom: "2026-08-29" })
+    await expect(scheduleWorkforceShiftDefault({
+      organizationId, defaultAssignment: today, currentDateKey: "2026-08-29", audit,
+    })).rejects.toMatchObject<Partial<WorkforceConfigurationManagementError>>({
+      code: "WORKFORCE_CONFIGURATION_DEFAULT_EFFECTIVE_DATE_NOT_FUTURE",
+    })
+
+    vi.mocked(prisma.workforceShiftTemplate.findFirst).mockResolvedValue({
+      id: "team-shift", teamId: "team-1", code: "TEAM", isDefault: false,
+      version: 1, status: "ACTIVE", name: "Team shift", timezone: "Asia/Baku",
+      definitionHash: workforceShiftDefinitionHash(shiftDefinition),
+    } as never)
+    const teamDefault = WorkforceShiftDefaultScheduleSchema.parse({ templateId: "team-shift", effectiveFrom: "2026-09-01" })
+    await expect(scheduleWorkforceShiftDefault({
+      organizationId, defaultAssignment: teamDefault, currentDateKey: "2026-08-29", audit,
+    })).rejects.toMatchObject<Partial<WorkforceConfigurationManagementError>>({
+      code: "WORKFORCE_CONFIGURATION_DEFAULT_TEMPLATE_SCOPE_INVALID",
+    })
+    expect(prisma.workforceShiftDefaultAssignment.create).not.toHaveBeenCalled()
   })
 })

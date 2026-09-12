@@ -195,6 +195,97 @@ export function localDateTimeToUtc(
   return new Date(naiveUtc.getTime() - getOffsetMinutes(effectiveTimezone, first) * 60_000)
 }
 
+type ParsedLocalDateTime = {
+  year: number
+  month: number
+  day: number
+  hour: number
+  minute: number
+  naiveUtc: Date
+}
+
+function parseLocalDateTime(value: string): ParsedLocalDateTime {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/)
+  if (!match) throw new Error("Invalid local date-time")
+
+  const [, rawYear, rawMonth, rawDay, rawHour, rawMinute] = match
+  const year = Number(rawYear)
+  const month = Number(rawMonth)
+  const day = Number(rawDay)
+  const hour = Number(rawHour)
+  const minute = Number(rawMinute)
+  const naiveUtc = new Date(Date.UTC(year, month - 1, day, hour, minute))
+  if (
+    naiveUtc.getUTCFullYear() !== year
+    || naiveUtc.getUTCMonth() !== month - 1
+    || naiveUtc.getUTCDate() !== day
+    || naiveUtc.getUTCHours() !== hour
+    || naiveUtc.getUTCMinutes() !== minute
+  ) {
+    throw new Error("Invalid local date-time")
+  }
+  return { year, month, day, hour, minute, naiveUtc }
+}
+
+function isSameLocalMinute(
+  value: ParsedLocalDateTime,
+  candidate: Date,
+  timezone: string,
+): boolean {
+  // Machine comparison only: this is not user-facing localized date output.
+  // eslint-disable-next-line no-restricted-syntax
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    calendar: "iso8601",
+    numberingSystem: "latn",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(candidate)
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+  return Number(values.year) === value.year
+    && Number(values.month) === value.month
+    && Number(values.day) === value.day
+    && Number(values.hour) === value.hour
+    && Number(values.minute) === value.minute
+}
+
+/**
+ * Resolves a local clock value only when it names one real instant. Unlike the
+ * compatibility converter above, this deliberately refuses DST gaps and
+ * folds, because an attendance shift must not silently move or choose between
+ * two employee-facing local times. Callers that need a business-specific DST
+ * policy must make that policy explicit instead.
+ */
+export function localDateTimeToUnambiguousUtc(
+  value: string,
+  timezone: string,
+): Date {
+  const parsed = parseLocalDateTime(value)
+  const effectiveTimezone = isValidTimezone(timezone) ? timezone : "UTC"
+  const offsets = new Set<number>()
+  // Sample both sides of any modern offset transition. The candidate itself is
+  // always within +/-14 hours of the local wall-clock value; this wider window
+  // also covers historical 30-minute and date-line transitions.
+  for (let hours = -48; hours <= 48; hours += 6) {
+    offsets.add(getOffsetMinutes(
+      effectiveTimezone,
+      new Date(parsed.naiveUtc.getTime() + hours * 60 * 60 * 1_000),
+    ))
+  }
+  const candidates = [...offsets]
+    .map((offset) => new Date(parsed.naiveUtc.getTime() - offset * 60_000))
+    .filter((candidate) => isSameLocalMinute(parsed, candidate, effectiveTimezone))
+    .sort((left, right) => left.getTime() - right.getTime())
+
+  if (candidates.length === 0) throw new Error("Non-existent local date-time")
+  if (candidates.length > 1) throw new Error("Ambiguous local date-time")
+  return candidates[0]
+}
+
 /**
  * Compute the UTC offset for an IANA timezone at a specific moment.
  * Returned in minutes (positive = east of UTC). Useful for displaying

@@ -191,6 +191,7 @@ model Organization {
   workforceShiftSegments              WorkforceShiftSegment[]
   workforceSiteTransitions            WorkforceSiteTransition[]
   workforceShiftAssignments           WorkforceShiftAssignment[]
+  workforceShiftDefaultAssignments    WorkforceShiftDefaultAssignment[]
   workforceSiteAssignments            WorkforceSiteAssignment[]
   workforcePolicySnapshots            WorkforcePolicySnapshot[]
   workforceShiftSnapshots             WorkforceShiftSnapshot[]
@@ -654,6 +655,7 @@ model User {
   workforceShiftTemplatesCreated      WorkforceShiftTemplate[]       @relation("WorkforceShiftTemplateCreatedBy")
   workforceShiftTemplatesActivated    WorkforceShiftTemplate[]       @relation("WorkforceShiftTemplateActivatedBy")
   workforceShiftAssignmentsAssigned   WorkforceShiftAssignment[]     @relation("WorkforceShiftAssignmentAssignedBy")
+  workforceShiftDefaultAssignmentsAssigned WorkforceShiftDefaultAssignment[] @relation("WorkforceShiftDefaultAssignmentAssignedBy")
   workforceSitesCreated               WorkforceSite[]                @relation("WorkforceSiteCreatedBy")
   workforceSitesArchived              WorkforceSite[]                @relation("WorkforceSiteArchivedBy")
   workforceSiteGeofenceRevisionsCreated WorkforceSiteGeofenceRevision[] @relation("WorkforceSiteGeofenceRevisionCreatedBy")
@@ -7557,6 +7559,7 @@ model WorkforceShiftTemplate {
   updatedAt         DateTime                 @updatedAt
 
   assignments WorkforceShiftAssignment[]
+  defaultAssignments WorkforceShiftDefaultAssignment[]
   snapshots   WorkforceShiftSnapshot[]
   segments    WorkforceShiftSegment[]
 
@@ -7658,6 +7661,33 @@ model WorkforceShiftAssignment {
   @@map("workforce_shift_assignments")
 }
 
+/// Versioned organization-wide fallback selection. It is distinct from an
+/// employee assignment: a snapshot stores this exact row so a later default
+/// change cannot reinterpret a started/closed workday. Team defaults remain a
+/// separate future contract because historical team membership is not yet a
+/// Workforce fact.
+model WorkforceShiftDefaultAssignment {
+  id               String                 @id @default(cuid())
+  organizationId   String
+  organization     Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  templateId       String
+  template         WorkforceShiftTemplate @relation(fields: [organizationId, templateId], references: [organizationId, id], onDelete: Restrict)
+  effectiveFrom    DateTime               @db.Date
+  effectiveTo      DateTime?              @db.Date
+  assignedByUserId String
+  assignedByUser   User                   @relation("WorkforceShiftDefaultAssignmentAssignedBy", fields: [organizationId, assignedByUserId], references: [organizationId, id], onDelete: Restrict)
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  snapshots WorkforceShiftSnapshot[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, effectiveFrom, effectiveTo])
+  @@index([organizationId, templateId, effectiveFrom])
+  @@index([organizationId, assignedByUserId, createdAt])
+  @@map("workforce_shift_default_assignments")
+}
+
 // Immutable policy inputs used for one workday's calculation. No live policy
 // is consulted when a closed day is recomputed or exported.
 model WorkforcePolicySnapshot {
@@ -7702,6 +7732,8 @@ model WorkforceShiftSnapshot {
   template          WorkforceShiftTemplate @relation(fields: [organizationId, templateId], references: [organizationId, id], onDelete: Restrict)
   assignmentId      String?
   assignment        WorkforceShiftAssignment? @relation(fields: [organizationId, assignmentId], references: [organizationId, id], onDelete: Restrict)
+  defaultAssignmentId String?
+  defaultAssignment WorkforceShiftDefaultAssignment? @relation(fields: [organizationId, defaultAssignmentId], references: [organizationId, id], onDelete: Restrict)
   workdayId         String
   workday           MtmAgentWorkday        @relation("WorkforceShiftSnapshotWorkday", fields: [organizationId, workdayId], references: [organizationId, id], onDelete: Restrict)
   agentId           String
@@ -7723,6 +7755,7 @@ model WorkforceShiftSnapshot {
   @@unique([organizationId, workdayId])
   @@index([organizationId, agentId, workDate])
   @@index([organizationId, templateId, templateVersion])
+  @@index([organizationId, defaultAssignmentId])
   @@map("workforce_shift_snapshots")
 }
 

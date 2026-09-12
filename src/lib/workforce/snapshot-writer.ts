@@ -305,6 +305,7 @@ export async function writeWorkforceSnapshotsInTransaction(
       organizationId: input.organizationId,
       templateId: shift.id,
       assignmentId: shift.assignmentId,
+      defaultAssignmentId: shift.defaultAssignmentId,
       workdayId: workday.id,
       agentId: workday.agentId,
       workDate: workDateValue,

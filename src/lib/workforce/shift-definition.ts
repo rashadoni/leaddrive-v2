@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto"
 import { z } from "zod"
 import { isDateKey } from "@/lib/mtm/mobile-week"
-import { isValidTimezone, localDateTimeToUtc } from "@/lib/timezone"
+import { isValidTimezone, localDateTimeToUnambiguousUtc } from "@/lib/timezone"
 
 const LOCAL_TIME = /^(?:[01]\d|2[0-3]):[0-5]\d$/
 
@@ -123,14 +123,21 @@ export function resolveWorkforceShiftDay(input: {
   const isoWeekday = utcDate.getUTCDay() === 0 ? 7 : utcDate.getUTCDay()
   if (!definition.daysOfWeek.includes(isoWeekday)) return null
 
-  const plannedStartAt = localDateTimeToUtc(
-    input.workDate + "T" + definition.startTime,
-    definition.timezone,
-  )
-  const plannedEndAt = localDateTimeToUtc(
-    input.workDate + "T" + definition.endTime,
-    definition.timezone,
-  )
+  let plannedStartAt: Date
+  let plannedEndAt: Date
+  try {
+    plannedStartAt = localDateTimeToUnambiguousUtc(
+      input.workDate + "T" + definition.startTime,
+      definition.timezone,
+    )
+    plannedEndAt = localDateTimeToUnambiguousUtc(
+      input.workDate + "T" + definition.endTime,
+      definition.timezone,
+    )
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "invalid local time"
+    throw new WorkforceShiftDefinitionError(`shift ${message.toLowerCase()}`)
+  }
   if (plannedEndAt <= plannedStartAt) {
     throw new WorkforceShiftDefinitionError("resolved shift must end after it starts")
   }

@@ -22,6 +22,7 @@ vi.mock("@/lib/workforce/configuration-management", async () => {
     activateWorkforcePolicyDraft: vi.fn(),
     activateWorkforceShiftTemplateDraft: vi.fn(),
     scheduleWorkforceShiftAssignment: vi.fn(),
+    scheduleWorkforceShiftDefault: vi.fn(),
   }
 })
 
@@ -32,6 +33,7 @@ import { POST as createShift } from "@/app/api/v1/workforce/configuration/shifts
 import { PATCH as updateShift } from "@/app/api/v1/workforce/configuration/shifts/[id]/route"
 import { POST as activateShift } from "@/app/api/v1/workforce/configuration/shifts/[id]/activate/route"
 import { POST as scheduleAssignment } from "@/app/api/v1/workforce/configuration/assignments/route"
+import { POST as scheduleDefaultAssignment } from "@/app/api/v1/workforce/configuration/shifts/default/route"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { withWorkforceSessionAdminAuth } from "@/lib/with-workforce-rls-auth"
 import {
@@ -40,6 +42,7 @@ import {
   createWorkforcePolicyDraft,
   createWorkforceShiftTemplateDraft,
   scheduleWorkforceShiftAssignment,
+  scheduleWorkforceShiftDefault,
   updateWorkforcePolicyDraft,
   updateWorkforceShiftTemplateDraft,
 } from "@/lib/workforce/configuration-management"
@@ -60,6 +63,10 @@ const callUpdateShift = updateShift as unknown as ConfigurationUpdateHandler
 const callActivatePolicy = activatePolicy as unknown as ConfigurationUpdateHandler
 const callActivateShift = activateShift as unknown as ConfigurationUpdateHandler
 const callScheduleAssignment = scheduleAssignment as unknown as (
+  request: NextRequest,
+  auth: typeof AUTH,
+) => Promise<Response>
+const callScheduleDefaultAssignment = scheduleDefaultAssignment as unknown as (
   request: NextRequest,
   auth: typeof AUTH,
 ) => Promise<Response>
@@ -95,13 +102,14 @@ beforeEach(() => {
   vi.mocked(activateWorkforcePolicyDraft).mockReset()
   vi.mocked(activateWorkforceShiftTemplateDraft).mockReset()
   vi.mocked(scheduleWorkforceShiftAssignment).mockReset()
+  vi.mocked(scheduleWorkforceShiftDefault).mockReset()
   vi.mocked(getMtmSettings).mockReset()
   vi.mocked(getMtmSettings).mockResolvedValue({ timezone: "Asia/Baku" } as never)
 })
 
 describe("Workforce draft configuration API", () => {
   it("binds every configuration route to the session-only Workforce admin boundary", () => {
-    expect(withWorkforceSessionAdminAuth).toHaveBeenCalledTimes(10)
+    expect(withWorkforceSessionAdminAuth).toHaveBeenCalledTimes(11)
   })
 
   it("creates only validated draft policy and shift records", async () => {
@@ -237,6 +245,26 @@ describe("Workforce draft configuration API", () => {
     expect(scheduleWorkforceShiftAssignment).toHaveBeenCalledWith(expect.objectContaining({
       organizationId: AUTH.orgId,
       assignment: { agentId: "agent-1", templateId: "shift-1", effectiveFrom: "2026-09-01" },
+      currentDateKey: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      audit: expect.objectContaining({ actorUserId: AUTH.userId }),
+    }))
+  })
+
+  it("schedules a default only through the session-admin boundary and a server-derived date", async () => {
+    vi.mocked(scheduleWorkforceShiftDefault).mockResolvedValue({
+      id: "default-1", templateId: "shift-1", effectiveFrom: new Date("2026-09-01T00:00:00.000Z"),
+    } as never)
+
+    const response = await callScheduleDefaultAssignment(post("/api/v1/workforce/configuration/shifts/default", {
+      templateId: "shift-1",
+      effectiveFrom: "2026-09-01",
+    }), AUTH)
+
+    expect(response.status).toBe(201)
+    expect(getMtmSettings).toHaveBeenCalledWith(AUTH.orgId)
+    expect(scheduleWorkforceShiftDefault).toHaveBeenCalledWith(expect.objectContaining({
+      organizationId: AUTH.orgId,
+      defaultAssignment: { templateId: "shift-1", effectiveFrom: "2026-09-01" },
       currentDateKey: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
       audit: expect.objectContaining({ actorUserId: AUTH.userId }),
     }))

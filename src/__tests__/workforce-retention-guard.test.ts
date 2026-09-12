@@ -12,6 +12,7 @@ vi.mock("@/lib/prisma", () => ({
     workforcePolicy: { count: vi.fn() },
     workforceShiftTemplate: { count: vi.fn() },
     workforceShiftAssignment: { count: vi.fn() },
+    workforceShiftDefaultAssignment: { count: vi.fn() },
     workforcePolicySnapshot: { count: vi.fn() },
     workforceShiftSnapshot: { count: vi.fn() },
     workforceWorkdayScheduleSnapshot: { count: vi.fn() },
@@ -42,6 +43,7 @@ type RetentionPrisma = {
   workforcePolicy: { count: ReturnType<typeof vi.fn> }
   workforceShiftTemplate: { count: ReturnType<typeof vi.fn> }
   workforceShiftAssignment: { count: ReturnType<typeof vi.fn> }
+  workforceShiftDefaultAssignment: { count: ReturnType<typeof vi.fn> }
   workforcePolicySnapshot: { count: ReturnType<typeof vi.fn> }
   workforceShiftSnapshot: { count: ReturnType<typeof vi.fn> }
   workforceWorkdayScheduleSnapshot: { count: ReturnType<typeof vi.fn> }
@@ -70,6 +72,7 @@ beforeEach(() => {
     db.workforcePolicy,
     db.workforceShiftTemplate,
     db.workforceShiftAssignment,
+    db.workforceShiftDefaultAssignment,
     db.workforcePolicySnapshot,
     db.workforceShiftSnapshot,
     db.workforceWorkdayScheduleSnapshot,
@@ -114,6 +117,14 @@ describe("Workforce tenant retention guard", () => {
   it("keeps the retention fence for a complete workday schedule snapshot", async () => {
     db.organization.findUnique.mockResolvedValue({ id: "tenant-1", slug: "acme", name: "Acme" })
     db.workforceWorkdayScheduleSnapshot.count.mockResolvedValue(1)
+
+    await expect(hardDeleteTenant("tenant-1")).rejects.toBeInstanceOf(WorkforceRetentionBlockedError)
+    expect(db.organization.delete).not.toHaveBeenCalled()
+  })
+
+  it("keeps the retention fence for an otherwise unused default-selection timeline", async () => {
+    db.organization.findUnique.mockResolvedValue({ id: "tenant-1", slug: "acme", name: "Acme" })
+    db.workforceShiftDefaultAssignment.count.mockResolvedValue(1)
 
     await expect(hardDeleteTenant("tenant-1")).rejects.toBeInstanceOf(WorkforceRetentionBlockedError)
     expect(db.organization.delete).not.toHaveBeenCalled()
