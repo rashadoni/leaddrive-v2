@@ -32,7 +32,10 @@ class StaticConfigTests(unittest.TestCase):
             "\n".join(
                 (
                     "PGHOST=127.0.0.1",
+                    "PGHOSTADDR=127.0.0.1",
                     "PGPORT=5432",
+                    "PGSSLMODE=verify-full",
+                    "PGSSLROOTCERT=/etc/leaddrive/managed-postgres-ca.crt",
                     "VERIFY_PGHOST=example.aivencloud.com",
                     "VERIFY_PGPORT=6432",
                     "PGUSER=do-not-read",
@@ -48,7 +51,10 @@ class StaticConfigTests(unittest.TestCase):
             config,
             {
                 "PGHOST": "127.0.0.1",
+                "PGHOSTADDR": "127.0.0.1",
                 "PGPORT": "5432",
+                "PGSSLMODE": "verify-full",
+                "PGSSLROOTCERT": "/etc/leaddrive/managed-postgres-ca.crt",
                 "VERIFY_PGHOST": "example.aivencloud.com",
                 "VERIFY_PGPORT": "6432",
             },
@@ -157,8 +163,96 @@ class ClassificationTests(unittest.TestCase):
                 {"PGHOST": "127.0.0.1", "PGPORT": "5432"}
             )
 
-        self.assertEqual(result.remediation_without_restart, "proven")
+        self.assertEqual(result.remediation_without_restart, "direct-dns")
         self.assertEqual(verify_full.call_args.args[0].value, "production.example.com")
+
+    def test_source_can_report_scoped_client_route_requirement(self) -> None:
+        secured = mock.Mock()
+        secured.getpeercert.return_value = b"certificate"
+        with (
+            mock.patch.object(
+                DIAGNOSTIC,
+                "_postgres_tls_socket",
+                return_value=("available", secured),
+            ),
+            mock.patch.object(
+                DIAGNOSTIC,
+                "_certificate_dns_sans",
+                return_value=["production.example.com"],
+            ),
+            mock.patch.object(
+                DIAGNOSTIC,
+                "_production_server_names",
+                return_value=["production.example.com"],
+            ),
+            mock.patch.object(
+                DIAGNOSTIC, "_name_resolves_to_local", return_value="yes"
+            ),
+            mock.patch.object(
+                DIAGNOSTIC,
+                "_verify_full_with_presented_certificate",
+                side_effect=["yes", "no"],
+            ),
+        ):
+            result = DIAGNOSTIC.inspect_source_san(
+                {"PGHOST": "127.0.0.1", "PGPORT": "5432"}
+            )
+
+        self.assertEqual(
+            result.remediation_without_restart, "client-hostaddr-required"
+        )
+
+    def test_source_reports_effective_verify_full_with_configured_hostaddr(self) -> None:
+        secured = mock.Mock()
+        secured.getpeercert.return_value = b"certificate"
+        with (
+            mock.patch.object(
+                DIAGNOSTIC,
+                "_postgres_tls_socket",
+                return_value=("available", secured),
+            ),
+            mock.patch.object(
+                DIAGNOSTIC,
+                "_certificate_dns_sans",
+                return_value=["production.example.com"],
+            ),
+            mock.patch.object(
+                DIAGNOSTIC,
+                "_production_server_names",
+                return_value=["production.example.com"],
+            ),
+            mock.patch.object(
+                DIAGNOSTIC, "_name_resolves_to_local", return_value="yes"
+            ),
+            mock.patch.object(DIAGNOSTIC, "_source_ca_matches", return_value=True),
+            mock.patch.object(
+                DIAGNOSTIC,
+                "_verify_full_with_presented_certificate",
+                side_effect=["yes", "no", "yes"],
+            ),
+        ):
+            result = DIAGNOSTIC.inspect_source_san(
+                {
+                    "PGHOST": "production.example.com",
+                    "PGHOSTADDR": "127.0.0.1",
+                    "PGPORT": "5432",
+                    "PGSSLMODE": "verify-full",
+                    "PGSSLROOTCERT": "/etc/leaddrive/managed-postgres-ca.crt",
+                }
+            )
+
+        self.assertEqual(result.client_hostaddr_configured, "yes")
+        self.assertEqual(result.effective_verify_full, "yes")
+
+    @mock.patch.object(DIAGNOSTIC.Path, "is_dir", return_value=False)
+    @mock.patch.object(DIAGNOSTIC.shutil, "which", return_value=None)
+    def test_absent_standard_cluster_tools_are_conclusive_for_reviewed_scope(
+        self, _which: mock.Mock, _is_dir: mock.Mock
+    ) -> None:
+        self.assertEqual(
+            DIAGNOSTIC._detect_postgresql_cluster(55432),
+            (False, "absent", True),
+        )
 
     @mock.patch.object(DIAGNOSTIC, "_detect_custom_systemd")
     @mock.patch.object(DIAGNOSTIC, "_compose_definition_exists")
@@ -185,6 +279,10 @@ class ClassificationTests(unittest.TestCase):
                 launch_mechanism="separate-postgresql-cluster",
                 definition="present",
                 runtime_state="stopped",
+                cluster_probe="present",
+                docker_probe="absent",
+                compose_probe="absent",
+                systemd_probe="absent",
             ),
         )
 
@@ -235,8 +333,11 @@ class OutputSchemaTests(unittest.TestCase):
                 dns_san_count="1",
                 san_matches_server_name="yes",
                 san_resolves_local="yes",
-                verify_full_with_san="yes",
-                remediation_without_restart="proven",
+                verify_full_at_source_endpoint="yes",
+                verify_full_via_san_name="no",
+                client_hostaddr_configured="yes",
+                effective_verify_full="yes",
+                remediation_without_restart="client-hostaddr-required",
             )
         )
         scratch_output = DIAGNOSTIC.format_scratch_launch_result(
@@ -245,19 +346,26 @@ class OutputSchemaTests(unittest.TestCase):
                 launch_mechanism="not-configured",
                 definition="absent",
                 runtime_state="absent",
+                cluster_probe="absent",
+                docker_probe="absent",
+                compose_probe="absent",
+                systemd_probe="absent",
             )
         )
 
         self.assertEqual(
             source_output,
             "source_san dns_san_count=1 san_matches_server_name=yes "
-            "san_resolves_local=yes verify_full_with_san=yes "
-            "remediation_without_postgres_restart=proven",
+            "san_resolves_local=yes verify_full_at_source_endpoint=yes "
+            "verify_full_via_san_name=no "
+            "client_hostaddr_configured=yes effective_verify_full=yes "
+            "remediation_without_postgres_restart=client-hostaddr-required",
         )
         self.assertEqual(
             scratch_output,
             "scratch port=55432 launch_mechanism=not-configured "
-            "definition=absent runtime_state=absent",
+            "definition=absent runtime_state=absent cluster_probe=absent "
+            "docker_probe=absent compose_probe=absent systemd_probe=absent",
         )
         for forbidden in (
             "db.example.com",

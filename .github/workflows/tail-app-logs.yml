@@ -171,8 +171,8 @@ jobs:
           set -e
 
           mapfile -t DIAGNOSTIC_LINES <<<"$DIAGNOSTIC_OUTPUT"
-          SOURCE_RE='^source_san dns_san_count=([0-9]+|unavailable) san_matches_server_name=(yes|no|unavailable) san_resolves_local=(yes|no|unavailable) verify_full_with_san=(yes|no|unavailable) remediation_without_postgres_restart=(proven|not-proven)$'
-          SCRATCH_RE='^scratch port=([1-9][0-9]{0,4}|invalid) launch_mechanism=(separate-postgresql-cluster|docker-compose|docker|custom-systemd|ambiguous|not-configured|unknown) definition=(present|absent|unknown) runtime_state=(running|stopped|not-created|absent|unknown)$'
+          SOURCE_RE='^source_san dns_san_count=([0-9]+|unavailable) san_matches_server_name=(yes|no|unavailable) san_resolves_local=(yes|no|unavailable) verify_full_at_source_endpoint=(yes|no|unavailable) verify_full_via_san_name=(yes|no|unavailable) client_hostaddr_configured=(yes|no|unavailable) effective_verify_full=(yes|no|unavailable) remediation_without_postgres_restart=(direct-dns|client-hostaddr-required|not-proven)$'
+          SCRATCH_RE='^scratch port=([1-9][0-9]{0,4}|invalid) launch_mechanism=(separate-postgresql-cluster|docker-compose|docker|custom-systemd|ambiguous|not-configured|unknown) definition=(present|absent|unknown) runtime_state=(running|stopped|not-created|absent|unknown) cluster_probe=(present|absent|unknown) docker_probe=(present|absent|unknown) compose_probe=(present|absent|unknown) systemd_probe=(present|absent|unknown)$'
           [ "${#DIAGNOSTIC_LINES[@]}" -eq 2 ] \
             && [[ "${DIAGNOSTIC_LINES[0]}" =~ $SOURCE_RE ]] \
             && [[ "${DIAGNOSTIC_LINES[1]}" =~ $SCRATCH_RE ]] || {
