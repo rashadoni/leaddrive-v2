@@ -1528,7 +1528,8 @@ export async function previewWorkforceShiftAssignments(input: {
       select: workforceShiftAssignmentSelect,
     }),
   ])
-  const agentsById = new Map(agents.map((agent) => [agent.id, agent]))
+  const typedAgents = agents as Array<{ id: string; teamId: string | null }>
+  const agentsById = new Map(typedAgents.map((agent) => [agent.id, agent]))
   const assignmentsByAgentId = new Map<string, typeof assignments>()
   for (const assignment of assignments) {
     const items = assignmentsByAgentId.get(assignment.agentId) ?? []
