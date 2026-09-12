@@ -6,6 +6,7 @@ import { withRlsAuth, withRlsSessionAuth } from "@/lib/with-rls"
 import type { AuthResult } from "@/lib/api-auth"
 import { decidePersistedWorkforceAccess } from "@/lib/workforce/access-grant-resolution"
 import { workforceGranularAccessEnabled } from "@/lib/workforce/granular-access-rollout"
+import type { WorkforceAccessPermission } from "@/lib/workforce/access-control"
 
 type WrappedWorkforceRouteHandler<C> = {
   (req: NextRequest): Promise<Response>
@@ -128,6 +129,49 @@ export function withWorkforceSessionAdminAuth<C = unknown>(
     const denied = await workforceCapabilityResponse(auth.orgId)
     if (denied) return denied
     return handler(req, auth, ctx)
+  })
+  return wrapped as WrappedWorkforceRouteHandler<C>
+}
+
+/**
+ * Session-only boundary for tenant-wide schedule and site configuration.
+ * Legacy tenants retain the admin boundary; after granular cutover the caller
+ * must hold the exact organization-scoped Workforce permission.
+ */
+export function withWorkforceSessionScheduleConfigurationAuth<C = unknown>(
+  permission: Extract<WorkforceAccessPermission, "SCHEDULE_READ" | "SCHEDULE_WRITE" | "SITE_ASSIGNMENT_WRITE">,
+  handler: (req: NextRequest, auth: AuthResult, ctx: C) => Promise<Response> | Response,
+) {
+  const wrapped = withRlsSessionAuth<C>(async (req, auth, ctx) => {
+    try {
+      const organization = await prisma.organization.findUnique({
+        where: { id: auth.orgId },
+        select: { plan: true, addons: true, features: true, modules: true },
+      })
+      if (!organization || !isTenantCapabilityEnabled("workforce-hrm", organization)) {
+        return workforceCapabilityDisabled()
+      }
+      if (!workforceGranularAccessEnabled(organization.features)) {
+        return isWorkforcePolicyAdministrator(auth.role)
+          ? handler(req, auth, ctx)
+          : workforcePolicyAdminDenied()
+      }
+      const access = await decidePersistedWorkforceAccess({
+        db: prisma,
+        organizationId: auth.orgId,
+        principalUserId: auth.userId,
+        selfAgentId: null,
+        permission,
+        resource: { organizationId: auth.orgId },
+      })
+      return access.allowed ? handler(req, auth, ctx) : workforceGranularAccessDenied()
+    } catch (error) {
+      console.error("[withWorkforceSessionScheduleConfigurationAuth] authorization lookup failed", error)
+      return NextResponse.json({
+        error: "Unable to verify Workforce schedule configuration access.",
+        code: "WORKFORCE_GRANULAR_ACCESS_UNAVAILABLE",
+      }, { status: 503 })
+    }
   })
   return wrapped as WrappedWorkforceRouteHandler<C>
 }

@@ -34,6 +34,7 @@ import {
   withWorkforceRlsAuth,
   withWorkforceSessionAdminAuth,
   withWorkforceSessionExceptionQueueAuth,
+  withWorkforceSessionScheduleConfigurationAuth,
 } from "@/lib/with-workforce-rls-auth"
 
 const request = () => new NextRequest("http://localhost:3000/api/v1/workforce/today")
@@ -41,6 +42,30 @@ const request = () => new NextRequest("http://localhost:3000/api/v1/workforce/to
 beforeEach(() => {
   vi.clearAllMocks()
   sessionRole.value = "manager"
+})
+describe("withWorkforceSessionScheduleConfigurationAuth", () => {
+  it("preserves legacy admin access and denies a legacy manager", async () => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      plan: "enterprise", addons: [], features: ["workforce-hrm"], modules: { "workforce-hrm": true },
+    } as never)
+    const handler = vi.fn(async () => NextResponse.json({ success: true }))
+    sessionRole.value = "admin"
+    expect((await withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_WRITE", handler)(request())).status).toBe(200)
+    sessionRole.value = "manager"
+    expect((await withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_WRITE", handler)(request())).status).toBe(403)
+  })
+
+  it("fails closed after granular cutover without an effective grant", async () => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      plan: "enterprise", addons: [], features: ["workforce-hrm", "workforce-granular-access-v1"], modules: { "workforce-hrm": true },
+    } as never)
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([])
+    const handler = vi.fn(async () => NextResponse.json({ success: true }))
+    sessionRole.value = "admin"
+    const response = await withWorkforceSessionScheduleConfigurationAuth("SITE_ASSIGNMENT_WRITE", handler)(request())
+    expect(response.status).toBe(403)
+    expect(handler).not.toHaveBeenCalled()
+  })
 })
 describe("withWorkforceRlsAuth", () => {
   it("requires the dedicated permission scope and active Workforce capability", async () => {
