@@ -155,7 +155,7 @@ export const GET = withRls(async (_req: NextRequest, { orgId, session }, { param
       where: { id, organizationId: orgId },
       include: {
         categoryRef: { select: { id: true, name: true, slug: true, scope: true } },
-        comments: { orderBy: { createdAt: "asc" } },
+        comments: { orderBy: { createdAt: "asc" }, include: { attachments: true } },
         closureRequests: {
           orderBy: { requestedAt: "desc" },
           take: 1,
@@ -220,7 +220,7 @@ export const GET = withRls(async (_req: NextRequest, { orgId, session }, { param
         ? prisma.company.findFirst({ where: { id: ticket.companyId }, select: { id: true, name: true } })
         : Promise.resolve(null),
       ticket.contactId
-        ? prisma.contact.findFirst({ where: { id: ticket.contactId }, select: { id: true, fullName: true, email: true, phone: true } })
+        ? prisma.contact.findFirst({ where: { id: ticket.contactId }, select: { id: true, fullName: true, email: true, phone: true, preferredLanguage: true } })
         : Promise.resolve(null),
     ])
 
@@ -253,6 +253,7 @@ export const GET = withRls(async (_req: NextRequest, { orgId, session }, { param
       requesterName: ticket.requesterName || contact?.fullName || contact?.email || contact?.phone || null,
       requesterEmail: ticket.requesterEmail || contact?.email || null,
       requesterPhone: ticket.requesterPhone || contact?.phone || null,
+      contactPreferredLanguage: contact?.preferredLanguage || null,
       closureRequest: latestClosureRequest,
       entitlement,
     }

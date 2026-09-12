@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { NextRequest, NextResponse } from "next/server"
 
@@ -61,6 +62,14 @@ vi.mock("@/lib/whatsapp", () => ({
 
 vi.mock("@/lib/notifications", () => ({
   createNotification: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock("@/lib/deal-stage-vocabulary", () => ({
+  orgStageVocabulary: vi.fn().mockResolvedValue({
+    wonStages: ["WON", "SIGNED"],
+    lostStages: ["LOST"],
+    closedStages: ["WON", "SIGNED", "LOST"],
+  }),
 }))
 
 vi.mock("@/lib/constants", () => ({
@@ -177,6 +186,22 @@ describe("POST /api/v1/tickets/[id]/comments", () => {
     expect(res.status).toBe(404)
   })
 
+  it("requires a closed ticket to be reopened before another reply", async () => {
+    vi.mocked(prisma.ticket.findFirst).mockResolvedValue({ id: "t1", organizationId: "org-1", status: "closed" } as never)
+
+    const res = await POST_COMMENT(
+      makeReq("http://localhost:3000/api/v1/tickets/t1/comments", {
+        method: "POST",
+        body: JSON.stringify({ comment: "should not be created" }),
+      }),
+      makeParams("t1"),
+    )
+
+    expect(res.status).toBe(409)
+    expect(await res.json()).toMatchObject({ errorKey: "ticketClosed" })
+    expect(prisma.ticketComment.create).not.toHaveBeenCalled()
+  })
+
   it("creates comment successfully", async () => {
     vi.mocked(prisma.ticket.findFirst).mockResolvedValue({
       id: "t1",
@@ -205,6 +230,35 @@ describe("POST /api/v1/tickets/[id]/comments", () => {
     expect(prisma.ticketComment.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ userId: "user-1" }),
     }))
+  })
+
+  it("keeps manual agent replies available while Support AI is disabled", async () => {
+    vi.mocked(isSupportAiEnabled).mockResolvedValue(false)
+    vi.mocked(prisma.ticket.findFirst).mockResolvedValue({
+      id: "t1",
+      organizationId: "org-1",
+      assignedTo: "user-2",
+      firstResponseAt: null,
+      tags: [],
+      ticketNumber: "TK-001",
+      subject: "Manual reply",
+      description: "",
+      contactId: null,
+    } as any)
+    vi.mocked(prisma.ticketComment.create).mockResolvedValue({ id: "c2", comment: "Agent response" } as any)
+    vi.mocked(prisma.ticket.updateMany).mockResolvedValue({ count: 1 } as any)
+
+    const res = await POST_COMMENT(
+      makeReq("http://localhost:3000/api/v1/tickets/t1/comments", {
+        method: "POST",
+        body: JSON.stringify({ comment: "Agent response" }),
+      }),
+      makeParams("t1"),
+    )
+
+    expect(res.status).toBe(201)
+    expect(prisma.ticketComment.create).toHaveBeenCalled()
+    expect(isSupportAiEnabled).not.toHaveBeenCalled()
   })
 })
 
@@ -243,6 +297,12 @@ describe("GET /api/v1/tickets/[id]/context", () => {
     const json = await res.json()
     expect(json.success).toBe(true)
     expect(json.data.lifetimeValue).toBe(5000)
+    expect(prisma.deal.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ stage: { notIn: ["WON", "SIGNED", "LOST"] } }),
+    }))
+    expect(prisma.deal.aggregate).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ stage: { in: ["WON", "SIGNED"] } }),
+    }))
   })
 })
 
