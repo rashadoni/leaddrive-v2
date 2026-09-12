@@ -531,19 +531,24 @@ def _require_pgpass_match(config: dict[str, str], server_name: str, port: int) -
     raise SafeMaintenanceError
 
 
-def _require_reviewed_invocation() -> None:
+def _require_reviewed_invocation() -> bool:
     script, _ = _read_regular_file(
-        ACTIVE_BACKUP_SCRIPT_PATH, maximum_bytes=256 * 1024, required=True
+        ACTIVE_BACKUP_SCRIPT_PATH, maximum_bytes=256 * 1024, required=False
     )
     service, _ = _read_regular_file(
-        ACTIVE_BACKUP_SERVICE_PATH, maximum_bytes=32 * 1024, required=True
+        ACTIVE_BACKUP_SERVICE_PATH, maximum_bytes=32 * 1024, required=False
     )
-    if script is None or service is None:
+    if script is None:
+        if service is None:
+            return False
         raise SafeMaintenanceError
     if hashlib.sha256(script).hexdigest() not in APPROVED_BACKUP_SCRIPT_SHA256:
         raise SafeMaintenanceError
+    if service is None:
+        return False
     if hashlib.sha256(service).hexdigest() != APPROVED_BACKUP_SERVICE_SHA256:
         raise SafeMaintenanceError
+    return True
 
 
 def _require_backup_inactive() -> None:
@@ -566,7 +571,7 @@ def _require_backup_inactive() -> None:
             raise SafeMaintenanceError
 
 
-def _acquire_backup_lock() -> int:
+def _acquire_backup_lock(*, required: bool) -> int | None:
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     try:
         fd = os.open(BACKUP_LOCK_PATH, flags)
@@ -579,6 +584,10 @@ def _acquire_backup_lock() -> int:
             raise SafeMaintenanceError
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         return fd
+    except FileNotFoundError as exc:
+        if not required:
+            return None
+        raise SafeMaintenanceError from exc
     except Exception as exc:
         try:
             os.close(fd)
@@ -842,7 +851,7 @@ def apply() -> str:
     except Exception as exc:
         raise SafeMaintenanceError("file-safety") from exc
     try:
-        _require_reviewed_invocation()
+        commissioned_invocation = _require_reviewed_invocation()
     except Exception as exc:
         raise SafeMaintenanceError("invocation") from exc
     try:
@@ -850,7 +859,7 @@ def apply() -> str:
     except Exception as exc:
         raise SafeMaintenanceError("scheduler") from exc
     try:
-        lock_fd = _acquire_backup_lock()
+        lock_fd = _acquire_backup_lock(required=commissioned_invocation)
     except Exception as exc:
         raise SafeMaintenanceError("backup-lock") from exc
     try:
@@ -918,7 +927,8 @@ def apply() -> str:
                 "rollback" if rollback_failed else "post-write"
             ) from exc
     finally:
-        os.close(lock_fd)
+        if lock_fd is not None:
+            os.close(lock_fd)
     return "applied"
 
 
@@ -926,16 +936,17 @@ def rollback() -> str:
     if os.geteuid() != 0:
         raise SafeMaintenanceError
     _assert_root_directory(SNAPSHOT_PATH)
-    _require_reviewed_invocation()
+    commissioned_invocation = _require_reviewed_invocation()
     _require_backup_inactive()
-    lock_fd = _acquire_backup_lock()
+    lock_fd = _acquire_backup_lock(required=commissioned_invocation)
     try:
         state = _load_state()
         _restore_snapshot(state, require_post_state=True)
         state["phase"] = "rolled-back"
         _write_state(state)
     finally:
-        os.close(lock_fd)
+        if lock_fd is not None:
+            os.close(lock_fd)
     return "rolled-back"
 
 
