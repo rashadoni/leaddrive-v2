@@ -54,6 +54,21 @@ describe("Workforce granular access foundation", () => {
     })).toEqual({ allowed: false, code: "WORKFORCE_ACCESS_SCOPE_DENIED" })
   })
 
+  it("allows accountable exception decisions only for an explicit HR or scoped team-manager grant", () => {
+    expect(decideWorkforceAccess({ ...BASE, permission: "TEAM_EXCEPTION_DECIDE", grants: [grant()] }))
+      .toEqual({ allowed: true, source: "GRANT", grantId: "grant-1" })
+    expect(decideWorkforceAccess({
+      ...BASE,
+      permission: "TEAM_EXCEPTION_DECIDE",
+      grants: [grant({ role: "HR_ADMIN", scope: { kind: "ORGANIZATION" } })],
+    })).toEqual({ allowed: true, source: "GRANT", grantId: "grant-1" })
+    expect(decideWorkforceAccess({
+      ...BASE,
+      permission: "TEAM_EXCEPTION_DECIDE",
+      grants: [grant({ role: "TIME_APPROVER" })],
+    })).toEqual({ allowed: false, code: "WORKFORCE_ACCESS_GRANT_UNAVAILABLE" })
+  })
+
   it("does not let a role borrow another role's permission or an unsupported broad scope", () => {
     expect(decideWorkforceAccess({ ...BASE, permission: "TIME_APPROVE", grants: [grant()] }))
       .toEqual({ allowed: false, code: "WORKFORCE_ACCESS_GRANT_UNAVAILABLE" })
@@ -91,6 +106,8 @@ describe("Workforce granular access foundation", () => {
       allowed: false,
       code: "WORKFORCE_ACCESS_RAW_EVIDENCE_RESTRICTED",
     })
+    expect(workforceRolePermissions("HR_ADMIN")).toContain("TEAM_EXCEPTION_DECIDE")
+    expect(workforceRolePermissions("TEAM_MANAGER")).toContain("TEAM_EXCEPTION_DECIDE")
     expect(workforceRolePermissions("EVIDENCE_REVIEWER")).toEqual(["EVIDENCE_DERIVED_READ"])
     expect(workforceRoleScopeKinds("DEVICE_SECURITY_ADMIN")).toEqual(["ORGANIZATION", "SITE"])
   })

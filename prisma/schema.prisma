@@ -7322,6 +7322,7 @@ model WorkforceExceptionCase {
 
   decisions WorkforceExceptionDecision[]
   employeeResponses WorkforceExceptionEmployeeResponse[]
+  correctionRequests MtmHrmRequest[] @relation("WorkforceExceptionCorrectionRequest")
 
   @@unique([organizationId, id])
   @@unique([organizationId, deduplicationKey])
@@ -7562,6 +7563,10 @@ model MtmHrmRequest {
   endDate             DateTime            @db.Date
   correctionWorkdayId String?
   correctionWorkday   MtmAgentWorkday?    @relation(fields: [correctionWorkdayId], references: [id], onDelete: SetNull)
+  // Optional immutable source link for a correction the employee began from
+  // their own exception. It remains absent for ordinary correction requests.
+  exceptionCaseId     String?
+  exceptionCase       WorkforceExceptionCase? @relation("WorkforceExceptionCorrectionRequest", fields: [organizationId, exceptionCaseId], references: [organizationId, id], onDelete: Restrict)
   requestedStartAt    DateTime?
   requestedEndAt      DateTime?
   reason              String
@@ -7581,6 +7586,7 @@ model MtmHrmRequest {
   @@index([organizationId, agentId, startDate])
   @@index([organizationId, status, submittedAt])
   @@index([correctionWorkdayId])
+  @@index([organizationId, exceptionCaseId])
   @@map("mtm_hrm_requests")
 }
 

@@ -25,6 +25,14 @@ coordinate, QR or device-proof read is absent from the ordinary role
 vocabulary entirely; it remains blocked until C10 adds a separate
 purpose/reason/audit/investigation decision.
 
+The approved management boundary now also names `TEAM_EXCEPTION_DECIDE`.
+`HR_ADMIN` may resolve a Workforce exception within an explicit organization,
+team or site grant; `TEAM_MANAGER` may do so only within its explicit team or
+site grant. Neither role receives raw evidence, payroll, disciplinary or
+approval authority from that permission. `TIME_APPROVER` remains deliberately
+separate, so the existing incompatible-role guard still prevents one person
+from combining a time approval with team management.
+
 The owner-approved recommended v1 draft also makes these role pairs
 incompatible for a future assignment flow: scheduler/time approver, time
 approver/team manager, evidence reviewer/device-security admin and export
@@ -35,12 +43,13 @@ modify a durable tenant grant.
 
 ## Deliberate rollout boundary
 
-No Prisma model, migration, UI, endpoint wrapper or existing role mapping is
-changed by this source slice. That avoids an accidental production lockout or
-an unreviewed conversion of broad legacy CRM roles. A later forward-only C7
-migration must add durable grants, record accountable grant/revoke audit,
-enforce the recorded incompatible-role rules and migrate each endpoint behind
-an explicit tenant rollout fence before it can claim enforcement.
+No migration has been applied, grant row created or existing role mapping
+replaced. The new C6 decision route is deliberately default-deny: it reads
+only an effective durable C7 grant and otherwise makes no write, so a legacy
+CRM role cannot become a hidden exception authority. A later forward-only C7
+service must assign and review the grants, migrate each endpoint behind an
+explicit tenant rollout fence and run access review before it can claim live
+enforcement.
 
 ## Verification
 
