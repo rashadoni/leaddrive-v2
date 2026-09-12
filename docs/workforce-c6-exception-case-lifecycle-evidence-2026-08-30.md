@@ -49,6 +49,14 @@ has no endpoint, queue, detector, live permission grant, lifecycle state,
 notification, payroll or disciplinary behavior; a future authorized C6
 service must supply those separately.
 
+After the owner-approved recommended v1 draft policy, the ledger also offers
+`createDraftPolicyWorkforceExceptionDecisionDraft`. This opt-in pure adapter
+validates a candidate append against the complete caller-supplied decision
+sequence (`OPEN` → employee-visible response/review → human resolution or
+explicit re-open) before it emits the same immutable envelope. It neither
+queries a case, authorizes an actor nor alters the generic legacy-compatible
+draft writer, so it cannot accidentally activate a tenant lifecycle.
+
 Segment-only no-show proposals remain permissible at this storage boundary:
 they have no accepted START snapshot yet. Their schedule detector, grace
 timing, case writer and employee lifecycle remain separately disabled until
@@ -56,9 +64,11 @@ the approved C6 policy/RACI exists.
 
 ## Explicitly not activated
 
-No tenant taxonomy/severity/owner/SLA, endpoint, queue, detector, employee
-notification/appeal UI, manager authorization, decision vocabulary, migration
-apply or legacy-row conversion is enabled. The existing
+No tenant policy activation, endpoint, queue, detector, employee
+notification/appeal UI, manager authorization, migration apply or legacy-row
+conversion is enabled. The recommended v1 taxonomy/triage/owner/targets and
+draft decision vocabulary are recorded separately, but have no operational
+tenant effect. The existing
 `WorkforceAttendanceException` table and timesheet approval behavior are
 unchanged. No case may be treated as a payroll or disciplinary outcome.
 

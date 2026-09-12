@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   WorkforceExceptionCaseLedgerError,
   createWorkforceExceptionCaseDraft,
+  createDraftPolicyWorkforceExceptionDecisionDraft,
   createWorkforceExceptionDecisionDraft,
   workforceExceptionCaseDeduplicationKey,
 } from "@/lib/workforce/exception-case-ledger"
@@ -76,5 +77,26 @@ describe("Workforce exception case ledger drafts", () => {
       organizationId: "org-1", caseId: "case-1", operationId: "decision-op-1",
       decisionCode: "ACKNOWLEDGED", reason: " ", actorUserId: "user-1",
     })).toThrow(expect.objectContaining({ code: "WORKFORCE_EXCEPTION_DECISION_INPUT_INVALID" }))
+  })
+
+  it("offers a policy-aware draft path without changing the generic legacy-compatible envelope", () => {
+    expect(createDraftPolicyWorkforceExceptionDecisionDraft({
+      organizationId: "org-1",
+      caseId: "case-1",
+      operationId: "decision-op-policy-1",
+      decisionCode: "RESOLVE_NO_CHANGE",
+      reason: "No correction is required after review.",
+      actorUserId: "user-1",
+      priorDecisionCodes: ["ACKNOWLEDGE"],
+    })).toMatchObject({ decisionCode: "RESOLVE_NO_CHANGE", caseId: "case-1" })
+    expect(() => createDraftPolicyWorkforceExceptionDecisionDraft({
+      organizationId: "org-1",
+      caseId: "case-1",
+      operationId: "decision-op-policy-2",
+      decisionCode: "RESOLVE_NO_CHANGE",
+      reason: "A decision cannot be automatic.",
+      actorUserId: "user-1",
+      priorDecisionCodes: [],
+    })).toThrow(expect.objectContaining({ code: "WORKFORCE_EXCEPTION_DECISION_LIFECYCLE_INVALID" }))
   })
 })

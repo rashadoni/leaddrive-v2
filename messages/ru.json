@@ -264,6 +264,7 @@
     "workforceToday": "Табель и команда: рабочее время и исключения",
     "workforceTimesheet": "Часы, перерывы и история учёта",
     "workforceRequests": "Отпуск, отсутствие и решения по корректировкам",
+    "workforceExceptions": "Проверка исключений учёта времени",
     "workforceConfiguration": "Будущие политики рабочего времени и шаблоны смен",
     "healthPatients": "Карты пациентов",
     "healthEncounters": "Приёмы и обращения",
@@ -548,6 +549,7 @@
     "workforceToday": "Табель и команда",
     "workforceTimesheet": "Табель",
     "workforceRequests": "Запросы",
+    "workforceExceptions": "Исключения",
     "workforceConfiguration": "Настройка рабочего времени",
     "healthPatients": "Пациенты",
     "healthEncounters": "Визиты",
@@ -23751,6 +23753,68 @@
       "leave": "Отпуск",
       "absence": "Отсутствие",
       "correction": "Корректировка времени"
+    }
+  },
+  "workforceExceptionQueue": {
+    "title": "Очередь исключений учёта времени",
+    "subtitle": "Проверяйте неопределённые случаи учёта без раскрытия точной геопозиции, QR, данных устройства или причин сотрудника.",
+    "adminOnly": "Эта очередь только для чтения доступна лишь вошедшему администратору тенанта.",
+    "boundaryTitle": "Только человеческая проверка",
+    "boundaryHint": "Эта очередь не меняет факт времени, оплату или дисциплинарное решение. Она показывает лишь производное состояние проверки: здесь недоступны координаты, карты, QR-значения, идентификаторы устройств, материалы доказательств, причины решений и внутренние идентификаторы.",
+    "refresh": "Обновить очередь",
+    "loading": "Загрузка очереди исключений учёта времени",
+    "loadFailed": "Не удалось загрузить очередь исключений учёта времени.",
+    "casesTitle": "Случаи для проверки",
+    "casesHint": "Для проверки человеком показано случаев: {count}.",
+    "case": "Случай",
+    "employee": "Сотрудник",
+    "type": "Тип",
+    "severity": "Риск",
+    "age": "Возраст",
+    "stage": "Этап проверки",
+    "evidence": "Полнота доказательств",
+    "employeeResponse": "Ответ сотрудника",
+    "nextAction": "Следующее действие",
+    "empty": "Нет случаев исключений учёта времени, требующих проверки.",
+    "types": {
+      "LATE_START": "Позднее начало",
+      "UNDERTIME": "Недоработка",
+      "OVERTIME": "Переработка",
+      "LONG_PAUSE": "Длинный перерыв",
+      "NO_SHOW": "Неявка",
+      "MISSED_FINISH": "Нет завершения",
+      "DELAYED_CLAIM": "Поздняя заявка",
+      "SITE_TRANSITION_REVIEW": "Проверка перехода между площадками",
+      "DEVICE_SECURITY_REVIEW": "Проверка безопасности устройства",
+      "ATTENDANCE_PROOF_REVIEW": "Проверка доказательств присутствия"
+    },
+    "severities": {
+      "ROUTINE_REVIEW": "Обычная проверка",
+      "ATTENTION_REVIEW": "Требует внимания"
+    },
+    "stages": {
+      "OPEN": "Открыт",
+      "AWAITING_EMPLOYEE_RESPONSE": "Ожидается ответ сотрудника",
+      "HR_REVIEW": "Проверка HR",
+      "RESOLVED": "Решён",
+      "DATA_INTEGRITY_REVIEW": "Проверка целостности данных"
+    },
+    "evidenceStates": {
+      "NOT_REQUIRED": "Не требуется",
+      "LINKED_RESTRICTED": "Связано, ограниченный доступ",
+      "MISSING_OR_UNAVAILABLE": "Нет или недоступно"
+    },
+    "employeeResponses": {
+      "NOT_REQUESTED": "Не запрошен",
+      "PENDING": "Ожидается",
+      "RECEIVED": "Получен"
+    },
+    "nextActions": {
+      "ACKNOWLEDGE_HR_REVIEW": "Подтвердить проверку HR",
+      "WAIT_FOR_EMPLOYEE_RESPONSE": "Ждать ответа сотрудника",
+      "HUMAN_REVIEW_REQUIRED": "Нужна проверка человеком",
+      "NO_FURTHER_ACTION": "Дальнейшее действие не требуется",
+      "ESCALATE_DATA_INTEGRITY_REVIEW": "Передать на проверку целостности данных"
     }
   },
   "workforceConfigurationPage": {

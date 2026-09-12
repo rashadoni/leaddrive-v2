@@ -264,6 +264,7 @@
     "workforceToday": "Timesheet & team: work-time status and exceptions",
     "workforceTimesheet": "Hours, pauses and attendance history",
     "workforceRequests": "Leave, absence and time-correction decisions",
+    "workforceExceptions": "Attendance exception review",
     "workforceConfiguration": "Forward-only work-time policies and shift templates",
     "healthPatients": "Patient records",
     "healthEncounters": "Clinical encounters",
@@ -548,6 +549,7 @@
     "workforceToday": "Timesheet & team",
     "workforceTimesheet": "Timesheet",
     "workforceRequests": "Requests",
+    "workforceExceptions": "Exceptions",
     "workforceConfiguration": "Work-time configuration",
     "healthPatients": "Patients",
     "healthEncounters": "Encounters",
@@ -23751,6 +23753,68 @@
       "leave": "Leave",
       "absence": "Absence",
       "correction": "Time correction"
+    }
+  },
+  "workforceExceptionQueue": {
+    "title": "Attendance exception queue",
+    "subtitle": "Review uncertain attendance cases without exposing raw location, QR, device proof or employee reasons.",
+    "adminOnly": "This read-only exception queue is available only to a signed-in tenant administrator.",
+    "boundaryTitle": "Human review only",
+    "boundaryHint": "This queue cannot change attendance, pay or discipline. It shows only a derived review state: no coordinates, maps, QR values, device identifiers, proof payloads, decision reasons or internal identifiers are available here.",
+    "refresh": "Refresh queue",
+    "loading": "Loading attendance exception queue",
+    "loadFailed": "Unable to load the attendance exception queue.",
+    "casesTitle": "Exception cases",
+    "casesHint": "{count} cases are shown for read-only human review.",
+    "case": "Case",
+    "employee": "Employee",
+    "type": "Type",
+    "severity": "Risk",
+    "age": "Age",
+    "stage": "Review stage",
+    "evidence": "Evidence completeness",
+    "employeeResponse": "Employee response",
+    "nextAction": "Next action",
+    "empty": "No attendance exception cases require review.",
+    "types": {
+      "LATE_START": "Late start",
+      "UNDERTIME": "Undertime",
+      "OVERTIME": "Overtime",
+      "LONG_PAUSE": "Long pause",
+      "NO_SHOW": "No-show",
+      "MISSED_FINISH": "Missed finish",
+      "DELAYED_CLAIM": "Delayed claim",
+      "SITE_TRANSITION_REVIEW": "Site transition review",
+      "DEVICE_SECURITY_REVIEW": "Device security review",
+      "ATTENDANCE_PROOF_REVIEW": "Attendance proof review"
+    },
+    "severities": {
+      "ROUTINE_REVIEW": "Routine review",
+      "ATTENTION_REVIEW": "Attention review"
+    },
+    "stages": {
+      "OPEN": "Open",
+      "AWAITING_EMPLOYEE_RESPONSE": "Awaiting employee response",
+      "HR_REVIEW": "HR review",
+      "RESOLVED": "Resolved",
+      "DATA_INTEGRITY_REVIEW": "Data integrity review"
+    },
+    "evidenceStates": {
+      "NOT_REQUIRED": "Not required",
+      "LINKED_RESTRICTED": "Linked, restricted",
+      "MISSING_OR_UNAVAILABLE": "Missing or unavailable"
+    },
+    "employeeResponses": {
+      "NOT_REQUESTED": "Not requested",
+      "PENDING": "Pending",
+      "RECEIVED": "Received"
+    },
+    "nextActions": {
+      "ACKNOWLEDGE_HR_REVIEW": "Acknowledge HR review",
+      "WAIT_FOR_EMPLOYEE_RESPONSE": "Wait for employee response",
+      "HUMAN_REVIEW_REQUIRED": "Human review required",
+      "NO_FURTHER_ACTION": "No further action",
+      "ESCALATE_DATA_INTEGRITY_REVIEW": "Escalate data integrity review"
     }
   },
   "workforceConfigurationPage": {
