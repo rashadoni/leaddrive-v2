@@ -56,7 +56,7 @@ export function TourRenderer() {
       onSkip={skipTour}
       isFirst={currentStep === 0}
       isLast={currentStep === totalSteps - 1}
-      labels={{ back: tc("back"), next: tc("next"), done: tc("done") }}
+      labels={{ back: tc("back"), next: tc("next"), done: tc("done"), close: tc("close") }}
     />
   )
 }

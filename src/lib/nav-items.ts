@@ -22,7 +22,7 @@ import {
   FolderKanban, Wallet, MapPin, Route, Camera, AlertTriangle,
   ClipboardList, UserCog, GitBranch, Plug, Keyboard, Shield, Phone,
   Trophy, Activity, FileBarChart, Bot, Sparkles, Inbox, MessageSquareWarning, Key, Gauge, ChartPie, Award,
-  Mic, Tag, Wrench, ScanLine, LayoutTemplate, Columns3, Library,
+  Tag, Wrench, ScanLine, LayoutTemplate, Columns3, Library,
   Globe, Globe2, Hash, LayoutGrid, SearchCheck, Reply, Scale,
   CreditCard, BellRing, Lock,
   // Phase 7 Industry Cloud icons
@@ -41,6 +41,8 @@ export interface NavItem {
   icon: ElementType
   tKey: string
   group: string
+  /** Task-oriented subgroup used only inside the Support module navigation. */
+  supportSection?: SupportNavSection
   feature?: string
   /**
    * Independently sellable capability layered inside a historical group
@@ -87,6 +89,10 @@ export interface NavItem {
    */
   allowedRoles?: readonly Role[]
 }
+
+export type SupportNavSection = "work" | "team" | "rules"
+
+export const SUPPORT_NAV_SECTION_ORDER: readonly SupportNavSection[] = ["work", "team", "rules"]
 
 /**
  * Shape of the `org` context the navigation gate needs. Matches the object the
@@ -231,24 +237,23 @@ export const navItems: NavItem[] = [
   // not Support. A tenant with VoIP but without the service-desk module must
   // still see the summaries, transcripts and next steps from its AI calls.
   { module: "voip", href: "/voip/insights", icon: Brain, tKey: "conversationInsights", group: "VoIP" },
-  { module: "support", href: "/tickets", icon: Ticket, tKey: "tickets", group: "Support" },
-  { module: "support", feature: "complaints_register", href: "/complaints", icon: MessageSquareWarning, tKey: "complaints", group: "Support" },
-  { module: "support", href: "/support/agent-desktop", icon: Headphones, tKey: "agentDesktop", group: "Support" },
-  { module: "support", href: "/support/voip", icon: Phone, tKey: "voipCalls", group: "Support", addon: "voip" },
-  { module: "support", href: "/knowledge-base", icon: BookOpen, tKey: "knowledgeBase", group: "Support" },
-  // Ticket/service-desk settings — keep this as the final block in the Support
-  // group. Pages may live under /support/* or /settings/*, but their home is the
-  // ticketing module, not the generic Parametrlər section.
-  { module: "support", href: "/settings/ticket-categories", icon: Tag, tKey: "ticketCategoriesNav", group: "Support" },
-  { module: "support", href: "/settings/sla-policies", icon: Clock, tKey: "slaPoliciesNav", group: "Support" },
-  { module: "support", href: "/support/entitlements", icon: Shield, tKey: "entitlements", group: "Support" },
-  { module: "support", href: "/settings/entitlement-templates", icon: LayoutTemplate, tKey: "entitlementTemplatesNav", group: "Support" },
-  { module: "support", href: "/support/skill-routing", icon: Route, tKey: "skillRouting", group: "Support" },
-  { module: "support", href: "/support/calendar", icon: CalendarDays, tKey: "agentCalendar", group: "Support" },
-  { module: "support", href: "/settings/escalation", icon: AlertTriangle, tKey: "escalationRules", group: "Support" },
-  { module: "support", href: "/settings/macros", icon: Keyboard, tKey: "macros", group: "Support" },
-  { module: "support", href: "/settings/portal-users", icon: Shield, tKey: "portalUsersNav", group: "Support" },
-  { module: "support", href: "/support/ai-settings", icon: Bot, tKey: "supportAiNav", group: "Support", addon: "ai", allowedRoles: ["admin", "superadmin"] },
+  { module: "support", href: "/tickets", icon: Ticket, tKey: "tickets", group: "Support", supportSection: "work" },
+  { module: "support", feature: "complaints_register", href: "/complaints", icon: MessageSquareWarning, tKey: "complaints", group: "Support", supportSection: "work" },
+  { module: "support", href: "/support/agent-desktop", icon: Headphones, tKey: "agentDesktop", group: "Support", supportSection: "work" },
+  { module: "support", href: "/support/voip", icon: Phone, tKey: "voipCalls", group: "Support", addon: "voip", supportSection: "work" },
+  { module: "support", href: "/knowledge-base", icon: BookOpen, tKey: "knowledgeBase", group: "Support", supportSection: "work" },
+  { module: "support", href: "/support/skill-routing", icon: Route, tKey: "skillRouting", group: "Support", supportSection: "team" },
+  { module: "support", href: "/support/calendar", icon: CalendarDays, tKey: "agentCalendar", group: "Support", supportSection: "team" },
+  { module: "support", href: "/settings/portal-users", icon: Shield, tKey: "portalUsersNav", group: "Support", supportSection: "team" },
+  // Ticket/service-desk rules may live under /support/* or /settings/*, but
+  // their product home remains Support rather than the generic Settings group.
+  { module: "support", href: "/settings/ticket-categories", icon: Tag, tKey: "ticketCategoriesNav", group: "Support", supportSection: "rules" },
+  { module: "support", href: "/settings/sla-policies", icon: Clock, tKey: "slaPoliciesNav", group: "Support", supportSection: "rules" },
+  { module: "support", href: "/support/entitlements", icon: Shield, tKey: "entitlements", group: "Support", supportSection: "rules" },
+  { module: "support", href: "/settings/entitlement-templates", icon: LayoutTemplate, tKey: "entitlementTemplatesNav", group: "Support", supportSection: "rules" },
+  { module: "support", href: "/settings/escalation", icon: AlertTriangle, tKey: "escalationRules", group: "Support", supportSection: "rules" },
+  { module: "support", href: "/settings/macros", icon: Keyboard, tKey: "macros", group: "Support", supportSection: "rules" },
+  { module: "support", href: "/support/ai-settings", icon: Bot, tKey: "supportAiNav", group: "Support", addon: "ai", allowedRoles: ["admin", "superadmin"], supportSection: "rules" },
   { module: "finance", href: "/invoices", icon: FileSpreadsheet, tKey: "invoices", group: "Finance" },
   { module: "finance", href: "/billing/subscriptions", icon: RefreshCw, tKey: "subscriptionsOverview", group: "Finance" },
   { module: "finance", href: "/finance", icon: Wallet, tKey: "finance", group: "Finance" },

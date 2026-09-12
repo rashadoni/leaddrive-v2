@@ -85,6 +85,62 @@
   }
 }
 
+@layer components {
+  /* Support uses named 4 px-step tokens so compactness is deliberate rather
+     than a collection of page-local margins. Critical controls remain 44 px. */
+  .support-page-shell {
+    --support-space-unit: 0.25rem;
+    --support-space-inline: calc(var(--support-space-unit) * 1);
+    --support-space-control: calc(var(--support-space-unit) * 2);
+    --support-space-cluster: calc(var(--support-space-unit) * 3);
+    --support-space-section: calc(var(--support-space-unit) * 4);
+    --support-space-page-end: calc(var(--support-space-unit) * 6);
+    --support-control-min-size: 2.75rem;
+    --support-text-page: 1.25rem;
+    --support-text-page-compact: 1.125rem;
+  }
+
+  .support-page-shell :where(button, a, [role="button"]).bg-primary,
+  .support-ai-search .ai-search-btn {
+    background-color: hsl(20 92% 38%) !important;
+  }
+
+  .support-page-shell :where(button, a, [role="button"]).bg-primary:hover,
+  .support-ai-search .ai-search-btn:hover {
+    background-color: hsl(20 92% 32%) !important;
+  }
+
+  .support-case-workspace {
+    --support-space-cluster: 0.5rem;
+    --support-space-section: 0.5rem;
+  }
+
+  .support-page-shell[data-density="comfortable"] {
+    --support-space-section: calc(var(--support-space-unit) * 6);
+    --support-space-page-end: calc(var(--support-space-unit) * 8);
+  }
+
+  .support-page-title {
+    font-size: var(--support-text-page);
+    line-height: 1.75rem;
+  }
+
+  .support-page-title[data-size="compact"] {
+    font-size: var(--support-text-page-compact);
+    line-height: 1.5rem;
+  }
+
+  @media (pointer: coarse) {
+    .support-page-shell :where(button, [role="button"], input:not([type="checkbox"]):not([type="radio"]), select) {
+      min-height: var(--support-control-min-size);
+    }
+
+    .support-ai-search .ai-search-input {
+      min-height: 2.75rem;
+    }
+  }
+}
+
 @theme inline {
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
@@ -154,6 +210,12 @@
     font-family: var(--font-sans);
     line-height: 1.5;
     transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  .font-dashboard {
+    /* Plus Jakarta Sans has no Cyrillic glyphs. Keep its current Latin voice,
+       but never let Russian UI copy fall through to the browser's serif. */
+    font-family: var(--font-dashboard), ui-sans-serif, system-ui, -apple-system,
+      BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
 }
 

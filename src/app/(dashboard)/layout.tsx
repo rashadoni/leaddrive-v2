@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { Plus_Jakarta_Sans } from "next/font/google"
 import { Sidebar } from "@/components/sidebar"
+import { SupportMobileNavigation } from "@/components/support-mobile-navigation"
 import { Header } from "@/components/header"
 import { ThemeProvider } from "@/components/theme-provider"
 import { CommandSearch } from "@/components/command-search"
@@ -30,7 +31,12 @@ import { HelpVideoLauncher } from "@/components/help/help-video-launcher"
 import { PharmacyPromotionOutboxSync } from "@/components/mtm/pharmacy-promotion-outbox-sync"
 import { dashboardAssistantVisibility } from "@/lib/dashboard-assistant-visibility"
 
-const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], weight: ["400", "500", "600", "700"], display: "swap" })
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+  variable: "--font-dashboard",
+})
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -53,6 +59,8 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   // re-issued, which is what tells it the credentials it drains with are fresh.
   const outboxSessionKey = outboxSession ? `${sessionIdentity}:${session?.iat ?? ""}` : ""
   const org = orgFromSession(user)
+  const mtmSyncItem = matchNavItem("/mtm/promotions")
+  const mtmSyncEnabled = Boolean(mtmSyncItem && isNavItemEnabled(org, mtmSyncItem))
 
   // Hydration watchdog: the sidebar/header skeleton is meant for the brief
   // (~200ms) useSession() hydration gap. But if /api/auth/session hangs or fails
@@ -76,12 +84,22 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   //
   // On the dashboard the hero owns a larger, contextual Da Vinci field, so the
   // shared bar would be a duplicate — but only while the hero is actually
-  // showing it. The greeting is a switchable widget now, and a tenant who
-  // turns it off must get the ordinary search bar back instead of losing every
-  // in-flow way to reach the assistant.
+  // showing it. Support pages retain the same search with compact spacing.
   const isDashboardHome = pathname === "/dashboard"
   const hideContentSearch =
     (isDashboardHome && heroCommandVisible) || pathname.startsWith("/leaderboard")
+  const compactSupportSearch = [
+    "/tickets",
+    "/complaints",
+    "/knowledge-base",
+    "/support",
+    "/settings/ticket-categories",
+    "/settings/sla-policies",
+    "/settings/entitlement-templates",
+    "/settings/escalation",
+    "/settings/macros",
+    "/settings/portal-users",
+  ].some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
   const [launcherOpen, setLauncherOpen] = useState(false)
 
   // Direct-URL guard: if the current section's module/feature isn't enabled for
@@ -144,7 +162,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                 sessionLoaded={sessionLoaded}
                 onOpenLauncher={() => setLauncherOpen(true)}
               />
-              <main className={`relative flex-1 overflow-y-auto bg-background p-3 sm:p-4 lg:p-8 ${jakarta.className}`}>
+              <main className={`font-dashboard relative flex-1 overflow-x-hidden overflow-y-auto bg-background p-3 sm:p-4 lg:p-8 ${jakarta.variable}`}>
                 {!childrenReady ? (
                   <div className="flex h-full items-center justify-center" aria-busy="true">
                     <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" aria-hidden="true" />
@@ -153,9 +171,10 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                   <ModuleDisabled />
                 ) : (
                   <>
+                    <SupportMobileNavigation org={org} pathname={pathname} />
                     {/* Prominent AI search — top of content (hidden on the
                         full-bleed KPI Arena) */}
-                    {contentSearchVisible && <ContentSearchBar />}
+                    {contentSearchVisible && <ContentSearchBar compact={compactSupportSearch} />}
                     {/* Section help video — an in-flow card at the top of the
                         content (never a floating overlay), so it doesn't cover
                         the work area. Expands into a modal on click. */}
@@ -175,7 +194,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                         Identity still resets the page — switching account must
                         not leave the previous one's state on screen. Token
                         rotation is not an identity change. */}
-                    <MotionPage key={sessionIdentity}>{children}</MotionPage>
+                    <MotionPage key={sessionIdentity} className="min-w-0 max-w-full">{children}</MotionPage>
                   </>
                 )}
               </main>
@@ -193,7 +212,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           </div>
           <TourRenderer />
           <TicketNotifier />
-          {status === "authenticated" ? <PharmacyPromotionOutboxSync sessionKey={outboxSessionKey} /> : null}
+          {status === "authenticated" && mtmSyncEnabled ? <PharmacyPromotionOutboxSync sessionKey={outboxSessionKey} /> : null}
           </LauncherPrefsProvider>
           </TooltipProvider>
           </VoipCallProvider>

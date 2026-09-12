@@ -29,7 +29,7 @@ export function TourReplayButton({ tourId, className = "" }: TourReplayButtonPro
   return (
     <button
       onClick={handleReplay}
-      className={`inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors ${className}`}
+      className={`inline-flex min-h-6 items-center gap-1 rounded-sm text-[11px] text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 ${className}`}
       title={t("replayTour")}
     >
       <HelpCircle className="h-3.5 w-3.5" />

@@ -65,7 +65,11 @@ export function Header({ orgName, userName, userAvatar, onOpenLauncher, sessionL
   const initial = userName ? userName.charAt(0).toUpperCase() : "·"
 
   return (
-    <header data-testid="global-header" className="flex h-14 min-w-0 items-center justify-between gap-2 border-b border-zinc-200/40 bg-card px-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] backdrop-blur-xl dark:border-zinc-700/40 sm:px-4 lg:px-6">
+    <header
+      data-testid="global-header"
+      data-session-ready={orgName && userName ? "true" : "false"}
+      className="flex h-14 min-w-0 items-center justify-between gap-2 border-b border-zinc-200/40 bg-card px-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] backdrop-blur-xl dark:border-zinc-700/40 sm:px-4 lg:px-6"
+    >
       <div className="flex min-w-0 items-center gap-2 sm:gap-4">
         {orgName ? (
           <span className="max-w-24 truncate text-sm font-semibold text-foreground sm:max-w-32 xl:max-w-none">{orgName}</span>
@@ -74,7 +78,7 @@ export function Header({ orgName, userName, userAvatar, onOpenLauncher, sessionL
         ) : null}
 
         {/* Visible search bar — pill style */}
-        <button aria-label={t("search")} title={t("search")} className="flex shrink-0 items-center gap-2 rounded-full bg-muted/60 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted sm:px-4 cursor-pointer">
+        <button aria-label={t("search")} title={t("search")} className="flex shrink-0 items-center gap-2 rounded-full bg-muted/60 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted dark:text-zinc-300 sm:px-4 cursor-pointer">
           <Search className="h-3.5 w-3.5" />
           <span className="hidden xl:inline">{t("search")}</span>
           <kbd className="hidden xl:inline-flex items-center gap-0.5 rounded-full border border-zinc-200/60 dark:border-zinc-700/60 bg-background px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
@@ -88,7 +92,7 @@ export function Header({ orgName, userName, userAvatar, onOpenLauncher, sessionL
           data-tour-id="app-launcher"
           title={`${tNav("allApps")} (⌘⇧K)`}
           aria-label={tNav("allApps")}
-          className="flex shrink-0 items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow-sm ring-1 ring-primary/20 transition-all hover:bg-primary/90 hover:shadow-md active:scale-[0.98] sm:px-3.5 cursor-pointer"
+          className="flex shrink-0 items-center gap-1.5 rounded-full bg-[#c2410c] px-3 py-1.5 text-sm font-medium text-white shadow-sm ring-1 ring-black/10 transition-all hover:bg-[#9a3412] hover:shadow-md active:scale-[0.98] sm:px-3.5 cursor-pointer"
         >
           <LayoutGrid className="h-4 w-4" />
           <span className="hidden sm:inline">{tNav("allApps")}</span>

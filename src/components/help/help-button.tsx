@@ -43,7 +43,7 @@ export function HelpButton({ slug, variant = "icon", className }: HelpButtonProp
         variant="outline"
         size="sm"
         onClick={() => setOpen(true)}
-        className={`border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 hover:text-primary ${className ?? ""}`}
+        className={`border-orange-200 bg-orange-50/60 text-orange-800 hover:bg-orange-100 hover:text-orange-900 dark:border-orange-900/60 dark:bg-orange-950/20 dark:text-orange-300 dark:hover:bg-orange-950/40 ${className ?? ""}`}
       >
         <HelpCircle className="h-4 w-4 mr-1.5" />
         {label}
@@ -57,7 +57,7 @@ export function HelpButton({ slug, variant = "icon", className }: HelpButtonProp
         size="icon"
         onClick={() => setOpen(true)}
         aria-label={label}
-        className={`h-8 w-8 rounded-full bg-primary/10 text-primary ring-1 ring-primary/20 hover:bg-primary/20 hover:text-primary transition-colors ${className ?? ""}`}
+        className={`h-8 w-8 rounded-full bg-orange-50 text-orange-800 ring-1 ring-orange-200 hover:bg-orange-100 hover:text-orange-900 transition-colors dark:bg-orange-950/30 dark:text-orange-300 dark:ring-orange-900/60 dark:hover:bg-orange-950/50 ${className ?? ""}`}
       >
         <HelpCircle className="h-4 w-4" />
       </Button>

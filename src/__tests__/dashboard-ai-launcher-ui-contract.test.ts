@@ -17,7 +17,7 @@ describe("dashboard AI launcher placement", () => {
     expect(layout).toContain("<AiAssistantPanel showFloatingLauncher={showFloatingAiLauncher} />")
     expect(layout).toContain("showFloatingLauncher={showFloatingVoiceOrb}")
     expect(layout).toContain("inlineLauncherAvailable={contentSearchVisible}")
-    expect(layout).toContain("{contentSearchVisible && <ContentSearchBar />}")
+    expect(layout).toContain("{contentSearchVisible && <ContentSearchBar compact={compactSupportSearch} />}")
     // The dashboard hides the shared bar only while its hero is showing a Da
     // Vinci field. Pinned as two facts rather than one literal line: the
     // leaderboard is unconditional, the dashboard is not.

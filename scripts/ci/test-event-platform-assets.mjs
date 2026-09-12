@@ -890,6 +890,14 @@ assert.ok(
     && deployJob.indexOf("Upload deploy script") > stagedArtifactStart,
   "only the protected deploy job may download, verify, and stage the SHA-bound production artifact",
 )
+
+assert.ok(
+  githubPrChecks.includes("NEXTAUTH_SECRET: build-only-${{ github.sha }}")
+    && githubPrChecks.includes("NEXTAUTH_URL: https://build.invalid")
+    && !githubPrChecks.includes("NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}")
+    && !githubPrChecks.includes("NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}"),
+  "PR production build must use non-runtime auth configuration and never receive live auth secrets",
+)
 assert.ok(
   recoveryJob.includes("RECOVERY_ARTIFACT_RUN_ID")
     && recoveryJob.includes("Authorize retained recovery artifact source")

@@ -53,8 +53,8 @@ export function ConfirmDialog({
     try {
       await onConfirm()
       onOpenChange(false)
-    } catch (err: any) {
-      setError(err.message || t("errorDeleteFailed"))
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t("errorDeleteFailed"))
     } finally {
       setLoading(false)
     }
@@ -93,13 +93,13 @@ export function ConfirmDialog({
                 : <>{t("deleteConfirmDescGeneric")}</>
             )}
           </p>
-          {error && <p className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded">{error}</p>}
+          {error && <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
         </div>
       </DialogContent>
       <DialogFooter>
-        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>{t("cancel")}</Button>
-        <Button variant={confirmVariant} onClick={handleConfirm} disabled={loading}>
-          {loading ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />{loadingLabel || fallbackLoadingLabel}</> : (confirmLabel || fallbackConfirmLabel)}
+        <Button variant="outline" className="min-h-11" onClick={() => onOpenChange(false)} disabled={loading}>{t("cancel")}</Button>
+        <Button variant={confirmVariant} className="min-h-11" onClick={handleConfirm} disabled={loading}>
+          {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" />{loadingLabel || fallbackLoadingLabel}</> : (confirmLabel || fallbackConfirmLabel)}
         </Button>
       </DialogFooter>
     </Dialog>

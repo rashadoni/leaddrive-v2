@@ -16,7 +16,7 @@ interface TourStepProps {
   onSkip: () => void
   isFirst: boolean
   isLast: boolean
-  labels?: { back?: string; next?: string; done?: string }
+  labels?: { back?: string; next?: string; done?: string; close?: string }
 }
 
 export function TourStep({
@@ -135,6 +135,7 @@ export function TourStep({
       {/* Overlay */}
       <motion.div
         key="tour-overlay"
+        data-testid="tour-overlay"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -195,7 +196,10 @@ export function TourStep({
               <p className="text-xs text-muted-foreground leading-relaxed">{description}</p>
             </div>
             <button
+              type="button"
               onClick={onSkip}
+              aria-label={labels?.close || "Close"}
+              title={labels?.close || "Close"}
               className="shrink-0 text-muted-foreground hover:text-foreground transition-colors mt-0.5"
             >
               <X className="h-4 w-4" />

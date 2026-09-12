@@ -97,7 +97,7 @@ describe("SWM-09 pharmacy promotion UI contract", () => {
     // (post-deploy smoke flakes, 2026-08-11). The page is keyed on identity
     // alone, which still resets it when the account changes.
     expect(source(dashboardLayoutPath)).toContain("<PharmacyPromotionOutboxSync sessionKey={outboxSessionKey} />")
-    expect(source(dashboardLayoutPath)).toContain("<MotionPage key={sessionIdentity}>")
+    expect(source(dashboardLayoutPath)).toContain("<MotionPage key={sessionIdentity}")
     expect(source(dashboardLayoutPath)).not.toContain("<MotionPage key={outboxSessionKey}>")
   })
 
