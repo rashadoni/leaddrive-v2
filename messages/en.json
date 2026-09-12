@@ -23848,6 +23848,8 @@
     "subtitle": "Review only your own attendance items and use the protected correction-request path when a recorded time needs review.",
     "boundaryTitle": "Your review does not alter recorded time",
     "boundaryHint": "This page shows only your own generic exception type and workday date. It never displays location, maps, QR values, device identifiers, evidence, a manager decision or another employee's data. A correction stays pending for human review.",
+    "responseRecordingUnavailableTitle": "Acknowledgement is not available yet",
+    "responseRecordingUnavailableHint": "This tenant has not applied the employee-response record required for acknowledgements. Use the protected correction request when recorded time needs review; it does not resolve the exception or change recorded time.",
     "refresh": "Refresh items",
     "loading": "Loading your attendance exceptions",
     "loadFailed": "Unable to load your attendance exceptions.",

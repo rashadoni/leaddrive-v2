@@ -1,16 +1,20 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { withWorkforceSessionAdminAuth } from "@/lib/with-workforce-rls-auth"
-import { projectWorkforceExceptionQueueItem } from "@/lib/workforce/exception-queue"
+import { withWorkforceSessionExceptionQueueAuth } from "@/lib/with-workforce-rls-auth"
+import {
+  projectWorkforceExceptionQueueItem,
+  workforceExceptionQueueEmployeeResponseState,
+} from "@/lib/workforce/exception-queue"
 
 const MAX_EXCEPTION_CASES = 250
 
 /**
  * Read-only C6 review queue. Generic decision codes are projected into a
- * safe HR lifecycle view; raw evidence, decision reasons and mutable actions
- * deliberately remain unavailable until granular reviewer scopes are live.
+ * safe HR lifecycle view. Raw evidence, decision reasons and mutable actions
+ * remain unavailable. A tenant-wide queue uses an explicit C7 grant cutover;
+ * it never infers a historical case scope from an employee's current team.
  */
-export const GET = withWorkforceSessionAdminAuth(async (_req: NextRequest, auth) => {
+export const GET = withWorkforceSessionExceptionQueueAuth(async (_req: NextRequest, auth) => {
   try {
     const cases = await prisma.workforceExceptionCase.findMany({
       where: { organizationId: auth.orgId },
@@ -23,6 +27,9 @@ export const GET = withWorkforceSessionAdminAuth(async (_req: NextRequest, auth)
         evidenceId: true,
         agent: { select: { name: true } },
         decisions: { orderBy: [{ createdAt: "asc" }, { id: "asc" }], select: { decisionCode: true } },
+        // A single raw-proof-free existence row is sufficient for the queue.
+        // Do not select response text, correction IDs or employee request data.
+        employeeResponses: { take: 1, select: { id: true } },
       },
     })
     if (cases.length > MAX_EXCEPTION_CASES) {
@@ -35,16 +42,22 @@ export const GET = withWorkforceSessionAdminAuth(async (_req: NextRequest, auth)
     return NextResponse.json({
       success: true,
       data: {
-        cases: cases.map((item) => projectWorkforceExceptionQueueItem({
-          displayReference: `WF-${item.id.slice(-8)}`,
-          employeeDisplayName: item.agent.name,
-          type: item.kind,
-          createdAt: item.createdAt,
-          decisionCodes: item.decisions.map((decision) => decision.decisionCode),
-          evidenceState: item.evidenceId ? "LINKED_RESTRICTED" : "NOT_REQUIRED",
-          employeeResponse: "NOT_REQUESTED",
-          now,
-        })),
+        cases: cases.map((item) => {
+          const decisionCodes = item.decisions.map((decision) => decision.decisionCode)
+          return projectWorkforceExceptionQueueItem({
+            displayReference: `WF-${item.id.slice(-8)}`,
+            employeeDisplayName: item.agent.name,
+            type: item.kind,
+            createdAt: item.createdAt,
+            decisionCodes,
+            evidenceState: item.evidenceId ? "LINKED_RESTRICTED" : "NOT_REQUIRED",
+            employeeResponse: workforceExceptionQueueEmployeeResponseState({
+              decisionCodes,
+              recordedResponseCount: item.employeeResponses.length,
+            }),
+            now,
+          })
+        }),
         disposition: "READ_ONLY_HUMAN_REVIEW_REQUIRED",
       },
     }, { headers: { "cache-control": "private, no-store", "x-content-type-options": "nosniff" } })
