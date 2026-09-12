@@ -78,6 +78,26 @@ APPROVED_BACKUP_SERVICE_SHA256 = (
 class SafeMaintenanceError(Exception):
     """A deliberately message-free failure that cannot disclose input data."""
 
+    ALLOWED_CODES = frozenset(
+        {
+            "configuration",
+            "invocation",
+            "scheduler",
+            "backup-lock",
+            "file-safety",
+            "snapshot-present",
+            "tls-evidence",
+            "pgpass",
+            "post-write",
+            "rollback",
+            "internal",
+        }
+    )
+
+    def __init__(self, code: str = "internal") -> None:
+        self.code = code if code in self.ALLOWED_CODES else "internal"
+        super().__init__()
+
 
 @dataclass(frozen=True)
 class FileAuthority:
@@ -769,34 +789,43 @@ def _restore_snapshot(state: dict[str, object], *, require_post_state: bool) -> 
 
 def _prepare(environment: bytes, config: dict[str, str]) -> PreparedRemediation:
     if config["PGSSLMODE"] != "verify-full":
-        raise SafeMaintenanceError
+        raise SafeMaintenanceError("configuration")
     if config["PGSSLROOTCERT"] != str(CA_PATH):
-        raise SafeMaintenanceError
+        raise SafeMaintenanceError("configuration")
     if any(config[key] for key in ("PGSERVICE", "PGSERVICEFILE", "PGPASSWORD")):
-        raise SafeMaintenanceError
+        raise SafeMaintenanceError("configuration")
     current_host = config["PGHOST"]
     port = _normalize_port(config["PGPORT"])
-    first_certificate, first_route = _postgres_certificate(current_host, port)
-    second_certificate, second_route = _postgres_certificate(current_host, port)
-    first_sha = hashlib.sha256(first_certificate).hexdigest()
-    if first_sha != hashlib.sha256(second_certificate).hexdigest():
-        raise SafeMaintenanceError
-    _certificate_identity(first_certificate)
-    server_name = _production_server_name(
-        _certificate_identity(first_certificate)[2][0]
-    )
-    _require_pgpass_match(config, server_name, port)
-    _verify_full(first_route, port, server_name, first_certificate)
-    _verify_full(second_route, port, server_name, second_certificate)
-    rewritten = rewrite_environment(
-        environment,
-        {
-            "PGHOST": server_name,
-            "PGHOSTADDR": first_route,
-            "PGSSLMODE": "verify-full",
-            "PGSSLROOTCERT": str(CA_PATH),
-        },
-    )
+    try:
+        first_certificate, first_route = _postgres_certificate(current_host, port)
+        second_certificate, second_route = _postgres_certificate(current_host, port)
+        first_sha = hashlib.sha256(first_certificate).hexdigest()
+        if first_sha != hashlib.sha256(second_certificate).hexdigest():
+            raise SafeMaintenanceError
+        _certificate_identity(first_certificate)
+        server_name = _production_server_name(
+            _certificate_identity(first_certificate)[2][0]
+        )
+        _verify_full(first_route, port, server_name, first_certificate)
+        _verify_full(second_route, port, server_name, second_certificate)
+    except Exception as exc:
+        raise SafeMaintenanceError("tls-evidence") from exc
+    try:
+        _require_pgpass_match(config, server_name, port)
+    except Exception as exc:
+        raise SafeMaintenanceError("pgpass") from exc
+    try:
+        rewritten = rewrite_environment(
+            environment,
+            {
+                "PGHOST": server_name,
+                "PGHOSTADDR": first_route,
+                "PGSSLMODE": "verify-full",
+                "PGSSLROOTCERT": str(CA_PATH),
+            },
+        )
+    except Exception as exc:
+        raise SafeMaintenanceError("configuration") from exc
     return PreparedRemediation(
         environment=rewritten,
         certificate_pem=ssl.DER_cert_to_PEM_cert(first_certificate).encode("ascii"),
@@ -806,24 +835,45 @@ def _prepare(environment: bytes, config: dict[str, str]) -> PreparedRemediation:
 
 def apply() -> str:
     if os.geteuid() != 0:
-        raise SafeMaintenanceError
-    _assert_root_directory(Path("/etc"))
-    _assert_root_directory(Path("/etc/leaddrive"))
-    _require_reviewed_invocation()
-    _require_backup_inactive()
-    lock_fd = _acquire_backup_lock()
+        raise SafeMaintenanceError("file-safety")
     try:
-        environment, env_authority, config = read_environment()
-        ca_payload, ca_authority = _read_regular_file(
-            CA_PATH, maximum_bytes=MAX_CA_BYTES, required=False
-        )
-        _require_no_extended_attributes(ENV_PATH)
-        if ca_payload is not None:
-            _require_no_extended_attributes(CA_PATH)
+        _assert_root_directory(Path("/etc"))
+        _assert_root_directory(Path("/etc/leaddrive"))
+    except Exception as exc:
+        raise SafeMaintenanceError("file-safety") from exc
+    try:
+        _require_reviewed_invocation()
+    except Exception as exc:
+        raise SafeMaintenanceError("invocation") from exc
+    try:
+        _require_backup_inactive()
+    except Exception as exc:
+        raise SafeMaintenanceError("scheduler") from exc
+    try:
+        lock_fd = _acquire_backup_lock()
+    except Exception as exc:
+        raise SafeMaintenanceError("backup-lock") from exc
+    try:
+        try:
+            environment, env_authority, config = read_environment()
+        except Exception as exc:
+            raise SafeMaintenanceError("configuration") from exc
+        try:
+            ca_payload, ca_authority = _read_regular_file(
+                CA_PATH, maximum_bytes=MAX_CA_BYTES, required=False
+            )
+            _require_no_extended_attributes(ENV_PATH)
+            if ca_payload is not None:
+                _require_no_extended_attributes(CA_PATH)
+        except Exception as exc:
+            raise SafeMaintenanceError("file-safety") from exc
         if SNAPSHOT_PATH.exists():
-            raise SafeMaintenanceError
+            raise SafeMaintenanceError("snapshot-present")
         prepared = _prepare(environment, config)
-        state = _snapshot(environment, env_authority, ca_payload, ca_authority)
+        try:
+            state = _snapshot(environment, env_authority, ca_payload, ca_authority)
+        except Exception as exc:
+            raise SafeMaintenanceError("file-safety") from exc
         changed = False
         try:
             backup_gid = grp.getgrnam("leaddrive-backup").gr_gid
@@ -855,15 +905,18 @@ def apply() -> str:
                 prepared.certificate_pem
             ).hexdigest()
             _write_state(state)
-        except Exception:
+        except Exception as exc:
+            rollback_failed = False
             if changed:
                 try:
                     _restore_snapshot(state, require_post_state=False)
                     state["phase"] = "automatically-rolled-back"
                     _write_state(state)
                 except Exception:
-                    pass
-            raise SafeMaintenanceError
+                    rollback_failed = True
+            raise SafeMaintenanceError(
+                "rollback" if rollback_failed else "post-write"
+            ) from exc
     finally:
         os.close(lock_fd)
     return "applied"
@@ -896,18 +949,25 @@ def main(arguments: list[str]) -> int:
             status = rollback()
         else:
             raise SafeMaintenanceError
+    except SafeMaintenanceError as exc:
+        print(
+            f"source_tls_maintenance operation={safe_operation} status=failed "
+            "pg_restart=no service_restart=no effective_verify_full=unknown "
+            f"rollback_snapshot=unknown failure_stage={exc.code}"
+        )
+        return 1
     except Exception:
         print(
             f"source_tls_maintenance operation={safe_operation} status=failed "
             "pg_restart=no service_restart=no effective_verify_full=unknown "
-            "rollback_snapshot=unknown"
+            "rollback_snapshot=unknown failure_stage=internal"
         )
         return 1
     print(
         f"source_tls_maintenance operation={operation} status={status} "
         "pg_restart=no service_restart=no "
         f"effective_verify_full={'yes' if status == 'applied' else 'not-tested'} "
-        "rollback_snapshot=retained"
+        "rollback_snapshot=retained failure_stage=none"
     )
     return 0
 

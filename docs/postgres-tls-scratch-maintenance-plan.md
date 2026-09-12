@@ -82,7 +82,8 @@ an ACL or security label. It then creates a root-only sealed snapshot, atomicall
 installs the public source CA, and atomically changes only `PGHOST`,
 `PGHOSTADDR`, `PGSSLMODE`, and `PGSSLROOTCERT`. A failed post-write TLS check
 automatically restores the snapshot. Workflow output is a single schema-gated
-enum line and contains no raw configuration or certificate identity.
+enum line, including only an allowlisted preflight failure stage when blocked,
+and contains no raw configuration or certificate identity.
 
 No PostgreSQL restart is part of this path. If any decision result is not
 positive, certificate re-issuance and DNS correction need a separate reviewed

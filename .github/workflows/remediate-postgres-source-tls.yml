@@ -105,7 +105,7 @@ jobs:
           set -e
 
           mapfile -t MAINTENANCE_LINES <<<"$MAINTENANCE_OUTPUT"
-          LINE_RE='^source_tls_maintenance operation=(apply|rollback|unknown) status=(applied|rolled-back|failed) pg_restart=no service_restart=no effective_verify_full=(yes|not-tested|unknown) rollback_snapshot=(retained|unknown)$'
+          LINE_RE='^source_tls_maintenance operation=(apply|rollback|unknown) status=(applied|rolled-back|failed) pg_restart=no service_restart=no effective_verify_full=(yes|not-tested|unknown) rollback_snapshot=(retained|unknown) failure_stage=(none|configuration|invocation|scheduler|backup-lock|file-safety|snapshot-present|tls-evidence|pgpass|post-write|rollback|internal)$'
           [ "${#MAINTENANCE_LINES[@]}" -eq 1 ] \
             && [[ "${MAINTENANCE_LINES[0]}" =~ $LINE_RE ]] || {
               echo "::error::Maintenance output failed the anonymized schema gate"
@@ -114,8 +114,8 @@ jobs:
 
           if [ "$MAINTENANCE_STATUS" -eq 0 ]; then
             case "$OPERATION:${MAINTENANCE_LINES[0]}" in
-              apply:source_tls_maintenance\ operation=apply\ status=applied\ pg_restart=no\ service_restart=no\ effective_verify_full=yes\ rollback_snapshot=retained) ;;
-              rollback:source_tls_maintenance\ operation=rollback\ status=rolled-back\ pg_restart=no\ service_restart=no\ effective_verify_full=not-tested\ rollback_snapshot=retained) ;;
+              apply:source_tls_maintenance\ operation=apply\ status=applied\ pg_restart=no\ service_restart=no\ effective_verify_full=yes\ rollback_snapshot=retained\ failure_stage=none) ;;
+              rollback:source_tls_maintenance\ operation=rollback\ status=rolled-back\ pg_restart=no\ service_restart=no\ effective_verify_full=not-tested\ rollback_snapshot=retained\ failure_stage=none) ;;
               *)
                 echo "::error::Maintenance result does not match the requested operation"
                 exit 1
