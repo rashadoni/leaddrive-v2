@@ -72,11 +72,15 @@ describe("Workforce attendance security primitives", () => {
     const token = mintWorkforceAttendanceQr({
       organizationId: "org_1",
       stationId: "station_1",
+      siteId: "site_1",
+      geofenceRevisionId: "geofence_1",
+      action: "START",
       expiresAt: new Date("2026-08-29T09:01:00.000Z"),
       now: NOW,
     })
     const verified = verifyWorkforceAttendanceQr({ organizationId: "org_1", token, now: NOW })
     expect(verified.stationId).toBe("station_1")
+    expect(verified).toMatchObject({ siteId: "site_1", geofenceRevisionId: "geofence_1", action: "START" })
     expect(verified.expiresAt).toEqual(new Date("2026-08-29T09:01:00.000Z"))
     expect(workforceAttendanceQrNonceFingerprint("org_1", verified.nonce))
       .not.toEqual(workforceAttendanceQrNonceFingerprint("org_2", verified.nonce))

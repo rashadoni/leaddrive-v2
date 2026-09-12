@@ -90,6 +90,7 @@ export class WorkforceAttendanceTrustError extends Error {
       | "WORKFORCE_ATTENDANCE_CAPABILITY_DISABLED"
       | "WORKFORCE_ATTENDANCE_QR_REQUIRED"
       | "WORKFORCE_ATTENDANCE_QR_EVENT_TIME_INVALID"
+      | "WORKFORCE_ATTENDANCE_QR_CONTEXT_INVALID"
       | "WORKFORCE_ATTENDANCE_QR_STATION_UNAVAILABLE"
       | "WORKFORCE_ATTENDANCE_DEVICE_REQUIRED"
       | "WORKFORCE_ATTENDANCE_DEVICE_UNAVAILABLE"
@@ -247,6 +248,12 @@ export async function prepareWorkforceAttendanceVerification(
       throw error
     }
     const eventTime = input.event.occurredAt.getTime()
+    if (qr.action !== action) {
+      throw new WorkforceAttendanceTrustError(
+        "WORKFORCE_ATTENDANCE_QR_CONTEXT_INVALID",
+        "The attendance QR was issued for a different work-time action",
+      )
+    }
     if (
       eventTime < qr.issuedAt.getTime() - QR_EVENT_CLOCK_SKEW_MS ||
       eventTime > now.getTime() + QR_EVENT_CLOCK_SKEW_MS ||
@@ -262,6 +269,10 @@ export async function prepareWorkforceAttendanceVerification(
         id: qr.stationId,
         organizationId: input.organizationId,
         status: "ACTIVE",
+        siteId: qr.siteId,
+        geofenceRevisionId: qr.geofenceRevisionId,
+        effectiveFrom: { lte: now },
+        OR: [{ effectiveTo: null }, { effectiveTo: { gt: now } }],
       },
       select: { id: true },
     })

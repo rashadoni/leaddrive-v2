@@ -41,16 +41,27 @@ describe("Workforce attendance management", () => {
       name: "Head office",
       status: "ACTIVE",
       rotationSeconds: 60,
+      siteId: "site_1",
+      areaLabel: "Reception",
+      geofenceRevisionId: "geofence_1",
+      effectiveFrom: new Date("2026-08-01T00:00:00.000Z"),
+      effectiveTo: null,
     } as never)
 
     const issued = await issueWorkforceAttendanceQr(prisma as never, {
       organizationId: ORGANIZATION_ID,
       stationId: "station_1",
+      action: "START",
       now: NOW,
     })
     expect(issued.expiresAt).toEqual(new Date("2026-08-29T09:01:00.000Z"))
     expect(verifyWorkforceAttendanceQr({ organizationId: ORGANIZATION_ID, token: issued.token, now: NOW }))
-      .toMatchObject({ stationId: "station_1" })
+      .toMatchObject({
+        stationId: "station_1",
+        siteId: "site_1",
+        geofenceRevisionId: "geofence_1",
+        action: "START",
+      })
 
     vi.mocked(prisma.workforceAttendanceQrStation.updateMany).mockResolvedValue({ count: 1 } as never)
     await disableWorkforceAttendanceQrStation(prisma as never, {
