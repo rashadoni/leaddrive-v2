@@ -1581,6 +1581,15 @@ export async function previewWorkforceShiftAssignments(input: {
         closesAssignmentId: null,
       }
     }
+    if (predecessor && dateKey(predecessor.effectiveFrom) === input.preview.effectiveFrom) {
+      summary.CONFLICT += 1
+      return {
+        agentId,
+        outcome: "CONFLICT",
+        currentAssignmentId: predecessor.id,
+        closesAssignmentId: null,
+      }
+    }
     summary.READY += 1
     return {
       agentId,

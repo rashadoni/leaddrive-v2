@@ -726,6 +726,7 @@ describe("safe Workforce configuration drafts", () => {
       { id: "agent-ready", teamId: "team-a" },
       { id: "agent-wrong-team", teamId: "team-b" },
       { id: "agent-conflict", teamId: "team-a" },
+      { id: "agent-same-day", teamId: "team-a" },
     ] as never)
     vi.mocked(prisma.workforceShiftAssignment.findMany).mockResolvedValue([
       {
@@ -736,9 +737,13 @@ describe("safe Workforce configuration drafts", () => {
         id: "assignment-later", agentId: "agent-conflict", templateId: "shift-later",
         effectiveFrom: new Date("2026-10-01T00:00:00.000Z"), effectiveTo: null,
       },
+      {
+        id: "assignment-same-day", agentId: "agent-same-day", templateId: "shift-other",
+        effectiveFrom: new Date("2026-09-01T00:00:00.000Z"), effectiveTo: null,
+      },
     ] as never)
     const preview = WorkforceShiftAssignmentBulkPreviewSchema.parse({
-      agentIds: ["agent-ready", "agent-wrong-team", "agent-missing", "agent-conflict"],
+      agentIds: ["agent-ready", "agent-wrong-team", "agent-missing", "agent-conflict", "agent-same-day"],
       templateId: "shift-next",
       effectiveFrom: "2026-09-01",
     })
@@ -755,13 +760,14 @@ describe("safe Workforce configuration drafts", () => {
         { agentId: "agent-wrong-team", outcome: "TEMPLATE_TEAM_MISMATCH", currentAssignmentId: null, closesAssignmentId: null },
         { agentId: "agent-missing", outcome: "EMPLOYEE_UNAVAILABLE", currentAssignmentId: null, closesAssignmentId: null },
         { agentId: "agent-conflict", outcome: "CONFLICT", currentAssignmentId: null, closesAssignmentId: null },
+        { agentId: "agent-same-day", outcome: "CONFLICT", currentAssignmentId: "assignment-same-day", closesAssignmentId: null },
       ],
       summary: {
         READY: 1,
         NO_CHANGE: 0,
         EMPLOYEE_UNAVAILABLE: 1,
         TEMPLATE_TEAM_MISMATCH: 1,
-        CONFLICT: 1,
+        CONFLICT: 2,
       },
     })
     expect(prisma.$executeRaw).not.toHaveBeenCalled()
