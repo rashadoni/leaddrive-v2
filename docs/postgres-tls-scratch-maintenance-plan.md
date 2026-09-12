@@ -122,6 +122,13 @@ The scratch CA must come from the independently provisioned scratch cluster's
 own trust chain. Do not copy or reuse the source certificate or source CA. Pin
 its separately approved fingerprint before setting scratch `verify-full`.
 
+An existing byte-drifted backup unit is not approved or rewritten by the
+source TLS maintenance. The maintenance may treat it only as uncommissioned
+when the active backup script is an exact reviewed artifact and both the
+service and timer are inactive and non-enabled (or absent) before and after the
+atomic client configuration update. Commissioning remains blocked until a
+separate reviewed deployment reconciles the exact unit bytes.
+
 Rollback is limited to stopping the scratch mechanism created in that window,
 removing only its disposable data and CA after evidence retention, and proving
 that the source endpoint and all disabled recovery timers were unchanged.
