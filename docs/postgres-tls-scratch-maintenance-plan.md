@@ -75,14 +75,17 @@ fingerprint, a self-signed identity, exactly one DNS SAN equal to the production
 server name, local name resolution, and successful in-memory `verify-full`
 through the already configured local endpoint. It also requires at least seven
 days of certificate validity, server TLS purpose, a matching `.pgpass` entry for
-the new certificate identity, the exact reviewed systemd unit and backup script,
-an inactive service and timer, and the backup's own nonblocking lock. Extended
-attributes are a stop condition so an atomic replacement cannot silently drop
-an ACL or security label. It then creates a root-only sealed snapshot, atomically
+the new certificate identity, any installed backup artifact to match an exact
+reviewed script, and an inactive service and timer. If the backup unit is already
+commissioned, its exact reviewed bytes and its own nonblocking lock are also
+mandatory; the expected pre-commission state may omit the unit and lock.
+Extended attributes are a stop condition so an atomic replacement cannot
+silently drop an ACL or security label. It then creates a root-only sealed snapshot, atomically
 installs the public source CA, and atomically changes only `PGHOST`,
 `PGHOSTADDR`, `PGSSLMODE`, and `PGSSLROOTCERT`. A failed post-write TLS check
 automatically restores the snapshot. Workflow output is a single schema-gated
-enum line and contains no raw configuration or certificate identity.
+enum line, including only an allowlisted preflight failure stage when blocked,
+and contains no raw configuration or certificate identity.
 
 No PostgreSQL restart is part of this path. If any decision result is not
 positive, certificate re-issuance and DNS correction need a separate reviewed
