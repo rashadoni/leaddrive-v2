@@ -20,6 +20,7 @@ on:
           - backup-readiness
           - backup-log-inventory
           - postgres-tls-metadata
+          - postgres-san-scratch-audit
       lines:
         description: "How many log lines to tail"
         required: false
@@ -148,6 +149,45 @@ jobs:
               }
             }
           done
+
+          printf '%s\n' "${DIAGNOSTIC_LINES[@]}"
+          [ "$DIAGNOSTIC_STATUS" -eq 0 ] || {
+            echo "::error::Production diagnostic did not complete"
+            exit "$DIAGNOSTIC_STATUS"
+          }
+      - name: Audit anonymized source SAN and scratch launcher
+        if: ${{ inputs.view == 'postgres-san-scratch-audit' }}
+        run: |
+          set -euo pipefail
+          export LC_ALL=C
+          set +e
+          DIAGNOSTIC_OUTPUT="$(
+            ssh -T -o ConnectTimeout=30 -o LogLevel=ERROR -i ~/.ssh/deploy_key \
+              ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+              'PYTHONDONTWRITEBYTECODE=1 python3 -I - san-scratch-audit' \
+              < .github/scripts/inspect_postgres_tls_metadata.py 2>/dev/null
+          )"
+          DIAGNOSTIC_STATUS=$?
+          set -e
+
+          mapfile -t DIAGNOSTIC_LINES <<<"$DIAGNOSTIC_OUTPUT"
+          SOURCE_RE='^source_san dns_san_count=([0-9]+|unavailable) san_matches_server_name=(yes|no|unavailable) san_resolves_local=(yes|no|unavailable) verify_full_with_san=(yes|no|unavailable) remediation_without_postgres_restart=(proven|not-proven)$'
+          SCRATCH_RE='^scratch port=([1-9][0-9]{0,4}|invalid) launch_mechanism=(separate-postgresql-cluster|docker-compose|docker|custom-systemd|ambiguous|not-configured|unknown) definition=(present|absent|unknown) runtime_state=(running|stopped|not-created|absent|unknown)$'
+          [ "${#DIAGNOSTIC_LINES[@]}" -eq 2 ] \
+            && [[ "${DIAGNOSTIC_LINES[0]}" =~ $SOURCE_RE ]] \
+            && [[ "${DIAGNOSTIC_LINES[1]}" =~ $SCRATCH_RE ]] || {
+              echo "::error::Anonymized diagnostic output failed schema validation"
+              exit 1
+            }
+
+          port="${DIAGNOSTIC_LINES[1]#* port=}"
+          port="${port%% *}"
+          [ "$port" = invalid ] || {
+            [ "$port" -ge 1 ] && [ "$port" -le 65535 ] || {
+              echo "::error::Anonymized diagnostic output contained an invalid port"
+              exit 1
+            }
+          }
 
           printf '%s\n' "${DIAGNOSTIC_LINES[@]}"
           [ "$DIAGNOSTIC_STATUS" -eq 0 ] || {
