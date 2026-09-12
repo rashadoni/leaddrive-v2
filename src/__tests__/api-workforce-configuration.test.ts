@@ -139,6 +139,44 @@ describe("Workforce draft configuration API", () => {
     }))
   })
 
+  it("accepts an ordered Workforce-only multi-site timeline and rejects an ambiguous site mode", async () => {
+    vi.mocked(createWorkforceShiftTemplateDraft).mockResolvedValue({
+      id: "shift-segmented",
+      status: "DRAFT",
+      isDefault: false,
+      segments: [{ sequence: 1 }, { sequence: 2 }],
+    } as never)
+    const response = await createShift(post("/api/v1/workforce/configuration/shifts", {
+      code: "MULTI_SITE",
+      name: "Multi-site day",
+      definition: {
+        ...shiftDefinition,
+        plannedBreaks: [{ startTime: "13:00", endTime: "14:00" }],
+      },
+      segments: [
+        { mode: "SITE", siteId: "site-a", startTime: "09:00", endTime: "13:00", lateGraceSeconds: 900 },
+        { mode: "SITE", siteId: "site-b", startTime: "14:00", endTime: "18:00", lateGraceSeconds: 900 },
+      ],
+    }), AUTH as never)
+    const invalid = await createShift(post("/api/v1/workforce/configuration/shifts", {
+      code: "INVALID_MODE",
+      name: "Invalid mode",
+      definition: shiftDefinition,
+      segments: [{ mode: "REMOTE", siteId: "site-a", startTime: "09:00", endTime: "18:00" }],
+    }), AUTH as never)
+
+    expect(response.status).toBe(201)
+    expect(invalid.status).toBe(400)
+    expect(createWorkforceShiftTemplateDraft).toHaveBeenCalledWith(expect.objectContaining({
+      draft: expect.objectContaining({
+        segments: [
+          expect.objectContaining({ mode: "SITE", siteId: "site-a", lateGraceSeconds: 900 }),
+          expect.objectContaining({ mode: "SITE", siteId: "site-b", lateGraceSeconds: 900 }),
+        ],
+      }),
+    }))
+  })
+
   it("cannot use patch to change a published configuration through an unchecked body", async () => {
     const invalidPolicy = await callUpdatePolicy(post("/api/v1/workforce/configuration/policies/policy-1", {
       teamId: "other-team",

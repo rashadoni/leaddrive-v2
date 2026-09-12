@@ -188,6 +188,8 @@ model Organization {
   mtmHrmRequests                      MtmHrmRequest[]
   workforcePolicies                   WorkforcePolicy[]
   workforceShiftTemplates             WorkforceShiftTemplate[]
+  workforceShiftSegments              WorkforceShiftSegment[]
+  workforceSiteTransitions            WorkforceSiteTransition[]
   workforceShiftAssignments           WorkforceShiftAssignment[]
   workforceSiteAssignments            WorkforceSiteAssignment[]
   workforcePolicySnapshots            WorkforcePolicySnapshot[]
@@ -5178,6 +5180,26 @@ enum WorkforceSiteAssignmentKind {
   TEMPORARY
 }
 
+/// A planned slice of one Workforce workday. SITE uses a tenant-owned
+/// WorkforceSite; the other modes intentionally do not imply a Route customer
+/// or continuous location tracking.
+enum WorkforceShiftSegmentMode {
+  SITE
+  REMOTE
+  FIELD
+  TRAVEL
+  ON_CALL
+  EXCEPTION
+}
+
+/// A site transition is recorded as an arrival to or departure from one
+/// planned segment. An inter-site movement is the ordered departure/arrival
+/// pair, never a second workday and never a payment decision.
+enum WorkforceSiteTransitionKind {
+  ARRIVAL
+  DEPARTURE
+}
+
 enum WorkforceAttendanceExceptionType {
   LATE_START
   UNDERTIME
@@ -5523,6 +5545,7 @@ model MtmAgent {
   hrmRequests               MtmHrmRequest[]
   workforceShiftAssignments WorkforceShiftAssignment[]
   workforceSiteAssignments  WorkforceSiteAssignment[]
+  workforceSiteTransitions  WorkforceSiteTransition[]
   workforcePolicySnapshots  WorkforcePolicySnapshot[]
   workforceShiftSnapshots   WorkforceShiftSnapshot[]
   workforceExceptions       WorkforceAttendanceException[]
@@ -7084,6 +7107,7 @@ model MtmAgentWorkday {
   locations          MtmAgentLocation[]
   workforcePolicySnapshot WorkforcePolicySnapshot?       @relation("WorkforcePolicySnapshotWorkday")
   workforceShiftSnapshot  WorkforceShiftSnapshot?        @relation("WorkforceShiftSnapshotWorkday")
+  workforceSiteTransitions WorkforceSiteTransition[]
   workforceExceptions     WorkforceAttendanceException[]
   workforceAttendanceReviewCases WorkforceAttendanceReviewCase[]
   workforceTimeCorrections WorkforceTimeCorrection[]
@@ -7393,6 +7417,7 @@ model WorkforceSite {
 
   geofenceRevisions WorkforceSiteGeofenceRevision[]
   assignments        WorkforceSiteAssignment[]
+  shiftSegments      WorkforceShiftSegment[]
 
   @@unique([organizationId, id])
   @@unique([organizationId, code])
@@ -7530,6 +7555,7 @@ model WorkforceShiftTemplate {
 
   assignments WorkforceShiftAssignment[]
   snapshots   WorkforceShiftSnapshot[]
+  segments    WorkforceShiftSegment[]
 
   @@unique([organizationId, id])
   @@index([organizationId, teamId, code, status])
@@ -7537,6 +7563,71 @@ model WorkforceShiftTemplate {
   @@index([organizationId, createdByUserId])
   @@index([organizationId, activatedByUserId])
   @@map("workforce_shift_templates")
+}
+
+/// Ordered planned portions of a reusable shift. The parent draft controls
+/// mutability; once the template is ACTIVE/RETIRED these rows are immutable
+/// configuration history and later C3 snapshots copy their exact values.
+model WorkforceShiftSegment {
+  id                   String                    @id @default(cuid())
+  organizationId       String
+  organization         Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  templateId           String
+  template             WorkforceShiftTemplate    @relation(fields: [organizationId, templateId], references: [organizationId, id], onDelete: Cascade)
+  sequence             Int
+  mode                 WorkforceShiftSegmentMode
+  siteId               String?
+  site                 WorkforceSite?            @relation(fields: [organizationId, siteId], references: [organizationId, id], onDelete: Restrict)
+  startTime            String                    @db.VarChar(5)
+  endTime              String                    @db.VarChar(5)
+  lateGraceSeconds     Int                       @default(0)
+  proofPolicyReference String?                   @db.VarChar(64)
+  createdAt            DateTime                  @default(now())
+
+  transitions          WorkforceSiteTransition[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, templateId, sequence])
+  @@index([organizationId, templateId, startTime, endTime])
+  @@index([organizationId, siteId, createdAt])
+  @@map("workforce_shift_segments")
+}
+
+/// Append-only claims of arriving at or departing from a planned segment. The
+/// row stores timing provenance but deliberately no raw location, QR token or
+/// device proof. C4 will attach evidence and a separate assessment; a claim
+/// alone is never a presence verdict or a payroll input.
+model WorkforceSiteTransition {
+  id                 String                       @id @default(cuid())
+  organizationId     String
+  organization       Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentId            String
+  agent              MtmAgent                     @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  workdayId          String
+  workday            MtmAgentWorkday              @relation(fields: [organizationId, workdayId], references: [organizationId, id], onDelete: Restrict)
+  segmentId          String
+  segment            WorkforceShiftSegment        @relation(fields: [organizationId, segmentId], references: [organizationId, id], onDelete: Restrict)
+  kind               WorkforceSiteTransitionKind
+  clientTransitionId String                       @db.VarChar(100)
+  claimedAt          DateTime
+  capturedAt         DateTime
+  queuedAt           DateTime?
+  serverReceivedAt   DateTime
+  appliedAt          DateTime
+  schemaVersion      Int                          @default(1)
+  requestHash        String                       @db.VarChar(64)
+  attendanceReviewState WorkforceAttendanceClaimReviewState @default(NOT_REQUIRED)
+  attendanceReviewReasonCode String?              @db.VarChar(64)
+  createdAt          DateTime                     @default(now())
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, agentId, clientTransitionId])
+  @@unique([organizationId, workdayId, segmentId, kind])
+  @@index([organizationId, agentId, claimedAt])
+  @@index([organizationId, workdayId, claimedAt])
+  @@index([organizationId, segmentId, claimedAt])
+  @@index([organizationId, agentId, attendanceReviewState, serverReceivedAt])
+  @@map("workforce_site_transitions")
 }
 
 // Effective-dated assignment only. It never rewrites a workday snapshot.

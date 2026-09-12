@@ -382,6 +382,149 @@ describe("safe Workforce configuration drafts", () => {
     }))
   })
 
+  it("creates one reproducible multi-site day as ordered draft segments", async () => {
+    const segmentedDefinition = {
+      ...shiftDefinition,
+      plannedBreaks: [{ startTime: "13:00", endTime: "14:00" }],
+    }
+    const segments = [
+      { mode: "SITE" as const, siteId: "site-a", startTime: "09:00", endTime: "13:00", lateGraceSeconds: 15 * 60, proofPolicyReference: "office-v1" },
+      { mode: "SITE" as const, siteId: "site-b", startTime: "14:00", endTime: "18:00", lateGraceSeconds: 15 * 60, proofPolicyReference: "office-v1" },
+    ]
+    vi.mocked(prisma.workforceShiftTemplate.findFirst).mockResolvedValue(null as never)
+    vi.mocked(prisma.workforceSite.findMany).mockResolvedValue([{ id: "site-a" }, { id: "site-b" }] as never)
+    vi.mocked(prisma.workforceShiftTemplate.create).mockResolvedValue({
+      id: "shift-segmented",
+      teamId: null,
+      code: "MULTI_SITE",
+      status: "DRAFT",
+      version: 1,
+      isDefault: false,
+      name: "Multi-site day",
+      timezone: "Asia/Baku",
+      definitionHash: workforceShiftDefinitionHash(segmentedDefinition),
+      segments: segments.map((segment, index) => ({ id: `segment-${index + 1}`, sequence: index + 1, ...segment })),
+    } as never)
+    const draft = WorkforceShiftTemplateDraftCreateSchema.parse({
+      code: "MULTI_SITE",
+      name: "Multi-site day",
+      definition: segmentedDefinition,
+      segments,
+    })
+
+    await expect(createWorkforceShiftTemplateDraft({ organizationId, createdByUserId: userId, draft, audit }))
+      .resolves.toMatchObject({ id: "shift-segmented", segments: [{ sequence: 1 }, { sequence: 2 }] })
+
+    expect(prisma.workforceSite.findMany).toHaveBeenCalledWith({
+      where: { organizationId, id: { in: ["site-a", "site-b"] }, status: "ACTIVE" },
+      select: { id: true },
+    })
+    expect(prisma.workforceShiftTemplate.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        segments: {
+          create: [
+            expect.objectContaining({ organizationId, sequence: 1, mode: "SITE", siteId: "site-a", lateGraceSeconds: 15 * 60 }),
+            expect.objectContaining({ organizationId, sequence: 2, mode: "SITE", siteId: "site-b", lateGraceSeconds: 15 * 60 }),
+          ],
+        },
+      }),
+    }))
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        newData: expect.objectContaining({ segmentCount: 2, segmentDefinitionHash: expect.any(String) }),
+      }),
+    }))
+  })
+
+  it("rejects a multi-site draft with unsafe segment ownership, overlap or an active-site mismatch", async () => {
+    expect(WorkforceShiftTemplateDraftCreateSchema.parse({
+      code: "TRAVEL_ONLY_CONTRACT",
+      name: "Travel without a Route customer",
+      definition: shiftDefinition,
+      segments: [
+        { mode: "SITE", siteId: "site-a", startTime: "09:00", endTime: "12:00" },
+        { mode: "TRAVEL", startTime: "12:00", endTime: "13:00", proofPolicyReference: "travel-review-v1" },
+        { mode: "SITE", siteId: "site-b", startTime: "13:00", endTime: "18:00" },
+      ],
+    }).segments?.[1]).toMatchObject({ mode: "TRAVEL", lateGraceSeconds: 0 })
+    expect(() => WorkforceShiftTemplateDraftCreateSchema.parse({
+      code: "INVALID_SITE",
+      name: "Invalid site mode",
+      definition: shiftDefinition,
+      segments: [{ mode: "REMOTE", siteId: "site-a", startTime: "09:00", endTime: "18:00" }],
+    })).toThrow(/only a SITE segment/i)
+    expect(() => WorkforceShiftTemplateDraftCreateSchema.parse({
+      code: "OVERLAP",
+      name: "Overlapping segments",
+      definition: shiftDefinition,
+      segments: [
+        { mode: "REMOTE", startTime: "09:00", endTime: "14:00" },
+        { mode: "FIELD", startTime: "13:00", endTime: "18:00" },
+      ],
+    })).toThrow(/non-overlapping/i)
+
+    vi.mocked(prisma.workforceShiftTemplate.findFirst).mockResolvedValue(null as never)
+    vi.mocked(prisma.workforceSite.findMany).mockResolvedValue([] as never)
+    const draft = WorkforceShiftTemplateDraftCreateSchema.parse({
+      code: "MISSING_SITE",
+      name: "Missing active site",
+      definition: shiftDefinition,
+      segments: [{ mode: "SITE", siteId: "missing-site", startTime: "09:00", endTime: "18:00" }],
+    })
+    await expect(createWorkforceShiftTemplateDraft({ organizationId, createdByUserId: userId, draft, audit }))
+      .rejects.toMatchObject<Partial<WorkforceConfigurationManagementError>>({
+        code: "WORKFORCE_CONFIGURATION_SHIFT_SEGMENT_SITE_INVALID",
+      })
+    expect(prisma.workforceShiftTemplate.create).not.toHaveBeenCalled()
+  })
+
+  it("replaces the complete segment timeline only while the template remains a draft", async () => {
+    const beforeLock = {
+      id: "shift-1", teamId: null, code: "STANDARD", isDefault: false, version: 1,
+      status: "DRAFT", name: "Standard shift", timezone: "Asia/Baku", definitionHash: workforceShiftDefinitionHash(shiftDefinition),
+    }
+    const existing = {
+      ...beforeLock,
+      definition: shiftDefinition,
+      segments: [{
+        id: "segment-old", sequence: 1, mode: "REMOTE", siteId: null,
+        startTime: "09:00", endTime: "18:00", lateGraceSeconds: 0, proofPolicyReference: null,
+      }],
+    }
+    const replacementSegments = [
+      { mode: "SITE" as const, siteId: "site-a", startTime: "09:00", endTime: "13:00", lateGraceSeconds: 15 * 60 },
+      { mode: "SITE" as const, siteId: "site-b", startTime: "13:00", endTime: "18:00", lateGraceSeconds: 15 * 60 },
+    ]
+    const result = {
+      ...existing,
+      segments: replacementSegments.map((segment, index) => ({
+        id: `segment-${index + 1}`, sequence: index + 1, proofPolicyReference: null, ...segment,
+      })),
+    }
+    vi.mocked(prisma.workforceShiftTemplate.findFirst)
+      .mockResolvedValueOnce(beforeLock as never)
+      .mockResolvedValueOnce(existing as never)
+      .mockResolvedValueOnce(result as never)
+    vi.mocked(prisma.workforceSite.findMany).mockResolvedValue([{ id: "site-a" }, { id: "site-b" }] as never)
+    vi.mocked(prisma.workforceShiftTemplate.updateMany).mockResolvedValue({ count: 1 } as never)
+    vi.mocked(prisma.workforceShiftSegment.deleteMany).mockResolvedValue({ count: 1 } as never)
+    vi.mocked(prisma.workforceShiftSegment.createMany).mockResolvedValue({ count: 2 } as never)
+    const draft = WorkforceShiftTemplateDraftUpdateSchema.parse({ segments: replacementSegments })
+
+    await expect(updateWorkforceShiftTemplateDraft({ organizationId, templateId: "shift-1", draft, audit }))
+      .resolves.toMatchObject({ id: "shift-1", segments: [{ sequence: 1 }, { sequence: 2 }] })
+
+    expect(prisma.workforceShiftSegment.deleteMany).toHaveBeenCalledWith({
+      where: { organizationId, templateId: "shift-1" },
+    })
+    expect(prisma.workforceShiftSegment.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({ organizationId, templateId: "shift-1", sequence: 1, siteId: "site-a" }),
+        expect.objectContaining({ organizationId, templateId: "shift-1", sequence: 2, siteId: "site-b" }),
+      ],
+    })
+  })
+
   it("will not revise a published shift or allow a scope/code change through patch input", async () => {
     expect(() => WorkforceShiftTemplateDraftUpdateSchema.parse({ code: "CHANGED" })).toThrow()
     vi.mocked(prisma.workforceShiftTemplate.findFirst).mockResolvedValue({
