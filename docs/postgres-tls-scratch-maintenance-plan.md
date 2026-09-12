@@ -20,8 +20,11 @@ For the source endpoint it:
    and FQDN;
 3. resolves the matched name and compares the result only with loopback and
    addresses actually assigned to local interfaces; and
-4. performs a second TLS-only connection using that name, hostname checking,
-   and the presented self-signed certificate as the in-memory trust anchor.
+4. verifies the certificate identity at the currently configured endpoint by
+   using the SAN as the TLS server name and the presented self-signed
+   certificate as the in-memory trust anchor; and
+5. separately repeats the TLS-only connection through the SAN's own DNS
+   resolution, without authentication or SQL.
 
 For the configured scratch port it performs bounded, read-only discovery of:
 
@@ -35,11 +38,18 @@ output is never printed unless both result lines match that schema.
 
 ## Source TLS decision
 
-Client-only remediation without a PostgreSQL restart is proven only when all
-three results are `yes`: the SAN matches the production server name, that name
-resolves to a local interface address, and the TLS-only hostname verification
-succeeds. A missing or negative result is a stop condition, not permission to
-change DNS or the server certificate.
+Client-only remediation without a PostgreSQL restart has two distinct paths:
+
+- `direct-dns`: the SAN matches the production server name, resolves to a local
+  interface, and `verify-full` succeeds through that DNS name;
+- `client-hostaddr-required`: certificate identity verification succeeds at
+  the current source endpoint, but the direct DNS/listener path does not. This
+  is evidence for a future client-only `PGHOST` plus `PGHOSTADDR` design, not
+  permission to use it now. The backup scripts and readiness contract must gain
+  explicit reviewed support in a separate PR before the maintenance window.
+
+`not-proven` is a stop condition, not permission to change DNS or the server
+certificate.
 
 After a separately confirmed maintenance window, the proven client-only path
 is:
@@ -48,7 +58,10 @@ is:
    TLS-only connection and independently compare its approved fingerprint;
 2. install that public certificate as a dedicated, root-owned source CA file;
 3. atomically change only the source client settings in `backup.env` to use the
-   matching DNS name, `verify-full`, and that source CA file; and
+   matching DNS name, `verify-full`, and that source CA file; for the
+   `client-hostaddr-required` path, first land the separately reviewed,
+   fail-closed `PGHOSTADDR` support and bind it to the already classified source
+   address without printing that value; and
 4. run only TLS/configuration readiness checks while all backup and recovery
    timers remain disabled.
 
@@ -69,7 +82,9 @@ Docker or custom systemd definition is not implied by the port alone.
 
 The audit distinguishes an existing separate PostgreSQL cluster, Docker,
 Compose, custom systemd, multiple conflicting definitions, and no definition
-in the reviewed locations. It does not start or create any of them.
+in the reviewed locations. It also reports a separate `present`, `absent`, or
+`unknown` probe state for each mechanism so an incomplete inspection cannot be
+mistaken for absence. It does not start or create any of them.
 
 After a separately confirmed maintenance window, provision exactly one
 mechanism. Prefer a dedicated disposable PostgreSQL cluster because that is the
