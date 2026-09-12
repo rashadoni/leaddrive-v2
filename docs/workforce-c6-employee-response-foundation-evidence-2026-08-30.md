@@ -1,7 +1,7 @@
 # Workforce C6 employee-response foundation evidence
 
 **Status:** WF-C6-006 partial
-**Date:** 2026-08-30
+**Date:** 2026-08-31
 
 ## Available employee correction path
 
@@ -18,23 +18,54 @@ contains only request metadata, not their free-text explanation.
 
 ## Explicit C6 boundary
 
-This gives the employee a safe correction route from an exact day, but it is
-not yet a formal response or appeal for `WorkforceExceptionCase`: the additive
-C6 case/decision schema has not been applied, has no transaction writer or
-employee-scoped case API, and has no segment-linked response field. Therefore
-the UI cannot claim a case was resolved, edit an accepted fact, suppress an
-exception, or expose another employee's evidence.
+The source now also contains an additive, inactive
+`WorkforceExceptionEmployeeResponse` ledger and migration. It accepts only an
+employee acknowledgement or a link to an existing `TIME_CORRECTION` request,
+never a free-text explanation or raw proof. Its database trigger requires the
+same tenant employee, exact exception case, exact workday and exact segment;
+the correction request must be the employee's request for that exact workday.
+The linked CRM user is also verified so another signed-in tenant user cannot
+submit an employee response under a caller-supplied agent id.
 
-The later C6 lifecycle must bind an employee response to the exact authorized
-case/workday/segment, preserve immutable status history, and route a requested
-correction through the configured-bounds and accountable-decision path. It
-must not turn the request reason into a raw-evidence or payroll input.
+The canonical writer authorizes before any advisory lock or database call,
+records only metadata-only audit fields, accepts an exact client-response retry
+and rejects a changed retry. `POST /api/v1/workforce/exceptions/:id/response`
+is a session-only self-service source path: it resolves the current employee,
+reads only a case matching that employee and tenant, derives the case's exact
+workday/segment server-side, and then calls the writer. A missing or another
+employee's case has one identical unavailable result, so it cannot serve as an
+ID oracle. The endpoint accepts neither explanation/proof nor a direct time
+change. No migration has been applied, so the UI cannot offer that acknowledgement
+write, claim a case was resolved, edit an accepted fact, suppress an exception,
+or expose another employee's evidence.
+
+`GET /api/v1/workforce/exceptions/mine` and `/workforce/exceptions/mine` now
+provide the corresponding self-scoped discovery surface. It reads only the
+current employee's tenant-local case, generic type and owned workday date; it
+never reads decision reasons, location, QR/device proof, response-ledger rows
+or another employee's case. Its correction link carries an opaque owned
+workday selection into the existing protected request form. The browser may
+change that selection, but the server still requires an exact self-owned
+workday/date before it accepts a correction.
+
+The later C6 lifecycle must apply the migration with disposable-DB/RLS
+evidence, connect the resulting correction request to the exact case response,
+and add accountable resolution. It must not turn the existing protected
+request reason into raw evidence or payroll input.
 
 ## Verification
 
-    PASS  targeted self-request/API/UI Vitest suite (3 files, 12 tests)
-    PASS  git diff --check
+    PASS  CI=true npx vitest run \
+          src/__tests__/lib-workforce-exception-employee-response.test.ts \
+          src/__tests__/lib-workforce-exception-employee-response-writer.test.ts \
+          src/__tests__/migration-workforce-exception-employee-responses.test.ts \
+          src/__tests__/api-workforce-exception-employee-response.test.ts \
+          src/__tests__/api-workforce-my-exceptions.test.ts
+          (5 files, 16 tests)
 
-    NOT RUN  applied C6 lifecycle migration, employee case/appeal endpoint and
-             browser accessibility evidence, mobile UI, notification delivery,
-             full typecheck/build, staging and production tests.
+    PASS  DATABASE_URL=<nonconnecting validation URL> npx prisma validate
+    PASS  i18n parity (EN/RU/AZ), targeted ESLint and git diff --check
+
+    NOT RUN  migration apply/disposable-DB RLS, browser accessibility evidence,
+             mobile UI, notification delivery, full typecheck/build, staging
+             and production tests.
