@@ -20,6 +20,14 @@ import { prisma } from "@/lib/prisma"
 import { getMtmSettings } from "@/lib/mtm-settings"
 
 const AUTH = { orgId: "org-1", userId: "admin-1", role: "admin" }
+type SiteRouteContext = { params: Promise<{ id: string }> }
+type SiteMutationHandler = (
+  request: NextRequest,
+  auth: typeof AUTH,
+  context: SiteRouteContext,
+) => Promise<Response>
+const callArchiveSite = archivePost as unknown as SiteMutationHandler
+const callCreateGeofence = geofencePost as unknown as SiteMutationHandler
 const site = {
   id: "site-1",
   code: "BAKU_HQ",
@@ -111,7 +119,7 @@ describe("Workforce site configuration API", () => {
     vi.mocked(prisma.workforceSite.updateMany).mockResolvedValue({ count: 1 } as never)
     vi.mocked(prisma.mtmAuditLog.create).mockResolvedValue({ id: "audit-2" } as never)
 
-    const response = await archivePost(request("/api/v1/workforce/configuration/sites/site-1/archive", {
+    const response = await callArchiveSite(request("/api/v1/workforce/configuration/sites/site-1/archive", {
       reason: "Office lease ended",
     }), AUTH as never, { params: Promise.resolve({ id: "site-1" }) })
 
@@ -146,7 +154,7 @@ describe("Workforce site configuration API", () => {
     vi.mocked(prisma.workforceSiteGeofenceRevision.create).mockResolvedValue(revision as never)
     vi.mocked(prisma.mtmAuditLog.create).mockResolvedValue({ id: "audit-3" } as never)
 
-    const response = await geofencePost(request("/api/v1/workforce/configuration/sites/site-1/geofences", {
+    const response = await callCreateGeofence(request("/api/v1/workforce/configuration/sites/site-1/geofences", {
       effectiveFrom: "2026-09-01",
       centerLatitude: 40.4093,
       centerLongitude: 49.8671,

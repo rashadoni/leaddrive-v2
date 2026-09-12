@@ -63,7 +63,7 @@ export class WorkforceSiteManagementError extends Error {
       | "WORKFORCE_SITE_ALREADY_ARCHIVED"
       | "WORKFORCE_SITE_CODE_DUPLICATE"
       | "WORKFORCE_SITE_SCOPE_INVALID",
-    message = code,
+    message: string = code,
   ) {
     super(message)
   }
@@ -76,7 +76,7 @@ export class WorkforceSiteGeofenceManagementError extends Error {
       | "WORKFORCE_SITE_GEOFENCE_SITE_ARCHIVED"
       | "WORKFORCE_SITE_GEOFENCE_EFFECTIVE_DATE_NOT_FUTURE"
       | "WORKFORCE_SITE_GEOFENCE_TIMELINE_CONFLICT",
-    message = code,
+    message: string = code,
   ) {
     super(message)
   }
@@ -90,7 +90,7 @@ export class WorkforceSiteAssignmentManagementError extends Error {
       | "WORKFORCE_SITE_ASSIGNMENT_SITE_ARCHIVED"
       | "WORKFORCE_SITE_ASSIGNMENT_EFFECTIVE_DATE_NOT_FUTURE"
       | "WORKFORCE_SITE_ASSIGNMENT_TIMELINE_CONFLICT",
-    message = code,
+    message: string = code,
   ) {
     super(message)
   }
