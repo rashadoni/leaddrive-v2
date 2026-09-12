@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
+import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { withWorkforceSessionAuth } from "@/lib/with-workforce-rls-auth"
 import {
@@ -63,7 +64,7 @@ export const POST = withWorkforceSessionAuth<RouteContext>("write", async (req, 
   }
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const exceptionCase = await tx.workforceExceptionCase.findFirst({
         where: { id: caseId, organizationId: auth.orgId },
         select: {
