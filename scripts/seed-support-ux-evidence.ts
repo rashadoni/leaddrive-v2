@@ -86,8 +86,8 @@ async function main(): Promise<void> {
       slug: DEMO_SLUG,
       plan: "enterprise",
       addons: ["ai", "voip"],
-      features: ["crm", "support", "settings", "voip", "ai", "complaints_register"],
-      modules: { crm: true, support: true, settings: true, voip: true, ai: true },
+      features: ["crm", "support", "settings", "analytics", "voip", "ai", "complaints_register"],
+      modules: { crm: true, support: true, settings: true, analytics: true, voip: true, ai: true },
       settings: { defaultLocale: "az", landingPath: "/tickets" },
       maxUsers: 20,
       maxContacts: 1000,
@@ -212,6 +212,19 @@ async function main(): Promise<void> {
       },
     }),
   ])
+  await prisma.ticketCategory.create({
+    data: {
+      organizationId: organization.id,
+      name: "Sign-in troubleshooting",
+      slug: "sign-in-troubleshooting",
+      description: "Child category used to prove hierarchy behavior",
+      parentId: generalCategory.id,
+      scope: "ticket",
+      defaultPriority: "medium",
+      defaultQueueId: queue.id,
+      sortOrder: 10,
+    },
+  })
 
   await Promise.all([
     prisma.escalationRule.create({
@@ -240,9 +253,9 @@ async function main(): Promise<void> {
   const kbCategory = await prisma.kbCategory.create({
     data: { organizationId: organization.id, name: "Getting started", sortOrder: 10 },
   })
-  await prisma.kbArticle.createMany({
-    data: [
-      {
+  const [primaryKbArticle] = await Promise.all([
+    prisma.kbArticle.create({
+      data: {
         organizationId: organization.id,
         title: "Resolve a sign-in issue",
         content: "Check your workspace address, then reset your password if needed.",
@@ -253,7 +266,9 @@ async function main(): Promise<void> {
         viewCount: 24,
         helpfulCount: 18,
       },
-      {
+    }),
+    prisma.kbArticle.create({
+      data: {
         organizationId: organization.id,
         title: "Follow a support request",
         content: "Open My tickets to review the latest status and replies.",
@@ -264,8 +279,24 @@ async function main(): Promise<void> {
         viewCount: 16,
         helpfulCount: 12,
       },
-    ],
-  })
+    }),
+  ])
+
+  if (count === 0) {
+    await writeFile(outputPath, JSON.stringify({
+      organization: { id: organization.id, name: organization.name, slug: organization.slug },
+      accounts: {
+        agent: { email: credentials.agent.email },
+        manager: { email: credentials.manager.email },
+        admin: { email: credentials.admin.email },
+        customer: { email: credentials.customer.email },
+      },
+      fixtures: {},
+      dataProfile: process.env.SUPPORT_EVIDENCE_DATA_PROFILE || "empty",
+      synthetic: true,
+    }, null, 2) + "\n", { mode: 0o600 })
+    return
+  }
 
   const portalTicket = await prisma.ticket.create({
     data: {
@@ -353,7 +384,7 @@ async function main(): Promise<void> {
         categoryId: generalCategory.id,
         contactId: contact.id,
         companyId: company.id,
-        assignedTo: index % 3 === 0 ? manager.id : agent.id,
+        assignedTo: index % 5 === 0 ? null : index % 3 === 0 ? manager.id : agent.id,
         createdBy: admin.id,
         source: index % 2 === 0 ? "portal" : "email",
         requesterName: contact.fullName,
@@ -475,6 +506,10 @@ async function main(): Promise<void> {
       ticketId: portalTicket.id,
       complaintId: complaint.id,
       portalTicketId: portalTicket.id,
+      kbArticleId: primaryKbArticle.id,
+      ticketCategoryId: generalCategory.id,
+      slaPolicyId: sla.id,
+      entitlementId: entitlement.id,
       closureToken: closure.token,
     },
     dataProfile: process.env.SUPPORT_EVIDENCE_DATA_PROFILE || "typical",
