@@ -10,6 +10,7 @@ import {
   type WorkforceExceptionDraftStage,
   type WorkforceExceptionDraftType,
 } from "@/lib/workforce/exception-policy-draft"
+import { lockWorkforceExceptionDecisionStream } from "@/lib/workforce/exception-case-writer"
 import {
   buildWorkforceTimesheetApproval,
   persistWorkforceTimesheetApproval,
@@ -294,7 +295,7 @@ async function rebuildApprovalRows(
 
   const rowByWorkdayId = new Map(rows.map((row) => [row.workdayId, row]))
   const workdayById = new Map(workdays.map((workday) => [workday.id, workday]))
-  const [calculationExceptions, exceptionCases] = await Promise.all([
+  const [calculationExceptions, exceptionCaseRefs] = await Promise.all([
     tx.workforceAttendanceException.findMany({
       where: {
         organizationId: scope.organizationId,
@@ -317,6 +318,37 @@ async function rebuildApprovalRows(
       },
       orderBy: [{ expectedWorkDate: "asc" }, { createdAt: "asc" }, { id: "asc" }],
       take: MAX_APPROVAL_EXCEPTION_CASES + 1,
+      select: { id: true },
+    }),
+  ])
+
+  if (exceptionCaseRefs.length > MAX_APPROVAL_EXCEPTION_CASES) {
+    throw conflict(
+      "WORKFORCE_TIMESHEET_APPROVAL_EXCEPTION_LIMIT_EXCEEDED",
+      "The requested period has too many exception cases for one safe approval",
+    )
+  }
+
+  const exceptionCaseIds = exceptionCaseRefs.map(({ id }) => id).sort()
+  // The workday lock is acquired first. Current no-show/missed-finish case
+  // producers use that same employee lane, so the case set is stable. Lock
+  // each existing C6 decision stream in deterministic ID order and only then
+  // read its final lifecycle. The decision writer uses this exact lock key.
+  for (const caseId of exceptionCaseIds) {
+    await lockWorkforceExceptionDecisionStream(tx, {
+      organizationId: scope.organizationId,
+      caseId,
+    })
+  }
+  const exceptionCases = exceptionCaseIds.length === 0
+    ? []
+    : await tx.workforceExceptionCase.findMany({
+      where: {
+        organizationId: scope.organizationId,
+        agentId: scope.agentId,
+        id: { in: exceptionCaseIds },
+      },
+      orderBy: [{ expectedWorkDate: "asc" }, { createdAt: "asc" }, { id: "asc" }],
       select: {
         id: true,
         kind: true,
@@ -329,13 +361,11 @@ async function rebuildApprovalRows(
           select: { decisionCode: true },
         },
       },
-    }),
-  ])
-
-  if (exceptionCases.length > MAX_APPROVAL_EXCEPTION_CASES) {
+    })
+  if (exceptionCases.length !== exceptionCaseIds.length) {
     throw conflict(
-      "WORKFORCE_TIMESHEET_APPROVAL_EXCEPTION_LIMIT_EXCEEDED",
-      "The requested period has too many exception cases for one safe approval",
+      "WORKFORCE_TIMESHEET_APPROVAL_EXCEPTION_HISTORY_INVALID",
+      "An attendance exception changed while the requested period was being approved",
     )
   }
 

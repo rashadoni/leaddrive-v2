@@ -294,6 +294,41 @@ describe("Workforce server-side timesheet approval", () => {
     })
   })
 
+  it("re-reads the C6 lifecycle after acquiring the shared decision-stream lock", async () => {
+    const resolvedCase = {
+      id: "case-00000046",
+      kind: "UNDERTIME",
+      workdayId: "workday-1",
+      expectedWorkDate: null,
+      workdayEvent: null,
+      decisions: [
+        { decisionCode: "ACKNOWLEDGE" },
+        { decisionCode: "RESOLVE_NO_CHANGE" },
+      ],
+    }
+    vi.mocked(prisma.workforceExceptionCase.findMany)
+      // Discovery occurs while the employee workday fence is held.
+      .mockResolvedValueOnce([resolvedCase] as never)
+      // Model a concurrent REOPEN that completed before approval acquired the
+      // shared per-case lock. The mandatory post-lock read must see it.
+      .mockResolvedValueOnce([{
+        ...resolvedCase,
+        decisions: [...resolvedCase.decisions, { decisionCode: "REOPEN_FOR_REVIEW" }],
+      }] as never)
+
+    await expect(approveWorkforceTimesheet(context)).resolves.toMatchObject({
+      kind: "conflict",
+      code: "WORKFORCE_TIMESHEET_APPROVAL_UNRESOLVED_EXCEPTIONS",
+      blockers: [{
+        caseReference: "WF-00000046",
+        exceptionStage: "HR_REVIEW",
+      }],
+    })
+    expect(prisma.workforceExceptionCase.findMany).toHaveBeenCalledTimes(2)
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(2)
+    expect(prisma.workforceTimesheetApproval.create).not.toHaveBeenCalled()
+  })
+
   it("fails closed on an invalid or truncated C6 decision history", async () => {
     vi.mocked(prisma.workforceExceptionCase.findMany).mockResolvedValue([{
       id: "case-00000045",

@@ -27,6 +27,12 @@ non-blocking. A stale calculation exception from an older calculation version
 does not block a newer correction revision. Case and decision reads are hard
 bounded; overflow fails closed instead of silently truncating approval facts.
 
+Approval acquires the canonical employee workday fence, discovers the bounded
+case set, locks every C6 decision stream in deterministic case-ID order using
+the same advisory-lock helper as the decision writer, and then re-reads the
+lifecycle. A resolution or reopen that wins the lock is therefore visible to
+approval; one that waits is serialized after the approval transaction.
+
 ## Reviewer disclosure and minimization
 
 The session-only approval endpoint returns `private, no-store` and `nosniff`
@@ -43,7 +49,7 @@ unexpected server value is not interpolated as a translation key.
 
 PASS in the exact checkpoint tree:
 
-- `npx vitest run src/__tests__/workforce-timesheet-approval-service.test.ts src/__tests__/api-workforce-timesheet-approvals.test.ts src/__tests__/workforce-timesheet-approval-blockers-ui-contract.test.ts --pool=forks --maxWorkers=1` — 3 files / 19 tests;
+- `npx vitest run src/__tests__/workforce-timesheet-approval-service.test.ts src/__tests__/api-workforce-timesheet-approvals.test.ts src/__tests__/workforce-timesheet-approval-blockers-ui-contract.test.ts src/__tests__/lib-workforce-exception-case-writer.test.ts --pool=forks --maxWorkers=1` — 4 files / 28 tests, including a deterministic reopen-before-lock case;
 - scoped ESLint for the service, route, UI and three test files;
 - `npm run i18n:check` — EN/RU/AZ parity;
 - `git diff --check`.
