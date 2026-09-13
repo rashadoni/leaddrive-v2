@@ -363,7 +363,7 @@ async function plannedAssignment(
       return {
         assignment: {
           state: "NON_WORKING_DAY",
-          templateName: shift.name,
+          templateName: shift.name ?? null,
           timezone: shift.timezone,
           plannedStartAt: null,
           plannedEndAt: null,
@@ -387,7 +387,7 @@ async function plannedAssignment(
     return {
       assignment: {
         state: "ASSIGNED",
-        templateName: shift.name,
+        templateName: shift.name ?? null,
         timezone: shift.timezone,
         plannedStartAt: shift.schedule.plannedStartAt,
         plannedEndAt: shift.schedule.plannedEndAt,

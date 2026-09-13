@@ -10,7 +10,8 @@ import { resolveWorkforceHistoricalTeamMembership } from "@/lib/workforce/team-m
 
 export type WorkforceShiftTemplateCandidate = {
   id: string
-  name: string
+  /** Present for persisted templates; optional for pure policy-resolution callers. */
+  name?: string
   teamId: string | null
   isDefault: boolean
   version: number
