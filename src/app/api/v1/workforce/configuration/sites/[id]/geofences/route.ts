@@ -3,7 +3,7 @@ import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { prisma } from "@/lib/prisma"
 import { isValidTimezone } from "@/lib/timezone"
-import { withWorkforceSessionAdminAuth } from "@/lib/with-workforce-rls-auth"
+import { withWorkforceSessionScheduleConfigurationAuth } from "@/lib/with-workforce-rls-auth"
 import {
   createWorkforceSiteGeofenceRevision,
   WorkforceSiteGeofenceManagementError,
@@ -29,7 +29,7 @@ const revisionSelect = {
 } as const
 
 /** Read calibrated Workforce circle revisions, never Route customer geofences. */
-export const GET = withWorkforceSessionAdminAuth<RouteContext>(async (_req: NextRequest, auth, { params }) => {
+export const GET = withWorkforceSessionScheduleConfigurationAuth<RouteContext>("SCHEDULE_READ", async (_req: NextRequest, auth, { params }) => {
   try {
     const { id } = await params
     const revisions = await prisma.workforceSiteGeofenceRevision.findMany({
@@ -45,7 +45,7 @@ export const GET = withWorkforceSessionAdminAuth<RouteContext>(async (_req: Next
 })
 
 /** Schedule the next calibrated circle revision; only server time picks "future". */
-export const POST = withWorkforceSessionAdminAuth<RouteContext>(async (req: NextRequest, auth, { params }) => {
+export const POST = withWorkforceSessionScheduleConfigurationAuth<RouteContext>("SCHEDULE_WRITE", async (req: NextRequest, auth, { params }) => {
   const parsed = WorkforceSiteGeofenceRevisionCreateSchema.safeParse(await req.json().catch(() => ({})))
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid Workforce site geofence" }, { status: 400 })
