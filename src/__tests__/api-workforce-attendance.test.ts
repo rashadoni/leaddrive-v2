@@ -34,6 +34,10 @@ import { resolveMobileAuth } from "@/lib/mobile-auth"
 import { prisma } from "@/lib/prisma"
 import { checkRateLimit, hashForRateLimit } from "@/lib/rate-limit"
 import QRCode from "qrcode"
+import {
+  requireWorkforceAttendanceAdminAddon,
+  resolveWorkforceAttendanceAdministrationCapabilities,
+} from "@/lib/workforce/attendance-route"
 
 const ORG = "org_1"
 const ADMIN = {
@@ -43,6 +47,13 @@ const ADMIN = {
   principalType: "session",
   email: "admin@example.test",
   name: "Admin",
+} satisfies AuthResult
+const DEVICE_SECURITY_ADMIN = {
+  ...ADMIN,
+  userId: "security_1",
+  role: "sales",
+  email: "security@example.test",
+  name: "Device security",
 } satisfies AuthResult
 type StationPostHandler = (request: NextRequest, auth: AuthResult) => Promise<Response>
 const callStationPost = stationPost as unknown as StationPostHandler
@@ -121,6 +132,67 @@ beforeEach(() => {
 })
 
 describe("Workforce attendance H5 API boundaries", () => {
+  it("uses an organization device-security grant for QR and device administration after cutover", async () => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      plan: "enterprise",
+      addons: [],
+      features: ["workforce-hrm", "attendance-qr", "attendance-device-trust", "workforce-granular-access-v1"],
+      modules: { "workforce-hrm": true, "attendance-qr": true, "attendance-device-trust": true },
+    } as never)
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([{
+      id: "grant_device_1", organizationId: ORG, principalUserId: DEVICE_SECURITY_ADMIN.userId,
+      role: "DEVICE_SECURITY_ADMIN", scopeKind: "ORGANIZATION", scopeTeamId: null,
+      scopeSiteId: null, scopeAgentId: null, effectiveFrom: new Date("2026-08-01T00:00:00.000Z"),
+      effectiveUntil: null, revocation: null,
+    }] as never)
+
+    await expect(resolveWorkforceAttendanceAdministrationCapabilities(ORG, DEVICE_SECURITY_ADMIN)).resolves.toEqual({
+      qrEnabled: true,
+      deviceTrustEnabled: true,
+      canManageQr: true,
+      canManageDeviceTrust: true,
+    })
+    await expect(requireWorkforceAttendanceAdminAddon(ORG, DEVICE_SECURITY_ADMIN, "qr")).resolves.toBeNull()
+    await expect(requireWorkforceAttendanceAdminAddon(ORG, DEVICE_SECURITY_ADMIN, "deviceTrust")).resolves.toBeNull()
+  })
+
+  it("does not retain broad CRM-admin attendance authority after cutover", async () => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      plan: "enterprise",
+      addons: [],
+      features: ["workforce-hrm", "attendance-qr", "attendance-device-trust", "workforce-granular-access-v1"],
+      modules: { "workforce-hrm": true, "attendance-qr": true, "attendance-device-trust": true },
+    } as never)
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([])
+
+    await expect(resolveWorkforceAttendanceAdministrationCapabilities(ORG, ADMIN)).resolves.toMatchObject({
+      canManageQr: false,
+      canManageDeviceTrust: false,
+    })
+    expect((await requireWorkforceAttendanceAdminAddon(ORG, ADMIN, "qr"))?.status).toBe(403)
+    expect((await requireWorkforceAttendanceAdminAddon(ORG, ADMIN, "deviceTrust"))?.status).toBe(403)
+  })
+
+  it("does not inflate a site-scoped device-security grant into tenant-wide QR access", async () => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      plan: "enterprise",
+      addons: [],
+      features: ["workforce-hrm", "attendance-qr", "attendance-device-trust", "workforce-granular-access-v1"],
+      modules: { "workforce-hrm": true, "attendance-qr": true, "attendance-device-trust": true },
+    } as never)
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([{
+      id: "grant_device_site_1", organizationId: ORG, principalUserId: DEVICE_SECURITY_ADMIN.userId,
+      role: "DEVICE_SECURITY_ADMIN", scopeKind: "SITE", scopeTeamId: null, scopeSiteId: "site_1",
+      scopeAgentId: null, effectiveFrom: new Date("2026-08-01T00:00:00.000Z"),
+      effectiveUntil: null, revocation: null,
+    }] as never)
+
+    await expect(resolveWorkforceAttendanceAdministrationCapabilities(ORG, DEVICE_SECURITY_ADMIN)).resolves.toMatchObject({
+      canManageQr: false,
+      canManageDeviceTrust: false,
+    })
+  })
+
   it("lets only an attendance administrator create a QR station", async () => {
     vi.mocked(prisma.workforceSite.findFirst).mockResolvedValue({ id: "site_1" } as never)
     vi.mocked(prisma.workforceSiteGeofenceRevision.findFirst).mockResolvedValue({ id: "geofence_1" } as never)

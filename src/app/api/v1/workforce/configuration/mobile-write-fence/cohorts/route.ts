@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { withWorkforceSessionAdminAuth } from "@/lib/with-workforce-rls-auth"
+import { withWorkforceSessionPilotFenceAuth } from "@/lib/with-workforce-rls-auth"
 import {
   disableWorkforceMobileWriteCohort,
   upsertWorkforceMobileWriteCohort,
@@ -23,7 +23,7 @@ function fenceErrorStatus(error: WorkforceMobileWriteFenceError): number {
  * An exact `(agentId, deviceId)` row is enabled or renewed. It is a server
  * selector for a controlled release, not an APK provenance/attestation claim.
  */
-export const PUT = withWorkforceSessionAdminAuth(async (req: NextRequest, auth) => {
+export const PUT = withWorkforceSessionPilotFenceAuth(async (req: NextRequest, auth) => {
   const mfaDenied = await requireWorkforceAttendanceSecurityMfa(auth.orgId, auth)
   if (mfaDenied) return mfaDenied
   const parsed = WorkforceMobileWriteCohortUpsertSchema.safeParse(await req.json().catch(() => ({})))
@@ -53,7 +53,7 @@ export const PUT = withWorkforceSessionAdminAuth(async (req: NextRequest, auth) 
  * Rows are disabled, never deleted, to preserve the release-control audit.
  * The final active row cannot be disabled while the tenant is cohort-only.
  */
-export const DELETE = withWorkforceSessionAdminAuth(async (req: NextRequest, auth) => {
+export const DELETE = withWorkforceSessionPilotFenceAuth(async (req: NextRequest, auth) => {
   const mfaDenied = await requireWorkforceAttendanceSecurityMfa(auth.orgId, auth)
   if (mfaDenied) return mfaDenied
   const parsed = WorkforceMobileWriteCohortDisableSchema.safeParse(await req.json().catch(() => ({})))
