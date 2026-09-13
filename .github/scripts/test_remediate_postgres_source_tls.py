@@ -407,6 +407,97 @@ class DecisionTests(unittest.TestCase):
             config, "production.example.internal", 5432
         )
 
+    @mock.patch.object(MAINTENANCE, "_read_pgpass")
+    def test_pgpass_selector_rewrite_preserves_credential_bytes(
+        self, read_pgpass: mock.Mock
+    ) -> None:
+        authority = MAINTENANCE.FileAuthority(uid=990, gid=991, mode=0o600)
+        original = (
+            b"# retained comment\r\n"
+            b"127.0.0.1:5432:database_name:backup_user:pa\\:ss\\\\word\r\n"
+            b"other.example.internal:5432:other:other_user:untouched\r\n"
+        )
+        read_pgpass.return_value = (original, authority)
+        config = {
+            "PGPASSFILE": str(MAINTENANCE.PGPASS_PATH),
+            "PGDATABASE": "database_name",
+            "PGUSER": "backup_user",
+        }
+
+        before, after, observed_authority = (
+            MAINTENANCE._replace_pgpass_host_selector(
+                config,
+                "127.0.0.1",
+                "production.example.internal",
+                5432,
+            )
+        )
+
+        self.assertEqual(before, original)
+        self.assertEqual(observed_authority, authority)
+        self.assertEqual(
+            after,
+            original.replace(
+                b"127.0.0.1:5432:",
+                b"production.example.internal:5432:",
+                1,
+            ),
+        )
+        self.assertEqual(after.count(b"pa\\:ss\\\\word"), 1)
+
+    @mock.patch.object(MAINTENANCE, "_read_pgpass")
+    def test_pgpass_selector_rewrite_requires_one_exact_current_tuple(
+        self, read_pgpass: mock.Mock
+    ) -> None:
+        authority = MAINTENANCE.FileAuthority(uid=990, gid=991, mode=0o600)
+        read_pgpass.return_value = (
+            b"127.0.0.1:5432:database_name:backup_user:first\n"
+            b"127.0.0.1:5432:database_name:backup_user:second\n",
+            authority,
+        )
+        config = {
+            "PGPASSFILE": str(MAINTENANCE.PGPASS_PATH),
+            "PGDATABASE": "database_name",
+            "PGUSER": "backup_user",
+        }
+
+        with self.assertRaises(MAINTENANCE.SafeMaintenanceError) as raised:
+            MAINTENANCE._replace_pgpass_host_selector(
+                config,
+                "127.0.0.1",
+                "production.example.internal",
+                5432,
+            )
+        self.assertEqual(raised.exception.code, "pgpass-rewrite")
+
+    @mock.patch.object(MAINTENANCE, "_read_pgpass")
+    def test_pgpass_selector_rewrite_is_noop_when_new_tuple_already_matches(
+        self, read_pgpass: mock.Mock
+    ) -> None:
+        authority = MAINTENANCE.FileAuthority(uid=990, gid=991, mode=0o600)
+        original = (
+            b"production.example.internal:5432:database_name:backup_user:secret\n"
+        )
+        read_pgpass.return_value = (original, authority)
+        config = {
+            "PGPASSFILE": str(MAINTENANCE.PGPASS_PATH),
+            "PGDATABASE": "database_name",
+            "PGUSER": "backup_user",
+        }
+
+        before, after, observed_authority = (
+            MAINTENANCE._replace_pgpass_host_selector(
+                config,
+                "127.0.0.1",
+                "production.example.internal",
+                5432,
+            )
+        )
+
+        self.assertEqual(before, original)
+        self.assertIsNone(after)
+        self.assertEqual(observed_authority, authority)
+
     def test_pgpass_requires_canonical_path_without_exposing_it(self) -> None:
         config = {
             "PGPASSFILE": "/different/path",
@@ -452,6 +543,21 @@ class OutputTests(unittest.TestCase):
             "source_tls_maintenance operation=apply status=applied "
             "pg_restart=no service_restart=no effective_verify_full=yes "
             "rollback_snapshot=retained failure_stage=none"
+        )
+
+    @mock.patch.object(MAINTENANCE, "apply", return_value="applied")
+    def test_separately_confirmed_pgpass_operation_is_fixed_schema(
+        self, apply: mock.Mock
+    ) -> None:
+        with mock.patch("builtins.print") as output:
+            status = MAINTENANCE.main(["apply-with-passfile-selector"])
+        self.assertEqual(status, 0)
+        apply.assert_called_once_with(rewrite_pgpass_selector=True)
+        output.assert_called_once_with(
+            "source_tls_maintenance operation=apply-with-passfile-selector "
+            "status=applied pg_restart=no service_restart=no "
+            "effective_verify_full=yes rollback_snapshot=retained "
+            "failure_stage=none"
         )
 
     @mock.patch.object(MAINTENANCE, "apply", side_effect=RuntimeError("secret-host"))
