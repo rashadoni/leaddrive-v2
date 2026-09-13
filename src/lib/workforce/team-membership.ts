@@ -11,6 +11,14 @@ export type WorkforceHistoricalTeamMembership = {
   effectiveAt: Date
 }
 
+export type WorkforceHistoricalTeamMembershipCandidate = {
+  requestId: string
+  agentId: string
+  workdayStartedAt: Date
+}
+
+export const MAX_WORKFORCE_HISTORICAL_TEAM_MEMBERSHIP_CANDIDATES = 1_000
+
 type WorkforceTeamMembershipDb = Pick<PrismaClient, "$queryRaw">
 
 function validInstant(value: Date): boolean {
@@ -53,4 +61,48 @@ export async function resolveWorkforceHistoricalTeamMembership(
   const row = rows[0]
   if (!row?.id || !row.effectiveAt || !validInstant(row.effectiveAt)) return null
   return { id: row.id, teamId: row.teamId, effectiveAt: row.effectiveAt }
+}
+
+/** Resolve bounded request candidates in one metadata-only historical query. */
+export async function resolveWorkforceHistoricalTeamMemberships(
+  db: WorkforceTeamMembershipDb,
+  input: { organizationId: string; candidates: readonly WorkforceHistoricalTeamMembershipCandidate[] },
+): Promise<ReadonlyMap<string, string | null>> {
+  if (input.candidates.length > MAX_WORKFORCE_HISTORICAL_TEAM_MEMBERSHIP_CANDIDATES) {
+    throw new Error("Workforce historical team membership batch exceeds the safe limit")
+  }
+  if (input.candidates.length === 0) return new Map()
+  const requestIds = new Set<string>()
+  const rows = input.candidates.map((candidate) => {
+    if (!candidate.requestId || !candidate.agentId || !validInstant(candidate.workdayStartedAt)
+      || requestIds.has(candidate.requestId)) {
+      throw new Error("Workforce historical team membership candidate is invalid")
+    }
+    requestIds.add(candidate.requestId)
+    return Prisma.sql`(${candidate.requestId}, ${candidate.agentId}, ${candidate.workdayStartedAt})`
+  })
+
+  const memberships = await db.$queryRaw<Array<{ requestId: string | null; teamId: string | null }>>(Prisma.sql`
+    SELECT candidate."requestId", membership."teamId"
+    FROM (VALUES ${Prisma.join(rows)}) AS candidate("requestId", "agentId", "scopeInstant")
+    LEFT JOIN LATERAL (
+      SELECT "teamId"
+      FROM "workforce_employee_team_memberships"
+      WHERE "organizationId" = ${input.organizationId}
+        AND "agentId" = candidate."agentId"
+        AND "effectiveAt" <= candidate."scopeInstant"
+      ORDER BY "effectiveAt" DESC, "id" DESC
+      LIMIT 1
+    ) AS membership ON TRUE
+  `)
+  const result = new Map<string, string | null>()
+  for (const membership of memberships) {
+    if (membership.requestId && requestIds.has(membership.requestId)) {
+      result.set(membership.requestId, typeof membership.teamId === "string" ? membership.teamId : null)
+    }
+  }
+  for (const requestId of requestIds) {
+    if (!result.has(requestId)) result.set(requestId, null)
+  }
+  return result
 }
