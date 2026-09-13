@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { CalendarDays, ChevronLeft, ChevronRight, MapPin, Plus, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -102,7 +102,8 @@ export function MtmRouteCalendar({
   const t = useTranslations("mtmRoutesPage")
   const statusT = useTranslations("mtmStatus")
   const [selectedDate, setSelectedDate] = useState("")
-  const days = useMemo(() => month ? buildMonthDays(month, routes) : [], [month, routes])
+  const selectedDayPanelRef = useRef<HTMLDivElement>(null)
+  const days =useMemo(() => month ? buildMonthDays(month, routes) : [], [month, routes])
   const fallbackSelectedDate = useMemo(() => {
     if (!month) return ""
     const now = new Date()
@@ -135,6 +136,21 @@ export function MtmRouteCalendar({
   function selectDate(date: string) {
     setSelectedDate(date)
     onSelectedDateChange?.(date)
+  }
+
+  /**
+   * The day's panel — its routes and "plan on this date" — renders under the
+   * grid, and nothing brought it into view. Measured on production at 834×695
+   * (audit C15): after tapping 1 September the plan button sat at y=664–708
+   * and the day's only route at 720–780, below a 695 px screen, with the page
+   * still able to scroll 114 px. `nearest` leaves an already visible panel
+   * where it is. Runs after paint so it measures the newly selected day.
+   */
+  function revealSelectedDayPanel() {
+    window.requestAnimationFrame(() => {
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      selectedDayPanelRef.current?.scrollIntoView({ block: "nearest", behavior: reduceMotion ? "auto" : "smooth" })
+    })
   }
 
   return (
@@ -197,7 +213,10 @@ export function MtmRouteCalendar({
                 aria-pressed={isSelected}
                 aria-label={formatDate(day.date, locale, { weekday: "long", day: "numeric", month: "long" })}
                 className={`relative min-h-11 rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-25 ${isSelected ? "bg-primary text-primary-foreground" : "hover:bg-muted"} ${isToday && !isSelected ? "text-primary" : ""}`}
-                onClick={() => selectDate(key)}
+                onClick={() => {
+                  selectDate(key)
+                  revealSelectedDayPanel()
+                }}
               >
                 {day.date.getDate()}
                 {day.routes.length > 0 ? (
@@ -209,7 +228,7 @@ export function MtmRouteCalendar({
         </div>
 
         {selectedDay ? (
-          <div className="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-700">
+          <div ref={selectedDayPanelRef} data-testid="mtm-route-calendar-selected-day" className="mt-4 scroll-mb-3 border-t border-zinc-200 pt-4 dark:border-zinc-700">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h3 className="text-sm font-semibold capitalize">{formatDate(selectedDay.date, locale, { weekday: "long", day: "numeric", month: "long" })}</h3>

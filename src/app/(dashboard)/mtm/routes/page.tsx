@@ -844,7 +844,7 @@ export default function MtmRoutesPage() {
         mobileFullscreenBreakpoint="tablet"
       >
         <DialogTitle className="sr-only">{editData ? t("builderEditTitle") : t("builderNewTitle")}</DialogTitle>
-        <div data-testid="mtm-route-builder-dialog" className="min-h-0 overflow-hidden">
+        <div data-testid="mtm-route-builder-dialog" className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <MtmRouteBuilder
             open={builderOpen}
             initialData={editData}

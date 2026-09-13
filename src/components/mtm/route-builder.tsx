@@ -1497,7 +1497,7 @@ export function MtmRouteBuilder({
             : t("saveDraft")
 
   return (
-    <section data-testid="mtm-route-builder" className="flex min-h-0 max-h-dvh flex-col overflow-hidden border-y border-zinc-200 bg-card dark:border-zinc-700 min-[900px]:max-h-[min(52rem,calc(100dvh-2rem))]">
+    <section data-testid="mtm-route-builder" className="flex min-h-0 max-h-dvh flex-1 flex-col overflow-hidden border-y border-zinc-200 bg-card dark:border-zinc-700 min-[900px]:max-h-[min(52rem,calc(100dvh-2rem))]">
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-zinc-200 px-4 py-2 dark:border-zinc-700">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -1687,7 +1687,16 @@ export function MtmRouteBuilder({
         </ol>
       </nav>
 
-      <div className="mx-auto min-h-0 w-full max-w-6xl flex-1 overflow-y-auto overscroll-contain">
+      {/*
+        `relative` makes this scroller the containing block of the `sr-only`
+        time labels inside it. Without it their containing block was the
+        dialog: eight labels stretched its scrollHeight to 876 px on a 683 px
+        screen, and the step-3 `scrollIntoView` scrolled the dialog itself by
+        89 px, pushing the close button and the stepper off the top (audit C15,
+        measured at 834 px). `overflow: hidden` does not stop programmatic
+        scrolling.
+      */}
+      <div className="relative mx-auto min-h-0 w-full max-w-6xl flex-1 overflow-y-auto overscroll-contain">
         {activeStep === 1 ? (
         <section data-testid="mtm-route-wizard-step-1" className="mx-auto w-full max-w-3xl space-y-4 px-4 py-4 sm:px-6 sm:py-5">
           <div>
