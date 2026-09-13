@@ -330,7 +330,7 @@ export default function AgentDesktopPage() {
                 <button
                   type="button"
                   data-testid="agent-desktop-retry-availability"
-                  className="min-h-9 rounded px-1 font-medium underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="min-h-11 rounded px-2 font-medium underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   onClick={() => availabilityRetry === "load"
                     ? void loadAvailability()
                     : void saveAvailability(availabilityRetry)}
@@ -346,7 +346,7 @@ export default function AgentDesktopPage() {
       {loadError && (
         <div data-testid="agent-desktop-refresh-error" role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm">
           <span>{t("refreshFailed")}</span>
-          <Button data-testid="agent-desktop-retry-refresh" variant="outline" size="sm" className="min-h-9" onClick={() => void loadDashboard()}>
+          <Button data-testid="agent-desktop-retry-refresh" variant="outline" size="sm" className="min-h-11" onClick={() => void loadDashboard()}>
             <RefreshCw className="h-4 w-4" aria-hidden="true" />
             {t("retry")}
           </Button>
@@ -406,14 +406,14 @@ export default function AgentDesktopPage() {
               type="button"
               variant="ghost"
               size="icon"
-              className="min-h-10 min-w-10"
+              className="min-h-11 min-w-11"
               disabled={loading}
               onClick={() => void loadDashboard()}
               aria-label={t("refresh")}
             >
               <RefreshCw className={cn("h-4 w-4", loading && "animate-spin motion-reduce:animate-none")} aria-hidden="true" />
             </Button>
-            <Button asChild variant="ghost" size="sm" className="min-h-10">
+            <Button asChild variant="ghost" size="sm" className="min-h-11">
               <Link href="/tickets?assignee=me">
                 {t("viewAll")}
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -526,7 +526,7 @@ export default function AgentDesktopPage() {
           ))}
         </dl>
         <details className="border-t px-4 py-3 text-xs text-muted-foreground">
-          <summary className="min-h-10 cursor-pointer rounded py-2 font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <summary className="min-h-11 cursor-pointer rounded py-2 font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             {t("howMetricsWork")}
           </summary>
           <ul className="mt-1 list-disc space-y-1 pl-5">
@@ -544,7 +544,7 @@ export default function AgentDesktopPage() {
               <p className="text-xs text-muted-foreground">{t("teamAnalyticsHint")}</p>
             </div>
           </div>
-          <Button asChild variant="outline" size="sm" className="min-h-10 shrink-0">
+          <Button asChild variant="outline" size="sm" className="min-h-11 shrink-0">
             <Link href="/leaderboard?group=tickets">{t("openTeamAnalytics")}</Link>
           </Button>
         </aside>

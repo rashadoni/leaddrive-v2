@@ -23,6 +23,8 @@ describe("agent desktop UX contract", () => {
     expect(page).toContain("hidden overflow-x-auto md:block")
     expect(page).toContain("focus-visible:ring-2")
     expect(page).toContain("min-h-11")
+    expect(page).not.toContain('className="min-h-9')
+    expect(page).not.toContain('<summary className="min-h-10')
     expect(page).toContain('data-testid="agent-desktop-workspace"')
     expect(page).toContain('data-testid="agent-desktop-next-case"')
     expect(page).not.toContain("<main")

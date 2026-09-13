@@ -100,6 +100,21 @@ describe("agent desktop metric contract", () => {
     ])
   })
 
+  it("keeps urgent work between critical and high when no SLA date exists", () => {
+    const row = (priority: string) => ({
+      priority,
+      createdAt: date("2026-09-01T08:00:00Z"),
+      slaFirstResponseDueAt: null,
+      slaDueAt: null,
+      firstResponseAt: null,
+    })
+
+    expect([row("low"), row("high"), row("urgent"), row("critical")]
+      .sort(compareAgentQueueRows)
+      .map((item) => item.priority))
+      .toEqual(["critical", "urgent", "high", "low"])
+  })
+
   it("creates an exact rolling 30-day period", () => {
     const now = date("2026-09-04T12:00:00Z")
     expect(agentDesktopPeriod(now)).toEqual({
