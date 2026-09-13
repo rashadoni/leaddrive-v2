@@ -1,13 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 
+const workforceAuthBindings = vi.hoisted(() => ({ admin: 0, schedule: [] as string[] }))
+
 vi.mock("@/lib/prisma", async () => {
   const { makeMtmPrismaMock } = await import("./mocks/mtm-prisma")
   return { prisma: makeMtmPrismaMock() }
 })
 vi.mock("@/lib/with-workforce-rls-auth", () => ({
-  withWorkforceSessionAdminAuth: vi.fn((handler) => handler),
-  withWorkforceSessionScheduleConfigurationAuth: vi.fn((_permission, handler) => handler),
+  withWorkforceSessionAdminAuth: vi.fn((handler) => {
+    workforceAuthBindings.admin += 1
+    return handler
+  }),
+  withWorkforceSessionScheduleConfigurationAuth: vi.fn((permission, handler) => {
+    workforceAuthBindings.schedule.push(permission)
+    return handler
+  }),
 }))
 vi.mock("@/lib/mtm-settings", () => ({
   getMtmSettings: vi.fn(),
@@ -71,6 +79,13 @@ afterEach(() => {
 })
 
 describe("Workforce site configuration API", () => {
+  it("binds site eligibility to exact session-only schedule grants", () => {
+    expect(workforceAuthBindings.admin).toBe(5)
+    expect([...workforceAuthBindings.schedule].sort()).toEqual([
+      "SCHEDULE_READ", "SCHEDULE_READ", "SITE_ASSIGNMENT_WRITE", "SITE_ASSIGNMENT_WRITE",
+    ])
+  })
+
   it("lists only tenant-scoped Workforce sites", async () => {
     vi.mocked(prisma.workforceSite.findMany).mockResolvedValue([site] as never)
 

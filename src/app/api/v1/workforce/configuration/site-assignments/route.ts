@@ -3,7 +3,7 @@ import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { prisma } from "@/lib/prisma"
 import { isValidTimezone } from "@/lib/timezone"
-import { withWorkforceSessionAdminAuth } from "@/lib/with-workforce-rls-auth"
+import { withWorkforceSessionScheduleConfigurationAuth } from "@/lib/with-workforce-rls-auth"
 import {
   scheduleWorkforceSiteAssignment,
   WorkforceSiteAssignmentManagementError,
@@ -23,7 +23,7 @@ const assignmentSelect = {
 } as const
 
 /** Administrative timeline; it has no Route/customer fallback. */
-export const GET = withWorkforceSessionAdminAuth(async (_req: NextRequest, auth) => {
+export const GET = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_READ", async (_req: NextRequest, auth) => {
   try {
     const assignments = await prisma.workforceSiteAssignment.findMany({
       where: { organizationId: auth.orgId },
@@ -38,7 +38,7 @@ export const GET = withWorkforceSessionAdminAuth(async (_req: NextRequest, auth)
 })
 
 /** Schedules a future assignment from server-derived organization date. */
-export const POST = withWorkforceSessionAdminAuth(async (req: NextRequest, auth) => {
+export const POST = withWorkforceSessionScheduleConfigurationAuth("SITE_ASSIGNMENT_WRITE", async (req: NextRequest, auth) => {
   const parsed = WorkforceSiteAssignmentScheduleSchema.safeParse(await req.json().catch(() => ({})))
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid Workforce site assignment" }, { status: 400 })
