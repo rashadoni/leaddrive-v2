@@ -952,7 +952,7 @@ Closure evidence (2026-09-12; supersedes the earlier open/NOT RUN notes above):
 
 ## 9. Workstream 2 — Complaint Registry
 
-**Status: DONE — exact-SHA browser, recovery, responsive, accessibility, performance and visual gates green; PR/release pending**
+**Status: DONE — full acceptance matrix, PR #141, deployment and smoke green**
 **Route:** `/complaints`
 **Primary file:** `src/app/(dashboard)/complaints/page.tsx`
 
@@ -1038,10 +1038,16 @@ Current verification evidence (2026-09-13):
   files; zero findings). Exact-SHA evidence production builds are green; a full
   local build/typecheck remains intentionally NOT RUN under the Contabo workload
   contract and is delegated to the mandatory PR checks.
+- PR #141 merged head `6235954c92d2f67f456d4fd7c4a11ac25e363d66`
+  into `main` as `77c429150`. The subsequent main artifact
+  `0464543ff84cd223f84615b910c907aae99d5b07`, which contains that merge, passed
+  deployment run `34746767927` including post-deploy smoke. Public `/api/v1/ping`
+  returned `{"ok":true}` and public build-info reported the same complete
+  artifact SHA.
 
 ## 10. Workstream 3 — Agent Desktop
 
-**Status: DONE — exact-SHA responsive, recovery, accessibility, performance and visual gates green; PR/release pending**
+**Status: DONE — full acceptance matrix, PR #175, deployment and smoke green**
 **Route:** `/support/agent-desktop`
 **Primary file:** `src/app/(dashboard)/support/agent-desktop/page.tsx`
 
@@ -1126,8 +1132,14 @@ Current verification evidence (2026-09-13):
   left every task-owned Agent/evidence file byte-identical. Earlier expanded
   contract coverage passed 60/60 assertions. Each exact-SHA evidence job
   completed its isolated production-mode build. A redundant full build is
-  intentionally not run on Contabo; full repository typecheck and required
-  branch protection remain mandatory PR gates before merge.
+  intentionally not run on Contabo. PR run `34770935716` passed the full
+  repository typecheck and baseline-aware static checks; `pr-scope`,
+  `runner-policy` and secret scan also passed on head `72e056a1c`.
+- PR #175 merged as `27770f68be8a6d3c10d4aaaba93c91bf8e70ffdc`.
+  Production run `34771717004` passed quality/security, immutable artifact build,
+  atomic deployment, artifact retention and post-deploy smoke. Independent public
+  checks returned `{"ok":true}` from `/api/v1/ping` and exact `artifactSha`
+  `27770f68be8a6d3c10d4aaaba93c91bf8e70ffdc` from build-info.
 
 ## 11. Workstream 4 — VoIP Calls
 
