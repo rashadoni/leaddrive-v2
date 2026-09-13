@@ -5,7 +5,7 @@
 > **Original date:** 2026-08-31
 > **Last reviewed:** 2026-09-13
 > **Code baseline:** `rashadoni/leaddrive-v2` `main` at
-> `aad61167a68565b64c33e7eab257bf0e8ca33f0d`
+> `86d6411189ab221a8b5363176d25bf6a3552319e`
 > **Scope:** 15 potentially visible Support destinations (14 base destinations
 > plus role/add-on-gated Support AI Settings), their nested operational flows,
 > and customer-portal dependencies
@@ -1032,8 +1032,8 @@ Current verification evidence (2026-09-13):
   0.5% threshold, with matching dimensions and layout. All four results have
   zero browser/HTTP errors and unchanged primary-work position.
 - Current-tree checks pass all 11 Complaint/browser/performance contract files
-  (84/84 assertions), changed-source ESLint,
-  runner syntax, `git diff --check`, translation parity (22,498 EN keys; zero
+  (87/87 assertions), changed-source ESLint,
+  runner syntax, `git diff --check`, translation parity (22,548 EN keys; zero
   RU/AZ missing or extra) and the scoped anti-pattern scan (five visible TSX
   files; zero findings). Exact-SHA evidence production builds are green; a full
   local build/typecheck remains intentionally NOT RUN under the Contabo workload
