@@ -245,6 +245,22 @@ class FileStateTests(unittest.TestCase):
 
 
 class VerificationTests(unittest.TestCase):
+    @mock.patch.object(MAINTENANCE, "_atomic_write")
+    def test_scratch_passfile_is_private_and_backup_owned(
+        self, atomic_write: mock.Mock
+    ) -> None:
+        payload = b"127.0.0.1:55432:postgres:role:secret\n"
+
+        MAINTENANCE._write_scratch_passfile(payload, 5678, 1234)
+
+        atomic_write.assert_called_once_with(
+            MAINTENANCE.SCRATCH_PGPASS_PATH,
+            payload,
+            mode=0o600,
+            uid=5678,
+            gid=1234,
+        )
+
     @mock.patch.object(MAINTENANCE, "_command", side_effect=lambda name: name)
     @mock.patch.object(MAINTENANCE, "_run")
     def test_role_creation_is_bound_to_scratch_port_and_identity(
