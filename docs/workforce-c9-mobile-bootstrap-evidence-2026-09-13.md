@@ -18,6 +18,11 @@ principal permissions, attendance policy and sync manifest.
 - With all release variables absent, the contract is `NOT_CONFIGURED` and is
   inert for installed legacy Field clients. Existing API authorization,
   evidence and idempotency checks remain server-authoritative.
+- Once a coherent window is configured, direct and offline mobile Workforce
+  writes enforce the same release decision before creating new state. An exact
+  stored idempotent replay remains readable so an expired client can drain and
+  reconcile its outbox before updating. Route-only and browser paths remain
+  independent.
 
 ## Configuration
 
@@ -38,6 +43,11 @@ deployment path.
   malformed, stale, recommended, supported, too-new and invalid-policy cases.
 - The bootstrap API contract covers the additive forced-update response while
   retaining HTTP 200 for state recovery and the legacy response shape.
+- Direct-workday and mixed mobile-sync contracts cover missing, malformed,
+  expired, too-new and invalid server-policy outcomes, including the
+  replay-before-version-fence recovery order.
+- PR #149 passed all five required checks and merged as
+  `93a1a1d8bd716c8ffca1d781174521866b51bdeb`.
 - `NOT RUN`: full typecheck/build and browser/Android checks on Contabo; CI or
   the approved heavy/mobile runner owns them.
 - `NOT RUN`: signed app, package/signing custody, Play distribution and
@@ -45,7 +55,9 @@ deployment path.
 
 ## Status
 
-WF-C9-002 remains **PARTIAL**. The server contract is ready, but completion
-still requires the separately owned native application to consume the
-manifest and prove that `maySubmitNewWorkforceActions=false` blocks its UI and
-outbox without data loss.
+WF-C9-002 is **DONE** at its Mobile/Backend server-contract boundary: secure
+authenticated bootstrap supplies the split tenant manifest, permissions,
+effective attendance configuration, exact wire-schema support and release
+decision, and every supported new mobile Workforce write is server-fenced.
+Native UI/outbox consumption, package/signing custody and physical-device
+evidence remain explicitly separate WF-C9-001/C9-003..014/C14 tasks.
