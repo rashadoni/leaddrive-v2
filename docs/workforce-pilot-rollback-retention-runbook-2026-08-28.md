@@ -104,9 +104,9 @@ in source control.
 
 - Confirmed business-event loss: zero.
 - Online critical mutation acknowledgement p95: at most 10 seconds.
-- Owner-approved warning and critical thresholds for oldest pending operations
-  are recorded after the baseline. Two and 15 minutes are initial proposals,
-  not acceptance criteria until approved.
+- The approved release-one warning and critical thresholds for oldest pending
+  operations are two and 15 minutes respectively; window and paging semantics
+  are pinned in `docs/workforce-c12-slo-contract-2026-09-13.md`.
 - Morning start load: 5,000 users with client jitter, per-tenant fairness and
   bounded retries.
 - Chaos scenarios cover 503, timeout, partial result, process death, DB failover
