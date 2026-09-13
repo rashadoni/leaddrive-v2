@@ -230,7 +230,7 @@ because eleven of its findings were things tests could not see.
 | RUX-1008 | P0 | DONE | Unplanned visit reports every outcome (B1) | Closed in section 0.1 of the plan |
 | RUX-1009 | P0 | DONE | Distance to a point without coordinates (B2) | Closed in section 0.1 of the plan |
 | RUX-1010 | P0 | DONE | "Day finished at HH:MM" after End day (B3) | Closed in section 0.1 of the plan |
-| RUX-1011 | P0 | MERGED | Offline is detected and shown (B4) | Merged to `main` and in the APK; device acceptance not run (D1) |
+| RUX-1011 | P0 | DONE | Offline is detected and shown (B4) | Accepted on the phone 2026-09-14: offline chip within 5 s, synced on reconnect |
 | RUX-1012 | P0 | DONE | Day card carries the route status and opens (B5) | Accepted on the phone 2026-09-13/14; closed in section 0.1 of the plan |
 | RUX-1013 | P1 | DONE | Week as a strip of seven, one day open (B6) | Accepted on the phone 2026-09-13 (build56); closed in section 0.1 of the plan |
 | RUX-1014 | P1 | DONE | Today fits one screen (B7) | Accepted on the phone 2026-09-13/14; closed in section 0.1 of the plan |
