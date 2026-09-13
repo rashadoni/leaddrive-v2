@@ -25,7 +25,10 @@ CREATE TABLE "workforce_legal_holds" (
   CONSTRAINT "workforce_legal_holds_status_release_check" CHECK (
     ("status" = 'ACTIVE' AND "releasedByUserId" IS NULL AND "releasedAt" IS NULL)
     OR
-    ("status" = 'RELEASED' AND "releasedByUserId" IS NOT NULL AND "releasedAt" IS NOT NULL)
+    ("status" = 'RELEASED'
+      AND "releasedByUserId" IS NOT NULL
+      AND "releasedAt" IS NOT NULL
+      AND "releasedAt" >= "createdAt")
   )
 );
 
@@ -59,6 +62,7 @@ BEGIN
      AND NEW."status" = 'RELEASED'
      AND NEW."releasedByUserId" IS NOT NULL
      AND NEW."releasedAt" IS NOT NULL
+     AND NEW."releasedAt" >= OLD."createdAt"
      AND (to_jsonb(NEW) - ARRAY['status', 'releasedByUserId', 'releasedAt'])
          IS NOT DISTINCT FROM (to_jsonb(OLD) - ARRAY['status', 'releasedByUserId', 'releasedAt']) THEN
     RETURN NEW;

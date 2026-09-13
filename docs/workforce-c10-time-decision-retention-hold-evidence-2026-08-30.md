@@ -11,6 +11,8 @@ an executor that deletes immutable Workforce time/decision records.
   time/decision inventory rather than guessing a narrow employee/case scope.
 - The migration enforces tenant RLS and prevents deletes. A hold is immutable
   except for one recorded `ACTIVE` -> `RELEASED` transition with actor/time.
+  Both its table invariant and mutation guard reject a release timestamp before
+  the hold was created.
   The stored `matterReference` is an opaque reference, not legal documents,
   coordinates, employee reasons or other sensitive payload.
 - `planWorkforceTimeDecisionRetention` calculates the cutoff as a calendar

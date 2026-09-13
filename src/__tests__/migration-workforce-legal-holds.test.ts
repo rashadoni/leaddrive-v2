@@ -15,6 +15,8 @@ describe("Workforce legal-hold migration contract", () => {
     expect(migration).toContain("workforce_guard_legal_hold_mutation")
     expect(migration).toContain("'Workforce legal hold cannot be deleted'")
     expect(migration).toContain('NEW."status" = \'RELEASED\'')
+    expect(migration).toContain('"releasedAt" >= "createdAt"')
+    expect(migration).toContain('NEW."releasedAt" >= OLD."createdAt"')
   })
 
   it("enables forced RLS and does not introduce a retention delete executor", () => {
