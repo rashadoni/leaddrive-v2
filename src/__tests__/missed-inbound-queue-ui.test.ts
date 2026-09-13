@@ -87,7 +87,7 @@ describe("missed inbound manager queue UI", () => {
     expect(normalizeMissedInboundQueuePayload({ error: "no" })).toBeNull()
   })
 
-  it("is mounted only for manager roles and intentionally appears on both VoIP aliases", () => {
+  it("is mounted only for manager roles with the required VoIP/CRM/sales modules", () => {
     const supportPage = readFileSync(
       "src/app/(dashboard)/support/voip/page.tsx",
       "utf8",
@@ -101,7 +101,26 @@ describe("missed inbound manager queue UI", () => {
     expect(supportPage).toContain("<MissedInboundQueue")
     expect(supportPage).toContain('const role = session?.user?.role ?? ""')
     expect(supportPage).toContain("isManagerOrAbove(role)")
+    expect(supportPage).toContain("canViewMissedQueue")
+    expect(supportPage).toContain('modules: capabilityUser.modules }, "sales")')
     expect(inboxAlias).toContain('import VoipCallsPage from "../../support/voip/page"')
+  })
+
+  it("keeps the queue compact until the manager expands it", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => response(200, { success: true, data: [item] })))
+
+    await renderQueue()
+
+    const toggle = Array.from(container.querySelectorAll("button"))
+      .find((button) => button.textContent?.includes("expand"))
+    const content = container.querySelector("#missed-inbound-queue-content")
+    expect(toggle?.getAttribute("aria-expanded")).toBe("false")
+    expect(content).toHaveProperty("hidden", true)
+
+    await act(async () => toggle?.dispatchEvent(new MouseEvent("click", { bubbles: true })))
+
+    expect(toggle?.getAttribute("aria-expanded")).toBe("true")
+    expect(content).toHaveProperty("hidden", false)
   })
 
   it("shows a useful empty state after a successful load", async () => {
@@ -234,6 +253,9 @@ describe("missed inbound manager queue UI", () => {
         "claimedElsewhere",
         "claimFailed",
         "missedAt",
+        "openCount",
+        "expand",
+        "collapse",
       ]) {
         expect(copy?.[key]).toBeTruthy()
       }

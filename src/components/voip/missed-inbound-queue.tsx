@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { AlertTriangle, ArrowUpRight, Loader2, PhoneMissed, RefreshCw } from "lucide-react"
+import { AlertTriangle, ArrowUpRight, ChevronDown, Loader2, PhoneMissed, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { formatDateTime } from "@/lib/format-date"
+import { cn } from "@/lib/utils"
 
 export type MissedInboundQueueItem = {
   taskId: string
@@ -60,6 +61,7 @@ export function MissedInboundQueue() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [claimingTaskId, setClaimingTaskId] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState(false)
 
   const loadQueue = useCallback(async () => {
     setLoading(true)
@@ -118,23 +120,37 @@ export function MissedInboundQueue() {
   return (
     <section
       aria-labelledby="missed-inbound-queue-title"
-      className="overflow-hidden rounded-xl border border-orange-200/80 bg-card shadow-[0_1px_3px_rgba(0,0,0,0.05)] dark:border-orange-900/60"
+      className="overflow-hidden rounded-lg border bg-card"
     >
-      <div className="flex items-start gap-3 border-b border-orange-100 bg-orange-50/70 px-4 py-4 dark:border-orange-900/50 dark:bg-orange-950/20 sm:px-5">
-        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300">
-          <PhoneMissed className="h-5 w-5" aria-hidden="true" />
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 sm:px-4">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground">
+            <PhoneMissed className="h-4 w-4" aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <h2 id="missed-inbound-queue-title" className="text-sm font-semibold">
+              {t("title")}
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              {loading ? t("loading") : loadError ? t("loadError") : items.length === 0 ? t("emptyTitle") : t("openCount", { count: items.length })}
+            </p>
+          </div>
         </div>
-        <div className="min-w-0">
-          <h2 id="missed-inbound-queue-title" className="font-semibold tracking-tight">
-            {t("title")}
-          </h2>
-          <p className="mt-1 text-sm leading-5 text-muted-foreground">
-            {t("description")}
-          </p>
-        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="min-h-11 shrink-0"
+          aria-expanded={expanded}
+          aria-controls="missed-inbound-queue-content"
+          onClick={() => setExpanded((value) => !value)}
+        >
+          {expanded ? t("collapse") : t("expand")}
+          <ChevronDown className={cn("h-4 w-4 transition-transform motion-reduce:transition-none", expanded && "rotate-180")} aria-hidden="true" />
+        </Button>
       </div>
 
-      <div className="p-4 sm:p-5" aria-live="polite">
+      <div id="missed-inbound-queue-content" hidden={!expanded} className="border-t p-3 sm:p-4" aria-live="polite">
         {loading ? (
           <div className="space-y-3" aria-label={t("loading")}>
             {[0, 1].map((row) => (

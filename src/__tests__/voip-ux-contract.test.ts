@@ -57,10 +57,21 @@ describe("VoIP workspace UX contract", () => {
   it("keeps connection truth visible without exposing admin tests to agents", () => {
     const page = source("src/app/(dashboard)/support/voip/page.tsx")
     expect(page).toContain("canManageConnection = isAdmin(role)")
+    expect(page).toContain("const refreshConnection = useCallback")
+    expect(page).toContain("const testConnection = useCallback")
     expect(page).toContain('/api/v1/calls/providers')
     expect(page).toContain('/api/v1/calls/test')
+    expect(page).toContain("canManageConnection ? testConnection() : refreshConnection()")
     expect(page).toContain("connectionAgentHint")
     expect(page).toContain("connectionAdminHint")
+  })
+
+  it("keeps the primary timeline compact and gates the lead queue by its modules", () => {
+    const page = source("src/app/(dashboard)/support/voip/page.tsx")
+    expect(page).toContain('grid grid-cols-3 sm:grid-cols-5')
+    expect(page).toContain('hasModule({ plan: capabilityUser.plan || "", addons: capabilityUser.addons, modules: capabilityUser.modules }, "sales")')
+    expect(page).toContain("{canViewMissedQueue && <MissedInboundQueue />}")
+    expect(page).not.toContain('<p className="text-xs text-muted-foreground">{t("durationSample"')
   })
 
   it("gates callback and contact navigation actions by their actual permissions", () => {

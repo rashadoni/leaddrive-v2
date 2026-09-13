@@ -10662,7 +10662,10 @@
       "claimFailed": "Could not claim this missed call. Try again.",
       "missedAt": "Missed {time}",
       "statusOpen": "Unassigned",
-      "loading": "Loading missed calls…"
+      "loading": "Loading missed calls…",
+      "openCount": "{count} waiting",
+      "expand": "Show queue",
+      "collapse": "Hide queue"
     },
     "journal": {
       "title": "Call details",

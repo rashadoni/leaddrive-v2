@@ -28,6 +28,7 @@ import { CallJournalDetail } from "@/components/voip/call-journal-detail"
 import { CallRecordingPlayer } from "@/components/voip/call-recording-player"
 import { MissedInboundQueue } from "@/components/voip/missed-inbound-queue"
 import { formatDateTime } from "@/lib/format-date"
+import { hasModule } from "@/lib/modules"
 import { cn } from "@/lib/utils"
 import { isAdmin, isManagerOrAbove } from "@/lib/constants"
 import { checkPermission, type Role } from "@/lib/permissions"
@@ -104,9 +105,17 @@ export default function VoipCallsPage() {
   const locale = useLocale()
   const role = session?.user?.role ?? ""
   const permissionRole = (role || "viewer") as Role
+  const capabilityUser = session?.user as { plan?: string; addons?: string[]; modules?: Record<string, boolean> } | undefined
   const canManageConnection = isAdmin(role)
   const canCallBack = checkPermission(permissionRole, "voip", "write")
   const canOpenContacts = checkPermission(permissionRole, "contacts", "read")
+  const canViewMissedQueue = role === "superadmin" || Boolean(
+    isManagerOrAbove(role)
+    && capabilityUser
+    && hasModule({ plan: capabilityUser.plan || "", addons: capabilityUser.addons, modules: capabilityUser.modules }, "voip")
+    && hasModule({ plan: capabilityUser.plan || "", addons: capabilityUser.addons, modules: capabilityUser.modules }, "crm")
+    && hasModule({ plan: capabilityUser.plan || "", addons: capabilityUser.addons, modules: capabilityUser.modules }, "sales"),
+  )
 
   const [calls, setCalls] = useState<CallLog[]>([])
   const [summary, setSummary] = useState<CallSummary | null>(null)
@@ -178,17 +187,10 @@ export default function VoipCallsPage() {
     return () => controller.abort()
   }, [directionFilter, page, retryVersion, searchQuery, sessionStatus])
 
-  const checkConnection = useCallback(async () => {
+  const refreshConnection = useCallback(async () => {
     if (sessionStatus !== "authenticated") return
     setConnectionState("checking")
     try {
-      if (canManageConnection) {
-        const response = await fetch("/api/v1/calls/test", { method: "POST" })
-        const payload = await response.json().catch(() => null)
-        setConnectionState(response.ok && payload?.success ? "connected" : "disconnected")
-        return
-      }
-
       const response = await fetch("/api/v1/calls/providers", { cache: "no-store" })
       const payload = await response.json().catch(() => null)
       if (!response.ok || !payload?.success || !Array.isArray(payload.data)) {
@@ -201,11 +203,23 @@ export default function VoipCallsPage() {
     } catch {
       setConnectionState("error")
     }
+  }, [sessionStatus])
+
+  const testConnection = useCallback(async () => {
+    if (sessionStatus !== "authenticated" || !canManageConnection) return
+    setConnectionState("checking")
+    try {
+      const response = await fetch("/api/v1/calls/test", { method: "POST" })
+      const payload = await response.json().catch(() => null)
+      setConnectionState(response.ok && payload?.success ? "connected" : "disconnected")
+    } catch {
+      setConnectionState("error")
+    }
   }, [canManageConnection, sessionStatus])
 
   useEffect(() => {
-    void checkConnection()
-  }, [checkConnection])
+    void refreshConnection()
+  }, [refreshConnection])
 
   const connectionLabel = t(`connectionState.${connectionState}`)
   const hasFilters = Boolean(searchQuery || directionFilter)
@@ -265,8 +279,8 @@ export default function VoipCallsPage() {
   }
 
   return (
-    <div data-testid="voip-workspace" className="mx-auto max-w-[1180px] space-y-4 pb-8">
-      <header className="border-b pb-4">
+    <div data-testid="voip-workspace" className="mx-auto max-w-[1180px] space-y-3 pb-8 sm:space-y-4">
+      <header className="border-b pb-3 sm:pb-4">
         <div className="flex items-center gap-2">
           <Phone className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
           <h1 className="text-xl font-semibold tracking-tight">{t("title")}</h1>
@@ -292,7 +306,7 @@ export default function VoipCallsPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button data-testid="voip-retry-connection" variant="outline" size="sm" className="min-h-11" onClick={() => void checkConnection()} disabled={connectionState === "checking"}>
+          <Button data-testid="voip-retry-connection" variant="outline" size="sm" className="min-h-11" onClick={() => void (canManageConnection ? testConnection() : refreshConnection())} disabled={connectionState === "checking"}>
             <RefreshCw className="h-4 w-4" aria-hidden="true" />
             {canManageConnection ? t("testConnection") : t("refreshConnection")}
           </Button>
@@ -317,24 +331,26 @@ export default function VoipCallsPage() {
             <RefreshCw className={cn("h-4 w-4", loading && "animate-spin motion-reduce:animate-none")} aria-hidden="true" />
           </Button>
         </div>
-        <dl className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+        <dl className="grid grid-cols-3 sm:grid-cols-5">
           {metricItems.map((item, index) => {
             const Icon = item.icon
             return (
-              <div key={item.key} className={cn("px-4 py-3", index > 0 && "border-l", index >= 2 && "max-sm:border-t", index >= 3 && "sm:max-lg:border-t", index === 2 && "max-sm:border-l-0", index === 3 && "sm:max-lg:border-l-0")}>
+              <div key={item.key} className={cn("px-3 py-2.5 sm:px-4 sm:py-3", index > 0 && "border-l", index >= 3 && "max-sm:border-t", index === 3 && "max-sm:border-l-0")}>
                 <dt className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                   <Icon className="h-3.5 w-3.5" aria-hidden="true" />
                   {item.label}
                 </dt>
-                <dd className="mt-1 text-lg font-semibold tabular-nums">{item.value ?? t("metricUnavailable")}</dd>
-                {item.sample != null && <p className="text-xs text-muted-foreground">{t("durationSample", { count: item.sample })}</p>}
+                <dd className="mt-1 text-lg font-semibold tabular-nums">
+                  <span>{item.value ?? t("metricUnavailable")}</span>
+                  {item.sample != null && <span className="block text-xs font-normal text-muted-foreground">{t("durationSample", { count: item.sample })}</span>}
+                </dd>
               </div>
             )
           })}
         </dl>
       </section>
 
-      {isManagerOrAbove(role) && <MissedInboundQueue />}
+      {canViewMissedQueue && <MissedInboundQueue />}
 
       <Suspense fallback={<JournalSkeleton label={t("journal.loading")} />}>
         <CallJournalDetail />

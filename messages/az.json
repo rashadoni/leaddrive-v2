@@ -10658,7 +10658,10 @@
       "claimFailed": "Zəngi üzərinizə götürmək mümkün olmadı. Yenidən cəhd edin.",
       "missedAt": "Buraxılıb: {time}",
       "statusOpen": "Məsul şəxs yoxdur",
-      "loading": "Buraxılmış zənglər yüklənir…"
+      "loading": "Buraxılmış zənglər yüklənir…",
+      "openCount": "{count} zəng gözləyir",
+      "expand": "Növbəni göstər",
+      "collapse": "Növbəni gizlət"
     },
     "journal": {
       "title": "Zəng detalları",
