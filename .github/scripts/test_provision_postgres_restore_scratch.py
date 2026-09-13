@@ -73,6 +73,37 @@ class EnvironmentTests(unittest.TestCase):
 
 
 class FileStateTests(unittest.TestCase):
+    def test_cluster_config_accepts_only_postgres_owned_debian_modes(self) -> None:
+        self.assertTrue(
+            MAINTENANCE._acceptable_cluster_config_file(
+                MAINTENANCE.FileState(True, uid=111, gid=222, mode=0o644),
+                111,
+                222,
+                0o644,
+            )
+        )
+        self.assertTrue(
+            MAINTENANCE._acceptable_cluster_config_file(
+                MAINTENANCE.FileState(True, uid=111, gid=222, mode=0o640),
+                111,
+                222,
+                0o640,
+            )
+        )
+
+    def test_cluster_config_rejects_other_authority_or_modes(self) -> None:
+        for state in (
+            MAINTENANCE.FileState(True, uid=0, gid=222, mode=0o644),
+            MAINTENANCE.FileState(True, uid=111, gid=0, mode=0o644),
+            MAINTENANCE.FileState(True, uid=111, gid=222, mode=0o664),
+            MAINTENANCE.FileState(False),
+        ):
+            self.assertFalse(
+                MAINTENANCE._acceptable_cluster_config_file(
+                    state, 111, 222, 0o644
+                )
+            )
+
     def test_root_owned_stale_pgpass_can_be_snapshotted_then_normalized(self) -> None:
         self.assertTrue(
             MAINTENANCE._acceptable_existing_secret_file(
