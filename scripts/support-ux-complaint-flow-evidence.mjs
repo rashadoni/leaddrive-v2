@@ -326,7 +326,11 @@ try {
 
   await recordStep(page, "assignment-failure-rollback-and-recovery", async () => {
     const select = page.getByTestId("complaint-assignee-select")
-    const options = await select.locator("option").evaluateAll((items) => items.map((item) => item.value).filter(Boolean))
+    const original = await select.inputValue()
+    const options = await select.locator("option").evaluateAll(
+      (items, current) => items.map((item) => item.value).filter((value) => Boolean(value) && value !== current),
+      original,
+    )
     if (options.length === 0) throw new Error("assignee_options_missing")
     const target = options[0]
     await select.selectOption(target)
@@ -343,7 +347,7 @@ try {
     ])
     if (failed.status() !== 503) throw new Error(`assignment_failure_intercept_missed_${failed.status()}`)
     await page.getByTestId("complaint-detail-action-error").waitFor({ state: "visible" })
-    await page.waitForFunction(() => document.querySelector("[data-testid='complaint-assignee-select']")?.value === "")
+    await page.waitForFunction((expected) => document.querySelector("[data-testid='complaint-assignee-select']")?.value === expected, original)
       .catch(() => { throw new Error("assignment_failure_did_not_rollback") })
     await page.unroute(pattern, deny)
     await select.selectOption(target)
@@ -355,13 +359,13 @@ try {
       save.evaluate((button) => button.click()),
     ])
     if (!saved.ok()) throw new Error(`assignment_retry_http_${saved.status()}`)
-    await select.selectOption("")
+    await select.selectOption(original)
     const [restored] = await Promise.all([
       page.waitForResponse((candidate) => new URL(candidate.url()).pathname === `/api/v1/complaints/${createdComplaintId}` && candidate.request().method() === "PATCH"),
       page.getByTestId("complaint-assignee-save").click(),
     ])
     if (!restored.ok()) throw new Error(`assignment_restore_http_${restored.status()}`)
-    await page.waitForFunction(() => document.querySelector("[data-testid='complaint-assignee-select']")?.value === "")
+    await page.waitForFunction((expected) => document.querySelector("[data-testid='complaint-assignee-select']")?.value === expected, original)
     return { rollbackObserved: true, retrySucceeded: true, fixtureRestored: true }
   })
 
