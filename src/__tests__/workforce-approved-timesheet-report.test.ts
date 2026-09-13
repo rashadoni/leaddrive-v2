@@ -116,4 +116,33 @@ describe("buildWorkforceApprovedTimesheetReport", () => {
       approvals: [approval],
     })).toThrow(/hashes/i)
   })
+
+  it("fails closed on hash-valid negative or overflowing stored metrics", () => {
+    const negative = storedApproval({
+      id: "approval-negative",
+      revision: 1,
+      approvedAt: "2026-09-01T09:00:00.000Z",
+      rows: [{ workdayId: "day-negative", workDate: "2026-08-20", workedSeconds: -1 }],
+    })
+    expect(() => buildWorkforceApprovedTimesheetReport({
+      start: "2026-08-01",
+      end: "2026-08-31",
+      approvals: [negative],
+    })).toThrow(/workedSeconds is invalid/)
+
+    const overflowing = storedApproval({
+      id: "approval-overflow",
+      revision: 1,
+      approvedAt: "2026-09-01T09:00:00.000Z",
+      rows: [
+        { workdayId: "day-overflow-1", workDate: "2026-08-20", workedSeconds: Number.MAX_SAFE_INTEGER },
+        { workdayId: "day-overflow-2", workDate: "2026-08-21", workedSeconds: Number.MAX_SAFE_INTEGER },
+      ],
+    })
+    expect(() => buildWorkforceApprovedTimesheetReport({
+      start: "2026-08-01",
+      end: "2026-08-31",
+      approvals: [overflowing],
+    })).toThrow(/workedSeconds aggregate is unsafe/)
+  })
 })

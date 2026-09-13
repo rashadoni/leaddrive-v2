@@ -107,15 +107,54 @@ function emptySummary() {
   }
 }
 
+function addMetric(current: number, increment: unknown, name: string): number {
+  if (!Number.isSafeInteger(increment) || (increment as number) < 0) {
+    throw new WorkforceTimesheetApprovalError(`stored approval ${name} is invalid`)
+  }
+  const next = current + (increment as number)
+  if (!Number.isSafeInteger(next)) {
+    throw new WorkforceTimesheetApprovalError(`stored approval ${name} aggregate is unsafe`)
+  }
+  return next
+}
+
 function appendSummary(summary: ReturnType<typeof emptySummary>, row: WorkforceTimesheetApprovalRow) {
-  summary.workdays += 1
-  summary.expectedWorkSeconds += row.calculation.plan.expectedWorkSeconds
-  summary.workedSeconds += row.calculation.fact.workedSeconds
-  summary.pausedSeconds += row.calculation.fact.pausedSeconds
-  summary.lateStartSeconds += row.calculation.deviations.lateStartSeconds
-  summary.undertimeSeconds += row.calculation.deviations.undertimeSeconds
-  summary.overtimeSeconds += row.calculation.deviations.overtimeSeconds
-  summary.longPauseSeconds += row.calculation.deviations.longPauseSeconds
+  summary.workdays = addMetric(summary.workdays, 1, "workdays")
+  summary.expectedWorkSeconds = addMetric(
+    summary.expectedWorkSeconds,
+    row.calculation.plan.expectedWorkSeconds,
+    "expectedWorkSeconds",
+  )
+  summary.workedSeconds = addMetric(
+    summary.workedSeconds,
+    row.calculation.fact.workedSeconds,
+    "workedSeconds",
+  )
+  summary.pausedSeconds = addMetric(
+    summary.pausedSeconds,
+    row.calculation.fact.pausedSeconds,
+    "pausedSeconds",
+  )
+  summary.lateStartSeconds = addMetric(
+    summary.lateStartSeconds,
+    row.calculation.deviations.lateStartSeconds,
+    "lateStartSeconds",
+  )
+  summary.undertimeSeconds = addMetric(
+    summary.undertimeSeconds,
+    row.calculation.deviations.undertimeSeconds,
+    "undertimeSeconds",
+  )
+  summary.overtimeSeconds = addMetric(
+    summary.overtimeSeconds,
+    row.calculation.deviations.overtimeSeconds,
+    "overtimeSeconds",
+  )
+  summary.longPauseSeconds = addMetric(
+    summary.longPauseSeconds,
+    row.calculation.deviations.longPauseSeconds,
+    "longPauseSeconds",
+  )
 }
 
 /**

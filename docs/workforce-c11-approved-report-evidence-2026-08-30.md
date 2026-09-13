@@ -28,6 +28,9 @@ and long-pause deviations. Overlapping approval views are deduplicated by
 workday: the latest immutable approval/correction wins, and the suppressed
 overlap count is disclosed. This prevents a correction revision or an
 overlapping manager view from being counted twice.
+Every stored metric and aggregate must remain a non-negative safe integer;
+hash-valid but malformed negative or overflowing data fails closed rather than
+reaching the report response.
 
 The report response and its access audit deliberately exclude raw coordinates,
 QR tokens/nonces, device keys/proofs, request reasons, individual approval row
@@ -77,6 +80,8 @@ summary, rather than rendering a partial or internally inconsistent report.
   browser response contract, immutable export, approval service and navigation.
 - **PASS:** focused report rate-limit and route integration Vitest, 2 files and
   10 tests; includes the pre-read short-circuit and fail-closed limiter path.
+- **PASS:** focused immutable report/API Vitest, 2 files and 10 tests; includes
+  hash-valid negative-metric and aggregate-overflow rejection.
 - **PASS:** targeted ESLint for the report service, route, access guard,
   component and tests.
 - **PASS:** `npm run i18n:check`: 22,520 EN leaf keys; RU/AZ missing=0,
