@@ -46,6 +46,7 @@ describe("complaint workspace UX contract", () => {
     expect(page).toContain("data.slaDueAt")
     expect(page).toContain("changeAssignee")
     expect(page).toContain('router.push(returnTo, { scroll: false })')
+    expect(page).toContain('window.addEventListener("focus", refreshOnFocus)')
     expect(page).toContain("comment.attachments?.map")
     expect(page).toContain("clientRequestId")
     expect(page).toContain("ConfirmDialog")

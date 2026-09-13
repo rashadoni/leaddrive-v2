@@ -144,7 +144,7 @@ try {
       const json = await original.json()
       const source = json?.data?.complaints?.[0]
       if (!source) throw new Error("reference_complaint_missing")
-      const complaints = Array.from({ length: 36 }, (_, index) => index === 0 ? source : ({
+      const complaints = Array.from({ length: 36 }, (_, index) => index === 8 ? source : ({
         ...source,
         id: `visual-density-${index}`,
         ticketNumber: `CMP-${9100 + index}`,
@@ -161,8 +161,10 @@ try {
     const expectedScroll = Math.min(maxScroll, 420)
     if (expectedScroll < 200) throw new Error(`registry_scroll_range_too_small_${maxScroll}`)
     await page.evaluate((top) => document.querySelector("main")?.scrollTo({ top, behavior: "instant" }), expectedScroll)
-    const row = page.locator("tbody tr[tabindex='0']").first()
+    const row = page.locator("tbody tr[tabindex='0']").nth(8)
     await row.focus()
+    const focusedScroll = await page.evaluate(() => document.querySelector("main")?.scrollTop ?? 0)
+    if (focusedScroll < 200) throw new Error(`registry_focus_reset_scroll_${focusedScroll}`)
     await Promise.all([
       page.waitForURL((url) => url.pathname === `/complaints/${referenceComplaintId}`),
       page.keyboard.press("Enter"),
@@ -178,8 +180,8 @@ try {
       return Math.abs(restored - Number(top)) <= 80
     }, expectedScroll, { timeout: 5_000 }).catch(() => undefined)
     const restoredScroll = await page.evaluate(() => document.querySelector("main")?.scrollTop ?? 0)
-    if (Math.abs(restoredScroll - expectedScroll) > 80) throw new Error(`registry_scroll_not_restored_${expectedScroll}_${restoredScroll}`)
-    return { keyboardOpen: true, queryPreserved: true, expectedScroll, restoredScroll }
+    if (Math.abs(restoredScroll - focusedScroll) > 80) throw new Error(`registry_scroll_not_restored_${focusedScroll}_${restoredScroll}`)
+    return { keyboardOpen: true, queryPreserved: true, expectedScroll: focusedScroll, restoredScroll }
   })
 
   await recordStep(page, "registry-load-failure-and-recovery", async () => {
@@ -280,6 +282,7 @@ try {
     await page.unroute(pattern, deny)
     const retry = page.getByTestId("complaint-response-retry")
     await retry.click({ trial: true })
+    await page.waitForTimeout(150)
     const [response] = await Promise.all([
       page.waitForResponse((candidate) => new URL(candidate.url()).pathname === `/api/v1/tickets/${createdComplaintId}/comments`),
       retry.evaluate((button) => button.click()),
@@ -306,6 +309,7 @@ try {
     await page.unroute(pattern, deny)
     const resolve = page.getByTestId("complaint-status-resolved")
     await resolve.click({ trial: true })
+    await page.waitForTimeout(150)
     await Promise.all([
       page.waitForResponse((candidate) => new URL(candidate.url()).pathname === `/api/v1/complaints/${createdComplaintId}` && candidate.request().method() === "PATCH" && candidate.ok()),
       resolve.evaluate((button) => button.click()),
@@ -341,6 +345,7 @@ try {
     await select.selectOption(target)
     const save = page.getByTestId("complaint-assignee-save")
     await save.click({ trial: true })
+    await page.waitForTimeout(150)
     const [saved] = await Promise.all([
       page.waitForResponse((candidate) => new URL(candidate.url()).pathname === `/api/v1/complaints/${createdComplaintId}` && candidate.request().method() === "PATCH"),
       save.evaluate((button) => button.click()),
@@ -366,13 +371,7 @@ try {
     await page.route(pattern, deny)
     const [refresh] = await Promise.all([
       page.waitForResponse((candidate) => new URL(candidate.url()).pathname === `/api/v1/complaints/${createdComplaintId}` && candidate.request().method() === "GET"),
-      page.evaluate(() => {
-        const original = Object.getOwnPropertyDescriptor(document, "visibilityState")
-        Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" })
-        document.dispatchEvent(new Event("visibilitychange"))
-        if (original) Object.defineProperty(document, "visibilityState", original)
-        else delete document.visibilityState
-      }),
+      page.evaluate(() => window.dispatchEvent(new Event("focus"))),
     ])
     if (refresh.status() !== 503) throw new Error(`stale_refresh_intercept_missed_${refresh.status()}`)
     await page.getByTestId("complaint-detail-stale").waitFor({ state: "visible", timeout: 10_000 })

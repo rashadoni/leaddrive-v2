@@ -162,9 +162,15 @@ export default function ComplaintDetailPage({ params }: { params: Promise<{ id: 
   useEffect(() => { void fetchUsers() }, [fetchUsers])
   useEffect(() => {
     const refresh = () => { if (document.visibilityState === "visible") void fetchOne(true) }
+    const refreshOnFocus = () => { void fetchOne(true) }
     const interval = window.setInterval(refresh, 12000)
     document.addEventListener("visibilitychange", refresh)
-    return () => { window.clearInterval(interval); document.removeEventListener("visibilitychange", refresh) }
+    window.addEventListener("focus", refreshOnFocus)
+    return () => {
+      window.clearInterval(interval)
+      document.removeEventListener("visibilitychange", refresh)
+      window.removeEventListener("focus", refreshOnFocus)
+    }
   }, [fetchOne])
   useEffect(() => {
     if (!responseDraftKey) return
