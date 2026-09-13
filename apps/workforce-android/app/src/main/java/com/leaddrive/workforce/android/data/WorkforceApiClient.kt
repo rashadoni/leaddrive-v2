@@ -5,6 +5,7 @@ import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.time.Instant
 import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -13,6 +14,8 @@ import org.json.JSONObject
 
 private const val MAX_HRM_REQUEST_DAYS = 366L
 private const val MAX_QR_TOKEN_LENGTH = 4_096
+private val DEVICE_IDENTIFIER = Regex("[A-Za-z0-9_-]{1,100}")
+private val ENROLLMENT_CHALLENGE = Regex("[A-Za-z0-9_-]{24,256}")
 
 /**
  * Small, explicit Workforce-only HTTP adapter. The app never discovers or
@@ -58,9 +61,14 @@ class WorkforceApiClient(
             ?: throw WorkforceApiException("The Workforce module was missing from bootstrap.", recoverable = true)
         val enabled = workforce.optBoolean("enabled", false)
         if (!enabled) throw WorkforceApiException("Workforce is not enabled for this tenant.", recoverable = false)
+        val tenant = data.optJSONObject("tenant")
+            ?: throw WorkforceApiException("The Workforce tenant identity was missing.", recoverable = true)
         val principal = data.optJSONObject("principal")
+            ?: throw WorkforceApiException("The Workforce employee identity was missing.", recoverable = true)
         val release = workforce.optJSONObject("release")
         WorkforceBootstrap(
+            organizationId = tenant.requiredString("id", "The Workforce tenant identity was missing."),
+            agentId = principal.requiredString("id", "The Workforce employee identity was missing."),
             employeeName = principal?.optString("name")?.takeIf { it.isNotBlank() } ?: "Employee",
             timezone = data.optString("timezone", "UTC"),
             releaseStatus = release?.optString("status")?.takeIf { it.isNotBlank() } ?: "NOT_CONFIGURED",
@@ -68,6 +76,99 @@ class WorkforceApiClient(
             attendance = workforce.optJSONObject("attendance")?.toAttendanceRequirements()
                 ?: WorkforceAttendanceRequirements.unconfigured(),
         )
+    }
+
+    /**
+     * Starts or resumes the server's one-time proof-of-possession challenge.
+     * The Android attestation chain stays on device until the server contract
+     * has a verified validator; only the P-256 public key is sent here.
+     */
+    suspend fun beginDeviceEnrollment(
+        session: WorkforceStoredSession,
+        deviceId: String,
+        deviceLabel: String,
+        publicKeySpki: String,
+    ): WorkforceDeviceEnrollmentStart = withContext(Dispatchers.IO) {
+        require(deviceLabel.trim().length in 1..120) { "Choose a device label up to 120 characters." }
+        require(publicKeySpki.length in 1..8_192) { "The Workforce device key is invalid." }
+        val response = request(
+            method = "POST",
+            path = "/api/v1/mtm/mobile/attendance/devices/enrollments",
+            token = session.token,
+            deviceId = deviceId,
+            body = JSONObject()
+                .put("deviceLabel", deviceLabel.trim())
+                .put("publicKeySpki", publicKeySpki)
+                .toString(),
+        )
+        val data = response.optJSONObject("data")
+            ?: throw WorkforceApiException("The device enrollment response was incomplete.", recoverable = true)
+        val enrollment = data.optJSONObject("enrollment")
+            ?: throw WorkforceApiException("The device enrollment record was missing.", recoverable = true)
+        WorkforceDeviceEnrollmentStart(
+            enrollmentId = enrollment.requiredString("id", "The device enrollment identifier was missing."),
+            challenge = data.requiredString("challenge", "The device enrollment challenge was missing."),
+            expiresAt = data.requiredString("expiresAt", "The device enrollment expiry was missing."),
+        )
+    }
+
+    suspend fun proveDeviceEnrollment(
+        session: WorkforceStoredSession,
+        deviceId: String,
+        enrollmentId: String,
+        challenge: String,
+        signature: String,
+    ): WorkforceDeviceEnrollmentProof = withContext(Dispatchers.IO) {
+        require(enrollmentId.matches(DEVICE_IDENTIFIER)) { "The device enrollment identifier was invalid." }
+        require(challenge.matches(ENROLLMENT_CHALLENGE)) { "The device enrollment challenge was invalid." }
+        require(signature.length in 1..8_192) { "The device enrollment signature was invalid." }
+        val response = request(
+            method = "POST",
+            path = "/api/v1/mtm/mobile/attendance/devices/enrollments/${enrollmentId}/proof",
+            token = session.token,
+            deviceId = deviceId,
+            body = JSONObject().put("challenge", challenge).put("signature", signature).toString(),
+        )
+        val enrollment = response.optJSONObject("data")?.optJSONObject("enrollment")
+            ?: throw WorkforceApiException("The device proof response was incomplete.", recoverable = true)
+        WorkforceDeviceEnrollmentProof(
+            enrollmentId = enrollment.requiredString("enrollmentId", "The device proof identifier was missing."),
+            status = enrollment.requiredString("status", "The device proof status was missing."),
+        )
+    }
+
+    /** Reads only the authenticated employee's lifecycle metadata, never keys or proofs. */
+    suspend fun loadDeviceEnrollments(
+        session: WorkforceStoredSession,
+        deviceId: String,
+    ): List<WorkforceDeviceEnrollment> = withContext(Dispatchers.IO) {
+        val response = request(
+            method = "GET",
+            path = "/api/v1/mtm/mobile/attendance/devices/enrollments",
+            token = session.token,
+            deviceId = deviceId,
+        )
+        val values = response.optJSONObject("data")?.optJSONArray("enrollments")
+            ?: throw WorkforceApiException("The device enrollment list was incomplete.", recoverable = true)
+        buildList {
+            for (index in 0 until values.length()) {
+                values.optJSONObject(index)?.let { enrollment ->
+                    val id = enrollment.optString("id")
+                    val label = enrollment.optString("deviceLabel")
+                    val status = enrollment.optString("status")
+                    if (id.isNotBlank() && label.isNotBlank() && status.isNotBlank()) {
+                        add(
+                            WorkforceDeviceEnrollment(
+                                id = id,
+                                deviceLabel = label,
+                                status = status,
+                                keyVerifiedAt = enrollment.optString("keyVerifiedAt").takeIf { it.isNotBlank() && it != "null" },
+                            ),
+                        )
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -124,14 +225,18 @@ class WorkforceApiClient(
             snapshot.workday?.id
                 ?: throw WorkforceApiException("There is no active workday to update. Refresh and try again.", recoverable = true)
         }
+        // Java Instant can carry nanoseconds while the server's Date protocol
+        // signs and serializes milliseconds. Freeze the exact wire time once
+        // so a device signature cannot differ merely by timestamp precision.
+        val eventTime = now.truncatedTo(ChronoUnit.MILLIS).toString()
         return WorkforceWorkdayOperation(
             operationId = UUID.randomUUID().toString(),
             action = action,
             workdayId = workdayId,
-            occurredAt = now.toString(),
-            claimedAt = now.toString(),
-            capturedAt = now.toString(),
-            queuedAt = now.toString(),
+            occurredAt = eventTime,
+            claimedAt = eventTime,
+            capturedAt = eventTime,
+            queuedAt = eventTime,
             attendanceQrToken = attendanceQrToken?.trim()?.takeIf { it.isNotBlank() }?.also {
                 if (it.length > MAX_QR_TOKEN_LENGTH) {
                     throw WorkforceApiException("The scanned QR token was invalid. Scan a fresh code.", recoverable = false)
@@ -326,7 +431,11 @@ class WorkforceApiClient(
             val response = runCatching { JSONObject(responseText) }.getOrDefault(JSONObject())
             if (status !in 200..299) {
                 val detail = response.optString("error").takeIf { it.isNotBlank() } ?: "Workforce request failed."
-                throw WorkforceApiException(detail, recoverable = status >= 500 || status == 429)
+                throw WorkforceApiException(
+                    detail,
+                    recoverable = status >= 500 || status == 429,
+                    recoveryCode = response.optString("code").takeIf { it.isNotBlank() },
+                )
             }
             return response
         } finally {
@@ -440,11 +549,12 @@ data class WorkforceWorkdayOperation(
     val capturedAt: String,
     override val queuedAt: String,
     val attendanceQrToken: String? = null,
+    val attendanceDeviceProof: WorkforceDeviceProof? = null,
 ) : WorkforceSyncOperation {
     override val domain = WorkforceOutboxDomain.WORKDAY
     override val entity = "workdays"
     override val opType = "create"
-    override val hasEphemeralProof: Boolean get() = attendanceQrToken != null
+    override val hasEphemeralProof: Boolean get() = attendanceQrToken != null || attendanceDeviceProof != null
 
     override fun toDataJson(): JSONObject = JSONObject()
         .put("action", action.wireValue)
@@ -456,7 +566,17 @@ data class WorkforceWorkdayOperation(
         .apply {
             if (action == WorkforceWorkdayAction.START) put("id", workdayId)
             else put("workdayId", workdayId)
-            attendanceQrToken?.let { put("attendance", JSONObject().put("qrToken", it)) }
+            if (attendanceQrToken != null || attendanceDeviceProof != null) {
+                put("attendance", JSONObject().apply {
+                    attendanceQrToken?.let { put("qrToken", it) }
+                    attendanceDeviceProof?.let { proof ->
+                        put("device", JSONObject()
+                            .put("enrollmentId", proof.enrollmentId)
+                            .put("signature", proof.signature),
+                        )
+                    }
+                })
+            }
         }
 
     companion object {
@@ -536,6 +656,12 @@ data class WorkforceWorkdayOperation(
 data class WorkforceStoredOperation(
     val organizationSlug: String,
     val operation: WorkforceSyncOperation,
+)
+
+/** Exact-action proof: it is sent once and is never durable outbox data. */
+data class WorkforceDeviceProof(
+    val enrollmentId: String,
+    val signature: String,
 )
 
 private fun JSONObject.requiredString(name: String, message: String): String = optString(name).takeIf { it.isNotBlank() }
@@ -638,11 +764,32 @@ data class WorkforceLoginResult(
 )
 
 data class WorkforceBootstrap(
+    val organizationId: String,
+    val agentId: String,
     val employeeName: String,
     val timezone: String,
     val releaseStatus: String,
     val updateUrl: String?,
     val attendance: WorkforceAttendanceRequirements,
+)
+
+data class WorkforceDeviceEnrollmentStart(
+    val enrollmentId: String,
+    /** One-time value: retain in memory only for the immediate system prompt. */
+    val challenge: String,
+    val expiresAt: String,
+)
+
+data class WorkforceDeviceEnrollmentProof(
+    val enrollmentId: String,
+    val status: String,
+)
+
+data class WorkforceDeviceEnrollment(
+    val id: String,
+    val deviceLabel: String,
+    val status: String,
+    val keyVerifiedAt: String?,
 )
 
 data class WorkforceAttendanceRequirements(
@@ -654,6 +801,8 @@ data class WorkforceAttendanceRequirements(
     fun requiresQr(action: WorkforceWorkdayAction): Boolean = action.wireValue in qrRequiredActions
     fun requiresDeviceTrust(action: WorkforceWorkdayAction): Boolean = action.wireValue in deviceTrustRequiredActions
     fun requiresBiometric(action: WorkforceWorkdayAction): Boolean = action.wireValue in biometricRequiredActions
+    fun requiresDeviceProof(action: WorkforceWorkdayAction): Boolean =
+        requiresDeviceTrust(action) || requiresBiometric(action)
 
     companion object {
         fun unconfigured() = WorkforceAttendanceRequirements(

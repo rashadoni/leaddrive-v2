@@ -71,10 +71,9 @@ claiming Gradle, physical-device or seven-day recovery evidence.
 
 ## Evidence and privacy posture
 
-- The manifest declares foreground/action-time location permissions only; QR
-  camera access stays inside the delegated scanner. It has no background-
-  location permission, location service or active
-  action capture flow. `WorkforceActionTimeLocationCapture` is a user-triggered
+- The manifest declares no `CAMERA` permission. It declares foreground/action-time
+  location and `USE_BIOMETRIC` only; it has no background-location permission,
+  location service or active location capture flow. `WorkforceActionTimeLocationCapture` is a user-triggered
   foreground-only `getCurrentLocation` primitive with no stale last-known
   fallback. It rejects fixes older than 30 seconds or outside coordinate and
   accuracy bounds, exposes the platform mock flag for later server assessment,
@@ -82,19 +81,23 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   timeout states. It is not wired until tenant proof policy is active.
 - `WorkforceDeviceKeyManager` requests a challenge-bound ECDSA Android
   Keystore key, tries StrongBox where available, falls back only when the
-  device reports StrongBox unavailable, and asks for per-use strong biometric
-  or secure-device-credential authorization. It can export only the public key
-  and DER certificate chain for the existing enrollment protocol.
-- It does not read, persist or send biometric templates/results. Attestation is
-  still not accepted as proof until server chain/root/app-identity validation
-  and physical-device evidence exist.
+  device reports StrongBox unavailable, and requires per-use **strong
+  biometric** authorization through an OS-owned `BiometricPrompt` CryptoObject.
+  Device credential is deliberately not claimed as an equivalent per-use
+  cryptographic authorization. The mobile client sends only P-256 public-key
+  enrollment and one exact-action proof; its local attestation certificate
+  chain is neither uploaded nor asserted as verified.
+- It does not read, persist or send biometric templates/results. Server-side
+  attestation chain/root/app-identity validation and physical-device evidence
+  are still absent, so no hardware-attestation claim is made.
 
 ## Source-level checks
 
 - `PASS` — `workforce-android-foundation.test.ts` fixes the module boundary,
   no-background-location/backup posture, release-property guard, Workforce-only
   endpoint list, release-policy version header, bounded CI, secure-store
-  requirements and attestation-key source contract.
+  requirements, per-use strong-biometric source contract, exact canonical
+  device-proof wire labels and no-proof-outbox rule.
 - `NOT RUN` — Android Gradle lint/unit tests, build, emulator/device tests,
   camera/location/QR checks, Keystore attestation chain verification,
   managed Play upload and signing. Contabo has no Java, Android SDK or Gradle;
@@ -105,18 +108,21 @@ claiming Gradle, physical-device or seven-day recovery evidence.
 Today submits online first; a transport/ambiguous transient failure saves the
 same immutable operation into the encrypted outbox. Explicit server rejections
 and proof/state conflicts are never queued. It does not yet capture
-action-time location, site or device proof. A QR-required action scans one
-fresh token and sends it immediately, while a device-required action remains
-unavailable until C9-009; neither condition has an offline bypass. Work Time
-history is a bounded self-HRM server read and explicitly
+action-time location or site proof. A QR-required action scans one fresh token
+and sends it immediately. A device-required action can start/resume an
+encrypted account-bound enrollment, get an OS-only per-use strong-biometric
+signature, and send its device proof immediately; server truth still requires
+manager approval before that device can sign a work-time action. Neither proof
+condition has an offline bypass. Work Time history is a bounded self-HRM server
+read and explicitly
 labels the returned workday/request state as accepted server truth; it never
-calculates an accepted fact from an outbox entry. The Android client can now
+calculates an accepted fact from an outbox entry. The Android client can
 create/cancel leave, absence and correction claims through the same encrypted
 per-domain outbox. Employment reasons remain only in live draft memory or
 encrypted transport/outbox payloads, not saved UI state or ordinary
 diagnostics. Physical offline/process-death/two-account
-exercise, action-time permission/capture, QR scanner, device-enrollment transport,
-attestation-server verification, accessibility localisation, update/outbox-drain
+exercise, action-time permission/capture, device enrollment transport,
+attestation-server verification, device-revocation/replace API, accessibility localisation, update/outbox-drain
 drill and real device matrix remain their individual C5/C9/C10/C14 tasks.
 
 The Recovery view returns metadata-only queue state and an approved recovery

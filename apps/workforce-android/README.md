@@ -7,7 +7,8 @@ location/background-tracking service.
 ## Source and release boundaries
 
 - The module is native Android/Kotlin/Compose because the approved high-
-  assurance path needs Android Keystore attestation and exact-action signing.
+  assurance path needs Android Keystore exact-action signing. A local
+  attestation certificate is only a candidate until a server verifier exists.
 - The untrusted debug build uses `com.leaddrive.workforce.debug.dev` and an
   inert `https://invalid.invalid/` API base. It cannot be configured to contact
   a guessed host.
@@ -36,19 +37,27 @@ location/background-tracking service.
 - a Room/WorkManager outbox stores operation metadata plus an Android
   Keystore AES-GCM encrypted tenant/action payload. It preserves oldest-first
   domain order, has a seven-day/eight-attempt bound and removes the encryption
-  key plus rows on logout or tenant switch. Server conflicts/rejections are
-  never queued as an offline bypass;
-- camera and foreground/action-time location permissions are declared, but
-  there is **no** `ACCESS_BACKGROUND_LOCATION`, background location service or
-  location capture implementation;
-- the device-key foundation requests a non-exportable ECDSA Android Keystore
-  key with an attestation challenge and per-use secure device credential or
-  strong biometric authorization. It never reads or exports biometric data.
+  key plus rows on logout or tenant switch. QR and device proofs are never
+  queued; server conflicts/rejections are never an offline bypass;
+- foreground/action-time location and `USE_BIOMETRIC` permissions are declared,
+  but there is **no** `CAMERA`, `ACCESS_BACKGROUND_LOCATION`, background
+  location service or active location-capture flow;
+- QR is scanned by the managed-Play delegated scanner and sent immediately;
+- trusted-device enrollment stores only an encrypted account-bound key alias,
+  public-key enrollment ID and lifecycle. An Android Keystore P-256 key signs
+  only an exact enrollment/work-time challenge after an OS-owned per-use
+  **strong-biometric** prompt. The client never reads, stores or sends
+  biometric templates/results, raw QR/device proofs or its attestation
+  certificate chain;
+- device enrollment proof remains pending until an accountable server-side
+  administrator approves it. Revocation/replacement is an administrator flow;
+  sign-out removes only this phone's private key and local binding.
 
-The project intentionally does **not** claim physical Today/offline tests,
-history/request screens, QR scanner, attestation-server validation, device
-enrollment API transport, physical device support, managed Play upload or
-legal activation. Those slices remain independently gated in C5/C9/C10/C14.
+The project intentionally does **not** claim Android Gradle/build evidence,
+physical Today/offline/QR/biometric tests, hardware-attestation-server
+validation, server/mobile revoke-replace transport, physical device support,
+managed Play upload or legal activation. Those slices remain independently
+gated in C5/C9/C10/C14.
 
 ## Required external verification
 

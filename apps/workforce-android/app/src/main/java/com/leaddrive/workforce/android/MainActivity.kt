@@ -1,7 +1,6 @@
 package com.leaddrive.workforce.android
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -27,10 +26,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.fragment.app.FragmentActivity
 import com.leaddrive.workforce.android.data.WorkforceActionConflictException
 import com.leaddrive.workforce.android.data.WorkforceApiClient
 import com.leaddrive.workforce.android.data.WorkforceApiException
 import com.leaddrive.workforce.android.data.WorkforceBootstrap
+import com.leaddrive.workforce.android.data.WorkforceDeviceBindingLifecycle
+import com.leaddrive.workforce.android.data.WorkforceDeviceTrustState
 import com.leaddrive.workforce.android.data.WorkforceEncryptedOutbox
 import com.leaddrive.workforce.android.data.WorkforceHistorySnapshot
 import com.leaddrive.workforce.android.data.WorkforceHrmRequestDraft
@@ -46,25 +48,33 @@ import com.leaddrive.workforce.android.data.WorkforceWorkday
 import com.leaddrive.workforce.android.data.WorkforceWorkdayAction
 import com.leaddrive.workforce.android.data.WorkforceWorkdayStatus
 import com.leaddrive.workforce.android.security.WorkforceQrScanner
+import com.leaddrive.workforce.android.security.WorkforceDeviceAuthenticator
+import com.leaddrive.workforce.android.security.WorkforceDeviceKeyManager
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val configuration = WorkforceRuntimeConfiguration.fromBuildConfig()
         val secureStore = WorkforceSecureStore(applicationContext)
+        val deviceKeys = WorkforceDeviceKeyManager()
         val repository = WorkforceSessionRepository(
             api = WorkforceApiClient(configuration),
             secureStore = secureStore,
             outbox = WorkforceEncryptedOutbox(applicationContext),
+            deviceKeys = deviceKeys,
         )
         setContent {
             MaterialTheme {
-                WorkforceRoot(repository, WorkforceQrScanner(this@MainActivity))
+                WorkforceRoot(
+                    repository,
+                    WorkforceQrScanner(this@MainActivity),
+                    WorkforceDeviceAuthenticator(this@MainActivity),
+                )
             }
         }
     }
@@ -79,6 +89,7 @@ class MainActivity : ComponentActivity() {
 private fun WorkforceRoot(
     repository: WorkforceSessionRepository,
     qrScanner: WorkforceQrScanner,
+    deviceAuthenticator: WorkforceDeviceAuthenticator,
 ) {
     val scope = rememberCoroutineScope()
     var bootstrap by remember { mutableStateOf<WorkforceBootstrap?>(null) }
@@ -86,9 +97,24 @@ private fun WorkforceRoot(
     var status by remember { mutableStateOf<String?>(null) }
     var history by remember { mutableStateOf<WorkforceHistorySnapshot?>(null) }
     var recoveryItems by remember { mutableStateOf<List<WorkforceOutboxRecoveryItem>?>(null) }
+    var deviceTrust by remember { mutableStateOf<WorkforceDeviceTrustState?>(null) }
     var section by remember { mutableStateOf(WorkforceSection.TODAY) }
     var restoring by remember { mutableStateOf(true) }
     var busyAction by remember { mutableStateOf<WorkforceWorkdayAction?>(null) }
+
+    fun applyTodaySubmission(submission: com.leaddrive.workforce.android.data.WorkforceTodaySubmission) {
+        when (submission) {
+            is com.leaddrive.workforce.android.data.WorkforceTodaySubmission.Accepted -> {
+                today = submission.snapshot
+                history = null
+                recoveryItems = null
+                status = null
+            }
+            com.leaddrive.workforce.android.data.WorkforceTodaySubmission.Queued -> {
+                status = "Saved in this device’s encrypted outbox. It will retry in order for up to seven days."
+            }
+        }
+    }
 
     fun refreshToday() {
         scope.launch {
@@ -98,6 +124,7 @@ private fun WorkforceRoot(
                     today = it
                     history = null
                     recoveryItems = null
+                    deviceTrust = null
                     status = null
                 }
                 .onFailure { status = it.employeeMessage() }
@@ -110,21 +137,59 @@ private fun WorkforceRoot(
         status = null
         scope.launch {
             runCatching { repository.submitTodayAction(snapshot, action, qrToken) }
-                .onSuccess { submission ->
-                    when (submission) {
-                        is com.leaddrive.workforce.android.data.WorkforceTodaySubmission.Accepted -> {
-                            today = submission.snapshot
-                            history = null
-                            recoveryItems = null
-                            status = null
-                        }
-                        com.leaddrive.workforce.android.data.WorkforceTodaySubmission.Queued -> {
-                            status = "Saved in this device’s encrypted outbox. It will retry in order for up to seven days."
-                        }
-                    }
-                }
+                .onSuccess(::applyTodaySubmission)
                 .onFailure { status = it.employeeMessage() }
             busyAction = null
+        }
+    }
+
+    fun submitDeviceTrustedTodayAction(action: WorkforceWorkdayAction, qrToken: String? = null) {
+        val snapshot = today ?: return
+        val currentBootstrap = bootstrap ?: return
+        busyAction = action
+        status = "Confirming this exact action on your device…"
+        scope.launch {
+            runCatching {
+                val prepared = repository.prepareDeviceTrustedTodayAction(currentBootstrap, snapshot, action, qrToken)
+                val signature = deviceAuthenticator.authenticateAndSign(
+                    prepared.signature,
+                    "Confirm ${action.label.lowercase()} for this exact Workforce action",
+                )
+                repository.submitPreparedDeviceTodayAction(prepared, signature)
+            }.onSuccess(::applyTodaySubmission)
+                .onFailure { status = it.employeeMessage() }
+            busyAction = null
+        }
+    }
+
+    fun beginDeviceEnrollment(deviceLabel: String) {
+        val currentBootstrap = bootstrap ?: return
+        status = "Preparing the protected device enrollment…"
+        scope.launch {
+            runCatching {
+                val pending = repository.beginDeviceEnrollment(currentBootstrap, deviceLabel)
+                val signature = deviceAuthenticator.authenticateAndSign(
+                    pending.signature,
+                    "Confirm this device enrollment before ${pending.expiresAt}",
+                )
+                repository.completeDeviceEnrollment(pending, signature)
+            }.onSuccess {
+                deviceTrust = it
+                status = it.message
+            }.onFailure { status = it.employeeMessage() }
+        }
+    }
+
+    fun refreshDeviceTrust() {
+        val currentBootstrap = bootstrap ?: return
+        status = "Refreshing trusted-device status…"
+        scope.launch {
+            runCatching { repository.loadDeviceTrustState(currentBootstrap) }
+                .onSuccess {
+                    deviceTrust = it
+                    status = it.message
+                }
+                .onFailure { status = it.employeeMessage() }
         }
     }
 
@@ -158,6 +223,7 @@ private fun WorkforceRoot(
                         today = loadedToday
                         history = null
                         recoveryItems = null
+                        deviceTrust = null
                         status = null
                     }.onFailure { status = it.employeeMessage() }
                 }
@@ -170,6 +236,7 @@ private fun WorkforceRoot(
             section = section,
             history = history,
             recoveryItems = recoveryItems,
+            deviceTrust = deviceTrust,
             busyAction = busyAction,
             onRefresh = ::refreshToday,
             onSelectSection = { section = it },
@@ -198,6 +265,8 @@ private fun WorkforceRoot(
                         .onFailure { status = it.employeeMessage() }
                 }
             },
+            onLoadDeviceTrust = ::refreshDeviceTrust,
+            onBeginDeviceEnrollment = ::beginDeviceEnrollment,
             onSubmitRequest = { draft ->
                 status = "Submitting request…"
                 scope.launch {
@@ -227,13 +296,25 @@ private fun WorkforceRoot(
                         .onFailure { status = it.employeeMessage() }
                 }
             },
-            onAction = { action -> submitTodayAction(action) },
-            onScanQr = { action ->
-                qrScanner.scan(
-                    onToken = { token -> submitTodayAction(action, token.value) },
-                    onCancelled = { status = "QR scan cancelled. No attendance action was sent." },
-                    onFailure = { status = "A fresh QR code could not be read. No attendance action was sent." },
-                )
+            onAction = { action ->
+                val attendance = bootstrap!!.attendance
+                if (attendance.requiresQr(action)) {
+                    qrScanner.scan(
+                        onToken = { token ->
+                            if (attendance.requiresDeviceProof(action)) {
+                                submitDeviceTrustedTodayAction(action, token.value)
+                            } else {
+                                submitTodayAction(action, token.value)
+                            }
+                        },
+                        onCancelled = { status = "QR scan cancelled. No attendance action was sent." },
+                        onFailure = { status = "A fresh QR code could not be read. No attendance action was sent." },
+                    )
+                } else if (attendance.requiresDeviceProof(action)) {
+                    submitDeviceTrustedTodayAction(action)
+                } else {
+                    submitTodayAction(action)
+                }
             },
             onSignOut = {
                 scope.launch {
@@ -242,6 +323,8 @@ private fun WorkforceRoot(
                             bootstrap = null
                             today = null
                             history = null
+                            recoveryItems = null
+                            deviceTrust = null
                             status = null
                         }
                         .onFailure { status = "Secure sign-out could not finish. Try again." }
@@ -269,7 +352,8 @@ private fun WorkforceLogin(
 ) {
     var organizationSlug by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }
-    var password by rememberSaveable { mutableStateOf("") }
+    // Credentials remain in live memory only and are cleared on submit.
+    var password by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp),
@@ -320,15 +404,17 @@ private fun WorkforceHome(
     section: WorkforceSection,
     history: WorkforceHistorySnapshot?,
     recoveryItems: List<WorkforceOutboxRecoveryItem>?,
+    deviceTrust: WorkforceDeviceTrustState?,
     busyAction: WorkforceWorkdayAction?,
     onRefresh: () -> Unit,
     onSelectSection: (WorkforceSection) -> Unit,
     onLoadHistory: () -> Unit,
     onLoadRecovery: () -> Unit,
+    onLoadDeviceTrust: () -> Unit,
+    onBeginDeviceEnrollment: (String) -> Unit,
     onSubmitRequest: (WorkforceHrmRequestDraft) -> Unit,
     onCancelRequest: (String) -> Unit,
     onAction: (WorkforceWorkdayAction) -> Unit,
-    onScanQr: (WorkforceWorkdayAction) -> Unit,
     onSignOut: () -> Unit,
 ) {
     Column(
@@ -356,7 +442,6 @@ private fun WorkforceHome(
                         attendance = bootstrap.attendance,
                         busyAction = busyAction,
                         onAction = onAction,
-                        onScanQr = onScanQr,
                     )
                     Text("Current site: not asserted until an approved action-time proof is captured.")
                     Text("Location is never tracked in the background. Action-time location remains unavailable until the published legal notice and tenant proof policy are active.")
@@ -380,6 +465,11 @@ private fun WorkforceHome(
                 timezone = bootstrap.timezone,
                 onLoad = onLoadRecovery,
             )
+            WorkforceSection.DEVICE -> WorkforceDeviceTrust(
+                state = deviceTrust,
+                onLoad = onLoadDeviceTrust,
+                onEnroll = onBeginDeviceEnrollment,
+            )
         }
         if (bootstrap.updateUrl != null) {
             Text("An approved update is available through your organization’s managed Play channel.")
@@ -394,6 +484,7 @@ private enum class WorkforceSection(val label: String) {
     HISTORY("Work Time"),
     REQUESTS("Requests"),
     RECOVERY("Recovery"),
+    DEVICE("Device"),
 }
 
 @Composable
@@ -432,6 +523,52 @@ private fun WorkforceRecovery(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun WorkforceDeviceTrust(
+    state: WorkforceDeviceTrustState?,
+    onLoad: () -> Unit,
+    onEnroll: (String) -> Unit,
+) {
+    var label by rememberSaveable { mutableStateOf("This Android device") }
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Trusted device", style = MaterialTheme.typography.titleLarge)
+        Text("A trusted device signs only the exact work-time action you confirm. The Android system performs biometric matching; Workforce never receives a template or result.")
+        if (state == null) {
+            Button(onClick = onLoad) { Text("Load device status") }
+            return@Column
+        }
+        Text(state.message)
+        when (state.lifecycle) {
+            WorkforceDeviceBindingLifecycle.ACTIVE,
+            WorkforceDeviceBindingLifecycle.PENDING_MANAGER_APPROVAL -> {
+                TextButton(onClick = onLoad) { Text("Refresh device status") }
+            }
+            else -> {
+                OutlinedTextField(
+                    value = label,
+                    onValueChange = { label = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Device label") },
+                    singleLine = true,
+                )
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { onEnroll(label) },
+                ) {
+                    Text(
+                        if (state.lifecycle == WorkforceDeviceBindingLifecycle.PENDING_PROOF || state.lifecycle == WorkforceDeviceBindingLifecycle.PROVISIONING) {
+                            "Resume device enrollment"
+                        } else {
+                            "Enroll this device"
+                        },
+                    )
+                }
+            }
+        }
+        Text("If this device is lost or replaced, ask an authorized administrator to revoke or replace its enrollment. Signing out removes this phone’s private key and local binding; it does not approve or revoke a server enrollment.")
     }
 }
 
@@ -617,7 +754,6 @@ private fun WorkforceTodayCard(
     attendance: com.leaddrive.workforce.android.data.WorkforceAttendanceRequirements,
     busyAction: WorkforceWorkdayAction?,
     onAction: (WorkforceWorkdayAction) -> Unit,
-    onScanQr: (WorkforceWorkdayAction) -> Unit,
 ) {
     val workday = snapshot.workday
     val allowed = snapshot.actions()
@@ -648,27 +784,19 @@ private fun WorkforceTodayCard(
             Text("No work-time action is available for this server state.")
         } else {
             allowed.forEach { action ->
-                when {
-                    attendance.requiresBiometric(action) -> {
-                        Text("${action.label} requires an authenticated trusted-device proof. It is unavailable on this build.")
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = busyAction == null,
+                    onClick = { onAction(action) },
+                ) {
+                    val label = when {
+                        attendance.requiresQr(action) && attendance.requiresDeviceProof(action) ->
+                            "Scan QR and confirm ${action.label.lowercase()}"
+                        attendance.requiresQr(action) -> "Scan fresh QR to ${action.label.lowercase()}"
+                        attendance.requiresDeviceProof(action) -> "Confirm ${action.label.lowercase()} on trusted device"
+                        else -> action.label
                     }
-                    attendance.requiresDeviceTrust(action) -> {
-                        Text("${action.label} requires a trusted device. Device enrollment is not yet available on this build.")
-                    }
-                    attendance.requiresQr(action) -> Button(
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = busyAction == null,
-                        onClick = { onScanQr(action) },
-                    ) {
-                        Text(if (busyAction == action) "Sending…" else "Scan fresh QR to ${action.label.lowercase()}")
-                    }
-                    else -> Button(
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = busyAction == null,
-                        onClick = { onAction(action) },
-                    ) {
-                        Text(if (busyAction == action) "Sending…" else action.label)
-                    }
+                    Text(if (busyAction == action) "Sending…" else label)
                 }
             }
         }

@@ -10,12 +10,15 @@ import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.spec.ECGenParameterSpec
 import java.nio.charset.StandardCharsets
+import java.security.Signature
 
 /**
  * Android-only device-key foundation for the future attendance enrollment
  * flow. The private key remains non-exportable in Android Keystore. A local
- * device credential/strong biometric authorizes every signing use; the server
- * still decides whether verified attestation is sufficient for an action.
+ * strong biometric authorizes every signing use; the server still decides
+ * whether verified attestation is sufficient for an action. Android does not
+ * permit a device credential with a per-use cryptographic CryptoObject, so the
+ * app fails safe to manager review when strong biometric is unavailable.
  *
  * No biometric template or biometric result is read or sent by this class.
  */
@@ -44,11 +47,14 @@ class WorkforceDeviceKeyManager {
     }
 
     /**
-     * The current server contract verifies `SHA256withECDSA` over the canonical
-     * UTF-8 challenge string. Do not pre-hash it here: that would sign a
-     * different (double-hashed) payload and break exact-action binding.
+     * The server verifies `SHA256withECDSA` over the canonical UTF-8 challenge
+     * string, without a client-side pre-hash. This prepares, but does not
+     * complete, one exact signature. The caller must
+     * pass this Signature to the OS-owned BiometricPrompt CryptoObject and use
+     * it only after authentication succeeds. This class never receives a
+     * biometric template or biometric result.
      */
-    fun signCanonicalAction(alias: String, canonicalChallenge: String): String {
+    fun prepareCanonicalActionSignature(alias: String, canonicalChallenge: String): Signature {
         require(canonicalChallenge.isNotBlank() && canonicalChallenge.length <= 4_096) {
             "Workforce action challenge is invalid."
         }
@@ -58,7 +64,14 @@ class WorkforceDeviceKeyManager {
         val signer = java.security.Signature.getInstance("SHA256withECDSA")
         signer.initSign(privateKey as java.security.PrivateKey)
         signer.update(canonicalChallenge.toByteArray(StandardCharsets.UTF_8))
-        return Base64.encodeToString(signer.sign(), Base64.NO_WRAP)
+        return signer
+    }
+
+    fun publicKeyDerBase64(alias: String): String {
+        val certificate = KeyStore.getInstance(ANDROID_KEY_STORE).apply { load(null) }
+            .getCertificate(alias)
+            ?: throw WorkforceDeviceKeyUnavailableException("The Workforce device key is unavailable.")
+        return Base64.encodeToString(certificate.publicKey.encoded, Base64.NO_WRAP)
     }
 
     fun delete(alias: String) {
@@ -84,8 +97,11 @@ class WorkforceDeviceKeyManager {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             builder.setUserAuthenticationParameters(
                 0,
-                KeyProperties.AUTH_BIOMETRIC_STRONG or KeyProperties.AUTH_DEVICE_CREDENTIAL,
+                KeyProperties.AUTH_BIOMETRIC_STRONG,
             )
+        } else {
+            @Suppress("DEPRECATION")
+            builder.setUserAuthenticationValidityDurationSeconds(-1)
         }
         if (preferStrongBox && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             builder.setIsStrongBoxBacked(true)

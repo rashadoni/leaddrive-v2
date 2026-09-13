@@ -42,6 +42,82 @@ class WorkforceSecureStore(context: Context) {
         }
     }
 
+    /**
+     * The alias is not a private key and is encrypted alongside the session.
+     * It is bound to one organization/employee pair so a device proof cannot
+     * be reused after an account boundary. The raw enrollment challenge,
+     * signature and attestation certificate chain are never persisted here.
+     */
+    fun readDeviceBinding(): WorkforceDeviceBinding? {
+        val keyAlias = decrypt(PREFERENCE_DEVICE_KEY_ALIAS) ?: return null
+        val enrollmentId = decrypt(PREFERENCE_DEVICE_ENROLLMENT_ID) ?: return null
+        val organizationId = decrypt(PREFERENCE_DEVICE_ORGANIZATION_ID) ?: return null
+        val agentId = decrypt(PREFERENCE_DEVICE_AGENT_ID) ?: return null
+        val lifecycle = decrypt(PREFERENCE_DEVICE_LIFECYCLE) ?: return null
+        return WorkforceDeviceBinding(
+            keyAlias = keyAlias,
+            enrollmentId = enrollmentId,
+            organizationId = organizationId,
+            agentId = agentId,
+            lifecycle = WorkforceDeviceBindingLifecycle.fromStored(lifecycle) ?: return null,
+        )
+    }
+
+    fun writeDeviceBinding(binding: WorkforceDeviceBinding) {
+        require(binding.keyAlias.matches(Regex("[A-Za-z0-9._-]{1,96}"))) { "Invalid Workforce device key alias." }
+        require(binding.enrollmentId.matches(IDENTIFIER)) { "Invalid Workforce enrollment identifier." }
+        require(binding.organizationId.matches(IDENTIFIER)) { "Invalid Workforce organization identifier." }
+        require(binding.agentId.matches(IDENTIFIER)) { "Invalid Workforce employee identifier." }
+        writeEncrypted(PREFERENCE_DEVICE_KEY_ALIAS, binding.keyAlias)
+        writeEncrypted(PREFERENCE_DEVICE_ENROLLMENT_ID, binding.enrollmentId)
+        writeEncrypted(PREFERENCE_DEVICE_ORGANIZATION_ID, binding.organizationId)
+        writeEncrypted(PREFERENCE_DEVICE_AGENT_ID, binding.agentId)
+        writeEncrypted(PREFERENCE_DEVICE_LIFECYCLE, binding.lifecycle.name)
+    }
+
+    /**
+     * A generated key can outlive an ambiguous enrollment-start response. Keep
+     * only its alias and account boundary so the next launch can submit the
+     * same public key and let the server issue a fresh one-time challenge.
+     */
+    fun readDeviceProvisioning(): WorkforceDeviceProvisioning? {
+        val keyAlias = decrypt(PREFERENCE_DEVICE_PROVISIONING_KEY_ALIAS) ?: return null
+        val organizationId = decrypt(PREFERENCE_DEVICE_PROVISIONING_ORGANIZATION_ID) ?: return null
+        val agentId = decrypt(PREFERENCE_DEVICE_PROVISIONING_AGENT_ID) ?: return null
+        return WorkforceDeviceProvisioning(keyAlias, organizationId, agentId)
+    }
+
+    fun writeDeviceProvisioning(provisioning: WorkforceDeviceProvisioning) {
+        require(provisioning.keyAlias.matches(Regex("[A-Za-z0-9._-]{1,96}"))) { "Invalid Workforce device key alias." }
+        require(provisioning.organizationId.matches(IDENTIFIER)) { "Invalid Workforce organization identifier." }
+        require(provisioning.agentId.matches(IDENTIFIER)) { "Invalid Workforce employee identifier." }
+        writeEncrypted(PREFERENCE_DEVICE_PROVISIONING_KEY_ALIAS, provisioning.keyAlias)
+        writeEncrypted(PREFERENCE_DEVICE_PROVISIONING_ORGANIZATION_ID, provisioning.organizationId)
+        writeEncrypted(PREFERENCE_DEVICE_PROVISIONING_AGENT_ID, provisioning.agentId)
+    }
+
+    fun clearDeviceProvisioning() {
+        check(
+            preferences.edit()
+                .remove(PREFERENCE_DEVICE_PROVISIONING_KEY_ALIAS)
+                .remove(PREFERENCE_DEVICE_PROVISIONING_ORGANIZATION_ID)
+                .remove(PREFERENCE_DEVICE_PROVISIONING_AGENT_ID)
+                .commit(),
+        ) { "Unable to clear Workforce device provisioning state." }
+    }
+
+    fun clearDeviceBinding() {
+        check(
+            preferences.edit()
+                .remove(PREFERENCE_DEVICE_KEY_ALIAS)
+                .remove(PREFERENCE_DEVICE_ENROLLMENT_ID)
+                .remove(PREFERENCE_DEVICE_ORGANIZATION_ID)
+                .remove(PREFERENCE_DEVICE_AGENT_ID)
+                .remove(PREFERENCE_DEVICE_LIFECYCLE)
+                .commit(),
+        ) { "Unable to clear Workforce device binding." }
+    }
+
     /** A logout/tenant switch must not retain a token or device selector. */
     fun clearForLogout() {
         check(preferences.edit().clear().commit()) { "Unable to clear the Workforce session." }
@@ -99,7 +175,16 @@ class WorkforceSecureStore(context: Context) {
         const val PREFERENCE_TOKEN = "token"
         const val PREFERENCE_ORGANIZATION_SLUG = "organization_slug"
         const val PREFERENCE_INSTALLATION_ID = "installation_id"
+        const val PREFERENCE_DEVICE_KEY_ALIAS = "device_key_alias"
+        const val PREFERENCE_DEVICE_ENROLLMENT_ID = "device_enrollment_id"
+        const val PREFERENCE_DEVICE_ORGANIZATION_ID = "device_organization_id"
+        const val PREFERENCE_DEVICE_AGENT_ID = "device_agent_id"
+        const val PREFERENCE_DEVICE_LIFECYCLE = "device_lifecycle"
+        const val PREFERENCE_DEVICE_PROVISIONING_KEY_ALIAS = "device_provisioning_key_alias"
+        const val PREFERENCE_DEVICE_PROVISIONING_ORGANIZATION_ID = "device_provisioning_organization_id"
+        const val PREFERENCE_DEVICE_PROVISIONING_AGENT_ID = "device_provisioning_agent_id"
         const val ENCODED_SEPARATOR = ":"
+        val IDENTIFIER = Regex("[A-Za-z0-9_-]{1,100}")
     }
 }
 
@@ -107,3 +192,30 @@ data class WorkforceStoredSession(
     val token: String,
     val organizationSlug: String,
 )
+
+data class WorkforceDeviceBinding(
+    val keyAlias: String,
+    val enrollmentId: String,
+    val organizationId: String,
+    val agentId: String,
+    val lifecycle: WorkforceDeviceBindingLifecycle,
+)
+
+data class WorkforceDeviceProvisioning(
+    val keyAlias: String,
+    val organizationId: String,
+    val agentId: String,
+)
+
+enum class WorkforceDeviceBindingLifecycle {
+    PROVISIONING,
+    PENDING_PROOF,
+    PENDING_MANAGER_APPROVAL,
+    ACTIVE,
+    REVOKED,
+    REPLACED;
+
+    companion object {
+        fun fromStored(value: String): WorkforceDeviceBindingLifecycle? = entries.firstOrNull { it.name == value }
+    }
+}

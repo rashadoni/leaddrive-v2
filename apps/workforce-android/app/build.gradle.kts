@@ -113,6 +113,9 @@ dependencies {
     implementation("androidx.room:room-ktx:2.8.4")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("androidx.work:work-runtime-ktx:2.11.2")
+    // Stable compatibility prompt for a per-use Android Keystore signature.
+    // The app receives only success/failure and never biometric material.
+    implementation("androidx.biometric:biometric:1.1.0")
     // Delegated Google Code Scanner opens its own privacy-preserving scanner
     // surface; the Workforce app itself never receives camera frames.
     implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
