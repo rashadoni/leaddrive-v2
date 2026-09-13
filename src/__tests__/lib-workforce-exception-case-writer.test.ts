@@ -68,6 +68,7 @@ describe("Workforce immutable exception-case writer", () => {
     db.workforceExceptionCase.findFirst.mockResolvedValueOnce({ id: "case-1", ...caseWriteData })
     await expect(persistAuthorizedWorkforceExceptionCase({ db, draft: caseDraft, authorize: allow }))
       .resolves.toEqual({ caseId: "case-1", idempotent: true })
+    expect(db.workforceExceptionCase.create).toHaveBeenCalledTimes(1)
     expect(db.mtmAuditLog.create).toHaveBeenCalledTimes(1)
   })
 
