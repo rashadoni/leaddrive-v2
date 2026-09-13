@@ -8,6 +8,7 @@ export function logWorkforceSensitiveOperationFailure(input: {
     | "review-exception-response-write"
     | "review-workday-correction"
     | "review-timesheet-approval-export"
+    | "retention-raw-location-dry-run"
     | "verify-attendance-mfa"
 }): void {
   console.error("[workforce/privacy] sensitive operation failed", { operation: input.operation })
