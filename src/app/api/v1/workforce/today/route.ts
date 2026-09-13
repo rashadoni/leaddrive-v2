@@ -6,6 +6,7 @@ import { isValidTimezone } from "@/lib/timezone"
 import { withWorkforceRlsAuth } from "@/lib/with-workforce-rls-auth"
 import { resolveWorkforceActor } from "@/lib/workforce/actor"
 import { resolveWorkforceCalendarDay, type WorkforceCalendarOverride } from "@/lib/workforce/calendar"
+import { loadWorkforceEmployeeToday } from "@/lib/workforce/employee-today"
 
 type WorkdayStatus = "STARTED" | "PAUSED" | "COMPLETED"
 
@@ -20,6 +21,7 @@ type WorkforceTodayWorkday = {
   id: string
   agentId: string
   status: WorkdayStatus
+  workDate: Date
   startedAt: Date
   pausedAt: Date | null
   completedAt: Date | null
@@ -69,7 +71,7 @@ export const GET = withWorkforceRlsAuth("read", async (_req, auth) => {
       ? await Promise.all([
           prisma.mtmAgentWorkday.findMany({
             where: { organizationId: auth.orgId, agentId: { in: agentIds }, workDate },
-            select: { id: true, agentId: true, status: true, startedAt: true, pausedAt: true, completedAt: true },
+            select: { id: true, agentId: true, status: true, workDate: true, startedAt: true, pausedAt: true, completedAt: true },
           }),
           prisma.mtmAgentWorkday.findMany({
             where: {
@@ -140,6 +142,22 @@ export const GET = withWorkforceRlsAuth("read", async (_req, auth) => {
       return counts
     }, { started: 0, paused: 0, completed: 0, notStarted: 0, previousOpen: 0 })
 
+    const self = actor.role === "AGENT" && actor.agentId
+      ? people.find((person) => person.id === actor.agentId) ?? null
+      : null
+    const employeeToday = self
+      ? await loadWorkforceEmployeeToday(prisma, {
+          organizationId: auth.orgId,
+          agentId: self.id,
+          date,
+          timezone,
+          status: self.status,
+          workday: self.workday,
+          previousOpen: self.previousOpenWorkday != null,
+          calendar: self.calendar,
+        })
+      : null
+
     return NextResponse.json({
       success: true,
       data: {
@@ -148,6 +166,7 @@ export const GET = withWorkforceRlsAuth("read", async (_req, auth) => {
         scope: actor.scopedAgentIds === null ? "ORGANIZATION" : actor.role === "AGENT" ? "SELF" : "TEAM_OR_REGION",
         summary,
         people,
+        employeeToday,
       },
     })
   } catch (error) {

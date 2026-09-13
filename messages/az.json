@@ -23696,6 +23696,62 @@
     "startedAt": "{time}-da başlayıb",
     "notStarted": "Başlamayıb",
     "noPeople": "Bu əhatədə aktiv əməkdaş yoxdur.",
+    "employeeTodayTitle": "İş gününüz, {name}",
+    "employeeCurrentState": "Cari vəziyyət",
+    "employeePlannedWindow": "Plan {start}–{end} · {timezone}",
+    "employeeAssignmentTitle": "Bugünkü təyinat",
+    "employeeAssignmentHint": "Bu, bugünkü Workforce cədvəlidir. Marşrut dayanacaqları ayrıca idarə olunur.",
+    "employeeAssignmentState": {
+      "ASSIGNED": "Bugünkü təyinat mövcuddur.",
+      "NON_WORKING_DAY": "Bu gün iştirak gözlənilmir.",
+      "UNAVAILABLE": "Bu gün üçün dərc edilmiş təyinat yoxdur."
+    },
+    "employeeSegmentMode": {
+      "SITE": "Ofis və ya filial",
+      "REMOTE": "Məsafədən iş",
+      "FIELD": "Sahə işi",
+      "TRAVEL": "Filiallar arasında səfər",
+      "EXCEPTION": "Yoxlanılan istisna",
+      "ON_CALL": "Növbətçilik (hələ buraxılmayıb)"
+    },
+    "employeeAction": {
+      "START": "İş gününə başla",
+      "PAUSE": "Fasiləyə başla",
+      "RESUME": "İş gününü davam etdir",
+      "FINISH": "İş gününü bitir"
+    },
+    "employeeActionBlocked": {
+      "PREVIOUS_WORKDAY_OPEN": "Əvvəlki iş günü hələ açıqdır. Yeni günə başlamazdan əvvəl yoxlanılan düzəliş sorğusu göndərin.",
+      "NON_WORKING_DAY": "Dərc edilmiş təqvimə görə bu gün iştirak gözlənilmir.",
+      "ASSIGNMENT_UNAVAILABLE": "İş gününə başlamazdan əvvəl dərc edilmiş cədvəl tələb olunur.",
+      "WEB_PROOF_REQUIRED": "Bu əməl üçün brauzerin təhlükəsiz yarada bilmədiyi iştirak sübutu tələb olunur. Təsdiqlənmiş mobil axından istifadə edin və ya yoxlanılan sorğu göndərin.",
+      "POLICY_UNAVAILABLE": "Qüvvədə olan iştirak siyasətini yoxlamaq mümkün olmadı. Əməl göndərilmədi.",
+      "WORKDAY_COMPLETED": "Bugünkü iş günü tamamlanıb."
+    },
+    "employeeEvidenceTitle": "Növbəti əməl üçün sübut",
+    "employeeEvidenceRequired": "Tələb olunur: {methods}.",
+    "employeeEvidenceState": {
+      "NOT_REQUIRED": "Növbəti brauzer əməli üçün QR, etibarlı cihaz və ya biometrik təsdiq tələb olunmur.",
+      "REQUIRED": "Əlavə iştirak sübutu tələb olunur.",
+      "UNAVAILABLE": "Sübut siyasətini yoxlamaq mümkün olmadı."
+    },
+    "employeeEvidenceMethod": {
+      "QR": "iş yerinin cari QR kodu",
+      "TRUSTED_DEVICE": "etibarlı cihaz imzası",
+      "LOCAL_BIOMETRIC": "cihazda yerli autentifikasiya"
+    },
+    "employeeRecoveryRequest": "Yoxlanılan düzəliş tələb et",
+    "employeeActionApplied": "Server iş günü əməlini tətbiq etdi.",
+    "employeeActionPendingReview": "Server əməli insan yoxlaması üçün saxladı.",
+    "employeeActionConflict": "Bu əməldən əvvəl iş günü dəyişib. Cari vəziyyət yenilənəcək.",
+    "employeeActionFailed": "İş günü əməli tətbiq edilmədi.",
+    "employeeServerOutcome": {
+      "SENDING": "Serverə göndərilir…",
+      "APPLIED": "Server tərəfindən təsdiqlənib",
+      "PENDING_REVIEW": "Serverdə saxlanılıb · insan yoxlamasını gözləyir",
+      "CONFLICT": "Vəziyyət dəyişib · yeniləmə tələb olunur",
+      "LEGACY_APPLIED": "Serverdə qeydə alınıb · tarixi etibarlılıq məlum deyil"
+    },
     "recordedTime": "Qeydə alınmış vaxt",
     "totalRecorded": "{count} iş günü üzrə {duration}",
     "employee": "Əməkdaş",

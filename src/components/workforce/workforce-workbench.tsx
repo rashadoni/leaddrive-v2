@@ -12,8 +12,12 @@ import {
   Clock3,
   ClipboardList,
   Loader2,
+  MapPin,
   Pause,
+  Play,
   RefreshCw,
+  ShieldCheck,
+  Square,
   TriangleAlert,
   UserRound,
   X,
@@ -33,13 +37,45 @@ type TodayData = {
   timezone: string
   scope: string
   summary: { started: number; paused: number; completed: number; notStarted: number; previousOpen: number }
+  employeeToday: {
+    assignment: {
+      state: "ASSIGNED" | "NON_WORKING_DAY" | "UNAVAILABLE"
+      templateName: string | null
+      timezone: string
+      plannedStartAt: string | null
+      plannedEndAt: string | null
+      segments: Array<{
+        sequence: number
+        mode: string
+        startTime: string
+        endTime: string
+        siteName: string | null
+      }>
+    }
+    evidence: {
+      state: "NOT_REQUIRED" | "REQUIRED" | "UNAVAILABLE"
+      methods: Array<"QR" | "TRUSTED_DEVICE" | "LOCAL_BIOMETRIC">
+    }
+    action: {
+      primary: "START" | "PAUSE" | "RESUME" | "FINISH" | null
+      endpoint: "/api/v1/workforce/today/action"
+      enabled: boolean
+      blockedReason: "PREVIOUS_WORKDAY_OPEN" | "NON_WORKING_DAY" | "ASSIGNMENT_UNAVAILABLE" | "WEB_PROOF_REQUIRED" | "POLICY_UNAVAILABLE" | "WORKDAY_COMPLETED" | null
+    }
+    serverOutcome: {
+      state: "APPLIED" | "PENDING_REVIEW" | "LEGACY_APPLIED"
+      action: "START" | "PAUSE" | "RESUME" | "FINISH"
+      serverReceivedAt: string
+      appliedAt: string
+    } | null
+  } | null
   people: Array<{
     id: string
     name: string
     role: string
     status: "STARTED" | "PAUSED" | "COMPLETED" | "NOT_STARTED"
-    workday: { startedAt: string; pausedAt: string | null; completedAt: string | null } | null
-    previousOpenWorkday: { workDate: string; status: "STARTED" | "PAUSED" } | null
+    workday: { id: string; startedAt: string; pausedAt: string | null; completedAt: string | null } | null
+    previousOpenWorkday: { id: string; workDate: string; status: "STARTED" | "PAUSED" } | null
   }>
 }
 
@@ -370,6 +406,13 @@ function createSelfRequestClientId(): string {
   return "self-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2)
 }
 
+function createWorkdayClientId(prefix: "event" | "workday"): string {
+  const suffix = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : Date.now().toString(36) + "-" + Math.random().toString(36).slice(2)
+  return prefix + "-" + suffix
+}
+
 function statusTone(status: string): "default" | "secondary" | "outline" | "destructive" {
   if (status === "COMPLETED" || status === "APPROVED") return "default"
   if (status === "PAUSED" || status === "PENDING") return "secondary"
@@ -396,6 +439,8 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
   const [timesheetQuery, setTimesheetQuery] = useState<TimesheetFilters>({ agentId: "", start: "", end: "" })
   const [timesheetFilters, setTimesheetFilters] = useState<TimesheetFilters>({ agentId: "", start: "", end: "" })
   const [approvingTimesheet, setApprovingTimesheet] = useState(false)
+  const [submittingWorkday, setSubmittingWorkday] = useState(false)
+  const [workdayOutcome, setWorkdayOutcome] = useState<"SENDING" | "APPLIED" | "PENDING_REVIEW" | "CONFLICT" | null>(null)
   const organizationId = session?.user?.organizationId ? String(session.user.organizationId) : ""
   const canApproveTimesheet = session?.user?.role === "manager"
     || session?.user?.role === "admin"
@@ -485,6 +530,51 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
       toast.error(cause instanceof Error ? cause.message : t("decisionFailed"))
     } finally {
       setSavingId(null)
+    }
+  }
+
+  async function submitWorkdayAction() {
+    const employeeToday = today?.employeeToday
+    const employee = today?.people[0]
+    const action = employeeToday?.action.primary
+    if (!employeeToday?.action.enabled || !employee || !action || submittingWorkday) return
+    const occurredAt = new Date().toISOString()
+    const payload = {
+      action,
+      clientEventId: createWorkdayClientId("event"),
+      occurredAt,
+      ...(action === "START"
+        ? { id: createWorkdayClientId("workday") }
+        : employee.workday?.id ? { workdayId: employee.workday.id } : {}),
+    }
+    setSubmittingWorkday(true)
+    setWorkdayOutcome("SENDING")
+    try {
+      const response = await fetch(employeeToday.action.endpoint, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          ...(organizationId ? { "x-organization-id": organizationId } : {}),
+        },
+        body: JSON.stringify(payload),
+      })
+      const result = await response.json().catch(() => ({}))
+      if (response.status === 409) {
+        setWorkdayOutcome("CONFLICT")
+        toast.error(t("employeeActionConflict"))
+        setRetry((value) => value + 1)
+        return
+      }
+      if (!response.ok || !result.success) throw new Error(result.error || `HTTP ${response.status}`)
+      const pendingReview = result.data?.review?.state === "PENDING_REVIEW"
+      setWorkdayOutcome(pendingReview ? "PENDING_REVIEW" : "APPLIED")
+      toast.success(t(pendingReview ? "employeeActionPendingReview" : "employeeActionApplied"))
+      setRetry((value) => value + 1)
+    } catch (cause) {
+      setWorkdayOutcome(null)
+      toast.error(cause instanceof Error ? cause.message : t("employeeActionFailed"))
+    } finally {
+      setSubmittingWorkday(false)
     }
   }
 
@@ -665,7 +755,7 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
         </section>
       ) : null}
 
-      {!loading && !error && today ? <TodayView data={today} t={t} formatter={formatter} locale={locale} /> : null}
+      {!loading && !error && today ? <TodayView data={today} t={t} formatter={formatter} locale={locale} submittingWorkday={submittingWorkday} workdayOutcome={workdayOutcome} onWorkdayAction={submitWorkdayAction} /> : null}
       {!loading && !error && timesheet ? (
         <TimesheetView
           data={timesheet}
@@ -709,7 +799,15 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
   )
 }
 
-function TodayView({ data, t, formatter, locale }: { data: TodayData; t: ReturnType<typeof useTranslations>; formatter: Intl.DateTimeFormat; locale: string }) {
+function TodayView({ data, t, formatter, locale, submittingWorkday, workdayOutcome, onWorkdayAction }: {
+  data: TodayData
+  t: ReturnType<typeof useTranslations>
+  formatter: Intl.DateTimeFormat
+  locale: string
+  submittingWorkday: boolean
+  workdayOutcome: "SENDING" | "APPLIED" | "PENDING_REVIEW" | "CONFLICT" | null
+  onWorkdayAction: () => void
+}) {
   const timeFormatter = useMemo(() => new Intl.DateTimeFormat(locale, {
     hour: "2-digit",
     minute: "2-digit",
@@ -721,6 +819,79 @@ function TodayView({ data, t, formatter, locale }: { data: TodayData; t: ReturnT
     { key: "completed", label: t("completed"), value: data.summary.completed, icon: Check },
     { key: "previousOpen", label: t("needsReview"), value: data.summary.previousOpen, icon: TriangleAlert },
   ]
+  if (data.scope === "SELF" && data.employeeToday && data.people[0]) {
+    const employee = data.people[0]
+    const today = data.employeeToday
+    const ActionIcon = today.action.primary === "START" || today.action.primary === "RESUME"
+      ? Play
+      : today.action.primary === "PAUSE"
+        ? Pause
+        : Square
+    const outcome = workdayOutcome ?? today.serverOutcome?.state ?? null
+    return <>
+      <section aria-labelledby="workforce-employee-today" className="grid overflow-hidden rounded-xl border border-zinc-200 bg-card dark:border-zinc-700 lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.8fr)]">
+        <div className="flex min-h-[22rem] flex-col justify-between gap-8 p-6 sm:p-8">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">{formatter.format(new Date(`${data.date}T12:00:00`))}</p>
+              <h2 id="workforce-employee-today" className="mt-2 text-2xl font-semibold tracking-tight">{t("employeeTodayTitle", { name: employee.name })}</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                {today.assignment.templateName ?? t(`employeeAssignmentState.${today.assignment.state}`)}
+              </p>
+            </div>
+            <Badge variant={statusTone(employee.status)}>{t(`status.${employee.status}`)}</Badge>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-muted-foreground">{t("employeeCurrentState")}</p>
+              <p className="mt-1 text-3xl font-semibold tracking-tight">{t(`status.${employee.status}`)}</p>
+              {today.assignment.plannedStartAt && today.assignment.plannedEndAt ? (
+                <p className="mt-2 text-sm text-muted-foreground">{t("employeePlannedWindow", {
+                  start: timeFormatter.format(new Date(today.assignment.plannedStartAt)),
+                  end: timeFormatter.format(new Date(today.assignment.plannedEndAt)),
+                  timezone: today.assignment.timezone,
+                })}</p>
+              ) : null}
+            </div>
+            {today.action.primary ? <Button type="button" className="min-h-14 w-full text-base sm:max-w-sm" disabled={!today.action.enabled || submittingWorkday} onClick={onWorkdayAction}>
+              {submittingWorkday ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <ActionIcon />}
+              {t(`employeeAction.${today.action.primary}`)}
+            </Button> : null}
+            {today.action.blockedReason ? <p className="max-w-2xl text-sm leading-6 text-muted-foreground" role="status">{t(`employeeActionBlocked.${today.action.blockedReason}`)}</p> : null}
+            {outcome ? <p className="inline-flex min-h-8 items-center gap-2 text-sm font-medium" role="status" aria-live="polite">
+              {outcome === "SENDING" ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <ShieldCheck className="h-4 w-4" />}
+              {t(`employeeServerOutcome.${outcome}`)}
+            </p> : null}
+          </div>
+        </div>
+
+        <div className="border-t border-zinc-200 bg-muted/25 p-6 dark:border-zinc-700 lg:border-l lg:border-t-0 sm:p-8">
+          <h3 className="text-base font-semibold">{t("employeeAssignmentTitle")}</h3>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">{t("employeeAssignmentHint")}</p>
+          <div className="mt-5 space-y-4">
+            {today.assignment.segments.map((segment) => <div key={`${segment.sequence}-${segment.startTime}`} className="grid grid-cols-[3.25rem_minmax(0,1fr)] gap-3">
+              <p className="text-sm font-medium tabular-nums">{segment.startTime}</p>
+              <div>
+                <p className="text-sm font-medium">{segment.siteName ?? t(`employeeSegmentMode.${segment.mode}`)}</p>
+                <p className="mt-0.5 inline-flex items-center gap-1.5 text-xs text-muted-foreground"><MapPin className="h-3.5 w-3.5" />{t(`employeeSegmentMode.${segment.mode}`)} · {segment.startTime}–{segment.endTime}</p>
+              </div>
+            </div>)}
+            {today.assignment.segments.length === 0 ? <p className="text-sm text-muted-foreground">{t(`employeeAssignmentState.${today.assignment.state}`)}</p> : null}
+          </div>
+          <div className="mt-7 border-t border-zinc-200 pt-5 dark:border-zinc-700">
+            <p className="text-sm font-medium">{t("employeeEvidenceTitle")}</p>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              {today.evidence.state === "REQUIRED"
+                ? t("employeeEvidenceRequired", { methods: today.evidence.methods.map((method) => t(`employeeEvidenceMethod.${method}`)).join(", ") })
+                : t(`employeeEvidenceState.${today.evidence.state}`)}
+            </p>
+            {today.action.blockedReason === "WEB_PROOF_REQUIRED" || today.action.blockedReason === "PREVIOUS_WORKDAY_OPEN" ? <Link href={employee.previousOpenWorkday ? `/workforce/requests?correctionWorkdayId=${encodeURIComponent(employee.previousOpenWorkday.id)}` : "/workforce/requests"} className="mt-3 inline-flex min-h-12 items-center text-sm font-medium underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{t("employeeRecoveryRequest")}</Link> : null}
+          </div>
+        </div>
+      </section>
+    </>
+  }
   return <>
     <section className="grid gap-px overflow-hidden rounded-xl border border-zinc-200 bg-zinc-200 dark:border-zinc-700 dark:bg-zinc-700 sm:grid-cols-2 xl:grid-cols-4" aria-label={t("dailySummary")}>
       {items.map(({ key, label, value, icon: Icon }) => <div key={key} className="flex min-h-28 flex-col justify-between bg-card p-5">

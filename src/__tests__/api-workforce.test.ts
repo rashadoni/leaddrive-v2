@@ -12,6 +12,9 @@ vi.mock("@/lib/with-workforce-rls-auth", () => ({
 vi.mock("@/lib/mtm-settings", () => ({
   getMtmSettings: vi.fn(),
 }))
+vi.mock("@/lib/workforce/employee-today", () => ({
+  loadWorkforceEmployeeToday: vi.fn(),
+}))
 vi.mock("@/lib/workforce/request-decision", () => ({
   WorkforceRequestDecisionSchema: {
     safeParse: vi.fn((value: unknown) => (
@@ -50,6 +53,7 @@ import { decideWorkforceRequest } from "@/lib/workforce/request-decision"
 import { correctWorkforceTimeDirectly } from "@/lib/workforce/direct-time-correction"
 import { requireWorkforceAttendanceSecurityMfa } from "@/lib/workforce/attendance-route"
 import { requireWorkforceDirectTimeCorrectionRateLimit } from "@/lib/workforce/direct-time-correction-rate-limit"
+import { loadWorkforceEmployeeToday } from "@/lib/workforce/employee-today"
 
 const AUTH = {
   orgId: "org-workforce",
@@ -85,6 +89,7 @@ beforeEach(() => {
   vi.mocked(prisma.workforceShiftSnapshot.findMany).mockResolvedValue([])
   vi.mocked(prisma.mtmHrmRequest.findMany).mockResolvedValue([])
   vi.mocked(prisma.organization.findUnique).mockResolvedValue(null)
+  vi.mocked(loadWorkforceEmployeeToday).mockResolvedValue(null as never)
 })
 
 afterEach(() => vi.useRealTimers())
@@ -150,6 +155,35 @@ describe("independent Workforce read models", () => {
     ]))
     expect(prisma.mtmWorkCalendarDay.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ organizationId: "org-workforce", deletedAt: null }),
+    }))
+  })
+
+  it("attaches the self-only employee action model without widening tenant scope", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "agent-self", role: "AGENT" } as never)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
+      { id: "agent-self", name: "Aysel", role: "AGENT", teamId: null },
+    ] as never)
+    const employeeToday = {
+      assignment: { state: "ASSIGNED", templateName: "Baku", timezone: "Asia/Baku", plannedStartAt: null, plannedEndAt: null, segments: [] },
+      evidence: { state: "NOT_REQUIRED", methods: [] },
+      action: { primary: "START", endpoint: "/api/v1/workforce/today/action", enabled: true, blockedReason: null },
+      serverOutcome: null,
+    }
+    vi.mocked(loadWorkforceEmployeeToday).mockResolvedValue(employeeToday as never)
+
+    const response = await todayGet(request("/api/v1/workforce/today"), { ...AUTH, role: "user", userId: "user-self" } as never)
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.data.scope).toBe("SELF")
+    expect(body.data.employeeToday).toEqual(employeeToday)
+    expect(loadWorkforceEmployeeToday).toHaveBeenCalledWith(prisma, expect.objectContaining({
+      organizationId: "org-workforce",
+      agentId: "agent-self",
+      status: "NOT_STARTED",
+    }))
+    expect(prisma.mtmAgent.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ organizationId: "org-workforce", id: { in: ["agent-self"] } }),
     }))
   })
 
