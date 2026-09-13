@@ -26,6 +26,7 @@ const DEFINITION = {
 function template(id: string, teamId: string | null, overrides: Record<string, unknown> = {}) {
   return {
     id,
+    name: `Shift ${id}`,
     teamId,
     isDefault: false,
     version: 1,

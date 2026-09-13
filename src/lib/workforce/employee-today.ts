@@ -147,7 +147,7 @@ function snapshotSegments(
       if (typeof site?.id === "string" && typeof site.name === "string") siteNames.set(site.id, site.name)
     }
   }
-  return segments.flatMap((candidate) => {
+  return segments.flatMap<WorkforceEmployeeTodaySegment>((candidate) => {
     const segment = record(candidate)
     if (
       typeof segment?.sequence !== "number"
@@ -471,6 +471,8 @@ export async function loadWorkforceEmployeeToday(
       })
     : null
   const serverOutcome: WorkforceEmployeeTodayServerOutcome = lastEvent
+    && lastEvent.serverReceivedAt
+    && lastEvent.appliedAt
     && (lastEvent.type === "START" || lastEvent.type === "PAUSE" || lastEvent.type === "RESUME" || lastEvent.type === "FINISH")
     ? {
         state: lastEvent.attendanceReviewState === "PENDING_REVIEW"

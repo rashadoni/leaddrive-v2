@@ -10,6 +10,7 @@ import { resolveWorkforceHistoricalTeamMembership } from "@/lib/workforce/team-m
 
 export type WorkforceShiftTemplateCandidate = {
   id: string
+  name: string
   teamId: string | null
   isDefault: boolean
   version: number
@@ -197,6 +198,7 @@ export async function resolveCurrentWorkforceShift(
   })
   const templateSelect = {
     id: true,
+    name: true,
     teamId: true,
     isDefault: true,
     version: true,
