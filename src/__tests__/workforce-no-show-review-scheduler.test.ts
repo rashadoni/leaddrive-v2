@@ -3,17 +3,17 @@ import type { JobLeaseStore } from "@/lib/cron/job-lease";
 
 const {
   readWorkforceNoShowCandidateBatch,
-  materializeAuthorizedWorkforceNoShowReviewCase,
+  materializeAuthorizedWorkforceNoShowReviewCaseInTransaction,
 } = vi.hoisted(() => ({
   readWorkforceNoShowCandidateBatch: vi.fn(),
-  materializeAuthorizedWorkforceNoShowReviewCase: vi.fn(),
+  materializeAuthorizedWorkforceNoShowReviewCaseInTransaction: vi.fn(),
 }));
 
 vi.mock("@/lib/workforce/no-show-candidate-batch", () => ({
   readWorkforceNoShowCandidateBatch,
 }));
 vi.mock("@/lib/workforce/no-show-case-materializer", () => ({
-  materializeAuthorizedWorkforceNoShowReviewCase,
+  materializeAuthorizedWorkforceNoShowReviewCaseInTransaction,
 }));
 
 import {
@@ -111,7 +111,7 @@ describe("Workforce scheduled no-show review", () => {
       morePending: true,
       nextCursorAgentId: "agent-b",
     });
-    materializeAuthorizedWorkforceNoShowReviewCase.mockResolvedValue({
+    materializeAuthorizedWorkforceNoShowReviewCaseInTransaction.mockResolvedValue({
       outcome: "REVIEW_CASE_RECORDED",
       caseId: "case-a",
       idempotent: false,
@@ -150,7 +150,7 @@ describe("Workforce scheduled no-show review", () => {
       afterAgentId: null,
       limit: 20,
     });
-    expect(materializeAuthorizedWorkforceNoShowReviewCase).toHaveBeenCalledWith(
+    expect(materializeAuthorizedWorkforceNoShowReviewCaseInTransaction).toHaveBeenCalledWith(
       expect.objectContaining({
         tx,
         organizationId: "org-workforce",
@@ -159,7 +159,7 @@ describe("Workforce scheduled no-show review", () => {
         asOf: NOW,
       }),
     );
-    const authorize = materializeAuthorizedWorkforceNoShowReviewCase.mock
+    const authorize = materializeAuthorizedWorkforceNoShowReviewCaseInTransaction.mock
       .calls[0]?.[0]?.authorize as (input: unknown) => Promise<boolean>;
     await expect(
       authorize({
@@ -233,7 +233,7 @@ describe("Workforce scheduled no-show review", () => {
     });
     expect(readWorkforceNoShowCandidateBatch).not.toHaveBeenCalled();
     expect(
-      materializeAuthorizedWorkforceNoShowReviewCase,
+      materializeAuthorizedWorkforceNoShowReviewCaseInTransaction,
     ).not.toHaveBeenCalled();
     expect(tx.mtmAuditLog.create).not.toHaveBeenCalled();
     expectCursorUpdate(tx, {

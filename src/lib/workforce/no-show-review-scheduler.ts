@@ -4,7 +4,7 @@ import { addDateKeyDays, isDateKey } from "@/lib/mtm/mobile-week";
 import { prisma } from "@/lib/prisma";
 import { runWithRlsBypass } from "@/lib/rls-context";
 import { isTenantCapabilityEnabled } from "@/lib/tenant-capabilities";
-import { materializeAuthorizedWorkforceNoShowReviewCase } from "@/lib/workforce/no-show-case-materializer";
+import { materializeAuthorizedWorkforceNoShowReviewCaseInTransaction } from "@/lib/workforce/no-show-case-materializer";
 import { readWorkforceNoShowCandidateBatch } from "@/lib/workforce/no-show-candidate-batch";
 import { workforceNoShowReviewEnabled } from "@/lib/workforce/no-show-review-rollout";
 
@@ -169,7 +169,7 @@ function serializeCursor(cursor: CursorState): string {
 
 async function nextActiveOrganization(
   tx: Prisma.TransactionClient,
-  cursor: CursorLockRow,
+  cursor: CursorState,
 ): Promise<WorkforceNoShowReviewOrganization | null> {
   const select = {
     id: true,
@@ -218,7 +218,7 @@ async function runOneScheduledNoShowReview(
 ): Promise<Omit<WorkforceScheduledNoShowReviewResult, "skipped">> {
   const targetWorkDate = scheduledWorkDate(now);
   return db.$transaction(
-    async (tx) => {
+    async (tx: Prisma.TransactionClient) => {
       // Reuse the global bounded scheduler cursor table. The row is opaque and
       // contains no employee or proof data; creating it is safe and
       // idempotent. A missing migration fails here before tenant inspection.
@@ -328,7 +328,7 @@ async function runOneScheduledNoShowReview(
       let idempotentCases = 0;
       for (const candidate of reviewCandidateRows) {
         const materialized =
-          await materializeAuthorizedWorkforceNoShowReviewCase({
+          await materializeAuthorizedWorkforceNoShowReviewCaseInTransaction({
             tx,
             organizationId: organization.id,
             agentId: candidate.agentId,
