@@ -60,6 +60,31 @@ describe("MTM mobile sync pull telemetry", () => {
     expect(String(info.mock.calls[0][1])).toContain('"result":"unavailable"')
   })
 
+  it("bounds runtime dimensions instead of accepting high-cardinality labels", () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => undefined)
+
+    recordMtmMobileSyncPullTelemetry({
+      organizationId: "org-1",
+      stream: "workforce/agent-private-id",
+      endpoint: "GET /api/v2/mtm/mobile/sync/workforce?agentId=private",
+      contractVersion: 9_999,
+      apkVersion: null,
+      result: "private-result" as never,
+      durationMs: Number.POSITIVE_INFINITY,
+      response: {},
+    })
+
+    const event = JSON.parse(String(info.mock.calls[0][1]))
+    expect(event).toMatchObject({
+      stream: "unknown",
+      endpoint: "unknown",
+      contractVersion: 0,
+      result: "unavailable",
+      durationMs: 0,
+    })
+    expect(String(info.mock.calls[0][1])).not.toContain("agent-private-id")
+  })
+
   it("records a privacy-safe bootstrap APK census without turning it into a v1 gate", () => {
     const info = vi.spyOn(console, "info").mockImplementation(() => undefined)
 

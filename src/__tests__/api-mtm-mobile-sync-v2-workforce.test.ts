@@ -142,6 +142,21 @@ describe("v2 workforce active-workday read-only pilot", () => {
     }))
   })
 
+  it("rejects an oversized Workforce page with a bounded smaller-page recovery", async () => {
+    vi.mocked(prisma.mtmAgentWorkday.findMany).mockResolvedValueOnce([
+      workday(`workday-${"x".repeat(1_000_000)}`),
+    ] as never)
+
+    const response = await GET(request("?limit=500", "device-oversized-page"))
+
+    expect(response.status).toBe(413)
+    expect(await response.json()).toEqual({
+      error: "Sync page is too large; retry with a smaller limit",
+      code: "MOBILE_SYNC_V2_PAYLOAD_TOO_LARGE",
+      recommendedPageSize: 100,
+    })
+  })
+
   it("returns a workday tombstone without exposing an unreviewed workforce entity", async () => {
     vi.mocked(prisma.mtmMobileSyncStream.findUnique).mockResolvedValue({ revision: 3n, retentionFloorRevision: 0n } as never)
     vi.mocked(prisma.mtmMobileSyncChange.findMany).mockResolvedValue([{
