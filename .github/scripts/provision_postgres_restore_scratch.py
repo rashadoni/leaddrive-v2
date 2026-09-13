@@ -113,8 +113,13 @@ class MaintenanceError(Exception):
         }
     )
 
-    def __init__(self, code: str = "internal") -> None:
+    def __init__(self, code: str = "internal", *, cause_code: str = "none") -> None:
         self.code = code if code in self.ALLOWED else "internal"
+        self.cause_code = (
+            cause_code
+            if cause_code == "none" or cause_code in self.ALLOWED
+            else "internal"
+        )
         super().__init__()
 
 
@@ -1011,6 +1016,7 @@ def apply() -> None:
         state["after"] = current
         _write_state(state)
     except Exception as exc:
+        cause_code = exc.code if isinstance(exc, MaintenanceError) else "internal"
         try:
             _remove_cluster_if_present(allow_partial=True)
             _restore_before(state)
@@ -1018,7 +1024,7 @@ def apply() -> None:
             state["after"] = {}
             _write_state(state)
         except Exception as rollback_exc:
-            raise MaintenanceError("rollback") from rollback_exc
+            raise MaintenanceError("rollback", cause_code=cause_code) from rollback_exc
         if isinstance(exc, MaintenanceError):
             raise
         raise MaintenanceError("internal") from exc
@@ -1090,6 +1096,7 @@ def main() -> int:
     scratch_state = "unknown"
     snapshot = "unknown"
     stage = "invocation"
+    cause_stage = "none"
     lock = -1
     try:
         if operation not in {"apply", "rollback"}:
@@ -1109,6 +1116,7 @@ def main() -> int:
         return 0
     except MaintenanceError as exc:
         stage = exc.code
+        cause_stage = exc.cause_code
         snapshot = "retained" if SNAPSHOT_STATE.exists() else "unknown"
         return 1
     except Exception:
@@ -1125,7 +1133,7 @@ def main() -> int:
             "source_restart=no backup_run=no restore_run=no kafka_change=no "
             f"scratch_port={SCRATCH_PORT} scratch_state={scratch_state} "
             f"effective_verify_full={verify_full} rollback_snapshot={snapshot} "
-            f"failure_stage={stage}"
+            f"failure_stage={stage} cause_stage={cause_stage}"
         )
 
 

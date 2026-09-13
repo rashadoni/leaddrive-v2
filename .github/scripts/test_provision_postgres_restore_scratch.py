@@ -290,6 +290,19 @@ class StaticSafetyContractTests(unittest.TestCase):
     def test_output_is_schema_bounded(self) -> None:
         self.assertIn("source_restart=no backup_run=no restore_run=no kafka_change=no", self.source)
         self.assertIn("failure_stage={stage}", self.source)
+        self.assertIn("cause_stage={cause_stage}", self.source)
+
+    def test_rollback_error_preserves_only_bounded_cause(self) -> None:
+        error = MAINTENANCE.MaintenanceError(
+            "rollback", cause_code="cluster-start"
+        )
+        self.assertEqual(error.code, "rollback")
+        self.assertEqual(error.cause_code, "cluster-start")
+
+        invalid = MAINTENANCE.MaintenanceError(
+            "rollback", cause_code="secret-text-must-not-pass"
+        )
+        self.assertEqual(invalid.cause_code, "internal")
 
 
 if __name__ == "__main__":
