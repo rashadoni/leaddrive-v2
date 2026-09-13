@@ -22,6 +22,8 @@ describe("Workforce approved-export preview UI boundary", () => {
     expect(workbench).toContain('siteScope !== "EXCLUDED_FROM_ORDINARY_EXPORT"')
     expect(workbench).toContain('delivery.artifactPersistence !== "NONE"')
     expect(workbench).toContain("value.rows.length !== scope.rowCount")
+    expect(workbench).toContain("value.warningCodes.length !== TIMESHEET_EXPORT_WARNING_CODES.size")
+    expect(workbench).toContain("row.agentId !== scope.employee.id")
     expect(workbench).toContain("approvedExportCorrectionRevision")
     expect(workbench).toContain("approvedExportSiteScopeExcluded")
     expect(workbench).toContain("approvedExportDirectSessionOnly")

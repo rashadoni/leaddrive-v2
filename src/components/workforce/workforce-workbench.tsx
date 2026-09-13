@@ -236,17 +236,30 @@ function parseTimesheetExportPreview(value: unknown): TimesheetExportPreview | n
     || typeof scope.periodEnd !== "string"
     || !/^\d{4}-\d{2}-\d{2}$/.test(scope.periodEnd)
     || !isNonNegativeInteger(scope.rowCount)
+    || scope.rowCount < 1
+    || scope.rowCount > 93
     || scope.siteScope !== "EXCLUDED_FROM_ORDINARY_EXPORT"
     || delivery.purpose !== "HR_RECORD_REVIEW"
     || delivery.recipient !== "SESSION_DIRECT_DOWNLOAD"
     || delivery.artifactPersistence !== "NONE"
     || !Array.isArray(value.warningCodes)
+    || value.warningCodes.length !== TIMESHEET_EXPORT_WARNING_CODES.size
     || value.warningCodes.some((code) => typeof code !== "string" || !TIMESHEET_EXPORT_WARNING_CODES.has(code as TimesheetExportWarningCode))
+    || [...TIMESHEET_EXPORT_WARNING_CODES].some((code) => !value.warningCodes.includes(code))
     || !Array.isArray(value.rows)
     || value.rows.length !== scope.rowCount
   ) return null
   const rows = value.rows.map(parseTimesheetExportRow)
   if (rows.some((row) => row == null)) return null
+  const safeRows = rows as TimesheetExportPreviewRow[]
+  if (
+    safeRows.some((row) => (
+      row.agentId !== scope.employee.id
+      || row.workDate < scope.periodStart
+      || row.workDate > scope.periodEnd
+    ))
+    || new Set(safeRows.map((row) => row.workdayId)).size !== safeRows.length
+  ) return null
   return {
     approval: {
       id: approval.id,
@@ -268,7 +281,7 @@ function parseTimesheetExportPreview(value: unknown): TimesheetExportPreview | n
       artifactPersistence: delivery.artifactPersistence,
     },
     warningCodes: value.warningCodes as TimesheetExportWarningCode[],
-    rows: rows as TimesheetExportPreviewRow[],
+    rows: safeRows,
   }
 }
 
