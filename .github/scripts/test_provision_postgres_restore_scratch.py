@@ -320,8 +320,9 @@ class VerificationTests(unittest.TestCase):
         self, run: mock.Mock, _command: mock.Mock
     ) -> None:
         run.side_effect = [b"0|1|0|0|0\n", b"1|TLSv1.3\n", b"111\n"]
-        with self.assertRaises(MAINTENANCE.MaintenanceError):
+        with self.assertRaises(MAINTENANCE.MaintenanceError) as raised:
             MAINTENANCE._verify_scratch("111")
+        self.assertEqual(raised.exception.code, "verify-identity")
 
     @mock.patch.object(MAINTENANCE, "_command", side_effect=lambda name: name)
     @mock.patch.object(MAINTENANCE, "_run")
@@ -329,8 +330,29 @@ class VerificationTests(unittest.TestCase):
         self, run: mock.Mock, _command: mock.Mock
     ) -> None:
         run.return_value = b"1|1|0|0|0\n"
-        with self.assertRaises(MAINTENANCE.MaintenanceError):
+        with self.assertRaises(MAINTENANCE.MaintenanceError) as raised:
             MAINTENANCE._verify_scratch("111")
+        self.assertEqual(raised.exception.code, "verify-role")
+
+    @mock.patch.object(MAINTENANCE, "_command", side_effect=lambda name: name)
+    @mock.patch.object(MAINTENANCE, "_run")
+    def test_verify_rejects_non_tls_session_with_exact_stage(
+        self, run: mock.Mock, _command: mock.Mock
+    ) -> None:
+        run.side_effect = [b"0|1|0|0|0\n", b"0|\n"]
+        with self.assertRaises(MAINTENANCE.MaintenanceError) as raised:
+            MAINTENANCE._verify_scratch("111")
+        self.assertEqual(raised.exception.code, "verify-tls")
+
+    @mock.patch.object(MAINTENANCE, "_command", side_effect=lambda name: name)
+    @mock.patch.object(MAINTENANCE, "_run")
+    def test_verify_subprocess_failure_keeps_exact_stage(
+        self, run: mock.Mock, _command: mock.Mock
+    ) -> None:
+        run.side_effect = MAINTENANCE.MaintenanceError("verify-role")
+        with self.assertRaises(MAINTENANCE.MaintenanceError) as raised:
+            MAINTENANCE._verify_scratch("111")
+        self.assertEqual(raised.exception.code, "verify-role")
 
 
 class StaticSafetyContractTests(unittest.TestCase):

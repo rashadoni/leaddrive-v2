@@ -108,6 +108,9 @@ class MaintenanceError(Exception):
             "cluster-start",
             "role-create",
             "verify-full",
+            "verify-role",
+            "verify-tls",
+            "verify-identity",
             "cluster-stop",
             "source-drift",
             "post-write",
@@ -936,26 +939,26 @@ def _verify_scratch(source_identifier: str) -> None:
         [_command("psql"), "-X", "-v", "ON_ERROR_STOP=1", "-AtF", "|", "-c", "SELECT rolsuper::int, rolcreatedb::int, rolcreaterole::int, rolreplication::int, rolbypassrls::int FROM pg_roles WHERE rolname = session_user"],
         capture=True,
         env=environment,
-        code="verify-full",
+        code="verify-role",
     ).decode("ascii", errors="strict").strip()
     if role_state != "0|1|0|0|0":
-        raise MaintenanceError("verify-full")
+        raise MaintenanceError("verify-role")
     tls_state = _run(
         [_command("psql"), "-X", "-v", "ON_ERROR_STOP=1", "-AtF", "|", "-c", "SELECT CASE WHEN ssl THEN 1 ELSE 0 END, version FROM pg_stat_ssl WHERE pid = pg_backend_pid()"],
         capture=True,
         env=environment,
-        code="verify-full",
+        code="verify-tls",
     ).decode("ascii", errors="strict").strip()
     if not re.fullmatch(r"1\|TLSv1\.[23]", tls_state):
-        raise MaintenanceError("verify-full")
+        raise MaintenanceError("verify-tls")
     identifier = _run(
         [_command("psql"), "-X", "-v", "ON_ERROR_STOP=1", "-At", "-c", "SELECT (pg_control_system()).system_identifier::text"],
         capture=True,
         env=environment,
-        code="verify-full",
+        code="verify-identity",
     ).decode("ascii", errors="strict").strip()
     if not re.fullmatch(r"[0-9]{1,20}", identifier) or identifier == source_identifier:
-        raise MaintenanceError("verify-full")
+        raise MaintenanceError("verify-identity")
 
 
 def _current_target_hashes() -> dict[str, str]:
