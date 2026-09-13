@@ -87,6 +87,12 @@ class MaintenanceError(Exception):
             "prerequisite",
             "filesystem",
             "configuration",
+            "configuration-env-file",
+            "configuration-env-encoding",
+            "configuration-env-duplicate",
+            "configuration-pgpass-file",
+            "configuration-ca-file",
+            "configuration-rewrite",
             "source",
             "port",
             "snapshot",
@@ -250,7 +256,7 @@ def _parse_environment(payload: bytes) -> dict[str, str]:
     try:
         text = payload.decode("utf-8", errors="strict")
     except UnicodeDecodeError as exc:
-        raise MaintenanceError("configuration") from exc
+        raise MaintenanceError("configuration-env-encoding") from exc
     values: dict[str, list[str]] = {}
     assignment = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s*=(.*)$")
     for raw in text.splitlines():
@@ -267,7 +273,7 @@ def _parse_environment(payload: bytes) -> dict[str, str]:
             value = value[1:-1]
         values.setdefault(match.group(1), []).append(value)
     if any(len(items) != 1 for items in values.values()):
-        raise MaintenanceError("configuration")
+        raise MaintenanceError("configuration-env-duplicate")
     return {key: items[0] for key, items in values.items()}
 
 
@@ -276,7 +282,7 @@ def rewrite_environment(payload: bytes, replacements: dict[str, str]) -> bytes:
         if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key) or any(
             char in value for char in "\r\n\0"
         ):
-            raise MaintenanceError("configuration")
+            raise MaintenanceError("configuration-rewrite")
     lines = payload.splitlines(keepends=True)
     seen: set[str] = set()
     output: list[bytes] = []
@@ -286,7 +292,7 @@ def rewrite_environment(payload: bytes, replacements: dict[str, str]) -> bytes:
         key = match.group(1).decode("ascii") if match else ""
         if key in replacements:
             if key in seen:
-                raise MaintenanceError("configuration")
+                raise MaintenanceError("configuration-rewrite")
             output.append(f"{key}={replacements[key]}\n".encode())
             seen.add(key)
         else:
@@ -782,7 +788,7 @@ def apply() -> None:
         or env_state.uid != 0
         or (env_state.mode, env_state.gid) not in {(0o600, 0), (0o640, backup_gid)}
     ):
-        raise MaintenanceError("configuration")
+        raise MaintenanceError("configuration-env-file")
     config = _parse_environment(env_payload)
     source_identifier = _source_system_identifier(config)
     source_before = _cluster_lines()
@@ -797,12 +803,12 @@ def apply() -> None:
         or (pgpass_state.mode, pgpass_state.gid)
         not in {(0o600, 0), (0o640, backup_gid)}
     ):
-        raise MaintenanceError("configuration")
+        raise MaintenanceError("configuration-pgpass-file")
     if ca_state.present and (
         ca_state.uid != 0
         or ca_state.mode not in {0o400, 0o440, 0o444, 0o600, 0o640, 0o644}
     ):
-        raise MaintenanceError("configuration")
+        raise MaintenanceError("configuration-ca-file")
     state = _create_snapshot(
         env_state, env_payload, pgpass_state, pgpass_payload, ca_state, ca_payload
     )
