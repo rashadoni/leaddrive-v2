@@ -231,9 +231,9 @@ because eleven of its findings were things tests could not see.
 | RUX-1009 | P0 | DONE | Distance to a point without coordinates (B2) | Closed in section 0.1 of the plan |
 | RUX-1010 | P0 | DONE | "Day finished at HH:MM" after End day (B3) | Closed in section 0.1 of the plan |
 | RUX-1011 | P0 | MERGED | Offline is detected and shown (B4) | Merged to `main` and in the APK; device acceptance not run (D1) |
-| RUX-1012 | P0 | MERGED | Day card carries the route status and opens (B5) | Merged to `main` and in the APK; device acceptance not run (D1) |
+| RUX-1012 | P0 | DONE | Day card carries the route status and opens (B5) | Accepted on the phone 2026-09-13/14; closed in section 0.1 of the plan |
 | RUX-1013 | P1 | DONE | Week as a strip of seven, one day open (B6) | Accepted on the phone 2026-09-13 (build56); closed in section 0.1 of the plan |
-| RUX-1014 | P1 | MERGED | Today fits one screen (B7) | Merged to `main` and in the APK; device acceptance not run (D1) |
+| RUX-1014 | P1 | DONE | Today fits one screen (B7) | Accepted on the phone 2026-09-13/14; closed in section 0.1 of the plan |
 | RUX-1015 | P1 | DONE | Self planner asks only what it can answer (B8) | Accepted on the phone 2026-09-13 (build56); closed in section 0.1 of the plan |
 | RUX-1016 | P1 | DONE | Route screen without a route (B9) | Accepted on the phone 2026-09-13 (build56); closed in section 0.1 of the plan |
 | RUX-1017 | P1 | DONE | Tasks state facts, not advice (B10) | Accepted on the phone 2026-09-13 (build56); closed in section 0.1 of the plan |
@@ -242,10 +242,10 @@ because eleven of its findings were things tests could not see.
 | RUX-1020 | P1 | DONE | Azerbaijani uppercase keeps İ (B13) | Closed in section 0.1 of the plan |
 | RUX-1021 | P1 | DONE | Russian plural forms (B14) | Closed in section 0.1 of the plan |
 | RUX-1022 | P1 | DONE | No raw enum values on screen (B15) | Closed in section 0.1 of the plan |
-| RUX-1023 | P1 | MERGED | GPS map without the API-key watermark (B16) | Merged; on the phone 2026-09-13 the watermark is gone but CARTO rejects the key from the tenant origin — the key's domain allowlist needs `leaddrive.leaddrivecrm.org` |
+| RUX-1023 | P1 | DONE | GPS map without the API-key watermark (B16) | Accepted on the phone 2026-09-13/14; closed in section 0.1 of the plan |
 | RUX-1024 | P2 | DONE | End-day confirmation in the app's own dialog (B17) | Accepted on the phone 2026-09-13 (build56); closed in section 0.1 of the plan |
 | RUX-1025 | P2 | DONE | Accessible names and readable tab captions (B18) | Accepted on the phone 2026-09-13 (build56); closed in section 0.1 of the plan |
-| RUX-1026 | P1 | MERGED | Tablet layout from 600 dp (B19) | Merged to `main` and in the APK; device acceptance not run (D1) |
+| RUX-1026 | P1 | DONE | Tablet layout from 600 dp (B19) | Accepted on the phone in landscape 2026-09-14 (823 dp, two panes; rail captions fixed in mtm #25) |
 | RUX-1027 | P1 | MERGED | Sign-in above the fold (B20) | Merged to `main` and in the APK; device acceptance not run (D1) |
 | RUX-1028 | P2 | DONE | Visit history opens from the screen that lists it (B21) | Accepted on the phone 2026-09-13 (build56); closed in section 0.1 of the plan |
 | RUX-1029 | P2 | DONE | Only a handset build becomes a release (B22) | Closed in section 0.1 of the plan |
