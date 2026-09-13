@@ -17,5 +17,12 @@ Targeted route tests prove MFA-first denial, strict limit validation,
 tenant-scoped dry-run invocation, counts-only audit, lack of an execute path,
 and privacy-safe containment of runner or audit failures.
 
+The pure time/decision retention preflight separately requires a clear legal
+hold result, isolated staging, a current-window restore proof, per-class leased
+cursor, normal pressure, immutable audit readiness and recorded accountable
+authorization. Missing or malformed evidence produces a specific blocker.
+Even a complete preflight returns only `READY_FOR_EXTERNAL_EXECUTION_AUTHORIZATION`
+with `execution: NOT_AVAILABLE`; it cannot approve production or delete data.
+
 Backup/restore and destructive staging execution are **NOT RUN**; those remain
 gates for any future scheduler or operational execute path.
