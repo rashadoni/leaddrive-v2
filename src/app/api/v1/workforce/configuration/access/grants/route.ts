@@ -48,6 +48,7 @@ const GrantRequest = z.object({
   effectiveUntil: z.string().datetime({ offset: true }).nullable().optional(),
   grantReasonCode: ReasonCode,
 }).strict()
+const MAX_ACTIVE_GRANTS = 500
 
 type ActiveTenantTargetDb = Pick<Prisma.TransactionClient, "user" | "mtmTeam" | "workforceSite" | "mtmAgent">
 
@@ -242,6 +243,97 @@ export const POST = withWorkforceSessionGrantManagementAuth(async (req: NextRequ
       }, { status, headers: workforceSensitiveResponseHeaders })
     }
     logWorkforceSensitiveOperationFailure({ operation: "configuration-access-grant-write" })
+    return unavailable()
+  }
+})
+
+/**
+ * GET /api/v1/workforce/configuration/access/grants
+ *
+ * A bounded, active-only inventory for the same MFA-gated grant-management
+ * principal. It returns display labels needed for accountable HR review but
+ * never internal principal/scope IDs, operation keys, reasons, revocation
+ * history or raw attendance evidence.
+ */
+export const GET = withWorkforceSessionGrantManagementAuth(async (req: NextRequest, auth) => {
+  const mfaDenied = await requireWorkforceAttendanceSecurityMfa(auth.orgId, auth)
+  if (mfaDenied) return applyWorkforceSensitiveResponseHeaders(mfaDenied)
+  const rateLimited = await requireWorkforceAccessGrantRateLimit({
+    operation: "INVENTORY",
+    organizationId: auth.orgId,
+    principalUserId: auth.userId,
+  })
+  if (rateLimited) return rateLimited
+
+  const now = new Date()
+  try {
+    const grants = await prisma.workforceAccessGrant.findMany({
+      where: {
+        organizationId: auth.orgId,
+        effectiveFrom: { lte: now },
+        OR: [{ effectiveUntil: null }, { effectiveUntil: { gt: now } }],
+        revocation: null,
+      },
+      orderBy: [{ effectiveFrom: "desc" }, { id: "desc" }],
+      take: MAX_ACTIVE_GRANTS + 1,
+      select: {
+        id: true,
+        role: true,
+        scopeKind: true,
+        effectiveFrom: true,
+        effectiveUntil: true,
+        principalUser: { select: { name: true, email: true } },
+        scopeTeam: { select: { name: true, code: true } },
+        scopeSite: { select: { name: true, code: true } },
+        scopeAgent: { select: { name: true, externalCode: true } },
+      },
+    })
+    if (grants.length > MAX_ACTIVE_GRANTS) {
+      return NextResponse.json({
+        error: "Too many active Workforce grants for one review. Narrow the controlled administration scope before continuing.",
+        code: "WORKFORCE_ACCESS_GRANT_INVENTORY_LIMIT_EXCEEDED",
+      }, { status: 413, headers: workforceSensitiveResponseHeaders })
+    }
+    const requestAudit = workforceConfigurationRequestAuditContext(req, auth.userId)
+    await prisma.mtmAuditLog.create({
+      data: {
+        organizationId: auth.orgId,
+        agentId: null,
+        action: "WORKFORCE_ACCESS_GRANT_INVENTORY_VIEWED",
+        entity: "workforce_access_grant",
+        entityId: now.toISOString(),
+        metadataKind: "workforce_access_control",
+        newData: { observedAt: now.toISOString(), activeGrantCount: grants.length },
+        ipAddress: requestAudit.ipAddress,
+        userAgent: requestAudit.userAgent,
+      },
+    })
+    return NextResponse.json({
+      success: true,
+      data: grants.map((grant) => ({
+        grantId: grant.id,
+        role: grant.role,
+        scopeKind: grant.scopeKind,
+        effectiveFrom: grant.effectiveFrom.toISOString(),
+        effectiveUntil: grant.effectiveUntil?.toISOString() ?? null,
+        principal: {
+          name: grant.principalUser.name,
+          email: grant.principalUser.email,
+        },
+        scope: grant.scopeKind === "TEAM" ? grant.scopeTeam && {
+          name: grant.scopeTeam.name,
+          code: grant.scopeTeam.code,
+        } : grant.scopeKind === "SITE" ? grant.scopeSite && {
+          name: grant.scopeSite.name,
+          code: grant.scopeSite.code,
+        } : grant.scopeKind === "AGENT" ? grant.scopeAgent && {
+          name: grant.scopeAgent.name,
+          externalCode: grant.scopeAgent.externalCode,
+        } : null,
+      })),
+    }, { headers: workforceSensitiveResponseHeaders })
+  } catch {
+    logWorkforceSensitiveOperationFailure({ operation: "configuration-access-grant-inventory" })
     return unavailable()
   }
 })

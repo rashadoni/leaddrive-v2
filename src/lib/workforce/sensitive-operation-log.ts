@@ -21,6 +21,8 @@ export function logWorkforceSensitiveOperationFailure(input: {
     | "verify-attendance-mfa"
     | "configuration-access-lookup"
     | "configuration-access-grant-write"
+    | "configuration-access-grant-inventory"
+    | "configuration-access-grant-target-search"
 }): void {
   console.error("[workforce/privacy] sensitive operation failed", { operation: input.operation })
 }

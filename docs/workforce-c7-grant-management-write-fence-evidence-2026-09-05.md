@@ -50,25 +50,40 @@ do not activate Workforce granular access for any tenant.
   timestamps. An exact retry returns the original receipt; a changed target,
   role, scope, reason, actor or expiry conflicts rather than creating a second
   authority fact.
-- Grant and revocation mutations share a Redis-backed tenant/principal
-  budget of 12 requests per minute. Exact identities are hashed before
-  storage. Quota responses carry a bounded retry value; an unavailable or
-  unexpected shared-guard failure is a contained `503`, never a per-process
-  fallback that could weaken a multi-instance privilege boundary.
+- Grant and revocation mutations share a Redis-backed tenant/principal budget
+  of 12 requests per minute; inventory and picker reads share an independent
+  30-per-minute budget. Exact identities are hashed before storage. Quota
+  responses carry a bounded retry value; an unavailable or unexpected
+  shared-guard failure is a contained `503`, never a per-process fallback that
+  could weaken a multi-instance privilege boundary.
+- The matching active-grant inventory is bounded to 500 current, unrevoked
+  records and has the same rollout/session/MFA fence. It returns only the
+  grant reference needed for revocation, role/scope kind, effective window and
+  tenant-local display labels. Principal/scope internal IDs, operation keys,
+  reason codes, revocation history and any evidence are absent. Viewing the
+  inventory writes a counts-only access-control audit record.
+
+- The role-manager type-ahead endpoint requires the same session/granular
+  grant/MFA boundary. It requires a two-character search, returns at most 25
+  active tenant-local principal/team/site/agent targets, and uses the
+  inventory guard before every lookup. It supplies only the opaque value
+  needed by a future form plus its display label; its metadata-only audit
+  stores kind, query length and result count, never the typed search, name,
+  email or ID. It is a picker source, not a full directory or a grant writer.
 
 ## Verification
 
-- `PASS` — focused Vitest (`7 files / 54 tests`): role boundary,
-  ledger/writer replay modes, changed-payload conflicts, transactional target
-  recheck, shared grant-rate guard and grant/revocation API negative paths.
-- `PASS` — RLS route-context coverage (`1 file / 3 tests`), including the new
-  session grant-management wrapper.
+- `PASS` — focused Vitest (`2 files / 23 tests`) in this exact tree: the
+  grant/revocation/inventory API and grant-target search, including MFA,
+  active-tenant predicates, minimized audit and fail-closed read budgets.
+- `PASS` — PR #160 required gates on the immediately preceding grant/revoke
+  foundation: pr-scope, static-checks, typecheck, runner-policy and scan.
 - `PASS` — scoped ESLint for all changed server, writer, test and static-RLS
   contract files; `git diff --check`.
 - `NOT RUN` — full TypeScript, production build, Chromium browser journey,
   Android, entire recursive RLS call-graph scan, applied migration/RLS,
   staging, physical MFA/device verification, real grant bootstrap and
-  production. The Contabo worktree runs only small sequential checks; the
+  production for this inventory/search slice. The Contabo worktree runs only small sequential checks; the
   heavier or real-world evidence requires GitHub CI, the owner Mac staging
   channel or a controlled pilot. `codex-heavy-run` is installed but its shared
   host lock was unavailable before any heavy command could start.

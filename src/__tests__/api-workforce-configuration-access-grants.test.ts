@@ -16,7 +16,7 @@ vi.mock("@/lib/workforce/access-grant-rate-limit", () => ({
 }))
 
 import { DELETE } from "@/app/api/v1/workforce/configuration/access/grants/[id]/route"
-import { POST } from "@/app/api/v1/workforce/configuration/access/grants/route"
+import { GET, POST } from "@/app/api/v1/workforce/configuration/access/grants/route"
 import { prisma } from "@/lib/prisma"
 import { requireWorkforceAttendanceSecurityMfa } from "@/lib/workforce/attendance-route"
 import { requireWorkforceAccessGrantRateLimit } from "@/lib/workforce/access-grant-rate-limit"
@@ -30,6 +30,7 @@ const auth = {
 
 type Handler = (req: NextRequest, auth: typeof auth) => Promise<Response>
 const post = POST as unknown as Handler
+const inventory = GET as unknown as Handler
 type DeleteHandler = (req: NextRequest, auth: typeof auth, ctx: { params: Promise<{ id: string }> }) => Promise<Response>
 const revoke = DELETE as unknown as DeleteHandler
 
@@ -42,6 +43,15 @@ function request(body: unknown): NextRequest {
       "user-agent": "workforce-grant-test",
     },
     body: JSON.stringify(body),
+  })
+}
+
+function inventoryRequest(): NextRequest {
+  return new NextRequest("http://localhost/api/v1/workforce/configuration/access/grants", {
+    headers: {
+      "x-real-ip": "203.0.113.40",
+      "user-agent": "workforce-grant-test",
+    },
   })
 }
 
@@ -281,6 +291,78 @@ describe("Workforce access-grant configuration API", () => {
     expect(response.status).toBe(403)
     await expect(response.json()).resolves.toMatchObject({ code: "WORKFORCE_ACCESS_GRANT_NOT_AUTHORIZED" })
     expect(prisma.workforceAccessGrant.create).not.toHaveBeenCalled()
+  })
+
+  it("returns only a bounded active-grant review projection and audit metadata", async () => {
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([{
+      ...revocableGrant,
+      principalUser: { name: "Employee Two", email: "employee@example.test" },
+      scopeTeam: null,
+      scopeSite: null,
+      scopeAgent: null,
+    }] as never)
+
+    const response = await inventory(inventoryRequest(), auth)
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("cache-control")).toBe("private, no-store")
+    const payload = await response.json()
+    expect(payload).toEqual({
+      success: true,
+      data: [{
+        grantId: "grant_scheduler_1",
+        role: "SCHEDULER",
+        scopeKind: "ORGANIZATION",
+        effectiveFrom: "2026-09-02T00:00:00.000Z",
+        effectiveUntil: null,
+        principal: { name: "Employee Two", email: "employee@example.test" },
+        scope: null,
+      }],
+    })
+    expect(JSON.stringify(payload)).not.toContain("employee_2")
+    expect(JSON.stringify(payload)).not.toContain("grant-op-previous")
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        action: "WORKFORCE_ACCESS_GRANT_INVENTORY_VIEWED",
+        newData: expect.objectContaining({ activeGrantCount: 1 }),
+        ipAddress: "203.0.113.40",
+        userAgent: "workforce-grant-test",
+      }),
+    }))
+  })
+
+  it("contains MFA and bounded-inventory failures before an access-review audit", async () => {
+    vi.mocked(requireWorkforceAttendanceSecurityMfa).mockResolvedValueOnce(NextResponse.json({
+      code: "WORKFORCE_ATTENDANCE_MFA_REQUIRED",
+    }, { status: 403 }))
+    const mfa = await inventory(inventoryRequest(), auth)
+    expect(mfa.status).toBe(403)
+    expect(prisma.workforceAccessGrant.findMany).not.toHaveBeenCalled()
+
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue(
+      Array.from({ length: 501 }, () => ({ ...revocableGrant })) as never,
+    )
+    const overLimit = await inventory(inventoryRequest(), auth)
+    expect(overLimit.status).toBe(413)
+    await expect(overLimit.json()).resolves.toMatchObject({ code: "WORKFORCE_ACCESS_GRANT_INVENTORY_LIMIT_EXCEEDED" })
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+
+  it("fails closed before inventory access or audit when the shared guard denies", async () => {
+    vi.mocked(requireWorkforceAccessGrantRateLimit).mockResolvedValue(NextResponse.json({
+      code: "WORKFORCE_ACCESS_GRANT_RATE_LIMITED",
+    }, { status: 429 }))
+
+    const response = await inventory(inventoryRequest(), auth)
+
+    expect(response.status).toBe(429)
+    expect(requireWorkforceAccessGrantRateLimit).toHaveBeenCalledWith({
+      operation: "INVENTORY",
+      organizationId: auth.orgId,
+      principalUserId: auth.userId,
+    })
+    expect(prisma.workforceAccessGrant.findMany).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
   })
 
   it("appends an audited immutable revocation only after the transaction rechecks tenant-admin authority", async () => {
