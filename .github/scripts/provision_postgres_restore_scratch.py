@@ -98,6 +98,7 @@ class MaintenanceError(Exception):
             "configuration-rewrite",
             "source",
             "source-role-present",
+            "source-role-cleanup",
             "port",
             "snapshot",
             "cluster-create",
@@ -591,6 +592,96 @@ def _require_source_role_absent(config: dict[str, str]) -> None:
     ).decode("ascii", errors="strict").strip()
     if output != "0":
         raise MaintenanceError("source-role-present")
+
+
+def _cleanup_accidental_source_role(
+    config: dict[str, str], source_identifier: str
+) -> None:
+    source_port = config.get("PGPORT") or "5432"
+    if (
+        not re.fullmatch(r"[0-9]{1,5}", source_port)
+        or int(source_port) == SCRATCH_PORT
+        or not re.fullmatch(r"[0-9]{1,20}", source_identifier)
+    ):
+        raise MaintenanceError("source-role-cleanup")
+    sql = (
+        "BEGIN;\n"
+        "DO $leaddrive$\n"
+        "DECLARE target_oid oid;\n"
+        "BEGIN\n"
+        f"  IF current_setting('port') <> '{source_port}'\n"
+        "     OR (SELECT system_identifier::text FROM pg_control_system()) "
+        f"<> '{source_identifier}' THEN\n"
+        "    RAISE EXCEPTION 'source target identity rejected';\n"
+        "  END IF;\n"
+        f"  SELECT oid INTO target_oid FROM pg_roles WHERE rolname = '{SCRATCH_ROLE}';\n"
+        "  IF target_oid IS NULL OR NOT EXISTS (\n"
+        "    SELECT 1 FROM pg_roles\n"
+        f"    WHERE oid = target_oid AND rolname = '{SCRATCH_ROLE}'\n"
+        "      AND rolcanlogin AND NOT rolsuper AND NOT rolinherit\n"
+        "      AND rolcreatedb AND NOT rolcreaterole AND NOT rolreplication\n"
+        "      AND NOT rolbypassrls AND rolconnlimit = -1 AND rolvaliduntil IS NULL\n"
+        "  ) THEN\n"
+        "    RAISE EXCEPTION 'reserved role authority rejected';\n"
+        "  END IF;\n"
+        "  IF EXISTS (\n"
+        "       SELECT 1 FROM pg_auth_members\n"
+        "       WHERE roleid = target_oid OR member = target_oid OR grantor = target_oid\n"
+        "     ) OR EXISTS (\n"
+        "       SELECT 1 FROM pg_db_role_setting WHERE setrole = target_oid\n"
+        "     ) OR EXISTS (\n"
+        "       SELECT 1 FROM pg_shdepend\n"
+        "       WHERE refclassid = 'pg_authid'::regclass AND refobjid = target_oid\n"
+        "     ) THEN\n"
+        "    RAISE EXCEPTION 'reserved role dependencies rejected';\n"
+        "  END IF;\n"
+        f"  EXECUTE 'DROP ROLE {SCRATCH_ROLE}';\n"
+        "END\n"
+        "$leaddrive$;\n"
+        "COMMIT;\n"
+    ).encode("ascii")
+    _run(
+        [
+            _command("runuser"),
+            "-u",
+            "postgres",
+            "--",
+            _command("psql"),
+            "-X",
+            "-v",
+            "ON_ERROR_STOP=1",
+            "-h",
+            SCRATCH_SOCKET_DIR,
+            "-p",
+            source_port,
+            "-d",
+            SCRATCH_DATABASE,
+        ],
+        input_bytes=sql,
+        code="source-role-cleanup",
+    )
+
+
+def cleanup_source_role() -> None:
+    if os.geteuid() != 0:
+        raise MaintenanceError("invocation")
+    _require_units_inactive()
+    try:
+        backup_gid = grp.getgrnam("leaddrive-backup").gr_gid
+    except KeyError as exc:
+        raise MaintenanceError("prerequisite") from exc
+    env_payload, env_state = _read_file(ENV_PATH, maximum=MAX_ENV_BYTES)
+    if (
+        env_payload is None
+        or env_state.uid != 0
+        or (env_state.mode, env_state.gid) not in {(0o600, 0), (0o640, backup_gid)}
+    ):
+        raise MaintenanceError("configuration-env-file")
+    config = _parse_environment(env_payload)
+    source_identifier = _source_system_identifier(config)
+    _cleanup_accidental_source_role(config, source_identifier)
+    _require_source_role_absent(config)
+    _require_units_inactive()
 
 
 def _create_certificates(temp_dir: Path, postgres_uid: int, postgres_gid: int, backup_gid: int) -> None:
@@ -1154,16 +1245,20 @@ def main() -> int:
     cause_stage = "none"
     lock = -1
     try:
-        if operation not in {"apply", "rollback"}:
+        if operation not in {"apply", "rollback", "cleanup-source-role"}:
             raise MaintenanceError("invocation")
         lock = _acquire_lock()
         if operation == "apply":
             apply()
             status = "applied"
             verify_full = "yes"
-        else:
+        elif operation == "rollback":
             rollback()
             status = "rolled-back"
+            verify_full = "not-tested"
+        else:
+            cleanup_source_role()
+            status = "source-role-removed"
             verify_full = "not-tested"
         scratch_state = "stopped"
         snapshot = "retained"
@@ -1181,7 +1276,11 @@ def main() -> int:
     finally:
         if lock >= 0:
             os.close(lock)
-        safe_operation = operation if operation in {"apply", "rollback"} else "unknown"
+        safe_operation = (
+            operation
+            if operation in {"apply", "rollback", "cleanup-source-role"}
+            else "unknown"
+        )
         print(
             "scratch_postgres_maintenance "
             f"operation={safe_operation} status={status} "
