@@ -104,6 +104,30 @@ class FileStateTests(unittest.TestCase):
                 )
             )
 
+    def test_cluster_directory_accepts_only_postgres_owned_safe_modes(self) -> None:
+        for mode in (0o700, 0o750, 0o755):
+            self.assertTrue(
+                MAINTENANCE._acceptable_cluster_config_directory(
+                    MAINTENANCE.FileState(True, uid=111, gid=222, mode=mode),
+                    111,
+                    222,
+                )
+            )
+
+    def test_cluster_directory_rejects_other_authority_or_writable_modes(self) -> None:
+        for state in (
+            MAINTENANCE.FileState(True, uid=0, gid=222, mode=0o755),
+            MAINTENANCE.FileState(True, uid=111, gid=0, mode=0o755),
+            MAINTENANCE.FileState(True, uid=111, gid=222, mode=0o770),
+            MAINTENANCE.FileState(True, uid=111, gid=222, mode=0o757),
+            MAINTENANCE.FileState(False),
+        ):
+            self.assertFalse(
+                MAINTENANCE._acceptable_cluster_config_directory(
+                    state, 111, 222
+                )
+            )
+
     def test_root_owned_stale_pgpass_can_be_snapshotted_then_normalized(self) -> None:
         self.assertTrue(
             MAINTENANCE._acceptable_existing_secret_file(

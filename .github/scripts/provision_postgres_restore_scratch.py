@@ -252,8 +252,19 @@ def _read_file(
         os.close(descriptor)
 
 
-def _atomic_write(path: Path, payload: bytes, *, mode: int, uid: int, gid: int) -> None:
-    _assert_root_dir(path.parent)
+def _atomic_write(
+    path: Path,
+    payload: bytes,
+    *,
+    mode: int,
+    uid: int,
+    gid: int,
+    cluster_parent_authority: tuple[int, int] | None = None,
+) -> None:
+    if cluster_parent_authority is None:
+        _assert_root_dir(path.parent)
+    else:
+        _assert_cluster_config_directory(path.parent, *cluster_parent_authority)
     descriptor = -1
     temporary = ""
     try:
@@ -586,8 +597,22 @@ def _create_certificates(temp_dir: Path, postgres_uid: int, postgres_gid: int, b
     if source_ca is None or _sha(source_ca) == _sha(ca_payload):
         raise MaintenanceError("tls-create")
     _atomic_write(SCRATCH_CA_PATH, ca_payload, mode=0o640, uid=0, gid=backup_gid)
-    _atomic_write(SERVER_CERT, cert_payload, mode=0o640, uid=0, gid=postgres_gid)
-    _atomic_write(SERVER_KEY, key_payload, mode=0o600, uid=postgres_uid, gid=postgres_gid)
+    _atomic_write(
+        SERVER_CERT,
+        cert_payload,
+        mode=0o640,
+        uid=0,
+        gid=postgres_gid,
+        cluster_parent_authority=(postgres_uid, postgres_gid),
+    )
+    _atomic_write(
+        SERVER_KEY,
+        key_payload,
+        mode=0o600,
+        uid=postgres_uid,
+        gid=postgres_gid,
+        cluster_parent_authority=(postgres_uid, postgres_gid),
+    )
 
 
 def _acceptable_cluster_config_file(
@@ -602,6 +627,44 @@ def _acceptable_cluster_config_file(
         and state.gid == postgres_gid
         and state.mode == expected_mode
     )
+
+
+def _acceptable_cluster_config_directory(
+    state: FileState,
+    postgres_uid: int,
+    postgres_gid: int,
+) -> bool:
+    return (
+        state.present
+        and state.uid == postgres_uid
+        and state.gid == postgres_gid
+        and state.mode in {0o700, 0o750, 0o755}
+    )
+
+
+def _assert_cluster_config_directory(
+    path: Path,
+    postgres_uid: int,
+    postgres_gid: int,
+) -> None:
+    try:
+        metadata = path.lstat()
+    except OSError as exc:
+        raise MaintenanceError("cluster-config-owner") from exc
+    state = FileState(
+        present=True,
+        uid=metadata.st_uid,
+        gid=metadata.st_gid,
+        mode=stat.S_IMODE(metadata.st_mode),
+    )
+    if (
+        not stat.S_ISDIR(metadata.st_mode)
+        or stat.S_ISLNK(metadata.st_mode)
+        or not _acceptable_cluster_config_directory(
+            state, postgres_uid, postgres_gid
+        )
+    ):
+        raise MaintenanceError("cluster-config-owner")
 
 
 def _configure_cluster(postgres_uid: int, postgres_gid: int) -> None:
@@ -632,6 +695,7 @@ def _configure_cluster(postgres_uid: int, postgres_gid: int) -> None:
         mode=conf_state.mode,
         uid=conf_state.uid,
         gid=conf_state.gid,
+        cluster_parent_authority=(postgres_uid, postgres_gid),
     )
     hba = (
         "# Managed LeadDrive restore scratch authentication\n"
@@ -647,7 +711,14 @@ def _configure_cluster(postgres_uid: int, postgres_gid: int) -> None:
         hba_state, postgres_uid, postgres_gid, 0o640
     ):
         raise MaintenanceError("cluster-config-owner")
-    _atomic_write(PG_HBA, hba, mode=hba_state.mode, uid=hba_state.uid, gid=hba_state.gid)
+    _atomic_write(
+        PG_HBA,
+        hba,
+        mode=hba_state.mode,
+        uid=hba_state.uid,
+        gid=hba_state.gid,
+        cluster_parent_authority=(postgres_uid, postgres_gid),
+    )
     start_payload, start_state = _read_file(START_CONF, maximum=MAX_SMALL_FILE_BYTES)
     if start_payload != b"manual\n" or not _acceptable_cluster_config_file(
         start_state, postgres_uid, postgres_gid, 0o644
