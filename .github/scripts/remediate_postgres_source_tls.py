@@ -81,6 +81,10 @@ class SafeMaintenanceError(Exception):
     ALLOWED_CODES = frozenset(
         {
             "configuration",
+            "configuration-read",
+            "configuration-client",
+            "configuration-override",
+            "configuration-rewrite",
             "invocation",
             "invocation-script-read",
             "invocation-script-missing",
@@ -570,7 +574,10 @@ def _require_backup_inactive() -> None:
     executable = shutil.which("systemctl", path="/usr/bin:/bin")
     if executable is None:
         raise SafeMaintenanceError
-    for unit in ("leaddrive-postgres-backup.service", "leaddrive-postgres-backup.timer"):
+    for unit in (
+        "leaddrive-postgres-backup.service",
+        "leaddrive-postgres-backup.timer",
+    ):
         try:
             result = subprocess.run(
                 [executable, "is-active", "--quiet", unit],
@@ -829,12 +836,26 @@ def _restore_snapshot(state: dict[str, object], *, require_post_state: bool) -> 
 
 
 def _prepare(environment: bytes, config: dict[str, str]) -> PreparedRemediation:
-    if config["PGSSLMODE"] != "verify-full":
-        raise SafeMaintenanceError("configuration")
-    if config["PGSSLROOTCERT"] != str(CA_PATH):
-        raise SafeMaintenanceError("configuration")
+    if config["PGSSLMODE"] not in {
+        "disable",
+        "allow",
+        "prefer",
+        "require",
+        "verify-ca",
+        "verify-full",
+    }:
+        raise SafeMaintenanceError("configuration-client")
+    current_rootcert = config["PGSSLROOTCERT"]
+    if (
+        len(current_rootcert) > 4096
+        or not Path(current_rootcert).is_absolute()
+        or any(ord(character) < 32 for character in current_rootcert)
+        or "://" in current_rootcert
+        or "@" in current_rootcert
+    ):
+        raise SafeMaintenanceError("configuration-client")
     if any(config[key] for key in ("PGSERVICE", "PGSERVICEFILE", "PGPASSWORD")):
-        raise SafeMaintenanceError("configuration")
+        raise SafeMaintenanceError("configuration-override")
     current_host = config["PGHOST"]
     port = _normalize_port(config["PGPORT"])
     try:
@@ -866,7 +887,7 @@ def _prepare(environment: bytes, config: dict[str, str]) -> PreparedRemediation:
             },
         )
     except Exception as exc:
-        raise SafeMaintenanceError("configuration") from exc
+        raise SafeMaintenanceError("configuration-rewrite") from exc
     return PreparedRemediation(
         environment=rewritten,
         certificate_pem=ssl.DER_cert_to_PEM_cert(first_certificate).encode("ascii"),
@@ -902,7 +923,7 @@ def apply() -> str:
         try:
             environment, env_authority, config = read_environment()
         except Exception as exc:
-            raise SafeMaintenanceError("configuration") from exc
+            raise SafeMaintenanceError("configuration-read") from exc
         try:
             ca_payload, ca_authority = _read_regular_file(
                 CA_PATH, maximum_bytes=MAX_CA_BYTES, required=False
