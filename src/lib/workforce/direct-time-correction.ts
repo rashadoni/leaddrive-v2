@@ -3,7 +3,12 @@ import { Prisma } from "@prisma/client"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { lockMtmWorkdayTransitions } from "@/lib/mtm/workday"
+import {
+  decidePersistedWorkforceAccess,
+  type WorkforceAccessGrantReaderDb,
+} from "@/lib/workforce/access-grant-resolution"
 import { isAgentInWorkforceScope, type WorkforceActor } from "@/lib/workforce/actor"
+import { workforceGranularAccessEnabled } from "@/lib/workforce/granular-access-rollout"
 import {
   replayWorkforceWorkdayFacts,
   workforceReplayMatchesWorkdayCorrectionFacts,
@@ -43,7 +48,8 @@ type DirectCorrectionAuditContext = {
 type DirectCorrectionContext = {
   organizationId: string
   userId: string
-  actor: WorkforceActor
+  /** A C7 TIME_APPROVER grant may authorize a principal without a CRM actor. */
+  actor: WorkforceActor | null
   workdayId: string
   input: WorkforceDirectTimeCorrectionInput
   audit?: DirectCorrectionAuditContext
@@ -114,7 +120,6 @@ export async function correctWorkforceTimeDirectly(
   context: DirectCorrectionContext,
 ): Promise<WorkforceDirectTimeCorrectionResult> {
   const { organizationId, userId, actor, workdayId, input, audit } = context
-  if (actor.role === "AGENT") return { kind: "forbidden" }
 
   const initial = await prisma.mtmAgentWorkday.findFirst({
     where: { id: workdayId, organizationId },
@@ -126,9 +131,8 @@ export async function correctWorkforceTimeDirectly(
   // Web admins normally resolve without an agentId, so compare the target
   // employee's linked user as well as the actor's MTM-agent identity.
   if (
-    actor.agentId === initial.agentId
+    actor?.agentId === initial.agentId
     || initial.agent.userId === userId
-    || !isAgentInWorkforceScope(actor, initial.agentId)
   ) {
     return { kind: "forbidden" }
   }
@@ -140,6 +144,28 @@ export async function correctWorkforceTimeDirectly(
 
   try {
     return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const organization = await tx.organization.findUnique({
+        where: { id: organizationId },
+        select: { features: true },
+      })
+      const granularAccess = workforceGranularAccessEnabled(organization?.features)
+      // C7 replaces only the broad CRM-role authority. The employee ownership
+      // check above and the locked linked-user check below remain mandatory.
+      if (!granularAccess) {
+        if (!actor || actor.role === "AGENT" || !isAgentInWorkforceScope(actor, initial.agentId)) {
+          return { kind: "forbidden" as const }
+        }
+      } else {
+        const access = await decidePersistedWorkforceAccess({
+          db: tx as WorkforceAccessGrantReaderDb,
+          organizationId,
+          principalUserId: userId,
+          selfAgentId: null,
+          permission: "TIME_CORRECT",
+          resource: { organizationId, agentId: initial.agentId },
+        })
+        if (!access.allowed) return { kind: "forbidden" as const }
+      }
       // Keep timestamp-without-time-zone legacy fields deterministic while
       // checking and persisting their canonical UTC ledger representation.
       await tx.$executeRaw`SELECT set_config('TimeZone', 'UTC', true)`
@@ -333,6 +359,7 @@ export async function correctWorkforceTimeDirectly(
             operationId: input.operationId,
             reason: input.reason,
             source: "DIRECT_MANAGER",
+            authorizationSource: granularAccess ? "WORKFORCE_GRANT" : actor!.role,
           },
           ipAddress: audit?.ipAddress ?? null,
           userAgent: audit?.userAgent ?? null,
