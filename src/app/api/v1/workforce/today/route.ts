@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
-import { withWorkforceRlsAuth } from "@/lib/with-workforce-rls-auth"
+import { withWorkforceSessionAuth } from "@/lib/with-workforce-rls-auth"
 import { resolveWorkforceActor } from "@/lib/workforce/actor"
 import { resolveWorkforceCalendarDay, type WorkforceCalendarOverride } from "@/lib/workforce/calendar"
 import { loadWorkforceEmployeeToday } from "@/lib/workforce/employee-today"
@@ -36,8 +36,14 @@ function workforceScopeDenied() {
   return NextResponse.json({ error: "Forbidden", code: "WORKFORCE_SCOPE_DENIED" }, { status: 403 })
 }
 
-/** GET /api/v1/workforce/today — manager exception-first daily read model. */
-export const GET = withWorkforceRlsAuth("read", async (_req, auth) => {
+/**
+ * GET /api/v1/workforce/today — signed-in manager/self daily read model.
+ *
+ * The response contains named employees and attendance-adjacent facts. An API
+ * key creator is audit metadata, not a Workforce delegation, so integrations
+ * cannot use this browser read path to impersonate that creator.
+ */
+export const GET = withWorkforceSessionAuth("read", async (_req, auth) => {
   const actor = await resolveWorkforceActor(prisma, {
     organizationId: auth.orgId,
     userId: auth.userId,
