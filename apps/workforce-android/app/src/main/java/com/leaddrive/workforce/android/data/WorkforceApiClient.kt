@@ -14,7 +14,7 @@ import org.json.JSONObject
 
 private const val MAX_HRM_REQUEST_DAYS = 366L
 private const val MAX_QR_TOKEN_LENGTH = 4_096
-private val DEVICE_IDENTIFIER = Regex("[A-Za-z0-9_-]{1,100}")
+private val IDENTIFIER = Regex("[A-Za-z0-9_-]{1,100}")
 private val ENROLLMENT_CHALLENGE = Regex("[A-Za-z0-9_-]{24,256}")
 private val WORKFORCE_SCHEDULE_SEGMENT_MODES = setOf("SITE", "REMOTE", "FIELD", "TRAVEL", "ON_CALL", "EXCEPTION")
 private val WORKFORCE_LOCAL_TIME = Regex("^(?:[01]\\d|2[0-3]):[0-5]\\d$")
@@ -120,7 +120,7 @@ class WorkforceApiClient(
         challenge: String,
         signature: String,
     ): WorkforceDeviceEnrollmentProof = withContext(Dispatchers.IO) {
-        require(enrollmentId.matches(DEVICE_IDENTIFIER)) { "The device enrollment identifier was invalid." }
+        require(enrollmentId.matches(IDENTIFIER)) { "The device enrollment identifier was invalid." }
         require(challenge.matches(ENROLLMENT_CHALLENGE)) { "The device enrollment challenge was invalid." }
         require(signature.length in 1..8_192) { "The device enrollment signature was invalid." }
         val response = request(
@@ -148,7 +148,7 @@ class WorkforceApiClient(
         deviceId: String,
         enrollmentId: String,
     ) = withContext(Dispatchers.IO) {
-        require(enrollmentId.matches(DEVICE_IDENTIFIER)) { "The device enrollment identifier was invalid." }
+        require(enrollmentId.matches(IDENTIFIER)) { "The device enrollment identifier was invalid." }
         val response = request(
             method = "POST",
             path = "/api/v1/mtm/mobile/attendance/devices/enrollments/${enrollmentId}/revoke",
@@ -1101,6 +1101,7 @@ data class WorkforceAttendanceRequirements(
 
         fun invalid() = WorkforceAttendanceRequirements(
             status = "INVALID",
+            locationRequiredActions = emptyList(),
             qrRequiredActions = emptyList(),
             deviceTrustRequiredActions = emptyList(),
             biometricRequiredActions = emptyList(),
