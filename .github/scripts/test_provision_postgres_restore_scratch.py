@@ -128,6 +128,25 @@ class FileStateTests(unittest.TestCase):
                 )
             )
 
+    def test_start_conf_accepts_debian_comments_and_one_manual_setting(self) -> None:
+        self.assertTrue(
+            MAINTENANCE._start_conf_is_manual(
+                b"# Automatic startup configuration\n\nmanual\n"
+            )
+        )
+        self.assertTrue(MAINTENANCE._start_conf_is_manual(b"manual # selected\n"))
+
+    def test_start_conf_rejects_other_or_multiple_settings(self) -> None:
+        for payload in (
+            b"auto\n",
+            b"disabled\n",
+            b"manual\nauto\n",
+            b"# manual only\n",
+            b"manual\nunknown=value\n",
+            b"manual\xff\n",
+        ):
+            self.assertFalse(MAINTENANCE._start_conf_is_manual(payload))
+
     def test_root_owned_stale_pgpass_can_be_snapshotted_then_normalized(self) -> None:
         self.assertTrue(
             MAINTENANCE._acceptable_existing_secret_file(
@@ -227,7 +246,7 @@ class StaticSafetyContractTests(unittest.TestCase):
         self.assertIn('SCRATCH_HOST = "127.0.0.1"', self.source)
         self.assertIn("SCRATCH_PORT = 55432", self.source)
         self.assertIn('"--start-conf=manual"', self.source)
-        self.assertIn('b"manual\\n"', self.source)
+        self.assertIn("_start_conf_is_manual(start_payload)", self.source)
         self.assertIn("host all all 0.0.0.0/0 reject", self.source)
         self.assertNotIn("listen_addresses = '*'", self.source)
 
