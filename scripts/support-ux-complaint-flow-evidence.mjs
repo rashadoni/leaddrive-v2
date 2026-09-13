@@ -359,12 +359,19 @@ try {
       save.evaluate((button) => button.click()),
     ])
     if (!saved.ok()) throw new Error(`assignment_retry_http_${saved.status()}`)
+    await page.waitForFunction(() => !document.querySelector("[data-testid='complaint-assignee-save'] svg.animate-spin"))
     await select.selectOption(original)
+    await page.waitForFunction((expected) => {
+      const input = document.querySelector("[data-testid='complaint-assignee-select']")
+      const button = document.querySelector("[data-testid='complaint-assignee-save']")
+      return input?.value === expected && button instanceof HTMLButtonElement && !button.disabled
+    }, original)
     const [restored] = await Promise.all([
       page.waitForResponse((candidate) => new URL(candidate.url()).pathname === `/api/v1/complaints/${createdComplaintId}` && candidate.request().method() === "PATCH"),
       page.getByTestId("complaint-assignee-save").click(),
     ])
     if (!restored.ok()) throw new Error(`assignment_restore_http_${restored.status()}`)
+    await page.waitForFunction(() => !document.querySelector("[data-testid='complaint-assignee-save'] svg.animate-spin"))
     await page.waitForFunction((expected) => document.querySelector("[data-testid='complaint-assignee-select']")?.value === expected, original)
     return { rollbackObserved: true, retrySucceeded: true, fixtureRestored: true }
   })
