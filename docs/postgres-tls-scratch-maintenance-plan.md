@@ -1,10 +1,12 @@
 # PostgreSQL TLS and scratch maintenance plan
 
-Status: the source environment/CA maintenance window was approved, but the
-attempt failed closed at `pgpass-match` before any snapshot or write. Changing
-the passfile still requires the separate confirmation described below.
-Scratch, PostgreSQL, firewall, VPS, Docker, systemd services, backup, restore,
-deploy, and Kafka changes remain unauthorized.
+Status: the separately confirmed source environment/CA/passfile maintenance
+completed successfully. The source backup client now uses `PGHOST` plus
+`PGHOSTADDR` with `verify-full`, its dedicated source CA, and a matching
+passfile selector; credential fields were preserved. PostgreSQL and services
+were not restarted. The isolated scratch cluster is still absent until its own
+workflow is merged and separately confirmed. Backup, restore, deploy, and Kafka
+runtime changes are not part of scratch provisioning.
 
 ## Read-only decision evidence
 
@@ -140,17 +142,35 @@ in the reviewed locations. It also reports a separate `present`, `absent`, or
 `unknown` probe state for each mechanism so an incomplete inspection cannot be
 mistaken for absence. It does not start or create any of them.
 
-After a separately confirmed maintenance window, provision exactly one
-mechanism. Prefer a dedicated disposable PostgreSQL cluster because that is the
-reviewed backup contract. Bind it to loopback only, use separate encrypted or
-disposable storage and a separate verifier role, and keep it stopped outside a
-controlled restore drill. A service manager may supervise that separate
-cluster, but it does not turn the source cluster into an acceptable scratch
-target.
+The dispatch-only `Provision isolated PostgreSQL restore scratch` workflow is
+the selected mechanism. After its own typed maintenance confirmation it creates
+exactly one standard Debian PostgreSQL 16 cluster named `leaddriverestore` on
+IPv4 loopback port `55432`, using a distinct data directory and a dedicated
+`leaddrive_restore_verifier` login. The login is `NOSUPERUSER`, `NOCREATEROLE`,
+`NOREPLICATION`, `NOBYPASSRLS`, and has only the `CREATEDB` capability required
+by the restore canary. Host authentication permits only TLS/SCRAM access for
+that role from loopback and rejects other TCP clients.
 
-The scratch CA must come from the independently provisioned scratch cluster's
-own trust chain. Do not copy or reuse the source certificate or source CA. Pin
-its separately approved fingerprint before setting scratch `verify-full`.
+The workflow installs no packages and accepts no operator-provided path,
+hostname, password, certificate, or port. It refuses an existing cluster,
+existing listener, active recovery unit, unavailable source identity, unsafe
+file authority, or prior unclosed rollback snapshot. It creates an independent
+CA and loopback-IP server certificate, atomically writes only the scratch
+client keys in `backup.env`, starts the new cluster only long enough to create
+and test the limited verifier role, proves `verify-full` and a system identifier
+different from the source, then stops it. Any failure after the snapshot
+automatically removes only the newly created cluster and restores the exact
+previous environment, scratch passfile, and scratch CA state.
+
+The separate `rollback` operation refuses byte drift, drops only this fixed
+cluster, restores the sealed snapshot, and again proves the source-cluster
+inventory is unchanged. The cluster's lifecycle during an actual recovery run
+is a later reviewed step; provisioning alone never performs a dump or restore.
+
+The scratch CA comes from the newly generated scratch trust chain. The script
+compares it with the source CA and refuses equality; the source certificate and
+source CA are never copied. The public scratch CA and verifier passfile are
+root-owned and readable only by the dedicated backup group.
 
 An existing byte-drifted backup unit is not approved or rewritten by the
 source TLS maintenance. The maintenance may treat it only as uncommissioned
@@ -165,8 +185,9 @@ that the source endpoint and all disabled recovery timers were unchanged.
 
 ## Explicit exclusions
 
-This plan does not authorize backup commissioning, deploy, restore, Kafka
-consumers, offset reset, replay, production SQL, firewall changes, VPS power
-operations, or any service start. Each requires its own explicit authorization;
-production or database changes additionally require maintenance-window
-confirmation.
+Merging the implementation does not itself provision the cluster. The `apply`
+dispatch remains a production/database change and requires the exact typed
+maintenance confirmation. Provisioning does not authorize backup commissioning,
+an actual dump/restore, Kafka consumers, offset reset, replay, firewall changes,
+VPS power operations, or application deploy beyond the repository's normal
+SHA-bound delivery of this reviewed code.
