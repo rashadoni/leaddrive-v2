@@ -9,6 +9,7 @@ import {
   buildWorkforceExceptionCaseReport,
   WorkforceExceptionCaseReportError,
 } from "@/lib/workforce/exception-case-report"
+import { requireWorkforceExceptionReportRateLimit } from "@/lib/workforce/approved-report-rate-limit"
 import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { workforceSensitiveResponseHeaders } from "@/lib/workforce/sensitive-response"
 
@@ -42,6 +43,12 @@ function auditContext(req: NextRequest) {
  */
 export const GET = withWorkforceSessionExceptionQueueAuth(async (req: NextRequest, auth) => {
   try {
+    const rateLimited = await requireWorkforceExceptionReportRateLimit({
+      organizationId: auth.orgId,
+      principalUserId: auth.userId,
+    })
+    if (rateLimited) return rateLimited
+
     const settings = await getMtmSettings(auth.orgId)
     const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
     const today = currentDateKey(new Date(), timezone)

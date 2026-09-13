@@ -11,6 +11,9 @@ vi.mock("@/lib/with-workforce-rls-auth", () => ({
   withWorkforceSessionExceptionQueueAuth: vi.fn((handler) => handler),
 }))
 vi.mock("@/lib/mtm-settings", () => ({ getMtmSettings: vi.fn() }))
+vi.mock("@/lib/workforce/approved-report-rate-limit", () => ({
+  requireWorkforceExceptionReportRateLimit: vi.fn(async () => null),
+}))
 vi.mock("@/lib/workforce/sensitive-operation-log", () => ({
   logWorkforceSensitiveOperationFailure: vi.fn(),
 }))
@@ -20,6 +23,7 @@ import { getMtmSettings } from "@/lib/mtm-settings"
 import { prisma } from "@/lib/prisma"
 import { withWorkforceSessionExceptionQueueAuth } from "@/lib/with-workforce-rls-auth"
 import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
+import { requireWorkforceExceptionReportRateLimit } from "@/lib/workforce/approved-report-rate-limit"
 
 const AUTH = { orgId: "org-workforce", userId: "admin-1", role: "admin", principalType: "session" as const }
 const invoke = GET as unknown as (request: NextRequest, auth: typeof AUTH) => Promise<Response>
@@ -43,6 +47,7 @@ beforeEach(() => {
   vi.mocked(getMtmSettings).mockResolvedValue({ timezone: "Asia/Baku" } as never)
   vi.mocked(prisma.workforceExceptionCase.findMany).mockResolvedValue([])
   vi.mocked(prisma.mtmAuditLog.create).mockResolvedValue({} as never)
+  vi.mocked(requireWorkforceExceptionReportRateLimit).mockResolvedValue(null)
 })
 
 describe("GET /api/v1/workforce/exception-reports", () => {
@@ -109,6 +114,19 @@ describe("GET /api/v1/workforce/exception-reports", () => {
 
     expect(response.status).toBe(400)
     await expect(response.json()).resolves.toMatchObject({ code: "WORKFORCE_EXCEPTION_REPORT_RANGE_INVALID" })
+    expect(prisma.workforceExceptionCase.findMany).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+
+  it("stops before settings, case reads and audit when rate limited", async () => {
+    vi.mocked(requireWorkforceExceptionReportRateLimit).mockResolvedValueOnce(
+      new Response(null, { status: 429 }) as never,
+    )
+
+    const response = await invoke(new NextRequest("http://localhost:3000/api/v1/workforce/exception-reports"), AUTH)
+
+    expect(response.status).toBe(429)
+    expect(getMtmSettings).not.toHaveBeenCalled()
     expect(prisma.workforceExceptionCase.findMany).not.toHaveBeenCalled()
     expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
   })

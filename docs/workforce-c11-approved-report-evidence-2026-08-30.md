@@ -41,11 +41,12 @@ authorization or immutable-integrity failures expose fixed codes only;
 unexpected report/access failures emit only a fixed operation label, never an
 error object, employee value or approval detail.
 
-A distributed tenant-and-principal budget limits the endpoint to 30 report
-requests per 15 minutes. The Redis partition tag contains a one-way tenant
-hash rather than a tenant or employee identifier. Limiter unavailability fails
-closed before actor resolution, access lookup, approval reads or audit writes;
-bounded `Retry-After` responses remain private/no-store.
+Separate distributed tenant-and-principal budgets limit approved-time and
+exception reports to 30 requests per 15 minutes each. Redis partition tags
+contain a one-way tenant hash rather than a tenant or employee identifier.
+Limiter unavailability fails closed before settings, actor/access resolution,
+report reads or audit writes; bounded `Retry-After` responses remain
+private/no-store.
 
 The new Workforce web report uses this endpoint, a date filter and the current
 actor scope. Its first load omits the date parameters so the server selects
@@ -81,13 +82,12 @@ logging with a fixed operation label.
 
 ## Verification
 
-- **PASS:** seven sequential targeted Vitest files, 89 tests: report
-  service/API/rate limiter, browser response contract, immutable export,
-  approval service and navigation. Coverage includes the pre-read limiter
-  short-circuit, fail-closed limiter path, hash-valid negative metrics and
-  aggregate-overflow rejection.
-- **PASS:** exception report/API Vitest, 2 files and 7 tests; includes private
-  failure responses and fixed-label error logging.
+- **PASS:** nine sequential targeted Vitest files, 98 tests: approved and
+  exception report services/APIs/rate limits, browser response contract,
+  immutable export, approval service and navigation. Coverage includes
+  separate pre-read limiter budgets, fail-closed limiter paths, hash-valid
+  negative metrics, aggregate-overflow rejection, private failure responses
+  and fixed-label error logging.
 - **PASS:** targeted ESLint for the report service, route, access guard,
   component and tests.
 - **PASS:** `npm run i18n:check`: 22,520 EN leaf keys; RU/AZ missing=0,

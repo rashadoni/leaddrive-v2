@@ -9,7 +9,10 @@ vi.mock("@/lib/rate-limit", () => ({
 
 import { consumePublicRateLimitBatch } from "@/lib/public-abuse-guard"
 import { hashForRateLimit } from "@/lib/rate-limit"
-import { requireWorkforceApprovedReportRateLimit } from "@/lib/workforce/approved-report-rate-limit"
+import {
+  requireWorkforceApprovedReportRateLimit,
+  requireWorkforceExceptionReportRateLimit,
+} from "@/lib/workforce/approved-report-rate-limit"
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -70,6 +73,30 @@ describe("requireWorkforceApprovedReportRateLimit", () => {
     await expect(response?.json()).resolves.toMatchObject({
       code: "WORKFORCE_APPROVED_REPORT_RATE_LIMIT_UNAVAILABLE",
       retryAfterSeconds: 1,
+    })
+  })
+
+  it("keeps exception reports in a separate distributed budget", async () => {
+    vi.mocked(consumePublicRateLimitBatch).mockResolvedValueOnce({
+      allowed: false,
+      unavailable: false,
+      retryAfterSeconds: 30,
+    } as never)
+
+    const response = await requireWorkforceExceptionReportRateLimit({
+      organizationId: "org-private",
+      principalUserId: "user-private",
+    })
+
+    expect(hashForRateLimit).toHaveBeenCalledWith("workforce-exception-report-partition:v1:org-private")
+    expect(consumePublicRateLimitBatch).toHaveBeenCalledWith([expect.objectContaining({
+      scope: "workforce-exception-report:principal",
+      redisHashTag: "workforce-exception-report:partition-hash",
+    })])
+    expect(response?.status).toBe(429)
+    await expect(response?.json()).resolves.toMatchObject({
+      code: "WORKFORCE_EXCEPTION_REPORT_RATE_LIMITED",
+      retryAfterSeconds: 30,
     })
   })
 })

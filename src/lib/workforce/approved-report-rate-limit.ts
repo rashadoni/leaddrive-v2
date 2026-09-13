@@ -4,6 +4,7 @@ import { hashForRateLimit } from "@/lib/rate-limit"
 import { workforceSensitiveResponseHeaders } from "@/lib/workforce/sensitive-response"
 
 type WorkforceApprovedReportRateLimit = PublicRatePolicy & { retryAfterSeconds: number }
+type WorkforceReportKind = "approved" | "exception"
 
 const WORKFORCE_APPROVED_REPORT_RATE_LIMIT: WorkforceApprovedReportRateLimit = {
   maxRequests: 30,
@@ -15,19 +16,22 @@ const WORKFORCE_APPROVED_REPORT_RATE_LIMIT: WorkforceApprovedReportRateLimit = {
  * A distributed per-principal budget bounds repeated immutable report rebuilds
  * and employee-scope probing. Limiter unavailability fails closed.
  */
-export async function requireWorkforceApprovedReportRateLimit(input: {
+async function requireWorkforceReportRateLimit(input: {
   organizationId: string
   principalUserId: string
+  reportKind: WorkforceReportKind
 }): Promise<NextResponse | null> {
+  const label = input.reportKind === "approved" ? "approved-report" : "exception-report"
+  const codeLabel = input.reportKind === "approved" ? "APPROVED_REPORT" : "EXCEPTION_REPORT"
   try {
     const partition = await hashForRateLimit(
-      `workforce-approved-report-partition:v1:${input.organizationId}`,
+      `workforce-${label}-partition:v1:${input.organizationId}`,
     )
     const decision = await consumePublicRateLimitBatch([{
-      scope: "workforce-approved-report:principal",
+      scope: `workforce-${label}:principal`,
       identifier: `${input.organizationId}:${input.principalUserId}`,
       identifierMode: "exact",
-      redisHashTag: `workforce-approved-report:${partition}`,
+      redisHashTag: `workforce-${label}:${partition}`,
       policy: WORKFORCE_APPROVED_REPORT_RATE_LIMIT,
     }])
     if (decision.allowed) return null
@@ -40,11 +44,11 @@ export async function requireWorkforceApprovedReportRateLimit(input: {
       )
     return NextResponse.json({
       error: decision.unavailable
-        ? "Workforce approved-report protection is temporarily unavailable."
-        : "Workforce approved-report rate limit exceeded.",
+        ? "Workforce report protection is temporarily unavailable."
+        : "Workforce report rate limit exceeded.",
       code: decision.unavailable
-        ? "WORKFORCE_APPROVED_REPORT_RATE_LIMIT_UNAVAILABLE"
-        : "WORKFORCE_APPROVED_REPORT_RATE_LIMITED",
+        ? `WORKFORCE_${codeLabel}_RATE_LIMIT_UNAVAILABLE`
+        : `WORKFORCE_${codeLabel}_RATE_LIMITED`,
       retryAfterSeconds,
     }, {
       status: decision.unavailable ? 503 : 429,
@@ -52,12 +56,26 @@ export async function requireWorkforceApprovedReportRateLimit(input: {
     })
   } catch {
     return NextResponse.json({
-      error: "Workforce approved-report protection is temporarily unavailable.",
-      code: "WORKFORCE_APPROVED_REPORT_RATE_LIMIT_UNAVAILABLE",
+      error: "Workforce report protection is temporarily unavailable.",
+      code: `WORKFORCE_${codeLabel}_RATE_LIMIT_UNAVAILABLE`,
       retryAfterSeconds: 1,
     }, {
       status: 503,
       headers: { ...workforceSensitiveResponseHeaders, "Retry-After": "1" },
     })
   }
+}
+
+export function requireWorkforceApprovedReportRateLimit(input: {
+  organizationId: string
+  principalUserId: string
+}): Promise<NextResponse | null> {
+  return requireWorkforceReportRateLimit({ ...input, reportKind: "approved" })
+}
+
+export function requireWorkforceExceptionReportRateLimit(input: {
+  organizationId: string
+  principalUserId: string
+}): Promise<NextResponse | null> {
+  return requireWorkforceReportRateLimit({ ...input, reportKind: "exception" })
 }
