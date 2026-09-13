@@ -461,6 +461,7 @@ Owner roles are accountabilities, not individual names:
 | 2026-09-13T07:21:18Z | C12 release-one SLO contract | 93% | C12 20% | 149/161 | 5/15 | WF-C12-001 accepted: p95/p99 acknowledgement, two/15-minute oldest-pending thresholds, zero accepted-event loss, conflict/error/isolation stops, zero-repair reconciliation and 30-minute freeze-or-restore recovery are assigned to accountable roles. The contract preserves tenant-safe evidence and does not claim the external 5,000-user/chaos/restore exercise. |
 | 2026-09-13T06:38:00Z | C3 release-one shift workflow scope | 93% | C3 55% | 150/161 | 5/15 | WF-C3-011 accepted: swaps, open shifts and operational on-call are explicitly excluded. Existing `ON_CALL` schema/history remains readable, while activation fails closed before writes until a future reviewed effective policy defines eligibility, consent, rest, compensation and appeal. |
 | 2026-09-13T07:08:35Z | C3 explicit break and shift semantics | 95% | C3 82% | 153/161 | 5/15 | WF-C3-003/004/005 accepted: the approved Baku lunch requires recorded Pause/Resume, planned metadata is never silently deducted, and release one rejects overnight/split definitions. Focused calculation/definition/default-profile evidence remains separate from the future WF-C3-006 extension. |
+| 2026-09-13T06:41:00Z | C9 iOS release exclusion | 95% | C9 7% | 154/161 | 5/15 | WF-C9-015 accepted by explicit safe exclusion: the current pilot/release is Android-only, no iOS parity/signing/background-location claim is made, and a future separate iOS roadmap requires signed Android pilot, support/privacy, device/OS, custody and platform-assurance evidence. |
 
 **C3 phase display reconciliation (2026-08-30T08:11:00+02:00):** the C3
 register contains 11 tasks and its scope did not change. Earlier C3 ledger
@@ -755,7 +756,7 @@ APK artifact alone does not close any mobile gate.
 | WF-C9-012 | P1 | PLANNED | Mobile | Add AZ/RU/EN, TalkBack, 200% font, 48 dp, reduced motion, poor-vision/color-independent states | Physical accessibility acceptance |
 | WF-C9-013 | P1 | PLANNED | Mobile/SRE | Add privacy-safe crash/sync telemetry, build SHA, app version and device-class diagnostics | No token, raw QR/GPS or employee reason in telemetry |
 | WF-C9-014 | P1 | PLANNED | Mobile | Implement version migration, forced upgrade, offline outbox drain and safe uninstall/lost-device guidance | Supported-version matrix and rollback drill |
-| WF-C9-015 | P2 | OWNER DECISION | Product/Mobile | Decide iOS release/parity scope after Android pilot evidence | Separate approved iOS roadmap or explicit exclusion |
+| WF-C9-015 | P2 | DONE | Product/Mobile | Decide iOS release/parity scope after Android pilot evidence | [`iOS release scope`](./workforce-c9-ios-release-scope-2026-09-13.md) explicitly excludes iOS from the current release/pilot and defines evidence required before a separate parity roadmap |
 
 **Gate C9:** a signed app completes normal and failure flows on supported
 physical devices; there is no reliance on a web mock, emulator-only evidence or
