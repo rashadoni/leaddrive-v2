@@ -588,6 +588,76 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
     expect(json.results).toHaveLength(0)
   })
 
+  it("rejects only a new Workforce operation from an expired app version", async () => {
+    vi.stubEnv("WORKFORCE_ANDROID_MIN_VERSION_CODE", "100")
+    vi.stubEnv("WORKFORCE_ANDROID_RECOMMENDED_VERSION_CODE", "120")
+    try {
+      const response = await PushPOST(makePushReq({ operations: [{
+        operationId: "op-expired-workforce-version",
+        op: "create",
+        entity: "workdays",
+        data: {
+          action: "START",
+          id: "workday-expired-version",
+          occurredAt: new Date().toISOString(),
+        },
+        clientTimestamp: Date.now(),
+      }] }, { "x-workforce-app-version-code": "99" }))
+      const body = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(body.results).toEqual([expect.objectContaining({
+        operationId: "op-expired-workforce-version",
+        status: "error",
+        serverData: {
+          code: "WORKFORCE_ANDROID_UPDATE_REQUIRED",
+          release: expect.objectContaining({
+            status: "UPDATE_REQUIRED",
+            minimumVersionCode: 100,
+            recommendedVersionCode: 120,
+            maySubmitNewWorkforceActions: false,
+            recovery: "DRAIN_THEN_UPDATE",
+          }),
+        },
+      })])
+      expect(prisma.$transaction).not.toHaveBeenCalled()
+      expect(prisma.mtmSyncOperation.create).not.toHaveBeenCalled()
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
+
+  it("allows an expired client to reconcile an exact stored Workforce replay", async () => {
+    vi.stubEnv("WORKFORCE_ANDROID_MIN_VERSION_CODE", "100")
+    vi.mocked(prisma.mtmSyncOperation.findMany).mockResolvedValue([{
+      operationId: "op-expired-exact-replay",
+      entity: "hrmRequests",
+      status: "ok",
+      result: { serverId: "request-1", serverData: { status: "PENDING" } },
+    }] as never)
+    try {
+      const response = await PushPOST(makePushReq({ operations: [{
+        operationId: "op-expired-exact-replay",
+        op: "create",
+        entity: "hrmRequests",
+        data: {},
+        clientTimestamp: Date.now(),
+      }] }, { "x-workforce-app-version-code": "99" }))
+      const body = await response.json()
+
+      expect(body.results).toEqual([expect.objectContaining({
+        operationId: "op-expired-exact-replay",
+        status: "ok",
+        serverId: "request-1",
+        serverData: { status: "PENDING" },
+      })])
+      expect(prisma.$transaction).not.toHaveBeenCalled()
+      expect(prisma.mtmSyncOperation.create).not.toHaveBeenCalled()
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
+
   it("isolates a disabled route-field operation without writing it", async () => {
     // Capability checks are intentionally operation-scoped: an old client can
     // keep a workforce operation in the same outbox batch without losing it

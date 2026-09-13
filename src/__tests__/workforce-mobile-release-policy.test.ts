@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest"
-import { resolveWorkforceAndroidReleasePolicy } from "@/lib/workforce/mobile-release-policy"
+import {
+  resolveWorkforceAndroidReleasePolicy,
+  workforceAndroidMutationReleaseBlock,
+} from "@/lib/workforce/mobile-release-policy"
 
 const configured = {
   WORKFORCE_ANDROID_MIN_VERSION_CODE: "100",
@@ -69,5 +72,41 @@ describe("Workforce Android release policy", () => {
         WORKFORCE_ANDROID_RECOMMENDED_VERSION_CODE: "100",
       },
     })).toMatchObject({ status: "POLICY_INVALID", maySubmitNewWorkforceActions: false })
+  })
+
+  it("blocks only new unsupported mutations while the release policy is active", () => {
+    expect(workforceAndroidMutationReleaseBlock({
+      workforceEnabled: true,
+      clientVersionCode: "99",
+      environment: configured,
+    })).toMatchObject({
+      httpStatus: 426,
+      code: "WORKFORCE_ANDROID_UPDATE_REQUIRED",
+      release: { status: "UPDATE_REQUIRED", recovery: "DRAIN_THEN_UPDATE" },
+    })
+    expect(workforceAndroidMutationReleaseBlock({
+      workforceEnabled: true,
+      clientVersionCode: "200",
+      environment: configured,
+    })).toMatchObject({
+      httpStatus: 409,
+      code: "WORKFORCE_ANDROID_VERSION_UNSUPPORTED",
+      release: { status: "CLIENT_TOO_NEW", recovery: "CONTACT_SUPPORT" },
+    })
+    expect(workforceAndroidMutationReleaseBlock({
+      workforceEnabled: true,
+      clientVersionCode: "120",
+      environment: configured,
+    })).toBeNull()
+    expect(workforceAndroidMutationReleaseBlock({
+      workforceEnabled: true,
+      clientVersionCode: null,
+      environment: {},
+    })).toBeNull()
+    expect(workforceAndroidMutationReleaseBlock({
+      workforceEnabled: false,
+      clientVersionCode: "1",
+      environment: configured,
+    })).toBeNull()
   })
 })

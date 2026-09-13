@@ -91,6 +91,10 @@ import {
 } from "@/lib/mtm/mobile-hrm"
 import { recordMtmMobileV1SyncActivity } from "@/lib/mtm/mobile-sync-telemetry"
 import { evaluateWorkforceMobileWriteAccess } from "@/lib/workforce/mobile-write-fence"
+import {
+  workforceAndroidMutationReleaseBlock,
+  WORKFORCE_ANDROID_VERSION_CODE_HEADER,
+} from "@/lib/workforce/mobile-release-policy"
 import { mtmAlertMessage } from "@/lib/mtm/alert-messages"
 
 /**
@@ -417,6 +421,12 @@ export const POST = withMobileRls(async (req, auth) => {
     !Array.isArray(operation) &&
     needsWorkforceMobileWriteFence(auth, (operation as { entity?: unknown }).entity as string)
   ))
+  const workforceReleaseBlock = containsWorkforceOperation
+    ? workforceAndroidMutationReleaseBlock({
+        workforceEnabled: true,
+        clientVersionCode: req.headers.get(WORKFORCE_ANDROID_VERSION_CODE_HEADER),
+      })
+    : null
   const privilegedForceOnly = FORCE_CHECK_IN_ROLES.has(auth.role)
     && operations.length > 0
     && operations.every((operation) => (
@@ -640,6 +650,18 @@ export const POST = withMobileRls(async (req, auth) => {
       }
       if (!hasMobilePermission(auth.role, "WORKTIME_SELF_MUTATE")) {
         results.push(syncPermissionError(operationId, "WORKTIME_SELF_MUTATE"))
+        continue
+      }
+      if (workforceReleaseBlock) {
+        results.push({
+          operationId,
+          status: "error",
+          error: workforceReleaseBlock.message,
+          serverData: {
+            code: workforceReleaseBlock.code,
+            release: workforceReleaseBlock.release,
+          },
+        })
         continue
       }
     } else {
