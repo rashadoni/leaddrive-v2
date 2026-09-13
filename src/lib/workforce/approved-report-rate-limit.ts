@@ -4,7 +4,7 @@ import { hashForRateLimit } from "@/lib/rate-limit"
 import { workforceSensitiveResponseHeaders } from "@/lib/workforce/sensitive-response"
 
 type WorkforceApprovedReportRateLimit = PublicRatePolicy & { retryAfterSeconds: number }
-type WorkforceReportKind = "approved" | "exception"
+type WorkforceReportKind = "approved" | "exception" | "siteTransition"
 
 const WORKFORCE_APPROVED_REPORT_RATE_LIMIT: WorkforceApprovedReportRateLimit = {
   maxRequests: 30,
@@ -21,8 +21,12 @@ async function requireWorkforceReportRateLimit(input: {
   principalUserId: string
   reportKind: WorkforceReportKind
 }): Promise<NextResponse | null> {
-  const label = input.reportKind === "approved" ? "approved-report" : "exception-report"
-  const codeLabel = input.reportKind === "approved" ? "APPROVED_REPORT" : "EXCEPTION_REPORT"
+  const labels: Record<WorkforceReportKind, { key: string; code: string }> = {
+    approved: { key: "approved-report", code: "APPROVED_REPORT" },
+    exception: { key: "exception-report", code: "EXCEPTION_REPORT" },
+    siteTransition: { key: "site-transition-report", code: "SITE_TRANSITION_REPORT" },
+  }
+  const { key: label, code: codeLabel } = labels[input.reportKind]
   try {
     const partition = await hashForRateLimit(
       `workforce-${label}-partition:v1:${input.organizationId}`,
@@ -78,4 +82,11 @@ export function requireWorkforceExceptionReportRateLimit(input: {
   principalUserId: string
 }): Promise<NextResponse | null> {
   return requireWorkforceReportRateLimit({ ...input, reportKind: "exception" })
+}
+
+export function requireWorkforceSiteTransitionReportRateLimit(input: {
+  organizationId: string
+  principalUserId: string
+}): Promise<NextResponse | null> {
+  return requireWorkforceReportRateLimit({ ...input, reportKind: "siteTransition" })
 }

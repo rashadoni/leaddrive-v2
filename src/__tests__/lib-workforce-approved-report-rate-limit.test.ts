@@ -12,6 +12,7 @@ import { hashForRateLimit } from "@/lib/rate-limit"
 import {
   requireWorkforceApprovedReportRateLimit,
   requireWorkforceExceptionReportRateLimit,
+  requireWorkforceSiteTransitionReportRateLimit,
 } from "@/lib/workforce/approved-report-rate-limit"
 
 beforeEach(() => {
@@ -98,5 +99,20 @@ describe("requireWorkforceApprovedReportRateLimit", () => {
       code: "WORKFORCE_EXCEPTION_REPORT_RATE_LIMITED",
       retryAfterSeconds: 30,
     })
+  })
+
+  it("keeps site-transition reports in their own distributed budget", async () => {
+    vi.mocked(consumePublicRateLimitBatch).mockResolvedValueOnce({ allowed: true } as never)
+
+    await expect(requireWorkforceSiteTransitionReportRateLimit({
+      organizationId: "org-private",
+      principalUserId: "user-private",
+    })).resolves.toBeNull()
+
+    expect(hashForRateLimit).toHaveBeenCalledWith("workforce-site-transition-report-partition:v1:org-private")
+    expect(consumePublicRateLimitBatch).toHaveBeenCalledWith([expect.objectContaining({
+      scope: "workforce-site-transition-report:principal",
+      redisHashTag: "workforce-site-transition-report:partition-hash",
+    })])
   })
 })

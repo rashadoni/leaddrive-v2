@@ -1,8 +1,8 @@
 # Workforce C11 site-transition report foundation evidence
 
-**Status:** WF-C11-007 partial — safe aggregation and a fail-closed access
-contract are implemented; no endpoint or user-visible site-transition report
-is claimed by this checkpoint.
+**Status:** WF-C11-007 partial — safe aggregation, a fail-closed access
+contract and a read-only API are implemented; no user-visible site-transition
+report is claimed by this checkpoint.
 **Last verified:** 2026-09-13
 
 ## Delivered projection
@@ -27,8 +27,15 @@ workday, segment and site fail closed instead of inflating a count.
   requires an exact matching durable attendance-read grant; an unfiltered
   aggregate requires organization scope. A current team grant is never widened
   into a historical report because claims do not snapshot team membership.
-- Names, tenant-timezone date reads, rate limits, audit and response shaping
-  remain mandatory work for the future API/UI.
+- `GET /api/v1/workforce/site-transition-reports` accepts one tenant-timezone
+  period of at most 93 days and either one employee or one site filter. It
+  refuses ambiguous dual filters and more than 5,000 claims.
+- Employee and site names are resolved only after aggregation. The response is
+  private/no-store and nosniff; its audit stores only period, filter kind and
+  aggregate counts, never IDs, names, coordinates, proof or reasons.
+- A separate distributed tenant-and-principal budget is fail-closed before
+  actor/settings/database reads.
+- Browser UI and physical reconciliation remain mandatory future work.
 
 ## Verification
 
@@ -37,6 +44,9 @@ workday, segment and site fail closed instead of inflating a count.
 - **PASS:** targeted access-contract Vitest, 1 file and 5 tests: legacy
   compatibility, exact site grant, no team-to-history widening, ambiguous-scope
   rejection and fail-closed fixed-label logging.
+- **PASS:** site-transition API/projection/access/rate-limit Vitest, 4 files and
+  20 tests; includes tenant-local Baku bounds, privacy-safe audit, oversized and
+  missing-site failure, separate rate budget and fixed-label containment.
 - **PASS:** targeted ESLint.
 - **PASS:** `git diff --check`.
 - **NOT RUN:** TypeScript full check, browser E2E, database integration, staging
