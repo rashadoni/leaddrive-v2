@@ -253,8 +253,6 @@ def read_environment(
         "PGDATABASE",
         "PGUSER",
         "PGPASSFILE",
-        "PGSSLMODE",
-        "PGSSLROOTCERT",
     ):
         if not result[required_key]:
             raise SafeMaintenanceError("configuration-read-required")
@@ -678,6 +676,7 @@ def rewrite_environment(payload: bytes, replacements: dict[str, str]) -> bytes:
         r"^(?P<indent>\s*)(?:export\s+)?(?P<key>[A-Za-z_][A-Za-z0-9_]*)\s*=.*?(?P<ending>\r?\n)?$"
     )
     lines = text.splitlines(keepends=True)
+    newline = "\r\n" if any(line.endswith("\r\n") for line in lines) else "\n"
     existing = {key: 0 for key in replacements}
     for line in lines:
         match = assignment.fullmatch(line)
@@ -696,18 +695,34 @@ def rewrite_environment(payload: bytes, replacements: dict[str, str]) -> bytes:
             if seen[key] > 1:
                 raise SafeMaintenanceError
             ending = match.group("ending") or ""
-            output.append(f"{match.group('indent')}{key}={replacements[key]}{ending}")
             if (
                 key == "PGHOST"
                 and "PGHOSTADDR" in replacements
                 and existing["PGHOSTADDR"] == 0
             ):
-                output.append(f"{match.group('indent')}PGHOSTADDR={replacements['PGHOSTADDR']}{ending}")
+                separator = ending or newline
+                output.append(
+                    f"{match.group('indent')}{key}={replacements[key]}{separator}"
+                )
+                output.append(
+                    f"{match.group('indent')}PGHOSTADDR={replacements['PGHOSTADDR']}{ending}"
+                )
                 seen["PGHOSTADDR"] += 1
+            else:
+                output.append(
+                    f"{match.group('indent')}{key}={replacements[key]}{ending}"
+                )
             continue
         output.append(line)
 
-    for key in ("PGHOST", "PGSSLMODE", "PGSSLROOTCERT"):
+    if seen.get("PGHOST") != 1:
+        raise SafeMaintenanceError
+    for key in ("PGSSLMODE", "PGSSLROOTCERT"):
+        if seen.get(key) == 0:
+            if output and not output[-1].endswith(("\n", "\r")):
+                output[-1] = f"{output[-1]}{newline}"
+            output.append(f"{key}={replacements[key]}{newline}")
+            seen[key] = 1
         if seen.get(key) != 1:
             raise SafeMaintenanceError
     if seen.get("PGHOSTADDR") != 1:
@@ -857,7 +872,7 @@ def _restore_snapshot(state: dict[str, object], *, require_post_state: bool) -> 
 
 
 def _prepare(environment: bytes, config: dict[str, str]) -> PreparedRemediation:
-    if config["PGSSLMODE"] not in {
+    if config["PGSSLMODE"] and config["PGSSLMODE"] not in {
         "disable",
         "allow",
         "prefer",
@@ -867,7 +882,7 @@ def _prepare(environment: bytes, config: dict[str, str]) -> PreparedRemediation:
     }:
         raise SafeMaintenanceError("configuration-client")
     current_rootcert = config["PGSSLROOTCERT"]
-    if (
+    if current_rootcert and (
         len(current_rootcert) > 4096
         or not Path(current_rootcert).is_absolute()
         or any(ord(character) < 32 for character in current_rootcert)

@@ -87,10 +87,11 @@ automatically restores the snapshot. Workflow output is a single schema-gated
 enum line, including only an allowlisted preflight failure stage when blocked,
 and contains no raw configuration or certificate identity.
 
-The controlled transition accepts only a standard libpq TLS mode and an
-absolute non-URL starting CA path, then replaces both with the reviewed
-`verify-full` and dedicated source-CA settings. Any service-based connection or
-password override remains a stop condition.
+The controlled transition accepts an absent or standard libpq TLS mode and an
+absent or absolute non-URL starting CA path, then installs both reviewed
+`verify-full` and dedicated source-CA settings. Database identity, user and
+passfile settings remain mandatory; any service-based connection or password
+override remains a stop condition.
 
 No PostgreSQL restart is part of this path. If any decision result is not
 positive, certificate re-issuance and DNS correction need a separate reviewed

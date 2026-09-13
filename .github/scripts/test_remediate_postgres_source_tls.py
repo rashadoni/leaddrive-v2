@@ -79,6 +79,19 @@ class EnvironmentTests(unittest.TestCase):
             MAINTENANCE.read_environment(path, require_production_authority=False)
         self.assertEqual(raised.exception.code, "configuration-read-duplicate")
 
+    def test_reader_accepts_missing_precommission_tls_client_settings(self) -> None:
+        path = self.write_environment(
+            "PGHOST=127.0.0.1\n"
+            "PGDATABASE=database_name\n"
+            "PGUSER=backup_user\n"
+            "PGPASSFILE=/etc/leaddrive/backup.pgpass\n"
+        )
+        _, _, config = MAINTENANCE.read_environment(
+            path, require_production_authority=False
+        )
+        self.assertEqual(config["PGSSLMODE"], "")
+        self.assertEqual(config["PGSSLROOTCERT"], "")
+
     def test_reader_classifies_hardlinked_environment_without_reading_values(self) -> None:
         path = self.write_environment(
             "PGHOST=127.0.0.1\n"
@@ -138,6 +151,36 @@ class EnvironmentTests(unittest.TestCase):
         )
         self.assertEqual(rewritten.count(b"PGHOSTADDR="), 1)
         self.assertIn(b"PGHOSTADDR=127.0.0.1\n", rewritten)
+
+    def test_rewrite_adds_missing_tls_client_settings(self) -> None:
+        original = b"PGHOST=127.0.0.1\nUNRELATED=preserved-without-reading\n"
+        rewritten = MAINTENANCE.rewrite_environment(
+            original,
+            {
+                "PGHOST": "production.example.internal",
+                "PGHOSTADDR": "127.0.0.1",
+                "PGSSLMODE": "verify-full",
+                "PGSSLROOTCERT": "/etc/leaddrive/managed-postgres-ca.crt",
+            },
+        )
+        self.assertEqual(rewritten.count(b"PGSSLMODE="), 1)
+        self.assertEqual(rewritten.count(b"PGSSLROOTCERT="), 1)
+        self.assertIn(b"UNRELATED=preserved-without-reading\n", rewritten)
+
+    def test_rewrite_adds_hostaddr_after_unterminated_host_line(self) -> None:
+        rewritten = MAINTENANCE.rewrite_environment(
+            b"PGHOST=127.0.0.1",
+            {
+                "PGHOST": "production.example.internal",
+                "PGHOSTADDR": "127.0.0.1",
+                "PGSSLMODE": "verify-full",
+                "PGSSLROOTCERT": "/etc/leaddrive/managed-postgres-ca.crt",
+            },
+        )
+        self.assertIn(
+            b"PGHOST=production.example.internal\nPGHOSTADDR=127.0.0.1\n",
+            rewritten,
+        )
 
 
 class DecisionTests(unittest.TestCase):
