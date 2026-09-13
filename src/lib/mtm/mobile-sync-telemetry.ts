@@ -39,6 +39,7 @@ type MtmMobileApkObservationInput = {
   apkVersion: string | null
   protocolPreferred: 1 | 2
   cohorts: { routes: boolean; visits: boolean; tasks: boolean; workforce: boolean; gps: boolean; media: boolean }
+  diagnostics?: MtmMobileClientDiagnosticsInput
 }
 
 type MtmMobileV1SyncActivityInput = {
@@ -46,6 +47,16 @@ type MtmMobileV1SyncActivityInput = {
   agentId: string
   apkVersion: string | null
   endpoint: "GET /api/v1/mtm/mobile/sync/pull" | "POST /api/v1/mtm/mobile/sync/push"
+  diagnostics?: MtmMobileClientDiagnosticsInput
+}
+
+type MtmMobileClientDiagnosticsInput = {
+  /** Immutable artifact claim only; never a source path, branch or token. */
+  buildSha: string | null
+  /** Current clients may only identify the platform, never a model/serial. */
+  platform: string | null
+  /** Coarse screen class, not Android ID, IMEI, manufacturer or model. */
+  deviceClass: string | null
 }
 
 type PullTelemetryInput = {
@@ -82,6 +93,26 @@ function safePullDimensions(input: Pick<PullTelemetryInput,
     durationMs: Number.isFinite(input.durationMs)
       ? Math.min(300_000, Math.max(0, Math.round(input.durationMs)))
       : 0,
+  }
+}
+
+function safeBuildSha(value: string | null): string {
+  return value != null && /^[0-9a-f]{40}$/.test(value) ? value : "unknown"
+}
+
+function safePlatform(value: string | null): "android" | "unknown" {
+  return value === "android" ? value : "unknown"
+}
+
+function safeDeviceClass(value: string | null): "phone" | "tablet" | "other" | "unknown" {
+  return value === "phone" || value === "tablet" || value === "other" ? value : "unknown"
+}
+
+function safeClientDiagnostics(input: MtmMobileClientDiagnosticsInput | undefined) {
+  return {
+    buildSha: safeBuildSha(input?.buildSha ?? null),
+    platform: safePlatform(input?.platform ?? null),
+    deviceClass: safeDeviceClass(input?.deviceClass ?? null),
   }
 }
 
@@ -160,6 +191,7 @@ export function recordMtmMobileApkObservation(input: MtmMobileApkObservationInpu
       endpoint: "GET /api/v1/mtm/mobile/bootstrap",
       apkVersion: safeApkVersion(input.apkVersion),
       protocolPreferred: input.protocolPreferred,
+      ...(input.diagnostics ? { diagnostics: safeClientDiagnostics(input.diagnostics) } : {}),
       cohorts: {
         routes: input.cohorts.routes,
         visits: input.cohorts.visits,
@@ -194,6 +226,7 @@ export function recordMtmMobileV1SyncActivity(input: MtmMobileV1SyncActivityInpu
       endpoint: input.endpoint,
       apkVersion: safeApkVersion(input.apkVersion),
       protocolVersion: 1,
+      ...(input.diagnostics ? { diagnostics: safeClientDiagnostics(input.diagnostics) } : {}),
     }))
   } catch {
     // Census evidence must never affect a v1 response, its idempotency record

@@ -2,7 +2,7 @@
 
 > **Status:** safe partial source foundation for `WF-C9-001`, `WF-C9-002`,
 > `WF-C9-003`, `WF-C9-004`, `WF-C9-005`, `WF-C9-006`, `WF-C9-008`,
-> `WF-C9-011`, `WF-C9-012` and `WF-C5-003`. It is not an Android build, signed app, device-attestation
+> `WF-C9-011`, `WF-C9-012`, `WF-C9-013` and `WF-C5-003`. It is not an Android build, signed app, device-attestation
 > acceptance, Play upload or location-collection activation.
 > **Recorded:** 2026-08-30
 
@@ -134,6 +134,27 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   this resource slice: safely localising them requires stable error codes and
   reviewed legal/HR translation, not unreliable client-side text matching.
 
+## Privacy-safe mobile diagnostics (`WF-C9-013`, partial)
+
+- A release build now requires an externally supplied immutable 40-character
+  lowercase Git SHA (`WORKFORCE_BUILD_SHA`) in addition to its final package,
+  URL and version properties. Debug intentionally reports `unknown`; it does
+  not pretend to be a releasable artifact.
+- The native client sends only app semver, that build SHA, literal `android`,
+  and a coarse screen category (`phone`, `tablet` or `other`) on its existing
+  Workforce API requests. The category is derived from the screen-layout
+  bucket, not a model, serial, Android ID, IMEI, carrier or hardware ID.
+- The existing server-side mobile census HMACs tenant and principal before it
+  logs them. It accepts only the fixed SHA/platform/device-class grammar and
+  converts all other header values to `unknown`. No raw request header,
+  authentication token, QR proof, GPS coordinate, employee reason, outbox
+  payload or device selector is emitted by this source slice.
+- This intentionally does **not** install a crash SDK, DSN, crash collector,
+  dashboard, analytics vendor or stack-trace pipeline. Selecting one and
+  approving its data-processing, retention, access and release posture needs
+  privacy/security approval and real operational ownership; therefore this
+  task remains partial.
+
 ## Source-level checks
 
 - `PASS` — `workforce-android-foundation.test.ts` fixes the module boundary,
@@ -149,6 +170,10 @@ claiming Gradle, physical-device or seven-day recovery evidence.
 - `PASS` — `workforce-android-foundation.test.ts` verifies all three core
   catalogs, resource-backed native notification/biometric prompts, tab state
   semantics, polite status announcements and explicit 48 dp target source.
+- `PASS` — targeted telemetry, mobile bootstrap, legacy sync, `/workday` and
+  Android-foundation tests cover the bounded header grammar, legacy-call
+  compatibility and absence of raw diagnostic collection (154 tests total in
+  this checkpoint); scoped ESLint and `git diff --check` also pass.
 - `NOT RUN` — Android Gradle lint/unit tests, build, emulator/device tests,
   camera/location/QR checks, notification permission/channel/delivery failure,
   TalkBack, AZ/RU/EN linguistic review, 200% font, contrast, reduced-motion

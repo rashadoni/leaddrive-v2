@@ -78,7 +78,7 @@ import kotlinx.coroutines.launch
 class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val configuration = WorkforceRuntimeConfiguration.fromBuildConfig()
+        val configuration = WorkforceRuntimeConfiguration.fromBuildConfig(applicationContext)
         val secureStore = WorkforceSecureStore(applicationContext)
         val deviceKeys = WorkforceDeviceKeyManager()
         val repository = WorkforceSessionRepository(

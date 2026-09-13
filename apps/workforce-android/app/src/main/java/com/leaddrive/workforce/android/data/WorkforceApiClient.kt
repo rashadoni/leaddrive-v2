@@ -418,6 +418,8 @@ class WorkforceApiClient(
             connection.setRequestProperty("x-workforce-client-platform", configuration.clientPlatform)
             connection.setRequestProperty("x-workforce-app-version", configuration.appVersion)
             connection.setRequestProperty("x-workforce-app-version-code", configuration.appVersionCode.toString())
+            connection.setRequestProperty("x-workforce-app-build", configuration.buildSha)
+            connection.setRequestProperty("x-workforce-device-class", configuration.deviceClass.wireValue)
             if (token != null) connection.setRequestProperty("Authorization", "Bearer $token")
             if (deviceId != null) connection.setRequestProperty("x-field-device-id", deviceId)
             if (body != null) {

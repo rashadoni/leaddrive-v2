@@ -266,4 +266,18 @@ describe("Workforce Android foundation", () => {
     expect(authenticator).toContain("R.string.biometric_title")
     expect(authenticator).toContain("R.string.cancel")
   })
+
+  it("sends only bounded release and coarse device diagnostics through the existing sync observability path", () => {
+    const build = read("app/build.gradle.kts")
+    const configuration = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceRuntimeConfiguration.kt")
+    const api = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceApiClient.kt")
+    expect(build).toContain("WORKFORCE_BUILD_SHA")
+    expect(build).toContain('Regex("[0-9a-f]{40}")')
+    expect(configuration).toContain("WorkforceDeviceClass")
+    expect(configuration).toContain("SCREENLAYOUT_SIZE_MASK")
+    expect(configuration).not.toMatch(/Build\.(MODEL|SERIAL)|Settings\.Secure\.ANDROID_ID/i)
+    expect(api).toContain('"x-workforce-app-build"')
+    expect(api).toContain('"x-workforce-device-class"')
+    expect(api).not.toMatch(/Log\.|println\(/)
+  })
 })

@@ -8,6 +8,7 @@ val releaseApplicationId = providers.gradleProperty("WORKFORCE_APPLICATION_ID")
 val releaseApiBaseUrl = providers.gradleProperty("WORKFORCE_API_BASE_URL")
 val releaseVersionName = providers.gradleProperty("WORKFORCE_VERSION_NAME")
 val releaseVersionCode = providers.gradleProperty("WORKFORCE_VERSION_CODE")
+val releaseBuildSha = providers.gradleProperty("WORKFORCE_BUILD_SHA")
 
 fun quotedBuildValue(value: String): String = "\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\""
 
@@ -35,6 +36,9 @@ android {
         buildConfigField("String", "WORKFORCE_API_BASE_URL", quotedBuildValue("https://invalid.invalid/"))
         buildConfigField("String", "WORKFORCE_CLIENT_FAMILY", quotedBuildValue("workforce"))
         buildConfigField("String", "WORKFORCE_CLIENT_PLATFORM", quotedBuildValue("android"))
+        // Debug source has no immutable release artifact. It must report
+        // unknown rather than inventing a source revision for diagnostics.
+        buildConfigField("String", "WORKFORCE_BUILD_SHA", quotedBuildValue("unknown"))
     }
 
     buildTypes {
@@ -52,6 +56,11 @@ android {
                 "String",
                 "WORKFORCE_API_BASE_URL",
                 quotedBuildValue(releaseApiBaseUrl.orElse("https://invalid.invalid/").get()),
+            )
+            buildConfigField(
+                "String",
+                "WORKFORCE_BUILD_SHA",
+                quotedBuildValue(releaseBuildSha.orElse("unknown").get()),
             )
             isMinifyEnabled = true
             isShrinkResources = true
@@ -89,6 +98,7 @@ tasks.configureEach {
             requireReleaseValue("WORKFORCE_API_BASE_URL", releaseApiBaseUrl.orNull)
             requireReleaseValue("WORKFORCE_VERSION_NAME", releaseVersionName.orNull)
             requireReleaseValue("WORKFORCE_VERSION_CODE", releaseVersionCode.orNull)
+            requireReleaseValue("WORKFORCE_BUILD_SHA", releaseBuildSha.orNull)
             check(releaseApplicationId.orNull?.matches(Regex("[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+")) == true) {
                 "WORKFORCE_APPLICATION_ID must be a valid Android application ID."
             }
@@ -100,6 +110,9 @@ tasks.configureEach {
             }
             check(releaseVersionCode.orNull?.toIntOrNull()?.let { it > 0 } == true) {
                 "WORKFORCE_VERSION_CODE must be a positive integer."
+            }
+            check(releaseBuildSha.orNull?.matches(Regex("[0-9a-f]{40}")) == true) {
+                "WORKFORCE_BUILD_SHA must be the lowercase 40-character immutable Git commit SHA."
             }
         }
     }

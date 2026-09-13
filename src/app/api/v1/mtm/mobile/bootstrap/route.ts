@@ -349,10 +349,13 @@ export const GET = withMobileRls(async (req, auth) => {
     // census without storing client state or withholding the v1 contract from
     // an old APK. The telemetry helper hashes tenant/principal identifiers and
     // rejects unsafe version strings before logging.
+    const buildSha = req.headers.get("x-workforce-app-build")
+    const platform = req.headers.get("x-workforce-client-platform")
+    const deviceClass = req.headers.get("x-workforce-device-class")
     recordMtmMobileApkObservation({
       organizationId: auth.orgId,
       agentId: auth.agentId,
-      apkVersion: req.headers.get("x-field-apk-version"),
+      apkVersion: req.headers.get("x-workforce-app-version") ?? req.headers.get("x-field-apk-version"),
       protocolPreferred: manifest.protocol.preferred,
       cohorts: {
         routes: manifest.syncV2.routes,
@@ -362,6 +365,9 @@ export const GET = withMobileRls(async (req, auth) => {
         gps: manifest.gps.batches,
         media: manifest.media.uploads,
       },
+      ...(buildSha || platform || deviceClass
+        ? { diagnostics: { buildSha, platform, deviceClass } }
+        : {}),
     })
     const date = currentDateKey(now, timezone)
     const todayWorkDate = localDateKeyToUtc(date, timezone)

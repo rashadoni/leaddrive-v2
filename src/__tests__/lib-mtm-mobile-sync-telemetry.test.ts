@@ -94,12 +94,22 @@ describe("MTM mobile sync pull telemetry", () => {
       apkVersion: "2.3.1+101",
       protocolPreferred: 2,
       cohorts: { routes: true, visits: false, tasks: false, workforce: true, gps: false, media: true },
+      diagnostics: {
+        buildSha: "a".repeat(40),
+        platform: "android",
+        deviceClass: "tablet",
+      },
     })
 
     expect(info).toHaveBeenCalledTimes(1)
     const serialized = String(info.mock.calls[0][1])
     expect(serialized).toContain('"event":"mobile_apk_observed"')
     expect(serialized).toContain('"apkVersion":"2.3.1+101"')
+    expect(JSON.parse(serialized).diagnostics).toEqual({
+      buildSha: "a".repeat(40),
+      platform: "android",
+      deviceClass: "tablet",
+    })
     expect(serialized).toContain('"protocolPreferred":2')
     expect(JSON.parse(serialized).cohorts).toEqual({
       routes: true,
@@ -132,6 +142,35 @@ describe("MTM mobile sync pull telemetry", () => {
     expect(serialized).not.toContain("agent-private-id")
     expect(serialized).not.toContain("cursor")
     expect(serialized).not.toContain("operationId")
+    expect(JSON.parse(serialized)).not.toHaveProperty("diagnostics")
+  })
+
+  it("normalizes arbitrary client diagnostics without retaining sensitive header content", () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => undefined)
+
+    recordMtmMobileV1SyncActivity({
+      organizationId: "tenant-private-id",
+      agentId: "agent-private-id",
+      apkVersion: "2.3.1+101",
+      endpoint: "POST /api/v1/mtm/mobile/sync/push",
+      diagnostics: {
+        buildSha: "Bearer token / qr-token / 40.4,49.8",
+        platform: "android; device=alice-phone",
+        deviceClass: "Galaxy A55 serial 123",
+      },
+    })
+
+    const serialized = String(info.mock.calls[0][1])
+    expect(JSON.parse(serialized).diagnostics).toEqual({
+      buildSha: "unknown",
+      platform: "unknown",
+      deviceClass: "unknown",
+    })
+    expect(serialized).not.toContain("Bearer token")
+    expect(serialized).not.toContain("qr-token")
+    expect(serialized).not.toContain("40.4,49.8")
+    expect(serialized).not.toContain("alice-phone")
+    expect(serialized).not.toContain("serial 123")
   })
 
   it("maps an arbitrary APK header claim to unknown", () => {

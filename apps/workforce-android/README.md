@@ -14,7 +14,8 @@ location/background-tracking service.
   a guessed host.
 - A release task requires all of the following CI/release-management Gradle
   properties: `WORKFORCE_APPLICATION_ID`, `WORKFORCE_API_BASE_URL`,
-  `WORKFORCE_VERSION_NAME` and `WORKFORCE_VERSION_CODE`. No value is committed.
+  `WORKFORCE_VERSION_NAME`, `WORKFORCE_VERSION_CODE` and a 40-character
+  lowercase immutable `WORKFORCE_BUILD_SHA`. No value is committed.
 - A final Play application ID, signing key/Play App Signing configuration,
   supported device/OS matrix and managed Play organization track are external
   release decisions. This project must not be uploaded before they are
@@ -62,6 +63,11 @@ location/background-tracking service.
   selected state to accessibility services and explicitly use 48 dp minimum
   targets. Server/API error text and physical TalkBack/font-scale acceptance
   remain separate work; the resource files do not claim full translation.
+- Existing mobile sync census receives only app semver, immutable build SHA,
+  literal Android platform and coarse `phone`/`tablet`/`other` screen class.
+  It does not collect model, serial, Android ID, IMEI, token, QR, GPS, employee
+  reason or payload. A crash SDK, external telemetry collector and dashboard
+  remain unselected and are not present in this source foundation.
 
 The project intentionally does **not** claim Android Gradle/build evidence,
 physical Today/offline/QR/biometric tests, hardware-attestation-server
