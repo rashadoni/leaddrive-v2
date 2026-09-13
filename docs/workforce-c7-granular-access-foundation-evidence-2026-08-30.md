@@ -58,6 +58,29 @@ all owner-approved incompatible pairs whose effective windows overlap. Both
 tables have tenant RLS, only `SELECT`/`INSERT` policies and mutation-rejection
 triggers.
 
+`src/lib/workforce/access-grant-ledger.ts` supplies the matching pure draft
+writer. It normalizes exact scopes, role/scope compatibility, bounded opaque
+identifiers, reason codes, stable operation IDs and effective windows;
+revocation drafts cannot predate their grant.
+
+The operation-ID migration mirrors the writer's strict identifier and reason
+formats as database checks. A direct application-role insert therefore cannot
+create an authority row that the canonical service could not replay or audit.
+
+`src/lib/workforce/access-grant-writer.ts` is the next, still-unwired
+transaction-scoped primitive. It requires a caller-provided authorization
+decision, serializes one tenant-principal with a PostgreSQL advisory transaction
+lock, creates exactly one append-only grant or revocation and records a
+metadata-only audit entry in the same transaction. An operation ID is unique
+per tenant: an exact retry returns the original record, while a changed payload
+under the same ID fails closed. A revocation re-reads and matches the immutable
+grant start before writing, so a stale caller cannot revoke a different grant.
+It authorizes a revocation before looking up the requested grant or acquiring a
+lock, so an unauthorized caller cannot use a not-found or mismatch result to
+probe dormant grant identities.
+The new operation-ID migration deliberately refuses non-empty dormant storage
+instead of inventing identifiers for direct database authority rows.
+
 ## Deliberate rollout boundary
 
 The migration creates no grant row and changes no tenant flag, role mapping or
@@ -76,8 +99,11 @@ and run access review before live enforcement can be claimed.
   deny an ungranted administrator after cutover and accept an exact
   employee-scoped `TEAM_ATTENDANCE_READ` grant without a mutable team lookup.
 - `PASS` — static migration contract tests cover exact scope, role/scope
-  constraints, append-only revocation, RLS and every incompatible pair;
-  `prisma validate` is part of the bounded source gate.
-- `NOT RUN` — migration apply/RLS concurrency, browser role assignment,
-  accountable grant/revocation writer, tenant activation and production
-  rollout; these remain behind the normal CI/deploy and later C7 rollout gates.
+  constraints, append-only revocation, RLS, every incompatible pair and the
+  fail-closed operation-ID migration; `prisma validate` passed without a
+  database connection. Focused writer tests cover invalid scope/window,
+  pre-grant revocation rejection, mandatory authorization, tenant-principal
+  serialization, metadata-only audit, exact replay, changed-operation conflict
+  rejection and pre-lookup revocation authorization.
+- `NOT RUN` — browser role assignment, endpoint integration, database RLS
+  concurrency and tenant activation require the later C7 rollout gates.
