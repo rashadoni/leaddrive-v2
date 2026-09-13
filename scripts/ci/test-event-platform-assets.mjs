@@ -437,6 +437,11 @@ assert.ok(
   prTrigger.length > 0 && !/^\s+paths(-ignore)?:/mu.test(prTrigger),
   "pr-checks must start on every pull request: its jobs are required, and a check that never starts leaves a PR unmergeable for ever",
 )
+assert.ok(
+  prChecksWorkflow.includes("python3 .github/scripts/test_remediate_postgres_source_tls.py")
+    && prChecksWorkflow.includes("python3 .github/scripts/test_provision_postgres_restore_scratch.py"),
+  "required PR checks must execute both PostgreSQL maintenance safety suites",
+)
 // The heavy jobs may be skipped for documentation-only PRs, but only through
 // pr-scope — and pr-scope must itself be required, because a failed detector
 // skips its dependants and GitHub counts a skip as a pass.
