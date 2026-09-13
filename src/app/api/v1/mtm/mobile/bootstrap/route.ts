@@ -36,6 +36,10 @@ import {
   resolveWorkforceAndroidReleasePolicy,
   WORKFORCE_ANDROID_VERSION_CODE_HEADER,
 } from "@/lib/workforce/mobile-release-policy"
+import {
+  WORKFORCE_MOBILE_BOOTSTRAP_SCHEMA_VERSION,
+  WORKFORCE_MOBILE_SCHEMA_SUPPORT,
+} from "@/lib/workforce/mobile-schema-support"
 
 type MobileAttendanceManifest = {
   qrEnabled: boolean
@@ -406,7 +410,7 @@ export const GET = withMobileRls(async (req, auth) => {
     return NextResponse.json({
       success: true,
       data: {
-        schemaVersion: 1,
+        schemaVersion: WORKFORCE_MOBILE_BOOTSTRAP_SCHEMA_VERSION,
         protocol: { min: 1, preferred: 1 },
         tenant: { id: organization.id, name: organization.name, slug: organization.slug },
         principal: { id: agent.id, name: agent.name, email: agent.email, role: agent.role },
@@ -424,6 +428,7 @@ export const GET = withMobileRls(async (req, auth) => {
             cursor: null,
             attendance,
             release: workforceRelease,
+            wireSchemas: WORKFORCE_MOBILE_SCHEMA_SUPPORT,
           },
           routes: {
             enabled: routeFieldEnabled,

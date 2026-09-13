@@ -7,6 +7,12 @@ import {
 } from "@/lib/mtm/workday"
 import { WORKFORCE_EVIDENCE_ENVELOPE_VERSION } from "@/lib/workforce/evidence-envelope"
 import { buildMtmMobileCapabilityManifest } from "@/lib/mtm/mobile-capability-manifest"
+import {
+  WORKFORCE_MOBILE_BOOTSTRAP_SCHEMA_VERSION,
+  WORKFORCE_MOBILE_SCHEMA_SUPPORT,
+  WORKFORCE_SITE_TRANSITION_CLAIM_SCHEMA_VERSION,
+  WORKFORCE_WORKDAY_RESPONSE_SCHEMA_VERSION,
+} from "@/lib/workforce/mobile-schema-support"
 
 const root = process.cwd()
 const source = (path: string) => readFileSync(join(root, path), "utf8")
@@ -50,6 +56,19 @@ describe("Workforce C13 additive compatibility contract", () => {
       .toContain("Do not backfill requestHash, provenance, review state, or segment identity")
     expect(source("src/lib/workforce/timesheet-approval-service.ts"))
       .toContain("WORKFORCE_TIMESHEET_APPROVAL_SNAPSHOT_MISSING")
+  })
+
+  it("advertises only the exact deployed Workforce wire schemas", () => {
+    expect(WORKFORCE_MOBILE_BOOTSTRAP_SCHEMA_VERSION).toBe(1)
+    expect(WORKFORCE_WORKDAY_RESPONSE_SCHEMA_VERSION).toBe(1)
+    expect(WORKFORCE_SITE_TRANSITION_CLAIM_SCHEMA_VERSION).toBe(1)
+    expect(WORKFORCE_MOBILE_SCHEMA_SUPPORT).toEqual({
+      bootstrapResponse: { current: 1, supported: [1] },
+      workdayRequest: { preferred: 3, supported: [1, 2, 3] },
+      workdayResponse: { current: 1, supported: [1] },
+      evidenceEnvelope: { preferred: 1, supported: [1] },
+      siteTransitionRequest: { preferred: 1, supported: [1] },
+    })
   })
 
   it.each([
