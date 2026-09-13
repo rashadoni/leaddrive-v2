@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import ExcelJS from "exceljs"
 import type { Prisma } from "@prisma/client"
 import { prisma, logAudit } from "@/lib/prisma"
-import { withRls } from "@/lib/with-rls"
+import { withRlsAuth } from "@/lib/with-rls"
 import { resolveHeaders, rowToComplaint, type ComplaintRow } from "@/lib/complaints-mapper"
 import { lockTicketNumberSequence, nextTicketNumber } from "@/lib/ticket-number"
 import { createTicketEntitlementMilestones } from "@/lib/entitlement-process/ticket-milestones"
@@ -13,6 +13,8 @@ import {
 } from "@/lib/ticketing/category-service"
 
 const MAX_ROWS = 5000
+const MAX_FILE_SIZE = 15 * 1024 * 1024
+const MAX_BASE64_LENGTH = Math.ceil(MAX_FILE_SIZE / 3) * 4 + 4
 
 function subjectFrom(content: string, brand?: string | null, obj?: string | null): string {
   const parts = [brand, obj].filter(Boolean).join(" — ")
@@ -45,12 +47,13 @@ async function parseWorkbook(buf: ArrayBuffer): Promise<{ headers: string[]; row
   return { headers, rows }
 }
 
-export const POST = withRls(async (req, { orgId }) => {
+export const POST = withRlsAuth("tickets", "write", async (req, { orgId }) => {
   const contentType = req.headers.get("content-type") || ""
 
   let buf: ArrayBuffer
   let fileName = "complaints-import.xlsx"
   let dryRun = false
+  let retryRows: number[] | null = null
 
   if (contentType.includes("multipart/form-data")) {
     const form = await req.formData()
@@ -58,15 +61,51 @@ export const POST = withRls(async (req, { orgId }) => {
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "Missing file" }, { status: 400 })
     }
+    if (file.size <= 0) return NextResponse.json({ error: "File is empty" }, { status: 400 })
+    if (file.size > MAX_FILE_SIZE) return NextResponse.json({ error: "File too large (max 15MB)" }, { status: 400 })
+    if (!/\.xls(?:x|m)$/i.test(file.name)) return NextResponse.json({ error: "Only .xlsx or .xlsm files are allowed" }, { status: 400 })
     fileName = file.name
     buf = await file.arrayBuffer()
     dryRun = form.get("dryRun") === "true"
+    const retryRowsRaw = form.get("retryRows")
+    if (typeof retryRowsRaw === "string" && retryRowsRaw) {
+      try {
+        const candidate = JSON.parse(retryRowsRaw)
+        if (!Array.isArray(candidate) || candidate.some((row) => !Number.isInteger(row) || row < 2)) throw new Error("invalid")
+        retryRows = [...new Set(candidate as number[])]
+      } catch {
+        return NextResponse.json({ error: "Invalid retry row list" }, { status: 400 })
+      }
+    }
   } else if (contentType.includes("application/json")) {
-    const body = await req.json()
-    if (!body?.base64) return NextResponse.json({ error: "Missing base64 payload" }, { status: 400 })
-    buf = Uint8Array.from(Buffer.from(body.base64, "base64")).buffer
-    fileName = body.fileName || fileName
-    dryRun = body.dryRun === true
+    const body: unknown = await req.json().catch(() => null)
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 })
+    }
+    const payload = body as { base64?: unknown; fileName?: unknown; dryRun?: unknown; retryRows?: unknown }
+    if (typeof payload.base64 !== "string" || !payload.base64) {
+      return NextResponse.json({ error: "Missing base64 payload" }, { status: 400 })
+    }
+    if (payload.base64.length > MAX_BASE64_LENGTH) {
+      return NextResponse.json({ error: "File too large (max 15MB)" }, { status: 400 })
+    }
+    fileName = typeof payload.fileName === "string" && payload.fileName ? payload.fileName : fileName
+    if (!/\.xls(?:x|m)$/i.test(fileName)) {
+      return NextResponse.json({ error: "Only .xlsx or .xlsm files are allowed" }, { status: 400 })
+    }
+    const decoded = Buffer.from(payload.base64, "base64")
+    if (decoded.byteLength <= 0) return NextResponse.json({ error: "File is empty" }, { status: 400 })
+    if (decoded.byteLength > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: "File too large (max 15MB)" }, { status: 400 })
+    }
+    buf = Uint8Array.from(decoded).buffer
+    dryRun = payload.dryRun === true
+    if (Array.isArray(payload.retryRows)) {
+      const retryRowCandidates: unknown[] = payload.retryRows
+      retryRows = [...new Set<number>(retryRowCandidates.filter(
+        (row): row is number => typeof row === "number" && Number.isInteger(row) && row >= 2,
+      ))]
+    }
   } else {
     return NextResponse.json({ error: "Unsupported content type" }, { status: 400 })
   }
@@ -113,11 +152,16 @@ export const POST = withRls(async (req, { orgId }) => {
     riskLevel: p.c.riskLevel,
     status: p.c.status,
   }))
+  const mapping = Object.entries(headerMap).map(([field, index]) => ({
+    field,
+    column: headers[index],
+    index,
+  }))
 
   if (dryRun) {
     return NextResponse.json({
       success: true,
-      data: { dryRun: true, totalParsed: parsed.length, errors, preview },
+      data: { dryRun: true, totalParsed: parsed.length, errors, preview, mapping, headers },
     })
   }
 
@@ -126,10 +170,13 @@ export const POST = withRls(async (req, { orgId }) => {
     scope: "complaint",
   })
 
+  const rowsToImport = retryRows ? parsed.filter((item) => retryRows?.includes(item.row)) : parsed
   let imported = 0
-  const detailErrors: Array<{ row: number; error: string }> = [...errors]
+  const detailErrors: Array<{ row: number; error: string }> = retryRows
+    ? errors.filter((error) => retryRows?.includes(error.row))
+    : [...errors]
 
-  for (const { row, c } of parsed) {
+  for (const { row, c } of rowsToImport) {
     try {
       // findOrCreate contact
       let contactId: string | undefined
@@ -230,9 +277,12 @@ export const POST = withRls(async (req, { orgId }) => {
     success: true,
     data: {
       imported,
-      totalParsed: parsed.length,
+      totalParsed: rowsToImport.length,
+      sourceTotal: parsed.length,
       errors: detailErrors,
       fileName,
+      retriedRows: retryRows,
+      mapping,
     },
   })
 })

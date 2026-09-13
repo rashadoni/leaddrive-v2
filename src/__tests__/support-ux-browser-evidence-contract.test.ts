@@ -67,6 +67,11 @@ describe("Support UX browser evidence contract", () => {
     expect(runner).toContain("[data-testid='complaint-new-workspace']");
     expect(runner).toContain("[data-testid='complaint-import-workspace']");
     expect(runner).toContain("[data-testid='complaint-detail-workspace']");
+    expect(runner).toContain('id: "complaints"');
+    expect(runner).toContain("performanceBudget: { loadP75: 650 }");
+    expect(runner).toContain("performanceBudget: { loadP75: 450 }");
+    expect(runner).toContain("performanceBudget: { loadP75: 350 }");
+    expect(runner).toContain("performanceBudget: { loadP75: 400 }");
     expect(runner).toContain('id: "knowledge-article"');
     expect(runner).toContain("[data-testid='knowledge-base-workspace'][data-state='ready']");
     expect(runner).toContain("[data-testid='knowledge-article-workspace'][data-state='ready']");
