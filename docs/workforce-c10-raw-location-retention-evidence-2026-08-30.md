@@ -24,4 +24,3 @@ redaction, reconciliation, UTC date cutoffs, and fail-fast bounds.
 No purge was run. Scheduler exposure, legal-hold integration, pressure stops,
 resume cursors, metrics, staging backup/restore, and the 5,000-user drill remain
 outside this safe slice and are not claimed here.
-
