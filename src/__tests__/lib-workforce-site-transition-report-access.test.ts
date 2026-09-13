@@ -14,7 +14,7 @@ import { prisma } from "@/lib/prisma"
 import { requireWorkforceSiteTransitionReportAccess } from "@/lib/workforce/site-transition-report-access"
 import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 
-const AUTH = { principalType: "session" as const, role: "admin", userId: "user-1" }
+const AUTH = { principalType: "session" as const, role: "admin" as const, userId: "user-1" }
 
 function grant(overrides: Record<string, unknown> = {}) {
   return {
@@ -50,7 +50,7 @@ describe("requireWorkforceSiteTransitionReportAccess", () => {
 
     const denied = await requireWorkforceSiteTransitionReportAccess({
       organizationId: "org-1",
-      auth: { ...AUTH, role: "member" },
+      auth: { ...AUTH, role: "viewer" },
       selectedAgentId: null,
       selectedSiteId: null,
     })
