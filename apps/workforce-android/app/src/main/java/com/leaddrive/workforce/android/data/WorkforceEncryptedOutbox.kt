@@ -52,6 +52,7 @@ class WorkforceEncryptedOutbox(context: Context) {
     private val cipher = WorkforceOutboxCipher()
 
     suspend fun enqueue(session: WorkforceStoredSession, operation: WorkforceSyncOperation) = withContext(Dispatchers.IO) {
+        require(!operation.hasEphemeralProof) { "Ephemeral attendance proof cannot enter the durable outbox." }
         ACCOUNT_BOUNDARY_MUTEX.withLock {
             val now = System.currentTimeMillis()
             val plaintext = operation.toEncryptedPayload(session.organizationSlug)

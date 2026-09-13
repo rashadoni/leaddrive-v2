@@ -44,6 +44,7 @@ import com.leaddrive.workforce.android.data.WorkforceTodaySnapshot
 import com.leaddrive.workforce.android.data.WorkforceWorkday
 import com.leaddrive.workforce.android.data.WorkforceWorkdayAction
 import com.leaddrive.workforce.android.data.WorkforceWorkdayStatus
+import com.leaddrive.workforce.android.security.WorkforceQrScanner
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -59,7 +60,7 @@ class MainActivity : ComponentActivity() {
         )
         setContent {
             MaterialTheme {
-                WorkforceRoot(repository)
+                WorkforceRoot(repository, WorkforceQrScanner(this@MainActivity))
             }
         }
     }
@@ -71,7 +72,10 @@ class MainActivity : ComponentActivity() {
  * death instead of reconstructing an attendance state from a local timer.
  */
 @Composable
-private fun WorkforceRoot(repository: WorkforceSessionRepository) {
+private fun WorkforceRoot(
+    repository: WorkforceSessionRepository,
+    qrScanner: WorkforceQrScanner,
+) {
     val scope = rememberCoroutineScope()
     var bootstrap by remember { mutableStateOf<WorkforceBootstrap?>(null) }
     var today by remember { mutableStateOf<WorkforceTodaySnapshot?>(null) }
@@ -91,6 +95,29 @@ private fun WorkforceRoot(repository: WorkforceSessionRepository) {
                     status = null
                 }
                 .onFailure { status = it.employeeMessage() }
+        }
+    }
+
+    fun submitTodayAction(action: WorkforceWorkdayAction, qrToken: String? = null) {
+        val snapshot = today ?: return
+        busyAction = action
+        status = null
+        scope.launch {
+            runCatching { repository.submitTodayAction(snapshot, action, qrToken) }
+                .onSuccess { submission ->
+                    when (submission) {
+                        is com.leaddrive.workforce.android.data.WorkforceTodaySubmission.Accepted -> {
+                            today = submission.snapshot
+                            history = null
+                            status = null
+                        }
+                        com.leaddrive.workforce.android.data.WorkforceTodaySubmission.Queued -> {
+                            status = "Saved in this device’s encrypted outbox. It will retry in order for up to seven days."
+                        }
+                    }
+                }
+                .onFailure { status = it.employeeMessage() }
+            busyAction = null
         }
     }
 
@@ -179,29 +206,13 @@ private fun WorkforceRoot(repository: WorkforceSessionRepository) {
                         .onFailure { status = it.employeeMessage() }
                 }
             },
-            onAction = { action ->
-                val snapshot = today
-                if (snapshot != null) {
-                    busyAction = action
-                    status = null
-                    scope.launch {
-                        runCatching { repository.submitTodayAction(snapshot, action) }
-                            .onSuccess { submission ->
-                                when (submission) {
-                                    is com.leaddrive.workforce.android.data.WorkforceTodaySubmission.Accepted -> {
-                                        today = submission.snapshot
-                                        history = null
-                                        status = null
-                                    }
-                                    com.leaddrive.workforce.android.data.WorkforceTodaySubmission.Queued -> {
-                                        status = "Saved in this device’s encrypted outbox. It will retry in order for up to seven days."
-                                    }
-                                }
-                            }
-                            .onFailure { status = it.employeeMessage() }
-                        busyAction = null
-                    }
-                }
+            onAction = { action -> submitTodayAction(action) },
+            onScanQr = { action ->
+                qrScanner.scan(
+                    onToken = { token -> submitTodayAction(action, token.value) },
+                    onCancelled = { status = "QR scan cancelled. No attendance action was sent." },
+                    onFailure = { status = "A fresh QR code could not be read. No attendance action was sent." },
+                )
             },
             onSignOut = {
                 scope.launch {
@@ -294,6 +305,7 @@ private fun WorkforceHome(
     onSubmitRequest: (WorkforceHrmRequestDraft) -> Unit,
     onCancelRequest: (String) -> Unit,
     onAction: (WorkforceWorkdayAction) -> Unit,
+    onScanQr: (WorkforceWorkdayAction) -> Unit,
     onSignOut: () -> Unit,
 ) {
     Column(
@@ -318,8 +330,10 @@ private fun WorkforceHome(
                 } else {
                     WorkforceTodayCard(
                         snapshot = today,
+                        attendance = bootstrap.attendance,
                         busyAction = busyAction,
                         onAction = onAction,
+                        onScanQr = onScanQr,
                     )
                     Text("Current site: not asserted until an approved action-time proof is captured.")
                     Text("Location is never tracked in the background. Action-time location remains unavailable until the published legal notice and tenant proof policy are active.")
@@ -532,8 +546,10 @@ private fun WorkforceHistory(
 @Composable
 private fun WorkforceTodayCard(
     snapshot: WorkforceTodaySnapshot,
+    attendance: com.leaddrive.workforce.android.data.WorkforceAttendanceRequirements,
     busyAction: WorkforceWorkdayAction?,
     onAction: (WorkforceWorkdayAction) -> Unit,
+    onScanQr: (WorkforceWorkdayAction) -> Unit,
 ) {
     val workday = snapshot.workday
     val allowed = snapshot.actions()
@@ -558,16 +574,33 @@ private fun WorkforceTodayCard(
         snapshot.activeWorkday?.let {
             Text("Another active workday is recorded by the server. Finish that day before starting a new one.")
         }
-        if (allowed.isEmpty()) {
+        if (attendance.status == "INVALID") {
+            Text("Attendance policy is unavailable or unsupported. Refresh or contact your administrator; no action can be sent.")
+        } else if (allowed.isEmpty()) {
             Text("No work-time action is available for this server state.")
         } else {
             allowed.forEach { action ->
-                Button(
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = busyAction == null,
-                    onClick = { onAction(action) },
-                ) {
-                    Text(if (busyAction == action) "Sending…" else action.label)
+                when {
+                    attendance.requiresBiometric(action) -> {
+                        Text("${action.label} requires an authenticated trusted-device proof. It is unavailable on this build.")
+                    }
+                    attendance.requiresDeviceTrust(action) -> {
+                        Text("${action.label} requires a trusted device. Device enrollment is not yet available on this build.")
+                    }
+                    attendance.requiresQr(action) -> Button(
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = busyAction == null,
+                        onClick = { onScanQr(action) },
+                    ) {
+                        Text(if (busyAction == action) "Sending…" else "Scan fresh QR to ${action.label.lowercase()}")
+                    }
+                    else -> Button(
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = busyAction == null,
+                        onClick = { onAction(action) },
+                    ) {
+                        Text(if (busyAction == action) "Sending…" else action.label)
+                    }
                 }
             }
         }

@@ -39,15 +39,20 @@ class WorkforceSessionRepository(
     suspend fun submitTodayAction(
         snapshot: WorkforceTodaySnapshot,
         action: WorkforceWorkdayAction,
+        attendanceQrToken: String? = null,
     ): WorkforceTodaySubmission = sessionMutex.withLock {
         val session = secureStore.readSession()
             ?: throw WorkforceApiException("Your Workforce session has ended. Sign in again.", recoverable = false)
-        val operation = api.newTodayOperation(snapshot, action)
+        val operation = api.newTodayOperation(snapshot, action, attendanceQrToken)
         try {
             WorkforceTodaySubmission.Accepted(
                 api.submitTodayOperation(session, secureStore.installationId(), operation),
             )
         } catch (error: Throwable) {
+            if (error is kotlinx.coroutines.CancellationException) throw error
+            if (operation.hasEphemeralProof && error.isEligibleForOfflineOutbox()) {
+                throw WorkforceApiException("The fresh QR proof was not accepted. Scan a new code and try again.", recoverable = false)
+            }
             if (!error.isEligibleForOfflineOutbox()) throw error
             outbox.enqueue(session, operation)
             WorkforceTodaySubmission.Queued

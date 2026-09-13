@@ -1,7 +1,7 @@
 # Workforce C9 — native Android foundation
 
 > **Status:** safe partial source foundation for `WF-C9-001`, `WF-C9-002`,
-> `WF-C9-003`, `WF-C9-004`, `WF-C9-005`, `WF-C9-006` and `WF-C5-003`. It is not an Android build, signed app, device-attestation
+> `WF-C9-003`, `WF-C9-004`, `WF-C9-005`, `WF-C9-006`, `WF-C9-008` and `WF-C5-003`. It is not an Android build, signed app, device-attestation
 > acceptance, Play upload or location-collection activation.
 > **Recorded:** 2026-08-30
 
@@ -59,11 +59,21 @@ claiming Gradle, physical-device or seven-day recovery evidence.
 - A logout or tenant switch first destroys the outbox key and then clears all
   rows. A different tenant can never submit a former tenant's operation; an
   unexpected scope mismatch is discarded rather than replayed.
+- The managed-Play Google Code Scanner scans QR only when the current signed-in
+  server manifest requires it for a specific action. The app has no `CAMERA`
+  permission and receives only the single raw token callback. A token is sent
+  immediately in that one action, is never saved in state/outbox/logs, and a
+  transient failure asks for a fresh scan instead of queuing an expired proof.
+- Only attendance manifest version 1 in `ACTIVE` state is actionable. An
+  invalid or unknown-version manifest blocks attendance controls instead of
+  silently degrading to an unprotected action; biometric-required actions also
+  remain blocked until the trusted-device proof flow exists.
 
 ## Evidence and privacy posture
 
-- The manifest declares camera and foreground/action-time location permissions
-  only. It has no background-location permission, location service or active
+- The manifest declares foreground/action-time location permissions only; QR
+  camera access stays inside the delegated scanner. It has no background-
+  location permission, location service or active
   action capture flow. `WorkforceActionTimeLocationCapture` is a user-triggered
   foreground-only `getCurrentLocation` primitive with no stale last-known
   fallback. It rejects fixes older than 30 seconds or outside coordinate and
@@ -95,9 +105,10 @@ claiming Gradle, physical-device or seven-day recovery evidence.
 Today submits online first; a transport/ambiguous transient failure saves the
 same immutable operation into the encrypted outbox. Explicit server rejections
 and proof/state conflicts are never queued. It does not yet capture
-action-time location, site, QR or device proof, so a tenant that requires
-those proofs receives the server's non-acceptance response rather than a
-bypass. Work Time history is a bounded self-HRM server read and explicitly
+action-time location, site or device proof. A QR-required action scans one
+fresh token and sends it immediately, while a device-required action remains
+unavailable until C9-009; neither condition has an offline bypass. Work Time
+history is a bounded self-HRM server read and explicitly
 labels the returned workday/request state as accepted server truth; it never
 calculates an accepted fact from an outbox entry. The Android client can now
 create/cancel leave, absence and correction claims through the same encrypted

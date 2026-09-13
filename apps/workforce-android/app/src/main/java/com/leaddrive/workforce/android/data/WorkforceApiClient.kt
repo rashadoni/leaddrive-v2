@@ -12,6 +12,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 private const val MAX_HRM_REQUEST_DAYS = 366L
+private const val MAX_QR_TOKEN_LENGTH = 4_096
 
 /**
  * Small, explicit Workforce-only HTTP adapter. The app never discovers or
@@ -64,6 +65,8 @@ class WorkforceApiClient(
             timezone = data.optString("timezone", "UTC"),
             releaseStatus = release?.optString("status")?.takeIf { it.isNotBlank() } ?: "NOT_CONFIGURED",
             updateUrl = release?.optString("updateUrl")?.takeIf { it.isNotBlank() },
+            attendance = workforce.optJSONObject("attendance")?.toAttendanceRequirements()
+                ?: WorkforceAttendanceRequirements.unconfigured(),
         )
     }
 
@@ -109,6 +112,7 @@ class WorkforceApiClient(
     fun newTodayOperation(
         snapshot: WorkforceTodaySnapshot,
         action: WorkforceWorkdayAction,
+        attendanceQrToken: String? = null,
         now: Instant = Instant.now(),
     ): WorkforceWorkdayOperation {
         require(action.wireValue in snapshot.availableActions) {
@@ -128,6 +132,11 @@ class WorkforceApiClient(
             claimedAt = now.toString(),
             capturedAt = now.toString(),
             queuedAt = now.toString(),
+            attendanceQrToken = attendanceQrToken?.trim()?.takeIf { it.isNotBlank() }?.also {
+                if (it.length > MAX_QR_TOKEN_LENGTH) {
+                    throw WorkforceApiException("The scanned QR token was invalid. Scan a fresh code.", recoverable = false)
+                }
+            },
         )
     }
 
@@ -340,6 +349,8 @@ sealed interface WorkforceSyncOperation {
     val domain: WorkforceOutboxDomain
     val entity: String
     val opType: String
+    /** Raw QR/device proof may never enter durable offline storage. */
+    val hasEphemeralProof: Boolean get() = false
 
     fun toDataJson(): JSONObject
 
@@ -428,10 +439,12 @@ data class WorkforceWorkdayOperation(
     val claimedAt: String,
     val capturedAt: String,
     override val queuedAt: String,
+    val attendanceQrToken: String? = null,
 ) : WorkforceSyncOperation {
     override val domain = WorkforceOutboxDomain.WORKDAY
     override val entity = "workdays"
     override val opType = "create"
+    override val hasEphemeralProof: Boolean get() = attendanceQrToken != null
 
     override fun toDataJson(): JSONObject = JSONObject()
         .put("action", action.wireValue)
@@ -443,6 +456,7 @@ data class WorkforceWorkdayOperation(
         .apply {
             if (action == WorkforceWorkdayAction.START) put("id", workdayId)
             else put("workdayId", workdayId)
+            attendanceQrToken?.let { put("attendance", JSONObject().put("qrToken", it)) }
         }
 
     companion object {
@@ -472,7 +486,9 @@ data class WorkforceWorkdayOperation(
             val claimedAt = data.optString("claimedAt")
             val capturedAt = data.optString("capturedAt")
             val queuedAt = data.optString("queuedAt")
-            if (workdayId.isBlank() || occurredAt.isBlank() || claimedAt.isBlank() || capturedAt.isBlank() || queuedAt.isBlank()) return null
+            // The outbox must never recover a raw QR/device proof. Any row
+            // containing one is terminally unreadable rather than replayable.
+            if (data.has("attendance") || workdayId.isBlank() || occurredAt.isBlank() || claimedAt.isBlank() || capturedAt.isBlank() || queuedAt.isBlank()) return null
             return WorkforceWorkdayOperation(operationId, action, workdayId, occurredAt, claimedAt, capturedAt, queuedAt)
         }
 
@@ -551,6 +567,23 @@ private fun JSONObject.toWorkday(): WorkforceWorkday = WorkforceWorkday(
     availableActions = optStringList("availableActions"),
 )
 
+private fun JSONObject.toAttendanceRequirements(): WorkforceAttendanceRequirements {
+    val status = optString("status")
+    val qrActions = optStringList("qrRequiredActions")
+    return if (status == "ACTIVE" && optInt("enforcementVersion", 0) == 1) {
+        WorkforceAttendanceRequirements(
+            status = status,
+            qrRequiredActions = qrActions,
+            deviceTrustRequiredActions = optStringList("deviceTrustRequiredActions"),
+            biometricRequiredActions = optStringList("biometricRequiredActions"),
+        )
+    } else if (status == "NOT_CONFIGURED") {
+        WorkforceAttendanceRequirements.unconfigured()
+    } else {
+        WorkforceAttendanceRequirements.invalid()
+    }
+}
+
 private fun JSONObject.toHistoryDay(): WorkforceHistoryDay? {
     val date = optString("date").takeIf { it.isNotBlank() } ?: return null
     val calendar = optJSONObject("calendar")
@@ -609,7 +642,35 @@ data class WorkforceBootstrap(
     val timezone: String,
     val releaseStatus: String,
     val updateUrl: String?,
+    val attendance: WorkforceAttendanceRequirements,
 )
+
+data class WorkforceAttendanceRequirements(
+    val status: String,
+    val qrRequiredActions: List<String>,
+    val deviceTrustRequiredActions: List<String>,
+    val biometricRequiredActions: List<String>,
+) {
+    fun requiresQr(action: WorkforceWorkdayAction): Boolean = action.wireValue in qrRequiredActions
+    fun requiresDeviceTrust(action: WorkforceWorkdayAction): Boolean = action.wireValue in deviceTrustRequiredActions
+    fun requiresBiometric(action: WorkforceWorkdayAction): Boolean = action.wireValue in biometricRequiredActions
+
+    companion object {
+        fun unconfigured() = WorkforceAttendanceRequirements(
+            status = "NOT_CONFIGURED",
+            qrRequiredActions = emptyList(),
+            deviceTrustRequiredActions = emptyList(),
+            biometricRequiredActions = emptyList(),
+        )
+
+        fun invalid() = WorkforceAttendanceRequirements(
+            status = "INVALID",
+            qrRequiredActions = emptyList(),
+            deviceTrustRequiredActions = emptyList(),
+            biometricRequiredActions = emptyList(),
+        )
+    }
+}
 
 enum class WorkforceWorkdayAction(val wireValue: String, val label: String) {
     START("START", "Start work"),
