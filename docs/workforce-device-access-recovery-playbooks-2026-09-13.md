@@ -28,7 +28,12 @@ audit entry to make recovery appear clean.
    process. This is separate from the Workforce mobile write fence.
 3. Use **Report lost / revoke** for the exact active enrollment. Self-revoke is
    intentionally permitted for containment; self-approval of a replacement is
-   forbidden. Do not revoke unrelated employee devices.
+   forbidden. An already authenticated Workforce employee may list only their
+   own lifecycle metadata and revoke only their own pending/active enrollment;
+   the endpoint requires the linked accountable user for its redacted audit
+   and accepts no key, proof, QR, biometric output or offline retry. The local
+   private key is cleared only after the server acknowledges revocation. Do not
+   revoke unrelated employee devices.
 4. Review accepted actions from the last known-safe time using metadata-only
    review and exception records. Send uncertain actions to human review; do not
    silently rewrite time or infer absence/presence.

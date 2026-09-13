@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -244,6 +245,19 @@ private fun WorkforceRoot(
         }
     }
 
+    fun revokeOwnDeviceEnrollment(enrollmentId: String) {
+        val currentBootstrap = bootstrap ?: return
+        status = "Revoking this trusted device…"
+        scope.launch {
+            runCatching { repository.revokeOwnDeviceEnrollment(currentBootstrap, enrollmentId) }
+                .onSuccess {
+                    deviceTrust = it
+                    status = "Trusted-device access was revoked. Refresh before enrolling a replacement."
+                }
+                .onFailure { status = it.employeeMessage() }
+        }
+    }
+
     LaunchedEffect(Unit) {
         runCatching { repository.restore() }
             .onSuccess { restored ->
@@ -323,6 +337,7 @@ private fun WorkforceRoot(
             },
             onLoadDeviceTrust = ::refreshDeviceTrust,
             onBeginDeviceEnrollment = ::beginDeviceEnrollment,
+            onRevokeDeviceEnrollment = ::revokeOwnDeviceEnrollment,
             onSetLocalReminders = ::setLocalReminders,
             onSubmitRequest = { draft ->
                 status = "Submitting request…"
@@ -480,6 +495,7 @@ private fun WorkforceHome(
     onLoadRecovery: () -> Unit,
     onLoadDeviceTrust: () -> Unit,
     onBeginDeviceEnrollment: (String) -> Unit,
+    onRevokeDeviceEnrollment: (String) -> Unit,
     onSetLocalReminders: (Boolean) -> Unit,
     onSubmitRequest: (WorkforceHrmRequestDraft) -> Unit,
     onCancelRequest: (String) -> Unit,
@@ -556,6 +572,7 @@ private fun WorkforceHome(
                 mutationsBlocked = bootstrap.release.mutationsBlocked,
                 onLoad = onLoadDeviceTrust,
                 onEnroll = onBeginDeviceEnrollment,
+                onRevoke = onRevokeDeviceEnrollment,
             )
         }
         if (bootstrap.release.updateUrl != null) {
@@ -686,8 +703,10 @@ private fun WorkforceDeviceTrust(
     mutationsBlocked: Boolean,
     onLoad: () -> Unit,
     onEnroll: (String) -> Unit,
+    onRevoke: (String) -> Unit,
 ) {
     var label by rememberSaveable { mutableStateOf("This Android device") }
+    var revokeCandidateId by rememberSaveable { mutableStateOf<String?>(null) }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Trusted device", style = MaterialTheme.typography.titleLarge)
         Text("A trusted device signs only the exact work-time action you confirm. The Android system performs biometric matching; Workforce never receives a template or result.")
@@ -726,6 +745,39 @@ private fun WorkforceDeviceTrust(
         }
         Text(stringResource(R.string.device_lost_guidance))
         Text(stringResource(R.string.device_uninstall_guidance))
+        val revocable = state.enrollments.filter { it.status == "PENDING" || it.status == "ACTIVE" }
+        if (revocable.isNotEmpty()) {
+            Text("Your attendance device enrollments")
+            Text("Revoke a lost or suspected-compromised device. This is permanent for that enrollment and does not alter recorded work time.")
+            revocable.forEach { enrollment ->
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("${enrollment.deviceLabel}: ${enrollment.status}")
+                    TextButton(
+                        modifier = Modifier.workforceTapTarget(),
+                        onClick = { revokeCandidateId = enrollment.id },
+                    ) {
+                        Text("Revoke this device")
+                    }
+                }
+            }
+        }
+    }
+    revokeCandidateId?.let { enrollmentId ->
+        val labelForCandidate = state.enrollments.firstOrNull { it.id == enrollmentId }?.deviceLabel ?: "this device"
+        AlertDialog(
+            onDismissRequest = { revokeCandidateId = null },
+            title = { Text("Revoke trusted device?") },
+            text = { Text("${labelForCandidate} will no longer confirm Workforce actions. Recorded work time will remain unchanged.") },
+            confirmButton = {
+                Button(onClick = {
+                    revokeCandidateId = null
+                    onRevoke(enrollmentId)
+                }) { Text("Revoke device") }
+            },
+            dismissButton = {
+                TextButton(onClick = { revokeCandidateId = null }) { Text("Cancel") }
+            },
+        )
     }
 }
 

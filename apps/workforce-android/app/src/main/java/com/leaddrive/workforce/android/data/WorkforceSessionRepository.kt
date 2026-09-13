@@ -228,40 +228,51 @@ class WorkforceSessionRepository(
     }
 
     suspend fun loadDeviceTrustState(bootstrap: WorkforceBootstrap): WorkforceDeviceTrustState = sessionMutex.withLock {
+        loadDeviceTrustStateLocked(bootstrap)
+    }
+
+    private suspend fun loadDeviceTrustStateLocked(bootstrap: WorkforceBootstrap): WorkforceDeviceTrustState {
+        // Even a new/replacement phone must be able to see its own lifecycle
+        // metadata in order to contain a lost older device. The endpoint never
+        // returns a public key, proof, QR or biometric material.
+        val enrollments = api.loadDeviceEnrollments(requireSession(), secureStore.installationId())
         val binding = secureStore.readDeviceBinding()
         if (binding == null) {
             val provisioning = secureStore.readDeviceProvisioning()
-            return@withLock if (provisioning != null && provisioning.matches(bootstrap)) {
+            return if (provisioning != null && provisioning.matches(bootstrap)) {
                 WorkforceDeviceTrustState(
                     lifecycle = WorkforceDeviceBindingLifecycle.PROVISIONING,
                     enrollmentId = null,
                     message = "A device key is waiting for a safe enrollment retry. Refresh or enroll again on this device.",
+                    enrollments = enrollments,
                 )
             } else {
-                WorkforceDeviceTrustState.unenrolled()
+                WorkforceDeviceTrustState.unenrolled(enrollments)
             }
         }
         if (!binding.matches(bootstrap)) {
-            return@withLock WorkforceDeviceTrustState(
+            return WorkforceDeviceTrustState(
                 lifecycle = null,
                 enrollmentId = null,
                 message = "This device binding belongs to another Workforce account and cannot be used here. Sign out to clear it safely.",
+                enrollments = enrollments,
             )
         }
         if (binding.lifecycle == WorkforceDeviceBindingLifecycle.PENDING_PROOF) {
-            return@withLock WorkforceDeviceTrustState(
+            return WorkforceDeviceTrustState(
                 lifecycle = binding.lifecycle,
                 enrollmentId = binding.enrollmentId,
                 message = "Device enrollment is awaiting its local confirmation. Restart enrollment to request a fresh challenge.",
+                enrollments = enrollments,
             )
         }
-        val enrollment = api.loadDeviceEnrollments(requireSession(), secureStore.installationId())
-            .firstOrNull { it.id == binding.enrollmentId }
+        val enrollment = enrollments.firstOrNull { it.id == binding.enrollmentId }
         if (enrollment == null) {
-            return@withLock WorkforceDeviceTrustState(
+            return WorkforceDeviceTrustState(
                 lifecycle = null,
                 enrollmentId = binding.enrollmentId,
                 message = "The server no longer recognizes this device enrollment. Ask an administrator for the replacement path.",
+                enrollments = enrollments,
             )
         }
         val lifecycle = when (enrollment.status) {
@@ -276,10 +287,11 @@ class WorkforceSessionRepository(
             else -> WorkforceDeviceBindingLifecycle.fromStored(enrollment.status)
         }
         if (lifecycle == null) {
-            return@withLock WorkforceDeviceTrustState(
+            return WorkforceDeviceTrustState(
                 lifecycle = null,
                 enrollmentId = binding.enrollmentId,
                 message = "The server returned an unknown device status. Do not use it for attendance; ask an administrator for review.",
+                enrollments = enrollments,
             )
         }
         if (lifecycle != binding.lifecycle) secureStore.writeDeviceBinding(binding.copy(lifecycle = lifecycle))
@@ -287,7 +299,28 @@ class WorkforceSessionRepository(
             lifecycle = lifecycle,
             enrollmentId = binding.enrollmentId,
             message = lifecycle.employeeMessage,
+            enrollments = enrollments,
         )
+    }
+
+    /**
+     * This deliberate one-way containment action remains available when the
+     * managed-Play release window blocks ordinary work-time changes. The local
+     * private key is deleted only after the server acknowledges revocation, so
+     * a failed request cannot silently lose recovery material or pretend that
+     * the factor is no longer active.
+     */
+    suspend fun revokeOwnDeviceEnrollment(
+        bootstrap: WorkforceBootstrap,
+        enrollmentId: String,
+    ): WorkforceDeviceTrustState = sessionMutex.withLock {
+        api.revokeDeviceEnrollment(requireSession(), secureStore.installationId(), enrollmentId)
+        val binding = secureStore.readDeviceBinding()
+        if (binding != null && binding.matches(bootstrap) && binding.enrollmentId == enrollmentId) {
+            deviceKeys.delete(binding.keyAlias)
+            secureStore.clearDeviceBinding()
+        }
+        loadDeviceTrustStateLocked(bootstrap)
     }
 
     /**
@@ -431,12 +464,15 @@ data class WorkforceDeviceTrustState(
     val lifecycle: WorkforceDeviceBindingLifecycle?,
     val enrollmentId: String?,
     val message: String,
+    /** Metadata-only self-service containment list; it never contains keys or proofs. */
+    val enrollments: List<WorkforceDeviceEnrollment> = emptyList(),
 ) {
     companion object {
-        fun unenrolled() = WorkforceDeviceTrustState(
+        fun unenrolled(enrollments: List<WorkforceDeviceEnrollment> = emptyList()) = WorkforceDeviceTrustState(
             lifecycle = null,
             enrollmentId = null,
             message = "No trusted device is enrolled on this phone.",
+            enrollments = enrollments,
         )
     }
 }

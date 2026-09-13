@@ -138,6 +138,31 @@ class WorkforceApiClient(
         )
     }
 
+    /**
+     * An online-only lost-device containment action. It carries no key,
+     * signature, QR, biometric output or offline retry: the server must audit
+     * exactly which employee removed their own attendance factor.
+     */
+    suspend fun revokeDeviceEnrollment(
+        session: WorkforceStoredSession,
+        deviceId: String,
+        enrollmentId: String,
+    ) = withContext(Dispatchers.IO) {
+        require(enrollmentId.matches(DEVICE_IDENTIFIER)) { "The device enrollment identifier was invalid." }
+        val response = request(
+            method = "POST",
+            path = "/api/v1/mtm/mobile/attendance/devices/enrollments/${enrollmentId}/revoke",
+            token = session.token,
+            deviceId = deviceId,
+            body = "{}",
+        )
+        val revoked = response.optJSONObject("data")
+            ?: throw WorkforceApiException("The device revocation response was incomplete.", recoverable = true)
+        if (revoked.optString("enrollmentId") != enrollmentId || revoked.optString("status") != "REVOKED") {
+            throw WorkforceApiException("The device revocation response was not safe to apply.", recoverable = true)
+        }
+    }
+
     /** Reads only the authenticated employee's lifecycle metadata, never keys or proofs. */
     suspend fun loadDeviceEnrollments(
         session: WorkforceStoredSession,

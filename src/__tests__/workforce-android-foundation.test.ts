@@ -220,6 +220,7 @@ describe("Workforce Android foundation", () => {
     expect(authenticator).not.toMatch(/FingerprintManager|faceTemplate|biometricTemplate|upload/i)
     expect(api).toContain('"/api/v1/mtm/mobile/attendance/devices/enrollments"')
     expect(api).toContain('"/api/v1/mtm/mobile/attendance/devices/enrollments/${enrollmentId}/proof"')
+    expect(api).toContain('"/api/v1/mtm/mobile/attendance/devices/enrollments/${enrollmentId}/revoke"')
     expect(api).toContain('put("device", JSONObject()')
     expect(api).toContain("truncatedTo(ChronoUnit.MILLIS)")
     expect(repository).toContain("workforce-device-enrollment:v1")
@@ -228,8 +229,11 @@ describe("Workforce Android foundation", () => {
     expect(repository).toContain("sessionMutex.withLock")
     expect(repository).toContain("runCatching { deviceKeys.delete(alias) }")
     expect(api).toContain("requiresDeviceProof")
+    expect(repository).toContain("revokeOwnDeviceEnrollment")
+    expect(repository).toContain("private key is deleted only after the server acknowledges revocation")
     expect(activity).toContain("R.string.action_scan_and_confirm")
     expect(activity).toContain("Trusted device")
+    expect(activity).toContain("Revoke trusted device?")
   })
 
   it("bounds pull-request Android CI to the affected paths and cancels superseded work", () => {

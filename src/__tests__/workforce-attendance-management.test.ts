@@ -441,6 +441,30 @@ describe("Workforce attendance management", () => {
     }))
   })
 
+  it("fails closed instead of revoking another employee's device from the self-service scope", async () => {
+    vi.mocked(prisma.workforceAttendanceDeviceEnrollment.findFirst).mockResolvedValue(null as never)
+
+    await expect(revokeWorkforceAttendanceDeviceEnrollment(prisma as never, {
+      organizationId: ORGANIZATION_ID,
+      enrollmentId: "enrollment_other_agent",
+      expectedAgentId: "agent_self",
+      revokedByUserId: USER_ID,
+      audit: AUDIT,
+      now: NOW,
+    })).rejects.toMatchObject({ code: "WORKFORCE_ATTENDANCE_ENROLLMENT_REVOKE_INVALID" })
+
+    expect(prisma.workforceAttendanceDeviceEnrollment.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: {
+        id: "enrollment_other_agent",
+        organizationId: ORGANIZATION_ID,
+        agentId: "agent_self",
+        status: { in: ["PENDING", "ACTIVE"] },
+      },
+    }))
+    expect(prisma.workforceAttendanceDeviceEnrollment.updateMany).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+
   it("does not accept an invalid key as a device enrollment", async () => {
     await expect(beginWorkforceAttendanceDeviceEnrollment(prisma as never, {
       organizationId: ORGANIZATION_ID,

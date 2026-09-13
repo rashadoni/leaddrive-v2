@@ -879,16 +879,25 @@ export async function revokeWorkforceAttendanceDeviceEnrollment(
     organizationId: string
     enrollmentId: string
     revokedByUserId: string
+    /**
+     * Mobile containment may revoke only the authenticated employee's factor.
+     * Omit this for the separately authorized administrator lifecycle route.
+     */
+    expectedAgentId?: string
     audit: WorkforceAttendanceAuditContext
     now?: Date
   },
 ) {
   const now = input.now ?? new Date()
+  const expectedAgentScope = input.expectedAgentId === undefined
+    ? {}
+    : { agentId: input.expectedAgentId }
   return db.$transaction(async (tx) => {
     const enrollment = await tx.workforceAttendanceDeviceEnrollment.findFirst({
       where: {
         id: input.enrollmentId,
         organizationId: input.organizationId,
+        ...expectedAgentScope,
         status: { in: ["PENDING", "ACTIVE"] },
       },
       select: {
@@ -910,6 +919,7 @@ export async function revokeWorkforceAttendanceDeviceEnrollment(
       where: {
         id: input.enrollmentId,
         organizationId: input.organizationId,
+        ...expectedAgentScope,
         status: { in: ["PENDING", "ACTIVE"] },
       },
       data: { status: "REVOKED", revokedByUserId: input.revokedByUserId, revokedAt: now },

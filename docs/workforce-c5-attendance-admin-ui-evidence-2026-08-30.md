@@ -45,18 +45,23 @@ The Workforce configuration page now contains an administrator-only
   employee is rejected before a pending device can become active. A different
   MFA-gated administrator must approve it. Self-revoke remains allowed because
   containment of a lost factor is safer than retaining it.
-- All requests remain behind the existing Workforce attendance admin routes
-  and their tenant/capability/role checks. This UI does not turn on QR, device
-  trust, location, Route or an attendance policy for a tenant.
+- A metadata-only Workforce Android source path now lists an authenticated
+  employee's own enrollments and requires an explicit confirmation before it
+  can revoke a `PENDING`/`ACTIVE` one. Its server route is Workforce-capability
+  and self-mutate gated, scopes both transaction queries to the mobile
+  `agentId`, requires a linked audit user and never accepts a key, proof, QR,
+  biometric value or offline retry. It deletes a matching local key only after
+  a server `REVOKED` acknowledgement. This does not turn on QR, device trust,
+  location, Route or an attendance policy for a tenant.
 
 ## Deliberately not claimed
 
 This does **not** complete WF-C5-007 or WF-C5-008:
 
-- no signed mobile enrollment flow, employee self-service lost-phone request,
-  recovery factor, hardware attestation or physical device proof. The existing
-  server replacement transaction and its new review visibility do not make an
-  unsupported mobile binary available;
+- no signed managed-Play mobile release, recovery factor, hardware attestation
+  or physical device proof. The source-level employee self-revocation flow and
+  server replacement transaction do not make a supported mobile binary
+  available;
 - no controller health telemetry, clock-skew detection, kiosk hardware
   integration or physical display test. The emergency replacement flow only
   changes the server-side lifecycle and cannot prove a replacement display is
