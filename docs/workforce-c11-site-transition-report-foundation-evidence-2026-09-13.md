@@ -1,8 +1,7 @@
-# Workforce C11 site-transition report foundation evidence
+# Workforce C11 site-transition report evidence
 
-**Status:** WF-C11-007 partial — safe aggregation, a fail-closed access
-contract and a read-only API are implemented; no user-visible site-transition
-report is claimed by this checkpoint.
+**Status:** WF-C11-007 delivered together with the approved-time and exception
+aggregate reports referenced by the completion roadmap.
 **Last verified:** 2026-09-13
 
 ## Delivered projection
@@ -35,7 +34,15 @@ workday, segment and site fail closed instead of inflating a count.
   aggregate counts, never IDs, names, coordinates, proof or reasons.
 - A separate distributed tenant-and-principal budget is fail-closed before
   actor/settings/database reads.
-- Browser UI and physical reconciliation remain mandatory future work.
+- `/workforce/reports/site-transitions` provides tenant-timezone date filters
+  and mutually exclusive named employee/site filters. Options originate only
+  from the caller's already-authorized aggregate; the server remains
+  authoritative on every filtered request.
+- The browser allowlist-parses every literal, ID, name and safe-integer count,
+  reconciles both site and employee breakdowns to the summary, contains stale
+  requests, exposes keyboard-scrollable tables and uses 44 px controls.
+- Physical reconciliation remains a C14 pilot obligation and is not claimed by
+  this code/evidence slice.
 
 ## Verification
 
@@ -47,6 +54,9 @@ workday, segment and site fail closed instead of inflating a count.
 - **PASS:** site-transition API/projection/access/rate-limit Vitest, 4 files and
   20 tests; includes tenant-local Baku bounds, privacy-safe audit, oversized and
   missing-site failure, separate rate budget and fixed-label containment.
+- **PASS:** site-transition UI/navigation/API contracts, 5 files and 75 tests.
+- **PASS:** `npm run i18n:check`: 22,548 EN leaf keys; RU/AZ missing=0,
+  extra=0.
 - **PASS:** targeted ESLint.
 - **PASS:** `git diff --check`.
 - **NOT RUN:** TypeScript full check, browser E2E, database integration, staging
