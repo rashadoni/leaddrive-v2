@@ -151,7 +151,7 @@ def _acceptable_existing_secret_file(
 
     ``_read_file`` has already rejected links, non-regular files, oversized
     files, and group/world-writable modes.  The provisioner replaces this file
-    atomically with the canonical root:leaddrive-backup 0640 authority before
+    atomically with the canonical leaddrive-backup-owned 0600 authority before
     it ever contains the newly generated scratch credential.
     """
 
@@ -885,6 +885,21 @@ def _scratch_environment() -> dict[str, str]:
     }
 
 
+def _write_scratch_passfile(
+    payload: bytes, backup_uid: int, backup_gid: int
+) -> None:
+    # libpq deliberately ignores a password file when group or world permissions
+    # are present.  The service account owns this 0600 file so both provisioning
+    # verification and later recovery drills use the same valid authority.
+    _atomic_write(
+        SCRATCH_PGPASS_PATH,
+        payload,
+        mode=0o600,
+        uid=backup_uid,
+        gid=backup_gid,
+    )
+
+
 def _start_cluster() -> None:
     _run([_command("pg_ctlcluster"), PG_VERSION, CLUSTER_NAME, "start"], code="cluster-start")
 
@@ -1157,9 +1172,7 @@ def apply() -> None:
             )
         password = secrets.token_urlsafe(48)
         passfile = f"{SCRATCH_HOST}:{SCRATCH_PORT}:{SCRATCH_DATABASE}:{SCRATCH_ROLE}:{password}\n".encode()
-        _atomic_write(
-            SCRATCH_PGPASS_PATH, passfile, mode=0o640, uid=0, gid=backup_gid
-        )
+        _write_scratch_passfile(passfile, backup_uid, backup_gid)
         rewritten = rewrite_environment(env_payload, TARGET_ENV)
         _atomic_write(
             ENV_PATH,
