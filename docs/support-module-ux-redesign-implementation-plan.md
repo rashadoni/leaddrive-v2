@@ -1041,7 +1041,7 @@ Current verification evidence (2026-09-13):
 
 ## 10. Workstream 3 — Agent Desktop
 
-**Status: IN PROGRESS — implementation and recovery-evidence checkpoints complete; rendered CI/browser gates pending**
+**Status: DONE — exact-SHA responsive, recovery, accessibility, performance and visual gates green; PR/release pending**
 **Route:** `/support/agent-desktop`
 **Primary file:** `src/app/(dashboard)/support/agent-desktop/page.tsx`
 
@@ -1053,21 +1053,21 @@ metrics and team leaderboard over an agent's next case.
 Target UX: a personal workbench centered on the next urgent case, personal queue,
 availability, and real SLA deadlines.
 
-- [ ] **SUPUX-AGT-001** Remove random and hardcoded operational metrics or label
+- [x] **SUPUX-AGT-001** Remove random and hardcoded operational metrics or label
   them explicitly unavailable until a real aggregate API exists.
-- [ ] **SUPUX-AGT-002** Define one authoritative metric contract and time range for
+- [x] **SUPUX-AGT-002** Define one authoritative metric contract and time range for
   response, resolution, SLA, CSAT, and queue counts.
-- [ ] **SUPUX-AGT-003** Put next urgent ticket and personal queue before team-level
+- [x] **SUPUX-AGT-003** Put next urgent ticket and personal queue before team-level
   analytics.
-- [ ] **SUPUX-AGT-004** Move leaderboard and management analytics into a secondary
+- [x] **SUPUX-AGT-004** Move leaderboard and management analytics into a secondary
   view restricted by role.
-- [ ] **SUPUX-AGT-005** Replace four saturated KPI cards with compact trustworthy
+- [x] **SUPUX-AGT-005** Replace four saturated KPI cards with compact trustworthy
   indicators and avoid duplicating CSAT/open-case information.
-- [ ] **SUPUX-AGT-006** Implement availability as an accessible switch with clear
+- [x] **SUPUX-AGT-006** Implement availability as an accessible switch with clear
   saving, success, and rollback feedback.
-- [ ] **SUPUX-AGT-007** Localize priority/status values and make queue rows
+- [x] **SUPUX-AGT-007** Localize priority/status values and make queue rows
   keyboard-operable.
-- [ ] **SUPUX-AGT-008** Add error/retry states for availability and dashboard data.
+- [x] **SUPUX-AGT-008** Add error/retry states for availability and dashboard data.
 
 Acceptance:
 
@@ -1075,52 +1075,58 @@ Acceptance:
 - An agent reaches the next assigned/urgent case in one primary action.
 - A failed availability update is visible and the control returns to truth.
 
-Current verification evidence (2026-09-05):
+Current verification evidence (2026-09-13):
 
-- `fa85acf70` removes the page-size-derived, hardcoded, and random figures and
-  introduces one tenant-scoped personal metric contract. Queue volume is the
-  current assigned non-terminal set; response, resolution, resolution rate,
-  SLA compliance, and CSAT use the same rolling 30-day assigned creation cohort,
-  expose their sample sizes, and return `null` rather than a misleading zero
-  when no observation exists.
+- Checkpoints `cbee2998c`, `80ceb8383`, `6dfa155a7`, `c1b9ee2e5`,
+  `40f13fced` and `d56d50b22` replace the page-size-derived, hardcoded and
+  random figures with one tenant- and agent-scoped contract. Queue volume is the
+  complete assigned non-terminal set. Response, resolution, resolution rate,
+  SLA compliance and CSAT use one rolling 30-day assigned-creation cohort,
+  expose sample sizes and return `null` rather than a misleading zero when no
+  observation exists.
 - The first primary action opens the next assigned ticket, ordered by actionable
-  SLA deadline, then business priority and age. The complete personal queue is
-  before analytics, has native links and 44 px targets, and switches from table
-  to compact cards below the tablet breakpoint. Priority/status values and all
-  new copy have AZ/RU/EN parity.
-- The old saturated KPI quartet, SVG gauges, and inline leaderboard are removed.
+  SLA deadline, then business priority and age. A compact eight-ticket personal
+  queue preview appears before analytics, retains the honest assigned total and
+  provides a `View all` route. Native links, 44 px primary targets, desktop rows
+  and narrow-screen cards keep the same action available without horizontal
+  page scrolling. Priority, status and all new copy have AZ/RU/EN parity.
+- The old saturated KPI quartet, SVG gauges and inline leaderboard are removed.
   Team comparison is a secondary link emitted only for
-  `admin`/`manager`/`superadmin`. The availability control reads server truth,
-  exposes accessible switch semantics and saving/success/failure state, does not
-  optimistically move on failure, and offers a retry for both load and save.
-- Changed-source ESLint, AZ/RU/EN translation parity, `git diff --check`, and 16
-  focused Vitest assertions are green. Tests cover exact metric math and null
-  samples, queue ordering, tenant/user query scoping, ticket-read authorization,
-  management visibility, availability read/write scoping, failure behavior,
-  responsive/keyboard contracts, and removal of fabricated values and rainbow
-  dashboard patterns.
-- AGT checkboxes remain open until authenticated browser evidence covers
-  375/768/1024/1440, AZ/RU/EN, light/dark, keyboard/focus, touch, reduced motion,
-  forced loading/empty/error/permission/recovery states, accessibility,
-  performance, and visual regression. Full local typecheck is NOT RUN because
-  the earlier reference-slice process exhausted Node's 2 GB heap and the Contabo
-  workload contract forbids a heavier local retry; GitHub CI remains mandatory.
-- Checkpoint `d3cc476f1` removes an invalid nested `main` landmark, makes the
-  browser gate wait for the data-ready workspace and first next-case surface,
-  localizes urgent priority and escalated status, and exposes an inline live
-  success state for availability instead of relying on a transient toast.
-- Checkpoint `983e83b85` adds a six-outcome disposable Agent Desktop runner for
-  initial load failure and keyboard retry, availability load failure, keyboard
-  save failure with rollback and retry, failed refresh with stale snapshot,
-  empty-queue recovery, and non-retryable permission denial. It is hard-blocked
-  outside an ephemeral loopback tenant and restores the availability fixture
-  after its only real mutation.
-- Current-tree verification passes five Agent Desktop/availability test files
-  with 21/21 assertions, changed-source ESLint, `git diff --check`, translation
-  parity (21,895 EN keys; zero RU/AZ missing or extra keys), and the Support UX
-  anti-pattern scan (27 visible TSX files; zero findings). Browser execution is
-  still **NOT RUN** because GitHub Actions continues to fail before job creation;
-  no AGT checkbox is closed on source evidence alone.
+  `admin`/`manager`/`superadmin`. Availability reads server truth, exposes native
+  switch semantics plus saving/success/failure feedback, rolls back a failed
+  write and offers keyboard-operable recovery for load and save failures.
+- Typical run `34753244625` passed 72/72 combinations across agent/manager/admin,
+  AZ/RU/EN, light/dark and 1440/1024/768/375 viewports. Empty run `34754443652`
+  and high-density run `34755555000` each passed 72/72. Across these 216 rows
+  there are zero runtime, axe, custom accessibility, touch-target, horizontal
+  overflow, environment or first-viewport-primary failures; maximum load was
+  621 ms. The mobile high-density page renders the eight-case preview while the
+  API-reported total remains 20.
+- Checkpoints `3f19141e6`, `279c9ed63`, `8bae13795`, `5c0f226cc`,
+  `7482b48c9` and `f92477f74` make state evidence deterministic, block service
+  workers from bypassing request interception and capture each transient state.
+  Desktop run `34763000887` and AZ/dark mobile run `34764127278` both passed
+  7/7 recovery journeys plus 1/1 static audit. The saved screenshots and flow
+  records prove loading recovery, dashboard load failure with keyboard retry,
+  availability load recovery, failed save rollback and retry with fixture
+  restoration, stale-data preservation and refresh, empty-queue recovery and a
+  non-retryable permission state without a misleading action. Mobile execution
+  uses physical-touch emulation and reduced motion.
+- Seven-sample baseline run `34765630195` on
+  `f92477f7443d7890e2873b2ecfc1625c2b39f6f6` passed 4/4 desktop, tablet,
+  narrow-tablet and mobile surfaces. Load p75 was 588/512/490/518 ms and CLS was
+  0.0009/0.0032/0.0064/0.0094. Exact-baseline compare run `34766847715` passed
+  4/4 visual and 4/4 performance comparisons with no regressions; load p75 was
+  579/533/503/497 ms. Every result has zero browser/HTTP, axe, custom
+  accessibility, touch-target, overflow and primary-work failures.
+- The final current-tree repeat passes seven Agent Desktop/API/evidence/scan test
+  files with 42/42 assertions, changed-source ESLint, both runner syntax checks,
+  `git diff --check`, and translation parity (22,548 EN keys; zero RU/AZ missing
+  or extra). Earlier expanded contract coverage passed 60/60 assertions. Each
+  exact-SHA evidence job completed its isolated production-mode build. A
+  redundant full build is intentionally not run on Contabo; full repository
+  typecheck and required branch protection remain mandatory PR gates before
+  merge.
 
 ## 11. Workstream 4 — VoIP Calls
 
