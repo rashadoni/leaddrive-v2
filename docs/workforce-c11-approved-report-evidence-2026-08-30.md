@@ -3,7 +3,7 @@
 **Status:** WF-C11-007 partial — approved-time reporting is available; the
 schedule-aware no-show and site-transition report lanes remain deliberately
 unavailable.
-**Date:** 2026-08-30
+**Last verified:** 2026-09-13
 
 ## Delivered read model
 
@@ -33,6 +33,10 @@ The report response and its access audit deliberately exclude raw coordinates,
 QR tokens/nonces, device keys/proofs, request reasons, individual approval row
 hashes and other free text. The access audit has period and aggregate counts
 only; it does not store employee identifiers or individual metrics.
+Every success and failure response is private/no-store and nosniff. Expected
+authorization or immutable-integrity failures expose fixed codes only;
+unexpected report/access failures emit only a fixed operation label, never an
+error object, employee value or approval detail.
 
 The new Workforce web report uses this endpoint, a date filter and the current
 actor scope. Its first load omits the date parameters so the server selects
@@ -44,6 +48,10 @@ If a replacement filter request supersedes an earlier browser request, only
 the live request can clear the loading state; an aborted response cannot
 re-enable controls while another approved period is still loading.
 It is a separate HRM navigation item and remains independent of Route & Field.
+The browser allowlist-parses the source, tenant timezone, fixed unavailable
+lanes and every non-negative metric. It rejects unknown rows, duplicate
+employees and any response whose employee totals do not reconcile to the
+summary, rather than rendering a partial or internally inconsistent report.
 
 ## Explicit non-claims
 
@@ -59,23 +67,13 @@ It is a separate HRM navigation item and remains independent of Route & Field.
 
 ## Verification
 
-```text
-PASS  npx vitest run workforce-approved-timesheet-report,
-      api-workforce-reports, workforce-timesheet-export,
-      workforce-timesheet-approval-service, nav-items
-      (5 files, 71 tests; one sequential Vitest worker)
-PASS  targeted ESLint for report service, route, component, page and tests
-PASS  npm run i18n:check (21,232 EN leaf keys; RU/AZ missing=0, extra=0)
-PASS  git diff --check
-PASS  2026-09-01: selected-employee grant/no-fallback and unavailable-grant
-      source contracts (9 tests across report/access evaluator)
-PASS  2026-09-01: tenant-timezone initial-period contract, report aggregate
-      and immutable report builder (3 files, 12 tests; one sequential worker)
-PASS  2026-09-01: scoped ESLint for the report component/contract and
-      `npm run i18n:check` (21,465 EN leaf keys; RU/AZ missing=0, extra=0)
-PASS  2026-09-01: cancelled-request loading-state containment (the same
-      3 focused report contracts, 12 tests; scoped ESLint and diff check)
-NOT RUN  full TypeScript check, production build, browser E2E, staging data
-         reconciliation and load tests: full/heavy gates are reserved for CI
-         or an approved heavy worker on this Contabo development host.
-```
+- **PASS:** six sequential targeted Vitest files, 84 tests: report service/API,
+  browser response contract, immutable export, approval service and navigation.
+- **PASS:** targeted ESLint for the report service, route, access guard,
+  component and tests.
+- **PASS:** `npm run i18n:check`: 22,520 EN leaf keys; RU/AZ missing=0,
+  extra=0.
+- **PASS:** `git diff --check`.
+- **NOT RUN:** full TypeScript check, production build, browser E2E, staging
+  data reconciliation and load tests; full/heavy gates are reserved for CI or
+  an approved heavy worker, not the Contabo development host.

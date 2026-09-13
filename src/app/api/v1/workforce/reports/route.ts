@@ -11,15 +11,21 @@ import {
 } from "@/lib/workforce/approved-timesheet-report"
 import { requireWorkforceApprovedReportAccess } from "@/lib/workforce/approved-report-access"
 import { WorkforceTimesheetApprovalError } from "@/lib/workforce/timesheet-approval"
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
+import { workforceSensitiveResponseHeaders } from "@/lib/workforce/sensitive-response"
 
 const MAX_RANGE_DAYS = 93
 const MAX_APPROVALS = 5_000
 
+function reportJson(body: Record<string, unknown>, status: number) {
+  return NextResponse.json(body, { status, headers: workforceSensitiveResponseHeaders })
+}
+
 function badRange() {
-  return NextResponse.json({
+  return reportJson({
     error: "start/end must be YYYY-MM-DD and cover at most 93 days",
     code: "WORKFORCE_REPORT_RANGE_INVALID",
-  }, { status: 400 })
+  }, 400)
 }
 
 function auditContext(req: NextRequest) {
@@ -36,12 +42,13 @@ function auditContext(req: NextRequest) {
  * state, raw location, QR/device evidence or free-text employee requests.
  */
 export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, auth) => {
+  try {
   const actor = await resolveWorkforceActor(prisma, {
     organizationId: auth.orgId,
     userId: auth.userId,
     webRole: auth.role,
   })
-  if (!actor) return NextResponse.json({ error: "Forbidden", code: "WORKFORCE_SCOPE_DENIED" }, { status: 403 })
+  if (!actor) return reportJson({ error: "Forbidden", code: "WORKFORCE_SCOPE_DENIED" }, 403)
 
   const settings = await getMtmSettings(auth.orgId)
   const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
@@ -53,8 +60,11 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
   if (!isDateKey(start) || !isDateKey(end) || end < start || end > addDateKeyDays(start, MAX_RANGE_DAYS - 1)) {
     return badRange()
   }
-  if (requestedAgentId && !isAgentInWorkforceScope(actor, requestedAgentId)) {
-    return NextResponse.json({ error: "Forbidden", code: "WORKFORCE_SCOPE_DENIED" }, { status: 403 })
+  if (requestedAgentId && (
+    !/^[A-Za-z0-9_-]{1,100}$/.test(requestedAgentId)
+    || !isAgentInWorkforceScope(actor, requestedAgentId)
+  )) {
+    return reportJson({ error: "Forbidden", code: "WORKFORCE_SCOPE_DENIED" }, 403)
   }
   const accessDenied = await requireWorkforceApprovedReportAccess({
     organizationId: auth.orgId,
@@ -69,7 +79,6 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
     ? { agentId: requestedAgentId }
     : actor.scopedAgentIds === null ? {} : { agentId: { in: [...actor.scopedAgentIds] } }
 
-  try {
     const approvals = await prisma.workforceTimesheetApproval.findMany({
       where: {
         organizationId: auth.orgId,
@@ -94,10 +103,10 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
       },
     })
     if (approvals.length > MAX_APPROVALS) {
-      return NextResponse.json({
+      return reportJson({
         error: "Too many approvals for one report; split the date range or employee scope",
         code: "WORKFORCE_REPORT_LIMIT_EXCEEDED",
-      }, { status: 413 })
+      }, 413)
     }
     const report = buildWorkforceApprovedTimesheetReport({
       start,
@@ -138,7 +147,7 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
         userAgent: audit.userAgent,
       },
     })
-    return NextResponse.json({
+    return reportJson({
       success: true,
       data: {
         timezone,
@@ -150,15 +159,15 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
           })),
         },
       },
-    }, { headers: { "cache-control": "private, no-store", "x-content-type-options": "nosniff" } })
+    }, 200)
   } catch (error) {
     if (error instanceof WorkforceTimesheetApprovalError) {
-      return NextResponse.json({
+      return reportJson({
         error: "An immutable approval cannot be verified for reporting",
         code: "WORKFORCE_REPORT_APPROVAL_INVALID",
-      }, { status: 409 })
+      }, 409)
     }
-    console.error("[workforce/reports GET]", error)
-    return NextResponse.json({ error: "Failed to load Workforce approved-time report" }, { status: 500 })
+    logWorkforceSensitiveOperationFailure({ operation: "read-approved-timesheet-report" })
+    return reportJson({ error: "Failed to load Workforce approved-time report" }, 500)
   }
 })

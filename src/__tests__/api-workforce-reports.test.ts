@@ -81,6 +81,7 @@ describe("GET /api/v1/workforce/reports", () => {
     const response = await invoke(new NextRequest("http://localhost/api/v1/workforce/reports?start=bad&end=2026-08-28"), AUTH)
 
     expect(response.status).toBe(400)
+    expect(response.headers.get("cache-control")).toBe("private, no-store")
     await expect(response.json()).resolves.toMatchObject({ code: "WORKFORCE_REPORT_RANGE_INVALID" })
     expect(prisma.workforceTimesheetApproval.findMany).not.toHaveBeenCalled()
   })
@@ -94,6 +95,7 @@ describe("GET /api/v1/workforce/reports", () => {
     const denied = await invoke(new NextRequest("http://localhost:3000/api/v1/workforce/reports?start=2026-08-28&end=2026-08-28&agentId=agent-1"), AUTH)
 
     expect(denied.status).toBe(403)
+    expect(denied.headers.get("cache-control")).toBe("private, no-store")
     await expect(denied.json()).resolves.toMatchObject({ code: "WORKFORCE_APPROVED_REPORT_ACCESS_REQUIRED" })
     expect(prisma.workforceAccessGrant.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ organizationId: AUTH.orgId, principalUserId: AUTH.userId }),
@@ -126,12 +128,50 @@ describe("GET /api/v1/workforce/reports", () => {
 
   it("fails closed on an unavailable approved-report authorization lookup", async () => {
     vi.mocked(prisma.organization.findUnique).mockRejectedValueOnce(new Error("database unavailable"))
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
 
     const response = await invoke(new NextRequest("http://localhost:3000/api/v1/workforce/reports?start=2026-08-28&end=2026-08-28"), AUTH)
 
     expect(response.status).toBe(503)
+    expect(response.headers.get("cache-control")).toBe("private, no-store")
     await expect(response.json()).resolves.toMatchObject({ code: "WORKFORCE_APPROVED_REPORT_ACCESS_UNAVAILABLE" })
     expect(prisma.workforceTimesheetApproval.findMany).not.toHaveBeenCalled()
     expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+    expect(consoleError).toHaveBeenCalledWith(
+      "[workforce/privacy] sensitive operation failed",
+      { operation: "authorize-approved-timesheet-report" },
+    )
+    expect(JSON.stringify(consoleError.mock.calls)).not.toContain("database unavailable")
+    consoleError.mockRestore()
+  })
+
+  it("rejects malformed employee ids before access or report reads", async () => {
+    const response = await invoke(new NextRequest(
+      "http://localhost:3000/api/v1/workforce/reports?start=2026-08-28&end=2026-08-28&agentId=bad%20id",
+    ), AUTH)
+
+    expect(response.status).toBe(403)
+    expect(prisma.organization.findUnique).not.toHaveBeenCalled()
+    expect(prisma.workforceTimesheetApproval.findMany).not.toHaveBeenCalled()
+  })
+
+  it("contains unexpected report reads without logging or reflecting sensitive details", async () => {
+    const privateFailure = new Error("private report failure employee-42")
+    vi.mocked(prisma.workforceTimesheetApproval.findMany).mockRejectedValueOnce(privateFailure)
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+    const response = await invoke(new NextRequest(
+      "http://localhost:3000/api/v1/workforce/reports?start=2026-08-28&end=2026-08-28",
+    ), AUTH)
+
+    expect(response.status).toBe(500)
+    expect(response.headers.get("cache-control")).toBe("private, no-store")
+    expect(JSON.stringify(await response.json())).not.toContain(privateFailure.message)
+    expect(consoleError).toHaveBeenCalledWith(
+      "[workforce/privacy] sensitive operation failed",
+      { operation: "read-approved-timesheet-report" },
+    )
+    expect(JSON.stringify(consoleError.mock.calls)).not.toContain(privateFailure.message)
+    consoleError.mockRestore()
   })
 })

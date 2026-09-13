@@ -3,6 +3,8 @@ import type { AuthResult } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
 import { decidePersistedWorkforceAccess } from "@/lib/workforce/access-grant-resolution"
 import { workforceGranularAccessEnabled } from "@/lib/workforce/granular-access-rollout"
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
+import { workforceSensitiveResponseHeaders } from "@/lib/workforce/sensitive-response"
 
 function isLegacyWorkforceAdministrator(role: string | null | undefined): boolean {
   return role === "admin" || role === "superadmin"
@@ -14,14 +16,14 @@ function reportAccessDenied(): NextResponse {
   return NextResponse.json({
     error: "This Workforce approved-time report requires an effective attendance-read grant.",
     code: "WORKFORCE_APPROVED_REPORT_ACCESS_REQUIRED",
-  }, { status: 403 })
+  }, { status: 403, headers: workforceSensitiveResponseHeaders })
 }
 
 function reportAccessUnavailable(): NextResponse {
   return NextResponse.json({
     error: "Unable to verify Workforce approved-time report access.",
     code: "WORKFORCE_APPROVED_REPORT_ACCESS_UNAVAILABLE",
-  }, { status: 503 })
+  }, { status: 503, headers: workforceSensitiveResponseHeaders })
 }
 
 /**
@@ -58,8 +60,8 @@ export async function requireWorkforceApprovedReportAccess(input: {
       },
     })
     return access.allowed ? null : reportAccessDenied()
-  } catch (error) {
-    console.error("[workforce/approved-report] authorization lookup failed", error)
+  } catch {
+    logWorkforceSensitiveOperationFailure({ operation: "authorize-approved-timesheet-report" })
     return reportAccessUnavailable()
   }
 }

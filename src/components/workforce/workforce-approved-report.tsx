@@ -9,43 +9,150 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
+type ApprovedReportMetrics = {
+  workdays: number
+  expectedWorkSeconds: number
+  workedSeconds: number
+  pausedSeconds: number
+  lateStartSeconds: number
+  undertimeSeconds: number
+  overtimeSeconds: number
+  longPauseSeconds: number
+}
+
 type ApprovedReport = {
+  source: "HASH_VERIFIED_IMMUTABLE_APPROVALS"
   start: string
   end: string
-  summary: {
+  summary: ApprovedReportMetrics & {
     employees: number
-    workdays: number
-    expectedWorkSeconds: number
-    workedSeconds: number
-    pausedSeconds: number
-    lateStartSeconds: number
-    undertimeSeconds: number
-    overtimeSeconds: number
-    longPauseSeconds: number
     approvalsExamined: number
     overlappingRowsSuppressed: number
   }
-  byEmployee: Array<{
+  byEmployee: Array<ApprovedReportMetrics & {
     agentId: string
     name: string
-    workdays: number
-    expectedWorkSeconds: number
-    workedSeconds: number
-    pausedSeconds: number
-    lateStartSeconds: number
-    undertimeSeconds: number
-    overtimeSeconds: number
-    longPauseSeconds: number
   }>
   unavailable: {
-    noShow: string
-    siteTransitions: string
-    freeTextAppeals: string
+    noShow: "UNAVAILABLE_UNTIL_SCHEDULED_EXCEPTION_LIFECYCLE"
+    siteTransitions: "EXCLUDED_FROM_APPROVED_TIMESHEET_FACTS"
+    freeTextAppeals: "EXCLUDED_FROM_APPROVED_TIMESHEET_FACTS"
   }
 }
 
 type ReportData = { timezone: string; report: ApprovedReport }
 type ReportRange = Pick<ApprovedReport, "start" | "end">
+
+const REPORT_METRIC_KEYS = [
+  "workdays",
+  "expectedWorkSeconds",
+  "workedSeconds",
+  "pausedSeconds",
+  "lateStartSeconds",
+  "undertimeSeconds",
+  "overtimeSeconds",
+  "longPauseSeconds",
+] as const
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value != null && typeof value === "object" && !Array.isArray(value)
+}
+
+function isNonNegativeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0
+}
+
+function reportMetrics(value: Record<string, unknown>): ApprovedReportMetrics | null {
+  if (!REPORT_METRIC_KEYS.every((key) => isNonNegativeInteger(value[key]))) return null
+  return {
+    workdays: value.workdays as number,
+    expectedWorkSeconds: value.expectedWorkSeconds as number,
+    workedSeconds: value.workedSeconds as number,
+    pausedSeconds: value.pausedSeconds as number,
+    lateStartSeconds: value.lateStartSeconds as number,
+    undertimeSeconds: value.undertimeSeconds as number,
+    overtimeSeconds: value.overtimeSeconds as number,
+    longPauseSeconds: value.longPauseSeconds as number,
+  }
+}
+
+function isSupportedTimezone(value: unknown): value is string {
+  if (typeof value !== "string") return false
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: value }).format()
+    return true
+  } catch {
+    return false
+  }
+}
+
+function parseApprovedReportData(value: unknown): ReportData | null {
+  if (!isRecord(value) || !isSupportedTimezone(value.timezone) || !isRecord(value.report)) return null
+  const report = value.report
+  if (
+    report.source !== "HASH_VERIFIED_IMMUTABLE_APPROVALS"
+    || typeof report.start !== "string"
+    || !/^\d{4}-\d{2}-\d{2}$/.test(report.start)
+    || typeof report.end !== "string"
+    || !/^\d{4}-\d{2}-\d{2}$/.test(report.end)
+    || report.end < report.start
+    || !isRecord(report.summary)
+    || !Array.isArray(report.byEmployee)
+    || report.byEmployee.length > 5_000
+    || !isRecord(report.unavailable)
+    || report.unavailable.noShow !== "UNAVAILABLE_UNTIL_SCHEDULED_EXCEPTION_LIFECYCLE"
+    || report.unavailable.siteTransitions !== "EXCLUDED_FROM_APPROVED_TIMESHEET_FACTS"
+    || report.unavailable.freeTextAppeals !== "EXCLUDED_FROM_APPROVED_TIMESHEET_FACTS"
+  ) return null
+  const summaryMetrics = reportMetrics(report.summary)
+  if (
+    !summaryMetrics
+    || !isNonNegativeInteger(report.summary.employees)
+    || !isNonNegativeInteger(report.summary.approvalsExamined)
+    || !isNonNegativeInteger(report.summary.overlappingRowsSuppressed)
+  ) return null
+  const byEmployee = report.byEmployee.flatMap((candidate) => {
+    if (!isRecord(candidate)) return []
+    const metrics = reportMetrics(candidate)
+    if (
+      !metrics
+      || typeof candidate.agentId !== "string"
+      || !/^[A-Za-z0-9_-]{1,100}$/.test(candidate.agentId)
+      || typeof candidate.name !== "string"
+      || candidate.name.length < 1
+      || candidate.name.length > 500
+    ) return []
+    return [{ agentId: candidate.agentId, name: candidate.name, ...metrics }]
+  })
+  if (
+    byEmployee.length !== report.byEmployee.length
+    || new Set(byEmployee.map((employee) => employee.agentId)).size !== byEmployee.length
+    || report.summary.employees !== byEmployee.length
+    || REPORT_METRIC_KEYS.some((key) => (
+      byEmployee.reduce((sum, employee) => sum + employee[key], 0) !== summaryMetrics[key]
+    ))
+  ) return null
+  return {
+    timezone: value.timezone,
+    report: {
+      source: report.source,
+      start: report.start,
+      end: report.end,
+      summary: {
+        employees: report.summary.employees,
+        ...summaryMetrics,
+        approvalsExamined: report.summary.approvalsExamined,
+        overlappingRowsSuppressed: report.summary.overlappingRowsSuppressed,
+      },
+      byEmployee,
+      unavailable: {
+        noShow: report.unavailable.noShow,
+        siteTransitions: report.unavailable.siteTransitions,
+        freeTextAppeals: report.unavailable.freeTextAppeals,
+      },
+    },
+  }
+}
 
 function duration(value: number): string {
   const hours = Math.floor(value / 3600)
@@ -87,13 +194,18 @@ export function WorkforceApprovedReport() {
       parameters.set("end", applied.end)
     }
     fetch("/api/v1/workforce/reports?" + parameters.toString(), {
+      cache: "no-store",
       headers: organizationId ? { "x-organization-id": organizationId } : {},
       signal: controller.signal,
     })
       .then(async (response) => {
-        const result = await response.json().catch(() => ({}))
-        if (!response.ok || !result.success) throw new Error("WORKFORCE_APPROVED_REPORT_LOAD_FAILED")
-        const nextData = result.data as ReportData
+        const result: unknown = await response.json().catch(() => ({}))
+        if (!response.ok || !isRecord(result) || result.success !== true) {
+          throw new Error("WORKFORCE_APPROVED_REPORT_LOAD_FAILED")
+        }
+        const nextData = parseApprovedReportData(result.data)
+        if (!nextData) throw new Error("WORKFORCE_APPROVED_REPORT_RESPONSE_INVALID")
+        if (controller.signal.aborted) return
         setData(nextData)
         // Inputs remain usable after the initial response, but they must show
         // the exact server-selected dates. Do not overwrite a later local
@@ -105,7 +217,7 @@ export function WorkforceApprovedReport() {
       })
       .catch((cause: unknown) => {
         if (cause instanceof Error && cause.name === "AbortError") return
-        setError(cause instanceof Error ? cause.message : t("approvedReportLoadFailed"))
+        setError(t("approvedReportLoadFailed"))
         setData(null)
       })
       .finally(() => {
