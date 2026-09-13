@@ -37,6 +37,7 @@ describe("Workforce access review", () => {
     expect(result).toMatchObject({
       grantsExamined: 2,
       actionsExamined: 1,
+      activityEvidence: "COMPLETE",
       findingCounts: { STALE_PRIVILEGED_ASSIGNMENT: 1 },
       automaticAction: "NONE",
       nextAction: "ACCOUNTABLE_HUMAN_REVIEW",
@@ -44,6 +45,20 @@ describe("Workforce access review", () => {
     expect(result.findings).toEqual([
       { grantId: "grant-stale", codes: ["STALE_PRIVILEGED_ASSIGNMENT"] },
     ])
+  })
+
+  it("does not label grants stale when exact-grant activity evidence is unavailable", () => {
+    const result = reviewWorkforceAccess({
+      organizationId: "org-1",
+      now: NOW,
+      grants: [grant("grant-without-usage-ledger")],
+      actions: [],
+      activityEvidenceComplete: false,
+    })
+
+    expect(result.activityEvidence).toBe("UNAVAILABLE")
+    expect(result.findings).toEqual([])
+    expect(result.findingCounts.STALE_PRIVILEGED_ASSIGNMENT).toBeUndefined()
   })
 
   it("finds inactive principals, expired rows and actions outside the grant window", () => {
