@@ -25,6 +25,18 @@ export type WorkforceAndroidReleasePolicy = {
   recovery: "NONE" | "DRAIN_THEN_UPDATE" | "CONTACT_SUPPORT"
 }
 
+export type WorkforceAndroidMutationReleaseBlock = {
+  httpStatus: 400 | 409 | 426 | 503
+  code:
+    | "WORKFORCE_ANDROID_VERSION_REQUIRED"
+    | "WORKFORCE_ANDROID_VERSION_INVALID"
+    | "WORKFORCE_ANDROID_UPDATE_REQUIRED"
+    | "WORKFORCE_ANDROID_VERSION_UNSUPPORTED"
+    | "WORKFORCE_ANDROID_RELEASE_POLICY_INVALID"
+  message: string
+  release: WorkforceAndroidReleasePolicy
+}
+
 function versionCode(value: string | undefined): number | null {
   if (value == null || value === "" || !/^[1-9]\d{0,9}$/.test(value)) return null
   const parsed = Number(value)
@@ -169,5 +181,60 @@ export function resolveWorkforceAndroidReleasePolicy(input: {
     status: "SUPPORTED",
     maySubmitNewWorkforceActions: true,
     recovery: "NONE",
+  }
+}
+
+/**
+ * Converts the advertised compatibility decision into a fail-closed mutation
+ * boundary. It remains inert while the server policy is unconfigured and for
+ * tenants without Workforce. Callers must evaluate this only for a brand-new
+ * Workforce mutation; an exact stored idempotent replay remains available so
+ * a client can reconcile its outbox before upgrading.
+ */
+export function workforceAndroidMutationReleaseBlock(input: {
+  workforceEnabled: boolean
+  clientVersionCode: string | null
+  environment?: WorkforceAndroidReleaseEnvironment
+}): WorkforceAndroidMutationReleaseBlock | null {
+  const release = resolveWorkforceAndroidReleasePolicy(input)
+  if (release.maySubmitNewWorkforceActions || release.status === "NOT_APPLICABLE") return null
+
+  switch (release.status) {
+    case "CLIENT_VERSION_REQUIRED":
+      return {
+        httpStatus: 426,
+        code: "WORKFORCE_ANDROID_VERSION_REQUIRED",
+        message: "A supported Workforce app version is required before submitting a new action.",
+        release,
+      }
+    case "CLIENT_VERSION_INVALID":
+      return {
+        httpStatus: 400,
+        code: "WORKFORCE_ANDROID_VERSION_INVALID",
+        message: "The Workforce app version is invalid.",
+        release,
+      }
+    case "UPDATE_REQUIRED":
+      return {
+        httpStatus: 426,
+        code: "WORKFORCE_ANDROID_UPDATE_REQUIRED",
+        message: "Update the Workforce app before submitting a new action.",
+        release,
+      }
+    case "CLIENT_TOO_NEW":
+      return {
+        httpStatus: 409,
+        code: "WORKFORCE_ANDROID_VERSION_UNSUPPORTED",
+        message: "This Workforce app version is not supported by the current server release.",
+        release,
+      }
+    case "POLICY_INVALID":
+    default:
+      return {
+        httpStatus: 503,
+        code: "WORKFORCE_ANDROID_RELEASE_POLICY_INVALID",
+        message: "The Workforce mobile release policy is temporarily unavailable.",
+        release,
+      }
   }
 }
