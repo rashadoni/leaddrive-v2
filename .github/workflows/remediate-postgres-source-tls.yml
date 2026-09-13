@@ -105,7 +105,7 @@ jobs:
           set -e
 
           mapfile -t MAINTENANCE_LINES <<<"$MAINTENANCE_OUTPUT"
-          LINE_RE='^source_tls_maintenance operation=(apply|rollback|unknown) status=(applied|rolled-back|failed) pg_restart=no service_restart=no effective_verify_full=(yes|not-tested|unknown) rollback_snapshot=(retained|unknown) failure_stage=(none|configuration|invocation|invocation-script-read|invocation-script-missing|invocation-script-unapproved|invocation-unit-read|invocation-unit-unapproved|scheduler|backup-lock|file-safety|snapshot-present|tls-evidence|pgpass|post-write|rollback|internal)$'
+          LINE_RE='^source_tls_maintenance operation=(apply|rollback|unknown) status=(applied|rolled-back|failed) pg_restart=no service_restart=no effective_verify_full=(yes|not-tested|unknown) rollback_snapshot=(retained|unknown) failure_stage=(none|configuration|configuration-read|configuration-client|configuration-override|configuration-rewrite|invocation|invocation-script-read|invocation-script-missing|invocation-script-unapproved|invocation-unit-read|invocation-unit-unapproved|scheduler|backup-lock|file-safety|snapshot-present|tls-evidence|pgpass|post-write|rollback|internal)$'
           [ "${#MAINTENANCE_LINES[@]}" -eq 1 ] \
             && [[ "${MAINTENANCE_LINES[0]}" =~ $LINE_RE ]] || {
               echo "::error::Maintenance output failed the anonymized schema gate"

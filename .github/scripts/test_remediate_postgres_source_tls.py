@@ -229,8 +229,8 @@ class DecisionTests(unittest.TestCase):
     ) -> None:
         environment = (
             b"PGHOST=127.0.0.1\n"
-            b"PGSSLMODE=verify-full\n"
-            b"PGSSLROOTCERT=/etc/leaddrive/managed-postgres-ca.crt\n"
+            b"PGSSLMODE=require\n"
+            b"PGSSLROOTCERT=/etc/leaddrive/legacy-source-ca.crt\n"
         )
         prepared = MAINTENANCE._prepare(
             environment,
@@ -241,8 +241,8 @@ class DecisionTests(unittest.TestCase):
                 "PGDATABASE": "database_name",
                 "PGUSER": "backup_user",
                 "PGPASSFILE": "/etc/leaddrive/backup.pgpass",
-                "PGSSLMODE": "verify-full",
-                "PGSSLROOTCERT": "/etc/leaddrive/managed-postgres-ca.crt",
+                "PGSSLMODE": "require",
+                "PGSSLROOTCERT": "/etc/leaddrive/legacy-source-ca.crt",
                 "PGSERVICE": "",
                 "PGSERVICEFILE": "",
                 "PGPASSWORD": "",
@@ -252,6 +252,11 @@ class DecisionTests(unittest.TestCase):
         self.assertEqual(certificate.call_count, 2)
         self.assertEqual(verify_full.call_count, 2)
         self.assertIn(b"PGHOSTADDR=127.0.0.1\n", prepared.environment)
+        self.assertIn(b"PGSSLMODE=verify-full\n", prepared.environment)
+        self.assertIn(
+            b"PGSSLROOTCERT=/etc/leaddrive/managed-postgres-ca.crt\n",
+            prepared.environment,
+        )
         self.assertNotIn(b"PGHOST=127.0.0.1\n", prepared.environment)
         identity.assert_called()
         server_name.assert_called_once()
