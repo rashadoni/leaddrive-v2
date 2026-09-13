@@ -268,7 +268,7 @@ export default function ComplaintDetailPage({ params }: { params: Promise<{ id: 
   if (loading) return <div data-testid="complaint-detail-loading" className="flex min-h-48 items-center justify-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />{t("loading")}</div>
   if (fetchError || !data) return (
     <div className="space-y-4">
-      <Button variant="ghost" size="sm" className="h-11 sm:h-9" onClick={() => router.push(returnTo)}><ArrowLeft className="h-4 w-4" />{t("backToRegistry")}</Button>
+      <Button variant="ghost" size="sm" className="h-11 sm:h-9" onClick={() => router.push(returnTo, { scroll: false })}><ArrowLeft className="h-4 w-4" />{t("backToRegistry")}</Button>
       <div data-testid="complaint-detail-load-error" className="rounded-xl border p-8 text-center"><p className="text-sm text-muted-foreground">{fetchError || t("notFound")}</p><Button data-testid="complaint-detail-retry-load" variant="outline" size="sm" className="mt-3 h-11 sm:h-9" onClick={() => { setLoading(true); void fetchOne() }}><RefreshCw className="h-4 w-4" />{permissionDenied ? t("checkAccessAgain") : t("retry")}</Button></div>
     </div>
   )
@@ -284,7 +284,7 @@ export default function ComplaintDetailPage({ params }: { params: Promise<{ id: 
       data-testid="complaint-detail-workspace"
       width="fluid"
       title={data.subject}
-      leading={<Button data-testid="complaint-detail-back" variant="ghost" size="icon" className="h-11 w-11 sm:h-9 sm:w-9" aria-label={t("backToRegistry")} onClick={() => router.push(returnTo)}><ArrowLeft className="h-4 w-4" /></Button>}
+      leading={<Button data-testid="complaint-detail-back" variant="ghost" size="icon" className="h-11 w-11 sm:h-9 sm:w-9" aria-label={t("backToRegistry")} onClick={() => router.push(returnTo, { scroll: false })}><ArrowLeft className="h-4 w-4" /></Button>}
       utilities={<HelpButton slug="complaint-detail" variant="icon" className="shrink-0" />}
       description={<span className="flex flex-wrap items-center gap-1.5">
               <span className="font-mono">#{meta?.externalRegistryNumber ?? data.ticketNumber}</span>

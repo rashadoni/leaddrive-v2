@@ -282,7 +282,7 @@ try {
     await retry.click({ trial: true })
     const [response] = await Promise.all([
       page.waitForResponse((candidate) => new URL(candidate.url()).pathname === `/api/v1/tickets/${createdComplaintId}/comments`),
-      retry.click(),
+      retry.evaluate((button) => button.click()),
     ])
     if (!response.ok()) throw new Error(`response_retry_http_${response.status()}`)
     await page.getByText(content, { exact: true }).waitFor({ state: "visible" })
@@ -308,7 +308,7 @@ try {
     await resolve.click({ trial: true })
     await Promise.all([
       page.waitForResponse((candidate) => new URL(candidate.url()).pathname === `/api/v1/complaints/${createdComplaintId}` && candidate.request().method() === "PATCH" && candidate.ok()),
-      resolve.click(),
+      resolve.evaluate((button) => button.click()),
     ])
     await page.getByTestId("complaint-status-open").waitFor({ state: "visible" })
     await page.getByTestId("complaint-status-open").click()
@@ -343,7 +343,7 @@ try {
     await save.click({ trial: true })
     const [saved] = await Promise.all([
       page.waitForResponse((candidate) => new URL(candidate.url()).pathname === `/api/v1/complaints/${createdComplaintId}` && candidate.request().method() === "PATCH"),
-      save.click(),
+      save.evaluate((button) => button.click()),
     ])
     if (!saved.ok()) throw new Error(`assignment_retry_http_${saved.status()}`)
     await select.selectOption("")
@@ -364,13 +364,16 @@ try {
       } else await route.continue()
     }
     await page.route(pattern, deny)
-    const backgroundPage = await context.newPage()
-    await backgroundPage.bringToFront()
     const [refresh] = await Promise.all([
       page.waitForResponse((candidate) => new URL(candidate.url()).pathname === `/api/v1/complaints/${createdComplaintId}` && candidate.request().method() === "GET"),
-      page.bringToFront(),
+      page.evaluate(() => {
+        const original = Object.getOwnPropertyDescriptor(document, "visibilityState")
+        Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" })
+        document.dispatchEvent(new Event("visibilitychange"))
+        if (original) Object.defineProperty(document, "visibilityState", original)
+        else delete document.visibilityState
+      }),
     ])
-    await backgroundPage.close()
     if (refresh.status() !== 503) throw new Error(`stale_refresh_intercept_missed_${refresh.status()}`)
     await page.getByTestId("complaint-detail-stale").waitFor({ state: "visible", timeout: 10_000 })
     await page.unroute(pattern, deny)
