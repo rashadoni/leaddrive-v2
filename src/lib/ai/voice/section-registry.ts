@@ -329,6 +329,10 @@ export const NO_DATA_SECTIONS: Record<string, "surface" | "config" | "bespoke" |
   // a dedicated, capability-aware reader exists instead of inventing totals.
   workforce: "pending",
   workforce_timesheet: "pending",
+  // These reports combine immutable revisions and derived aggregates rather
+  // than exposing one Prisma model to the generic voice reader.
+  workforce_reports: "surface",
+  "workforce_reports_site-transitions": "surface",
   workforce_requests: "pending",
   // This administrator-only queue is a derived, read-only lifecycle surface.
   // It deliberately has no generic aggregate until a separately audited,
