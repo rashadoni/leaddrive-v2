@@ -14,9 +14,9 @@ type OwnException = {
   displayReference: string
   type: string
   createdAt: string
-  workdayId: string
+  workdayId: string | null
   workDate: string
-  availableAction: "REQUEST_CORRECTION"
+  availableAction: "REQUEST_CORRECTION" | "VIEW_ONLY_NO_SHOW"
   responseState: "UNAVAILABLE" | "NOT_ACKNOWLEDGED" | "ACKNOWLEDGED"
 }
 
@@ -106,10 +106,23 @@ export function WorkforceMyExceptions() {
     {loading ? <div className="flex items-center gap-2 py-12 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin motion-reduce:animate-none" />{t("loading")}</div> : null}
     {items && !loading ? <section aria-labelledby="workforce-my-exceptions-list" className="rounded-lg border border-zinc-200 dark:border-zinc-700">
       <div className="border-b border-zinc-200 p-4 dark:border-zinc-700"><h2 id="workforce-my-exceptions-list" className="font-semibold">{t("casesTitle")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("casesHint", { count: items.length })}</p></div>
-      <div className="divide-y divide-zinc-200 dark:divide-zinc-700">{items.map((item) => <article key={item.caseId} className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-        <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="font-mono text-xs text-muted-foreground">{item.displayReference}</span><Badge variant="outline">{tTypes(`types.${item.type}`)}</Badge></div><p className="mt-2 text-sm font-medium">{t("workday", { date: dateFormatter.format(new Date(`${item.workDate.slice(0, 10)}T12:00:00`)) })}</p><p className="mt-1 text-xs text-muted-foreground">{t("raised", { date: dateFormatter.format(new Date(item.createdAt)) })}</p></div>
-        <div className="flex flex-col items-stretch gap-2 sm:flex-row md:flex-col"><Button asChild className="min-h-11"><Link href={`/workforce/requests?correctionWorkdayId=${encodeURIComponent(item.workdayId)}&exceptionCaseId=${encodeURIComponent(item.caseId)}`}>{t("requestCorrection")}</Link></Button><p className="max-w-72 text-xs leading-5 text-muted-foreground">{t("requestCorrectionHint")}</p>{responseRecording === "AVAILABLE" && item.responseState === "NOT_ACKNOWLEDGED" ? <><Button type="button" variant="outline" className="min-h-11" disabled={acknowledgingCaseId !== null} onClick={() => void acknowledgeForReview(item)}>{acknowledgingCaseId === item.caseId ? <Loader2 className="mr-2 size-4 animate-spin motion-reduce:animate-none" /> : null}{t("acknowledgeForReview")}</Button><p className="max-w-72 text-xs leading-5 text-muted-foreground">{t("acknowledgeForReviewHint")}</p></> : null}{responseRecording === "AVAILABLE" && item.responseState === "ACKNOWLEDGED" ? <p className="max-w-72 text-xs leading-5 text-muted-foreground" role="status">{t("acknowledgedForReview")}</p> : null}</div>
-      </article>)}{items.length === 0 ? <p className="px-4 py-12 text-center text-sm text-muted-foreground">{t("empty")}</p> : null}</div>
+      <div className="divide-y divide-zinc-200 dark:divide-zinc-700">{items.map((item) => {
+        const correctionWorkdayId = item.availableAction === "REQUEST_CORRECTION" ? item.workdayId : null
+        const isWorkdayCorrection = correctionWorkdayId !== null
+        const displayDate = dateFormatter.format(new Date(`${item.workDate.slice(0, 10)}T12:00:00`))
+        return <article key={item.caseId} className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2"><span className="font-mono text-xs text-muted-foreground">{item.displayReference}</span><Badge variant="outline">{tTypes(`types.${item.type}`)}</Badge></div>
+            <p className="mt-2 text-sm font-medium">{item.availableAction === "VIEW_ONLY_NO_SHOW" ? t("expectedWorkday", { date: displayDate }) : t("workday", { date: displayDate })}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("raised", { date: dateFormatter.format(new Date(item.createdAt)) })}</p>
+          </div>
+          <div className="flex flex-col items-stretch gap-2 sm:flex-row md:flex-col">
+            {isWorkdayCorrection ? <><Button asChild className="min-h-11"><Link href={`/workforce/requests?correctionWorkdayId=${encodeURIComponent(correctionWorkdayId)}&exceptionCaseId=${encodeURIComponent(item.caseId)}`}>{t("requestCorrection")}</Link></Button><p className="max-w-72 text-xs leading-5 text-muted-foreground">{t("requestCorrectionHint")}</p></> : <p className="max-w-72 text-xs leading-5 text-muted-foreground" data-testid="workforce-no-show-self-review-boundary">{t("noShowReviewOnlyHint")}</p>}
+            {isWorkdayCorrection && responseRecording === "AVAILABLE" && item.responseState === "NOT_ACKNOWLEDGED" ? <><Button type="button" variant="outline" className="min-h-11" disabled={acknowledgingCaseId !== null} onClick={() => void acknowledgeForReview(item)}>{acknowledgingCaseId === item.caseId ? <Loader2 className="mr-2 size-4 animate-spin motion-reduce:animate-none" /> : null}{t("acknowledgeForReview")}</Button><p className="max-w-72 text-xs leading-5 text-muted-foreground">{t("acknowledgeForReviewHint")}</p></> : null}
+            {isWorkdayCorrection && responseRecording === "AVAILABLE" && item.responseState === "ACKNOWLEDGED" ? <p className="max-w-72 text-xs leading-5 text-muted-foreground" role="status">{t("acknowledgedForReview")}</p> : null}
+          </div>
+        </article>
+      })}{items.length === 0 ? <p className="px-4 py-12 text-center text-sm text-muted-foreground">{t("empty")}</p> : null}</div>
     </section> : null}
   </section>
 }

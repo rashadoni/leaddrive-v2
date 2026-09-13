@@ -15,11 +15,19 @@ describe("Workforce employee exception response boundary", () => {
     expect(component).toContain('responseRecording === "MIGRATION_REQUIRED"')
     expect(component).toContain('t("responseRecordingUnavailableTitle")')
     expect(component).toContain('t("responseRecordingUnavailableHint")')
-    expect(component).toContain('responseRecording === "AVAILABLE" && item.responseState === "NOT_ACKNOWLEDGED"')
+    expect(component).toContain('isWorkdayCorrection && responseRecording === "AVAILABLE" && item.responseState === "NOT_ACKNOWLEDGED"')
     expect(component).toContain('`/api/v1/workforce/exceptions/${encodeURIComponent(item.caseId)}/response`')
     expect(component).toContain('responseCode: "ACKNOWLEDGED"')
     expect(component).toContain('globalThis.crypto.randomUUID()')
-    expect(component).toContain('responseState === "ACKNOWLEDGED"')
+    expect(component).toContain('isWorkdayCorrection && responseRecording === "AVAILABLE" && item.responseState === "ACKNOWLEDGED"')
+  })
+
+  it("keeps a schedule-only no-show visible but strictly outside workday correction and acknowledgement writes", () => {
+    expect(component).toContain('item.availableAction === "VIEW_ONLY_NO_SHOW"')
+    expect(component).toContain('t("expectedWorkday"')
+    expect(component).toContain('data-testid="workforce-no-show-self-review-boundary"')
+    expect(component).toContain('item.availableAction === "REQUEST_CORRECTION" ? item.workdayId : null')
+    expect(component).toContain('isWorkdayCorrection && responseRecording === "AVAILABLE"')
   })
 
   it("keeps the employee response notice localized and clear about its non-mutating correction path", () => {
@@ -32,6 +40,8 @@ describe("Workforce employee exception response boundary", () => {
         "acknowledgeForReviewHint",
         "acknowledgedForReview",
         "acknowledgeFailed",
+        "expectedWorkday",
+        "noShowReviewOnlyHint",
       ]) {
         expect(localized[key], `${locale}.${key} is missing`).toEqual(expect.any(String))
         expect((localized[key] as string).trim(), `${locale}.${key} is empty`).not.toBe("")

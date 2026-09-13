@@ -71,6 +71,21 @@ they have no accepted START snapshot yet. Their schedule detector, grace
 timing, case writer and employee lifecycle remain separately disabled until
 the approved C6 policy/RACI exists.
 
+The transaction-only no-show materializer now composes that schedule detector
+and this writer behind the canonical employee workday-transition lock. It
+rechecks all historical schedule, employment, calendar and exact-workday
+inputs before asking this writer to persist a raw-proof-free `NO_SHOW` review
+case. It has no route or scheduled caller, so it cannot activate a tenant
+detector or employee workflow; its only positive outcome is this immutable
+review envelope.
+
+The same transaction boundary now materializes only an explicit stale-open
+workday `MISSED_FINISH` proposal. It receives timing from its caller rather
+than selecting it, locks and re-reads the canonical workday before the
+idempotent case write, and treats an already completed workday or a reminder
+candidate as no-write results. It cannot send a reminder, fabricate a FINISH,
+mutate a workday or decide the case.
+
 ## Explicitly not activated
 
 No tenant policy activation, detector, employee notification/appeal UI,

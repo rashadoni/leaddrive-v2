@@ -384,7 +384,35 @@ export type WorkforceMissedFinishProposal =
       policy: WorkforceExceptionIntakePolicy
       automaticFinish: "FORBIDDEN"
       correction: "REQUIRES_HUMAN_REVIEW"
-    }
+  }
+
+/**
+ * A stale open workday is a distinct, concrete workday subject. Its detector
+ * key therefore has no timing value: retries with the same immutable workday
+ * cannot fork cases just because a worker ran later.
+ */
+export const WORKFORCE_MISSED_FINISH_DETECTOR_VERSION = "workforce-missed-finish-v1"
+
+/**
+ * Converts only a server-derived stale-open-workday proposal into the
+ * raw-proof-free immutable C6 case subject. This helper neither closes the
+ * workday nor sends the preceding private reminder.
+ */
+export function createWorkforceMissedFinishExceptionCaseDraft(input: {
+  organizationId: string
+  agentId: string
+  workdayId: string
+  proposal: WorkforceMissedFinishProposal
+}): WorkforceExceptionCaseDraft | null {
+  if (input.proposal.outcome !== "PROPOSE_REVIEW_CASE") return null
+  return createWorkforceExceptionCaseDraft({
+    organizationId: input.organizationId,
+    agentId: input.agentId,
+    kind: "MISSED_FINISH",
+    detectorVersion: WORKFORCE_MISSED_FINISH_DETECTOR_VERSION,
+    links: { workdayId: input.workdayId },
+  })
+}
 
 /**
  * Plans a safe next step for an open workday without inventing a FINISH event.

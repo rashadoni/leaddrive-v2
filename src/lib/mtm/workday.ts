@@ -599,7 +599,7 @@ function pausedSeconds(from: Date, to: Date): number {
  * key, so a transition cannot read state while another writer is changing it.
  */
 export async function lockMtmWorkdayTransitions(
-  db: Pick<WorkdayDb, "$executeRaw">,
+  db: { $executeRaw: (query: TemplateStringsArray, ...values: readonly unknown[]) => PromiseLike<unknown> },
   scope: WorkdayScope,
 ): Promise<void> {
   await db.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`mtm-workday:${scope.organizationId}:${scope.agentId}`}))`

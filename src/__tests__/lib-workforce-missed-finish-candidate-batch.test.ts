@@ -98,4 +98,31 @@ describe("Workforce missed-finish candidate batch reader", () => {
     expect(prisma.mtmAgentWorkday.findMany).not.toHaveBeenCalled();
     expect(readWorkforceMissedFinishCandidate).not.toHaveBeenCalled();
   });
+
+  it("stops and propagates an incomplete workday read instead of treating later rows as a complete reminder scan", async () => {
+    vi.mocked(readWorkforceMissedFinishCandidate).mockReset();
+    vi.mocked(readWorkforceMissedFinishCandidate).mockRejectedValueOnce(
+      new Error("immutable shift snapshot unavailable"),
+    );
+
+    await expect(
+      readWorkforceMissedFinishCandidateBatch(prisma as never, {
+        ...INPUT,
+        limit: 2,
+      }),
+    ).rejects.toThrow("immutable shift snapshot unavailable");
+
+    // No future scheduler may interpret a partial read as a completed scan;
+    // it must record the incomplete observation and leave all workdays alone.
+    expect(readWorkforceMissedFinishCandidate).toHaveBeenCalledTimes(1);
+    expect(readWorkforceMissedFinishCandidate).toHaveBeenCalledWith(prisma, {
+      organizationId: INPUT.organizationId,
+      agentId: "agent-a",
+      workdayId: "workday-a",
+      asOf: INPUT.asOf,
+      timing: INPUT.timing,
+    });
+    expect(prisma.workforceExceptionCase.create).not.toHaveBeenCalled();
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled();
+  });
 });
