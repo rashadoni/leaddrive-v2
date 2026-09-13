@@ -29,11 +29,17 @@ describe("Workforce Android foundation", () => {
     expect(dataRules).toContain("<exclude domain=\"database\" path=\".\" />")
   })
 
-  it("keeps the Android data layer limited to Workforce login/bootstrap and secure local session state", () => {
+  it("keeps the Android data layer limited to Workforce login, server-truth work time and secure local session state", () => {
     const api = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceApiClient.kt")
     const store = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceSecureStore.kt")
     expect(api).toContain('"/api/v1/mtm/mobile/auth"')
     expect(api).toContain('"/api/v1/mtm/mobile/bootstrap"')
+    expect(api).toContain('"/api/v1/mtm/mobile/workday"')
+    expect(api).toContain('"/api/v1/mtm/mobile/sync/push"')
+    expect(api).toContain('"entity", "workdays"')
+    expect(api).toContain('"schemaVersion", WORKFORCE_WORKDAY_SCHEMA_VERSION')
+    expect(api).toContain("UUID.randomUUID()")
+    expect(api).toContain("if (activeWorkday == null)")
     expect(api).not.toContain('"/api/v1/mtm/mobile/routes')
     expect(api).not.toContain('"/api/v1/mtm/mobile/visits')
     expect(api).toContain('"x-workforce-client"')
@@ -41,6 +47,17 @@ describe("Workforce Android foundation", () => {
     expect(store).toContain("AndroidKeyStore")
     expect(store).toContain("AES/GCM/NoPadding")
     expect(store).toContain("clearForLogout")
+  })
+
+  it("restores canonical Today state after process death and never manufactures an offline fact", () => {
+    const activity = read("app/src/main/java/com/leaddrive/workforce/android/MainActivity.kt")
+    const repository = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceSessionRepository.kt")
+    expect(activity).toContain("LaunchedEffect(Unit)")
+    expect(activity).toContain("repository.restore()")
+    expect(activity).toContain("repository.loadToday()")
+    expect(activity).toContain("No attendance action was created locally")
+    expect(activity).toContain("actions require a live server acknowledgement")
+    expect(repository).toContain("submitTodayAction")
   })
 
   it("uses an attested non-exportable Android key without handling biometric data", () => {

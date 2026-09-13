@@ -23,6 +23,21 @@ class WorkforceSessionRepository(
         return api.bootstrap(session, secureStore.installationId())
     }
 
+    suspend fun loadToday(): WorkforceTodaySnapshot {
+        val session = secureStore.readSession()
+            ?: throw WorkforceApiException("Your Workforce session has ended. Sign in again.", recoverable = false)
+        return api.loadToday(session, secureStore.installationId())
+    }
+
+    suspend fun submitTodayAction(
+        snapshot: WorkforceTodaySnapshot,
+        action: WorkforceWorkdayAction,
+    ): WorkforceTodaySnapshot {
+        val session = secureStore.readSession()
+            ?: throw WorkforceApiException("Your Workforce session has ended. Sign in again.", recoverable = false)
+        return api.submitTodayAction(session, secureStore.installationId(), snapshot, action)
+    }
+
     fun signOut() {
         secureStore.clearForLogout()
     }
