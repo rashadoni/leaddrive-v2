@@ -406,13 +406,17 @@ async function rebuildApprovalRows(
         "An attendance exception cannot be tied to a reproducible workday",
       )
     }
+    const exceptionStage: NonNullable<WorkforceTimesheetApprovalBlocker["exceptionStage"]> =
+      !lifecycle || !lifecycle.valid || lifecycle.stage === "RESOLVED"
+        ? "DATA_INTEGRITY_REVIEW"
+        : lifecycle.stage
     return [{
       ...(linkedWorkdayId ? { workdayId: linkedWorkdayId } : {}),
       caseReference: `WF-${exceptionCase.id.slice(-8)}`,
       workDate: workDate.toISOString().slice(0, 10),
       reason: "UNRESOLVED_EXCEPTION",
       ...(approvalExceptionType(exceptionCase.kind) ? { exceptionType: approvalExceptionType(exceptionCase.kind) } : {}),
-      exceptionStage: !lifecycle || !lifecycle.valid ? "DATA_INTEGRITY_REVIEW" : lifecycle.stage,
+      exceptionStage,
     }]
   })
 
