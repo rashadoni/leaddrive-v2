@@ -325,7 +325,7 @@ export default function AgentDesktopPage() {
               </span>
             )}
             {availabilityRetry != null && !availabilitySaving && (
-              <span data-testid="agent-desktop-availability-error" className="flex flex-wrap items-center gap-x-2 text-destructive">
+              <span data-testid="agent-desktop-availability-error" className="flex flex-wrap items-center gap-x-2 font-medium text-red-700 dark:text-red-300">
                 {availabilityRetry === "load" ? t("availabilityLoadFailed") : t("availabilityUnchanged")}
                 <button
                   type="button"
@@ -382,7 +382,10 @@ export default function AgentDesktopPage() {
             )}
           </div>
           {nextTicket && (
-            <Button asChild className="min-h-11 shrink-0">
+            <Button
+              asChild
+              className="min-h-11 shrink-0 bg-foreground text-background hover:bg-foreground/90"
+            >
               <Link href={`/tickets/${nextTicket.id}`}>
                 {t("openNext")}
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -455,7 +458,7 @@ export default function AgentDesktopPage() {
                       </td>
                       <td className="px-3 py-2.5">{priorityLabel(ticket.priority)}</td>
                       <td className="px-3 py-2.5"><Badge variant="outline">{statusLabel(ticket.status)}</Badge></td>
-                      <td className={cn("whitespace-nowrap px-3 py-2.5 text-xs", ticket.isOverdue ? "font-medium text-destructive" : "text-muted-foreground")}>
+                      <td className={cn("whitespace-nowrap px-3 py-2.5 text-xs", ticket.isOverdue ? "font-semibold text-red-700 dark:text-red-300" : "text-muted-foreground")}>
                         {ticket.actionableDueAt ? formatDateTime(ticket.actionableDueAt, locale) : t("noDueDate")}
                       </td>
                       <td className="px-3 py-2.5">
@@ -484,7 +487,7 @@ export default function AgentDesktopPage() {
                         {ticket.ticketNumber} · {priorityLabel(ticket.priority)} · {statusLabel(ticket.status)}
                       </span>
                       {ticket.actionableDueAt && (
-                        <span className={cn("mt-1 block text-xs", ticket.isOverdue ? "font-medium text-destructive" : "text-muted-foreground")}>
+                        <span className={cn("mt-1 block text-xs", ticket.isOverdue ? "font-semibold text-red-700 dark:text-red-300" : "text-muted-foreground")}>
                           {t("due", { date: formatDateTime(ticket.actionableDueAt, locale) })}
                         </span>
                       )}
@@ -519,9 +522,11 @@ export default function AgentDesktopPage() {
               )}
             >
               <dt className="text-xs font-medium text-muted-foreground">{metric.label}</dt>
-              <dd className="mt-1 text-lg font-semibold tabular-nums">{metric.value}</dd>
-              <p className="mt-1 text-xs text-muted-foreground">{t("sampleSize", { count: metric.sample })}</p>
-              <p className="sr-only">{metric.hint}</p>
+              <dd className="mt-1">
+                <span className="block text-lg font-semibold tabular-nums">{metric.value}</span>
+                <span className="mt-1 block text-xs text-muted-foreground">{t("sampleSize", { count: metric.sample })}</span>
+                <span className="sr-only">{metric.hint}</span>
+              </dd>
             </div>
           ))}
         </dl>

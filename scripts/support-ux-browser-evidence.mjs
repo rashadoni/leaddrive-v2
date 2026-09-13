@@ -183,6 +183,19 @@ async function authenticate(context, role) {
   return null
 }
 
+async function authenticateRole(browser, role) {
+  const context = await browser.newContext({ baseURL: baseUrl })
+  try {
+    const portalUser = await authenticate(context, role)
+    return {
+      portalUser,
+      storageState: await context.storageState(),
+    }
+  } finally {
+    await context.close()
+  }
+}
+
 async function primeEvidenceStorage(context, theme, portalUser) {
   const page = await context.newPage()
   try {
@@ -569,12 +582,34 @@ const report = {
 const browser = await chromium.launch({ headless: true })
 try {
   for (const role of roles) {
+    let authenticated
+    try {
+      authenticated = await authenticateRole(browser, role)
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error)
+      for (const locale of selectedLocales) {
+        for (const theme of selectedThemes) {
+          for (const viewportName of selectedViewports) {
+            report.results.push({ id: "authentication", role: role.key, locale, theme, viewport: viewportName, status: "blocked", reason })
+          }
+        }
+      }
+      continue
+    }
     for (const locale of selectedLocales) {
       for (const theme of selectedThemes) {
         for (const viewportName of selectedViewports) {
           const viewport = viewports[viewportName]
           const expectsTouch = viewportName !== "desktop"
-          const context = await browser.newContext({ baseURL: baseUrl, viewport, locale, colorScheme: theme, reducedMotion: "reduce", hasTouch: expectsTouch })
+          const context = await browser.newContext({
+            baseURL: baseUrl,
+            viewport,
+            locale,
+            colorScheme: theme,
+            reducedMotion: "reduce",
+            hasTouch: expectsTouch,
+            storageState: authenticated.storageState,
+          })
           await context.route("**/api/v1/public/csp-report", async (route) => {
             const request = route.request()
             const url = new URL(request.url())
@@ -586,8 +621,7 @@ try {
           })
           await context.addCookies([{ name: "NEXT_LOCALE", value: locale, domain: hostname, path: "/" }])
           try {
-            const portalUser = await authenticate(context, role)
-            await primeEvidenceStorage(context, theme, portalUser)
+            await primeEvidenceStorage(context, theme, authenticated.portalUser)
             const roleScenarios = scenarios.filter((item) => item.roles.includes(role.key) && selectedScenarioIds.has(item.id))
             console.log(`[support-evidence] ${role.key}/${locale}/${theme}/${viewportName}: ${roleScenarios.length} scenario(s)`)
             for (const scenario of roleScenarios) {

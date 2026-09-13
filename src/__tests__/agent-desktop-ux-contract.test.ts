@@ -41,6 +41,15 @@ describe("agent desktop UX contract", () => {
     expect(page).toContain('data-testid="agent-desktop-availability-error"')
   })
 
+  it("keeps urgent states legible and metric definition markup valid", () => {
+    const page = source("src/app/(dashboard)/support/agent-desktop/page.tsx")
+    expect(page).toContain("bg-foreground text-background hover:bg-foreground/90")
+    expect(page).toContain("font-semibold text-red-700 dark:text-red-300")
+    expect(page).toContain('<dd className="mt-1">')
+    expect(page).not.toContain('<p className="mt-1 text-xs text-muted-foreground">{t("sampleSize"')
+    expect(page).not.toContain('<p className="sr-only">{metric.hint}</p>')
+  })
+
   it("localizes every active queue priority and status", () => {
     const page = source("src/app/(dashboard)/support/agent-desktop/page.tsx")
     expect(page).toContain('["critical", "urgent", "high", "medium", "low"]')

@@ -99,6 +99,17 @@ describe("Support UX browser evidence contract", () => {
     );
   });
 
+  it("reuses one authenticated session per role across the evidence matrix", () => {
+    expect(runner).toContain("async function authenticateRole(browser, role)");
+    expect(runner).toContain("authenticated = await authenticateRole(browser, role)");
+    expect(runner).toContain("storageState: authenticated.storageState");
+    expect(runner).toContain(
+      "primeEvidenceStorage(context, theme, authenticated.portalUser)",
+    );
+    expect(runner.match(/await authenticate\(context, role\)/g)).toHaveLength(1);
+    expect(runner).not.toContain("authenticate(context, role)\n            await primeEvidenceStorage");
+  });
+
   it("uses the narrow sidebar width before client viewport effects run", () => {
     expect(sidebar).toContain('effectiveCollapsed ? "w-16" : "w-16 lg:w-64"');
     expect(sidebar).toContain("overflow-hidden");
@@ -123,7 +134,9 @@ describe("Support UX browser evidence contract", () => {
     expect(runner).not.toContain("page.request.delete(");
     expect(runner).toContain('name: "portal-token"');
     expect(runner).toContain('secure: baseUrl.startsWith("https:")');
-    expect(runner).toContain('primeEvidenceStorage(context, theme, portalUser)');
+    expect(runner).toContain(
+      'primeEvidenceStorage(context, theme, authenticated.portalUser)',
+    );
     expect(runner).toContain('page.goto("/api/v1/ping"');
     expect(runner).not.toContain("context.addInitScript");
   });
