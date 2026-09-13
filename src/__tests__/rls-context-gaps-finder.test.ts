@@ -37,9 +37,10 @@ describe("RLS context-gap finder (route + lib-delegation, any depth)", () => {
     let code = 0
     try {
       out = execFileSync("python3", ["scripts/rls/find-context-gaps.py"], { encoding: "utf8" })
-    } catch (e: any) {
-      out = `${e.stdout || ""}${e.stderr || ""}`
-      code = e.status ?? 1
+    } catch (error: unknown) {
+      const failure = error as { stdout?: unknown; stderr?: unknown; status?: number }
+      out = `${failure.stdout ?? ""}${failure.stderr ?? ""}`
+      code = failure.status ?? 1
     }
     expect(code, `scripts/rls/find-context-gaps.py reported RLS-context gaps:\n${out}`).toBe(0)
   }, FINDER_TIMEOUT_MS)

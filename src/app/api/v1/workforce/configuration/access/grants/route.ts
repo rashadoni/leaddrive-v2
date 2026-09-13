@@ -49,6 +49,10 @@ const GrantRequest = z.object({
   grantReasonCode: ReasonCode,
 }).strict()
 
+type ActiveTenantTargetDb = Pick<Prisma.TransactionClient, "user" | "mtmTeam" | "workforceSite" | "mtmAgent">
+
+class WorkforceAccessGrantTargetUnavailableError extends Error {}
+
 function unavailable(): NextResponse {
   return NextResponse.json({
     error: "Unable to apply Workforce access grant.",
@@ -64,11 +68,12 @@ function invalid(): NextResponse {
 }
 
 async function activeTenantTarget(input: {
+  db: ActiveTenantTargetDb
   organizationId: string
   principalUserId: string
   scope: z.infer<typeof Scope>
 }): Promise<boolean> {
-  const principal = await prisma.user.findFirst({
+  const principal = await input.db.user.findFirst({
     where: { id: input.principalUserId, organizationId: input.organizationId, isActive: true },
     select: { id: true },
   })
@@ -78,17 +83,17 @@ async function activeTenantTarget(input: {
     case "ORGANIZATION":
       return true
     case "TEAM":
-      return Boolean(await prisma.mtmTeam.findFirst({
+      return Boolean(await input.db.mtmTeam.findFirst({
         where: { id: input.scope.teamId, organizationId: input.organizationId, isActive: true },
         select: { id: true },
       }))
     case "SITE":
-      return Boolean(await prisma.workforceSite.findFirst({
+      return Boolean(await input.db.workforceSite.findFirst({
         where: { id: input.scope.siteId, organizationId: input.organizationId, status: "ACTIVE" },
         select: { id: true },
       }))
     case "AGENT":
-      return Boolean(await prisma.mtmAgent.findFirst({
+      return Boolean(await input.db.mtmAgent.findFirst({
         where: { id: input.scope.agentId, organizationId: input.organizationId, status: "ACTIVE" },
         select: { id: true },
       }))
@@ -135,6 +140,7 @@ export const POST = withWorkforceSessionGrantManagementAuth(async (req: NextRequ
 
   try {
     if (!await activeTenantTarget({
+      db: prisma,
       organizationId: auth.orgId,
       principalUserId: parsed.data.principalUserId,
       scope: parsed.data.scope,
@@ -184,6 +190,14 @@ export const POST = withWorkforceSessionGrantManagementAuth(async (req: NextRequ
     const requestAudit = workforceConfigurationRequestAuditContext(req, auth.userId)
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const db = tx as unknown as WorkforceAccessGrantWriterDb
+      if (!await activeTenantTarget({
+        db: tx,
+        organizationId: auth.orgId,
+        principalUserId: parsed.data.principalUserId,
+        scope: parsed.data.scope,
+      })) {
+        throw new WorkforceAccessGrantTargetUnavailableError()
+      }
       return persistAuthorizedWorkforceAccessGrant({
         db,
         draft,
@@ -203,6 +217,7 @@ export const POST = withWorkforceSessionGrantManagementAuth(async (req: NextRequ
           ipAddress: requestAudit.ipAddress,
           userAgent: requestAudit.userAgent,
         },
+        replayMode: "SERVER_ASSIGNED_TIMESTAMPS",
       })
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
     return NextResponse.json({
@@ -212,6 +227,12 @@ export const POST = withWorkforceSessionGrantManagementAuth(async (req: NextRequ
     }, { status: 201, headers: workforceSensitiveResponseHeaders })
   } catch (error) {
     if (missingGrantSchema(error)) return unavailable()
+    if (error instanceof WorkforceAccessGrantTargetUnavailableError) {
+      return NextResponse.json({
+        error: "The requested Workforce grant target is unavailable.",
+        code: "WORKFORCE_ACCESS_GRANT_TARGET_UNAVAILABLE",
+      }, { status: 404, headers: workforceSensitiveResponseHeaders })
+    }
     if (error instanceof WorkforceAccessGrantLedgerError) return invalid()
     if (error instanceof WorkforceAccessGrantWriterError) {
       const status = error.code === "WORKFORCE_ACCESS_GRANT_NOT_AUTHORIZED" ? 403 : 409

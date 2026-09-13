@@ -84,6 +84,13 @@ export type WorkforceAccessGrantAuditContext = {
   userAgent: string | null
 }
 
+/**
+ * HTTP routes own the grant/revocation receipt timestamps. Their retries must
+ * compare every caller- and actor-controlled field while reusing the first
+ * persisted server timestamp. Direct domain callers remain exact by default.
+ */
+export type WorkforceAccessGrantReplayMode = "EXACT" | "SERVER_ASSIGNED_TIMESTAMPS"
+
 export class WorkforceAccessGrantWriterError extends Error {
   constructor(readonly code:
     | "WORKFORCE_ACCESS_GRANT_NOT_AUTHORIZED"
@@ -147,7 +154,11 @@ function grantWriteData(draft: WorkforceAccessGrantDraft): WorkforceAccessGrantW
   }
 }
 
-function sameGrant(left: WorkforceAccessGrantStored, right: WorkforceAccessGrantWriteData): boolean {
+function sameGrant(
+  left: WorkforceAccessGrantStored,
+  right: WorkforceAccessGrantWriteData,
+  replayMode: WorkforceAccessGrantReplayMode,
+): boolean {
   return left.organizationId === right.organizationId
     && left.principalUserId === right.principalUserId
     && left.operationId === right.operationId
@@ -156,7 +167,8 @@ function sameGrant(left: WorkforceAccessGrantStored, right: WorkforceAccessGrant
     && left.scopeTeamId === right.scopeTeamId
     && left.scopeSiteId === right.scopeSiteId
     && left.scopeAgentId === right.scopeAgentId
-    && left.effectiveFrom.getTime() === right.effectiveFrom.getTime()
+    && (replayMode === "SERVER_ASSIGNED_TIMESTAMPS"
+      || left.effectiveFrom.getTime() === right.effectiveFrom.getTime())
     && left.effectiveUntil?.getTime() === right.effectiveUntil?.getTime()
     && left.grantedByUserId === right.grantedByUserId
     && left.grantReasonCode === right.grantReasonCode
@@ -173,13 +185,18 @@ function revocationWriteData(draft: WorkforceAccessGrantRevocationDraft): Workfo
   }
 }
 
-function sameRevocation(left: WorkforceAccessGrantRevocationStored, right: WorkforceAccessGrantRevocationWriteData): boolean {
+function sameRevocation(
+  left: WorkforceAccessGrantRevocationStored,
+  right: WorkforceAccessGrantRevocationWriteData,
+  replayMode: WorkforceAccessGrantReplayMode,
+): boolean {
   return left.organizationId === right.organizationId
     && left.grantId === right.grantId
     && left.operationId === right.operationId
     && left.revokedByUserId === right.revokedByUserId
     && left.revocationReasonCode === right.revocationReasonCode
-    && left.revokedAt.getTime() === right.revokedAt.getTime()
+    && (replayMode === "SERVER_ASSIGNED_TIMESTAMPS"
+      || left.revokedAt.getTime() === right.revokedAt.getTime())
 }
 
 async function requireAuthorization(input: {
@@ -234,6 +251,7 @@ export async function persistAuthorizedWorkforceAccessGrant(input: {
   draft: WorkforceAccessGrantDraft
   authorize: WorkforceAccessGrantAuthorization
   audit?: WorkforceAccessGrantAuditContext
+  replayMode?: WorkforceAccessGrantReplayMode
 }): Promise<{ grantId: string; idempotent: boolean }> {
   const draft = canonicalGrant(input.draft)
   await requireAuthorization({
@@ -274,7 +292,9 @@ export async function persistAuthorizedWorkforceAccessGrant(input: {
       where: { organizationId: draft.organizationId, operationId: draft.operationId },
       select: GRANT_SELECT,
     })
-    if (existing && sameGrant(existing, data)) return { grantId: existing.id, idempotent: true }
+    if (existing && sameGrant(existing, data, input.replayMode ?? "EXACT")) {
+      return { grantId: existing.id, idempotent: true }
+    }
     throw new WorkforceAccessGrantWriterError("WORKFORCE_ACCESS_GRANT_WRITE_CONFLICT")
   }
 }
@@ -289,6 +309,7 @@ export async function appendAuthorizedWorkforceAccessGrantRevocation(input: {
   draft: WorkforceAccessGrantRevocationDraft
   authorize: WorkforceAccessGrantAuthorization
   audit?: WorkforceAccessGrantAuditContext
+  replayMode?: WorkforceAccessGrantReplayMode
 }): Promise<{ revocationId: string; idempotent: boolean }> {
   const draft = canonicalRevocation(input.draft)
   await requireAuthorization({
@@ -334,7 +355,9 @@ export async function appendAuthorizedWorkforceAccessGrantRevocation(input: {
       where: { organizationId: draft.organizationId, operationId: draft.operationId },
       select: REVOCATION_SELECT,
     })
-    if (existing && sameRevocation(existing, data)) return { revocationId: existing.id, idempotent: true }
+    if (existing && sameRevocation(existing, data, input.replayMode ?? "EXACT")) {
+      return { revocationId: existing.id, idempotent: true }
+    }
     throw new WorkforceAccessGrantWriterError("WORKFORCE_ACCESS_REVOCATION_WRITE_CONFLICT")
   }
 }

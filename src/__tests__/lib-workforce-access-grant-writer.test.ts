@@ -115,6 +115,41 @@ describe("Workforce access grant transaction writer", () => {
     expect(db.mtmAuditLog.create).not.toHaveBeenCalled()
   })
 
+  it("reuses the persisted server start time for an otherwise exact HTTP retry", async () => {
+    const retryDraft = createWorkforceAccessGrantDraft({
+      ...grantDraft,
+      effectiveFrom: new Date(EFFECTIVE_FROM.getTime() + 1_000),
+    })
+    db.workforceAccessGrant.create.mockRejectedValueOnce({ code: "P2002" })
+    db.workforceAccessGrant.findFirst.mockResolvedValueOnce({ id: "grant-1", ...grantData })
+
+    await expect(persistAuthorizedWorkforceAccessGrant({
+      db,
+      draft: retryDraft,
+      authorize: allow,
+      replayMode: "SERVER_ASSIGNED_TIMESTAMPS",
+    })).resolves.toEqual({ grantId: "grant-1", idempotent: true })
+  })
+
+  it("does not let HTTP replay mode hide a changed caller-controlled grant field", async () => {
+    db.workforceAccessGrant.create.mockRejectedValueOnce({ code: "P2002" })
+    db.workforceAccessGrant.findFirst.mockResolvedValueOnce({ id: "grant-1", ...grantData })
+    const changedDraft = createWorkforceAccessGrantDraft({
+      ...grantDraft,
+      effectiveFrom: new Date(EFFECTIVE_FROM.getTime() + 1_000),
+      grantReasonCode: "ROLE_CHANGE",
+    })
+
+    await expect(persistAuthorizedWorkforceAccessGrant({
+      db,
+      draft: changedDraft,
+      authorize: allow,
+      replayMode: "SERVER_ASSIGNED_TIMESTAMPS",
+    })).rejects.toMatchObject<Partial<WorkforceAccessGrantWriterError>>({
+      code: "WORKFORCE_ACCESS_GRANT_WRITE_CONFLICT",
+    })
+  })
+
   it("fails closed when an operation id identifies a different authority row", async () => {
     db.workforceAccessGrant.create.mockRejectedValueOnce({ code: "P2002" })
     db.workforceAccessGrant.findFirst.mockResolvedValueOnce({
@@ -193,5 +228,22 @@ describe("Workforce access grant transaction writer", () => {
     await expect(appendAuthorizedWorkforceAccessGrantRevocation({ db, draft: revocationDraft, authorize: allow }))
       .resolves.toEqual({ revocationId: "revocation-1", idempotent: true })
     expect(db.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+
+  it("reuses the persisted server revocation time for an otherwise exact HTTP retry", async () => {
+    const retryDraft = createWorkforceAccessGrantRevocationDraft({
+      ...revocationDraft,
+      revokedAt: new Date(REVOKED_AT.getTime() + 1_000),
+    })
+    db.workforceAccessGrant.findFirst.mockResolvedValueOnce({ id: "grant-1", ...grantData })
+    db.workforceAccessGrantRevocation.create.mockRejectedValueOnce({ code: "P2002" })
+    db.workforceAccessGrantRevocation.findFirst.mockResolvedValueOnce({ id: "revocation-1", ...revocationData })
+
+    await expect(appendAuthorizedWorkforceAccessGrantRevocation({
+      db,
+      draft: retryDraft,
+      authorize: allow,
+      replayMode: "SERVER_ASSIGNED_TIMESTAMPS",
+    })).resolves.toEqual({ revocationId: "revocation-1", idempotent: true })
   })
 })

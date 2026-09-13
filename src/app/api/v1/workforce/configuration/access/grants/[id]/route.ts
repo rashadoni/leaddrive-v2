@@ -115,6 +115,7 @@ export const DELETE = withWorkforceSessionGrantManagementAuth<RouteContext>(asyn
           ipAddress: requestAudit.ipAddress,
           userAgent: requestAudit.userAgent,
         },
+        replayMode: "SERVER_ASSIGNED_TIMESTAMPS",
       })
     ), { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
     return NextResponse.json({
