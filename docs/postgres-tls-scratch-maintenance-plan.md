@@ -76,7 +76,7 @@ server name, local name resolution, and successful in-memory `verify-full`
 through the already configured local endpoint. It also requires at least seven
 days of certificate validity, server TLS purpose, a matching `.pgpass` entry for
 the new certificate identity, any installed backup artifact to match an exact
-reviewed script, and an inactive service and timer. If the backup unit is already
+reviewed script, and an inactive, non-enabled service and timer. If the backup unit is already
 commissioned, its exact reviewed bytes and its own nonblocking lock are also
 mandatory; the expected pre-commission state may omit the unit and lock.
 Extended attributes are a stop condition so an atomic replacement cannot
@@ -86,6 +86,11 @@ installs the public source CA, and atomically changes only `PGHOST`,
 automatically restores the snapshot. Workflow output is a single schema-gated
 enum line, including only an allowlisted preflight failure stage when blocked,
 and contains no raw configuration or certificate identity.
+
+The controlled transition accepts only a standard libpq TLS mode and an
+absolute non-URL starting CA path, then replaces both with the reviewed
+`verify-full` and dedicated source-CA settings. Any service-based connection or
+password override remains a stop condition.
 
 No PostgreSQL restart is part of this path. If any decision result is not
 positive, certificate re-issuance and DNS correction need a separate reviewed
@@ -121,6 +126,13 @@ target.
 The scratch CA must come from the independently provisioned scratch cluster's
 own trust chain. Do not copy or reuse the source certificate or source CA. Pin
 its separately approved fingerprint before setting scratch `verify-full`.
+
+An existing byte-drifted backup unit is not approved or rewritten by the
+source TLS maintenance. The maintenance may treat it only as uncommissioned
+when the active backup script is an exact reviewed artifact and both the
+service and timer are inactive and non-enabled (or absent) before and after the
+atomic client configuration update. Commissioning remains blocked until a
+separate reviewed deployment reconciles the exact unit bytes.
 
 Rollback is limited to stopping the scratch mechanism created in that window,
 removing only its disposable data and CA after evidence retention, and proving

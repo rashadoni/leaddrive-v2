@@ -81,7 +81,16 @@ class SafeMaintenanceError(Exception):
     ALLOWED_CODES = frozenset(
         {
             "configuration",
+            "configuration-read",
+            "configuration-client",
+            "configuration-override",
+            "configuration-rewrite",
             "invocation",
+            "invocation-script-read",
+            "invocation-script-missing",
+            "invocation-script-unapproved",
+            "invocation-unit-read",
+            "invocation-unit-unapproved",
             "scheduler",
             "backup-lock",
             "file-safety",
@@ -532,22 +541,32 @@ def _require_pgpass_match(config: dict[str, str], server_name: str, port: int) -
 
 
 def _require_reviewed_invocation() -> bool:
-    script, _ = _read_regular_file(
-        ACTIVE_BACKUP_SCRIPT_PATH, maximum_bytes=256 * 1024, required=False
-    )
-    service, _ = _read_regular_file(
-        ACTIVE_BACKUP_SERVICE_PATH, maximum_bytes=32 * 1024, required=False
-    )
+    try:
+        script, _ = _read_regular_file(
+            ACTIVE_BACKUP_SCRIPT_PATH, maximum_bytes=256 * 1024, required=False
+        )
+    except SafeMaintenanceError as exc:
+        raise SafeMaintenanceError("invocation-script-read") from exc
+    try:
+        service, _ = _read_regular_file(
+            ACTIVE_BACKUP_SERVICE_PATH, maximum_bytes=32 * 1024, required=False
+        )
+    except SafeMaintenanceError as exc:
+        raise SafeMaintenanceError("invocation-unit-read") from exc
     if script is None:
         if service is None:
             return False
-        raise SafeMaintenanceError
+        raise SafeMaintenanceError("invocation-script-missing")
     if hashlib.sha256(script).hexdigest() not in APPROVED_BACKUP_SCRIPT_SHA256:
-        raise SafeMaintenanceError
+        raise SafeMaintenanceError("invocation-script-unapproved")
     if service is None:
         return False
     if hashlib.sha256(service).hexdigest() != APPROVED_BACKUP_SERVICE_SHA256:
-        raise SafeMaintenanceError
+        # A root-owned, non-writable but byte-drifted unit is not approved for
+        # commissioning. Treat it like an uncommissioned unit only while the
+        # independent scheduler gate proves that neither it nor its timer can
+        # run during this client-only maintenance. The unit is never changed.
+        return False
     return True
 
 
@@ -555,7 +574,10 @@ def _require_backup_inactive() -> None:
     executable = shutil.which("systemctl", path="/usr/bin:/bin")
     if executable is None:
         raise SafeMaintenanceError
-    for unit in ("leaddrive-postgres-backup.service", "leaddrive-postgres-backup.timer"):
+    for unit in (
+        "leaddrive-postgres-backup.service",
+        "leaddrive-postgres-backup.timer",
+    ):
         try:
             result = subprocess.run(
                 [executable, "is-active", "--quiet", unit],
@@ -568,6 +590,23 @@ def _require_backup_inactive() -> None:
         except (OSError, subprocess.SubprocessError) as exc:
             raise SafeMaintenanceError from exc
         if result.returncode == 0:
+            raise SafeMaintenanceError
+    for unit in ("leaddrive-postgres-backup.service", "leaddrive-postgres-backup.timer"):
+        try:
+            result = subprocess.run(
+                [executable, "is-enabled", "--quiet", unit],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=5,
+                check=False,
+                env={"PATH": "/usr/bin:/bin", "LC_ALL": "C"},
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise SafeMaintenanceError from exc
+        # systemd returns 1 for disabled/static/masked units and 4 when the
+        # unit does not exist. Any enabled state, or an unexpected failure to
+        # classify it, keeps the maintenance fail-closed.
+        if result.returncode not in {1, 4}:
             raise SafeMaintenanceError
 
 
@@ -797,12 +836,26 @@ def _restore_snapshot(state: dict[str, object], *, require_post_state: bool) -> 
 
 
 def _prepare(environment: bytes, config: dict[str, str]) -> PreparedRemediation:
-    if config["PGSSLMODE"] != "verify-full":
-        raise SafeMaintenanceError("configuration")
-    if config["PGSSLROOTCERT"] != str(CA_PATH):
-        raise SafeMaintenanceError("configuration")
+    if config["PGSSLMODE"] not in {
+        "disable",
+        "allow",
+        "prefer",
+        "require",
+        "verify-ca",
+        "verify-full",
+    }:
+        raise SafeMaintenanceError("configuration-client")
+    current_rootcert = config["PGSSLROOTCERT"]
+    if (
+        len(current_rootcert) > 4096
+        or not Path(current_rootcert).is_absolute()
+        or any(ord(character) < 32 for character in current_rootcert)
+        or "://" in current_rootcert
+        or "@" in current_rootcert
+    ):
+        raise SafeMaintenanceError("configuration-client")
     if any(config[key] for key in ("PGSERVICE", "PGSERVICEFILE", "PGPASSWORD")):
-        raise SafeMaintenanceError("configuration")
+        raise SafeMaintenanceError("configuration-override")
     current_host = config["PGHOST"]
     port = _normalize_port(config["PGPORT"])
     try:
@@ -834,7 +887,7 @@ def _prepare(environment: bytes, config: dict[str, str]) -> PreparedRemediation:
             },
         )
     except Exception as exc:
-        raise SafeMaintenanceError("configuration") from exc
+        raise SafeMaintenanceError("configuration-rewrite") from exc
     return PreparedRemediation(
         environment=rewritten,
         certificate_pem=ssl.DER_cert_to_PEM_cert(first_certificate).encode("ascii"),
@@ -852,6 +905,10 @@ def apply() -> str:
         raise SafeMaintenanceError("file-safety") from exc
     try:
         commissioned_invocation = _require_reviewed_invocation()
+    except SafeMaintenanceError as exc:
+        if exc.code.startswith("invocation-"):
+            raise
+        raise SafeMaintenanceError("invocation") from exc
     except Exception as exc:
         raise SafeMaintenanceError("invocation") from exc
     try:
@@ -866,7 +923,7 @@ def apply() -> str:
         try:
             environment, env_authority, config = read_environment()
         except Exception as exc:
-            raise SafeMaintenanceError("configuration") from exc
+            raise SafeMaintenanceError("configuration-read") from exc
         try:
             ca_payload, ca_authority = _read_regular_file(
                 CA_PATH, maximum_bytes=MAX_CA_BYTES, required=False
@@ -908,6 +965,7 @@ def apply() -> str:
                 applied_config["PGHOST"],
                 observed,
             )
+            _require_backup_inactive()
             state["phase"] = "applied"
             state["env_after_sha256"] = hashlib.sha256(prepared.environment).hexdigest()
             state["ca_after_sha256"] = hashlib.sha256(

@@ -140,6 +140,60 @@ class DecisionTests(unittest.TestCase):
         ):
             self.assertFalse(MAINTENANCE._require_reviewed_invocation())
 
+    def test_unapproved_reviewed_artifact_reports_only_sanitized_stage(self) -> None:
+        authority = MAINTENANCE.FileAuthority(uid=0, gid=0, mode=0o555)
+        with mock.patch.object(
+            MAINTENANCE,
+            "_read_regular_file",
+            side_effect=[(b"different-script", authority), (None, None)],
+        ):
+            with self.assertRaises(MAINTENANCE.SafeMaintenanceError) as raised:
+                MAINTENANCE._require_reviewed_invocation()
+        self.assertEqual(raised.exception.code, "invocation-script-unapproved")
+
+    def test_drifted_unit_is_quarantined_as_uncommissioned(self) -> None:
+        script = b"reviewed-script"
+        authority = MAINTENANCE.FileAuthority(uid=0, gid=0, mode=0o555)
+        approved = {MAINTENANCE.hashlib.sha256(script).hexdigest()}
+        with (
+            mock.patch.object(
+                MAINTENANCE,
+                "_read_regular_file",
+                side_effect=[(script, authority), (b"different-unit", authority)],
+            ),
+            mock.patch.object(
+                MAINTENANCE, "APPROVED_BACKUP_SCRIPT_SHA256", approved
+            ),
+        ):
+            self.assertFalse(MAINTENANCE._require_reviewed_invocation())
+
+    @mock.patch.object(MAINTENANCE.shutil, "which", return_value="/usr/bin/systemctl")
+    @mock.patch.object(MAINTENANCE.subprocess, "run")
+    def test_scheduler_gate_requires_inactive_and_disabled_units(
+        self, run: mock.Mock, _which: mock.Mock
+    ) -> None:
+        run.side_effect = [
+            MAINTENANCE.subprocess.CompletedProcess([], 1),
+            MAINTENANCE.subprocess.CompletedProcess([], 1),
+            MAINTENANCE.subprocess.CompletedProcess([], 1),
+            MAINTENANCE.subprocess.CompletedProcess([], 1),
+        ]
+        MAINTENANCE._require_backup_inactive()
+        self.assertEqual(run.call_count, 4)
+
+    @mock.patch.object(MAINTENANCE.shutil, "which", return_value="/usr/bin/systemctl")
+    @mock.patch.object(MAINTENANCE.subprocess, "run")
+    def test_scheduler_gate_rejects_enabled_unit(
+        self, run: mock.Mock, _which: mock.Mock
+    ) -> None:
+        run.side_effect = [
+            MAINTENANCE.subprocess.CompletedProcess([], 1),
+            MAINTENANCE.subprocess.CompletedProcess([], 1),
+            MAINTENANCE.subprocess.CompletedProcess([], 0),
+        ]
+        with self.assertRaises(MAINTENANCE.SafeMaintenanceError):
+            MAINTENANCE._require_backup_inactive()
+
     @mock.patch.object(MAINTENANCE.os, "open", side_effect=FileNotFoundError)
     def test_precommission_state_does_not_require_backup_lock(
         self, _open: mock.Mock
@@ -175,8 +229,8 @@ class DecisionTests(unittest.TestCase):
     ) -> None:
         environment = (
             b"PGHOST=127.0.0.1\n"
-            b"PGSSLMODE=verify-full\n"
-            b"PGSSLROOTCERT=/etc/leaddrive/managed-postgres-ca.crt\n"
+            b"PGSSLMODE=require\n"
+            b"PGSSLROOTCERT=/etc/leaddrive/legacy-source-ca.crt\n"
         )
         prepared = MAINTENANCE._prepare(
             environment,
@@ -187,8 +241,8 @@ class DecisionTests(unittest.TestCase):
                 "PGDATABASE": "database_name",
                 "PGUSER": "backup_user",
                 "PGPASSFILE": "/etc/leaddrive/backup.pgpass",
-                "PGSSLMODE": "verify-full",
-                "PGSSLROOTCERT": "/etc/leaddrive/managed-postgres-ca.crt",
+                "PGSSLMODE": "require",
+                "PGSSLROOTCERT": "/etc/leaddrive/legacy-source-ca.crt",
                 "PGSERVICE": "",
                 "PGSERVICEFILE": "",
                 "PGPASSWORD": "",
@@ -198,6 +252,11 @@ class DecisionTests(unittest.TestCase):
         self.assertEqual(certificate.call_count, 2)
         self.assertEqual(verify_full.call_count, 2)
         self.assertIn(b"PGHOSTADDR=127.0.0.1\n", prepared.environment)
+        self.assertIn(b"PGSSLMODE=verify-full\n", prepared.environment)
+        self.assertIn(
+            b"PGSSLROOTCERT=/etc/leaddrive/managed-postgres-ca.crt\n",
+            prepared.environment,
+        )
         self.assertNotIn(b"PGHOST=127.0.0.1\n", prepared.environment)
         identity.assert_called()
         server_name.assert_called_once()
