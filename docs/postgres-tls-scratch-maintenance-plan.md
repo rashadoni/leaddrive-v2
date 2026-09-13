@@ -93,6 +93,12 @@ absent or absolute non-URL starting CA path, then installs both reviewed
 passfile settings remain mandatory; any service-based connection or password
 override remains a stop condition.
 
+The passfile may use either the reviewed root/group-readable authority or the
+runbook's private dedicated-service-user authority. The maintenance only reads
+and validates it; it never changes, copies, or emits passfile bytes. A deployed
+backup script that does not yet accept the service-user-owned variant remains
+uncommissioned until a separate reviewed deployment reconciles that contract.
+
 No PostgreSQL restart is part of this path. If any decision result is not
 positive, certificate re-issuance and DNS correction need a separate reviewed
 maintenance plan; whether a reload is sufficient must be proved against the

@@ -16,6 +16,7 @@ import ipaddress
 import json
 import fcntl
 import os
+import pwd
 import re
 import shutil
 import socket
@@ -540,7 +541,10 @@ def _require_pgpass_match(config: dict[str, str], server_name: str, port: int) -
         raise SafeMaintenanceError("pgpass-path")
     try:
         payload, authority = _read_regular_file(
-            PGPASS_PATH, maximum_bytes=MAX_ENV_BYTES, required=True
+            PGPASS_PATH,
+            maximum_bytes=MAX_ENV_BYTES,
+            required=True,
+            require_root_owner=False,
         )
     except SafeMaintenanceError as exc:
         try:
@@ -553,8 +557,6 @@ def _require_pgpass_match(config: dict[str, str], server_name: str, port: int) -
             raise SafeMaintenanceError("pgpass-links") from exc
         if not stat.S_ISREG(metadata.st_mode) or stat.S_ISLNK(metadata.st_mode):
             raise SafeMaintenanceError("pgpass-file") from exc
-        if metadata.st_uid != 0:
-            raise SafeMaintenanceError("pgpass-owner") from exc
         if stat.S_IMODE(metadata.st_mode) & 0o022:
             raise SafeMaintenanceError("pgpass-writable") from exc
         if metadata.st_size > MAX_ENV_BYTES:
@@ -563,10 +565,21 @@ def _require_pgpass_match(config: dict[str, str], server_name: str, port: int) -
     if payload is None or authority is None:
         raise SafeMaintenanceError("pgpass-read")
     try:
+        backup_uid = pwd.getpwnam("leaddrive-backup").pw_uid
         backup_gid = grp.getgrnam("leaddrive-backup").gr_gid
     except KeyError as exc:
         raise SafeMaintenanceError("pgpass-authority") from exc
-    if authority.gid != backup_gid or authority.mode not in {0o440, 0o640}:
+    root_group_readable = (
+        authority.uid == 0
+        and authority.gid == backup_gid
+        and authority.mode in {0o440, 0o640}
+    )
+    service_user_private = (
+        authority.uid == backup_uid
+        and authority.gid == backup_gid
+        and authority.mode in {0o400, 0o600}
+    )
+    if not (root_group_readable or service_user_private):
         raise SafeMaintenanceError("pgpass-authority")
     try:
         text = payload.decode("utf-8", errors="strict")
