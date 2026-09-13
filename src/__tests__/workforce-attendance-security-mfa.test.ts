@@ -55,11 +55,19 @@ describe("Workforce attendance security MFA gate", () => {
     expect(apiKeyResponse?.status).toBe(403)
     expect(prisma.user.findFirst).not.toHaveBeenCalled()
 
-    vi.mocked(prisma.user.findFirst).mockRejectedValue(new Error("database unavailable"))
+    const privateFailure = new Error("database unavailable for employee-secret-42")
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    vi.mocked(prisma.user.findFirst).mockRejectedValue(privateFailure)
     const unavailableResponse = await requireWorkforceAttendanceSecurityMfa("org_1", AUTH)
     expect(unavailableResponse?.status).toBe(503)
+    expect(unavailableResponse?.headers.get("cache-control")).toBe("private, no-store")
     await expect(unavailableResponse?.json()).resolves.toMatchObject({
       code: "WORKFORCE_ATTENDANCE_MFA_UNAVAILABLE",
     })
+    expect(consoleError).toHaveBeenCalledWith(
+      "[workforce/privacy] sensitive operation failed",
+      { operation: "verify-attendance-mfa" },
+    )
+    expect(JSON.stringify(consoleError.mock.calls)).not.toContain(privateFailure.message)
   })
 })
