@@ -82,6 +82,12 @@ class SafeMaintenanceError(Exception):
         {
             "configuration",
             "configuration-read",
+            "configuration-read-file",
+            "configuration-read-authority",
+            "configuration-read-links",
+            "configuration-read-encoding",
+            "configuration-read-duplicate",
+            "configuration-read-required",
             "configuration-client",
             "configuration-override",
             "configuration-rewrite",
@@ -183,29 +189,44 @@ def read_environment(
     *,
     require_production_authority: bool = True,
 ) -> tuple[bytes, FileAuthority, dict[str, str]]:
-    payload, authority = _read_regular_file(
-        path,
-        maximum_bytes=MAX_ENV_BYTES,
-        required=True,
-        require_root_owner=require_production_authority,
-    )
+    try:
+        payload, authority = _read_regular_file(
+            path,
+            maximum_bytes=MAX_ENV_BYTES,
+            required=True,
+            require_root_owner=require_production_authority,
+        )
+    except SafeMaintenanceError as exc:
+        try:
+            metadata = path.lstat()
+        except OSError:
+            raise SafeMaintenanceError("configuration-read-file") from exc
+        if metadata.st_nlink != 1:
+            raise SafeMaintenanceError("configuration-read-links") from exc
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or stat.S_ISLNK(metadata.st_mode)
+            or metadata.st_size > MAX_ENV_BYTES
+        ):
+            raise SafeMaintenanceError("configuration-read-file") from exc
+        raise SafeMaintenanceError("configuration-read-authority") from exc
     if payload is None or authority is None:
-        raise SafeMaintenanceError
+        raise SafeMaintenanceError("configuration-read-file")
     if require_production_authority:
         try:
             backup_gid = grp.getgrnam("leaddrive-backup").gr_gid
         except KeyError as exc:
-            raise SafeMaintenanceError from exc
+            raise SafeMaintenanceError("configuration-read-authority") from exc
         if not (
             (authority.gid == 0 and authority.mode == 0o600)
             or (authority.gid == backup_gid and authority.mode == 0o640)
         ):
-            raise SafeMaintenanceError
+            raise SafeMaintenanceError("configuration-read-authority")
 
     try:
         text = payload.decode("utf-8", errors="strict")
     except UnicodeDecodeError as exc:
-        raise SafeMaintenanceError from exc
+        raise SafeMaintenanceError("configuration-read-encoding") from exc
     found: dict[str, list[str]] = {key: [] for key in TARGET_KEYS}
     assignment = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s*=(.*)$")
     for raw_line in text.splitlines():
@@ -225,7 +246,7 @@ def read_environment(
     result: dict[str, str] = {}
     for key, values in found.items():
         if len(values) > 1:
-            raise SafeMaintenanceError
+            raise SafeMaintenanceError("configuration-read-duplicate")
         result[key] = values[0] if values else ""
     for required_key in (
         "PGHOST",
@@ -236,7 +257,7 @@ def read_environment(
         "PGSSLROOTCERT",
     ):
         if not result[required_key]:
-            raise SafeMaintenanceError
+            raise SafeMaintenanceError("configuration-read-required")
     return payload, authority, result
 
 
@@ -922,6 +943,10 @@ def apply() -> str:
     try:
         try:
             environment, env_authority, config = read_environment()
+        except SafeMaintenanceError as exc:
+            if exc.code.startswith("configuration-read-"):
+                raise
+            raise SafeMaintenanceError("configuration-read") from exc
         except Exception as exc:
             raise SafeMaintenanceError("configuration-read") from exc
         try:

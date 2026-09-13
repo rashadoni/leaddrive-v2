@@ -75,8 +75,25 @@ class EnvironmentTests(unittest.TestCase):
             "PGSSLMODE=verify-full\n"
             "PGSSLROOTCERT=/etc/leaddrive/managed-postgres-ca.crt\n"
         )
-        with self.assertRaises(MAINTENANCE.SafeMaintenanceError):
+        with self.assertRaises(MAINTENANCE.SafeMaintenanceError) as raised:
             MAINTENANCE.read_environment(path, require_production_authority=False)
+        self.assertEqual(raised.exception.code, "configuration-read-duplicate")
+
+    def test_reader_classifies_hardlinked_environment_without_reading_values(self) -> None:
+        path = self.write_environment(
+            "PGHOST=127.0.0.1\n"
+            "PGDATABASE=database_name\n"
+            "PGUSER=backup_user\n"
+            "PGPASSFILE=/etc/leaddrive/backup.pgpass\n"
+            "PGSSLMODE=verify-full\n"
+            "PGSSLROOTCERT=/etc/leaddrive/managed-postgres-ca.crt\n"
+        )
+        linked_path = Path(f"{path}.link")
+        os.link(path, linked_path)
+        self.addCleanup(lambda: linked_path.unlink(missing_ok=True))
+        with self.assertRaises(MAINTENANCE.SafeMaintenanceError) as raised:
+            MAINTENANCE.read_environment(path, require_production_authority=False)
+        self.assertEqual(raised.exception.code, "configuration-read-links")
 
     def test_rewrite_adds_hostaddr_and_preserves_unrelated_secret_bytes(self) -> None:
         original = (
