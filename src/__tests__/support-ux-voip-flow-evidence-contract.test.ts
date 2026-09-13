@@ -29,6 +29,8 @@ describe("VoIP mutating evidence contract", () => {
     ]) expect(flow).toContain(id)
     expect(flow).toContain('page.keyboard.press("Space")')
     expect(flow).toContain("const samples = sampleRate * 5")
+    expect(flow).toContain("evidencePlayObserved")
+    expect(flow).toContain('element.addEventListener("play"')
     expect(flow).toContain("raw_keystrokes_requested")
     expect(flow).toContain("refresh_failure_discarded_summary")
     expect(flow).toContain("nativePlaybackStarted: true")
