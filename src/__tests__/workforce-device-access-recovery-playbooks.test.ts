@@ -29,7 +29,7 @@ describe("Workforce device and access recovery playbooks", () => {
     expect(playbook).toContain("Do not revoke unrelated employee devices")
     expect(playbook).toContain("Do not copy a raw QR, GPS coordinate")
     expect(playbook).toContain("measured end-to-end termination/rehire exercise is **NOT RUN**")
-    expect(playbook).toContain("WF-C5-012 remains partial")
+    expect(playbook).toContain("WF-C5-012 DONE; external exercises NOT RUN")
   })
 
   it("requires measurable rejection, audit, reconciliation and rollback outcomes", () => {
