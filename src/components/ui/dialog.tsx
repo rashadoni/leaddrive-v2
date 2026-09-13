@@ -206,10 +206,15 @@ export function Dialog({ open, onOpenChange, children, widthClassName = "max-w-[
         ? "rounded-none md:rounded-lg"
         : "rounded-none sm:rounded-lg"
 
+  // `m-0` because the root renders in place, not in a portal: inside a
+  // `space-y-*` parent it inherited `margin-block-end`, and a fixed `inset-0`
+  // box with a bottom margin is that much shorter than the screen. Measured on
+  // /mtm/routes at 834 px (audit C15): the full-screen sheet ended 12 px above
+  // the bottom edge with the page showing through.
   return (
     <DialogA11yContext.Provider value={a11yContext}>
       <div
-        className={`fixed inset-0 z-[60] flex justify-center overflow-y-auto overscroll-contain ${fullscreenRootClassName}`}
+        className={`fixed inset-0 z-[60] m-0 flex justify-center overflow-y-auto overscroll-contain ${fullscreenRootClassName}`}
         data-dialog-root=""
         onMouseDown={(event) => {
           if (event.target === event.currentTarget) onOpenChange(false)
