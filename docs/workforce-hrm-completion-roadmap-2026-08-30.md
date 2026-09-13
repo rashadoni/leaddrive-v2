@@ -757,7 +757,7 @@ the recorded 30-day/one-year lifecycle safely.
 | WF-C10-007 | P1 | DONE | Backend | Preserve derived inside/outside/unknown verdict and approved time after raw evidence purge without retaining reversible exact location | [`workforce-c10-post-purge-verdict-evidence-2026-08-30.md`](./workforce-c10-post-purge-verdict-evidence-2026-08-30.md): post-purge fixture preserves the derived verdict and purge receipt while excluding exact/reversible location |
 | WF-C10-008 | P1 | PLANNED | Product/Mobile/Web | Show employees when/why location is captured, permission state, retention summary and how to request correction | AZ/RU/EN acceptance with no covert state |
 | WF-C10-009 | P1 | PLANNED | Backend/Privacy | Implement employee/tenant data access/export/deactivation workflows with redaction and third-party separation | Subject/contract request test and approval audit |
-| WF-C10-010 | P1 | PLANNED | Security/SRE | Add privacy/security incident runbook for location/device/export exposure | Tabletop drill, notification owner and evidence preservation |
+| WF-C10-010 | P1 | PARTIAL | Security/SRE | Add privacy/security incident runbook for location/device/export exposure | [`workforce-c10-privacy-security-incident-runbook-2026-08-30.md`](./workforce-c10-privacy-security-incident-runbook-2026-08-30.md): privacy-safe preservation, containment, triage and recovery procedure is recorded; named notification owner and tabletop drill remain external/NOT RUN |
 | WF-C10-011 | P2 | PLANNED | Privacy/Analytics | Use aggregated/minimized operational metrics; forbid raw location/reasons in general analytics | Schema/log scanners and dashboard review |
 
 **Gate C10:** collection and access are transparent, raw evidence expires in
