@@ -101,6 +101,7 @@ class MaintenanceError(Exception):
             "cluster-create",
             "tls-create",
             "cluster-config",
+            "cluster-config-owner",
             "cluster-start",
             "role-create",
             "verify-full",
@@ -589,10 +590,26 @@ def _create_certificates(temp_dir: Path, postgres_uid: int, postgres_gid: int, b
     _atomic_write(SERVER_KEY, key_payload, mode=0o600, uid=postgres_uid, gid=postgres_gid)
 
 
-def _configure_cluster() -> None:
+def _acceptable_cluster_config_file(
+    state: FileState,
+    postgres_uid: int,
+    postgres_gid: int,
+    expected_mode: int,
+) -> bool:
+    return (
+        state.present
+        and state.uid == postgres_uid
+        and state.gid == postgres_gid
+        and state.mode == expected_mode
+    )
+
+
+def _configure_cluster(postgres_uid: int, postgres_gid: int) -> None:
     conf_payload, conf_state = _read_file(POSTGRES_CONF, maximum=MAX_SMALL_FILE_BYTES)
-    if conf_payload is None or conf_state.uid != 0:
-        raise MaintenanceError("cluster-config")
+    if conf_payload is None or not _acceptable_cluster_config_file(
+        conf_state, postgres_uid, postgres_gid, 0o644
+    ):
+        raise MaintenanceError("cluster-config-owner")
     marker = b"# BEGIN LEADDRIVE RESTORE SCRATCH\n"
     if marker in conf_payload:
         raise MaintenanceError("cluster-config")
@@ -626,10 +643,16 @@ def _configure_cluster() -> None:
         "host all all ::0/0 reject\n"
     ).encode()
     hba_payload, hba_state = _read_file(PG_HBA, maximum=MAX_SMALL_FILE_BYTES)
-    if hba_payload is None or hba_state.uid != 0:
-        raise MaintenanceError("cluster-config")
+    if hba_payload is None or not _acceptable_cluster_config_file(
+        hba_state, postgres_uid, postgres_gid, 0o640
+    ):
+        raise MaintenanceError("cluster-config-owner")
     _atomic_write(PG_HBA, hba, mode=hba_state.mode, uid=hba_state.uid, gid=hba_state.gid)
-    _atomic_write(START_CONF, b"manual\n", mode=0o644, uid=0, gid=0)
+    start_payload, start_state = _read_file(START_CONF, maximum=MAX_SMALL_FILE_BYTES)
+    if start_payload != b"manual\n" or not _acceptable_cluster_config_file(
+        start_state, postgres_uid, postgres_gid, 0o644
+    ):
+        raise MaintenanceError("cluster-config-owner")
 
 
 def _scratch_environment() -> dict[str, str]:
@@ -863,7 +886,7 @@ def apply() -> None:
             ],
             code="cluster-create",
         )
-        _configure_cluster()
+        _configure_cluster(postgres.pw_uid, postgres.pw_gid)
         with tempfile.TemporaryDirectory(prefix="leaddrive-scratch-tls.", dir="/run") as temporary:
             os.chmod(temporary, 0o700)
             _create_certificates(
