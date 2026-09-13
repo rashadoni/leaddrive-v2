@@ -13,10 +13,10 @@ vi.mock("@/lib/workforce/sensitive-operation-log", () => ({
 import { prisma } from "@/lib/prisma"
 import { requireWorkforceEvidenceTimelineAccess } from "@/lib/workforce/evidence-timeline-access"
 
-const base = {
+const base: Parameters<typeof requireWorkforceEvidenceTimelineAccess>[0] = {
   organizationId: "org-1",
   targetAgentId: "agent-1",
-  auth: { principalType: "session" as const, role: "admin", userId: "user-1" },
+  auth: { principalType: "session", role: "admin", userId: "user-1" },
 }
 
 beforeEach(() => {
