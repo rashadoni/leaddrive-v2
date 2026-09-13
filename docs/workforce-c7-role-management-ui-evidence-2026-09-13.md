@@ -17,6 +17,9 @@ Roadmap item: `WF-C7-002` (partial)
 - Active grants show named people, localized roles, named scope and effective
   window. Revocation uses an inline two-step confirmation with a reason; it is
   never a one-click destructive icon.
+- The same section can run the bounded durable access review and shows only
+  localized aggregate finding counts. It explicitly explains when exact-grant
+  usage evidence is unavailable instead of labelling access stale by guess.
 - `TENANT_ADMIN` bootstrap and removal remain unavailable in the browser.
   Server-side MFA, incompatibility, tenant/RLS and immutable-ledger checks stay
   authoritative.

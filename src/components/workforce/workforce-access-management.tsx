@@ -32,6 +32,18 @@ type ActiveGrant = {
   scope: { name: string; code?: string | null; externalCode?: string | null } | null
 }
 
+type AccessReview = {
+  reviewedAt: string
+  grantsExamined: number
+  activityEvidence: "COMPLETE" | "UNAVAILABLE"
+  findingCounts: Partial<Record<
+    "EXPIRED_UNREVOKED" | "PRINCIPAL_INACTIVE" | "STALE_PRIVILEGED_ASSIGNMENT" | "INCOMPATIBLE_ACTIVE_ROLES" | "ACTION_OUTSIDE_GRANT_WINDOW",
+    number
+  >>
+}
+
+type AccessReviewFindingCode = keyof AccessReview["findingCounts"]
+
 type ApiFailure = Error & { code?: string }
 
 const GRANTABLE_ROLES = WORKFORCE_ACCESS_ROLES.filter((role) => role !== "TENANT_ADMIN")
@@ -79,6 +91,8 @@ export function WorkforceAccessManagement() {
   const [confirmed, setConfirmed] = useState(false)
   const [pendingRevocation, setPendingRevocation] = useState<string | null>(null)
   const [revocationReasonCode, setRevocationReasonCode] = useState<(typeof REVOCATION_REASON_CODES)[number]>(REVOCATION_REASON_CODES[0])
+  const [review, setReview] = useState<AccessReview | null>(null)
+  const [reviewing, setReviewing] = useState(false)
 
   const allowedScopeKinds = useMemo(() => workforceRoleScopeKinds(role), [role])
   const dateTime = useMemo(() => new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }), [])
@@ -224,6 +238,20 @@ export function WorkforceAccessManagement() {
     }
   }
 
+  async function runAccessReview() {
+    setReviewing(true)
+    try {
+      const data = await request("/api/v1/workforce/configuration/access/review", "GET") as { review: AccessReview }
+      setReview(data.review)
+      toast.success(t("reviewComplete"))
+    } catch (failure) {
+      setReview(null)
+      toast.error(localizedFailure(t, failure))
+    } finally {
+      setReviewing(false)
+    }
+  }
+
   if (!organizationId) return null
 
   return <section className="overflow-hidden rounded-xl border border-zinc-200 bg-background dark:border-zinc-800" aria-labelledby="workforce-access-title">
@@ -274,6 +302,10 @@ export function WorkforceAccessManagement() {
       </form>
 
       <div className="space-y-4">
+        <div className="space-y-3 border-b border-zinc-200 pb-5 dark:border-zinc-800">
+          <div className="flex flex-wrap items-start justify-between gap-3"><div className="space-y-1"><h3 className="font-semibold">{t("reviewTitle")}</h3><p className="text-sm leading-6 text-muted-foreground">{t("reviewHint")}</p></div><Button type="button" variant="outline" className="min-h-11" onClick={() => void runAccessReview()} disabled={reviewing || saving}>{reviewing ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <ShieldCheck />}{t("runReview")}</Button></div>
+          {review ? <div className="space-y-2 rounded-lg bg-zinc-50 p-3 text-sm dark:bg-zinc-900/60"><p>{t("reviewSummary", { count: review.grantsExamined, date: dateTime.format(new Date(review.reviewedAt)) })}</p><div className="flex flex-wrap gap-2">{(Object.entries(review.findingCounts) as Array<[AccessReviewFindingCode, number]>).map(([code, count]) => <Badge key={code} variant="outline">{t(`findings.${code}`)}: {count}</Badge>)}{Object.keys(review.findingCounts).length === 0 ? <Badge variant="outline">{t("noFindings")}</Badge> : null}</div>{review.activityEvidence === "UNAVAILABLE" ? <p className="leading-6 text-muted-foreground">{t("usageUnavailable")}</p> : null}</div> : null}
+        </div>
         <div className="space-y-1"><h3 className="font-semibold">{t("activeTitle")}</h3><p className="text-sm leading-6 text-muted-foreground">{t("activeHint", { count: grants.length })}</p></div>
         {grants.length === 0 ? <p className="rounded-lg bg-zinc-50 px-4 py-5 text-sm leading-6 text-muted-foreground dark:bg-zinc-900/60">{t("empty")}</p> : <ul className="divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">{grants.map((grantItem) => <li key={grantItem.grantId} className="space-y-3 py-4">
           <div className="flex flex-wrap items-start justify-between gap-3"><div className="space-y-1"><p className="font-medium">{grantItem.principal.name}</p><p className="text-sm text-muted-foreground">{grantItem.principal.email}</p></div><Badge variant="outline">{t(`roles.${grantItem.role}`)}</Badge></div>

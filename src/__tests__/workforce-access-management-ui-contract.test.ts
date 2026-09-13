@@ -14,6 +14,7 @@ describe("Workforce access-management UI contract", () => {
     expect(component).toContain('useTranslations("workforceAccessManagement")')
     expect(component).toContain('"/api/v1/workforce/configuration/access/grants"')
     expect(component).toContain('"/api/v1/workforce/configuration/access/grant-targets?kind="')
+    expect(component).toContain('"/api/v1/workforce/configuration/access/review"')
   })
 
   it("cannot bootstrap tenant-admin authority or submit an unreviewed grant", () => {
@@ -29,5 +30,6 @@ describe("Workforce access-management UI contract", () => {
     expect(component).toContain("pendingRevocation === grantItem.grantId")
     expect(component).toContain('variant="destructive"')
     expect(component).toContain('t("confirmRevocation")')
+    expect(component).toContain('review.activityEvidence === "UNAVAILABLE"')
   })
 })
