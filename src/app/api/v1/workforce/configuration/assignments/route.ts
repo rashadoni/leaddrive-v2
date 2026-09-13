@@ -3,7 +3,7 @@ import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey, isDateKey } from "@/lib/mtm/mobile-week"
 import { prisma } from "@/lib/prisma"
 import { isValidTimezone } from "@/lib/timezone"
-import { withWorkforceSessionAdminAuth } from "@/lib/with-workforce-rls-auth"
+import { withWorkforceSessionScheduleConfigurationAuth } from "@/lib/with-workforce-rls-auth"
 import {
   WorkforceConfigurationManagementError,
   WorkforceShiftAssignmentScheduleSchema,
@@ -77,7 +77,7 @@ const ROSTER_SEARCH_LIMIT = 200
 const ROSTER_SEARCH_QUERY_MAX_LENGTH = 100
 
 /** Read-only administrative timeline; employees cannot select their own shift. */
-export const GET = withWorkforceSessionAdminAuth(async (req: NextRequest, auth) => {
+export const GET = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_READ", async (req: NextRequest, auth) => {
   const effectiveDate = req.nextUrl.searchParams.get("effectiveDate")
   if (effectiveDate !== null && !isDateKey(effectiveDate)) {
     return NextResponse.json({ error: "effectiveDate must be a real YYYY-MM-DD date" }, { status: 400 })
@@ -184,7 +184,7 @@ export const GET = withWorkforceSessionAdminAuth(async (req: NextRequest, auth) 
  * Writes only a future effective-dated assignment. The organization date is
  * derived server-side so a browser cannot schedule into its own past/today.
  */
-export const POST = withWorkforceSessionAdminAuth(async (req: NextRequest, auth) => {
+export const POST = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_WRITE", async (req: NextRequest, auth) => {
   const parsed = WorkforceShiftAssignmentScheduleSchema.safeParse(await req.json().catch(() => ({})))
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid Workforce shift assignment" }, { status: 400 })

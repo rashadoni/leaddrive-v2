@@ -154,14 +154,14 @@ beforeEach(() => {
 
 describe("Workforce draft configuration API", () => {
   it("binds every configuration route to an accountable Workforce session boundary", () => {
-    expect(withWorkforceSessionAdminAuth).toHaveBeenCalledTimes(7)
-    expect(withWorkforceSessionScheduleConfigurationAuth).toHaveBeenCalledTimes(9)
+    expect(withWorkforceSessionAdminAuth).toHaveBeenCalledTimes(4)
+    expect(withWorkforceSessionScheduleConfigurationAuth).toHaveBeenCalledTimes(12)
     expect(
       vi.mocked(withWorkforceSessionScheduleConfigurationAuth).mock.calls.map(([permission]) => permission).sort(),
     ).toEqual([
-      "SCHEDULE_READ", "SCHEDULE_READ", "SCHEDULE_READ",
+      "SCHEDULE_READ", "SCHEDULE_READ", "SCHEDULE_READ", "SCHEDULE_READ", "SCHEDULE_READ",
       "SCHEDULE_WRITE", "SCHEDULE_WRITE", "SCHEDULE_WRITE",
-      "SCHEDULE_WRITE", "SCHEDULE_WRITE", "SCHEDULE_WRITE",
+      "SCHEDULE_WRITE", "SCHEDULE_WRITE", "SCHEDULE_WRITE", "SCHEDULE_WRITE",
     ])
   })
 
