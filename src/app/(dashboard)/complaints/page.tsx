@@ -158,11 +158,23 @@ export default function ComplaintsPage() {
 
   useEffect(() => {
     if (loading) return
+    let frame: number | undefined
+    let timeout: number | undefined
     try {
       const saved = sessionStorage.getItem(complaintScrollStorageKey(registryPath))
       const scroller = document.querySelector<HTMLElement>("main")
-      if (saved && scroller) scroller.scrollTo({ top: Number(saved) || 0, behavior: "instant" })
+      if (saved && scroller) {
+        const top = Number(saved) || 0
+        const restore = () => scroller.scrollTo({ top, behavior: "instant" })
+        restore()
+        frame = window.requestAnimationFrame(restore)
+        timeout = window.setTimeout(restore, 150)
+      }
     } catch {}
+    return () => {
+      if (frame !== undefined) window.cancelAnimationFrame(frame)
+      if (timeout !== undefined) window.clearTimeout(timeout)
+    }
   }, [loading, registryPath])
 
   function openChild(path: string) {

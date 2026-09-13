@@ -280,10 +280,9 @@ try {
     await page.unroute(pattern, deny)
     const retry = page.getByTestId("complaint-response-retry")
     await retry.click({ trial: true })
-    await retry.focus()
     const [response] = await Promise.all([
       page.waitForResponse((candidate) => new URL(candidate.url()).pathname === `/api/v1/tickets/${createdComplaintId}/comments`),
-      retry.press("Enter"),
+      retry.click(),
     ])
     if (!response.ok()) throw new Error(`response_retry_http_${response.status()}`)
     await page.getByText(content, { exact: true }).waitFor({ state: "visible" })
@@ -307,10 +306,9 @@ try {
     await page.unroute(pattern, deny)
     const resolve = page.getByTestId("complaint-status-resolved")
     await resolve.click({ trial: true })
-    await resolve.focus()
     await Promise.all([
       page.waitForResponse((candidate) => new URL(candidate.url()).pathname === `/api/v1/complaints/${createdComplaintId}` && candidate.request().method() === "PATCH" && candidate.ok()),
-      resolve.press("Enter"),
+      resolve.click(),
     ])
     await page.getByTestId("complaint-status-open").waitFor({ state: "visible" })
     await page.getByTestId("complaint-status-open").click()
@@ -343,10 +341,9 @@ try {
     await select.selectOption(target)
     const save = page.getByTestId("complaint-assignee-save")
     await save.click({ trial: true })
-    await save.focus()
     const [saved] = await Promise.all([
       page.waitForResponse((candidate) => new URL(candidate.url()).pathname === `/api/v1/complaints/${createdComplaintId}` && candidate.request().method() === "PATCH"),
-      save.press("Enter"),
+      save.click(),
     ])
     if (!saved.ok()) throw new Error(`assignment_retry_http_${saved.status()}`)
     await select.selectOption("")
@@ -367,10 +364,13 @@ try {
       } else await route.continue()
     }
     await page.route(pattern, deny)
+    const backgroundPage = await context.newPage()
+    await backgroundPage.bringToFront()
     const [refresh] = await Promise.all([
       page.waitForResponse((candidate) => new URL(candidate.url()).pathname === `/api/v1/complaints/${createdComplaintId}` && candidate.request().method() === "GET"),
-      page.evaluate(() => document.dispatchEvent(new Event("visibilitychange"))),
+      page.bringToFront(),
     ])
+    await backgroundPage.close()
     if (refresh.status() !== 503) throw new Error(`stale_refresh_intercept_missed_${refresh.status()}`)
     await page.getByTestId("complaint-detail-stale").waitFor({ state: "visible", timeout: 10_000 })
     await page.unroute(pattern, deny)
