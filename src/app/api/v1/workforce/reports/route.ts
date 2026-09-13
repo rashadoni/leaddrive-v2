@@ -44,47 +44,47 @@ function auditContext(req: NextRequest) {
  */
 export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, auth) => {
   try {
-  const rateLimited = await requireWorkforceApprovedReportRateLimit({
-    organizationId: auth.orgId,
-    principalUserId: auth.userId,
-  })
-  if (rateLimited) return rateLimited
+    const rateLimited = await requireWorkforceApprovedReportRateLimit({
+      organizationId: auth.orgId,
+      principalUserId: auth.userId,
+    })
+    if (rateLimited) return rateLimited
 
-  const actor = await resolveWorkforceActor(prisma, {
-    organizationId: auth.orgId,
-    userId: auth.userId,
-    webRole: auth.role,
-  })
-  if (!actor) return reportJson({ error: "Forbidden", code: "WORKFORCE_SCOPE_DENIED" }, 403)
+    const actor = await resolveWorkforceActor(prisma, {
+      organizationId: auth.orgId,
+      userId: auth.userId,
+      webRole: auth.role,
+    })
+    if (!actor) return reportJson({ error: "Forbidden", code: "WORKFORCE_SCOPE_DENIED" }, 403)
 
-  const settings = await getMtmSettings(auth.orgId)
-  const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
-  const today = currentDateKey(new Date(), timezone)
-  const { searchParams } = new URL(req.url)
-  const start = searchParams.get("start") ?? addDateKeyDays(today, -13)
-  const end = searchParams.get("end") ?? today
-  const requestedAgentId = searchParams.get("agentId")
-  if (!isDateKey(start) || !isDateKey(end) || end < start || end > addDateKeyDays(start, MAX_RANGE_DAYS - 1)) {
-    return badRange()
-  }
-  if (requestedAgentId && (
-    !/^[A-Za-z0-9_-]{1,100}$/.test(requestedAgentId)
-    || !isAgentInWorkforceScope(actor, requestedAgentId)
-  )) {
-    return reportJson({ error: "Forbidden", code: "WORKFORCE_SCOPE_DENIED" }, 403)
-  }
-  const accessDenied = await requireWorkforceApprovedReportAccess({
-    organizationId: auth.orgId,
-    auth,
-    selectedAgentId: requestedAgentId,
-  })
-  if (accessDenied) return accessDenied
+    const settings = await getMtmSettings(auth.orgId)
+    const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
+    const today = currentDateKey(new Date(), timezone)
+    const { searchParams } = new URL(req.url)
+    const start = searchParams.get("start") ?? addDateKeyDays(today, -13)
+    const end = searchParams.get("end") ?? today
+    const requestedAgentId = searchParams.get("agentId")
+    if (!isDateKey(start) || !isDateKey(end) || end < start || end > addDateKeyDays(start, MAX_RANGE_DAYS - 1)) {
+      return badRange()
+    }
+    if (requestedAgentId && (
+      !/^[A-Za-z0-9_-]{1,100}$/.test(requestedAgentId)
+      || !isAgentInWorkforceScope(actor, requestedAgentId)
+    )) {
+      return reportJson({ error: "Forbidden", code: "WORKFORCE_SCOPE_DENIED" }, 403)
+    }
+    const accessDenied = await requireWorkforceApprovedReportAccess({
+      organizationId: auth.orgId,
+      auth,
+      selectedAgentId: requestedAgentId,
+    })
+    if (accessDenied) return accessDenied
 
-  const rangeStart = new Date(`${start}T00:00:00.000Z`)
-  const rangeEnd = new Date(`${end}T00:00:00.000Z`)
-  const agentWhere = requestedAgentId
-    ? { agentId: requestedAgentId }
-    : actor.scopedAgentIds === null ? {} : { agentId: { in: [...actor.scopedAgentIds] } }
+    const rangeStart = new Date(`${start}T00:00:00.000Z`)
+    const rangeEnd = new Date(`${end}T00:00:00.000Z`)
+    const agentWhere = requestedAgentId
+      ? { agentId: requestedAgentId }
+      : actor.scopedAgentIds === null ? {} : { agentId: { in: [...actor.scopedAgentIds] } }
 
     const approvals = await prisma.workforceTimesheetApproval.findMany({
       where: {
