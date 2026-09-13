@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { clientIp } from "@/lib/request-ip"
-import { withWorkforceSessionAdminAuth } from "@/lib/with-workforce-rls-auth"
+import { withWorkforceSessionRetentionReadAuth } from "@/lib/with-workforce-rls-auth"
 import { requireWorkforceAttendanceSecurityMfa } from "@/lib/workforce/attendance-route"
 import {
   runWorkforceRawLocationRetention,
@@ -37,7 +37,7 @@ function requestAuditContext(req: NextRequest) {
  * destructive retention path remains fenced until its operational gates are
  * proven independently.
  */
-export const GET = withWorkforceSessionAdminAuth(async (req: NextRequest, auth) => {
+export const GET = withWorkforceSessionRetentionReadAuth(async (req: NextRequest, auth) => {
   const mfaDenied = await requireWorkforceAttendanceSecurityMfa(auth.orgId, auth)
   if (mfaDenied) return mfaDenied
 
