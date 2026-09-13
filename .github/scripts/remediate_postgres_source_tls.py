@@ -558,7 +558,11 @@ def _require_reviewed_invocation() -> bool:
     if service is None:
         return False
     if hashlib.sha256(service).hexdigest() != APPROVED_BACKUP_SERVICE_SHA256:
-        raise SafeMaintenanceError("invocation-unit-unapproved")
+        # A root-owned, non-writable but byte-drifted unit is not approved for
+        # commissioning. Treat it like an uncommissioned unit only while the
+        # independent scheduler gate proves that neither it nor its timer can
+        # run during this client-only maintenance. The unit is never changed.
+        return False
     return True
 
 
@@ -579,6 +583,23 @@ def _require_backup_inactive() -> None:
         except (OSError, subprocess.SubprocessError) as exc:
             raise SafeMaintenanceError from exc
         if result.returncode == 0:
+            raise SafeMaintenanceError
+    for unit in ("leaddrive-postgres-backup.service", "leaddrive-postgres-backup.timer"):
+        try:
+            result = subprocess.run(
+                [executable, "is-enabled", "--quiet", unit],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=5,
+                check=False,
+                env={"PATH": "/usr/bin:/bin", "LC_ALL": "C"},
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise SafeMaintenanceError from exc
+        # systemd returns 1 for disabled/static/masked units and 4 when the
+        # unit does not exist. Any enabled state, or an unexpected failure to
+        # classify it, keeps the maintenance fail-closed.
+        if result.returncode not in {1, 4}:
             raise SafeMaintenanceError
 
 
@@ -923,6 +944,7 @@ def apply() -> str:
                 applied_config["PGHOST"],
                 observed,
             )
+            _require_backup_inactive()
             state["phase"] = "applied"
             state["env_after_sha256"] = hashlib.sha256(prepared.environment).hexdigest()
             state["ca_after_sha256"] = hashlib.sha256(

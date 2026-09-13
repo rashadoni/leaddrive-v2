@@ -151,7 +151,7 @@ class DecisionTests(unittest.TestCase):
                 MAINTENANCE._require_reviewed_invocation()
         self.assertEqual(raised.exception.code, "invocation-script-unapproved")
 
-    def test_unapproved_commissioned_unit_reports_only_sanitized_stage(self) -> None:
+    def test_drifted_unit_is_quarantined_as_uncommissioned(self) -> None:
         script = b"reviewed-script"
         authority = MAINTENANCE.FileAuthority(uid=0, gid=0, mode=0o555)
         approved = {MAINTENANCE.hashlib.sha256(script).hexdigest()}
@@ -165,9 +165,34 @@ class DecisionTests(unittest.TestCase):
                 MAINTENANCE, "APPROVED_BACKUP_SCRIPT_SHA256", approved
             ),
         ):
-            with self.assertRaises(MAINTENANCE.SafeMaintenanceError) as raised:
-                MAINTENANCE._require_reviewed_invocation()
-        self.assertEqual(raised.exception.code, "invocation-unit-unapproved")
+            self.assertFalse(MAINTENANCE._require_reviewed_invocation())
+
+    @mock.patch.object(MAINTENANCE.shutil, "which", return_value="/usr/bin/systemctl")
+    @mock.patch.object(MAINTENANCE.subprocess, "run")
+    def test_scheduler_gate_requires_inactive_and_disabled_units(
+        self, run: mock.Mock, _which: mock.Mock
+    ) -> None:
+        run.side_effect = [
+            MAINTENANCE.subprocess.CompletedProcess([], 1),
+            MAINTENANCE.subprocess.CompletedProcess([], 1),
+            MAINTENANCE.subprocess.CompletedProcess([], 1),
+            MAINTENANCE.subprocess.CompletedProcess([], 1),
+        ]
+        MAINTENANCE._require_backup_inactive()
+        self.assertEqual(run.call_count, 4)
+
+    @mock.patch.object(MAINTENANCE.shutil, "which", return_value="/usr/bin/systemctl")
+    @mock.patch.object(MAINTENANCE.subprocess, "run")
+    def test_scheduler_gate_rejects_enabled_unit(
+        self, run: mock.Mock, _which: mock.Mock
+    ) -> None:
+        run.side_effect = [
+            MAINTENANCE.subprocess.CompletedProcess([], 1),
+            MAINTENANCE.subprocess.CompletedProcess([], 1),
+            MAINTENANCE.subprocess.CompletedProcess([], 0),
+        ]
+        with self.assertRaises(MAINTENANCE.SafeMaintenanceError):
+            MAINTENANCE._require_backup_inactive()
 
     @mock.patch.object(MAINTENANCE.os, "open", side_effect=FileNotFoundError)
     def test_precommission_state_does_not_require_backup_lock(
