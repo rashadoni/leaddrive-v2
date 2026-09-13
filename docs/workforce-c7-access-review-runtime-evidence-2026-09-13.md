@@ -21,7 +21,8 @@ Roadmap item: `WF-C7-010` (partial)
 
 ## Verification
 
-- PASS: 3 focused Vitest files / 12 tests.
+- PASS: 3 focused Vitest files / 19 tests after rebasing onto the accepted
+  retention-grant checkpoint.
 - PASS: scoped ESLint.
 - PASS: `python3 scripts/rls/find-context-gaps.py` (`RLS-CONTEXT GAPS: 0`).
 - PASS: `git diff --check`.
