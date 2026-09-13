@@ -18,6 +18,9 @@ vi.mock("@/lib/with-workforce-rls-auth", () => ({
   withWorkforceSessionAuth: vi.fn((_action, handler) => handler),
 }))
 vi.mock("@/lib/workforce/actor", () => ({ resolveWorkforceActor: vi.fn() }))
+vi.mock("@/lib/workforce/exception-employee-response-rate-limit", () => ({
+  requireWorkforceExceptionEmployeeResponseRateLimit: vi.fn(),
+}))
 vi.mock("@/lib/workforce/exception-employee-response-writer", async () => {
   const actual = await vi.importActual<typeof import("@/lib/workforce/exception-employee-response-writer")>(
     "@/lib/workforce/exception-employee-response-writer",
@@ -28,6 +31,7 @@ vi.mock("@/lib/workforce/exception-employee-response-writer", async () => {
 import { POST } from "@/app/api/v1/workforce/exceptions/[id]/response/route"
 import { withWorkforceSessionAuth } from "@/lib/with-workforce-rls-auth"
 import { resolveWorkforceActor } from "@/lib/workforce/actor"
+import { requireWorkforceExceptionEmployeeResponseRateLimit } from "@/lib/workforce/exception-employee-response-rate-limit"
 import {
   appendAuthorizedWorkforceExceptionEmployeeResponse,
   WorkforceExceptionEmployeeResponseWriterError,
@@ -55,6 +59,7 @@ beforeEach(() => {
   organizationFindUnique.mockResolvedValue({ features: [WORKFORCE_EXCEPTION_RESPONSE_FLAG] })
   transaction.mockClear()
   vi.mocked(resolveWorkforceActor).mockReset()
+  vi.mocked(requireWorkforceExceptionEmployeeResponseRateLimit).mockResolvedValue(null)
   vi.mocked(appendAuthorizedWorkforceExceptionEmployeeResponse).mockReset()
 })
 
@@ -89,6 +94,9 @@ describe("Workforce employee exception response API", () => {
         actorUserId: "user-1",
       }),
     }))
+    expect(requireWorkforceExceptionEmployeeResponseRateLimit).toHaveBeenCalledWith({
+      organizationId: "org-1", principalUserId: "user-1",
+    })
     expect(withWorkforceSessionAuth).toHaveBeenCalledWith("write", expect.any(Function))
   })
 
@@ -106,6 +114,25 @@ describe("Workforce employee exception response API", () => {
       error: "Employee exception acknowledgement is not available for this organization",
       code: "WORKFORCE_EXCEPTION_RESPONSE_MIGRATION_REQUIRED",
     })
+    expect(findFirst).not.toHaveBeenCalled()
+    expect(appendAuthorizedWorkforceExceptionEmployeeResponse).not.toHaveBeenCalled()
+    expect(requireWorkforceExceptionEmployeeResponseRateLimit).toHaveBeenCalledWith({
+      organizationId: "org-1", principalUserId: "user-1",
+    })
+    expect(resolveWorkforceActor).toHaveBeenCalled()
+  })
+
+  it("stops before actor or case lookup when the shared response guard denies", async () => {
+    vi.mocked(requireWorkforceExceptionEmployeeResponseRateLimit).mockResolvedValueOnce(new Response(null, { status: 429 }) as never)
+
+    const response = await callPost(request({
+      responseCode: "ACKNOWLEDGED",
+      clientResponseId: "response-client-rate-limited",
+    }), AUTH, { params: Promise.resolve({ id: "case-1" }) })
+
+    expect(response.status).toBe(429)
+    expect(resolveWorkforceActor).not.toHaveBeenCalled()
+    expect(organizationFindUnique).not.toHaveBeenCalled()
     expect(findFirst).not.toHaveBeenCalled()
     expect(appendAuthorizedWorkforceExceptionEmployeeResponse).not.toHaveBeenCalled()
   })
@@ -134,6 +161,8 @@ describe("Workforce employee exception response API", () => {
     })
     expect(denied.status).toBe(403)
 
+    vi.mocked(resolveWorkforceActor).mockReset()
+    vi.mocked(requireWorkforceExceptionEmployeeResponseRateLimit).mockClear()
     vi.mocked(resolveWorkforceActor).mockResolvedValue({ agentId: "agent-1", role: "AGENT", scopedAgentIds: ["agent-1"] })
     const invalid = await callPost(request({ responseCode: "CORRECTION_REQUESTED", clientResponseId: "response-client-4" }), AUTH, {
       params: Promise.resolve({ id: "case-1" }),
@@ -141,6 +170,8 @@ describe("Workforce employee exception response API", () => {
     expect(invalid.status).toBe(400)
     expect(findFirst).not.toHaveBeenCalled()
     expect(appendAuthorizedWorkforceExceptionEmployeeResponse).not.toHaveBeenCalled()
+    expect(requireWorkforceExceptionEmployeeResponseRateLimit).not.toHaveBeenCalled()
+    expect(resolveWorkforceActor).not.toHaveBeenCalled()
   })
 
   it("returns an idempotency conflict without making a second response", async () => {
