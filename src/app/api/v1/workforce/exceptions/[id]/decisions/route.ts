@@ -16,6 +16,7 @@ import { WorkforceExceptionCaseLedgerError } from "@/lib/workforce/exception-cas
 import { requireWorkforceAttendanceSecurityMfa } from "@/lib/workforce/attendance-route"
 import { requireWorkforceExceptionDecisionRateLimit } from "@/lib/workforce/exception-decision-rate-limit"
 import { resolveWorkforceHistoricalTeamMembership } from "@/lib/workforce/team-membership"
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { workforceSensitiveResponseHeaders } from "@/lib/workforce/sensitive-response"
 
 type RouteContext = { params: Promise<{ id: string }> }
@@ -163,7 +164,7 @@ export const POST = withWorkforceSessionAuth<RouteContext>("write", async (req, 
     if (error instanceof WorkforceExceptionCaseLedgerError || error instanceof WorkforceExceptionCaseWriterError) {
       return lifecycleConflict(error)
     }
-    console.error("[workforce/exceptions/:id/decisions POST]", error)
+    logWorkforceSensitiveOperationFailure({ operation: "review-exception-decision-write" })
     return NextResponse.json({ error: "Failed to record Workforce exception decision" }, { status: 500 })
   }
 })

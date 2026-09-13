@@ -162,4 +162,25 @@ describe("Workforce scoped exception-decision API", () => {
     expect(prisma.workforceAccessGrant.findMany).not.toHaveBeenCalled()
     expect(prisma.workforceExceptionDecision.create).not.toHaveBeenCalled()
   })
+
+  it("never logs sensitive decision failure details", async () => {
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const sensitiveFailure = new Error("case_1: private decision reason")
+    vi.mocked(prisma.$transaction).mockRejectedValueOnce(sensitiveFailure)
+
+    const response = await callPost(request({
+      operationId: "decision-op-private-failure",
+      decisionCode: "ACKNOWLEDGE",
+      reason: "private decision reason",
+    }), auth, { params: Promise.resolve({ id: "case_1" }) })
+
+    expect(response.status).toBe(500)
+    expect(errorLog).toHaveBeenCalledWith(
+      "[workforce/privacy] sensitive operation failed",
+      { operation: "review-exception-decision-write" },
+    )
+    expect(errorLog).not.toHaveBeenCalledWith(expect.anything(), sensitiveFailure)
+    expect(JSON.stringify(errorLog.mock.calls)).not.toContain("private decision reason")
+    expect(JSON.stringify(errorLog.mock.calls)).not.toContain("case_1")
+  })
 })
