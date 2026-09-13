@@ -174,6 +174,10 @@ export function workforceRoleScopeKinds(role: WorkforceAccessRole): readonly Wor
   return ROLE_SCOPE_KINDS[role]
 }
 
+function isKnownWorkforceAccessRole(value: unknown): value is WorkforceAccessRole {
+  return typeof value === "string" && WORKFORCE_ACCESS_ROLES.includes(value as WorkforceAccessRole)
+}
+
 /**
  * Validates a proposed future role set without looking up or mutating a live
  * grant. Unknown persisted/future role strings fail closed. Actual SoD
@@ -253,6 +257,7 @@ export function decideWorkforceAccess(input: {
     grant.organizationId === input.organizationId
     && grant.principalUserId === input.principalUserId
     && isActiveGrant(grant, now)
+    && isKnownWorkforceAccessRole(grant.role)
     && ROLE_PERMISSIONS[grant.role].includes(input.permission)
   ))
   if (eligibleGrants.length === 0) return { allowed: false, code: "WORKFORCE_ACCESS_GRANT_UNAVAILABLE" }
