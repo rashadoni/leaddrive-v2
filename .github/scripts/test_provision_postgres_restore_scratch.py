@@ -73,6 +73,25 @@ class EnvironmentTests(unittest.TestCase):
 
 
 class FileStateTests(unittest.TestCase):
+    def test_partial_cluster_cleanup_accepts_expected_owner(self) -> None:
+        temporary = tempfile.mkdtemp()
+        path = Path(temporary)
+        try:
+            os.chmod(path, 0o700)
+            with mock.patch.object(MAINTENANCE.shutil, "rmtree") as rmtree:
+                MAINTENANCE._remove_partial_cluster_path(path, {os.getuid()})
+                rmtree.assert_called_once_with(path)
+        finally:
+            path.rmdir()
+
+    def test_partial_cluster_cleanup_rejects_unexpected_owner(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary)
+            os.chmod(path, 0o700)
+            with self.assertRaises(MAINTENANCE.MaintenanceError) as raised:
+                MAINTENANCE._remove_partial_cluster_path(path, {os.getuid() + 1})
+        self.assertEqual(raised.exception.code, "rollback")
+
     def test_cluster_config_accepts_only_postgres_owned_debian_modes(self) -> None:
         self.assertTrue(
             MAINTENANCE._acceptable_cluster_config_file(

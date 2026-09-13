@@ -888,7 +888,12 @@ def _remove_cluster_if_present(*, allow_partial: bool = False) -> None:
             postgres_uid = pwd.getpwnam("postgres").pw_uid
         except KeyError as exc:
             raise MaintenanceError("rollback") from exc
-        _remove_partial_cluster_path(CONFIG_DIR, {0})
+        # Debian's pg_createcluster may hand the cluster config directory to
+        # postgres before the cluster is visible to pg_lsclusters.  Accept the
+        # same tightly-scoped postgres authority that configuration writes
+        # validate, otherwise a fail-closed apply can strand its own partial
+        # directory and mask the original failure as a rollback failure.
+        _remove_partial_cluster_path(CONFIG_DIR, {0, postgres_uid})
         _remove_partial_cluster_path(DATA_DIR, {0, postgres_uid})
     for path in (CONFIG_DIR, DATA_DIR):
         if path.exists() or path.is_symlink():
