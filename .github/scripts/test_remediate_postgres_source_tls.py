@@ -377,8 +377,21 @@ class DecisionTests(unittest.TestCase):
             config, "production.example.internal", 5432
         )
 
-        with self.assertRaises(MAINTENANCE.SafeMaintenanceError):
+        with self.assertRaises(MAINTENANCE.SafeMaintenanceError) as raised:
             MAINTENANCE._require_pgpass_match(config, "different.example.internal", 5432)
+        self.assertEqual(raised.exception.code, "pgpass-match")
+
+    def test_pgpass_requires_canonical_path_without_exposing_it(self) -> None:
+        config = {
+            "PGPASSFILE": "/different/path",
+            "PGDATABASE": "database_name",
+            "PGUSER": "backup_user",
+        }
+        with self.assertRaises(MAINTENANCE.SafeMaintenanceError) as raised:
+            MAINTENANCE._require_pgpass_match(
+                config, "production.example.internal", 5432
+            )
+        self.assertEqual(raised.exception.code, "pgpass-path")
 
 
 class OutputTests(unittest.TestCase):

@@ -103,6 +103,12 @@ class SafeMaintenanceError(Exception):
             "snapshot-present",
             "tls-evidence",
             "pgpass",
+            "pgpass-path",
+            "pgpass-read",
+            "pgpass-authority",
+            "pgpass-encoding",
+            "pgpass-format",
+            "pgpass-match",
             "post-write",
             "rollback",
             "internal",
@@ -525,29 +531,35 @@ def _split_pgpass_line(line: str) -> list[str]:
 
 def _require_pgpass_match(config: dict[str, str], server_name: str, port: int) -> None:
     if config["PGPASSFILE"] != str(PGPASS_PATH):
-        raise SafeMaintenanceError
-    payload, authority = _read_regular_file(
-        PGPASS_PATH, maximum_bytes=MAX_ENV_BYTES, required=True
-    )
+        raise SafeMaintenanceError("pgpass-path")
+    try:
+        payload, authority = _read_regular_file(
+            PGPASS_PATH, maximum_bytes=MAX_ENV_BYTES, required=True
+        )
+    except SafeMaintenanceError as exc:
+        raise SafeMaintenanceError("pgpass-read") from exc
     if payload is None or authority is None:
-        raise SafeMaintenanceError
+        raise SafeMaintenanceError("pgpass-read")
     try:
         backup_gid = grp.getgrnam("leaddrive-backup").gr_gid
     except KeyError as exc:
-        raise SafeMaintenanceError from exc
+        raise SafeMaintenanceError("pgpass-authority") from exc
     if authority.gid != backup_gid or authority.mode not in {0o440, 0o640}:
-        raise SafeMaintenanceError
+        raise SafeMaintenanceError("pgpass-authority")
     try:
         text = payload.decode("utf-8", errors="strict")
     except UnicodeDecodeError as exc:
-        raise SafeMaintenanceError from exc
+        raise SafeMaintenanceError("pgpass-encoding") from exc
     for raw_line in text.splitlines():
         line = raw_line.strip()
         if not line or line.startswith("#"):
             continue
-        fields = _split_pgpass_line(line)
+        try:
+            fields = _split_pgpass_line(line)
+        except SafeMaintenanceError as exc:
+            raise SafeMaintenanceError("pgpass-format") from exc
         if len(fields) != 5 or not fields[4]:
-            raise SafeMaintenanceError
+            raise SafeMaintenanceError("pgpass-format")
         host, pg_port, database, user, _password = fields
         if (
             host in {"*", server_name}
@@ -556,7 +568,7 @@ def _require_pgpass_match(config: dict[str, str], server_name: str, port: int) -
             and user in {"*", config["PGUSER"]}
         ):
             return
-    raise SafeMaintenanceError
+    raise SafeMaintenanceError("pgpass-match")
 
 
 def _require_reviewed_invocation() -> bool:
@@ -910,6 +922,10 @@ def _prepare(environment: bytes, config: dict[str, str]) -> PreparedRemediation:
         raise SafeMaintenanceError("tls-evidence") from exc
     try:
         _require_pgpass_match(config, server_name, port)
+    except SafeMaintenanceError as exc:
+        if exc.code.startswith("pgpass-"):
+            raise
+        raise SafeMaintenanceError("pgpass") from exc
     except Exception as exc:
         raise SafeMaintenanceError("pgpass") from exc
     try:
