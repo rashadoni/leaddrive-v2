@@ -7,6 +7,7 @@ vi.mock("@/lib/prisma", async () => {
 
 import { prisma } from "@/lib/prisma"
 import { correctWorkforceTimeDirectly } from "@/lib/workforce/direct-time-correction"
+import { WORKFORCE_GRANULAR_ACCESS_FLAG } from "@/lib/workforce/granular-access-rollout"
 
 const ORGANIZATION_ID = "org-workforce"
 const WORKDAY_ID = "workday-1"
@@ -49,7 +50,9 @@ beforeEach(() => {
   vi.mocked(prisma.workforceTimeCorrection.findMany).mockResolvedValue([] as never)
   vi.mocked(prisma.workforceTimeCorrection.findFirst).mockResolvedValue(null as never)
   vi.mocked(prisma.workforceTimeCorrection.create).mockResolvedValue({ id: "correction-1" } as never)
+  vi.mocked(prisma.organization.findUnique).mockResolvedValue({ features: [] } as never)
   vi.mocked(prisma.mtmAgentWorkday.findFirst)
+    .mockReset()
     .mockResolvedValueOnce({
       id: WORKDAY_ID,
       agentId: AGENT_ID,
@@ -59,6 +62,88 @@ beforeEach(() => {
 })
 
 describe("direct Workforce manager time correction", () => {
+  it("permits a grant-only principal to correct another employee after C7 cutover", async () => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      features: [WORKFORCE_GRANULAR_ACCESS_FLAG],
+    } as never)
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([{
+      id: "grant-time-approver-1",
+      organizationId: ORGANIZATION_ID,
+      principalUserId: "manager-user-1",
+      role: "TIME_APPROVER",
+      scopeKind: "AGENT",
+      scopeTeamId: null,
+      scopeSiteId: null,
+      scopeAgentId: AGENT_ID,
+      effectiveFrom: new Date("2026-08-01T00:00:00.000Z"),
+      effectiveUntil: null,
+      revocation: null,
+    }] as never)
+
+    const result = await correctWorkforceTimeDirectly({
+      organizationId: ORGANIZATION_ID,
+      userId: "manager-user-1",
+      actor: null,
+      workdayId: WORKDAY_ID,
+      input,
+    })
+
+    expect(result).toMatchObject({ kind: "success", data: { correctionId: "correction-1" } })
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        newData: expect.objectContaining({ authorizationSource: "WORKFORCE_GRANT" }),
+      }),
+    }))
+  })
+
+  it("does not retain legacy manager correction authority after granular cutover", async () => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      features: [WORKFORCE_GRANULAR_ACCESS_FLAG],
+    } as never)
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([])
+
+    const result = await correctWorkforceTimeDirectly({
+      organizationId: ORGANIZATION_ID,
+      userId: "manager-user-1",
+      actor: { agentId: "manager-agent-1", role: "MANAGER", scopedAgentIds: [AGENT_ID] },
+      workdayId: WORKDAY_ID,
+      input,
+    })
+
+    expect(result).toEqual({ kind: "forbidden" })
+    expect(prisma.$executeRaw).not.toHaveBeenCalled()
+    expect(prisma.workforceTimeCorrection.create).not.toHaveBeenCalled()
+  })
+
+  it("does not let a legacy employee scope suppress a separate correction grant", async () => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      features: [WORKFORCE_GRANULAR_ACCESS_FLAG],
+    } as never)
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([{
+      id: "grant-time-approver-1",
+      organizationId: ORGANIZATION_ID,
+      principalUserId: "manager-user-1",
+      role: "TIME_APPROVER",
+      scopeKind: "AGENT",
+      scopeTeamId: null,
+      scopeSiteId: null,
+      scopeAgentId: AGENT_ID,
+      effectiveFrom: new Date("2026-08-01T00:00:00.000Z"),
+      effectiveUntil: null,
+      revocation: null,
+    }] as never)
+
+    const result = await correctWorkforceTimeDirectly({
+      organizationId: ORGANIZATION_ID,
+      userId: "manager-user-1",
+      actor: { agentId: "reviewer-agent", role: "AGENT", scopedAgentIds: ["reviewer-agent"] },
+      workdayId: WORKDAY_ID,
+      input,
+    })
+
+    expect(result).toMatchObject({ kind: "success", data: { correctionId: "correction-1" } })
+  })
+
   it("writes ledger, projection and mandatory audit atomically without a fake legacy event", async () => {
     const result = await correctWorkforceTimeDirectly({
       organizationId: ORGANIZATION_ID,

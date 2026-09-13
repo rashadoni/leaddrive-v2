@@ -531,6 +531,29 @@ describe("POST /api/v1/workforce/workdays/:id/corrections", () => {
     reason: "Verified with manager",
   }
 
+  it("forwards a grant-only session without a legacy actor to the correction service", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(null as never)
+    vi.mocked(correctWorkforceTimeDirectly).mockResolvedValue({ kind: "forbidden" })
+    const invoke = directCorrectionPost as unknown as (
+      req: NextRequest,
+      auth: typeof AUTH,
+      ctx: { params: Promise<{ id: string }> },
+    ) => Promise<Response>
+
+    const response = await invoke(
+      request("/api/v1/workforce/workdays/workday-1/corrections", correctionInput),
+      { ...AUTH, userId: "grant-reviewer", role: "sales" },
+      { params: Promise.resolve({ id: "workday-1" }) },
+    )
+
+    expect(response.status).toBe(403)
+    expect(correctWorkforceTimeDirectly).toHaveBeenCalledWith(expect.objectContaining({
+      userId: "grant-reviewer",
+      actor: null,
+      workdayId: "workday-1",
+    }))
+  })
+
   it("uses the Workforce-only manager correction service", async () => {
     vi.mocked(correctWorkforceTimeDirectly).mockResolvedValue({
       kind: "success",
@@ -687,8 +710,9 @@ describe("POST /api/v1/workforce/workdays/:id/corrections", () => {
     expect(correctWorkforceTimeDirectly).not.toHaveBeenCalled()
   })
 
-  it("denies a principal that has no active Workforce actor", async () => {
+  it("delegates a principal without a legacy actor to the granular correction service", async () => {
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValueOnce(null)
+    vi.mocked(correctWorkforceTimeDirectly).mockResolvedValueOnce({ kind: "forbidden" })
     const invoke = directCorrectionPost as unknown as (
       req: NextRequest,
       auth: typeof AUTH,
@@ -703,7 +727,7 @@ describe("POST /api/v1/workforce/workdays/:id/corrections", () => {
 
     expect(response.status).toBe(403)
     expect(await response.json()).toMatchObject({ code: "WORKFORCE_SCOPE_DENIED" })
-    expect(correctWorkforceTimeDirectly).not.toHaveBeenCalled()
+    expect(correctWorkforceTimeDirectly).toHaveBeenCalledWith(expect.objectContaining({ actor: null }))
   })
 
   it("contains actor lookup failures without logging sensitive error details", async () => {
