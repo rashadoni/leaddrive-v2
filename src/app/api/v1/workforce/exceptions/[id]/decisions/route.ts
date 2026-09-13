@@ -13,7 +13,10 @@ import {
   type WorkforceExceptionCaseWriterDb,
 } from "@/lib/workforce/exception-case-writer"
 import { WorkforceExceptionCaseLedgerError } from "@/lib/workforce/exception-case-ledger"
+import { requireWorkforceAttendanceSecurityMfa } from "@/lib/workforce/attendance-route"
+import { requireWorkforceExceptionDecisionRateLimit } from "@/lib/workforce/exception-decision-rate-limit"
 import { resolveWorkforceHistoricalTeamMembership } from "@/lib/workforce/team-membership"
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { workforceSensitiveResponseHeaders } from "@/lib/workforce/sensitive-response"
 
 type RouteContext = { params: Promise<{ id: string }> }
@@ -54,6 +57,9 @@ function lifecycleConflict(error: WorkforceExceptionCaseLedgerError | WorkforceE
  * broad session never becomes an implicit exception authority here.
  */
 export const POST = withWorkforceSessionAuth<RouteContext>("write", async (req, auth, context) => {
+  const mfaDenied = await requireWorkforceAttendanceSecurityMfa(auth.orgId, auth)
+  if (mfaDenied) return mfaDenied
+
   const { id: caseId } = await context.params
   if (!/^[A-Za-z0-9_-]{1,100}$/.test(caseId)) return unavailable()
   const parsed = ExceptionDecisionSchema.safeParse(await req.json().catch(() => ({})))
@@ -63,6 +69,12 @@ export const POST = withWorkforceSessionAuth<RouteContext>("write", async (req, 
       code: "WORKFORCE_EXCEPTION_DECISION_INVALID",
     }, { status: 400 })
   }
+
+  const rateLimited = await requireWorkforceExceptionDecisionRateLimit({
+    organizationId: auth.orgId,
+    principalUserId: auth.userId,
+  })
+  if (rateLimited) return rateLimited
 
   try {
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -152,7 +164,7 @@ export const POST = withWorkforceSessionAuth<RouteContext>("write", async (req, 
     if (error instanceof WorkforceExceptionCaseLedgerError || error instanceof WorkforceExceptionCaseWriterError) {
       return lifecycleConflict(error)
     }
-    console.error("[workforce/exceptions/:id/decisions POST]", error)
+    logWorkforceSensitiveOperationFailure({ operation: "review-exception-decision-write" })
     return NextResponse.json({ error: "Failed to record Workforce exception decision" }, { status: 500 })
   }
 })
