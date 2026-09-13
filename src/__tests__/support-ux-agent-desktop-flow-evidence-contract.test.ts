@@ -16,6 +16,7 @@ describe("Agent Desktop mutating evidence contract", () => {
 
   it("proves data and availability recovery without inventing truth", () => {
     for (const id of [
+      "dashboard-loading-and-recovery",
       "dashboard-load-failure-and-recovery",
       "availability-load-failure-and-recovery",
       "availability-save-rollback-and-recovery",
@@ -27,11 +28,17 @@ describe("Agent Desktop mutating evidence contract", () => {
     expect(flow).toContain("!control.hasAttribute(\"disabled\")")
     expect(flow).toContain('page.goto("about:blank")')
     expect(flow).toContain("permission_intercept_missed_")
+    expect(flow).toContain("captureObservedState")
+    expect(flow).toContain('"dashboard-load-error"')
+    expect(flow).toContain('"availability-load-error"')
+    expect(flow).toContain('"availability-save-error"')
+    expect(flow).toContain('"stale-refresh-error"')
+    expect(flow).toContain('"empty-queue"')
     expect(flow).toContain("availability_failure_did_not_rollback")
     expect(flow).toContain("refresh_failure_discarded_snapshot")
     expect(flow).toContain("permission_state_offered_misleading_retry")
     expect(flow).toContain('"agent-desktop-flow-evidence.json"')
-    expect(flow).toContain("report.results.length !== 6")
+    expect(flow).toContain("report.results.length !== 7")
   })
 
   it("uses stable selectors for every observable state", () => {

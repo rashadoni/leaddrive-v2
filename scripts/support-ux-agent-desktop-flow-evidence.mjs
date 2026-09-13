@@ -114,9 +114,43 @@ async function recordStep(page, id, action) {
   }
 }
 
+async function captureObservedState(page, id) {
+  const screenshot = `agent-desktop-state-${id}-${locale}-${theme}-${viewportName}.png`
+  await captureSupportEvidenceScreenshot(page, {
+    path: path.join(outputDirectory, screenshot),
+    fullPage: true,
+    animations: "disabled",
+  })
+  return screenshot
+}
+
 const page = await context.newPage()
 try {
   await authenticate(context)
+
+  await recordStep(page, "dashboard-loading-and-recovery", async () => {
+    const pattern = "**/api/v1/support/agent-desktop"
+    let releaseRequest = () => {}
+    const requestGate = new Promise((resolve) => {
+      releaseRequest = resolve
+    })
+    const hold = async (route) => {
+      await requestGate
+      await route.continue()
+    }
+    await page.route(pattern, hold)
+    await page.goto("about:blank")
+    await page.goto("/support/agent-desktop?evidence=loading", { waitUntil: "domcontentloaded" })
+    let loadingScreenshot
+    try {
+      await page.getByTestId("agent-desktop-loading").waitFor({ state: "visible", timeout: 10_000 })
+      loadingScreenshot = await captureObservedState(page, "dashboard-loading")
+    } finally {
+      releaseRequest()
+    }
+    await page.getByTestId("agent-desktop-workspace").waitFor({ state: "visible", timeout: 30_000 })
+    return { loadingObserved: true, loadingScreenshot, recoverySucceeded: true }
+  })
 
   await recordStep(page, "dashboard-load-failure-and-recovery", async () => {
     const pattern = "**/api/v1/support/agent-desktop"
@@ -125,11 +159,12 @@ try {
     await page.goto("/support/agent-desktop", { waitUntil: "domcontentloaded" })
     await page.getByTestId("agent-desktop-load-error").waitFor({ state: "visible" })
     assertDemoTenant(await page.locator("body").innerText(), demoOrganization, "Agent Desktop load error")
+    const errorScreenshot = await captureObservedState(page, "dashboard-load-error")
     await page.unroute(pattern, deny)
     await page.getByTestId("agent-desktop-retry-load").focus()
     await page.getByTestId("agent-desktop-retry-load").press("Enter")
     await page.getByTestId("agent-desktop-workspace").waitFor({ state: "visible" })
-    return { errorObserved: true, keyboardRetry: true, recoverySucceeded: true }
+    return { errorObserved: true, errorScreenshot, keyboardRetry: true, recoverySucceeded: true }
   })
 
   await recordStep(page, "availability-load-failure-and-recovery", async () => {
@@ -139,6 +174,7 @@ try {
     await openWorkspace(page)
     await page.getByTestId("agent-desktop-availability-error").waitFor({ state: "visible" })
     if (!await page.getByTestId("agent-desktop-availability").isDisabled()) throw new Error("unknown_availability_switch_enabled")
+    const errorScreenshot = await captureObservedState(page, "availability-load-error")
     await page.unroute(pattern, deny)
     await page.getByTestId("agent-desktop-retry-availability").click()
     await page.getByTestId("agent-desktop-availability-error").waitFor({ state: "hidden" })
@@ -148,7 +184,7 @@ try {
     }, null, { timeout: 10_000 }).catch(() => {
       throw new Error("recovered_availability_switch_disabled")
     })
-    return { unknownStateDisabled: true, retrySucceeded: true }
+    return { unknownStateDisabled: true, errorScreenshot, retrySucceeded: true }
   })
 
   await recordStep(page, "availability-save-rollback-and-recovery", async () => {
@@ -171,6 +207,7 @@ try {
     if (failed.status() !== 503) throw new Error(`availability_failure_intercept_missed_${failed.status()}`)
     await page.getByTestId("agent-desktop-availability-error").waitFor({ state: "visible" })
     if ((await toggle.getAttribute("data-state") === "checked") !== original) throw new Error("availability_failure_did_not_rollback")
+    const errorScreenshot = await captureObservedState(page, "availability-save-error")
     await page.unroute(pattern, denyPatch)
     const [saved] = await Promise.all([
       page.waitForResponse((candidate) => new URL(candidate.url()).pathname === "/api/v1/users/me/availability" && candidate.request().method() === "PATCH"),
@@ -187,7 +224,7 @@ try {
     if (!restored.ok()) throw new Error(`availability_restore_http_${restored.status()}`)
     await page.waitForFunction((expected) => (document.querySelector("[data-testid='agent-desktop-availability']")?.getAttribute("data-state") === "checked") === expected, original)
       .catch(() => { throw new Error("availability_fixture_not_restored") })
-    return { keyboardToggle: true, rollbackObserved: true, retrySucceeded: true, fixtureRestored: true }
+    return { keyboardToggle: true, rollbackObserved: true, errorScreenshot, retrySucceeded: true, fixtureRestored: true }
   })
 
   await recordStep(page, "stale-refresh-and-recovery", async () => {
@@ -199,10 +236,11 @@ try {
     await page.getByTestId("agent-desktop-refresh").click()
     await page.getByTestId("agent-desktop-refresh-error").waitFor({ state: "visible" })
     if (await page.getByTestId("agent-desktop-next-case").innerText() !== nextCaseText) throw new Error("refresh_failure_discarded_snapshot")
+    const errorScreenshot = await captureObservedState(page, "stale-refresh-error")
     await page.unroute(pattern, deny)
     await page.getByTestId("agent-desktop-retry-refresh").click()
     await page.getByTestId("agent-desktop-refresh-error").waitFor({ state: "hidden" })
-    return { staleSnapshotPreserved: true, retrySucceeded: true }
+    return { staleSnapshotPreserved: true, errorScreenshot, retrySucceeded: true }
   })
 
   await recordStep(page, "empty-queue-and-recovery", async () => {
@@ -218,10 +256,11 @@ try {
     await page.route(pattern, empty)
     await openWorkspace(page)
     await page.getByTestId("agent-desktop-empty-queue").waitFor({ state: "visible" })
+    const emptyScreenshot = await captureObservedState(page, "empty-queue")
     await page.unroute(pattern, empty)
     await page.getByTestId("agent-desktop-refresh").click()
     await page.getByTestId("agent-desktop-empty-queue").waitFor({ state: "hidden" })
-    return { emptyStateObserved: true, recoverySucceeded: true }
+    return { emptyStateObserved: true, emptyScreenshot, recoverySucceeded: true }
   })
 
   await recordStep(page, "dashboard-permission-state", async () => {
@@ -246,7 +285,7 @@ try {
 
 await writeFile(path.join(outputDirectory, "agent-desktop-flow-evidence.json"), JSON.stringify(report, null, 2) + "\n")
 const failures = report.results.filter((result) => result.status !== "passed")
-if (report.results.length !== 6 || failures.length > 0) {
-  console.error(JSON.stringify({ expected: 6, actual: report.results.length, failures }, null, 2))
+if (report.results.length !== 7 || failures.length > 0) {
+  console.error(JSON.stringify({ expected: 7, actual: report.results.length, failures }, null, 2))
   process.exitCode = 1
 }
