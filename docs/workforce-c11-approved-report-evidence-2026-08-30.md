@@ -76,12 +76,11 @@ summary, rather than rendering a partial or internally inconsistent report.
 
 ## Verification
 
-- **PASS:** six sequential targeted Vitest files, 84 tests: report service/API,
-  browser response contract, immutable export, approval service and navigation.
-- **PASS:** focused report rate-limit and route integration Vitest, 2 files and
-  10 tests; includes the pre-read short-circuit and fail-closed limiter path.
-- **PASS:** focused immutable report/API Vitest, 2 files and 10 tests; includes
-  hash-valid negative-metric and aggregate-overflow rejection.
+- **PASS:** seven sequential targeted Vitest files, 89 tests: report
+  service/API/rate limiter, browser response contract, immutable export,
+  approval service and navigation. Coverage includes the pre-read limiter
+  short-circuit, fail-closed limiter path, hash-valid negative metrics and
+  aggregate-overflow rejection.
 - **PASS:** targeted ESLint for the report service, route, access guard,
   component and tests.
 - **PASS:** `npm run i18n:check`: 22,520 EN leaf keys; RU/AZ missing=0,
