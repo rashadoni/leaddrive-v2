@@ -24,6 +24,33 @@ import { workforceSensitiveResponseHeaders } from "@/lib/workforce/sensitive-res
 const REQUEST_STATUSES = new Set(["PENDING", "APPROVED", "REJECTED", "CANCELLED"])
 const MAX_GRANULAR_REQUEST_SCOPE_CANDIDATES = 1_000
 
+type WorkforceRequestDetail = {
+  id: string
+  agentId: string
+  type: string
+  status: string
+  startDate: Date
+  endDate: Date
+  correctionWorkdayId: string | null
+  requestedStartAt: Date | null
+  requestedEndAt: Date | null
+  reason: string
+  decisionNote: string | null
+  submittedAt: Date
+  decidedAt: Date | null
+  cancelledAt: Date | null
+  updatedAt: Date
+  agent: { id: string; name: string; role: string }
+}
+
+type WorkforceRequestCandidate = {
+  id: string
+  agentId: string
+  type: string
+  submittedAt: Date
+  correctionWorkday: { startedAt: Date } | null
+}
+
 function workforceScopeDenied() {
   return NextResponse.json({ error: "Forbidden", code: "WORKFORCE_SCOPE_DENIED" }, { status: 403 })
 }
@@ -89,7 +116,6 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
     updatedAt: true,
     agent: { select: { id: true, name: true, role: true } },
   } satisfies Prisma.MtmHrmRequestSelect
-  type RequestDetail = Prisma.MtmHrmRequestGetPayload<{ select: typeof requestSelect }>
 
   try {
     const [settings, organization] = await Promise.all([
@@ -134,7 +160,7 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
           take: limit + 1,
           ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
           select: requestSelect,
-        }),
+        }) as Promise<WorkforceRequestDetail[]>,
         selfWorkdaysPromise,
       ])
       const hasMore = requests.length > limit
@@ -147,7 +173,7 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
           canDecide: actor.role !== "AGENT",
           canSubmitSelf,
           selfWorkdays,
-          requests: page.map((request: RequestDetail) => ({
+          requests: page.map((request) => ({
             ...request,
             canDecide: actor.role !== "AGENT" && actor.agentId !== request.agentId,
             canCancelSelf: canSubmitSelf && selfAgentId === request.agentId,
@@ -189,8 +215,7 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
       submittedAt: true,
       correctionWorkday: { select: { startedAt: true } },
     } satisfies Prisma.MtmHrmRequestSelect
-    type RequestCandidate = Prisma.MtmHrmRequestGetPayload<{ select: typeof candidateSelect }>
-    const authorizeCandidates = async (candidates: RequestCandidate[]) => {
+    const authorizeCandidates = async (candidates: WorkforceRequestCandidate[]) => {
       const historicalTeamByRequestId = await resolveWorkforceHistoricalTeamMemberships(prisma, {
         organizationId: auth.orgId,
         candidates: candidates.map((candidate) => ({
@@ -236,7 +261,7 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
       }
     }
 
-    let candidates: RequestCandidate[]
+    let candidates: WorkforceRequestCandidate[]
     let authorization: ReadonlyMap<string, WorkforceRequestReadAuthorization>
     try {
       candidates = await prisma.mtmHrmRequest.findMany({
@@ -245,7 +270,7 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
         take: MAX_GRANULAR_REQUEST_SCOPE_CANDIDATES + 1,
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
         select: candidateSelect,
-      })
+      }) as WorkforceRequestCandidate[]
       if (candidates.length > MAX_GRANULAR_REQUEST_SCOPE_CANDIDATES) {
         return NextResponse.json({
           error: "Too many Workforce requests for one safe scoped review; narrow the status first.",
@@ -262,11 +287,11 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
     const pageIds = pageCandidates.map((candidate) => candidate.id)
     const [detailRows, selfWorkdays] = await Promise.all([
       pageIds.length === 0
-        ? Promise.resolve<RequestDetail[]>([])
+        ? Promise.resolve<WorkforceRequestDetail[]>([])
         : prisma.mtmHrmRequest.findMany({
             where: { organizationId: auth.orgId, id: { in: pageIds } },
             select: requestSelect,
-          }),
+          }) as Promise<WorkforceRequestDetail[]>,
       selfWorkdaysPromise,
     ])
     const detailById = new Map(detailRows.map((request) => [request.id, request]))
