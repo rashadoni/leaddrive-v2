@@ -11,6 +11,7 @@ import { consumePublicRateLimitBatch } from "@/lib/public-abuse-guard"
 import { hashForRateLimit } from "@/lib/rate-limit"
 import {
   requireWorkforceApprovedReportRateLimit,
+  requireWorkforceEvidenceTimelineRateLimit,
   requireWorkforceExceptionReportRateLimit,
   requireWorkforceSiteTransitionReportRateLimit,
 } from "@/lib/workforce/approved-report-rate-limit"
@@ -113,6 +114,21 @@ describe("requireWorkforceApprovedReportRateLimit", () => {
     expect(consumePublicRateLimitBatch).toHaveBeenCalledWith([expect.objectContaining({
       scope: "workforce-site-transition-report:principal",
       redisHashTag: "workforce-site-transition-report:partition-hash",
+    })])
+  })
+
+  it("keeps evidence timelines in a separate distributed budget", async () => {
+    vi.mocked(consumePublicRateLimitBatch).mockResolvedValueOnce({ allowed: true } as never)
+
+    await expect(requireWorkforceEvidenceTimelineRateLimit({
+      organizationId: "org-private",
+      principalUserId: "user-private",
+    })).resolves.toBeNull()
+
+    expect(hashForRateLimit).toHaveBeenCalledWith("workforce-evidence-timeline-partition:v1:org-private")
+    expect(consumePublicRateLimitBatch).toHaveBeenCalledWith([expect.objectContaining({
+      scope: "workforce-evidence-timeline:principal",
+      redisHashTag: "workforce-evidence-timeline:partition-hash",
     })])
   })
 })
