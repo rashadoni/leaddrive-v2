@@ -132,6 +132,27 @@ describe("Workforce granular request-list fence", () => {
     expect(prisma.mtmHrmRequest.findMany).not.toHaveBeenCalled()
   })
 
+  it("contains grant lookup failures without logging private identifiers", async () => {
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockRejectedValueOnce(
+      new Error("employee-private grant-private"),
+    )
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+
+    const response = await callGet(get(), AUTH)
+
+    expect(response.status).toBe(503)
+    await expect(response.json()).resolves.toMatchObject({
+      code: "WORKFORCE_REQUEST_READ_ACCESS_UNAVAILABLE",
+    })
+    expect(consoleError).toHaveBeenCalledWith(
+      "[workforce/privacy] sensitive operation failed",
+      { operation: "read-request-list" },
+    )
+    expect(JSON.stringify(consoleError.mock.calls)).not.toContain("employee-private")
+    expect(JSON.stringify(consoleError.mock.calls)).not.toContain("grant-private")
+    consoleError.mockRestore()
+  })
+
   it("loads a historical-team leave detail only after metadata authorization", async () => {
     vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([activeGrant()] as never)
     vi.mocked(prisma.mtmHrmRequest.findMany)

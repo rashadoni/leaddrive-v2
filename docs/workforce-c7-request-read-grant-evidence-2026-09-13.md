@@ -23,7 +23,7 @@ actor row.
 
 ## Verification
 
-- `PASS` — four focused files, 17 tests after rebasing onto the access-review
+- `PASS` — four focused files, 18 tests after rebasing onto the access-review
   checkpoint: legacy paging/cursor behavior,
   self-service, actor-independent grants, historical-team matching,
   correction-role separation, inaccessible cursor containment and bounded

@@ -25,6 +25,7 @@ export function logWorkforceSensitiveOperationFailure(input: {
     | "configuration-access-grant-inventory"
     | "configuration-access-grant-target-search"
     | "configuration-access-review"
+    | "read-request-list"
 }): void {
   console.error("[workforce/privacy] sensitive operation failed", { operation: input.operation })
 }

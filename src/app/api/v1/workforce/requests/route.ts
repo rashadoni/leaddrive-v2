@@ -8,6 +8,7 @@ import { readPersistedWorkforceAccessGrants } from "@/lib/workforce/access-grant
 import { workforceRolePermissions } from "@/lib/workforce/access-control"
 import { workforceGranularAccessEnabled } from "@/lib/workforce/granular-access-rollout"
 import { authorizeWorkforceRequestReadCandidates } from "@/lib/workforce/request-read-access"
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { resolveWorkforceHistoricalTeamMemberships } from "@/lib/workforce/team-membership"
 import {
   submitWorkforceSelfRequest,
@@ -161,8 +162,8 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
         principalUserId: auth.userId,
         now,
       })
-    } catch (error) {
-      console.error("[workforce/requests GET] granular grant lookup failed", error)
+    } catch {
+      logWorkforceSensitiveOperationFailure({ operation: "read-request-list" })
       return workforceGranularRequestReadUnavailable()
     }
     if (!grants) return workforceGranularRequestReadUnavailable()
@@ -219,8 +220,8 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
           where: { ...metadataWhere, id: cursor },
           select: candidateSelect,
         })
-      } catch (error) {
-        console.error("[workforce/requests GET] granular cursor lookup failed", error)
+      } catch {
+        logWorkforceSensitiveOperationFailure({ operation: "read-request-list" })
         return workforceGranularRequestReadUnavailable()
       }
       if (!cursorCandidate) {
@@ -230,8 +231,8 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
         if (!(await authorizeCandidates([cursorCandidate])).get(cursorCandidate.id)?.readable) {
           return NextResponse.json({ error: "Invalid request cursor", code: "WORKFORCE_REQUEST_CURSOR_INVALID" }, { status: 400 })
         }
-      } catch (error) {
-        console.error("[workforce/requests GET] granular cursor authorization failed", error)
+      } catch {
+        logWorkforceSensitiveOperationFailure({ operation: "read-request-list" })
         return workforceGranularRequestReadUnavailable()
       }
     }
@@ -253,8 +254,8 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
         }, { status: 413 })
       }
       authorization = await authorizeCandidates(candidates)
-    } catch (error) {
-      console.error("[workforce/requests GET] granular authorization failed", error)
+    } catch {
+      logWorkforceSensitiveOperationFailure({ operation: "read-request-list" })
       return workforceGranularRequestReadUnavailable()
     }
     const readableCandidates = candidates.filter((candidate) => authorization.get(candidate.id)?.readable)
