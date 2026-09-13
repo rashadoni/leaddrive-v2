@@ -14,6 +14,7 @@ import {
 
 const MAX_ROWS = 5000
 const MAX_FILE_SIZE = 15 * 1024 * 1024
+const MAX_BASE64_LENGTH = Math.ceil(MAX_FILE_SIZE / 3) * 4 + 4
 
 function subjectFrom(content: string, brand?: string | null, obj?: string | null): string {
   const parts = [brand, obj].filter(Boolean).join(" — ")
@@ -77,13 +78,30 @@ export const POST = withRlsAuth("tickets", "write", async (req, { orgId }) => {
       }
     }
   } else if (contentType.includes("application/json")) {
-    const body = await req.json()
-    if (!body?.base64) return NextResponse.json({ error: "Missing base64 payload" }, { status: 400 })
-    buf = Uint8Array.from(Buffer.from(body.base64, "base64")).buffer
-    fileName = body.fileName || fileName
-    dryRun = body.dryRun === true
-    if (Array.isArray(body.retryRows)) {
-      const retryRowCandidates: unknown[] = body.retryRows
+    const body: unknown = await req.json().catch(() => null)
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 })
+    }
+    const payload = body as { base64?: unknown; fileName?: unknown; dryRun?: unknown; retryRows?: unknown }
+    if (typeof payload.base64 !== "string" || !payload.base64) {
+      return NextResponse.json({ error: "Missing base64 payload" }, { status: 400 })
+    }
+    if (payload.base64.length > MAX_BASE64_LENGTH) {
+      return NextResponse.json({ error: "File too large (max 15MB)" }, { status: 400 })
+    }
+    fileName = typeof payload.fileName === "string" && payload.fileName ? payload.fileName : fileName
+    if (!/\.xls(?:x|m)$/i.test(fileName)) {
+      return NextResponse.json({ error: "Only .xlsx or .xlsm files are allowed" }, { status: 400 })
+    }
+    const decoded = Buffer.from(payload.base64, "base64")
+    if (decoded.byteLength <= 0) return NextResponse.json({ error: "File is empty" }, { status: 400 })
+    if (decoded.byteLength > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: "File too large (max 15MB)" }, { status: 400 })
+    }
+    buf = Uint8Array.from(decoded).buffer
+    dryRun = payload.dryRun === true
+    if (Array.isArray(payload.retryRows)) {
+      const retryRowCandidates: unknown[] = payload.retryRows
       retryRows = [...new Set<number>(retryRowCandidates.filter(
         (row): row is number => typeof row === "number" && Number.isInteger(row) && row >= 2,
       ))]

@@ -144,6 +144,16 @@ export const PATCH = withRlsAuth("tickets", "write", async (req, { orgId }, { pa
       return NextResponse.json({ error: "Complaint not found" }, { status: 404 })
     }
 
+    if (d.assignedTo) {
+      const assignee = await prisma.user.findFirst({
+        where: { id: d.assignedTo, organizationId: orgId },
+        select: { id: true },
+      })
+      if (!assignee) {
+        return NextResponse.json({ error: "Invalid assignee" }, { status: 400 })
+      }
+    }
+
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.ticket.update({
         where: { id },

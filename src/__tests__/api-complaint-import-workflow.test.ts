@@ -102,4 +102,15 @@ describe("complaint import workflow", () => {
     expect(response.status).toBe(400)
     expect(mocks.transaction).not.toHaveBeenCalled()
   })
+
+  it("applies the file contract to JSON/base64 imports too", async () => {
+    const response = await POST(new NextRequest("http://localhost/api/v1/complaints/import-xlsx", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ fileName: "complaints.csv", base64: Buffer.from("hello").toString("base64") }),
+    }), auth)
+
+    expect(response.status).toBe(400)
+    expect(mocks.transaction).not.toHaveBeenCalled()
+  })
 })
