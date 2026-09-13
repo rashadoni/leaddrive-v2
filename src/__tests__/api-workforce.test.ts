@@ -88,7 +88,9 @@ beforeEach(() => {
   vi.mocked(prisma.workforcePolicySnapshot.findMany).mockResolvedValue([])
   vi.mocked(prisma.workforceShiftSnapshot.findMany).mockResolvedValue([])
   vi.mocked(prisma.mtmHrmRequest.findMany).mockResolvedValue([])
-  vi.mocked(prisma.organization.findUnique).mockResolvedValue(null)
+  // Legacy tenants have an organization row with granular access disabled.
+  // Individual authorization tests override this with the explicit flag.
+  vi.mocked(prisma.organization.findUnique).mockResolvedValue({ features: [] } as never)
   vi.mocked(loadWorkforceEmployeeToday).mockResolvedValue(null as never)
 })
 

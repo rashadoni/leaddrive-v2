@@ -26,20 +26,12 @@ changes no flag or tenant and does not alter approval/export boundaries.
 ## Verification
 
 ```text
-PASS  CI=true PATH=/home/codex-alt/.local/bin:$PATH npx vitest run --maxWorkers=1 \
-      src/__tests__/lib-workforce-timesheet-read-access.test.ts \
-      src/__tests__/api-workforce.test.ts \
-      src/__tests__/workforce-timesheet-detail-ui-contract.test.ts \
-      src/__tests__/lib-workforce-access-control.test.ts \
-      src/__tests__/lib-workforce-access-grant-resolution.test.ts \
-      src/__tests__/with-workforce-rls-auth.test.ts
-      (6 files, 74 tests)
-
+PASS  focused Vitest for Timesheet access, Today access and shared API routes
+      (3 files / 31 tests) in this exact tree
 PASS  scoped ESLint; git diff --check
-PASS  python3 scripts/rls/find-context-gaps.py
-      (529 organization-scoped models; 0 gaps)
 
-NOT RUN  full TypeScript/build, browser E2E, Android, applied RLS, isolated
-         staging and physical attendance checks. Exact CI remains externally
-         blocked and Contabo policy prohibits the heavy/physical gates locally.
+NOT RUN  full TypeScript/build, recursive RLS scan, browser E2E, Android,
+         applied RLS, isolated staging and physical attendance checks. Contabo
+         policy prohibits the heavy/physical gates locally; the applicable
+         compile/static checks run on the reviewable GitHub PR.
 ```
