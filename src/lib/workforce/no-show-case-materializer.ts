@@ -41,7 +41,7 @@ export type WorkforceNoShowCaseMaterialization =
  * can turn the resulting case into a payroll, disciplinary or attendance fact
  * through this materializer.
  */
-async function materializeAuthorizedWorkforceNoShowReviewCaseInTransaction(input: {
+export async function materializeAuthorizedWorkforceNoShowReviewCaseInTransaction(input: {
   tx: WorkforceNoShowCaseMaterializerDb
   organizationId: string
   agentId: string
