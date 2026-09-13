@@ -5,6 +5,7 @@ import { getMtmSettings } from "@/lib/mtm-settings"
 import { isValidTimezone } from "@/lib/timezone"
 import { withWorkforceSessionAuth } from "@/lib/with-workforce-rls-auth"
 import { isAgentInWorkforceScope, resolveWorkforceActor } from "@/lib/workforce/actor"
+import { workforceGranularAccessEnabled } from "@/lib/workforce/granular-access-rollout"
 import {
   rehydrateWorkforceTimesheetDay,
   WorkforceTimesheetRehydrationError,
@@ -60,8 +61,6 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
     userId: auth.userId,
     webRole: auth.role,
   })
-  if (!actor) return workforceScopeDenied()
-
   try {
     const settings = await getMtmSettings(auth.orgId)
     const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
@@ -76,8 +75,6 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
         code: "WORKFORCE_TIMESHEET_RANGE_INVALID",
       }, { status: 400 })
     }
-    if (requestedAgentId && !isAgentInWorkforceScope(actor, requestedAgentId)) return workforceScopeDenied()
-
     // Resolve this feature flag and persisted grant before the named roster
     // query. A rolled-out tenant must never use the existing CRM actor scope
     // as a fallback Workforce attendance-read authority.
@@ -91,12 +88,19 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
         code: "WORKFORCE_TIMESHEET_READ_ACCESS_UNAVAILABLE",
       }, { status: 503 })
     }
+    const granularAccess = workforceGranularAccessEnabled(organization.features)
+    // Granular tenants authorize through the explicit Workforce ledger. The
+    // legacy CRM actor remains mandatory only before that deliberate cutover.
+    if (!granularAccess && !actor) return workforceScopeDenied()
+    if (!granularAccess && requestedAgentId && !isAgentInWorkforceScope(actor!, requestedAgentId)) {
+      return workforceScopeDenied()
+    }
     const accessDenied = await requireWorkforceTimesheetReadAccess({
       db: prisma,
       organizationId: auth.orgId,
       organizationFeatures: organization.features,
       principalUserId: auth.userId,
-      selfAgentId: actor.agentId,
+      selfAgentId: actor?.agentId ?? null,
       selectedAgentId: requestedAgentId,
     })
     if (accessDenied) return accessDenied
@@ -106,7 +110,9 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
       status: "ACTIVE" as const,
       ...(requestedAgentId
         ? { id: requestedAgentId }
-        : actor.scopedAgentIds === null ? {} : { id: { in: [...actor.scopedAgentIds] } }),
+        : granularAccess || actor!.scopedAgentIds === null
+          ? {}
+          : { id: { in: [...actor!.scopedAgentIds] } }),
     }
     const agents: WorkforceDirectoryAgent[] = await prisma.mtmAgent.findMany({
       where: agentWhere,

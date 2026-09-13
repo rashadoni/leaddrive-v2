@@ -7,6 +7,7 @@ import { withWorkforceSessionAuth } from "@/lib/with-workforce-rls-auth"
 import { resolveWorkforceActor } from "@/lib/workforce/actor"
 import { resolveWorkforceCalendarDay, type WorkforceCalendarOverride } from "@/lib/workforce/calendar"
 import { loadWorkforceEmployeeToday } from "@/lib/workforce/employee-today"
+import { workforceGranularAccessEnabled } from "@/lib/workforce/granular-access-rollout"
 import { requireWorkforceTodayReadAccess } from "@/lib/workforce/today-read-access"
 
 type WorkdayStatus = "STARTED" | "PAUSED" | "COMPLETED"
@@ -49,8 +50,6 @@ export const GET = withWorkforceSessionAuth("read", async (_req, auth) => {
     userId: auth.userId,
     webRole: auth.role,
   })
-  if (!actor) return workforceScopeDenied()
-
   try {
     const settings = await getMtmSettings(auth.orgId)
     const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
@@ -73,11 +72,18 @@ export const GET = withWorkforceSessionAuth("read", async (_req, auth) => {
         code: "WORKFORCE_TODAY_READ_ACCESS_UNAVAILABLE",
       }, { status: 503 })
     }
+    const granularAccess = workforceGranularAccessEnabled(organization.features)
+    // After deliberate C7 cutover, an explicit grant is a first-class
+    // Workforce authority and must not depend on an unrelated CRM actor row.
+    // Before cutover, preserve the established actor boundary exactly.
+    if (!granularAccess && !actor) return workforceScopeDenied()
     const scopeCandidates = await prisma.mtmAgent.findMany({
       where: {
         organizationId: auth.orgId,
         status: "ACTIVE",
-        ...(actor.scopedAgentIds === null ? {} : { id: { in: [...actor.scopedAgentIds] } }),
+        ...(granularAccess || actor!.scopedAgentIds === null
+          ? {}
+          : { id: { in: [...actor!.scopedAgentIds] } }),
       },
       orderBy: { name: "asc" },
       select: { id: true, teamId: true },
@@ -90,7 +96,7 @@ export const GET = withWorkforceSessionAuth("read", async (_req, auth) => {
       // Every mapped Workforce employee retains the narrow self-read
       // permission. Management role is not a reason to remove their own
       // current-day record; additional employees still need a team grant.
-      selfAgentId: actor.agentId,
+      selfAgentId: actor?.agentId ?? null,
       candidates: scopeCandidates,
     })
     if (todayAccess instanceof Response) return todayAccess
@@ -184,7 +190,7 @@ export const GET = withWorkforceSessionAuth("read", async (_req, auth) => {
       return counts
     }, { started: 0, paused: 0, completed: 0, notStarted: 0, previousOpen: 0 })
 
-    const self = actor.role === "AGENT" && actor.agentId
+    const self = actor?.role === "AGENT" && actor.agentId
       ? people.find((person) => person.id === actor.agentId) ?? null
       : null
     const employeeToday = self
@@ -205,7 +211,9 @@ export const GET = withWorkforceSessionAuth("read", async (_req, auth) => {
       data: {
         date,
         timezone,
-        scope: actor.scopedAgentIds === null ? "ORGANIZATION" : actor.role === "AGENT" ? "SELF" : "TEAM_OR_REGION",
+        scope: actor == null
+          ? "GRANT"
+          : actor.scopedAgentIds === null ? "ORGANIZATION" : actor.role === "AGENT" ? "SELF" : "TEAM_OR_REGION",
         summary,
         people,
         employeeToday,

@@ -54,6 +54,7 @@ import { correctWorkforceTimeDirectly } from "@/lib/workforce/direct-time-correc
 import { requireWorkforceAttendanceSecurityMfa } from "@/lib/workforce/attendance-route"
 import { requireWorkforceDirectTimeCorrectionRateLimit } from "@/lib/workforce/direct-time-correction-rate-limit"
 import { loadWorkforceEmployeeToday } from "@/lib/workforce/employee-today"
+import { WORKFORCE_GRANULAR_ACCESS_FLAG } from "@/lib/workforce/granular-access-rollout"
 
 const AUTH = {
   orgId: "org-workforce",
@@ -97,6 +98,70 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers())
 
 describe("independent Workforce read models", () => {
+  it("lets a grant-only session read granular Today without a CRM actor", async () => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      features: [WORKFORCE_GRANULAR_ACCESS_FLAG],
+    } as never)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(null as never)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{
+      id: "agent-1", name: "Aysel", role: "AGENT", teamId: "team-1",
+    }] as never)
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([{
+      id: "grant-team-1", organizationId: "org-workforce", principalUserId: "grant-reviewer",
+      role: "TEAM_MANAGER", scopeKind: "TEAM", scopeTeamId: "team-1", scopeSiteId: null,
+      scopeAgentId: null, effectiveFrom: new Date("2026-01-01T00:00:00.000Z"),
+      effectiveUntil: null, revocation: null,
+    }] as never)
+
+    const response = await todayGet(
+      request("/api/v1/workforce/today"),
+      { ...AUTH, userId: "grant-reviewer", role: "sales" } as never,
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      data: {
+        scope: "GRANT",
+        employeeToday: null,
+        people: [expect.objectContaining({ id: "agent-1", name: "Aysel" })],
+      },
+    })
+    const candidateQuery = vi.mocked(prisma.mtmAgent.findMany).mock.calls[0][0] as {
+      where: Record<string, unknown>
+    }
+    expect(candidateQuery.where).toMatchObject({ organizationId: "org-workforce", status: "ACTIVE" })
+    expect(candidateQuery.where).not.toHaveProperty("id")
+  })
+
+  it("lets a grant-only session read an exact granular timesheet without a CRM actor", async () => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      features: [WORKFORCE_GRANULAR_ACCESS_FLAG],
+    } as never)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(null as never)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{
+      id: "agent-1", name: "Aysel", role: "AGENT", teamId: "team-1",
+    }] as never)
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([{
+      id: "grant-agent-1", organizationId: "org-workforce", principalUserId: "grant-reviewer",
+      role: "TIME_APPROVER", scopeKind: "AGENT", scopeTeamId: null, scopeSiteId: null,
+      scopeAgentId: "agent-1", effectiveFrom: new Date("2026-01-01T00:00:00.000Z"),
+      effectiveUntil: null, revocation: null,
+    }] as never)
+
+    const response = await timesheetGet(
+      request("/api/v1/workforce/timesheet?start=2026-08-28&end=2026-08-28&agentId=agent-1"),
+      { ...AUTH, userId: "grant-reviewer", role: "sales" } as never,
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      data: { agents: [expect.objectContaining({ id: "agent-1", name: "Aysel" })] },
+    })
+    expect(prisma.mtmAgent.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { organizationId: "org-workforce", status: "ACTIVE", id: "agent-1" },
+    }))
+  })
+
   it("returns only the current tenant's daily work-time facts", async () => {
     vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
       { id: "agent-1", name: "Aysel", role: "AGENT", teamId: "team-1" },
