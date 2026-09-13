@@ -66,6 +66,15 @@ export function CallRecordingPlayer({
         onEnded={() => setState("ended")}
         onWaiting={() => setState("loading")}
         onError={() => setState("error")}
+        onKeyDown={(event) => {
+          if (event.key !== " " && event.key !== "Enter") return
+          event.preventDefault()
+          if (event.currentTarget.paused) {
+            void event.currentTarget.play().catch(() => setState("error"))
+          } else {
+            event.currentTarget.pause()
+          }
+        }}
         onLoadedMetadata={(event) => {
           const duration = event.currentTarget.duration
           setMediaDuration(Number.isFinite(duration) ? Math.round(duration) : null)
