@@ -7,7 +7,10 @@ import { resolveWorkforceActor } from "@/lib/workforce/actor"
 import { readPersistedWorkforceAccessGrants } from "@/lib/workforce/access-grant-resolution"
 import { workforceRolePermissions } from "@/lib/workforce/access-control"
 import { workforceGranularAccessEnabled } from "@/lib/workforce/granular-access-rollout"
-import { authorizeWorkforceRequestReadCandidates } from "@/lib/workforce/request-read-access"
+import {
+  authorizeWorkforceRequestReadCandidates,
+  type WorkforceRequestReadAuthorization,
+} from "@/lib/workforce/request-read-access"
 import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { resolveWorkforceHistoricalTeamMemberships } from "@/lib/workforce/team-membership"
 import {
@@ -86,6 +89,7 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
     updatedAt: true,
     agent: { select: { id: true, name: true, role: true } },
   } satisfies Prisma.MtmHrmRequestSelect
+  type RequestDetail = Prisma.MtmHrmRequestGetPayload<{ select: typeof requestSelect }>
 
   try {
     const [settings, organization] = await Promise.all([
@@ -143,7 +147,7 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
           canDecide: actor.role !== "AGENT",
           canSubmitSelf,
           selfWorkdays,
-          requests: page.map((request) => ({
+          requests: page.map((request: RequestDetail) => ({
             ...request,
             canDecide: actor.role !== "AGENT" && actor.agentId !== request.agentId,
             canCancelSelf: canSubmitSelf && selfAgentId === request.agentId,
@@ -185,13 +189,8 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
       submittedAt: true,
       correctionWorkday: { select: { startedAt: true } },
     } satisfies Prisma.MtmHrmRequestSelect
-    const authorizeCandidates = async (candidates: Array<{
-      id: string
-      agentId: string
-      type: string
-      submittedAt: Date
-      correctionWorkday: { startedAt: Date } | null
-    }>) => {
+    type RequestCandidate = Prisma.MtmHrmRequestGetPayload<{ select: typeof candidateSelect }>
+    const authorizeCandidates = async (candidates: RequestCandidate[]) => {
       const historicalTeamByRequestId = await resolveWorkforceHistoricalTeamMemberships(prisma, {
         organizationId: auth.orgId,
         candidates: candidates.map((candidate) => ({
@@ -237,8 +236,8 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
       }
     }
 
-    let candidates
-    let authorization
+    let candidates: RequestCandidate[]
+    let authorization: ReadonlyMap<string, WorkforceRequestReadAuthorization>
     try {
       candidates = await prisma.mtmHrmRequest.findMany({
         where: metadataWhere,
@@ -263,7 +262,7 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
     const pageIds = pageCandidates.map((candidate) => candidate.id)
     const [detailRows, selfWorkdays] = await Promise.all([
       pageIds.length === 0
-        ? Promise.resolve([])
+        ? Promise.resolve<RequestDetail[]>([])
         : prisma.mtmHrmRequest.findMany({
             where: { organizationId: auth.orgId, id: { in: pageIds } },
             select: requestSelect,
