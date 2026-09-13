@@ -421,6 +421,7 @@ describe("POST /api/v1/workforce/requests/:id/decision", () => {
 })
 
 describe("POST /api/v1/workforce/workdays/:id/corrections", () => {
+  const workforceUserAuth = { ...AUTH, userId: "workforce-user-1", role: "user" }
   const correctionInput = {
     operationId: "direct-correction-1",
     expectedUpdatedAt: "2026-08-28T09:00:00.000Z",
@@ -583,5 +584,49 @@ describe("POST /api/v1/workforce/workdays/:id/corrections", () => {
     expect(requireWorkforceDirectTimeCorrectionRateLimit).not.toHaveBeenCalled()
     expect(prisma.mtmAgent.findFirst).not.toHaveBeenCalled()
     expect(correctWorkforceTimeDirectly).not.toHaveBeenCalled()
+  })
+
+  it("denies a principal that has no active Workforce actor", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValueOnce(null)
+    const invoke = directCorrectionPost as unknown as (
+      req: NextRequest,
+      auth: typeof AUTH,
+      ctx: { params: Promise<{ id: string }> },
+    ) => Promise<Response>
+
+    const response = await invoke(
+      request("/api/v1/workforce/workdays/workday-1/corrections", correctionInput),
+      workforceUserAuth,
+      { params: Promise.resolve({ id: "workday-1" }) },
+    )
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toMatchObject({ code: "WORKFORCE_SCOPE_DENIED" })
+    expect(correctWorkforceTimeDirectly).not.toHaveBeenCalled()
+  })
+
+  it("contains actor lookup failures without logging sensitive error details", async () => {
+    const sensitiveFailure = new Error("private correction case correction-secret-42")
+    vi.mocked(prisma.mtmAgent.findFirst).mockRejectedValueOnce(sensitiveFailure)
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const invoke = directCorrectionPost as unknown as (
+      req: NextRequest,
+      auth: typeof AUTH,
+      ctx: { params: Promise<{ id: string }> },
+    ) => Promise<Response>
+
+    const response = await invoke(
+      request("/api/v1/workforce/workdays/workday-1/corrections", correctionInput),
+      workforceUserAuth,
+      { params: Promise.resolve({ id: "workday-1" }) },
+    )
+
+    expect(response.status).toBe(500)
+    expect(correctWorkforceTimeDirectly).not.toHaveBeenCalled()
+    expect(consoleError).toHaveBeenCalledWith(
+      "[workforce/privacy] sensitive operation failed",
+      { operation: "review-workday-correction" },
+    )
+    expect(JSON.stringify(consoleError.mock.calls)).not.toContain(sensitiveFailure.message)
   })
 })

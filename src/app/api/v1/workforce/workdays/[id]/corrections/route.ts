@@ -49,13 +49,14 @@ export const POST = withWorkforceSessionAuth<RouteContext>("write", async (req: 
   })
   if (rateLimited) return rateLimited
 
-  const actor = await resolveWorkforceActor(prisma, {
-    organizationId: auth.orgId,
-    userId: auth.userId,
-    webRole: auth.role,
-  })
-
   try {
+    const actor = await resolveWorkforceActor(prisma, {
+      organizationId: auth.orgId,
+      userId: auth.userId,
+      webRole: auth.role,
+    })
+    if (!actor) return workforceScopeDenied()
+
     const result = await correctWorkforceTimeDirectly({
       organizationId: auth.orgId,
       userId: auth.userId,
