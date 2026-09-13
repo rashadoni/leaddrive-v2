@@ -1,11 +1,11 @@
 # Support Module UX Redesign — Implementation Plan
 
-> **Status:** IN PROGRESS — Service Desk and Ticket Detail are evidence-complete
-> and deployed; Complaint Registry is the active sequential workstream
+> **Status:** IN PROGRESS — Service Desk and Ticket Detail are deployed;
+> Complaint Registry is evidence-complete and awaiting PR/release
 > **Original date:** 2026-08-31
-> **Last reviewed:** 2026-09-12
+> **Last reviewed:** 2026-09-13
 > **Code baseline:** `rashadoni/leaddrive-v2` `main` at
-> `3f25de43e63e9f7e8f0a12b4c214f86a5cfb1b7f`
+> `aad61167a68565b64c33e7eab257bf0e8ca33f0d`
 > **Scope:** 15 potentially visible Support destinations (14 base destinations
 > plus role/add-on-gated Support AI Settings), their nested operational flows,
 > and customer-portal dependencies
@@ -27,9 +27,10 @@ continues from a clean current-main worktree on a dedicated `codex/*` branch.
 
 Status legend: `TODO` · `IN_PROGRESS` · `DONE` · `BLOCKED` · `DEFERRED`
 
-Execution checkpoint (2026-09-12): the plan contains 191 tracked SUPUX tasks.
-All 19 Service Desk and Ticket Detail tasks are evidence-complete and those two
-surfaces are deployed. The remaining 172 tasks stay open until their own
+Execution checkpoint (2026-09-13): the plan contains 191 tracked SUPUX tasks.
+All 19 Service Desk and Ticket Detail tasks are evidence-complete and deployed;
+all 11 Complaint Registry tasks are evidence-complete and awaiting the normal
+PR/release path. The remaining 161 tasks stay open until their own
 section-scoped implementation, authenticated browser matrix, CI, performance/
 visual comparison and deployment evidence are complete.
 
@@ -951,7 +952,7 @@ Closure evidence (2026-09-12; supersedes the earlier open/NOT RUN notes above):
 
 ## 9. Workstream 2 — Complaint Registry
 
-**Status: IN PROGRESS — implementation and recovery-evidence checkpoints complete; rendered CI/browser gates pending**
+**Status: DONE — exact-SHA browser, recovery, responsive, accessibility, performance and visual gates green; PR/release pending**
 **Route:** `/complaints`
 **Primary file:** `src/app/(dashboard)/complaints/page.tsx`
 
@@ -962,24 +963,24 @@ laptop/mobile and fetch/export failures are not clearly reported.
 Target UX: a compact complaint triage list with clear ownership, deadline, and
 resolution state.
 
-- [ ] **SUPUX-CMP-001** Normalize header size and remove extra page/container
+- [x] **SUPUX-CMP-001** Normalize header size and remove extra page/container
   padding.
-- [ ] **SUPUX-CMP-002** Use one search plus a Filters popover/drawer, active chips,
+- [x] **SUPUX-CMP-002** Use one search plus a Filters popover/drawer, active chips,
   reset, and stable result count.
-- [ ] **SUPUX-CMP-003** Reduce default columns to triage-critical data; move
+- [x] **SUPUX-CMP-003** Reduce default columns to triage-critical data; move
   secondary metadata to row detail.
-- [ ] **SUPUX-CMP-004** Add responsive complaint cards for narrow widths.
-- [ ] **SUPUX-CMP-005** Show import/export progress, completion, and failure.
-- [ ] **SUPUX-CMP-006** Add fetch error/retry and preserve the current query.
-- [ ] **SUPUX-CMP-007** Keep create/import/export hierarchy to one primary and
+- [x] **SUPUX-CMP-004** Add responsive complaint cards for narrow widths.
+- [x] **SUPUX-CMP-005** Show import/export progress, completion, and failure.
+- [x] **SUPUX-CMP-006** Add fetch error/retry and preserve the current query.
+- [x] **SUPUX-CMP-007** Keep create/import/export hierarchy to one primary and
   secondary actions.
-- [ ] **SUPUX-CMP-008** Audit and redesign `/complaints/new` as part of the create
+- [x] **SUPUX-CMP-008** Audit and redesign `/complaints/new` as part of the create
   flow, including draft preservation, validation, and return-to-registry state.
-- [ ] **SUPUX-CMP-009** Audit `/complaints/[id]` for ownership, deadline,
+- [x] **SUPUX-CMP-009** Audit `/complaints/[id]` for ownership, deadline,
   conversation/evidence, lifecycle actions, and responsive detail hierarchy.
-- [ ] **SUPUX-CMP-010** Audit `/complaints/import` with explicit mapping preview,
+- [x] **SUPUX-CMP-010** Audit `/complaints/import` with explicit mapping preview,
   row-level validation, partial success, retry, and downloadable error evidence.
-- [ ] **SUPUX-CMP-011** Preserve registry filters and scroll position across
+- [x] **SUPUX-CMP-011** Preserve registry filters and scroll position across
   create, import, detail, and back navigation.
 
 Acceptance:
@@ -990,60 +991,53 @@ Acceptance:
 - Create/detail/import flows return users to the same registry context and never
   discard recoverable work silently.
 
-Current verification evidence (2026-09-04):
+Current verification evidence (2026-09-13):
 
-- `645919ac2` replaces the four-card/duplicate-search registry with one compact
-  search and filter surface, URL-backed chips/reset, one authoritative result
-  count, five triage columns, progressive row detail, and mobile complaint
-  cards. Create is the sole primary action; import/export are secondary. Fetch
-  and filtered-export progress, success, error, permission, retry, empty, and
-  no-result states preserve the active query and saved scroll position.
-- `d9e1ef866` carries the same safe `returnTo` through create, detail, and
-  import. New complaints use a tenant-scoped local draft, leave warning,
-  explicit validation and recoverable API/AI/facet failures. Detail keeps
-  owner, SLA deadline, lifecycle actions, conversation and attachment evidence
-  ahead of disclosed metadata/history, with assignment rollback, stale data,
-  closed-response, send retry/idempotency, permission and destructive-confirm
-  states.
-- Import validates extension and a 15 MB server/client limit, previews detected
-  column mapping and validated rows, reports row-level errors, distinguishes
-  full/partial/failure outcomes, downloads complete CSV error evidence, and
-  retries only the failed source row numbers so successful rows are not
-  re-imported by that recovery action.
-- Changed-source ESLint, AZ/RU/EN translation parity, `git diff --check`, and 50
-  focused Vitest assertions are green. Static contracts cover the compact and
-  responsive surfaces, return-state, RBAC/tenant scoping, draft recovery,
-  lifecycle/evidence hierarchy, mapping, partial retry and error download;
-  workbook-backed API tests prove preview is write-free and row retry selects
-  only the requested source row.
-- CMP checkboxes remain open until the authenticated browser matrix verifies
-  375/768/1024/1440, AZ/RU/EN, light/dark, keyboard/focus, touch, reduced
-  motion, forced loading/empty/error/permission/recovery states, accessibility,
-  performance, and visual regression. Full local typecheck is NOT RUN for this
-  checkpoint because the earlier reference-slice attempt exhausted Node's 2 GB
-  heap and the Contabo workload contract forbids a heavier local retry.
-- Checkpoints `8194dbc76` and `079d823cd` add data-ready coverage for registry,
-  create, detail and import; correct scroll preservation to use the dashboard's
-  actual `main` scroller; and debounce/cancel dependent facet requests so a
-  slower stale response cannot replace the user's latest selection.
-- Checkpoints `556dbc666` and `be4c95153` add a ten-outcome mutating Complaint
-  evidence runner, hard-restricted to an ephemeral loopback tenant. It covers
-  keyboard row open and query/scroll return, load and export failure recovery,
-  tenant-scoped create-draft leave/recovery, failed create and response retries,
-  status permission recovery, assignee rollback/restore, stale and permission
-  detail recovery, XLSX validation/mapping, partial import, CSV evidence and
-  retry of only failed rows. Stable application-owned selectors and accessible
-  names expose each observed state without locale-dependent automation.
-- Current-tree scoped verification passes 13 Complaint/evidence test files with
-  86/86 assertions, changed-source ESLint, `git diff --check`, translation
-  parity (21,893 EN keys; zero RU/AZ missing or extra keys), and the Support UX
-  anti-pattern scan (27 visible TSX files; zero findings).
-- Exact-SHA rendered execution is still **NOT RUN**. Workflow run `33999190747`
-  for `556dbc666d98039f1c8b0a57a5e0a9cca6d2fbcb` ended in GitHub Actions
-  `startup_failure` before any job was created, matching the repository-wide
-  Actions failure affecting unrelated branches. This is infrastructure
-  evidence, not a product pass; the Complaint reference flow and full matrix
-  must be rerun on the latest SHA before any CMP checkbox closes.
+- Checkpoints `f0088c1ae`, `1c3b36c4b` and `38e411c47` replace the duplicate
+  KPI/search/filter surfaces with a compact URL-backed registry, five triage
+  columns, progressive metadata and mobile cards. Create is the sole primary
+  action; import/export are secondary and expose distinct progress, success,
+  failure and retry states. Tenant-scoped assignee validation and the 15 MB
+  import limit are enforced at the API boundary as well as in the UI.
+- Create, detail and import carry a validated `returnTo`; tenant-scoped drafts,
+  leave warning and failed-submit recovery prevent silent loss. Detail puts
+  owner/deadline/lifecycle/conversation/evidence first and exposes assignment
+  rollback, stale snapshot, closed-response, permission, retry/idempotency and
+  destructive-confirm states. Import previews mapping and row validation,
+  distinguishes full/partial/failure results, downloads complete CSV evidence
+  and retries only failed source rows.
+- Typical run `34724208546` passed 192/192 combinations across manager/admin,
+  AZ/RU/EN, light/dark and 1440/1024/768/375 viewports. Empty run `34726959676`
+  and high-density run `34728256789` each passed 96/96. Across these 384 rows
+  there are zero runtime, axe, custom accessibility, touch-target, horizontal
+  overflow, environment or first-viewport-primary failures. Maximum recorded
+  load was 1,146 ms in the high-density one-sample matrix; primary work remained
+  within the first 680 px.
+- Desktop mutating run `34738564918` passed 10/10 recovery journeys and 4/4
+  static pages. Mobile RU/dark run `34740752183` passed the same 10/10 and 4/4
+  at 375 px with physical-touch emulation and reduced motion; the visible card
+  opened by touch, query context persisted and the registry scroll restored
+  exactly from 878 px to 878 px. The flows cover keyboard/touch open-and-return,
+  fetch/export failure, draft/create retry, response retry, status permission,
+  assignee rollback/restore, stale and detail-permission recovery, XLSX mapping,
+  partial import, error CSV and failed-row-only retry.
+- Exact-SHA baseline run `34743619941` on `5dbc61e5ba04ebab4dba55a998c4233f957b5197`
+  passed 4/4 pages with seven samples each. Measured load p75 was 618 ms for the
+  registry, 401 ms for create, 387 ms for import and 289 ms for detail. The
+  evidence-derived budgets are 650/450/350/400 ms and retain the existing
+  relative, CLS, density and primary-work guards.
+- Exact-SHA compare run `34744431151` passed 4/4 visual and 4/4 performance
+  comparisons with no regressions: load p75 was 549/253/258/231 ms. Three page
+  screenshots were byte-identical; detail changed 0.0308% of pixels, below the
+  0.5% threshold, with matching dimensions and layout. All four results have
+  zero browser/HTTP errors and unchanged primary-work position.
+- Current-tree checks pass all 11 Complaint/browser/performance contract files
+  (84/84 assertions), changed-source ESLint,
+  runner syntax, `git diff --check`, translation parity (22,498 EN keys; zero
+  RU/AZ missing or extra) and the scoped anti-pattern scan (five visible TSX
+  files; zero findings). Exact-SHA evidence production builds are green; a full
+  local build/typecheck remains intentionally NOT RUN under the Contabo workload
+  contract and is delegated to the mandatory PR checks.
 
 ## 10. Workstream 3 — Agent Desktop
 
