@@ -6,7 +6,7 @@ vi.mock("@/lib/prisma", async () => {
   return { prisma: makeMtmPrismaMock() }
 })
 vi.mock("@/lib/with-workforce-rls-auth", () => ({
-  withWorkforceSessionAdminAuth: vi.fn((handler) => handler),
+  withWorkforceSessionRetentionReadAuth: vi.fn((handler) => handler),
 }))
 vi.mock("@/lib/workforce/attendance-route", () => ({
   requireWorkforceAttendanceSecurityMfa: vi.fn(async () => null),

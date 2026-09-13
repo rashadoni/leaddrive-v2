@@ -3,6 +3,7 @@ import { NextRequest } from "next/server"
 
 vi.mock("@/lib/with-workforce-rls-auth", () => ({
   withWorkforceSessionAdminAuth: vi.fn((handler) => handler),
+  withWorkforceSessionPilotFenceAuth: vi.fn((handler) => handler),
 }))
 vi.mock("@/lib/workforce/attendance-route", () => ({
   requireWorkforceAttendanceSecurityMfa: vi.fn(async () => null),
@@ -22,7 +23,7 @@ vi.mock("@/lib/workforce/mobile-write-fence", async () => {
 
 import { GET, PUT as putFence } from "@/app/api/v1/workforce/configuration/mobile-write-fence/route"
 import { DELETE, PUT as putCohort } from "@/app/api/v1/workforce/configuration/mobile-write-fence/cohorts/route"
-import { withWorkforceSessionAdminAuth } from "@/lib/with-workforce-rls-auth"
+import { withWorkforceSessionPilotFenceAuth } from "@/lib/with-workforce-rls-auth"
 import { requireWorkforceAttendanceSecurityMfa } from "@/lib/workforce/attendance-route"
 import {
   disableWorkforceMobileWriteCohort,
@@ -85,8 +86,8 @@ beforeEach(() => {
 })
 
 describe("Workforce mobile write fence configuration API", () => {
-  it("uses the session-only Workforce administrator boundary for every control-plane operation", () => {
-    expect(withWorkforceSessionAdminAuth).toHaveBeenCalledTimes(4)
+  it("uses the session-only Workforce pilot-fence boundary for every control-plane operation", () => {
+    expect(withWorkforceSessionPilotFenceAuth).toHaveBeenCalledTimes(4)
   })
 
   it("returns the server-owned tenant posture and cohorts", async () => {

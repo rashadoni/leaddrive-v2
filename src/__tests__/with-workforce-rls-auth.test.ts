@@ -36,7 +36,9 @@ import {
   withWorkforceSessionEmploymentConfigurationAuth,
   withWorkforceSessionExceptionQueueAuth,
   withWorkforceSessionGrantManagementAuth,
+  withWorkforceSessionPilotFenceAuth,
   withWorkforceSessionPolicyConfigurationAuth,
+  withWorkforceSessionRetentionReadAuth,
   withWorkforceSessionScheduleConfigurationAuth,
 } from "@/lib/with-workforce-rls-auth"
 
@@ -111,6 +113,88 @@ describe("withWorkforceSessionPolicyConfigurationAuth", () => {
     const handler = vi.fn(async () => NextResponse.json({ success: true }))
     sessionRole.value = "admin"
     const response = await withWorkforceSessionPolicyConfigurationAuth(handler)(request())
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toMatchObject({ code: "WORKFORCE_GRANULAR_ACCESS_REQUIRED" })
+    expect(handler).not.toHaveBeenCalled()
+  })
+})
+describe("withWorkforceSessionPilotFenceAuth", () => {
+  function entitled(features: string[]) {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      plan: "enterprise", addons: [], features, modules: { "workforce-hrm": true },
+    } as never)
+  }
+
+  it("preserves the accountable admin boundary before granular cutover", async () => {
+    entitled(["workforce-hrm"])
+    const handler = vi.fn(async () => NextResponse.json({ success: true }))
+    sessionRole.value = "admin"
+    expect((await withWorkforceSessionPilotFenceAuth(handler)(request())).status).toBe(200)
+    sessionRole.value = "manager"
+    expect((await withWorkforceSessionPilotFenceAuth(handler)(request())).status).toBe(403)
+  })
+
+  it("requires an organization pilot operator grant after granular cutover", async () => {
+    entitled(["workforce-hrm", "workforce-granular-access-v1"])
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([{
+      id: "pilot-grant", organizationId: "org-1", principalUserId: "user-1", role: "PILOT_ROLLBACK_OPERATOR",
+      scopeKind: "ORGANIZATION", scopeTeamId: null, scopeSiteId: null, scopeAgentId: null,
+      effectiveFrom: new Date("2026-08-01T00:00:00.000Z"), effectiveUntil: null, revocation: null,
+    }] as never)
+    const handler = vi.fn(async () => NextResponse.json({ success: true }))
+    sessionRole.value = "sales"
+    expect((await withWorkforceSessionPilotFenceAuth(handler)(request())).status).toBe(200)
+    expect(handler).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not restore a broad CRM-admin fallback after cutover", async () => {
+    entitled(["workforce-hrm", "workforce-granular-access-v1"])
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([])
+    const handler = vi.fn(async () => NextResponse.json({ success: true }))
+    sessionRole.value = "admin"
+    const response = await withWorkforceSessionPilotFenceAuth(handler)(request())
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toMatchObject({ code: "WORKFORCE_GRANULAR_ACCESS_REQUIRED" })
+    expect(handler).not.toHaveBeenCalled()
+  })
+})
+describe("withWorkforceSessionRetentionReadAuth", () => {
+  function entitled(features: string[]) {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      plan: "enterprise", addons: [], features, modules: { "workforce-hrm": true },
+    } as never)
+  }
+
+  it("preserves the accountable admin boundary before granular cutover", async () => {
+    entitled(["workforce-hrm"])
+    const handler = vi.fn(async () => NextResponse.json({ success: true }))
+    sessionRole.value = "admin"
+    expect((await withWorkforceSessionRetentionReadAuth(handler)(request())).status).toBe(200)
+    sessionRole.value = "manager"
+    expect((await withWorkforceSessionRetentionReadAuth(handler)(request())).status).toBe(403)
+  })
+
+  it("requires the dedicated organization retention-read grant after cutover", async () => {
+    entitled(["workforce-hrm", "workforce-granular-access-v1"])
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([{
+      id: "retention-grant", organizationId: "org-1", principalUserId: "user-1", role: "RETENTION_HOLD_OFFICER",
+      scopeKind: "ORGANIZATION", scopeTeamId: null, scopeSiteId: null, scopeAgentId: null,
+      effectiveFrom: new Date("2026-08-01T00:00:00.000Z"), effectiveUntil: null, revocation: null,
+    }] as never)
+    const handler = vi.fn(async () => NextResponse.json({ success: true }))
+    sessionRole.value = "sales"
+
+    expect((await withWorkforceSessionRetentionReadAuth(handler)(request())).status).toBe(200)
+    expect(handler).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not restore broad CRM-admin access after cutover", async () => {
+    entitled(["workforce-hrm", "workforce-granular-access-v1"])
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([])
+    const handler = vi.fn(async () => NextResponse.json({ success: true }))
+    sessionRole.value = "admin"
+
+    const response = await withWorkforceSessionRetentionReadAuth(handler)(request())
     expect(response.status).toBe(403)
     await expect(response.json()).resolves.toMatchObject({ code: "WORKFORCE_GRANULAR_ACCESS_REQUIRED" })
     expect(handler).not.toHaveBeenCalled()

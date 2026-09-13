@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { withWorkforceSessionAdminAuth } from "@/lib/with-workforce-rls-auth"
+import { withWorkforceSessionPilotFenceAuth } from "@/lib/with-workforce-rls-auth"
 import {
   getWorkforceMobileWriteFenceConfiguration,
   setWorkforceMobileWriteFence,
@@ -21,7 +21,7 @@ function isMissingFenceSchema(error: unknown): boolean {
  * is session-admin-only because seeing or changing an enrolled device is not
  * an integration/API-key concern.
  */
-export const GET = withWorkforceSessionAdminAuth(async (_req: NextRequest, auth) => {
+export const GET = withWorkforceSessionPilotFenceAuth(async (_req: NextRequest, auth) => {
   try {
     const configuration = await getWorkforceMobileWriteFenceConfiguration(auth.orgId)
     return NextResponse.json({ success: true, data: configuration })
@@ -44,7 +44,7 @@ export const GET = withWorkforceSessionAdminAuth(async (_req: NextRequest, auth)
  * `FROZEN` is the immediate, auditable rollback posture. No tenant is changed
  * by the additive migration or by merely reading this endpoint.
  */
-export const PUT = withWorkforceSessionAdminAuth(async (req: NextRequest, auth) => {
+export const PUT = withWorkforceSessionPilotFenceAuth(async (req: NextRequest, auth) => {
   const mfaDenied = await requireWorkforceAttendanceSecurityMfa(auth.orgId, auth)
   if (mfaDenied) return mfaDenied
   const parsed = WorkforceMobileWriteFenceUpdateSchema.safeParse(await req.json().catch(() => ({})))

@@ -642,6 +642,19 @@ def _acceptable_cluster_config_directory(
     )
 
 
+def _start_conf_is_manual(payload: bytes) -> bool:
+    try:
+        text = payload.decode("ascii", errors="strict")
+    except UnicodeDecodeError:
+        return False
+    settings: list[str] = []
+    for raw_line in text.splitlines():
+        setting = raw_line.split("#", 1)[0].strip()
+        if setting:
+            settings.append(setting)
+    return settings == ["manual"]
+
+
 def _assert_cluster_config_directory(
     path: Path,
     postgres_uid: int,
@@ -720,8 +733,12 @@ def _configure_cluster(postgres_uid: int, postgres_gid: int) -> None:
         cluster_parent_authority=(postgres_uid, postgres_gid),
     )
     start_payload, start_state = _read_file(START_CONF, maximum=MAX_SMALL_FILE_BYTES)
-    if start_payload != b"manual\n" or not _acceptable_cluster_config_file(
-        start_state, postgres_uid, postgres_gid, 0o644
+    if (
+        start_payload is None
+        or not _start_conf_is_manual(start_payload)
+        or not _acceptable_cluster_config_file(
+            start_state, postgres_uid, postgres_gid, 0o644
+        )
     ):
         raise MaintenanceError("cluster-config-owner")
 
