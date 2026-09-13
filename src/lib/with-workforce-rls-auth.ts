@@ -7,7 +7,10 @@ import type { AuthResult } from "@/lib/api-auth"
 import { decidePersistedWorkforceAccess } from "@/lib/workforce/access-grant-resolution"
 import { workforceGranularAccessEnabled } from "@/lib/workforce/granular-access-rollout"
 import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
-import { applyWorkforceSensitiveResponseHeaders } from "@/lib/workforce/sensitive-response"
+import {
+  applyWorkforceSensitiveResponseHeaders,
+  workforceSensitiveResponseHeaders,
+} from "@/lib/workforce/sensitive-response"
 import type { WorkforceAccessPermission } from "@/lib/workforce/access-control"
 
 type WrappedWorkforceRouteHandler<C> = {
