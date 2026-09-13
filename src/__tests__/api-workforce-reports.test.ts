@@ -9,11 +9,15 @@ vi.mock("@/lib/with-workforce-rls-auth", () => ({
   withWorkforceSessionAuth: vi.fn((_action, handler) => handler),
 }))
 vi.mock("@/lib/mtm-settings", () => ({ getMtmSettings: vi.fn() }))
+vi.mock("@/lib/workforce/approved-report-rate-limit", () => ({
+  requireWorkforceApprovedReportRateLimit: vi.fn(async () => null),
+}))
 
 import { GET as getReport } from "@/app/api/v1/workforce/reports/route"
 import { prisma } from "@/lib/prisma"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { buildWorkforceTimesheetApproval } from "@/lib/workforce/timesheet-approval"
+import { requireWorkforceApprovedReportRateLimit } from "@/lib/workforce/approved-report-rate-limit"
 
 const AUTH = { orgId: "org-workforce", userId: "admin-1", role: "admin", principalType: "session" as const }
 const invoke = getReport as unknown as (request: NextRequest, auth: typeof AUTH) => Promise<Response>
@@ -42,6 +46,7 @@ beforeEach(() => {
   vi.mocked(prisma.organization.findUnique).mockResolvedValue({ features: [] } as never)
   vi.mocked(prisma.workforceTimesheetApproval.findMany).mockResolvedValue([])
   vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([])
+  vi.mocked(requireWorkforceApprovedReportRateLimit).mockResolvedValue(null)
 })
 
 describe("GET /api/v1/workforce/reports", () => {
@@ -84,6 +89,20 @@ describe("GET /api/v1/workforce/reports", () => {
     expect(response.headers.get("cache-control")).toBe("private, no-store")
     await expect(response.json()).resolves.toMatchObject({ code: "WORKFORCE_REPORT_RANGE_INVALID" })
     expect(prisma.workforceTimesheetApproval.findMany).not.toHaveBeenCalled()
+  })
+
+  it("stops before actor, settings, access and report reads when rate limited", async () => {
+    vi.mocked(requireWorkforceApprovedReportRateLimit).mockResolvedValueOnce(
+      new Response(null, { status: 429 }) as never,
+    )
+
+    const response = await invoke(new NextRequest("http://localhost/api/v1/workforce/reports"), AUTH)
+
+    expect(response.status).toBe(429)
+    expect(getMtmSettings).not.toHaveBeenCalled()
+    expect(prisma.organization.findUnique).not.toHaveBeenCalled()
+    expect(prisma.workforceTimesheetApproval.findMany).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
   })
 
   it("requires an exact attendance-read grant for a selected employee after granular cutover", async () => {

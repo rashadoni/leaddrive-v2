@@ -38,6 +38,12 @@ authorization or immutable-integrity failures expose fixed codes only;
 unexpected report/access failures emit only a fixed operation label, never an
 error object, employee value or approval detail.
 
+A distributed tenant-and-principal budget limits the endpoint to 30 report
+requests per 15 minutes. The Redis partition tag contains a one-way tenant
+hash rather than a tenant or employee identifier. Limiter unavailability fails
+closed before actor resolution, access lookup, approval reads or audit writes;
+bounded `Retry-After` responses remain private/no-store.
+
 The new Workforce web report uses this endpoint, a date filter and the current
 actor scope. Its first load omits the date parameters so the server selects
 the period in the tenant timezone; the inputs are then updated to the exact
@@ -69,6 +75,8 @@ summary, rather than rendering a partial or internally inconsistent report.
 
 - **PASS:** six sequential targeted Vitest files, 84 tests: report service/API,
   browser response contract, immutable export, approval service and navigation.
+- **PASS:** focused report rate-limit and route integration Vitest, 2 files and
+  10 tests; includes the pre-read short-circuit and fail-closed limiter path.
 - **PASS:** targeted ESLint for the report service, route, access guard,
   component and tests.
 - **PASS:** `npm run i18n:check`: 22,520 EN leaf keys; RU/AZ missing=0,

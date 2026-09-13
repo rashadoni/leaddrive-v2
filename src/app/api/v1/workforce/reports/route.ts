@@ -10,6 +10,7 @@ import {
   buildWorkforceApprovedTimesheetReport,
 } from "@/lib/workforce/approved-timesheet-report"
 import { requireWorkforceApprovedReportAccess } from "@/lib/workforce/approved-report-access"
+import { requireWorkforceApprovedReportRateLimit } from "@/lib/workforce/approved-report-rate-limit"
 import { WorkforceTimesheetApprovalError } from "@/lib/workforce/timesheet-approval"
 import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { workforceSensitiveResponseHeaders } from "@/lib/workforce/sensitive-response"
@@ -43,6 +44,12 @@ function auditContext(req: NextRequest) {
  */
 export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, auth) => {
   try {
+  const rateLimited = await requireWorkforceApprovedReportRateLimit({
+    organizationId: auth.orgId,
+    principalUserId: auth.userId,
+  })
+  if (rateLimited) return rateLimited
+
   const actor = await resolveWorkforceActor(prisma, {
     organizationId: auth.orgId,
     userId: auth.userId,
