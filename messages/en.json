@@ -13033,7 +13033,10 @@
     "weekTeamAll": "All teams",
     "discardBuilderTitle": "Discard this route?",
     "discardBuilderBody": "{count} customers are selected and nothing is saved yet. Closing loses them.",
-    "discardBuilderConfirm": "Discard"
+    "discardBuilderConfirm": "Discard",
+    "untimedPublishTitle": "Publish without times?",
+    "untimedPublishBody": "{count, plural, one {# of {total} meetings has no time} other {# of {total} meetings have no time}}. The employee will see them in the app without a time. To set times first, go back to the list: “Fill empty times from 09:00” does it in one step.",
+    "untimedPublishConfirm": "Publish without times"
   },
   "mtmOperationsPage": {
     "title": "Field operations center",

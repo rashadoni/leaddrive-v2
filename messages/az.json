@@ -13029,7 +13029,10 @@
     "weekTeamAll": "Bütün komandalar",
     "discardBuilderTitle": "Bu marşrutdan imtina edilsin?",
     "discardBuilderBody": "{count} müştəri seçilib və hələ heç nə saxlanmayıb. Bağlasanız, onlar itəcək.",
-    "discardBuilderConfirm": "İmtina et"
+    "discardBuilderConfirm": "İmtina et",
+    "untimedPublishTitle": "Vaxtsız dərc edilsin?",
+    "untimedPublishBody": "{total} görüşdən {count} görüşün vaxtı yoxdur. Əməkdaş onları tətbiqdə vaxtsız görəcək. Əvvəlcə vaxt təyin etmək üçün siyahıya qayıdın: «Boş vaxtları 09:00-dan doldur» bunu bir addımda edir.",
+    "untimedPublishConfirm": "Vaxtsız dərc et"
   },
   "mtmOperationsPage": {
     "title": "Sahə əməliyyat mərkəzi",
