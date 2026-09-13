@@ -325,6 +325,17 @@ Kafka. При ошибке после snapshot новый cluster удаляет
 `ROLLBACK_ISOLATED_POSTGRES_RESTORE_SCRATCH_ON_13_140_132_245` и отказывается
 работать при drift.
 
+Если preflight возвращает `source-role-present` после прерванной старой
+попытки, не продолжать `apply`. Одноразовая операция `cleanup-source-role` с
+confirmation
+`REMOVE_ACCIDENTAL_SCRATCH_VERIFIER_ROLE_FROM_SOURCE_ON_13_140_132_245`
+удаляет только зарезервированную роль `leaddrive_restore_verifier`. Перед
+удалением она повторно связывает соединение с source system identifier и
+портом, требует точный ожидаемый набор ограниченных атрибутов роли и
+отсутствие memberships, role settings и любых shared dependencies. Любое
+отклонение завершает операцию без изменений; `REASSIGN OWNED` и `DROP OWNED`
+не выполняются.
+
 1. `install-backup-tools` — confirmation
    `INSTALL_PINNED_BACKUP_TOOLS_AND_EXTEND_LOG_RETENTION_ON_13_140_132_245`.
    Стадия выключает **все четыре** recovery timer, устанавливает закреплённые

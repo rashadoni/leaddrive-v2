@@ -167,6 +167,14 @@ cluster, restores the sealed snapshot, and again proves the source-cluster
 inventory is unchanged. The cluster's lifecycle during an actual recovery run
 is a later reviewed step; provisioning alone never performs a dump or restore.
 
+The reserved verifier role must be absent from the source cluster before
+provisioning starts. A narrowly scoped `cleanup-source-role` recovery operation
+exists only for an accidental role left by an interrupted historical
+provisioning attempt. It binds to the source port and exact system identifier,
+requires the role's complete limited attribute set, and refuses memberships,
+per-role settings, or shared dependencies before issuing the one exact
+`DROP ROLE`. It never performs `REASSIGN OWNED` or `DROP OWNED`.
+
 The scratch CA comes from the newly generated scratch trust chain. The script
 compares it with the source CA and refuses equality; the source certificate and
 source CA are never copied. The public scratch CA and verifier passfile are
