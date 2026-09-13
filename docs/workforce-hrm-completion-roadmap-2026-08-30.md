@@ -25,8 +25,9 @@
 > [`workforce-c7-self-service-request-evidence-2026-08-30.md`](./workforce-c7-self-service-request-evidence-2026-08-30.md),
 > [`mobile-sync-v2-workforce-contract.md`](./mobile-sync-v2-workforce-contract.md),
 > [`workforce-c7-directory-picker-evidence-2026-08-30.md`](./workforce-c7-directory-picker-evidence-2026-08-30.md),
-> [`workforce-c6-scoped-decision-api-evidence-2026-08-31.md`](./workforce-c6-scoped-decision-api-evidence-2026-08-31.md)
+> [`workforce-c6-scoped-decision-api-evidence-2026-08-31.md`](./workforce-c6-scoped-decision-api-evidence-2026-08-31.md),
 > [`workforce-c7-employment-history-evidence-2026-08-30.md`](./workforce-c7-employment-history-evidence-2026-08-30.md),
+> [`workforce-c9-android-foundation-evidence-2026-08-30.md`](./workforce-c9-android-foundation-evidence-2026-08-30.md).
 
 ## 1. Purpose and honest starting point
 
@@ -497,6 +498,7 @@ Owner roles are accountabilities, not individual names:
 | 2026-09-13T18:09:00+02:00 | C7 retention dry-run grant (partial) | 47% | C7 70% | 78/161 | 6/15 | WF-C7-002 moves the bounded raw-location retention inventory behind session-only `RETENTION_DRY_RUN_READ` after cutover. Legacy admin and MFA behavior remain before cutover; the HTTP route still cannot delete data or manage legal holds. Three focused files / 31 tests, scoped lint, diff and RLS scan pass; no grant, flag, retention execution or completion credit is introduced. |
 | 2026-09-13T18:35:00+02:00 | C7 durable access-review reader (partial) | 47% | C7 70% | 78/161 | 6/15 | WF-C7-010 now evaluates up to 1,000 durable tenant grants for expiry, inactive principals and incompatible roles, with aggregate-only audit and accountable manual revocation. Missing exact-grant usage telemetry is declared `UNAVAILABLE`, so stale-use findings are suppressed rather than invented. Three focused files / 19 tests, scoped lint, diff and RLS scan pass; usage instrumentation, scheduling and staging evidence remain open, so no completion credit is introduced. |
 | 2026-09-13T17:54:00+02:00 | C7 historical request-read grants (partial) | 47% | C7 70% | 78/161 | 6/15 | WF-C7-002 gains a session-only two-phase request queue: bounded metadata and immutable historical team are grant-filtered before reasons/notes load, exact self-history stays available, and per-record decision/cancel controls are server-derived. Four focused files / 19 tests, scoped lint, diff and RLS scan pass after rebasing onto the access-review checkpoint. No tenant flag/grant is activated and no acceptance credit is claimed; this row resumes the strict accepted-task phase formula. |
+| 2026-09-13T21:18:00+02:00 | C9 native Android source foundation (partial) | 47% | C9 7% | 78/161 | 6/15 | WF-C9-001/002 and WF-C5-003 gain a separate native Android/Kotlin source project with release-identity guard, encrypted session selector, tenant-slug login/bootstrap and challenge-bound non-exportable Keystore foundation. Current server bootstrap remains canonical; package/signing/distribution, Gradle/physical-device evidence and final device matrix remain blocked or NOT RUN, so no completion credit is introduced. |
 
 **C3 phase display reconciliation (2026-08-30T08:11:00+02:00):** the C3
 register contains 11 tasks and its scope did not change. Earlier C3 ledger
@@ -687,7 +689,7 @@ remaining recoverable for legitimate employees.
 |---|---:|---|---|---|---|
 | WF-C5-001 | P0 | OWNER DECISION | Product/Security/HR | Approve assurance tiers per tenant/site/action and BYOD/company-device rules | OD-02 and OD-04 resolved |
 | WF-C5-002 | P0 | PARTIAL | Security/Backend | Require HRM-specific MFA/step-up policy for critical employee/admin actions; preserve recovery codes and accountable reset | [Attendance-security MFA evidence](./workforce-c5-attendance-security-mfa-evidence-2026-08-30.md): critical QR/device-admin mutations fail closed unless the accountable live admin has an enrolled mandatory MFA factor; mobile per-use step-up remains open |
-| WF-C5-003 | P0 | PLANNED | Mobile/Security | Generate non-exportable Android Keystore keys with user-auth properties and safe rotation | Physical device proves key lifecycle |
+| WF-C5-003 | P0 | PARTIAL | Mobile/Security | Generate non-exportable Android Keystore keys with user-auth properties and safe rotation | [`workforce-c9-android-foundation-evidence-2026-08-30.md`](./workforce-c9-android-foundation-evidence-2026-08-30.md): challenge-bound Android Keystore/StrongBox-preferred source foundation; physical key lifecycle, rotation transport and server validation remain open |
 | WF-C5-004 | P0 | PLANNED | Backend/Security | Validate Android Key Attestation chain, roots, revocation, security level, challenge and app identity server-side | Software key/emulator/untrusted chain rejected or reviewed |
 | WF-C5-005 | P0 | PLANNED | Mobile/Backend | Bind Play Integrity verdict/request hash to the exact attendance action; use tiered response and no verdict cache | Tampered/replayed request tests |
 | WF-C5-006 | P0 | PLANNED | Mobile | Use local BiometricPrompt/device credential only to unlock per-use signature; no template/result leaves OS | Physical smoke and packet/log inspection |
