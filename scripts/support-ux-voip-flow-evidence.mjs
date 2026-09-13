@@ -33,7 +33,9 @@ const agent = { email: requiredEnv("SUPPORT_EVIDENCE_AGENT_EMAIL"), password: re
 
 function silentWav() {
   const sampleRate = 8000
-  const samples = 4000
+  // Keep the synthetic recording playing long enough for Chromium to expose
+  // the native keyboard-triggered `playing` state before the clip ends.
+  const samples = sampleRate * 5
   const dataSize = samples * 2
   const buffer = Buffer.alloc(44 + dataSize)
   buffer.write("RIFF", 0)
