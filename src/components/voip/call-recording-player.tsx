@@ -58,7 +58,7 @@ export function CallRecordingPlayer({
         preload="none"
         src={url}
         aria-label={t("recordingFor", { call: callLabel })}
-        className="h-10 w-full max-w-full"
+        className="h-11 w-full max-w-full"
         onLoadStart={() => setState("loading")}
         onCanPlay={() => setState("ready")}
         onPlaying={() => setState("playing")}

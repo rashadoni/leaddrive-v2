@@ -69,7 +69,15 @@ async function openWorkspace(page) {
 await mkdir(outputDirectory, { recursive: true })
 const report = { generatedAt: new Date().toISOString(), commit, targetHost: hostname, demoOrganization, role: "agent", locale, theme, viewport: viewportName, results: [] }
 const browser = await chromium.launch({ headless: true })
-const context = await browser.newContext({ baseURL: baseUrl, viewport: viewports[viewportName], locale, colorScheme: theme, reducedMotion: "reduce", hasTouch: viewportName !== "desktop" })
+const context = await browser.newContext({
+  baseURL: baseUrl,
+  viewport: viewports[viewportName],
+  locale,
+  colorScheme: theme,
+  reducedMotion: "reduce",
+  hasTouch: viewportName !== "desktop",
+  serviceWorkers: "block",
+})
 await context.addCookies([{ name: "NEXT_LOCALE", value: locale, domain: hostname, path: "/" }])
 await context.addInitScript((activeTheme) => localStorage.setItem("theme", activeTheme), theme)
 
@@ -89,9 +97,46 @@ async function recordStep(page, id, action) {
   }
 }
 
+async function captureObservedState(page, id) {
+  const screenshot = `voip-state-${id}-${locale}-${theme}-${viewportName}.png`
+  await captureSupportEvidenceScreenshot(page, {
+    path: path.join(outputDirectory, screenshot),
+    fullPage: true,
+    animations: "disabled",
+  })
+  return screenshot
+}
+
 const page = await context.newPage()
 try {
   await authenticate(context)
+
+  await recordStep(page, "history-loading-and-recovery", async () => {
+    const pattern = "**/api/v1/calls**"
+    let releaseRequest = () => {}
+    const requestGate = new Promise((resolve) => {
+      releaseRequest = resolve
+    })
+    const holdHistory = async (route) => {
+      const url = new URL(route.request().url())
+      if (route.request().method() === "GET" && url.pathname === "/api/v1/calls") {
+        await requestGate
+      }
+      await route.continue()
+    }
+    await page.route(pattern, holdHistory)
+    await page.goto("about:blank")
+    await page.goto("/support/voip?evidence=loading", { waitUntil: "domcontentloaded" })
+    let loadingScreenshot
+    try {
+      await page.getByTestId("voip-loading").waitFor({ state: "visible", timeout: 10_000 })
+      loadingScreenshot = await captureObservedState(page, "history-loading")
+    } finally {
+      releaseRequest()
+    }
+    await page.getByTestId("voip-workspace").waitFor({ state: "visible", timeout: 30_000 })
+    return { loadingObserved: true, loadingScreenshot, recoverySucceeded: true }
+  })
 
   await recordStep(page, "history-load-failure-and-recovery", async () => {
     const pattern = "**/api/v1/calls**"
@@ -103,11 +148,13 @@ try {
     await page.route(pattern, deny)
     await page.goto("/support/voip", { waitUntil: "domcontentloaded" })
     await page.getByTestId("voip-load-error").waitFor({ state: "visible" })
+    assertDemoTenant(await page.locator("body").innerText(), demoOrganization, "VoIP load error")
+    const errorScreenshot = await captureObservedState(page, "history-load-error")
     await page.unroute(pattern, deny)
     await page.getByTestId("voip-retry-load").focus()
     await page.getByTestId("voip-retry-load").press("Enter")
     await page.getByTestId("voip-workspace").waitFor({ state: "visible" })
-    return { errorObserved: true, keyboardRetry: true, recoverySucceeded: true }
+    return { errorObserved: true, errorScreenshot, keyboardRetry: true, recoverySucceeded: true }
   })
 
   await recordStep(page, "stale-refresh-and-recovery", async () => {
@@ -123,10 +170,11 @@ try {
     await page.getByTestId("voip-refresh-calls").click()
     await page.getByTestId("voip-refresh-error").waitFor({ state: "visible" })
     if (await page.getByTestId("voip-summary").innerText() !== summary) throw new Error("refresh_failure_discarded_summary")
+    const errorScreenshot = await captureObservedState(page, "stale-refresh-error")
     await page.unroute(pattern, deny)
     await page.getByTestId("voip-retry-refresh").click()
     await page.getByTestId("voip-refresh-error").waitFor({ state: "hidden" })
-    return { staleSnapshotPreserved: true, retrySucceeded: true }
+    return { staleSnapshotPreserved: true, errorScreenshot, retrySucceeded: true }
   })
 
   await recordStep(page, "connection-failure-and-recovery", async () => {
@@ -135,10 +183,11 @@ try {
     await page.route(pattern, deny)
     await openWorkspace(page)
     await page.waitForFunction(() => document.querySelector("[data-testid='voip-connection-state']")?.getAttribute("data-state") === "error")
+    const errorScreenshot = await captureObservedState(page, "connection-error")
     await page.unroute(pattern, deny)
     await page.getByTestId("voip-retry-connection").click()
     await page.waitForFunction(() => ["configured", "not_configured"].includes(document.querySelector("[data-testid='voip-connection-state']")?.getAttribute("data-state") || ""))
-    return { errorObserved: true, retrySucceeded: true }
+    return { errorObserved: true, errorScreenshot, retrySucceeded: true }
   })
 
   await recordStep(page, "debounced-no-results-and-reset", async () => {
@@ -155,9 +204,10 @@ try {
     await page.getByTestId("voip-no-results").waitFor({ state: "visible", timeout: 10_000 })
     await page.waitForTimeout(450)
     if (requestCount !== 1) throw new Error(`raw_keystrokes_requested_${requestCount}_times`)
+    const noResultsScreenshot = await captureObservedState(page, "filtered-no-results")
     await page.getByTestId("voip-clear-filters").click()
     await page.getByTestId("voip-no-results").waitFor({ state: "hidden" })
-    return { typedCharacters: 5, historyRequests: requestCount, resetSucceeded: true }
+    return { typedCharacters: 5, historyRequests: requestCount, noResultsScreenshot, resetSucceeded: true }
   })
 
   await recordStep(page, "empty-history-and-recovery", async () => {
@@ -172,10 +222,11 @@ try {
     await page.route(pattern, empty)
     await openWorkspace(page)
     await page.getByTestId("voip-empty-state").waitFor({ state: "visible" })
+    const emptyScreenshot = await captureObservedState(page, "empty-history")
     await page.unroute(pattern, empty)
     await page.getByTestId("voip-refresh-calls").click()
     await page.getByTestId("voip-empty-state").waitFor({ state: "hidden" })
-    return { emptyStateObserved: true, recoverySucceeded: true }
+    return { emptyStateObserved: true, emptyScreenshot, recoverySucceeded: true }
   })
 
   await recordStep(page, "recording-error-keyboard-and-recovery", async () => {
@@ -200,6 +251,7 @@ try {
     await audio.focus()
     await page.keyboard.press("Space")
     await page.waitForFunction(() => document.querySelector("[data-testid='call-recording-player']")?.getAttribute("data-state") === "error", null, { timeout: 10_000 })
+    const errorScreenshot = await captureObservedState(page, "recording-error")
     await page.unroute(mediaPattern, denyMedia)
     await page.route(mediaPattern, async (route) => route.fulfill({ status: 200, contentType: "audio/wav", body: silentWav() }))
     await player.getByTestId("call-recording-retry").click()
@@ -207,7 +259,7 @@ try {
     await audio.focus()
     await page.keyboard.press("Space")
     await page.waitForFunction(() => ["playing", "ended"].includes(document.querySelector("[data-testid='call-recording-player']")?.getAttribute("data-state") || ""), null, { timeout: 10_000 })
-    return { keyboardControlFocused: true, errorObserved: true, retrySucceeded: true, nativePlaybackStarted: true }
+    return { keyboardControlFocused: true, errorObserved: true, errorScreenshot, retrySucceeded: true, nativePlaybackStarted: true }
   })
 
   await recordStep(page, "history-permission-state", async () => {
@@ -231,7 +283,7 @@ try {
 
 await writeFile(path.join(outputDirectory, "voip-flow-evidence.json"), JSON.stringify(report, null, 2) + "\n")
 const failures = report.results.filter((result) => result.status !== "passed")
-if (report.results.length !== 7 || failures.length > 0) {
-  console.error(JSON.stringify({ expected: 7, actual: report.results.length, failures }, null, 2))
+if (report.results.length !== 8 || failures.length > 0) {
+  console.error(JSON.stringify({ expected: 8, actual: report.results.length, failures }, null, 2))
   process.exitCode = 1
 }

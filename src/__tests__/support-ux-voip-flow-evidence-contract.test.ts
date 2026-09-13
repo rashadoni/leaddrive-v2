@@ -13,10 +13,12 @@ describe("VoIP mutating evidence contract", () => {
     expect(flow).toContain("requireScreenshotTarget()")
     expect(flow).toContain("requireDemoTenant()")
     expect(flow).toContain("assertDemoTenant")
+    expect(flow).toContain('serviceWorkers: "block"')
   })
 
   it("proves history, connection, filter and recording recovery", () => {
     for (const id of [
+      "history-loading-and-recovery",
       "history-load-failure-and-recovery",
       "stale-refresh-and-recovery",
       "connection-failure-and-recovery",
@@ -29,8 +31,12 @@ describe("VoIP mutating evidence contract", () => {
     expect(flow).toContain("raw_keystrokes_requested")
     expect(flow).toContain("refresh_failure_discarded_summary")
     expect(flow).toContain("nativePlaybackStarted: true")
+    expect(flow).toContain("captureObservedState")
+    expect(flow).toContain("loadingScreenshot")
+    expect(flow).toContain("errorScreenshot")
+    expect(flow).toContain("emptyScreenshot")
     expect(flow).toContain('"voip-flow-evidence.json"')
-    expect(flow).toContain("report.results.length !== 7")
+    expect(flow).toContain("report.results.length !== 8")
   })
 
   it("uses stable selectors for all observable states", () => {

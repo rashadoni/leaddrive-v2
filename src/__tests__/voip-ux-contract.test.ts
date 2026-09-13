@@ -33,6 +33,7 @@ describe("VoIP workspace UX contract", () => {
     expect(page).toContain("CallStatusBadge")
     expect(page).toContain("min-h-11")
     expect(page).not.toMatch(/text-(?:3xl|4xl)/)
+    expect(page).not.toContain("text-[11px]")
     expect(page).not.toMatch(/text-(?:violet|purple|blue|green)-600/)
     expect(page).toContain('data-testid="voip-workspace"')
     expect(page).toContain('data-testid="voip-call-timeline"')
@@ -50,6 +51,7 @@ describe("VoIP workspace UX contract", () => {
     expect(player).toContain("audio.load()")
     expect(player).toContain('data-testid="call-recording-player"')
     expect(player).toContain('data-testid="call-recording-retry"')
+    expect(player).toContain('className="h-11 w-full max-w-full"')
   })
 
   it("keeps connection truth visible without exposing admin tests to agents", () => {

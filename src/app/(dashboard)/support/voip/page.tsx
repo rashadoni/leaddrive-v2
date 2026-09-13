@@ -88,7 +88,7 @@ function CallStatusBadge({ status }: { status: string }) {
     <Badge
       variant={FAILURE_STATUSES.has(status) ? "destructive" : "outline"}
       className={cn(
-        "whitespace-nowrap text-[11px]",
+        "whitespace-nowrap text-xs",
         status === "in-progress" && "border-primary/30 bg-primary/5 text-primary",
       )}
     >
@@ -327,7 +327,7 @@ export default function VoipCallsPage() {
                   {item.label}
                 </dt>
                 <dd className="mt-1 text-lg font-semibold tabular-nums">{item.value ?? t("metricUnavailable")}</dd>
-                {item.sample != null && <p className="text-[11px] text-muted-foreground">{t("durationSample", { count: item.sample })}</p>}
+                {item.sample != null && <p className="text-xs text-muted-foreground">{t("durationSample", { count: item.sample })}</p>}
               </div>
             )
           })}
@@ -382,7 +382,7 @@ export default function VoipCallsPage() {
         {loadError && summary && (
           <div data-testid="voip-refresh-error" role="alert" className="m-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm">
             <span>{t("refreshFailed")}</span>
-            <Button data-testid="voip-retry-refresh" variant="outline" size="sm" className="min-h-9" onClick={() => setRetryVersion((value) => value + 1)}>
+            <Button data-testid="voip-retry-refresh" variant="outline" size="sm" className="min-h-11" onClick={() => setRetryVersion((value) => value + 1)}>
               {t("retry")}
             </Button>
           </div>
