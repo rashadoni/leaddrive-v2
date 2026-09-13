@@ -9,16 +9,23 @@ import {
   buildWorkforceExceptionCaseReport,
   WorkforceExceptionCaseReportError,
 } from "@/lib/workforce/exception-case-report"
+import { requireWorkforceExceptionReportRateLimit } from "@/lib/workforce/approved-report-rate-limit"
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
+import { workforceSensitiveResponseHeaders } from "@/lib/workforce/sensitive-response"
 
 const MAX_RANGE_DAYS = 93
 const MAX_EXCEPTION_CASES = 5_000
 const MAX_DECISIONS_PER_CASE = 64
 
+function exceptionReportJson(body: Record<string, unknown>, status = 200) {
+  return NextResponse.json(body, { status, headers: workforceSensitiveResponseHeaders })
+}
+
 function badRange() {
-  return NextResponse.json({
+  return exceptionReportJson({
     error: "start/end must be YYYY-MM-DD and cover at most 93 days",
     code: "WORKFORCE_EXCEPTION_REPORT_RANGE_INVALID",
-  }, { status: 400 })
+  }, 400)
 }
 
 function auditContext(req: NextRequest) {
@@ -36,6 +43,12 @@ function auditContext(req: NextRequest) {
  */
 export const GET = withWorkforceSessionExceptionQueueAuth(async (req: NextRequest, auth) => {
   try {
+    const rateLimited = await requireWorkforceExceptionReportRateLimit({
+      organizationId: auth.orgId,
+      principalUserId: auth.userId,
+    })
+    if (rateLimited) return rateLimited
+
     const settings = await getMtmSettings(auth.orgId)
     const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
     const today = currentDateKey(new Date(), timezone)
@@ -73,10 +86,10 @@ export const GET = withWorkforceSessionExceptionQueueAuth(async (req: NextReques
       },
     })
     if (cases.length > MAX_EXCEPTION_CASES) {
-      return NextResponse.json({
+      return exceptionReportJson({
         error: "Too many exception cases for one report; narrow the date range",
         code: "WORKFORCE_EXCEPTION_REPORT_LIMIT_EXCEEDED",
-      }, { status: 413 })
+      }, 413)
     }
 
     const report = buildWorkforceExceptionCaseReport({
@@ -112,7 +125,7 @@ export const GET = withWorkforceSessionExceptionQueueAuth(async (req: NextReques
         userAgent: audit.userAgent,
       },
     })
-    return NextResponse.json({
+    return exceptionReportJson({
       success: true,
       data: {
         timezone,
@@ -121,20 +134,20 @@ export const GET = withWorkforceSessionExceptionQueueAuth(async (req: NextReques
         dateBasis: "CASE_RECORDED_AT",
         report,
       },
-    }, { headers: { "cache-control": "private, no-store", "x-content-type-options": "nosniff" } })
+    })
   } catch (error) {
     if (error instanceof WorkforceExceptionCaseReportError) {
-      return NextResponse.json({
+      return exceptionReportJson({
         error: "An exception case cannot be safely aggregated for reporting",
         code: error.code,
-      }, { status: 409 })
+      }, 409)
     }
     // An older database may not have the C6 tables. A missing aggregate is
     // unavailable, never indistinguishable from an empty review period.
-    console.error("[workforce/exception-reports GET]", error)
-    return NextResponse.json({
+    logWorkforceSensitiveOperationFailure({ operation: "read-exception-case-report" })
+    return exceptionReportJson({
       error: "Workforce exception reporting is unavailable",
       code: "WORKFORCE_EXCEPTION_REPORT_UNAVAILABLE",
-    }, { status: 503 })
+    }, 503)
   }
 })

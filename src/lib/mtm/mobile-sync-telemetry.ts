@@ -11,6 +11,28 @@ export type MtmMobileSyncResultClass =
   | "rate_limited"
   | "unavailable"
 
+const MOBILE_SYNC_STREAMS = new Set([
+  "routes",
+  "routePoints",
+  "visits",
+  "customers",
+  "contacts",
+  "tasks",
+  "notifications",
+  "workforce",
+])
+const MOBILE_SYNC_RESULTS = new Set<MtmMobileSyncResultClass>([
+  "ok",
+  "forbidden",
+  "cohort_disabled",
+  "invalid_request",
+  "invalid_cursor",
+  "resnapshot_required",
+  "payload_too_large",
+  "rate_limited",
+  "unavailable",
+])
+
 type MtmMobileApkObservationInput = {
   organizationId: string
   agentId: string
@@ -44,6 +66,23 @@ function safeApkVersion(value: string | null): string {
   // release-artifact ledger, and an unregistered value is treated as unknown.
   if (value && /^\d{1,4}\.\d{1,4}\.\d{1,4}(?:\+\d{1,10})?$/.test(value)) return value
   return "unknown"
+}
+
+function safePullDimensions(input: Pick<PullTelemetryInput,
+  "stream" | "endpoint" | "contractVersion" | "result" | "durationMs">) {
+  const stream = MOBILE_SYNC_STREAMS.has(input.stream) ? input.stream : "unknown"
+  const expectedEndpoint = stream === "unknown" ? null : `GET /api/v2/mtm/mobile/sync/${stream}`
+  return {
+    stream,
+    endpoint: input.endpoint === expectedEndpoint ? input.endpoint : "unknown",
+    contractVersion: input.contractVersion === 1 || input.contractVersion === 2
+      ? input.contractVersion
+      : 0,
+    result: MOBILE_SYNC_RESULTS.has(input.result) ? input.result : "unavailable",
+    durationMs: Number.isFinite(input.durationMs)
+      ? Math.min(300_000, Math.max(0, Math.round(input.durationMs)))
+      : 0,
+  }
 }
 
 function apkCensusIdentity(input: Pick<MtmMobileApkObservationInput, "organizationId" | "agentId">) {
@@ -81,21 +120,22 @@ function successSampleRate(): number {
  */
 export function recordMtmMobileSyncPullTelemetry(input: PullTelemetryInput): void {
   try {
+    const dimensions = safePullDimensions(input)
     const successRate = successSampleRate()
-    if (input.result === "ok" && Math.random() >= successRate) return
+    if (dimensions.result === "ok" && Math.random() >= successRate) return
     const payload = payloadShape(input.response)
     console.info("[mtm-mobile-sync-telemetry]", JSON.stringify({
       event: "mobile_sync_pull",
       tenant: hmacToken(input.organizationId, "mtm-mobile-sync-telemetry").slice(0, 16),
-      stream: input.stream,
-      endpoint: input.endpoint,
-      contractVersion: input.contractVersion,
+      stream: dimensions.stream,
+      endpoint: dimensions.endpoint,
+      contractVersion: dimensions.contractVersion,
       apkVersion: safeApkVersion(input.apkVersion),
-      result: input.result,
+      result: dimensions.result,
       rowCount: payload.rows,
       payloadBytes: payload.bytes,
-      durationMs: Math.max(0, Math.round(input.durationMs)),
-      successSampleRate: input.result === "ok" ? successRate : 1,
+      durationMs: dimensions.durationMs,
+      successSampleRate: dimensions.result === "ok" ? successRate : 1,
     }))
   } catch {
     // Observability must never change a sync result or retry decision.

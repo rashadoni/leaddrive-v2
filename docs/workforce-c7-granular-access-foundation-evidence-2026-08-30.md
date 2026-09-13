@@ -41,6 +41,11 @@ roles deterministically, and fails closed for unknown roles or a conflicting
 pair. It is a planning guard only: it does not create, reject, revoke or
 modify a durable tenant grant.
 
+The immutable approved-time report is another C7 read consumer. After the
+flag, it requires `TEAM_ATTENDANCE_READ`; a selected employee is matched only
+by exact employee scope, while an aggregate can use only organization scope.
+It does not resolve a current team/site for historical rows and never falls
+back to CRM admin after cutover.
 ## Deliberate rollout boundary
 
 No migration has been applied, grant row created or existing role mapping
@@ -59,3 +64,6 @@ enforcement.
 - `NOT RUN` — Prisma migration/generate, browser role assignment, endpoint
   integration, database RLS, access-review operations and production rollout;
   these require the later C7 migration/rollout and approved external gates.
+- `PASS` — focused approved-report contracts preserve the unflagged boundary,
+  deny an ungranted administrator after cutover and accept an exact
+  employee-scoped `TEAM_ATTENDANCE_READ` grant without a mutable team lookup.
