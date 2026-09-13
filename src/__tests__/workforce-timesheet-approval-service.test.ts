@@ -74,6 +74,8 @@ beforeEach(() => {
   vi.mocked(prisma.workforceShiftSnapshot.findMany).mockResolvedValue([shiftSnapshot()] as never)
   vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue(finalEvents() as never)
   vi.mocked(prisma.workforceTimeCorrection.findMany).mockResolvedValue([])
+  vi.mocked(prisma.workforceAttendanceException.findMany).mockResolvedValue([])
+  vi.mocked(prisma.workforceExceptionCase.findMany).mockResolvedValue([])
   vi.mocked(prisma.workforceTimesheetApproval.findFirst).mockResolvedValue(null as never)
   vi.mocked(prisma.workforceTimesheetApproval.create).mockResolvedValue({ id: "approval-1", revision: 1 } as never)
 })
@@ -165,6 +167,11 @@ describe("Workforce server-side timesheet approval", () => {
       kind: "conflict",
       code: "WORKFORCE_TIMESHEET_APPROVAL_WORKDAY_NOT_FINAL",
       message: "Every recorded workday in the requested period must be completed before approval",
+      blockers: [{
+        workdayId: "workday-1",
+        workDate: "2026-08-28",
+        reason: "WORKDAY_NOT_FINAL",
+      }],
     })
     expect(prisma.workforceTimesheetApproval.create).not.toHaveBeenCalled()
   })
@@ -175,8 +182,135 @@ describe("Workforce server-side timesheet approval", () => {
     await expect(approveWorkforceTimesheet(context)).resolves.toMatchObject({
       kind: "conflict",
       code: "WORKFORCE_TIMESHEET_APPROVAL_SNAPSHOT_MISSING",
+      blockers: [{
+        workdayId: "workday-1",
+        workDate: "2026-08-28",
+        reason: "SNAPSHOT_MISSING",
+      }],
     })
     expect(prisma.workforceTimesheetApproval.create).not.toHaveBeenCalled()
+  })
+
+  it("blocks the exact current-calculation attendance deviation", async () => {
+    vi.mocked(prisma.workforceAttendanceException.findMany).mockResolvedValue([{
+      workdayId: "workday-1",
+      type: "LATE_START",
+      status: "OPEN",
+      calculationVersion: 1,
+    }] as never)
+
+    await expect(approveWorkforceTimesheet(context)).resolves.toEqual({
+      kind: "conflict",
+      code: "WORKFORCE_TIMESHEET_APPROVAL_UNRESOLVED_EXCEPTIONS",
+      message: "Every unresolved attendance exception in the requested period must be resolved before approval",
+      blockers: [{
+        workdayId: "workday-1",
+        workDate: "2026-08-28",
+        reason: "UNRESOLVED_EXCEPTION",
+        exceptionType: "LATE_START",
+        exceptionStage: "OPEN",
+      }],
+    })
+    expect(prisma.workforceTimesheetApproval.create).not.toHaveBeenCalled()
+  })
+
+  it("does not let a stale calculation exception block a newer reconstructed revision", async () => {
+    vi.mocked(prisma.workforceAttendanceException.findMany).mockResolvedValue([{
+      workdayId: "workday-1",
+      type: "OVERTIME",
+      status: "ACKNOWLEDGED",
+      calculationVersion: 0,
+    }] as never)
+
+    await expect(approveWorkforceTimesheet(context)).resolves.toMatchObject({
+      kind: "success",
+      data: { id: "approval-1" },
+    })
+  })
+
+  it("blocks an unresolved C6 case linked to the approved workday", async () => {
+    vi.mocked(prisma.workforceExceptionCase.findMany).mockResolvedValue([{
+      id: "case-00000042",
+      kind: "MISSED_FINISH",
+      workdayId: "workday-1",
+      expectedWorkDate: null,
+      workdayEvent: null,
+      decisions: [{ decisionCode: "ACKNOWLEDGE" }],
+    }] as never)
+
+    await expect(approveWorkforceTimesheet(context)).resolves.toEqual({
+      kind: "conflict",
+      code: "WORKFORCE_TIMESHEET_APPROVAL_UNRESOLVED_EXCEPTIONS",
+      message: "Every unresolved attendance exception in the requested period must be resolved before approval",
+      blockers: [{
+        workdayId: "workday-1",
+        caseReference: "WF-00000042",
+        workDate: "2026-08-28",
+        reason: "UNRESOLVED_EXCEPTION",
+        exceptionType: "MISSED_FINISH",
+        exceptionStage: "HR_REVIEW",
+      }],
+    })
+  })
+
+  it("blocks a no-show case for a date with no workday row", async () => {
+    vi.mocked(prisma.workforceExceptionCase.findMany).mockResolvedValue([{
+      id: "case-00000043",
+      kind: "NO_SHOW",
+      workdayId: null,
+      expectedWorkDate: new Date("2026-08-28T00:00:00.000Z"),
+      workdayEvent: null,
+      decisions: [],
+    }] as never)
+
+    await expect(approveWorkforceTimesheet(context)).resolves.toMatchObject({
+      kind: "conflict",
+      blockers: [{
+        caseReference: "WF-00000043",
+        workDate: "2026-08-28",
+        reason: "UNRESOLVED_EXCEPTION",
+        exceptionType: "NO_SHOW",
+        exceptionStage: "OPEN",
+      }],
+    })
+  })
+
+  it("allows a C6 case only when its complete immutable lifecycle is resolved", async () => {
+    vi.mocked(prisma.workforceExceptionCase.findMany).mockResolvedValue([{
+      id: "case-00000044",
+      kind: "UNDERTIME",
+      workdayId: "workday-1",
+      expectedWorkDate: null,
+      workdayEvent: null,
+      decisions: [
+        { decisionCode: "ACKNOWLEDGE" },
+        { decisionCode: "RESOLVE_NO_CHANGE" },
+      ],
+    }] as never)
+
+    await expect(approveWorkforceTimesheet(context)).resolves.toMatchObject({
+      kind: "success",
+      data: { id: "approval-1" },
+    })
+  })
+
+  it("fails closed on an invalid or truncated C6 decision history", async () => {
+    vi.mocked(prisma.workforceExceptionCase.findMany).mockResolvedValue([{
+      id: "case-00000045",
+      kind: "DEVICE_SECURITY_REVIEW",
+      workdayId: "workday-1",
+      expectedWorkDate: null,
+      workdayEvent: null,
+      decisions: [{ decisionCode: "RESOLVE_NO_CHANGE" }],
+    }] as never)
+
+    await expect(approveWorkforceTimesheet(context)).resolves.toMatchObject({
+      kind: "conflict",
+      blockers: [{
+        caseReference: "WF-00000045",
+        exceptionStage: "DATA_INTEGRITY_REVIEW",
+      }],
+    })
   })
 
   it("rejects a completed projection that cannot be replayed from immutable facts", async () => {
@@ -185,6 +319,11 @@ describe("Workforce server-side timesheet approval", () => {
     await expect(approveWorkforceTimesheet(context)).resolves.toMatchObject({
       kind: "conflict",
       code: "WORKFORCE_TIMESHEET_APPROVAL_HISTORY_INVALID",
+      blockers: [{
+        workdayId: "workday-1",
+        workDate: "2026-08-28",
+        reason: "HISTORY_INVALID",
+      }],
     })
     expect(prisma.workforceTimesheetApproval.create).not.toHaveBeenCalled()
   })

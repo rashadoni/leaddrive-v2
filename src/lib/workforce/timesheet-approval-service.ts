@@ -5,6 +5,12 @@ import { lockMtmWorkdayTransitions } from "@/lib/mtm/workday"
 import { prisma } from "@/lib/prisma"
 import { isAgentInWorkforceScope, type WorkforceActor } from "@/lib/workforce/actor"
 import {
+  evaluateWorkforceExceptionDraftLifecycle,
+  WORKFORCE_EXCEPTION_DRAFT_TYPES,
+  type WorkforceExceptionDraftStage,
+  type WorkforceExceptionDraftType,
+} from "@/lib/workforce/exception-policy-draft"
+import {
   buildWorkforceTimesheetApproval,
   persistWorkforceTimesheetApproval,
   WorkforceTimesheetApprovalError,
@@ -45,6 +51,15 @@ export const WorkforceTimesheetApprovalRequestSchema = z.object({
 
 export type WorkforceTimesheetApprovalRequest = z.infer<typeof WorkforceTimesheetApprovalRequestSchema>
 
+export type WorkforceTimesheetApprovalBlocker = {
+  workdayId?: string
+  caseReference?: string
+  workDate: string
+  reason: "WORKDAY_NOT_FINAL" | "SNAPSHOT_MISSING" | "HISTORY_INVALID" | "UNRESOLVED_EXCEPTION"
+  exceptionType?: WorkforceExceptionDraftType
+  exceptionStage?: Exclude<WorkforceExceptionDraftStage, "RESOLVED"> | "DATA_INTEGRITY_REVIEW"
+}
+
 type WorkforceTimesheetApprovalAuditContext = {
   ipAddress?: string | null
   userAgent?: string | null
@@ -76,7 +91,7 @@ export type WorkforceTimesheetApprovalResult =
   }
   | { kind: "not_found" }
   | { kind: "forbidden" }
-  | { kind: "conflict"; code: string; message: string }
+  | { kind: "conflict"; code: string; message: string; blockers?: WorkforceTimesheetApprovalBlocker[] }
 
 class WorkforceTimesheetApprovalProblem extends Error {
   constructor(readonly result: Exclude<WorkforceTimesheetApprovalResult, { kind: "success" } | { kind: "forbidden" }>) {
@@ -101,8 +116,25 @@ function recordsByWorkday<T extends { workdayId: string }>(records: readonly T[]
   return result
 }
 
-function conflict(code: string, message: string): WorkforceTimesheetApprovalProblem {
-  return new WorkforceTimesheetApprovalProblem({ kind: "conflict", code, message })
+function conflict(
+  code: string,
+  message: string,
+  blockers?: WorkforceTimesheetApprovalBlocker[],
+): WorkforceTimesheetApprovalProblem {
+  return new WorkforceTimesheetApprovalProblem({
+    kind: "conflict",
+    code,
+    message,
+    ...(blockers?.length ? { blockers } : {}),
+  })
+}
+
+const WORKFORCE_EXCEPTION_TYPE_SET = new Set<string>(WORKFORCE_EXCEPTION_DRAFT_TYPES)
+const MAX_APPROVAL_EXCEPTION_CASES = 500
+const MAX_APPROVAL_CASE_DECISIONS = 64
+
+function approvalExceptionType(value: string): WorkforceExceptionDraftType | undefined {
+  return WORKFORCE_EXCEPTION_TYPE_SET.has(value) ? value as WorkforceExceptionDraftType : undefined
 }
 
 /**
@@ -146,6 +178,13 @@ async function rebuildApprovalRows(
     throw conflict(
       "WORKFORCE_TIMESHEET_APPROVAL_WORKDAY_NOT_FINAL",
       "Every recorded workday in the requested period must be completed before approval",
+      workdays
+        .filter((workday) => workday.status !== "COMPLETED" || !workday.completedAt)
+        .map((workday) => ({
+          workdayId: workday.id,
+          workDate: workday.workDate.toISOString().slice(0, 10),
+          reason: "WORKDAY_NOT_FINAL" as const,
+        })),
     )
   }
 
@@ -187,6 +226,13 @@ async function rebuildApprovalRows(
     throw conflict(
       "WORKFORCE_TIMESHEET_APPROVAL_SNAPSHOT_MISSING",
       "Every recorded workday in the requested period needs immutable policy and shift snapshots",
+      workdays
+        .filter((workday) => !policyByWorkday.has(workday.id) || !shiftByWorkday.has(workday.id))
+        .map((workday) => ({
+          workdayId: workday.id,
+          workDate: workday.workDate.toISOString().slice(0, 10),
+          reason: "SNAPSHOT_MISSING" as const,
+        })),
     )
   }
 
@@ -205,7 +251,7 @@ async function rebuildApprovalRows(
   const eventsByWorkday = recordsByWorkday(events)
   const correctionsByWorkday = recordsByWorkday(corrections)
 
-  return workdays.map((workday) => {
+  const rows = workdays.map((workday) => {
     const policySnapshot = policyByWorkday.get(workday.id)!
     const shiftSnapshot = shiftByWorkday.get(workday.id)!
     try {
@@ -235,11 +281,125 @@ async function rebuildApprovalRows(
         throw conflict(
           "WORKFORCE_TIMESHEET_APPROVAL_HISTORY_INVALID",
           "A recorded workday cannot be reproduced from its immutable history",
+          [{
+            workdayId: workday.id,
+            workDate: workday.workDate.toISOString().slice(0, 10),
+            reason: "HISTORY_INVALID",
+          }],
         )
       }
       throw error
     }
   })
+
+  const rowByWorkdayId = new Map(rows.map((row) => [row.workdayId, row]))
+  const workdayById = new Map(workdays.map((workday) => [workday.id, workday]))
+  const [calculationExceptions, exceptionCases] = await Promise.all([
+    tx.workforceAttendanceException.findMany({
+      where: {
+        organizationId: scope.organizationId,
+        agentId: scope.agentId,
+        workdayId: { in: workdayIds },
+        status: { not: "RESOLVED" },
+      },
+      orderBy: [{ workdayId: "asc" }, { type: "asc" }, { id: "asc" }],
+      select: { workdayId: true, type: true, status: true, calculationVersion: true },
+    }),
+    tx.workforceExceptionCase.findMany({
+      where: {
+        organizationId: scope.organizationId,
+        agentId: scope.agentId,
+        OR: [
+          { workdayId: { in: workdayIds } },
+          { workdayEvent: { workdayId: { in: workdayIds } } },
+          { expectedWorkDate: { gte: rangeStart, lt: rangeEndExclusive } },
+        ],
+      },
+      orderBy: [{ expectedWorkDate: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+      take: MAX_APPROVAL_EXCEPTION_CASES + 1,
+      select: {
+        id: true,
+        kind: true,
+        workdayId: true,
+        expectedWorkDate: true,
+        workdayEvent: { select: { workdayId: true, workday: { select: { workDate: true } } } },
+        decisions: {
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          take: MAX_APPROVAL_CASE_DECISIONS + 1,
+          select: { decisionCode: true },
+        },
+      },
+    }),
+  ])
+
+  if (exceptionCases.length > MAX_APPROVAL_EXCEPTION_CASES) {
+    throw conflict(
+      "WORKFORCE_TIMESHEET_APPROVAL_EXCEPTION_LIMIT_EXCEEDED",
+      "The requested period has too many exception cases for one safe approval",
+    )
+  }
+
+  const calculationBlockers: WorkforceTimesheetApprovalBlocker[] = calculationExceptions.flatMap((exception) => {
+    const row = rowByWorkdayId.get(exception.workdayId)
+    const workday = workdayById.get(exception.workdayId)
+    if (
+      !row
+      || !workday
+      || row.calculationVersion !== exception.calculationVersion
+      || (exception.status !== "OPEN" && exception.status !== "ACKNOWLEDGED")
+    ) return []
+    return [{
+      workdayId: exception.workdayId,
+      workDate: workday.workDate.toISOString().slice(0, 10),
+      reason: "UNRESOLVED_EXCEPTION",
+      exceptionType: exception.type,
+      exceptionStage: exception.status === "OPEN" ? "OPEN" : "HR_REVIEW",
+    }]
+  })
+
+  const caseBlockers: WorkforceTimesheetApprovalBlocker[] = exceptionCases.flatMap((exceptionCase) => {
+    const decisionsTruncated = exceptionCase.decisions.length > MAX_APPROVAL_CASE_DECISIONS
+    const lifecycle = decisionsTruncated
+      ? null
+      : evaluateWorkforceExceptionDraftLifecycle(exceptionCase.decisions)
+    if (lifecycle?.valid && lifecycle.stage === "RESOLVED") return []
+
+    const linkedWorkdayId = exceptionCase.workdayId ?? exceptionCase.workdayEvent?.workdayId ?? undefined
+    const workDate = exceptionCase.expectedWorkDate
+      ?? (linkedWorkdayId ? workdayById.get(linkedWorkdayId)?.workDate : undefined)
+      ?? exceptionCase.workdayEvent?.workday.workDate
+    if (!workDate) {
+      // This should be unreachable because the query admits only period-bound
+      // subjects. Refuse the whole approval instead of inventing a date.
+      throw conflict(
+        "WORKFORCE_TIMESHEET_APPROVAL_EXCEPTION_HISTORY_INVALID",
+        "An attendance exception cannot be tied to a reproducible workday",
+      )
+    }
+    return [{
+      ...(linkedWorkdayId ? { workdayId: linkedWorkdayId } : {}),
+      caseReference: `WF-${exceptionCase.id.slice(-8)}`,
+      workDate: workDate.toISOString().slice(0, 10),
+      reason: "UNRESOLVED_EXCEPTION",
+      ...(approvalExceptionType(exceptionCase.kind) ? { exceptionType: approvalExceptionType(exceptionCase.kind) } : {}),
+      exceptionStage: !lifecycle || !lifecycle.valid ? "DATA_INTEGRITY_REVIEW" : lifecycle.stage,
+    }]
+  })
+
+  const blockers = [...calculationBlockers, ...caseBlockers].sort((left, right) => (
+    left.workDate.localeCompare(right.workDate)
+    || (left.workdayId ?? "").localeCompare(right.workdayId ?? "")
+    || (left.caseReference ?? "").localeCompare(right.caseReference ?? "")
+    || (left.exceptionType ?? "").localeCompare(right.exceptionType ?? "")
+  ))
+  if (blockers.length > 0) {
+    throw conflict(
+      "WORKFORCE_TIMESHEET_APPROVAL_UNRESOLVED_EXCEPTIONS",
+      "Every unresolved attendance exception in the requested period must be resolved before approval",
+      blockers,
+    )
+  }
+  return rows
 }
 
 /**

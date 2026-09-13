@@ -102,9 +102,48 @@ type TimesheetApprovalData = {
   calculationVersion: number
 }
 
+type TimesheetApprovalBlocker = {
+  workdayId?: string
+  caseReference?: string
+  workDate: string
+  reason: "WORKDAY_NOT_FINAL" | "SNAPSHOT_MISSING" | "HISTORY_INVALID" | "UNRESOLVED_EXCEPTION"
+  exceptionType?: "LATE_START" | "UNDERTIME" | "OVERTIME" | "LONG_PAUSE" | "NO_SHOW" | "MISSED_FINISH" | "DELAYED_CLAIM" | "SITE_TRANSITION_REVIEW" | "DEVICE_SECURITY_REVIEW" | "ATTENDANCE_PROOF_REVIEW"
+  exceptionStage?: "OPEN" | "AWAITING_EMPLOYEE_RESPONSE" | "HR_REVIEW" | "DATA_INTEGRITY_REVIEW"
+}
+
 type TimesheetApprovalOutcome =
   | { success: true; idempotent: boolean; data: TimesheetApprovalData }
-  | { success: false; error: string; code: string | null }
+  | { success: false; error: string; code: string | null; blockers: TimesheetApprovalBlocker[] }
+
+const TIMESHEET_BLOCKER_REASONS = new Set([
+  "WORKDAY_NOT_FINAL", "SNAPSHOT_MISSING", "HISTORY_INVALID", "UNRESOLVED_EXCEPTION",
+])
+const TIMESHEET_EXCEPTION_TYPES = new Set([
+  "LATE_START", "UNDERTIME", "OVERTIME", "LONG_PAUSE", "NO_SHOW", "MISSED_FINISH", "DELAYED_CLAIM",
+  "SITE_TRANSITION_REVIEW", "DEVICE_SECURITY_REVIEW", "ATTENDANCE_PROOF_REVIEW",
+])
+const TIMESHEET_EXCEPTION_STAGES = new Set([
+  "OPEN", "AWAITING_EMPLOYEE_RESPONSE", "HR_REVIEW", "DATA_INTEGRITY_REVIEW",
+])
+
+function parseTimesheetApprovalBlockers(value: unknown): TimesheetApprovalBlocker[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((candidate) => {
+    if (!candidate || typeof candidate !== "object") return []
+    const item = candidate as Record<string, unknown>
+    if (
+      typeof item.workDate !== "string"
+      || !/^\d{4}-\d{2}-\d{2}$/.test(item.workDate)
+      || typeof item.reason !== "string"
+      || !TIMESHEET_BLOCKER_REASONS.has(item.reason)
+      || (item.workdayId !== undefined && typeof item.workdayId !== "string")
+      || (item.caseReference !== undefined && typeof item.caseReference !== "string")
+      || (item.exceptionType !== undefined && (typeof item.exceptionType !== "string" || !TIMESHEET_EXCEPTION_TYPES.has(item.exceptionType)))
+      || (item.exceptionStage !== undefined && (typeof item.exceptionStage !== "string" || !TIMESHEET_EXCEPTION_STAGES.has(item.exceptionStage)))
+    ) return []
+    return [item as TimesheetApprovalBlocker]
+  })
+}
 
 type WorkforceRequest = {
   id: string
@@ -394,7 +433,12 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
       const result = await response.json().catch(() => ({}))
       if (!response.ok || !result.success) {
         const error = result.error || "HTTP " + response.status
-        return { success: false, error, code: typeof result.code === "string" ? result.code : null }
+        return {
+          success: false,
+          error,
+          code: typeof result.code === "string" ? result.code : null,
+          blockers: parseTimesheetApprovalBlockers(result.blockers),
+        }
       }
       const data = result.data as TimesheetApprovalData
       toast.success(result.idempotent ? t("timesheetApprovalAlreadyRecorded") : t(data.recordKind === "CORRECTION" ? "timesheetCorrectionRecorded" : "timesheetApprovalRecorded"))
@@ -404,6 +448,7 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
         success: false,
         error: cause instanceof Error ? cause.message : t("timesheetApprovalFailed"),
         code: null,
+        blockers: [],
       }
     } finally {
       setApprovingTimesheet(false)
@@ -721,6 +766,22 @@ function TimesheetApprovalPanel({
             </div>
           ) : null}
           {failure ? <p className="mt-4 text-sm text-destructive" role="alert">{failure.error}</p> : null}
+          {failure?.blockers.length ? (
+            <div className="mt-4 border-l-2 border-amber-500 pl-4" role="status">
+              <p className="font-medium">{t("timesheetApprovalBlockingRows")}</p>
+              <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                {failure.blockers.map((blocker) => (
+                  <li key={[blocker.workDate, blocker.workdayId, blocker.caseReference, blocker.reason, blocker.exceptionType].filter(Boolean).join(":")}>
+                    {blocker.workDate}
+                    {blocker.caseReference ? ` · ${blocker.caseReference}` : ""}
+                    {` · ${t(`timesheetApprovalBlocker.${blocker.reason}`)}`}
+                    {blocker.exceptionType ? ` · ${t(`timesheetApprovalException.${blocker.exceptionType}`)}` : ""}
+                    {blocker.exceptionStage ? ` · ${t(`timesheetApprovalStage.${blocker.exceptionStage}`)}` : ""}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           {record ? <p className="mt-4 text-sm text-emerald-700 dark:text-emerald-300" role="status">{t(record.recordKind === "CORRECTION" ? "timesheetCorrectionStatus" : "timesheetApprovalStatus", { revision: record.revision })}</p> : null}
           {canApproveTimesheet ? <div className="mt-5">
             <Button

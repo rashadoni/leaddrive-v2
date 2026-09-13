@@ -23757,6 +23757,31 @@
     "timesheetApprovalAlreadyRecorded": "Bu dəyişməz təsdiq artıq qeydə alınıb.",
     "timesheetCorrectionRecorded": "Düzəldici təsdiq redaksiyası qeydə alındı.",
     "timesheetApprovalFailed": "Dəyişməz təsdiqi qeyd etmək mümkün olmadı.",
+    "timesheetApprovalBlockingRows": "Təsdiqdən əvvəl bu qeydləri həll edin",
+    "timesheetApprovalBlocker": {
+      "WORKDAY_NOT_FINAL": "İş günü tamamlanmayıb",
+      "SNAPSHOT_MISSING": "Dəyişməz siyasət və ya növbə snapshot-ı yoxdur",
+      "HISTORY_INVALID": "Dəyişməz iş günü tarixçəsini yenidən yaratmaq olmur",
+      "UNRESOLVED_EXCEPTION": "Davamiyyət istisnası hələ həll edilməyib"
+    },
+    "timesheetApprovalException": {
+      "LATE_START": "Gecikmiş başlanğıc",
+      "UNDERTIME": "Natamam iş vaxtı",
+      "OVERTIME": "Əməliyyat üzrə əlavə iş sapması",
+      "LONG_PAUSE": "Uzun fasilə",
+      "NO_SHOW": "İşə gəlməmə yoxlaması",
+      "MISSED_FINISH": "İş gününün bitməsi qeyd edilməyib",
+      "DELAYED_CLAIM": "Gecikmiş davamiyyət qeydi",
+      "SITE_TRANSITION_REVIEW": "Məkanlararası keçid yoxlaması",
+      "DEVICE_SECURITY_REVIEW": "Cihaz təhlükəsizliyi yoxlaması",
+      "ATTENDANCE_PROOF_REVIEW": "Davamiyyət sübutu yoxlaması"
+    },
+    "timesheetApprovalStage": {
+      "OPEN": "Açıqdır",
+      "AWAITING_EMPLOYEE_RESPONSE": "İşçinin cavabı gözlənilir",
+      "HR_REVIEW": "HR yoxlaması",
+      "DATA_INTEGRITY_REVIEW": "Məlumat bütövlüyü yoxlaması"
+    },
     "timesheetApprovalStatus": "Təsdiqin {revision}-ci redaksiyası qeydə alındı.",
     "timesheetCorrectionStatus": "{revision}-ci düzəldici redaksiya qeydə alındı.",
     "status": {
