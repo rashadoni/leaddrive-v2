@@ -420,7 +420,7 @@ export default function ComplaintsPage() {
               const deadline = deadlineLabel(row.slaDueAt)
               return (
                 <article className="rounded-xl border bg-card p-3">
-                  <button type="button" className="min-h-11 w-full rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30" onClick={() => openChild(`/complaints/${row.id}`)}>
+                  <button data-testid="complaint-card-open" type="button" className="min-h-11 w-full rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30" onClick={() => openChild(`/complaints/${row.id}`)}>
                     <span className="font-mono text-xs text-muted-foreground">#{row.complaintMeta?.externalRegistryNumber ?? row.ticketNumber}</span>
                     <span className="block line-clamp-2 text-sm font-medium">{row.subject}</span>
                   </button>

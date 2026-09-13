@@ -144,7 +144,8 @@ try {
       const json = await original.json()
       const source = json?.data?.complaints?.[0]
       if (!source) throw new Error("reference_complaint_missing")
-      const complaints = Array.from({ length: 36 }, (_, index) => index === 8 ? source : ({
+      const referenceIndex = viewportName === "mobile" ? 3 : 8
+      const complaints = Array.from({ length: 36 }, (_, index) => index === referenceIndex ? source : ({
         ...source,
         id: `visual-density-${index}`,
         ticketNumber: `CMP-${9100 + index}`,
@@ -161,14 +162,28 @@ try {
     const expectedScroll = Math.min(maxScroll, 420)
     if (expectedScroll < 200) throw new Error(`registry_scroll_range_too_small_${maxScroll}`)
     await page.evaluate((top) => document.querySelector("main")?.scrollTo({ top, behavior: "instant" }), expectedScroll)
-    const row = page.locator("tbody tr[tabindex='0']").nth(8)
-    await row.focus()
-    const focusedScroll = await page.evaluate(() => document.querySelector("main")?.scrollTop ?? 0)
-    if (focusedScroll < 200) throw new Error(`registry_focus_reset_scroll_${focusedScroll}`)
-    await Promise.all([
-      page.waitForURL((url) => url.pathname === `/complaints/${referenceComplaintId}`),
-      page.keyboard.press("Enter"),
-    ])
+    const referenceIndex = viewportName === "mobile" ? 3 : 8
+    let openMode = "keyboard"
+    let interactionScroll = 0
+    if (viewportName === "mobile") {
+      const card = page.getByTestId("complaint-card-open").nth(referenceIndex)
+      await card.scrollIntoViewIfNeeded()
+      interactionScroll = await page.evaluate(() => document.querySelector("main")?.scrollTop ?? 0)
+      openMode = "touch"
+      await Promise.all([
+        page.waitForURL((url) => url.pathname === `/complaints/${referenceComplaintId}`),
+        card.tap(),
+      ])
+    } else {
+      const row = page.locator("tbody tr[tabindex='0']").nth(referenceIndex)
+      await row.focus()
+      interactionScroll = await page.evaluate(() => document.querySelector("main")?.scrollTop ?? 0)
+      await Promise.all([
+        page.waitForURL((url) => url.pathname === `/complaints/${referenceComplaintId}`),
+        page.keyboard.press("Enter"),
+      ])
+    }
+    if (interactionScroll < 200) throw new Error(`registry_interaction_reset_scroll_${interactionScroll}`)
     const returnTo = new URL(page.url()).searchParams.get("returnTo")
     if (!returnTo || new URL(returnTo, baseUrl).searchParams.get("q") !== "Northstar") throw new Error("registry_context_missing")
     await page.getByTestId("complaint-detail-back").click()
@@ -180,8 +195,8 @@ try {
       return Math.abs(restored - Number(top)) <= 80
     }, expectedScroll, { timeout: 5_000 }).catch(() => undefined)
     const restoredScroll = await page.evaluate(() => document.querySelector("main")?.scrollTop ?? 0)
-    if (Math.abs(restoredScroll - focusedScroll) > 80) throw new Error(`registry_scroll_not_restored_${focusedScroll}_${restoredScroll}`)
-    return { keyboardOpen: true, queryPreserved: true, expectedScroll: focusedScroll, restoredScroll }
+    if (Math.abs(restoredScroll - interactionScroll) > 80) throw new Error(`registry_scroll_not_restored_${interactionScroll}_${restoredScroll}`)
+    return { openMode, keyboardOpen: openMode === "keyboard", touchOpen: openMode === "touch", queryPreserved: true, expectedScroll: interactionScroll, restoredScroll }
   })
 
   await recordStep(page, "registry-load-failure-and-recovery", async () => {

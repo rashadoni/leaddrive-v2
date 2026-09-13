@@ -34,6 +34,8 @@ describe("Complaint mutating flow evidence contract", () => {
     ]) expect(flow).toContain(id)
 
     expect(flow).toContain('page.keyboard.press("Enter")')
+    expect(flow).toContain('card.tap()')
+    expect(flow).toContain('touchOpen: openMode === "touch"')
     expect(flow).toContain('complaints-results").waitFor({ state: "visible" })')
     expect(flow).toContain('click({ trial: true })')
     expect(flow).toContain('url.pathname !== "/complaints/new"')
@@ -60,6 +62,7 @@ describe("Complaint mutating flow evidence contract", () => {
       'data-testid="complaints-retry-load"',
       'data-testid="complaints-export-error"',
       'data-testid="complaints-retry-export"',
+      'data-testid="complaint-card-open"',
     ]) expect(registry).toContain(marker)
     expect(registry).toContain('aria-label={t("searchPlaceholder")}')
     for (const marker of [
