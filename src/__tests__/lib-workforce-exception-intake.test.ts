@@ -63,6 +63,7 @@ function resolvedNoShowConfiguration(overrides: Partial<WorkforceResolvedNoShowC
     scope: "ORGANIZATION" as const,
     assignmentId: null,
     defaultAssignmentId: "default-assignment-1",
+    teamDefaultAssignmentId: null,
     teamMembershipId: "membership-1",
     teamIdAtWorkday: "team-1",
     schedule: {
