@@ -13033,7 +13033,10 @@
     "weekTeamAll": "Все команды",
     "discardBuilderTitle": "Отменить этот маршрут?",
     "discardBuilderBody": "Выбрано клиентов: {count}, и пока ничего не сохранено. Закрытие их потеряет.",
-    "discardBuilderConfirm": "Отменить"
+    "discardBuilderConfirm": "Отменить",
+    "untimedPublishTitle": "Опубликовать без времени?",
+    "untimedPublishBody": "{count, plural, one {У # встречи из {total} нет времени} few {У # встреч из {total} нет времени} many {У # встреч из {total} нет времени} other {У # встречи из {total} нет времени}}. Сотрудник увидит их в приложении без времени. Чтобы сначала назначить время, вернитесь к списку: «Заполнить пустое время с 09:00» делает это за один шаг.",
+    "untimedPublishConfirm": "Опубликовать без времени"
   },
   "mtmOperationsPage": {
     "title": "Операционный центр поля",
