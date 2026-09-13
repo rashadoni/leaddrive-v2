@@ -4,6 +4,7 @@ import java.net.HttpURLConnection
 import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.time.Instant
+import java.time.LocalDate
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -176,6 +177,48 @@ class WorkforceApiClient(
         }
     }
 
+    /** Employee-only work-time history supplied by the existing HRM endpoint. */
+    suspend fun loadHistory(
+        session: WorkforceStoredSession,
+        deviceId: String,
+        anchorDate: String,
+    ): WorkforceHistorySnapshot = withContext(Dispatchers.IO) {
+        val anchor = runCatching { LocalDate.parse(anchorDate) }.getOrElse {
+            throw WorkforceApiException("The Workforce server date was invalid.", recoverable = true)
+        }
+        val start = anchor.minusDays(HISTORY_DAYS_BEFORE).toString()
+        val end = anchor.plusDays(HISTORY_DAYS_AFTER).toString()
+        val response = request(
+            method = "GET",
+            path = "/api/v1/mtm/mobile/hrm?start=$start&end=$end",
+            token = session.token,
+            deviceId = deviceId,
+        )
+        val data = response.optJSONObject("data")
+            ?: throw WorkforceApiException("The Workforce history response was incomplete.", recoverable = true)
+        val days = data.optJSONArray("days")?.let { values ->
+            buildList {
+                for (index in 0 until values.length()) {
+                    values.optJSONObject(index)?.toHistoryDay()?.let(::add)
+                }
+            }
+        }.orEmpty()
+        val requests = data.optJSONArray("requests")?.let { values ->
+            buildList {
+                for (index in 0 until values.length()) {
+                    values.optJSONObject(index)?.toHrmRequest()?.let(::add)
+                }
+            }
+        }.orEmpty()
+        WorkforceHistorySnapshot(
+            timezone = data.optString("timezone", "UTC"),
+            start = data.requiredString("start", "The Workforce history start date was missing."),
+            end = data.requiredString("end", "The Workforce history end date was missing."),
+            days = days,
+            requests = requests,
+        )
+    }
+
     private fun request(
         method: String,
         path: String,
@@ -220,6 +263,8 @@ class WorkforceApiClient(
         const val CONNECT_TIMEOUT_MS = 15_000
         const val READ_TIMEOUT_MS = 20_000
         const val WORKFORCE_WORKDAY_SCHEMA_VERSION = 3
+        const val HISTORY_DAYS_BEFORE = 14L
+        const val HISTORY_DAYS_AFTER = 45L
     }
 }
 
@@ -314,6 +359,48 @@ private fun JSONObject.toWorkday(): WorkforceWorkday = WorkforceWorkday(
     availableActions = optStringList("availableActions"),
 )
 
+private fun JSONObject.toHistoryDay(): WorkforceHistoryDay? {
+    val date = optString("date").takeIf { it.isNotBlank() } ?: return null
+    val calendar = optJSONObject("calendar")
+    return WorkforceHistoryDay(
+        date = date,
+        calendarKind = calendar?.optString("kind")?.takeIf { it.isNotBlank() },
+        calendarName = calendar?.optString("name")?.takeIf { it.isNotBlank() },
+        workday = optJSONObject("workday")?.toWorkday(),
+        activeRequestStates = optJSONArray("requests")?.let { values ->
+            buildList {
+                for (index in 0 until values.length()) {
+                    values.optJSONObject(index)?.let { request ->
+                        val type = request.optString("type")
+                        val status = request.optString("status")
+                        if (type.isNotBlank() && status.isNotBlank()) add("$type: $status")
+                    }
+                }
+            }
+        }.orEmpty(),
+    )
+}
+
+private fun JSONObject.toHrmRequest(): WorkforceHrmRequest? {
+    val id = optString("id").takeIf { it.isNotBlank() } ?: return null
+    val type = optString("type").takeIf { it.isNotBlank() } ?: return null
+    val status = optString("status").takeIf { it.isNotBlank() } ?: return null
+    val startDate = optString("startDate").takeIf { it.isNotBlank() } ?: return null
+    val endDate = optString("endDate").takeIf { it.isNotBlank() } ?: return null
+    return WorkforceHrmRequest(
+        id = id,
+        type = type,
+        status = status,
+        startDate = startDate,
+        endDate = endDate,
+        correctionWorkdayId = optString("correctionWorkdayId").takeIf { it.isNotBlank() && it != "null" },
+        requestedStartAt = optString("requestedStartAt").takeIf { it.isNotBlank() && it != "null" },
+        requestedEndAt = optString("requestedEndAt").takeIf { it.isNotBlank() && it != "null" },
+        decisionNote = optString("decisionNote").takeIf { it.isNotBlank() && it != "null" },
+        updatedAt = optString("updatedAt").takeIf { it.isNotBlank() && it != "null" },
+    )
+}
+
 data class WorkforceLoginInput(
     val email: String,
     val password: String,
@@ -380,6 +467,35 @@ data class WorkforceTodaySnapshot(
         emptyList()
     }
 }
+
+data class WorkforceHistorySnapshot(
+    val timezone: String,
+    val start: String,
+    val end: String,
+    val days: List<WorkforceHistoryDay>,
+    val requests: List<WorkforceHrmRequest>,
+)
+
+data class WorkforceHistoryDay(
+    val date: String,
+    val calendarKind: String?,
+    val calendarName: String?,
+    val workday: WorkforceWorkday?,
+    val activeRequestStates: List<String>,
+)
+
+data class WorkforceHrmRequest(
+    val id: String,
+    val type: String,
+    val status: String,
+    val startDate: String,
+    val endDate: String,
+    val correctionWorkdayId: String?,
+    val requestedStartAt: String?,
+    val requestedEndAt: String?,
+    val decisionNote: String?,
+    val updatedAt: String?,
+)
 
 open class WorkforceApiException(
     message: String,

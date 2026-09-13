@@ -54,6 +54,12 @@ class WorkforceSessionRepository(
         }
     }
 
+    suspend fun loadHistory(anchorDate: String): WorkforceHistorySnapshot = sessionMutex.withLock {
+        val session = secureStore.readSession()
+            ?: throw WorkforceApiException("Your Workforce session has ended. Sign in again.", recoverable = false)
+        api.loadHistory(session, secureStore.installationId(), anchorDate)
+    }
+
     suspend fun signOut() = sessionMutex.withLock {
         secureStore.clearForLogout()
         outbox.clearForAccountBoundary()

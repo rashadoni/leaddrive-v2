@@ -96,8 +96,14 @@ describe("GET /api/v1/mtm/mobile/hrm", () => {
     const body = await (await GET(request("?start=2026-07-16&end=2026-07-17"))).json()
     expect(body.data.days).toHaveLength(2)
     expect(body.data.days[0].workday.id).toBe("workday-1")
+    expect(body.data.days[0].workday.workedSeconds).toBe(30_600)
     expect(body.data.days[1].requests).toEqual([{ id: "request-1", type: "LEAVE", status: "PENDING" }])
-    const query = vi.mocked(prisma.mtmWorkCalendarDay.findMany).mock.calls[0][0] as any
+    const query = vi.mocked(prisma.mtmWorkCalendarDay.findMany).mock.calls[0][0] as {
+      where: {
+        organizationId: string
+        OR: Array<{ teamId: string | null; agentId: string | null }>
+      }
+    }
     expect(query.where.organizationId).toBe("org-1")
     expect(query.where.OR).toContainEqual({ teamId: "team-1", agentId: null })
   })

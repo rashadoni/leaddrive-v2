@@ -1,7 +1,7 @@
 # Workforce C9 — native Android foundation
 
 > **Status:** safe partial source foundation for `WF-C9-001`, `WF-C9-002`,
-> `WF-C9-003`, `WF-C9-006` and `WF-C5-003`. It is not an Android build, signed app, device-attestation
+> `WF-C9-003`, `WF-C9-004`, `WF-C9-006` and `WF-C5-003`. It is not an Android build, signed app, device-attestation
 > acceptance, Play upload or location-collection activation.
 > **Recorded:** 2026-08-30
 
@@ -37,9 +37,11 @@ claiming Gradle, physical-device or seven-day recovery evidence.
 - Today restores a secure session after process death and reloads the canonical
   `/workday` state. It displays only server-provided actions, sends one v3
   state-transition operation with a fresh idempotency key, and reloads server
-  truth after the acknowledgement. A failed live request creates neither a
-  local fact nor a hidden queued action. If the server exposes an older active
-  workday separately, the client refuses to offer a new `START` action.
+  truth after the acknowledgement. A server-rejected request creates neither
+  a local fact nor a hidden queued action; only a transient transport result
+  retains the same immutable operation in the explicit encrypted outbox. If
+  the server exposes an older active workday separately, the client refuses
+  to offer a new `START` action.
 - Android Keystore protects AES-GCM session/tenant/install-selector state;
   logout/account switch removes the encrypted token, selector and key.
 - Backups and device transfer exclude shared preferences and databases.
@@ -87,7 +89,9 @@ same immutable operation into the encrypted outbox. Explicit server rejections
 and proof/state conflicts are never queued. It does not yet capture
 action-time location, site, QR or device proof, so a tenant that requires
 those proofs receives the server's non-acceptance response rather than a
-bypass. History, requests, physical offline/process-death/two-account
-exercise, action-time permission/capture, QR scanner, device-enrollment transport,
+bypass. Work Time history is a bounded self-HRM server read and explicitly
+labels the returned workday/request state as accepted server truth; it never
+calculates an accepted fact from an outbox entry. Requests, physical
+offline/process-death/two-account exercise, action-time permission/capture, QR scanner, device-enrollment transport,
 attestation-server verification, accessibility localisation, update/outbox-drain
 drill and real device matrix remain their individual C5/C9/C10/C14 tasks.

@@ -5,9 +5,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -29,6 +32,7 @@ import com.leaddrive.workforce.android.data.WorkforceApiClient
 import com.leaddrive.workforce.android.data.WorkforceApiException
 import com.leaddrive.workforce.android.data.WorkforceBootstrap
 import com.leaddrive.workforce.android.data.WorkforceEncryptedOutbox
+import com.leaddrive.workforce.android.data.WorkforceHistorySnapshot
 import com.leaddrive.workforce.android.data.WorkforceLoginInput
 import com.leaddrive.workforce.android.data.WorkforceRuntimeConfiguration
 import com.leaddrive.workforce.android.data.WorkforceSecureStore
@@ -69,6 +73,8 @@ private fun WorkforceRoot(repository: WorkforceSessionRepository) {
     var bootstrap by remember { mutableStateOf<WorkforceBootstrap?>(null) }
     var today by remember { mutableStateOf<WorkforceTodaySnapshot?>(null) }
     var status by remember { mutableStateOf<String?>(null) }
+    var history by remember { mutableStateOf<WorkforceHistorySnapshot?>(null) }
+    var section by remember { mutableStateOf(WorkforceSection.TODAY) }
     var restoring by remember { mutableStateOf(true) }
     var busyAction by remember { mutableStateOf<WorkforceWorkdayAction?>(null) }
 
@@ -78,6 +84,7 @@ private fun WorkforceRoot(repository: WorkforceSessionRepository) {
             runCatching { repository.loadToday() }
                 .onSuccess {
                     today = it
+                    history = null
                     status = null
                 }
                 .onFailure { status = it.employeeMessage() }
@@ -112,6 +119,7 @@ private fun WorkforceRoot(repository: WorkforceSessionRepository) {
                     }.onSuccess { (signedIn, loadedToday) ->
                         bootstrap = signedIn
                         today = loadedToday
+                        history = null
                         status = null
                     }.onFailure { status = it.employeeMessage() }
                 }
@@ -121,8 +129,25 @@ private fun WorkforceRoot(repository: WorkforceSessionRepository) {
             bootstrap = bootstrap!!,
             today = today,
             status = status,
+            section = section,
+            history = history,
             busyAction = busyAction,
             onRefresh = ::refreshToday,
+            onSelectSection = { section = it },
+            onLoadHistory = {
+                val anchorDate = today?.date
+                if (anchorDate != null) {
+                    status = "Loading accepted work-time history…"
+                    scope.launch {
+                        runCatching { repository.loadHistory(anchorDate) }
+                            .onSuccess {
+                                history = it
+                                status = null
+                            }
+                            .onFailure { status = it.employeeMessage() }
+                    }
+                }
+            },
             onAction = { action ->
                 val snapshot = today
                 if (snapshot != null) {
@@ -134,6 +159,7 @@ private fun WorkforceRoot(repository: WorkforceSessionRepository) {
                                 when (submission) {
                                     is com.leaddrive.workforce.android.data.WorkforceTodaySubmission.Accepted -> {
                                         today = submission.snapshot
+                                        history = null
                                         status = null
                                     }
                                     com.leaddrive.workforce.android.data.WorkforceTodaySubmission.Queued -> {
@@ -152,6 +178,7 @@ private fun WorkforceRoot(repository: WorkforceSessionRepository) {
                         .onSuccess {
                             bootstrap = null
                             today = null
+                            history = null
                             status = null
                         }
                         .onFailure { status = "Secure sign-out could not finish. Try again." }
@@ -227,8 +254,12 @@ private fun WorkforceHome(
     bootstrap: WorkforceBootstrap,
     today: WorkforceTodaySnapshot?,
     status: String?,
+    section: WorkforceSection,
+    history: WorkforceHistorySnapshot?,
     busyAction: WorkforceWorkdayAction?,
     onRefresh: () -> Unit,
+    onSelectSection: (WorkforceSection) -> Unit,
+    onLoadHistory: () -> Unit,
     onAction: (WorkforceWorkdayAction) -> Unit,
     onSignOut: () -> Unit,
 ) {
@@ -238,25 +269,78 @@ private fun WorkforceHome(
     ) {
         Text("Hello, ${bootstrap.employeeName}", style = MaterialTheme.typography.headlineMedium)
         Text("Timezone: ${bootstrap.timezone}")
-        Text("Server truth: ${today?.date ?: "not loaded"}")
-        if (today == null) {
-            Text("Work-time state is unavailable. No attendance action was created locally.")
-            Button(onClick = onRefresh) { Text("Retry server state") }
-        } else {
-            WorkforceTodayCard(
-                snapshot = today,
-                busyAction = busyAction,
-                onAction = onAction,
+        Row(modifier = Modifier.fillMaxWidth()) {
+            WorkforceSection.entries.forEach { candidate ->
+                TextButton(onClick = { onSelectSection(candidate) }) {
+                    Text(if (candidate == section) "• ${candidate.label}" else candidate.label)
+                }
+            }
+        }
+        when (section) {
+            WorkforceSection.TODAY -> {
+                Text("Server truth: ${today?.date ?: "not loaded"}")
+                if (today == null) {
+                    Text("Work-time state is unavailable. No attendance action was created locally.")
+                    Button(onClick = onRefresh) { Text("Retry server state") }
+                } else {
+                    WorkforceTodayCard(
+                        snapshot = today,
+                        busyAction = busyAction,
+                        onAction = onAction,
+                    )
+                    Text("Current site: not asserted until an approved action-time proof is captured.")
+                    Text("A transient transport failure can keep the same action only in this device’s encrypted, bounded outbox; it is not a server-accepted fact.")
+                    TextButton(onClick = onRefresh) { Text("Refresh server state") }
+                }
+            }
+            WorkforceSection.HISTORY -> WorkforceHistory(
+                history = history,
+                onLoad = onLoadHistory,
             )
-            Text("Current site: not asserted until an approved action-time proof is captured.")
-            Text("Until the encrypted outbox is added, actions require a live server acknowledgement and are never silently queued.")
-            TextButton(onClick = onRefresh) { Text("Refresh server state") }
         }
         if (bootstrap.updateUrl != null) {
             Text("An approved update is available through your organization’s managed Play channel.")
         }
         status?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         TextButton(onClick = onSignOut) { Text("Sign out") }
+    }
+}
+
+private enum class WorkforceSection(val label: String) {
+    TODAY("Today"),
+    HISTORY("Work Time"),
+}
+
+@Composable
+private fun WorkforceHistory(
+    history: WorkforceHistorySnapshot?,
+    onLoad: () -> Unit,
+) {
+    if (history == null) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Work Time", style = MaterialTheme.typography.titleLarge)
+            Text("History is always reloaded from the server. A local pending claim is never presented as an accepted fact.")
+            Button(onClick = onLoad) { Text("Load work-time history") }
+        }
+        return
+    }
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item {
+            Text("Work Time", style = MaterialTheme.typography.titleLarge)
+            Text("Accepted server history: ${history.start} – ${history.end} (${history.timezone})")
+        }
+        items(history.days, key = { it.date }) { day ->
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(day.date, style = MaterialTheme.typography.titleMedium)
+                day.calendarName?.let { Text("Calendar: $it") }
+                day.calendarKind?.let { Text("Calendar state: $it") }
+                day.workday?.let { workday ->
+                    Text("Server workday: ${workday.status}")
+                    Text("Recorded worked time: ${workday.workedSeconds.asWorkDuration()}")
+                } ?: Text("No accepted workday")
+                day.activeRequestStates.forEach { Text("Request: $it") }
+            }
+        }
     }
 }
 

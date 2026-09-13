@@ -56,7 +56,7 @@ describe("Workforce Android foundation", () => {
     expect(activity).toContain("repository.restore()")
     expect(activity).toContain("repository.loadToday()")
     expect(activity).toContain("No attendance action was created locally")
-    expect(activity).toContain("actions require a live server acknowledgement")
+    expect(activity).toContain("it is not a server-accepted fact")
     expect(repository).toContain("submitTodayAction")
   })
 
@@ -84,6 +84,16 @@ describe("Workforce Android foundation", () => {
     expect(outbox).not.toMatch(/qrToken|latitude|longitude|password|biometricTemplate/i)
     expect(repository).toContain("outbox.clearForAccountBoundary()")
     expect(repository).toContain("sessionMutex.withLock")
+  })
+
+  it("keeps Work Time history on the self-HRM server lane and labels it as accepted truth", () => {
+    const api = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceApiClient.kt")
+    const activity = read("app/src/main/java/com/leaddrive/workforce/android/MainActivity.kt")
+    expect(api).toContain('"/api/v1/mtm/mobile/hrm?start=$start&end=$end"')
+    expect(api).toContain("HISTORY_DAYS_BEFORE")
+    expect(api).not.toContain('"/api/v1/mtm/mobile/location')
+    expect(activity).toContain("Accepted server history")
+    expect(activity).toContain("A local pending claim is never presented as an accepted fact")
   })
 
   it("uses an attested non-exportable Android key without handling biometric data", () => {
