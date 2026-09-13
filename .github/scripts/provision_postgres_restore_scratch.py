@@ -91,6 +91,8 @@ class MaintenanceError(Exception):
             "configuration-env-encoding",
             "configuration-env-duplicate",
             "configuration-pgpass-file",
+            "configuration-pgpass-owner",
+            "configuration-pgpass-authority",
             "configuration-ca-file",
             "configuration-rewrite",
             "source",
@@ -126,6 +128,27 @@ class FileState:
 
 def _sha(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
+
+
+def _acceptable_existing_secret_file(state: FileState, backup_gid: int) -> bool:
+    """Allow a root-owned, non-public stale file to enter the sealed snapshot.
+
+    ``_read_file`` has already rejected links, non-regular files, oversized
+    files, and group/world-writable modes.  The provisioner replaces this file
+    atomically with the canonical root:leaddrive-backup 0640 authority before
+    it ever contains the newly generated scratch credential.
+    """
+
+    return state.uid == 0 and (state.mode, state.gid) in {
+        (0o400, 0),
+        (0o440, 0),
+        (0o600, 0),
+        (0o640, 0),
+        (0o400, backup_gid),
+        (0o440, backup_gid),
+        (0o600, backup_gid),
+        (0o640, backup_gid),
+    }
 
 
 def _run(
@@ -798,12 +821,12 @@ def apply() -> None:
     ca_payload, ca_state = _read_file(
         SCRATCH_CA_PATH, maximum=MAX_SMALL_FILE_BYTES, required=False
     )
-    if pgpass_state.present and (
-        pgpass_state.uid != 0
-        or (pgpass_state.mode, pgpass_state.gid)
-        not in {(0o600, 0), (0o640, backup_gid)}
+    if pgpass_state.present and pgpass_state.uid != 0:
+        raise MaintenanceError("configuration-pgpass-owner")
+    if pgpass_state.present and not _acceptable_existing_secret_file(
+        pgpass_state, backup_gid
     ):
-        raise MaintenanceError("configuration-pgpass-file")
+        raise MaintenanceError("configuration-pgpass-authority")
     if ca_state.present and (
         ca_state.uid != 0
         or ca_state.mode not in {0o400, 0o440, 0o444, 0o600, 0o640, 0o644}
