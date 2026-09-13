@@ -4,7 +4,6 @@ import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { prisma } from "@/lib/prisma"
 import { isValidTimezone } from "@/lib/timezone"
 import {
-  withWorkforceSessionAdminAuth,
   withWorkforceSessionScheduleConfigurationAuth,
 } from "@/lib/with-workforce-rls-auth"
 import {
@@ -35,7 +34,7 @@ const defaultAssignmentSelect = {
 } as const
 
 /** Read-only tenant timeline for the future organization-default schedule. */
-export const GET = withWorkforceSessionAdminAuth(async (_req: NextRequest, auth) => {
+export const GET = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_READ", async (_req: NextRequest, auth) => {
   try {
     const defaultAssignments = await prisma.workforceShiftDefaultAssignment.findMany({
       where: { organizationId: auth.orgId },

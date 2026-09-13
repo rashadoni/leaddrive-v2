@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { withWorkforceSessionAdminAuth } from "@/lib/with-workforce-rls-auth"
+import { withWorkforceSessionScheduleConfigurationAuth } from "@/lib/with-workforce-rls-auth"
 import {
   WorkforceConfigurationManagementError,
   activateWorkforceShiftTemplateDraft,
@@ -14,7 +14,7 @@ type RouteContext = { params: Promise<{ id: string }> }
  * The activated template remains non-default and unassigned. An employee
  * schedule changes only through the separate future-dated assignment route.
  */
-export const POST = withWorkforceSessionAdminAuth<RouteContext>(async (req: NextRequest, auth, { params }) => {
+export const POST = withWorkforceSessionScheduleConfigurationAuth<RouteContext>("SCHEDULE_WRITE", async (req: NextRequest, auth, { params }) => {
   try {
     const { id } = await params
     const shift = await activateWorkforceShiftTemplateDraft({
