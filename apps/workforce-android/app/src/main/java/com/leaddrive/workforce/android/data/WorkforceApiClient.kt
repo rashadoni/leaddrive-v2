@@ -691,6 +691,11 @@ private fun JSONObject.toWorkday(): WorkforceWorkday = WorkforceWorkday(
     completedAt = optString("completedAt").takeIf { it.isNotBlank() && it != "null" },
     workedSeconds = optLong("workedSeconds", 0).coerceAtLeast(0),
     availableActions = optStringList("availableActions"),
+    schedule = optJSONObject("schedule")?.optString("plannedEndAt")
+        ?.takeIf { it.isNotBlank() && it != "null" }
+        ?.let { plannedEndAt ->
+            runCatching { Instant.parse(plannedEndAt) }.getOrNull()?.let { WorkforceWorkdaySchedule(it.toString()) }
+        },
 )
 
 private fun JSONObject.toAttendanceRequirements(): WorkforceAttendanceRequirements {
@@ -851,6 +856,12 @@ data class WorkforceWorkday(
     val completedAt: String?,
     val workedSeconds: Long,
     val availableActions: List<String>,
+    /** Server-snapshotted only; a missing plan never becomes a local default. */
+    val schedule: WorkforceWorkdaySchedule?,
+)
+
+data class WorkforceWorkdaySchedule(
+    val plannedEndAt: String,
 )
 
 data class WorkforceTodaySnapshot(

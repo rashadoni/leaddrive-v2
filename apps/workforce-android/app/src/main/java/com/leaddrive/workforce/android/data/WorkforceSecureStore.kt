@@ -43,6 +43,22 @@ class WorkforceSecureStore(context: Context) {
     }
 
     /**
+     * The choice is encrypted and local to this account/device. It controls
+     * only a generic local notification; it is never sent to Workforce.
+     */
+    fun localRemindersEnabled(): Boolean = decrypt(PREFERENCE_LOCAL_REMINDERS_ENABLED) == "true"
+
+    fun writeLocalRemindersEnabled(enabled: Boolean) {
+        if (enabled) {
+            writeEncrypted(PREFERENCE_LOCAL_REMINDERS_ENABLED, "true")
+        } else {
+            check(preferences.edit().remove(PREFERENCE_LOCAL_REMINDERS_ENABLED).commit()) {
+                "Unable to update the local Workforce reminder preference."
+            }
+        }
+    }
+
+    /**
      * The alias is not a private key and is encrypted alongside the session.
      * It is bound to one organization/employee pair so a device proof cannot
      * be reused after an account boundary. The raw enrollment challenge,
@@ -175,6 +191,7 @@ class WorkforceSecureStore(context: Context) {
         const val PREFERENCE_TOKEN = "token"
         const val PREFERENCE_ORGANIZATION_SLUG = "organization_slug"
         const val PREFERENCE_INSTALLATION_ID = "installation_id"
+        const val PREFERENCE_LOCAL_REMINDERS_ENABLED = "local_reminders_enabled"
         const val PREFERENCE_DEVICE_KEY_ALIAS = "device_key_alias"
         const val PREFERENCE_DEVICE_ENROLLMENT_ID = "device_enrollment_id"
         const val PREFERENCE_DEVICE_ORGANIZATION_ID = "device_organization_id"

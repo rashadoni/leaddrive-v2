@@ -33,7 +33,7 @@ beforeEach(() => {
     agentId: AGENT,
     role: "AGENT",
     tenantCapabilities: { routeField: true, workforceHrm: true },
-  } as any)
+  } as never)
   vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([])
   vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue(null)
 })
@@ -42,7 +42,7 @@ afterEach(() => vi.useRealTimers())
 
 describe("GET /api/v1/mtm/mobile/workday", () => {
   it("requires mobile authentication", async () => {
-    vi.mocked(resolveMobileAuth).mockResolvedValue(null as any)
+    vi.mocked(resolveMobileAuth).mockResolvedValue(null as never)
     expect((await GET(request())).status).toBe(401)
   })
 
@@ -52,7 +52,7 @@ describe("GET /api/v1/mtm/mobile/workday", () => {
       agentId: AGENT,
       role: "MANAGER",
       tenantCapabilities: { routeField: true, workforceHrm: true },
-    } as any)
+    } as never)
     expect((await GET(request())).status).toBe(200)
   })
 
@@ -62,7 +62,7 @@ describe("GET /api/v1/mtm/mobile/workday", () => {
       agentId: AGENT,
       role: "OWNER",
       tenantCapabilities: { routeField: true, workforceHrm: true },
-    } as any)
+    } as never)
     expect((await GET(request())).status).toBe(403)
     expect(prisma.mtmAgentWorkday.findFirst).not.toHaveBeenCalled()
   })
@@ -73,7 +73,7 @@ describe("GET /api/v1/mtm/mobile/workday", () => {
       agentId: AGENT,
       role: "AGENT",
       tenantCapabilities: { routeField: true, workforceHrm: false },
-    } as any)
+    } as never)
 
     const response = await GET(request())
 
@@ -107,6 +107,7 @@ describe("GET /api/v1/mtm/mobile/workday", () => {
       createdAt: new Date("2026-07-15T05:00:00.000Z"),
       updatedAt: new Date("2026-07-15T05:00:00.000Z"),
       events: [],
+      workforceShiftSnapshot: { plannedEndAt: new Date("2026-07-15T14:00:00.000Z") },
     } as never)
 
     const response = await GET(request("?date=2026-07-15"))
@@ -123,13 +124,18 @@ describe("GET /api/v1/mtm/mobile/workday", () => {
         status: "STARTED",
         workedSeconds: 10_200,
         availableActions: ["PAUSE", "FINISH"],
+        schedule: { plannedEndAt: "2026-07-15T14:00:00.000Z" },
       },
     })
-    const firstQuery = vi.mocked(prisma.mtmAgentWorkday.findFirst).mock.calls[0][0] as any
+    const firstQuery = vi.mocked(prisma.mtmAgentWorkday.findFirst).mock.calls[0][0] as {
+      where: unknown
+      select: { workforceShiftSnapshot: unknown }
+    }
     expect(firstQuery.where).toEqual({
       organizationId: ORG,
       agentId: AGENT,
       workDate: new Date("2026-07-15T00:00:00.000Z"),
     })
+    expect(firstQuery.select.workforceShiftSnapshot).toEqual({ select: { plannedEndAt: true } })
   })
 })

@@ -1,7 +1,8 @@
 # Workforce C9 — native Android foundation
 
 > **Status:** safe partial source foundation for `WF-C9-001`, `WF-C9-002`,
-> `WF-C9-003`, `WF-C9-004`, `WF-C9-005`, `WF-C9-006`, `WF-C9-008` and `WF-C5-003`. It is not an Android build, signed app, device-attestation
+> `WF-C9-003`, `WF-C9-004`, `WF-C9-005`, `WF-C9-006`, `WF-C9-008`,
+> `WF-C9-011` and `WF-C5-003`. It is not an Android build, signed app, device-attestation
 > acceptance, Play upload or location-collection activation.
 > **Recorded:** 2026-08-30
 
@@ -91,17 +92,47 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   attestation chain/root/app-identity validation and physical-device evidence
   are still absent, so no hardware-attestation claim is made.
 
+## Opt-in local missed-finish reminder (`WF-C9-011`, partial)
+
+- The employee must explicitly turn on the local reminder. Android 13+ asks
+  for `POST_NOTIFICATIONS` only after that employee action; a denied permission
+  or a system-disabled notification channel produces a safe visible state and
+  schedules nothing.
+- The server's own immutable `WorkforceShiftSnapshot.plannedEndAt` is the only
+  input. The client does not use the Baku default, device timezone, a local
+  clock-derived shift, current site, segment, location, QR or device proof to
+  create a reminder. If no current approved shift end is returned, or the
+  window has passed, it cancels any prior reminder instead of guessing.
+- The single WorkManager request stores `Data.EMPTY` and a fixed generic name;
+  no workday, employee, tenant, site or proof identifier is written to local
+  WorkManager metadata. Sign-out, tenant/account change, disabling the option,
+  completed workday and stale/no-plan state cancel it.
+- The worker displays only “LeadDrive Workforce — Open Workforce to review
+  your work-time status.” It contains no time, name, site, location, QR or
+  device information. A notification failure ends the one-shot job rather than
+  retrying and possibly showing a duplicate alert.
+- This is intentionally only a private **missed-finish** reminder. There is no
+  push credential, segment reminder, start reminder, server no-show action or
+  delivery receipt. Those flows remain unimplemented until an approved
+  server-side notification contract and physical-device evidence exist.
+
 ## Source-level checks
 
 - `PASS` — `workforce-android-foundation.test.ts` fixes the module boundary,
   no-background-location/backup posture, release-property guard, Workforce-only
   endpoint list, release-policy version header, bounded CI, secure-store
   requirements, per-use strong-biometric source contract, exact canonical
-  device-proof wire labels and no-proof-outbox rule.
+  device-proof wire labels, no-proof-outbox rule and generic
+  server-snapshotted reminder source contract.
+- `PASS` — targeted mobile `/workday`, bootstrap and Android-foundation tests
+  cover serialization of an immutable planned end plus the reminder boundary
+  (19 tests across the `/workday` and Android-foundation files in this
+  checkpoint; bootstrap behavior remains covered by its earlier checkpoint).
 - `NOT RUN` — Android Gradle lint/unit tests, build, emulator/device tests,
-  camera/location/QR checks, Keystore attestation chain verification,
-  managed Play upload and signing. Contabo has no Java, Android SDK or Gradle;
-  the new GitHub workflow is the prescribed external debug gate.
+  camera/location/QR checks, notification permission/channel/delivery failure
+  exercise, Keystore attestation chain verification, managed Play upload and
+  signing. Contabo has no Java, Android SDK or Gradle; the new GitHub workflow
+  is the prescribed external debug gate.
 
 ## Deliberate remaining work
 

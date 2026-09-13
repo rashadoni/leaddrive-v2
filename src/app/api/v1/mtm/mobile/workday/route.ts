@@ -12,6 +12,7 @@ type WorkdaySummary = {
   pausedAt: Date | null
   completedAt: Date | null
   totalPausedSeconds: number
+  workforceShiftSnapshot: { plannedEndAt: Date } | null
 }
 
 function workedSeconds(workday: WorkdaySummary, now: Date): number {
@@ -28,6 +29,23 @@ function availableActions(status: WorkdaySummary["status"] | null): string[] {
   if (status === "STARTED") return ["PAUSE", "FINISH"]
   if (status === "PAUSED") return ["RESUME", "FINISH"]
   return []
+}
+
+/**
+ * A mobile reminder may use only the accepted immutable shift-end snapshot.
+ * No client schedule default is inferred and no site/location/proof data is
+ * needed to show a generic missed-finish reminder.
+ */
+function mobileWorkdaySummary(workday: WorkdaySummary, now: Date) {
+  const { workforceShiftSnapshot, ...summary } = workday
+  return {
+    ...summary,
+    workedSeconds: workedSeconds(workday, now),
+    availableActions: availableActions(workday.status),
+    schedule: workforceShiftSnapshot == null ? null : {
+      plannedEndAt: workforceShiftSnapshot.plannedEndAt,
+    },
+  }
 }
 
 /** GET /api/v1/mtm/mobile/workday?date=YYYY-MM-DD */
@@ -70,6 +88,9 @@ export const GET = withMobileRls(async (req, auth) => {
           note: true,
         },
       },
+      workforceShiftSnapshot: {
+        select: { plannedEndAt: true },
+      },
     }
     const [workday, activeWorkday] = await Promise.all([
       prisma.mtmAgentWorkday.findFirst({
@@ -95,19 +116,9 @@ export const GET = withMobileRls(async (req, auth) => {
         today,
         timezone,
         gpsIntervalSeconds: settings.gpsInterval,
-        workday: workday
-          ? {
-              ...workday,
-              workedSeconds: workedSeconds(workday, now),
-              availableActions: availableActions(workday.status),
-            }
-          : null,
+        workday: workday ? mobileWorkdaySummary(workday, now) : null,
         activeWorkday: activeWorkday && activeWorkday.id !== workday?.id
-          ? {
-              ...activeWorkday,
-              workedSeconds: workedSeconds(activeWorkday, now),
-              availableActions: availableActions(activeWorkday.status),
-            }
+          ? mobileWorkdaySummary(activeWorkday, now)
           : null,
         availableActions: availableActions(workday?.status ?? null),
       },

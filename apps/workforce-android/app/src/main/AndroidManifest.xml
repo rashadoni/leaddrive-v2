@@ -8,6 +8,8 @@
     <!-- Needed only for the OS-owned strong-biometric prompt which unlocks an
          exact-action Android Keystore signature. No biometric data enters the app. -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <!-- Android 13+ explicit consent for the generic, opt-in local reminder. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:allowBackup="false"

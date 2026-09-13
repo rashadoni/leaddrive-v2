@@ -19,6 +19,7 @@ class WorkforceSessionRepository(
     private val secureStore: WorkforceSecureStore,
     private val outbox: WorkforceEncryptedOutbox,
     private val deviceKeys: WorkforceDeviceKeyManager,
+    private val reminderScheduler: WorkforceReminderScheduler,
 ) {
     private val sessionMutex = Mutex()
 
@@ -50,9 +51,8 @@ class WorkforceSessionRepository(
             ?: throw WorkforceApiException("Your Workforce session has ended. Sign in again.", recoverable = false)
         val operation = api.newTodayOperation(snapshot, action, attendanceQrToken)
         try {
-            WorkforceTodaySubmission.Accepted(
-                api.submitTodayOperation(session, secureStore.installationId(), operation),
-            )
+            val accepted = api.submitTodayOperation(session, secureStore.installationId(), operation)
+            WorkforceTodaySubmission.Accepted(accepted, reminderSettings(accepted))
         } catch (error: Throwable) {
             if (error is kotlinx.coroutines.CancellationException) throw error
             if (operation.hasEphemeralProof && error.isEligibleForOfflineOutbox()) {
@@ -68,6 +68,27 @@ class WorkforceSessionRepository(
         val session = secureStore.readSession()
             ?: throw WorkforceApiException("Your Workforce session has ended. Sign in again.", recoverable = false)
         api.loadHistory(session, secureStore.installationId(), anchorDate)
+    }
+
+    /**
+     * Reconciles only an opt-in generic local reminder from fresh server truth.
+     * It never derives a shift locally or sends a preference/notification fact
+     * to the API.
+     */
+    fun reminderSettings(snapshot: WorkforceTodaySnapshot): WorkforceReminderSettings {
+        val enabled = secureStore.localRemindersEnabled()
+        return WorkforceReminderSettings(
+            enabled = enabled,
+            state = reminderScheduler.reconcile(enabled, snapshot.workday),
+        )
+    }
+
+    fun setLocalRemindersEnabled(
+        enabled: Boolean,
+        snapshot: WorkforceTodaySnapshot,
+    ): WorkforceReminderSettings {
+        secureStore.writeLocalRemindersEnabled(enabled)
+        return reminderSettings(snapshot)
     }
 
     suspend fun submitHrmRequest(draft: WorkforceHrmRequestDraft): WorkforceHrmSubmission = sessionMutex.withLock {
@@ -292,9 +313,8 @@ class WorkforceSessionRepository(
             attendanceDeviceProof = WorkforceDeviceProof(prepared.enrollmentId, signature),
         )
         try {
-            WorkforceTodaySubmission.Accepted(
-                api.submitTodayOperation(session, secureStore.installationId(), operation),
-            )
+            val accepted = api.submitTodayOperation(session, secureStore.installationId(), operation)
+            WorkforceTodaySubmission.Accepted(accepted, reminderSettings(accepted))
         } catch (error: Throwable) {
             if (error is kotlinx.coroutines.CancellationException) throw error
             // An exact proof must never enter the durable outbox. On an
@@ -313,6 +333,7 @@ class WorkforceSessionRepository(
     }
 
     private suspend fun clearAccountBoundary() {
+        reminderScheduler.cancelAll()
         val bindings = listOfNotNull(
             secureStore.readDeviceBinding()?.keyAlias,
             secureStore.readDeviceProvisioning()?.keyAlias,
@@ -347,9 +368,17 @@ class WorkforceSessionRepository(
 }
 
 sealed interface WorkforceTodaySubmission {
-    data class Accepted(val snapshot: WorkforceTodaySnapshot) : WorkforceTodaySubmission
+    data class Accepted(
+        val snapshot: WorkforceTodaySnapshot,
+        val reminderSettings: WorkforceReminderSettings,
+    ) : WorkforceTodaySubmission
     data object Queued : WorkforceTodaySubmission
 }
+
+data class WorkforceReminderSettings(
+    val enabled: Boolean,
+    val state: WorkforceReminderState,
+)
 
 enum class WorkforceHrmSubmission {
     ACCEPTED,

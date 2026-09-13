@@ -52,6 +52,11 @@ location/background-tracking service.
 - device enrollment proof remains pending until an accountable server-side
   administrator approves it. Revocation/replacement is an administrator flow;
   sign-out removes only this phone's private key and local binding.
+- local missed-finish reminders are optional and use only the immutable server
+  shift end. Their WorkManager input/name and generic notification contain no
+  employee, workday, tenant, site, location, QR or device-proof data; they are
+  cancelled on sign-out/account change. There is no push, start or segment
+  reminder and no notification delivery claim.
 
 The project intentionally does **not** claim Android Gradle/build evidence,
 physical Today/offline/QR/biometric tests, hardware-attestation-server

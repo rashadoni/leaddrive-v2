@@ -1,7 +1,12 @@
 package com.leaddrive.workforce.android
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Build
 import androidx.activity.compose.setContent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,9 +29,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
+import androidx.core.content.ContextCompat
 import com.leaddrive.workforce.android.data.WorkforceActionConflictException
 import com.leaddrive.workforce.android.data.WorkforceApiClient
 import com.leaddrive.workforce.android.data.WorkforceApiException
@@ -41,6 +48,8 @@ import com.leaddrive.workforce.android.data.WorkforceHrmSubmission
 import com.leaddrive.workforce.android.data.WorkforceLoginInput
 import com.leaddrive.workforce.android.data.WorkforceOutboxRecoveryItem
 import com.leaddrive.workforce.android.data.WorkforceRuntimeConfiguration
+import com.leaddrive.workforce.android.data.WorkforceReminderSettings
+import com.leaddrive.workforce.android.data.WorkforceReminderScheduler
 import com.leaddrive.workforce.android.data.WorkforceSecureStore
 import com.leaddrive.workforce.android.data.WorkforceSessionRepository
 import com.leaddrive.workforce.android.data.WorkforceTodaySnapshot
@@ -67,6 +76,7 @@ class MainActivity : FragmentActivity() {
             secureStore = secureStore,
             outbox = WorkforceEncryptedOutbox(applicationContext),
             deviceKeys = deviceKeys,
+            reminderScheduler = WorkforceReminderScheduler(applicationContext),
         )
         setContent {
             MaterialTheme {
@@ -98,14 +108,43 @@ private fun WorkforceRoot(
     var history by remember { mutableStateOf<WorkforceHistorySnapshot?>(null) }
     var recoveryItems by remember { mutableStateOf<List<WorkforceOutboxRecoveryItem>?>(null) }
     var deviceTrust by remember { mutableStateOf<WorkforceDeviceTrustState?>(null) }
+    var reminderSettings by remember { mutableStateOf<WorkforceReminderSettings?>(null) }
     var section by remember { mutableStateOf(WorkforceSection.TODAY) }
     var restoring by remember { mutableStateOf(true) }
     var busyAction by remember { mutableStateOf<WorkforceWorkdayAction?>(null) }
+    val context = LocalContext.current
+
+    fun applyReminderSettings(snapshot: WorkforceTodaySnapshot) {
+        reminderSettings = repository.reminderSettings(snapshot)
+    }
+
+    val notificationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) {
+        val snapshot = today
+        if (snapshot != null) {
+            reminderSettings = repository.setLocalRemindersEnabled(true, snapshot)
+        }
+    }
+
+    fun setLocalReminders(enabled: Boolean) {
+        val snapshot = today ?: return
+        if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+            && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            // The app never requests notification permission until the employee
+            // explicitly enables this optional private reminder.
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            return
+        }
+        reminderSettings = repository.setLocalRemindersEnabled(enabled, snapshot)
+    }
 
     fun applyTodaySubmission(submission: com.leaddrive.workforce.android.data.WorkforceTodaySubmission) {
         when (submission) {
             is com.leaddrive.workforce.android.data.WorkforceTodaySubmission.Accepted -> {
                 today = submission.snapshot
+                reminderSettings = submission.reminderSettings
                 history = null
                 recoveryItems = null
                 status = null
@@ -122,6 +161,7 @@ private fun WorkforceRoot(
             runCatching { repository.loadToday() }
                 .onSuccess {
                     today = it
+                    applyReminderSettings(it)
                     history = null
                     recoveryItems = null
                     deviceTrust = null
@@ -199,7 +239,10 @@ private fun WorkforceRoot(
                 bootstrap = restored
                 if (restored != null) {
                     runCatching { repository.loadToday() }
-                        .onSuccess { today = it }
+                        .onSuccess {
+                            today = it
+                            applyReminderSettings(it)
+                        }
                         .onFailure { status = it.employeeMessage() }
                 }
             }
@@ -221,6 +264,7 @@ private fun WorkforceRoot(
                     }.onSuccess { (signedIn, loadedToday) ->
                         bootstrap = signedIn
                         today = loadedToday
+                        applyReminderSettings(loadedToday)
                         history = null
                         recoveryItems = null
                         deviceTrust = null
@@ -237,6 +281,7 @@ private fun WorkforceRoot(
             history = history,
             recoveryItems = recoveryItems,
             deviceTrust = deviceTrust,
+            reminderSettings = reminderSettings,
             busyAction = busyAction,
             onRefresh = ::refreshToday,
             onSelectSection = { section = it },
@@ -267,6 +312,7 @@ private fun WorkforceRoot(
             },
             onLoadDeviceTrust = ::refreshDeviceTrust,
             onBeginDeviceEnrollment = ::beginDeviceEnrollment,
+            onSetLocalReminders = ::setLocalReminders,
             onSubmitRequest = { draft ->
                 status = "Submitting request…"
                 scope.launch {
@@ -325,6 +371,7 @@ private fun WorkforceRoot(
                             history = null
                             recoveryItems = null
                             deviceTrust = null
+                            reminderSettings = null
                             status = null
                         }
                         .onFailure { status = "Secure sign-out could not finish. Try again." }
@@ -405,6 +452,7 @@ private fun WorkforceHome(
     history: WorkforceHistorySnapshot?,
     recoveryItems: List<WorkforceOutboxRecoveryItem>?,
     deviceTrust: WorkforceDeviceTrustState?,
+    reminderSettings: WorkforceReminderSettings?,
     busyAction: WorkforceWorkdayAction?,
     onRefresh: () -> Unit,
     onSelectSection: (WorkforceSection) -> Unit,
@@ -412,6 +460,7 @@ private fun WorkforceHome(
     onLoadRecovery: () -> Unit,
     onLoadDeviceTrust: () -> Unit,
     onBeginDeviceEnrollment: (String) -> Unit,
+    onSetLocalReminders: (Boolean) -> Unit,
     onSubmitRequest: (WorkforceHrmRequestDraft) -> Unit,
     onCancelRequest: (String) -> Unit,
     onAction: (WorkforceWorkdayAction) -> Unit,
@@ -442,6 +491,10 @@ private fun WorkforceHome(
                         attendance = bootstrap.attendance,
                         busyAction = busyAction,
                         onAction = onAction,
+                    )
+                    WorkforceLocalReminders(
+                        settings = reminderSettings,
+                        onSetEnabled = onSetLocalReminders,
                     )
                     Text("Current site: not asserted until an approved action-time proof is captured.")
                     Text("Location is never tracked in the background. Action-time location remains unavailable until the published legal notice and tenant proof policy are active.")
@@ -476,6 +529,25 @@ private fun WorkforceHome(
         }
         status?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         TextButton(onClick = onSignOut) { Text("Sign out") }
+    }
+}
+
+@Composable
+private fun WorkforceLocalReminders(
+    settings: WorkforceReminderSettings?,
+    onSetEnabled: (Boolean) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Private reminder", style = MaterialTheme.typography.titleMedium)
+        Text("Optional and local to this phone. Workforce schedules it only from a server-approved shift end; it never guesses office hours.")
+        if (settings == null) {
+            Text("Refresh server state to check the optional reminder.")
+        } else {
+            Text(settings.state.employeeMessage)
+            Button(onClick = { onSetEnabled(!settings.enabled) }) {
+                Text(if (settings.enabled) "Turn off local reminders" else "Turn on local reminders")
+            }
+        }
     }
 }
 
