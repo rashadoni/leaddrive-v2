@@ -91,6 +91,17 @@ describe("GET /api/v1/workforce/reports", () => {
     expect(prisma.workforceTimesheetApproval.findMany).not.toHaveBeenCalled()
   })
 
+  it("treats an empty employee filter as the caller's existing scope", async () => {
+    const response = await invoke(new NextRequest(
+      "http://localhost/api/v1/workforce/reports?agentId=",
+    ), AUTH)
+
+    expect(response.status).toBe(200)
+    expect(prisma.workforceTimesheetApproval.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.not.objectContaining({ agentId: "" }),
+    }))
+  })
+
   it("stops before actor, settings, access and report reads when rate limited", async () => {
     vi.mocked(requireWorkforceApprovedReportRateLimit).mockResolvedValueOnce(
       new Response(null, { status: 429 }) as never,

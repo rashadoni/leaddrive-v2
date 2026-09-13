@@ -63,7 +63,7 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
     const { searchParams } = new URL(req.url)
     const start = searchParams.get("start") ?? addDateKeyDays(today, -13)
     const end = searchParams.get("end") ?? today
-    const requestedAgentId = searchParams.get("agentId")
+    const requestedAgentId = searchParams.get("agentId") || null
     if (!isDateKey(start) || !isDateKey(end) || end < start || end > addDateKeyDays(start, MAX_RANGE_DAYS - 1)) {
       return badRange()
     }
