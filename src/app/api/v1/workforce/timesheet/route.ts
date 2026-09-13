@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { addDateKeyDays, currentDateKey, isDateKey } from "@/lib/mtm/mobile-week"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { isValidTimezone } from "@/lib/timezone"
-import { withWorkforceRlsAuth } from "@/lib/with-workforce-rls-auth"
+import { withWorkforceSessionAuth } from "@/lib/with-workforce-rls-auth"
 import { isAgentInWorkforceScope, resolveWorkforceActor } from "@/lib/workforce/actor"
 import {
   rehydrateWorkforceTimesheetDay,
@@ -47,8 +47,14 @@ function recordsByWorkday<T extends { workdayId: string }>(records: readonly T[]
   return result
 }
 
-/** GET /api/v1/workforce/timesheet?start=YYYY-MM-DD&end=YYYY-MM-DD&agentId=… */
-export const GET = withWorkforceRlsAuth("read", async (req: NextRequest, auth) => {
+/**
+ * GET /api/v1/workforce/timesheet?start=YYYY-MM-DD&end=YYYY-MM-DD&agentId=…
+ *
+ * This browser HR view returns named employee workdays and derived time facts.
+ * API-key creator metadata is not a manager/employee delegation, so this path
+ * is deliberately bound to an accountable human session.
+ */
+export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, auth) => {
   const actor = await resolveWorkforceActor(prisma, {
     organizationId: auth.orgId,
     userId: auth.userId,
