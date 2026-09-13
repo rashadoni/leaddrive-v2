@@ -93,6 +93,10 @@ class WorkforceSessionRepository(
         }
     }
 
+    suspend fun loadRecoveryItems(): List<WorkforceOutboxRecoveryItem> = sessionMutex.withLock {
+        if (secureStore.readSession() == null) emptyList() else outbox.recoveryItems()
+    }
+
     suspend fun signOut() = sessionMutex.withLock {
         secureStore.clearForLogout()
         outbox.clearForAccountBoundary()

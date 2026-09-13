@@ -37,6 +37,7 @@ import com.leaddrive.workforce.android.data.WorkforceHrmRequestDraft
 import com.leaddrive.workforce.android.data.WorkforceHrmRequestType
 import com.leaddrive.workforce.android.data.WorkforceHrmSubmission
 import com.leaddrive.workforce.android.data.WorkforceLoginInput
+import com.leaddrive.workforce.android.data.WorkforceOutboxRecoveryItem
 import com.leaddrive.workforce.android.data.WorkforceRuntimeConfiguration
 import com.leaddrive.workforce.android.data.WorkforceSecureStore
 import com.leaddrive.workforce.android.data.WorkforceSessionRepository
@@ -45,6 +46,9 @@ import com.leaddrive.workforce.android.data.WorkforceWorkday
 import com.leaddrive.workforce.android.data.WorkforceWorkdayAction
 import com.leaddrive.workforce.android.data.WorkforceWorkdayStatus
 import com.leaddrive.workforce.android.security.WorkforceQrScanner
+import java.time.Instant
+import java.time.ZoneId
+import java.time.ZoneOffset
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -81,6 +85,7 @@ private fun WorkforceRoot(
     var today by remember { mutableStateOf<WorkforceTodaySnapshot?>(null) }
     var status by remember { mutableStateOf<String?>(null) }
     var history by remember { mutableStateOf<WorkforceHistorySnapshot?>(null) }
+    var recoveryItems by remember { mutableStateOf<List<WorkforceOutboxRecoveryItem>?>(null) }
     var section by remember { mutableStateOf(WorkforceSection.TODAY) }
     var restoring by remember { mutableStateOf(true) }
     var busyAction by remember { mutableStateOf<WorkforceWorkdayAction?>(null) }
@@ -92,6 +97,7 @@ private fun WorkforceRoot(
                 .onSuccess {
                     today = it
                     history = null
+                    recoveryItems = null
                     status = null
                 }
                 .onFailure { status = it.employeeMessage() }
@@ -109,6 +115,7 @@ private fun WorkforceRoot(
                         is com.leaddrive.workforce.android.data.WorkforceTodaySubmission.Accepted -> {
                             today = submission.snapshot
                             history = null
+                            recoveryItems = null
                             status = null
                         }
                         com.leaddrive.workforce.android.data.WorkforceTodaySubmission.Queued -> {
@@ -150,6 +157,7 @@ private fun WorkforceRoot(
                         bootstrap = signedIn
                         today = loadedToday
                         history = null
+                        recoveryItems = null
                         status = null
                     }.onFailure { status = it.employeeMessage() }
                 }
@@ -161,6 +169,7 @@ private fun WorkforceRoot(
             status = status,
             section = section,
             history = history,
+            recoveryItems = recoveryItems,
             busyAction = busyAction,
             onRefresh = ::refreshToday,
             onSelectSection = { section = it },
@@ -178,12 +187,24 @@ private fun WorkforceRoot(
                     }
                 }
             },
+            onLoadRecovery = {
+                status = "Loading private recovery state…"
+                scope.launch {
+                    runCatching { repository.loadRecoveryItems() }
+                        .onSuccess {
+                            recoveryItems = it
+                            status = null
+                        }
+                        .onFailure { status = it.employeeMessage() }
+                }
+            },
             onSubmitRequest = { draft ->
                 status = "Submitting request…"
                 scope.launch {
                     runCatching { repository.submitHrmRequest(draft) }
                         .onSuccess { submission ->
                             history = null
+                            recoveryItems = null
                             status = when (submission) {
                                 WorkforceHrmSubmission.ACCEPTED -> "Request accepted by the server. Refresh its status."
                                 WorkforceHrmSubmission.QUEUED -> "Request is in this device’s encrypted outbox and will retry in order for up to seven days."
@@ -298,10 +319,12 @@ private fun WorkforceHome(
     status: String?,
     section: WorkforceSection,
     history: WorkforceHistorySnapshot?,
+    recoveryItems: List<WorkforceOutboxRecoveryItem>?,
     busyAction: WorkforceWorkdayAction?,
     onRefresh: () -> Unit,
     onSelectSection: (WorkforceSection) -> Unit,
     onLoadHistory: () -> Unit,
+    onLoadRecovery: () -> Unit,
     onSubmitRequest: (WorkforceHrmRequestDraft) -> Unit,
     onCancelRequest: (String) -> Unit,
     onAction: (WorkforceWorkdayAction) -> Unit,
@@ -352,6 +375,11 @@ private fun WorkforceHome(
                 onSubmit = onSubmitRequest,
                 onCancel = onCancelRequest,
             )
+            WorkforceSection.RECOVERY -> WorkforceRecovery(
+                items = recoveryItems,
+                timezone = bootstrap.timezone,
+                onLoad = onLoadRecovery,
+            )
         }
         if (bootstrap.updateUrl != null) {
             Text("An approved update is available through your organization’s managed Play channel.")
@@ -365,6 +393,46 @@ private enum class WorkforceSection(val label: String) {
     TODAY("Today"),
     HISTORY("Work Time"),
     REQUESTS("Requests"),
+    RECOVERY("Recovery"),
+}
+
+@Composable
+private fun WorkforceRecovery(
+    items: List<WorkforceOutboxRecoveryItem>?,
+    timezone: String,
+    onLoad: () -> Unit,
+) {
+    val tenantZone = remember(timezone) {
+        runCatching { ZoneId.of(timezone) }.getOrDefault(ZoneOffset.UTC)
+    }
+    if (items == null) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Recovery", style = MaterialTheme.typography.titleLarge)
+            Text("This view shows only local queue state, never request reasons, QR values, GPS or device proof.")
+            Button(onClick = onLoad) { Text("Load recovery state") }
+        }
+        return
+    }
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item {
+            Text("Recovery", style = MaterialTheme.typography.titleLarge)
+            Text("Refresh server state before retrying any work-time action.")
+            TextButton(onClick = onLoad) { Text("Refresh recovery state") }
+        }
+        if (items.isEmpty()) {
+            item { Text("No local recovery items.") }
+        } else {
+            items(items) { item ->
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("${item.domain}: ${item.state}", style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        "Saved locally: ${Instant.ofEpochMilli(item.createdAtEpochMs).atZone(tenantZone).toLocalDateTime()}",
+                    )
+                    Text(item.recoveryMessage)
+                }
+            }
+        }
+    }
 }
 
 @Composable

@@ -90,6 +90,21 @@ class WorkforceEncryptedOutbox(context: Context) {
         }
     }
 
+    /** Metadata-only recovery view. It never decrypts or exposes an employee
+     * reason, QR token, location, device proof, tenant slug or operation ID. */
+    suspend fun recoveryItems(): List<WorkforceOutboxRecoveryItem> = withContext(Dispatchers.IO) {
+        ACCOUNT_BOUNDARY_MUTEX.withLock {
+            database.operations().recoveryRows().map {
+                WorkforceOutboxRecoveryItem(
+                    domain = WorkforceOutboxDomain.fromStored(it.domain)?.displayName ?: "Workforce action",
+                    state = WorkforceOutboxState.fromStored(it.state)?.displayName ?: "Needs review",
+                    createdAtEpochMs = it.createdAtEpochMs,
+                    recoveryMessage = recoveryMessage(it.state, it.detailCode),
+                )
+            }
+        }
+    }
+
     suspend fun drain(
         session: WorkforceStoredSession,
         deviceId: String,
@@ -209,6 +224,19 @@ class WorkforceEncryptedOutbox(context: Context) {
         return now + delay
     }
 
+    private fun recoveryMessage(state: String, code: String?): String = when (state) {
+        WorkforceOutboxState.QUEUED.name, WorkforceOutboxState.RETRY.name ->
+            "Pending acknowledgement. Do not create another action; refresh server state first."
+        WorkforceOutboxState.CONFLICT.name ->
+            "Server state changed. Refresh before taking another action."
+        WorkforceOutboxState.EXPIRED.name ->
+            "The seven-day offline limit passed. Request a correction instead of retrying."
+        else -> when (code) {
+            "OUTBOX_DECRYPTION_FAILED" -> "This protected local item cannot be recovered. Refresh server state and request correction if needed."
+            else -> "This action needs review. Do not rescan QR or repeat device proof until server state is refreshed."
+        }
+    }
+
     private companion object {
         val ACCOUNT_BOUNDARY_MUTEX = Mutex()
         const val DATABASE_NAME = "workforce-outbox.v1.db"
@@ -221,12 +249,24 @@ class WorkforceEncryptedOutbox(context: Context) {
 
 data class WorkforceOutboxDrainResult(val retryNeeded: Boolean)
 
+data class WorkforceOutboxRecoveryItem(
+    val domain: String,
+    val state: String,
+    val createdAtEpochMs: Long,
+    val recoveryMessage: String,
+)
+
 enum class WorkforceOutboxDomain {
     WORKDAY,
     HRM_REQUEST;
 
     companion object {
         fun fromStored(value: String): WorkforceOutboxDomain? = entries.firstOrNull { it.name == value }
+    }
+
+    val displayName: String get() = when (this) {
+        WORKDAY -> "Work Time"
+        HRM_REQUEST -> "Request"
     }
 }
 
@@ -235,7 +275,18 @@ enum class WorkforceOutboxState {
     RETRY,
     CONFLICT,
     EXPIRED,
-    REQUIRES_REVIEW,
+    REQUIRES_REVIEW;
+
+    companion object {
+        fun fromStored(value: String): WorkforceOutboxState? = entries.firstOrNull { it.name == value }
+    }
+
+    val displayName: String get() = when (this) {
+        QUEUED, RETRY -> "Pending"
+        CONFLICT -> "Conflict"
+        EXPIRED -> "Expired"
+        REQUIRES_REVIEW -> "Needs review"
+    }
 }
 
 @Entity(tableName = "workforce_outbox_operations")
@@ -260,6 +311,9 @@ interface WorkforceOutboxDao {
     @Query("SELECT DISTINCT domain FROM workforce_outbox_operations WHERE state IN ('QUEUED', 'RETRY') ORDER BY domain ASC")
     suspend fun pendingDomains(): List<String>
 
+    @Query("SELECT domain, state, createdAtEpochMs, detailCode FROM workforce_outbox_operations ORDER BY createdAtEpochMs DESC LIMIT 100")
+    suspend fun recoveryRows(): List<WorkforceOutboxRecoveryRow>
+
     @Query("SELECT * FROM workforce_outbox_operations WHERE domain = :domain AND state IN ('QUEUED', 'RETRY') ORDER BY createdAtEpochMs ASC LIMIT 1")
     suspend fun oldestPending(domain: String): WorkforceOutboxEntity?
 
@@ -275,6 +329,13 @@ interface WorkforceOutboxDao {
     @Query("DELETE FROM workforce_outbox_operations")
     suspend fun deleteAll()
 }
+
+data class WorkforceOutboxRecoveryRow(
+    val domain: String,
+    val state: String,
+    val createdAtEpochMs: Long,
+    val detailCode: String?,
+)
 
 @Database(entities = [WorkforceOutboxEntity::class], version = 1, exportSchema = true)
 abstract class WorkforceOutboxDatabase : RoomDatabase() {

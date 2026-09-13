@@ -118,3 +118,9 @@ diagnostics. Physical offline/process-death/two-account
 exercise, action-time permission/capture, QR scanner, device-enrollment transport,
 attestation-server verification, accessibility localisation, update/outbox-drain
 drill and real device matrix remain their individual C5/C9/C10/C14 tasks.
+
+The Recovery view returns metadata-only queue state and an approved recovery
+message; it never decrypts or displays an operation ID, request reason, QR
+value, GPS coordinate, tenant identity or device proof. Its source rules tell
+the employee to refresh server truth, request correction after expiry, and
+never re-scan/retry a proof as an offline bypass.

@@ -157,6 +157,24 @@ describe("Workforce Android foundation", () => {
     expect(activity).toContain("Attendance policy is unavailable or unsupported")
   })
 
+  it("has a metadata-only recovery center with explicit safe next steps", () => {
+    const outbox = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceEncryptedOutbox.kt")
+    const repository = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceSessionRepository.kt")
+    const activity = read("app/src/main/java/com/leaddrive/workforce/android/MainActivity.kt")
+    expect(outbox).toContain("Metadata-only recovery view")
+    expect(outbox).toContain("OFFLINE_HORIZON_EXPIRED")
+    expect(outbox).toContain("Request a correction instead of retrying")
+    expect(outbox).toContain("SELECT domain, state, createdAtEpochMs, detailCode FROM workforce_outbox_operations")
+    expect(outbox).not.toContain("SELECT ciphertext")
+    expect(outbox).toContain("ACCOUNT_BOUNDARY_MUTEX.withLock")
+    expect(repository).toContain("loadRecoveryItems")
+    expect(repository).toContain("sessionMutex.withLock")
+    expect(activity).toContain("This view shows only local queue state")
+    expect(activity).toContain("never request reasons, QR values, GPS or device proof")
+    expect(activity).toContain("atZone(tenantZone)")
+    expect(activity).not.toContain("ZoneId.systemDefault()")
+  })
+
   it("uses an attested non-exportable Android key without handling biometric data", () => {
     const deviceKey = read("app/src/main/java/com/leaddrive/workforce/android/security/WorkforceDeviceKeyManager.kt")
     expect(deviceKey).toContain("setAttestationChallenge(challenge)")
