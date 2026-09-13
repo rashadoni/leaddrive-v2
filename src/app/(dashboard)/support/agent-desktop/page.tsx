@@ -222,7 +222,11 @@ export default function AgentDesktopPage() {
             {loadError === "forbidden" ? t("permissionDescription") : t("loadFailedDescription")}
           </p>
           {loadError !== "forbidden" && (
-            <Button data-testid="agent-desktop-retry-load" className="mt-4 min-h-11" onClick={() => void loadDashboard()}>
+            <Button
+              data-testid="agent-desktop-retry-load"
+              className="mt-4 min-h-11 bg-foreground text-background hover:bg-foreground/90"
+              onClick={() => void loadDashboard()}
+            >
               <RefreshCw className="h-4 w-4" aria-hidden="true" />
               {t("retry")}
             </Button>

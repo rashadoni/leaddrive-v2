@@ -48,6 +48,7 @@ describe("agent desktop UX contract", () => {
     expect(page).toContain('<dd className="mt-1">')
     expect(page).not.toContain('<p className="mt-1 text-xs text-muted-foreground">{t("sampleSize"')
     expect(page).not.toContain('<p className="sr-only">{metric.hint}</p>')
+    expect(page.match(/bg-foreground text-background hover:bg-foreground\/90/g)).toHaveLength(2)
   })
 
   it("localizes every active queue priority and status", () => {
