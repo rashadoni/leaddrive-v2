@@ -28,7 +28,7 @@ const teamGrant = {
   id: "grant-team-a",
   organizationId: "org-workforce",
   principalUserId: "manager-user",
-  role: "TEAM_MANAGER",
+  role: "TEAM_MANAGER" as const,
   scope: { kind: "TEAM" as const, teamId: "team-a" },
   effectiveFrom: new Date("2026-01-01T00:00:00.000Z"),
   effectiveUntil: null,
