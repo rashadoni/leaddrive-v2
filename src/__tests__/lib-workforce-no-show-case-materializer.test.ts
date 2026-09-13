@@ -15,6 +15,8 @@ const ORGANIZATION_ID = "org-no-show-materializer"
 const AGENT_ID = "agent-no-show-materializer"
 const WORK_DATE = "2026-09-01"
 const AS_OF = new Date("2026-09-01T05:15:00.000Z")
+const transaction = vi.fn(async (operation: (tx: typeof prisma) => Promise<unknown>) => operation(prisma))
+const client = { $transaction: transaction }
 const SHIFT_DEFINITION = {
   startTime: "09:00",
   endTime: "18:00",
@@ -79,7 +81,7 @@ describe("Workforce no-show review-case materializer", () => {
   it("locks the canonical workday lane, rechecks the candidate and records only a review case", async () => {
     const authorize = vi.fn().mockResolvedValue(true)
     await expect(materializeAuthorizedWorkforceNoShowReviewCase({
-      tx: prisma as never,
+      db: client as never,
       organizationId: ORGANIZATION_ID,
       agentId: AGENT_ID,
       workDate: WORK_DATE,
@@ -92,6 +94,7 @@ describe("Workforce no-show review-case materializer", () => {
       expectedStartAt: "2026-09-01T05:00:00.000Z",
     })
     expect(authorize).toHaveBeenCalledWith({ operation: "CASE_CREATE", organizationId: ORGANIZATION_ID, agentId: AGENT_ID })
+    expect(transaction).toHaveBeenCalledTimes(1)
     expect(prisma.$executeRaw).toHaveBeenCalledTimes(2)
     expect(prisma.workforceExceptionCase.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
@@ -109,7 +112,7 @@ describe("Workforce no-show review-case materializer", () => {
   it("does not create a case when the recheck sees a canonical workday", async () => {
     vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({ id: "workday-now-visible" } as never)
     await expect(materializeAuthorizedWorkforceNoShowReviewCase({
-      tx: prisma as never,
+      db: client as never,
       organizationId: ORGANIZATION_ID,
       agentId: AGENT_ID,
       workDate: WORK_DATE,
@@ -125,7 +128,7 @@ describe("Workforce no-show review-case materializer", () => {
 
   it("fails before the workday lock or candidate reads when the worker is not authorized", async () => {
     await expect(materializeAuthorizedWorkforceNoShowReviewCase({
-      tx: prisma as never,
+      db: client as never,
       organizationId: ORGANIZATION_ID,
       agentId: AGENT_ID,
       workDate: WORK_DATE,
@@ -141,7 +144,7 @@ describe("Workforce no-show review-case materializer", () => {
 
   it("keeps an exact duplicate detector subject idempotent without a second audit", async () => {
     await expect(materializeAuthorizedWorkforceNoShowReviewCase({
-      tx: prisma as never,
+      db: client as never,
       organizationId: ORGANIZATION_ID,
       agentId: AGENT_ID,
       workDate: WORK_DATE,
@@ -156,7 +159,7 @@ describe("Workforce no-show review-case materializer", () => {
     }) as never)
 
     await expect(materializeAuthorizedWorkforceNoShowReviewCase({
-      tx: prisma as never,
+      db: client as never,
       organizationId: ORGANIZATION_ID,
       agentId: AGENT_ID,
       workDate: WORK_DATE,

@@ -18,6 +18,9 @@ import {
  * worker must still supply those controls before it can call this primitive.
  */
 export type WorkforceNoShowCaseMaterializerDb = WorkforceNoShowCandidateDb & WorkforceExceptionCasePersistenceDb
+export type WorkforceNoShowCaseMaterializerClient = {
+  $transaction: <T>(operation: (tx: WorkforceNoShowCaseMaterializerDb) => Promise<T>) => Promise<T>
+}
 
 export type WorkforceNoShowCaseMaterialization =
   | {
@@ -38,7 +41,7 @@ export type WorkforceNoShowCaseMaterialization =
  * can turn the resulting case into a payroll, disciplinary or attendance fact
  * through this materializer.
  */
-export async function materializeAuthorizedWorkforceNoShowReviewCase(input: {
+async function materializeAuthorizedWorkforceNoShowReviewCaseInTransaction(input: {
   tx: WorkforceNoShowCaseMaterializerDb
   organizationId: string
   agentId: string
@@ -83,4 +86,23 @@ export async function materializeAuthorizedWorkforceNoShowReviewCase(input: {
     idempotent: persisted.idempotent,
     expectedStartAt: candidate.expectedStartAt,
   }
+}
+
+/** Owns the interactive transaction that keeps the workday and case locks. */
+export async function materializeAuthorizedWorkforceNoShowReviewCase(input: {
+  db: WorkforceNoShowCaseMaterializerClient
+  organizationId: string
+  agentId: string
+  workDate: string
+  asOf: Date
+  authorize: WorkforceExceptionCaseAuthorization
+}): Promise<WorkforceNoShowCaseMaterialization> {
+  return input.db.$transaction((tx) => materializeAuthorizedWorkforceNoShowReviewCaseInTransaction({
+    tx,
+    organizationId: input.organizationId,
+    agentId: input.agentId,
+    workDate: input.workDate,
+    asOf: input.asOf,
+    authorize: input.authorize,
+  }))
 }

@@ -22,6 +22,9 @@ import {
  */
 export type WorkforceMissedFinishCaseMaterializerDb =
   WorkforceMissedFinishCandidateDb & WorkforceExceptionCasePersistenceDb
+export type WorkforceMissedFinishCaseMaterializerClient = {
+  $transaction: <T>(operation: (tx: WorkforceMissedFinishCaseMaterializerDb) => Promise<T>) => Promise<T>
+}
 
 export type WorkforceMissedFinishCaseMaterialization =
   | {
@@ -41,7 +44,7 @@ export type WorkforceMissedFinishCaseMaterialization =
  * the case; a later finish remains an immutable, human-reviewable fact and is
  * never invented, delayed or overwritten by this materializer.
  */
-export async function materializeAuthorizedWorkforceMissedFinishReviewCase(input: {
+async function materializeAuthorizedWorkforceMissedFinishReviewCaseInTransaction(input: {
   tx: WorkforceMissedFinishCaseMaterializerDb
   organizationId: string
   agentId: string
@@ -100,4 +103,28 @@ export async function materializeAuthorizedWorkforceMissedFinishReviewCase(input
     idempotent: persisted.idempotent,
     workdayId: candidate.workdayId,
   }
+}
+
+/** Owns the interactive transaction that keeps the workday and case locks. */
+export async function materializeAuthorizedWorkforceMissedFinishReviewCase(input: {
+  db: WorkforceMissedFinishCaseMaterializerClient
+  organizationId: string
+  agentId: string
+  workdayId: string
+  asOf: Date
+  timing: {
+    privateReminderAfterSeconds: number
+    reviewAfterSeconds: number
+  }
+  authorize: WorkforceExceptionCaseAuthorization
+}): Promise<WorkforceMissedFinishCaseMaterialization> {
+  return input.db.$transaction((tx) => materializeAuthorizedWorkforceMissedFinishReviewCaseInTransaction({
+    tx,
+    organizationId: input.organizationId,
+    agentId: input.agentId,
+    workdayId: input.workdayId,
+    asOf: input.asOf,
+    timing: input.timing,
+    authorize: input.authorize,
+  }))
 }

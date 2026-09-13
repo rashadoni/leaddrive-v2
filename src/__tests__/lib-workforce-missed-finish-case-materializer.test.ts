@@ -19,6 +19,8 @@ const INPUT = {
     reviewAfterSeconds: 2 * 60 * 60,
   },
 }
+const transaction = vi.fn(async (operation: (tx: typeof prisma) => Promise<unknown>) => operation(prisma))
+const client = { $transaction: transaction }
 
 function configureStaleOpenWorkday() {
   vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({
@@ -41,7 +43,7 @@ describe("Workforce missed-finish review-case materializer", () => {
   it("locks, rechecks and records only the stale-open review subject", async () => {
     const authorize = vi.fn().mockResolvedValue(true)
     await expect(materializeAuthorizedWorkforceMissedFinishReviewCase({
-      tx: prisma as never,
+      db: client as never,
       ...INPUT,
       authorize,
     })).resolves.toEqual({
@@ -55,6 +57,7 @@ describe("Workforce missed-finish review-case materializer", () => {
       organizationId: INPUT.organizationId,
       agentId: INPUT.agentId,
     })
+    expect(transaction).toHaveBeenCalledTimes(1)
     expect(prisma.$executeRaw).toHaveBeenCalledTimes(2)
     expect(prisma.workforceExceptionCase.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
@@ -76,7 +79,7 @@ describe("Workforce missed-finish review-case materializer", () => {
       status: "COMPLETED",
     } as never)
     await expect(materializeAuthorizedWorkforceMissedFinishReviewCase({
-      tx: prisma as never,
+      db: client as never,
       ...INPUT,
       authorize: async () => true,
     })).resolves.toEqual({
@@ -92,7 +95,7 @@ describe("Workforce missed-finish review-case materializer", () => {
 
   it("does not turn a private reminder candidate into a case or notification", async () => {
     await expect(materializeAuthorizedWorkforceMissedFinishReviewCase({
-      tx: prisma as never,
+      db: client as never,
       ...INPUT,
       asOf: new Date("2026-09-01T14:30:00.000Z"),
       authorize: async () => true,
@@ -109,7 +112,7 @@ describe("Workforce missed-finish review-case materializer", () => {
 
   it("fails before the transition lock or workday read without CASE_CREATE authorization", async () => {
     await expect(materializeAuthorizedWorkforceMissedFinishReviewCase({
-      tx: prisma as never,
+      db: client as never,
       ...INPUT,
       authorize: async () => false,
     })).rejects.toMatchObject<Partial<WorkforceExceptionCaseWriterError>>({
@@ -122,7 +125,7 @@ describe("Workforce missed-finish review-case materializer", () => {
 
   it("keeps an exact stale-open subject idempotent without a second audit", async () => {
     await materializeAuthorizedWorkforceMissedFinishReviewCase({
-      tx: prisma as never,
+      db: client as never,
       ...INPUT,
       authorize: async () => true,
     })
@@ -134,7 +137,7 @@ describe("Workforce missed-finish review-case materializer", () => {
     } as never)
 
     await expect(materializeAuthorizedWorkforceMissedFinishReviewCase({
-      tx: prisma as never,
+      db: client as never,
       ...INPUT,
       authorize: async () => true,
     })).resolves.toMatchObject({
