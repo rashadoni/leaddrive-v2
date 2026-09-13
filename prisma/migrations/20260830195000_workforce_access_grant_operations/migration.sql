@@ -23,11 +23,15 @@ $$;
 ALTER TABLE "workforce_access_grants"
   ALTER COLUMN "operationId" SET NOT NULL,
   ADD CONSTRAINT "workforce_access_grants_operation_id_check"
-    CHECK (NULLIF(btrim("operationId"), '') IS NOT NULL);
+    CHECK ("operationId" ~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,99}$'),
+  ADD CONSTRAINT "workforce_access_grants_reason_format_check"
+    CHECK ("grantReasonCode" ~ '^[A-Z][A-Z0-9_]{0,63}$');
 ALTER TABLE "workforce_access_grant_revocations"
   ALTER COLUMN "operationId" SET NOT NULL,
   ADD CONSTRAINT "workforce_access_grant_revocations_operation_id_check"
-    CHECK (NULLIF(btrim("operationId"), '') IS NOT NULL);
+    CHECK ("operationId" ~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,99}$'),
+  ADD CONSTRAINT "workforce_access_grant_revocations_reason_format_check"
+    CHECK ("revocationReasonCode" ~ '^[A-Z][A-Z0-9_]{0,63}$');
 
 CREATE UNIQUE INDEX "workforce_access_grants_organizationId_operationId_key"
   ON "workforce_access_grants"("organizationId", "operationId");

@@ -63,6 +63,10 @@ writer. It normalizes exact scopes, role/scope compatibility, bounded opaque
 identifiers, reason codes, stable operation IDs and effective windows;
 revocation drafts cannot predate their grant.
 
+The operation-ID migration mirrors the writer's strict identifier and reason
+formats as database checks. A direct application-role insert therefore cannot
+create an authority row that the canonical service could not replay or audit.
+
 `src/lib/workforce/access-grant-writer.ts` is the next, still-unwired
 transaction-scoped primitive. It requires a caller-provided authorization
 decision, serializes one tenant-principal with a PostgreSQL advisory transaction
