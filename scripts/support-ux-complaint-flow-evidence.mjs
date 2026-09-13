@@ -171,6 +171,11 @@ try {
     await page.getByTestId("complaint-detail-back").click()
     await page.waitForURL((url) => url.pathname === "/complaints" && url.searchParams.get("q") === "Northstar")
     await page.getByTestId("complaints-workspace").waitFor({ state: "visible" })
+    await page.getByTestId("complaints-results").waitFor({ state: "visible" })
+    await page.waitForFunction((top) => {
+      const restored = document.querySelector("main")?.scrollTop ?? 0
+      return Math.abs(restored - Number(top)) <= 80
+    }, expectedScroll, { timeout: 5_000 }).catch(() => undefined)
     const restoredScroll = await page.evaluate(() => document.querySelector("main")?.scrollTop ?? 0)
     if (Math.abs(restoredScroll - expectedScroll) > 80) throw new Error(`registry_scroll_not_restored_${expectedScroll}_${restoredScroll}`)
     return { keyboardOpen: true, queryPreserved: true, expectedScroll, restoredScroll }
@@ -272,9 +277,12 @@ try {
     await page.getByTestId("complaint-response-error").waitFor({ state: "visible" })
     if (await composer.inputValue() !== content) throw new Error("response_failure_discarded_draft")
     await page.unroute(pattern, deny)
+    const retry = page.getByTestId("complaint-response-retry")
+    await retry.click({ trial: true })
+    await retry.focus()
     const [response] = await Promise.all([
       page.waitForResponse((candidate) => new URL(candidate.url()).pathname === `/api/v1/tickets/${createdComplaintId}/comments`),
-      page.getByTestId("complaint-response-retry").click(),
+      retry.press("Enter"),
     ])
     if (!response.ok()) throw new Error(`response_retry_http_${response.status()}`)
     await page.getByText(content, { exact: true }).waitFor({ state: "visible" })
@@ -296,9 +304,12 @@ try {
     if (denied.status() !== 403) throw new Error(`status_permission_intercept_missed_${denied.status()}`)
     await page.getByTestId("complaint-detail-action-error").waitFor({ state: "visible" })
     await page.unroute(pattern, deny)
+    const resolve = page.getByTestId("complaint-status-resolved")
+    await resolve.click({ trial: true })
+    await resolve.focus()
     await Promise.all([
       page.waitForResponse((candidate) => new URL(candidate.url()).pathname === `/api/v1/complaints/${createdComplaintId}` && candidate.request().method() === "PATCH" && candidate.ok()),
-      page.getByTestId("complaint-status-resolved").click(),
+      resolve.press("Enter"),
     ])
     await page.getByTestId("complaint-status-open").waitFor({ state: "visible" })
     await page.getByTestId("complaint-status-open").click()
@@ -329,9 +340,12 @@ try {
       .catch(() => { throw new Error("assignment_failure_did_not_rollback") })
     await page.unroute(pattern, deny)
     await select.selectOption(target)
+    const save = page.getByTestId("complaint-assignee-save")
+    await save.click({ trial: true })
+    await save.focus()
     const [saved] = await Promise.all([
       page.waitForResponse((candidate) => new URL(candidate.url()).pathname === `/api/v1/complaints/${createdComplaintId}` && candidate.request().method() === "PATCH"),
-      page.getByTestId("complaint-assignee-save").click(),
+      save.press("Enter"),
     ])
     if (!saved.ok()) throw new Error(`assignment_retry_http_${saved.status()}`)
     await select.selectOption("")
@@ -352,7 +366,11 @@ try {
       } else await route.continue()
     }
     await page.route(pattern, deny)
-    await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")))
+    const [refresh] = await Promise.all([
+      page.waitForResponse((candidate) => new URL(candidate.url()).pathname === `/api/v1/complaints/${createdComplaintId}` && candidate.request().method() === "GET"),
+      page.evaluate(() => document.dispatchEvent(new Event("visibilitychange"))),
+    ])
+    if (refresh.status() !== 503) throw new Error(`stale_refresh_intercept_missed_${refresh.status()}`)
     await page.getByTestId("complaint-detail-stale").waitFor({ state: "visible", timeout: 10_000 })
     await page.unroute(pattern, deny)
     await page.getByTestId("complaint-detail-retry-stale").click()
