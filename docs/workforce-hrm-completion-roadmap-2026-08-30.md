@@ -1,11 +1,11 @@
 # Workforce HRM — completion roadmap
 
-> **Status:** active planning roadmap; schema/mobile/pilot owner gates remain open
+> **Status:** current C6 server slices delivered; C6 roadmap and physical pilot remain open
 > **Date:** 2026-08-30
 > **Scope:** employee time, attendance evidence, offices and branches, schedules,
 > HR requests, exceptions, device trust, mobile application, privacy, export,
 > operations and controlled rollout
-> **Current implementation branch:** `codex/implement-hrm-plan`
+> **Delivery repository:** `rashadoni/leaddrive-v2`; reviewable slices merge through `main`
 > **Baseline inspected:** `ffb412f15`
 > **Related documents:**
 > [`mtm-hrm-module-plan-2026-08-28.md`](./mtm-hrm-module-plan-2026-08-28.md),
@@ -29,6 +29,44 @@
 > [`workforce-c7-employment-history-evidence-2026-08-30.md`](./workforce-c7-employment-history-evidence-2026-08-30.md),
 
 ## 1. Purpose and honest starting point
+
+### 1.0 Current delivery receipt (2026-09-13)
+
+The current C6 exception-management server chain has now been delivered as
+bounded pull requests rather than by merging the original large implementation
+branch. This receipt does not mark the broader C0-C14 roadmap complete:
+
+- PR #109 / `4de8c4e44fdc6a58e6d900c3f43be1ef740d2a3a`: historical employment and
+  schedule resolution plus transaction-safe, idempotent exception writes;
+- PR #115 / `b4102588ceb245e5f1163f393cc5256a62dcdc27`: review-only no-show and
+  missed-finish materialization under owned transactions and advisory locks;
+- PR #119 / `72aea540f4b322cc60c6b3e19bb3ec3c61ddcfb1`: MFA/rate-limit fences and
+  fixed-label privacy-safe failure logging for HR decisions and employee
+  responses.
+
+Each slice stayed below the 400 KB review limit, received an independent
+security/concurrency review, and passed its current GitHub static, typecheck,
+scope, runner-policy and secret-scan gates before merge. PR #109 and PR #115
+have matching successful production deployment receipts and public build SHA
+verification. PR #119 deployment workflow `34730054162` also completed
+successfully; the public build endpoint returned the exact artifact SHA
+`72aea540f4b322cc60c6b3e19bb3ec3c61ddcfb1` and `/api/v1/ping` returned
+`{"ok":true}`.
+
+This source-delivery milestone does not convert external evidence into a pass.
+The following remain explicitly **NOT RUN / externally gated**:
+
+- signed physical Android testing on two device classes, including QR, GPS,
+  device attestation, biometric unlock, offline recovery, reboot and rollover;
+- a named human LeadDrive pilot and its HR/employee sign-off;
+- the isolated 5,000-user wave, chaos/reconciliation and restore drill;
+- activation of any policy that treats location/device evidence as payroll,
+  disciplinary or conclusive physical-presence proof.
+
+These items require real devices, people or a deliberately scheduled isolated
+staging exercise. Their absence does not reopen the delivered C6 server chain,
+but it does block any claim that the broader roadmap or physical/mobile H6 pilot
+is complete.
 
 This roadmap completes the gap between the H0-H6 server/web foundation and a
 real HR attendance product. It is written for the concrete target scenario:
@@ -60,7 +98,7 @@ payroll, disciplinary action or physical-presence claims.
 | H3 policies/shifts/timesheet | **PARTIAL — gate not met** | Missing complete calendar/no-show/segment lifecycle, assignment UX, approved export delivery and retention execution |
 | H4 isolated sync | **PARTIAL** | Server lanes/write fence exist; no real mobile client, physical offline/two-device evidence or complete old-event safety |
 | H5 QR/device trust | **PARTIAL backend primitives** | No Workforce geofence, site binding, complete admin/mobile UX, hardware attestation or physical trust evidence |
-| H6 pilot/scale | **NOT MET** | No named physical LeadDrive cohort, real app/device matrix, 5,000-user result, formal privacy approval or pilot exit decision |
+| H6 pilot/scale | **NOT MET** | No named physical LeadDrive cohort, real app/device matrix, 5,000-user result or pilot exit decision; the owner-confirmed privacy notice does not replace these operational gates |
 
 This roadmap does not renumber H0-H6 or declare them complete. Phases C0-C14
 are the closure program and preserve the original plan as the compatibility
@@ -466,8 +504,8 @@ attendance schema or a real employee cohort.
 |---|---:|---|---|---|---|
 | WF-C0-001 | P0 | DONE | Product/HR | Approve this roadmap, terminology and non-goals | Active task authorization recorded in C0 evidence; unresolved owner decisions remain explicit |
 | WF-C0-002 | P0 | DONE | Security/Product | Create abuse/threat model: shared credentials, stolen sessions, QR relay, GPS spoof, clock rollback, rooted/emulated app, replay, manager abuse and tenant leakage | `workforce-c0-foundation-evidence-2026-08-30.md` sections 2-3 |
-| WF-C0-003 | P0 | PARTIAL | Legal/Privacy/HR | Complete data inventory and processing-purpose map for time, location, device, audit, requests and exports | Technical inventory exists; lawful basis/notice awaits C0-004 |
-| WF-C0-004 | P0 | BLOCKED | Legal/Privacy | Complete Azerbaijan employment/privacy review and any required employee notice/assessment; add jurisdiction template for future tenants | Signed review and approved notice/fallback, not source-level assumption |
+| WF-C0-003 | P0 | DONE | Legal/Privacy/HR | Complete data inventory and processing-purpose map for time, location, device, audit, requests and exports | Owner confirmed employee-location disclosure in privacy-policy section 9 (EN/RU/AZ), controller/processor roles and 30-day retention on 2026-09-12 |
+| WF-C0-004 | P0 | PARTIAL (OWNER ATTESTATION) | Legal/Privacy | Complete Azerbaijan employment/privacy review and any required employee notice/assessment; add jurisdiction template for future tenants | Owner explicitly closed the LeadDrive privacy gate on 2026-09-12 based on the published section 9 notice, roles and retention; a reusable future-tenant jurisdiction template and any separate external-counsel opinion are not claimed |
 | WF-C0-005 | P0 | PARTIAL | SRE/DBA | Capture tenant-scoped baseline: employees, events/day, peak/minute, p50/p95/p99, failures, conflicts, outbox age, storage growth and prior-day opens | Read-only query/NOT RUN baseline recorded; production telemetry access remains required |
 | WF-C0-006 | P1 | OWNER DECISION | Product/Mobile | Record platforms, distribution, supported OS/device classes and app-version window | OD-01 and OD-15 resolved |
 | WF-C0-007 | P1 | DONE | Product/QA | Create requirements traceability matrix from H0-H6, this roadmap, tests and release evidence | C0 evidence section 5 maps all `WF-C*` groups to contract/test/gate |
@@ -955,7 +993,10 @@ from this worktree.
   - `workforce-attendance-trust`: 5 passed;
   - `lib-mtm-workday`: 10 passed;
   - shift definition and timesheet calculation: 17 passed.
-- `NOT RUN`: full build, full browser E2E, physical Android/QR/GPS, 5,000-user
-  load, formal legal/privacy assessment and real LeadDrive pilot.
+- At roadmap creation, `NOT RUN` included full build, full browser E2E,
+  physical Android/QR/GPS, 5,000-user load, formal legal/privacy assessment and
+  the real LeadDrive pilot. The legal/privacy item was later closed by explicit
+  owner attestation recorded in C0-003/C0-004; this does not claim an external
+  counsel opinion. Physical devices, load and the human pilot remain `NOT RUN`.
 - No deploy, production mutation, capability toggle or retention deletion is
   authorized by this document.
