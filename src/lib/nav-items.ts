@@ -299,6 +299,8 @@ export const navItems: NavItem[] = [
   // no `module` on purpose: a tenant can run timekeeping with no routes.
   { href: "/workforce", icon: Clock, tKey: "workforceToday", group: "HRM", capability: "workforce-hrm", permissionScope: "workforce" },
   { href: "/workforce/timesheet", icon: CalendarDays, tKey: "workforceTimesheet", group: "HRM", capability: "workforce-hrm", permissionScope: "workforce" },
+  { href: "/workforce/reports", icon: FileBarChart, tKey: "workforceReports", group: "HRM", capability: "workforce-hrm", permissionScope: "workforce" },
+  { href: "/workforce/reports/site-transitions", icon: Route, tKey: "workforceSiteTransitions", group: "HRM", capability: "workforce-hrm", permissionScope: "workforce" },
   { href: "/workforce/requests", icon: ClipboardList, tKey: "workforceRequests", group: "HRM", capability: "workforce-hrm", permissionScope: "workforce" },
   { href: "/workforce/exceptions", icon: AlertTriangle, tKey: "workforceExceptions", group: "HRM", capability: "workforce-hrm", permissionScope: "workforce", allowedRoles: ["admin", "superadmin"] },
   { href: "/workforce/configuration", icon: Settings, tKey: "workforceConfiguration", group: "HRM", capability: "workforce-hrm", permissionScope: "workforce", allowedRoles: ["admin", "superadmin"] },

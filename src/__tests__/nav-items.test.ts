@@ -111,7 +111,13 @@ describe("accessibleNavItems", () => {
   })
 
   it("keeps Workforce navigation independent from Route & Field in all four tenant modes", () => {
-    const workforceHrefs = ["/workforce", "/workforce/timesheet", "/workforce/requests"]
+    const workforceHrefs = [
+      "/workforce",
+      "/workforce/timesheet",
+      "/workforce/reports",
+      "/workforce/reports/site-transitions",
+      "/workforce/requests",
+    ]
     const hasEveryWorkforcePage = (modules: Record<string, boolean>) => {
       const hrefs = accessibleNavItems({ plan: "enterprise", role: "manager", modules }).map((item) => item.href)
       return workforceHrefs.every((href) => hrefs.includes(href))
