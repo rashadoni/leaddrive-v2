@@ -12,6 +12,7 @@
 // withWorkforceSessionGrantManagementAuth/
 // withWorkforceSessionEvidenceTimelineAuth/
 // withWorkforceSessionExceptionQueueAuth/
+// withWorkforceSessionPolicyConfigurationAuth/
 // withWorkforceSessionScheduleConfigurationAuth/
 // withWorkforceCompatAuth
 // (HOC factories) or an explicit runWithTenant/runWithRlsBypass.
@@ -54,7 +55,7 @@ function walk(dir: string, out: string[] = []): string[] {
 }
 
 const DELIVER =
-  /withRls(?:<[^>]+>)?\(|withRlsAuth(?:<[^>]+>)?\(|withRlsSessionAuth(?:<[^>]+>)?\(|withInboxSessionWrite(?:<[^>]+>)?\(|withSocialMonitoringMutationFence(?:<[^>]+>)?\(|withSocialConnectAuth\(|withMobileRls(?:<[^>]+>)?\(|withMobileFieldSuiteRls(?:<[^>]+>)?\(|withMobileTenantCapabilityRls(?:<[^>]+>)?\(|withMtmRlsAuth(?:<[^>]+>)?\(|withRouteFieldRlsAuth(?:<[^>]+>)?\(|withRouteFieldWebRlsAuth(?:<[^>]+>)?\(|withWorkforceHrmRlsAuth(?:<[^>]+>)?\(|withWorkforceRlsAuth(?:<[^>]+>)?\(|withWorkforceSessionAuth(?:<[^>]+>)?\(|withWorkforceSessionAdminAuth(?:<[^>]+>)?\(|withWorkforceSessionGrantManagementAuth(?:<[^>]+>)?\(|withWorkforceSessionEvidenceTimelineAuth(?:<[^>]+>)?\(|withWorkforceSessionExceptionQueueAuth(?:<[^>]+>)?\(|withWorkforceSessionScheduleConfigurationAuth(?:<[^>]+>)?\(|withWorkforceCompatAuth(?:<[^>]+>)?\(|runWithTenant|runWithRlsBypass/
+  /withRls(?:<[^>]+>)?\(|withRlsAuth(?:<[^>]+>)?\(|withRlsSessionAuth(?:<[^>]+>)?\(|withInboxSessionWrite(?:<[^>]+>)?\(|withSocialMonitoringMutationFence(?:<[^>]+>)?\(|withSocialConnectAuth\(|withMobileRls(?:<[^>]+>)?\(|withMobileFieldSuiteRls(?:<[^>]+>)?\(|withMobileTenantCapabilityRls(?:<[^>]+>)?\(|withMtmRlsAuth(?:<[^>]+>)?\(|withRouteFieldRlsAuth(?:<[^>]+>)?\(|withRouteFieldWebRlsAuth(?:<[^>]+>)?\(|withWorkforceHrmRlsAuth(?:<[^>]+>)?\(|withWorkforceRlsAuth(?:<[^>]+>)?\(|withWorkforceSessionAuth(?:<[^>]+>)?\(|withWorkforceSessionAdminAuth(?:<[^>]+>)?\(|withWorkforceSessionGrantManagementAuth(?:<[^>]+>)?\(|withWorkforceSessionEvidenceTimelineAuth(?:<[^>]+>)?\(|withWorkforceSessionExceptionQueueAuth(?:<[^>]+>)?\(|withWorkforceSessionPolicyConfigurationAuth(?:<[^>]+>)?\(|withWorkforceSessionScheduleConfigurationAuth(?:<[^>]+>)?\(|withWorkforceCompatAuth(?:<[^>]+>)?\(|runWithTenant|runWithRlsBypass/
 
 describe("RLS context coverage (totality, per-handler)", () => {
   const models = orgScopedModels()
