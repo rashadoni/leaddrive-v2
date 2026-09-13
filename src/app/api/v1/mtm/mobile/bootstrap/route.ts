@@ -32,6 +32,10 @@ import {
   resolveCurrentWorkforcePolicy,
   WorkforcePolicyResolutionError,
 } from "@/lib/workforce/policy-resolution"
+import {
+  resolveWorkforceAndroidReleasePolicy,
+  WORKFORCE_ANDROID_VERSION_CODE_HEADER,
+} from "@/lib/workforce/mobile-release-policy"
 
 type MobileAttendanceManifest = {
   qrEnabled: boolean
@@ -394,6 +398,10 @@ export const GET = withMobileRls(async (req, auth) => {
       qrEnabled,
       deviceTrustEnabled,
     })
+    const workforceRelease = resolveWorkforceAndroidReleasePolicy({
+      workforceEnabled,
+      clientVersionCode: req.headers.get(WORKFORCE_ANDROID_VERSION_CODE_HEADER),
+    })
 
     return NextResponse.json({
       success: true,
@@ -412,9 +420,10 @@ export const GET = withMobileRls(async (req, auth) => {
           workforce: {
             enabled: workforceEnabled,
             capabilityId: "workforce-hrm",
-            configVersion: null,
+            configVersion: attendance.configVersion,
             cursor: null,
             attendance,
+            release: workforceRelease,
           },
           routes: {
             enabled: routeFieldEnabled,
@@ -433,7 +442,12 @@ export const GET = withMobileRls(async (req, auth) => {
           // that their administrator has turned off.
           canPlanOwnRoutes,
           canSelfPublishRoutes,
-          workforce: { enabled: workforceEnabled, configVersion: null, attendance },
+          workforce: {
+            enabled: workforceEnabled,
+            configVersion: attendance.configVersion,
+            attendance,
+            release: workforceRelease,
+          },
         },
         // The same tenant-owned labels and data scopes drive both web and
         // mobile planners. The APK must never fall back to hard-coded

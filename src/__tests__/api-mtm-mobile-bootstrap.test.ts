@@ -88,7 +88,11 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
       modules: {
         routeField: { enabled: true, scopeVersion: null },
         workforceHrm: { enabled: true, scopeVersion: null },
-        workforce: { enabled: true, capabilityId: "workforce-hrm" },
+        workforce: {
+          enabled: true,
+          capabilityId: "workforce-hrm",
+          release: { platform: "ANDROID", status: "NOT_CONFIGURED", maySubmitNewWorkforceActions: true },
+        },
         routes: { enabled: true, capabilityId: "route-field" },
       },
       policies: { canPlanOwnRoutes: true, canSelfPublishRoutes: false, workforce: { enabled: true } },
@@ -115,6 +119,35 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
         policiesVersion: null,
       },
     })
+  })
+
+  it("returns a fail-closed forced-update response without changing legacy bootstrap status", async () => {
+    vi.stubEnv("WORKFORCE_ANDROID_MIN_VERSION_CODE", "100")
+    vi.stubEnv("WORKFORCE_ANDROID_RECOMMENDED_VERSION_CODE", "120")
+    try {
+      const oldClient = new NextRequest("http://localhost:3000/api/v1/mtm/mobile/bootstrap", {
+        headers: {
+          Authorization: "Bearer valid-token",
+          "x-workforce-app-version-code": "99",
+        },
+      })
+      const response = await GET(oldClient)
+      const json = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(json.data.modules.workforce.release).toMatchObject({
+        policyVersion: "android-v1:100:120:open",
+        status: "UPDATE_REQUIRED",
+        clientVersionCode: 99,
+        minimumVersionCode: 100,
+        recommendedVersionCode: 120,
+        maySubmitNewWorkforceActions: false,
+        recovery: "DRAIN_THEN_UPDATE",
+      })
+      expect(json.data.policies.workforce.release).toEqual(json.data.modules.workforce.release)
+    } finally {
+      vi.unstubAllEnvs()
+    }
   })
 
   it("hands the field app the CARTO basemap key of this build (audit B16)", async () => {
@@ -178,7 +211,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
   })
 
   it("advertises route sync v2 only for an exact enrolled device cohort", async () => {
-    vi.mocked(prisma.mtmMobileSyncCohort.findFirst).mockImplementation(async (args: any) => (
+    vi.mocked(prisma.mtmMobileSyncCohort.findFirst).mockImplementation(async (args) => (
       args.where.stream === "routes"
         ? { updatedAt: new Date("2026-08-28T12:00:00.000Z") } as never
         : null as never
@@ -197,12 +230,12 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
   })
 
   it("advertises visits/tasks only for their own exact cohort and never reuses route scope", async () => {
-    vi.mocked(prisma.mtmMobileSyncCohort.findFirst).mockImplementation(async (args: any) => {
+    vi.mocked(prisma.mtmMobileSyncCohort.findFirst).mockImplementation(async (args) => {
       if (args.where.stream === "visits") return { updatedAt: new Date("2026-08-29T09:00:00.000Z") } as never
       if (args.where.stream === "tasks") return { updatedAt: new Date("2026-08-29T09:01:00.000Z") } as never
       return null as never
     })
-    vi.mocked(prisma.mtmMobileSyncAgentScope.findUnique).mockImplementation(async (args: any) => ({
+    vi.mocked(prisma.mtmMobileSyncAgentScope.findUnique).mockImplementation(async (args) => ({
       scopeRevision: args.where.organizationId_stream_agentId.stream === "visits" ? 7n : 11n,
     } as never))
 
@@ -223,12 +256,12 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
   })
 
   it("advertises active-workday v2 only for its exact workforce cohort", async () => {
-    vi.mocked(prisma.mtmMobileSyncCohort.findFirst).mockImplementation(async (args: any) => (
+    vi.mocked(prisma.mtmMobileSyncCohort.findFirst).mockImplementation(async (args) => (
       args.where.stream === "workforce"
         ? { updatedAt: new Date("2026-08-29T10:00:00.000Z") } as never
         : null as never
     ))
-    vi.mocked(prisma.mtmMobileSyncAgentScope.findUnique).mockImplementation(async (args: any) => (
+    vi.mocked(prisma.mtmMobileSyncAgentScope.findUnique).mockImplementation(async (args) => (
       args.where.organizationId_stream_agentId.stream === "workforce"
         ? { scopeRevision: 9n } as never
         : null as never
@@ -250,7 +283,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
   })
 
   it("advertises isolated media only for its own exact server cohort", async () => {
-    vi.mocked(prisma.mtmMobileSyncCohort.findFirst).mockImplementation(async (args: any) => (
+    vi.mocked(prisma.mtmMobileSyncCohort.findFirst).mockImplementation(async (args) => (
       args.where.stream === "media"
         ? { updatedAt: new Date("2026-08-28T13:00:00.000Z") } as never
         : null as never
@@ -266,7 +299,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
   })
 
   it("advertises GPS batching only for its own exact server cohort", async () => {
-    vi.mocked(prisma.mtmMobileSyncCohort.findFirst).mockImplementation(async (args: any) => (
+    vi.mocked(prisma.mtmMobileSyncCohort.findFirst).mockImplementation(async (args) => (
       args.where.stream === "gps"
         ? { updatedAt: new Date("2026-08-28T14:00:00.000Z") } as never
         : null as never
