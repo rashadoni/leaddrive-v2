@@ -45,4 +45,9 @@
     <string name="notification_text">Open Workforce to review your work-time status.</string>
     <string name="biometric_title">Confirm Workforce action</string>
     <string name="cancel">Cancel</string>
+    <string name="update_available">An approved update is available through your organization’s managed Play channel.</string>
+    <string name="update_required_before_changes">Install the approved Workforce update before submitting work-time, request or device changes.</string>
+    <string name="update_release_window">Required version: %1$s. Latest approved version: %2$s.</string>
+    <string name="device_lost_guidance">If this phone is lost or replaced, promptly ask an authorized administrator to revoke or replace its enrollment. Removing the app does not revoke the server enrollment.</string>
+    <string name="device_uninstall_guidance">Before planned removal, refresh Recovery first. Signing out or uninstalling deletes this phone’s encrypted session, private key and pending local outbox; those local items cannot be restored.</string>
 </resources>

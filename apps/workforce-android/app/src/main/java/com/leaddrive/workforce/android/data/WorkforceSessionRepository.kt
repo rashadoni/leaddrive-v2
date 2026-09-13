@@ -28,12 +28,16 @@ class WorkforceSessionRepository(
         val login = api.login(input)
         val session = WorkforceStoredSession(login.token, login.organizationSlug)
         secureStore.writeSession(session)
-        api.bootstrap(session, secureStore.installationId())
+        api.bootstrap(session, secureStore.installationId()).also { bootstrap ->
+            if (!bootstrap.release.mutationsBlocked) outbox.resumeDrain()
+        }
     }
 
     suspend fun restore(): WorkforceBootstrap? = sessionMutex.withLock {
         val session = secureStore.readSession() ?: return@withLock null
-        api.bootstrap(session, secureStore.installationId())
+        api.bootstrap(session, secureStore.installationId()).also { bootstrap ->
+            if (!bootstrap.release.mutationsBlocked) outbox.resumeDrain()
+        }
     }
 
     suspend fun loadToday(): WorkforceTodaySnapshot = sessionMutex.withLock {
@@ -43,10 +47,12 @@ class WorkforceSessionRepository(
     }
 
     suspend fun submitTodayAction(
+        bootstrap: WorkforceBootstrap,
         snapshot: WorkforceTodaySnapshot,
         action: WorkforceWorkdayAction,
         attendanceQrToken: String? = null,
     ): WorkforceTodaySubmission = sessionMutex.withLock {
+        bootstrap.requireMutableRelease()
         val session = secureStore.readSession()
             ?: throw WorkforceApiException("Your Workforce session has ended. Sign in again.", recoverable = false)
         val operation = api.newTodayOperation(snapshot, action, attendanceQrToken)
@@ -91,7 +97,11 @@ class WorkforceSessionRepository(
         return reminderSettings(snapshot)
     }
 
-    suspend fun submitHrmRequest(draft: WorkforceHrmRequestDraft): WorkforceHrmSubmission = sessionMutex.withLock {
+    suspend fun submitHrmRequest(
+        bootstrap: WorkforceBootstrap,
+        draft: WorkforceHrmRequestDraft,
+    ): WorkforceHrmSubmission = sessionMutex.withLock {
+        bootstrap.requireMutableRelease()
         val session = secureStore.readSession()
             ?: throw WorkforceApiException("Your Workforce session has ended. Sign in again.", recoverable = false)
         val operation = api.newHrmRequestOperation(draft)
@@ -105,7 +115,11 @@ class WorkforceSessionRepository(
         }
     }
 
-    suspend fun cancelHrmRequest(requestId: String): WorkforceHrmSubmission = sessionMutex.withLock {
+    suspend fun cancelHrmRequest(
+        bootstrap: WorkforceBootstrap,
+        requestId: String,
+    ): WorkforceHrmSubmission = sessionMutex.withLock {
+        bootstrap.requireMutableRelease()
         val session = secureStore.readSession()
             ?: throw WorkforceApiException("Your Workforce session has ended. Sign in again.", recoverable = false)
         val operation = api.newHrmRequestCancellation(requestId)
@@ -133,6 +147,7 @@ class WorkforceSessionRepository(
         bootstrap: WorkforceBootstrap,
         deviceLabel: String,
     ): WorkforcePendingDeviceEnrollment = sessionMutex.withLock {
+        bootstrap.requireMutableRelease()
         val session = requireSession()
         val existing = secureStore.readDeviceBinding()
         val alias = when {
@@ -285,6 +300,7 @@ class WorkforceSessionRepository(
         action: WorkforceWorkdayAction,
         attendanceQrToken: String? = null,
     ): WorkforcePreparedDeviceTodayAction = sessionMutex.withLock {
+        bootstrap.requireMutableRelease()
         val binding = secureStore.readDeviceBinding()
             ?: throw WorkforceApiException("Enroll and approve this device before using device trust.", recoverable = false)
         if (!binding.matches(bootstrap) || binding.lifecycle != WorkforceDeviceBindingLifecycle.ACTIVE) {
@@ -300,9 +316,11 @@ class WorkforceSessionRepository(
     }
 
     suspend fun submitPreparedDeviceTodayAction(
+        bootstrap: WorkforceBootstrap,
         prepared: WorkforcePreparedDeviceTodayAction,
         signature: String,
     ): WorkforceTodaySubmission = sessionMutex.withLock {
+        bootstrap.requireMutableRelease()
         val session = requireSession()
         val binding = secureStore.readDeviceBinding()
             ?: throw WorkforceApiException("The trusted-device binding was cleared. Refresh before continuing.", recoverable = false)
@@ -350,6 +368,16 @@ class WorkforceSessionRepository(
 
     private fun requireSession(): WorkforceStoredSession = secureStore.readSession()
         ?: throw WorkforceApiException("Your Workforce session has ended. Sign in again.", recoverable = false)
+
+    private fun WorkforceBootstrap.requireMutableRelease() {
+        if (release.mutationsBlocked) {
+            throw WorkforceApiException(
+                "This Workforce version must be updated through your organization’s managed Play channel before submitting changes.",
+                recoverable = false,
+                recoveryCode = "WORKFORCE_MOBILE_UPDATE_REQUIRED",
+            )
+        }
+    }
 
     private fun reusableOrNewDeviceKeyAlias(bootstrap: WorkforceBootstrap): String {
         val provisioning = secureStore.readDeviceProvisioning()

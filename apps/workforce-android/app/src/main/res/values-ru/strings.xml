@@ -45,4 +45,9 @@
     <string name="notification_text">Откройте Workforce, чтобы проверить статус рабочего времени.</string>
     <string name="biometric_title">Подтвердите действие Workforce</string>
     <string name="cancel">Отмена</string>
+    <string name="update_available">В канале управляемого Google Play вашей организации доступно утверждённое обновление.</string>
+    <string name="update_required_before_changes">Установите утверждённое обновление Workforce перед отправкой изменений рабочего времени, заявок или устройства.</string>
+    <string name="update_release_window">Требуемая версия: %1$s. Последняя утверждённая версия: %2$s.</string>
+    <string name="device_lost_guidance">Если телефон утерян или заменён, немедленно попросите уполномоченного администратора отозвать или заменить его регистрацию. Удаление приложения не отзывает регистрацию на сервере.</string>
+    <string name="device_uninstall_guidance">Перед плановым удалением сначала обновите раздел «Восстановление». Выход или удаление приложения удаляет зашифрованную сессию, закрытый ключ и ожидающий локальный outbox этого телефона; эти локальные элементы нельзя восстановить.</string>
 </resources>

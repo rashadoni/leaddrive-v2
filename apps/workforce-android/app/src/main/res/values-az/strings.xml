@@ -45,4 +45,9 @@
     <string name="notification_text">İş vaxtı vəziyyətinizi yoxlamaq üçün Workforce-u açın.</string>
     <string name="biometric_title">Workforce əməliyyatını təsdiqləyin</string>
     <string name="cancel">Ləğv et</string>
+    <string name="update_available">Təşkilatınızın idarə olunan Play kanalı vasitəsilə təsdiqlənmiş yeniləmə əlçatandır.</string>
+    <string name="update_required_before_changes">İş vaxtı, sorğu və ya cihaz dəyişikliklərini göndərməzdən əvvəl təsdiqlənmiş Workforce yeniləməsini quraşdırın.</string>
+    <string name="update_release_window">Tələb olunan versiya: %1$s. Son təsdiqlənmiş versiya: %2$s.</string>
+    <string name="device_lost_guidance">Bu telefon itirilibsə və ya dəyişdirilibsə, səlahiyyətli inzibatçıdan onun qeydiyyatını tezliklə ləğv etməsini və ya dəyişməsini istəyin. Tətbiqi silmək server qeydiyyatını ləğv etmir.</string>
+    <string name="device_uninstall_guidance">Planlı silməzdən əvvəl əvvəlcə Bərpa bölməsini yeniləyin. Çıxış etmək və ya silmək bu telefonun şifrələnmiş sessiyasını, şəxsi açarını və gözləyən lokal outbox məlumatını silir; həmin lokal məlumatlar bərpa edilə bilməz.</string>
 </resources>

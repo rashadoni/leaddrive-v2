@@ -65,14 +65,13 @@ class WorkforceApiClient(
             ?: throw WorkforceApiException("The Workforce tenant identity was missing.", recoverable = true)
         val principal = data.optJSONObject("principal")
             ?: throw WorkforceApiException("The Workforce employee identity was missing.", recoverable = true)
-        val release = workforce.optJSONObject("release")
+        val release = workforce.optJSONObject("release").toWorkforceMobileRelease()
         WorkforceBootstrap(
             organizationId = tenant.requiredString("id", "The Workforce tenant identity was missing."),
             agentId = principal.requiredString("id", "The Workforce employee identity was missing."),
             employeeName = principal?.optString("name")?.takeIf { it.isNotBlank() } ?: "Employee",
             timezone = data.optString("timezone", "UTC"),
-            releaseStatus = release?.optString("status")?.takeIf { it.isNotBlank() } ?: "NOT_CONFIGURED",
-            updateUrl = release?.optString("updateUrl")?.takeIf { it.isNotBlank() },
+            release = release,
             attendance = workforce.optJSONObject("attendance")?.toAttendanceRequirements()
                 ?: WorkforceAttendanceRequirements.unconfigured(),
         )
@@ -775,10 +774,74 @@ data class WorkforceBootstrap(
     val agentId: String,
     val employeeName: String,
     val timezone: String,
-    val releaseStatus: String,
-    val updateUrl: String?,
+    val release: WorkforceMobileRelease,
     val attendance: WorkforceAttendanceRequirements,
 )
+
+/**
+ * Parsed bootstrap release decision. The server remains authoritative, but a
+ * declared Workforce Android client must fail closed if that decision is
+ * malformed or calls for an update. Read-only server state remains available
+ * so an employee can understand what happened and use the approved channel.
+ */
+data class WorkforceMobileRelease(
+    val status: WorkforceMobileReleaseStatus,
+    val blockWorkforceMutations: Boolean,
+    val minimumVersion: String?,
+    val latestVersion: String?,
+    val updateUrl: String?,
+) {
+    val mutationsBlocked: Boolean
+        get() = blockWorkforceMutations || status.blocksMutations
+
+    companion object {
+        fun notConfigured() = WorkforceMobileRelease(
+            status = WorkforceMobileReleaseStatus.NOT_CONFIGURED,
+            blockWorkforceMutations = false,
+            minimumVersion = null,
+            latestVersion = null,
+            updateUrl = null,
+        )
+    }
+}
+
+enum class WorkforceMobileReleaseStatus(val blocksMutations: Boolean) {
+    NOT_CONFIGURED(false),
+    SUPPORTED(false),
+    UPDATE_REQUIRED(true),
+    INVALID_VERSION(true),
+    UNSUPPORTED_PLATFORM(true),
+    UNKNOWN(true);
+
+    companion object {
+        fun fromWire(value: String?): WorkforceMobileReleaseStatus = when (value) {
+            "NOT_CONFIGURED" -> NOT_CONFIGURED
+            "SUPPORTED" -> SUPPORTED
+            "UPDATE_REQUIRED" -> UPDATE_REQUIRED
+            "INVALID_VERSION" -> INVALID_VERSION
+            "UNSUPPORTED_PLATFORM" -> UNSUPPORTED_PLATFORM
+            else -> UNKNOWN
+        }
+    }
+}
+
+private fun JSONObject?.toWorkforceMobileRelease(): WorkforceMobileRelease {
+    if (this == null) return WorkforceMobileRelease.notConfigured()
+    val url = optString("updateUrl").takeIf { it.isNotBlank() }
+        ?.takeIf { candidate ->
+            runCatching {
+                val parsed = URI(candidate)
+                parsed.scheme == "https" && !parsed.host.isNullOrBlank()
+            }.getOrDefault(false)
+        }
+    return WorkforceMobileRelease(
+        status = WorkforceMobileReleaseStatus.fromWire(optString("status").takeIf { it.isNotBlank() }),
+        blockWorkforceMutations = optBoolean("blockWorkforceMutations", false),
+        minimumVersion = optString("minimumVersion").takeIf { it.isNotBlank() },
+        latestVersion = optString("latestVersion").takeIf { it.isNotBlank() },
+        updateUrl = url,
+    )
+}
 
 data class WorkforceDeviceEnrollmentStart(
     val enrollmentId: String,

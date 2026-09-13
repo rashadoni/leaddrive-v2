@@ -68,6 +68,21 @@ location/background-tracking service.
   It does not collect model, serial, Android ID, IMEI, token, QR, GPS, employee
   reason or payload. A crash SDK, external telemetry collector and dashboard
   remain unselected and are not present in this source foundation.
+- The server's Workforce-only managed-Play floor is parsed client-side as a
+  typed, fail-closed decision. A required, invalid, unsupported or unknown
+  release state leaves server reads available but disables new work-time,
+  request and device-enrollment mutations; the server remains the enforcement
+  authority.
+- Before an outbox drain, the worker re-reads the release state. A mandatory
+  update keeps encrypted pending rows intact without consuming their retry
+  count; a supported sign-in/restore, including an in-place update, schedules
+  the same rows for bounded oldest-first drain. There is no local payload
+  migration, proof recreation or accepted-fact fallback.
+- Before a planned uninstall, use Recovery first: sign-out/uninstall removes
+  this phone's encrypted session, private key and pending local outbox, which
+  cannot be restored. For a lost or replaced phone, contact an authorized
+  administrator to revoke/replace its enrollment; removing the app does not
+  revoke a server enrollment.
 
 The project intentionally does **not** claim Android Gradle/build evidence,
 physical Today/offline/QR/biometric tests, hardware-attestation-server

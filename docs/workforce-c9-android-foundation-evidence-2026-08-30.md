@@ -2,7 +2,7 @@
 
 > **Status:** safe partial source foundation for `WF-C9-001`, `WF-C9-002`,
 > `WF-C9-003`, `WF-C9-004`, `WF-C9-005`, `WF-C9-006`, `WF-C9-008`,
-> `WF-C9-011`, `WF-C9-012`, `WF-C9-013` and `WF-C5-003`. It is not an Android build, signed app, device-attestation
+> `WF-C9-011`, `WF-C9-012`, `WF-C9-013`, `WF-C9-014` and `WF-C5-003`. It is not an Android build, signed app, device-attestation
 > acceptance, Play upload or location-collection activation.
 > **Recorded:** 2026-08-30
 
@@ -155,6 +155,34 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   privacy/security approval and real operational ownership; therefore this
   task remains partial.
 
+## Managed-Play update and outbox preservation (`WF-C9-014`, partial)
+
+- The server's existing Workforce-only release state is now parsed as a typed
+  client decision. `UPDATE_REQUIRED`, invalid/unsupported or unrecognised
+  states are fail-closed for new work-time, HR-request and device-enrollment
+  mutations; server state remains readable. The legacy Route &amp; Field client is
+  not changed by this standalone-client gate.
+- The current source matrix is intentionally narrow: `NOT_CONFIGURED` and
+  `SUPPORTED` permit normal mutations; `UPDATE_REQUIRED`, `INVALID_VERSION`,
+  `UNSUPPORTED_PLATFORM` and malformed/unknown statuses require an approved
+  update. The update URL is shown only after local HTTPS validation; it is not
+  a redirect or a source of authority.
+- An outbox worker bootstraps before it drains. For a required update it retains
+  the existing encrypted Room rows, records a privacy-safe update-required
+  recovery state and does not consume an operation retry. After a supported
+  sign-in or restore (including an in-place update), it schedules the same
+  schema-v1 rows for normal oldest-first drain. It never decrypts them merely
+  to migrate, recreates an attendance proof or makes an accepted local fact.
+- Device guidance is visible in EN/AZ/RU: a planned removal requires Recovery
+  review first because sign-out/uninstall removes this phone's encrypted local
+  session, private key and pending outbox; a lost/replaced device needs prompt
+  administrator revocation or replacement. Removing the app cannot revoke the
+  server enrollment.
+- No managed-Play package/track, signing setup, supported Android device/OS
+  matrix, production policy variables, update exercise, rollback drill or
+  uninstall/lost-device physical test has been claimed. Those need a real
+  release owner and device matrix before this task can become complete.
+
 ## Source-level checks
 
 - `PASS` — `workforce-android-foundation.test.ts` fixes the module boundary,
@@ -174,6 +202,10 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   Android-foundation tests cover the bounded header grammar, legacy-call
   compatibility and absence of raw diagnostic collection (154 tests total in
   this checkpoint); scoped ESLint and `git diff --check` also pass.
+- `PASS` — `workforce-android-foundation.test.ts` asserts the typed
+  fail-closed release state, client mutation guards, deferred update outbox
+  path, supported-resume scheduling and the EN/AZ/RU loss/uninstall guidance
+  source contract.
 - `NOT RUN` — Android Gradle lint/unit tests, build, emulator/device tests,
   camera/location/QR checks, notification permission/channel/delivery failure,
   TalkBack, AZ/RU/EN linguistic review, 200% font, contrast, reduced-motion

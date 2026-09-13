@@ -183,10 +183,11 @@ private fun WorkforceRoot(
 
     fun submitTodayAction(action: WorkforceWorkdayAction, qrToken: String? = null) {
         val snapshot = today ?: return
+        val currentBootstrap = bootstrap ?: return
         busyAction = action
         status = null
         scope.launch {
-            runCatching { repository.submitTodayAction(snapshot, action, qrToken) }
+            runCatching { repository.submitTodayAction(currentBootstrap, snapshot, action, qrToken) }
                 .onSuccess(::applyTodaySubmission)
                 .onFailure { status = it.employeeMessage() }
             busyAction = null
@@ -205,7 +206,7 @@ private fun WorkforceRoot(
                     prepared.signature,
                     "Confirm ${action.label.lowercase()} for this exact Workforce action",
                 )
-                repository.submitPreparedDeviceTodayAction(prepared, signature)
+                repository.submitPreparedDeviceTodayAction(currentBootstrap, prepared, signature)
             }.onSuccess(::applyTodaySubmission)
                 .onFailure { status = it.employeeMessage() }
             busyAction = null
@@ -326,7 +327,7 @@ private fun WorkforceRoot(
             onSubmitRequest = { draft ->
                 status = "Submitting request…"
                 scope.launch {
-                    runCatching { repository.submitHrmRequest(draft) }
+                    runCatching { repository.submitHrmRequest(bootstrap!!, draft) }
                         .onSuccess { submission ->
                             history = null
                             recoveryItems = null
@@ -341,7 +342,7 @@ private fun WorkforceRoot(
             onCancelRequest = { requestId ->
                 status = "Cancelling request…"
                 scope.launch {
-                    runCatching { repository.cancelHrmRequest(requestId) }
+                    runCatching { repository.cancelHrmRequest(bootstrap!!, requestId) }
                         .onSuccess { submission ->
                             history = null
                             status = when (submission) {
@@ -353,8 +354,11 @@ private fun WorkforceRoot(
                 }
             },
             onAction = { action ->
-                val attendance = bootstrap!!.attendance
-                if (attendance.requiresQr(action)) {
+                val currentBootstrap = bootstrap!!
+                val attendance = currentBootstrap.attendance
+                if (currentBootstrap.release.mutationsBlocked) {
+                    status = context.getString(R.string.update_required_before_changes)
+                } else if (attendance.requiresQr(action)) {
                     qrScanner.scan(
                         onToken = { token ->
                             if (attendance.requiresDeviceProof(action)) {
@@ -516,6 +520,7 @@ private fun WorkforceHome(
                     WorkforceTodayCard(
                         snapshot = today,
                         attendance = bootstrap.attendance,
+                        mutationsBlocked = bootstrap.release.mutationsBlocked,
                         busyAction = busyAction,
                         onAction = onAction,
                     )
@@ -536,6 +541,7 @@ private fun WorkforceHome(
             WorkforceSection.REQUESTS -> WorkforceRequests(
                 history = history,
                 defaultDate = today?.date.orEmpty(),
+                mutationsBlocked = bootstrap.release.mutationsBlocked,
                 onLoad = onLoadHistory,
                 onSubmit = onSubmitRequest,
                 onCancel = onCancelRequest,
@@ -547,12 +553,31 @@ private fun WorkforceHome(
             )
             WorkforceSection.DEVICE -> WorkforceDeviceTrust(
                 state = deviceTrust,
+                mutationsBlocked = bootstrap.release.mutationsBlocked,
                 onLoad = onLoadDeviceTrust,
                 onEnroll = onBeginDeviceEnrollment,
             )
         }
-        if (bootstrap.updateUrl != null) {
-            Text("An approved update is available through your organization’s managed Play channel.")
+        if (bootstrap.release.updateUrl != null) {
+            Text(
+                stringResource(
+                    if (bootstrap.release.mutationsBlocked) {
+                        R.string.update_required_before_changes
+                    } else {
+                        R.string.update_available
+                    },
+                ),
+            )
+        }
+        if (bootstrap.release.mutationsBlocked) {
+            Text(
+                stringResource(
+                    R.string.update_release_window,
+                    bootstrap.release.minimumVersion ?: stringResource(R.string.not_loaded),
+                    bootstrap.release.latestVersion ?: stringResource(R.string.not_loaded),
+                ),
+                color = MaterialTheme.colorScheme.error,
+            )
         }
         status?.let {
             Text(
@@ -658,6 +683,7 @@ private fun WorkforceRecovery(
 @Composable
 private fun WorkforceDeviceTrust(
     state: WorkforceDeviceTrustState?,
+    mutationsBlocked: Boolean,
     onLoad: () -> Unit,
     onEnroll: (String) -> Unit,
 ) {
@@ -685,6 +711,7 @@ private fun WorkforceDeviceTrust(
                 )
                 Button(
                     modifier = Modifier.fillMaxWidth(),
+                    enabled = !mutationsBlocked,
                     onClick = { onEnroll(label) },
                 ) {
                     Text(
@@ -697,7 +724,8 @@ private fun WorkforceDeviceTrust(
                 }
             }
         }
-        Text("If this device is lost or replaced, ask an authorized administrator to revoke or replace its enrollment. Signing out removes this phone’s private key and local binding; it does not approve or revoke a server enrollment.")
+        Text(stringResource(R.string.device_lost_guidance))
+        Text(stringResource(R.string.device_uninstall_guidance))
     }
 }
 
@@ -705,6 +733,7 @@ private fun WorkforceDeviceTrust(
 private fun WorkforceRequests(
     history: WorkforceHistorySnapshot?,
     defaultDate: String,
+    mutationsBlocked: Boolean,
     onLoad: () -> Unit,
     onSubmit: (WorkforceHrmRequestDraft) -> Unit,
     onCancel: (String) -> Unit,
@@ -727,6 +756,7 @@ private fun WorkforceRequests(
         item {
             Text("Requests", style = MaterialTheme.typography.titleLarge)
             Text("Leave, absence and correction requests are employee claims for review, not approved time or payroll.")
+            if (mutationsBlocked) Text(stringResource(R.string.update_required_before_changes))
         }
         item {
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -818,6 +848,7 @@ private fun WorkforceRequests(
         item {
             Button(
                 modifier = Modifier.fillMaxWidth(),
+                enabled = !mutationsBlocked,
                 onClick = {
                     onSubmit(
                         WorkforceHrmRequestDraft(
@@ -847,7 +878,10 @@ private fun WorkforceRequests(
                     Text("${request.startDate} – ${request.endDate}")
                     request.decisionNote?.let { Text("Reviewer note: $it") }
                     if (request.status == "PENDING") {
-                        TextButton(onClick = { onCancel(request.id) }) { Text("Cancel pending request") }
+                        TextButton(
+                            enabled = !mutationsBlocked,
+                            onClick = { onCancel(request.id) },
+                        ) { Text("Cancel pending request") }
                     }
                 }
             }
@@ -892,6 +926,7 @@ private fun WorkforceHistory(
 private fun WorkforceTodayCard(
     snapshot: WorkforceTodaySnapshot,
     attendance: com.leaddrive.workforce.android.data.WorkforceAttendanceRequirements,
+    mutationsBlocked: Boolean,
     busyAction: WorkforceWorkdayAction?,
     onAction: (WorkforceWorkdayAction) -> Unit,
 ) {
@@ -923,11 +958,12 @@ private fun WorkforceTodayCard(
         } else if (allowed.isEmpty()) {
             Text("No work-time action is available for this server state.")
         } else {
+            if (mutationsBlocked) Text(stringResource(R.string.update_required_before_changes))
             allowed.forEach { action ->
                 val actionLabel = action.localizedLabel()
                 Button(
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = busyAction == null,
+                    enabled = busyAction == null && !mutationsBlocked,
                     onClick = { onAction(action) },
                 ) {
                     val label = when {

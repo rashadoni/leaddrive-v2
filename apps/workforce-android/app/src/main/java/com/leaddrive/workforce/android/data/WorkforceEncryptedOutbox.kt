@@ -90,6 +90,23 @@ class WorkforceEncryptedOutbox(context: Context) {
         }
     }
 
+    /**
+     * A mandatory managed-Play update is not a conflict and must not destroy
+     * the encrypted operations. Keep them pending without consuming the
+     * bounded operation retry count; a supported app resume schedules the
+     * same durable rows for normal oldest-first drain.
+     */
+    suspend fun deferForMandatoryUpdate() = withContext(Dispatchers.IO) {
+        database.operations().deferPendingForMandatoryUpdate(
+            nextAttemptAtEpochMs = System.currentTimeMillis() + UPDATE_RECHECK_DELAY_MS,
+        )
+    }
+
+    /** Called after a supported bootstrap, including an in-place app update. */
+    fun resumeDrain() {
+        WorkforceOutboxScheduler.schedule(applicationContext)
+    }
+
     /** Metadata-only recovery view. It never decrypts or exposes an employee
      * reason, QR token, location, device proof, tenant slug or operation ID. */
     suspend fun recoveryItems(): List<WorkforceOutboxRecoveryItem> = withContext(Dispatchers.IO) {
@@ -232,6 +249,7 @@ class WorkforceEncryptedOutbox(context: Context) {
         WorkforceOutboxState.EXPIRED.name ->
             "The seven-day offline limit passed. Request a correction instead of retrying."
         else -> when (code) {
+            "WORKFORCE_MOBILE_UPDATE_REQUIRED" -> "Install the approved Workforce update before this protected pending action can be sent. Do not uninstall or recreate it."
             "OUTBOX_DECRYPTION_FAILED" -> "This protected local item cannot be recovered. Refresh server state and request correction if needed."
             else -> "This action needs review. Do not rescan QR or repeat device proof until server state is refreshed."
         }
@@ -244,6 +262,7 @@ class WorkforceEncryptedOutbox(context: Context) {
         const val MAX_ATTEMPTS = 8
         const val INITIAL_RETRY_MS = 30_000L
         const val MAX_RETRY_MS = 6 * 60 * 60 * 1_000L
+        const val UPDATE_RECHECK_DELAY_MS = 6 * 60 * 60 * 1_000L
     }
 }
 
@@ -319,6 +338,9 @@ interface WorkforceOutboxDao {
 
     @Query("UPDATE workforce_outbox_operations SET attemptCount = :attemptCount, nextAttemptAtEpochMs = :nextAttemptAtEpochMs, state = 'RETRY', detailCode = :detailCode WHERE operationId = :operationId")
     suspend fun retry(operationId: String, attemptCount: Int, nextAttemptAtEpochMs: Long, detailCode: String)
+
+    @Query("UPDATE workforce_outbox_operations SET nextAttemptAtEpochMs = :nextAttemptAtEpochMs, state = 'RETRY', detailCode = 'WORKFORCE_MOBILE_UPDATE_REQUIRED' WHERE state IN ('QUEUED', 'RETRY')")
+    suspend fun deferPendingForMandatoryUpdate(nextAttemptAtEpochMs: Long)
 
     @Query("UPDATE workforce_outbox_operations SET state = :state, detailCode = :detailCode WHERE operationId = :operationId")
     suspend fun markTerminal(operationId: String, state: String, detailCode: String)
@@ -426,10 +448,25 @@ class WorkforceOutboxDrainWorker(
         val secureStore = WorkforceSecureStore(applicationContext)
         val session = secureStore.readSession() ?: return Result.success()
         val outbox = WorkforceEncryptedOutbox(applicationContext)
+        val api = WorkforceApiClient(WorkforceRuntimeConfiguration.fromBuildConfig(applicationContext))
+        val bootstrap = try {
+            api.bootstrap(session, secureStore.installationId())
+        } catch (error: WorkforceApiException) {
+            // Authentication and configuration recovery belong to the visible
+            // app. A background worker must not infer a release decision from
+            // an incomplete bootstrap response.
+            return if (error.recoverable) Result.retry() else Result.success()
+        } catch (_: IOException) {
+            return Result.retry()
+        }
+        if (bootstrap.release.mutationsBlocked) {
+            outbox.deferForMandatoryUpdate()
+            return Result.success()
+        }
         val result = outbox.drain(
             session = session,
             deviceId = secureStore.installationId(),
-            api = WorkforceApiClient(WorkforceRuntimeConfiguration.fromBuildConfig()),
+            api = api,
         )
         return if (result.retryNeeded) Result.retry() else Result.success()
     }
