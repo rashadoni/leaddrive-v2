@@ -1,6 +1,6 @@
 # Workforce C7 — periodic access-review foundation
 
-**Task:** `WF-C7-010` partial internal slice  
+**Task:** `WF-C7-010` partial internal slice
 **Recorded:** 2026-09-13
 
 ## Delivered boundary
