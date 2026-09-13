@@ -393,6 +393,28 @@ class DecisionTests(unittest.TestCase):
             )
         self.assertEqual(raised.exception.code, "pgpass-path")
 
+    def test_pgpass_classifies_missing_file_without_exposing_path(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            missing_path = Path(directory) / "missing"
+            config = {
+                "PGPASSFILE": str(missing_path),
+                "PGDATABASE": "database_name",
+                "PGUSER": "backup_user",
+            }
+            with (
+                mock.patch.object(MAINTENANCE, "PGPASS_PATH", missing_path),
+                mock.patch.object(
+                    MAINTENANCE,
+                    "_read_regular_file",
+                    side_effect=MAINTENANCE.SafeMaintenanceError(),
+                ),
+            ):
+                with self.assertRaises(MAINTENANCE.SafeMaintenanceError) as raised:
+                    MAINTENANCE._require_pgpass_match(
+                        config, "production.example.internal", 5432
+                    )
+        self.assertEqual(raised.exception.code, "pgpass-missing")
+
 
 class OutputTests(unittest.TestCase):
     @mock.patch.object(MAINTENANCE, "apply", return_value="applied")

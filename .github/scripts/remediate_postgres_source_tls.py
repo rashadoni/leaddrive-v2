@@ -105,6 +105,12 @@ class SafeMaintenanceError(Exception):
             "pgpass",
             "pgpass-path",
             "pgpass-read",
+            "pgpass-missing",
+            "pgpass-file",
+            "pgpass-links",
+            "pgpass-owner",
+            "pgpass-writable",
+            "pgpass-size",
             "pgpass-authority",
             "pgpass-encoding",
             "pgpass-format",
@@ -537,6 +543,22 @@ def _require_pgpass_match(config: dict[str, str], server_name: str, port: int) -
             PGPASS_PATH, maximum_bytes=MAX_ENV_BYTES, required=True
         )
     except SafeMaintenanceError as exc:
+        try:
+            metadata = PGPASS_PATH.lstat()
+        except FileNotFoundError:
+            raise SafeMaintenanceError("pgpass-missing") from exc
+        except OSError:
+            raise SafeMaintenanceError("pgpass-file") from exc
+        if metadata.st_nlink != 1:
+            raise SafeMaintenanceError("pgpass-links") from exc
+        if not stat.S_ISREG(metadata.st_mode) or stat.S_ISLNK(metadata.st_mode):
+            raise SafeMaintenanceError("pgpass-file") from exc
+        if metadata.st_uid != 0:
+            raise SafeMaintenanceError("pgpass-owner") from exc
+        if stat.S_IMODE(metadata.st_mode) & 0o022:
+            raise SafeMaintenanceError("pgpass-writable") from exc
+        if metadata.st_size > MAX_ENV_BYTES:
+            raise SafeMaintenanceError("pgpass-size") from exc
         raise SafeMaintenanceError("pgpass-read") from exc
     if payload is None or authority is None:
         raise SafeMaintenanceError("pgpass-read")
