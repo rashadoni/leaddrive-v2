@@ -8,6 +8,7 @@ export function logWorkforceSensitiveOperationFailure(input: {
     | "review-exception-response-write"
     | "review-workday-correction"
     | "review-timesheet-approval-export"
+    | "preview-timesheet-approval-export"
     | "retention-raw-location-dry-run"
     | "verify-attendance-mfa"
 }): void {
