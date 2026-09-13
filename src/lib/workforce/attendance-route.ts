@@ -4,6 +4,8 @@ import type { AuthResult } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
 import { clientIp } from "@/lib/request-ip"
 import { resolveTwoFactorMethod } from "@/lib/two-factor-policy"
+import { decidePersistedWorkforceAccess } from "@/lib/workforce/access-grant-resolution"
+import { workforceGranularAccessEnabled } from "@/lib/workforce/granular-access-rollout"
 import {
   workforceAttendanceCapabilitiesFromTenant,
   type WorkforceAttendanceCapabilities,
@@ -13,6 +15,11 @@ import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive
 import { workforceSensitiveResponseHeaders } from "@/lib/workforce/sensitive-response"
 
 export type WorkforceAttendanceAddon = "qr" | "deviceTrust"
+
+export type WorkforceAttendanceAdministrationCapabilities = WorkforceAttendanceCapabilities & {
+  canManageQr: boolean
+  canManageDeviceTrust: boolean
+}
 
 /**
  * Captures only bounded, server-derived request metadata for the immutable
@@ -41,6 +48,13 @@ export function workforceAttendanceAdminDenied(): NextResponse {
     error: "Workforce attendance administration requires a tenant administrator",
     code: "WORKFORCE_ATTENDANCE_ADMIN_REQUIRED",
   }, { status: 403 })
+}
+
+function workforceAttendanceGranularAccessDenied(): NextResponse {
+  return NextResponse.json({
+    error: "This Workforce attendance action requires an effective device-security grant.",
+    code: "WORKFORCE_ATTENDANCE_GRANULAR_ACCESS_REQUIRED",
+  }, { status: 403, headers: workforceSensitiveResponseHeaders })
 }
 
 export function workforceAttendanceAddonDisabled(addon: WorkforceAttendanceAddon): NextResponse {
@@ -112,29 +126,83 @@ export async function workforceAttendanceCapabilitiesForOrganization(
     : { qrEnabled: false, deviceTrustEnabled: false }
 }
 
+/**
+ * Resolve tenant-wide QR and trusted-device administration independently from
+ * broad CRM roles after the explicit granular-access cutover. A site grant is
+ * not inflated into whole-tenant inventory access.
+ */
+export async function resolveWorkforceAttendanceAdministrationCapabilities(
+  organizationId: string,
+  auth: Pick<AuthResult, "role" | "principalType" | "userId">,
+): Promise<WorkforceAttendanceAdministrationCapabilities> {
+  const capabilities = await workforceAttendanceCapabilitiesForOrganization(organizationId)
+  if (auth.principalType !== "session") {
+    return { ...capabilities, canManageQr: false, canManageDeviceTrust: false }
+  }
+
+  const organization = await prisma.organization.findUnique({
+    where: { id: organizationId },
+    select: { features: true },
+  })
+  if (!organization) return { ...capabilities, canManageQr: false, canManageDeviceTrust: false }
+
+  if (!workforceGranularAccessEnabled(organization.features)) {
+    const legacyAdmin = isWorkforceAttendanceAdministrator(auth.role)
+    return {
+      ...capabilities,
+      canManageQr: capabilities.qrEnabled && legacyAdmin,
+      canManageDeviceTrust: capabilities.deviceTrustEnabled && legacyAdmin,
+    }
+  }
+
+  const qrAccess = capabilities.qrEnabled
+    ? await decidePersistedWorkforceAccess({
+        db: prisma,
+        organizationId,
+        principalUserId: auth.userId,
+        selfAgentId: null,
+        permission: "QR_STATION_MANAGE",
+        resource: { organizationId },
+      })
+    : { allowed: false as const }
+  const deviceAccess = capabilities.deviceTrustEnabled
+    ? await decidePersistedWorkforceAccess({
+        db: prisma,
+        organizationId,
+        principalUserId: auth.userId,
+        selfAgentId: null,
+        permission: "DEVICE_LIFECYCLE_MANAGE",
+        resource: { organizationId },
+      })
+    : { allowed: false as const }
+  return {
+    ...capabilities,
+    canManageQr: qrAccess.allowed,
+    canManageDeviceTrust: deviceAccess.allowed,
+  }
+}
+
 /** Fail closed before any H5 management data is read or changed. */
 export async function requireWorkforceAttendanceAdminAddon(
   organizationId: string,
-  auth: Pick<AuthResult, "role" | "principalType">,
+  auth: Pick<AuthResult, "role" | "principalType" | "userId">,
   addon: WorkforceAttendanceAddon,
 ): Promise<Response | null> {
   // A key's creator is an audit field, not an impersonation grant. QR station
   // lifecycle and trusted-device approval/revocation change an attendance
   // security factor, so they must be performed by an accountable live admin
   // session. Fail closed when a narrow legacy fixture lacks principalType.
-  if (
-    auth.principalType !== "session"
-    || !isWorkforceAttendanceAdministrator(auth.role)
-  ) return workforceAttendanceAdminDenied()
   try {
-    const capabilities = await workforceAttendanceCapabilitiesForOrganization(organizationId)
+    const capabilities = await resolveWorkforceAttendanceAdministrationCapabilities(organizationId, auth)
     const enabled = addon === "qr" ? capabilities.qrEnabled : capabilities.deviceTrustEnabled
-    return enabled ? null : workforceAttendanceAddonDisabled(addon)
-  } catch (error) {
-    console.error("[workforce/attendance] entitlement lookup failed", error)
+    if (!enabled) return workforceAttendanceAddonDisabled(addon)
+    if (addon === "qr") return capabilities.canManageQr ? null : workforceAttendanceAdminDenied()
+    return capabilities.canManageDeviceTrust ? null : workforceAttendanceGranularAccessDenied()
+  } catch {
+    logWorkforceSensitiveOperationFailure({ operation: "verify-attendance-administration" })
     return NextResponse.json({
       error: "Unable to verify Workforce attendance entitlement.",
       code: "WORKFORCE_ATTENDANCE_CAPABILITY_UNAVAILABLE",
-    }, { status: 503 })
+    }, { status: 503, headers: workforceSensitiveResponseHeaders })
   }
 }
