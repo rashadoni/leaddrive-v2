@@ -1,7 +1,8 @@
 # Workforce C11 site-transition report foundation evidence
 
-**Status:** WF-C11-007 partial — safe aggregation is implemented; no endpoint
-or user-visible site-transition report is claimed by this checkpoint.
+**Status:** WF-C11-007 partial — safe aggregation and a fail-closed access
+contract are implemented; no endpoint or user-visible site-transition report
+is claimed by this checkpoint.
 **Last verified:** 2026-09-13
 
 ## Delivered projection
@@ -21,13 +22,21 @@ workday, segment and site fail closed instead of inflating a count.
 - Raw coordinates, QR/device proof, distances, evidence verdicts and employee
   reasons are neither inputs nor outputs.
 - The projection is not a payroll or disciplinary input.
-- Names, authorization, historical scope, tenant timezone, rate limits, audit
-  and private response headers remain mandatory work for the future API/UI.
+- Before granular cutover, the access contract preserves the established
+  session-administrator boundary. After cutover, a selected employee or site
+  requires an exact matching durable attendance-read grant; an unfiltered
+  aggregate requires organization scope. A current team grant is never widened
+  into a historical report because claims do not snapshot team membership.
+- Names, tenant-timezone date reads, rate limits, audit and response shaping
+  remain mandatory work for the future API/UI.
 
 ## Verification
 
 - **PASS:** targeted Vitest, 1 file and 4 tests: reconciliation, incomplete
   segments, privacy boundaries, malformed/duplicate/oversized fail-closed.
+- **PASS:** targeted access-contract Vitest, 1 file and 5 tests: legacy
+  compatibility, exact site grant, no team-to-history widening, ambiguous-scope
+  rejection and fail-closed fixed-label logging.
 - **PASS:** targeted ESLint.
 - **PASS:** `git diff --check`.
 - **NOT RUN:** TypeScript full check, browser E2E, database integration, staging
