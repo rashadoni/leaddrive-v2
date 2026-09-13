@@ -138,6 +138,11 @@ describe("Workforce scheduled no-show review", () => {
       idempotentCases: 0,
       morePending: true,
     });
+    expect(tx.systemJobCursor.upsert).toHaveBeenCalledWith({
+      where: { name: WORKFORCE_NO_SHOW_REVIEW_SCHEDULER_JOB_NAME },
+      create: { name: WORKFORCE_NO_SHOW_REVIEW_SCHEDULER_JOB_NAME, cursor: null },
+      update: {},
+    });
     expect(readWorkforceNoShowCandidateBatch).toHaveBeenCalledWith(tx, {
       organizationId: "org-workforce",
       workDate: "2026-08-31",
@@ -295,6 +300,24 @@ describe("Workforce scheduled no-show review", () => {
         now: NOW,
       }),
     ).rejects.toThrow("WORKFORCE_NO_SHOW_REVIEW_CURSOR_INVALID");
+    expect(tx.organization.findFirst).not.toHaveBeenCalled();
+    expect(readWorkforceNoShowCandidateBatch).not.toHaveBeenCalled();
+  });
+
+  it("returns a bounded busy result when another transaction holds the cursor row", async () => {
+    const { db, tx } = schedulerDb({ cursorRows: [] });
+
+    await expect(
+      runScheduledWorkforceNoShowReview({
+        db: db as never,
+        leaseStore: leaseStore(),
+        now: NOW,
+      }),
+    ).resolves.toMatchObject({
+      cursorBusy: true,
+      candidatesEvaluated: 0,
+      reviewCasesRecorded: 0,
+    });
     expect(tx.organization.findFirst).not.toHaveBeenCalled();
     expect(readWorkforceNoShowCandidateBatch).not.toHaveBeenCalled();
   });

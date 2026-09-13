@@ -59,7 +59,9 @@ physical/mobile evidence and pilot observation.
 PASS  npx vitest run
       workforce-no-show-review-scheduler,
       api-cron-workforce-no-show-review
-      (2 files, 8 tests)
+      plus candidate, candidate-batch, case-materializer and immutable-writer
+      contracts (6 files, 29 tests)
+PASS  scoped ESLint and git diff checks
 PENDING exact-SHA required PR checks
 
 NOT RUN  full typecheck/build/browser E2E/Android/load; disposable-DB
