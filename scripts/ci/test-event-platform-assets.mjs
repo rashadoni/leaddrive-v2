@@ -245,6 +245,8 @@ const productionSshAction = await readText(".github/actions/setup-production-ssh
 const productionEnvironmentGuard = await readText(".github/actions/assert-production-environment-protection/action.yml")
 const productionInspection = await readText(".github/workflows/tail-app-logs.yml")
 const backupCommissionWorkflow = await readText(".github/workflows/commission-production-backup.yml")
+const scratchProvisionWorkflow = await readText(".github/workflows/provision-postgres-restore-scratch.yml")
+const scratchProvision = await readText(".github/scripts/provision_postgres_restore_scratch.py")
 const backupReadiness = await readText("scripts/backup/report-production-readiness.sh")
 const backupCommission = await readText("scripts/backup/commission-production-backup.sh")
 const offlineCustodyVerifier = await readText("scripts/backup/verify-age-key-custody.sh")
@@ -435,6 +437,11 @@ assert.ok(
   prTrigger.length > 0 && !/^\s+paths(-ignore)?:/mu.test(prTrigger),
   "pr-checks must start on every pull request: its jobs are required, and a check that never starts leaves a PR unmergeable for ever",
 )
+assert.ok(
+  prChecksWorkflow.includes("python3 .github/scripts/test_remediate_postgres_source_tls.py")
+    && prChecksWorkflow.includes("python3 .github/scripts/test_provision_postgres_restore_scratch.py"),
+  "required PR checks must execute both PostgreSQL maintenance safety suites",
+)
 // The heavy jobs may be skipped for documentation-only PRs, but only through
 // pr-scope — and pr-scope must itself be required, because a failed detector
 // skips its dependants and GitHub counts a skip as a pass.
@@ -551,6 +558,58 @@ assert.equal(
   false,
   "production backup commissioning must never run implicitly on push",
 )
+for (const requiredScratchGuard of [
+  "workflow_dispatch:",
+  "environment: production",
+  "group: production-deploy",
+  "cancel-in-progress: false",
+  "./.github/actions/assert-production-environment-protection",
+  "./.github/actions/setup-production-ssh",
+  "PROVISION_ISOLATED_POSTGRES_RESTORE_SCRATCH_ON_13_140_132_245",
+  "ROLLBACK_ISOLATED_POSTGRES_RESTORE_SCRATCH_ON_13_140_132_245",
+  "git fetch --no-tags --depth=1 origin refs/heads/main",
+  '[ "$GITHUB_SHA" = "$CURRENT_MAIN_SHA" ]',
+  "scratch_postgres_maintenance",
+]) {
+  assert.ok(
+    scratchProvisionWorkflow.includes(requiredScratchGuard),
+    `scratch PostgreSQL workflow guard is missing: ${requiredScratchGuard}`,
+  )
+}
+assert.ok(
+  scratchProvisionWorkflow.indexOf("assert-production-environment-protection")
+      < scratchProvisionWorkflow.indexOf("setup-production-ssh")
+    && !/^ {2}push:/mu.test(scratchProvisionWorkflow),
+  "scratch PostgreSQL maintenance must be dispatch-only and validate production admission before SSH",
+)
+for (const requiredScratchContract of [
+  'SCRATCH_HOST = "127.0.0.1"',
+  "SCRATCH_PORT = 55432",
+  '"--start-conf=manual"',
+  "LOGIN NOSUPERUSER NOINHERIT CREATEDB",
+  "NOCREATEROLE NOREPLICATION NOBYPASSRLS",
+  "host all all 0.0.0.0/0 reject",
+  "restore-postgres-ca.crt",
+  "source_restart=no backup_run=no restore_run=no kafka_change=no",
+]) {
+  assert.ok(
+    scratchProvision.includes(requiredScratchContract),
+    `scratch PostgreSQL safety contract is missing: ${requiredScratchContract}`,
+  )
+}
+for (const forbiddenScratchAction of [
+  "apt-get",
+  "docker run",
+  "kafka-consumer-groups",
+  "systemctl restart postgresql",
+  "listen_addresses = '*'",
+]) {
+  assert.equal(
+    scratchProvision.includes(forbiddenScratchAction),
+    false,
+    `scratch PostgreSQL maintenance contains a forbidden action: ${forbiddenScratchAction}`,
+  )
+}
 for (const forbiddenReadinessPattern of [
   'source "$BACKUP_ENV_FILE"',
   '. "$BACKUP_ENV_FILE"',

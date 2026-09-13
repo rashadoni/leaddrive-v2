@@ -230,6 +230,7 @@ export interface MtmPrismaMock {
   workforceExceptionCase: ModelMock
   workforceExceptionDecision: ModelMock
   workforceAccessGrant: ModelMock
+  workforceAccessGrantRevocation: ModelMock
   workforceAttendanceQrStation: ModelMock
   workforceAttendanceDeviceEnrollment: ModelMock
   workforceAttendanceDeviceEnrollmentChallenge: ModelMock
@@ -401,6 +402,7 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     workforceExceptionCase: makeModel(),
     workforceExceptionDecision: makeModel(),
     workforceAccessGrant: makeModel(),
+    workforceAccessGrantRevocation: makeModel(),
     workforceAttendanceQrStation: makeModel(),
     workforceAttendanceDeviceEnrollment: makeModel(),
     workforceAttendanceDeviceEnrollmentChallenge: makeModel(),

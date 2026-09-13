@@ -3,8 +3,9 @@ import { prisma } from "@/lib/prisma"
 import { addDateKeyDays, currentDateKey, isDateKey } from "@/lib/mtm/mobile-week"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { isValidTimezone } from "@/lib/timezone"
-import { withWorkforceRlsAuth } from "@/lib/with-workforce-rls-auth"
+import { withWorkforceSessionAuth } from "@/lib/with-workforce-rls-auth"
 import { isAgentInWorkforceScope, resolveWorkforceActor } from "@/lib/workforce/actor"
+import { workforceGranularAccessEnabled } from "@/lib/workforce/granular-access-rollout"
 import {
   rehydrateWorkforceTimesheetDay,
   WorkforceTimesheetRehydrationError,
@@ -12,6 +13,7 @@ import {
   type WorkforceShiftSnapshotForCalculation,
   type WorkforceTimesheetWorkday,
 } from "@/lib/workforce/timesheet-rehydration"
+import { requireWorkforceTimesheetReadAccess } from "@/lib/workforce/timesheet-read-access"
 import type {
   WorkforceTimeCorrectionReplayFact,
   WorkforceWorkdayEventFact,
@@ -46,15 +48,19 @@ function recordsByWorkday<T extends { workdayId: string }>(records: readonly T[]
   return result
 }
 
-/** GET /api/v1/workforce/timesheet?start=YYYY-MM-DD&end=YYYY-MM-DD&agentId=… */
-export const GET = withWorkforceRlsAuth("read", async (req: NextRequest, auth) => {
+/**
+ * GET /api/v1/workforce/timesheet?start=YYYY-MM-DD&end=YYYY-MM-DD&agentId=…
+ *
+ * This browser HR view returns named employee workdays and derived time facts.
+ * API-key creator metadata is not a manager/employee delegation, so this path
+ * is deliberately bound to an accountable human session.
+ */
+export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, auth) => {
   const actor = await resolveWorkforceActor(prisma, {
     organizationId: auth.orgId,
     userId: auth.userId,
     webRole: auth.role,
   })
-  if (!actor) return workforceScopeDenied()
-
   try {
     const settings = await getMtmSettings(auth.orgId)
     const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
@@ -69,14 +75,44 @@ export const GET = withWorkforceRlsAuth("read", async (req: NextRequest, auth) =
         code: "WORKFORCE_TIMESHEET_RANGE_INVALID",
       }, { status: 400 })
     }
-    if (requestedAgentId && !isAgentInWorkforceScope(actor, requestedAgentId)) return workforceScopeDenied()
+    // Resolve this feature flag and persisted grant before the named roster
+    // query. A rolled-out tenant must never use the existing CRM actor scope
+    // as a fallback Workforce attendance-read authority.
+    const organization = await prisma.organization.findUnique({
+      where: { id: auth.orgId },
+      select: { features: true },
+    })
+    if (!organization) {
+      return NextResponse.json({
+        error: "Unable to verify Workforce timesheet access",
+        code: "WORKFORCE_TIMESHEET_READ_ACCESS_UNAVAILABLE",
+      }, { status: 503 })
+    }
+    const granularAccess = workforceGranularAccessEnabled(organization.features)
+    // Granular tenants authorize through the explicit Workforce ledger. The
+    // legacy CRM actor remains mandatory only before that deliberate cutover.
+    if (!granularAccess && !actor) return workforceScopeDenied()
+    if (!granularAccess && requestedAgentId && !isAgentInWorkforceScope(actor!, requestedAgentId)) {
+      return workforceScopeDenied()
+    }
+    const accessDenied = await requireWorkforceTimesheetReadAccess({
+      db: prisma,
+      organizationId: auth.orgId,
+      organizationFeatures: organization.features,
+      principalUserId: auth.userId,
+      selfAgentId: actor?.agentId ?? null,
+      selectedAgentId: requestedAgentId,
+    })
+    if (accessDenied) return accessDenied
 
     const agentWhere = {
       organizationId: auth.orgId,
       status: "ACTIVE" as const,
       ...(requestedAgentId
         ? { id: requestedAgentId }
-        : actor.scopedAgentIds === null ? {} : { id: { in: [...actor.scopedAgentIds] } }),
+        : granularAccess || actor!.scopedAgentIds === null
+          ? {}
+          : { id: { in: [...actor!.scopedAgentIds] } }),
     }
     const agents: WorkforceDirectoryAgent[] = await prisma.mtmAgent.findMany({
       where: agentWhere,

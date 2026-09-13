@@ -55,8 +55,6 @@ export const POST = withWorkforceSessionAuth<RouteContext>("write", async (req: 
       userId: auth.userId,
       webRole: auth.role,
     })
-    if (!actor) return workforceScopeDenied()
-
     const result = await correctWorkforceTimeDirectly({
       organizationId: auth.orgId,
       userId: auth.userId,

@@ -176,8 +176,11 @@ describe("MTM guided route builder UI contract", () => {
     expect(routesPage).toContain('maxHeightClassName="max-h-dvh min-[900px]:max-h-[min(52rem,calc(100dvh-2rem))]"')
     expect(routesPage).toContain("mobileFullscreen")
     expect(routesPage).toContain('mobileFullscreenBreakpoint="tablet"')
-    expect(routesPage).toContain('className="min-h-0 overflow-hidden"')
-    expect(builder).toContain('className="flex min-h-0 max-h-dvh flex-col overflow-hidden')
+    // Both became flex children for C15: at 834 px the sheet held the planner
+    // at its content height, so the step-3 footer floated 62 px above the
+    // bottom edge. The geometry itself is pinned by `mtm-planner-sheet-geometry`.
+    expect(routesPage).toContain('data-testid="mtm-route-builder-dialog" className="flex min-h-0 flex-1 flex-col overflow-hidden"')
+    expect(builder).toContain('className="flex min-h-0 max-h-dvh flex-1 flex-col overflow-hidden')
     expect(builder).toContain("min-[900px]:max-h-[min(52rem,calc(100dvh-2rem))]")
     expect(routesPage).not.toContain('maxHeightClassName="h-[calc(100dvh-1rem)]')
     expect(builder).toContain("inlineAssignmentOpen && canManageAssignments ?")

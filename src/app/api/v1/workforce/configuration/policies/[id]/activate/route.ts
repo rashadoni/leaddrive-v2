@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
-import { withWorkforceSessionAdminAuth } from "@/lib/with-workforce-rls-auth"
+import { withWorkforceSessionPolicyConfigurationAuth } from "@/lib/with-workforce-rls-auth"
 import {
   WorkforceConfigurationManagementError,
   activateWorkforcePolicyDraft,
@@ -18,7 +18,7 @@ type RouteContext = { params: Promise<{ id: string }> }
  * published policy is closed only on the preceding future date; snapshots and
  * started/closed workdays are never changed.
  */
-export const POST = withWorkforceSessionAdminAuth<RouteContext>(async (req: NextRequest, auth, { params }) => {
+export const POST = withWorkforceSessionPolicyConfigurationAuth<RouteContext>(async (req: NextRequest, auth, { params }) => {
   try {
     const settings = await getMtmSettings(auth.orgId)
     const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"

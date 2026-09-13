@@ -4,6 +4,7 @@
  */
 export function logWorkforceSensitiveOperationFailure(input: {
   operation:
+    | "auth-workforce-grant-management"
     | "review-exception-decision-write"
     | "review-exception-response-write"
     | "review-workday-correction"
@@ -14,8 +15,14 @@ export function logWorkforceSensitiveOperationFailure(input: {
     | "read-exception-case-report"
     | "authorize-site-transition-report"
     | "read-site-transition-report"
+    | "authorize-evidence-timeline"
+    | "read-evidence-timeline"
     | "retention-raw-location-dry-run"
     | "verify-attendance-mfa"
+    | "configuration-access-lookup"
+    | "configuration-access-grant-write"
+    | "configuration-access-grant-inventory"
+    | "configuration-access-grant-target-search"
 }): void {
   console.error("[workforce/privacy] sensitive operation failed", { operation: input.operation })
 }

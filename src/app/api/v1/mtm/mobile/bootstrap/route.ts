@@ -32,6 +32,14 @@ import {
   resolveCurrentWorkforcePolicy,
   WorkforcePolicyResolutionError,
 } from "@/lib/workforce/policy-resolution"
+import {
+  resolveWorkforceAndroidReleasePolicy,
+  WORKFORCE_ANDROID_VERSION_CODE_HEADER,
+} from "@/lib/workforce/mobile-release-policy"
+import {
+  WORKFORCE_MOBILE_BOOTSTRAP_SCHEMA_VERSION,
+  WORKFORCE_MOBILE_SCHEMA_SUPPORT,
+} from "@/lib/workforce/mobile-schema-support"
 
 type MobileAttendanceManifest = {
   qrEnabled: boolean
@@ -394,11 +402,15 @@ export const GET = withMobileRls(async (req, auth) => {
       qrEnabled,
       deviceTrustEnabled,
     })
+    const workforceRelease = resolveWorkforceAndroidReleasePolicy({
+      workforceEnabled,
+      clientVersionCode: req.headers.get(WORKFORCE_ANDROID_VERSION_CODE_HEADER),
+    })
 
     return NextResponse.json({
       success: true,
       data: {
-        schemaVersion: 1,
+        schemaVersion: WORKFORCE_MOBILE_BOOTSTRAP_SCHEMA_VERSION,
         protocol: { min: 1, preferred: 1 },
         tenant: { id: organization.id, name: organization.name, slug: organization.slug },
         principal: { id: agent.id, name: agent.name, email: agent.email, role: agent.role },
@@ -412,9 +424,11 @@ export const GET = withMobileRls(async (req, auth) => {
           workforce: {
             enabled: workforceEnabled,
             capabilityId: "workforce-hrm",
-            configVersion: null,
+            configVersion: attendance.configVersion,
             cursor: null,
             attendance,
+            release: workforceRelease,
+            wireSchemas: WORKFORCE_MOBILE_SCHEMA_SUPPORT,
           },
           routes: {
             enabled: routeFieldEnabled,
@@ -433,7 +447,12 @@ export const GET = withMobileRls(async (req, auth) => {
           // that their administrator has turned off.
           canPlanOwnRoutes,
           canSelfPublishRoutes,
-          workforce: { enabled: workforceEnabled, configVersion: null, attendance },
+          workforce: {
+            enabled: workforceEnabled,
+            configVersion: attendance.configVersion,
+            attendance,
+            release: workforceRelease,
+          },
         },
         // The same tenant-owned labels and data scopes drive both web and
         // mobile planners. The APK must never fall back to hard-coded

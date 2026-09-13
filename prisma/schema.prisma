@@ -219,6 +219,8 @@ model Organization {
   workforceAttendanceEvidences         WorkforceAttendanceEvidence[]
   workforceEvidenceAssessments         WorkforceEvidenceAssessment[]
   workforceLegalHolds                  WorkforceLegalHold[]
+  workforceAccessGrants                WorkforceAccessGrant[]
+  workforceAccessGrantRevocations      WorkforceAccessGrantRevocation[]
   workforceMobileWriteFence            WorkforceMobileWriteFence?
   mtmPharmacyPromotionTypes           MtmPharmacyPromotionType[]
   mtmPharmacyPromotions               MtmPharmacyPromotion[]
@@ -691,6 +693,9 @@ model User {
   workforceAttendanceDeviceEnrollmentsRevoked  WorkforceAttendanceDeviceEnrollment[] @relation("WorkforceAttendanceDeviceEnrollmentRevokedBy")
   workforceLegalHoldsCreated                    WorkforceLegalHold[]                  @relation("WorkforceLegalHoldCreatedBy")
   workforceLegalHoldsReleased                   WorkforceLegalHold[]                  @relation("WorkforceLegalHoldReleasedBy")
+  workforceAccessGrantsPrincipal                WorkforceAccessGrant[]                @relation("WorkforceAccessGrantPrincipal")
+  workforceAccessGrantsGranted                  WorkforceAccessGrant[]                @relation("WorkforceAccessGrantGrantedBy")
+  workforceAccessGrantRevocations               WorkforceAccessGrantRevocation[]      @relation("WorkforceAccessGrantRevokedBy")
   workforceMobileWriteFencesUpdated            WorkforceMobileWriteFence[]           @relation("WorkforceMobileWriteFenceUpdatedBy")
   accounts             Account[]
   quotas               SalesQuota[]
@@ -5361,6 +5366,28 @@ enum WorkforceMobileWriteFenceMode {
   FROZEN
 }
 
+/// Durable C7 grant vocabulary. These rows remain inert until a later
+/// tenant-scoped endpoint migration makes them authoritative.
+enum WorkforceAccessRole {
+  TENANT_ADMIN
+  HR_ADMIN
+  SCHEDULER
+  TIME_APPROVER
+  EVIDENCE_REVIEWER
+  DEVICE_SECURITY_ADMIN
+  EXPORT_CUSTODIAN
+  RETENTION_HOLD_OFFICER
+  PILOT_ROLLBACK_OPERATOR
+  TEAM_MANAGER
+}
+
+enum WorkforceAccessScopeKind {
+  ORGANIZATION
+  TEAM
+  SITE
+  AGENT
+}
+
 enum MtmWorkdayStatus {
   STARTED
   PAUSED
@@ -5564,6 +5591,7 @@ model MtmTeam {
   workforceShiftTeamDefaultAssignments WorkforceShiftTeamDefaultAssignment[]
   workforceShiftTeamDefaultOperations WorkforceShiftTeamDefaultOperation[]
   workforceSitesResponsible WorkforceSite[]
+  workforceAccessGrantsScoped WorkforceAccessGrant[] @relation("WorkforceAccessGrantScopeTeam")
   pharmacyPromotionTargets MtmPharmacyPromotionTarget[] @relation("MtmPharmacyTargetTeam")
 
   @@unique([organizationId, id])
@@ -5659,6 +5687,7 @@ model MtmAgent {
   workforceAttendanceReviewCases WorkforceAttendanceReviewCase[]
   workforceExceptionCases   WorkforceExceptionCase[]
   workforceExceptionEmployeeResponses WorkforceExceptionEmployeeResponse[]
+  workforceAccessGrantsScoped WorkforceAccessGrant[] @relation("WorkforceAccessGrantScopeAgent")
   workforceTimeCorrections  WorkforceTimeCorrection[]
   workforceTimesheetApprovals WorkforceTimesheetApproval[]
   workforceAttendanceDeviceEnrollments WorkforceAttendanceDeviceEnrollment[]
@@ -7690,6 +7719,7 @@ model WorkforceSite {
   bulkAssignmentOperations WorkforceSiteAssignmentBulkOperation[]
   shiftSegments      WorkforceShiftSegment[]
   attendanceQrStations WorkforceAttendanceQrStation[] @relation("WorkforceAttendanceQrStationSite")
+  workforceAccessGrantsScoped WorkforceAccessGrant[] @relation("WorkforceAccessGrantScopeSite")
 
   @@unique([organizationId, id])
   @@unique([organizationId, code])
@@ -7698,6 +7728,70 @@ model WorkforceSite {
   @@index([organizationId, createdByUserId])
   @@index([organizationId, archivedByUserId])
   @@map("workforce_sites")
+}
+
+/// Immutable grant source for future Workforce-only authorization. A grant
+/// expires by its recorded effective window or an append-only revocation;
+/// modification/reassignment is intentionally not available.
+model WorkforceAccessGrant {
+  id                String                   @id @default(cuid())
+  organizationId    String
+  organization      Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  principalUserId   String
+  principalUser     User                     @relation("WorkforceAccessGrantPrincipal", fields: [organizationId, principalUserId], references: [organizationId, id], onDelete: Restrict)
+  role              WorkforceAccessRole
+  scopeKind         WorkforceAccessScopeKind
+  scopeTeamId       String?
+  scopeTeam         MtmTeam?                 @relation("WorkforceAccessGrantScopeTeam", fields: [organizationId, scopeTeamId], references: [organizationId, id], onDelete: Restrict)
+  scopeSiteId       String?
+  scopeSite         WorkforceSite?           @relation("WorkforceAccessGrantScopeSite", fields: [organizationId, scopeSiteId], references: [organizationId, id], onDelete: Restrict)
+  scopeAgentId      String?
+  scopeAgent        MtmAgent?                @relation("WorkforceAccessGrantScopeAgent", fields: [organizationId, scopeAgentId], references: [organizationId, id], onDelete: Restrict)
+  effectiveFrom     DateTime
+  effectiveUntil    DateTime?
+  /// Client- or admin-supplied idempotency key. A retry must prove it names
+  /// the same immutable grant rather than creating a second authority row.
+  operationId       String                   @db.VarChar(100)
+  grantedByUserId   String
+  grantedByUser     User                     @relation("WorkforceAccessGrantGrantedBy", fields: [organizationId, grantedByUserId], references: [organizationId, id], onDelete: Restrict)
+  grantReasonCode   String                   @db.VarChar(64)
+  createdAt         DateTime                 @default(now())
+
+  revocation WorkforceAccessGrantRevocation?
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, operationId])
+  @@index([organizationId, principalUserId, effectiveFrom, effectiveUntil])
+  @@index([organizationId, role, scopeKind, effectiveFrom])
+  @@index([organizationId, scopeTeamId, effectiveFrom])
+  @@index([organizationId, scopeSiteId, effectiveFrom])
+  @@index([organizationId, scopeAgentId, effectiveFrom])
+  @@index([organizationId, grantedByUserId, createdAt])
+  @@map("workforce_access_grants")
+}
+
+/// One append-only revocation per immutable Workforce grant. Replacing a
+/// scope/role requires a revocation and new grant so the audit history cannot
+/// be rewritten.
+model WorkforceAccessGrantRevocation {
+  id                   String                @id @default(cuid())
+  organizationId       String
+  organization         Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  grantId              String
+  grant                WorkforceAccessGrant @relation(fields: [organizationId, grantId], references: [organizationId, id], onDelete: Restrict)
+  /// Idempotency key for one immutable revocation action.
+  operationId           String                @db.VarChar(100)
+  revokedByUserId      String
+  revokedByUser        User                  @relation("WorkforceAccessGrantRevokedBy", fields: [organizationId, revokedByUserId], references: [organizationId, id], onDelete: Restrict)
+  revocationReasonCode String                @db.VarChar(64)
+  revokedAt            DateTime
+  createdAt            DateTime              @default(now())
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, grantId])
+  @@unique([organizationId, operationId])
+  @@index([organizationId, revokedByUserId, revokedAt])
+  @@map("workforce_access_grant_revocations")
 }
 
 /// A geofence geometry is immutable once recorded. Its effective window may

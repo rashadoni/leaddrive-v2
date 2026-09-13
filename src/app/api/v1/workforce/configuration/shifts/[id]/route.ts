@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { withWorkforceSessionAdminAuth } from "@/lib/with-workforce-rls-auth"
+import { withWorkforceSessionScheduleConfigurationAuth } from "@/lib/with-workforce-rls-auth"
 import {
   WorkforceConfigurationManagementError,
   WorkforceShiftTemplateDraftUpdateSchema,
@@ -10,7 +10,7 @@ import { workforceConfigurationRequestAuditContext } from "@/lib/workforce/confi
 type RouteContext = { params: Promise<{ id: string }> }
 
 /** PATCH /api/v1/workforce/configuration/shifts/:id — draft content only. */
-export const PATCH = withWorkforceSessionAdminAuth<RouteContext>(async (req: NextRequest, auth, { params }) => {
+export const PATCH = withWorkforceSessionScheduleConfigurationAuth<RouteContext>("SCHEDULE_WRITE", async (req: NextRequest, auth, { params }) => {
   const parsed = WorkforceShiftTemplateDraftUpdateSchema.safeParse(await req.json().catch(() => ({})))
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid Workforce shift draft" }, { status: 400 })

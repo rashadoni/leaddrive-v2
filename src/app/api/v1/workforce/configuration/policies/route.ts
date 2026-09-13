@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { withWorkforceSessionAdminAuth } from "@/lib/with-workforce-rls-auth"
+import { withWorkforceSessionPolicyConfigurationAuth } from "@/lib/with-workforce-rls-auth"
 import {
   WorkforceConfigurationManagementError,
   WorkforcePolicyDraftCreateSchema,
@@ -25,7 +25,7 @@ const policySelect = {
 } as const
 
 /** Administrative inventory. It is intentionally separate from employee HRM reads. */
-export const GET = withWorkforceSessionAdminAuth(async (_req: NextRequest, auth) => {
+export const GET = withWorkforceSessionPolicyConfigurationAuth(async (_req: NextRequest, auth) => {
   try {
     const policies = await prisma.workforcePolicy.findMany({
       where: { organizationId: auth.orgId },
@@ -40,7 +40,7 @@ export const GET = withWorkforceSessionAdminAuth(async (_req: NextRequest, auth)
 })
 
 /** Creates only a DRAFT policy; publication is a separate future-only action. */
-export const POST = withWorkforceSessionAdminAuth(async (req: NextRequest, auth) => {
+export const POST = withWorkforceSessionPolicyConfigurationAuth(async (req: NextRequest, auth) => {
   const parsed = WorkforcePolicyDraftCreateSchema.safeParse(await req.json().catch(() => ({})))
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid Workforce policy draft" }, { status: 400 })

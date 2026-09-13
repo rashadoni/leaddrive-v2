@@ -245,28 +245,28 @@ because eleven of its findings were things tests could not see.
 | RUX-1023 | P1 | MERGED | GPS map without the API-key watermark (B16) | Merged to `main` and in the APK; device acceptance not run (D1) |
 | RUX-1024 | P2 | MERGED | End-day confirmation in the app's own dialog (B17) | Merged to `main` and in the APK; device acceptance not run (D1) |
 | RUX-1025 | P2 | MERGED | Accessible names and readable tab captions (B18) | Merged to `main` and in the APK; device acceptance not run (D1) |
-| RUX-1026 | P1 | PLANNED | Tablet layout from 600 dp (B19) | Open; the remaining tails are listed in section 0.1 |
+| RUX-1026 | P1 | MERGED | Tablet layout from 600 dp (B19) | Merged to `main` and in the APK; device acceptance not run (D1) |
 | RUX-1027 | P1 | MERGED | Sign-in above the fold (B20) | Merged to `main` and in the APK; device acceptance not run (D1) |
 | RUX-1028 | P2 | MERGED | Visit history opens from the screen that lists it (B21) | Merged to `main` and in the APK; device acceptance not run (D1) |
 | RUX-1029 | P2 | DONE | Only a handset build becomes a release (B22) | Closed in section 0.1 of the plan |
-| RUX-1030 | P0 | PLANNED | No customer name in product copy (C1) | Open; the remaining tails are listed in section 0.1 |
+| RUX-1030 | P0 | DONE | No customer name in product copy (C1) | Closed in section 0.1 of the plan |
 | RUX-1031 | P0 | DONE | Dates only through the shared helper (C2) | Closed in section 0.1 of the plan |
 | RUX-1032 | P1 | DONE | Page language from the locale (C3) | Closed in section 0.1 of the plan |
 | RUX-1033 | P0 | DONE | "Not finished" on the web (C4) | Closed in section 0.1 of the plan |
-| RUX-1034 | P1 | PLANNED | First screen belongs to the work, not the chrome (C5) | Open; the remaining tails are listed in section 0.1 |
+| RUX-1034 | P1 | DONE | First screen belongs to the work, not the chrome (C5) | Closed in section 0.1 of the plan |
 | RUX-1035 | P1 | DONE | Calendar cells (C6) | Closed in section 0.1 of the plan |
-| RUX-1036 | P1 | PLANNED | Team week: search, QA accounts, team filter (C7) | Open; the remaining tails are listed in section 0.1 |
-| RUX-1037 | P1 | PLANNED | Planner rough edges (C8) | Open; the remaining tails are listed in section 0.1 |
-| RUX-1038 | P2 | BLOCKED | One view indicator (C9) | Waiting on the owner: adb tunnel for D1, one answer each for C9 and C13 |
+| RUX-1036 | P1 | DONE | Team week: search, QA accounts, team filter (C7) | Closed in section 0.1 of the plan |
+| RUX-1037 | P1 | DONE | Planner rough edges (C8) | Closed in section 0.1 of the plan; accepted on production 2026-09-13 |
+| RUX-1038 | P2 | DONE | One view indicator (C9) | Closed in section 0.1 of the plan |
 | RUX-1039 | P1 | DONE | Route card (C10) | Closed in section 0.1 of the plan |
 | RUX-1040 | P1 | DONE | Task counters from one source (C11) | Closed in section 0.1 of the plan |
 | RUX-1041 | P1 | DONE | No internal vocabulary on user screens (C12) | Closed in section 0.1 of the plan |
-| RUX-1042 | P2 | BLOCKED | Agent leaderboard (C13) | Waiting on the owner: adb tunnel for D1, one answer each for C9 and C13 |
+| RUX-1042 | P2 | DONE | Agent leaderboard (C13) | Closed in section 0.1 of the plan |
 | RUX-1043 | P2 | DONE | Delete out of the primary menu (C14) | Closed in section 0.1 of the plan |
-| RUX-1044 | P1 | PLANNED | Tablet width 834 (C15) | Open; the remaining tails are listed in section 0.1 |
+| RUX-1044 | P1 | DONE | Tablet width 834 (C15) | Closed in section 0.1 of the plan; measured at 834 px on production 2026-09-13 |
 | RUX-1045 | P2 | DONE | Small things that add up (C16) | Closed in section 0.1 of the plan |
-| RUX-1046 | P1 | BLOCKED | Mobile end-to-end over adb (D1) | Waiting on the owner: adb tunnel for D1, one answer each for C9 and C13 |
-| RUX-1047 | P1 | IN PROGRESS | Web runs (D2) | First pass done 2026-09-10 in the owner's browser; C15 width still unverified |
+| RUX-1046 | P1 | BLOCKED | Mobile end-to-end over adb (D1) | Waiting on the owner's adb tunnel to the phone |
+| RUX-1047 | P1 | BLOCKED | Web runs (D2) | AZ DOM pass on all 21 `/mtm/*` pages at 834 and 1470 found no `M0x` and no English day names (2026-09-13); the RUX evidence workflows need `MTM_EVIDENCE_*` secrets that were not moved to `rashadoni/leaddrive-v2`, and they write QA fixtures on production |
 | RUX-1048 | P1 | DONE | Documents (D3) | This section, plus the check-in error contract already in `mtm-mobile-update-spec-2026-07-11.md` §2.4 |
 
 

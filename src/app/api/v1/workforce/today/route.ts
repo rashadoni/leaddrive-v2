@@ -3,9 +3,12 @@ import { prisma } from "@/lib/prisma"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
-import { withWorkforceRlsAuth } from "@/lib/with-workforce-rls-auth"
+import { withWorkforceSessionAuth } from "@/lib/with-workforce-rls-auth"
 import { resolveWorkforceActor } from "@/lib/workforce/actor"
 import { resolveWorkforceCalendarDay, type WorkforceCalendarOverride } from "@/lib/workforce/calendar"
+import { loadWorkforceEmployeeToday } from "@/lib/workforce/employee-today"
+import { workforceGranularAccessEnabled } from "@/lib/workforce/granular-access-rollout"
+import { requireWorkforceTodayReadAccess } from "@/lib/workforce/today-read-access"
 
 type WorkdayStatus = "STARTED" | "PAUSED" | "COMPLETED"
 
@@ -20,6 +23,7 @@ type WorkforceTodayWorkday = {
   id: string
   agentId: string
   status: WorkdayStatus
+  workDate: Date
   startedAt: Date
   pausedAt: Date | null
   completedAt: Date | null
@@ -33,15 +37,19 @@ function workforceScopeDenied() {
   return NextResponse.json({ error: "Forbidden", code: "WORKFORCE_SCOPE_DENIED" }, { status: 403 })
 }
 
-/** GET /api/v1/workforce/today — manager exception-first daily read model. */
-export const GET = withWorkforceRlsAuth("read", async (_req, auth) => {
+/**
+ * GET /api/v1/workforce/today — signed-in manager/self daily read model.
+ *
+ * The response contains named employees and attendance-adjacent facts. An API
+ * key creator is audit metadata, not a Workforce delegation, so integrations
+ * cannot use this browser read path to impersonate that creator.
+ */
+export const GET = withWorkforceSessionAuth("read", async (_req, auth) => {
   const actor = await resolveWorkforceActor(prisma, {
     organizationId: auth.orgId,
     userId: auth.userId,
     webRole: auth.role,
   })
-  if (!actor) return workforceScopeDenied()
-
   try {
     const settings = await getMtmSettings(auth.orgId)
     const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
@@ -50,11 +58,53 @@ export const GET = withWorkforceRlsAuth("read", async (_req, auth) => {
     // converting organization midnight to an instant would shift the key for
     // every positive-offset timezone.
     const workDate = new Date(`${date}T00:00:00.000Z`)
+    // Resolve the tenant cutover before either a named roster or employee
+    // time fact is read. The first lookup intentionally carries only the
+    // technical current employee/team scope needed by the C7 authorization
+    // resolver; names are fetched only after that resolver returns IDs.
+    const organization = await prisma.organization.findUnique({
+      where: { id: auth.orgId },
+      select: { features: true },
+    })
+    if (!organization) {
+      return NextResponse.json({
+        error: "Unable to verify Workforce Today access",
+        code: "WORKFORCE_TODAY_READ_ACCESS_UNAVAILABLE",
+      }, { status: 503 })
+    }
+    const granularAccess = workforceGranularAccessEnabled(organization.features)
+    // After deliberate C7 cutover, an explicit grant is a first-class
+    // Workforce authority and must not depend on an unrelated CRM actor row.
+    // Before cutover, preserve the established actor boundary exactly.
+    if (!granularAccess && !actor) return workforceScopeDenied()
+    const scopeCandidates = await prisma.mtmAgent.findMany({
+      where: {
+        organizationId: auth.orgId,
+        status: "ACTIVE",
+        ...(granularAccess || actor!.scopedAgentIds === null
+          ? {}
+          : { id: { in: [...actor!.scopedAgentIds] } }),
+      },
+      orderBy: { name: "asc" },
+      select: { id: true, teamId: true },
+    })
+    const todayAccess = await requireWorkforceTodayReadAccess({
+      db: prisma,
+      organizationId: auth.orgId,
+      organizationFeatures: organization.features,
+      principalUserId: auth.userId,
+      // Every mapped Workforce employee retains the narrow self-read
+      // permission. Management role is not a reason to remove their own
+      // current-day record; additional employees still need a team grant.
+      selfAgentId: actor?.agentId ?? null,
+      candidates: scopeCandidates,
+    })
+    if (todayAccess instanceof Response) return todayAccess
     const agents: WorkforceTodayAgent[] = await prisma.mtmAgent.findMany({
       where: {
         organizationId: auth.orgId,
         status: "ACTIVE",
-        ...(actor.scopedAgentIds === null ? {} : { id: { in: [...actor.scopedAgentIds] } }),
+        id: { in: [...todayAccess.agentIds] },
       },
       orderBy: { name: "asc" },
       select: { id: true, name: true, role: true, teamId: true },
@@ -69,7 +119,7 @@ export const GET = withWorkforceRlsAuth("read", async (_req, auth) => {
       ? await Promise.all([
           prisma.mtmAgentWorkday.findMany({
             where: { organizationId: auth.orgId, agentId: { in: agentIds }, workDate },
-            select: { id: true, agentId: true, status: true, startedAt: true, pausedAt: true, completedAt: true },
+            select: { id: true, agentId: true, status: true, workDate: true, startedAt: true, pausedAt: true, completedAt: true },
           }),
           prisma.mtmAgentWorkday.findMany({
             where: {
@@ -140,14 +190,33 @@ export const GET = withWorkforceRlsAuth("read", async (_req, auth) => {
       return counts
     }, { started: 0, paused: 0, completed: 0, notStarted: 0, previousOpen: 0 })
 
+    const self = actor?.role === "AGENT" && actor.agentId
+      ? people.find((person) => person.id === actor.agentId) ?? null
+      : null
+    const employeeToday = self
+      ? await loadWorkforceEmployeeToday(prisma, {
+          organizationId: auth.orgId,
+          agentId: self.id,
+          date,
+          timezone,
+          status: self.status,
+          workday: self.workday,
+          previousOpen: self.previousOpenWorkday != null,
+          calendar: self.calendar,
+        })
+      : null
+
     return NextResponse.json({
       success: true,
       data: {
         date,
         timezone,
-        scope: actor.scopedAgentIds === null ? "ORGANIZATION" : actor.role === "AGENT" ? "SELF" : "TEAM_OR_REGION",
+        scope: actor == null
+          ? "GRANT"
+          : actor.scopedAgentIds === null ? "ORGANIZATION" : actor.role === "AGENT" ? "SELF" : "TEAM_OR_REGION",
         summary,
         people,
+        employeeToday,
       },
     })
   } catch (error) {

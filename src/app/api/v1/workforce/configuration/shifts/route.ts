@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { withWorkforceSessionAdminAuth } from "@/lib/with-workforce-rls-auth"
+import { withWorkforceSessionScheduleConfigurationAuth } from "@/lib/with-workforce-rls-auth"
 import {
   WorkforceConfigurationManagementError,
   WorkforceShiftTemplateDraftCreateSchema,
@@ -40,7 +40,7 @@ const shiftTemplateSelect = {
 } as const
 
 /** Administrative inventory. Draft and published templates are explicit. */
-export const GET = withWorkforceSessionAdminAuth(async (_req: NextRequest, auth) => {
+export const GET = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_READ", async (_req: NextRequest, auth) => {
   try {
     const shifts = await prisma.workforceShiftTemplate.findMany({
       where: { organizationId: auth.orgId },
@@ -55,7 +55,7 @@ export const GET = withWorkforceSessionAdminAuth(async (_req: NextRequest, auth)
 })
 
 /** Creates a DRAFT non-default shift template only. */
-export const POST = withWorkforceSessionAdminAuth(async (req: NextRequest, auth) => {
+export const POST = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_WRITE", async (req: NextRequest, auth) => {
   const parsed = WorkforceShiftTemplateDraftCreateSchema.safeParse(await req.json().catch(() => ({})))
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid Workforce shift draft" }, { status: 400 })

@@ -20,8 +20,52 @@ const PENDING_CORRECTION = {
   requestedEndAt: new Date("2026-08-28T07:30:00.000Z"),
   reason: "Fix finish time",
   decisionNote: null,
+  submittedAt: new Date("2026-08-28T08:30:00.000Z"),
   decidedAt: null,
   updatedAt: new Date("2026-08-28T09:00:00.000Z"),
+  correctionWorkday: null,
+}
+
+const PENDING_LEAVE = {
+  ...PENDING_CORRECTION,
+  id: "leave-request-1",
+  agentId: "agent-2",
+  type: "LEAVE",
+  correctionWorkdayId: null,
+  requestedStartAt: null,
+  requestedEndAt: null,
+}
+
+const GRANULAR_TEAM_MANAGER_GRANT = {
+  id: "grant-team-manager",
+  organizationId: "org-workforce",
+  principalUserId: "manager-1",
+  role: "TEAM_MANAGER",
+  scopeKind: "TEAM",
+  scopeTeamId: "team-1",
+  scopeSiteId: null,
+  scopeAgentId: null,
+  effectiveFrom: new Date("2026-08-01T00:00:00.000Z"),
+  effectiveUntil: null,
+  revocation: null,
+}
+
+function enableGranularRequestDecisions(times = 1) {
+  for (let index = 0; index < times; index += 1) {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValueOnce({
+      features: ["workforce-granular-access-v1"],
+    } as never)
+  }
+}
+
+function historicalTeam(times = 1) {
+  for (let index = 0; index < times; index += 1) {
+    vi.mocked(prisma.$queryRaw).mockResolvedValueOnce([{
+      id: "membership-1",
+      teamId: "team-1",
+      effectiveAt: new Date("2026-08-01T00:00:00.000Z"),
+    }] as never)
+  }
 }
 
 function startedJournal(startedAt = "2026-08-28T07:00:00.000Z") {
@@ -36,6 +80,113 @@ beforeEach(() => {
 })
 
 describe("decideWorkforceRequest time corrections", () => {
+  it("never lets an employee decide their own request", async () => {
+    vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue(PENDING_LEAVE as never)
+
+    await expect(decideWorkforceRequest({
+      organizationId: "org-workforce",
+      userId: "employee-user",
+      actor: { agentId: "agent-2", role: "MANAGER", scopedAgentIds: null },
+      requestId: "leave-request-1",
+      input: { decision: "APPROVED" },
+      includeRouteConflicts: false,
+    })).resolves.toEqual({ kind: "forbidden" })
+
+    expect(prisma.organization.findUnique).not.toHaveBeenCalled()
+    expect(prisma.mtmHrmRequest.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("requires an explicit team-request grant after granular cutover", async () => {
+    vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue(PENDING_LEAVE as never)
+    enableGranularRequestDecisions()
+    historicalTeam()
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([] as never)
+
+    await expect(decideWorkforceRequest({
+      organizationId: "org-workforce",
+      userId: "manager-1",
+      actor: { agentId: null, role: "MANAGER", scopedAgentIds: [] },
+      requestId: "leave-request-1",
+      input: { decision: "APPROVED" },
+      includeRouteConflicts: true,
+    })).resolves.toEqual({ kind: "forbidden" })
+
+    expect(prisma.mtmRoute.findMany).not.toHaveBeenCalled()
+    expect(prisma.mtmHrmRequest.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("uses a historical TEAM_MANAGER grant and rechecks it in the write transaction", async () => {
+    vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue(PENDING_LEAVE as never)
+    vi.mocked(prisma.mtmHrmRequest.findUnique).mockResolvedValue({
+      id: "leave-request-1",
+      status: "REJECTED",
+      decisionNote: "Insufficient coverage",
+      decidedAt: new Date("2026-08-28T09:05:00.000Z"),
+      updatedAt: new Date("2026-08-28T09:05:00.000Z"),
+    } as never)
+    enableGranularRequestDecisions(2)
+    historicalTeam(2)
+    vi.mocked(prisma.workforceAccessGrant.findMany)
+      .mockResolvedValueOnce([GRANULAR_TEAM_MANAGER_GRANT] as never)
+      .mockResolvedValueOnce([GRANULAR_TEAM_MANAGER_GRANT] as never)
+
+    await expect(decideWorkforceRequest({
+      organizationId: "org-workforce",
+      userId: "manager-1",
+      actor: { agentId: null, role: "MANAGER", scopedAgentIds: [] },
+      requestId: "leave-request-1",
+      input: { decision: "REJECTED", note: "Insufficient coverage" },
+      includeRouteConflicts: false,
+    })).resolves.toMatchObject({ kind: "success", data: { status: "REJECTED" } })
+
+    expect(prisma.workforceAccessGrant.findMany).toHaveBeenCalledTimes(2)
+    expect(prisma.mtmHrmRequest.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "leave-request-1", organizationId: "org-workforce", status: "PENDING" },
+    }))
+  })
+
+  it("fails closed when the effective request grant disappears before the status write", async () => {
+    vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue(PENDING_LEAVE as never)
+    enableGranularRequestDecisions(2)
+    historicalTeam(2)
+    vi.mocked(prisma.workforceAccessGrant.findMany)
+      .mockResolvedValueOnce([GRANULAR_TEAM_MANAGER_GRANT] as never)
+      .mockResolvedValueOnce([] as never)
+
+    await expect(decideWorkforceRequest({
+      organizationId: "org-workforce",
+      userId: "manager-1",
+      actor: { agentId: null, role: "MANAGER", scopedAgentIds: [] },
+      requestId: "leave-request-1",
+      input: { decision: "REJECTED", note: "Insufficient coverage" },
+      includeRouteConflicts: false,
+    })).resolves.toEqual({ kind: "forbidden" })
+
+    expect(prisma.mtmHrmRequest.updateMany).not.toHaveBeenCalled()
+    expect(prisma.mtmNotification.create).not.toHaveBeenCalled()
+  })
+
+  it("does not let a team-request grant approve an immutable time correction", async () => {
+    vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue(PENDING_CORRECTION as never)
+    enableGranularRequestDecisions()
+    historicalTeam()
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([
+      GRANULAR_TEAM_MANAGER_GRANT,
+    ] as never)
+
+    await expect(decideWorkforceRequest({
+      organizationId: "org-workforce",
+      userId: "manager-1",
+      actor: { agentId: null, role: "MANAGER", scopedAgentIds: null },
+      requestId: "request-1",
+      input: { decision: "APPROVED" },
+      includeRouteConflicts: false,
+    })).resolves.toEqual({ kind: "forbidden" })
+
+    expect(prisma.mtmHrmRequest.updateMany).not.toHaveBeenCalled()
+    expect(prisma.workforceTimeCorrection.create).not.toHaveBeenCalled()
+  })
+
   it("rejects an effective range whose one-sided finish precedes the stored start", async () => {
     vi.mocked(prisma.mtmHrmRequest.findFirst)
       .mockResolvedValueOnce(PENDING_CORRECTION as never)

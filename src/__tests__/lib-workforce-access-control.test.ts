@@ -133,4 +133,12 @@ describe("Workforce granular access foundation", () => {
         incompatiblePairs: [],
       })
   })
+
+  it("fails closed without throwing when a malformed persisted role reaches the evaluator", () => {
+    expect(decideWorkforceAccess({
+      ...BASE,
+      permission: "TEAM_REQUEST_DECIDE",
+      grants: [grant({ role: "NOT_A_WORKFORCE_ROLE" as WorkforceAccessGrant["role"] })],
+    })).toEqual({ allowed: false, code: "WORKFORCE_ACCESS_GRANT_UNAVAILABLE" })
+  })
 })

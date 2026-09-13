@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { withWorkforceSessionAdminAuth } from "@/lib/with-workforce-rls-auth"
+import { withWorkforceSessionScheduleConfigurationAuth } from "@/lib/with-workforce-rls-auth"
 import {
   archiveWorkforceSite,
   WorkforceSiteArchiveSchema,
@@ -10,7 +10,7 @@ import { workforceConfigurationRequestAuditContext } from "@/lib/workforce/confi
 type RouteContext = { params: Promise<{ id: string }> }
 
 /** Archive rather than delete a Workforce site. Historical snapshots keep their references. */
-export const POST = withWorkforceSessionAdminAuth<RouteContext>(async (req: NextRequest, auth, { params }) => {
+export const POST = withWorkforceSessionScheduleConfigurationAuth<RouteContext>("SCHEDULE_WRITE", async (req: NextRequest, auth, { params }) => {
   const parsed = WorkforceSiteArchiveSchema.safeParse(await req.json().catch(() => ({})))
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid site archive request" }, { status: 400 })

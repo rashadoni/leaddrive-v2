@@ -6,6 +6,8 @@ import { withRlsAuth, withRlsSessionAuth } from "@/lib/with-rls"
 import type { AuthResult } from "@/lib/api-auth"
 import { decidePersistedWorkforceAccess } from "@/lib/workforce/access-grant-resolution"
 import { workforceGranularAccessEnabled } from "@/lib/workforce/granular-access-rollout"
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
+import { applyWorkforceSensitiveResponseHeaders } from "@/lib/workforce/sensitive-response"
 import type { WorkforceAccessPermission } from "@/lib/workforce/access-control"
 
 type WrappedWorkforceRouteHandler<C> = {
@@ -134,6 +136,53 @@ export function withWorkforceSessionAdminAuth<C = unknown>(
 }
 
 /**
+ * C7 role-ledger administration is deliberately stricter than the former
+ * tenant-admin configuration boundary. It has no legacy CRM-role fallback:
+ * a tenant must first be explicitly cut over with an independently seeded
+ * organization-scoped TENANT_ADMIN grant. This prevents a broad CRM admin
+ * from silently creating their own replacement authority during rollout.
+ */
+export function withWorkforceSessionGrantManagementAuth<C = unknown>(
+  handler: (req: NextRequest, auth: AuthResult, ctx: C) => Promise<Response> | Response,
+) {
+  const wrapped = withRlsSessionAuth<C>(async (req, auth, ctx) => {
+    try {
+      const organization = await prisma.organization.findUnique({
+        where: { id: auth.orgId },
+        select: { plan: true, addons: true, features: true, modules: true },
+      })
+      if (!organization || !isTenantCapabilityEnabled("workforce-hrm", organization)) {
+        return applyWorkforceSensitiveResponseHeaders(workforceCapabilityDisabled())
+      }
+      if (!workforceGranularAccessEnabled(organization.features)) {
+        return applyWorkforceSensitiveResponseHeaders(NextResponse.json({
+          error: "Workforce role management requires an explicit granular-access bootstrap.",
+          code: "WORKFORCE_GRANT_MANAGEMENT_BOOTSTRAP_REQUIRED",
+        }, { status: 409 }))
+      }
+      const access = await decidePersistedWorkforceAccess({
+        db: prisma,
+        organizationId: auth.orgId,
+        principalUserId: auth.userId,
+        selfAgentId: null,
+        permission: "ROLE_GRANT_MANAGE",
+        resource: { organizationId: auth.orgId },
+      })
+      return applyWorkforceSensitiveResponseHeaders(
+        access.allowed ? await handler(req, auth, ctx) : workforceGranularAccessDenied(),
+      )
+    } catch {
+      logWorkforceSensitiveOperationFailure({ operation: "auth-workforce-grant-management" })
+      return applyWorkforceSensitiveResponseHeaders(NextResponse.json({
+        error: "Unable to verify Workforce role-management access.",
+        code: "WORKFORCE_GRANULAR_ACCESS_UNAVAILABLE",
+      }, { status: 503 }))
+    }
+  })
+  return wrapped as WrappedWorkforceRouteHandler<C>
+}
+
+/**
  * Session-only boundary for tenant-wide schedule and site configuration.
  * Legacy tenants retain the admin boundary; after granular cutover the caller
  * must hold the exact organization-scoped Workforce permission.
@@ -169,6 +218,49 @@ export function withWorkforceSessionScheduleConfigurationAuth<C = unknown>(
       console.error("[withWorkforceSessionScheduleConfigurationAuth] authorization lookup failed", error)
       return NextResponse.json({
         error: "Unable to verify Workforce schedule configuration access.",
+        code: "WORKFORCE_GRANULAR_ACCESS_UNAVAILABLE",
+      }, { status: 503 })
+    }
+  })
+  return wrapped as WrappedWorkforceRouteHandler<C>
+}
+
+/**
+ * Session-only boundary for tenant-wide policy drafts and activation.
+ * Legacy tenants retain the admin boundary; after granular cutover the caller
+ * must hold an organization-scoped HR policy grant. Team and site grants do
+ * not authorize reading or changing the tenant-wide policy timeline.
+ */
+export function withWorkforceSessionPolicyConfigurationAuth<C = unknown>(
+  handler: (req: NextRequest, auth: AuthResult, ctx: C) => Promise<Response> | Response,
+) {
+  const wrapped = withRlsSessionAuth<C>(async (req, auth, ctx) => {
+    try {
+      const organization = await prisma.organization.findUnique({
+        where: { id: auth.orgId },
+        select: { plan: true, addons: true, features: true, modules: true },
+      })
+      if (!organization || !isTenantCapabilityEnabled("workforce-hrm", organization)) {
+        return workforceCapabilityDisabled()
+      }
+      if (!workforceGranularAccessEnabled(organization.features)) {
+        return isWorkforcePolicyAdministrator(auth.role)
+          ? handler(req, auth, ctx)
+          : workforcePolicyAdminDenied()
+      }
+      const access = await decidePersistedWorkforceAccess({
+        db: prisma,
+        organizationId: auth.orgId,
+        principalUserId: auth.userId,
+        selfAgentId: null,
+        permission: "WORKFORCE_POLICY_DRAFT_WRITE",
+        resource: { organizationId: auth.orgId },
+      })
+      return access.allowed ? handler(req, auth, ctx) : workforceGranularAccessDenied()
+    } catch (error) {
+      console.error("[withWorkforceSessionPolicyConfigurationAuth] authorization lookup failed", error)
+      return NextResponse.json({
+        error: "Unable to verify Workforce policy configuration access.",
         code: "WORKFORCE_GRANULAR_ACCESS_UNAVAILABLE",
       }, { status: 503 })
     }

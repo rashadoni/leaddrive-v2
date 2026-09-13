@@ -441,6 +441,13 @@ export function MtmRouteBuilder({
   const [stops, setStops] = useState<Stop[]>([])
   /** Asked before a non-empty selection is thrown away (audit C8). */
   const [discardOpen, setDiscardOpen] = useState(false)
+  /**
+   * Asked before publishing meetings that have no time (audit C8, step 3).
+   * The server accepts a null `plannedTime`, so without this the route reached
+   * the employee's app with untimed stops on one press. A draft is not asked
+   * about: nobody but the planner sees it.
+   */
+  const [untimedPublishOpen, setUntimedPublishOpen] = useState(false)
 
   /**
    * Closing with customers chosen used to lose them silently.
@@ -1468,6 +1475,10 @@ export function MtmRouteBuilder({
       focusStep(3)
       return
     }
+    if (canPublishFromBuilder && unscheduledStopCount > 0) {
+      setUntimedPublishOpen(true)
+      return
+    }
     void save(canPublishFromBuilder ? "publish" : "draft")
   }
 
@@ -1486,7 +1497,7 @@ export function MtmRouteBuilder({
             : t("saveDraft")
 
   return (
-    <section data-testid="mtm-route-builder" className="flex min-h-0 max-h-dvh flex-col overflow-hidden border-y border-zinc-200 bg-card dark:border-zinc-700 min-[900px]:max-h-[min(52rem,calc(100dvh-2rem))]">
+    <section data-testid="mtm-route-builder" className="flex min-h-0 max-h-dvh flex-1 flex-col overflow-hidden border-y border-zinc-200 bg-card dark:border-zinc-700 min-[900px]:max-h-[min(52rem,calc(100dvh-2rem))]">
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-zinc-200 px-4 py-2 dark:border-zinc-700">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -1676,7 +1687,16 @@ export function MtmRouteBuilder({
         </ol>
       </nav>
 
-      <div className="mx-auto min-h-0 w-full max-w-6xl flex-1 overflow-y-auto overscroll-contain">
+      {/*
+        `relative` makes this scroller the containing block of the `sr-only`
+        time labels inside it. Without it their containing block was the
+        dialog: eight labels stretched its scrollHeight to 876 px on a 683 px
+        screen, and the step-3 `scrollIntoView` scrolled the dialog itself by
+        89 px, pushing the close button and the stepper off the top (audit C15,
+        measured at 834 px). `overflow: hidden` does not stop programmatic
+        scrolling.
+      */}
+      <div className="relative mx-auto min-h-0 w-full max-w-6xl flex-1 overflow-y-auto overscroll-contain">
         {activeStep === 1 ? (
         <section data-testid="mtm-route-wizard-step-1" className="mx-auto w-full max-w-3xl space-y-4 px-4 py-4 sm:px-6 sm:py-5">
           <div>
@@ -2530,6 +2550,16 @@ export function MtmRouteBuilder({
         title={t("discardBuilderTitle")}
         description={t("discardBuilderBody", { count: stops.length })}
         confirmLabel={t("discardBuilderConfirm")}
+      />
+      <ConfirmDialog
+        open={untimedPublishOpen}
+        onOpenChange={setUntimedPublishOpen}
+        onConfirm={async () => { void save("publish") }}
+        title={t("untimedPublishTitle")}
+        description={t("untimedPublishBody", { count: unscheduledStopCount, total: stops.length })}
+        confirmLabel={t("untimedPublishConfirm")}
+        confirmVariant="default"
+        icon={<Clock3 className="h-5 w-5 text-muted-foreground" />}
       />
       <div data-testid="mtm-route-builder-actions" className="sticky bottom-0 z-20 flex shrink-0 items-center justify-end gap-2 border-t border-zinc-200 bg-card px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-6px_18px_rgba(15,23,42,0.06)] dark:border-zinc-700 sm:px-4">
         <div id="route-builder-next-action" className="hidden min-w-0 items-start gap-2 text-sm sm:flex sm:flex-1" role="status" aria-live="polite">

@@ -93,22 +93,19 @@ function grantFromStored(row: PersistedWorkforceAccessGrant): WorkforceAccessGra
 }
 
 /**
- * Reads only bounded, currently-effective grants for an already-resolved
- * Workforce resource. It has no fallback to a CRM/session role: until C7
- * grants are deliberately rolled out, every privileged caller is denied.
+ * Reads one bounded, current authority snapshot. Callers that must evaluate a
+ * proposed role set reuse this projection instead of issuing per-role reads.
+ * `null` means the input or stored authority set was unsafe to evaluate.
  */
-export async function decidePersistedWorkforceAccess(input: {
+export async function readPersistedWorkforceAccessGrants(input: {
   db: WorkforceAccessGrantReaderDb
   organizationId: string
   principalUserId: string
-  selfAgentId: string | null
-  permission: WorkforceAccessPermission
-  resource: WorkforceResourceScope
   now?: Date
-}): Promise<WorkforceAccessDecision> {
+}): Promise<readonly WorkforceAccessGrant[] | null> {
   const now = input.now ?? new Date()
   if (!validDate(now) || !validIdentifier(input.organizationId) || !validIdentifier(input.principalUserId)) {
-    return { allowed: false, code: "WORKFORCE_ACCESS_GRANT_UNAVAILABLE" }
+    return null
   }
   const rows = await input.db.workforceAccessGrant.findMany({
     where: {
@@ -133,16 +130,39 @@ export async function decidePersistedWorkforceAccess(input: {
       revocation: { select: { revokedAt: true } },
     },
   })
-  if (rows.length > MAX_ACTIVE_GRANTS) {
-    return { allowed: false, code: "WORKFORCE_ACCESS_GRANT_UNAVAILABLE" }
-  }
+  if (rows.length > MAX_ACTIVE_GRANTS) return null
+  return rows.map(grantFromStored).filter((grant): grant is WorkforceAccessGrant => grant != null)
+}
+
+/**
+ * Reads only bounded, currently-effective grants for an already-resolved
+ * Workforce resource. It has no fallback to a CRM/session role: until C7
+ * grants are deliberately rolled out, every privileged caller is denied.
+ */
+export async function decidePersistedWorkforceAccess(input: {
+  db: WorkforceAccessGrantReaderDb
+  organizationId: string
+  principalUserId: string
+  selfAgentId: string | null
+  permission: WorkforceAccessPermission
+  resource: WorkforceResourceScope
+  now?: Date
+}): Promise<WorkforceAccessDecision> {
+  const now = input.now ?? new Date()
+  const grants = await readPersistedWorkforceAccessGrants({
+    db: input.db,
+    organizationId: input.organizationId,
+    principalUserId: input.principalUserId,
+    now,
+  })
+  if (!grants) return { allowed: false, code: "WORKFORCE_ACCESS_GRANT_UNAVAILABLE" }
   return decideWorkforceAccess({
     organizationId: input.organizationId,
     principalUserId: input.principalUserId,
     selfAgentId: input.selfAgentId,
     permission: input.permission,
     resource: input.resource,
-    grants: rows.map(grantFromStored).filter((grant): grant is WorkforceAccessGrant => grant != null),
+    grants,
     now,
   })
 }

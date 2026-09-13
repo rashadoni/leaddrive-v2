@@ -93,15 +93,16 @@ describe("POST /api/v1/workforce/timesheet/approvals", () => {
     }))
   })
 
-  it("does not turn a missing actor mapping into an approval path", async () => {
+  it("delegates a missing legacy actor to the granular approval service", async () => {
     vi.mocked(resolveWorkforceActor).mockResolvedValue(null)
+    vi.mocked(approveWorkforceTimesheet).mockResolvedValue({ kind: "forbidden" })
 
     const response = await invoke(post({
       agentId: "employee-1", periodStart: "2026-08-28", periodEnd: "2026-08-28",
     }), AUTH)
 
     expect(response.status).toBe(403)
-    expect(approveWorkforceTimesheet).not.toHaveBeenCalled()
+    expect(approveWorkforceTimesheet).toHaveBeenCalledWith(expect.objectContaining({ actor: null }))
   })
 
   it("returns immutable-history/finality failures as an explicit conflict", async () => {

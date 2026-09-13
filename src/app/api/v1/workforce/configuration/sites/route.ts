@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { withWorkforceSessionAdminAuth } from "@/lib/with-workforce-rls-auth"
+import { withWorkforceSessionScheduleConfigurationAuth } from "@/lib/with-workforce-rls-auth"
 import {
   createWorkforceSite,
   WorkforceSiteCreateSchema,
@@ -22,7 +22,7 @@ const siteSelect = {
 } as const
 
 /** Workforce-only site inventory. Route customers/geofences are never queried. */
-export const GET = withWorkforceSessionAdminAuth(async (_req: NextRequest, auth) => {
+export const GET = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_READ", async (_req: NextRequest, auth) => {
   try {
     const sites = await prisma.workforceSite.findMany({
       where: { organizationId: auth.orgId },
@@ -37,7 +37,7 @@ export const GET = withWorkforceSessionAdminAuth(async (_req: NextRequest, auth)
 })
 
 /** Create an active site record only; it does not yet schedule or monitor anyone. */
-export const POST = withWorkforceSessionAdminAuth(async (req: NextRequest, auth) => {
+export const POST = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_WRITE", async (req: NextRequest, auth) => {
   const parsed = WorkforceSiteCreateSchema.safeParse(await req.json().catch(() => ({})))
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid Workforce site" }, { status: 400 })

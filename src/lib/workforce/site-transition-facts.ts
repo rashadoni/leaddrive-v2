@@ -6,12 +6,11 @@ import {
   WORKFORCE_WORKDAY_OFFLINE_HORIZON_MS,
   workforceAttendanceClaimReview,
 } from "@/lib/mtm/workday"
+import { WORKFORCE_SITE_TRANSITION_CLAIM_SCHEMA_VERSION } from "@/lib/workforce/mobile-schema-support"
 import { workforceScheduledSnapshotSegment } from "@/lib/workforce/snapshot-writer"
 
 const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000
 const ID = z.string().trim().min(1).max(100)
-const CURRENT_SCHEMA_VERSION = 1
-
 export const WorkforceSiteTransitionClaimSchema = z.object({
   workdayId: ID,
   segmentId: ID,
@@ -20,7 +19,7 @@ export const WorkforceSiteTransitionClaimSchema = z.object({
   claimedAt: z.coerce.date(),
   capturedAt: z.coerce.date(),
   queuedAt: z.coerce.date(),
-  schemaVersion: z.literal(CURRENT_SCHEMA_VERSION),
+  schemaVersion: z.literal(WORKFORCE_SITE_TRANSITION_CLAIM_SCHEMA_VERSION),
 }).strict().superRefine((value, context) => {
   if (Number.isNaN(value.claimedAt.getTime()) || Number.isNaN(value.capturedAt.getTime()) || Number.isNaN(value.queuedAt.getTime())) {
     context.addIssue({ code: "custom", message: "transition provenance timestamps are invalid" })
@@ -103,7 +102,7 @@ export function workforceSiteTransitionRequestHash(
   claim: WorkforceSiteTransitionClaim,
 ): string {
   return createHash("sha256").update(JSON.stringify({
-    version: CURRENT_SCHEMA_VERSION,
+    version: WORKFORCE_SITE_TRANSITION_CLAIM_SCHEMA_VERSION,
     organizationId: scope.organizationId,
     agentId: scope.agentId,
     clientTransitionId: claim.clientTransitionId,

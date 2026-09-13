@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
-import { withWorkforceSessionAdminAuth } from "@/lib/with-workforce-rls-auth"
+import { withWorkforceSessionScheduleConfigurationAuth } from "@/lib/with-workforce-rls-auth"
 import {
   previewWorkforceSiteAssignments,
   WorkforceSiteAssignmentBulkPreviewSchema,
@@ -10,7 +10,7 @@ import {
 } from "@/lib/workforce/site-management"
 
 /** Read-only, session-admin review for a future multi-employee site draft. */
-export const POST = withWorkforceSessionAdminAuth(async (req: NextRequest, auth) => {
+export const POST = withWorkforceSessionScheduleConfigurationAuth("SCHEDULE_READ", async (req: NextRequest, auth) => {
   const parsed = WorkforceSiteAssignmentBulkPreviewSchema.safeParse(await req.json().catch(() => ({})))
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid Workforce site-assignment preview" }, { status: 400 })
