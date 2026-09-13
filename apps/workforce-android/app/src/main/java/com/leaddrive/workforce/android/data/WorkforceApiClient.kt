@@ -11,6 +11,8 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
+private const val MAX_HRM_REQUEST_DAYS = 366L
+
 /**
  * Small, explicit Workforce-only HTTP adapter. The app never discovers or
  * calls Route endpoints; its endpoint list is intentionally fixed here until
@@ -87,11 +89,7 @@ class WorkforceApiClient(
         )
     }
 
-    /**
-     * Sends exactly one employee action.  Until WF-C9-006 adds the encrypted
-     * outbox, a network failure means no local attendance claim is retained;
-     * the employee must retry after refreshing server truth.
-     */
+    /** Sends exactly one employee action and reloads the canonical result. */
     suspend fun submitTodayAction(
         session: WorkforceStoredSession,
         deviceId: String,
@@ -133,11 +131,79 @@ class WorkforceApiClient(
         )
     }
 
+    fun newHrmRequestOperation(
+        draft: WorkforceHrmRequestDraft,
+        now: Instant = Instant.now(),
+    ): WorkforceHrmRequestCreateOperation {
+        val start = runCatching { LocalDate.parse(draft.startDate) }.getOrNull()
+            ?: throw WorkforceApiException("Choose a valid start date.", recoverable = false)
+        val end = runCatching { LocalDate.parse(draft.endDate) }.getOrNull()
+            ?: throw WorkforceApiException("Choose a valid end date.", recoverable = false)
+        if (end.isBefore(start) || end.isAfter(start.plusDays(MAX_HRM_REQUEST_DAYS))) {
+            throw WorkforceApiException("Choose an end date within one year of the start date.", recoverable = false)
+        }
+        val reason = draft.reason.trim()
+        if (reason.length !in 3..1_000) {
+            throw WorkforceApiException("Reason must contain 3 to 1000 characters.", recoverable = false)
+        }
+        if (draft.type == WorkforceHrmRequestType.TIME_CORRECTION) {
+            if (draft.correctionWorkdayId.isNullOrBlank()) {
+                throw WorkforceApiException("Choose a workday to correct.", recoverable = false)
+            }
+            if (draft.requestedStartAt.isNullOrBlank() && draft.requestedEndAt.isNullOrBlank()) {
+                throw WorkforceApiException("Provide the requested start or finish time.", recoverable = false)
+            }
+        }
+        val requestedStartAt = if (draft.type == WorkforceHrmRequestType.TIME_CORRECTION) {
+            draft.requestedStartAt.toOptionalInstant("requested start")
+        } else null
+        val requestedEndAt = if (draft.type == WorkforceHrmRequestType.TIME_CORRECTION) {
+            draft.requestedEndAt.toOptionalInstant("requested finish")
+        } else null
+        if (requestedStartAt != null && requestedEndAt != null && !requestedEndAt.isAfter(requestedStartAt)) {
+            throw WorkforceApiException("Requested finish must be after requested start.", recoverable = false)
+        }
+        return WorkforceHrmRequestCreateOperation(
+            operationId = UUID.randomUUID().toString(),
+            requestId = UUID.randomUUID().toString(),
+            clientRequestId = UUID.randomUUID().toString(),
+            type = draft.type,
+            startDate = start.toString(),
+            endDate = end.toString(),
+            correctionWorkdayId = if (draft.type == WorkforceHrmRequestType.TIME_CORRECTION) {
+                draft.correctionWorkdayId?.trim()?.takeIf { it.isNotBlank() }
+            } else null,
+            requestedStartAt = requestedStartAt?.toString(),
+            requestedEndAt = requestedEndAt?.toString(),
+            reason = reason,
+            submittedAt = now.toString(),
+        )
+    }
+
+    fun newHrmRequestCancellation(requestId: String, now: Instant = Instant.now()): WorkforceHrmRequestCancelOperation {
+        if (requestId.isBlank()) throw WorkforceApiException("Choose a request to cancel.", recoverable = false)
+        return WorkforceHrmRequestCancelOperation(
+            operationId = UUID.randomUUID().toString(),
+            requestId = requestId,
+            cancelledAt = now.toString(),
+        )
+    }
+
     suspend fun submitTodayOperation(
         session: WorkforceStoredSession,
         deviceId: String,
         operation: WorkforceWorkdayOperation,
-    ): WorkforceTodaySnapshot = withContext(Dispatchers.IO) {
+    ): WorkforceTodaySnapshot {
+        submitOperation(session, deviceId, operation)
+        return loadToday(session, deviceId)
+    }
+
+    /** Sends one durable operation without projecting it into a UI model. */
+    suspend fun submitOperation(
+        session: WorkforceStoredSession,
+        deviceId: String,
+        operation: WorkforceSyncOperation,
+    ) = withContext(Dispatchers.IO) {
         val response = request(
             method = "POST",
             path = "/api/v1/mtm/mobile/sync/push",
@@ -150,9 +216,9 @@ class WorkforceApiClient(
                     JSONArray().put(
                         JSONObject()
                             .put("operationId", operation.operationId)
-                            .put("op", "create")
-                            .put("entity", "workdays")
-                            .put("data", operation.toEventJson())
+                            .put("op", operation.opType)
+                            .put("entity", operation.entity)
+                            .put("data", operation.toDataJson())
                             .put("clientTimestamp", System.currentTimeMillis()),
                     ),
                 )
@@ -161,7 +227,7 @@ class WorkforceApiClient(
         val result = response.optJSONArray("results")?.optJSONObject(0)
             ?: throw WorkforceApiException("The Workforce action response was incomplete.", recoverable = true)
         when (result.optString("status")) {
-            "ok" -> loadToday(session, deviceId)
+            "ok" -> Unit
             "conflict" -> throw WorkforceActionConflictException(
                 message = result.optString("error", "The server state changed. Refresh before trying again."),
                 recoveryCode = result.optJSONObject("serverData")?.optString("code"),
@@ -262,22 +328,112 @@ class WorkforceApiClient(
     private companion object {
         const val CONNECT_TIMEOUT_MS = 15_000
         const val READ_TIMEOUT_MS = 20_000
-        const val WORKFORCE_WORKDAY_SCHEMA_VERSION = 3
         const val HISTORY_DAYS_BEFORE = 14L
         const val HISTORY_DAYS_AFTER = 45L
     }
 }
 
+sealed interface WorkforceSyncOperation {
+    val operationId: String
+    /** Original client queue time; used only to enforce the seven-day bound. */
+    val queuedAt: String
+    val domain: WorkforceOutboxDomain
+    val entity: String
+    val opType: String
+
+    fun toDataJson(): JSONObject
+
+    fun toEncryptedPayload(organizationSlug: String): String = JSONObject()
+        .put("organizationSlug", organizationSlug.trim().lowercase())
+        .put("operationId", operationId)
+        .put("entity", entity)
+        .put("op", opType)
+        .put("data", toDataJson())
+        .toString()
+}
+
+enum class WorkforceHrmRequestType(val wireValue: String, val label: String) {
+    LEAVE("LEAVE", "Leave"),
+    ABSENCE("ABSENCE", "Absence"),
+    TIME_CORRECTION("TIME_CORRECTION", "Time correction");
+
+    companion object {
+        fun fromWire(value: String): WorkforceHrmRequestType? = entries.firstOrNull { it.wireValue == value }
+    }
+}
+
+data class WorkforceHrmRequestDraft(
+    val type: WorkforceHrmRequestType,
+    val startDate: String,
+    val endDate: String,
+    val reason: String,
+    val correctionWorkdayId: String? = null,
+    val requestedStartAt: String? = null,
+    val requestedEndAt: String? = null,
+)
+
+data class WorkforceHrmRequestCreateOperation(
+    override val operationId: String,
+    val requestId: String,
+    val clientRequestId: String,
+    val type: WorkforceHrmRequestType,
+    val startDate: String,
+    val endDate: String,
+    val correctionWorkdayId: String?,
+    val requestedStartAt: String?,
+    val requestedEndAt: String?,
+    val reason: String,
+    val submittedAt: String,
+) : WorkforceSyncOperation {
+    override val queuedAt: String get() = submittedAt
+    override val domain = WorkforceOutboxDomain.HRM_REQUEST
+    override val entity = "hrmRequests"
+    override val opType = "create"
+
+    override fun toDataJson(): JSONObject = JSONObject()
+        .put("id", requestId)
+        .put("clientRequestId", clientRequestId)
+        .put("type", type.wireValue)
+        .put("startDate", startDate)
+        .put("endDate", endDate)
+        .put("reason", reason)
+        .put("submittedAt", submittedAt)
+        .apply {
+            correctionWorkdayId?.let { put("correctionWorkdayId", it) }
+            requestedStartAt?.let { put("requestedStartAt", it) }
+            requestedEndAt?.let { put("requestedEndAt", it) }
+        }
+}
+
+data class WorkforceHrmRequestCancelOperation(
+    override val operationId: String,
+    val requestId: String,
+    val cancelledAt: String,
+) : WorkforceSyncOperation {
+    override val queuedAt: String get() = cancelledAt
+    override val domain = WorkforceOutboxDomain.HRM_REQUEST
+    override val entity = "hrmRequests"
+    override val opType = "update"
+
+    override fun toDataJson(): JSONObject = JSONObject()
+        .put("id", requestId)
+        .put("cancelledAt", cancelledAt)
+}
+
 data class WorkforceWorkdayOperation(
-    val operationId: String,
+    override val operationId: String,
     val action: WorkforceWorkdayAction,
     val workdayId: String,
     val occurredAt: String,
     val claimedAt: String,
     val capturedAt: String,
-    val queuedAt: String,
-) {
-    fun toEventJson(): JSONObject = JSONObject()
+    override val queuedAt: String,
+) : WorkforceSyncOperation {
+    override val domain = WorkforceOutboxDomain.WORKDAY
+    override val entity = "workdays"
+    override val opType = "create"
+
+    override fun toDataJson(): JSONObject = JSONObject()
         .put("action", action.wireValue)
         .put("occurredAt", occurredAt)
         .put("claimedAt", claimedAt)
@@ -289,17 +445,6 @@ data class WorkforceWorkdayOperation(
             else put("workdayId", workdayId)
         }
 
-    fun toEncryptedPayload(organizationSlug: String): String = JSONObject()
-        .put("organizationSlug", organizationSlug)
-        .put("operationId", operationId)
-        .put("action", action.wireValue)
-        .put("workdayId", workdayId)
-        .put("occurredAt", occurredAt)
-        .put("claimedAt", claimedAt)
-        .put("capturedAt", capturedAt)
-        .put("queuedAt", queuedAt)
-        .toString()
-
     companion object {
         const val WORKFORCE_WORKDAY_SCHEMA_VERSION = 3
 
@@ -307,38 +452,85 @@ data class WorkforceWorkdayOperation(
             val json = JSONObject(value)
             val organizationSlug = json.optString("organizationSlug").trim().lowercase()
             val operationId = json.optString("operationId")
-            val action = WorkforceWorkdayAction.fromWire(json.optString("action"))
-            val workdayId = json.optString("workdayId")
-            val occurredAt = json.optString("occurredAt")
-            val claimedAt = json.optString("claimedAt")
-            val capturedAt = json.optString("capturedAt")
-            val queuedAt = json.optString("queuedAt")
-            if (organizationSlug.isBlank() || operationId.isBlank() || action == null || workdayId.isBlank()
-                || occurredAt.isBlank() || claimedAt.isBlank() || capturedAt.isBlank() || queuedAt.isBlank()
-            ) return null
-            WorkforceStoredOperation(
-                organizationSlug = organizationSlug,
-                operation = WorkforceWorkdayOperation(
-                    operationId = operationId,
-                    action = action,
-                    workdayId = workdayId,
-                    occurredAt = occurredAt,
-                    claimedAt = claimedAt,
-                    capturedAt = capturedAt,
-                    queuedAt = queuedAt,
-                ),
-            )
+            val entity = json.optString("entity")
+            val opType = json.optString("op")
+            val data = json.optJSONObject("data")
+            if (organizationSlug.isBlank() || operationId.isBlank() || data == null) return null
+            val operation = when {
+                entity == "workdays" && opType == "create" -> workdayOperationFromJson(operationId, data)
+                entity == "hrmRequests" && opType == "create" -> hrmCreateOperationFromJson(operationId, data)
+                entity == "hrmRequests" && opType == "update" -> hrmCancelOperationFromJson(operationId, data)
+                else -> null
+            } ?: return null
+            WorkforceStoredOperation(organizationSlug = organizationSlug, operation = operation)
         }.getOrNull()
+
+        private fun workdayOperationFromJson(operationId: String, data: JSONObject): WorkforceWorkdayOperation? {
+            val action = WorkforceWorkdayAction.fromWire(data.optString("action")) ?: return null
+            val workdayId = if (action == WorkforceWorkdayAction.START) data.optString("id") else data.optString("workdayId")
+            val occurredAt = data.optString("occurredAt")
+            val claimedAt = data.optString("claimedAt")
+            val capturedAt = data.optString("capturedAt")
+            val queuedAt = data.optString("queuedAt")
+            if (workdayId.isBlank() || occurredAt.isBlank() || claimedAt.isBlank() || capturedAt.isBlank() || queuedAt.isBlank()) return null
+            return WorkforceWorkdayOperation(operationId, action, workdayId, occurredAt, claimedAt, capturedAt, queuedAt)
+        }
+
+        private fun hrmCreateOperationFromJson(operationId: String, data: JSONObject): WorkforceHrmRequestCreateOperation? {
+            val requestId = data.optString("id")
+            val clientRequestId = data.optString("clientRequestId")
+            val type = WorkforceHrmRequestType.fromWire(data.optString("type"))
+            val startDate = data.optString("startDate")
+            val endDate = data.optString("endDate")
+            val reason = data.optString("reason")
+            val submittedAt = data.optString("submittedAt")
+            val parsedStart = runCatching { LocalDate.parse(startDate) }.getOrNull() ?: return null
+            val parsedEnd = runCatching { LocalDate.parse(endDate) }.getOrNull() ?: return null
+            if (requestId.isBlank() || clientRequestId.length !in 8..128 || type == null
+                || parsedEnd.isBefore(parsedStart) || parsedEnd.isAfter(parsedStart.plusDays(MAX_HRM_REQUEST_DAYS))
+                || reason.length !in 3..1_000 || runCatching { Instant.parse(submittedAt) }.isFailure
+            ) return null
+            val correctionWorkdayId = data.optString("correctionWorkdayId").takeIf { it.isNotBlank() }
+            val requestedStartAt = data.optString("requestedStartAt").takeIf { it.isNotBlank() }
+            val requestedEndAt = data.optString("requestedEndAt").takeIf { it.isNotBlank() }
+            val parsedRequestedStart = requestedStartAt?.let { runCatching { Instant.parse(it) }.getOrNull() ?: return null }
+            val parsedRequestedEnd = requestedEndAt?.let { runCatching { Instant.parse(it) }.getOrNull() ?: return null }
+            if (type == WorkforceHrmRequestType.TIME_CORRECTION) {
+                if (correctionWorkdayId == null || (parsedRequestedStart == null && parsedRequestedEnd == null)) return null
+                if (parsedRequestedStart != null && parsedRequestedEnd != null && !parsedRequestedEnd.isAfter(parsedRequestedStart)) return null
+            }
+            return WorkforceHrmRequestCreateOperation(
+                operationId, requestId, clientRequestId, type, startDate, endDate,
+                correctionWorkdayId,
+                requestedStartAt,
+                requestedEndAt,
+                reason, submittedAt,
+            )
+        }
+
+        private fun hrmCancelOperationFromJson(operationId: String, data: JSONObject): WorkforceHrmRequestCancelOperation? {
+            val requestId = data.optString("id")
+            val cancelledAt = data.optString("cancelledAt")
+            return if (requestId.isBlank() || cancelledAt.isBlank()) null
+            else WorkforceHrmRequestCancelOperation(operationId, requestId, cancelledAt)
+        }
     }
 }
 
 data class WorkforceStoredOperation(
     val organizationSlug: String,
-    val operation: WorkforceWorkdayOperation,
+    val operation: WorkforceSyncOperation,
 )
 
 private fun JSONObject.requiredString(name: String, message: String): String = optString(name).takeIf { it.isNotBlank() }
     ?: throw WorkforceApiException(message, recoverable = true)
+
+private fun String?.toOptionalInstant(label: String): Instant? {
+    val value = this?.trim()?.takeIf { it.isNotBlank() } ?: return null
+    return runCatching { Instant.parse(value) }.getOrElse {
+        throw WorkforceApiException("Provide a valid ISO $label date-time with a timezone.", recoverable = false)
+    }
+}
 
 private fun JSONObject.optStringList(name: String): List<String> {
     val values = optJSONArray(name) ?: return emptyList()

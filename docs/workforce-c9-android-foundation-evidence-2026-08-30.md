@@ -1,7 +1,7 @@
 # Workforce C9 — native Android foundation
 
 > **Status:** safe partial source foundation for `WF-C9-001`, `WF-C9-002`,
-> `WF-C9-003`, `WF-C9-004`, `WF-C9-006` and `WF-C5-003`. It is not an Android build, signed app, device-attestation
+> `WF-C9-003`, `WF-C9-004`, `WF-C9-005`, `WF-C9-006` and `WF-C5-003`. It is not an Android build, signed app, device-attestation
 > acceptance, Play upload or location-collection activation.
 > **Recorded:** 2026-08-30
 
@@ -53,6 +53,9 @@ claiming Gradle, physical-device or seven-day recovery evidence.
 - A process-wide account-boundary mutex prevents a drain from racing logout,
   tenant switch or enqueue. A delayed head operation remains the absolute
   domain head, so a later action cannot overtake it while backoff is active.
+- The queue also compares the decrypted operation domain with the
+  authenticated Room-row domain before replay. A mismatch is terminal review,
+  never a request to another endpoint.
 - A logout or tenant switch first destroys the outbox key and then clears all
   rows. A different tenant can never submit a former tenant's operation; an
   unexpected scope mismatch is discarded rather than replayed.
@@ -91,7 +94,11 @@ action-time location, site, QR or device proof, so a tenant that requires
 those proofs receives the server's non-acceptance response rather than a
 bypass. Work Time history is a bounded self-HRM server read and explicitly
 labels the returned workday/request state as accepted server truth; it never
-calculates an accepted fact from an outbox entry. Requests, physical
-offline/process-death/two-account exercise, action-time permission/capture, QR scanner, device-enrollment transport,
+calculates an accepted fact from an outbox entry. The Android client can now
+create/cancel leave, absence and correction claims through the same encrypted
+per-domain outbox. Employment reasons remain only in live draft memory or
+encrypted transport/outbox payloads, not saved UI state or ordinary
+diagnostics. Physical offline/process-death/two-account
+exercise, action-time permission/capture, QR scanner, device-enrollment transport,
 attestation-server verification, accessibility localisation, update/outbox-drain
 drill and real device matrix remain their individual C5/C9/C10/C14 tasks.

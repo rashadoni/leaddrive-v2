@@ -51,19 +51,19 @@ class WorkforceEncryptedOutbox(context: Context) {
     ).build()
     private val cipher = WorkforceOutboxCipher()
 
-    suspend fun enqueue(session: WorkforceStoredSession, operation: WorkforceWorkdayOperation) = withContext(Dispatchers.IO) {
+    suspend fun enqueue(session: WorkforceStoredSession, operation: WorkforceSyncOperation) = withContext(Dispatchers.IO) {
         ACCOUNT_BOUNDARY_MUTEX.withLock {
             val now = System.currentTimeMillis()
             val plaintext = operation.toEncryptedPayload(session.organizationSlug)
             val encrypted = cipher.encrypt(
                 operationId = operation.operationId,
-                domain = WorkforceOutboxDomain.WORKDAY,
+                domain = operation.domain,
                 plaintext = plaintext,
             )
             database.operations().insertIgnore(
                 WorkforceOutboxEntity(
                     operationId = operation.operationId,
-                    domain = WorkforceOutboxDomain.WORKDAY.name,
+                    domain = operation.domain.name,
                     createdAtEpochMs = now,
                     expiresAtEpochMs = operation.queuedAt.toEpochMillisOr(now) + OFFLINE_HORIZON_MS,
                     nextAttemptAtEpochMs = now,
@@ -126,6 +126,14 @@ class WorkforceEncryptedOutbox(context: Context) {
                         )
                         continue
                     }
+                    if (stored.operation.domain != domain) {
+                        database.operations().markTerminal(
+                            row.operationId,
+                            WorkforceOutboxState.REQUIRES_REVIEW.name,
+                            "OUTBOX_DOMAIN_MISMATCH",
+                        )
+                        continue
+                    }
                     if (stored.organizationSlug != session.organizationSlug.trim().lowercase()) {
                         // This should only be reachable after unexpected local state
                         // damage; never replay a former tenant's operation.
@@ -133,13 +141,13 @@ class WorkforceEncryptedOutbox(context: Context) {
                         continue
                     }
                     try {
-                        api.submitTodayOperation(session, deviceId, stored.operation)
+                        api.submitOperation(session, deviceId, stored.operation)
                         database.operations().delete(row.operationId)
                     } catch (error: WorkforceActionConflictException) {
                         database.operations().markTerminal(
                             row.operationId,
                             WorkforceOutboxState.CONFLICT.name,
-                            error.recoveryCode ?: "WORKDAY_STATE_CHANGED",
+                            error.recoveryCode ?: "SYNC_STATE_CHANGED",
                         )
                     } catch (error: WorkforceApiException) {
                         if (error.recoverable && row.attemptCount + 1 < MAX_ATTEMPTS) {
@@ -154,7 +162,7 @@ class WorkforceEncryptedOutbox(context: Context) {
                             database.operations().markTerminal(
                                 row.operationId,
                                 WorkforceOutboxState.REQUIRES_REVIEW.name,
-                                error.recoveryCode ?: "WORKDAY_ACTION_REJECTED",
+                                error.recoveryCode ?: "SYNC_OPERATION_REJECTED",
                             )
                         }
                         // Do not let a later action overtake this domain's failed
@@ -213,7 +221,8 @@ class WorkforceEncryptedOutbox(context: Context) {
 data class WorkforceOutboxDrainResult(val retryNeeded: Boolean)
 
 enum class WorkforceOutboxDomain {
-    WORKDAY;
+    WORKDAY,
+    HRM_REQUEST;
 
     companion object {
         fun fromStored(value: String): WorkforceOutboxDomain? = entries.firstOrNull { it.name == value }

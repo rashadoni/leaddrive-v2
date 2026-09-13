@@ -60,6 +60,34 @@ class WorkforceSessionRepository(
         api.loadHistory(session, secureStore.installationId(), anchorDate)
     }
 
+    suspend fun submitHrmRequest(draft: WorkforceHrmRequestDraft): WorkforceHrmSubmission = sessionMutex.withLock {
+        val session = secureStore.readSession()
+            ?: throw WorkforceApiException("Your Workforce session has ended. Sign in again.", recoverable = false)
+        val operation = api.newHrmRequestOperation(draft)
+        try {
+            api.submitOperation(session, secureStore.installationId(), operation)
+            WorkforceHrmSubmission.ACCEPTED
+        } catch (error: Throwable) {
+            if (!error.isEligibleForOfflineOutbox()) throw error
+            outbox.enqueue(session, operation)
+            WorkforceHrmSubmission.QUEUED
+        }
+    }
+
+    suspend fun cancelHrmRequest(requestId: String): WorkforceHrmSubmission = sessionMutex.withLock {
+        val session = secureStore.readSession()
+            ?: throw WorkforceApiException("Your Workforce session has ended. Sign in again.", recoverable = false)
+        val operation = api.newHrmRequestCancellation(requestId)
+        try {
+            api.submitOperation(session, secureStore.installationId(), operation)
+            WorkforceHrmSubmission.ACCEPTED
+        } catch (error: Throwable) {
+            if (!error.isEligibleForOfflineOutbox()) throw error
+            outbox.enqueue(session, operation)
+            WorkforceHrmSubmission.QUEUED
+        }
+    }
+
     suspend fun signOut() = sessionMutex.withLock {
         secureStore.clearForLogout()
         outbox.clearForAccountBoundary()
@@ -69,6 +97,11 @@ class WorkforceSessionRepository(
 sealed interface WorkforceTodaySubmission {
     data class Accepted(val snapshot: WorkforceTodaySnapshot) : WorkforceTodaySubmission
     data object Queued : WorkforceTodaySubmission
+}
+
+enum class WorkforceHrmSubmission {
+    ACCEPTED,
+    QUEUED,
 }
 
 private fun Throwable.isEligibleForOfflineOutbox(): Boolean = this is java.io.IOException

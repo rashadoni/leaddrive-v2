@@ -33,6 +33,9 @@ import com.leaddrive.workforce.android.data.WorkforceApiException
 import com.leaddrive.workforce.android.data.WorkforceBootstrap
 import com.leaddrive.workforce.android.data.WorkforceEncryptedOutbox
 import com.leaddrive.workforce.android.data.WorkforceHistorySnapshot
+import com.leaddrive.workforce.android.data.WorkforceHrmRequestDraft
+import com.leaddrive.workforce.android.data.WorkforceHrmRequestType
+import com.leaddrive.workforce.android.data.WorkforceHrmSubmission
 import com.leaddrive.workforce.android.data.WorkforceLoginInput
 import com.leaddrive.workforce.android.data.WorkforceRuntimeConfiguration
 import com.leaddrive.workforce.android.data.WorkforceSecureStore
@@ -148,6 +151,34 @@ private fun WorkforceRoot(repository: WorkforceSessionRepository) {
                     }
                 }
             },
+            onSubmitRequest = { draft ->
+                status = "Submitting request…"
+                scope.launch {
+                    runCatching { repository.submitHrmRequest(draft) }
+                        .onSuccess { submission ->
+                            history = null
+                            status = when (submission) {
+                                WorkforceHrmSubmission.ACCEPTED -> "Request accepted by the server. Refresh its status."
+                                WorkforceHrmSubmission.QUEUED -> "Request is in this device’s encrypted outbox and will retry in order for up to seven days."
+                            }
+                        }
+                        .onFailure { status = it.employeeMessage() }
+                }
+            },
+            onCancelRequest = { requestId ->
+                status = "Cancelling request…"
+                scope.launch {
+                    runCatching { repository.cancelHrmRequest(requestId) }
+                        .onSuccess { submission ->
+                            history = null
+                            status = when (submission) {
+                                WorkforceHrmSubmission.ACCEPTED -> "Cancellation accepted by the server. Refresh its status."
+                                WorkforceHrmSubmission.QUEUED -> "Cancellation is in this device’s encrypted outbox and will retry in order for up to seven days."
+                            }
+                        }
+                        .onFailure { status = it.employeeMessage() }
+                }
+            },
             onAction = { action ->
                 val snapshot = today
                 if (snapshot != null) {
@@ -260,6 +291,8 @@ private fun WorkforceHome(
     onRefresh: () -> Unit,
     onSelectSection: (WorkforceSection) -> Unit,
     onLoadHistory: () -> Unit,
+    onSubmitRequest: (WorkforceHrmRequestDraft) -> Unit,
+    onCancelRequest: (String) -> Unit,
     onAction: (WorkforceWorkdayAction) -> Unit,
     onSignOut: () -> Unit,
 ) {
@@ -297,6 +330,13 @@ private fun WorkforceHome(
                 history = history,
                 onLoad = onLoadHistory,
             )
+            WorkforceSection.REQUESTS -> WorkforceRequests(
+                history = history,
+                defaultDate = today?.date.orEmpty(),
+                onLoad = onLoadHistory,
+                onSubmit = onSubmitRequest,
+                onCancel = onCancelRequest,
+            )
         }
         if (bootstrap.updateUrl != null) {
             Text("An approved update is available through your organization’s managed Play channel.")
@@ -309,6 +349,150 @@ private fun WorkforceHome(
 private enum class WorkforceSection(val label: String) {
     TODAY("Today"),
     HISTORY("Work Time"),
+    REQUESTS("Requests"),
+}
+
+@Composable
+private fun WorkforceRequests(
+    history: WorkforceHistorySnapshot?,
+    defaultDate: String,
+    onLoad: () -> Unit,
+    onSubmit: (WorkforceHrmRequestDraft) -> Unit,
+    onCancel: (String) -> Unit,
+) {
+    var type by remember { mutableStateOf(WorkforceHrmRequestType.LEAVE) }
+    var startDate by rememberSaveable { mutableStateOf(defaultDate) }
+    var endDate by rememberSaveable { mutableStateOf(defaultDate) }
+    // Reasons can contain sensitive employment context. Keep draft text only
+    // in live memory; do not persist it in the saved-instance-state bundle.
+    var reason by remember { mutableStateOf("") }
+    var correctionWorkdayId by rememberSaveable { mutableStateOf("") }
+    var requestedStartAt by rememberSaveable { mutableStateOf("") }
+    var requestedEndAt by rememberSaveable { mutableStateOf("") }
+    LaunchedEffect(defaultDate) {
+        if (startDate.isBlank()) startDate = defaultDate
+        if (endDate.isBlank()) endDate = defaultDate
+    }
+
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item {
+            Text("Requests", style = MaterialTheme.typography.titleLarge)
+            Text("Leave, absence and correction requests are employee claims for review, not approved time or payroll.")
+        }
+        item {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                WorkforceHrmRequestType.entries.forEach { candidate ->
+                    TextButton(onClick = { type = candidate }) {
+                        Text(if (candidate == type) "• ${candidate.label}" else candidate.label)
+                    }
+                }
+            }
+        }
+        item {
+            OutlinedTextField(
+                value = startDate,
+                onValueChange = { startDate = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Start date (YYYY-MM-DD)") },
+                singleLine = true,
+            )
+        }
+        item {
+            OutlinedTextField(
+                value = endDate,
+                onValueChange = { endDate = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("End date (YYYY-MM-DD)") },
+                singleLine = true,
+            )
+        }
+        if (type == WorkforceHrmRequestType.TIME_CORRECTION) {
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Choose an accepted workday to correct")
+                    val candidates = history?.days?.filter { it.workday != null }.orEmpty()
+                    if (candidates.isEmpty()) {
+                        Text("Load Work Time history first; do not invent a workday reference.")
+                        TextButton(onClick = onLoad) { Text("Load Work Time history") }
+                    } else {
+                        candidates.forEach { day ->
+                            TextButton(onClick = {
+                                correctionWorkdayId = day.workday!!.id
+                                startDate = day.date
+                                endDate = day.date
+                            }) {
+                                Text(if (correctionWorkdayId == day.workday!!.id) "• ${day.date}" else day.date)
+                            }
+                        }
+                    }
+                }
+            }
+            item {
+                OutlinedTextField(
+                    value = requestedStartAt,
+                    onValueChange = { requestedStartAt = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Requested start (ISO date-time, optional)") },
+                    singleLine = true,
+                )
+            }
+            item {
+                OutlinedTextField(
+                    value = requestedEndAt,
+                    onValueChange = { requestedEndAt = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Requested finish (ISO date-time, optional)") },
+                    singleLine = true,
+                )
+            }
+        }
+        item {
+            OutlinedTextField(
+                value = reason,
+                onValueChange = { reason = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Reason (visible only to the responsible reviewers)") },
+                minLines = 3,
+            )
+        }
+        item {
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = {
+                    onSubmit(
+                        WorkforceHrmRequestDraft(
+                            type = type,
+                            startDate = startDate,
+                            endDate = endDate,
+                            reason = reason,
+                            correctionWorkdayId = correctionWorkdayId,
+                            requestedStartAt = requestedStartAt,
+                            requestedEndAt = requestedEndAt,
+                        ),
+                    )
+                },
+            ) { Text("Submit request") }
+        }
+        item {
+            Text("Status history", style = MaterialTheme.typography.titleMedium)
+            Text("Refresh before cancelling; only pending requests are eligible.")
+            TextButton(onClick = onLoad) { Text("Refresh requests") }
+        }
+        if (history == null) {
+            item { Text("No server request history loaded.") }
+        } else {
+            items(history.requests, key = { it.id }) { request ->
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("${request.type}: ${request.status}", style = MaterialTheme.typography.titleSmall)
+                    Text("${request.startDate} – ${request.endDate}")
+                    request.decisionNote?.let { Text("Reviewer note: $it") }
+                    if (request.status == "PENDING") {
+                        TextButton(onClick = { onCancel(request.id) }) { Text("Cancel pending request") }
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
