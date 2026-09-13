@@ -218,6 +218,7 @@ model Organization {
   workforceAttendanceVerifications     WorkforceAttendanceVerification[]
   workforceAttendanceEvidences         WorkforceAttendanceEvidence[]
   workforceEvidenceAssessments         WorkforceEvidenceAssessment[]
+  workforceLegalHolds                  WorkforceLegalHold[]
   workforceMobileWriteFence            WorkforceMobileWriteFence?
   mtmPharmacyPromotionTypes           MtmPharmacyPromotionType[]
   mtmPharmacyPromotions               MtmPharmacyPromotion[]
@@ -688,6 +689,8 @@ model User {
   workforceAttendanceQrStationsDisabled        WorkforceAttendanceQrStation[]        @relation("WorkforceAttendanceQrStationDisabledBy")
   workforceAttendanceDeviceEnrollmentsApproved WorkforceAttendanceDeviceEnrollment[] @relation("WorkforceAttendanceDeviceEnrollmentApprovedBy")
   workforceAttendanceDeviceEnrollmentsRevoked  WorkforceAttendanceDeviceEnrollment[] @relation("WorkforceAttendanceDeviceEnrollmentRevokedBy")
+  workforceLegalHoldsCreated                    WorkforceLegalHold[]                  @relation("WorkforceLegalHoldCreatedBy")
+  workforceLegalHoldsReleased                   WorkforceLegalHold[]                  @relation("WorkforceLegalHoldReleasedBy")
   workforceMobileWriteFencesUpdated            WorkforceMobileWriteFence[]           @relation("WorkforceMobileWriteFenceUpdatedBy")
   accounts             Account[]
   quotas               SalesQuota[]
@@ -5338,6 +5341,18 @@ enum WorkforceEvidenceAssessmentVerdict {
   SATISFIED
 }
 
+/// An explicit tenant-wide stop for any one-year time/decision retention.
+/// Narrower record/employee holds need a separately approved scope model; an
+/// absent or unreadable hold check must never permit destructive execution.
+enum WorkforceLegalHoldScope {
+  TIME_DECISION
+}
+
+enum WorkforceLegalHoldStatus {
+  ACTIVE
+  RELEASED
+}
+
 /// Server-owned mobile mutation posture. An absent row remains legacy-safe;
 /// a tenant administrator must explicitly move to cohort-only or frozen mode.
 enum WorkforceMobileWriteFenceMode {
@@ -8491,6 +8506,32 @@ model WorkforceEvidenceAssessment {
   @@index([organizationId, evidenceId, assessedAt])
   @@index([organizationId, kind, verdict, assessedAt])
   @@map("workforce_evidence_assessments")
+}
+
+/// Append-only tenant-wide legal/contract hold for the one-year time/decision
+/// lifecycle. It records an opaque case reference only; legal documents and
+/// employee reasons do not belong in this operational table. Release is a
+/// one-way audited action in the migration, while a writer/API stays blocked
+/// until C7's retention/legal-hold officer scope is approved.
+model WorkforceLegalHold {
+  id                String                    @id @default(cuid())
+  organizationId    String
+  organization      Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  scope             WorkforceLegalHoldScope   @default(TIME_DECISION)
+  status            WorkforceLegalHoldStatus  @default(ACTIVE)
+  matterReference   String                    @db.VarChar(191)
+  createdByUserId   String
+  createdByUser     User                      @relation("WorkforceLegalHoldCreatedBy", fields: [organizationId, createdByUserId], references: [organizationId, id], onDelete: Restrict)
+  createdAt         DateTime                  @default(now())
+  releasedByUserId  String?
+  releasedByUser    User?                     @relation("WorkforceLegalHoldReleasedBy", fields: [organizationId, releasedByUserId], references: [organizationId, id], onDelete: Restrict)
+  releasedAt        DateTime?
+
+  @@unique([organizationId, id])
+  @@index([organizationId, scope, status, createdAt])
+  @@index([organizationId, createdByUserId, createdAt])
+  @@index([organizationId, releasedByUserId, releasedAt])
+  @@map("workforce_legal_holds")
 }
 
 /// A tenant-scoped emergency/drain fence for mobile Workforce mutations.
