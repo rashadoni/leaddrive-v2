@@ -31,5 +31,7 @@ describe("Workforce access-management UI contract", () => {
     expect(component).toContain('variant="destructive"')
     expect(component).toContain('t("confirmRevocation")')
     expect(component).toContain('review.activityEvidence === "UNAVAILABLE"')
+    expect(component).toContain('aria-live="polite"')
+    expect(component).toContain("aria-busy={loading || saving || reviewing}")
   })
 })

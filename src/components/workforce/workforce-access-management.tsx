@@ -254,7 +254,7 @@ export function WorkforceAccessManagement() {
 
   if (!organizationId) return null
 
-  return <section className="overflow-hidden rounded-xl border border-zinc-200 bg-background dark:border-zinc-800" aria-labelledby="workforce-access-title">
+  return <section className="overflow-hidden rounded-xl border border-zinc-200 bg-background dark:border-zinc-800" aria-labelledby="workforce-access-title" aria-busy={loading || saving || reviewing}>
     <div className="flex flex-wrap items-start justify-between gap-4 border-b border-zinc-200 px-5 py-5 dark:border-zinc-800 sm:px-6">
       <div className="flex max-w-3xl gap-3">
         <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300"><ShieldCheck className="h-5 w-5" aria-hidden="true" /></span>
@@ -304,7 +304,7 @@ export function WorkforceAccessManagement() {
       <div className="space-y-4">
         <div className="space-y-3 border-b border-zinc-200 pb-5 dark:border-zinc-800">
           <div className="flex flex-wrap items-start justify-between gap-3"><div className="space-y-1"><h3 className="font-semibold">{t("reviewTitle")}</h3><p className="text-sm leading-6 text-muted-foreground">{t("reviewHint")}</p></div><Button type="button" variant="outline" className="min-h-11" onClick={() => void runAccessReview()} disabled={reviewing || saving}>{reviewing ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <ShieldCheck />}{t("runReview")}</Button></div>
-          {review ? <div className="space-y-2 rounded-lg bg-zinc-50 p-3 text-sm dark:bg-zinc-900/60"><p>{t("reviewSummary", { count: review.grantsExamined, date: dateTime.format(new Date(review.reviewedAt)) })}</p><div className="flex flex-wrap gap-2">{(Object.entries(review.findingCounts) as Array<[AccessReviewFindingCode, number]>).map(([code, count]) => <Badge key={code} variant="outline">{t(`findings.${code}`)}: {count}</Badge>)}{Object.keys(review.findingCounts).length === 0 ? <Badge variant="outline">{t("noFindings")}</Badge> : null}</div>{review.activityEvidence === "UNAVAILABLE" ? <p className="leading-6 text-muted-foreground">{t("usageUnavailable")}</p> : null}</div> : null}
+          {review ? <div className="space-y-2 rounded-lg bg-zinc-50 p-3 text-sm dark:bg-zinc-900/60" role="status" aria-live="polite"><p>{t("reviewSummary", { count: review.grantsExamined, date: dateTime.format(new Date(review.reviewedAt)) })}</p><div className="flex flex-wrap gap-2">{(Object.entries(review.findingCounts) as Array<[AccessReviewFindingCode, number]>).map(([code, count]) => <Badge key={code} variant="outline">{t(`findings.${code}`)}: {count}</Badge>)}{Object.keys(review.findingCounts).length === 0 ? <Badge variant="outline">{t("noFindings")}</Badge> : null}</div>{review.activityEvidence === "UNAVAILABLE" ? <p className="leading-6 text-muted-foreground">{t("usageUnavailable")}</p> : null}</div> : null}
         </div>
         <div className="space-y-1"><h3 className="font-semibold">{t("activeTitle")}</h3><p className="text-sm leading-6 text-muted-foreground">{t("activeHint", { count: grants.length })}</p></div>
         {grants.length === 0 ? <p className="rounded-lg bg-zinc-50 px-4 py-5 text-sm leading-6 text-muted-foreground dark:bg-zinc-900/60">{t("empty")}</p> : <ul className="divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">{grants.map((grantItem) => <li key={grantItem.grantId} className="space-y-3 py-4">
