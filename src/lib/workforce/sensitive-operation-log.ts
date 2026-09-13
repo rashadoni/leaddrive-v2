@@ -3,7 +3,10 @@
  * Never pass an error object, message, case reference, or employee input.
  */
 export function logWorkforceSensitiveOperationFailure(input: {
-  operation: "review-exception-decision-write" | "review-exception-response-write"
+  operation:
+    | "review-exception-decision-write"
+    | "review-exception-response-write"
+    | "review-workday-correction"
 }): void {
   console.error("[workforce/privacy] sensitive operation failed", { operation: input.operation })
 }
