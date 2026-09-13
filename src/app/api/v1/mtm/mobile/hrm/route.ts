@@ -7,6 +7,7 @@ import {
   isDateKey,
 } from "@/lib/mtm/mobile-week"
 import { resolveWorkCalendarDay, type WorkCalendarOverride } from "@/lib/mtm/work-calendar"
+import { workedSeconds } from "@/lib/mtm/operational-week"
 import { isValidTimezone } from "@/lib/timezone"
 import { withMobileRls } from "@/lib/with-mobile-rls"
 import { requireMobilePermission } from "@/lib/mtm/mobile-capabilities"
@@ -137,7 +138,11 @@ export const GET = withMobileRls(async (req, auth) => {
     const overrides = calendarOverridesRaw as WorkCalendarOverride[]
     const typedWorkdays = workdays as WorkdayRow[]
     const typedRequests = requests as HrmRequestRow[]
-    const workdayByDate = new Map(typedWorkdays.map((workday) => [workday.workDate.toISOString().slice(0, 10), workday]))
+    const now = new Date()
+    const workdayByDate = new Map(typedWorkdays.map((workday) => [
+      workday.workDate.toISOString().slice(0, 10),
+      { ...workday, workedSeconds: workedSeconds(workday, now) },
+    ]))
     const days = Array.from({ length: dayCount(start, end) }, (_, index) => addDateKeyDays(start, index)).map((date) => {
       const calendar = resolveWorkCalendarDay({
         date,

@@ -377,6 +377,9 @@ export const POST = withMobileRls(async (req, auth) => {
   const orgId = auth.orgId
   const agentId = auth.agentId
   const workdayAuditMetadata = workforceAuditRequestMetadata(req.headers)
+  const buildSha = req.headers.get("x-workforce-app-build")
+  const platform = req.headers.get("x-workforce-client-platform")
+  const deviceClass = req.headers.get("x-workforce-device-class")
   const attendanceCapabilities = {
     qrEnabled: auth.tenantCapabilities.attendanceQr === true,
     deviceTrustEnabled: auth.tenantCapabilities.attendanceDeviceTrust === true,
@@ -388,8 +391,11 @@ export const POST = withMobileRls(async (req, auth) => {
   recordMtmMobileV1SyncActivity({
     organizationId: orgId,
     agentId,
-    apkVersion: req.headers.get("x-field-apk-version"),
+    apkVersion: req.headers.get("x-workforce-app-version") ?? req.headers.get("x-field-apk-version"),
     endpoint: "POST /api/v1/mtm/mobile/sync/push",
+    ...(buildSha || platform || deviceClass
+      ? { diagnostics: { buildSha, platform, deviceClass } }
+      : {}),
   })
 
   let body: unknown

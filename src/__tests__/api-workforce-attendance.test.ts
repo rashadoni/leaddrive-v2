@@ -29,6 +29,7 @@ import {
   POST as mobileEnrollmentPost,
 } from "@/app/api/v1/mtm/mobile/attendance/devices/enrollments/route"
 import { POST as mobileEnrollmentProofPost } from "@/app/api/v1/mtm/mobile/attendance/devices/enrollments/[id]/proof/route"
+import { POST as mobileEnrollmentRevokePost } from "@/app/api/v1/mtm/mobile/attendance/devices/enrollments/[id]/revoke/route"
 import type { AuthResult } from "@/lib/api-auth"
 import { resolveMobileAuth } from "@/lib/mobile-auth"
 import { prisma } from "@/lib/prisma"
@@ -61,6 +62,8 @@ type StationQrPostHandler = (request: NextRequest, auth: AuthResult, context: { 
 const callStationQrPost = stationQrPost as unknown as StationQrPostHandler
 type StationReplacementPostHandler = (request: NextRequest, auth: AuthResult, context: { params: Promise<{ id: string }> }) => Promise<Response>
 const callStationReplacementPost = stationReplacementPost as unknown as StationReplacementPostHandler
+type MobileEnrollmentRevokeHandler = (request: NextRequest, context: { params: Promise<{ id: string }> }) => Promise<Response>
+const callMobileEnrollmentRevokePost = mobileEnrollmentRevokePost as unknown as MobileEnrollmentRevokeHandler
 const MOBILE_AUTH = {
   orgId: ORG,
   agentId: "agent_1",
@@ -111,6 +114,13 @@ function mobileProofRequest(body: unknown) {
     method: "POST",
     headers: { authorization: "Bearer test", "content-type": "application/json" },
     body: JSON.stringify(body),
+  })
+}
+
+function mobileRevokeRequest() {
+  return new NextRequest("http://localhost/api/v1/mtm/mobile/attendance/devices/enrollments/enrollment_1/revoke", {
+    method: "POST",
+    headers: { authorization: "Bearer test" },
   })
 }
 
@@ -394,6 +404,52 @@ describe("Workforce attendance H5 API boundaries", () => {
     expect(prisma.workforceAttendanceDeviceEnrollment.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { organizationId: ORG, agentId: "agent_1" },
       select: expect.not.objectContaining({ publicKeySpki: true }),
+    }))
+  })
+
+  it("lets an accountable employee revoke only their own device as an immutable lost-factor containment action", async () => {
+    vi.mocked(prisma.workforceAttendanceDeviceEnrollment.findFirst).mockResolvedValueOnce({
+      id: "enrollment_1",
+      agentId: "agent_1",
+      deviceLabel: "Lost Pixel",
+      publicKeyFingerprint: "a".repeat(64),
+      status: "ACTIVE",
+      replacesEnrollmentId: null,
+    } as never)
+    vi.mocked(prisma.workforceAttendanceDeviceEnrollment.updateMany).mockResolvedValueOnce({ count: 1 } as never)
+
+    const response = await callMobileEnrollmentRevokePost(mobileRevokeRequest(), {
+      params: Promise.resolve({ id: "enrollment_1" }),
+    })
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      success: true,
+      data: { enrollmentId: "enrollment_1", status: "REVOKED" },
+    })
+    expect(prisma.workforceAttendanceDeviceEnrollment.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: {
+        id: "enrollment_1",
+        organizationId: ORG,
+        agentId: "agent_1",
+        status: { in: ["PENDING", "ACTIVE"] },
+      },
+    }))
+    expect(prisma.workforceAttendanceDeviceEnrollment.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: {
+        id: "enrollment_1",
+        organizationId: ORG,
+        agentId: "agent_1",
+        status: { in: ["PENDING", "ACTIVE"] },
+      },
+      data: expect.objectContaining({ status: "REVOKED", revokedByUserId: "user_1" }),
+    }))
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        action: "WORKFORCE_ATTENDANCE_DEVICE_REVOKED",
+        entityId: "enrollment_1",
+        newData: expect.objectContaining({ actorUserId: "user_1", status: "REVOKED" }),
+      }),
     }))
   })
 
