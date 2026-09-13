@@ -313,6 +313,10 @@ class VerificationTests(unittest.TestCase):
         run.side_effect = [b"0|1|0|0|0\n", b"1|TLSv1.3\n", b"222\n"]
         MAINTENANCE._verify_scratch("111")
         self.assertEqual(run.call_count, 3)
+        role_query = run.call_args_list[0].args[0][-1]
+        self.assertIn("CASE WHEN rolsuper THEN 1 ELSE 0 END", role_query)
+        self.assertIn("CASE WHEN rolcreatedb THEN 1 ELSE 0 END", role_query)
+        self.assertNotIn("::int", role_query)
 
     @mock.patch.object(MAINTENANCE, "_command", side_effect=lambda name: name)
     @mock.patch.object(MAINTENANCE, "_run")
@@ -332,7 +336,7 @@ class VerificationTests(unittest.TestCase):
         run.return_value = b"1|1|0|0|0\n"
         with self.assertRaises(MAINTENANCE.MaintenanceError) as raised:
             MAINTENANCE._verify_scratch("111")
-        self.assertEqual(raised.exception.code, "verify-role")
+        self.assertEqual(raised.exception.code, "verify-role-attributes")
 
     @mock.patch.object(MAINTENANCE, "_command", side_effect=lambda name: name)
     @mock.patch.object(MAINTENANCE, "_run")
@@ -349,10 +353,10 @@ class VerificationTests(unittest.TestCase):
     def test_verify_subprocess_failure_keeps_exact_stage(
         self, run: mock.Mock, _command: mock.Mock
     ) -> None:
-        run.side_effect = MAINTENANCE.MaintenanceError("verify-role")
+        run.side_effect = MAINTENANCE.MaintenanceError("verify-role-query")
         with self.assertRaises(MAINTENANCE.MaintenanceError) as raised:
             MAINTENANCE._verify_scratch("111")
-        self.assertEqual(raised.exception.code, "verify-role")
+        self.assertEqual(raised.exception.code, "verify-role-query")
 
 
 class StaticSafetyContractTests(unittest.TestCase):

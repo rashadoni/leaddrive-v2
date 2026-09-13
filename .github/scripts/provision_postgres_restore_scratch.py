@@ -109,6 +109,8 @@ class MaintenanceError(Exception):
             "role-create",
             "verify-full",
             "verify-role",
+            "verify-role-query",
+            "verify-role-attributes",
             "verify-tls",
             "verify-identity",
             "cluster-stop",
@@ -936,13 +938,27 @@ def _create_role(password: str, source_identifier: str) -> None:
 def _verify_scratch(source_identifier: str) -> None:
     environment = _scratch_environment()
     role_state = _run(
-        [_command("psql"), "-X", "-v", "ON_ERROR_STOP=1", "-AtF", "|", "-c", "SELECT rolsuper::int, rolcreatedb::int, rolcreaterole::int, rolreplication::int, rolbypassrls::int FROM pg_roles WHERE rolname = session_user"],
+        [
+            _command("psql"),
+            "-X",
+            "-v",
+            "ON_ERROR_STOP=1",
+            "-AtF",
+            "|",
+            "-c",
+            "SELECT CASE WHEN rolsuper THEN 1 ELSE 0 END, "
+            "CASE WHEN rolcreatedb THEN 1 ELSE 0 END, "
+            "CASE WHEN rolcreaterole THEN 1 ELSE 0 END, "
+            "CASE WHEN rolreplication THEN 1 ELSE 0 END, "
+            "CASE WHEN rolbypassrls THEN 1 ELSE 0 END "
+            "FROM pg_roles WHERE rolname = session_user",
+        ],
         capture=True,
         env=environment,
-        code="verify-role",
+        code="verify-role-query",
     ).decode("ascii", errors="strict").strip()
     if role_state != "0|1|0|0|0":
-        raise MaintenanceError("verify-role")
+        raise MaintenanceError("verify-role-attributes")
     tls_state = _run(
         [_command("psql"), "-X", "-v", "ON_ERROR_STOP=1", "-AtF", "|", "-c", "SELECT CASE WHEN ssl THEN 1 ELSE 0 END, version FROM pg_stat_ssl WHERE pid = pg_backend_pid()"],
         capture=True,
