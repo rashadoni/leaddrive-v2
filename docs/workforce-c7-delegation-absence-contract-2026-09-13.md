@@ -1,7 +1,7 @@
 # Workforce C7 — delegation and manager-absence contract
 
-**Task:** `WF-C7-009`  
-**Status:** definition accepted; implementation and rollout remain separate work  
+**Task:** `WF-C7-009`
+**Status:** definition accepted; implementation and rollout remain separate work
 **Recorded:** 2026-09-13
 
 ## Release contract
