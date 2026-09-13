@@ -1121,12 +1121,13 @@ Current verification evidence (2026-09-13):
   accessibility, touch-target, overflow and primary-work failures.
 - The final current-tree repeat passes seven Agent Desktop/API/evidence/scan test
   files with 42/42 assertions, changed-source ESLint, both runner syntax checks,
-  `git diff --check`, and translation parity (22,548 EN keys; zero RU/AZ missing
-  or extra). Earlier expanded contract coverage passed 60/60 assertions. Each
-  exact-SHA evidence job completed its isolated production-mode build. A
-  redundant full build is intentionally not run on Contabo; full repository
-  typecheck and required branch protection remain mandatory PR gates before
-  merge.
+  `git diff --check`, and translation parity (22,599 EN keys; zero RU/AZ missing
+  or extra) after the conflict-free `origin/main` integration. The integration
+  left every task-owned Agent/evidence file byte-identical. Earlier expanded
+  contract coverage passed 60/60 assertions. Each exact-SHA evidence job
+  completed its isolated production-mode build. A redundant full build is
+  intentionally not run on Contabo; full repository typecheck and required
+  branch protection remain mandatory PR gates before merge.
 
 ## 11. Workstream 4 — VoIP Calls
 
