@@ -42,6 +42,7 @@ type ApprovedReport = {
 
 type ReportData = { timezone: string; report: ApprovedReport }
 type ReportRange = Pick<ApprovedReport, "start" | "end">
+type ReportFilter = ReportRange & { agentId: string }
 
 const REPORT_METRIC_KEYS = [
   "workdays",
@@ -167,6 +168,7 @@ function initialRange() {
   return {
     start: start.toISOString().slice(0, 10),
     end: end.toISOString().slice(0, 10),
+    agentId: "",
   }
 }
 
@@ -179,7 +181,8 @@ export function WorkforceApprovedReport() {
   // The report API resolves an omitted period in the tenant timezone. Keep
   // that first request server-authoritative rather than making an employee in
   // another browser timezone silently select the wrong Baku work date.
-  const [applied, setApplied] = useState<ReportRange | null>(null)
+  const [applied, setApplied] = useState<ReportFilter | null>(null)
+  const [employeeOptions, setEmployeeOptions] = useState<Array<{ agentId: string; name: string }>>([])
   const [data, setData] = useState<ReportData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -192,6 +195,7 @@ export function WorkforceApprovedReport() {
     if (applied) {
       parameters.set("start", applied.start)
       parameters.set("end", applied.end)
+      if (applied.agentId) parameters.set("agentId", applied.agentId)
     }
     fetch("/api/v1/workforce/reports?" + parameters.toString(), {
       cache: "no-store",
@@ -207,12 +211,15 @@ export function WorkforceApprovedReport() {
         if (!nextData) throw new Error("WORKFORCE_APPROVED_REPORT_RESPONSE_INVALID")
         if (controller.signal.aborted) return
         setData(nextData)
+        if (!applied?.agentId) {
+          setEmployeeOptions(nextData.report.byEmployee.map(({ agentId, name }) => ({ agentId, name })))
+        }
         // Inputs remain usable after the initial response, but they must show
         // the exact server-selected dates. Do not overwrite a later local
         // edit while an earlier request is being cancelled/replaced.
         setFilters((current) => {
           if (applied && (current.start !== applied.start || current.end !== applied.end)) return current
-          return { start: nextData.report.start, end: nextData.report.end }
+          return { ...current, start: nextData.report.start, end: nextData.report.end }
         })
       })
       .catch((cause: unknown) => {
@@ -250,9 +257,10 @@ export function WorkforceApprovedReport() {
   return <section className="space-y-6">
     <PageDescription title={t("approvedReportTitle")} description={t("approvedReportSubtitle")} />
     <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
-      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.4fr)_auto] lg:items-end">
         <div className="space-y-1.5"><label htmlFor="workforce-report-start" className="text-sm font-medium">{t("approvalPeriodStart")}</label><Input id="workforce-report-start" type="date" value={filters.start} onChange={(event) => setFilters({ ...filters, start: event.target.value })} disabled={loading} className="min-h-11" /></div>
         <div className="space-y-1.5"><label htmlFor="workforce-report-end" className="text-sm font-medium">{t("approvalPeriodEnd")}</label><Input id="workforce-report-end" type="date" value={filters.end} onChange={(event) => setFilters({ ...filters, end: event.target.value })} disabled={loading} className="min-h-11" /></div>
+        <div className="space-y-1.5"><label htmlFor="workforce-report-agent" className="text-sm font-medium">{t("employee")}</label><select id="workforce-report-agent" value={filters.agentId} onChange={(event) => setFilters({ ...filters, agentId: event.target.value })} disabled={loading} className="flex min-h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"><option value="">{t("approvedReportAllEmployees")}</option>{employeeOptions.map((employee) => <option key={employee.agentId} value={employee.agentId}>{employee.name}</option>)}</select></div>
         <div className="flex gap-2"><Button type="button" variant="outline" className="min-h-11" disabled={loading} onClick={apply}>{t("approvedReportApply")}</Button><Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("refresh")} disabled={loading} onClick={() => { setLoading(true); setError(null); setRetry((value) => value + 1) }}>{loading ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <RefreshCw />}</Button></div>
       </div>
       <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">{t("approvedReportSourceHint")}</p>

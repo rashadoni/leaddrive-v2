@@ -23666,6 +23666,7 @@
     "approvedReportLoading": "Loading approved work-time report",
     "approvedReportRangeInvalid": "Choose a valid report period with an end date on or after the start date.",
     "approvedReportApply": "Review report",
+    "approvedReportAllEmployees": "All employees in my scope",
     "approvedReportSourceHint": "Each metric is rebuilt from immutable approved rows. Raw location, QR, device proof and employee explanations are not in this report.",
     "approvedReportTimezone": "Report dates use the tenant time zone: {timezone}.",
     "approvedReportEmployees": "Employees",

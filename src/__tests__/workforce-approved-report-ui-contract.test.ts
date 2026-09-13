@@ -5,9 +5,16 @@ const report = readFileSync("src/components/workforce/workforce-approved-report.
 
 describe("Workforce approved-time report UI boundary", () => {
   it("uses the server-selected tenant period for its first request", () => {
-    expect(report).toContain("useState<ReportRange | null>(null)")
-    expect(report).toContain("return { start: nextData.report.start, end: nextData.report.end }")
+    expect(report).toContain("useState<ReportFilter | null>(null)")
+    expect(report).toContain("return { ...current, start: nextData.report.start, end: nextData.report.end }")
     expect(report).toContain('t("approvedReportTimezone", { timezone: data.timezone })')
+  })
+
+  it("applies only a server-validated employee ID from the scoped report options", () => {
+    expect(report).toContain('parameters.set("agentId", applied.agentId)')
+    expect(report).toContain('id="workforce-report-agent"')
+    expect(report).toContain('t("approvedReportAllEmployees")')
+    expect(report).toContain("setEmployeeOptions(nextData.report.byEmployee.map")
   })
 
   it("allowlist-parses and reconciles every immutable aggregate before rendering", () => {

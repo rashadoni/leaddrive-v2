@@ -23666,6 +23666,7 @@
     "approvedReportLoading": "Загружаем отчёт по утверждённому рабочему времени",
     "approvedReportRangeInvalid": "Выберите корректный период отчёта: дата окончания не может быть раньше даты начала.",
     "approvedReportApply": "Показать отчёт",
+    "approvedReportAllEmployees": "Все сотрудники в моей области доступа",
     "approvedReportSourceHint": "Каждый показатель пересчитывается из неизменяемых утверждённых строк. Сырая геолокация, QR, подтверждение устройства и объяснения сотрудника в отчёт не входят.",
     "approvedReportTimezone": "Даты отчёта используют часовой пояс tenant: {timezone}.",
     "approvedReportEmployees": "Сотрудники",

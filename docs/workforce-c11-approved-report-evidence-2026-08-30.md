@@ -48,8 +48,11 @@ Limiter unavailability fails closed before settings, actor/access resolution,
 report reads or audit writes; bounded `Retry-After` responses remain
 private/no-store.
 
-The new Workforce web report uses this endpoint, a date filter and the current
-actor scope. Its first load omits the date parameters so the server selects
+The new Workforce web report uses this endpoint, date filters, a named employee
+filter populated only from the current scoped result, and the current actor
+scope. An employee selection sends the opaque ID back to the server, where the
+actor and durable-grant checks remain authoritative. Its first load omits the
+date parameters so the server selects
 the period in the tenant timezone; the inputs are then updated to the exact
 returned start/end dates and name that timezone. A browser in a different
 timezone therefore cannot silently choose a different Baku work date on the
@@ -82,7 +85,7 @@ logging with a fixed operation label.
 
 ## Verification
 
-- **PASS:** nine sequential targeted Vitest files, 98 tests: approved and
+- **PASS:** nine sequential targeted Vitest files, 99 tests: approved and
   exception report services/APIs/rate limits, browser response contract,
   immutable export, approval service and navigation. Coverage includes
   separate pre-read limiter budgets, fail-closed limiter paths, hash-valid
@@ -90,7 +93,7 @@ logging with a fixed operation label.
   and fixed-label error logging.
 - **PASS:** targeted ESLint for the report service, route, access guard,
   component and tests.
-- **PASS:** `npm run i18n:check`: 22,520 EN leaf keys; RU/AZ missing=0,
+- **PASS:** `npm run i18n:check`: 22,521 EN leaf keys; RU/AZ missing=0,
   extra=0.
 - **PASS:** `git diff --check`.
 - **NOT RUN:** full TypeScript check, production build, browser E2E, staging
