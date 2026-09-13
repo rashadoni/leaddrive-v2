@@ -11,8 +11,9 @@ It is not a reusable integration artifact and has no external recipient retry
 ledger.
 
 This boundary implements the owner's 2026-08-28 choice to release approved
-timesheet export only. WF-C11-010 remains conditional and unbuilt because no
-external HRIS has been approved.
+timesheet export only. WF-C11-010 is closed as explicitly excluded from release
+1 because no external HRIS has been approved. A future approval creates a new
+reviewed project; it does not silently reopen or expand the current export.
 
 ## Required separate project before integration
 
