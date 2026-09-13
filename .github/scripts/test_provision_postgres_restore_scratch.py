@@ -264,6 +264,49 @@ class VerificationTests(unittest.TestCase):
 
     @mock.patch.object(MAINTENANCE, "_command", side_effect=lambda name: name)
     @mock.patch.object(MAINTENANCE, "_run")
+    def test_source_role_cleanup_is_identity_bound_and_dependency_guarded(
+        self, run: mock.Mock, _command: mock.Mock
+    ) -> None:
+        config = {
+            "PGHOST": "source.example.invalid",
+            "PGPORT": "5432",
+            "PGDATABASE": "source",
+            "PGUSER": "backup",
+            "PGPASSFILE": "/secure/source.pgpass",
+        }
+        MAINTENANCE._cleanup_accidental_source_role(config, "123456789")
+
+        argv = run.call_args.args[0]
+        sql = run.call_args.kwargs["input_bytes"]
+        self.assertEqual(argv[argv.index("-h") + 1], "/var/run/postgresql")
+        self.assertEqual(argv[argv.index("-p") + 1], "5432")
+        self.assertIn(b"current_setting('port') <> '5432'", sql)
+        self.assertIn(b"<> '123456789'", sql)
+        self.assertIn(b"NOT rolsuper", sql)
+        self.assertIn(b"rolcreatedb", sql)
+        self.assertIn(b"pg_auth_members", sql)
+        self.assertIn(b"pg_db_role_setting", sql)
+        self.assertIn(b"pg_shdepend", sql)
+        self.assertIn(b"DROP ROLE leaddrive_restore_verifier", sql)
+
+    @mock.patch.object(MAINTENANCE, "_run")
+    def test_source_role_cleanup_rejects_scratch_port(
+        self, run: mock.Mock
+    ) -> None:
+        config = {
+            "PGHOST": "source.example.invalid",
+            "PGPORT": "55432",
+            "PGDATABASE": "source",
+            "PGUSER": "backup",
+            "PGPASSFILE": "/secure/source.pgpass",
+        }
+        with self.assertRaises(MAINTENANCE.MaintenanceError) as raised:
+            MAINTENANCE._cleanup_accidental_source_role(config, "123456789")
+        self.assertEqual(raised.exception.code, "source-role-cleanup")
+        run.assert_not_called()
+
+    @mock.patch.object(MAINTENANCE, "_command", side_effect=lambda name: name)
+    @mock.patch.object(MAINTENANCE, "_run")
     def test_verify_requires_limited_role_tls_and_distinct_identity(
         self, run: mock.Mock, _command: mock.Mock
     ) -> None:

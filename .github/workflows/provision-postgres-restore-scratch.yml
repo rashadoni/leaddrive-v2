@@ -14,6 +14,7 @@ on:
         options:
           - apply
           - rollback
+          - cleanup-source-role
       confirmation:
         description: "Type the exact operation-specific maintenance confirmation"
         required: true
@@ -71,7 +72,7 @@ jobs:
         run: |
           set -euo pipefail
           case "$OPERATION:$CONFIRMATION" in
-            apply:PROVISION_ISOLATED_POSTGRES_RESTORE_SCRATCH_ON_13_140_132_245|rollback:ROLLBACK_ISOLATED_POSTGRES_RESTORE_SCRATCH_ON_13_140_132_245) ;;
+            apply:PROVISION_ISOLATED_POSTGRES_RESTORE_SCRATCH_ON_13_140_132_245|rollback:ROLLBACK_ISOLATED_POSTGRES_RESTORE_SCRATCH_ON_13_140_132_245|cleanup-source-role:REMOVE_ACCIDENTAL_SCRATCH_VERIFIER_ROLE_FROM_SOURCE_ON_13_140_132_245) ;;
             *)
               echo "::error::Confirmation does not match the selected operation"
               exit 1
@@ -89,7 +90,7 @@ jobs:
         run: |
           set -euo pipefail
           export LC_ALL=C
-          [[ "$OPERATION" =~ ^(apply|rollback)$ ]] || {
+          [[ "$OPERATION" =~ ^(apply|rollback|cleanup-source-role)$ ]] || {
             echo "::error::Unsupported maintenance operation"
             exit 1
           }
@@ -104,7 +105,7 @@ jobs:
           set -e
 
           mapfile -t MAINTENANCE_LINES <<<"$MAINTENANCE_OUTPUT"
-          LINE_RE='^scratch_postgres_maintenance operation=(apply|rollback|unknown) status=(applied|rolled-back|failed) source_restart=no backup_run=no restore_run=no kafka_change=no scratch_port=55432 scratch_state=(stopped|unknown) effective_verify_full=(yes|not-tested|unknown) rollback_snapshot=(retained|unknown) failure_stage=(none|invocation|lock|scheduler|prerequisite|filesystem|configuration|configuration-env-file|configuration-env-encoding|configuration-env-duplicate|configuration-pgpass-file|configuration-pgpass-owner|configuration-pgpass-authority|configuration-ca-file|configuration-rewrite|source|source-role-present|port|snapshot|cluster-create|tls-create|cluster-config|cluster-config-owner|cluster-start|role-create|verify-full|cluster-stop|source-drift|post-write|rollback|internal) cause_stage=(none|invocation|lock|scheduler|prerequisite|filesystem|configuration|configuration-env-file|configuration-env-encoding|configuration-env-duplicate|configuration-pgpass-file|configuration-pgpass-owner|configuration-pgpass-authority|configuration-ca-file|configuration-rewrite|source|source-role-present|port|snapshot|cluster-create|tls-create|cluster-config|cluster-config-owner|cluster-start|role-create|verify-full|cluster-stop|source-drift|post-write|rollback|internal)$'
+          LINE_RE='^scratch_postgres_maintenance operation=(apply|rollback|cleanup-source-role|unknown) status=(applied|rolled-back|source-role-removed|failed) source_restart=no backup_run=no restore_run=no kafka_change=no scratch_port=55432 scratch_state=(stopped|unknown) effective_verify_full=(yes|not-tested|unknown) rollback_snapshot=(retained|unknown) failure_stage=(none|invocation|lock|scheduler|prerequisite|filesystem|configuration|configuration-env-file|configuration-env-encoding|configuration-env-duplicate|configuration-pgpass-file|configuration-pgpass-owner|configuration-pgpass-authority|configuration-ca-file|configuration-rewrite|source|source-role-present|source-role-cleanup|port|snapshot|cluster-create|tls-create|cluster-config|cluster-config-owner|cluster-start|role-create|verify-full|cluster-stop|source-drift|post-write|rollback|internal) cause_stage=(none|invocation|lock|scheduler|prerequisite|filesystem|configuration|configuration-env-file|configuration-env-encoding|configuration-env-duplicate|configuration-pgpass-file|configuration-pgpass-owner|configuration-pgpass-authority|configuration-ca-file|configuration-rewrite|source|source-role-present|source-role-cleanup|port|snapshot|cluster-create|tls-create|cluster-config|cluster-config-owner|cluster-start|role-create|verify-full|cluster-stop|source-drift|post-write|rollback|internal)$'
           [ "${#MAINTENANCE_LINES[@]}" -eq 1 ] \
             && [[ "${MAINTENANCE_LINES[0]}" =~ $LINE_RE ]] || {
               echo "::error::Maintenance output failed the anonymized schema gate"
@@ -115,6 +116,7 @@ jobs:
             case "$OPERATION:${MAINTENANCE_LINES[0]}" in
               apply:scratch_postgres_maintenance\ operation=apply\ status=applied\ source_restart=no\ backup_run=no\ restore_run=no\ kafka_change=no\ scratch_port=55432\ scratch_state=stopped\ effective_verify_full=yes\ rollback_snapshot=retained\ failure_stage=none\ cause_stage=none) ;;
               rollback:scratch_postgres_maintenance\ operation=rollback\ status=rolled-back\ source_restart=no\ backup_run=no\ restore_run=no\ kafka_change=no\ scratch_port=55432\ scratch_state=stopped\ effective_verify_full=not-tested\ rollback_snapshot=retained\ failure_stage=none\ cause_stage=none) ;;
+              cleanup-source-role:scratch_postgres_maintenance\ operation=cleanup-source-role\ status=source-role-removed\ source_restart=no\ backup_run=no\ restore_run=no\ kafka_change=no\ scratch_port=55432\ scratch_state=stopped\ effective_verify_full=not-tested\ rollback_snapshot=retained\ failure_stage=none\ cause_stage=none) ;;
               *)
                 echo "::error::Maintenance result does not match the requested operation"
                 exit 1
