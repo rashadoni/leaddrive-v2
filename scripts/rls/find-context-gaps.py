@@ -10,6 +10,7 @@ withSocialMonitoringMutationFence/withSocialConnectAuth/withMobileRls/
 withMobileFieldSuiteRls/withMobileTenantCapabilityRls/withMtmRlsAuth/
 withRouteFieldRlsAuth/withRouteFieldWebRlsAuth/withWorkforceHrmRlsAuth/
 withWorkforceRlsAuth/withWorkforceSessionAuth/withWorkforceSessionAdminAuth/
+withWorkforceSessionGrantManagementAuth/
 withWorkforceSessionEvidenceTimelineAuth/withWorkforceSessionExceptionQueueAuth/
 withWorkforceSessionScheduleConfigurationAuth/
 withWorkforceCompatAuth/
@@ -65,6 +66,7 @@ DELIVER = re.compile(
     r'|withWorkforceRlsAuth(?:<[^>]+>)?\('
     r'|withWorkforceSessionAuth(?:<[^>]+>)?\('
     r'|withWorkforceSessionAdminAuth(?:<[^>]+>)?\('
+    r'|withWorkforceSessionGrantManagementAuth(?:<[^>]+>)?\('
     r'|withWorkforceSessionEvidenceTimelineAuth(?:<[^>]+>)?\('
     r'|withWorkforceSessionExceptionQueueAuth(?:<[^>]+>)?\('
     r'|withWorkforceSessionScheduleConfigurationAuth(?:<[^>]+>)?\('

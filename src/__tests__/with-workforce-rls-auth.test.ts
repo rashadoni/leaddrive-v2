@@ -35,6 +35,7 @@ import {
   withWorkforceSessionAdminAuth,
   withWorkforceSessionEmploymentConfigurationAuth,
   withWorkforceSessionExceptionQueueAuth,
+  withWorkforceSessionGrantManagementAuth,
   withWorkforceSessionScheduleConfigurationAuth,
 } from "@/lib/with-workforce-rls-auth"
 
@@ -187,6 +188,69 @@ describe("withWorkforceSessionAdminAuth", () => {
     expect(handler).toHaveBeenCalledTimes(1)
   })
 })
+describe("withWorkforceSessionGrantManagementAuth", () => {
+  function entitled(features: string[]) {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      plan: "enterprise",
+      addons: [],
+      features,
+      modules: { "workforce-hrm": true, mtm: false },
+    } as never)
+  }
+
+  it("refuses legacy CRM-admin fallback until a granular tenant-admin bootstrap exists", async () => {
+    entitled(["workforce-hrm"])
+    sessionRole.value = "admin"
+    const handler = vi.fn(async () => NextResponse.json({ success: true }))
+
+    const response = await withWorkforceSessionGrantManagementAuth(handler)(request())
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toMatchObject({ code: "WORKFORCE_GRANT_MANAGEMENT_BOOTSTRAP_REQUIRED" })
+    expect(response.headers.get("cache-control")).toBe("private, no-store")
+    expect(handler).not.toHaveBeenCalled()
+    expect(prisma.workforceAccessGrant.findMany).not.toHaveBeenCalled()
+  })
+
+  it("requires an effective organization-scoped tenant-admin grant after granular cutover", async () => {
+    entitled(["workforce-hrm", "workforce-granular-access-v1"])
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([{
+      id: "grant_tenant_admin_1",
+      organizationId: "org-1",
+      principalUserId: "user-1",
+      role: "TENANT_ADMIN",
+      scopeKind: "ORGANIZATION",
+      scopeTeamId: null,
+      scopeSiteId: null,
+      scopeAgentId: null,
+      effectiveFrom: new Date("2026-08-01T00:00:00.000Z"),
+      effectiveUntil: null,
+      revocation: null,
+    }] as never)
+    sessionRole.value = "sales"
+    const handler = vi.fn(async () => NextResponse.json({ success: true }))
+
+    const response = await withWorkforceSessionGrantManagementAuth(handler)(request())
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("cache-control")).toBe("private, no-store")
+    expect(handler).toHaveBeenCalledTimes(1)
+  })
+
+  it("fails closed without leaking lookup failures", async () => {
+    entitled(["workforce-hrm", "workforce-granular-access-v1"])
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockRejectedValue(new Error("sensitive database detail"))
+    const handler = vi.fn(async () => NextResponse.json({ success: true }))
+
+    const response = await withWorkforceSessionGrantManagementAuth(handler)(request())
+
+    expect(response.status).toBe(503)
+    expect(response.headers.get("cache-control")).toBe("private, no-store")
+    await expect(response.json()).resolves.toMatchObject({ code: "WORKFORCE_GRANULAR_ACCESS_UNAVAILABLE" })
+    expect(handler).not.toHaveBeenCalled()
+  })
+})
+
 describe("withWorkforceSessionExceptionQueueAuth", () => {
   function entitled(features: string[]) {
     vi.mocked(prisma.organization.findUnique).mockResolvedValue({

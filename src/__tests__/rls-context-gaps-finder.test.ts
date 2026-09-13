@@ -7,6 +7,7 @@
 // runtime [RLS-GUARD] + the TS coverage gate still apply).
 import { describe, it, expect } from "vitest"
 import { execFileSync } from "child_process"
+import { readFileSync } from "fs"
 
 function hasPython3(): boolean {
   try {
@@ -18,6 +19,10 @@ function hasPython3(): boolean {
 }
 
 describe("RLS context-gap finder (route + lib-delegation, any depth)", () => {
+  it("recognizes the Workforce grant-management context wrapper", () => {
+    const finder = readFileSync("scripts/rls/find-context-gaps.py", "utf8")
+    expect(finder).toContain("r'|withWorkforceSessionGrantManagementAuth")
+  })
   // Explicit timeout because the default 5s is not a budget this test can hold.
   // The body shells out to a whole-repo static analysis: it parses every source
   // file and walks the call graph to any depth. Measured on an 8-core dev box,
@@ -32,9 +37,10 @@ describe("RLS context-gap finder (route + lib-delegation, any depth)", () => {
     let code = 0
     try {
       out = execFileSync("python3", ["scripts/rls/find-context-gaps.py"], { encoding: "utf8" })
-    } catch (e: any) {
-      out = `${e.stdout || ""}${e.stderr || ""}`
-      code = e.status ?? 1
+    } catch (error: unknown) {
+      const failure = error as { stdout?: unknown; stderr?: unknown; status?: number }
+      out = `${failure.stdout ?? ""}${failure.stderr ?? ""}`
+      code = failure.status ?? 1
     }
     expect(code, `scripts/rls/find-context-gaps.py reported RLS-context gaps:\n${out}`).toBe(0)
   }, FINDER_TIMEOUT_MS)
