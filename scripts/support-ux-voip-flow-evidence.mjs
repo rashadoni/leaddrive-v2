@@ -248,25 +248,25 @@ try {
     await page.route(callsPattern, injectRecording)
     await page.route(mediaPattern, denyMedia)
     await openWorkspace(page)
-    const player = page.getByTestId("call-recording-player").first()
-    const audio = page.getByTestId("call-recording-audio").first()
-    await audio.focus()
+    const player = page.locator("[data-testid='call-recording-player']:visible").first()
+    const visibleAudio = player.getByTestId("call-recording-audio")
+    await visibleAudio.focus()
     await page.keyboard.press("Space")
-    await page.waitForFunction(() => document.querySelector("[data-testid='call-recording-player']")?.getAttribute("data-state") === "error", null, { timeout: 10_000 })
+    await page.locator("[data-testid='call-recording-player'][data-state='error']:visible").waitFor({ state: "visible", timeout: 10_000 })
     const errorScreenshot = await captureObservedState(page, "recording-error")
     await page.unroute(mediaPattern, denyMedia)
     await page.route(mediaPattern, async (route) => route.fulfill({ status: 200, contentType: "audio/wav", body: silentWav() }))
     await player.getByTestId("call-recording-retry").click()
-    await page.waitForFunction(() => document.querySelector("[data-testid='call-recording-player']")?.getAttribute("data-state") === "ready", null, { timeout: 10_000 })
-    await audio.evaluate((element) => {
+    await page.locator("[data-testid='call-recording-player'][data-state='ready']:visible").waitFor({ state: "visible", timeout: 10_000 })
+    await visibleAudio.evaluate((element) => {
       element.dataset.evidencePlayObserved = "false"
       element.addEventListener("play", () => {
         element.dataset.evidencePlayObserved = "true"
       }, { once: true })
     })
-    await audio.focus()
+    await visibleAudio.focus()
     await page.keyboard.press("Space")
-    await page.waitForFunction(() => document.querySelector("[data-testid='call-recording-audio']")?.getAttribute("data-evidence-play-observed") === "true", null, { timeout: 10_000 })
+    await page.locator("[data-testid='call-recording-audio'][data-evidence-play-observed='true']:visible").waitFor({ state: "visible", timeout: 10_000 })
     return { keyboardControlFocused: true, errorObserved: true, errorScreenshot, retrySucceeded: true, nativePlaybackStarted: true }
   })
 

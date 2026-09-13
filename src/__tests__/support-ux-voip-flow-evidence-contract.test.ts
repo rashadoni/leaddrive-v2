@@ -31,6 +31,7 @@ describe("VoIP mutating evidence contract", () => {
     expect(flow).toContain("const samples = sampleRate * 5")
     expect(flow).toContain("evidencePlayObserved")
     expect(flow).toContain('element.addEventListener("play"')
+    expect(flow).toContain("call-recording-player']:visible")
     expect(flow).toContain("raw_keystrokes_requested")
     expect(flow).toContain("refresh_failure_discarded_summary")
     expect(flow).toContain("nativePlaybackStarted: true")
