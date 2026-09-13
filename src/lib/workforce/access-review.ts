@@ -155,7 +155,9 @@ export function reviewWorkforceAccess(input: {
       principalGrants.map((grant) => grant.role),
     )
     if (!validation.valid) {
-      const conflictingRoles = new Set(validation.incompatiblePairs.flat())
+      const conflictingRoles = new Set<WorkforceAccessGrant["role"]>(
+        validation.incompatiblePairs.flat(),
+      )
       for (const grant of principalGrants) {
         if (conflictingRoles.has(grant.role)) incompatible.add(grant.id)
       }
