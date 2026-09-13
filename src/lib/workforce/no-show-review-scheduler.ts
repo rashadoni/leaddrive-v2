@@ -4,7 +4,10 @@ import { addDateKeyDays, isDateKey } from "@/lib/mtm/mobile-week";
 import { prisma } from "@/lib/prisma";
 import { runWithRlsBypass } from "@/lib/rls-context";
 import { isTenantCapabilityEnabled } from "@/lib/tenant-capabilities";
-import { materializeAuthorizedWorkforceNoShowReviewCaseInTransaction } from "@/lib/workforce/no-show-case-materializer";
+import {
+  materializeAuthorizedWorkforceNoShowReviewCaseInTransaction,
+  type WorkforceNoShowCaseMaterializerDb,
+} from "@/lib/workforce/no-show-case-materializer";
 import { readWorkforceNoShowCandidateBatch } from "@/lib/workforce/no-show-candidate-batch";
 import { workforceNoShowReviewEnabled } from "@/lib/workforce/no-show-review-rollout";
 
@@ -329,7 +332,11 @@ async function runOneScheduledNoShowReview(
       for (const candidate of reviewCandidateRows) {
         const materialized =
           await materializeAuthorizedWorkforceNoShowReviewCaseInTransaction({
-            tx,
+            // Prisma's generic delegate signatures are wider than the narrow
+            // structural facade used by the materializer tests. The active
+            // transaction supplies every required delegate and remains the
+            // only transaction boundary here.
+            tx: tx as unknown as WorkforceNoShowCaseMaterializerDb,
             organizationId: organization.id,
             agentId: candidate.agentId,
             workDate,
