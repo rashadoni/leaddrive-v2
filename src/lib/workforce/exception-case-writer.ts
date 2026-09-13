@@ -10,7 +10,10 @@ type WorkforceExceptionCaseWriteData = Omit<WorkforceExceptionCaseDraft, "links"
 type StoredCase = Omit<WorkforceExceptionCaseWriteData, "expectedWorkDate"> & { id: string; expectedWorkDate: string | Date | null }
 type StoredDecision = WorkforceExceptionDecisionDraft & { id: string }
 
-export type WorkforceExceptionCaseWriterDb = {
+/** Smallest transaction facade needed to append an immutable case. Keeping it
+ * separate from decisions lets a detector use an actual Prisma transaction
+ * without pretending it owns the later case-lookup/decision delegates. */
+export type WorkforceExceptionCasePersistenceDb = {
   $executeRaw: (query: TemplateStringsArray, ...values: readonly unknown[]) => Promise<unknown>
   workforceExceptionCase: {
     create: (args: { data: WorkforceExceptionCaseWriteData }) => Promise<StoredCase>
@@ -18,21 +21,6 @@ export type WorkforceExceptionCaseWriterDb = {
       where: { organizationId: string; deduplicationKey: string }
       select: { id: true; organizationId: true; agentId: true; kind: true; detectorVersion: true; deduplicationKey: true; workdayId: true; workdayEventId: true; evidenceId: true; segmentId: true; expectedWorkDate: true }
     }) => Promise<StoredCase | null>
-  }
-  workforceExceptionDecision: {
-    create: (args: { data: WorkforceExceptionDecisionDraft }) => Promise<StoredDecision>
-    findFirst: (args: {
-      where: { organizationId: string; operationId: string }
-      select: { id: true; organizationId: true; caseId: true; operationId: true; decisionCode: true; reason: true; actorUserId: true }
-    }) => Promise<StoredDecision | null>
-    findMany: (args: {
-      where: { organizationId: string; caseId: string }
-      orderBy: readonly [{ createdAt: "asc" }, { id: "asc" }]
-      select: { decisionCode: true }
-    }) => Promise<readonly { decisionCode: string }[]>
-  }
-  workforceExceptionCaseLookup: {
-    findFirst: (args: { where: { id: string; organizationId: string }; select: { id: true } }) => Promise<{ id: string } | null>
   }
   mtmAuditLog: {
     create: (args: {
@@ -48,6 +36,24 @@ export type WorkforceExceptionCaseWriterDb = {
         userAgent: null
       }
     }) => Promise<unknown>
+  }
+}
+
+export type WorkforceExceptionCaseWriterDb = WorkforceExceptionCasePersistenceDb & {
+  workforceExceptionDecision: {
+    create: (args: { data: WorkforceExceptionDecisionDraft }) => Promise<StoredDecision>
+    findFirst: (args: {
+      where: { organizationId: string; operationId: string }
+      select: { id: true; organizationId: true; caseId: true; operationId: true; decisionCode: true; reason: true; actorUserId: true }
+    }) => Promise<StoredDecision | null>
+    findMany: (args: {
+      where: { organizationId: string; caseId: string }
+      orderBy: readonly [{ createdAt: "asc" }, { id: "asc" }]
+      select: { decisionCode: true }
+    }) => Promise<readonly { decisionCode: string }[]>
+  }
+  workforceExceptionCaseLookup: {
+    findFirst: (args: { where: { id: string; organizationId: string }; select: { id: true } }) => Promise<{ id: string } | null>
   }
 }
 
@@ -95,8 +101,20 @@ function caseLockKey(draft: WorkforceExceptionCaseDraft): string {
   return `workforce-exception-case:${draft.organizationId}:${draft.deduplicationKey}`
 }
 
-function decisionLockKey(draft: WorkforceExceptionDecisionDraft): string {
-  return `workforce-exception-decision:${draft.organizationId}:${draft.caseId}`
+function decisionLockKey(scope: { organizationId: string; caseId: string }): string {
+  return `workforce-exception-decision:${scope.organizationId}:${scope.caseId}`
+}
+
+/**
+ * Shared transaction fence for one immutable C6 decision stream. Approval
+ * readers use the same key before their final lifecycle read, so a concurrent
+ * resolution/reopen cannot commit between that read and the approval write.
+ */
+export async function lockWorkforceExceptionDecisionStream(
+  db: { $executeRaw: (query: TemplateStringsArray, ...values: readonly unknown[]) => PromiseLike<unknown> },
+  scope: { organizationId: string; caseId: string },
+): Promise<void> {
+  await db.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${decisionLockKey(scope)}))`
 }
 
 function sameCase(left: WorkforceExceptionCaseDraft, right: WorkforceExceptionCaseDraft): boolean {
@@ -180,7 +198,7 @@ function canonicalDecisionDraft(draft: WorkforceExceptionDecisionDraft): Workfor
  * applied by this source slice.
  */
 export async function persistAuthorizedWorkforceExceptionCase(input: {
-  db: WorkforceExceptionCaseWriterDb
+  db: WorkforceExceptionCasePersistenceDb
   draft: WorkforceExceptionCaseDraft
   authorize: WorkforceExceptionCaseAuthorization
 }): Promise<{ caseId: string; idempotent: boolean }> {
@@ -255,7 +273,7 @@ export async function appendAuthorizedWorkforceExceptionDecision(input: {
     caseId: canonical.caseId,
     actorUserId: canonical.actorUserId,
   })
-  await input.db.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${decisionLockKey(canonical)}))`
+  await lockWorkforceExceptionDecisionStream(input.db, canonical)
   const exceptionCase = await input.db.workforceExceptionCaseLookup.findFirst({
     where: { id: canonical.caseId, organizationId: canonical.organizationId },
     select: { id: true },
@@ -327,7 +345,7 @@ export async function appendAuthorizedPolicyWorkforceExceptionDecision(input: {
     caseId: basic.caseId,
     actorUserId: basic.actorUserId,
   })
-  await input.db.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${decisionLockKey(basic)}))`
+  await lockWorkforceExceptionDecisionStream(input.db, basic)
   const exceptionCase = await input.db.workforceExceptionCaseLookup.findFirst({
     where: { id: basic.caseId, organizationId: basic.organizationId },
     select: { id: true },

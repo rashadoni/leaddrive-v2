@@ -79,6 +79,19 @@ class EnvironmentTests(unittest.TestCase):
             MAINTENANCE.read_environment(path, require_production_authority=False)
         self.assertEqual(raised.exception.code, "configuration-read-duplicate")
 
+    def test_reader_accepts_missing_precommission_tls_client_settings(self) -> None:
+        path = self.write_environment(
+            "PGHOST=127.0.0.1\n"
+            "PGDATABASE=database_name\n"
+            "PGUSER=backup_user\n"
+            "PGPASSFILE=/etc/leaddrive/backup.pgpass\n"
+        )
+        _, _, config = MAINTENANCE.read_environment(
+            path, require_production_authority=False
+        )
+        self.assertEqual(config["PGSSLMODE"], "")
+        self.assertEqual(config["PGSSLROOTCERT"], "")
+
     def test_reader_classifies_hardlinked_environment_without_reading_values(self) -> None:
         path = self.write_environment(
             "PGHOST=127.0.0.1\n"
@@ -138,6 +151,36 @@ class EnvironmentTests(unittest.TestCase):
         )
         self.assertEqual(rewritten.count(b"PGHOSTADDR="), 1)
         self.assertIn(b"PGHOSTADDR=127.0.0.1\n", rewritten)
+
+    def test_rewrite_adds_missing_tls_client_settings(self) -> None:
+        original = b"PGHOST=127.0.0.1\nUNRELATED=preserved-without-reading\n"
+        rewritten = MAINTENANCE.rewrite_environment(
+            original,
+            {
+                "PGHOST": "production.example.internal",
+                "PGHOSTADDR": "127.0.0.1",
+                "PGSSLMODE": "verify-full",
+                "PGSSLROOTCERT": "/etc/leaddrive/managed-postgres-ca.crt",
+            },
+        )
+        self.assertEqual(rewritten.count(b"PGSSLMODE="), 1)
+        self.assertEqual(rewritten.count(b"PGSSLROOTCERT="), 1)
+        self.assertIn(b"UNRELATED=preserved-without-reading\n", rewritten)
+
+    def test_rewrite_adds_hostaddr_after_unterminated_host_line(self) -> None:
+        rewritten = MAINTENANCE.rewrite_environment(
+            b"PGHOST=127.0.0.1",
+            {
+                "PGHOST": "production.example.internal",
+                "PGHOSTADDR": "127.0.0.1",
+                "PGSSLMODE": "verify-full",
+                "PGSSLROOTCERT": "/etc/leaddrive/managed-postgres-ca.crt",
+            },
+        )
+        self.assertIn(
+            b"PGHOST=production.example.internal\nPGHOSTADDR=127.0.0.1\n",
+            rewritten,
+        )
 
 
 class DecisionTests(unittest.TestCase):
@@ -315,10 +358,12 @@ class DecisionTests(unittest.TestCase):
         )
 
     @mock.patch.object(MAINTENANCE.grp, "getgrnam")
+    @mock.patch.object(MAINTENANCE.pwd, "getpwnam")
     @mock.patch.object(MAINTENANCE, "_read_regular_file")
     def test_pgpass_must_match_new_certificate_identity(
-        self, read_file: mock.Mock, get_group: mock.Mock
+        self, read_file: mock.Mock, get_user: mock.Mock, get_group: mock.Mock
     ) -> None:
+        get_user.return_value.pw_uid = 990
         get_group.return_value.gr_gid = 991
         read_file.return_value = (
             b"production.example.internal:5432:database_name:backup_user:secret\n",
@@ -334,8 +379,158 @@ class DecisionTests(unittest.TestCase):
             config, "production.example.internal", 5432
         )
 
-        with self.assertRaises(MAINTENANCE.SafeMaintenanceError):
+        with self.assertRaises(MAINTENANCE.SafeMaintenanceError) as raised:
             MAINTENANCE._require_pgpass_match(config, "different.example.internal", 5432)
+        self.assertEqual(raised.exception.code, "pgpass-match")
+
+    @mock.patch.object(MAINTENANCE.grp, "getgrnam")
+    @mock.patch.object(MAINTENANCE.pwd, "getpwnam")
+    @mock.patch.object(MAINTENANCE, "_read_regular_file")
+    def test_pgpass_accepts_private_service_user_authority(
+        self,
+        read_file: mock.Mock,
+        get_user: mock.Mock,
+        get_group: mock.Mock,
+    ) -> None:
+        get_user.return_value.pw_uid = 990
+        get_group.return_value.gr_gid = 991
+        read_file.return_value = (
+            b"production.example.internal:5432:database_name:backup_user:secret\n",
+            MAINTENANCE.FileAuthority(uid=990, gid=991, mode=0o600),
+        )
+        config = {
+            "PGPASSFILE": str(MAINTENANCE.PGPASS_PATH),
+            "PGDATABASE": "database_name",
+            "PGUSER": "backup_user",
+        }
+        MAINTENANCE._require_pgpass_match(
+            config, "production.example.internal", 5432
+        )
+
+    @mock.patch.object(MAINTENANCE, "_read_pgpass")
+    def test_pgpass_selector_rewrite_preserves_credential_bytes(
+        self, read_pgpass: mock.Mock
+    ) -> None:
+        authority = MAINTENANCE.FileAuthority(uid=990, gid=991, mode=0o600)
+        original = (
+            b"# retained comment\r\n"
+            b"127.0.0.1:5432:database_name:backup_user:pa\\:ss\\\\word\r\n"
+            b"other.example.internal:5432:other:other_user:untouched\r\n"
+        )
+        read_pgpass.return_value = (original, authority)
+        config = {
+            "PGPASSFILE": str(MAINTENANCE.PGPASS_PATH),
+            "PGDATABASE": "database_name",
+            "PGUSER": "backup_user",
+        }
+
+        before, after, observed_authority = (
+            MAINTENANCE._replace_pgpass_host_selector(
+                config,
+                "127.0.0.1",
+                "production.example.internal",
+                5432,
+            )
+        )
+
+        self.assertEqual(before, original)
+        self.assertEqual(observed_authority, authority)
+        self.assertEqual(
+            after,
+            original.replace(
+                b"127.0.0.1:5432:",
+                b"production.example.internal:5432:",
+                1,
+            ),
+        )
+        self.assertEqual(after.count(b"pa\\:ss\\\\word"), 1)
+
+    @mock.patch.object(MAINTENANCE, "_read_pgpass")
+    def test_pgpass_selector_rewrite_requires_one_exact_current_tuple(
+        self, read_pgpass: mock.Mock
+    ) -> None:
+        authority = MAINTENANCE.FileAuthority(uid=990, gid=991, mode=0o600)
+        read_pgpass.return_value = (
+            b"127.0.0.1:5432:database_name:backup_user:first\n"
+            b"127.0.0.1:5432:database_name:backup_user:second\n",
+            authority,
+        )
+        config = {
+            "PGPASSFILE": str(MAINTENANCE.PGPASS_PATH),
+            "PGDATABASE": "database_name",
+            "PGUSER": "backup_user",
+        }
+
+        with self.assertRaises(MAINTENANCE.SafeMaintenanceError) as raised:
+            MAINTENANCE._replace_pgpass_host_selector(
+                config,
+                "127.0.0.1",
+                "production.example.internal",
+                5432,
+            )
+        self.assertEqual(raised.exception.code, "pgpass-rewrite")
+
+    @mock.patch.object(MAINTENANCE, "_read_pgpass")
+    def test_pgpass_selector_rewrite_is_noop_when_new_tuple_already_matches(
+        self, read_pgpass: mock.Mock
+    ) -> None:
+        authority = MAINTENANCE.FileAuthority(uid=990, gid=991, mode=0o600)
+        original = (
+            b"production.example.internal:5432:database_name:backup_user:secret\n"
+        )
+        read_pgpass.return_value = (original, authority)
+        config = {
+            "PGPASSFILE": str(MAINTENANCE.PGPASS_PATH),
+            "PGDATABASE": "database_name",
+            "PGUSER": "backup_user",
+        }
+
+        before, after, observed_authority = (
+            MAINTENANCE._replace_pgpass_host_selector(
+                config,
+                "127.0.0.1",
+                "production.example.internal",
+                5432,
+            )
+        )
+
+        self.assertEqual(before, original)
+        self.assertIsNone(after)
+        self.assertEqual(observed_authority, authority)
+
+    def test_pgpass_requires_canonical_path_without_exposing_it(self) -> None:
+        config = {
+            "PGPASSFILE": "/different/path",
+            "PGDATABASE": "database_name",
+            "PGUSER": "backup_user",
+        }
+        with self.assertRaises(MAINTENANCE.SafeMaintenanceError) as raised:
+            MAINTENANCE._require_pgpass_match(
+                config, "production.example.internal", 5432
+            )
+        self.assertEqual(raised.exception.code, "pgpass-path")
+
+    def test_pgpass_classifies_missing_file_without_exposing_path(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            missing_path = Path(directory) / "missing"
+            config = {
+                "PGPASSFILE": str(missing_path),
+                "PGDATABASE": "database_name",
+                "PGUSER": "backup_user",
+            }
+            with (
+                mock.patch.object(MAINTENANCE, "PGPASS_PATH", missing_path),
+                mock.patch.object(
+                    MAINTENANCE,
+                    "_read_regular_file",
+                    side_effect=MAINTENANCE.SafeMaintenanceError(),
+                ),
+            ):
+                with self.assertRaises(MAINTENANCE.SafeMaintenanceError) as raised:
+                    MAINTENANCE._require_pgpass_match(
+                        config, "production.example.internal", 5432
+                    )
+        self.assertEqual(raised.exception.code, "pgpass-missing")
 
 
 class OutputTests(unittest.TestCase):
@@ -348,6 +543,21 @@ class OutputTests(unittest.TestCase):
             "source_tls_maintenance operation=apply status=applied "
             "pg_restart=no service_restart=no effective_verify_full=yes "
             "rollback_snapshot=retained failure_stage=none"
+        )
+
+    @mock.patch.object(MAINTENANCE, "apply", return_value="applied")
+    def test_separately_confirmed_pgpass_operation_is_fixed_schema(
+        self, apply: mock.Mock
+    ) -> None:
+        with mock.patch("builtins.print") as output:
+            status = MAINTENANCE.main(["apply-with-passfile-selector"])
+        self.assertEqual(status, 0)
+        apply.assert_called_once_with(rewrite_pgpass_selector=True)
+        output.assert_called_once_with(
+            "source_tls_maintenance operation=apply-with-passfile-selector "
+            "status=applied pg_restart=no service_restart=no "
+            "effective_verify_full=yes rollback_snapshot=retained "
+            "failure_stage=none"
         )
 
     @mock.patch.object(MAINTENANCE, "apply", side_effect=RuntimeError("secret-host"))

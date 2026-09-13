@@ -86,6 +86,13 @@ safe inputs. For one explicit employee/date/as-of instant it:
 - returns either an in-memory review draft, a non-creation proposal, or an
   explicit not-ready result.
 
+Its deliberately narrow resolver surface includes the separately versioned
+team-default timeline. A historical team-default shift can therefore be
+resolved with the same immutable workday-start membership rule as START
+snapshotting; it is not silently skipped by the no-show reader. This only
+repairs source compatibility and still creates no case, audit, job or tenant
+effect.
+
 It has a deliberately read-only Prisma surface: no case writer, audit writer,
 queue, notification, capability or tenant control is available to it. A shift
 with no matching published first segment is not assigned a made-up generic
@@ -140,6 +147,46 @@ severity, role owner, targets and employee-visibility rule is now recorded in
 [`workforce-c6-recommended-draft-policy-evidence-2026-08-30.md`](./workforce-c6-recommended-draft-policy-evidence-2026-08-30.md).
 It remains deliberately non-active for every tenant. The durable additive
 case/decision migration and actual detector remain WF-C6-002/003 work.
+
+### 2026-09-01 transaction-only no-show review materializer
+
+`materializeAuthorizedWorkforceNoShowReviewCase` is the first narrow bridge
+from a current candidate to the existing immutable C6 case ledger. It has no
+route, scheduler, queue, tenant-capability lookup, notification or decision
+writer. A future operational worker must still supply its own tenant fence,
+lease/cursor, monitoring and named authorization before it can call this
+transaction-only primitive.
+
+It first requires explicit `CASE_CREATE` authorization, then acquires the
+canonical `mtm-workday` transition lock for the employee and re-reads the
+complete candidate inside the caller's transaction. If a START became visible,
+or a calendar/employment/configuration input is no longer eligible, it returns
+`NOT_CREATED` and writes no case/audit. A positive result writes only the
+existing raw-proof-free `NO_SHOW` review-case draft through the idempotent C6
+writer; it does not create an attendance event, notification, employee
+conclusion, payroll outcome or disciplinary result. A concurrent later START
+is recorded as a human-reviewable missed-start case rather than silently
+rewriting the historical observation.
+
+### 2026-09-01 transaction-only missed-finish review materializer
+
+`materializeAuthorizedWorkforceMissedFinishReviewCase` is the equivalent
+narrow bridge for an already existing stale open workday. Its timing remains a
+mandatory caller input — it does not select or activate a global reminder or
+review threshold. It requires `CASE_CREATE` authorization before the
+transition lock/read, then takes the canonical employee workday lock and
+re-reads the exact scoped workday and its immutable planned-end snapshot. A
+completed workday, a missing snapshot, an in-grace state and a
+private-reminder candidate all return `NOT_CREATED` with no case, audit or
+delivery side effect.
+
+Only the explicit stale review proposal can write the existing idempotent,
+raw-proof-free `MISSED_FINISH` case subject linked to that concrete workday.
+It never writes a `FINISH`, sends the generic reminder, changes a workday,
+notifies an employee, decides a case, or produces a payroll/disciplinary
+result. A later FINISH stays an immutable human-review fact; a future worker
+still needs a tenant fence, lease/cursor, monitoring, reviewed timing policy
+and employee-visible lifecycle before any operational use.
 
 ## Verification
 
@@ -196,6 +243,27 @@ case/decision migration and actual detector remain WF-C6-002/003 work.
           batch/no-show/employment contracts (3 files, 12 tests), scoped
           ESLint and `git diff --check`. The test pins tenant scope,
           50-row bound, stable continuation metadata and no case/audit write.
+
+    PASS  2026-09-01 incomplete candidate-scan containment re-check:
+          no-show and missed-finish batch readers propagate a failed historical
+          candidate read and stop before a later employee/workday. They never
+          treat a partial scan as a complete absence/reminder result and still
+          expose no case or audit writer (2 files, 6 tests).
+
+    PASS  2026-09-01 no-show materializer re-check:
+          candidate/materializer/immutable-case-writer/decision-route
+          contracts (4 files, 21 tests), scoped ESLint, Prisma schema
+          validation and `git diff --check`. The matrix pins
+          authorization before the workday lock/read, re-check suppression when
+          START exists, raw-proof-free idempotent case creation and no second
+          audit on exact replay.
+
+    PASS  2026-09-01 missed-finish materializer re-check:
+          missed-finish materializer/candidate/intake/immutable-case-writer
+          contracts (4 files, 28 tests), scoped ESLint and `git diff --check`.
+          The matrix pins authorization before lock/read, completed-workday and
+          private-reminder suppression, a raw-proof-free workday-linked stale
+          review subject and no second audit on exact replay.
 
     NOT RUN  database migration/apply, full typecheck/build, browser E2E,
              Android, scheduler/concurrency/load and physical pilot checks:

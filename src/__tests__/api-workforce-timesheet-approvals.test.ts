@@ -81,6 +81,8 @@ describe("POST /api/v1/workforce/timesheet/approvals", () => {
     }), AUTH)
 
     expect(response.status).toBe(201)
+    expect(response.headers.get("cache-control")).toBe("private, no-store")
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff")
     expect(await response.json()).toMatchObject({ success: true, idempotent: false, data: { id: "approval-1" } })
     expect(withWorkforceSessionAuth).toHaveBeenCalledWith("write", expect.any(Function))
     expect(approveWorkforceTimesheet).toHaveBeenCalledWith(expect.objectContaining({
@@ -115,5 +117,40 @@ describe("POST /api/v1/workforce/timesheet/approvals", () => {
 
     expect(response.status).toBe(409)
     expect(await response.json()).toMatchObject({ code: "WORKFORCE_TIMESHEET_APPROVAL_HISTORY_INVALID" })
+  })
+
+  it("returns exact blocking rows without exposing mutable approval inputs", async () => {
+    vi.mocked(approveWorkforceTimesheet).mockResolvedValue({
+      kind: "conflict",
+      code: "WORKFORCE_TIMESHEET_APPROVAL_UNRESOLVED_EXCEPTIONS",
+      message: "Every unresolved attendance exception in the requested period must be resolved before approval",
+      blockers: [{
+        workdayId: "workday-1",
+        caseReference: "WF-00000042",
+        workDate: "2026-08-28",
+        reason: "UNRESOLVED_EXCEPTION",
+        exceptionType: "MISSED_FINISH",
+        exceptionStage: "HR_REVIEW",
+      }],
+    } as never)
+
+    const response = await invoke(post({
+      agentId: "employee-1", periodStart: "2026-08-28", periodEnd: "2026-08-28",
+    }), AUTH)
+
+    expect(response.status).toBe(409)
+    expect(response.headers.get("cache-control")).toBe("private, no-store")
+    await expect(response.json()).resolves.toEqual({
+      error: "Every unresolved attendance exception in the requested period must be resolved before approval",
+      code: "WORKFORCE_TIMESHEET_APPROVAL_UNRESOLVED_EXCEPTIONS",
+      blockers: [{
+        workdayId: "workday-1",
+        caseReference: "WF-00000042",
+        workDate: "2026-08-28",
+        reason: "UNRESOLVED_EXCEPTION",
+        exceptionType: "MISSED_FINISH",
+        exceptionStage: "HR_REVIEW",
+      }],
+    })
   })
 })

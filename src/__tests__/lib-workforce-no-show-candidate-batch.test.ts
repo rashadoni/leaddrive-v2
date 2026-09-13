@@ -97,4 +97,29 @@ describe("Workforce no-show candidate batch reader", () => {
     expect(prisma.mtmAgent.findMany).not.toHaveBeenCalled();
     expect(readWorkforceNoShowCandidate).not.toHaveBeenCalled();
   });
+
+  it("stops and propagates an incomplete candidate read instead of skipping an employee into a no-show result", async () => {
+    vi.mocked(readWorkforceNoShowCandidate).mockReset();
+    vi.mocked(readWorkforceNoShowCandidate).mockRejectedValueOnce(
+      new Error("historical configuration unavailable"),
+    );
+
+    await expect(
+      readWorkforceNoShowCandidateBatch(prisma as never, {
+        ...INPUT,
+        limit: 2,
+      }),
+    ).rejects.toThrow("historical configuration unavailable");
+
+    // The candidate readers are deliberately sequential. Continuing after a
+    // failed historical read would make a future worker's cursor look
+    // complete while silently omitting a potentially excused employee.
+    expect(readWorkforceNoShowCandidate).toHaveBeenCalledTimes(1);
+    expect(readWorkforceNoShowCandidate).toHaveBeenCalledWith(prisma, {
+      ...INPUT,
+      agentId: "agent-a",
+    });
+    expect(prisma.workforceExceptionCase.create).not.toHaveBeenCalled();
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled();
+  });
 });

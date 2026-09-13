@@ -3,8 +3,10 @@
 
 This script is streamed over the pinned production SSH connection. It never
 prints configuration values, hostnames, addresses, certificate identities, or
-exception text. The only mutation is an atomic update of the fixed source CA
-and four source-client keys in the canonical backup environment. PostgreSQL,
+exception text. The default operation atomically updates the fixed source CA
+and four source-client keys in the canonical backup environment. A separately
+confirmed operation may also atomically replace only the matching host selector
+in the canonical passfile; it preserves every credential byte. PostgreSQL,
 systemd, backup, restore, deploy, and Kafka processes are never invoked.
 """
 
@@ -16,6 +18,7 @@ import ipaddress
 import json
 import fcntl
 import os
+import pwd
 import re
 import shutil
 import socket
@@ -44,6 +47,7 @@ ACTIVE_BACKUP_SERVICE_PATH = Path(
 SNAPSHOT_PATH = Path("/var/lib/leaddrive-postgres-tls-maintenance")
 SNAPSHOT_ENV_PATH = SNAPSHOT_PATH / "backup.env.before"
 SNAPSHOT_CA_PATH = SNAPSHOT_PATH / "managed-postgres-ca.crt.before"
+SNAPSHOT_PGPASS_PATH = SNAPSHOT_PATH / "backup.pgpass.before"
 SNAPSHOT_STATE_PATH = SNAPSHOT_PATH / "state.json"
 MAX_ENV_BYTES = 64 * 1024
 MAX_CA_BYTES = 256 * 1024
@@ -103,6 +107,19 @@ class SafeMaintenanceError(Exception):
             "snapshot-present",
             "tls-evidence",
             "pgpass",
+            "pgpass-path",
+            "pgpass-read",
+            "pgpass-missing",
+            "pgpass-file",
+            "pgpass-links",
+            "pgpass-owner",
+            "pgpass-writable",
+            "pgpass-size",
+            "pgpass-authority",
+            "pgpass-encoding",
+            "pgpass-format",
+            "pgpass-match",
+            "pgpass-rewrite",
             "post-write",
             "rollback",
             "internal",
@@ -126,6 +143,9 @@ class PreparedRemediation:
     environment: bytes
     certificate_pem: bytes
     certificate_sha256: str
+    pgpass_before: bytes | None
+    pgpass_after: bytes | None
+    pgpass_authority: FileAuthority | None
 
 
 def _assert_root_directory(path: Path) -> None:
@@ -253,8 +273,6 @@ def read_environment(
         "PGDATABASE",
         "PGUSER",
         "PGPASSFILE",
-        "PGSSLMODE",
-        "PGSSLROOTCERT",
     ):
         if not result[required_key]:
             raise SafeMaintenanceError("configuration-read-required")
@@ -525,40 +543,156 @@ def _split_pgpass_line(line: str) -> list[str]:
     return fields
 
 
-def _require_pgpass_match(config: dict[str, str], server_name: str, port: int) -> None:
-    if config["PGPASSFILE"] != str(PGPASS_PATH):
-        raise SafeMaintenanceError
-    payload, authority = _read_regular_file(
-        PGPASS_PATH, maximum_bytes=MAX_ENV_BYTES, required=True
-    )
-    if payload is None or authority is None:
-        raise SafeMaintenanceError
+def _read_pgpass() -> tuple[bytes, FileAuthority]:
     try:
+        payload, authority = _read_regular_file(
+            PGPASS_PATH,
+            maximum_bytes=MAX_ENV_BYTES,
+            required=True,
+            require_root_owner=False,
+        )
+    except SafeMaintenanceError as exc:
+        try:
+            metadata = PGPASS_PATH.lstat()
+        except FileNotFoundError:
+            raise SafeMaintenanceError("pgpass-missing") from exc
+        except OSError:
+            raise SafeMaintenanceError("pgpass-file") from exc
+        if metadata.st_nlink != 1:
+            raise SafeMaintenanceError("pgpass-links") from exc
+        if not stat.S_ISREG(metadata.st_mode) or stat.S_ISLNK(metadata.st_mode):
+            raise SafeMaintenanceError("pgpass-file") from exc
+        if stat.S_IMODE(metadata.st_mode) & 0o022:
+            raise SafeMaintenanceError("pgpass-writable") from exc
+        if metadata.st_size > MAX_ENV_BYTES:
+            raise SafeMaintenanceError("pgpass-size") from exc
+        raise SafeMaintenanceError("pgpass-read") from exc
+    if payload is None or authority is None:
+        raise SafeMaintenanceError("pgpass-read")
+    try:
+        backup_uid = pwd.getpwnam("leaddrive-backup").pw_uid
         backup_gid = grp.getgrnam("leaddrive-backup").gr_gid
     except KeyError as exc:
-        raise SafeMaintenanceError from exc
-    if authority.gid != backup_gid or authority.mode not in {0o440, 0o640}:
-        raise SafeMaintenanceError
+        raise SafeMaintenanceError("pgpass-authority") from exc
+    root_group_readable = (
+        authority.uid == 0
+        and authority.gid == backup_gid
+        and authority.mode in {0o440, 0o640}
+    )
+    service_user_private = (
+        authority.uid == backup_uid
+        and authority.gid == backup_gid
+        and authority.mode in {0o400, 0o600}
+    )
+    if not (root_group_readable or service_user_private):
+        raise SafeMaintenanceError("pgpass-authority")
+    return payload, authority
+
+
+def _parse_pgpass(payload: bytes) -> list[tuple[str, str, list[str]]]:
     try:
         text = payload.decode("utf-8", errors="strict")
     except UnicodeDecodeError as exc:
-        raise SafeMaintenanceError from exc
-    for raw_line in text.splitlines():
-        line = raw_line.strip()
+        raise SafeMaintenanceError("pgpass-encoding") from exc
+
+    parsed: list[tuple[str, str, list[str]]] = []
+    for raw_line in text.splitlines(keepends=True):
+        ending = (
+            "\r\n"
+            if raw_line.endswith("\r\n")
+            else ("\n" if raw_line.endswith("\n") else "")
+        )
+        line = raw_line[: -len(ending)] if ending else raw_line
         if not line or line.startswith("#"):
+            parsed.append((line, ending, []))
             continue
-        fields = _split_pgpass_line(line)
+        try:
+            fields = _split_pgpass_line(line)
+        except SafeMaintenanceError as exc:
+            raise SafeMaintenanceError("pgpass-format") from exc
         if len(fields) != 5 or not fields[4]:
-            raise SafeMaintenanceError
-        host, pg_port, database, user, _password = fields
-        if (
-            host in {"*", server_name}
-            and pg_port in {"*", str(port)}
-            and database in {"*", config["PGDATABASE"]}
-            and user in {"*", config["PGUSER"]}
-        ):
+            raise SafeMaintenanceError("pgpass-format")
+        parsed.append((line, ending, fields))
+    return parsed
+
+
+def _pgpass_tuple_matches(
+    fields: list[str], host: str, config: dict[str, str], port: int
+) -> bool:
+    pg_host, pg_port, database, user, _password = fields
+    return (
+        pg_host in {"*", host}
+        and pg_port in {"*", str(port)}
+        and database in {"*", config["PGDATABASE"]}
+        and user in {"*", config["PGUSER"]}
+    )
+
+
+def _require_pgpass_match(config: dict[str, str], server_name: str, port: int) -> None:
+    if config["PGPASSFILE"] != str(PGPASS_PATH):
+        raise SafeMaintenanceError("pgpass-path")
+    payload, _ = _read_pgpass()
+    for _line, _ending, fields in _parse_pgpass(payload):
+        if fields and _pgpass_tuple_matches(fields, server_name, config, port):
             return
-    raise SafeMaintenanceError
+    raise SafeMaintenanceError("pgpass-match")
+
+
+def _replace_pgpass_host_selector(
+    config: dict[str, str], current_host: str, server_name: str, port: int
+) -> tuple[bytes, bytes | None, FileAuthority]:
+    if config["PGPASSFILE"] != str(PGPASS_PATH):
+        raise SafeMaintenanceError("pgpass-path")
+    payload, authority = _read_pgpass()
+    parsed = _parse_pgpass(payload)
+    if any(
+        fields and _pgpass_tuple_matches(fields, server_name, config, port)
+        for _line, _ending, fields in parsed
+    ):
+        return payload, None, authority
+
+    candidates = [
+        index
+        for index, (_line, _ending, fields) in enumerate(parsed)
+        if fields
+        and fields[0] == current_host
+        and fields[1] in {"*", str(port)}
+        and fields[2] in {"*", config["PGDATABASE"]}
+        and fields[3] in {"*", config["PGUSER"]}
+    ]
+    if len(candidates) != 1:
+        raise SafeMaintenanceError("pgpass-rewrite")
+
+    candidate = candidates[0]
+    line, ending, fields = parsed[candidate]
+    raw_fields: list[str] = []
+    raw_field: list[str] = []
+    escaped = False
+    for character in line:
+        if escaped:
+            raw_field.append(character)
+            escaped = False
+        elif character == "\\":
+            raw_field.append(character)
+            escaped = True
+        elif character == ":":
+            raw_fields.append("".join(raw_field))
+            raw_field = []
+        else:
+            raw_field.append(character)
+    if escaped:
+        raise SafeMaintenanceError("pgpass-format")
+    raw_fields.append("".join(raw_field))
+    if len(raw_fields) != 5:
+        raise SafeMaintenanceError("pgpass-format")
+    raw_fields[0] = server_name.replace("\\", "\\\\").replace(":", "\\:")
+    parsed[candidate] = (":".join(raw_fields), ending, fields)
+    rewritten = "".join(
+        item_line + item_ending for item_line, item_ending, _fields in parsed
+    ).encode("utf-8")
+    if len(rewritten) > MAX_ENV_BYTES or rewritten == payload:
+        raise SafeMaintenanceError("pgpass-rewrite")
+    return payload, rewritten, authority
 
 
 def _require_reviewed_invocation() -> bool:
@@ -678,6 +812,7 @@ def rewrite_environment(payload: bytes, replacements: dict[str, str]) -> bytes:
         r"^(?P<indent>\s*)(?:export\s+)?(?P<key>[A-Za-z_][A-Za-z0-9_]*)\s*=.*?(?P<ending>\r?\n)?$"
     )
     lines = text.splitlines(keepends=True)
+    newline = "\r\n" if any(line.endswith("\r\n") for line in lines) else "\n"
     existing = {key: 0 for key in replacements}
     for line in lines:
         match = assignment.fullmatch(line)
@@ -696,18 +831,34 @@ def rewrite_environment(payload: bytes, replacements: dict[str, str]) -> bytes:
             if seen[key] > 1:
                 raise SafeMaintenanceError
             ending = match.group("ending") or ""
-            output.append(f"{match.group('indent')}{key}={replacements[key]}{ending}")
             if (
                 key == "PGHOST"
                 and "PGHOSTADDR" in replacements
                 and existing["PGHOSTADDR"] == 0
             ):
-                output.append(f"{match.group('indent')}PGHOSTADDR={replacements['PGHOSTADDR']}{ending}")
+                separator = ending or newline
+                output.append(
+                    f"{match.group('indent')}{key}={replacements[key]}{separator}"
+                )
+                output.append(
+                    f"{match.group('indent')}PGHOSTADDR={replacements['PGHOSTADDR']}{ending}"
+                )
                 seen["PGHOSTADDR"] += 1
+            else:
+                output.append(
+                    f"{match.group('indent')}{key}={replacements[key]}{ending}"
+                )
             continue
         output.append(line)
 
-    for key in ("PGHOST", "PGSSLMODE", "PGSSLROOTCERT"):
+    if seen.get("PGHOST") != 1:
+        raise SafeMaintenanceError
+    for key in ("PGSSLMODE", "PGSSLROOTCERT"):
+        if seen.get(key) == 0:
+            if output and not output[-1].endswith(("\n", "\r")):
+                output[-1] = f"{output[-1]}{newline}"
+            output.append(f"{key}={replacements[key]}{newline}")
+            seen[key] = 1
         if seen.get(key) != 1:
             raise SafeMaintenanceError
     if seen.get("PGHOSTADDR") != 1:
@@ -752,6 +903,8 @@ def _snapshot(
     env_authority: FileAuthority,
     ca_payload: bytes | None,
     ca_authority: FileAuthority | None,
+    pgpass_payload: bytes | None,
+    pgpass_authority: FileAuthority | None,
 ) -> dict[str, object]:
     _assert_root_directory(Path("/var"))
     _assert_root_directory(Path("/var/lib"))
@@ -766,8 +919,14 @@ def _snapshot(
         _atomic_write(
             SNAPSHOT_CA_PATH, ca_payload, FileAuthority(uid=0, gid=0, mode=0o600)
         )
+    if pgpass_payload is not None:
+        _atomic_write(
+            SNAPSHOT_PGPASS_PATH,
+            pgpass_payload,
+            FileAuthority(uid=0, gid=0, mode=0o600),
+        )
     state: dict[str, object] = {
-        "format": 1,
+        "format": 2,
         "phase": "snapshotted",
         "env_uid": env_authority.uid,
         "env_gid": env_authority.gid,
@@ -779,6 +938,15 @@ def _snapshot(
         "ca_mode": ca_authority.mode if ca_authority is not None else 0o640,
         "ca_before_sha256": (
             hashlib.sha256(ca_payload).hexdigest() if ca_payload is not None else ""
+        ),
+        "pgpass_changed": pgpass_payload is not None,
+        "pgpass_uid": pgpass_authority.uid if pgpass_authority is not None else 0,
+        "pgpass_gid": pgpass_authority.gid if pgpass_authority is not None else 0,
+        "pgpass_mode": pgpass_authority.mode if pgpass_authority is not None else 0o600,
+        "pgpass_before_sha256": (
+            hashlib.sha256(pgpass_payload).hexdigest()
+            if pgpass_payload is not None
+            else ""
         ),
     }
     _write_state(state)
@@ -802,7 +970,7 @@ def _load_state() -> dict[str, object]:
         state = json.loads(payload.decode("utf-8", errors="strict"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise SafeMaintenanceError from exc
-    if not isinstance(state, dict) or state.get("format") != 1:
+    if not isinstance(state, dict) or state.get("format") not in {1, 2}:
         raise SafeMaintenanceError
     return state
 
@@ -817,16 +985,30 @@ def _authority_from_state(state: dict[str, object], prefix: str) -> FileAuthorit
 def _restore_snapshot(state: dict[str, object], *, require_post_state: bool) -> None:
     current_env, _, _ = read_environment()
     current_ca, _ = _read_regular_file(
-        CA_PATH, maximum_bytes=MAX_CA_BYTES, required=True
+        CA_PATH, maximum_bytes=MAX_CA_BYTES, required=False
     )
-    if current_ca is None:
-        raise SafeMaintenanceError
+    current_pgpass: bytes | None = None
+    if state.get("pgpass_changed") is True:
+        current_pgpass, _ = _read_regular_file(
+            PGPASS_PATH,
+            maximum_bytes=MAX_ENV_BYTES,
+            required=True,
+            require_root_owner=False,
+        )
     if require_post_state:
         if state.get("phase") != "applied":
             raise SafeMaintenanceError
         if hashlib.sha256(current_env).hexdigest() != state.get("env_after_sha256"):
             raise SafeMaintenanceError
-        if hashlib.sha256(current_ca).hexdigest() != state.get("ca_after_sha256"):
+        if current_ca is None or hashlib.sha256(current_ca).hexdigest() != state.get(
+            "ca_after_sha256"
+        ):
+            raise SafeMaintenanceError
+        if state.get("pgpass_changed") is True and (
+            current_pgpass is None
+            or hashlib.sha256(current_pgpass).hexdigest()
+            != state.get("pgpass_after_sha256")
+        ):
             raise SafeMaintenanceError
 
     previous_env, _ = _read_regular_file(
@@ -848,16 +1030,36 @@ def _restore_snapshot(state: dict[str, object], *, require_post_state: bool) -> 
             raise SafeMaintenanceError
         _atomic_write(CA_PATH, previous_ca, _authority_from_state(state, "ca"))
     elif state.get("ca_existed") is False:
-        metadata = CA_PATH.lstat()
-        if not stat.S_ISREG(metadata.st_mode) or stat.S_ISLNK(metadata.st_mode):
-            raise SafeMaintenanceError
-        CA_PATH.unlink()
+        if current_ca is not None:
+            metadata = CA_PATH.lstat()
+            if not stat.S_ISREG(metadata.st_mode) or stat.S_ISLNK(metadata.st_mode):
+                raise SafeMaintenanceError
+            CA_PATH.unlink()
     else:
         raise SafeMaintenanceError
 
+    if state.get("pgpass_changed") is True:
+        previous_pgpass, _ = _read_regular_file(
+            SNAPSHOT_PGPASS_PATH, maximum_bytes=MAX_ENV_BYTES, required=True
+        )
+        if previous_pgpass is None or hashlib.sha256(
+            previous_pgpass
+        ).hexdigest() != state.get("pgpass_before_sha256"):
+            raise SafeMaintenanceError
+        _atomic_write(
+            PGPASS_PATH, previous_pgpass, _authority_from_state(state, "pgpass")
+        )
+    elif state.get("format") == 2 and state.get("pgpass_changed") is not False:
+        raise SafeMaintenanceError
 
-def _prepare(environment: bytes, config: dict[str, str]) -> PreparedRemediation:
-    if config["PGSSLMODE"] not in {
+
+def _prepare(
+    environment: bytes,
+    config: dict[str, str],
+    *,
+    rewrite_pgpass_selector: bool = False,
+) -> PreparedRemediation:
+    if config["PGSSLMODE"] and config["PGSSLMODE"] not in {
         "disable",
         "allow",
         "prefer",
@@ -867,7 +1069,7 @@ def _prepare(environment: bytes, config: dict[str, str]) -> PreparedRemediation:
     }:
         raise SafeMaintenanceError("configuration-client")
     current_rootcert = config["PGSSLROOTCERT"]
-    if (
+    if current_rootcert and (
         len(current_rootcert) > 4096
         or not Path(current_rootcert).is_absolute()
         or any(ord(character) < 32 for character in current_rootcert)
@@ -893,8 +1095,22 @@ def _prepare(environment: bytes, config: dict[str, str]) -> PreparedRemediation:
         _verify_full(second_route, port, server_name, second_certificate)
     except Exception as exc:
         raise SafeMaintenanceError("tls-evidence") from exc
+    pgpass_before: bytes | None = None
+    pgpass_after: bytes | None = None
+    pgpass_authority: FileAuthority | None = None
     try:
-        _require_pgpass_match(config, server_name, port)
+        if rewrite_pgpass_selector:
+            pgpass_before, pgpass_after, pgpass_authority = (
+                _replace_pgpass_host_selector(
+                    config, current_host, server_name, port
+                )
+            )
+        else:
+            _require_pgpass_match(config, server_name, port)
+    except SafeMaintenanceError as exc:
+        if exc.code.startswith("pgpass-"):
+            raise
+        raise SafeMaintenanceError("pgpass") from exc
     except Exception as exc:
         raise SafeMaintenanceError("pgpass") from exc
     try:
@@ -913,10 +1129,13 @@ def _prepare(environment: bytes, config: dict[str, str]) -> PreparedRemediation:
         environment=rewritten,
         certificate_pem=ssl.DER_cert_to_PEM_cert(first_certificate).encode("ascii"),
         certificate_sha256=first_sha,
+        pgpass_before=pgpass_before,
+        pgpass_after=pgpass_after,
+        pgpass_authority=pgpass_authority,
     )
 
 
-def apply() -> str:
+def apply(*, rewrite_pgpass_selector: bool = False) -> str:
     if os.geteuid() != 0:
         raise SafeMaintenanceError("file-safety")
     try:
@@ -956,13 +1175,38 @@ def apply() -> str:
             _require_no_extended_attributes(ENV_PATH)
             if ca_payload is not None:
                 _require_no_extended_attributes(CA_PATH)
+            if rewrite_pgpass_selector:
+                _require_no_extended_attributes(PGPASS_PATH)
         except Exception as exc:
             raise SafeMaintenanceError("file-safety") from exc
         if SNAPSHOT_PATH.exists():
             raise SafeMaintenanceError("snapshot-present")
-        prepared = _prepare(environment, config)
+        prepared = _prepare(
+            environment,
+            config,
+            rewrite_pgpass_selector=rewrite_pgpass_selector,
+        )
+        pgpass_snapshot: bytes | None = None
+        if prepared.pgpass_after is not None:
+            if prepared.pgpass_before is None or prepared.pgpass_authority is None:
+                raise SafeMaintenanceError("pgpass-rewrite")
+            live_pgpass, live_pgpass_authority = _read_pgpass()
+            if (
+                not hashlib.sha256(live_pgpass).digest()
+                == hashlib.sha256(prepared.pgpass_before).digest()
+                or live_pgpass_authority != prepared.pgpass_authority
+            ):
+                raise SafeMaintenanceError("pgpass-rewrite")
+            pgpass_snapshot = live_pgpass
         try:
-            state = _snapshot(environment, env_authority, ca_payload, ca_authority)
+            state = _snapshot(
+                environment,
+                env_authority,
+                ca_payload,
+                ca_authority,
+                pgpass_snapshot,
+                prepared.pgpass_authority,
+            )
         except Exception as exc:
             raise SafeMaintenanceError("file-safety") from exc
         changed = False
@@ -974,6 +1218,14 @@ def apply() -> str:
                 prepared.certificate_pem,
                 FileAuthority(uid=0, gid=backup_gid, mode=0o640),
             )
+            if prepared.pgpass_after is not None:
+                if prepared.pgpass_authority is None:
+                    raise SafeMaintenanceError
+                _atomic_write(
+                    PGPASS_PATH,
+                    prepared.pgpass_after,
+                    prepared.pgpass_authority,
+                )
             _atomic_write(ENV_PATH, prepared.environment, env_authority)
             _, _, applied_config = read_environment()
             if applied_config["PGHOSTADDR"] == "":
@@ -990,12 +1242,17 @@ def apply() -> str:
                 applied_config["PGHOST"],
                 observed,
             )
+            _require_pgpass_match(applied_config, applied_config["PGHOST"], port)
             _require_backup_inactive()
             state["phase"] = "applied"
             state["env_after_sha256"] = hashlib.sha256(prepared.environment).hexdigest()
             state["ca_after_sha256"] = hashlib.sha256(
                 prepared.certificate_pem
             ).hexdigest()
+            if prepared.pgpass_after is not None:
+                state["pgpass_after_sha256"] = hashlib.sha256(
+                    prepared.pgpass_after
+                ).hexdigest()
             _write_state(state)
         except Exception as exc:
             rollback_failed = False
@@ -1035,10 +1292,16 @@ def rollback() -> str:
 
 def main(arguments: list[str]) -> int:
     operation = arguments[0] if len(arguments) == 1 else "invalid"
-    safe_operation = operation if operation in {"apply", "rollback"} else "unknown"
+    safe_operation = (
+        operation
+        if operation in {"apply", "apply-with-passfile-selector", "rollback"}
+        else "unknown"
+    )
     try:
         if operation == "apply":
             status = apply()
+        elif operation == "apply-with-passfile-selector":
+            status = apply(rewrite_pgpass_selector=True)
         elif operation == "rollback":
             status = rollback()
         else:

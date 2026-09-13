@@ -67,6 +67,16 @@ describe.each(LOCALES)("privacy policy — %s", locale => {
     expect(p.p7_note).toBeTruthy()
     expect(p.p7_note).toContain("400")
   })
+
+  it("discloses Workforce location purpose, lifecycle, roles and employee rights", () => {
+    for (const key of ["s9", "p9", "p9_l1", "p9_l2", "p9_l3", "p9_l4", "p9_controller", "p9_note"] as const) {
+      expect(p[key], `${key} must remain published in ${locale}`).toBeTruthy()
+    }
+    expect(p.p9_l4).toMatch(/30/)
+    expect(p.p9_l4).toMatch(/day|дн|gün/i)
+    expect(`${p.p9} ${p.p9_controller}`).toMatch(/employer|работодател|işəgötürən/i)
+    expect(p.p9_note).toMatch(/section 7|раздела 7|7-ci bölmə/i)
+  })
 })
 
 describe("the privacy page renders the corrected sections", () => {
@@ -77,6 +87,11 @@ describe("the privacy page renders the corrected sections", () => {
     key => {
       expect(page).toContain(`t("${key}")`)
     },
+  )
+
+  it.each(["s9", "p9", "p9_l1", "p9_l2", "p9_l3", "p9_l4", "p9_controller", "p9_note", "s10", "p10"])(
+    "renders Workforce privacy key %s",
+    key => expect(page).toContain(`t("${key}")`),
   )
 })
 

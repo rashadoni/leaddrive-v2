@@ -1,11 +1,11 @@
 # Workforce HRM — completion roadmap
 
-> **Status:** active planning roadmap; schema/mobile/pilot owner gates remain open
+> **Status:** current C6 server slices delivered; C6 roadmap and physical pilot remain open
 > **Date:** 2026-08-30
 > **Scope:** employee time, attendance evidence, offices and branches, schedules,
 > HR requests, exceptions, device trust, mobile application, privacy, export,
 > operations and controlled rollout
-> **Current implementation branch:** `codex/implement-hrm-plan`
+> **Delivery repository:** `rashadoni/leaddrive-v2`; reviewable slices merge through `main`
 > **Baseline inspected:** `ffb412f15`
 > **Related documents:**
 > [`mtm-hrm-module-plan-2026-08-28.md`](./mtm-hrm-module-plan-2026-08-28.md),
@@ -29,6 +29,44 @@
 > [`workforce-c7-employment-history-evidence-2026-08-30.md`](./workforce-c7-employment-history-evidence-2026-08-30.md),
 
 ## 1. Purpose and honest starting point
+
+### 1.0 Current delivery receipt (2026-09-13)
+
+The current C6 exception-management server chain has now been delivered as
+bounded pull requests rather than by merging the original large implementation
+branch. This receipt does not mark the broader C0-C14 roadmap complete:
+
+- PR #109 / `4de8c4e44fdc6a58e6d900c3f43be1ef740d2a3a`: historical employment and
+  schedule resolution plus transaction-safe, idempotent exception writes;
+- PR #115 / `b4102588ceb245e5f1163f393cc5256a62dcdc27`: review-only no-show and
+  missed-finish materialization under owned transactions and advisory locks;
+- PR #119 / `72aea540f4b322cc60c6b3e19bb3ec3c61ddcfb1`: MFA/rate-limit fences and
+  fixed-label privacy-safe failure logging for HR decisions and employee
+  responses.
+
+Each slice stayed below the 400 KB review limit, received an independent
+security/concurrency review, and passed its current GitHub static, typecheck,
+scope, runner-policy and secret-scan gates before merge. PR #109 and PR #115
+have matching successful production deployment receipts and public build SHA
+verification. PR #119 deployment workflow `34730054162` also completed
+successfully; the public build endpoint returned the exact artifact SHA
+`72aea540f4b322cc60c6b3e19bb3ec3c61ddcfb1` and `/api/v1/ping` returned
+`{"ok":true}`.
+
+This source-delivery milestone does not convert external evidence into a pass.
+The following remain explicitly **NOT RUN / externally gated**:
+
+- signed physical Android testing on two device classes, including QR, GPS,
+  device attestation, biometric unlock, offline recovery, reboot and rollover;
+- a named human LeadDrive pilot and its HR/employee sign-off;
+- the isolated 5,000-user wave, chaos/reconciliation and restore drill;
+- activation of any policy that treats location/device evidence as payroll,
+  disciplinary or conclusive physical-presence proof.
+
+These items require real devices, people or a deliberately scheduled isolated
+staging exercise. Their absence does not reopen the delivered C6 server chain,
+but it does block any claim that the broader roadmap or physical/mobile H6 pilot
+is complete.
 
 This roadmap completes the gap between the H0-H6 server/web foundation and a
 real HR attendance product. It is written for the concrete target scenario:
@@ -60,7 +98,7 @@ payroll, disciplinary action or physical-presence claims.
 | H3 policies/shifts/timesheet | **PARTIAL — gate not met** | Missing complete calendar/no-show/segment lifecycle, assignment UX, approved export delivery and retention execution |
 | H4 isolated sync | **PARTIAL** | Server lanes/write fence exist; no real mobile client, physical offline/two-device evidence or complete old-event safety |
 | H5 QR/device trust | **PARTIAL backend primitives** | No Workforce geofence, site binding, complete admin/mobile UX, hardware attestation or physical trust evidence |
-| H6 pilot/scale | **NOT MET** | No named physical LeadDrive cohort, real app/device matrix, 5,000-user result, formal privacy approval or pilot exit decision |
+| H6 pilot/scale | **NOT MET** | No named physical LeadDrive cohort, real app/device matrix, 5,000-user result or pilot exit decision; the owner-confirmed privacy notice does not replace these operational gates |
 
 This roadmap does not renumber H0-H6 or declare them complete. Phases C0-C14
 are the closure program and preserve the original plan as the compatibility
@@ -138,7 +176,7 @@ be recorded before the dependent phase can leave `BLOCKED`.
 | OD-09 | Inter-branch travel | **Confirmed v1:** no travel-pay calculation. Existing explicit `TRAVEL` segments stay non-payroll; future paid/expected treatment remains tenant-policy work. | C2, C3, C11 |
 | OD-10 | Exact role separation | **Confirmed v1 draft:** least-privilege role vocabulary plus scheduler/time approver, time approver/team manager, evidence reviewer/device-security admin and export custodian/retention-hold incompatibilities. Durable RACI enforcement remains C7 work. | C7, C8, C10 |
 | OD-11 | Location visibility | Normal manager view shows verdict/reason, not raw coordinates; restricted drill-down only for authorized investigations | C8, C10 |
-| OD-12 | Employee monitoring legal basis/notice | Local legal/privacy sign-off and employee notice before any real location cohort | C10, C14 |
+| OD-12 | Employee monitoring legal basis/notice | **Confirmed platform boundary:** section 9 EN/RU/AZ discloses purpose, collection, visibility, 30-day raw retention, controller/processor roles and rights channel; each employer must still establish its applicable basis and notify employees before enabling a real cohort | C10, C14 |
 | OD-13 | Backdated event outcome | **Recorded safe default:** older than seven days is rejected; an in-window claim received over 15 minutes after `claimedAt` becomes `PENDING_REVIEW` under `c1-delay-review-v1`. Tenant-published policy/resolution awaits C6. | C6 |
 | OD-14 | Pilot population and observation window | Named small LeadDrive cohort, two physical devices, at least one full payroll-like reporting cycle without using results for payroll | C14 |
 | OD-15 | Supported app version window | Minimum/maximum version, forced-update policy and offline drain period | C9, C13, C14 |
@@ -466,8 +504,8 @@ attendance schema or a real employee cohort.
 |---|---:|---|---|---|---|
 | WF-C0-001 | P0 | DONE | Product/HR | Approve this roadmap, terminology and non-goals | Active task authorization recorded in C0 evidence; unresolved owner decisions remain explicit |
 | WF-C0-002 | P0 | DONE | Security/Product | Create abuse/threat model: shared credentials, stolen sessions, QR relay, GPS spoof, clock rollback, rooted/emulated app, replay, manager abuse and tenant leakage | `workforce-c0-foundation-evidence-2026-08-30.md` sections 2-3 |
-| WF-C0-003 | P0 | PARTIAL | Legal/Privacy/HR | Complete data inventory and processing-purpose map for time, location, device, audit, requests and exports | Technical inventory exists; lawful basis/notice awaits C0-004 |
-| WF-C0-004 | P0 | BLOCKED | Legal/Privacy | Complete Azerbaijan employment/privacy review and any required employee notice/assessment; add jurisdiction template for future tenants | Signed review and approved notice/fallback, not source-level assumption |
+| WF-C0-003 | P0 | DONE | Legal/Privacy/HR | Complete data inventory and processing-purpose map for time, location, device, audit, requests and exports | Owner confirmed employee-location disclosure in privacy-policy section 9 (EN/RU/AZ), controller/processor roles and 30-day retention on 2026-09-12 |
+| WF-C0-004 | P0 | PARTIAL (OWNER ATTESTATION) | Legal/Privacy | Complete Azerbaijan employment/privacy review and any required employee notice/assessment; add jurisdiction template for future tenants | Owner explicitly closed the LeadDrive privacy gate on 2026-09-12 based on the published section 9 notice, roles and retention; a reusable future-tenant jurisdiction template and any separate external-counsel opinion are not claimed |
 | WF-C0-005 | P0 | PARTIAL | SRE/DBA | Capture tenant-scoped baseline: employees, events/day, peak/minute, p50/p95/p99, failures, conflicts, outbox age, storage growth and prior-day opens | Read-only query/NOT RUN baseline recorded; production telemetry access remains required |
 | WF-C0-006 | P1 | OWNER DECISION | Product/Mobile | Record platforms, distribution, supported OS/device classes and app-version window | OD-01 and OD-15 resolved |
 | WF-C0-007 | P1 | DONE | Product/QA | Create requirements traceability matrix from H0-H6, this roadmap, tests and release evidence | C0 evidence section 5 maps all `WF-C*` groups to contract/test/gate |
@@ -622,7 +660,7 @@ than a hidden calculation or direct data overwrite.
 | WF-C6-004 | P1 | PARTIAL | Backend/HR | Define missed checkout and stale open-shift policy: reminder, review, bounded auto-close proposal or manual correction | [`workforce-c6-exception-intake-evidence-2026-08-30.md`](./workforce-c6-exception-intake-evidence-2026-08-30.md): safe generic reminder/review proposal requires immutable schedule and complete observation; it never fabricates a finish, while policy timing/delivery/auto-close stay owner-gated |
 | WF-C6-005 | P1 | PARTIAL | Web | Build exception queue with scope, risk, age, evidence completeness, employee response and next action | [`workforce-c6-exception-queue-foundation-evidence-2026-08-30.md`](./workforce-c6-exception-queue-foundation-evidence-2026-08-30.md): session-admin tenant query, hard cap and EN/RU/AZ read-only queue show every safe review field without raw proof; case-linked employee response, granular grants and real immutable resolution remain open |
 | WF-C6-006 | P1 | PARTIAL | Web/Mobile | Let employee explain or appeal an exception and request a correction from the exact day/segment | [`employee-response foundation`](./workforce-c6-employee-response-foundation-evidence-2026-08-30.md) and [`case-to-correction source link`](./workforce-c6-correction-request-link-evidence-2026-08-31.md): self discovery, exact-case/workday server validation, source-linked protected correction submission and a session-only exact-own-case response API exist; migration apply, visible acknowledgement, mobile and accountable lifecycle remain open |
-| WF-C6-007 | P1 | PARTIAL | Backend | Constrain manager corrections to configured date/duration/range rules; mark derived records as manual | [`workforce-c6-correction-bounds-foundation-evidence-2026-08-30.md`](./workforce-c6-correction-bounds-foundation-evidence-2026-08-30.md): pure versioned effective-window/duration/boundary evaluator fails closed to review; tenant policy selection, endpoint wiring and escalation ownership remain open |
+| WF-C6-007 | P1 | PARTIAL | Backend | Constrain manager corrections to configured date/duration/range rules; mark derived records as manual | [`workforce-c6-correction-bounds-foundation-evidence-2026-08-30.md`](./workforce-c6-correction-bounds-foundation-evidence-2026-08-30.md): the session-only correction route now has mandatory MFA, strict identifier/input validation, a fail-closed shared rate guard, generic conflict/error containment and immutable service handoff; tenant bounds-policy selection and escalation ownership remain open |
 | WF-C6-008 | P1 | DONE | Backend | Make correction affect calculation/approval through a new ledger revision, preserving original evidence/verdict | Workforce C6 correction-to-approval evidence: rehydration, correction revision/hash and no-evidence-mutation tests |
 | WF-C6-009 | P1 | PARTIAL | Notifications | Add reminders/escalations for missed actions and aging cases without exposing reasons/location in unsafe channels | [`workforce-c6-exception-notification-boundary-evidence-2026-08-31.md`](./workforce-c6-exception-notification-boundary-evidence-2026-08-31.md): pure private in-app planner suppresses unsafe/ineligible/duplicate delivery and emits no raw HRM proof; durable outbox, retry worker, policy/recipient mapping and delivery evidence remain open |
 | WF-C6-010 | P2 | PLANNED | HR/Analytics | Measure false positives, correction rate, appeal overturn rate and time-to-resolution | Aggregated metrics exclude raw coordinates/reasons |
@@ -645,7 +683,7 @@ overbroad CRM roles or mobile-only requests.
 | WF-C7-005 | P1 | DONE | Web/Mobile | Deliver self-service leave, absence and time-correction creation/cancel/history | Workforce C7 self-service evidence: self-scoped web fallback, named workday picker, idempotency/overlap/DST/cancel tests; mobile remains C9 |
 | WF-C7-006 | P1 | PARTIAL | Web/Backend | Complete manager request decision queue, route conflict acknowledgement and immutable audit | Concurrent decision is idempotent and scoped |
 | WF-C7-007 | P1 | PARTIAL | HR/Web | Add future-effective bulk schedules/sites, preview, conflict report and reversible draft before publish | [`workforce-c7-bulk-draft-preview-evidence-2026-08-30.md`](./workforce-c7-bulk-draft-preview-evidence-2026-08-30.md): named schedule/site browser drafts and read-only conflict reports are safe; durable publish and recurrence remain open |
-| WF-C7-008 | P1 | PLANNED | Backend | Freeze approvals when unresolved blocking exceptions or snapshot gaps exist | Approval error lists exact blocking rows |
+| WF-C7-008 | P1 | DONE | Backend | Freeze approvals when unresolved blocking exceptions or snapshot gaps exist | [`C11 approval blocker evidence`](./workforce-c11-approval-blockers-evidence-2026-09-13.md): server-rebuilt workdays, snapshot/history failures, current deviations and unresolved C6 lifecycles fail closed with exact minimized rows |
 | WF-C7-009 | P2 | PLANNED | HR | Define delegation, temporary approver and manager absence workflow | Delegation is bounded, expiring and audited |
 | WF-C7-010 | P2 | PLANNED | Security/HR | Review access and decisions periodically; disable stale privileged assignments | Access review evidence and revocation SLA |
 
@@ -710,16 +748,16 @@ the recorded 30-day/one-year lifecycle safely.
 
 | ID | Pri | Status | Owner | Task | Acceptance evidence |
 |---|---:|---|---|---|---|
-| WF-C10-001 | P0 | BLOCKED | Legal/Privacy/HR | Approve purpose, notice, lawful/contract basis, fallback and employee inquiry/appeal channel | OD-12 resolved before real location collection |
-| WF-C10-002 | P0 | PLANNED | Backend/Privacy | Classify raw location, derived verdict, time fact, request reason, device evidence, audit and export separately | Data dictionary enforced in code/runbooks |
-| WF-C10-003 | P0 | PLANNED | Backend | Implement tenant-scoped bounded purge for all raw GPS copies, including workday/event start/end coordinates, after 30 days | Dry-run/delete/reconciliation tests prove no raw coordinate remains |
-| WF-C10-004 | P0 | PLANNED | Backend | Implement one-year time/decision retention with explicit eligible classes, legal-hold fail-closed check and immutable purge audit | Hold and no-hold integration tests |
-| WF-C10-005 | P0 | PLANNED | Backend/SRE | Add retention dry run, backup/restore verification, batching, resume cursor, pressure stop and metrics | Staging retention drill is recoverable and auditable |
+| WF-C10-001 | P0 | DONE | Legal/Privacy/HR | Approve purpose, notice, lawful/contract basis, fallback and employee inquiry/appeal channel | [`workforce-c10-legal-notice-evidence-2026-09-13.md`](./workforce-c10-legal-notice-evidence-2026-09-13.md): owner-confirmed section 9 EN/RU/AZ fixes the platform purpose/role/lifecycle/rights boundary while preserving each employer's pre-enable legal duties |
+| WF-C10-002 | P0 | DONE | Backend/Privacy | Classify raw location, derived verdict, time fact, request reason, device evidence, audit and export separately | [`workforce-c10-data-classification-evidence-2026-08-30.md`](./workforce-c10-data-classification-evidence-2026-08-30.md): seven-class code dictionary and deny-by-default ordinary-export allow-list |
+| WF-C10-003 | P0 | DONE | Backend | Implement tenant-scoped bounded purge for all raw GPS copies, including workday/event start/end coordinates, after 30 days | [`workforce-c10-raw-location-retention-evidence-2026-08-30.md`](./workforce-c10-raw-location-retention-evidence-2026-08-30.md): bounded dry-run/execute/reconciliation tests cover every current raw copy; destructive exposure remains fenced |
+| WF-C10-004 | P0 | PARTIAL | Backend | Implement one-year time/decision retention with explicit eligible classes, legal-hold fail-closed check and immutable purge audit | [`workforce-c10-time-decision-retention-hold-evidence-2026-08-30.md`](./workforce-c10-time-decision-retention-hold-evidence-2026-08-30.md): calendar-year inventory and immutable tenant hold contract are fail-closed; writer, executor and immutable purge audit remain fenced |
+| WF-C10-005 | P0 | PARTIAL | Backend/SRE | Add retention dry run, backup/restore verification, batching, resume cursor, pressure stop and metrics | [`workforce-c10-retention-dry-run-evidence-2026-08-30.md`](./workforce-c10-retention-dry-run-evidence-2026-08-30.md): dry-run, bounded batching and fail-closed external-execution preflight complete; restore proof, cursor/lease implementation, pressure metrics and staging drill remain open |
 | WF-C10-006 | P1 | PLANNED | Security/Web | Enforce restricted raw-evidence access, purpose/reason, access log and periodic review | Unauthorized manager receives no raw coordinates |
-| WF-C10-007 | P1 | PLANNED | Backend | Preserve derived inside/outside/unknown verdict and approved time after raw evidence purge without retaining reversible exact location | Post-purge report/test fixture |
+| WF-C10-007 | P1 | DONE | Backend | Preserve derived inside/outside/unknown verdict and approved time after raw evidence purge without retaining reversible exact location | [`workforce-c10-post-purge-verdict-evidence-2026-08-30.md`](./workforce-c10-post-purge-verdict-evidence-2026-08-30.md): post-purge fixture preserves the derived verdict and purge receipt while excluding exact/reversible location |
 | WF-C10-008 | P1 | PLANNED | Product/Mobile/Web | Show employees when/why location is captured, permission state, retention summary and how to request correction | AZ/RU/EN acceptance with no covert state |
 | WF-C10-009 | P1 | PLANNED | Backend/Privacy | Implement employee/tenant data access/export/deactivation workflows with redaction and third-party separation | Subject/contract request test and approval audit |
-| WF-C10-010 | P1 | PLANNED | Security/SRE | Add privacy/security incident runbook for location/device/export exposure | Tabletop drill, notification owner and evidence preservation |
+| WF-C10-010 | P1 | PARTIAL | Security/SRE | Add privacy/security incident runbook for location/device/export exposure | [`workforce-c10-privacy-security-incident-runbook-2026-08-30.md`](./workforce-c10-privacy-security-incident-runbook-2026-08-30.md): privacy-safe preservation, containment, triage and recovery procedure is recorded; named notification owner and tabletop drill remain external/NOT RUN |
 | WF-C10-011 | P2 | PLANNED | Privacy/Analytics | Use aggregated/minimized operational metrics; forbid raw location/reasons in general analytics | Schema/log scanners and dashboard review |
 
 **Gate C10:** collection and access are transparent, raw evidence expires in
@@ -734,13 +772,13 @@ payroll engine or leaking sensitive evidence.
 | ID | Pri | Status | Owner | Task | Acceptance evidence |
 |---|---:|---|---|---|---|
 | WF-C11-001 | P1 | PARTIAL | Backend | Complete deterministic calculation for segments, approved breaks/travel, calendar, exceptions and corrections | Rehydration/property tests from immutable snapshots |
-| WF-C11-002 | P1 | PARTIAL | Backend/Web | Block approval on incomplete facts, unresolved blocking cases or snapshot/history errors | Exact rows/reasons shown; valid bounded period approves once |
-| WF-C11-003 | P1 | PLANNED | Backend | Add approved-export endpoint from immutable approval/revision, never live mutable rows | Checksum and facts/rows hashes verify |
-| WF-C11-004 | P1 | PLANNED | Security/Web | Require purpose, recipient, authorized scope and encrypted delivery channel; set artifact expiry | Export audit and unauthorized/expired download tests |
+| WF-C11-002 | P1 | DONE | Backend/Web | Block approval on incomplete facts, unresolved blocking cases or snapshot/history errors | [`C11 approval blocker evidence`](./workforce-c11-approval-blockers-evidence-2026-09-13.md): exact minimized rows/reasons cover finality, snapshots, replay, current deviations and C6 lifecycle; resolved bounded periods remain deterministic/idempotent |
+| WF-C11-003 | P1 | DONE | Backend | Add approved-export endpoint from immutable approval/revision, never live mutable rows | [`workforce-c11-approved-export-evidence-2026-08-30.md`](./workforce-c11-approved-export-evidence-2026-08-30.md): persisted calculation/row/fact hashes are reproduced before a narrow attachment is returned |
+| WF-C11-004 | P1 | PARTIAL | Security/Web | Require purpose, recipient, authorized scope and encrypted delivery channel; set artifact expiry | [`workforce-c11-direct-export-purpose-evidence-2026-08-30.md`](./workforce-c11-direct-export-purpose-evidence-2026-08-30.md): fixed direct-review purpose, MFA, shared rate guard and historic export-custodian scope exist; external encrypted artifact delivery/expiry remain open |
 | WF-C11-005 | P1 | PLANNED | Web | Add preview, row count, date/employee/site scope, warnings and correction version before export | User knows exactly what will leave the system |
-| WF-C11-006 | P1 | PLANNED | Backend | Keep raw coordinates, QR/device proofs and free-text reasons out of ordinary timesheet export | Contract/privacy tests |
+| WF-C11-006 | P1 | DONE | Backend | Keep raw coordinates, QR/device proofs and free-text reasons out of ordinary timesheet export | Explicit `TIME_FACT` allow-list plus projection/privacy tests reject every other current data class |
 | WF-C11-007 | P1 | PLANNED | Web/Analytics | Add schedule/actual, late, no-show, overtime, break, site-transition and exception reports with scope/date filters | Metrics reconcile to approved facts |
-| WF-C11-008 | P1 | PLANNED | HR/Product | Label overtime as operational deviation, not payable amount | Copy and export schema contain no wage claim |
+| WF-C11-008 | P1 | DONE | HR/Product | Label overtime as operational deviation, not payable amount | Export schema emits `OPERATIONAL_DEVIATION_NOT_PAYABLE` and contains no wage/payroll field |
 | WF-C11-009 | P2 | PLANNED | Product | Define future payroll/integration contract only after jurisdiction, rounding and accountable system-of-record decisions | Separate approved project; not implicit in v1 |
 | WF-C11-010 | P2 | PLANNED | Backend | Add signed/versioned integration export and delivery retry ledger if external HRIS is approved | Idempotent recipient delivery and reconciliation |
 
@@ -955,7 +993,10 @@ from this worktree.
   - `workforce-attendance-trust`: 5 passed;
   - `lib-mtm-workday`: 10 passed;
   - shift definition and timesheet calculation: 17 passed.
-- `NOT RUN`: full build, full browser E2E, physical Android/QR/GPS, 5,000-user
-  load, formal legal/privacy assessment and real LeadDrive pilot.
+- At roadmap creation, `NOT RUN` included full build, full browser E2E,
+  physical Android/QR/GPS, 5,000-user load, formal legal/privacy assessment and
+  the real LeadDrive pilot. The legal/privacy item was later closed by explicit
+  owner attestation recorded in C0-003/C0-004; this does not claim an external
+  counsel opinion. Physical devices, load and the human pilot remain `NOT RUN`.
 - No deploy, production mutation, capability toggle or retention deletion is
   authorized by this document.

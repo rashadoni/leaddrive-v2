@@ -1,8 +1,10 @@
 # PostgreSQL TLS and scratch maintenance plan
 
-Status: a maintenance window is approved only for the source client TLS change
-described below. Scratch, PostgreSQL, firewall, VPS, Docker, systemd services,
-backup, restore, deploy, and Kafka changes remain unauthorized.
+Status: the source environment/CA maintenance window was approved, but the
+attempt failed closed at `pgpass-match` before any snapshot or write. Changing
+the passfile still requires the separate confirmation described below.
+Scratch, PostgreSQL, firewall, VPS, Docker, systemd services, backup, restore,
+deploy, and Kafka changes remain unauthorized.
 
 ## Read-only decision evidence
 
@@ -60,7 +62,10 @@ The approved maintenance path is:
    matching DNS name, `verify-full`, and that source CA file; for the
    `client-hostaddr-required` path, first land the separately reviewed,
    fail-closed `PGHOSTADDR` support and bind it to the already classified source
-   address without printing that value; and
+   address without printing that value. If the passfile selector does not
+   already match the certificate identity, use only the separately confirmed
+   combined operation, which replaces that one selector in the same sealed
+   transaction while preserving the credential fields byte-for-byte; and
 4. run only TLS/configuration readiness checks; do not start or enable any
    backup or recovery timer.
 
@@ -87,10 +92,23 @@ automatically restores the snapshot. Workflow output is a single schema-gated
 enum line, including only an allowlisted preflight failure stage when blocked,
 and contains no raw configuration or certificate identity.
 
-The controlled transition accepts only a standard libpq TLS mode and an
-absolute non-URL starting CA path, then replaces both with the reviewed
-`verify-full` and dedicated source-CA settings. Any service-based connection or
-password override remains a stop condition.
+The controlled transition accepts an absent or standard libpq TLS mode and an
+absent or absolute non-URL starting CA path, then installs both reviewed
+`verify-full` and dedicated source-CA settings. Database identity, user and
+passfile settings remain mandatory; any service-based connection or password
+override remains a stop condition.
+
+The passfile may use either the reviewed root/group-readable authority or the
+runbook's private dedicated-service-user authority. The default `apply`
+operation only reads and validates it. The separately confirmed
+`apply-with-passfile-selector` operation accepts exactly one existing tuple for
+the current source host, rewrites only that tuple's host selector, preserves
+all remaining bytes and file authority, includes the full pre-change file in
+the root-only rollback snapshot, and revalidates the new tuple after the atomic
+write. It refuses missing or ambiguous tuples and never emits passfile bytes.
+A deployed backup script that does not yet accept the service-user-owned
+variant remains uncommissioned until a separate reviewed deployment reconciles
+that contract.
 
 No PostgreSQL restart is part of this path. If any decision result is not
 positive, certificate re-issuance and DNS correction need a separate reviewed
@@ -103,6 +121,13 @@ exact pre-window environment and prior CA state atomically, and retains the
 root-only snapshot as evidence.
 
 ## Scratch decision
+
+The current bounded audit found no separate PostgreSQL cluster, Docker
+container, or custom systemd definition for the configured scratch port. The
+Compose probe was incomplete, so no existing launcher is proven and nothing is
+safe to start. The required future mechanism is therefore still a newly
+reviewed, dedicated disposable PostgreSQL cluster; Docker/Compose is not
+selected merely because an old development example used it.
 
 The backup contract requires a disposable, isolated loopback PostgreSQL
 cluster on the configured scratch port, with storage separate from production.

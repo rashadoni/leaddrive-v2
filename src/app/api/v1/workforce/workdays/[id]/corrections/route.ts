@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { clientIp } from "@/lib/request-ip"
-import { withWorkforceRlsAuth } from "@/lib/with-workforce-rls-auth"
+import { withWorkforceSessionAuth } from "@/lib/with-workforce-rls-auth"
 import { resolveWorkforceActor } from "@/lib/workforce/actor"
 import {
   correctWorkforceTimeDirectly,
   WorkforceDirectTimeCorrectionSchema,
 } from "@/lib/workforce/direct-time-correction"
+import { requireWorkforceAttendanceSecurityMfa } from "@/lib/workforce/attendance-route"
+import { requireWorkforceDirectTimeCorrectionRateLimit } from "@/lib/workforce/direct-time-correction-rate-limit"
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
+import { workforceSensitiveResponseHeaders } from "@/lib/workforce/sensitive-response"
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -22,22 +26,37 @@ function requestAuditContext(req: NextRequest) {
   }
 }
 
-/** POST /api/v1/workforce/workdays/:id/corrections */
-export const POST = withWorkforceRlsAuth<RouteContext>("write", async (req: NextRequest, auth, { params }) => {
-  const actor = await resolveWorkforceActor(prisma, {
-    organizationId: auth.orgId,
-    userId: auth.userId,
-    webRole: auth.role,
-  })
-  if (!actor) return workforceScopeDenied()
+/**
+ * POST /api/v1/workforce/workdays/:id/corrections
+ *
+ * A direct correction is an accountable human action. Integration keys must
+ * not use this route to impersonate a supervisor or append its audit record.
+ */
+export const POST = withWorkforceSessionAuth<RouteContext>("write", async (req: NextRequest, auth, { params }) => {
+  const mfaDenied = await requireWorkforceAttendanceSecurityMfa(auth.orgId, auth)
+  if (mfaDenied) return mfaDenied
+
+  const { id } = await params
+  if (!/^[A-Za-z0-9_-]{1,100}$/.test(id)) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
   const parsed = WorkforceDirectTimeCorrectionSchema.safeParse(await req.json().catch(() => ({})))
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid time correction" }, { status: 400 })
   }
-  const { id } = await params
+  const rateLimited = await requireWorkforceDirectTimeCorrectionRateLimit({
+    organizationId: auth.orgId,
+    principalUserId: auth.userId,
+  })
+  if (rateLimited) return rateLimited
 
   try {
+    const actor = await resolveWorkforceActor(prisma, {
+      organizationId: auth.orgId,
+      userId: auth.userId,
+      webRole: auth.role,
+    })
+    if (!actor) return workforceScopeDenied()
+
     const result = await correctWorkforceTimeDirectly({
       organizationId: auth.orgId,
       userId: auth.userId,
@@ -50,18 +69,18 @@ export const POST = withWorkforceRlsAuth<RouteContext>("write", async (req: Next
     if (result.kind === "forbidden") return workforceScopeDenied()
     if (result.kind === "conflict") {
       return NextResponse.json({
-        error: result.message,
+        error: "Unable to apply Workforce time correction.",
         code: result.code,
         ...(result.currentWorkday ? { data: { workday: result.currentWorkday } } : {}),
-      }, { status: 409 })
+      }, { status: 409, headers: workforceSensitiveResponseHeaders })
     }
     return NextResponse.json({
       success: true,
       idempotent: result.idempotent,
       data: result.data,
-    })
-  } catch (error) {
-    console.error("[workforce/workday correction POST]", error)
+    }, { headers: workforceSensitiveResponseHeaders })
+  } catch {
+    logWorkforceSensitiveOperationFailure({ operation: "review-workday-correction" })
     return NextResponse.json({ error: "Failed to correct Workforce time" }, { status: 500 })
   }
 })

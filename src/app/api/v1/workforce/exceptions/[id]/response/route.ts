@@ -9,6 +9,8 @@ import {
   WorkforceExceptionEmployeeResponseWriterError,
   type WorkforceExceptionEmployeeResponseWriterDb,
 } from "@/lib/workforce/exception-employee-response-writer"
+import { requireWorkforceExceptionEmployeeResponseRateLimit } from "@/lib/workforce/exception-employee-response-rate-limit"
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 import { workforceSensitiveResponseHeaders } from "@/lib/workforce/sensitive-response"
 
 const EmployeeExceptionResponseSchema = z.object({
@@ -46,15 +48,8 @@ function responseConstraint(error: unknown): boolean {
  * decision. The migration's transaction trigger re-checks ownership/topology.
  */
 export const POST = withWorkforceSessionAuth<EmployeeExceptionResponseRouteContext>("write", async (req, auth, context) => {
-  const actor = await resolveWorkforceActor(prisma, {
-    organizationId: auth.orgId,
-    userId: auth.userId,
-    webRole: auth.role,
-  })
-  if (!actor || actor.role !== "AGENT" || !actor.agentId) return workforceScopeDenied()
-
   const { id: caseId } = await context.params
-  if (!caseId || caseId.length > 191 || /[\u0000-\u001f]/.test(caseId)) {
+  if (!/^[A-Za-z0-9_-]{1,100}$/.test(caseId)) {
     return NextResponse.json({ error: "Invalid Workforce exception reference", code: "WORKFORCE_EXCEPTION_RESPONSE_INVALID" }, { status: 400 })
   }
   const parsed = EmployeeExceptionResponseSchema.safeParse(await req.json().catch(() => ({})))
@@ -64,6 +59,19 @@ export const POST = withWorkforceSessionAuth<EmployeeExceptionResponseRouteConte
       code: "WORKFORCE_EXCEPTION_RESPONSE_INVALID",
     }, { status: 400 })
   }
+
+  const rateLimited = await requireWorkforceExceptionEmployeeResponseRateLimit({
+    organizationId: auth.orgId,
+    principalUserId: auth.userId,
+  })
+  if (rateLimited) return rateLimited
+
+  const actor = await resolveWorkforceActor(prisma, {
+    organizationId: auth.orgId,
+    userId: auth.userId,
+    webRole: auth.role,
+  })
+  if (!actor || actor.role !== "AGENT" || !actor.agentId) return workforceScopeDenied()
 
   try {
     // This protects the endpoint itself, rather than relying on the web
@@ -116,7 +124,7 @@ export const POST = withWorkforceSessionAuth<EmployeeExceptionResponseRouteConte
     if (responseConstraint(error)) {
       return NextResponse.json({ error: "This exception is unavailable for that employee response", code: "WORKFORCE_EXCEPTION_RESPONSE_LINK_INVALID" }, { status: 409 })
     }
-    console.error("[workforce/exceptions response POST]", error)
+    logWorkforceSensitiveOperationFailure({ operation: "review-exception-response-write" })
     return NextResponse.json({ error: "Failed to record Workforce exception response" }, { status: 500 })
   }
 })

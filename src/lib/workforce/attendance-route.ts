@@ -9,6 +9,8 @@ import {
   type WorkforceAttendanceCapabilities,
 } from "@/lib/workforce/attendance-trust"
 import type { WorkforceAttendanceAuditContext } from "@/lib/workforce/attendance-management"
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
+import { workforceSensitiveResponseHeaders } from "@/lib/workforce/sensitive-response"
 
 export type WorkforceAttendanceAddon = "qr" | "deviceTrust"
 
@@ -82,12 +84,12 @@ export async function requireWorkforceAttendanceSecurityMfa(
       return workforceAttendanceSecurityMfaRequired()
     }
     return null
-  } catch (error) {
-    console.error("[workforce/attendance] MFA policy lookup failed", error)
+  } catch {
+    logWorkforceSensitiveOperationFailure({ operation: "verify-attendance-mfa" })
     return NextResponse.json({
       error: "Unable to verify Workforce attendance MFA policy.",
       code: "WORKFORCE_ATTENDANCE_MFA_UNAVAILABLE",
-    }, { status: 503 })
+    }, { status: 503, headers: workforceSensitiveResponseHeaders })
   }
 }
 
@@ -95,7 +97,7 @@ function workforceAttendanceSecurityMfaRequired(): NextResponse {
   return NextResponse.json({
     error: "A mandatory enrolled MFA factor is required for this Workforce attendance security action.",
     code: "WORKFORCE_ATTENDANCE_MFA_REQUIRED",
-  }, { status: 403 })
+  }, { status: 403, headers: workforceSensitiveResponseHeaders })
 }
 
 export async function workforceAttendanceCapabilitiesForOrganization(

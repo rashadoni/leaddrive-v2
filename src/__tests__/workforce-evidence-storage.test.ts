@@ -88,7 +88,18 @@ describe("Workforce evidence storage", () => {
 
   it("purges only due ciphertext and makes normal reports select no raw field", async () => {
     const updateMany = vi.fn().mockResolvedValue({ count: 2 })
-    const findMany = vi.fn().mockResolvedValue([])
+    const findMany = vi.fn().mockResolvedValue([{
+      id: "assessment_1",
+      kind: "GEOFENCE",
+      verdict: "INSIDE",
+      reasonCodes: ["INSIDE_GEOFENCE"],
+      evidence: {
+        id: "evidence_1",
+        source: "LOCATION",
+        capturedAt: new Date("2026-08-30T09:00:00.000Z"),
+        rawPurgedAt: new Date("2026-09-30T00:00:00.000Z"),
+      },
+    }])
     const db = { workforceAttendanceEvidence: { create: vi.fn(), findFirst: vi.fn(), updateMany }, workforceEvidenceAssessment: { create: vi.fn(), findMany } }
     await expect(purgeExpiredWorkforceEvidence(db, { organizationId: orgId, now: new Date("2026-09-30T00:00:00.000Z") }))
       .resolves.toEqual({ purged: 2 })
@@ -96,7 +107,12 @@ describe("Workforce evidence storage", () => {
       where: expect.objectContaining({ rawPurgedAt: null }),
       data: { rawEnvelopeCiphertext: null, rawPurgedAt: new Date("2026-09-30T00:00:00.000Z") },
     }))
-    await listWorkforceEvidenceAssessmentReport(db, orgId)
+    const report = await listWorkforceEvidenceAssessmentReport(db, orgId)
+    expect(report).toEqual([expect.objectContaining({
+      verdict: "INSIDE",
+      evidence: expect.objectContaining({ rawPurgedAt: new Date("2026-09-30T00:00:00.000Z") }),
+    })])
+    expect(JSON.stringify(report)).not.toMatch(/latitude|longitude|40\.4093|49\.8671|rawEnvelopeCiphertext/)
     expect(JSON.stringify(findMany.mock.calls[0]?.[0])).not.toContain("rawEnvelopeCiphertext")
   })
 })
