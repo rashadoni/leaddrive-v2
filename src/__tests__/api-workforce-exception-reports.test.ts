@@ -11,11 +11,15 @@ vi.mock("@/lib/with-workforce-rls-auth", () => ({
   withWorkforceSessionExceptionQueueAuth: vi.fn((handler) => handler),
 }))
 vi.mock("@/lib/mtm-settings", () => ({ getMtmSettings: vi.fn() }))
+vi.mock("@/lib/workforce/sensitive-operation-log", () => ({
+  logWorkforceSensitiveOperationFailure: vi.fn(),
+}))
 
 import { GET } from "@/app/api/v1/workforce/exception-reports/route"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { prisma } from "@/lib/prisma"
 import { withWorkforceSessionExceptionQueueAuth } from "@/lib/with-workforce-rls-auth"
+import { logWorkforceSensitiveOperationFailure } from "@/lib/workforce/sensitive-operation-log"
 
 const AUTH = { orgId: "org-workforce", userId: "admin-1", role: "admin", principalType: "session" as const }
 const invoke = GET as unknown as (request: NextRequest, auth: typeof AUTH) => Promise<Response>
@@ -115,7 +119,11 @@ describe("GET /api/v1/workforce/exception-reports", () => {
     const response = await invoke(new NextRequest("http://localhost:3000/api/v1/workforce/exception-reports?start=2026-08-28&end=2026-08-28"), AUTH)
 
     expect(response.status).toBe(503)
+    expect(response.headers.get("cache-control")).toBe("private, no-store")
     await expect(response.json()).resolves.toMatchObject({ code: "WORKFORCE_EXCEPTION_REPORT_UNAVAILABLE" })
+    expect(logWorkforceSensitiveOperationFailure).toHaveBeenCalledWith({
+      operation: "read-exception-case-report",
+    })
   })
 
   it("refuses an oversized period rather than truncating its count", async () => {

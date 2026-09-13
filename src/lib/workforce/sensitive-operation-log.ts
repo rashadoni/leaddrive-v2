@@ -11,6 +11,7 @@ export function logWorkforceSensitiveOperationFailure(input: {
     | "preview-timesheet-approval-export"
     | "authorize-approved-timesheet-report"
     | "read-approved-timesheet-report"
+    | "read-exception-case-report"
     | "retention-raw-location-dry-run"
     | "verify-attendance-mfa"
 }): void {

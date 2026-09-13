@@ -62,6 +62,11 @@ lanes and every non-negative metric. It rejects unknown rows, duplicate
 employees and any response whose employee totals do not reconcile to the
 summary, rather than rendering a partial or internally inconsistent report.
 
+The existing separate exception aggregate remains behind its exception-queue
+authorization boundary. This slice also aligns every exception-report response
+with the same private/no-store and nosniff headers and replaces raw exception
+logging with a fixed operation label.
+
 ## Explicit non-claims
 
 - No-show remains unavailable until C6 has an approved, schedule-aware
@@ -81,6 +86,8 @@ summary, rather than rendering a partial or internally inconsistent report.
   approval service and navigation. Coverage includes the pre-read limiter
   short-circuit, fail-closed limiter path, hash-valid negative metrics and
   aggregate-overflow rejection.
+- **PASS:** exception report/API Vitest, 2 files and 7 tests; includes private
+  failure responses and fixed-label error logging.
 - **PASS:** targeted ESLint for the report service, route, access guard,
   component and tests.
 - **PASS:** `npm run i18n:check`: 22,520 EN leaf keys; RU/AZ missing=0,
