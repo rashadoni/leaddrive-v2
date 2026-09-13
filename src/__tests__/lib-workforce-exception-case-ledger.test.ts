@@ -46,6 +46,44 @@ describe("Workforce exception case ledger drafts", () => {
     expect(changed).not.toBe(first)
   })
 
+  it("uses an exact expected work date only for a segment-only scheduled subject", () => {
+    const firstDay = createWorkforceExceptionCaseDraft({
+      organizationId: "org-1",
+      agentId: "agent-1",
+      kind: "NO_SHOW",
+      detectorVersion: "workforce-no-show-v1",
+      links: { segmentId: "segment-1", expectedWorkDate: "2026-08-31" },
+    })
+    const nextDay = createWorkforceExceptionCaseDraft({
+      organizationId: "org-1",
+      agentId: "agent-1",
+      kind: "NO_SHOW",
+      detectorVersion: "workforce-no-show-v1",
+      links: { segmentId: "segment-1", expectedWorkDate: "2026-09-01" },
+    })
+    expect(nextDay.deduplicationKey).not.toBe(firstDay.deduplicationKey)
+    expect(() => createWorkforceExceptionCaseDraft({
+      organizationId: "org-1", agentId: "agent-1", kind: "NO_SHOW", detectorVersion: "workforce-no-show-v1",
+      links: { segmentId: "segment-1" },
+    })).toThrow(expect.objectContaining({ code: "WORKFORCE_EXCEPTION_CASE_INPUT_INVALID" }))
+    expect(() => createWorkforceExceptionCaseDraft({
+      organizationId: "org-1", agentId: "agent-1", kind: "DELAYED_CLAIM", detectorVersion: "delay-v1",
+      links: { segmentId: "segment-1", expectedWorkDate: "2026-08-31" },
+    })).toThrow(expect.objectContaining({ code: "WORKFORCE_EXCEPTION_CASE_INPUT_INVALID" }))
+    expect(() => createWorkforceExceptionCaseDraft({
+      ...CASE,
+      links: { workdayId: "day-1", segmentId: "segment-1", expectedWorkDate: "2026-08-31" },
+    })).toThrow(expect.objectContaining({ code: "WORKFORCE_EXCEPTION_CASE_INPUT_INVALID" }))
+    expect(() => createWorkforceExceptionCaseDraft({
+      ...CASE,
+      links: { expectedWorkDate: "2026-08-31" },
+    })).toThrow(expect.objectContaining({ code: "WORKFORCE_EXCEPTION_CASE_INPUT_INVALID" }))
+    expect(() => createWorkforceExceptionCaseDraft({
+      ...CASE,
+      links: { segmentId: "segment-1", evidenceId: "evidence-1", expectedWorkDate: "2026-08-31" },
+    })).toThrow(expect.objectContaining({ code: "WORKFORCE_EXCEPTION_CASE_INPUT_INVALID" }))
+  })
+
   it("rejects an unscoped evidence-only case and invalid policy codes", () => {
     expect(() => createWorkforceExceptionCaseDraft({
       ...CASE,

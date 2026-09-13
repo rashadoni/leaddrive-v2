@@ -208,14 +208,20 @@ export interface MtmPrismaMock {
   mtmMediaObject: ModelMock
   mtmAuditLog: ModelMock
   workforcePolicy: ModelMock
+  workforceEmploymentEvent: ModelMock
   workforceShiftTemplate: ModelMock
   workforceShiftSegment: ModelMock
   workforceSiteTransition: ModelMock
   workforceShiftAssignment: ModelMock
+  workforceShiftAssignmentBulkOperation: ModelMock
   workforceShiftDefaultAssignment: ModelMock
+  workforceShiftDefaultOperation: ModelMock
+  workforceShiftTeamDefaultAssignment: ModelMock
+  workforceShiftTeamDefaultOperation: ModelMock
   workforceSite: ModelMock
   workforceSiteGeofenceRevision: ModelMock
   workforceSiteAssignment: ModelMock
+  workforceSiteAssignmentBulkOperation: ModelMock
   workforcePolicySnapshot: ModelMock
   workforceShiftSnapshot: ModelMock
   workforceWorkdayScheduleSnapshot: ModelMock
@@ -373,14 +379,20 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     mtmMediaObject: makeModel(),
     mtmAuditLog: makeModel(),
     workforcePolicy: makeModel(),
+    workforceEmploymentEvent: makeModel(),
     workforceShiftTemplate: makeModel(),
     workforceShiftSegment: makeModel(),
     workforceSiteTransition: makeModel(),
     workforceShiftAssignment: makeModel(),
+    workforceShiftAssignmentBulkOperation: makeModel(),
     workforceShiftDefaultAssignment: makeModel(),
+    workforceShiftDefaultOperation: makeModel(),
+    workforceShiftTeamDefaultAssignment: makeModel(),
+    workforceShiftTeamDefaultOperation: makeModel(),
     workforceSite: makeModel(),
     workforceSiteGeofenceRevision: makeModel(),
     workforceSiteAssignment: makeModel(),
+    workforceSiteAssignmentBulkOperation: makeModel(),
     workforcePolicySnapshot: makeModel(),
     workforceShiftSnapshot: makeModel(),
     workforceWorkdayScheduleSnapshot: makeModel(),

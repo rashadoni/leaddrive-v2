@@ -1,16 +1,16 @@
 # PostgreSQL TLS and scratch maintenance plan
 
-Status: planning and read-only evidence only. This document does not authorize
-production, PostgreSQL, firewall, VPS, Docker, systemd, backup, restore, or
-Kafka changes.
+Status: a maintenance window is approved only for the source client TLS change
+described below. Scratch, PostgreSQL, firewall, VPS, Docker, systemd services,
+backup, restore, deploy, and Kafka changes remain unauthorized.
 
 ## Read-only decision evidence
 
 The `postgres-san-scratch-audit` view in `Inspect production safely` reads only
-the four endpoint host/port keys from the root-owned backup environment. It
-does not source the file, authenticate to PostgreSQL, issue SQL, start a
-service, or print a hostname, address, SAN, path, unit/container name, or
-configuration value other than the non-secret port.
+the seven allowlisted source route/TLS and endpoint host/port keys from the
+root-owned backup environment. It does not source the file, authenticate to
+PostgreSQL, issue SQL, start a service, or print a hostname, address, SAN, path,
+unit/container name, or configuration value other than the non-secret port.
 
 For the source endpoint it:
 
@@ -51,8 +51,7 @@ Client-only remediation without a PostgreSQL restart has two distinct paths:
 `not-proven` is a stop condition, not permission to change DNS or the server
 certificate.
 
-After a separately confirmed maintenance window, the proven client-only path
-is:
+The approved maintenance path is:
 
 1. export the currently presented self-signed public certificate through a
    TLS-only connection and independently compare its approved fingerprint;
@@ -62,16 +61,46 @@ is:
    `client-hostaddr-required` path, first land the separately reviewed,
    fail-closed `PGHOSTADDR` support and bind it to the already classified source
    address without printing that value; and
-4. run only TLS/configuration readiness checks while all backup and recovery
-   timers remain disabled.
+4. run only TLS/configuration readiness checks; do not start or enable any
+   backup or recovery timer.
+
+The dispatch-only `Remediate production PostgreSQL source TLS client` workflow
+implements this path. It is bound to the exact current `main` SHA, the protected
+production environment, the pinned SSH host key, an operation-specific typed
+confirmation, and the production concurrency fence. The streamed script
+accepts no hostname, address, path, certificate, or credential input.
+
+Before writing, it observes the certificate twice and requires an identical
+fingerprint, a self-signed identity, exactly one DNS SAN equal to the production
+server name, local name resolution, and successful in-memory `verify-full`
+through the already configured local endpoint. It also requires at least seven
+days of certificate validity, server TLS purpose, a matching `.pgpass` entry for
+the new certificate identity, any installed backup artifact to match an exact
+reviewed script, and an inactive, non-enabled service and timer. If the backup unit is already
+commissioned, its exact reviewed bytes and its own nonblocking lock are also
+mandatory; the expected pre-commission state may omit the unit and lock.
+Extended attributes are a stop condition so an atomic replacement cannot
+silently drop an ACL or security label. It then creates a root-only sealed snapshot, atomically
+installs the public source CA, and atomically changes only `PGHOST`,
+`PGHOSTADDR`, `PGSSLMODE`, and `PGSSLROOTCERT`. A failed post-write TLS check
+automatically restores the snapshot. Workflow output is a single schema-gated
+enum line, including only an allowlisted preflight failure stage when blocked,
+and contains no raw configuration or certificate identity.
+
+The controlled transition accepts only a standard libpq TLS mode and an
+absolute non-URL starting CA path, then replaces both with the reviewed
+`verify-full` and dedicated source-CA settings. Any service-based connection or
+password override remains a stop condition.
 
 No PostgreSQL restart is part of this path. If any decision result is not
 positive, certificate re-issuance and DNS correction need a separate reviewed
 maintenance plan; whether a reload is sufficient must be proved against the
 installed PostgreSQL version before execution.
 
-Rollback is to restore the exact pre-window backup environment and remove only
-the newly staged public CA file after confirming that no service uses it.
+Rollback is the workflow's separate `rollback` operation. It refuses to act if
+the current files do not match the recorded post-change hashes, restores the
+exact pre-window environment and prior CA state atomically, and retains the
+root-only snapshot as evidence.
 
 ## Scratch decision
 
@@ -97,6 +126,13 @@ target.
 The scratch CA must come from the independently provisioned scratch cluster's
 own trust chain. Do not copy or reuse the source certificate or source CA. Pin
 its separately approved fingerprint before setting scratch `verify-full`.
+
+An existing byte-drifted backup unit is not approved or rewritten by the
+source TLS maintenance. The maintenance may treat it only as uncommissioned
+when the active backup script is an exact reviewed artifact and both the
+service and timer are inactive and non-enabled (or absent) before and after the
+atomic client configuration update. Commissioning remains blocked until a
+separate reviewed deployment reconciles the exact unit bytes.
 
 Rollback is limited to stopping the scratch mechanism created in that window,
 removing only its disposable data and CA after evidence retention, and proving

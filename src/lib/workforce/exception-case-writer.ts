@@ -7,7 +7,7 @@ import {
 } from "@/lib/workforce/exception-case-ledger"
 
 type WorkforceExceptionCaseWriteData = Omit<WorkforceExceptionCaseDraft, "links"> & WorkforceExceptionCaseDraft["links"]
-type StoredCase = WorkforceExceptionCaseWriteData & { id: string }
+type StoredCase = Omit<WorkforceExceptionCaseWriteData, "expectedWorkDate"> & { id: string; expectedWorkDate: string | Date | null }
 type StoredDecision = WorkforceExceptionDecisionDraft & { id: string }
 
 export type WorkforceExceptionCaseWriterDb = {
@@ -16,7 +16,7 @@ export type WorkforceExceptionCaseWriterDb = {
     create: (args: { data: WorkforceExceptionCaseWriteData }) => Promise<StoredCase>
     findFirst: (args: {
       where: { organizationId: string; deduplicationKey: string }
-      select: { id: true; organizationId: true; agentId: true; kind: true; detectorVersion: true; deduplicationKey: true; workdayId: true; workdayEventId: true; evidenceId: true; segmentId: true }
+      select: { id: true; organizationId: true; agentId: true; kind: true; detectorVersion: true; deduplicationKey: true; workdayId: true; workdayEventId: true; evidenceId: true; segmentId: true; expectedWorkDate: true }
     }) => Promise<StoredCase | null>
   }
   workforceExceptionDecision: {
@@ -109,6 +109,7 @@ function sameCase(left: WorkforceExceptionCaseDraft, right: WorkforceExceptionCa
     && left.links.workdayEventId === right.links.workdayEventId
     && left.links.evidenceId === right.links.evidenceId
     && left.links.segmentId === right.links.segmentId
+    && left.links.expectedWorkDate === right.links.expectedWorkDate
 }
 
 function caseWriteData(draft: WorkforceExceptionCaseDraft): WorkforceExceptionCaseWriteData {
@@ -134,6 +135,9 @@ function caseDraftFromStored(record: StoredCase): WorkforceExceptionCaseDraft {
       workdayEventId: record.workdayEventId,
       evidenceId: record.evidenceId,
       segmentId: record.segmentId,
+      expectedWorkDate: record.expectedWorkDate instanceof Date
+        ? record.expectedWorkDate.toISOString().slice(0, 10)
+        : record.expectedWorkDate,
     },
   }
 }
@@ -187,49 +191,51 @@ export async function persistAuthorizedWorkforceExceptionCase(input: {
     agentId: canonical.agentId,
   })
   await input.db.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${caseLockKey(canonical)}))`
-  try {
-    const created = await input.db.workforceExceptionCase.create({ data: caseWriteData(canonical) })
-    await input.db.mtmAuditLog.create({
-      data: {
-        organizationId: canonical.organizationId,
-        agentId: null,
-        action: "WORKFORCE_EXCEPTION_CASE_RECORDED",
-        entity: "workforce_exception_case",
-        entityId: created.id,
-        metadataKind: "workforce_exception_lifecycle",
-        newData: {
-          deduplicationKey: canonical.deduplicationKey,
-          kind: canonical.kind,
-          detectorVersion: canonical.detectorVersion,
-        },
-        ipAddress: null,
-        userAgent: null,
-      },
-    })
-    return { caseId: created.id, idempotent: false }
-  } catch (error) {
-    if (!isUniqueViolation(error)) throw error
-    const existing = await input.db.workforceExceptionCase.findFirst({
-      where: { organizationId: canonical.organizationId, deduplicationKey: canonical.deduplicationKey },
-      select: {
-        id: true,
-        organizationId: true,
-        agentId: true,
-        kind: true,
-        detectorVersion: true,
-        deduplicationKey: true,
-        workdayId: true,
-        workdayEventId: true,
-        evidenceId: true,
-        segmentId: true,
-      },
-    })
-    if (existing && sameCase(caseDraftFromStored(existing), canonical)) return { caseId: existing.id, idempotent: true }
+  // Resolve a retry while the transaction is still healthy. Catching P2002
+  // and then querying is invalid in PostgreSQL: the unique violation aborts
+  // the interactive transaction and every later statement fails with 25P02.
+  const existing = await input.db.workforceExceptionCase.findFirst({
+    where: { organizationId: canonical.organizationId, deduplicationKey: canonical.deduplicationKey },
+    select: {
+      id: true,
+      organizationId: true,
+      agentId: true,
+      kind: true,
+      detectorVersion: true,
+      deduplicationKey: true,
+      workdayId: true,
+      workdayEventId: true,
+      evidenceId: true,
+      segmentId: true,
+      expectedWorkDate: true,
+    },
+  })
+  if (existing) {
+    if (sameCase(caseDraftFromStored(existing), canonical)) return { caseId: existing.id, idempotent: true }
     throw new WorkforceExceptionCaseWriterError(
       "WORKFORCE_EXCEPTION_CASE_WRITE_CONFLICT",
       "The Workforce exception-case deduplication key conflicts with a different immutable subject",
     )
   }
+  const created = await input.db.workforceExceptionCase.create({ data: caseWriteData(canonical) })
+  await input.db.mtmAuditLog.create({
+    data: {
+      organizationId: canonical.organizationId,
+      agentId: null,
+      action: "WORKFORCE_EXCEPTION_CASE_RECORDED",
+      entity: "workforce_exception_case",
+      entityId: created.id,
+      metadataKind: "workforce_exception_lifecycle",
+      newData: {
+        deduplicationKey: canonical.deduplicationKey,
+        kind: canonical.kind,
+        detectorVersion: canonical.detectorVersion,
+      },
+      ipAddress: null,
+      userAgent: null,
+    },
+  })
+  return { caseId: created.id, idempotent: false }
 }
 
 /**

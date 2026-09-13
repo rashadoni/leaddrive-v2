@@ -14,22 +14,34 @@ records, and cannot rewrite a previously snapshotted day.
 The resolver chooses, in order:
 
 1. an individual effective-dated assignment;
-2. a covering `WorkforceShiftDefaultAssignment`;
-3. the existing `isDefault` mechanism solely as a compatibility fallback.
+2. a covering team-default timeline whose team matches immutable membership at
+   the workday start;
+3. a covering `WorkforceShiftDefaultAssignment`;
+4. the existing `isDefault` mechanism solely as a compatibility fallback.
 
 When a timeline row is selected, `WorkforceShiftSnapshot` records its exact
-ID. SQL guards enforce non-overlap, active organization-scoped template input,
-no deletion, monotonic narrowing only and snapshot/date/template consistency.
-No migration backfills a history for existing timeless `isDefault` rows, so
-past attendance is not guessed.
+source ID. SQL guards enforce non-overlap, active matching-scope template
+input, no deletion, monotonic narrowing only and snapshot/date/template
+consistency. A snapshot has exactly one source: an explicit assignment, the
+organization-default timeline, or the team-default timeline. No migration
+backfills a history for existing timeless `isDefault` rows or team membership,
+so past attendance is not guessed.
 
-## Deliberate limit
+## Team-default extension (2026-09-01)
 
-New **team** default timelines remain rejected in this checkpoint. C1-006 now
-adds an immutable historical team-membership fact for new workdays, but the
-organization-default table is intentionally not broadened incidentally: team
-timeline write semantics, authorization and migration guards require their own
-review. Existing legacy team-default compatibility remains unchanged.
+`WorkforceShiftTeamDefaultAssignment` is a separate effective-dated,
+tenant-RLS-protected timeline. Its writer accepts one active tenant team, an
+active shift template scoped to that same team, a future organization-local
+date and an opaque retry key. It advisory-locks the team timeline, closes only
+its immediate predecessor, writes an append-only publication receipt and
+metadata-only configuration audit, and rejects a changed retry key.
+
+The database requires the snapshotted workday's immutable membership at
+`startedAt` to match the timeline team. The resolver therefore never uses a
+later mutable directory team to select a schedule. Missing historical
+membership skips the team-default timeline and continues safely to the
+organization-default/legacy fallbacks. This is source-only delivery: no
+tenant default was activated and no schedule/history was backfilled.
 
 The new table is included in the tenant-retention preflight. Calendar leave
 source markers added in C3-002 are also covered by the retention fence.
@@ -56,6 +68,34 @@ PASS
 
 DATABASE_URL=<inert> npx prisma validate --schema=prisma/schema.prisma
 Prisma schema is valid
+
+git diff --check
+PASS
+```
+
+The subsequent team-default extension passed its own small sequential check:
+
+```text
+DATABASE_URL=<inert> npx prisma validate --schema=prisma/schema.prisma
+PASS
+
+CI=true npx vitest run --maxWorkers=1 \
+  src/__tests__/workforce-configuration-management.test.ts \
+  src/__tests__/api-workforce-configuration.test.ts \
+  src/__tests__/workforce-configuration-assignment-ui-contract.test.ts \
+  src/__tests__/workforce-shift-resolution.test.ts \
+  src/__tests__/workforce-snapshot-writer.test.ts \
+  src/__tests__/migration-workforce-shift-default-timeline.test.ts \
+  src/__tests__/migration-workforce-default-shift-operations.test.ts \
+  src/__tests__/migration-workforce-team-default-shift-timeline.test.ts
+
+8 files passed, 82 tests passed
+
+npx eslint <changed TypeScript paths>
+PASS
+
+npm run i18n:check
+PASS — AZ/RU/EN parity
 
 git diff --check
 PASS

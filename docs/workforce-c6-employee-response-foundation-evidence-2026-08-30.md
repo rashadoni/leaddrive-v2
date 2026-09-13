@@ -51,10 +51,29 @@ workday before it records the optional immutable source link on the correction
 request. The database migration is still unapplied, so the trigger is not yet
 live.
 
+## Staged acknowledgement fence
+
+The employee web card has a deliberately default-disabled acknowledgement
+control. `GET /api/v1/workforce/exceptions/mine` reads the additive response
+ledger only when the organization contains the exact
+`workforce-exception-response-v1` feature flag; otherwise it returns the
+honest `MIGRATION_REQUIRED` state and no response-row lookup occurs. The
+corresponding POST independently re-checks the same flag before it looks up a
+case or calls the writer, so a crafted request cannot bypass the UI boundary.
+An enabled card sends only `ACKNOWLEDGED` plus a browser-generated idempotency
+ID. It cannot send free text, a correction reference, location, QR/device
+proof or a direct time change. The response exposes only the derived
+`ACKNOWLEDGED` / `NOT_ACKNOWLEDGED` state and the write is private/no-store.
+
+This flag is not set for LeadDrive or any other tenant. It is a post-migration,
+staged-rollout fence—not authorization to apply the schema, enable the
+capability, or claim employee acknowledgement as a completed lifecycle.
+
 The later C6 lifecycle must apply the migrations with disposable-DB/RLS
-evidence, connect the separate employee response ledger to an explicit
-employee action, and add accountable resolution. It must not turn the existing
-protected request reason into raw evidence or payroll input.
+evidence, rehearse this exact tenant rollout, connect the separate employee
+response ledger to accountable resolution, and add real browser/mobile
+evidence. It must not turn the existing protected request reason into raw
+evidence or payroll input.
 
 ## Verification
 
@@ -64,7 +83,18 @@ protected request reason into raw evidence or payroll input.
           src/__tests__/migration-workforce-exception-employee-responses.test.ts \
           src/__tests__/api-workforce-exception-employee-response.test.ts \
           src/__tests__/api-workforce-my-exceptions.test.ts
-          (5 files, 16 tests)
+          (5 files, 16 tests; preceding foundation checkpoint)
+
+    PASS  CI=true npx vitest run --maxWorkers=1
+          src/__tests__/workforce-exception-response-rollout.test.ts
+          src/__tests__/api-workforce-my-exceptions.test.ts
+          src/__tests__/api-workforce-exception-employee-response.test.ts
+          src/__tests__/workforce-my-exceptions-ui-contract.test.ts
+          src/__tests__/api-workforce-exceptions.test.ts
+          src/__tests__/lib-workforce-exception-queue.test.ts
+          (6 files, 21 tests)
+
+    PASS  targeted ESLint, i18n parity (EN/RU/AZ), git diff --check
 
     PASS  DATABASE_URL=<nonconnecting validation URL> npx prisma validate
     PASS  i18n parity (EN/RU/AZ), targeted ESLint and git diff --check

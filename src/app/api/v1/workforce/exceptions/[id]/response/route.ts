@@ -3,11 +3,13 @@ import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { withWorkforceSessionAuth } from "@/lib/with-workforce-rls-auth"
 import { resolveWorkforceActor } from "@/lib/workforce/actor"
+import { resolveWorkforceExceptionResponseRecording } from "@/lib/workforce/exception-response-rollout"
 import {
   appendAuthorizedWorkforceExceptionEmployeeResponse,
   WorkforceExceptionEmployeeResponseWriterError,
   type WorkforceExceptionEmployeeResponseWriterDb,
 } from "@/lib/workforce/exception-employee-response-writer"
+import { workforceSensitiveResponseHeaders } from "@/lib/workforce/sensitive-response"
 
 const EmployeeExceptionResponseSchema = z.object({
   responseCode: z.enum(["ACKNOWLEDGED", "CORRECTION_REQUESTED"]),
@@ -64,6 +66,20 @@ export const POST = withWorkforceSessionAuth<EmployeeExceptionResponseRouteConte
   }
 
   try {
+    // This protects the endpoint itself, rather than relying on the web
+    // client to hide its button. The additive ledger is not safe to use until
+    // its migration is applied and the tenant's rehearsed rollout is
+    // explicitly enabled.
+    const organization = await prisma.organization.findUnique({
+      where: { id: auth.orgId },
+      select: { features: true },
+    })
+    if (resolveWorkforceExceptionResponseRecording(organization?.features) !== "AVAILABLE") {
+      return NextResponse.json({
+        error: "Employee exception acknowledgement is not available for this organization",
+        code: "WORKFORCE_EXCEPTION_RESPONSE_MIGRATION_REQUIRED",
+      }, { status: 409, headers: workforceSensitiveResponseHeaders })
+    }
     const exceptionCase = await prisma.workforceExceptionCase.findFirst({
       where: { organizationId: auth.orgId, id: caseId, agentId: actor.agentId, workdayId: { not: null } },
       select: { workdayId: true, segmentId: true },
@@ -90,6 +106,7 @@ export const POST = withWorkforceSessionAuth<EmployeeExceptionResponseRouteConte
     }))
     return NextResponse.json({ success: true, idempotent: result.idempotent, data: { responseId: result.responseId } }, {
       status: result.idempotent ? 200 : 201,
+      headers: workforceSensitiveResponseHeaders,
     })
   } catch (error) {
     if (error instanceof WorkforceExceptionEmployeeResponseWriterError) {

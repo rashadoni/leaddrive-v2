@@ -73,6 +73,26 @@ function canonicalEmployeeResponse(value: unknown): WorkforceExceptionQueueEmplo
   throw new WorkforceExceptionQueueError("WORKFORCE_EXCEPTION_QUEUE_INPUT_INVALID")
 }
 
+/**
+ * Derives only a lifecycle signal for the HR queue. The response itself,
+ * correction link and employee explanation remain outside this projection.
+ */
+export function workforceExceptionQueueEmployeeResponseState(input: {
+  decisionCodes: readonly string[]
+  recordedResponseCount: number
+}): WorkforceExceptionQueueEmployeeResponse {
+  if (!Number.isInteger(input.recordedResponseCount) || input.recordedResponseCount < 0) {
+    throw new WorkforceExceptionQueueError("WORKFORCE_EXCEPTION_QUEUE_INPUT_INVALID")
+  }
+  if (input.recordedResponseCount > 0) return "RECEIVED"
+  const lifecycle = evaluateWorkforceExceptionDraftLifecycle(
+    input.decisionCodes.map((decisionCode) => ({ decisionCode })),
+  )
+  return lifecycle.valid && lifecycle.stage === "AWAITING_EMPLOYEE_RESPONSE"
+    ? "PENDING"
+    : "NOT_REQUESTED"
+}
+
 function nextAction(input: {
   stage: WorkforceExceptionDraftStage
   employeeResponse: WorkforceExceptionQueueEmployeeResponse

@@ -1,0 +1,130 @@
+name: Remediate production PostgreSQL source TLS client
+
+# Dispatch-only, client-side maintenance. The reviewed script can change only
+# the canonical backup environment and its dedicated source CA, with a sealed
+# rollback snapshot. It never restarts PostgreSQL or any service and never runs
+# a backup, restore, deploy, scratch launcher, or Kafka command.
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: "Exact maintenance operation"
+        required: true
+        default: "apply"
+        type: choice
+        options:
+          - apply
+          - rollback
+      confirmation:
+        description: "Type APPLY_SOURCE_TLS_CLIENT_ONLY or ROLLBACK_SOURCE_TLS_CLIENT_ONLY"
+        required: true
+        type: string
+      expected_main_sha:
+        description: "Exact current 40-character main SHA"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  source-tls-client-maintenance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: production
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+    steps:
+      - name: Checkout dispatched revision
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+      - name: Require independently protected production environment
+        uses: ./.github/actions/assert-production-environment-protection
+        with:
+          github-token: ${{ github.token }}
+      - name: Bind maintenance to the exact current main revision
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+        run: |
+          set -euo pipefail
+          [ "$GITHUB_REF" = "refs/heads/main" ] || {
+            echo "::error::Production maintenance may only be dispatched from main"
+            exit 1
+          }
+          [[ "$EXPECTED_MAIN_SHA" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "::error::expected_main_sha must be an exact lowercase Git SHA"
+            exit 1
+          }
+          git fetch --no-tags --depth=1 origin refs/heads/main
+          CURRENT_MAIN_SHA="$(git rev-parse FETCH_HEAD)"
+          [ "$GITHUB_SHA" = "$CURRENT_MAIN_SHA" ] \
+            && [ "$EXPECTED_MAIN_SHA" = "$CURRENT_MAIN_SHA" ] || {
+              echo "::error::Dispatch revision is not the exact current main head"
+              exit 1
+            }
+      - name: Validate explicit maintenance confirmation
+        env:
+          OPERATION: ${{ inputs.operation }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          case "$OPERATION:$CONFIRMATION" in
+            apply:APPLY_SOURCE_TLS_CLIENT_ONLY|rollback:ROLLBACK_SOURCE_TLS_CLIENT_ONLY) ;;
+            *)
+              echo "::error::Confirmation does not match the selected operation"
+              exit 1
+              ;;
+          esac
+      - name: Setup pinned production SSH
+        uses: ./.github/actions/setup-production-ssh
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server-host: ${{ secrets.SERVER_HOST }}
+          known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+      - name: Run fail-closed source TLS client maintenance
+        env:
+          OPERATION: ${{ inputs.operation }}
+        run: |
+          set -euo pipefail
+          export LC_ALL=C
+          [[ "$OPERATION" =~ ^(apply|rollback)$ ]] || {
+            echo "::error::Unsupported maintenance operation"
+            exit 1
+          }
+          set +e
+          MAINTENANCE_OUTPUT="$(
+            ssh -T -o ConnectTimeout=30 -o LogLevel=ERROR -i ~/.ssh/deploy_key \
+              ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+              "PYTHONDONTWRITEBYTECODE=1 python3 -I - '$OPERATION'" \
+              < .github/scripts/remediate_postgres_source_tls.py 2>/dev/null
+          )"
+          MAINTENANCE_STATUS=$?
+          set -e
+
+          mapfile -t MAINTENANCE_LINES <<<"$MAINTENANCE_OUTPUT"
+          LINE_RE='^source_tls_maintenance operation=(apply|rollback|unknown) status=(applied|rolled-back|failed) pg_restart=no service_restart=no effective_verify_full=(yes|not-tested|unknown) rollback_snapshot=(retained|unknown) failure_stage=(none|configuration|configuration-read|configuration-read-file|configuration-read-authority|configuration-read-links|configuration-read-encoding|configuration-read-duplicate|configuration-read-required|configuration-client|configuration-override|configuration-rewrite|invocation|invocation-script-read|invocation-script-missing|invocation-script-unapproved|invocation-unit-read|invocation-unit-unapproved|scheduler|backup-lock|file-safety|snapshot-present|tls-evidence|pgpass|post-write|rollback|internal)$'
+          [ "${#MAINTENANCE_LINES[@]}" -eq 1 ] \
+            && [[ "${MAINTENANCE_LINES[0]}" =~ $LINE_RE ]] || {
+              echo "::error::Maintenance output failed the anonymized schema gate"
+              exit 1
+            }
+
+          if [ "$MAINTENANCE_STATUS" -eq 0 ]; then
+            case "$OPERATION:${MAINTENANCE_LINES[0]}" in
+              apply:source_tls_maintenance\ operation=apply\ status=applied\ pg_restart=no\ service_restart=no\ effective_verify_full=yes\ rollback_snapshot=retained\ failure_stage=none) ;;
+              rollback:source_tls_maintenance\ operation=rollback\ status=rolled-back\ pg_restart=no\ service_restart=no\ effective_verify_full=not-tested\ rollback_snapshot=retained\ failure_stage=none) ;;
+              *)
+                echo "::error::Maintenance result does not match the requested operation"
+                exit 1
+                ;;
+            esac
+          fi
+
+          printf '%s\n' "${MAINTENANCE_LINES[0]}"
+          [ "$MAINTENANCE_STATUS" -eq 0 ] || {
+            echo "::error::Production source TLS client maintenance failed closed"
+            exit "$MAINTENANCE_STATUS"
+          }

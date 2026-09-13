@@ -68,6 +68,7 @@ describe("Workforce immutable exception-case writer", () => {
     db.workforceExceptionCase.findFirst.mockResolvedValueOnce({ id: "case-1", ...caseWriteData })
     await expect(persistAuthorizedWorkforceExceptionCase({ db, draft: caseDraft, authorize: allow }))
       .resolves.toEqual({ caseId: "case-1", idempotent: true })
+    expect(db.workforceExceptionCase.create).toHaveBeenCalledTimes(1)
     expect(db.mtmAuditLog.create).toHaveBeenCalledTimes(1)
   })
 
@@ -94,6 +95,22 @@ describe("Workforce immutable exception-case writer", () => {
       .rejects.toMatchObject<Partial<WorkforceExceptionCaseWriterError>>({
       code: "WORKFORCE_EXCEPTION_CASE_WRITE_CONFLICT",
     })
+  })
+
+  it("normalizes a Prisma DATE value when recognizing an exact no-show retry", async () => {
+    const noShow = createWorkforceExceptionCaseDraft({
+      organizationId: "org-1", agentId: "agent-1", kind: "NO_SHOW", detectorVersion: "workforce-no-show-v1",
+      links: { segmentId: "segment-1", expectedWorkDate: "2026-09-01" },
+    })
+    db.workforceExceptionCase.create.mockRejectedValueOnce({ code: "P2002" })
+    db.workforceExceptionCase.findFirst.mockResolvedValueOnce({
+      id: "case-no-show", organizationId: noShow.organizationId, agentId: noShow.agentId,
+      kind: noShow.kind, detectorVersion: noShow.detectorVersion, deduplicationKey: noShow.deduplicationKey,
+      workdayId: null, workdayEventId: null, evidenceId: null, segmentId: "segment-1",
+      expectedWorkDate: new Date("2026-09-01T00:00:00.000Z"),
+    })
+    await expect(persistAuthorizedWorkforceExceptionCase({ db, draft: noShow, authorize: allow }))
+      .resolves.toEqual({ caseId: "case-no-show", idempotent: true })
   })
 
   it("requires a tenant-scoped case and appends only an exact replayable decision envelope", async () => {

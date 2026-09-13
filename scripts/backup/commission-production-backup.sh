@@ -79,7 +79,7 @@ AWS_LINK="/usr/local/bin/aws"
 # bytes from the exact main revision, not an arbitrary look-alike verifier.
 CUSTODY_VERIFIER_SHA256="a02101a2e9ae313c7486d31337b9efe771ea2127d565b059d6e2427df86eca91"
 ARCHIVE_VERIFIER_SHA256="c6d4caabb1f44db3036c79d59b63253f961fa8ce29780724c9d15667dac644a6"
-POSTGRES_BACKUP_SHA256="ddf2142311b6c7ad561e510369925ca3f5347f667966a5c265451c0823e4e065"
+POSTGRES_BACKUP_SHA256="b2b0ca62ab77afe5ff2cda88351f71a038163b791484adc886cad806fe07edff"
 SECRETS_SNAPSHOT_SHA256="16d4bf083ad2549cd34e1bd89a53ee958f1625605235fe5370c8acecc401de99"
 RUNTIME_FILES_SNAPSHOT_SHA256="d5fe33b4b0b0e581194b3aff770eca45a14a493774ec314340146bd69475e53e"
 RESTORE_CANARY_SHA256="af743a9bd8df3daa6ba6b60d90141daea28629f6140d8d12d1623f6b083f5d9e"
@@ -700,6 +700,9 @@ assert_recovery_policy() {
     || fatal "secrets retention must cover the longest database retention"
   [ "$(require_static_value PGSSLMODE)" = "verify-full" ] \
     || fatal "PGSSLMODE must remain verify-full"
+  configured="$(require_static_value PGHOSTADDR)"
+  [[ "$configured" =~ ^[0-9A-Fa-f:.]+$ ]] \
+    || fatal "PGHOSTADDR must be a numeric PostgreSQL route address"
   [ "$(require_static_value VERIFY_PGSSLMODE)" = "verify-full" ] \
     || fatal "VERIFY_PGSSLMODE must remain verify-full"
   for key in PGCONNECT_TIMEOUT VERIFY_PGCONNECT_TIMEOUT; do

@@ -5,14 +5,14 @@ vi.mock("@/lib/prisma", () => ({
   prisma: { workforceExceptionCase: { findMany: vi.fn() } },
 }))
 vi.mock("@/lib/with-workforce-rls-auth", () => ({
-  withWorkforceSessionAdminAuth: vi.fn((handler) => handler),
+  withWorkforceSessionExceptionQueueAuth: vi.fn((handler) => handler),
 }))
 
 import { GET } from "@/app/api/v1/workforce/exceptions/route"
 import { prisma } from "@/lib/prisma"
-import { withWorkforceSessionAdminAuth } from "@/lib/with-workforce-rls-auth"
+import { withWorkforceSessionExceptionQueueAuth } from "@/lib/with-workforce-rls-auth"
 
-const AUTH = { orgId: "org-workforce", userId: "admin-1", role: "admin" }
+const AUTH = { orgId: "org-workforce", userId: "admin-1", role: "admin", principalType: "session" as const }
 const callGet = GET as unknown as (request: NextRequest, auth: typeof AUTH) => Promise<Response>
 
 function caseRecord(overrides: Record<string, unknown> = {}) {
@@ -23,6 +23,7 @@ function caseRecord(overrides: Record<string, unknown> = {}) {
     evidenceId: "evidence-1",
     agent: { name: "Aysel Aliyeva" },
     decisions: [{ decisionCode: "ACKNOWLEDGE" }],
+    employeeResponses: [],
     ...overrides,
   }
 }
@@ -30,7 +31,7 @@ function caseRecord(overrides: Record<string, unknown> = {}) {
 beforeEach(() => vi.mocked(prisma.workforceExceptionCase.findMany).mockReset())
 
 describe("Workforce read-only exception queue API", () => {
-  it("uses the session-admin boundary and returns a tenant-scoped raw-proof-free projection", async () => {
+  it("uses the exception-queue grant boundary and returns a tenant-scoped raw-proof-free projection", async () => {
     vi.mocked(prisma.workforceExceptionCase.findMany).mockResolvedValue([
       caseRecord({
         // A mocked database row may contain extra data, but the route must not
@@ -71,9 +72,32 @@ describe("Workforce read-only exception queue API", () => {
         evidenceId: true,
         agent: { select: { name: true } },
         decisions: expect.objectContaining({ select: { decisionCode: true } }),
+        employeeResponses: { take: 1, select: { id: true } },
       }),
     }))
-    expect(withWorkforceSessionAdminAuth).toHaveBeenCalledTimes(1)
+    expect(withWorkforceSessionExceptionQueueAuth).toHaveBeenCalledTimes(1)
+  })
+
+  it("projects only an employee-response receipt when a requested response has been recorded", async () => {
+    vi.mocked(prisma.workforceExceptionCase.findMany).mockResolvedValue([caseRecord({
+      decisions: [{ decisionCode: "ACKNOWLEDGE" }, { decisionCode: "REQUEST_EMPLOYEE_RESPONSE" }],
+      employeeResponses: [{ id: "response-internal-1", correctionRequestId: "request-internal-1", reason: "must not leak" }],
+    })] as never)
+
+    const response = await callGet(new NextRequest("http://localhost:3000/api/v1/workforce/exceptions"), AUTH)
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body).toMatchObject({
+      data: {
+        cases: [{
+          stage: "AWAITING_EMPLOYEE_RESPONSE",
+          employeeResponse: "RECEIVED",
+          nextAction: "ACKNOWLEDGE_HR_REVIEW",
+        }],
+      },
+    })
+    expect(JSON.stringify(body)).not.toMatch(/response-internal-1|request-internal-1|must not leak/)
   })
 
   it("fails closed instead of silently truncating an unbounded review queue", async () => {

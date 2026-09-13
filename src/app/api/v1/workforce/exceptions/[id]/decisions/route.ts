@@ -13,6 +13,8 @@ import {
   type WorkforceExceptionCaseWriterDb,
 } from "@/lib/workforce/exception-case-writer"
 import { WorkforceExceptionCaseLedgerError } from "@/lib/workforce/exception-case-ledger"
+import { resolveWorkforceHistoricalTeamMembership } from "@/lib/workforce/team-membership"
+import { workforceSensitiveResponseHeaders } from "@/lib/workforce/sensitive-response"
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -69,11 +71,28 @@ export const POST = withWorkforceSessionAuth<RouteContext>("write", async (req, 
         select: {
           id: true,
           agentId: true,
-          agent: { select: { teamId: true } },
+          // A mutable directory team cannot authorize a decision about an old
+          // attendance fact after the employee moves to another branch.
+          workdayEvent: { select: { occurredAt: true } },
+          workday: { select: { startedAt: true } },
           segment: { select: { siteId: true } },
         },
       })
       if (!exceptionCase) return null
+      const scopeInstant = exceptionCase.workdayEvent?.occurredAt
+        ?? exceptionCase.workday?.startedAt
+        ?? null
+      // A no-show case without a historical instant intentionally has no
+      // team scope here. An organization HR grant or its persisted segment
+      // site scope can still be evaluated; a team manager must not receive
+      // access from the employee's current directory assignment.
+      const historicalTeam = scopeInstant == null
+        ? null
+        : await resolveWorkforceHistoricalTeamMembership(tx, {
+            organizationId: auth.orgId,
+            agentId: exceptionCase.agentId,
+            workdayStartedAt: scopeInstant,
+          })
       const access = await decidePersistedWorkforceAccess({
         db: tx as unknown as WorkforceAccessGrantReaderDb,
         organizationId: auth.orgId,
@@ -83,7 +102,7 @@ export const POST = withWorkforceSessionAuth<RouteContext>("write", async (req, 
         resource: {
           organizationId: auth.orgId,
           agentId: exceptionCase.agentId,
-          teamId: exceptionCase.agent.teamId,
+          teamId: historicalTeam?.teamId ?? null,
           siteId: exceptionCase.segment?.siteId ?? null,
         },
       })
@@ -122,7 +141,13 @@ export const POST = withWorkforceSessionAuth<RouteContext>("write", async (req, 
       success: true,
       idempotent: result.idempotent,
       data: { decisionId: result.decisionId },
-    }, { status: result.idempotent ? 200 : 201 })
+    }, {
+      status: result.idempotent ? 200 : 201,
+      // A decision ID is opaque but still links an employee's exception to a
+      // privileged HR action. Keep response and intermediary retention out
+      // of the ordinary browser cache just as for the surrounding queue.
+      headers: workforceSensitiveResponseHeaders,
+    })
   } catch (error) {
     if (error instanceof WorkforceExceptionCaseLedgerError || error instanceof WorkforceExceptionCaseWriterError) {
       return lifecycleConflict(error)

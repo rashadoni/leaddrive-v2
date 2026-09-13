@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest"
 import {
   projectWorkforceExceptionQueueItem,
   WorkforceExceptionQueueError,
+  workforceExceptionQueueEmployeeResponseState,
 } from "@/lib/workforce/exception-queue"
+import { workforceExceptionQueueLabelKey, workforceExceptionQueueLabelValues } from "@/lib/workforce/exception-queue-labels"
 
 const BASE = {
   displayReference: "WF-CASE-2026-0001",
@@ -56,5 +58,33 @@ describe("Workforce raw-proof-free exception queue projection", () => {
       decisionCodes: [],
       now: new Date("2026-09-01T08:59:59.000Z"),
     })).toThrow(expect.objectContaining({ code: "WORKFORCE_EXCEPTION_QUEUE_INPUT_INVALID" }))
+  })
+})
+
+describe("workforceExceptionQueueEmployeeResponseState", () => {
+  it("uses only lifecycle and receipt existence, never employee content", () => {
+    expect(workforceExceptionQueueEmployeeResponseState({
+      decisionCodes: ["ACKNOWLEDGE", "REQUEST_EMPLOYEE_RESPONSE"],
+      recordedResponseCount: 0,
+    })).toBe("PENDING")
+    expect(workforceExceptionQueueEmployeeResponseState({
+      decisionCodes: ["ACKNOWLEDGE", "REQUEST_EMPLOYEE_RESPONSE"],
+      recordedResponseCount: 1,
+    })).toBe("RECEIVED")
+    expect(workforceExceptionQueueEmployeeResponseState({
+      decisionCodes: ["ACKNOWLEDGE"],
+      recordedResponseCount: 0,
+    })).toBe("NOT_REQUESTED")
+  })
+})
+
+describe("workforceExceptionQueueLabelKey", () => {
+  it("maps only the reviewed queue taxonomy and fails closed for a future transport value", () => {
+    for (const [group, values] of Object.entries(workforceExceptionQueueLabelValues)) {
+      for (const value of values) {
+        expect(workforceExceptionQueueLabelKey(group as keyof typeof workforceExceptionQueueLabelValues, value)).toBe(`${group}.${value}`)
+      }
+      expect(workforceExceptionQueueLabelKey(group as keyof typeof workforceExceptionQueueLabelValues, "FUTURE_OR_MALFORMED")).toBe(`${group}.unavailable`)
+    }
   })
 })

@@ -188,12 +188,18 @@ model Organization {
   mtmHrmRequests                      MtmHrmRequest[]
   workforcePolicies                   WorkforcePolicy[]
   workforceTeamMemberships            WorkforceEmployeeTeamMembership[]
+  workforceEmploymentEvents           WorkforceEmploymentEvent[] @ignore
   workforceShiftTemplates             WorkforceShiftTemplate[]
   workforceShiftSegments              WorkforceShiftSegment[]
   workforceSiteTransitions            WorkforceSiteTransition[]
   workforceShiftAssignments           WorkforceShiftAssignment[]
+  workforceShiftAssignmentBulkOperations WorkforceShiftAssignmentBulkOperation[]
   workforceShiftDefaultAssignments    WorkforceShiftDefaultAssignment[]
+  workforceShiftDefaultOperations     WorkforceShiftDefaultOperation[]
+  workforceShiftTeamDefaultAssignments WorkforceShiftTeamDefaultAssignment[]
+  workforceShiftTeamDefaultOperations WorkforceShiftTeamDefaultOperation[]
   workforceSiteAssignments            WorkforceSiteAssignment[]
+  workforceSiteAssignmentBulkOperations WorkforceSiteAssignmentBulkOperation[]
   workforcePolicySnapshots            WorkforcePolicySnapshot[]
   workforceShiftSnapshots             WorkforceShiftSnapshot[]
   workforceWorkdayScheduleSnapshots   WorkforceWorkdayScheduleSnapshot[]
@@ -661,11 +667,17 @@ model User {
   workforceShiftTemplatesCreated      WorkforceShiftTemplate[]       @relation("WorkforceShiftTemplateCreatedBy")
   workforceShiftTemplatesActivated    WorkforceShiftTemplate[]       @relation("WorkforceShiftTemplateActivatedBy")
   workforceShiftAssignmentsAssigned   WorkforceShiftAssignment[]     @relation("WorkforceShiftAssignmentAssignedBy")
+  workforceShiftAssignmentBulkOperationsPublished WorkforceShiftAssignmentBulkOperation[] @relation("WorkforceShiftAssignmentBulkOperationPublishedBy")
   workforceShiftDefaultAssignmentsAssigned WorkforceShiftDefaultAssignment[] @relation("WorkforceShiftDefaultAssignmentAssignedBy")
+  workforceShiftDefaultOperationsPublished WorkforceShiftDefaultOperation[] @relation("WorkforceShiftDefaultOperationPublishedBy")
+  workforceShiftTeamDefaultAssignmentsAssigned WorkforceShiftTeamDefaultAssignment[] @relation("WorkforceShiftTeamDefaultAssignmentAssignedBy")
+  workforceShiftTeamDefaultOperationsPublished WorkforceShiftTeamDefaultOperation[] @relation("WorkforceShiftTeamDefaultOperationPublishedBy")
   workforceSitesCreated               WorkforceSite[]                @relation("WorkforceSiteCreatedBy")
   workforceSitesArchived              WorkforceSite[]                @relation("WorkforceSiteArchivedBy")
   workforceSiteGeofenceRevisionsCreated WorkforceSiteGeofenceRevision[] @relation("WorkforceSiteGeofenceRevisionCreatedBy")
   workforceSiteAssignmentsAssigned    WorkforceSiteAssignment[]       @relation("WorkforceSiteAssignmentAssignedBy")
+  workforceEmploymentEventsRecorded   WorkforceEmploymentEvent[]      @relation("WorkforceEmploymentEventRecordedBy") @ignore
+  workforceSiteAssignmentBulkOperationsPublished WorkforceSiteAssignmentBulkOperation[] @relation("WorkforceSiteAssignmentBulkOperationPublishedBy")
   workforceAttendanceExceptionsResolved WorkforceAttendanceException[] @relation("WorkforceAttendanceExceptionResolvedBy")
   workforceExceptionDecisionsActed      WorkforceExceptionDecision[]   @relation("WorkforceExceptionDecisionActor")
   workforceExceptionEmployeeResponsesActed WorkforceExceptionEmployeeResponse[] @relation("WorkforceExceptionEmployeeResponseActor")
@@ -5183,6 +5195,14 @@ enum WorkforceDefinitionStatus {
   RETIRED
 }
 
+/// Explicit HR lifecycle facts. A mutable employee-directory status is not
+/// interpreted as a termination, rehire or historical employment decision.
+enum WorkforceEmploymentEventKind {
+  HIRE
+  TERMINATION
+  REHIRE
+}
+
 /// Who established a Workforce policy or shift definition. Tenant-authored
 /// definitions must retain their tenant-local human actor; the explicit system
 /// variant is reserved for the audited default profile created at HRM enable.
@@ -5526,6 +5546,8 @@ model MtmTeam {
   workforcePolicies WorkforcePolicy[]
   workforceShiftTemplates WorkforceShiftTemplate[]
   workforceTeamMemberships WorkforceEmployeeTeamMembership[] @relation("WorkforceTeamMembershipTeam")
+  workforceShiftTeamDefaultAssignments WorkforceShiftTeamDefaultAssignment[]
+  workforceShiftTeamDefaultOperations WorkforceShiftTeamDefaultOperation[]
   workforceSitesResponsible WorkforceSite[]
   pharmacyPromotionTargets MtmPharmacyPromotionTarget[] @relation("MtmPharmacyTargetTeam")
 
@@ -5612,6 +5634,7 @@ model MtmAgent {
   hrmRequests               MtmHrmRequest[]
   workforceShiftAssignments WorkforceShiftAssignment[]
   workforceTeamMemberships WorkforceEmployeeTeamMembership[]
+  workforceEmploymentEvents WorkforceEmploymentEvent[] @ignore
   workforceSiteAssignments  WorkforceSiteAssignment[]
   workforceSiteTransitions  WorkforceSiteTransition[]
   workforcePolicySnapshots  WorkforcePolicySnapshot[]
@@ -5670,6 +5693,35 @@ model WorkforceEmployeeTeamMembership {
   @@index([organizationId, agentId, effectiveAt])
   @@index([organizationId, teamId, effectiveAt])
   @@map("workforce_employee_team_memberships")
+}
+
+/// Append-only HR lifecycle facts. Transfers and temporary site eligibility
+/// remain in their dedicated effective-dated timelines; this table captures
+/// only employment start/end/re-entry and never infers a termination from a
+/// mutable directory status.
+model WorkforceEmploymentEvent {
+  id               String                       @id @default(cuid())
+  organizationId   String
+  organization     Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentId          String
+  agent            MtmAgent                     @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  kind             WorkforceEmploymentEventKind
+  effectiveAt      DateTime
+  source           String                       @db.VarChar(48)
+  recordedByUserId String
+  recordedByUser   User                         @relation("WorkforceEmploymentEventRecordedBy", fields: [organizationId, recordedByUserId], references: [organizationId, id], onDelete: Restrict)
+  recordedAt       DateTime                     @default(now())
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, agentId, effectiveAt, kind])
+  @@index([organizationId, agentId, effectiveAt])
+  @@index([organizationId, effectiveAt])
+  @@index([organizationId, recordedByUserId, recordedAt])
+  @@map("workforce_employment_events")
+  // Kept as migration-documented storage but excluded from the generated
+  // client: adding another delegate tips this repository's extended Prisma
+  // client beyond TypeScript's inference budget. Access stays explicit SQL.
+  @@ignore
 }
 
 // Explicit organization/team/agent calendar overrides. Weekday/weekend
@@ -7318,6 +7370,10 @@ model WorkforceExceptionCase {
   evidence         WorkforceAttendanceEvidence? @relation(fields: [organizationId, evidenceId], references: [organizationId, id], onDelete: Restrict)
   segmentId        String?
   segment          WorkforceShiftSegment?   @relation(fields: [organizationId, segmentId], references: [organizationId, id], onDelete: Restrict)
+  // A segment-only no-show case has no accepted workday yet. The expected
+  // date makes its immutable detector subject distinct across repeated shifts
+  // without inventing a START fact or copying schedule/evidence payloads.
+  expectedWorkDate DateTime?                @db.Date
   createdAt        DateTime                  @default(now())
 
   decisions WorkforceExceptionDecision[]
@@ -7331,6 +7387,7 @@ model WorkforceExceptionCase {
   @@index([organizationId, workdayEventId])
   @@index([organizationId, evidenceId])
   @@index([organizationId, segmentId])
+  @@index([organizationId, expectedWorkDate])
   @@map("workforce_exception_cases")
 }
 
@@ -7615,6 +7672,7 @@ model WorkforceSite {
 
   geofenceRevisions WorkforceSiteGeofenceRevision[]
   assignments        WorkforceSiteAssignment[]
+  bulkAssignmentOperations WorkforceSiteAssignmentBulkOperation[]
   shiftSegments      WorkforceShiftSegment[]
   attendanceQrStations WorkforceAttendanceQrStation[] @relation("WorkforceAttendanceQrStationSite")
 
@@ -7681,6 +7739,35 @@ model WorkforceSiteAssignment {
   @@index([organizationId, siteId, kind, effectiveFrom, effectiveTo])
   @@index([organizationId, assignedByUserId, createdAt])
   @@map("workforce_site_assignments")
+}
+
+/// One immutable receipt for a reviewed, future-only bulk site-assignment
+/// publish. The operation intentionally stores only the selected site/window
+/// and aggregate counts; individual employee eligibility remains solely in
+/// the effective-dated assignment history.
+model WorkforceSiteAssignmentBulkOperation {
+  id                String                       @id @default(cuid())
+  organizationId    String
+  organization      Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  operationId       String                       @db.VarChar(100)
+  requestHash       String                       @db.VarChar(64)
+  siteId            String
+  site              WorkforceSite                @relation(fields: [organizationId, siteId], references: [organizationId, id], onDelete: Restrict)
+  kind              WorkforceSiteAssignmentKind
+  effectiveFrom     DateTime                     @db.Date
+  effectiveTo       DateTime?                    @db.Date
+  requestedCount    Int
+  createdCount      Int
+  unchangedCount    Int
+  publishedByUserId String
+  publishedByUser   User                         @relation("WorkforceSiteAssignmentBulkOperationPublishedBy", fields: [organizationId, publishedByUserId], references: [organizationId, id], onDelete: Restrict)
+  createdAt         DateTime                     @default(now())
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, operationId])
+  @@index([organizationId, siteId, createdAt])
+  @@index([organizationId, publishedByUserId, createdAt])
+  @@map("workforce_site_assignment_bulk_operations")
 }
 
 // Versioned Workforce policy. The JSON definition is the tenant-authored
@@ -7755,7 +7842,11 @@ model WorkforceShiftTemplate {
   updatedAt         DateTime                 @updatedAt
 
   assignments WorkforceShiftAssignment[]
+  bulkAssignmentOperations WorkforceShiftAssignmentBulkOperation[]
   defaultAssignments WorkforceShiftDefaultAssignment[]
+  defaultOperations WorkforceShiftDefaultOperation[]
+  teamDefaultAssignments WorkforceShiftTeamDefaultAssignment[]
+  teamDefaultOperations WorkforceShiftTeamDefaultOperation[]
   snapshots   WorkforceShiftSnapshot[]
   segments    WorkforceShiftSegment[]
 
@@ -7861,11 +7952,37 @@ model WorkforceShiftAssignment {
   @@map("workforce_shift_assignments")
 }
 
+/// One immutable, aggregate-only receipt for an explicitly confirmed,
+/// future-only bulk shift assignment. Individual employee choices remain in
+/// the effective-dated assignment timeline; this record supports safe retry
+/// without retaining a duplicate employee roster in a second table.
+model WorkforceShiftAssignmentBulkOperation {
+  id                String                 @id @default(cuid())
+  organizationId    String
+  organization      Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade, map: "workforce_shift_assignment_bulk_operations_organization_fkey")
+  operationId       String                 @db.VarChar(100)
+  requestHash       String                 @db.VarChar(64)
+  templateId        String
+  template          WorkforceShiftTemplate @relation(fields: [organizationId, templateId], references: [organizationId, id], onDelete: Restrict, map: "workforce_shift_assignment_bulk_operations_template_fkey")
+  effectiveFrom     DateTime               @db.Date
+  requestedCount    Int
+  createdCount      Int
+  unchangedCount    Int
+  publishedByUserId String
+  publishedByUser   User                   @relation("WorkforceShiftAssignmentBulkOperationPublishedBy", fields: [organizationId, publishedByUserId], references: [organizationId, id], onDelete: Restrict, map: "workforce_shift_assignment_bulk_operations_published_by_fkey")
+  createdAt         DateTime               @default(now())
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, operationId])
+  @@index([organizationId, templateId, createdAt])
+  @@index([organizationId, publishedByUserId, createdAt])
+  @@map("workforce_shift_assignment_bulk_operations")
+}
+
 /// Versioned organization-wide fallback selection. It is distinct from an
 /// employee assignment: a snapshot stores this exact row so a later default
-/// change cannot reinterpret a started/closed workday. Team defaults remain a
-/// separate future contract because historical team membership is not yet a
-/// Workforce fact.
+/// change cannot reinterpret a started/closed workday. Team defaults have a
+/// separate timeline selected only from immutable workday-start membership.
 model WorkforceShiftDefaultAssignment {
   id               String                 @id @default(cuid())
   organizationId   String
@@ -7880,12 +7997,92 @@ model WorkforceShiftDefaultAssignment {
   updatedAt        DateTime               @updatedAt
 
   snapshots WorkforceShiftSnapshot[]
+  publicationOperations WorkforceShiftDefaultOperation[] @relation("WorkforceShiftDefaultOperationAssignment")
 
   @@unique([organizationId, id])
   @@index([organizationId, effectiveFrom, effectiveTo])
   @@index([organizationId, templateId, effectiveFrom])
   @@index([organizationId, assignedByUserId, createdAt])
   @@map("workforce_shift_default_assignments")
+}
+
+/// Immutable retry receipt for a reviewed future organization-default shift
+/// publication. It records the timeline row selected by the server but never
+/// stores employee selections, attendance facts or proof material.
+model WorkforceShiftDefaultOperation {
+  id                  String                          @id @default(cuid())
+  organizationId      String
+  organization        Organization                    @relation(fields: [organizationId], references: [id], onDelete: Cascade, map: "workforce_shift_default_operations_organization_fkey")
+  operationId         String                          @db.VarChar(100)
+  requestHash         String                          @db.VarChar(64)
+  templateId          String
+  template            WorkforceShiftTemplate          @relation(fields: [organizationId, templateId], references: [organizationId, id], onDelete: Restrict, map: "workforce_shift_default_operations_template_fkey")
+  effectiveFrom       DateTime                        @db.Date
+  defaultAssignmentId String
+  defaultAssignment   WorkforceShiftDefaultAssignment @relation("WorkforceShiftDefaultOperationAssignment", fields: [organizationId, defaultAssignmentId], references: [organizationId, id], onDelete: Restrict, map: "workforce_shift_default_operations_assignment_fkey")
+  publishedByUserId   String
+  publishedByUser     User                            @relation("WorkforceShiftDefaultOperationPublishedBy", fields: [organizationId, publishedByUserId], references: [organizationId, id], onDelete: Restrict, map: "workforce_shift_default_operations_published_by_fkey")
+  createdAt           DateTime                        @default(now())
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, operationId])
+  @@index([organizationId, templateId, createdAt])
+  @@index([organizationId, publishedByUserId, createdAt])
+  @@map("workforce_shift_default_operations")
+}
+
+/// Versioned fallback for the employee's immutable team membership at the
+/// workday start. It is distinct from both an explicit assignment and the
+/// organization-wide default timeline.
+model WorkforceShiftTeamDefaultAssignment {
+  id               String                 @id @default(cuid())
+  organizationId   String
+  organization     Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade, map: "workforce_shift_team_default_assignments_organization_fkey")
+  teamId           String
+  team             MtmTeam                @relation(fields: [organizationId, teamId], references: [organizationId, id], onDelete: Restrict, map: "workforce_shift_team_default_assignments_team_fkey")
+  templateId       String
+  template         WorkforceShiftTemplate @relation(fields: [organizationId, templateId], references: [organizationId, id], onDelete: Restrict, map: "workforce_shift_team_default_assignments_template_fkey")
+  effectiveFrom    DateTime               @db.Date
+  effectiveTo      DateTime?              @db.Date
+  assignedByUserId String
+  assignedByUser   User                   @relation("WorkforceShiftTeamDefaultAssignmentAssignedBy", fields: [organizationId, assignedByUserId], references: [organizationId, id], onDelete: Restrict, map: "workforce_shift_team_default_assignments_assigned_by_fkey")
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  snapshots             WorkforceShiftSnapshot[]
+  publicationOperations WorkforceShiftTeamDefaultOperation[] @relation("WorkforceShiftTeamDefaultOperationAssignment")
+
+  @@unique([organizationId, id])
+  @@index([organizationId, teamId, effectiveFrom, effectiveTo])
+  @@index([organizationId, templateId, effectiveFrom])
+  @@index([organizationId, assignedByUserId, createdAt])
+  @@map("workforce_shift_team_default_assignments")
+}
+
+/// Immutable retry receipt for a reviewed future team-default shift
+/// publication. It binds no roster: membership is resolved at workday start.
+model WorkforceShiftTeamDefaultOperation {
+  id                    String                              @id @default(cuid())
+  organizationId        String
+  organization          Organization                        @relation(fields: [organizationId], references: [id], onDelete: Cascade, map: "workforce_shift_team_default_operations_organization_fkey")
+  operationId           String                              @db.VarChar(100)
+  requestHash           String                              @db.VarChar(64)
+  teamId                String
+  team                  MtmTeam                             @relation(fields: [organizationId, teamId], references: [organizationId, id], onDelete: Restrict, map: "workforce_shift_team_default_operations_team_fkey")
+  templateId            String
+  template              WorkforceShiftTemplate              @relation(fields: [organizationId, templateId], references: [organizationId, id], onDelete: Restrict, map: "workforce_shift_team_default_operations_template_fkey")
+  effectiveFrom         DateTime                            @db.Date
+  teamDefaultAssignmentId String
+  teamDefaultAssignment WorkforceShiftTeamDefaultAssignment @relation("WorkforceShiftTeamDefaultOperationAssignment", fields: [organizationId, teamDefaultAssignmentId], references: [organizationId, id], onDelete: Restrict, map: "workforce_shift_team_default_operations_assignment_fkey")
+  publishedByUserId     String
+  publishedByUser       User                                @relation("WorkforceShiftTeamDefaultOperationPublishedBy", fields: [organizationId, publishedByUserId], references: [organizationId, id], onDelete: Restrict, map: "workforce_shift_team_default_operations_published_by_fkey")
+  createdAt             DateTime                            @default(now())
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, operationId])
+  @@index([organizationId, teamId, templateId, createdAt])
+  @@index([organizationId, publishedByUserId, createdAt])
+  @@map("workforce_shift_team_default_operations")
 }
 
 // Immutable policy inputs used for one workday's calculation. No live policy
@@ -7934,6 +8131,8 @@ model WorkforceShiftSnapshot {
   assignment        WorkforceShiftAssignment? @relation(fields: [organizationId, assignmentId], references: [organizationId, id], onDelete: Restrict)
   defaultAssignmentId String?
   defaultAssignment WorkforceShiftDefaultAssignment? @relation(fields: [organizationId, defaultAssignmentId], references: [organizationId, id], onDelete: Restrict)
+  teamDefaultAssignmentId String?
+  teamDefaultAssignment WorkforceShiftTeamDefaultAssignment? @relation(fields: [organizationId, teamDefaultAssignmentId], references: [organizationId, id], onDelete: Restrict)
   workdayId         String
   workday           MtmAgentWorkday        @relation("WorkforceShiftSnapshotWorkday", fields: [organizationId, workdayId], references: [organizationId, id], onDelete: Restrict)
   agentId           String
@@ -7956,6 +8155,7 @@ model WorkforceShiftSnapshot {
   @@index([organizationId, agentId, workDate])
   @@index([organizationId, templateId, templateVersion])
   @@index([organizationId, defaultAssignmentId])
+  @@index([organizationId, teamDefaultAssignmentId])
   @@map("workforce_shift_snapshots")
 }
 

@@ -4,6 +4,9 @@ import { checkPermission, type Action } from "@/lib/permissions"
 import { isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
 import { withRlsAuth, withRlsSessionAuth } from "@/lib/with-rls"
 import type { AuthResult } from "@/lib/api-auth"
+import { decidePersistedWorkforceAccess } from "@/lib/workforce/access-grant-resolution"
+import { workforceGranularAccessEnabled } from "@/lib/workforce/granular-access-rollout"
+import type { WorkforceAccessPermission } from "@/lib/workforce/access-control"
 
 type WrappedWorkforceRouteHandler<C> = {
   (req: NextRequest): Promise<Response>
@@ -31,6 +34,13 @@ function workforceSessionPermissionDenied(action: Action): NextResponse {
     error: "This Workforce action requires a signed-in user with the required permission.",
     code: "WORKFORCE_SESSION_PERMISSION_REQUIRED",
     action,
+  }, { status: 403 })
+}
+
+function workforceGranularAccessDenied(): NextResponse {
+  return NextResponse.json({
+    error: "This Workforce action requires an effective Workforce role grant.",
+    code: "WORKFORCE_GRANULAR_ACCESS_REQUIRED",
   }, { status: 403 })
 }
 
@@ -119,6 +129,143 @@ export function withWorkforceSessionAdminAuth<C = unknown>(
     const denied = await workforceCapabilityResponse(auth.orgId)
     if (denied) return denied
     return handler(req, auth, ctx)
+  })
+  return wrapped as WrappedWorkforceRouteHandler<C>
+}
+
+/**
+ * Session-only boundary for tenant-wide schedule and site configuration.
+ * Legacy tenants retain the admin boundary; after granular cutover the caller
+ * must hold the exact organization-scoped Workforce permission.
+ */
+export function withWorkforceSessionScheduleConfigurationAuth<C = unknown>(
+  permission: Extract<WorkforceAccessPermission, "SCHEDULE_READ" | "SCHEDULE_WRITE" | "SITE_ASSIGNMENT_WRITE">,
+  handler: (req: NextRequest, auth: AuthResult, ctx: C) => Promise<Response> | Response,
+) {
+  const wrapped = withRlsSessionAuth<C>(async (req, auth, ctx) => {
+    try {
+      const organization = await prisma.organization.findUnique({
+        where: { id: auth.orgId },
+        select: { plan: true, addons: true, features: true, modules: true },
+      })
+      if (!organization || !isTenantCapabilityEnabled("workforce-hrm", organization)) {
+        return workforceCapabilityDisabled()
+      }
+      if (!workforceGranularAccessEnabled(organization.features)) {
+        return isWorkforcePolicyAdministrator(auth.role)
+          ? handler(req, auth, ctx)
+          : workforcePolicyAdminDenied()
+      }
+      const access = await decidePersistedWorkforceAccess({
+        db: prisma,
+        organizationId: auth.orgId,
+        principalUserId: auth.userId,
+        selfAgentId: null,
+        permission,
+        resource: { organizationId: auth.orgId },
+      })
+      return access.allowed ? handler(req, auth, ctx) : workforceGranularAccessDenied()
+    } catch (error) {
+      console.error("[withWorkforceSessionScheduleConfigurationAuth] authorization lookup failed", error)
+      return NextResponse.json({
+        error: "Unable to verify Workforce schedule configuration access.",
+        code: "WORKFORCE_GRANULAR_ACCESS_UNAVAILABLE",
+      }, { status: 503 })
+    }
+  })
+  return wrapped as WrappedWorkforceRouteHandler<C>
+}
+
+/**
+ * Employment lifecycle is an organization-wide HR fact. After granular
+ * access cutover, a generic CRM administrator is insufficient and the exact
+ * Workforce HR grant becomes authoritative.
+ */
+export function withWorkforceSessionEmploymentConfigurationAuth<C = unknown>(
+  handler: (req: NextRequest, auth: AuthResult, ctx: C) => Promise<Response> | Response,
+) {
+  const wrapped = withRlsSessionAuth<C>(async (req, auth, ctx) => {
+    try {
+      const organization = await prisma.organization.findUnique({
+        where: { id: auth.orgId },
+        select: { plan: true, addons: true, features: true, modules: true },
+      })
+      if (!organization || !isTenantCapabilityEnabled("workforce-hrm", organization)) {
+        return workforceCapabilityDisabled()
+      }
+      if (!workforceGranularAccessEnabled(organization.features)) {
+        return isWorkforcePolicyAdministrator(auth.role)
+          ? handler(req, auth, ctx)
+          : workforcePolicyAdminDenied()
+      }
+      const access = await decidePersistedWorkforceAccess({
+        db: prisma,
+        organizationId: auth.orgId,
+        principalUserId: auth.userId,
+        selfAgentId: null,
+        permission: "WORKFORCE_EMPLOYMENT_MANAGE",
+        resource: { organizationId: auth.orgId },
+      })
+      return access.allowed ? handler(req, auth, ctx) : workforceGranularAccessDenied()
+    } catch (error) {
+      console.error("[withWorkforceSessionEmploymentConfigurationAuth] authorization lookup failed", error)
+      return NextResponse.json({
+        error: "Unable to verify Workforce employment-history access.",
+        code: "WORKFORCE_GRANULAR_ACCESS_UNAVAILABLE",
+      }, { status: 503 })
+    }
+  })
+  return wrapped as WrappedWorkforceRouteHandler<C>
+}
+/**
+ * Controlled C7 cutover for the tenant-wide, raw-proof-free exception queue.
+ *
+ * A case list has no immutable historic team/site snapshot that can safely
+ * authorize a bulk read. Before a tenant enables the explicit grant fence we
+ * retain the established session-admin boundary. Once enabled, only an
+ * organization-scoped `HR_ADMIN` grant with `TEAM_EXCEPTION_READ` can read
+ * the whole queue; a current employee team is never inferred for a past case.
+ * A later indexed team/site queue may use a separately reviewed historic scope
+ * model, but must not silently reuse this tenant-wide reader.
+ */
+export function withWorkforceSessionExceptionQueueAuth<C = unknown>(
+  handler: (req: NextRequest, auth: AuthResult, ctx: C) => Promise<Response> | Response,
+) {
+  const wrapped = withRlsSessionAuth<C>(async (req, auth, ctx) => {
+    let authorized = false
+    try {
+      const organization = await prisma.organization.findUnique({
+        where: { id: auth.orgId },
+        select: { plan: true, addons: true, features: true, modules: true },
+      })
+      if (!organization || !isTenantCapabilityEnabled("workforce-hrm", organization)) {
+        return workforceCapabilityDisabled()
+      }
+
+      if (!workforceGranularAccessEnabled(organization.features)) {
+        if (!isWorkforcePolicyAdministrator(auth.role)) return workforcePolicyAdminDenied()
+        authorized = true
+      } else {
+        const access = await decidePersistedWorkforceAccess({
+          db: prisma,
+          organizationId: auth.orgId,
+          principalUserId: auth.userId,
+          selfAgentId: null,
+          permission: "TEAM_EXCEPTION_READ",
+          resource: { organizationId: auth.orgId },
+        })
+        if (!access.allowed) return workforceGranularAccessDenied()
+        authorized = true
+      }
+    } catch (error) {
+      // A failed grant lookup cannot silently restore broad CRM-admin access.
+      console.error("[withWorkforceSessionExceptionQueueAuth] authorization lookup failed", error)
+      return NextResponse.json({
+        error: "Unable to verify Workforce exception queue access.",
+        code: "WORKFORCE_GRANULAR_ACCESS_UNAVAILABLE",
+      }, { status: 503 })
+    }
+    return authorized ? handler(req, auth, ctx) : workforceGranularAccessDenied()
   })
   return wrapped as WrappedWorkforceRouteHandler<C>
 }
