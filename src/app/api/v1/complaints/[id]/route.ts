@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import type { Prisma } from "@prisma/client"
 import { prisma, logAudit } from "@/lib/prisma"
-import { withRls } from "@/lib/with-rls"
+import { withRlsAuth } from "@/lib/with-rls"
 import { clearTaskRelations } from "@/lib/tasks/clear-task-relations"
 
 type CommentLite = { id: string; userId: string | null; comment: string; isInternal: boolean; createdAt: Date }
@@ -40,7 +40,7 @@ const updateSchema = z.object({
     .optional(),
 })
 
-export const GET = withRls(async (_req, { orgId }, { params }: { params: Promise<{ id: string }> }) => {
+export const GET = withRlsAuth("tickets", "read", async (_req, { orgId }, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
 
   try {
@@ -48,7 +48,7 @@ export const GET = withRls(async (_req, { orgId }, { params }: { params: Promise
       where: { id, organizationId: orgId },
       include: {
         complaintMeta: true,
-        comments: { orderBy: { createdAt: "asc" } },
+        comments: { orderBy: { createdAt: "asc" }, include: { attachments: true } },
         contact: { select: { id: true, fullName: true, phone: true, email: true } },
       },
     })
@@ -62,7 +62,7 @@ export const GET = withRls(async (_req, { orgId }, { params }: { params: Promise
     ].filter(Boolean))] as string[]
     const users = userIds.length
       ? await prisma.user.findMany({
-          where: { id: { in: userIds } },
+          where: { id: { in: userIds }, organizationId: orgId },
           select: { id: true, name: true, email: true },
         })
       : []
@@ -87,7 +87,7 @@ export const GET = withRls(async (_req, { orgId }, { params }: { params: Promise
     const auditUserIds = [...new Set(audit.map((a: { userId: string | null }) => a.userId).filter(Boolean))] as string[]
     const auditUsers = auditUserIds.length
       ? await prisma.user.findMany({
-          where: { id: { in: auditUserIds } },
+          where: { id: { in: auditUserIds }, organizationId: orgId },
           select: { id: true, name: true, email: true },
         })
       : []
@@ -120,7 +120,7 @@ export const GET = withRls(async (_req, { orgId }, { params }: { params: Promise
   }
 })
 
-export const PATCH = withRls(async (req, { orgId }, { params }: { params: Promise<{ id: string }> }) => {
+export const PATCH = withRlsAuth("tickets", "write", async (req, { orgId }, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
 
   let body: unknown
@@ -142,6 +142,16 @@ export const PATCH = withRls(async (req, { orgId }, { params }: { params: Promis
     })
     if (!existing || !existing.complaintMeta) {
       return NextResponse.json({ error: "Complaint not found" }, { status: 404 })
+    }
+
+    if (d.assignedTo) {
+      const assignee = await prisma.user.findFirst({
+        where: { id: d.assignedTo, organizationId: orgId },
+        select: { id: true },
+      })
+      if (!assignee) {
+        return NextResponse.json({ error: "Invalid assignee" }, { status: 400 })
+      }
     }
 
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -208,7 +218,7 @@ export const PATCH = withRls(async (req, { orgId }, { params }: { params: Promis
   }
 })
 
-export const DELETE = withRls(async (_req, { orgId }, { params }: { params: Promise<{ id: string }> }) => {
+export const DELETE = withRlsAuth("tickets", "delete", async (_req, { orgId }, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
 
   try {

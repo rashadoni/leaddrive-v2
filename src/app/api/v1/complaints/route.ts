@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import type { Prisma } from "@prisma/client"
 import { prisma, logAudit } from "@/lib/prisma"
-import { withRls } from "@/lib/with-rls"
+import { withRlsAuth } from "@/lib/with-rls"
 import { lockTicketNumberSequence, nextTicketNumber } from "@/lib/ticket-number"
 import { enrichComplaintInBackground } from "@/lib/complaint-ai"
 import { createNotification } from "@/lib/notifications"
@@ -37,7 +37,7 @@ function subjectFrom(content: string, brand?: string | null, obj?: string | null
   return parts ? `${parts}: ${head}` : head || "Şikayət"
 }
 
-export const GET = withRls(async (req, { orgId }) => {
+export const GET = withRlsAuth("tickets", "read", async (req, { orgId }) => {
 
   const sp = new URL(req.url).searchParams
   const status = sp.get("status") || ""
@@ -92,9 +92,22 @@ export const GET = withRls(async (req, { orgId }) => {
       prisma.ticket.count({ where }),
     ])
 
+    const assigneeIds = [...new Set(tickets.map((ticket) => ticket.assignedTo).filter((id): id is string => Boolean(id)))]
+    const assignees = assigneeIds.length > 0
+      ? await prisma.user.findMany({
+          where: { id: { in: assigneeIds }, organizationId: orgId },
+          select: { id: true, name: true, email: true },
+        })
+      : []
+    const assigneeNames = new Map(assignees.map((user) => [user.id, user.name || user.email]))
+    const complaints = tickets.map((ticket) => ({
+      ...ticket,
+      assigneeName: ticket.assignedTo ? assigneeNames.get(ticket.assignedTo) || null : null,
+    }))
+
     return NextResponse.json({
       success: true,
-      data: { complaints: tickets, total, page, limit },
+      data: { complaints, total, page, limit },
     })
   } catch (e) {
     console.error("Complaints GET error:", e)
@@ -102,7 +115,7 @@ export const GET = withRls(async (req, { orgId }) => {
   }
 })
 
-export const POST = withRls(async (req, { orgId }) => {
+export const POST = withRlsAuth("tickets", "write", async (req, { orgId }) => {
 
   let body: unknown
   try {

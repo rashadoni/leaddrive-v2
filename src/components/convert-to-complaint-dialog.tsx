@@ -77,13 +77,13 @@ export function ConvertToComplaintDialog({ open, onOpenChange, ticketId, orgId, 
       })
       const json = await res.json()
       if (!res.ok || !json.success) {
-        setError(json.error || t("convertFailed"))
+        setError(t("convertFailed"))
         return
       }
       onConverted?.(ticketId)
       onOpenChange(false)
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : tc("error"))
+    } catch {
+      setError(t("convertFailed"))
     } finally {
       setSaving(false)
     }
@@ -103,22 +103,22 @@ export function ConvertToComplaintDialog({ open, onOpenChange, ticketId, orgId, 
             {t("convertToComplaintDesc")}
           </p>
           {error && (
-            <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded mb-3">
+            <div role="alert" className="mb-3 rounded bg-red-50 p-2 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-300">
               {error}
             </div>
           )}
           <div className="grid gap-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>{t("complaintType")}</Label>
-                <Select value={form.complaintType} onChange={(e) => u("complaintType", e.target.value as "complaint" | "suggestion")}>
+                <Label htmlFor="convert-complaint-type">{t("complaintType")}</Label>
+                <Select id="convert-complaint-type" value={form.complaintType} onChange={(e) => u("complaintType", e.target.value as "complaint" | "suggestion")}>
                   <option value="complaint">{t("complaintTypeComplaint")}</option>
                   <option value="suggestion">{t("complaintTypeSuggestion")}</option>
                 </Select>
               </div>
               <div>
-                <Label>{t("riskLevel")}</Label>
-                <Select value={form.riskLevel} onChange={(e) => u("riskLevel", e.target.value as "low" | "medium" | "high")}>
+                <Label htmlFor="convert-risk-level">{t("riskLevel")}</Label>
+                <Select id="convert-risk-level" value={form.riskLevel} onChange={(e) => u("riskLevel", e.target.value as "low" | "medium" | "high")}>
                   <option value="low">{t("riskLow")}</option>
                   <option value="medium">{t("riskMedium")}</option>
                   <option value="high">{t("riskHigh")}</option>
@@ -127,44 +127,45 @@ export function ConvertToComplaintDialog({ open, onOpenChange, ticketId, orgId, 
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>{t("complaintBrand")}</Label>
-                <Input value={form.brand} onChange={(e) => u("brand", e.target.value)} />
+                <Label htmlFor="convert-brand">{t("complaintBrand")}</Label>
+                <Input id="convert-brand" value={form.brand} onChange={(e) => u("brand", e.target.value)} />
               </div>
               <div>
-                <Label>{t("productionArea")}</Label>
-                <Input value={form.productionArea} onChange={(e) => u("productionArea", e.target.value)} />
+                <Label htmlFor="convert-production-area">{t("productionArea")}</Label>
+                <Input id="convert-production-area" value={form.productionArea} onChange={(e) => u("productionArea", e.target.value)} />
               </div>
               <div>
-                <Label>{t("productCategory")}</Label>
-                <Input value={form.productCategory} onChange={(e) => u("productCategory", e.target.value)} />
+                <Label htmlFor="convert-product-category">{t("productCategory")}</Label>
+                <Input id="convert-product-category" value={form.productCategory} onChange={(e) => u("productCategory", e.target.value)} />
               </div>
               <div>
-                <Label>{t("complaintObject")}</Label>
-                <Input value={form.complaintObject} onChange={(e) => u("complaintObject", e.target.value)} />
+                <Label htmlFor="convert-object">{t("complaintObject")}</Label>
+                <Input id="convert-object" value={form.complaintObject} onChange={(e) => u("complaintObject", e.target.value)} />
               </div>
               <div>
-                <Label>{t("complaintObjectDetail")}</Label>
-                <Input value={form.complaintObjectDetail} onChange={(e) => u("complaintObjectDetail", e.target.value)} />
+                <Label htmlFor="convert-object-detail">{t("complaintObjectDetail")}</Label>
+                <Input id="convert-object-detail" value={form.complaintObjectDetail} onChange={(e) => u("complaintObjectDetail", e.target.value)} />
               </div>
               <div>
-                <Label>{t("responsibleDepartment")}</Label>
+                <Label htmlFor="convert-responsible-department">{t("responsibleDepartment")}</Label>
                 <Input
+                  id="convert-responsible-department"
                   value={form.responsibleDepartment}
                   onChange={(e) => u("responsibleDepartment", e.target.value)}
                   placeholder={t("responsibleDepartmentPlaceholder")}
                 />
               </div>
             </div>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {t("convertAiHint")}
             </p>
           </div>
         </DialogContent>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="outline" className="min-h-11" onClick={() => onOpenChange(false)}>
             {tc("cancel")}
           </Button>
-          <Button type="submit" disabled={saving}>
+          <Button type="submit" className="min-h-11" disabled={saving}>
             {saving ? t("convertingComplaint") : t("convertToComplaintBtn")}
           </Button>
         </DialogFooter>

@@ -109,6 +109,7 @@ const context = await browser.newContext({
   reducedMotion: "reduce",
   hasTouch: viewportName !== "desktop",
   acceptDownloads: true,
+  serviceWorkers: "block",
 })
 await context.addCookies([{ name: "NEXT_LOCALE", value: locale, domain: hostname, path: "/" }])
 await context.addInitScript((activeTheme) => localStorage.setItem("theme", activeTheme), theme)
@@ -143,7 +144,8 @@ try {
       const json = await original.json()
       const source = json?.data?.complaints?.[0]
       if (!source) throw new Error("reference_complaint_missing")
-      const complaints = Array.from({ length: 36 }, (_, index) => index === 0 ? source : ({
+      const referenceIndex = viewportName === "mobile" ? 3 : 8
+      const complaints = Array.from({ length: 36 }, (_, index) => index === referenceIndex ? source : ({
         ...source,
         id: `visual-density-${index}`,
         ticketNumber: `CMP-${9100 + index}`,
@@ -160,20 +162,41 @@ try {
     const expectedScroll = Math.min(maxScroll, 420)
     if (expectedScroll < 200) throw new Error(`registry_scroll_range_too_small_${maxScroll}`)
     await page.evaluate((top) => document.querySelector("main")?.scrollTo({ top, behavior: "instant" }), expectedScroll)
-    const row = page.locator("tbody tr[tabindex='0']").first()
-    await row.focus()
-    await Promise.all([
-      page.waitForURL((url) => url.pathname === `/complaints/${referenceComplaintId}`),
-      page.keyboard.press("Enter"),
-    ])
+    const referenceIndex = viewportName === "mobile" ? 3 : 8
+    let openMode = "keyboard"
+    let interactionScroll = 0
+    if (viewportName === "mobile") {
+      const card = page.getByTestId("complaint-card-open").nth(referenceIndex)
+      await card.scrollIntoViewIfNeeded()
+      interactionScroll = await page.evaluate(() => document.querySelector("main")?.scrollTop ?? 0)
+      openMode = "touch"
+      await Promise.all([
+        page.waitForURL((url) => url.pathname === `/complaints/${referenceComplaintId}`),
+        card.tap(),
+      ])
+    } else {
+      const row = page.locator("tbody tr[tabindex='0']").nth(referenceIndex)
+      await row.focus()
+      interactionScroll = await page.evaluate(() => document.querySelector("main")?.scrollTop ?? 0)
+      await Promise.all([
+        page.waitForURL((url) => url.pathname === `/complaints/${referenceComplaintId}`),
+        page.keyboard.press("Enter"),
+      ])
+    }
+    if (interactionScroll < 200) throw new Error(`registry_interaction_reset_scroll_${interactionScroll}`)
     const returnTo = new URL(page.url()).searchParams.get("returnTo")
     if (!returnTo || new URL(returnTo, baseUrl).searchParams.get("q") !== "Northstar") throw new Error("registry_context_missing")
     await page.getByTestId("complaint-detail-back").click()
     await page.waitForURL((url) => url.pathname === "/complaints" && url.searchParams.get("q") === "Northstar")
     await page.getByTestId("complaints-workspace").waitFor({ state: "visible" })
+    await page.getByTestId("complaints-results").waitFor({ state: "visible" })
+    await page.waitForFunction((top) => {
+      const restored = document.querySelector("main")?.scrollTop ?? 0
+      return Math.abs(restored - Number(top)) <= 80
+    }, expectedScroll, { timeout: 5_000 }).catch(() => undefined)
     const restoredScroll = await page.evaluate(() => document.querySelector("main")?.scrollTop ?? 0)
-    if (Math.abs(restoredScroll - expectedScroll) > 80) throw new Error(`registry_scroll_not_restored_${expectedScroll}_${restoredScroll}`)
-    return { keyboardOpen: true, queryPreserved: true, expectedScroll, restoredScroll }
+    if (Math.abs(restoredScroll - interactionScroll) > 80) throw new Error(`registry_scroll_not_restored_${interactionScroll}_${restoredScroll}`)
+    return { openMode, keyboardOpen: openMode === "keyboard", touchOpen: openMode === "touch", queryPreserved: true, expectedScroll: interactionScroll, restoredScroll }
   })
 
   await recordStep(page, "registry-load-failure-and-recovery", async () => {
@@ -249,7 +272,11 @@ try {
       page.waitForResponse((candidate) => new URL(candidate.url()).pathname === "/api/v1/complaints" && candidate.request().method() === "POST" && candidate.ok()),
       page.getByTestId("complaint-new-submit").click(),
     ])
-    await page.waitForURL((url) => /^\/complaints\/[^/]+$/.test(url.pathname))
+    await page.waitForURL((url) => (
+      url.pathname !== "/complaints/new"
+      && url.pathname !== "/complaints/import"
+      && /^\/complaints\/[^/]+$/.test(url.pathname)
+    ))
     createdComplaintId = new URL(page.url()).pathname.split("/").pop() || ""
     if (!createdComplaintId) throw new Error("created_complaint_id_missing")
     return { leaveWarningObserved: true, draftRecovered: true, failedDraftPreserved: true, createdComplaintId }
@@ -272,9 +299,12 @@ try {
     await page.getByTestId("complaint-response-error").waitFor({ state: "visible" })
     if (await composer.inputValue() !== content) throw new Error("response_failure_discarded_draft")
     await page.unroute(pattern, deny)
+    const retry = page.getByTestId("complaint-response-retry")
+    await retry.click({ trial: true })
+    await page.waitForTimeout(150)
     const [response] = await Promise.all([
       page.waitForResponse((candidate) => new URL(candidate.url()).pathname === `/api/v1/tickets/${createdComplaintId}/comments`),
-      page.getByTestId("complaint-response-retry").click(),
+      retry.evaluate((button) => button.click()),
     ])
     if (!response.ok()) throw new Error(`response_retry_http_${response.status()}`)
     await page.getByText(content, { exact: true }).waitFor({ state: "visible" })
@@ -296,9 +326,12 @@ try {
     if (denied.status() !== 403) throw new Error(`status_permission_intercept_missed_${denied.status()}`)
     await page.getByTestId("complaint-detail-action-error").waitFor({ state: "visible" })
     await page.unroute(pattern, deny)
+    const resolve = page.getByTestId("complaint-status-resolved")
+    await resolve.click({ trial: true })
+    await page.waitForTimeout(150)
     await Promise.all([
       page.waitForResponse((candidate) => new URL(candidate.url()).pathname === `/api/v1/complaints/${createdComplaintId}` && candidate.request().method() === "PATCH" && candidate.ok()),
-      page.getByTestId("complaint-status-resolved").click(),
+      resolve.evaluate((button) => button.click()),
     ])
     await page.getByTestId("complaint-status-open").waitFor({ state: "visible" })
     await page.getByTestId("complaint-status-open").click()
@@ -308,7 +341,11 @@ try {
 
   await recordStep(page, "assignment-failure-rollback-and-recovery", async () => {
     const select = page.getByTestId("complaint-assignee-select")
-    const options = await select.locator("option").evaluateAll((items) => items.map((item) => item.value).filter(Boolean))
+    const original = await select.inputValue()
+    const options = await select.locator("option").evaluateAll(
+      (items, current) => items.map((item) => item.value).filter((value) => Boolean(value) && value !== current),
+      original,
+    )
     if (options.length === 0) throw new Error("assignee_options_missing")
     const target = options[0]
     await select.selectOption(target)
@@ -325,22 +362,32 @@ try {
     ])
     if (failed.status() !== 503) throw new Error(`assignment_failure_intercept_missed_${failed.status()}`)
     await page.getByTestId("complaint-detail-action-error").waitFor({ state: "visible" })
-    await page.waitForFunction(() => document.querySelector("[data-testid='complaint-assignee-select']")?.value === "")
+    await page.waitForFunction((expected) => document.querySelector("[data-testid='complaint-assignee-select']")?.value === expected, original)
       .catch(() => { throw new Error("assignment_failure_did_not_rollback") })
     await page.unroute(pattern, deny)
     await select.selectOption(target)
+    const save = page.getByTestId("complaint-assignee-save")
+    await save.click({ trial: true })
+    await page.waitForTimeout(150)
     const [saved] = await Promise.all([
       page.waitForResponse((candidate) => new URL(candidate.url()).pathname === `/api/v1/complaints/${createdComplaintId}` && candidate.request().method() === "PATCH"),
-      page.getByTestId("complaint-assignee-save").click(),
+      save.evaluate((button) => button.click()),
     ])
     if (!saved.ok()) throw new Error(`assignment_retry_http_${saved.status()}`)
-    await select.selectOption("")
+    await page.waitForFunction(() => !document.querySelector("[data-testid='complaint-assignee-save'] svg.animate-spin"))
+    await select.selectOption(original)
+    await page.waitForFunction((expected) => {
+      const input = document.querySelector("[data-testid='complaint-assignee-select']")
+      const button = document.querySelector("[data-testid='complaint-assignee-save']")
+      return input?.value === expected && button instanceof HTMLButtonElement && !button.disabled
+    }, original)
     const [restored] = await Promise.all([
       page.waitForResponse((candidate) => new URL(candidate.url()).pathname === `/api/v1/complaints/${createdComplaintId}` && candidate.request().method() === "PATCH"),
       page.getByTestId("complaint-assignee-save").click(),
     ])
     if (!restored.ok()) throw new Error(`assignment_restore_http_${restored.status()}`)
-    await page.waitForFunction(() => document.querySelector("[data-testid='complaint-assignee-select']")?.value === "")
+    await page.waitForFunction(() => !document.querySelector("[data-testid='complaint-assignee-save'] svg.animate-spin"))
+    await page.waitForFunction((expected) => document.querySelector("[data-testid='complaint-assignee-select']")?.value === expected, original)
     return { rollbackObserved: true, retrySucceeded: true, fixtureRestored: true }
   })
 
@@ -352,7 +399,11 @@ try {
       } else await route.continue()
     }
     await page.route(pattern, deny)
-    await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")))
+    const [refresh] = await Promise.all([
+      page.waitForResponse((candidate) => new URL(candidate.url()).pathname === `/api/v1/complaints/${createdComplaintId}` && candidate.request().method() === "GET"),
+      page.evaluate(() => window.dispatchEvent(new Event("focus"))),
+    ])
+    if (refresh.status() !== 503) throw new Error(`stale_refresh_intercept_missed_${refresh.status()}`)
     await page.getByTestId("complaint-detail-stale").waitFor({ state: "visible", timeout: 10_000 })
     await page.unroute(pattern, deny)
     await page.getByTestId("complaint-detail-retry-stale").click()
