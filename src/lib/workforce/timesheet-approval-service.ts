@@ -5,12 +5,17 @@ import { lockMtmWorkdayTransitions } from "@/lib/mtm/workday"
 import { prisma } from "@/lib/prisma"
 import { isAgentInWorkforceScope, type WorkforceActor } from "@/lib/workforce/actor"
 import {
+  decidePersistedWorkforceAccess,
+  type WorkforceAccessGrantReaderDb,
+} from "@/lib/workforce/access-grant-resolution"
+import {
   evaluateWorkforceExceptionDraftLifecycle,
   WORKFORCE_EXCEPTION_DRAFT_TYPES,
   type WorkforceExceptionDraftStage,
   type WorkforceExceptionDraftType,
 } from "@/lib/workforce/exception-policy-draft"
 import { lockWorkforceExceptionDecisionStream } from "@/lib/workforce/exception-case-writer"
+import { workforceGranularAccessEnabled } from "@/lib/workforce/granular-access-rollout"
 import {
   buildWorkforceTimesheetApproval,
   persistWorkforceTimesheetApproval,
@@ -69,7 +74,8 @@ type WorkforceTimesheetApprovalAuditContext = {
 type WorkforceTimesheetApprovalContext = {
   organizationId: string
   userId: string
-  actor: WorkforceActor
+  /** Granular TIME_APPROVER authority does not require a legacy CRM actor. */
+  actor: WorkforceActor | null
   input: WorkforceTimesheetApprovalRequest
   audit?: WorkforceTimesheetApprovalAuditContext
 }
@@ -445,20 +451,43 @@ export async function approveWorkforceTimesheet(
   context: WorkforceTimesheetApprovalContext,
 ): Promise<WorkforceTimesheetApprovalResult> {
   const { organizationId, userId, actor, input, audit } = context
-  if (actor.role === "AGENT" || !isAgentInWorkforceScope(actor, input.agentId)) {
-    return { kind: "forbidden" }
-  }
 
   try {
     return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const organization = await tx.organization.findUnique({
+        where: { id: organizationId },
+        select: { features: true },
+      })
+      const granularAccess = workforceGranularAccessEnabled(organization?.features)
+      // Resolve authority before looking up the employee. An ungranted caller
+      // must not use the not-found distinction as a tenant directory oracle.
+      if (!granularAccess) {
+        if (
+          !actor
+          || actor.role === "AGENT"
+          || actor.agentId === input.agentId
+          || !isAgentInWorkforceScope(actor, input.agentId)
+        ) return { kind: "forbidden" as const }
+      } else {
+        if (actor?.agentId === input.agentId) return { kind: "forbidden" as const }
+        const access = await decidePersistedWorkforceAccess({
+          db: tx as WorkforceAccessGrantReaderDb,
+          organizationId,
+          principalUserId: userId,
+          selfAgentId: null,
+          permission: "TIME_APPROVE",
+          resource: { organizationId, agentId: input.agentId },
+        })
+        if (!access.allowed) return { kind: "forbidden" as const }
+      }
       const employee = await tx.mtmAgent.findFirst({
         where: { id: input.agentId, organizationId, status: "ACTIVE" },
         select: { id: true, userId: true },
       })
       if (!employee) throw new WorkforceTimesheetApprovalProblem({ kind: "not_found" })
-      // Separation of duties: a manager or administrator cannot approve their
-      // own recorded time, even when their organizational scope includes it.
-      if (actor.agentId === employee.id || employee.userId === userId) return { kind: "forbidden" as const }
+      // The recorded employee can never approve their own time, even if a
+      // malformed external grant process assigned them TIME_APPROVER.
+      if (employee.userId === userId) return { kind: "forbidden" as const }
 
       await lockMtmWorkdayTransitions(tx, { organizationId, agentId: employee.id })
       const rows = await rebuildApprovalRows(tx, {
@@ -511,6 +540,7 @@ export async function approveWorkforceTimesheet(
               factsHash: payload.factsHash,
               correctionReason: recordKind === "CORRECTION" ? input.correctionReason ?? null : null,
               approvedByUserId: userId,
+              authorizationSource: granularAccess ? "WORKFORCE_GRANT" : actor!.role,
             },
             ipAddress: audit?.ipAddress ?? null,
             userAgent: audit?.userAgent ?? null,

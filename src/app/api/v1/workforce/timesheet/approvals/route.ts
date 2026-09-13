@@ -38,7 +38,6 @@ export const POST = withWorkforceSessionAuth("write", async (req: NextRequest, a
     userId: auth.userId,
     webRole: auth.role,
   })
-  if (!actor) return workforceScopeDenied()
 
   const parsed = WorkforceTimesheetApprovalRequestSchema.safeParse(await req.json().catch(() => ({})))
   if (!parsed.success) {

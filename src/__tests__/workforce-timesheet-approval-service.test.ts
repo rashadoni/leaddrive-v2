@@ -69,6 +69,7 @@ function finalEvents() {
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "employee-1", userId: "employee-user" } as never)
+  vi.mocked(prisma.organization.findUnique).mockResolvedValue({ features: [] } as never)
   vi.mocked(prisma.mtmAgentWorkday.findMany).mockResolvedValue([completeWorkday()] as never)
   vi.mocked(prisma.workforcePolicySnapshot.findMany).mockResolvedValue([policySnapshot()] as never)
   vi.mocked(prisma.workforceShiftSnapshot.findMany).mockResolvedValue([shiftSnapshot()] as never)
@@ -81,6 +82,85 @@ beforeEach(() => {
 })
 
 describe("Workforce server-side timesheet approval", () => {
+  it("permits a grant-only principal to approve another employee after C7 cutover", async () => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      features: ["workforce-granular-access-v1"],
+    } as never)
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([{
+      id: "grant-time-approver-1",
+      organizationId: "org-1",
+      principalUserId: "manager-user",
+      role: "TIME_APPROVER",
+      scopeKind: "AGENT",
+      scopeTeamId: null,
+      scopeSiteId: null,
+      scopeAgentId: "employee-1",
+      effectiveFrom: new Date("2026-08-01T00:00:00.000Z"),
+      effectiveUntil: null,
+      revocation: null,
+    }] as never)
+
+    await expect(approveWorkforceTimesheet({ ...context, actor: null })).resolves.toMatchObject({
+      kind: "success",
+      data: { id: "approval-1", agentId: "employee-1" },
+    })
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        newData: expect.objectContaining({ authorizationSource: "WORKFORCE_GRANT" }),
+      }),
+    }))
+  })
+
+  it("does not let a legacy employee scope suppress a separate approval grant", async () => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      features: ["workforce-granular-access-v1"],
+    } as never)
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([{
+      id: "grant-time-approver-1",
+      organizationId: "org-1",
+      principalUserId: "manager-user",
+      role: "TIME_APPROVER",
+      scopeKind: "AGENT",
+      scopeTeamId: null,
+      scopeSiteId: null,
+      scopeAgentId: "employee-1",
+      effectiveFrom: new Date("2026-08-01T00:00:00.000Z"),
+      effectiveUntil: null,
+      revocation: null,
+    }] as never)
+
+    await expect(approveWorkforceTimesheet({
+      ...context,
+      actor: { agentId: "reviewer-agent", role: "AGENT", scopedAgentIds: ["reviewer-agent"] },
+    })).resolves.toMatchObject({ kind: "success", data: { agentId: "employee-1" } })
+  })
+
+  it("denies a grant-only principal without an exact effective TIME_APPROVER grant", async () => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      features: ["workforce-granular-access-v1"],
+    } as never)
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([])
+
+    await expect(approveWorkforceTimesheet({ ...context, actor: null })).resolves.toEqual({ kind: "forbidden" })
+    expect(prisma.mtmAgent.findFirst).not.toHaveBeenCalled()
+    expect(prisma.$executeRaw).not.toHaveBeenCalled()
+    expect(prisma.mtmAgentWorkday.findMany).not.toHaveBeenCalled()
+  })
+
+  it("never lets the recorded employee self-approve through a granular grant path", async () => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      features: ["workforce-granular-access-v1"],
+    } as never)
+
+    await expect(approveWorkforceTimesheet({
+      ...context,
+      userId: "employee-user",
+      actor: null,
+    })).resolves.toEqual({ kind: "forbidden" })
+    expect(prisma.workforceAccessGrant.findMany).toHaveBeenCalledTimes(1)
+    expect(prisma.mtmAgentWorkday.findMany).not.toHaveBeenCalled()
+  })
+
   it("rebuilds immutable rows under the workday fence and audits a first approval", async () => {
     await expect(approveWorkforceTimesheet(context)).resolves.toMatchObject({
       kind: "success",
