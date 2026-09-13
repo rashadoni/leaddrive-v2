@@ -266,7 +266,7 @@ because eleven of its findings were things tests could not see.
 | RUX-1044 | P1 | DONE | Tablet width 834 (C15) | Closed in section 0.1 of the plan; measured at 834 px on production 2026-09-13 |
 | RUX-1045 | P2 | DONE | Small things that add up (C16) | Closed in section 0.1 of the plan |
 | RUX-1046 | P1 | BLOCKED | Mobile end-to-end over adb (D1) | Waiting on the owner's adb tunnel to the phone |
-| RUX-1047 | P1 | BLOCKED | Web runs (D2) | AZ DOM pass on all 21 `/mtm/*` pages at 834 and 1470 found no `M0x` and no English day names (2026-09-13); the RUX evidence workflows need `MTM_EVIDENCE_*` secrets that were not moved to `rashadoni/leaddrive-v2`, and they write QA fixtures on production |
+| RUX-1047 | P1 | DONE | Web runs (D2) | Closed 2026-09-14 by the owner on the manual production runs (1470/834, AZ DOM pass on 21 pages); the automated RUX workflows were judged unnecessary |
 | RUX-1048 | P1 | DONE | Documents (D3) | This section, plus the check-in error contract already in `mtm-mobile-update-spec-2026-07-11.md` §2.4 |
 
 
