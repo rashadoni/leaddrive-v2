@@ -20905,6 +20905,18 @@ model SystemJobLease {
   @@map("system_job_leases")
 }
 
+// Compare-and-set progress for bounded scheduled readers. Like SystemJobLease,
+// this is global operational state and contains no tenant or employee payload.
+// A cursor is opaque to the table; each job owns its versioned interpretation.
+model SystemJobCursor {
+  name      String   @id
+  cursor    String?
+  version   Int      @default(1)
+  updatedAt DateTime @updatedAt
+
+  @@map("system_job_cursors")
+}
+
 model TikTokPublicationRevisit {
   id                     String         @id @default(cuid())
   organizationId         String
