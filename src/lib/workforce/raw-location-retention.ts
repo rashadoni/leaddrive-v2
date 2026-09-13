@@ -195,14 +195,18 @@ export async function runWorkforceRawLocationRetention(
   const purged = zeroCounts()
 
   if (mode === "EXECUTE") {
-    if (locations.length > 0) purged.locationRows = (await db.mtmAgentLocation.deleteMany({ where: { organizationId, id: { in: locations.map((row) => row.id) } } })).count
-    if (latestLocations.length > 0) purged.latestLocationRows = (await db.mtmAgentLatestLocation.deleteMany({ where: { organizationId, id: { in: latestLocations.map((row) => row.id) } } })).count
+    if (locations.length > 0) purged.locationRows = (await db.mtmAgentLocation.deleteMany({
+      where: { organizationId, id: { in: locations.map((row) => row.id) }, recordedAt: { lt: cutoff } },
+    })).count
+    if (latestLocations.length > 0) purged.latestLocationRows = (await db.mtmAgentLatestLocation.deleteMany({
+      where: { organizationId, id: { in: latestLocations.map((row) => row.id) }, recordedAt: { lt: cutoff } },
+    })).count
     if (workdays.length > 0) purged.workdayCoordinateRows = (await db.mtmAgentWorkday.updateMany({
-      where: { organizationId, id: { in: workdays.map((row) => row.id) } },
+      where: { ...coordinateWhere(organizationId, cutoff), id: { in: workdays.map((row) => row.id) } },
       data: { startLatitude: null, startLongitude: null, endLatitude: null, endLongitude: null },
     })).count
     if (events.length > 0) purged.workdayEventCoordinateRows = (await db.mtmAgentWorkdayEvent.updateMany({
-      where: { organizationId, id: { in: events.map((row) => row.id) } },
+      where: { ...eventCoordinateWhere(organizationId, cutoff), id: { in: events.map((row) => row.id) } },
       data: { latitude: null, longitude: null, accuracy: null },
     })).count
     if (evidence.length > 0) purged.evidenceCiphertextRows = (await db.workforceAttendanceEvidence.updateMany({

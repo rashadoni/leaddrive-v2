@@ -73,16 +73,73 @@ describe("Workforce raw location retention", () => {
       morePending: false,
     })
     expect(retentionDb.mtmAgentWorkday.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ organizationId: orgId, id: { in: ["workday-1"] } }),
+      where: expect.objectContaining({
+        organizationId: orgId,
+        id: { in: ["workday-1"] },
+        workDate: { lt: new Date("2026-07-31T00:00:00.000Z") },
+      }),
       data: { startLatitude: null, startLongitude: null, endLatitude: null, endLongitude: null },
     }))
     expect(retentionDb.mtmAgentWorkdayEvent.updateMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ organizationId: orgId, id: { in: ["event-1"] } }),
+      where: expect.objectContaining({
+        organizationId: orgId,
+        id: { in: ["event-1"] },
+        occurredAt: { lt: new Date("2026-07-31T12:00:00.000Z") },
+      }),
       data: { latitude: null, longitude: null, accuracy: null },
     }))
+    expect(retentionDb.mtmAgentLocation.deleteMany).toHaveBeenCalledWith({
+      where: {
+        organizationId: orgId,
+        id: { in: ["location-1"] },
+        recordedAt: { lt: new Date("2026-07-31T12:00:00.000Z") },
+      },
+    })
+    expect(retentionDb.mtmAgentLatestLocation.deleteMany).toHaveBeenCalledWith({
+      where: {
+        organizationId: orgId,
+        id: { in: ["latest-1"] },
+        recordedAt: { lt: new Date("2026-07-31T12:00:00.000Z") },
+      },
+    })
     expect(retentionDb.workforceAttendanceEvidence.updateMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ organizationId: orgId, id: { in: ["evidence-1"] }, rawPurgedAt: null }),
       data: { rawEnvelopeCiphertext: null, rawPurgedAt: now },
+    }))
+  })
+
+  it("rechecks expiry and raw-presence predicates to preserve rows changed after selection", async () => {
+    const retentionDb = db()
+    retentionDb.mtmAgentLocation.deleteMany.mockResolvedValueOnce({ count: 0 })
+    retentionDb.mtmAgentLatestLocation.deleteMany.mockResolvedValueOnce({ count: 0 })
+    retentionDb.mtmAgentWorkday.updateMany.mockResolvedValueOnce({ count: 0 })
+    retentionDb.mtmAgentWorkdayEvent.updateMany.mockResolvedValueOnce({ count: 0 })
+    retentionDb.workforceAttendanceEvidence.updateMany.mockResolvedValueOnce({ count: 0 })
+
+    const result = await runWorkforceRawLocationRetention(retentionDb, {
+      organizationId: orgId,
+      mode: "EXECUTE",
+      now,
+    })
+
+    expect(result.purged).toEqual({
+      locationRows: 0,
+      latestLocationRows: 0,
+      workdayCoordinateRows: 0,
+      workdayEventCoordinateRows: 0,
+      evidenceCiphertextRows: 0,
+    })
+    expect(retentionDb.mtmAgentLatestLocation.deleteMany.mock.calls[0]?.[0]).toEqual({
+      where: expect.objectContaining({ recordedAt: { lt: new Date("2026-07-31T12:00:00.000Z") } }),
+    })
+    expect(retentionDb.mtmAgentWorkday.updateMany.mock.calls[0]?.[0]).toEqual(expect.objectContaining({
+      where: expect.objectContaining({ OR: expect.any(Array) }),
+    }))
+    expect(retentionDb.mtmAgentWorkdayEvent.updateMany.mock.calls[0]?.[0]).toEqual(expect.objectContaining({
+      where: expect.objectContaining({ OR: expect.any(Array) }),
+    }))
+    expect(retentionDb.workforceAttendanceEvidence.updateMany.mock.calls[0]?.[0]).toEqual(expect.objectContaining({
+      where: expect.objectContaining({ rawPurgedAt: null, rawEnvelopeCiphertext: { not: null } }),
     }))
   })
 
