@@ -12,6 +12,7 @@ import {
   type WorkforceShiftSnapshotForCalculation,
   type WorkforceTimesheetWorkday,
 } from "@/lib/workforce/timesheet-rehydration"
+import { requireWorkforceTimesheetReadAccess } from "@/lib/workforce/timesheet-read-access"
 import type {
   WorkforceTimeCorrectionReplayFact,
   WorkforceWorkdayEventFact,
@@ -70,6 +71,29 @@ export const GET = withWorkforceRlsAuth("read", async (req: NextRequest, auth) =
       }, { status: 400 })
     }
     if (requestedAgentId && !isAgentInWorkforceScope(actor, requestedAgentId)) return workforceScopeDenied()
+
+    // Resolve this feature flag and persisted grant before the named roster
+    // query. A rolled-out tenant must never use the existing CRM actor scope
+    // as a fallback Workforce attendance-read authority.
+    const organization = await prisma.organization.findUnique({
+      where: { id: auth.orgId },
+      select: { features: true },
+    })
+    if (!organization) {
+      return NextResponse.json({
+        error: "Unable to verify Workforce timesheet access",
+        code: "WORKFORCE_TIMESHEET_READ_ACCESS_UNAVAILABLE",
+      }, { status: 503 })
+    }
+    const accessDenied = await requireWorkforceTimesheetReadAccess({
+      db: prisma,
+      organizationId: auth.orgId,
+      organizationFeatures: organization.features,
+      principalUserId: auth.userId,
+      selfAgentId: actor.agentId,
+      selectedAgentId: requestedAgentId,
+    })
+    if (accessDenied) return accessDenied
 
     const agentWhere = {
       organizationId: auth.orgId,

@@ -7,6 +7,7 @@ import { withWorkforceRlsAuth } from "@/lib/with-workforce-rls-auth"
 import { resolveWorkforceActor } from "@/lib/workforce/actor"
 import { resolveWorkforceCalendarDay, type WorkforceCalendarOverride } from "@/lib/workforce/calendar"
 import { loadWorkforceEmployeeToday } from "@/lib/workforce/employee-today"
+import { requireWorkforceTodayReadAccess } from "@/lib/workforce/today-read-access"
 
 type WorkdayStatus = "STARTED" | "PAUSED" | "COMPLETED"
 
@@ -52,11 +53,46 @@ export const GET = withWorkforceRlsAuth("read", async (_req, auth) => {
     // converting organization midnight to an instant would shift the key for
     // every positive-offset timezone.
     const workDate = new Date(`${date}T00:00:00.000Z`)
-    const agents: WorkforceTodayAgent[] = await prisma.mtmAgent.findMany({
+    // Resolve the tenant cutover before either a named roster or employee
+    // time fact is read. The first lookup intentionally carries only the
+    // technical current employee/team scope needed by the C7 authorization
+    // resolver; names are fetched only after that resolver returns IDs.
+    const organization = await prisma.organization.findUnique({
+      where: { id: auth.orgId },
+      select: { features: true },
+    })
+    if (!organization) {
+      return NextResponse.json({
+        error: "Unable to verify Workforce Today access",
+        code: "WORKFORCE_TODAY_READ_ACCESS_UNAVAILABLE",
+      }, { status: 503 })
+    }
+    const scopeCandidates = await prisma.mtmAgent.findMany({
       where: {
         organizationId: auth.orgId,
         status: "ACTIVE",
         ...(actor.scopedAgentIds === null ? {} : { id: { in: [...actor.scopedAgentIds] } }),
+      },
+      orderBy: { name: "asc" },
+      select: { id: true, teamId: true },
+    })
+    const todayAccess = await requireWorkforceTodayReadAccess({
+      db: prisma,
+      organizationId: auth.orgId,
+      organizationFeatures: organization.features,
+      principalUserId: auth.userId,
+      // Every mapped Workforce employee retains the narrow self-read
+      // permission. Management role is not a reason to remove their own
+      // current-day record; additional employees still need a team grant.
+      selfAgentId: actor.agentId,
+      candidates: scopeCandidates,
+    })
+    if (todayAccess instanceof Response) return todayAccess
+    const agents: WorkforceTodayAgent[] = await prisma.mtmAgent.findMany({
+      where: {
+        organizationId: auth.orgId,
+        status: "ACTIVE",
+        id: { in: [...todayAccess.agentIds] },
       },
       orderBy: { name: "asc" },
       select: { id: true, name: true, role: true, teamId: true },
