@@ -1,6 +1,7 @@
 package com.leaddrive.workforce.android.data
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -111,8 +112,17 @@ class WorkforceGenericReminderWorker(
 ) : CoroutineWorker(appContext, workerParameters) {
     override suspend fun doWork(): Result {
         if (!notificationsAllowed(applicationContext)) return Result.success()
+        return postGenericReminder()
+    }
+
+    /**
+     * Permission is checked immediately before this call. A concurrent revoke
+     * is treated as an unposted optional reminder, never as retrying work.
+     */
+    @SuppressLint("MissingPermission")
+    private fun postGenericReminder(): Result {
         val manager = NotificationManagerCompat.from(applicationContext)
-        return runCatching {
+        return try {
             ensureChannel(applicationContext)
             val notificationText = applicationContext.getString(R.string.notification_text)
             manager.notify(
@@ -128,10 +138,12 @@ class WorkforceGenericReminderWorker(
                     .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                     .build(),
             )
-        // A second notification after a transient OS failure would be more
-        // surprising than useful. The next server refresh schedules a new
-        // current-workday reminder; this worker never retries in a loop.
-        }.fold(onSuccess = { Result.success() }, onFailure = { Result.success() })
+            Result.success()
+        } catch (_: Exception) {
+            // A second notification after an OS failure would be more
+            // surprising than useful; a fresh server state schedules anew.
+            Result.success()
+        }
     }
 
     private fun notificationsAllowed(context: Context): Boolean =

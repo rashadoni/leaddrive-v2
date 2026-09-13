@@ -9,6 +9,14 @@ val releaseApiBaseUrl = providers.gradleProperty("WORKFORCE_API_BASE_URL")
 val releaseVersionName = providers.gradleProperty("WORKFORCE_VERSION_NAME")
 val releaseVersionCode = providers.gradleProperty("WORKFORCE_VERSION_CODE")
 val releaseBuildSha = providers.gradleProperty("WORKFORCE_BUILD_SHA")
+// `applicationId`, `versionName` and `versionCode` belong to defaultConfig in
+// the Android Gradle DSL. A build type can add a suffix, but cannot replace
+// those properties. Keeping the release identity here lets release CI supply
+// the verified values while a source-only debug build uses an explicitly
+// non-production placeholder. AGP requires every configured variant to have a
+// positive version code, while the release task below still rejects a missing
+// or malformed externally supplied release version.
+val configuredVersionCode = releaseVersionCode.orNull?.toIntOrNull() ?: 1
 
 fun quotedBuildValue(value: String): String = "\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\""
 
@@ -23,14 +31,13 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        // This development-only ID is intentionally not the future Play ID.
-        // A release task validates a separately supplied identity before
-        // packaging, so the app cannot accidentally claim a production name.
-        applicationId = "com.leaddrive.workforce.debug"
+        // Without a verified Play identity all variants retain this deliberately
+        // invalid release placeholder; debug adds `.dev` below.
+        applicationId = releaseApplicationId.orElse("invalid.release.workforce").get()
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.0.0-debug"
+        versionCode = configuredVersionCode
+        versionName = releaseVersionName.orElse("0.0.0-invalid").get()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "WORKFORCE_API_BASE_URL", quotedBuildValue("https://invalid.invalid/"))
@@ -46,12 +53,6 @@ android {
             applicationIdSuffix = ".dev"
         }
         release {
-            // A deliberately invalid placeholder means even a local release
-            // configuration cannot be shipped before release management gives
-            // the final verified Play application ID.
-            applicationId = releaseApplicationId.orElse("invalid.release.workforce").get()
-            versionName = releaseVersionName.orElse("0.0.0-invalid").get()
-            versionCode = releaseVersionCode.map(String::toInt).orElse(0).get()
             buildConfigField(
                 "String",
                 "WORKFORCE_API_BASE_URL",

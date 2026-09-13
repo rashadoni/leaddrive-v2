@@ -1,6 +1,7 @@
 package com.leaddrive.workforce.android.location
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
@@ -8,6 +9,7 @@ import android.location.LocationManager
 import android.os.Build
 import android.os.CancellationSignal
 import android.os.SystemClock
+import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -43,12 +45,18 @@ class WorkforceActionTimeLocationCapture(context: Context) {
         } catch (_: SecurityException) {
             return WorkforceActionTimeLocationResult.PermissionMissing
         } ?: return WorkforceActionTimeLocationResult.ProviderDisabled
-        return try {
+        return captureWithGrantedForegroundPermission(provider)
+    }
+
+    /** Permission is checked immediately before this narrow API-30 call. */
+    @RequiresApi(Build.VERSION_CODES.R)
+    @SuppressLint("MissingPermission")
+    private suspend fun captureWithGrantedForegroundPermission(provider: String): WorkforceActionTimeLocationResult = try {
             withTimeoutOrNull(CAPTURE_TIMEOUT_MS) {
                 suspendCancellableCoroutine { continuation ->
                     val cancellation = CancellationSignal()
                     continuation.invokeOnCancellation { cancellation.cancel() }
-                    locationManager.getCurrentLocation(provider, cancellation, applicationContext.mainExecutor) { location ->
+                    locationManager.getCurrentLocation(provider, cancellation, ContextCompat.getMainExecutor(applicationContext)) { location ->
                         if (!continuation.isActive) return@getCurrentLocation
                         continuation.resume(location?.toResult() ?: WorkforceActionTimeLocationResult.Unavailable)
                     }
@@ -59,7 +67,6 @@ class WorkforceActionTimeLocationCapture(context: Context) {
             // platform call. Treat that race as an explicit missing proof.
             WorkforceActionTimeLocationResult.PermissionMissing
         }
-    }
 
     private fun hasForegroundLocationPermission(): Boolean =
         hasPermission(Manifest.permission.ACCESS_FINE_LOCATION) || hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION)

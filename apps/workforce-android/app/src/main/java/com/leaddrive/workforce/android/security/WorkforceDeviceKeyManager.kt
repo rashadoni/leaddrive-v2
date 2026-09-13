@@ -5,6 +5,7 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.security.keystore.StrongBoxUnavailableException
 import android.util.Base64
+import androidx.annotation.RequiresApi
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.KeyStore
@@ -27,11 +28,10 @@ class WorkforceDeviceKeyManager {
         require(alias.matches(Regex("[A-Za-z0-9._-]{1,96}"))) { "Invalid Workforce key alias." }
         require(challenge.size in 16..128) { "Enrollment challenge must contain 16..128 bytes." }
 
-        val withStrongBox = runCatching { generate(alias, challenge, preferStrongBox = true) }
-        val keyPair = when {
-            withStrongBox.isSuccess -> withStrongBox.getOrThrow()
-            withStrongBox.exceptionOrNull() is StrongBoxUnavailableException -> generate(alias, challenge, preferStrongBox = false)
-            else -> throw withStrongBox.exceptionOrNull() ?: IllegalStateException("Unable to create Workforce key.")
+        val keyPair = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            createStrongBoxPreferredEnrollmentKey(alias, challenge)
+        } else {
+            generate(alias, challenge, preferStrongBox = false)
         }
 
         val certificateChain = KeyStore.getInstance(ANDROID_KEY_STORE).apply { load(null) }
@@ -78,6 +78,16 @@ class WorkforceDeviceKeyManager {
         KeyStore.getInstance(ANDROID_KEY_STORE).apply {
             load(null)
             if (containsAlias(alias)) deleteEntry(alias)
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.P)
+    private fun createStrongBoxPreferredEnrollmentKey(alias: String, challenge: ByteArray): KeyPair {
+        val withStrongBox = runCatching { generate(alias, challenge, preferStrongBox = true) }
+        return when {
+            withStrongBox.isSuccess -> withStrongBox.getOrThrow()
+            withStrongBox.exceptionOrNull() is StrongBoxUnavailableException -> generate(alias, challenge, preferStrongBox = false)
+            else -> throw withStrongBox.exceptionOrNull() ?: IllegalStateException("Unable to create Workforce key.")
         }
     }
 

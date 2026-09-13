@@ -124,6 +124,7 @@ private fun WorkforceRoot(
     var restoring by remember { mutableStateOf(true) }
     var busyAction by remember { mutableStateOf<WorkforceWorkdayAction?>(null) }
     val context = LocalContext.current
+    val updateRequiredBeforeChanges = stringResource(R.string.update_required_before_changes)
 
     fun applyReminderSettings(snapshot: WorkforceTodaySnapshot) {
         reminderSettings = repository.reminderSettings(snapshot)
@@ -372,7 +373,7 @@ private fun WorkforceRoot(
                 val currentBootstrap = bootstrap!!
                 val attendance = currentBootstrap.attendance
                 if (currentBootstrap.release.mutationsBlocked) {
-                    status = context.getString(R.string.update_required_before_changes)
+                    status = updateRequiredBeforeChanges
                 } else if (attendance.requiresQr(action)) {
                     qrScanner.scan(
                         onToken = { token ->
@@ -707,15 +708,19 @@ private fun WorkforceDeviceTrust(
 ) {
     var label by rememberSaveable { mutableStateOf("This Android device") }
     var revokeCandidateId by rememberSaveable { mutableStateOf<String?>(null) }
+    val trustedState = state ?: run {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Trusted device", style = MaterialTheme.typography.titleLarge)
+            Text("A trusted device signs only the exact work-time action you confirm. The Android system performs biometric matching; Workforce never receives a template or result.")
+            Button(onClick = onLoad) { Text("Load device status") }
+        }
+        return
+    }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Trusted device", style = MaterialTheme.typography.titleLarge)
         Text("A trusted device signs only the exact work-time action you confirm. The Android system performs biometric matching; Workforce never receives a template or result.")
-        if (state == null) {
-            Button(onClick = onLoad) { Text("Load device status") }
-            return@Column
-        }
-        Text(state.message)
-        when (state.lifecycle) {
+        Text(trustedState.message)
+        when (trustedState.lifecycle) {
             WorkforceDeviceBindingLifecycle.ACTIVE,
             WorkforceDeviceBindingLifecycle.PENDING_MANAGER_APPROVAL -> {
                 TextButton(onClick = onLoad) { Text("Refresh device status") }
@@ -734,7 +739,7 @@ private fun WorkforceDeviceTrust(
                     onClick = { onEnroll(label) },
                 ) {
                     Text(
-                        if (state.lifecycle == WorkforceDeviceBindingLifecycle.PENDING_PROOF || state.lifecycle == WorkforceDeviceBindingLifecycle.PROVISIONING) {
+                        if (trustedState.lifecycle == WorkforceDeviceBindingLifecycle.PENDING_PROOF || trustedState.lifecycle == WorkforceDeviceBindingLifecycle.PROVISIONING) {
                             "Resume device enrollment"
                         } else {
                             "Enroll this device"
@@ -745,7 +750,7 @@ private fun WorkforceDeviceTrust(
         }
         Text(stringResource(R.string.device_lost_guidance))
         Text(stringResource(R.string.device_uninstall_guidance))
-        val revocable = state.enrollments.filter { it.status == "PENDING" || it.status == "ACTIVE" }
+        val revocable = trustedState.enrollments.filter { it.status == "PENDING" || it.status == "ACTIVE" }
         if (revocable.isNotEmpty()) {
             Text("Your attendance device enrollments")
             Text("Revoke a lost or suspected-compromised device. This is permanent for that enrollment and does not alter recorded work time.")
@@ -763,7 +768,7 @@ private fun WorkforceDeviceTrust(
         }
     }
     revokeCandidateId?.let { enrollmentId ->
-        val labelForCandidate = state.enrollments.firstOrNull { it.id == enrollmentId }?.deviceLabel ?: "this device"
+        val labelForCandidate = trustedState.enrollments.firstOrNull { it.id == enrollmentId }?.deviceLabel ?: "this device"
         AlertDialog(
             onDismissRequest = { revokeCandidateId = null },
             title = { Text("Revoke trusted device?") },
