@@ -23700,6 +23700,70 @@
     "startedAt": "Started {time}",
     "notStarted": "Not started",
     "noPeople": "No active employees are available in this scope.",
+    "employeeTodayTitle": "Your workday, {name}",
+    "employeeCurrentState": "Current state",
+    "employeePlannedWindow": "Planned {start}–{end} · {timezone}",
+    "employeeAssignmentTitle": "Today’s assignment",
+    "employeeAssignmentHint": "This is the Workforce schedule for today. Route stops are managed separately.",
+    "employeeAssignmentState": {
+      "ASSIGNED": "Today’s assignment is available.",
+      "NON_WORKING_DAY": "No attendance is expected today.",
+      "UNAVAILABLE": "No published assignment is available for today."
+    },
+    "employeeSegmentMode": {
+      "SITE": "Office or branch",
+      "REMOTE": "Remote work",
+      "FIELD": "Field work",
+      "TRAVEL": "Travel between sites",
+      "EXCEPTION": "Reviewed exception",
+      "ON_CALL": "On-call (not released)"
+    },
+    "employeeSegmentTransition": {
+      "NOT_RECORDED": "No claim yet",
+      "ARRIVED": "Arrival recorded",
+      "DEPARTED": "Completed",
+      "PENDING_REVIEW": "Needs review"
+    },
+    "employeeSegmentClaims": "Arrival {arrival} · departure {departure}",
+    "employeeSegmentBoundary": "Arrival and departure are server-recorded claims, not proof of continuous physical presence.",
+    "employeeAction": {
+      "START": "Start workday",
+      "PAUSE": "Start pause",
+      "RESUME": "Resume workday",
+      "FINISH": "Finish workday"
+    },
+    "employeeActionBlocked": {
+      "PREVIOUS_WORKDAY_OPEN": "A previous workday is still open. Request a reviewed correction before starting another day.",
+      "NON_WORKING_DAY": "The published calendar does not expect attendance today.",
+      "ASSIGNMENT_UNAVAILABLE": "A published schedule is required before this workday can start.",
+      "WEB_PROOF_REQUIRED": "This action requires attendance proof that the browser cannot safely produce. Use the approved mobile flow or submit a reviewed request.",
+      "POLICY_UNAVAILABLE": "The effective attendance policy cannot be verified. No action was sent.",
+      "WORKDAY_COMPLETED": "Today’s workday is complete."
+    },
+    "employeeEvidenceTitle": "Evidence for the next action",
+    "employeeEvidenceRequired": "Required: {methods}.",
+    "employeeEvidenceState": {
+      "NOT_REQUIRED": "No QR, trusted-device or biometric proof is required for the next browser action.",
+      "REQUIRED": "Additional attendance proof is required.",
+      "UNAVAILABLE": "The evidence policy cannot be verified."
+    },
+    "employeeEvidenceMethod": {
+      "QR": "current workplace QR",
+      "TRUSTED_DEVICE": "trusted device signature",
+      "LOCAL_BIOMETRIC": "local device authentication"
+    },
+    "employeeRecoveryRequest": "Request a reviewed correction",
+    "employeeActionApplied": "The server applied the workday action.",
+    "employeeActionPendingReview": "The server saved the action for human review.",
+    "employeeActionConflict": "The workday changed before this action. Current state will be refreshed.",
+    "employeeActionFailed": "The workday action was not applied.",
+    "employeeServerOutcome": {
+      "SENDING": "Sending to the server…",
+      "APPLIED": "Confirmed by the server",
+      "PENDING_REVIEW": "Saved by the server · pending human review",
+      "CONFLICT": "State changed · refresh required",
+      "LEGACY_APPLIED": "Recorded by the server · historical assurance unknown"
+    },
     "recordedTime": "Recorded time",
     "totalRecorded": "{duration} across {count} workdays",
     "employee": "Employee",
