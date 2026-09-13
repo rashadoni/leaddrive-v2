@@ -41,15 +41,22 @@ class EnvironmentTests(unittest.TestCase):
             self.assertIn(f"{key}={value}\n".encode(), rewritten)
 
     def test_rewrite_rejects_duplicate_target(self) -> None:
-        with self.assertRaises(MAINTENANCE.MaintenanceError):
+        with self.assertRaises(MAINTENANCE.MaintenanceError) as raised:
             MAINTENANCE.rewrite_environment(
                 b"VERIFY_PGHOST=first\nVERIFY_PGHOST=second\n",
                 MAINTENANCE.TARGET_ENV,
             )
+        self.assertEqual(raised.exception.code, "configuration-rewrite")
 
     def test_environment_reader_rejects_duplicate_assignments(self) -> None:
-        with self.assertRaises(MAINTENANCE.MaintenanceError):
+        with self.assertRaises(MAINTENANCE.MaintenanceError) as raised:
             MAINTENANCE._parse_environment(b"PGHOST=one\nPGHOST=two\n")
+        self.assertEqual(raised.exception.code, "configuration-env-duplicate")
+
+    def test_environment_reader_rejects_invalid_utf8_safely(self) -> None:
+        with self.assertRaises(MAINTENANCE.MaintenanceError) as raised:
+            MAINTENANCE._parse_environment(b"PGHOST=source\xff\n")
+        self.assertEqual(raised.exception.code, "configuration-env-encoding")
 
     def test_source_endpoint_cannot_use_scratch_port(self) -> None:
         with self.assertRaises(MAINTENANCE.MaintenanceError) as raised:
