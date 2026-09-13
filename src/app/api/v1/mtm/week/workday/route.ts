@@ -32,6 +32,10 @@ import {
   workforceAuditRequestMetadata,
   writeWorkforceWorkdayAuditInTransaction,
 } from "@/lib/workforce/workday-audit"
+import {
+  workforceAndroidMutationReleaseBlock,
+  WORKFORCE_ANDROID_VERSION_CODE_HEADER,
+} from "@/lib/workforce/mobile-release-policy"
 
 const MAX_WEB_WORKDAY_EVENT_AGE_MS = 5 * 60 * 1000
 
@@ -223,6 +227,23 @@ export const POST = withWorkforceCompatAuth("write", async (req, auth) => {
       organizationId: auth.orgId,
       agentId: actor.agentId,
     }) ? responseForReplay(existing) : replayMismatch(existing)
+  }
+
+  // Keep exact stored replays available above for outbox reconciliation, but
+  // reject every new mobile mutation once an accountable minimum app version
+  // has been configured. Browser fallback remains independent of Android.
+  if (auth.principal === "mobile") {
+    const releaseBlock = workforceAndroidMutationReleaseBlock({
+      workforceEnabled: true,
+      clientVersionCode: req.headers.get(WORKFORCE_ANDROID_VERSION_CODE_HEADER),
+    })
+    if (releaseBlock) {
+      return NextResponse.json({
+        error: releaseBlock.message,
+        code: releaseBlock.code,
+        release: releaseBlock.release,
+      }, { status: releaseBlock.httpStatus })
+    }
   }
 
   // This endpoint is an online web transport. Offline/mobile events have a

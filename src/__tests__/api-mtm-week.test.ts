@@ -1178,6 +1178,56 @@ describe("POST /api/v1/mtm/week/workday", () => {
     expect(prisma.mtmAgentWorkdayEvent.create).not.toHaveBeenCalled()
   })
 
+  it("rejects a new workday mutation from an expired mobile version without changing state", async () => {
+    const mobileAuth = {
+      orgId: ORG,
+      agentId: "agent-1",
+      userId: "agent-user",
+      role: "AGENT",
+      email: "agent@example.test",
+      name: "Agent",
+      tenantCapabilities: { routeField: false, workforceHrm: true },
+    }
+    vi.mocked(getMobileAuth).mockReturnValue(mobileAuth as never)
+    vi.mocked(resolveMobileAuth).mockResolvedValue(mobileAuth as never)
+    vi.mocked(resolveMtmRouteActor).mockResolvedValue({
+      agentId: "agent-1",
+      role: "AGENT",
+      scopedAgentIds: ["agent-1"],
+    } as never)
+    vi.stubEnv("WORKFORCE_ANDROID_MIN_VERSION_CODE", "100")
+    vi.stubEnv("WORKFORCE_ANDROID_RECOMMENDED_VERSION_CODE", "120")
+    try {
+      const response = await POST_WORKDAY(workdayRequest({
+        clientEventId: "event-expired-mobile",
+        action: "START",
+        id: "workday-expired-mobile",
+        occurredAt: "2026-07-15T08:00:00.000Z",
+      }, {
+        authorization: "Bearer mobile-token",
+        "x-field-device-id": "device-expired",
+        "x-workforce-app-version-code": "99",
+      }))
+
+      expect(response.status).toBe(426)
+      await expect(response.json()).resolves.toMatchObject({
+        code: "WORKFORCE_ANDROID_UPDATE_REQUIRED",
+        release: {
+          status: "UPDATE_REQUIRED",
+          minimumVersionCode: 100,
+          recommendedVersionCode: 120,
+          maySubmitNewWorkforceActions: false,
+          recovery: "DRAIN_THEN_UPDATE",
+        },
+      })
+      expect(prisma.$transaction).not.toHaveBeenCalled()
+      expect(prisma.mtmAgentWorkday.create).not.toHaveBeenCalled()
+      expect(prisma.mtmAgentWorkdayEvent.create).not.toHaveBeenCalled()
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
+
   it("does not send a browser Workforce request through the mobile device fence", async () => {
     vi.mocked(resolveMtmRouteActor).mockResolvedValue({
       agentId: "agent-1",
