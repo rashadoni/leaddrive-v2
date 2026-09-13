@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest"
-import { workforceEmployeeTodayProjection } from "@/lib/workforce/employee-today"
+import {
+  workforceEmployeeSegmentTransition,
+  workforceEmployeeTodayProjection,
+} from "@/lib/workforce/employee-today"
 
 const assignment = {
   state: "ASSIGNED" as const,
@@ -7,7 +10,14 @@ const assignment = {
   timezone: "Asia/Baku",
   plannedStartAt: "2026-09-14T05:00:00.000Z",
   plannedEndAt: "2026-09-14T14:00:00.000Z",
-  segments: [{ sequence: 1, mode: "SITE", startTime: "09:00", endTime: "18:00", siteName: "Baku HQ" }],
+  segments: [{
+    sequence: 1,
+    mode: "SITE",
+    startTime: "09:00",
+    endTime: "18:00",
+    siteName: "Baku HQ",
+    transition: { state: "NOT_RECORDED" as const, arrivalAt: null, departureAt: null },
+  }],
 }
 
 function project(overrides: Partial<Parameters<typeof workforceEmployeeTodayProjection>[0]> = {}) {
@@ -25,6 +35,38 @@ function project(overrides: Partial<Parameters<typeof workforceEmployeeTodayProj
 }
 
 describe("employee Workforce Today projection", () => {
+  it("summarizes append-only segment claims without claiming physical presence", () => {
+    const arrival = {
+      segmentId: "segment-a",
+      kind: "ARRIVAL" as const,
+      claimedAt: new Date("2026-09-14T05:01:00.000Z"),
+      attendanceReviewState: "NOT_REQUIRED" as const,
+    }
+    expect(workforceEmployeeSegmentTransition("segment-a", [arrival])).toEqual({
+      state: "ARRIVED",
+      arrivalAt: "2026-09-14T05:01:00.000Z",
+      departureAt: null,
+    })
+    expect(workforceEmployeeSegmentTransition("segment-a", [
+      arrival,
+      {
+        segmentId: "segment-a",
+        kind: "DEPARTURE",
+        claimedAt: new Date("2026-09-14T09:00:00.000Z"),
+        attendanceReviewState: "PENDING_REVIEW",
+      },
+    ])).toEqual({
+      state: "PENDING_REVIEW",
+      arrivalAt: "2026-09-14T05:01:00.000Z",
+      departureAt: "2026-09-14T09:00:00.000Z",
+    })
+    expect(workforceEmployeeSegmentTransition("segment-b", [arrival])).toEqual({
+      state: "NOT_RECORDED",
+      arrivalAt: null,
+      departureAt: null,
+    })
+  })
+
   it("offers exactly one server-valid START for an assigned ordinary day", () => {
     const result = project()
     expect(result.action).toEqual({

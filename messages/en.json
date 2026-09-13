@@ -23718,6 +23718,14 @@
       "EXCEPTION": "Reviewed exception",
       "ON_CALL": "On-call (not released)"
     },
+    "employeeSegmentTransition": {
+      "NOT_RECORDED": "No claim yet",
+      "ARRIVED": "Arrival recorded",
+      "DEPARTED": "Completed",
+      "PENDING_REVIEW": "Needs review"
+    },
+    "employeeSegmentClaims": "Arrival {arrival} · departure {departure}",
+    "employeeSegmentBoundary": "Arrival and departure are server-recorded claims, not proof of continuous physical presence.",
     "employeeAction": {
       "START": "Start workday",
       "PAUSE": "Start pause",

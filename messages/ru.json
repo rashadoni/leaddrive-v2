@@ -23718,6 +23718,14 @@
       "EXCEPTION": "Рассматриваемое исключение",
       "ON_CALL": "Дежурство (ещё не выпущено)"
     },
+    "employeeSegmentTransition": {
+      "NOT_RECORDED": "Отметки ещё нет",
+      "ARRIVED": "Прибытие записано",
+      "DEPARTED": "Завершено",
+      "PENDING_REVIEW": "Нужна проверка"
+    },
+    "employeeSegmentClaims": "Прибытие {arrival} · убытие {departure}",
+    "employeeSegmentBoundary": "Прибытие и убытие — записанные сервером отметки, а не доказательство непрерывного физического присутствия.",
     "employeeAction": {
       "START": "Начать рабочий день",
       "PAUSE": "Начать перерыв",

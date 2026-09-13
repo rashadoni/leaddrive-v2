@@ -50,6 +50,11 @@ type TodayData = {
         startTime: string
         endTime: string
         siteName: string | null
+        transition: {
+          state: "NOT_RECORDED" | "ARRIVED" | "DEPARTED" | "PENDING_REVIEW"
+          arrivalAt: string | null
+          departureAt: string | null
+        }
       }>
     }
     evidence: {
@@ -873,12 +878,22 @@ function TodayView({ data, t, formatter, locale, submittingWorkday, workdayOutco
             {today.assignment.segments.map((segment) => <div key={`${segment.sequence}-${segment.startTime}`} className="grid grid-cols-[3.25rem_minmax(0,1fr)] gap-3">
               <p className="text-sm font-medium tabular-nums">{segment.startTime}</p>
               <div>
-                <p className="text-sm font-medium">{segment.siteName ?? t(`employeeSegmentMode.${segment.mode}`)}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-medium">{segment.siteName ?? t(`employeeSegmentMode.${segment.mode}`)}</p>
+                  <Badge variant={segment.transition.state === "PENDING_REVIEW" ? "warning" : segment.transition.state === "DEPARTED" ? "success" : "secondary"}>
+                    {t(`employeeSegmentTransition.${segment.transition.state}`)}
+                  </Badge>
+                </div>
                 <p className="mt-0.5 inline-flex items-center gap-1.5 text-xs text-muted-foreground"><MapPin className="h-3.5 w-3.5" />{t(`employeeSegmentMode.${segment.mode}`)} · {segment.startTime}–{segment.endTime}</p>
+                {segment.transition.arrivalAt || segment.transition.departureAt ? <p className="mt-1 text-xs text-muted-foreground">{t("employeeSegmentClaims", {
+                  arrival: segment.transition.arrivalAt ? timeFormatter.format(new Date(segment.transition.arrivalAt)) : "—",
+                  departure: segment.transition.departureAt ? timeFormatter.format(new Date(segment.transition.departureAt)) : "—",
+                })}</p> : null}
               </div>
             </div>)}
             {today.assignment.segments.length === 0 ? <p className="text-sm text-muted-foreground">{t(`employeeAssignmentState.${today.assignment.state}`)}</p> : null}
           </div>
+          {today.assignment.segments.length > 0 ? <p className="mt-5 text-xs leading-5 text-muted-foreground">{t("employeeSegmentBoundary")}</p> : null}
           <div className="mt-7 border-t border-zinc-200 pt-5 dark:border-zinc-700">
             <p className="text-sm font-medium">{t("employeeEvidenceTitle")}</p>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">

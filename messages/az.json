@@ -23714,6 +23714,14 @@
       "EXCEPTION": "Yoxlanılan istisna",
       "ON_CALL": "Növbətçilik (hələ buraxılmayıb)"
     },
+    "employeeSegmentTransition": {
+      "NOT_RECORDED": "Hələ qeyd yoxdur",
+      "ARRIVED": "Gəliş qeydə alınıb",
+      "DEPARTED": "Tamamlanıb",
+      "PENDING_REVIEW": "Yoxlanmalıdır"
+    },
+    "employeeSegmentClaims": "Gəliş {arrival} · çıxış {departure}",
+    "employeeSegmentBoundary": "Gəliş və çıxış serverdə qeydə alınan iddialardır, fasiləsiz fiziki iştirak sübutu deyil.",
     "employeeAction": {
       "START": "İş gününə başla",
       "PAUSE": "Fasiləyə başla",

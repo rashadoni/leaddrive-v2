@@ -23,6 +23,11 @@ export type WorkforceEmployeeTodaySegment = {
   startTime: string
   endTime: string
   siteName: string | null
+  transition: {
+    state: "NOT_RECORDED" | "ARRIVED" | "DEPARTED" | "PENDING_REVIEW"
+    arrivalAt: string | null
+    departureAt: string | null
+  }
 }
 
 export type WorkforceEmployeeTodayAssignment = {
@@ -80,6 +85,7 @@ type EmployeeTodayDb = Pick<
   | "workforceShiftTemplate"
   | "workforceShiftSnapshot"
   | "workforceShiftSegment"
+  | "workforceSiteTransition"
   | "workforceWorkdayScheduleSnapshot"
 >
 
@@ -100,13 +106,39 @@ type LoadedAssignment = {
   policyUnavailable: boolean
 }
 
+type EmployeeTodayTransition = {
+  segmentId: string
+  kind: "ARRIVAL" | "DEPARTURE"
+  claimedAt: Date
+  attendanceReviewState: "LEGACY_UNKNOWN" | "NOT_REQUIRED" | "PENDING_REVIEW"
+}
+
 function record(value: unknown): Record<string, unknown> | null {
   return value != null && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>
     : null
 }
 
-function snapshotSegments(segments: unknown, sites: unknown): WorkforceEmployeeTodaySegment[] {
+export function workforceEmployeeSegmentTransition(
+  segmentId: string,
+  transitions: readonly EmployeeTodayTransition[],
+): WorkforceEmployeeTodaySegment["transition"] {
+  const arrival = transitions.find((transition) => transition.segmentId === segmentId && transition.kind === "ARRIVAL")
+  const departure = transitions.find((transition) => transition.segmentId === segmentId && transition.kind === "DEPARTURE")
+  const pendingReview = arrival?.attendanceReviewState === "PENDING_REVIEW"
+    || departure?.attendanceReviewState === "PENDING_REVIEW"
+  return {
+    state: pendingReview ? "PENDING_REVIEW" : departure ? "DEPARTED" : arrival ? "ARRIVED" : "NOT_RECORDED",
+    arrivalAt: arrival?.claimedAt.toISOString() ?? null,
+    departureAt: departure?.claimedAt.toISOString() ?? null,
+  }
+}
+
+function snapshotSegments(
+  segments: unknown,
+  sites: unknown,
+  transitions: readonly EmployeeTodayTransition[],
+): WorkforceEmployeeTodaySegment[] {
   if (!Array.isArray(segments)) return []
   const siteNames = new Map<string, string>()
   if (Array.isArray(sites)) {
@@ -131,6 +163,9 @@ function snapshotSegments(segments: unknown, sites: unknown): WorkforceEmployeeT
       startTime: segment.startTime,
       endTime: segment.endTime,
       siteName: typeof segment.siteId === "string" ? siteNames.get(segment.siteId) ?? null : null,
+      transition: typeof segment.id === "string"
+        ? workforceEmployeeSegmentTransition(segment.id, transitions)
+        : { state: "NOT_RECORDED", arrivalAt: null, departureAt: null },
     }]
   }).sort((left, right) => left.sequence - right.sequence)
 }
@@ -206,7 +241,7 @@ async function activeAssignment(
   db: EmployeeTodayDb,
   input: { organizationId: string; agentId: string; workday: EmployeeTodayWorkday; timezone: string; now: Date },
 ): Promise<LoadedAssignment> {
-  const [shift, schedule, policy] = await Promise.all([
+  const [shift, schedule, policy, transitions] = await Promise.all([
     db.workforceShiftSnapshot.findFirst({
       where: {
         organizationId: input.organizationId,
@@ -235,6 +270,20 @@ async function activeAssignment(
         workdayId: input.workday.id,
       },
       select: { definition: true },
+    }),
+    db.workforceSiteTransition.findMany({
+      where: {
+        organizationId: input.organizationId,
+        agentId: input.agentId,
+        workdayId: input.workday.id,
+      },
+      orderBy: [{ claimedAt: "asc" }, { id: "asc" }],
+      select: {
+        segmentId: true,
+        kind: true,
+        claimedAt: true,
+        attendanceReviewState: true,
+      },
     }),
   ])
   let policyDefinition: unknown | null = policy?.definition ?? null
@@ -275,7 +324,7 @@ async function activeAssignment(
       timezone: shift.timezone,
       plannedStartAt: shift.plannedStartAt.toISOString(),
       plannedEndAt: shift.plannedEndAt.toISOString(),
-      segments: snapshotSegments(schedule.segments, schedule.sites),
+      segments: snapshotSegments(schedule.segments, schedule.sites, transitions),
     },
     policyDefinition,
     policyUnavailable,
@@ -348,6 +397,11 @@ async function plannedAssignment(
           startTime: segment.startTime,
           endTime: segment.endTime,
           siteName: segment.site?.name ?? null,
+          transition: {
+            state: "NOT_RECORDED",
+            arrivalAt: null,
+            departureAt: null,
+          },
         })),
       },
       policyDefinition,
