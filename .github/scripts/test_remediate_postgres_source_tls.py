@@ -358,10 +358,12 @@ class DecisionTests(unittest.TestCase):
         )
 
     @mock.patch.object(MAINTENANCE.grp, "getgrnam")
+    @mock.patch.object(MAINTENANCE.pwd, "getpwnam")
     @mock.patch.object(MAINTENANCE, "_read_regular_file")
     def test_pgpass_must_match_new_certificate_identity(
-        self, read_file: mock.Mock, get_group: mock.Mock
+        self, read_file: mock.Mock, get_user: mock.Mock, get_group: mock.Mock
     ) -> None:
+        get_user.return_value.pw_uid = 990
         get_group.return_value.gr_gid = 991
         read_file.return_value = (
             b"production.example.internal:5432:database_name:backup_user:secret\n",
@@ -380,6 +382,30 @@ class DecisionTests(unittest.TestCase):
         with self.assertRaises(MAINTENANCE.SafeMaintenanceError) as raised:
             MAINTENANCE._require_pgpass_match(config, "different.example.internal", 5432)
         self.assertEqual(raised.exception.code, "pgpass-match")
+
+    @mock.patch.object(MAINTENANCE.grp, "getgrnam")
+    @mock.patch.object(MAINTENANCE.pwd, "getpwnam")
+    @mock.patch.object(MAINTENANCE, "_read_regular_file")
+    def test_pgpass_accepts_private_service_user_authority(
+        self,
+        read_file: mock.Mock,
+        get_user: mock.Mock,
+        get_group: mock.Mock,
+    ) -> None:
+        get_user.return_value.pw_uid = 990
+        get_group.return_value.gr_gid = 991
+        read_file.return_value = (
+            b"production.example.internal:5432:database_name:backup_user:secret\n",
+            MAINTENANCE.FileAuthority(uid=990, gid=991, mode=0o600),
+        )
+        config = {
+            "PGPASSFILE": str(MAINTENANCE.PGPASS_PATH),
+            "PGDATABASE": "database_name",
+            "PGUSER": "backup_user",
+        }
+        MAINTENANCE._require_pgpass_match(
+            config, "production.example.internal", 5432
+        )
 
     def test_pgpass_requires_canonical_path_without_exposing_it(self) -> None:
         config = {
