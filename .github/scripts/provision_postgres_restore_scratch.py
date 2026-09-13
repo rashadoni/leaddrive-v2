@@ -39,6 +39,7 @@ SCRATCH_HOST = "127.0.0.1"
 SCRATCH_PORT = 55432
 SCRATCH_ROLE = "leaddrive_restore_verifier"
 SCRATCH_DATABASE = "postgres"
+SCRATCH_SOCKET_DIR = "/var/run/postgresql"
 
 ENV_PATH = Path("/etc/leaddrive/backup.env")
 SOURCE_CA_PATH = Path("/etc/leaddrive/managed-postgres-ca.crt")
@@ -96,6 +97,7 @@ class MaintenanceError(Exception):
             "configuration-ca-file",
             "configuration-rewrite",
             "source",
+            "source-role-present",
             "port",
             "snapshot",
             "cluster-create",
@@ -535,7 +537,7 @@ def _require_storage_capacity() -> None:
         raise MaintenanceError("prerequisite")
 
 
-def _source_system_identifier(config: dict[str, str]) -> str:
+def _source_environment(config: dict[str, str]) -> dict[str, str]:
     required = ("PGHOST", "PGDATABASE", "PGUSER", "PGPASSFILE")
     if any(not config.get(key) for key in required):
         raise MaintenanceError("source")
@@ -556,6 +558,11 @@ def _source_system_identifier(config: dict[str, str]) -> str:
     for key in ("PGHOSTADDR", "PGSSLROOTCERT"):
         if config.get(key):
             environment[key] = config[key]
+    return environment
+
+
+def _source_system_identifier(config: dict[str, str]) -> str:
+    environment = _source_environment(config)
     output = _run(
         [_command("psql"), "-X", "-v", "ON_ERROR_STOP=1", "-At", "-c", "SELECT (pg_control_system()).system_identifier::text"],
         capture=True,
@@ -565,6 +572,25 @@ def _source_system_identifier(config: dict[str, str]) -> str:
     if not re.fullmatch(r"[0-9]{1,20}", output):
         raise MaintenanceError("source")
     return output
+
+
+def _require_source_role_absent(config: dict[str, str]) -> None:
+    output = _run(
+        [
+            _command("psql"),
+            "-X",
+            "-v",
+            "ON_ERROR_STOP=1",
+            "-At",
+            "-c",
+            f"SELECT count(*)::text FROM pg_roles WHERE rolname = '{SCRATCH_ROLE}'",
+        ],
+        capture=True,
+        env=_source_environment(config),
+        code="source",
+    ).decode("ascii", errors="strict").strip()
+    if output != "0":
+        raise MaintenanceError("source-role-present")
 
 
 def _create_certificates(temp_dir: Path, postgres_uid: int, postgres_gid: int, backup_gid: int) -> None:
@@ -771,15 +797,43 @@ def _stop_cluster(code: str = "cluster-stop") -> None:
     _run([_command("pg_ctlcluster"), PG_VERSION, CLUSTER_NAME, "stop"], code=code)
 
 
-def _create_role(password: str) -> None:
+def _create_role(password: str, source_identifier: str) -> None:
     if not re.fullmatch(r"[A-Za-z0-9_-]{40,100}", password):
         raise MaintenanceError("role-create")
+    if not re.fullmatch(r"[0-9]{1,20}", source_identifier):
+        raise MaintenanceError("role-create")
     sql = (
+        "BEGIN;\n"
+        "DO $leaddrive$\n"
+        "BEGIN\n"
+        f"  IF current_setting('port') <> '{SCRATCH_PORT}'\n"
+        "     OR (SELECT system_identifier::text FROM pg_control_system()) "
+        f"= '{source_identifier}' THEN\n"
+        "    RAISE EXCEPTION 'scratch target identity rejected';\n"
+        "  END IF;\n"
+        "END\n"
+        "$leaddrive$;\n"
         f"CREATE ROLE {SCRATCH_ROLE} LOGIN NOSUPERUSER NOINHERIT CREATEDB "
         f"NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD '{password}';\n"
+        "COMMIT;\n"
     ).encode("ascii")
     _run(
-        [_command("runuser"), "-u", "postgres", "--", _command("psql"), "-X", "-v", "ON_ERROR_STOP=1", "-d", SCRATCH_DATABASE],
+        [
+            _command("runuser"),
+            "-u",
+            "postgres",
+            "--",
+            _command("psql"),
+            "-X",
+            "-v",
+            "ON_ERROR_STOP=1",
+            "-h",
+            SCRATCH_SOCKET_DIR,
+            "-p",
+            str(SCRATCH_PORT),
+            "-d",
+            SCRATCH_DATABASE,
+        ],
         input_bytes=sql,
         code="role-create",
     )
@@ -947,6 +1001,7 @@ def apply() -> None:
         raise MaintenanceError("configuration-env-file")
     config = _parse_environment(env_payload)
     source_identifier = _source_system_identifier(config)
+    _require_source_role_absent(config)
     source_before = _cluster_lines()
     pgpass_payload, pgpass_state = _read_file(
         SCRATCH_PGPASS_PATH, maximum=MAX_SMALL_FILE_BYTES, required=False
@@ -1004,7 +1059,7 @@ def apply() -> None:
             gid=env_state.gid,
         )
         _start_cluster()
-        _create_role(password)
+        _create_role(password, source_identifier)
         _verify_scratch(source_identifier)
         _stop_cluster()
         _require_port_free()
