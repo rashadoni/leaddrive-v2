@@ -23761,6 +23761,31 @@
     "timesheetApprovalAlreadyRecorded": "Это неизменяемое утверждение уже зафиксировано.",
     "timesheetCorrectionRecorded": "Корректирующая редакция утверждения зафиксирована.",
     "timesheetApprovalFailed": "Не удалось зафиксировать неизменяемое утверждение.",
+    "timesheetApprovalBlockingRows": "Разрешите эти записи перед утверждением",
+    "timesheetApprovalBlocker": {
+      "WORKDAY_NOT_FINAL": "Рабочий день не завершён",
+      "SNAPSHOT_MISSING": "Нет неизменяемого снимка политики или смены",
+      "HISTORY_INVALID": "Неизменяемая история рабочего дня не воспроизводится",
+      "UNRESOLVED_EXCEPTION": "Отклонение учёта времени ещё не разрешено"
+    },
+    "timesheetApprovalException": {
+      "LATE_START": "Опоздание",
+      "UNDERTIME": "Недоработка",
+      "OVERTIME": "Операционное отклонение по сверхурочным",
+      "LONG_PAUSE": "Длительный перерыв",
+      "NO_SHOW": "Проверка неявки",
+      "MISSED_FINISH": "Не отмечено завершение дня",
+      "DELAYED_CLAIM": "Запоздалая отметка посещаемости",
+      "SITE_TRANSITION_REVIEW": "Проверка перехода между площадками",
+      "DEVICE_SECURITY_REVIEW": "Проверка безопасности устройства",
+      "ATTENDANCE_PROOF_REVIEW": "Проверка подтверждения присутствия"
+    },
+    "timesheetApprovalStage": {
+      "OPEN": "Открыто",
+      "AWAITING_EMPLOYEE_RESPONSE": "Ожидается ответ сотрудника",
+      "HR_REVIEW": "Проверка отдела кадров",
+      "DATA_INTEGRITY_REVIEW": "Проверка целостности данных"
+    },
     "timesheetApprovalStatus": "Зафиксирована редакция утверждения {revision}.",
     "timesheetCorrectionStatus": "Зафиксирована корректирующая редакция {revision}.",
     "status": {

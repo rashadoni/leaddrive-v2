@@ -101,8 +101,20 @@ function caseLockKey(draft: WorkforceExceptionCaseDraft): string {
   return `workforce-exception-case:${draft.organizationId}:${draft.deduplicationKey}`
 }
 
-function decisionLockKey(draft: WorkforceExceptionDecisionDraft): string {
-  return `workforce-exception-decision:${draft.organizationId}:${draft.caseId}`
+function decisionLockKey(scope: { organizationId: string; caseId: string }): string {
+  return `workforce-exception-decision:${scope.organizationId}:${scope.caseId}`
+}
+
+/**
+ * Shared transaction fence for one immutable C6 decision stream. Approval
+ * readers use the same key before their final lifecycle read, so a concurrent
+ * resolution/reopen cannot commit between that read and the approval write.
+ */
+export async function lockWorkforceExceptionDecisionStream(
+  db: { $executeRaw: (query: TemplateStringsArray, ...values: readonly unknown[]) => PromiseLike<unknown> },
+  scope: { organizationId: string; caseId: string },
+): Promise<void> {
+  await db.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${decisionLockKey(scope)}))`
 }
 
 function sameCase(left: WorkforceExceptionCaseDraft, right: WorkforceExceptionCaseDraft): boolean {
@@ -261,7 +273,7 @@ export async function appendAuthorizedWorkforceExceptionDecision(input: {
     caseId: canonical.caseId,
     actorUserId: canonical.actorUserId,
   })
-  await input.db.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${decisionLockKey(canonical)}))`
+  await lockWorkforceExceptionDecisionStream(input.db, canonical)
   const exceptionCase = await input.db.workforceExceptionCaseLookup.findFirst({
     where: { id: canonical.caseId, organizationId: canonical.organizationId },
     select: { id: true },
@@ -333,7 +345,7 @@ export async function appendAuthorizedPolicyWorkforceExceptionDecision(input: {
     caseId: basic.caseId,
     actorUserId: basic.actorUserId,
   })
-  await input.db.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${decisionLockKey(basic)}))`
+  await lockWorkforceExceptionDecisionStream(input.db, basic)
   const exceptionCase = await input.db.workforceExceptionCaseLookup.findFirst({
     where: { id: basic.caseId, organizationId: basic.organizationId },
     select: { id: true },

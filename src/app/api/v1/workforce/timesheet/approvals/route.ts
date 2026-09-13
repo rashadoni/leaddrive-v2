@@ -3,13 +3,18 @@ import { clientIp } from "@/lib/request-ip"
 import { prisma } from "@/lib/prisma"
 import { withWorkforceSessionAuth } from "@/lib/with-workforce-rls-auth"
 import { resolveWorkforceActor } from "@/lib/workforce/actor"
+import { workforceSensitiveResponseHeaders } from "@/lib/workforce/sensitive-response"
 import {
   approveWorkforceTimesheet,
   WorkforceTimesheetApprovalRequestSchema,
 } from "@/lib/workforce/timesheet-approval-service"
 
 function workforceScopeDenied() {
-  return NextResponse.json({ error: "Forbidden", code: "WORKFORCE_SCOPE_DENIED" }, { status: 403 })
+  return approvalJson({ error: "Forbidden", code: "WORKFORCE_SCOPE_DENIED" }, 403)
+}
+
+function approvalJson(body: unknown, status: number) {
+  return NextResponse.json(body, { status, headers: workforceSensitiveResponseHeaders })
 }
 
 function requestAuditContext(req: NextRequest) {
@@ -37,7 +42,7 @@ export const POST = withWorkforceSessionAuth("write", async (req: NextRequest, a
 
   const parsed = WorkforceTimesheetApprovalRequestSchema.safeParse(await req.json().catch(() => ({})))
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid timesheet approval" }, { status: 400 })
+    return approvalJson({ error: parsed.error.issues[0]?.message ?? "Invalid timesheet approval" }, 400)
   }
 
   try {
@@ -48,14 +53,20 @@ export const POST = withWorkforceSessionAuth("write", async (req: NextRequest, a
       input: parsed.data,
       audit: requestAuditContext(req),
     })
-    if (result.kind === "not_found") return NextResponse.json({ error: "Not found" }, { status: 404 })
+    if (result.kind === "not_found") return approvalJson({ error: "Not found" }, 404)
     if (result.kind === "forbidden") return workforceScopeDenied()
     if (result.kind === "conflict") {
-      return NextResponse.json({ error: result.message, code: result.code }, { status: 409 })
+      return approvalJson({
+        error: result.message,
+        code: result.code,
+        ...(result.blockers?.length ? { blockers: result.blockers } : {}),
+      }, 409)
     }
-    return NextResponse.json({ success: true, idempotent: result.idempotent, data: result.data }, { status: 201 })
+    return approvalJson({ success: true, idempotent: result.idempotent, data: result.data }, 201)
   } catch (error) {
-    console.error("[workforce/timesheet approvals POST]", error)
-    return NextResponse.json({ error: "Failed to approve Workforce timesheet" }, { status: 500 })
+    console.error("[workforce/timesheet approvals POST]", {
+      name: error instanceof Error ? error.name : "UnknownError",
+    })
+    return approvalJson({ error: "Failed to approve Workforce timesheet" }, 500)
   }
 })

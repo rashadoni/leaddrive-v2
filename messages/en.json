@@ -23761,6 +23761,31 @@
     "timesheetApprovalAlreadyRecorded": "This immutable approval was already recorded.",
     "timesheetCorrectionRecorded": "Correcting approval revision recorded.",
     "timesheetApprovalFailed": "Could not record the immutable approval.",
+    "timesheetApprovalBlockingRows": "Resolve these recorded rows before approval",
+    "timesheetApprovalBlocker": {
+      "WORKDAY_NOT_FINAL": "Workday is not completed",
+      "SNAPSHOT_MISSING": "Immutable policy or shift snapshot is missing",
+      "HISTORY_INVALID": "Immutable workday history cannot be reproduced",
+      "UNRESOLVED_EXCEPTION": "Attendance exception is still unresolved"
+    },
+    "timesheetApprovalException": {
+      "LATE_START": "Late start",
+      "UNDERTIME": "Undertime",
+      "OVERTIME": "Operational overtime deviation",
+      "LONG_PAUSE": "Long pause",
+      "NO_SHOW": "No-show review",
+      "MISSED_FINISH": "Missed finish",
+      "DELAYED_CLAIM": "Delayed attendance claim",
+      "SITE_TRANSITION_REVIEW": "Site transition review",
+      "DEVICE_SECURITY_REVIEW": "Device security review",
+      "ATTENDANCE_PROOF_REVIEW": "Attendance proof review"
+    },
+    "timesheetApprovalStage": {
+      "OPEN": "Open",
+      "AWAITING_EMPLOYEE_RESPONSE": "Awaiting employee response",
+      "HR_REVIEW": "HR review",
+      "DATA_INTEGRITY_REVIEW": "Data integrity review"
+    },
     "timesheetApprovalStatus": "Approval revision {revision} is recorded.",
     "timesheetCorrectionStatus": "Correcting revision {revision} is recorded.",
     "status": {
