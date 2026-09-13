@@ -54,6 +54,27 @@ describe("workforce timesheet calculation", () => {
     expect(result.exceptions).toEqual([])
   })
 
+  it("requires the approved lunch to be recorded instead of silently deducting planned metadata", () => {
+    const withoutRecordedPause = calculateWorkforceTimesheetDay({
+      ...base,
+      facts: {
+        ...base.facts!,
+        pauseIntervals: [],
+      },
+    })
+
+    expect(withoutRecordedPause.fact.workedSeconds).toBe(9 * 60 * 60)
+    expect(withoutRecordedPause.fact.pausedSeconds).toBe(0)
+    expect(withoutRecordedPause.deviations.overtimeSeconds).toBe(60 * 60)
+    expect(withoutRecordedPause.exceptions).toContainEqual({
+      type: "OVERTIME",
+      valueSeconds: 60 * 60,
+      thresholdSeconds: 15 * 60,
+      excessSeconds: 45 * 60,
+      provisional: false,
+    })
+  })
+
   it("reports late start and final undertime without hiding policy thresholds", () => {
     const result = calculateWorkforceTimesheetDay({
       ...base,
