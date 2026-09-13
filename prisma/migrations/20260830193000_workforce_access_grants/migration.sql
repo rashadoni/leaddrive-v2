@@ -1,6 +1,7 @@
 -- C7: additive Workforce-only role grants. No tenant receives a grant from
--- this migration and no endpoint reads these tables yet, so applying storage
--- cannot change legacy CRM/MTM authorization or activate Workforce policy.
+-- this migration and no tenant rollout flag changes here. Existing
+-- grant-aware endpoints therefore remain on their legacy/default-off path, so
+-- applying storage cannot activate Workforce authorization policy.
 
 SET lock_timeout = '3s';
 
@@ -211,9 +212,9 @@ CREATE POLICY workforce_access_grant_revocations_tenant_insert
   ON "workforce_access_grant_revocations" FOR INSERT
   WITH CHECK ("organizationId" = current_setting('app.org_id', true) OR current_setting('app.rls_bypass', true) = 'on');
 
--- Storage stays dormant: no rows, endpoint, grant conversion or permission
--- switch are introduced. A later tenant-scoped C7 service must provide
--- authorization, atomic actor audit and a controlled rollout fence.
+-- Storage stays dormant: no row, grant conversion or permission switch is
+-- introduced. A later tenant-scoped C7 service must provide authorization,
+-- atomic actor audit and a controlled rollout fence.
 DO $$
 DECLARE
   app_owner TEXT;
