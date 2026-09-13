@@ -92,6 +92,25 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   attestation chain/root/app-identity validation and physical-device evidence
   are still absent, so no hardware-attestation claim is made.
 
+## Immutable Today schedule context (`WF-C9-003`, partial)
+
+- The v1 mobile workday adapter is now an explicit allow-list: the client gets
+  only the server workday state, accumulated work time, allowed actions, the
+  immutable planned start/end and at most one server-selected current or next
+  segment. It does not serialize start/end GPS, event coordinates/accuracy/
+  notes, address, site identifier, eligibility, geofence revision, proof
+  policy reference, QR or device proof.
+- The segment is calculated on the server from the immutable workday schedule
+  snapshot and its stored timezone. Android renders the returned mode, planned
+  local window and safe site name without re-evaluating it against the phone
+  clock. A missing, malformed, ambiguous or exhausted snapshot renders no
+  segment context rather than an inferred default.
+- The screen says explicitly that a schedule is not proof of physical
+  presence. QR requirements remain a separately server-disclosed immediate
+  action requirement; foreground GEO capture remains disabled until legal
+  notice and tenant proof-policy activation. This does not claim a QR/GEO/
+  device physical validation result.
+
 ## Opt-in local missed-finish reminder (`WF-C9-011`, partial)
 
 - The employee must explicitly turn on the local reminder. Android 13+ asks
@@ -206,6 +225,11 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   fail-closed release state, client mutation guards, deferred update outbox
   path, supported-resume scheduling and the EN/AZ/RU loss/uninstall guidance
   source contract.
+- `PASS` — two targeted mobile `/workday` and Android-foundation files (24
+  tests) cover the allow-list workday projection, server-only
+  current/next segment selection, raw-coordinate/geofence/proof exclusion and
+  the Android display-only parsing contract; scoped ESLint and
+  `git diff --check` also pass.
 - `NOT RUN` — Android Gradle lint/unit tests, build, emulator/device tests,
   camera/location/QR checks, notification permission/channel/delivery failure,
   TalkBack, AZ/RU/EN linguistic review, 200% font, contrast, reduced-motion

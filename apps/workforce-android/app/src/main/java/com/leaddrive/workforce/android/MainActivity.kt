@@ -528,7 +528,7 @@ private fun WorkforceHome(
                         settings = reminderSettings,
                         onSetEnabled = onSetLocalReminders,
                     )
-                    Text("Current site: not asserted until an approved action-time proof is captured.")
+                    WorkforceScheduledContext(today.workday?.schedule?.segment)
                     Text("Location is never tracked in the background. Action-time location remains unavailable until the published legal notice and tenant proof policy are active.")
                     Text("A transient transport failure can keep the same action only in this device’s encrypted, bounded outbox; it is not a server-accepted fact.")
                     TextButton(onClick = onRefresh) { Text(stringResource(R.string.refresh_server_state)) }
@@ -920,6 +920,29 @@ private fun WorkforceHistory(
             }
         }
     }
+}
+
+@Composable
+private fun WorkforceScheduledContext(segment: com.leaddrive.workforce.android.data.WorkforceWorkdayScheduleSegment?) {
+    if (segment == null) {
+        Text(stringResource(R.string.scheduled_context_unavailable))
+        return
+    }
+    val state = if (segment.state == "CURRENT") {
+        stringResource(R.string.scheduled_context_current)
+    } else {
+        stringResource(R.string.scheduled_context_next)
+    }
+    val place = segment.siteName ?: stringResource(R.string.scheduled_context_no_site)
+    Text(stringResource(
+        R.string.scheduled_context_value,
+        state,
+        segment.mode.lowercase(),
+        place,
+        segment.startTime,
+        segment.endTime,
+    ))
+    Text(stringResource(R.string.scheduled_context_not_presence_proof))
 }
 
 @Composable

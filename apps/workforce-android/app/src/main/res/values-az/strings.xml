@@ -26,6 +26,12 @@
     <string name="private_reminder">Şəxsi xatırlatma</string>
     <string name="private_reminder_explainer">Bu telefon üçün lokal və könüllü xatırlatmadır. Workforce yalnız server tərəfindən təsdiqlənmiş növbə sonundan istifadə edir və iş saatlarını təxmin etmir.</string>
     <string name="private_reminder_refresh">Könüllü xatırlatmanı yoxlamaq üçün server məlumatını yeniləyin.</string>
+    <string name="scheduled_context_unavailable">Cari növbə üçün dəyişməz plan məlumatı mövcud deyil.</string>
+    <string name="scheduled_context_current">Cari planlaşdırılmış hissə</string>
+    <string name="scheduled_context_next">Növbəti planlaşdırılmış hissə</string>
+    <string name="scheduled_context_no_site">planlaşdırılmış məkan yoxdur</string>
+    <string name="scheduled_context_value">%1$s: %2$s — %3$s (%4$s–%5$s).</string>
+    <string name="scheduled_context_not_presence_proof">Bu plan fiziki iştirakın sübutu deyil.</string>
     <string name="turn_on_reminders">Lokal xatırlatmaları aktiv et</string>
     <string name="turn_off_reminders">Lokal xatırlatmaları söndür</string>
     <string name="action_start">Başla</string>

@@ -16,6 +16,8 @@ private const val MAX_HRM_REQUEST_DAYS = 366L
 private const val MAX_QR_TOKEN_LENGTH = 4_096
 private val DEVICE_IDENTIFIER = Regex("[A-Za-z0-9_-]{1,100}")
 private val ENROLLMENT_CHALLENGE = Regex("[A-Za-z0-9_-]{24,256}")
+private val WORKFORCE_SCHEDULE_SEGMENT_MODES = setOf("SITE", "REMOTE", "FIELD", "TRAVEL", "ON_CALL", "EXCEPTION")
+private val WORKFORCE_LOCAL_TIME = Regex("^(?:[01]\\d|2[0-3]):[0-5]\\d$")
 
 /**
  * Small, explicit Workforce-only HTTP adapter. The app never discovers or
@@ -692,12 +694,43 @@ private fun JSONObject.toWorkday(): WorkforceWorkday = WorkforceWorkday(
     completedAt = optString("completedAt").takeIf { it.isNotBlank() && it != "null" },
     workedSeconds = optLong("workedSeconds", 0).coerceAtLeast(0),
     availableActions = optStringList("availableActions"),
-    schedule = optJSONObject("schedule")?.optString("plannedEndAt")
-        ?.takeIf { it.isNotBlank() && it != "null" }
-        ?.let { plannedEndAt ->
-            runCatching { Instant.parse(plannedEndAt) }.getOrNull()?.let { WorkforceWorkdaySchedule(it.toString()) }
-        },
+    schedule = optJSONObject("schedule")?.toWorkdaySchedule(),
 )
+
+/** Server values remain display-only; the client never infers segment state. */
+private fun JSONObject.toWorkdaySchedule(): WorkforceWorkdaySchedule? {
+    val plannedEndAt = optString("plannedEndAt").takeIf { it.isNotBlank() && it != "null" }
+        ?.let { runCatching { Instant.parse(it) }.getOrNull()?.toString() }
+        ?: return null
+    val plannedStartAt = optString("plannedStartAt").takeIf { it.isNotBlank() && it != "null" }
+        ?.let { runCatching { Instant.parse(it) }.getOrNull()?.toString() }
+    return WorkforceWorkdaySchedule(
+        plannedStartAt = plannedStartAt,
+        plannedEndAt = plannedEndAt,
+        segment = optJSONObject("segment")?.toWorkdayScheduleSegment(),
+    )
+}
+
+private fun JSONObject.toWorkdayScheduleSegment(): WorkforceWorkdayScheduleSegment? {
+    val state = optString("state")
+    val mode = optString("mode")
+    val startTime = optString("startTime")
+    val endTime = optString("endTime")
+    if (
+        state !in setOf("CURRENT", "NEXT")
+        || mode !in WORKFORCE_SCHEDULE_SEGMENT_MODES
+        || !WORKFORCE_LOCAL_TIME.matches(startTime)
+        || !WORKFORCE_LOCAL_TIME.matches(endTime)
+        || endTime <= startTime
+    ) return null
+    return WorkforceWorkdayScheduleSegment(
+        state = state,
+        mode = mode,
+        startTime = startTime,
+        endTime = endTime,
+        siteName = optString("siteName").takeIf { it.isNotBlank() && it != "null" && it.length <= 160 },
+    )
+}
 
 private fun JSONObject.toAttendanceRequirements(): WorkforceAttendanceRequirements {
     val status = optString("status")
@@ -926,7 +959,18 @@ data class WorkforceWorkday(
 )
 
 data class WorkforceWorkdaySchedule(
+    val plannedStartAt: String?,
     val plannedEndAt: String,
+    /** Immutable server display context; never a physical-presence verdict. */
+    val segment: WorkforceWorkdayScheduleSegment?,
+)
+
+data class WorkforceWorkdayScheduleSegment(
+    val state: String,
+    val mode: String,
+    val startTime: String,
+    val endTime: String,
+    val siteName: String?,
 )
 
 data class WorkforceTodaySnapshot(

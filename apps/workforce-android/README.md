@@ -35,6 +35,10 @@ location/background-tracking service.
 - Today reloads the canonical server workday after restore, displays only its
   allowed transitions and uses one immutable v3/idempotency operation per
   action; a failed online transport cannot manufacture a local accepted fact;
+- Today can show the current or next immutable server-selected segment and its
+  scheduled site name. It receives no raw GPS, address, site ID, geofence,
+  QR or device-proof value; the schedule is explicitly not a physical-presence
+  verdict and the client never derives it from its local clock;
 - a Room/WorkManager outbox stores operation metadata plus an Android
   Keystore AES-GCM encrypted tenant/action payload. It preserves oldest-first
   domain order, has a seven-day/eight-attempt bound and removes the encryption

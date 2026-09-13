@@ -63,6 +63,25 @@ describe("Workforce Android foundation", () => {
     expect(repository).toContain("submitTodayAction")
   })
 
+  it("renders only server-selected immutable schedule context and never treats it as a presence proof", () => {
+    const api = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceApiClient.kt")
+    const activity = read("app/src/main/java/com/leaddrive/workforce/android/MainActivity.kt")
+    const defaultStrings = read("app/src/main/res/values/strings.xml")
+    const russianStrings = read("app/src/main/res/values-ru/strings.xml")
+    const azerbaijaniStrings = read("app/src/main/res/values-az/strings.xml")
+    expect(api).toContain("toWorkdayScheduleSegment")
+    expect(api).toContain('state !in setOf("CURRENT", "NEXT")')
+    expect(api).toContain("WORKFORCE_SCHEDULE_SEGMENT_MODES")
+    expect(api).not.toContain('optString("latitude")')
+    expect(api).not.toContain('optString("longitude")')
+    expect(activity).toContain("WorkforceScheduledContext(today.workday?.schedule?.segment)")
+    expect(activity).toContain("R.string.scheduled_context_not_presence_proof")
+    for (const catalog of [defaultStrings, russianStrings, azerbaijaniStrings]) {
+      expect(catalog).toContain('name="scheduled_context_value"')
+      expect(catalog).toContain('name="scheduled_context_not_presence_proof"')
+    }
+  })
+
   it("keeps a bounded encrypted Room outbox in domain order and isolates account changes", () => {
     const rootBuild = read("build.gradle.kts")
     const build = read("app/build.gradle.kts")
