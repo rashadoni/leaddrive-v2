@@ -749,7 +749,7 @@ the recorded 30-day/one-year lifecycle safely.
 | ID | Pri | Status | Owner | Task | Acceptance evidence |
 |---|---:|---|---|---|---|
 | WF-C10-001 | P0 | BLOCKED | Legal/Privacy/HR | Approve purpose, notice, lawful/contract basis, fallback and employee inquiry/appeal channel | OD-12 resolved before real location collection |
-| WF-C10-002 | P0 | PLANNED | Backend/Privacy | Classify raw location, derived verdict, time fact, request reason, device evidence, audit and export separately | Data dictionary enforced in code/runbooks |
+| WF-C10-002 | P0 | DONE | Backend/Privacy | Classify raw location, derived verdict, time fact, request reason, device evidence, audit and export separately | [`workforce-c10-data-classification-evidence-2026-08-30.md`](./workforce-c10-data-classification-evidence-2026-08-30.md): seven-class code dictionary and deny-by-default ordinary-export allow-list |
 | WF-C10-003 | P0 | PLANNED | Backend | Implement tenant-scoped bounded purge for all raw GPS copies, including workday/event start/end coordinates, after 30 days | Dry-run/delete/reconciliation tests prove no raw coordinate remains |
 | WF-C10-004 | P0 | PLANNED | Backend | Implement one-year time/decision retention with explicit eligible classes, legal-hold fail-closed check and immutable purge audit | Hold and no-hold integration tests |
 | WF-C10-005 | P0 | PLANNED | Backend/SRE | Add retention dry run, backup/restore verification, batching, resume cursor, pressure stop and metrics | Staging retention drill is recoverable and auditable |
@@ -773,12 +773,12 @@ payroll engine or leaking sensitive evidence.
 |---|---:|---|---|---|---|
 | WF-C11-001 | P1 | PARTIAL | Backend | Complete deterministic calculation for segments, approved breaks/travel, calendar, exceptions and corrections | Rehydration/property tests from immutable snapshots |
 | WF-C11-002 | P1 | PARTIAL | Backend/Web | Block approval on incomplete facts, unresolved blocking cases or snapshot/history errors | Exact rows/reasons shown; valid bounded period approves once |
-| WF-C11-003 | P1 | PLANNED | Backend | Add approved-export endpoint from immutable approval/revision, never live mutable rows | Checksum and facts/rows hashes verify |
-| WF-C11-004 | P1 | PLANNED | Security/Web | Require purpose, recipient, authorized scope and encrypted delivery channel; set artifact expiry | Export audit and unauthorized/expired download tests |
+| WF-C11-003 | P1 | DONE | Backend | Add approved-export endpoint from immutable approval/revision, never live mutable rows | [`workforce-c11-approved-export-evidence-2026-08-30.md`](./workforce-c11-approved-export-evidence-2026-08-30.md): persisted calculation/row/fact hashes are reproduced before a narrow attachment is returned |
+| WF-C11-004 | P1 | PARTIAL | Security/Web | Require purpose, recipient, authorized scope and encrypted delivery channel; set artifact expiry | [`workforce-c11-direct-export-purpose-evidence-2026-08-30.md`](./workforce-c11-direct-export-purpose-evidence-2026-08-30.md): fixed direct-review purpose, MFA, shared rate guard and historic export-custodian scope exist; external encrypted artifact delivery/expiry remain open |
 | WF-C11-005 | P1 | PLANNED | Web | Add preview, row count, date/employee/site scope, warnings and correction version before export | User knows exactly what will leave the system |
-| WF-C11-006 | P1 | PLANNED | Backend | Keep raw coordinates, QR/device proofs and free-text reasons out of ordinary timesheet export | Contract/privacy tests |
+| WF-C11-006 | P1 | DONE | Backend | Keep raw coordinates, QR/device proofs and free-text reasons out of ordinary timesheet export | Explicit `TIME_FACT` allow-list plus projection/privacy tests reject every other current data class |
 | WF-C11-007 | P1 | PLANNED | Web/Analytics | Add schedule/actual, late, no-show, overtime, break, site-transition and exception reports with scope/date filters | Metrics reconcile to approved facts |
-| WF-C11-008 | P1 | PLANNED | HR/Product | Label overtime as operational deviation, not payable amount | Copy and export schema contain no wage claim |
+| WF-C11-008 | P1 | DONE | HR/Product | Label overtime as operational deviation, not payable amount | Export schema emits `OPERATIONAL_DEVIATION_NOT_PAYABLE` and contains no wage/payroll field |
 | WF-C11-009 | P2 | PLANNED | Product | Define future payroll/integration contract only after jurisdiction, rounding and accountable system-of-record decisions | Separate approved project; not implicit in v1 |
 | WF-C11-010 | P2 | PLANNED | Backend | Add signed/versioned integration export and delivery retry ledger if external HRIS is approved | Idempotent recipient delivery and reconciliation |
 
