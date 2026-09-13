@@ -19,6 +19,7 @@ export function logWorkforceSensitiveOperationFailure(input: {
     | "read-evidence-timeline"
     | "retention-raw-location-dry-run"
     | "verify-attendance-mfa"
+    | "verify-attendance-administration"
     | "configuration-access-lookup"
     | "configuration-access-grant-write"
     | "configuration-access-grant-inventory"
