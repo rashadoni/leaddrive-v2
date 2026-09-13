@@ -208,6 +208,7 @@ export interface MtmPrismaMock {
   mtmMediaObject: ModelMock
   mtmAuditLog: ModelMock
   workforcePolicy: ModelMock
+  workforceEmploymentEvent: ModelMock
   workforceShiftTemplate: ModelMock
   workforceShiftSegment: ModelMock
   workforceSiteTransition: ModelMock
@@ -378,6 +379,7 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     mtmMediaObject: makeModel(),
     mtmAuditLog: makeModel(),
     workforcePolicy: makeModel(),
+    workforceEmploymentEvent: makeModel(),
     workforceShiftTemplate: makeModel(),
     workforceShiftSegment: makeModel(),
     workforceSiteTransition: makeModel(),
