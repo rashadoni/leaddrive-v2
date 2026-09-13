@@ -1,9 +1,11 @@
 name: Remediate production PostgreSQL source TLS client
 
-# Dispatch-only, client-side maintenance. The reviewed script can change only
-# the canonical backup environment and its dedicated source CA, with a sealed
-# rollback snapshot. It never restarts PostgreSQL or any service and never runs
-# a backup, restore, deploy, scratch launcher, or Kafka command.
+# Dispatch-only, client-side maintenance. The default operation can change only
+# the canonical backup environment and its dedicated source CA. A separately
+# confirmed operation may additionally replace only the matching passfile host
+# selector. Both paths use a sealed rollback snapshot, preserve credential
+# bytes, never restart PostgreSQL or any service, and never run a backup,
+# restore, deploy, scratch launcher, or Kafka command.
 on:
   workflow_dispatch:
     inputs:
@@ -14,9 +16,10 @@ on:
         type: choice
         options:
           - apply
+          - apply-with-passfile-selector
           - rollback
       confirmation:
-        description: "Type APPLY_SOURCE_TLS_CLIENT_ONLY or ROLLBACK_SOURCE_TLS_CLIENT_ONLY"
+        description: "Type the exact operation-specific maintenance confirmation"
         required: true
         type: string
       expected_main_sha:
@@ -72,7 +75,7 @@ jobs:
         run: |
           set -euo pipefail
           case "$OPERATION:$CONFIRMATION" in
-            apply:APPLY_SOURCE_TLS_CLIENT_ONLY|rollback:ROLLBACK_SOURCE_TLS_CLIENT_ONLY) ;;
+            apply:APPLY_SOURCE_TLS_CLIENT_ONLY|apply-with-passfile-selector:APPLY_SOURCE_TLS_CLIENT_AND_PGPASS_SELECTOR|rollback:ROLLBACK_SOURCE_TLS_CLIENT_ONLY) ;;
             *)
               echo "::error::Confirmation does not match the selected operation"
               exit 1
@@ -90,7 +93,7 @@ jobs:
         run: |
           set -euo pipefail
           export LC_ALL=C
-          [[ "$OPERATION" =~ ^(apply|rollback)$ ]] || {
+          [[ "$OPERATION" =~ ^(apply|apply-with-passfile-selector|rollback)$ ]] || {
             echo "::error::Unsupported maintenance operation"
             exit 1
           }
@@ -105,7 +108,7 @@ jobs:
           set -e
 
           mapfile -t MAINTENANCE_LINES <<<"$MAINTENANCE_OUTPUT"
-          LINE_RE='^source_tls_maintenance operation=(apply|rollback|unknown) status=(applied|rolled-back|failed) pg_restart=no service_restart=no effective_verify_full=(yes|not-tested|unknown) rollback_snapshot=(retained|unknown) failure_stage=(none|configuration|configuration-read|configuration-read-file|configuration-read-authority|configuration-read-links|configuration-read-encoding|configuration-read-duplicate|configuration-read-required|configuration-client|configuration-override|configuration-rewrite|invocation|invocation-script-read|invocation-script-missing|invocation-script-unapproved|invocation-unit-read|invocation-unit-unapproved|scheduler|backup-lock|file-safety|snapshot-present|tls-evidence|pgpass|pgpass-path|pgpass-read|pgpass-missing|pgpass-file|pgpass-links|pgpass-owner|pgpass-writable|pgpass-size|pgpass-authority|pgpass-encoding|pgpass-format|pgpass-match|post-write|rollback|internal)$'
+          LINE_RE='^source_tls_maintenance operation=(apply|apply-with-passfile-selector|rollback|unknown) status=(applied|rolled-back|failed) pg_restart=no service_restart=no effective_verify_full=(yes|not-tested|unknown) rollback_snapshot=(retained|unknown) failure_stage=(none|configuration|configuration-read|configuration-read-file|configuration-read-authority|configuration-read-links|configuration-read-encoding|configuration-read-duplicate|configuration-read-required|configuration-client|configuration-override|configuration-rewrite|invocation|invocation-script-read|invocation-script-missing|invocation-script-unapproved|invocation-unit-read|invocation-unit-unapproved|scheduler|backup-lock|file-safety|snapshot-present|tls-evidence|pgpass|pgpass-path|pgpass-read|pgpass-missing|pgpass-file|pgpass-links|pgpass-owner|pgpass-writable|pgpass-size|pgpass-authority|pgpass-encoding|pgpass-format|pgpass-match|pgpass-rewrite|post-write|rollback|internal)$'
           [ "${#MAINTENANCE_LINES[@]}" -eq 1 ] \
             && [[ "${MAINTENANCE_LINES[0]}" =~ $LINE_RE ]] || {
               echo "::error::Maintenance output failed the anonymized schema gate"
@@ -115,6 +118,7 @@ jobs:
           if [ "$MAINTENANCE_STATUS" -eq 0 ]; then
             case "$OPERATION:${MAINTENANCE_LINES[0]}" in
               apply:source_tls_maintenance\ operation=apply\ status=applied\ pg_restart=no\ service_restart=no\ effective_verify_full=yes\ rollback_snapshot=retained\ failure_stage=none) ;;
+              apply-with-passfile-selector:source_tls_maintenance\ operation=apply-with-passfile-selector\ status=applied\ pg_restart=no\ service_restart=no\ effective_verify_full=yes\ rollback_snapshot=retained\ failure_stage=none) ;;
               rollback:source_tls_maintenance\ operation=rollback\ status=rolled-back\ pg_restart=no\ service_restart=no\ effective_verify_full=not-tested\ rollback_snapshot=retained\ failure_stage=none) ;;
               *)
                 echo "::error::Maintenance result does not match the requested operation"
