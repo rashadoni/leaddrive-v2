@@ -32,7 +32,8 @@ Roadmap item: `WF-C7-002` (partial)
 - PASS: role-management UI contract plus access-control contract, 2 files / 13
   tests.
 - PASS: scoped ESLint for the component, page and contracts.
-- PASS: `npm run i18n:check` (22,665 EN leaf keys; RU/AZ parity).
+- PASS: `npm run i18n:check` (22,677 EN leaf keys; RU/AZ parity) after the
+  access-review copy was added.
 - PASS: `git diff --check`.
 - NOT RUN: real browser interaction and screenshot evidence; those require the
   approved browser/heavy gate, not Contabo.
