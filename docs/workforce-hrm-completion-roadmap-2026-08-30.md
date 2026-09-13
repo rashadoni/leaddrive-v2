@@ -445,6 +445,7 @@ Owner roles are accountabilities, not individual names:
 | 2026-09-13T06:46:00Z | C11 approved-time reporting (partial) | 85% | C11 50% | 139/161 | 12/15 | WF-C11-007 gains a tenant/actor-scoped date report from hash-verified immutable approvals with correction deduplication; schedule-aware no-show, site-transition and full exception lanes remain explicitly unavailable, so no completion credit is claimed |
 | 2026-09-13T07:21:00+02:00 | C11 site-transition reporting (partial) | 86% | C11 50% | 139/161 | 14/15 | WF-C11-007 gains a bounded, raw-proof-free transition-claim API with pair/incomplete/review reconciliation, tenant-timezone bounds, exact historical scope and metadata-only audit; UI remains open, so no completion credit is claimed |
 | 2026-09-13T07:35:00+02:00 | C11 reconciled reporting | 87% | C11 60% | 140/161 | 14/15 | WF-C11-007 accepted across separate approved-time, exception and site-transition reports: scoped date/name filters, immutable/time-safe aggregates and raw-proof-free transition completeness are visible in EN/RU/AZ; physical presence and payroll conclusions remain prohibited |
+| 2026-09-13T07:42:56+02:00 | C12 bounded mobile-sync telemetry (partial) | 87% | C12 0% | 140/161 | 14/15 | WF-C12-002 now maps stream, endpoint, contract, result and duration to finite allowlisted/bounded dimensions before sampling or logging, so caller-controlled labels cannot expose an identifier or create unbounded metric cardinality. Existing tenant HMAC, APK validation and payload-content exclusion remain intact. Dashboard ingestion, paging/SLO approval and end-to-end cardinality review remain open, so no completion credit is claimed. |
 
 **C3 phase display reconciliation (2026-08-30T08:11:00+02:00):** the C3
 register contains 11 tasks and its scope did not change. Earlier C3 ledger
@@ -798,7 +799,7 @@ LeadDrive modules.
 | ID | Pri | Status | Owner | Task | Acceptance evidence |
 |---|---:|---|---|---|---|
 | WF-C12-001 | P0 | PLANNED | SRE/Product | Approve SLOs: online acknowledgement, pending age, event loss, conflict/error rates and recovery | Thresholds and paging/runbook ownership recorded |
-| WF-C12-002 | P0 | PLANNED | Backend/SRE | Emit tenant-safe metrics by stream/app/schema/policy result without high-cardinality employee/location data | Dashboard and cardinality/privacy review |
+| WF-C12-002 | P0 | PARTIAL | Backend/SRE | Emit tenant-safe metrics by stream/app/schema/policy result without high-cardinality employee/location data | [`bounded mobile-sync telemetry evidence`](./workforce-c12-mobile-sync-telemetry-evidence-2026-09-13.md): current pull telemetry maps all runtime dimensions to finite allowlists/bounds before logging; dashboard ingestion, paging and end-to-end cardinality/privacy review remain open |
 | WF-C12-003 | P0 | PLANNED | SRE/QA | Run 5,000-user morning START wave with jitter on isolated staging and representative trust-off/trust-on profiles | p95/p99, DB/queue metrics and zero-loss reconciliation |
 | WF-C12-004 | P0 | PLANNED | Backend/SRE | Prove Workforce and Route queue/cursor/failure isolation under 503, timeout and overload | One stream failure does not delay the other |
 | WF-C12-005 | P1 | PLANNED | Backend | Bound retries/backoff, payload size, batch size, per-tenant fairness and poison-operation quarantine | Load/chaos tests and operator recovery |
