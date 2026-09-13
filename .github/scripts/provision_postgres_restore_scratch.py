@@ -108,6 +108,11 @@ class MaintenanceError(Exception):
             "cluster-start",
             "role-create",
             "verify-full",
+            "verify-role",
+            "verify-role-query",
+            "verify-role-attributes",
+            "verify-tls",
+            "verify-identity",
             "cluster-stop",
             "source-drift",
             "post-write",
@@ -146,7 +151,7 @@ def _acceptable_existing_secret_file(
 
     ``_read_file`` has already rejected links, non-regular files, oversized
     files, and group/world-writable modes.  The provisioner replaces this file
-    atomically with the canonical root:leaddrive-backup 0640 authority before
+    atomically with the canonical leaddrive-backup-owned 0600 authority before
     it ever contains the newly generated scratch credential.
     """
 
@@ -880,6 +885,21 @@ def _scratch_environment() -> dict[str, str]:
     }
 
 
+def _write_scratch_passfile(
+    payload: bytes, backup_uid: int, backup_gid: int
+) -> None:
+    # libpq deliberately ignores a password file when group or world permissions
+    # are present.  The service account owns this 0600 file so both provisioning
+    # verification and later recovery drills use the same valid authority.
+    _atomic_write(
+        SCRATCH_PGPASS_PATH,
+        payload,
+        mode=0o600,
+        uid=backup_uid,
+        gid=backup_gid,
+    )
+
+
 def _start_cluster() -> None:
     _run([_command("pg_ctlcluster"), PG_VERSION, CLUSTER_NAME, "start"], code="cluster-start")
 
@@ -933,29 +953,43 @@ def _create_role(password: str, source_identifier: str) -> None:
 def _verify_scratch(source_identifier: str) -> None:
     environment = _scratch_environment()
     role_state = _run(
-        [_command("psql"), "-X", "-v", "ON_ERROR_STOP=1", "-AtF", "|", "-c", "SELECT rolsuper::int, rolcreatedb::int, rolcreaterole::int, rolreplication::int, rolbypassrls::int FROM pg_roles WHERE rolname = session_user"],
+        [
+            _command("psql"),
+            "-X",
+            "-v",
+            "ON_ERROR_STOP=1",
+            "-AtF",
+            "|",
+            "-c",
+            "SELECT CASE WHEN rolsuper THEN 1 ELSE 0 END, "
+            "CASE WHEN rolcreatedb THEN 1 ELSE 0 END, "
+            "CASE WHEN rolcreaterole THEN 1 ELSE 0 END, "
+            "CASE WHEN rolreplication THEN 1 ELSE 0 END, "
+            "CASE WHEN rolbypassrls THEN 1 ELSE 0 END "
+            "FROM pg_roles WHERE rolname = session_user",
+        ],
         capture=True,
         env=environment,
-        code="verify-full",
+        code="verify-role-query",
     ).decode("ascii", errors="strict").strip()
     if role_state != "0|1|0|0|0":
-        raise MaintenanceError("verify-full")
+        raise MaintenanceError("verify-role-attributes")
     tls_state = _run(
         [_command("psql"), "-X", "-v", "ON_ERROR_STOP=1", "-AtF", "|", "-c", "SELECT CASE WHEN ssl THEN 1 ELSE 0 END, version FROM pg_stat_ssl WHERE pid = pg_backend_pid()"],
         capture=True,
         env=environment,
-        code="verify-full",
+        code="verify-tls",
     ).decode("ascii", errors="strict").strip()
     if not re.fullmatch(r"1\|TLSv1\.[23]", tls_state):
-        raise MaintenanceError("verify-full")
+        raise MaintenanceError("verify-tls")
     identifier = _run(
         [_command("psql"), "-X", "-v", "ON_ERROR_STOP=1", "-At", "-c", "SELECT (pg_control_system()).system_identifier::text"],
         capture=True,
         env=environment,
-        code="verify-full",
+        code="verify-identity",
     ).decode("ascii", errors="strict").strip()
     if not re.fullmatch(r"[0-9]{1,20}", identifier) or identifier == source_identifier:
-        raise MaintenanceError("verify-full")
+        raise MaintenanceError("verify-identity")
 
 
 def _current_target_hashes() -> dict[str, str]:
@@ -1138,9 +1172,7 @@ def apply() -> None:
             )
         password = secrets.token_urlsafe(48)
         passfile = f"{SCRATCH_HOST}:{SCRATCH_PORT}:{SCRATCH_DATABASE}:{SCRATCH_ROLE}:{password}\n".encode()
-        _atomic_write(
-            SCRATCH_PGPASS_PATH, passfile, mode=0o640, uid=0, gid=backup_gid
-        )
+        _write_scratch_passfile(passfile, backup_uid, backup_gid)
         rewritten = rewrite_environment(env_payload, TARGET_ENV)
         _atomic_write(
             ENV_PATH,

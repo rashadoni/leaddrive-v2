@@ -245,6 +245,22 @@ class FileStateTests(unittest.TestCase):
 
 
 class VerificationTests(unittest.TestCase):
+    @mock.patch.object(MAINTENANCE, "_atomic_write")
+    def test_scratch_passfile_is_private_and_backup_owned(
+        self, atomic_write: mock.Mock
+    ) -> None:
+        payload = b"127.0.0.1:55432:postgres:role:secret\n"
+
+        MAINTENANCE._write_scratch_passfile(payload, 5678, 1234)
+
+        atomic_write.assert_called_once_with(
+            MAINTENANCE.SCRATCH_PGPASS_PATH,
+            payload,
+            mode=0o600,
+            uid=5678,
+            gid=1234,
+        )
+
     @mock.patch.object(MAINTENANCE, "_command", side_effect=lambda name: name)
     @mock.patch.object(MAINTENANCE, "_run")
     def test_role_creation_is_bound_to_scratch_port_and_identity(
@@ -313,6 +329,10 @@ class VerificationTests(unittest.TestCase):
         run.side_effect = [b"0|1|0|0|0\n", b"1|TLSv1.3\n", b"222\n"]
         MAINTENANCE._verify_scratch("111")
         self.assertEqual(run.call_count, 3)
+        role_query = run.call_args_list[0].args[0][-1]
+        self.assertIn("CASE WHEN rolsuper THEN 1 ELSE 0 END", role_query)
+        self.assertIn("CASE WHEN rolcreatedb THEN 1 ELSE 0 END", role_query)
+        self.assertNotIn("::int", role_query)
 
     @mock.patch.object(MAINTENANCE, "_command", side_effect=lambda name: name)
     @mock.patch.object(MAINTENANCE, "_run")
@@ -320,8 +340,9 @@ class VerificationTests(unittest.TestCase):
         self, run: mock.Mock, _command: mock.Mock
     ) -> None:
         run.side_effect = [b"0|1|0|0|0\n", b"1|TLSv1.3\n", b"111\n"]
-        with self.assertRaises(MAINTENANCE.MaintenanceError):
+        with self.assertRaises(MAINTENANCE.MaintenanceError) as raised:
             MAINTENANCE._verify_scratch("111")
+        self.assertEqual(raised.exception.code, "verify-identity")
 
     @mock.patch.object(MAINTENANCE, "_command", side_effect=lambda name: name)
     @mock.patch.object(MAINTENANCE, "_run")
@@ -329,8 +350,29 @@ class VerificationTests(unittest.TestCase):
         self, run: mock.Mock, _command: mock.Mock
     ) -> None:
         run.return_value = b"1|1|0|0|0\n"
-        with self.assertRaises(MAINTENANCE.MaintenanceError):
+        with self.assertRaises(MAINTENANCE.MaintenanceError) as raised:
             MAINTENANCE._verify_scratch("111")
+        self.assertEqual(raised.exception.code, "verify-role-attributes")
+
+    @mock.patch.object(MAINTENANCE, "_command", side_effect=lambda name: name)
+    @mock.patch.object(MAINTENANCE, "_run")
+    def test_verify_rejects_non_tls_session_with_exact_stage(
+        self, run: mock.Mock, _command: mock.Mock
+    ) -> None:
+        run.side_effect = [b"0|1|0|0|0\n", b"0|\n"]
+        with self.assertRaises(MAINTENANCE.MaintenanceError) as raised:
+            MAINTENANCE._verify_scratch("111")
+        self.assertEqual(raised.exception.code, "verify-tls")
+
+    @mock.patch.object(MAINTENANCE, "_command", side_effect=lambda name: name)
+    @mock.patch.object(MAINTENANCE, "_run")
+    def test_verify_subprocess_failure_keeps_exact_stage(
+        self, run: mock.Mock, _command: mock.Mock
+    ) -> None:
+        run.side_effect = MAINTENANCE.MaintenanceError("verify-role-query")
+        with self.assertRaises(MAINTENANCE.MaintenanceError) as raised:
+            MAINTENANCE._verify_scratch("111")
+        self.assertEqual(raised.exception.code, "verify-role-query")
 
 
 class StaticSafetyContractTests(unittest.TestCase):
