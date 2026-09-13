@@ -33,6 +33,20 @@ export const WorkforceShiftSegmentModeSchema = z.enum([
   "EXCEPTION",
 ])
 
+/**
+ * Release-one executable segment modes. ON_CALL stays schema-readable so an
+ * additive future release can understand inert drafts/history, but activation
+ * is fail-closed until its availability, response-time and compensation policy
+ * has been separately approved.
+ */
+export const WORKFORCE_SHIFT_RELEASED_SEGMENT_MODES = [
+  "SITE",
+  "REMOTE",
+  "FIELD",
+  "TRAVEL",
+  "EXCEPTION",
+] as const
+
 export const WorkforceShiftSegmentDraftSchema = z.object({
   mode: WorkforceShiftSegmentModeSchema,
   siteId: WorkforceScopeIdSchema.nullable().optional(),
@@ -1329,6 +1343,16 @@ export async function activateWorkforceShiftTemplateDraft(input: {
         throw new WorkforceConfigurationManagementError(
           "WORKFORCE_CONFIGURATION_SHIFT_NOT_DRAFT",
           "Only an unpublished Workforce shift can be activated",
+        )
+      }
+      if ((draft.segments ?? []).some((segment) => (
+        !WORKFORCE_SHIFT_RELEASED_SEGMENT_MODES.includes(
+          segment.mode as typeof WORKFORCE_SHIFT_RELEASED_SEGMENT_MODES[number],
+        )
+      ))) {
+        throw new WorkforceConfigurationManagementError(
+          "WORKFORCE_CONFIGURATION_SHIFT_SEGMENT_INVALID",
+          "This shift contains a segment mode that is not released for activation",
         )
       }
       const active = await tx.workforceShiftTemplate.findFirst({
