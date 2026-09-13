@@ -7,6 +7,7 @@ vi.mock("@/lib/prisma", async () => {
 })
 vi.mock("@/lib/with-workforce-rls-auth", () => ({
   withWorkforceSessionAdminAuth: vi.fn((handler) => handler),
+  withWorkforceSessionPolicyConfigurationAuth: vi.fn((handler) => handler),
   withWorkforceSessionScheduleConfigurationAuth: vi.fn((_permission, handler) => handler),
 }))
 vi.mock("@/lib/mtm-settings", () => ({ getMtmSettings: vi.fn() }))
@@ -45,6 +46,7 @@ import { getMtmSettings } from "@/lib/mtm-settings"
 import { prisma } from "@/lib/prisma"
 import {
   withWorkforceSessionAdminAuth,
+  withWorkforceSessionPolicyConfigurationAuth,
   withWorkforceSessionScheduleConfigurationAuth,
 } from "@/lib/with-workforce-rls-auth"
 import {
@@ -154,9 +156,16 @@ beforeEach(() => {
 
 describe("Workforce draft configuration API", () => {
   it("binds every configuration route to an accountable Workforce session boundary", () => {
-    expect(withWorkforceSessionAdminAuth).toHaveBeenCalledTimes(12)
-    expect(withWorkforceSessionScheduleConfigurationAuth).toHaveBeenCalledTimes(4)
-    expect(withWorkforceSessionScheduleConfigurationAuth).toHaveBeenCalledWith("SCHEDULE_WRITE", expect.any(Function))
+    expect(withWorkforceSessionAdminAuth).not.toHaveBeenCalled()
+    expect(withWorkforceSessionPolicyConfigurationAuth).toHaveBeenCalledTimes(4)
+    expect(withWorkforceSessionScheduleConfigurationAuth).toHaveBeenCalledTimes(12)
+    expect(
+      vi.mocked(withWorkforceSessionScheduleConfigurationAuth).mock.calls.map(([permission]) => permission).sort(),
+    ).toEqual([
+      "SCHEDULE_READ", "SCHEDULE_READ", "SCHEDULE_READ", "SCHEDULE_READ", "SCHEDULE_READ",
+      "SCHEDULE_WRITE", "SCHEDULE_WRITE", "SCHEDULE_WRITE",
+      "SCHEDULE_WRITE", "SCHEDULE_WRITE", "SCHEDULE_WRITE", "SCHEDULE_WRITE",
+    ])
   })
 
   it("creates only validated draft policy and shift records", async () => {

@@ -12,6 +12,7 @@ withRouteFieldRlsAuth/withRouteFieldWebRlsAuth/withWorkforceHrmRlsAuth/
 withWorkforceRlsAuth/withWorkforceSessionAuth/withWorkforceSessionAdminAuth/
 withWorkforceSessionGrantManagementAuth/
 withWorkforceSessionEvidenceTimelineAuth/withWorkforceSessionExceptionQueueAuth/
+withWorkforceSessionPolicyConfigurationAuth/
 withWorkforceSessionScheduleConfigurationAuth/
 withWorkforceCompatAuth/
 runWithTenant/runWithRlsBypass), at three depths:
@@ -69,6 +70,7 @@ DELIVER = re.compile(
     r'|withWorkforceSessionGrantManagementAuth(?:<[^>]+>)?\('
     r'|withWorkforceSessionEvidenceTimelineAuth(?:<[^>]+>)?\('
     r'|withWorkforceSessionExceptionQueueAuth(?:<[^>]+>)?\('
+    r'|withWorkforceSessionPolicyConfigurationAuth(?:<[^>]+>)?\('
     r'|withWorkforceSessionScheduleConfigurationAuth(?:<[^>]+>)?\('
     r'|withWorkforceCompatAuth(?:<[^>]+>)?\('
     r'|runWithTenant|runWithRlsBypass'

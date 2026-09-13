@@ -226,6 +226,49 @@ export function withWorkforceSessionScheduleConfigurationAuth<C = unknown>(
 }
 
 /**
+ * Session-only boundary for tenant-wide policy drafts and activation.
+ * Legacy tenants retain the admin boundary; after granular cutover the caller
+ * must hold an organization-scoped HR policy grant. Team and site grants do
+ * not authorize reading or changing the tenant-wide policy timeline.
+ */
+export function withWorkforceSessionPolicyConfigurationAuth<C = unknown>(
+  handler: (req: NextRequest, auth: AuthResult, ctx: C) => Promise<Response> | Response,
+) {
+  const wrapped = withRlsSessionAuth<C>(async (req, auth, ctx) => {
+    try {
+      const organization = await prisma.organization.findUnique({
+        where: { id: auth.orgId },
+        select: { plan: true, addons: true, features: true, modules: true },
+      })
+      if (!organization || !isTenantCapabilityEnabled("workforce-hrm", organization)) {
+        return workforceCapabilityDisabled()
+      }
+      if (!workforceGranularAccessEnabled(organization.features)) {
+        return isWorkforcePolicyAdministrator(auth.role)
+          ? handler(req, auth, ctx)
+          : workforcePolicyAdminDenied()
+      }
+      const access = await decidePersistedWorkforceAccess({
+        db: prisma,
+        organizationId: auth.orgId,
+        principalUserId: auth.userId,
+        selfAgentId: null,
+        permission: "WORKFORCE_POLICY_DRAFT_WRITE",
+        resource: { organizationId: auth.orgId },
+      })
+      return access.allowed ? handler(req, auth, ctx) : workforceGranularAccessDenied()
+    } catch (error) {
+      console.error("[withWorkforceSessionPolicyConfigurationAuth] authorization lookup failed", error)
+      return NextResponse.json({
+        error: "Unable to verify Workforce policy configuration access.",
+        code: "WORKFORCE_GRANULAR_ACCESS_UNAVAILABLE",
+      }, { status: 503 })
+    }
+  })
+  return wrapped as WrappedWorkforceRouteHandler<C>
+}
+
+/**
  * Employment lifecycle is an organization-wide HR fact. After granular
  * access cutover, a generic CRM administrator is insufficient and the exact
  * Workforce HR grant becomes authoritative.

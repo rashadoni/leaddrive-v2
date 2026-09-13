@@ -1,13 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 
+const workforceAuthBindings = vi.hoisted(() => ({ admin: 0, schedule: [] as string[] }))
+
 vi.mock("@/lib/prisma", async () => {
   const { makeMtmPrismaMock } = await import("./mocks/mtm-prisma")
   return { prisma: makeMtmPrismaMock() }
 })
 vi.mock("@/lib/with-workforce-rls-auth", () => ({
-  withWorkforceSessionAdminAuth: vi.fn((handler) => handler),
-  withWorkforceSessionScheduleConfigurationAuth: vi.fn((_permission, handler) => handler),
+  withWorkforceSessionAdminAuth: vi.fn((handler) => {
+    workforceAuthBindings.admin += 1
+    return handler
+  }),
+  withWorkforceSessionScheduleConfigurationAuth: vi.fn((permission, handler) => {
+    workforceAuthBindings.schedule.push(permission)
+    return handler
+  }),
 }))
 vi.mock("@/lib/mtm-settings", () => ({
   getMtmSettings: vi.fn(),
@@ -15,7 +23,7 @@ vi.mock("@/lib/mtm-settings", () => ({
 
 import { GET, POST } from "@/app/api/v1/workforce/configuration/sites/route"
 import { POST as archivePost } from "@/app/api/v1/workforce/configuration/sites/[id]/archive/route"
-import { POST as geofencePost } from "@/app/api/v1/workforce/configuration/sites/[id]/geofences/route"
+import { GET as geofenceGet, POST as geofencePost } from "@/app/api/v1/workforce/configuration/sites/[id]/geofences/route"
 import { GET as assignmentsGet, POST as assignmentsPost } from "@/app/api/v1/workforce/configuration/site-assignments/route"
 import { POST as previewAssignmentsPost } from "@/app/api/v1/workforce/configuration/site-assignments/preview/route"
 import { POST as publishAssignmentsPost } from "@/app/api/v1/workforce/configuration/site-assignments/bulk/publish/route"
@@ -30,6 +38,7 @@ type SiteMutationHandler = (
   context: SiteRouteContext,
 ) => Promise<Response>
 const callArchiveSite = archivePost as unknown as SiteMutationHandler
+const callListGeofences = geofenceGet as unknown as SiteMutationHandler
 const callCreateGeofence = geofencePost as unknown as SiteMutationHandler
 const callPublishAssignmentsPost = publishAssignmentsPost as unknown as (
   request: NextRequest,
@@ -71,6 +80,15 @@ afterEach(() => {
 })
 
 describe("Workforce site configuration API", () => {
+  it("binds site and eligibility configuration to exact session-only schedule grants", () => {
+    expect(workforceAuthBindings.admin).toBe(0)
+    expect([...workforceAuthBindings.schedule].sort()).toEqual([
+      "SCHEDULE_READ", "SCHEDULE_READ", "SCHEDULE_READ", "SCHEDULE_READ",
+      "SCHEDULE_WRITE", "SCHEDULE_WRITE", "SCHEDULE_WRITE",
+      "SITE_ASSIGNMENT_WRITE", "SITE_ASSIGNMENT_WRITE",
+    ])
+  })
+
   it("lists only tenant-scoped Workforce sites", async () => {
     vi.mocked(prisma.workforceSite.findMany).mockResolvedValue([site] as never)
 
@@ -83,6 +101,22 @@ describe("Workforce site configuration API", () => {
     }))
     expect(prisma.mtmCustomer.findMany).not.toHaveBeenCalled()
     expect(prisma.mtmRoute.findMany).not.toHaveBeenCalled()
+  })
+
+  it("lists calibrated geofence revisions through schedule-read authority", async () => {
+    vi.mocked(prisma.workforceSiteGeofenceRevision.findMany).mockResolvedValue([] as never)
+
+    const response = await callListGeofences(
+      request("/api/v1/workforce/configuration/sites/site-1/geofences"),
+      AUTH as never,
+      { params: Promise.resolve({ id: "site-1" }) },
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ success: true, data: { revisions: [] } })
+    expect(prisma.workforceSiteGeofenceRevision.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { organizationId: "org-1", siteId: "site-1" },
+    }))
   })
 
   it("returns a tenant-scoped read-only bulk site-assignment preview", async () => {
