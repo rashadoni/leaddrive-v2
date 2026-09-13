@@ -71,6 +71,23 @@ class EnvironmentTests(unittest.TestCase):
             )
         self.assertEqual(raised.exception.code, "source")
 
+    @mock.patch.object(MAINTENANCE, "_command", side_effect=lambda name: name)
+    @mock.patch.object(MAINTENANCE, "_run", return_value=b"1\n")
+    def test_source_role_collision_blocks_apply(
+        self, run: mock.Mock, _command: mock.Mock
+    ) -> None:
+        config = {
+            "PGHOST": "source.example.invalid",
+            "PGPORT": "5432",
+            "PGDATABASE": "source",
+            "PGUSER": "backup",
+            "PGPASSFILE": "/secure/source.pgpass",
+        }
+        with self.assertRaises(MAINTENANCE.MaintenanceError) as raised:
+            MAINTENANCE._require_source_role_absent(config)
+        self.assertEqual(raised.exception.code, "source-role-present")
+        self.assertIn("pg_roles", run.call_args.args[0][-1])
+
 
 class FileStateTests(unittest.TestCase):
     def test_partial_cluster_cleanup_accepts_expected_owner(self) -> None:
@@ -228,6 +245,23 @@ class FileStateTests(unittest.TestCase):
 
 
 class VerificationTests(unittest.TestCase):
+    @mock.patch.object(MAINTENANCE, "_command", side_effect=lambda name: name)
+    @mock.patch.object(MAINTENANCE, "_run")
+    def test_role_creation_is_bound_to_scratch_port_and_identity(
+        self, run: mock.Mock, _command: mock.Mock
+    ) -> None:
+        MAINTENANCE._create_role("A" * 48, "123456789")
+
+        argv = run.call_args.args[0]
+        sql = run.call_args.kwargs["input_bytes"]
+        self.assertEqual(argv[argv.index("-h") + 1], "/var/run/postgresql")
+        self.assertEqual(argv[argv.index("-p") + 1], "55432")
+        self.assertIn(b"current_setting('port') <> '55432'", sql)
+        self.assertIn(b"system_identifier::text", sql)
+        self.assertIn(b"= '123456789'", sql)
+        self.assertIn(b"BEGIN;", sql)
+        self.assertIn(b"COMMIT;", sql)
+
     @mock.patch.object(MAINTENANCE, "_command", side_effect=lambda name: name)
     @mock.patch.object(MAINTENANCE, "_run")
     def test_verify_requires_limited_role_tls_and_distinct_identity(

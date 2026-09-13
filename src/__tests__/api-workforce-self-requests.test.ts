@@ -58,6 +58,7 @@ beforeEach(() => {
   vi.mocked(resolveWorkforceActor).mockResolvedValue({
     agentId: "agent-1", role: "AGENT", scopedAgentIds: ["agent-1"],
   })
+  vi.mocked(prisma.organization.findUnique).mockResolvedValue({ features: [] } as never)
 })
 
 describe("Workforce self-request web routes", () => {
