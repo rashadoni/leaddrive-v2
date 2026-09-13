@@ -42,3 +42,23 @@ NOT RUN  physical Android and named-pilot exercise; those are separate C9/C14
 WF-C7-006 is **DONE**. Manager queue scope, route-conflict acknowledgement,
 idempotent decision and immutable/transactional audit are implemented. This
 does not claim payroll semantics or permit Route to decide Workforce facts.
+
+## Granular-access follow-on
+
+After the explicit `workforce-granular-access-v1` cutover, the legacy CRM
+actor scope is no longer accepted as decision authority. Leave and absence
+decisions require `TEAM_REQUEST_DECIDE`; an immutable time correction requires
+the separate `TIME_APPROVE` permission. The resource team is resolved at the
+request submission instant, or at the linked workday start for a correction,
+and is never inferred from the employee's mutable current directory row.
+
+The service checks the persisted grant before any Route-conflict preview and
+checks the rollout fence plus grant again in the mutation transaction. A
+revoked grant therefore cannot race a successful decision. Missing history or
+an unavailable grant lookup fails closed, organization/exact-agent scopes stay
+usable, and an employee can never decide their own request even if they hold a
+separate grant.
+
+Focused verification on the delivery stack passed 11 request-decision tests,
+3 persisted-grant resolver tests, scoped ESLint and `git diff --check`. No
+tenant flag or grant is created by this source checkpoint.
