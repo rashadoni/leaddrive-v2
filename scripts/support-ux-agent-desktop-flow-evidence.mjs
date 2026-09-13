@@ -263,22 +263,26 @@ try {
     return { emptyStateObserved: true, emptyScreenshot, recoverySucceeded: true }
   })
 
-  await recordStep(page, "dashboard-permission-state", async () => {
-    const pattern = "**/api/v1/support/agent-desktop"
-    let interceptCount = 0
-    const deny = async (route) => {
-      interceptCount += 1
-      await route.fulfill({ status: 403, contentType: "application/json", body: JSON.stringify({ success: false, error: "Synthetic permission denial" }) })
-    }
-    await page.route(pattern, deny)
-    await page.goto("about:blank")
-    await page.goto("/support/agent-desktop?evidence=permission", { waitUntil: "domcontentloaded" })
-    await page.getByTestId("agent-desktop-load-error").waitFor({ state: "visible" })
-    if (interceptCount !== 1) throw new Error(`permission_intercept_count_${interceptCount}`)
-    if (await page.getByTestId("agent-desktop-retry-load").count() !== 0) throw new Error("permission_state_offered_misleading_retry")
-    assertDemoTenant(await page.locator("body").innerText(), demoOrganization, "Agent Desktop permission state")
-    return { permissionMessageObserved: true, misleadingRetryAbsent: true }
-  })
+  const permissionPage = await context.newPage()
+  try {
+    await recordStep(permissionPage, "dashboard-permission-state", async () => {
+      const pattern = "**/api/v1/support/agent-desktop"
+      let interceptCount = 0
+      const deny = async (route) => {
+        interceptCount += 1
+        await route.fulfill({ status: 403, contentType: "application/json", body: JSON.stringify({ success: false, error: "Synthetic permission denial" }) })
+      }
+      await permissionPage.route(pattern, deny)
+      await permissionPage.goto("/support/agent-desktop?evidence=permission", { waitUntil: "domcontentloaded" })
+      await permissionPage.getByTestId("agent-desktop-load-error").waitFor({ state: "visible" })
+      if (interceptCount !== 1) throw new Error(`permission_intercept_count_${interceptCount}`)
+      if (await permissionPage.getByTestId("agent-desktop-retry-load").count() !== 0) throw new Error("permission_state_offered_misleading_retry")
+      assertDemoTenant(await permissionPage.locator("body").innerText(), demoOrganization, "Agent Desktop permission state")
+      return { permissionMessageObserved: true, misleadingRetryAbsent: true }
+    })
+  } finally {
+    await permissionPage.close()
+  }
 } finally {
   await context.close()
   await browser.close()
