@@ -269,6 +269,49 @@ export function withWorkforceSessionPolicyConfigurationAuth<C = unknown>(
 }
 
 /**
+ * Session-only boundary for the mobile pilot write-fence control plane.
+ * Legacy tenants retain the admin boundary; after granular cutover only an
+ * organization-scoped pilot rollback operator may inspect or change cohorts.
+ * Mutation routes continue to enforce their separate mandatory MFA check.
+ */
+export function withWorkforceSessionPilotFenceAuth<C = unknown>(
+  handler: (req: NextRequest, auth: AuthResult, ctx: C) => Promise<Response> | Response,
+) {
+  const wrapped = withRlsSessionAuth<C>(async (req, auth, ctx) => {
+    try {
+      const organization = await prisma.organization.findUnique({
+        where: { id: auth.orgId },
+        select: { plan: true, addons: true, features: true, modules: true },
+      })
+      if (!organization || !isTenantCapabilityEnabled("workforce-hrm", organization)) {
+        return workforceCapabilityDisabled()
+      }
+      if (!workforceGranularAccessEnabled(organization.features)) {
+        return isWorkforcePolicyAdministrator(auth.role)
+          ? handler(req, auth, ctx)
+          : workforcePolicyAdminDenied()
+      }
+      const access = await decidePersistedWorkforceAccess({
+        db: prisma,
+        organizationId: auth.orgId,
+        principalUserId: auth.userId,
+        selfAgentId: null,
+        permission: "PILOT_FENCE_MANAGE",
+        resource: { organizationId: auth.orgId },
+      })
+      return access.allowed ? handler(req, auth, ctx) : workforceGranularAccessDenied()
+    } catch (error) {
+      console.error("[withWorkforceSessionPilotFenceAuth] authorization lookup failed", error)
+      return NextResponse.json({
+        error: "Unable to verify Workforce pilot-fence access.",
+        code: "WORKFORCE_GRANULAR_ACCESS_UNAVAILABLE",
+      }, { status: 503 })
+    }
+  })
+  return wrapped as WrappedWorkforceRouteHandler<C>
+}
+
+/**
  * Employment lifecycle is an organization-wide HR fact. After granular
  * access cutover, a generic CRM administrator is insufficient and the exact
  * Workforce HR grant becomes authoritative.
