@@ -29,6 +29,7 @@ export type WorkforceAccessReviewAction = {
 export type WorkforceAccessReviewResult = {
   reviewedAt: string
   staleAfterDays: number
+  activityEvidence: "COMPLETE" | "UNAVAILABLE"
   grantsExamined: number
   actionsExamined: number
   findingCounts: Partial<Record<WorkforceAccessReviewFindingCode, number>>
@@ -87,9 +88,11 @@ export function reviewWorkforceAccess(input: {
   actions: readonly WorkforceAccessReviewAction[]
   now?: Date
   staleAfterDays?: number
+  activityEvidenceComplete?: boolean
 }): WorkforceAccessReviewResult {
   const now = input.now ?? new Date()
   const staleAfterDays = input.staleAfterDays ?? DEFAULT_STALE_AFTER_DAYS
+  const activityEvidenceComplete = input.activityEvidenceComplete ?? true
   if (
     !validIdentifier(input.organizationId)
     || !validDate(now)
@@ -181,7 +184,7 @@ export function reviewWorkforceAccess(input: {
     if (grant.principalState !== "ACTIVE" && grant.revokedAt == null) {
       codes.push("PRINCIPAL_INACTIVE")
     }
-    if (activeAt(grant, now) && grant.effectiveFrom <= staleCutoff) {
+    if (activityEvidenceComplete && activeAt(grant, now) && grant.effectiveFrom <= staleCutoff) {
       const latestAction = (actionsByGrant.get(grant.id) ?? [])
         .filter((instant) => instant <= now)
         .sort((left, right) => right.getTime() - left.getTime())[0]
@@ -200,6 +203,7 @@ export function reviewWorkforceAccess(input: {
   return {
     reviewedAt: now.toISOString(),
     staleAfterDays,
+    activityEvidence: activityEvidenceComplete ? "COMPLETE" : "UNAVAILABLE",
     grantsExamined: input.grants.length,
     actionsExamined: input.actions.length,
     findingCounts,
