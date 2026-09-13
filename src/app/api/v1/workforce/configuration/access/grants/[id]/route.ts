@@ -112,8 +112,8 @@ export const DELETE = withWorkforceSessionGrantManagementAuth<RouteContext>(asyn
           })
         ),
         audit: {
-          ipAddress: requestAudit.ipAddress,
-          userAgent: requestAudit.userAgent,
+          ipAddress: requestAudit.ipAddress ?? null,
+          userAgent: requestAudit.userAgent ?? null,
         },
         replayMode: "SERVER_ASSIGNED_TIMESTAMPS",
       })

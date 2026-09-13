@@ -214,8 +214,8 @@ export const POST = withWorkforceSessionGrantManagementAuth(async (req: NextRequ
           })
         ),
         audit: {
-          ipAddress: requestAudit.ipAddress,
-          userAgent: requestAudit.userAgent,
+          ipAddress: requestAudit.ipAddress ?? null,
+          userAgent: requestAudit.userAgent ?? null,
         },
         replayMode: "SERVER_ASSIGNED_TIMESTAMPS",
       })
