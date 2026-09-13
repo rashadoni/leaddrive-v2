@@ -306,7 +306,7 @@ class WorkforceSessionRepository(
             )
         }
         if (lifecycle != binding.lifecycle) secureStore.writeDeviceBinding(binding.copy(lifecycle = lifecycle))
-        WorkforceDeviceTrustState(
+        return WorkforceDeviceTrustState(
             lifecycle = lifecycle,
             enrollmentId = binding.enrollmentId,
             enrollments = enrollments,
