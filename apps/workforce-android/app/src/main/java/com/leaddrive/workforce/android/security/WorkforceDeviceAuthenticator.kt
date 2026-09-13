@@ -5,6 +5,7 @@ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import com.leaddrive.workforce.android.R
 import java.security.Signature
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -65,10 +66,10 @@ class WorkforceDeviceAuthenticator(private val activity: FragmentActivity) {
                 },
             )
             val promptInfo = BiometricPrompt.PromptInfo.Builder()
-                .setTitle("Confirm Workforce action")
+                .setTitle(activity.getString(R.string.biometric_title))
                 .setSubtitle(actionLabel)
                 .setAllowedAuthenticators(STRONG_BIOMETRIC)
-                .setNegativeButtonText("Cancel")
+                .setNegativeButtonText(activity.getString(R.string.cancel))
                 .build()
             prompt.authenticate(promptInfo, BiometricPrompt.CryptoObject(signature))
             continuation.invokeOnCancellation { prompt.cancelAuthentication() }

@@ -57,6 +57,11 @@ location/background-tracking service.
   employee, workday, tenant, site, location, QR or device-proof data; they are
   cancelled on sign-out/account change. There is no push, start or segment
   reminder and no notification delivery claim.
+- core client actions, navigation, private-reminder and OS prompt strings have
+  Android resource catalogs for English, Azerbaijani and Russian. Tabs expose
+  selected state to accessibility services and explicitly use 48 dp minimum
+  targets. Server/API error text and physical TalkBack/font-scale acceptance
+  remain separate work; the resource files do not claim full translation.
 
 The project intentionally does **not** claim Android Gradle/build evidence,
 physical Today/offline/QR/biometric tests, hardware-attestation-server

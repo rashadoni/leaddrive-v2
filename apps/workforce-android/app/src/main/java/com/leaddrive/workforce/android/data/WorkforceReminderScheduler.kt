@@ -18,6 +18,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.leaddrive.workforce.android.MainActivity
+import com.leaddrive.workforce.android.R
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 
@@ -113,13 +114,14 @@ class WorkforceGenericReminderWorker(
         val manager = NotificationManagerCompat.from(applicationContext)
         return runCatching {
             ensureChannel(applicationContext)
+            val notificationText = applicationContext.getString(R.string.notification_text)
             manager.notify(
                 NOTIFICATION_ID,
                 NotificationCompat.Builder(applicationContext, CHANNEL_ID)
                     .setSmallIcon(android.R.drawable.ic_dialog_info)
-                    .setContentTitle("LeadDrive Workforce")
-                    .setContentText("Open Workforce to review your work-time status.")
-                    .setStyle(NotificationCompat.BigTextStyle().bigText("Open Workforce to review your work-time status."))
+                    .setContentTitle(applicationContext.getString(R.string.notification_title))
+                    .setContentText(notificationText)
+                    .setStyle(NotificationCompat.BigTextStyle().bigText(notificationText))
                     .setContentIntent(openWorkforceIntent(applicationContext))
                     .setAutoCancel(true)
                     .setCategory(NotificationCompat.CATEGORY_REMINDER)
@@ -141,8 +143,12 @@ class WorkforceGenericReminderWorker(
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, "Workforce reminders", NotificationManager.IMPORTANCE_DEFAULT).apply {
-                description = "Generic reminders to review Workforce work-time status"
+            NotificationChannel(
+                CHANNEL_ID,
+                context.getString(R.string.notification_channel),
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply {
+                description = context.getString(R.string.notification_channel_description)
             },
         )
     }

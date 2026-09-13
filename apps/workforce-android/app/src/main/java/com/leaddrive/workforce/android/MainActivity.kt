@@ -4,17 +4,20 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Build
+import androidx.annotation.StringRes
 import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -30,6 +33,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
@@ -387,8 +397,8 @@ private fun WorkforceLoading() {
         modifier = Modifier.fillMaxSize().padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("LeadDrive Workforce", style = MaterialTheme.typography.headlineMedium)
-        Text("Restoring your secure session…")
+        Text(stringResource(R.string.title_loading), style = MaterialTheme.typography.headlineMedium)
+        Text(stringResource(R.string.restoring_session))
     }
 }
 
@@ -406,27 +416,27 @@ private fun WorkforceLogin(
         modifier = Modifier.fillMaxSize().padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("LeadDrive Workforce", style = MaterialTheme.typography.headlineMedium)
-        Text("Work time is separate from Route & Field.")
+        Text(stringResource(R.string.title_loading), style = MaterialTheme.typography.headlineMedium)
+        Text(stringResource(R.string.work_time_separate))
         OutlinedTextField(
             value = organizationSlug,
             onValueChange = { organizationSlug = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Organization") },
+            label = { Text(stringResource(R.string.organization)) },
             singleLine = true,
         )
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Email") },
+            label = { Text(stringResource(R.string.email)) },
             singleLine = true,
         )
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Password") },
+            label = { Text(stringResource(R.string.password)) },
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
         )
@@ -437,9 +447,15 @@ private fun WorkforceLogin(
                 password = ""
             },
         ) {
-            Text("Sign in")
+            Text(stringResource(R.string.sign_in))
         }
-        status?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        status?.let {
+            Text(
+                it,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
@@ -470,21 +486,32 @@ private fun WorkforceHome(
         modifier = Modifier.fillMaxSize().padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("Hello, ${bootstrap.employeeName}", style = MaterialTheme.typography.headlineMedium)
-        Text("Timezone: ${bootstrap.timezone}")
-        Row(modifier = Modifier.fillMaxWidth()) {
+        Text(stringResource(R.string.hello_employee, bootstrap.employeeName), style = MaterialTheme.typography.headlineMedium)
+        Text(stringResource(R.string.timezone, bootstrap.timezone))
+        Row(modifier = Modifier.fillMaxWidth().selectableGroup()) {
             WorkforceSection.entries.forEach { candidate ->
-                TextButton(onClick = { onSelectSection(candidate) }) {
-                    Text(if (candidate == section) "• ${candidate.label}" else candidate.label)
+                val label = stringResource(candidate.labelRes)
+                val selected = candidate == section
+                val selectionState = stringResource(
+                    if (selected) R.string.tab_selected else R.string.tab_not_selected,
+                )
+                TextButton(
+                    modifier = Modifier.workforceTapTarget().semantics {
+                        role = Role.Tab
+                        stateDescription = selectionState
+                    },
+                    onClick = { onSelectSection(candidate) },
+                ) {
+                    Text(if (selected) "• $label" else label)
                 }
             }
         }
         when (section) {
             WorkforceSection.TODAY -> {
-                Text("Server truth: ${today?.date ?: "not loaded"}")
+                Text(stringResource(R.string.server_truth, today?.date ?: stringResource(R.string.not_loaded)))
                 if (today == null) {
-                    Text("Work-time state is unavailable. No attendance action was created locally.")
-                    Button(onClick = onRefresh) { Text("Retry server state") }
+                    Text(stringResource(R.string.worktime_unavailable))
+                    Button(onClick = onRefresh) { Text(stringResource(R.string.retry_server_state)) }
                 } else {
                     WorkforceTodayCard(
                         snapshot = today,
@@ -499,7 +526,7 @@ private fun WorkforceHome(
                     Text("Current site: not asserted until an approved action-time proof is captured.")
                     Text("Location is never tracked in the background. Action-time location remains unavailable until the published legal notice and tenant proof policy are active.")
                     Text("A transient transport failure can keep the same action only in this device’s encrypted, bounded outbox; it is not a server-accepted fact.")
-                    TextButton(onClick = onRefresh) { Text("Refresh server state") }
+                    TextButton(onClick = onRefresh) { Text(stringResource(R.string.refresh_server_state)) }
                 }
             }
             WorkforceSection.HISTORY -> WorkforceHistory(
@@ -527,8 +554,14 @@ private fun WorkforceHome(
         if (bootstrap.updateUrl != null) {
             Text("An approved update is available through your organization’s managed Play channel.")
         }
-        status?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        TextButton(onClick = onSignOut) { Text("Sign out") }
+        status?.let {
+            Text(
+                it,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        TextButton(modifier = Modifier.workforceTapTarget(), onClick = onSignOut) { Text(stringResource(R.string.sign_out)) }
     }
 }
 
@@ -538,26 +571,50 @@ private fun WorkforceLocalReminders(
     onSetEnabled: (Boolean) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Private reminder", style = MaterialTheme.typography.titleMedium)
-        Text("Optional and local to this phone. Workforce schedules it only from a server-approved shift end; it never guesses office hours.")
+        Text(stringResource(R.string.private_reminder), style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.private_reminder_explainer))
         if (settings == null) {
-            Text("Refresh server state to check the optional reminder.")
+            Text(stringResource(R.string.private_reminder_refresh))
         } else {
             Text(settings.state.employeeMessage)
             Button(onClick = { onSetEnabled(!settings.enabled) }) {
-                Text(if (settings.enabled) "Turn off local reminders" else "Turn on local reminders")
+                Text(stringResource(if (settings.enabled) R.string.turn_off_reminders else R.string.turn_on_reminders))
             }
         }
     }
 }
 
-private enum class WorkforceSection(val label: String) {
-    TODAY("Today"),
-    HISTORY("Work Time"),
-    REQUESTS("Requests"),
-    RECOVERY("Recovery"),
-    DEVICE("Device"),
+private enum class WorkforceSection(@StringRes val labelRes: Int) {
+    TODAY(R.string.tab_today),
+    HISTORY(R.string.tab_work_time),
+    REQUESTS(R.string.tab_requests),
+    RECOVERY(R.string.tab_recovery),
+    DEVICE(R.string.tab_device),
 }
+
+@Composable
+private fun WorkforceHrmRequestType.localizedLabel(): String = stringResource(
+    when (this) {
+        WorkforceHrmRequestType.LEAVE -> R.string.request_leave
+        WorkforceHrmRequestType.ABSENCE -> R.string.request_absence
+        WorkforceHrmRequestType.TIME_CORRECTION -> R.string.request_time_correction
+    },
+)
+
+@Composable
+private fun WorkforceWorkdayAction.localizedLabel(): String = stringResource(
+    when (this) {
+        WorkforceWorkdayAction.START -> R.string.action_start
+        WorkforceWorkdayAction.PAUSE -> R.string.action_pause
+        WorkforceWorkdayAction.RESUME -> R.string.action_resume
+        WorkforceWorkdayAction.FINISH -> R.string.action_finish
+    },
+)
+
+private fun Modifier.workforceTapTarget(): Modifier = defaultMinSize(
+    minWidth = 48.dp,
+    minHeight = 48.dp,
+)
 
 @Composable
 private fun WorkforceRecovery(
@@ -674,8 +731,19 @@ private fun WorkforceRequests(
         item {
             Column(modifier = Modifier.fillMaxWidth()) {
                 WorkforceHrmRequestType.entries.forEach { candidate ->
-                    TextButton(onClick = { type = candidate }) {
-                        Text(if (candidate == type) "• ${candidate.label}" else candidate.label)
+                    val label = candidate.localizedLabel()
+                    val selected = candidate == type
+                    val selectionState = stringResource(
+                        if (selected) R.string.tab_selected else R.string.tab_not_selected,
+                    )
+                    TextButton(
+                        modifier = Modifier.workforceTapTarget().semantics {
+                            role = Role.Tab
+                            stateDescription = selectionState
+                        },
+                        onClick = { type = candidate },
+                    ) {
+                        Text(if (selected) "• $label" else label)
                     }
                 }
             }
@@ -842,7 +910,7 @@ private fun WorkforceTodayCard(
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Today", style = MaterialTheme.typography.titleLarge)
+        Text(stringResource(R.string.today), style = MaterialTheme.typography.titleLarge)
         when {
             workday == null -> Text("No workday has been accepted by the server.")
             else -> WorkforceWorkdayState(workday, elapsedSeconds)
@@ -856,6 +924,7 @@ private fun WorkforceTodayCard(
             Text("No work-time action is available for this server state.")
         } else {
             allowed.forEach { action ->
+                val actionLabel = action.localizedLabel()
                 Button(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = busyAction == null,
@@ -863,12 +932,12 @@ private fun WorkforceTodayCard(
                 ) {
                     val label = when {
                         attendance.requiresQr(action) && attendance.requiresDeviceProof(action) ->
-                            "Scan QR and confirm ${action.label.lowercase()}"
-                        attendance.requiresQr(action) -> "Scan fresh QR to ${action.label.lowercase()}"
-                        attendance.requiresDeviceProof(action) -> "Confirm ${action.label.lowercase()} on trusted device"
-                        else -> action.label
+                            stringResource(R.string.action_scan_and_confirm, actionLabel)
+                        attendance.requiresQr(action) -> stringResource(R.string.action_scan_fresh, actionLabel)
+                        attendance.requiresDeviceProof(action) -> stringResource(R.string.action_confirm_trusted, actionLabel)
+                        else -> actionLabel
                     }
-                    Text(if (busyAction == action) "Sending…" else label)
+                    Text(if (busyAction == action) stringResource(R.string.action_sending) else label)
                 }
             }
         }

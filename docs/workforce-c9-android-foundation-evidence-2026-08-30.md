@@ -2,7 +2,7 @@
 
 > **Status:** safe partial source foundation for `WF-C9-001`, `WF-C9-002`,
 > `WF-C9-003`, `WF-C9-004`, `WF-C9-005`, `WF-C9-006`, `WF-C9-008`,
-> `WF-C9-011` and `WF-C5-003`. It is not an Android build, signed app, device-attestation
+> `WF-C9-011`, `WF-C9-012` and `WF-C5-003`. It is not an Android build, signed app, device-attestation
 > acceptance, Play upload or location-collection activation.
 > **Recorded:** 2026-08-30
 
@@ -116,6 +116,24 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   delivery receipt. Those flows remain unimplemented until an approved
   server-side notification contract and physical-device evidence exist.
 
+## Localisation and accessibility foundation (`WF-C9-012`, partial)
+
+- Core native client navigation, sign-in, action, request-type, reminder,
+  notification-channel and biometric-prompt copy is resource-backed in default
+  English plus `values-az` and `values-ru`. The employee's device locale picks
+  the correct resource without a tenant setting or a hidden tracking field.
+- The existing Material `Button`/`TextButton` semantics remain intact. The
+  selectable section/request tabs additionally announce their `Tab` role and
+  selected/not-selected state; dynamic employee status uses a polite live
+  region. All visible workday state includes words, not colour alone.
+- Navigation and request-type tabs explicitly have a 48 dp minimum width and
+  height. Text uses standard Material typography and no fixed font scale,
+  clipping or custom motion. This is source posture only, not evidence that a
+  200% device font scale reflows every screen.
+- Remaining hard-coded server/API/recovery messages deliberately stay outside
+  this resource slice: safely localising them requires stable error codes and
+  reviewed legal/HR translation, not unreliable client-side text matching.
+
 ## Source-level checks
 
 - `PASS` — `workforce-android-foundation.test.ts` fixes the module boundary,
@@ -128,11 +146,15 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   cover serialization of an immutable planned end plus the reminder boundary
   (19 tests across the `/workday` and Android-foundation files in this
   checkpoint; bootstrap behavior remains covered by its earlier checkpoint).
+- `PASS` — `workforce-android-foundation.test.ts` verifies all three core
+  catalogs, resource-backed native notification/biometric prompts, tab state
+  semantics, polite status announcements and explicit 48 dp target source.
 - `NOT RUN` — Android Gradle lint/unit tests, build, emulator/device tests,
-  camera/location/QR checks, notification permission/channel/delivery failure
-  exercise, Keystore attestation chain verification, managed Play upload and
-  signing. Contabo has no Java, Android SDK or Gradle; the new GitHub workflow
-  is the prescribed external debug gate.
+  camera/location/QR checks, notification permission/channel/delivery failure,
+  TalkBack, AZ/RU/EN linguistic review, 200% font, contrast, reduced-motion
+  and poor-vision exercise, Keystore attestation chain verification, managed
+  Play upload and signing. Contabo has no Java, Android SDK or Gradle; the new
+  GitHub workflow is the prescribed external debug gate.
 
 ## Deliberate remaining work
 
