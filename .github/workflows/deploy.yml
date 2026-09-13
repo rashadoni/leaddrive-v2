@@ -316,6 +316,11 @@ jobs:
       - name: Event-platform Kafka and schema asset gate
         run: node scripts/ci/test-event-platform-assets.mjs
 
+      - name: PostgreSQL maintenance safety unit tests
+        run: |
+          python3 .github/scripts/test_remediate_postgres_source_tls.py
+          python3 .github/scripts/test_provision_postgres_restore_scratch.py
+
       - name: Event-platform migration and database invariant gate
         run: node scripts/ci/test-event-platform-migrations.mjs
         env:

@@ -311,6 +311,20 @@ Healthchecks.io URL только из GitHub environment secrets
 `disabled/inactive`, URL отсутствует, повторяется или не является точным
 `https://hc-ping.com/<uuid>`.
 
+Отдельная одноразовая подготовка создаёт изолированный restore scratch до
+установки backup tools. Workflow `Provision isolated PostgreSQL restore
+scratch` запускается только с актуального `main`, operation `apply` и
+confirmation
+`PROVISION_ISOLATED_POSTGRES_RESTORE_SCRATCH_ON_13_140_132_245`. Он создаёт
+отдельный PostgreSQL 16 на `127.0.0.1:55432`, собственные CA/passfile и
+ограниченную роль `leaddrive_restore_verifier`, проверяет `verify-full` и
+отличающийся от source system identifier, затем оставляет cluster остановленным.
+Workflow не устанавливает пакеты, не запускает backup/restore и не меняет
+Kafka. При ошибке после snapshot новый cluster удаляется, а три клиентских
+файла восстанавливаются байт-в-байт. Обратная операция требует confirmation
+`ROLLBACK_ISOLATED_POSTGRES_RESTORE_SCRATCH_ON_13_140_132_245` и отказывается
+работать при drift.
+
 1. `install-backup-tools` — confirmation
    `INSTALL_PINNED_BACKUP_TOOLS_AND_EXTEND_LOG_RETENTION_ON_13_140_132_245`.
    Стадия выключает **все четыре** recovery timer, устанавливает закреплённые
@@ -404,6 +418,11 @@ gh workflow run commission-production-backup.yml --ref main \
   -f operation=configure-monitoring-urls \
   -f expected_main_sha="$MAIN_SHA" \
   -f confirmation=CONFIGURE_BACKUP_MONITORING_ON_13_140_132_245
+
+gh workflow run provision-postgres-restore-scratch.yml --ref main \
+  -f operation=apply \
+  -f expected_main_sha="$MAIN_SHA" \
+  -f confirmation=PROVISION_ISOLATED_POSTGRES_RESTORE_SCRATCH_ON_13_140_132_245
 
 gh workflow run commission-production-backup.yml --ref main \
   -f operation=install-backup-tools \
