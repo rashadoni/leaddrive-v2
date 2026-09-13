@@ -129,7 +129,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "axe-core": "^4.11.1",
-    "eslint": "^9",
+    "eslint": "^10",
     "eslint-config-next": "16.1.7",
     "prisma": "^6.19.2",
     "tailwindcss": "^4",
