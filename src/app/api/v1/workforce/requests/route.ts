@@ -29,14 +29,14 @@ function workforceGranularRequestReadDenied() {
   return NextResponse.json({
     error: "This Workforce request list requires an effective Workforce role grant.",
     code: "WORKFORCE_REQUEST_READ_ACCESS_REQUIRED",
-  }, { status: 403 })
+  }, { status: 403, headers: workforceSensitiveResponseHeaders })
 }
 
-function workforceGranularRequestReadUnavailable() {
+function workforceRequestReadUnavailable() {
   return NextResponse.json({
     error: "Unable to verify Workforce request-list access.",
     code: "WORKFORCE_REQUEST_READ_ACCESS_UNAVAILABLE",
-  }, { status: 503 })
+  }, { status: 503, headers: workforceSensitiveResponseHeaders })
 }
 
 function requestAuditContext(req: NextRequest) {
@@ -92,7 +92,7 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
       getMtmSettings(auth.orgId),
       prisma.organization.findUnique({ where: { id: auth.orgId }, select: { features: true } }),
     ])
-    if (!organization) return workforceGranularRequestReadUnavailable()
+    if (!organization) return workforceRequestReadUnavailable()
     const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
     const granularAccess = workforceGranularAccessEnabled(organization.features)
     const selfWorkdaysPromise = canSubmitSelf && selfAgentId
@@ -164,9 +164,9 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
       })
     } catch {
       logWorkforceSensitiveOperationFailure({ operation: "read-request-list" })
-      return workforceGranularRequestReadUnavailable()
+      return workforceRequestReadUnavailable()
     }
-    if (!grants) return workforceGranularRequestReadUnavailable()
+    if (!grants) return workforceRequestReadUnavailable()
     const hasRequestReadGrant = grants.some((grant) => (
       workforceRolePermissions(grant.role).includes("TEAM_REQUEST_READ")
       || workforceRolePermissions(grant.role).includes("TIME_APPROVE")
@@ -222,7 +222,7 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
         })
       } catch {
         logWorkforceSensitiveOperationFailure({ operation: "read-request-list" })
-        return workforceGranularRequestReadUnavailable()
+        return workforceRequestReadUnavailable()
       }
       if (!cursorCandidate) {
         return NextResponse.json({ error: "Invalid request cursor", code: "WORKFORCE_REQUEST_CURSOR_INVALID" }, { status: 400 })
@@ -233,7 +233,7 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
         }
       } catch {
         logWorkforceSensitiveOperationFailure({ operation: "read-request-list" })
-        return workforceGranularRequestReadUnavailable()
+        return workforceRequestReadUnavailable()
       }
     }
 
@@ -256,7 +256,7 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
       authorization = await authorizeCandidates(candidates)
     } catch {
       logWorkforceSensitiveOperationFailure({ operation: "read-request-list" })
-      return workforceGranularRequestReadUnavailable()
+      return workforceRequestReadUnavailable()
     }
     const readableCandidates = candidates.filter((candidate) => authorization.get(candidate.id)?.readable)
     const pageCandidates = readableCandidates.slice(0, limit)
@@ -294,9 +294,9 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
         nextCursor: hasMore ? page.at(-1)?.id ?? null : null,
       },
     }, { headers: workforceSensitiveResponseHeaders })
-  } catch (error) {
-    console.error("[workforce/requests GET]", error)
-    return NextResponse.json({ error: "Failed to load workforce requests" }, { status: 500 })
+  } catch {
+    logWorkforceSensitiveOperationFailure({ operation: "read-request-list" })
+    return workforceRequestReadUnavailable()
   }
 })
 
