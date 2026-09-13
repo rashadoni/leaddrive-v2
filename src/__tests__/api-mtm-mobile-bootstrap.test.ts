@@ -92,6 +92,13 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
           enabled: true,
           capabilityId: "workforce-hrm",
           release: { platform: "ANDROID", status: "NOT_CONFIGURED", maySubmitNewWorkforceActions: true },
+          wireSchemas: {
+            bootstrapResponse: { current: 1, supported: [1] },
+            workdayRequest: { preferred: 3, supported: [1, 2, 3] },
+            workdayResponse: { current: 1, supported: [1] },
+            evidenceEnvelope: { preferred: 1, supported: [1] },
+            siteTransitionRequest: { preferred: 1, supported: [1] },
+          },
         },
         routes: { enabled: true, capabilityId: "route-field" },
       },
