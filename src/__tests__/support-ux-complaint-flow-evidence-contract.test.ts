@@ -36,6 +36,8 @@ describe("Complaint mutating flow evidence contract", () => {
     expect(flow).toContain('page.keyboard.press("Enter")')
     expect(flow).toContain('complaints-results").waitFor({ state: "visible" })')
     expect(flow).toContain('click({ trial: true })')
+    expect(flow).toContain('url.pathname !== "/complaints/new"')
+    expect(flow).toContain('url.pathname !== "/complaints/import"')
     expect(flow).toContain('stale_refresh_intercept_missed_')
     expect(flow).toContain("registry_scroll_not_restored")
     expect(flow).toContain("create_failure_discarded_draft")

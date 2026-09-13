@@ -257,7 +257,11 @@ try {
       page.waitForResponse((candidate) => new URL(candidate.url()).pathname === "/api/v1/complaints" && candidate.request().method() === "POST" && candidate.ok()),
       page.getByTestId("complaint-new-submit").click(),
     ])
-    await page.waitForURL((url) => /^\/complaints\/[^/]+$/.test(url.pathname))
+    await page.waitForURL((url) => (
+      url.pathname !== "/complaints/new"
+      && url.pathname !== "/complaints/import"
+      && /^\/complaints\/[^/]+$/.test(url.pathname)
+    ))
     createdComplaintId = new URL(page.url()).pathname.split("/").pop() || ""
     if (!createdComplaintId) throw new Error("created_complaint_id_missing")
     return { leaveWarningObserved: true, draftRecovered: true, failedDraftPreserved: true, createdComplaintId }
