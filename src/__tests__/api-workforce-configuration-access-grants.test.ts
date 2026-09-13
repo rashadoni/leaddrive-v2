@@ -348,6 +348,23 @@ describe("Workforce access-grant configuration API", () => {
     expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
   })
 
+  it("fails closed before inventory access or audit when the shared guard denies", async () => {
+    vi.mocked(requireWorkforceAccessGrantRateLimit).mockResolvedValue(NextResponse.json({
+      code: "WORKFORCE_ACCESS_GRANT_RATE_LIMITED",
+    }, { status: 429 }))
+
+    const response = await inventory(inventoryRequest(), auth)
+
+    expect(response.status).toBe(429)
+    expect(requireWorkforceAccessGrantRateLimit).toHaveBeenCalledWith({
+      operation: "INVENTORY",
+      organizationId: auth.orgId,
+      principalUserId: auth.userId,
+    })
+    expect(prisma.workforceAccessGrant.findMany).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+
   it("appends an audited immutable revocation only after the transaction rechecks tenant-admin authority", async () => {
     const response = await revoke(revocationRequest(), auth, revokeContext)
 

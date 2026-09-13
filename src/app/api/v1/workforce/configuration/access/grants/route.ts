@@ -258,6 +258,12 @@ export const POST = withWorkforceSessionGrantManagementAuth(async (req: NextRequ
 export const GET = withWorkforceSessionGrantManagementAuth(async (req: NextRequest, auth) => {
   const mfaDenied = await requireWorkforceAttendanceSecurityMfa(auth.orgId, auth)
   if (mfaDenied) return applyWorkforceSensitiveResponseHeaders(mfaDenied)
+  const rateLimited = await requireWorkforceAccessGrantRateLimit({
+    operation: "INVENTORY",
+    organizationId: auth.orgId,
+    principalUserId: auth.userId,
+  })
+  if (rateLimited) return rateLimited
 
   const now = new Date()
   try {
