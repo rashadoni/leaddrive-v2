@@ -27,7 +27,7 @@ describe("Agent Desktop mutating evidence contract", () => {
     expect(flow).toContain('page.keyboard.press("Space")')
     expect(flow).toContain("!control.hasAttribute(\"disabled\")")
     expect(flow).toContain('page.goto("about:blank")')
-    expect(flow).toContain("permission_intercept_missed_")
+    expect(flow).toContain("permission_intercept_count_")
     expect(flow).toContain("captureObservedState")
     expect(flow).toContain('"dashboard-load-error"')
     expect(flow).toContain('"availability-load-error"')

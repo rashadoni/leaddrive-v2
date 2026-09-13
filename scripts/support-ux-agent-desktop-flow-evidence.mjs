@@ -265,15 +265,16 @@ try {
 
   await recordStep(page, "dashboard-permission-state", async () => {
     const pattern = "**/api/v1/support/agent-desktop"
-    const deny = async (route) => route.fulfill({ status: 403, contentType: "application/json", body: JSON.stringify({ success: false, error: "Synthetic permission denial" }) })
+    let interceptCount = 0
+    const deny = async (route) => {
+      interceptCount += 1
+      await route.fulfill({ status: 403, contentType: "application/json", body: JSON.stringify({ success: false, error: "Synthetic permission denial" }) })
+    }
     await page.route(pattern, deny)
     await page.goto("about:blank")
-    const [denied] = await Promise.all([
-      page.waitForResponse((candidate) => new URL(candidate.url()).pathname === "/api/v1/support/agent-desktop"),
-      page.goto("/support/agent-desktop?evidence=permission", { waitUntil: "domcontentloaded" }),
-    ])
-    if (denied.status() !== 403) throw new Error(`permission_intercept_missed_${denied.status()}`)
+    await page.goto("/support/agent-desktop?evidence=permission", { waitUntil: "domcontentloaded" })
     await page.getByTestId("agent-desktop-load-error").waitFor({ state: "visible" })
+    if (interceptCount !== 1) throw new Error(`permission_intercept_count_${interceptCount}`)
     if (await page.getByTestId("agent-desktop-retry-load").count() !== 0) throw new Error("permission_state_offered_misleading_retry")
     assertDemoTenant(await page.locator("body").innerText(), demoOrganization, "Agent Desktop permission state")
     return { permissionMessageObserved: true, misleadingRetryAbsent: true }
