@@ -76,23 +76,35 @@ class FileStateTests(unittest.TestCase):
     def test_root_owned_stale_pgpass_can_be_snapshotted_then_normalized(self) -> None:
         self.assertTrue(
             MAINTENANCE._acceptable_existing_secret_file(
-                MAINTENANCE.FileState(True, uid=0, gid=0, mode=0o640), 1234
+                MAINTENANCE.FileState(True, uid=0, gid=0, mode=0o640), 5678, 1234
             )
         )
         self.assertTrue(
             MAINTENANCE._acceptable_existing_secret_file(
-                MAINTENANCE.FileState(True, uid=0, gid=1234, mode=0o440), 1234
+                MAINTENANCE.FileState(True, uid=0, gid=1234, mode=0o440), 5678, 1234
             )
         )
+
+    def test_backup_owned_private_pgpass_can_be_snapshotted_then_normalized(self) -> None:
+        for mode in (0o400, 0o600):
+            self.assertTrue(
+                MAINTENANCE._acceptable_existing_secret_file(
+                    MAINTENANCE.FileState(True, uid=5678, gid=1234, mode=mode),
+                    5678,
+                    1234,
+                )
+            )
 
     def test_non_root_or_public_pgpass_is_rejected(self) -> None:
         for state in (
             MAINTENANCE.FileState(True, uid=1000, gid=1234, mode=0o640),
             MAINTENANCE.FileState(True, uid=0, gid=1234, mode=0o644),
             MAINTENANCE.FileState(True, uid=0, gid=9999, mode=0o640),
+            MAINTENANCE.FileState(True, uid=5678, gid=9999, mode=0o600),
+            MAINTENANCE.FileState(True, uid=5678, gid=1234, mode=0o640),
         ):
             self.assertFalse(
-                MAINTENANCE._acceptable_existing_secret_file(state, 1234)
+                MAINTENANCE._acceptable_existing_secret_file(state, 5678, 1234)
             )
 
     def test_file_match_requires_exact_bytes_and_authority(self) -> None:

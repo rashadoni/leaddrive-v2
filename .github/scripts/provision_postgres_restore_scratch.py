@@ -130,8 +130,10 @@ def _sha(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def _acceptable_existing_secret_file(state: FileState, backup_gid: int) -> bool:
-    """Allow a root-owned, non-public stale file to enter the sealed snapshot.
+def _acceptable_existing_secret_file(
+    state: FileState, backup_uid: int, backup_gid: int
+) -> bool:
+    """Allow a controlled, non-public stale file to enter the sealed snapshot.
 
     ``_read_file`` has already rejected links, non-regular files, oversized
     files, and group/world-writable modes.  The provisioner replaces this file
@@ -139,7 +141,7 @@ def _acceptable_existing_secret_file(state: FileState, backup_gid: int) -> bool:
     it ever contains the newly generated scratch credential.
     """
 
-    return state.uid == 0 and (state.mode, state.gid) in {
+    root_owned = state.uid == 0 and (state.mode, state.gid) in {
         (0o400, 0),
         (0o440, 0),
         (0o600, 0),
@@ -149,6 +151,12 @@ def _acceptable_existing_secret_file(state: FileState, backup_gid: int) -> bool:
         (0o600, backup_gid),
         (0o640, backup_gid),
     }
+    backup_owned = (
+        state.uid == backup_uid
+        and state.gid == backup_gid
+        and state.mode in {0o400, 0o600}
+    )
+    return root_owned or backup_owned
 
 
 def _run(
@@ -803,8 +811,12 @@ def apply() -> None:
 
     try:
         backup_gid = grp.getgrnam("leaddrive-backup").gr_gid
+        backup_user = pwd.getpwnam("leaddrive-backup")
     except KeyError as exc:
         raise MaintenanceError("prerequisite") from exc
+    if backup_user.pw_gid != backup_gid:
+        raise MaintenanceError("prerequisite")
+    backup_uid = backup_user.pw_uid
     env_payload, env_state = _read_file(ENV_PATH, maximum=MAX_ENV_BYTES)
     if (
         env_payload is None
@@ -821,10 +833,10 @@ def apply() -> None:
     ca_payload, ca_state = _read_file(
         SCRATCH_CA_PATH, maximum=MAX_SMALL_FILE_BYTES, required=False
     )
-    if pgpass_state.present and pgpass_state.uid != 0:
+    if pgpass_state.present and pgpass_state.uid not in {0, backup_uid}:
         raise MaintenanceError("configuration-pgpass-owner")
     if pgpass_state.present and not _acceptable_existing_secret_file(
-        pgpass_state, backup_gid
+        pgpass_state, backup_uid, backup_gid
     ):
         raise MaintenanceError("configuration-pgpass-authority")
     if ca_state.present and (
