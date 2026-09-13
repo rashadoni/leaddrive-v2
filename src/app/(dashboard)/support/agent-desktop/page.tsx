@@ -1,403 +1,581 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
+import Link from "next/link"
 import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useLocale, useTranslations } from "next-intl"
+import { toast } from "sonner"
+import {
+  AlertCircle,
+  ArrowRight,
+  BarChart3,
+  Check,
+  Clock3,
+  Headphones,
+  RefreshCw,
+} from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Headphones, Ticket, Clock, CheckCircle2, AlertTriangle, TrendingUp,
-  Users, Star, ArrowRight, Timer, BarChart3,
-} from "lucide-react"
-import { useLocale, useTranslations } from "next-intl"
-import { formatDate } from "@/lib/format-date"
+import { Switch } from "@/components/ui/switch"
 import { HelpButton } from "@/components/help/help-button"
+import { formatDateTime } from "@/lib/format-date"
+import { cn } from "@/lib/utils"
 
-/* ── CircularGauge (SVG ring) ─────────────────── */
-function CircularGauge({
-  value, max = 100, label, color = "#6366f1", size = 100,
-}: { value: number; max?: number; label: string; color?: string; size?: number }) {
-  const pct = Math.min(value / max, 1)
-  const r = 38
-  const cx = size / 2
-  const cy = size / 2
-  const circumference = 2 * Math.PI * r
-  const offset = circumference * (1 - pct)
-  return (
-    <div className="flex flex-col items-center gap-1">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#e5e7eb" strokeWidth="8" />
-        <circle
-          cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth="8"
-          strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={offset}
-          transform={`rotate(-90 ${cx} ${cy})`}
-          className="transition-all duration-1000"
-        />
-        <text x={cx} y={cy - 2} textAnchor="middle" className="text-lg font-bold" fill="currentColor" fontSize="18">
-          {Math.round(value)}{max === 100 ? "%" : ""}
-        </text>
-        <text x={cx} y={cy + 14} textAnchor="middle" className="text-muted-foreground" fill="#9ca3af" fontSize="10">
-          {label}
-        </text>
-      </svg>
-    </div>
-  )
+type QueueTicket = {
+  id: string
+  ticketNumber: string
+  subject: string
+  priority: string
+  status: string
+  createdAt: string
+  updatedAt: string
+  actionableDueAt: string | null
+  isOverdue: boolean
 }
 
-interface AgentStats {
-  totalOpen: number
-  myOpen: number
-  avgResponseTime: string
-  avgResolutionTime: string
-  resolutionRate: number
-  csatScore: number
-  slaCompliance: number
-  tickets: any[]
-  byPriority: { priority: string; count: number }[]
-  byStatus: { status: string; count: number }[]
-  leaderboard: { name: string; resolved: number; avgTime: string; csat: number }[]
+type AgentDesktopData = {
+  generatedAt: string
+  scope: "assigned_to_current_user"
+  period: {
+    key: "rolling_30_days"
+    days: number
+    from: string
+    to: string
+  }
+  queue: {
+    total: number
+    shown: number
+    nextTicket: QueueTicket | null
+    tickets: QueueTicket[]
+    byPriority: Record<string, number>
+  }
+  metrics: {
+    averageFirstResponseSeconds: number | null
+    firstResponseSample: number
+    averageResolutionSeconds: number | null
+    resolutionSample: number
+    resolutionRatePct: number | null
+    resolutionRateSample: number
+    slaCompliancePct: number | null
+    slaObligationSample: number
+    csatAverage: number | null
+    csatSample: number
+  }
+  canViewTeamAnalytics: boolean
+}
+
+type LoadError = "forbidden" | "failed" | null
+
+function responseError(response: Response): LoadError {
+  return response.status === 403 ? "forbidden" : "failed"
 }
 
 export default function AgentDesktopPage() {
   const t = useTranslations("agentDesktop")
   const locale = useLocale()
-  const { data: session } = useSession()
-  const router = useRouter()
-  const orgId = session?.user?.organizationId
-  const [stats, setStats] = useState<AgentStats | null>(null)
+  const { data: session, status: sessionStatus } = useSession()
+  const sessionUserId = session?.user?.id
+  const organizationId = session?.user?.organizationId
+  const displayName = session?.user?.name || t("agentFallback")
+
+  const [data, setData] = useState<AgentDesktopData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [isAvailable, setIsAvailable] = useState(true)
-  const [togglingAvail, setTogglingAvail] = useState(false)
+  const [loadError, setLoadError] = useState<LoadError>(null)
+  const [isAvailable, setIsAvailable] = useState<boolean | null>(null)
+  const [availabilityLoading, setAvailabilityLoading] = useState(true)
+  const [availabilitySaving, setAvailabilitySaving] = useState(false)
+  const [availabilitySaved, setAvailabilitySaved] = useState(false)
+  const [availabilityRetry, setAvailabilityRetry] = useState<"load" | boolean | null>(null)
 
-  // Fetch current user availability
-  useEffect(() => {
-    if (!session?.user?.id) return
-    const headers: any = orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>
-    // Personal state belongs on the session-only self-service route. The
-    // organization directory detail endpoint requires `users:read`, which a
-    // support agent intentionally does not hold.
-    fetch("/api/v1/users/me", { headers })
-      .then(r => r.json())
-      .then(json => {
-        if (json.success && json.data) {
-          setIsAvailable(json.data.isAvailable ?? true)
-        }
-      })
-      .catch(() => {})
-  }, [session])
-
-  const toggleAvailability = async () => {
-    if (togglingAvail) return
-    setTogglingAvail(true)
+  const loadDashboard = useCallback(async () => {
+    if (!sessionUserId) return
+    setLoading(true)
+    setLoadError(null)
     try {
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-        ...(orgId ? { "x-organization-id": String(orgId) } : {}),
-      }
-      const res = await fetch("/api/v1/users/me/availability", {
-        method: "PATCH",
-        headers,
-        body: JSON.stringify({ isAvailable: !isAvailable }),
+      const response = await fetch("/api/v1/support/agent-desktop", {
+        headers: organizationId ? { "x-organization-id": String(organizationId) } : undefined,
       })
-      if (res.ok) setIsAvailable(!isAvailable)
+      if (!response.ok) {
+        setLoadError(responseError(response))
+        return
+      }
+      const payload = await response.json()
+      if (!payload.success || !payload.data) {
+        setLoadError("failed")
+        return
+      }
+      setData(payload.data)
     } catch {
-      // ignore
+      setLoadError("failed")
     } finally {
-      setTogglingAvail(false)
+      setLoading(false)
+    }
+  }, [organizationId, sessionUserId])
+
+  const loadAvailability = useCallback(async () => {
+    if (!sessionUserId) return
+    setAvailabilityLoading(true)
+    setAvailabilitySaved(false)
+    setAvailabilityRetry(null)
+    try {
+      const response = await fetch("/api/v1/users/me/availability", {
+        headers: organizationId ? { "x-organization-id": String(organizationId) } : undefined,
+      })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok || !payload?.success || typeof payload.data?.isAvailable !== "boolean") {
+        setAvailabilityRetry("load")
+        return
+      }
+      setIsAvailable(payload.data.isAvailable)
+    } catch {
+      setAvailabilityRetry("load")
+    } finally {
+      setAvailabilityLoading(false)
+    }
+  }, [organizationId, sessionUserId])
+
+  useEffect(() => {
+    if (sessionStatus !== "authenticated" || !sessionUserId) return
+    void loadDashboard()
+    void loadAvailability()
+  }, [loadAvailability, loadDashboard, sessionStatus, sessionUserId])
+
+  const saveAvailability = async (nextValue: boolean) => {
+    if (availabilitySaving || availabilityLoading) return
+    setAvailabilitySaving(true)
+    setAvailabilitySaved(false)
+    setAvailabilityRetry(null)
+    try {
+      const response = await fetch("/api/v1/users/me/availability", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(organizationId ? { "x-organization-id": String(organizationId) } : {}),
+        },
+        body: JSON.stringify({ isAvailable: nextValue }),
+      })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok || !payload?.success || payload.data?.isAvailable !== nextValue) {
+        setAvailabilityRetry(nextValue)
+        toast.error(t("availabilitySaveFailed"))
+        return
+      }
+      setIsAvailable(nextValue)
+      setAvailabilitySaved(true)
+      toast.success(t("availabilitySaved"))
+    } catch {
+      setAvailabilityRetry(nextValue)
+      toast.error(t("availabilitySaveFailed"))
+    } finally {
+      setAvailabilitySaving(false)
     }
   }
 
-  useEffect(() => {
-    if (!session) return
-    const headers: any = orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>
+  const formatDuration = (seconds: number | null) => {
+    if (seconds == null) return t("unavailableMetric")
+    if (seconds < 60) return t("durationSeconds", { count: seconds })
+    const totalMinutes = Math.round(seconds / 60)
+    if (totalMinutes < 60) return t("durationMinutes", { count: totalMinutes })
+    return t("durationHoursMinutes", {
+      hours: Math.floor(totalMinutes / 60),
+      minutes: totalMinutes % 60,
+    })
+  }
 
-    Promise.all([
-      fetch("/api/v1/tickets?limit=100", { headers }).then(r => r.json()),
-      fetch("/api/v1/users?limit=50", { headers }).then(r => r.json()),
-    ]).then(([ticketsRes, usersRes]) => {
-      const tickets = ticketsRes?.data?.tickets || ticketsRes?.data || []
-      const users = usersRes?.data?.users || usersRes?.data || []
+  const priorityLabel = (priority: string) => {
+    const key = ["critical", "urgent", "high", "medium", "low"].includes(priority) ? priority : "unknown"
+    return t(`priority.${key}`)
+  }
 
-      const open = tickets.filter((t: any) => t.status !== "resolved" && t.status !== "closed")
-      const resolved = tickets.filter((t: any) => t.status === "resolved" || t.status === "closed")
-      const myOpen = open.filter((t: any) => t.assignedTo === session?.user?.id)
+  const statusLabel = (status: string) => {
+    const key = ["new", "open", "in_progress", "waiting", "resolved", "closed", "escalated"].includes(status)
+      ? status
+      : "unknown"
+    return t(`status.${key}`)
+  }
 
-      const byPriority = ["critical", "high", "medium", "low"].map(p => ({
-        priority: p,
-        count: open.filter((t: any) => t.priority === p).length,
-      }))
-
-      const byStatus = ["new", "in_progress", "waiting", "resolved", "closed"].map(s => ({
-        status: s,
-        count: tickets.filter((t: any) => t.status === s).length,
-      }))
-
-      // Build simple leaderboard from assignees
-      const assigneeCounts: Record<string, { name: string; resolved: number; total: number }> = {}
-      tickets.forEach((t: any) => {
-        if (t.assignedTo) {
-          const user = users.find((u: any) => u.id === t.assignedTo)
-          const name = user?.name || t.assignedTo.slice(0, 8)
-          if (!assigneeCounts[t.assignedTo]) assigneeCounts[t.assignedTo] = { name, resolved: 0, total: 0 }
-          assigneeCounts[t.assignedTo].total++
-          if (t.status === "resolved" || t.status === "closed") assigneeCounts[t.assignedTo].resolved++
-        }
-      })
-
-      const leaderboard = Object.values(assigneeCounts)
-        .sort((a, b) => b.resolved - a.resolved)
-        .slice(0, 5)
-        .map(a => ({
-          name: a.name,
-          resolved: a.resolved,
-          avgTime: "—",
-          csat: Math.round(70 + Math.random() * 25),
-        }))
-
-      const csatTickets = tickets.filter((t: any) => t.satisfactionRating)
-      const csatScore = csatTickets.length > 0
-        ? Math.round(csatTickets.reduce((s: number, t: any) => s + t.satisfactionRating, 0) / csatTickets.length * 20)
-        : 0
-
-      setStats({
-        totalOpen: open.length,
-        myOpen: myOpen.length,
-        avgResponseTime: "2h 15m",
-        avgResolutionTime: "18h 30m",
-        resolutionRate: tickets.length > 0 ? Math.round((resolved.length / tickets.length) * 100) : 0,
-        csatScore,
-        slaCompliance: 85,
-        tickets: open.slice(0, 10),
-        byPriority,
-        byStatus,
-        leaderboard,
-      })
-    }).finally(() => setLoading(false))
-  }, [session])
-
-  if (loading) {
+  if (sessionStatus === "unauthenticated") {
     return (
-      <div className="space-y-4 animate-pulse">
-        <div className="h-8 w-56 bg-muted rounded" />
-        <div className="grid grid-cols-4 gap-3">{[0,1,2,3].map(i => <div key={i} className="h-20 bg-muted rounded-xl" />)}</div>
+      <div data-testid="agent-desktop-permission" className="mx-auto flex min-h-[50vh] max-w-xl items-center px-4 py-8">
+        <div className="w-full rounded-lg border bg-card p-5 text-center">
+          <AlertCircle className="mx-auto h-6 w-6 text-muted-foreground" aria-hidden="true" />
+          <h1 className="mt-3 text-base font-semibold">{t("permissionTitle")}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t("signInDescription")}</p>
+        </div>
       </div>
     )
   }
 
-  if (!stats) return null
-
-  const PRIORITY_COLORS: Record<string, string> = {
-    critical: "bg-red-500", high: "bg-orange-500", medium: "bg-amber-400", low: "bg-green-400",
+  if (sessionStatus === "loading" || (loading && !data)) {
+    return <AgentDesktopSkeleton label={t("loading")} />
   }
 
-  const STATUS_BADGE: Record<string, string> = {
-    new: "bg-blue-100 text-blue-700",
-    in_progress: "bg-amber-100 text-amber-700",
-    waiting: "bg-purple-100 text-purple-700",
-    resolved: "bg-green-100 text-green-700",
-    closed: "bg-muted text-muted-foreground",
+  if (loadError && !data) {
+    return (
+      <div data-testid="agent-desktop-load-error" className="mx-auto flex min-h-[50vh] max-w-xl items-center px-4 py-8">
+        <div className="w-full rounded-lg border bg-card p-5 text-center">
+          <AlertCircle className="mx-auto h-6 w-6 text-muted-foreground" aria-hidden="true" />
+          <h1 className="mt-3 text-base font-semibold">
+            {loadError === "forbidden" ? t("permissionTitle") : t("loadFailedTitle")}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {loadError === "forbidden" ? t("permissionDescription") : t("loadFailedDescription")}
+          </p>
+          {loadError !== "forbidden" && (
+            <Button
+              data-testid="agent-desktop-retry-load"
+              className="mt-4 min-h-11 bg-foreground text-background hover:bg-foreground/90"
+              onClick={() => void loadDashboard()}
+            >
+              <RefreshCw className="h-4 w-4" aria-hidden="true" />
+              {t("retry")}
+            </Button>
+          )}
+        </div>
+      </div>
+    )
   }
+
+  if (!data) return null
+
+  const nextTicket = data.queue.nextTicket
+  const metrics = [
+    {
+      key: "response",
+      label: t("avgResponse"),
+      value: formatDuration(data.metrics.averageFirstResponseSeconds),
+      sample: data.metrics.firstResponseSample,
+      hint: t("avgResponseHint"),
+    },
+    {
+      key: "resolution",
+      label: t("avgResolution"),
+      value: formatDuration(data.metrics.averageResolutionSeconds),
+      sample: data.metrics.resolutionSample,
+      hint: t("avgResolutionHint"),
+    },
+    {
+      key: "rate",
+      label: t("resolutionRate"),
+      value: data.metrics.resolutionRatePct == null
+        ? t("unavailableMetric")
+        : `${data.metrics.resolutionRatePct}%`,
+      sample: data.metrics.resolutionRateSample,
+      hint: t("resolutionRateHint"),
+    },
+    {
+      key: "sla",
+      label: t("slaCompliance"),
+      value: data.metrics.slaCompliancePct == null
+        ? t("unavailableMetric")
+        : `${data.metrics.slaCompliancePct}%`,
+      sample: data.metrics.slaObligationSample,
+      hint: t("slaComplianceHint"),
+    },
+    {
+      key: "csat",
+      label: t("csat"),
+      value: data.metrics.csatAverage == null
+        ? t("unavailableMetric")
+        : t("csatValue", { value: data.metrics.csatAverage }),
+      sample: data.metrics.csatSample,
+      hint: t("csatHint"),
+    },
+  ]
 
   return (
-    <div className="space-y-6 pb-12">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-            <Headphones className="h-5 w-5 text-primary" />
+    <div data-testid="agent-desktop-workspace" className="mx-auto max-w-[1120px] space-y-4 pb-8">
+      <header className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <Headphones className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+            <h1 className="truncate text-xl font-semibold tracking-tight">{t("title")}</h1>
+            <HelpButton slug="agent-desktop" variant="label" />
           </div>
-          <div>
-            <h1 className="flex items-center gap-2 text-xl font-bold">{t("title")}<HelpButton slug="agent-desktop" variant="label" /></h1>
-            <p className="text-sm text-muted-foreground">{t("subtitle", { name: session?.user?.name || "" })}</p>
-          </div>
+          <p className="mt-1 text-sm text-muted-foreground">{t("subtitle", { name: displayName })}</p>
         </div>
-        <div className="flex items-center gap-3">
-          <span className={`text-sm font-medium ${isAvailable ? "text-green-600" : "text-muted-foreground"}`}>
-            {isAvailable ? t("available") : t("unavailable")}
-          </span>
-          <button
-            type="button"
-            disabled={togglingAvail}
-            onClick={toggleAvailability}
-            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-              isAvailable ? "bg-green-500" : "bg-muted-foreground/40"
-            } ${togglingAvail ? "opacity-50" : ""}`}
-          >
-            <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform ${
-              isAvailable ? "translate-x-5" : "translate-x-0"
-            }`} />
-          </button>
-        </div>
-      </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-blue-500 text-white rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium opacity-80">{t("openCases")}</span>
-            <Ticket className="h-4 w-4 opacity-80" />
-          </div>
-          <span className="text-2xl font-bold">{stats.totalOpen}</span>
-        </div>
-        <div className="bg-violet-500 text-white rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium opacity-80">{t("myCases")}</span>
-            <Users className="h-4 w-4 opacity-80" />
-          </div>
-          <span className="text-2xl font-bold">{stats.myOpen}</span>
-        </div>
-        <div className="bg-green-500 text-white rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium opacity-80">{t("avgResponse")}</span>
-            <Timer className="h-4 w-4 opacity-80" />
-          </div>
-          <span className="text-2xl font-bold">{stats.avgResponseTime}</span>
-        </div>
-        <div className="bg-amber-500 text-white rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium opacity-80">{t("csat")}</span>
-            <Star className="h-4 w-4 opacity-80" />
-          </div>
-          <span className="text-2xl font-bold">{stats.csatScore}%</span>
-        </div>
-      </div>
-
-      {/* Gauges + Cases */}
-      <div className="grid lg:grid-cols-3 gap-4">
-        {/* Team KPI Gauges */}
-        <Card className="border-none shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{t("teamKpis")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex justify-around">
-              <CircularGauge value={stats.resolutionRate} label="Resolved" color="#22c55e" size={100} />
-              <CircularGauge value={stats.slaCompliance} label="SLA" color="#6366f1" size={100} />
-              <CircularGauge value={stats.csatScore} label="CSAT" color="#f59e0b" size={100} />
+        <div className="rounded-lg border bg-card px-3 py-2 sm:max-w-[360px]">
+          <div className="flex min-h-11 items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium">
+                {isAvailable == null
+                  ? availabilityLoading ? t("availabilityLoading") : t("availabilityUnknown")
+                  : isAvailable ? t("available") : t("unavailable")}
+              </p>
+              <p className="truncate text-xs text-muted-foreground">
+                {isAvailable == null
+                  ? t("availabilityUnknownHint")
+                  : isAvailable ? t("availableHint") : t("unavailableHint")}
+              </p>
             </div>
-
-            {/* Priority breakdown */}
-            <div className="mt-4 pt-4 border-t space-y-2">
-              <p className="text-xs font-medium text-muted-foreground mb-2">{t("openByPriority")}</p>
-              {stats.byPriority.map(p => (
-                <div key={p.priority} className="flex items-center gap-2 text-sm">
-                  <div className={`h-2.5 w-2.5 rounded-full ${PRIORITY_COLORS[p.priority]}`} />
-                  <span className="flex-1 capitalize">{p.priority}</span>
-                  <span className="font-semibold">{p.count}</span>
-                </div>
-              ))}
+            <div className="flex min-h-11 min-w-11 items-center justify-center">
+              <Switch
+                data-testid="agent-desktop-availability"
+                checked={isAvailable ?? false}
+                disabled={isAvailable == null || availabilityLoading || availabilitySaving}
+                onCheckedChange={(checked) => void saveAvailability(checked)}
+                aria-label={t("availabilityLabel")}
+                aria-describedby="availability-status"
+                className="h-6 w-11 [&>span]:h-5 [&>span]:w-5 data-[state=checked]:[&>span]:translate-x-5 motion-reduce:transition-none motion-reduce:[&>span]:transition-none"
+              />
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Open Cases List */}
-        <Card className="border-none shadow-sm lg:col-span-2">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{t("openCases")}</CardTitle>
-              <Button variant="ghost" size="sm" className="text-xs gap-1" onClick={() => router.push("/tickets")}>
-                {t("viewAll")} <ArrowRight className="h-3 w-3" />
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {stats.tickets.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">{t("noOpenCases")}</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-2 font-medium text-muted-foreground text-xs">{t("colSubject")}</th>
-                      <th className="text-left p-2 font-medium text-muted-foreground text-xs">{t("colPriority")}</th>
-                      <th className="text-left p-2 font-medium text-muted-foreground text-xs">{t("colStatus")}</th>
-                      <th className="text-left p-2 font-medium text-muted-foreground text-xs">{t("colCreated")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {stats.tickets.map((t: any) => (
-                      <tr
-                        key={t.id}
-                        className="border-b last:border-0 hover:bg-muted/20 cursor-pointer"
-                        onClick={() => router.push(`/tickets/${t.id}`)}
-                      >
-                        <td className="p-2">
-                          <span className="font-medium line-clamp-1">{t.subject || t.title || "Untitled"}</span>
-                        </td>
-                        <td className="p-2">
-                          <div className="flex items-center gap-1.5">
-                            <div className={`h-2 w-2 rounded-full ${PRIORITY_COLORS[t.priority] || "bg-muted-foreground/30"}`} />
-                            <span className="text-xs capitalize">{t.priority || "medium"}</span>
-                          </div>
-                        </td>
-                        <td className="p-2">
-                          <Badge className={STATUS_BADGE[t.status] || "bg-muted"} variant="outline">
-                            {t.status?.replace(/_/g, " ")}
-                          </Badge>
-                        </td>
-                        <td className="p-2 text-muted-foreground text-xs">
-                          {formatDate(t.createdAt, locale)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+          </div>
+          <div id="availability-status" className="text-xs" aria-live="polite">
+            {availabilitySaving && <span className="text-muted-foreground">{t("availabilitySaving")}</span>}
+            {availabilitySaved && !availabilitySaving && availabilityRetry == null && (
+              <span data-testid="agent-desktop-availability-saved" className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300">
+                <Check className="h-3.5 w-3.5" aria-hidden="true" />{t("availabilitySaved")}
+              </span>
             )}
-          </CardContent>
-        </Card>
-      </div>
+            {availabilityRetry != null && !availabilitySaving && (
+              <span data-testid="agent-desktop-availability-error" className="flex flex-wrap items-center gap-x-2 font-medium text-red-700 dark:text-red-300">
+                {availabilityRetry === "load" ? t("availabilityLoadFailed") : t("availabilityUnchanged")}
+                <button
+                  type="button"
+                  data-testid="agent-desktop-retry-availability"
+                  className="min-h-11 rounded px-2 font-medium underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() => availabilityRetry === "load"
+                    ? void loadAvailability()
+                    : void saveAvailability(availabilityRetry)}
+                >
+                  {t("retry")}
+                </button>
+              </span>
+            )}
+          </div>
+        </div>
+      </header>
 
-      {/* Agent Leaderboard */}
-      <Card className="border-none shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{t("agentLeaderboard")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {stats.leaderboard.length === 0 ? (
-            <p className="text-center text-muted-foreground py-4">{t("noData")}</p>
-          ) : (
-            <div className="overflow-x-auto">
+      {loadError && (
+        <div data-testid="agent-desktop-refresh-error" role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm">
+          <span>{t("refreshFailed")}</span>
+          <Button data-testid="agent-desktop-retry-refresh" variant="outline" size="sm" className="min-h-11" onClick={() => void loadDashboard()}>
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
+            {t("retry")}
+          </Button>
+        </div>
+      )}
+
+      <section data-testid="agent-desktop-next-case" aria-labelledby="next-ticket-heading" className="rounded-lg border bg-card p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {t("nextAction")}
+            </p>
+            {nextTicket ? (
+              <>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <h2 id="next-ticket-heading" className="truncate text-base font-semibold">
+                    {nextTicket.subject}
+                  </h2>
+                  {nextTicket.isOverdue && <Badge variant="destructive">{t("overdue")}</Badge>}
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {nextTicket.ticketNumber} · {priorityLabel(nextTicket.priority)} · {statusLabel(nextTicket.status)}
+                  {nextTicket.actionableDueAt
+                    ? ` · ${t("due", { date: formatDateTime(nextTicket.actionableDueAt, locale) })}`
+                    : ""}
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 id="next-ticket-heading" className="mt-1 text-base font-semibold">{t("queueClearTitle")}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">{t("queueClearDescription")}</p>
+              </>
+            )}
+          </div>
+          {nextTicket && (
+            <Button
+              asChild
+              className="min-h-11 shrink-0 bg-foreground text-background hover:bg-foreground/90"
+            >
+              <Link href={`/tickets/${nextTicket.id}`}>
+                {t("openNext")}
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </Button>
+          )}
+        </div>
+      </section>
+
+      <section aria-labelledby="queue-heading" className="rounded-lg border bg-card">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
+          <div>
+            <h2 id="queue-heading" className="text-sm font-semibold">{t("personalQueue")}</h2>
+            <p className="text-xs text-muted-foreground">
+              {t("queueCount", { shown: data.queue.shown, total: data.queue.total })}
+            </p>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              data-testid="agent-desktop-refresh"
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="min-h-11 min-w-11"
+              disabled={loading}
+              onClick={() => void loadDashboard()}
+              aria-label={t("refresh")}
+            >
+              <RefreshCw className={cn("h-4 w-4", loading && "animate-spin motion-reduce:animate-none")} aria-hidden="true" />
+            </Button>
+            <Button asChild variant="ghost" size="sm" className="min-h-11">
+              <Link href="/tickets?assignee=me">
+                {t("viewAll")}
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+
+        {data.queue.tickets.length === 0 ? (
+          <div data-testid="agent-desktop-empty-queue" className="px-4 py-8 text-center">
+            <Check className="mx-auto h-5 w-5 text-muted-foreground" aria-hidden="true" />
+            <p className="mt-2 text-sm font-medium">{t("noOpenCases")}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("noOpenCasesHint")}</p>
+          </div>
+        ) : (
+          <>
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-2 font-medium text-muted-foreground text-xs">#</th>
-                    <th className="text-left p-2 font-medium text-muted-foreground text-xs">{t("colAgent")}</th>
-                    <th className="text-left p-2 font-medium text-muted-foreground text-xs">{t("colResolved")}</th>
-                    <th className="text-left p-2 font-medium text-muted-foreground text-xs">{t("colAvgTime")}</th>
-                    <th className="text-left p-2 font-medium text-muted-foreground text-xs">{t("csat")}</th>
+                  <tr className="text-left text-xs text-muted-foreground">
+                    <th className="px-4 py-2 font-medium">{t("colSubject")}</th>
+                    <th className="px-3 py-2 font-medium">{t("colPriority")}</th>
+                    <th className="px-3 py-2 font-medium">{t("colStatus")}</th>
+                    <th className="px-3 py-2 font-medium">{t("colDue")}</th>
+                    <th className="w-16 px-3 py-2"><span className="sr-only">{t("openTicket")}</span></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {stats.leaderboard.map((a, i) => (
-                    <tr key={a.name} className="border-b last:border-0">
-                      <td className="p-2">
-                        <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
-                          i === 0 ? "bg-yellow-100 text-yellow-700" :
-                          i === 1 ? "bg-muted text-muted-foreground" :
-                          i === 2 ? "bg-amber-100 text-amber-700" : "bg-muted text-muted-foreground"
-                        }`}>
-                          {i + 1}
-                        </span>
+                  {data.queue.tickets.map((ticket) => (
+                    <tr key={ticket.id} className="border-t transition-colors hover:bg-muted/40 motion-reduce:transition-none">
+                      <td className="max-w-[420px] px-4 py-2.5">
+                        <Link
+                          href={`/tickets/${ticket.id}`}
+                          className="block min-h-11 rounded py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <span className="block truncate font-medium">{ticket.subject}</span>
+                          <span className="block text-xs text-muted-foreground">{ticket.ticketNumber}</span>
+                        </Link>
                       </td>
-                      <td className="p-2 font-medium">{a.name}</td>
-                      <td className="p-2 font-semibold text-green-600">{a.resolved}</td>
-                      <td className="p-2 text-muted-foreground">{a.avgTime}</td>
-                      <td className="p-2">
-                        <div className="flex items-center gap-1">
-                          <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
-                          <span className="font-medium">{a.csat}%</span>
-                        </div>
+                      <td className="px-3 py-2.5">{priorityLabel(ticket.priority)}</td>
+                      <td className="px-3 py-2.5"><Badge variant="outline">{statusLabel(ticket.status)}</Badge></td>
+                      <td className={cn("whitespace-nowrap px-3 py-2.5 text-xs", ticket.isOverdue ? "font-semibold text-red-700 dark:text-red-300" : "text-muted-foreground")}>
+                        {ticket.actionableDueAt ? formatDateTime(ticket.actionableDueAt, locale) : t("noDueDate")}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <Button asChild variant="ghost" size="icon" className="min-h-11 min-w-11">
+                          <Link href={`/tickets/${ticket.id}`} aria-label={t("openTicketNamed", { subject: ticket.subject })}>
+                            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                          </Link>
+                        </Button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          )}
-        </CardContent>
-      </Card>
+
+            <ul className="divide-y md:hidden">
+              {data.queue.tickets.map((ticket) => (
+                <li key={ticket.id}>
+                  <Link
+                    href={`/tickets/${ticket.id}`}
+                    className="flex min-h-16 items-center justify-between gap-3 px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-medium">{ticket.subject}</span>
+                      <span className="mt-1 block text-xs text-muted-foreground">
+                        {ticket.ticketNumber} · {priorityLabel(ticket.priority)} · {statusLabel(ticket.status)}
+                      </span>
+                      {ticket.actionableDueAt && (
+                        <span className={cn("mt-1 block text-xs", ticket.isOverdue ? "font-semibold text-red-700 dark:text-red-300" : "text-muted-foreground")}>
+                          {t("due", { date: formatDateTime(ticket.actionableDueAt, locale) })}
+                        </span>
+                      )}
+                    </span>
+                    <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </section>
+
+      <section aria-labelledby="metrics-heading" className="rounded-lg border bg-card">
+        <div className="flex flex-wrap items-start justify-between gap-2 border-b px-4 py-3">
+          <div>
+            <h2 id="metrics-heading" className="text-sm font-semibold">{t("myPerformance")}</h2>
+            <p className="text-xs text-muted-foreground">{t("rollingPeriod", { days: data.period.days })}</p>
+          </div>
+          <span className="text-xs text-muted-foreground">
+            {t("updatedAt", { date: formatDateTime(data.generatedAt, locale) })}
+          </span>
+        </div>
+        <dl className="grid sm:grid-cols-2 lg:grid-cols-5">
+          {metrics.map((metric, index) => (
+            <div
+              key={metric.key}
+              className={cn(
+                "px-4 py-3",
+                index > 0 && "border-t sm:border-t-0 sm:border-l",
+                index > 1 && index % 2 === 0 && "sm:border-l-0 lg:border-l",
+              )}
+            >
+              <dt className="text-xs font-medium text-muted-foreground">{metric.label}</dt>
+              <dd className="mt-1">
+                <span className="block text-lg font-semibold tabular-nums">{metric.value}</span>
+                <span className="mt-1 block text-xs text-muted-foreground">{t("sampleSize", { count: metric.sample })}</span>
+                <span className="sr-only">{metric.hint}</span>
+              </dd>
+            </div>
+          ))}
+        </dl>
+        <details className="border-t px-4 py-3 text-xs text-muted-foreground">
+          <summary className="min-h-11 cursor-pointer rounded py-2 font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            {t("howMetricsWork")}
+          </summary>
+          <ul className="mt-1 list-disc space-y-1 pl-5">
+            {metrics.map((metric) => <li key={metric.key}>{metric.hint}</li>)}
+          </ul>
+        </details>
+      </section>
+
+      {data.canViewTeamAnalytics && (
+        <aside className="flex flex-col gap-3 rounded-lg border bg-muted/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex gap-3">
+            <BarChart3 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <div>
+              <h2 className="text-sm font-medium">{t("teamAnalytics")}</h2>
+              <p className="text-xs text-muted-foreground">{t("teamAnalyticsHint")}</p>
+            </div>
+          </div>
+          <Button asChild variant="outline" size="sm" className="min-h-11 shrink-0">
+            <Link href="/leaderboard?group=tickets">{t("openTeamAnalytics")}</Link>
+          </Button>
+        </aside>
+      )}
+    </div>
+  )
+}
+
+function AgentDesktopSkeleton({ label }: { label: string }) {
+  return (
+    <div data-testid="agent-desktop-loading" className="mx-auto max-w-[1120px] space-y-4" aria-busy="true" aria-label={label}>
+      <div className="flex items-center justify-between border-b pb-4">
+        <div className="space-y-2">
+          <div className="h-6 w-48 animate-pulse rounded bg-muted motion-reduce:animate-none" />
+          <div className="h-4 w-64 max-w-[70vw] animate-pulse rounded bg-muted motion-reduce:animate-none" />
+        </div>
+        <Clock3 className="h-5 w-5 animate-pulse text-muted-foreground motion-reduce:animate-none" aria-hidden="true" />
+      </div>
+      {[96, 260, 148].map((height) => (
+        <div key={height} className="animate-pulse rounded-lg border bg-muted/30 motion-reduce:animate-none" style={{ height }} />
+      ))}
+      <span className="sr-only">{label}</span>
     </div>
   )
 }

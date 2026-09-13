@@ -1,11 +1,11 @@
 /**
- * PATCH /api/v1/users/me/availability
+ * GET/PATCH /api/v1/users/me/availability
  *
  * Lets any authenticated user toggle their own isAvailable flag without
  * requiring the settings/write permission that PUT /api/v1/users/[id] needs.
  * Used by the Agent Desktop availability toggle.
  *
- * Body: { isAvailable: boolean }
+ * GET returns the persisted value. PATCH body: { isAvailable: boolean }.
  */
 import { NextResponse } from "next/server"
 import { z } from "zod"
@@ -14,6 +14,20 @@ import { withRlsSessionAuth } from "@/lib/with-rls"
 
 const schema = z.object({
   isAvailable: z.boolean(),
+})
+
+export const GET = withRlsSessionAuth(async (_req, session) => {
+  try {
+    const user = await prisma.user.findFirst({
+      where: { id: session.userId, organizationId: session.orgId },
+      select: { isAvailable: true },
+    })
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 })
+    return NextResponse.json({ success: true, data: user })
+  } catch (error) {
+    console.error("[me/availability GET]", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
 })
 
 export const PATCH = withRlsSessionAuth(async (req, session) => {

@@ -70,7 +70,6 @@ const GRANDFATHERED = new Set([
   "src/app/(dashboard)/settings/pipelines/page.tsx",
   "src/app/(dashboard)/settings/sales-forecast/page.tsx",
   "src/app/(dashboard)/settings/workflows/page.tsx",
-  "src/app/(dashboard)/support/agent-desktop/page.tsx",
   "src/app/(dashboard)/support/calendar/page.tsx",
   "src/app/(dashboard)/tasks/page.tsx",
   "src/components/ai/voice-console.tsx",
