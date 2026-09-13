@@ -322,6 +322,7 @@ private fun WorkforceHome(
                         onAction = onAction,
                     )
                     Text("Current site: not asserted until an approved action-time proof is captured.")
+                    Text("Location is never tracked in the background. Action-time location remains unavailable until the published legal notice and tenant proof policy are active.")
                     Text("A transient transport failure can keep the same action only in this device’s encrypted, bounded outbox; it is not a server-accepted fact.")
                     TextButton(onClick = onRefresh) { Text("Refresh server state") }
                 }

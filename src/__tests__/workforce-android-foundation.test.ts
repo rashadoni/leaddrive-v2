@@ -115,6 +115,22 @@ describe("Workforce Android foundation", () => {
     expect(activity).not.toMatch(/Log\.|println\(|Timber\./)
   })
 
+  it("contains an explicit foreground-only, action-time location primitive without activating background tracking", () => {
+    const manifest = read("app/src/main/AndroidManifest.xml")
+    const capture = read("app/src/main/java/com/leaddrive/workforce/android/location/WorkforceActionTimeLocationCapture.kt")
+    const activity = read("app/src/main/java/com/leaddrive/workforce/android/MainActivity.kt")
+    expect(capture).toContain("getCurrentLocation")
+    expect(capture).toContain("PermissionMissing")
+    expect(capture).toContain("UnsupportedPlatform")
+    expect(capture).toContain("CAPTURE_TIMEOUT_MS = 15_000L")
+    expect(capture).toContain("MAX_LOCATION_AGE_MS = 30_000L")
+    expect(capture).toContain("No legacy last-known fallback")
+    expect(capture).not.toMatch(/requestLocationUpdates|ForegroundService|ACCESS_BACKGROUND_LOCATION/i)
+    expect(manifest).not.toContain("ACCESS_BACKGROUND_LOCATION")
+    expect(activity).toContain("never tracked in the background")
+    expect(activity).toContain("legal notice and tenant proof policy are active")
+  })
+
   it("uses an attested non-exportable Android key without handling biometric data", () => {
     const deviceKey = read("app/src/main/java/com/leaddrive/workforce/android/security/WorkforceDeviceKeyManager.kt")
     expect(deviceKey).toContain("setAttestationChallenge(challenge)")

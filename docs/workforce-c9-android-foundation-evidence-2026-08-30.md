@@ -63,8 +63,13 @@ claiming Gradle, physical-device or seven-day recovery evidence.
 ## Evidence and privacy posture
 
 - The manifest declares camera and foreground/action-time location permissions
-  only. It has no background-location permission, location service or action
-  capture implementation.
+  only. It has no background-location permission, location service or active
+  action capture flow. `WorkforceActionTimeLocationCapture` is a user-triggered
+  foreground-only `getCurrentLocation` primitive with no stale last-known
+  fallback. It rejects fixes older than 30 seconds or outside coordinate and
+  accuracy bounds, exposes the platform mock flag for later server assessment,
+  cancels after 15 seconds, and returns explicit permission/provider/platform/
+  timeout states. It is not wired until tenant proof policy is active.
 - `WorkforceDeviceKeyManager` requests a challenge-bound ECDSA Android
   Keystore key, tries StrongBox where available, falls back only when the
   device reports StrongBox unavailable, and asks for per-use strong biometric
