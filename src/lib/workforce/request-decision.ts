@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client"
+import { Prisma, type PrismaClient } from "@prisma/client"
 import { NextRequest } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
@@ -8,6 +8,12 @@ import {
   isAgentInWorkforceScope,
   type WorkforceActor,
 } from "@/lib/workforce/actor"
+import {
+  decidePersistedWorkforceAccess,
+  type WorkforceAccessGrantReaderDb,
+} from "@/lib/workforce/access-grant-resolution"
+import { workforceGranularAccessEnabled } from "@/lib/workforce/granular-access-rollout"
+import { resolveWorkforceHistoricalTeamMembership } from "@/lib/workforce/team-membership"
 import {
   replayWorkforceWorkdayFacts,
   workforceReplayMatchesWorkdayCorrectionFacts,
@@ -73,6 +79,59 @@ class DecisionConflict extends Error {
   }
 }
 
+class DecisionAccessDenied extends Error {
+  constructor() {
+    super("Workforce request decision access is no longer effective")
+  }
+}
+
+type WorkforceRequestDecisionGrantDb = WorkforceAccessGrantReaderDb & Pick<PrismaClient, "$queryRaw">
+
+type WorkforceRequestDecisionGrantTarget = {
+  agentId: string
+  type: string
+  submittedAt: Date
+  correctionWorkday: { startedAt: Date } | null
+}
+
+/**
+ * Resolves the employee's team at the immutable request/workday instant. A
+ * leave or absence needs TEAM_REQUEST_DECIDE; changing time facts needs the
+ * separate TIME_APPROVE grant. Missing history is never replaced with the
+ * employee's mutable current team, while organization and exact-agent grants
+ * can still match the bounded resource.
+ */
+async function canDecideWorkforceRequestAfterGranularCutover(input: {
+  db: WorkforceRequestDecisionGrantDb
+  organizationId: string
+  userId: string
+  request: WorkforceRequestDecisionGrantTarget
+}): Promise<boolean> {
+  const scopeInstant = input.request.type === "TIME_CORRECTION"
+    ? input.request.correctionWorkday?.startedAt ?? input.request.submittedAt
+    : input.request.submittedAt
+  if (!(scopeInstant instanceof Date) || !Number.isFinite(scopeInstant.getTime())) return false
+
+  const historicalTeam = await resolveWorkforceHistoricalTeamMembership(input.db, {
+    organizationId: input.organizationId,
+    agentId: input.request.agentId,
+    workdayStartedAt: scopeInstant,
+  })
+  const access = await decidePersistedWorkforceAccess({
+    db: input.db,
+    organizationId: input.organizationId,
+    principalUserId: input.userId,
+    selfAgentId: null,
+    permission: input.request.type === "TIME_CORRECTION" ? "TIME_APPROVE" : "TEAM_REQUEST_DECIDE",
+    resource: {
+      organizationId: input.organizationId,
+      agentId: input.request.agentId,
+      teamId: historicalTeam?.teamId ?? null,
+    },
+  })
+  return access.allowed
+}
+
 function dateKeys(start: Date, end: Date): string[] {
   const first = start.toISOString().slice(0, 10)
   const last = end.toISOString().slice(0, 10)
@@ -112,8 +171,6 @@ function pausedSeconds(from: Date, to: Date): number {
 export async function decideWorkforceRequest(context: WorkforceDecisionContext): Promise<WorkforceDecisionResult> {
   const { organizationId, userId, actor, requestId, input, includeRouteConflicts, req } = context
   const requestAuditMetadata = req ? workforceAuditRequestMetadata(req.headers) : undefined
-  if (actor.role === "AGENT") return { kind: "forbidden" }
-
   const request = await prisma.mtmHrmRequest.findFirst({
     where: { id: requestId, organizationId },
     select: {
@@ -128,12 +185,37 @@ export async function decideWorkforceRequest(context: WorkforceDecisionContext):
       requestedEndAt: true,
       reason: true,
       decisionNote: true,
+      submittedAt: true,
       decidedAt: true,
       updatedAt: true,
+      correctionWorkday: { select: { startedAt: true } },
     },
   })
   if (!request) return { kind: "not_found" }
-  if (!isAgentInWorkforceScope(actor, request.agentId)) return { kind: "forbidden" }
+  // No session role or grant can authorize deciding one's own request.
+  if (actor.agentId === request.agentId) return { kind: "forbidden" }
+
+  const organization = await prisma.organization.findUnique({
+    where: { id: organizationId },
+    select: { features: true },
+  })
+  const granularAccess = workforceGranularAccessEnabled(organization?.features)
+  if (!granularAccess && !isAgentInWorkforceScope(actor, request.agentId)) {
+    return { kind: "forbidden" }
+  }
+  if (granularAccess) {
+    try {
+      if (!await canDecideWorkforceRequestAfterGranularCutover({
+        db: prisma,
+        organizationId,
+        userId,
+        request,
+      })) return { kind: "forbidden" }
+    } catch (error) {
+      console.error("[workforce/request decision] granular authorization lookup failed", error)
+      return { kind: "forbidden" }
+    }
+  }
 
   // Existing clients did not send a decision operationId. Treat a repeat of
   // the same terminal decision as a safe replay; a different terminal result
@@ -174,6 +256,22 @@ export async function decideWorkforceRequest(context: WorkforceDecisionContext):
   let data: DecisionData
   try {
     const updatedRequest = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // Recheck the rollout fence and grant in the write transaction. A grant
+      // revocation or cutover change cannot race an already-authorized preview
+      // into an unaccountable state mutation.
+      const currentOrganization = await tx.organization.findUnique({
+        where: { id: organizationId },
+        select: { features: true },
+      })
+      if (workforceGranularAccessEnabled(currentOrganization?.features)) {
+        const allowed = await canDecideWorkforceRequestAfterGranularCutover({
+          db: tx as unknown as WorkforceRequestDecisionGrantDb,
+          organizationId,
+          userId,
+          request,
+        })
+        if (!allowed) throw new DecisionAccessDenied()
+      }
       const updated = await tx.mtmHrmRequest.updateMany({
         where: { id: request.id, organizationId, status: "PENDING" },
         data: {
@@ -455,6 +553,7 @@ export async function decideWorkforceRequest(context: WorkforceDecisionContext):
     if (!updatedRequest) throw new DecisionConflict("Request disappeared after update")
     data = decisionData(updatedRequest)
   } catch (error) {
+    if (error instanceof DecisionAccessDenied) return { kind: "forbidden" }
     if (error instanceof DecisionConflict) {
       const current = await prisma.mtmHrmRequest.findFirst({
         where: { id: request.id, organizationId },
