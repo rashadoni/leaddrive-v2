@@ -30,6 +30,14 @@ location/background-tracking service.
   Workforce release state;
 - session token, tenant slug and selector are AES-GCM encrypted under a
   non-exportable Android Keystore key and are deleted on logout/account switch;
+- Today reloads the canonical server workday after restore, displays only its
+  allowed transitions and uses one immutable v3/idempotency operation per
+  action; a failed online transport cannot manufacture a local accepted fact;
+- a Room/WorkManager outbox stores operation metadata plus an Android
+  Keystore AES-GCM encrypted tenant/action payload. It preserves oldest-first
+  domain order, has a seven-day/eight-attempt bound and removes the encryption
+  key plus rows on logout or tenant switch. Server conflicts/rejections are
+  never queued as an offline bypass;
 - camera and foreground/action-time location permissions are declared, but
   there is **no** `ACCESS_BACKGROUND_LOCATION`, background location service or
   location capture implementation;
@@ -37,10 +45,10 @@ location/background-tracking service.
   key with an attestation challenge and per-use secure device credential or
   strong biometric authorization. It never reads or exports biometric data.
 
-The project intentionally does **not** claim delivered Today/history/request
-screens, durable Room outbox, QR scanner, attestation-server validation,
-device enrollment API transport, physical device support, managed Play upload
-or legal activation. Those slices remain independently gated in C5/C9/C10/C14.
+The project intentionally does **not** claim physical Today/offline tests,
+history/request screens, QR scanner, attestation-server validation, device
+enrollment API transport, physical device support, managed Play upload or
+legal activation. Those slices remain independently gated in C5/C9/C10/C14.
 
 ## Required external verification
 

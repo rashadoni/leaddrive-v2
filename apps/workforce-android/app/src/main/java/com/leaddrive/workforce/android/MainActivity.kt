@@ -28,6 +28,7 @@ import com.leaddrive.workforce.android.data.WorkforceActionConflictException
 import com.leaddrive.workforce.android.data.WorkforceApiClient
 import com.leaddrive.workforce.android.data.WorkforceApiException
 import com.leaddrive.workforce.android.data.WorkforceBootstrap
+import com.leaddrive.workforce.android.data.WorkforceEncryptedOutbox
 import com.leaddrive.workforce.android.data.WorkforceLoginInput
 import com.leaddrive.workforce.android.data.WorkforceRuntimeConfiguration
 import com.leaddrive.workforce.android.data.WorkforceSecureStore
@@ -43,9 +44,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val configuration = WorkforceRuntimeConfiguration.fromBuildConfig()
+        val secureStore = WorkforceSecureStore(applicationContext)
         val repository = WorkforceSessionRepository(
             api = WorkforceApiClient(configuration),
-            secureStore = WorkforceSecureStore(applicationContext),
+            secureStore = secureStore,
+            outbox = WorkforceEncryptedOutbox(applicationContext),
         )
         setContent {
             MaterialTheme {
@@ -127,9 +130,16 @@ private fun WorkforceRoot(repository: WorkforceSessionRepository) {
                     status = null
                     scope.launch {
                         runCatching { repository.submitTodayAction(snapshot, action) }
-                            .onSuccess {
-                                today = it
-                                status = null
+                            .onSuccess { submission ->
+                                when (submission) {
+                                    is com.leaddrive.workforce.android.data.WorkforceTodaySubmission.Accepted -> {
+                                        today = submission.snapshot
+                                        status = null
+                                    }
+                                    com.leaddrive.workforce.android.data.WorkforceTodaySubmission.Queued -> {
+                                        status = "Saved in this device’s encrypted outbox. It will retry in order for up to seven days."
+                                    }
+                                }
                             }
                             .onFailure { status = it.employeeMessage() }
                         busyAction = null
@@ -137,10 +147,15 @@ private fun WorkforceRoot(repository: WorkforceSessionRepository) {
                 }
             },
             onSignOut = {
-                repository.signOut()
-                bootstrap = null
-                today = null
-                status = null
+                scope.launch {
+                    runCatching { repository.signOut() }
+                        .onSuccess {
+                            bootstrap = null
+                            today = null
+                            status = null
+                        }
+                        .onFailure { status = "Secure sign-out could not finish. Try again." }
+                }
             },
         )
     }

@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("com.google.devtools.ksp")
 }
 
 val releaseApplicationId = providers.gradleProperty("WORKFORCE_APPLICATION_ID")
@@ -73,6 +74,11 @@ android {
     }
 }
 
+ksp {
+    // Keep generated Room schema evidence outside the hand-written source tree.
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 // Do the release-identity validation at execution time so debug source/lint
 // work stays possible without secrets. The task is still stopped before its
 // output is published or signed if any external release value is absent.
@@ -103,6 +109,8 @@ dependencies {
     implementation("androidx.core:core-ktx:1.19.0")
     implementation("androidx.activity:activity-compose:1.13.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
+    implementation("androidx.room:room-runtime:2.8.4")
+    implementation("androidx.room:room-ktx:2.8.4")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("androidx.work:work-runtime-ktx:2.11.2")
 
@@ -115,4 +123,5 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    ksp("androidx.room:room-compiler:2.8.4")
 }

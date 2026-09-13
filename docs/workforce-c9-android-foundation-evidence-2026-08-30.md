@@ -1,7 +1,7 @@
 # Workforce C9 — native Android foundation
 
 > **Status:** safe partial source foundation for `WF-C9-001`, `WF-C9-002`,
-> `WF-C9-003` and `WF-C5-003`. It is not an Android build, signed app, device-attestation
+> `WF-C9-003`, `WF-C9-006` and `WF-C5-003`. It is not an Android build, signed app, device-attestation
 > acceptance, Play upload or location-collection activation.
 > **Recorded:** 2026-08-30
 
@@ -14,11 +14,11 @@ or Route & Field wrapper: Android Keystore attestation, non-exportable keys and
 per-use device authentication are first-class requirements for the approved
 high-assurance `GEO + rotating QR` path.
 
-The project pins AGP 9.3.0, Gradle 9.5.0, JDK 17, compile SDK 37 and Compose
-BOM 2026.08.00. It follows the current Android offline-first direction of a
-local source of truth and future bounded persistent work, but intentionally
-does not claim the required Room/WorkManager outbox until `WF-C9-006` is
-implemented and physically exercised.
+The project pins AGP 9.3.0, Gradle 9.5.0, JDK 17, compile SDK 37, Kotlin
+2.4.20, KSP 2.3.12, Compose BOM 2026.08.00, Room 2.8.4 and WorkManager
+2.11.2. It follows the Android
+offline-first direction using a bounded local source of truth, while still not
+claiming Gradle, physical-device or seven-day recovery evidence.
 
 ## Safe identity and network posture
 
@@ -43,6 +43,17 @@ implemented and physically exercised.
 - Android Keystore protects AES-GCM session/tenant/install-selector state;
   logout/account switch removes the encrypted token, selector and key.
 - Backups and device transfer exclude shared preferences and databases.
+- The Room outbox stores only queue metadata plus an Android-Keystore AES-GCM
+  ciphertext envelope, authenticated to its operation ID/domain. The tenant
+  slug, action and all server payload remain encrypted. It has a seven-day
+  expiry, eight-attempt bound, oldest-first domain ordering, connected-network
+  WorkManager drain and terminal conflict/expiry/review states.
+- A process-wide account-boundary mutex prevents a drain from racing logout,
+  tenant switch or enqueue. A delayed head operation remains the absolute
+  domain head, so a later action cannot overtake it while backoff is active.
+- A logout or tenant switch first destroys the outbox key and then clears all
+  rows. A different tenant can never submit a former tenant's operation; an
+  unexpected scope mismatch is discarded rather than replayed.
 
 ## Evidence and privacy posture
 
@@ -71,10 +82,12 @@ implemented and physically exercised.
 
 ## Deliberate remaining work
 
-Today is online-only until the encrypted durable outbox exists. It does not
-yet capture action-time location, site, QR or device proof, so a tenant that
-requires those proofs receives the server's non-acceptance response rather
-than a bypass. History, requests, encrypted durable outbox, action-time
-permission/capture, QR scanner, device-enrollment transport,
+Today submits online first; a transport/ambiguous transient failure saves the
+same immutable operation into the encrypted outbox. Explicit server rejections
+and proof/state conflicts are never queued. It does not yet capture
+action-time location, site, QR or device proof, so a tenant that requires
+those proofs receives the server's non-acceptance response rather than a
+bypass. History, requests, physical offline/process-death/two-account
+exercise, action-time permission/capture, QR scanner, device-enrollment transport,
 attestation-server verification, accessibility localisation, update/outbox-drain
 drill and real device matrix remain their individual C5/C9/C10/C14 tasks.

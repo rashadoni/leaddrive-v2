@@ -96,30 +96,47 @@ class WorkforceApiClient(
         deviceId: String,
         snapshot: WorkforceTodaySnapshot,
         action: WorkforceWorkdayAction,
-    ): WorkforceTodaySnapshot = withContext(Dispatchers.IO) {
+    ): WorkforceTodaySnapshot = submitTodayOperation(
+        session = session,
+        deviceId = deviceId,
+        operation = newTodayOperation(snapshot, action),
+    )
+
+    /**
+     * Creates the immutable client-side envelope before attempting transport.
+     * A retry must reuse this exact operation ID and claimed time; it must not
+     * manufacture a later attendance event.
+     */
+    fun newTodayOperation(
+        snapshot: WorkforceTodaySnapshot,
+        action: WorkforceWorkdayAction,
+        now: Instant = Instant.now(),
+    ): WorkforceWorkdayOperation {
         require(action.wireValue in snapshot.availableActions) {
             "This work-time action is no longer available. Refresh and try again."
         }
-        val now = Instant.now().toString()
-        val operationId = UUID.randomUUID().toString()
         val workdayId = if (action == WorkforceWorkdayAction.START) {
             UUID.randomUUID().toString()
         } else {
             snapshot.workday?.id
                 ?: throw WorkforceApiException("There is no active workday to update. Refresh and try again.", recoverable = true)
         }
-        val event = JSONObject()
-            .put("action", action.wireValue)
-            .put("occurredAt", now)
-            .put("claimedAt", now)
-            .put("capturedAt", now)
-            .put("queuedAt", now)
-            .put("schemaVersion", WORKFORCE_WORKDAY_SCHEMA_VERSION)
-        if (action == WorkforceWorkdayAction.START) {
-            event.put("id", workdayId)
-        } else {
-            event.put("workdayId", workdayId)
-        }
+        return WorkforceWorkdayOperation(
+            operationId = UUID.randomUUID().toString(),
+            action = action,
+            workdayId = workdayId,
+            occurredAt = now.toString(),
+            claimedAt = now.toString(),
+            capturedAt = now.toString(),
+            queuedAt = now.toString(),
+        )
+    }
+
+    suspend fun submitTodayOperation(
+        session: WorkforceStoredSession,
+        deviceId: String,
+        operation: WorkforceWorkdayOperation,
+    ): WorkforceTodaySnapshot = withContext(Dispatchers.IO) {
         val response = request(
             method = "POST",
             path = "/api/v1/mtm/mobile/sync/push",
@@ -131,10 +148,10 @@ class WorkforceApiClient(
                     "operations",
                     JSONArray().put(
                         JSONObject()
-                            .put("operationId", operationId)
+                            .put("operationId", operation.operationId)
                             .put("op", "create")
                             .put("entity", "workdays")
-                            .put("data", event)
+                            .put("data", operation.toEventJson())
                             .put("clientTimestamp", System.currentTimeMillis()),
                     ),
                 )
@@ -150,7 +167,10 @@ class WorkforceApiClient(
             )
             else -> throw WorkforceApiException(
                 result.optString("error", "The Workforce action was not accepted."),
-                recoverable = true,
+                // The server produced a terminal operation result. Retrying a
+                // rejected proof/state mutation through the offline outbox
+                // would be a bypass attempt, so it is never queued.
+                recoverable = false,
                 recoveryCode = result.optJSONObject("serverData")?.optString("code"),
             )
         }
@@ -202,6 +222,75 @@ class WorkforceApiClient(
         const val WORKFORCE_WORKDAY_SCHEMA_VERSION = 3
     }
 }
+
+data class WorkforceWorkdayOperation(
+    val operationId: String,
+    val action: WorkforceWorkdayAction,
+    val workdayId: String,
+    val occurredAt: String,
+    val claimedAt: String,
+    val capturedAt: String,
+    val queuedAt: String,
+) {
+    fun toEventJson(): JSONObject = JSONObject()
+        .put("action", action.wireValue)
+        .put("occurredAt", occurredAt)
+        .put("claimedAt", claimedAt)
+        .put("capturedAt", capturedAt)
+        .put("queuedAt", queuedAt)
+        .put("schemaVersion", WORKFORCE_WORKDAY_SCHEMA_VERSION)
+        .apply {
+            if (action == WorkforceWorkdayAction.START) put("id", workdayId)
+            else put("workdayId", workdayId)
+        }
+
+    fun toEncryptedPayload(organizationSlug: String): String = JSONObject()
+        .put("organizationSlug", organizationSlug)
+        .put("operationId", operationId)
+        .put("action", action.wireValue)
+        .put("workdayId", workdayId)
+        .put("occurredAt", occurredAt)
+        .put("claimedAt", claimedAt)
+        .put("capturedAt", capturedAt)
+        .put("queuedAt", queuedAt)
+        .toString()
+
+    companion object {
+        const val WORKFORCE_WORKDAY_SCHEMA_VERSION = 3
+
+        fun fromEncryptedPayload(value: String): WorkforceStoredOperation? = runCatching {
+            val json = JSONObject(value)
+            val organizationSlug = json.optString("organizationSlug").trim().lowercase()
+            val operationId = json.optString("operationId")
+            val action = WorkforceWorkdayAction.fromWire(json.optString("action"))
+            val workdayId = json.optString("workdayId")
+            val occurredAt = json.optString("occurredAt")
+            val claimedAt = json.optString("claimedAt")
+            val capturedAt = json.optString("capturedAt")
+            val queuedAt = json.optString("queuedAt")
+            if (organizationSlug.isBlank() || operationId.isBlank() || action == null || workdayId.isBlank()
+                || occurredAt.isBlank() || claimedAt.isBlank() || capturedAt.isBlank() || queuedAt.isBlank()
+            ) return null
+            WorkforceStoredOperation(
+                organizationSlug = organizationSlug,
+                operation = WorkforceWorkdayOperation(
+                    operationId = operationId,
+                    action = action,
+                    workdayId = workdayId,
+                    occurredAt = occurredAt,
+                    claimedAt = claimedAt,
+                    capturedAt = capturedAt,
+                    queuedAt = queuedAt,
+                ),
+            )
+        }.getOrNull()
+    }
+}
+
+data class WorkforceStoredOperation(
+    val organizationSlug: String,
+    val operation: WorkforceWorkdayOperation,
+)
 
 private fun JSONObject.requiredString(name: String, message: String): String = optString(name).takeIf { it.isNotBlank() }
     ?: throw WorkforceApiException(message, recoverable = true)
