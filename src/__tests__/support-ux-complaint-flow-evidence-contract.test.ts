@@ -16,6 +16,7 @@ describe("Complaint mutating flow evidence contract", () => {
     expect(flow).toContain("requireDemoTenant()")
     expect(flow).toContain("assertDemoTenant")
     expect(flow).toContain("SUPPORT_EVIDENCE_COMPLAINT_ID")
+    expect(flow).toContain('serviceWorkers: "block"')
   })
 
   it("proves all critical registry, draft, recovery and import paths", () => {
