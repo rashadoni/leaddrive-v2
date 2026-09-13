@@ -37,3 +37,16 @@ period source and escalation authority.
     NOT RUN  policy persistence/selection, endpoint integration, Prisma
              migration/generate/apply, browser workflow, pay-period system
              integration, full typecheck/build, staging and production tests.
+
+## 2026-09-13 critical-write fence
+
+The direct-manager correction route is now session-only and requires the
+existing mandatory Workforce MFA gate before parsing a workday identifier. A
+valid bounded request then passes a shared Redis tenant/principal limit of
+twelve attempts per minute before actor, workday, grant, ledger or audit work.
+Malformed input consumes no rate slot; quota, hashing and guard failures fail
+closed with bounded no-store responses. Conflict details and caught exceptions
+are not reflected to the browser or written to logs.
+
+This does not choose the still owner-gated correction date/duration/range
+policy, enable payroll use, or turn a correction into physical-presence proof.

@@ -32,6 +32,12 @@ vi.mock("@/lib/workforce/direct-time-correction", () => ({
   },
   correctWorkforceTimeDirectly: vi.fn(),
 }))
+vi.mock("@/lib/workforce/attendance-route", () => ({
+  requireWorkforceAttendanceSecurityMfa: vi.fn(),
+}))
+vi.mock("@/lib/workforce/direct-time-correction-rate-limit", () => ({
+  requireWorkforceDirectTimeCorrectionRateLimit: vi.fn(),
+}))
 
 import { GET as todayGet } from "@/app/api/v1/workforce/today/route"
 import { GET as timesheetGet } from "@/app/api/v1/workforce/timesheet/route"
@@ -42,6 +48,8 @@ import { prisma } from "@/lib/prisma"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { decideWorkforceRequest } from "@/lib/workforce/request-decision"
 import { correctWorkforceTimeDirectly } from "@/lib/workforce/direct-time-correction"
+import { requireWorkforceAttendanceSecurityMfa } from "@/lib/workforce/attendance-route"
+import { requireWorkforceDirectTimeCorrectionRateLimit } from "@/lib/workforce/direct-time-correction-rate-limit"
 
 const AUTH = {
   orgId: "org-workforce",
@@ -65,6 +73,8 @@ beforeEach(() => {
   vi.useFakeTimers()
   vi.setSystemTime(new Date("2026-08-28T09:00:00.000Z"))
   vi.clearAllMocks()
+  vi.mocked(requireWorkforceAttendanceSecurityMfa).mockResolvedValue(null)
+  vi.mocked(requireWorkforceDirectTimeCorrectionRateLimit).mockResolvedValue(null)
   vi.mocked(getMtmSettings).mockResolvedValue({ timezone: "UTC" } as never)
   vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([])
   vi.mocked(prisma.mtmAgentWorkday.findMany).mockResolvedValue([])
@@ -411,6 +421,7 @@ describe("POST /api/v1/workforce/requests/:id/decision", () => {
 })
 
 describe("POST /api/v1/workforce/workdays/:id/corrections", () => {
+  const workforceUserAuth = { ...AUTH, userId: "workforce-user-1", role: "user" }
   const correctionInput = {
     operationId: "direct-correction-1",
     expectedUpdatedAt: "2026-08-28T09:00:00.000Z",
@@ -448,6 +459,10 @@ describe("POST /api/v1/workforce/workdays/:id/corrections", () => {
       workdayId: "workday-1",
       input: correctionInput,
     }))
+    expect(requireWorkforceAttendanceSecurityMfa).toHaveBeenCalledWith("org-workforce", AUTH)
+    expect(requireWorkforceDirectTimeCorrectionRateLimit).toHaveBeenCalledWith({
+      organizationId: "org-workforce", principalUserId: "admin-1",
+    })
   })
 
   it("uses the trusted request IP rather than a caller-controlled forwarded chain in audit metadata", async () => {
@@ -506,6 +521,112 @@ describe("POST /api/v1/workforce/workdays/:id/corrections", () => {
     )
 
     expect(response.status).toBe(409)
-    expect(await response.json()).toMatchObject({ code: "WORKFORCE_TIME_CORRECTION_VERSION_CONFLICT" })
+    expect(response.headers.get("cache-control")).toBe("private, no-store")
+    expect(await response.json()).toMatchObject({
+      error: "Unable to apply Workforce time correction.",
+      code: "WORKFORCE_TIME_CORRECTION_VERSION_CONFLICT",
+    })
+  })
+
+  it("does not resolve an actor, workday or rate bucket when MFA is denied", async () => {
+    vi.mocked(requireWorkforceAttendanceSecurityMfa).mockResolvedValueOnce(new Response(null, { status: 403 }) as never)
+    const invoke = directCorrectionPost as unknown as (
+      req: NextRequest,
+      auth: typeof AUTH,
+      ctx: { params: Promise<{ id: string }> },
+    ) => Promise<Response>
+
+    const response = await invoke(
+      request("/api/v1/workforce/workdays/workday-1/corrections", correctionInput),
+      AUTH,
+      { params: Promise.resolve({ id: "workday-1" }) },
+    )
+
+    expect(response.status).toBe(403)
+    expect(requireWorkforceDirectTimeCorrectionRateLimit).not.toHaveBeenCalled()
+    expect(prisma.mtmAgent.findFirst).not.toHaveBeenCalled()
+    expect(correctWorkforceTimeDirectly).not.toHaveBeenCalled()
+  })
+
+  it("does not resolve an actor or workday when the correction rate guard denies", async () => {
+    vi.mocked(requireWorkforceDirectTimeCorrectionRateLimit).mockResolvedValueOnce(new Response(null, { status: 429 }) as never)
+    const invoke = directCorrectionPost as unknown as (
+      req: NextRequest,
+      auth: typeof AUTH,
+      ctx: { params: Promise<{ id: string }> },
+    ) => Promise<Response>
+
+    const response = await invoke(
+      request("/api/v1/workforce/workdays/workday-1/corrections", correctionInput),
+      AUTH,
+      { params: Promise.resolve({ id: "workday-1" }) },
+    )
+
+    expect(response.status).toBe(429)
+    expect(prisma.mtmAgent.findFirst).not.toHaveBeenCalled()
+    expect(correctWorkforceTimeDirectly).not.toHaveBeenCalled()
+  })
+
+  it("rejects malformed correction input before the rate guard or actor lookup", async () => {
+    const invoke = directCorrectionPost as unknown as (
+      req: NextRequest,
+      auth: typeof AUTH,
+      ctx: { params: Promise<{ id: string }> },
+    ) => Promise<Response>
+
+    const response = await invoke(
+      request("/api/v1/workforce/workdays/workday-1/corrections", {}),
+      AUTH,
+      { params: Promise.resolve({ id: "workday-1" }) },
+    )
+
+    expect(response.status).toBe(400)
+    expect(requireWorkforceDirectTimeCorrectionRateLimit).not.toHaveBeenCalled()
+    expect(prisma.mtmAgent.findFirst).not.toHaveBeenCalled()
+    expect(correctWorkforceTimeDirectly).not.toHaveBeenCalled()
+  })
+
+  it("denies a principal that has no active Workforce actor", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValueOnce(null)
+    const invoke = directCorrectionPost as unknown as (
+      req: NextRequest,
+      auth: typeof AUTH,
+      ctx: { params: Promise<{ id: string }> },
+    ) => Promise<Response>
+
+    const response = await invoke(
+      request("/api/v1/workforce/workdays/workday-1/corrections", correctionInput),
+      workforceUserAuth,
+      { params: Promise.resolve({ id: "workday-1" }) },
+    )
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toMatchObject({ code: "WORKFORCE_SCOPE_DENIED" })
+    expect(correctWorkforceTimeDirectly).not.toHaveBeenCalled()
+  })
+
+  it("contains actor lookup failures without logging sensitive error details", async () => {
+    const sensitiveFailure = new Error("private correction case correction-secret-42")
+    vi.mocked(prisma.mtmAgent.findFirst).mockRejectedValueOnce(sensitiveFailure)
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const invoke = directCorrectionPost as unknown as (
+      req: NextRequest,
+      auth: typeof AUTH,
+      ctx: { params: Promise<{ id: string }> },
+    ) => Promise<Response>
+
+    const response = await invoke(
+      request("/api/v1/workforce/workdays/workday-1/corrections", correctionInput),
+      workforceUserAuth,
+      { params: Promise.resolve({ id: "workday-1" }) },
+    )
+
+    expect(response.status).toBe(500)
+    expect(correctWorkforceTimeDirectly).not.toHaveBeenCalled()
+    expect(consoleError).toHaveBeenCalledWith(
+      "[workforce/privacy] sensitive operation failed",
+      { operation: "review-workday-correction" },
+    )
+    expect(JSON.stringify(consoleError.mock.calls)).not.toContain(sensitiveFailure.message)
   })
 })
