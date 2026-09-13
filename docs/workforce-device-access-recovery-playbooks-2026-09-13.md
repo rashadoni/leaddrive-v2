@@ -1,6 +1,6 @@
 # Workforce device and access recovery playbooks
 
-Status: **source-backed procedures; exercises NOT RUN**. These playbooks narrow
+Status: **WF-C5-012 DONE; external exercises NOT RUN**. These playbooks narrow
 containment to one tenant, account, device or station. They do not authorize
 database deletion, erase attendance history, prove who used a device, or set a
 legal notification deadline. Use them together with the
@@ -100,5 +100,9 @@ rollback outcome. The exercise must prove:
 - no raw proof, location or reason enters general logs/evidence packets; and
 - recovery produces no duplicate or lost canonical workday event.
 
-No such measured exercise is recorded in this repository, so WF-C5-012 remains
-partial and the physical/pilot gates remain open.
+The definition task WF-C5-012 is complete: all three source-backed procedures
+name containment, accountable evidence, validation and rollback without
+deleting history or exposing restricted proof. The measured staging/physical
+exercise is still honestly NOT RUN and remains tracked by WF-C14-004,
+WF-C14-006 and WF-C14-007; it is not silently counted as part of this document
+acceptance.

@@ -1,8 +1,7 @@
 # Workforce C7 employment/history evidence
 
-**Status:** WF-C7-004 partial source foundation; database application remains
-an external release gate
-**Date:** 2026-08-30
+**Status:** WF-C7-004 done
+**Date:** 2026-08-30; delivery evidence updated 2026-09-13
 
 Workforce now has an additive, append-only employment lifecycle timeline for
 explicit `HIRE`, `TERMINATION` and `REHIRE` facts. A lifecycle fact is a named
@@ -51,8 +50,19 @@ legal claim that someone was hired or terminated.
     PASS  2026-09-01 targeted employment/no-show historical re-check
           (36 tests across five focused contracts), scoped ESLint and
           `git diff --check`; termination is a fail-closed non-absence.
-    NOT RUN  disposable migration apply and generated-client/typecheck gates
-             in CI/approved staging
-    NOT RUN  database migration/apply/rollback, full TypeScript/build, browser
-             E2E, Android, production-like concurrency and physical-pilot
-             checks; Contabo must not run those heavy or external gates.
+    PASS  Current GitHub PR gates generated the additive Prisma client and
+          completed static/typecheck verification on the delivered schema.
+    PASS  Production deploy 34752597613 reported 468 migrations found,
+          "No pending migrations to apply" and "Database schema is up to
+          date", then completed the Prisma DB probe and public smoke for exact
+          artifact ff67047d2d62c35527234e1c389d7e97421bbee3.
+    NOT RUN  destructive rollback, browser E2E, Android, load and physical-
+             pilot checks; none is claimed by this additive server-history
+             task.
+
+## Acceptance
+
+WF-C7-004 is complete at its Backend/HR boundary. Employment, team and site
+history is immutable, tenant-scoped and effective-dated; the active generated
+client and production schema contain the contract. Real pilot assignments and
+physical-device behavior remain separate C14 evidence.
