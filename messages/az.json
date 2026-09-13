@@ -23757,6 +23757,23 @@
     "timesheetApprovalAlreadyRecorded": "Bu dəyişməz təsdiq artıq qeydə alınıb.",
     "timesheetCorrectionRecorded": "Düzəldici təsdiq redaksiyası qeydə alındı.",
     "timesheetApprovalFailed": "Dəyişməz təsdiqi qeyd etmək mümkün olmadı.",
+    "timesheetExportPreviewFailed": "Təsdiqlənmiş ixracın önbaxışını yükləmək mümkün olmadı.",
+    "timesheetExportPreviewInvalid": "Təsdiqlənmiş ixrac önbaxışı təhlükəsiz və tanınan formatda deyil.",
+    "timesheetExportPreviewTitle": "Təsdiqlənmiş ixracın önbaxışı",
+    "timesheetExportPreviewHint": "Yükləmədən əvvəl dəyişməz vaxt faktlarını, düzəliş redaksiyasını və çıxarılan məlumatları yoxlayın.",
+    "previewApprovedExport": "Təsdiqlənmiş ixracı yoxla",
+    "timesheetExportCustodianRequired": "Server bu önbaxışı yalnız qüvvədə olan ixrac nəzarətçisi səlahiyyəti və MFA təsdiqi ilə göstərir.",
+    "approvedExportScope": "{count} vaxt faktı sətri, {start} — {end}",
+    "approvedExportRevision": "Dəyişməz redaksiya {revision}",
+    "approvedExportCorrectionRevision": "Düzəldici redaksiya {revision}",
+    "approvedExportSiteScopeExcluded": "Filial və məkan əhatəsi adi təsdiqlənmiş iş vaxtı ixracından qəsdən çıxarılıb.",
+    "approvedExportWarning": {
+      "WORKFORCE_EXPORT_TIME_FACTS_ONLY": "Bu önbaxış yalnız vaxt faktlarını və əməliyyat sapmalarını ehtiva edir.",
+      "WORKFORCE_EXPORT_SITE_SCOPE_EXCLUDED": "Filial, iş yeri, dəqiq məkan, QR və cihaz sübutu daxil deyil.",
+      "WORKFORCE_EXPORT_OVERTIME_NOT_PAYABLE": "Əlavə iş vaxtı ödəniş hesablaması olmayan əməliyyat sapması olaraq qalır."
+    },
+    "exportPaused": "Fasilələr",
+    "approvedExportDirectSessionOnly": "Fayl hələ yaradılmayıb. Uyğun ixrac HR qeydlərinin yoxlanması üçün birbaşa sessiyada yüklənir və artefakt kimi saxlanmır.",
     "timesheetApprovalBlockingRows": "Təsdiqdən əvvəl bu qeydləri həll edin",
     "timesheetApprovalBlocker": {
       "WORKDAY_NOT_FINAL": "İş günü tamamlanmayıb",

@@ -23761,6 +23761,23 @@
     "timesheetApprovalAlreadyRecorded": "This immutable approval was already recorded.",
     "timesheetCorrectionRecorded": "Correcting approval revision recorded.",
     "timesheetApprovalFailed": "Could not record the immutable approval.",
+    "timesheetExportPreviewFailed": "Could not load the approved export preview.",
+    "timesheetExportPreviewInvalid": "The approved export preview was not in a safe, recognized format.",
+    "timesheetExportPreviewTitle": "Approved export preview",
+    "timesheetExportPreviewHint": "Review the immutable time-fact rows, correction revision and excluded scope before downloading.",
+    "previewApprovedExport": "Review approved export",
+    "timesheetExportCustodianRequired": "The server requires current export-custodian scope and MFA before showing this preview.",
+    "approvedExportScope": "{count} time-fact rows, {start} — {end}",
+    "approvedExportRevision": "Immutable revision {revision}",
+    "approvedExportCorrectionRevision": "Correcting revision {revision}",
+    "approvedExportSiteScopeExcluded": "Site and location scope: intentionally excluded from the ordinary approved-timesheet export.",
+    "approvedExportWarning": {
+      "WORKFORCE_EXPORT_TIME_FACTS_ONLY": "This preview contains time facts and operational deviations only.",
+      "WORKFORCE_EXPORT_SITE_SCOPE_EXCLUDED": "No branch, site, raw location, QR or device evidence is included.",
+      "WORKFORCE_EXPORT_OVERTIME_NOT_PAYABLE": "Overtime remains an operational, non-payable deviation."
+    },
+    "exportPaused": "Paused",
+    "approvedExportDirectSessionOnly": "No file has been created yet. A matching export is a direct session download for HR record review and is not retained as an artifact.",
     "timesheetApprovalBlockingRows": "Resolve these recorded rows before approval",
     "timesheetApprovalBlocker": {
       "WORKDAY_NOT_FINAL": "Workday is not completed",

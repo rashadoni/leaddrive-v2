@@ -115,6 +115,53 @@ type TimesheetApprovalOutcome =
   | { success: true; idempotent: boolean; data: TimesheetApprovalData }
   | { success: false; error: string; code: string | null; blockers: TimesheetApprovalBlocker[] }
 
+type TimesheetExportPreview = {
+  approval: {
+    id: string
+    recordKind: "APPROVAL" | "CORRECTION"
+    revision: number
+    calculationVersion: number
+    approvedAt: string
+  }
+  scope: {
+    employee: { id: string; name: string }
+    periodStart: string
+    periodEnd: string
+    rowCount: number
+    siteScope: "EXCLUDED_FROM_ORDINARY_EXPORT"
+  }
+  delivery: {
+    purpose: "HR_RECORD_REVIEW"
+    recipient: "SESSION_DIRECT_DOWNLOAD"
+    artifactPersistence: "NONE"
+  }
+  warningCodes: TimesheetExportWarningCode[]
+  rows: TimesheetExportPreviewRow[]
+}
+
+type TimesheetExportPreviewRow = {
+  workdayId: string
+  agentId: string
+  workDate: string
+  status: "COMPLETED"
+  workedSeconds: number
+  pausedSeconds: number
+  lateStartSeconds: number
+  undertimeSeconds: number
+  overtimeSeconds: number
+  overtimeClassification: "OPERATIONAL_DEVIATION_NOT_PAYABLE"
+  longPauseSeconds: number
+}
+
+type TimesheetExportWarningCode =
+  | "WORKFORCE_EXPORT_TIME_FACTS_ONLY"
+  | "WORKFORCE_EXPORT_SITE_SCOPE_EXCLUDED"
+  | "WORKFORCE_EXPORT_OVERTIME_NOT_PAYABLE"
+
+type TimesheetExportPreviewOutcome =
+  | { success: true; data: TimesheetExportPreview }
+  | { success: false; error: string }
+
 const TIMESHEET_BLOCKER_REASONS = new Set([
   "WORKDAY_NOT_FINAL", "SNAPSHOT_MISSING", "HISTORY_INVALID", "UNRESOLVED_EXCEPTION",
 ])
@@ -125,6 +172,118 @@ const TIMESHEET_EXCEPTION_TYPES = new Set([
 const TIMESHEET_EXCEPTION_STAGES = new Set([
   "OPEN", "AWAITING_EMPLOYEE_RESPONSE", "HR_REVIEW", "DATA_INTEGRITY_REVIEW",
 ])
+const TIMESHEET_EXPORT_WARNING_CODES = new Set<TimesheetExportWarningCode>([
+  "WORKFORCE_EXPORT_TIME_FACTS_ONLY",
+  "WORKFORCE_EXPORT_SITE_SCOPE_EXCLUDED",
+  "WORKFORCE_EXPORT_OVERTIME_NOT_PAYABLE",
+])
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value != null && typeof value === "object" && !Array.isArray(value)
+}
+
+function isNonNegativeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0
+}
+
+function parseTimesheetExportRow(value: unknown): TimesheetExportPreviewRow | null {
+  if (!isRecord(value)) return null
+  if (
+    typeof value.workdayId !== "string"
+    || typeof value.agentId !== "string"
+    || typeof value.workDate !== "string"
+    || !/^\d{4}-\d{2}-\d{2}$/.test(value.workDate)
+    || value.status !== "COMPLETED"
+    || value.overtimeClassification !== "OPERATIONAL_DEVIATION_NOT_PAYABLE"
+    || !isNonNegativeInteger(value.workedSeconds)
+    || !isNonNegativeInteger(value.pausedSeconds)
+    || !isNonNegativeInteger(value.lateStartSeconds)
+    || !isNonNegativeInteger(value.undertimeSeconds)
+    || !isNonNegativeInteger(value.overtimeSeconds)
+    || !isNonNegativeInteger(value.longPauseSeconds)
+  ) return null
+  return {
+    workdayId: value.workdayId,
+    agentId: value.agentId,
+    workDate: value.workDate,
+    status: value.status,
+    workedSeconds: value.workedSeconds,
+    pausedSeconds: value.pausedSeconds,
+    lateStartSeconds: value.lateStartSeconds,
+    undertimeSeconds: value.undertimeSeconds,
+    overtimeSeconds: value.overtimeSeconds,
+    overtimeClassification: value.overtimeClassification,
+    longPauseSeconds: value.longPauseSeconds,
+  }
+}
+
+function parseTimesheetExportPreview(value: unknown): TimesheetExportPreview | null {
+  if (!isRecord(value) || !isRecord(value.approval) || !isRecord(value.scope) || !isRecord(value.delivery)) return null
+  const { approval, scope, delivery } = value
+  if (
+    typeof approval.id !== "string"
+    || (approval.recordKind !== "APPROVAL" && approval.recordKind !== "CORRECTION")
+    || !isNonNegativeInteger(approval.revision)
+    || approval.revision < 1
+    || !isNonNegativeInteger(approval.calculationVersion)
+    || typeof approval.approvedAt !== "string"
+    || !Number.isFinite(Date.parse(approval.approvedAt))
+    || !isRecord(scope.employee)
+    || typeof scope.employee.id !== "string"
+    || typeof scope.employee.name !== "string"
+    || typeof scope.periodStart !== "string"
+    || !/^\d{4}-\d{2}-\d{2}$/.test(scope.periodStart)
+    || typeof scope.periodEnd !== "string"
+    || !/^\d{4}-\d{2}-\d{2}$/.test(scope.periodEnd)
+    || !isNonNegativeInteger(scope.rowCount)
+    || scope.rowCount < 1
+    || scope.rowCount > 93
+    || scope.siteScope !== "EXCLUDED_FROM_ORDINARY_EXPORT"
+    || delivery.purpose !== "HR_RECORD_REVIEW"
+    || delivery.recipient !== "SESSION_DIRECT_DOWNLOAD"
+    || delivery.artifactPersistence !== "NONE"
+    || !Array.isArray(value.warningCodes)
+    || value.warningCodes.length !== TIMESHEET_EXPORT_WARNING_CODES.size
+    || value.warningCodes.some((code) => typeof code !== "string" || !TIMESHEET_EXPORT_WARNING_CODES.has(code as TimesheetExportWarningCode))
+    || [...TIMESHEET_EXPORT_WARNING_CODES].some((code) => !value.warningCodes.includes(code))
+    || !Array.isArray(value.rows)
+    || value.rows.length !== scope.rowCount
+  ) return null
+  const rows = value.rows.map(parseTimesheetExportRow)
+  if (rows.some((row) => row == null)) return null
+  const safeRows = rows as TimesheetExportPreviewRow[]
+  if (
+    safeRows.some((row) => (
+      row.agentId !== scope.employee.id
+      || row.workDate < scope.periodStart
+      || row.workDate > scope.periodEnd
+    ))
+    || new Set(safeRows.map((row) => row.workdayId)).size !== safeRows.length
+  ) return null
+  return {
+    approval: {
+      id: approval.id,
+      recordKind: approval.recordKind,
+      revision: approval.revision,
+      calculationVersion: approval.calculationVersion,
+      approvedAt: approval.approvedAt,
+    },
+    scope: {
+      employee: { id: scope.employee.id, name: scope.employee.name },
+      periodStart: scope.periodStart,
+      periodEnd: scope.periodEnd,
+      rowCount: scope.rowCount,
+      siteScope: scope.siteScope,
+    },
+    delivery: {
+      purpose: delivery.purpose,
+      recipient: delivery.recipient,
+      artifactPersistence: delivery.artifactPersistence,
+    },
+    warningCodes: value.warningCodes as TimesheetExportWarningCode[],
+    rows: safeRows,
+  }
+}
 
 function parseTimesheetApprovalBlockers(value: unknown): TimesheetApprovalBlocker[] {
   if (!Array.isArray(value)) return []
@@ -455,6 +614,30 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
     }
   }
 
+  async function previewApprovedTimesheetExport(approvalId: string): Promise<TimesheetExportPreviewOutcome> {
+    try {
+      const response = await fetch(
+        "/api/v1/workforce/timesheet/approvals/" + encodeURIComponent(approvalId) + "/preview?purpose=HR_RECORD_REVIEW",
+        {
+          cache: "no-store",
+          headers: organizationId ? { "x-organization-id": organizationId } : {},
+        },
+      )
+      const result: unknown = await response.json().catch(() => ({}))
+      if (!response.ok || !isRecord(result) || result.success !== true) {
+        const detail = isRecord(result) && typeof result.error === "string"
+          ? result.error
+          : "HTTP " + response.status
+        return { success: false, error: detail }
+      }
+      const preview = parseTimesheetExportPreview(result.data)
+      if (!preview) return { success: false, error: t("timesheetExportPreviewInvalid") }
+      return { success: true, data: preview }
+    } catch (cause) {
+      return { success: false, error: cause instanceof Error ? cause.message : t("timesheetExportPreviewFailed") }
+    }
+  }
+
   const title = view === "today" ? tNav("workforceToday") : view === "timesheet" ? tNav("workforceTimesheet") : tNav("workforceRequests")
   const Icon = view === "today" ? Clock3 : view === "timesheet" ? CalendarDays : ClipboardList
 
@@ -494,6 +677,7 @@ export function WorkforceWorkbench({ view }: { view: WorkforceView }) {
           loading={loading}
           approving={approvingTimesheet}
           canApproveTimesheet={canApproveTimesheet}
+          onPreviewApprovedExport={previewApprovedTimesheetExport}
           onFiltersChange={setTimesheetFilters}
           onApplyFilters={applyTimesheetFilters}
           onApprove={approveTimesheet}
@@ -561,7 +745,7 @@ function TodayView({ data, t, formatter, locale }: { data: TodayData; t: ReturnT
   </>
 }
 
-function TimesheetView({ data, t, formatter, locale, appliedFilters, filters, loading, approving, canApproveTimesheet, onFiltersChange, onApplyFilters, onApprove }: {
+function TimesheetView({ data, t, formatter, locale, appliedFilters, filters, loading, approving, canApproveTimesheet, onFiltersChange, onApplyFilters, onApprove, onPreviewApprovedExport }: {
   data: TimesheetData
   t: ReturnType<typeof useTranslations>
   formatter: Intl.DateTimeFormat
@@ -574,6 +758,7 @@ function TimesheetView({ data, t, formatter, locale, appliedFilters, filters, lo
   onFiltersChange: (next: TimesheetFilters) => void
   onApplyFilters: () => void
   onApprove: (input: { agentId: string; periodStart: string; periodEnd: string; correctionReason?: string }) => Promise<TimesheetApprovalOutcome>
+  onPreviewApprovedExport: (approvalId: string) => Promise<TimesheetExportPreviewOutcome>
 }) {
   const names = new Map(data.agents.map((agent) => [agent.id, agent.name]))
   const timeFormatters = new Map<string, Intl.DateTimeFormat>()
@@ -599,9 +784,11 @@ function TimesheetView({ data, t, formatter, locale, appliedFilters, filters, lo
       loading={loading}
       approving={approving}
       canApproveTimesheet={canApproveTimesheet}
+      formatter={formatter}
       onFiltersChange={onFiltersChange}
       onApplyFilters={onApplyFilters}
       onApprove={onApprove}
+      onPreviewApprovedExport={onPreviewApprovedExport}
     />
     <section className="flex flex-col gap-1 border-y border-zinc-200 py-5 dark:border-zinc-700 sm:flex-row sm:items-end sm:justify-between">
       <div><h3 className="text-base font-semibold">{t("recordedTime")}</h3><p className="text-sm text-muted-foreground">{data.start} — {data.end} · {data.timezone}</p></div>
@@ -651,9 +838,11 @@ function TimesheetApprovalPanel({
   loading,
   approving,
   canApproveTimesheet,
+  formatter,
   onFiltersChange,
   onApplyFilters,
   onApprove,
+  onPreviewApprovedExport,
 }: {
   data: TimesheetData
   t: ReturnType<typeof useTranslations>
@@ -662,13 +851,18 @@ function TimesheetApprovalPanel({
   loading: boolean
   approving: boolean
   canApproveTimesheet: boolean
+  formatter: Intl.DateTimeFormat
   onFiltersChange: (next: TimesheetFilters) => void
   onApplyFilters: () => void
   onApprove: (input: { agentId: string; periodStart: string; periodEnd: string; correctionReason?: string }) => Promise<TimesheetApprovalOutcome>
+  onPreviewApprovedExport: (approvalId: string) => Promise<TimesheetExportPreviewOutcome>
 }) {
   const [correctionReason, setCorrectionReason] = useState("")
   const [failure, setFailure] = useState<Extract<TimesheetApprovalOutcome, { success: false }> | null>(null)
   const [record, setRecord] = useState<TimesheetApprovalData | null>(null)
+  const [exportPreview, setExportPreview] = useState<TimesheetExportPreview | null>(null)
+  const [previewingExport, setPreviewingExport] = useState(false)
+  const [exportPreviewFailure, setExportPreviewFailure] = useState<string | null>(null)
   const selectedAgent = appliedFilters.agentId
     ? data.agents.find((agent) => agent.id === appliedFilters.agentId) ?? null
     : null
@@ -692,9 +886,25 @@ function TimesheetApprovalPanel({
     if (outcome.success) {
       setFailure(null)
       setRecord(outcome.data)
+      setExportPreview(null)
+      setExportPreviewFailure(null)
       return
     }
     setFailure(outcome)
+  }
+
+  async function previewExport() {
+    if (!record || previewingExport) return
+    setPreviewingExport(true)
+    const outcome = await onPreviewApprovedExport(record.id)
+    setPreviewingExport(false)
+    if (outcome.success) {
+      setExportPreview(outcome.data)
+      setExportPreviewFailure(null)
+      return
+    }
+    setExportPreview(null)
+    setExportPreviewFailure(outcome.error)
   }
 
   return (
@@ -783,6 +993,86 @@ function TimesheetApprovalPanel({
             </div>
           ) : null}
           {record ? <p className="mt-4 text-sm text-emerald-700 dark:text-emerald-300" role="status">{t(record.recordKind === "CORRECTION" ? "timesheetCorrectionStatus" : "timesheetApprovalStatus", { revision: record.revision })}</p> : null}
+          {record ? (
+            <div className="mt-5 border-t border-zinc-200 pt-5 dark:border-zinc-700">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h4 className="font-medium">{t("timesheetExportPreviewTitle")}</h4>
+                  <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">{t("timesheetExportPreviewHint")}</p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-11"
+                  disabled={previewingExport}
+                  onClick={() => void previewExport()}
+                >
+                  {previewingExport ? <Loader2 className="animate-spin motion-reduce:animate-none" /> : <ClipboardList />}
+                  {t("previewApprovedExport")}
+                </Button>
+              </div>
+              <p className="mt-3 text-sm text-muted-foreground">{t("timesheetExportCustodianRequired")}</p>
+              {exportPreviewFailure ? <p className="mt-3 text-sm text-destructive" role="alert">{exportPreviewFailure}</p> : null}
+              {exportPreview ? (
+                <div className="mt-4 space-y-4 border-y border-zinc-200 py-4 dark:border-zinc-700">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="font-medium">{exportPreview.scope.employee.name}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {t("approvedExportScope", {
+                          start: exportPreview.scope.periodStart,
+                          end: exportPreview.scope.periodEnd,
+                          count: exportPreview.scope.rowCount,
+                        })}
+                      </p>
+                    </div>
+                    <Badge variant="outline">
+                      {t(exportPreview.approval.recordKind === "CORRECTION" ? "approvedExportCorrectionRevision" : "approvedExportRevision", {
+                        revision: exportPreview.approval.revision,
+                      })}
+                    </Badge>
+                  </div>
+                  <div className="space-y-1 text-sm leading-6 text-muted-foreground">
+                    <p>{t("approvedExportSiteScopeExcluded")}</p>
+                    {exportPreview.warningCodes.map((warning) => (
+                      <p key={warning}>{t("approvedExportWarning." + warning)}</p>
+                    ))}
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-[760px] text-left text-sm">
+                      <thead className="border-b border-zinc-200 text-xs uppercase tracking-wide text-muted-foreground dark:border-zinc-700">
+                        <tr>
+                          <th className="py-2 pr-3 font-medium">{t("date")}</th>
+                          <th className="px-3 py-2 text-right font-medium">{t("worked")}</th>
+                          <th className="px-3 py-2 text-right font-medium">{t("exportPaused")}</th>
+                          <th className="px-3 py-2 font-medium">{t("deviations")}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
+                        {exportPreview.rows.map((row) => {
+                          const deviations = [
+                            row.lateStartSeconds > 0 ? t("lateStart", { duration: duration(row.lateStartSeconds) }) : null,
+                            row.undertimeSeconds > 0 ? t("undertime", { duration: duration(row.undertimeSeconds) }) : null,
+                            row.overtimeSeconds > 0 ? t("overtime", { duration: duration(row.overtimeSeconds) }) : null,
+                            row.longPauseSeconds > 0 ? t("longPause", { duration: duration(row.longPauseSeconds) }) : null,
+                          ].filter((value): value is string => value != null)
+                          return (
+                            <tr key={row.workdayId}>
+                              <td className="whitespace-nowrap py-3 pr-3">{formatter.format(new Date(row.workDate + "T12:00:00"))}</td>
+                              <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums">{duration(row.workedSeconds)}</td>
+                              <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums">{duration(row.pausedSeconds)}</td>
+                              <td className="px-3 py-3 text-xs text-muted-foreground">{deviations.join(" · ") || t("onPlan")}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{t("approvedExportDirectSessionOnly")}</p>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           {canApproveTimesheet ? <div className="mt-5">
             <Button
               type="button"

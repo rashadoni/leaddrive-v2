@@ -23761,6 +23761,23 @@
     "timesheetApprovalAlreadyRecorded": "Это неизменяемое утверждение уже зафиксировано.",
     "timesheetCorrectionRecorded": "Корректирующая редакция утверждения зафиксирована.",
     "timesheetApprovalFailed": "Не удалось зафиксировать неизменяемое утверждение.",
+    "timesheetExportPreviewFailed": "Не удалось загрузить предварительный просмотр утверждённого экспорта.",
+    "timesheetExportPreviewInvalid": "Предварительный просмотр экспорта получен в небезопасном или неизвестном формате.",
+    "timesheetExportPreviewTitle": "Предварительный просмотр утверждённого экспорта",
+    "timesheetExportPreviewHint": "Перед скачиванием проверьте неизменяемые факты времени, редакцию корректировки и исключённые данные.",
+    "previewApprovedExport": "Проверить утверждённый экспорт",
+    "timesheetExportCustodianRequired": "Сервер покажет данные только при действующем доступе хранителя экспорта и подтверждённой MFA.",
+    "approvedExportScope": "Строк фактов времени: {count}; {start} — {end}",
+    "approvedExportRevision": "Неизменяемая редакция {revision}",
+    "approvedExportCorrectionRevision": "Корректирующая редакция {revision}",
+    "approvedExportSiteScopeExcluded": "Филиалы и геопозиция намеренно исключены из обычного утверждённого экспорта табеля.",
+    "approvedExportWarning": {
+      "WORKFORCE_EXPORT_TIME_FACTS_ONLY": "Предпросмотр содержит только факты времени и операционные отклонения.",
+      "WORKFORCE_EXPORT_SITE_SCOPE_EXCLUDED": "Филиалы, площадки, точная геопозиция, QR и данные устройства не включены.",
+      "WORKFORCE_EXPORT_OVERTIME_NOT_PAYABLE": "Сверхурочное время остаётся операционным отклонением без расчёта выплаты."
+    },
+    "exportPaused": "Перерывы",
+    "approvedExportDirectSessionOnly": "Файл ещё не создан. Соответствующий экспорт скачивается прямо в сессии для кадровой проверки и не хранится как артефакт.",
     "timesheetApprovalBlockingRows": "Разрешите эти записи перед утверждением",
     "timesheetApprovalBlocker": {
       "WORKDAY_NOT_FINAL": "Рабочий день не завершён",
