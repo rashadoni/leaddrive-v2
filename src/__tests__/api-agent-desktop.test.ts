@@ -74,6 +74,33 @@ describe("GET /api/v1/support/agent-desktop", () => {
     expect(body.data.canViewTeamAnalytics).toBe(false)
   })
 
+  it("returns a compact prioritized preview while preserving the full queue count", async () => {
+    const activeRows = Array.from({ length: 10 }, (_, index) => ({
+      id: `ticket-${index}`,
+      ticketNumber: `SUP-${index}`,
+      subject: `Ticket ${index}`,
+      priority: "medium",
+      status: "open",
+      createdAt: new Date(`2026-09-${String(index + 1).padStart(2, "0")}T08:00:00Z`),
+      updatedAt: new Date(`2026-09-${String(index + 1).padStart(2, "0")}T09:00:00Z`),
+      slaFirstResponseDueAt: null,
+      slaDueAt: null,
+      firstResponseAt: null,
+    }))
+    vi.mocked(prisma.ticket.findMany).mockReset()
+    vi.mocked(prisma.ticket.findMany)
+      .mockResolvedValueOnce(activeRows as never)
+      .mockResolvedValueOnce([] as never)
+
+    const response = await GET(request())
+    const body = await response.json()
+
+    expect(body.data.queue.total).toBe(10)
+    expect(body.data.queue.shown).toBe(8)
+    expect(body.data.queue.tickets).toHaveLength(8)
+    expect(body.data.queue.nextTicket.id).toBe("ticket-0")
+  })
+
   it("denies before querying when authorization fails", async () => {
     vi.mocked(requireAuth).mockResolvedValue(
       NextResponse.json({ error: "Forbidden" }, { status: 403 }) as never,

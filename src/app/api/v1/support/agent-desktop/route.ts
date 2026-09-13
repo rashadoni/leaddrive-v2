@@ -10,7 +10,8 @@ import {
   compareAgentQueueRows,
 } from "@/lib/ticketing/agent-desktop"
 
-const QUEUE_LIMIT = 20
+// Keep the workbench focused: the complete queue remains one click away.
+const QUEUE_PREVIEW_LIMIT = 8
 
 export const GET = withRlsAuth("tickets", "read", async (_req, auth) => {
   const now = new Date()
@@ -61,7 +62,7 @@ export const GET = withRlsAuth("tickets", "read", async (_req, auth) => {
     ])
 
     const sortedQueue = [...activeRows].sort(compareAgentQueueRows)
-    const queue = sortedQueue.slice(0, QUEUE_LIMIT).map((ticket) => {
+    const queue = sortedQueue.slice(0, QUEUE_PREVIEW_LIMIT).map((ticket) => {
       const actionableDueAt = !ticket.firstResponseAt && ticket.slaFirstResponseDueAt
         ? ticket.slaFirstResponseDueAt
         : ticket.slaDueAt
