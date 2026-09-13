@@ -94,6 +94,7 @@ const context = await browser.newContext({
   colorScheme: theme,
   reducedMotion: "reduce",
   hasTouch: viewportName !== "desktop",
+  serviceWorkers: "block",
 })
 await context.addCookies([{ name: "NEXT_LOCALE", value: locale, domain: hostname, path: "/" }])
 await context.addInitScript((activeTheme) => localStorage.setItem("theme", activeTheme), theme)

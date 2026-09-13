@@ -12,6 +12,7 @@ describe("Agent Desktop mutating evidence contract", () => {
     expect(flow).toContain("requireScreenshotTarget()")
     expect(flow).toContain("requireDemoTenant()")
     expect(flow).toContain("assertDemoTenant")
+    expect(flow).toContain('serviceWorkers: "block"')
   })
 
   it("proves data and availability recovery without inventing truth", () => {
