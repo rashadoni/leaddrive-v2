@@ -6,16 +6,19 @@ import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 import { useTranslations, useLocale } from "next-intl"
 import { mtmActivityEntityText } from "@/lib/mtm/activity-entity"
-import { Activity, LogIn, LogOut, Camera, ShieldAlert, Download, ChevronRight } from "lucide-react"
+import { Activity, LogIn, LogOut, Camera, ShieldAlert, Download, ChevronRight, Lock } from "lucide-react"
 import { PageDescription } from "@/components/page-description"
 import { ColorStatCard } from "@/components/color-stat-card"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
 import { HelpButton } from "@/components/help/help-button"
 import {
-  actionMeta, actionLabelKey, TONE_CLASSES, entityHref, kindKey,
-  relativeTime, dayKeyOf, dayLabel,
+  actionMeta, actionLabelKey, TONE_CLASSES, activityRowHref, kindKey,
+  relativeTime, dayKeyOf, dayLabel, type ActivitySubject,
 } from "@/lib/mtm/activity-actions"
+import { mtmAccessErrorKey, type MtmAccessErrorKey } from "@/lib/mtm/access-error"
+import { formatDate } from "@/lib/format-date"
+import { dateInputValueInTimezone } from "@/lib/timezone"
 
 type Period = "today" | "7d" | "30d" | "all"
 const PERIODS: Period[] = ["today", "7d", "30d", "all"]
@@ -40,20 +43,27 @@ export default function MtmActivityPage() {
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [agents, setAgents] = useState<AgentLite[]>([])
+  const [errorKey, setErrorKey] = useState<MtmAccessErrorKey | null>(null)
+  // Day headers follow the organization's calendar, the same one the period
+  // filter uses on the server — not the browser's.
+  const [timezone, setTimezone] = useState<string | null>(null)
 
   const [period, setPeriod] = useState<Period>("7d")
   const [agentId, setAgentId] = useState("")
   const [type, setType] = useState("")
   const [violations, setViolations] = useState(false)
 
-  const headers = orgId ? { "x-organization-id": String(orgId) } : ({} as Record<string, string>)
+  const headers: Record<string, string> = {}
+  if (orgId) headers["x-organization-id"] = String(orgId)
 
   // Agent list for the filter dropdown (once per org).
   useEffect(() => {
     if (!orgId) return
     fetch(`/api/v1/mtm/agents`, { headers })
       .then(r => r.ok ? r.json() : null)
-      .then(j => { const arr = j?.data || j?.agents || j; if (Array.isArray(arr)) setAgents(arr.map((a: any) => ({ id: a.id, name: a.name }))) })
+      // The roster answers { data: { agents } }; the old reader expected an
+      // array and the employee filter stayed empty.
+      .then(j => { const arr = j?.data?.agents ?? j?.data ?? j?.agents; if (Array.isArray(arr)) setAgents(arr.map((a: any) => ({ id: a.id, name: a.name }))) })
       .catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId])
@@ -66,14 +76,18 @@ export default function MtmActivityPage() {
       if (violations) qs.set("violations", "1")
       else if (type) qs.set("type", type)
       const res = await fetch(`/api/v1/mtm/activity?${qs}`, { headers })
-      const r = await res.json()
-      if (!res.ok || !r.success) { toast.error(r.error || "Failed to load activity"); return }
+      const r = await res.json().catch(() => null)
+      // #204: never paste the server's English sentence; the code decides
+      // which localized explanation the page shows in place of the feed.
+      if (!res.ok || !r?.success) { setErrorKey(mtmAccessErrorKey(res.status, r)); return }
+      setErrorKey(null)
+      if (typeof r.data.timezone === "string") setTimezone(r.data.timezone)
       setKpi(r.data.kpi)
       setTotal(r.data.total)
       setPage(nextPage)
       setLogs(prev => append ? [...prev, ...r.data.logs] : r.data.logs)
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Network error")
+    } catch {
+      setErrorKey("loadFailed")
     } finally { setLoading(false); setLoadingMore(false) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, period, agentId, type, violations])
@@ -104,6 +118,10 @@ export default function MtmActivityPage() {
   // имя таблицы и шесть символов идентификатора. Ни то, ни другое не язык, а
   // по обрывку id ничего и не найти. Полный id уехал в подсказку.
   const detailsOf = (l: any): { label: string; title: string | null } => {
+    // 2026-09-14: the row used to read «Əməliyyat · Sistem · Əməkdaş». What a
+    // manager needs is WHERE — the customer's name, resolved by the API.
+    const subject = l.subject as ActivitySubject | undefined
+    if (subject?.customerName) return { label: subject.customerName, title: l.entityId ?? null }
     const k = kindKey(l.metadataKind)
     if (k) return { label: t(k), title: null }
     return mtmActivityEntityText(l, t)
@@ -161,11 +179,20 @@ export default function MtmActivityPage() {
           <option value="CHECK_IN_FORCED">{t("forcedCheckIn")}</option>
           <option value="CHECK_OUT">{t("checkOut")}</option>
           <option value="PHOTO">{t("photoUpload")}</option>
+          <option value="ROUTE">{t("typeRoute")}</option>
           <option value="TASK">{t("tasks")}</option>
         </Select>
       </div>
 
-      {loading ? (
+      {errorKey ? (
+        <div role="alert" className="flex flex-col items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200 sm:flex-row sm:items-center">
+          <Lock className="h-5 w-5 shrink-0" aria-hidden="true" />
+          <p className="min-w-0 flex-1">{tt(`accessError.${errorKey}`)}</p>
+          {errorKey === "loadFailed" && (
+            <Button variant="outline" size="sm" onClick={() => load(1, false)}>{tt("accessError.retry")}</Button>
+          )}
+        </div>
+      ) : loading ? (
         <div className="animate-pulse space-y-2">{[...Array(6)].map((_, i) => <div key={i} className="h-14 bg-muted rounded-lg" />)}</div>
       ) : logs.length === 0 ? (
         <div className="h-48 flex items-center justify-center text-muted-foreground border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card">
@@ -190,13 +217,21 @@ export default function MtmActivityPage() {
   function renderTimeline() {
     const out: ReactNode[] = []
     let lastDay = ""
+    const now = new Date()
+    const todayKey = timezone ? dateInputValueInTimezone(now, timezone) : null
+    const yesterdayKey = timezone ? dateInputValueInTimezone(new Date(now.getTime() - 86_400_000), timezone) : null
     for (const log of logs) {
-      const dk = dayKeyOf(log.createdAt)
+      const dk = timezone ? dateInputValueInTimezone(log.createdAt, timezone) : dayKeyOf(log.createdAt)
       if (dk !== lastDay) {
         lastDay = dk
+        const label = !timezone
+          ? dayLabel(log.createdAt, tt, locale)
+          : dk === todayKey ? t("dayToday")
+          : dk === yesterdayKey ? t("dayYesterday")
+          : formatDate(log.createdAt, locale, { day: "numeric", month: "long", year: "numeric", timeZone: timezone })
         out.push(
-          <div key={`d-${dk}`} className="px-4 py-1.5 bg-muted/50 text-xs font-medium text-muted-foreground sticky top-0">
-            {dayLabel(log.createdAt, tt, locale)}
+          <div key={`d-${dk}`} className="px-4 py-1.5 bg-muted/50 text-xs font-medium text-muted-foreground">
+            {label}
           </div>
         )
       }
@@ -208,7 +243,7 @@ export default function MtmActivityPage() {
   function ActivityRow({ log }: { log: any }) {
     const meta = actionMeta(log.action)
     const Icon = meta.icon
-    const href = entityHref(log.entity)
+    const href = activityRowHref(log)
     const clickable = !!href
     return (
       <div

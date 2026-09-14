@@ -3,35 +3,8 @@ import { prisma } from "@/lib/prisma"
 import { AlertUpdateSchema, parseBody } from "@/lib/mtm-validators"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { withRouteFieldRlsAuth } from "@/lib/with-mtm-rls-auth"
-import type { MtmRlsAuth } from "@/lib/with-mtm-rls-auth"
-import { fieldScopeAgentIdWhere, mtmFieldScopeRequiredResponse, resolveMtmFieldScope, type MtmFieldScope } from "@/lib/mtm/field-access"
-
-/**
- * Resolving or deleting an alert is a supervisory act on someone's record.
- * Before the scope audit any web user with MTM write — and a field agent's
- * token — could close or delete alerts of any team. Now:
- *   - no MTM card behind the caller → MTM_FIELD_SCOPE_REQUIRED;
- *   - AGENT → 403: an agent does not close alerts raised about themselves;
- *   - MANAGER/SUPERVISOR → only alerts of agents in scope (others are a 404,
- *     indistinguishable from a missing id);
- *   - admin → any alert in the organization.
- */
-async function alertWriteScope(auth: MtmRlsAuth): Promise<Response | Exclude<MtmFieldScope, { kind: "none" }>> {
-  const scope = await resolveMtmFieldScope(prisma, {
-    organizationId: auth.orgId,
-    userId: auth.userId,
-    webRole: auth.role,
-    agentId: auth.agentId,
-  })
-  if (scope.kind === "none") return mtmFieldScopeRequiredResponse()
-  if (scope.actor.role === "AGENT") {
-    return NextResponse.json(
-      { error: "Alert review requires manager access", code: "MTM_ALERT_REVIEW_FORBIDDEN" },
-      { status: 403 },
-    )
-  }
-  return scope
-}
+import { fieldScopeAgentIdWhere } from "@/lib/mtm/field-access"
+import { alertWriteScope } from "../_scope"
 
 export const PATCH = withRouteFieldRlsAuth("write", async (req, auth, { params }: { params: Promise<{ id: string }> }) => {
   const { orgId } = auth
