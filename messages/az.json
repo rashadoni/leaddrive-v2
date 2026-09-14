@@ -13526,6 +13526,8 @@
   "mtmVisitsPage": {
     "title": "Ziyarətlər",
     "subtitle": "Agentlərin ziyarətlərinə baxın: vaxt, yer, foto, imza",
+    "subtitleAgent": "Hazırkı ziyarətiniz və ziyarət tarixçəniz",
+    "subtitleNeutral": "Ziyarətlər: vaxt, yer, foto və nəticə",
     "clarityGuide": {
       "title": "Ziyarət nəzarəti üçün 3 addım",
       "description": "Əvvəl açıq ziyarəti tamamlayın, sonra tarixçədə statusu və GPS təsdiqini yoxlayın. Lazım olduqda yeni qeyd yaradın və ya mövcud qeydi düzəldin."
@@ -13599,6 +13601,7 @@
     "resultBounded": "Təhlükəsiz həddə görə {limit} qeyddən yoxlanılan son {shown} ziyarət göstərilir.",
     "advisorRisk": "Ziyarət üzrə AI qeydləri",
     "gpsCheckoutMissing": "Çıxış GPS yoxdur",
+    "gpsCheckinMissing": "Giriş GPS yoxdur",
     "gpsNoPin": "Müştərinin xəritə nöqtəsi yoxdur",
     "distanceMeters": "{value} m",
     "distanceKilometers": "{value} km",
@@ -13616,6 +13619,7 @@
       "routePoint": "nöqtə №{number}",
       "plannedAt": "Plan üzrə: {time}",
       "unplanned": "Marşrutdan kənar ziyarət",
+      "routeHidden": "Marşrut məlumatı sizə görünmür",
       "actualTitle": "Faktiki vaxt",
       "duration": "{minutes} dəq",
       "placeTitle": "Yer yoxlaması",
@@ -13627,10 +13631,12 @@
       "placeCheckoutNoGps": "Çıxış GPS yoxdur",
       "placeNoPin": "Müştərinin xəritə nöqtəsi yoxdur",
       "placeNotFinished": "Ziyarət hələ bitməyib",
+      "placeNoCheckout": "Çıxış qeydə alınmayıb",
       "placeDistanceDetail": "Nöqtəyə qədər {distance}, icazə verilən radius {radius}",
       "photosTitle": "Fotolar",
       "photosCount": "{count, plural, one {# foto} other {# foto}}",
       "noPhotos": "Bu ziyarətdə foto yoxdur",
+      "morePhotos": "{count, plural, one {Daha # foto burada göstərilmir} other {Daha # foto burada göstərilmir}}",
       "openPhoto": "Fotonu aç: {index}",
       "photoTitle": "Foto {index} / {total}",
       "noteTitle": "Agentin qeydi",

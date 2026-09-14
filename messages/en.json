@@ -13530,6 +13530,8 @@
   "mtmVisitsPage": {
     "title": "Visits",
     "subtitle": "Review your agents' visits: time, place, photos, signature",
+    "subtitleAgent": "Your visit in progress and your visit history",
+    "subtitleNeutral": "Visits: time, place, photos and results",
     "clarityGuide": {
       "title": "Three steps to control visits",
       "description": "First finish an open visit, then review status and GPS confirmation in the history. Add a new record or correct an existing one when needed."
@@ -13603,6 +13605,7 @@
     "resultBounded": "For safety, showing the latest {shown} visits checked within a {limit}-record window.",
     "advisorRisk": "AI visit notes",
     "gpsCheckoutMissing": "No check-out GPS",
+    "gpsCheckinMissing": "No check-in GPS",
     "gpsNoPin": "Customer has no map pin",
     "distanceMeters": "{value} m",
     "distanceKilometers": "{value} km",
@@ -13620,6 +13623,7 @@
       "routePoint": "stop {number}",
       "plannedAt": "Planned for {time}",
       "unplanned": "Not on a route",
+      "routeHidden": "Route details are not visible to you",
       "actualTitle": "Actual time",
       "duration": "{minutes} min",
       "placeTitle": "Place check",
@@ -13631,10 +13635,12 @@
       "placeCheckoutNoGps": "No check-out GPS",
       "placeNoPin": "Customer has no map pin",
       "placeNotFinished": "Visit not finished yet",
+      "placeNoCheckout": "No check-out recorded",
       "placeDistanceDetail": "{distance} from the pin, allowed radius {radius}",
       "photosTitle": "Photos",
       "photosCount": "{count, plural, one {# photo} other {# photos}}",
       "noPhotos": "No photos for this visit",
+      "morePhotos": "{count, plural, one {# more photo is not shown here} other {# more photos are not shown here}}",
       "openPhoto": "Open photo {index}",
       "photoTitle": "Photo {index} of {total}",
       "noteTitle": "Agent's note",

@@ -40,8 +40,16 @@ import {
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { formatDateTime } from "@/lib/format-date"
-import { isOwnVisitExecution, visitApiErrorKey, visitPlaceSummary, visitStatusKey } from "@/lib/mtm/visit-review"
-import { VisitReviewPanel, formatDistance, visitStatusClasses } from "./visit-review-panel"
+import {
+  isOwnVisitExecution,
+  isVisitGoneResponse,
+  selectActiveVisitId,
+  visitApiErrorKey,
+  visitPlaceSummary,
+  visitStatusKey,
+  visitStillOpenFromResponse,
+} from "@/lib/mtm/visit-review"
+import { VisitReviewPanel, formatDistance, visitStatusClasses, type ReviewedVisitFacts } from "./visit-review-panel"
 import { VisitWorkspace } from "./visit-workspace"
 
 type MtmVisitRow = {
@@ -158,15 +166,31 @@ export default function MtmVisitsPage() {
     identity: "",
     controller: null,
   })
+  const [activeResolved, setActiveResolved] = useState(false)
   const activeVisitIdRef = useRef<string | null>(null)
+  const activeVisitsRef = useRef<ActiveVisitRow[]>([])
+  const visitsRef = useRef<MtmVisitRow[]>([])
+  const focusedVisitIdRef = useRef<string | null>(focusedVisitId)
+  const focusSelectedRef = useRef<string | null>(null)
   const lastRefreshAtRef = useRef(0)
   const viewerKey = String(session?.user?.id ?? session?.user?.email ?? "")
   const tCommon = useTranslations("mtmCommon")
-  const visitIdentityKey = `${String(orgId ?? "")}:${viewerKey}:${focusedVisitId ?? ""}:${historyRange}`
+  // The list does not depend on which visit is open: opening a row must not reload 200 rows.
+  const listIdentityKey = `${String(orgId ?? "")}:${viewerKey}:${historyRange}`
+  const activeIdentityKey = `${String(orgId ?? "")}:${viewerKey}`
 
   useEffect(() => {
     activeVisitIdRef.current = activeVisitId
   }, [activeVisitId])
+  useEffect(() => {
+    activeVisitsRef.current = activeVisits
+  }, [activeVisits])
+  useEffect(() => {
+    visitsRef.current = visits
+  }, [visits])
+  useEffect(() => {
+    focusedVisitIdRef.current = focusedVisitId
+  }, [focusedVisitId])
 
   /**
    * `silent` is the background refresh: it keeps open dialogs, shows no
@@ -179,11 +203,11 @@ export default function MtmVisitsPage() {
     visitRequestRef.current.controller?.abort()
     const requestId = visitRequestRef.current.id + 1
     const controller = new AbortController()
-    visitRequestRef.current = { id: requestId, identity: visitIdentityKey, controller, pending: true }
+    visitRequestRef.current = { id: requestId, identity: listIdentityKey, controller, pending: true }
     const isCurrentRequest = () => (
       !controller.signal.aborted
       && visitRequestRef.current.id === requestId
-      && visitRequestRef.current.identity === visitIdentityKey
+      && visitRequestRef.current.identity === listIdentityKey
       && visitRequestRef.current.controller === controller
     )
 
@@ -192,47 +216,29 @@ export default function MtmVisitsPage() {
       setFormOpen(false)
       setDeleteItem(null)
       setDeleteOpen(false)
-      setFocusedVisitUnavailable(false)
       setLoading(true)
     }
 
     try {
       const headers: Record<string, string> = orgId ? { "x-organization-id": String(orgId) } : {}
-      const [res, focusedResponse] = await Promise.all([
-        fetch(`/api/v1/mtm/visits?limit=200&range=${historyRange}`, { headers, signal: controller.signal }),
-        focusedVisitId
-          ? fetch(`/api/v1/mtm/visits/${encodeURIComponent(focusedVisitId)}`, { headers, signal: controller.signal })
-          : Promise.resolve(null),
-      ])
+      const res = await fetch(`/api/v1/mtm/visits?limit=200&range=${historyRange}`, { headers, signal: controller.signal })
       const result = await res.json().catch(() => null)
       if (!isCurrentRequest()) return
       if (!res.ok || !result?.success) {
-        if (silent) return
-        setFocusedVisitUnavailable(Boolean(focusedVisitId))
-        toast.error(t("loadFailed"))
+        // A failed list says nothing about the focused visit; keep what is on screen.
+        if (!silent) toast.error(t("loadFailed"))
         return
       }
 
-      let nextVisits: MtmVisitRow[] = result.data.visits || []
-      let focusedUnavailable = false
-      if (focusedResponse) {
-        const focusedResult = await focusedResponse.json().catch(() => null)
-        if (!isCurrentRequest()) return
-        if (focusedResponse.ok && focusedResult?.success && focusedResult.data?.id === focusedVisitId) {
-          // The exact endpoint returns the same customer facts as the list
-          // (address, pin, geofence), so swapping the row loses nothing.
-          const focusedVisit = focusedResult.data as MtmVisitRow
-          nextVisits = nextVisits.some((visit) => visit.id === focusedVisit.id)
-            ? nextVisits.map((visit) => visit.id === focusedVisit.id ? focusedVisit : visit)
-            : [focusedVisit, ...nextVisits]
-        } else {
-          focusedUnavailable = true
-          nextVisits = nextVisits.filter((visit) => visit.id !== focusedVisitId)
-        }
-      }
-
-      if (!isCurrentRequest()) return
-      setVisits(nextVisits)
+      const listed: MtmVisitRow[] = result.data.visits || []
+      setVisits((current) => {
+        // A focused visit outside this period stays pinned on top instead of vanishing.
+        const focusedId = focusedVisitIdRef.current
+        const pinned = focusedId && !listed.some((visit) => visit.id === focusedId)
+          ? current.find((visit) => visit.id === focusedId)
+          : undefined
+        return pinned ? [pinned, ...listed] : listed
+      })
       setMeta({
         total: typeof result.data.total === "number" ? result.data.total : null,
         totalExact: result.data.totalExact === true,
@@ -241,28 +247,54 @@ export default function MtmVisitsPage() {
         timezone: typeof result.data.timezone === "string" ? result.data.timezone : "UTC",
         geofenceRadius: typeof result.data.geofenceRadius === "number" ? result.data.geofenceRadius : null,
       })
-      setFocusedVisitUnavailable(focusedUnavailable)
     } catch (error) {
       if (!isCurrentRequest() || (error as { name?: string })?.name === "AbortError") return
-      if (silent) return
-      setFocusedVisitUnavailable(Boolean(focusedVisitId))
-      toast.error(t("loadFailed"))
+      if (!silent) toast.error(t("loadFailed"))
     } finally {
       if (visitRequestRef.current.controller === controller) visitRequestRef.current.pending = false
       if (isCurrentRequest() && !silent) setLoading(false)
     }
-  }, [focusedVisitId, historyRange, orgId, t, visitIdentityKey])
+  }, [historyRange, listIdentityKey, orgId, t])
 
-  const fetchActiveVisits = useCallback(async () => {
+  /**
+   * The focused row, once per opened visit. Skipped when the list already
+   * holds it — the review panel keeps its status current from then on.
+   * Only 403/404 mark it unavailable; a transient failure keeps the review.
+   */
+  const fetchFocusedVisit = useCallback(async (visitId: string, signal: AbortSignal) => {
+    if (visitsRef.current.some((visit) => visit.id === visitId)) return
+    try {
+      const headers: Record<string, string> = orgId ? { "x-organization-id": String(orgId) } : {}
+      const response = await fetch(`/api/v1/mtm/visits/${encodeURIComponent(visitId)}`, { headers, signal })
+      const body = await response.json().catch(() => null)
+      if (signal.aborted) return
+      if (isVisitGoneResponse(response.status)) {
+        setFocusedVisitUnavailable(true)
+        setVisits((rows) => rows.filter((visit) => visit.id !== visitId))
+        return
+      }
+      if (!response.ok || !body?.success || body.data?.id !== visitId) return
+      const focusedVisit = body.data as MtmVisitRow
+      setVisits((rows) => rows.some((visit) => visit.id === visitId)
+        ? rows.map((visit) => visit.id === visitId ? focusedVisit : visit)
+        : [focusedVisit, ...rows])
+    } catch {
+      // Transient: the review panel shows its own retry state.
+    }
+  }, [orgId])
+
+  /** Resolves with the ids that left the open-visit list, so the caller can decide whether the history needs a reload. */
+  const fetchActiveVisits = useCallback(async (): Promise<string[]> => {
     activeVisitRequestRef.current.controller?.abort()
     const requestId = activeVisitRequestRef.current.id + 1
     const controller = new AbortController()
-    activeVisitRequestRef.current = { id: requestId, identity: visitIdentityKey, controller }
+    activeVisitRequestRef.current = { id: requestId, identity: activeIdentityKey, controller }
     const previousActiveVisitId = activeVisitIdRef.current
+    const previousRows = activeVisitsRef.current
     const isCurrentRequest = () => (
       !controller.signal.aborted
       && activeVisitRequestRef.current.id === requestId
-      && activeVisitRequestRef.current.identity === visitIdentityKey
+      && activeVisitRequestRef.current.identity === activeIdentityKey
       && activeVisitRequestRef.current.controller === controller
     )
 
@@ -270,45 +302,93 @@ export default function MtmVisitsPage() {
       const headers: Record<string, string> = orgId ? { "x-organization-id": String(orgId) } : {}
       const res = await fetch("/api/v1/mtm/visits/active", { headers, signal: controller.signal })
       const body = await res.json().catch(() => null)
-      if (!isCurrentRequest() || !res.ok || !body?.success) return
-      const next: ActiveVisitRow[] = body.data.visits ?? []
+      if (!isCurrentRequest() || !res.ok || !body?.success) return []
       const nextViewer: VisitViewer | null = body.data.viewer ?? null
-      // Only the viewer's own open visits can be executed here.
-      const own = next.filter((visit) => isOwnVisitExecution(nextViewer, { agentId: visit.agentId, status: "CHECKED_IN" }))
-      const nextActiveVisitId = focusedVisitId && own.some((visit) => visit.id === focusedVisitId)
-        ? focusedVisitId
-        : previousActiveVisitId && own.some((visit) => visit.id === previousActiveVisitId)
-          ? previousActiveVisitId
-          : own[0]?.id ?? null
+      const isOwn = (visit: ActiveVisitRow) => isOwnVisitExecution(nextViewer, { agentId: visit.agentId, status: "CHECKED_IN" })
+      let next: ActiveVisitRow[] = body.data.visits ?? []
+
+      // Missing from the capped list is not proof the visit ended. Ask for
+      // that one visit before closing the workspace the agent is typing in.
+      const previousRow = previousActiveVisitId ? previousRows.find((visit) => visit.id === previousActiveVisitId) : undefined
+      if (previousRow && isOwn(previousRow) && !next.some((visit) => visit.id === previousRow.id)) {
+        let stillOpen = true
+        try {
+          const response = await fetch(`/api/v1/mtm/visits/${encodeURIComponent(previousRow.id)}`, { headers, signal: controller.signal })
+          stillOpen = visitStillOpenFromResponse(response.status, await response.json().catch(() => null))
+        } catch {
+          stillOpen = true
+        }
+        if (!isCurrentRequest()) return []
+        if (stillOpen) next = [previousRow, ...next]
+      }
+
+      const nextActiveVisitId = selectActiveVisitId({
+        ownOpenVisitIds: next.filter(isOwn).map((visit) => visit.id),
+        currentId: previousActiveVisitId,
+        focusedId: focusedVisitIdRef.current,
+      })
       setActiveVisits(next)
       setViewer(nextViewer)
       activeVisitIdRef.current = nextActiveVisitId
       setActiveVisitId(nextActiveVisitId)
+      const nextIds = new Set(next.map((visit) => visit.id))
+      return previousRows.filter((visit) => !nextIds.has(visit.id)).map((visit) => visit.id)
     } catch (error) {
-      if (!isCurrentRequest() || (error as { name?: string })?.name === "AbortError") return
+      if (!isCurrentRequest() || (error as { name?: string })?.name === "AbortError") return []
       // History remains available when the active-visit endpoint is temporarily unavailable.
+      return []
+    } finally {
+      // Resolved either way: without an answer the viewer is treated as an office user.
+      if (isCurrentRequest()) setActiveResolved(true)
     }
-  }, [focusedVisitId, orgId, visitIdentityKey])
+  }, [activeIdentityKey, orgId])
 
   useEffect(() => {
     void fetchVisits()
+    return () => visitRequestRef.current.controller?.abort()
+  }, [fetchVisits])
+
+  useEffect(() => {
     void fetchActiveVisits()
-    return () => {
-      visitRequestRef.current.controller?.abort()
-      activeVisitRequestRef.current.controller?.abort()
-    }
-  }, [fetchActiveVisits, fetchVisits])
+    return () => activeVisitRequestRef.current.controller?.abort()
+  }, [fetchActiveVisits])
+
+  useEffect(() => {
+    setFocusedVisitUnavailable(false)
+    if (!focusedVisitId) return
+    const controller = new AbortController()
+    void fetchFocusedVisit(focusedVisitId, controller.signal)
+    return () => controller.abort()
+  }, [fetchFocusedVisit, focusedVisitId])
+
+  // Opening one of the viewer's own open visits selects its workspace — once
+  // per opened visit, so a refresh never overrides a later manual switch.
+  useEffect(() => {
+    if (!focusedVisitId || focusSelectedRef.current === focusedVisitId) return
+    const own = activeVisits.some((visit) => visit.id === focusedVisitId && isOwnVisitExecution(viewer, { agentId: visit.agentId, status: "CHECKED_IN" }))
+    if (!own) return
+    focusSelectedRef.current = focusedVisitId
+    activeVisitIdRef.current = focusedVisitId
+    setActiveVisitId(focusedVisitId)
+  }, [activeVisits, focusedVisitId, viewer])
 
   // Live refresh: a visit that finishes in the field must not stay "in
-  // progress" on this screen until someone reloads it.
+  // progress" on this screen until someone reloads it. A background tick is
+  // cheap on purpose: open visits and the focused review every time; the
+  // history list only for today, or when an open visit it shows has ended.
   useEffect(() => {
     const refresh = () => {
       if (document.visibilityState !== "visible") return
       const now = Date.now()
       if (now - lastRefreshAtRef.current < 2_000) return
       lastRefreshAtRef.current = now
-      void fetchVisits({ silent: true })
-      void fetchActiveVisits()
+      const listIsLive = historyRange === "today"
+      if (listIsLive) void fetchVisits({ silent: true })
+      void fetchActiveVisits().then((departedIds) => {
+        if (listIsLive || departedIds.length === 0) return
+        const shownOpen = visitsRef.current.some((visit) => visit.status === "CHECKED_IN" && departedIds.includes(visit.id))
+        if (shownOpen) void fetchVisits({ silent: true })
+      })
       setRefreshTick((tick) => tick + 1)
     }
     const onVisibilityChange = () => {
@@ -322,7 +402,21 @@ export default function MtmVisitsPage() {
       window.removeEventListener("focus", refresh)
       document.removeEventListener("visibilitychange", onVisibilityChange)
     }
-  }, [fetchActiveVisits, fetchVisits])
+  }, [fetchActiveVisits, fetchVisits, historyRange])
+
+  /** The review already fetched the visit; the history row follows it without a request of its own. */
+  const applyReviewedVisit = useCallback((facts: ReviewedVisitFacts) => {
+    setVisits((rows) => {
+      const row = rows.find((visit) => visit.id === facts.id)
+      if (!row) return rows
+      const changed = row.status !== facts.status
+        || (row.checkOutAt ?? null) !== facts.checkOutAt
+        || (row.duration ?? null) !== facts.duration
+        || (row.checkOutLat ?? null) !== facts.checkOutLat
+        || (row.checkOutLng ?? null) !== facts.checkOutLng
+      return changed ? rows.map((visit) => visit.id === facts.id ? { ...visit, ...facts } : visit) : rows
+    })
+  }, [])
 
   const visitHref = useCallback((visitId: string | null) => {
     const params = new URLSearchParams(searchParams.toString())
@@ -359,9 +453,12 @@ export default function MtmVisitsPage() {
   const ownActiveVisits = activeVisits.filter((visit) => isOwnVisitExecution(viewer, { agentId: visit.agentId, status: "CHECKED_IN" }))
   const teamActiveVisits = activeVisits.filter((visit) => !ownActiveVisits.includes(visit))
   const focusedOwnExecution = Boolean(focusedVisitId && ownActiveVisits.some((visit) => visit.id === focusedVisitId))
-  const showReview = Boolean(focusedVisitId && !focusedOwnExecution && !focusedVisitUnavailable)
+  // Until the viewer is known, an agent's own ?visitId must not flash the office review.
+  const focusPending = Boolean(focusedVisitId && !activeResolved && !focusedVisitUnavailable)
+  const showReview = Boolean(focusedVisitId && activeResolved && !focusedOwnExecution && !focusedVisitUnavailable)
   // The three-step guide teaches how to execute a visit; office users review.
   const showGuide = viewer?.role === "AGENT"
+  const subtitle = !activeResolved ? t("subtitleNeutral") : viewer?.role === "AGENT" ? t("subtitleAgent") : t("subtitle")
 
   function refreshAll() {
     void fetchVisits()
@@ -430,7 +527,9 @@ export default function MtmVisitsPage() {
     const confirmed = place.verdict === "at_point"
     const label = place.verdict === "checkout_gps_missing"
       ? t("gpsCheckoutMissing")
-      : confirmed
+      : place.verdict === "checkin_gps_missing"
+        ? t("gpsCheckinMissing")
+        : confirmed
         ? t("gpsConfirmed")
         : `${t("gpsOutside")} · ${formatDistance(t, place.distanceMeters ?? 0)}`
     return (
@@ -484,10 +583,11 @@ export default function MtmVisitsPage() {
     }) || "—"
   }
 
-  if (loading && visits.length === 0) {
+  // Never while an own workspace is open: this early return would unmount it.
+  if (loading && visits.length === 0 && activeVisits.length === 0) {
     return (
       <div className="space-y-6">
-        <PageDescription icon={CheckSquare} title={t("title")} description={t("subtitle")} />
+        <PageDescription icon={CheckSquare} title={t("title")} description={subtitle} />
         <div className="animate-pulse space-y-4 motion-reduce:animate-none">
           <div className="h-24 rounded-2xl bg-muted" />
           <div className="h-80 rounded-2xl bg-muted" />
@@ -500,7 +600,7 @@ export default function MtmVisitsPage() {
     <div className="space-y-6 pb-8" data-testid="mtm-visits-guided-history">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-2">
-          <PageDescription icon={CheckSquare} title={t("title")} description={t("subtitle")} />
+          <PageDescription icon={CheckSquare} title={t("title")} description={subtitle} />
           <HelpButton slug="mtm-visits" variant="label" />
         </div>
         <div className="grid gap-2 sm:flex sm:flex-wrap sm:justify-end">
@@ -540,6 +640,10 @@ export default function MtmVisitsPage() {
         </div>
       ) : null}
 
+      {focusPending ? (
+        <div role="status" aria-label={t("loading")} className="h-40 animate-pulse rounded-2xl bg-muted motion-reduce:animate-none" data-testid="mtm-visit-focus-pending" />
+      ) : null}
+
       {showReview && focusedVisitId ? (
         <div className="grid items-start gap-4 2xl:grid-cols-[minmax(0,1fr)_360px]">
           <VisitReviewPanel
@@ -547,6 +651,7 @@ export default function MtmVisitsPage() {
             visitId={focusedVisitId}
             refreshToken={refreshTick}
             closeHref={visitHref(null)}
+            onVisitLoaded={applyReviewedVisit}
           />
           <AdvisorRecordWidget entityType="mtm_visit" entityId={focusedVisitId} orgId={orgId ? String(orgId) : undefined} title={t("advisorRisk")} />
         </div>

@@ -37,6 +37,8 @@ export const GET = withRouteFieldRlsAuth("read", async (
         orderBy: { createdAt: "asc" },
         select: { id: true, actionKey: true, status: true, evidence: true },
       },
+      // Counted separately: the list is capped, the requirement is not.
+      _count: { select: { photos: true } },
       photos: {
         orderBy: { createdAt: "desc" },
         take: 20,

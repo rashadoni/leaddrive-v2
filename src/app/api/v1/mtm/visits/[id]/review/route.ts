@@ -9,6 +9,7 @@ import { effectiveGeofenceRadius, isOwnVisitExecution } from "@/lib/mtm/visit-re
 import { isValidTimezone } from "@/lib/timezone"
 
 const OPEN_TASK_STATUSES = ["PENDING", "IN_PROGRESS", "OVERDUE"] as const
+const REVIEW_PHOTO_LIMIT = 30
 
 /**
  * Read-only review of one visit for the office (/mtm/visits?visitId=…).
@@ -69,9 +70,11 @@ export const GET = withRouteFieldRlsAuth("read", async (
           orderBy: { createdAt: "asc" },
           select: { id: true, actionKey: true, status: true, evidence: true, completedAt: true },
         },
+        // The grid shows the first photos; the count and the PHOTO step use _count.
+        _count: { select: { photos: true } },
         photos: {
           orderBy: { createdAt: "asc" },
-          take: 30,
+          take: REVIEW_PHOTO_LIMIT,
           select: { id: true, url: true, thumbnailUrl: true, status: true, createdAt: true },
         },
       },
@@ -105,7 +108,7 @@ export const GET = withRouteFieldRlsAuth("read", async (
       }),
     ])
 
-    const { participants: _authorizationEvidence, ...publicVisit } = visit
+    const { participants: _authorizationEvidence, _count: counts, ...publicVisit } = visit
     const primaryAgentVisible = isAgentInRouteScope(actor, visit.agentId)
     const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
 
@@ -117,6 +120,11 @@ export const GET = withRouteFieldRlsAuth("read", async (
           agentId: primaryAgentVisible ? visit.agentId : null,
           agent: primaryAgentVisible ? visit.agent : null,
           primaryAgentHidden: !primaryAgentVisible,
+          // A route is named after its agent often enough ("Anar — Monday")
+          // that it identifies a primary agent the reviewer may not see.
+          route: primaryAgentVisible ? visit.route : null,
+          routePoint: primaryAgentVisible ? visit.routePoint : null,
+          photoCount: counts?.photos ?? visit.photos.length,
         },
         geofenceRadius: effectiveGeofenceRadius(visit.customer.geofenceRadius, settings.geofenceRadius),
         openTasks: { count: openTaskCount, items: openTasks },

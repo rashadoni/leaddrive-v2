@@ -4,12 +4,15 @@ import {
   VISIT_API_ERROR_MESSAGE_KEYS,
   effectiveGeofenceRadius,
   isOwnVisitExecution,
+  isVisitGoneResponse,
   placeCheck,
   reviewActionRows,
+  selectActiveVisitId,
   visitApiErrorKey,
   visitDurationMinutes,
   visitPlaceSummary,
   visitStatusKey,
+  visitStillOpenFromResponse,
 } from "@/lib/mtm/visit-review"
 
 /**
@@ -43,6 +46,17 @@ describe("place check", () => {
   it("respects a wider customer radius instead of a fixed 100 m", () => {
     expect(placeCheck({ latitude: 40.4108, longitude: 49.8671 }, pin, 100).state).toBe("outside")
     expect(placeCheck({ latitude: 40.4108, longitude: 49.8671 }, pin, 250).state).toBe("at_point")
+  })
+
+  it("never measures from (0, 0): old field APKs sent it for 'no fix' and it read '6745.7 km'", () => {
+    expect(placeCheck({ latitude: 0, longitude: 0 }, pin, 100)).toEqual({ state: "no_gps", distanceMeters: null, radiusMeters: 100 })
+    expect(placeCheck({ latitude: 40.4094, longitude: 49.8671 }, { latitude: 0, longitude: 0 }, 100).state).toBe("no_pin")
+  })
+
+  it("treats half pairs and out-of-range values as unknown, like every other coordinate path", () => {
+    expect(placeCheck({ latitude: 40.4094, longitude: null }, pin, 100).state).toBe("no_gps")
+    expect(placeCheck({ latitude: 140, longitude: 49.8671 }, pin, 100).state).toBe("no_gps")
+    expect(placeCheck({ latitude: 40.4094, longitude: 49.8671 }, { latitude: Number.NaN, longitude: 49.8 }, 100).state).toBe("no_pin")
   })
 
   it("separates a missing fix from a customer without a pin", () => {
@@ -84,6 +98,40 @@ describe("visit place summary", () => {
     const summary = visitPlaceSummary({ ...finished, status: "CHECKED_IN", checkOutLat: null, checkOutLng: null }, 100)
     expect(summary.checkOut).toBeNull()
     expect(summary.verdict).toBe("at_point")
+  })
+
+  it("reads a (0, 0) check-out as a missing check-out fix, not as 6745 km away", () => {
+    const summary = visitPlaceSummary({ ...finished, checkOutLat: 0, checkOutLng: 0 }, 100)
+    expect(summary.verdict).toBe("checkout_gps_missing")
+    expect(summary.checkOut).toEqual({ state: "no_gps", distanceMeters: null, radiusMeters: 100 })
+  })
+
+  it("says so explicitly when only the check-out carries a fix", () => {
+    const summary = visitPlaceSummary({ ...finished, checkInLat: null, checkInLng: null }, 100)
+    expect(summary.verdict).toBe("checkin_gps_missing")
+    expect(summary.checkIn.state).toBe("no_gps")
+    expect(summary.checkOut?.state).toBe("at_point")
+    expect(summary.distanceMeters).toBe(summary.checkOut?.distanceMeters)
+  })
+
+  it("still reports 'outside' when the only fix is a check-out far away", () => {
+    const summary = visitPlaceSummary({ ...finished, checkInLat: null, checkInLng: null, checkOutLat: 40.43, checkOutLng: 49.8671 }, 100)
+    expect(summary.verdict).toBe("outside")
+  })
+
+  it("has no GPS verdict when neither fix is usable", () => {
+    expect(visitPlaceSummary({ ...finished, checkInLat: 0, checkInLng: 0, checkOutLat: null, checkOutLng: null }, 100).verdict).toBe("no_gps")
+  })
+
+  it("measures check-out only for a checked-out visit and says why it did not", () => {
+    const open = visitPlaceSummary({ ...finished, status: "CHECKED_IN" }, 100)
+    expect(open.checkOut).toBeNull()
+    expect(open.checkOutSkipped).toBe("visit_open")
+    const cancelled = visitPlaceSummary({ ...finished, status: "CANCELLED", checkOutLat: 40.43 }, 100)
+    expect(cancelled.checkOut).toBeNull()
+    expect(cancelled.checkOutSkipped).toBe("not_checked_out")
+    expect(cancelled.verdict).toBe("at_point")
+    expect(visitPlaceSummary(finished, 100).checkOutSkipped).toBeNull()
   })
 
   it("uses the organization radius when the customer has none", () => {
@@ -153,6 +201,33 @@ describe("who executes a visit on the web", () => {
 
   it("does not match two unknown agents to each other", () => {
     expect(isOwnVisitExecution({ agentId: null }, { agentId: null, status: "CHECKED_IN" })).toBe(false)
+  })
+})
+
+describe("live refresh keeps the agent's workspace", () => {
+  it("keeps the visit already on screen while it is still open, even when another visit is focused", () => {
+    expect(selectActiveVisitId({ ownOpenVisitIds: ["visit-a", "visit-b"], currentId: "visit-b", focusedId: "visit-a" })).toBe("visit-b")
+  })
+
+  it("falls back to the focused visit, then the first open one, only when the current one is gone", () => {
+    expect(selectActiveVisitId({ ownOpenVisitIds: ["visit-a", "visit-b"], currentId: "visit-gone", focusedId: "visit-b" })).toBe("visit-b")
+    expect(selectActiveVisitId({ ownOpenVisitIds: ["visit-a"], currentId: null, focusedId: "someone-elses" })).toBe("visit-a")
+    expect(selectActiveVisitId({ ownOpenVisitIds: [], currentId: "visit-a", focusedId: null })).toBeNull()
+  })
+
+  it("marks a visit gone only on 403/404, never on a transient failure", () => {
+    expect(isVisitGoneResponse(404)).toBe(true)
+    expect(isVisitGoneResponse(403)).toBe(true)
+    for (const status of [500, 502, 503, 504, 429, 0]) expect(isVisitGoneResponse(status)).toBe(false)
+  })
+
+  it("closes the workspace only when the server says the visit is no longer open", () => {
+    expect(visitStillOpenFromResponse(200, { success: true, data: { status: "CHECKED_IN" } })).toBe(true)
+    expect(visitStillOpenFromResponse(200, { success: true, data: { status: "CHECKED_OUT" } })).toBe(false)
+    expect(visitStillOpenFromResponse(200, { success: true, data: { status: "CANCELLED" } })).toBe(false)
+    expect(visitStillOpenFromResponse(404, null)).toBe(false)
+    expect(visitStillOpenFromResponse(503, null)).toBe(true)
+    expect(visitStillOpenFromResponse(200, null)).toBe(true)
   })
 })
 

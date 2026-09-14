@@ -52,6 +52,8 @@ interface WorkspaceData {
     requirementSnapshot: { sourcePolicy?: { name: string } | null; requirements: Requirement[] } | null
     actionResults: Array<{ id: string; actionKey: ActionKey; status: string; evidence?: Record<string, unknown> | null }>
     photos: Array<{ id: string; url: string; thumbnailUrl?: string | null; status: string; createdAt?: string | null }>
+    /** All photos of the visit; `photos` holds only the latest 20. */
+    _count?: { photos: number }
     route?: { id: string; name?: string | null; date: string; status: string } | null
   }
   reminders: Array<{ id: string; title: string; description?: string | null; status: string; priority: string; dueDate?: string | null; version: number }>
@@ -276,7 +278,7 @@ export function VisitWorkspace({ visitId, onCompleted, canReschedule = false }: 
     for (const item of data?.visit.actionResults ?? []) {
       if (item.status === "COMPLETED" || item.status === "WAIVED") counts.set(item.actionKey, (counts.get(item.actionKey) ?? 0) + 1)
     }
-    if (data) counts.set("PHOTO", Math.max(counts.get("PHOTO") ?? 0, data.visit.photos.length))
+    if (data) counts.set("PHOTO", Math.max(counts.get("PHOTO") ?? 0, data.visit._count?.photos ?? data.visit.photos.length))
     return counts
   }, [data])
 

@@ -1,4 +1,5 @@
 import { calculateDistance } from "@/lib/geo-utils"
+import { hasMtmCoordinates, type MtmCoordinateInput } from "@/lib/mtm/geo-coordinates"
 
 /**
  * Pure rules behind the office review of a field visit (/mtm/visits).
@@ -6,7 +7,36 @@ import { calculateDistance } from "@/lib/geo-utils"
  * The page used to show every viewer the agent's execution workspace, so a
  * supervisor opening a finished visit saw forms to fill in and nothing that
  * had actually happened. These helpers decide what a reviewer sees; they hold
- * no React and no Prisma so both the API and the page can share them.
+ * no React and no Prisma so the API, the page and other MTM screens share one
+ * answer.
+ *
+ * Exported API
+ *
+ * Place check — the single source for "was the visit recorded at the
+ * customer?" on the web. Other screens should call this instead of measuring
+ * on their own:
+ *
+ * - `effectiveGeofenceRadius(customerRadius, organizationRadius)` — the radius
+ *   the check-in is judged by: customer override (F-22), else the organization
+ *   setting, else 100 m.
+ * - `placeCheck(fix, pin, radiusMeters)` — one fix against the pin:
+ *   `at_point` | `outside` | `no_gps` | `no_pin`, with the rounded distance.
+ *   Both pairs go through `hasMtmCoordinates`, so (0, 0), half pairs and
+ *   out-of-range values are "unknown", never a position in the Gulf of Guinea.
+ * - `visitPlaceSummary(visit, organizationRadius)` — check-in and check-out
+ *   together. Check-out is measured only for a `CHECKED_OUT` visit
+ *   (`checkOutSkipped` says why it was not: `visit_open` or `not_checked_out`).
+ *   `verdict` is one value for a table cell, worst fact first: `no_pin`,
+ *   `outside`, `no_gps` (no usable fix at all), `checkin_gps_missing` (only the
+ *   check-out fix exists), `checkout_gps_missing` (finished visit without a
+ *   check-out fix), `at_point`.
+ *
+ * Review — `reviewActionRows`, `isOwnVisitExecution`, `visitStatusKey`,
+ * `visitDurationMinutes`, `visitApiErrorKey` / `VISIT_API_ERROR_MESSAGE_KEYS`.
+ *
+ * Live refresh — `selectActiveVisitId`, `isVisitGoneResponse`,
+ * `visitStillOpenFromResponse`: the rules that keep a background refresh from
+ * switching or unmounting the workspace an agent is typing in.
  */
 
 /** Same fallback as POST /api/v1/mtm/visits and MTM_SETTING_DEFAULTS.geofenceRadius. */
@@ -22,14 +52,6 @@ export function effectiveGeofenceRadius(customerRadius: number | null | undefine
   return DEFAULT_VISIT_GEOFENCE_RADIUS_METERS
 }
 
-type Coordinate = { latitude: number | null | undefined; longitude: number | null | undefined }
-
-function hasCoordinate(value: Coordinate | null | undefined): value is { latitude: number; longitude: number } {
-  return value != null
-    && typeof value.latitude === "number" && Number.isFinite(value.latitude)
-    && typeof value.longitude === "number" && Number.isFinite(value.longitude)
-}
-
 export type PlaceCheckState = "at_point" | "outside" | "no_gps" | "no_pin"
 
 export interface PlaceCheck {
@@ -40,9 +62,9 @@ export interface PlaceCheck {
 }
 
 /** One GPS fix against the customer pin and its geofence. */
-export function placeCheck(fix: Coordinate | null | undefined, pin: Coordinate | null | undefined, radiusMeters: number): PlaceCheck {
-  if (!hasCoordinate(pin)) return { state: "no_pin", distanceMeters: null, radiusMeters }
-  if (!hasCoordinate(fix)) return { state: "no_gps", distanceMeters: null, radiusMeters }
+export function placeCheck(fix: MtmCoordinateInput | null | undefined, pin: MtmCoordinateInput | null | undefined, radiusMeters: number): PlaceCheck {
+  if (!hasMtmCoordinates(pin)) return { state: "no_pin", distanceMeters: null, radiusMeters }
+  if (!hasMtmCoordinates(fix)) return { state: "no_gps", distanceMeters: null, radiusMeters }
   const distanceMeters = Math.round(calculateDistance(fix.latitude, fix.longitude, pin.latitude, pin.longitude))
   return { state: distanceMeters <= radiusMeters ? "at_point" : "outside", distanceMeters, radiusMeters }
 }
@@ -56,15 +78,17 @@ export interface VisitPlaceInput {
   customer?: { latitude?: number | null; longitude?: number | null; geofenceRadius?: number | null } | null
 }
 
-export type VisitPlaceVerdict = "at_point" | "outside" | "checkout_gps_missing" | "no_gps" | "no_pin"
+export type VisitPlaceVerdict = "at_point" | "outside" | "checkout_gps_missing" | "checkin_gps_missing" | "no_gps" | "no_pin"
 
 export interface VisitPlaceSummary {
   checkIn: PlaceCheck
-  /** Null while the visit is still open or was cancelled: there is no check-out to measure. */
+  /** Measured only for a CHECKED_OUT visit; null otherwise (see `checkOutSkipped`). */
   checkOut: PlaceCheck | null
+  /** Why there is no check-out measurement: the visit is still open, or it ended without a check-out (cancelled). */
+  checkOutSkipped: "visit_open" | "not_checked_out" | null
   /** One word for a table cell. The worst fact wins: being elsewhere beats a missing fix. */
   verdict: VisitPlaceVerdict
-  /** The distance that explains an "outside" verdict. */
+  /** The distance that explains the verdict: the farthest "outside" fix, else the check-in (or check-out) distance. */
   distanceMeters: number | null
   radiusMeters: number
 }
@@ -78,18 +102,24 @@ export function visitPlaceSummary(visit: VisitPlaceInput, organizationRadius?: n
   const radiusMeters = effectiveGeofenceRadius(visit.customer?.geofenceRadius, organizationRadius)
   const pin = { latitude: visit.customer?.latitude, longitude: visit.customer?.longitude }
   const checkIn = placeCheck({ latitude: visit.checkInLat, longitude: visit.checkInLng }, pin, radiusMeters)
-  const checkOut = visit.status === "CHECKED_OUT"
+  const finished = visit.status === "CHECKED_OUT"
+  const checkOut = finished
     ? placeCheck({ latitude: visit.checkOutLat, longitude: visit.checkOutLng }, pin, radiusMeters)
     : null
+  const checkOutSkipped = finished ? null : visit.status === "CHECKED_IN" ? "visit_open" as const : "not_checked_out" as const
+  const summary = (verdict: VisitPlaceVerdict, distanceMeters: number | null): VisitPlaceSummary => (
+    { checkIn, checkOut, checkOutSkipped, verdict, distanceMeters, radiusMeters }
+  )
 
-  if (checkIn.state === "no_pin") return { checkIn, checkOut, verdict: "no_pin", distanceMeters: null, radiusMeters }
+  if (checkIn.state === "no_pin") return summary("no_pin", null)
   const outside = [checkIn, checkOut].filter((check): check is PlaceCheck => check?.state === "outside")
-  if (outside.length) {
-    return { checkIn, checkOut, verdict: "outside", distanceMeters: Math.max(...outside.map((check) => check.distanceMeters ?? 0)), radiusMeters }
+  if (outside.length) return summary("outside", Math.max(...outside.map((check) => check.distanceMeters ?? 0)))
+  if (checkIn.state === "no_gps") {
+    // A check-out fix alone proves the agent left from the point, not that they arrived there.
+    return checkOut?.state === "at_point" ? summary("checkin_gps_missing", checkOut.distanceMeters) : summary("no_gps", null)
   }
-  if (checkIn.state === "no_gps") return { checkIn, checkOut, verdict: "no_gps", distanceMeters: null, radiusMeters }
-  if (checkOut?.state === "no_gps") return { checkIn, checkOut, verdict: "checkout_gps_missing", distanceMeters: null, radiusMeters }
-  return { checkIn, checkOut, verdict: "at_point", distanceMeters: checkIn.distanceMeters, radiusMeters }
+  if (checkOut?.state === "no_gps") return summary("checkout_gps_missing", checkIn.distanceMeters)
+  return summary("at_point", checkIn.distanceMeters)
 }
 
 /**
@@ -239,4 +269,40 @@ export function visitApiErrorKey(status: number, body: unknown): string | null {
     : null
   if (code && ERROR_CODE_KEYS[code]) return ERROR_CODE_KEYS[code]
   return STATUS_FALLBACK_KEYS[status] ?? null
+}
+
+/**
+ * Which of the viewer's own open visits the execution workspace shows.
+ *
+ * The visit already on screen wins while it is still open: a background
+ * refresh must never switch (and so remount, losing unsaved input) the
+ * workspace. Only when it is gone does the focused visit, then the first open
+ * one, take over.
+ */
+export function selectActiveVisitId(input: {
+  ownOpenVisitIds: readonly string[]
+  currentId: string | null
+  focusedId: string | null
+}): string | null {
+  const open = new Set(input.ownOpenVisitIds)
+  if (input.currentId && open.has(input.currentId)) return input.currentId
+  if (input.focusedId && open.has(input.focusedId)) return input.focusedId
+  return input.ownOpenVisitIds[0] ?? null
+}
+
+/** Only these answers mean "this visit is not there for you"; a 5xx or a network error means "try again later". */
+export function isVisitGoneResponse(httpStatus: number): boolean {
+  return httpStatus === 403 || httpStatus === 404
+}
+
+/**
+ * Whether the visit behind the workspace is still open, from a GET
+ * /api/v1/mtm/visits/:id answer. Unknown (transient failure) keeps it open:
+ * the workspace closes only when the server says the visit ended or is gone.
+ */
+export function visitStillOpenFromResponse(httpStatus: number, body: unknown): boolean {
+  if (isVisitGoneResponse(httpStatus)) return false
+  const data = body && typeof body === "object" ? (body as { success?: unknown; data?: { status?: unknown } }) : null
+  if (httpStatus < 200 || httpStatus >= 300 || data?.success !== true || typeof data.data?.status !== "string") return true
+  return data.data.status === "CHECKED_IN"
 }

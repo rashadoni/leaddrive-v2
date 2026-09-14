@@ -13530,6 +13530,8 @@
   "mtmVisitsPage": {
     "title": "Визиты",
     "subtitle": "Смотрите визиты агентов: время, место, фото, подпись",
+    "subtitleAgent": "Ваш текущий визит и история ваших визитов",
+    "subtitleNeutral": "Визиты: время, место, фото и результат",
     "clarityGuide": {
       "title": "Три шага для контроля визитов",
       "description": "Сначала завершите открытый визит, затем проверьте статус и GPS-подтверждение в истории. При необходимости добавьте новую запись или исправьте существующую."
@@ -13603,6 +13605,7 @@
     "resultBounded": "Для безопасности показаны последние {shown} визитов, проверенные в пределах {limit} записей.",
     "advisorRisk": "AI-заметки по визиту",
     "gpsCheckoutMissing": "Нет GPS на выходе",
+    "gpsCheckinMissing": "Нет GPS на входе",
     "gpsNoPin": "У клиента нет точки на карте",
     "distanceMeters": "{value} м",
     "distanceKilometers": "{value} км",
@@ -13620,6 +13623,7 @@
       "routePoint": "точка {number}",
       "plannedAt": "По плану: {time}",
       "unplanned": "Визит вне маршрута",
+      "routeHidden": "Сведения о маршруте вам недоступны",
       "actualTitle": "Фактическое время",
       "duration": "{minutes} мин",
       "placeTitle": "Проверка места",
@@ -13631,10 +13635,12 @@
       "placeCheckoutNoGps": "Нет GPS на выходе",
       "placeNoPin": "У клиента нет точки на карте",
       "placeNotFinished": "Визит ещё не завершён",
+      "placeNoCheckout": "Выход не зафиксирован",
       "placeDistanceDetail": "{distance} до точки, допустимый радиус {radius}",
       "photosTitle": "Фото",
       "photosCount": "{count, plural, one {# фото} few {# фото} many {# фото} other {# фото}}",
       "noPhotos": "К визиту нет фото",
+      "morePhotos": "{count, plural, one {Ещё # фото здесь не показано} few {Ещё # фото здесь не показаны} many {Ещё # фото здесь не показаны} other {Ещё # фото здесь не показаны}}",
       "openPhoto": "Открыть фото {index}",
       "photoTitle": "Фото {index} из {total}",
       "noteTitle": "Заметка агента",

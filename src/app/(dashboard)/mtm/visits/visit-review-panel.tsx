@@ -51,6 +51,10 @@ export interface VisitReviewData {
     requirementSnapshot: { requirements: Array<{ id: string; actionKey: string; mode: string; minCount: number }> } | null
     actionResults: Array<{ id: string; actionKey: string; status: string; evidence: Record<string, unknown> | null; completedAt: string | null }>
     photos: Array<{ id: string; url: string; thumbnailUrl: string | null; status: string; createdAt: string }>
+    /** True when the primary agent is outside the reviewer's scope; agent and route are withheld then. */
+    primaryAgentHidden?: boolean
+    /** Every photo of the visit; `photos` carries only the first ones. */
+    photoCount?: number
   }
   geofenceRadius: number
   openTasks: { count: number; items: Array<{ id: string; title: string; priority: string; dueDate: string | null }> }
@@ -77,10 +81,15 @@ export function formatDistance(t: Translator, meters: number): string {
  * refetches whenever `refreshToken` changes so a visit that finishes while
  * the page is open updates in place.
  */
-export function VisitReviewPanel({ visitId, refreshToken, closeHref }: {
+/** What the page may reuse from a review load instead of fetching the visit again. */
+export type ReviewedVisitFacts = Pick<VisitReviewData["visit"], "id" | "status" | "checkOutAt" | "duration" | "checkOutLat" | "checkOutLng">
+
+export function VisitReviewPanel({ visitId, refreshToken, closeHref, onVisitLoaded }: {
   visitId: string
   refreshToken: number
   closeHref: string
+  /** Called with the fresh status facts after every successful load, so the history row can follow without its own request. */
+  onVisitLoaded?: (visit: ReviewedVisitFacts) => void
 }) {
   const t = useTranslations("mtmVisitsPage") as unknown as Translator
   const tw = useTranslations("mtmVisitWorkspace") as unknown as Translator
@@ -88,6 +97,8 @@ export function VisitReviewPanel({ visitId, refreshToken, closeHref }: {
   const [data, setData] = useState<VisitReviewData | null>(null)
   const [state, setState] = useState<"loading" | "ready" | "unavailable" | "failed">("loading")
   const requestRef = useRef<AbortController | null>(null)
+  const onVisitLoadedRef = useRef(onVisitLoaded)
+  useEffect(() => { onVisitLoadedRef.current = onVisitLoaded }, [onVisitLoaded])
 
   const load = useCallback(async (silent: boolean) => {
     requestRef.current?.abort()
@@ -108,8 +119,11 @@ export function VisitReviewPanel({ visitId, refreshToken, closeHref }: {
         if (!silent) setState("failed")
         return
       }
-      setData(body.data as VisitReviewData)
+      const next = body.data as VisitReviewData
+      setData(next)
       setState("ready")
+      const { id, status, checkOutAt, duration, checkOutLat, checkOutLng } = next.visit
+      onVisitLoadedRef.current?.({ id, status, checkOutAt, duration, checkOutLat, checkOutLng })
     } catch (error) {
       if ((error as { name?: string })?.name === "AbortError") return
       if (!silent) setState("failed")
@@ -168,10 +182,11 @@ export function VisitReviewPanel({ visitId, refreshToken, closeHref }: {
     : "—"
   const place = visitPlaceSummary({ ...visit, customer: { ...visit.customer, geofenceRadius: data.geofenceRadius } })
   const duration = visitDurationMinutes(visit)
+  const photoCount = Math.max(visit.photoCount ?? 0, visit.photos.length)
   const actionRows = reviewActionRows({
     requirements: visit.requirementSnapshot?.requirements ?? [],
     actionResults: visit.actionResults,
-    photoCount: visit.photos.length,
+    photoCount,
     agentNote: visit.notes,
     resultNote: visit.resultNotes,
   })
@@ -186,7 +201,8 @@ export function VisitReviewPanel({ visitId, refreshToken, closeHref }: {
     let Icon = MapPin
     let text: string
     if (!check) {
-      text = t("review.placeNotFinished")
+      // Only a check-out can be skipped: still open, or ended without one (cancelled).
+      text = place.checkOutSkipped === "visit_open" ? t("review.placeNotFinished") : t("review.placeNoCheckout")
     } else if (check.state === "at_point") {
       tone = "text-emerald-700 dark:text-emerald-300"
       Icon = CheckCircle2
@@ -258,7 +274,7 @@ export function VisitReviewPanel({ visitId, refreshToken, closeHref }: {
                 </span>
               </p>
             ) : (
-              <p className="mt-2 text-sm text-muted-foreground">{t("review.unplanned")}</p>
+              <p className="mt-2 text-sm text-muted-foreground">{visit.primaryAgentHidden ? t("review.routeHidden") : t("review.unplanned")}</p>
             )}
           </div>
           <div>
@@ -277,23 +293,28 @@ export function VisitReviewPanel({ visitId, refreshToken, closeHref }: {
           {blockTitle(t("review.placeTitle"))}
           <dl className="mt-1 divide-y divide-zinc-100 dark:divide-zinc-800/60">
             {placeRow(t("review.placeCheckIn"), place.checkIn, "checkIn")}
-            {placeRow(t("review.placeCheckOut"), visit.status === "CHECKED_IN" ? null : place.checkOut, "checkOut")}
+            {placeRow(t("review.placeCheckOut"), place.checkOut, "checkOut")}
           </dl>
         </div>
 
         <div className="py-4">
           <div className="flex items-baseline justify-between gap-3">
             {blockTitle(t("review.photosTitle"))}
-            <span className="text-xs text-muted-foreground">{t("review.photosCount", { count: visit.photos.length })}</span>
+            <span className="text-xs text-muted-foreground">{t("review.photosCount", { count: photoCount })}</span>
           </div>
           <div className="mt-3">
             {visit.photos.length ? (
-              <VisitPhotoGrid
-                photos={visit.photos}
-                formatTime={(value) => formatTime(value)}
-                openLabel={(index) => t("review.openPhoto", { index })}
-                titleLabel={(index) => t("review.photoTitle", { index, total: visit.photos.length })}
-              />
+              <>
+                <VisitPhotoGrid
+                  photos={visit.photos}
+                  formatTime={(value) => formatTime(value)}
+                  openLabel={(index) => t("review.openPhoto", { index })}
+                  titleLabel={(index) => t("review.photoTitle", { index, total: photoCount })}
+                />
+                {photoCount > visit.photos.length ? (
+                  <p className="mt-2 text-xs text-muted-foreground">{t("review.morePhotos", { count: photoCount - visit.photos.length })}</p>
+                ) : null}
+              </>
             ) : (
               <p className="text-sm text-muted-foreground">{t("review.noPhotos")}</p>
             )}

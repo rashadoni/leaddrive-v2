@@ -72,6 +72,7 @@ const finishedVisit = {
     evidence: { method: "drawn", svgPath: "M10 20 L30 40", widthPx: 600, heightPx: 240, signerName: "Leyla" },
     completedAt: new Date("2026-09-14T13:05:00.000Z"),
   }],
+  _count: { photos: 3 },
   photos: [
     { id: "photo-1", url: "/uploads/mtm-photos/a.jpg", thumbnailUrl: null, status: "PENDING", createdAt: new Date("2026-09-14T12:50:00.000Z") },
     { id: "photo-2", url: "/uploads/mtm-photos/b.jpg", thumbnailUrl: null, status: "PENDING", createdAt: new Date("2026-09-14T12:51:00.000Z") },
@@ -143,6 +144,24 @@ describe("GET /api/v1/mtm/visits/[id]/review", () => {
     expect(json.data.openTasks).toEqual({ count: 7, items: [{ id: "task-1", title: "Qalığı yoxla", priority: "HIGH", dueDate: null }] })
     expect(json.data.viewer).toEqual({ canExecute: false })
     expect(json.data.visit).not.toHaveProperty("participants")
+    expect(json.data.visit).not.toHaveProperty("_count")
+    expect(json.data.visit.photoCount).toBe(3)
+    expect(json.data.visit.route).toMatchObject({ name: "Bazar ertəsi" })
+  })
+
+  it("counts every photo even though the grid carries only the first 30", async () => {
+    vi.mocked(prisma.mtmVisit.findFirst).mockResolvedValue({ ...finishedVisit, _count: { photos: 42 } } as never)
+
+    const response = await getVisitReview(request("/api/v1/mtm/visits/v/review"), { params: Promise.resolve({ id: finishedVisit.id }) })
+    const json = await response.json()
+
+    expect(json.data.visit.photoCount).toBe(42)
+    expect(prisma.mtmVisit.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      select: expect.objectContaining({
+        _count: { select: { photos: true } },
+        photos: expect.objectContaining({ take: 30 }),
+      }),
+    }))
   })
 
   it("prefers the customer's own radius over the organization setting", async () => {
@@ -188,7 +207,11 @@ describe("GET /api/v1/mtm/visits/[id]/review", () => {
     expect(response.status).toBe(200)
     expect(json.data.visit.agent).toBeNull()
     expect(json.data.visit.agentId).toBeNull()
+    // Route names often carry the agent's name; the route goes with the agent.
+    expect(json.data.visit.route).toBeNull()
+    expect(json.data.visit.routePoint).toBeNull()
     expect(JSON.stringify(json)).not.toContain("Anar Mammadov")
+    expect(JSON.stringify(json)).not.toContain("Bazar ertəsi")
   })
 
   it("answers 404 for a visit outside the reviewer's scope at check-in", async () => {
@@ -225,6 +248,30 @@ describe("GET /api/v1/mtm/visits/[id]/review", () => {
 })
 
 describe("GET /api/v1/mtm/visits/active viewer", () => {
+  it("always includes the viewer's own open visit, however many newer team visits there are", async () => {
+    vi.mocked(resolveMtmRouteActor).mockResolvedValue({ agentId: "manager-1", role: "ADMIN", scopedAgentIds: null } as never)
+    const teamVisits = Array.from({ length: 50 }, (_, index) => ({ id: `team-${index}`, agentId: `agent-${index}` }))
+    vi.mocked(prisma.mtmVisit.findMany)
+      .mockResolvedValueOnce(teamVisits as never)
+      .mockResolvedValueOnce([{ id: "own-open", agentId: "manager-1" }] as never)
+
+    const response = await getActiveVisits(request("/api/v1/mtm/visits/active"))
+    const json = await response.json()
+
+    expect(json.data.visits[0]).toEqual({ id: "own-open", agentId: "manager-1" })
+    expect(json.data.visits).toHaveLength(51)
+    const ownQuery = vi.mocked(prisma.mtmVisit.findMany).mock.calls[1][0] as { where: Record<string, unknown> }
+    expect(ownQuery.where).toMatchObject({ organizationId: ORG, status: "CHECKED_IN", deletedAt: null, AND: [{ agentId: "manager-1" }] })
+  })
+
+  it("does not list the viewer's own visit twice", async () => {
+    vi.mocked(resolveMtmRouteActor).mockResolvedValue({ agentId: "agent-anar", role: "AGENT", scopedAgentIds: ["agent-anar"] } as never)
+    vi.mocked(prisma.mtmVisit.findMany).mockResolvedValue([{ id: "visit-2", agentId: "agent-anar" }] as never)
+
+    const response = await getActiveVisits(request("/api/v1/mtm/visits/active"))
+    expect((await response.json()).data.visits).toEqual([{ id: "visit-2", agentId: "agent-anar" }])
+  })
+
   it("tells the page who is looking so only their own visits open the execution workspace", async () => {
     vi.mocked(resolveMtmRouteActor).mockResolvedValue({ agentId: "manager-1", role: "MANAGER", scopedAgentIds: ["manager-1", "agent-anar"] } as never)
     vi.mocked(prisma.mtmVisit.findMany).mockResolvedValue([{ id: "visit-2", agentId: "agent-anar", status: "CHECKED_IN" }] as never)
