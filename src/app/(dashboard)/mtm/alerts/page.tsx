@@ -21,7 +21,7 @@ import {
 import { formatDate, formatTime } from "@/lib/format-date"
 import { readMtmAlertMessage } from "@/lib/mtm/alert-messages"
 import { mtmAccessErrorKey, type MtmAccessErrorKey } from "@/lib/mtm/access-error"
-import { formatMtmDistance } from "@/lib/mtm/visit-geofence-state"
+import { formatMtmDistance } from "@/lib/mtm/visit-place-check"
 import type { MtmAlertDayGroup, MtmAlertDayItem } from "@/lib/mtm/alert-day-groups"
 
 /**
