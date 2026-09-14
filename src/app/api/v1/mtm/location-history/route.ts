@@ -274,6 +274,32 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     }),
   ])
 
+  // A workday is dated by the day it started. One opened the previous evening
+  // and still open (or closed during this day) has no row for the selected
+  // date, and the page said "no workday" while the live map showed it active
+  // (audit 2026-09-14). Look for such a carried-over workday only when the
+  // selected date has none; it is shown as a note and does not feed the
+  // timeline or the evidence pack, which stay tied to this date's own row.
+  const carriedOverWorkday = workforceEnabled && !workday
+    ? await prisma.mtmAgentWorkday.findFirst({
+      where: {
+        organizationId: auth.orgId,
+        agentId,
+        workDate: { lt: new Date(`${date}T00:00:00.000Z`) },
+        startedAt: { lte: to },
+        OR: [{ completedAt: null }, { completedAt: { gte: from } }],
+      },
+      orderBy: [{ startedAt: "desc" }, { id: "desc" }],
+      select: {
+        id: true,
+        status: true,
+        workDate: true,
+        startedAt: true,
+        completedAt: true,
+      },
+    }) ?? null
+    : null
+
   const rawLocations: HistoryLocationPoint[] = rawLocationRows.map((row) => ({
     ...row,
     workdayId: workforceEnabled && "workdayId" in row
@@ -397,6 +423,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         anomalyCount: anomalies.length,
       },
       workday,
+      carriedOverWorkday,
       evidencePack: {
         id: workday?.id ?? `day:${agentId}:${date}`,
         workdayId: workday?.id ?? null,

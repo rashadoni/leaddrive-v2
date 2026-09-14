@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { hasMtmCoordinates, withNormalizedCoordinates } from "@/lib/mtm/geo-coordinates"
+import { effectiveGeofenceRadius } from "@/lib/mtm/visit-place-check"
 import { withRouteFieldRlsAuth, type MtmRlsAuth } from "@/lib/with-mtm-rls-auth"
 import { calculateDistance } from "@/lib/geo-utils"
 import { RouteUpdateSchema, parseBody } from "@/lib/mtm-validators"
@@ -249,9 +250,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth, { params }: {
           hasNote: Boolean(visit.notes?.trim() || visit.resultNotes?.trim()),
         }
       })
-      const geofenceRadiusMeters = typeof customer.geofenceRadius === "number" && customer.geofenceRadius > 0
-        ? customer.geofenceRadius
-        : settings.geofenceRadius
+      const geofenceRadiusMeters = effectiveGeofenceRadius(customer.geofenceRadius, settings.geofenceRadius)
       return { ...point, customer, distanceMeters, visits, geofenceRadiusMeters }
     })
     const travelPolicy = resolveMtmRouteTravelPolicy({

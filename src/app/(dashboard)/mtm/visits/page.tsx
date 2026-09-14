@@ -49,7 +49,8 @@ import {
   visitStatusKey,
   visitStillOpenFromResponse,
 } from "@/lib/mtm/visit-review"
-import { VisitReviewPanel, formatDistance, visitStatusClasses, type ReviewedVisitFacts } from "./visit-review-panel"
+import { VisitReviewPanel, visitStatusClasses, type ReviewedVisitFacts } from "./visit-review-panel"
+import { VisitPlaceBadge } from "@/components/mtm/visit-place-badge"
 import { VisitWorkspace } from "./visit-workspace"
 
 type MtmVisitRow = {
@@ -511,33 +512,11 @@ export default function MtmVisitsPage() {
   }
 
   /**
-   * Check-in AND check-out against the customer's own geofence. The worst fact
-   * wins: being elsewhere, then a check-out without a fix.
+   * Check-in AND check-out against the customer's own geofence — the same
+   * verdict and words as the route detail and the GPS history.
    */
   function gpsBadge(visit: MtmVisitRow) {
-    const place = visitPlaceSummary(visit, meta.geofenceRadius)
-    if (place.verdict === "no_gps" || place.verdict === "no_pin") {
-      return (
-        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-          <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
-          {place.verdict === "no_pin" ? t("gpsNoPin") : t("gpsUnavailable")}
-        </span>
-      )
-    }
-    const confirmed = place.verdict === "at_point"
-    const label = place.verdict === "checkout_gps_missing"
-      ? t("gpsCheckoutMissing")
-      : place.verdict === "checkin_gps_missing"
-        ? t("gpsCheckinMissing")
-        : confirmed
-        ? t("gpsConfirmed")
-        : `${t("gpsOutside")} · ${formatDistance(t, place.distanceMeters ?? 0)}`
-    return (
-      <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${confirmed ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300"}`}>
-        {confirmed ? <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> : <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />}
-        {label}
-      </span>
-    )
+    return <VisitPlaceBadge place={visitPlaceSummary(visit, meta.geofenceRadius)} />
   }
 
   function visitActions(visit: MtmVisitRow, showEditLabel: boolean) {

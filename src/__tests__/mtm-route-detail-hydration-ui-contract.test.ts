@@ -106,7 +106,10 @@ describe("MTM route detail hydration UI contract", () => {
     expect(routesPage).toContain('t("stopFact.fact", { from: tenantTime(fact.checkInAt), to: tenantTime(fact.checkOutAt) })')
     expect(routesPage).toContain('t("stopFact.late", { delay: durationLabel(fact.delayMinutes) })')
     expect(routesPage).toContain('t("stopFact.outOfOrder", { actual: fact.actualSequence })')
-    expect(routesPage).toContain('t("stopFact.outOfZone", { distance: formatMtmDistance(zone.distanceMeters, locale, (unit, value) => tUnits(unit, { value })) })')
+    // Zone through the visit review's rule and the shared badge (2026-09-14).
+    expect(routesPage).toContain("const place = visit ? visitPlaceSummary({")
+    expect(routesPage).toContain('<VisitPlaceBadge place={place} size="xs" />')
+    expect(routesPage).not.toContain("stopFact.outOfZone")
     expect(routesPage).toContain('href={`/mtm/visits?visitId=${encodeURIComponent(visit.id)}`}')
     expect(routesPage).not.toContain("h ${routeMetrics.duration % 60}m")
     // The chip reports the server total, not the page size.

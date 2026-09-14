@@ -173,6 +173,63 @@ describe("GET /api/v1/mtm/location-history", () => {
     }))
   })
 
+  it("reports a workday opened on an earlier day that still covers the selected date (audit 2026-09-14)", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
+      id: "agent-1", name: "Aysel", role: "AGENT", team: null,
+    } as never)
+    vi.mocked(prisma.mtmAgentLocation.findMany).mockResolvedValue([] as never)
+    vi.mocked(prisma.mtmVisit.findMany).mockResolvedValue([] as never)
+    vi.mocked(prisma.mtmRoute.findMany).mockResolvedValue([] as never)
+    const carried = {
+      id: "workday-prev",
+      status: "STARTED",
+      workDate: new Date("2026-09-11T00:00:00.000Z"),
+      startedAt: new Date("2026-09-11T16:57:00.000Z"),
+      completedAt: null,
+    }
+    // First lookup: no row dated on the selected day; second: the carried-over one.
+    vi.mocked(prisma.mtmAgentWorkday.findFirst)
+      .mockResolvedValueOnce(null as never)
+      .mockResolvedValueOnce(carried as never)
+
+    const response = await GET(request("?agentId=agent-1&date=2026-09-12"))
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.data.workday).toBeNull()
+    expect(body.data.carriedOverWorkday).toMatchObject({ id: "workday-prev", status: "STARTED", completedAt: null })
+    // The evidence pack stays tied to the selected date's own row.
+    expect(body.data.evidencePack.workdayId).toBeNull()
+    const lookup = vi.mocked(prisma.mtmAgentWorkday.findFirst).mock.calls[1]?.[0] as unknown as { where: Record<string, unknown> & { startedAt: { lte: unknown } }; orderBy: unknown }
+    expect(lookup.where).toMatchObject({
+      organizationId: ORG,
+      agentId: "agent-1",
+      workDate: { lt: new Date("2026-09-12T00:00:00.000Z") },
+      OR: [{ completedAt: null }, { completedAt: { gte: expect.any(Date) } }],
+    })
+    expect(lookup.where.startedAt.lte).toBeInstanceOf(Date)
+    expect(lookup.orderBy).toEqual([{ startedAt: "desc" }, { id: "desc" }])
+  })
+
+  it("does not look for a carried-over workday when the selected date has its own", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
+      id: "agent-1", name: "Aysel", role: "AGENT", team: null,
+    } as never)
+    vi.mocked(prisma.mtmAgentLocation.findMany).mockResolvedValue([] as never)
+    vi.mocked(prisma.mtmVisit.findMany).mockResolvedValue([] as never)
+    vi.mocked(prisma.mtmRoute.findMany).mockResolvedValue([] as never)
+    vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({
+      id: "workday-1", status: "STARTED", startedAt: new Date("2026-09-12T05:00:00.000Z"),
+      pausedAt: null, completedAt: null, totalPausedSeconds: 0,
+      startLatitude: null, startLongitude: null, endLatitude: null, endLongitude: null,
+    } as never)
+
+    const body = await (await GET(request("?agentId=agent-1&date=2026-09-12"))).json()
+    expect(body.data.workday.id).toBe("workday-1")
+    expect(body.data.carriedOverWorkday).toBeNull()
+    expect(prisma.mtmAgentWorkday.findFirst).toHaveBeenCalledTimes(1)
+  })
+
   it("does not query or expose Workforce workday evidence for a Routes-only tenant", async () => {
     vi.mocked(prisma.organization.findUnique).mockResolvedValue({
       plan: "pro",

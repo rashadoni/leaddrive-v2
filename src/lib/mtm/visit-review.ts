@@ -1,5 +1,17 @@
-import { calculateDistance } from "@/lib/geo-utils"
-import { hasMtmCoordinates, type MtmCoordinateInput } from "@/lib/mtm/geo-coordinates"
+export {
+  DEFAULT_VISIT_GEOFENCE_RADIUS_METERS,
+  effectiveGeofenceRadius,
+  formatMtmDistance,
+  placeCheck,
+  visitPlaceSummary,
+  VISIT_PLACE_VERDICT_MESSAGE_KEYS,
+  type MtmDistanceUnitLabel,
+  type PlaceCheck,
+  type PlaceCheckState,
+  type VisitPlaceInput,
+  type VisitPlaceSummary,
+  type VisitPlaceVerdict,
+} from "@/lib/mtm/visit-place-check"
 
 /**
  * Pure rules behind the office review of a field visit (/mtm/visits).
@@ -13,8 +25,9 @@ import { hasMtmCoordinates, type MtmCoordinateInput } from "@/lib/mtm/geo-coordi
  * Exported API
  *
  * Place check — the single source for "was the visit recorded at the
- * customer?" on the web. Other screens should call this instead of measuring
- * on their own:
+ * customer?" on the web. It lives in `visit-place-check.ts` and is re-exported
+ * here unchanged; other screens should call it instead of measuring on their
+ * own:
  *
  * - `effectiveGeofenceRadius(customerRadius, organizationRadius)` — the radius
  *   the check-in is judged by: customer override (F-22), else the organization
@@ -38,89 +51,6 @@ import { hasMtmCoordinates, type MtmCoordinateInput } from "@/lib/mtm/geo-coordi
  * `visitStillOpenFromResponse`: the rules that keep a background refresh from
  * switching or unmounting the workspace an agent is typing in.
  */
-
-/** Same fallback as POST /api/v1/mtm/visits and MTM_SETTING_DEFAULTS.geofenceRadius. */
-export const DEFAULT_VISIT_GEOFENCE_RADIUS_METERS = 100
-
-/**
- * The radius the check-in itself was measured against: the customer's own
- * override when set (F-22), otherwise the organization setting.
- */
-export function effectiveGeofenceRadius(customerRadius: number | null | undefined, organizationRadius: number | null | undefined): number {
-  if (typeof customerRadius === "number" && Number.isFinite(customerRadius) && customerRadius > 0) return customerRadius
-  if (typeof organizationRadius === "number" && Number.isFinite(organizationRadius) && organizationRadius > 0) return organizationRadius
-  return DEFAULT_VISIT_GEOFENCE_RADIUS_METERS
-}
-
-export type PlaceCheckState = "at_point" | "outside" | "no_gps" | "no_pin"
-
-export interface PlaceCheck {
-  state: PlaceCheckState
-  /** Rounded meters between the fix and the customer pin; null when either is unknown. */
-  distanceMeters: number | null
-  radiusMeters: number
-}
-
-/** One GPS fix against the customer pin and its geofence. */
-export function placeCheck(fix: MtmCoordinateInput | null | undefined, pin: MtmCoordinateInput | null | undefined, radiusMeters: number): PlaceCheck {
-  if (!hasMtmCoordinates(pin)) return { state: "no_pin", distanceMeters: null, radiusMeters }
-  if (!hasMtmCoordinates(fix)) return { state: "no_gps", distanceMeters: null, radiusMeters }
-  const distanceMeters = Math.round(calculateDistance(fix.latitude, fix.longitude, pin.latitude, pin.longitude))
-  return { state: distanceMeters <= radiusMeters ? "at_point" : "outside", distanceMeters, radiusMeters }
-}
-
-export interface VisitPlaceInput {
-  status: string
-  checkInLat?: number | null
-  checkInLng?: number | null
-  checkOutLat?: number | null
-  checkOutLng?: number | null
-  customer?: { latitude?: number | null; longitude?: number | null; geofenceRadius?: number | null } | null
-}
-
-export type VisitPlaceVerdict = "at_point" | "outside" | "checkout_gps_missing" | "checkin_gps_missing" | "no_gps" | "no_pin"
-
-export interface VisitPlaceSummary {
-  checkIn: PlaceCheck
-  /** Measured only for a CHECKED_OUT visit; null otherwise (see `checkOutSkipped`). */
-  checkOut: PlaceCheck | null
-  /** Why there is no check-out measurement: the visit is still open, or it ended without a check-out (cancelled). */
-  checkOutSkipped: "visit_open" | "not_checked_out" | null
-  /** One word for a table cell. The worst fact wins: being elsewhere beats a missing fix. */
-  verdict: VisitPlaceVerdict
-  /** The distance that explains the verdict: the farthest "outside" fix, else the check-in (or check-out) distance. */
-  distanceMeters: number | null
-  radiusMeters: number
-}
-
-/**
- * Check-in and check-out against the pin. The old badge measured only the
- * check-in with a fixed 100 m, so a visit whose check-out came from nowhere
- * still read "confirmed".
- */
-export function visitPlaceSummary(visit: VisitPlaceInput, organizationRadius?: number | null): VisitPlaceSummary {
-  const radiusMeters = effectiveGeofenceRadius(visit.customer?.geofenceRadius, organizationRadius)
-  const pin = { latitude: visit.customer?.latitude, longitude: visit.customer?.longitude }
-  const checkIn = placeCheck({ latitude: visit.checkInLat, longitude: visit.checkInLng }, pin, radiusMeters)
-  const finished = visit.status === "CHECKED_OUT"
-  const checkOut = finished
-    ? placeCheck({ latitude: visit.checkOutLat, longitude: visit.checkOutLng }, pin, radiusMeters)
-    : null
-  const checkOutSkipped = finished ? null : visit.status === "CHECKED_IN" ? "visit_open" as const : "not_checked_out" as const
-  const summary = (verdict: VisitPlaceVerdict, distanceMeters: number | null): VisitPlaceSummary => (
-    { checkIn, checkOut, checkOutSkipped, verdict, distanceMeters, radiusMeters }
-  )
-
-  if (checkIn.state === "no_pin") return summary("no_pin", null)
-  const outside = [checkIn, checkOut].filter((check): check is PlaceCheck => check?.state === "outside")
-  if (outside.length) return summary("outside", Math.max(...outside.map((check) => check.distanceMeters ?? 0)))
-  if (checkIn.state === "no_gps") {
-    // A check-out fix alone proves the agent left from the point, not that they arrived there.
-    return checkOut?.state === "at_point" ? summary("checkin_gps_missing", checkOut.distanceMeters) : summary("no_gps", null)
-  }
-  if (checkOut?.state === "no_gps") return summary("checkout_gps_missing", checkIn.distanceMeters)
-  return summary("at_point", checkIn.distanceMeters)
-}
 
 /**
  * Steps the field app cannot perform yet. A policy may still list them, but a

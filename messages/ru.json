@@ -13050,8 +13050,6 @@
       "early": "раньше на {delay}",
       "onTime": "Вовремя",
       "outOfOrder": "Не по порядку: фактически №{actual}",
-      "outOfZone": "Вне зоны · {distance}",
-      "inZone": "В зоне",
       "photos": "{count, plural, one {# фото} few {# фото} many {# фото} other {# фото}}",
       "signature": "Есть подпись",
       "note": "Есть заметка",
@@ -13629,18 +13627,10 @@
     "statusUnknown": "Статус неизвестен",
     "finishedAt": "Выход: {time}",
     "notFinished": "Ещё не завершён",
-    "gpsConfirmed": "На точке",
-    "gpsOutside": "Вне точки",
-    "gpsUnavailable": "Нет GPS",
     "resultCount": "Показано: {count}",
     "resultPartial": "Показаны последние {shown} из {total} визитов за этот период.",
     "resultBounded": "Для безопасности показаны последние {shown} визитов, проверенные в пределах {limit} записей.",
     "advisorRisk": "AI-заметки по визиту",
-    "gpsCheckoutMissing": "Нет GPS на выходе",
-    "gpsCheckinMissing": "Нет GPS на входе",
-    "gpsNoPin": "У клиента нет точки на карте",
-    "distanceMeters": "{value} м",
-    "distanceKilometers": "{value} км",
     "teamActiveTitle": "Визиты в процессе: {count}",
     "teamActiveHint": "Агенты, которые сейчас у клиента. Выберите визит, чтобы увидеть детали.",
     "activeSince": "вход {time}",
@@ -13661,14 +13651,8 @@
       "placeTitle": "Проверка места",
       "placeCheckIn": "Вход",
       "placeCheckOut": "Выход",
-      "placeAtPoint": "На точке",
-      "placeOutside": "Вне точки · {distance}",
-      "placeNoGps": "Нет GPS",
-      "placeCheckoutNoGps": "Нет GPS на выходе",
-      "placeNoPin": "У клиента нет точки на карте",
       "placeNotFinished": "Визит ещё не завершён",
       "placeNoCheckout": "Выход не зафиксирован",
-      "placeDistanceDetail": "{distance} до точки, допустимый радиус {radius}",
       "photosTitle": "Фото",
       "photosCount": "{count, plural, one {# фото} few {# фото} many {# фото} other {# фото}}",
       "noPhotos": "К визиту нет фото",
@@ -15517,6 +15501,15 @@
       "REVIEW_L2_REJECTED": "L2 отклонено"
     }
   },
+  "mtmPlaceCheck": {
+    "atPoint": "В зоне",
+    "outside": "Вне зоны · {distance}",
+    "noGps": "Нет GPS",
+    "noPin": "У клиента нет точки на карте",
+    "checkoutGpsMissing": "Нет GPS на выходе",
+    "checkinGpsMissing": "Нет GPS на входе",
+    "distanceDetail": "{distance} от клиента (допустимо {radius})"
+  },
   "mtmMap": {
     "fieldStatus": {
       "checkedIn": "На точке",
@@ -15649,6 +15642,8 @@
       "workdayStart": "Начало рабочего дня",
       "workdayEnd": "Конец рабочего дня",
       "noWorkday": "На эту дату рабочий день не зарегистрирован.",
+      "workdayOpenSince": "Рабочий день открыт с {since}.",
+      "workdayCarriedClosed": "Рабочий день начат {since}, закрыт {until}.",
       "stopDetails": "Детали остановок",
       "stopPolicy": "Остановка = не менее {minutes} мин в радиусе {radius} м.",
       "noStops": "В этом интервале нет остановок по политике компании.",
@@ -15742,14 +15737,7 @@
       "accuracyDetail": "Заявленная точность: {accuracy} м",
       "gapDetail": "Телеметрия отсутствовала примерно {minutes} мин",
       "openVisit": "Открыть визит",
-      "openOrganization": "Открыть организацию",
-      "geofence": {
-        "inside": "В зоне",
-        "outside": "Вне зоны",
-        "distance": "{distance} от клиента (допустимо {radius})",
-        "noVisitGps": "У визита нет GPS",
-        "noCustomerCoordinates": "У клиента нет координат"
-      }
+      "openOrganization": "Открыть организацию"
     },
     "feed": {
       "hint": "Повторяющиеся оповещения сгруппированы по сотруднику и часу",

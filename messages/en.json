@@ -13050,8 +13050,6 @@
       "early": "{delay} early",
       "onTime": "On time",
       "outOfOrder": "Out of order: visited #{actual}",
-      "outOfZone": "Outside zone · {distance}",
-      "inZone": "In zone",
       "photos": "{count, plural, one {# photo} other {# photos}}",
       "signature": "Signed",
       "note": "Has note",
@@ -13629,18 +13627,10 @@
     "statusUnknown": "Status unavailable",
     "finishedAt": "Check-out: {time}",
     "notFinished": "Not completed yet",
-    "gpsConfirmed": "At the location",
-    "gpsOutside": "Outside the location",
-    "gpsUnavailable": "No GPS",
     "resultCount": "Showing: {count}",
     "resultPartial": "Showing the latest {shown} of {total} visits in this period.",
     "resultBounded": "For safety, showing the latest {shown} visits checked within a {limit}-record window.",
     "advisorRisk": "AI visit notes",
-    "gpsCheckoutMissing": "No check-out GPS",
-    "gpsCheckinMissing": "No check-in GPS",
-    "gpsNoPin": "Customer has no map pin",
-    "distanceMeters": "{value} m",
-    "distanceKilometers": "{value} km",
     "teamActiveTitle": "Visits in progress: {count}",
     "teamActiveHint": "Agents who are with a customer right now. Select a visit to see its details.",
     "activeSince": "since {time}",
@@ -13661,14 +13651,8 @@
       "placeTitle": "Place check",
       "placeCheckIn": "Check-in",
       "placeCheckOut": "Check-out",
-      "placeAtPoint": "At the location",
-      "placeOutside": "Outside the location · {distance}",
-      "placeNoGps": "No GPS",
-      "placeCheckoutNoGps": "No check-out GPS",
-      "placeNoPin": "Customer has no map pin",
       "placeNotFinished": "Visit not finished yet",
       "placeNoCheckout": "No check-out recorded",
-      "placeDistanceDetail": "{distance} from the pin, allowed radius {radius}",
       "photosTitle": "Photos",
       "photosCount": "{count, plural, one {# photo} other {# photos}}",
       "noPhotos": "No photos for this visit",
@@ -15517,6 +15501,15 @@
       "REVIEW_L2_REJECTED": "L2 rejected"
     }
   },
+  "mtmPlaceCheck": {
+    "atPoint": "In zone",
+    "outside": "Outside zone · {distance}",
+    "noGps": "No GPS",
+    "noPin": "Customer has no map pin",
+    "checkoutGpsMissing": "No check-out GPS",
+    "checkinGpsMissing": "No check-in GPS",
+    "distanceDetail": "{distance} from the customer (allowed {radius})"
+  },
   "mtmMap": {
     "fieldStatus": {
       "checkedIn": "Check-in",
@@ -15649,6 +15642,8 @@
       "workdayStart": "Workday started",
       "workdayEnd": "Workday ended",
       "noWorkday": "No workday record for this date.",
+      "workdayOpenSince": "Workday open since {since}.",
+      "workdayCarriedClosed": "Workday started {since}, closed {until}.",
       "stopDetails": "Stop details",
       "stopPolicy": "Stop = at least {minutes} min within a {radius} m radius.",
       "noStops": "No stops matched the tenant policy in this interval.",
@@ -15742,14 +15737,7 @@
       "accuracyDetail": "Reported accuracy: {accuracy} m",
       "gapDetail": "No telemetry for approximately {minutes} min",
       "openVisit": "Open visit",
-      "openOrganization": "Open organization",
-      "geofence": {
-        "inside": "In zone",
-        "outside": "Outside zone",
-        "distance": "{distance} from the customer (allowed {radius})",
-        "noVisitGps": "Visit has no GPS",
-        "noCustomerCoordinates": "Customer has no coordinates"
-      }
+      "openOrganization": "Open organization"
     },
     "feed": {
       "hint": "Repeated alerts are grouped per employee and hour",
