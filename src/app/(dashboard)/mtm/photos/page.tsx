@@ -9,6 +9,7 @@ import { useLocale, useTranslations } from "next-intl"
 import { formatDateTime } from "@/lib/format-date"
 import { mtmPhotoPeriodStart, type MtmPhotoPeriod } from "@/lib/mtm/photo-period"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
+import { mtmPhotoThumbnailUrl, type MtmPhotoThumbnailWidth } from "@/lib/mtm/photo-thumbnail-url"
 import { PageDescription } from "@/components/page-description"
 import { HelpButton } from "@/components/help/help-button"
 import { ColorStatCard } from "@/components/color-stat-card"
@@ -41,8 +42,10 @@ type PhotoPeriod = MtmPhotoPeriod
  * Prod audit 2026-09-14: 196 of the 200 newest tiles were seeded rows whose
  * files return 404, and the manager saw a wall of broken pictures.
  */
-function PhotoImage({ photo, className, missingLabel, onMissing, missing }: {
+function PhotoImage({ photo, className, missingLabel, onMissing, missing, thumbnailWidth = 480 }: {
   photo: MtmPhotoRow
+  /** Tiles load a server-resized copy; only the lightbox loads the original. */
+  thumbnailWidth?: MtmPhotoThumbnailWidth
   className: string
   missingLabel: string
   onMissing: (id: string) => void
@@ -56,7 +59,7 @@ function PhotoImage({ photo, className, missingLabel, onMissing, missing }: {
       </span>
     )
   }
-  return <img src={photo.url} alt="" loading="lazy" decoding="async" className={className} onError={() => onMissing(photo.id)} />
+  return <img src={mtmPhotoThumbnailUrl(photo.url, thumbnailWidth)} alt="" width={thumbnailWidth} height={thumbnailWidth} loading="lazy" decoding="async" className={className} onError={() => onMissing(photo.id)} />
 }
 
 const PHOTO_FILTER_LABELS = {
@@ -296,7 +299,7 @@ export default function MtmPhotosPage() {
             <div key={label}>
               <div className="text-xs font-medium text-muted-foreground mb-2">{label} — {photo ? `${photo.agent?.name} (${mtmStatusLabel(ts, "photo", photo.status)})` : t("comparePickHint")}</div>
               <div className="aspect-square bg-muted rounded-lg flex items-center justify-center overflow-hidden">
-                {photo ? <PhotoImage photo={photo} className="w-full h-full object-cover" missingLabel={t("fileMissing")} onMissing={markMissing} missing={missingFiles.has(photo.id)} /> : <Camera className="h-12 w-12 text-muted-foreground/30" />}
+                {photo ? <PhotoImage photo={photo} className="w-full h-full object-cover" missingLabel={t("fileMissing")} onMissing={markMissing} missing={missingFiles.has(photo.id)} thumbnailWidth={960} /> : <Camera className="h-12 w-12 text-muted-foreground/30" />}
               </div>
             </div>
           ))}

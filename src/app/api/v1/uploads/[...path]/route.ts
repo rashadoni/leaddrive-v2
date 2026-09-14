@@ -50,6 +50,13 @@ import { readCommittedMtmMediaObject, toMtmReservedMediaObject } from "@/lib/mtm
 import { mtmMediaObjectStorageSelect } from "@/lib/mtm/media-object-select"
 import { mtmPhotoFieldScopeWhere, resolveMtmFieldScope } from "@/lib/mtm/field-access"
 import { runtimePublicUploadsRoot } from "@/lib/runtime-paths"
+import { parseMtmPhotoThumbnailWidth, type MtmPhotoThumbnailWidth } from "@/lib/mtm/photo-thumbnail-url"
+import {
+  etagMatches,
+  objectMtmPhotoThumbnailEtag,
+  renderMtmPhotoThumbnail,
+  resolveDiskMtmPhotoThumbnail,
+} from "@/lib/mtm/photo-thumbnail-server"
 
 const MAX_SERVED_FILE_SIZE = 50 * 1024 * 1024
 const MAX_PUBLIC_SERVED_FILE_SIZE = 6 * 1024 * 1024
@@ -230,6 +237,93 @@ async function serveUploadFile(
   return new NextResponse(body, { status: 200, headers })
 }
 
+// Thumbnails revalidate on every use (`no-cache` + ETag) instead of the
+// original's `no-store`: the browser may keep the ~30 KB copy, but each view
+// still passes session, module and field-scope checks before a 304 — so a
+// revoked user or a moved agent stops seeing it exactly like the original.
+function thumbnailHeaders(etag: string): Record<string, string> {
+  return {
+    "ETag": etag,
+    "Cache-Control": "private, no-cache",
+    "Vary": "Cookie, Authorization",
+    "X-Content-Type-Options": "nosniff",
+    "Cross-Origin-Resource-Policy": "same-origin",
+    "Referrer-Policy": "no-referrer",
+  }
+}
+
+function thumbnailNotModified(etag: string): NextResponse {
+  return new NextResponse(null, { status: 304, headers: thumbnailHeaders(etag) })
+}
+
+function thumbnailResponse(
+  fileName: string,
+  width: MtmPhotoThumbnailWidth,
+  bytes: Buffer,
+  etag: string,
+): NextResponse {
+  return new NextResponse(bytes as unknown as BodyInit, {
+    status: 200,
+    headers: {
+      ...thumbnailHeaders(etag),
+      "Content-Type": "image/webp",
+      "Content-Length": String(bytes.byteLength),
+      "Content-Disposition": dispositionFor(`${fileName}.w${width}.webp`),
+    },
+  })
+}
+
+/**
+ * Disk-backed `/uploads/mtm-photos/<file>?w=<width>`. Authorization is done by
+ * the caller; this helper repeats the lexical/canonical path checks of
+ * `serveUploadFile`, then serves a cached or freshly generated thumbnail. A
+ * file that cannot be decoded falls back to the original response.
+ */
+async function serveMtmDiskPhotoThumbnail(input: {
+  parts: readonly string[]
+  width: MtmPhotoThumbnailWidth
+  principal: string
+  ifNoneMatch: string | null
+}): Promise<NextResponse> {
+  const { parts } = input
+  if (!isSafeUploadPathParts(parts) || parts.length !== 2 || parts[0] !== "mtm-photos") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 })
+  }
+  const uploadsRoot = runtimePublicUploadsRoot()
+  const originalPath = path.resolve(uploadsRoot, ...parts)
+  if (!originalPath.startsWith(uploadsRoot + path.sep)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 })
+  }
+
+  const slot = await acquirePublicConcurrencySlot("uploads:get", input.principal, DOWNLOAD_CONCURRENCY_POLICY)
+  if (!slot.allowed) {
+    return NextResponse.json(
+      { error: slot.unavailable ? "Download protection temporarily unavailable" : "Too many concurrent downloads" },
+      {
+        status: slot.unavailable ? 503 : 429,
+        headers: { "Retry-After": String(slot.retryAfterSeconds) },
+      },
+    )
+  }
+  let result
+  try {
+    result = await resolveDiskMtmPhotoThumbnail({
+      uploadsRoot,
+      originalPath,
+      fileName: parts[1],
+      width: input.width,
+      ifNoneMatch: input.ifNoneMatch,
+    })
+  } finally {
+    await releasePublicConcurrencySlot(slot)
+  }
+
+  if (result.kind === "missing") return NextResponse.json({ error: "Not found" }, { status: 404 })
+  if (result.kind === "not-modified") return thumbnailNotModified(result.etag)
+  if (result.kind === "ok") return thumbnailResponse(parts[1], input.width, result.bytes, result.etag)
+  return serveUploadFile(parts, { public: false, principal: input.principal })
+}
+
 /**
  * Object-backed photos preserve the old authenticated `/uploads/mtm-photos/*`
  * URL shape, but their bytes never visit the legacy public/uploads directory.
@@ -240,7 +334,15 @@ async function serveMtmObjectPhoto(input: {
   fileName: string
   mediaObject: Parameters<typeof toMtmReservedMediaObject>[0]
   principal: string
+  thumbnailWidth: MtmPhotoThumbnailWidth | null
+  ifNoneMatch: string | null
 }): Promise<NextResponse> {
+  const thumbnailEtag = input.thumbnailWidth
+    ? objectMtmPhotoThumbnailEtag(input.mediaObject.checksumSha256, input.thumbnailWidth)
+    : null
+  if (thumbnailEtag && etagMatches(input.ifNoneMatch, thumbnailEtag)) {
+    return thumbnailNotModified(thumbnailEtag)
+  }
   const slot = await acquirePublicConcurrencySlot(
     "uploads:get",
     input.principal,
@@ -259,6 +361,13 @@ async function serveMtmObjectPhoto(input: {
     const bytes = await readCommittedMtmMediaObject({ mediaObject: toMtmReservedMediaObject(input.mediaObject) })
     if (bytes.byteLength > MAX_SERVED_FILE_SIZE) {
       return NextResponse.json({ error: "File is too large to serve" }, { status: 413 })
+    }
+    if (input.thumbnailWidth && thumbnailEtag) {
+      // Rendered in memory only: object-backed photos are encrypted at rest,
+      // and a plaintext copy on local disk would undo that.
+      const thumbnail = await renderMtmPhotoThumbnail(bytes, input.thumbnailWidth)
+      if (thumbnail) return thumbnailResponse(input.fileName, input.thumbnailWidth, thumbnail, thumbnailEtag)
+      // Undecodable raster: fall through to the original, as before thumbnails.
     }
     return new NextResponse(bytes as unknown as BodyInit, {
       status: 200,
@@ -282,7 +391,7 @@ async function serveMtmObjectPhoto(input: {
   }
 }
 
-const authenticatedGET = withRlsSessionAuth(async (_req, auth, { params }: RouteContext) => {
+const authenticatedGET = withRlsSessionAuth(async (req, auth, { params }: RouteContext) => {
   // F-41 must-fix: gate behind a real browser session so anonymous scrapers
   // and API keys cannot pull personal files by treating the key creator's
   // audit id as an impersonation grant. Same-origin <img>/<a> requests carry
@@ -389,6 +498,15 @@ const authenticatedGET = withRlsSessionAuth(async (_req, auth, { params }: Route
     if (!fileName) {
       return NextResponse.json({ error: "Not found" }, { status: 404 })
     }
+    // `?w=` asks for a thumbnail. Only allowlisted widths are served, so a
+    // caller cannot fill the disk cache with arbitrary sizes. The check is
+    // lexical and runs first; every authorization step below still runs
+    // before a single byte is read or resized.
+    const thumbnailWidth = parseMtmPhotoThumbnailWidth(new URL(req.url).searchParams)
+    if (thumbnailWidth === "invalid" || (thumbnailWidth && parts.length !== 2)) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 })
+    }
+    const ifNoneMatch = req.headers.get("if-none-match")
     // Tenant is not enough: inside one organization a manager may open only
     // the photos their field scope shows in the gallery. A web user without an
     // MTM card has no field scope and gets the same masked 404.
@@ -416,6 +534,16 @@ const authenticatedGET = withRlsSessionAuth(async (_req, auth, { params }: Route
         fileName,
         mediaObject: photo.mediaObject,
         principal: `${auth.orgId}:${auth.userId}`,
+        thumbnailWidth,
+        ifNoneMatch,
+      })
+    }
+    if (thumbnailWidth) {
+      return serveMtmDiskPhotoThumbnail({
+        parts,
+        width: thumbnailWidth,
+        principal: `${auth.orgId}:${auth.userId}`,
+        ifNoneMatch,
       })
     }
   } else if (subdir === "contracts") {

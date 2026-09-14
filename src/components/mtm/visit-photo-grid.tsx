@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { mtmPhotoThumbnailUrl } from "@/lib/mtm/photo-thumbnail-url"
 
 export interface VisitPhoto {
   id: string
@@ -14,6 +15,9 @@ export interface VisitPhoto {
  * Visit photos as thumbnails; a click opens the full image. Thumbnails keep a
  * fixed square so a portrait shelf shot and a landscape display do not make
  * the row jump, and they load lazily because a visit may carry many.
+ *
+ * Tiles request a server-resized copy (`?w=480`, ~30 KB) instead of the
+ * 4080 px camera original (2–4 MB); the dialog still opens the original.
  */
 export function VisitPhotoGrid({ photos, formatTime, openLabel, titleLabel }: {
   photos: readonly VisitPhoto[]
@@ -38,8 +42,10 @@ export function VisitPhotoGrid({ photos, formatTime, openLabel, titleLabel }: {
               className="group block w-full overflow-hidden rounded-lg border border-zinc-200 bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-800"
             >
               <img
-                src={photo.thumbnailUrl || photo.url}
+                src={photo.thumbnailUrl || mtmPhotoThumbnailUrl(photo.url)}
                 alt=""
+                width={480}
+                height={480}
                 loading="lazy"
                 decoding="async"
                 className="aspect-square w-full object-cover transition-transform group-hover:scale-[1.02] motion-reduce:transition-none"
