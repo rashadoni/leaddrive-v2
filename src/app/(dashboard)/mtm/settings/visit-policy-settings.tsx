@@ -305,7 +305,7 @@ export function VisitPolicySettings() {
 
         <div className="min-w-0 space-y-6">
           <div className="rounded-lg border border-zinc-200 bg-background p-4 dark:border-zinc-800">
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
               <label className="space-y-1 sm:col-span-2">
                 <span className="text-xs font-medium text-muted-foreground">{t("name")}</span>
                 <Input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} className="h-9" />
@@ -411,7 +411,7 @@ export function VisitPolicySettings() {
                           })}
                         </div>
 
-                        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[110px_1fr_1fr_170px]">
+                        <div className="grid gap-2 sm:grid-cols-2 2xl:grid-cols-[110px_minmax(0,1fr)_minmax(0,1fr)_170px]">
                           <label className="space-y-1">
                             <span className="text-[11px] font-medium opacity-80">{t("minimum")}</span>
                             <Input type="number" min={1} max={100} value={action.minCount} onChange={(event) => updateAction(action.actionKey, { minCount: Math.max(1, Number(event.target.value) || 1) })} disabled={action.mode === "HIDDEN"} className="h-9 bg-background" />

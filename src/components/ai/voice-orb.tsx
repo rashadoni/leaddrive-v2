@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react"
 import { createPortal } from "react-dom"
 import { Mic } from "lucide-react"
 import { useTranslations } from "next-intl"
+import { VoiceInlineStatus } from "@/components/ai/voice-inline-status"
 
 /**
  * Global voice orb — the assistant as a presence rather than a page.
@@ -86,7 +87,25 @@ export function VoiceOrb({
     }
   }, [status])
 
+  /**
+   * Where the control lives.
+   *
+   * The header slot wins whenever it exists. A 56 px orb fixed to the bottom
+   * right corner sat on top of whatever the page put there — row "…" menus,
+   * priority labels, period buttons, chart labels on every MTM screen (owner
+   * report 2026-09-14). The header is on screen at any scroll position and
+   * holds no page content, so the control can never cover work from there.
+   * Only its placement changes: the same button arms the same console.
+   *
+   * The in-flow AI bar slot and the floating corner remain as fallbacks for a
+   * shell that renders no header slot.
+   */
   useEffect(() => {
+    const headerHost = document.getElementById("header-voice-assistant-slot")
+    if (headerHost) {
+      setInlineHost(headerHost)
+      return
+    }
     if (showFloatingLauncher || !inlineLauncherAvailable) {
       setInlineHost(null)
       return
@@ -110,6 +129,12 @@ export function VoiceOrb({
       setInlineHostVisible(false)
       return
     }
+    // The header is outside the scrolling <main> and always on screen, so it
+    // is never watched. Watching it was a deadlock: the slot is `empty:hidden`
+    // (display: none) until the control is portalled in, a display:none box
+    // never intersects, and the control was only portalled in once it did —
+    // so the orb stayed in the corner for ever (review of PR #206).
+    if (inlineHost.id === "header-voice-assistant-slot") return
     if (typeof IntersectionObserver === "undefined") {
       setInlineHostVisible(true)
       return
@@ -123,8 +148,9 @@ export function VoiceOrb({
   }, [inlineHost])
 
   if (!allowed) return null
-  const inlineReachable = Boolean(inlineHost) && inlineHostVisible
-  const floating = showFloatingLauncher || !inlineReachable
+  const hostIsHeader = inlineHost?.id === "header-voice-assistant-slot"
+  const inlineReachable = hostIsHeader || (Boolean(inlineHost) && inlineHostVisible)
+  const floating = !hostIsHeader && (showFloatingLauncher || !inlineReachable)
   const activeInlineHost = floating ? null : inlineHost
   // Keep the console component mounted across navigation so an active media
   // session is not torn down. Only its control moves from a floating overlay
@@ -160,23 +186,25 @@ export function VoiceOrb({
         data-placement={activeInlineHost ? "inline" : "floating"}
         aria-label={loadFailed ? t("staleBuild") : t("start")}
         title={loadFailed ? t("staleBuild") : t("start")}
-        className={`relative flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${activeInlineHost ? "h-11 w-11" : "h-14 w-14"}`}
+        className={`relative flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${activeInlineHost ? "h-9 w-9" : "h-14 w-14"}`}
       >
-        <span className={`relative flex items-center justify-center rounded-full text-white shadow-lg shadow-black/20 animate-[pulse_3s_ease-in-out_infinite] ${loadFailed ? "bg-destructive" : "bg-muted-foreground/70"} ${activeInlineHost ? "h-11 w-11" : "h-14 w-14"}`}>
-          <Mic className="h-5 w-5" />
+        <span className={`relative flex items-center justify-center rounded-full text-white shadow-lg shadow-black/20 animate-[pulse_3s_ease-in-out_infinite] ${loadFailed ? "bg-destructive" : "bg-muted-foreground/70"} ${activeInlineHost ? "h-9 w-9 shadow-sm" : "h-14 w-14"}`}>
+          <Mic className={activeInlineHost ? "h-4 w-4" : "h-5 w-5"} />
         </span>
       </button>
 
-      {loadFailed && (
+      {loadFailed && (activeInlineHost ? (
+        <VoiceInlineStatus className="w-52 max-w-[calc(100vw-2rem)] rounded-md bg-destructive px-2 py-1 text-center text-[11px] leading-tight text-destructive-foreground shadow-sm">
+          {t("staleBuild")}
+        </VoiceInlineStatus>
+      ) : (
         <span
-          className={activeInlineHost
-            ? "absolute right-0 top-full z-20 mt-2 w-52 rounded-md bg-destructive px-2 py-1 text-center text-[11px] leading-tight text-destructive-foreground shadow-sm"
-            : "max-w-[13rem] rounded-md bg-destructive px-2 py-1 text-center text-[11px] leading-tight text-destructive-foreground shadow-sm"}
+          className="max-w-[13rem] rounded-md bg-destructive px-2 py-1 text-center text-[11px] leading-tight text-destructive-foreground shadow-sm"
           aria-live="polite"
         >
           {t("staleBuild")}
         </span>
-      )}
+      ))}
     </div>
   )
 

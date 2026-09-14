@@ -909,7 +909,7 @@ export function ExplainableKpiDashboard({ orgId, className }: ExplainableKpiDash
             const canAdjust = fact.adjustable !== false && canAdjustEvidence
 
             return (
-              <article key={`${drilldown?.metric}-${drilldown?.bucket}-${factType}-${factId}`} className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_auto] sm:items-center sm:px-5">
+              <article key={`${drilldown?.metric}-${drilldown?.bucket}-${factType}-${factId}`} className="grid gap-3 px-4 py-3 sm:px-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_auto] xl:items-center">
                 <div className="min-w-0">
                   <strong className="block truncate text-sm">{fact.customerName}</strong>
                   <span className="mt-0.5 block truncate text-xs text-muted-foreground">{fact.agentName}</span>
@@ -943,7 +943,7 @@ export function ExplainableKpiDashboard({ orgId, className }: ExplainableKpiDash
                     <time dateTime={latestAdjustment.createdAt}>{t("adjustedAt", { date: dateTimeFormatter.format(new Date(latestAdjustment.createdAt)) })}</time>
                   ) : null}
                 </div>
-                <div className="flex flex-col gap-2 sm:flex-row">
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                   <Button asChild variant="outline" size="sm" className="min-h-11 w-full sm:min-h-8 sm:w-auto">
                     <a href={factHref(fact)}>
                       {drilldown?.metric === "gps" ? <History className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}

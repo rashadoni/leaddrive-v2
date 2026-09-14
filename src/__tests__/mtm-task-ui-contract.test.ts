@@ -37,7 +37,7 @@ describe("SWM-14 task UI navigation contract", () => {
     const actions = readFileSync(resolve("src/components/mtm/task-actions-panel.tsx"), "utf8")
 
     expect(workspace).toContain('className="order-2 min-w-0')
-    expect(workspace).toContain('className="order-1 space-y-6 print:hidden lg:order-2')
+    expect(workspace).toContain('className="order-1 min-w-0 space-y-6 print:hidden xl:order-2"')
     expect(workspace).toContain("capabilities.canDelete === true")
     expect(workspace).toContain("expectedVersion=${encodeURIComponent(String(task.version))}")
     expect(actions).toContain("print:hidden lg:hidden")

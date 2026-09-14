@@ -43,11 +43,49 @@ describe("dashboard AI launcher placement", () => {
     expect(voice).toContain("createPortal(launcher, activeInlineHost)")
     expect(voiceConsole).toContain("if (orbPortalTarget) return createPortal(orbControl, orbPortalTarget)")
     expect(voiceConsole).toContain("if (!showFloatingOrb) return null")
-    expect(voiceConsole).toContain('inline ? "h-11 w-11" : "h-14 w-14"')
+    expect(voiceConsole).toContain('inline ? "h-9 w-9" : "h-14 w-14"')
     expect(voiceConsole).toContain("const showInlineMessage = Boolean(error || notice || micSilent || transcriptionWarning)")
     expect(voiceConsole).toContain("showInlineMessage")
     expect(voice).toContain('data-placement={activeInlineHost ? "inline" : "floating"}')
     expect(voiceConsole).toContain('data-placement={inline ? "inline" : "floating"}')
+  })
+
+  it("docks the microphone in the header instead of over page content", () => {
+    // Owner report 2026-09-14: the floating orb covered row menus, priority
+    // labels, period buttons and chart labels on every MTM page. The header
+    // hosts it now; gating is untouched — the slot is empty for anyone the
+    // pilot gate does not allow.
+    const header = source("src/components/header.tsx")
+    expect(header).toContain('id="header-voice-assistant-slot"')
+    expect(header).toContain("flex shrink-0 items-center empty:hidden")
+    expect(header.indexOf('id="header-voice-assistant-slot"')).toBeGreaterThan(header.indexOf('data-testid="global-header-actions"'))
+    expect(header.indexOf('id="header-voice-assistant-slot"')).toBeLessThan(header.indexOf("<NotificationBell />"))
+    // No z-index on the header: `relative z-30` lifted it over dialogs that
+    // render in place inside positioned page wrappers (review of PR #206).
+    expect(header).not.toMatch(/data-testid="global-header"[\s\S]{0,200}className="[^"]*\bz-\d/)
+    expect(voice).toContain('document.getElementById("header-voice-assistant-slot")')
+    // The header host is never gated on an IntersectionObserver: the slot is
+    // display:none while empty, and a display:none box never intersects.
+    expect(voice).toContain('if (inlineHost.id === "header-voice-assistant-slot") return')
+    expect(voice).toContain("const inlineReachable = hostIsHeader || (Boolean(inlineHost) && inlineHostVisible)")
+    // The status line is portalled to <body> below dialogs instead.
+    // …into a layer inside the shell's own stacking context, so in-place
+    // dialogs (z-[60]) still cover it; <body> would sit above all of them.
+    const status = source("src/components/ai/voice-inline-status.tsx")
+    expect(status).toContain("createPortal(")
+    expect(status).toContain('VOICE_STATUS_LAYER_ID = "dashboard-voice-status-layer"')
+    expect(status).toContain("fixed z-50")
+    expect(layout).toContain('<div id="dashboard-voice-status-layer" />')
+    expect(layout.indexOf('<div id="dashboard-voice-status-layer" />')).toBeGreaterThan(layout.indexOf('className="relative z-[2] flex h-screen min-w-0"'))
+    expect(voiceConsole).toContain("<VoiceInlineStatus")
+    expect(voice).toContain("<VoiceInlineStatus")
+    expect(voiceConsole).not.toContain("absolute right-0 top-full z-20")
+    expect(voice).not.toContain("absolute right-0 top-full z-20")
+    // The fallback slot in the AI bar keeps a box while empty for the same reason.
+    expect(search).not.toMatch(/id="dashboard-voice-assistant-slot"[\s\S]{0,120}empty:hidden/)
+    // Placement only: the access check and the lazy console are unchanged.
+    expect(voice).toContain('fetch("/api/v1/ai/voice/access", { credentials: "same-origin" })')
+    expect(voice).toContain("if (!allowed) return null")
   })
 
   it("keeps the panel reachable from the in-flow search or blocked-page fallback", () => {

@@ -14,6 +14,9 @@ const CALL_SITES = [
   "src/components/mtm/contact-explorer.tsx",
   "src/components/mtm/organization-explorer.tsx",
   "src/components/mtm/pharmacy-promotion-workspace.tsx",
+  // «Связь с командой» showed the same three-step panel with no way to put it
+  // away (owner report 2026-09-14).
+  "src/app/(dashboard)/mtm/operations/page.tsx",
 ]
 
 function guideProps(source: string): string {

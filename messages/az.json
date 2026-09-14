@@ -534,7 +534,7 @@
     "mtmDashboard": "Panel",
     "mtmMap": "Canlı Xəritə",
     "mtmRoutes": "Marşrutlar",
-    "mtmOperations": "Əməliyyat mərkəzi",
+    "mtmOperations": "Komanda ilə əlaqə",
     "mtmVisits": "Vizitlər",
     "mtmPromotions": "Aptek promoları",
     "mtmTasks": "Tapşırıqlar",
@@ -13060,14 +13060,21 @@
     "allLatest": "Hamısı (son {shown} / {total})"
   },
   "mtmOperationsPage": {
-    "title": "Sahə əməliyyat mərkəzi",
+    "title": "Komanda ilə əlaqə",
     "subtitle": "Mesajlar, məxfi sənədlər və işçi sorğuları bir aydın iş yerində.",
     "clarityGuide": {
       "title": "Nə etmək istəyirsiniz?",
       "description": "Mesaj göndərmək, sənəd təyin etmək və ya əməkdaş sorğusuna qərar vermək üçün aşağıdakı bölmələrdən birini seçin. Sayğaclar cavab gözləyən işləri göstərir."
     },
+    "roles": {
+      "ADMIN": "Administrator",
+      "MANAGER": "Menecer",
+      "SUPERVISOR": "Supervayzer",
+      "AGENT": "Sahə əməkdaşı",
+      "OTHER": "Digər rol"
+    },
     "refresh": "Yenilə",
-    "loadFailed": "Əməliyyat mərkəzini yükləmək mümkün olmadı.",
+    "loadFailed": "«Komanda ilə əlaqə» bölməsini yükləmək mümkün olmadı.",
     "acknowledgementsDue": "Təsdiq gözləyir",
     "requiredUnread": "Məcburi və oxunmamış",
     "pendingHrm": "Komanda sorğuları qərar gözləyir",

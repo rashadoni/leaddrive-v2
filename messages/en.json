@@ -534,7 +534,7 @@
     "mtmDashboard": "Dashboard",
     "mtmMap": "Live Map",
     "mtmRoutes": "Routes",
-    "mtmOperations": "Operations center",
+    "mtmOperations": "Team messages",
     "mtmVisits": "Visits",
     "mtmPromotions": "Pharmacy Promotions",
     "mtmTasks": "Field Tasks",
@@ -13064,14 +13064,21 @@
     "allLatest": "All (latest {shown} of {total})"
   },
   "mtmOperationsPage": {
-    "title": "Field operations center",
+    "title": "Team messages",
     "subtitle": "Messages, private documents, and team requests in one clear workspace.",
     "clarityGuide": {
       "title": "What do you want to do?",
       "description": "Choose one of three areas: send a message, assign a document, or decide an employee request. The counters show work still waiting for a response."
     },
+    "roles": {
+      "ADMIN": "Administrator",
+      "MANAGER": "Manager",
+      "SUPERVISOR": "Supervisor",
+      "AGENT": "Field agent",
+      "OTHER": "Other role"
+    },
     "refresh": "Refresh",
-    "loadFailed": "Could not load the operations center.",
+    "loadFailed": "Could not load team messages.",
     "acknowledgementsDue": "Acknowledgements due",
     "requiredUnread": "Required and unread",
     "pendingHrm": "Team requests pending a decision",
