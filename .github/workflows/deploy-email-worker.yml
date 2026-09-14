@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Resolve deployment account
         id: cloudflare-account
@@ -55,7 +55,7 @@ jobs:
           echo "::notice::Resolved Cloudflare account ID: $ACCOUNT_ID"
 
       - name: Deploy ld-email-inbound
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ steps.cloudflare-account.outputs.account_id }}
