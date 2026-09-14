@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import type { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
@@ -10,7 +11,7 @@ import { checkRateLimit } from "@/lib/rate-limit"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
 import { OPERATIONAL_WEEK_LIMITS, resolveOperationalWeekWindow } from "@/lib/mtm/operational-week"
-import { buildMtmTeamTodayRows } from "@/lib/mtm/week-team-today"
+import { buildMtmTeamTodayRows, rememberMtmTeamGpsRead } from "@/lib/mtm/week-team-today"
 
 /**
  * GET /api/v1/mtm/week/team — the Panel's default "team today" table.
@@ -22,6 +23,8 @@ import { buildMtmTeamTodayRows } from "@/lib/mtm/week-team-today"
 
 const TEAM_RATE_LIMIT = { maxRequests: 30, windowMs: 60_000 }
 const TEAM_VISIT_LIMIT = 2_000
+/** Up to this many ids are written into the audit row verbatim; beyond it, count + hash. */
+const AUDIT_AGENT_IDS_INLINE = 100
 
 function trimmedParam(params: URLSearchParams, key: string): string {
   return params.get(key)?.trim().slice(0, 100) ?? ""
@@ -88,7 +91,7 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
     where: agentWhere,
     orderBy: [{ name: "asc" }, { id: "asc" }],
     take: OPERATIONAL_WEEK_LIMITS.filterAgents + 1,
-    select: { id: true, name: true, lastSeenAt: true, team: { select: { id: true, name: true } } },
+    select: { id: true, name: true, team: { select: { id: true, name: true } } },
   })
   const agents = agentsRaw.slice(0, OPERATIONAL_WEEK_LIMITS.filterAgents)
   const agentsTruncated = agentsRaw.length > OPERATIONAL_WEEK_LIMITS.filterAgents
@@ -130,7 +133,9 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
         deletedAt: null,
         checkInAt: { gte: window.activityStart, lt: window.activityEnd },
       },
-      orderBy: [{ checkInAt: "asc" }, { id: "asc" }],
+      // Newest first: when the cap bites it drops the morning, not the
+      // afternoon a manager is looking at.
+      orderBy: [{ checkInAt: "desc" }, { id: "desc" }],
       take: TEAM_VISIT_LIMIT + 1,
       select: { id: true, agentId: true, status: true, checkInAt: true, checkOutAt: true, customer: { select: { name: true } } },
     }),
@@ -174,17 +179,31 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
     workdays: workdays.filter((row) => scopeSet.has(row.agentId)),
   })
 
-  if (locations.length) {
-    await writeMtmAudit({
-      organizationId: auth.orgId,
-      agentId: null,
-      action: "WEEK_TEAM_GPS_LATEST_READ",
-      entity: "agent",
-      entityId: null,
-      metadataKind: "gps_latest_access",
-      newData: { agentCount: agentIds.length, date: today, source: "LATEST_RECORDED_TIME_ONLY" },
-      req,
-    }).catch((error) => console.warn("[MTM/week/team] GPS access audit failed", error))
+  const gpsAgentIds = [...new Set(locations.filter((row) => scopeSet.has(row.agentId)).map((row) => row.agentId))].sort()
+  if (gpsAgentIds.length) {
+    const agentIdsHash = createHash("sha256").update(gpsAgentIds.join("\0")).digest("hex")
+    const reader = auth.userId || auth.agentId || auth.principal
+    if (rememberMtmTeamGpsRead(`${auth.orgId}:${reader}:${agentIdsHash}:${today}`)) {
+      await writeMtmAudit({
+        organizationId: auth.orgId,
+        agentId: auth.agentId ?? null,
+        action: "WEEK_TEAM_GPS_LATEST_READ",
+        entity: "agent",
+        entityId: null,
+        metadataKind: "gps_latest_access",
+        newData: {
+          readerUserId: auth.userId || null,
+          readerAgentId: auth.agentId || null,
+          principal: auth.principal,
+          date: today,
+          agentCount: gpsAgentIds.length,
+          agentIdsHash,
+          ...(gpsAgentIds.length <= AUDIT_AGENT_IDS_INLINE ? { agentIds: gpsAgentIds } : {}),
+          source: "LATEST_RECORDED_TIME_ONLY",
+        },
+        req,
+      }).catch((error) => console.warn("[MTM/week/team] GPS access audit failed", error))
+    }
   }
 
   const truncatedSources = [

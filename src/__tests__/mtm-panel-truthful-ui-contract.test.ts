@@ -32,7 +32,7 @@ describe("MTM Panel for a manager", () => {
   it("uses one manager workday state and keeps the close/continue instruction for the agent", () => {
     expect(ui).toContain('data-testid="mtm-week-workday-left-open"')
     expect(ui).toContain("facts.workdayCapability.canMutateSelf && facts.workdayCapability.requiresPriorDayClosure")
-    expect(ui).toContain("if (day.isToday && facts?.managerWorkday)")
+    expect(ui).toContain("if (managerView && day.isToday && facts?.managerWorkday)")
   })
 
   it("names routes by date, numbers stops from 1, hides task ids for managers and words empty days by date", () => {

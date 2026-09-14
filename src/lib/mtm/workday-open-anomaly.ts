@@ -10,7 +10,7 @@
  * they told an office manager nothing.
  *
  * A shift that has been running for more than {@link MTM_WORKDAY_OPEN_ANOMALY_HOURS}
- * hours, or that belongs to an earlier tenant-local day, is not "active" in any
+ * hours is not "active" in any
  * sense a manager can act on: nobody works three days straight. It is an
  * anomaly — the agent did not close the shift — and it gets its own state so
  * every screen can say the same sentence:
@@ -37,9 +37,9 @@ export type MtmManagerWorkdayState =
   | { kind: "paused"; since: string | null }
   | { kind: "finished"; at: string | null }
   /**
-   * STARTED or PAUSED for too long or from an earlier day. `days` counts
-   * tenant-local calendar days between the work date and today (0 when the
-   * anomaly is only the duration); `hours` is the elapsed time since start.
+   * STARTED or PAUSED for more than 16 h. `days` is 0 until 24 h have
+   * elapsed (the label then uses hours), afterwards the tenant-local calendar
+   * days from the work date to today; `hours` is the elapsed time since start.
    */
   | {
       kind: "left-open"
@@ -74,10 +74,11 @@ function calendarDaysBetween(fromKey: string, toKey: string): number {
  * Is an open (STARTED/PAUSED) row an anomaly? Exported so a caller that only
  * has a status and a start can ask the same question.
  */
-export function isMtmWorkdayLeftOpen(row: MtmWorkdayRow, now: Date, todayKey?: string | null): boolean {
+export function isMtmWorkdayLeftOpen(row: MtmWorkdayRow, now: Date, _todayKey?: string | null): boolean {
   if (row.status !== "STARTED" && row.status !== "PAUSED") return false
-  const workKey = dateKey(row.workDate)
-  if (todayKey && workKey && workKey < todayKey) return true
+  // Review of #210: crossing midnight alone is not an anomaly — a 22:00 start
+  // read «açıqdır (1 gün) — agent bağlamayıb» at 00:05. Only elapsed time
+  // counts. A row with no start moment cannot be judged and is not flagged.
   const started = iso(row.startedAt)
   if (!started) return false
   return now.getTime() - Date.parse(started) > MTM_WORKDAY_OPEN_ANOMALY_HOURS * 3_600_000
@@ -101,16 +102,26 @@ export function mtmManagerWorkdayState(input: {
   if (open) {
     const since = iso(open.startedAt)
     const workKey = dateKey(open.workDate) ?? (since ? since.slice(0, 10) : null)
+    const hours = since ? Math.max(0, Math.floor((now.getTime() - Date.parse(since)) / 3_600_000)) : 0
+    // Days are shown only once a full day has elapsed, and then as calendar
+    // days (11 Sep → 14 Sep = 3), which is how a manager reads the date.
+    const days = hours < 24
+      ? 0
+      : todayKey && workKey
+        ? Math.max(1, calendarDaysBetween(workKey, todayKey))
+        : Math.floor(hours / 24)
     return {
       kind: "left-open",
       since,
       workDate: workKey,
-      days: todayKey && workKey ? calendarDaysBetween(workKey, todayKey) : 0,
-      hours: since ? Math.max(0, Math.floor((now.getTime() - Date.parse(since)) / 3_600_000)) : 0,
+      days,
+      hours,
       status: open.status === "PAUSED" ? "PAUSED" : "STARTED",
     }
   }
-  const day = input.today ?? null
+  // A shift started at 22:00 is still being worked at 00:05: without a row
+  // for today, a not-yet-anomalous open row speaks for the day.
+  const day = input.today ?? input.active ?? null
   if (!day) return { kind: "not-started" }
   // COMPLETED first: a closed day can still remember its last break.
   if (day.status === "COMPLETED") return { kind: "finished", at: iso(day.completedAt) }

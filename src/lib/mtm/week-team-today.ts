@@ -17,7 +17,7 @@ export type MtmTeamTodayInput = {
   now: Date
   todayKey: string
   workforceEnabled: boolean
-  agents: ReadonlyArray<{ id: string; name: string; team?: { id: string; name: string } | null; lastSeenAt?: Date | null }>
+  agents: ReadonlyArray<{ id: string; name: string; team?: { id: string; name: string } | null }>
   latestLocations: ReadonlyArray<{ agentId: string; recordedAt: Date }>
   routes: ReadonlyArray<{ agentId: string; status: string; totalPoints: number; visitedPoints: number }>
   visits: ReadonlyArray<{
@@ -43,7 +43,10 @@ export type MtmTeamTodayRow = {
   agent: { id: string; name: string; teamName: string | null }
   lastGpsAt: string | null
   route: { visited: number; total: number; state: "FINISHED" | "ACTIVE" | "NOT_STARTED" } | null
+  /** The newest {@link MTM_TEAM_TODAY_VISITS_PER_ROW} visits, shown in time order. */
   visits: Array<{ id: string; customerName: string | null; status: string; checkInAt: string; checkOutAt: string | null }>
+  /** All of today's visits read for this agent; `visitCount - visits.length` is the "+N". */
+  visitCount: number
   openAlerts: number
   workday: MtmManagerWorkdayState | null
 }
@@ -77,8 +80,11 @@ export function buildMtmTeamTodayRows(input: MtmTeamTodayInput): MtmTeamTodayRow
 
   return input.agents.map((agent) => {
     const combined = combineMtmDayRoutes(routesByAgent.get(agent.id) ?? [])
-    const visits = [...(visitsByAgent.get(agent.id) ?? [])]
-      .sort((left, right) => left.checkInAt.getTime() - right.checkInAt.getTime() || left.id.localeCompare(right.id))
+    // Review of #210: keeping the FIRST six showed a 17:00 manager only the
+    // morning. Keep the newest six, then show them in time order.
+    const allVisits = [...(visitsByAgent.get(agent.id) ?? [])]
+      .sort((left, right) => right.checkInAt.getTime() - left.checkInAt.getTime() || right.id.localeCompare(left.id))
+    const visits = allVisits.slice(0, MTM_TEAM_TODAY_VISITS_PER_ROW).reverse()
     const days = workdaysByAgent.get(agent.id) ?? []
     const today = days.find((day) => dateKeyOf(day.workDate) === input.todayKey) ?? null
     const active = days
@@ -89,7 +95,8 @@ export function buildMtmTeamTodayRows(input: MtmTeamTodayInput): MtmTeamTodayRow
       agent: { id: agent.id, name: agent.name, teamName: agent.team?.name ?? null },
       lastGpsAt: lastGps ? lastGps.toISOString() : null,
       route: combined ? { visited: Math.min(combined.visitedPoints, combined.totalPoints), total: combined.totalPoints, state: combined.state } : null,
-      visits: visits.slice(0, MTM_TEAM_TODAY_VISITS_PER_ROW).map((visit) => ({
+      visitCount: allVisits.length,
+      visits: visits.map((visit) => ({
         id: visit.id,
         customerName: visit.customer?.name ?? null,
         status: visit.status,
@@ -102,4 +109,26 @@ export function buildMtmTeamTodayRows(input: MtmTeamTodayInput): MtmTeamTodayRow
         : null,
     }
   })
+}
+
+const AUDIT_DEDUPE_MAX_ENTRIES = 5_000
+/**
+ * Review of #210: the Panel polls every 60 s, and one audit row per poll buried
+ * the reads that matter. One row per reader + scope + tenant-local day is
+ * enough to answer "who looked at whose GPS, when". Per-instance memory: a
+ * restart can write one more row for the same day, which errs on the side of
+ * recording.
+ */
+const auditedTeamReads = new Set<string>()
+
+export function rememberMtmTeamGpsRead(key: string): boolean {
+  if (auditedTeamReads.has(key)) return false
+  if (auditedTeamReads.size >= AUDIT_DEDUPE_MAX_ENTRIES) auditedTeamReads.clear()
+  auditedTeamReads.add(key)
+  return true
+}
+
+/** Test hook: forget which reads were already audited. */
+export function __resetTeamReadAuditForTests(): void {
+  auditedTeamReads.clear()
 }

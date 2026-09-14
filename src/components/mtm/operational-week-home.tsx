@@ -188,6 +188,7 @@ interface TeamTodayRow {
   lastGpsAt: string | null
   route: { visited: number; total: number } | null
   visits: Array<{ id: string; customerName: string | null; status: string; checkInAt: string | null; checkOutAt: string | null }>
+  visitCount: number
   openAlerts: number
   workday: MtmManagerWorkdayState | null
 }
@@ -198,6 +199,7 @@ interface TeamToday {
   generatedAt: string | null
   rows: TeamTodayRow[]
   partial: boolean
+  visitsTruncated: boolean
   workdayEnabled: boolean
 }
 
@@ -760,15 +762,18 @@ function normalizeTeamToday(value: unknown): TeamToday | null {
         }
       }).filter((visit) => visit.id),
       openAlerts: Math.max(0, firstNumber(row, "openAlerts") ?? 0),
+      visitCount: Math.max(0, firstNumber(row, "visitCount") ?? 0),
       workday: normalizeManagerWorkday(row.workday),
     }]
   })
+  const completeness = record(source.completeness)
   return {
     timezone: firstString(source, "timezone") || "UTC",
     today: firstString(source, "today") || "",
     generatedAt: firstString(source, "generatedAt"),
     rows,
-    partial: record(source.completeness).authoritative === false,
+    partial: list(completeness.truncatedSources).includes("FILTER_AGENTS"),
+    visitsTruncated: list(completeness.truncatedSources).includes("VISITS"),
     workdayEnabled: record(record(source.capabilities).workday).enabled === true,
   }
 }
@@ -1730,7 +1735,9 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
 
   /** Workday label for a day card or the strip; today follows the manager state. */
   function dayWorkdayPresentation(day: WeekDay) {
-    if (day.isToday && facts?.managerWorkday) return managerWorkdayPresentation(facts.managerWorkday, facts.timezone)
+    // The third-person "agent did not close it" sentence is for a manager; an
+    // agent reading about themselves keeps the plain workday state.
+    if (managerView && day.isToday && facts?.managerWorkday) return managerWorkdayPresentation(facts.managerWorkday, facts.timezone)
     return workdayPresentation(day.workday.state)
   }
 
@@ -2561,7 +2568,10 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
             <h3 id="mtm-week-team-today-title" className="text-base font-semibold">{t("teamTodayTitle", { date: teamToday.today ? formatCalendarDay(teamToday.today, locale, { weekday: "long", day: "numeric", month: "long" }) : "—" })}</h3>
             <p className="mt-0.5 text-xs text-muted-foreground">{t("teamTodayHint")}</p>
           </div>
-          {teamToday.partial ? <Badge variant="warning">{t("scopeListLimited")}</Badge> : null}
+          <div className="flex flex-wrap gap-1.5">
+            {teamToday.partial ? <Badge variant="warning">{t("scopeListLimited")}</Badge> : null}
+            {teamToday.visitsTruncated ? <Badge variant="warning">{t("teamVisitsTruncated")}</Badge> : null}
+          </div>
         </div>
         {teamToday.rows.length === 0 ? (
           <p className="px-4 pb-5 text-sm text-muted-foreground lg:px-5">{t("noEmployeesHint")}</p>
@@ -2602,6 +2612,7 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
                                 {visit.customerName ? <span className="text-muted-foreground"> · {visit.customerName}</span> : null}
                               </li>
                             ))}
+                            {row.visitCount > row.visits.length ? <li className="text-muted-foreground">{t("teamMoreVisits", { count: row.visitCount - row.visits.length })}</li> : null}
                           </ul>
                         ) : <span className="text-muted-foreground">{t("teamNoVisits")}</span>}
                       </td>

@@ -26,7 +26,7 @@ import {
 } from "@/lib/mtm/operational-week"
 import { buildOperationalTaskQueue } from "@/lib/mtm/operational-task-queue"
 import { groupMtmWeekAlerts, projectMtmWeekAlert, type MtmWeekAlert } from "@/lib/mtm/week-alert-groups"
-import { mtmManagerWorkdayState } from "@/lib/mtm/workday-open-anomaly"
+import { mtmManagerWorkdayState, type MtmWorkdayRow } from "@/lib/mtm/workday-open-anomaly"
 
 const PENDING_PLAN_CHANGE_STATUSES = ["SUBMITTED", "IN_REVIEW", "NEEDS_INFO"] as const
 const VISIBLE_PLAN_CHANGE_STATUSES = [
@@ -74,6 +74,19 @@ const agentSelect = {
 } as const
 
 type AgentRow = Prisma.MtmAgentGetPayload<{ select: typeof agentSelect }>
+
+const activeWorkdaySelect = {
+  id: true,
+  workDate: true,
+  status: true,
+  startedAt: true,
+  pausedAt: true,
+  completedAt: true,
+  totalPausedSeconds: true,
+  updatedAt: true,
+} satisfies Prisma.MtmAgentWorkdaySelect
+
+type ActiveWorkdayRow = Prisma.MtmAgentWorkdayGetPayload<{ select: typeof activeWorkdaySelect }>
 
 function denied(code: string, status = 403) {
   return NextResponse.json({
@@ -213,7 +226,9 @@ function sourceVisit(
     status: visit.status,
     checkInAt: visit.checkInAt,
     checkOutAt: visit.checkOutAt,
-    reason: visit.resultNotes ?? visit.notes ?? null,
+    // Review of #210: visit note text is not a manager-facing fact. It is kept
+    // only as the reason of a CANCELLED visit, where it explains the gap.
+    reason: visit.status === "CANCELLED" ? visit.resultNotes ?? visit.notes ?? null : null,
     ...visitEvidence(visit),
   }
 }
@@ -539,17 +554,8 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
         status: { in: ["STARTED", "PAUSED"] },
       },
       orderBy: [{ startedAt: "desc" }, { id: "asc" }],
-      select: {
-        id: true,
-        workDate: true,
-        status: true,
-        startedAt: true,
-        pausedAt: true,
-        completedAt: true,
-        totalPausedSeconds: true,
-        updatedAt: true,
-      },
-    }) : Promise.resolve(null),
+      select: activeWorkdaySelect,
+    }) as Promise<ActiveWorkdayRow | null> : Promise.resolve<ActiveWorkdayRow | null>(null),
     prisma.mtmAgentLocation.findFirst({
       // GPS status is based on the newest admissible coordinate, never merely
       // the newest raw telemetry row. This is the same quality boundary used
@@ -1071,7 +1077,15 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
   const managerWorkdayState = canReadWorkforce
     ? mtmManagerWorkdayState({
         today: workdayByDay.get(today) ?? null,
-        active: activeWorkdayRaw ? { ...activeWorkdayRaw, workDate: activeWorkdayDate } : null,
+        active: activeWorkdayRaw
+          ? {
+              status: String(activeWorkdayRaw.status),
+              workDate: activeWorkdayDate,
+              startedAt: activeWorkdayRaw.startedAt,
+              pausedAt: activeWorkdayRaw.pausedAt,
+              completedAt: activeWorkdayRaw.completedAt,
+            } satisfies MtmWorkdayRow
+          : null,
         now: generatedAt,
         todayKey: today,
       })

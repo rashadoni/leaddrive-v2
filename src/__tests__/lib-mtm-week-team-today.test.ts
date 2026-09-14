@@ -35,6 +35,7 @@ describe("team today rows", () => {
       workday: { kind: "left-open", days: 3 },
     })
     expect(rows[0].visits.map((visit) => visit.id)).toEqual(["v1", "v2"])
+    expect(rows[0].visitCount).toBe(2)
     expect(rows[1]).toMatchObject({ lastGpsAt: null, route: null, visits: [], openAlerts: 0, workday: { kind: "not-started" } })
   })
 
@@ -59,5 +60,8 @@ describe("team today rows", () => {
     })
     expect(row.workday).toBeNull()
     expect(row.visits).toHaveLength(MTM_TEAM_TODAY_VISITS_PER_ROW)
+    // Review of #210: the newest six, in time order — not the morning.
+    expect(row.visits.map((visit) => visit.id)).toEqual(["v3", "v4", "v5", "v6", "v7", "v8"])
+    expect(row.visitCount).toBe(MTM_TEAM_TODAY_VISITS_PER_ROW + 3)
   })
 })

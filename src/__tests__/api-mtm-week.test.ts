@@ -1735,6 +1735,9 @@ describe("GET /api/v1/mtm/week — manager truth (prod audit 2026-09-14)", () =>
       photoCount: 3,
       hasSignature: true,
       hasNote: true,
+      // Review of #210: note text is not sent for a completed visit.
+      reason: null,
     })
+    expect(JSON.stringify(json.data)).not.toContain("private text")
   })
 })

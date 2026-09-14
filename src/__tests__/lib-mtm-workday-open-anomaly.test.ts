@@ -39,6 +39,26 @@ describe("manager workday state", () => {
     expect(state).toMatchObject({ kind: "left-open", days: 0, hours: 17 })
   })
 
+  it("does not flag a shift just because it crossed midnight (review of #210)", () => {
+    // Started 22:00 Baku on 13 Sep, read at 00:05 on 14 Sep: 2 h of work.
+    const lateStart = { status: "STARTED", workDate: "2026-09-13", startedAt: "2026-09-13T18:00:00.000Z" }
+    const justAfterMidnight = new Date("2026-09-13T20:05:00.000Z")
+    expect(isMtmWorkdayLeftOpen(lateStart, justAfterMidnight, "2026-09-14")).toBe(false)
+    // No row for today yet: the open row speaks for the day instead of "not started".
+    expect(mtmManagerWorkdayState({ today: null, active: lateStart, now: justAfterMidnight, todayKey: "2026-09-14" }))
+      .toEqual({ kind: "working", since: "2026-09-13T18:00:00.000Z" })
+
+    // 17 h later it is an anomaly, labelled in hours (not yet a full day).
+    const nextMorning = new Date("2026-09-14T11:01:00.000Z")
+    expect(mtmManagerWorkdayState({ active: lateStart, now: nextMorning, todayKey: "2026-09-14" }))
+      .toMatchObject({ kind: "left-open", days: 0, hours: 17, workDate: "2026-09-13" })
+
+    // After a full day the label switches to calendar days: 13 → 15 Sep = 2.
+    const dayAfter = new Date("2026-09-15T06:00:00.000Z")
+    expect(mtmManagerWorkdayState({ active: lateStart, now: dayAfter, todayKey: "2026-09-15" }))
+      .toMatchObject({ kind: "left-open", days: 2, hours: 36 })
+  })
+
   it("keeps a paused anomaly paused in its status, and never flags a closed day", () => {
     expect(mtmManagerWorkdayState({ active: { ...ANAR_OPEN, status: "PAUSED" }, now: NOW, todayKey: "2026-09-14" }))
       .toMatchObject({ kind: "left-open", status: "PAUSED" })
