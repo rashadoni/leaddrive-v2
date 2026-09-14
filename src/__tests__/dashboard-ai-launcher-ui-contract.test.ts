@@ -60,9 +60,29 @@ describe("dashboard AI launcher placement", () => {
     expect(header).toContain("flex shrink-0 items-center empty:hidden")
     expect(header.indexOf('id="header-voice-assistant-slot"')).toBeGreaterThan(header.indexOf('data-testid="global-header-actions"'))
     expect(header.indexOf('id="header-voice-assistant-slot"')).toBeLessThan(header.indexOf("<NotificationBell />"))
-    expect(header).toContain('className="relative z-30 flex h-14 min-w-0')
+    // No z-index on the header: `relative z-30` lifted it over dialogs that
+    // render in place inside positioned page wrappers (review of PR #206).
+    expect(header).not.toMatch(/data-testid="global-header"[\s\S]{0,200}className="[^"]*\bz-\d/)
     expect(voice).toContain('document.getElementById("header-voice-assistant-slot")')
-    expect(voice).toContain('const hostIsHeader = inlineHost?.id === "header-voice-assistant-slot"')
+    // The header host is never gated on an IntersectionObserver: the slot is
+    // display:none while empty, and a display:none box never intersects.
+    expect(voice).toContain('if (inlineHost.id === "header-voice-assistant-slot") return')
+    expect(voice).toContain("const inlineReachable = hostIsHeader || (Boolean(inlineHost) && inlineHostVisible)")
+    // The status line is portalled to <body> below dialogs instead.
+    // …into a layer inside the shell's own stacking context, so in-place
+    // dialogs (z-[60]) still cover it; <body> would sit above all of them.
+    const status = source("src/components/ai/voice-inline-status.tsx")
+    expect(status).toContain("createPortal(")
+    expect(status).toContain('VOICE_STATUS_LAYER_ID = "dashboard-voice-status-layer"')
+    expect(status).toContain("fixed z-50")
+    expect(layout).toContain('<div id="dashboard-voice-status-layer" />')
+    expect(layout.indexOf('<div id="dashboard-voice-status-layer" />')).toBeGreaterThan(layout.indexOf('className="relative z-[2] flex h-screen min-w-0"'))
+    expect(voiceConsole).toContain("<VoiceInlineStatus")
+    expect(voice).toContain("<VoiceInlineStatus")
+    expect(voiceConsole).not.toContain("absolute right-0 top-full z-20")
+    expect(voice).not.toContain("absolute right-0 top-full z-20")
+    // The fallback slot in the AI bar keeps a box while empty for the same reason.
+    expect(search).not.toMatch(/id="dashboard-voice-assistant-slot"[\s\S]{0,120}empty:hidden/)
     // Placement only: the access check and the lazy console are unchanged.
     expect(voice).toContain('fetch("/api/v1/ai/voice/access", { credentials: "same-origin" })')
     expect(voice).toContain("if (!allowed) return null")

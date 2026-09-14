@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
 import { Mic } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { VoiceInlineStatus } from "@/components/ai/voice-inline-status"
 import { VOICE_TOOL_NAMES, type VoiceToolName } from "@/lib/ai/voice/read-tools"
 import {
   diagnoseMicrophoneFailure,
@@ -1144,18 +1145,31 @@ function ConsoleInner({
             <Mic className={inline ? "h-4 w-4" : "h-5 w-5"} />
           </span>
         </button>
-        {(error || notice || active || micSilent || transcriptionWarning) && (
-          <span className={`${inline
-            ? showInlineMessage
-              ? "absolute right-0 top-full z-20 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-md px-2 py-1 text-center text-[11px] leading-tight shadow-sm"
-              : "sr-only"
-            : "max-w-[16rem] rounded-md px-2 py-1 text-center text-[11px] leading-tight shadow-sm"} ${error ? "bg-destructive text-destructive-foreground" : "bg-background text-muted-foreground"}`} aria-live="polite">
-            <span className="block">{label}</span>
-            {!error && lastTranscript && <span data-sentry-mask className="mt-0.5 block max-w-[15rem] truncate text-foreground">{t("heard", { text: lastTranscript })}</span>}
-            {!error && micSilent && <span className="mt-0.5 block max-w-[15rem] text-amber-700 dark:text-amber-300">{t("micSilent")}</span>}
-            {!error && transcriptionWarning && <span className="mt-0.5 block max-w-[15rem] text-amber-700 dark:text-amber-300">{t("transcriptionUnavailable")}</span>}
-          </span>
-        )}
+        {(error || notice || active || micSilent || transcriptionWarning) && (() => {
+          const tone = error ? "bg-destructive text-destructive-foreground" : "bg-background text-muted-foreground"
+          const statusText = (
+            <>
+              <span className="block">{label}</span>
+              {!error && lastTranscript && <span data-sentry-mask className="mt-0.5 block max-w-[15rem] truncate text-foreground">{t("heard", { text: lastTranscript })}</span>}
+              {!error && micSilent && <span className="mt-0.5 block max-w-[15rem] text-amber-700 dark:text-amber-300">{t("micSilent")}</span>}
+              {!error && transcriptionWarning && <span className="mt-0.5 block max-w-[15rem] text-amber-700 dark:text-amber-300">{t("transcriptionUnavailable")}</span>}
+            </>
+          )
+          // In-flow placement: the visible line is portalled under the button
+          // (see VoiceInlineStatus); a quiet "listening" state stays sr-only.
+          if (inline && showInlineMessage) {
+            return (
+              <VoiceInlineStatus className={`w-64 max-w-[calc(100vw-2rem)] rounded-md px-2 py-1 text-center text-[11px] leading-tight shadow-sm ${tone}`}>
+                {statusText}
+              </VoiceInlineStatus>
+            )
+          }
+          return (
+            <span className={`${inline ? "sr-only" : "max-w-[16rem] rounded-md px-2 py-1 text-center text-[11px] leading-tight shadow-sm"} ${tone}`} aria-live="polite">
+              {statusText}
+            </span>
+          )
+        })()}
       </div>
     )
     if (orbPortalTarget) return createPortal(orbControl, orbPortalTarget)

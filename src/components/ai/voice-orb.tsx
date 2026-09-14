@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react"
 import { createPortal } from "react-dom"
 import { Mic } from "lucide-react"
 import { useTranslations } from "next-intl"
+import { VoiceInlineStatus } from "@/components/ai/voice-inline-status"
 
 /**
  * Global voice orb — the assistant as a presence rather than a page.
@@ -128,6 +129,12 @@ export function VoiceOrb({
       setInlineHostVisible(false)
       return
     }
+    // The header is outside the scrolling <main> and always on screen, so it
+    // is never watched. Watching it was a deadlock: the slot is `empty:hidden`
+    // (display: none) until the control is portalled in, a display:none box
+    // never intersects, and the control was only portalled in once it did —
+    // so the orb stayed in the corner for ever (review of PR #206).
+    if (inlineHost.id === "header-voice-assistant-slot") return
     if (typeof IntersectionObserver === "undefined") {
       setInlineHostVisible(true)
       return
@@ -141,9 +148,9 @@ export function VoiceOrb({
   }, [inlineHost])
 
   if (!allowed) return null
-  const inlineReachable = Boolean(inlineHost) && inlineHostVisible
   const hostIsHeader = inlineHost?.id === "header-voice-assistant-slot"
-  const floating = hostIsHeader ? !inlineReachable : showFloatingLauncher || !inlineReachable
+  const inlineReachable = hostIsHeader || (Boolean(inlineHost) && inlineHostVisible)
+  const floating = !hostIsHeader && (showFloatingLauncher || !inlineReachable)
   const activeInlineHost = floating ? null : inlineHost
   // Keep the console component mounted across navigation so an active media
   // session is not torn down. Only its control moves from a floating overlay
@@ -186,16 +193,18 @@ export function VoiceOrb({
         </span>
       </button>
 
-      {loadFailed && (
+      {loadFailed && (activeInlineHost ? (
+        <VoiceInlineStatus className="w-52 max-w-[calc(100vw-2rem)] rounded-md bg-destructive px-2 py-1 text-center text-[11px] leading-tight text-destructive-foreground shadow-sm">
+          {t("staleBuild")}
+        </VoiceInlineStatus>
+      ) : (
         <span
-          className={activeInlineHost
-            ? "absolute right-0 top-full z-20 mt-2 w-52 rounded-md bg-destructive px-2 py-1 text-center text-[11px] leading-tight text-destructive-foreground shadow-sm"
-            : "max-w-[13rem] rounded-md bg-destructive px-2 py-1 text-center text-[11px] leading-tight text-destructive-foreground shadow-sm"}
+          className="max-w-[13rem] rounded-md bg-destructive px-2 py-1 text-center text-[11px] leading-tight text-destructive-foreground shadow-sm"
           aria-live="polite"
         >
           {t("staleBuild")}
         </span>
-      )}
+      ))}
     </div>
   )
 

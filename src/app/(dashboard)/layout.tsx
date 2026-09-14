@@ -149,6 +149,10 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           <LauncherPrefsProvider>
           <DashboardWallpaper />
           <div className="relative z-[2] flex h-screen min-w-0">
+            {/* Portal target for the voice control's status line: inside this
+                stacking context so in-place dialogs (z-[60]) still cover it.
+                See VoiceInlineStatus. Empty and zero-size; its child is fixed. */}
+            <div id="dashboard-voice-status-layer" />
             {/* sessionLoaded: while useSession() is still hydrating, the
                 sidebar shows a skeleton and the header shows shimmer
                 placeholders — rendering the menu from a default org context

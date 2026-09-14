@@ -68,9 +68,7 @@ export function Header({ orgName, userName, userAvatar, onOpenLauncher, sessionL
     <header
       data-testid="global-header"
       data-session-ready={orgName && userName ? "true" : "false"}
-      /* relative z-30: the voice control's status line hangs below the header
-         and has to paint over the page, not under it. */
-      className="relative z-30 flex h-14 min-w-0 items-center justify-between gap-2 border-b border-zinc-200/40 bg-card px-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] backdrop-blur-xl dark:border-zinc-700/40 sm:px-4 lg:px-6"
+      className="flex h-14 min-w-0 items-center justify-between gap-2 border-b border-zinc-200/40 bg-card px-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] backdrop-blur-xl dark:border-zinc-700/40 sm:px-4 lg:px-6"
     >
       <div className="flex min-w-0 items-center gap-2 sm:gap-4">
         {orgName ? (
