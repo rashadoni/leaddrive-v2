@@ -89,6 +89,9 @@ describe("Workforce Android foundation", () => {
     const build = read("app/build.gradle.kts")
     const outbox = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceEncryptedOutbox.kt")
     const repository = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceSessionRepository.kt")
+    const secureStore = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceSecureStore.kt")
+    const api = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceApiClient.kt")
+    const keyManager = read("app/src/main/java/com/leaddrive/workforce/android/security/WorkforceDeviceKeyManager.kt")
     expect(build).toContain('id("com.google.devtools.ksp")')
     expect(build).toContain('implementation("androidx.room:room-runtime:2.8.4")')
     expect(build).toContain('ksp("androidx.room:room-compiler:2.8.4")')
@@ -99,11 +102,14 @@ describe("Workforce Android foundation", () => {
     expect(outbox).toContain("OFFLINE_HORIZON_MS = 7 * 24 * 60 * 60 * 1_000L")
     expect(outbox).toContain("MAX_ATTEMPTS = 8")
     expect(outbox).toContain("Read the absolute oldest pending item")
-    expect(outbox).toContain("oldestPending(domain.name)")
+    expect(outbox).toContain("oldestPending(session.accountScope, domain.name)")
     expect(outbox).not.toContain("nextAttemptAtEpochMs <= :nowEpochMs")
     expect(outbox).toContain("ACCOUNT_BOUNDARY_MUTEX.withLock")
     expect(outbox).toContain("stored.operation.domain != domain")
     expect(outbox).toContain("OUTBOX_DOMAIN_MISMATCH")
+    expect(outbox).toContain("Random.Default.nextLong")
+    expect(outbox).toContain("nextPendingAttemptAtEpochMs")
+    expect(outbox).toContain("early wake cannot strand it")
     expect(outbox).toContain("ExistingWorkPolicy.KEEP")
     expect(outbox).toContain("NetworkType.CONNECTED")
     expect(outbox).toContain("clearForAccountBoundary")
@@ -111,16 +117,41 @@ describe("Workforce Android foundation", () => {
     expect(outbox).not.toMatch(/qrToken|latitude|longitude|password|biometricTemplate/i)
     expect(repository).toContain("outbox.clearForAccountBoundary()")
     expect(repository).toContain("sessionMutex.withLock")
+    expect(outbox).toContain("accountScope")
+    expect(outbox).toContain("deleteLegacyUnscopedRows")
+    expect(outbox).toContain("isSessionCurrent")
+    expect(outbox).toContain("Migration(1, 2)")
+    expect(repository).toContain("outbox.recoveryItems(session)")
+    expect(secureStore).toContain("PREFERENCE_ACCOUNT_SCOPE")
+    expect(secureStore).toContain("newAccountScope")
+    expect(api).toContain('put("accountScope", session.accountScope)')
+    expect(keyManager).toContain("createStrongBoxPreferredEnrollmentKey")
+    expect(keyManager).toContain("@RequiresApi(Build.VERSION_CODES.P)")
   })
 
   it("keeps Work Time history on the self-HRM server lane and labels it as accepted truth", () => {
     const api = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceApiClient.kt")
     const activity = read("app/src/main/java/com/leaddrive/workforce/android/MainActivity.kt")
+    const catalogs = [
+      read("app/src/main/res/values/strings.xml"),
+      read("app/src/main/res/values-ru/strings.xml"),
+      read("app/src/main/res/values-az/strings.xml"),
+    ]
     expect(api).toContain('"/api/v1/mtm/mobile/hrm?start=$start&end=$end"')
     expect(api).toContain("HISTORY_DAYS_BEFORE")
     expect(api).not.toContain('"/api/v1/mtm/mobile/location')
     expect(activity).toContain("R.string.history_range")
     expect(activity).toContain("R.string.history_empty_explainer")
+    expect(api).toContain("WorkforceHistoryDayDetail")
+    expect(api).toContain('optJSONObject("history")')
+    expect(activity).toContain("R.string.history_detail_title")
+    expect(activity).toContain("R.string.history_review_pending")
+    expect(activity).not.toMatch(/history.*latitude|history.*longitude|history.*reasonCode/i)
+    for (const catalog of catalogs) {
+      expect(catalog).toContain('name="history_detail_show"')
+      expect(catalog).toContain('name="history_review_pending"')
+      expect(catalog).toContain('name="history_correction"')
+    }
   })
 
   it("supports leave, absence and correction requests without putting their reason in ordinary diagnostics", () => {
@@ -129,6 +160,12 @@ describe("Workforce Android foundation", () => {
     const activity = read("app/src/main/java/com/leaddrive/workforce/android/MainActivity.kt")
     expect(api).toContain('override val entity = "hrmRequests"')
     expect(api).toContain("WorkforceHrmRequestType")
+    expect(api).toContain("WorkforceHrmRequestStatus")
+    expect(api).toContain("WorkforceHrmRequestTimelineEntry")
+    expect(api).toContain("WorkforceHistoryRequestState")
+    expect(api).toContain('"/api/v1/mtm/mobile/hrm/exceptions"')
+    expect(api).toContain("WorkforceSelfException")
+    expect(api).toContain('put("exceptionCaseId", it)')
     expect(api).toContain("MAX_HRM_REQUEST_DAYS = 366L")
     expect(api).toContain("Requested finish must be after requested start")
     expect(api).toContain("toOptionalInstant")
@@ -137,6 +174,15 @@ describe("Workforce Android foundation", () => {
     expect(activity).not.toContain("var reason by rememberSaveable")
     expect(activity).toContain("R.string.requests_explainer")
     expect(activity).toContain("R.string.request_reason")
+    expect(activity).toContain("R.string.request_summary")
+    expect(activity).toContain("R.string.request_timeline_submitted")
+    expect(activity).toContain("R.string.request_status_unknown")
+    expect(activity).toContain("R.string.exception_corrections_explainer")
+    expect(activity).toContain("exceptionCaseId = exception.caseId")
+    expect(activity).toContain("if (correctionWorkdayId != day.workday!!.id) exceptionCaseId = \"\"")
+    expect(activity).toContain("ownExceptions.isEmpty()")
+    expect(activity).not.toContain("emptyList() ->")
+    expect(activity).not.toContain('Text("${request.type}: ${request.status}"')
     expect(activity).not.toMatch(/Log\.|println\(|Timber\./)
   })
 
@@ -144,6 +190,13 @@ describe("Workforce Android foundation", () => {
     const manifest = read("app/src/main/AndroidManifest.xml")
     const capture = read("app/src/main/java/com/leaddrive/workforce/android/location/WorkforceActionTimeLocationCapture.kt")
     const activity = read("app/src/main/java/com/leaddrive/workforce/android/MainActivity.kt")
+    const api = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceApiClient.kt")
+    const repository = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceSessionRepository.kt")
+    const catalogs = [
+      read("app/src/main/res/values/strings.xml"),
+      read("app/src/main/res/values-ru/strings.xml"),
+      read("app/src/main/res/values-az/strings.xml"),
+    ]
     expect(capture).toContain("getCurrentLocation")
     expect(capture).toContain('@SuppressLint("MissingPermission")')
     expect(capture).toContain("ContextCompat.getMainExecutor(applicationContext)")
@@ -153,9 +206,31 @@ describe("Workforce Android foundation", () => {
     expect(capture).toContain("CAPTURE_TIMEOUT_MS = 15_000L")
     expect(capture).toContain("MAX_LOCATION_AGE_MS = 30_000L")
     expect(capture).toContain("No legacy last-known fallback")
+    expect(capture).toContain("isFromMockProvider")
+    expect(api).toContain('optStringList("locationRequiredActions")')
+    expect(api).toContain("fun requiresLocation")
+    expect(api).toContain("WORKFORCE_WORKDAY_SCHEMA_VERSION = 4")
+    expect(api).toContain('put("location", JSONObject()')
+    expect(api).toContain("data.has(\"attendance\")")
+    expect(repository).toContain("attendanceLocationProof")
+    expect(repository).toContain("place raw coordinates in the outbox")
+    expect(activity).toContain("captureLocationThenContinue")
+    expect(activity).toContain("RequestMultiplePermissions")
+    expect(activity).toContain("pendingLocationPermissionAction")
+    expect(activity).toContain("WORKFORCE_ATTENDANCE_LOCATION_REQUIRED")
+    expect(activity).toContain("WORKFORCE_ATTENDANCE_LOCATION_REVIEW_REQUIRED")
     expect(capture).not.toMatch(/requestLocationUpdates|ForegroundService|ACCESS_BACKGROUND_LOCATION/i)
     expect(manifest).not.toContain("ACCESS_BACKGROUND_LOCATION")
     expect(activity).toContain("R.string.today_location_disclaimer")
+    for (const catalog of catalogs) {
+      expect(catalog).toContain('name="status_capturing_location"')
+      expect(catalog).toContain('name="error_location_permission_missing"')
+      expect(catalog).toContain('name="error_location_provider_disabled"')
+      expect(catalog).toContain('name="error_location_unavailable"')
+      expect(catalog).toContain('name="error_location_unsupported"')
+      expect(catalog).toContain('name="error_location_server_required"')
+      expect(catalog).toContain('name="error_location_server_review_required"')
+    }
   })
 
   it("scans a fresh QR only for the immediately requested action and never persists it", () => {
@@ -166,6 +241,11 @@ describe("Workforce Android foundation", () => {
     const outbox = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceEncryptedOutbox.kt")
     const scanner = read("app/src/main/java/com/leaddrive/workforce/android/security/WorkforceQrScanner.kt")
     const activity = read("app/src/main/java/com/leaddrive/workforce/android/MainActivity.kt")
+    const catalogs = [
+      read("app/src/main/res/values/strings.xml"),
+      read("app/src/main/res/values-ru/strings.xml"),
+      read("app/src/main/res/values-az/strings.xml"),
+    ]
     expect(build).toContain('implementation("com.google.android.gms:play-services-code-scanner:16.1.0")')
     expect(manifest).toContain("barcode_ui")
     expect(manifest).not.toContain("android.permission.CAMERA")
@@ -183,15 +263,27 @@ describe("Workforce Android foundation", () => {
     expect(activity).toContain("R.string.today_attendance_unavailable")
     expect(activity).toContain('var password by remember { mutableStateOf("") }')
     expect(activity).not.toContain("var password by rememberSaveable")
+    expect(activity).toContain("activeQrScanAttemptId")
+    expect(activity).toContain("R.string.action_scanning")
+    for (const catalog of catalogs) expect(catalog).toContain('name="action_scanning"')
   })
 
   it("has a metadata-only recovery center with explicit safe next steps", () => {
     const outbox = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceEncryptedOutbox.kt")
     const repository = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceSessionRepository.kt")
     const activity = read("app/src/main/java/com/leaddrive/workforce/android/MainActivity.kt")
+    const catalogs = [
+      read("app/src/main/res/values/strings.xml"),
+      read("app/src/main/res/values-ru/strings.xml"),
+      read("app/src/main/res/values-az/strings.xml"),
+    ]
     expect(outbox).toContain("Metadata-only recovery view")
     expect(outbox).toContain("OFFLINE_HORIZON_EXPIRED")
-    expect(outbox).toContain("Request a correction instead of retrying")
+    expect(outbox).toContain("WorkforceOutboxRecoveryHint.OFFLINE_LIMIT_EXPIRED")
+    expect(outbox).toContain("MTM_MOBILE_SYNC_OPERATION_TOO_LARGE")
+    expect(outbox).toContain("MTM_MOBILE_SYNC_OPERATION_INVALID")
+    expect(outbox).toContain("WorkforceOutboxRecoveryHint.QUARANTINED_OPERATION")
+    expect(outbox).not.toContain("Request a correction instead of retrying")
     expect(outbox).toContain("SELECT domain, state, createdAtEpochMs, detailCode FROM workforce_outbox_operations")
     expect(outbox).not.toContain("SELECT ciphertext")
     expect(outbox).toContain("ACCOUNT_BOUNDARY_MUTEX.withLock")
@@ -200,6 +292,15 @@ describe("Workforce Android foundation", () => {
     expect(activity).toContain("atZone(tenantZone)")
     expect(activity).not.toContain("ZoneId.systemDefault()")
     expect(activity).toContain("R.string.recovery_explainer")
+    expect(activity).toContain("R.string.recovery_hint_offline_limit_expired")
+    expect(activity).toContain("R.string.recovery_hint_quarantined_operation")
+    expect(activity).toContain("onRefreshServer = onRefresh")
+    expect(activity).toContain("TextButton(onClick = onRefreshServer)")
+    expect(activity).toContain("R.string.refresh_server_state")
+    for (const catalog of catalogs) {
+      expect(catalog).toContain('name="recovery_hint_quarantined_operation"')
+      expect(catalog).toContain('name="refresh_server_state"')
+    }
   })
 
   it("uses a per-use non-exportable Android key and OS-owned strong-biometric signature without handling biometric data", () => {
@@ -239,6 +340,9 @@ describe("Workforce Android foundation", () => {
     expect(api).toContain("requiresDeviceProof")
     expect(repository).toContain("revokeOwnDeviceEnrollment")
     expect(repository).toContain("private key is deleted only after the server acknowledges revocation")
+    expect(repository).toContain("bindings.forEach { alias ->")
+    expect(repository).toContain("val login = api.login(input)\n        // Do not destroy a recoverable current session")
+    expect(repository).toContain("clearAccountBoundary()\n        val session = WorkforceStoredSession(login.token")
     expect(activity).toContain("R.string.action_scan_and_confirm")
     expect(activity).toContain("R.string.qr_scan_cancelled")
     expect(activity).toContain("R.string.qr_scan_unreadable")
@@ -314,18 +418,28 @@ describe("Workforce Android foundation", () => {
 
   it("uses localized generic status and failure copy instead of reflecting API/device messages", () => {
     const activity = read("app/src/main/java/com/leaddrive/workforce/android/MainActivity.kt")
+    const repository = read("app/src/main/java/com/leaddrive/workforce/android/data/WorkforceSessionRepository.kt")
     const catalogs = [
       read("app/src/main/res/values/strings.xml"),
       read("app/src/main/res/values-ru/strings.xml"),
       read("app/src/main/res/values-az/strings.xml"),
     ]
     expect(activity).toContain("WorkforceEmployeeErrorCopy")
-    expect(activity).toContain("is WorkforceApiException -> copy.api")
+    expect(activity).toContain("is WorkforceApiException -> when (recoveryCode)")
+    expect(activity).toContain("else -> copy.api")
     expect(activity).not.toContain("is WorkforceApiException -> message")
+    expect(activity).toContain("val deviceActionPrompts = mapOf")
+    expect(activity).toContain("val deviceEnrollmentPromptTemplate = stringResource")
+    expect(activity).toContain("val deviceLifecycleMessages = mapOf<WorkforceDeviceBindingLifecycle?, String>")
+    expect(activity).not.toContain("context.getString(R.string.device_action_prompt")
+    expect(activity).not.toContain("context.getString(R.string.device_enrollment_prompt")
+    expect(activity).not.toContain("context.getString(deviceLifecycleMessage")
     expect(activity).toContain("deviceLifecycleMessages.getValue(it.lifecycle)")
     expect(activity).not.toContain("context.getString(")
     expect(activity).toContain("R.string.device_action_prompt")
     expect(activity).toContain("R.string.device_enrollment_prompt")
+    expect(repository).not.toContain("val message: String")
+    expect(repository).not.toContain("employeeMessage")
     for (const catalog of catalogs) {
       expect(catalog).toContain('name="status_today_queued"')
       expect(catalog).toContain('name="status_request_accepted"')

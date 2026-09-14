@@ -48,6 +48,7 @@ type MobileAttendanceManifest = {
   status: "NOT_CONFIGURED" | "ACTIVE" | "INVALID"
   enforcementVersion: 1 | null
   configVersion: string | null
+  locationRequiredActions: WorkforceAttendanceAction[]
   qrRequiredActions: WorkforceAttendanceAction[]
   deviceTrustRequiredActions: WorkforceAttendanceAction[]
   biometricRequiredActions: WorkforceAttendanceAction[]
@@ -62,6 +63,7 @@ function unconfiguredAttendanceManifest(input: {
     status: "NOT_CONFIGURED",
     enforcementVersion: null,
     configVersion: null,
+    locationRequiredActions: [],
     qrRequiredActions: [],
     deviceTrustRequiredActions: [],
     biometricRequiredActions: [],
@@ -122,6 +124,7 @@ async function mobileAttendanceManifest(input: {
       status: "ACTIVE",
       enforcementVersion: attendance.enforcementVersion,
       configVersion,
+      locationRequiredActions: attendance.locationRequiredActions,
       qrRequiredActions: attendance.qrRequiredActions,
       deviceTrustRequiredActions: attendance.deviceTrustRequiredActions,
       biometricRequiredActions: attendance.biometricRequiredActions,

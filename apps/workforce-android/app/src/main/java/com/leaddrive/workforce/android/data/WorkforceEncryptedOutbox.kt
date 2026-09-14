@@ -8,6 +8,7 @@ import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
 import androidx.room.Insert
+import androidx.room.migration.Migration
 import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
@@ -21,6 +22,7 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import androidx.sqlite.db.SupportSQLiteDatabase
 import java.io.IOException
 import java.security.KeyStore
 import java.time.Instant
@@ -29,6 +31,7 @@ import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
+import kotlin.random.Random
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -48,14 +51,17 @@ class WorkforceEncryptedOutbox(context: Context) {
         applicationContext,
         WorkforceOutboxDatabase::class.java,
         DATABASE_NAME,
-    ).build()
+    ).addMigrations(WORKFORCE_OUTBOX_MIGRATION_1_2).build()
     private val cipher = WorkforceOutboxCipher()
 
     suspend fun enqueue(session: WorkforceStoredSession, operation: WorkforceSyncOperation) = withContext(Dispatchers.IO) {
         require(!operation.hasEphemeralProof) { "Ephemeral attendance proof cannot enter the durable outbox." }
         ACCOUNT_BOUNDARY_MUTEX.withLock {
+            check(WORKFORCE_ACCOUNT_SCOPE.matches(session.accountScope)) {
+                "Workforce session is missing its local account boundary. Sign in again."
+            }
             val now = System.currentTimeMillis()
-            val plaintext = operation.toEncryptedPayload(session.organizationSlug)
+            val plaintext = operation.toEncryptedPayload(session)
             val encrypted = cipher.encrypt(
                 operationId = operation.operationId,
                 domain = operation.domain,
@@ -64,6 +70,7 @@ class WorkforceEncryptedOutbox(context: Context) {
             database.operations().insertIgnore(
                 WorkforceOutboxEntity(
                     operationId = operation.operationId,
+                    accountScope = session.accountScope,
                     domain = operation.domain.name,
                     createdAtEpochMs = now,
                     expiresAtEpochMs = operation.queuedAt.toEpochMillisOr(now) + OFFLINE_HORIZON_MS,
@@ -85,6 +92,7 @@ class WorkforceEncryptedOutbox(context: Context) {
      */
     suspend fun clearForAccountBoundary() = withContext(Dispatchers.IO) {
         ACCOUNT_BOUNDARY_MUTEX.withLock {
+            WorkforceOutboxScheduler.cancel(applicationContext)
             cipher.deleteKey()
             database.operations().deleteAll()
         }
@@ -96,10 +104,13 @@ class WorkforceEncryptedOutbox(context: Context) {
      * bounded operation retry count; a supported app resume schedules the
      * same durable rows for normal oldest-first drain.
      */
-    suspend fun deferForMandatoryUpdate() = withContext(Dispatchers.IO) {
-        database.operations().deferPendingForMandatoryUpdate(
-            nextAttemptAtEpochMs = System.currentTimeMillis() + UPDATE_RECHECK_DELAY_MS,
-        )
+    suspend fun deferForMandatoryUpdate(session: WorkforceStoredSession) = withContext(Dispatchers.IO) {
+        ACCOUNT_BOUNDARY_MUTEX.withLock {
+            database.operations().deferPendingForMandatoryUpdate(
+                accountScope = session.accountScope,
+                nextAttemptAtEpochMs = System.currentTimeMillis() + UPDATE_RECHECK_DELAY_MS,
+            )
+        }
     }
 
     /** Called after a supported bootstrap, including an in-place app update. */
@@ -109,14 +120,14 @@ class WorkforceEncryptedOutbox(context: Context) {
 
     /** Metadata-only recovery view. It never decrypts or exposes an employee
      * reason, QR token, location, device proof, tenant slug or operation ID. */
-    suspend fun recoveryItems(): List<WorkforceOutboxRecoveryItem> = withContext(Dispatchers.IO) {
+    suspend fun recoveryItems(session: WorkforceStoredSession): List<WorkforceOutboxRecoveryItem> = withContext(Dispatchers.IO) {
         ACCOUNT_BOUNDARY_MUTEX.withLock {
-            database.operations().recoveryRows().map {
+            database.operations().recoveryRows(session.accountScope).map {
                 WorkforceOutboxRecoveryItem(
-                    domain = WorkforceOutboxDomain.fromStored(it.domain)?.displayName ?: "Workforce action",
-                    state = WorkforceOutboxState.fromStored(it.state)?.displayName ?: "Needs review",
+                    domain = WorkforceOutboxDomain.fromStored(it.domain),
+                    state = WorkforceOutboxState.fromStored(it.state),
                     createdAtEpochMs = it.createdAtEpochMs,
-                    recoveryMessage = recoveryMessage(it.state, it.detailCode),
+                    recoveryHint = recoveryHint(it.state, it.detailCode),
                 )
             }
         }
@@ -126,17 +137,23 @@ class WorkforceEncryptedOutbox(context: Context) {
         session: WorkforceStoredSession,
         deviceId: String,
         api: WorkforceApiClient,
+        isSessionCurrent: () -> Boolean,
     ): WorkforceOutboxDrainResult = withContext(Dispatchers.IO) {
         ACCOUNT_BOUNDARY_MUTEX.withLock {
+            if (!isSessionCurrent()) return@withLock WorkforceOutboxDrainResult(retryNeeded = false)
+            // Version-1 rows carry no account scope. Delete only those opaque
+            // legacy rows; another signed-in account's rows remain fenced.
+            database.operations().deleteLegacyUnscopedRows()
             var retryNeeded = false
             val now = System.currentTimeMillis()
-            for (domainValue in database.operations().pendingDomains()) {
+            for (domainValue in database.operations().pendingDomains(session.accountScope)) {
                 val domain = WorkforceOutboxDomain.fromStored(domainValue) ?: continue
                 // Read the absolute oldest pending item, even while its retry
                 // delay is active. Filtering by due time in SQL would let a
                 // later action overtake that head-of-line operation.
                 while (true) {
-                    val row = database.operations().oldestPending(domain.name) ?: break
+                    if (!isSessionCurrent()) return@withLock WorkforceOutboxDrainResult(retryNeeded = false)
+                    val row = database.operations().oldestPending(session.accountScope, domain.name) ?: break
                     if (row.nextAttemptAtEpochMs > now) {
                         retryNeeded = true
                         break
@@ -167,13 +184,18 @@ class WorkforceEncryptedOutbox(context: Context) {
                         )
                         continue
                     }
-                    if (stored.organizationSlug != session.organizationSlug.trim().lowercase()) {
+                    if (
+                        row.accountScope != session.accountScope
+                        || stored.organizationSlug != session.organizationSlug.trim().lowercase()
+                        || stored.accountScope != session.accountScope
+                    ) {
                         // This should only be reachable after unexpected local state
                         // damage; never replay a former tenant's operation.
                         database.operations().delete(row.operationId)
                         continue
                     }
                     try {
+                        if (!isSessionCurrent()) return@withLock WorkforceOutboxDrainResult(retryNeeded = false)
                         api.submitOperation(session, deviceId, stored.operation)
                         database.operations().delete(row.operationId)
                     } catch (error: WorkforceActionConflictException) {
@@ -232,26 +254,38 @@ class WorkforceEncryptedOutbox(context: Context) {
                     }
                 }
             }
+            // WorkManager can wake before a database-selected jitter window.
+            // Keep returning retry while a recoverable head remains so that an
+            // early wake cannot strand it until an unrelated app action.
+            if (database.operations().nextPendingAttemptAtEpochMs(session.accountScope) != null) {
+                retryNeeded = true
+            }
             WorkforceOutboxDrainResult(retryNeeded)
         }
     }
 
     private fun retryAt(attempt: Int, now: Long): Long {
-        val delay = (INITIAL_RETRY_MS * (1L shl (attempt - 1).coerceAtMost(8))).coerceAtMost(MAX_RETRY_MS)
-        return now + delay
+        val cappedDelay = (INITIAL_RETRY_MS * (1L shl (attempt - 1).coerceAtMost(8))).coerceAtMost(MAX_RETRY_MS)
+        // Equal jitter spreads a synchronized reconnect without allowing a
+        // zero-delay retry. The durable next-at value remains the authority;
+        // WorkManager's own backoff is an additional, not competing, guard.
+        val jitteredDelay = Random.Default.nextLong(cappedDelay / 2, cappedDelay + 1)
+        return now + jitteredDelay
     }
 
-    private fun recoveryMessage(state: String, code: String?): String = when (state) {
+    private fun recoveryHint(state: String, code: String?): WorkforceOutboxRecoveryHint = when (state) {
         WorkforceOutboxState.QUEUED.name, WorkforceOutboxState.RETRY.name ->
-            "Pending acknowledgement. Do not create another action; refresh server state first."
+            WorkforceOutboxRecoveryHint.PENDING_ACKNOWLEDGEMENT
         WorkforceOutboxState.CONFLICT.name ->
-            "Server state changed. Refresh before taking another action."
+            WorkforceOutboxRecoveryHint.CONFLICT_REFRESH
         WorkforceOutboxState.EXPIRED.name ->
-            "The seven-day offline limit passed. Request a correction instead of retrying."
+            WorkforceOutboxRecoveryHint.OFFLINE_LIMIT_EXPIRED
         else -> when (code) {
-            "WORKFORCE_MOBILE_UPDATE_REQUIRED" -> "Install the approved Workforce update before this protected pending action can be sent. Do not uninstall or recreate it."
-            "OUTBOX_DECRYPTION_FAILED" -> "This protected local item cannot be recovered. Refresh server state and request correction if needed."
-            else -> "This action needs review. Do not rescan QR or repeat device proof until server state is refreshed."
+            "WORKFORCE_MOBILE_UPDATE_REQUIRED" -> WorkforceOutboxRecoveryHint.UPDATE_REQUIRED
+            "OUTBOX_DECRYPTION_FAILED" -> WorkforceOutboxRecoveryHint.LOCAL_ITEM_UNRECOVERABLE
+            "MTM_MOBILE_SYNC_OPERATION_INVALID",
+            "MTM_MOBILE_SYNC_OPERATION_TOO_LARGE" -> WorkforceOutboxRecoveryHint.QUARANTINED_OPERATION
+            else -> WorkforceOutboxRecoveryHint.REVIEW_REQUIRED
         }
     }
 
@@ -269,11 +303,22 @@ class WorkforceEncryptedOutbox(context: Context) {
 data class WorkforceOutboxDrainResult(val retryNeeded: Boolean)
 
 data class WorkforceOutboxRecoveryItem(
-    val domain: String,
-    val state: String,
+    val domain: WorkforceOutboxDomain?,
+    val state: WorkforceOutboxState?,
     val createdAtEpochMs: Long,
-    val recoveryMessage: String,
+    val recoveryHint: WorkforceOutboxRecoveryHint,
 )
+
+/** Non-sensitive local recovery categories. Employee language belongs to UI resources. */
+enum class WorkforceOutboxRecoveryHint {
+    PENDING_ACKNOWLEDGEMENT,
+    CONFLICT_REFRESH,
+    OFFLINE_LIMIT_EXPIRED,
+    UPDATE_REQUIRED,
+    LOCAL_ITEM_UNRECOVERABLE,
+    QUARANTINED_OPERATION,
+    REVIEW_REQUIRED,
+}
 
 enum class WorkforceOutboxDomain {
     WORKDAY,
@@ -283,10 +328,6 @@ enum class WorkforceOutboxDomain {
         fun fromStored(value: String): WorkforceOutboxDomain? = entries.firstOrNull { it.name == value }
     }
 
-    val displayName: String get() = when (this) {
-        WORKDAY -> "Work Time"
-        HRM_REQUEST -> "Request"
-    }
 }
 
 enum class WorkforceOutboxState {
@@ -300,17 +341,13 @@ enum class WorkforceOutboxState {
         fun fromStored(value: String): WorkforceOutboxState? = entries.firstOrNull { it.name == value }
     }
 
-    val displayName: String get() = when (this) {
-        QUEUED, RETRY -> "Pending"
-        CONFLICT -> "Conflict"
-        EXPIRED -> "Expired"
-        REQUIRES_REVIEW -> "Needs review"
-    }
 }
 
 @Entity(tableName = "workforce_outbox_operations")
 data class WorkforceOutboxEntity(
     @PrimaryKey val operationId: String,
+    /** Opaque random account fence; it carries no tenant or employee value. */
+    val accountScope: String,
     val domain: String,
     val createdAtEpochMs: Long,
     val expiresAtEpochMs: Long,
@@ -327,20 +364,24 @@ interface WorkforceOutboxDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertIgnore(entity: WorkforceOutboxEntity): Long
 
-    @Query("SELECT DISTINCT domain FROM workforce_outbox_operations WHERE state IN ('QUEUED', 'RETRY') ORDER BY domain ASC")
-    suspend fun pendingDomains(): List<String>
+    @Query("SELECT DISTINCT domain FROM workforce_outbox_operations WHERE accountScope = :accountScope AND state IN ('QUEUED', 'RETRY') ORDER BY domain ASC")
+    suspend fun pendingDomains(accountScope: String): List<String>
 
-    @Query("SELECT domain, state, createdAtEpochMs, detailCode FROM workforce_outbox_operations ORDER BY createdAtEpochMs DESC LIMIT 100")
-    suspend fun recoveryRows(): List<WorkforceOutboxRecoveryRow>
+    @Query("SELECT domain, state, createdAtEpochMs, detailCode FROM workforce_outbox_operations WHERE accountScope = :accountScope ORDER BY createdAtEpochMs DESC LIMIT 100")
+    suspend fun recoveryRows(accountScope: String): List<WorkforceOutboxRecoveryRow>
 
-    @Query("SELECT * FROM workforce_outbox_operations WHERE domain = :domain AND state IN ('QUEUED', 'RETRY') ORDER BY createdAtEpochMs ASC LIMIT 1")
-    suspend fun oldestPending(domain: String): WorkforceOutboxEntity?
+    @Query("SELECT * FROM workforce_outbox_operations WHERE accountScope = :accountScope AND domain = :domain AND state IN ('QUEUED', 'RETRY') ORDER BY createdAtEpochMs ASC LIMIT 1")
+    suspend fun oldestPending(accountScope: String, domain: String): WorkforceOutboxEntity?
+
+    /** Metadata-only earliest retry deadline; it never reads ciphertext. */
+    @Query("SELECT MIN(nextAttemptAtEpochMs) FROM workforce_outbox_operations WHERE accountScope = :accountScope AND state IN ('QUEUED', 'RETRY')")
+    suspend fun nextPendingAttemptAtEpochMs(accountScope: String): Long?
 
     @Query("UPDATE workforce_outbox_operations SET attemptCount = :attemptCount, nextAttemptAtEpochMs = :nextAttemptAtEpochMs, state = 'RETRY', detailCode = :detailCode WHERE operationId = :operationId")
     suspend fun retry(operationId: String, attemptCount: Int, nextAttemptAtEpochMs: Long, detailCode: String)
 
-    @Query("UPDATE workforce_outbox_operations SET nextAttemptAtEpochMs = :nextAttemptAtEpochMs, state = 'RETRY', detailCode = 'WORKFORCE_MOBILE_UPDATE_REQUIRED' WHERE state IN ('QUEUED', 'RETRY')")
-    suspend fun deferPendingForMandatoryUpdate(nextAttemptAtEpochMs: Long)
+    @Query("UPDATE workforce_outbox_operations SET nextAttemptAtEpochMs = :nextAttemptAtEpochMs, state = 'RETRY', detailCode = 'WORKFORCE_MOBILE_UPDATE_REQUIRED' WHERE accountScope = :accountScope AND state IN ('QUEUED', 'RETRY')")
+    suspend fun deferPendingForMandatoryUpdate(accountScope: String, nextAttemptAtEpochMs: Long)
 
     @Query("UPDATE workforce_outbox_operations SET state = :state, detailCode = :detailCode WHERE operationId = :operationId")
     suspend fun markTerminal(operationId: String, state: String, detailCode: String)
@@ -350,6 +391,9 @@ interface WorkforceOutboxDao {
 
     @Query("DELETE FROM workforce_outbox_operations")
     suspend fun deleteAll()
+
+    @Query("DELETE FROM workforce_outbox_operations WHERE accountScope = ''")
+    suspend fun deleteLegacyUnscopedRows()
 }
 
 data class WorkforceOutboxRecoveryRow(
@@ -359,9 +403,18 @@ data class WorkforceOutboxRecoveryRow(
     val detailCode: String?,
 )
 
-@Database(entities = [WorkforceOutboxEntity::class], version = 1, exportSchema = true)
+@Database(entities = [WorkforceOutboxEntity::class], version = 2, exportSchema = true)
 abstract class WorkforceOutboxDatabase : RoomDatabase() {
     abstract fun operations(): WorkforceOutboxDao
+}
+
+private val WORKFORCE_OUTBOX_MIGRATION_1_2 = object : Migration(1, 2) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        // Existing encrypted rows have no account scope. They remain opaque
+        // until the next authenticated drain deletes them rather than ever
+        // replaying them under a newly introduced account boundary.
+        database.execSQL("ALTER TABLE workforce_outbox_operations ADD COLUMN accountScope TEXT NOT NULL DEFAULT ''")
+    }
 }
 
 private data class WorkforceEncryptedBlob(
@@ -438,6 +491,10 @@ private object WorkforceOutboxScheduler {
             .build()
         WorkManager.getInstance(context).enqueueUniqueWork(UNIQUE_WORK_NAME, ExistingWorkPolicy.KEEP, request)
     }
+
+    fun cancel(context: Context) {
+        WorkManager.getInstance(context).cancelUniqueWork(UNIQUE_WORK_NAME)
+    }
 }
 
 class WorkforceOutboxDrainWorker(
@@ -460,13 +517,15 @@ class WorkforceOutboxDrainWorker(
             return Result.retry()
         }
         if (bootstrap.release.mutationsBlocked) {
-            outbox.deferForMandatoryUpdate()
+            if (secureStore.readSession() != session) return Result.success()
+            outbox.deferForMandatoryUpdate(session)
             return Result.success()
         }
         val result = outbox.drain(
             session = session,
             deviceId = secureStore.installationId(),
             api = api,
+            isSessionCurrent = { secureStore.readSession() == session },
         )
         return if (result.retryNeeded) Result.retry() else Result.success()
     }

@@ -114,6 +114,8 @@ beforeEach(() => {
   vi.mocked(prisma.mtmSyncOperation.findFirst).mockResolvedValue(null)
   vi.mocked(prisma.mtmSyncOperation.create).mockResolvedValue({} as any)
   vi.mocked(prisma.mtmAgentWorkdayEvent.findFirst).mockResolvedValue(null)
+  vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue(null)
+  vi.mocked(prisma.mtmHrmRequest.updateMany).mockResolvedValue({ count: 1 } as never)
   vi.mocked(evaluateWorkforceMobileWriteAccess).mockResolvedValue({
     allowed: true,
     mode: "LEGACY_ALLOWED",
@@ -656,6 +658,36 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
     } finally {
       vi.unstubAllEnvs()
     }
+  })
+
+  it("isolates an unsupported Workforce schema with an additive upgrade response", async () => {
+    const response = await PushPOST(makePushReq({
+      operations: [{
+        operationId: "op-workday-unsupported-schema",
+        op: "create",
+        entity: "workdays",
+        data: {
+          action: "START",
+          id: "workday-unsupported-schema",
+          occurredAt: new Date().toISOString(),
+          schemaVersion: 5,
+        },
+        clientTimestamp: Date.now(),
+      }],
+    }))
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      results: [{
+        operationId: "op-workday-unsupported-schema",
+        status: "error",
+        serverData: {
+          code: "WORKFORCE_WORKDAY_SCHEMA_UNSUPPORTED",
+          schemaSupport: { min: 1, max: 4, action: "UPGRADE_CLIENT" },
+        },
+      }],
+    })
+    expect(prisma.mtmSyncOperation.create).not.toHaveBeenCalled()
   })
 
   it("isolates a disabled route-field operation without writing it", async () => {
@@ -1446,6 +1478,229 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
       }),
     }))
     expect(prisma.mtmVisit.create).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        action: "WORKFORCE_SELF_REQUEST_SUBMITTED",
+        entity: "hrm_request",
+        entityId: "hrm-hrm-only-1",
+        newData: {
+          type: "LEAVE",
+          startDate: "2026-07-20",
+          endDate: "2026-07-21",
+          correctionRequested: false,
+          exceptionCaseLinked: false,
+        },
+      }),
+    }))
+    expect(JSON.stringify(vi.mocked(prisma.mtmAuditLog.create).mock.calls)).not.toContain("Annual leave")
+  })
+
+  it("does not replay a mobile HR request when its client request id has different details", async () => {
+    vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue({
+      id: "hrm-existing-1",
+      clientRequestId: "hrm-client-0001",
+      type: "LEAVE",
+      status: "PENDING",
+      startDate: new Date("2026-07-20T00:00:00.000Z"),
+      endDate: new Date("2026-07-21T00:00:00.000Z"),
+      correctionWorkdayId: null,
+      requestedStartAt: null,
+      requestedEndAt: null,
+      reason: "Annual leave",
+      submittedAt: new Date("2026-07-14T05:00:00.000Z"),
+    } as never)
+
+    const response = await PushPOST(makePushReq({ operations: [{
+      operationId: "op-hrm-replayed-details",
+      op: "create",
+      entity: "hrmRequests",
+      data: {
+        id: "hrm-new-id-ignored",
+        clientRequestId: "hrm-client-0001",
+        type: "LEAVE",
+        startDate: "2026-07-20",
+        endDate: "2026-07-21",
+        reason: "Different leave details",
+        submittedAt: "2026-07-14T05:00:00.000Z",
+      },
+      clientTimestamp: Date.now(),
+    }] }))
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.results).toEqual([expect.objectContaining({
+      operationId: "op-hrm-replayed-details",
+      status: "conflict",
+      serverData: { code: "WORKFORCE_SELF_REQUEST_IDEMPOTENCY_MISMATCH" },
+    })])
+    expect(prisma.mtmHrmRequest.create).not.toHaveBeenCalled()
+    expect(prisma.mtmSyncOperation.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        operationId: "op-hrm-replayed-details",
+        status: "conflict",
+      }),
+    }))
+  })
+
+  it("links a mobile correction only to its exact own exception/workday pair", async () => {
+    vi.mocked(prisma.mtmHrmRequest.findFirst)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+    vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({ id: "workday-1" } as never)
+    vi.mocked(prisma.workforceExceptionCase.findFirst).mockResolvedValue({ id: "case-1" } as never)
+    vi.mocked(prisma.mtmHrmRequest.create).mockResolvedValue({
+      id: "correction-1",
+      clientRequestId: "correction-client-1",
+      type: "TIME_CORRECTION",
+      status: "PENDING",
+      startDate: new Date("2026-07-20T00:00:00.000Z"),
+      endDate: new Date("2026-07-20T00:00:00.000Z"),
+      correctionWorkdayId: "workday-1",
+      requestedStartAt: null,
+      requestedEndAt: new Date("2026-07-20T15:00:00.000Z"),
+      reason: "Forgot to finish shift",
+      submittedAt: new Date("2026-07-20T16:00:00.000Z"),
+    } as never)
+
+    const response = await PushPOST(makePushReq({ operations: [{
+      operationId: "op-own-exception-correction",
+      op: "create",
+      entity: "hrmRequests",
+      data: {
+        id: "correction-1",
+        clientRequestId: "correction-client-1",
+        type: "TIME_CORRECTION",
+        startDate: "2026-07-20",
+        endDate: "2026-07-20",
+        correctionWorkdayId: "workday-1",
+        exceptionCaseId: "case-1",
+        requestedEndAt: "2026-07-20T15:00:00.000Z",
+        reason: "Forgot to finish shift",
+        submittedAt: "2026-07-20T16:00:00.000Z",
+      },
+      clientTimestamp: Date.now(),
+    }] }))
+
+    expect(response.status).toBe(200)
+    expect(prisma.workforceExceptionCase.findFirst).toHaveBeenCalledWith({
+      where: { id: "case-1", organizationId: ORG, agentId: AGENT_ID, workdayId: "workday-1" },
+      select: { id: true },
+    })
+    expect(prisma.mtmHrmRequest.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ exceptionCaseId: "case-1" }),
+    }))
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        newData: expect.objectContaining({ exceptionCaseLinked: true }),
+      }),
+    }))
+  })
+
+  it("does not reveal or link an unavailable mobile exception source", async () => {
+    vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValueOnce(null)
+    vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({ id: "workday-1" } as never)
+    vi.mocked(prisma.workforceExceptionCase.findFirst).mockResolvedValue(null)
+
+    const response = await PushPOST(makePushReq({ operations: [{
+      operationId: "op-unavailable-exception-correction",
+      op: "create",
+      entity: "hrmRequests",
+      data: {
+        id: "correction-2",
+        clientRequestId: "correction-client-2",
+        type: "TIME_CORRECTION",
+        startDate: "2026-07-20",
+        endDate: "2026-07-20",
+        correctionWorkdayId: "workday-1",
+        exceptionCaseId: "case-not-owned",
+        requestedEndAt: "2026-07-20T15:00:00.000Z",
+        reason: "Forgot to finish shift",
+        submittedAt: "2026-07-20T16:00:00.000Z",
+      },
+      clientTimestamp: Date.now(),
+    }] }))
+    const body = await response.json()
+
+    expect(body.results).toEqual([expect.objectContaining({
+      status: "conflict",
+      serverData: { code: "WORKFORCE_SELF_EXCEPTION_UNAVAILABLE" },
+    })])
+    expect(prisma.mtmHrmRequest.create).not.toHaveBeenCalled()
+    expect(JSON.stringify(body)).not.toContain("case-not-owned")
+  })
+
+  it("cancels a mobile HR request conditionally and writes a metadata-only audit", async () => {
+    const cancelledAt = "2026-07-14T06:00:00.000Z"
+    vi.mocked(prisma.mtmHrmRequest.findFirst)
+      .mockResolvedValueOnce({ id: "hrm-cancel-1", status: "PENDING", cancelledAt: null } as never)
+      .mockResolvedValueOnce({
+        id: "hrm-cancel-1",
+        status: "CANCELLED",
+        cancelledAt: new Date(cancelledAt),
+        updatedAt: new Date(cancelledAt),
+      } as never)
+    vi.mocked(prisma.mtmHrmRequest.updateMany).mockResolvedValue({ count: 1 } as never)
+
+    const response = await PushPOST(makePushReq({ operations: [{
+      operationId: "op-hrm-cancel-conditional",
+      op: "update",
+      entity: "hrmRequests",
+      data: { id: "hrm-cancel-1", cancelledAt },
+      clientTimestamp: Date.now(),
+    }] }))
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.results).toEqual([expect.objectContaining({
+      operationId: "op-hrm-cancel-conditional",
+      status: "ok",
+      serverId: "hrm-cancel-1",
+    })])
+    expect(prisma.mtmHrmRequest.updateMany).toHaveBeenCalledWith({
+      where: { id: "hrm-cancel-1", organizationId: ORG, agentId: AGENT_ID, status: "PENDING" },
+      data: { status: "CANCELLED", cancelledAt: new Date(cancelledAt) },
+    })
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        action: "WORKFORCE_SELF_REQUEST_CANCELLED",
+        entity: "hrm_request",
+        entityId: "hrm-cancel-1",
+        oldData: { status: "PENDING" },
+        newData: { status: "CANCELLED" },
+      }),
+    }))
+  })
+
+  it("does not acknowledge or audit a mobile cancellation that loses the pending-row race", async () => {
+    vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue({
+      id: "hrm-cancel-race-1",
+      status: "PENDING",
+      cancelledAt: null,
+    } as never)
+    vi.mocked(prisma.mtmHrmRequest.updateMany).mockResolvedValue({ count: 0 } as never)
+
+    const response = await PushPOST(makePushReq({ operations: [{
+      operationId: "op-hrm-cancel-race",
+      op: "update",
+      entity: "hrmRequests",
+      data: { id: "hrm-cancel-race-1", cancelledAt: "2026-07-14T06:00:00.000Z" },
+      clientTimestamp: Date.now(),
+    }] }))
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.results).toEqual([expect.objectContaining({
+      operationId: "op-hrm-cancel-race",
+      status: "conflict",
+      serverData: { code: "WORKFORCE_SELF_REQUEST_CONCURRENT_CHANGE" },
+    })])
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+    expect(prisma.mtmSyncOperation.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        operationId: "op-hrm-cancel-race",
+        status: "conflict",
+      }),
+    }))
   })
 
   it("fences only Workforce operations in a mixed legacy batch without pinning the denied write", async () => {

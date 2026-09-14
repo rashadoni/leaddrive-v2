@@ -1,6 +1,11 @@
 import { createHash } from "node:crypto"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import { isValidTimezone, localDateTimeToUnambiguousUtc } from "@/lib/timezone"
+import {
+  WorkforceSnapshottedCircleGeofenceSchema,
+  type WorkforceSnapshottedCircleGeofence,
+} from "@/lib/workforce/geofence-evaluation"
 import {
   WorkforcePolicyDefinitionError,
   canonicalWorkforcePolicyJson,
@@ -87,6 +92,141 @@ export function workforceScheduledSnapshotSegment(
     }
   }
   return null
+}
+
+type WorkforceSnapshottedSegmentAt = {
+  id: string
+  mode: string
+  siteId: string | null
+}
+
+/**
+ * Resolves the one immutable planned segment that contained an accepted event
+ * instant. It never trusts a client-provided segment id and never consults a
+ * live shift/site row, so a later transfer or schedule edit cannot reclassify
+ * action-time evidence. Ambiguous, malformed and out-of-segment history stays
+ * unclassified instead of being guessed.
+ */
+export function workforceSnapshottedSegmentAt(input: {
+  workDate: Date
+  timezone: string
+  segments: unknown
+  occurredAt: Date
+}): WorkforceSnapshottedSegmentAt | null {
+  if (
+    !(input.workDate instanceof Date)
+    || Number.isNaN(input.workDate.getTime())
+    || !(input.occurredAt instanceof Date)
+    || Number.isNaN(input.occurredAt.getTime())
+    || !isValidTimezone(input.timezone)
+    || !Array.isArray(input.segments)
+  ) return null
+
+  const workDate = input.workDate.toISOString().slice(0, 10)
+  for (const candidate of input.segments) {
+    if (candidate == null || typeof candidate !== "object") continue
+    const segment = candidate as {
+      id?: unknown
+      mode?: unknown
+      siteId?: unknown
+      startTime?: unknown
+      endTime?: unknown
+    }
+    if (
+      typeof segment.id !== "string"
+      || !segment.id.trim()
+      || typeof segment.mode !== "string"
+      || (typeof segment.siteId !== "string" && segment.siteId !== null)
+      || typeof segment.startTime !== "string"
+      || typeof segment.endTime !== "string"
+      || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(segment.startTime)
+      || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(segment.endTime)
+      || segment.endTime <= segment.startTime
+    ) continue
+    try {
+      const startAt = localDateTimeToUnambiguousUtc(`${workDate}T${segment.startTime}`, input.timezone)
+      const endAt = localDateTimeToUnambiguousUtc(`${workDate}T${segment.endTime}`, input.timezone)
+      if (startAt <= input.occurredAt && input.occurredAt < endAt) {
+        return { id: segment.id, mode: segment.mode, siteId: segment.siteId }
+      }
+    } catch {
+      // Historical snapshots with invalid local/DST coordinates must not be
+      // reinterpreted into a physical-presence assertion.
+    }
+  }
+  return null
+}
+
+/**
+ * Extracts the geofence stored beside one scheduled site from an immutable
+ * workday snapshot. The caller gets no live-site fallback: absent or invalid
+ * snapshot material is deliberately represented by `null` and evaluated as
+ * UNKNOWN by the evidence layer.
+ */
+export function workforceSnapshottedSiteGeofence(
+  sites: unknown,
+  siteId: string,
+): WorkforceSnapshottedCircleGeofence | null {
+  if (!Array.isArray(sites) || !siteId.trim()) return null
+  for (const candidate of sites) {
+    if (candidate == null || typeof candidate !== "object") continue
+    const site = candidate as { id?: unknown; geofenceRevision?: unknown }
+    if (site.id !== siteId || site.geofenceRevision == null || typeof site.geofenceRevision !== "object") continue
+    const revision = site.geofenceRevision as {
+      id?: unknown
+      kind?: unknown
+      centerLatitude?: unknown
+      centerLongitude?: unknown
+      radiusMeters?: unknown
+    }
+    const parsed = WorkforceSnapshottedCircleGeofenceSchema.safeParse({
+      revisionId: revision.id,
+      kind: revision.kind,
+      centerLatitude: revision.centerLatitude,
+      centerLongitude: revision.centerLongitude,
+      radiusMeters: revision.radiusMeters,
+    })
+    return parsed.success ? parsed.data : null
+  }
+  return null
+}
+
+/**
+ * Resolves the expected predecessor for a SITE arrival from the immutable
+ * schedule order. The schedule writer stores segments in sequence order; the
+ * fallback to array order keeps old, already-pinned v2 JSON readable without
+ * reconstructing it from mutable shift configuration.
+ */
+export function workforceScheduledSnapshotSiteTransitionContext(
+  value: unknown,
+  segmentId: string,
+): { id: string; mode: string; siteId: string; previousSiteSegmentId: string | null } | null {
+  if (!Array.isArray(value)) return null
+  const segments = value.map((candidate) => {
+    if (candidate == null || typeof candidate !== "object") return null
+    const segment = candidate as { id?: unknown; mode?: unknown; siteId?: unknown }
+    if (
+      typeof segment.id !== "string"
+      || typeof segment.mode !== "string"
+      || (typeof segment.siteId !== "string" && segment.siteId !== null)
+    ) return null
+    return { id: segment.id, mode: segment.mode, siteId: segment.siteId }
+  })
+  const currentIndex = segments.findIndex((segment) => segment?.id === segmentId)
+  const current = currentIndex < 0 ? null : segments[currentIndex]
+  if (current == null || current.mode !== "SITE" || current.siteId == null) return null
+  for (let index = currentIndex - 1; index >= 0; index -= 1) {
+    const previous = segments[index]
+    if (previous?.mode === "SITE" && previous.siteId != null) {
+      return {
+        id: current.id,
+        mode: current.mode,
+        siteId: current.siteId,
+        previousSiteSegmentId: previous.id,
+      }
+    }
+  }
+  return { id: current.id, mode: current.mode, siteId: current.siteId, previousSiteSegmentId: null }
 }
 
 /** Rejects a v3 claimed segment unless this employee workday already pinned it. */

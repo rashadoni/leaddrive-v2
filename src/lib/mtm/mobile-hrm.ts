@@ -11,6 +11,7 @@ export type MobileHrmRequestCreateInput = {
   startDateKey: string
   endDateKey: string
   correctionWorkdayId: string | null
+  exceptionCaseId: string | null
   requestedStartAt: Date | null
   requestedEndAt: Date | null
   reason: string
@@ -24,6 +25,7 @@ export type MobileHrmRequestCancelInput = {
 
 const HRM_TYPES = new Set<MobileHrmRequestType>(["LEAVE", "ABSENCE", "TIME_CORRECTION"])
 const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000
+const OPAQUE_IDENTIFIER = /^[A-Za-z0-9_-]{1,128}$/
 
 function validId(value: unknown, minimum = 1): value is string {
   return typeof value === "string" && value.trim().length >= minimum && value.length <= 128
@@ -70,13 +72,23 @@ export function parseMobileHrmRequestCreate(
 
   const type = value.type as MobileHrmRequestType
   let correctionWorkdayId: string | null = null
+  let exceptionCaseId: string | null = null
   let requestedStartAt: Date | null = null
   let requestedEndAt: Date | null = null
+  if (type !== "TIME_CORRECTION" && value.exceptionCaseId != null) {
+    return { input: null, error: "exceptionCaseId is valid only for time correction" }
+  }
   if (type === "TIME_CORRECTION") {
     if (!validId(value.correctionWorkdayId)) {
       return { input: null, error: "correctionWorkdayId is required for time correction" }
     }
     correctionWorkdayId = value.correctionWorkdayId.trim()
+    if (value.exceptionCaseId != null && (typeof value.exceptionCaseId !== "string" || !OPAQUE_IDENTIFIER.test(value.exceptionCaseId))) {
+      return { input: null, error: "exceptionCaseId is invalid" }
+    }
+    exceptionCaseId = typeof value.exceptionCaseId === "string"
+      ? value.exceptionCaseId.trim()
+      : null
     requestedStartAt = value.requestedStartAt == null
       ? null
       : parseTimestamp(value.requestedStartAt, now, true)
@@ -107,6 +119,7 @@ export function parseMobileHrmRequestCreate(
       startDateKey: value.startDate,
       endDateKey: value.endDate,
       correctionWorkdayId,
+      exceptionCaseId,
       requestedStartAt,
       requestedEndAt,
       reason,

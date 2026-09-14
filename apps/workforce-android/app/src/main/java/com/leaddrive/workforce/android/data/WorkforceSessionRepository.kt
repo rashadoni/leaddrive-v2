@@ -24,8 +24,13 @@ class WorkforceSessionRepository(
     private val sessionMutex = Mutex()
 
     suspend fun signIn(input: WorkforceLoginInput): WorkforceBootstrap = sessionMutex.withLock {
-        clearAccountBoundary()
         val login = api.login(input)
+        // Do not destroy a recoverable current session, its local key or its
+        // encrypted queue for a rejected/cancelled new sign-in. Once the
+        // server has authenticated the new account, clear that old boundary
+        // before writing any new token so no pending data or device selector
+        // can cross into the newly authenticated account.
+        clearAccountBoundary()
         val session = WorkforceStoredSession(login.token, login.organizationSlug)
         secureStore.writeSession(session)
         api.bootstrap(session, secureStore.installationId()).also { bootstrap ->
@@ -51,18 +56,22 @@ class WorkforceSessionRepository(
         snapshot: WorkforceTodaySnapshot,
         action: WorkforceWorkdayAction,
         attendanceQrToken: String? = null,
+        attendanceLocationProof: WorkforceLocationProof? = null,
     ): WorkforceTodaySubmission = sessionMutex.withLock {
         bootstrap.requireMutableRelease()
         val session = secureStore.readSession()
             ?: throw WorkforceApiException("Your Workforce session has ended. Sign in again.", recoverable = false)
-        val operation = api.newTodayOperation(snapshot, action, attendanceQrToken)
+        val operation = api.newTodayOperation(snapshot, action, attendanceQrToken, attendanceLocationProof)
         try {
             val accepted = api.submitTodayOperation(session, secureStore.installationId(), operation)
             WorkforceTodaySubmission.Accepted(accepted, reminderSettings(accepted))
         } catch (error: Throwable) {
             if (error is kotlinx.coroutines.CancellationException) throw error
             if (operation.hasEphemeralProof && error.isEligibleForOfflineOutbox()) {
-                throw WorkforceApiException("The fresh QR proof was not accepted. Scan a new code and try again.", recoverable = false)
+                // QR, device signatures and action-time location must never
+                // enter the durable retry path: a later replay could reuse
+                // expired proof or place raw coordinates in the outbox.
+                throw WorkforceApiException("The fresh attendance proof was not accepted. Refresh and try again.", recoverable = false)
             }
             if (!error.isEligibleForOfflineOutbox()) throw error
             outbox.enqueue(session, operation)
@@ -74,6 +83,13 @@ class WorkforceSessionRepository(
         val session = secureStore.readSession()
             ?: throw WorkforceApiException("Your Workforce session has ended. Sign in again.", recoverable = false)
         api.loadHistory(session, secureStore.installationId(), anchorDate)
+    }
+
+    /** Read-only self-service discovery; it is never queued or made into a fact. */
+    suspend fun loadOwnExceptions(): List<WorkforceSelfException> {
+        val session = secureStore.readSession()
+            ?: throw WorkforceApiException("Your Workforce session has ended. Sign in again.", recoverable = false)
+        return api.loadOwnExceptions(session, secureStore.installationId())
     }
 
     /**
@@ -134,7 +150,8 @@ class WorkforceSessionRepository(
     }
 
     suspend fun loadRecoveryItems(): List<WorkforceOutboxRecoveryItem> = sessionMutex.withLock {
-        if (secureStore.readSession() == null) emptyList() else outbox.recoveryItems()
+        val session = secureStore.readSession() ?: return@withLock emptyList()
+        outbox.recoveryItems(session)
     }
 
     /**
@@ -165,7 +182,7 @@ class WorkforceSessionRepository(
             }
             existing != null && existing.matches(bootstrap) ->
                 throw WorkforceApiException(
-                    "This device enrollment is ${existing.lifecycle.employeeLabel}. Refresh its status or ask an administrator for the replacement path.",
+                    "Device enrollment requires a status refresh before another enrollment can start.",
                     recoverable = false,
                 )
             else -> reusableOrNewDeviceKeyAlias(bootstrap)
@@ -223,7 +240,6 @@ class WorkforceSessionRepository(
         WorkforceDeviceTrustState(
             lifecycle = verified.lifecycle,
             enrollmentId = verified.enrollmentId,
-            message = "Device proof received. An administrator must approve this device before it can confirm work-time actions.",
         )
     }
 
@@ -243,7 +259,6 @@ class WorkforceSessionRepository(
                 WorkforceDeviceTrustState(
                     lifecycle = WorkforceDeviceBindingLifecycle.PROVISIONING,
                     enrollmentId = null,
-                    message = "A device key is waiting for a safe enrollment retry. Refresh or enroll again on this device.",
                     enrollments = enrollments,
                 )
             } else {
@@ -254,7 +269,6 @@ class WorkforceSessionRepository(
             return WorkforceDeviceTrustState(
                 lifecycle = null,
                 enrollmentId = null,
-                message = "This device binding belongs to another Workforce account and cannot be used here. Sign out to clear it safely.",
                 enrollments = enrollments,
             )
         }
@@ -262,7 +276,6 @@ class WorkforceSessionRepository(
             return WorkforceDeviceTrustState(
                 lifecycle = binding.lifecycle,
                 enrollmentId = binding.enrollmentId,
-                message = "Device enrollment is awaiting its local confirmation. Restart enrollment to request a fresh challenge.",
                 enrollments = enrollments,
             )
         }
@@ -271,7 +284,6 @@ class WorkforceSessionRepository(
             return WorkforceDeviceTrustState(
                 lifecycle = null,
                 enrollmentId = binding.enrollmentId,
-                message = "The server no longer recognizes this device enrollment. Ask an administrator for the replacement path.",
                 enrollments = enrollments,
             )
         }
@@ -290,7 +302,6 @@ class WorkforceSessionRepository(
             return WorkforceDeviceTrustState(
                 lifecycle = null,
                 enrollmentId = binding.enrollmentId,
-                message = "The server returned an unknown device status. Do not use it for attendance; ask an administrator for review.",
                 enrollments = enrollments,
             )
         }
@@ -298,7 +309,6 @@ class WorkforceSessionRepository(
         return WorkforceDeviceTrustState(
             lifecycle = lifecycle,
             enrollmentId = binding.enrollmentId,
-            message = lifecycle.employeeMessage,
             enrollments = enrollments,
         )
     }
@@ -332,6 +342,7 @@ class WorkforceSessionRepository(
         snapshot: WorkforceTodaySnapshot,
         action: WorkforceWorkdayAction,
         attendanceQrToken: String? = null,
+        attendanceLocationProof: WorkforceLocationProof? = null,
     ): WorkforcePreparedDeviceTodayAction = sessionMutex.withLock {
         bootstrap.requireMutableRelease()
         val binding = secureStore.readDeviceBinding()
@@ -339,7 +350,7 @@ class WorkforceSessionRepository(
         if (!binding.matches(bootstrap) || binding.lifecycle != WorkforceDeviceBindingLifecycle.ACTIVE) {
             throw WorkforceApiException("This device is not approved for Workforce attendance. Refresh its status or ask an administrator.", recoverable = false)
         }
-        val operation = api.newTodayOperation(snapshot, action, attendanceQrToken)
+        val operation = api.newTodayOperation(snapshot, action, attendanceQrToken, attendanceLocationProof)
         val canonical = workforceDeviceAttendanceChallenge(bootstrap, binding, operation)
         WorkforcePreparedDeviceTodayAction(
             operation = operation,
@@ -463,7 +474,6 @@ data class WorkforcePreparedDeviceTodayAction(
 data class WorkforceDeviceTrustState(
     val lifecycle: WorkforceDeviceBindingLifecycle?,
     val enrollmentId: String?,
-    val message: String,
     /** Metadata-only self-service containment list; it never contains keys or proofs. */
     val enrollments: List<WorkforceDeviceEnrollment> = emptyList(),
 ) {
@@ -471,7 +481,6 @@ data class WorkforceDeviceTrustState(
         fun unenrolled(enrollments: List<WorkforceDeviceEnrollment> = emptyList()) = WorkforceDeviceTrustState(
             lifecycle = null,
             enrollmentId = null,
-            message = "No trusted device is enrolled on this phone.",
             enrollments = enrollments,
         )
     }
@@ -482,26 +491,6 @@ private fun WorkforceDeviceBinding.matches(bootstrap: WorkforceBootstrap): Boole
 
 private fun WorkforceDeviceProvisioning.matches(bootstrap: WorkforceBootstrap): Boolean =
     organizationId == bootstrap.organizationId && agentId == bootstrap.agentId
-
-private val WorkforceDeviceBindingLifecycle.employeeLabel: String
-    get() = when (this) {
-        WorkforceDeviceBindingLifecycle.PROVISIONING -> "being prepared"
-        WorkforceDeviceBindingLifecycle.PENDING_PROOF -> "waiting for local confirmation"
-        WorkforceDeviceBindingLifecycle.PENDING_MANAGER_APPROVAL -> "waiting for manager approval"
-        WorkforceDeviceBindingLifecycle.ACTIVE -> "already active"
-        WorkforceDeviceBindingLifecycle.REVOKED -> "revoked"
-        WorkforceDeviceBindingLifecycle.REPLACED -> "replaced"
-    }
-
-private val WorkforceDeviceBindingLifecycle.employeeMessage: String
-    get() = when (this) {
-        WorkforceDeviceBindingLifecycle.ACTIVE -> "This trusted device is approved for exact-action confirmation."
-        WorkforceDeviceBindingLifecycle.PENDING_MANAGER_APPROVAL -> "Device proof is complete and awaits manager approval."
-        WorkforceDeviceBindingLifecycle.PENDING_PROOF -> "Device enrollment awaits a fresh local confirmation."
-        WorkforceDeviceBindingLifecycle.PROVISIONING -> "Device enrollment is waiting for a safe retry."
-        WorkforceDeviceBindingLifecycle.REVOKED -> "This device was revoked and cannot confirm attendance."
-        WorkforceDeviceBindingLifecycle.REPLACED -> "This device was replaced and cannot confirm attendance."
-    }
 
 private fun workforceDeviceEnrollmentChallenge(binding: WorkforceDeviceBinding, challenge: String): String = listOf(
     "workforce-device-enrollment:v1",
@@ -515,16 +504,24 @@ private fun workforceDeviceAttendanceChallenge(
     bootstrap: WorkforceBootstrap,
     binding: WorkforceDeviceBinding,
     operation: WorkforceWorkdayOperation,
-): String = listOf(
-    "workforce-device-attendance:v1",
-    "organizationId=${bootstrap.organizationId}",
-    "agentId=${bootstrap.agentId}",
-    "enrollmentId=${binding.enrollmentId}",
-    "clientEventId=${operation.operationId}",
-    "action=${operation.action.wireValue}",
-    "workdayId=${operation.workdayId}",
-    "occurredAt=${Instant.ofEpochMilli(Instant.parse(operation.occurredAt).toEpochMilli())}",
-).joinToString("\n")
+): String = buildList {
+    add("workforce-device-attendance:v1")
+    add("organizationId=${bootstrap.organizationId}")
+    add("agentId=${bootstrap.agentId}")
+    add("enrollmentId=${binding.enrollmentId}")
+    add("clientEventId=${operation.operationId}")
+    add("action=${operation.action.wireValue}")
+    add("workdayId=${operation.workdayId}")
+    add("occurredAt=${Instant.ofEpochMilli(Instant.parse(operation.occurredAt).toEpochMilli())}")
+    operation.attendanceLocationProof?.let { location ->
+        add("locationCapturedAt=${Instant.ofEpochMilli(Instant.parse(location.capturedAt).toEpochMilli())}")
+        add("latitude=${location.latitude}")
+        add("longitude=${location.longitude}")
+        add("accuracy=${location.accuracyMeters}")
+        add("locationProvider=${location.provider}")
+        add("locationMock=${location.isMock}")
+    }
+}.joinToString("\n")
 
 private fun Throwable.isEligibleForOfflineOutbox(): Boolean = this is java.io.IOException
     || (this is WorkforceApiException && recoverable && recoveryCode == null)

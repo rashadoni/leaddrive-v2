@@ -306,11 +306,20 @@ export function workforceDeviceAttendanceChallenge(input: {
   action: WorkforceAttendanceAction
   workdayId: string
   occurredAt: Date
+  /** v4 only: bind a supplied action-time sample to the signature when present. */
+  location?: {
+    capturedAt: Date
+    latitude: number
+    longitude: number
+    accuracy: number
+    provider: "FUSED" | "GPS" | "NETWORK" | "PASSIVE" | "UNKNOWN"
+    isMock: boolean
+  }
 }): string {
   if (!WorkforceAttendanceActionSchema.safeParse(input.action).success) {
     throw new WorkforceAttendanceSecurityError("WORKFORCE_ATTENDANCE_DEVICE_KEY_INVALID", "action is invalid")
   }
-  return [
+  const base = [
     "workforce-device-attendance:v1",
     `organizationId=${requireDeviceIdentifier(input.organizationId, "organizationId")}`,
     `agentId=${requireDeviceIdentifier(input.agentId, "agentId")}`,
@@ -319,7 +328,26 @@ export function workforceDeviceAttendanceChallenge(input: {
     `action=${input.action}`,
     `workdayId=${requireDeviceIdentifier(input.workdayId, "workdayId")}`,
     `occurredAt=${requireDeviceTimestamp(input.occurredAt)}`,
-  ].join("\n")
+  ]
+  if (input.location) {
+    const { location } = input
+    if (
+      !Number.isFinite(location.latitude) || !Number.isFinite(location.longitude) || !Number.isFinite(location.accuracy)
+      || location.latitude < -90 || location.latitude > 90 || location.longitude < -180 || location.longitude > 180
+      || location.accuracy < 0
+    ) {
+      throw new WorkforceAttendanceSecurityError("WORKFORCE_ATTENDANCE_DEVICE_KEY_INVALID", "location is invalid")
+    }
+    base.push(
+      `locationCapturedAt=${requireDeviceTimestamp(location.capturedAt)}`,
+      `latitude=${location.latitude}`,
+      `longitude=${location.longitude}`,
+      `accuracy=${location.accuracy}`,
+      `locationProvider=${location.provider}`,
+      `locationMock=${location.isMock}`,
+    )
+  }
+  return base.join("\n")
 }
 
 function strictBase64(value: string): Buffer | null {

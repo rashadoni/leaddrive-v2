@@ -94,7 +94,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
           release: { platform: "ANDROID", status: "NOT_CONFIGURED", maySubmitNewWorkforceActions: true },
           wireSchemas: {
             bootstrapResponse: { current: 1, supported: [1] },
-            workdayRequest: { preferred: 3, supported: [1, 2, 3] },
+            workdayRequest: { preferred: 4, supported: [1, 2, 3, 4] },
             workdayResponse: { current: 1, supported: [1] },
             evidenceEnvelope: { preferred: 1, supported: [1] },
             siteTransitionRequest: { preferred: 1, supported: [1] },
@@ -446,6 +446,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
       definition: {
         attendance: {
           enforcementVersion: 1,
+          location: { requiredActions: ["START", "FINISH"] },
           qr: { requiredActions: ["START"] },
           deviceTrust: {
             requiredActions: ["START", "FINISH"],
@@ -463,6 +464,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
       status: "ACTIVE",
       enforcementVersion: 1,
       configVersion: `attendance-policy-1:4:${"a".repeat(64)}`,
+      locationRequiredActions: ["START", "FINISH"],
       qrRequiredActions: ["START"],
       deviceTrustRequiredActions: ["START", "FINISH"],
       biometricRequiredActions: [],
@@ -502,6 +504,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
       status: "INVALID",
       enforcementVersion: null,
       configVersion: `attendance-policy-invalid:1:${"b".repeat(64)}`,
+      locationRequiredActions: [],
       qrRequiredActions: [],
       deviceTrustRequiredActions: [],
       biometricRequiredActions: [],
@@ -542,6 +545,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
       status: "INVALID",
       enforcementVersion: null,
       configVersion: `attendance-policy-mismatch:2:${"c".repeat(64)}`,
+      locationRequiredActions: [],
       qrRequiredActions: [],
       deviceTrustRequiredActions: [],
       biometricRequiredActions: [],
@@ -582,6 +586,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
       status: "INVALID",
       enforcementVersion: null,
       configVersion: `attendance-policy-disabled:3:${"d".repeat(64)}`,
+      locationRequiredActions: [],
       qrRequiredActions: [],
       deviceTrustRequiredActions: [],
       biometricRequiredActions: [],

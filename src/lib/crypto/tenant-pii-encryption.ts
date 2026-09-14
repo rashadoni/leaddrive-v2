@@ -64,6 +64,13 @@ const KEK_HEX_BYTES = 64 // 32 bytes hex-encoded
  */
 const INFO_LABEL = "leaddrive-tenant-pii-v1"
 
+/**
+ * Distinct from both the per-tenant DEK and blind-index key. Workforce uses
+ * this only to make its encrypted evidence receipt tamper-evident without
+ * turning the encryption key itself into an HMAC key.
+ */
+const WORKFORCE_EVIDENCE_HMAC_INFO = "leaddrive-workforce-evidence-hmac-v1"
+
 const ENV_VAR = "TENANT_PII_MASTER_KEY"
 
 /* ─── Master KEK load (the slice-3 vault-swap choke point) ──────── */
@@ -128,6 +135,25 @@ function deriveTenantDek(orgId: string): Buffer {
   // string; output = 32-byte DEK.
   const dek = hkdfSync("sha256", kek, Buffer.from(orgId, "utf8"), INFO_LABEL, KEY_BYTES)
   return Buffer.from(dek)
+}
+
+/**
+ * Returns an ephemeral tenant-bound key for Workforce evidence hashes. The
+ * caller must use it immediately and must never persist, log or return it.
+ * It is intentionally uncached: process-level master-key reset/rotation must
+ * not leave a stale evidence-key cache behind.
+ */
+export function deriveTenantWorkforceEvidenceHmacKey(orgId: string): Buffer {
+  if (typeof orgId !== "string" || orgId.length === 0) {
+    throw new Error("deriveTenantWorkforceEvidenceHmacKey: orgId required")
+  }
+  return Buffer.from(hkdfSync(
+    "sha256",
+    loadMasterKek(),
+    Buffer.from(orgId, "utf8"),
+    WORKFORCE_EVIDENCE_HMAC_INFO,
+    KEY_BYTES,
+  ))
 }
 
 /* ─── Encrypt / decrypt API ──────────────────────────────────────── */

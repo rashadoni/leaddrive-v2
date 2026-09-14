@@ -22,26 +22,31 @@ describe("Workforce attendance security primitives", () => {
   it("requires an explicit, internally coherent attendance policy", () => {
     expect(workforceAttendancePolicyManifest({ expectedWorkSeconds: 28_800 })).toBeNull()
     const absent = workforceAttendanceRequirements({ expectedWorkSeconds: 28_800 })
+    expect(absent.locationRequiredActions.size).toBe(0)
     expect(absent.qrRequiredActions.size).toBe(0)
     expect(absent.deviceTrustRequiredActions.size).toBe(0)
 
     const configured = workforceAttendanceRequirements({
       attendance: {
         enforcementVersion: 1,
+        location: { requiredActions: ["START", "FINISH"] },
         qr: { requiredActions: ["START", "FINISH"] },
         deviceTrust: { requiredActions: ["START", "FINISH"] },
       },
     })
+    expect(configured.locationRequiredActions).toEqual(new Set(["START", "FINISH"]))
     expect(configured.qrRequiredActions).toEqual(new Set(["START", "FINISH"]))
     expect(configured.biometricRequiredActions).toEqual(new Set())
     expect(workforceAttendancePolicyManifest({
       attendance: {
         enforcementVersion: 1,
+        location: { requiredActions: ["START", "FINISH"] },
         qr: { requiredActions: ["START", "FINISH"] },
         deviceTrust: { requiredActions: ["START", "FINISH"] },
       },
     })).toEqual({
       enforcementVersion: 1,
+      locationRequiredActions: ["START", "FINISH"],
       qrRequiredActions: ["START", "FINISH"],
       deviceTrustRequiredActions: ["START", "FINISH"],
       biometricRequiredActions: [],
@@ -66,6 +71,13 @@ describe("Workforce attendance security primitives", () => {
         },
       },
     })).toThrow(/hardware attestation/)
+
+    expect(workforceAttendancePolicyManifest({
+      attendance: {
+        enforcementVersion: 1,
+        location: { requiredActions: ["START"] },
+      },
+    })).toMatchObject({ locationRequiredActions: ["START"] })
   })
 
   it("signs a short-lived tenant-bound QR and rejects tampering, expiry, and another tenant", () => {
@@ -125,6 +137,23 @@ describe("Workforce attendance security primitives", () => {
       challenge: `${challenge}\naction=FINISH`,
       signatureBase64,
     })).toBe(false)
+    expect(workforceDeviceAttendanceChallenge({
+      organizationId: "org_1",
+      agentId: "agent_1",
+      enrollmentId: "enrollment_1",
+      clientEventId: "operation_1",
+      action: "START",
+      workdayId: "workday_1",
+      occurredAt: NOW,
+      location: {
+        capturedAt: NOW,
+        latitude: 40.4093,
+        longitude: 49.8671,
+        accuracy: 12,
+        provider: "GPS",
+        isMock: false,
+      },
+    })).toContain("locationCapturedAt=2026-08-29T09:00:00.000Z")
     expect(workforceDeviceEnrollmentChallenge({
       organizationId: "org_1",
       agentId: "agent_1",

@@ -40,8 +40,29 @@ describe("mobile HRM request contract", () => {
     expect(parseMobileHrmRequestCreate({
       ...base,
       correctionWorkdayId: "workday-1",
+      exceptionCaseId: "case-1",
       requestedEndAt: "2026-07-15T15:00:00.000Z",
-    }, now).error).toBeNull()
+    }, now).input).toMatchObject({ exceptionCaseId: "case-1" })
+  })
+
+  it("rejects an exception link outside one exact time correction", () => {
+    const base = {
+      id: "request-1",
+      clientRequestId: "request-client-1",
+      type: "LEAVE",
+      startDate: "2026-07-20",
+      endDate: "2026-07-20",
+      reason: "Annual leave",
+      submittedAt: now.toISOString(),
+    }
+    expect(parseMobileHrmRequestCreate({ ...base, exceptionCaseId: "case-1" }, now).error).toMatch(/only for time correction/)
+    expect(parseMobileHrmRequestCreate({
+      ...base,
+      type: "TIME_CORRECTION",
+      correctionWorkdayId: "workday-1",
+      requestedEndAt: "2026-07-20T15:00:00.000Z",
+      exceptionCaseId: "*",
+    }, now).error).toMatch(/exceptionCaseId/)
   })
 
   it("rejects invalid ranges and accepts an offline cancellation", () => {

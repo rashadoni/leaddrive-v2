@@ -6,7 +6,7 @@ The authenticated mobile bootstrap now advertises one server-owned,
 independently versioned Workforce wire-schema registry:
 
 - bootstrap response schema `1`;
-- workday request schemas `1`, `2` and `3`, with `3` preferred;
+- workday request schemas `1`, `2`, `3` and `4`, with `4` preferred;
 - workday response schema `1`;
 - evidence-envelope schema `1`;
 - site-transition request schema `1`.
@@ -38,6 +38,11 @@ rollout to fail closed.
   this server compatibility task.
 
 ## Status
+
+The v4 request is additive: it binds action-time location source metadata to
+the immutable request digest while preserving the v1-v3 digest shapes and
+legacy facts. Location collection remains policy-controlled and foreground
+only; support for the wire shape does not activate collection for a tenant.
 
 WF-C13-003 is **DONE** at its Backend acceptance boundary: every deployed
 Workforce request/response/evidence schema has an explicit advertised version,

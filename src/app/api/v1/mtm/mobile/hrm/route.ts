@@ -20,11 +20,15 @@ type WorkdayRow = {
   pausedAt: Date | null
   completedAt: Date | null
   totalPausedSeconds: number
+  events: Array<{
+    type: string
+    occurredAt: Date
+    attendanceReviewState: "LEGACY_UNKNOWN" | "NOT_REQUIRED" | "PENDING_REVIEW"
+  }>
 }
 
 type HrmRequestRow = {
   id: string
-  clientRequestId: string
   type: string
   status: string
   startDate: Date
@@ -32,12 +36,37 @@ type HrmRequestRow = {
   correctionWorkdayId: string | null
   requestedStartAt: Date | null
   requestedEndAt: Date | null
-  reason: string
   decisionNote: string | null
   submittedAt: Date
   decidedAt: Date | null
   cancelledAt: Date | null
   updatedAt: Date
+}
+
+/**
+ * The employee history response is an explicit projection, rather than a
+ * serialized Prisma row. Request reasons and client idempotency keys are
+ * needed to submit safely, but do not belong in the routine mobile status
+ * read. A self-visible decision note and server timestamps remain available
+ * so an employee can understand a terminal result without seeing evidence,
+ * audit, device or transport data.
+ */
+function mobileRequestHistory(request: HrmRequestRow) {
+  return {
+    id: request.id,
+    type: request.type,
+    status: request.status,
+    startDate: request.startDate,
+    endDate: request.endDate,
+    correctionWorkdayId: request.correctionWorkdayId,
+    requestedStartAt: request.requestedStartAt,
+    requestedEndAt: request.requestedEndAt,
+    decisionNote: request.decisionNote,
+    submittedAt: request.submittedAt,
+    decidedAt: request.decidedAt,
+    cancelledAt: request.cancelledAt,
+    updatedAt: request.updatedAt,
+  }
 }
 
 function dayCount(start: string, end: string): number {
@@ -109,6 +138,15 @@ export const GET = withMobileRls(async (req, auth) => {
           pausedAt: true,
           completedAt: true,
           totalPausedSeconds: true,
+          events: {
+            orderBy: [{ occurredAt: "asc" }, { id: "asc" }],
+            take: 32,
+            select: {
+              type: true,
+              occurredAt: true,
+              attendanceReviewState: true,
+            },
+          },
         },
       }),
       prisma.mtmHrmRequest.findMany({
@@ -117,7 +155,6 @@ export const GET = withMobileRls(async (req, auth) => {
         take: 200,
         select: {
           id: true,
-          clientRequestId: true,
           type: true,
           status: true,
           startDate: true,
@@ -125,7 +162,6 @@ export const GET = withMobileRls(async (req, auth) => {
           correctionWorkdayId: true,
           requestedStartAt: true,
           requestedEndAt: true,
-          reason: true,
           decisionNote: true,
           submittedAt: true,
           decidedAt: true,
@@ -155,10 +191,35 @@ export const GET = withMobileRls(async (req, auth) => {
         && request.startDate.toISOString().slice(0, 10) <= date
         && request.endDate.toISOString().slice(0, 10) >= date
       ))
+      const workday = workdayByDate.get(date) ?? null
+      const correctionStatuses = workday == null
+        ? []
+        : typedRequests
+          .filter((request) => request.type === "TIME_CORRECTION" && request.correctionWorkdayId === workday.id)
+          .map((request) => request.status)
+      const reviewState = workday?.events.some((event) => event.attendanceReviewState === "PENDING_REVIEW")
+        ? "PENDING_REVIEW"
+        : workday?.events.some((event) => event.attendanceReviewState === "LEGACY_UNKNOWN")
+          ? "LEGACY_UNKNOWN"
+          : "NOT_REQUIRED"
       return {
         date,
         calendar,
-        workday: workdayByDate.get(date) ?? null,
+        workday: workday == null ? null : {
+          ...workday,
+          // This allow-list supports only an employee's own accepted event
+          // history. It deliberately excludes coordinates, notes, review
+          // reason codes, proof receipts and local/offline claims.
+          history: {
+            reviewState,
+            events: workday.events.map((event) => ({
+              action: event.type,
+              occurredAt: event.occurredAt,
+              reviewState: event.attendanceReviewState,
+            })),
+            correctionStatuses,
+          },
+        },
         requests: activeRequests.map((request) => ({ id: request.id, type: request.type, status: request.status })),
       }
     })
@@ -170,7 +231,7 @@ export const GET = withMobileRls(async (req, auth) => {
         start,
         end,
         days,
-        requests: typedRequests,
+        requests: typedRequests.map(mobileRequestHistory),
         capabilities: {
           requestLeave: true,
           requestAbsence: true,

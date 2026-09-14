@@ -16,6 +16,8 @@ import {
   recordWorkforceAttendanceVerification,
 } from "@/lib/workforce/attendance-trust"
 
+type AttendanceEvent = Parameters<typeof prepareWorkforceAttendanceVerification>[1]["event"]
+
 const ORGANIZATION_ID = "org_1"
 const AGENT_ID = "agent_1"
 const NOW = new Date("2026-08-29T09:00:00.000Z")
@@ -23,11 +25,14 @@ const WORKDAY = {
   workDate: new Date("2026-08-29T00:00:00.000Z"),
   startedAt: new Date("2026-08-29T08:00:00.000Z"),
 }
-const EVENT = {
+const EVENT: AttendanceEvent = {
   action: "START" as const,
   workdayId: "workday_1",
   clientEventId: "event_1",
   occurredAt: NOW,
+  latitude: null,
+  longitude: null,
+  accuracy: null,
 }
 
 function policy(definition: Record<string, unknown>) {
@@ -48,7 +53,7 @@ function policy(definition: Record<string, unknown>) {
 
 function prepare(
   input: Parameters<typeof prepareWorkforceAttendanceVerification>[1]["evidence"] = undefined,
-  event = EVENT,
+  event: AttendanceEvent = EVENT,
 ) {
   return prepareWorkforceAttendanceVerification(prisma as never, {
     organizationId: ORGANIZATION_ID,
@@ -226,5 +231,45 @@ describe("Workforce attendance trust preparation", () => {
       principal: "web",
       now: NOW,
     })).rejects.toMatchObject({ code: "WORKFORCE_ATTENDANCE_POLICY_INVALID" })
+  })
+
+  it("requires a fresh, quality-eligible action-time location only when the policy publishes it", async () => {
+    vi.mocked(prisma.workforcePolicy.findMany).mockResolvedValue([
+      policy({ attendance: { enforcementVersion: 1, location: { requiredActions: ["START"] } } }),
+    ] as never)
+
+    await expect(prepare()).rejects.toMatchObject({ code: "WORKFORCE_ATTENDANCE_LOCATION_REQUIRED" })
+
+    await expect(prepare({
+      location: {
+        capturedAt: NOW,
+        provider: "GPS",
+        isMock: false,
+      },
+    }, {
+      ...EVENT,
+      latitude: 40.4093,
+      longitude: 49.8671,
+      accuracy: 12,
+    })).resolves.toMatchObject({
+      facts: [],
+      locationEvidence: {
+        provider: "GPS",
+        quality: { status: "ELIGIBLE_FOR_GEOFENCE" },
+      },
+    })
+
+    await expect(prepare({
+      location: {
+        capturedAt: NOW,
+        provider: "NETWORK",
+        isMock: false,
+      },
+    }, {
+      ...EVENT,
+      latitude: 40.4093,
+      longitude: 49.8671,
+      accuracy: 12,
+    })).rejects.toMatchObject({ code: "WORKFORCE_ATTENDANCE_LOCATION_REVIEW_REQUIRED" })
   })
 })

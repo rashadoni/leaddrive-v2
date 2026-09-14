@@ -69,6 +69,8 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   invalid or unknown-version manifest blocks attendance controls instead of
   silently degrading to an unprotected action; biometric-required actions also
   remain blocked until the trusted-device proof flow exists.
+- One in-memory action-attempt fence permits only one live scan and ignores a
+  late cancellation/failure/token callback after that attempt or logout.
 - Cancellation and unreadable-token recovery copy is resource-backed in
   EN/AZ/RU and states only that no action was sent; it does not render a QR
   token or internal scanner detail.
@@ -178,6 +180,20 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   distinguish a review claim from approved time or payroll. Free-form
   reviewer notes and server-returned calendar/request values are not
   machine-translated by the client.
+- The on-device reminder and encrypted-outbox Recovery surfaces now carry
+  typed, non-sensitive local state/hint codes from the data layer and resolve
+  all employee wording in EN/AZ/RU Compose resources. This preserves the same
+  queue safety: unknown stored domain/state fails closed to generic
+  `Workforce action`/`Needs review`; no operation ID, ciphertext, reason, QR,
+  location or proof becomes a translation input. The local data layer no
+  longer stores English display text for these recovery values.
+- The mobile history parser now converts known request type/status and calendar
+  codes into typed values before Compose renders them. Known values use
+  EN/AZ/RU resources; an unknown future server value displays a generic
+  localized review state and is never cancelled locally. This prevents server
+  enum literals from becoming accidental English UI while retaining an honest
+  indication that human review may be needed. Dates and free-form reviewer
+  notes remain server facts, not translation inputs.
 - The latest Android CI candidate exposed a Compose compiler error in a prior
   trusted-device source line: `stringResource` was called from the non-
   composable `rememberSaveable` initializer. The source now resolves the
@@ -218,11 +234,13 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   update. The update URL is shown only after local HTTPS validation; it is not
   a redirect or a source of authority.
 - An outbox worker bootstraps before it drains. For a required update it retains
-  the existing encrypted Room rows, records a privacy-safe update-required
-  recovery state and does not consume an operation retry. After a supported
-  sign-in or restore (including an in-place update), it schedules the same
-  schema-v1 rows for normal oldest-first drain. It never decrypts them merely
-  to migrate, recreates an attendance proof or makes an accepted local fact.
+  the existing account-bound encrypted Room rows, records a privacy-safe
+  update-required recovery state and does not consume an operation retry. After
+  a supported sign-in or restore (including an in-place update), it schedules
+  those scoped rows for normal oldest-first drain. The additive v1-to-v2
+  account-fence migration deliberately removes unscoped legacy rows instead
+  of replaying them under a fresh sign-in. It never decrypts them merely to
+  migrate, recreates an attendance proof or makes an accepted local fact.
 - Device guidance is visible in EN/AZ/RU: a planned removal requires Recovery
   review first because sign-out/uninstall removes this phone's encrypted local
   session, private key and pending outbox; a lost/replaced device needs prompt
@@ -269,11 +287,39 @@ claiming Gradle, physical-device or seven-day recovery evidence.
   ESLint and `git diff --check` cover the resource-backed Today/Recovery/
   Requests/History copy and localized known workday labels. The raw server
   calendar/request/reviewer values remain deliberately unmodified.
-- `NOT RUN / pending external rerun` — Android Gradle lint/unit was run by
-  GitHub Actions on the preceding candidate and correctly failed at compile
-  time on the now-fixed `rememberSaveable { stringResource(...) }` violation.
-  Contabo must not substitute a local Gradle build; the next PR SHA requires
-  the prescribed GitHub Android debug lint/unit gate.
+- `PASS` — resource-key parity, the targeted Android source contract, scoped
+  ESLint and `git diff --check` cover type-only reminder/outbox recovery state,
+  localized generic recovery hints and absence of data-layer display text.
+- `PASS` — complete mobile Compose text-resource guard, resource-key parity,
+  17 targeted Android source contracts, scoped ESLint and `git diff --check`
+  cover typed request/calendar rendering, unknown-value fallback and no direct
+  hard-coded UI text in `MainActivity.kt`.
+- `PASS` — the current 17 Android source contracts, scoped ESLint and
+  `git diff --check` cover the typed self-exception empty-list branch and the
+  absence of the unused device-status display-text channel in the Android data
+  model. This is source-level evidence only.
+- `PASS` — GitHub Actions Android debug lint/unit completed successfully on
+  candidate `f1e9dde44` after the repair below. Android Gradle lint/unit had
+  previously run on candidate `4135083e4` and correctly rejected five
+  `LocalContextGetResourceValueCall` errors. The pre-fix code read dynamic
+  device-action, enrollment and lifecycle strings through
+  `LocalContext.current.getString`, which could retain stale configuration
+  values after a locale/configuration change. The current source resolves the
+  action/lifecycle copy and an enrollment placeholder template through
+  composition-aware `stringResource` values, then substitutes the server
+  expiry only into that already-localized template. No lint baseline or
+  suppression was added. This Contabo worktree did not run Gradle; the
+  prescribed external gate did. The current PR candidate still requires its
+  own GitHub Android debug lint/unit result for its later mobile changes.
+- `FAIL / external` — GitHub Actions Android debug lint/unit for `26020f925`
+  stopped at Kotlin compilation before lint or unit tests: `MainActivity.kt`
+  used `emptyList()` as a `when` branch for the nullable typed exception-card
+  list, leaving its generic type ambiguous. The successor source uses the
+  typed `ownExceptions.isEmpty()` branch and has a source-contract guard.
+  This is not a passing current-SHA Android result.
+- `NOT RUN / next candidate` — the successor checkpoint requires the same
+  prescribed GitHub Android debug lint/unit gate. Contabo must not substitute
+  a local Gradle build.
 - `NOT RUN` — Android Gradle lint/unit tests, build, emulator/device tests,
   camera/location/QR checks, notification permission/channel/delivery failure,
   TalkBack, AZ/RU/EN linguistic review, 200% font, contrast, reduced-motion
