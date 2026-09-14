@@ -293,6 +293,17 @@ describe("GET /api/v1/mtm/routes", () => {
     expect(callArgs.orderBy).toEqual([{ date: "desc" }, { createdAt: "desc" }])
   })
 
+  it("returns the point customer's city, which the field planner shows when there is no street address", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(prisma.mtmRoute.findMany).mockResolvedValue([])
+    vi.mocked(prisma.mtmRoute.count).mockResolvedValue(0)
+
+    await GET(makeReq("/api/v1/mtm/routes"))
+
+    const callArgs = vi.mocked(prisma.mtmRoute.findMany).mock.calls[0][0] as any
+    expect(callArgs.include.points.include.customer.select).toEqual({ id: true, name: true, address: true, city: true })
+  })
+
   it("filters by agentId", async () => {
     vi.mocked(getOrgId).mockResolvedValue(ORG)
     vi.mocked(prisma.mtmRoute.findMany).mockResolvedValue([])

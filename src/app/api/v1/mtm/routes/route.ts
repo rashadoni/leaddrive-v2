@@ -61,7 +61,11 @@ const routeInclude = {
         select: { id: true, changeType: true, status: true },
       },
       customer: {
-        select: { id: true, name: true, address: true },
+        // `city` too: the assignable catalog shows a client without a street
+        // address by its city, and the field app falls back to it. Without it
+        // here a client saved into a route lost «Baku» and read «address not
+        // given» the moment the planner reloaded (phone, 2026-09-13).
+        select: { id: true, name: true, address: true, city: true },
       },
       contact: {
         select: { id: true, displayName: true, type: true, specialtyName: true, phone: true },
