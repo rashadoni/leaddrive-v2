@@ -1639,3 +1639,105 @@ describe("POST /api/v1/mtm/week/workday", () => {
     expect(prisma.mtmAgentWorkdayEvent.create).not.toHaveBeenCalled()
   })
 })
+
+// ─── Prod audit 2026-09-14: the Panel has to be truthful for a manager ───
+describe("GET /api/v1/mtm/week — manager truth (prod audit 2026-09-14)", () => {
+  function alertRow(id: string, createdAt: string, distanceMeters: number) {
+    return {
+      id,
+      type: "OUT_OF_ZONE",
+      category: "WARNING",
+      title: "Out of zone",
+      description: `Agent is ${distanceMeters}m away`,
+      metadata: { messageKey: "outOfZoneCheckIn", messageParams: { distanceMeters, geofenceRadius: 150 } },
+      createdAt: new Date(createdAt),
+    }
+  }
+
+  it("includes the selected agent's unresolved alerts, scoped and grouped per type per hour", async () => {
+    vi.mocked(prisma.mtmAlert.findMany).mockResolvedValue([
+      alertRow("a3", "2026-07-15T07:50:00.000Z", 900),
+      alertRow("a2", "2026-07-15T07:20:00.000Z", 400),
+      alertRow("a1", "2026-07-15T06:10:00.000Z", 300),
+    ] as never)
+
+    const response = await GET(weekRequest("?agentId=agent-1&days=1&anchor=2026-07-15"))
+    expect(response.status).toBe(200)
+    const json = await response.json()
+
+    const where = (vi.mocked(prisma.mtmAlert.findMany).mock.calls[0][0] as any).where
+    expect(where).toMatchObject({ organizationId: ORG, agentId: "agent-1", isResolved: false })
+    expect(where.createdAt.gte).toBeInstanceOf(Date)
+
+    expect(json.data.queues.alerts.items).toHaveLength(3)
+    expect(json.data.queues.alerts.groups).toEqual([
+      expect.objectContaining({ type: "OUT_OF_ZONE", date: "2026-07-15", hour: 11, count: 2, maxDistanceMeters: 900 }),
+      expect.objectContaining({ type: "OUT_OF_ZONE", date: "2026-07-15", hour: 10, count: 1, maxDistanceMeters: 300 }),
+    ])
+    expect(json.data.days[0].alertGroups).toHaveLength(2)
+    expect(json.data.queues.alerts.groups[0].latest).toMatchObject({ messageKey: "outOfZoneCheckIn", messageParams: { distanceMeters: 900 } })
+  })
+
+  it("never reads alerts for an out-of-scope employee or in the filters-only bootstrap", async () => {
+    await GET(weekRequest("?agentId=outside-agent&days=1&anchor=2026-07-15"))
+    await GET(weekRequest(""))
+    expect(prisma.mtmAlert.findMany).not.toHaveBeenCalled()
+  })
+
+  it("marks alert truncation instead of silently dropping rows", async () => {
+    vi.mocked(prisma.mtmAlert.findMany).mockResolvedValue(
+      Array.from({ length: 201 }, (_, index) => alertRow(`a${index}`, "2026-07-15T07:00:00.000Z", 100)) as never,
+    )
+    const json = await (await GET(weekRequest("?agentId=agent-1&days=1&anchor=2026-07-15"))).json()
+    expect(json.data.queues.alerts.truncated).toBe(true)
+    expect(json.data.queues.alerts.items).toHaveLength(200)
+    expect(json.data.completeness.truncatedSources).toContain("ALERTS")
+  })
+
+  it("reports a shift left open since an earlier day as one manager state", async () => {
+    vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({
+      id: "workday-old",
+      workDate: new Date("2026-07-12T00:00:00.000Z"),
+      status: "STARTED",
+      startedAt: new Date("2026-07-12T16:57:00.000Z"),
+      pausedAt: null,
+      completedAt: null,
+      totalPausedSeconds: 0,
+      updatedAt: new Date("2026-07-12T16:57:00.000Z"),
+    } as never)
+    const json = await (await GET(weekRequest("?agentId=agent-1&days=1&anchor=2026-07-15"))).json()
+    expect(json.data.workdayContext.managerState).toMatchObject({ kind: "left-open", workDate: "2026-07-12", days: 3 })
+    // The manager cannot close someone else's shift.
+    expect(json.data.capabilities.workday.canMutateSelf).toBe(false)
+  })
+
+  it("carries visit evidence as counts only: duration, photos, signature, note", async () => {
+    vi.mocked(prisma.mtmRoute.findMany).mockResolvedValue([
+      route({ points: [point("point-1")], totalPoints: 1 }),
+    ] as never)
+    vi.mocked(prisma.mtmVisit.findMany).mockResolvedValue([
+      visit({
+        checkInAt: new Date("2026-07-15T12:46:00.000Z"),
+        checkOutAt: new Date("2026-07-15T13:09:00.000Z"),
+        notes: "private text",
+        _count: { photos: 3 },
+        actionResults: [{ actionKey: "SIGNATURE" }],
+      }),
+    ] as never)
+    const response = await GET(weekRequest("?agentId=agent-1&days=1&anchor=2026-07-15"))
+    const json = await response.json()
+    const visitQuery = vi.mocked(prisma.mtmVisit.findMany).mock.calls[0][0] as any
+    expect(visitQuery.select._count).toEqual({ select: { photos: true } })
+    expect(visitQuery.select.actionResults.where).toEqual({ status: "COMPLETED", actionKey: { in: ["SIGNATURE", "VISIT_NOTE"] } })
+    expect(json.data.days[0].routes[0].points[0].actualEvidence).toMatchObject({
+      visitId: "visit-1",
+      durationMinutes: 23,
+      photoCount: 3,
+      hasSignature: true,
+      hasNote: true,
+      // Review of #210: note text is not sent for a completed visit.
+      reason: null,
+    })
+    expect(JSON.stringify(json.data)).not.toContain("private text")
+  })
+})

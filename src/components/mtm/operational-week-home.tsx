@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import {
   AlertTriangle,
   ArrowUpRight,
+  BellRing,
   BatteryMedium,
   Building2,
   CalendarDays,
@@ -64,6 +65,7 @@ import {
 } from "@/lib/mtm/operational-week-client"
 import { cn } from "@/lib/utils"
 import { createDateFormatter } from "@/lib/format-date"
+import type { MtmManagerWorkdayState } from "@/lib/mtm/workday-open-anomaly"
 
 type WeekDays = 1 | 5 | 7
 type WorkdayAction = "START" | "PAUSE" | "RESUME" | "FINISH"
@@ -158,6 +160,47 @@ interface WeekPoint {
   actualAt: string | null
   cancellationReason: string | null
   cancellationSource: string | null
+  checkOutAt: string | null
+  durationMinutes: number | null
+  photoCount: number | null
+  hasSignature: boolean
+  hasNote: boolean
+}
+
+interface AlertGroup {
+  key: string
+  type: string
+  category: string
+  date: string
+  hour: number
+  count: number
+  lastAt: string | null
+  maxDistanceMeters: number | null
+  messageKey: string | null
+  messageParams: Record<string, string | number> | null
+  fallbackText: string | null
+}
+
+interface TeamTodayRow {
+  agentId: string
+  name: string
+  teamName: string | null
+  lastGpsAt: string | null
+  route: { visited: number; total: number } | null
+  visits: Array<{ id: string; customerName: string | null; status: string; checkInAt: string | null; checkOutAt: string | null }>
+  visitCount: number
+  openAlerts: number
+  workday: MtmManagerWorkdayState | null
+}
+
+interface TeamToday {
+  timezone: string
+  today: string
+  generatedAt: string | null
+  rows: TeamTodayRow[]
+  partial: boolean
+  visitsTruncated: boolean
+  workdayEnabled: boolean
 }
 
 interface WeekRoute {
@@ -191,6 +234,7 @@ interface WeekDay {
   routes: WeekRoute[]
   unplannedVisits: WeekPoint[]
   tasks: WeekTask[]
+  alertGroups: AlertGroup[]
 }
 
 interface PlanChange {
@@ -258,6 +302,10 @@ interface WeekFacts {
   pendingPlanChanges: PlanChange[]
   contract: WeekContract
   workdayCapability: WorkdayCapability
+  alertGroups: AlertGroup[]
+  alertCount: number
+  alertsTruncated: boolean
+  managerWorkday: MtmManagerWorkdayState | null
 }
 
 interface BaseCoverageGroup {
@@ -626,6 +674,107 @@ function normalizePoint(value: unknown, index: number, routeId: string | null): 
       || firstString(actualEvidence, "checkInAt", "checkedInAt", "visitedAt", "completedAt"),
     cancellationReason: firstString(source, "cancellationReason", "cancelReason", "reason") || firstString(cancellationEvidence, "reason"),
     cancellationSource: firstString(cancellationEvidence, "source"),
+    checkOutAt: firstString(source, "checkOutAt") || firstString(actualEvidence, "checkOutAt"),
+    durationMinutes: firstNumber(source, "durationMinutes") ?? firstNumber(actualEvidence, "durationMinutes"),
+    photoCount: firstNumber(source, "photoCount") ?? firstNumber(actualEvidence, "photoCount"),
+    hasSignature: source.hasSignature === true || actualEvidence.hasSignature === true,
+    hasNote: source.hasNote === true || actualEvidence.hasNote === true,
+  }
+}
+
+function normalizeAlertGroups(value: unknown): AlertGroup[] {
+  return list(value).flatMap((item): AlertGroup[] => {
+    const source = record(item)
+    const latest = record(source.latest)
+    const key = firstString(source, "key")
+    const type = firstString(source, "type")
+    const date = firstString(source, "date")
+    const hour = firstNumber(source, "hour")
+    const count = firstNumber(source, "count")
+    if (!key || !type || !date || hour === null || count === null) return []
+    const params = record(latest.messageParams)
+    return [{
+      key,
+      type,
+      category: firstString(source, "category") || "WARNING",
+      date,
+      hour,
+      count,
+      lastAt: firstString(source, "lastAt"),
+      maxDistanceMeters: firstNumber(source, "maxDistanceMeters"),
+      messageKey: firstString(latest, "messageKey"),
+      messageParams: Object.keys(params).length
+        ? Object.fromEntries(Object.entries(params).filter((entry): entry is [string, string | number] => typeof entry[1] === "string" || typeof entry[1] === "number"))
+        : null,
+      fallbackText: firstString(latest, "fallbackText"),
+    }]
+  })
+}
+
+function asLeftOpen(state: MtmManagerWorkdayState | null): Extract<MtmManagerWorkdayState, { kind: "left-open" }> | null {
+  return state && state.kind === "left-open" ? state : null
+}
+
+function normalizeManagerWorkday(value: unknown): MtmManagerWorkdayState | null {
+  const source = record(value)
+  const kind = firstString(source, "kind")
+  switch (kind) {
+    case "not-started": return { kind: "not-started" }
+    case "working": return { kind: "working", since: firstString(source, "since") }
+    case "paused": return { kind: "paused", since: firstString(source, "since") }
+    case "finished": return { kind: "finished", at: firstString(source, "at") }
+    case "left-open": return {
+      kind: "left-open",
+      since: firstString(source, "since"),
+      workDate: firstString(source, "workDate"),
+      days: Math.max(0, firstNumber(source, "days") ?? 0),
+      hours: Math.max(0, firstNumber(source, "hours") ?? 0),
+      status: firstString(source, "status") === "PAUSED" ? "PAUSED" : "STARTED",
+    }
+    default: return null
+  }
+}
+
+function normalizeTeamToday(value: unknown): TeamToday | null {
+  const source = record(record(value).data)
+  if (firstString(source, "mode") !== "TEAM_TODAY") return null
+  const rows = list(source.rows).flatMap((item): TeamTodayRow[] => {
+    const row = record(item)
+    const agent = record(row.agent)
+    const agentId = firstString(agent, "id")
+    if (!agentId) return []
+    const route = record(row.route)
+    const total = firstNumber(route, "total")
+    return [{
+      agentId,
+      name: firstString(agent, "name") || "—",
+      teamName: firstString(agent, "teamName"),
+      lastGpsAt: firstString(row, "lastGpsAt"),
+      route: total === null ? null : { visited: Math.max(0, firstNumber(route, "visited") ?? 0), total },
+      visits: list(row.visits).map((visitValue) => {
+        const visit = record(visitValue)
+        return {
+          id: firstString(visit, "id") || "",
+          customerName: firstString(visit, "customerName"),
+          status: (firstString(visit, "status") || "").toUpperCase(),
+          checkInAt: firstString(visit, "checkInAt"),
+          checkOutAt: firstString(visit, "checkOutAt"),
+        }
+      }).filter((visit) => visit.id),
+      openAlerts: Math.max(0, firstNumber(row, "openAlerts") ?? 0),
+      visitCount: Math.max(0, firstNumber(row, "visitCount") ?? 0),
+      workday: normalizeManagerWorkday(row.workday),
+    }]
+  })
+  const completeness = record(source.completeness)
+  return {
+    timezone: firstString(source, "timezone") || "UTC",
+    today: firstString(source, "today") || "",
+    generatedAt: firstString(source, "generatedAt"),
+    rows,
+    partial: list(completeness.truncatedSources).includes("FILTER_AGENTS"),
+    visitsTruncated: list(completeness.truncatedSources).includes("VISITS"),
+    workdayEnabled: record(record(source.capabilities).workday).enabled === true,
   }
 }
 
@@ -634,7 +783,9 @@ function normalizeRoute(value: unknown, index: number): WeekRoute {
   const id = firstString(source, "id", "routeId") || `route-${index + 1}`
   return {
     id,
-    name: firstString(source, "name", "title") || id,
+    // Prod 2026-09-14: an unnamed route rendered its cuid. The card now
+    // builds "Marşrut · 14 sen" from the day instead (see renderDay).
+    name: firstString(source, "name", "title") || "",
     status: (firstString(source, "status", "state") || "PUBLISHED").toUpperCase(),
     publishedVersion: firstNumber(source, "publishedVersion", "version"),
     pointsTruncated: booleanValue(source.pointsTruncated),
@@ -715,6 +866,7 @@ function normalizeDay(value: unknown): WeekDay | null {
       }, visitIndex, firstString(visitSource, "routeId"))
     }),
     tasks: list(source.tasks).map(normalizeTask),
+    alertGroups: normalizeAlertGroups(source.alertGroups),
   }
 }
 
@@ -879,6 +1031,10 @@ function normalizeWeekResponse(value: unknown): NormalizedWeekResponse {
         activeStartedAt: firstString(activeWorkday, "startedAt"),
         outsideSelectedWindow: booleanValue(activeWorkday.outsideSelectedWindow),
       },
+      alertGroups: normalizeAlertGroups(record(queues.alerts).groups),
+      alertCount: list(record(queues.alerts).items).length,
+      alertsTruncated: booleanValue(record(queues.alerts).truncated),
+      managerWorkday: normalizeManagerWorkday(workdayContext.managerState),
     },
   }
 }
@@ -975,6 +1131,7 @@ function requestErrorMessage(status: number): "permission" | "notFound" | "rateL
 export function OperationalWeekHome({ organizationId, viewerId }: OperationalWeekHomeProps) {
   const t = useTranslations("mtmDashboardPage.operationalWeek")
   const taskT = useTranslations("mtmTasksPage")
+  const alertT = useTranslations("mtmAlertsPage")
   const locale = useLocale()
   const [query, setQuery] = useState<WeekQuery | null>(null)
   const [filters, setFilters] = useState<WeekFilters>(EMPTY_FILTERS)
@@ -1002,6 +1159,9 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
   const [decisionNotes, setDecisionNotes] = useState<Record<string, string>>({})
   const [rescheduleDates, setRescheduleDates] = useState<Record<string, string>>({})
   const [cancellationsExpanded, setCancellationsExpanded] = useState(false)
+  const [teamToday, setTeamToday] = useState<TeamToday | null>(null)
+  const [teamPhase, setTeamPhase] = useState<"idle" | "loading" | "ready" | "error">("idle")
+  const teamRequestIdRef = useRef(0)
   const requestIdRef = useRef(0)
   const coverageRequestIdRef = useRef(0)
   const coverageRowsRequestIdRef = useRef(0)
@@ -1186,6 +1346,41 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshToken, requestKey])
 
+  // Prod 2026-09-14: without a selected employee the Panel was blank. A
+  // supervisor's default is the scoped team today; a row opens the week.
+  const teamViewActive = Boolean(query && !query.agentId)
+  useEffect(() => {
+    const requestId = ++teamRequestIdRef.current
+    if (!query || query.agentId) {
+      setTeamPhase("idle")
+      return
+    }
+    const controller = new AbortController()
+    setTeamPhase((current) => current === "ready" ? current : "loading")
+    const params = new URLSearchParams()
+    if (query.regionId) params.set("regionId", query.regionId)
+    if (query.teamId) params.set("teamId", query.teamId)
+    void (async () => {
+      try {
+        const { response, body } = await fetchOperationalWeekJsonWithTimeout(`/api/v1/mtm/week/team?${params.toString()}`, {
+          signal: controller.signal,
+          cache: "no-store",
+          headers: organizationId ? { "x-organization-id": String(organizationId) } : {},
+        })
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        const normalized = normalizeTeamToday(body)
+        if (!normalized) throw new Error("Invalid team response")
+        if (requestId !== teamRequestIdRef.current) return
+        setTeamToday(normalized)
+        setTeamPhase("ready")
+      } catch {
+        if (controller.signal.aborted || requestId !== teamRequestIdRef.current) return
+        setTeamPhase("error")
+      }
+    })()
+    return () => controller.abort()
+  }, [organizationId, query?.agentId, query?.regionId, query?.teamId, refreshToken]) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     const agentId = facts?.selectedAgent.id || ""
     const period = monthWindow(query?.date || "")
@@ -1244,7 +1439,7 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
   useEffect(() => {
     if (!query) return
     const interval = window.setInterval(() => {
-      if (document.visibilityState === "visible" && !inFlightRef.current && !mutatingAction && !planMutationId && facts) {
+      if (document.visibilityState === "visible" && !inFlightRef.current && !mutatingAction && !planMutationId && (facts || !query.agentId)) {
         setRefreshToken((value) => value + 1)
       }
     }, 60_000)
@@ -1512,6 +1707,72 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
     }
   }
 
+  const managerView = facts ? facts.scopeRole !== "AGENT" : true
+  const leftOpenWorkday = asLeftOpen(facts?.managerWorkday ?? null)
+
+  function shortTime(value: string | null, timezone: string): string {
+    return formatTenantTimestamp(value, locale, timezone, { hour: "2-digit", minute: "2-digit", hour12: false })
+  }
+
+  /** One sentence for a shift the agent left open (prod 2026-09-14). */
+  function leftOpenLabel(state: Extract<MtmManagerWorkdayState, { kind: "left-open" }>, timezone: string): string {
+    return t("workdayLeftOpen", {
+      date: state.since ? formatTenantTimestamp(state.since, locale, timezone, { day: "numeric", month: "short" }) : "—",
+      time: shortTime(state.since, timezone),
+      duration: state.days > 0 ? t("workdayOpenDays", { count: state.days }) : t("workdayOpenHours", { count: state.hours }),
+    })
+  }
+
+  function managerWorkdayPresentation(state: MtmManagerWorkdayState, timezone: string) {
+    switch (state.kind) {
+      case "left-open": return { icon: AlertTriangle as typeof Info, label: leftOpenLabel(state, timezone), className: "text-red-700 dark:text-red-300" }
+      case "working": return workdayPresentation("ACTIVE")
+      case "paused": return workdayPresentation("PAUSED")
+      case "finished": return workdayPresentation("CLOSED")
+      default: return workdayPresentation("NOT_STARTED")
+    }
+  }
+
+  /** Workday label for a day card or the strip; today follows the manager state. */
+  function dayWorkdayPresentation(day: WeekDay) {
+    // The third-person "agent did not close it" sentence is for a manager; an
+    // agent reading about themselves keeps the plain workday state.
+    if (managerView && day.isToday && facts?.managerWorkday) return managerWorkdayPresentation(facts.managerWorkday, facts.timezone)
+    return workdayPresentation(day.workday.state)
+  }
+
+  function alertTypeLabel(type: string): string {
+    return alertT.has(`typeLabel_${type}` as never) ? alertT(`typeLabel_${type}` as never) : alertT("typeLabel_OTHER")
+  }
+
+  function alertGroupSentence(group: AlertGroup): string | null {
+    if (group.messageKey && group.messageParams && alertT.has(`messages.${group.messageKey}` as never)) {
+      try {
+        return alertT(`messages.${group.messageKey}` as never, group.messageParams as never)
+      } catch {
+        return group.fallbackText
+      }
+    }
+    return group.fallbackText
+  }
+
+  function renderAlertGroup(group: AlertGroup, compact: boolean) {
+    const from = `${String(group.hour).padStart(2, "0")}:00`
+    const to = `${String((group.hour + 1) % 24).padStart(2, "0")}:00`
+    const sentence = compact ? null : alertGroupSentence(group)
+    return (
+      <li key={group.key} className={cn("text-xs", compact ? "py-1" : "py-2")}>
+        <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+          <span className={cn("font-semibold", group.category === "CRITICAL" ? "text-red-700 dark:text-red-300" : "text-amber-800 dark:text-amber-300")}>{alertTypeLabel(group.type)}</span>
+          <span className="tabular-nums text-muted-foreground">{from}–{to}</span>
+          <span className="tabular-nums">· {t("alertTimes", { count: group.count })}</span>
+          {group.maxDistanceMeters !== null ? <span className="tabular-nums text-muted-foreground">· {t("alertDistance", { value: group.maxDistanceMeters })}</span> : null}
+        </p>
+        {sentence ? <p className="mt-0.5 leading-5 text-muted-foreground">{sentence}</p> : null}
+      </li>
+    )
+  }
+
   function gpsPresentation(evidence: GpsEvidence) {
     if (evidence.reason === "PERMISSION_NOT_GRANTED") return { icon: ShieldAlert, label: t("gps.noPermission"), className: "text-red-700 dark:text-red-300" }
     const presentedFreshness = operationalWeekGpsPresentationFreshness(evidence.freshness, phase, {
@@ -1591,7 +1852,7 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
     return null
   }
 
-  function renderPoint(point: WeekPoint, day: WeekDay) {
+  function renderPoint(point: WeekPoint, day: WeekDay, displayNumber: number) {
     if (!query || !facts) return null
     const presentation = pointPresentation(point.status)
     const PointIcon = presentation.icon
@@ -1609,8 +1870,9 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
     return (
       <article key={point.id} className="border-t border-zinc-200 py-3 first:border-t-0 dark:border-zinc-700">
         <div className="flex items-start gap-2.5">
+          {/* Prod 2026-09-14: orderIndex is 0-based and cards read «0», «1». */}
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold tabular-nums">
-            {point.order}
+            {displayNumber}
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-start justify-between gap-2">
@@ -1650,6 +1912,19 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
               <div><dt className="text-muted-foreground">{t("planned")}</dt><dd className="font-medium">{formatTenantTimestamp(point.plannedAt, locale, facts.timezone, { hour: "2-digit", minute: "2-digit" })}</dd></div>
               <div><dt className="text-muted-foreground">{t("actual")}</dt><dd className="font-medium">{formatTenantTimestamp(point.actualAt, locale, facts.timezone, { hour: "2-digit", minute: "2-digit" })}</dd></div>
             </dl>
+            {point.visitId && point.actualAt ? (
+              <p className="mt-1.5 text-xs tabular-nums text-foreground" data-testid="mtm-week-visit-evidence">
+                {[
+                  point.checkOutAt
+                    ? t("visitEvidence.inOut", { in: shortTime(point.actualAt, facts.timezone), out: shortTime(point.checkOutAt, facts.timezone) })
+                    : t("visitEvidence.inOnly", { in: shortTime(point.actualAt, facts.timezone) }),
+                  point.durationMinutes !== null ? t("visitEvidence.minutes", { count: point.durationMinutes }) : null,
+                  point.photoCount ? t("visitEvidence.photos", { count: point.photoCount }) : null,
+                  point.hasSignature ? t("visitEvidence.signature") : null,
+                  point.hasNote ? t("visitEvidence.note") : null,
+                ].filter(Boolean).join(" · ")}
+              </p>
+            ) : null}
             {point.status === "CANCELLED" || point.status === "CANCELED" ? (
               <p className="mt-2 text-xs text-red-700 dark:text-red-300">
                 {point.cancellationReason
@@ -1692,9 +1967,11 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
 
   function renderDay(day: WeekDay, compact = false) {
     if (!query || !facts) return null
-    const workday = workdayPresentation(day.workday.state)
+    const workday = dayWorkdayPresentation(day)
     const gps = gpsPresentation(facts.gps)
     const WorkdayIcon = workday.icon
+    const dayAlertGroups = day.alertGroups ?? []
+    const emptyPlanKey = day.date > facts.today ? "noPublishedPlanFuture" : day.date < facts.today ? "noPublishedPlanPast" : "noPublishedPlan"
     const GpsIcon = gps.icon
     const orderedRoutes = day.routes.map((route) => ({
       ...route,
@@ -1736,29 +2013,40 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
           {facts.workdayCapability.enabled && day.workday.finishedAt ? <p className="mt-1 text-[11px] text-muted-foreground">{t("dayFinished", { time: formatTenantTimestamp(day.workday.finishedAt, locale, facts.timezone, { hour: "2-digit", minute: "2-digit" }) })}</p> : null}
         </header>
         <div className="px-3">
-          {pointCount ? orderedRoutes.map((route) => (
-            <section key={route.id} aria-label={route.name || route.id}>
-              {route.name ? (
+          {dayAlertGroups.length ? (
+            <div className="border-b border-zinc-200 py-2 dark:border-zinc-700" data-testid="mtm-week-day-alerts">
+              <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-800 dark:text-amber-300"><BellRing className="h-3.5 w-3.5" />{t("dayAlerts", { count: dayAlertGroups.reduce((total, group) => total + group.count, 0) })}</p>
+              <ul>{dayAlertGroups.slice(0, 4).map((group) => renderAlertGroup(group, true))}</ul>
+              <Link href={withReturnTo(`/mtm/alerts?agentId=${encodeURIComponent(effectiveAgentId)}`, context)} className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-primary hover:underline md:min-h-0">
+                {dayAlertGroups.length > 4 ? t("moreAlertGroups", { count: dayAlertGroups.length - 4 }) : t("openAlerts")}<ArrowUpRight className="h-3 w-3" />
+              </Link>
+            </div>
+          ) : null}
+          {pointCount ? orderedRoutes.map((route) => {
+            // An unnamed route used to show its cuid; name it by its day.
+            const routeLabel = route.name || t("routeFallbackName", { date: formatCalendarDay(day.date, locale, { day: "numeric", month: "short" }) })
+            return (
+              <section key={route.id} aria-label={routeLabel}>
                 <div className="flex items-center justify-between gap-2 border-b border-zinc-200 py-2 text-xs dark:border-zinc-700">
                   <Link href={withReturnTo(`/mtm/routes?routeId=${encodeURIComponent(route.id)}`, context)} className="inline-flex min-h-11 min-w-0 items-center gap-1.5 font-medium hover:text-primary hover:underline md:min-h-0">
-                    <RouteIcon className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{route.name}</span>
+                    <RouteIcon className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{routeLabel}</span>
                   </Link>
-                  {route.publishedVersion !== null ? <span className="shrink-0 text-muted-foreground">v{route.publishedVersion}</span> : null}
+                  {!managerView && route.publishedVersion !== null ? <span className="shrink-0 text-muted-foreground">v{route.publishedVersion}</span> : null}
                 </div>
-              ) : null}
-              {route.points.map((point) => renderPoint(point, day))}
-            </section>
-          )) : (
+                {route.points.map((point, index) => renderPoint(point, day, index + 1))}
+              </section>
+            )
+          }) : (
             <div className="flex min-h-32 flex-col items-center justify-center gap-2 py-6 text-center">
               {planRowsMayBeTruncated ? <AlertTriangle className="h-5 w-5 text-amber-600" /> : <CalendarDays className="h-5 w-5 text-muted-foreground" />}
               <p className="text-sm font-medium">{t(planRowsMayBeTruncated ? "planRowsLimited" : "noPublishedPlan")}</p>
-              <p className="max-w-[32ch] text-xs text-muted-foreground">{t(planRowsMayBeTruncated ? "planRowsLimitedHint" : "noPublishedPlanHint")}</p>
+              <p className="max-w-[32ch] text-xs text-muted-foreground">{t(planRowsMayBeTruncated ? "planRowsLimitedHint" : `${emptyPlanKey}Hint` as never)}</p>
             </div>
           )}
           {day.unplannedVisits.length ? (
             <div className="border-t border-zinc-200 py-2 dark:border-zinc-700">
               <p className="pb-1 text-xs font-semibold text-muted-foreground">{t("unplannedVisits")}</p>
-              {day.unplannedVisits.map((visit) => renderPoint(visit, day))}
+              {day.unplannedVisits.map((visit, index) => renderPoint(visit, day, index + 1))}
             </div>
           ) : null}
           {day.tasks.length ? (
@@ -2122,7 +2410,29 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
         <section className="border-t border-zinc-200 px-4 py-5 dark:border-zinc-700 md:border-l md:border-t-0 min-[100rem]:border-l-0 min-[100rem]:border-t min-[100rem]:px-5">
           <h3 className="text-base font-semibold">{t("needsAttention")}</h3>
           <div className="mt-4 space-y-5">
-            <section>
+            {(() => {
+              const todayInPeriod = facts.days.some((day) => day.date === facts.today)
+              const groups = (facts.alertGroups ?? []).filter((group) => !todayInPeriod || group.date === facts.today)
+              const total = groups.reduce((sum, group) => sum + group.count, 0)
+              const alertsHref = withReturnTo(
+                `/mtm/alerts?agentId=${encodeURIComponent(effectiveAgentId)}`,
+                query ? returnPath(query, effectiveAgentId, selectedDay?.date || query.day) : "/mtm",
+              )
+              return (
+                <section data-testid={`mtm-week-alerts-${railId}`}>
+                  <div className="flex items-center justify-between gap-2"><h4 className="inline-flex items-center gap-1.5 text-sm font-semibold text-amber-800 dark:text-amber-300"><BellRing className="h-4 w-4" />{t(todayInPeriod ? "alertsToday" : "alertsInPeriod")}</h4><Badge variant={total ? "warning" : "outline"}>{total}{facts.alertsTruncated ? "+" : ""}</Badge></div>
+                  {groups.length ? (
+                    <>
+                      <ul className="mt-1 divide-y divide-zinc-200 dark:divide-zinc-700">{groups.slice(0, 6).map((group) => renderAlertGroup(group, false))}</ul>
+                      <Link href={alertsHref} className="mt-1 inline-flex min-h-11 items-center gap-1 text-xs font-semibold text-primary hover:underline">
+                        {groups.length > 6 ? t("moreAlertGroups", { count: groups.length - 6 }) : t("openAlerts")}<ArrowUpRight className="h-3 w-3 shrink-0" />
+                      </Link>
+                    </>
+                  ) : <p className="mt-2 text-xs text-muted-foreground">{t("noOpenAlerts")}</p>}
+                </section>
+              )
+            })()}
+            <section className="border-t border-zinc-200 pt-4 dark:border-zinc-700">
               <div className="flex items-center justify-between gap-2"><h4 className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-800 dark:text-red-200"><XCircle className="h-4 w-4" />{t("pendingCancellations")}</h4><Badge variant={pendingCancellations.length ? "destructive" : "outline"}>{pendingCancellations.length}</Badge></div>
               {pendingCancellations.length ? (
                 <>
@@ -2194,10 +2504,13 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
                             </Link>
                             <Badge variant={attention.variant} className="shrink-0">{attention.label}</Badge>
                           </div>
-                          <p className="mt-1 text-[11px] text-muted-foreground" title={task.id} aria-label={t("taskId", { id: task.id })}>
-                            {t("taskId", { id: task.id.length > 12 ? `${task.id.slice(0, 6)}…${task.id.slice(-4)}` : task.id })}
-                            {task.version === null ? null : <span> · {t("taskVersion", { version: task.version })}</span>}
-                          </p>
+                          {/* Prod 2026-09-14: «ID cmqm7j…p468 · versiya 1» means nothing to a manager. */}
+                          {!managerView ? (
+                            <p className="mt-1 text-[11px] text-muted-foreground" title={task.id} aria-label={t("taskId", { id: task.id })}>
+                              {t("taskId", { id: task.id.length > 12 ? `${task.id.slice(0, 6)}…${task.id.slice(-4)}` : task.id })}
+                              {task.version === null ? null : <span> · {t("taskVersion", { version: task.version })}</span>}
+                            </p>
+                          ) : null}
                           <div className="mt-2 flex flex-wrap gap-1.5">
                             <Badge variant={task.status === "OVERDUE" ? "destructive" : "outline"}>{taskStatusLabel(task.status)}</Badge>
                             <Badge variant={task.priority === "URGENT" || task.priority === "HIGH" ? "warning" : "outline"}>{taskPriorityLabel(task.priority)}</Badge>
@@ -2225,6 +2538,98 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
           </div>
         </section>
       </>
+    )
+  }
+
+  function renderTeamToday() {
+    if (!query) return null
+    if (teamPhase === "loading" && !teamToday) {
+      return (
+        <div className="border-t border-zinc-200 px-4 py-6 dark:border-zinc-700" role="status" aria-live="polite">
+          <div className="h-32 animate-pulse bg-muted/60 motion-reduce:animate-none" />
+          <p className="mt-3 text-center text-sm text-muted-foreground">{t("teamLoading")}</p>
+        </div>
+      )
+    }
+    if (teamPhase === "error" && !teamToday) {
+      return (
+        <div className="flex min-h-40 flex-col items-center justify-center gap-3 border-t border-zinc-200 px-4 py-8 text-center dark:border-zinc-700" role="alert">
+          <WifiOff className="h-6 w-6 text-red-600" /><p className="text-sm font-semibold">{t("teamLoadFailed")}</p>
+          <Button type="button" variant="outline" className="min-h-11" onClick={() => setRefreshToken((value) => value + 1)}>{t("retry")}</Button>
+        </div>
+      )
+    }
+    if (!teamToday) return null
+    const timezone = teamToday.timezone
+    return (
+      <section className="border-t border-zinc-200 dark:border-zinc-700" data-testid="mtm-week-team-today" aria-labelledby="mtm-week-team-today-title">
+        <div className="flex flex-wrap items-end justify-between gap-2 px-4 pb-2 pt-4 lg:px-5">
+          <div className="min-w-0">
+            <h3 id="mtm-week-team-today-title" className="text-base font-semibold">{t("teamTodayTitle", { date: teamToday.today ? formatCalendarDay(teamToday.today, locale, { weekday: "long", day: "numeric", month: "long" }) : "—" })}</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">{t("teamTodayHint")}</p>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {teamToday.partial ? <Badge variant="warning">{t("scopeListLimited")}</Badge> : null}
+            {teamToday.visitsTruncated ? <Badge variant="warning">{t("teamVisitsTruncated")}</Badge> : null}
+          </div>
+        </div>
+        {teamToday.rows.length === 0 ? (
+          <p className="px-4 pb-5 text-sm text-muted-foreground lg:px-5">{t("noEmployeesHint")}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-y border-zinc-200 bg-muted/35 text-xs text-muted-foreground dark:border-zinc-700">
+                  <th scope="col" className="px-4 py-2 font-medium lg:pl-5">{t("employee")}</th>
+                  <th scope="col" className="px-3 py-2 font-medium">{t("teamLastGps")}</th>
+                  <th scope="col" className="px-3 py-2 font-medium">{t("teamRoute")}</th>
+                  <th scope="col" className="px-3 py-2 font-medium">{t("teamVisits")}</th>
+                  <th scope="col" className="px-3 py-2 font-medium">{t("teamAlerts")}</th>
+                  {teamToday.workdayEnabled ? <th scope="col" className="px-3 py-2 pr-4 font-medium lg:pr-5">{t("workdayState")}</th> : null}
+                </tr>
+              </thead>
+              <tbody>
+                {teamToday.rows.map((row) => {
+                  const openWeek = () => updateQuery({ ...query, agentId: row.agentId, day: teamToday.today || query.day, date: teamToday.today || query.date })
+                  const workday = row.workday ? managerWorkdayPresentation(row.workday, timezone) : null
+                  const WorkdayIcon = workday?.icon
+                  return (
+                    <tr key={row.agentId} className="cursor-pointer border-b border-zinc-200 align-top last:border-b-0 hover:bg-muted/40 dark:border-zinc-700" onClick={openWeek}>
+                      <td className="px-4 py-2.5 lg:pl-5">
+                        <button type="button" className="min-h-11 text-left font-semibold hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:min-h-0" onClick={(event) => { event.stopPropagation(); openWeek() }}>
+                          {row.name}
+                        </button>
+                        {row.teamName ? <p className="text-xs text-muted-foreground">{row.teamName}</p> : null}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2.5 tabular-nums">{row.lastGpsAt ? shortTime(row.lastGpsAt, timezone) : <span className="text-muted-foreground">{t("teamNoGpsToday")}</span>}</td>
+                      <td className="whitespace-nowrap px-3 py-2.5 tabular-nums">{row.route ? t("teamRouteProgress", { visited: row.route.visited, total: row.route.total }) : <span className="text-muted-foreground">{t("teamNoRoute")}</span>}</td>
+                      <td className="px-3 py-2.5 text-xs">
+                        {row.visits.length ? (
+                          <ul className="space-y-0.5">
+                            {row.visits.map((visit) => (
+                              <li key={visit.id} className="tabular-nums">
+                                <span className="font-medium">{visit.checkInAt ? shortTime(visit.checkInAt, timezone) : "—"}→{visit.checkOutAt ? shortTime(visit.checkOutAt, timezone) : t("teamVisitOpen")}</span>
+                                {visit.customerName ? <span className="text-muted-foreground"> · {visit.customerName}</span> : null}
+                              </li>
+                            ))}
+                            {row.visitCount > row.visits.length ? <li className="text-muted-foreground">{t("teamMoreVisits", { count: row.visitCount - row.visits.length })}</li> : null}
+                          </ul>
+                        ) : <span className="text-muted-foreground">{t("teamNoVisits")}</span>}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2.5">{row.openAlerts ? <Badge variant="warning">{row.openAlerts}</Badge> : <span className="text-muted-foreground">0</span>}</td>
+                      {teamToday.workdayEnabled ? (
+                        <td className={cn("px-3 py-2.5 pr-4 text-xs lg:pr-5", workday?.className)}>
+                          {workday && WorkdayIcon ? <span className="inline-flex items-start gap-1.5"><WorkdayIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />{workday.label}</span> : "—"}
+                        </td>
+                      ) : null}
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     )
   }
 
@@ -2409,7 +2814,14 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
             </div> : null}
           </div>
 
-          {facts.workdayCapability.enabled && facts.workdayCapability.requiresPriorDayClosure ? (
+          {facts.workdayCapability.enabled && leftOpenWorkday && !facts.workdayCapability.canMutateSelf ? (
+            <div className="border-t border-zinc-200 bg-red-50 px-4 py-3 text-sm text-red-950 dark:border-zinc-700 dark:bg-red-950/25 dark:text-red-100" role="status" data-testid="mtm-week-workday-left-open">
+              <p className="inline-flex items-center gap-2 font-semibold"><AlertTriangle className="h-4 w-4" />{leftOpenLabel(leftOpenWorkday, facts.timezone)}</p>
+              <p className="mt-1 text-xs leading-5">{t("workdayLeftOpenHint")}</p>
+            </div>
+          ) : null}
+          {/* The close/continue instruction is for the agent who can act on it. */}
+          {facts.workdayCapability.enabled && facts.workdayCapability.canMutateSelf && facts.workdayCapability.requiresPriorDayClosure ? (
             <div className="border-t border-zinc-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-zinc-700 dark:bg-amber-950/25 dark:text-amber-100" role="status">
               <p className="inline-flex items-center gap-2 font-semibold"><AlertTriangle className="h-4 w-4" />{t("priorWorkdayTitle")}</p>
               <p className="mt-1 text-xs leading-5">{t("priorWorkdayHint", {
@@ -2422,7 +2834,7 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
           {selectedDay ? (
             <div className={cn("grid border-t border-zinc-200 bg-muted/20 dark:border-zinc-700 sm:grid-cols-2", facts.workdayCapability.enabled ? "lg:grid-cols-4" : "lg:grid-cols-3")}>
               {facts.workdayCapability.enabled ? (() => {
-                const workday = workdayPresentation(selectedDay.workday.state)
+                const workday = dayWorkdayPresentation(selectedDay)
                 const WorkdayIcon = workday.icon
                 return <div className="px-4 py-3 lg:px-5"><p className="text-xs text-muted-foreground">{t("workdayState")}</p><p className={cn("mt-1 inline-flex items-center gap-1.5 text-sm font-medium", workday.className)}><WorkdayIcon className="h-4 w-4" />{workday.label}</p></div>
               })() : null}
@@ -2538,6 +2950,8 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
           <WifiOff className="h-7 w-7 text-red-600" /><h3 className="text-base font-semibold">{t("loadFailedTitle")}</h3><p className="max-w-lg text-sm text-muted-foreground">{t("loadFailedHint")}</p>
           <Button type="button" variant="outline" className="min-h-11" onClick={() => setRefreshToken((value) => value + 1)}>{t("retry")}</Button>
         </div>
+      ) : teamViewActive && (displayedAgentOptions.length || teamToday?.rows.length) ? (
+        renderTeamToday()
       ) : (
         <div className="flex min-h-52 flex-col items-center justify-center gap-3 border-t border-zinc-200 px-4 py-8 text-center dark:border-zinc-700" role="status">
           <UserRound className="h-7 w-7 text-muted-foreground" /><h3 className="text-base font-semibold">{displayedAgentOptions.length ? t("chooseEmployeeTitle") : t("noEmployeesTitle")}</h3><p className="max-w-lg text-sm text-muted-foreground">{displayedAgentOptions.length ? t("chooseEmployeeHint") : t("noEmployeesHint")}</p>

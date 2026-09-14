@@ -125,13 +125,11 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       activeAgents,
       todayRoutes,
       completedRoutes,
-      offRouteAlerts,
       todayVisits,
       totalCustomers,
       pendingTasks,
       urgentTasks,
       unresolvedAlerts,
-      recentVisits,
       activeAgentCandidatesRaw,
       completedTasks,
       totalTasks,
@@ -145,7 +143,6 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       prisma.mtmAgent.count({ where: { organizationId: orgId, status: "ACTIVE", ...agentScope } }),
       prisma.mtmRoute.count({ where: { organizationId: orgId, date: routePeriodRange, deletedAt: null, ...agentLinkedScope } }),
       prisma.mtmRoute.count({ where: { organizationId: orgId, date: routePeriodRange, status: "COMPLETED", deletedAt: null, ...agentLinkedScope } }),
-      prisma.mtmAlert.count({ where: { organizationId: orgId, category: "WARNING", isResolved: false, ...agentLinkedScope } }),
       prisma.mtmVisit.count({ where: { organizationId: orgId, checkInAt: activityPeriodRange, deletedAt: null, ...agentLinkedScope } }),
       prisma.mtmCustomer.count({
         where: { organizationId: orgId, status: "ACTIVE", deletedAt: null, ...customerScope },
@@ -153,12 +150,6 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       prisma.mtmTask.count({ where: { organizationId: orgId, status: { in: ["PENDING", "IN_PROGRESS"] }, deletedAt: null, ...agentLinkedScope } }),
       prisma.mtmTask.count({ where: { organizationId: orgId, priority: "URGENT", status: { in: ["PENDING", "IN_PROGRESS"] }, deletedAt: null, ...agentLinkedScope } }),
       prisma.mtmAlert.count({ where: { organizationId: orgId, isResolved: false, ...agentLinkedScope } }),
-      prisma.mtmVisit.findMany({
-        where: { organizationId: orgId, deletedAt: null, ...agentLinkedScope },
-        take: 10,
-        orderBy: { checkInAt: "desc" },
-        include: { agent: { select: { name: true } }, customer: { select: { name: true } } },
-      }),
       prisma.mtmAgent.findMany({
         where: { organizationId: orgId, status: "ACTIVE", ...agentScope },
         orderBy: { id: "asc" },
@@ -229,11 +220,6 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       lastSeen: agentLocationMap[a.id]?.recordedAt ?? null,
     }))
 
-    const avgRouteDuration = await prisma.mtmVisit.aggregate({
-      where: { organizationId: orgId, checkInAt: activityPeriodRange, status: "CHECKED_OUT", duration: { not: null }, deletedAt: null, ...agentLinkedScope },
-      _avg: { duration: true },
-    })
-
     const payload = {
       generatedAt: now,
       timezone,
@@ -253,7 +239,6 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       todayRoutes,
       completedRoutes,
       routeCompletion,
-      offRouteAlerts,
       todayVisits,
       totalCustomers,
       pendingTasks,
@@ -263,20 +248,14 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       openVisits,
       approvalBacklog: routeApprovalBacklog + customerApprovalBacklog,
       avgVisitDuration: Math.round(avgVisitDuration._avg?.duration ?? 0),
-      avgRouteDuration: Math.round(avgRouteDuration._avg?.duration ?? 0),
-      totalWorkTime: Math.round((avgRouteDuration._avg?.duration ?? 0) * todayVisits / 60),
       activeAgentsList,
-      recentVisits: recentVisits
-        .filter((v: any) => !bounded || scopeIdSet.has(v.agentId))
-        .map((v: any) => ({
-          id: v.id,
-          agent: v.agent.name,
-          customer: v.customer.name,
-          status: v.status,
-          checkInAt: v.checkInAt,
-          checkOutAt: v.checkOutAt,
-          duration: v.duration,
-        })),
+      // Prod audit 2026-09-14 removed four fields whose labels lied, together
+      // with the Panel block that showed them: `avgRouteDuration` was the
+      // average VISIT duration, `totalWorkTime` was round(avg visit × visits
+      // / 60) — «0 saat» after a real day —, `offRouteAlerts` counted every
+      // open WARNING of all time, and `recentVisits` had no dates. Nothing
+      // else reads this endpoint (the mobile app does not call it); the
+      // Panel's per-agent week carries the truthful versions.
     }
     setCache(cacheKey, payload)
     return NextResponse.json({ success: true, data: payload })
