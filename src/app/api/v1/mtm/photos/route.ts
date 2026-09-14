@@ -44,6 +44,7 @@ import {
   reserveMtmMediaObject,
 } from "@/lib/mtm/media-object-lifecycle"
 import { readMtmMediaObjectStorageConfig } from "@/lib/mtm/media-object-storage"
+import { mtmPhotoThumbnailUrl } from "@/lib/mtm/photo-thumbnail-url"
 // Static import (not dynamic) so Next.js's output-file-tracing pulls
 // heic-convert into .next/standalone/node_modules. Dynamic
 // `await import("heic-convert")` left the module out of the prod
@@ -551,6 +552,9 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
             clientPhotoId,
             checksumSha256: exactReplayInput.checksumSha256,
             url,
+            // Served lazily by the upload proxy under the same authorization
+            // as `url`; grids use it instead of the 4080 px original.
+            thumbnailUrl: mtmPhotoThumbnailUrl(url),
             category,
             latitude,
             longitude,
