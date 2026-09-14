@@ -33,7 +33,20 @@ import { prisma } from "@/lib/prisma"
 import { requireAuth } from "@/lib/api-auth"
 
 const ORG = "org-1"
-const AUTH = { orgId: ORG, userId: "manager-user", role: "manager", email: "manager@example.com", name: "Manager" }
+// The contract tests below run as a web admin (organization-wide scope); the
+// "field scope" block at the end pins what a manager and others see.
+const AUTH = { orgId: ORG, userId: "admin-user", role: "admin", email: "admin@example.com", name: "Admin" }
+const MANAGER_AUTH = { orgId: ORG, userId: "manager-user", role: "manager", email: "manager@example.com", name: "Manager" }
+
+/** A web manager whose MTM card is a MANAGER with one direct report, agent-1. */
+function linkManagerCard() {
+  vi.mocked(requireAuth).mockResolvedValue(MANAGER_AUTH as never)
+  vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
+    id: "mgr-1", role: "MANAGER", canPlanOwnRoutes: true, canSelfPublishRoutes: false,
+  } as never)
+  vi.mocked(prisma.mtmAgent.findUnique).mockResolvedValue({ id: "mgr-1", teamId: null } as never)
+  vi.mocked(prisma.mtmAgent.findMany).mockResolvedValueOnce([{ id: "agent-1" }] as never)
+}
 const BOTH_PRODUCTS = {
   plan: "starter",
   addons: [],
@@ -52,6 +65,9 @@ beforeEach(() => {
   vi.mocked(prisma.mtmAuditLog.count).mockResolvedValue(0)
   vi.mocked(prisma.mtmAuditLog.findMany).mockResolvedValue([])
   vi.mocked(prisma.organization.findUnique).mockResolvedValue(BOTH_PRODUCTS as never)
+  vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(null as never)
+  vi.mocked(prisma.mtmAgent.findUnique).mockResolvedValue(null as never)
+  vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([] as never)
 })
 
 describe("GET /api/v1/mtm/activity", () => {
@@ -241,6 +257,48 @@ describe("GET /api/v1/mtm/activity", () => {
       await GET(makeReq("/api/v1/mtm/activity"))
       const findArgs = vi.mocked(prisma.mtmAuditLog.findMany).mock.calls[0][0] as any
       expect(findArgs.orderBy).toEqual({ createdAt: "desc" })
+    })
+  })
+
+  describe("field scope (audit 2026-09-14)", () => {
+    it("limits a manager's feed and every counter to their agents", async () => {
+      linkManagerCard()
+      const res = await GET(makeReq("/api/v1/mtm/activity?period=all"))
+      expect(res.status).toBe(200)
+      const scoped = { in: ["agent-1", "mgr-1"] }
+      for (const [arg] of vi.mocked(prisma.mtmAuditLog.count).mock.calls) {
+        expect((arg as any).where.agentId).toEqual(scoped)
+      }
+      expect((vi.mocked(prisma.mtmAuditLog.findMany).mock.calls[0][0] as any).where.agentId).toEqual(scoped)
+    })
+
+    it("accepts an agent filter inside the scope", async () => {
+      linkManagerCard()
+      const res = await GET(makeReq("/api/v1/mtm/activity?agentId=agent-1"))
+      expect(res.status).toBe(200)
+      expect((vi.mocked(prisma.mtmAuditLog.findMany).mock.calls[0][0] as any).where.agentId).toBe("agent-1")
+    })
+
+    it("rejects an agent of another team", async () => {
+      linkManagerCard()
+      const res = await GET(makeReq("/api/v1/mtm/activity?agentId=agent-other-team"))
+      expect(res.status).toBe(403)
+      expect(await res.json()).toMatchObject({ code: "MTM_AGENT_OUT_OF_SCOPE" })
+      expect(prisma.mtmAuditLog.findMany).not.toHaveBeenCalled()
+    })
+
+    it("refuses a web manager without an MTM card instead of showing the company", async () => {
+      vi.mocked(requireAuth).mockResolvedValue(MANAGER_AUTH as never)
+      const res = await GET(makeReq("/api/v1/mtm/activity"))
+      expect(res.status).toBe(403)
+      expect(await res.json()).toMatchObject({ code: "MTM_FIELD_SCOPE_REQUIRED" })
+      expect(prisma.mtmAuditLog.count).not.toHaveBeenCalled()
+    })
+
+    it("keeps the admin feed organization-wide", async () => {
+      await GET(makeReq("/api/v1/mtm/activity"))
+      expect((vi.mocked(prisma.mtmAuditLog.findMany).mock.calls[0][0] as any).where.agentId).toBeUndefined()
+      expect(prisma.mtmAgent.findFirst).not.toHaveBeenCalled()
     })
   })
 })

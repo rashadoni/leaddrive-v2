@@ -48,6 +48,7 @@ import {
 import { mtmMediaObjectReadFailureResponse } from "@/lib/mtm/media-object-http"
 import { readCommittedMtmMediaObject, toMtmReservedMediaObject } from "@/lib/mtm/media-object-lifecycle"
 import { mtmMediaObjectStorageSelect } from "@/lib/mtm/media-object-select"
+import { mtmPhotoFieldScopeWhere, resolveMtmFieldScope } from "@/lib/mtm/field-access"
 import { runtimePublicUploadsRoot } from "@/lib/runtime-paths"
 
 const MAX_SERVED_FILE_SIZE = 50 * 1024 * 1024
@@ -388,8 +389,23 @@ const authenticatedGET = withRlsSessionAuth(async (_req, auth, { params }: Route
     if (!fileName) {
       return NextResponse.json({ error: "Not found" }, { status: 404 })
     }
+    // Tenant is not enough: inside one organization a manager may open only
+    // the photos their field scope shows in the gallery. A web user without an
+    // MTM card has no field scope and gets the same masked 404.
+    const scope = await resolveMtmFieldScope(prisma, {
+      organizationId: auth.orgId,
+      userId: auth.userId,
+      webRole: auth.role,
+    })
+    if (scope.kind === "none") {
+      return NextResponse.json({ error: "Not found" }, { status: 404 })
+    }
     const photo = await prisma.mtmPhoto.findFirst({
-      where: { url: `/uploads/mtm-photos/${fileName}`, organizationId: auth.orgId },
+      where: {
+        url: `/uploads/mtm-photos/${fileName}`,
+        organizationId: auth.orgId,
+        ...mtmPhotoFieldScopeWhere(scope),
+      },
       select: { id: true, mediaObject: { select: mtmMediaObjectStorageSelect } },
     })
     if (!photo) {

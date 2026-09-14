@@ -41,6 +41,9 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     mtmPhoto: { findFirst: vi.fn() },
     contractFile: { findFirst: vi.fn() },
+    // Field-scope actor lookup for mtm-photos (web manager → their agents only).
+    mtmAgent: { findFirst: vi.fn(), findUnique: vi.fn(), findMany: vi.fn(), count: vi.fn() },
+    mtmTeam: { findFirst: vi.fn(), findMany: vi.fn() },
   },
 }))
 
@@ -446,6 +449,38 @@ describe("GET /api/v1/uploads/[...path]", () => {
       vi.mocked(prisma.mtmPhoto.findFirst).mockResolvedValueOnce({ id: "p1" } as any)
       const res = await GET(req(), pp(["mtm-photos", "owned.jpg"]))
       expect(res.status).toBe(200)
+    })
+
+    it("mtm-photos: a manager opens only photos inside their field scope", async () => {
+      vi.mocked(requireSessionAuth).mockResolvedValueOnce({ ...AUTH_OK, userId: "manager-user", role: "manager" })
+      vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValueOnce({ id: "mgr-1", role: "MANAGER" } as any)
+      vi.mocked(prisma.mtmAgent.count).mockResolvedValueOnce(1 as any)
+      vi.mocked(prisma.mtmAgent.findUnique).mockResolvedValueOnce({ id: "mgr-1", teamId: null } as any)
+      vi.mocked(prisma.mtmAgent.findMany)
+        .mockResolvedValueOnce([{ id: "agent-1" }] as any)
+        .mockResolvedValue([] as any)
+      vi.mocked(prisma.mtmPhoto.findFirst).mockResolvedValueOnce(null)
+
+      const res = await GET(req(), pp(["mtm-photos", "other-team.jpg"]))
+
+      expect(res.status).toBe(404)
+      expect(stat).not.toHaveBeenCalled()
+      const call = vi.mocked(prisma.mtmPhoto.findFirst).mock.calls[0][0] as any
+      expect(call.where).toMatchObject({ url: "/uploads/mtm-photos/other-team.jpg", organizationId: "org-1" })
+      expect(call.where.OR).toEqual([
+        { agentId: { in: ["agent-1", "mgr-1"] } },
+        { visit: { is: { agentId: { in: ["agent-1", "mgr-1"] } } } },
+      ])
+    })
+
+    it("mtm-photos: a web user without an MTM card gets the masked 404 without a photo lookup", async () => {
+      vi.mocked(requireSessionAuth).mockResolvedValueOnce({ ...AUTH_OK, userId: "manager-user", role: "manager" })
+      vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValueOnce(null)
+
+      const res = await GET(req(), pp(["mtm-photos", "anything.jpg"]))
+
+      expect(res.status).toBe(404)
+      expect(prisma.mtmPhoto.findFirst).not.toHaveBeenCalled()
     })
 
     it("contracts: 404 when DB lookup returns no row for caller's org", async () => {

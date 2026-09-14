@@ -7,7 +7,13 @@ import bcrypt from "bcryptjs"
 import { AgentCreateSchema, parseBody } from "@/lib/mtm-validators"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { resolveAgentScope, isValidMtmAgentRole } from "@/lib/mtm/territory-scope"
-import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
+import { mtmFieldScopeRequiredResponse, resolveMtmFieldScope } from "@/lib/mtm/field-access"
+import {
+  MTM_SCOPED_MANAGEABLE_AGENT_ROLES,
+  mtmScopedAgentLinkForbidden,
+  mtmScopedAgentRoleForbidden,
+  resolveMtmAgentAdministration,
+} from "@/lib/mtm/agent-administration"
 import { mtmAgentPresence, type MtmAgentPresence } from "@/lib/mtm/agent-day-state"
 import { mtmWorkdayPauses, serializeMtmWorkdayPauses } from "@/lib/mtm/workday-pauses"
 import { getMtmSettings } from "@/lib/mtm-settings"
@@ -40,26 +46,6 @@ const AGENT_RESPONSE_SELECT = {
   manager: { select: { id: true, name: true } },
   team: { select: { id: true, name: true, region: { select: { id: true, name: true } } } },
 } satisfies Prisma.MtmAgentSelect
-
-async function canManageAgents({ orgId, session }: RlsAuth): Promise<boolean> {
-  // Agent credentials and authorization links are privileged web operations.
-  // Mobile JWTs and API keys reach withRls without a browser session and fail.
-  if (!session) return false
-  if (checkPermission(session.role, "mtm", "admin")) return true
-  const actor = await resolveMtmRouteActor(prisma, {
-    organizationId: orgId,
-    userId: session.userId,
-    webRole: session.role,
-  })
-  return actor?.role === "ADMIN"
-}
-
-function agentAdministrationDenied() {
-  return NextResponse.json(
-    { error: "Web administrator access required", code: "MTM_AGENT_ADMIN_REQUIRED" },
-    { status: 403 },
-  )
-}
 
 /**
  * Момент ухода на перерыв и момент закрытия дня — это данные о персонале.
@@ -149,6 +135,16 @@ export const GET = withRls(async (req, auth) => {
         // check and this query. Do not widen that race to organization-wide.
         where.id = { in: [] }
       }
+    } else if (session) {
+      // Web users see the cards of their field scope. Before, every web user
+      // with MTM read saw every employee's phone, email, team and manager.
+      const scope = await resolveMtmFieldScope(prisma, {
+        organizationId: orgId,
+        userId: session.userId,
+        webRole: session.role,
+      })
+      if (scope.kind === "none") return mtmFieldScopeRequiredResponse()
+      if (scope.kind === "agents") where.id = { in: scope.agentIds }
     }
 
     const [agents, total] = await Promise.all([
@@ -238,12 +234,25 @@ export const GET = withRls(async (req, auth) => {
 export const POST = withRls(async (req, auth) => {
   const { orgId } = auth
   try {
-    if (!await canManageAgents(auth)) return agentAdministrationDenied()
+    const administration = await resolveMtmAgentAdministration(prisma, auth)
+    if (administration.kind === "denied") return administration.response
 
     const raw = await req.json()
     const parsed = parseBody(AgentCreateSchema, raw)
     if (!parsed.ok) return parsed.response
     const body = parsed.data
+
+    if (administration.kind === "scoped") {
+      // A manager hires into their own team line: field roles only, no web
+      // login link, and a manager inside their scope (themselves by default)
+      // so the new card is visible to them the moment it exists.
+      if (!MTM_SCOPED_MANAGEABLE_AGENT_ROLES.includes(body.role ?? "AGENT")) return mtmScopedAgentRoleForbidden()
+      if (body.userId) return mtmScopedAgentLinkForbidden()
+      if (body.managerId && !administration.agentIds.includes(body.managerId)) {
+        return NextResponse.json({ error: "Manager is outside your field scope", code: "MTM_AGENT_OUT_OF_SCOPE" }, { status: 403 })
+      }
+      body.managerId = body.managerId ?? administration.actor.agentId
+    }
 
     if (body.userId) {
       const linkedUser = await prisma.user.findFirst({

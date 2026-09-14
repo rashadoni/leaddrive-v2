@@ -1,13 +1,20 @@
 import { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { withRls, type RlsAuth } from "@/lib/with-rls"
+import { withRls } from "@/lib/with-rls"
 import { getMobileAuth } from "@/lib/mobile-auth"
 import bcrypt from "bcryptjs"
 import { AgentUpdateSchema, parseBody } from "@/lib/mtm-validators"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { resolveAgentScope, isValidMtmAgentRole } from "@/lib/mtm/territory-scope"
-import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
+import { mtmFieldScopeRequiredResponse, resolveMtmFieldScope } from "@/lib/mtm/field-access"
+import {
+  MTM_SCOPED_MANAGEABLE_AGENT_ROLES,
+  mtmScopedAgentLinkForbidden,
+  mtmScopedAgentRoleForbidden,
+  resolveMtmAgentAdministration,
+  type MtmAgentAdministration,
+} from "@/lib/mtm/agent-administration"
 import { checkPermission } from "@/lib/permissions"
 import { passwordPolicyError } from "@/lib/password-policy"
 
@@ -34,22 +41,9 @@ const AGENT_RESPONSE_SELECT = {
   team: { select: { id: true, name: true, region: { select: { id: true, name: true } } } },
 } satisfies Prisma.MtmAgentSelect
 
-async function canManageAgents({ orgId, session }: RlsAuth): Promise<boolean> {
-  if (!session) return false
-  if (checkPermission(session.role, "mtm", "admin")) return true
-  const actor = await resolveMtmRouteActor(prisma, {
-    organizationId: orgId,
-    userId: session.userId,
-    webRole: session.role,
-  })
-  return actor?.role === "ADMIN"
-}
-
-function agentAdministrationDenied() {
-  return NextResponse.json(
-    { error: "Web administrator access required", code: "MTM_AGENT_ADMIN_REQUIRED" },
-    { status: 403 },
-  )
+/** A scoped manager reaches only cards inside their field scope; others look missing. */
+function scopedAgentIdFilter(administration: MtmAgentAdministration, id: string): string | { equals: string; in: string[] } {
+  return administration.kind === "scoped" ? { equals: id, in: administration.agentIds } : id
 }
 
 function workforceRetentionBlocked() {
@@ -85,7 +79,17 @@ export const GET = withRls(async (req, auth, { params }: { params: Promise<{ id:
     if (session && !checkPermission(session.role, "mtm", "read")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
-    const visibleAgentIds = await mobileVisibleAgentIds(req, orgId)
+    let visibleAgentIds = await mobileVisibleAgentIds(req, orgId)
+    if (visibleAgentIds === null && session) {
+      // A web user opens only a card inside their field scope; others are a 404.
+      const scope = await resolveMtmFieldScope(prisma, {
+        organizationId: orgId,
+        userId: session.userId,
+        webRole: session.role,
+      })
+      if (scope.kind === "none") return mtmFieldScopeRequiredResponse()
+      if (scope.kind === "agents") visibleAgentIds = scope.agentIds
+    }
     const agent = await prisma.mtmAgent.findFirst({
       where: {
         id: visibleAgentIds === null ? id : { equals: id, in: [...visibleAgentIds] },
@@ -106,7 +110,8 @@ export const PUT = withRls(async (req, auth, { params }: { params: Promise<{ id:
   const { id } = await params
 
   try {
-    if (!await canManageAgents(auth)) return agentAdministrationDenied()
+    const administration = await resolveMtmAgentAdministration(prisma, auth)
+    if (administration.kind === "denied") return administration.response
 
     const raw = await req.json()
     const parsed = parseBody(AgentUpdateSchema, raw)
@@ -133,7 +138,7 @@ export const PUT = withRls(async (req, auth, { params }: { params: Promise<{ id:
     }
 
     const before = await prisma.mtmAgent.findFirst({
-      where: { id, organizationId: orgId },
+      where: { id: scopedAgentIdFilter(administration, id), organizationId: orgId },
       select: {
         id: true,
         name: true,
@@ -143,9 +148,26 @@ export const PUT = withRls(async (req, auth, { params }: { params: Promise<{ id:
         canPlanOwnRoutes: true,
         canSelfPublishRoutes: true,
         managerId: true,
+        userId: true,
       },
     })
     if (!before) return NextResponse.json({ error: "Not found" }, { status: 404 })
+    if (administration.kind === "scoped") {
+      // A manager's own card and their peers' cards are administrator work:
+      // otherwise a manager could raise their own role or take over a peer's
+      // login by resetting the password.
+      if (!MTM_SCOPED_MANAGEABLE_AGENT_ROLES.includes(before.role)) return mtmScopedAgentRoleForbidden()
+      if (body.role !== undefined && !MTM_SCOPED_MANAGEABLE_AGENT_ROLES.includes(body.role)) return mtmScopedAgentRoleForbidden()
+      if (body.userId !== undefined && (body.userId ?? null) !== before.userId) return mtmScopedAgentLinkForbidden()
+      if (
+        body.managerId !== undefined
+        && body.managerId !== null
+        && body.managerId !== before.managerId
+        && !administration.agentIds.includes(body.managerId)
+      ) {
+        return NextResponse.json({ error: "Manager is outside your field scope", code: "MTM_AGENT_OUT_OF_SCOPE" }, { status: 403 })
+      }
+    }
 
     const data: Prisma.MtmAgentUncheckedUpdateManyInput = {}
     if (body.name !== undefined) data.name = body.name
@@ -165,7 +187,7 @@ export const PUT = withRls(async (req, auth, { params }: { params: Promise<{ id:
     }
 
     const agent = await prisma.mtmAgent.updateMany({
-      where: { id, organizationId: orgId },
+      where: { id: scopedAgentIdFilter(administration, id), organizationId: orgId },
       data,
     })
     if (agent.count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 })
@@ -193,7 +215,8 @@ export const DELETE = withRls(async (req, auth, { params }: { params: Promise<{ 
   const { id } = await params
 
   try {
-    if (!await canManageAgents(auth)) return agentAdministrationDenied()
+    const administration = await resolveMtmAgentAdministration(prisma, auth)
+    if (administration.kind === "denied") return administration.response
 
     const deletion = await prisma.$transaction(async (tx) => {
       // Child HRM/GPS inserts take a KEY SHARE lock on the employee. Keep the
@@ -205,10 +228,13 @@ export const DELETE = withRls(async (req, auth, { params }: { params: Promise<{ 
         FOR UPDATE
       `
       const before = await tx.mtmAgent.findFirst({
-        where: { id, organizationId: orgId },
+        where: { id: scopedAgentIdFilter(administration, id), organizationId: orgId },
         select: { id: true, name: true, email: true, role: true },
       })
       if (!before) return { kind: "not_found" as const }
+      if (administration.kind === "scoped" && !MTM_SCOPED_MANAGEABLE_AGENT_ROLES.includes(before.role)) {
+        return { kind: "role_forbidden" as const }
+      }
 
       // Time history is governed by a separate retention contract. Check it
       // before the FK cascade reaches the database fact guard, so admins
@@ -262,6 +288,7 @@ export const DELETE = withRls(async (req, auth, { params }: { params: Promise<{ 
     })
     if (deletion.kind === "not_found") return NextResponse.json({ error: "Not found" }, { status: 404 })
     if (deletion.kind === "retention_blocked") return workforceRetentionBlocked()
+    if (deletion.kind === "role_forbidden") return mtmScopedAgentRoleForbidden()
 
     await writeMtmAudit({
       organizationId: orgId,

@@ -7,14 +7,21 @@
  *
  * Role → visibility:
  *   ADMIN      — all agents in the org          (agentIds: null = no filter)
- *   MANAGER    — all agents in their region     (all teams in region)
+ *   MANAGER    — union of: all agents in their region (all teams in region),
+ *                everyone below them in the reporting line (managerId,
+ *                transitively, depth-limited and cycle-safe), and self
  *   SUPERVISOR — all agents in their team
  *   AGENT      — only themselves                (agentIds: [agentId])
  *
+ * Owner decision 2026-09-14: "my agents" for a manager is the territory AND the
+ * reporting line, not one or the other. Before, managerId counted only for a
+ * manager without a team, so a manager with a team lost a direct report who sat
+ * in another team — and the report fell out of every scoped screen.
+ *
  * Graceful fallbacks for unassigned agents (teamId: null):
- *   MANAGER without a teamId → direct reports plus self
+ *   MANAGER without a teamId → reporting-line subtree plus self
  *   SUPERVISOR without a teamId → self-only visibility
- *   MANAGER whose team has no regionId  → team-only visibility
+ *   MANAGER whose team has no regionId  → team plus reporting-line subtree
  *
  * IMPORTANT: every DB query in this function MUST include organizationId
  * in the WHERE clause to prevent cross-tenant data leaks.
@@ -52,8 +59,79 @@ export interface AgentScopeResult {
   agentIds: string[] | null
 }
 
+/** How many reporting levels below a manager count as "their agents". */
+export const MTM_MANAGER_SUBTREE_MAX_DEPTH = 5
+
+type ScopePrisma = Pick<PrismaClient, "mtmAgent" | "mtmTeam">
+
+/**
+ * Everyone below `agentId` in the managerId reporting line, breadth-first.
+ * Depth-limited and cycle-safe: an agent already seen is never expanded twice,
+ * so A→B→A data loops terminate. Every query is tenant-scoped.
+ */
+export async function resolveManagerSubtreeAgentIds(
+  prisma: Pick<PrismaClient, "mtmAgent">,
+  params: { agentId: string; organizationId: string; maxDepth?: number },
+): Promise<string[]> {
+  const maxDepth = params.maxDepth ?? MTM_MANAGER_SUBTREE_MAX_DEPTH
+  const seen = new Set<string>([params.agentId])
+  const found: string[] = []
+  let frontier = [params.agentId]
+  for (let depth = 0; depth < maxDepth && frontier.length > 0; depth += 1) {
+    const reports = await prisma.mtmAgent.findMany({
+      where: { managerId: { in: frontier }, organizationId: params.organizationId },
+      select: { id: true },
+    })
+    const next: string[] = []
+    for (const report of reports ?? []) {
+      if (seen.has(report.id)) continue
+      seen.add(report.id)
+      found.push(report.id)
+      next.push(report.id)
+    }
+    frontier = next
+  }
+  return found
+}
+
+/**
+ * Teams a MANAGER or SUPERVISOR is responsible for as a territory — the part
+ * of the scope that is about teams, without the reporting-line subtree. A
+ * manager's direct report in someone else's team does not make that whole
+ * team theirs; team-wide configuration (visit policies) uses this set.
+ */
+export async function resolveTerritoryTeamIds(
+  prisma: ScopePrisma,
+  params: { agentId: string; organizationId: string; role: MtmAgentRoleString },
+): Promise<string[]> {
+  const { agentId, organizationId, role } = params
+  if (role !== "MANAGER" && role !== "SUPERVISOR") return []
+  const caller = await prisma.mtmAgent.findUnique({
+    where: { id: agentId, organizationId },
+    select: { id: true, teamId: true },
+  })
+  if (!caller?.teamId) return []
+  if (role === "SUPERVISOR") return [caller.teamId]
+  const managerTeam = await prisma.mtmTeam.findFirst({
+    where: { id: caller.teamId, organizationId },
+    select: { id: true, regionId: true },
+  })
+  if (!managerTeam?.regionId) return [caller.teamId]
+  const regionTeams = await prisma.mtmTeam.findMany({
+    where: { regionId: managerTeam.regionId, organizationId },
+    select: { id: true },
+  })
+  const ids = regionTeams.map((team) => team.id)
+  if (!ids.includes(caller.teamId)) ids.push(caller.teamId)
+  return ids
+}
+
+function uniqueIds(...groups: string[][]): string[] {
+  return [...new Set(groups.flat())]
+}
+
 export async function resolveAgentScope(
-  prisma: Pick<PrismaClient, "mtmAgent" | "mtmTeam">,
+  prisma: ScopePrisma,
   params: {
     agentId: string
     organizationId: string
@@ -84,29 +162,18 @@ export async function resolveAgentScope(
     select: { id: true, teamId: true },
   })
 
-  // A manager can still own direct reports before the organization finishes
-  // configuring teams/regions. Keep that fallback tenant-scoped and include
-  // the manager so manager views remain useful during staged onboarding.
-  if (caller && !caller.teamId && role === "MANAGER") {
-    const directReports = await prisma.mtmAgent.findMany({
-      where: { managerId: agentId, organizationId },
-      select: { id: true },
-    })
-    return { agentIds: [agentId, ...directReports.map(report => report.id)] }
-  }
-
-  // Missing caller, or an unassigned supervisor: fail closed to self-only.
-  if (!caller?.teamId) {
+  // Missing caller: fail closed to self-only, for both roles.
+  if (!caller) {
     return { agentIds: [agentId] }
   }
 
-  const { teamId } = caller
-
   // ─── SUPERVISOR ─────────────────────────────────────────────────────────
   // All agents in the same team (including the supervisor themselves).
+  // An unassigned supervisor is self-only.
   if (role === "SUPERVISOR") {
+    if (!caller.teamId) return { agentIds: [agentId] }
     const members = await prisma.mtmAgent.findMany({
-      where: { teamId, organizationId },
+      where: { teamId: caller.teamId, organizationId },
       select: { id: true },
     })
     const ids = members.map(m => m.id)
@@ -117,36 +184,35 @@ export async function resolveAgentScope(
   }
 
   // ─── MANAGER ────────────────────────────────────────────────────────────
-  // Step 1: resolve the manager's team to get its regionId.
-  const managerTeam = await prisma.mtmTeam.findFirst({
-    where: { id: teamId, organizationId },
-    select: { id: true, regionId: true },
-  })
-
-  if (!managerTeam?.regionId) {
-    // Team has no region → scope to the manager's single team (same as supervisor).
-    const members = await prisma.mtmAgent.findMany({
-      where: { teamId, organizationId },
-      select: { id: true },
+  // Territory part: the region's teams, or just the manager's own team when
+  // it has no region, or nothing when the manager has no team yet.
+  let territoryIds: string[] = []
+  if (caller.teamId) {
+    const { teamId } = caller
+    const managerTeam = await prisma.mtmTeam.findFirst({
+      where: { id: teamId, organizationId },
+      select: { id: true, regionId: true },
     })
-    const ids = members.map(m => m.id)
-    if (!ids.includes(agentId)) ids.push(agentId)
-    return { agentIds: ids }
+    if (!managerTeam?.regionId) {
+      const members = await prisma.mtmAgent.findMany({
+        where: { teamId, organizationId },
+        select: { id: true },
+      })
+      territoryIds = members.map(m => m.id)
+    } else {
+      const regionTeams = await prisma.mtmTeam.findMany({
+        where: { regionId: managerTeam.regionId, organizationId },
+        select: { id: true },
+      })
+      const members = await prisma.mtmAgent.findMany({
+        where: { teamId: { in: regionTeams.map(t => t.id) }, organizationId },
+        select: { id: true },
+      })
+      territoryIds = members.map(m => m.id)
+    }
   }
 
-  // Step 2: all teams in the same region.
-  const regionTeams = await prisma.mtmTeam.findMany({
-    where: { regionId: managerTeam.regionId, organizationId },
-    select: { id: true },
-  })
-  const teamIds = regionTeams.map(t => t.id)
-
-  // Step 3: all agents across those teams.
-  const members = await prisma.mtmAgent.findMany({
-    where: { teamId: { in: teamIds }, organizationId },
-    select: { id: true },
-  })
-  const ids = members.map(m => m.id)
-  if (!ids.includes(agentId)) ids.push(agentId)
-  return { agentIds: ids }
+  // Reporting-line part: everyone below the manager, whichever team they sit in.
+  const subtreeIds = await resolveManagerSubtreeAgentIds(prisma, { agentId, organizationId })
+  return { agentIds: uniqueIds(territoryIds, subtreeIds, [agentId]) }
 }

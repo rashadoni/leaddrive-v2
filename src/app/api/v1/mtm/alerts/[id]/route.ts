@@ -3,18 +3,51 @@ import { prisma } from "@/lib/prisma"
 import { AlertUpdateSchema, parseBody } from "@/lib/mtm-validators"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { withRouteFieldRlsAuth } from "@/lib/with-mtm-rls-auth"
+import type { MtmRlsAuth } from "@/lib/with-mtm-rls-auth"
+import { fieldScopeAgentIdWhere, mtmFieldScopeRequiredResponse, resolveMtmFieldScope, type MtmFieldScope } from "@/lib/mtm/field-access"
 
-export const PATCH = withRouteFieldRlsAuth("write", async (req, { orgId }, { params }: { params: Promise<{ id: string }> }) => {
+/**
+ * Resolving or deleting an alert is a supervisory act on someone's record.
+ * Before the scope audit any web user with MTM write — and a field agent's
+ * token — could close or delete alerts of any team. Now:
+ *   - no MTM card behind the caller → MTM_FIELD_SCOPE_REQUIRED;
+ *   - AGENT → 403: an agent does not close alerts raised about themselves;
+ *   - MANAGER/SUPERVISOR → only alerts of agents in scope (others are a 404,
+ *     indistinguishable from a missing id);
+ *   - admin → any alert in the organization.
+ */
+async function alertWriteScope(auth: MtmRlsAuth): Promise<Response | Exclude<MtmFieldScope, { kind: "none" }>> {
+  const scope = await resolveMtmFieldScope(prisma, {
+    organizationId: auth.orgId,
+    userId: auth.userId,
+    webRole: auth.role,
+    agentId: auth.agentId,
+  })
+  if (scope.kind === "none") return mtmFieldScopeRequiredResponse()
+  if (scope.actor.role === "AGENT") {
+    return NextResponse.json(
+      { error: "Alert review requires manager access", code: "MTM_ALERT_REVIEW_FORBIDDEN" },
+      { status: 403 },
+    )
+  }
+  return scope
+}
+
+export const PATCH = withRouteFieldRlsAuth("write", async (req, auth, { params }: { params: Promise<{ id: string }> }) => {
+  const { orgId } = auth
   const { id } = await params
 
   try {
+    const scope = await alertWriteScope(auth)
+    if (scope instanceof Response) return scope
+
     const raw = await req.json()
     const parsed = parseBody(AlertUpdateSchema, raw)
     if (!parsed.ok) return parsed.response
     const body = parsed.data
 
     const before = await prisma.mtmAlert.findFirst({
-      where: { id, organizationId: orgId },
+      where: { id, organizationId: orgId, ...fieldScopeAgentIdWhere(scope) },
       select: { id: true, type: true, isResolved: true, agentId: true },
     })
     if (!before) return NextResponse.json({ error: "Not found" }, { status: 404 })
@@ -26,7 +59,7 @@ export const PATCH = withRouteFieldRlsAuth("write", async (req, { orgId }, { par
     }
 
     const updated = await prisma.mtmAlert.updateMany({
-      where: { id, organizationId: orgId },
+      where: { id, organizationId: orgId, ...fieldScopeAgentIdWhere(scope) },
       data,
     })
     if (updated.count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 })
@@ -49,20 +82,27 @@ export const PATCH = withRouteFieldRlsAuth("write", async (req, { orgId }, { par
   }
 })
 
-export const DELETE = withRouteFieldRlsAuth("delete", async (req, { orgId }, { params }: { params: Promise<{ id: string }> }) => {
+export const DELETE = withRouteFieldRlsAuth("delete", async (req, auth, { params }: { params: Promise<{ id: string }> }) => {
+  const { orgId } = auth
   const { id } = await params
 
   try {
+    const scope = await alertWriteScope(auth)
+    if (scope instanceof Response) return scope
+
     const before = await prisma.mtmAlert.findFirst({
-      where: { id, organizationId: orgId },
+      where: { id, organizationId: orgId, ...fieldScopeAgentIdWhere(scope) },
       select: { id: true, type: true, title: true, agentId: true },
     })
-    const deleted = await prisma.mtmAlert.deleteMany({ where: { id, organizationId: orgId } })
+    if (!before) return NextResponse.json({ error: "Not found" }, { status: 404 })
+    const deleted = await prisma.mtmAlert.deleteMany({
+      where: { id, organizationId: orgId, ...fieldScopeAgentIdWhere(scope) },
+    })
     if (deleted.count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
     await writeMtmAudit({
       organizationId: orgId,
-      agentId: before?.agentId,
+      agentId: before.agentId,
       action: "ALERT_DELETE",
       entity: "alert",
       entityId: id,

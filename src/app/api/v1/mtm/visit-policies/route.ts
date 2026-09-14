@@ -3,17 +3,9 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withRouteFieldWebRlsAuth } from "@/lib/with-mtm-rls-auth"
 import { VisitPolicyCreateSchema, parseBody } from "@/lib/mtm-validators"
-import { canManageMtmVisitPolicies } from "@/lib/mtm/route-permissions"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { getMtmSettings } from "@/lib/mtm-settings"
-
-async function requireAdministrator(auth: { orgId: string; userId: string; role: string }) {
-  return canManageMtmVisitPolicies(prisma, {
-    organizationId: auth.orgId,
-    userId: auth.userId,
-    webRole: auth.role,
-  })
-}
+import { visitPolicyAccessFor, visitPolicyReadDenied, visitPolicyWriteDenied } from "@/lib/mtm/visit-policy-access"
 
 function overlapWhere(input: {
   organizationId: string
@@ -37,26 +29,39 @@ function overlapWhere(input: {
 }
 
 export const GET = withRouteFieldWebRlsAuth("read", async (_req, auth) => {
-  if (!await requireAdministrator(auth)) {
-    return NextResponse.json({ error: "Administrator access required", code: "MTM_POLICY_ADMIN_REQUIRED" }, { status: 403 })
-  }
+  const access = await visitPolicyAccessFor(auth)
+  if (access.kind === "none") return visitPolicyReadDenied(access)
   const settings = await getMtmSettings(auth.orgId)
   if (!settings.visitPoliciesEnabled) return NextResponse.json({ success: true, data: { policies: [], featureDisabled: true } })
+  // Managers and supervisors see the rules that apply to their people:
+  // organization-wide rules plus rules bound to their teams.
+  const scopeWhere: Prisma.MtmVisitPolicyWhereInput = access.kind === "admin"
+    ? {}
+    : { OR: [{ teamId: null }, ...(access.readableTeamIds.length ? [{ teamId: { in: access.readableTeamIds } }] : [])] }
   const policies = await prisma.mtmVisitPolicy.findMany({
-    where: { organizationId: auth.orgId },
+    where: { organizationId: auth.orgId, ...scopeWhere },
     orderBy: [{ isActive: "desc" }, { priority: "asc" }, { effectiveFrom: "desc" }],
     include: {
       team: { select: { id: true, name: true } },
       actions: { orderBy: { actionKey: "asc" } },
     },
   })
-  return NextResponse.json({ success: true, data: { policies } })
+  return NextResponse.json({
+    success: true,
+    data: {
+      policies,
+      access: {
+        canWriteOrganizationWide: access.kind === "admin",
+        writableTeamIds: access.kind === "admin" ? null : access.writableTeamIds,
+      },
+    },
+  })
 })
 
 export const POST = withRouteFieldWebRlsAuth("write", async (req, auth) => {
-  if (!await requireAdministrator(auth)) {
-    return NextResponse.json({ error: "Administrator access required", code: "MTM_POLICY_ADMIN_REQUIRED" }, { status: 403 })
-  }
+  const access = await visitPolicyAccessFor(auth)
+  if (access.kind === "none") return visitPolicyReadDenied(access)
+  if (access.kind === "supervisor") return visitPolicyWriteDenied(access, null)
   const settings = await getMtmSettings(auth.orgId)
   if (!settings.visitPoliciesEnabled) return NextResponse.json({ error: "Visit policies are disabled", code: "MTM_VISIT_POLICIES_DISABLED" }, { status: 409 })
   const parsed = parseBody(VisitPolicyCreateSchema, await req.json().catch(() => null))
@@ -65,6 +70,8 @@ export const POST = withRouteFieldWebRlsAuth("write", async (req, auth) => {
   const visitType = body.visitType.toUpperCase()
   const effectiveFrom = new Date(body.effectiveFrom)
   const effectiveTo = body.effectiveTo ? new Date(body.effectiveTo) : null
+  const writeDenied = visitPolicyWriteDenied(access, body.teamId ?? null)
+  if (writeDenied) return writeDenied
 
   if (body.teamId) {
     const team = await prisma.mtmTeam.findFirst({
