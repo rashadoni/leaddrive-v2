@@ -1847,7 +1847,7 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
                 disabled={Boolean(planMutationId)}
               />
             </div>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 min-[1600px]:grid-cols-1">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 min-[100rem]:grid-cols-1">
               <Button type="button" size="sm" className="min-h-11" disabled={Boolean(planMutationId)} onClick={() => void decidePlanChange(change, "APPROVED")}>{t("approveCancellation")}</Button>
               <Button type="button" size="sm" variant="secondary" className="min-h-11" disabled={Boolean(planMutationId)} onClick={() => void decidePlanChange(change, "RESCHEDULE")}>{t("rescheduleCancellation")}</Button>
               <Button type="button" size="sm" variant="outline" className="min-h-11" disabled={Boolean(planMutationId)} onClick={() => void decidePlanChange(change, "NEEDS_INFO")}>{t("returnCancellation")}</Button>
@@ -2119,7 +2119,7 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
           </section>
         </div>
 
-        <section className="border-t border-zinc-200 px-4 py-5 dark:border-zinc-700 md:border-l md:border-t-0 min-[1600px]:border-l-0 min-[1600px]:border-t min-[1600px]:px-5">
+        <section className="border-t border-zinc-200 px-4 py-5 dark:border-zinc-700 md:border-l md:border-t-0 min-[100rem]:border-l-0 min-[100rem]:border-t min-[100rem]:px-5">
           <h3 className="text-base font-semibold">{t("needsAttention")}</h3>
           <div className="mt-4 space-y-5">
             <section>
@@ -2478,12 +2478,12 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
             </section>
           ) : null}
 
-          <div className="grid border-t border-zinc-200 dark:border-zinc-700 min-[1600px]:grid-cols-[minmax(0,1fr)_20rem]">
-            <aside className="md:grid md:grid-cols-2 min-[1600px]:hidden" aria-label={t("needsAttention") }>
+          <div className="grid border-t border-zinc-200 dark:border-zinc-700 min-[100rem]:grid-cols-[minmax(0,1fr)_20rem]">
+            <aside className="md:max-[100rem]:grid md:max-[100rem]:grid-cols-2 min-[100rem]:hidden" aria-label={t("needsAttention") }>
               {renderAttentionRailContent("compact")}
             </aside>
 
-            <div className="min-w-0 border-t border-zinc-200 dark:border-zinc-700 min-[1600px]:border-t-0">
+            <div className="min-w-0 border-t border-zinc-200 dark:border-zinc-700 min-[100rem]:border-t-0">
               {compactWeekProjection ? <div>
                 <div className="flex gap-1 overflow-x-auto px-3 py-2" role="group" aria-label={t("chooseDay") }>
                   {facts.days.map((day) => (
@@ -2507,7 +2507,7 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
               </div> : null}
             </div>
 
-            <aside className="hidden min-[1600px]:sticky min-[1600px]:top-4 min-[1600px]:block min-[1600px]:max-h-[calc(100vh-2rem)] min-[1600px]:self-start min-[1600px]:overflow-y-auto min-[1600px]:border-l" aria-label={t("needsAttention") }>
+            <aside className="hidden min-w-0 min-[100rem]:block min-[100rem]:border-l" aria-label={t("needsAttention") }>
               {renderAttentionRailContent("desktop")}
             </aside>
           </div>
