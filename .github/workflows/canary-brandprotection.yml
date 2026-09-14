@@ -57,7 +57,7 @@ jobs:
           esac
 
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup pinned production SSH
         uses: ./.github/actions/setup-production-ssh
