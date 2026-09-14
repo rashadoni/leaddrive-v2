@@ -29,31 +29,22 @@ function InvalidateSize() {
 }
 
 /**
- * Frames every stop, and every recorded check-in position, whenever the map
- * mounts or its box changes size.
+ * Frames every stop, and every recorded check-in position, when the map
+ * mounts and when those positions change.
  *
  * Prod audit 2026-09-14: the route dialog centred on the first stop at zoom 13,
  * so a second stop a few kilometres away — and check-ins 7.8 and 13.1 km from
- * their pins — were simply off screen.
+ * their pins — were simply off screen. A resize only re-measures the map
+ * (`InvalidateSize`); refitting on it reset the user's own zoom (review of #205).
  */
 function FitRouteBounds({ positions }: { positions: Array<[number, number]> }) {
   const map = useMap()
   const signature = positions.map(([lat, lng]) => `${lat.toFixed(5)},${lng.toFixed(5)}`).join("|")
   useEffect(() => {
     if (positions.length === 0) return
-    const fit = () => {
-      map.invalidateSize()
-      if (positions.length === 1) map.setView(positions[0], 15)
-      else map.fitBounds(L.latLngBounds(positions), { padding: [32, 32], maxZoom: 16 })
-    }
-    fit()
-    const container = map.getContainer()
-    let observer: ResizeObserver | null = null
-    if (container && typeof ResizeObserver !== "undefined") {
-      observer = new ResizeObserver(() => fit())
-      observer.observe(container)
-    }
-    return () => observer?.disconnect()
+    map.invalidateSize()
+    if (positions.length === 1) map.setView(positions[0], 15)
+    else map.fitBounds(L.latLngBounds(positions), { padding: [32, 32], maxZoom: 16 })
     // `signature` stands for `positions`: a new array with the same points must not refit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, signature])

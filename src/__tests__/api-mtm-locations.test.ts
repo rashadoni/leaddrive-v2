@@ -461,6 +461,49 @@ describe("GET /api/v1/mtm/locations", () => {
     }
   })
 
+  it("combines an agent's routes for the day and keeps a red-light stop «on the road» (review of #205)", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-09-14T11:00:00.000Z"))
+    try {
+      const now = new Date()
+      const standing = { latitude: 40.41, longitude: 49.87, accuracy: 5, speed: 0, heading: 0, battery: 70, isMoving: false, recordedAt: now }
+      vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
+        { id: "agent-a", name: "A", isOnline: true, lastSeenAt: now, teamId: null, team: null, workdays: [], locations: [standing] },
+        { id: "agent-b", name: "B", isOnline: true, lastSeenAt: now, teamId: null, team: null, workdays: [], locations: [standing] },
+      ] as any)
+      // agent-a: the cancelled route comes last, as the database is free to return it.
+      vi.mocked(prisma.mtmRoute.findMany).mockResolvedValue([
+        { agentId: "agent-a", totalPoints: 3, visitedPoints: 1, status: "IN_PROGRESS" },
+        { agentId: "agent-a", totalPoints: 2, visitedPoints: 0, status: "CANCELLED" },
+        { agentId: "agent-b", totalPoints: 2, visitedPoints: 2, status: "COMPLETED" },
+        { agentId: "agent-b", totalPoints: 2, visitedPoints: 0, status: "PLANNED" },
+      ] as any)
+      vi.mocked(prisma.mtmVisit.findMany).mockResolvedValueOnce([] as any).mockResolvedValueOnce([] as any)
+      vi.mocked(prisma.mtmAlert.findMany).mockResolvedValue([] as any)
+      // agent-a was driving 40 seconds ago; the newest sample is a red light.
+      vi.mocked(prisma.mtmAgentLocation.groupBy).mockResolvedValueOnce([
+        { agentId: "agent-a", _max: { recordedAt: new Date(now.getTime() - 40_000) } },
+      ] as any)
+
+      const res = await GET(makeReq())
+      const json = await res.json()
+      const byId = Object.fromEntries(json.data.agentLocations.map((agent: any) => [agent.agentId, agent]))
+
+      expect(byId["agent-a"].fieldStatus).toBe("ON_ROAD")
+      expect(byId["agent-a"].routeCompletion).toBe(33)
+      expect(byId["agent-b"].fieldStatus).toBe("STOPPED")
+      expect(byId["agent-b"].routeCompletion).toBe(50)
+      const movementQuery = vi.mocked(prisma.mtmAgentLocation.groupBy).mock.calls[0]?.[0] as any
+      expect(movementQuery.where).toMatchObject({
+        organizationId: ORG,
+        agentId: { in: ["agent-a", "agent-b"] },
+        recordedAt: { gte: new Date("2026-09-14T10:55:00.000Z"), lte: now },
+      })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("fetches one sentinel row and explicitly marks a roster over the 500-person contract", async () => {
     vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue(Array.from({ length: 501 }, (_, index) => ({
       id: `agent-${index.toString().padStart(3, "0")}`,

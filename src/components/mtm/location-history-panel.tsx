@@ -190,8 +190,20 @@ function tenantClock(value: Date | string, timezone: string): string {
  */
 function defaultHistoryWindow(date: string, timezone: string): { from: string; to: string } {
   const today = dateInputValueInTimezone(new Date(), timezone)
-  if (date === today) return { from: "00:00", to: tenantClock(new Date(), timezone) }
+  if (date === today) return { from: "00:00", to: tenantClockNowCeil(timezone) }
   return { from: "00:00", to: "23:59" }
+}
+
+/**
+ * "Now" for the end of today's window, rounded up to the next minute and kept
+ * on today. Review of #205: in the first minute after midnight the window was
+ * 00:00–00:00, an empty range.
+ */
+function tenantClockNowCeil(timezone: string): string {
+  const now = new Date()
+  const next = new Date(now.getTime() + 60_000)
+  if (dateInputValueInTimezone(next, timezone) !== dateInputValueInTimezone(now, timezone)) return "23:59"
+  return tenantClock(next, timezone)
 }
 
 function distanceLabel(meters: number | null, unavailable: string): string {
@@ -202,6 +214,8 @@ function distanceLabel(meters: number | null, unavailable: string): string {
 export function LocationHistoryPanel() {
   const locale = useLocale()
   const t = useTranslations("mtmMap.history")
+  const tUnits = useTranslations("mtmMap.distanceUnits")
+  const distanceText = (meters: number) => formatMtmDistance(meters, locale, (unit, value) => tUnits(unit, { value }))
   const [agents, setAgents] = useState<RosterAgent[]>([])
   const [timezone, setTimezone] = useState("Asia/Baku")
   const [agentId, setAgentId] = useState("")
@@ -314,7 +328,7 @@ export function LocationHistoryPanel() {
     setData(null)
     const isToday = date === dateInputValueInTimezone(new Date(), timezone)
     // Pressing «Show» again later today should include what happened since.
-    const effectiveTo = autoWindowRef.current && isToday ? tenantClock(new Date(), timezone) : to
+    const effectiveTo = autoWindowRef.current && isToday ? tenantClockNowCeil(timezone) : to
     if (effectiveTo !== to) setTo(effectiveTo)
     try {
       const params = new URLSearchParams({
@@ -824,8 +838,8 @@ export function LocationHistoryPanel() {
                         {zone.distanceMeters !== null ? (
                           <div className="mt-0.5 text-xs text-muted-foreground">
                             {t("geofence.distance", {
-                              distance: formatMtmDistance(zone.distanceMeters, locale),
-                              radius: formatMtmDistance(zone.radiusMeters, locale),
+                              distance: distanceText(zone.distanceMeters),
+                              radius: distanceText(zone.radiusMeters),
                             })}
                           </div>
                         ) : null}

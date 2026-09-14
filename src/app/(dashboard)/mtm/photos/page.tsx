@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 import { useLocale, useTranslations } from "next-intl"
 import { formatDateTime } from "@/lib/format-date"
+import { mtmPhotoPeriodStart, type MtmPhotoPeriod } from "@/lib/mtm/photo-period"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
 import { PageDescription } from "@/components/page-description"
 import { HelpButton } from "@/components/help/help-button"
@@ -33,15 +34,7 @@ type MtmPhotoRow = {
   visit?: { id: string; customer?: { name: string | null } | null } | null
 }
 
-type PhotoPeriod = "today" | "week" | "all"
-
-/** Start of the viewer's local day, or of the local week (Monday). */
-function periodStart(period: PhotoPeriod, now: Date): number {
-  const start = new Date(now)
-  start.setHours(0, 0, 0, 0)
-  if (period === "week") start.setDate(start.getDate() - ((start.getDay() + 6) % 7))
-  return period === "all" ? Number.NEGATIVE_INFINITY : start.getTime()
-}
+type PhotoPeriod = MtmPhotoPeriod
 
 /**
  * A tile whose file is gone says so, instead of a browser's broken-image icon.
@@ -88,6 +81,9 @@ export default function MtmPhotosPage() {
   const [period, setPeriod] = useState<PhotoPeriod>("week")
   const [agentFilter, setAgentFilter] = useState("")
   const [knownAgents, setKnownAgents] = useState<Map<string, string>>(() => new Map())
+  // Same source of "today" as every other MTM screen: the organization's
+  // timezone from MTM settings, not the browser clock (review of #205).
+  const [timezone, setTimezone] = useState("Asia/Baku")
   const [missingFiles, setMissingFiles] = useState<Set<string>>(() => new Set())
   const [lightboxPhoto, setLightboxPhoto] = useState<MtmPhotoRow | null>(null)
   const [loading, setLoading] = useState(true)
@@ -117,9 +113,10 @@ export default function MtmPhotosPage() {
         const rows: MtmPhotoRow[] = r.data.photos || []
         setPhotos(rows)
         setTotal(Number.isFinite(Number(r.data.total)) ? Number(r.data.total) : rows.length)
+        // Photo authors not in the roster (left the team) stay choosable.
         setKnownAgents((current) => {
           const next = new Map(current)
-          for (const row of rows) if (row.agent?.id) next.set(row.agent.id, row.agent.name || "—")
+          for (const row of rows) if (row.agent?.id && !next.has(row.agent.id)) next.set(row.agent.id, row.agent.name || "—")
           return next.size === current.size ? current : next
         })
       }
@@ -130,17 +127,44 @@ export default function MtmPhotosPage() {
 
   useEffect(() => { fetchPhotos() }, [fetchPhotos])
 
+  useEffect(() => {
+    const controller = new AbortController()
+    const headers: Record<string, string> = orgId ? { "x-organization-id": String(orgId) } : {}
+    fetch("/api/v1/mtm/settings", { headers, signal: controller.signal })
+      .then((response) => response.json())
+      .then((result) => {
+        if (!controller.signal.aborted && typeof result?.data?.timezone === "string") setTimezone(result.data.timezone)
+      })
+      .catch(() => undefined)
+    // The employee list comes from the roster, not from whoever happens to be
+    // in the newest 200 photos.
+    fetch("/api/v1/mtm/agents?limit=200", { headers, signal: controller.signal })
+      .then((response) => response.json())
+      .then((result) => {
+        if (controller.signal.aborted || !Array.isArray(result?.data?.agents)) return
+        setKnownAgents((current) => {
+          const next = new Map(current)
+          for (const agent of result.data.agents as Array<{ id?: string; name?: string | null }>) {
+            if (agent.id) next.set(agent.id, agent.name || "—")
+          }
+          return next
+        })
+      })
+      .catch(() => undefined)
+    return () => controller.abort()
+  }, [orgId])
+
   const markMissing = useCallback((id: string) => {
     setMissingFiles((current) => current.has(id) ? current : new Set(current).add(id))
   }, [])
 
   const periodPhotos = useMemo(() => {
-    const start = periodStart(period, new Date())
+    const start = mtmPhotoPeriodStart(period, new Date(), timezone)
     return photos.filter((photo) => {
       const createdAt = Date.parse(photo.createdAt)
       return Number.isFinite(createdAt) ? createdAt >= start : period === "all"
     })
-  }, [period, photos])
+  }, [period, photos, timezone])
 
   const filtered = periodPhotos.filter(p => {
     if (activeFilter !== "all" && p.status !== activeFilter) return false
@@ -206,7 +230,8 @@ export default function MtmPhotosPage() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 stagger-children">
-        <ColorStatCard label={t("statTotal")} value={total} icon={<Camera className="h-4 w-4" />} hint={t("hintTotal")} />
+        {/* The four cards describe the same set — the chosen period — so they add up. */}
+        <ColorStatCard label={t("statTotal")} value={periodPhotos.length} icon={<Camera className="h-4 w-4" />} hint={t("hintTotal")} />
         <ColorStatCard label={t("statPending")} value={statusCounts["PENDING"] || 0} icon={<Clock className="h-4 w-4" />} hint={t("hintPending")} />
         <ColorStatCard label={t("statApproved")} value={statusCounts["APPROVED"] || 0} icon={<CheckCircle2 className="h-4 w-4" />} hint={t("hintApproved")} />
         <ColorStatCard label={t("statRejected")} value={statusCounts["REJECTED"] || 0} icon={<XCircle className="h-4 w-4" />} hint={t("hintRejected")} />

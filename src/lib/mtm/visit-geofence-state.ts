@@ -87,15 +87,22 @@ export function mtmVisitGeofenceState(input: MtmVisitGeofenceInput): MtmVisitGeo
   }
 }
 
+/** Puts a formatted number and its unit together, e.g. through `mtmMap.distanceUnits`. */
+export type MtmDistanceUnitLabel = (unit: "m" | "km", value: string) => string
+
+const LATIN_UNITS: MtmDistanceUnitLabel = (unit, value) => `${value} ${unit}`
+
 /**
- * «7.8 km» / «450 m» in the reader's number format. Kept here because every
+ * «7,8 km» / «450 m» in the reader's number format. Kept here because every
  * geofence label needs it and `geo-utils.formatDistance` glues the unit on
- * without a space or a locale.
+ * without a space or a locale. Units come from the caller's translations —
+ * Russian reads «м»/«км» (review of #205); the Latin default is for tests and
+ * non-UI callers.
  */
-export function formatMtmDistance(meters: number, locale: string): string {
+export function formatMtmDistance(meters: number, locale: string, unitLabel: MtmDistanceUnitLabel = LATIN_UNITS): string {
   const safe = Math.max(0, meters)
   if (safe < 1_000) {
-    return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(Math.round(safe))} m`
+    return unitLabel("m", new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(Math.round(safe)))
   }
-  return `${new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(safe / 1_000)} km`
+  return unitLabel("km", new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(safe / 1_000))
 }

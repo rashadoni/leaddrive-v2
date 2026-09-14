@@ -102,6 +102,19 @@ function localDateKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
 }
 
+/**
+ * «Not visited» is a verdict, so it needs the moment to have passed: the route
+ * is closed, or the stop's planned time is behind us. Review of #205: stops
+ * planned for later today on a running route already read «Not visited».
+ */
+function isStopOverdue(point: MtmRoutePoint, routeStatus: MtmRouteRecord["status"], now = Date.now()): boolean {
+  if (point.status !== "PENDING") return false
+  if (routeStatus === "COMPLETED" || routeStatus === "INCOMPLETE" || routeStatus === "CANCELLED") return true
+  if (routeStatus !== "IN_PROGRESS" && routeStatus !== "PLANNED") return false
+  const planned = point.plannedTime ? Date.parse(point.plannedTime) : Number.NaN
+  return Number.isFinite(planned) && planned < now
+}
+
 function routeAssignmentDirection(value: string | null): MtmRouteAssignmentDirection | undefined {
   return value === "DOCTOR" || value === "PHARMACY" || value === "ORGANIZATION" ? value : undefined
 }
@@ -122,6 +135,7 @@ export default function MtmRoutesPage() {
   const searchParams = useSearchParams()
   const t = useTranslations("mtmRoutesPage")
   const statusT = useTranslations("mtmStatus")
+  const tUnits = useTranslations("mtmMap.distanceUnits")
   const locale = useLocale()
   const tf = useTranslations("mtmForms")
   const [routes, setRoutes] = useState<MtmRouteRecord[]>([])
@@ -1012,7 +1026,7 @@ export default function MtmRoutesPage() {
                       </span>
                     ) : p.visitedAt ? (
                       <span>{t("stopFact.closedAt", { time: tenantTime(p.visitedAt) })}</span>
-                    ) : p.status !== "SKIPPED" && selectedRoute.status !== "DRAFT" && selectedRoute.status !== "PLANNED" ? (
+                    ) : isStopOverdue(p, selectedRoute.status) ? (
                       <span>{t("stopFact.notVisited")}</span>
                     ) : null}
                     {fact?.timing === "LATE" && fact.delayMinutes !== null ? (
@@ -1026,7 +1040,7 @@ export default function MtmRoutesPage() {
                       <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-950/30 dark:text-amber-300"><ArrowDownUp className="h-3 w-3" />{t("stopFact.outOfOrder", { actual: fact.actualSequence })}</span>
                     ) : null}
                     {zone?.state === "OUTSIDE" && zone.distanceMeters !== null ? (
-                      <span className="inline-flex items-center gap-1 rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-950/30 dark:text-red-300"><AlertTriangle className="h-3 w-3" />{t("stopFact.outOfZone", { distance: formatMtmDistance(zone.distanceMeters, locale) })}</span>
+                      <span className="inline-flex items-center gap-1 rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-950/30 dark:text-red-300"><AlertTriangle className="h-3 w-3" />{t("stopFact.outOfZone", { distance: formatMtmDistance(zone.distanceMeters, locale, (unit, value) => tUnits(unit, { value })) })}</span>
                     ) : zone?.state === "INSIDE" ? (
                       <span className="text-[10px] text-green-700 dark:text-green-300">{t("stopFact.inZone")}</span>
                     ) : null}

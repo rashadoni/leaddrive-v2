@@ -21,6 +21,19 @@ describe("MTM live map: route, statuses and feed", () => {
     expect(page).toContain("void fetchAgentRoute(requestedAgentId, tenantToday)")
   })
 
+  it("takes the mode from the URL so links and tabs cannot disagree (review of #205)", () => {
+    expect(page).toContain('const mapMode: "live" | "history" = searchParams.get("mode") === "history" ? "history" : "live"')
+    expect(page).not.toContain("setMapMode")
+    expect(page).toContain('onClick={() => switchMapMode("live")}')
+    expect(page).toContain('for (const key of ["mode", "from", "to", "date", "agentId"]) params.delete(key)')
+    // The history panel reads its URL on mount; a new link must remount it.
+    expect(page).toContain("<LocationHistoryPanel key={historyPanelKey} />")
+  })
+
+  it("refits a focused employee's frame only when the selection or the stops change", () => {
+    expect(map).toContain("`focus:${focusAgentId}:${focusedAgent ? \"agent\" : \"no-agent\"}:")
+  })
+
   it("offers the new field statuses as filters", () => {
     expect(page).toContain('tMap("fieldStatus.stopped")')
     expect(page).toContain('tMap("fieldStatus.routeFinished")')

@@ -99,6 +99,22 @@ export function buildMtmLiveFeedAlertMessage(alertType: string, metadata: unknow
   return { key: "type", alertType }
 }
 
+/**
+ * Which customer or visit an alert is about. Review of #205: two out-of-zone
+ * check-ins at different customers in the same hour merged into one row and
+ * the second customer disappeared from the feed. Deviation from the route is
+ * one ongoing situation per agent; a check-in or an open visit is not.
+ */
+function alertSubject(metadata: unknown): string | null {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null
+  const raw = metadata as Record<string, unknown>
+  for (const field of ["visitId", "routePointId", "customerId"] as const) {
+    const value = raw[field]
+    if (typeof value === "string" && value.trim()) return `${field}:${value}`
+  }
+  return null
+}
+
 function iso(value: Date | string): string | null {
   const parsed = value instanceof Date ? value : new Date(value)
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString()
@@ -109,7 +125,8 @@ function localHourKey(at: string, timezone: string): string {
 }
 
 /**
- * Collapses repeats: one group per agent + alert kind + tenant-local hour.
+ * Collapses repeats: one group per agent + alert kind + tenant-local hour
+ * (+ customer or visit for check-in and open-visit alerts).
  * The group keeps the farthest distance, the first and last moment, and the
  * number of rows it stands for. Newest group first.
  */
@@ -120,7 +137,10 @@ export function groupMtmLiveFeedAlerts(rows: MtmLiveFeedAlertRow[], timezone: st
     if (!at) continue
     const message = buildMtmLiveFeedAlertMessage(row.type, row.metadata)
     const kind = message.key === "type" ? `type:${row.type}` : message.key
-    const key = `${row.agentId}|${kind}|${localHourKey(at, timezone)}`
+    const subject = message.key === "outOfZoneCheckIn" || message.key === "visitStillOpen"
+      ? `|${alertSubject(row.metadata) ?? `row:${row.id}`}`
+      : ""
+    const key = `${row.agentId}|${kind}|${localHourKey(at, timezone)}${subject}`
     const existing = groups.get(key)
     if (!existing) {
       groups.set(key, {

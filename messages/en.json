@@ -15682,6 +15682,10 @@
       "factOpen": "Actual {from} — in progress",
       "openVisit": "Open visit",
       "missingCoordinates": "{count, plural, one {# stop has no coordinates and is} other {# stops have no coordinates and are}} not on the map"
+    },
+    "distanceUnits": {
+      "m": "{value} m",
+      "km": "{value} km"
     }
   },
   "mtmSettingsPage": {

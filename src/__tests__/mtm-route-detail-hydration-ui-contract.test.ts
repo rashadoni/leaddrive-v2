@@ -106,7 +106,7 @@ describe("MTM route detail hydration UI contract", () => {
     expect(routesPage).toContain('t("stopFact.fact", { from: tenantTime(fact.checkInAt), to: tenantTime(fact.checkOutAt) })')
     expect(routesPage).toContain('t("stopFact.late", { delay: durationLabel(fact.delayMinutes) })')
     expect(routesPage).toContain('t("stopFact.outOfOrder", { actual: fact.actualSequence })')
-    expect(routesPage).toContain('t("stopFact.outOfZone", { distance: formatMtmDistance(zone.distanceMeters, locale) })')
+    expect(routesPage).toContain('t("stopFact.outOfZone", { distance: formatMtmDistance(zone.distanceMeters, locale, (unit, value) => tUnits(unit, { value })) })')
     expect(routesPage).toContain('href={`/mtm/visits?visitId=${encodeURIComponent(visit.id)}`}')
     expect(routesPage).not.toContain("h ${routeMetrics.duration % 60}m")
     // The chip reports the server total, not the page size.
@@ -114,6 +114,11 @@ describe("MTM route detail hydration UI contract", () => {
     // The dialog map frames every stop and check-in instead of centring on stop 1.
     expect(routeMap).toContain("<FitRouteBounds positions={framedPositions} />")
     expect(routeMap).toContain("map.fitBounds(L.latLngBounds(positions), { padding: [32, 32], maxZoom: 16 })")
+    // A resize only re-measures; it must not undo the user's zoom.
+    expect(routeMap).not.toContain("new ResizeObserver(() => fit())")
+    // «Not visited» only once the moment has passed or the route is closed.
+    expect(routesPage).toContain("isStopOverdue(p, selectedRoute.status)")
+    expect(routesPage).toContain("return Number.isFinite(planned) && planned < now")
   })
 
   it("summarises the day in a team-week cell instead of repeating the agent's name", () => {

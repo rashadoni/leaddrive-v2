@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 import { formatMtmDistance, mtmVisitGeofenceState } from "@/lib/mtm/visit-geofence-state"
 
@@ -79,5 +80,10 @@ describe("mtmVisitGeofenceState (prod audit 2026-09-14: «Təsdiqlənib» on eve
     expect(formatMtmDistance(7_734, "en")).toBe("7.7 km")
     expect(formatMtmDistance(7_734, "az")).toMatch(/^7[.,]7 km$/)
     expect(formatMtmDistance(449.6, "en")).toBe("450 m")
+    // Units come from translations: Russian reads Cyrillic units.
+    const ru = JSON.parse(readFileSync("messages/ru.json", "utf8")).mtmMap.distanceUnits
+    const label = (unit: "m" | "km", value: string) => ru[unit].replace("{value}", value)
+    expect(formatMtmDistance(7_734, "ru", label)).toMatch(/^7,7\s?км$/)
+    expect(formatMtmDistance(450, "ru", label)).toBe("450 м")
   })
 })

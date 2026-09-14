@@ -13045,7 +13045,7 @@
       "late": "{delay} gecikmə",
       "early": "{delay} tez",
       "onTime": "Vaxtında",
-      "outOfOrder": "Sıra pozulub: faktiki {actual}-ci",
+      "outOfOrder": "Sıra pozulub: faktiki №{actual}",
       "outOfZone": "Zonadan kənar · {distance}",
       "inZone": "Zonada",
       "photos": "{count} foto",
@@ -15678,6 +15678,10 @@
       "factOpen": "Fakt {from} — davam edir",
       "openVisit": "Ziyarəti aç",
       "missingCoordinates": "{count} dayanacağın koordinatı yoxdur — xəritədə göstərilmir"
+    },
+    "distanceUnits": {
+      "m": "{value} m",
+      "km": "{value} km"
     }
   },
   "mtmSettingsPage": {

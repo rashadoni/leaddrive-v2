@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 import { useTranslations, useLocale } from "next-intl"
@@ -129,12 +129,14 @@ function operationalWeekReturnHref(value: string | null): string | null {
 export default function MtmMapPage() {
   const { data: session, status: sessionStatus } = useSession()
   const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
   const locale = useLocale()
   const t = useTranslations("nav")
   const tMap = useTranslations("mtmMap")
   const tc = useTranslations("common")
   const tAlerts = useTranslations("mtmAlertsPage")
-  const [mapMode, setMapMode] = useState<"live" | "history">("live")
+  const tUnits = useTranslations("mtmMap.distanceUnits")
   const [rosterSnapshot, setRosterSnapshot] = useState<LiveRosterSnapshot | null>(null)
   const [teamFilter, setTeamFilter] = useState("")
   const [employeeFilter, setEmployeeFilter] = useState("")
@@ -158,7 +160,11 @@ export default function MtmMapPage() {
   const orgId = session?.user?.organizationId
   const viewerKey = String(session?.user?.id ?? session?.user?.email ?? "")
   const identityKey = liveMapIdentityKey(String(orgId ?? ""), viewerKey)
-  const requestedMode = searchParams.get("mode")
+  // The URL is the one source of the mode. A local copy of it got out of step
+  // with links (review of #205): after an alert link and a click on «İndi»,
+  // the next alert link stayed in live mode and selected a stray employee.
+  const mapMode: "live" | "history" = searchParams.get("mode") === "history" ? "history" : "live"
+  const historyPanelKey = `${identityKey}::${searchParams.toString()}`
   // A link that names an employee (operational week, alerts, a colleague's
   // message) used to open the live map with nobody selected (audit 2026-09-14).
   const requestedAgentId = searchParams.get("agentId")?.trim() || ""
@@ -194,9 +200,22 @@ export default function MtmMapPage() {
     const timer = window.setTimeout(() => setDebouncedEmployeeFilter(employeeFilter.trim()), 400)
     return () => window.clearTimeout(timer)
   }, [employeeFilter])
-  useEffect(() => {
-    if (requestedMode === "history") setMapMode("history")
-  }, [requestedMode])
+  const switchMapMode = useCallback((next: "live" | "history") => {
+    const params = new URLSearchParams(searchParams.toString())
+    // Live mode carries no history window and no employee from a history
+    // link; only the way back to the operational week survives.
+    for (const key of ["mode", "from", "to", "date", "agentId"]) params.delete(key)
+    if (next === "history") {
+      params.set("mode", "history")
+      const focused = selectedAgentRef.current
+      if (focused && tenantToday) {
+        params.set("agentId", focused)
+        params.set("date", tenantToday)
+      }
+    }
+    const query = params.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+  }, [pathname, router, searchParams, tenantToday])
 
   useEffect(() => {
     rosterRequestRef.current.controller?.abort()
@@ -586,7 +605,7 @@ export default function MtmMapPage() {
   const feedAlertText = (alert: NonNullable<LiveEvent["alert"]>) => {
     const message = alert.message
     if (message.key === "routeDeviation" || message.key === "outOfZoneCheckIn") {
-      return tMap(`feed.${message.key}`, { distance: formatMtmDistance(message.distanceMeters, locale) })
+      return tMap(`feed.${message.key}`, { distance: formatMtmDistance(message.distanceMeters, locale, (unit, value) => tUnits(unit, { value })) })
     }
     if (message.key === "visitStillOpen") return tMap("feed.visitStillOpen", { minutes: Math.round(message.minutes) })
     return tAlerts(`typeLabel_${FEED_ALERT_TYPES.has(message.alertType) ? message.alertType : "OTHER"}`)
@@ -646,7 +665,7 @@ export default function MtmMapPage() {
               variant={mapMode === "live" ? "default" : "ghost"}
               size="sm"
               className="min-h-11"
-              onClick={() => setMapMode("live")}
+              onClick={() => switchMapMode("live")}
             >
               <Radio className="mr-1.5 h-3.5 w-3.5" />{tMap("liveMode")}
             </Button>
@@ -658,7 +677,7 @@ export default function MtmMapPage() {
               variant={mapMode === "history" ? "default" : "ghost"}
               size="sm"
               className="min-h-11"
-              onClick={() => setMapMode("history")}
+              onClick={() => switchMapMode("history")}
             >
               <History className="mr-1.5 h-3.5 w-3.5" />{tMap("historyMode")}
             </Button>
@@ -674,7 +693,7 @@ export default function MtmMapPage() {
         </div>
       </div>
 
-      {mapMode === "history" ? <LocationHistoryPanel key={identityKey} /> : (
+      {mapMode === "history" ? <LocationHistoryPanel key={historyPanelKey} /> : (
       <>
       <div className="grid gap-2 rounded-lg border bg-card p-3 sm:grid-cols-2 lg:grid-cols-[220px_minmax(240px,1fr)_auto]">
         <label className="grid gap-1 text-xs font-medium">

@@ -199,16 +199,22 @@ function FitBounds({ agents, plannedRoute, focusAgentId }: { agents: LiveMapAgen
       ...framedAgents.map((a) => [a.latitude, a.longitude] as L.LatLngTuple),
       ...plannedRoute.map((s) => [s.latitude, s.longitude] as L.LatLngTuple),
     ].filter(([lat, lng]) => Number.isFinite(lat) && Number.isFinite(lng))
-    if (points.length === 1 && focusAgentId && plannedRoute.length > 0) {
-      const sig = `${points[0][0].toFixed(4)},${points[0][1].toFixed(4)}`
+    const focusMode = Boolean(focusAgentId && plannedRoute.length > 0)
+    // In focus mode the frame belongs to the selection, not to the agent's
+    // live position: refitting every time the marker moved ~11 m kept undoing
+    // the manager's own zoom (review of #205). Fit again only when the
+    // selection, the stops, or the agent's visibility change.
+    const sig = focusMode
+      ? `focus:${focusAgentId}:${focusedAgent ? "agent" : "no-agent"}:${plannedRoute.map((s) => `${s.orderIndex}@${s.latitude.toFixed(4)},${s.longitude.toFixed(4)}`).join("|")}`
+      : points.map((p) => `${p[0].toFixed(4)},${p[1].toFixed(4)}`).join("|")
+    if (focusMode && points.length === 1) {
       if (sig === lastFitRef.current) return
       lastFitRef.current = sig
       map.setView(points[0], 15)
       return
     }
     if (points.length < 2) return
-    // Avoid re-fitting on every render when set of coords didn't change
-    const sig = points.map((p) => `${p[0].toFixed(4)},${p[1].toFixed(4)}`).join("|")
+    // Avoid re-fitting on every render when the frame did not change
     if (sig === lastFitRef.current) return
     lastFitRef.current = sig
     map.fitBounds(L.latLngBounds(points), { padding: [60, 60], maxZoom: 16 })

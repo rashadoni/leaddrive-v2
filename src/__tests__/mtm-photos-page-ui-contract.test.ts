@@ -22,10 +22,19 @@ describe("MTM photos page", () => {
     expect(page).toContain('data-testid="mtm-photos-agent"')
   })
 
-  it("counts from the server total and says when only the newest rows are loaded", () => {
-    expect(page).toContain("value={total}")
+  it("counts the cards over the chosen period so they add up; the server total is only a note", () => {
+    expect(page).toContain('<ColorStatCard label={t("statTotal")} value={periodPhotos.length}')
+    expect(page).toContain("for (const p of periodPhotos) statusCounts[p.status]")
     expect(page).toContain('t("latestOfTotal", { shown: photos.length, total })')
+    expect(page).not.toContain("value={total}")
     expect(page).not.toContain("value={photos.length}")
+  })
+
+  it("uses the organization's timezone and the roster for its filters", () => {
+    expect(page).toContain("mtmPhotoPeriodStart(period, new Date(), timezone)")
+    expect(page).toContain('fetch("/api/v1/mtm/settings"')
+    expect(page).toContain('fetch("/api/v1/mtm/agents?limit=200"')
+    expect(page).not.toContain("setHours(0, 0, 0, 0)")
   })
 
   it("shows when a photo was taken, links its visit and opens it large", () => {

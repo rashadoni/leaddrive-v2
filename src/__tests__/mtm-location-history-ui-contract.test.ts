@@ -116,6 +116,9 @@ describe("SWM-10 GPS history presentation contract", () => {
     expect(panel).toContain("defaultHistoryWindow(")
     expect(panel).toContain("workday?.startedAt ?? (body.data as HistoryData).summary.firstPointAt")
     expect(panel).toContain('searchParams.get("from")')
+    // Never an empty 00:00–00:00 window in the first minute after midnight.
+    expect(panel).toContain("function tenantClockNowCeil(timezone: string)")
+    expect(panel).toContain("const effectiveTo = autoWindowRef.current && isToday ? tenantClockNowCeil(timezone) : to")
   })
 
   it("keeps developer wording and small scrolling frames out of the page", () => {

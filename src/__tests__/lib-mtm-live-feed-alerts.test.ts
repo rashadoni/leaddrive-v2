@@ -88,6 +88,34 @@ describe("groupMtmLiveFeedAlerts", () => {
     expect(groups.map((group) => group.id)).toEqual(["alert-b", "alert-c", "alert-d", "alert-a"])
   })
 
+  it("keeps out-of-zone check-ins at different customers apart, and merges repeats at the same one", () => {
+    const checkIn = (id: string, at: string, customerId: string | null, distance: number): MtmLiveFeedAlertRow => ({
+      id,
+      agentId: "anar",
+      agentName: "Anar Mammadov",
+      type: "OUT_OF_ZONE",
+      title: "Out of zone check-in",
+      createdAt: at,
+      metadata: {
+        ...(customerId ? { customerId } : {}),
+        distanceMeters: distance,
+        geofenceRadius: 100,
+        messageKey: "outOfZoneCheckIn",
+        messageParams: { distanceMeters: distance, geofenceRadius: 100 },
+      },
+    })
+    const groups = groupMtmLiveFeedAlerts([
+      checkIn("a", "2026-09-14T12:46:00Z", "store-22", 13100),
+      checkIn("b", "2026-09-14T12:50:00Z", "store-22", 13050),
+      checkIn("c", "2026-09-14T12:49:00Z", "store-1", 7800),
+      checkIn("d", "2026-09-14T12:55:00Z", null, 900),
+      checkIn("e", "2026-09-14T12:56:00Z", null, 950),
+    ], "Asia/Baku")
+    expect(groups).toHaveLength(4)
+    expect(groups.find((group) => group.id === "alert-b")?.alert).toMatchObject({ count: 2, message: { distanceMeters: 13100 } })
+    expect(groups.find((group) => group.id === "alert-c")?.alert.count).toBe(1)
+  })
+
   it("groups by the tenant's hour, not UTC's", () => {
     // 13:50 and 14:20 UTC are 18:20 and 18:50 in Kolkata (+05:30): same local hour.
     const groups = groupMtmLiveFeedAlerts([

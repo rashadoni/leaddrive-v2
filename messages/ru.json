@@ -13049,7 +13049,7 @@
       "late": "опоздание {delay}",
       "early": "раньше на {delay}",
       "onTime": "Вовремя",
-      "outOfOrder": "Не по порядку: фактически {actual}-я",
+      "outOfOrder": "Не по порядку: фактически №{actual}",
       "outOfZone": "Вне зоны · {distance}",
       "inZone": "В зоне",
       "photos": "{count, plural, one {# фото} few {# фото} many {# фото} other {# фото}}",
@@ -15681,7 +15681,11 @@
       "fact": "Факт {from}–{to}",
       "factOpen": "Факт {from} — идёт",
       "openVisit": "Открыть визит",
-      "missingCoordinates": "{count, plural, one {# точка без координат} few {# точки без координат} many {# точек без координат} other {# точки без координат}} — на карте не показаны"
+      "missingCoordinates": "{count, plural, one {# точка без координат не показана на карте} few {# точки без координат не показаны на карте} many {# точек без координат не показаны на карте} other {# точки без координат не показаны на карте}}"
+    },
+    "distanceUnits": {
+      "m": "{value} м",
+      "km": "{value} км"
     }
   },
   "mtmSettingsPage": {

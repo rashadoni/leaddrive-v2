@@ -11,7 +11,13 @@ import { checkRateLimit } from "@/lib/rate-limit"
 import { isValidTimezone } from "@/lib/timezone"
 import { advanceMtmAgentLatestLocation } from "@/lib/mtm/mobile-location-latest"
 import { workforceEnabledForMixedSurface } from "@/lib/workforce-capability"
-import { deriveMtmLiveFieldStatus } from "@/lib/mtm/live-field-status"
+import {
+  combineMtmDayRoutes,
+  deriveMtmLiveFieldStatus,
+  isMtmAgentMoving,
+  MTM_STOPPED_DWELL_MS,
+  type MtmLiveRouteFact,
+} from "@/lib/mtm/live-field-status"
 import { groupMtmLiveFeedAlerts } from "@/lib/mtm/live-feed-alerts"
 
 const MAX_FUTURE_LOCATION_SKEW_MS = 5 * 60 * 1000
@@ -248,18 +254,41 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
     const returnedAgentIds = agents.map((agent: AgentWithLocations) => agent.id)
     const scopedWhere = returnedAgentIds.length ? { agentId: { in: returnedAgentIds } } : { agentId: "__no_access__" }
 
-    // Get today's route completion per agent
+    // Get today's route completion per agent. An agent can hold several
+    // routes a day; they are combined, never "whichever row came last"
+    // (src/lib/mtm/live-field-status.ts, review of #205).
     const todayRoutes = await prisma.mtmRoute.findMany({
       where: { organizationId: orgId, date: { gte: routeToday, lt: routeTomorrow }, deletedAt: null, ...scopedWhere },
       select: { agentId: true, totalPoints: true, visitedPoints: true, status: true },
     })
-    const routeMap = Object.fromEntries(
-      todayRoutes.map((r: TodayRouteRow) => [r.agentId, {
-        completion: r.totalPoints > 0 ? Math.round((r.visitedPoints / r.totalPoints) * 100) : 0,
-        routeStatus: r.status,
-        totalPoints: r.totalPoints,
-        visitedPoints: r.visitedPoints,
-      }])
+    const routesByAgent = new Map<string, MtmLiveRouteFact[]>()
+    for (const r of todayRoutes as TodayRouteRow[]) {
+      const list = routesByAgent.get(r.agentId) ?? []
+      list.push({ status: r.status, totalPoints: r.totalPoints, visitedPoints: r.visitedPoints })
+      routesByAgent.set(r.agentId, list)
+    }
+    const dayRoutesByAgent = new Map(
+      [...routesByAgent.entries()].map(([agentId, routes]) => [agentId, combineMtmDayRoutes(routes)]),
+    )
+
+    // The newest moving sample per agent within the dwell window. One
+    // motionless point at a red light must not read «Dayanıb».
+    const movementSince = new Date(now.getTime() - MTM_STOPPED_DWELL_MS)
+    const recentMovement = returnedAgentIds.length
+      ? await prisma.mtmAgentLocation.groupBy({
+          by: ["agentId"],
+          where: {
+            organizationId: orgId,
+            agentId: { in: returnedAgentIds },
+            recordedAt: { gte: movementSince, lte: now },
+            OR: [{ isMoving: true }, { speed: { gt: 1 } }],
+          },
+          _max: { recordedAt: true },
+        })
+      : []
+    const lastMovingAtByAgent = new Map(
+      (recentMovement as unknown as Array<{ agentId: string; _max: { recordedAt: Date | null } | null }>)
+        .map((row) => [row.agentId, row._max?.recordedAt ?? null]),
     )
 
     // Get today's active visits (checked in but not out) for check-in status
@@ -278,7 +307,7 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
           Number.isFinite(candidate.accuracy) && candidate.accuracy >= 0 && candidate.accuracy <= maxAccuracyMeters
         )),
       ) ?? null
-      const route = routeMap[a.id]
+      const dayRoutes = dayRoutesByAgent.get(a.id) ?? null
       const isCheckedIn = checkedInAgents.has(a.id)
       const workdays = fieldSessionEnabled ? a.workdays ?? [] : []
       const activeWorkday = workdays.find((workday) => workday.status === "STARTED" || workday.status === "PAUSED")
@@ -301,8 +330,13 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
         freshness,
         isCheckedIn,
         isOnline: a.isOnline,
-        isMoving: loc?.isMoving === true,
-        route: route ? { status: route.routeStatus, totalPoints: route.totalPoints, visitedPoints: route.visitedPoints } : null,
+        isMoving: loc ? isMtmAgentMoving({
+          samples: a.locations.filter((candidate: AgentLocationRow) =>
+            Number.isFinite(candidate.latitude) && Number.isFinite(candidate.longitude)),
+          lastMovingAt: lastMovingAtByAgent.get(a.id) ?? null,
+          now,
+        }) : false,
+        dayRoutes,
         tenantHour,
         lateAfterHour: settings.lateAfterHour,
       })
@@ -321,7 +355,7 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
         workdayStartedAt: fieldSessionEnabled ? effectiveWorkday?.startedAt ?? null : null,
         workdayCarryover,
         locationState: explainMissingLocation({ hasLocation: Boolean(loc), lastSeenAt: a.lastSeenAt }),
-        routeCompletion: route?.completion ?? 0,
+        routeCompletion: dayRoutes?.completion ?? 0,
         ...(loc ? {
           latitude: loc.latitude,
           longitude: loc.longitude,
