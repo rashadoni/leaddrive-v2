@@ -279,7 +279,7 @@ export default function VoipCallsPage() {
   }
 
   return (
-    <div data-testid="voip-workspace" className="mx-auto max-w-[1180px] space-y-3 pb-8 sm:space-y-4">
+    <div data-testid="voip-workspace" data-state={loading && calls.length === 0 ? "loading" : "ready"} className="mx-auto max-w-[1180px] space-y-3 pb-8 sm:space-y-4">
       <header className="border-b pb-3 sm:pb-4">
         <div className="flex items-center gap-2">
           <Phone className="h-5 w-5 text-muted-foreground" aria-hidden="true" />

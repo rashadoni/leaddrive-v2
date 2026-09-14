@@ -36,6 +36,7 @@ describe("VoIP workspace UX contract", () => {
     expect(page).not.toContain("text-[11px]")
     expect(page).not.toMatch(/text-(?:violet|purple|blue|green)-600/)
     expect(page).toContain('data-testid="voip-workspace"')
+    expect(page).toContain('data-state={loading && calls.length === 0 ? "loading" : "ready"}')
     expect(page).toContain('data-testid="voip-call-timeline"')
     expect(page).not.toContain("<main")
   })

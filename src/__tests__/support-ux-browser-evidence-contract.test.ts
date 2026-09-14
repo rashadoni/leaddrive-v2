@@ -319,7 +319,7 @@ describe("Support UX browser evidence contract", () => {
     expect(runner).toContain("[data-testid='ticket-detail-workspace']");
     expect(runner).toContain("[data-testid='agent-desktop-workspace']");
     expect(runner).toContain("[data-testid='agent-desktop-next-case']");
-    expect(runner).toContain("[data-testid='voip-workspace']");
+    expect(runner).toContain("[data-testid='voip-workspace'][data-state='ready']");
     expect(runner).toContain("[data-testid='voip-call-timeline']");
     expect(runner).toContain("scenario.ready");
   });
