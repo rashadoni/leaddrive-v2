@@ -1,10 +1,12 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { toast } from "sonner"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
+import { formatDateTime } from "@/lib/format-date"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
 import { PageDescription } from "@/components/page-description"
 import { HelpButton } from "@/components/help/help-button"
@@ -14,7 +16,8 @@ import { AdvisorRecordWidget } from "@/components/ai/advisor-record-widget"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
-import { Camera, ThumbsUp, ThumbsDown, Check, X, Trash2, Search, Clock, CheckCircle2, XCircle, Download, LayoutGrid, Columns, CheckSquare } from "lucide-react"
+import { Dialog, DialogTitle } from "@/components/ui/dialog"
+import { Camera, ThumbsUp, ThumbsDown, Check, X, Trash2, Search, Clock, CheckCircle2, XCircle, Download, LayoutGrid, Columns, CheckSquare, ImageOff, ExternalLink } from "lucide-react"
 
 const statusColors: Record<string, string> = { PENDING: "bg-amber-100 text-amber-700", APPROVED: "bg-green-100 text-green-700", REJECTED: "bg-red-100 text-red-600" }
 
@@ -28,6 +31,39 @@ type MtmPhotoRow = {
   dislikes?: number | null
   agent?: { id: string; name: string | null } | null
   visit?: { id: string; customer?: { name: string | null } | null } | null
+}
+
+type PhotoPeriod = "today" | "week" | "all"
+
+/** Start of the viewer's local day, or of the local week (Monday). */
+function periodStart(period: PhotoPeriod, now: Date): number {
+  const start = new Date(now)
+  start.setHours(0, 0, 0, 0)
+  if (period === "week") start.setDate(start.getDate() - ((start.getDay() + 6) % 7))
+  return period === "all" ? Number.NEGATIVE_INFINITY : start.getTime()
+}
+
+/**
+ * A tile whose file is gone says so, instead of a browser's broken-image icon.
+ * Prod audit 2026-09-14: 196 of the 200 newest tiles were seeded rows whose
+ * files return 404, and the manager saw a wall of broken pictures.
+ */
+function PhotoImage({ photo, className, missingLabel, onMissing, missing }: {
+  photo: MtmPhotoRow
+  className: string
+  missingLabel: string
+  onMissing: (id: string) => void
+  missing: boolean
+}) {
+  if (!photo.url || missing) {
+    return (
+      <span data-testid="mtm-photo-missing" className="flex h-full w-full flex-col items-center justify-center gap-1 text-muted-foreground">
+        {photo.url ? <ImageOff className="h-7 w-7" aria-hidden="true" /> : <Camera className="h-7 w-7" aria-hidden="true" />}
+        {photo.url ? <span className="px-2 text-center text-[11px]">{missingLabel}</span> : null}
+      </span>
+    )
+  }
+  return <img src={photo.url} alt="" loading="lazy" decoding="async" className={className} onError={() => onMissing(photo.id)} />
 }
 
 const PHOTO_FILTER_LABELS = {
@@ -44,7 +80,16 @@ export default function MtmPhotosPage() {
   // A5: статус — идентификатор, а не текст для человека. Раньше страница
   // печатала PENDING и «Photo approved» по-английски в любом интерфейсе.
   const ts = useTranslations("mtmStatus")
+  const locale = useLocale()
   const [photos, setPhotos] = useState<MtmPhotoRow[]>([])
+  const [total, setTotal] = useState(0)
+  // Land on this week's photos: the newest rows of a tenant can be seeded
+  // placeholders, and "all" is one click away.
+  const [period, setPeriod] = useState<PhotoPeriod>("week")
+  const [agentFilter, setAgentFilter] = useState("")
+  const [knownAgents, setKnownAgents] = useState<Map<string, string>>(() => new Map())
+  const [missingFiles, setMissingFiles] = useState<Set<string>>(() => new Set())
+  const [lightboxPhoto, setLightboxPhoto] = useState<MtmPhotoRow | null>(null)
   const [loading, setLoading] = useState(true)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteItem, setDeleteItem] = useState<MtmPhotoRow | null>(null)
@@ -60,21 +105,44 @@ export default function MtmPhotosPage() {
 
   const fetchPhotos = useCallback(async () => {
     try {
-      const res = await fetch("/api/v1/mtm/photos?limit=200", { headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string> })
+      // The API filters by employee on the server, so choosing one reaches
+      // past the newest 200 rows instead of filtering inside them.
+      const params = new URLSearchParams({ limit: "200" })
+      if (agentFilter) params.set("agentId", agentFilter)
+      const res = await fetch(`/api/v1/mtm/photos?${params.toString()}`, { headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string> })
       const r = await res.json()
       if (!res.ok || !r.success) {
         toast.error(`Failed to load photos: ${r.error || "Unknown error"}`)
       } else {
-        setPhotos(r.data.photos || [])
+        const rows: MtmPhotoRow[] = r.data.photos || []
+        setPhotos(rows)
+        setTotal(Number.isFinite(Number(r.data.total)) ? Number(r.data.total) : rows.length)
+        setKnownAgents((current) => {
+          const next = new Map(current)
+          for (const row of rows) if (row.agent?.id) next.set(row.agent.id, row.agent.name || "—")
+          return next.size === current.size ? current : next
+        })
       }
     } catch (e) {
       toast.error(`Failed to load photos: ${e instanceof Error ? e.message : "Network error"}`)
     } finally { setLoading(false) }
-  }, [orgId])
+  }, [agentFilter, orgId])
 
   useEffect(() => { fetchPhotos() }, [fetchPhotos])
 
-  const filtered = photos.filter(p => {
+  const markMissing = useCallback((id: string) => {
+    setMissingFiles((current) => current.has(id) ? current : new Set(current).add(id))
+  }, [])
+
+  const periodPhotos = useMemo(() => {
+    const start = periodStart(period, new Date())
+    return photos.filter((photo) => {
+      const createdAt = Date.parse(photo.createdAt)
+      return Number.isFinite(createdAt) ? createdAt >= start : period === "all"
+    })
+  }, [period, photos])
+
+  const filtered = periodPhotos.filter(p => {
     if (activeFilter !== "all" && p.status !== activeFilter) return false
     if (search) { const s = search.toLowerCase(); if (!p.agent?.name?.toLowerCase().includes(s)) return false }
     return true
@@ -87,7 +155,8 @@ export default function MtmPhotosPage() {
   })
 
   const statusCounts: Record<string, number> = {}
-  for (const p of photos) statusCounts[p.status] = (statusCounts[p.status] || 0) + 1
+  for (const p of periodPhotos) statusCounts[p.status] = (statusCounts[p.status] || 0) + 1
+  const loadedIsPartial = total > photos.length
   const focusedPhoto = focusedPhotoId ? photos.find((photo) => photo.id === focusedPhotoId) || null : null
 
   const updatePhotoStatus = async (photoId: string, status: string) => {
@@ -137,14 +206,35 @@ export default function MtmPhotosPage() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 stagger-children">
-        <ColorStatCard label={t("statTotal")} value={photos.length} icon={<Camera className="h-4 w-4" />} hint={t("hintTotal")} />
+        <ColorStatCard label={t("statTotal")} value={total} icon={<Camera className="h-4 w-4" />} hint={t("hintTotal")} />
         <ColorStatCard label={t("statPending")} value={statusCounts["PENDING"] || 0} icon={<Clock className="h-4 w-4" />} hint={t("hintPending")} />
         <ColorStatCard label={t("statApproved")} value={statusCounts["APPROVED"] || 0} icon={<CheckCircle2 className="h-4 w-4" />} hint={t("hintApproved")} />
         <ColorStatCard label={t("statRejected")} value={statusCounts["REJECTED"] || 0} icon={<XCircle className="h-4 w-4" />} hint={t("hintRejected")} />
       </div>
 
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="grid gap-1 text-xs font-medium">
+          {t("periodLabel")}
+          <Select data-testid="mtm-photos-period" value={period} onChange={(event) => setPeriod(event.target.value as PhotoPeriod)} className="min-h-10 w-[180px]">
+            <option value="today">{t("periodToday")}</option>
+            <option value="week">{t("periodWeek")}</option>
+            <option value="all">{t("periodAll")}</option>
+          </Select>
+        </label>
+        <label className="grid gap-1 text-xs font-medium">
+          {t("agentFilter")}
+          <Select data-testid="mtm-photos-agent" value={agentFilter} onChange={(event) => setAgentFilter(event.target.value)} className="min-h-10 w-[220px]">
+            <option value="">{t("allAgents")}</option>
+            {[...knownAgents.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+          </Select>
+        </label>
+        {loadedIsPartial ? (
+          <span data-testid="mtm-photos-partial" className="pb-2 text-xs text-muted-foreground">{t("latestOfTotal", { shown: photos.length, total })}</span>
+        ) : null}
+      </div>
+
       <div className="flex flex-wrap gap-2">
-        <Button variant={activeFilter === "all" ? "default" : "outline"} size="sm" onClick={() => setActiveFilter("all")}>{t("all")} ({photos.length})</Button>
+        <Button variant={activeFilter === "all" ? "default" : "outline"} size="sm" onClick={() => setActiveFilter("all")}>{t("all")} ({periodPhotos.length})</Button>
         {(["PENDING", "APPROVED", "REJECTED"] as const).map((s) => (
           <Button key={s} variant={activeFilter === s ? "default" : "outline"} size="sm" onClick={() => setActiveFilter(s)}>
             {t(PHOTO_FILTER_LABELS[s])} ({statusCounts[s] || 0})
@@ -181,7 +271,7 @@ export default function MtmPhotosPage() {
             <div key={label}>
               <div className="text-xs font-medium text-muted-foreground mb-2">{label} — {photo ? `${photo.agent?.name} (${mtmStatusLabel(ts, "photo", photo.status)})` : t("comparePickHint")}</div>
               <div className="aspect-square bg-muted rounded-lg flex items-center justify-center overflow-hidden">
-                {photo?.url ? <img src={photo.url} alt="" className="w-full h-full object-cover" /> : <Camera className="h-12 w-12 text-muted-foreground/30" />}
+                {photo ? <PhotoImage photo={photo} className="w-full h-full object-cover" missingLabel={t("fileMissing")} onMissing={markMissing} missing={missingFiles.has(photo.id)} /> : <Camera className="h-12 w-12 text-muted-foreground/30" />}
               </div>
             </div>
           ))}
@@ -189,7 +279,7 @@ export default function MtmPhotosPage() {
       )}
 
       {filtered.length === 0 ? (
-        <div className="h-48 flex items-center justify-center text-muted-foreground border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card">{photos.length === 0 ? t("empty") : t("noResults")}</div>
+        <div className="h-48 flex items-center justify-center px-4 text-center text-muted-foreground border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card">{photos.length === 0 ? t("empty") : periodPhotos.length === 0 ? t("periodEmpty") : t("noResults")}</div>
       ) : (
         <div className={`grid gap-4 ${focusedPhoto ? "xl:grid-cols-[minmax(0,1fr)_360px]" : ""}`}>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
@@ -212,7 +302,18 @@ export default function MtmPhotosPage() {
                     }
                   }}>
                   <div className="aspect-square bg-muted flex items-center justify-center relative">
-                    {photo.url ? <img src={photo.url} alt="" className="w-full h-full object-cover" /> : <Camera className="h-8 w-8 text-muted-foreground" />}
+                    {viewMode === "gallery" && photo.url && !missingFiles.has(photo.id) ? (
+                      <button
+                        type="button"
+                        className="h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                        aria-label={t("openPhoto", { name: photo.visit?.customer?.name || photo.agent?.name || "—" })}
+                        onClick={() => setLightboxPhoto(photo)}
+                      >
+                        <PhotoImage photo={photo} className="w-full h-full object-cover" missingLabel={t("fileMissing")} onMissing={markMissing} missing={false} />
+                      </button>
+                    ) : (
+                      <PhotoImage photo={photo} className="w-full h-full object-cover" missingLabel={t("fileMissing")} onMissing={markMissing} missing={missingFiles.has(photo.id)} />
+                    )}
                     {viewMode === "batch" && (
                       <div className={`absolute top-1.5 left-1.5 w-4 h-4 rounded border-2 flex items-center justify-center ${selectedPhotos.has(photo.id) ? "bg-primary border-primary text-white" : "border-white/70 bg-black/20"}`}>
                         {selectedPhotos.has(photo.id) && <Check className="h-2.5 w-2.5" />}
@@ -222,6 +323,18 @@ export default function MtmPhotosPage() {
                   <div className="p-2">
                     <div className="text-xs font-medium truncate">{photo.agent?.name}</div>
                     <div className="text-[10px] text-muted-foreground truncate">{photo.visit?.customer?.name || "—"}</div>
+                    <div className="flex items-center justify-between gap-1 text-[10px] text-muted-foreground">
+                      <time dateTime={photo.createdAt} className="truncate tabular-nums">{t("capturedAt", { time: formatDateTime(photo.createdAt, locale, { dateStyle: "short", timeStyle: "short" }) })}</time>
+                      {photo.visit?.id ? (
+                        <Link
+                          href={`/mtm/visits?visitId=${encodeURIComponent(photo.visit.id)}`}
+                          className="shrink-0 text-primary hover:underline"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          {t("openVisit")}
+                        </Link>
+                      ) : null}
+                    </div>
                     <div className="flex items-center justify-between mt-1">
                       <span className={`text-[10px] px-1.5 py-0.5 rounded ${statusColors[photo.status] || ""}`}>{mtmStatusLabel(ts, "photo", photo.status)}</span>
                       <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
@@ -248,6 +361,33 @@ export default function MtmPhotosPage() {
           ) : null}
         </div>
       )}
+
+      <Dialog open={lightboxPhoto !== null} onOpenChange={(open) => { if (!open) setLightboxPhoto(null) }} widthClassName="max-w-4xl" maxHeightClassName="max-h-[calc(100dvh-2rem)]">
+        {lightboxPhoto ? (
+          <div data-testid="mtm-photo-lightbox" className="space-y-3 p-4">
+            <DialogTitle className="text-sm font-semibold">
+              {t("lightboxTitle")} · {lightboxPhoto.agent?.name || "—"}{lightboxPhoto.visit?.customer?.name ? ` · ${lightboxPhoto.visit.customer.name}` : ""}
+            </DialogTitle>
+            <div className="flex min-h-64 items-center justify-center rounded-lg bg-muted">
+              {lightboxPhoto.url && !missingFiles.has(lightboxPhoto.id) ? (
+                <img src={lightboxPhoto.url} alt="" className="max-h-[70dvh] w-auto max-w-full object-contain" onError={() => markMissing(lightboxPhoto.id)} />
+              ) : (
+                <PhotoImage photo={lightboxPhoto} className="" missingLabel={t("fileMissing")} onMissing={markMissing} missing />
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              <time dateTime={lightboxPhoto.createdAt}>{formatDateTime(lightboxPhoto.createdAt, locale, { dateStyle: "medium", timeStyle: "short" })}</time>
+              <span className={`rounded px-1.5 py-0.5 text-[10px] ${statusColors[lightboxPhoto.status] || ""}`}>{mtmStatusLabel(ts, "photo", lightboxPhoto.status)}</span>
+              {lightboxPhoto.visit?.id ? (
+                <Link href={`/mtm/visits?visitId=${encodeURIComponent(lightboxPhoto.visit.id)}`} className="inline-flex items-center gap-1 text-primary hover:underline">
+                  <ExternalLink className="h-3 w-3" />{t("openVisit")}
+                </Link>
+              ) : null}
+              <Button size="sm" variant="outline" className="ml-auto min-h-10" onClick={() => setLightboxPhoto(null)}>{t("closeLightbox")}</Button>
+            </div>
+          </div>
+        ) : null}
+      </Dialog>
 
       <DeleteConfirmDialog open={deleteOpen} onOpenChange={setDeleteOpen} onConfirm={confirmDelete} title={t("delete")} itemName={deleteItem?.agent?.name || tf("thisPhoto")} />
     </div>

@@ -18,6 +18,7 @@ import { summarizeMtmRouteExecution } from "@/lib/mtm/route-point-execution"
 import { hasMtmCoordinates } from "@/lib/mtm/geo-coordinates"
 import { saveRouteCache, loadRouteCache, routeCacheKey } from "@/lib/mtm/route-cache"
 import type { RouteStop } from "@/components/mtm/live-map"
+import type { MtmRoutePoint, MtmRouteRecord } from "@/components/mtm/route-types"
 import { LocationHistoryPanel } from "@/components/mtm/location-history-panel"
 import {
   MapPin, RefreshCw, Clock, WifiOff, Navigation,
@@ -76,7 +77,7 @@ interface ScopedRequest {
 
 interface AgentRouteSnapshot {
   identity: string
-  route: any
+  route: MtmRouteRecord | null
   fromCache: boolean
 }
 
@@ -259,7 +260,7 @@ export default function MtmMapPage() {
         return
       }
       // Only the exact tenant + viewer + agent + tenant-day key may recover.
-      const cached = await loadRouteCache(key)
+      const cached = await loadRouteCache<MtmRouteRecord>(key)
       if (!isCurrentRequest()) return
       if (cached) {
         setRouteSnapshot({ identity: requestIdentity, route: cached.data, fromCache: true })
@@ -547,40 +548,39 @@ export default function MtmMapPage() {
   // Plan versus fact for the selected employee's day. The same summary feeds
   // the numbered map markers and the stop list under the employee card.
   const routeExecution = useMemo(() => {
-    if (!Array.isArray(agentRoute?.points)) return null
+    if (!agentRoute || !Array.isArray(agentRoute.points)) return null
     return summarizeMtmRouteExecution(agentRoute.points)
   }, [agentRoute])
 
   // Transform route points to RouteStop[] for the map
   const routeStops: RouteStop[] = useMemo(() => {
     if (!agentRoute?.points) return []
-    const points = [...agentRoute.points].sort((a: any, b: any) => a.orderIndex - b.orderIndex)
-    const firstPendingOrder = points.find((p: any) => p.status === "PENDING")?.orderIndex
+    const points = [...agentRoute.points].sort((a: MtmRoutePoint, b: MtmRoutePoint) => a.orderIndex - b.orderIndex)
+    const firstPendingOrder = points.find((p) => p.status === "PENDING")?.orderIndex
     const facts = new Map((routeExecution?.points ?? []).map((fact) => [fact.pointId, fact]))
-    return points
-      .filter((p: any) => hasMtmCoordinates(p.customer))
-      .map((p: any) => {
-        const fact = facts.get(p.id)
-        return {
-          orderIndex: p.orderIndex,
-          status: p.status === "VISITED" ? "VISITED" as const :
-                  p.status === "SKIPPED" ? "SKIPPED" as const :
-                  p.orderIndex === firstPendingOrder ? "NEXT" as const : "PENDING" as const,
-          latitude: p.customer.latitude,
-          longitude: p.customer.longitude,
-          name: p.customer.name,
-          address: p.customer.address,
-          visitedAt: p.visitedAt,
-          plannedTime: p.plannedTime ?? null,
-          checkInAt: fact?.checkInAt ?? null,
-          checkOutAt: fact?.visit ? fact.checkOutAt : null,
-          visitId: fact?.visit?.id ?? null,
-        }
-      })
+    return points.flatMap((p): RouteStop[] => {
+      const customer = p.customer
+      if (!hasMtmCoordinates(customer)) return []
+      const fact = facts.get(p.id)
+      return [{
+        orderIndex: p.orderIndex,
+        status: p.status === "VISITED" ? "VISITED" :
+                p.status === "SKIPPED" ? "SKIPPED" :
+                p.orderIndex === firstPendingOrder ? "NEXT" : "PENDING",
+        latitude: customer.latitude,
+        longitude: customer.longitude,
+        name: customer.name,
+        address: customer.address ?? undefined,
+        visitedAt: p.visitedAt ?? undefined,
+        plannedTime: p.plannedTime ?? null,
+        checkInAt: fact?.checkInAt ?? null,
+        checkOutAt: fact?.visit ? fact.checkOutAt : null,
+        visitId: fact?.visit?.id ?? null,
+      }]
+    })
   }, [agentRoute, routeExecution])
-  const routeStopsWithoutCoordinates = Array.isArray(agentRoute?.points)
-    ? agentRoute.points.filter((point: any) => !hasMtmCoordinates(point.customer)).length
-    : 0
+  const routeStopsWithoutCoordinates = (agentRoute?.points ?? [])
+    .filter((point) => !hasMtmCoordinates(point.customer)).length
   const formatTenantTime = (value: string | null | undefined) =>
     value ? formatTime(value, locale, { hour: "2-digit", minute: "2-digit", timeZone: contract?.timezone }) : ""
   const feedAlertText = (alert: NonNullable<LiveEvent["alert"]>) => {
@@ -897,7 +897,7 @@ export default function MtmMapPage() {
                           <div className="text-muted-foreground">{tMap("routeStop.none")}</div>
                         ) : (
                           <ol className="space-y-1">
-                            {[...agentRoute.points].sort((a: any, b: any) => a.orderIndex - b.orderIndex).map((point: any) => {
+                            {[...(agentRoute.points ?? [])].sort((a, b) => a.orderIndex - b.orderIndex).map((point) => {
                               const fact = routeExecution.points.find((item) => item.pointId === point.id)
                               const done = point.status === "VISITED" || Boolean(fact?.checkInAt)
                               return (

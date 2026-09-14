@@ -3,11 +3,12 @@
 import "leaflet/dist/leaflet.css"
 import { useEffect, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { MapContainer, Marker, Popup, Polyline, useMap } from "react-leaflet"
+import { CircleMarker, MapContainer, Marker, Popup, Polyline, useMap } from "react-leaflet"
 import L from "leaflet"
 import { hasMtmCoordinates } from "@/lib/mtm/geo-coordinates"
 import { CartoVectorBasemap } from "./carto-vector-basemap"
-import { createDateFormatter } from "@/lib/format-date"
+import { formatTime } from "@/lib/format-date"
+import { summarizeMtmRouteExecution, type MtmRoutePointVisitFact } from "@/lib/mtm/route-point-execution"
 
 function InvalidateSize() {
   const map = useMap()
@@ -27,12 +28,46 @@ function InvalidateSize() {
   return null
 }
 
+/**
+ * Frames every stop, and every recorded check-in position, whenever the map
+ * mounts or its box changes size.
+ *
+ * Prod audit 2026-09-14: the route dialog centred on the first stop at zoom 13,
+ * so a second stop a few kilometres away — and check-ins 7.8 and 13.1 km from
+ * their pins — were simply off screen.
+ */
+function FitRouteBounds({ positions }: { positions: Array<[number, number]> }) {
+  const map = useMap()
+  const signature = positions.map(([lat, lng]) => `${lat.toFixed(5)},${lng.toFixed(5)}`).join("|")
+  useEffect(() => {
+    if (positions.length === 0) return
+    const fit = () => {
+      map.invalidateSize()
+      if (positions.length === 1) map.setView(positions[0], 15)
+      else map.fitBounds(L.latLngBounds(positions), { padding: [32, 32], maxZoom: 16 })
+    }
+    fit()
+    const container = map.getContainer()
+    let observer: ResizeObserver | null = null
+    if (container && typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(() => fit())
+      observer.observe(container)
+    }
+    return () => observer?.disconnect()
+    // `signature` stands for `positions`: a new array with the same points must not refit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, signature])
+  return null
+}
+
 interface RoutePoint {
   id: string
   orderIndex: number
   status: string
   customer?: { name?: string; latitude?: number | null; longitude?: number | null }
   visitedAt?: string | null
+  plannedTime?: string | null
+  visits?: MtmRoutePointVisitFact[] | null
 }
 
 const createPointIcon = (index: number, status: string) =>
@@ -52,6 +87,8 @@ const createPointIcon = (index: number, status: string) =>
 
 interface Props {
   points: RoutePoint[]
+  /** Tenant timezone for stop times; the browser's when omitted. */
+  timezone?: string
 }
 
 function pointStatusMessageKey(status: string): "pointStatusPending" | "pointStatusVisited" | "pointStatusSkipped" | "pointStatusUnknown" {
@@ -63,14 +100,14 @@ function pointStatusMessageKey(status: string): "pointStatusPending" | "pointSta
   }
 }
 
-function visitedTime(value: string | null | undefined, locale: string): string | null {
+function stopTime(value: string | null | undefined, locale: string, timezone?: string): string | null {
   if (!value) return null
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) return null
-  return createDateFormatter(locale, { timeStyle: "short" }).format(parsed)
+  return formatTime(parsed, locale, { hour: "2-digit", minute: "2-digit", ...(timezone ? { timeZone: timezone } : {}) })
 }
 
-export default function MtmRouteMap({ points }: Props) {
+export default function MtmRouteMap({ points, timezone }: Props) {
   const t = useTranslations("mtmRoutesPage")
   const locale = useLocale()
   const containerRef = useRef<HTMLElement>(null)
@@ -122,19 +159,46 @@ export default function MtmRouteMap({ points }: Props) {
     p.customer!.latitude!,
     p.customer!.longitude!,
   ])
+  const execution = summarizeMtmRouteExecution(points)
+  const factByPoint = new Map(execution.points.map((fact) => [fact.pointId, fact]))
+  // Where the agent actually stood at check-in, drawn next to the pin it
+  // belongs to. A long connector is the out-of-zone check-in, visibly.
+  const checkIns = validPoints.flatMap((point, index) => {
+    const visit = factByPoint.get(point.id)?.visit
+    const position = { latitude: visit?.checkInLat, longitude: visit?.checkInLng }
+    if (!visit || !hasMtmCoordinates(position)) return []
+    return [{
+      id: `${point.id}:${visit.id}`,
+      index,
+      position: [position.latitude, position.longitude] as [number, number],
+      stop: [point.customer!.latitude!, point.customer!.longitude!] as [number, number],
+      time: stopTime(typeof visit.checkInAt === "string" ? visit.checkInAt : visit.checkInAt?.toISOString(), locale, timezone),
+    }]
+  })
+  const framedPositions: Array<[number, number]> = [...polylinePositions, ...checkIns.map((checkIn) => checkIn.position)]
   const pointDetails = (point: RoutePoint, index: number) => {
     const stop = t("routeMapStopLabel", {
       number: index + 1,
       name: point.customer?.name?.trim() || t("routeMapUnnamedStop"),
     })
     const status = t("routeMapStatusLabel", { status: t(pointStatusMessageKey(point.status)) })
-    const visitedAt = visitedTime(point.visitedAt, locale)
-    const visited = visitedAt ? t("routeMapVisitedAt", { time: visitedAt }) : null
+    const fact = factByPoint.get(point.id)
+    const planned = point.plannedTime ? t("stopFact.planned", { time: stopTime(point.plannedTime, locale, timezone) ?? "" }) : null
+    // `visitedAt` is when the stop was closed. It used to be labelled as the
+    // visit time; with the visit known, show arrival and departure instead.
+    const visited = fact?.visit && fact.checkInAt
+      ? fact.checkOutAt
+        ? t("stopFact.fact", { from: stopTime(fact.checkInAt, locale, timezone) ?? "", to: stopTime(fact.checkOutAt, locale, timezone) ?? "" })
+        : t("stopFact.factOpen", { from: stopTime(fact.checkInAt, locale, timezone) ?? "" })
+      : point.visitedAt
+        ? t("stopFact.closedAt", { time: stopTime(point.visitedAt, locale, timezone) ?? "" })
+        : null
     return {
+      planned,
       stop,
       status,
       visited,
-      accessibleLabel: visited ? `${stop}. ${status}. ${visited}` : `${stop}. ${status}`,
+      accessibleLabel: [stop, status, planned, visited].filter(Boolean).join(". "),
     }
   }
 
@@ -142,7 +206,7 @@ export default function MtmRouteMap({ points }: Props) {
     <section
       ref={containerRef}
       aria-label={t("routeMapLabel")}
-      style={{ height: "100%", width: "100%", minHeight: 400, display: "flex", flexDirection: "column" }}
+      style={{ height: "100%", width: "100%", display: "flex", flexDirection: "column" }}
     >
       <ol className="sr-only" aria-label={t("routeMapStopsLabel")}>
         {validPoints.map((point, index) => <li key={point.id}>{pointDetails(point, index).accessibleLabel}</li>)}
@@ -151,6 +215,7 @@ export default function MtmRouteMap({ points }: Props) {
         {ready ? (
           <MapContainer center={center} zoom={13} style={{ height: "100%", width: "100%" }}>
             <InvalidateSize />
+            <FitRouteBounds positions={framedPositions} />
             <CartoVectorBasemap />
             {/* Route line */}
             <Polyline positions={polylinePositions} color="#6366f1" weight={3} opacity={0.7} dashArray="8 4" />
@@ -171,13 +236,32 @@ export default function MtmRouteMap({ points }: Props) {
                       <div className="font-semibold">{details.stop}</div>
                       <div className="text-xs text-muted-foreground mt-1">
                         {details.status}
-                        {details.visited ? <> · {details.visited}</> : null}
                       </div>
+                      {details.planned ? <div className="text-xs text-muted-foreground">{details.planned}</div> : null}
+                      {details.visited ? <div className="text-xs font-medium">{details.visited}</div> : null}
                     </div>
                   </Popup>
                 </Marker>
               )
             })}
+            {checkIns.map((checkIn) => (
+              <Polyline key={`link-${checkIn.id}`} positions={[checkIn.stop, checkIn.position]} color="#0ea5e9" weight={1.5} opacity={0.6} dashArray="2 6" />
+            ))}
+            {checkIns.map((checkIn) => (
+              <CircleMarker
+                key={`checkin-${checkIn.id}`}
+                center={checkIn.position}
+                radius={6}
+                pathOptions={{ color: "#ffffff", weight: 2, fillColor: "#0ea5e9", fillOpacity: 0.95 }}
+              >
+                <Popup>
+                  <div className="text-sm">
+                    <div className="font-semibold">#{checkIn.index + 1}</div>
+                    <div className="text-xs text-muted-foreground mt-1">{t("stopFact.checkInPosition", { time: checkIn.time ?? "—" })}</div>
+                  </div>
+                </Popup>
+              </CircleMarker>
+            ))}
           </MapContainer>
         ) : (
           <div style={{ height: "100%", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8", fontSize: 14 }}>
