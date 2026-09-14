@@ -419,6 +419,9 @@ async function main(): Promise<void> {
       providerCallId: `support-evidence-provider-${index + 1}`,
       wasAnswered: true,
       providerOutcome: "connected",
+      // The VoIP timeline deliberately renders `createdAt`, so pin it with the
+      // call interval rather than leaving Prisma's default clock value here.
+      createdAt: new Date(EVIDENCE_FIXTURE_EPOCH_MS - (index + 1) * 60 * 60 * 1000),
       startedAt: new Date(EVIDENCE_FIXTURE_EPOCH_MS - (index + 1) * 60 * 60 * 1000),
       endedAt: new Date(EVIDENCE_FIXTURE_EPOCH_MS - (index + 1) * 60 * 60 * 1000 + (90 + index * 15) * 1000),
     })),

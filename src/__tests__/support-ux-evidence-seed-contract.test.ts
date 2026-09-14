@@ -54,6 +54,7 @@ describe("Support UX evidence seed safety contract", () => {
 
   it("keeps user-visible fixture dates stable across visual comparison runs", () => {
     expect(seed).toContain("const EVIDENCE_FIXTURE_EPOCH_MS = Date.UTC(2026, 8, 14, 0, 0, 0)")
+    expect(seed).toContain("createdAt: new Date(EVIDENCE_FIXTURE_EPOCH_MS - (index + 1) * 60 * 60 * 1000)")
     expect(seed).not.toContain("Date.now()")
   })
 
