@@ -576,6 +576,8 @@ describe("Workforce Android foundation", () => {
     expect(activity).not.toContain("context.getString(R.string.device_action_prompt")
     expect(activity).not.toContain("context.getString(R.string.device_enrollment_prompt")
     expect(activity).not.toContain("context.getString(deviceLifecycleMessage")
+    expect(activity).toContain("deviceLifecycleMessages.getValue(it.lifecycle)")
+    expect(activity).not.toContain("context.getString(")
     expect(activity).toContain("R.string.device_action_prompt")
     expect(activity).toContain("R.string.device_enrollment_prompt")
     expect(repository).not.toContain("val message: String")
