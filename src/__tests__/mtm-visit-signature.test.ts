@@ -3,7 +3,7 @@ import { join } from "node:path"
 import { describe, expect, it, vi } from "vitest"
 import { MtmSignatureEvidence, VisitActionResultSchema, VisitPolicyCreateSchema } from "@/lib/mtm-validators"
 import { MTM_VISIT_ACTION_KEYS } from "@/lib/mtm/visit-policies"
-import { canManageMtmVisitPolicies } from "@/lib/mtm/route-permissions"
+import { resolveMtmVisitPolicyAccess } from "@/lib/mtm/route-permissions"
 
 /**
  * Customer signature on the tablet (owner request 2026-09-14): optional by
@@ -37,17 +37,21 @@ describe("signature as a visit action", () => {
 })
 
 describe("who may configure visit policies", () => {
-  const prisma = { mtmAgent: { findFirst: vi.fn() } }
+  // The first rule (2026-09-14, #202) let every web manager write any policy.
+  // The scope audit the same day narrowed it: admins write anything, managers
+  // their teams, supervisors read — full coverage in api-mtm-visit-policies.
+  const prisma = { mtmAgent: { findFirst: vi.fn(), findMany: vi.fn(), findUnique: vi.fn() }, mtmTeam: { findFirst: vi.fn(), findMany: vi.fn() } }
 
-  it("allows web admins and managers without an agent lookup", async () => {
-    for (const webRole of ["superadmin", "admin", "manager"]) {
-      expect(await canManageMtmVisitPolicies(prisma as never, { organizationId: "org-1", userId: "u", webRole })).toBe(true)
+  it("gives web admins organization-wide access without an agent lookup", async () => {
+    for (const webRole of ["superadmin", "admin"]) {
+      expect(await resolveMtmVisitPolicyAccess(prisma as never, { organizationId: "org-1", userId: "u", webRole })).toEqual({ kind: "admin" })
     }
     expect(prisma.mtmAgent.findFirst).not.toHaveBeenCalled()
   })
 
-  it("refuses a web user who is not a manager when no manager agent stands behind them", async () => {
+  it("refuses a web manager when no MTM card stands behind them", async () => {
     prisma.mtmAgent.findFirst.mockResolvedValue(null)
-    expect(await canManageMtmVisitPolicies(prisma as never, { organizationId: "org-1", userId: "u", webRole: "user" })).toBe(false)
+    expect(await resolveMtmVisitPolicyAccess(prisma as never, { organizationId: "org-1", userId: "u", webRole: "manager" }))
+      .toEqual({ kind: "none", reason: "no_field_scope" })
   })
 })

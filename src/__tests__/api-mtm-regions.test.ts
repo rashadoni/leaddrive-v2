@@ -27,6 +27,7 @@ vi.mock("@/lib/mobile-auth", () => ({
 import { GET as listRegions, POST as createRegion } from "@/app/api/v1/mtm/regions/route"
 import { GET as getRegion, PATCH as patchRegion, DELETE as deleteRegion } from "@/app/api/v1/mtm/regions/[id]/route"
 import { prisma } from "@/lib/prisma"
+import { resetMtmFieldScopeMemo } from "@/lib/mtm/field-access"
 import { getOrgId } from "@/lib/api-auth"
 import { getMobileAuth } from "@/lib/mobile-auth"
 
@@ -58,6 +59,8 @@ function deleteReq(url: string): NextRequest {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // Route tests reuse user ids with different cards; never serve a memoized actor.
+  resetMtmFieldScopeMemo()
   vi.mocked(getOrgId).mockResolvedValue(ORG)
   // Default: no mobile JWT → web admin panel caller, no role gate
   vi.mocked(getMobileAuth).mockReturnValue(null)
@@ -171,15 +174,16 @@ describe("POST /api/v1/mtm/regions", () => {
     expect(res.status).toBe(403)
   })
 
-  it("allows mobile JWT caller with MANAGER role", async () => {
+  it("refuses a mobile JWT caller with MANAGER role — regions are administrator work", async () => {
+    // Scope audit 2026-09-14: a region groups teams into a manager's territory,
+    // so a manager creating or reshaping regions could widen their own scope.
     vi.mocked(getMobileAuth).mockReturnValue({ agentId: "a1", role: "MANAGER" } as any)
-    // DB re-check must confirm the agent still holds the role (P2 stale-JWT fix)
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "a1" } as any)
-    vi.mocked(prisma.mtmRegion.create).mockResolvedValue({ id: "r1", name: "X", isActive: true } as any)
     const res = await createRegion(
       jsonReq("http://localhost/api/v1/mtm/regions", { name: "X" }),
     )
-    expect(res.status).toBe(201)
+    expect(res.status).toBe(403)
+    expect(prisma.mtmRegion.create).not.toHaveBeenCalled()
   })
 
   it("returns 403 when JWT claims MANAGER but DB re-check fails (stale JWT)", async () => {

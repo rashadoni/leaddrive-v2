@@ -4,6 +4,13 @@ import { prisma } from "@/lib/prisma"
 import { MAX_PAGE_LIMIT } from "./_constants"
 import { withRouteFieldWebRlsAuth } from "@/lib/with-mtm-rls-auth"
 import { productCapabilitiesForMixedSurface } from "@/lib/workforce-capability"
+import {
+  fieldScopeAgentIdWhere,
+  isAgentInFieldScope,
+  mtmAgentOutOfScopeResponse,
+  mtmFieldScopeRequiredResponse,
+  resolveMtmFieldScope,
+} from "@/lib/mtm/field-access"
 
 const CHECK_IN_ACTIONS = ["CHECK_IN", "CHECK_IN_FORCED"] as const
 // Compliance lens: geofence bypasses + failed mobile logins. Kept in sync with
@@ -53,7 +60,17 @@ function periodStart(period: string, now: Date): Date | null {
   return midnight // "today" (default)
 }
 
-export const GET = withRouteFieldWebRlsAuth("read", async (req, { orgId }) => {
+export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
+  const { orgId } = auth
+  // The feed and its counters are about people: a manager sees their own
+  // agents' events. Organization-level entries without an agent (settings,
+  // policy changes by web users) stay visible to admins only.
+  const scope = await resolveMtmFieldScope(prisma, {
+    organizationId: orgId,
+    userId: auth.userId,
+    webRole: auth.role,
+  })
+  if (scope.kind === "none") return mtmFieldScopeRequiredResponse()
 
   const { searchParams } = new URL(req.url)
   const type = searchParams.get("type") || "" // CHECK_IN, CHECK_OUT, PHOTO, TASK, CHECK_IN_FORCED
@@ -62,6 +79,7 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, { orgId }) => {
   const period = searchParams.get("period") || "today"
   const page = Math.max(1, parseInt(searchParams.get("page") || "1"))
   const limit = Math.min(MAX_PAGE_LIMIT, Math.max(1, parseInt(searchParams.get("limit") || "50")))
+  if (agentId && !isAgentInFieldScope(scope, agentId)) return mtmAgentOutOfScopeResponse()
 
   try {
     const capabilities = await productCapabilitiesForMixedSurface(orgId, "MTM/activity GET")
@@ -73,7 +91,7 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, { orgId }) => {
     // bug where cards were hard-coded to "today" while the feed showed all time.
     // KPIs intentionally ignore the type/violations filters so the cards stay a
     // stable overview while the list below narrows.
-    const kpiWhere = routeAuditWhere(orgId, capabilities.workforceHrm)
+    const kpiWhere: Prisma.MtmAuditLogWhereInput = { ...routeAuditWhere(orgId, capabilities.workforceHrm), ...fieldScopeAgentIdWhere(scope) }
     if (start) kpiWhere.createdAt = { gte: start }
     if (agentId) kpiWhere.agentId = agentId
 
@@ -88,7 +106,7 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, { orgId }) => {
 
     // Activity feed = period + agent + (violations OR type) filters, paginated.
     // Action names match writers in visits/[id]/route.ts and photos/route.ts.
-    const auditWhere = routeAuditWhere(orgId, capabilities.workforceHrm)
+    const auditWhere: Prisma.MtmAuditLogWhereInput = { ...routeAuditWhere(orgId, capabilities.workforceHrm), ...fieldScopeAgentIdWhere(scope) }
     if (start) auditWhere.createdAt = { gte: start }
     if (agentId) auditWhere.agentId = agentId
     if (violations) auditWhere.action = { in: [...VIOLATION_ACTIONS] }

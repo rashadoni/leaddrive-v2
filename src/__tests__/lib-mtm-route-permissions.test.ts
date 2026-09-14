@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import {
   canAssignMtmRouteAgents,
   canCreateMtmRouteFor,
@@ -7,9 +7,13 @@ import {
   canPublishMtmRoute,
   canReviewMtmRouteRequest,
   canViewMtmRoute,
+  canWriteMtmVisitPolicyTeam,
   resolveMtmRouteActor,
+  resetMtmActorDiagnostics,
+  resolveMtmVisitPolicyAccess,
   type MtmRouteActor,
 } from "@/lib/mtm/route-permissions"
+import { fieldScopeForActor } from "@/lib/mtm/field-access"
 
 const agent: MtmRouteActor = {
   agentId: "agent-1",
@@ -175,5 +179,100 @@ describe("MTM route permissions", () => {
       userId: "user-without-agent",
       webRole: "manager",
     })).resolves.toBeNull()
+  })
+})
+
+describe("MTM actor lookup is deterministic (audit 2026-09-14)", () => {
+  beforeEach(() => resetMtmActorDiagnostics())
+
+  const card = { id: "agent-old", role: "MANAGER", canPlanOwnRoutes: true, canSelfPublishRoutes: false }
+
+  function prismaWith(activeCards: number) {
+    return {
+      mtmAgent: {
+        findFirst: vi.fn().mockResolvedValue(card),
+        findUnique: vi.fn().mockResolvedValue({ id: "agent-old", teamId: null }),
+        findMany: vi.fn().mockResolvedValue([]),
+        count: vi.fn().mockResolvedValue(activeCards),
+      },
+      mtmTeam: { findFirst: vi.fn(), findMany: vi.fn() },
+    }
+  }
+
+  it("picks the oldest ACTIVE card for a web user and warns about duplicates", async () => {
+    const prisma = prismaWith(2)
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    try {
+      const actor = await resolveMtmRouteActor(prisma as any, { organizationId: "org-1", userId: "user-1", webRole: "manager" })
+      expect(actor?.agentId).toBe("agent-old")
+      expect(prisma.mtmAgent.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+        where: { organizationId: "org-1", userId: "user-1", status: "ACTIVE" },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      }))
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("several ACTIVE agent cards"),
+        expect.objectContaining({ userId: "user-1", activeCards: 2, chosenAgentId: "agent-old" }),
+      )
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
+  it("stays quiet for a single card and does not count for a token-bound agent", async () => {
+    const single = prismaWith(1)
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    try {
+      await resolveMtmRouteActor(single as any, { organizationId: "org-1", userId: "user-1", webRole: "manager" })
+      expect(warn).not.toHaveBeenCalled()
+
+      const token = prismaWith(5)
+      await resolveMtmRouteActor(token as any, { organizationId: "org-1", userId: "user-1", webRole: "sales", agentId: "agent-old" })
+      expect(token.mtmAgent.count).not.toHaveBeenCalled()
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
+  it("never lets a failed duplicate count change the answer", async () => {
+    const prisma = prismaWith(0)
+    prisma.mtmAgent.count.mockRejectedValue(new Error("db down"))
+    const actor = await resolveMtmRouteActor(prisma as any, { organizationId: "org-1", userId: "user-1", webRole: "manager" })
+    expect(actor?.role).toBe("MANAGER")
+  })
+})
+
+describe("field scope for list endpoints", () => {
+  it("maps actors to organization, bounded or no scope", () => {
+    expect(fieldScopeForActor(admin).kind).toBe("organization")
+    expect(fieldScopeForActor(agent)).toMatchObject({ kind: "agents", agentIds: ["agent-1"] })
+    expect(fieldScopeForActor(manager)).toMatchObject({ kind: "agents", agentIds: ["manager-1", "agent-1", "agent-2"] })
+    expect(fieldScopeForActor(null).kind).toBe("none")
+    // A bounded role with the tenant-wide sentinel fails closed.
+    expect(fieldScopeForActor({ ...manager, scopedAgentIds: null }).kind).toBe("none")
+  })
+})
+
+describe("visit policy write rules", () => {
+  it("admins write any team and org-wide rules; managers only their teams; supervisors nothing", async () => {
+    expect(canWriteMtmVisitPolicyTeam({ kind: "admin" }, null)).toBe(true)
+    const managerAccess = { kind: "manager" as const, actor: manager, readableTeamIds: ["team-A", "team-B"], writableTeamIds: ["team-A"] }
+    expect(canWriteMtmVisitPolicyTeam(managerAccess, "team-A")).toBe(true)
+    expect(canWriteMtmVisitPolicyTeam(managerAccess, "team-B")).toBe(false)
+    expect(canWriteMtmVisitPolicyTeam(managerAccess, null)).toBe(false)
+    const supervisorAccess = { kind: "supervisor" as const, actor: manager, readableTeamIds: ["team-A"], writableTeamIds: [] }
+    expect(canWriteMtmVisitPolicyTeam(supervisorAccess, "team-A")).toBe(false)
+    expect(canWriteMtmVisitPolicyTeam({ kind: "none", reason: "role" }, "team-A")).toBe(false)
+  })
+
+  it("resolves an MTM ADMIN card behind a non-admin web role to full access", async () => {
+    const prisma = {
+      mtmAgent: {
+        findFirst: vi.fn().mockResolvedValue({ id: "a-1", role: "ADMIN", canPlanOwnRoutes: true, canSelfPublishRoutes: true }),
+        count: vi.fn().mockResolvedValue(1),
+      },
+      mtmTeam: {},
+    }
+    expect(await resolveMtmVisitPolicyAccess(prisma as any, { organizationId: "org-1", userId: "u", webRole: "sales" }))
+      .toEqual({ kind: "admin" })
   })
 })

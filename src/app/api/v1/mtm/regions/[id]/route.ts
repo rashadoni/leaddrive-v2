@@ -3,8 +3,8 @@
  * Route: /api/v1/mtm/regions/[id]
  *
  * GET    — any authenticated caller may read a region's detail.
- * PATCH  — ADMIN or MANAGER only (mobile JWT); web admin panel unrestricted.
- * DELETE — ADMIN or MANAGER only (mobile JWT); web admin panel unrestricted.
+ * PATCH  — administrators only (web admin/superadmin or MTM ADMIN; see auth-gate.ts).
+ * DELETE — administrators only (web admin/superadmin or MTM ADMIN; see auth-gate.ts).
  */
 import { NextResponse } from "next/server"
 import { assertMtmAdmin } from "@/lib/mtm/auth-gate"
@@ -32,8 +32,9 @@ export const GET = withRls(async (_req, { orgId }, { params }: { params: Promise
   }
 })
 
-export const PATCH = withRls(async (req, { orgId }, { params }: { params: Promise<{ id: string }> }) => {
-  const forbidden = await assertMtmAdmin(req, orgId)
+export const PATCH = withRls(async (req, auth, { params }: { params: Promise<{ id: string }> }) => {
+  const { orgId } = auth
+  const forbidden = await assertMtmAdmin(req, auth)
   if (forbidden) return forbidden
 
   const { id } = await params
@@ -59,8 +60,9 @@ export const PATCH = withRls(async (req, { orgId }, { params }: { params: Promis
   }
 })
 
-export const DELETE = withRls(async (req, { orgId }, { params }: { params: Promise<{ id: string }> }) => {
-  const forbidden = await assertMtmAdmin(req, orgId)
+export const DELETE = withRls(async (req, auth, { params }: { params: Promise<{ id: string }> }) => {
+  const { orgId } = auth
+  const forbidden = await assertMtmAdmin(req, auth)
   if (forbidden) return forbidden
 
   const { id } = await params
