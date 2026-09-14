@@ -19,6 +19,7 @@ describe("Workforce Play Integrity attendance migration", () => {
 
   it("keeps only a fingerprint, an active tenant enrollment and v5 compatibility", () => {
     expect(contractMigration).toContain('DROP CONSTRAINT IF EXISTS "workforce_attendance_verifications_method_check"')
+    expect(contractMigration).toContain('DROP CONSTRAINT IF EXISTS "mtm_agent_workday_events_schema_version_check"')
     expect(contractMigration).toContain("'PLAY_INTEGRITY'")
     expect(contractMigration).toContain('"deviceEnrollmentId" IS NOT NULL')
     expect(contractMigration).toContain('"proofFingerprint" ~ \'^[A-Fa-f0-9]{64}$\'')

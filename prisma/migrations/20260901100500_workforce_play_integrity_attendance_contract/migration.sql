@@ -88,7 +88,9 @@ $$;
 -- v5 adds an action-bound Play Integrity token fingerprint to the mobile
 -- transport digest. Older immutable events continue to validate unchanged.
 ALTER TABLE "mtm_agent_workday_events"
-  DROP CONSTRAINT "mtm_agent_workday_events_schema_version_check";
+  -- As above, schema-only compatibility baselines do not reconstruct raw
+  -- CHECK constraints from historical SQL migrations.
+  DROP CONSTRAINT IF EXISTS "mtm_agent_workday_events_schema_version_check";
 
 ALTER TABLE "mtm_agent_workday_events"
   ADD CONSTRAINT "mtm_agent_workday_events_schema_version_check"
