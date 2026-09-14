@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import type { Prisma } from "@prisma/client"
 import type { MtmRouteActor } from "@/lib/mtm/route-permissions"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
+import { createTtlMemo } from "@/lib/mtm/actor-memo"
 
 /**
  * Agent-level field scope for MTM list/report endpoints.
@@ -27,11 +28,46 @@ export type MtmFieldScope =
 
 type ActorPrisma = Parameters<typeof resolveMtmRouteActor>[0]
 
+/** How long a resolved read-side actor is reused for the same person. */
+export const MTM_FIELD_SCOPE_MEMO_TTL_MS = 30_000
+const MTM_FIELD_SCOPE_MEMO_MAX_ENTRIES = 2_000
+
+const fieldActorMemo = createTtlMemo<MtmRouteActor | null>({
+  ttlMs: MTM_FIELD_SCOPE_MEMO_TTL_MS,
+  maxEntries: MTM_FIELD_SCOPE_MEMO_MAX_ENTRIES,
+})
+
+/**
+ * Key of the read-side memo. The organization is always part of it, and a
+ * token-bound agent and a web login never share an entry, so one tenant or
+ * principal can never be served another's actor.
+ */
+export function mtmFieldScopeMemoKey(params: { organizationId: string; userId: string; agentId?: string | null }): string {
+  return params.agentId
+    ? `${params.organizationId}\u0000agent\u0000${params.agentId}`
+    : `${params.organizationId}\u0000user\u0000${params.userId}`
+}
+
+/** Test hook: forget memoized actors (route tests reuse ids across cases). */
+export function resetMtmFieldScopeMemo(): void {
+  fieldActorMemo.clear()
+}
+
+/**
+ * Read-side scope for lists, reports and the photo file proxy. Reuses the
+ * resolved actor for up to MTM_FIELD_SCOPE_MEMO_TTL_MS (see actor-memo.ts);
+ * writes and configuration must call resolveMtmRouteActor directly.
+ */
 export async function resolveMtmFieldScope(
   prisma: ActorPrisma,
   params: { organizationId: string; userId: string; webRole: string; agentId?: string | null },
 ): Promise<MtmFieldScope> {
-  const actor = await resolveMtmRouteActor(prisma, params)
+  // A web admin resolves without a query; memoizing it would only let a
+  // demoted admin keep organization scope for the TTL.
+  if (!params.agentId && (params.webRole === "superadmin" || params.webRole === "admin")) {
+    return fieldScopeForActor(await resolveMtmRouteActor(prisma, params))
+  }
+  const actor = await fieldActorMemo.get(mtmFieldScopeMemoKey(params), () => resolveMtmRouteActor(prisma, params))
   return fieldScopeForActor(actor)
 }
 

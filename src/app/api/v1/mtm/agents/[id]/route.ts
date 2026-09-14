@@ -6,12 +6,15 @@ import { getMobileAuth } from "@/lib/mobile-auth"
 import bcrypt from "bcryptjs"
 import { AgentUpdateSchema, parseBody } from "@/lib/mtm-validators"
 import { writeMtmAudit } from "@/lib/mtm-audit"
-import { resolveAgentScope, isValidMtmAgentRole } from "@/lib/mtm/territory-scope"
+import { resolveAgentScope, isValidMtmAgentRole, resolveTerritoryTeamIds } from "@/lib/mtm/territory-scope"
 import { mtmFieldScopeRequiredResponse, resolveMtmFieldScope } from "@/lib/mtm/field-access"
 import {
   MTM_SCOPED_MANAGEABLE_AGENT_ROLES,
+  managerAssignmentCreatesCycle,
+  mtmAgentManagerCycleResponse,
   mtmScopedAgentLinkForbidden,
   mtmScopedAgentRoleForbidden,
+  mtmScopedAgentTerritoryForbidden,
   resolveMtmAgentAdministration,
   type MtmAgentAdministration,
 } from "@/lib/mtm/agent-administration"
@@ -40,6 +43,20 @@ const AGENT_RESPONSE_SELECT = {
   manager: { select: { id: true, name: true } },
   team: { select: { id: true, name: true, region: { select: { id: true, name: true } } } },
 } satisfies Prisma.MtmAgentSelect
+
+async function isCardInManagerTerritory(
+  administration: Extract<MtmAgentAdministration, { kind: "scoped" }>,
+  organizationId: string,
+  teamId: string | null,
+): Promise<boolean> {
+  if (!teamId) return false
+  const territory = await resolveTerritoryTeamIds(prisma, {
+    agentId: administration.actor.agentId,
+    organizationId,
+    role: "MANAGER",
+  })
+  return territory.includes(teamId)
+}
 
 /** A scoped manager reaches only cards inside their field scope; others look missing. */
 function scopedAgentIdFilter(administration: MtmAgentAdministration, id: string): string | { equals: string; in: string[] } {
@@ -118,6 +135,56 @@ export const PUT = withRls(async (req, auth, { params }: { params: Promise<{ id:
     if (!parsed.ok) return parsed.response
     const body = parsed.data
 
+    // Scope first, existence second: a manager probing ids outside their scope
+    // gets the same 404/403 whether the linked user or manager exists or not.
+    const before = await prisma.mtmAgent.findFirst({
+      where: { id: scopedAgentIdFilter(administration, id), organizationId: orgId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        status: true,
+        canPlanOwnRoutes: true,
+        canSelfPublishRoutes: true,
+        managerId: true,
+        userId: true,
+        teamId: true,
+      },
+    })
+    if (!before) return NextResponse.json({ error: "Not found" }, { status: 404 })
+    const managerChanges = body.managerId !== undefined && body.managerId !== null && body.managerId !== before.managerId
+    if (administration.kind === "scoped") {
+      // A manager's own card and their peers' cards are administrator work:
+      // otherwise a manager could raise their own role or take over a peer's
+      // login by resetting the password.
+      if (!MTM_SCOPED_MANAGEABLE_AGENT_ROLES.includes(before.role)) return mtmScopedAgentRoleForbidden()
+      if (body.role !== undefined && !MTM_SCOPED_MANAGEABLE_AGENT_ROLES.includes(body.role)) return mtmScopedAgentRoleForbidden()
+      if (body.userId !== undefined && (body.userId ?? null) !== before.userId) return mtmScopedAgentLinkForbidden()
+      if (managerChanges && !administration.agentIds.includes(body.managerId as string)) {
+        return NextResponse.json({ error: "Manager is outside your field scope", code: "MTM_AGENT_OUT_OF_SCOPE" }, { status: 403 })
+      }
+      // A supervisor sees their whole team, and a login taken over by a
+      // password reset acts with that card's scope. A report reached only
+      // through the reporting line may sit in someone else's team — making
+      // them supervisor, or resetting their password, would hand the manager
+      // that team. Both require the card's team to be in the manager's own
+      // territory.
+      const becomesSupervisor = body.role === "SUPERVISOR" && before.role !== "SUPERVISOR"
+      if (becomesSupervisor || body.password) {
+        if (!await isCardInManagerTerritory(administration, orgId, before.teamId)) {
+          return mtmScopedAgentTerritoryForbidden()
+        }
+      }
+    }
+    if (managerChanges && await managerAssignmentCreatesCycle(prisma, {
+      organizationId: orgId,
+      agentId: id,
+      managerId: body.managerId as string,
+    })) {
+      return mtmAgentManagerCycleResponse()
+    }
+
     if (body.userId) {
       const linkedUser = await prisma.user.findFirst({
         where: { id: body.userId, organizationId: orgId, isActive: true },
@@ -134,38 +201,6 @@ export const PUT = withRls(async (req, auth, { params }: { params: Promise<{ id:
       })
       if (!manager) {
         return NextResponse.json({ error: "Manager not found in this organization" }, { status: 400 })
-      }
-    }
-
-    const before = await prisma.mtmAgent.findFirst({
-      where: { id: scopedAgentIdFilter(administration, id), organizationId: orgId },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        status: true,
-        canPlanOwnRoutes: true,
-        canSelfPublishRoutes: true,
-        managerId: true,
-        userId: true,
-      },
-    })
-    if (!before) return NextResponse.json({ error: "Not found" }, { status: 404 })
-    if (administration.kind === "scoped") {
-      // A manager's own card and their peers' cards are administrator work:
-      // otherwise a manager could raise their own role or take over a peer's
-      // login by resetting the password.
-      if (!MTM_SCOPED_MANAGEABLE_AGENT_ROLES.includes(before.role)) return mtmScopedAgentRoleForbidden()
-      if (body.role !== undefined && !MTM_SCOPED_MANAGEABLE_AGENT_ROLES.includes(body.role)) return mtmScopedAgentRoleForbidden()
-      if (body.userId !== undefined && (body.userId ?? null) !== before.userId) return mtmScopedAgentLinkForbidden()
-      if (
-        body.managerId !== undefined
-        && body.managerId !== null
-        && body.managerId !== before.managerId
-        && !administration.agentIds.includes(body.managerId)
-      ) {
-        return NextResponse.json({ error: "Manager is outside your field scope", code: "MTM_AGENT_OUT_OF_SCOPE" }, { status: 403 })
       }
     }
 

@@ -30,6 +30,7 @@ vi.mock("@/lib/api-auth", () => ({
 import { GET } from "@/app/api/v1/mtm/activity/route"
 import { MAX_PAGE_LIMIT } from "@/app/api/v1/mtm/activity/_constants"
 import { prisma } from "@/lib/prisma"
+import { resetMtmFieldScopeMemo } from "@/lib/mtm/field-access"
 import { requireAuth } from "@/lib/api-auth"
 
 const ORG = "org-1"
@@ -60,6 +61,8 @@ function makeReq(url: string): NextRequest {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // Route tests reuse user ids with different cards; never serve a memoized actor.
+  resetMtmFieldScopeMemo()
   vi.mocked(requireAuth).mockResolvedValue(AUTH as never)
   // Default count to 0 unless a test overrides
   vi.mocked(prisma.mtmAuditLog.count).mockResolvedValue(0)

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import {
   canAssignMtmRouteAgents,
   canCreateMtmRouteFor,
@@ -9,6 +9,7 @@ import {
   canViewMtmRoute,
   canWriteMtmVisitPolicyTeam,
   resolveMtmRouteActor,
+  resetMtmActorDiagnostics,
   resolveMtmVisitPolicyAccess,
   type MtmRouteActor,
 } from "@/lib/mtm/route-permissions"
@@ -182,6 +183,8 @@ describe("MTM route permissions", () => {
 })
 
 describe("MTM actor lookup is deterministic (audit 2026-09-14)", () => {
+  beforeEach(() => resetMtmActorDiagnostics())
+
   const card = { id: "agent-old", role: "MANAGER", canPlanOwnRoutes: true, canSelfPublishRoutes: false }
 
   function prismaWith(activeCards: number) {

@@ -1,38 +1,39 @@
 /**
- * M4-5 — Two-phase admin gate for MTM mutation endpoints.
+ * Admin gate for MTM org-structure mutations: regions POST, regions/[id]
+ * PATCH+DELETE, teams POST, teams/[id] PATCH+DELETE.
  *
- * Extracts the repeated role-check pattern shared by all 5 MTM mutation
- * handlers (regions POST, regions/[id] PATCH+DELETE, teams POST,
- * teams/[id] PATCH+DELETE) into a single reusable helper.
+ * Regions and teams define every manager's territory, so changing them is an
+ * administrator's act. Until the scope audit of 2026-09-14 this gate let every
+ * web caller through ("web admin panel: unrestricted") — any web user with MTM
+ * write could move a team into their own region and so pull its agents into
+ * their scope. Now:
  *
- * Phase 1 — Fast-path (no DB): rejects JWT callers whose role is not in
- *   MTM_ADMIN_ROLES immediately without a DB query.
- * Phase 2 — DB re-check: verifies the agent still holds an admin role in
- *   the database, closing the stale-JWT window (JWT TTL = 7 days).
+ *   - browser session: web admin/superadmin, or a user whose MTM card
+ *     (oldest ACTIVE one, the same card resolveMtmRouteActor picks) is ADMIN;
+ *   - mobile JWT: role ADMIN, re-checked in the database (a demotion must take
+ *     effect before the 7-day token expires). MANAGER no longer qualifies —
+ *     and these paths are web-only for mobile tokens anyway (mtm-web-only.ts);
+ *   - API key (no session, no JWT): allowed — keys are created by
+ *     administrators and resolve with the admin role everywhere in MTM.
  *
- * Returns:
- *   null          → caller is allowed to proceed.
- *   NextResponse  → 403 Forbidden; caller must return this response immediately.
- *
- * Web admin-panel callers (no mobile JWT) are always allowed (null).
+ * Returns null when the caller may proceed, otherwise a 403 to return as is.
  */
 import { NextResponse, type NextRequest } from "next/server"
 import { getMobileAuth } from "@/lib/mobile-auth"
-import { isMtmAdminRole, MTM_ADMIN_ROLES, type MtmAgentRoleString } from "@/lib/mtm/territory-scope"
 import { prisma as defaultPrisma } from "@/lib/prisma"
 import type { PrismaClient } from "@prisma/client"
+import type { AuthResult } from "@/lib/api-auth"
 
-/**
- * Mutable copy of MTM_ADMIN_ROLES for Prisma's `role: { in: [...] }` param.
- * Typed as MtmAgentRoleString[] (not string[]) so it stays assignable to
- * Prisma's generated MtmAgentRole enum expectation.
- * Lifted to module scope to avoid reallocating a new array on every call.
- */
-const ADMIN_ROLES_IN: MtmAgentRoleString[] = [...MTM_ADMIN_ROLES]
+function forbidden() {
+  return NextResponse.json(
+    { error: "Forbidden", code: "MTM_STRUCTURE_ADMIN_REQUIRED" },
+    { status: 403 },
+  )
+}
 
 export async function assertMtmAdmin(
   req: NextRequest,
-  orgId: string,
+  auth: { orgId: string; session: AuthResult | null },
   /**
    * Prisma client to use for the DB re-check. Defaults to the singleton.
    * Callers that wrap operations in a `$transaction` should pass the
@@ -40,26 +41,35 @@ export async function assertMtmAdmin(
    */
   db: Pick<PrismaClient, "mtmAgent"> = defaultPrisma,
 ): Promise<NextResponse | null> {
-  const mobileAuth = getMobileAuth(req)
-  if (!mobileAuth) return null // web admin panel: no JWT → unrestricted
+  const { orgId, session } = auth
 
-  // Phase 1: fast-path rejection — no DB round-trip for clearly non-admin roles
-  if (!isMtmAdminRole(mobileAuth.role)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  if (session) {
+    if (session.role === "superadmin" || session.role === "admin") return null
+    const card = await db.mtmAgent.findFirst({
+      where: { organizationId: orgId, userId: session.userId, status: "ACTIVE" },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      select: { role: true },
+    })
+    return card?.role === "ADMIN" ? null : forbidden()
   }
 
-  // Phase 2: DB re-check — confirms the agent still holds an admin role.
-  // Necessary because JWTs have a 7-day TTL (see getMobileAuth); a demotion
-  // must take effect immediately rather than persisting until token expiry.
+  const mobileAuth = getMobileAuth(req)
+  if (!mobileAuth) return null // API key: administrator-issued integration
+
+  // Fast-path rejection — no DB round-trip for a non-admin token.
+  if (mobileAuth.role !== "ADMIN") return forbidden()
+
+  // DB re-check — confirms the agent still holds the ADMIN role.
   const agent = await db.mtmAgent.findFirst({
     where: {
       id: mobileAuth.agentId,
       organizationId: orgId,
-      role: { in: ADMIN_ROLES_IN },
+      role: "ADMIN",
+      status: "ACTIVE",
     },
     select: { id: true },
   })
-  if (!agent) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  if (!agent) return forbidden()
 
-  return null // both checks pass — caller may proceed
+  return null
 }

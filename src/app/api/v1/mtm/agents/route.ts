@@ -12,6 +12,7 @@ import {
   MTM_SCOPED_MANAGEABLE_AGENT_ROLES,
   mtmScopedAgentLinkForbidden,
   mtmScopedAgentRoleForbidden,
+  mtmScopedAgentTerritoryForbidden,
   resolveMtmAgentAdministration,
 } from "@/lib/mtm/agent-administration"
 import { mtmAgentPresence, type MtmAgentPresence } from "@/lib/mtm/agent-day-state"
@@ -247,6 +248,9 @@ export const POST = withRls(async (req, auth) => {
       // login link, and a manager inside their scope (themselves by default)
       // so the new card is visible to them the moment it exists.
       if (!MTM_SCOPED_MANAGEABLE_AGENT_ROLES.includes(body.role ?? "AGENT")) return mtmScopedAgentRoleForbidden()
+      // A supervisor's scope is their team. A new card has no team yet, so it
+      // cannot be shown to sit in the manager's territory — administrator work.
+      if (body.role === "SUPERVISOR") return mtmScopedAgentTerritoryForbidden()
       if (body.userId) return mtmScopedAgentLinkForbidden()
       if (body.managerId && !administration.agentIds.includes(body.managerId)) {
         return NextResponse.json({ error: "Manager is outside your field scope", code: "MTM_AGENT_OUT_OF_SCOPE" }, { status: 403 })

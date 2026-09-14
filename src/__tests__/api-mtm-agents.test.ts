@@ -38,6 +38,7 @@ import { GET as GetDashboard } from "@/app/api/v1/mtm/dashboard/route"
 import { GET as GetAnalytics } from "@/app/api/v1/mtm/analytics/route"
 import { GET as GetLeaderboard } from "@/app/api/v1/mtm/leaderboard/route"
 import { prisma } from "@/lib/prisma"
+import { resetMtmFieldScopeMemo } from "@/lib/mtm/field-access"
 import { getOrgId, getSession, requireAuth } from "@/lib/api-auth"
 import { getMobileAuth, resolveMobileAuth } from "@/lib/mobile-auth"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
@@ -63,6 +64,8 @@ function makeParams(id: string) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // Route tests reuse user ids with different cards; never serve a memoized actor.
+  resetMtmFieldScopeMemo()
   vi.mocked(getSession).mockResolvedValue(null)
   vi.mocked(resolveMtmRouteActor).mockResolvedValue(null)
   vi.mocked(getMobileAuth).mockReturnValue(null)
@@ -441,6 +444,7 @@ describe("PUT /api/v1/mtm/agents/[id]", () => {
 
   it("does not update an agent to a foreign CRM user", async () => {
     mockAgentAdministrator()
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "a1", role: "AGENT", managerId: null, userId: null } as any)
     vi.mocked(prisma.user.findFirst).mockResolvedValue(null)
 
     const res = await UpdateAgent(
@@ -670,9 +674,7 @@ describe("employee cards follow the web user's field scope", () => {
 
   it("refuses to move an agent under a manager outside the scope", async () => {
     mockWebManager()
-    vi.mocked(prisma.mtmAgent.findFirst)
-      .mockResolvedValueOnce({ id: "cm9999999999999999999999" } as never) // manager exists in org
-      .mockResolvedValueOnce(card() as never)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(card() as never)
 
     const res = await UpdateAgent(
       makeJsonReq("/api/v1/mtm/agents/agent-1", "PUT", { managerId: "cm9999999999999999999999" }),
@@ -700,6 +702,7 @@ describe("employee cards follow the web user's field scope", () => {
 
   it("creates a field agent under the manager by default and refuses a manager role", async () => {
     mockWebManager()
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "mgr-1" } as never) // default manager exists
     vi.mocked(prisma.mtmAgent.create).mockResolvedValue({ id: "new", name: "New" } as never)
 
     const created = await CreateAgent(makeJsonReq("/api/v1/mtm/agents", "POST", { name: "New" }))
@@ -711,11 +714,141 @@ describe("employee cards follow the web user's field scope", () => {
     expect(prisma.mtmAgent.create).toHaveBeenCalledTimes(1)
   })
 
+  // ─── Review of #204: no second team through the reporting line ──────────
+  // mgr-1 sits in team-A (no region), so their territory is [team-A]. A direct
+  // report in team-B is in their scope, but team-B is not their territory.
+  function territoryOfTeamA() {
+    vi.mocked(prisma.mtmAgent.findUnique).mockResolvedValue({ id: "mgr-1", teamId: "team-A" } as never)
+    vi.mocked(prisma.mtmTeam.findFirst).mockResolvedValue({ id: "team-A", regionId: null } as never)
+  }
+
+  it("refuses to make a report from another team a supervisor — it would hand over that team", async () => {
+    mockWebManager()
+    territoryOfTeamA()
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(card({ teamId: "team-B" }) as never)
+
+    const res = await UpdateAgent(makeJsonReq("/api/v1/mtm/agents/agent-1", "PUT", { role: "SUPERVISOR" }), makeParams("agent-1"))
+
+    expect(res.status).toBe(403)
+    expect(await res.json()).toMatchObject({ code: "MTM_AGENT_TERRITORY_REQUIRED" })
+    expect(prisma.mtmAgent.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("refuses a password reset for a report whose team is outside the territory", async () => {
+    mockWebManager()
+    territoryOfTeamA()
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(card({ teamId: "team-B" }) as never)
+
+    const res = await UpdateAgent(makeJsonReq("/api/v1/mtm/agents/agent-1", "PUT", { password: "Str0ng-Passw0rd!" }), makeParams("agent-1"))
+
+    expect(res.status).toBe(403)
+    expect(await res.json()).toMatchObject({ code: "MTM_AGENT_TERRITORY_REQUIRED" })
+    expect(prisma.mtmAgent.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("refuses a password reset for a card without a team", async () => {
+    mockWebManager()
+    territoryOfTeamA()
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(card({ teamId: null }) as never)
+
+    const res = await UpdateAgent(makeJsonReq("/api/v1/mtm/agents/agent-1", "PUT", { password: "Str0ng-Passw0rd!" }), makeParams("agent-1"))
+
+    expect(res.status).toBe(403)
+  })
+
+  it("allows supervisor assignment and password reset inside the manager's own team", async () => {
+    mockWebManager()
+    territoryOfTeamA()
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(card({ teamId: "team-A" }) as never)
+    vi.mocked(prisma.mtmAgent.updateMany).mockResolvedValue({ count: 1 })
+
+    const res = await UpdateAgent(
+      makeJsonReq("/api/v1/mtm/agents/agent-1", "PUT", { role: "SUPERVISOR", password: "Str0ng-Passw0rd!" }),
+      makeParams("agent-1"),
+    )
+
+    expect(res.status).toBe(200)
+    expect((vi.mocked(prisma.mtmAgent.updateMany).mock.calls[0][0] as any).data).toMatchObject({ role: "SUPERVISOR", passwordHash: "hashed-pw" })
+  })
+
+  it("keeps editing other fields of an out-of-territory report possible", async () => {
+    mockWebManager()
+    territoryOfTeamA()
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(card({ teamId: "team-B" }) as never)
+    vi.mocked(prisma.mtmAgent.updateMany).mockResolvedValue({ count: 1 })
+
+    const res = await UpdateAgent(makeJsonReq("/api/v1/mtm/agents/agent-1", "PUT", { name: "Renamed", role: "AGENT" }), makeParams("agent-1"))
+
+    expect(res.status).toBe(200)
+  })
+
+  it("refuses to create a supervisor card as a scoped manager", async () => {
+    mockWebManager()
+    const res = await CreateAgent(makeJsonReq("/api/v1/mtm/agents", "POST", { name: "Lead", role: "SUPERVISOR" }))
+    expect(res.status).toBe(403)
+    expect(await res.json()).toMatchObject({ code: "MTM_AGENT_TERRITORY_REQUIRED" })
+    expect(prisma.mtmAgent.create).not.toHaveBeenCalled()
+  })
+
+  it("answers an out-of-scope probe with 404 before checking whether the linked user or manager exists", async () => {
+    mockWebManager()
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(null as never)
+
+    const res = await UpdateAgent(
+      makeJsonReq("/api/v1/mtm/agents/agent-other", "PUT", { userId: "user-somewhere", managerId: "someone" }),
+      makeParams("agent-other"),
+    )
+
+    expect(res.status).toBe(404)
+    expect(prisma.user.findFirst).not.toHaveBeenCalled()
+    expect(prisma.mtmAgent.findFirst).toHaveBeenCalledTimes(1)
+  })
+
   it("does not let a supervisor or a field agent behind a web manager login manage cards", async () => {
     mockWebManager({ agentId: "sup-1", role: "SUPERVISOR", scopedAgentIds: ["sup-1", "agent-1"] })
     const res = await UpdateAgent(makeJsonReq("/api/v1/mtm/agents/agent-1", "PUT", { name: "X" }), makeParams("agent-1"))
     expect(res.status).toBe(403)
     expect(await res.json()).toMatchObject({ code: "MTM_AGENT_ADMIN_REQUIRED" })
+  })
+})
+
+// ─── Reporting-line cycles (review of #204) ────────────────
+describe("PUT /api/v1/mtm/agents/[id] — managerId cycles", () => {
+  const cards: Record<string, { id: string; role: string; managerId: string | null; userId: null; teamId: null }> = {
+    boss: { id: "boss", role: "MANAGER", managerId: null, userId: null, teamId: null },
+    lead: { id: "lead", role: "SUPERVISOR", managerId: "boss", userId: null, teamId: null },
+    rep: { id: "rep", role: "AGENT", managerId: "lead", userId: null, teamId: null },
+  }
+
+  beforeEach(() => {
+    mockAgentAdministrator()
+    vi.mocked(prisma.mtmAgent.findFirst).mockImplementation((async ({ where }: any) => {
+      const id = typeof where.id === "string" ? where.id : where.id?.equals
+      return cards[id] ?? null
+    }) as never)
+    vi.mocked(prisma.mtmAgent.updateMany).mockResolvedValue({ count: 1 })
+  })
+
+  it("refuses making an employee their own manager", async () => {
+    const res = await UpdateAgent(makeJsonReq("/api/v1/mtm/agents/boss", "PUT", { managerId: "boss" }), makeParams("boss"))
+    expect(res.status).toBe(400)
+    expect(await res.json()).toMatchObject({ code: "MTM_AGENT_MANAGER_CYCLE" })
+    expect(prisma.mtmAgent.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("refuses putting a manager under someone who reports to them, at any depth", async () => {
+    const direct = await UpdateAgent(makeJsonReq("/api/v1/mtm/agents/boss", "PUT", { managerId: "lead" }), makeParams("boss"))
+    expect(direct.status).toBe(400)
+    const indirect = await UpdateAgent(makeJsonReq("/api/v1/mtm/agents/boss", "PUT", { managerId: "rep" }), makeParams("boss"))
+    expect(indirect.status).toBe(400)
+    expect(await indirect.json()).toMatchObject({ code: "MTM_AGENT_MANAGER_CYCLE" })
+    expect(prisma.mtmAgent.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("accepts a manager outside the employee's own reporting line", async () => {
+    const res = await UpdateAgent(makeJsonReq("/api/v1/mtm/agents/rep", "PUT", { managerId: "boss" }), makeParams("rep"))
+    expect(res.status).toBe(200)
+    expect((vi.mocked(prisma.mtmAgent.updateMany).mock.calls[0][0] as any).data.managerId).toBe("boss")
   })
 })
 

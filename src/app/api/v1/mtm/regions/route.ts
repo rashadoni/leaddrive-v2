@@ -6,9 +6,8 @@
  * hierarchy. Each region belongs to one organization (multi-tenant).
  *
  * GET   — any authenticated caller (web admin or mobile JWT) may list regions.
- * POST  — restricted to ADMIN or MANAGER role.
- *         Web admin panel (cookie session) has no mobile JWT → passes through.
- *         Mobile JWT callers must carry role=ADMIN or role=MANAGER.
+ * POST  — administrators only (web admin/superadmin or MTM ADMIN; see
+ *         auth-gate.ts). A region groups teams into a manager's territory.
  */
 import { NextResponse } from "next/server"
 import { withRls } from "@/lib/with-rls"
@@ -38,8 +37,9 @@ export const GET = withRls(async (req, { orgId }) => {
   }
 })
 
-export const POST = withRls(async (req, { orgId }) => {
-  const forbidden = await assertMtmAdmin(req, orgId)
+export const POST = withRls(async (req, auth) => {
+  const { orgId } = auth
+  const forbidden = await assertMtmAdmin(req, auth)
   if (forbidden) return forbidden
 
   try {

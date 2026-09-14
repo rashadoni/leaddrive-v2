@@ -46,6 +46,7 @@ import { GET as ListPhotos } from "@/app/api/v1/mtm/photos/route"
 import { GET as ListAlerts } from "@/app/api/v1/mtm/alerts/route"
 import { PATCH as UpdateAlert, DELETE as DeleteAlert } from "@/app/api/v1/mtm/alerts/[id]/route"
 import { prisma } from "@/lib/prisma"
+import { resetMtmFieldScopeMemo } from "@/lib/mtm/field-access"
 import { requireAuth } from "@/lib/api-auth"
 import { getMobileAuth, resolveMobileAuth } from "@/lib/mobile-auth"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
@@ -101,6 +102,8 @@ function asAgentToken() {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // Route tests reuse user ids with different cards; never serve a memoized actor.
+  resetMtmFieldScopeMemo()
   vi.mocked(getMobileAuth).mockReturnValue(null)
   vi.mocked(resolveMobileAuth).mockResolvedValue(null)
   vi.mocked(prisma.organization.findFirst).mockResolvedValue({

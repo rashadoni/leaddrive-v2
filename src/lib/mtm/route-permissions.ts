@@ -1,5 +1,6 @@
 import type { MtmAgentRoleString } from "@/lib/mtm/territory-scope"
 import { isValidMtmAgentRole, resolveAgentScope, resolveTerritoryTeamIds } from "@/lib/mtm/territory-scope"
+import { createTtlThrottle } from "@/lib/mtm/actor-memo"
 
 export interface MtmRouteActor {
   agentId: string | null
@@ -107,11 +108,24 @@ export function canReviewMtmRouteRequest(
 
 type RouteActorPrisma = Parameters<typeof resolveAgentScope>[0]
 
+/**
+ * The duplicate-card check is diagnostics, not authorization: run its count
+ * and warning at most once per person per 30 s instead of on every request
+ * (a photo gallery alone is hundreds of requests).
+ */
+const duplicateCardCheck = createTtlThrottle({ ttlMs: 30_000, maxEntries: 2_000 })
+
+/** Test hook: let the duplicate-card diagnostics run again for every user. */
+export function resetMtmActorDiagnostics(): void {
+  duplicateCardCheck.clear()
+}
+
 async function warnOnDuplicateActiveCards(
   prisma: RouteActorPrisma,
   params: { organizationId: string; userId: string },
   chosenAgentId: string,
 ): Promise<void> {
+  if (!duplicateCardCheck.shouldRun(`${params.organizationId}\u0000${params.userId}`)) return
   try {
     const active = await prisma.mtmAgent.count({
       where: { organizationId: params.organizationId, userId: params.userId, status: "ACTIVE" },

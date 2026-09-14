@@ -87,3 +87,51 @@ export function mtmScopedAgentLinkForbidden() {
     { status: 403 },
   )
 }
+
+export function mtmScopedAgentTerritoryForbidden() {
+  return NextResponse.json(
+    {
+      error: "Only an administrator can make this employee a supervisor or reset their password: their team is outside your territory",
+      code: "MTM_AGENT_TERRITORY_REQUIRED",
+    },
+    { status: 403 },
+  )
+}
+
+export function mtmAgentManagerCycleResponse() {
+  return NextResponse.json(
+    { error: "An employee cannot report to themselves or to someone who reports to them", code: "MTM_AGENT_MANAGER_CYCLE" },
+    { status: 400 },
+  )
+}
+
+/** Hard ceiling for walking a reporting line; a longer chain is treated as a cycle. */
+const MANAGER_CHAIN_MAX_STEPS = 100
+
+/**
+ * True when putting `agentId` under `managerId` would close a loop: the new
+ * manager is the card itself or already reports to it (at any depth). Walks
+ * up from the new manager, tenant-scoped, one row per level, and stops on an
+ * existing loop elsewhere in the chain. An unexpectedly long chain fails
+ * closed.
+ */
+export async function managerAssignmentCreatesCycle(
+  prisma: Pick<ActorPrisma, "mtmAgent">,
+  params: { organizationId: string; agentId: string; managerId: string },
+): Promise<boolean> {
+  if (params.managerId === params.agentId) return true
+  const seen = new Set<string>()
+  let current: string | null = params.managerId
+  for (let step = 0; step < MANAGER_CHAIN_MAX_STEPS; step += 1) {
+    if (!current || seen.has(current)) return false
+    seen.add(current)
+    const row: { managerId: string | null } | null = await prisma.mtmAgent.findFirst({
+      where: { id: current, organizationId: params.organizationId },
+      select: { managerId: true },
+    })
+    if (!row?.managerId) return false
+    if (row.managerId === params.agentId) return true
+    current = row.managerId
+  }
+  return true
+}

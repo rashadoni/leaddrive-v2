@@ -2,24 +2,40 @@
  * M4-5 — MTM Team detail (GET / PATCH / DELETE).
  * Route: /api/v1/mtm/teams/[id]
  *
- * GET    — any authenticated caller may read team detail.
- * PATCH  — ADMIN or MANAGER only (mobile JWT); web admin panel unrestricted.
- * DELETE — ADMIN or MANAGER only (mobile JWT); web admin panel unrestricted.
+ * GET    — team detail; the member list follows the caller's field scope
+ *          (names and emails are people data, same rule as GET /mtm/agents).
+ * PATCH  — administrators only (web admin/superadmin or MTM ADMIN; see auth-gate.ts):
+ *          a team's region decides whose territory its agents fall into.
+ * DELETE — administrators only.
  */
+import type { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
+import { mtmFieldScopeRequiredResponse, resolveMtmFieldScope } from "@/lib/mtm/field-access"
 import { assertMtmAdmin } from "@/lib/mtm/auth-gate"
 import { prisma } from "@/lib/prisma"
 import { withRls } from "@/lib/with-rls"
 
-export const GET = withRls(async (_req, { orgId }, { params }: { params: Promise<{ id: string }> }) => {
+export const GET = withRls(async (_req, { orgId, session }, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
   try {
+    // Members are people data: a web user sees only the members inside their
+    // field scope, exactly like GET /mtm/agents. API keys stay organization-wide.
+    let memberScope: Prisma.MtmAgentWhereInput = {}
+    if (session) {
+      const scope = await resolveMtmFieldScope(prisma, {
+        organizationId: orgId,
+        userId: session.userId,
+        webRole: session.role,
+      })
+      if (scope.kind === "none") return mtmFieldScopeRequiredResponse()
+      if (scope.kind === "agents") memberScope = { id: { in: scope.agentIds } }
+    }
     const team = await prisma.mtmTeam.findFirst({
       where: { id, organizationId: orgId },
       include: {
         region: { select: { id: true, name: true, code: true } },
         agents: {
-          where: { status: "ACTIVE" },
+          where: { status: "ACTIVE", ...memberScope },
           orderBy: { name: "asc" },
           select: { id: true, name: true, role: true, email: true, avatar: true },
         },
@@ -33,8 +49,9 @@ export const GET = withRls(async (_req, { orgId }, { params }: { params: Promise
   }
 })
 
-export const PATCH = withRls(async (req, { orgId }, { params }: { params: Promise<{ id: string }> }) => {
-  const forbidden = await assertMtmAdmin(req, orgId)
+export const PATCH = withRls(async (req, auth, { params }: { params: Promise<{ id: string }> }) => {
+  const { orgId } = auth
+  const forbidden = await assertMtmAdmin(req, auth)
   if (forbidden) return forbidden
 
   const { id } = await params
@@ -76,8 +93,9 @@ export const PATCH = withRls(async (req, { orgId }, { params }: { params: Promis
   }
 })
 
-export const DELETE = withRls(async (req, { orgId }, { params }: { params: Promise<{ id: string }> }) => {
-  const forbidden = await assertMtmAdmin(req, orgId)
+export const DELETE = withRls(async (req, auth, { params }: { params: Promise<{ id: string }> }) => {
+  const { orgId } = auth
+  const forbidden = await assertMtmAdmin(req, auth)
   if (forbidden) return forbidden
 
   const { id } = await params

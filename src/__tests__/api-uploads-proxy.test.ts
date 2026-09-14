@@ -53,6 +53,7 @@ import { createReadStream } from "fs"
 import { Readable } from "stream"
 import { orgHasModule, requireSessionAuth } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
+import { resetMtmFieldScopeMemo } from "@/lib/mtm/field-access"
 import {
   acquirePublicConcurrencySlot,
   consumePublicRateLimit,
@@ -70,6 +71,8 @@ function req(): NextRequest {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // Route tests reuse user ids with different cards; never serve a memoized actor.
+  resetMtmFieldScopeMemo()
   // Public-path tests intentionally assert that auth is never called after
   // queuing a denial. Clear that unused once-queue between tests; otherwise a
   // stale 401 can leak into a later authenticated-path assertion.
