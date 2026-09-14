@@ -11100,6 +11100,24 @@
     "addDomainDesc": "Enter the domain or subdomain you want to connect. You will need to add a CNAME record in your DNS provider.",
     "domainHint": "Use a subdomain like landing.yourcompany.com or pages.yourcompany.com"
   },
+  "mtmApiErrors": {
+    "fieldScopeRequired": "This screen shows your field team's work, and your user is not linked to an employee card. Ask an administrator to link your user to an active MTM employee card.",
+    "agentOutOfScope": "This employee is outside your field team.",
+    "policyAdminRequired": "Visit rules are available only to a manager or an administrator.",
+    "policyScopeForbidden": "You can change only the rules of your own teams. Organization-wide rules are changed by an administrator.",
+    "policyReadOnly": "Supervisors can view visit rules but cannot change them.",
+    "forbidden": "You do not have access to this action.",
+    "unauthorized": "Your session has ended. Sign in again.",
+    "generic": "Could not load the data. Try again later.",
+    "policyTeamInvalid": "The selected team no longer exists. Pick another team and save again.",
+    "policyWindowConflict": "Another active rule with the same team, visit type and priority already covers these dates. Change the priority or the dates.",
+    "policyNotFound": "This rule no longer exists. Refresh the page.",
+    "policiesDisabled": "Visit rules are turned off for the organization.",
+    "previewAgentNotFound": "This employee is not available for the preview.",
+    "previewCustomerNotFound": "This customer is not available for the preview.",
+    "validationFailed": "Some fields are filled in incorrectly. Check the form and try again.",
+    "policyPreviewFailed": "Could not build the preview. Try again later."
+  },
   "mtmAgents": {
     "title": "Field Agents",
     "subtitle": "Manage field agents and teams",
@@ -11144,15 +11162,11 @@
     "agoMin": "min ago",
     "agoHour": "h ago",
     "agoDay": "d ago",
-    "appInstalled": "App",
-    "appNotActivated": "Not activated",
-    "weekLabel": "This week",
     "shortVisits": "visits",
-    "shortEff": "eff.",
     "actionCall": "Call",
     "actionMessage": "Message",
     "actionMap": "On map",
-    "actionHistory": "Visits",
+    "actionHistory": "Route history",
     "sortActivity": "Most active",
     "sortLastSeen": "Last seen",
     "moreActions": "More actions",
@@ -11161,7 +11175,19 @@
     "presenceFinishedAt": "Day finished at {time}",
     "presenceFinished": "Day finished",
     "presenceNotStarted": "Day not started",
-    "breaksSummary": "Breaks: {count} · {minutes} min"
+    "breaksSummary": "Breaks: {count} · {minutes} min",
+    "periodLastDays": "Last {count} days",
+    "planFulfillment": "Plan done",
+    "planNone": "No planned route",
+    "appActive": "App active",
+    "appQuiet": "No app signal",
+    "appNever": "Not signed in to the app",
+    "appLastSignal": "Last app signal: {time}",
+    "notificationsOff": "Notifications not connected",
+    "focusAgent": "Show only this employee",
+    "focusChip": "Employee: {name}",
+    "focusUnknown": "not in your list",
+    "focusClear": "Show all employees"
   },
   "mtmContactExplorer": {
     "title": "Field team contacts",
@@ -13303,7 +13329,10 @@
       "MEDIUM": "Medium",
       "HIGH": "High",
       "URGENT": "Urgent"
-    }
+    },
+    "undatedTitle": "No due date",
+    "undatedHint": "Open tasks without a due date. They are counted in the status totals and shown first so they do not get lost at the end of the list.",
+    "undatedHintPartial": "The oldest {shown} of {count} are shown."
   },
   "mtmTaskWorkspace": {
     "loading": "Loading task…",
@@ -16266,7 +16295,11 @@
       "DOCTOR": "Doctor",
       "STORE": "Store",
       "OTHER": "Other"
-    }
+    },
+    "readOnlySupervisor": "Supervisors can view this rule but cannot change it.",
+    "readOnlyAdminOnly": "Only an administrator can change this rule.",
+    "readOnlyOtherTeam": "This rule belongs to a team outside your teams. Its manager or an administrator can change it.",
+    "managerNoTeamHint": "You can change only the rules of your own teams, and your employee card is not in a team yet. Ask an administrator to assign your card to a team."
   },
   "mtmReports": {
     "title": "Reports",

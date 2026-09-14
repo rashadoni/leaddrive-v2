@@ -253,7 +253,7 @@ describe("visit policy access by role", () => {
     const response = await listPolicies(new NextRequest(new URL("/api/v1/mtm/visit-policies", "http://localhost:3000")))
     expect(response.status).toBe(200)
     const body = await response.json()
-    expect(body.data.access).toEqual({ canWriteOrganizationWide: false, writableTeamIds: ["team-A"] })
+    expect(body.data.access).toEqual({ kind: "manager", canWriteOrganizationWide: false, writableTeamIds: ["team-A"] })
     const where = (vi.mocked(prisma.mtmVisitPolicy.findMany).mock.calls[0][0] as any).where
     expect(where.OR[0]).toEqual({ teamId: null })
     expect(new Set(where.OR[1].teamId.in)).toEqual(new Set(["team-A", "team-B"]))

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useReducer, useState } from "react"
 import { useTranslations } from "next-intl"
+import { useMtmApiError } from "@/components/mtm/use-mtm-api-error"
 import { ChevronLeft, ChevronRight, MapPin, Plus, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { MtmRouteRecord } from "@/components/mtm/route-types"
@@ -42,12 +43,14 @@ interface RouteAgent {
 interface AgentsState {
   agents: RouteAgent[]
   loading: boolean
+  /** Localized reason the list was refused, e.g. no field card. */
+  message?: string
 }
 
 type AgentsAction =
   | { type: "loading" }
   | { type: "loaded"; agents: RouteAgent[] }
-  | { type: "failed" }
+  | { type: "failed"; message?: string }
 
 function agentsReducer(state: AgentsState, action: AgentsAction): AgentsState {
   switch (action.type) {
@@ -56,7 +59,7 @@ function agentsReducer(state: AgentsState, action: AgentsAction): AgentsState {
     case "loaded":
       return { agents: action.agents, loading: false }
     case "failed":
-      return { agents: [], loading: false }
+      return { agents: [], loading: false, message: action.message }
     default:
       return state
   }
@@ -120,6 +123,7 @@ export function MtmRouteWeekPlan({
 }: RouteWeekPlanProps) {
   const t = useTranslations("mtmRoutesPage")
   const statusT = useTranslations("mtmStatus")
+  const explainError = useMtmApiError()
   const [weekStart, setWeekStart] = useState(() => startOfWeek(initialDate ? dateFromKey(initialDate) : new Date()))
   const [agentsState, dispatchAgents] = useReducer(agentsReducer, { agents: [], loading: true })
   const [rangeState, dispatchRange] = useReducer(routeRangeReducer, { routes: [], loading: true, error: false })
@@ -147,13 +151,13 @@ export function MtmRouteWeekPlan({
       .then((result) => {
         if (controller.signal.aborted) return
         if (result.success) dispatchAgents({ type: "loaded", agents: result.data?.agents ?? [] })
-        else dispatchAgents({ type: "failed" })
+        else dispatchAgents({ type: "failed", message: explainError(result) })
       })
       .catch(() => {
         if (!controller.signal.aborted) dispatchAgents({ type: "failed" })
       })
     return () => controller.abort()
-  }, [orgId])
+  }, [explainError, orgId])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -179,7 +183,7 @@ export function MtmRouteWeekPlan({
 
   const [agentSearch, setAgentSearch] = useState("")
   const [agentTeamId, setAgentTeamId] = useState("")
-  const { agents: availableAgents, loading: agentsLoading } = agentsState
+  const { agents: availableAgents, loading: agentsLoading, message: agentsMessage } = agentsState
   const { routes: routesForWeek, loading: rangeLoading, error: rangeError } = rangeState
 
   const allAgents = useMemo(() => {
@@ -377,7 +381,7 @@ export function MtmRouteWeekPlan({
             </div>
           ) : null}
           {agents.length === 0 ? (
-            <div className="flex min-h-40 items-center justify-center text-sm text-muted-foreground">{agentsLoading ? t("loading") : t("weekNoAgents")}</div>
+            <div className="flex min-h-40 items-center justify-center text-sm text-muted-foreground">{agentsLoading ? t("loading") : agentsMessage || t("weekNoAgents")}</div>
           ) : null}
         </div>
       </div>

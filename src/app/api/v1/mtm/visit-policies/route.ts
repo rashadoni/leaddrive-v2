@@ -56,6 +56,8 @@ export const GET = withRouteFieldWebRlsAuth("read", async (_req, auth) => {
     data: {
       policies,
       access: {
+        // Lets the settings screen word a read-only rule for the right person.
+        kind: access.kind,
         canWriteOrganizationWide: access.kind === "admin",
         writableTeamIds: access.kind === "admin" ? null : access.writableTeamIds,
       },
