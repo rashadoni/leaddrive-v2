@@ -7,7 +7,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
-const ACTION_KEYS = ["PHOTO", "PRESENTATION", "STOCK_CHECK", "VISIT_NOTE", "CHECKLIST", "FEEDBACK", "NEXT_ACTION"] as const
+const ACTION_KEYS = ["PHOTO", "PRESENTATION", "STOCK_CHECK", "VISIT_NOTE", "CHECKLIST", "FEEDBACK", "NEXT_ACTION", "SIGNATURE"] as const
 const MODES = ["REQUIRED", "OPTIONAL", "HIDDEN"] as const
 const CATEGORIES = ["A", "B", "C", "D"] as const
 const OBJECT_TYPES = ["PHARMACY", "CLINIC", "DOCTOR", "STORE", "OTHER"] as const

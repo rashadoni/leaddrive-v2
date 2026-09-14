@@ -13644,6 +13644,7 @@
     "quantity": "Количество",
     "checklistResult": "Результат чек-листа",
     "completeInResult": "Заполните этот пункт в результате визита ниже.",
+    "signatureOnTablet": "Подпись собирается в полевом приложении.",
     "visitResult": "Результат визита",
     "outcome": "Исход",
     "selectOutcome": "Выберите исход",
@@ -13674,7 +13675,8 @@
       "VISIT_NOTE": "Заметка о визите",
       "CHECKLIST": "Чек-лист",
       "FEEDBACK": "Обратная связь",
-      "NEXT_ACTION": "Следующее действие"
+      "NEXT_ACTION": "Следующее действие",
+      "SIGNATURE": "Подпись клиента"
     },
     "outcomes": {
       "SUCCESSFUL": "Успешно",
@@ -16093,7 +16095,8 @@
       "VISIT_NOTE": "Заметка о визите",
       "CHECKLIST": "Чек-лист",
       "FEEDBACK": "Обратная связь",
-      "NEXT_ACTION": "Следующее действие"
+      "NEXT_ACTION": "Следующее действие",
+      "SIGNATURE": "Подпись клиента"
     },
     "objectTypes": {
       "PHARMACY": "Аптека",

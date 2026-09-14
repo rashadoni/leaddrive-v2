@@ -13640,6 +13640,7 @@
     "quantity": "Miqdar",
     "checklistResult": "Yoxlama nəticəsi",
     "completeInResult": "Bu bəndi aşağıdakı ziyarət nəticəsində doldurun.",
+    "signatureOnTablet": "İmza sahə tətbiqində alınır.",
     "visitResult": "Ziyarət nəticəsi",
     "outcome": "Nəticə",
     "selectOutcome": "Nəticəni seçin",
@@ -13670,7 +13671,8 @@
       "VISIT_NOTE": "Ziyarət qeydi",
       "CHECKLIST": "Yoxlama siyahısı",
       "FEEDBACK": "Rəy",
-      "NEXT_ACTION": "Növbəti əməliyyat"
+      "NEXT_ACTION": "Növbəti əməliyyat",
+      "SIGNATURE": "Müştəri imzası"
     },
     "outcomes": {
       "SUCCESSFUL": "Uğurlu",
@@ -16089,7 +16091,8 @@
       "VISIT_NOTE": "Ziyarət qeydi",
       "CHECKLIST": "Yoxlama siyahısı",
       "FEEDBACK": "Rəy",
-      "NEXT_ACTION": "Növbəti əməliyyat"
+      "NEXT_ACTION": "Növbəti əməliyyat",
+      "SIGNATURE": "Müştəri imzası"
     },
     "objectTypes": {
       "PHARMACY": "Aptek",
