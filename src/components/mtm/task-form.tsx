@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react"
 import { useLocale, useTranslations } from "next-intl"
+import { useMtmApiError } from "@/components/mtm/use-mtm-api-error"
 import { CalendarClock, MapPin, Repeat2, UserRound } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -272,6 +273,7 @@ export function MtmTaskForm({
 }: TaskFormProps) {
   const t = useTranslations("mtmTaskWorkspace")
   const tf = useTranslations("mtmForms")
+  const explainError = useMtmApiError()
   const locale = useLocale()
   const [form, setForm] = useState<TaskCreateDraft>({ ...EMPTY_DRAFT, recurrenceTimezone: timezone })
   const [agents, setAgents] = useState<TaskAgentOption[]>(agentOptions)
@@ -306,11 +308,12 @@ export function MtmTaskForm({
       fetch("/api/v1/mtm/customers?limit=200", { headers }).then((response) => response.json()),
     ]).then(([agentBody, customerBody]) => {
       if (agentBody?.success) setAgents(agentBody.data?.agents || [])
+      else setError(explainError(agentBody))
       if (customerBody?.success) setCustomers(customerBody.data?.customers || [])
     }).catch(() => {
       setError(t("optionLoadFailed"))
     }).finally(() => setLoadingOptions(false))
-  }, [agentOptions, initialData, open, orgId, t, timezone])
+  }, [agentOptions, explainError, initialData, open, orgId, t, timezone])
 
   useEffect(() => {
     if (!open || !form.agentId) {

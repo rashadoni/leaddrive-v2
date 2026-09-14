@@ -2,10 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useTranslations } from "next-intl"
-import { Check, Eye, EyeOff, LockKeyhole, Plus, RefreshCw, Save, Settings2, Trash2 } from "lucide-react"
+import { AlertCircle, Check, Eye, EyeOff, Info, LockKeyhole, Plus, RefreshCw, Save, Settings2, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { useMtmApiError } from "@/components/mtm/use-mtm-api-error"
+import {
+  canCreateVisitPolicy,
+  parseVisitPolicyUiAccess,
+  visitPolicyReadOnlyReason,
+  visitPolicyTeamChoices,
+  type VisitPolicyUiAccess,
+} from "@/lib/mtm/visit-policy-ui-access"
 
 const ACTION_KEYS = ["PHOTO", "PRESENTATION", "STOCK_CHECK", "VISIT_NOTE", "CHECKLIST", "FEEDBACK", "NEXT_ACTION", "SIGNATURE"] as const
 const MODES = ["REQUIRED", "OPTIONAL", "HIDDEN"] as const
@@ -102,6 +110,9 @@ function modeIcon(mode: Mode) {
 
 export function VisitPolicySettings() {
   const t = useTranslations("mtmVisitPolicies")
+  const explainError = useMtmApiError()
+  const [access, setAccess] = useState<VisitPolicyUiAccess | null>(null)
+  const [loadError, setLoadError] = useState("")
   const [policies, setPolicies] = useState<Policy[]>([])
   const [teams, setTeams] = useState<NamedEntity[]>([])
   const [agents, setAgents] = useState<NamedEntity[]>([])
@@ -127,29 +138,40 @@ export function VisitPolicySettings() {
       const [policyBody, teamBody, agentBody, customerBody] = await Promise.all([
         policyRes.json(), teamRes.json(), agentRes.json(), customerRes.json(),
       ])
-      if (!policyRes.ok) throw new Error(policyBody?.error || t("loadFailed"))
+      if (!policyRes.ok) {
+        setLoadError(explainError(policyBody, policyRes.status))
+        return
+      }
+      setLoadError("")
+      const nextAccess = parseVisitPolicyUiAccess(policyBody.data?.access)
+      setAccess(nextAccess)
       const nextPolicies = (policyBody.data?.policies ?? []).map(normalizePolicy)
+      const nextTeams: NamedEntity[] = teamBody.data?.teams ?? []
       setPolicies(nextPolicies)
-      setTeams(teamBody.data?.teams ?? [])
+      setTeams(nextTeams)
+      if (!nextPolicies.length && selectedId === "new") {
+        const choices = visitPolicyTeamChoices(nextAccess, nextTeams)
+        if (!choices.allowAllTeams) setDraft({ ...emptyPolicy(), teamId: choices.teams[0]?.id ?? null })
+      }
       setAgents(agentBody.data?.agents ?? [])
       setCustomers(customerBody.data?.customers ?? [])
       if (nextPolicies.length && selectedId === "new") {
         setSelectedId(nextPolicies[0].id as string)
         setDraft(nextPolicies[0])
       }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("loadFailed"))
+    } catch {
+      setLoadError(t("loadFailed"))
     } finally {
       setLoading(false)
     }
-  }, [selectedId, t])
+  }, [explainError, selectedId, t])
 
   useEffect(() => { void load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectPolicy = (id: string) => {
     setSelectedId(id)
     setPreview(null)
-    setDraft(id === "new" ? emptyPolicy() : normalizePolicy(policies.find((policy) => policy.id === id) ?? emptyPolicy()))
+    setDraft(id === "new" ? newDraft() : normalizePolicy(policies.find((policy) => policy.id === id) ?? emptyPolicy()))
   }
 
   const updateAction = (actionKey: ActionKey, patch: Partial<PolicyAction>) => {
@@ -188,7 +210,7 @@ export function VisitPolicySettings() {
         }),
       })
       const body = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(body?.error || t("saveFailed"))
+      if (!response.ok) throw new Error(response.status === 403 ? explainError(body, 403) : body?.error || t("saveFailed"))
       const saved = normalizePolicy(body.data)
       setPolicies((current) => {
         const exists = current.some((policy) => policy.id === saved.id)
@@ -210,7 +232,7 @@ export function VisitPolicySettings() {
     try {
       const response = await fetch(`/api/v1/mtm/visit-policies/${draft.id}`, { method: "DELETE" })
       const body = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(body?.error || t("deactivateFailed"))
+      if (!response.ok) throw new Error(response.status === 403 ? explainError(body, 403) : body?.error || t("deactivateFailed"))
       const saved = normalizePolicy(body.data)
       setPolicies((current) => current.map((policy) => policy.id === saved.id ? saved : policy))
       setDraft(saved)
@@ -232,7 +254,7 @@ export function VisitPolicySettings() {
         body: JSON.stringify({ agentId: previewAgentId, customerId: previewCustomerId, visitType: draft.visitType || "DEFAULT" }),
       })
       const body = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(body?.error || t("previewFailed"))
+      if (!response.ok) throw new Error(response.status === 403 ? explainError(body, 403) : body?.error || t("previewFailed"))
       setPreview(body.data)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("previewFailed"))
@@ -240,6 +262,25 @@ export function VisitPolicySettings() {
       setPreviewing(false)
     }
   }
+
+  // Write gating from the GET's own `access` block (see visit-policy-ui-access.ts).
+  const savedPolicy = draft.id ? policies.find((policy) => policy.id === draft.id) : undefined
+  const readOnlyReason = visitPolicyReadOnlyReason(access, { isNew: !draft.id, savedTeamId: savedPolicy?.teamId ?? draft.teamId ?? null })
+  const readOnly = readOnlyReason !== null
+  const canCreate = canCreateVisitPolicy(access)
+  const teamChoices = visitPolicyTeamChoices(access, teams)
+  function newDraft(): Policy {
+    const policy = emptyPolicy()
+    // A manager cannot write an organization-wide rule: start on their team.
+    return teamChoices.allowAllTeams ? policy : { ...policy, teamId: teamChoices.teams[0]?.id ?? null }
+  }
+  const readOnlyText = readOnlyReason === "supervisor"
+    ? t("readOnlySupervisor")
+    : readOnlyReason === "adminOnly"
+      ? t("readOnlyAdminOnly")
+      : readOnlyReason === "otherTeam"
+        ? t("readOnlyOtherTeam")
+        : readOnlyReason === "noTeam" ? t("managerNoTeamHint") : ""
 
   const activeCount = useMemo(() => policies.filter((policy) => policy.isActive).length, [policies])
   const selectedTeamName = useMemo(() => {
@@ -280,11 +321,23 @@ export function VisitPolicySettings() {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs tabular-nums text-muted-foreground">{t("activeCount", { count: activeCount })}</span>
-          <Button type="button" variant="outline" size="sm" onClick={() => selectPolicy("new")}>
-            <Plus className="mr-1 h-4 w-4" /> {t("newPolicy")}
-          </Button>
+          {canCreate ? (
+            <Button type="button" variant="outline" size="sm" onClick={() => selectPolicy("new")}>
+              <Plus className="mr-1 h-4 w-4" /> {t("newPolicy")}
+            </Button>
+          ) : null}
         </div>
       </div>
+
+      {loadError ? (
+        <div role="alert" className="mt-4 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /><span>{loadError}</span>
+        </div>
+      ) : access && !canCreate && access.kind !== "supervisor" ? (
+        <p className="mt-4 flex items-start gap-2 text-sm text-muted-foreground" data-testid="visit-policy-no-team-hint">
+          <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />{t("managerNoTeamHint")}
+        </p>
+      ) : null}
 
       <div className="mt-5 grid gap-6 xl:grid-cols-[230px_minmax(0,1fr)]">
         <nav aria-label={t("policyList")} className="space-y-1">
@@ -304,6 +357,14 @@ export function VisitPolicySettings() {
         </nav>
 
         <div className="min-w-0 space-y-6">
+          {readOnly && !loadError ? (
+            <p className="flex items-start gap-2 rounded-md border border-zinc-200 bg-muted/40 px-3 py-2 text-sm text-muted-foreground dark:border-zinc-800" data-testid="visit-policy-read-only">
+              <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />{readOnlyText}
+            </p>
+          ) : null}
+          {/* A native fieldset disables every input, select and button inside at
+              once, so a read-only rule cannot be half-edited. Preview stays out. */}
+          <fieldset disabled={readOnly || Boolean(loadError)} className="min-w-0 space-y-6">
           <div className="rounded-lg border border-zinc-200 bg-background p-4 dark:border-zinc-800">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
               <label className="space-y-1 sm:col-span-2">
@@ -313,8 +374,8 @@ export function VisitPolicySettings() {
               <label className="space-y-1">
                 <span className="text-xs font-medium text-muted-foreground">{t("team")}</span>
                 <select value={draft.teamId ?? ""} onChange={(event) => setDraft({ ...draft, teamId: event.target.value || null })} className={`${fieldClass} w-full`}>
-                  <option value="">{t("allTeams")}</option>
-                  {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+                  {teamChoices.allowAllTeams || readOnly ? <option value="">{t("allTeams")}</option> : null}
+                  {(readOnly ? teams : teamChoices.teams).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
                 </select>
               </label>
               <label className="space-y-1">
@@ -458,17 +519,20 @@ export function VisitPolicySettings() {
               <span className="text-xs font-medium text-muted-foreground">{t("priority")}</span>
               <Input type="number" min={0} max={10000} value={draft.priority} onChange={(event) => setDraft({ ...draft, priority: Number(event.target.value) || 0 })} className="h-9 w-28" />
             </label>
-            <div className="flex gap-2">
-              {draft.id && draft.isActive && (
-                <Button type="button" variant="outline" size="sm" onClick={deactivate} disabled={saving}>
-                  <Trash2 className="mr-1 h-4 w-4" /> {t("deactivate")}
+            {readOnly ? null : (
+              <div className="flex gap-2">
+                {draft.id && draft.isActive && (
+                  <Button type="button" variant="outline" size="sm" onClick={deactivate} disabled={saving}>
+                    <Trash2 className="mr-1 h-4 w-4" /> {t("deactivate")}
+                  </Button>
+                )}
+                <Button type="button" size="sm" onClick={save} disabled={saving || !draft.isActive}>
+                  <Save className="mr-1 h-4 w-4" /> {saving ? t("saving") : t("save")}
                 </Button>
-              )}
-              <Button type="button" size="sm" onClick={save} disabled={saving || !draft.isActive}>
-                <Save className="mr-1 h-4 w-4" /> {saving ? t("saving") : t("save")}
-              </Button>
-            </div>
+              </div>
+            )}
           </div>
+          </fieldset>
 
           <div className="border-t border-zinc-200 pt-5 dark:border-zinc-800">
             <div className="flex items-center gap-2">

@@ -1,12 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { toast } from "sonner"
 import { useLocale, useTranslations } from "next-intl"
-import { formatTime } from "@/lib/format-date"
+import { formatDateTime, formatTime } from "@/lib/format-date"
 import { mtmWorkdayBreakSummary } from "@/lib/mtm/workday-break-summary"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
+import { useMtmApiError } from "@/components/mtm/use-mtm-api-error"
 import { PageDescription } from "@/components/page-description"
 import { HelpButton } from "@/components/help/help-button"
 import { ColorStatCard } from "@/components/color-stat-card"
@@ -16,7 +17,7 @@ import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
-import { UserCog, Plus, Pencil, Trash2, MoreHorizontal, Search, Users, Wifi, Download, Phone, MessageCircle, MapPin, Smartphone, ClipboardList, MapPinned } from "lucide-react"
+import { UserCog, Plus, Pencil, Trash2, MoreHorizontal, Search, Users, Wifi, Download, Phone, MessageCircle, Smartphone, BellOff, History, MapPinned, X, Filter, AlertCircle } from "lucide-react"
 
 const roleColors: Record<string, string> = {
   ADMIN: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
@@ -36,8 +37,15 @@ export default function MtmAgentsPage() {
   const t = useTranslations("mtmAgents")
   const locale = useLocale()
   const ts = useTranslations("mtmStatus")
+  const explainError = useMtmApiError()
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  // One employee in focus, from a link or the card menu. The visits page
+  // does not filter by employee, so "show me this person" lives here.
+  const focusAgentId = searchParams.get("agentId")?.trim() || ""
   const [agents, setAgents] = useState<any[]>([])
-  const [statsByAgent, setStatsByAgent] = useState<Record<string, { visits: number; eff: number }>>({})
+  const [loadError, setLoadError] = useState("")
   const [loading, setLoading] = useState(true)
   const [formOpen, setFormOpen] = useState(false)
   const [editData, setEditData] = useState<any>(undefined)
@@ -51,23 +59,18 @@ export default function MtmAgentsPage() {
   const fetchAgents = async () => {
     try {
       const res = await fetch("/api/v1/mtm/agents?limit=200", { headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string> })
-      const r = await res.json()
-      if (!res.ok || !r.success) toast.error(`Failed to load agents: ${r.error || "Unknown error"}`)
-      else setAgents(r.data.agents || [])
-    } catch (e) {
-      toast.error(`Failed to load agents: ${e instanceof Error ? e.message : "Network error"}`)
+      const r = await res.json().catch(() => null)
+      if (!res.ok || !r?.success) {
+        setLoadError(explainError(r, res.status))
+      } else {
+        setLoadError("")
+        setAgents(r.data.agents || [])
+      }
+    } catch {
+      setLoadError(explainError(null))
     } finally { setLoading(false) }
   }
-  // Per-agent weekly activity (visits + effectiveness) — joined from the analytics KPI endpoint.
-  const fetchStats = async () => {
-    try {
-      const r = await (await fetch("/api/v1/mtm/analytics?period=weekly", { headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string> })).json()
-      const m: Record<string, { visits: number; eff: number }> = {}
-      for (const a of (r?.data?.agentKpis || [])) m[a.agentId] = { visits: a.totalVisits, eff: a.visitEffectiveness }
-      setStatsByAgent(m)
-    } catch { /* stats are best-effort */ }
-  }
-  useEffect(() => { fetchAgents(); fetchStats() }, [orgId])
+  useEffect(() => { fetchAgents() }, [orgId])
 
   const now = Date.now()
   const seenMs = (a: any) => (a.lastSeenAt ? now - new Date(a.lastSeenAt).getTime() : Infinity)
@@ -111,10 +114,18 @@ export default function MtmAgentsPage() {
     if (h < 24) return `${h} ${t("agoHour")}`
     return `${Math.floor(h / 24)} ${t("agoDay")}`
   }
-  const appInstalled = (a: any) => Boolean(a.expoPushToken)
+  const setFocusAgent = (id: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (id) params.set("agentId", id)
+    else params.delete("agentId")
+    const query = params.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+  }
+  const focusAgent = focusAgentId ? agents.find(a => a.id === focusAgentId) : null
   const digits = (p?: string) => (p || "").replace(/[^\d+]/g, "")
 
   const filtered = agents.filter(a => {
+    if (focusAgentId && a.id !== focusAgentId) return false
     if (activeFilter === "online") { if (!isOnline(a)) return false }
     else if (activeFilter !== "all" && a.status !== activeFilter) return false
     if (search) { const s = search.toLowerCase(); if (!a.name?.toLowerCase().includes(s) && !a.email?.toLowerCase().includes(s) && !a.phone?.toLowerCase().includes(s)) return false }
@@ -126,7 +137,7 @@ export default function MtmAgentsPage() {
       case "role": return (a.role || "").localeCompare(b.role || "")
       case "status": return (a.status || "").localeCompare(b.status || "")
       case "lastSeen": return seenMs(a) - seenMs(b)
-      case "activity": return (statsByAgent[b.id]?.visits || 0) - (statsByAgent[a.id]?.visits || 0)
+      case "activity": return (b.activity?.visits || 0) - (a.activity?.visits || 0)
       default: return 0
     }
   })
@@ -178,8 +189,10 @@ export default function MtmAgentsPage() {
   const renderCard = (agent: any) => {
     const presence = presenceText(agent)
     const breaks = mtmWorkdayBreakSummary(agent?.breaks, new Date())
-    const stat = statsByAgent[agent.id]
+    const activity = agent.activity as { periodDays: number; visits: number; planFulfillment: number | null } | null | undefined
+    const app = agent.app as { state: "active" | "quiet" | "never"; lastSignalAt: string | null; notificationsConnected: boolean } | undefined
     const phone = digits(agent.phone)
+    const historyHref = `/mtm/map?mode=history&agentId=${encodeURIComponent(agent.id)}`
     return (
       <div key={agent.id} className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4 flex flex-col gap-3">
         <div className="flex items-center gap-3">
@@ -190,7 +203,7 @@ export default function MtmAgentsPage() {
             <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card ${presence.tone === "working" ? "bg-green-500" : presence.tone === "paused" ? "bg-amber-500" : "bg-muted-foreground/40"}`} title={`${presence.text} · ${lastSeenText(agent)}`} />
           </div>
           <div className="flex-1 min-w-0">
-            <a href={`/mtm/visits?agentId=${agent.id}`} className="font-medium text-sm truncate hover:underline block">{agent.name}</a>
+            <a href={historyHref} title={t("actionHistory")} className="font-medium text-sm truncate hover:underline block">{agent.name}</a>
             {breaks.count > 0 ? (
               // The segments, not just the state: two twenty-minute breaks and
               // one two-hour break read the same as "on a break" and are very
@@ -211,6 +224,10 @@ export default function MtmAgentsPage() {
                 <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={t("moreActions")}><MoreHorizontal className="h-3.5 w-3.5" aria-hidden="true" /></Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => setFocusAgent(agent.id)}>
+                  <Filter className="mr-2 h-4 w-4" aria-hidden="true" />
+                  {t("focusAgent")}
+                </DropdownMenuItem>
                 <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => { setDeleteItem(agent); setDeleteOpen(true) }}>
                   <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
                   {t("delete")}
@@ -220,20 +237,37 @@ export default function MtmAgentsPage() {
           </div>
         </div>
 
-        {/* This-week activity snapshot */}
-        <div className="flex items-center gap-3 rounded-md bg-muted/40 px-2.5 py-1.5 text-xs">
-          <span className="text-muted-foreground">{t("weekLabel")}</span>
-          <span className="font-semibold">{stat?.visits ?? 0}</span><span className="text-muted-foreground">{t("shortVisits")}</span>
-          <span className="ml-auto font-semibold">{stat?.eff ?? 0}%</span><span className="text-muted-foreground">{t("shortEff")}</span>
-        </div>
+        {/* Activity over the analytics "weekly" window: visits and plan
+            fulfilment from the same route points analytics counts. No plan in
+            the window is said as such, never printed as 0%. */}
+        {activity ? (
+          <div className="flex items-center gap-2 rounded-md bg-muted/40 px-2.5 py-1.5 text-xs" data-testid="mtm-agent-activity">
+            <span className="text-muted-foreground">{t("periodLastDays", { count: activity.periodDays })}</span>
+            <span className="font-semibold tabular-nums">{activity.visits}</span><span className="text-muted-foreground">{t("shortVisits")}</span>
+            {activity.planFulfillment === null
+              ? <span className="ml-auto text-muted-foreground">{t("planNone")}</span>
+              : <span className="ml-auto"><span className="text-muted-foreground">{t("planFulfillment")}</span> <span className="font-semibold tabular-nums">{activity.planFulfillment}%</span></span>}
+          </div>
+        ) : null}
 
         {/* Badges: role · status · app */}
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className={`text-[10px] px-2 py-0.5 rounded-full ${roleColors[agent.role] || ""}`}>{roleLabel(agent.role)}</span>
           <span className={`text-[10px] px-2 py-0.5 rounded-full ${statusColors[agent.status] || ""}`}>{statusLabel(agent.status)}</span>
-          <span className={`text-[10px] px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${appInstalled(agent) ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"}`}>
-            <Smartphone className="h-2.5 w-2.5" />{appInstalled(agent) ? t("appInstalled") : t("appNotActivated")}
-          </span>
+          {app ? (
+            <span
+              className={`text-[10px] px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${app.state === "active" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" : "bg-muted text-muted-foreground"}`}
+              title={app.lastSignalAt ? t("appLastSignal", { time: formatDateTime(app.lastSignalAt, locale) }) : undefined}
+              data-testid="mtm-agent-app-state"
+            >
+              <Smartphone className="h-2.5 w-2.5" />{app.state === "active" ? t("appActive") : app.state === "quiet" ? t("appQuiet") : t("appNever")}
+            </span>
+          ) : null}
+          {app && !app.notificationsConnected ? (
+            <span className="text-[10px] px-2 py-0.5 rounded-full inline-flex items-center gap-1 bg-muted text-muted-foreground">
+              <BellOff className="h-2.5 w-2.5" />{t("notificationsOff")}
+            </span>
+          ) : null}
         </div>
 
         {/* Contact + quick actions */}
@@ -242,8 +276,8 @@ export default function MtmAgentsPage() {
           <div className="flex gap-1 shrink-0">
             {phone && <a href={`tel:${phone}`} title={t("actionCall")} className="h-6 w-6 rounded flex items-center justify-center hover:bg-muted text-muted-foreground"><Phone className="h-3.5 w-3.5" /></a>}
             {phone && <a href={`https://wa.me/${phone.replace(/^\+/, "")}`} target="_blank" rel="noopener noreferrer" title={t("actionMessage")} className="h-6 w-6 rounded flex items-center justify-center hover:bg-muted text-muted-foreground"><MessageCircle className="h-3.5 w-3.5" /></a>}
-            <a href={`/mtm/map?agentId=${agent.id}`} title={t("actionMap")} className="h-6 w-6 rounded flex items-center justify-center hover:bg-muted text-muted-foreground"><MapPinned className="h-3.5 w-3.5" /></a>
-            <a href={`/mtm/visits?agentId=${agent.id}`} title={t("actionHistory")} className="h-6 w-6 rounded flex items-center justify-center hover:bg-muted text-muted-foreground"><ClipboardList className="h-3.5 w-3.5" /></a>
+            <a href={`/mtm/map?agentId=${encodeURIComponent(agent.id)}`} title={t("actionMap")} aria-label={t("actionMap")} className="h-6 w-6 rounded flex items-center justify-center hover:bg-muted text-muted-foreground"><MapPinned className="h-3.5 w-3.5" /></a>
+            <a href={historyHref} title={t("actionHistory")} aria-label={t("actionHistory")} className="h-6 w-6 rounded flex items-center justify-center hover:bg-muted text-muted-foreground"><History className="h-3.5 w-3.5" /></a>
           </div>
         </div>
       </div>
@@ -267,6 +301,12 @@ export default function MtmAgentsPage() {
         </div>
       </div>
 
+      {loadError ? (
+        <div role="alert" className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /><span>{loadError}</span>
+        </div>
+      ) : null}
+
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 stagger-children">
         <ColorStatCard label={t("statTotal")} value={agents.length} icon={<UserCog className="h-4 w-4" />} hint={t("hintTotal")} />
         <ColorStatCard label={t("statActive")} value={totalActive} icon={<Users className="h-4 w-4" />} hint={t("hintActive")} />
@@ -275,6 +315,12 @@ export default function MtmAgentsPage() {
       </div>
 
       <div className="flex flex-wrap gap-2">
+        {focusAgentId ? (
+          <span className="inline-flex items-center gap-1 rounded-full border border-zinc-300 bg-muted px-3 text-sm dark:border-zinc-600" data-testid="mtm-agent-focus-chip">
+            {t("focusChip", { name: focusAgent?.name ?? t("focusUnknown") })}
+            <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10" onClick={() => setFocusAgent("")} aria-label={t("focusClear")}><X className="h-3.5 w-3.5" /></button>
+          </span>
+        ) : null}
         <Button variant={activeFilter === "all" ? "default" : "outline"} size="sm" onClick={() => setActiveFilter("all")}>{t("all")} ({agents.length})</Button>
         <Button variant={activeFilter === "online" ? "default" : "outline"} size="sm" onClick={() => setActiveFilter("online")}>{t("filterOnline")} ({totalOnline})</Button>
         {(["ACTIVE", "INACTIVE", "SUSPENDED"] as const).map(s => (
@@ -298,7 +344,7 @@ export default function MtmAgentsPage() {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="h-48 flex items-center justify-center text-muted-foreground border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card">{agents.length === 0 ? t("empty") : t("noResults")}</div>
+        <div className="h-48 flex items-center justify-center text-muted-foreground border border-zinc-200 dark:border-zinc-700 rounded-lg bg-card">{loadError ? loadError : agents.length === 0 ? t("empty") : t("noResults")}</div>
       ) : (
         <div className="space-y-5">
           {groups.map(g => (

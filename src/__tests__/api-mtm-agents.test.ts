@@ -199,6 +199,46 @@ describe("GET /api/v1/mtm/agents", () => {
     expect(json.data.agents[0].breaks).toEqual([])
   })
 
+  it("puts plan fulfilment and app activity on the card without leaking the push token", async () => {
+    // Prod 2026-09-14: «0% eff.» and amber «Aktiv deyil» on every card while the
+    // route was done and the phone sent GPS every 30 s — the page read fields
+    // this list never returned.
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
+      { id: "a1", name: "Anar", lastSeenAt: null, expoPushToken: null, latestLocation: { receivedAt: new Date(Date.now() - 30_000) } },
+      { id: "a2", name: "Bez plana", lastSeenAt: null, expoPushToken: "ExponentPushToken[secret]", latestLocation: null },
+    ] as any)
+    vi.mocked(prisma.mtmAgent.count).mockResolvedValue(2)
+    vi.mocked(prisma.mtmVisit.groupBy).mockResolvedValue([{ agentId: "a1", _count: { _all: 2 } }] as any)
+    vi.mocked(prisma.mtmRoute.groupBy).mockResolvedValue([{ agentId: "a1", _sum: { totalPoints: 2, visitedPoints: 2 } }] as any)
+
+    const res = await ListAgents(makeReq("/api/v1/mtm/agents"))
+    const json = await res.json()
+    const [anar, other] = json.data.agents
+
+    expect(anar.activity).toEqual({ periodDays: 7, visits: 2, plannedPoints: 2, visitedPoints: 2, planFulfillment: 100 })
+    expect(anar.app).toMatchObject({ state: "active", notificationsConnected: false })
+    expect(other.activity.planFulfillment).toBeNull()
+    expect(other.app).toMatchObject({ state: "never", notificationsConnected: true })
+    expect(JSON.stringify(json)).not.toContain("ExponentPushToken")
+    expect(anar).not.toHaveProperty("latestLocation")
+
+    const routeWhere = (vi.mocked(prisma.mtmRoute.groupBy).mock.calls[0][0] as any).where
+    expect(routeWhere).toMatchObject({ organizationId: ORG, agentId: { in: ["a1", "a2"] }, deletedAt: null, totalPoints: { gt: 0 } })
+  })
+
+  it("still lists people when the activity figures cannot be computed", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{ id: "a1", name: "Agent 1" }] as any)
+    vi.mocked(prisma.mtmAgent.count).mockResolvedValue(1)
+    vi.mocked(prisma.mtmRoute.groupBy).mockRejectedValueOnce(new Error("db down"))
+    const res = await ListAgents(makeReq("/api/v1/mtm/agents"))
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.data.agents[0].activity).toBeNull()
+    expect(json.data.agents[0].app.state).toBe("never")
+  })
+
   it("still lists people when presence cannot be resolved", async () => {
     // The list is the point of this endpoint; presence is an enrichment. A
     // failing workday query must cost one label, not the whole screen.

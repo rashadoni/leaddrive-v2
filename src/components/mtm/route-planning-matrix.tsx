@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
+import { useMtmApiError } from "@/components/mtm/use-mtm-api-error"
 import {
   AlertTriangle,
   CalendarDays,
@@ -191,6 +192,7 @@ export function MtmRoutePlanningMatrix({
   onOpenDayPlanner?: (input: DayPlannerLaunch) => void
 }) {
   const t = useTranslations("mtmRoutesPage")
+  const explainError = useMtmApiError()
   const locale = useLocale()
   const coverageLocale = locale === "az" ? "az" : locale === "en" ? "en" : "ru"
   const headers = useMemo<Record<string, string>>(() => orgId ? { "x-organization-id": orgId } : {}, [orgId])
@@ -225,6 +227,7 @@ export function MtmRoutePlanningMatrix({
       fetch("/api/v1/mtm/agents?limit=200", { headers, signal: controller.signal }).then((response) => response.json()),
       fetch("/api/v1/mtm/settings", { headers, signal: controller.signal }).then((response) => response.json()),
     ]).then(([agentResult, settingsResult]) => {
+      if (!agentResult?.success) setError(explainError(agentResult))
       const rows = (agentResult.data?.agents ?? []) as Agent[]
       const visibleAgents = !canManageAssignments && selfAgentId
         ? rows.filter((agent) => agent.id === selfAgentId)
@@ -239,7 +242,7 @@ export function MtmRoutePlanningMatrix({
       if ((loadError as { name?: string })?.name !== "AbortError") setError(t("matrixLoadFailed"))
     })
     return () => controller.abort()
-  }, [canManageAssignments, headers, preferredAgentId, selfAgentId, t])
+  }, [canManageAssignments, explainError, headers, preferredAgentId, selfAgentId, t])
 
   useEffect(() => {
     initializedIdentity.current = ""

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
+import { useMtmApiError } from "@/components/mtm/use-mtm-api-error"
 import { ConfirmDialog } from "@/components/delete-confirm-dialog"
 import { toast } from "sonner"
 import {
@@ -431,6 +432,7 @@ export function MtmRouteBuilder({
   onRequestCustomer,
 }: RouteBuilderProps) {
   const t = useTranslations("mtmRoutesPage")
+  const explainError = useMtmApiError()
   const statusT = useTranslations("mtmStatus")
   const locale = useLocale()
   const [name, setName] = useState("")
@@ -657,6 +659,7 @@ export function MtmRouteBuilder({
     Promise.all([agentsPromise, settingsPromise])
       .then(([agentResult, settingsResult]) => {
         if (agentResult.success) setAgents(agentResult.data.agents ?? [])
+        else setError(explainError(agentResult))
         if (settingsResult.success) {
           const configured = coerceMtmRouteTargetTypes(settingsResult.data?.routeTargetTypes)
           setRouteTargetTypes(configured)
@@ -700,7 +703,7 @@ export function MtmRouteBuilder({
         })
     }
     return () => controller.abort()
-  }, [draftStorageKey, initialAgentId, initialContactId, initialCustomerId, initialData, initialDate, initialDirection, initialPlannerContext, open, orgId, t, timezone])
+  }, [draftStorageKey, explainError, initialAgentId, initialContactId, initialCustomerId, initialData, initialDate, initialDirection, initialPlannerContext, open, orgId, t, timezone])
 
   useEffect(() => {
     if (!open || !draftReady || !draftStorageKey || recoverableDraft) return

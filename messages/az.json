@@ -11096,6 +11096,16 @@
     "addDomainDesc": "Qoşmaq istədiyiniz domen və ya alt domeni daxil edin. DNS provayderinizdə CNAME yazısı əlavə etməlisiniz.",
     "domainHint": "Alt domen istifadə edin, məsələn landing.sirketiniz.com və ya pages.sirketiniz.com"
   },
+  "mtmApiErrors": {
+    "fieldScopeRequired": "Bu ekran sahə komandanızın işini göstərir, amma istifadəçiniz əməkdaş kartına bağlı deyil. Administratordan istifadəçinizi aktiv MTM əməkdaş kartına bağlamasını xahiş edin.",
+    "agentOutOfScope": "Bu əməkdaş sahə komandanızdan kənardadır.",
+    "policyAdminRequired": "Ziyarət qaydaları yalnız menecer və ya administrator üçün açıqdır.",
+    "policyScopeForbidden": "Yalnız öz komandalarınızın qaydalarını dəyişə bilərsiniz. Bütün təşkilat üçün qaydaları administrator dəyişir.",
+    "policyReadOnly": "Supervayzer ziyarət qaydalarına baxa bilər, amma dəyişə bilməz.",
+    "forbidden": "Bu əməliyyata çıxışınız yoxdur.",
+    "unauthorized": "Sessiyanız bitib. Yenidən daxil olun.",
+    "generic": "Məlumatı yükləmək alınmadı. Bir az sonra yenidən cəhd edin."
+  },
   "mtmAgents": {
     "title": "Sahə agentləri",
     "subtitle": "Agentləri və komandaları idarə edin",
@@ -11140,15 +11150,11 @@
     "agoMin": "dəq əvvəl",
     "agoHour": "saat əvvəl",
     "agoDay": "gün əvvəl",
-    "appInstalled": "Tətbiq",
-    "appNotActivated": "Aktiv deyil",
-    "weekLabel": "Bu həftə",
     "shortVisits": "ziyarət",
-    "shortEff": "eff.",
     "actionCall": "Zəng",
     "actionMessage": "Mesaj",
     "actionMap": "Xəritədə",
-    "actionHistory": "Ziyarətlər",
+    "actionHistory": "Marşrut tarixçəsi",
     "sortActivity": "Fəallığa görə",
     "sortLastSeen": "Son fəallıq",
     "moreActions": "Digər əməliyyatlar",
@@ -11157,7 +11163,19 @@
     "presenceFinishedAt": "Gün {time}-da bitdi",
     "presenceFinished": "Gün bitdi",
     "presenceNotStarted": "Gün başlamayıb",
-    "breaksSummary": "Fasilə: {count} · {minutes} dəq"
+    "breaksSummary": "Fasilə: {count} · {minutes} dəq",
+    "periodLastDays": "Son {count} gün",
+    "planFulfillment": "Plan icrası",
+    "planNone": "Marşrut planı yoxdur",
+    "appActive": "Tətbiq aktivdir",
+    "appQuiet": "Tətbiqdən siqnal yoxdur",
+    "appNever": "Tətbiqə daxil olmayıb",
+    "appLastSignal": "Tətbiqdən son siqnal: {time}",
+    "notificationsOff": "Bildirişlər qoşulmayıb",
+    "focusAgent": "Yalnız bu əməkdaşı göstər",
+    "focusChip": "Əməkdaş: {name}",
+    "focusUnknown": "siyahınızda yoxdur",
+    "focusClear": "Bütün əməkdaşları göstər"
   },
   "mtmContactExplorer": {
     "title": "Sahə komandasının kontaktları",
@@ -13299,7 +13317,10 @@
       "MEDIUM": "Orta",
       "HIGH": "Yüksək",
       "URGENT": "Təcili"
-    }
+    },
+    "undatedTitle": "Tarixsiz",
+    "undatedHint": "Son tarixi olmayan açıq tapşırıqlar. Status saylarına daxildir və siyahının sonunda itməsin deyə əvvəldə göstərilir.",
+    "undatedHintPartial": "{count} tapşırıqdan ən köhnə {shown} göstərilir."
   },
   "mtmTaskWorkspace": {
     "loading": "Tapşırıq yüklənir…",
@@ -16262,7 +16283,11 @@
       "DOCTOR": "Həkim",
       "STORE": "Mağaza",
       "OTHER": "Digər"
-    }
+    },
+    "readOnlySupervisor": "Supervayzer bu qaydaya baxa bilər, amma dəyişə bilməz.",
+    "readOnlyAdminOnly": "Bu qaydanı yalnız administrator dəyişə bilər.",
+    "readOnlyOtherTeam": "Bu qayda komandalarınızdan kənar komandaya aiddir. Onu həmin komandanın meneceri və ya administrator dəyişə bilər.",
+    "managerNoTeamHint": "Yalnız öz komandalarınızın qaydalarını dəyişə bilərsiniz, amma əməkdaş kartınız hələ heç bir komandaya daxil deyil. Administratordan kartınıza komanda təyin etməsini xahiş edin."
   },
   "mtmReports": {
     "title": "Hesabatlar",

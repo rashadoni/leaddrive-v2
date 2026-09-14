@@ -11,6 +11,7 @@ import {
   CalendarClock,
   ChevronLeft,
   ChevronRight,
+  CalendarOff,
   ClipboardList,
   Filter,
   LayoutGrid,
@@ -66,6 +67,8 @@ type TaskListData = {
   timezone: string
   capabilities: TaskListCapabilities
   summary?: Record<string, number>
+  /** Undated open tasks, lifted above the paginated list (task-undated-group.ts). */
+  undatedOpen?: { tasks: TaskSummary[]; total: number }
 }
 
 type LoadPhase = "loading" | "ready" | "permission" | "error"
@@ -156,6 +159,7 @@ export default function MtmTasksPage() {
     if (status) query.set("status", status)
     if (priority) query.set("priority", priority)
     query.set("sort", sort)
+    query.set("undated", "group")
     if (agentId) query.set("agentId", agentId)
     if (teamId) query.set("teamId", teamId)
     if (contactId) query.set("contactId", contactId)
@@ -184,6 +188,9 @@ export default function MtmTasksPage() {
         timezone: payload.timezone || "UTC",
         capabilities: payload.capabilities || {},
         summary: payload.summary && typeof payload.summary === "object" ? payload.summary : undefined,
+        undatedOpen: payload.undatedOpen && Array.isArray(payload.undatedOpen.tasks)
+          ? { tasks: payload.undatedOpen.tasks, total: Number(payload.undatedOpen.total) || payload.undatedOpen.tasks.length }
+          : undefined,
       })
       setSelected([])
       setPhase("ready")
@@ -243,7 +250,7 @@ export default function MtmTasksPage() {
           taskIds: selected,
           agentId: bulkAgentId,
           expectedVersions: Object.fromEntries(
-            (data?.tasks || [])
+            [...(data?.tasks || []), ...(data?.undatedOpen?.tasks || [])]
               .filter((task) => selected.includes(task.id))
               .map((task) => [task.id, task.version]),
           ),
@@ -294,6 +301,8 @@ export default function MtmTasksPage() {
   }
 
   const pageTasks = data?.tasks || []
+  const undatedTasks = data?.undatedOpen?.tasks || []
+  const undatedTotal = data?.undatedOpen?.total || 0
   const selectableTasks = pageTasks.filter((task) => !["COMPLETED", "CANCELLED"].includes(task.status))
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.limit)) : 1
   const pageCounts = useMemo(() => {
@@ -393,7 +402,7 @@ export default function MtmTasksPage() {
         <>
           <section className="flex flex-col gap-3 border-y border-zinc-200 py-3 dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between" aria-live="polite">
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
-              <span className="font-semibold tabular-nums">{phase === "loading" ? t("loading") : t("totalCount", { count: data?.total || 0 })}</span>
+              <span className="font-semibold tabular-nums">{phase === "loading" ? t("loading") : t("totalCount", { count: (data?.total || 0) + undatedTotal })}</span>
               {STATUSES.slice(0, 3).map((value) => (
                 <span key={value} className="text-muted-foreground">{t(`statuses.${value}`)}: <span className="font-medium tabular-nums text-foreground">{data?.summary?.[value] ?? pageCounts[value] ?? 0}</span></span>
               ))}
@@ -416,9 +425,31 @@ export default function MtmTasksPage() {
 
           {phase === "loading" ? (
             <div className="space-y-3" role="status"><div className="h-14 animate-pulse rounded-lg bg-muted/60 motion-reduce:animate-none" />{Array.from({ length: 6 }).map((_, index) => <div key={index} className="h-20 animate-pulse rounded-lg bg-muted/40 motion-reduce:animate-none" />)}<span className="sr-only">{t("loading")}</span></div>
-          ) : !pageTasks.length ? (
+          ) : !pageTasks.length && !undatedTasks.length ? (
             <StatePanel icon={ClipboardList} title={activeFilters ? t("noResults") : t("empty")} hint={activeFilters ? t("noResultsHint") : t("emptyHint")} action={activeFilters ? <Button type="button" variant="outline" className="min-h-11" onClick={clearFilters}>{t("clearFilters")}</Button> : canCreate ? <Button type="button" className="min-h-11" onClick={() => setFormOpen(true)}><Plus className="h-4 w-4" />{t("add")}</Button> : undefined} />
-          ) : viewMode === "list" ? (
+          ) : (
+            <>
+              {undatedTasks.length ? (
+                <section className="space-y-3" aria-labelledby="mtm-tasks-undated" data-testid="mtm-tasks-undated-group">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <h2 id="mtm-tasks-undated" className="flex items-center gap-2 text-sm font-semibold"><CalendarOff className="h-4 w-4 text-muted-foreground" aria-hidden="true" />{t("undatedTitle")}<Badge variant="warning">{undatedTotal}</Badge></h2>
+                    <p className="text-xs text-muted-foreground">{undatedTotal > undatedTasks.length ? t("undatedHintPartial", { shown: undatedTasks.length, count: undatedTotal }) : t("undatedHint")}</p>
+                  </div>
+                  <TaskList
+                    tasks={undatedTasks}
+                    selected={selected}
+                    canBulk={canBulk}
+                    allSelected={false}
+                    showSelectAll={false}
+                    onToggleAll={() => undefined}
+                    onToggle={(id) => setSelected((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])}
+                    href={taskHref}
+                    formatDateTime={formatDateTime}
+                    t={t}
+                  />
+                </section>
+              ) : null}
+              {!pageTasks.length ? null : viewMode === "list" ? (
             <TaskList
               tasks={pageTasks}
               selected={selected}
@@ -432,6 +463,8 @@ export default function MtmTasksPage() {
             />
           ) : (
             <TaskKanban tasks={pageTasks} href={taskHref} formatDateTime={formatDateTime} t={t} />
+              )}
+            </>
           )}
 
           {data && data.total > data.limit ? (
@@ -467,14 +500,15 @@ type TaskProjectionProps = {
   t: ReturnType<typeof useTranslations<"mtmTasksPage">>
 }
 
-function TaskList({ tasks, selected, canBulk, allSelected, onToggleAll, onToggle, href, formatDateTime, t }: TaskProjectionProps & { selected: string[]; canBulk: boolean; allSelected: boolean; onToggleAll: () => void; onToggle: (id: string) => void }) {
+function TaskList({ tasks, selected, canBulk, allSelected, showSelectAll = true, onToggleAll, onToggle, href, formatDateTime, t }: TaskProjectionProps & { selected: string[]; canBulk: boolean; allSelected: boolean; showSelectAll?: boolean; onToggleAll: () => void; onToggle: (id: string) => void }) {
   return (
     <>
       <div className="hidden overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 lg:block">
         <table className="w-full min-w-[58rem] text-sm">
           <thead className="bg-muted/35 text-left text-xs text-muted-foreground">
             <tr>
-              {canBulk ? <th className="w-14 px-1 py-1"><label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center"><input type="checkbox" className="h-5 w-5 accent-primary" checked={allSelected} onChange={onToggleAll} aria-label={t("selectPage")} /></label></th> : null}
+              {canBulk && !showSelectAll ? <th className="w-14 px-1 py-1"><span className="sr-only">{t("selectPage")}</span></th> : null}
+              {canBulk && showSelectAll ? <th className="w-14 px-1 py-1"><label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center"><input type="checkbox" className="h-5 w-5 accent-primary" checked={allSelected} onChange={onToggleAll} aria-label={t("selectPage")} /></label></th> : null}
               <th className="px-4 py-3 font-medium">{t("colTitle")}</th>
               <th className="px-4 py-3 font-medium">{t("colAgent")}</th>
               <th className="px-4 py-3 font-medium">{t("colCustomer")}</th>

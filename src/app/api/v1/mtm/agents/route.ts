@@ -24,6 +24,11 @@ import type { RlsAuth } from "@/lib/with-rls"
 import { checkPermission } from "@/lib/permissions"
 import { isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
 import { passwordPolicyError } from "@/lib/password-policy"
+import {
+  mtmAgentActivityWindowStart,
+  mtmAgentAppActivity,
+  mtmAgentCardActivity,
+} from "@/lib/mtm/agent-card-activity"
 
 const AGENT_RESPONSE_SELECT = {
   id: true,
@@ -154,7 +159,13 @@ export const GET = withRls(async (req, auth) => {
         skip: (page - 1) * limit,
         take: limit,
         orderBy: { name: "asc" },
-        select: AGENT_RESPONSE_SELECT,
+        select: {
+          ...AGENT_RESPONSE_SELECT,
+          // Read only to answer two yes/no questions below; the token itself
+          // and the coordinates never leave this handler.
+          expoPushToken: true,
+          latestLocation: { select: { receivedAt: true } },
+        },
       }),
       prisma.mtmAgent.count({ where }),
     ])
@@ -208,17 +219,64 @@ export const GET = withRls(async (req, auth) => {
       }
     }
 
+    // Card figures (visits and plan fulfilment over the analytics "weekly"
+    // window). Like presence, an enrichment: a failure costs the figure, not
+    // the list of people.
+    const activityByAgent = new Map<string, { visits: number; plannedPoints: number; visitedPoints: number }>()
+    let activityAvailable = false
+    if (agents.length) {
+      try {
+        const agentIds = agents.map((agent) => agent.id)
+        const since = mtmAgentActivityWindowStart(new Date())
+        const [visitRows, routeRows] = await Promise.all([
+          prisma.mtmVisit.groupBy({
+            by: ["agentId"],
+            where: { organizationId: orgId, agentId: { in: agentIds }, createdAt: { gte: since }, deletedAt: null },
+            _count: { _all: true },
+          }),
+          prisma.mtmRoute.groupBy({
+            by: ["agentId"],
+            where: { organizationId: orgId, agentId: { in: agentIds }, date: { gte: since }, deletedAt: null, totalPoints: { gt: 0 } },
+            _sum: { totalPoints: true, visitedPoints: true },
+          }),
+        ])
+        for (const row of visitRows as Array<{ agentId: string; _count?: { _all?: number } }>) {
+          const current = activityByAgent.get(row.agentId) ?? { visits: 0, plannedPoints: 0, visitedPoints: 0 }
+          current.visits = row._count?._all ?? 0
+          activityByAgent.set(row.agentId, current)
+        }
+        for (const row of routeRows as Array<{ agentId: string; _sum?: { totalPoints?: number | null; visitedPoints?: number | null } }>) {
+          const current = activityByAgent.get(row.agentId) ?? { visits: 0, plannedPoints: 0, visitedPoints: 0 }
+          current.plannedPoints = row._sum?.totalPoints ?? 0
+          current.visitedPoints = row._sum?.visitedPoints ?? 0
+          activityByAgent.set(row.agentId, current)
+        }
+        activityAvailable = true
+      } catch (activityError) {
+        console.error("[MTM/agents GET] activity unavailable", activityError)
+      }
+    }
+
     const showTimes = await mayReadWorkdayTimes(auth)
+    const now = new Date()
 
     return NextResponse.json({
       success: true,
       data: {
-        agents: agents.map((agent) => {
+        agents: agents.map((row) => {
+          const { expoPushToken, latestLocation, ...agent } = row
           const presence = mtmAgentPresence(dayByAgent.get(agent.id))
           return {
             ...agent,
             presence: showTimes ? presence : withoutTimes(presence),
             breaks: showTimes ? (breaksByAgent.get(agent.id) ?? []) : [],
+            activity: activityAvailable ? mtmAgentCardActivity(activityByAgent.get(agent.id) ?? {}) : null,
+            app: mtmAgentAppActivity({
+              lastLocationAt: latestLocation?.receivedAt ?? null,
+              lastSeenAt: agent.lastSeenAt ?? null,
+              hasPushToken: Boolean(expoPushToken),
+              now,
+            }),
           }
         }),
         total,

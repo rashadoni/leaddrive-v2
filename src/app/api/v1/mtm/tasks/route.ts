@@ -17,6 +17,11 @@ import {
   MtmTaskGroupError,
   resolveMtmTaskGroupSelection,
 } from "@/lib/mtm/task-group"
+import {
+  MTM_UNDATED_TASK_GROUP_LIMIT,
+  mtmUndatedOpenTaskWhere,
+  mtmUndatedTaskGroupApplies,
+} from "@/lib/mtm/task-undated-group"
 
 const VALID_STATUSES = new Set(["PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED", "OVERDUE"])
 const VALID_PRIORITIES = new Set(["LOW", "MEDIUM", "HIGH", "URGENT"])
@@ -114,23 +119,35 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         ],
       } : {}),
     }
+    // Undated open tasks as their own group (see task-undated-group.ts). The
+    // paginated list then leaves them out so no row is shown twice; the status
+    // summary still counts the whole filtered set, group included.
+    const undatedGroup = mtmUndatedTaskGroupApplies({
+      principal: auth.principal,
+      requested: searchParams.get("undated"),
+      status,
+    })
+    const listWhere = undatedGroup ? { ...where, NOT: mtmUndatedOpenTaskWhere() } : where
+    // AND, not a spread: a status filter on the page must still narrow the group.
+    const undatedWhere = { ...where, AND: [...where.AND, mtmUndatedOpenTaskWhere()] }
     const agentScope = actor.scopedAgentIds === null ? {} : { id: { in: [...actor.scopedAgentIds] } }
 
-    const [tasks, total, statusCounts, agents, teams, settings, taskGroupCatalog] = await Promise.all([
+    const taskInclude = {
+      agent: { select: { id: true, name: true, teamId: true, team: { select: { id: true, name: true } } } },
+      customer: {
+        select: { id: true, name: true, locality: true, city: true, address: true },
+      },
+      visit: { select: { id: true, status: true, checkInAt: true, checkOutAt: true } },
+    } satisfies Prisma.MtmTaskInclude
+    const [tasks, total, statusCounts, agents, teams, settings, taskGroupCatalog, undatedTasks, undatedTotal] = await Promise.all([
       prisma.mtmTask.findMany({
-        where,
+        where: listWhere,
         skip: (page - 1) * limit,
         take: limit,
         orderBy: taskOrderBy(sort),
-        include: {
-          agent: { select: { id: true, name: true, teamId: true, team: { select: { id: true, name: true } } } },
-          customer: {
-            select: { id: true, name: true, locality: true, city: true, address: true },
-          },
-          visit: { select: { id: true, status: true, checkInAt: true, checkOutAt: true } },
-        },
+        include: taskInclude,
       }),
-      prisma.mtmTask.count({ where }),
+      prisma.mtmTask.count({ where: listWhere }),
       // C11: the page used to count statuses in the rows it happened to have
       // loaded and show them next to a server-wide "Всего: 137". Two numbers
       // from two sources side by side is how a page lies without a single
@@ -154,6 +171,16 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       }),
       getMtmSettings(auth.orgId),
       activeMtmTaskGroupCatalog(prisma, auth.orgId),
+      undatedGroup
+        ? prisma.mtmTask.findMany({
+          where: undatedWhere,
+          take: MTM_UNDATED_TASK_GROUP_LIMIT,
+          // Oldest first: the longest-forgotten task is the one to look at.
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          include: taskInclude,
+        })
+        : Promise.resolve(null),
+      undatedGroup ? prisma.mtmTask.count({ where: undatedWhere }) : Promise.resolve(0),
     ])
 
     return NextResponse.json({
@@ -162,6 +189,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         tasks,
         total,
         summary: Object.fromEntries(statusCounts.map((row) => [row.status, row._count._all])),
+        ...(undatedGroup ? { undatedOpen: { tasks: undatedTasks ?? [], total: undatedTotal } } : {}),
         page,
         limit,
         sort,
