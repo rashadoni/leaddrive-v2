@@ -11,6 +11,8 @@ import { checkRateLimit } from "@/lib/rate-limit"
 import { isValidTimezone } from "@/lib/timezone"
 import { advanceMtmAgentLatestLocation } from "@/lib/mtm/mobile-location-latest"
 import { workforceEnabledForMixedSurface } from "@/lib/workforce-capability"
+import { deriveMtmLiveFieldStatus } from "@/lib/mtm/live-field-status"
+import { groupMtmLiveFeedAlerts } from "@/lib/mtm/live-feed-alerts"
 
 const MAX_FUTURE_LOCATION_SKEW_MS = 5 * 60 * 1000
 const MAX_WEB_LOCATION_AGE_MS = 5 * 60 * 1000
@@ -255,6 +257,8 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
       todayRoutes.map((r: TodayRouteRow) => [r.agentId, {
         completion: r.totalPoints > 0 ? Math.round((r.visitedPoints / r.totalPoints) * 100) : 0,
         routeStatus: r.status,
+        totalPoints: r.totalPoints,
+        visitedPoints: r.visitedPoints,
       }])
     )
 
@@ -291,21 +295,17 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
       )
 
       // Field activity remains separate from GPS freshness and workday state.
-      let fieldStatus: string
-      if (freshness === "STALE" || freshness === "NO_LOCATION") {
-        fieldStatus = "OFFLINE"
-      } else if (isCheckedIn) {
-        fieldStatus = "CHECKED_IN"
-      } else if (route?.routeStatus === "IN_PROGRESS" && loc?.isMoving) {
-        fieldStatus = "ON_ROAD"
-      } else if (route?.routeStatus === "PLANNED" && a.isOnline) {
-        // Has route but hasn't started — check if late
-        fieldStatus = tenantHour >= settings.lateAfterHour ? "LATE" : "ON_ROAD"
-      } else if (a.isOnline) {
-        fieldStatus = "ON_ROAD"
-      } else {
-        fieldStatus = "OFFLINE"
-      }
+      // «Yolda» now requires movement, and a closed route says so instead of
+      // falling through to "on the road" (src/lib/mtm/live-field-status.ts).
+      const fieldStatus = deriveMtmLiveFieldStatus({
+        freshness,
+        isCheckedIn,
+        isOnline: a.isOnline,
+        isMoving: loc?.isMoving === true,
+        route: route ? { status: route.routeStatus, totalPoints: route.totalPoints, visitedPoints: route.visitedPoints } : null,
+        tenantHour,
+        lateAfterHour: settings.lateAfterHour,
+      })
 
       return {
         agentId: a.id,
@@ -340,6 +340,8 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
       total: agentLocations.length,
       checkedIn: agentLocations.filter((a) => a.fieldStatus === "CHECKED_IN").length,
       onRoad: agentLocations.filter((a) => a.fieldStatus === "ON_ROAD").length,
+      stopped: agentLocations.filter((a) => a.fieldStatus === "STOPPED").length,
+      routeFinished: agentLocations.filter((a) => a.fieldStatus === "ROUTE_FINISHED").length,
       late: agentLocations.filter((a) => a.fieldStatus === "LATE").length,
       offline: agentLocations.filter((a) => a.fieldStatus === "OFFLINE").length,
     }
@@ -365,26 +367,44 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
     const visitEvents = recentVisits.map((v) => ({
       id: v.id,
       type: v.status === "CHECKED_IN" ? "CHECK_IN" : "CHECK_OUT",
+      agentId: v.agentId,
+      visitId: v.id,
       agent: v.agent.name,
       customer: v.customer.name,
       time: v.status === "CHECKED_IN" ? v.checkInAt : v.checkOutAt || v.checkInAt,
     }))
 
-    // Recent alerts (route deviation, late start, etc.)
+    // Recent alerts (route deviation, late start, etc.). One drifting agent
+    // writes an alert per throttle window, so read a wider slice and collapse
+    // repeats per agent, kind and local hour before they reach the feed —
+    // ten identical rows used to push every visit out of it (audit 2026-09-14).
     const recentAlerts = await prisma.mtmAlert.findMany({
       where: { organizationId: orgId, createdAt: { gte: activityToday, lt: activityTomorrow }, ...scopedWhere },
-      take: 10,
+      take: 60,
       orderBy: { createdAt: "desc" },
-      include: { agent: { select: { name: true } } },
+      select: {
+        id: true,
+        agentId: true,
+        type: true,
+        title: true,
+        metadata: true,
+        createdAt: true,
+        agent: { select: { name: true } },
+      },
     })
 
-    const alertEvents = recentAlerts.map((a) => ({
-      id: `alert-${a.id}`,
-      type: "ALERT",
-      agent: a.agent?.name || "System",
-      customer: a.title,
-      time: a.createdAt,
-    }))
+    const alertEvents = groupMtmLiveFeedAlerts(
+      recentAlerts.map((a) => ({
+        id: a.id,
+        agentId: a.agentId,
+        agentName: a.agent?.name ?? null,
+        type: a.type,
+        title: a.title,
+        createdAt: a.createdAt,
+        metadata: a.metadata,
+      })),
+      timezone,
+    )
 
     // Merge: visits + alerts, sorted by time, max 15
     const liveFeed = [...visitEvents, ...alertEvents]

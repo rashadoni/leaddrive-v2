@@ -13032,7 +13032,32 @@
     "discardBuilderConfirm": "İmtina et",
     "untimedPublishTitle": "Vaxtsız dərc edilsin?",
     "untimedPublishBody": "{total} görüşdən {count} görüşün vaxtı yoxdur. Əməkdaş onları tətbiqdə vaxtsız görəcək. Əvvəlcə vaxt təyin etmək üçün siyahıya qayıdın: «Boş vaxtları 09:00-dan doldur» bunu bir addımda edir.",
-    "untimedPublishConfirm": "Vaxtsız dərc et"
+    "untimedPublishConfirm": "Vaxtsız dərc et",
+    "stopFact": {
+      "planned": "Plan {time}",
+      "notPlanned": "Vaxt planlaşdırılmayıb",
+      "fact": "{from} → {to}",
+      "factOpen": "{from} → davam edir",
+      "closedAt": "Bağlanıb {time}",
+      "notVisited": "Ziyarət olmayıb",
+      "durationHoursMinutes": "{hours} saat {minutes} dəq",
+      "durationMinutes": "{minutes} dəq",
+      "late": "{delay} gecikmə",
+      "early": "{delay} tez",
+      "onTime": "Vaxtında",
+      "outOfOrder": "Sıra pozulub: faktiki {actual}-ci",
+      "outOfZone": "Zonadan kənar · {distance}",
+      "inZone": "Zonada",
+      "photos": "{count} foto",
+      "signature": "İmza var",
+      "note": "Qeyd var",
+      "openVisit": "Ziyarəti aç",
+      "checkInPosition": "Giriş yeri · {time}",
+      "weekSummary": "{visited}/{total} · {from}–{to}",
+      "weekSummaryNoTime": "{visited}/{total}",
+      "weekLate": "Gecikmə"
+    },
+    "allLatest": "Hamısı (son {shown} / {total})"
   },
   "mtmOperationsPage": {
     "title": "Sahə əməliyyat mərkəzi",
@@ -13726,7 +13751,21 @@
     "comparePickHint": "Aşağıdakı şəkillərdən birini seçin",
     "statusUpdated": "Foto: {status}",
     "statusUpdateFailed": "Fotonun statusu saxlanmadı: {reason}",
-    "networkError": "şəbəkə yoxdur"
+    "networkError": "şəbəkə yoxdur",
+    "fileMissing": "Fayl tapılmadı",
+    "periodLabel": "Dövr",
+    "periodToday": "Bu gün",
+    "periodWeek": "Bu həftə",
+    "periodAll": "Bütün yüklənənlər",
+    "agentFilter": "Əməkdaş",
+    "allAgents": "Bütün əməkdaşlar",
+    "latestOfTotal": "son {shown} / {total}",
+    "periodEmpty": "Bu dövrdə foto yoxdur. «Bütün yüklənənlər» seçin.",
+    "capturedAt": "{time}",
+    "openVisit": "Ziyarəti aç",
+    "openPhoto": "Fotonu böyüt: {name}",
+    "lightboxTitle": "Foto",
+    "closeLightbox": "Bağla"
   },
   "mtmAlertsPage": {
     "title": "Xəbərdarlıqlar",
@@ -15389,7 +15428,9 @@
       "checkedIn": "Yerində",
       "onRoad": "Yolda",
       "late": "Gecikir",
-      "offline": "GPS aktiv deyil"
+      "offline": "GPS aktiv deyil",
+      "stopped": "Dayanıb",
+      "routeFinished": "Marşrut bitib"
     },
     "subtitle": "Sahə komandasının son qəbul edilən GPS mövqeləri",
     "returnToOperationalWeek": "Əməliyyat həftəsinə qayıt",
@@ -15441,7 +15482,7 @@
     "offlineCachedRoute": "Oflayn — əməkdaşın marşrutu cihazdakı keşdən göstərilir",
     "lastUpdate": "Son yenilənmə",
     "additionalControls": "Əlavə xəritə alətləri",
-    "additionalControlsHint": "Geozona, istilik xəritəsi və son hadisələr — ilkin olaraq bağlıdır",
+    "additionalControlsHint": "Geozona və istilik xəritəsi — ilkin olaraq bağlıdır",
     "historyOnlyExplicit": "Tam günlük GPS izi yalnız Tarixçəni açıq şəkildə seçdikdən sonra yüklənir.",
     "selectForDetails": "Detallar üçün seçin",
     "geofence": "Geozona",
@@ -15499,11 +15540,11 @@
       "distance": "Məsafə",
       "acceptedPoints": "Qəbul edilən GPS nöqtələri",
       "stops": "Dayanacaqlar",
-      "visits": "Təsdiqlənmiş ziyarətlər",
+      "visits": "Ziyarətlər",
       "gaps": "Telemetriya boşluqları",
       "unavailableTruncated": "Hesablanmayıb",
       "truncatedWarning": "İlkin nöqtələrin təhlükəsiz limitinə çatılıb. Natamam sıra üçün məsafə qəsdən göstərilmir — aralığı daraldın.",
-      "qualitySummary": "{raw} nöqtədən {accepted} keyfiyyət yoxlamasından keçdi; deterministik seyrəltmədən sonra xəritədə {returned} göstərilir.",
+      "qualitySummary": "{raw} nöqtədən {accepted} keyfiyyət yoxlamasından keçdi; xəritədə {returned} göstərilir.",
       "workday": "İş günü",
       "status": "Status",
       "workdayStatus": {
@@ -15531,16 +15572,14 @@
       "confirmedVisit": "Təsdiqlənmiş ziyarət",
       "stopIsNotVisit": "Yalnız GPS dayanacağıdır — ziyarət faktı iddia edilmir.",
       "visitCorrelation": "Təşkilat və ziyarət əlaqəsi",
-      "visitCorrelationHint": "Yalnız saxlanmış ziyarətlər təsdiqlənir; təkcə koordinat yaxınlığı ziyarət yaratmır.",
+      "visitCorrelationHint": "Ziyarətin giriş və çıxış GPS-i müştərinin geozonası ilə müqayisə olunur.",
       "organization": "Təşkilat",
       "visitTime": "Vaxt",
       "visitStatus": "Status",
       "fact": "Fakt",
-      "noVisits": "Bu aralıqda təsdiqlənmiş ziyarət yoxdur.",
-      "methodNote": "Məsafə {formula} düsturu ilə hesablanır; yalnız dəqiqliyi ≤ {accuracy} m olan nöqtələr nəzərə alınır.",
-      "autoTrackingAvailable": "Avtomatik izləmə ayrıca mənbə kimi mövcuddur.",
-      "autoTrackingUnavailable": "Ayrı avtomatik izləmə mənbəyi yoxdur, buna görə sistem onu imitasiya etmir.",
-      "anomalies": "Xəbərdarlıqlar",
+      "noVisits": "Bu aralıqda ziyarət yoxdur.",
+      "methodNote": "Məsafə yalnız dəqiqliyi ≤ {accuracy} m olan nöqtələrlə hesablanır.",
+      "anomalies": "GPS keyfiyyət problemləri",
       "layers": "Laylar",
       "layer": {
         "planned": "Plan",
@@ -15565,7 +15604,7 @@
       "moving": "Hərəkətdə",
       "stationary": "Dayanıb",
       "timeline": "Plan və fakt zaman xətti",
-      "timelineHint": "Sabit UTC ardıcıllığı; saat qurşağı yalnız görünüşü dəyişir.",
+      "timelineHint": "Plan, ziyarətlər və GPS hadisələri vaxt sırası ilə.",
       "noTimeline": "Bu aralıqda vaxtlı hadisə yoxdur.",
       "timelineKind": {
         "WORKDAY_START": "İş günü başladı",
@@ -15609,7 +15648,36 @@
       "accuracyDetail": "Göstərilən dəqiqlik: {accuracy} m",
       "gapDetail": "Təxminən {minutes} dəq telemetriya olmayıb",
       "openVisit": "Ziyarəti aç",
-      "openOrganization": "Təşkilatı aç"
+      "openOrganization": "Təşkilatı aç",
+      "geofence": {
+        "inside": "Zonada",
+        "outside": "Zonadan kənar",
+        "distance": "Müştəridən {distance} (icazə {radius})",
+        "noVisitGps": "Ziyarətin GPS-i yoxdur",
+        "noCustomerCoordinates": "Müştərinin koordinatı yoxdur"
+      }
+    },
+    "feed": {
+      "hint": "Təkrarlanan xəbərdarlıqlar əməkdaş və saat üzrə birləşdirilir",
+      "routeDeviation": "Marşrutdan {distance} kənarda",
+      "outOfZoneCheckIn": "Qeydiyyat müştəridən {distance} aralıda",
+      "visitStillOpen": "Ziyarət {minutes} dəq açıqdır",
+      "repeated": "{count} dəfə",
+      "timeRange": "{from}–{to}",
+      "checkIn": "ziyarətə başladı",
+      "checkOut": "ziyarəti bitirdi",
+      "openHistoryAt": "{name}: bu vaxtın GPS tarixçəsini aç",
+      "openVisit": "{name}: ziyarəti aç"
+    },
+    "routeStop": {
+      "title": "Bugünkü marşrut",
+      "loading": "Marşrut yüklənir…",
+      "none": "Bu gün üçün marşrut yoxdur",
+      "planned": "Plan {time}",
+      "fact": "Fakt {from}–{to}",
+      "factOpen": "Fakt {from} — davam edir",
+      "openVisit": "Ziyarəti aç",
+      "missingCoordinates": "{count} dayanacağın koordinatı yoxdur — xəritədə göstərilmir"
     }
   },
   "mtmSettingsPage": {

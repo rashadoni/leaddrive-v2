@@ -13036,7 +13036,32 @@
     "discardBuilderConfirm": "Отменить",
     "untimedPublishTitle": "Опубликовать без времени?",
     "untimedPublishBody": "{count, plural, one {У # встречи из {total} нет времени} few {У # встреч из {total} нет времени} many {У # встреч из {total} нет времени} other {У # встречи из {total} нет времени}}. Сотрудник увидит их в приложении без времени. Чтобы сначала назначить время, вернитесь к списку: «Заполнить пустое время с 09:00» делает это за один шаг.",
-    "untimedPublishConfirm": "Опубликовать без времени"
+    "untimedPublishConfirm": "Опубликовать без времени",
+    "stopFact": {
+      "planned": "План {time}",
+      "notPlanned": "Время не запланировано",
+      "fact": "{from} → {to}",
+      "factOpen": "{from} → идёт",
+      "closedAt": "Закрыта {time}",
+      "notVisited": "Не посещена",
+      "durationHoursMinutes": "{hours} ч {minutes} мин",
+      "durationMinutes": "{minutes} мин",
+      "late": "опоздание {delay}",
+      "early": "раньше на {delay}",
+      "onTime": "Вовремя",
+      "outOfOrder": "Не по порядку: фактически {actual}-я",
+      "outOfZone": "Вне зоны · {distance}",
+      "inZone": "В зоне",
+      "photos": "{count, plural, one {# фото} few {# фото} many {# фото} other {# фото}}",
+      "signature": "Есть подпись",
+      "note": "Есть заметка",
+      "openVisit": "Открыть визит",
+      "checkInPosition": "Место отметки · {time}",
+      "weekSummary": "{visited}/{total} · {from}–{to}",
+      "weekSummaryNoTime": "{visited}/{total}",
+      "weekLate": "Опоздание"
+    },
+    "allLatest": "Все (последние {shown} из {total})"
   },
   "mtmOperationsPage": {
     "title": "Операционный центр поля",
@@ -13730,7 +13755,21 @@
     "comparePickHint": "Кликните по фото ниже",
     "statusUpdated": "Фото: {status}",
     "statusUpdateFailed": "Статус фото не сохранён: {reason}",
-    "networkError": "нет сети"
+    "networkError": "нет сети",
+    "fileMissing": "Файл не найден",
+    "periodLabel": "Период",
+    "periodToday": "Сегодня",
+    "periodWeek": "Эта неделя",
+    "periodAll": "Все загруженные",
+    "agentFilter": "Сотрудник",
+    "allAgents": "Все сотрудники",
+    "latestOfTotal": "последние {shown} из {total}",
+    "periodEmpty": "За этот период фото нет. Выберите «Все загруженные».",
+    "capturedAt": "{time}",
+    "openVisit": "Открыть визит",
+    "openPhoto": "Увеличить фото: {name}",
+    "lightboxTitle": "Фото",
+    "closeLightbox": "Закрыть"
   },
   "mtmAlertsPage": {
     "title": "Оповещения",
@@ -15393,7 +15432,9 @@
       "checkedIn": "На точке",
       "onRoad": "В пути",
       "late": "Опаздывает",
-      "offline": "GPS неактивен"
+      "offline": "GPS неактивен",
+      "stopped": "Стоит",
+      "routeFinished": "Маршрут завершён"
     },
     "subtitle": "Последние допустимые GPS-позиции полевой команды",
     "returnToOperationalWeek": "Назад к операционной неделе",
@@ -15445,7 +15486,7 @@
     "offlineCachedRoute": "Нет сети — маршрут сотрудника показан из кэша на устройстве",
     "lastUpdate": "Последнее обновление",
     "additionalControls": "Дополнительные инструменты карты",
-    "additionalControlsHint": "Геозона, тепловая карта и последние события — по умолчанию скрыты",
+    "additionalControlsHint": "Геозона и тепловая карта — по умолчанию скрыты",
     "historyOnlyExplicit": "Полный GPS-трек за день загружается только после явного открытия «Истории».",
     "selectForDetails": "Нажмите для деталей",
     "geofence": "Геозона",
@@ -15503,11 +15544,11 @@
       "distance": "Расстояние",
       "acceptedPoints": "Принято GPS-точек",
       "stops": "Остановки",
-      "visits": "Подтверждённые визиты",
+      "visits": "Визиты",
       "gaps": "Разрывы телеметрии",
       "unavailableTruncated": "Не рассчитано",
       "truncatedWarning": "Достигнут безопасный лимит исходных точек. Для неполного ряда расстояние намеренно не публикуется — сузьте интервал.",
-      "qualitySummary": "Проверку качества прошли {accepted} из {raw} точек; после детерминированного прореживания на карте показано {returned}.",
+      "qualitySummary": "Проверку качества прошли {accepted} из {raw} точек; на карте показано {returned}.",
       "workday": "Рабочий день",
       "status": "Статус",
       "workdayStatus": {
@@ -15535,16 +15576,14 @@
       "confirmedVisit": "Подтверждённый визит",
       "stopIsNotVisit": "Только GPS-остановка — факт визита не утверждается.",
       "visitCorrelation": "Связь с организациями и визитами",
-      "visitCorrelationHint": "Подтверждаются только сохранённые визиты; одна близость координат визит не создаёт.",
+      "visitCorrelationHint": "GPS отметок входа и выхода сравнивается с геозоной клиента.",
       "organization": "Организация",
       "visitTime": "Время",
       "visitStatus": "Статус",
       "fact": "Факт",
-      "noVisits": "В этом интервале нет подтверждённых визитов.",
-      "methodNote": "Расстояние рассчитано по формуле {formula}; учитываются только точки с точностью ≤ {accuracy} м.",
-      "autoTrackingAvailable": "Автоматический трекинг доступен отдельным источником.",
-      "autoTrackingUnavailable": "Отдельного источника автотрекинга нет, поэтому система его не имитирует.",
-      "anomalies": "Предупреждения",
+      "noVisits": "В этом интервале нет визитов.",
+      "methodNote": "Расстояние считается только по точкам с точностью ≤ {accuracy} м.",
+      "anomalies": "Проблемы качества GPS",
       "layers": "Слои",
       "layer": {
         "planned": "План",
@@ -15569,7 +15608,7 @@
       "moving": "В движении",
       "stationary": "Стоянка",
       "timeline": "План и факт по времени",
-      "timelineHint": "Стабильный порядок по UTC; часовой пояс меняет только отображение.",
+      "timelineHint": "План, визиты и GPS-события по времени.",
       "noTimeline": "В этом интервале нет событий со временем.",
       "timelineKind": {
         "WORKDAY_START": "Рабочий день начат",
@@ -15613,7 +15652,36 @@
       "accuracyDetail": "Заявленная точность: {accuracy} м",
       "gapDetail": "Телеметрия отсутствовала примерно {minutes} мин",
       "openVisit": "Открыть визит",
-      "openOrganization": "Открыть организацию"
+      "openOrganization": "Открыть организацию",
+      "geofence": {
+        "inside": "В зоне",
+        "outside": "Вне зоны",
+        "distance": "{distance} от клиента (допустимо {radius})",
+        "noVisitGps": "У визита нет GPS",
+        "noCustomerCoordinates": "У клиента нет координат"
+      }
+    },
+    "feed": {
+      "hint": "Повторяющиеся оповещения сгруппированы по сотруднику и часу",
+      "routeDeviation": "В {distance} от маршрута",
+      "outOfZoneCheckIn": "Отметка в {distance} от клиента",
+      "visitStillOpen": "Визит открыт {minutes} мин",
+      "repeated": "{count, plural, one {# раз} few {# раза} many {# раз} other {# раза}}",
+      "timeRange": "{from}–{to}",
+      "checkIn": "начал визит",
+      "checkOut": "завершил визит",
+      "openHistoryAt": "{name}: открыть GPS-историю за это время",
+      "openVisit": "{name}: открыть визит"
+    },
+    "routeStop": {
+      "title": "Маршрут на сегодня",
+      "loading": "Маршрут загружается…",
+      "none": "На сегодня маршрута нет",
+      "planned": "План {time}",
+      "fact": "Факт {from}–{to}",
+      "factOpen": "Факт {from} — идёт",
+      "openVisit": "Открыть визит",
+      "missingCoordinates": "{count, plural, one {# точка без координат} few {# точки без координат} many {# точек без координат} other {# точки без координат}} — на карте не показаны"
     }
   },
   "mtmSettingsPage": {

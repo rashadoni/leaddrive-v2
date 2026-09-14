@@ -13036,7 +13036,32 @@
     "discardBuilderConfirm": "Discard",
     "untimedPublishTitle": "Publish without times?",
     "untimedPublishBody": "{count, plural, one {# of {total} meetings has no time} other {# of {total} meetings have no time}}. The employee will see them in the app without a time. To set times first, go back to the list: “Fill empty times from 09:00” does it in one step.",
-    "untimedPublishConfirm": "Publish without times"
+    "untimedPublishConfirm": "Publish without times",
+    "stopFact": {
+      "planned": "Plan {time}",
+      "notPlanned": "No planned time",
+      "fact": "{from} → {to}",
+      "factOpen": "{from} → in progress",
+      "closedAt": "Closed {time}",
+      "notVisited": "Not visited",
+      "durationHoursMinutes": "{hours} h {minutes} min",
+      "durationMinutes": "{minutes} min",
+      "late": "{delay} late",
+      "early": "{delay} early",
+      "onTime": "On time",
+      "outOfOrder": "Out of order: visited #{actual}",
+      "outOfZone": "Outside zone · {distance}",
+      "inZone": "In zone",
+      "photos": "{count, plural, one {# photo} other {# photos}}",
+      "signature": "Signed",
+      "note": "Has note",
+      "openVisit": "Open visit",
+      "checkInPosition": "Check-in position · {time}",
+      "weekSummary": "{visited}/{total} · {from}–{to}",
+      "weekSummaryNoTime": "{visited}/{total}",
+      "weekLate": "Late"
+    },
+    "allLatest": "All (latest {shown} of {total})"
   },
   "mtmOperationsPage": {
     "title": "Field operations center",
@@ -13730,7 +13755,21 @@
     "comparePickHint": "Click a photo below to select",
     "statusUpdated": "Photo: {status}",
     "statusUpdateFailed": "The photo status was not saved: {reason}",
-    "networkError": "no network"
+    "networkError": "no network",
+    "fileMissing": "File not found",
+    "periodLabel": "Period",
+    "periodToday": "Today",
+    "periodWeek": "This week",
+    "periodAll": "All loaded",
+    "agentFilter": "Employee",
+    "allAgents": "All employees",
+    "latestOfTotal": "latest {shown} of {total}",
+    "periodEmpty": "No photos in this period. Choose «All loaded».",
+    "capturedAt": "{time}",
+    "openVisit": "Open visit",
+    "openPhoto": "Enlarge photo: {name}",
+    "lightboxTitle": "Photo",
+    "closeLightbox": "Close"
   },
   "mtmAlertsPage": {
     "title": "Alerts",
@@ -15393,7 +15432,9 @@
       "checkedIn": "Check-in",
       "onRoad": "On Road",
       "late": "Late",
-      "offline": "GPS inactive"
+      "offline": "GPS inactive",
+      "stopped": "Stopped",
+      "routeFinished": "Route finished"
     },
     "subtitle": "Latest admissible GPS positions for the field team",
     "returnToOperationalWeek": "Back to operational week",
@@ -15445,7 +15486,7 @@
     "offlineCachedRoute": "Offline — showing this employee's route from the on-device cache",
     "lastUpdate": "Last update",
     "additionalControls": "Additional map tools",
-    "additionalControlsHint": "Geofence, heatmap and recent events — closed by default",
+    "additionalControlsHint": "Geofence and heatmap — closed by default",
     "historyOnlyExplicit": "A full-day GPS trail is loaded only after you explicitly open History.",
     "selectForDetails": "Select for details",
     "geofence": "Geofence",
@@ -15503,11 +15544,11 @@
       "distance": "Distance",
       "acceptedPoints": "Accepted GPS points",
       "stops": "Detected stops",
-      "visits": "Confirmed visits",
+      "visits": "Visits",
       "gaps": "Telemetry gaps",
       "unavailableTruncated": "Not calculated",
       "truncatedWarning": "The safe raw-point limit was reached. Distance is intentionally not published for a truncated series; narrow the interval.",
-      "qualitySummary": "{accepted} of {raw} points passed quality checks; {returned} are rendered after deterministic downsampling.",
+      "qualitySummary": "{accepted} of {raw} points passed quality checks; {returned} are shown on the map.",
       "workday": "Workday",
       "status": "Status",
       "workdayStatus": {
@@ -15535,16 +15576,14 @@
       "confirmedVisit": "Confirmed visit",
       "stopIsNotVisit": "GPS stop only — no visit fact is asserted.",
       "visitCorrelation": "Organization and visit correlation",
-      "visitCorrelationHint": "Only stored visit records are marked as confirmed; proximity alone never creates a visit.",
+      "visitCorrelationHint": "Each visit's check-in and check-out GPS is compared with the customer's geofence.",
       "organization": "Organization",
       "visitTime": "Time",
       "visitStatus": "Status",
       "fact": "Fact",
-      "noVisits": "No confirmed visits in this interval.",
-      "methodNote": "Distance uses {formula}; only points with accuracy ≤ {accuracy} m are included.",
-      "autoTrackingAvailable": "Automatic tracking is available as a separate source.",
-      "autoTrackingUnavailable": "No separate automatic-tracking source exists, so it is not simulated.",
-      "anomalies": "Evidence warnings",
+      "noVisits": "No visits in this interval.",
+      "methodNote": "Distance uses only points with accuracy ≤ {accuracy} m.",
+      "anomalies": "GPS quality issues",
       "layers": "Layers",
       "layer": {
         "planned": "Plan",
@@ -15569,7 +15608,7 @@
       "moving": "Moving",
       "stationary": "Stationary",
       "timeline": "Planned vs actual timeline",
-      "timelineHint": "Stable UTC ordering; tenant timezone changes display only.",
+      "timelineHint": "Plan, visits and GPS events in time order.",
       "noTimeline": "No timed events in this interval.",
       "timelineKind": {
         "WORKDAY_START": "Workday started",
@@ -15613,7 +15652,36 @@
       "accuracyDetail": "Reported accuracy: {accuracy} m",
       "gapDetail": "No telemetry for approximately {minutes} min",
       "openVisit": "Open visit",
-      "openOrganization": "Open organization"
+      "openOrganization": "Open organization",
+      "geofence": {
+        "inside": "In zone",
+        "outside": "Outside zone",
+        "distance": "{distance} from the customer (allowed {radius})",
+        "noVisitGps": "Visit has no GPS",
+        "noCustomerCoordinates": "Customer has no coordinates"
+      }
+    },
+    "feed": {
+      "hint": "Repeated alerts are grouped per employee and hour",
+      "routeDeviation": "{distance} off the route",
+      "outOfZoneCheckIn": "Check-in {distance} from the customer",
+      "visitStillOpen": "Visit open for {minutes} min",
+      "repeated": "{count, plural, one {# time} other {# times}}",
+      "timeRange": "{from}–{to}",
+      "checkIn": "started a visit",
+      "checkOut": "finished a visit",
+      "openHistoryAt": "{name}: open GPS history for this time",
+      "openVisit": "{name}: open visit"
+    },
+    "routeStop": {
+      "title": "Today's route",
+      "loading": "Loading route…",
+      "none": "No route for today",
+      "planned": "Plan {time}",
+      "fact": "Actual {from}–{to}",
+      "factOpen": "Actual {from} — in progress",
+      "openVisit": "Open visit",
+      "missingCoordinates": "{count, plural, one {# stop has no coordinates and is} other {# stops have no coordinates and are}} not on the map"
     }
   },
   "mtmSettingsPage": {
