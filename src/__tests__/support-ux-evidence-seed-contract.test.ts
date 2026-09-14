@@ -52,6 +52,11 @@ describe("Support UX evidence seed safety contract", () => {
     expect(seed).toContain("index % 5 === 0 ? null")
   })
 
+  it("keeps user-visible fixture dates stable across visual comparison runs", () => {
+    expect(seed).toContain("const EVIDENCE_FIXTURE_EPOCH_MS = Date.UTC(2026, 8, 14, 0, 0, 0)")
+    expect(seed).not.toContain("Date.now()")
+  })
+
   it("keeps the fixture manifest private and removes it before artifact upload", () => {
     expect(seed).toContain("SUPPORT_EVIDENCE_FIXTURE_MANIFEST")
     expect(seed).toContain("{ mode: 0o600 }")

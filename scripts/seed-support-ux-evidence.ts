@@ -9,6 +9,10 @@ let prisma!: PrismaClient
 const DEMO_ORGANIZATION = "Northstar Support Lab"
 const DEMO_SLUG = "support-evidence"
 const SEED_CONFIRMATION = "ephemeral-support-ux-v1"
+// Evidence screenshots are compared across independent CI runs. Keep all
+// user-visible fixture dates stable so a harmless clock tick cannot create a
+// visual regression.
+const EVIDENCE_FIXTURE_EPOCH_MS = Date.UTC(2026, 8, 14, 0, 0, 0)
 const LOCAL_DATABASE_HOSTS = new Set(["127.0.0.1", "localhost", "::1"])
 
 function requiredEnv(name: string): string {
@@ -318,8 +322,8 @@ async function main(): Promise<void> {
       requesterPhone: contact.phone,
       tags: ["demo", "access"],
       slaPolicyName: sla.name,
-      slaFirstResponseDueAt: new Date(Date.now() + 60 * 60 * 1000),
-      slaDueAt: new Date(Date.now() + 8 * 60 * 60 * 1000),
+      slaFirstResponseDueAt: new Date(EVIDENCE_FIXTURE_EPOCH_MS + 60 * 60 * 1000),
+      slaDueAt: new Date(EVIDENCE_FIXTURE_EPOCH_MS + 8 * 60 * 60 * 1000),
     },
   })
   await prisma.ticketComment.createMany({
@@ -348,8 +352,8 @@ async function main(): Promise<void> {
       requesterEmail: contact.email,
       tags: ["demo", "quality"],
       slaPolicyName: sla.name,
-      slaFirstResponseDueAt: new Date(Date.now() - 30 * 60 * 1000),
-      slaDueAt: new Date(Date.now() + 2 * 60 * 60 * 1000),
+      slaFirstResponseDueAt: new Date(EVIDENCE_FIXTURE_EPOCH_MS - 30 * 60 * 1000),
+      slaDueAt: new Date(EVIDENCE_FIXTURE_EPOCH_MS + 2 * 60 * 60 * 1000),
     },
   })
   await prisma.complaintMeta.create({
@@ -391,8 +395,8 @@ async function main(): Promise<void> {
         requesterEmail: contact.email,
         tags: ["demo", `batch-${index % 5}`],
         slaPolicyName: sla.name,
-        slaFirstResponseDueAt: new Date(Date.now() + (index + 1) * 60 * 1000),
-        slaDueAt: new Date(Date.now() + (index + 2) * 60 * 60 * 1000),
+        slaFirstResponseDueAt: new Date(EVIDENCE_FIXTURE_EPOCH_MS + (index + 1) * 60 * 1000),
+        slaDueAt: new Date(EVIDENCE_FIXTURE_EPOCH_MS + (index + 2) * 60 * 60 * 1000),
       })),
     })
   }
@@ -415,8 +419,8 @@ async function main(): Promise<void> {
       providerCallId: `support-evidence-provider-${index + 1}`,
       wasAnswered: true,
       providerOutcome: "connected",
-      startedAt: new Date(Date.now() - (index + 1) * 60 * 60 * 1000),
-      endedAt: new Date(Date.now() - (index + 1) * 60 * 60 * 1000 + (90 + index * 15) * 1000),
+      startedAt: new Date(EVIDENCE_FIXTURE_EPOCH_MS - (index + 1) * 60 * 60 * 1000),
+      endedAt: new Date(EVIDENCE_FIXTURE_EPOCH_MS - (index + 1) * 60 * 60 * 1000 + (90 + index * 15) * 1000),
     })),
   })
 
@@ -426,8 +430,8 @@ async function main(): Promise<void> {
       companyId: company.id,
       slaPolicyId: sla.id,
       supportLevel: "premium",
-      validFrom: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-      validTo: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      validFrom: new Date(EVIDENCE_FIXTURE_EPOCH_MS - 7 * 24 * 60 * 60 * 1000),
+      validTo: new Date(EVIDENCE_FIXTURE_EPOCH_MS + 365 * 24 * 60 * 60 * 1000),
       status: "active",
       notes: "Synthetic Support UX evidence entitlement",
       createdBy: admin.id,
@@ -490,7 +494,7 @@ async function main(): Promise<void> {
       recipient: contact.email,
       tokenHash: closure.tokenHash,
       requestedBy: agent.id,
-      dueAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      dueAt: new Date(EVIDENCE_FIXTURE_EPOCH_MS + 7 * 24 * 60 * 60 * 1000),
     },
   })
 
