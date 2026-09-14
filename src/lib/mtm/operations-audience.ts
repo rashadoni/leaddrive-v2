@@ -2,10 +2,11 @@
  * Who a team message goes to by default, and how a role reads on screen.
  *
  * The broadcast form used to tick every active MTM account — managers,
- * supervisors and the QA logins included — so a message meant for the field
- * went to the people writing it unless someone remembered to untick them.
- * Field staff are the audience; everyone else is one tap away via
- * "Select all".
+ * admins and the QA logins included — so a message meant for the field went
+ * to the people writing it unless someone remembered to untick them.
+ * The default audience is the field: agents and their supervisors
+ * (supervisors keep receiving broadcasts — product decision 2026-09-14).
+ * Managers, admins and any other role are one tap away via "Select all".
  *
  * The role used to be printed raw and twice ("MANAGER MANAGER"): once as the
  * fallback subtitle when a person had no team, once as the badge. The screen
@@ -23,6 +24,10 @@ export function operationsRoleKey(role: string | null | undefined): OperationsAu
     : "OTHER"
 }
 
+export const DEFAULT_BROADCAST_ROLES: ReadonlyArray<OperationsAudienceRole> = ["AGENT", "SUPERVISOR"]
+
 export function defaultBroadcastAudience(agents: ReadonlyArray<{ id: string; role: string | null | undefined }>): string[] {
-  return agents.filter((agent) => operationsRoleKey(agent.role) === "AGENT").map((agent) => agent.id)
+  return agents
+    .filter((agent) => (DEFAULT_BROADCAST_ROLES as ReadonlyArray<string>).includes(operationsRoleKey(agent.role)))
+    .map((agent) => agent.id)
 }
