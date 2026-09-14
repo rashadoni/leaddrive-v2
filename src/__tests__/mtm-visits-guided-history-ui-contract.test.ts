@@ -30,8 +30,14 @@ describe("MTM visits guided history UI contract", () => {
     expect(page).toContain('status === "CHECKED_IN"')
     expect(page).toContain('status === "CHECKED_OUT"')
     expect(page).not.toContain("{v.status}")
-    expect(page).toContain('confirmed ? "gpsConfirmed" : "gpsOutside"')
+    // GPS: check-in and check-out against the customer's geofence (2026-09-14),
+    // no longer check-in only against a fixed 100 m.
+    expect(page).toContain("visitPlaceSummary(visit, meta.geofenceRadius)")
+    expect(page).toContain('t("gpsConfirmed")')
+    expect(page).toContain('t("gpsOutside")')
+    expect(page).toContain('t("gpsCheckoutMissing")')
     expect(page).toContain('t("gpsUnavailable")')
+    expect(page).not.toContain("distance <= 100")
   })
 
   it("uses localized tenant-timezone dates and explains bounded results", () => {

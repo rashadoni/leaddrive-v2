@@ -33,7 +33,11 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth, { params }: 
       where: historicalVisitCandidateWhere(actor, auth.orgId, { id }),
       include: {
         agent: { select: { id: true, name: true } },
-        customer: { select: { id: true, name: true } },
+        // Same customer facts as the list row this response replaces on the
+        // visits page: without them a focused row lost its address and GPS.
+        customer: {
+          select: { id: true, name: true, address: true, city: true, latitude: true, longitude: true, geofenceRadius: true },
+        },
         contact: { select: { id: true, displayName: true, type: true, specialtyName: true } },
         participants: {
           select: { agentId: true, role: true, joinedAt: true, leftAt: true },
