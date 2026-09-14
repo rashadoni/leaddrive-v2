@@ -144,6 +144,7 @@ export function groupMtmLiveFeedAlerts(rows: MtmLiveFeedAlertRow[], timezone: st
     }
     const current = existing.alert.message
     if ((current.key === "routeDeviation" || current.key === "outOfZoneCheckIn") &&
+        (message.key === "routeDeviation" || message.key === "outOfZoneCheckIn") &&
         message.key === current.key && message.distanceMeters > current.distanceMeters) {
       existing.alert.message = message
     } else if (current.key === "visitStillOpen" && message.key === "visitStillOpen" && message.minutes > current.minutes) {
