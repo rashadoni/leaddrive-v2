@@ -79,7 +79,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     }
     const include = {
       agent: { select: { id: true, name: true } },
-      customer: { select: { id: true, name: true, address: true, latitude: true, longitude: true } },
+      customer: { select: { id: true, name: true, address: true, city: true, latitude: true, longitude: true, geofenceRadius: true } },
       contact: { select: { id: true, displayName: true, type: true, specialtyName: true } },
       participants: {
         select: { agentId: true, role: true, joinedAt: true, leftAt: true },
@@ -157,6 +157,9 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         limit,
         range,
         timezone,
+        // Org-level geofence for customers without their own radius, so the
+        // page measures a visit against the radius its check-in used.
+        geofenceRadius: settings.geofenceRadius,
       },
     })
   } catch (e) {

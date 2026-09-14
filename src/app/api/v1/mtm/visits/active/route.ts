@@ -34,5 +34,13 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth) => {
       },
     },
   })
-  return NextResponse.json({ success: true, data: { visits } })
+  return NextResponse.json({
+    success: true,
+    data: {
+      visits,
+      // The page shows the execution workspace only for the viewer's own
+      // visits; everyone else gets the read-only review.
+      viewer: { agentId: actor.agentId, role: actor.role },
+    },
+  })
 })

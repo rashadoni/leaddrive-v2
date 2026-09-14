@@ -1,11 +1,14 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
 import { AlertCircle, CalendarClock, Check, CheckCircle2, ChevronDown, Clock3, FileText, ImagePlus, PackageCheck, PenLine, Presentation, RefreshCw, Save, Upload } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { VisitPhotoGrid } from "@/components/mtm/visit-photo-grid"
+import { SignaturePreview } from "@/components/mtm/visit-signature-preview"
 import {
   loadQueue,
   saveQueue,
@@ -18,7 +21,8 @@ import {
   type OutboxOp,
 } from "@/lib/mtm/offline-outbox"
 import { enqueuePhoto, listPhotos, removePhoto, countPhotos } from "@/lib/mtm/photo-outbox"
-import { formatDate, formatDateTime } from "@/lib/format-date"
+import { formatDate, formatDateTime, formatTime } from "@/lib/format-date"
+import { visitApiErrorKey } from "@/lib/mtm/visit-review"
 
 type ActionKey = "PHOTO" | "PRESENTATION" | "STOCK_CHECK" | "VISIT_NOTE" | "CHECKLIST" | "FEEDBACK" | "NEXT_ACTION" | "SIGNATURE"
 type RequirementMode = "REQUIRED" | "OPTIONAL" | "HIDDEN"
@@ -47,10 +51,10 @@ interface WorkspaceData {
     participants: Array<{ agent: { id: string; name: string } }>
     requirementSnapshot: { sourcePolicy?: { name: string } | null; requirements: Requirement[] } | null
     actionResults: Array<{ id: string; actionKey: ActionKey; status: string; evidence?: Record<string, unknown> | null }>
-    photos: Array<{ id: string; url: string; status: string }>
+    photos: Array<{ id: string; url: string; thumbnailUrl?: string | null; status: string; createdAt?: string | null }>
     route?: { id: string; name?: string | null; date: string; status: string } | null
   }
-  reminders: Array<{ id: string; title: string; description?: string | null; status: string; priority: string; dueDate?: string | null }>
+  reminders: Array<{ id: string; title: string; description?: string | null; status: string; priority: string; dueDate?: string | null; version: number }>
   previousPromises: Array<{ id: string; checkInAt: string; outcome?: string | null; resultNotes?: string | null; nextActionDueAt?: string | null; agent: { name: string } }>
   previousStockChecks: Array<{ id: string; evidence?: Record<string, unknown> | null; completedAt?: string | null; visit: { checkInAt: string; agent: { name: string } } }>
 }
@@ -88,24 +92,45 @@ const ACTION_ICONS = {
   SIGNATURE: PenLine,
 } as const
 
-/** The customer's finger-drawn signature from the field app, drawn as one path. */
-function SignaturePreview({ evidence }: { evidence?: Record<string, unknown> | null }) {
-  const path = typeof evidence?.svgPath === "string" && /^[MLQCZmlqcz0-9.,\s-]+$/.test(evidence.svgPath) ? evidence.svgPath : null
-  const width = typeof evidence?.widthPx === "number" ? evidence.widthPx : 0
-  const height = typeof evidence?.heightPx === "number" ? evidence.heightPx : 0
-  if (!path || !width || !height) return null
-  return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="mt-3 h-24 w-full max-w-sm rounded-md border border-zinc-200 bg-white dark:border-zinc-700" role="img" aria-label="signature">
-      <path d={path} fill="none" stroke="#13231f" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
+/** Reminders shown inline; the rest live on the tasks screen. */
+const REMINDER_PREVIEW_LIMIT = 5
 
 function draftKey(visitId: string) {
   return `mtm-visit-result-draft:${visitId}`
 }
 
-export function VisitWorkspace({ visitId, onCompleted }: { visitId: string; onCompleted: () => void }) {
+function savedResult(visit: WorkspaceData["visit"]): ResultDraft {
+  return {
+    ...EMPTY_RESULT,
+    outcome: visit.outcome ?? "",
+    potential: visit.potential ?? "UNKNOWN",
+    finalNote: visit.resultNotes ?? "",
+    nextActionDueDate: visit.nextActionDueAt?.slice(0, 16) ?? "",
+  }
+}
+
+function readDraft(visitId: string): Partial<ResultDraft> | null {
+  try {
+    const stored = localStorage.getItem(draftKey(visitId))
+    const parsed = stored ? JSON.parse(stored) : null
+    return parsed && typeof parsed === "object" ? parsed as Partial<ResultDraft> : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The execution workspace of the signed-in agent's OWN open visit. Office
+ * users never get here: the page shows them the read-only review instead.
+ * A result typed on this device stays a local draft, labelled as such, until
+ * the server accepts it.
+ */
+export function VisitWorkspace({ visitId, onCompleted, canReschedule = false }: {
+  visitId: string
+  onCompleted: () => void
+  /** Moving a due date is task metadata: the server allows it to managers, supervisors and admins only. */
+  canReschedule?: boolean
+}) {
   const t = useTranslations("mtmVisitWorkspace") as unknown as WorkspaceTranslator
   const locale = useLocale()
   const [data, setData] = useState<WorkspaceData | null>(null)
@@ -121,29 +146,33 @@ export function VisitWorkspace({ visitId, onCompleted }: { visitId: string; onCo
   const [pendingSync, setPendingSync] = useState(0)
   // G — count of photos captured offline, awaiting upload on reconnect.
   const [pendingPhotos, setPendingPhotos] = useState(0)
+  // True while the result form holds values restored from this device that the server has not accepted.
+  const [draftRestored, setDraftRestored] = useState(false)
+
+  /** Localized message for a failed call; the API's English `error` never reaches the toast. */
+  const failure = useCallback((status: number, body: unknown, fallbackKey: string) => {
+    const key = visitApiErrorKey(status, body)
+    return new Error(key ? t(`errors.${key}`) : t(fallbackKey))
+  }, [t])
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const response = await fetch(`/api/v1/mtm/visits/${visitId}/workspace`)
       const body = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(body?.error || t("loadFailed"))
+      if (!response.ok || !body?.data) throw failure(response.status, body, "loadFailed")
       setData(body.data)
-      const stored = localStorage.getItem(draftKey(visitId))
-      if (stored) setResult({ ...EMPTY_RESULT, ...JSON.parse(stored) })
-      else setResult({
-        ...EMPTY_RESULT,
-        outcome: body.data.visit.outcome ?? "",
-        potential: body.data.visit.potential ?? "UNKNOWN",
-        finalNote: body.data.visit.resultNotes ?? "",
-        nextActionDueDate: body.data.visit.nextActionDueAt?.slice(0, 16) ?? "",
-      })
+      const saved = savedResult(body.data.visit)
+      const draft = readDraft(visitId)
+      const restored = draft ? { ...saved, ...draft } : saved
+      setResult(restored)
+      setDraftRestored(JSON.stringify(restored) !== JSON.stringify(saved))
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("loadFailed"))
     } finally {
       setLoading(false)
     }
-  }, [t, visitId])
+  }, [failure, t, visitId])
 
   useEffect(() => { void load() }, [load])
   useEffect(() => {
@@ -157,9 +186,19 @@ export function VisitWorkspace({ visitId, onCompleted }: { visitId: string; onCo
     }
   }, [])
   useEffect(() => {
-    const timer = window.setTimeout(() => localStorage.setItem(draftKey(visitId), JSON.stringify(result)), 250)
+    if (!data) return
+    const timer = window.setTimeout(() => {
+      try {
+        const saved = savedResult(data.visit)
+        // Only a real difference from the server is a draft; an untouched form is not.
+        if (JSON.stringify(result) === JSON.stringify(saved)) localStorage.removeItem(draftKey(visitId))
+        else localStorage.setItem(draftKey(visitId), JSON.stringify(result))
+      } catch {
+        // Storage can be unavailable (private mode); the form still works.
+      }
+    }, 250)
     return () => window.clearTimeout(timer)
-  }, [result, visitId])
+  }, [data, result, visitId])
 
   // G — flush the offline outbox to the idempotent sync engine (safe to retry).
   const flushOutbox = useCallback(async () => {
@@ -250,7 +289,7 @@ export function VisitWorkspace({ visitId, onCompleted }: { visitId: string; onCo
         body: JSON.stringify({ actionKey, status: "COMPLETED", evidence }),
       })
       const body = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(body?.error || t("actionFailed"))
+      if (!response.ok) throw failure(response.status, body, "actionFailed")
       toast.success(t("actionSaved"))
       await load()
     } catch (error) {
@@ -277,7 +316,7 @@ export function VisitWorkspace({ visitId, onCompleted }: { visitId: string; onCo
     try {
       const response = await fetch("/api/v1/mtm/photos", { method: "POST", body: form })
       const body = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(body?.error || t("photoFailed"))
+      if (!response.ok) throw failure(response.status, body, "photoFailed")
       toast.success(t("photoSaved"))
       await load()
     } catch (error) {
@@ -288,17 +327,23 @@ export function VisitWorkspace({ visitId, onCompleted }: { visitId: string; onCo
   }
 
 
-  const updateReminder = async (id: string, action: "complete" | "acknowledge" | "reschedule") => {
-    const dueDate = action === "reschedule" ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() : undefined
-    const status = action === "complete" ? "COMPLETED" : action === "acknowledge" ? "IN_PROGRESS" : "PENDING"
-    const response = await fetch(`/api/v1/mtm/tasks/${id}`, {
+  const updateReminder = async (reminder: WorkspaceData["reminders"][number], action: "complete" | "acknowledge" | "reschedule") => {
+    // A due date is metadata and a status is execution; the server refuses
+    // both in one request, so "tomorrow" moves the date and nothing else.
+    const change = action === "reschedule"
+      ? { dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() }
+      : { status: action === "complete" ? "COMPLETED" : "IN_PROGRESS" }
+    const response = await fetch(`/api/v1/mtm/tasks/${reminder.id}`, {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ status, ...(dueDate ? { dueDate } : {}) }),
+      // Web task updates are optimistic: without the version the server refuses every change.
+      body: JSON.stringify({ ...change, expectedVersion: reminder.version }),
     })
     if (!response.ok) {
       const body = await response.json().catch(() => null)
-      toast.error(body?.error || t("reminderFailed"))
+      toast.error(failure(response.status, body, "reminderFailed").message)
+      // A version conflict means the task moved on; show its current state.
+      await load()
       return
     }
     await load()
@@ -326,8 +371,9 @@ export function VisitWorkspace({ visitId, onCompleted }: { visitId: string; onCo
       }),
     })
     const body = await response.json().catch(() => null)
-    if (!response.ok) throw new Error(body?.error || t("resultFailed"))
-    localStorage.removeItem(draftKey(visitId))
+    if (!response.ok) throw failure(response.status, body, "resultFailed")
+    try { localStorage.removeItem(draftKey(visitId)) } catch { /* storage unavailable */ }
+    setDraftRestored(false)
     return body
   }
 
@@ -357,7 +403,7 @@ export function VisitWorkspace({ visitId, onCompleted }: { visitId: string; onCo
       const body = await response.json().catch(() => null)
       if (!response.ok) {
         if (body?.code === "MTM_VISIT_REQUIREMENTS_INCOMPLETE") setMissing(body.missing ?? [])
-        throw new Error(body?.error || t("completeFailed"))
+        throw failure(response.status, body, "completeFailed")
       }
       toast.success(t("completed"))
       onCompleted()
@@ -390,6 +436,16 @@ export function VisitWorkspace({ visitId, onCompleted }: { visitId: string; onCo
           </div>
           {done && <span className="inline-flex items-center gap-1 text-xs text-emerald-700 dark:text-emerald-300"><Check className="h-3.5 w-3.5" /> {t("done")}</span>}
         </div>
+        {requirement.actionKey === "PHOTO" && data.visit.photos.length > 0 && (
+          <div className="mt-3">
+            <VisitPhotoGrid
+              photos={data.visit.photos}
+              formatTime={(value) => formatTime(value, locale)}
+              openLabel={(index) => t("openPhoto", { index })}
+              titleLabel={(index) => t("photoTitle", { index, total: data.visit.photos.length })}
+            />
+          </div>
+        )}
         {!done && requirement.actionKey === "PHOTO" && (
           <label className="mt-3 inline-flex cursor-pointer items-center gap-2 text-sm text-primary">
             <Upload className="h-4 w-4" /> {t("uploadPhoto")}
@@ -415,13 +471,13 @@ export function VisitWorkspace({ visitId, onCompleted }: { visitId: string; onCo
           <div className="mt-3 flex gap-2"><Input value={checklist} onChange={(event) => setChecklist(event.target.value)} placeholder={t("checklistResult")} className="h-9" /><Button size="icon" className="h-9 w-9" disabled={!checklist || busy} onClick={() => void saveAction("CHECKLIST", { result: checklist })} title={t("saveAction")}><Save className="h-4 w-4" /></Button></div>
         )}
         {!done && ["VISIT_NOTE", "FEEDBACK", "NEXT_ACTION"].includes(requirement.actionKey) && <p className="mt-2 text-xs text-muted-foreground">{t("completeInResult")}</p>}
-        {requirement.actionKey === "SIGNATURE" && (done ? <SignaturePreview evidence={data.visit.actionResults.filter((item) => item.actionKey === "SIGNATURE" && item.status === "COMPLETED").at(-1)?.evidence} /> : <p className="mt-2 text-xs text-muted-foreground">{t("signatureOnTablet")}</p>)}
+        {requirement.actionKey === "SIGNATURE" && (done ? <SignaturePreview evidence={data.visit.actionResults.filter((item) => item.actionKey === "SIGNATURE" && item.status === "COMPLETED").at(-1)?.evidence} label={t("actions.SIGNATURE")} /> : <p className="mt-2 text-xs text-muted-foreground">{t("signatureOnTablet")}</p>)}
       </div>
     )
   }
 
   return (
-    <section className="border-y border-zinc-200 bg-background py-5 dark:border-zinc-800">
+    <div className="p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-emerald-500" /><span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">{t("activeVisit")}</span></div>
@@ -440,6 +496,16 @@ export function VisitWorkspace({ visitId, onCompleted }: { visitId: string; onCo
 
           <div className="space-y-3">
             <h3 className="text-sm font-semibold">{t("visitResult")}</h3>
+            <p className="text-xs text-muted-foreground" data-testid="mtm-visit-saved-result">
+              {data.visit.outcome
+                ? t("savedResult", { outcome: t(`outcomes.${data.visit.outcome}`) })
+                : t("resultNotSaved")}
+            </p>
+            {draftRestored && (
+              <p role="status" className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+                {t("localDraftNotice")}
+              </p>
+            )}
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="space-y-1"><span className="text-xs text-muted-foreground">{t("outcome")}</span><select value={result.outcome} onChange={(event) => setResult({ ...result, outcome: event.target.value })} className="h-10 w-full rounded-md border border-zinc-200 bg-background px-3 text-sm dark:border-zinc-700"><option value="">{t("selectOutcome")}</option>{["SUCCESSFUL", "PARTIAL", "NO_CONTACT", ...(visibleActions.has("NEXT_ACTION") ? ["RESCHEDULE"] : [])].map((value) => <option key={value} value={value}>{t(`outcomes.${value}`)}</option>)}</select></label>
               <label className="space-y-1"><span className="text-xs text-muted-foreground">{t("potential")}</span><select value={result.potential} onChange={(event) => setResult({ ...result, potential: event.target.value })} className="h-10 w-full rounded-md border border-zinc-200 bg-background px-3 text-sm dark:border-zinc-700">{["HIGH", "MEDIUM", "LOW", "UNKNOWN"].map((value) => <option key={value} value={value}>{t(`potentials.${value}`)}</option>)}</select></label>
@@ -452,13 +518,38 @@ export function VisitWorkspace({ visitId, onCompleted }: { visitId: string; onCo
         </div>
 
         <aside className="space-y-6">
-          <div><h3 className="text-sm font-semibold">{t("reminders")}</h3><div className="mt-2 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">{data.reminders.length ? data.reminders.map((reminder) => <div key={reminder.id} className="py-3"><div className="flex items-start justify-between gap-2"><div><div className="text-sm font-medium">{reminder.title}</div>{reminder.dueDate && <div className="mt-1 text-xs text-muted-foreground">{formatDateTime(new Date(reminder.dueDate), locale)}</div>}</div><span className="text-[11px] text-muted-foreground">{reminder.priority}</span></div><div className="mt-2 flex gap-1"><Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => void updateReminder(reminder.id, "complete")}><Check className="mr-1 h-3.5 w-3.5" />{t("complete")}</Button><Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => void updateReminder(reminder.id, "acknowledge")}>{t("acknowledge")}</Button><Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => void updateReminder(reminder.id, "reschedule")}><RefreshCw className="mr-1 h-3.5 w-3.5" />{t("tomorrow")}</Button></div></div>) : <p className="py-4 text-sm text-muted-foreground">{t("noReminders")}</p>}</div></div>
+          <div>
+            <h3 className="text-sm font-semibold">{t("reminders")}</h3>
+            <div className="mt-2 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+              {data.reminders.length ? data.reminders.slice(0, REMINDER_PREVIEW_LIMIT).map((reminder) => (
+                <div key={reminder.id} className="py-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="text-sm font-medium">{reminder.title}</div>
+                      {reminder.dueDate && <div className="mt-1 text-xs text-muted-foreground">{formatDateTime(new Date(reminder.dueDate), locale)}</div>}
+                    </div>
+                    <span className="text-[11px] text-muted-foreground">{t(`priorities.${reminder.priority}`)}</span>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => void updateReminder(reminder, "complete")}><Check className="mr-1 h-3.5 w-3.5" />{t("complete")}</Button>
+                    {reminder.status !== "IN_PROGRESS" && <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => void updateReminder(reminder, "acknowledge")}>{t("acknowledge")}</Button>}
+                    {canReschedule && <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => void updateReminder(reminder, "reschedule")}><RefreshCw className="mr-1 h-3.5 w-3.5" />{t("tomorrow")}</Button>}
+                  </div>
+                </div>
+              )) : <p className="py-4 text-sm text-muted-foreground">{t("noReminders")}</p>}
+            </div>
+            {data.reminders.length > REMINDER_PREVIEW_LIMIT && (
+              <Link href="/mtm/tasks" className="mt-2 inline-block text-xs font-medium text-primary hover:underline">
+                {t("moreReminders", { count: data.reminders.length - REMINDER_PREVIEW_LIMIT })}
+              </Link>
+            )}
+          </div>
           <div><h3 className="text-sm font-semibold">{t("previousPromises")}</h3><div className="mt-2 space-y-3">{data.previousPromises.length ? data.previousPromises.map((promise) => <div key={promise.id} className="text-sm"><div className="text-xs text-muted-foreground">{formatDate(new Date(promise.checkInAt), locale)} - {promise.agent.name}</div>{promise.resultNotes && <p className="mt-1">{promise.resultNotes}</p>}{promise.nextActionDueAt && <p className="mt-1 text-xs text-muted-foreground">{t("due", { date: formatDateTime(new Date(promise.nextActionDueAt), locale) })}</p>}</div>) : <p className="text-sm text-muted-foreground">{t("noPreviousPromises")}</p>}</div></div>
           {data.previousStockChecks.length > 0 && <div><h3 className="text-sm font-semibold">{t("previousStock")}</h3><div className="mt-2 space-y-2">{data.previousStockChecks.map((item) => <div key={item.id} className="text-sm"><span className="font-medium">{String(item.evidence?.product ?? t("unknownProduct"))}</span><span className="ml-2 text-muted-foreground">{String(item.evidence?.state ?? "-")}{item.evidence?.quantity != null ? ` (${String(item.evidence?.quantity)})` : ""}</span><div className="text-xs text-muted-foreground">{formatDate(new Date(item.completedAt ?? item.visit.checkInAt), locale)} - {item.visit.agent.name}</div></div>)}</div></div>}
         </aside>
       </div>
 
-      <div className="sticky bottom-0 z-10 -mx-1 mt-6 border-t border-zinc-200 bg-background/95 px-1 py-3 backdrop-blur-sm dark:border-zinc-800">
+      <div className="sticky bottom-0 z-10 mt-6 border-t border-zinc-200 bg-card/95 py-3 backdrop-blur-sm dark:border-zinc-800">
         {missing.length > 0 && <div className="mb-2 flex flex-wrap gap-2">{missing.map((item) => <span key={item.actionKey} className="rounded-md bg-rose-50 px-2 py-1 text-xs text-rose-800 dark:bg-rose-950/40 dark:text-rose-200">{t(`actions.${item.actionKey}`)} {item.completedCount}/{item.requiredCount}</span>)}</div>}
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
@@ -469,6 +560,6 @@ export function VisitWorkspace({ visitId, onCompleted }: { visitId: string; onCo
           <Button size="sm" disabled={busy} onClick={() => void completeVisit()}><CheckCircle2 className="mr-1 h-4 w-4" /> {busy ? t("completing") : online ? t("completeVisit") : t("queueCheckout")}</Button>
         </div>
       </div>
-    </section>
+    </div>
   )
 }

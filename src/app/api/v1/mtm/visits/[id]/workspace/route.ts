@@ -40,7 +40,7 @@ export const GET = withRouteFieldRlsAuth("read", async (
       photos: {
         orderBy: { createdAt: "desc" },
         take: 20,
-        select: { id: true, url: true, status: true },
+        select: { id: true, url: true, thumbnailUrl: true, status: true, createdAt: true },
       },
       route: { select: { id: true, name: true, date: true, status: true } },
       routePoint: { select: { id: true, orderIndex: true, plannedTime: true } },
@@ -65,7 +65,8 @@ export const GET = withRouteFieldRlsAuth("read", async (
       },
       orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
       take: 30,
-      select: { id: true, title: true, description: true, status: true, priority: true, dueDate: true, result: true, visitId: true },
+      // version: web task updates are optimistic and must send expectedVersion.
+      select: { id: true, title: true, description: true, status: true, priority: true, dueDate: true, result: true, visitId: true, version: true },
     }),
     prisma.mtmVisit.findMany({
       where: mutableVisitWhere(actor, auth.orgId, {
