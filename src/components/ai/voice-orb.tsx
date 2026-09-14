@@ -86,7 +86,25 @@ export function VoiceOrb({
     }
   }, [status])
 
+  /**
+   * Where the control lives.
+   *
+   * The header slot wins whenever it exists. A 56 px orb fixed to the bottom
+   * right corner sat on top of whatever the page put there — row "…" menus,
+   * priority labels, period buttons, chart labels on every MTM screen (owner
+   * report 2026-09-14). The header is on screen at any scroll position and
+   * holds no page content, so the control can never cover work from there.
+   * Only its placement changes: the same button arms the same console.
+   *
+   * The in-flow AI bar slot and the floating corner remain as fallbacks for a
+   * shell that renders no header slot.
+   */
   useEffect(() => {
+    const headerHost = document.getElementById("header-voice-assistant-slot")
+    if (headerHost) {
+      setInlineHost(headerHost)
+      return
+    }
     if (showFloatingLauncher || !inlineLauncherAvailable) {
       setInlineHost(null)
       return
@@ -124,7 +142,8 @@ export function VoiceOrb({
 
   if (!allowed) return null
   const inlineReachable = Boolean(inlineHost) && inlineHostVisible
-  const floating = showFloatingLauncher || !inlineReachable
+  const hostIsHeader = inlineHost?.id === "header-voice-assistant-slot"
+  const floating = hostIsHeader ? !inlineReachable : showFloatingLauncher || !inlineReachable
   const activeInlineHost = floating ? null : inlineHost
   // Keep the console component mounted across navigation so an active media
   // session is not torn down. Only its control moves from a floating overlay
@@ -160,10 +179,10 @@ export function VoiceOrb({
         data-placement={activeInlineHost ? "inline" : "floating"}
         aria-label={loadFailed ? t("staleBuild") : t("start")}
         title={loadFailed ? t("staleBuild") : t("start")}
-        className={`relative flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${activeInlineHost ? "h-11 w-11" : "h-14 w-14"}`}
+        className={`relative flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${activeInlineHost ? "h-9 w-9" : "h-14 w-14"}`}
       >
-        <span className={`relative flex items-center justify-center rounded-full text-white shadow-lg shadow-black/20 animate-[pulse_3s_ease-in-out_infinite] ${loadFailed ? "bg-destructive" : "bg-muted-foreground/70"} ${activeInlineHost ? "h-11 w-11" : "h-14 w-14"}`}>
-          <Mic className="h-5 w-5" />
+        <span className={`relative flex items-center justify-center rounded-full text-white shadow-lg shadow-black/20 animate-[pulse_3s_ease-in-out_infinite] ${loadFailed ? "bg-destructive" : "bg-muted-foreground/70"} ${activeInlineHost ? "h-9 w-9 shadow-sm" : "h-14 w-14"}`}>
+          <Mic className={activeInlineHost ? "h-4 w-4" : "h-5 w-5"} />
         </span>
       </button>
 

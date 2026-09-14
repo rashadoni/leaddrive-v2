@@ -43,11 +43,29 @@ describe("dashboard AI launcher placement", () => {
     expect(voice).toContain("createPortal(launcher, activeInlineHost)")
     expect(voiceConsole).toContain("if (orbPortalTarget) return createPortal(orbControl, orbPortalTarget)")
     expect(voiceConsole).toContain("if (!showFloatingOrb) return null")
-    expect(voiceConsole).toContain('inline ? "h-11 w-11" : "h-14 w-14"')
+    expect(voiceConsole).toContain('inline ? "h-9 w-9" : "h-14 w-14"')
     expect(voiceConsole).toContain("const showInlineMessage = Boolean(error || notice || micSilent || transcriptionWarning)")
     expect(voiceConsole).toContain("showInlineMessage")
     expect(voice).toContain('data-placement={activeInlineHost ? "inline" : "floating"}')
     expect(voiceConsole).toContain('data-placement={inline ? "inline" : "floating"}')
+  })
+
+  it("docks the microphone in the header instead of over page content", () => {
+    // Owner report 2026-09-14: the floating orb covered row menus, priority
+    // labels, period buttons and chart labels on every MTM page. The header
+    // hosts it now; gating is untouched — the slot is empty for anyone the
+    // pilot gate does not allow.
+    const header = source("src/components/header.tsx")
+    expect(header).toContain('id="header-voice-assistant-slot"')
+    expect(header).toContain("flex shrink-0 items-center empty:hidden")
+    expect(header.indexOf('id="header-voice-assistant-slot"')).toBeGreaterThan(header.indexOf('data-testid="global-header-actions"'))
+    expect(header.indexOf('id="header-voice-assistant-slot"')).toBeLessThan(header.indexOf("<NotificationBell />"))
+    expect(header).toContain('className="relative z-30 flex h-14 min-w-0')
+    expect(voice).toContain('document.getElementById("header-voice-assistant-slot")')
+    expect(voice).toContain('const hostIsHeader = inlineHost?.id === "header-voice-assistant-slot"')
+    // Placement only: the access check and the lazy console are unchanged.
+    expect(voice).toContain('fetch("/api/v1/ai/voice/access", { credentials: "same-origin" })')
+    expect(voice).toContain("if (!allowed) return null")
   })
 
   it("keeps the panel reachable from the in-flow search or blocked-page fallback", () => {

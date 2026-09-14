@@ -111,4 +111,40 @@ describe("voice orb", () => {
 
     slot.remove()
   })
+
+  it("docks in the header slot on every page, including ones that would float", async () => {
+    // The corner orb sat on top of page controls (owner report 2026-09-14).
+    // The header slot is always on screen, so the corner is never used while
+    // it exists — even where the layout asks for a floating launcher.
+    const headerSlot = document.createElement("div")
+    headerSlot.id = "header-voice-assistant-slot"
+    document.body.appendChild(headerSlot)
+    auth.status = "authenticated"
+
+    await act(async () => {
+      root.render(createElement(VoiceOrb, { showFloatingLauncher: true, inlineLauncherAvailable: false }))
+    })
+    await act(async () => { observers.forEach((fire) => fire(true)) })
+
+    expect(headerSlot.querySelector('[data-placement="inline"]')).not.toBeNull()
+    expect(container.querySelector('[data-placement="floating"]')).toBeNull()
+
+    headerSlot.remove()
+  })
+
+  it("stays hidden in the header when the gate says no", async () => {
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ allowed: false }) })
+    const headerSlot = document.createElement("div")
+    headerSlot.id = "header-voice-assistant-slot"
+    document.body.appendChild(headerSlot)
+    auth.status = "authenticated"
+
+    await render()
+    await act(async () => { observers.forEach((fire) => fire(true)) })
+
+    expect(headerSlot.querySelector("button")).toBeNull()
+    expect(container.querySelector("button")).toBeNull()
+
+    headerSlot.remove()
+  })
 })

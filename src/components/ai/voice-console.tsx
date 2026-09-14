@@ -1131,17 +1131,17 @@ function ConsoleInner({
           data-placement={inline ? "inline" : "floating"}
           aria-label={label}
           title={label}
-          className={`relative flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${inline ? "h-11 w-11" : "h-14 w-14"}`}
+          className={`relative flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${inline ? "h-9 w-9" : "h-14 w-14"}`}
         >
           {active && isSpeaking && <span className={`absolute inset-0 animate-ping rounded-full ${tone} opacity-40`} />}
           <span className={[
             "relative flex items-center justify-center rounded-full text-white shadow-lg transition-colors duration-300",
-            inline ? "h-11 w-11" : "h-14 w-14",
+            inline ? "h-9 w-9 shadow-sm" : "h-14 w-14",
             tone,
             !active && !starting ? "animate-[pulse_3s_ease-in-out_infinite]" : "",
             starting ? "animate-pulse" : "",
           ].join(" ")}>
-            <Mic className="h-5 w-5" />
+            <Mic className={inline ? "h-4 w-4" : "h-5 w-5"} />
           </span>
         </button>
         {(error || notice || active || micSilent || transcriptionWarning) && (

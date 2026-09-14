@@ -68,7 +68,9 @@ export function Header({ orgName, userName, userAvatar, onOpenLauncher, sessionL
     <header
       data-testid="global-header"
       data-session-ready={orgName && userName ? "true" : "false"}
-      className="flex h-14 min-w-0 items-center justify-between gap-2 border-b border-zinc-200/40 bg-card px-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] backdrop-blur-xl dark:border-zinc-700/40 sm:px-4 lg:px-6"
+      /* relative z-30: the voice control's status line hangs below the header
+         and has to paint over the page, not under it. */
+      className="relative z-30 flex h-14 min-w-0 items-center justify-between gap-2 border-b border-zinc-200/40 bg-card px-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] backdrop-blur-xl dark:border-zinc-700/40 sm:px-4 lg:px-6"
     >
       <div className="flex min-w-0 items-center gap-2 sm:gap-4">
         {orgName ? (
@@ -117,6 +119,14 @@ export function Header({ orgName, userName, userAvatar, onOpenLauncher, sessionL
       </div>
 
       <div data-testid="global-header-actions" className="flex shrink-0 items-center gap-1 sm:gap-2">
+        {/* The voice assistant's microphone portals here (VoiceOrb). The slot
+            collapses to nothing for everyone outside the voice pilot; who sees
+            the control is still decided by the pilot gate, not by the header. */}
+        <div
+          id="header-voice-assistant-slot"
+          data-testid="header-voice-assistant-slot"
+          className="flex shrink-0 items-center empty:hidden"
+        />
         <NotificationBell />
 
         <LanguageSwitcher />
