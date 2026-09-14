@@ -9,10 +9,20 @@ import {
   WorkforceAttendanceSecurityError,
 } from "@/lib/workforce/attendance-security"
 import {
+  assessConfiguredWorkforcePlayIntegrity,
+  WorkforcePlayIntegrityDecoderError,
+  type WorkforcePlayIntegrityDecodedToken,
+} from "@/lib/workforce/play-integrity-decoder"
+import {
+  workforcePlayIntegrityRequestHash,
+  workforcePlayIntegrityTokenFingerprint,
+} from "@/lib/workforce/play-integrity"
+import {
   workforceAttendanceRequirements,
   type WorkforceAttendanceAction,
   type WorkforceAttendanceRequirements,
 } from "@/lib/workforce/attendance-policy"
+import { hasVerifiedWorkforceAttendanceAttestation } from "@/lib/workforce/attendance-attestation-receipt"
 import {
   assessWorkforceLocationEvidence,
   type WorkforceLocationEvidenceAssessment,
@@ -50,6 +60,11 @@ export type WorkforceAttendancePrincipal = "mobile" | "web"
 
 export type WorkforceAttendanceEvidence = {
   qrToken?: string
+  /**
+   * Ephemeral Google Play Integrity Standard API token. The server validates
+   * it for this one mutation and retains only a tenant-bound fingerprint.
+   */
+  playIntegrityToken?: string
   device?: {
     enrollmentId: string
     signature: string
@@ -77,7 +92,7 @@ type AttendanceTrustDb = Pick<
 >
 
 type PreparedVerificationFact = {
-  method: "QR" | "DEVICE_KEY"
+  method: "QR" | "DEVICE_KEY" | "PLAY_INTEGRITY"
   stationId?: string
   deviceEnrollmentId?: string
   nonceFingerprint?: string
@@ -118,11 +133,16 @@ export class WorkforceAttendanceTrustError extends Error {
       | "WORKFORCE_ATTENDANCE_QR_STATION_UNAVAILABLE"
       | "WORKFORCE_ATTENDANCE_DEVICE_REQUIRED"
       | "WORKFORCE_ATTENDANCE_DEVICE_UNAVAILABLE"
+      | "WORKFORCE_ATTENDANCE_DEVICE_ATTESTATION_REQUIRED"
       | "WORKFORCE_ATTENDANCE_DEVICE_SIGNATURE_INVALID"
       | "WORKFORCE_ATTENDANCE_LOCATION_REQUIRED"
       | "WORKFORCE_ATTENDANCE_LOCATION_REVIEW_REQUIRED"
       | "WORKFORCE_ATTENDANCE_PROOF_REPLAY"
-      | "WORKFORCE_ATTENDANCE_BIOMETRIC_MOBILE_REQUIRED",
+      | "WORKFORCE_ATTENDANCE_BIOMETRIC_MOBILE_REQUIRED"
+      | "WORKFORCE_ATTENDANCE_PLAY_INTEGRITY_REQUIRED"
+      | "WORKFORCE_ATTENDANCE_PLAY_INTEGRITY_UNAVAILABLE"
+      | "WORKFORCE_ATTENDANCE_PLAY_INTEGRITY_REVIEW_REQUIRED"
+      | "WORKFORCE_ATTENDANCE_PLAY_INTEGRITY_MOBILE_REQUIRED",
     message: string = code,
   ) {
     super(message)
@@ -152,6 +172,7 @@ function normalizedEvidence(value: WorkforceAttendanceEvidence | undefined): Wor
       ? { device: { enrollmentId: device.enrollmentId.trim(), signature: device.signature.trim() } }
       : {}),
     ...(value?.location ? { location: value.location } : {}),
+    ...(nonEmpty(value?.playIntegrityToken, 20_000) ? { playIntegrityToken: value!.playIntegrityToken!.trim() } : {}),
   }
 }
 
@@ -161,6 +182,7 @@ function required(requirements: WorkforceAttendanceRequirements, action: Workfor
     qr: requirements.qrRequiredActions.has(action),
     device: requirements.deviceTrustRequiredActions.has(action),
     biometric: requirements.biometricRequiredActions.has(action),
+    playIntegrity: requirements.playIntegrityRequiredActions.has(action),
   }
 }
 
@@ -194,11 +216,13 @@ export async function prepareWorkforceAttendanceVerification(
     workday: WorkforceAttendanceWorkday
     event: Pick<
       MtmWorkdayEventInput,
-      "action" | "workdayId" | "clientEventId" | "occurredAt" | "latitude" | "longitude" | "accuracy"
+      "action" | "workdayId" | "clientEventId" | "occurredAt" | "schemaVersion" | "latitude" | "longitude" | "accuracy"
     >
     evidence?: WorkforceAttendanceEvidence
     capabilities: WorkforceAttendanceCapabilities
     principal: WorkforceAttendancePrincipal
+    /** Test-only seam; production uses the server's configured Google decoder. */
+    playIntegrityDecode?: WorkforcePlayIntegrityDecodedToken
     now?: Date
   },
 ): Promise<PreparedWorkforceAttendanceVerification | null> {
@@ -228,7 +252,7 @@ export async function prepareWorkforceAttendanceVerification(
   }
   const action = input.event.action as WorkforceAttendanceAction
   const needs = required(requirements, action)
-  if (!needs.location && !needs.qr && !needs.device) return null
+  if (!needs.location && !needs.qr && !needs.device && !needs.playIntegrity) return null
 
   if (needs.qr && !input.capabilities.qrEnabled) {
     throw new WorkforceAttendanceTrustError(
@@ -251,10 +275,17 @@ export async function prepareWorkforceAttendanceVerification(
       "This workday action requires a locally biometric-unlocked mobile device",
     )
   }
+  if (needs.playIntegrity && input.principal !== "mobile") {
+    throw new WorkforceAttendanceTrustError(
+      "WORKFORCE_ATTENDANCE_PLAY_INTEGRITY_MOBILE_REQUIRED",
+      "This workday action requires a Play Integrity token from the native Workforce client",
+    )
+  }
 
   const evidence = normalizedEvidence(input.evidence)
   const facts: PreparedVerificationFact[] = []
   let locationEvidence: PreparedWorkforceAttendanceVerification["locationEvidence"]
+  let verifiedEnrollmentId: string | null = null
 
   if (needs.location) {
     const location = evidence.location
@@ -391,12 +422,28 @@ export async function prepareWorkforceAttendanceVerification(
         status: "ACTIVE",
         keyVerifiedAt: { not: null },
       },
-      select: { id: true, publicKeySpki: true },
+      select: {
+        id: true,
+        publicKeySpki: true,
+        attestationVerifiedAt: true,
+        attestationSecurityLevel: true,
+        attestationRootCertificateSha256: true,
+      },
     })
     if (!enrollment) {
       throw new WorkforceAttendanceTrustError(
         "WORKFORCE_ATTENDANCE_DEVICE_UNAVAILABLE",
         "The selected attendance device is not active for this employee",
+      )
+    }
+    if (!hasVerifiedWorkforceAttendanceAttestation(enrollment, now)) {
+      // Do not use an active proof-of-possession key as an attendance trust
+      // factor until a server verifier recorded the minimum hardware/app
+      // assurance receipt. The response names no root, certificate, device
+      // property or other attestation material.
+      throw new WorkforceAttendanceTrustError(
+        "WORKFORCE_ATTENDANCE_DEVICE_ATTESTATION_REQUIRED",
+        "The selected attendance device still needs server-verified Android key attestation",
       )
     }
     const challenge = workforceDeviceAttendanceChallenge({
@@ -434,6 +481,62 @@ export async function prepareWorkforceAttendanceVerification(
       method: "DEVICE_KEY",
       deviceEnrollmentId: enrollment.id,
       proofFingerprint: proofFingerprint(input.organizationId, evidence.device.signature),
+    })
+    verifiedEnrollmentId = enrollment.id
+  }
+
+  if (needs.playIntegrity) {
+    if (!evidence.playIntegrityToken || !verifiedEnrollmentId) {
+      throw new WorkforceAttendanceTrustError(
+        "WORKFORCE_ATTENDANCE_PLAY_INTEGRITY_REQUIRED",
+        "A current Play Integrity token bound to this trusted-device action is required",
+      )
+    }
+    let assessment: Awaited<ReturnType<typeof assessConfiguredWorkforcePlayIntegrity>>
+    try {
+      assessment = await assessConfiguredWorkforcePlayIntegrity({
+        token: evidence.playIntegrityToken,
+        expectedRequestHash: workforcePlayIntegrityRequestHash({
+          organizationId: input.organizationId,
+          agentId: input.agentId,
+          enrollmentId: verifiedEnrollmentId,
+          operationId: input.event.clientEventId,
+          workdayId: input.event.workdayId,
+          action,
+          occurredAt: input.event.occurredAt.toISOString(),
+          schemaVersion: input.event.schemaVersion,
+        }),
+        now,
+        ...(input.playIntegrityDecode ? { decode: input.playIntegrityDecode } : {}),
+      })
+    } catch (error) {
+      if (error instanceof WorkforcePlayIntegrityDecoderError) {
+        throw new WorkforceAttendanceTrustError(
+          "WORKFORCE_ATTENDANCE_PLAY_INTEGRITY_UNAVAILABLE",
+          "Play Integrity could not be verified for this attendance action",
+        )
+      }
+      throw error
+    }
+    if (assessment.status === "REVIEW_REQUIRED") {
+      throw new WorkforceAttendanceTrustError(
+        "WORKFORCE_ATTENDANCE_PLAY_INTEGRITY_REVIEW_REQUIRED",
+        "This device needs reviewed attendance fallback",
+      )
+    }
+    if (assessment.status !== "ACCEPTED") {
+      throw new WorkforceAttendanceTrustError(
+        "WORKFORCE_ATTENDANCE_PLAY_INTEGRITY_REQUIRED",
+        "Play Integrity rejected this attendance action",
+      )
+    }
+    facts.push({
+      method: "PLAY_INTEGRITY",
+      deviceEnrollmentId: verifiedEnrollmentId,
+      proofFingerprint: workforcePlayIntegrityTokenFingerprint({
+        organizationId: input.organizationId,
+        token: evidence.playIntegrityToken,
+      }),
     })
   }
 

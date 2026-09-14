@@ -54,7 +54,9 @@ import com.leaddrive.workforce.android.data.WorkforceDeviceTrustState
 import com.leaddrive.workforce.android.data.WorkforceEncryptedOutbox
 import com.leaddrive.workforce.android.data.WorkforceHistorySnapshot
 import com.leaddrive.workforce.android.data.WorkforceHistoryDayDetail
+import com.leaddrive.workforce.android.data.WorkforceHistoryLocalRecovery
 import com.leaddrive.workforce.android.data.WorkforceHistoryReviewState
+import com.leaddrive.workforce.android.data.WorkforceRequestLocalRecovery
 import com.leaddrive.workforce.android.data.WorkforceHrmRequestDraft
 import com.leaddrive.workforce.android.data.WorkforceHrmRequestType
 import com.leaddrive.workforce.android.data.WorkforceHrmRequestStatus
@@ -80,12 +82,14 @@ import com.leaddrive.workforce.android.data.WorkforceWorkdayAction
 import com.leaddrive.workforce.android.data.WorkforceWorkdayStatus
 import com.leaddrive.workforce.android.location.WorkforceActionTimeLocationCapture
 import com.leaddrive.workforce.android.location.WorkforceActionTimeLocationResult
-import com.leaddrive.workforce.android.security.WorkforceQrScanner
 import com.leaddrive.workforce.android.security.WorkforceDeviceAuthenticator
 import com.leaddrive.workforce.android.security.WorkforceDeviceKeyManager
+import com.leaddrive.workforce.android.security.WorkforceEphemeralQrToken
+import com.leaddrive.workforce.android.security.WorkforcePlayIntegrityClient
+import com.leaddrive.workforce.android.security.WorkforcePlayIntegrityUnavailableException
+import com.leaddrive.workforce.android.security.WorkforceQrScanner
 import java.time.Instant
 import java.time.ZoneId
-import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import kotlinx.coroutines.delay
@@ -103,6 +107,7 @@ class MainActivity : FragmentActivity() {
             outbox = WorkforceEncryptedOutbox(applicationContext),
             deviceKeys = deviceKeys,
             reminderScheduler = WorkforceReminderScheduler(applicationContext),
+            playIntegrity = WorkforcePlayIntegrityClient(applicationContext, configuration.playIntegrityCloudProjectNumber),
         )
         setContent {
             MaterialTheme {
@@ -132,6 +137,8 @@ private fun WorkforceRoot(
     var today by remember { mutableStateOf<WorkforceTodaySnapshot?>(null) }
     var status by remember { mutableStateOf<String?>(null) }
     var history by remember { mutableStateOf<WorkforceHistorySnapshot?>(null) }
+    var historyLocalRecovery by remember { mutableStateOf<WorkforceHistoryLocalRecovery?>(null) }
+    var requestLocalRecovery by remember { mutableStateOf<WorkforceRequestLocalRecovery?>(null) }
     var ownExceptions by remember { mutableStateOf<List<WorkforceSelfException>?>(null) }
     var recoveryItems by remember { mutableStateOf<List<WorkforceOutboxRecoveryItem>?>(null) }
     var deviceTrust by remember { mutableStateOf<WorkforceDeviceTrustState?>(null) }
@@ -141,8 +148,12 @@ private fun WorkforceRoot(
         conflict = stringResource(R.string.error_action_conflict),
         api = stringResource(R.string.error_request_failed),
         network = stringResource(R.string.error_network_unavailable),
+        updateRequired = stringResource(R.string.error_update_required),
         locationRequired = stringResource(R.string.error_location_server_required),
         locationReviewRequired = stringResource(R.string.error_location_server_review_required),
+        deviceAttestationRequired = stringResource(R.string.error_device_attestation_required),
+        playIntegrityRequired = stringResource(R.string.error_play_integrity_required),
+        playIntegrityReviewRequired = stringResource(R.string.error_play_integrity_review_required),
     )
     val queuedToday = stringResource(R.string.status_today_queued)
     val refreshingToday = stringResource(R.string.status_refreshing_server)
@@ -245,6 +256,8 @@ private fun WorkforceRoot(
                 today = submission.snapshot
                 reminderSettings = submission.reminderSettings
                 history = null
+                historyLocalRecovery = null
+                requestLocalRecovery = null
                 ownExceptions = null
                 recoveryItems = null
                 status = null
@@ -263,6 +276,8 @@ private fun WorkforceRoot(
                     today = it
                     applyReminderSettings(it)
                     history = null
+                    historyLocalRecovery = null
+                    requestLocalRecovery = null
                     ownExceptions = null
                     recoveryItems = null
                     deviceTrust = null
@@ -274,7 +289,7 @@ private fun WorkforceRoot(
 
     fun submitTodayAction(
         action: WorkforceWorkdayAction,
-        qrToken: String? = null,
+        qrToken: WorkforceEphemeralQrToken? = null,
         location: WorkforceLocationProof? = null,
     ) {
         val snapshot = today ?: return
@@ -291,7 +306,7 @@ private fun WorkforceRoot(
 
     fun submitDeviceTrustedTodayAction(
         action: WorkforceWorkdayAction,
-        qrToken: String? = null,
+        qrToken: WorkforceEphemeralQrToken? = null,
         location: WorkforceLocationProof? = null,
     ) {
         val snapshot = today ?: return
@@ -330,10 +345,10 @@ private fun WorkforceRoot(
                     if (activeQrScanAttemptId == scanAttemptId && scanningQrAction == action) {
                         activeQrScanAttemptId = null
                         scanningQrAction = null
-                        if (attendance.requiresDeviceProof(action)) {
-                            submitDeviceTrustedTodayAction(action, token.value, location)
+                        if (attendance.requiresDeviceProof(action) || attendance.requiresPlayIntegrity(action)) {
+                            submitDeviceTrustedTodayAction(action, token, location)
                         } else {
-                            submitTodayAction(action, token.value, location)
+                            submitTodayAction(action, token, location)
                         }
                     }
                 },
@@ -354,7 +369,7 @@ private fun WorkforceRoot(
                     }
                 },
             )
-        } else if (attendance.requiresDeviceProof(action)) {
+        } else if (attendance.requiresDeviceProof(action) || attendance.requiresPlayIntegrity(action)) {
             submitDeviceTrustedTodayAction(action, location = location)
         } else {
             submitTodayAction(action, location = location)
@@ -436,12 +451,12 @@ private fun WorkforceRoot(
         }
     }
 
-    fun beginDeviceEnrollment(deviceLabel: String) {
+    fun beginDeviceEnrollment(deviceLabel: String, replacesEnrollmentId: String?) {
         val currentBootstrap = bootstrap ?: return
         status = preparingDeviceEnrollment
         scope.launch {
             runCatching {
-                val pending = repository.beginDeviceEnrollment(currentBootstrap, deviceLabel)
+                val pending = repository.beginDeviceEnrollment(currentBootstrap, deviceLabel, replacesEnrollmentId)
                 val signature = deviceAuthenticator.authenticateAndSign(
                     pending.signature,
                     deviceEnrollmentPromptTemplate.replace("__WORKFORCE_EXPIRY__", pending.expiresAt),
@@ -485,6 +500,9 @@ private fun WorkforceRoot(
             .onSuccess { restored ->
                 bootstrap = restored
                 if (restored != null) {
+                    // Warm-up is deliberately non-authoritative: a fresh token
+                    // is still requested and server-verified for each action.
+                    runCatching { repository.warmPlayIntegrityIfRequired(restored) }
                     runCatching { repository.loadToday() }
                         .onSuccess {
                             today = it
@@ -506,6 +524,7 @@ private fun WorkforceRoot(
                 scope.launch {
                     runCatching {
                         val signedIn = repository.signIn(input)
+                        runCatching { repository.warmPlayIntegrityIfRequired(signedIn) }
                         val loadedToday = repository.loadToday()
                         signedIn to loadedToday
                     }.onSuccess { (signedIn, loadedToday) ->
@@ -513,6 +532,8 @@ private fun WorkforceRoot(
                         today = loadedToday
                         applyReminderSettings(loadedToday)
                         history = null
+                        historyLocalRecovery = null
+                        requestLocalRecovery = null
                         ownExceptions = null
                         recoveryItems = null
                         deviceTrust = null
@@ -527,6 +548,8 @@ private fun WorkforceRoot(
             status = status,
             section = section,
             history = history,
+            historyLocalRecovery = historyLocalRecovery,
+            requestLocalRecovery = requestLocalRecovery,
             ownExceptions = ownExceptions,
             recoveryItems = recoveryItems,
             deviceTrust = deviceTrust,
@@ -540,9 +563,16 @@ private fun WorkforceRoot(
                 if (anchorDate != null) {
                     status = loadingHistory
                     scope.launch {
-                        runCatching { repository.loadHistory(anchorDate) }
-                            .onSuccess {
-                                history = it
+                        // A local delivery summary is deliberately separate
+                        // from the server history request: an offline refresh
+                        // may still explain that no request fact was accepted.
+                        runCatching { repository.loadRequestLocalRecovery() }
+                            .onSuccess { requestLocalRecovery = it }
+                        runCatching { repository.loadHistoryWithLocalRecovery(anchorDate) }
+                            .onSuccess { loaded ->
+                                history = loaded.history
+                                historyLocalRecovery = loaded.localRecovery
+                                requestLocalRecovery = loaded.requestLocalRecovery
                                 status = null
                             }
                             .onFailure { status = it.employeeMessage(employeeErrorCopy) }
@@ -581,11 +611,13 @@ private fun WorkforceRoot(
                     runCatching { repository.submitHrmRequest(bootstrap!!, draft) }
                         .onSuccess { submission ->
                             history = null
+                            historyLocalRecovery = null
+                            requestLocalRecovery = (submission as? WorkforceHrmSubmission.Queued)?.localRecovery
                             ownExceptions = null
                             recoveryItems = null
                             status = when (submission) {
-                                WorkforceHrmSubmission.ACCEPTED -> requestAccepted
-                                WorkforceHrmSubmission.QUEUED -> requestQueued
+                                WorkforceHrmSubmission.Accepted -> requestAccepted
+                                is WorkforceHrmSubmission.Queued -> requestQueued
                             }
                         }
                         .onFailure { status = it.employeeMessage(employeeErrorCopy) }
@@ -597,9 +629,11 @@ private fun WorkforceRoot(
                     runCatching { repository.cancelHrmRequest(bootstrap!!, requestId) }
                         .onSuccess { submission ->
                             history = null
+                            historyLocalRecovery = null
+                            requestLocalRecovery = (submission as? WorkforceHrmSubmission.Queued)?.localRecovery
                             status = when (submission) {
-                                WorkforceHrmSubmission.ACCEPTED -> cancellationAccepted
-                                WorkforceHrmSubmission.QUEUED -> cancellationQueued
+                                WorkforceHrmSubmission.Accepted -> cancellationAccepted
+                                is WorkforceHrmSubmission.Queued -> cancellationQueued
                             }
                         }
                         .onFailure { status = it.employeeMessage(employeeErrorCopy) }
@@ -615,6 +649,8 @@ private fun WorkforceRoot(
                             bootstrap = null
                             today = null
                             history = null
+                            historyLocalRecovery = null
+                            requestLocalRecovery = null
                             recoveryItems = null
                             deviceTrust = null
                             reminderSettings = null
@@ -705,6 +741,8 @@ private fun WorkforceHome(
     status: String?,
     section: WorkforceSection,
     history: WorkforceHistorySnapshot?,
+    historyLocalRecovery: WorkforceHistoryLocalRecovery?,
+    requestLocalRecovery: WorkforceRequestLocalRecovery?,
     ownExceptions: List<WorkforceSelfException>?,
     recoveryItems: List<WorkforceOutboxRecoveryItem>?,
     deviceTrust: WorkforceDeviceTrustState?,
@@ -717,7 +755,7 @@ private fun WorkforceHome(
     onLoadOwnExceptions: () -> Unit,
     onLoadRecovery: () -> Unit,
     onLoadDeviceTrust: () -> Unit,
-    onBeginDeviceEnrollment: (String) -> Unit,
+    onBeginDeviceEnrollment: (String, String?) -> Unit,
     onRevokeDeviceEnrollment: (String) -> Unit,
     onSetLocalReminders: (Boolean) -> Unit,
     onSubmitRequest: (WorkforceHrmRequestDraft) -> Unit,
@@ -776,10 +814,12 @@ private fun WorkforceHome(
             }
             WorkforceSection.HISTORY -> WorkforceHistory(
                 history = history,
+                localRecovery = historyLocalRecovery,
                 onLoad = onLoadHistory,
             )
             WorkforceSection.REQUESTS -> WorkforceRequests(
                 history = history,
+                localRecovery = requestLocalRecovery,
                 ownExceptions = ownExceptions,
                 defaultDate = today?.date.orEmpty(),
                 mutationsBlocked = bootstrap.release.mutationsBlocked,
@@ -1004,9 +1044,6 @@ private fun WorkforceRecovery(
     onLoad: () -> Unit,
     onRefreshServer: () -> Unit,
 ) {
-    val tenantZone = remember(timezone) {
-        runCatching { ZoneId.of(timezone) }.getOrDefault(ZoneOffset.UTC)
-    }
     if (items == null) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.tab_recovery), style = MaterialTheme.typography.titleLarge)
@@ -1036,10 +1073,11 @@ private fun WorkforceRecovery(
                         ),
                         style = MaterialTheme.typography.titleSmall,
                     )
-                    Text(stringResource(
-                        R.string.recovery_saved_at,
-                        Instant.ofEpochMilli(item.createdAtEpochMs).atZone(tenantZone).toLocalDateTime(),
-                    ))
+                    val savedAt = workforceHistoryTimestamp(
+                        Instant.ofEpochMilli(item.createdAtEpochMs).toString(),
+                        timezone,
+                    ) ?: stringResource(R.string.recovery_saved_at_unavailable)
+                    Text(stringResource(R.string.recovery_saved_at, savedAt))
                     Text(stringResource(item.recoveryHint.labelRes()))
                 }
             }
@@ -1052,7 +1090,7 @@ private fun WorkforceDeviceTrust(
     state: WorkforceDeviceTrustState?,
     mutationsBlocked: Boolean,
     onLoad: () -> Unit,
-    onEnroll: (String) -> Unit,
+    onEnroll: (String, String?) -> Unit,
     onRevoke: (String) -> Unit,
 ) {
     val defaultDeviceLabel = stringResource(R.string.device_label_default)
@@ -1065,6 +1103,21 @@ private fun WorkforceDeviceTrust(
             Button(onClick = onLoad) { Text(stringResource(R.string.device_status_load)) }
         }
         return
+    }
+    val canStartReplacement = trustedState.lifecycle !in setOf(
+        WorkforceDeviceBindingLifecycle.ACTIVE,
+        WorkforceDeviceBindingLifecycle.PENDING_PROOF,
+        WorkforceDeviceBindingLifecycle.PROVISIONING,
+        WorkforceDeviceBindingLifecycle.PENDING_MANAGER_APPROVAL,
+    )
+    val replacementCandidates = if (canStartReplacement) {
+        trustedState.enrollments.filter { it.status == "ACTIVE" && it.id != trustedState.enrollmentId }
+    } else {
+        emptyList()
+    }
+    var replacesEnrollmentId by rememberSaveable { mutableStateOf<String?>(null) }
+    val selectedReplacementId = replacesEnrollmentId?.takeIf { selected ->
+        replacementCandidates.any { it.id == selected }
     }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(stringResource(R.string.device_trust_title), style = MaterialTheme.typography.titleLarge)
@@ -1083,14 +1136,38 @@ private fun WorkforceDeviceTrust(
                     label = { Text(stringResource(R.string.device_label)) },
                     singleLine = true,
                 )
+                if (replacementCandidates.isNotEmpty()) {
+                    Text(stringResource(R.string.device_replace_explainer))
+                    replacementCandidates.forEach { enrollment ->
+                        TextButton(
+                            modifier = Modifier.workforceTapTarget(),
+                            onClick = {
+                                replacesEnrollmentId = if (selectedReplacementId == enrollment.id) null else enrollment.id
+                            },
+                        ) {
+                            Text(
+                                stringResource(
+                                    if (selectedReplacementId == enrollment.id) {
+                                        R.string.device_replace_selected
+                                    } else {
+                                        R.string.device_replace_select
+                                    },
+                                    enrollment.deviceLabel,
+                                ),
+                            )
+                        }
+                    }
+                }
                 Button(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !mutationsBlocked,
-                    onClick = { onEnroll(label) },
+                    onClick = { onEnroll(label, selectedReplacementId) },
                 ) {
                     Text(
                         if (trustedState.lifecycle == WorkforceDeviceBindingLifecycle.PENDING_PROOF || trustedState.lifecycle == WorkforceDeviceBindingLifecycle.PROVISIONING) {
                             stringResource(R.string.device_enrollment_resume)
+                        } else if (selectedReplacementId != null) {
+                            stringResource(R.string.device_enrollment_replace)
                         } else {
                             stringResource(R.string.device_enrollment_start)
                         },
@@ -1157,6 +1234,7 @@ private fun deviceEnrollmentStatus(status: String): Int = when (status) {
 @Composable
 private fun WorkforceRequests(
     history: WorkforceHistorySnapshot?,
+    localRecovery: WorkforceRequestLocalRecovery?,
     ownExceptions: List<WorkforceSelfException>?,
     defaultDate: String,
     mutationsBlocked: Boolean,
@@ -1186,6 +1264,21 @@ private fun WorkforceRequests(
             Text(stringResource(R.string.tab_requests), style = MaterialTheme.typography.titleLarge)
             Text(stringResource(R.string.requests_explainer))
             if (mutationsBlocked) Text(stringResource(R.string.update_required_before_changes))
+            localRecovery?.takeIf { it.hasOutstanding }?.let { recovery ->
+                // This is delivery metadata only. The request list below stays
+                // server-authoritative and no pending row is assigned to a
+                // request type, date, correction, or review decision.
+                Text(stringResource(R.string.request_local_sync_explainer))
+                if (recovery.pendingCount > 0) {
+                    Text(stringResource(R.string.request_local_sync_pending, recovery.pendingCount))
+                }
+                if (recovery.conflictCount > 0) {
+                    Text(stringResource(R.string.request_local_sync_conflict, recovery.conflictCount))
+                }
+                if (recovery.reviewCount > 0) {
+                    Text(stringResource(R.string.request_local_sync_review, recovery.reviewCount))
+                }
+            }
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -1392,6 +1485,7 @@ private fun WorkforceRequestHistoryDetail(
 @Composable
 private fun WorkforceHistory(
     history: WorkforceHistorySnapshot?,
+    localRecovery: WorkforceHistoryLocalRecovery?,
     onLoad: () -> Unit,
 ) {
     var expandedDate by rememberSaveable { mutableStateOf<String?>(null) }
@@ -1407,6 +1501,21 @@ private fun WorkforceHistory(
         item {
             Text(stringResource(R.string.tab_work_time), style = MaterialTheme.typography.titleLarge)
             Text(stringResource(R.string.history_range, history.start, history.end, history.timezone))
+            localRecovery?.takeIf { it.hasOutstanding }?.let { recovery ->
+                // These are global encrypted-outbox metadata counts, not
+                // server-accepted events. In particular, do not bind one to a
+                // day here: a local retry must never resemble an accepted fact.
+                Text(stringResource(R.string.history_local_sync_explainer))
+                if (recovery.pendingCount > 0) {
+                    Text(stringResource(R.string.history_local_sync_pending, recovery.pendingCount))
+                }
+                if (recovery.conflictCount > 0) {
+                    Text(stringResource(R.string.history_local_sync_conflict, recovery.conflictCount))
+                }
+                if (recovery.reviewCount > 0) {
+                    Text(stringResource(R.string.history_local_sync_review, recovery.reviewCount))
+                }
+            }
         }
         items(history.days, key = { it.date }) { day ->
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -1471,15 +1580,31 @@ private fun WorkforceScheduledContext(segment: com.leaddrive.workforce.android.d
         stringResource(R.string.scheduled_context_next)
     }
     val place = segment.siteName ?: stringResource(R.string.scheduled_context_no_site)
+    val modeResource = workforceScheduleSegmentModeResource(segment.mode)
+    val mode = if (modeResource == null) {
+        stringResource(R.string.scheduled_context_mode_unavailable)
+    } else {
+        stringResource(modeResource)
+    }
     Text(stringResource(
         R.string.scheduled_context_value,
         state,
-        segment.mode.lowercase(),
+        mode,
         place,
         segment.startTime,
         segment.endTime,
     ))
     Text(stringResource(R.string.scheduled_context_not_presence_proof))
+}
+
+private fun workforceScheduleSegmentModeResource(mode: String): Int? = when (mode) {
+    "SITE" -> R.string.scheduled_context_mode_site
+    "REMOTE" -> R.string.scheduled_context_mode_remote
+    "FIELD" -> R.string.scheduled_context_mode_field
+    "TRAVEL" -> R.string.scheduled_context_mode_travel
+    "ON_CALL" -> R.string.scheduled_context_mode_on_call
+    "EXCEPTION" -> R.string.scheduled_context_mode_exception
+    else -> null
 }
 
 @Composable
@@ -1509,7 +1634,7 @@ private fun WorkforceTodayCard(
         Text(stringResource(R.string.today), style = MaterialTheme.typography.titleLarge)
         when {
             workday == null -> Text(stringResource(R.string.today_no_workday))
-            else -> WorkforceWorkdayState(workday, elapsedSeconds)
+            else -> WorkforceWorkdayState(workday, snapshot.timezone, elapsedSeconds)
         }
         snapshot.activeWorkday?.let {
             Text(stringResource(R.string.today_other_active))
@@ -1528,10 +1653,10 @@ private fun WorkforceTodayCard(
                     onClick = { onAction(action) },
                 ) {
                     val label = when {
-                        attendance.requiresQr(action) && attendance.requiresDeviceProof(action) ->
+                        attendance.requiresQr(action) && (attendance.requiresDeviceProof(action) || attendance.requiresPlayIntegrity(action)) ->
                             stringResource(R.string.action_scan_and_confirm, actionLabel)
                         attendance.requiresQr(action) -> stringResource(R.string.action_scan_fresh, actionLabel)
-                        attendance.requiresDeviceProof(action) -> stringResource(R.string.action_confirm_trusted, actionLabel)
+                        attendance.requiresDeviceProof(action) || attendance.requiresPlayIntegrity(action) -> stringResource(R.string.action_confirm_trusted, actionLabel)
                         else -> actionLabel
                     }
                     Text(when {
@@ -1540,17 +1665,24 @@ private fun WorkforceTodayCard(
                         else -> label
                     })
                 }
+                if (attendance.requiresLocation(action)) {
+                    Text(
+                        stringResource(R.string.action_location_disclaimer, actionLabel),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun WorkforceWorkdayState(workday: WorkforceWorkday, elapsedSeconds: Long) {
+private fun WorkforceWorkdayState(workday: WorkforceWorkday, timezone: String, elapsedSeconds: Long) {
     val state = workday.status.localizedLabel()
     Text(stringResource(R.string.workday_status, state))
     Text(stringResource(R.string.workday_worked, elapsedSeconds.asWorkDuration()))
-    Text(stringResource(R.string.workday_started, workday.startedAt))
+    val startedAt = workforceHistoryTimestamp(workday.startedAt, timezone)
+    Text(stringResource(R.string.workday_started, startedAt ?: stringResource(R.string.workday_started_unavailable)))
 }
 
 private fun Long.asWorkDuration(): String {
@@ -1564,15 +1696,24 @@ private data class WorkforceEmployeeErrorCopy(
     val conflict: String,
     val api: String,
     val network: String,
+    val updateRequired: String,
     val locationRequired: String,
     val locationReviewRequired: String,
+    val deviceAttestationRequired: String,
+    val playIntegrityRequired: String,
+    val playIntegrityReviewRequired: String,
 )
 
 private fun Throwable.employeeMessage(copy: WorkforceEmployeeErrorCopy): String = when (this) {
     is WorkforceActionConflictException -> copy.conflict
+    is WorkforcePlayIntegrityUnavailableException -> copy.playIntegrityRequired
     is WorkforceApiException -> when (recoveryCode) {
+        "WORKFORCE_MOBILE_UPDATE_REQUIRED", "WORKFORCE_MOBILE_PLATFORM_UNSUPPORTED" -> copy.updateRequired
         "WORKFORCE_ATTENDANCE_LOCATION_REQUIRED" -> copy.locationRequired
         "WORKFORCE_ATTENDANCE_LOCATION_REVIEW_REQUIRED" -> copy.locationReviewRequired
+        "WORKFORCE_ATTENDANCE_DEVICE_ATTESTATION_REQUIRED" -> copy.deviceAttestationRequired
+        "WORKFORCE_ATTENDANCE_PLAY_INTEGRITY_REVIEW_REQUIRED" -> copy.playIntegrityReviewRequired
+        "WORKFORCE_ATTENDANCE_PLAY_INTEGRITY_REQUIRED", "WORKFORCE_ATTENDANCE_PLAY_INTEGRITY_UNAVAILABLE", "WORKFORCE_ATTENDANCE_PLAY_INTEGRITY_MOBILE_REQUIRED" -> copy.playIntegrityRequired
         else -> copy.api
     }
     else -> copy.network

@@ -9,6 +9,10 @@ val releaseApiBaseUrl = providers.gradleProperty("WORKFORCE_API_BASE_URL")
 val releaseVersionName = providers.gradleProperty("WORKFORCE_VERSION_NAME")
 val releaseVersionCode = providers.gradleProperty("WORKFORCE_VERSION_CODE")
 val releaseBuildSha = providers.gradleProperty("WORKFORCE_BUILD_SHA")
+// This project number is public Android configuration, not a credential. A
+// zero/absent value deliberately leaves Play Integrity unavailable until a
+// tenant explicitly publishes the matching server policy.
+val releasePlayIntegrityCloudProjectNumber = providers.gradleProperty("WORKFORCE_PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER")
 // `applicationId`, `versionName` and `versionCode` belong to defaultConfig in
 // the Android Gradle DSL. A build type can add a suffix, but cannot replace
 // those properties. Keeping the release identity here lets release CI supply
@@ -46,6 +50,7 @@ android {
         // Debug source has no immutable release artifact. It must report
         // unknown rather than inventing a source revision for diagnostics.
         buildConfigField("String", "WORKFORCE_BUILD_SHA", quotedBuildValue("unknown"))
+        buildConfigField("String", "WORKFORCE_PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER", quotedBuildValue("0"))
     }
 
     buildTypes {
@@ -62,6 +67,11 @@ android {
                 "String",
                 "WORKFORCE_BUILD_SHA",
                 quotedBuildValue(releaseBuildSha.orElse("unknown").get()),
+            )
+            buildConfigField(
+                "String",
+                "WORKFORCE_PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER",
+                quotedBuildValue(releasePlayIntegrityCloudProjectNumber.orElse("0").get()),
             )
             isMinifyEnabled = true
             isShrinkResources = true
@@ -126,6 +136,7 @@ dependencies {
     implementation("androidx.room:room-runtime:2.8.4")
     implementation("androidx.room:room-ktx:2.8.4")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
     implementation("androidx.work:work-runtime-ktx:2.11.2")
     // Stable compatibility prompt for a per-use Android Keystore signature.
     // The app receives only success/failure and never biometric material.
@@ -133,6 +144,7 @@ dependencies {
     // Delegated Google Code Scanner opens its own privacy-preserving scanner
     // surface; the Workforce app itself never receives camera frames.
     implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
+    implementation("com.google.android.play:integrity:1.6.0")
 
     val composeBom = platform("androidx.compose:compose-bom:2026.08.00")
     implementation(composeBom)

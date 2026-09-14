@@ -1,9 +1,17 @@
 package com.leaddrive.workforce.android.data
 
 import com.leaddrive.workforce.android.security.WorkforceDeviceKeyManager
-import java.security.SecureRandom
+import com.leaddrive.workforce.android.security.WorkforceEphemeralQrToken
+import com.leaddrive.workforce.android.security.WorkforcePlayIntegrityClient
+import android.util.Base64
+import android.util.Base64.NO_PADDING
+import android.util.Base64.NO_WRAP
+import android.util.Base64.URL_SAFE
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 import java.security.Signature
 import java.time.Instant
+import java.time.format.DateTimeFormatterBuilder
 import java.util.UUID
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -20,6 +28,7 @@ class WorkforceSessionRepository(
     private val outbox: WorkforceEncryptedOutbox,
     private val deviceKeys: WorkforceDeviceKeyManager,
     private val reminderScheduler: WorkforceReminderScheduler,
+    private val playIntegrity: WorkforcePlayIntegrityClient,
 ) {
     private val sessionMutex = Mutex()
 
@@ -45,6 +54,15 @@ class WorkforceSessionRepository(
         }
     }
 
+    /**
+     * Best-effort warm-up after an authenticated server manifest. It is not an
+     * authorization decision: an action still obtains a fresh token and the
+     * server still verifies it. A failure remains fail-closed at submission.
+     */
+    suspend fun warmPlayIntegrityIfRequired(bootstrap: WorkforceBootstrap) {
+        if (bootstrap.attendance.playIntegrityRequiredActions.isNotEmpty()) playIntegrity.warmUp()
+    }
+
     suspend fun loadToday(): WorkforceTodaySnapshot = sessionMutex.withLock {
         val session = secureStore.readSession()
             ?: throw WorkforceApiException("Your Workforce session has ended. Sign in again.", recoverable = false)
@@ -55,7 +73,7 @@ class WorkforceSessionRepository(
         bootstrap: WorkforceBootstrap,
         snapshot: WorkforceTodaySnapshot,
         action: WorkforceWorkdayAction,
-        attendanceQrToken: String? = null,
+        attendanceQrToken: WorkforceEphemeralQrToken? = null,
         attendanceLocationProof: WorkforceLocationProof? = null,
     ): WorkforceTodaySubmission = sessionMutex.withLock {
         bootstrap.requireMutableRelease()
@@ -79,10 +97,30 @@ class WorkforceSessionRepository(
         }
     }
 
-    suspend fun loadHistory(anchorDate: String): WorkforceHistorySnapshot = sessionMutex.withLock {
+    /**
+     * Pairs accepted server history with metadata-only local Work Time recovery
+     * state. It never decrypts an outbox payload or assigns a pending local
+     * action to a day, so a queued/conflicted action cannot look accepted.
+     */
+    suspend fun loadHistoryWithLocalRecovery(anchorDate: String): WorkforceHistoryWithLocalRecovery = sessionMutex.withLock {
         val session = secureStore.readSession()
             ?: throw WorkforceApiException("Your Workforce session has ended. Sign in again.", recoverable = false)
-        api.loadHistory(session, secureStore.installationId(), anchorDate)
+        val history = api.loadHistory(session, secureStore.installationId(), anchorDate)
+        val recoveryItems = outbox.recoveryItems(session)
+        WorkforceHistoryWithLocalRecovery(
+            history = history,
+            localRecovery = WorkforceHistoryLocalRecovery.from(recoveryItems),
+            requestLocalRecovery = WorkforceRequestLocalRecovery.from(recoveryItems),
+        )
+    }
+
+    /**
+     * Reads only local request-delivery metadata. It intentionally has no
+     * request ID, date, reason or operation payload, and is safe to use when
+     * a server-history refresh fails.
+     */
+    suspend fun loadRequestLocalRecovery(): WorkforceRequestLocalRecovery = sessionMutex.withLock {
+        WorkforceRequestLocalRecovery.from(outbox.recoveryItems(requireSession()))
     }
 
     /** Read-only self-service discovery; it is never queued or made into a fact. */
@@ -93,15 +131,15 @@ class WorkforceSessionRepository(
     }
 
     /**
-     * Reconciles only an opt-in generic local reminder from fresh server truth.
-     * It never derives a shift locally or sends a preference/notification fact
-     * to the API.
+     * Reconciles only opt-in generic local reminders from fresh server truth.
+     * It never derives a shift/segment locally or sends a preference or
+     * notification fact to the API.
      */
     fun reminderSettings(snapshot: WorkforceTodaySnapshot): WorkforceReminderSettings {
         val enabled = secureStore.localRemindersEnabled()
         return WorkforceReminderSettings(
             enabled = enabled,
-            state = reminderScheduler.reconcile(enabled, snapshot.workday),
+            state = reminderScheduler.reconcile(enabled, snapshot),
         )
     }
 
@@ -123,11 +161,11 @@ class WorkforceSessionRepository(
         val operation = api.newHrmRequestOperation(draft)
         try {
             api.submitOperation(session, secureStore.installationId(), operation)
-            WorkforceHrmSubmission.ACCEPTED
+            WorkforceHrmSubmission.Accepted
         } catch (error: Throwable) {
             if (!error.isEligibleForOfflineOutbox()) throw error
             outbox.enqueue(session, operation)
-            WorkforceHrmSubmission.QUEUED
+            WorkforceHrmSubmission.Queued(WorkforceRequestLocalRecovery.from(outbox.recoveryItems(session)))
         }
     }
 
@@ -141,11 +179,11 @@ class WorkforceSessionRepository(
         val operation = api.newHrmRequestCancellation(requestId)
         try {
             api.submitOperation(session, secureStore.installationId(), operation)
-            WorkforceHrmSubmission.ACCEPTED
+            WorkforceHrmSubmission.Accepted
         } catch (error: Throwable) {
             if (!error.isEligibleForOfflineOutbox()) throw error
             outbox.enqueue(session, operation)
-            WorkforceHrmSubmission.QUEUED
+            WorkforceHrmSubmission.Queued(WorkforceRequestLocalRecovery.from(outbox.recoveryItems(session)))
         }
     }
 
@@ -155,14 +193,16 @@ class WorkforceSessionRepository(
     }
 
     /**
-     * Creates or resumes proof of possession of a single Android Keystore key.
-     * A server response can be lost after committing the pending enrollment, so
-     * the provisional alias is retained (encrypted) and the same public key is
-     * safely re-submitted for a fresh one-time challenge on the next attempt.
+     * Creates or resumes proof of possession of one Android Keystore key. A
+     * newly created key always receives a server-issued attestation nonce
+     * before `setAttestationChallenge` runs. A lost enrollment response still
+     * retains only the encrypted alias/account boundary for its public-key
+     * proof retry; raw attestation material is never persisted locally.
      */
     suspend fun beginDeviceEnrollment(
         bootstrap: WorkforceBootstrap,
         deviceLabel: String,
+        replacesEnrollmentId: String? = null,
     ): WorkforcePendingDeviceEnrollment = sessionMutex.withLock {
         bootstrap.requireMutableRelease()
         val session = requireSession()
@@ -178,14 +218,14 @@ class WorkforceSessionRepository(
                 // replacement.
                 deviceKeys.delete(existing.keyAlias)
                 secureStore.clearDeviceBinding()
-                reusableOrNewDeviceKeyAlias(bootstrap)
+                reusableOrNewDeviceKeyAlias(bootstrap, session)
             }
             existing != null && existing.matches(bootstrap) ->
                 throw WorkforceApiException(
                     "Device enrollment requires a status refresh before another enrollment can start.",
                     recoverable = false,
                 )
-            else -> reusableOrNewDeviceKeyAlias(bootstrap)
+            else -> reusableOrNewDeviceKeyAlias(bootstrap, session)
         }
         val publicKeySpki = deviceKeys.publicKeyDerBase64(alias)
         val started = api.beginDeviceEnrollment(
@@ -193,6 +233,7 @@ class WorkforceSessionRepository(
             deviceId = secureStore.installationId(),
             deviceLabel = deviceLabel,
             publicKeySpki = publicKeySpki,
+            replacesEnrollmentId = replacesEnrollmentId,
         )
         val binding = WorkforceDeviceBinding(
             keyAlias = alias,
@@ -305,6 +346,22 @@ class WorkforceSessionRepository(
                 enrollments = enrollments,
             )
         }
+        if (
+            lifecycle == WorkforceDeviceBindingLifecycle.REVOKED
+            || lifecycle == WorkforceDeviceBindingLifecycle.REPLACED
+        ) {
+            // Only an authoritative server lifecycle may retire this local
+            // private key. A missing/unknown/pending enrollment deliberately
+            // keeps it intact for recovery, while a confirmed terminal state
+            // cannot leave a now-ineligible attendance key on the device.
+            deviceKeys.delete(binding.keyAlias)
+            secureStore.clearDeviceBinding()
+            return WorkforceDeviceTrustState(
+                lifecycle = lifecycle,
+                enrollmentId = binding.enrollmentId,
+                enrollments = enrollments,
+            )
+        }
         if (lifecycle != binding.lifecycle) secureStore.writeDeviceBinding(binding.copy(lifecycle = lifecycle))
         return WorkforceDeviceTrustState(
             lifecycle = lifecycle,
@@ -341,7 +398,7 @@ class WorkforceSessionRepository(
         bootstrap: WorkforceBootstrap,
         snapshot: WorkforceTodaySnapshot,
         action: WorkforceWorkdayAction,
-        attendanceQrToken: String? = null,
+        attendanceQrToken: WorkforceEphemeralQrToken? = null,
         attendanceLocationProof: WorkforceLocationProof? = null,
     ): WorkforcePreparedDeviceTodayAction = sessionMutex.withLock {
         bootstrap.requireMutableRelease()
@@ -368,12 +425,21 @@ class WorkforceSessionRepository(
         val session = requireSession()
         val binding = secureStore.readDeviceBinding()
             ?: throw WorkforceApiException("The trusted-device binding was cleared. Refresh before continuing.", recoverable = false)
-        if (binding.enrollmentId != prepared.enrollmentId || binding.lifecycle != WorkforceDeviceBindingLifecycle.ACTIVE) {
+        if (!binding.matches(bootstrap)
+            || binding.enrollmentId != prepared.enrollmentId
+            || binding.lifecycle != WorkforceDeviceBindingLifecycle.ACTIVE) {
             throw WorkforceApiException("This device is no longer approved for the prepared action. Refresh before continuing.", recoverable = false)
         }
-        val operation = prepared.operation.copy(
+        var operation = prepared.operation.copy(
             attendanceDeviceProof = WorkforceDeviceProof(prepared.enrollmentId, signature),
         )
+        if (bootstrap.attendance.requiresPlayIntegrity(operation.action)) {
+            operation = operation.copy(
+                attendancePlayIntegrityToken = playIntegrity.tokenFor(
+                    workforcePlayIntegrityRequestHash(bootstrap, binding, operation),
+                ),
+            )
+        }
         try {
             val accepted = api.submitTodayOperation(session, secureStore.installationId(), operation)
             WorkforceTodaySubmission.Accepted(accepted, reminderSettings(accepted))
@@ -423,15 +489,30 @@ class WorkforceSessionRepository(
         }
     }
 
-    private fun reusableOrNewDeviceKeyAlias(bootstrap: WorkforceBootstrap): String {
+    private suspend fun reusableOrNewDeviceKeyAlias(
+        bootstrap: WorkforceBootstrap,
+        session: WorkforceStoredSession,
+    ): String {
         val provisioning = secureStore.readDeviceProvisioning()
         if (provisioning != null && provisioning.matches(bootstrap)) return provisioning.keyAlias
         if (provisioning != null) {
             deviceKeys.delete(provisioning.keyAlias)
             secureStore.clearDeviceProvisioning()
         }
+        val attestation = api.beginDeviceAttestationChallenge(session, secureStore.installationId())
+        val challengeBytes = try {
+            Base64.decode(
+                attestation.challenge,
+                Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP,
+            )
+        } catch (_: IllegalArgumentException) {
+            throw WorkforceApiException("The device attestation challenge was invalid. Refresh and try again.", recoverable = true)
+        }
+        if (challengeBytes.size !in 16..128) {
+            throw WorkforceApiException("The device attestation challenge was invalid. Refresh and try again.", recoverable = true)
+        }
         val alias = "leaddrive.workforce.device.${UUID.randomUUID()}"
-        deviceKeys.createEnrollmentKey(alias, ByteArray(32).also(SecureRandom()::nextBytes))
+        deviceKeys.createEnrollmentKey(alias, challengeBytes)
         secureStore.writeDeviceProvisioning(
             WorkforceDeviceProvisioning(alias, bootstrap.organizationId, bootstrap.agentId),
         )
@@ -447,14 +528,72 @@ sealed interface WorkforceTodaySubmission {
     data object Queued : WorkforceTodaySubmission
 }
 
+data class WorkforceHistoryWithLocalRecovery(
+    val history: WorkforceHistorySnapshot,
+    val localRecovery: WorkforceHistoryLocalRecovery,
+    val requestLocalRecovery: WorkforceRequestLocalRecovery,
+)
+
+/** Counts only known Work Time outbox states; it carries no event/day/payload. */
+data class WorkforceHistoryLocalRecovery(
+    val pendingCount: Int,
+    val conflictCount: Int,
+    val reviewCount: Int,
+) {
+    val hasOutstanding: Boolean get() = pendingCount + conflictCount + reviewCount > 0
+
+    companion object {
+        fun from(items: List<WorkforceOutboxRecoveryItem>): WorkforceHistoryLocalRecovery {
+            val workday = items.filter { it.domain == WorkforceOutboxDomain.WORKDAY }
+            return WorkforceHistoryLocalRecovery(
+                pendingCount = workday.count {
+                    it.state == WorkforceOutboxState.QUEUED || it.state == WorkforceOutboxState.RETRY
+                },
+                conflictCount = workday.count { it.state == WorkforceOutboxState.CONFLICT },
+                reviewCount = workday.count {
+                    it.state == WorkforceOutboxState.EXPIRED
+                        || it.state == WorkforceOutboxState.REQUIRES_REVIEW
+                        || it.state == null
+                },
+            )
+        }
+    }
+}
+
+/** Counts only request-domain outbox state; it carries no request field or payload. */
+data class WorkforceRequestLocalRecovery(
+    val pendingCount: Int,
+    val conflictCount: Int,
+    val reviewCount: Int,
+) {
+    val hasOutstanding: Boolean get() = pendingCount + conflictCount + reviewCount > 0
+
+    companion object {
+        fun from(items: List<WorkforceOutboxRecoveryItem>): WorkforceRequestLocalRecovery {
+            val requests = items.filter { it.domain == WorkforceOutboxDomain.HRM_REQUEST }
+            return WorkforceRequestLocalRecovery(
+                pendingCount = requests.count {
+                    it.state == WorkforceOutboxState.QUEUED || it.state == WorkforceOutboxState.RETRY
+                },
+                conflictCount = requests.count { it.state == WorkforceOutboxState.CONFLICT },
+                reviewCount = requests.count {
+                    it.state == WorkforceOutboxState.EXPIRED
+                        || it.state == WorkforceOutboxState.REQUIRES_REVIEW
+                        || it.state == null
+                },
+            )
+        }
+    }
+}
+
 data class WorkforceReminderSettings(
     val enabled: Boolean,
     val state: WorkforceReminderState,
 )
 
-enum class WorkforceHrmSubmission {
-    ACCEPTED,
-    QUEUED,
+sealed interface WorkforceHrmSubmission {
+    data object Accepted : WorkforceHrmSubmission
+    data class Queued(val localRecovery: WorkforceRequestLocalRecovery) : WorkforceHrmSubmission
 }
 
 data class WorkforcePendingDeviceEnrollment(
@@ -522,6 +661,28 @@ private fun workforceDeviceAttendanceChallenge(
         add("locationMock=${location.isMock}")
     }
 }.joinToString("\n")
+
+/** Must stay byte-for-byte aligned with src/lib/workforce/play-integrity.ts. */
+private fun workforcePlayIntegrityRequestHash(
+    bootstrap: WorkforceBootstrap,
+    binding: WorkforceDeviceBinding,
+    operation: WorkforceWorkdayOperation,
+): String {
+    val identifier = Regex("[A-Za-z0-9_-]{1,100}")
+    require(identifier.matches(bootstrap.organizationId)
+        && identifier.matches(bootstrap.agentId)
+        && identifier.matches(binding.enrollmentId)
+        && identifier.matches(operation.operationId)
+        && identifier.matches(operation.workdayId)) { "The Workforce Play Integrity action identifiers are invalid." }
+    val occurredAt = PLAY_INTEGRITY_UTC.format(Instant.ofEpochMilli(Instant.parse(operation.occurredAt).toEpochMilli()))
+    val canonical = "{\"version\":1,\"organizationId\":\"${bootstrap.organizationId}\",\"agentId\":\"${bootstrap.agentId}\",\"enrollmentId\":\"${binding.enrollmentId}\",\"operationId\":\"${operation.operationId}\",\"workdayId\":\"${operation.workdayId}\",\"action\":\"${operation.action.wireValue}\",\"occurredAt\":\"$occurredAt\",\"schemaVersion\":${WorkforceWorkdayOperation.WORKFORCE_WORKDAY_SCHEMA_VERSION}}"
+    return Base64.encodeToString(
+        MessageDigest.getInstance("SHA-256").digest(canonical.toByteArray(StandardCharsets.UTF_8)),
+        URL_SAFE or NO_PADDING or NO_WRAP,
+    )
+}
+
+private val PLAY_INTEGRITY_UTC = DateTimeFormatterBuilder().appendInstant(3).toFormatter()
 
 private fun Throwable.isEligibleForOfflineOutbox(): Boolean = this is java.io.IOException
     || (this is WorkforceApiException && recoverable && recoveryCode == null)

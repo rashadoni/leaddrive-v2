@@ -7,6 +7,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import com.leaddrive.workforce.android.R
 import java.security.Signature
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -25,12 +26,22 @@ class WorkforceDeviceAuthenticator(private val activity: FragmentActivity) {
             )
         }
         return suspendCancellableCoroutine { continuation ->
+            // Android delivers prompt callbacks through the main executor, but
+            // cancellation can race a terminal callback. A signature must have
+            // exactly one terminal result: a late error must never resume a
+            // completed action or turn a successful signature into a second
+            // employee-visible failure.
+            val terminalCallbackDelivered = AtomicBoolean(false)
+            fun claimTerminalCallback(): Boolean {
+                if (!continuation.isActive) return false
+                return terminalCallbackDelivered.compareAndSet(false, true)
+            }
             val prompt = BiometricPrompt(
                 activity,
                 ContextCompat.getMainExecutor(activity),
                 object : BiometricPrompt.AuthenticationCallback() {
                     override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                        if (!continuation.isActive) return
+                        if (!claimTerminalCallback()) return
                         val unlockedSignature = result.cryptoObject?.signature
                         if (unlockedSignature == null) {
                             continuation.resumeWithException(
@@ -52,11 +63,10 @@ class WorkforceDeviceAuthenticator(private val activity: FragmentActivity) {
                     }
 
                     override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                        if (continuation.isActive) {
-                            continuation.resumeWithException(
-                                WorkforceLocalAuthenticationException("Workforce device confirmation was not completed."),
-                            )
-                        }
+                        if (!claimTerminalCallback()) return
+                        continuation.resumeWithException(
+                            WorkforceLocalAuthenticationException("Workforce device confirmation was not completed."),
+                        )
                     }
 
                     override fun onAuthenticationFailed() {

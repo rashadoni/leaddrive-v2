@@ -52,6 +52,7 @@ type MobileAttendanceManifest = {
   qrRequiredActions: WorkforceAttendanceAction[]
   deviceTrustRequiredActions: WorkforceAttendanceAction[]
   biometricRequiredActions: WorkforceAttendanceAction[]
+  playIntegrityRequiredActions: WorkforceAttendanceAction[]
 }
 
 function unconfiguredAttendanceManifest(input: {
@@ -67,6 +68,7 @@ function unconfiguredAttendanceManifest(input: {
     qrRequiredActions: [],
     deviceTrustRequiredActions: [],
     biometricRequiredActions: [],
+    playIntegrityRequiredActions: [],
   }
 }
 
@@ -128,6 +130,7 @@ async function mobileAttendanceManifest(input: {
       qrRequiredActions: attendance.qrRequiredActions,
       deviceTrustRequiredActions: attendance.deviceTrustRequiredActions,
       biometricRequiredActions: attendance.biometricRequiredActions,
+      playIntegrityRequiredActions: attendance.playIntegrityRequiredActions,
     }
   } catch {
     return { ...disabled, status: "INVALID", configVersion }

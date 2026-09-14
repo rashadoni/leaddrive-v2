@@ -46,6 +46,8 @@ export type MtmWorkdayAttendanceEvidence = {
     provider: "FUSED" | "GPS" | "NETWORK" | "PASSIVE" | "UNKNOWN"
     isMock: boolean
   }
+  /** Encrypted Standard API token; validate in-transaction and never persist it. */
+  playIntegrityToken?: string
 }
 
 export type MtmWorkdayEventInput = {
@@ -63,7 +65,7 @@ export type MtmWorkdayEventInput = {
   queuedAt: Date | null
   /** Server receipt is assigned by the parser, never accepted from the client. */
   serverReceivedAt: Date
-  /** `1` is legacy, `2` supplies provenance, `3` binds a segment, `4` binds location metadata. */
+  /** `1` is legacy, `2` supplies provenance, `3` binds a segment, `4` binds location metadata, `5` binds a Play Integrity token fingerprint. */
   schemaVersion: number
   /** v3 optional segment context, bound into the request digest when present. */
   segmentId?: string | null
@@ -137,7 +139,7 @@ const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000
 export const WORKFORCE_WORKDAY_OFFLINE_HORIZON_MS = 7 * 24 * 60 * 60 * 1000
 export const WORKFORCE_WORKDAY_LEGACY_SCHEMA_VERSION = 1
 const WORKFORCE_WORKDAY_SEGMENT_SCHEMA_VERSION = 3
-export const WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION = 4
+export const WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION = 5
 /**
  * Additive client-compatibility contract.  Keep this separate from the
  * parser's human-readable error: legacy adapters consume that text, while
@@ -334,7 +336,7 @@ function attendanceReviewResult(value: {
 }
 
 function validSchemaVersion(value: unknown): value is number {
-  return value === WORKFORCE_WORKDAY_LEGACY_SCHEMA_VERSION || value === 2 || value === 3 || value === WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION
+  return value === WORKFORCE_WORKDAY_LEGACY_SCHEMA_VERSION || value === 2 || value === 3 || value === 4 || value === WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION
 }
 
 function parseAttendanceEvidence(value: unknown): {
@@ -388,15 +390,28 @@ function parseAttendanceEvidence(value: unknown): {
     }
     parsedLocation = { capturedAt, provider, isMock: value.isMock }
   }
+  const playIntegrity = attendance.playIntegrity
+  if (playIntegrity != null && (!playIntegrity || typeof playIntegrity !== "object" || Array.isArray(playIntegrity))) {
+    return { evidence: undefined, error: "attendance.playIntegrity must be an object" }
+  }
+  let parsedPlayIntegrityToken: string | undefined
+  if (playIntegrity) {
+    const token = (playIntegrity as Record<string, unknown>).token
+    if (typeof token !== "string" || !token.trim() || token.length > 20_000) {
+      return { evidence: undefined, error: "attendance.playIntegrity.token must be a non-empty string at most 20000 characters" }
+    }
+    parsedPlayIntegrityToken = token.trim()
+  }
   const parsedQrToken = typeof qrToken === "string" ? qrToken.trim() : undefined
-  if (!parsedQrToken && !parsedDevice && !parsedLocation) {
-    return { evidence: undefined, error: "attendance must include QR, device, or location proof" }
+  if (!parsedQrToken && !parsedDevice && !parsedLocation && !parsedPlayIntegrityToken) {
+    return { evidence: undefined, error: "attendance must include QR, device, location, or Play Integrity proof" }
   }
   return {
     evidence: {
       ...(parsedQrToken ? { qrToken: parsedQrToken } : {}),
       ...(parsedDevice ? { device: parsedDevice } : {}),
       ...(parsedLocation ? { location: parsedLocation } : {}),
+      ...(parsedPlayIntegrityToken ? { playIntegrityToken: parsedPlayIntegrityToken } : {}),
     },
     error: null,
   }
@@ -501,6 +516,9 @@ export function parseMtmWorkdayEvent(
   if (attendance.evidence?.location && schemaVersion < 4) {
     return { input: null, error: "attendance.location requires Workforce workday schemaVersion 4" }
   }
+  if (attendance.evidence?.playIntegrityToken && schemaVersion < 5) {
+    return { input: null, error: "attendance.playIntegrity requires Workforce workday schemaVersion 5" }
+  }
   if (attendance.evidence?.location && (
     value.latitude == null || value.longitude == null || value.accuracy == null
   )) {
@@ -540,7 +558,8 @@ export function parseMtmWorkdayEvent(
  * this function.
  *
  * v1/v2 payloads retain their historical digest shape. v3 adds a segment;
- * v4 additionally binds location-source metadata without changing old facts.
+ * v4 additionally binds location-source metadata and v5 binds a non-reversible
+ * Play Integrity token fingerprint without changing old facts.
  */
 export function mtmWorkdayRequestHash(scope: WorkdayScope, input: MtmWorkdayEventInput): string {
   const qrFingerprint = input.attendance?.qrToken
@@ -549,10 +568,14 @@ export function mtmWorkdayRequestHash(scope: WorkdayScope, input: MtmWorkdayEven
   const deviceProofFingerprint = input.attendance?.device
     ? createHash("sha256").update(input.attendance.device.signature).digest("hex")
     : null
+  const playIntegrityFingerprint = input.attendance?.playIntegrityToken
+    ? createHash("sha256").update(input.attendance.playIntegrityToken).digest("hex")
+    : null
   const includesSegment = input.schemaVersion >= 3
   const includesLocation = input.schemaVersion >= 4
+  const includesPlayIntegrity = input.schemaVersion >= 5
   return createHash("sha256").update(JSON.stringify({
-    version: includesLocation ? 4 : includesSegment ? 3 : 2,
+    version: includesPlayIntegrity ? 5 : includesLocation ? 4 : includesSegment ? 3 : 2,
     organizationId: scope.organizationId,
     agentId: scope.agentId,
     clientEventId: input.clientEventId,
@@ -573,6 +596,7 @@ export function mtmWorkdayRequestHash(scope: WorkdayScope, input: MtmWorkdayEven
     locationCapturedAt: includesLocation ? input.attendance?.location?.capturedAt.toISOString() ?? null : null,
     locationProvider: includesLocation ? input.attendance?.location?.provider ?? null : null,
     locationMock: includesLocation ? input.attendance?.location?.isMock ?? null : null,
+    playIntegrityFingerprint: includesPlayIntegrity ? playIntegrityFingerprint : null,
   })).digest("hex")
 }
 
