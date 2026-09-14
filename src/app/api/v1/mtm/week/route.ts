@@ -25,6 +25,8 @@ import {
   type OperationalVisitEvidence,
 } from "@/lib/mtm/operational-week"
 import { buildOperationalTaskQueue } from "@/lib/mtm/operational-task-queue"
+import { groupMtmWeekAlerts, projectMtmWeekAlert, type MtmWeekAlert } from "@/lib/mtm/week-alert-groups"
+import { mtmManagerWorkdayState } from "@/lib/mtm/workday-open-anomaly"
 
 const PENDING_PLAN_CHANGE_STATUSES = ["SUBMITTED", "IN_REVIEW", "NEEDS_INFO"] as const
 const VISIBLE_PLAN_CHANGE_STATUSES = [
@@ -35,6 +37,8 @@ const VISIBLE_PLAN_CHANGE_STATUSES = [
 ] as const
 const ACTIVE_TASK_STATUSES = ["PENDING", "IN_PROGRESS", "OVERDUE"] as const
 const WEEK_RATE_LIMIT = { maxRequests: 30, windowMs: 60_000 }
+/** Unresolved alerts in the window. 18 a day is real (prod 2026-09-14); 200 is a week of that. */
+const WEEK_ALERT_LIMIT = 200
 
 const operationalTaskSelect = {
   id: true,
@@ -172,8 +176,34 @@ function routeDateKey(value: Date): string {
   return value.toISOString().slice(0, 10)
 }
 
+type VisitEvidenceCounts = {
+  notes?: string | null
+  resultNotes?: string | null
+  _count?: { photos?: number } | null
+  actionResults?: Array<{ actionKey: string }> | null
+}
+
+/**
+ * What a manager can see about a visit without opening it: how long, how many
+ * photos, whether it was signed and whether a note exists. Counts only — the
+ * note text stays on the visit page (prod audit 2026-09-14, item 6).
+ */
+function visitEvidence(visit: OperationalVisitEvidence & VisitEvidenceCounts) {
+  const actions = Array.isArray(visit.actionResults) ? visit.actionResults : []
+  const durationMinutes = visit.checkOutAt
+    ? Math.max(0, Math.round((visit.checkOutAt.getTime() - visit.checkInAt.getTime()) / 60_000))
+    : null
+  return {
+    durationMinutes,
+    photoCount: typeof visit._count?.photos === "number" ? visit._count.photos : 0,
+    hasSignature: actions.some((action) => action.actionKey === "SIGNATURE"),
+    hasNote: actions.some((action) => action.actionKey === "VISIT_NOTE")
+      || Boolean(visit.notes?.trim() || visit.resultNotes?.trim()),
+  }
+}
+
 function sourceVisit(
-  visit: OperationalVisitEvidence & { notes?: string | null; resultNotes?: string | null },
+  visit: OperationalVisitEvidence & VisitEvidenceCounts,
   match: string,
 ) {
   return {
@@ -184,6 +214,7 @@ function sourceVisit(
     checkInAt: visit.checkInAt,
     checkOutAt: visit.checkOutAt,
     reason: visit.resultNotes ?? visit.notes ?? null,
+    ...visitEvidence(visit),
   }
 }
 
@@ -202,7 +233,7 @@ function publicVisit(visit: {
   customer: unknown
   contact: unknown
   attribution: "PRIMARY" | "PARTICIPANT"
-}) {
+} & VisitEvidenceCounts) {
   return {
     id: visit.id,
     customerId: visit.customerId,
@@ -218,6 +249,7 @@ function publicVisit(visit: {
     customer: visit.customer,
     contact: visit.contact,
     attribution: visit.attribution,
+    ...visitEvidence(visit),
   }
 }
 
@@ -360,6 +392,7 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
     tasksRaw,
     activeTasksRaw,
     planChangesRaw,
+    alertsRaw,
   ] = await Promise.all([
     loadFilterAgents(auth.orgId, actor, regionId, teamId),
     prisma.mtmRoute.findMany({
@@ -461,6 +494,11 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
           where: { agentId: selectedAgent.id, role: { not: "OBSERVER" } },
           orderBy: [{ joinedAt: "asc" }, { id: "asc" }],
           select: { id: true, agentId: true, role: true, joinedAt: true, leftAt: true },
+        },
+        _count: { select: { photos: true } },
+        actionResults: {
+          where: { status: "COMPLETED", actionKey: { in: ["SIGNATURE", "VISIT_NOTE"] } },
+          select: { actionKey: true },
         },
       },
     }),
@@ -628,6 +666,28 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
         },
       },
     }),
+    // Prod 2026-09-14: 18 unresolved OUT_OF_ZONE alerts for the selected agent
+    // that day, and «Diqqət tələb edir» showed none. Same selected-agent scope
+    // as every other fact above; resolved rows are history, not attention.
+    prisma.mtmAlert.findMany({
+      where: {
+        organizationId: auth.orgId,
+        agentId: selectedAgent.id,
+        isResolved: false,
+        createdAt: { gte: window.activityStart, lt: window.activityEnd },
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+      take: WEEK_ALERT_LIMIT + 1,
+      select: {
+        id: true,
+        type: true,
+        category: true,
+        title: true,
+        description: true,
+        metadata: true,
+        createdAt: true,
+      },
+    }),
   ])
 
   // Preserve the fail-closed quality boundary even if legacy data or a mocked
@@ -651,6 +711,13 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
   const activeTasksTruncated = activeTasksRaw.length > OPERATIONAL_WEEK_LIMITS.tasks
   const planChangesCapped = planChangesRaw.slice(0, OPERATIONAL_WEEK_LIMITS.planChanges)
   const planChangesTruncated = planChangesRaw.length > OPERATIONAL_WEEK_LIMITS.planChanges
+  const alertRows = Array.isArray(alertsRaw) ? alertsRaw : []
+  const alertsTruncated = alertRows.length > WEEK_ALERT_LIMIT
+  const alerts = alertRows
+    .slice(0, WEEK_ALERT_LIMIT)
+    .map((row) => projectMtmWeekAlert(row, timezone))
+    .filter((alert): alert is MtmWeekAlert => Boolean(alert))
+  const alertGroups = groupMtmWeekAlerts(alerts, timezone)
 
   const routes = routesCapped.flatMap((route) => {
     if (route.publishedVersion === null) return []
@@ -684,6 +751,7 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
   if (tasksTruncated) truncatedSources.add("TASKS")
   if (activeTasksTruncated) truncatedSources.add("ACTIVE_TASKS")
   if (planChangesTruncated) truncatedSources.add("PLAN_CHANGES")
+  if (alertsTruncated) truncatedSources.add("ALERTS")
 
   let plannedStops = 0
   let actualStops = 0
@@ -849,6 +917,7 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
       routes: dayRoutes,
       unplannedVisits: dayUnplannedVisits.map(publicVisit),
       tasks: dayTasks,
+      alertGroups: alertGroups.filter((group) => group.date === dateKey),
     }
   })
 
@@ -970,6 +1039,7 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
       tasks: tasks.length,
       activeTasks: activeTasks.length,
       planChanges: planChanges.length,
+      alerts: alerts.length,
     },
   }
   const selectedAgentData = {
@@ -995,6 +1065,17 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
     requiresPriorDayClosure: activeWorkdayIsPriorDay,
     outsideSelectedWindow: activeWorkdayDate < window.start || activeWorkdayDate >= window.endExclusive,
   } : null
+  // One manager-facing sentence for the shift (prod 2026-09-14): a row open
+  // since 11 Sep is "left open (3 days)", not "not started today" plus an
+  // instruction to close it that only the agent can follow.
+  const managerWorkdayState = canReadWorkforce
+    ? mtmManagerWorkdayState({
+        today: workdayByDay.get(today) ?? null,
+        active: activeWorkdayRaw ? { ...activeWorkdayRaw, workDate: activeWorkdayDate } : null,
+        now: generatedAt,
+        todayKey: today,
+      })
+    : null
   const snapshotSource = {
     protocolVersion: 1,
     period: {
@@ -1010,10 +1091,15 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
     },
     selectedAgent: selectedAgentData,
     days,
-    queues: { planChanges, pendingPlanChanges, activeTasks },
+    queues: {
+      planChanges,
+      pendingPlanChanges,
+      activeTasks,
+      alerts: { items: alerts, groups: alertGroups, truncated: alertsTruncated },
+    },
     coverage,
     gps,
-    workdayContext: { activeWorkday: activeWorkdayData },
+    workdayContext: { activeWorkday: activeWorkdayData, managerState: managerWorkdayState },
     completeness,
   }
   // Source identity deliberately excludes projections that advance with the

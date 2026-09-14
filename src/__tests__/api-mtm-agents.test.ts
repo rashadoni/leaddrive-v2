@@ -938,8 +938,13 @@ describe("GET /api/v1/mtm/dashboard", () => {
     expect(json.data).toHaveProperty("totalAgents")
     expect(json.data).toHaveProperty("todayVisits")
     expect(json.data).toHaveProperty("totalCustomers")
-    expect(json.data).toHaveProperty("recentVisits")
     expect(json.data).toHaveProperty("avgVisitDuration")
+    // Prod audit 2026-09-14: these four carried labels the numbers did not
+    // mean (avg visit as "route time", round(avg×visits/60) as "work time",
+    // all-time open warnings as "off route", visits without dates).
+    for (const removed of ["avgRouteDuration", "totalWorkTime", "offRouteAlerts", "recentVisits"]) {
+      expect(json.data).not.toHaveProperty(removed)
+    }
     expect(json.data.timezone).toBe("Asia/Baku")
     expect(prisma.mtmImportJob.count).toHaveBeenCalledWith({
       where: { organizationId: ORG, status: { in: ["FAILED", "COMPLETED_WITH_ERRORS"] } },
@@ -1020,7 +1025,7 @@ describe("GET /api/v1/mtm/dashboard", () => {
       expect.objectContaining({ id: "agent-in-scope", name: "Scoped Agent" }),
     ])
     expect(json.data).toMatchObject({ recentGpsAgents: 1, gpsFreshnessThresholdSeconds: 300, gpsRosterTruncated: false })
-    expect(json.data.recentVisits).toEqual([])
+    expect(json.data).not.toHaveProperty("recentVisits")
     expect(JSON.stringify(json.data)).not.toContain("Hidden Agent")
     expect(JSON.stringify(json.data)).not.toContain("Hidden Customer")
     expect(prisma.mtmImportJob.count).not.toHaveBeenCalled()
