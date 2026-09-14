@@ -83,7 +83,7 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
       orderBy: { createdAt: "asc" },
       take: BULK_RESOLVE_CAP,
     })
-    const matchedIds = matched.map((row) => row.id)
+    const matchedIds = matched.map((row: { id: string }) => row.id)
     if (matchedIds.length === 0) return NextResponse.json({ success: true, data: { resolved: 0 } })
 
     const updated = await prisma.mtmAlert.updateMany({

@@ -53,7 +53,8 @@ export default function MtmActivityPage() {
   const [type, setType] = useState("")
   const [violations, setViolations] = useState(false)
 
-  const headers = orgId ? { "x-organization-id": String(orgId) } : ({} as Record<string, string>)
+  const headers: Record<string, string> = {}
+  if (orgId) headers["x-organization-id"] = String(orgId)
 
   // Agent list for the filter dropdown (once per org).
   useEffect(() => {

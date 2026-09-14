@@ -98,8 +98,8 @@ async function activitySubjects(orgId: string, logs: ActivityLog[]) {
       ? prisma.mtmVisit.findMany({ where: { organizationId: orgId, id: { in: [...visitIds] } }, select: { id: true, customer: { select: { name: true } } } })
       : Promise.resolve([]),
   ])
-  const customerName = new Map((customers ?? []).map((c) => [c.id, c.name] as const))
-  const visitCustomer = new Map((visits ?? []).map((v) => [v.id, v.customer?.name ?? null] as const))
+  const customerName = new Map((customers ?? []).map((c: { id: string; name: string }) => [c.id, c.name] as const))
+  const visitCustomer = new Map((visits ?? []).map((v: { id: string; customer: { name: string } | null }) => [v.id, v.customer?.name ?? null] as const))
 
   return logs.map((log) => {
     const data = jsonRecord(log.newData)
@@ -195,7 +195,7 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
       success: true,
       data: {
         kpi: { totalActivities, totalCheckIns, totalCheckOuts, totalPhotos, totalViolations },
-        logs: logs.map((log, index) => ({ ...log, subject: subjects[index] })),
+        logs: logs.map((log: (typeof logs)[number], index: number) => ({ ...log, subject: subjects[index] })),
         timezone,
         total,
         page,

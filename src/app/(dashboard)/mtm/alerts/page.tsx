@@ -101,7 +101,11 @@ export default function MtmAlertsPage() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteItem, setDeleteItem] = useState<MtmAlertDayItem | null>(null)
 
-  const headers = useMemo<Record<string, string>>(() => (orgId ? { "x-organization-id": String(orgId) } : {}), [orgId])
+  const headers = useMemo(() => {
+    const value: Record<string, string> = {}
+    if (orgId) value["x-organization-id"] = String(orgId)
+    return value
+  }, [orgId])
 
   const setFilter = (key: string, value: string) => {
     const next = new URLSearchParams(searchParams.toString())
