@@ -22,17 +22,12 @@ export const POST = withMobileRls(async (_req: NextRequest, auth) => {
     principalId: auth.agentId,
   })
   if (!rate.allowed) {
-    const unavailable = rate.unavailable
     return NextResponse.json({
-      error: unavailable
-        ? "Attendance enrollment protection is temporarily unavailable"
-        : "Attendance device enrollment rate limit exceeded",
-      code: unavailable
-        ? "WORKFORCE_ATTENDANCE_RATE_LIMIT_UNAVAILABLE"
-        : "WORKFORCE_ATTENDANCE_RATE_LIMITED",
+      error: "Attendance device enrollment rate limit exceeded",
+      code: "WORKFORCE_ATTENDANCE_RATE_LIMITED",
       retryAfterSeconds: rate.retryAfterSeconds,
     }, {
-      status: unavailable ? 503 : 429,
+      status: 429,
       headers: { "Retry-After": String(rate.retryAfterSeconds), "cache-control": "no-store" },
     })
   }

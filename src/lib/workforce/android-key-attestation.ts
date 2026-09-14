@@ -352,6 +352,12 @@ export function verifyWorkforceAndroidKeyAttestation(input: {
   ) {
     return { status: "REJECTED", code: "WORKFORCE_ANDROID_ATTESTATION_CLAIMS_INVALID" }
   }
+  // `validClaims` rejects software-backed attestations. Repeat the discriminant
+  // check here so the accepted-result type remains aligned with that security
+  // boundary even if the validation implementation changes later.
+  if (claims.attestationSecurityLevel === "SOFTWARE") {
+    return { status: "REJECTED", code: "WORKFORCE_ANDROID_ATTESTATION_CLAIMS_INVALID" }
+  }
   return {
     status: "ACCEPTED",
     securityLevel: claims.attestationSecurityLevel,
