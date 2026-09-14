@@ -93,20 +93,24 @@ describe("SWM-10 GPS history presentation contract", () => {
     expect(map).toContain("...fullActualPath")
   })
 
-  it("judges each visit against the customer's geofence instead of calling every visit confirmed (audit 2026-09-14)", () => {
-    expect(panel).toContain("mtmVisitGeofenceState({")
-    expect(panel).toContain('data-geofence-state={zone.state}')
+  it("judges each visit with the visit review's rule instead of calling every visit confirmed (audit 2026-09-14)", () => {
+    expect(panel).toContain("visitPlaceSummary(visit, data.policy.geofenceRadiusMeters)")
+    expect(panel).toContain("<VisitPlaceBadge place={place} showDistanceDetail />")
     expect(panel).not.toContain('<CheckCircle2 className="h-3.5 w-3.5" />{t("confirmed")}</span>')
     for (const messages of locales) {
-      const history = messages.mtmMap.history
-      expect(history.geofence).toMatchObject({
-        inside: expect.any(String),
-        outside: expect.any(String),
-        noVisitGps: expect.any(String),
-        noCustomerCoordinates: expect.any(String),
-      })
-      expect(history.geofence.distance).toContain("{distance}")
-      expect(history.geofence.distance).toContain("{radius}")
+      expect(messages.mtmMap.history.geofence).toBeUndefined()
+      expect(messages.mtmPlaceCheck.distanceDetail).toContain("{radius}")
+    }
+  })
+
+  it("says the workday is open since an earlier day instead of «no workday» (audit 2026-09-14)", () => {
+    expect(panel).toContain("data.carriedOverWorkday ? (")
+    expect(panel).toContain('t("workdayOpenSince", {')
+    expect(panel).toContain('t("workdayCarriedClosed", {')
+    for (const messages of locales) {
+      expect(messages.mtmMap.history.workdayOpenSince).toContain("{since}")
+      expect(messages.mtmMap.history.workdayCarriedClosed).toContain("{since}")
+      expect(messages.mtmMap.history.workdayCarriedClosed).toContain("{until}")
     }
   })
 

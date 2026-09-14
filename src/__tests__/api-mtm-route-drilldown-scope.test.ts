@@ -141,7 +141,7 @@ describe("MTM route exact drilldown scope", () => {
 
     expect(response.status).toBe(200)
     const [own, secret] = json.data.points[0].visits
-    expect(own).toMatchObject({ id: "visit-own", checkInLat: 40.47, checkInLng: 49.86, checkOutLat: 40.471, checkOutLng: 49.861 })
+    expect(own).toMatchObject({ id: "visit-own", checkInLat: 40.47, checkInLng: 49.86, checkOutLat: 40.471, checkOutLng: 49.861, locationHidden: false })
     expect(secret).toMatchObject({
       id: "visit-secret",
       checkInAt: "2026-04-10T09:00:00.000Z",
@@ -150,6 +150,8 @@ describe("MTM route exact drilldown scope", () => {
       checkInLng: null,
       checkOutLat: null,
       checkOutLng: null,
+      // Redaction is explicit, so the page does not read it as "no GPS" (review of #208).
+      locationHidden: true,
     })
     expect(json.data.points[0].geofenceRadiusMeters).toBe(150)
     expect(JSON.stringify(json.data.points[0].visits)).not.toContain("agent-secret-participant")

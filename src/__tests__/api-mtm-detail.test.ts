@@ -163,11 +163,14 @@ describe("GET /api/v1/mtm/routes/[id]", () => {
       checkInLng: 49.86,
       checkOutLat: 40.47,
       checkOutLng: 49.86,
+      // The reader's own visit: coordinates shown, not redacted.
+      locationHidden: false,
       photoCount: 3,
       hasSignature: true,
       hasNote: true,
     }])
     expect(JSON.stringify(json.data.points[0].visits)).not.toContain("private remark")
+    expect(JSON.stringify(json.data.points[0].visits)).not.toContain("sig-1")
   })
 })
 

@@ -28,7 +28,7 @@ import type { MtmRouteAssignment, MtmRoutePoint, MtmRouteRecord } from "@/compon
 import {
   Route, MapPin, User, CheckCircle2, Plus, Pencil, Trash2, Search, Send,
   ArrowLeft, List, CalendarDays, Clock, Navigation, ChevronDown, Eye, X, Columns3, ClipboardCheck, Users, FileSpreadsheet, TableProperties,
-  Camera, PenLine, StickyNote, ArrowDownUp, AlertTriangle,
+  Camera, PenLine, StickyNote, ArrowDownUp,
 } from "lucide-react"
 import { mtmRouteReturnTarget, type MtmRouteAssignmentDirection } from "@/lib/mtm/route-links"
 import { fetchMtmRoutesInRange } from "@/lib/mtm/route-range-client"
@@ -44,7 +44,8 @@ import {
 import { formatDate, formatTime } from "@/lib/format-date"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
 import { mtmDurationParts, summarizeMtmRouteExecution } from "@/lib/mtm/route-point-execution"
-import { formatMtmDistance, mtmVisitGeofenceState } from "@/lib/mtm/visit-geofence-state"
+import { visitPlaceSummary } from "@/lib/mtm/visit-place-check"
+import { VisitPlaceBadge } from "@/components/mtm/visit-place-badge"
 
 const MtmRouteMap = dynamic(() => import("@/components/mtm/route-map"), { ssr: false })
 
@@ -135,8 +136,8 @@ export default function MtmRoutesPage() {
   const searchParams = useSearchParams()
   const t = useTranslations("mtmRoutesPage")
   const statusT = useTranslations("mtmStatus")
-  const tUnits = useTranslations("mtmMap.distanceUnits")
   const locale = useLocale()
+  const tPlace = useTranslations("mtmPlaceCheck")
   const tf = useTranslations("mtmForms")
   const [routes, setRoutes] = useState<MtmRouteRecord[]>([])
   // The server's count for the same filter. The chip read «Hamısı (200)» —
@@ -988,15 +989,14 @@ export default function MtmRoutesPage() {
                 // zone or what was collected.
                 const fact = selectedRouteExecution.points.find((item) => item.pointId === p.id)
                 const visit = fact?.visit ?? null
-                const zone = visit ? mtmVisitGeofenceState({
-                  checkInLat: visit.checkInLat,
-                  checkInLng: visit.checkInLng,
-                  checkOutLat: visit.checkOutLat,
-                  checkOutLng: visit.checkOutLng,
-                  customerLatitude: p.customer?.latitude,
-                  customerLongitude: p.customer?.longitude,
-                  customerGeofenceRadius: p.geofenceRadiusMeters ?? p.customer?.geofenceRadius,
-                  defaultGeofenceRadius: 100,
+                // The rule of the visit review (visitPlaceSummary): the detail
+                // payload already resolved the customer's radius or the
+                // organization default into geofenceRadiusMeters.
+                // A co-participant outside the reader's scope comes with its
+                // coordinates withheld: that is not "no GPS", so no verdict.
+                const place = visit && !visit.locationHidden ? visitPlaceSummary({
+                  ...visit,
+                  customer: { latitude: p.customer?.latitude, longitude: p.customer?.longitude, geofenceRadius: p.geofenceRadiusMeters ?? p.customer?.geofenceRadius },
                 }) : null
                 return (
                 <div key={p.id} data-testid="mtm-route-detail-stop" className="border-b border-zinc-200 py-2 text-xs last:border-b-0 dark:border-zinc-700">
@@ -1039,11 +1039,9 @@ export default function MtmRoutesPage() {
                     {fact?.outOfOrder && fact.actualSequence !== null ? (
                       <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-950/30 dark:text-amber-300"><ArrowDownUp className="h-3 w-3" />{t("stopFact.outOfOrder", { actual: fact.actualSequence })}</span>
                     ) : null}
-                    {zone?.state === "OUTSIDE" && zone.distanceMeters !== null ? (
-                      <span className="inline-flex items-center gap-1 rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-950/30 dark:text-red-300"><AlertTriangle className="h-3 w-3" />{t("stopFact.outOfZone", { distance: formatMtmDistance(zone.distanceMeters, locale, (unit, value) => tUnits(unit, { value })) })}</span>
-                    ) : zone?.state === "INSIDE" ? (
-                      <span className="text-[10px] text-green-700 dark:text-green-300">{t("stopFact.inZone")}</span>
-                    ) : null}
+                    {visit?.locationHidden ? (
+                      <span data-place-verdict="location_hidden" className="text-[10px] text-muted-foreground">{tPlace("locationHidden")}</span>
+                    ) : place ? <VisitPlaceBadge place={place} size="xs" /> : null}
                     {visit?.photoCount ? (
                       <span className="inline-flex items-center gap-1"><Camera className="h-3 w-3" />{t("stopFact.photos", { count: visit.photoCount })}</span>
                     ) : null}

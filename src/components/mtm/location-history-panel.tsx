@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
 import { dateInputValueInTimezone, formatInTimezone } from "@/lib/timezone"
 import { formatTime } from "@/lib/format-date"
-import { formatMtmDistance, mtmVisitGeofenceState } from "@/lib/mtm/visit-geofence-state"
+import { visitPlaceSummary } from "@/lib/mtm/visit-place-check"
+import { VisitPlaceBadge } from "@/components/mtm/visit-place-badge"
 
 const LocationHistoryMap = dynamic(() => import("@/components/mtm/location-history-map"), { ssr: false })
 
@@ -67,6 +68,17 @@ type HistoryData = {
     startLongitude: number | null
     endLatitude: number | null
     endLongitude: number | null
+  } | null
+  /**
+   * No workday dated on the selected day, but one started earlier covers it
+   * (open overnight, or closed during this day). Older responses omit it.
+   */
+  carriedOverWorkday?: {
+    id: string
+    status: "STARTED" | "PAUSED" | "COMPLETED"
+    workDate: string
+    startedAt: string
+    completedAt: string | null
   } | null
   points: Array<{
     id: string
@@ -214,8 +226,6 @@ function distanceLabel(meters: number | null, unavailable: string): string {
 export function LocationHistoryPanel() {
   const locale = useLocale()
   const t = useTranslations("mtmMap.history")
-  const tUnits = useTranslations("mtmMap.distanceUnits")
-  const distanceText = (meters: number) => formatMtmDistance(meters, locale, (unit, value) => tUnits(unit, { value }))
   const [agents, setAgents] = useState<RosterAgent[]>([])
   const [timezone, setTimezone] = useState("Asia/Baku")
   const [agentId, setAgentId] = useState("")
@@ -710,6 +720,19 @@ export function LocationHistoryPanel() {
                     <dt className="text-muted-foreground">{t("workdayStart")}</dt><dd>{formatMoment(data.workday.startedAt)}</dd>
                     <dt className="text-muted-foreground">{t("workdayEnd")}</dt><dd>{data.workday.completedAt ? formatMoment(data.workday.completedAt) : "—"}</dd>
                   </dl>
+                ) : data.carriedOverWorkday ? (
+                  // Audit 2026-09-14: the history said "no workday" while the live
+                  // map showed the same workday active since the previous evening.
+                  <p data-testid="mtm-history-carried-workday" className="text-xs">
+                    {data.carriedOverWorkday.completedAt
+                      ? t("workdayCarriedClosed", {
+                        since: formatMoment(data.carriedOverWorkday.startedAt, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
+                        until: formatMoment(data.carriedOverWorkday.completedAt, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
+                      })
+                      : t("workdayOpenSince", {
+                        since: formatMoment(data.carriedOverWorkday.startedAt, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
+                      })}
+                  </p>
                 ) : <p className="text-xs text-muted-foreground">{t("noWorkday")}</p>}
               </section> : null}
 
@@ -812,37 +835,15 @@ export function LocationHistoryPanel() {
                 <tbody className="divide-y">
                   {!data.visits.length && <tr><td colSpan={4} className="px-4 py-6 text-center text-xs text-muted-foreground">{t("noVisits")}</td></tr>}
                   {data.visits.map((visit) => {
-                    const zone = mtmVisitGeofenceState({
-                      checkInLat: visit.checkInLat,
-                      checkInLng: visit.checkInLng,
-                      checkOutLat: visit.checkOutLat,
-                      checkOutLng: visit.checkOutLng,
-                      customerLatitude: visit.customer.latitude,
-                      customerLongitude: visit.customer.longitude,
-                      customerGeofenceRadius: visit.customer.geofenceRadius,
-                      defaultGeofenceRadius: data.policy.geofenceRadiusMeters ?? 100,
-                    })
+                    // One rule with the visit review and the route detail.
+                    const place = visitPlaceSummary(visit, data.policy.geofenceRadiusMeters)
                     return (
                     <tr key={visit.id}>
                       <td className="px-4 py-2.5"><div className="font-medium">{visit.customer.name}</div><div className="text-xs text-muted-foreground">{visit.customer.address || "—"}</div></td>
                       <td className="px-4 py-2.5 tabular-nums">{formatMoment(visit.checkInAt)}{visit.checkOutAt ? ` – ${formatMoment(visit.checkOutAt, { timeStyle: "short" })}` : ""}</td>
                       <td className="px-4 py-2.5">{t(`visitStatuses.${visit.status}`)}</td>
                       <td className="px-4 py-2.5">
-                        {zone.state === "INSIDE" ? (
-                          <span data-geofence-state={zone.state} className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300"><CheckCircle2 className="h-3.5 w-3.5" />{t("geofence.inside")}</span>
-                        ) : zone.state === "OUTSIDE" ? (
-                          <span data-geofence-state={zone.state} className="inline-flex items-center gap-1 font-medium text-red-700 dark:text-red-300"><AlertTriangle className="h-3.5 w-3.5" />{t("geofence.outside")}</span>
-                        ) : (
-                          <span data-geofence-state={zone.state} className="inline-flex items-center gap-1 text-muted-foreground"><MapPin className="h-3.5 w-3.5" />{t(zone.state === "NO_VISIT_GPS" ? "geofence.noVisitGps" : "geofence.noCustomerCoordinates")}</span>
-                        )}
-                        {zone.distanceMeters !== null ? (
-                          <div className="mt-0.5 text-xs text-muted-foreground">
-                            {t("geofence.distance", {
-                              distance: distanceText(zone.distanceMeters),
-                              radius: distanceText(zone.radiusMeters),
-                            })}
-                          </div>
-                        ) : null}
+                        <VisitPlaceBadge place={place} showDistanceDetail />
                         <div className="mt-1 flex gap-2 text-xs">
                           <Link className="text-primary hover:underline" href={`/mtm/visits?visitId=${visit.id}`}>{t("openVisit")}</Link>
                           <Link className="text-primary hover:underline" href={`/mtm/customers/${visit.customerId}`}>{t("openOrganization")}</Link>

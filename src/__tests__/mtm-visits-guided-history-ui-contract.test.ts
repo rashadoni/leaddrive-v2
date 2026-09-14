@@ -33,10 +33,8 @@ describe("MTM visits guided history UI contract", () => {
     // GPS: check-in and check-out against the customer's geofence (2026-09-14),
     // no longer check-in only against a fixed 100 m.
     expect(page).toContain("visitPlaceSummary(visit, meta.geofenceRadius)")
-    expect(page).toContain('t("gpsConfirmed")')
-    expect(page).toContain('t("gpsOutside")')
-    expect(page).toContain('t("gpsCheckoutMissing")')
-    expect(page).toContain('t("gpsUnavailable")')
+    // One badge and one label set with the route detail and GPS history.
+    expect(page).toContain("<VisitPlaceBadge place={visitPlaceSummary(visit, meta.geofenceRadius)} />")
     expect(page).not.toContain("distance <= 100")
   })
 
@@ -76,9 +74,6 @@ describe("MTM visits guided history UI contract", () => {
       "statusCompleted",
       "statusCancelled",
       "statusUnknown",
-      "gpsConfirmed",
-      "gpsOutside",
-      "gpsUnavailable",
       "resultCount",
       "resultPartial",
       "resultBounded",

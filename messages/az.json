@@ -13072,8 +13072,6 @@
       "early": "{delay} tez",
       "onTime": "Vaxtında",
       "outOfOrder": "Sıra pozulub: faktiki №{actual}",
-      "outOfZone": "Zonadan kənar · {distance}",
-      "inZone": "Zonada",
       "photos": "{count} foto",
       "signature": "İmza var",
       "note": "Qeyd var",
@@ -13654,18 +13652,10 @@
     "statusUnknown": "Status məlum deyil",
     "finishedAt": "Çıxış: {time}",
     "notFinished": "Hələ tamamlanmayıb",
-    "gpsConfirmed": "Nöqtədə",
-    "gpsOutside": "Nöqtədən kənar",
-    "gpsUnavailable": "GPS yoxdur",
     "resultCount": "Göstərilir: {count}",
     "resultPartial": "Son {shown} ziyarət göstərilir. Bu dövrdə cəmi: {total}.",
     "resultBounded": "Təhlükəsiz həddə görə {limit} qeyddən yoxlanılan son {shown} ziyarət göstərilir.",
     "advisorRisk": "Ziyarət üzrə AI qeydləri",
-    "gpsCheckoutMissing": "Çıxış GPS yoxdur",
-    "gpsCheckinMissing": "Giriş GPS yoxdur",
-    "gpsNoPin": "Müştərinin xəritə nöqtəsi yoxdur",
-    "distanceMeters": "{value} m",
-    "distanceKilometers": "{value} km",
     "teamActiveTitle": "Hazırda gedən ziyarətlər: {count}",
     "teamActiveHint": "Hazırda müştəri yanında olan agentlər. Detallara baxmaq üçün ziyarəti seçin.",
     "activeSince": "giriş {time}",
@@ -13686,14 +13676,8 @@
       "placeTitle": "Yer yoxlaması",
       "placeCheckIn": "Giriş",
       "placeCheckOut": "Çıxış",
-      "placeAtPoint": "Nöqtədə",
-      "placeOutside": "Nöqtədən kənar · {distance}",
-      "placeNoGps": "GPS yoxdur",
-      "placeCheckoutNoGps": "Çıxış GPS yoxdur",
-      "placeNoPin": "Müştərinin xəritə nöqtəsi yoxdur",
       "placeNotFinished": "Ziyarət hələ bitməyib",
       "placeNoCheckout": "Çıxış qeydə alınmayıb",
-      "placeDistanceDetail": "Nöqtəyə qədər {distance}, icazə verilən radius {radius}",
       "photosTitle": "Fotolar",
       "photosCount": "{count, plural, one {# foto} other {# foto}}",
       "noPhotos": "Bu ziyarətdə foto yoxdur",
@@ -15578,6 +15562,16 @@
       "REVIEW_L2_REJECTED": "L2 rədd edildi"
     }
   },
+  "mtmPlaceCheck": {
+    "locationHidden": "Yer məlumatı gizlidir",
+    "atPoint": "Zonada",
+    "outside": "Zonadan kənar · {distance}",
+    "noGps": "GPS yoxdur",
+    "noPin": "Müştərinin xəritə nöqtəsi yoxdur",
+    "checkoutGpsMissing": "Çıxış GPS yoxdur",
+    "checkinGpsMissing": "Giriş GPS yoxdur",
+    "distanceDetail": "Müştəridən {distance} (icazə {radius})"
+  },
   "mtmMap": {
     "fieldStatus": {
       "checkedIn": "Yerində",
@@ -15710,6 +15704,8 @@
       "workdayStart": "İş gününün başlanğıcı",
       "workdayEnd": "İş gününün sonu",
       "noWorkday": "Bu tarix üçün iş günü qeydi yoxdur.",
+      "workdayOpenSince": "İş günü {since} tarixindən açıqdır.",
+      "workdayCarriedClosed": "İş günü {since} tarixində başlayıb, {until} tarixində bağlanıb.",
       "stopDetails": "Dayanacaq detalları",
       "stopPolicy": "Dayanacaq = {radius} m radiusda ən az {minutes} dəq.",
       "noStops": "Bu aralıqda şirkət siyasətinə uyğun dayanacaq yoxdur.",
@@ -15803,14 +15799,7 @@
       "accuracyDetail": "Göstərilən dəqiqlik: {accuracy} m",
       "gapDetail": "Təxminən {minutes} dəq telemetriya olmayıb",
       "openVisit": "Ziyarəti aç",
-      "openOrganization": "Təşkilatı aç",
-      "geofence": {
-        "inside": "Zonada",
-        "outside": "Zonadan kənar",
-        "distance": "Müştəridən {distance} (icazə {radius})",
-        "noVisitGps": "Ziyarətin GPS-i yoxdur",
-        "noCustomerCoordinates": "Müştərinin koordinatı yoxdur"
-      }
+      "openOrganization": "Təşkilatı aç"
     },
     "feed": {
       "hint": "Təkrarlanan xəbərdarlıqlar əməkdaş və saat üzrə birləşdirilir",

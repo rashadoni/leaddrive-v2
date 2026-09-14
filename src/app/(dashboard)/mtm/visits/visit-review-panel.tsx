@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { SignaturePreview } from "@/components/mtm/visit-signature-preview"
 import { VisitPhotoGrid } from "@/components/mtm/visit-photo-grid"
 import { formatDateTime, formatTime as formatClockTime } from "@/lib/format-date"
+import { useMtmDistanceText } from "@/components/mtm/visit-place-badge"
 import {
   reviewActionRows,
   visitDurationMinutes,
@@ -69,12 +70,6 @@ export function visitStatusClasses(status: string): string {
   return "border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
 }
 
-export function formatDistance(t: Translator, meters: number): string {
-  return meters < 1_000
-    ? t("distanceMeters", { value: meters })
-    : t("distanceKilometers", { value: (meters / 1_000).toFixed(1) })
-}
-
 /**
  * Read-only review of one visit for an office user. Everything shown comes
  * from the server: no browser draft, no execution form, no upload. The panel
@@ -94,6 +89,9 @@ export function VisitReviewPanel({ visitId, refreshToken, closeHref, onVisitLoad
   const t = useTranslations("mtmVisitsPage") as unknown as Translator
   const tw = useTranslations("mtmVisitWorkspace") as unknown as Translator
   const locale = useLocale()
+  // Place labels are shared with the visits list, route detail and GPS history.
+  const tPlace = useTranslations("mtmPlaceCheck") as unknown as Translator
+  const distanceText = useMtmDistanceText()
   const [data, setData] = useState<VisitReviewData | null>(null)
   const [state, setState] = useState<"loading" | "ready" | "unavailable" | "failed">("loading")
   const requestRef = useRef<AbortController | null>(null)
@@ -206,17 +204,17 @@ export function VisitReviewPanel({ visitId, refreshToken, closeHref, onVisitLoad
     } else if (check.state === "at_point") {
       tone = "text-emerald-700 dark:text-emerald-300"
       Icon = CheckCircle2
-      text = t("review.placeAtPoint")
+      text = tPlace("atPoint")
     } else if (check.state === "outside") {
       tone = "text-amber-700 dark:text-amber-300"
       Icon = AlertTriangle
-      text = t("review.placeOutside", { distance: formatDistance(t, check.distanceMeters ?? 0) })
+      text = tPlace("outside", { distance: distanceText(check.distanceMeters ?? 0) })
     } else if (check.state === "no_gps") {
       tone = "text-amber-700 dark:text-amber-300"
       Icon = AlertTriangle
-      text = kind === "checkOut" ? t("review.placeCheckoutNoGps") : t("review.placeNoGps")
+      text = kind === "checkOut" ? tPlace("checkoutGpsMissing") : tPlace("noGps")
     } else {
-      text = t("review.placeNoPin")
+      text = tPlace("noPin")
     }
     return (
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2">
@@ -227,7 +225,7 @@ export function VisitReviewPanel({ visitId, refreshToken, closeHref, onVisitLoad
           </span>
           {check?.distanceMeters != null ? (
             <span className="block text-xs text-muted-foreground">
-              {t("review.placeDistanceDetail", { distance: formatDistance(t, check.distanceMeters), radius: formatDistance(t, check.radiusMeters) })}
+              {tPlace("distanceDetail", { distance: distanceText(check.distanceMeters), radius: distanceText(check.radiusMeters) })}
             </span>
           ) : null}
         </dd>
