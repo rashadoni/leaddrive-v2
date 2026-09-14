@@ -53,6 +53,7 @@ import { runtimePublicUploadsRoot } from "@/lib/runtime-paths"
 import { parseMtmPhotoThumbnailWidth, type MtmPhotoThumbnailWidth } from "@/lib/mtm/photo-thumbnail-url"
 import {
   etagMatches,
+  MtmPhotoThumbnailBusyError,
   objectMtmPhotoThumbnailEtag,
   renderMtmPhotoThumbnail,
   resolveDiskMtmPhotoThumbnail,
@@ -252,6 +253,15 @@ function thumbnailHeaders(etag: string): Record<string, string> {
   }
 }
 
+// Render queue full: a transient refusal the tile retries, never a 404 that
+// would label the photo "file missing".
+function thumbnailBusy(retryAfterSeconds: number): NextResponse {
+  return NextResponse.json(
+    { error: "Thumbnail generation busy" },
+    { status: 503, headers: { "Retry-After": String(retryAfterSeconds), "Cache-Control": "no-store" } },
+  )
+}
+
 function thumbnailNotModified(etag: string): NextResponse {
   return new NextResponse(null, { status: 304, headers: thumbnailHeaders(etag) })
 }
@@ -319,6 +329,7 @@ async function serveMtmDiskPhotoThumbnail(input: {
   }
 
   if (result.kind === "missing") return NextResponse.json({ error: "Not found" }, { status: 404 })
+  if (result.kind === "busy") return thumbnailBusy(result.retryAfterSeconds)
   if (result.kind === "not-modified") return thumbnailNotModified(result.etag)
   if (result.kind === "ok") return thumbnailResponse(parts[1], input.width, result.bytes, result.etag)
   return serveUploadFile(parts, { public: false, principal: input.principal })
@@ -383,6 +394,7 @@ async function serveMtmObjectPhoto(input: {
       },
     })
   } catch (error) {
+    if (error instanceof MtmPhotoThumbnailBusyError) return thumbnailBusy(error.retryAfterSeconds)
     const response = mtmMediaObjectReadFailureResponse(error)
     if (response) return response
     throw error

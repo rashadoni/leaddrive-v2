@@ -30,13 +30,32 @@ const MAX_INPUT_BYTES = 50 * 1024 * 1024
 // Resizing a camera original costs a few hundred ms of CPU. A gallery opening
 // for the first time can ask for dozens; never let that starve the app.
 const MAX_PARALLEL_RENDERS = 2
+// Beyond this many waiters the request is refused (503 + Retry-After) rather
+// than parked: every waiter also holds a download-concurrency slot.
+const MAX_QUEUED_RENDERS = 16
+export const MTM_PHOTO_THUMBNAIL_BUSY_RETRY_AFTER_SECONDS = 2
+// Files that failed to decode (legacy HEIC, truncated uploads) are remembered
+// by path + size + mtime, so later `?w=` requests fall back to the original
+// without re-reading and re-decoding megabytes each time.
+const MAX_UNDECODABLE_ENTRIES = 512
 
 let activeRenders = 0
 const renderQueue: Array<() => void> = []
 const inflight = new Map<string, Promise<Buffer | null>>()
+const undecodable = new Map<string, true>()
+
+/** All render slots and the bounded wait queue are taken. */
+export class MtmPhotoThumbnailBusyError extends Error {
+  readonly retryAfterSeconds = MTM_PHOTO_THUMBNAIL_BUSY_RETRY_AFTER_SECONDS
+  constructor() {
+    super("MTM_PHOTO_THUMBNAIL_BUSY")
+    this.name = "MtmPhotoThumbnailBusyError"
+  }
+}
 
 async function withRenderSlot<T>(work: () => Promise<T>): Promise<T> {
   if (activeRenders >= MAX_PARALLEL_RENDERS) {
+    if (renderQueue.length >= MAX_QUEUED_RENDERS) throw new MtmPhotoThumbnailBusyError()
     await new Promise<void>((resolve) => renderQueue.push(resolve))
   } else {
     activeRenders += 1
@@ -50,28 +69,46 @@ async function withRenderSlot<T>(work: () => Promise<T>): Promise<T> {
   }
 }
 
+async function decodeThumbnail(input: Buffer, width: MtmPhotoThumbnailWidth): Promise<Buffer | null> {
+  if (input.byteLength < 1 || input.byteLength > MAX_INPUT_BYTES) return null
+  try {
+    return await sharp(input, { failOn: "error", limitInputPixels: MAX_INPUT_PIXELS, animated: false })
+      .rotate()
+      .resize({ width, withoutEnlargement: true })
+      .webp({ quality: THUMBNAIL_QUALITY })
+      .toBuffer()
+  } catch {
+    return null
+  }
+}
+
+function undecodableKey(originalPath: string, original: { size: number; mtimeMs: number }): string {
+  return `${originalPath}\0${original.size}\0${Math.trunc(original.mtimeMs)}`
+}
+
+function rememberUndecodable(key: string): void {
+  undecodable.delete(key)
+  undecodable.set(key, true)
+  while (undecodable.size > MAX_UNDECODABLE_ENTRIES) {
+    const oldest = undecodable.keys().next().value
+    if (oldest === undefined) break
+    undecodable.delete(oldest)
+  }
+}
+
 /**
  * Rotates by EXIF orientation first (so a portrait shot stays upright once
  * metadata is stripped), then shrinks to at most `width` wide. Never enlarges.
  * Returns null when the bytes are not a decodable raster (legacy HEIC, a
  * truncated upload) — the caller then serves the original as before.
+ * Throws `MtmPhotoThumbnailBusyError` when the render queue is full.
  */
 export async function renderMtmPhotoThumbnail(
   input: Buffer,
   width: MtmPhotoThumbnailWidth,
 ): Promise<Buffer | null> {
   if (input.byteLength < 1 || input.byteLength > MAX_INPUT_BYTES) return null
-  return withRenderSlot(async () => {
-    try {
-      return await sharp(input, { failOn: "error", limitInputPixels: MAX_INPUT_PIXELS, animated: false })
-        .rotate()
-        .resize({ width, withoutEnlargement: true })
-        .webp({ quality: THUMBNAIL_QUALITY })
-        .toBuffer()
-    } catch {
-      return null
-    }
-  })
+  return withRenderSlot(() => decodeThumbnail(input, width))
 }
 
 export function mtmPhotoThumbnailCachePath(
@@ -111,6 +148,7 @@ export type DiskThumbnailResult =
   | { kind: "not-modified"; etag: string }
   | { kind: "ok"; etag: string; bytes: Buffer }
   | { kind: "undecodable" }
+  | { kind: "busy"; retryAfterSeconds: number }
 
 /**
  * Serves `mtm-photos/<fileName>` at `width` from the disk cache, generating it
@@ -146,21 +184,29 @@ export async function resolveDiskMtmPhotoThumbnail(input: {
   }
 
   if (original.size > MAX_INPUT_BYTES) return { kind: "undecodable" }
+  const failureKey = undecodableKey(input.originalPath, original)
+  if (undecodable.has(failureKey)) return { kind: "undecodable" }
 
   let pending = inflight.get(cachePath)
   if (!pending) {
-    pending = (async () => {
-      const bytes = await renderMtmPhotoThumbnail(await readFile(input.originalPath), input.width)
+    // The render slot is taken BEFORE the original is read: a queued request
+    // must not hold megabytes of camera bytes while it waits.
+    pending = withRenderSlot(async () => {
+      const bytes = await decodeThumbnail(await readFile(input.originalPath), input.width)
       if (bytes) await writeCacheAtomically(cachePath, bytes)
+      else rememberUndecodable(failureKey)
       return bytes
-    })().finally(() => inflight.delete(cachePath))
+    }).finally(() => inflight.delete(cachePath))
     inflight.set(cachePath, pending)
   }
 
   let bytes: Buffer | null
   try {
     bytes = await pending
-  } catch {
+  } catch (error) {
+    if (error instanceof MtmPhotoThumbnailBusyError) {
+      return { kind: "busy", retryAfterSeconds: error.retryAfterSeconds }
+    }
     return { kind: "missing" }
   }
   return bytes ? { kind: "ok", etag, bytes } : { kind: "undecodable" }
@@ -179,7 +225,13 @@ async function writeCacheAtomically(cachePath: string, bytes: Buffer): Promise<v
   }
 }
 
-/** Test hook: the render queue is module state. */
+/** Test hook: the render queue and negative cache are module state. */
 export function mtmPhotoThumbnailRenderStateForTests() {
-  return { activeRenders, queued: renderQueue.length, inflight: inflight.size }
+  return { activeRenders, queued: renderQueue.length, inflight: inflight.size, undecodable: undecodable.size }
 }
+
+export const MTM_PHOTO_THUMBNAIL_LIMITS = {
+  maxParallelRenders: MAX_PARALLEL_RENDERS,
+  maxQueuedRenders: MAX_QUEUED_RENDERS,
+  maxUndecodableEntries: MAX_UNDECODABLE_ENTRIES,
+} as const

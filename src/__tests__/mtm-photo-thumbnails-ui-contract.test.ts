@@ -23,8 +23,18 @@ describe("field photo tiles use thumbnails", () => {
     expect(page).toContain("src={mtmPhotoThumbnailUrl(photo.url, thumbnailWidth)}")
     expect(page).not.toContain("<img src={photo.url}")
     expect(page).toContain("<img src={lightboxPhoto.url}")
-    expect(page).toContain("onError={() => onMissing(photo.id)}")
+    expect(page).toContain("onFinalError={() => onMissing(photo.id)}")
     expect(page).toContain("thumbnailWidth={960}")
+  })
+
+  it("a transient 503/429 retries the tile once before it is reported missing", () => {
+    const img = readFileSync("src/components/mtm/photo-thumbnail-img.tsx", "utf8")
+    expect(grid).toContain("<PhotoThumbnailImg")
+    expect(page).toContain("<PhotoThumbnailImg")
+    expect(img).toContain("if (attempt === 0) setAttempt(\"waiting\")")
+    expect(img).toContain("else if (attempt === 1) onFinalError?.()")
+    expect(img).toContain("setTimeout(() => setAttempt(1), MTM_PHOTO_RETRY_DELAY_MS)")
+    expect(img).toContain("mtmPhotoRetryUrl(src)")
   })
 
   it("new uploads record their thumbnail URL", () => {

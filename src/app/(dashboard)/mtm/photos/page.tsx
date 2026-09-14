@@ -10,6 +10,7 @@ import { formatDateTime } from "@/lib/format-date"
 import { mtmPhotoPeriodStart, type MtmPhotoPeriod } from "@/lib/mtm/photo-period"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
 import { mtmPhotoThumbnailUrl, type MtmPhotoThumbnailWidth } from "@/lib/mtm/photo-thumbnail-url"
+import { PhotoThumbnailImg } from "@/components/mtm/photo-thumbnail-img"
 import { PageDescription } from "@/components/page-description"
 import { HelpButton } from "@/components/help/help-button"
 import { ColorStatCard } from "@/components/color-stat-card"
@@ -59,7 +60,9 @@ function PhotoImage({ photo, className, missingLabel, onMissing, missing, thumbn
       </span>
     )
   }
-  return <img src={mtmPhotoThumbnailUrl(photo.url, thumbnailWidth)} alt="" width={thumbnailWidth} height={thumbnailWidth} loading="lazy" decoding="async" className={className} onError={() => onMissing(photo.id)} />
+  // A transient 503/429 from the thumbnail proxy is retried once inside
+  // PhotoThumbnailImg; only a repeated failure marks the file missing.
+  return <PhotoThumbnailImg src={mtmPhotoThumbnailUrl(photo.url, thumbnailWidth)} alt="" width={thumbnailWidth} height={thumbnailWidth} loading="lazy" decoding="async" className={className} onFinalError={() => onMissing(photo.id)} />
 }
 
 const PHOTO_FILTER_LABELS = {

@@ -56,6 +56,7 @@ import {
   releasePublicConcurrencySlot,
 } from "@/lib/public-abuse-guard"
 import {
+  MtmPhotoThumbnailBusyError,
   objectMtmPhotoThumbnailEtag,
   renderMtmPhotoThumbnail,
   resolveDiskMtmPhotoThumbnail,
@@ -147,6 +148,21 @@ describe("GET /uploads/mtm-photos/<file>?w=", () => {
     expect(res.status).toBe(404)
   })
 
+  it("answers a full render queue with 503 + Retry-After, not a 404 the tile would call missing", async () => {
+    vi.mocked(resolveDiskMtmPhotoThumbnail).mockResolvedValueOnce({ kind: "busy", retryAfterSeconds: 2 })
+    const res = await GET(req("?w=480"), pp(["mtm-photos", "owned.jpg"]))
+    expect(res.status).toBe(503)
+    expect(res.headers.get("retry-after")).toBe("2")
+    expect(res.headers.get("cache-control")).toBe("no-store")
+    expect(releasePublicConcurrencySlot).toHaveBeenCalledOnce()
+  })
+
+  it("ignores the tile's retry marker and serves the thumbnail", async () => {
+    const res = await GET(req("?w=480&retry=1"), pp(["mtm-photos", "owned.jpg"]))
+    expect(res.status).toBe(200)
+    expect(resolveDiskMtmPhotoThumbnail).toHaveBeenCalledWith(expect.objectContaining({ width: 480 }))
+  })
+
   it("falls back to the original when the file cannot be decoded", async () => {
     vi.mocked(resolveDiskMtmPhotoThumbnail).mockResolvedValueOnce({ kind: "undecodable" })
     vi.mocked(stat).mockResolvedValue({ isFile: () => true, size: 4 } as any)
@@ -185,6 +201,15 @@ describe("GET /uploads/mtm-photos/<file>?w=", () => {
       expect(res.headers.get("etag")).toBe(objectMtmPhotoThumbnailEtag(mediaObject.checksumSha256, 480))
       expect(renderMtmPhotoThumbnail).toHaveBeenCalledWith(Buffer.from("jpeg-bytes"), 480)
       expect(resolveDiskMtmPhotoThumbnail).not.toHaveBeenCalled()
+    })
+
+    it("returns 503 when the render queue is full", async () => {
+      vi.mocked(prisma.mtmPhoto.findFirst).mockResolvedValueOnce({ id: "p1", mediaObject } as any)
+      vi.mocked(readCommittedMtmMediaObject).mockResolvedValueOnce(Buffer.from("jpeg-bytes"))
+      vi.mocked(renderMtmPhotoThumbnail).mockRejectedValueOnce(new MtmPhotoThumbnailBusyError())
+      const res = await GET(req("?w=480"), pp(["mtm-photos", "media-abc.jpg"]))
+      expect(res.status).toBe(503)
+      expect(res.headers.get("retry-after")).toBe("2")
     })
 
     it("answers 304 without reading the object", async () => {

@@ -8,7 +8,7 @@ describe("MTM photos page", () => {
     JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).mtmPhotosPage)
 
   it("replaces a missing file with a labelled tile instead of a broken image", () => {
-    expect(page).toContain("onError={() => onMissing(photo.id)}")
+    expect(page).toContain("onFinalError={() => onMissing(photo.id)}")
     expect(page).toContain('data-testid="mtm-photo-missing"')
     expect(page).toContain('missingLabel={t("fileMissing")}')
     expect(page).toContain('loading="lazy"')

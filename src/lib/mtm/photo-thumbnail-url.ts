@@ -34,6 +34,14 @@ export function mtmPhotoThumbnailUrl(
 }
 
 /**
+ * The same image URL with a retry marker, so the browser issues a fresh
+ * request after a transient 503/429. The proxy ignores the extra parameter.
+ */
+export function mtmPhotoRetryUrl(src: string): string {
+  return `${src}${src.includes("?") ? "&" : "?"}retry=1`
+}
+
+/**
  * Parses the `w` query parameter of an upload-proxy request.
  * - `null`: no thumbnail requested, serve the original;
  * - `"invalid"`: a width outside the allowlist (or repeated/garbled);

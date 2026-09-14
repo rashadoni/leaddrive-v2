@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { mtmPhotoThumbnailUrl } from "@/lib/mtm/photo-thumbnail-url"
+import { PhotoThumbnailImg } from "@/components/mtm/photo-thumbnail-img"
 
 export interface VisitPhoto {
   id: string
@@ -41,7 +42,7 @@ export function VisitPhotoGrid({ photos, formatTime, openLabel, titleLabel }: {
               aria-label={openLabel(index + 1)}
               className="group block w-full overflow-hidden rounded-lg border border-zinc-200 bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-zinc-800"
             >
-              <img
+              <PhotoThumbnailImg
                 src={photo.thumbnailUrl || mtmPhotoThumbnailUrl(photo.url)}
                 alt=""
                 width={480}
