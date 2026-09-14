@@ -245,6 +245,8 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth, { params }: {
           checkInLng: locationVisible ? visit.checkInLng : null,
           checkOutLat: locationVisible ? visit.checkOutLat : null,
           checkOutLng: locationVisible ? visit.checkOutLng : null,
+          // Says the blanks above are redaction, not a visit without GPS.
+          locationHidden: !locationVisible,
           photoCount: visit._count?.photos ?? 0,
           hasSignature: (visit.actionResults?.length ?? 0) > 0,
           hasNote: Boolean(visit.notes?.trim() || visit.resultNotes?.trim()),

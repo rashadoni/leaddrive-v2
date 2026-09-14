@@ -280,7 +280,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
   // (audit 2026-09-14). Look for such a carried-over workday only when the
   // selected date has none; it is shown as a note and does not feed the
   // timeline or the evidence pack, which stay tied to this date's own row.
-  const carriedOverWorkday = workforceEnabled && !workday
+  const carriedOverCandidate = workforceEnabled && !workday
     ? await prisma.mtmAgentWorkday.findFirst({
       where: {
         organizationId: auth.orgId,
@@ -298,6 +298,13 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         completedAt: true,
       },
     }) ?? null
+    : null
+  // The query already requires it; re-checked so a workday closed before the
+  // window can never be reported as covering the date.
+  const carriedOverWorkday = carriedOverCandidate
+    && carriedOverCandidate.startedAt <= to
+    && (!carriedOverCandidate.completedAt || carriedOverCandidate.completedAt >= from)
+    ? carriedOverCandidate
     : null
 
   const rawLocations: HistoryLocationPoint[] = rawLocationRows.map((row) => ({

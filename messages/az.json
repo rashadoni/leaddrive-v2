@@ -15498,6 +15498,7 @@
     }
   },
   "mtmPlaceCheck": {
+    "locationHidden": "Yer məlumatı gizlidir",
     "atPoint": "Zonada",
     "outside": "Zonadan kənar · {distance}",
     "noGps": "GPS yoxdur",

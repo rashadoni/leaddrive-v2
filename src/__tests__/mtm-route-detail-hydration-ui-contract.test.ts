@@ -107,9 +107,16 @@ describe("MTM route detail hydration UI contract", () => {
     expect(routesPage).toContain('t("stopFact.late", { delay: durationLabel(fact.delayMinutes) })')
     expect(routesPage).toContain('t("stopFact.outOfOrder", { actual: fact.actualSequence })')
     // Zone through the visit review's rule and the shared badge (2026-09-14).
-    expect(routesPage).toContain("const place = visit ? visitPlaceSummary({")
     expect(routesPage).toContain('<VisitPlaceBadge place={place} size="xs" />')
     expect(routesPage).not.toContain("stopFact.outOfZone")
+    // A co-participant's withheld coordinates are not "no GPS" (review of #208).
+    expect(routesPage).toContain("const place = visit && !visit.locationHidden ? visitPlaceSummary({")
+    expect(routesPage).toContain('{visit?.locationHidden ? (')
+    expect(routesPage).toContain('{tPlace("locationHidden")}')
+    for (const locale of ["az", "ru", "en"]) {
+      const placeMessages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).mtmPlaceCheck
+      expect(placeMessages.locationHidden, locale).toEqual(expect.any(String))
+    }
     expect(routesPage).toContain('href={`/mtm/visits?visitId=${encodeURIComponent(visit.id)}`}')
     expect(routesPage).not.toContain("h ${routeMetrics.duration % 60}m")
     // The chip reports the server total, not the page size.

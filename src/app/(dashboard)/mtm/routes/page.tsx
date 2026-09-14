@@ -137,6 +137,7 @@ export default function MtmRoutesPage() {
   const t = useTranslations("mtmRoutesPage")
   const statusT = useTranslations("mtmStatus")
   const locale = useLocale()
+  const tPlace = useTranslations("mtmPlaceCheck")
   const tf = useTranslations("mtmForms")
   const [routes, setRoutes] = useState<MtmRouteRecord[]>([])
   // The server's count for the same filter. The chip read «Hamısı (200)» —
@@ -991,7 +992,9 @@ export default function MtmRoutesPage() {
                 // The rule of the visit review (visitPlaceSummary): the detail
                 // payload already resolved the customer's radius or the
                 // organization default into geofenceRadiusMeters.
-                const place = visit ? visitPlaceSummary({
+                // A co-participant outside the reader's scope comes with its
+                // coordinates withheld: that is not "no GPS", so no verdict.
+                const place = visit && !visit.locationHidden ? visitPlaceSummary({
                   ...visit,
                   customer: { latitude: p.customer?.latitude, longitude: p.customer?.longitude, geofenceRadius: p.geofenceRadiusMeters ?? p.customer?.geofenceRadius },
                 }) : null
@@ -1036,7 +1039,9 @@ export default function MtmRoutesPage() {
                     {fact?.outOfOrder && fact.actualSequence !== null ? (
                       <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-950/30 dark:text-amber-300"><ArrowDownUp className="h-3 w-3" />{t("stopFact.outOfOrder", { actual: fact.actualSequence })}</span>
                     ) : null}
-                    {place ? <VisitPlaceBadge place={place} size="xs" /> : null}
+                    {visit?.locationHidden ? (
+                      <span data-place-verdict="location_hidden" className="text-[10px] text-muted-foreground">{tPlace("locationHidden")}</span>
+                    ) : place ? <VisitPlaceBadge place={place} size="xs" /> : null}
                     {visit?.photoCount ? (
                       <span className="inline-flex items-center gap-1"><Camera className="h-3 w-3" />{t("stopFact.photos", { count: visit.photoCount })}</span>
                     ) : null}

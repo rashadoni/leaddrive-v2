@@ -15502,6 +15502,7 @@
     }
   },
   "mtmPlaceCheck": {
+    "locationHidden": "Location hidden",
     "atPoint": "In zone",
     "outside": "Outside zone · {distance}",
     "noGps": "No GPS",

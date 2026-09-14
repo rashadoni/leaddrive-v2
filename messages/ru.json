@@ -15502,6 +15502,7 @@
     }
   },
   "mtmPlaceCheck": {
+    "locationHidden": "Место скрыто",
     "atPoint": "В зоне",
     "outside": "Вне зоны · {distance}",
     "noGps": "Нет GPS",

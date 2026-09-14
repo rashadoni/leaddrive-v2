@@ -211,6 +211,31 @@ describe("GET /api/v1/mtm/location-history", () => {
     expect(lookup.orderBy).toEqual([{ startedAt: "desc" }, { id: "desc" }])
   })
 
+  it("does not report a carried-over workday that closed before the selected window", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
+      id: "agent-1", name: "Aysel", role: "AGENT", team: null,
+    } as never)
+    vi.mocked(prisma.mtmAgentLocation.findMany).mockResolvedValue([] as never)
+    vi.mocked(prisma.mtmVisit.findMany).mockResolvedValue([] as never)
+    vi.mocked(prisma.mtmRoute.findMany).mockResolvedValue([] as never)
+    // Started 11 Sep 20:57 Baku, closed 12 Sep 02:00 Baku; the window opens 12 Sep 07:00 Baku.
+    vi.mocked(prisma.mtmAgentWorkday.findFirst)
+      .mockResolvedValueOnce(null as never)
+      .mockResolvedValueOnce({
+        id: "workday-prev",
+        status: "COMPLETED",
+        workDate: new Date("2026-09-11T00:00:00.000Z"),
+        startedAt: new Date("2026-09-11T16:57:00.000Z"),
+        completedAt: new Date("2026-09-11T22:00:00.000Z"),
+      } as never)
+
+    const body = await (await GET(request("?agentId=agent-1&date=2026-09-12&from=07%3A00&to=19%3A00&timezone=Asia%2FBaku"))).json()
+    expect(body.data.workday).toBeNull()
+    expect(body.data.carriedOverWorkday).toBeNull()
+    const lookup = vi.mocked(prisma.mtmAgentWorkday.findFirst).mock.calls[1]?.[0] as unknown as { where: { OR: Array<{ completedAt: unknown }> } }
+    expect(lookup.where.OR).toEqual([{ completedAt: null }, { completedAt: { gte: new Date("2026-09-12T03:00:00.000Z") } }])
+  })
+
   it("does not look for a carried-over workday when the selected date has its own", async () => {
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
       id: "agent-1", name: "Aysel", role: "AGENT", team: null,
