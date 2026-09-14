@@ -45,7 +45,7 @@ describe("MTM visit policy resolution", () => {
     })
 
     expect(result.sourcePolicyId).toBe("policy-medical")
-    expect(result.requirements).toHaveLength(7)
+    expect(result.requirements).toHaveLength(8)
     expect(result.requirements.find((item) => item.actionKey === "PRESENTATION")).toMatchObject({ mode: "REQUIRED", minCount: 1 })
     expect(result.requirements.find((item) => item.actionKey === "PHOTO")).toMatchObject({ mode: "OPTIONAL" })
   })

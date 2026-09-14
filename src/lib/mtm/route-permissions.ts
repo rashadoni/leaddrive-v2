@@ -144,3 +144,17 @@ export async function resolveMtmRouteActor(
     scopedAgentIds: scope.agentIds,
   }
 }
+
+/**
+ * Who may configure visit policies: managers and above (owner decision
+ * 2026-09-14 — "со стороны менеджера и того кто выше"). A web admin or manager
+ * qualifies by web role; a user linked to an MTM agent by that agent's role.
+ */
+export async function canManageMtmVisitPolicies(
+  prisma: RouteActorPrisma,
+  params: { organizationId: string; userId: string; webRole: string },
+): Promise<boolean> {
+  if (params.webRole === "superadmin" || params.webRole === "admin" || params.webRole === "manager") return true
+  const actor = await resolveMtmRouteActor(prisma, params)
+  return actor?.role === "ADMIN" || actor?.role === "MANAGER"
+}

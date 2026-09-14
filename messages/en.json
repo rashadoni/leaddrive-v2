@@ -13644,6 +13644,7 @@
     "quantity": "Quantity",
     "checklistResult": "Checklist result",
     "completeInResult": "Complete this item in the visit result below.",
+    "signatureOnTablet": "The signature is collected in the field app.",
     "visitResult": "Visit result",
     "outcome": "Outcome",
     "selectOutcome": "Select outcome",
@@ -13674,7 +13675,8 @@
       "VISIT_NOTE": "Visit note",
       "CHECKLIST": "Checklist",
       "FEEDBACK": "Feedback",
-      "NEXT_ACTION": "Next action"
+      "NEXT_ACTION": "Next action",
+      "SIGNATURE": "Customer signature"
     },
     "outcomes": {
       "SUCCESSFUL": "Successful",
@@ -16093,7 +16095,8 @@
       "VISIT_NOTE": "Visit note",
       "CHECKLIST": "Checklist",
       "FEEDBACK": "Feedback",
-      "NEXT_ACTION": "Next action"
+      "NEXT_ACTION": "Next action",
+      "SIGNATURE": "Customer signature"
     },
     "objectTypes": {
       "PHARMACY": "Pharmacy",

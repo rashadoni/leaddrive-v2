@@ -717,7 +717,7 @@ export const VisitUpdateSchema = z.object({
   checkOutAt: isoDate.optional(),
 })
 
-export const MtmVisitActionKey = z.enum(["PHOTO", "PRESENTATION", "STOCK_CHECK", "VISIT_NOTE", "CHECKLIST", "FEEDBACK", "NEXT_ACTION"])
+export const MtmVisitActionKey = z.enum(["PHOTO", "PRESENTATION", "STOCK_CHECK", "VISIT_NOTE", "CHECKLIST", "FEEDBACK", "NEXT_ACTION", "SIGNATURE"])
 export const MtmRequirementMode = z.enum(["REQUIRED", "OPTIONAL", "HIDDEN"])
 
 const VisitPolicyActionInput = z.object({
@@ -739,7 +739,7 @@ const VisitPolicyBaseSchema = z.object({
   effectiveFrom: isoDate,
   effectiveTo: isoDate.optional().nullable(),
   isActive: z.boolean().default(true),
-  actions: z.array(VisitPolicyActionInput).max(7),
+  actions: z.array(VisitPolicyActionInput).max(8),
 })
 
 function validateVisitPolicy(
@@ -764,6 +764,20 @@ export const VisitPolicyPreviewSchema = z.object({
   at: isoDate.optional(),
 })
 
+/**
+ * A finger-drawn signature, same shape as the contracts e-sign "drawn" payload:
+ * one SVG path in the pad's own pixel box. Path commands and numbers only, so
+ * it renders inertly as <path d>; capped so a scribble cannot bloat a visit.
+ */
+export const MtmSignatureEvidence = z.object({
+  method: z.literal("drawn"),
+  svgPath: z.string().min(8).max(120_000).regex(/^[MLQCZmlqcz0-9.,\s-]+$/, "Signature path contains unsupported characters"),
+  widthPx: z.number().int().min(50).max(4000),
+  heightPx: z.number().int().min(50).max(4000),
+  signerName: z.string().trim().max(120).optional().nullable(),
+  signedAt: isoDate.optional(),
+})
+
 export const VisitActionResultSchema = z.object({
   id: cuid.optional(),
   actionKey: MtmVisitActionKey,
@@ -774,6 +788,12 @@ export const VisitActionResultSchema = z.object({
     const reason = value.evidence?.reason
     if (typeof reason !== "string" || !reason.trim()) {
       ctx.addIssue({ code: "custom", path: ["evidence", "reason"], message: "A waiver reason is required" })
+    }
+  }
+  if (value.actionKey === "SIGNATURE" && value.status === "COMPLETED") {
+    const parsed = MtmSignatureEvidence.safeParse(value.evidence)
+    if (!parsed.success) {
+      ctx.addIssue({ code: "custom", path: ["evidence"], message: parsed.error.issues[0]?.message ?? "A drawn signature is required" })
     }
   }
 })

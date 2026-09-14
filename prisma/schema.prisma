@@ -5044,6 +5044,7 @@ enum MtmVisitActionKey {
   CHECKLIST
   FEEDBACK
   NEXT_ACTION
+  SIGNATURE
 }
 
 enum MtmRequirementMode {

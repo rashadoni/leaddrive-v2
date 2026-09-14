@@ -2,17 +2,17 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withRouteFieldWebRlsAuth } from "@/lib/with-mtm-rls-auth"
 import { VisitPolicyPreviewSchema, parseBody } from "@/lib/mtm-validators"
-import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
+import { canManageMtmVisitPolicies } from "@/lib/mtm/route-permissions"
 import { resolveMtmVisitPolicy } from "@/lib/mtm/visit-policies"
 import { getMtmSettings } from "@/lib/mtm-settings"
 
 export const POST = withRouteFieldWebRlsAuth("read", async (req, auth) => {
-  const actor = await resolveMtmRouteActor(prisma, {
+  const allowed = await canManageMtmVisitPolicies(prisma, {
     organizationId: auth.orgId,
     userId: auth.userId,
     webRole: auth.role,
   })
-  if (actor?.role !== "ADMIN") {
+  if (!allowed) {
     return NextResponse.json({ error: "Administrator access required", code: "MTM_POLICY_ADMIN_REQUIRED" }, { status: 403 })
   }
   const settings = await getMtmSettings(auth.orgId)

@@ -6,6 +6,7 @@ export const MTM_VISIT_ACTION_KEYS = [
   "CHECKLIST",
   "FEEDBACK",
   "NEXT_ACTION",
+  "SIGNATURE",
 ] as const
 
 export type MtmVisitActionKey = typeof MTM_VISIT_ACTION_KEYS[number]

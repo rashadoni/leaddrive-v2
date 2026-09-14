@@ -3,17 +3,16 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withRouteFieldWebRlsAuth } from "@/lib/with-mtm-rls-auth"
 import { VisitPolicyCreateSchema, parseBody } from "@/lib/mtm-validators"
-import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
+import { canManageMtmVisitPolicies } from "@/lib/mtm/route-permissions"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { getMtmSettings } from "@/lib/mtm-settings"
 
 async function requireAdministrator(auth: { orgId: string; userId: string; role: string }) {
-  const actor = await resolveMtmRouteActor(prisma, {
+  return canManageMtmVisitPolicies(prisma, {
     organizationId: auth.orgId,
     userId: auth.userId,
     webRole: auth.role,
   })
-  return actor?.role === "ADMIN" ? actor : null
 }
 
 function overlapWhere(input: {

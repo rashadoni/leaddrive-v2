@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { AlertCircle, CalendarClock, Check, CheckCircle2, ChevronDown, Clock3, FileText, ImagePlus, PackageCheck, Presentation, RefreshCw, Save, Upload } from "lucide-react"
+import { AlertCircle, CalendarClock, Check, CheckCircle2, ChevronDown, Clock3, FileText, ImagePlus, PackageCheck, PenLine, Presentation, RefreshCw, Save, Upload } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,7 +20,7 @@ import {
 import { enqueuePhoto, listPhotos, removePhoto, countPhotos } from "@/lib/mtm/photo-outbox"
 import { formatDate, formatDateTime } from "@/lib/format-date"
 
-type ActionKey = "PHOTO" | "PRESENTATION" | "STOCK_CHECK" | "VISIT_NOTE" | "CHECKLIST" | "FEEDBACK" | "NEXT_ACTION"
+type ActionKey = "PHOTO" | "PRESENTATION" | "STOCK_CHECK" | "VISIT_NOTE" | "CHECKLIST" | "FEEDBACK" | "NEXT_ACTION" | "SIGNATURE"
 type RequirementMode = "REQUIRED" | "OPTIONAL" | "HIDDEN"
 type WorkspaceTranslator = (key: string, values?: Record<string, string | number>) => string
 
@@ -85,7 +85,21 @@ const ACTION_ICONS = {
   CHECKLIST: CheckCircle2,
   FEEDBACK: FileText,
   NEXT_ACTION: CalendarClock,
+  SIGNATURE: PenLine,
 } as const
+
+/** The customer's finger-drawn signature from the field app, drawn as one path. */
+function SignaturePreview({ evidence }: { evidence?: Record<string, unknown> | null }) {
+  const path = typeof evidence?.svgPath === "string" && /^[MLQCZmlqcz0-9.,\s-]+$/.test(evidence.svgPath) ? evidence.svgPath : null
+  const width = typeof evidence?.widthPx === "number" ? evidence.widthPx : 0
+  const height = typeof evidence?.heightPx === "number" ? evidence.heightPx : 0
+  if (!path || !width || !height) return null
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="mt-3 h-24 w-full max-w-sm rounded-md border border-zinc-200 bg-white dark:border-zinc-700" role="img" aria-label="signature">
+      <path d={path} fill="none" stroke="#13231f" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
 
 function draftKey(visitId: string) {
   return `mtm-visit-result-draft:${visitId}`
@@ -401,6 +415,7 @@ export function VisitWorkspace({ visitId, onCompleted }: { visitId: string; onCo
           <div className="mt-3 flex gap-2"><Input value={checklist} onChange={(event) => setChecklist(event.target.value)} placeholder={t("checklistResult")} className="h-9" /><Button size="icon" className="h-9 w-9" disabled={!checklist || busy} onClick={() => void saveAction("CHECKLIST", { result: checklist })} title={t("saveAction")}><Save className="h-4 w-4" /></Button></div>
         )}
         {!done && ["VISIT_NOTE", "FEEDBACK", "NEXT_ACTION"].includes(requirement.actionKey) && <p className="mt-2 text-xs text-muted-foreground">{t("completeInResult")}</p>}
+        {requirement.actionKey === "SIGNATURE" && (done ? <SignaturePreview evidence={data.visit.actionResults.filter((item) => item.actionKey === "SIGNATURE" && item.status === "COMPLETED").at(-1)?.evidence} /> : <p className="mt-2 text-xs text-muted-foreground">{t("signatureOnTablet")}</p>)}
       </div>
     )
   }
