@@ -8,6 +8,25 @@ describe("MTM API refusals get a localized explanation", () => {
     expect(mtmApiErrorKey({ code: "MTM_POLICY_SCOPE_FORBIDDEN" }, 403)).toBe("policyScopeForbidden")
     expect(mtmApiErrorKey({ code: "MTM_POLICY_READ_ONLY" })).toBe("policyReadOnly")
     expect(mtmApiErrorKey({ code: "MTM_AGENT_OUT_OF_SCOPE" })).toBe("agentOutOfScope")
+    expect(mtmApiErrorKey({ code: "MTM_POLICY_TEAM_INVALID" }, 400)).toBe("policyTeamInvalid")
+    expect(mtmApiErrorKey({ code: "MTM_POLICY_WINDOW_CONFLICT", conflict: {} }, 409)).toBe("policyWindowConflict")
+    expect(mtmApiErrorKey({ code: "MTM_POLICY_NOT_FOUND" }, 404)).toBe("policyNotFound")
+    expect(mtmApiErrorKey({ code: "MTM_VISIT_POLICIES_DISABLED" }, 409)).toBe("policiesDisabled")
+    expect(mtmApiErrorKey({ error: "Validation failed", details: [] }, 400)).toBe("validationFailed")
+  })
+
+  it("knows every visit-policy error code the server returns", async () => {
+    const { readdirSync, statSync } = await import("node:fs")
+    const walk = (dir: string): string[] => readdirSync(dir).flatMap((name) => {
+      const path = `${dir}/${name}`
+      return statSync(path).isDirectory() ? walk(path) : [path]
+    })
+    const codes = new Set<string>()
+    for (const file of [...walk("src/app/api/v1/mtm/visit-policies"), "src/lib/mtm/visit-policy-access.ts", "src/lib/mtm/field-access.ts"]) {
+      for (const match of readFileSync(file, "utf8").matchAll(/"(MTM_[A-Z_]+)"/g)) codes.add(match[1])
+    }
+    const unmapped = [...codes].filter((code) => mtmApiErrorKey({ code }) === "generic")
+    expect(unmapped).toEqual([])
   })
 
   it("falls back by status, then to a generic sentence", () => {
@@ -18,7 +37,7 @@ describe("MTM API refusals get a localized explanation", () => {
   })
 
   it("has every key in every language", () => {
-    const keys = ["fieldScopeRequired", "agentOutOfScope", "policyAdminRequired", "policyScopeForbidden", "policyReadOnly", "forbidden", "unauthorized", "generic"]
+    const keys = ["fieldScopeRequired", "agentOutOfScope", "policyAdminRequired", "policyScopeForbidden", "policyReadOnly", "policyTeamInvalid", "policyWindowConflict", "policyNotFound", "policiesDisabled", "previewAgentNotFound", "previewCustomerNotFound", "validationFailed", "policyPreviewFailed", "forbidden", "unauthorized", "generic"]
     const missing: string[] = []
     for (const locale of ["en", "ru", "az"]) {
       const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"))

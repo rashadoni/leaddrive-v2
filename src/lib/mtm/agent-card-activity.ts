@@ -17,10 +17,17 @@
  *     notifications are connected, which is a separate, neutral fact.
  */
 
-/** The same window analytics uses for `period=weekly`. */
+import { dateInputValueInTimezone, isValidTimezone } from "@/lib/timezone"
+import { localDateKeyToUtc } from "@/lib/mtm/mobile-week"
+
+/** Seven organization-local calendar days, today included. */
 export const MTM_AGENT_CARD_ACTIVITY_DAYS = 7
 
-/** How fresh a mobile signal must be for "the app is active". */
+/**
+ * How fresh a mobile signal must be for "the app is active" — and for the
+ * page's "online" dot and counter. One window, so a card never says "online"
+ * and "no app signal" at the same time.
+ */
 export const MTM_AGENT_APP_ACTIVE_WINDOW_MS = 15 * 60 * 1000
 
 export type MtmAgentCardActivity = {
@@ -32,10 +39,41 @@ export type MtmAgentCardActivity = {
   planFulfillment: number | null
 }
 
-export function mtmAgentActivityWindowStart(now: Date): Date {
-  const start = new Date(now)
-  start.setDate(now.getDate() - MTM_AGENT_CARD_ACTIVITY_DAYS)
-  return start
+function shiftDateKey(key: string, days: number): string {
+  const date = new Date(`${key}T00:00:00.000Z`)
+  date.setUTCDate(date.getUTCDate() + days)
+  return date.toISOString().slice(0, 10)
+}
+
+/**
+ * The card window as seven org-local days ending today.
+ *
+ * Review of #209: bounding routes only from below counted next week's already
+ * planned routes, so an agent at 100% today with next week planned read ~20%.
+ * `MtmRoute.date` is a `@db.Date` holding the org-local date at UTC midnight
+ * (the workday convention), so routes take `routeDate`; visits are instants
+ * and take `visitsSince`, the org-local midnight of the first day.
+ */
+export function mtmAgentActivityWindow(now: Date, timezone: string): {
+  visitsSince: Date
+  routeDate: { gte: Date; lte: Date }
+} {
+  const tz = isValidTimezone(timezone) ? timezone : "UTC"
+  const todayKey = dateInputValueInTimezone(now, tz)
+  const firstKey = shiftDateKey(todayKey, -(MTM_AGENT_CARD_ACTIVITY_DAYS - 1))
+  return {
+    visitsSince: localDateKeyToUtc(firstKey, tz),
+    routeDate: {
+      gte: new Date(`${firstKey}T00:00:00.000Z`),
+      lte: new Date(`${todayKey}T00:00:00.000Z`),
+    },
+  }
+}
+
+/** Upper bound for route dates: today in the organization, never the future. */
+export function mtmRouteDateTodayBound(now: Date, timezone: string): Date {
+  const tz = isValidTimezone(timezone) ? timezone : "UTC"
+  return new Date(`${dateInputValueInTimezone(now, tz)}T00:00:00.000Z`)
 }
 
 export function mtmAgentPlanFulfillment(plannedPoints: number, visitedPoints: number): number | null {

@@ -15,6 +15,8 @@ import { buildAgentKpis, type AgentVisitRow, type AgentRouteRow } from "@/lib/mt
 import { withAnalyticsCache } from "@/lib/cache/analytics-cache"
 import { withRouteFieldWebRlsAuth } from "@/lib/with-mtm-rls-auth"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
+import { getMtmSettings } from "@/lib/mtm-settings"
+import { mtmRouteDateTodayBound } from "@/lib/mtm/agent-card-activity"
 
 export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
   const orgId = auth.orgId
@@ -112,7 +114,16 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
     }
 
     // ── Batch 3: agent queries + Mars KPI data ───────────────────────────────
-    const routeWhere = { organizationId: orgId, date: { gte: startDate }, deletedAt: null, ...agentScope }
+    // Plan fulfilment is about routes that were due, not routes already planned
+    // for next week (review of #209): bound the route date by today in the
+    // organization's timezone. Settings failure falls back to UTC.
+    const routeTimezone = await getMtmSettings(orgId).then((settings) => settings.timezone).catch(() => "UTC")
+    const routeWhere = {
+      organizationId: orgId,
+      date: { gte: startDate, lte: mtmRouteDateTodayBound(now, routeTimezone) },
+      deletedAt: null,
+      ...agentScope,
+    }
 
     const [
       agentVisitStats,

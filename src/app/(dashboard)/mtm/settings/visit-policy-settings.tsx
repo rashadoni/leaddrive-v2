@@ -6,7 +6,7 @@ import { AlertCircle, Check, Eye, EyeOff, Info, LockKeyhole, Plus, RefreshCw, Sa
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { useMtmApiError } from "@/components/mtm/use-mtm-api-error"
+import { explainMtmApiErrorOr, useMtmApiError } from "@/components/mtm/use-mtm-api-error"
 import {
   canCreateVisitPolicy,
   parseVisitPolicyUiAccess,
@@ -210,7 +210,7 @@ export function VisitPolicySettings() {
         }),
       })
       const body = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(response.status === 403 ? explainError(body, 403) : body?.error || t("saveFailed"))
+      if (!response.ok) throw new Error(explainMtmApiErrorOr(explainError, body, response.status, t("saveFailed")))
       const saved = normalizePolicy(body.data)
       setPolicies((current) => {
         const exists = current.some((policy) => policy.id === saved.id)
@@ -232,7 +232,7 @@ export function VisitPolicySettings() {
     try {
       const response = await fetch(`/api/v1/mtm/visit-policies/${draft.id}`, { method: "DELETE" })
       const body = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(response.status === 403 ? explainError(body, 403) : body?.error || t("deactivateFailed"))
+      if (!response.ok) throw new Error(explainMtmApiErrorOr(explainError, body, response.status, t("deactivateFailed")))
       const saved = normalizePolicy(body.data)
       setPolicies((current) => current.map((policy) => policy.id === saved.id ? saved : policy))
       setDraft(saved)
@@ -254,7 +254,7 @@ export function VisitPolicySettings() {
         body: JSON.stringify({ agentId: previewAgentId, customerId: previewCustomerId, visitType: draft.visitType || "DEFAULT" }),
       })
       const body = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(response.status === 403 ? explainError(body, 403) : body?.error || t("previewFailed"))
+      if (!response.ok) throw new Error(explainMtmApiErrorOr(explainError, body, response.status, t("previewFailed")))
       setPreview(body.data)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("previewFailed"))

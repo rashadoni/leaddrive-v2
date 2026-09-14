@@ -11108,7 +11108,15 @@
     "policyReadOnly": "Supervisors can view visit rules but cannot change them.",
     "forbidden": "You do not have access to this action.",
     "unauthorized": "Your session has ended. Sign in again.",
-    "generic": "Could not load the data. Try again later."
+    "generic": "Could not load the data. Try again later.",
+    "policyTeamInvalid": "The selected team no longer exists. Pick another team and save again.",
+    "policyWindowConflict": "Another active rule with the same team, visit type and priority already covers these dates. Change the priority or the dates.",
+    "policyNotFound": "This rule no longer exists. Refresh the page.",
+    "policiesDisabled": "Visit rules are turned off for the organization.",
+    "previewAgentNotFound": "This employee is not available for the preview.",
+    "previewCustomerNotFound": "This customer is not available for the preview.",
+    "validationFailed": "Some fields are filled in incorrectly. Check the form and try again.",
+    "policyPreviewFailed": "Could not build the preview. Try again later."
   },
   "mtmAgents": {
     "title": "Field Agents",

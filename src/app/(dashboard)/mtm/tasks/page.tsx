@@ -455,7 +455,14 @@ export default function MtmTasksPage() {
               selected={selected}
               canBulk={canBulk}
               allSelected={allPageSelected}
-              onToggleAll={() => setSelected(allPageSelected ? [] : selectableTasks.map((task) => task.id))}
+              // Merge, not replace: ticked tasks in the «Tarixsiz» group above
+              // stay selected when the page is (un)selected as a whole.
+              onToggleAll={() => {
+                const pageIds = selectableTasks.map((task) => task.id)
+                setSelected((current) => allPageSelected
+                  ? current.filter((id) => !pageIds.includes(id))
+                  : [...new Set([...current, ...pageIds])])
+              }}
               onToggle={(id) => setSelected((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])}
               href={taskHref}
               formatDateTime={formatDateTime}

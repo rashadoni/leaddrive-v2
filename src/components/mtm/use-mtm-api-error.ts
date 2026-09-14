@@ -2,7 +2,7 @@
 
 import { useCallback } from "react"
 import { useTranslations } from "next-intl"
-import { mtmApiErrorKey } from "@/lib/mtm/api-error-message"
+import { mtmApiErrorIsSpecific, mtmApiErrorKey } from "@/lib/mtm/api-error-message"
 
 /**
  * Localized explanation for an MTM API refusal. Pass the parsed JSON body and,
@@ -11,4 +11,14 @@ import { mtmApiErrorKey } from "@/lib/mtm/api-error-message"
 export function useMtmApiError() {
   const t = useTranslations("mtmApiErrors")
   return useCallback((body: unknown, status?: number | null) => t(mtmApiErrorKey(body, status)), [t])
+}
+
+/** A specific localized explanation, or `fallback` when the refusal has none. */
+export function explainMtmApiErrorOr(
+  explain: (body: unknown, status?: number | null) => string,
+  body: unknown,
+  status: number,
+  fallback: string,
+): string {
+  return mtmApiErrorIsSpecific(body, status) ? explain(body, status) : fallback
 }

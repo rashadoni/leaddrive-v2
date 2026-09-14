@@ -209,8 +209,8 @@ describe("GET /api/v1/mtm/agents", () => {
       { id: "a2", name: "Bez plana", lastSeenAt: null, expoPushToken: "ExponentPushToken[secret]", latestLocation: null },
     ] as any)
     vi.mocked(prisma.mtmAgent.count).mockResolvedValue(2)
-    vi.mocked(prisma.mtmVisit.groupBy).mockResolvedValue([{ agentId: "a1", _count: { _all: 2 } }] as any)
-    vi.mocked(prisma.mtmRoute.groupBy).mockResolvedValue([{ agentId: "a1", _sum: { totalPoints: 2, visitedPoints: 2 } }] as any)
+    vi.mocked(prisma.mtmVisit.groupBy).mockResolvedValueOnce([{ agentId: "a1", _count: { _all: 2 } }] as any)
+    vi.mocked(prisma.mtmRoute.groupBy).mockResolvedValueOnce([{ agentId: "a1", _sum: { totalPoints: 2, visitedPoints: 2 } }] as any)
 
     const res = await ListAgents(makeReq("/api/v1/mtm/agents"))
     const json = await res.json()
@@ -225,6 +225,13 @@ describe("GET /api/v1/mtm/agents", () => {
 
     const routeWhere = (vi.mocked(prisma.mtmRoute.groupBy).mock.calls[0][0] as any).where
     expect(routeWhere).toMatchObject({ organizationId: ORG, agentId: { in: ["a1", "a2"] }, deletedAt: null, totalPoints: { gt: 0 } })
+    // Review of #209: next week's planned routes must not dilute today's 100%.
+    // Seven org-local days ending today, both ends bounded.
+    expect(routeWhere.date.lte).toBeInstanceOf(Date)
+    expect(routeWhere.date.lte.getTime() - routeWhere.date.gte.getTime()).toBe(6 * 24 * 60 * 60 * 1000)
+    expect(routeWhere.date.lte.getTime()).toBeLessThanOrEqual(Date.now() + 24 * 60 * 60 * 1000)
+    const visitWhere = (vi.mocked(prisma.mtmVisit.groupBy).mock.calls[0][0] as any).where
+    expect(visitWhere.createdAt.gte.getTime()).toBeLessThanOrEqual(routeWhere.date.gte.getTime() + 24 * 60 * 60 * 1000)
   })
 
   it("still lists people when the activity figures cannot be computed", async () => {

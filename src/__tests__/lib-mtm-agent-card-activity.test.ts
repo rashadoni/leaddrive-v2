@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 import {
   MTM_AGENT_APP_ACTIVE_WINDOW_MS,
-  mtmAgentActivityWindowStart,
+  mtmAgentActivityWindow,
+  mtmRouteDateTodayBound,
   mtmAgentAppActivity,
   mtmAgentCardActivity,
   mtmAgentPlanFulfillment,
@@ -56,8 +57,16 @@ describe("agent card: plan fulfilment", () => {
     expect(mtmAgentPlanFulfillment(4, 9)).toBe(100)
   })
 
-  it("uses the analytics weekly window", () => {
-    expect(mtmAgentActivityWindowStart(NOW).toISOString()).toBe("2026-09-07T10:00:00.000Z")
+  it("covers seven org-local days ending today, never future routes", () => {
+    // 2026-09-14T22:30Z is already the 15th in Baku (+04:00).
+    const late = new Date("2026-09-14T22:30:00.000Z")
+    const window = mtmAgentActivityWindow(late, "Asia/Baku")
+    expect(window.routeDate.gte.toISOString()).toBe("2026-09-09T00:00:00.000Z")
+    expect(window.routeDate.lte.toISOString()).toBe("2026-09-15T00:00:00.000Z")
+    // Visits start at Baku midnight of the first day.
+    expect(window.visitsSince.toISOString()).toBe("2026-09-08T20:00:00.000Z")
+    expect(mtmRouteDateTodayBound(late, "Asia/Baku").toISOString()).toBe("2026-09-15T00:00:00.000Z")
+    expect(mtmRouteDateTodayBound(late, "not/a-zone").toISOString()).toBe("2026-09-14T00:00:00.000Z")
   })
 })
 
@@ -71,6 +80,9 @@ describe("agents page reads fields the list returns", () => {
     expect(page).toContain("agent.activity")
     expect(page).toContain("agent.app")
     expect(page).toContain('t("planNone")')
+    // One freshness window for the online dot and the app badge.
+    expect(page).toContain("const ONLINE_WINDOW_MS = MTM_AGENT_APP_ACTIVE_WINDOW_MS")
+    expect(page).not.toContain("10 * 60 * 1000")
   })
 
   it("links an employee to their route history and supports focusing one employee", () => {

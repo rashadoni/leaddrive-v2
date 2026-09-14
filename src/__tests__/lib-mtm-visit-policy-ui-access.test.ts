@@ -50,6 +50,9 @@ describe("visit policy settings: what may be edited (GET data.access contract)",
     expect(source).toContain("{readOnly ? null : (")
     expect(source).toContain('data-testid="visit-policy-read-only"')
     expect(source).toContain('data-testid="visit-policy-no-team-hint"')
+    // 400/409 answers are explained too, never printed as the server's English.
+    expect(source).not.toContain("body?.error")
+    expect(source.match(/explainMtmApiErrorOr\(explainError, body, response\.status/g) ?? []).toHaveLength(3)
     for (const locale of ["en", "ru", "az"]) {
       const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).mtmVisitPolicies
       for (const key of ["readOnlySupervisor", "readOnlyAdminOnly", "readOnlyOtherTeam", "managerNoTeamHint"]) {

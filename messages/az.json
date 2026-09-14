@@ -11104,7 +11104,15 @@
     "policyReadOnly": "Supervayzer ziyarət qaydalarına baxa bilər, amma dəyişə bilməz.",
     "forbidden": "Bu əməliyyata çıxışınız yoxdur.",
     "unauthorized": "Sessiyanız bitib. Yenidən daxil olun.",
-    "generic": "Məlumatı yükləmək alınmadı. Bir az sonra yenidən cəhd edin."
+    "generic": "Məlumatı yükləmək alınmadı. Bir az sonra yenidən cəhd edin.",
+    "policyTeamInvalid": "Seçilmiş komanda artıq yoxdur. Başqa komanda seçib yenidən yadda saxlayın.",
+    "policyWindowConflict": "Bu tarixləri eyni komanda, ziyarət növü və prioritetli başqa aktiv qayda artıq əhatə edir. Prioriteti və ya tarixləri dəyişin.",
+    "policyNotFound": "Bu qayda artıq yoxdur. Səhifəni yeniləyin.",
+    "policiesDisabled": "Ziyarət qaydaları təşkilat üçün söndürülüb.",
+    "previewAgentNotFound": "Bu əməkdaş önbaxış üçün əlçatan deyil.",
+    "previewCustomerNotFound": "Bu müştəri önbaxış üçün əlçatan deyil.",
+    "validationFailed": "Bəzi sahələr səhv doldurulub. Formanı yoxlayıb yenidən cəhd edin.",
+    "policyPreviewFailed": "Önbaxışı qurmaq alınmadı. Bir az sonra yenidən cəhd edin."
   },
   "mtmAgents": {
     "title": "Sahə agentləri",

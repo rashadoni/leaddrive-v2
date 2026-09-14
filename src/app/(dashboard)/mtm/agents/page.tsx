@@ -8,6 +8,7 @@ import { formatDateTime, formatTime } from "@/lib/format-date"
 import { mtmWorkdayBreakSummary } from "@/lib/mtm/workday-break-summary"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
 import { useMtmApiError } from "@/components/mtm/use-mtm-api-error"
+import { MTM_AGENT_APP_ACTIVE_WINDOW_MS } from "@/lib/mtm/agent-card-activity"
 import { PageDescription } from "@/components/page-description"
 import { HelpButton } from "@/components/help/help-button"
 import { ColorStatCard } from "@/components/color-stat-card"
@@ -30,7 +31,9 @@ const statusColors: Record<string, string> = {
   INACTIVE: "bg-muted text-muted-foreground",
   SUSPENDED: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-300",
 }
-const ONLINE_WINDOW_MS = 10 * 60 * 1000
+// One freshness window for the "online" dot/counter and the app badge
+// (review of #209: 10 min here and 15 min on the badge disagreed).
+const ONLINE_WINDOW_MS = MTM_AGENT_APP_ACTIVE_WINDOW_MS
 
 export default function MtmAgentsPage() {
   const { data: session } = useSession()
@@ -73,8 +76,13 @@ export default function MtmAgentsPage() {
   useEffect(() => { fetchAgents() }, [orgId])
 
   const now = Date.now()
-  const seenMs = (a: any) => (a.lastSeenAt ? now - new Date(a.lastSeenAt).getTime() : Infinity)
-  const isOnline = (a: any) => seenMs(a) < ONLINE_WINDOW_MS
+  // The newest mobile signal the server computed for the badge (GPS point or
+  // lastSeenAt), so the dot and the badge read the same fact.
+  const seenMs = (a: any) => {
+    const at = a.app?.lastSignalAt ?? a.lastSeenAt
+    return at ? now - new Date(at).getTime() : Infinity
+  }
+  const isOnline = (a: any) => seenMs(a) <= ONLINE_WINDOW_MS
   // A break and a dead phone both stop GPS; only one of them is a reason to
   // call the rep. The workday's own state answers that, so it goes first and
   // "last seen" stays for the case where nothing else explains the silence.
@@ -107,7 +115,7 @@ export default function MtmAgentsPage() {
   const lastSeenText = (a: any) => {
     const ms = seenMs(a)
     if (!isFinite(ms)) return t("neverSeen")
-    if (ms < ONLINE_WINDOW_MS) return t("online")
+    if (ms <= ONLINE_WINDOW_MS) return t("online")
     const min = Math.floor(ms / 60000)
     if (min < 60) return `${min} ${t("agoMin")}`
     const h = Math.floor(min / 60)

@@ -1053,5 +1053,8 @@ describe("undated open tasks are a visible group, not the last row of page 3", (
     expect(group).toBeGreaterThan(0)
     expect(group).toBeLessThan(page.indexOf("tasks={pageTasks}"))
     expect(page).toContain("(data?.total || 0) + undatedTotal")
+    // Selecting the page merges into the selection instead of dropping ticked undated tasks.
+    expect(page).toContain("[...new Set([...current, ...pageIds])]")
+    expect(page).not.toContain("setSelected(allPageSelected ? [] :")
   })
 })

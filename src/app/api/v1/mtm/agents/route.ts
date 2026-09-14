@@ -25,7 +25,7 @@ import { checkPermission } from "@/lib/permissions"
 import { isTenantCapabilityEnabled } from "@/lib/tenant-capabilities"
 import { passwordPolicyError } from "@/lib/password-policy"
 import {
-  mtmAgentActivityWindowStart,
+  mtmAgentActivityWindow,
   mtmAgentAppActivity,
   mtmAgentCardActivity,
 } from "@/lib/mtm/agent-card-activity"
@@ -227,16 +227,17 @@ export const GET = withRls(async (req, auth) => {
     if (agents.length) {
       try {
         const agentIds = agents.map((agent) => agent.id)
-        const since = mtmAgentActivityWindowStart(new Date())
+        const activitySettings = await getMtmSettings(orgId)
+        const activityWindow = mtmAgentActivityWindow(new Date(), activitySettings.timezone)
         const [visitRows, routeRows] = await Promise.all([
           prisma.mtmVisit.groupBy({
             by: ["agentId"],
-            where: { organizationId: orgId, agentId: { in: agentIds }, createdAt: { gte: since }, deletedAt: null },
+            where: { organizationId: orgId, agentId: { in: agentIds }, createdAt: { gte: activityWindow.visitsSince }, deletedAt: null },
             _count: { _all: true },
           }),
           prisma.mtmRoute.groupBy({
             by: ["agentId"],
-            where: { organizationId: orgId, agentId: { in: agentIds }, date: { gte: since }, deletedAt: null, totalPoints: { gt: 0 } },
+            where: { organizationId: orgId, agentId: { in: agentIds }, date: activityWindow.routeDate, deletedAt: null, totalPoints: { gt: 0 } },
             _sum: { totalPoints: true, visitedPoints: true },
           }),
         ])
