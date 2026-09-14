@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
-import { MAX_PAGE_LIMIT } from "./_constants"
+import { activityPeriodStart, MAX_PAGE_LIMIT, VIEWER_READ_ACTION_SUFFIXES, VIEWER_READ_ACTIONS } from "./_constants"
 import { withRouteFieldWebRlsAuth } from "@/lib/with-mtm-rls-auth"
 import { productCapabilitiesForMixedSurface } from "@/lib/workforce-capability"
 import {
@@ -11,6 +11,8 @@ import {
   mtmFieldScopeRequiredResponse,
   resolveMtmFieldScope,
 } from "@/lib/mtm/field-access"
+import { getMtmSettings } from "@/lib/mtm-settings"
+import { isValidTimezone } from "@/lib/timezone"
 
 const CHECK_IN_ACTIONS = ["CHECK_IN", "CHECK_IN_FORCED"] as const
 // Compliance lens: geofence bypasses + failed mobile logins. Kept in sync with
@@ -39,6 +41,10 @@ function routeCapabilityDisabled() {
 function routeAuditWhere(organizationId: string, workforceEnabled: boolean): Prisma.MtmAuditLogWhereInput {
   return {
     organizationId,
+    AND: [
+      ...VIEWER_READ_ACTION_SUFFIXES.map((suffix) => ({ NOT: { action: { endsWith: suffix } } })),
+      { action: { notIn: [...VIEWER_READ_ACTIONS] } },
+    ],
     ...(workforceEnabled ? {} : {
       NOT: {
         OR: [
@@ -51,13 +57,62 @@ function routeAuditWhere(organizationId: string, workforceEnabled: boolean): Pri
   }
 }
 
-/** Inclusive local-midnight start for the selected period, or null for "all". */
-function periodStart(period: string, now: Date): Date | null {
-  const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  if (period === "all") return null
-  if (period === "7d") { const s = new Date(midnight); s.setDate(s.getDate() - 6); return s }
-  if (period === "30d") { const s = new Date(midnight); s.setDate(s.getDate() - 29); return s }
-  return midnight // "today" (default)
+function jsonRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {}
+}
+
+function stringValue(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null
+}
+
+type ActivityLog = { entity: string; entityId: string | null; newData: unknown; oldData: unknown }
+
+/**
+ * What a row is about, in words a manager reads: the customer's name, and the
+ * visit or route it links to. New sync rows carry the name; older ones carry
+ * only a customerId or the visit id, so the name is looked up once per page.
+ */
+async function activitySubjects(orgId: string, logs: ActivityLog[]) {
+  const visitIdOf = (log: ActivityLog) =>
+    log.entity === "visit" ? stringValue(log.entityId) : stringValue(jsonRecord(log.newData).visitId)
+  const routeIdOf = (log: ActivityLog) =>
+    log.entity === "route" ? stringValue(log.entityId) : stringValue(jsonRecord(log.newData).routeId)
+
+  const customerIds = new Set<string>()
+  const visitIds = new Set<string>()
+  for (const log of logs) {
+    const data = jsonRecord(log.newData)
+    if (stringValue(data.customerName)) continue
+    const customerId = stringValue(data.customerId) ?? stringValue(jsonRecord(log.oldData).customerId)
+    if (customerId) customerIds.add(customerId)
+    else {
+      const visitId = visitIdOf(log)
+      if (visitId) visitIds.add(visitId)
+    }
+  }
+  const [customers, visits] = await Promise.all([
+    customerIds.size
+      ? prisma.mtmCustomer.findMany({ where: { organizationId: orgId, id: { in: [...customerIds] } }, select: { id: true, name: true } })
+      : Promise.resolve([]),
+    visitIds.size
+      ? prisma.mtmVisit.findMany({ where: { organizationId: orgId, id: { in: [...visitIds] } }, select: { id: true, customer: { select: { name: true } } } })
+      : Promise.resolve([]),
+  ])
+  const customerName = new Map((customers ?? []).map((c) => [c.id, c.name] as const))
+  const visitCustomer = new Map((visits ?? []).map((v) => [v.id, v.customer?.name ?? null] as const))
+
+  return logs.map((log) => {
+    const data = jsonRecord(log.newData)
+    const visitId = visitIdOf(log)
+    const customerId = stringValue(data.customerId) ?? stringValue(jsonRecord(log.oldData).customerId)
+    return {
+      customerName: stringValue(data.customerName)
+        ?? (customerId ? customerName.get(customerId) ?? null : null)
+        ?? (visitId ? visitCustomer.get(visitId) ?? null : null),
+      visitId,
+      routeId: routeIdOf(log),
+    }
+  })
 }
 
 export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
@@ -84,8 +139,9 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
   try {
     const capabilities = await productCapabilitiesForMixedSurface(orgId, "MTM/activity GET")
     if (!capabilities.routeField) return routeCapabilityDisabled()
-    const now = new Date()
-    const start = periodStart(period, now)
+    const settings = await getMtmSettings(orgId)
+    const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
+    const start = activityPeriodStart(period, new Date(), timezone)
 
     // KPI counts are scoped to the SELECTED period (+ agent) — this fixes the old
     // bug where cards were hard-coded to "today" while the feed showed all time.
@@ -116,6 +172,7 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
     else if (type === "CHECK_IN_FORCED") auditWhere.action = "CHECK_IN_FORCED"
     else if (type === "CHECK_OUT") auditWhere.action = "CHECK_OUT"
     else if (type === "PHOTO") auditWhere.action = "PHOTO_UPLOAD"
+    else if (type === "ROUTE") auditWhere.action = { in: ["ROUTE_START", "ROUTE_COMPLETE"] }
     else if (type === "TASK") auditWhere.action = { in: ["TASK_CREATE", "TASK_UPDATE", "TASK_COMPLETE", "TASK_DELETE"] }
 
     const [logs, total] = await Promise.all([
@@ -132,11 +189,14 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
       prisma.mtmAuditLog.count({ where: auditWhere }),
     ])
 
+    const subjects = await activitySubjects(orgId, logs)
+
     return NextResponse.json({
       success: true,
       data: {
         kpi: { totalActivities, totalCheckIns, totalCheckOuts, totalPhotos, totalViolations },
-        logs,
+        logs: logs.map((log, index) => ({ ...log, subject: subjects[index] })),
+        timezone,
         total,
         page,
         limit,

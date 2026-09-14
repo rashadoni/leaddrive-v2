@@ -39,6 +39,7 @@ import {
   spawnNextMtmTaskRecurrenceInTransaction,
 } from "@/lib/mtm/task-recurrence"
 import { mtmAlertMessage } from "@/lib/mtm/alert-messages"
+import { routeTransitionActions, writeFieldSyncAudit } from "@/lib/mtm/field-sync-audit"
 
 // Mirror the mobile engine's coordinate/geofence helpers (local there, not exported).
 function validCoordinate(value: unknown, min: number, max: number): value is number {
@@ -222,7 +223,7 @@ async function applyOp(
             deletedAt: null,
             AND: [customerMutationScopeForActor(actor, checkInAt)],
           },
-          select: { id: true, latitude: true, longitude: true, geofenceRadius: true },
+          select: { id: true, name: true, latitude: true, longitude: true, geofenceRadius: true },
         })
         if (!customer) { const r = { status: "customer_not_found", code: MTM_CHECK_IN_ERROR.CUSTOMER_MISSING }; await pin("conflict", r); return { status: "conflict" as const, result: r } }
         // Owner decision 2 (field UX audit 2026-09-05): no coordinates, no
@@ -337,6 +338,7 @@ async function applyOp(
         await createVisitRequirementSnapshot(tx, { organizationId: orgId, visitId: visit.id, agentId: fieldAgentId, customerId: resolvedCustomerId, visitType: typeof d.visitType === "string" ? d.visitType : undefined, at: checkInAt })
 
         // Route-point visit: fan out participants (other assigned agents) + advance the route.
+        let routeStarted = false
         if (routePoint) {
           const others = routePoint.route.assignments.filter((a: { agentId: string }) => a.agentId !== fieldAgentId)
           if (others.length > 0) {
@@ -352,7 +354,7 @@ async function applyOp(
             })
           }
           if (routePoint.route.status === "PLANNED") {
-            await tx.mtmRoute.updateMany({
+            routeStarted = await tx.mtmRoute.updateMany({
               where: {
                 id: routePoint.routeId,
                 organizationId: orgId,
@@ -364,9 +366,26 @@ async function applyOp(
                 ],
               },
               data: { status: "IN_PROGRESS", startedAt: checkInAt },
-            })
+            }).then((started) => started.count === 1)
           }
         }
+
+        // Activity journal, in the same transaction as the visit and the pin:
+        // exactly once per operationId (src/lib/mtm/field-sync-audit.ts).
+        const auditShared = {
+          organizationId: orgId,
+          agentId: fieldAgentId,
+          operationId: op.operationId,
+          source: "web_sync" as const,
+          visitId: visit.id,
+          routeId: routePoint?.routeId ?? null,
+          customerId: resolvedCustomerId,
+          customerName: customer.name ?? null,
+        }
+        await writeFieldSyncAudit(tx, [
+          { ...auditShared, action: "CHECK_IN" },
+          ...(routeStarted ? [{ ...auditShared, action: "ROUTE_START" as const }] : []),
+        ])
 
         const r = { status: "checked_in", visit }
         await pin("ok", r)
@@ -416,6 +435,10 @@ async function applyOp(
           }
           expectedAgentId = visible.agentId
         }
+        const before = await tx.mtmVisit.findFirst({
+          where: { id: visitId, organizationId: orgId },
+          select: { agentId: true, customerId: true, routeId: true, customer: { select: { name: true } }, route: { select: { status: true } } },
+        })
         const completion = await completeMtmVisit(tx, {
           organizationId: orgId,
           visitId,
@@ -425,6 +448,25 @@ async function applyOp(
           longitude: coordinates.longitude,
         })
         const status = checkoutStatus(completion)
+        if (completion.status === "completed" && !completion.idempotent && before) {
+          const routeAfter = before.routeId && before.route
+            ? await tx.mtmRoute.findFirst({ where: { id: before.routeId, organizationId: orgId }, select: { status: true } })
+            : null
+          const auditShared = {
+            organizationId: orgId,
+            agentId: before.agentId,
+            operationId: op.operationId,
+            source: "web_sync" as const,
+            visitId,
+            routeId: before.routeId ?? null,
+            customerId: before.customerId,
+            customerName: before.customer?.name ?? null,
+          }
+          await writeFieldSyncAudit(tx, [
+            { ...auditShared, action: "CHECK_OUT", metadataKind: "check_out" },
+            ...routeTransitionActions(before.route?.status, routeAfter?.status).map((action) => ({ ...auditShared, action })),
+          ])
+        }
         await tx.mtmSyncOperation.create({
           data: { organizationId: orgId, agentId: principalId, operationId: op.operationId, entity: "visits", opType: "update", status, result: completion as Prisma.InputJsonValue },
         })

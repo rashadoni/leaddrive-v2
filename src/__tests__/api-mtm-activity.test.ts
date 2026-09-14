@@ -28,7 +28,7 @@ vi.mock("@/lib/api-auth", () => ({
 }))
 
 import { GET } from "@/app/api/v1/mtm/activity/route"
-import { MAX_PAGE_LIMIT } from "@/app/api/v1/mtm/activity/_constants"
+import { activityPeriodStart, MAX_PAGE_LIMIT, VIEWER_READ_ACTION_SUFFIXES } from "@/app/api/v1/mtm/activity/_constants"
 import { prisma } from "@/lib/prisma"
 import { resetMtmFieldScopeMemo } from "@/lib/mtm/field-access"
 import { requireAuth } from "@/lib/api-auth"
@@ -303,5 +303,79 @@ describe("GET /api/v1/mtm/activity", () => {
       expect((vi.mocked(prisma.mtmAuditLog.findMany).mock.calls[0][0] as any).where.agentId).toBeUndefined()
       expect(prisma.mtmAgent.findFirst).not.toHaveBeenCalled()
     })
+  })
+})
+
+// ─── Prod 2026-09-14: a feed an office manager can read ──────────────────────
+describe("GET /api/v1/mtm/activity — manager feed (2026-09-14)", () => {
+  it("excludes viewer read events (*_READ, *_VIEW) from the feed and every counter", async () => {
+    await GET(makeReq("/api/v1/mtm/activity?period=7d"))
+    const wheres = [
+      ...vi.mocked(prisma.mtmAuditLog.count).mock.calls.map(([arg]) => (arg as any).where),
+      (vi.mocked(prisma.mtmAuditLog.findMany).mock.calls[0][0] as any).where,
+    ]
+    for (const where of wheres) {
+      expect(where.AND).toEqual(expect.arrayContaining([
+        { NOT: { action: { endsWith: "_READ" } } },
+        { NOT: { action: { endsWith: "_VIEW" } } },
+        { action: { notIn: ["ROUTE_TRAVEL_PREVIEW"] } },
+      ]))
+    }
+    // GPS_HISTORY_VIEW and WEEK_GPS_LATEST_READ — the two names seen on prod.
+    const excluded = (action: string) => VIEWER_READ_ACTION_SUFFIXES.some((suffix) => action.endsWith(suffix))
+    expect(excluded("GPS_HISTORY_VIEW")).toBe(true)
+    expect(excluded("WEEK_GPS_LATEST_READ")).toBe(true)
+    expect(excluded("CHECK_IN")).toBe(false)
+    expect(excluded("PHOTO_REVIEW")).toBe(false)
+  })
+
+  it("starts 'today' at the organization's midnight, not the server's", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    try {
+      // 00:30 on 15 September in Baku (UTC+4) is still 14 September in UTC.
+      vi.setSystemTime(new Date("2026-09-14T20:30:00.000Z"))
+      vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "timezone", value: "Asia/Baku" }] as never)
+      await GET(makeReq("/api/v1/mtm/activity?period=today"))
+      const where = (vi.mocked(prisma.mtmAuditLog.count).mock.calls[0][0] as any).where
+      expect(where.createdAt.gte.toISOString()).toBe("2026-09-14T20:00:00.000Z")
+    } finally {
+      vi.useRealTimers()
+      vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([] as never)
+    }
+  })
+
+  it("activityPeriodStart covers 7 and 30 local days and 'all'", () => {
+    const now = new Date("2026-09-14T10:00:00.000Z")
+    expect(activityPeriodStart("7d", now, "Asia/Baku")?.toISOString()).toBe("2026-09-07T20:00:00.000Z")
+    expect(activityPeriodStart("30d", now, "Asia/Baku")?.toISOString()).toBe("2026-08-15T20:00:00.000Z")
+    expect(activityPeriodStart("all", now, "Asia/Baku")).toBeNull()
+  })
+
+  it("names the customer and links the visit/route on each row", async () => {
+    vi.mocked(prisma.mtmAuditLog.findMany).mockResolvedValue([
+      { id: "l1", action: "CHECK_IN", entity: "visit", entityId: "v-1", newData: { customerName: "Aptek 24", routeId: "r-1" }, createdAt: new Date() },
+      { id: "l2", action: "CHECK_OUT", entity: "visit", entityId: "v-2", newData: { duration: 12 }, createdAt: new Date() },
+      { id: "l3", action: "CHECK_IN", entity: "visit", entityId: "v-3", newData: { customerId: "c-3" }, createdAt: new Date() },
+      { id: "l4", action: "ROUTE_COMPLETE", entity: "route", entityId: "r-9", newData: {}, createdAt: new Date() },
+    ] as never)
+    vi.mocked(prisma.mtmCustomer.findMany).mockResolvedValue([{ id: "c-3", name: "Klinika" }] as never)
+    vi.mocked(prisma.mtmVisit.findMany).mockResolvedValue([{ id: "v-2", customer: { name: "Zeytun" } }] as never)
+
+    const json = await (await GET(makeReq("/api/v1/mtm/activity"))).json()
+
+    expect(json.data.logs.map((log: any) => log.subject)).toEqual([
+      { customerName: "Aptek 24", visitId: "v-1", routeId: "r-1" },
+      { customerName: "Zeytun", visitId: "v-2", routeId: null },
+      { customerName: "Klinika", visitId: "v-3", routeId: null },
+      { customerName: null, visitId: null, routeId: "r-9" },
+    ])
+    expect((vi.mocked(prisma.mtmCustomer.findMany).mock.calls[0][0] as any).where.organizationId).toBe(ORG)
+    expect((vi.mocked(prisma.mtmVisit.findMany).mock.calls[0][0] as any).where.organizationId).toBe(ORG)
+    expect(json.data.timezone).toBe("Asia/Baku")
+  })
+
+  it("type=ROUTE filters route start/completion", async () => {
+    await GET(makeReq("/api/v1/mtm/activity?type=ROUTE"))
+    expect((vi.mocked(prisma.mtmAuditLog.findMany).mock.calls[0][0] as any).where.action).toEqual({ in: ["ROUTE_START", "ROUTE_COMPLETE"] })
   })
 })

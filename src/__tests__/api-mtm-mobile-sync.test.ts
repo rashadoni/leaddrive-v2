@@ -3371,3 +3371,122 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
     }))
   })
 })
+
+// ─── Activity journal rows from the sync path (prod 2026-09-14) ─────────────
+// /mtm/activity counted «Check-in 0, Check-out 0» for a week while visits were
+// being opened and closed from the phone: the sync path wrote no audit rows.
+describe("POST /api/v1/mtm/mobile/sync/push — activity audit rows", () => {
+  const auditCalls = () => vi.mocked(prisma.mtmAuditLog.create).mock.calls.map((call) => (call[0] as any).data)
+
+  it("writes one CHECK_IN row with customer name and visit id inside the operation's transaction", async () => {
+    vi.mocked(prisma.mtmCustomer.findFirst).mockResolvedValue({ id: "cust-1", name: "Aptek 24", latitude: 40.4, longitude: 49.8, geofenceRadius: null } as never)
+    vi.mocked(prisma.mtmVisit.create).mockResolvedValue({ id: "visit-audit-1", status: "CHECKED_IN", checkInAt: new Date(), customerId: "cust-1" } as any)
+
+    const res = await PushPOST(makePushReq({ operations: [{
+      operationId: "op-audit-checkin", op: "create", entity: "visits",
+      data: { customerId: "cust-1", checkInAt: new Date().toISOString() }, clientTimestamp: Date.now(),
+    }] }))
+    expect((await res.json()).results[0].status).toBe("ok")
+
+    expect(auditCalls()).toEqual([expect.objectContaining({
+      organizationId: ORG,
+      agentId: AGENT_ID,
+      action: "CHECK_IN",
+      entity: "visit",
+      entityId: "visit-audit-1",
+      newData: expect.objectContaining({ operationId: "op-audit-checkin", customerName: "Aptek 24", visitId: "visit-audit-1", source: "mobile_sync" }),
+    })])
+    // Same transaction as the pin: written after $transaction opened and
+    // before the idempotency row that commits it.
+    expect(prisma.$transaction).toHaveBeenCalled()
+    expect(vi.mocked(prisma.mtmAuditLog.create).mock.invocationCallOrder[0])
+      .toBeLessThan(vi.mocked(prisma.mtmSyncOperation.create).mock.invocationCallOrder[0])
+  })
+
+  it("a retried operationId replays from the pin and writes no second row", async () => {
+    vi.mocked(prisma.mtmSyncOperation.findMany).mockResolvedValue([{
+      operationId: "op-audit-retry", entity: "visits", status: "ok", result: { serverId: "visit-audit-1", serverData: {} },
+    }] as any)
+
+    const res = await PushPOST(makePushReq({ operations: [{
+      operationId: "op-audit-retry", op: "create", entity: "visits", data: { customerId: "cust-1" }, clientTimestamp: Date.now(),
+    }] }))
+    expect((await res.json()).results[0].status).toBe("ok")
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+
+  it("a duplicate in the same batch writes one row", async () => {
+    vi.mocked(prisma.mtmVisit.create).mockResolvedValue({ id: "visit-audit-2", status: "CHECKED_IN", checkInAt: new Date() } as any)
+    const op = { operationId: "op-audit-dup", op: "create", entity: "visits", data: { customerId: "cust-1" }, clientTimestamp: Date.now() }
+
+    await PushPOST(makePushReq({ operations: [op, op] }))
+
+    expect(auditCalls().filter((row) => row.action === "CHECK_IN")).toHaveLength(1)
+  })
+
+  it("a concurrent duplicate that loses the pin race commits no row of its own", async () => {
+    vi.mocked(prisma.mtmVisit.create).mockResolvedValue({ id: "visit-audit-3", status: "CHECKED_IN", checkInAt: new Date() } as any)
+    // The pin fails on the unique index → the whole transaction (audit row
+    // included) rolls back and the winner's stored result is replayed.
+    vi.mocked(prisma.mtmSyncOperation.create).mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError("dup", { code: "P2002", clientVersion: "test" }),
+    )
+    vi.mocked(prisma.mtmSyncOperation.findFirst).mockResolvedValue({
+      operationId: "op-audit-race", entity: "visits", status: "ok", result: { serverId: "visit-audit-3" },
+    } as any)
+
+    const res = await PushPOST(makePushReq({ operations: [{
+      operationId: "op-audit-race", op: "create", entity: "visits", data: { customerId: "cust-1" }, clientTimestamp: Date.now(),
+    }] }))
+    expect((await res.json()).results[0]).toMatchObject({ status: "ok", serverId: "visit-audit-3" })
+    // The only create happened inside the rolled-back transaction, never
+    // re-attempted outside it.
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(prisma.mtmAuditLog.create).mock.invocationCallOrder[0])
+      .toBeLessThan(vi.mocked(prisma.mtmSyncOperation.create).mock.invocationCallOrder[0])
+  })
+
+  it("a refused check-in (conflict) writes no activity row", async () => {
+    vi.mocked(prisma.mtmCustomer.findFirst).mockResolvedValue({ id: "cust-1", latitude: null, longitude: null, geofenceRadius: null } as never)
+    const res = await PushPOST(makePushReq({ operations: [{
+      operationId: "op-audit-refused", op: "create", entity: "visits", data: { customerId: "cust-1" }, clientTimestamp: Date.now(),
+    }] }))
+    expect((await res.json()).results[0].status).toBe("conflict")
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+
+  it("check-out writes CHECK_OUT, and ROUTE_COMPLETE when that visit closed the route", async () => {
+    const checkInAt = new Date(Date.now() - 30 * 60_000)
+    vi.mocked(prisma.mtmVisit.findFirst)
+      // the sync guard's own read
+      .mockResolvedValueOnce({ id: "visit-co", status: "CHECKED_IN", customerId: "cust-1", routeId: "route-1", routePointId: "rp-1" } as never)
+      // completeMtmVisit readiness
+      .mockResolvedValueOnce({
+        id: "visit-co", agentId: AGENT_ID, status: "CHECKED_IN", checkInAt, checkOutAt: null, routeId: "route-1", routePointId: "rp-1",
+        requirementSnapshot: { requirements: [] }, actionResults: [], _count: { photos: 0 },
+      } as never)
+    vi.mocked(prisma.mtmVisit.update).mockResolvedValue({
+      id: "visit-co", agentId: AGENT_ID, status: "CHECKED_OUT", checkOutAt: new Date(), duration: 30, routeId: "route-1", routePointId: "rp-1",
+    } as never)
+    vi.mocked(prisma.mtmRoute.findFirst)
+      .mockResolvedValueOnce({ status: "IN_PROGRESS" } as never) // before
+      .mockResolvedValueOnce({ id: "route-1", totalPoints: 1, status: "IN_PROGRESS" } as never) // completeMtmVisit
+      .mockResolvedValueOnce({ status: "COMPLETED" } as never) // after
+    vi.mocked(prisma.mtmRoutePoint.count).mockResolvedValue(1 as never)
+    vi.mocked(prisma.mtmRoute.update).mockResolvedValue({} as never)
+    vi.mocked(prisma.mtmCustomer.findFirst).mockResolvedValue({ name: "Aptek 24" } as never)
+
+    const res = await PushPOST(makePushReq({ operations: [{
+      operationId: "op-audit-checkout", op: "update", entity: "visits",
+      data: { id: "visit-co", status: "CHECKED_OUT" }, clientTimestamp: Date.now(),
+    }] }))
+    expect((await res.json()).results[0].status).toBe("ok")
+
+    expect(auditCalls().map((row) => row.action)).toEqual(["CHECK_OUT", "ROUTE_COMPLETE"])
+    expect(auditCalls()[0]).toMatchObject({
+      entity: "visit", entityId: "visit-co",
+      newData: expect.objectContaining({ customerName: "Aptek 24", operationId: "op-audit-checkout", routeId: "route-1" }),
+    })
+    expect(auditCalls()[1]).toMatchObject({ entity: "route", entityId: "route-1" })
+  })
+})

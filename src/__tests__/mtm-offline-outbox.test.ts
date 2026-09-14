@@ -129,7 +129,8 @@ let txMock: {
   mtmSetting: { findFirst: ReturnType<typeof vi.fn> }
   mtmAlert: { create: ReturnType<typeof vi.fn> }
   mtmVisitParticipant: { createMany: ReturnType<typeof vi.fn> }
-  mtmRoute: { updateMany: ReturnType<typeof vi.fn> }
+  mtmRoute: { updateMany: ReturnType<typeof vi.fn>; findFirst: ReturnType<typeof vi.fn> }
+  mtmAuditLog: { create: ReturnType<typeof vi.fn> }
 }
 
 const uuid = () => "123e4567-e89b-42d3-a456-426614174000"
@@ -180,7 +181,8 @@ beforeEach(() => {
     mtmSetting: { findFirst: vi.fn().mockResolvedValue(null) },
     mtmAlert: { create: vi.fn().mockResolvedValue({}) },
     mtmVisitParticipant: { createMany: vi.fn().mockResolvedValue({}) },
-    mtmRoute: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+    mtmRoute: { updateMany: vi.fn().mockResolvedValue({ count: 1 }), findFirst: vi.fn().mockResolvedValue(null) },
+    mtmAuditLog: { create: vi.fn().mockResolvedValue({}) },
   }
   vi.mocked(prisma.$transaction).mockImplementation(((cb: (tx: unknown) => unknown) => cb(txMock)) as never)
 })
@@ -545,5 +547,51 @@ describe("POST /api/v1/mtm/sync/push", () => {
   it("visit_action errors on missing required fields", async () => {
     const res = await POST(req({ operations: [{ operationId: uuid(), entity: "visits", op: "update", data: { kind: "visit_action", visitId: "v1" } }] }), undefined as never)
     expect((await res.json()).data.results[0].status).toBe("error")
+  })
+})
+
+// Prod 2026-09-14: the PWA's offline check-ins and check-outs never reached the
+// activity journal. They now write audit rows through the transaction client.
+describe("POST /api/v1/mtm/sync/push — activity audit rows", () => {
+  const checkin = (operationId: string, extra: Record<string, unknown> = {}) => ({
+    operationId, entity: "visits", op: "create", data: { kind: "checkin", customerId: "cust-1", ...extra },
+  })
+
+  it("check-in writes CHECK_IN (and ROUTE_START for a planned route) via the tx client", async () => {
+    txMock.mtmCustomer.findFirst.mockResolvedValue({ id: "cust-1", name: "Aptek 24", latitude: 40, longitude: 49, geofenceRadius: null })
+    txMock.mtmRoutePoint.findFirst.mockResolvedValue({
+      id: "rp-1", routeId: "r-1", customerId: "cust-1", contactId: null,
+      route: { status: "PLANNED", assignments: [] },
+    })
+    const res = await POST(req({ operations: [checkin(uuid(), { routePointId: "rp-1" })] }), undefined as never)
+    expect((await res.json()).data.results[0].status).toBe("ok")
+
+    const rows = txMock.mtmAuditLog.create.mock.calls.map((call) => call[0].data)
+    expect(rows.map((row) => row.action)).toEqual(["CHECK_IN", "ROUTE_START"])
+    expect(rows[0]).toMatchObject({
+      agentId: "mtm-agent-1", entity: "visit", entityId: "visit-new",
+      newData: expect.objectContaining({ customerName: "Aptek 24", operationId: uuid(), source: "web_sync" }),
+    })
+    expect(txMock.mtmAuditLog.create.mock.invocationCallOrder[1])
+      .toBeLessThan(txMock.mtmSyncOperation.create.mock.invocationCallOrder[0])
+  })
+
+  it("check-out writes CHECK_OUT once; an idempotent replay of a checked-out visit writes nothing", async () => {
+    txMock.mtmVisit.findFirst.mockResolvedValue({ agentId: "mtm-agent-1", customerId: "cust-1", routeId: null, customer: { name: "Aptek 24" }, route: null })
+    vi.mocked(completeMtmVisit).mockResolvedValueOnce({ status: "completed", visit: { id: "v1" }, idempotent: false } as never)
+    await POST(req({ operations: [checkoutOp()] }), undefined as never)
+    expect(txMock.mtmAuditLog.create.mock.calls.map((call) => call[0].data.action)).toEqual(["CHECK_OUT"])
+
+    txMock.mtmAuditLog.create.mockClear()
+    vi.mocked(completeMtmVisit).mockResolvedValueOnce({ status: "completed", visit: { id: "v1" }, idempotent: true } as never)
+    await POST(req({ operations: [checkoutOp("223e4567-e89b-42d3-a456-426614174000")] }), undefined as never)
+    expect(txMock.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+
+  it("a previously pinned operation replays without any audit write", async () => {
+    vi.mocked(prisma.mtmSyncOperation.findMany).mockResolvedValue([{ operationId: uuid(), status: "ok", result: {} }] as never)
+    await POST(req({ operations: [checkin(uuid())] }), undefined as never)
+    expect(txMock.mtmAuditLog.create).not.toHaveBeenCalled()
+    expect(prisma.$transaction).not.toHaveBeenCalled()
   })
 })

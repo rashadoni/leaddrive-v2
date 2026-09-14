@@ -8,8 +8,8 @@
  * writer never crashes or shows a blank badge.
  */
 import {
-  Activity, AlertTriangle, Camera, CheckCircle2, Eye, Link2, ListPlus, LogIn, LogOut,
-  PencilLine, RotateCcw, Route, Settings, ShieldAlert, ShieldCheck, ShoppingCart, Store,
+  Activity, AlertTriangle, Camera, CheckCircle2, Eye, Flag, Link2, ListChecks, ListPlus, LogIn, LogOut,
+  Megaphone, Pause, PencilLine, Play, RotateCcw, Route, Send, Settings, ShieldAlert, ShieldCheck, ShoppingCart, Store,
   Trash2, UserCog, UserMinus, UserPlus, type LucideIcon,
 } from "lucide-react"
 
@@ -64,6 +64,23 @@ const META: Record<string, ActionMeta> = {
   ALERT_REOPEN:        { icon: RotateCcw,     tone: "amber" },
   ALERT_DELETE:        { icon: Trash2,        tone: "red" },
   SETTINGS_UPDATE:     { icon: Settings,      tone: "slate" },
+  // 2026-09-14: written by the mobile/PWA sync path and route lifecycle.
+  ROUTE_START:         { icon: Play,          tone: "emerald" },
+  ROUTE_COMPLETE:      { icon: Flag,          tone: "teal" },
+  ROUTE_PUBLISH:       { icon: Send,          tone: "sky" },
+  ROUTE_DAY_CLOSE:     { icon: Flag,          tone: "amber" },
+  VISIT_COMPLETE:      { icon: CheckCircle2,  tone: "teal" },
+  VISIT_ACTION_COMPLETE: { icon: ListChecks,  tone: "teal" },
+  VISIT_RESULT_UPDATE: { icon: PencilLine,    tone: "sky" },
+  ALERT_BULK_RESOLVE:  { icon: ShieldCheck,   tone: "teal" },
+  CONTACT_CREATE:      { icon: UserPlus,      tone: "emerald" },
+  CONTACT_UPDATE:      { icon: PencilLine,    tone: "sky" },
+  CONTACT_DELETE:      { icon: Trash2,        tone: "red" },
+  WORKDAY_START:       { icon: Play,          tone: "emerald" },
+  WORKDAY_PAUSE:       { icon: Pause,         tone: "amber" },
+  WORKDAY_RESUME:      { icon: Play,          tone: "sky" },
+  WORKDAY_FINISH:      { icon: Flag,          tone: "slate" },
+  OPERATIONAL_ANNOUNCEMENT_ACKNOWLEDGE: { icon: Megaphone, tone: "slate" },
 }
 
 const FALLBACK: ActionMeta = { icon: Activity, tone: "slate" }
@@ -94,6 +111,25 @@ const ENTITY_ROUTES: Record<string, string> = {
 export function entityHref(entity: string | null | undefined): string | null {
   if (!entity) return null
   return ENTITY_ROUTES[entity.toLowerCase()] ?? null
+}
+
+/** What the activity API resolved a row to be about (see activity/route.ts). */
+export interface ActivitySubject {
+  customerName: string | null
+  visitId: string | null
+  routeId: string | null
+}
+
+/**
+ * The exact record a row is about — the visit, then the route — falling back
+ * to the section. Before, every visit row opened the whole visits list.
+ */
+export function activityRowHref(log: { entity?: string | null; subject?: ActivitySubject | null }): string | null {
+  const visitId = log.subject?.visitId
+  if (visitId) return `/mtm/visits?visitId=${encodeURIComponent(visitId)}`
+  const routeId = log.subject?.routeId
+  if (routeId) return `/mtm/routes?routeId=${encodeURIComponent(routeId)}`
+  return entityHref(log.entity)
 }
 
 /** metadataKind → i18n key for a short human note in the Details cell. */

@@ -1,3 +1,4 @@
+import { routeTransitionActions, writeFieldSyncAudit } from "@/lib/mtm/field-sync-audit"
 import { NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
@@ -994,7 +995,7 @@ export const POST = withMobileRls(async (req, auth) => {
                   deletedAt: null,
                   AND: [customerMutationScopeForActor(visitActor, checkInAt)],
                 },
-                select: { id: true, latitude: true, longitude: true, geofenceRadius: true },
+                select: { id: true, name: true, latitude: true, longitude: true, geofenceRadius: true },
               }),
               tx.mtmVisit.findFirst({
                 where: { organizationId: orgId, agentId, status: "CHECKED_IN", deletedAt: null },
@@ -1161,26 +1162,31 @@ export const POST = withMobileRls(async (req, auth) => {
                   visitType: typeof data.visitType === "string" ? data.visitType : undefined,
                   at: visit.checkInAt,
                 })
-                if (forceOverrideMeta) {
-                  await tx.mtmAuditLog.create({
-                    data: {
-                      organizationId: orgId,
-                      agentId,
-                      action: "CHECK_IN_FORCED",
-                      entity: "visit",
-                      entityId: visit.id,
-                      metadataKind: "force_checkin",
-                      newData: {
-                        customerId,
-                        routeId: routePoint?.routeId ?? null,
-                        routePointId: routePoint?.id ?? null,
-                        actorRole: auth.role,
-                        forceOverride: true,
-                        ...forceOverrideMeta,
-                      },
-                    },
-                  })
-                }
+                // Activity journal: one row per accepted check-in, written with
+                // the visit and the operation pin (exactly once per operationId,
+                // see field-sync-audit.ts). A forced check-in is its own action.
+                await writeFieldSyncAudit(tx, [{
+                  organizationId: orgId,
+                  agentId,
+                  action: forceOverrideMeta ? "CHECK_IN_FORCED" : "CHECK_IN",
+                  operationId,
+                  source: "mobile_sync",
+                  visitId: visit.id,
+                  routeId: routePoint?.routeId ?? null,
+                  customerId,
+                  customerName: customer.name ?? null,
+                  metadataKind: forceOverrideMeta ? "force_checkin" : "field_sync",
+                  ...(forceOverrideMeta
+                    ? {
+                        extra: {
+                          routePointId: routePoint?.id ?? null,
+                          actorRole: auth.role,
+                          forceOverride: true,
+                          ...forceOverrideMeta,
+                        },
+                      }
+                    : {}),
+                }])
                 if (routePoint) {
                   const participants = routePoint.route.assignments.filter((assignment) => assignment.agentId !== agentId)
                   if (participants.length > 0) {
@@ -1240,6 +1246,12 @@ export const POST = withMobileRls(async (req, auth) => {
                 opStatus = "conflict"
                 errorMsg = "Visit changed or is no longer owned by agent"
               } else {
+                const routeBefore = existing.routeId
+                  ? await tx.mtmRoute.findFirst({
+                      where: { id: existing.routeId, organizationId: orgId },
+                      select: { status: true },
+                    })
+                  : null
                 const completion = await completeMtmVisit(tx, {
                   organizationId: orgId,
                   visitId: data.id,
@@ -1260,6 +1272,32 @@ export const POST = withMobileRls(async (req, auth) => {
                   opStatus = "conflict"
                   errorMsg = "Visit not found or not owned by agent"
                 } else {
+                  if (!completion.idempotent) {
+                    const [customerRow, routeAfter] = await Promise.all([
+                      tx.mtmCustomer.findFirst({
+                        where: { id: existing.customerId, organizationId: orgId },
+                        select: { name: true },
+                      }),
+                      existing.routeId && routeBefore
+                        ? tx.mtmRoute.findFirst({ where: { id: existing.routeId, organizationId: orgId }, select: { status: true } })
+                        : Promise.resolve(null),
+                    ])
+                    const shared = {
+                      organizationId: orgId,
+                      agentId,
+                      operationId,
+                      source: "mobile_sync" as const,
+                      visitId: completion.visit.id,
+                      routeId: existing.routeId ?? null,
+                      customerId: existing.customerId,
+                      customerName: customerRow?.name ?? null,
+                    }
+                    await writeFieldSyncAudit(tx, [
+                      { ...shared, action: "CHECK_OUT", metadataKind: "check_out" },
+                      ...routeTransitionActions(routeBefore?.status, routeAfter?.status)
+                        .map((action) => ({ ...shared, action })),
+                    ])
+                  }
                   serverId = completion.visit.id
                   serverData = completion.visit
                 }
