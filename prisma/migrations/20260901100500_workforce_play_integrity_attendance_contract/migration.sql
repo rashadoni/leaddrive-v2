@@ -4,7 +4,10 @@
 SET lock_timeout = '3s';
 
 ALTER TABLE "workforce_attendance_verifications"
-  DROP CONSTRAINT "workforce_attendance_verifications_method_check";
+  -- The legacy SQL migration created this check, but a schema-only baseline
+  -- (for example the CI compatibility gate) has no Prisma representation for
+  -- it. Replacing it must therefore be safe in either state.
+  DROP CONSTRAINT IF EXISTS "workforce_attendance_verifications_method_check";
 
 ALTER TABLE "workforce_attendance_verifications"
   ADD CONSTRAINT "workforce_attendance_verifications_method_check" CHECK (
