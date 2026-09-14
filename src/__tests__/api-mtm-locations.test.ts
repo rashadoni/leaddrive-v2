@@ -219,7 +219,10 @@ describe("GET /api/v1/mtm/locations", () => {
     expect(byId["agent-3"].freshness).toBe("ONLINE")
     expect(byId["agent-3"].workdayState).toBe("CLOSED")
 
-    expect(json.data.statusCounts).toEqual({ total: 3, checkedIn: 1, onRoad: 1, late: 0, offline: 1 })
+    // agent-3 is online with a fresh, motionless point: that is «Dayanıb», not
+    // «Yolda». "On the road" used to mean only "the phone is on".
+    expect(byId["agent-3"].fieldStatus).toBe("STOPPED")
+    expect(json.data.statusCounts).toEqual({ total: 3, checkedIn: 1, onRoad: 0, stopped: 1, routeFinished: 0, late: 0, offline: 1 })
     expect(json.data.contract).toMatchObject({
       maxRosterSize: 500,
       returnedAgents: 3,
@@ -393,6 +396,108 @@ describe("GET /api/v1/mtm/locations", () => {
         workdayState: "PAUSED",
         workdayCarryover: true,
         workdayDate: "2026-07-31T00:00:00.000Z",
+      })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("says a finished route is finished and collapses repeated deviation alerts into one localized feed row (audit 2026-09-14)", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-09-14T15:30:00.000Z"))
+    try {
+      const now = new Date()
+      vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{
+        id: "agent-anar", name: "Anar Mammadov", isOnline: true, lastSeenAt: now,
+        teamId: null, team: null,
+        workdays: [{ status: "STARTED", workDate: new Date("2026-09-14T00:00:00.000Z"), startedAt: now }],
+        locations: [{ latitude: 40.41, longitude: 49.87, accuracy: 5, speed: 0, heading: 0, battery: 70, isMoving: false, recordedAt: now }],
+      }] as any)
+      vi.mocked(prisma.mtmRoute.findMany).mockResolvedValue([
+        { agentId: "agent-anar", totalPoints: 2, visitedPoints: 2, status: "IN_PROGRESS" },
+      ] as any)
+      vi.mocked(prisma.mtmVisit.findMany)
+        .mockResolvedValueOnce([] as any)
+        .mockResolvedValueOnce([] as any)
+      vi.mocked(prisma.mtmAlert.findMany).mockResolvedValue(Array.from({ length: 10 }, (_, index) => ({
+        id: `alert-${index}`,
+        agentId: "agent-anar",
+        type: "OUT_OF_ZONE",
+        title: "Route deviation detected",
+        createdAt: new Date(Date.UTC(2026, 8, 14, 13, 50 - index * 4)),
+        metadata: {
+          deviationMeters: 7000 + index * 70,
+          messageKey: "routeDeviation",
+          messageParams: { deviationMeters: 7000 + index * 70, thresholdMeters: 500 },
+        },
+        agent: { name: "Anar Mammadov" },
+      })) as any)
+
+      const res = await GET(makeReq())
+      const json = await res.json()
+
+      expect(json.data.agentLocations[0].fieldStatus).toBe("ROUTE_FINISHED")
+      expect(json.data.statusCounts).toMatchObject({ routeFinished: 1, onRoad: 0 })
+      const alertQuery = vi.mocked(prisma.mtmAlert.findMany).mock.calls[0]?.[0] as any
+      expect(alertQuery.where.organizationId).toBe(ORG)
+      expect(alertQuery.select).toMatchObject({ agentId: true, type: true, metadata: true })
+
+      const alerts = json.data.liveFeed.filter((event: any) => event.type === "ALERT")
+      // 13:14–13:50 UTC is 17:14–17:50 in Baku: one local hour, one row.
+      expect(alerts).toHaveLength(1)
+      expect(alerts[0]).toMatchObject({
+        agentId: "agent-anar",
+        agent: "Anar Mammadov",
+        alert: {
+          alertType: "OUT_OF_ZONE",
+          count: 10,
+          message: { key: "routeDeviation", distanceMeters: 7630 },
+          firstAt: "2026-09-14T13:14:00.000Z",
+          lastAt: "2026-09-14T13:50:00.000Z",
+        },
+      })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("combines an agent's routes for the day and keeps a red-light stop «on the road» (review of #205)", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-09-14T11:00:00.000Z"))
+    try {
+      const now = new Date()
+      const standing = { latitude: 40.41, longitude: 49.87, accuracy: 5, speed: 0, heading: 0, battery: 70, isMoving: false, recordedAt: now }
+      vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
+        { id: "agent-a", name: "A", isOnline: true, lastSeenAt: now, teamId: null, team: null, workdays: [], locations: [standing] },
+        { id: "agent-b", name: "B", isOnline: true, lastSeenAt: now, teamId: null, team: null, workdays: [], locations: [standing] },
+      ] as any)
+      // agent-a: the cancelled route comes last, as the database is free to return it.
+      vi.mocked(prisma.mtmRoute.findMany).mockResolvedValue([
+        { agentId: "agent-a", totalPoints: 3, visitedPoints: 1, status: "IN_PROGRESS" },
+        { agentId: "agent-a", totalPoints: 2, visitedPoints: 0, status: "CANCELLED" },
+        { agentId: "agent-b", totalPoints: 2, visitedPoints: 2, status: "COMPLETED" },
+        { agentId: "agent-b", totalPoints: 2, visitedPoints: 0, status: "PLANNED" },
+      ] as any)
+      vi.mocked(prisma.mtmVisit.findMany).mockResolvedValueOnce([] as any).mockResolvedValueOnce([] as any)
+      vi.mocked(prisma.mtmAlert.findMany).mockResolvedValue([] as any)
+      // agent-a was driving 40 seconds ago; the newest sample is a red light.
+      vi.mocked(prisma.mtmAgentLocation.groupBy).mockResolvedValueOnce([
+        { agentId: "agent-a", _max: { recordedAt: new Date(now.getTime() - 40_000) } },
+      ] as any)
+
+      const res = await GET(makeReq())
+      const json = await res.json()
+      const byId = Object.fromEntries(json.data.agentLocations.map((agent: any) => [agent.agentId, agent]))
+
+      expect(byId["agent-a"].fieldStatus).toBe("ON_ROAD")
+      expect(byId["agent-a"].routeCompletion).toBe(33)
+      expect(byId["agent-b"].fieldStatus).toBe("STOPPED")
+      expect(byId["agent-b"].routeCompletion).toBe(50)
+      const movementQuery = vi.mocked(prisma.mtmAgentLocation.groupBy).mock.calls[0]?.[0] as any
+      expect(movementQuery.where).toMatchObject({
+        organizationId: ORG,
+        agentId: { in: ["agent-a", "agent-b"] },
+        recordedAt: { gte: new Date("2026-09-14T10:55:00.000Z"), lte: now },
       })
     } finally {
       vi.useRealTimers()

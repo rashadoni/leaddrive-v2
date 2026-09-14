@@ -28,6 +28,7 @@ import type { MtmRouteAssignment, MtmRoutePoint, MtmRouteRecord } from "@/compon
 import {
   Route, MapPin, User, CheckCircle2, Plus, Pencil, Trash2, Search, Send,
   ArrowLeft, List, CalendarDays, Clock, Navigation, ChevronDown, Eye, X, Columns3, ClipboardCheck, Users, FileSpreadsheet, TableProperties,
+  Camera, PenLine, StickyNote, ArrowDownUp, AlertTriangle,
 } from "lucide-react"
 import { mtmRouteReturnTarget, type MtmRouteAssignmentDirection } from "@/lib/mtm/route-links"
 import { fetchMtmRoutesInRange } from "@/lib/mtm/route-range-client"
@@ -42,6 +43,8 @@ import {
 } from "@/lib/mtm/route-planner-context"
 import { formatDate, formatTime } from "@/lib/format-date"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
+import { mtmDurationParts, summarizeMtmRouteExecution } from "@/lib/mtm/route-point-execution"
+import { formatMtmDistance, mtmVisitGeofenceState } from "@/lib/mtm/visit-geofence-state"
 
 const MtmRouteMap = dynamic(() => import("@/components/mtm/route-map"), { ssr: false })
 
@@ -99,6 +102,19 @@ function localDateKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
 }
 
+/**
+ * «Not visited» is a verdict, so it needs the moment to have passed: the route
+ * is closed, or the stop's planned time is behind us. Review of #205: stops
+ * planned for later today on a running route already read «Not visited».
+ */
+function isStopOverdue(point: MtmRoutePoint, routeStatus: MtmRouteRecord["status"], now = Date.now()): boolean {
+  if (point.status !== "PENDING") return false
+  if (routeStatus === "COMPLETED" || routeStatus === "INCOMPLETE" || routeStatus === "CANCELLED") return true
+  if (routeStatus !== "IN_PROGRESS" && routeStatus !== "PLANNED") return false
+  const planned = point.plannedTime ? Date.parse(point.plannedTime) : Number.NaN
+  return Number.isFinite(planned) && planned < now
+}
+
 function routeAssignmentDirection(value: string | null): MtmRouteAssignmentDirection | undefined {
   return value === "DOCTOR" || value === "PHARMACY" || value === "ORGANIZATION" ? value : undefined
 }
@@ -119,9 +135,13 @@ export default function MtmRoutesPage() {
   const searchParams = useSearchParams()
   const t = useTranslations("mtmRoutesPage")
   const statusT = useTranslations("mtmStatus")
+  const tUnits = useTranslations("mtmMap.distanceUnits")
   const locale = useLocale()
   const tf = useTranslations("mtmForms")
   const [routes, setRoutes] = useState<MtmRouteRecord[]>([])
+  // The server's count for the same filter. The chip read «Hamısı (200)» —
+  // the page size — while 432 routes existed (audit 2026-09-14).
+  const [routesTotal, setRoutesTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [builderOpen, setBuilderOpen] = useState(false)
   const [builderPreset, setBuilderPreset] = useState<RouteBuilderPreset | null>(null)
@@ -308,6 +328,7 @@ export default function MtmRoutesPage() {
         ? nextRoutes.find((route) => route.id === routeToRestore) ?? null
         : null
       setRoutes(nextRoutes)
+      setRoutesTotal(Number.isFinite(Number(r.data.total)) ? Number(r.data.total) : nextRoutes.length)
       setCapabilities(r.data.capabilities ?? EMPTY_ROUTE_CAPABILITIES)
       setFocusedRouteUnavailable(focusedUnavailable)
       selectedRouteRef.current = nextSelectedRoute
@@ -747,6 +768,18 @@ export default function MtmRoutesPage() {
     return { completion, duration }
   }, [selectedRoute])
   const selectedRoutePoints = selectedRoute?.points ?? []
+  const selectedRouteExecution = useMemo(
+    () => summarizeMtmRouteExecution(selectedRoute?.points ?? []),
+    [selectedRoute],
+  )
+  const tenantTime = (value: string | null | undefined) =>
+    value ? formatTime(new Date(value), locale, { hour: "2-digit", minute: "2-digit", timeZone: timezone }) : ""
+  const durationLabel = (minutes: number) => {
+    const parts = mtmDurationParts(minutes)
+    return parts.hours > 0
+      ? t("stopFact.durationHoursMinutes", parts)
+      : t("stopFact.durationMinutes", { minutes: parts.minutes })
+  }
   const canEditRoute = (route: MtmRouteRecord) => route.status === "DRAFT"
     && route.historicalAccessOnly !== true
     && (capabilities.canReview || (capabilities.canCreateRoute && route.agentId === capabilities.actorAgentId))
@@ -934,12 +967,12 @@ export default function MtmRoutesPage() {
           <div className="grid grid-cols-2 divide-x divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700 sm:grid-cols-5 sm:divide-y-0">
             <div className="p-3 text-center"><CheckCircle2 className="mx-auto mb-1 h-4 w-4 text-green-500" /><div className="text-lg font-bold">{selectedRoute.visitedPoints}/{selectedRoute.totalPoints}</div><div className="text-[10px] text-muted-foreground">{t("completed")}</div></div>
             <div className="p-3 text-center"><Navigation className="mx-auto mb-1 h-4 w-4 text-blue-500" /><div className="text-lg font-bold">{routeMetrics?.completion ?? 0}%</div><div className="text-[10px] text-muted-foreground">{t("execution")}</div></div>
-            <div className="p-3 text-center"><Clock className="mx-auto mb-1 h-4 w-4 text-amber-500" /><div className="text-lg font-bold">{routeMetrics?.duration ? `${Math.floor(routeMetrics.duration / 60)}h ${routeMetrics.duration % 60}m` : "—"}</div><div className="text-[10px] text-muted-foreground">{t("duration")}</div></div>
+            <div className="p-3 text-center"><Clock className="mx-auto mb-1 h-4 w-4 text-amber-500" /><div className="text-lg font-bold">{routeMetrics?.duration ? durationLabel(routeMetrics.duration) : "—"}</div><div className="text-[10px] text-muted-foreground">{t("duration")}</div></div>
             <div className="p-3 text-center"><MapPin className="mx-auto mb-1 h-4 w-4 text-fuchsia-500" /><div className="text-lg font-bold">{selectedRoute.totalPoints}</div><div className="text-[10px] text-muted-foreground">{t("points")}</div></div>
             <div className="p-3 text-center"><Route className="mx-auto mb-1 h-4 w-4 text-cyan-600" /><div className="text-lg font-bold">{selectedRoute.distanceKm ? `${selectedRoute.distanceKm} km` : "—"}</div><div className="text-[10px] text-muted-foreground">{t("distance")}</div></div>
           </div>
           {selectedRoutePoints.length > 0 && (
-            <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden" style={{ height: 300 }}><MtmRouteMap points={selectedRoutePoints} /></div>
+            <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden" style={{ height: 360 }}><MtmRouteMap points={selectedRoutePoints} timezone={timezone} /></div>
           )}
           <MtmRouteTravelPanel
             route={selectedRoute}
@@ -949,19 +982,80 @@ export default function MtmRoutesPage() {
           />
           {selectedRoutePoints.length > 0 && (
             <div className="space-y-1">
-              {[...selectedRoutePoints].sort((a: MtmRoutePoint, b: MtmRoutePoint) => a.orderIndex - b.orderIndex).map((p: MtmRoutePoint, i: number) => (
-                <div key={p.id} className="border-b border-zinc-200 py-2 text-xs last:border-b-0 dark:border-zinc-700">
+              {[...selectedRoutePoints].sort((a: MtmRoutePoint, b: MtmRoutePoint) => a.orderIndex - b.orderIndex).map((p: MtmRoutePoint, i: number) => {
+                // Plan versus fact (audit 2026-09-14): the row used to show one
+                // time — the check-out — and nothing about lateness, order,
+                // zone or what was collected.
+                const fact = selectedRouteExecution.points.find((item) => item.pointId === p.id)
+                const visit = fact?.visit ?? null
+                const zone = visit ? mtmVisitGeofenceState({
+                  checkInLat: visit.checkInLat,
+                  checkInLng: visit.checkInLng,
+                  checkOutLat: visit.checkOutLat,
+                  checkOutLng: visit.checkOutLng,
+                  customerLatitude: p.customer?.latitude,
+                  customerLongitude: p.customer?.longitude,
+                  customerGeofenceRadius: p.geofenceRadiusMeters ?? p.customer?.geofenceRadius,
+                  defaultGeofenceRadius: 100,
+                }) : null
+                return (
+                <div key={p.id} data-testid="mtm-route-detail-stop" className="border-b border-zinc-200 py-2 text-xs last:border-b-0 dark:border-zinc-700">
                   <div className="flex items-center gap-2">
-                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${p.status === "VISITED" ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-300" : p.status === "SKIPPED" ? "bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-300" : "bg-muted text-muted-foreground"}`}>{i + 1}</span>
-                  <span className="flex-1">{p.customer?.name || "—"}</span>
+                  <span className={`w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${p.status === "VISITED" ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-300" : p.status === "SKIPPED" ? "bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-300" : "bg-muted text-muted-foreground"}`}>{i + 1}</span>
+                  <span className="min-w-0 flex-1 font-medium">
+                    {visit ? (
+                      <Link className="hover:underline" href={`/mtm/visits?visitId=${encodeURIComponent(visit.id)}`}>{p.customer?.name || "—"}</Link>
+                    ) : (p.customer?.name || "—")}
+                  </span>
                   <span className={`rounded px-1.5 py-0.5 text-[10px] ${p.status === "VISITED" ? "bg-green-50 text-green-700 dark:bg-green-950/20 dark:text-green-300" : p.status === "SKIPPED" ? "bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-300" : "bg-muted/50 text-muted-foreground"}`}>{t(pointStatusLabelKey[p.status] ?? "pointStatusUnknown")}</span>
                   {p.changeRequests?.some((request) => request.changeType === "REMOVE_STOP") ? (
                     <span className="border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">{t("removalPending")}</span>
                   ) : null}
-                  {p.visitedAt && <span className="text-muted-foreground">{formatTime(new Date(p.visitedAt), locale)}</span>}
                   {selectedRoute.historicalAccessOnly !== true && (selectedRoute.status === "PLANNED" || selectedRoute.status === "IN_PROGRESS") && p.status !== "VISITED" && !p.changeRequests?.some((request) => request.changeType === "REMOVE_STOP") ? (
                     <Button variant="ghost" size="sm" onClick={() => { setRemovalPointId(p.id); setRemovalReason("") }}>{t("requestRemoval")}</Button>
                   ) : null}
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 pl-7 text-muted-foreground">
+                    <span>{p.plannedTime ? t("stopFact.planned", { time: tenantTime(p.plannedTime) }) : t("stopFact.notPlanned")}</span>
+                    {fact?.checkInAt && visit ? (
+                      <span className="font-medium text-foreground">
+                        {fact.checkOutAt
+                          ? t("stopFact.fact", { from: tenantTime(fact.checkInAt), to: tenantTime(fact.checkOutAt) })
+                          : t("stopFact.factOpen", { from: tenantTime(fact.checkInAt) })}
+                        {fact.durationMinutes !== null ? ` · ${durationLabel(fact.durationMinutes)}` : ""}
+                      </span>
+                    ) : p.visitedAt ? (
+                      <span>{t("stopFact.closedAt", { time: tenantTime(p.visitedAt) })}</span>
+                    ) : isStopOverdue(p, selectedRoute.status) ? (
+                      <span>{t("stopFact.notVisited")}</span>
+                    ) : null}
+                    {fact?.timing === "LATE" && fact.delayMinutes !== null ? (
+                      <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-950/30 dark:text-red-300">{t("stopFact.late", { delay: durationLabel(fact.delayMinutes) })}</span>
+                    ) : fact?.timing === "EARLY" && fact.delayMinutes !== null ? (
+                      <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">{t("stopFact.early", { delay: durationLabel(Math.abs(fact.delayMinutes)) })}</span>
+                    ) : fact?.timing === "ON_TIME" ? (
+                      <span className="rounded bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-700 dark:bg-green-950/20 dark:text-green-300">{t("stopFact.onTime")}</span>
+                    ) : null}
+                    {fact?.outOfOrder && fact.actualSequence !== null ? (
+                      <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-950/30 dark:text-amber-300"><ArrowDownUp className="h-3 w-3" />{t("stopFact.outOfOrder", { actual: fact.actualSequence })}</span>
+                    ) : null}
+                    {zone?.state === "OUTSIDE" && zone.distanceMeters !== null ? (
+                      <span className="inline-flex items-center gap-1 rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-950/30 dark:text-red-300"><AlertTriangle className="h-3 w-3" />{t("stopFact.outOfZone", { distance: formatMtmDistance(zone.distanceMeters, locale, (unit, value) => tUnits(unit, { value })) })}</span>
+                    ) : zone?.state === "INSIDE" ? (
+                      <span className="text-[10px] text-green-700 dark:text-green-300">{t("stopFact.inZone")}</span>
+                    ) : null}
+                    {visit?.photoCount ? (
+                      <span className="inline-flex items-center gap-1"><Camera className="h-3 w-3" />{t("stopFact.photos", { count: visit.photoCount })}</span>
+                    ) : null}
+                    {visit?.hasSignature ? (
+                      <span className="inline-flex items-center" title={t("stopFact.signature")} aria-label={t("stopFact.signature")}><PenLine className="h-3 w-3" /></span>
+                    ) : null}
+                    {visit?.hasNote ? (
+                      <span className="inline-flex items-center" title={t("stopFact.note")} aria-label={t("stopFact.note")}><StickyNote className="h-3 w-3" /></span>
+                    ) : null}
+                    {visit ? (
+                      <Link className="ml-auto text-primary hover:underline" href={`/mtm/visits?visitId=${encodeURIComponent(visit.id)}`}>{t("stopFact.openVisit")}</Link>
+                    ) : null}
                   </div>
                   {removalPointId === p.id ? (
                     <div className="mt-2 flex flex-col gap-2 pl-7 sm:flex-row">
@@ -971,7 +1065,8 @@ export default function MtmRoutesPage() {
                     </div>
                   ) : null}
                 </div>
-              ))}
+                )
+              })}
             </div>
           )}
             </section>
@@ -982,7 +1077,7 @@ export default function MtmRoutesPage() {
       {viewMode === "list" ? (
         <>
           <div data-testid="mtm-route-status-filters" role="group" aria-label={t("routeSummary")} className="flex flex-wrap gap-2">
-            <Button aria-pressed={activeFilter === "all"} variant={activeFilter === "all" ? "default" : "outline"} size="sm" onClick={() => setActiveFilter("all")}>{t("all")} ({routes.length})</Button>
+            <Button aria-pressed={activeFilter === "all"} variant={activeFilter === "all" ? "default" : "outline"} size="sm" onClick={() => setActiveFilter("all")}>{routesTotal > routes.length ? t("allLatest", { shown: routes.length, total: routesTotal }) : `${t("all")} (${routes.length})`}</Button>
             {(["DRAFT", "PLANNED", "IN_PROGRESS", "COMPLETED", "INCOMPLETE", "CANCELLED"] as const).map(s => (
               <Button key={s} aria-pressed={activeFilter === s} variant={activeFilter === s ? "default" : "outline"} size="sm" onClick={() => setActiveFilter(s)}>
                 {mtmStatusLabel(statusT, "route", s)} ({statusCounts[s] || 0})
@@ -1074,6 +1169,7 @@ export default function MtmRoutesPage() {
         <MtmRouteWeekPlan
           orgId={orgId ? String(orgId) : undefined}
           locale={locale}
+          timezone={timezone}
           refreshVersion={calendarRefreshVersion}
           initialDate={plannerContext.date}
           onSelectRoute={openRouteDetails}

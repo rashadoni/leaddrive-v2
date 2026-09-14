@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 import { useTranslations, useLocale } from "next-intl"
@@ -11,14 +11,19 @@ import { HelpButton } from "@/components/help/help-button"
 import { Button } from "@/components/ui/button"
 import dynamic from "next/dynamic"
 import { calculateDistance } from "@/lib/geo-utils"
-import { formatDateTime } from "@/lib/format-date"
+import { formatDateTime, formatTime } from "@/lib/format-date"
+import { formatMtmDistance } from "@/lib/mtm/visit-geofence-state"
+import { mtmLiveFeedHistoryHref, type MtmLiveFeedAlertGroup } from "@/lib/mtm/live-feed-alerts"
+import { summarizeMtmRouteExecution } from "@/lib/mtm/route-point-execution"
+import { hasMtmCoordinates } from "@/lib/mtm/geo-coordinates"
 import { saveRouteCache, loadRouteCache, routeCacheKey } from "@/lib/mtm/route-cache"
 import type { RouteStop } from "@/components/mtm/live-map"
+import type { MtmRoutePoint, MtmRouteRecord } from "@/components/mtm/route-types"
 import { LocationHistoryPanel } from "@/components/mtm/location-history-panel"
 import {
   MapPin, RefreshCw, Clock, WifiOff, Navigation,
   Radio, AlertTriangle, Circle, Flame, History,
-  Search, Battery, ShieldAlert, ArrowLeft, SlidersHorizontal,
+  Search, Battery, ShieldAlert, ArrowLeft, SlidersHorizontal, PauseCircle, Flag,
 } from "lucide-react"
 
 const MtmLiveMap = dynamic(() => import("@/components/mtm/live-map"), { ssr: false })
@@ -45,7 +50,15 @@ interface LiveEvent {
   agent: string
   customer: string
   time: string
+  agentId?: string
+  visitId?: string
+  /** Grouped, translatable alert (src/lib/mtm/live-feed-alerts.ts). */
+  alert?: MtmLiveFeedAlertGroup["alert"]
 }
+
+const FEED_ALERT_TYPES = new Set([
+  "GPS_ANOMALY", "LATE_START", "MISSED_VISIT", "LONG_BREAK", "GPS_SPOOFING", "OUT_OF_ZONE", "LOW_BATTERY", "OVERTIME",
+])
 
 interface LiveRosterSnapshot {
   identity: string
@@ -64,11 +77,11 @@ interface ScopedRequest {
 
 interface AgentRouteSnapshot {
   identity: string
-  route: any
+  route: MtmRouteRecord | null
   fromCache: boolean
 }
 
-const EMPTY_STATUS_COUNTS = { total: 0, checkedIn: 0, onRoad: 0, late: 0, offline: 0 }
+const EMPTY_STATUS_COUNTS = { total: 0, checkedIn: 0, onRoad: 0, stopped: 0, routeFinished: 0, late: 0, offline: 0 }
 const EMPTY_FRESHNESS_COUNTS = { online: 0, delayed: 0, stale: 0, noLocation: 0 }
 const EMPTY_WORKDAY_COUNTS = { active: 0, paused: 0, closed: 0, notStarted: 0 }
 
@@ -90,6 +103,8 @@ function isAbortError(error: unknown): boolean {
 const STATUS_DOT_CLASS: Record<string, string> = {
   CHECKED_IN: "bg-green-500",
   ON_ROAD: "bg-blue-500",
+  STOPPED: "bg-amber-500",
+  ROUTE_FINISHED: "bg-emerald-700",
   LATE: "bg-red-500",
   OFFLINE: "bg-muted-foreground/50",
 }
@@ -114,11 +129,14 @@ function operationalWeekReturnHref(value: string | null): string | null {
 export default function MtmMapPage() {
   const { data: session, status: sessionStatus } = useSession()
   const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
   const locale = useLocale()
   const t = useTranslations("nav")
   const tMap = useTranslations("mtmMap")
   const tc = useTranslations("common")
-  const [mapMode, setMapMode] = useState<"live" | "history">("live")
+  const tAlerts = useTranslations("mtmAlertsPage")
+  const tUnits = useTranslations("mtmMap.distanceUnits")
   const [rosterSnapshot, setRosterSnapshot] = useState<LiveRosterSnapshot | null>(null)
   const [teamFilter, setTeamFilter] = useState("")
   const [employeeFilter, setEmployeeFilter] = useState("")
@@ -142,7 +160,15 @@ export default function MtmMapPage() {
   const orgId = session?.user?.organizationId
   const viewerKey = String(session?.user?.id ?? session?.user?.email ?? "")
   const identityKey = liveMapIdentityKey(String(orgId ?? ""), viewerKey)
-  const requestedMode = searchParams.get("mode")
+  // The URL is the one source of the mode. A local copy of it got out of step
+  // with links (review of #205): after an alert link and a click on «İndi»,
+  // the next alert link stayed in live mode and selected a stray employee.
+  const mapMode: "live" | "history" = searchParams.get("mode") === "history" ? "history" : "live"
+  const historyPanelKey = `${identityKey}::${searchParams.toString()}`
+  // A link that names an employee (operational week, alerts, a colleague's
+  // message) used to open the live map with nobody selected (audit 2026-09-14).
+  const requestedAgentId = searchParams.get("agentId")?.trim() || ""
+  const handledAgentParamRef = useRef("")
   const returnHref = operationalWeekReturnHref(searchParams.get("returnTo"))
   const roster = rosterSnapshot?.identity === identityKey ? rosterSnapshot : null
   const contract = roster?.contract ?? null
@@ -174,9 +200,22 @@ export default function MtmMapPage() {
     const timer = window.setTimeout(() => setDebouncedEmployeeFilter(employeeFilter.trim()), 400)
     return () => window.clearTimeout(timer)
   }, [employeeFilter])
-  useEffect(() => {
-    if (requestedMode === "history") setMapMode("history")
-  }, [requestedMode])
+  const switchMapMode = useCallback((next: "live" | "history") => {
+    const params = new URLSearchParams(searchParams.toString())
+    // Live mode carries no history window and no employee from a history
+    // link; only the way back to the operational week survives.
+    for (const key of ["mode", "from", "to", "date", "agentId"]) params.delete(key)
+    if (next === "history") {
+      params.set("mode", "history")
+      const focused = selectedAgentRef.current
+      if (focused && tenantToday) {
+        params.set("agentId", focused)
+        params.set("date", tenantToday)
+      }
+    }
+    const query = params.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+  }, [pathname, router, searchParams, tenantToday])
 
   useEffect(() => {
     rosterRequestRef.current.controller?.abort()
@@ -240,7 +279,7 @@ export default function MtmMapPage() {
         return
       }
       // Only the exact tenant + viewer + agent + tenant-day key may recover.
-      const cached = await loadRouteCache(key)
+      const cached = await loadRouteCache<MtmRouteRecord>(key)
       if (!isCurrentRequest()) return
       if (cached) {
         setRouteSnapshot({ identity: requestIdentity, route: cached.data, fromCache: true })
@@ -454,10 +493,24 @@ export default function MtmMapPage() {
     void fetchAgentRoute(agentId, tenantToday)
   }
 
+  useEffect(() => {
+    if (mapMode !== "live" || !requestedAgentId || !tenantToday || !identityKey) return
+    const handledKey = `${identityKey}::${requestedAgentId}`
+    if (handledAgentParamRef.current === handledKey) return
+    if (!agents.some((agent) => agent.agentId === requestedAgentId)) return
+    handledAgentParamRef.current = handledKey
+    if (selectedAgentRef.current === requestedAgentId) return
+    selectedAgentRef.current = requestedAgentId
+    setSelectedAgent(requestedAgentId)
+    void fetchAgentRoute(requestedAgentId, tenantToday)
+  }, [agents, fetchAgentRoute, identityKey, mapMode, requestedAgentId, tenantToday])
+
   const statusCounts = useMemo(() => agents.reduce((counts, agent) => {
     counts.total += 1
     if (agent.fieldStatus === "CHECKED_IN") counts.checkedIn += 1
     else if (agent.fieldStatus === "ON_ROAD") counts.onRoad += 1
+    else if (agent.fieldStatus === "STOPPED") counts.stopped += 1
+    else if (agent.fieldStatus === "ROUTE_FINISHED") counts.routeFinished += 1
     else if (agent.fieldStatus === "LATE") counts.late += 1
     else counts.offline += 1
     return counts
@@ -490,6 +543,8 @@ export default function MtmMapPage() {
     if (activeFilter === "all") return true
     if (activeFilter === "checked_in") return a.fieldStatus === "CHECKED_IN"
     if (activeFilter === "on_road") return a.fieldStatus === "ON_ROAD"
+    if (activeFilter === "stopped") return a.fieldStatus === "STOPPED"
+    if (activeFilter === "route_finished") return a.fieldStatus === "ROUTE_FINISHED"
     if (activeFilter === "late") return a.fieldStatus === "LATE"
     if (activeFilter === "offline") return a.fieldStatus === "OFFLINE"
     return true
@@ -509,26 +564,52 @@ export default function MtmMapPage() {
   })
   const hiddenStalePositions = filteredAgents.filter((agent) => agent.freshness === "STALE").length
 
+  // Plan versus fact for the selected employee's day. The same summary feeds
+  // the numbered map markers and the stop list under the employee card.
+  const routeExecution = useMemo(() => {
+    if (!agentRoute || !Array.isArray(agentRoute.points)) return null
+    return summarizeMtmRouteExecution(agentRoute.points)
+  }, [agentRoute])
+
   // Transform route points to RouteStop[] for the map
   const routeStops: RouteStop[] = useMemo(() => {
     if (!agentRoute?.points) return []
-    const points = [...agentRoute.points].sort((a: any, b: any) => a.orderIndex - b.orderIndex)
-    const firstPendingOrder = points.find((p: any) => p.status === "PENDING")?.orderIndex
-    return points
-      .filter((p: any) => Number.isFinite(p.customer?.latitude) && p.customer.latitude >= -90 && p.customer.latitude <= 90 &&
-        Number.isFinite(p.customer?.longitude) && p.customer.longitude >= -180 && p.customer.longitude <= 180)
-      .map((p: any) => ({
+    const points = [...agentRoute.points].sort((a: MtmRoutePoint, b: MtmRoutePoint) => a.orderIndex - b.orderIndex)
+    const firstPendingOrder = points.find((p) => p.status === "PENDING")?.orderIndex
+    const facts = new Map((routeExecution?.points ?? []).map((fact) => [fact.pointId, fact]))
+    return points.flatMap((p): RouteStop[] => {
+      const customer = p.customer
+      if (!hasMtmCoordinates(customer)) return []
+      const fact = facts.get(p.id)
+      return [{
         orderIndex: p.orderIndex,
-        status: p.status === "VISITED" ? "VISITED" as const :
-                p.status === "SKIPPED" ? "SKIPPED" as const :
-                p.orderIndex === firstPendingOrder ? "NEXT" as const : "PENDING" as const,
-        latitude: p.customer.latitude,
-        longitude: p.customer.longitude,
-        name: p.customer.name,
-        address: p.customer.address,
-        visitedAt: p.visitedAt,
-      }))
-  }, [agentRoute])
+        status: p.status === "VISITED" ? "VISITED" :
+                p.status === "SKIPPED" ? "SKIPPED" :
+                p.orderIndex === firstPendingOrder ? "NEXT" : "PENDING",
+        latitude: customer.latitude,
+        longitude: customer.longitude,
+        name: customer.name,
+        address: customer.address ?? undefined,
+        visitedAt: p.visitedAt ?? undefined,
+        plannedTime: p.plannedTime ?? null,
+        checkInAt: fact?.checkInAt ?? null,
+        checkOutAt: fact?.visit ? fact.checkOutAt : null,
+        visitId: fact?.visit?.id ?? null,
+      }]
+    })
+  }, [agentRoute, routeExecution])
+  const routeStopsWithoutCoordinates = (agentRoute?.points ?? [])
+    .filter((point) => !hasMtmCoordinates(point.customer)).length
+  const formatTenantTime = (value: string | null | undefined) =>
+    value ? formatTime(value, locale, { hour: "2-digit", minute: "2-digit", timeZone: contract?.timezone }) : ""
+  const feedAlertText = (alert: NonNullable<LiveEvent["alert"]>) => {
+    const message = alert.message
+    if (message.key === "routeDeviation" || message.key === "outOfZoneCheckIn") {
+      return tMap(`feed.${message.key}`, { distance: formatMtmDistance(message.distanceMeters, locale, (unit, value) => tUnits(unit, { value })) })
+    }
+    if (message.key === "visitStillOpen") return tMap("feed.visitStillOpen", { minutes: Math.round(message.minutes) })
+    return tAlerts(`typeLabel_${FEED_ALERT_TYPES.has(message.alertType) ? message.alertType : "OTHER"}`)
+  }
 
   // ETA calculation: distance to next stop / speed
   const etaSeconds = useMemo(() => {
@@ -584,7 +665,7 @@ export default function MtmMapPage() {
               variant={mapMode === "live" ? "default" : "ghost"}
               size="sm"
               className="min-h-11"
-              onClick={() => setMapMode("live")}
+              onClick={() => switchMapMode("live")}
             >
               <Radio className="mr-1.5 h-3.5 w-3.5" />{tMap("liveMode")}
             </Button>
@@ -596,7 +677,7 @@ export default function MtmMapPage() {
               variant={mapMode === "history" ? "default" : "ghost"}
               size="sm"
               className="min-h-11"
-              onClick={() => setMapMode("history")}
+              onClick={() => switchMapMode("history")}
             >
               <History className="mr-1.5 h-3.5 w-3.5" />{tMap("historyMode")}
             </Button>
@@ -612,7 +693,7 @@ export default function MtmMapPage() {
         </div>
       </div>
 
-      {mapMode === "history" ? <LocationHistoryPanel key={identityKey} /> : (
+      {mapMode === "history" ? <LocationHistoryPanel key={historyPanelKey} /> : (
       <>
       <div className="grid gap-2 rounded-lg border bg-card p-3 sm:grid-cols-2 lg:grid-cols-[220px_minmax(240px,1fr)_auto]">
         <label className="grid gap-1 text-xs font-medium">
@@ -655,6 +736,14 @@ export default function MtmMapPage() {
           className={`min-h-11 shrink-0 ${activeFilter === "on_road" ? "" : "text-blue-600 border-blue-200 hover:bg-blue-50 dark:border-blue-800 dark:hover:bg-blue-950/20"}`}>
           <Navigation className="h-3 w-3 mr-1" /> {tMap("fieldStatus.onRoad")} ({statusCounts.onRoad})
         </Button>
+        <Button variant={activeFilter === "stopped" ? "default" : "outline"} size="sm" onClick={() => setActiveFilter("stopped")}
+          className={`min-h-11 shrink-0 ${activeFilter === "stopped" ? "" : "text-amber-700 border-amber-200 hover:bg-amber-50 dark:text-amber-300 dark:border-amber-800 dark:hover:bg-amber-950/20"}`}>
+          <PauseCircle className="h-3 w-3 mr-1" /> {tMap("fieldStatus.stopped")} ({statusCounts.stopped})
+        </Button>
+        <Button variant={activeFilter === "route_finished" ? "default" : "outline"} size="sm" onClick={() => setActiveFilter("route_finished")}
+          className={`min-h-11 shrink-0 ${activeFilter === "route_finished" ? "" : "text-emerald-700 border-emerald-200 hover:bg-emerald-50 dark:text-emerald-300 dark:border-emerald-800 dark:hover:bg-emerald-950/20"}`}>
+          <Flag className="h-3 w-3 mr-1" /> {tMap("fieldStatus.routeFinished")} ({statusCounts.routeFinished})
+        </Button>
         <Button variant={activeFilter === "late" ? "default" : "outline"} size="sm" onClick={() => setActiveFilter("late")}
           className={`min-h-11 shrink-0 ${activeFilter === "late" ? "" : "text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950/20"}`}>
           <AlertTriangle className="h-3 w-3 mr-1" /> {tMap("fieldStatus.late")} ({statusCounts.late})
@@ -695,9 +784,13 @@ export default function MtmMapPage() {
           {tMap("stalePositionsHidden", { count: hiddenStalePositions })}
         </div>
       ) : null}
-      <div data-testid="mtm-map-canvas" className="grid gap-3 max-lg:order-first lg:grid-cols-[minmax(0,1fr)_320px]" style={{ minHeight: 480 }}>
+      {/* Owner rule (audit 2026-09-14): the page scrolls as one. The employee
+          list grows with the roster instead of showing two or three names in a
+          small scrolling frame; on wide screens the map stays in view beside
+          it as a sticky column. */}
+      <div data-testid="mtm-map-canvas" className="grid gap-3 max-lg:order-first lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start" style={{ minHeight: 480 }}>
         {/* Map */}
-        <div className="order-1 h-[54vh] min-h-[360px] overflow-hidden rounded-lg border border-zinc-200 bg-card lg:h-[calc(100vh-340px)] lg:min-h-[480px] dark:border-zinc-700 relative">
+        <div className="order-1 h-[54vh] min-h-[360px] overflow-hidden rounded-lg border border-zinc-200 bg-card lg:sticky lg:top-3 lg:h-[calc(100vh-7rem)] lg:min-h-[480px] dark:border-zinc-700 relative">
           {showRosterLoading ? (
             <div className="h-full flex items-center justify-center text-muted-foreground text-sm">{tMap("loadingMap")}</div>
           ) : (
@@ -715,12 +808,12 @@ export default function MtmMapPage() {
         </div>
 
         {/* Compact employee list. Detail appears only after an explicit selection. */}
-        <aside className="order-2 min-h-0 rounded-lg border border-zinc-200 bg-card p-3 dark:border-zinc-700 lg:max-h-[calc(100vh-340px)]">
+        <aside className="order-2 rounded-lg border border-zinc-200 bg-card p-3 dark:border-zinc-700">
             <div className="mb-2 flex items-center justify-between gap-2">
               <h4 className="text-xs font-semibold uppercase text-muted-foreground">{tMap("agents")} ({filteredAgents.length})</h4>
               <span className="text-[11px] text-muted-foreground">{tMap("selectForDetails")}</span>
             </div>
-            <div className="max-h-[42vh] space-y-2 overflow-y-auto pr-1 lg:max-h-[calc(100vh-410px)]">
+            <div data-testid="mtm-map-agent-list" className="space-y-2">
               {filteredAgents.length === 0 ? (
                 <div className="py-8 text-center text-xs text-muted-foreground">{tMap("noAgentsMatch")}</div>
               ) : (
@@ -740,7 +833,8 @@ export default function MtmMapPage() {
                       : "text-muted-foreground"
                   const isSelected = selectedAgent === agent.agentId
                   return (
-                    <div key={agent.agentId} className={`flex items-stretch gap-1 rounded-lg border p-1 ${isSelected ? "border-blue-300 bg-blue-50/80 dark:border-blue-800 dark:bg-blue-950/30" : "border-transparent"}`}>
+                    <div key={agent.agentId} className={`rounded-lg border p-1 ${isSelected ? "border-blue-300 bg-blue-50/80 dark:border-blue-800 dark:bg-blue-950/30" : "border-transparent"}`}>
+                    <div className="flex items-stretch gap-1">
                       <button
                         type="button"
                         className="flex min-h-11 min-w-0 flex-1 items-start gap-2 rounded-md p-1.5 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -813,12 +907,120 @@ export default function MtmMapPage() {
                         </Button>
                       ) : null}
                     </div>
+                    {isSelected ? (
+                      <div data-testid="mtm-map-selected-route" className="mt-1 rounded-md bg-background/80 p-2 text-[11px]">
+                        <div className="mb-1 font-semibold text-foreground">{tMap("routeStop.title")}</div>
+                        {!visibleRouteSnapshot ? (
+                          <div className="text-muted-foreground">{tMap("routeStop.loading")}</div>
+                        ) : !agentRoute || !routeExecution || routeExecution.totalCount === 0 ? (
+                          <div className="text-muted-foreground">{tMap("routeStop.none")}</div>
+                        ) : (
+                          <ol className="space-y-1">
+                            {[...(agentRoute.points ?? [])].sort((a, b) => a.orderIndex - b.orderIndex).map((point) => {
+                              const fact = routeExecution.points.find((item) => item.pointId === point.id)
+                              const done = point.status === "VISITED" || Boolean(fact?.checkInAt)
+                              return (
+                                <li key={point.id} className="flex items-start gap-2">
+                                  <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${done ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-300" : point.status === "SKIPPED" ? "bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-300" : "bg-muted text-muted-foreground"}`}>
+                                    {fact?.plannedSequence ?? point.orderIndex + 1}
+                                  </span>
+                                  <span className="min-w-0 flex-1">
+                                    <span className="block truncate font-medium text-foreground">{point.customer?.name || "—"}</span>
+                                    <span className="flex flex-wrap gap-x-2 text-muted-foreground">
+                                      {point.plannedTime ? <span>{tMap("routeStop.planned", { time: formatTenantTime(point.plannedTime) })}</span> : null}
+                                      {fact?.checkInAt ? (
+                                        <span className="text-foreground">
+                                          {fact.checkOutAt && fact.visit
+                                            ? tMap("routeStop.fact", { from: formatTenantTime(fact.checkInAt), to: formatTenantTime(fact.checkOutAt) })
+                                            : tMap("routeStop.factOpen", { from: formatTenantTime(fact.checkInAt) })}
+                                        </span>
+                                      ) : null}
+                                    </span>
+                                  </span>
+                                  {fact?.visit ? (
+                                    <Link className="shrink-0 text-primary hover:underline" href={`/mtm/visits?visitId=${encodeURIComponent(fact.visit.id)}`}>
+                                      {tMap("routeStop.openVisit")}
+                                    </Link>
+                                  ) : null}
+                                </li>
+                              )
+                            })}
+                          </ol>
+                        )}
+                        {routeStopsWithoutCoordinates > 0 ? (
+                          <div className="mt-1 text-amber-700 dark:text-amber-300">{tMap("routeStop.missingCoordinates", { count: routeStopsWithoutCoordinates })}</div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    </div>
                   )
                 })
               )}
             </div>
         </aside>
       </div>
+
+      <section data-testid="mtm-map-live-feed" className="rounded-lg border bg-card p-3" aria-labelledby="mtm-map-live-feed-title">
+        <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <h4 id="mtm-map-live-feed-title" className="text-xs font-semibold uppercase text-muted-foreground">{tMap("liveFeed")}</h4>
+          <span className="flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+            <Radio className="h-2 w-2" /> {tMap("latestEvents")}
+          </span>
+          <span className="text-[11px] text-muted-foreground">{tMap("feed.hint")}</span>
+        </div>
+        {liveFeed.length > 0 ? (
+          <ul className="grid gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
+            {liveFeed.map((event) => {
+              const isAlert = event.type === "ALERT"
+              const timeLabel = event.alert && event.alert.count > 1
+                ? `${tMap("feed.timeRange", { from: formatTenantTime(event.alert.firstAt), to: formatTenantTime(event.alert.lastAt) })} · ${tMap("feed.repeated", { count: event.alert.count })}`
+                : formatDateTime(event.time, locale, { timeStyle: "short", timeZone: contract?.timezone })
+              const href = isAlert && event.agentId && event.alert && contract?.timezone
+                ? mtmLiveFeedHistoryHref({
+                    agentId: event.agentId,
+                    firstAt: event.alert.firstAt,
+                    lastAt: event.alert.lastAt,
+                    timezone: contract.timezone,
+                  })
+                : !isAlert && (event.visitId ?? event.id)
+                  ? `/mtm/visits?visitId=${encodeURIComponent(event.visitId ?? event.id)}`
+                  : null
+              const body = (
+                <>
+                  <span className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${event.type === "CHECK_IN" ? "bg-green-500" : isAlert ? "bg-red-500" : "bg-blue-500"}`} />
+                  <span className="min-w-0">
+                    <span className="font-medium">{event.agent}</span>
+                    <span className="text-muted-foreground">
+                      {" "}
+                      {isAlert
+                        ? (event.alert ? feedAlertText(event.alert) : event.customer)
+                        : `${tMap(event.type === "CHECK_IN" ? "feed.checkIn" : "feed.checkOut")} · ${event.customer}`}
+                    </span>
+                    <span className="block text-muted-foreground">{timeLabel}</span>
+                  </span>
+                </>
+              )
+              return (
+                <li key={event.id}>
+                  {href ? (
+                    <Link
+                      href={href}
+                      aria-label={isAlert ? tMap("feed.openHistoryAt", { name: event.agent }) : tMap("feed.openVisit", { name: event.agent })}
+                      className="flex min-h-11 items-start gap-1.5 rounded-md bg-muted/30 p-2 text-[11px] transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      {body}
+                    </Link>
+                  ) : (
+                    <div className="flex min-h-11 items-start gap-1.5 rounded-md bg-muted/30 p-2 text-[11px]">{body}</div>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        ) : (
+          <div className="py-3 text-center text-xs text-muted-foreground">{tMap("waitingForEvents")}</div>
+        )}
+      </section>
 
       <details className="group rounded-lg border bg-card">
         <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -829,50 +1031,24 @@ export default function MtmMapPage() {
           </span>
           <span aria-hidden="true" className="text-muted-foreground transition-transform group-open:rotate-180">⌄</span>
         </summary>
-        <div className="grid gap-3 border-t p-3 md:grid-cols-[auto_minmax(0,1fr)]">
-          <div className="flex flex-wrap content-start gap-2">
-            <Button className="min-h-11" variant={showGeofence ? "default" : "outline"} size="sm" onClick={() => setShowGeofence(!showGeofence)}>
-              <Circle className="mr-1 h-3.5 w-3.5" /> {tMap("geofence")}
-            </Button>
-            <Button
-              data-testid="mtm-map-heatmap-toggle"
-              type="button"
-              aria-pressed={showHeatmap}
-              className="min-h-11"
-              variant={showHeatmap ? "default" : "outline"}
-              size="sm"
-              onClick={() => setShowHeatmap((current) => !current)}
-            >
-              <Flame className="mr-1 h-3.5 w-3.5" /> {tMap("heatmap")}
-            </Button>
-            <div className="flex basis-full items-start gap-2 rounded-md bg-muted/40 p-2 text-xs text-muted-foreground">
-              <History className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              {tMap("historyOnlyExplicit")}
-            </div>
-          </div>
-          <div className="rounded-md border bg-background p-3">
-            <div className="mb-2 flex items-center gap-1.5">
-              <h4 className="text-xs font-semibold uppercase text-muted-foreground">{tMap("liveFeed")}</h4>
-              <span className="flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                <Radio className="h-2 w-2" /> {tMap("latestEvents")}
-              </span>
-            </div>
-            {liveFeed.length > 0 ? (
-              <div className="grid max-h-[180px] gap-1.5 overflow-y-auto sm:grid-cols-2">
-                {liveFeed.map((event) => (
-                  <div key={event.id} className="flex items-start gap-1.5 rounded-md bg-muted/30 p-2 text-[11px]">
-                    <span className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${event.type === "CHECK_IN" ? "bg-green-500" : event.type === "ALERT" ? "bg-red-500" : "bg-blue-500"}`} />
-                    <div className="min-w-0">
-                      <span className="font-medium">{event.agent}</span>
-                      <span className="text-muted-foreground"> {event.type === "ALERT" ? "⚠ " : "→ "}{event.customer}</span>
-                      <div className="text-muted-foreground">{formatDateTime(event.time, locale, { timeStyle: "short", timeZone: contract?.timezone })}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="py-3 text-center text-xs text-muted-foreground">{tMap("waitingForEvents")}</div>
-            )}
+        <div className="flex flex-wrap content-start gap-2 border-t p-3">
+          <Button className="min-h-11" variant={showGeofence ? "default" : "outline"} size="sm" onClick={() => setShowGeofence(!showGeofence)}>
+            <Circle className="mr-1 h-3.5 w-3.5" /> {tMap("geofence")}
+          </Button>
+          <Button
+            data-testid="mtm-map-heatmap-toggle"
+            type="button"
+            aria-pressed={showHeatmap}
+            className="min-h-11"
+            variant={showHeatmap ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowHeatmap((current) => !current)}
+          >
+            <Flame className="mr-1 h-3.5 w-3.5" /> {tMap("heatmap")}
+          </Button>
+          <div className="flex basis-full items-start gap-2 rounded-md bg-muted/40 p-2 text-xs text-muted-foreground">
+            <History className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            {tMap("historyOnlyExplicit")}
           </div>
         </div>
       </details>

@@ -112,6 +112,63 @@ describe("GET /api/v1/mtm/routes/[id]", () => {
     expect(json.success).toBe(true)
     expect(json.data.points[0].distanceMeters).toBe(150)
   })
+
+  it("reduces each stop's visits to a plan-versus-fact record without note text or signature drawing", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(prisma.mtmRoute.findFirst).mockResolvedValue({
+      id: "r1",
+      organizationId: ORG,
+      agentId: "a1",
+      status: "IN_PROGRESS",
+      date: new Date("2026-09-14T00:00:00.000Z"),
+      publishedVersion: 1,
+      assignments: [],
+      points: [{
+        id: "p1",
+        orderIndex: 0,
+        status: "VISITED",
+        plannedTime: new Date("2026-09-14T05:00:00.000Z"),
+        customer: { latitude: 40.4, longitude: 49.8, geofenceRadius: null },
+        visits: [{
+          id: "v1",
+          agentId: "a1",
+          status: "CHECKED_OUT",
+          checkInAt: new Date("2026-09-14T14:49:00.000Z"),
+          checkOutAt: new Date("2026-09-14T14:53:00.000Z"),
+          checkInLat: 40.47,
+          checkInLng: 49.86,
+          checkOutLat: 40.47,
+          checkOutLng: 49.86,
+          notes: "  private remark ",
+          resultNotes: null,
+          _count: { photos: 3 },
+          actionResults: [{ id: "sig-1" }],
+        }],
+      }],
+    } as any)
+
+    const res = await GET(makeReq("/api/v1/mtm/routes/r1"), params("r1"))
+    const json = await res.json()
+
+    const include = vi.mocked(prisma.mtmRoute.findFirst).mock.calls[0]?.[0] as any
+    expect(include.include.points.include.customer.select.geofenceRadius).toBe(true)
+    expect(include.include.points.include.visits.select.actionResults.where).toEqual({ actionKey: "SIGNATURE", status: "COMPLETED" })
+    expect(json.data.points[0].geofenceRadiusMeters).toBe(100)
+    expect(json.data.points[0].visits).toEqual([{
+      id: "v1",
+      status: "CHECKED_OUT",
+      checkInAt: "2026-09-14T14:49:00.000Z",
+      checkOutAt: "2026-09-14T14:53:00.000Z",
+      checkInLat: 40.47,
+      checkInLng: 49.86,
+      checkOutLat: 40.47,
+      checkOutLng: 49.86,
+      photoCount: 3,
+      hasSignature: true,
+      hasNote: true,
+    }])
+    expect(JSON.stringify(json.data.points[0].visits)).not.toContain("private remark")
+  })
 })
 
 describe("PUT /api/v1/mtm/routes/[id]", () => {

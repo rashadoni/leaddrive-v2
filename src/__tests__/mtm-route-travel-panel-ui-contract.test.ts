@@ -12,7 +12,7 @@ describe("MTM route travel panel UI contract", () => {
 
   it("adds travel beside the existing detail map and never replaces it", () => {
     expect(routesPage).toContain('import { MtmRouteTravelPanel } from "@/components/mtm/route-travel-panel"')
-    expect(routesPage).toContain("<MtmRouteMap points={selectedRoutePoints} />")
+    expect(routesPage).toContain("<MtmRouteMap points={selectedRoutePoints} timezone={timezone} />")
     expect(routesPage).toContain("<MtmRouteTravelPanel")
     expect(routeMap).not.toContain("Google")
   })

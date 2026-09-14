@@ -56,6 +56,7 @@ const routeInclude = {
           phone: true,
           latitude: true,
           longitude: true,
+          geofenceRadius: true,
         },
       },
       contact: {
@@ -74,6 +75,55 @@ const routeDetailInclude = {
     include: { agent: { select: { id: true, name: true, role: true } } },
     orderBy: { assignedAt: "asc" as const },
   },
+  points: {
+    ...routeInclude.points,
+    include: {
+      ...routeInclude.points.include,
+      // Plan versus fact per stop (prod audit 2026-09-14): the dialog showed
+      // one time and nothing about lateness, order, zone or evidence. Reduced
+      // to a serializable fact in GET below — note text and the signature
+      // drawing never leave the server, only whether they exist.
+      visits: {
+        where: { deletedAt: null },
+        orderBy: { checkInAt: "asc" as const },
+        select: {
+          id: true,
+          agentId: true,
+          status: true,
+          checkInAt: true,
+          checkOutAt: true,
+          checkInLat: true,
+          checkInLng: true,
+          checkOutLat: true,
+          checkOutLng: true,
+          notes: true,
+          resultNotes: true,
+          _count: { select: { photos: true } },
+          actionResults: {
+            where: { actionKey: "SIGNATURE" as const, status: "COMPLETED" as const },
+            select: { id: true },
+            take: 1,
+          },
+        },
+      },
+    },
+  },
+}
+
+type RoutePointVisitRow = {
+  id: string
+  agentId: string
+  status: string
+  checkInAt: Date
+  checkOutAt: Date | null
+  checkInLat: number | null
+  checkInLng: number | null
+  checkOutLat: number | null
+  checkOutLng: number | null
+  notes: string | null
+  resultNotes: string | null
+  _count?: { photos: number }
+  actionResults?: Array<{ id: string }>
 }
 
 type RouteAssignmentRow = {
@@ -96,7 +146,9 @@ type RoutePointRow = {
   customer: {
     latitude: number | null
     longitude: number | null
+    geofenceRadius?: number | null
   }
+  visits?: RoutePointVisitRow[]
 }
 
 class RouteVersionConflict extends Error {}
@@ -178,7 +230,29 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth, { params }: {
         agentLat != null && agentLng != null && hasMtmCoordinates(customer)
           ? Math.round(calculateDistance(agentLat, agentLng, customer.latitude, customer.longitude))
           : null
-      return { ...point, customer, distanceMeters }
+      // Check-in coordinates are an employee's location. A co-participant
+      // outside the reader's current scope keeps the times of their visit on
+      // this route, but not where they stood.
+      const visits = (point.visits ?? []).map((visit) => {
+        const locationVisible = isAgentInRouteScope(actor, visit.agentId)
+        return {
+          id: visit.id,
+          status: visit.status,
+          checkInAt: visit.checkInAt,
+          checkOutAt: visit.checkOutAt,
+          checkInLat: locationVisible ? visit.checkInLat : null,
+          checkInLng: locationVisible ? visit.checkInLng : null,
+          checkOutLat: locationVisible ? visit.checkOutLat : null,
+          checkOutLng: locationVisible ? visit.checkOutLng : null,
+          photoCount: visit._count?.photos ?? 0,
+          hasSignature: (visit.actionResults?.length ?? 0) > 0,
+          hasNote: Boolean(visit.notes?.trim() || visit.resultNotes?.trim()),
+        }
+      })
+      const geofenceRadiusMeters = typeof customer.geofenceRadius === "number" && customer.geofenceRadius > 0
+        ? customer.geofenceRadius
+        : settings.geofenceRadius
+      return { ...point, customer, distanceMeters, visits, geofenceRadiusMeters }
     })
     const travelPolicy = resolveMtmRouteTravelPolicy({
       tenantCalculationEnabled: settings.routeTravelEnabled,

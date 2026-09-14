@@ -205,12 +205,17 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         checkOutAt: true,
         checkInLat: true,
         checkInLng: true,
+        // With the customer's radius these answer "was the visit recorded at
+        // the door" — the page used to print «confirmed» for every row.
+        checkOutLat: true,
+        checkOutLng: true,
         customer: {
           select: {
             name: true,
             address: true,
             latitude: true,
             longitude: true,
+            geofenceRadius: true,
           },
         },
       },
@@ -369,6 +374,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         distanceFormula: LOCATION_HISTORY_DISTANCE_FORMULA,
         impossibleSpeedKmh: 180,
         autoTrackingSupported: false,
+        geofenceRadiusMeters: settings.geofenceRadius,
       },
       capabilities: { workforce: workforceEnabled },
       quality: {

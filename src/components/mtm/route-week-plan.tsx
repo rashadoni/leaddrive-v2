@@ -6,13 +6,16 @@ import { ChevronLeft, ChevronRight, MapPin, Plus, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { MtmRouteRecord } from "@/components/mtm/route-types"
 import { fetchMtmRoutesInRange } from "@/lib/mtm/route-range-client"
-import { formatDate } from "@/lib/format-date"
+import { formatDate, formatTime } from "@/lib/format-date"
+import { summarizeMtmRouteExecution } from "@/lib/mtm/route-point-execution"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
 import { visibleWeekPlanAgents } from "@/lib/mtm/week-plan-agents"
 
 interface RouteWeekPlanProps {
   orgId?: string
   locale: string
+  /** Tenant timezone for the check-in window in each cell. */
+  timezone?: string
   refreshVersion: number
   initialDate?: string | null
   onSelectRoute: (route: MtmRouteRecord) => void
@@ -105,6 +108,7 @@ function dateFromKey(value: string): Date {
 export function MtmRouteWeekPlan({
   orgId,
   locale,
+  timezone,
   refreshVersion,
   initialDate,
   onSelectRoute,
@@ -308,19 +312,44 @@ export function MtmRouteWeekPlan({
                 const canCreateForAgent = canCreateRoutes && (canManageAssignments || !selfAgentId || selfAgentId === agent.id)
                 return (
                   <div key={dateKey(day)} className="space-y-1 border-r border-zinc-200 p-1.5 last:border-r-0 dark:border-zinc-700">
-                    {dayRoutes.map((route) => (
+                    {dayRoutes.map((route) => {
+                      // The row already names the agent; the cell said it again
+                      // (audit 2026-09-14). It now says how the day went:
+                      // «2/2 · 16:46–18:53», and whether a stop started late.
+                      const execution = summarizeMtmRouteExecution(route.points ?? [])
+                      const clock = (value: string) => formatTime(new Date(value), locale, {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        ...(timezone ? { timeZone: timezone } : {}),
+                      })
+                      const summary = execution.firstCheckInAt && execution.lastCheckOutAt
+                        ? t("stopFact.weekSummary", {
+                            visited: route.visitedPoints,
+                            total: route.totalPoints,
+                            from: clock(execution.firstCheckInAt),
+                            to: clock(execution.lastCheckOutAt),
+                          })
+                        : t("stopFact.weekSummaryNoTime", { visited: route.visitedPoints, total: route.totalPoints })
+                      return (
                       <button
                         key={route.id}
                         type="button"
+                        data-testid="mtm-week-route-cell"
                         onClick={() => onSelectRoute(route)}
                         className="block min-h-11 w-full rounded-lg border border-zinc-200 bg-muted/60 px-2 py-1.5 text-left hover:border-primary/50 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:border-zinc-700"
                       >
-                        <span className="block truncate text-xs font-medium">{route.name || route.agent?.name}</span>
+                        <span className="flex items-center gap-1 text-xs font-medium tabular-nums">
+                          <span className="truncate">{summary}</span>
+                          {execution.lateCount > 0 ? (
+                            <span className="shrink-0 rounded bg-red-50 px-1 text-[10px] font-medium text-red-700 dark:bg-red-950/30 dark:text-red-300">{t("stopFact.weekLate")}</span>
+                          ) : null}
+                        </span>
                         <span className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
-                          <MapPin className="h-3 w-3" /> {route.totalPoints} {t("points")} · {mtmStatusLabel(statusT, "route", route.status)}
+                          <MapPin className="h-3 w-3 shrink-0" /> <span className="truncate">{route.name ? `${route.name} · ` : ""}{mtmStatusLabel(statusT, "route", route.status)}</span>
                         </span>
                       </button>
-                    ))}
+                      )
+                    })}
                     {dayRoutes.length === 0 ? (
                       <button
                         type="button"
