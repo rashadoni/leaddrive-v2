@@ -150,6 +150,9 @@ async function groupedAlerts(
         today: todayKey,
         status,
         staleDays: MTM_ALERT_STALE_DAYS,
+        // Echoed into "close all old" so a page left open across midnight
+        // closes exactly the set its dialog counted, not a day more.
+        staleBefore: staleBefore.toISOString(),
         canResolve: scope.actor.role !== "AGENT",
         groups: groupMtmAlertsByAgentDay(dayRows.map(toDayRow), timezone),
         truncated: dayRows.length >= DAY_ROW_CAP,

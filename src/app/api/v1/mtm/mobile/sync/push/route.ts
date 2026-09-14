@@ -1175,6 +1175,7 @@ export const POST = withMobileRls(async (req, auth) => {
                   routeId: routePoint?.routeId ?? null,
                   customerId,
                   customerName: customer.name ?? null,
+                  occurredAt: visit.checkInAt,
                   metadataKind: forceOverrideMeta ? "force_checkin" : "field_sync",
                   ...(forceOverrideMeta
                     ? {
@@ -1291,6 +1292,7 @@ export const POST = withMobileRls(async (req, auth) => {
                       routeId: existing.routeId ?? null,
                       customerId: existing.customerId,
                       customerName: customerRow?.name ?? null,
+                      occurredAt: completion.visit.checkOutAt,
                     }
                     await writeFieldSyncAudit(tx, [
                       { ...shared, action: "CHECK_OUT", metadataKind: "check_out" },

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import type { MtmAlertType, Prisma } from "@prisma/client"
@@ -21,14 +22,21 @@ import { alertWriteScope } from "../_scope"
  * scope sits inside the UPDATE's WHERE, so an id from another team is simply
  * not matched: the response count says how many rows were actually closed.
  * One audit row per bulk action, not one per alert, so closing 300 stale
- * deviations does not flood the activity journal.
+ * deviations does not flood the activity journal. The row lists the ids that
+ * matched the scoped filter and were updated — not what the client asked for
+ * (review of #211) — in full up to 200, as a count + sha256 above that.
  */
+const AUDIT_ID_LIST_MAX = 200
+/** One click never updates more than this; the rest stays for the next one. */
+const BULK_RESOLVE_CAP = 5_000
 const ALERT_TYPES = ["GPS_ANOMALY", "LATE_START", "MISSED_VISIT", "LONG_BREAK", "GPS_SPOOFING", "OUT_OF_ZONE", "LOW_BATTERY", "OVERTIME"] as const
 
 const BulkResolveSchema = z.union([
   z.object({ ids: z.array(z.string().min(1).max(128)).min(1).max(2_000) }).strict(),
   z.object({
     stale: z.literal(true),
+    /** The cutoff the list was loaded with (GET `staleBefore`). */
+    staleBefore: z.string().datetime().optional(),
     agentId: z.string().min(1).max(128).optional(),
     type: z.enum(ALERT_TYPES).optional(),
   }).strict(),
@@ -59,18 +67,34 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
       if (body.agentId && !isAgentInFieldScope(scope, body.agentId)) return mtmAgentOutOfScopeResponse()
       const settings = await getMtmSettings(orgId)
       const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
-      staleBefore = localDateKeyToUtc(addDateKeyDays(currentDateKey(new Date(), timezone), -MTM_ALERT_STALE_DAYS), timezone)
+      const serverCutoff = localDateKeyToUtc(addDateKeyDays(currentDateKey(new Date(), timezone), -MTM_ALERT_STALE_DAYS), timezone)
+      // Never later than what the dialog was computed with, never later than
+      // the server's own cutoff: a stale page closes fewer, not more.
+      const clientCutoff = body.staleBefore ? new Date(body.staleBefore) : null
+      staleBefore = clientCutoff && clientCutoff.getTime() < serverCutoff.getTime() ? clientCutoff : serverCutoff
       where.createdAt = { lt: staleBefore }
       if (body.agentId) where.agentId = body.agentId
       if (body.type) where.type = body.type as MtmAlertType
     }
 
-    const updated = await prisma.mtmAlert.updateMany({
+    const matched = await prisma.mtmAlert.findMany({
       where,
+      select: { id: true },
+      orderBy: { createdAt: "asc" },
+      take: BULK_RESOLVE_CAP,
+    })
+    const matchedIds = matched.map((row) => row.id)
+    if (matchedIds.length === 0) return NextResponse.json({ success: true, data: { resolved: 0 } })
+
+    const updated = await prisma.mtmAlert.updateMany({
+      // Same scoped filter again, narrowed to the matched rows: a row closed
+      // meanwhile by someone else is not counted twice.
+      where: { ...where, id: { in: matchedIds } },
       data: { isResolved: true, resolvedAt: new Date(), resolvedBy: auth.userId },
     })
 
     if (updated.count > 0) {
+      const sortedIds = [...matchedIds].sort()
       await writeMtmAudit({
         organizationId: orgId,
         agentId: "agentId" in body && body.agentId ? body.agentId : null,
@@ -81,7 +105,11 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
         newData: {
           mode,
           count: updated.count,
-          ...(mode === "ids" && "ids" in body ? { ids: body.ids.slice(0, 200) } : {}),
+          matchedCount: sortedIds.length,
+          ...(sortedIds.length <= AUDIT_ID_LIST_MAX
+            ? { ids: sortedIds }
+            : { idsSha256: createHash("sha256").update(sortedIds.join(",")).digest("hex") }),
+          ...(matchedIds.length >= BULK_RESOLVE_CAP ? { capped: true } : {}),
           ...(staleBefore ? { olderThan: staleBefore.toISOString(), staleDays: MTM_ALERT_STALE_DAYS } : {}),
         },
         req,

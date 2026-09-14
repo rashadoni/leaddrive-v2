@@ -61,6 +61,7 @@ interface GroupsData {
   today: string
   status: Status
   staleDays: number
+  staleBefore: string
   canResolve: boolean
   truncated: boolean
   groups: MtmAlertDayGroup[]
@@ -95,6 +96,8 @@ export default function MtmAlertsPage() {
   const [staleOpen, setStaleOpen] = useState(false)
   const [staleConfirm, setStaleConfirm] = useState(false)
   const [busyGroup, setBusyGroup] = useState<string | null>(null)
+  // A group of several alerts is closed only after the count was shown.
+  const [groupConfirm, setGroupConfirm] = useState<{ key: string; ids: string[] } | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteItem, setDeleteItem] = useState<MtmAlertDayItem | null>(null)
 
@@ -194,7 +197,12 @@ export default function MtmAlertsPage() {
     const res = await fetch("/api/v1/mtm/alerts/resolve", {
       method: "POST",
       headers: { "Content-Type": "application/json", ...headers },
-      body: JSON.stringify({ stale: true, ...(agentId ? { agentId } : {}), ...(type ? { type } : {}) }),
+      body: JSON.stringify({
+        stale: true,
+        ...(data?.staleBefore ? { staleBefore: data.staleBefore } : {}),
+        ...(agentId ? { agentId } : {}),
+        ...(type ? { type } : {}),
+      }),
     })
     const body = await res.json().catch(() => null)
     if (!res.ok || !body?.success) {
@@ -329,7 +337,7 @@ export default function MtmAlertsPage() {
               </Button>
             )}
             {data?.canResolve && group.openIds.length > 0 && (
-              <Button size="sm" variant="outline" className="h-7 bg-white/50 text-xs hover:bg-white/80 dark:bg-black/20" disabled={busyGroup === group.key} onClick={() => resolveIds(group.openIds, group.key)}>
+              <Button size="sm" variant="outline" className="h-7 bg-white/50 text-xs hover:bg-white/80 dark:bg-black/20" disabled={busyGroup === group.key} onClick={() => (group.openIds.length > 1 ? setGroupConfirm({ key: group.key, ids: group.openIds }) : resolveIds(group.openIds, group.key))}>
                 <CheckCircle2 className="mr-1 h-3.5 w-3.5" aria-hidden="true" />{t("resolveGroup")}
               </Button>
             )}
@@ -440,7 +448,7 @@ export default function MtmAlertsPage() {
           </div>
           {staleOpen && (
             <div className="space-y-2 px-3 pb-3">
-              {data.stale.groups.length < data.stale.total && (
+              {data.stale.groups.reduce((sum, group) => sum + group.count, 0) < data.stale.total && (
                 <p className="text-xs text-muted-foreground">
                   {t("staleMore", { shown: data.stale.groups.reduce((sum, group) => sum + group.count, 0), total: data.stale.total })}
                 </p>
@@ -452,6 +460,15 @@ export default function MtmAlertsPage() {
       )}
 
       <DeleteConfirmDialog open={deleteOpen} onOpenChange={setDeleteOpen} onConfirm={confirmDelete} title={t("delete")} itemName={deleteItem ? hhmm(deleteItem.at) : undefined} />
+      <ConfirmDialog
+        open={groupConfirm !== null}
+        onOpenChange={(open) => { if (!open) setGroupConfirm(null) }}
+        onConfirm={async () => { if (groupConfirm) await resolveIds(groupConfirm.ids, groupConfirm.key) }}
+        title={t("resolveGroup")}
+        description={t("resolveGroupConfirm", { count: groupConfirm?.ids.length ?? 0 })}
+        confirmLabel={t("resolveGroup")}
+        confirmVariant="default"
+      />
       <ConfirmDialog
         open={staleConfirm}
         onOpenChange={setStaleConfirm}

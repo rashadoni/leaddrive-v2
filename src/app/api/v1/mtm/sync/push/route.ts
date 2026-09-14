@@ -381,6 +381,7 @@ async function applyOp(
           routeId: routePoint?.routeId ?? null,
           customerId: resolvedCustomerId,
           customerName: customer.name ?? null,
+          occurredAt: visit.checkInAt,
         }
         await writeFieldSyncAudit(tx, [
           { ...auditShared, action: "CHECK_IN" },
@@ -461,6 +462,7 @@ async function applyOp(
             routeId: before.routeId ?? null,
             customerId: before.customerId,
             customerName: before.customer?.name ?? null,
+            occurredAt: completion.visit.checkOutAt,
           }
           await writeFieldSyncAudit(tx, [
             { ...auditShared, action: "CHECK_OUT", metadataKind: "check_out" },

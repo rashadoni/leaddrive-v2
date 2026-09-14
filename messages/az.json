@@ -13940,6 +13940,7 @@
     "openOnMap": "Xəritədə bax",
     "openVisit": "Ziyarəti aç",
     "resolveGroup": "Qrupu həll et",
+    "resolveGroupConfirm": "Bu qrupun bütün {count} xəbərdarlığı həll edilsin?",
     "resolveDone": "{count} xəbərdarlıq həll edildi",
     "resolveFailed": "Xəbərdarlıqları həll etmək alınmadı. Yenidən cəhd edin.",
     "deleteFailed": "Xəbərdarlığı silmək alınmadı.",

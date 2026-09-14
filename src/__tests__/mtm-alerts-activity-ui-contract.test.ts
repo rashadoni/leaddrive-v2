@@ -86,6 +86,16 @@ describe("grouped alert rows", () => {
     expect(pages.alerts).toContain("data.stale.total > 0")
     expect(pages.alerts).toContain("stale: true")
     expect(pages.alerts).toContain("<ConfirmDialog")
+    // The dialog's count and the POST share one cutoff (page open across midnight).
+    expect(pages.alerts).toContain("staleBefore: data.staleBefore")
+    // "showing X of Y" compares rows to rows, not groups to rows.
+    expect(pages.alerts).toContain("data.stale.groups.reduce((sum, group) => sum + group.count, 0) < data.stale.total")
+  })
+
+  it("asks before resolving a group of more than one alert, with the count", () => {
+    expect(pages.alerts).toContain("group.openIds.length > 1 ? setGroupConfirm(")
+    expect(pages.alerts).toContain('t("resolveGroupConfirm", { count: groupConfirm?.ids.length ?? 0 })')
+    for (const dict of Object.values(messages)) expect(dict.mtmAlertsPage.resolveGroupConfirm).toContain("count")
   })
 })
 

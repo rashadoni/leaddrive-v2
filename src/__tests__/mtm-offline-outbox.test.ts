@@ -131,6 +131,7 @@ let txMock: {
   mtmVisitParticipant: { createMany: ReturnType<typeof vi.fn> }
   mtmRoute: { updateMany: ReturnType<typeof vi.fn>; findFirst: ReturnType<typeof vi.fn> }
   mtmAuditLog: { create: ReturnType<typeof vi.fn> }
+  $executeRaw: ReturnType<typeof vi.fn>
 }
 
 const uuid = () => "123e4567-e89b-42d3-a456-426614174000"
@@ -183,6 +184,7 @@ beforeEach(() => {
     mtmVisitParticipant: { createMany: vi.fn().mockResolvedValue({}) },
     mtmRoute: { updateMany: vi.fn().mockResolvedValue({ count: 1 }), findFirst: vi.fn().mockResolvedValue(null) },
     mtmAuditLog: { create: vi.fn().mockResolvedValue({}) },
+    $executeRaw: vi.fn().mockResolvedValue(0),
   }
   vi.mocked(prisma.$transaction).mockImplementation(((cb: (tx: unknown) => unknown) => cb(txMock)) as never)
 })
@@ -586,6 +588,28 @@ describe("POST /api/v1/mtm/sync/push — activity audit rows", () => {
     vi.mocked(completeMtmVisit).mockResolvedValueOnce({ status: "completed", visit: { id: "v1" }, idempotent: true } as never)
     await POST(req({ operations: [checkoutOp("223e4567-e89b-42d3-a456-426614174000")] }), undefined as never)
     expect(txMock.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+
+  it("an audit insert failure rolls back only its savepoint: the check-in is written and pinned ok", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    txMock.mtmAuditLog.create.mockRejectedValue(new Error("audit table unavailable"))
+    const res = await POST(req({ operations: [checkin(uuid())] }), undefined as never)
+    consoleError.mockRestore()
+
+    expect((await res.json()).data.results[0].status).toBe("ok")
+    expect(txMock.mtmVisit.create).toHaveBeenCalledTimes(1)
+    expect(txMock.mtmSyncOperation.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: "ok" }) }))
+    const sql = txMock.$executeRaw.mock.calls.map((call) => (call[0] as TemplateStringsArray).join("?"))
+    expect(sql).toEqual(["SAVEPOINT field_sync_audit", "ROLLBACK TO SAVEPOINT field_sync_audit", "RELEASE SAVEPOINT field_sync_audit"])
+  })
+
+  it("dates an offline check-in by when it happened, not when it synced", async () => {
+    txMock.mtmVisit.create.mockResolvedValue({ id: "visit-new", status: "CHECKED_IN", checkInAt: new Date("2026-09-13T14:40:00.000Z") })
+    await POST(req({ operations: [checkin(uuid(), { checkInAt: "2026-09-13T14:40:00.000Z" })] }), undefined as never)
+    const row = txMock.mtmAuditLog.create.mock.calls[0][0].data
+    expect(row.createdAt.toISOString()).toBe("2026-09-13T14:40:00.000Z")
+    expect(row.newData.occurredAt).toBe("2026-09-13T14:40:00.000Z")
+    expect(Date.parse(row.newData.syncedAt)).toBeGreaterThan(Date.parse("2026-09-13T14:40:00.000Z"))
   })
 
   it("a previously pinned operation replays without any audit write", async () => {

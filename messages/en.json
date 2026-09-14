@@ -13944,6 +13944,7 @@
     "openOnMap": "View on map",
     "openVisit": "Open visit",
     "resolveGroup": "Resolve group",
+    "resolveGroupConfirm": "{count, plural, one {Resolve # alert of this group?} other {Resolve all # alerts of this group?}}",
     "resolveDone": "{count, plural, one {# alert resolved} other {# alerts resolved}}",
     "resolveFailed": "Could not resolve the alerts. Try again.",
     "deleteFailed": "Could not delete the alert.",

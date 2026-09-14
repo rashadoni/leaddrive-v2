@@ -196,6 +196,7 @@ describe("GET /api/v1/mtm/alerts?view=groups", () => {
     expect(staleWhere.isResolved).toBe(false)
     expect(staleWhere.createdAt.lt).toBeInstanceOf(Date)
     expect(data.stale.total).toBe(41)
+    expect(data.staleBefore).toBe(staleWhere.createdAt.lt.toISOString())
     expect(data.stale.groups[0]).toMatchObject({ dateKey: "2026-04-02", count: 1 })
     expect(prisma.mtmAlert.updateMany).not.toHaveBeenCalled()
   })
@@ -215,29 +216,71 @@ describe("GET /api/v1/mtm/alerts?view=groups", () => {
 })
 
 describe("POST /api/v1/mtm/alerts/resolve", () => {
-  it("resolves a group's ids only within the manager's scope, with one audit row", async () => {
+  it("resolves a group's ids only within the manager's scope and audits the ids actually closed", async () => {
     asWebManager()
+    // foreign-3 belongs to another team: the scoped select does not match it.
+    vi.mocked(prisma.mtmAlert.findMany).mockResolvedValue([{ id: "a2" }, { id: "a1" }] as never)
     vi.mocked(prisma.mtmAlert.updateMany).mockResolvedValue({ count: 2 } as never)
     const res = await bulk({ ids: ["a1", "a2", "foreign-3"] })
     expect(res.status).toBe(200)
     expect(await res.json()).toMatchObject({ data: { resolved: 2 } })
-    const args = vi.mocked(prisma.mtmAlert.updateMany).mock.calls[0][0] as any
-    expect(args.where).toEqual({
+    const selectWhere = (vi.mocked(prisma.mtmAlert.findMany).mock.calls[0][0] as any).where
+    expect(selectWhere).toEqual({
       organizationId: ORG, isResolved: false, agentId: { in: MANAGER_SCOPE }, id: { in: ["a1", "a2", "foreign-3"] },
     })
+    const args = vi.mocked(prisma.mtmAlert.updateMany).mock.calls[0][0] as any
+    expect(args.where).toEqual({ organizationId: ORG, isResolved: false, agentId: { in: MANAGER_SCOPE }, id: { in: ["a2", "a1"] } })
     expect(args.data).toMatchObject({ isResolved: true, resolvedBy: "manager-user" })
     expect(writeMtmAudit).toHaveBeenCalledTimes(1)
-    expect(vi.mocked(writeMtmAudit).mock.calls[0][0]).toMatchObject({ action: "ALERT_BULK_RESOLVE", newData: expect.objectContaining({ count: 2, mode: "ids" }) })
+    const audit = vi.mocked(writeMtmAudit).mock.calls[0][0] as any
+    expect(audit).toMatchObject({ action: "ALERT_BULK_RESOLVE", newData: expect.objectContaining({ count: 2, mode: "ids", ids: ["a1", "a2"] }) })
+    expect(JSON.stringify(audit.newData)).not.toContain("foreign-3")
+  })
+
+  it("audits a large close as count + hash instead of the id list", async () => {
+    asWebAdmin()
+    const rows = Array.from({ length: 250 }, (_, i) => ({ id: `al-${String(i).padStart(3, "0")}` }))
+    vi.mocked(prisma.mtmAlert.findMany).mockResolvedValue(rows as never)
+    vi.mocked(prisma.mtmAlert.updateMany).mockResolvedValue({ count: 250 } as never)
+    await bulk({ ids: rows.map((row) => row.id) })
+    const newData = (vi.mocked(writeMtmAudit).mock.calls[0][0] as any).newData
+    expect(newData).toMatchObject({ count: 250, matchedCount: 250 })
+    expect(newData.ids).toBeUndefined()
+    expect(newData.idsSha256).toMatch(/^[0-9a-f]{64}$/)
+  })
+
+  it("writes nothing when no alert matched", async () => {
+    asWebManager()
+    vi.mocked(prisma.mtmAlert.findMany).mockResolvedValue([] as never)
+    expect(await (await bulk({ ids: ["foreign-3"] })).json()).toMatchObject({ data: { resolved: 0 } })
+    expect(prisma.mtmAlert.updateMany).not.toHaveBeenCalled()
+    expect(writeMtmAudit).not.toHaveBeenCalled()
   })
 
   it("closes all stale open alerts of an in-scope agent", async () => {
     asWebManager()
-    vi.mocked(prisma.mtmAlert.updateMany).mockResolvedValue({ count: 41 } as never)
+    vi.mocked(prisma.mtmAlert.findMany).mockResolvedValue([{ id: "old-1" }] as never)
+    vi.mocked(prisma.mtmAlert.updateMany).mockResolvedValue({ count: 1 } as never)
     const res = await bulk({ stale: true, agentId: "agent-1", type: "OUT_OF_ZONE" })
     expect(res.status).toBe(200)
     const where = (vi.mocked(prisma.mtmAlert.updateMany).mock.calls[0][0] as any).where
-    expect(where).toMatchObject({ organizationId: ORG, isResolved: false, agentId: "agent-1", type: "OUT_OF_ZONE" })
+    expect(where).toMatchObject({ organizationId: ORG, isResolved: false, agentId: "agent-1", type: "OUT_OF_ZONE", id: { in: ["old-1"] } })
     expect(where.createdAt.lt).toBeInstanceOf(Date)
+  })
+
+  it("uses the cutoff the page was loaded with, never a later one", async () => {
+    asWebManager()
+    vi.mocked(prisma.mtmAlert.findMany).mockResolvedValue([] as never)
+    // A page opened yesterday: its cutoff is a day earlier than today's.
+    const earlier = "2020-01-01T20:00:00.000Z"
+    await bulk({ stale: true, staleBefore: earlier })
+    expect((vi.mocked(prisma.mtmAlert.findMany).mock.calls[0][0] as any).where.createdAt.lt.toISOString()).toBe(earlier)
+
+    vi.mocked(prisma.mtmAlert.findMany).mockClear()
+    // A forged future cutoff cannot widen the close past the server's own.
+    await bulk({ stale: true, staleBefore: "2999-01-01T00:00:00.000Z" })
+    const lt = (vi.mocked(prisma.mtmAlert.findMany).mock.calls[0][0] as any).where.createdAt.lt as Date
+    expect(lt.getTime()).toBeLessThan(Date.now())
   })
 
   it("does not let a manager close another team's stale alerts", async () => {

@@ -918,8 +918,12 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
     // Both outcomes are pinned atomically despite the failed idempotency
     // pre-check, and both writers acquire the same per-agent slot lock.
     expect(vi.mocked(prisma.mtmSyncOperation.create)).toHaveBeenCalledTimes(2)
-    expect(vi.mocked(prisma.$executeRaw)).toHaveBeenCalledTimes(2)
-    const lockKeys = vi.mocked(prisma.$executeRaw).mock.calls.map((call: unknown[]) => call[1])
+    // Only the slot locks; the accepted check-in also opens and releases the
+    // activity-audit savepoint (field-sync-audit.ts), which carries no key.
+    const lockCalls = vi.mocked(prisma.$executeRaw).mock.calls
+      .filter((call: unknown[]) => !(call[0] as string[]).join("?").includes("field_sync_audit"))
+    expect(lockCalls).toHaveLength(2)
+    const lockKeys = lockCalls.map((call: unknown[]) => call[1])
     expect(lockKeys).toEqual([
       `mtm-active-visit:${ORG}:${AGENT_ID}`,
       `mtm-active-visit:${ORG}:${AGENT_ID}`,
@@ -3444,6 +3448,47 @@ describe("POST /api/v1/mtm/mobile/sync/push — activity audit rows", () => {
     expect(prisma.mtmAuditLog.create).toHaveBeenCalledTimes(1)
     expect(vi.mocked(prisma.mtmAuditLog.create).mock.invocationCallOrder[0])
       .toBeLessThan(vi.mocked(prisma.mtmSyncOperation.create).mock.invocationCallOrder[0])
+  })
+
+  it("an audit insert failure never fails the check-in: visit written, op pinned ok, savepoint rolled back", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    vi.mocked(prisma.mtmVisit.create).mockResolvedValue({ id: "visit-audit-fail", status: "CHECKED_IN", checkInAt: new Date() } as any)
+    vi.mocked(prisma.mtmAuditLog.create).mockRejectedValueOnce(new Error("audit insert failed"))
+
+    const res = await PushPOST(makePushReq({ operations: [{
+      operationId: "op-audit-fail", op: "create", entity: "visits", data: { customerId: "cust-1" }, clientTimestamp: Date.now(),
+    }] }))
+    consoleError.mockRestore()
+
+    expect((await res.json()).results[0]).toMatchObject({ status: "ok", serverId: "visit-audit-fail" })
+    expect(prisma.mtmVisit.create).toHaveBeenCalledTimes(1)
+    expect(prisma.mtmSyncOperation.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ operationId: "op-audit-fail", status: "ok" }),
+    }))
+    const sql = vi.mocked(prisma.$executeRaw).mock.calls
+      .map((call) => (call[0] as unknown as TemplateStringsArray).join("?"))
+      .filter((text) => text.includes("field_sync_audit"))
+    expect(sql).toEqual(["SAVEPOINT field_sync_audit", "ROLLBACK TO SAVEPOINT field_sync_audit", "RELEASE SAVEPOINT field_sync_audit"])
+  })
+
+  it("an offline check-in synced the next day is dated by its checkInAt", async () => {
+    const checkInAt = new Date(Date.now() - 20 * 60 * 60_000)
+    vi.mocked(prisma.mtmVisit.create).mockResolvedValue({ id: "visit-offline", status: "CHECKED_IN", checkInAt } as any)
+    await PushPOST(makePushReq({ operations: [{
+      operationId: "op-offline", op: "create", entity: "visits",
+      data: { customerId: "cust-1", checkInAt: checkInAt.toISOString() }, clientTimestamp: Date.now(),
+    }] }))
+    const row = auditCalls()[0]
+    expect(row.createdAt.toISOString()).toBe(checkInAt.toISOString())
+    expect(row.newData.occurredAt).toBe(checkInAt.toISOString())
+  })
+
+  it("a device clock in the future does not date the row ahead of now", async () => {
+    vi.mocked(prisma.mtmVisit.create).mockResolvedValue({ id: "visit-future", status: "CHECKED_IN", checkInAt: new Date("2099-01-01T00:00:00.000Z") } as any)
+    await PushPOST(makePushReq({ operations: [{
+      operationId: "op-future", op: "create", entity: "visits", data: { customerId: "cust-1" }, clientTimestamp: Date.now(),
+    }] }))
+    expect(auditCalls()[0].createdAt.getTime()).toBeLessThanOrEqual(Date.now())
   })
 
   it("a refused check-in (conflict) writes no activity row", async () => {
