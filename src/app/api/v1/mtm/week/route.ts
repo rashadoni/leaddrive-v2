@@ -75,18 +75,31 @@ const agentSelect = {
 
 type AgentRow = Prisma.MtmAgentGetPayload<{ select: typeof agentSelect }>
 
-const activeWorkdaySelect = {
-  id: true,
-  workDate: true,
-  status: true,
-  startedAt: true,
-  pausedAt: true,
-  completedAt: true,
-  totalPausedSeconds: true,
-  updatedAt: true,
-} satisfies Prisma.MtmAgentWorkdaySelect
+/**
+ * The shift fields the manager-state helper reads. Declared locally on
+ * purpose (review of #210): the rows of the Promise.all tuple below infer as
+ * `{}` under this client's extended types, and new code must not add to the
+ * known `{}` errors — it converts once, here, to exactly these fields.
+ */
+interface WeekWorkdayStateRow {
+  status: string
+  workDate: Date
+  startedAt: Date | null
+  pausedAt: Date | null
+  completedAt: Date | null
+}
 
-type ActiveWorkdayRow = Prisma.MtmAgentWorkdayGetPayload<{ select: typeof activeWorkdaySelect }>
+function weekWorkdayStateRow(value: unknown, workDateKey?: string | null): MtmWorkdayRow | null {
+  if (!value || typeof value !== "object") return null
+  const row = value as WeekWorkdayStateRow
+  return {
+    status: String(row.status),
+    workDate: workDateKey ?? row.workDate ?? null,
+    startedAt: row.startedAt ?? null,
+    pausedAt: row.pausedAt ?? null,
+    completedAt: row.completedAt ?? null,
+  }
+}
 
 function denied(code: string, status = 403) {
   return NextResponse.json({
@@ -397,6 +410,34 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
     ],
   }
 
+  // Prod 2026-09-14: 18 unresolved OUT_OF_ZONE alerts for the selected agent
+  // that day, and «Diqqət tələb edir» showed none. Same selected-agent scope
+  // as every other fact above; resolved rows are history, not attention.
+  // Awaited separately so the fact tuple below keeps its original shape.
+  const alertsPromise = prisma.mtmAlert.findMany({
+    where: {
+      organizationId: auth.orgId,
+      agentId: selectedAgent.id,
+      isResolved: false,
+      createdAt: { gte: window.activityStart, lt: window.activityEnd },
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+    take: WEEK_ALERT_LIMIT + 1,
+    select: {
+      id: true,
+      type: true,
+      category: true,
+      title: true,
+      description: true,
+      metadata: true,
+      createdAt: true,
+    },
+  })
+  // Prisma queries are lazy: attaching a handler starts it now, in parallel
+  // with the tuple, and keeps an early tuple failure from leaving this
+  // rejection unhandled. The `await` below still rethrows it.
+  alertsPromise.catch(() => undefined)
+
   const [
     roster,
     routesRaw,
@@ -407,7 +448,6 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
     tasksRaw,
     activeTasksRaw,
     planChangesRaw,
-    alertsRaw,
   ] = await Promise.all([
     loadFilterAgents(auth.orgId, actor, regionId, teamId),
     prisma.mtmRoute.findMany({
@@ -554,8 +594,17 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
         status: { in: ["STARTED", "PAUSED"] },
       },
       orderBy: [{ startedAt: "desc" }, { id: "asc" }],
-      select: activeWorkdaySelect,
-    }) as Promise<ActiveWorkdayRow | null> : Promise.resolve<ActiveWorkdayRow | null>(null),
+      select: {
+        id: true,
+        workDate: true,
+        status: true,
+        startedAt: true,
+        pausedAt: true,
+        completedAt: true,
+        totalPausedSeconds: true,
+        updatedAt: true,
+      },
+    }) : Promise.resolve(null),
     prisma.mtmAgentLocation.findFirst({
       // GPS status is based on the newest admissible coordinate, never merely
       // the newest raw telemetry row. This is the same quality boundary used
@@ -672,28 +721,6 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
         },
       },
     }),
-    // Prod 2026-09-14: 18 unresolved OUT_OF_ZONE alerts for the selected agent
-    // that day, and «Diqqət tələb edir» showed none. Same selected-agent scope
-    // as every other fact above; resolved rows are history, not attention.
-    prisma.mtmAlert.findMany({
-      where: {
-        organizationId: auth.orgId,
-        agentId: selectedAgent.id,
-        isResolved: false,
-        createdAt: { gte: window.activityStart, lt: window.activityEnd },
-      },
-      orderBy: [{ createdAt: "desc" }, { id: "asc" }],
-      take: WEEK_ALERT_LIMIT + 1,
-      select: {
-        id: true,
-        type: true,
-        category: true,
-        title: true,
-        description: true,
-        metadata: true,
-        createdAt: true,
-      },
-    }),
   ])
 
   // Preserve the fail-closed quality boundary even if legacy data or a mocked
@@ -717,6 +744,7 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
   const activeTasksTruncated = activeTasksRaw.length > OPERATIONAL_WEEK_LIMITS.tasks
   const planChangesCapped = planChangesRaw.slice(0, OPERATIONAL_WEEK_LIMITS.planChanges)
   const planChangesTruncated = planChangesRaw.length > OPERATIONAL_WEEK_LIMITS.planChanges
+  const alertsRaw = await alertsPromise
   const alertRows = Array.isArray(alertsRaw) ? alertsRaw : []
   const alertsTruncated = alertRows.length > WEEK_ALERT_LIMIT
   const alerts = alertRows
@@ -1076,16 +1104,8 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
   // instruction to close it that only the agent can follow.
   const managerWorkdayState = canReadWorkforce
     ? mtmManagerWorkdayState({
-        today: workdayByDay.get(today) ?? null,
-        active: activeWorkdayRaw
-          ? {
-              status: String(activeWorkdayRaw.status),
-              workDate: activeWorkdayDate,
-              startedAt: activeWorkdayRaw.startedAt,
-              pausedAt: activeWorkdayRaw.pausedAt,
-              completedAt: activeWorkdayRaw.completedAt,
-            } satisfies MtmWorkdayRow
-          : null,
+        today: weekWorkdayStateRow(workdayByDay.get(today)),
+        active: weekWorkdayStateRow(activeWorkdayRaw, activeWorkdayDate),
         now: generatedAt,
         todayKey: today,
       })
