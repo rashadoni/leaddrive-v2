@@ -432,9 +432,9 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap lg:max-w-sm lg:justify-end">
+          <div className="flex flex-wrap gap-2 lg:max-w-sm lg:justify-end">
             {capabilities.canManage || capabilities.canRequestChanges ? (
-              <Button type="button" variant="outline" className="col-span-2 min-h-11" onClick={() => setEditOpen(true)}>
+              <Button type="button" variant="outline" className="min-h-11" onClick={() => setEditOpen(true)}>
                 <Pencil className="h-4 w-4" />
                 {capabilities.canManage ? t("editContact") : t("suggestChange")}
               </Button>
@@ -463,7 +463,7 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
                 </Link>
               </Button>
             ) : null}
-            <Button asChild variant="outline" className="col-span-2 min-h-11">
+            <Button asChild variant="outline" className="min-h-11">
               <Link href={`/mtm/tasks?contactId=${encodeURIComponent(contact.id)}`}>
                 <ClipboardList className="h-4 w-4" />{t("openTasks")}
               </Link>

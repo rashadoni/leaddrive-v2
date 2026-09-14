@@ -392,7 +392,7 @@ function SummaryCard({ icon: Icon, label, value, hint, tone }: {
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
           <p className="mt-1 truncate text-2xl font-semibold tabular-nums">{value}</p>
-          {hint ? <p className="mt-1 truncate text-xs text-muted-foreground">{hint}</p> : null}
+          {hint ? <p className="mt-1 break-words text-xs text-muted-foreground">{hint}</p> : null}
         </div>
         <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-lg", toneClass)}><Icon className="h-4 w-4" /></span>
       </div>
@@ -592,7 +592,7 @@ function ReviewDialog({ rows, open, onOpenChange, onApplied }: {
                 <p className="text-xs text-muted-foreground">{t("reviewPreviewHint")}</p>
               </div>
             </div>
-            <div className="mt-3 max-h-48 space-y-2 overflow-y-auto" aria-live="polite">
+            <div className="mt-3 space-y-2" aria-live="polite">
               {previewEntries.map((entry) => {
                 const value = entry.preview
                 return (
@@ -1179,16 +1179,16 @@ export function PharmacyPromotionWorkspace() {
                     {savedViews.map((savedView) => <option key={savedView.id} value={savedView.id}>{savedView.name}{savedView.isDefault ? ` · ${t("defaultView")}` : ""}</option>)}
                   </Select>
                 </div>
-                <div className="grid grid-cols-2 gap-2 sm:flex">
+                <div className="flex flex-wrap gap-2">
                   <Button className="min-h-11 lg:min-h-9" variant="outline" onClick={() => setShowSaveView((value) => !value)} aria-expanded={showSaveView}><Bookmark className="mr-2 h-4 w-4" />{t("saveView")}</Button>
                   <Button className="min-h-11 lg:min-h-9" variant="ghost" disabled={!selectedSavedViewId || deletingView} onClick={deleteSelectedView}><Trash2 className="mr-2 h-4 w-4" />{t("deleteSavedView")}</Button>
                 </div>
               </div>
               {showSaveView ? (
-                <div className="mt-3 grid gap-3 border-t pt-3 sm:grid-cols-[minmax(220px,1fr)_auto_auto] sm:items-end">
+                <div className="mt-3 grid gap-3 border-t pt-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
                   <LabeledInput label={t("savedViewName")} value={savedViewName} maxLength={80} placeholder={t("savedViewNamePlaceholder")} className="min-h-11 lg:min-h-10" onChange={(event) => setSavedViewName(event.target.value)} />
                   <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm"><input className="h-5 w-5" type="checkbox" checked={savedViewDefault} onChange={(event) => setSavedViewDefault(event.target.checked)} />{t("makeDefaultView")}</label>
-                  <div className="grid grid-cols-2 gap-2 sm:flex"><Button className="min-h-11 lg:min-h-9" variant="ghost" onClick={() => { setShowSaveView(false); setSavedViewName(""); setSavedViewDefault(false) }} disabled={savingView}>{t("cancel")}</Button><Button className="min-h-11 lg:min-h-9" onClick={saveCurrentView} disabled={savingView || !data || !savedViewName.trim()}>{savingView ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> : <Save className="mr-2 h-4 w-4" />}{t("save")}</Button></div>
+                  <div className="flex flex-wrap gap-2"><Button className="min-h-11 lg:min-h-9" variant="ghost" onClick={() => { setShowSaveView(false); setSavedViewName(""); setSavedViewDefault(false) }} disabled={savingView}>{t("cancel")}</Button><Button className="min-h-11 lg:min-h-9" onClick={saveCurrentView} disabled={savingView || !data || !savedViewName.trim()}>{savingView ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> : <Save className="mr-2 h-4 w-4" />}{t("save")}</Button></div>
                 </div>
               ) : null}
             </div>
@@ -1202,7 +1202,7 @@ export function PharmacyPromotionWorkspace() {
           </section>
 
           <section aria-label={t("filtersLabel")} className="border border-zinc-200/70 bg-card dark:border-zinc-800">
-            <div className="grid gap-2 p-3 [&_input]:min-h-11 [&_select]:min-h-11 md:grid-cols-[minmax(220px,1.5fr)_minmax(150px,1fr)_minmax(170px,1fr)_auto] lg:[&_input]:min-h-10 lg:[&_select]:min-h-10">
+            <div className="grid gap-2 p-3 [&_input]:min-h-11 [&_select]:min-h-11 md:grid-cols-2 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_auto] lg:[&_input]:min-h-10 lg:[&_select]:min-h-10">
               <div className="relative"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input aria-label={t("search")} value={draft.q ?? ""} onChange={(event) => setDraft((current) => ({ ...current, q: event.target.value }))} onKeyDown={(event) => { if (event.key === "Enter") applyFilters() }} placeholder={t("searchPlaceholder")} className="pl-9" /></div>
               <Select aria-label={t("department")} value={draft.departmentId ?? ""} onChange={(event) => setDraft((current) => ({ ...current, departmentId: event.target.value, employeeId: "" }))}><option value="">{t("allDepartments")}</option>{data?.filters.teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</Select>
               <Select aria-label={t("employee")} value={draft.employeeId ?? ""} onChange={(event) => setDraft((current) => ({ ...current, employeeId: event.target.value }))}><option value="">{t("allEmployees")}</option>{data?.filters.agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name}</option>)}</Select>

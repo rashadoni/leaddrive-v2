@@ -372,7 +372,7 @@ export function MtmContactDictionaryAssignmentPanel({
               <fieldset key={label} className="grid gap-3">
                 <legend className="text-sm font-medium">{t(label)}</legend>
                 {dictionary ? (
-                  <div className="grid max-h-52 gap-2 overflow-y-auto rounded-xl border border-zinc-200 p-3 dark:border-zinc-700 sm:grid-cols-2">
+                  <div className="grid gap-2 rounded-xl border border-zinc-200 p-3 dark:border-zinc-700 sm:grid-cols-2">
                     {dictionary.entries.map((entry) => (
                       <label key={entry.code} className="flex min-h-10 cursor-pointer items-start gap-2 rounded-lg px-2 py-2 hover:bg-muted/60">
                         <input

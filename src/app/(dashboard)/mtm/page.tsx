@@ -264,7 +264,7 @@ export default function MtmDashboardPage() {
       />
 
       <details
-        className="group overflow-hidden rounded-lg border border-zinc-200 bg-card dark:border-zinc-700"
+        className="group border-t border-zinc-200 dark:border-zinc-700"
         onToggle={(event) => setLegacyOpen(event.currentTarget.open)}
       >
         <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset [&::-webkit-details-marker]:hidden">
@@ -279,7 +279,7 @@ export default function MtmDashboardPage() {
           <ChevronDown className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
         </summary>
 
-        <div className="space-y-5 border-t border-zinc-200 p-4 dark:border-zinc-700">
+        <div className="space-y-5 pb-4 pt-2">
 
       {/* Period filter */}
       <div className="flex gap-1">
@@ -334,11 +334,11 @@ export default function MtmDashboardPage() {
       </div>
 
       {/* Row 2: Donut + Time Metrics + Active Agents */}
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {/* Donut Chart */}
         <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card p-4">
           <h3 className="text-sm font-semibold mb-3">{td("completionRate")}</h3>
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center gap-4">
             <div className="relative h-28 w-28 flex-shrink-0">
               <svg viewBox="0 0 36 36" className="h-28 w-28 -rotate-90">
                 <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" className="text-muted/30" />
@@ -348,7 +348,7 @@ export default function MtmDashboardPage() {
                 <span className="text-xl font-bold">{data ? `${data.routeCompletion ?? 0}%` : "—"}</span>
               </div>
             </div>
-            <div className="space-y-2 text-sm">
+            <div className="min-w-0 space-y-2 text-sm">
               <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-primary" /><span>{td("kpiCompleted")}: {metricValue(data?.completedRoutes)}</span></div>
               <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/30" /><span>{td("remaining")}: {data ? (data.todayRoutes ?? 0) - (data.completedRoutes ?? 0) : "—"}</span></div>
             </div>

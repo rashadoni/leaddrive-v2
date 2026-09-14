@@ -218,9 +218,11 @@ export default function MtmActivityPage() {
         {/* agent avatar / initials */}
         <Avatar name={log.agent?.name} avatar={log.agent?.avatar} />
         {/* action icon + label */}
-        <span className={`inline-flex items-center gap-1.5 shrink-0 text-xs px-2 py-1 rounded-full font-medium ${TONE_CLASSES[meta.tone]}`}>
-          <Icon className="h-3.5 w-3.5" />
-          {t(actionLabelKey(log.action))}
+        {/* min-w-0 + truncate below sm: long localized actions ("Xəbərdarlıq
+            yenidən açıldı") used to push the row past the right edge. */}
+        <span title={t(actionLabelKey(log.action))} className={`inline-flex min-w-0 max-w-[45%] items-center gap-1.5 text-xs px-2 py-1 rounded-full font-medium sm:max-w-none sm:shrink-0 ${TONE_CLASSES[meta.tone]}`}>
+          <Icon className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">{t(actionLabelKey(log.action))}</span>
         </span>
         {/* agent name + details */}
         <div className="min-w-0 flex-1">

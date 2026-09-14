@@ -750,7 +750,7 @@ export function MtmContactExplorer() {
           <Filter className="h-4 w-4 text-muted-foreground" />
           <h2 className="text-sm font-semibold">{t("filters")}</h2>
         </div>
-        <form onSubmit={submitSearch} className="mt-3 grid gap-3 lg:grid-cols-[minmax(14rem,2fr)_repeat(4,minmax(9rem,1fr))]">
+        <form onSubmit={submitSearch} className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-[minmax(0,2fr)_repeat(4,minmax(0,1fr))]">
           <div>
             <Label htmlFor="mtm-contact-search" className="text-xs text-muted-foreground">{t("searchLabel")}</Label>
             <div className="mt-1.5 flex gap-2">
