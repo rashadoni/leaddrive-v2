@@ -93,6 +93,46 @@ describe("SWM-10 GPS history presentation contract", () => {
     expect(map).toContain("...fullActualPath")
   })
 
+  it("judges each visit against the customer's geofence instead of calling every visit confirmed (audit 2026-09-14)", () => {
+    expect(panel).toContain("mtmVisitGeofenceState({")
+    expect(panel).toContain('data-geofence-state={zone.state}')
+    expect(panel).not.toContain('<CheckCircle2 className="h-3.5 w-3.5" />{t("confirmed")}</span>')
+    for (const messages of locales) {
+      const history = messages.mtmMap.history
+      expect(history.geofence).toMatchObject({
+        inside: expect.any(String),
+        outside: expect.any(String),
+        noVisitGps: expect.any(String),
+        noCustomerCoordinates: expect.any(String),
+      })
+      expect(history.geofence.distance).toContain("{distance}")
+      expect(history.geofence.distance).toContain("{radius}")
+    }
+  })
+
+  it("opens today from midnight to now, not a fixed 07:00–19:00 that hid evening visits", () => {
+    expect(panel).not.toContain('useState("07:00")')
+    expect(panel).not.toContain('useState("19:00")')
+    expect(panel).toContain("defaultHistoryWindow(")
+    expect(panel).toContain("workday?.startedAt ?? (body.data as HistoryData).summary.firstPointAt")
+    expect(panel).toContain('searchParams.get("from")')
+  })
+
+  it("keeps developer wording and small scrolling frames out of the page", () => {
+    expect(panel).not.toContain("max-h-[390px]")
+    expect(panel).not.toContain("max-h-[360px]")
+    expect(panel).not.toContain("data.policy.distanceFormula")
+    expect(panel).not.toContain('t("autoTracking')
+    expect(panel).toContain("Math.round(stop.averageAccuracy)")
+    for (const messages of locales) {
+      const history = messages.mtmMap.history
+      expect(history.methodNote).not.toContain("{formula}")
+      expect(history.autoTrackingUnavailable).toBeUndefined()
+      expect(JSON.stringify(history)).not.toMatch(/haversine|imitasiya|UTC|имитир|simulated|deterministic|детерминир|deterministik/i)
+    }
+    expect(locales[2].mtmMap.history.anomalies).toBe("GPS keyfiyyət problemləri")
+  })
+
   it("keeps stop evidence visible in every locale", () => {
     expect(panel).toContain('t("battery")')
     expect(map).toContain("stop.batteryStart")
