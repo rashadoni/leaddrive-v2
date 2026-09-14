@@ -33,7 +33,11 @@ export function visitPolicyWriteDenied(access: MtmVisitPolicyAccess, teamId: str
       code: "MTM_POLICY_SCOPE_FORBIDDEN",
     }, { status: 403 })
   }
-  // Supervisors see the rules of their team but do not change them.
+  return visitPolicyReadOnlyResponse()
+}
+
+/** Supervisors see the rules of their team but do not change them. */
+export function visitPolicyReadOnlyResponse(): Response {
   return NextResponse.json({ error: "Visit policies are read-only for supervisors", code: "MTM_POLICY_READ_ONLY" }, { status: 403 })
 }
 

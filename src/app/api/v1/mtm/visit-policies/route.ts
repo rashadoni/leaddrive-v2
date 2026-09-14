@@ -5,7 +5,12 @@ import { withRouteFieldWebRlsAuth } from "@/lib/with-mtm-rls-auth"
 import { VisitPolicyCreateSchema, parseBody } from "@/lib/mtm-validators"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { getMtmSettings } from "@/lib/mtm-settings"
-import { visitPolicyAccessFor, visitPolicyReadDenied, visitPolicyWriteDenied } from "@/lib/mtm/visit-policy-access"
+import {
+  visitPolicyAccessFor,
+  visitPolicyReadDenied,
+  visitPolicyReadOnlyResponse,
+  visitPolicyWriteDenied,
+} from "@/lib/mtm/visit-policy-access"
 
 function overlapWhere(input: {
   organizationId: string
@@ -61,7 +66,7 @@ export const GET = withRouteFieldWebRlsAuth("read", async (_req, auth) => {
 export const POST = withRouteFieldWebRlsAuth("write", async (req, auth) => {
   const access = await visitPolicyAccessFor(auth)
   if (access.kind === "none") return visitPolicyReadDenied(access)
-  if (access.kind === "supervisor") return visitPolicyWriteDenied(access, null)
+  if (access.kind === "supervisor") return visitPolicyReadOnlyResponse()
   const settings = await getMtmSettings(auth.orgId)
   if (!settings.visitPoliciesEnabled) return NextResponse.json({ error: "Visit policies are disabled", code: "MTM_VISIT_POLICIES_DISABLED" }, { status: 409 })
   const parsed = parseBody(VisitPolicyCreateSchema, await req.json().catch(() => null))

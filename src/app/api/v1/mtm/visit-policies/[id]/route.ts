@@ -6,7 +6,12 @@ import { VisitPolicyUpdateSchema, parseBody } from "@/lib/mtm-validators"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { overlapWhere } from "../route"
 import { getMtmSettings } from "@/lib/mtm-settings"
-import { visitPolicyAccessFor, visitPolicyReadDenied, visitPolicyWriteDenied } from "@/lib/mtm/visit-policy-access"
+import {
+  visitPolicyAccessFor,
+  visitPolicyReadDenied,
+  visitPolicyReadOnlyResponse,
+  visitPolicyWriteDenied,
+} from "@/lib/mtm/visit-policy-access"
 
 export const PUT = withRouteFieldWebRlsAuth("write", async (
   req,
@@ -15,7 +20,7 @@ export const PUT = withRouteFieldWebRlsAuth("write", async (
 ) => {
   const access = await visitPolicyAccessFor(auth)
   if (access.kind === "none") return visitPolicyReadDenied(access)
-  if (access.kind === "supervisor") return visitPolicyWriteDenied(access, null)
+  if (access.kind === "supervisor") return visitPolicyReadOnlyResponse()
   const settings = await getMtmSettings(auth.orgId)
   if (!settings.visitPoliciesEnabled) return NextResponse.json({ error: "Visit policies are disabled", code: "MTM_VISIT_POLICIES_DISABLED" }, { status: 409 })
   const { id } = await params
@@ -126,7 +131,7 @@ export const DELETE = withRouteFieldWebRlsAuth("write", async (
 ) => {
   const access = await visitPolicyAccessFor(auth)
   if (access.kind === "none") return visitPolicyReadDenied(access)
-  if (access.kind === "supervisor") return visitPolicyWriteDenied(access, null)
+  if (access.kind === "supervisor") return visitPolicyReadOnlyResponse()
   const settings = await getMtmSettings(auth.orgId)
   if (!settings.visitPoliciesEnabled) return NextResponse.json({ error: "Visit policies are disabled", code: "MTM_VISIT_POLICIES_DISABLED" }, { status: 409 })
   const { id } = await params
