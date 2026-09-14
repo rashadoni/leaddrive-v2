@@ -167,6 +167,7 @@ describe("Support UX browser evidence contract", () => {
       "filterP75",
       "interactionP75",
       "cumulativeLayoutShift",
+      "cumulativeLayoutShiftSamples",
       "primaryFlowClicks",
       "axeViolations",
     ]) {
@@ -175,6 +176,9 @@ describe("Support UX browser evidence contract", () => {
     expect(runner).toContain('SUPPORT_EVIDENCE_SAMPLE_COUNT || "3"');
     expect(runner).toContain("[1, 3, 7].includes(sampleCount)");
     expect(runner).toContain("for (let sample = 0; sample < sampleCount");
+    expect(runner).toContain("const layoutShiftSamples = []");
+    expect(runner).toContain("layoutShiftSamples.push(metrics.cumulativeLayoutShift)");
+    expect(runner).toContain("cumulativeLayoutShift: percentile(layoutShiftSamples, 0.75)");
     expect(runner).toContain("Visual/performance comparison requires seven samples");
     expect(runner).toContain("baselineEvidence?.sampleCount !== sampleCount");
     expect(runner).toContain("if (sampleCount > 1)");

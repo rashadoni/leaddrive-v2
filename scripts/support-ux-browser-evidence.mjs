@@ -648,6 +648,7 @@ try {
               try {
                 const loadSamples = []
                 const filterSamples = []
+                const layoutShiftSamples = []
                 let metrics = null
                 const openScenario = async () => {
                   const response = await page.goto(scenarioPath, { waitUntil: "domcontentloaded", timeout: 60_000 })
@@ -676,6 +677,9 @@ try {
                   await openScenario()
                   metrics = await inspectPage(page, scenario.ready, scenario.primary)
                   if (metrics.timing?.loadMs) loadSamples.push(metrics.timing.loadMs)
+                  if (Number.isFinite(metrics.cumulativeLayoutShift)) {
+                    layoutShiftSamples.push(metrics.cumulativeLayoutShift)
+                  }
                   if (scenario.filter) {
                     const filterFeedbackMs = await measureFilterFeedback(page, scenario.ready)
                     if (filterFeedbackMs !== null) filterSamples.push(filterFeedbackMs)
@@ -717,7 +721,11 @@ try {
                   filterP75: percentile(filterSamples, 0.75),
                   filterSamples,
                   interactionP75: metrics.interactionP75,
-                  cumulativeLayoutShift: metrics.cumulativeLayoutShift,
+                  // Treat CLS like the other performance metrics: seven-sample
+                  // evidence must compare a p75, not whichever navigation
+                  // happened to be last on a shared runner.
+                  cumulativeLayoutShift: percentile(layoutShiftSamples, 0.75),
+                  cumulativeLayoutShiftSamples: layoutShiftSamples,
                 }
                 const visual = await baselineComparison(fileName, screenshotPath)
                 const comparedPerformance = performanceComparison(common, performance, metrics, scenario.performanceBudget)
