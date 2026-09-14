@@ -78,6 +78,15 @@ describe("VoIP workspace UX contract", () => {
     expect(page).not.toContain('<p className="text-xs text-muted-foreground">{t("durationSample"')
   })
 
+  it("does not mount a journal loading placeholder when no journal deep link is open", () => {
+    const page = source("src/app/(dashboard)/support/voip/page.tsx")
+    expect(page).toContain('import { useSearchParams } from "next/navigation"')
+    expect(page).toContain("function CallJournalDetailSlot()")
+    expect(page).toContain('searchParams.get("call") ? <CallJournalDetail /> : null')
+    expect(page).toContain("<Suspense fallback={null}>")
+    expect(page).not.toContain("JournalSkeleton")
+  })
+
   it("gates callback and contact navigation actions by their actual permissions", () => {
     const page = source("src/app/(dashboard)/support/voip/page.tsx")
     expect(page).toContain('const permissionRole = (role || "viewer") as Role')

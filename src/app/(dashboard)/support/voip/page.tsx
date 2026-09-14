@@ -2,6 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useLocale, useTranslations } from "next-intl"
 import {
@@ -352,8 +353,8 @@ export default function VoipCallsPage() {
 
       {canViewMissedQueue && <MissedInboundQueue />}
 
-      <Suspense fallback={<JournalSkeleton label={t("journal.loading")} />}>
-        <CallJournalDetail />
+      <Suspense fallback={null}>
+        <CallJournalDetailSlot />
       </Suspense>
 
       <section data-testid="voip-call-timeline" aria-labelledby="call-timeline-heading" className="rounded-lg border bg-card">
@@ -454,6 +455,13 @@ export default function VoipCallsPage() {
       </section>
     </div>
   )
+}
+
+function CallJournalDetailSlot() {
+  const searchParams = useSearchParams()
+  // Avoid mounting then removing a loading card on the normal timeline route:
+  // it produces a real layout shift while the dynamic journal chunk resolves.
+  return searchParams.get("call") ? <CallJournalDetail /> : null
 }
 
 function CallTableRow({ call, locale, canCallBack, canOpenContacts }: { call: CallLog; locale: string; canCallBack: boolean; canOpenContacts: boolean }) {
@@ -571,10 +579,6 @@ function VoipSkeleton({ label }: { label: string }) {
       <span className="sr-only">{label}</span>
     </div>
   )
-}
-
-function JournalSkeleton({ label }: { label: string }) {
-  return <div className="flex min-h-24 items-center justify-center gap-2 rounded-lg border bg-card text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />{label}</div>
 }
 
 function CallRowsSkeleton({ label }: { label: string }) {
