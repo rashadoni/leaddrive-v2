@@ -14777,7 +14777,8 @@
           "idempotencyMismatch": "This request conflicts with an earlier action. Close the window and try again.",
           "undoNotReopened": "The agent has already continued or finished the day, so the reopen cannot be undone.",
           "undoNotToday": "Only today's reopen can be undone.",
-          "mfaRequired": "Enable and verify mandatory MFA before changing a workday. Nothing was changed.",
+          "mfaRequiredReopen": "Reopening a workday requires mandatory 2FA on your account — Settings → Users",
+          "mfaRequiredUndo": "Undoing a reopen requires mandatory 2FA on your account — Settings → Users",
           "forbidden": "You do not have permission to change this employee's workday.",
           "rateLimited": "Too many workday changes in a short time. Wait a minute and try again.",
           "generic": "The workday could not be changed. Try again."

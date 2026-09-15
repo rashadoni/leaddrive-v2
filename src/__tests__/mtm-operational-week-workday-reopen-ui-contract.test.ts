@@ -56,11 +56,13 @@ describe("operational week: manager reopen of today's workday", () => {
     const controls = sourceBetween("function renderManagerWorkdayControls()", "\n  }\n")
     expect(controls).toContain('<span className="inline-flex items-center gap-2 text-xs text-muted-foreground" data-testid="mtm-week-workday-manager-blocked">')
     expect(controls).toContain("MANAGER_WORKDAY_EXPLAINED_REFUSALS.has(reason)")
-    expect(controls).toContain("managerWorkdayFailureMessage(refusal)")
+    // The line names the action it explains (reopen or undo).
+    expect(controls).toContain("managerWorkdayFailureMessage(actions[refusalKind].blockedReason, refusalKind)")
 
     const explained = sourceBetween("const MANAGER_WORKDAY_EXPLAINED_REFUSALS", "])")
     const listed = [...explained.matchAll(/"([A-Z_]+)"/g)].map((match) => match[1]).sort()
     expect(listed).toEqual([
+      "WORKFORCE_ATTENDANCE_MFA_REQUIRED",
       "WORKFORCE_SCOPE_DENIED",
       "WORKFORCE_SESSION_PERMISSION_REQUIRED",
       "WORKFORCE_WORKDAY_REOPEN_CORRECTED",
@@ -113,7 +115,7 @@ describe("operational week: manager reopen of today's workday", () => {
     expect(submit).toContain('toast.success(t(target.kind === "reopen" ? "managerWorkday.reopenSucceeded" : "managerWorkday.undoSucceeded"))')
     // A refusal keeps the dialog and the typed reason; a 409 also ends this attempt.
     expect(submit).toContain("const final = response.status === 409")
-    expect(submit).toContain('managerWorkdayFailureMessage(firstString(result, "code"), response.status)')
+    expect(submit).toContain('managerWorkdayFailureMessage(firstString(result, "code"), target.kind, response.status)')
     expect(submit.match(/refreshAfterPlanMutation\(\)/g)).toHaveLength(2)
   })
 
@@ -123,12 +125,12 @@ describe("operational week: manager reopen of today's workday", () => {
       ...WORKFORCE_WORKDAY_REOPEN_CONFLICT_CODES,
       ...WORKFORCE_WORKDAY_REOPEN_UNDO_CONFLICT_CODES,
       ...WORKFORCE_WORKDAY_MANAGER_ACTION_DENIAL_CODES,
-      "WORKFORCE_ATTENDANCE_MFA_REQUIRED",
     ]
-    expect(codes.filter((code) => !new RegExp(`\\b${code}: "\\w+",`).test(table))).toEqual([])
+    expect(codes).toContain("WORKFORCE_ATTENDANCE_MFA_REQUIRED")
+    expect(codes.filter((code) => !new RegExp(`\\b${code}: ["{]`).test(table))).toEqual([])
 
     const keys = [...new Set([
-      ...[...table.matchAll(/\b[A-Z_]+: "(\w+)",/g)].map((match) => match[1]),
+      ...[...table.matchAll(/\b\w+: "(\w+)"/g)].map((match) => match[1]),
       "forbidden",
       "rateLimited",
       "generic",
@@ -144,16 +146,30 @@ describe("operational week: manager reopen of today's workday", () => {
     // The distinct refusals do not collapse into one generic sentence.
     expect(new Set(keys.map((key) => managerWorkdayMessages.az.failure[key])).size).toBe(keys.length)
 
-    const message = sourceBetween("function managerWorkdayFailureMessage(code: string | null, status = 0)", "\n  }\n")
+    const message = sourceBetween("function managerWorkdayFailureMessage(code: string | null, kind: ManagerWorkdayActionKind, status = 0)", "\n  }\n")
     expect(message).toContain("if (key) return t(`managerWorkday.failure.${key}`)")
     expect(message).toContain('return t("managerWorkday.failure.generic")')
   })
 
-  it("handles a missing MFA factor like the Workforce access screen: a localized instruction, nothing applied", () => {
+  it("says before any reason is typed that the endpoints' mandatory 2FA is missing, and where it is switched on", () => {
+    // The same code the Workforce access screen localizes, per action here.
     const access = readFileSync("src/components/workforce/workforce-access-management.tsx", "utf8")
     expect(access).toContain('if (code === "WORKFORCE_ATTENDANCE_MFA_REQUIRED") return t("mfaRequired")')
-    expect(ui).toContain('WORKFORCE_ATTENDANCE_MFA_REQUIRED: "mfaRequired"')
-    for (const locale of LOCALES) expect(managerWorkdayMessages[locale].failure.mfaRequired).toMatch(/MFA/)
+    expect(ui).toContain('WORKFORCE_ATTENDANCE_MFA_REQUIRED: { reopen: "mfaRequiredReopen", undoReopen: "mfaRequiredUndo" },')
+    expect(sourceBetween("function managerWorkdayFailureMessageKey(", "\n}\n")).toContain('return typeof key === "string" ? key : key[kind]')
+    // Explained in the workday cell instead of a button, so no dialog opens.
+    expect(sourceBetween("const MANAGER_WORKDAY_EXPLAINED_REFUSALS", "])")).toContain('"WORKFORCE_ATTENDANCE_MFA_REQUIRED"')
+
+    expect(managerWorkdayMessages.az.failure.mfaRequiredReopen).toBe("Günü bərpa etmək üçün hesabınızda 2FA məcburi olmalıdır — Parametrlər → İstifadəçilər")
+    expect(managerWorkdayMessages.az.failure.mfaRequiredUndo).toBe("Bərpanı ləğv etmək üçün hesabınızda 2FA məcburi olmalıdır — Parametrlər → İstifadəçilər")
+    const unclear: string[] = []
+    for (const locale of LOCALES) {
+      for (const key of ["mfaRequiredReopen", "mfaRequiredUndo"]) {
+        const text = String(managerWorkdayMessages[locale]?.failure?.[key] ?? "")
+        if (!text.includes("2FA") || !text.includes("→")) unclear.push(`${locale}.managerWorkday.failure.${key}`)
+      }
+    }
+    expect(unclear).toEqual([])
   })
 
   it("speaks the owner's Azerbaijani and localizes every dialog string", () => {

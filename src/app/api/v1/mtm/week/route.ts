@@ -1129,6 +1129,7 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
         (tx: Prisma.TransactionClient) => resolveWorkforceWorkdayManagerActions(tx, {
           organizationId: auth.orgId,
           userId: auth.userId,
+          principalType: auth.principalType,
           actor,
           sessionPermitted: workforceSessionRoleAllows(auth.role, "write"),
           agentId: selectedAgent.id,

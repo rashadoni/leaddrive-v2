@@ -14773,7 +14773,8 @@
           "idempotencyMismatch": "Bu sorğu əvvəlki əməliyyatla uyğun gəlmir. Pəncərəni bağlayıb yenidən cəhd edin.",
           "undoNotReopened": "Agent günü artıq davam etdirib və ya bitirib, ona görə bərpanı ləğv etmək olmaz.",
           "undoNotToday": "Yalnız bugünkü bərpanı ləğv etmək olar.",
-          "mfaRequired": "İş gününü dəyişməzdən əvvəl məcburi MFA-nı aktivləşdirin və təsdiqləyin. Heç nə dəyişdirilmədi.",
+          "mfaRequiredReopen": "Günü bərpa etmək üçün hesabınızda 2FA məcburi olmalıdır — Parametrlər → İstifadəçilər",
+          "mfaRequiredUndo": "Bərpanı ləğv etmək üçün hesabınızda 2FA məcburi olmalıdır — Parametrlər → İstifadəçilər",
           "forbidden": "Bu işçinin iş gününü dəyişmək üçün icazəniz yoxdur.",
           "rateLimited": "Qısa müddətdə iş günündə çox dəyişiklik edilib. Bir dəqiqə gözləyib yenidən cəhd edin.",
           "generic": "İş gününü dəyişmək mümkün olmadı. Yenidən cəhd edin."

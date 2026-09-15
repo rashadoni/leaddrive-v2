@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import type { AuthResult } from "@/lib/api-auth"
@@ -67,6 +68,34 @@ export function workforceAttendanceAddonDisabled(addon: WorkforceAttendanceAddon
   }, { status: 403 })
 }
 
+/** The 403 code of a principal who does not meet the attendance-security MFA policy. */
+export const WORKFORCE_ATTENDANCE_MFA_REQUIRED_CODE = "WORKFORCE_ATTENDANCE_MFA_REQUIRED"
+
+/**
+ * The attendance-security MFA policy itself: a live browser session of an
+ * active user of the tenant who is required to use MFA and has an enrolled
+ * factor. `requireWorkforceAttendanceSecurityMfa` enforces it; a read model
+ * asks it to show the requirement before a manager acts. A lookup failure
+ * throws, so each caller fails closed its own way.
+ */
+export async function workforceAttendanceSecurityMfaSatisfied(
+  db: Pick<Prisma.TransactionClient, "user">,
+  organizationId: string,
+  auth: Pick<AuthResult, "userId" | "principalType">,
+): Promise<boolean> {
+  if (auth.principalType !== "session") return false
+  const user = await db.user.findFirst({
+    where: { id: auth.userId, organizationId, isActive: true },
+    select: {
+      require2fa: true,
+      totpEnabled: true,
+      smsAuthEnabled: true,
+      verifiedPhone: true,
+    },
+  })
+  return Boolean(user && user.require2fa && resolveTwoFactorMethod(user))
+}
+
 /**
  * Critical attendance controls create, issue, approve, revoke, or retire an
  * authentication/verification factor. They require a live admin session that
@@ -82,22 +111,10 @@ export async function requireWorkforceAttendanceSecurityMfa(
   organizationId: string,
   auth: Pick<AuthResult, "userId" | "principalType">,
 ): Promise<Response | null> {
-  if (auth.principalType !== "session") return workforceAttendanceSecurityMfaRequired()
-
   try {
-    const user = await prisma.user.findFirst({
-      where: { id: auth.userId, organizationId, isActive: true },
-      select: {
-        require2fa: true,
-        totpEnabled: true,
-        smsAuthEnabled: true,
-        verifiedPhone: true,
-      },
-    })
-    if (!user || !user.require2fa || !resolveTwoFactorMethod(user)) {
-      return workforceAttendanceSecurityMfaRequired()
-    }
-    return null
+    return await workforceAttendanceSecurityMfaSatisfied(prisma, organizationId, auth)
+      ? null
+      : workforceAttendanceSecurityMfaRequired()
   } catch {
     logWorkforceSensitiveOperationFailure({ operation: "verify-attendance-mfa" })
     return NextResponse.json({
@@ -110,7 +127,7 @@ export async function requireWorkforceAttendanceSecurityMfa(
 function workforceAttendanceSecurityMfaRequired(): NextResponse {
   return NextResponse.json({
     error: "A mandatory enrolled MFA factor is required for this Workforce attendance security action.",
-    code: "WORKFORCE_ATTENDANCE_MFA_REQUIRED",
+    code: WORKFORCE_ATTENDANCE_MFA_REQUIRED_CODE,
   }, { status: 403, headers: workforceSensitiveResponseHeaders })
 }
 

@@ -79,6 +79,7 @@ import {
 type WeekDays = 1 | 5 | 7
 type WorkdayAction = "START" | "PAUSE" | "RESUME" | "FINISH"
 type ManagerWorkdayActionKind = "reopen" | "undoReopen"
+const MANAGER_WORKDAY_ACTION_KINDS: readonly ManagerWorkdayActionKind[] = ["reopen", "undoReopen"]
 
 const OPERATIONAL_TASK_ATTENTION = new Set<OperationalWeekTaskAttention>(["OVERDUE", "RETURNED", "ACTIVE"])
 const OPERATIONAL_TASK_ATTENTION_RANK: Record<OperationalWeekTaskAttention, number> = { OVERDUE: 0, RETURNED: 1, ACTIVE: 2 }
@@ -104,12 +105,14 @@ const WORKDAY_RECOVERY_MESSAGE_KEYS = new Set([
   "operationMismatch",
   "refresh",
 ])
+/** A message key, or one per action when the message names the action it unlocks. */
+type ManagerWorkdayMessageKey = string | Readonly<Record<ManagerWorkdayActionKind, string>>
 /**
  * `managerWorkday.failure.*` message per refusal of the manager's reopen or
  * undo-reopen. Keyed by the shared contract, so a refusal the server can send
- * — as a 409 or as a week `blockedReason` — cannot lack a message.
+ * — as a 409/403 or as a week `blockedReason` — cannot lack a message.
  */
-const MANAGER_WORKDAY_REFUSAL_MESSAGE_KEYS: Record<WorkforceWorkdayManagerActionBlockedReason, string> = {
+const MANAGER_WORKDAY_REFUSAL_MESSAGE_KEYS: Record<WorkforceWorkdayManagerActionBlockedReason, ManagerWorkdayMessageKey> = {
   WORKFORCE_WORKDAY_REOPEN_IDEMPOTENCY_MISMATCH: "idempotencyMismatch",
   WORKFORCE_WORKDAY_REOPEN_NOT_COMPLETED: "notCompleted",
   WORKFORCE_WORKDAY_REOPEN_NOT_TODAY: "notToday",
@@ -126,17 +129,19 @@ const MANAGER_WORKDAY_REFUSAL_MESSAGE_KEYS: Record<WorkforceWorkdayManagerAction
   WORKFORCE_WORKDAY_REOPEN_UNDO_HISTORY_INVALID: "historyInvalid",
   WORKFORCE_SESSION_PERMISSION_REQUIRED: "forbidden",
   WORKFORCE_SCOPE_DENIED: "forbidden",
+  // As on the Workforce access screen, a missing mandatory MFA factor is a
+  // localized instruction — here with where it is switched on.
+  WORKFORCE_ATTENDANCE_MFA_REQUIRED: { reopen: "mfaRequiredReopen", undoReopen: "mfaRequiredUndo" },
 }
-const MANAGER_WORKDAY_FAILURE_MESSAGE_KEYS: Readonly<Record<string, string>> = {
+const MANAGER_WORKDAY_FAILURE_MESSAGE_KEYS: Readonly<Record<string, ManagerWorkdayMessageKey>> = {
   ...MANAGER_WORKDAY_REFUSAL_MESSAGE_KEYS,
-  // As on the Workforce access screen: a missing mandatory MFA factor is a
-  // localized instruction, and nothing was applied.
-  WORKFORCE_ATTENDANCE_MFA_REQUIRED: "mfaRequired",
   WORKFORCE_DIRECT_TIME_CORRECTION_RATE_LIMITED: "rateLimited",
 }
 /**
  * Refusals explained under the workday header instead of a button. The
  * others are ordinary states — a running shift is simply not finished yet.
+ * The server reports missing MFA only on a day the manager could otherwise
+ * change, so that instruction never appears on an unfinished day.
  */
 const MANAGER_WORKDAY_EXPLAINED_REFUSALS = new Set<string>([
   "WORKFORCE_WORKDAY_REOPEN_OPEN_SHIFT_EXISTS",
@@ -147,6 +152,7 @@ const MANAGER_WORKDAY_EXPLAINED_REFUSALS = new Set<string>([
   "WORKFORCE_WORKDAY_REOPEN_UNDO_HISTORY_INVALID",
   "WORKFORCE_SESSION_PERMISSION_REQUIRED",
   "WORKFORCE_SCOPE_DENIED",
+  "WORKFORCE_ATTENDANCE_MFA_REQUIRED",
 ])
 
 interface WeekQuery {
@@ -832,10 +838,10 @@ function normalizeManagerWorkdayActions(value: unknown): ManagerWorkdayActions |
   return reopen && undoReopen ? { reopen, undoReopen } : null
 }
 
-function managerWorkdayFailureMessageKey(code: string | null): string | null {
-  return code && Object.prototype.hasOwnProperty.call(MANAGER_WORKDAY_FAILURE_MESSAGE_KEYS, code)
-    ? MANAGER_WORKDAY_FAILURE_MESSAGE_KEYS[code]
-    : null
+function managerWorkdayFailureMessageKey(code: string | null, kind: ManagerWorkdayActionKind): string | null {
+  if (!code || !Object.prototype.hasOwnProperty.call(MANAGER_WORKDAY_FAILURE_MESSAGE_KEYS, code)) return null
+  const key = MANAGER_WORKDAY_FAILURE_MESSAGE_KEYS[code]
+  return typeof key === "string" ? key : key[kind]
 }
 
 function clientOperationId(prefix: string): string {
@@ -1793,8 +1799,8 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
     }
   }
 
-  function managerWorkdayFailureMessage(code: string | null, status = 0): string {
-    const key = managerWorkdayFailureMessageKey(code)
+  function managerWorkdayFailureMessage(code: string | null, kind: ManagerWorkdayActionKind, status = 0): string {
+    const key = managerWorkdayFailureMessageKey(code, kind)
     if (key) return t(`managerWorkday.failure.${key}`)
     if (status === 401 || status === 403) return t("managerWorkday.failure.forbidden")
     if (status === 429) return t("managerWorkday.failure.rateLimited")
@@ -1848,7 +1854,7 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
       const result = record(body)
       if (!response.ok || result.success !== true) {
         const final = response.status === 409
-        setManagerWorkdayError({ message: managerWorkdayFailureMessage(firstString(result, "code"), response.status), final })
+        setManagerWorkdayError({ message: managerWorkdayFailureMessage(firstString(result, "code"), target.kind, response.status), final })
         // The day changed under the manager: show its current state behind the message.
         if (final) refreshAfterPlanMutation()
         return
@@ -1953,11 +1959,13 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
         </Button>
       )
     }
-    const refusal = [actions.reopen.blockedReason, actions.undoReopen.blockedReason]
-      .find((reason): reason is string => Boolean(reason && MANAGER_WORKDAY_EXPLAINED_REFUSALS.has(reason)))
-    return refusal ? (
+    const refusalKind = MANAGER_WORKDAY_ACTION_KINDS.find((kind) => {
+      const reason = actions[kind].blockedReason
+      return Boolean(reason && MANAGER_WORKDAY_EXPLAINED_REFUSALS.has(reason))
+    })
+    return refusalKind ? (
       <span className="inline-flex items-center gap-2 text-xs text-muted-foreground" data-testid="mtm-week-workday-manager-blocked">
-        <Info className="h-4 w-4 shrink-0" />{managerWorkdayFailureMessage(refusal)}
+        <Info className="h-4 w-4 shrink-0" />{managerWorkdayFailureMessage(actions[refusalKind].blockedReason, refusalKind)}
       </span>
     ) : null
   }

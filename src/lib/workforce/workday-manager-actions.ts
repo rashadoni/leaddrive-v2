@@ -1,5 +1,9 @@
 import type { Prisma } from "@prisma/client"
 import type { WorkforceActor } from "@/lib/workforce/actor"
+import {
+  WORKFORCE_ATTENDANCE_MFA_REQUIRED_CODE,
+  workforceAttendanceSecurityMfaSatisfied,
+} from "@/lib/workforce/attendance-route"
 import { workforceWorkdayCorrectionFacts } from "@/lib/workforce/workday-correction-facts"
 import { workforceWorkdayEventFact } from "@/lib/workforce/workday-facts-replay"
 import {
@@ -39,6 +43,7 @@ export type WorkforceWorkdayManagerActionsDb = Pick<
   | "mtmHrmRequest"
   | "workforceTimeCorrection"
   | "workforceWorkdayReopen"
+  | "user"
 >
 
 /**
@@ -78,9 +83,10 @@ function permitted(workday: ActionWorkday): WorkforceWorkdayManagerAction {
  * It evaluates the reopen and undo services' own predicates, without their
  * locks and writes. Facts that belong to the day come first (a running shift
  * is simply "not finished", not "forbidden"), then the manager's authority,
- * then what else keeps the day closed. The services decide again under their
- * locks, so an answer that went stale in between is refused there with the
- * same code.
+ * then what else keeps the day closed, and last the endpoints' mandatory MFA:
+ * that instruction is worth reading only on a day the manager could otherwise
+ * change. The services decide again under their locks, so an answer that went
+ * stale in between is refused there with the same code.
  *
  * Returns null for the employee's own day: there is nothing a manager could do
  * on it.
@@ -91,6 +97,7 @@ export async function resolveWorkforceWorkdayManagerActions(
     organizationId: string
     /** The viewing principal and its Workforce actor. */
     userId: string
+    principalType?: "session" | "api_key"
     actor: WorkforceActor | null
     /**
      * Whether the principal passes the endpoints' session boundary (a browser
@@ -131,6 +138,15 @@ export async function resolveWorkforceWorkdayManagerActions(
     return authority ? null : "WORKFORCE_SCOPE_DENIED"
   }
 
+  /** An action nothing else refuses, unless the manager lacks the endpoints' MFA. */
+  async function permittedUnlessMfaMissing(target: ActionWorkday): Promise<WorkforceWorkdayManagerAction> {
+    const mfa = await workforceAttendanceSecurityMfaSatisfied(db, organizationId, {
+      userId,
+      principalType: params.principalType,
+    })
+    return mfa ? permitted(target) : refused(target, WORKFORCE_ATTENDANCE_MFA_REQUIRED_CODE)
+  }
+
   // Today's finished day: the reopen may apply, the undo cannot.
   const finishedAt = workday.completedAt
   if (!reopenState && finishedAt) {
@@ -150,7 +166,7 @@ export async function resolveWorkforceWorkdayManagerActions(
         appliedAt: now,
         clientEventId: workforceWorkdayReopenEventKey(PREVIEW_OPERATION_ID),
       }) ? "WORKFORCE_WORKDAY_REOPEN_HISTORY_INVALID" : null)
-    return { reopen: blocked ? refused(workday, blocked) : permitted(workday), undoReopen }
+    return { reopen: blocked ? refused(workday, blocked) : await permittedUnlessMfaMissing(workday), undoReopen }
   }
 
   // Today's paused day: only a manager's reopen the employee has not acted on
@@ -182,5 +198,5 @@ export async function resolveWorkforceWorkdayManagerActions(
     })
       ? "WORKFORCE_WORKDAY_REOPEN_UNDO_HISTORY_INVALID"
       : null
-  return { reopen, undoReopen: blocked ? refused(workday, blocked) : permitted(workday) }
+  return { reopen, undoReopen: blocked ? refused(workday, blocked) : await permittedUnlessMfaMissing(workday) }
 }

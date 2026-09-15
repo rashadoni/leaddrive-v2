@@ -45,6 +45,7 @@ import {
   evaluateWorkforceMobileWriteAccess,
   workforceMobileWriteFenceResponse,
 } from "@/lib/workforce/mobile-write-fence"
+import { requireWorkforceAttendanceSecurityMfa } from "@/lib/workforce/attendance-route"
 import { WORKFORCE_GRANULAR_ACCESS_FLAG } from "@/lib/workforce/granular-access-rollout"
 
 const ORG = "org-1"
@@ -1754,6 +1755,9 @@ describe("GET /api/v1/mtm/week — manager reopen actions", () => {
   const FINISH_SAVED_AT = new Date("2026-07-15T07:30:01.000Z")
   const REOPENED_AT = new Date("2026-07-15T07:40:00.000Z")
   const MANAGER_SESSION = { ...SESSION, role: "manager", principalType: "session" }
+  /** The endpoints' MFA policy: required for the user, with an enrolled factor. */
+  const MFA_USER = { require2fa: true, totpEnabled: true, smsAuthEnabled: false, verifiedPhone: null }
+  const NO_MFA_USER = { ...MFA_USER, require2fa: false }
 
   function todayWorkday(overrides: Record<string, unknown> = {}) {
     return {
@@ -1839,6 +1843,7 @@ describe("GET /api/v1/mtm/week — manager reopen actions", () => {
     vi.mocked(prisma.workforceTimeCorrection.findMany).mockResolvedValue([] as never)
     vi.mocked(prisma.workforceWorkdayReopen.findFirst).mockResolvedValue(null as never)
     vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([] as never)
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(MFA_USER as never)
   })
 
   afterEach(() => {
@@ -2030,6 +2035,62 @@ describe("GET /api/v1/mtm/week — manager reopen actions", () => {
       allowed: false,
       blockedReason: "WORKFORCE_WORKDAY_REOPEN_UNDO_HISTORY_INVALID",
     })
+  })
+
+  it("reports the endpoints' missing MFA before the manager writes a reason, with the route's own code", async () => {
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(NO_MFA_USER as never)
+    const actions = await managerActions()
+
+    expect(actions.reopen).toEqual({
+      allowed: false,
+      workdayId: "workday-today",
+      updatedAt: FINISH_SAVED_AT.toISOString(),
+      blockedReason: "WORKFORCE_ATTENDANCE_MFA_REQUIRED",
+    })
+    // Exactly the check the reopen/undo routes run, on the viewer's own user.
+    expect(prisma.user.findFirst).toHaveBeenCalledWith({
+      where: { id: SESSION.userId, organizationId: ORG, isActive: true },
+      select: { require2fa: true, totpEnabled: true, smsAuthEnabled: true, verifiedPhone: true },
+    })
+    const routeDenial = await requireWorkforceAttendanceSecurityMfa(ORG, { userId: SESSION.userId, principalType: "session" })
+    expect(routeDenial?.status).toBe(403)
+    expect((await routeDenial?.json())?.code).toBe(actions.reopen.blockedReason)
+
+    mockWorkdays(reopenedWorkday())
+    vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue(reopenedJournal as never)
+    vi.mocked(prisma.workforceWorkdayReopen.findFirst).mockResolvedValue({ id: "reopen-1" } as never)
+    expect((await managerActions()).undoReopen).toEqual({
+      allowed: false,
+      workdayId: "workday-today",
+      updatedAt: REOPENED_AT.toISOString(),
+      blockedReason: "WORKFORCE_ATTENDANCE_MFA_REQUIRED",
+    })
+  })
+
+  it.each([
+    ["a running day", () => mockWorkdays(todayWorkday({ status: "STARTED", completedAt: null })), "WORKFORCE_WORKDAY_REOPEN_NOT_COMPLETED"],
+    ["an ordinary break", () => {
+      const pausedAt = new Date("2026-07-15T07:00:00.000Z")
+      mockWorkdays(todayWorkday({ status: "PAUSED", pausedAt, completedAt: null }))
+      vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue([
+        finishedJournal[0],
+        journalEvent("event-2", "PAUSE", pausedAt),
+      ] as never)
+    }, "WORKFORCE_WORKDAY_REOPEN_NOT_COMPLETED"],
+    ["an approved timesheet", () => {
+      vi.mocked(prisma.workforceTimesheetApproval.findFirst).mockResolvedValue({ id: "approval-1" } as never)
+    }, "WORKFORCE_WORKDAY_REOPEN_TIMESHEET_APPROVED"],
+    ["a role without Workforce write", () => {
+      vi.mocked(requireAuth).mockResolvedValue({ ...MANAGER_SESSION, role: "support" } as never)
+    }, "WORKFORCE_SESSION_PERMISSION_REQUIRED"],
+  ])("names missing MFA only on a day the manager could otherwise change, not on %s", async (_label, arrange, reopenReason) => {
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(NO_MFA_USER as never)
+    arrange()
+    const actions = await managerActions()
+
+    expect(actions.reopen.blockedReason).toBe(reopenReason)
+    expect(actions.undoReopen.blockedReason).not.toBe("WORKFORCE_ATTENDANCE_MFA_REQUIRED")
+    expect(prisma.user.findFirst).not.toHaveBeenCalled()
   })
 
   it("gives the agent's own view no manager actions", async () => {

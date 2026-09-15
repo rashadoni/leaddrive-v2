@@ -41,12 +41,14 @@ export type WorkforceWorkdayReopenUndoConflictCode = typeof WORKFORCE_WORKDAY_RE
 
 /**
  * 403 codes both endpoints answer to a principal who may not act on the
- * employee: a session without Workforce write (`withWorkforceSessionAuth`), or
- * one outside the manager time-correction authority.
+ * employee: a session without Workforce write (`withWorkforceSessionAuth`),
+ * one outside the manager time-correction authority, or one without the
+ * mandatory MFA of `requireWorkforceAttendanceSecurityMfa`.
  */
 export const WORKFORCE_WORKDAY_MANAGER_ACTION_DENIAL_CODES = [
   "WORKFORCE_SESSION_PERMISSION_REQUIRED",
   "WORKFORCE_SCOPE_DENIED",
+  "WORKFORCE_ATTENDANCE_MFA_REQUIRED",
 ] as const
 
 export type WorkforceWorkdayManagerActionDenialCode = typeof WORKFORCE_WORKDAY_MANAGER_ACTION_DENIAL_CODES[number]
