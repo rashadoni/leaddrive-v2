@@ -56,6 +56,8 @@ export function mtmRouteAssignmentCatalogHref(input: {
   agentId: string
   date: string
   direction: MtmRouteAssignmentDirection
+  /** Organization switch; when false the doctor direction opens customers. */
+  fieldContactsEnabled?: boolean
 }): string {
   const returnTo = mtmRoutePlannerHref(input)
   const params = new URLSearchParams({
@@ -64,7 +66,7 @@ export function mtmRouteAssignmentCatalogHref(input: {
     routeDirection: input.direction,
     routeReturnTo: returnTo,
   })
-  const pathname = input.direction === "DOCTOR" ? "/mtm/contacts" : "/mtm/customers"
+  const pathname = input.direction === "DOCTOR" && input.fieldContactsEnabled !== false ? "/mtm/contacts" : "/mtm/customers"
   if (input.direction === "PHARMACY") {
     params.set("scope", "ALL")
     params.set("objectType", "PHARMACY")

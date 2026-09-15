@@ -124,6 +124,18 @@ export function parseMtmRouteTargetTypes(raw: unknown):
   return { success: true, data: result }
 }
 
+/**
+ * Doctor targets are field contacts. When the organization turns field
+ * contacts off, planners (web and field app) stop offering them; the stored
+ * configuration is kept so turning contacts back on restores it unchanged.
+ */
+export function routeTargetTypesForFieldContacts(
+  targets: MtmRouteTargetType[],
+  fieldContactsEnabled: boolean,
+): MtmRouteTargetType[] {
+  return fieldContactsEnabled ? targets : targets.filter((target) => target.direction !== "DOCTOR")
+}
+
 export function coerceMtmRouteTargetTypes(raw: unknown): MtmRouteTargetType[] {
   const parsed = parseMtmRouteTargetTypes(raw)
   const configured = (parsed.success ? parsed.data : MTM_ROUTE_TARGET_TYPE_DEFAULTS).map((entry) => ({

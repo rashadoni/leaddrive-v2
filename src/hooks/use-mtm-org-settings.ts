@@ -48,7 +48,7 @@ export function notifyMtmSettingsChanged(next: MtmNavOrgSettings): void {
   }
 }
 
-export function useMtmOrgSettings(user: unknown): MtmNavOrgSettings {
+function useMtmOrgSettingsState(user: unknown): { settings: MtmNavOrgSettings; ready: boolean } {
   const sessionUser = user as { organizationId?: string; role?: string } | undefined
   const orgId = sessionUser?.organizationId ?? ""
   const org = useMemo(() => orgFromSession(user), [user])
@@ -76,7 +76,28 @@ export function useMtmOrgSettings(user: unknown): MtmNavOrgSettings {
     }
   }, [eligible, orgId])
 
-  return eligible && state.orgId === orgId ? state.settings : {}
+  const loaded = eligible && state.orgId === orgId
+  return {
+    settings: loaded ? state.settings : {},
+    // Nothing to load (no organization, no Route & Field) is also a decision:
+    // the dashboard shell renders pages only after the session is known.
+    ready: loaded || !eligible,
+  }
+}
+
+export function useMtmOrgSettings(user: unknown): MtmNavOrgSettings {
+  return useMtmOrgSettingsState(user).settings
+}
+
+/**
+ * Field contacts visibility for a page that shows contact data. `ready` is
+ * false until the organization switch is known, so a page can hold a neutral
+ * placeholder instead of flashing contacts at a tenant that turned them off.
+ * A failed read resolves to enabled — the historical behaviour.
+ */
+export function useMtmFieldContacts(user: unknown): { enabled: boolean; ready: boolean } {
+  const { settings, ready } = useMtmOrgSettingsState(user)
+  return { enabled: settings.fieldContactsEnabled !== false, ready }
 }
 
 /** The nav gate context from the session plus the organization switches above. */

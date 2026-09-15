@@ -259,10 +259,14 @@ export default function MtmSettingsPage() {
           )
         })}
       </div>
-      <ContactRequiredFieldSettings
-        value={settings.contactRequiredFields}
-        onChange={(value) => updateSetting("contactRequiredFields", value)}
-      />
+      {/* Hidden with field contacts; the stored value stays in `settings` and
+          is saved back unchanged, so turning contacts on restores it. */}
+      {settings.fieldContactsEnabled !== false ? (
+        <ContactRequiredFieldSettings
+          value={settings.contactRequiredFields}
+          onChange={(value) => updateSetting("contactRequiredFields", value)}
+        />
+      ) : null}
       <ContactDictionarySettings />
       <OrganizationAttributePackageSettings />
       <CoveragePolicyAdmin />

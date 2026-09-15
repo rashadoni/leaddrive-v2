@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
+import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 import {
   AlertTriangle,
@@ -64,6 +65,7 @@ import {
   type OperationalWeekTaskAttention,
 } from "@/lib/mtm/operational-week-client"
 import { cn } from "@/lib/utils"
+import { useMtmFieldContacts } from "@/hooks/use-mtm-org-settings"
 import { createDateFormatter } from "@/lib/format-date"
 import type { MtmManagerWorkdayState } from "@/lib/mtm/workday-open-anomaly"
 
@@ -1133,6 +1135,10 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
   const taskT = useTranslations("mtmTasksPage")
   const alertT = useTranslations("mtmAlertsPage")
   const locale = useLocale()
+  // With field contacts off a contact name stays readable (it is part of the
+  // visit), but it no longer links to a contact card the organization hid.
+  const { data: fieldContactsSession } = useSession()
+  const { enabled: fieldContactsEnabled } = useMtmFieldContacts(fieldContactsSession?.user)
   const [query, setQuery] = useState<WeekQuery | null>(null)
   const [filters, setFilters] = useState<WeekFilters>(EMPTY_FILTERS)
   const [facts, setFacts] = useState<WeekFacts | null>(null)
@@ -1888,7 +1894,12 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
                 ) : (
                   <span className="text-sm font-semibold">{t("unknownOrganization")}</span>
                 )}
-                {point.contactId && point.contactName ? (
+                {point.contactId && point.contactName && !fieldContactsEnabled ? (
+                  <span className="flex min-h-11 items-center gap-1 text-xs text-muted-foreground md:min-h-0">
+                    <ContactRound className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{point.contactName}</span>
+                  </span>
+                ) : point.contactId && point.contactName ? (
                   <Link
                     className="flex min-h-11 items-center gap-1 text-xs text-muted-foreground hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:min-h-0"
                     href={withReturnTo(`/mtm/contacts/${encodeURIComponent(point.contactId)}`, context)}
@@ -2346,7 +2357,7 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
                             <ul className="divide-y divide-zinc-200 dark:divide-zinc-700">
                               {rows.map((row) => {
                                 const detailPath = row.subjectType === "DOCTOR"
-                                  ? `/mtm/contacts/${encodeURIComponent(row.subjectId)}`
+                                  ? (fieldContactsEnabled ? `/mtm/contacts/${encodeURIComponent(row.subjectId)}` : null)
                                   : row.customerId
                                     ? `/mtm/customers/${encodeURIComponent(row.customerId)}`
                                     : null

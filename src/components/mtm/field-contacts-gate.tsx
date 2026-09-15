@@ -6,7 +6,7 @@ import { ArrowRight, UsersRound } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
-import { useMtmOrgSettings } from "@/hooks/use-mtm-org-settings"
+import { useMtmFieldContacts } from "@/hooks/use-mtm-org-settings"
 
 const SETTINGS_ADMIN_ROLES = new Set(["admin", "superadmin"])
 
@@ -15,13 +15,24 @@ const SETTINGS_ADMIN_ROLES = new Set(["admin", "superadmin"])
  * longer lead here, but a bookmark or an old link still can: explain the
  * switch instead of a 404, and give an administrator the way back. Contact
  * data is untouched and contact APIs keep answering, so nothing else breaks.
+ *
+ * Until the switch is known the children are NOT mounted: a tenant with
+ * contacts off must neither see the list flash nor fire its requests.
  */
 export function FieldContactsGate({ children }: { children: ReactNode }) {
   const { data: session } = useSession()
   const t = useTranslations("mtmFieldContactsDisabled")
-  const { fieldContactsEnabled } = useMtmOrgSettings(session?.user)
+  const { enabled, ready } = useMtmFieldContacts(session?.user)
 
-  if (fieldContactsEnabled !== false) return <>{children}</>
+  if (!ready) {
+    return (
+      <div className="space-y-3" aria-busy="true" data-testid="field-contacts-loading">
+        <div className="h-8 w-56 animate-pulse rounded-md bg-muted motion-reduce:animate-none" />
+        <div className="h-40 animate-pulse rounded-lg bg-muted motion-reduce:animate-none" />
+      </div>
+    )
+  }
+  if (enabled) return <>{children}</>
 
   const role = (session?.user as { role?: string } | undefined)?.role ?? ""
   const canChange = SETTINGS_ADMIN_ROLES.has(role)

@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest"
 import { accessibleNavItems, isNavItemEnabled, matchNavItem } from "@/lib/nav-items"
 import { visibleMtmToolGroups } from "@/lib/mtm/navigation"
 import { MTM_SETTING_DEFAULTS } from "@/lib/mtm-settings"
+import { MTM_ROUTE_TARGET_TYPE_DEFAULTS, routeTargetTypesForFieldContacts } from "@/lib/mtm/route-target-types"
+import { mtmRouteAssignmentCatalogHref } from "@/lib/mtm/route-links"
 
 const source = (path: string) => readFileSync(resolve(path), "utf8")
 const routeFieldOrg = { plan: "enterprise", role: "admin", modules: { "route-field": true } }
@@ -66,7 +68,7 @@ describe("field contacts organization switch", () => {
     expect(page).toMatch(/<FieldContactsGate>\s*<MtmContactExplorer \/>\s*<\/FieldContactsGate>/)
 
     const gate = source("src/components/mtm/field-contacts-gate.tsx")
-    expect(gate).toContain("fieldContactsEnabled !== false")
+    expect(gate).toContain("if (enabled) return <>{children}</>")
     expect(gate).toContain('href="/mtm/settings"')
     expect(gate).not.toContain("notFound")
 
@@ -83,6 +85,55 @@ describe("field contacts organization switch", () => {
     expect(az.mtmSettingsPage.lblFieldContacts).toBe("Sahə kontaktları (həkim, əczaçı və s.)")
     expect(az.mtmSettingsPage.hintFieldContacts)
       .toBe("Söndürüldükdə menyudan və agent tətbiqindən kontaktlar gizlədilir; məlumatlar silinmir.")
+  })
+
+  it("holds a neutral placeholder until the switch is known", () => {
+    const gate = source("src/components/mtm/field-contacts-gate.tsx")
+    const skeleton = gate.indexOf("if (!ready)")
+    const children = gate.indexOf("if (enabled) return <>{children}</>")
+    expect(skeleton).toBeGreaterThan(-1)
+    expect(children).toBeGreaterThan(skeleton)
+    expect(gate).toContain('data-testid="field-contacts-loading"')
+  })
+
+  it("gates the contact card page with the same notice", () => {
+    expect(source("src/app/(dashboard)/mtm/contacts/[id]/page.tsx"))
+      .toMatch(/<FieldContactsGate>\s*<MtmContactDetail contactId=\{id\} \/>\s*<\/FieldContactsGate>/)
+  })
+
+  it("stops offering doctor targets to planners while keeping the stored config", () => {
+    const off = routeTargetTypesForFieldContacts(MTM_ROUTE_TARGET_TYPE_DEFAULTS, false)
+    expect(off.some((target) => target.direction === "DOCTOR")).toBe(false)
+    expect(off.map((target) => target.id)).toContain("all-customers")
+    expect(routeTargetTypesForFieldContacts(MTM_ROUTE_TARGET_TYPE_DEFAULTS, true)).toEqual(MTM_ROUTE_TARGET_TYPE_DEFAULTS)
+    expect(MTM_ROUTE_TARGET_TYPE_DEFAULTS.some((target) => target.direction === "DOCTOR")).toBe(true)
+
+    for (const path of ["src/components/mtm/route-builder.tsx", "src/components/mtm/route-planning-matrix.tsx"]) {
+      expect(source(path), path).toContain("routeTargetTypesForFieldContacts(")
+      expect(source(path), path).toContain("settingsResult.data?.fieldContactsEnabled !== false")
+    }
+  })
+
+  it("sends the doctor direction to customers when contacts are off", () => {
+    const input = { agentId: "a1", date: "2026-09-15", direction: "DOCTOR" as const }
+    expect(new URL(mtmRouteAssignmentCatalogHref(input), "http://x").pathname).toBe("/mtm/contacts")
+    expect(new URL(mtmRouteAssignmentCatalogHref({ ...input, fieldContactsEnabled: false }), "http://x").pathname).toBe("/mtm/customers")
+  })
+
+  it("hides contact entry points on customer and week screens without touching data", () => {
+    const detail = source("src/components/mtm/organization-detail.tsx")
+    expect(detail).toContain("useMtmFieldContacts(session?.user)")
+    expect(detail).toContain('.filter(([section]) => fieldContactsEnabled || section !== "contacts")')
+    expect(detail).toContain('{fieldContactsEnabled ? <TabsContent value="contacts">')
+    expect(detail).toContain("...(fieldContactsEnabled ? [[t(\"detail.contacts\")")
+
+    const week = source("src/components/mtm/operational-week-home.tsx")
+    expect(week).toContain("useMtmFieldContacts(")
+    expect(week).toContain("point.contactId && point.contactName && !fieldContactsEnabled ?")
+    expect(week).toContain("(fieldContactsEnabled ? `/mtm/contacts/${encodeURIComponent(row.subjectId)}` : null)")
+
+    const settings = source("src/app/(dashboard)/mtm/settings/page.tsx")
+    expect(settings).toMatch(/settings\.fieldContactsEnabled !== false \? \(\s*<ContactRequiredFieldSettings/)
   })
 
   it("renders the switch on /mtm/settings for administrators only", () => {

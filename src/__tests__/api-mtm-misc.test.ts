@@ -542,31 +542,17 @@ describe("PUT /api/v1/mtm/settings", () => {
     }))
   })
 
-  it("refuses a manager changing the field contacts switch", async () => {
+  it.each([false, true])("silently ignores the field contacts switch (%s) from a manager", async (value) => {
+    // The settings page PUTs the whole object. A manager's save must succeed
+    // for the other keys and must never write the administrator-only switch,
+    // whatever value their (possibly stale) page carries.
     vi.mocked(getOrgId).mockResolvedValue(ORG)
     vi.mocked(requireAuth).mockResolvedValue({ orgId: ORG, role: "manager", userId: "u2" } as any)
-    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([])
-
-    const res = await UpdateSettings(makeJsonReq("/api/v1/mtm/settings", "PUT", {
-      gpsInterval: 20,
-      fieldContactsEnabled: false,
-    }))
-
-    expect(res.status).toBe(403)
-    expect(prisma.mtmSetting.upsert).not.toHaveBeenCalled()
-  })
-
-  it("lets a manager save other settings while the page echoes the unchanged switch", async () => {
-    // The settings page PUTs the whole object; the current value coming back
-    // must not turn every manager save into a 403, and must not be written.
-    vi.mocked(getOrgId).mockResolvedValue(ORG)
-    vi.mocked(requireAuth).mockResolvedValue({ orgId: ORG, role: "manager", userId: "u2" } as any)
-    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([])
     vi.mocked(prisma.mtmSetting.upsert).mockResolvedValue({} as any)
 
     const res = await UpdateSettings(makeJsonReq("/api/v1/mtm/settings", "PUT", {
       gpsInterval: 20,
-      fieldContactsEnabled: true,
+      fieldContactsEnabled: value,
     }))
 
     expect(res.status).toBe(200)

@@ -44,21 +44,16 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
       Object.entries(parsed.data).filter(([key, value]) => key in MTM_SETTING_DEFAULTS && value !== undefined)
     )
     // Hiding a whole module surface for every manager and field agent is an
-    // administrator decision, narrower than the general settings guard.
-    // The settings page saves the whole object, so a manager's unrelated save
-    // carries the current value back: an unchanged value is dropped, only a
-    // real change by a non-administrator is refused.
-    if (body.fieldContactsEnabled !== undefined) {
-      if (typeof body.fieldContactsEnabled !== "boolean") {
-        return NextResponse.json({ error: "Field contacts visibility must be a boolean" }, { status: 400 })
-      }
-      if (!FIELD_CONTACTS_TOGGLE_ROLES.includes(auth.role)) {
-        const current = (await getMtmSettings(orgId)).fieldContactsEnabled
-        if (body.fieldContactsEnabled !== current) {
-          return NextResponse.json({ error: "Only an administrator can change field contacts visibility" }, { status: 403 })
-        }
-        delete body.fieldContactsEnabled
-      }
+    // administrator decision, narrower than the general settings guard. The
+    // settings page saves the whole object, so a non-administrator's save
+    // always carries the key: drop it silently instead of refusing the save.
+    // Comparing with the stored value would 403 a manager whose page predates
+    // an administrator's change, and would still decide nothing.
+    if (body.fieldContactsEnabled !== undefined && !FIELD_CONTACTS_TOGGLE_ROLES.includes(auth.role)) {
+      delete body.fieldContactsEnabled
+    }
+    if (body.fieldContactsEnabled !== undefined && typeof body.fieldContactsEnabled !== "boolean") {
+      return NextResponse.json({ error: "Field contacts visibility must be a boolean" }, { status: 400 })
     }
     if (typeof body.supportEmail === "string") body.supportEmail = body.supportEmail.trim()
     if (typeof body.supportPhone === "string") body.supportPhone = body.supportPhone.trim()
