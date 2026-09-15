@@ -986,6 +986,24 @@ describe("UPDATE_PUBLISHED: changing a published route from Route Field", () => 
     expect(prisma.mtmMobileRouteCommandReceipt.create).not.toHaveBeenCalled()
   })
 
+  it("maps a Prisma transaction timeout (P2028) to a retryable version conflict without a receipt", async () => {
+    givenRoute("PLANNED", [stop("p1", "c1", 0)])
+    vi.mocked(prisma.$transaction).mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError("Transaction already closed: timeout", { code: "P2028", clientVersion: "6" }),
+    )
+
+    const result = await executeMtmMobileRouteCommand({
+      auth,
+      deviceId: "rf-device-1",
+      command: updatePublished([{ customerId: "c1" }, { customerId: "c2" }]),
+      now,
+    })
+
+    expect(result).toMatchObject({ responseStatus: 409, replayed: false, result: { code: "ROUTE_VERSION_CONFLICT" } })
+    expect(JSON.stringify(result.result)).not.toContain("Transaction already closed")
+    expect(prisma.mtmMobileRouteCommandReceipt.create).not.toHaveBeenCalled()
+  })
+
   it("replays a receipt without a second write or a second notification", async () => {
     const command = updatePublished([{ customerId: "c1" }])
     vi.mocked(prisma.mtmMobileRouteCommandReceipt.findUnique).mockResolvedValue({

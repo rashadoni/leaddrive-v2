@@ -243,7 +243,11 @@ export class PublishedRoutePointsChangedError extends Error {
 type PointWriteClient = Pick<Prisma.TransactionClient, "mtmRoutePoint">
 type PointLockClient = Pick<Prisma.TransactionClient, "$executeRaw" | "$queryRaw" | "mtmRoutePoint">
 
-/** The advisory key check-in takes (src/lib/mtm/visit-requirements.ts). */
+/**
+ * The per-point advisory key. Check-in (src/lib/mtm/visit-requirements.ts)
+ * and published-route edits must use this one function: a different string
+ * would hash to a different lock and silently reopen the race.
+ */
 export function mtmRoutePointCheckInLockKey(organizationId: string, routePointId: string): string {
   return `mtm-route-point-check-in:${organizationId}:${routePointId}`
 }
@@ -319,13 +323,21 @@ export function samePublishedRoutePointDiff(
 }
 
 /**
- * Postgres deadlock (40P01) or serialization failure (40001). Both are safe
- * to retry after a reload; answering 500 would tell Route Field the server is
- * down.
+ * Prisma codes for a transaction that lost to concurrency or ran out of time:
+ * P2034 write conflict / deadlock, P2028 interactive transaction timed out or
+ * already closed (waiting on point locks behind a long check-in counts here),
+ * P2024 no pool connection in time. Nothing was committed in any of them.
+ */
+const RETRYABLE_ROUTE_TRANSACTION_PRISMA_CODES = new Set(["P2034", "P2028", "P2024"])
+
+/**
+ * Postgres deadlock (40P01), serialization failure (40001) or a Prisma
+ * transaction/pool timeout. All are safe to retry after a reload; answering
+ * 500 would tell Route Field the server is down.
  */
 export function isRetryableRouteTransactionConflict(error: unknown): boolean {
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
-    if (error.code === "P2034") return true
+    if (RETRYABLE_ROUTE_TRANSACTION_PRISMA_CODES.has(error.code)) return true
     const meta = error.meta as Record<string, unknown> | undefined
     if (meta && (meta.code === "40P01" || meta.code === "40001")) return true
   }

@@ -7,6 +7,7 @@ import {
   lockAndVerifyMtmRoutePointForCheckIn,
   lockMtmActiveVisitSlot,
 } from "@/lib/mtm/visit-requirements"
+import { lockPublishedRoutePoints, mtmRoutePointCheckInLockKey } from "@/lib/mtm/route-published-diff"
 
 function transactionClient(visit: Record<string, unknown>) {
   return {
@@ -104,6 +105,38 @@ describe("visit completion requirements", () => {
       }),
       select: { id: true },
     }))
+  })
+
+  it("check-in and a published-route edit take the very same per-point advisory lock", async () => {
+    const checkInRaw = vi.fn().mockResolvedValue(0)
+    await lockAndVerifyMtmRoutePointForCheckIn({
+      $executeRaw: checkInRaw,
+      $queryRaw: vi.fn().mockResolvedValue([]),
+      mtmRoutePoint: { findFirst: vi.fn().mockResolvedValue(null) },
+    } as never, {
+      organizationId: "org-1",
+      agentId: "agent-1",
+      routePointId: "point-1",
+      routeId: "route-1",
+      customerId: "customer-1",
+      contactId: null,
+    })
+    const editRaw = vi.fn().mockResolvedValue(0)
+    await lockPublishedRoutePoints({
+      $executeRaw: editRaw,
+      $queryRaw: vi.fn().mockResolvedValue([]),
+      mtmRoutePoint: { findMany: vi.fn().mockResolvedValue([]) },
+    } as never, { organizationId: "org-1", routeId: "route-1", pointIds: ["point-1"] })
+
+    const checkInKey = (checkInRaw.mock.calls[0] as unknown as [TemplateStringsArray, string])[1]
+    const editKey = (editRaw.mock.calls[0] as unknown as [TemplateStringsArray, string])[1]
+    expect(checkInKey).toBe(mtmRoutePointCheckInLockKey("org-1", "point-1"))
+    expect(editKey).toBe(checkInKey)
+    // Both must hash the key the same way, not just build the same string.
+    expect((checkInRaw.mock.calls[0]![0] as TemplateStringsArray).join("?"))
+      .toContain("hashtextextended(")
+    expect((editRaw.mock.calls[0]![0] as TemplateStringsArray).join("?").replace(/\s+/g, ""))
+      .toBe((checkInRaw.mock.calls[0]![0] as TemplateStringsArray).join("?").replace(/\s+/g, ""))
   })
 
   it("returns structured missing requirements and counts photo evidence", async () => {

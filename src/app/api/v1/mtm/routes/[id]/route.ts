@@ -852,6 +852,18 @@ export const PUT = withRouteFieldRlsAuth("write", async (req, auth, { params }: 
         code: "ROUTE_DUPLICATE",
       }, { status: 409 })
     }
+    // Database errors carry SQL, constraint and column names: log them, never
+    // echo them to the browser.
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError
+      || error instanceof Prisma.PrismaClientUnknownRequestError
+      || error instanceof Prisma.PrismaClientValidationError
+      || error instanceof Prisma.PrismaClientInitializationError
+      || error instanceof Prisma.PrismaClientRustPanicError
+    ) {
+      console.error("[MTM/routes/[id] PUT]", error)
+      return NextResponse.json({ error: "Failed to update route", code: "MTM_ROUTE_UPDATE_FAILED" }, { status: 500 })
+    }
     const message = error instanceof Error ? error.message : "Failed to update"
     return NextResponse.json({ error: message }, { status: 400 })
   }

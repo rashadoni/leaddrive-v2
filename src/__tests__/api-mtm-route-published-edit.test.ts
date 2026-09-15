@@ -228,6 +228,31 @@ describe("PUT /api/v1/mtm/routes/[id] on a published route", () => {
     expect(await res.json()).toMatchObject({ code: "ROUTE_VERSION_CONFLICT" })
   })
 
+  it("maps a Prisma transaction timeout (P2028) to a version conflict", async () => {
+    givenRoute("PLANNED", [stop("p1", "c1", 0)])
+    vi.mocked(prisma.$transaction).mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError("Transaction API error: Transaction already closed", { code: "P2028", clientVersion: "6" }),
+    )
+    const res = await put({ expectedVersion: 3, points: [{ customerId: "c1" }, { customerId: "c2" }] })
+    expect(res.status).toBe(409)
+    const body = await res.json()
+    expect(body).toMatchObject({ code: "ROUTE_VERSION_CONFLICT" })
+    expect(JSON.stringify(body)).not.toContain("Transaction API error")
+  })
+
+  it("never echoes a raw Prisma error to the browser", async () => {
+    givenRoute("PLANNED", [stop("p1", "c1", 0)])
+    vi.mocked(prisma.$transaction).mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError('Invalid `tx.mtmRoute.updateMany()` column "secret_column"', { code: "P2022", clientVersion: "6" }),
+    )
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {})
+    const res = await put({ expectedVersion: 3, points: [{ customerId: "c1" }, { customerId: "c2" }] })
+    expect(res.status).toBe(500)
+    const body = await res.json()
+    expect(body).toEqual({ error: "Failed to update route", code: "MTM_ROUTE_UPDATE_FAILED" })
+    errorLog.mockRestore()
+  })
+
   it("saves a route with an observer although the builder never sends observers", async () => {
     givenRoute("PLANNED", [stop("p1", "c1", 0)], [
       { agentId: "a1", role: "PRIMARY" },

@@ -280,6 +280,8 @@ describe("isRetryableRouteTransactionConflict", () => {
     const known = (code: string, meta?: Record<string, unknown>) =>
       new Prisma.PrismaClientKnownRequestError("boom", { code, clientVersion: "6", meta })
     expect(isRetryableRouteTransactionConflict(known("P2034"))).toBe(true)
+    expect(isRetryableRouteTransactionConflict(known("P2028"))).toBe(true)
+    expect(isRetryableRouteTransactionConflict(known("P2024"))).toBe(true)
     expect(isRetryableRouteTransactionConflict(known("P2010", { code: "40P01" }))).toBe(true)
     expect(isRetryableRouteTransactionConflict(new Error("ERROR: deadlock detected"))).toBe(true)
     expect(isRetryableRouteTransactionConflict(new Error("could not serialize access due to concurrent update"))).toBe(true)
