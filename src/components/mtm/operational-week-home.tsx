@@ -30,9 +30,11 @@ import {
   PauseCircle,
   PlayCircle,
   RefreshCw,
+  RotateCcw,
   Route as RouteIcon,
   ShieldAlert,
   Square,
+  Undo2,
   UserRound,
   Wifi,
   WifiOff,
@@ -68,9 +70,16 @@ import { cn } from "@/lib/utils"
 import { useMtmFieldContacts } from "@/hooks/use-mtm-org-settings"
 import { createDateFormatter } from "@/lib/format-date"
 import type { MtmManagerWorkdayState } from "@/lib/mtm/workday-open-anomaly"
+import {
+  WORKFORCE_WORKDAY_REOPEN_REASON_MAX_LENGTH,
+  WORKFORCE_WORKDAY_REOPEN_REASON_MIN_LENGTH,
+  type WorkforceWorkdayManagerActionBlockedReason,
+} from "@/lib/workforce/workday-reopen-contract"
 
 type WeekDays = 1 | 5 | 7
 type WorkdayAction = "START" | "PAUSE" | "RESUME" | "FINISH"
+type ManagerWorkdayActionKind = "reopen" | "undoReopen"
+const MANAGER_WORKDAY_ACTION_KINDS: readonly ManagerWorkdayActionKind[] = ["reopen", "undoReopen"]
 
 const OPERATIONAL_TASK_ATTENTION = new Set<OperationalWeekTaskAttention>(["OVERDUE", "RETURNED", "ACTIVE"])
 const OPERATIONAL_TASK_ATTENTION_RANK: Record<OperationalWeekTaskAttention, number> = { OVERDUE: 0, RETURNED: 1, ACTIVE: 2 }
@@ -95,6 +104,55 @@ const WORKDAY_RECOVERY_MESSAGE_KEYS = new Set([
   "workdayUnavailable",
   "operationMismatch",
   "refresh",
+])
+/** A message key, or one per action when the message names the action it unlocks. */
+type ManagerWorkdayMessageKey = string | Readonly<Record<ManagerWorkdayActionKind, string>>
+/**
+ * `managerWorkday.failure.*` message per refusal of the manager's reopen or
+ * undo-reopen. Keyed by the shared contract, so a refusal the server can send
+ * — as a 409/403 or as a week `blockedReason` — cannot lack a message.
+ */
+const MANAGER_WORKDAY_REFUSAL_MESSAGE_KEYS: Record<WorkforceWorkdayManagerActionBlockedReason, ManagerWorkdayMessageKey> = {
+  WORKFORCE_WORKDAY_REOPEN_IDEMPOTENCY_MISMATCH: "idempotencyMismatch",
+  WORKFORCE_WORKDAY_REOPEN_NOT_COMPLETED: "notCompleted",
+  WORKFORCE_WORKDAY_REOPEN_NOT_TODAY: "notToday",
+  WORKFORCE_WORKDAY_REOPEN_VERSION_CONFLICT: "versionConflict",
+  WORKFORCE_WORKDAY_REOPEN_OPEN_SHIFT_EXISTS: "openShiftExists",
+  WORKFORCE_WORKDAY_REOPEN_TIMESHEET_APPROVED: "timesheetApproved",
+  WORKFORCE_WORKDAY_REOPEN_CORRECTION_PENDING: "correctionPending",
+  WORKFORCE_WORKDAY_REOPEN_CORRECTED: "corrected",
+  WORKFORCE_WORKDAY_REOPEN_HISTORY_INVALID: "historyInvalid",
+  WORKFORCE_WORKDAY_REOPEN_UNDO_NOT_REOPENED: "undoNotReopened",
+  WORKFORCE_WORKDAY_REOPEN_UNDO_NOT_TODAY: "undoNotToday",
+  WORKFORCE_WORKDAY_REOPEN_UNDO_VERSION_CONFLICT: "versionConflict",
+  WORKFORCE_WORKDAY_REOPEN_UNDO_IDEMPOTENCY_MISMATCH: "idempotencyMismatch",
+  WORKFORCE_WORKDAY_REOPEN_UNDO_HISTORY_INVALID: "historyInvalid",
+  WORKFORCE_SESSION_PERMISSION_REQUIRED: "forbidden",
+  WORKFORCE_SCOPE_DENIED: "forbidden",
+  // As on the Workforce access screen, a missing mandatory MFA factor is a
+  // localized instruction — here with where it is switched on.
+  WORKFORCE_ATTENDANCE_MFA_REQUIRED: { reopen: "mfaRequiredReopen", undoReopen: "mfaRequiredUndo" },
+}
+const MANAGER_WORKDAY_FAILURE_MESSAGE_KEYS: Readonly<Record<string, ManagerWorkdayMessageKey>> = {
+  ...MANAGER_WORKDAY_REFUSAL_MESSAGE_KEYS,
+  WORKFORCE_DIRECT_TIME_CORRECTION_RATE_LIMITED: "rateLimited",
+}
+/**
+ * Refusals explained under the workday header instead of a button. The
+ * others are ordinary states — a running shift is simply not finished yet.
+ * The server reports missing MFA only on a day the manager could otherwise
+ * change, so that instruction never appears on an unfinished day.
+ */
+const MANAGER_WORKDAY_EXPLAINED_REFUSALS = new Set<string>([
+  "WORKFORCE_WORKDAY_REOPEN_OPEN_SHIFT_EXISTS",
+  "WORKFORCE_WORKDAY_REOPEN_TIMESHEET_APPROVED",
+  "WORKFORCE_WORKDAY_REOPEN_CORRECTION_PENDING",
+  "WORKFORCE_WORKDAY_REOPEN_CORRECTED",
+  "WORKFORCE_WORKDAY_REOPEN_HISTORY_INVALID",
+  "WORKFORCE_WORKDAY_REOPEN_UNDO_HISTORY_INVALID",
+  "WORKFORCE_SESSION_PERMISSION_REQUIRED",
+  "WORKFORCE_SCOPE_DENIED",
+  "WORKFORCE_ATTENDANCE_MFA_REQUIRED",
 ])
 
 interface WeekQuery {
@@ -288,6 +346,26 @@ interface WorkdayCapability {
   outsideSelectedWindow: boolean
 }
 
+interface ManagerWorkdayAction {
+  allowed: boolean
+  workdayId: string | null
+  updatedAt: string | null
+  blockedReason: string | null
+}
+
+interface ManagerWorkdayActions {
+  reopen: ManagerWorkdayAction
+  undoReopen: ManagerWorkdayAction
+}
+
+interface ManagerWorkdayDialogTarget {
+  kind: ManagerWorkdayActionKind
+  workdayId: string
+  expectedUpdatedAt: string
+  /** Generated once per opened dialog: a retry repeats the action, never doubles it. */
+  operationId: string
+}
+
 interface WeekFacts {
   timezone: string
   today: string
@@ -308,6 +386,8 @@ interface WeekFacts {
   alertCount: number
   alertsTruncated: boolean
   managerWorkday: MtmManagerWorkdayState | null
+  /** Absent in snapshots cached before the manager actions existed. */
+  managerWorkdayActions?: ManagerWorkdayActions | null
 }
 
 interface BaseCoverageGroup {
@@ -737,6 +817,39 @@ function normalizeManagerWorkday(value: unknown): MtmManagerWorkdayState | null 
   }
 }
 
+function normalizeManagerWorkdayAction(value: unknown): ManagerWorkdayAction | null {
+  const source = record(value)
+  if (typeof source.allowed !== "boolean") return null
+  const workdayId = firstString(source, "workdayId")
+  const updatedAt = firstString(source, "updatedAt")
+  return {
+    // Without its target and version the request cannot be sent: never offer it.
+    allowed: source.allowed === true && Boolean(workdayId && updatedAt),
+    workdayId,
+    updatedAt,
+    blockedReason: firstString(source, "blockedReason"),
+  }
+}
+
+function normalizeManagerWorkdayActions(value: unknown): ManagerWorkdayActions | null {
+  const source = record(value)
+  const reopen = normalizeManagerWorkdayAction(source.reopen)
+  const undoReopen = normalizeManagerWorkdayAction(source.undoReopen)
+  return reopen && undoReopen ? { reopen, undoReopen } : null
+}
+
+function managerWorkdayFailureMessageKey(code: string | null, kind: ManagerWorkdayActionKind): string | null {
+  if (!code || !Object.prototype.hasOwnProperty.call(MANAGER_WORKDAY_FAILURE_MESSAGE_KEYS, code)) return null
+  const key = MANAGER_WORKDAY_FAILURE_MESSAGE_KEYS[code]
+  return typeof key === "string" ? key : key[kind]
+}
+
+function clientOperationId(prefix: string): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
 function normalizeTeamToday(value: unknown): TeamToday | null {
   const source = record(record(value).data)
   if (firstString(source, "mode") !== "TEAM_TODAY") return null
@@ -1037,6 +1150,7 @@ function normalizeWeekResponse(value: unknown): NormalizedWeekResponse {
       alertCount: list(record(queues.alerts).items).length,
       alertsTruncated: booleanValue(record(queues.alerts).truncated),
       managerWorkday: normalizeManagerWorkday(workdayContext.managerState),
+      managerWorkdayActions: normalizeManagerWorkdayActions(workdayContext.managerActions),
     },
   }
 }
@@ -1161,6 +1275,11 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
   const [cancellationTarget, setCancellationTarget] = useState<{ point: WeekPoint; day: WeekDay } | null>(null)
   const [cancellationReasonCode, setCancellationReasonCode] = useState("CUSTOMER_REQUEST")
   const [cancellationDetails, setCancellationDetails] = useState("")
+  const [managerWorkdayTarget, setManagerWorkdayTarget] = useState<ManagerWorkdayDialogTarget | null>(null)
+  const [managerWorkdayReason, setManagerWorkdayReason] = useState("")
+  const [managerWorkdayPending, setManagerWorkdayPending] = useState(false)
+  /** `final`: the day moved on (409), so this dialog can no longer succeed. */
+  const [managerWorkdayError, setManagerWorkdayError] = useState<{ message: string; final: boolean } | null>(null)
   const [planMutationId, setPlanMutationId] = useState<string | null>(null)
   const [decisionNotes, setDecisionNotes] = useState<Record<string, string>>({})
   const [rescheduleDates, setRescheduleDates] = useState<Record<string, string>>({})
@@ -1680,6 +1799,77 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
     }
   }
 
+  function managerWorkdayFailureMessage(code: string | null, kind: ManagerWorkdayActionKind, status = 0): string {
+    const key = managerWorkdayFailureMessageKey(code, kind)
+    if (key) return t(`managerWorkday.failure.${key}`)
+    if (status === 401 || status === 403) return t("managerWorkday.failure.forbidden")
+    if (status === 429) return t("managerWorkday.failure.rateLimited")
+    return t("managerWorkday.failure.generic")
+  }
+
+  function openManagerWorkdayDialog(kind: ManagerWorkdayActionKind) {
+    if (managerWorkdayPending || phase !== "ready" || cachedSnapshot) return
+    const action = facts?.managerWorkdayActions?.[kind]
+    if (!action?.allowed || !action.workdayId || !action.updatedAt) return
+    setManagerWorkdayReason("")
+    setManagerWorkdayError(null)
+    setManagerWorkdayTarget({
+      kind,
+      workdayId: action.workdayId,
+      expectedUpdatedAt: action.updatedAt,
+      operationId: clientOperationId(kind === "reopen" ? "workday-reopen" : "workday-reopen-undo"),
+    })
+  }
+
+  function closeManagerWorkdayDialog() {
+    if (managerWorkdayPending) return
+    setManagerWorkdayTarget(null)
+    setManagerWorkdayReason("")
+    setManagerWorkdayError(null)
+  }
+
+  const managerWorkdayReasonLength = managerWorkdayReason.trim().length
+  const managerWorkdayReasonValid = managerWorkdayReasonLength >= WORKFORCE_WORKDAY_REOPEN_REASON_MIN_LENGTH
+    && managerWorkdayReasonLength <= WORKFORCE_WORKDAY_REOPEN_REASON_MAX_LENGTH
+
+  async function submitManagerWorkdayAction() {
+    const target = managerWorkdayTarget
+    if (!target || managerWorkdayPending || !managerWorkdayReasonValid || managerWorkdayError?.final) return
+    setManagerWorkdayPending(true)
+    setManagerWorkdayError(null)
+    const action = target.kind === "reopen" ? "reopen" : "reopen/undo"
+    try {
+      const { response, body } = await fetchOperationalWeekJsonWithTimeout(`/api/v1/workforce/workdays/${encodeURIComponent(target.workdayId)}/${action}`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          ...(organizationId ? { "x-organization-id": String(organizationId) } : {}),
+        },
+        body: JSON.stringify({
+          operationId: target.operationId,
+          expectedUpdatedAt: target.expectedUpdatedAt,
+          reason: managerWorkdayReason.trim(),
+        }),
+      })
+      const result = record(body)
+      if (!response.ok || result.success !== true) {
+        const final = response.status === 409
+        setManagerWorkdayError({ message: managerWorkdayFailureMessage(firstString(result, "code"), target.kind, response.status), final })
+        // The day changed under the manager: show its current state behind the message.
+        if (final) refreshAfterPlanMutation()
+        return
+      }
+      toast.success(t(target.kind === "reopen" ? "managerWorkday.reopenSucceeded" : "managerWorkday.undoSucceeded"))
+      setManagerWorkdayTarget(null)
+      setManagerWorkdayReason("")
+      refreshAfterPlanMutation()
+    } catch {
+      setManagerWorkdayError({ message: t("managerWorkday.failure.generic"), final: false })
+    } finally {
+      setManagerWorkdayPending(false)
+    }
+  }
+
   const effectiveAgentId = facts?.selectedAgent.id || query?.agentId || ""
   const workdayMutationLive = phase === "ready" && cachedSnapshot === null
   const selectedDay = facts?.days.find((day) => day.date === query?.day) || facts?.days[0] || null
@@ -1745,6 +1935,39 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
     // agent reading about themselves keeps the plain workday state.
     if (managerView && day.isToday && facts?.managerWorkday) return managerWorkdayPresentation(facts.managerWorkday, facts.timezone)
     return workdayPresentation(day.workday.state)
+  }
+
+  /**
+   * The manager's side of today's workday for the selected employee: reopen
+   * a finished day, undo that reopen, or one line on why neither is possible.
+   * A saved snapshot offers no action; a refresh in flight only disables it.
+   */
+  function renderManagerWorkdayControls() {
+    const actions = facts?.managerWorkdayActions
+    if (!actions || !managerView || facts?.workdayCapability.canMutateSelf || cachedSnapshot) return null
+    if (actions.reopen.allowed) {
+      return (
+        <Button type="button" className="min-h-11" data-testid="mtm-week-workday-reopen" disabled={managerWorkdayPending || !workdayMutationLive} onClick={() => openManagerWorkdayDialog("reopen")}>
+          <RotateCcw className="h-4 w-4" />{t("managerWorkday.reopenAction")}
+        </Button>
+      )
+    }
+    if (actions.undoReopen.allowed) {
+      return (
+        <Button type="button" variant="outline" className="min-h-11" data-testid="mtm-week-workday-reopen-undo" disabled={managerWorkdayPending || !workdayMutationLive} onClick={() => openManagerWorkdayDialog("undoReopen")}>
+          <Undo2 className="h-4 w-4" />{t("managerWorkday.undoAction")}
+        </Button>
+      )
+    }
+    const refusalKind = MANAGER_WORKDAY_ACTION_KINDS.find((kind) => {
+      const reason = actions[kind].blockedReason
+      return Boolean(reason && MANAGER_WORKDAY_EXPLAINED_REFUSALS.has(reason))
+    })
+    return refusalKind ? (
+      <span className="inline-flex items-center gap-2 text-xs text-muted-foreground" data-testid="mtm-week-workday-manager-blocked">
+        <Info className="h-4 w-4 shrink-0" />{managerWorkdayFailureMessage(actions[refusalKind].blockedReason, refusalKind)}
+      </span>
+    ) : null
   }
 
   function alertTypeLabel(type: string): string {
@@ -2808,7 +3031,7 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
                     {mutatingAction === action ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : action === "START" || action === "RESUME" ? <PlayCircle className="h-4 w-4" /> : action === "PAUSE" ? <PauseCircle className="h-4 w-4" /> : <Square className="h-4 w-4" />}
                     {actionLabel(action)}
                   </Button>
-                )) : <span className="inline-flex items-center gap-2 text-xs text-muted-foreground"><ShieldAlert className="h-4 w-4" />{facts.workdayCapability.canMutateSelf ? t("workdayNoActions") : t("workdayReadOnly")}</span>}
+                )) : renderManagerWorkdayControls() ?? <span className="inline-flex items-center gap-2 text-xs text-muted-foreground"><ShieldAlert className="h-4 w-4" />{facts.workdayCapability.canMutateSelf ? t("workdayNoActions") : t("workdayReadOnly")}</span>}
               </div>
               {confirmingFinish ? (
                 <div className="mt-3 border border-red-200 bg-red-50 p-3 text-sm text-red-950 dark:border-red-900 dark:bg-red-950/25 dark:text-red-100" role="alert">
@@ -3014,6 +3237,59 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
             <Button type="button" disabled={Boolean(planMutationId)} onClick={() => void submitCancellationRequest()}>
               {planMutationId?.startsWith("request:") ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> : null}
               {t("sendCancellationRequest")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={Boolean(managerWorkdayTarget)} onOpenChange={(open) => {
+        if (!open) closeManagerWorkdayDialog()
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t(managerWorkdayTarget?.kind === "undoReopen" ? "managerWorkday.undoTitle" : "managerWorkday.reopenTitle")}</DialogTitle>
+            <DialogDescription>{facts?.selectedAgent.name || "—"}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4" data-testid="mtm-week-workday-manager-dialog">
+            <p className="bg-muted/60 px-3 py-2 text-xs leading-5 text-muted-foreground">
+              {t(managerWorkdayTarget?.kind === "undoReopen" ? "managerWorkday.undoConsequence" : "managerWorkday.reopenConsequence")}
+              {" "}{t("managerWorkday.historyNote")}
+            </p>
+            <div className="space-y-1.5">
+              <Label htmlFor="operational-week-manager-workday-reason">{t("managerWorkday.reasonLabel")}</Label>
+              <Textarea
+                id="operational-week-manager-workday-reason"
+                value={managerWorkdayReason}
+                onChange={(event) => setManagerWorkdayReason(event.target.value)}
+                rows={4}
+                maxLength={WORKFORCE_WORKDAY_REOPEN_REASON_MAX_LENGTH}
+                placeholder={t("managerWorkday.reasonPlaceholder")}
+                disabled={managerWorkdayPending}
+                required
+                data-dialog-initial-focus
+                aria-invalid={managerWorkdayReason.length > 0 && !managerWorkdayReasonValid}
+                aria-describedby="operational-week-manager-workday-reason-hint"
+              />
+              <p id="operational-week-manager-workday-reason-hint" className="text-xs text-muted-foreground">
+                {t("managerWorkday.reasonHint", {
+                  min: WORKFORCE_WORKDAY_REOPEN_REASON_MIN_LENGTH,
+                  max: WORKFORCE_WORKDAY_REOPEN_REASON_MAX_LENGTH,
+                  count: managerWorkdayReasonLength,
+                })}
+              </p>
+            </div>
+            {managerWorkdayError ? (
+              <p className="text-sm text-red-700 dark:text-red-300" role="alert" data-testid="mtm-week-workday-manager-error">{managerWorkdayError.message}</p>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" disabled={managerWorkdayPending} onClick={closeManagerWorkdayDialog}>{t("cancelDialog")}</Button>
+            <Button
+              type="button"
+              disabled={managerWorkdayPending || !managerWorkdayReasonValid || Boolean(managerWorkdayError?.final)}
+              onClick={() => void submitManagerWorkdayAction()}
+            >
+              {managerWorkdayPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> : null}
+              {t(managerWorkdayTarget?.kind === "undoReopen" ? "managerWorkday.confirmUndo" : "managerWorkday.confirmReopen")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -31,7 +31,15 @@ import {
   workforceReplayMatchesWorkdayCorrectionFacts,
   workforceWorkdayEventFact,
   WorkforceWorkdayFactsReplayError,
+  type WorkforceWorkdayEventFact,
 } from "@/lib/workforce/workday-facts-replay"
+import {
+  WORKFORCE_WORKDAY_REOPEN_REASON_MAX_LENGTH,
+  WORKFORCE_WORKDAY_REOPEN_REASON_MIN_LENGTH,
+  type WorkforceWorkdayReopenConflictCode,
+} from "@/lib/workforce/workday-reopen-contract"
+
+export type { WorkforceWorkdayReopenConflictCode } from "@/lib/workforce/workday-reopen-contract"
 
 /**
  * A manager reopens the employee's finished shift for today, or undoes that
@@ -40,21 +48,12 @@ import {
 export const WorkforceWorkdayReopenSchema = z.object({
   operationId: z.string().trim().min(8).max(128),
   expectedUpdatedAt: z.string().datetime({ offset: true }),
-  reason: z.string().trim().min(3).max(1000),
+  reason: z.string().trim()
+    .min(WORKFORCE_WORKDAY_REOPEN_REASON_MIN_LENGTH)
+    .max(WORKFORCE_WORKDAY_REOPEN_REASON_MAX_LENGTH),
 }).strict()
 
 export type WorkforceWorkdayReopenInput = z.infer<typeof WorkforceWorkdayReopenSchema>
-
-export type WorkforceWorkdayReopenConflictCode =
-  | "WORKFORCE_WORKDAY_REOPEN_IDEMPOTENCY_MISMATCH"
-  | "WORKFORCE_WORKDAY_REOPEN_NOT_COMPLETED"
-  | "WORKFORCE_WORKDAY_REOPEN_NOT_TODAY"
-  | "WORKFORCE_WORKDAY_REOPEN_VERSION_CONFLICT"
-  | "WORKFORCE_WORKDAY_REOPEN_OPEN_SHIFT_EXISTS"
-  | "WORKFORCE_WORKDAY_REOPEN_TIMESHEET_APPROVED"
-  | "WORKFORCE_WORKDAY_REOPEN_CORRECTION_PENDING"
-  | "WORKFORCE_WORKDAY_REOPEN_CORRECTED"
-  | "WORKFORCE_WORKDAY_REOPEN_HISTORY_INVALID"
 
 /** Request context shared by the reopen and undo services. */
 export type WorkforceWorkdayReopenContext = {
@@ -119,6 +118,13 @@ export const workforceReopenWorkdaySelect = {
   agent: { select: { userId: true } },
 } satisfies Prisma.MtmAgentWorkdaySelect
 
+/** The employee and day a reopen, an undo or their availability reads. */
+export type WorkforceWorkdayScope = {
+  organizationId: string
+  agentId: string
+  workdayId: string
+}
+
 /** Binds a reopen or undo operation id to its actor, target and exact body. */
 export function workforceWorkdayReopenRequestHash(params: {
   action: "REOPEN" | "REOPEN_UNDO"
@@ -138,11 +144,36 @@ export function workforceWorkdayReopenRequestHash(params: {
   return createHash("sha256").update(JSON.stringify(payload)).digest("hex")
 }
 
+/** The journal key of the REOPEN event an operation writes. */
+export function workforceWorkdayReopenEventKey(operationId: string): string {
+  return `${MTM_WORKDAY_REOPEN_EVENT_KEY_PREFIX}${operationId}`
+}
+
 /** Today's date key in the tenant timezone: the only day a manager may touch. */
 export async function workforceTenantToday(organizationId: string, now: Date): Promise<string> {
   const settings = await getMtmSettings(organizationId)
   return currentDateKey(now, isValidTimezone(settings.timezone) ? settings.timezone : "UTC")
 }
+
+/**
+ * Reopening and undoing are supervisor actions on someone else's day. Web
+ * admins resolve without an agentId, so the target employee's linked user is
+ * compared too.
+ */
+export function isWorkforceWorkdayOwnDay(params: {
+  actor: Pick<WorkforceActor, "agentId"> | null
+  userId: string
+  agentId: string
+  agentUserId: string | null
+}): boolean {
+  return params.actor?.agentId === params.agentId || params.agentUserId === params.userId
+}
+
+/** The client surface the manager authority reads: a transaction or the tenant client. */
+export type WorkforceWorkdayManagerAuthorityDb = Pick<
+  Prisma.TransactionClient,
+  "organization" | "workforceAccessGrant"
+>
 
 /**
  * Exactly the authority of a direct manager time correction: the legacy CRM
@@ -151,10 +182,10 @@ export async function workforceTenantToday(organizationId: string, now: Date): P
  * The caller still refuses the employee's own day separately.
  */
 export async function authorizeWorkforceWorkdayManagerAction(
-  tx: Prisma.TransactionClient,
+  db: WorkforceWorkdayManagerAuthorityDb,
   params: { organizationId: string; userId: string; actor: WorkforceActor | null; agentId: string },
 ): Promise<string | null> {
-  const organization = await tx.organization.findUnique({
+  const organization = await db.organization.findUnique({
     where: { id: params.organizationId },
     select: { features: true },
   })
@@ -164,7 +195,7 @@ export async function authorizeWorkforceWorkdayManagerAction(
     return actor.role
   }
   const access = await decidePersistedWorkforceAccess({
-    db: tx as WorkforceAccessGrantReaderDb,
+    db: db as WorkforceAccessGrantReaderDb,
     organizationId: params.organizationId,
     principalUserId: params.userId,
     selfAgentId: null,
@@ -172,6 +203,190 @@ export async function authorizeWorkforceWorkdayManagerAction(
     resource: { organizationId: params.organizationId, agentId: params.agentId },
   })
   return access.allowed ? "WORKFORCE_GRANT" : null
+}
+
+export type WorkforceWorkdayReopenStateConflictCode = Extract<
+  WorkforceWorkdayReopenConflictCode,
+  "WORKFORCE_WORKDAY_REOPEN_NOT_COMPLETED" | "WORKFORCE_WORKDAY_REOPEN_NOT_TODAY"
+>
+
+/**
+ * What the day's own facts say about a reopen: only a finished shift dated
+ * today in the tenant's timezone can be reopened.
+ */
+export function workforceWorkdayReopenStateConflict(
+  workday: Pick<WorkforceWorkdayCorrectionFacts, "status" | "completedAt" | "workDate">,
+  today: string,
+): WorkforceWorkdayReopenStateConflictCode | null {
+  if (workday.status !== "COMPLETED" || !workday.completedAt) return "WORKFORCE_WORKDAY_REOPEN_NOT_COMPLETED"
+  if (workday.workDate !== today) return "WORKFORCE_WORKDAY_REOPEN_NOT_TODAY"
+  return null
+}
+
+export type WorkforceWorkdayReopenBlockersDb = Pick<
+  Prisma.TransactionClient,
+  "mtmAgentWorkday" | "workforceTimesheetApproval" | "mtmHrmRequest" | "workforceTimeCorrection"
+>
+
+/** Facts outside the workday row that keep a finished day closed. */
+export type WorkforceWorkdayReopenBlockers = {
+  /** One shift per day: the employee already holds another open workday. */
+  otherOpenWorkday: boolean
+  /** An approved timesheet already covers the day. */
+  approvedTimesheet: boolean
+  /** A time-correction request for the day still awaits a decision. */
+  pendingCorrectionRequest: boolean
+  /** A direct time correction already rewrote the day. */
+  corrected: boolean
+}
+
+export async function readWorkforceWorkdayReopenBlockers(
+  db: WorkforceWorkdayReopenBlockersDb,
+  params: WorkforceWorkdayScope & { workDate: Date },
+): Promise<WorkforceWorkdayReopenBlockers> {
+  const { organizationId, agentId, workdayId, workDate } = params
+  const [otherOpenWorkday, approval, pendingCorrection, corrections] = await Promise.all([
+    db.mtmAgentWorkday.findFirst({
+      where: {
+        organizationId,
+        agentId,
+        status: { in: ["STARTED", "PAUSED"] },
+        id: { not: workdayId },
+      },
+      select: { id: true },
+    }),
+    db.workforceTimesheetApproval.findFirst({
+      where: {
+        organizationId,
+        agentId,
+        periodStart: { lte: workDate },
+        periodEnd: { gte: workDate },
+      },
+      select: { id: true },
+    }),
+    db.mtmHrmRequest.findFirst({
+      where: {
+        organizationId,
+        agentId,
+        type: "TIME_CORRECTION",
+        status: "PENDING",
+        correctionWorkdayId: workdayId,
+      },
+      select: { id: true },
+    }),
+    db.workforceTimeCorrection.findMany({
+      where: { organizationId, agentId, workdayId },
+      select: { id: true },
+    }),
+  ])
+  return {
+    otherOpenWorkday: Boolean(otherOpenWorkday),
+    approvedTimesheet: Boolean(approval),
+    pendingCorrectionRequest: Boolean(pendingCorrection),
+    corrected: corrections.length > 0,
+  }
+}
+
+export type WorkforceWorkdayReopenBlockerConflictCode = Extract<
+  WorkforceWorkdayReopenConflictCode,
+  | "WORKFORCE_WORKDAY_REOPEN_OPEN_SHIFT_EXISTS"
+  | "WORKFORCE_WORKDAY_REOPEN_TIMESHEET_APPROVED"
+  | "WORKFORCE_WORKDAY_REOPEN_CORRECTION_PENDING"
+  | "WORKFORCE_WORKDAY_REOPEN_CORRECTED"
+>
+
+/** The first blocker that refuses a reopen, in the service's order. */
+export function workforceWorkdayReopenBlockerConflict(
+  blockers: WorkforceWorkdayReopenBlockers,
+): WorkforceWorkdayReopenBlockerConflictCode | null {
+  if (blockers.otherOpenWorkday) return "WORKFORCE_WORKDAY_REOPEN_OPEN_SHIFT_EXISTS"
+  if (blockers.approvedTimesheet) return "WORKFORCE_WORKDAY_REOPEN_TIMESHEET_APPROVED"
+  if (blockers.pendingCorrectionRequest) return "WORKFORCE_WORKDAY_REOPEN_CORRECTION_PENDING"
+  // The correction ledger replays after the whole journal. A REOPEN after a
+  // correction would split that chain, so corrected days stay closed.
+  if (blockers.corrected) return "WORKFORCE_WORKDAY_REOPEN_CORRECTED"
+  return null
+}
+
+const REOPEN_REFUSAL_MESSAGES: Record<
+  WorkforceWorkdayReopenStateConflictCode | WorkforceWorkdayReopenBlockerConflictCode,
+  string
+> = {
+  WORKFORCE_WORKDAY_REOPEN_NOT_COMPLETED: "Only a completed workday can be reopened",
+  WORKFORCE_WORKDAY_REOPEN_NOT_TODAY: "Only today's workday can be reopened",
+  WORKFORCE_WORKDAY_REOPEN_OPEN_SHIFT_EXISTS: "The employee already has another open workday",
+  WORKFORCE_WORKDAY_REOPEN_TIMESHEET_APPROVED: "An approved timesheet already covers this workday",
+  WORKFORCE_WORKDAY_REOPEN_CORRECTION_PENDING: "A time-correction request for this workday is still pending",
+  WORKFORCE_WORKDAY_REOPEN_CORRECTED: "A corrected workday cannot be reopened",
+}
+
+/** The day's whole append-only journal, in replay order. */
+export async function readWorkforceWorkdayJournal(
+  db: Pick<Prisma.TransactionClient, "mtmAgentWorkdayEvent">,
+  scope: WorkforceWorkdayScope,
+) {
+  return db.mtmAgentWorkdayEvent.findMany({
+    where: { organizationId: scope.organizationId, agentId: scope.agentId, workdayId: scope.workdayId },
+    orderBy: [...WORKFORCE_WORKDAY_JOURNAL_ORDER],
+    select: WORKFORCE_WORKDAY_JOURNAL_SELECT,
+  })
+}
+
+/**
+ * The projection a reopen produces: PAUSED with `pausedAt` at the previous
+ * finish and an unchanged closed-pause total, so the ordinary RESUME and
+ * FINISH-while-paused transitions bank the gap as pause.
+ */
+export function workforceReopenedWorkdayFacts(
+  before: WorkforceWorkdayCorrectionFacts,
+): WorkforceWorkdayCorrectionFacts {
+  return {
+    ...before,
+    status: "PAUSED",
+    pausedAt: before.completedAt,
+    completedAt: null,
+  }
+}
+
+/**
+ * Proves the immutable journal reproduces the finished row before a REOPEN
+ * extends it, and that the extended journal reproduces exactly the reopened
+ * row. Returns why it does not, or null.
+ */
+export function workforceWorkdayReopenHistoryProblem(params: {
+  workdayId: string
+  journal: readonly WorkforceWorkdayEventFact[]
+  before: WorkforceWorkdayCorrectionFacts
+  /** The finish being reopened: the REOPEN is recorded at that instant. */
+  finishedAt: Date
+  /** When the server applies the REOPEN. */
+  appliedAt: Date
+  clientEventId: string
+}): string | null {
+  const { workdayId, journal, before } = params
+  try {
+    const replayed = replayWorkforceWorkdayFacts({ workdayId, events: journal })
+    if (!workforceReplayMatchesWorkdayCorrectionFacts(replayed, before)) {
+      return "Immutable workday journal does not match its current projection"
+    }
+    const reopened = replayWorkforceWorkdayFacts({
+      workdayId,
+      events: [...journal, {
+        id: "pending-workday-reopen",
+        type: "REOPEN",
+        occurredAt: params.finishedAt.toISOString(),
+        appliedAt: params.appliedAt.toISOString(),
+        clientEventId: params.clientEventId,
+      }],
+    })
+    if (!workforceReplayMatchesWorkdayCorrectionFacts(reopened, workforceReopenedWorkdayFacts(before))) {
+      return "Reopened workday journal does not reproduce the reopened projection"
+    }
+    return null
+  } catch (error) {
+    if (!(error instanceof WorkforceWorkdayFactsReplayError)) throw error
+    return error.message
+  }
 }
 
 /**
@@ -188,6 +403,9 @@ export async function authorizeWorkforceWorkdayManagerAction(
  * ledger row, selects that row for the database guard (the only way a
  * completed workday may leave COMPLETED), moves the projection and writes the
  * audit record. Past, corrected, approved or contested days are refused.
+ *
+ * The refusals are the exported predicates above, which the operational week
+ * also evaluates to tell a manager in advance whether the action is possible.
  */
 export async function reopenWorkforceWorkday(
   context: WorkforceWorkdayReopenContext,
@@ -200,9 +418,7 @@ export async function reopenWorkforceWorkday(
     select: { id: true, agentId: true, agent: { select: { userId: true } } },
   })
   if (!initial) return { kind: "not_found" }
-  // Reopening is a supervisor action on someone else's day. Web admins resolve
-  // without an agentId, so the target employee's linked user is compared too.
-  if (actor?.agentId === initial.agentId || initial.agent.userId === userId) {
+  if (isWorkforceWorkdayOwnDay({ actor, userId, agentId: initial.agentId, agentUserId: initial.agent.userId })) {
     return { kind: "forbidden" }
   }
 
@@ -214,7 +430,8 @@ export async function reopenWorkforceWorkday(
     input,
   })
   const today = await workforceTenantToday(organizationId, now)
-  const clientEventId = `${MTM_WORKDAY_REOPEN_EVENT_KEY_PREFIX}${input.operationId}`
+  const clientEventId = workforceWorkdayReopenEventKey(input.operationId)
+  const scope: WorkforceWorkdayScope = { organizationId, agentId: initial.agentId, workdayId }
 
   try {
     return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -263,7 +480,9 @@ export async function reopenWorkforceWorkday(
         if (!current) throw new WorkdayReopenProblem({ kind: "not_found" })
         // Repeat the self check under the lock that returns the replay: an
         // employee linked to this user after the preflight gets no receipt.
-        if (current.agent.userId === userId) return { kind: "forbidden" as const }
+        if (isWorkforceWorkdayOwnDay({ actor, userId, agentId: initial.agentId, agentUserId: current.agent.userId })) {
+          return { kind: "forbidden" as const }
+        }
         // The same operation is acknowledged once more, never applied twice.
         // The employee may already have resumed, so report today's state.
         return {
@@ -283,23 +502,16 @@ export async function reopenWorkforceWorkday(
         select: workforceReopenWorkdaySelect,
       })
       if (!workday) throw new WorkdayReopenProblem({ kind: "not_found" })
-      if (workday.agent.userId === userId) return { kind: "forbidden" as const }
+      if (isWorkforceWorkdayOwnDay({ actor, userId, agentId: initial.agentId, agentUserId: workday.agent.userId })) {
+        return { kind: "forbidden" as const }
+      }
 
       const beforeWorkday = workforceWorkdayCorrectionFacts(workday)
       const finishedAt = workday.completedAt
-      if (workday.status !== "COMPLETED" || !finishedAt) {
-        throw reopenConflict(
-          "WORKFORCE_WORKDAY_REOPEN_NOT_COMPLETED",
-          "Only a completed workday can be reopened",
-          beforeWorkday,
-        )
-      }
-      if (beforeWorkday.workDate !== today) {
-        throw reopenConflict(
-          "WORKFORCE_WORKDAY_REOPEN_NOT_TODAY",
-          "Only today's workday can be reopened",
-          beforeWorkday,
-        )
+      const stateConflict = workforceWorkdayReopenStateConflict(beforeWorkday, today)
+      if (stateConflict || !finishedAt) {
+        const code = stateConflict ?? "WORKFORCE_WORKDAY_REOPEN_NOT_COMPLETED"
+        throw reopenConflict(code, REOPEN_REFUSAL_MESSAGES[code], beforeWorkday)
       }
       if (workday.updatedAt.getTime() !== expectedUpdatedAt.getTime()) {
         throw reopenConflict(
@@ -309,78 +521,17 @@ export async function reopenWorkforceWorkday(
         )
       }
 
-      const [otherOpenWorkday, approval, pendingCorrection, corrections, events, eventKeyOwner] = await Promise.all([
-        tx.mtmAgentWorkday.findFirst({
-          where: {
-            organizationId,
-            agentId: initial.agentId,
-            status: { in: ["STARTED", "PAUSED"] },
-            id: { not: workdayId },
-          },
-          select: { id: true },
-        }),
-        tx.workforceTimesheetApproval.findFirst({
-          where: {
-            organizationId,
-            agentId: initial.agentId,
-            periodStart: { lte: workday.workDate },
-            periodEnd: { gte: workday.workDate },
-          },
-          select: { id: true },
-        }),
-        tx.mtmHrmRequest.findFirst({
-          where: {
-            organizationId,
-            agentId: initial.agentId,
-            type: "TIME_CORRECTION",
-            status: "PENDING",
-            correctionWorkdayId: workdayId,
-          },
-          select: { id: true },
-        }),
-        tx.workforceTimeCorrection.findMany({
-          where: { organizationId, agentId: initial.agentId, workdayId },
-          select: { id: true },
-        }),
-        tx.mtmAgentWorkdayEvent.findMany({
-          where: { organizationId, agentId: initial.agentId, workdayId },
-          orderBy: [...WORKFORCE_WORKDAY_JOURNAL_ORDER],
-          select: WORKFORCE_WORKDAY_JOURNAL_SELECT,
-        }),
+      const [blockers, events, eventKeyOwner] = await Promise.all([
+        readWorkforceWorkdayReopenBlockers(tx, { ...scope, workDate: workday.workDate }),
+        readWorkforceWorkdayJournal(tx, scope),
         tx.mtmAgentWorkdayEvent.findFirst({
           where: { organizationId, agentId: initial.agentId, clientEventId },
           select: { id: true },
         }),
       ])
-      if (otherOpenWorkday) {
-        throw reopenConflict(
-          "WORKFORCE_WORKDAY_REOPEN_OPEN_SHIFT_EXISTS",
-          "The employee already has another open workday",
-          beforeWorkday,
-        )
-      }
-      if (approval) {
-        throw reopenConflict(
-          "WORKFORCE_WORKDAY_REOPEN_TIMESHEET_APPROVED",
-          "An approved timesheet already covers this workday",
-          beforeWorkday,
-        )
-      }
-      if (pendingCorrection) {
-        throw reopenConflict(
-          "WORKFORCE_WORKDAY_REOPEN_CORRECTION_PENDING",
-          "A time-correction request for this workday is still pending",
-          beforeWorkday,
-        )
-      }
-      // The correction ledger replays after the whole journal. A REOPEN after
-      // a correction would split that chain, so corrected days stay closed.
-      if (corrections.length > 0) {
-        throw reopenConflict(
-          "WORKFORCE_WORKDAY_REOPEN_CORRECTED",
-          "A corrected workday cannot be reopened",
-          beforeWorkday,
-        )
+      const blockerConflict = workforceWorkdayReopenBlockerConflict(blockers)
+      if (blockerConflict) {
+        throw reopenConflict(blockerConflict, REOPEN_REFUSAL_MESSAGES[blockerConflict], beforeWorkday)
       }
       if (eventKeyOwner) {
         throw reopenConflict(
@@ -389,39 +540,15 @@ export async function reopenWorkforceWorkday(
         )
       }
 
-      const afterWorkday: WorkforceWorkdayCorrectionFacts = {
-        ...beforeWorkday,
-        status: "PAUSED",
-        pausedAt: beforeWorkday.completedAt,
-        completedAt: null,
-      }
-      // Prove the immutable journal reproduces the row before a REOPEN extends
-      // it, and that the extended journal reproduces exactly the reopened row.
-      const journal = events.map(workforceWorkdayEventFact)
-      let historyProblem: string | null = null
-      try {
-        const replayed = replayWorkforceWorkdayFacts({ workdayId, events: journal })
-        if (!workforceReplayMatchesWorkdayCorrectionFacts(replayed, beforeWorkday)) {
-          historyProblem = "Immutable workday journal does not match its current projection"
-        } else {
-          const reopened = replayWorkforceWorkdayFacts({
-            workdayId,
-            events: [...journal, {
-              id: "pending-workday-reopen",
-              type: "REOPEN",
-              occurredAt: finishedAt.toISOString(),
-              appliedAt: now.toISOString(),
-              clientEventId,
-            }],
-          })
-          if (!workforceReplayMatchesWorkdayCorrectionFacts(reopened, afterWorkday)) {
-            historyProblem = "Reopened workday journal does not reproduce the reopened projection"
-          }
-        }
-      } catch (error) {
-        if (!(error instanceof WorkforceWorkdayFactsReplayError)) throw error
-        historyProblem = error.message
-      }
+      const afterWorkday = workforceReopenedWorkdayFacts(beforeWorkday)
+      const historyProblem = workforceWorkdayReopenHistoryProblem({
+        workdayId,
+        journal: events.map(workforceWorkdayEventFact),
+        before: beforeWorkday,
+        finishedAt,
+        appliedAt: now,
+        clientEventId,
+      })
       if (historyProblem) {
         throw reopenConflict("WORKFORCE_WORKDAY_REOPEN_HISTORY_INVALID", historyProblem, beforeWorkday)
       }
