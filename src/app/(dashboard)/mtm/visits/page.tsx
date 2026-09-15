@@ -66,6 +66,9 @@ type MtmVisitRow = {
   checkInLng?: number | null
   checkOutLat?: number | null
   checkOutLng?: number | null
+  checkInCustomerLat?: number | null
+  checkInCustomerLng?: number | null
+  checkInGeofenceRadius?: number | null
   notes?: string | null
   agent?: { id: string; name: string | null } | null
   customer?: {

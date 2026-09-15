@@ -31,6 +31,9 @@ export interface VisitReviewData {
     checkInLng: number | null
     checkOutLat: number | null
     checkOutLng: number | null
+    checkInCustomerLat?: number | null
+    checkInCustomerLng?: number | null
+    checkInGeofenceRadius?: number | null
     notes: string | null
     outcome: string | null
     potential: string | null

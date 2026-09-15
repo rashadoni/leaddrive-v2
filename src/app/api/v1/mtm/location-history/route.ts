@@ -209,6 +209,9 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         // the door" — the page used to print «confirmed» for every row.
         checkOutLat: true,
         checkOutLng: true,
+        checkInCustomerLat: true,
+        checkInCustomerLng: true,
+        checkInGeofenceRadius: true,
         customer: {
           select: {
             name: true,

@@ -44,6 +44,41 @@ export function checkInGeofenceRadius(customerRadius: unknown, organizationRadiu
 
 type SettingReader = Pick<Prisma.TransactionClient, "mtmSetting">
 
+export interface MtmVisitPlaceSnapshot {
+  checkInCustomerLat: number | null
+  checkInCustomerLng: number | null
+  checkInGeofenceRadius: number
+}
+
+/**
+ * What a new visit stores about where it was supposed to happen: the
+ * customer's pin and the enforced zone at check-in. 2026-09-15: moving a
+ * customer's pin turned two finished visits from «Zonada 44 m» into
+ * «Zonadan kənar 10.5 km», because every page measured old visits against the
+ * current pin. `organizationRadius` skips the setting read when the caller
+ * already has it.
+ */
+export async function mtmVisitPlaceSnapshot(
+  client: SettingReader,
+  organizationId: string,
+  customer: { latitude: number | null; longitude: number | null; geofenceRadius: number | null },
+  organizationRadius?: unknown,
+): Promise<MtmVisitPlaceSnapshot> {
+  let orgRadius = organizationRadius
+  if (customer.geofenceRadius == null && orgRadius === undefined) {
+    const setting = await client.mtmSetting.findFirst({
+      where: { organizationId, key: "geofenceRadius" },
+      select: { value: true },
+    })
+    orgRadius = setting?.value
+  }
+  return {
+    checkInCustomerLat: customer.latitude,
+    checkInCustomerLng: customer.longitude,
+    checkInGeofenceRadius: Math.round(checkInGeofenceRadius(customer.geofenceRadius, orgRadius)),
+  }
+}
+
 /**
  * Per-request memo of `alertOutOfZone`. The row is read lazily — only when a
  * check-in actually lands outside the zone — and at most once per request,

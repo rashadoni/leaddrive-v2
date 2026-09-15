@@ -19,6 +19,9 @@ export interface MtmRoutePointVisitFact {
   checkInLng?: number | null
   checkOutLat?: number | null
   checkOutLng?: number | null
+  checkInCustomerLat?: number | null
+  checkInCustomerLng?: number | null
+  checkInGeofenceRadius?: number | null
   /** Route detail: coordinates were withheld (co-participant outside the reader's scope), not missing. */
   locationHidden?: boolean | null
   photoCount?: number | null

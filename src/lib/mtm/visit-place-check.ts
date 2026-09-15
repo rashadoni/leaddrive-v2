@@ -66,6 +66,10 @@ export interface VisitPlaceInput {
   checkInLng?: number | null
   checkOutLat?: number | null
   checkOutLng?: number | null
+  /** Pin and zone stored at check-in (2026-09-15); null on older visits. */
+  checkInCustomerLat?: number | null
+  checkInCustomerLng?: number | null
+  checkInGeofenceRadius?: number | null
   customer?: { latitude?: number | null; longitude?: number | null; geofenceRadius?: number | null } | null
 }
 
@@ -90,8 +94,16 @@ export interface VisitPlaceSummary {
  * still read "confirmed".
  */
 export function visitPlaceSummary(visit: VisitPlaceInput, organizationRadius?: number | null): VisitPlaceSummary {
-  const radiusMeters = effectiveGeofenceRadius(visit.customer?.geofenceRadius, organizationRadius)
-  const pin = { latitude: visit.customer?.latitude, longitude: visit.customer?.longitude }
+  // A visit is judged against the pin and zone it was made against. Moving a
+  // customer's pin later must not rewrite old verdicts (2026-09-15: «Zonada
+  // 44 m» became «Zonadan kənar 10.5 km»). Visits made before the snapshot
+  // existed keep the current pin, the only one there is for them.
+  const snapshotPin = { latitude: visit.checkInCustomerLat, longitude: visit.checkInCustomerLng }
+  const hasSnapshot = hasMtmCoordinates(snapshotPin)
+  const radiusMeters = hasSnapshot && typeof visit.checkInGeofenceRadius === "number" && visit.checkInGeofenceRadius > 0
+    ? visit.checkInGeofenceRadius
+    : effectiveGeofenceRadius(visit.customer?.geofenceRadius, organizationRadius)
+  const pin = hasSnapshot ? snapshotPin : { latitude: visit.customer?.latitude, longitude: visit.customer?.longitude }
   const checkIn = placeCheck({ latitude: visit.checkInLat, longitude: visit.checkInLng }, pin, radiusMeters)
   const finished = visit.status === "CHECKED_OUT"
   const checkOut = finished

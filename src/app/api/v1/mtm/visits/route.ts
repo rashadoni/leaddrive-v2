@@ -8,7 +8,7 @@ import { writeMtmAudit } from "@/lib/mtm-audit"
 import { VisitCreateSchema, parseBody } from "@/lib/mtm-validators"
 import { notifyAgent } from "@/lib/mtm-notify"
 import { getMtmSettings } from "@/lib/mtm-settings"
-import { checkInGeofenceRadius } from "@/lib/mtm/check-in-geofence"
+import { checkInGeofenceRadius, mtmVisitPlaceSnapshot } from "@/lib/mtm/check-in-geofence"
 import { addDateKeyDays, currentDateKey, localDateKeyToUtc } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
 import {
@@ -441,6 +441,7 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
           checkInAt,
           checkInLat: latitude,
           checkInLng: longitude,
+          ...(await mtmVisitPlaceSnapshot(tx, orgId, scopedCustomer)),
           notes: notes || null,
         },
       })

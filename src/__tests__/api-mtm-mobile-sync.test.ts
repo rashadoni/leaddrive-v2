@@ -1053,6 +1053,11 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
         contactId: "contact-1",
         routeId: "route-1",
         routePointId: "point-1",
+        // The pin and zone this visit is judged against later, whatever
+        // happens to the customer card (no setting stored → 100 m).
+        checkInCustomerLat: 40.4,
+        checkInCustomerLng: 49.8,
+        checkInGeofenceRadius: 100,
       }),
     }))
     expect(prisma.mtmRoute.updateMany).not.toHaveBeenCalled()

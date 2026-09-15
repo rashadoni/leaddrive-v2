@@ -176,6 +176,9 @@ type HistoryData = {
     checkInLng: number | null
     checkOutLat?: number | null
     checkOutLng?: number | null
+    checkInCustomerLat?: number | null
+    checkInCustomerLng?: number | null
+    checkInGeofenceRadius?: number | null
     confirmed: true
     customer: {
       name: string
