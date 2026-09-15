@@ -43,7 +43,6 @@
     "src/components/mtm/contact-detail.tsx TS2322": 2,
     "src/components/mtm/contact-duplicate-dialog.tsx TS2322": 2,
     "src/components/mtm/contact-workplace-dialog.tsx TS2322": 1,
-    "src/components/mtm/mtm-module-navigation.tsx TS2322": 1,
     "src/components/mtm/operational-week-home.tsx TS2345": 1,
     "src/components/mtm/organization-detail.tsx TS2322": 1,
     "src/components/mtm/organization-explorer.tsx TS2322": 1,
