@@ -462,6 +462,10 @@ export const GET = withMobileRls(async (req, auth) => {
           // contact they reference. Older APKs ignore the key and keep showing
           // contacts, which is the safe side of this switch.
           fieldContactsEnabled: settings.fieldContactsEnabled !== false,
+          // Same contract for pharmacy promotions: OFF hides the app's promotion
+          // screens and entry points; promotion APIs keep answering and older
+          // APKs keep showing them.
+          pharmacyPromotionsEnabled: settings.pharmacyPromotionsEnabled !== false,
           workforce: {
             enabled: workforceEnabled,
             configVersion: attendance.configVersion,

@@ -459,6 +459,20 @@ describe("GET /api/v1/mtm/settings", () => {
     expect(json.data.taskSelfRecurring).toBe(true)
     // Field contacts stay visible for every tenant that never touched the switch.
     expect(json.data.fieldContactsEnabled).toBe(true)
+    // Pharmacy promotions too; the posting guard stays separate and closed.
+    expect(json.data.pharmacyPromotionsEnabled).toBe(true)
+    expect(json.data.pharmacyPromotionPostingEnabled).toBe(false)
+  })
+
+  it("reads a stored pharmacy promotions switch", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([
+      { key: "pharmacyPromotionsEnabled", value: false },
+    ] as any)
+
+    const json = await (await GetSettings(makeReq("/api/v1/mtm/settings"))).json()
+    expect(json.data.pharmacyPromotionsEnabled).toBe(false)
+    expect(json.data.fieldContactsEnabled).toBe(true)
   })
 
   it("reads a stored field contacts switch", async () => {
@@ -560,6 +574,49 @@ describe("PUT /api/v1/mtm/settings", () => {
     expect(prisma.mtmSetting.upsert).not.toHaveBeenCalledWith(expect.objectContaining({
       create: expect.objectContaining({ key: "fieldContactsEnabled" }),
     }))
+  })
+
+  it("lets an administrator turn pharmacy promotions off", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(requireAuth).mockResolvedValue({ orgId: ORG, role: "admin", userId: "u1" } as any)
+    vi.mocked(prisma.mtmSetting.upsert).mockResolvedValue({} as any)
+
+    const res = await UpdateSettings(makeJsonReq("/api/v1/mtm/settings", "PUT", { pharmacyPromotionsEnabled: false }))
+
+    expect(res.status).toBe(200)
+    expect(prisma.mtmSetting.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      create: expect.objectContaining({ key: "pharmacyPromotionsEnabled", value: false }),
+    }))
+  })
+
+  it.each([false, true])("silently ignores the pharmacy promotions switch (%s) from a manager", async (value) => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(requireAuth).mockResolvedValue({ orgId: ORG, role: "manager", userId: "u2" } as any)
+    vi.mocked(prisma.mtmSetting.upsert).mockResolvedValue({} as any)
+
+    const res = await UpdateSettings(makeJsonReq("/api/v1/mtm/settings", "PUT", {
+      gpsInterval: 20,
+      fieldContactsEnabled: value,
+      pharmacyPromotionsEnabled: value,
+    }))
+
+    expect(res.status).toBe(200)
+    expect(prisma.mtmSetting.upsert).toHaveBeenCalledTimes(1)
+    for (const key of ["fieldContactsEnabled", "pharmacyPromotionsEnabled"]) {
+      expect(prisma.mtmSetting.upsert).not.toHaveBeenCalledWith(expect.objectContaining({
+        create: expect.objectContaining({ key }),
+      }))
+    }
+  })
+
+  it("rejects a non-boolean pharmacy promotions switch", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(requireAuth).mockResolvedValue({ orgId: ORG, role: "admin", userId: "u1" } as any)
+
+    const res = await UpdateSettings(makeJsonReq("/api/v1/mtm/settings", "PUT", { pharmacyPromotionsEnabled: "no" }))
+
+    expect(res.status).toBe(400)
+    expect(prisma.mtmSetting.upsert).not.toHaveBeenCalled()
   })
 
   it("rejects a non-boolean field contacts switch", async () => {

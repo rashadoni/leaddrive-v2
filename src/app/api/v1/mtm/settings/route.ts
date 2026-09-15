@@ -9,7 +9,9 @@ import { isValidTimezone } from "@/lib/timezone"
 import { coerceMtmContactRequiredFields } from "@/lib/mtm/contact-required-fields"
 import { parseMtmRouteTargetTypes } from "@/lib/mtm/route-target-types"
 
-const FIELD_CONTACTS_TOGGLE_ROLES = ["admin", "superadmin"]
+const MODULE_TOGGLE_ROLES = ["admin", "superadmin"]
+// Whole-feature visibility switches. Only an administrator changes them.
+const MODULE_TOGGLE_KEYS = ["fieldContactsEnabled", "pharmacyPromotionsEnabled"] as const
 
 export const GET = withRls(async (_req: NextRequest, { orgId }) => {
   try {
@@ -49,11 +51,17 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
     // always carries the key: drop it silently instead of refusing the save.
     // Comparing with the stored value would 403 a manager whose page predates
     // an administrator's change, and would still decide nothing.
-    if (body.fieldContactsEnabled !== undefined && !FIELD_CONTACTS_TOGGLE_ROLES.includes(auth.role)) {
-      delete body.fieldContactsEnabled
-    }
-    if (body.fieldContactsEnabled !== undefined && typeof body.fieldContactsEnabled !== "boolean") {
-      return NextResponse.json({ error: "Field contacts visibility must be a boolean" }, { status: 400 })
+    for (const key of MODULE_TOGGLE_KEYS) {
+      if (body[key] !== undefined && !MODULE_TOGGLE_ROLES.includes(auth.role)) {
+        delete body[key]
+      }
+      if (body[key] !== undefined && typeof body[key] !== "boolean") {
+        return NextResponse.json({
+          error: key === "fieldContactsEnabled"
+            ? "Field contacts visibility must be a boolean"
+            : "Pharmacy promotions visibility must be a boolean",
+        }, { status: 400 })
+      }
     }
     if (typeof body.supportEmail === "string") body.supportEmail = body.supportEmail.trim()
     if (typeof body.supportPhone === "string") body.supportPhone = body.supportPhone.trim()

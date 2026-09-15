@@ -444,6 +444,21 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
     expect(directions).toContain("PHARMACY")
   })
 
+  it("reports pharmacy promotions as enabled for a tenant that never configured the switch", async () => {
+    const json = await (await GET(request())).json()
+    expect(json.data.policies.pharmacyPromotionsEnabled).toBe(true)
+  })
+
+  it("reports pharmacy promotions as disabled once an administrator turns them off", async () => {
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([
+      { key: "pharmacyPromotionsEnabled", value: false },
+    ] as never)
+    const json = await (await GET(request())).json()
+    expect(json.data.policies.pharmacyPromotionsEnabled).toBe(false)
+    // Independent of the contacts switch and of route planning.
+    expect(json.data.policies).toMatchObject({ fieldContactsEnabled: true, canPlanOwnRoutes: true })
+  })
+
   it("advertises enabled attendance add-ons without claiming an enforcement policy", async () => {
     vi.mocked(resolveMobileAuth).mockResolvedValue({
       ...mobileAuth("AGENT"),

@@ -67,7 +67,9 @@ describe("field contacts organization switch", () => {
     const page = source("src/app/(dashboard)/mtm/contacts/page.tsx")
     expect(page).toMatch(/<FieldContactsGate>\s*<MtmContactExplorer \/>\s*<\/FieldContactsGate>/)
 
-    const gate = source("src/components/mtm/field-contacts-gate.tsx")
+    expect(source("src/components/mtm/field-contacts-gate.tsx"))
+      .toContain('<MtmFeatureGate feature="fieldContactsEnabled">{children}</MtmFeatureGate>')
+    const gate = source("src/components/mtm/mtm-feature-gate.tsx")
     expect(gate).toContain("if (enabled) return <>{children}</>")
     expect(gate).toContain('href="/mtm/settings"')
     expect(gate).not.toContain("notFound")
@@ -77,7 +79,7 @@ describe("field contacts organization switch", () => {
       for (const key of ["title", "body", "openSettings", "askAdmin"]) {
         expect(typeof messages.mtmFieldContactsDisabled?.[key], `${locale} ${key}`).toBe("string")
       }
-      for (const key of ["groupFieldContacts", "lblFieldContacts", "hintFieldContacts"]) {
+      for (const key of ["groupModules", "lblFieldContacts", "hintFieldContacts"]) {
         expect(typeof messages.mtmSettingsPage?.[key], `${locale} ${key}`).toBe("string")
       }
     }
@@ -88,12 +90,14 @@ describe("field contacts organization switch", () => {
   })
 
   it("holds a neutral placeholder until the switch is known", () => {
-    const gate = source("src/components/mtm/field-contacts-gate.tsx")
+    const gate = source("src/components/mtm/mtm-feature-gate.tsx")
     const skeleton = gate.indexOf("if (!ready)")
     const children = gate.indexOf("if (enabled) return <>{children}</>")
     expect(skeleton).toBeGreaterThan(-1)
     expect(children).toBeGreaterThan(skeleton)
-    expect(gate).toContain('data-testid="field-contacts-loading"')
+    // The shared gate builds its test ids from the feature config.
+    expect(gate).toContain('data-testid={`${config.testId}-loading`}')
+    expect(gate).toContain('fieldContactsEnabled: { namespace: "mtmFieldContactsDisabled", icon: UsersRound, testId: "field-contacts" }')
   })
 
   it("gates the contact card page with the same notice", () => {
@@ -123,7 +127,7 @@ describe("field contacts organization switch", () => {
   it("hides contact entry points on customer and week screens without touching data", () => {
     const detail = source("src/components/mtm/organization-detail.tsx")
     expect(detail).toContain("useMtmFieldContacts(session?.user)")
-    expect(detail).toContain('.filter(([section]) => fieldContactsEnabled || section !== "contacts")')
+    expect(detail).toContain('.filter(([section]) => (fieldContactsEnabled || section !== "contacts")')
     expect(detail).toContain('{fieldContactsEnabled ? <TabsContent value="contacts">')
     expect(detail).toContain("...(fieldContactsEnabled ? [[t(\"detail.contacts\")")
 

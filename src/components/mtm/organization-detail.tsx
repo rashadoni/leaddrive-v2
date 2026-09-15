@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { useMtmFieldContacts } from "@/hooks/use-mtm-org-settings"
+import { useMtmFieldContacts, useMtmPharmacyPromotions } from "@/hooks/use-mtm-org-settings"
 import { useLocale, useTranslations } from "next-intl"
 import {
   ArrowLeft,
@@ -339,6 +339,8 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
   // Organization switch: when field contacts are off the tab, its count and
   // links to contact cards disappear. Data and the section API are untouched.
   const { enabled: fieldContactsEnabled } = useMtmFieldContacts(session?.user)
+  // Same for pharmacy promotions: the tab goes, the section API stays.
+  const { enabled: pharmacyPromotionsEnabled } = useMtmPharmacyPromotions(session?.user)
   const [summary, setSummary] = useState<OrganizationSummary | null>(null)
   const [commercial, setCommercial] = useState<CommercialSummary | null>(null)
   const [coordinateVerification, setCoordinateVerification] = useState<CoordinateVerification | null>(null)
@@ -693,7 +695,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
         </div>
       </header>
 
-      <Tabs value={!fieldContactsEnabled && activeSection === "contacts" ? "details" : activeSection} onValueChange={selectSection}>
+      <Tabs value={(!fieldContactsEnabled && activeSection === "contacts") || (!pharmacyPromotionsEnabled && activeSection === "promotions") ? "details" : activeSection} onValueChange={selectSection}>
         <div className="overflow-x-auto pb-1">
           <TabsList className="h-auto min-w-max justify-start p-1">
             {([
@@ -704,7 +706,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
               ["staff", UsersRound],
               ["promotions", Megaphone],
               ["files", FileText],
-            ] as const).filter(([section]) => fieldContactsEnabled || section !== "contacts").map(([section, Icon]) => (
+            ] as const).filter(([section]) => (fieldContactsEnabled || section !== "contacts") && (pharmacyPromotionsEnabled || section !== "promotions")).map(([section, Icon]) => (
               <TabsTrigger key={section} value={section} className="min-h-10 gap-2 px-3">
                 <Icon className="h-4 w-4" />
                 {t(`detail.tabs.${section}`)}
@@ -970,7 +972,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
           </SectionFrame>
         </TabsContent>
 
-        <TabsContent value="promotions">
+        {pharmacyPromotionsEnabled ? <TabsContent value="promotions">
           <SectionFrame title={t("detail.promotionsTitle")} description={t("detail.promotionsDescription")}>
             <SectionState loading={sectionLoading === "promotions"} error={sectionError} retry={() => void loadDetailSection("promotions", true)} t={t}>
               {promotions?.length ? (
@@ -1001,7 +1003,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
               ) : <EmptySection icon={Megaphone} title={t("detail.noPromotions")} description={t("detail.noPromotionsDescription")} />}
             </SectionState>
           </SectionFrame>
-        </TabsContent>
+        </TabsContent> : null}
 
         <TabsContent value="files">
           <SectionFrame title={t("detail.filesTitle")} description={t("detail.filesDescription")}>
