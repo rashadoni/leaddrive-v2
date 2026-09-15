@@ -130,6 +130,50 @@ describe("GET /api/v1/mtm/agents", () => {
     expect(json.data.limit).toBe(50)
   })
 
+  it("returns the linked web login's email flat to a web session, without the user row", async () => {
+    // Prod 2026-09-15: the owner searched for a manager by «rashad@guven.az»,
+    // which lives only on the linked login, not on the field card.
+    mockAgentAdministrator()
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
+      { id: "a1", name: "Ramil", email: null, user: { email: "rashad@guven.az" } },
+      { id: "a2", name: "No login", email: "a2@x.az", user: null },
+    ] as any)
+    vi.mocked(prisma.mtmAgent.count).mockResolvedValue(2)
+
+    const res = await ListAgents(makeReq("/api/v1/mtm/agents"))
+    expect(res.status).toBe(200)
+    const [ramil, other] = (await res.json()).data.agents
+
+    expect(ramil.userEmail).toBe("rashad@guven.az")
+    expect(ramil).not.toHaveProperty("user")
+    expect(other.userEmail).toBeNull()
+    const select = (vi.mocked(prisma.mtmAgent.findMany).mock.calls[0][0] as any).select
+    expect(select.user).toEqual({ select: { email: true } })
+  })
+
+  it("never gives the login email to a mobile token or a session-less principal", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(prisma.mtmAgent.count).mockResolvedValue(1)
+    const rows = () => [{ id: "a1", name: "Ramil", user: { email: "rashad@guven.az" } }] as any
+
+    // Integration key / no session.
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue(rows())
+    let json = await (await ListAgents(makeReq("/api/v1/mtm/agents"))).json()
+    expect(json.data.agents[0]).not.toHaveProperty("userEmail")
+    expect((vi.mocked(prisma.mtmAgent.findMany).mock.calls[0][0] as any).select).not.toHaveProperty("user")
+
+    // Mobile JWT of a field manager.
+    vi.mocked(prisma.mtmAgent.findMany).mockClear()
+    vi.mocked(getMobileAuth).mockReturnValue({ orgId: ORG, agentId: "a1", userId: "", role: "ADMIN", email: "m@x.az", name: "M" } as any)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "a1", role: "ADMIN" } as any)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue(rows())
+    json = await (await ListAgents(makeReq("/api/v1/mtm/agents"))).json()
+    expect(json.success).toBe(true)
+    expect(json.data.agents[0]).not.toHaveProperty("userEmail")
+    expect(JSON.stringify(json)).not.toContain("rashad@guven.az")
+    expect((vi.mocked(prisma.mtmAgent.findMany).mock.calls[0][0] as any).select).not.toHaveProperty("user")
+  })
+
   it("says an agent is on a break instead of letting them fade to grey", async () => {
     // A break stops GPS by design (A7), so `lastSeenAt` goes stale on someone
     // who is simply at lunch — indistinguishable from a dead phone until the
