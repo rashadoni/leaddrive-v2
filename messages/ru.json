@@ -16072,7 +16072,9 @@
     "unitMinutes": "минуты",
     "unitMeters": "метры",
     "unitHour": "час, 0–23",
-    "unitPhotos": "количество фото"
+    "unitPhotos": "количество фото",
+    "ignoredAdminKeys": "Не сохранено параметров, которые может менять только администратор: {count}.",
+    "maxPhotosBelowPolicyMinimum": "В некоторых правилах минимум фото выше этого лимита — в приложении он будет ограничен лимитом"
   },
   "mtmKpiPolicyAdmin": {
     "title": "Утверждение формулы KPI плана и GPS",

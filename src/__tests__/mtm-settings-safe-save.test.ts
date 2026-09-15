@@ -27,6 +27,7 @@ import { MTM_SETTING_DEFAULTS } from "@/lib/mtm-settings"
 import {
   MTM_SETTING_NUMBER_RANGES,
   changedMtmSettingKeys,
+  mtmSettingValuesEqual,
   validateMtmSettingChanges,
 } from "@/lib/mtm/settings-validation"
 
@@ -86,6 +87,14 @@ describe("settings validation ranges", () => {
     expect(changedMtmSettingKeys(loaded, { a: 1, b: true, c: [{ id: "x" }] })).toEqual([])
     expect(changedMtmSettingKeys(loaded, { a: 2, b: true, c: [{ id: "y" }] })).toEqual(["a", "c"])
   })
+
+  it("ignores key order inside objects but not array order", () => {
+    const loaded = { targets: [{ id: "x", label: { az: "A", en: "B" } }, { id: "y" }] }
+    expect(changedMtmSettingKeys(loaded, { targets: [{ label: { en: "B", az: "A" }, id: "x" }, { id: "y" }] })).toEqual([])
+    expect(changedMtmSettingKeys(loaded, { targets: [{ id: "y" }, { id: "x", label: { az: "A", en: "B" } }] })).toEqual(["targets"])
+    expect(mtmSettingValuesEqual({ a: 1, b: undefined }, { a: 1 })).toBe(true)
+    expect(mtmSettingValuesEqual([1], { 0: 1 })).toBe(false)
+  })
 })
 
 describe("PUT /api/v1/mtm/settings — safe save", () => {
@@ -136,6 +145,30 @@ describe("PUT /api/v1/mtm/settings — safe save", () => {
     expect(upsertedKeys()).toEqual(["maxPhotosPerVisit"])
   })
 
+  it("accepts an old page's whole-object save that carries a stored out-of-range value unchanged", async () => {
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([
+      { key: "geofenceRadius", value: 5 },
+      { key: "lateAfterHour", value: 30 },
+    ] as never)
+    const res = await UpdateSettings(put({ ...MTM_SETTING_DEFAULTS, geofenceRadius: 5, lateAfterHour: 30, maxPhotosPerVisit: 12 }))
+    expect(res.status).toBe(200)
+    // Audit names only the real change, not ~40 untouched keys.
+    expect(writeMtmAudit).toHaveBeenCalledTimes(1)
+    expect(writeMtmAudit).toHaveBeenCalledWith(expect.objectContaining({
+      oldData: { maxPhotosPerVisit: 10 },
+      newData: expect.objectContaining({ keys: ["maxPhotosPerVisit"], maxPhotosPerVisit: 12 }),
+    }))
+    // Changing that stored value to another out-of-range value is still refused.
+    const refused = await UpdateSettings(put({ geofenceRadius: 6 }))
+    expect(refused.status).toBe(400)
+  })
+
+  it("writes no audit entry when nothing really changed", async () => {
+    const res = await UpdateSettings(put({ geofenceRadius: 100, alertLongBreak: true }))
+    expect(res.status).toBe(200)
+    expect(writeMtmAudit).not.toHaveBeenCalled()
+  })
+
   it("audits old and new values for each changed key", async () => {
     vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "geofenceRadius", value: 120 }] as never)
     await UpdateSettings(put({ geofenceRadius: 150, alertLongBreak: false }))
@@ -156,18 +189,21 @@ describe("PUT /api/v1/mtm/settings — safe save", () => {
     const res = await UpdateSettings(put({ maxPhotosPerVisit: 12, fieldContactsEnabled: value, pharmacyPromotionsEnabled: value }))
     expect(res.status).toBe(200)
     expect(upsertedKeys()).toEqual(["maxPhotosPerVisit"])
+    expect((await res.json()).data.ignoredKeys).toEqual(["fieldContactsEnabled", "pharmacyPromotionsEnabled"])
   })
 
   it("drops advanced GPS thresholds from a manager and writes them for an administrator", async () => {
     as("manager")
     const res = await UpdateSettings(put({ gpsInterval: 60, historyStopRadiusMeters: 80 }))
     expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ success: true, data: { ignoredKeys: ["gpsInterval", "historyStopRadiusMeters"] } })
     expect(prisma.mtmSetting.upsert).not.toHaveBeenCalled()
     expect(writeMtmAudit).not.toHaveBeenCalled()
 
     as("admin")
-    await UpdateSettings(put({ gpsInterval: 60, historyStopRadiusMeters: 80 }))
+    const adminRes = await UpdateSettings(put({ gpsInterval: 60, historyStopRadiusMeters: 80 }))
     expect(upsertedKeys()).toEqual(["gpsInterval", "historyStopRadiusMeters"])
+    expect((await adminRes.json()).data.ignoredKeys).toEqual([])
   })
 })
 
@@ -243,6 +279,32 @@ describe("settings page contract", () => {
     expect(page).toContain('window.confirm(tsRef.current("unsavedLeaveConfirm"))')
   })
 
+  it("guards browser Back/Forward with a same-URL history entry", () => {
+    const guard = page.slice(page.indexOf("// Browser Back/Forward while dirty"))
+    expect(guard).toContain('window.addEventListener("popstate", onPopState)')
+    expect(guard).toContain("mtmSettingsGuard: true")
+    expect(guard).toMatch(/if \(window\.confirm\(tsRef\.current\("unsavedLeaveConfirm"\)\)\) \{\s*leaving = true\s*window\.history\.back\(\)\s*\} else \{\s*armGuard\(\)/)
+    expect(guard).toContain("}, [dirty])")
+  })
+
+  it("tells a non-administrator which keys were not saved", () => {
+    expect(page).toContain('toast.warning(ts("ignoredAdminKeys", { count: ignoredKeys.length }))')
+  })
+
+  it("refreshes visit-rule warnings and the rule editor after rule-related saves", () => {
+    const save = page.slice(page.indexOf("const handleSave"), page.indexOf("const settingGroups"))
+    expect(save).toMatch(/if \("visitPoliciesEnabled" in changes \|\| "photoRequired" in changes\) \{\s*loadVisitPolicies\(\)\s*setVisitPolicyEditorKey/)
+    expect(page).toContain("<VisitPolicySettings key={visitPolicyEditorKey} />")
+  })
+
+  it("warns when the photo limit drops below a rule's required photo minimum", () => {
+    expect(page).toContain('action?.actionKey === "PHOTO" && action.mode === "REQUIRED"')
+    expect(page).toMatch(/item\.key === "maxPhotosPerVisit" && typeof settings\.maxPhotosPerVisit === "number" && policyPhotoMinimum > settings\.maxPhotosPerVisit \?/)
+    const az = JSON.parse(source("messages/az.json"))
+    expect(az.mtmSettingsPage.maxPhotosBelowPolicyMinimum)
+      .toBe("Bəzi qaydalarda minimum foto sayı bu limitdən yüksəkdir — tətbiqdə limitlə məhdudlaşdırılacaq")
+  })
+
   it("labels switches and number inputs for assistive technology", () => {
     expect(page).toContain('role="switch"')
     expect(page).toContain("aria-checked={!!settings[item.key]}")
@@ -250,7 +312,7 @@ describe("settings page contract", () => {
   })
 
   it("warns under the photo switch when visit rules exist", () => {
-    expect(page).toContain('fetch("/api/v1/mtm/visit-policies")')
+    expect(page).toContain('fetch("/api/v1/mtm/visit-policies", { cache: "no-store" })')
     expect(page).toMatch(/item\.key === "photoRequired" && activeVisitPolicies > 0 \?/)
     expect(page).toContain('ts("photoPoliciesWarning")')
   })

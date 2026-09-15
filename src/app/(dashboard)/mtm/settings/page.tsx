@@ -58,9 +58,11 @@ function stringSettingValue(value: SettingValue, fallback: string): string {
   return typeof value === "string" ? value : fallback
 }
 
-function activePolicyCount(policies: unknown, now = Date.now()): number {
-  if (!Array.isArray(policies)) return 0
-  return policies.filter((policy) => {
+type PolicySummary = { isActive?: unknown; effectiveFrom?: unknown; effectiveTo?: unknown; actions?: unknown }
+
+function activePolicies(policies: unknown, now = Date.now()): PolicySummary[] {
+  if (!Array.isArray(policies)) return []
+  return policies.filter((policy): policy is PolicySummary => {
     if (!policy || typeof policy !== "object") return false
     const row = policy as { isActive?: unknown; effectiveFrom?: unknown; effectiveTo?: unknown }
     if (row.isActive !== true) return false
@@ -69,7 +71,21 @@ function activePolicyCount(policies: unknown, now = Date.now()): number {
     if (Number.isFinite(from) && from > now) return false
     if (Number.isFinite(to) && to < now) return false
     return true
-  }).length
+  })
+}
+
+/** Highest REQUIRED photo minimum among active rules (0 when none). */
+function highestRequiredPhotoMinimum(policies: PolicySummary[]): number {
+  let highest = 0
+  for (const policy of policies) {
+    if (!Array.isArray(policy.actions)) continue
+    for (const action of policy.actions as { actionKey?: unknown; mode?: unknown; minCount?: unknown }[]) {
+      if (action?.actionKey === "PHOTO" && action.mode === "REQUIRED" && typeof action.minCount === "number") {
+        highest = Math.max(highest, action.minCount)
+      }
+    }
+  }
+  return highest
 }
 
 /**
@@ -99,6 +115,10 @@ export default function MtmSettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [activeVisitPolicies, setActiveVisitPolicies] = useState(0)
+  const [policyPhotoMinimum, setPolicyPhotoMinimum] = useState(0)
+  // Bumped after a save that changes how visit rules apply, so the rule
+  // editor below remounts and reloads (its internals stay untouched).
+  const [visitPolicyEditorKey, setVisitPolicyEditorKey] = useState(0)
   // Loading and the leave warning must not re-run when the translator's
   // identity changes; they read the latest one through this ref.
   const tsRef = useRef(ts)
@@ -127,15 +147,24 @@ export default function MtmSettingsPage() {
     loadSettings().finally(() => setLoading(false))
   }, [loadSettings])
 
-  useEffect(() => {
-    // Only the count matters: the photo switch is a fallback when no rule matches.
-    fetch("/api/v1/mtm/visit-policies")
+  // Active rules decide two warnings: the photo switch is only a fallback
+  // when no rule matches, and a rule's photo minimum above the per-visit
+  // limit is capped at that limit.
+  const loadVisitPolicies = useCallback(() => {
+    fetch("/api/v1/mtm/visit-policies", { cache: "no-store" })
       .then(async (r) => {
         const body = await r.json().catch(() => null)
-        if (r.ok && body?.success) setActiveVisitPolicies(activePolicyCount(body.data?.policies))
+        if (!r.ok || !body?.success) return
+        const active = activePolicies(body.data?.policies)
+        setActiveVisitPolicies(active.length)
+        setPolicyPhotoMinimum(highestRequiredPhotoMinimum(active))
       })
       .catch(() => undefined)
   }, [])
+
+  useEffect(() => {
+    loadVisitPolicies()
+  }, [loadVisitPolicies])
 
   const changedKeys = useMemo(() => changedMtmSettingKeys(loaded, settings), [loaded, settings])
   const hasFieldErrors = Object.keys(fieldErrors).length > 0
@@ -170,6 +199,43 @@ export default function MtmSettingsPage() {
       document.removeEventListener("click", onLinkClick, true)
     }
   }, [])
+
+  // Browser Back/Forward while dirty: a same-URL guard entry is pushed on top
+  // of this page, so Back first lands on this very page (the router sees no
+  // URL change) and we can ask. Confirm → step back once more for real;
+  // cancel → re-arm the guard. Pushing an entry also drops the forward stack,
+  // so Forward cannot leave unasked. When the page becomes clean again the
+  // guard entry is popped. Programmatic router.push (command palette) is not
+  // intercepted — beforeunload does not fire for it and Next has no hook.
+  useEffect(() => {
+    if (!dirty) return
+    let leaving = false
+    let guardOnTop = true
+    const armGuard = () => {
+      window.history.pushState({ ...(window.history.state ?? {}), mtmSettingsGuard: true }, "", window.location.href)
+      guardOnTop = true
+    }
+    armGuard()
+    const onPopState = () => {
+      if (leaving) return
+      guardOnTop = false
+      if (window.confirm(tsRef.current("unsavedLeaveConfirm"))) {
+        leaving = true
+        window.history.back()
+      } else {
+        armGuard()
+      }
+    }
+    window.addEventListener("popstate", onPopState)
+    return () => {
+      window.removeEventListener("popstate", onPopState)
+      // Saved or cancelled while still on the page: remove our extra entry.
+      // On unmount after a confirmed navigation dirtyRef is still true.
+      if (guardOnTop && !leaving && !dirtyRef.current && window.history.state?.mtmSettingsGuard) {
+        window.history.back()
+      }
+    }
+  }, [dirty])
 
   const updateSetting = (key: string, value: SettingValue) => {
     setSettings((prev) => ({ ...prev, [key]: value }))
@@ -252,6 +318,12 @@ export default function MtmSettingsPage() {
         if (typeof value === "boolean") moduleSwitches[key] = value
       }
       if (Object.keys(moduleSwitches).length > 0) notifyMtmSettingsChanged(moduleSwitches)
+      if ("visitPoliciesEnabled" in changes || "photoRequired" in changes) {
+        loadVisitPolicies()
+        setVisitPolicyEditorKey((value) => value + 1)
+      }
+      const ignoredKeys = Array.isArray(body?.data?.ignoredKeys) ? body.data.ignoredKeys as string[] : []
+      if (ignoredKeys.length > 0) toast.warning(ts("ignoredAdminKeys", { count: ignoredKeys.length }))
       // Saved even if the reload below fails, so the bar stops saying "unsaved".
       setLoaded((prev) => ({ ...prev, ...changes }))
       // Show what the server now holds, including keys another tab changed.
@@ -472,6 +544,12 @@ export default function MtmSettingsPage() {
             renderNumber(item.key, item.labelKey, item.unitKey ?? "unitMinutes", disabled)
           )}
         </div>
+        {item.key === "maxPhotosPerVisit" && typeof settings.maxPhotosPerVisit === "number" && policyPhotoMinimum > settings.maxPhotosPerVisit ? (
+          <div data-testid="max-photos-policy-warning" role="status" className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span>{ts("maxPhotosBelowPolicyMinimum")}</span>
+          </div>
+        ) : null}
         {item.key === "photoRequired" && activeVisitPolicies > 0 ? (
           <div data-testid="photo-required-policy-warning" className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
@@ -579,7 +657,7 @@ export default function MtmSettingsPage() {
       <CoveragePolicyAdmin />
       <KpiPolicyAdmin />
       <ScoringFormulaSettings />
-      <VisitPolicySettings />
+      <VisitPolicySettings key={visitPolicyEditorKey} />
     </div>
   )
 }

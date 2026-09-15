@@ -91,13 +91,37 @@ export function validateMtmSettingChanges(
 }
 
 /**
+ * Structural equality for setting values: key order inside objects does not
+ * matter (an array of route target types re-serialized with its keys in
+ * another order is the same value); array order does.
+ */
+export function mtmSettingValuesEqual(left: unknown, right: unknown): boolean {
+  if (Object.is(left, right)) return true
+  if (Array.isArray(left) || Array.isArray(right)) {
+    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false
+    return left.every((item, index) => mtmSettingValuesEqual(item, right[index]))
+  }
+  if (left && right && typeof left === "object" && typeof right === "object") {
+    const leftRecord = left as Record<string, unknown>
+    const rightRecord = right as Record<string, unknown>
+    // An absent key and an explicit undefined are the same JSON.
+    const leftKeys = Object.keys(leftRecord).filter((key) => leftRecord[key] !== undefined)
+    const rightKeys = Object.keys(rightRecord).filter((key) => rightRecord[key] !== undefined)
+    if (leftKeys.length !== rightKeys.length) return false
+    return leftKeys.every((key) => Object.prototype.hasOwnProperty.call(rightRecord, key)
+      && mtmSettingValuesEqual(leftRecord[key], rightRecord[key]))
+  }
+  return false
+}
+
+/**
  * Keys whose value differs from the last values loaded from the server.
- * Compared structurally so an array edited back to its loaded shape is not
- * "changed".
+ * Compared with {@link mtmSettingValuesEqual}, so an array edited back to its
+ * loaded shape is not "changed".
  */
 export function changedMtmSettingKeys(
   loaded: Record<string, unknown>,
   current: Record<string, unknown>,
 ): string[] {
-  return Object.keys(current).filter((key) => JSON.stringify(current[key]) !== JSON.stringify(loaded[key]))
+  return Object.keys(current).filter((key) => !mtmSettingValuesEqual(current[key], loaded[key]))
 }

@@ -16068,7 +16068,9 @@
     "unitMinutes": "dəqiqə",
     "unitMeters": "metr",
     "unitHour": "saat, 0–23",
-    "unitPhotos": "foto sayı"
+    "unitPhotos": "foto sayı",
+    "ignoredAdminKeys": "Yalnız administratorun dəyişə bildiyi {count} parametr saxlanılmadı.",
+    "maxPhotosBelowPolicyMinimum": "Bəzi qaydalarda minimum foto sayı bu limitdən yüksəkdir — tətbiqdə limitlə məhdudlaşdırılacaq"
   },
   "mtmKpiPolicyAdmin": {
     "title": "Plan və GPS KPI formulasının təsdiqi",

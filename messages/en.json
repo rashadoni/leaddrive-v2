@@ -16072,7 +16072,9 @@
     "unitMinutes": "minutes",
     "unitMeters": "meters",
     "unitHour": "hour, 0–23",
-    "unitPhotos": "number of photos"
+    "unitPhotos": "number of photos",
+    "ignoredAdminKeys": "Settings only an administrator can change were not saved: {count}.",
+    "maxPhotosBelowPolicyMinimum": "Some rules require more photos than this limit — the app will cap them at the limit"
   },
   "mtmKpiPolicyAdmin": {
     "title": "Plan and GPS KPI formula approval",
