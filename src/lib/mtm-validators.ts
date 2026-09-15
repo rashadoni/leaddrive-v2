@@ -544,6 +544,8 @@ export const RouteUpdateSchema = z.object({
   status: MtmRouteStatus.optional(),
   notes: longString,
   points: z.array(RoutePointInput).max(200).optional(),
+  /** Published edits only: a manager's reason to accept planning conflicts. */
+  overrideReason: z.string().trim().min(3).max(1000).optional(),
 }).superRefine((value, ctx) => {
   validateRouteOwnership(value, ctx, false)
   validateRoutePoints(value, ctx)

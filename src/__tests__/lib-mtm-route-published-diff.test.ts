@@ -1,7 +1,11 @@
+import { Prisma } from "@prisma/client"
 import { describe, expect, it, vi } from "vitest"
 import {
   applyPublishedRoutePointDiff,
   diffPublishedRoutePoints,
+  isRetryableRouteTransactionConflict,
+  lockPublishedRoutePoints,
+  samePublishedRoutePointDiff,
   PublishedRoutePointsChangedError,
   publishedRouteResultPoints,
   toPublishedRouteExistingPoint,
@@ -180,7 +184,8 @@ describe("applyPublishedRoutePointDiff", () => {
       data: { deletedAt: now, version: { increment: 1 } },
     })
     expect(tx.mtmRoutePoint.updateMany).toHaveBeenNthCalledWith(2, expect.objectContaining({
-      where: expect.objectContaining({ id: "p2" }),
+      // An unlocked stop is moved only while it is still without field history.
+      where: expect.objectContaining({ id: "p2", status: "PENDING", visits: { none: { deletedAt: null } } }),
       data: { orderIndex: 0, plannedTime: null, version: { increment: 1 } },
     }))
     expect(tx.mtmRoutePoint.createMany).toHaveBeenCalledWith({
@@ -201,3 +206,85 @@ describe("applyPublishedRoutePointDiff", () => {
     expect(tx.mtmRoutePoint.createMany).not.toHaveBeenCalled()
   })
 })
+
+describe("lockPublishedRoutePoints", () => {
+  function lockClient(freshIds: string[]) {
+    const calls: string[] = []
+    const tx = {
+      $executeRaw: vi.fn((strings: TemplateStringsArray, ...values: unknown[]) => {
+        calls.push(`advisory:${String(values[0])}`)
+        return Promise.resolve(1)
+      }),
+      $queryRaw: vi.fn((strings: TemplateStringsArray) => {
+        calls.push(strings.join("?").includes("FOR UPDATE") ? "row-lock" : "query")
+        return Promise.resolve([])
+      }),
+      mtmRoutePoint: {
+        findMany: vi.fn(() => {
+          calls.push("fresh-read")
+          return Promise.resolve(freshIds.map((id, index) => ({
+            id,
+            customerId: `c-${id}`,
+            contactId: null,
+            orderIndex: index,
+            plannedTime: null,
+            status: "PENDING",
+            _count: { visits: id === "p1" ? 1 : 0, changeRequests: 0 },
+          })))
+        }),
+      },
+    }
+    return { tx, calls }
+  }
+
+  it("takes check-in's advisory lock per point in sorted order, then row locks, then reads in a new statement", async () => {
+    const { tx, calls } = lockClient(["p3", "p1", "p2"])
+
+    const points = await lockPublishedRoutePoints(tx as never, {
+      organizationId: "org-1",
+      routeId: "r1",
+      pointIds: ["p3", "p1", "p2", "p1"],
+    })
+
+    expect(calls).toEqual([
+      "advisory:mtm-route-point-check-in:org-1:p1",
+      "advisory:mtm-route-point-check-in:org-1:p2",
+      "advisory:mtm-route-point-check-in:org-1:p3",
+      "row-lock",
+      "fresh-read",
+    ])
+    const rowLockSql = (tx.$queryRaw.mock.calls[0]![0] as TemplateStringsArray).join("?")
+    expect(rowLockSql).toMatch(/ORDER BY "id"\s+FOR UPDATE/)
+    // The visit that committed while we waited is visible in the fresh read.
+    expect(points?.find((point) => point.id === "p1")).toMatchObject({ visitCount: 1 })
+  })
+
+  it("returns null when a stop appeared after the route was read", async () => {
+    const { tx } = lockClient(["p1", "p2", "p9"])
+    await expect(lockPublishedRoutePoints(tx as never, { organizationId: "org-1", routeId: "r1", pointIds: ["p1", "p2"] }))
+      .resolves.toBeNull()
+  })
+
+  it("compares a pre-lock diff with the locked one", () => {
+    const before = diffPublishedRoutePoints([point("p1", "c1", 0), point("p2", "c2", 1)], [{ customerId: "c2" }])
+    const same = diffPublishedRoutePoints([point("p1", "c1", 0), point("p2", "c2", 1)], [{ customerId: "c2" }])
+    const moved = diffPublishedRoutePoints([point("p1", "c1", 1), point("p2", "c2", 0)], [{ customerId: "c2" }])
+    if (!before.ok || !same.ok || !moved.ok) throw new Error("diff refused")
+    expect(samePublishedRoutePointDiff(before, same)).toBe(true)
+    expect(samePublishedRoutePointDiff(before, moved)).toBe(false)
+  })
+})
+
+describe("isRetryableRouteTransactionConflict", () => {
+  it("recognizes deadlocks and serialization failures, not other errors", () => {
+    const known = (code: string, meta?: Record<string, unknown>) =>
+      new Prisma.PrismaClientKnownRequestError("boom", { code, clientVersion: "6", meta })
+    expect(isRetryableRouteTransactionConflict(known("P2034"))).toBe(true)
+    expect(isRetryableRouteTransactionConflict(known("P2010", { code: "40P01" }))).toBe(true)
+    expect(isRetryableRouteTransactionConflict(new Error("ERROR: deadlock detected"))).toBe(true)
+    expect(isRetryableRouteTransactionConflict(new Error("could not serialize access due to concurrent update"))).toBe(true)
+    expect(isRetryableRouteTransactionConflict(known("P2002"))).toBe(false)
+    expect(isRetryableRouteTransactionConflict(new Error("database unavailable"))).toBe(false)
+  })
+})
+

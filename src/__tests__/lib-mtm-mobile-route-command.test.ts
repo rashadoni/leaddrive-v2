@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({
@@ -593,6 +594,8 @@ describe("UPDATE_PUBLISHED: changing a published route from Route Field", () => 
   }
 
   function givenRoute(status: string, points: ReturnType<typeof stop>[], version = 4) {
+    // The diff reads points again after taking the point locks.
+    vi.mocked(prisma.mtmRoutePoint.findMany).mockResolvedValue(points as never)
     vi.mocked(prisma.mtmRoute.findFirst)
       .mockResolvedValueOnce({ id: "route-1", date: routeDate, agentId: "agent-1" } as never)
       .mockResolvedValueOnce({
@@ -622,6 +625,7 @@ describe("UPDATE_PUBLISHED: changing a published route from Route Field", () => 
   }
 
   beforeEach(() => {
+    vi.mocked(prisma.mtmRoutePoint.findMany).mockResolvedValue([] as never)
     vi.mocked(prisma.mtmRouteNotificationOutbox.upsert).mockResolvedValue({ id: "outbox-1" } as never)
     vi.mocked(prisma.mtmRoutePoint.updateMany).mockResolvedValue({ count: 1 } as never)
   })
@@ -904,6 +908,82 @@ describe("UPDATE_PUBLISHED: changing a published route from Route Field", () => 
     })).resolves.toMatchObject({ responseStatus: 409, replayed: false, result: { code: "ROUTE_VERSION_CONFLICT" } })
     expect(prisma.mtmMobileRouteCommandReceipt.create).not.toHaveBeenCalled()
     expect(prisma.mtmRouteNotificationOutbox.upsert).not.toHaveBeenCalled()
+  })
+
+  it("takes check-in's point locks in sorted order and re-reads points before touching the route row", async () => {
+    givenRoute("PLANNED", [stop("p3", "c3", 0), stop("p1", "c1", 1), stop("p2", "c2", 2)])
+
+    await expect(executeMtmMobileRouteCommand({
+      auth,
+      deviceId: "rf-device-1",
+      command: updatePublished([{ customerId: "c1" }, { customerId: "c3" }]),
+      now,
+    })).resolves.toMatchObject({ responseStatus: 200 })
+
+    const executeCalls = vi.mocked(prisma.$executeRaw).mock.calls
+    const pointLockIndexes = executeCalls
+      .map((call, index) => ({ key: String(call[1]), index }))
+      .filter((call) => call.key.startsWith("mtm-route-point-check-in:"))
+    expect(pointLockIndexes.map((call) => call.key)).toEqual([
+      "mtm-route-point-check-in:org-1:p1",
+      "mtm-route-point-check-in:org-1:p2",
+      "mtm-route-point-check-in:org-1:p3",
+    ])
+    const lastPointLock = vi.mocked(prisma.$executeRaw).mock.invocationCallOrder[pointLockIndexes.at(-1)!.index]!
+    const rowLock = vi.mocked(prisma.$queryRaw).mock.invocationCallOrder[0]!
+    const freshRead = vi.mocked(prisma.mtmRoutePoint.findMany).mock.invocationCallOrder[0]!
+    const routeWrite = vi.mocked(prisma.mtmRoute.updateMany).mock.invocationCallOrder[0]!
+    const firstPointWrite = vi.mocked(prisma.mtmRoutePoint.updateMany).mock.invocationCallOrder[0]!
+    expect(lastPointLock).toBeLessThan(rowLock)
+    expect(rowLock).toBeLessThan(freshRead)
+    expect(freshRead).toBeLessThan(routeWrite)
+    expect(routeWrite).toBeLessThan(firstPointWrite)
+  })
+
+  it("decides locks from the post-lock read: a check-in that committed while waiting blocks removal", async () => {
+    givenRoute("PLANNED", [stop("p1", "c1", 0), stop("p2", "c2", 1)])
+    // The route read saw no visit; the fresh read after the locks does.
+    vi.mocked(prisma.mtmRoutePoint.findMany).mockResolvedValue([
+      stop("p1", "c1", 0, { visits: 1 }),
+      stop("p2", "c2", 1),
+    ] as never)
+
+    await expect(executeMtmMobileRouteCommand({
+      auth,
+      deviceId: "rf-device-1",
+      command: updatePublished([{ customerId: "c2" }]),
+      now,
+    })).resolves.toMatchObject({ responseStatus: 409, result: { code: "ROUTE_VISITED_POINTS_LOCKED", pointIds: ["p1"] } })
+    expect(prisma.mtmRoute.updateMany).not.toHaveBeenCalled()
+    expect(prisma.mtmRoutePoint.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("answers a version conflict when a stop appeared between the route read and the locks", async () => {
+    givenRoute("PLANNED", [stop("p1", "c1", 0)])
+    vi.mocked(prisma.mtmRoutePoint.findMany).mockResolvedValue([stop("p1", "c1", 0), stop("p9", "c9", 1)] as never)
+
+    await expect(executeMtmMobileRouteCommand({
+      auth,
+      deviceId: "rf-device-1",
+      command: updatePublished([{ customerId: "c1" }]),
+      now,
+    })).resolves.toMatchObject({ responseStatus: 409, result: { code: "ROUTE_VERSION_CONFLICT" } })
+    expect(prisma.mtmRoute.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("maps a Postgres deadlock to a retryable version conflict instead of 500", async () => {
+    givenRoute("PLANNED", [stop("p1", "c1", 0)])
+    vi.mocked(prisma.mtmRoute.updateMany).mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError("deadlock detected", { code: "P2034", clientVersion: "6" }),
+    )
+
+    await expect(executeMtmMobileRouteCommand({
+      auth,
+      deviceId: "rf-device-1",
+      command: updatePublished([{ customerId: "c1" }, { customerId: "c2" }]),
+      now,
+    })).resolves.toMatchObject({ responseStatus: 409, replayed: false, result: { code: "ROUTE_VERSION_CONFLICT" } })
+    expect(prisma.mtmMobileRouteCommandReceipt.create).not.toHaveBeenCalled()
   })
 
   it("replays a receipt without a second write or a second notification", async () => {

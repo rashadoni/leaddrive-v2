@@ -20,11 +20,12 @@ import {
   applyPublishedRoutePointDiff,
   diffPublishedRoutePoints,
   isPublishedRoutePointLocked,
+  isRetryableRouteTransactionConflict,
+  lockPublishedRoutePoints,
   PublishedRoutePointsChangedError,
   publishedRouteAuditStops,
   publishedRoutePointDiffSelect,
   publishedRouteResultPoints,
-  toPublishedRouteExistingPoint,
 } from "@/lib/mtm/route-published-diff"
 import {
   mtmRouteTargetKey,
@@ -816,7 +817,21 @@ async function applyUpdatePublished(
   const requestedPoints = input.command.payload.points
   if (requestedPoints.length === 0) return conflict("ROUTE_EMPTY", "A route must contain at least one stop")
 
-  const existingPoints = route.points.map(toPublishedRouteExistingPoint)
+  // Point locks (check-in's own lock) come before any route write and before
+  // the diff reads visits: see lockPublishedRoutePoints for the race and the
+  // lock order. The diff is computed only from this fresh read.
+  const existingPoints = await lockPublishedRoutePoints(tx, {
+    organizationId: input.auth.orgId,
+    routeId: route.id,
+    pointIds: route.points.map((point) => point.id),
+  })
+  if (!existingPoints) {
+    return conflict(
+      "ROUTE_VERSION_CONFLICT",
+      "Route stops changed while saving. Reload the route before saving again.",
+      { currentVersion: route.version, status: route.status },
+    )
+  }
   const diff = diffPublishedRoutePoints(existingPoints, requestedPoints)
   if (!diff.ok) {
     return diff.code === "ROUTE_VISITED_POINTS_LOCKED"
@@ -963,7 +978,7 @@ async function applyUpdatePublished(
       version: route.version,
       publishedVersion: route.publishedVersion,
       totalPoints: route.totalPoints,
-      stops: publishedRouteAuditStops(route.points),
+      stops: publishedRouteAuditStops(existingPoints),
     },
     newData: {
       status: route.status,
@@ -1215,7 +1230,7 @@ export async function executeMtmMobileRouteCommand(
       timeout: MOBILE_ROUTE_COMMAND_TRANSACTION_TIMEOUT_MS,
     })
   } catch (error) {
-    if (error instanceof PublishedRoutePointsChangedError) {
+    if (error instanceof PublishedRoutePointsChangedError || isRetryableRouteTransactionConflict(error)) {
       // Rolled back, nothing pinned: the client reloads and retries with a
       // new operation ID or the same one.
       return {

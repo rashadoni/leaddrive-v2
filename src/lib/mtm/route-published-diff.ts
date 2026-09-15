@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client"
+import { Prisma } from "@prisma/client"
 
 /**
  * Changing a route that is already published (PLANNED or IN_PROGRESS).
@@ -241,12 +241,104 @@ export class PublishedRoutePointsChangedError extends Error {
 }
 
 type PointWriteClient = Pick<Prisma.TransactionClient, "mtmRoutePoint">
+type PointLockClient = Pick<Prisma.TransactionClient, "$executeRaw" | "$queryRaw" | "mtmRoutePoint">
+
+/** The advisory key check-in takes (src/lib/mtm/visit-requirements.ts). */
+export function mtmRoutePointCheckInLockKey(organizationId: string, routePointId: string): string {
+  return `mtm-route-point-check-in:${organizationId}:${routePointId}`
+}
 
 /**
- * Apply an accepted diff. Removal is fenced in SQL on the same facts the diff
- * trusted (PENDING, no visit, no pending change request), so a concurrent
- * check-in cannot be erased: the count mismatch throws and the caller's
- * transaction rolls back.
+ * Lock every current point of the route against check-in, then read the
+ * points again.
+ *
+ * Why this is needed. A check-in never writes the point row: the web
+ * check-in (POST /api/v1/mtm/visits) takes the per-point advisory lock plus
+ * SELECT … FOR UPDATE on the point and inserts a visit; mobile sync push takes
+ * the row lock with a no-op UPDATE and inserts a visit. Under READ COMMITTED a
+ * removal guarded only by `visits: none` evaluates its NOT EXISTS subquery on
+ * the statement snapshot, which cannot see a visit inserted by a transaction
+ * that commits while the UPDATE waits — the visit would end up on a
+ * soft-deleted stop.
+ *
+ * What this does. (1) The same advisory lock as check-in, one per point in
+ * sorted id order, so two editors and a check-in never wait on each other in
+ * a cycle. (2) Row locks with SELECT … FOR UPDATE ORDER BY id, which also
+ * serializes with the sync-push no-op UPDATE. (3) A NEW statement reads status,
+ * visits and pending change requests: under READ COMMITTED it takes a fresh
+ * snapshot, so every check-in that held a lock before us is visible, and every
+ * later check-in re-reads the point after our commit and finds it deleted.
+ *
+ * Callers take these locks BEFORE updating the route row. Check-in holds the
+ * point locks while it moves the route PLANNED → IN_PROGRESS, so taking the
+ * route row first would invert the order and deadlock.
+ *
+ * Returns null when a point appeared or disappeared since `pointIds` was
+ * read: the caller then answers a version conflict instead of editing an
+ * unlocked stop.
+ */
+export async function lockPublishedRoutePoints(
+  tx: PointLockClient,
+  input: { organizationId: string; routeId: string; pointIds: readonly string[] },
+): Promise<PublishedRouteExistingPoint[] | null> {
+  const ids = [...new Set(input.pointIds)].sort()
+  for (const id of ids) {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${mtmRoutePointCheckInLockKey(input.organizationId, id)}, 0))`
+  }
+  if (ids.length > 0) {
+    await tx.$queryRaw`
+      SELECT "id"
+      FROM "mtm_route_points"
+      WHERE "organizationId" = ${input.organizationId}
+        AND "id" IN (${Prisma.join(ids)})
+      ORDER BY "id"
+      FOR UPDATE
+    `
+  }
+  const fresh = await tx.mtmRoutePoint.findMany({
+    where: { routeId: input.routeId, organizationId: input.organizationId, deletedAt: null },
+    select: publishedRoutePointDiffSelect,
+    orderBy: { orderIndex: "asc" },
+  })
+  const freshIds = fresh.map((point) => point.id).sort()
+  if (freshIds.length !== ids.length || freshIds.some((id, index) => id !== ids[index])) return null
+  return fresh.map(toPublishedRouteExistingPoint)
+}
+
+/** Same kept/removed/added decision, used to confirm a pre-lock diff. */
+export function samePublishedRoutePointDiff(
+  left: Extract<PublishedRoutePointDiff, { ok: true }>,
+  right: Extract<PublishedRoutePointDiff, { ok: true }>,
+): boolean {
+  const shape = (diff: Extract<PublishedRoutePointDiff, { ok: true }>) => JSON.stringify({
+    kept: diff.kept.map((point) => [point.id, point.orderIndex, point.plannedTime?.getTime() ?? null, point.changed, point.locked]),
+    removed: diff.removed.map((point) => point.id).sort(),
+    added: diff.added.map((point) => [point.customerId, point.contactId, point.orderIndex, point.plannedTime?.getTime() ?? null]),
+  })
+  return shape(left) === shape(right)
+}
+
+/**
+ * Postgres deadlock (40P01) or serialization failure (40001). Both are safe
+ * to retry after a reload; answering 500 would tell Route Field the server is
+ * down.
+ */
+export function isRetryableRouteTransactionConflict(error: unknown): boolean {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error.code === "P2034") return true
+    const meta = error.meta as Record<string, unknown> | undefined
+    if (meta && (meta.code === "40P01" || meta.code === "40001")) return true
+  }
+  const message = error instanceof Error ? error.message : ""
+  return /\b(40P01|40001)\b|deadlock detected|could not serialize access/i.test(message)
+}
+
+/**
+ * Apply an accepted diff computed from `lockPublishedRoutePoints` rows. The
+ * SQL fences repeat the facts the diff trusted (PENDING, no visit, no pending
+ * change request); they are a second line behind the locks, not a substitute
+ * for them (see lockPublishedRoutePoints). A count mismatch throws and the
+ * caller's transaction rolls back.
  */
 export async function applyPublishedRoutePointDiff(
   tx: PointWriteClient,
@@ -281,6 +373,9 @@ export async function applyPublishedRoutePointDiff(
         routeId: input.routeId,
         organizationId: input.organizationId,
         deletedAt: null,
+        // An unlocked stop may be moved or retimed only while it is still
+        // without field history; a locked stop only changes position.
+        ...(point.locked ? {} : { status: "PENDING" as const, visits: { none: { deletedAt: null } } }),
       },
       data: {
         orderIndex: point.orderIndex,

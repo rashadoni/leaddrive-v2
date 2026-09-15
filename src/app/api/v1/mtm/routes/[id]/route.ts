@@ -9,17 +9,29 @@ import { RouteUpdateSchema, parseBody } from "@/lib/mtm-validators"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { MTM_ROUTE_AUDIT_ACTION } from "@/lib/mtm/route-audit"
 import {
+  acquireMtmRouteScheduleLocks,
   buildMtmRouteDedupeKey,
   detectMtmRouteInternalScheduleConflicts,
+  detectMtmRoutePlanningSignals,
   normalizeMtmRouteAssignments,
+  type MtmRouteConflict,
+  type MtmRoutePlanningSignals,
 } from "@/lib/mtm/route-planning"
+import {
+  appendMtmRouteChangeEvidenceOutcome,
+  attachMtmRouteChangeEvidence,
+  createMtmRouteChangeEvidence,
+} from "@/lib/mtm/route-change-evidence"
 import {
   applyPublishedRoutePointDiff,
   diffPublishedRoutePoints,
+  isRetryableRouteTransactionConflict,
+  lockPublishedRoutePoints,
   PublishedRoutePointsChangedError,
   publishedRouteAuditStops,
   publishedRoutePointDiffSelect,
   publishedRouteResultPoints,
+  samePublishedRoutePointDiff,
   toPublishedRouteExistingPoint,
   type PublishedRoutePointDiff,
 } from "@/lib/mtm/route-published-diff"
@@ -168,6 +180,12 @@ type RoutePointRow = {
 }
 
 class RouteVersionConflict extends Error {}
+
+class RouteScheduleConflict extends Error {
+  constructor(readonly conflicts: MtmRouteConflict[]) {
+    super("Route conflicts require manager approval")
+  }
+}
 
 function forbidden() {
   return NextResponse.json({ error: "Forbidden", code: "MTM_ROUTE_SCOPE_DENIED" }, { status: 403 })
@@ -441,10 +459,10 @@ export const PUT = withRouteFieldRlsAuth("write", async (req, auth, { params }: 
       // The route builder resends the whole form. The date, the employee and
       // the crew of a published route are what the field already acts on;
       // moving them is a new route, not an edit.
-      // Agent sets, not roles: assignments are not rewritten on this path, so
-      // a form that cannot express OBSERVER must not block the edit.
-      const assignmentSignature = (items: ReadonlyArray<{ agentId: string }>) =>
-        [...new Set(items.map((item) => item.agentId))].sort().join(",")
+      // Working crew only (PRIMARY + PARTICIPANT): the builder never loads or
+      // sends OBSERVER rows, and assignments are not rewritten on this path.
+      const assignmentSignature = (items: ReadonlyArray<{ agentId: string; role: string }>) =>
+        [...new Set(items.filter((item) => item.role !== "OBSERVER").map((item) => item.agentId))].sort().join(",")
       if (
         primaryAgentChanged
         || routeDateChanged
@@ -499,7 +517,11 @@ export const PUT = withRouteFieldRlsAuth("write", async (req, auth, { params }: 
       validateMtmRouteTargets(prisma, {
         organizationId: auth.orgId,
         routeDate,
-        points: pointInput,
+        // Stops with field history are not re-validated (same as Route Field):
+        // a customer deactivated after the visit must not freeze the day.
+        points: publishedDiff
+          ? pointInput.filter((_, index) => !publishedDiff?.kept.some((point) => point.orderIndex === index && point.locked))
+          : pointInput,
       }),
       auth.principal === "mobile"
         ? validateMtmMobileRouteTargetEligibility(prisma, {
@@ -592,7 +614,77 @@ export const PUT = withRouteFieldRlsAuth("write", async (req, auth, { params }: 
     if (body.notes !== undefined) data.notes = body.notes ?? null
     if (body.points !== undefined) data.totalPoints = body.points.length
 
-    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const planningSignals = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      let signals: MtmRoutePlanningSignals | null = null
+      if (isPublishedEdit && publishedDiff && body.points) {
+        const crewAgentIds = [...new Set([
+          before.agentId,
+          ...before.assignments.map((assignment: RouteAssignmentRow) => assignment.agentId),
+        ])].sort()
+        // Lock order everywhere: schedule → point (check-in's lock) → route.
+        await acquireMtmRouteScheduleLocks(tx, { organizationId: auth.orgId, date: before.date, agentIds: crewAgentIds })
+        const lockedPoints = await lockPublishedRoutePoints(tx, {
+          organizationId: auth.orgId,
+          routeId: id,
+          pointIds: before.points.map((point: { id: string }) => point.id),
+        })
+        const freshDiff = lockedPoints ? diffPublishedRoutePoints(lockedPoints, body.points) : null
+        if (!freshDiff?.ok || !samePublishedRoutePointDiff(publishedDiff, freshDiff)) {
+          throw new PublishedRoutePointsChangedError()
+        }
+
+        // The same planning check publish runs, re-read under the locks.
+        const existingRoutes = await tx.mtmRoute.findMany({
+          where: {
+            organizationId: auth.orgId,
+            id: { not: id },
+            date: before.date,
+            status: { in: ["PLANNED", "IN_PROGRESS"] },
+            deletedAt: null,
+          },
+          select: {
+            id: true,
+            status: true,
+            agentId: true,
+            assignments: { select: { agentId: true, removedAt: true } },
+            points: { select: { customerId: true, contactId: true, plannedTime: true, deletedAt: true } },
+          },
+        })
+        signals = detectMtmRoutePlanningSignals({
+          primaryAgentId: before.agentId,
+          assignments: before.assignments,
+          points: pointInput,
+        }, existingRoutes)
+        if (signals.conflicts.length > 0) {
+          if (!body.overrideReason || actor.role === "AGENT") throw new RouteScheduleConflict(signals.conflicts)
+          const now = new Date()
+          const evidence = createMtmRouteChangeEvidence({ capturedAt: now, changeType: "CONFLICT_OVERRIDE", route: before })
+          const payload = attachMtmRouteChangeEvidence({ dedupeKey, conflicts: signals.conflicts, source: "published_edit" }, evidence)
+          const completed = appendMtmRouteChangeEvidenceOutcome({
+            payload,
+            decision: "APPROVED",
+            status: "APPROVED",
+            recordedAt: now,
+            route: { ...before, version: body.expectedVersion + 1, publishedVersion: body.expectedVersion + 1 },
+            routePoint: null,
+          }) ?? payload
+          await tx.mtmRouteChangeRequest.create({
+            data: {
+              organizationId: auth.orgId,
+              routeId: id,
+              requestedByAgentId: actor.agentId ?? before.agentId,
+              changeType: "CONFLICT_OVERRIDE",
+              status: "APPROVED",
+              reason: body.overrideReason,
+              payload: completed as unknown as Prisma.InputJsonValue,
+              reviewedBy: auth.userId || null,
+              decisionComment: body.overrideReason,
+              reviewedAt: now,
+            },
+          })
+        }
+      }
+
       const updated = await tx.mtmRoute.updateMany({
         where: {
           id,
@@ -678,7 +770,8 @@ export const PUT = withRouteFieldRlsAuth("write", async (req, auth, { params }: 
           })
         }
       }
-    })
+      return signals
+    }, { maxWait: 5_000, timeout: 10_000 })
 
     await writeMtmAudit({
       organizationId: auth.orgId,
@@ -703,6 +796,8 @@ export const PUT = withRouteFieldRlsAuth("write", async (req, auth, { params }: 
           ? {
               stops: publishedRouteAuditStops(body.points),
               removedPointIds: publishedDiff.removed.map((point) => point.id),
+              coordination: planningSignals?.coordination ?? [],
+              managerOverride: Boolean(planningSignals?.conflicts.length),
             }
           : {}),
       },
@@ -714,7 +809,18 @@ export const PUT = withRouteFieldRlsAuth("write", async (req, auth, { params }: 
       data: { id, version: body.expectedVersion + 1 },
     })
   } catch (error) {
-    if (error instanceof RouteVersionConflict || error instanceof PublishedRoutePointsChangedError) {
+    if (error instanceof RouteScheduleConflict) {
+      return NextResponse.json({
+        error: error.message,
+        code: "ROUTE_CONFLICT",
+        conflicts: error.conflicts,
+      }, { status: 409 })
+    }
+    if (
+      error instanceof RouteVersionConflict
+      || error instanceof PublishedRoutePointsChangedError
+      || isRetryableRouteTransactionConflict(error)
+    ) {
       const current = await prisma.mtmRoute.findFirst({
         where: { id, organizationId: auth.orgId, deletedAt: null },
         select: { version: true, updatedAt: true, status: true },

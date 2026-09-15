@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 
@@ -51,7 +52,12 @@ function stop(id: string, customerId: string, orderIndex: number, status = "PEND
   return { id, customerId, contactId: null, orderIndex, plannedTime: null, status, _count: { visits, changeRequests } }
 }
 
-function givenRoute(status: string, points: ReturnType<typeof stop>[]) {
+function givenRoute(
+  status: string,
+  points: ReturnType<typeof stop>[],
+  assignments: Array<{ agentId: string; role: string }> = [{ agentId: "a1", role: "PRIMARY" }],
+) {
+  vi.mocked(prisma.mtmRoutePoint.findMany).mockResolvedValue(points as never)
   vi.mocked(prisma.mtmRoute.findFirst)
     .mockResolvedValueOnce({
       id: "r1",
@@ -62,7 +68,7 @@ function givenRoute(status: string, points: ReturnType<typeof stop>[]) {
       publishedVersion: 3,
       updatedAt: new Date("2026-09-15T08:00:00.000Z"),
       totalPoints: points.length,
-      assignments: [{ agentId: "a1", role: "PRIMARY" }],
+      assignments,
       points,
     } as never)
     .mockResolvedValueOnce(null as never)
@@ -86,6 +92,7 @@ beforeEach(() => {
   vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{ id: "a1", teamId: null }] as never)
   vi.mocked(prisma.mtmCustomer.findMany).mockResolvedValue([{ id: "c1" }, { id: "c2" }, { id: "c3" }] as never)
   vi.mocked(prisma.mtmRoute.updateMany).mockResolvedValue({ count: 1 } as never)
+  vi.mocked(prisma.mtmRoute.findMany).mockResolvedValue([] as never)
   vi.mocked(prisma.mtmRoutePoint.updateMany).mockResolvedValue({ count: 1 } as never)
   vi.mocked(prisma.mtmRoutePoint.createMany).mockResolvedValue({ count: 1 } as never)
   vi.mocked(prisma.mtmRouteNotificationOutbox.upsert).mockResolvedValue({ id: "outbox-1" } as never)
@@ -182,6 +189,107 @@ describe("PUT /api/v1/mtm/routes/[id] on a published route", () => {
 
     expect(res.status).toBe(409)
     expect(await res.json()).toMatchObject({ code: "ROUTE_VERSION_CONFLICT" })
+  })
+
+  it("locks points before the route row, in sorted order, and re-reads them in a new statement", async () => {
+    givenRoute("PLANNED", [stop("p2", "c2", 0), stop("p1", "c1", 1)])
+
+    const res = await put({ expectedVersion: 3, points: [{ customerId: "c1" }] })
+
+    expect(res.status).toBe(200)
+    const pointLocks = vi.mocked(prisma.$executeRaw).mock.calls
+      .map((call, index) => ({ key: String(call[1]), index }))
+      .filter((call) => call.key.startsWith("mtm-route-point-check-in:"))
+    expect(pointLocks.map((call) => call.key)).toEqual(["mtm-route-point-check-in:org-1:p1", "mtm-route-point-check-in:org-1:p2"])
+    const order = (fn: { mock: { invocationCallOrder: number[] } }, index = 0) => fn.mock.invocationCallOrder[index]!
+    expect(order(vi.mocked(prisma.$executeRaw), pointLocks.at(-1)!.index)).toBeLessThan(order(vi.mocked(prisma.$queryRaw)))
+    expect(order(vi.mocked(prisma.$queryRaw))).toBeLessThan(order(vi.mocked(prisma.mtmRoutePoint.findMany)))
+    expect(order(vi.mocked(prisma.mtmRoutePoint.findMany))).toBeLessThan(order(vi.mocked(prisma.mtmRoute.updateMany)))
+  })
+
+  it("refuses when a check-in committed while the save waited for the point lock", async () => {
+    givenRoute("PLANNED", [stop("p1", "c1", 0), stop("p2", "c2", 1)])
+    vi.mocked(prisma.mtmRoutePoint.findMany).mockResolvedValue([stop("p1", "c1", 0, "PENDING", 1), stop("p2", "c2", 1)] as never)
+
+    const res = await put({ expectedVersion: 3, points: [{ customerId: "c2" }] })
+
+    expect(res.status).toBe(409)
+    expect(await res.json()).toMatchObject({ code: "ROUTE_VERSION_CONFLICT" })
+    expect(prisma.mtmRoute.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("maps a deadlock to a version conflict", async () => {
+    givenRoute("PLANNED", [stop("p1", "c1", 0)])
+    vi.mocked(prisma.mtmRoute.updateMany).mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError("deadlock detected", { code: "P2010", clientVersion: "6", meta: { code: "40P01" } }),
+    )
+    const res = await put({ expectedVersion: 3, points: [{ customerId: "c1" }, { customerId: "c2" }] })
+    expect(res.status).toBe(409)
+    expect(await res.json()).toMatchObject({ code: "ROUTE_VERSION_CONFLICT" })
+  })
+
+  it("saves a route with an observer although the builder never sends observers", async () => {
+    givenRoute("PLANNED", [stop("p1", "c1", 0)], [
+      { agentId: "a1", role: "PRIMARY" },
+      { agentId: "o1", role: "OBSERVER" },
+    ])
+    actorMock.resolveMtmRouteActor.mockResolvedValue({ ...manager, scopedAgentIds: ["m1", "a1", "o1"] })
+
+    const res = await put({
+      expectedVersion: 3,
+      date: "2026-09-16",
+      agentId: "a1",
+      assignments: [{ agentId: "a1", role: "PRIMARY" }],
+      points: [{ customerId: "c1" }, { customerId: "c2" }],
+    })
+
+    expect(res.status).toBe(200)
+    expect(prisma.mtmRouteAssignment.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("runs publish's planning-conflict check and accepts it only with a manager's reason", async () => {
+    const busyRoute = {
+      id: "r2",
+      status: "PLANNED",
+      agentId: "a1",
+      assignments: [],
+      points: [{ customerId: "c7", contactId: null, plannedTime: null, deletedAt: null }],
+    }
+    givenRoute("PLANNED", [stop("p1", "c1", 0)])
+    vi.mocked(prisma.mtmRoute.findMany).mockResolvedValue([busyRoute] as never)
+
+    const refused = await put({ expectedVersion: 3, points: [{ customerId: "c1" }, { customerId: "c2" }] })
+    expect(refused.status).toBe(409)
+    expect(await refused.json()).toMatchObject({ code: "ROUTE_CONFLICT", conflicts: [{ code: "AGENT_SCHEDULE_CONFLICT", routeId: "r2" }] })
+    expect(prisma.mtmRoute.updateMany).not.toHaveBeenCalled()
+
+    givenRoute("PLANNED", [stop("p1", "c1", 0)])
+    vi.mocked(prisma.mtmRoute.findMany).mockResolvedValue([busyRoute] as never)
+    const accepted = await put({
+      expectedVersion: 3,
+      overrideReason: "Agent covers both clinics today",
+      points: [{ customerId: "c1" }, { customerId: "c2" }],
+    })
+    expect(accepted.status).toBe(200)
+    expect(prisma.mtmRouteChangeRequest.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        routeId: "r1",
+        changeType: "CONFLICT_OVERRIDE",
+        status: "APPROVED",
+        reason: "Agent covers both clinics today",
+      }),
+    })
+  })
+
+  it("does not re-validate targets of stops with field history", async () => {
+    givenRoute("IN_PROGRESS", [stop("p1", "c1", 0, "VISITED", 1)])
+
+    const res = await put({ expectedVersion: 3, points: [{ customerId: "c1" }, { customerId: "c2" }] })
+
+    expect(res.status).toBe(200)
+    const customerLookups = JSON.stringify(vi.mocked(prisma.mtmCustomer.findMany).mock.calls)
+    expect(customerLookups).toContain("c2")
+    expect(customerLookups).not.toContain("\"c1\"")
   })
 
   it("keeps a published route immutable for a field agent on the web path", async () => {
