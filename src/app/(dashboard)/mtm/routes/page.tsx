@@ -781,9 +781,14 @@ export default function MtmRoutesPage() {
       ? t("stopFact.durationHoursMinutes", parts)
       : t("stopFact.durationMinutes", { minutes: parts.minutes })
   }
-  const canEditRoute = (route: MtmRouteRecord) => route.status === "DRAFT"
-    && route.historicalAccessOnly !== true
-    && (capabilities.canReview || (capabilities.canCreateRoute && route.agentId === capabilities.actorAgentId))
+  // Published and started routes open the builder's published-edit mode for
+  // managers, supervisors and admins; the server re-checks scope and locks
+  // stops with field history (PUT /api/v1/mtm/routes/[id]).
+  const canEditRoute = (route: MtmRouteRecord) => route.historicalAccessOnly !== true && (
+    route.status === "DRAFT"
+      ? capabilities.canReview || (capabilities.canCreateRoute && route.agentId === capabilities.actorAgentId)
+      : (route.status === "PLANNED" || route.status === "IN_PROGRESS") && capabilities.canReview
+  )
   const preferredPlanningAgentId = !capabilities.canReview && capabilities.actorAgentId
     ? capabilities.actorAgentId
     : selectedRoute?.agentId
@@ -977,7 +982,7 @@ export default function MtmRoutesPage() {
           )}
           <MtmRouteTravelPanel
             route={selectedRoute}
-            canCalculate={canEditRoute(selectedRoute)}
+            canCalculate={selectedRoute.status === "DRAFT" && canEditRoute(selectedRoute)}
             locale={locale}
             orgId={orgId ? String(orgId) : undefined}
           />

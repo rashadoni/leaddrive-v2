@@ -1361,7 +1361,15 @@ export function MtmRouteBuilder({
         if (result.code === "ROUTE_DUPLICATE" && result.duplicate?.id) setDuplicate(result.duplicate)
         throw new Error(result.code === "ROUTE_VERSION_CONFLICT"
           ? t("versionConflict")
-          : result.error ?? t("saveFailed"))
+          : result.code === "ROUTE_VISITED_POINTS_LOCKED"
+            ? t("publishedEditLockedStopsError")
+            : result.code === "ROUTE_POINT_CHANGE_PENDING"
+              ? t("publishedEditPendingRequestError")
+              : result.code === "ROUTE_PUBLISHED_FIELDS_LOCKED"
+                ? t("publishedEditFieldsLockedError")
+                : result.code === "ROUTE_POINT_TIME_CONFLICT"
+                  ? t("sameRouteTimeConflictError")
+                  : result.error ?? t("saveFailed"))
       }
 
       const routeId = routeIdToEdit ?? result.data?.id
@@ -1717,6 +1725,7 @@ export function MtmRouteBuilder({
                 id="route-builder-primary"
                 ref={agentSelectRef}
                 value={primaryAgentId}
+                disabled={isPublishedEdit}
                 onChange={(event) => {
                   setPrimaryAgentId(event.target.value)
                   setParticipantIds((current) => current.filter((id) => id !== event.target.value))
@@ -1745,7 +1754,7 @@ export function MtmRouteBuilder({
             ) : (
               <div>
                 <Label htmlFor="route-builder-date">{t("singleRouteDate")} *</Label>
-                <Input ref={dateInputRef} id="route-builder-date" type="date" value={date} onChange={(event) => setDate(event.target.value)} required />
+                <Input ref={dateInputRef} id="route-builder-date" type="date" value={date} disabled={isPublishedEdit} onChange={(event) => setDate(event.target.value)} required />
               </div>
             )}
           </div>
@@ -1774,6 +1783,7 @@ export function MtmRouteBuilder({
                         <input
                           type="checkbox"
                           checked={checked}
+                          disabled={isPublishedEdit}
                           onChange={() => toggleParticipant(agent.id)}
                           className="h-4 w-4 accent-primary"
                         />
