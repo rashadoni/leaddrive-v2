@@ -557,15 +557,15 @@ describe("PUT /api/v1/mtm/settings", () => {
   })
 
   it.each([false, true])("silently ignores the field contacts switch (%s) from a manager", async (value) => {
-    // The settings page PUTs the whole object. A manager's save must succeed
-    // for the other keys and must never write the administrator-only switch,
-    // whatever value their (possibly stale) page carries.
+    // An older open settings page PUTs the whole object. A manager's save must
+    // succeed for the other keys and must never write the administrator-only
+    // switch, whatever value their (possibly stale) page carries.
     vi.mocked(getOrgId).mockResolvedValue(ORG)
     vi.mocked(requireAuth).mockResolvedValue({ orgId: ORG, role: "manager", userId: "u2" } as any)
     vi.mocked(prisma.mtmSetting.upsert).mockResolvedValue({} as any)
 
     const res = await UpdateSettings(makeJsonReq("/api/v1/mtm/settings", "PUT", {
-      gpsInterval: 20,
+      geofenceRadius: 150,
       fieldContactsEnabled: value,
     }))
 
@@ -595,7 +595,7 @@ describe("PUT /api/v1/mtm/settings", () => {
     vi.mocked(prisma.mtmSetting.upsert).mockResolvedValue({} as any)
 
     const res = await UpdateSettings(makeJsonReq("/api/v1/mtm/settings", "PUT", {
-      gpsInterval: 20,
+      geofenceRadius: 150,
       fieldContactsEnabled: value,
       pharmacyPromotionsEnabled: value,
     }))
