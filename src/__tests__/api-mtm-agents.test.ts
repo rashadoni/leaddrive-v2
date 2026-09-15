@@ -130,6 +130,26 @@ describe("GET /api/v1/mtm/agents", () => {
     expect(json.data.limit).toBe(50)
   })
 
+  it("returns the linked web login's email flat, without the user row", async () => {
+    // Prod 2026-09-15: the owner searched for a manager by «rashad@guven.az»,
+    // which lives only on the linked login, not on the field card.
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([
+      { id: "a1", name: "Ramil", email: null, user: { email: "rashad@guven.az" } },
+      { id: "a2", name: "No login", email: "a2@x.az", user: null },
+    ] as any)
+    vi.mocked(prisma.mtmAgent.count).mockResolvedValue(2)
+
+    const res = await ListAgents(makeReq("/api/v1/mtm/agents"))
+    const [ramil, other] = (await res.json()).data.agents
+
+    expect(ramil.userEmail).toBe("rashad@guven.az")
+    expect(ramil).not.toHaveProperty("user")
+    expect(other.userEmail).toBeNull()
+    const select = (vi.mocked(prisma.mtmAgent.findMany).mock.calls[0][0] as any).select
+    expect(select.user).toEqual({ select: { email: true } })
+  })
+
   it("says an agent is on a break instead of letting them fade to grey", async () => {
     // A break stops GPS by design (A7), so `lastSeenAt` goes stale on someone
     // who is simply at lunch — indistinguishable from a dead phone until the

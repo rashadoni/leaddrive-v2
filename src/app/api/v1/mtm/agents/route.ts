@@ -165,6 +165,10 @@ export const GET = withRls(async (req, auth) => {
           // and the coordinates never leave this handler.
           expoPushToken: true,
           latestLocation: { select: { receivedAt: true } },
+          // The linked web login's email, so the page can find a manager by the
+          // address they sign in with (prod 2026-09-15: «rashad@guven.az» lived
+          // only on the login). Flattened below; the user row never leaves.
+          user: { select: { email: true } },
         },
       }),
       prisma.mtmAgent.count({ where }),
@@ -265,10 +269,11 @@ export const GET = withRls(async (req, auth) => {
       success: true,
       data: {
         agents: agents.map((row) => {
-          const { expoPushToken, latestLocation, ...agent } = row
+          const { expoPushToken, latestLocation, user, ...agent } = row
           const presence = mtmAgentPresence(dayByAgent.get(agent.id))
           return {
             ...agent,
+            userEmail: user?.email ?? null,
             presence: showTimes ? presence : withoutTimes(presence),
             breaks: showTimes ? (breaksByAgent.get(agent.id) ?? []) : [],
             activity: activityAvailable ? mtmAgentCardActivity(activityByAgent.get(agent.id) ?? {}) : null,
