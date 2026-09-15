@@ -8,10 +8,20 @@ import { MTM_SETTING_DEFAULTS, getMtmSettings } from "@/lib/mtm-settings"
 import { isValidTimezone } from "@/lib/timezone"
 import { coerceMtmContactRequiredFields } from "@/lib/mtm/contact-required-fields"
 import { parseMtmRouteTargetTypes } from "@/lib/mtm/route-target-types"
+import { validateMtmSettingChanges } from "@/lib/mtm/settings-validation"
 
 const MODULE_TOGGLE_ROLES = ["admin", "superadmin"]
 // Whole-feature visibility switches. Only an administrator changes them.
 const MODULE_TOGGLE_KEYS = ["fieldContactsEnabled", "pharmacyPromotionsEnabled"] as const
+// Technical GPS-history thresholds, shown in the collapsed «Qabaqcıl (yalnız
+// administrator)» section. Same rule as the module switches.
+const ADVANCED_KEYS = [
+  "gpsInterval",
+  "locationWindowMinutes",
+  "historyMaxAccuracyMeters",
+  "historyStopRadiusMeters",
+  "historyStopMinimumMinutes",
+] as const
 
 export const GET = withRls(async (_req: NextRequest, { orgId }) => {
   try {
@@ -47,10 +57,14 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
     )
     // Hiding a whole module surface for every manager and field agent is an
     // administrator decision, narrower than the general settings guard. The
-    // settings page saves the whole object, so a non-administrator's save
-    // always carries the key: drop it silently instead of refusing the save.
-    // Comparing with the stored value would 403 a manager whose page predates
-    // an administrator's change, and would still decide nothing.
+    // settings page now sends only changed keys and disables these controls
+    // for everyone else, but an older open page still sends the whole object:
+    // drop the key silently instead of refusing the save.
+    for (const key of ADVANCED_KEYS) {
+      if (body[key] !== undefined && !MODULE_TOGGLE_ROLES.includes(auth.role)) {
+        delete body[key]
+      }
+    }
     for (const key of MODULE_TOGGLE_KEYS) {
       if (body[key] !== undefined && !MODULE_TOGGLE_ROLES.includes(auth.role)) {
         delete body[key]
@@ -62,6 +76,18 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
             : "Pharmacy promotions visibility must be a boolean",
         }, { status: 400 })
       }
+    }
+    // Ranges and types are checked for the INCOMING keys only. Nothing is
+    // clamped, and a value stored before these bounds existed never blocks a
+    // save of some other key — the page sends only what the user changed.
+    const fieldErrors = validateMtmSettingChanges(body, MTM_SETTING_DEFAULTS)
+    if (fieldErrors.length > 0) {
+      return NextResponse.json({
+        error: "Invalid setting value",
+        code: fieldErrors[0].code,
+        key: fieldErrors[0].key,
+        errors: fieldErrors,
+      }, { status: 400 })
     }
     if (typeof body.supportEmail === "string") body.supportEmail = body.supportEmail.trim()
     if (typeof body.supportPhone === "string") body.supportPhone = body.supportPhone.trim()
@@ -110,9 +136,12 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
       return NextResponse.json({ error: "Route travel navigation must be a boolean" }, { status: 400 })
     }
 
-    const previousTeamScheduleVisibility = body.teamScheduleVisibilityEnabled !== undefined
-      ? (await getMtmSettings(orgId)).teamScheduleVisibilityEnabled
-      : undefined
+    // Nothing left to write (e.g. only administrator keys from a manager).
+    if (Object.keys(body).length === 0) return NextResponse.json({ success: true })
+
+    // Effective values before this save (stored row or default), so the audit
+    // entry says what each changed key was and what it became.
+    const previous = await getMtmSettings(orgId) as unknown as Record<string, unknown>
 
     const updates = Object.entries(body).map(([key, value]) => {
       const jsonValue = value as Prisma.InputJsonValue
@@ -131,17 +160,11 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
       entity: "settings",
       entityId: orgId,
       metadataKind: "settings_update",
-      oldData: previousTeamScheduleVisibility === undefined
-        ? undefined
-        : { teamScheduleVisibilityEnabled: previousTeamScheduleVisibility },
+      oldData: Object.fromEntries(Object.keys(body).map((key) => [key, previous[key] ?? null])),
       newData: {
+        ...body,
         keys: Object.keys(body),
-        ...(previousTeamScheduleVisibility === undefined
-          ? {}
-          : {
-              teamScheduleVisibilityEnabled: body.teamScheduleVisibilityEnabled,
-              actor: { userId: auth.userId, role: auth.role },
-            }),
+        actor: { userId: auth.userId, role: auth.role },
       },
       req,
     }).catch((e) => console.warn("[MTM/settings PUT] audit failed", e))

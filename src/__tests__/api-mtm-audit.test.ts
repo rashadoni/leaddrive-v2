@@ -630,9 +630,12 @@ describe("audit: settings", () => {
         entity: "settings",
         entityId: ORG,
         metadataKind: "settings_update",
-        oldData: { teamScheduleVisibilityEnabled: false },
+        // Old and new value for every changed key, not just the key names.
+        oldData: { gpsInterval: 30, photoRequired: false, teamScheduleVisibilityEnabled: false },
         newData: expect.objectContaining({
           keys: expect.arrayContaining(["gpsInterval", "photoRequired", "teamScheduleVisibilityEnabled"]),
+          gpsInterval: 15,
+          photoRequired: false,
           teamScheduleVisibilityEnabled: true,
           actor: { userId: "u1", role: "admin" },
         }),
