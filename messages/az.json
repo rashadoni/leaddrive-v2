@@ -21581,6 +21581,8 @@
     "smsNotSetTooltip": "SMS 2FA qurulmayıb",
     "smsResetConfirm": "Bu istifadəçi üçün SMS 2FA sıfırlansın? Yenidən aktivləşdirənə qədər SMS kodsuz daxil ola bilər.",
     "require2faTooltip": "Girişdə 2FA tələb et (istənilən üsul)",
+    "twoFactorConfigured": "qurulub",
+    "twoFactorSetupPending": "növbəti girişdə qurulacaq",
     "statTotal": "Cəmi",
     "statActive": "Aktiv",
     "statInactive": "Qeyri-aktiv",
