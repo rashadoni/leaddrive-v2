@@ -696,6 +696,33 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
     }))
   })
 
+  it("looks up today's shift by the stored date, not the tenant-midnight instant", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    // 18:30 in Asia/Baku (UTC+4) on 2026-09-15.
+    vi.setSystemTime(new Date("2026-09-15T14:30:00.000Z"))
+    try {
+      vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({
+        id: "workday-today",
+        workDate: new Date("2026-09-15T00:00:00.000Z"),
+        status: "COMPLETED",
+        startedAt: new Date("2026-09-15T05:00:00.000Z"),
+        pausedAt: null,
+        completedAt: new Date("2026-09-15T10:23:00.000Z"),
+      } as never)
+
+      const json = await (await GET(request())).json()
+
+      expect(json.data.workday).toMatchObject({ id: "workday-today", status: "COMPLETED" })
+      const where = vi.mocked(prisma.mtmAgentWorkday.findFirst).mock.calls.at(-1)?.[0]?.where as { OR: Array<{ workDate?: Date }> }
+      const byDate = where.OR.find((clause) => clause.workDate)
+      // workday.ts writes `${workDateKey}T00:00:00.000Z`; 2026-09-14T20:00Z
+      // would be read by the @db.Date column as the day before.
+      expect(byDate?.workDate?.toISOString()).toBe("2026-09-15T00:00:00.000Z")
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("advertises HRM-only mode without route UI data or route capability", async () => {
     vi.mocked(resolveMobileAuth).mockResolvedValue({
       ...mobileAuth("AGENT"),

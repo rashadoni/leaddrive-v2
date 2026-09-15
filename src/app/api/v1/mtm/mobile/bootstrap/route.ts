@@ -23,7 +23,7 @@ import {
 import { readMtmMobileMediaUploadPolicy } from "@/lib/mtm/mobile-media-guard"
 import { readMtmMobileGpsBatchPilot } from "@/lib/mtm/mobile-gps-guard"
 import { recordMtmMobileApkObservation } from "@/lib/mtm/mobile-sync-telemetry"
-import { currentDateKey, localDateKeyToUtc } from "@/lib/mtm/mobile-week"
+import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
 import {
   workforceAttendancePolicyManifest,
@@ -374,7 +374,12 @@ export const GET = withMobileRls(async (req, auth) => {
         : {}),
     })
     const date = currentDateKey(now, timezone)
-    const todayWorkDate = localDateKeyToUtc(date, timezone)
+    // workDate is a @db.Date written as `${workDateKey}T00:00:00.000Z`
+    // (lib/mtm/workday.ts). The tenant-midnight instant from
+    // localDateKeyToUtc is the previous UTC day in Asia/Baku, so today's
+    // finished shift never matched and the app offered START again, which the
+    // server refused with MTM_WORKDAY_ALREADY_EXISTS (Redmi Pad SE, 2026-09-15).
+    const todayWorkDate = new Date(`${date}T00:00:00.000Z`)
     // A Route Field agent needs only their own field-session boundary to
     // start a route and transmit GPS. This is deliberately narrower than the
     // Workforce module: it does not expose a workforce stream, attendance
