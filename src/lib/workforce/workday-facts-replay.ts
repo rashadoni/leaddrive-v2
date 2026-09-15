@@ -1,4 +1,5 @@
 import { isDateKey } from "@/lib/mtm/mobile-week"
+import { isMtmWorkdayReopenUndoEventKey, MTM_WORKDAY_MAX_CLOCK_SKEW_MS } from "@/lib/mtm/workday"
 import type { WorkforceWorkdayFactsInput } from "@/lib/workforce/timesheet-calculation"
 import type { WorkforceWorkdayCorrectionFacts } from "@/lib/workforce/workday-correction-facts"
 
@@ -33,6 +34,39 @@ export type WorkforceWorkdayEventFact = {
   type: WorkforceWorkdayEventType
   /** Canonical UTC instant, never a device-local timestamp. */
   occurredAt: string
+  /**
+   * Canonical UTC instant the server applied the event. A REOPEN must carry
+   * it: the employee's next transition may not claim time before it, less the
+   * clock-skew allowance.
+   */
+  appliedAt?: string | null
+  /** Identifies the manager's undo FINISH, the one event exempt from that floor. */
+  clientEventId?: string | null
+}
+
+/** The journal columns every replay reads, in WORKFORCE_WORKDAY_JOURNAL_ORDER. */
+export const WORKFORCE_WORKDAY_JOURNAL_SELECT = {
+  id: true,
+  type: true,
+  occurredAt: true,
+  appliedAt: true,
+  clientEventId: true,
+} as const
+
+export function workforceWorkdayEventFact(event: {
+  id: string
+  type: string
+  occurredAt: Date
+  appliedAt: Date | null
+  clientEventId: string | null
+}): WorkforceWorkdayEventFact {
+  return {
+    id: event.id,
+    type: event.type as WorkforceWorkdayEventType,
+    occurredAt: event.occurredAt.toISOString(),
+    appliedAt: event.appliedAt?.toISOString() ?? null,
+    clientEventId: event.clientEventId,
+  }
 }
 
 /** Immutable ledger row fields needed to reconstruct a corrected workday. */
@@ -284,6 +318,8 @@ function replayJournal(input: {
   let pauseStartedAt: string | null = null
   let previousOccurredAt = Number.NEGATIVE_INFINITY
   let previousType: WorkforceWorkdayEventType | null = null
+  /** Earliest instant the transition after the latest REOPEN may claim. */
+  let reopenFloorMs: number | null = null
   const eventIds = new Set<string>()
   const pauseIntervals: Array<{ startedAt: string; endedAt: string | null }> = []
 
@@ -302,6 +338,20 @@ function replayJournal(input: {
       && ((event.type === "REOPEN" && previousType === "FINISH") || previousType === "REOPEN")
     if (occurredAtMs < previousOccurredAt || (occurredAtMs === previousOccurredAt && !sharesReopenInstant)) {
       fail("workday events must be in strict chronological order")
+    }
+    // The state machine's rule, replayed: until the manager reopened it the
+    // day was closed, so the employee's next transition cannot claim that time
+    // as work. Only the manager's undo FINISH returns to the reopened instant,
+    // and it may appear nowhere else.
+    const reopenUndo = event.type === "FINISH" && isMtmWorkdayReopenUndoEventKey(event.clientEventId)
+    if (previousType === "REOPEN") {
+      if (reopenUndo) {
+        if (occurredAt !== pauseStartedAt) fail("reopen undo must finish at the reopened instant")
+      } else if (reopenFloorMs == null || occurredAtMs < reopenFloorMs) {
+        fail("workday event after a reopen cannot claim time before the reopen")
+      }
+    } else if (reopenUndo) {
+      fail("reopen undo must directly follow its REOPEN")
     }
     previousOccurredAt = occurredAtMs
     previousType = event.type
@@ -344,6 +394,11 @@ function replayJournal(input: {
         // before it stays in the journal as the closure's history.
         if (status !== "COMPLETED" || completedAt == null) fail("REOPEN is only valid for a completed workday")
         if (occurredAt !== completedAt) fail("REOPEN must be recorded at the finish it reopens")
+        if (event.appliedAt == null) fail("REOPEN requires its server application time")
+        reopenFloorMs = instantMs(
+          `events[${index}].appliedAt`,
+          canonicalUtcInstant(`events[${index}].appliedAt`, event.appliedAt),
+        ) - MTM_WORKDAY_MAX_CLOCK_SKEW_MS
         pauseStartedAt = completedAt
         completedAt = null
         status = "PAUSED"

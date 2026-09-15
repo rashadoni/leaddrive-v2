@@ -17,9 +17,10 @@ import { resolveWorkforceHistoricalTeamMembership } from "@/lib/workforce/team-m
 import {
   replayWorkforceWorkdayFacts,
   WORKFORCE_WORKDAY_JOURNAL_ORDER,
+  WORKFORCE_WORKDAY_JOURNAL_SELECT,
   workforceReplayMatchesWorkdayCorrectionFacts,
+  workforceWorkdayEventFact,
   WorkforceWorkdayFactsReplayError,
-  type WorkforceWorkdayEventType,
 } from "@/lib/workforce/workday-facts-replay"
 import { workforceWorkdayCorrectionFacts } from "@/lib/workforce/workday-correction-facts"
 import { workforceAuditRequestMetadata } from "@/lib/workforce/workday-audit"
@@ -404,7 +405,7 @@ export async function decideWorkforceRequest(context: WorkforceDecisionContext):
           tx.mtmAgentWorkdayEvent.findMany({
             where: { organizationId, agentId: request.agentId, workdayId: workday.id },
             orderBy: [...WORKFORCE_WORKDAY_JOURNAL_ORDER],
-            select: { id: true, type: true, occurredAt: true },
+            select: WORKFORCE_WORKDAY_JOURNAL_SELECT,
           }),
           tx.workforceTimeCorrection.findMany({
             where: { organizationId, agentId: request.agentId, workdayId: workday.id },
@@ -414,11 +415,7 @@ export async function decideWorkforceRequest(context: WorkforceDecisionContext):
         try {
           const replayed = replayWorkforceWorkdayFacts({
             workdayId: workday.id,
-            events: events.map((event) => ({
-              id: event.id,
-              type: event.type as WorkforceWorkdayEventType,
-              occurredAt: event.occurredAt.toISOString(),
-            })),
+            events: events.map(workforceWorkdayEventFact),
             corrections,
           })
           if (!workforceReplayMatchesWorkdayCorrectionFacts(replayed, previousWorkday)) {
@@ -428,11 +425,7 @@ export async function decideWorkforceRequest(context: WorkforceDecisionContext):
           }
           replayWorkforceWorkdayFacts({
             workdayId: workday.id,
-            events: events.map((event) => ({
-              id: event.id,
-              type: event.type as WorkforceWorkdayEventType,
-              occurredAt: event.occurredAt.toISOString(),
-            })),
+            events: events.map(workforceWorkdayEventFact),
             corrections: [...corrections, {
               id: "pending-request-correction",
               beforeFacts: previousWorkday,

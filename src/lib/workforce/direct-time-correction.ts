@@ -12,9 +12,10 @@ import { workforceGranularAccessEnabled } from "@/lib/workforce/granular-access-
 import {
   replayWorkforceWorkdayFacts,
   WORKFORCE_WORKDAY_JOURNAL_ORDER,
+  WORKFORCE_WORKDAY_JOURNAL_SELECT,
   workforceReplayMatchesWorkdayCorrectionFacts,
+  workforceWorkdayEventFact,
   WorkforceWorkdayFactsReplayError,
-  type WorkforceWorkdayEventType,
 } from "@/lib/workforce/workday-facts-replay"
 import {
   workforceWorkdayCorrectionFacts,
@@ -262,7 +263,7 @@ export async function correctWorkforceTimeDirectly(
         tx.mtmAgentWorkdayEvent.findMany({
           where: { organizationId, agentId: initial.agentId, workdayId },
           orderBy: [...WORKFORCE_WORKDAY_JOURNAL_ORDER],
-          select: { id: true, type: true, occurredAt: true },
+          select: WORKFORCE_WORKDAY_JOURNAL_SELECT,
         }),
         tx.workforceTimeCorrection.findMany({
           where: { organizationId, agentId: initial.agentId, workdayId },
@@ -274,11 +275,7 @@ export async function correctWorkforceTimeDirectly(
       try {
         replayed = replayWorkforceWorkdayFacts({
           workdayId,
-          events: events.map((event) => ({
-            id: event.id,
-            type: event.type as WorkforceWorkdayEventType,
-            occurredAt: event.occurredAt.toISOString(),
-          })),
+          events: events.map(workforceWorkdayEventFact),
           corrections,
         })
       } catch (error) {
@@ -301,11 +298,7 @@ export async function correctWorkforceTimeDirectly(
       try {
         replayWorkforceWorkdayFacts({
           workdayId,
-          events: events.map((event) => ({
-            id: event.id,
-            type: event.type as WorkforceWorkdayEventType,
-            occurredAt: event.occurredAt.toISOString(),
-          })),
+          events: events.map(workforceWorkdayEventFact),
           corrections: [...corrections, {
             id: "pending-direct-correction",
             beforeFacts: beforeWorkday,

@@ -144,6 +144,10 @@ describe("employee Workforce Today projection", () => {
     // After a reopen the day is paused again; "your FINISH was applied" would
     // contradict it, and the REOPEN itself is not the employee's action.
     expect(workforceEmployeeTodayServerOutcome({ ...applied, type: "REOPEN" })).toBeNull()
+    // The manager's undo of a reopen is a FINISH, but not the employee's: the
+    // day reads as finished from its status, with no receipt in their name.
+    expect(workforceEmployeeTodayServerOutcome({ ...applied, clientEventId: "reopen-undo:operation-1" })).toBeNull()
+    expect(workforceEmployeeTodayServerOutcome({ ...applied, clientEventId: "finish-from-phone" })?.action).toBe("FINISH")
     expect(workforceEmployeeTodayServerOutcome({ ...applied, serverReceivedAt: null })).toBeNull()
     expect(workforceEmployeeTodayServerOutcome(null)).toBeNull()
   })

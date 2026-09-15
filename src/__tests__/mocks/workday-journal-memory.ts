@@ -1,3 +1,4 @@
+import type { WorkforceWorkdayEventFact, WorkforceWorkdayEventType } from "@/lib/workforce/workday-facts-replay"
 import type { MtmPrismaMock } from "./mtm-prisma"
 
 /**
@@ -17,6 +18,8 @@ export type InMemoryWorkdayJournal = {
   workday(id: string): MemoryRow
   /** One workday's events in journal order, as the replay reads them. */
   journal(workdayId: string): MemoryRow[]
+  /** The same journal serialized into replay facts, as the services pass it. */
+  journalFacts(workdayId: string): WorkforceWorkdayEventFact[]
 }
 
 function matches(row: MemoryRow, where: MemoryRow = {}): boolean {
@@ -100,9 +103,10 @@ export function installInMemoryWorkdayJournal(
   })
   db.mtmAgentWorkdayEvent.findFirst.mockReset().mockImplementation(async (...args: unknown[]) => {
     const query = firstArgument(args)
-    const orderBy = query.orderBy as MemoryRow | undefined
+    const orderBy = query.orderBy
+    const leading = (Array.isArray(orderBy) ? orderBy[0] : orderBy) as MemoryRow | undefined
     const found = events.filter((event) => matches(event, whereOf(query))).sort(journalOrder)
-    if (orderBy && !Array.isArray(orderBy) && orderBy.occurredAt === "desc") found.reverse()
+    if (leading?.occurredAt === "desc") found.reverse()
     return found[0] ?? null
   })
   db.mtmAgentWorkdayEvent.findMany.mockReset().mockImplementation(async (...args: unknown[]) => (
@@ -138,6 +142,15 @@ export function installInMemoryWorkdayJournal(
     workday,
     journal(workdayId: string) {
       return events.filter((event) => event.workdayId === workdayId).sort(journalOrder)
+    },
+    journalFacts(workdayId: string) {
+      return events.filter((event) => event.workdayId === workdayId).sort(journalOrder).map((event) => ({
+        id: String(event.id),
+        type: event.type as WorkforceWorkdayEventType,
+        occurredAt: (event.occurredAt as Date).toISOString(),
+        appliedAt: event.appliedAt instanceof Date ? event.appliedAt.toISOString() : null,
+        clientEventId: typeof event.clientEventId === "string" ? event.clientEventId : null,
+      }))
     },
   }
 }

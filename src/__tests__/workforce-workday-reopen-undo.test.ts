@@ -16,7 +16,6 @@ import { workforceWorkdayCorrectionFacts } from "@/lib/workforce/workday-correct
 import {
   replayWorkforceWorkdayFacts,
   workforceReplayMatchesWorkdayCorrectionFacts,
-  type WorkforceWorkdayEventType,
 } from "@/lib/workforce/workday-facts-replay"
 import { reopenWorkforceWorkday, type WorkforceWorkdayReopenInput } from "@/lib/workforce/workday-reopen"
 import { undoWorkforceWorkdayReopen, WorkforceWorkdayReopenUndoSchema } from "@/lib/workforce/workday-reopen-undo"
@@ -71,12 +70,16 @@ function reopenedWorkday(overrides: Record<string, unknown> = {}) {
   }
 }
 
+function journalEvent(id: string, type: string, occurredAt: Date, appliedAt: Date = occurredAt, clientEventId = `${type.toLowerCase()}-${id}`) {
+  return { id, type, occurredAt, appliedAt, clientEventId }
+}
+
 const reopenedJournal = [
-  { id: "event-1", type: "START", occurredAt: new Date("2026-09-15T05:00:00.000Z") },
-  { id: "event-2", type: "PAUSE", occurredAt: new Date("2026-09-15T09:00:00.000Z") },
-  { id: "event-3", type: "RESUME", occurredAt: new Date("2026-09-15T09:30:00.000Z") },
-  { id: "event-4", type: "FINISH", occurredAt: FINISHED_AT },
-  { id: "event-5", type: "REOPEN", occurredAt: FINISHED_AT },
+  journalEvent("event-1", "START", new Date("2026-09-15T05:00:00.000Z")),
+  journalEvent("event-2", "PAUSE", new Date("2026-09-15T09:00:00.000Z")),
+  journalEvent("event-3", "RESUME", new Date("2026-09-15T09:30:00.000Z")),
+  journalEvent("event-4", "FINISH", FINISHED_AT),
+  journalEvent("event-5", "REOPEN", FINISHED_AT, REOPENED_AT, "reopen:reopen-operation-1"),
 ]
 
 const input: WorkforceWorkdayReopenInput = {
@@ -204,7 +207,7 @@ describe("undoing a manager's reopen of today's workday", () => {
     expect(prisma.mtmAgentWorkdayEvent.findMany).toHaveBeenCalledWith({
       where: { organizationId: ORGANIZATION_ID, agentId: AGENT_ID, workdayId: WORKDAY_ID },
       orderBy: [{ occurredAt: "asc" }, { appliedAt: { sort: "asc", nulls: "first" } }, { id: "asc" }],
-      select: { id: true, type: true, occurredAt: true },
+      select: { id: true, type: true, occurredAt: true, appliedAt: true, clientEventId: true },
     })
     // No ledger fact or reopen context: this is an ordinary PAUSED -> COMPLETED finish.
     expect(prisma.workforceWorkdayReopen.create).not.toHaveBeenCalled()
@@ -244,8 +247,8 @@ describe("undoing a manager's reopen of today's workday", () => {
         mockWorkdayLookups(reopenedWorkday({ pausedAt: new Date("2026-09-15T15:00:00.000Z"), totalPausedSeconds: 40 * 60 }))
         vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue([
           ...reopenedJournal,
-          { id: "event-6", type: "RESUME", occurredAt: new Date("2026-09-15T14:10:00.000Z") },
-          { id: "event-7", type: "PAUSE", occurredAt: new Date("2026-09-15T15:00:00.000Z") },
+          journalEvent("event-6", "RESUME", new Date("2026-09-15T14:31:00.000Z")),
+          journalEvent("event-7", "PAUSE", new Date("2026-09-15T15:00:00.000Z")),
         ] as never)
       },
     ],
@@ -255,8 +258,8 @@ describe("undoing a manager's reopen of today's workday", () => {
       () => {
         mockWorkdayLookups(reopenedWorkday({ pausedAt: new Date("2026-09-15T13:00:00.000Z"), totalPausedSeconds: 0 }))
         vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue([
-          { id: "event-1", type: "START", occurredAt: new Date("2026-09-15T05:00:00.000Z") },
-          { id: "event-2", type: "PAUSE", occurredAt: new Date("2026-09-15T13:00:00.000Z") },
+          journalEvent("event-1", "START", new Date("2026-09-15T05:00:00.000Z")),
+          journalEvent("event-2", "PAUSE", new Date("2026-09-15T13:00:00.000Z")),
         ] as never)
       },
     ],
@@ -446,14 +449,7 @@ describe("undone reopen through the canonical state machine", () => {
   }
 
   function replayMatchesRow() {
-    const facts = replayWorkforceWorkdayFacts({
-      workdayId: WORKDAY_ID,
-      events: memory.journal(WORKDAY_ID).map((event) => ({
-        id: String(event.id),
-        type: event.type as WorkforceWorkdayEventType,
-        occurredAt: (event.occurredAt as Date).toISOString(),
-      })),
-    })
+    const facts = replayWorkforceWorkdayFacts({ workdayId: WORKDAY_ID, events: memory.journalFacts(WORKDAY_ID) })
     expect(workforceReplayMatchesWorkdayCorrectionFacts(facts, workforceWorkdayCorrectionFacts(row() as never))).toBe(true)
     return facts
   }
@@ -516,6 +512,13 @@ describe("undone reopen through the canonical state machine", () => {
     const undoneFacts = replayMatchesRow()
     expect({ ...undoneFacts, eventIds: [] }).toEqual({ ...finishedFacts, eventIds: [] })
     expect(memory.journal(WORKDAY_ID).map((event) => event.type)).toEqual(["START", "PAUSE", "FINISH", "REOPEN", "FINISH"])
+    // The restoring FINISH sits at the reopened instant although the manager
+    // acted five minutes after the reopen: only the undo key is exempt.
+    expect(memory.journal(WORKDAY_ID).at(-1)).toMatchObject({
+      clientEventId: "reopen-undo:undo-op-1",
+      occurredAt: new Date("2026-09-15T13:00:00.000Z"),
+      appliedAt: new Date("2026-09-15T13:25:00.000Z"),
+    })
 
     // A retry of the same undo is acknowledged, not applied again.
     serverClockAt("2026-09-15T13:26:00.000Z")

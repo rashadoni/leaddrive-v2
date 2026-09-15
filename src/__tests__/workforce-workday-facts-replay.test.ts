@@ -171,9 +171,9 @@ describe("Workforce workday fact replay", () => {
       const events = [
         { id: "event-1", type: "START" as const, occurredAt: "2026-08-28T09:00:00.000Z" },
         { id: "event-2", type: "FINISH" as const, occurredAt: "2026-08-28T12:00:00.000Z" },
-        // Recorded at the instant of the finish it reopens, whenever the
-        // manager acted.
-        { id: "event-3", type: "REOPEN" as const, occurredAt: "2026-08-28T12:00:00.000Z" },
+        // Recorded at the instant of the finish it reopens; the manager acted
+        // at its application time.
+        { id: "event-3", type: "REOPEN" as const, occurredAt: "2026-08-28T12:00:00.000Z", appliedAt: "2026-08-28T12:20:00.000Z" },
         { id: "event-4", type: "RESUME" as const, occurredAt: "2026-08-28T13:00:00.000Z" },
         { id: "event-5", type: "FINISH" as const, occurredAt: "2026-08-28T18:00:00.000Z" },
       ]
@@ -200,7 +200,7 @@ describe("Workforce workday fact replay", () => {
         events: [
           { id: "event-1", type: "START", occurredAt: "2026-08-28T09:00:00.000Z" },
           { id: "event-2", type: "FINISH", occurredAt: "2026-08-28T12:00:00.000Z" },
-          { id: "event-3", type: "REOPEN", occurredAt: "2026-08-28T12:00:00.000Z" },
+          { id: "event-3", type: "REOPEN", occurredAt: "2026-08-28T12:00:00.000Z", appliedAt: "2026-08-28T12:20:00.000Z" },
         ],
       })).toMatchObject({
         status: "PAUSED",
@@ -218,7 +218,7 @@ describe("Workforce workday fact replay", () => {
           { id: "event-1", type: "START", occurredAt: "2026-08-28T09:00:00.000Z" },
           { id: "event-2", type: "PAUSE", occurredAt: "2026-08-28T11:00:00.000Z" },
           { id: "event-3", type: "FINISH", occurredAt: "2026-08-28T11:30:00.000Z" },
-          { id: "event-4", type: "REOPEN", occurredAt: "2026-08-28T11:30:00.000Z" },
+          { id: "event-4", type: "REOPEN", occurredAt: "2026-08-28T11:30:00.000Z", appliedAt: "2026-08-28T11:40:00.000Z" },
           { id: "event-5", type: "FINISH", occurredAt: "2026-08-28T12:00:00.000Z" },
         ],
       })
@@ -240,14 +240,75 @@ describe("Workforce workday fact replay", () => {
         events: [
           { id: "event-1", type: "START", occurredAt: "2026-08-28T09:00:00.000Z" },
           { id: "event-2", type: "FINISH", occurredAt: "2026-08-28T12:00:00.000Z" },
-          { id: "event-3", type: "REOPEN", occurredAt: "2026-08-28T12:00:00.000Z" },
+          { id: "event-3", type: "REOPEN", occurredAt: "2026-08-28T12:00:00.000Z", appliedAt: "2026-08-28T12:10:00.000Z" },
           { id: "event-4", type: "RESUME", occurredAt: "2026-08-28T12:30:00.000Z" },
           { id: "event-5", type: "FINISH", occurredAt: "2026-08-28T15:00:00.000Z" },
-          { id: "event-6", type: "REOPEN", occurredAt: "2026-08-28T15:00:00.000Z" },
+          { id: "event-6", type: "REOPEN", occurredAt: "2026-08-28T15:00:00.000Z", appliedAt: "2026-08-28T15:05:00.000Z" },
           { id: "event-7", type: "RESUME", occurredAt: "2026-08-28T15:15:00.000Z" },
           { id: "event-8", type: "FINISH", occurredAt: "2026-08-28T18:00:00.000Z" },
         ],
       })).toMatchObject({ status: "COMPLETED", totalPausedSeconds: 45 * 60 })
+    })
+
+    describe("the closed time before a reopen", () => {
+      const reopenedAt12 = [
+        { id: "event-1", type: "START" as const, occurredAt: "2026-08-28T09:00:00.000Z" },
+        { id: "event-2", type: "FINISH" as const, occurredAt: "2026-08-28T12:00:00.000Z" },
+        { id: "event-3", type: "REOPEN" as const, occurredAt: "2026-08-28T12:00:00.000Z", appliedAt: "2026-08-28T12:20:00.000Z" },
+      ]
+
+      it("refuses an employee transition that claims it as work", () => {
+        for (const type of ["RESUME", "FINISH"] as const) {
+          expect(() => replayWorkforceWorkdayFacts({
+            workdayId: WORKDAY_ID,
+            events: [...reopenedAt12, { id: "event-4", type, occurredAt: "2026-08-28T12:06:00.000Z", clientEventId: "phone-4" }],
+          }), type).toThrow("workday event after a reopen cannot claim time before the reopen")
+        }
+      })
+
+      it("accepts a claim within the clock-skew allowance before the reopen and banks the pause up to it", () => {
+        expect(replayWorkforceWorkdayFacts({
+          workdayId: WORKDAY_ID,
+          events: [...reopenedAt12, { id: "event-4", type: "RESUME", occurredAt: "2026-08-28T12:17:00.000Z" }],
+        })).toMatchObject({
+          status: "STARTED",
+          totalPausedSeconds: 17 * 60,
+          pauseIntervals: [{ startedAt: "2026-08-28T12:00:00.000Z", endedAt: "2026-08-28T12:17:00.000Z" }],
+        })
+      })
+
+      it("exempts only the manager's undo FINISH, and only at the reopened instant", () => {
+        expect(replayWorkforceWorkdayFacts({
+          workdayId: WORKDAY_ID,
+          events: [...reopenedAt12, { id: "event-4", type: "FINISH", occurredAt: "2026-08-28T12:00:00.000Z", clientEventId: "reopen-undo:op-1" }],
+        })).toMatchObject({ status: "COMPLETED", completedAt: "2026-08-28T12:00:00.000Z", pauseIntervals: [] })
+        expect(() => replayWorkforceWorkdayFacts({
+          workdayId: WORKDAY_ID,
+          events: [...reopenedAt12, { id: "event-4", type: "FINISH", occurredAt: "2026-08-28T12:00:00.000Z", clientEventId: "finish-4" }],
+        })).toThrow("workday event after a reopen cannot claim time before the reopen")
+        expect(() => replayWorkforceWorkdayFacts({
+          workdayId: WORKDAY_ID,
+          events: [...reopenedAt12, { id: "event-4", type: "FINISH", occurredAt: "2026-08-28T12:30:00.000Z", clientEventId: "reopen-undo:op-1" }],
+        })).toThrow("reopen undo must finish at the reopened instant")
+        expect(() => replayWorkforceWorkdayFacts({
+          workdayId: WORKDAY_ID,
+          events: [
+            { id: "event-1", type: "START", occurredAt: "2026-08-28T09:00:00.000Z" },
+            { id: "event-2", type: "FINISH", occurredAt: "2026-08-28T12:00:00.000Z", clientEventId: "reopen-undo:op-1" },
+          ],
+        })).toThrow("reopen undo must directly follow its REOPEN")
+      })
+
+      it("cannot judge a REOPEN without its server application time", () => {
+        expect(() => replayWorkforceWorkdayFacts({
+          workdayId: WORKDAY_ID,
+          events: [
+            { id: "event-1", type: "START", occurredAt: "2026-08-28T09:00:00.000Z" },
+            { id: "event-2", type: "FINISH", occurredAt: "2026-08-28T12:00:00.000Z" },
+            { id: "event-3", type: "REOPEN", occurredAt: "2026-08-28T12:00:00.000Z" },
+          ],
+        })).toThrow("REOPEN requires its server application time")
+      })
     })
 
     it("restores the finished day exactly when the reopen is undone at the same instant", () => {
@@ -266,8 +327,8 @@ describe("Workforce workday fact replay", () => {
           { id: "event-1", type: "START", occurredAt: "2026-08-28T09:00:00.000Z" },
           { id: "event-2", type: "PAUSE", occurredAt: "2026-08-28T12:00:00.000Z" },
           { id: "event-3", type: "FINISH", occurredAt: "2026-08-28T12:40:00.000Z" },
-          { id: "event-4", type: "REOPEN", occurredAt: "2026-08-28T12:40:00.000Z" },
-          { id: "event-5", type: "FINISH", occurredAt: "2026-08-28T12:40:00.000Z" },
+          { id: "event-4", type: "REOPEN", occurredAt: "2026-08-28T12:40:00.000Z", appliedAt: "2026-08-28T12:45:00.000Z" },
+          { id: "event-5", type: "FINISH", occurredAt: "2026-08-28T12:40:00.000Z", clientEventId: "reopen-undo:op-1" },
         ],
       })
 
@@ -279,21 +340,21 @@ describe("Workforce workday fact replay", () => {
         events: [
           { id: "event-1", type: "START", occurredAt: "2026-08-28T09:00:00.000Z" },
           { id: "event-3", type: "FINISH", occurredAt: "2026-08-28T12:40:00.000Z" },
-          { id: "event-4", type: "REOPEN", occurredAt: "2026-08-28T12:40:00.000Z" },
-          { id: "event-5", type: "FINISH", occurredAt: "2026-08-28T12:40:00.000Z" },
-          { id: "event-6", type: "REOPEN", occurredAt: "2026-08-28T12:40:00.000Z" },
+          { id: "event-4", type: "REOPEN", occurredAt: "2026-08-28T12:40:00.000Z", appliedAt: "2026-08-28T12:45:00.000Z" },
+          { id: "event-5", type: "FINISH", occurredAt: "2026-08-28T12:40:00.000Z", clientEventId: "reopen-undo:op-1" },
+          { id: "event-6", type: "REOPEN", occurredAt: "2026-08-28T12:40:00.000Z", appliedAt: "2026-08-28T12:50:00.000Z" },
           { id: "event-7", type: "RESUME", occurredAt: "2026-08-28T13:00:00.000Z" },
         ],
       })).toMatchObject({ status: "STARTED", totalPausedSeconds: 20 * 60 })
     })
 
-    it("accepts a RESUME at the very instant of the reopened finish without inventing a pause", () => {
+    it("accepts a RESUME at the very instant of a reopened finish, when the reopen came within the allowance", () => {
       expect(replayWorkforceWorkdayFacts({
         workdayId: WORKDAY_ID,
         events: [
           { id: "event-1", type: "START", occurredAt: "2026-08-28T09:00:00.000Z" },
           { id: "event-2", type: "FINISH", occurredAt: "2026-08-28T12:00:00.000Z" },
-          { id: "event-3", type: "REOPEN", occurredAt: "2026-08-28T12:00:00.000Z" },
+          { id: "event-3", type: "REOPEN", occurredAt: "2026-08-28T12:00:00.000Z", appliedAt: "2026-08-28T12:03:00.000Z" },
           { id: "event-4", type: "RESUME", occurredAt: "2026-08-28T12:00:00.000Z" },
         ],
       })).toMatchObject({ status: "STARTED", totalPausedSeconds: 0, pauseIntervals: [] })
@@ -302,25 +363,25 @@ describe("Workforce workday fact replay", () => {
     it.each([
       ["a running day", [
         { id: "event-1", type: "START", occurredAt: "2026-08-28T09:00:00.000Z" },
-        { id: "event-2", type: "REOPEN", occurredAt: "2026-08-28T12:00:00.000Z" },
+        { id: "event-2", type: "REOPEN", occurredAt: "2026-08-28T12:00:00.000Z", appliedAt: "2026-08-28T12:10:00.000Z" },
       ]],
       ["a paused day", [
         { id: "event-1", type: "START", occurredAt: "2026-08-28T09:00:00.000Z" },
         { id: "event-2", type: "PAUSE", occurredAt: "2026-08-28T11:00:00.000Z" },
-        { id: "event-3", type: "REOPEN", occurredAt: "2026-08-28T12:00:00.000Z" },
+        { id: "event-3", type: "REOPEN", occurredAt: "2026-08-28T12:00:00.000Z", appliedAt: "2026-08-28T12:10:00.000Z" },
       ]],
       ["an already reopened day", [
         { id: "event-1", type: "START", occurredAt: "2026-08-28T09:00:00.000Z" },
         { id: "event-2", type: "FINISH", occurredAt: "2026-08-28T11:00:00.000Z" },
-        { id: "event-3", type: "REOPEN", occurredAt: "2026-08-28T11:00:00.000Z" },
-        { id: "event-4", type: "REOPEN", occurredAt: "2026-08-28T11:20:00.000Z" },
+        { id: "event-3", type: "REOPEN", occurredAt: "2026-08-28T11:00:00.000Z", appliedAt: "2026-08-28T11:10:00.000Z" },
+        { id: "event-4", type: "REOPEN", occurredAt: "2026-08-28T11:20:00.000Z", appliedAt: "2026-08-28T11:20:00.000Z" },
       ]],
       ["a day that never started", [
-        { id: "event-1", type: "REOPEN", occurredAt: "2026-08-28T12:00:00.000Z" },
+        { id: "event-1", type: "REOPEN", occurredAt: "2026-08-28T12:00:00.000Z", appliedAt: "2026-08-28T12:10:00.000Z" },
       ]],
       ["a journal that lists the REOPEN before its FINISH at the same instant", [
         { id: "event-1", type: "START", occurredAt: "2026-08-28T09:00:00.000Z" },
-        { id: "event-3", type: "REOPEN", occurredAt: "2026-08-28T12:00:00.000Z" },
+        { id: "event-3", type: "REOPEN", occurredAt: "2026-08-28T12:00:00.000Z", appliedAt: "2026-08-28T12:10:00.000Z" },
         { id: "event-2", type: "FINISH", occurredAt: "2026-08-28T12:00:00.000Z" },
       ]],
     ] as const)("refuses REOPEN on %s", (_label, events) => {
@@ -335,7 +396,7 @@ describe("Workforce workday fact replay", () => {
         events: [
           { id: "event-1", type: "START", occurredAt: "2026-08-28T09:00:00.000Z" },
           { id: "event-2", type: "FINISH", occurredAt: "2026-08-28T12:00:00.000Z" },
-          { id: "event-3", type: "REOPEN", occurredAt: "2026-08-28T12:20:00.000Z" },
+          { id: "event-3", type: "REOPEN", occurredAt: "2026-08-28T12:20:00.000Z", appliedAt: "2026-08-28T12:20:00.000Z" },
         ],
       })).toThrow("REOPEN must be recorded at the finish it reopens")
       expect(() => replayWorkforceWorkdayFacts({
@@ -343,7 +404,7 @@ describe("Workforce workday fact replay", () => {
         events: [
           { id: "event-1", type: "START", occurredAt: "2026-08-28T09:00:00.000Z" },
           { id: "event-2", type: "FINISH", occurredAt: "2026-08-28T12:00:00.000Z" },
-          { id: "event-3", type: "REOPEN", occurredAt: "2026-08-28T11:59:59.999Z" },
+          { id: "event-3", type: "REOPEN", occurredAt: "2026-08-28T11:59:59.999Z", appliedAt: "2026-08-28T12:20:00.000Z" },
         ],
       })).toThrow("workday events must be in strict chronological order")
     })
@@ -362,7 +423,7 @@ describe("Workforce workday fact replay", () => {
         events: [
           { id: "event-1", type: "START", occurredAt: "2026-08-28T09:00:00.000Z" },
           { id: "event-2", type: "FINISH", occurredAt: "2026-08-28T12:00:00.000Z" },
-          { id: "event-3", type: "REOPEN", occurredAt: "2026-08-28T12:00:00.000Z" },
+          { id: "event-3", type: "REOPEN", occurredAt: "2026-08-28T12:00:00.000Z", appliedAt: "2026-08-28T12:10:00.000Z" },
           { id: "event-4", type: "RESUME", occurredAt: "2026-08-28T12:30:00.000Z" },
           { id: "event-5", type: "PAUSE", occurredAt: "2026-08-28T12:30:00.000Z" },
         ],

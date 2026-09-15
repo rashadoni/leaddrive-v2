@@ -3,7 +3,11 @@ import { Prisma } from "@prisma/client"
 import { z } from "zod"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
-import { lockMtmWorkdayTransitions, WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION } from "@/lib/mtm/workday"
+import {
+  lockMtmWorkdayTransitions,
+  MTM_WORKDAY_REOPEN_EVENT_KEY_PREFIX,
+  WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION,
+} from "@/lib/mtm/workday"
 import { prisma } from "@/lib/prisma"
 import { isValidTimezone } from "@/lib/timezone"
 import {
@@ -23,10 +27,10 @@ import {
 import {
   replayWorkforceWorkdayFacts,
   WORKFORCE_WORKDAY_JOURNAL_ORDER,
+  WORKFORCE_WORKDAY_JOURNAL_SELECT,
   workforceReplayMatchesWorkdayCorrectionFacts,
+  workforceWorkdayEventFact,
   WorkforceWorkdayFactsReplayError,
-  type WorkforceWorkdayEventFact,
-  type WorkforceWorkdayEventType,
 } from "@/lib/workforce/workday-facts-replay"
 
 /**
@@ -140,16 +144,6 @@ export async function workforceTenantToday(organizationId: string, now: Date): P
   return currentDateKey(now, isValidTimezone(settings.timezone) ? settings.timezone : "UTC")
 }
 
-export function workforceWorkdayJournalFacts(
-  events: ReadonlyArray<{ id: string; type: string; occurredAt: Date }>,
-): WorkforceWorkdayEventFact[] {
-  return events.map((event) => ({
-    id: event.id,
-    type: event.type as WorkforceWorkdayEventType,
-    occurredAt: event.occurredAt.toISOString(),
-  }))
-}
-
 /**
  * Exactly the authority of a direct manager time correction: the legacy CRM
  * manager scope before C7 cutover, a TIME_CORRECT grant after it. Returns the
@@ -220,7 +214,7 @@ export async function reopenWorkforceWorkday(
     input,
   })
   const today = await workforceTenantToday(organizationId, now)
-  const clientEventId = `reopen:${input.operationId}`
+  const clientEventId = `${MTM_WORKDAY_REOPEN_EVENT_KEY_PREFIX}${input.operationId}`
 
   try {
     return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -351,7 +345,7 @@ export async function reopenWorkforceWorkday(
         tx.mtmAgentWorkdayEvent.findMany({
           where: { organizationId, agentId: initial.agentId, workdayId },
           orderBy: [...WORKFORCE_WORKDAY_JOURNAL_ORDER],
-          select: { id: true, type: true, occurredAt: true },
+          select: WORKFORCE_WORKDAY_JOURNAL_SELECT,
         }),
         tx.mtmAgentWorkdayEvent.findFirst({
           where: { organizationId, agentId: initial.agentId, clientEventId },
@@ -403,7 +397,7 @@ export async function reopenWorkforceWorkday(
       }
       // Prove the immutable journal reproduces the row before a REOPEN extends
       // it, and that the extended journal reproduces exactly the reopened row.
-      const journal = workforceWorkdayJournalFacts(events)
+      const journal = events.map(workforceWorkdayEventFact)
       let historyProblem: string | null = null
       try {
         const replayed = replayWorkforceWorkdayFacts({ workdayId, events: journal })
@@ -412,7 +406,13 @@ export async function reopenWorkforceWorkday(
         } else {
           const reopened = replayWorkforceWorkdayFacts({
             workdayId,
-            events: [...journal, { id: "pending-workday-reopen", type: "REOPEN", occurredAt: finishedAt.toISOString() }],
+            events: [...journal, {
+              id: "pending-workday-reopen",
+              type: "REOPEN",
+              occurredAt: finishedAt.toISOString(),
+              appliedAt: now.toISOString(),
+              clientEventId,
+            }],
           })
           if (!workforceReplayMatchesWorkdayCorrectionFacts(reopened, afterWorkday)) {
             historyProblem = "Reopened workday journal does not reproduce the reopened projection"

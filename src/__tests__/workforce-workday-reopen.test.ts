@@ -17,7 +17,6 @@ import { workforceWorkdayCorrectionFacts } from "@/lib/workforce/workday-correct
 import {
   replayWorkforceWorkdayFacts,
   workforceReplayMatchesWorkdayCorrectionFacts,
-  type WorkforceWorkdayEventType,
 } from "@/lib/workforce/workday-facts-replay"
 import {
   reopenWorkforceWorkday,
@@ -298,7 +297,7 @@ describe("manager reopen of today's finished Workforce workday", () => {
     expect(prisma.mtmAgentWorkdayEvent.findMany).toHaveBeenCalledWith({
       where: { organizationId: ORGANIZATION_ID, agentId: AGENT_ID, workdayId: WORKDAY_ID },
       orderBy: [{ occurredAt: "asc" }, { appliedAt: { sort: "asc", nulls: "first" } }, { id: "asc" }],
-      select: { id: true, type: true, occurredAt: true },
+      select: { id: true, type: true, occurredAt: true, appliedAt: true, clientEventId: true },
     })
     expect(prisma.mtmAgentWorkday.findFirst).toHaveBeenNthCalledWith(3, {
       where: {
@@ -583,14 +582,7 @@ describe("reopened workday through the canonical state machine", () => {
   }
 
   function replayMatchesRow() {
-    const facts = replayWorkforceWorkdayFacts({
-      workdayId: WORKDAY_ID,
-      events: memory.journal(WORKDAY_ID).map((event) => ({
-        id: String(event.id),
-        type: event.type as WorkforceWorkdayEventType,
-        occurredAt: (event.occurredAt as Date).toISOString(),
-      })),
-    })
+    const facts = replayWorkforceWorkdayFacts({ workdayId: WORKDAY_ID, events: memory.journalFacts(WORKDAY_ID) })
     expect(workforceReplayMatchesWorkdayCorrectionFacts(facts, workforceWorkdayCorrectionFacts(row() as never))).toBe(true)
     return facts
   }
@@ -696,17 +688,61 @@ describe("reopened workday through the canonical state machine", () => {
     replayMatchesRow()
   })
 
-  it("accepts a RESUME the phone stamped before the reopen but after the finish", async () => {
+  it("refuses a RESUME that claims the closed time before the reopen as work", async () => {
     await act("START", "2026-09-15T05:00:00.000Z")
     await act("FINISH", "2026-09-15T13:00:00.000Z")
-    await expect(managerReopensAt("2026-09-15T13:05:00.000Z")).resolves.toMatchObject({ kind: "success" })
+    await expect(managerReopensAt("2026-09-15T13:20:00.000Z")).resolves.toMatchObject({ kind: "success" })
 
-    // The phone runs behind the server: its RESUME claims 13:04:30.
-    await expect(act("RESUME", "2026-09-15T13:04:30.000Z", "2026-09-15T13:05:10.000Z"))
+    // Arrives a minute after the reopen but claims 13:06, while the day was
+    // still closed: 13:06-13:20 would otherwise count as work.
+    await expect(act("RESUME", "2026-09-15T13:06:00.000Z", "2026-09-15T13:21:00.000Z")).resolves.toMatchObject({
+      status: "conflict",
+      code: "MTM_WORKDAY_EVENT_OUT_OF_ORDER",
+      riskCodes: ["CLAIM_BEFORE_REOPEN"],
+    })
+    expect(row()).toMatchObject({ status: "PAUSED", pausedAt: new Date("2026-09-15T13:00:00.000Z"), totalPausedSeconds: 0 })
+    expect(memory.journal(WORKDAY_ID).map((event) => event.type)).toEqual(["START", "FINISH", "REOPEN"])
+    replayMatchesRow()
+
+    // A journal carrying such a RESUME anyway does not replay either.
+    expect(() => replayWorkforceWorkdayFacts({
+      workdayId: WORKDAY_ID,
+      events: [...memory.journalFacts(WORKDAY_ID), {
+        id: "forged-resume",
+        type: "RESUME",
+        occurredAt: "2026-09-15T13:06:00.000Z",
+        appliedAt: "2026-09-15T13:21:00.000Z",
+        clientEventId: "resume-forged",
+      }],
+    })).toThrow("workday event after a reopen cannot claim time before the reopen")
+  })
+
+  it("refuses a FINISH that claims the closed time before the reopen", async () => {
+    await act("START", "2026-09-15T05:00:00.000Z")
+    await act("FINISH", "2026-09-15T13:00:00.000Z")
+    await managerReopensAt("2026-09-15T13:20:00.000Z")
+
+    await expect(act("FINISH", "2026-09-15T13:10:00.000Z", "2026-09-15T13:22:00.000Z")).resolves.toMatchObject({
+      status: "conflict",
+      code: "MTM_WORKDAY_EVENT_OUT_OF_ORDER",
+      riskCodes: ["CLAIM_BEFORE_REOPEN"],
+    })
+    expect(row()).toMatchObject({ status: "PAUSED", completedAt: null })
+    replayMatchesRow()
+  })
+
+  it("accepts a RESUME within the phone clock allowance and banks the pause up to its claim", async () => {
+    await act("START", "2026-09-15T05:00:00.000Z")
+    await act("FINISH", "2026-09-15T13:00:00.000Z")
+    await expect(managerReopensAt("2026-09-15T13:20:00.000Z")).resolves.toMatchObject({ kind: "success" })
+
+    // 13:17 is within five minutes of the 13:20 reopen: a phone running behind.
+    await expect(act("RESUME", "2026-09-15T13:17:00.000Z", "2026-09-15T13:21:00.000Z"))
       .resolves.toMatchObject({ status: "ok" })
 
-    expect(row()).toMatchObject({ status: "STARTED", pausedAt: null, totalPausedSeconds: 270 })
-    replayMatchesRow()
+    expect(row()).toMatchObject({ status: "STARTED", pausedAt: null, totalPausedSeconds: 17 * 60 })
+    const facts = replayMatchesRow()
+    expect(facts.pauseIntervals).toEqual([{ startedAt: "2026-09-15T13:00:00.000Z", endedAt: "2026-09-15T13:17:00.000Z" }])
   })
 
   it("still refuses a RESUME claimed before the finish it would continue", async () => {

@@ -1,5 +1,9 @@
 import { Prisma } from "@prisma/client"
-import { lockMtmWorkdayTransitions, WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION } from "@/lib/mtm/workday"
+import {
+  lockMtmWorkdayTransitions,
+  MTM_WORKDAY_REOPEN_UNDO_EVENT_KEY_PREFIX,
+  WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION,
+} from "@/lib/mtm/workday"
 import { prisma } from "@/lib/prisma"
 import { writeWorkforceWorkdayReopenUndoAuditInTransaction } from "@/lib/workforce/workday-audit"
 import {
@@ -9,7 +13,9 @@ import {
 import {
   replayWorkforceWorkdayFacts,
   WORKFORCE_WORKDAY_JOURNAL_ORDER,
+  WORKFORCE_WORKDAY_JOURNAL_SELECT,
   workforceReplayMatchesWorkdayCorrectionFacts,
+  workforceWorkdayEventFact,
   WorkforceWorkdayFactsReplayError,
 } from "@/lib/workforce/workday-facts-replay"
 import {
@@ -17,7 +23,6 @@ import {
   workforceReopenWorkdaySelect,
   workforceTenantToday,
   WorkforceWorkdayReopenSchema,
-  workforceWorkdayJournalFacts,
   workforceWorkdayReopenRequestHash,
   type WorkforceWorkdayReopenContext,
 } from "@/lib/workforce/workday-reopen"
@@ -104,7 +109,7 @@ export async function undoWorkforceWorkdayReopen(
     input,
   })
   const today = await workforceTenantToday(organizationId, now)
-  const clientEventId = `reopen-undo:${input.operationId}`
+  const clientEventId = `${MTM_WORKDAY_REOPEN_UNDO_EVENT_KEY_PREFIX}${input.operationId}`
   const scope = { organizationId, agentId: initial.agentId }
 
   try {
@@ -162,6 +167,10 @@ export async function undoWorkforceWorkdayReopen(
           beforeWorkday,
         )
       }
+      // Undo is a same-day correction of the manager's own mistake. A reopen
+      // left open past midnight is no longer undone here: that day is handled
+      // by the existing prior-day / left-open workday flow (missed-finish
+      // review), which v1 of the reopen feature deliberately does not replace.
       if (beforeWorkday.workDate !== today) {
         throw undoConflict(
           "WORKFORCE_WORKDAY_REOPEN_UNDO_NOT_TODAY",
@@ -174,7 +183,7 @@ export async function undoWorkforceWorkdayReopen(
         tx.mtmAgentWorkdayEvent.findMany({
           where: { organizationId, agentId: initial.agentId, workdayId },
           orderBy: [...WORKFORCE_WORKDAY_JOURNAL_ORDER],
-          select: { id: true, type: true, occurredAt: true },
+          select: WORKFORCE_WORKDAY_JOURNAL_SELECT,
         }),
         tx.workforceTimeCorrection.findMany({
           where: { organizationId, agentId: initial.agentId, workdayId },
@@ -212,7 +221,7 @@ export async function undoWorkforceWorkdayReopen(
         pausedAt: null,
         completedAt: beforeWorkday.pausedAt,
       }
-      const journal = workforceWorkdayJournalFacts(events)
+      const journal = events.map(workforceWorkdayEventFact)
       let historyProblem: string | null = null
       try {
         const replayed = replayWorkforceWorkdayFacts({ workdayId, events: journal, corrections })
@@ -221,7 +230,13 @@ export async function undoWorkforceWorkdayReopen(
         } else {
           const restored = replayWorkforceWorkdayFacts({
             workdayId,
-            events: [...journal, { id: "pending-workday-reopen-undo", type: "FINISH", occurredAt: pauseStartedAt.toISOString() }],
+            events: [...journal, {
+              id: "pending-workday-reopen-undo",
+              type: "FINISH",
+              occurredAt: pauseStartedAt.toISOString(),
+              appliedAt: now.toISOString(),
+              clientEventId,
+            }],
             corrections,
           })
           if (!workforceReplayMatchesWorkdayCorrectionFacts(restored, afterWorkday)) {
