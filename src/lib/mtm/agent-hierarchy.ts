@@ -13,9 +13,10 @@
  * 2. Руководитель, который сам подчиняется другому руководителю, НЕ получает
  *    отдельную команду верхнего уровня: он показан вложенной подкомандой внутри
  *    команды своего начальника. Так его карточка не дублируется.
- * 3. Если фильтр или поиск спрятал руководителя, а подчинённые видны, они
- *    остаются под его именем (группа без карточки руководителя), а не падают в
- *    «без менеджера» — менеджер у них есть.
+ * 3. Если руководителя нет в загруженном списке (фильтр, поиск или скоуп
+ *    веб-менеджера, в который его начальник не входит), видимые подчинённые
+ *    остаются под его именем (группа без карточки руководителя), а не падают
+ *    в «без менеджера» — менеджер у них есть.
  * 4. Все остальные, у кого нет ни руководителя, ни подчинённых (включая
  *    менеджеров без команды), — в корзине «Менеджер не назначен» в конце.
  * 5. Цикл в данных (A — начальник B, B — начальник A) не зацикливает обход:
@@ -162,10 +163,21 @@ export function mtmAgentMatchesSearch(agent: MtmSearchableAgent, query: string):
   if (!q) return true
   const texts = [agent.name, agent.email, agent.phone, agent.externalCode, agent.userEmail]
   if (texts.some((value) => typeof value === "string" && value.toLocaleLowerCase().includes(q))) return true
-  const qDigits = q.replace(/\D/g, "")
-  if (qDigits.length >= 3 && /^[\d\s()+-]+$/.test(q)) {
-    const phoneDigits = (agent.phone || "").replace(/\D/g, "")
-    if (phoneDigits.includes(qDigits)) return true
+  if (/^[\d\s()+-]+$/.test(q)) {
+    const qDigits = mtmLocalPhoneDigits(q)
+    if (qDigits.length >= 3 && mtmLocalPhoneDigits(agent.phone).includes(qDigits)) return true
   }
   return false
+}
+
+/**
+ * Azerbaijani numbers are typed three ways: «050 123 45 67», «+994 50 1234567»
+ * and «994501234567». Digits only, without the country code or the trunk 0,
+ * so all three compare equal (review of #214).
+ */
+export function mtmLocalPhoneDigits(value: string | null | undefined): string {
+  const digits = (value || "").replace(/\D/g, "")
+  if (digits.startsWith("994")) return digits.slice(3)
+  if (digits.startsWith("0")) return digits.slice(1)
+  return digits
 }

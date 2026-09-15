@@ -37,6 +37,9 @@ const statusColors: Record<string, string> = {
 const ONLINE_WINDOW_MS = MTM_AGENT_APP_ACTIVE_WINDOW_MS
 // Cards or a compact list; a per-viewer convenience, so localStorage is enough.
 const VIEW_STORAGE_KEY = "mtm-agents-view"
+// Page through the list; bounded so a runaway total cannot loop for ever.
+const AGENTS_PAGE_SIZE = 200
+const AGENTS_MAX_PAGES = 10
 type AgentsView = "cards" | "list"
 
 export default function MtmAgentsPage() {
@@ -76,14 +79,24 @@ export default function MtmAgentsPage() {
 
   const fetchAgents = async () => {
     try {
-      const res = await fetch("/api/v1/mtm/agents?limit=200", { headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string> })
-      const r = await res.json().catch(() => null)
-      if (!res.ok || !r?.success) {
-        setLoadError(explainError(r, res.status))
-      } else {
-        setLoadError("")
-        setAgents(r.data.agents || [])
+      // The list API caps a page at 200. One page used to be the whole page:
+      // in a bigger organization managers past 200 never loaded, their teams
+      // looked leaderless and search could not find them (review of #214).
+      const headers = orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>
+      const loaded: any[] = []
+      for (let page = 1; page <= AGENTS_MAX_PAGES; page++) {
+        const res = await fetch(`/api/v1/mtm/agents?limit=${AGENTS_PAGE_SIZE}&page=${page}`, { headers })
+        const r = await res.json().catch(() => null)
+        if (!res.ok || !r?.success) {
+          setLoadError(explainError(r, res.status))
+          return
+        }
+        const batch = r.data.agents || []
+        loaded.push(...batch)
+        if (batch.length < AGENTS_PAGE_SIZE || loaded.length >= (r.data.total ?? 0)) break
       }
+      setLoadError("")
+      setAgents(loaded)
     } catch {
       setLoadError(explainError(null))
     } finally { setLoading(false) }
@@ -175,6 +188,9 @@ export default function MtmAgentsPage() {
   // Teams, not name buckets (prod 2026-09-15): a manager heads their own team
   // instead of sinking into "no manager". Rules live in agent-hierarchy.ts.
   const hierarchy = buildMtmAgentHierarchy(filtered, agents)
+  // Under the managers filter everyone left over is a leader with no team —
+  // "no manager assigned" would say the wrong thing about them.
+  const unassignedLabel = activeFilter === "managers" ? t("leadersWithoutTeam") : t("unassignedGroup")
 
   async function confirmDelete() {
     if (!deleteItem) return
@@ -345,7 +361,7 @@ export default function MtmAgentsPage() {
     const cards = [...(team.leader ? [team.leader] : []), ...team.members]
     return (
       <section key={team.key} data-testid="mtm-agent-team" className={depth > 0 ? "border-l-2 border-blue-200 pl-3 dark:border-blue-900" : ""}>
-        {teamHeader(team.label, team.size, team.leader ? undefined : t("leaderHidden"), depth > 0)}
+        {teamHeader(team.label, team.size, team.leader ? undefined : t("leaderNotListed"), depth > 0)}
         {cards.length ? <div className={cardGrid}>{cards.map(agent => renderCard(agent, team))}</div> : null}
         {team.subteams.length ? <div className={`space-y-4 ${cards.length ? "mt-4" : ""}`}>{team.subteams.map(sub => renderTeam(sub, depth + 1))}</div> : null}
       </section>
@@ -360,7 +376,7 @@ export default function MtmAgentsPage() {
     if (!small) return <div key={team.key} className="basis-full min-w-0">{renderTeam(team, 0)}</div>
     return (
       <section key={team.key} data-testid="mtm-agent-team" className={`min-w-0 w-full ${cards.length === 2 ? "sm:flex-[2_1_36rem] sm:max-w-[60rem]" : "sm:flex-[1_1_18rem] sm:max-w-[30rem]"}`}>
-        {teamHeader(team.label, team.size, team.leader ? undefined : t("leaderHidden"))}
+        {teamHeader(team.label, team.size, team.leader ? undefined : t("leaderNotListed"))}
         <div className={`grid auto-rows-fr gap-3 ${cards.length === 2 ? "sm:grid-cols-2" : "grid-cols-1"}`}>
           {cards.map(agent => renderCard(agent, team))}
         </div>
@@ -428,11 +444,11 @@ export default function MtmAgentsPage() {
         </thead>
         <tbody>
           {hierarchy.teams.flatMap(team => [
-            groupRow(team.key, team.label, team.size, team.leader ? undefined : t("leaderHidden")),
+            groupRow(team.key, team.label, team.size, team.leader ? undefined : t("leaderNotListed")),
             ...flattenMtmAgentTeam(team).map(row => renderRow(row.agent, row.depth, row.isLeader, row.team)),
           ])}
           {hierarchy.unassigned.length ? [
-            groupRow("unassigned", t("unassignedGroup"), hierarchy.unassigned.length),
+            groupRow("unassigned", unassignedLabel, hierarchy.unassigned.length),
             ...hierarchy.unassigned.map(agent => renderRow(agent, 0, false)),
           ] : null}
         </tbody>
@@ -474,12 +490,13 @@ export default function MtmAgentsPage() {
           role="button"
           tabIndex={0}
           aria-pressed={activeFilter === "managers"}
-          aria-label={t("filterManagersHint")}
+          aria-describedby="mtm-agents-managers-tile-hint"
           data-testid="mtm-agents-managers-tile"
           onClick={toggleManagers}
           onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleManagers() } }}
           className="cursor-pointer rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
+          <span id="mtm-agents-managers-tile-hint" className="sr-only">{t("filterManagersHint")}</span>
           <ColorStatCard className={`h-full ${activeFilter === "managers" ? "border-blue-400 ring-1 ring-blue-300 dark:border-blue-700 dark:ring-blue-800" : ""}`} label={t("statManagers")} value={totalManagers} icon={<Users className="h-4 w-4" />} hint={t("hintManagers")} />
         </div>
       </div>
@@ -493,7 +510,6 @@ export default function MtmAgentsPage() {
         ) : null}
         <Button variant={activeFilter === "all" ? "default" : "outline"} size="sm" onClick={() => setActiveFilter("all")}>{t("all")} ({agents.length})</Button>
         <Button variant={activeFilter === "online" ? "default" : "outline"} size="sm" onClick={() => setActiveFilter("online")}>{t("filterOnline")} ({totalOnline})</Button>
-        <Button variant={activeFilter === "managers" ? "default" : "outline"} size="sm" onClick={() => setActiveFilter("managers")}>{t("filterManagers")} ({totalManagers})</Button>
         {(["ACTIVE", "INACTIVE", "SUSPENDED"] as const).map(s => (
           <Button key={s} variant={activeFilter === s ? "default" : "outline"} size="sm" onClick={() => setActiveFilter(s)}>{t(`filter${s.charAt(0) + s.slice(1).toLowerCase()}` as any)} ({statusCounts[s] || 0})</Button>
         ))}
@@ -525,7 +541,7 @@ export default function MtmAgentsPage() {
           {hierarchy.teams.map(teamSlot)}
           {hierarchy.unassigned.length ? (
             <section className="basis-full min-w-0" data-testid="mtm-agents-unassigned">
-              {teamHeader(t("unassignedGroup"), hierarchy.unassigned.length)}
+              {teamHeader(unassignedLabel, hierarchy.unassigned.length)}
               <div className={cardGrid}>{hierarchy.unassigned.map(agent => renderCard(agent))}</div>
             </section>
           ) : null}

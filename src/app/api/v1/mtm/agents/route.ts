@@ -115,6 +115,10 @@ export const GET = withRls(async (req, auth) => {
     // Mobile callers (MANAGER/SUPERVISOR) are scoped to their team/region.
     // AGENT callers see only themselves.
     const mobileAuth = getMobileAuth(req)
+    // The linked web login's email is for the web page's search only: a phone
+    // token or an integration key has no reason to learn anyone's sign-in
+    // address (review of #214).
+    const exposeLoginEmail = Boolean(session) && !mobileAuth?.agentId
     if (mobileAuth?.agentId) {
       const callerAgent = await prisma.mtmAgent.findFirst({
         where: { id: mobileAuth.agentId, organizationId: orgId },
@@ -167,8 +171,9 @@ export const GET = withRls(async (req, auth) => {
           latestLocation: { select: { receivedAt: true } },
           // The linked web login's email, so the page can find a manager by the
           // address they sign in with (prod 2026-09-15: «rashad@guven.az» lived
-          // only on the login). Flattened below; the user row never leaves.
-          user: { select: { email: true } },
+          // only on the login). Web sessions only; flattened below, the user
+          // row never leaves.
+          ...(exposeLoginEmail ? { user: { select: { email: true } } } : {}),
         },
       }),
       prisma.mtmAgent.count({ where }),
@@ -269,11 +274,12 @@ export const GET = withRls(async (req, auth) => {
       success: true,
       data: {
         agents: agents.map((row) => {
-          const { expoPushToken, latestLocation, user, ...agent } = row
+          const { expoPushToken, latestLocation, ...rest } = row
+          const { user, ...agent } = rest as typeof rest & { user?: { email: string | null } | null }
           const presence = mtmAgentPresence(dayByAgent.get(agent.id))
           return {
             ...agent,
-            userEmail: user?.email ?? null,
+            ...(exposeLoginEmail ? { userEmail: user?.email ?? null } : {}),
             presence: showTimes ? presence : withoutTimes(presence),
             breaks: showTimes ? (breaksByAgent.get(agent.id) ?? []) : [],
             activity: activityAvailable ? mtmAgentCardActivity(activityByAgent.get(agent.id) ?? {}) : null,

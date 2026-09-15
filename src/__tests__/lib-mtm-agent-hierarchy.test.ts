@@ -4,6 +4,7 @@ import {
   buildMtmAgentHierarchy,
   flattenMtmAgentTeam,
   mtmAgentMatchesSearch,
+  mtmLocalPhoneDigits,
   type MtmAgentTeam,
   type MtmHierarchyAgent,
 } from "@/lib/mtm/agent-hierarchy"
@@ -124,7 +125,12 @@ describe("agents page search", () => {
     expect(mtmAgentMatchesSearch(card, "ramil")).toBe(true)
     expect(mtmAgentMatchesSearch(card, "mr-007")).toBe(true)
     expect(mtmAgentMatchesSearch(card, "501234567")).toBe(true)
-    expect(mtmAgentMatchesSearch(card, "050 123 45")).toBe(false)
+    // Local, international and bare formats are the same number.
+    expect(mtmAgentMatchesSearch(card, "050 123 45")).toBe(true)
+    expect(mtmAgentMatchesSearch({ phone: "+994 50 1234567" }, "050 123 45 67")).toBe(true)
+    expect(mtmAgentMatchesSearch({ phone: "050-123-45-67" }, "+994501234567")).toBe(true)
+    expect(mtmAgentMatchesSearch({ phone: "994501234567" }, "(050) 123")).toBe(true)
+    expect(mtmAgentMatchesSearch({ phone: "+994 55 1234567" }, "050 123 45 67")).toBe(false)
     expect(mtmAgentMatchesSearch(card, "123 45 67")).toBe(true)
   })
 
@@ -132,6 +138,15 @@ describe("agents page search", () => {
     expect(mtmAgentMatchesSearch(card, "guven.com")).toBe(false)
     expect(mtmAgentMatchesSearch({ name: null }, "x")).toBe(false)
     expect(mtmAgentMatchesSearch(card, "   ")).toBe(true)
+  })
+})
+
+describe("local phone digits", () => {
+  it("drops the country code and the trunk zero", () => {
+    expect(mtmLocalPhoneDigits("+994 50 123-45-67")).toBe("501234567")
+    expect(mtmLocalPhoneDigits("050 123 45 67")).toBe("501234567")
+    expect(mtmLocalPhoneDigits("501234567")).toBe("501234567")
+    expect(mtmLocalPhoneDigits(null)).toBe("")
   })
 })
 
@@ -164,10 +179,25 @@ describe("agents page contract", () => {
     expect(list).not.toMatch(/overflow-(x|y)?-?auto|overflow-scroll/)
   })
 
-  it("makes the managers tile a filter", () => {
+  it("makes the managers tile the one managers filter, readable with its count", () => {
     expect(page).toContain('data-testid="mtm-agents-managers-tile"')
     expect(page).toContain('activeFilter === "managers"')
     expect(page).toContain("isMtmLeaderRole(a.role)")
+    const tile = page.slice(page.indexOf('data-testid="mtm-agents-managers-tile"') - 400, page.indexOf("</ColorStatCard>") > 0 ? page.indexOf("</ColorStatCard>") : page.indexOf('label={t("statManagers")}') + 200)
+    // aria-label would replace the tile's content, count included.
+    expect(tile).not.toContain("aria-label=")
+    expect(tile).toContain('aria-describedby="mtm-agents-managers-tile-hint"')
+    // Review of #214: tile and chip did the same thing — one control stays.
+    expect(page).not.toContain('t("filterManagers")')
+    expect(page).toContain('activeFilter === "managers" ? t("leadersWithoutTeam") : t("unassignedGroup")')
+  })
+
+  it("loads every page of agents, bounded, instead of the first 200", () => {
+    expect(page).toContain("const AGENTS_PAGE_SIZE = 200")
+    expect(page).toContain("const AGENTS_MAX_PAGES = 10")
+    expect(page).toContain("page=${page}")
+    expect(page).not.toContain('fetch("/api/v1/mtm/agents?limit=200"')
+    expect(page).not.toContain('t("leaderHidden")')
   })
 
   it("has every new label in every language", () => {
