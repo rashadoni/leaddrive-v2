@@ -38,6 +38,8 @@ export interface MtmToolNavigationItem {
   icon: LucideIcon
   /** Reuses the established, fully localized label in the `nav` namespace. */
   navKey: string
+  /** Organization switch that hides this tool when explicitly false. */
+  orgSetting?: "fieldContactsEnabled"
 }
 
 export interface MtmToolNavigationGroup {
@@ -75,7 +77,7 @@ export const MTM_TOOL_GROUPS = [
     key: "reference",
     items: [
       { href: "/mtm/customers", icon: Building2, navKey: "mtmCustomers" },
-      { href: "/mtm/contacts", icon: Users, navKey: "mtmContacts" },
+      { href: "/mtm/contacts", icon: Users, navKey: "mtmContacts", orgSetting: "fieldContactsEnabled" },
       { href: "/mtm/agents", icon: UserCog, navKey: "mtmAgents" },
     ],
   },
@@ -102,6 +104,21 @@ export const MTM_TOOL_GROUPS = [
     ],
   },
 ] as const satisfies readonly MtmToolNavigationGroup[]
+
+/**
+ * Tool groups as a given organization should see them. A switch hides only
+ * when explicitly false; a group left without items disappears.
+ */
+export function visibleMtmToolGroups(
+  orgSettings: Partial<Record<"fieldContactsEnabled", boolean>> = {},
+): MtmToolNavigationGroup[] {
+  return MTM_TOOL_GROUPS
+    .map((group) => ({
+      key: group.key,
+      items: (group.items as readonly MtmToolNavigationItem[]).filter((item) => !item.orgSetting || orgSettings[item.orgSetting] !== false),
+    }))
+    .filter((group) => group.items.length > 0)
+}
 
 export const MTM_ALL_NAVIGATION_HREFS = [
   ...MTM_PRIMARY_NAVIGATION.map((item) => item.href),

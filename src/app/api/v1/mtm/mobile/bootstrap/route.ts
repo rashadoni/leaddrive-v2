@@ -456,6 +456,11 @@ export const GET = withMobileRls(async (req, auth) => {
           // that their administrator has turned off.
           canPlanOwnRoutes,
           canSelfPublishRoutes,
+          // UI visibility only. OFF hides the app's contact screens; the
+          // contact stream and APIs keep working so visits never lose the
+          // contact they reference. Older APKs ignore the key and keep showing
+          // contacts, which is the safe side of this switch.
+          fieldContactsEnabled: settings.fieldContactsEnabled !== false,
           workforce: {
             enabled: workforceEnabled,
             configVersion: attendance.configVersion,

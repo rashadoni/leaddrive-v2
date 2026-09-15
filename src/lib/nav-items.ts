@@ -88,7 +88,16 @@ export interface NavItem {
    * endpoint that correctly returns 403.
    */
   allowedRoles?: readonly Role[]
+  /**
+   * Organization-level visibility switch (MTM settings). Unlike `module` it
+   * is not an entitlement: the page stays reachable by URL and explains the
+   * switch, so `isNavItemEnabled` (the page guard) ignores it and only
+   * `accessibleNavItems` (menus) applies it. Unknown = shown.
+   */
+  orgSetting?: NavOrgSettingKey
 }
+
+export type NavOrgSettingKey = "fieldContactsEnabled"
 
 export type SupportNavSection = "work" | "team" | "rules"
 
@@ -103,6 +112,11 @@ export interface OrgNavContext {
   addons?: string[]
   modules?: Record<string, boolean>
   role?: string
+  /**
+   * Organization switches read after login. Absent while loading or when the
+   * tenant has no MTM — every switch then counts as ON, the historical menu.
+   */
+  orgSettings?: Partial<Record<NavOrgSettingKey, boolean>>
 }
 
 /**
@@ -286,7 +300,7 @@ export const navItems: NavItem[] = [
   { module: "mtm", href: "/mtm/promotions", icon: FileBadge, tKey: "mtmPromotions", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/tasks", icon: ClipboardList, tKey: "mtmTasks", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/customers", icon: Building2, tKey: "mtmCustomers", group: "Route & Field" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/contacts", icon: Users, tKey: "mtmContacts", group: "Route & Field" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/contacts", icon: Users, tKey: "mtmContacts", group: "Route & Field", orgSetting: "fieldContactsEnabled" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/photos", icon: Camera, tKey: "mtmPhotos", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/alerts", icon: AlertTriangle, tKey: "mtmAlerts", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/agents", icon: UserCog, tKey: "mtmAgents", group: "Route & Field" },
@@ -468,6 +482,11 @@ export function isNavItemEnabled(
   return moduleEnabled && featureEnabled && addonEnabled && capabilityEnabled
 }
 
+/** Only an explicit false hides: a missing or still-loading setting keeps the item. */
+export function isNavItemOrgSettingEnabled(org: OrgNavContext, item: NavItem): boolean {
+  return !item.orgSetting || org.orgSettings?.[item.orgSetting] !== false
+}
+
 export function accessibleNavItems(org: OrgNavContext): NavItem[] {
   const showAll = org.role === "superadmin"
   // Роль-гейт для под-поверхностей с более строгой границей, чем у модуля
@@ -477,7 +496,7 @@ export function accessibleNavItems(org: OrgNavContext): NavItem[] {
     (!i.permissionScope || checkPermission((org.role as Role) || "viewer", i.permissionScope, "read"))
     && (!i.allowedRoles || i.allowedRoles.includes((org.role as Role) || "viewer"))
   return navItems.filter((item) =>
-    isNavItemEnabled(org, item, { ignoreModuleGate: showAll }) && roleAllowed(item)
+    isNavItemEnabled(org, item, { ignoreModuleGate: showAll }) && roleAllowed(item) && isNavItemOrgSettingEnabled(org, item)
   )
 }
 

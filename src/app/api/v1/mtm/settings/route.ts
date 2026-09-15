@@ -9,6 +9,8 @@ import { isValidTimezone } from "@/lib/timezone"
 import { coerceMtmContactRequiredFields } from "@/lib/mtm/contact-required-fields"
 import { parseMtmRouteTargetTypes } from "@/lib/mtm/route-target-types"
 
+const FIELD_CONTACTS_TOGGLE_ROLES = ["admin", "superadmin"]
+
 export const GET = withRls(async (_req: NextRequest, { orgId }) => {
   try {
     // Single source of truth: getMtmSettings merges org rows over the schema
@@ -41,6 +43,23 @@ export const PUT = withRlsAuth(undefined, undefined, async (req, auth) => {
     const body = Object.fromEntries(
       Object.entries(parsed.data).filter(([key, value]) => key in MTM_SETTING_DEFAULTS && value !== undefined)
     )
+    // Hiding a whole module surface for every manager and field agent is an
+    // administrator decision, narrower than the general settings guard.
+    // The settings page saves the whole object, so a manager's unrelated save
+    // carries the current value back: an unchanged value is dropped, only a
+    // real change by a non-administrator is refused.
+    if (body.fieldContactsEnabled !== undefined) {
+      if (typeof body.fieldContactsEnabled !== "boolean") {
+        return NextResponse.json({ error: "Field contacts visibility must be a boolean" }, { status: 400 })
+      }
+      if (!FIELD_CONTACTS_TOGGLE_ROLES.includes(auth.role)) {
+        const current = (await getMtmSettings(orgId)).fieldContactsEnabled
+        if (body.fieldContactsEnabled !== current) {
+          return NextResponse.json({ error: "Only an administrator can change field contacts visibility" }, { status: 403 })
+        }
+        delete body.fieldContactsEnabled
+      }
+    }
     if (typeof body.supportEmail === "string") body.supportEmail = body.supportEmail.trim()
     if (typeof body.supportPhone === "string") body.supportPhone = body.supportPhone.trim()
     if (body.contactRequiredFields !== undefined) {

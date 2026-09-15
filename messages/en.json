@@ -16028,7 +16028,10 @@
     "lblVisitPolicies": "Visit action policies",
     "hintVisitPolicies": "Enable team-specific required, optional, and hidden visit actions",
     "lblExcelImports": "Excel imports",
-    "hintExcelImports": "Allow authorized users to validate and apply MTM Excel workbooks"
+    "hintExcelImports": "Allow authorized users to validate and apply MTM Excel workbooks",
+    "groupFieldContacts": "Field contacts",
+    "lblFieldContacts": "Field contacts (doctors, pharmacists, etc.)",
+    "hintFieldContacts": "When off, contacts are hidden from the menu and the agent app; no data is deleted."
   },
   "mtmKpiPolicyAdmin": {
     "title": "Plan and GPS KPI formula approval",
@@ -24823,5 +24826,11 @@
     "deviceRevoked": "Trusted device revoked.",
     "deviceApproveFailed": "Could not approve this device.",
     "deviceRevokeFailed": "Could not revoke this device."
+  },
+  "mtmFieldContactsDisabled": {
+    "title": "Field contacts are turned off",
+    "body": "Your organization has hidden field contacts (doctors, pharmacists, etc.) from the menu and the agent app. No data was deleted.",
+    "openSettings": "Turn on in settings",
+    "askAdmin": "Ask an administrator to turn them back on."
   }
 }

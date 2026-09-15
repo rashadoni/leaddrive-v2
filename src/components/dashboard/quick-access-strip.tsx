@@ -12,7 +12,8 @@ import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
 import { LayoutGrid } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { accessibleNavItems, orgFromSession, groupLauncherStyle, type NavItem } from "@/lib/nav-items"
+import { accessibleNavItems, groupLauncherStyle, type NavItem } from "@/lib/nav-items"
+import { useNavOrgContext } from "@/hooks/use-mtm-org-settings"
 import { useLauncherPrefs } from "@/contexts/launcher-prefs-context"
 import { openAppLauncher } from "@/components/app-launcher"
 
@@ -24,7 +25,7 @@ export function QuickAccessStrip() {
   const { data: session } = useSession()
   const { favorites, recents, recordVisit } = useLauncherPrefs()
 
-  const org = useMemo(() => orgFromSession(session?.user), [session])
+  const org = useNavOrgContext(session?.user)
 
   // Resolve hrefs against accessible items only — a favorite/recent for a module
   // the user can't see simply drops out.
