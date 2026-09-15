@@ -181,6 +181,25 @@ type RoutePointRow = {
 
 class RouteVersionConflict extends Error {}
 
+/**
+ * Sorted, de-duplicated agent ids of a route's crew. Built with explicit
+ * string guards: the Prisma row type reaches this handler loosely enough that
+ * a Set spread over it was inferred as unknown[] (TS2322 in CI).
+ */
+function routeCrewAgentIds(
+  primaryAgentId: string,
+  assignments: ReadonlyArray<{ agentId: unknown; role: unknown }>,
+  options: { includeObservers: boolean },
+): string[] {
+  const ids = new Set<string>([primaryAgentId])
+  for (const assignment of assignments) {
+    if (typeof assignment.agentId !== "string") continue
+    if (!options.includeObservers && assignment.role === "OBSERVER") continue
+    ids.add(assignment.agentId)
+  }
+  return [...ids].sort()
+}
+
 class RouteScheduleConflict extends Error {
   constructor(readonly conflicts: MtmRouteConflict[]) {
     super("Route conflicts require manager approval")
@@ -617,10 +636,7 @@ export const PUT = withRouteFieldRlsAuth("write", async (req, auth, { params }: 
     const planningSignals = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       let signals: MtmRoutePlanningSignals | null = null
       if (isPublishedEdit && publishedDiff && body.points) {
-        const crewAgentIds = [...new Set([
-          before.agentId,
-          ...before.assignments.map((assignment: RouteAssignmentRow) => assignment.agentId),
-        ])].sort()
+        const crewAgentIds = routeCrewAgentIds(before.agentId, before.assignments, { includeObservers: true })
         // Lock order everywhere: schedule → point (check-in's lock) → route.
         await acquireMtmRouteScheduleLocks(tx, { organizationId: auth.orgId, date: before.date, agentIds: crewAgentIds })
         const lockedPoints = await lockPublishedRoutePoints(tx, {
@@ -754,10 +770,7 @@ export const PUT = withRouteFieldRlsAuth("write", async (req, auth, { params }: 
 
       if (isPublishedEdit) {
         const publishedVersion = body.expectedVersion + 1
-        const notifiedAgentIds = [...new Set(before.assignments
-          .filter((assignment: RouteAssignmentRow) => assignment.role !== "OBSERVER")
-          .map((assignment: RouteAssignmentRow) => assignment.agentId)
-          .concat(before.agentId))]
+        const notifiedAgentIds = routeCrewAgentIds(before.agentId, before.assignments, { includeObservers: false })
         for (const agentId of notifiedAgentIds) {
           await enqueueMtmRouteNotification(tx, {
             organizationId: auth.orgId,
