@@ -32,6 +32,7 @@ import {
 import type {
   WorkforceTimeCorrectionReplayFact,
   WorkforceWorkdayEventFact,
+  WorkforceWorkdayEventType,
 } from "@/lib/workforce/workday-facts-replay"
 
 const WorkforceDateKey = z.string().refine(isDateKey, "must be YYYY-MM-DD")
@@ -271,7 +272,7 @@ async function rebuildApprovalRows(
         shiftSnapshot,
         events: (eventsByWorkday.get(workday.id) ?? []).map((event) => ({
           id: event.id,
-          type: event.type as "START" | "PAUSE" | "RESUME" | "FINISH",
+          type: event.type as WorkforceWorkdayEventType,
           occurredAt: event.occurredAt.toISOString(),
         })),
         corrections: correctionsByWorkday.get(workday.id) ?? [],

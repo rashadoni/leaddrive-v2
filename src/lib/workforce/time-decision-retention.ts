@@ -25,6 +25,7 @@ export type WorkforceTimeDecisionRetentionDb = {
   mtmHrmRequest: CountModel
   workforceAttendanceException: CountModel
   workforceTimeCorrection: CountModel
+  workforceWorkdayReopen: CountModel
   workforceTimesheetApproval: CountModel
   workforceEvidenceAssessment: CountModel
   mtmAuditLog: CountModel
@@ -36,6 +37,7 @@ export type WorkforceTimeDecisionRetentionCandidates = {
   decidedRequests: number
   resolvedExceptions: number
   corrections: number
+  reopens: number
   approvals: number
   derivedAssessments: number
   workforceAudits: number
@@ -82,6 +84,7 @@ function zeroCandidates(): WorkforceTimeDecisionRetentionCandidates {
     decidedRequests: 0,
     resolvedExceptions: 0,
     corrections: 0,
+    reopens: 0,
     approvals: 0,
     derivedAssessments: 0,
     workforceAudits: 0,
@@ -120,6 +123,7 @@ export async function planWorkforceTimeDecisionRetention(
     decidedRequests,
     resolvedExceptions,
     corrections,
+    reopens,
     approvals,
     derivedAssessments,
     workforceAudits,
@@ -137,6 +141,7 @@ export async function planWorkforceTimeDecisionRetention(
       resolvedAt: { lt: cutoff },
     } }),
     db.workforceTimeCorrection.count({ where: { organizationId, occurredAt: { lt: cutoff } } }),
+    db.workforceWorkdayReopen.count({ where: { organizationId, occurredAt: { lt: cutoff } } }),
     db.workforceTimesheetApproval.count({ where: { organizationId, approvedAt: { lt: cutoff } } }),
     db.workforceEvidenceAssessment.count({ where: { organizationId, assessedAt: { lt: cutoff } } }),
     db.mtmAuditLog.count({ where: {
@@ -146,7 +151,7 @@ export async function planWorkforceTimeDecisionRetention(
         { metadataKind: { startsWith: "workforce_" } },
         { metadataKind: { in: ["workday_transition", "hrm_request_decision"] } },
         { action: { startsWith: "WORKFORCE_" } },
-        { action: { in: ["WORKDAY_START", "WORKDAY_PAUSE", "WORKDAY_RESUME", "WORKDAY_FINISH", "HRM_REQUEST_DECISION"] } },
+        { action: { in: ["WORKDAY_START", "WORKDAY_PAUSE", "WORKDAY_RESUME", "WORKDAY_FINISH", "WORKDAY_REOPEN", "HRM_REQUEST_DECISION"] } },
       ],
     } }),
   ])
@@ -162,6 +167,7 @@ export async function planWorkforceTimeDecisionRetention(
       decidedRequests,
       resolvedExceptions,
       corrections,
+      reopens,
       approvals,
       derivedAssessments,
       workforceAudits,

@@ -16,7 +16,11 @@ import {
   resolveMtmAgentAdministration,
 } from "@/lib/mtm/agent-administration"
 import { mtmAgentPresence, type MtmAgentPresence } from "@/lib/mtm/agent-day-state"
-import { mtmWorkdayPauses, serializeMtmWorkdayPauses } from "@/lib/mtm/workday-pauses"
+import {
+  MTM_WORKDAY_PAUSE_EVENT_TYPES,
+  mtmWorkdayPauses,
+  serializeMtmWorkdayPauses,
+} from "@/lib/mtm/workday-pauses"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
@@ -208,7 +212,7 @@ export const GET = withRls(async (req, auth) => {
             where: {
               organizationId: orgId,
               workdayId: { in: days.map((day) => day.id) },
-              type: { in: ["PAUSE", "RESUME", "FINISH"] },
+              type: { in: [...MTM_WORKDAY_PAUSE_EVENT_TYPES] },
             },
             orderBy: { occurredAt: "asc" },
             select: { workdayId: true, type: true, occurredAt: true },

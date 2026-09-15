@@ -424,6 +424,34 @@ async function plannedAssignment(
   }
 }
 
+/**
+ * The receipt for the employee's own last accepted action. Only the four
+ * employee actions qualify: after a manager REOPEN the latest journal entry is
+ * not something the employee did, and presenting the FINISH before it as the
+ * current outcome would contradict the reopened (paused) day, so no receipt
+ * is shown until the employee acts again.
+ */
+export function workforceEmployeeTodayServerOutcome(lastEvent: {
+  type: string
+  attendanceReviewState: string | null
+  serverReceivedAt: Date | null
+  appliedAt: Date | null
+} | null): WorkforceEmployeeTodayServerOutcome {
+  if (!lastEvent || !lastEvent.serverReceivedAt || !lastEvent.appliedAt) return null
+  const action = lastEvent.type
+  if (action !== "START" && action !== "PAUSE" && action !== "RESUME" && action !== "FINISH") return null
+  return {
+    state: lastEvent.attendanceReviewState === "PENDING_REVIEW"
+      ? "PENDING_REVIEW"
+      : lastEvent.attendanceReviewState === "LEGACY_UNKNOWN" || lastEvent.attendanceReviewState == null
+        ? "LEGACY_APPLIED"
+        : "APPLIED",
+    action,
+    serverReceivedAt: lastEvent.serverReceivedAt.toISOString(),
+    appliedAt: lastEvent.appliedAt.toISOString(),
+  }
+}
+
 export async function loadWorkforceEmployeeToday(
   db: EmployeeTodayDb,
   input: {
@@ -470,21 +498,7 @@ export async function loadWorkforceEmployeeToday(
         },
       })
     : null
-  const serverOutcome: WorkforceEmployeeTodayServerOutcome = lastEvent
-    && lastEvent.serverReceivedAt
-    && lastEvent.appliedAt
-    && (lastEvent.type === "START" || lastEvent.type === "PAUSE" || lastEvent.type === "RESUME" || lastEvent.type === "FINISH")
-    ? {
-        state: lastEvent.attendanceReviewState === "PENDING_REVIEW"
-          ? "PENDING_REVIEW"
-          : lastEvent.attendanceReviewState === "LEGACY_UNKNOWN" || lastEvent.attendanceReviewState == null
-            ? "LEGACY_APPLIED"
-            : "APPLIED",
-        action: lastEvent.type,
-        serverReceivedAt: lastEvent.serverReceivedAt.toISOString(),
-        appliedAt: lastEvent.appliedAt.toISOString(),
-      }
-    : null
+  const serverOutcome = workforceEmployeeTodayServerOutcome(lastEvent)
   return workforceEmployeeTodayProjection({
     status: input.status,
     previousOpen: input.previousOpen,

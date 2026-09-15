@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client"
 import type { MtmWorkdayEventInput } from "@/lib/mtm/workday"
+import type { WorkforceWorkdayCorrectionFacts } from "@/lib/workforce/workday-correction-facts"
 
 type WorkdayScope = { organizationId: string; agentId: string }
 type AuditWorkday = Record<string, unknown> & { id: string }
@@ -78,6 +79,52 @@ export async function writeWorkforceWorkdayAuditInTransaction(
         eventId: event.id,
         requestHash: typeof event.requestHash === "string" ? event.requestHash : null,
         workday: workdaySummary(input.workday),
+      } as Prisma.InputJsonValue,
+      ipAddress: input.requestMetadata?.ipAddress ?? null,
+      userAgent: input.requestMetadata?.userAgent ?? null,
+    },
+  })
+}
+
+/**
+ * Writes the manager reopen of a finished workday into the same audit stream
+ * as the employee's own transitions, through the caller's transaction: the
+ * REOPEN event, the immutable reopen ledger, the paused projection and this
+ * record commit or roll back together, so a reopen can never exist without
+ * its actor, reason and before/after facts.
+ */
+export async function writeWorkforceWorkdayReopenAuditInTransaction(
+  tx: Prisma.TransactionClient,
+  input: {
+    scope: WorkdayScope
+    reopenId: string
+    eventId: string
+    actorUserId: string
+    operationId: string
+    reason: string
+    authorizationSource: string
+    beforeWorkday: WorkforceWorkdayCorrectionFacts
+    afterWorkday: WorkforceWorkdayCorrectionFacts
+    requestMetadata?: WorkforceAuditRequestMetadata
+  },
+): Promise<void> {
+  await tx.mtmAuditLog.create({
+    data: {
+      organizationId: input.scope.organizationId,
+      agentId: input.scope.agentId,
+      action: "WORKDAY_REOPEN",
+      entity: "workday",
+      entityId: input.afterWorkday.id,
+      metadataKind: "workforce_workday_reopen",
+      oldData: { workday: input.beforeWorkday } as Prisma.InputJsonValue,
+      newData: {
+        workday: input.afterWorkday,
+        reopenId: input.reopenId,
+        eventId: input.eventId,
+        actorUserId: input.actorUserId,
+        operationId: input.operationId,
+        reason: input.reason,
+        authorizationSource: input.authorizationSource,
       } as Prisma.InputJsonValue,
       ipAddress: input.requestMetadata?.ipAddress ?? null,
       userAgent: input.requestMetadata?.userAgent ?? null,

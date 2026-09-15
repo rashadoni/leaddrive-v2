@@ -76,6 +76,9 @@ export const GET = withWorkforceRlsAuth("read", async (req: NextRequest, auth) =
               organizationId: auth.orgId,
               agentId: { in: agentIds },
               serverReceivedAt: { gte: actionSince },
+              // A manager's reopen is journalled on the employee's workday but
+              // is not an attendance action the employee performed.
+              type: { not: "REOPEN" },
             },
             _count: { _all: true },
           }),

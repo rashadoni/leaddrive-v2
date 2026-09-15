@@ -211,6 +211,7 @@ model Organization {
   workforceExceptionDecisions         WorkforceExceptionDecision[]
   workforceExceptionEmployeeResponses WorkforceExceptionEmployeeResponse[]
   workforceTimeCorrections            WorkforceTimeCorrection[]
+  workforceWorkdayReopens             WorkforceWorkdayReopen[]
   workforceTimesheetApprovals         WorkforceTimesheetApproval[]
   workforceAttendanceQrStations        WorkforceAttendanceQrStation[]
   workforceAttendanceDeviceEnrollments WorkforceAttendanceDeviceEnrollment[]
@@ -685,6 +686,7 @@ model User {
   workforceExceptionDecisionsActed      WorkforceExceptionDecision[]   @relation("WorkforceExceptionDecisionActor")
   workforceExceptionEmployeeResponsesActed WorkforceExceptionEmployeeResponse[] @relation("WorkforceExceptionEmployeeResponseActor")
   workforceTimeCorrectionsActed       WorkforceTimeCorrection[]      @relation("WorkforceTimeCorrectionActor")
+  workforceWorkdayReopensActed        WorkforceWorkdayReopen[]       @relation("WorkforceWorkdayReopenActor")
   workforceTimesheetApprovalsApproved WorkforceTimesheetApproval[]   @relation("WorkforceTimesheetApprovalApprovedBy")
   workforceTimesheetApprovalsCorrected WorkforceTimesheetApproval[]  @relation("WorkforceTimesheetApprovalCorrectionActor")
   workforceAttendanceQrStationsCreated         WorkforceAttendanceQrStation[]        @relation("WorkforceAttendanceQrStationCreatedBy")
@@ -5400,6 +5402,10 @@ enum MtmWorkdayEventType {
   PAUSE
   RESUME
   FINISH
+  /// Written only by the audited manager reopen of today's finished workday
+  /// (WorkforceWorkdayReopen). It is not an employee action: MtmWorkdayAction
+  /// and every client transport parser keep rejecting it.
+  REOPEN
 }
 
 enum MtmWorkCalendarDayKind {
@@ -5690,6 +5696,7 @@ model MtmAgent {
   workforceExceptionEmployeeResponses WorkforceExceptionEmployeeResponse[]
   workforceAccessGrantsScoped WorkforceAccessGrant[] @relation("WorkforceAccessGrantScopeAgent")
   workforceTimeCorrections  WorkforceTimeCorrection[]
+  workforceWorkdayReopens   WorkforceWorkdayReopen[]
   workforceTimesheetApprovals WorkforceTimesheetApproval[]
   workforceAttendanceDeviceEnrollments WorkforceAttendanceDeviceEnrollment[]
   workforceAttendanceVerifications     WorkforceAttendanceVerification[]
@@ -7310,6 +7317,7 @@ model MtmAgentWorkday {
   workforceExceptionCases WorkforceExceptionCase[]
   workforceExceptionEmployeeResponses WorkforceExceptionEmployeeResponse[]
   workforceTimeCorrections WorkforceTimeCorrection[]
+  workforceReopens         WorkforceWorkdayReopen[]
 
   @@unique([organizationId, agentId, workDate])
   @@unique([organizationId, id])
@@ -7361,6 +7369,7 @@ model MtmAgentWorkdayEvent {
   workforceAttendanceEvidences WorkforceAttendanceEvidence[]
   workforceAttendanceReviewCase WorkforceAttendanceReviewCase?
   workforceExceptionCases WorkforceExceptionCase[]
+  workforceWorkdayReopen  WorkforceWorkdayReopen?
 
   @@unique([organizationId, agentId, clientEventId])
   @@unique([organizationId, id])
@@ -8379,6 +8388,43 @@ model WorkforceTimeCorrection {
   @@index([organizationId, requestId])
   @@index([organizationId, actorUserId, occurredAt])
   @@map("workforce_time_corrections")
+}
+
+// Append-only fact for a manager reopening today's finished workday. The
+// completed state and the reopen both stay in history: the canonical journal
+// keeps its FINISH and gains a REOPEN event, and this row records who, when,
+// why and the exact before/after projection. The migration prevents
+// UPDATE/DELETE and the completed-workday guard accepts COMPLETED -> PAUSED
+// only against this transaction's own row.
+model WorkforceWorkdayReopen {
+  id              String                @id @default(cuid())
+  organizationId  String
+  organization    Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentId         String
+  agent           MtmAgent              @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  workdayId       String
+  workday         MtmAgentWorkday       @relation(fields: [organizationId, workdayId], references: [organizationId, id], onDelete: Restrict)
+  /// The REOPEN event this fact explains, in the canonical workday journal.
+  eventId         String
+  event           MtmAgentWorkdayEvent  @relation(fields: [organizationId, eventId], references: [organizationId, id], onDelete: Restrict)
+  operationId     String
+  /// Proves a repeated operation id carries the exact same reopen request.
+  requestHash     String                @db.VarChar(64)
+  actorUserId     String
+  actorUser       User                  @relation("WorkforceWorkdayReopenActor", fields: [organizationId, actorUserId], references: [organizationId, id], onDelete: Restrict)
+  reason          String
+  beforeFacts     Json
+  afterFacts      Json
+  occurredAt      DateTime
+  createdAt       DateTime              @default(now())
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, operationId])
+  @@unique([organizationId, eventId])
+  @@index([organizationId, workdayId, occurredAt])
+  @@index([organizationId, agentId, occurredAt])
+  @@index([organizationId, actorUserId, occurredAt])
+  @@map("workforce_workday_reopens")
 }
 
 // An approved period is immutable. A subsequent correction appends another

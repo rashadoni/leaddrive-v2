@@ -18,6 +18,7 @@ import {
   replayWorkforceWorkdayFacts,
   workforceReplayMatchesWorkdayCorrectionFacts,
   WorkforceWorkdayFactsReplayError,
+  type WorkforceWorkdayEventType,
 } from "@/lib/workforce/workday-facts-replay"
 import { workforceWorkdayCorrectionFacts } from "@/lib/workforce/workday-correction-facts"
 import { workforceAuditRequestMetadata } from "@/lib/workforce/workday-audit"
@@ -414,7 +415,7 @@ export async function decideWorkforceRequest(context: WorkforceDecisionContext):
             workdayId: workday.id,
             events: events.map((event) => ({
               id: event.id,
-              type: event.type as "START" | "PAUSE" | "RESUME" | "FINISH",
+              type: event.type as WorkforceWorkdayEventType,
               occurredAt: event.occurredAt.toISOString(),
             })),
             corrections,
@@ -428,7 +429,7 @@ export async function decideWorkforceRequest(context: WorkforceDecisionContext):
             workdayId: workday.id,
             events: events.map((event) => ({
               id: event.id,
-              type: event.type as "START" | "PAUSE" | "RESUME" | "FINISH",
+              type: event.type as WorkforceWorkdayEventType,
               occurredAt: event.occurredAt.toISOString(),
             })),
             corrections: [...corrections, {

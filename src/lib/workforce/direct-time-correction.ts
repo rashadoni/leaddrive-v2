@@ -13,6 +13,7 @@ import {
   replayWorkforceWorkdayFacts,
   workforceReplayMatchesWorkdayCorrectionFacts,
   WorkforceWorkdayFactsReplayError,
+  type WorkforceWorkdayEventType,
 } from "@/lib/workforce/workday-facts-replay"
 import {
   workforceWorkdayCorrectionFacts,
@@ -274,7 +275,7 @@ export async function correctWorkforceTimeDirectly(
           workdayId,
           events: events.map((event) => ({
             id: event.id,
-            type: event.type as "START" | "PAUSE" | "RESUME" | "FINISH",
+            type: event.type as WorkforceWorkdayEventType,
             occurredAt: event.occurredAt.toISOString(),
           })),
           corrections,
@@ -301,7 +302,7 @@ export async function correctWorkforceTimeDirectly(
           workdayId,
           events: events.map((event) => ({
             id: event.id,
-            type: event.type as "START" | "PAUSE" | "RESUME" | "FINISH",
+            type: event.type as WorkforceWorkdayEventType,
             occurredAt: event.occurredAt.toISOString(),
           })),
           corrections: [...corrections, {

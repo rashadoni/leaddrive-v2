@@ -2,10 +2,21 @@ import { isDateKey } from "@/lib/mtm/mobile-week"
 import type { WorkforceWorkdayFactsInput } from "@/lib/workforce/timesheet-calculation"
 import type { WorkforceWorkdayCorrectionFacts } from "@/lib/workforce/workday-correction-facts"
 
+/**
+ * Every event type in the canonical append-only workday journal. START, PAUSE,
+ * RESUME and FINISH are the employee's state-machine actions. REOPEN is
+ * written only by the audited manager reopen of today's finished workday
+ * (`workday-reopen.ts`); it is deliberately not an `MtmWorkdayAction`, so no
+ * client transport can submit it.
+ */
+export const WORKFORCE_WORKDAY_EVENT_TYPES = ["START", "PAUSE", "RESUME", "FINISH", "REOPEN"] as const
+
+export type WorkforceWorkdayEventType = typeof WORKFORCE_WORKDAY_EVENT_TYPES[number]
+
 export type WorkforceWorkdayEventFact = {
   /** Stable event identity from the canonical append-only workday journal. */
   id: string
-  type: "START" | "PAUSE" | "RESUME" | "FINISH"
+  type: WorkforceWorkdayEventType
   /** Canonical UTC instant, never a device-local timestamp. */
   occurredAt: string
 }
@@ -49,12 +60,7 @@ export class WorkforceWorkdayFactsReplayError extends Error {
   readonly code = "WORKFORCE_WORKDAY_EVENTS_AMBIGUOUS"
 }
 
-const EVENT_TYPES = new Set<WorkforceWorkdayEventFact["type"]>([
-  "START",
-  "PAUSE",
-  "RESUME",
-  "FINISH",
-])
+const EVENT_TYPES = new Set<WorkforceWorkdayEventType>(WORKFORCE_WORKDAY_EVENT_TYPES)
 const WORKDAY_STATUSES = new Set<WorkforceWorkdayCorrectionFacts["status"]>([
   "STARTED",
   "PAUSED",
@@ -302,6 +308,16 @@ function replayJournal(input: {
         }
         completedAt = occurredAt
         status = "COMPLETED"
+        break
+      case "REOPEN":
+        // A manager reopened a finished shift. It continues paused from its
+        // previous finish, so the time until the employee resumes (or finishes
+        // again) becomes a pause interval and never worked time. The FINISH
+        // before it stays in the journal as the closure's history.
+        if (status !== "COMPLETED" || completedAt == null) fail("REOPEN is only valid for a completed workday")
+        pauseStartedAt = completedAt
+        completedAt = null
+        status = "PAUSED"
         break
     }
   }

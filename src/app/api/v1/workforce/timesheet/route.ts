@@ -17,6 +17,7 @@ import { requireWorkforceTimesheetReadAccess } from "@/lib/workforce/timesheet-r
 import type {
   WorkforceTimeCorrectionReplayFact,
   WorkforceWorkdayEventFact,
+  WorkforceWorkdayEventType,
 } from "@/lib/workforce/workday-facts-replay"
 
 type WorkforceDirectoryAgent = {
@@ -229,7 +230,7 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
           shiftSnapshot,
           events: (eventsByWorkday.get(workday.id) ?? []).map((event) => ({
             id: event.id,
-            type: event.type as "START" | "PAUSE" | "RESUME" | "FINISH",
+            type: event.type as WorkforceWorkdayEventType,
             occurredAt: event.occurredAt.toISOString(),
           })),
           corrections: correctionsByWorkday.get(workday.id) ?? [],

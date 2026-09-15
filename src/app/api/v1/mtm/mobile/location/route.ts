@@ -17,7 +17,12 @@ import { isValidTimezone } from "@/lib/timezone"
 import { requireMobileCapability } from "@/lib/mtm/mobile-capabilities"
 import { mtmMobileLocationPayloadSha256 } from "@/lib/mtm/mobile-location-idempotency"
 import { advanceMtmAgentLatestLocation } from "@/lib/mtm/mobile-location-latest"
-import { isDuringMtmWorkdayPause, mtmWorkdayPauses, serializeMtmWorkdayPauses } from "@/lib/mtm/workday-pauses"
+import {
+  isDuringMtmWorkdayPause,
+  MTM_WORKDAY_PAUSE_EVENT_TYPES,
+  mtmWorkdayPauses,
+  serializeMtmWorkdayPauses,
+} from "@/lib/mtm/workday-pauses"
 import { mtmAlertMessage } from "@/lib/mtm/alert-messages"
 
 // gpsInterval (org setting, default 30s) is what mobile should use. The
@@ -217,7 +222,7 @@ export const POST = withMobileRls(async (req, auth) => {
           organizationId: auth.orgId,
           agentId: auth.agentId,
           workdayId: resolvedWorkday.id,
-          type: { in: ["PAUSE", "RESUME", "FINISH"] },
+          type: { in: [...MTM_WORKDAY_PAUSE_EVENT_TYPES] },
         },
         orderBy: { occurredAt: "asc" },
         select: { type: true, occurredAt: true },
@@ -482,7 +487,7 @@ export const GET = withMobileRls(async (req, auth) => {
           organizationId: auth.orgId,
           agentId: auth.agentId,
           occurredAt: { gte: from, lt: to },
-          type: { in: ["PAUSE", "RESUME", "FINISH"] },
+          type: { in: [...MTM_WORKDAY_PAUSE_EVENT_TYPES] },
         },
         orderBy: { occurredAt: "asc" },
         select: { type: true, occurredAt: true },
