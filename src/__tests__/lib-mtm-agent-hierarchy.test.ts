@@ -171,12 +171,15 @@ describe("agents page contract", () => {
     expect(page).not.toContain("md:grid-cols-2 lg:grid-cols-3\">{g.items")
   })
 
-  it("offers a remembered list view without an inner scroll frame", () => {
+  it("offers a remembered list view without a vertical scroll frame", () => {
     expect(page).toContain('const VIEW_STORAGE_KEY = "mtm-agents-view"')
     expect(page).toContain("window.localStorage.setItem(VIEW_STORAGE_KEY, next)")
     const list = page.slice(page.indexOf("const renderList"), page.indexOf("const toggleManagers"))
     expect(list).toContain('data-testid="mtm-agents-list"')
-    expect(list).not.toMatch(/overflow-(x|y)?-?auto|overflow-scroll/)
+    // The MTM table rule wants a horizontal wrapper; the owner rule forbids a
+    // vertical frame — so overflow-x only, never overflow-y or a max height.
+    expect(list).toContain('<div className="overflow-x-auto">')
+    expect(list).not.toMatch(/overflow-y-|overflow-auto|overflow-scroll|max-h-/)
   })
 
   it("makes the managers tile the one managers filter, readable with its count", () => {

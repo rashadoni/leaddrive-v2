@@ -429,6 +429,9 @@ export default function MtmAgentsPage() {
   )
   const renderList = () => (
     <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card" data-testid="mtm-agents-list">
+      {/* Horizontal only, per the MTM table rule; columns already drop out on
+          narrow screens, and there is no vertical frame — one page scroll. */}
+      <div className="overflow-x-auto">
       <table className="w-full table-fixed text-sm">
         <thead>
           <tr className="text-left text-[11px] uppercase tracking-wide text-muted-foreground">
@@ -453,6 +456,7 @@ export default function MtmAgentsPage() {
           ] : null}
         </tbody>
       </table>
+      </div>
     </div>
   )
 
