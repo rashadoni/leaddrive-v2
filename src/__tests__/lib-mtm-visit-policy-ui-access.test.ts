@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest"
 import {
   canCreateVisitPolicy,
   parseVisitPolicyUiAccess,
+  visitPolicyDisabledNoticeKeys,
+  visitPolicyFeatureDisabled,
   visitPolicyReadOnlyReason,
   visitPolicyTeamChoices,
 } from "@/lib/mtm/visit-policy-ui-access"
@@ -56,6 +58,39 @@ describe("visit policy settings: what may be edited (GET data.access contract)",
     for (const locale of ["en", "ru", "az"]) {
       const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).mtmVisitPolicies
       for (const key of ["readOnlySupervisor", "readOnlyAdminOnly", "readOnlyOtherTeam", "managerNoTeamHint"]) {
+        expect(typeof messages[key], `${locale}.${key}`).toBe("string")
+      }
+    }
+  })
+})
+
+describe("visit policy settings: switch turned off (GET data.featureDisabled contract)", () => {
+  it("reads the flag strictly from the GET payload", () => {
+    expect(visitPolicyFeatureDisabled({ policies: [], featureDisabled: true })).toBe(true)
+    expect(visitPolicyFeatureDisabled({ policies: [] })).toBe(false)
+    expect(visitPolicyFeatureDisabled({ featureDisabled: "true" })).toBe(false)
+    expect(visitPolicyFeatureDisabled(null)).toBe(false)
+  })
+
+  it("gives the enable hint to an administrator only", () => {
+    expect(visitPolicyDisabledNoticeKeys(admin)).toEqual({ text: "featureDisabled", hint: "featureDisabledAdminHint" })
+    expect(visitPolicyDisabledNoticeKeys(manager)).toEqual({ text: "featureDisabled", hint: null })
+    expect(visitPolicyDisabledNoticeKeys(supervisor)).toEqual({ text: "featureDisabled", hint: null })
+    expect(visitPolicyDisabledNoticeKeys(null)).toEqual({ text: "featureDisabled", hint: null })
+  })
+
+  it("replaces the editor with a notice on the settings screen", () => {
+    const source = readFileSync("src/app/(dashboard)/mtm/settings/visit-policy-settings.tsx", "utf8")
+    expect(source).toContain("setFeatureDisabled(visitPolicyFeatureDisabled(policyBody.data))")
+    expect(source).toContain('data-testid="visit-policy-feature-disabled"')
+    // No list, form, Save or preview while off; no "New policy" button either.
+    expect(source).toContain("{featureDisabled || loadError ? null : (")
+    // A failed reload clears a stale "switched off" state.
+    expect(source.match(/setFeatureDisabled\(false\)/g) ?? []).toHaveLength(2)
+    expect(source).toContain("{canCreate && !featureDisabled ? (")
+    for (const locale of ["en", "ru", "az"]) {
+      const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).mtmVisitPolicies
+      for (const key of ["featureDisabled", "featureDisabledAdminHint"]) {
         expect(typeof messages[key], `${locale}.${key}`).toBe("string")
       }
     }

@@ -64,3 +64,17 @@ export function visitPolicyTeamChoices<T extends { id: string }>(
   const writable = new Set(access.writableTeamIds)
   return { teams: teams.filter((team) => writable.has(team.id)), allowAllTeams: false }
 }
+
+/**
+ * GET `data.featureDisabled`: the organization switch is off. Rules are then
+ * neither listed nor applied (resolveMtmVisitPolicy honours the same switch),
+ * so the screen must say so instead of an empty list with a Save that fails.
+ */
+export function visitPolicyFeatureDisabled(data: unknown): boolean {
+  return Boolean(data && typeof data === "object" && (data as { featureDisabled?: unknown }).featureDisabled === true)
+}
+
+/** Which notice the disabled screen shows: only an administrator can turn the switch on. */
+export function visitPolicyDisabledNoticeKeys(access: VisitPolicyUiAccess | null): { text: "featureDisabled"; hint: "featureDisabledAdminHint" | null } {
+  return { text: "featureDisabled", hint: access?.kind === "admin" ? "featureDisabledAdminHint" : null }
+}

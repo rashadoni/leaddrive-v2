@@ -17,6 +17,7 @@ import {
 import { calculateDistance } from "@/lib/geo-utils"
 import { MTM_CHECK_IN_ERROR, checkInConflict, type MtmCheckInErrorCode, type MtmCheckInErrorDetails } from "@/lib/mtm/check-in-errors"
 import { hasMtmCoordinates } from "@/lib/mtm/geo-coordinates"
+import { clampCheckInGeofenceRadius as geofenceRadius, createAlertOutOfZoneReader } from "@/lib/mtm/check-in-geofence"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { BrandPotentialCreateSchema, BrandPotentialEndSchema, VisitActionResultSchema } from "@/lib/mtm-validators"
 import { brandPotentialRequestHash, utcBrandPotentialDate } from "@/lib/mtm/brand-potential"
@@ -210,11 +211,6 @@ function needsWorkforceMobileWriteFence(
 
 function validCoordinate(value: unknown, min: number, max: number): value is number {
   return typeof value === "number" && Number.isFinite(value) && value >= min && value <= max
-}
-
-function geofenceRadius(value: unknown): number {
-  const parsed = typeof value === "number" ? value : Number(value)
-  return Number.isFinite(parsed) && parsed >= 25 && parsed <= 10_000 ? parsed : 100
 }
 
 function operationDate(value: unknown): Date {
@@ -540,6 +536,10 @@ export const POST = withMobileRls(async (req, auth) => {
       workforceMobileWriteFenceUnavailable = true
     }
   }
+
+  // alertOutOfZone gates only the OUT_OF_ZONE alert row, never the refusal.
+  // Read lazily, once per request, the first time a check-in is out of zone.
+  const alertOutOfZoneEnabled = createAlertOutOfZoneReader(orgId)
 
   for (const op of operations) {
     // `op ?? {}`: a null/undefined array element must fail as a malformed op,
@@ -1067,7 +1067,7 @@ export const POST = withMobileRls(async (req, auth) => {
               if (distanceMeters != null && distanceMeters > geofenceRadius(radius)) {
                 const roundedDistance = Math.round(distanceMeters)
                 const allowedRadius = geofenceRadius(radius)
-                await tx.mtmAlert.create({
+                if (await alertOutOfZoneEnabled(tx)) await tx.mtmAlert.create({
                   data: {
                     organizationId: orgId,
                     agentId,

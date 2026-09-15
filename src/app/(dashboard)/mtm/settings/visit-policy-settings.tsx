@@ -10,6 +10,8 @@ import { explainMtmApiErrorOr, useMtmApiError } from "@/components/mtm/use-mtm-a
 import {
   canCreateVisitPolicy,
   parseVisitPolicyUiAccess,
+  visitPolicyDisabledNoticeKeys,
+  visitPolicyFeatureDisabled,
   visitPolicyReadOnlyReason,
   visitPolicyTeamChoices,
   type VisitPolicyUiAccess,
@@ -113,6 +115,7 @@ export function VisitPolicySettings() {
   const explainError = useMtmApiError()
   const [access, setAccess] = useState<VisitPolicyUiAccess | null>(null)
   const [loadError, setLoadError] = useState("")
+  const [featureDisabled, setFeatureDisabled] = useState(false)
   const [policies, setPolicies] = useState<Policy[]>([])
   const [teams, setTeams] = useState<NamedEntity[]>([])
   const [agents, setAgents] = useState<NamedEntity[]>([])
@@ -139,12 +142,14 @@ export function VisitPolicySettings() {
         policyRes.json(), teamRes.json(), agentRes.json(), customerRes.json(),
       ])
       if (!policyRes.ok) {
+        setFeatureDisabled(false)
         setLoadError(explainError(policyBody, policyRes.status))
         return
       }
       setLoadError("")
       const nextAccess = parseVisitPolicyUiAccess(policyBody.data?.access)
       setAccess(nextAccess)
+      setFeatureDisabled(visitPolicyFeatureDisabled(policyBody.data))
       const nextPolicies = (policyBody.data?.policies ?? []).map(normalizePolicy)
       const nextTeams: NamedEntity[] = teamBody.data?.teams ?? []
       setPolicies(nextPolicies)
@@ -160,6 +165,7 @@ export function VisitPolicySettings() {
         setDraft(nextPolicies[0])
       }
     } catch {
+      setFeatureDisabled(false)
       setLoadError(t("loadFailed"))
     } finally {
       setLoading(false)
@@ -274,6 +280,7 @@ export function VisitPolicySettings() {
     // A manager cannot write an organization-wide rule: start on their team.
     return teamChoices.allowAllTeams ? policy : { ...policy, teamId: teamChoices.teams[0]?.id ?? null }
   }
+  const disabledNotice = visitPolicyDisabledNoticeKeys(access)
   const readOnlyText = readOnlyReason === "supervisor"
     ? t("readOnlySupervisor")
     : readOnlyReason === "adminOnly"
@@ -320,8 +327,8 @@ export function VisitPolicySettings() {
           <p className="mt-1 text-sm text-muted-foreground">{t("description")}</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs tabular-nums text-muted-foreground">{t("activeCount", { count: activeCount })}</span>
-          {canCreate ? (
+          {featureDisabled ? null : <span className="text-xs tabular-nums text-muted-foreground">{t("activeCount", { count: activeCount })}</span>}
+          {canCreate && !featureDisabled ? (
             <Button type="button" variant="outline" size="sm" onClick={() => selectPolicy("new")}>
               <Plus className="mr-1 h-4 w-4" /> {t("newPolicy")}
             </Button>
@@ -333,12 +340,24 @@ export function VisitPolicySettings() {
         <div role="alert" className="mt-4 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /><span>{loadError}</span>
         </div>
+      ) : featureDisabled ? (
+        // Switch off: rules are neither listed nor applied, and every write
+        // would be refused with 409 — so no form, no Save, no preview.
+        <div role="status" className="mt-4 flex items-start gap-2 rounded-md border border-zinc-200 bg-muted/40 px-3 py-3 text-sm dark:border-zinc-800" data-testid="visit-policy-feature-disabled">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <span>
+            <span className="block font-medium">{t(disabledNotice.text)}</span>
+            {disabledNotice.hint ? <span className="mt-1 block text-muted-foreground">{t(disabledNotice.hint)}</span> : null}
+          </span>
+        </div>
       ) : access && !canCreate && access.kind !== "supervisor" ? (
         <p className="mt-4 flex items-start gap-2 text-sm text-muted-foreground" data-testid="visit-policy-no-team-hint">
           <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />{t("managerNoTeamHint")}
         </p>
       ) : null}
 
+      {/* Neither the "switched off" notice nor a load error sits next to an editor. */}
+      {featureDisabled || loadError ? null : (
       <div className="mt-5 grid gap-6 xl:grid-cols-[230px_minmax(0,1fr)]">
         <nav aria-label={t("policyList")} className="space-y-1">
           {loading ? <div className="h-32 animate-pulse rounded-md bg-muted" /> : policies.length === 0 ? (
@@ -576,6 +595,7 @@ export function VisitPolicySettings() {
           </div>
         </div>
       </div>
+      )}
     </section>
   )
 }

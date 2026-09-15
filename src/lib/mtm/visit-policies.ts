@@ -1,3 +1,6 @@
+import type { Prisma } from "@prisma/client"
+import { coerceMtmBooleanSetting } from "./setting-values"
+
 export const MTM_VISIT_ACTION_KEYS = [
   "PHOTO",
   "PRESENTATION",
@@ -44,6 +47,15 @@ function conditionsMatch(conditions: unknown, customer: { category: string; obje
   return true
 }
 
+/**
+ * Default ON (MTM_SETTING_DEFAULTS.visitPoliciesEnabled), parsed by the same
+ * rule getMtmSettings uses — so the editor's "off" and the runtime's "off"
+ * are the same thing.
+ */
+export function visitPoliciesEnabled(stored: unknown): boolean {
+  return coerceMtmBooleanSetting(stored, true)
+}
+
 function defaultRequirement(actionKey: MtmVisitActionKey): ResolvedVisitRequirement {
   return { actionKey, mode: "OPTIONAL", minCount: 1, conditions: null, allowWaiver: false }
 }
@@ -56,11 +68,16 @@ export async function resolveMtmVisitPolicy(
     customerId: string
     visitType?: string
     at?: Date
+    /**
+     * Pre-read `visitPoliciesEnabled` (e.g. from getMtmSettings) for callers
+     * resolving many visits at once. Omitted → the resolver reads it itself.
+     */
+    policiesEnabled?: boolean
   },
 ): Promise<ResolvedVisitPolicy> {
   const at = input.at ?? new Date()
   const visitType = input.visitType?.trim().toUpperCase() || "DEFAULT"
-  const [agent, customer, legacyPhotoSetting] = await Promise.all([
+  const [agent, customer, legacyPhotoSetting, policiesEnabledSetting] = await Promise.all([
     client.mtmAgent.findFirst({
       where: { id: input.agentId, organizationId: input.organizationId, status: "ACTIVE" },
       select: { id: true, teamId: true },
@@ -73,11 +90,21 @@ export async function resolveMtmVisitPolicy(
       where: { organizationId: input.organizationId, key: "photoRequired" },
       select: { value: true },
     }) ?? Promise.resolve(null),
+    input.policiesEnabled !== undefined
+      ? Promise.resolve({ value: input.policiesEnabled })
+      : client.mtmSetting?.findFirst({
+        where: { organizationId: input.organizationId, key: "visitPoliciesEnabled" },
+        select: { value: true },
+      }) ?? Promise.resolve(null),
   ])
   if (!agent) throw new Error("MTM_VISIT_AGENT_NOT_FOUND")
   if (!customer) throw new Error("MTM_VISIT_CUSTOMER_NOT_FOUND")
 
-  const policies = await client.mtmVisitPolicy.findMany({
+  // The "visit action policies" switch must mean what it says: while it is
+  // off, stored rules stay untouched but none of them is selected — the visit
+  // gets exactly the fallback it gets when no rule matches. Before, only the
+  // editor honoured the switch and active rules kept blocking check-out.
+  const policies = !visitPoliciesEnabled(policiesEnabledSetting?.value) ? [] : await client.mtmVisitPolicy.findMany({
     where: {
       organizationId: input.organizationId,
       isActive: true,
@@ -134,6 +161,30 @@ export async function resolveMtmVisitPolicy(
   }
 }
 
+/**
+ * A PHOTO rule asking for more photos than the organization lets an agent
+ * upload (`maxPhotosPerVisit`) can never be satisfied: the upload is refused
+ * at the cap and the check-out is refused below the minimum. Returns the
+ * offending minimum, or null. A HIDDEN action has no minimum to meet.
+ */
+export function photoMinCountAboveMax(
+  actions: ReadonlyArray<{ actionKey: string; mode: string; minCount?: number | null }> | undefined,
+  maxPhotosPerVisit: number,
+): number | null {
+  const photo = actions?.find((action) => action.actionKey === "PHOTO" && action.mode !== "HIDDEN")
+  const minCount = photo?.minCount ?? 1
+  return photo && minCount > maxPhotosPerVisit ? minCount : null
+}
+
+export function photoMinAboveMaxResponseBody(minCount: number, maxPhotosPerVisit: number) {
+  return {
+    error: `PHOTO minimum (${minCount}) exceeds the per-visit photo limit (${maxPhotosPerVisit})`,
+    code: "MTM_POLICY_PHOTO_MIN_ABOVE_MAX",
+    minCount,
+    maxPhotosPerVisit,
+  }
+}
+
 export function policyWindowsOverlap(
   left: { effectiveFrom: Date; effectiveTo: Date | null },
   right: { effectiveFrom: Date; effectiveTo: Date | null },
@@ -142,4 +193,3 @@ export function policyWindowsOverlap(
   const rightEnd = right.effectiveTo?.getTime() ?? Number.POSITIVE_INFINITY
   return left.effectiveFrom.getTime() <= rightEnd && right.effectiveFrom.getTime() <= leftEnd
 }
-import type { Prisma } from "@prisma/client"

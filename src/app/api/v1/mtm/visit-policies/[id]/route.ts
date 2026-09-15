@@ -6,6 +6,7 @@ import { VisitPolicyUpdateSchema, parseBody } from "@/lib/mtm-validators"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { overlapWhere } from "../route"
 import { getMtmSettings } from "@/lib/mtm-settings"
+import { photoMinAboveMaxResponseBody, photoMinCountAboveMax } from "@/lib/mtm/visit-policies"
 import {
   visitPolicyAccessFor,
   visitPolicyReadDenied,
@@ -40,6 +41,11 @@ export const PUT = withRouteFieldWebRlsAuth("write", async (
   const teamId = body.teamId === undefined ? existing.teamId : body.teamId
   const targetDenied = visitPolicyWriteDenied(access, teamId ?? null)
   if (targetDenied) return targetDenied
+  // Authorization first (403), then content (400).
+  const photoMinAboveMax = photoMinCountAboveMax(body.actions, settings.maxPhotosPerVisit)
+  if (photoMinAboveMax !== null) {
+    return NextResponse.json(photoMinAboveMaxResponseBody(photoMinAboveMax, settings.maxPhotosPerVisit), { status: 400 })
+  }
   const visitType = (body.visitType ?? existing.visitType).toUpperCase()
   const priority = body.priority ?? existing.priority
   const effectiveFrom = body.effectiveFrom ? new Date(body.effectiveFrom) : existing.effectiveFrom

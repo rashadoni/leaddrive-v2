@@ -32,6 +32,7 @@ import {
 } from "@/lib/mtm/field-scope"
 import { VisitActionResultSchema } from "@/lib/mtm-validators"
 import { getMtmSettings } from "@/lib/mtm-settings"
+import { clampCheckInGeofenceRadius as geofenceRadius, createAlertOutOfZoneReader } from "@/lib/mtm/check-in-geofence"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { canApplyMobileTaskTransition, type MobileTaskStatus } from "@/lib/mtm/mobile-task"
 import {
@@ -41,13 +42,10 @@ import {
 import { mtmAlertMessage } from "@/lib/mtm/alert-messages"
 import { routeTransitionActions, writeFieldSyncAudit } from "@/lib/mtm/field-sync-audit"
 
-// Mirror the mobile engine's coordinate/geofence helpers (local there, not exported).
+// Mirror the mobile engine's coordinate helper (local there, not exported);
+// the geofence radius clamp is shared: @/lib/mtm/check-in-geofence.
 function validCoordinate(value: unknown, min: number, max: number): value is number {
   return typeof value === "number" && Number.isFinite(value) && value >= min && value <= max
-}
-function geofenceRadius(value: unknown): number {
-  const parsed = typeof value === "number" ? value : Number(value)
-  return Number.isFinite(parsed) && parsed >= 25 && parsed <= 10_000 ? parsed : 100
 }
 
 type OptionalCoordinatePair =
@@ -134,6 +132,8 @@ export const POST = withRouteFieldWebRlsAuth("write", async (req, auth) => {
   const seen = new Map(seenRows.map((r) => [r.operationId, r] as const))
 
   const results: Array<{ operationId: string; status: SyncStatus; result: unknown; replayed?: boolean }> = []
+  // alertOutOfZone gates only the OUT_OF_ZONE alert row, never the refusal.
+  const alertOutOfZoneEnabled = createAlertOutOfZoneReader(orgId)
 
   for (const op of operations) {
     const prior = seen.get(op.operationId)
@@ -142,7 +142,7 @@ export const POST = withRouteFieldWebRlsAuth("write", async (req, auth) => {
       continue
     }
 
-    const applied = await applyOp(orgId, principalId, actor, auth.name, op)
+    const applied = await applyOp(orgId, principalId, actor, auth.name, op, alertOutOfZoneEnabled)
     results.push({ operationId: op.operationId, ...applied })
   }
 
@@ -155,6 +155,7 @@ async function applyOp(
   actor: MtmRouteActor,
   actorName: string,
   op: z.infer<typeof opSchema>,
+  alertOutOfZoneEnabled: ReturnType<typeof createAlertOutOfZoneReader>,
 ): Promise<ApplyResult & { replayed?: boolean }> {
   const kind = typeof op.data.kind === "string" ? op.data.kind : ""
   const d = op.data
@@ -286,7 +287,7 @@ async function applyOp(
           const allowedRadius = geofenceRadius(radius)
           if (distanceMeters > allowedRadius) {
             const roundedDistance = Math.round(distanceMeters)
-            await tx.mtmAlert.create({
+            if (await alertOutOfZoneEnabled(tx)) await tx.mtmAlert.create({
               data: {
                 organizationId: orgId, agentId: fieldAgentId, type: "OUT_OF_ZONE", category: "WARNING",
                 title: "Out of zone check-in",

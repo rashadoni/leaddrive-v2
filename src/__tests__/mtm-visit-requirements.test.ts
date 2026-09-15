@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import {
   completeMtmVisit,
+  createVisitRequirementSnapshot,
   getVisitCompletionReadiness,
   lockAndVerifyMtmRoutePointForCheckIn,
   lockMtmActiveVisitSlot,
@@ -163,5 +164,87 @@ describe("visit completion requirements", () => {
 
     expect(result).toMatchObject({ status: "completed", idempotent: true })
     expect(tx.mtmVisit.update).not.toHaveBeenCalled()
+  })
+})
+
+describe("requirement snapshot honours the visit-policy switch", () => {
+  function snapshotTx(settings: Record<string, unknown>) {
+    return {
+      mtmAgent: { findFirst: vi.fn().mockResolvedValue({ id: "agent-1", teamId: null }) },
+      mtmCustomer: { findFirst: vi.fn().mockResolvedValue({ id: "customer-1", category: "A", objectType: "DOCTOR" }) },
+      mtmSetting: {
+        findFirst: vi.fn(({ where }: { where: { key: string } }) => Promise.resolve(
+          where.key in settings ? { value: settings[where.key] } : null,
+        )),
+      },
+      mtmVisitPolicy: {
+        findMany: vi.fn().mockResolvedValue([{
+          id: "policy-strict",
+          name: "Strict",
+          teamId: null,
+          visitType: "DEFAULT",
+          priority: 1,
+          effectiveFrom: new Date("2026-01-01"),
+          actions: [{ actionKey: "PRESENTATION", mode: "REQUIRED", minCount: 1, conditions: null, allowWaiver: false }],
+        }]),
+      },
+      mtmVisitRequirementSnapshot: { create: vi.fn().mockResolvedValue({ id: "snapshot-1", requirements: [] }) },
+    }
+  }
+  const input = { organizationId: "org-1", visitId: "visit-1", agentId: "agent-1", customerId: "customer-1" }
+
+  it("snapshots no REQUIRED rule action while the switch is off", async () => {
+    const tx = snapshotTx({ visitPoliciesEnabled: false })
+    await createVisitRequirementSnapshot(tx as never, input)
+    const data = tx.mtmVisitRequirementSnapshot.create.mock.calls[0][0].data
+    expect(data.sourcePolicyId).toBeNull()
+    expect(data.requirements.create.every((item: { mode: string }) => item.mode === "OPTIONAL")).toBe(true)
+  })
+
+  it("snapshots the active rule while the switch is on", async () => {
+    const tx = snapshotTx({ visitPoliciesEnabled: true })
+    await createVisitRequirementSnapshot(tx as never, input)
+    const data = tx.mtmVisitRequirementSnapshot.create.mock.calls[0][0].data
+    expect(data.sourcePolicyId).toBe("policy-strict")
+    expect(data.requirements.create.find((item: { actionKey: string }) => item.actionKey === "PRESENTATION").mode).toBe("REQUIRED")
+  })
+})
+
+describe("check-out never demands more photos than an agent may upload", () => {
+  const overCapVisit = {
+    ...activeVisit,
+    requirementSnapshot: { requirements: [{ id: "req-photo", actionKey: "PHOTO", minCount: 15, allowWaiver: false }] },
+    actionResults: [],
+    _count: { photos: 10 },
+  }
+
+  function withSetting(visit: Record<string, unknown>, value: unknown) {
+    return {
+      ...transactionClient(visit),
+      mtmSetting: { findFirst: vi.fn().mockResolvedValue(value === undefined ? null : { value }) },
+    }
+  }
+
+  it("treats a PHOTO minimum above maxPhotosPerVisit as met at the cap, with a warning", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const tx = withSetting(overCapVisit, 10)
+    const result = await completeMtmVisit(tx as never, { organizationId: "org-1", visitId: "visit-1" })
+    expect(result.status).toBe("completed")
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("capping"), expect.objectContaining({ minCount: 15, maxPhotosPerVisit: 10 }))
+    warn.mockRestore()
+  })
+
+  it("still reports the capped count while below the cap (default cap 10 when unset)", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const tx = withSetting({ ...overCapVisit, _count: { photos: 4 } }, undefined)
+    const result = await getVisitCompletionReadiness(tx as never, { organizationId: "org-1", visitId: "visit-1" })
+    expect(result.missing).toEqual([expect.objectContaining({ actionKey: "PHOTO", requiredCount: 10, completedCount: 4 })])
+    warn.mockRestore()
+  })
+
+  it("does not read the setting when the photo minimum is already met", async () => {
+    const tx = withSetting({ ...overCapVisit, requirementSnapshot: { requirements: [{ id: "r", actionKey: "PHOTO", minCount: 2, allowWaiver: false }] }, _count: { photos: 3 } }, 10)
+    await getVisitCompletionReadiness(tx as never, { organizationId: "org-1", visitId: "visit-1" })
+    expect(tx.mtmSetting.findFirst).not.toHaveBeenCalled()
   })
 })

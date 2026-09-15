@@ -8,6 +8,7 @@ import { writeMtmAudit } from "@/lib/mtm-audit"
 import { VisitCreateSchema, parseBody } from "@/lib/mtm-validators"
 import { notifyAgent } from "@/lib/mtm-notify"
 import { getMtmSettings } from "@/lib/mtm-settings"
+import { checkInGeofenceRadius } from "@/lib/mtm/check-in-geofence"
 import { addDateKeyDays, currentDateKey, localDateKeyToUtc } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
 import {
@@ -280,8 +281,8 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
       const customer = scopedCustomer
       const orgSettings = await getMtmSettings(orgId)
       // F-22: prefer per-customer override, fall back to org-level setting (default 100m)
-      const geofenceRadius =
-        customer.geofenceRadius != null ? customer.geofenceRadius : orgSettings.geofenceRadius
+      // Same clamp (25..10000 m, else 100 m) as both sync paths.
+      const geofenceRadius = checkInGeofenceRadius(customer.geofenceRadius, orgSettings.geofenceRadius)
 
       const distanceMeters = calculateDistance(
         latitude,
