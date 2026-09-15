@@ -1,8 +1,31 @@
 import { Prisma } from "@prisma/client"
 import { resolveMtmVisitPolicy } from "./visit-policies"
 
+import { coerceMtmNumberSetting } from "./setting-values"
+
 /** MTM_SETTING_DEFAULTS.maxPhotosPerVisit — kept literal to avoid importing the prisma-bound settings module. */
-const DEFAULT_MAX_PHOTOS_PER_VISIT = 10
+export const DEFAULT_MAX_PHOTOS_PER_VISIT = 10
+
+/**
+ * A PHOTO minimum can never exceed what an agent may upload. Shared by the
+ * check-out gate and the mobile workspace payload so the app never shows (or
+ * waits for) an impossible minimum. Other actions are returned unchanged.
+ */
+export function effectiveRequirementMinCount(actionKey: string, minCount: number, maxPhotosPerVisit: number | null): number {
+  if (actionKey !== "PHOTO" || maxPhotosPerVisit === null) return minCount
+  return Math.min(minCount, Math.max(0, maxPhotosPerVisit))
+}
+
+export async function readMaxPhotosPerVisit(
+  client: Pick<Prisma.TransactionClient, "mtmSetting">,
+  organizationId: string,
+): Promise<number> {
+  const row = await client.mtmSetting.findFirst({
+    where: { organizationId, key: "maxPhotosPerVisit" },
+    select: { value: true },
+  })
+  return coerceMtmNumberSetting(row?.value, DEFAULT_MAX_PHOTOS_PER_VISIT)
+}
 
 /**
  * Serialize every writer that can create a CHECKED_IN visit for one agent.
@@ -180,12 +203,7 @@ export async function getVisitCompletionReadiness(
   ))
   let maxPhotosPerVisit: number | null = null
   if (photoCapRequirement && tx.mtmSetting) {
-    const row = await tx.mtmSetting.findFirst({
-      where: { organizationId: input.organizationId, key: "maxPhotosPerVisit" },
-      select: { value: true },
-    })
-    const parsed = row?.value == null ? Number.NaN : Number(row.value)
-    maxPhotosPerVisit = Number.isFinite(parsed) ? parsed : DEFAULT_MAX_PHOTOS_PER_VISIT
+    maxPhotosPerVisit = await readMaxPhotosPerVisit(tx, input.organizationId)
     if (photoCapRequirement.minCount > maxPhotosPerVisit) {
       console.warn("[MTM/visit-requirements] PHOTO minCount above maxPhotosPerVisit; capping at the limit", {
         organizationId: input.organizationId,
@@ -198,9 +216,7 @@ export async function getVisitCompletionReadiness(
 
   const missing = requirements.flatMap((requirement) => {
     const completedCount = completed.get(requirement.actionKey) ?? 0
-    const requiredCount = requirement.actionKey === "PHOTO" && maxPhotosPerVisit !== null
-      ? Math.min(requirement.minCount, Math.max(0, maxPhotosPerVisit))
-      : requirement.minCount
+    const requiredCount = effectiveRequirementMinCount(requirement.actionKey, requirement.minCount, maxPhotosPerVisit)
     return completedCount < requiredCount ? [{
       actionKey: requirement.actionKey,
       requiredCount,

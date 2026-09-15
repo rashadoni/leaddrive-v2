@@ -38,13 +38,14 @@ export const PUT = withRouteFieldWebRlsAuth("write", async (
   const parsed = parseBody(VisitPolicyUpdateSchema, await req.json().catch(() => null))
   if (!parsed.ok) return parsed.response
   const body = parsed.data
+  const teamId = body.teamId === undefined ? existing.teamId : body.teamId
+  const targetDenied = visitPolicyWriteDenied(access, teamId ?? null)
+  if (targetDenied) return targetDenied
+  // Authorization first (403), then content (400).
   const photoMinAboveMax = photoMinCountAboveMax(body.actions, settings.maxPhotosPerVisit)
   if (photoMinAboveMax !== null) {
     return NextResponse.json(photoMinAboveMaxResponseBody(photoMinAboveMax, settings.maxPhotosPerVisit), { status: 400 })
   }
-  const teamId = body.teamId === undefined ? existing.teamId : body.teamId
-  const targetDenied = visitPolicyWriteDenied(access, teamId ?? null)
-  if (targetDenied) return targetDenied
   const visitType = (body.visitType ?? existing.visitType).toUpperCase()
   const priority = body.priority ?? existing.priority
   const effectiveFrom = body.effectiveFrom ? new Date(body.effectiveFrom) : existing.effectiveFrom

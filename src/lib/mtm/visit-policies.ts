@@ -1,3 +1,6 @@
+import type { Prisma } from "@prisma/client"
+import { coerceMtmBooleanSetting } from "./setting-values"
+
 export const MTM_VISIT_ACTION_KEYS = [
   "PHOTO",
   "PRESENTATION",
@@ -45,12 +48,12 @@ function conditionsMatch(conditions: unknown, customer: { category: string; obje
 }
 
 /**
- * Default ON (MTM_SETTING_DEFAULTS.visitPoliciesEnabled). Only an explicit
- * stored `false` turns it off, so a missing row or an unreadable value never
- * silently drops an organization's rules.
+ * Default ON (MTM_SETTING_DEFAULTS.visitPoliciesEnabled), parsed by the same
+ * rule getMtmSettings uses — so the editor's "off" and the runtime's "off"
+ * are the same thing.
  */
 export function visitPoliciesEnabled(stored: unknown): boolean {
-  return !(stored === false || stored === "false")
+  return coerceMtmBooleanSetting(stored, true)
 }
 
 function defaultRequirement(actionKey: MtmVisitActionKey): ResolvedVisitRequirement {
@@ -65,6 +68,11 @@ export async function resolveMtmVisitPolicy(
     customerId: string
     visitType?: string
     at?: Date
+    /**
+     * Pre-read `visitPoliciesEnabled` (e.g. from getMtmSettings) for callers
+     * resolving many visits at once. Omitted → the resolver reads it itself.
+     */
+    policiesEnabled?: boolean
   },
 ): Promise<ResolvedVisitPolicy> {
   const at = input.at ?? new Date()
@@ -82,10 +90,12 @@ export async function resolveMtmVisitPolicy(
       where: { organizationId: input.organizationId, key: "photoRequired" },
       select: { value: true },
     }) ?? Promise.resolve(null),
-    client.mtmSetting?.findFirst({
-      where: { organizationId: input.organizationId, key: "visitPoliciesEnabled" },
-      select: { value: true },
-    }) ?? Promise.resolve(null),
+    input.policiesEnabled !== undefined
+      ? Promise.resolve({ value: input.policiesEnabled })
+      : client.mtmSetting?.findFirst({
+        where: { organizationId: input.organizationId, key: "visitPoliciesEnabled" },
+        select: { value: true },
+      }) ?? Promise.resolve(null),
   ])
   if (!agent) throw new Error("MTM_VISIT_AGENT_NOT_FOUND")
   if (!customer) throw new Error("MTM_VISIT_CUSTOMER_NOT_FOUND")
@@ -183,4 +193,3 @@ export function policyWindowsOverlap(
   const rightEnd = right.effectiveTo?.getTime() ?? Number.POSITIVE_INFINITY
   return left.effectiveFrom.getTime() <= rightEnd && right.effectiveFrom.getTime() <= leftEnd
 }
-import type { Prisma } from "@prisma/client"

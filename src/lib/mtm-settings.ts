@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { coerceMtmBooleanSetting, coerceMtmNumberSetting } from "@/lib/mtm/setting-values"
 import {
   coerceMtmContactRequiredFields,
   MTM_CONTACT_REQUIRED_FIELD_DEFAULTS,
@@ -136,14 +137,12 @@ function coerce<K extends keyof MtmSettingsShape>(
 ): MtmSettingsShape[K] {
   const fallback = MTM_SETTING_DEFAULTS[key] as MtmSettingsShape[K]
   if (raw == null) return fallback
+  // Shared with every single-key runtime read (src/lib/mtm/setting-values.ts).
   if (typeof fallback === "number") {
-    const n = typeof raw === "string" ? Number(raw) : Number(raw)
-    return (Number.isFinite(n) ? n : fallback) as MtmSettingsShape[K]
+    return coerceMtmNumberSetting(raw, fallback) as MtmSettingsShape[K]
   }
   if (typeof fallback === "boolean") {
-    if (typeof raw === "boolean") return raw as MtmSettingsShape[K]
-    if (typeof raw === "string") return (raw === "true") as MtmSettingsShape[K]
-    return fallback
+    return coerceMtmBooleanSetting(raw, fallback) as MtmSettingsShape[K]
   }
   if (Array.isArray(fallback)) {
     if (key === "contactRequiredFields") {

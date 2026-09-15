@@ -123,7 +123,7 @@ describe("visitPoliciesEnabled switch in the resolver", () => {
   const input = { organizationId: "org-1", agentId: "agent-1", customerId: "customer-1" }
 
   it("selects no rule while the switch is off — identical to an organization without rules", async () => {
-    for (const off of [false, "false"]) {
+    for (const off of [false, "false", "no"]) {
       for (const photoRequired of [true, false]) {
         const disabled = clientWithSettings([requiredPresentationPolicy], { visitPoliciesEnabled: off, photoRequired })
         const withoutRules = clientWithSettings([], { photoRequired })
@@ -154,6 +154,21 @@ describe("visitPoliciesEnabled switch in the resolver", () => {
     expect(visitPoliciesEnabled(undefined)).toBe(true)
     expect(visitPoliciesEnabled(null)).toBe(true)
     expect(visitPoliciesEnabled(false)).toBe(false)
+    // Same rule as getMtmSettings: a string other than "true" is off.
+    expect(visitPoliciesEnabled("yes")).toBe(false)
+  })
+
+  it("uses a caller's pre-read switch without reading the setting", async () => {
+    const offClient = clientWithSettings([requiredPresentationPolicy], { visitPoliciesEnabled: true })
+    const off = await resolveMtmVisitPolicy(offClient as never, { ...input, policiesEnabled: false })
+    expect(off.sourcePolicyId).toBeNull()
+    expect(offClient.mtmVisitPolicy.findMany).not.toHaveBeenCalled()
+    const onClient = clientWithSettings([requiredPresentationPolicy], { visitPoliciesEnabled: false })
+    const on = await resolveMtmVisitPolicy(onClient as never, { ...input, policiesEnabled: true })
+    expect(on.sourcePolicyId).toBe("policy-required")
+    for (const c of [offClient, onClient]) {
+      expect(c.mtmSetting.findFirst.mock.calls.map(([args]) => args.where.key)).not.toContain("visitPoliciesEnabled")
+    }
   })
 })
 

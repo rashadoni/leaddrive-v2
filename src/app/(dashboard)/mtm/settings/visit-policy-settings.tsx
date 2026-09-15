@@ -142,6 +142,7 @@ export function VisitPolicySettings() {
         policyRes.json(), teamRes.json(), agentRes.json(), customerRes.json(),
       ])
       if (!policyRes.ok) {
+        setFeatureDisabled(false)
         setLoadError(explainError(policyBody, policyRes.status))
         return
       }
@@ -164,6 +165,7 @@ export function VisitPolicySettings() {
         setDraft(nextPolicies[0])
       }
     } catch {
+      setFeatureDisabled(false)
       setLoadError(t("loadFailed"))
     } finally {
       setLoading(false)
@@ -354,7 +356,8 @@ export function VisitPolicySettings() {
         </p>
       ) : null}
 
-      {featureDisabled && !loadError ? null : (
+      {/* Neither the "switched off" notice nor a load error sits next to an editor. */}
+      {featureDisabled || loadError ? null : (
       <div className="mt-5 grid gap-6 xl:grid-cols-[230px_minmax(0,1fr)]">
         <nav aria-label={t("policyList")} className="space-y-1">
           {loading ? <div className="h-32 animate-pulse rounded-md bg-muted" /> : policies.length === 0 ? (

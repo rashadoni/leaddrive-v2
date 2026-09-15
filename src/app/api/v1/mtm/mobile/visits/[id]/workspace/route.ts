@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withMobileRls } from "@/lib/with-mobile-rls"
 import { withNormalizedCoordinates } from "@/lib/mtm/geo-coordinates"
+import { effectiveRequirementMinCount, readMaxPhotosPerVisit } from "@/lib/mtm/visit-requirements"
 
 /**
  * Mobile visit workspace. The bearer agent may only read a visit they own or
@@ -118,6 +119,21 @@ export const GET = withMobileRls(async (
     )
   }
 
+  // A PHOTO minimum above maxPhotosPerVisit is impossible to meet (uploads stop
+  // at the cap), and check-out already counts it as met at the cap. Send the
+  // app the same number so it never waits for photos it cannot upload.
+  const photoMinimum = visit.requirementSnapshot?.requirements.find((requirement) => requirement.actionKey === "PHOTO" && requirement.minCount > 1)
+  const maxPhotosPerVisit = photoMinimum ? await readMaxPhotosPerVisit(prisma, auth.orgId) : null
+  const requirementSnapshot = visit.requirementSnapshot && maxPhotosPerVisit !== null
+    ? {
+      ...visit.requirementSnapshot,
+      requirements: visit.requirementSnapshot.requirements.map((requirement) => ({
+        ...requirement,
+        minCount: effectiveRequirementMinCount(requirement.actionKey, requirement.minCount, maxPhotosPerVisit),
+      })),
+    }
+    : visit.requirementSnapshot
+
   const reminders = await prisma.mtmTask.findMany({
     where: {
       organizationId: auth.orgId,
@@ -137,7 +153,7 @@ export const GET = withMobileRls(async (
       // Same rule as every other read path: a pre-migration (0, 0) leaves the
       // server as null/null, never as a number the app would measure from
       // (src/lib/mtm/geo-coordinates.ts).
-      visit: { ...visit, customer: withNormalizedCoordinates(visit.customer) },
+      visit: { ...visit, requirementSnapshot, customer: withNormalizedCoordinates(visit.customer) },
       reminders,
     },
   })

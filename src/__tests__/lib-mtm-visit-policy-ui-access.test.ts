@@ -84,7 +84,9 @@ describe("visit policy settings: switch turned off (GET data.featureDisabled con
     expect(source).toContain("setFeatureDisabled(visitPolicyFeatureDisabled(policyBody.data))")
     expect(source).toContain('data-testid="visit-policy-feature-disabled"')
     // No list, form, Save or preview while off; no "New policy" button either.
-    expect(source).toContain("{featureDisabled && !loadError ? null : (")
+    expect(source).toContain("{featureDisabled || loadError ? null : (")
+    // A failed reload clears a stale "switched off" state.
+    expect(source.match(/setFeatureDisabled\(false\)/g) ?? []).toHaveLength(2)
     expect(source).toContain("{canCreate && !featureDisabled ? (")
     for (const locale of ["en", "ru", "az"]) {
       const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).mtmVisitPolicies

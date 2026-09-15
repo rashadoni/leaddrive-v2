@@ -257,6 +257,18 @@ describe("visit policy access by role", () => {
     expect(prisma.mtmVisitPolicy.create).not.toHaveBeenCalled()
   })
 
+  it("answers 403 before 400: a manager moving a rule to another team with an over-limit PHOTO minimum", async () => {
+    asUser("manager-user", "manager")
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "maxPhotosPerVisit", value: 5 }] as never)
+    vi.mocked(prisma.mtmVisitPolicy.findFirst).mockResolvedValueOnce({ id: "policy-a", teamId: "team-A", actions: [] } as never)
+    const response = await put("policy-a", {
+      teamId: "team-B",
+      actions: [{ actionKey: "PHOTO", mode: "REQUIRED", minCount: 6, allowWaiver: false }],
+    })
+    expect(response.status).toBe(403)
+    expect(prisma.mtmVisitPolicy.update).not.toHaveBeenCalled()
+  })
+
   it("lets a manager create a rule for their own team", async () => {
     asUser("manager-user", "manager")
     const response = await createPolicy(request("/api/v1/mtm/visit-policies", policyBody("team-A")))

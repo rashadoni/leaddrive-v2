@@ -1357,6 +1357,51 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
     })
   })
 
+  it("gates only the alert of a forced out-of-zone check-in on alertOutOfZone", async () => {
+    for (const alertOutOfZone of [false, true]) {
+      vi.mocked(prisma.mtmAlert.create).mockClear()
+      vi.mocked(prisma.mtmVisit.create).mockClear()
+      vi.mocked(prisma.mtmAuditLog.create).mockClear()
+      vi.mocked(resolveMobileAuth).mockResolvedValue({ ...AUTH_CONTEXT, role: "MANAGER" } as never)
+      vi.mocked(prisma.mtmCustomer.findFirst).mockResolvedValue({ id: "cust-1", latitude: 40.4, longitude: 49.8, geofenceRadius: 50 } as never)
+      vi.mocked(prisma.mtmSetting.findFirst).mockImplementation((async ({ where }: any) => (
+        where.key === "alertOutOfZone" ? { value: alertOutOfZone } : null
+      )) as never)
+      vi.mocked(prisma.mtmVisit.create).mockResolvedValue({
+        id: `field-visit-force-${alertOutOfZone}`,
+        status: "CHECKED_IN",
+        checkInAt: new Date("2026-07-21T09:00:00.000Z"),
+        customerId: "cust-1",
+        contactId: null,
+        routeId: null,
+        routePointId: null,
+      } as never)
+
+      const response = await PushPOST(makePushReq({ operations: [{
+        operationId: `op-force-alert-${alertOutOfZone}`,
+        op: "create",
+        entity: "visits",
+        data: {
+          id: `field-visit-force-${alertOutOfZone}`,
+          customerId: "cust-1",
+          checkInAt: "2026-07-21T09:00:00.000Z",
+          checkInLat: 41.0,
+          checkInLng: 50.5,
+          force: true,
+        },
+        clientTimestamp: Date.now(),
+      }] }))
+      const body = await response.json()
+
+      // The forced check-in itself and its audit trail do not depend on the switch.
+      expect(body.results[0]).toMatchObject({ status: "ok", serverId: `field-visit-force-${alertOutOfZone}` })
+      expect(prisma.mtmVisit.create).toHaveBeenCalledTimes(1)
+      expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith({ data: expect.objectContaining({ action: "CHECK_IN_FORCED" }) })
+      expect(prisma.mtmAlert.create).toHaveBeenCalledTimes(alertOutOfZone ? 1 : 0)
+    }
+    vi.mocked(prisma.mtmSetting.findFirst).mockResolvedValue(null)
+  })
+
   it("does not grant managers general field mutation capability", async () => {
     vi.mocked(resolveMobileAuth).mockResolvedValue({ ...AUTH_CONTEXT, role: "MANAGER" } as never)
 

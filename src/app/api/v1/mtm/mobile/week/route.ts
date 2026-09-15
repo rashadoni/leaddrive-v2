@@ -336,6 +336,8 @@ export const GET = withMobileRls(async (req, auth) => {
         agentId: auth.agentId,
         customerId: target.customerId,
         at: target.at,
+        // Read once for the whole week, not once per (day × customer).
+        policiesEnabled: settings.visitPoliciesEnabled,
       })
       visitPolicies.set(key, policy)
     }))

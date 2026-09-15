@@ -87,7 +87,9 @@ const CustomerCreateBaseSchema = z.object({
   phone: optionalString,
   contactPerson: optionalString,
   notes: longString,
-  geofenceRadius: z.number().int().positive().max(50_000).optional().nullable(), // F-22
+  // F-22. New writes stay inside what check-in enforces (25..10000 m);
+  // older stored values outside it are clamped to the nearest bound at check-in.
+  geofenceRadius: z.number().int().min(25).max(10_000).optional().nullable(),
 })
 export const CustomerCreateSchema = CustomerCreateBaseSchema.superRefine(validateCoordinatePair)
 export const CustomerUpdateSchema = CustomerCreateBaseSchema.partial().superRefine(validateCoordinatePair)
