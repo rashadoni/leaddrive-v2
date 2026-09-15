@@ -12,30 +12,29 @@ import {
 } from "@/lib/workforce/workday-correction-facts"
 import {
   replayWorkforceWorkdayFacts,
-  WORKFORCE_WORKDAY_JOURNAL_ORDER,
-  WORKFORCE_WORKDAY_JOURNAL_SELECT,
   workforceReplayMatchesWorkdayCorrectionFacts,
   workforceWorkdayEventFact,
   WorkforceWorkdayFactsReplayError,
+  type WorkforceTimeCorrectionReplayFact,
+  type WorkforceWorkdayEventFact,
 } from "@/lib/workforce/workday-facts-replay"
 import {
   authorizeWorkforceWorkdayManagerAction,
+  isWorkforceWorkdayOwnDay,
+  readWorkforceWorkdayJournal,
   workforceReopenWorkdaySelect,
   workforceTenantToday,
   WorkforceWorkdayReopenSchema,
   workforceWorkdayReopenRequestHash,
   type WorkforceWorkdayReopenContext,
+  type WorkforceWorkdayScope,
 } from "@/lib/workforce/workday-reopen"
+import type { WorkforceWorkdayReopenUndoConflictCode } from "@/lib/workforce/workday-reopen-contract"
+
+export type { WorkforceWorkdayReopenUndoConflictCode } from "@/lib/workforce/workday-reopen-contract"
 
 /** Same body as the reopen itself: an operation id, the version seen, a reason. */
 export const WorkforceWorkdayReopenUndoSchema = WorkforceWorkdayReopenSchema
-
-export type WorkforceWorkdayReopenUndoConflictCode =
-  | "WORKFORCE_WORKDAY_REOPEN_UNDO_NOT_REOPENED"
-  | "WORKFORCE_WORKDAY_REOPEN_UNDO_NOT_TODAY"
-  | "WORKFORCE_WORKDAY_REOPEN_UNDO_VERSION_CONFLICT"
-  | "WORKFORCE_WORKDAY_REOPEN_UNDO_IDEMPOTENCY_MISMATCH"
-  | "WORKFORCE_WORKDAY_REOPEN_UNDO_HISTORY_INVALID"
 
 export type WorkforceWorkdayReopenUndoResult =
   | {
@@ -73,6 +72,137 @@ function undoConflict(
   })
 }
 
+/** The journal key of the FINISH an undo operation writes. */
+export function workforceWorkdayReopenUndoEventKey(operationId: string): string {
+  return `${MTM_WORKDAY_REOPEN_UNDO_EVENT_KEY_PREFIX}${operationId}`
+}
+
+export type WorkforceWorkdayReopenUndoStateConflictCode = Extract<
+  WorkforceWorkdayReopenUndoConflictCode,
+  "WORKFORCE_WORKDAY_REOPEN_UNDO_NOT_REOPENED" | "WORKFORCE_WORKDAY_REOPEN_UNDO_NOT_TODAY"
+>
+
+/**
+ * What the day's own facts say about an undo: the day is paused, and it is
+ * today's.
+ *
+ * Undo is a same-day correction of the manager's own mistake. A reopen left
+ * open past midnight is no longer undone here: that day is handled by the
+ * existing prior-day / left-open workday flow (missed-finish review), which
+ * v1 of the reopen feature deliberately does not replace.
+ */
+export function workforceWorkdayReopenUndoStateConflict(
+  workday: Pick<WorkforceWorkdayCorrectionFacts, "status" | "pausedAt" | "workDate">,
+  today: string,
+): WorkforceWorkdayReopenUndoStateConflictCode | null {
+  if (workday.status !== "PAUSED" || !workday.pausedAt) return "WORKFORCE_WORKDAY_REOPEN_UNDO_NOT_REOPENED"
+  if (workday.workDate !== today) return "WORKFORCE_WORKDAY_REOPEN_UNDO_NOT_TODAY"
+  return null
+}
+
+/**
+ * The REOPEN an undo takes back. It is still the journal's last event —
+ * anything the employee did after the reopen (RESUME, then perhaps PAUSE
+ * again) is the last event instead, and the day is theirs again — recorded at
+ * the instant the open pause began.
+ */
+export function workforceWorkdayUndoableReopenEvent<Event extends { id: string; type: string; occurredAt: Date }>(
+  journal: readonly Event[],
+  pausedAt: Date,
+): Event | null {
+  const last = journal.at(-1)
+  return last?.type === "REOPEN" && last.occurredAt.getTime() === pausedAt.getTime() ? last : null
+}
+
+/** The immutable ledger row that makes that REOPEN a manager's reopen. */
+export async function findWorkforceWorkdayReopenLedgerRow(
+  db: Pick<Prisma.TransactionClient, "workforceWorkdayReopen">,
+  params: WorkforceWorkdayScope & { eventId: string },
+): Promise<{ id: string } | null> {
+  return db.workforceWorkdayReopen.findFirst({
+    where: {
+      organizationId: params.organizationId,
+      agentId: params.agentId,
+      workdayId: params.workdayId,
+      eventId: params.eventId,
+    },
+    select: { id: true },
+  })
+}
+
+/** The day's immutable correction chain, replayed after its journal. */
+export async function readWorkforceWorkdayReplayCorrections(
+  db: Pick<Prisma.TransactionClient, "workforceTimeCorrection">,
+  scope: WorkforceWorkdayScope,
+) {
+  return db.workforceTimeCorrection.findMany({
+    where: { organizationId: scope.organizationId, agentId: scope.agentId, workdayId: scope.workdayId },
+    select: { id: true, beforeFacts: true, afterFacts: true },
+  })
+}
+
+/** The projection an undo restores: finished again at the reopened instant. */
+export function workforceUndoneReopenWorkdayFacts(
+  before: WorkforceWorkdayCorrectionFacts,
+): WorkforceWorkdayCorrectionFacts {
+  return {
+    ...before,
+    status: "COMPLETED",
+    pausedAt: null,
+    completedAt: before.pausedAt,
+  }
+}
+
+/**
+ * Proves the immutable journal and correction chain reproduce the reopened
+ * row, and that an undo FINISH at the reopened instant reproduces exactly the
+ * finished row. Returns why they do not, or null.
+ */
+export function workforceWorkdayReopenUndoHistoryProblem(params: {
+  workdayId: string
+  journal: readonly WorkforceWorkdayEventFact[]
+  corrections: readonly WorkforceTimeCorrectionReplayFact[]
+  before: WorkforceWorkdayCorrectionFacts
+  /** The start of the reopened pause: the original finish. */
+  pauseStartedAt: Date
+  /** When the server applies the undo FINISH. */
+  appliedAt: Date
+  /** The undo FINISH's journal key; replay recognises it by its reserved prefix. */
+  clientEventId: string
+}): string | null {
+  const { workdayId, journal, corrections, before } = params
+  try {
+    const replayed = replayWorkforceWorkdayFacts({ workdayId, events: journal, corrections })
+    if (!workforceReplayMatchesWorkdayCorrectionFacts(replayed, before)) {
+      return "Immutable workday journal does not match its current projection"
+    }
+    const restored = replayWorkforceWorkdayFacts({
+      workdayId,
+      events: [...journal, {
+        id: "pending-workday-reopen-undo",
+        type: "FINISH",
+        occurredAt: params.pauseStartedAt.toISOString(),
+        appliedAt: params.appliedAt.toISOString(),
+        clientEventId: params.clientEventId,
+      }],
+      corrections,
+    })
+    if (!workforceReplayMatchesWorkdayCorrectionFacts(restored, workforceUndoneReopenWorkdayFacts(before))) {
+      return "Undone reopen does not reproduce the finished projection"
+    }
+    return null
+  } catch (error) {
+    if (!(error instanceof WorkforceWorkdayFactsReplayError)) throw error
+    return error.message
+  }
+}
+
+const UNDO_REFUSAL_MESSAGES: Record<WorkforceWorkdayReopenUndoStateConflictCode, string> = {
+  WORKFORCE_WORKDAY_REOPEN_UNDO_NOT_REOPENED:
+    "Only a reopened workday the employee has not resumed or finished can be undone",
+  WORKFORCE_WORKDAY_REOPEN_UNDO_NOT_TODAY: "Only today's reopen can be undone",
+}
+
 /**
  * Undoes a manager's mistaken reopen of today's workday, as long as the
  * employee has not acted on the reopened day since: it stays PAUSED and the
@@ -85,6 +215,9 @@ function undoConflict(
  * exception: the update leaves PAUSED, not COMPLETED. The event note carries
  * the reason; the manager, the undone reopen and the before/after facts are in
  * the WORKDAY_REOPEN_UNDO audit record written in the same transaction.
+ *
+ * The refusals are the exported predicates above, which the operational week
+ * also evaluates to tell a manager in advance whether the undo is possible.
  */
 export async function undoWorkforceWorkdayReopen(
   context: WorkforceWorkdayReopenContext,
@@ -97,7 +230,7 @@ export async function undoWorkforceWorkdayReopen(
     select: { id: true, agentId: true, agent: { select: { userId: true } } },
   })
   if (!initial) return { kind: "not_found" }
-  if (actor?.agentId === initial.agentId || initial.agent.userId === userId) {
+  if (isWorkforceWorkdayOwnDay({ actor, userId, agentId: initial.agentId, agentUserId: initial.agent.userId })) {
     return { kind: "forbidden" }
   }
 
@@ -109,8 +242,9 @@ export async function undoWorkforceWorkdayReopen(
     input,
   })
   const today = await workforceTenantToday(organizationId, now)
-  const clientEventId = `${MTM_WORKDAY_REOPEN_UNDO_EVENT_KEY_PREFIX}${input.operationId}`
+  const clientEventId = workforceWorkdayReopenUndoEventKey(input.operationId)
   const scope = { organizationId, agentId: initial.agentId }
+  const workdayScope: WorkforceWorkdayScope = { ...scope, workdayId }
 
   try {
     return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -136,7 +270,9 @@ export async function undoWorkforceWorkdayReopen(
         }),
       ])
       if (!workday) throw new WorkdayReopenUndoProblem({ kind: "not_found" })
-      if (workday.agent.userId === userId) return { kind: "forbidden" as const }
+      if (isWorkforceWorkdayOwnDay({ actor, userId, agentId: initial.agentId, agentUserId: workday.agent.userId })) {
+        return { kind: "forbidden" as const }
+      }
       const beforeWorkday = workforceWorkdayCorrectionFacts(workday)
 
       if (existing) {
@@ -160,50 +296,26 @@ export async function undoWorkforceWorkdayReopen(
       }
 
       const pauseStartedAt = workday.pausedAt
-      if (workday.status !== "PAUSED" || !pauseStartedAt) {
-        throw undoConflict(
-          "WORKFORCE_WORKDAY_REOPEN_UNDO_NOT_REOPENED",
-          "Only a reopened workday the employee has not resumed or finished can be undone",
-          beforeWorkday,
-        )
-      }
-      // Undo is a same-day correction of the manager's own mistake. A reopen
-      // left open past midnight is no longer undone here: that day is handled
-      // by the existing prior-day / left-open workday flow (missed-finish
-      // review), which v1 of the reopen feature deliberately does not replace.
-      if (beforeWorkday.workDate !== today) {
-        throw undoConflict(
-          "WORKFORCE_WORKDAY_REOPEN_UNDO_NOT_TODAY",
-          "Only today's reopen can be undone",
-          beforeWorkday,
-        )
+      // Paused and today's; a reopen left open past midnight belongs to the
+      // prior-day flow (see workforceWorkdayReopenUndoStateConflict).
+      const stateConflict = workforceWorkdayReopenUndoStateConflict(beforeWorkday, today)
+      if (stateConflict || !pauseStartedAt) {
+        const code = stateConflict ?? "WORKFORCE_WORKDAY_REOPEN_UNDO_NOT_REOPENED"
+        throw undoConflict(code, UNDO_REFUSAL_MESSAGES[code], beforeWorkday)
       }
 
       const [events, corrections] = await Promise.all([
-        tx.mtmAgentWorkdayEvent.findMany({
-          where: { organizationId, agentId: initial.agentId, workdayId },
-          orderBy: [...WORKFORCE_WORKDAY_JOURNAL_ORDER],
-          select: WORKFORCE_WORKDAY_JOURNAL_SELECT,
-        }),
-        tx.workforceTimeCorrection.findMany({
-          where: { organizationId, agentId: initial.agentId, workdayId },
-          select: { id: true, beforeFacts: true, afterFacts: true },
-        }),
+        readWorkforceWorkdayJournal(tx, workdayScope),
+        readWorkforceWorkdayReplayCorrections(tx, workdayScope),
       ])
-      // Anything the employee did after the reopen (RESUME, then perhaps PAUSE
-      // again) is the last event instead, and the day is theirs again.
-      const reopenEvent = events.at(-1)
-      const reopen = reopenEvent?.type === "REOPEN"
-        && reopenEvent.occurredAt.getTime() === pauseStartedAt.getTime()
-        ? await tx.workforceWorkdayReopen.findFirst({
-          where: { organizationId, agentId: initial.agentId, workdayId, eventId: reopenEvent.id },
-          select: { id: true },
-        })
+      const reopenEvent = workforceWorkdayUndoableReopenEvent(events, pauseStartedAt)
+      const reopen = reopenEvent
+        ? await findWorkforceWorkdayReopenLedgerRow(tx, { ...workdayScope, eventId: reopenEvent.id })
         : null
       if (!reopenEvent || !reopen) {
         throw undoConflict(
           "WORKFORCE_WORKDAY_REOPEN_UNDO_NOT_REOPENED",
-          "Only a reopened workday the employee has not resumed or finished can be undone",
+          UNDO_REFUSAL_MESSAGES.WORKFORCE_WORKDAY_REOPEN_UNDO_NOT_REOPENED,
           beforeWorkday,
         )
       }
@@ -215,38 +327,16 @@ export async function undoWorkforceWorkdayReopen(
         )
       }
 
-      const afterWorkday: WorkforceWorkdayCorrectionFacts = {
-        ...beforeWorkday,
-        status: "COMPLETED",
-        pausedAt: null,
-        completedAt: beforeWorkday.pausedAt,
-      }
-      const journal = events.map(workforceWorkdayEventFact)
-      let historyProblem: string | null = null
-      try {
-        const replayed = replayWorkforceWorkdayFacts({ workdayId, events: journal, corrections })
-        if (!workforceReplayMatchesWorkdayCorrectionFacts(replayed, beforeWorkday)) {
-          historyProblem = "Immutable workday journal does not match its current projection"
-        } else {
-          const restored = replayWorkforceWorkdayFacts({
-            workdayId,
-            events: [...journal, {
-              id: "pending-workday-reopen-undo",
-              type: "FINISH",
-              occurredAt: pauseStartedAt.toISOString(),
-              appliedAt: now.toISOString(),
-              clientEventId,
-            }],
-            corrections,
-          })
-          if (!workforceReplayMatchesWorkdayCorrectionFacts(restored, afterWorkday)) {
-            historyProblem = "Undone reopen does not reproduce the finished projection"
-          }
-        }
-      } catch (error) {
-        if (!(error instanceof WorkforceWorkdayFactsReplayError)) throw error
-        historyProblem = error.message
-      }
+      const afterWorkday = workforceUndoneReopenWorkdayFacts(beforeWorkday)
+      const historyProblem = workforceWorkdayReopenUndoHistoryProblem({
+        workdayId,
+        journal: events.map(workforceWorkdayEventFact),
+        corrections,
+        before: beforeWorkday,
+        pauseStartedAt,
+        appliedAt: now,
+        clientEventId,
+      })
       if (historyProblem) {
         throw undoConflict("WORKFORCE_WORKDAY_REOPEN_UNDO_HISTORY_INVALID", historyProblem, beforeWorkday)
       }

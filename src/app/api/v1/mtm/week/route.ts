@@ -27,6 +27,9 @@ import {
 import { buildOperationalTaskQueue } from "@/lib/mtm/operational-task-queue"
 import { groupMtmWeekAlerts, projectMtmWeekAlert, type MtmWeekAlert } from "@/lib/mtm/week-alert-groups"
 import { mtmManagerWorkdayState, type MtmWorkdayRow } from "@/lib/mtm/workday-open-anomaly"
+import { workforceSessionRoleAllows } from "@/lib/with-workforce-rls-auth"
+import { resolveWorkforceWorkdayManagerActions } from "@/lib/workforce/workday-manager-actions"
+import type { WorkforceWorkdayManagerActions } from "@/lib/workforce/workday-reopen-contract"
 
 const PENDING_PLAN_CHANGE_STATUSES = ["SUBMITTED", "IN_REVIEW", "NEEDS_INFO"] as const
 const VISIBLE_PLAN_CHANGE_STATUSES = [
@@ -62,6 +65,8 @@ const agentSelect = {
   name: true,
   role: true,
   teamId: true,
+  // Never serialized: it only tells a web admin's own linked card apart.
+  userId: true,
   lastSeenAt: true,
   team: {
     select: {
@@ -1110,6 +1115,35 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
         todayKey: today,
       })
     : null
+  // Reopen / undo-reopen of today's workday, evaluated with the services' own
+  // predicates. Their endpoints accept only a signed-in browser session, and
+  // never act on the viewer's own day, so an agent, a mobile token or an API
+  // key gets none; a session whose role lacks Workforce write learns why.
+  let managerActions: WorkforceWorkdayManagerActions | null = null
+  if (canReadWorkforce && actor.role !== "AGENT" && auth.principal === "web" && auth.principalType === "session") {
+    const agentUserId = selectedAgent.userId
+    try {
+      // One snapshot: the row, its journal and its blockers must agree, or a
+      // reopen committed between two reads would look like a broken history.
+      managerActions = await prisma.$transaction(
+        (tx: Prisma.TransactionClient) => resolveWorkforceWorkdayManagerActions(tx, {
+          organizationId: auth.orgId,
+          userId: auth.userId,
+          actor,
+          sessionPermitted: workforceSessionRoleAllows(auth.role, "write"),
+          agentId: selectedAgent.id,
+          agentUserId,
+          today,
+          now: generatedAt,
+        }),
+        { isolationLevel: "RepeatableRead" },
+      )
+    } catch (error) {
+      // Like the capability lookup above: the week stays readable and the
+      // unverified actions fail closed.
+      console.warn("[MTM/week GET] Workforce manager actions unavailable", error)
+    }
+  }
   const snapshotSource = {
     protocolVersion: 1,
     period: {
@@ -1133,11 +1167,12 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
     },
     coverage,
     gps,
-    workdayContext: { activeWorkday: activeWorkdayData, managerState: managerWorkdayState },
+    workdayContext: { activeWorkday: activeWorkdayData, managerState: managerWorkdayState, managerActions },
     completeness,
   }
   // Source identity deliberately excludes projections that advance with the
-  // clock (`workedSeconds`, `isToday`, available actions and GPS freshness).
+  // clock (`workedSeconds`, `isToday`, available actions — the manager's
+  // included — and GPS freshness).
   // The cached payload can be refreshed in place while its source snapshot
   // remains stable until a business/telemetry fact actually changes.
   const stableDays = days.map(({ isToday: _isToday, ...day }) => {

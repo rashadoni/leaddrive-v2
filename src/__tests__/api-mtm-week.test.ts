@@ -45,6 +45,7 @@ import {
   evaluateWorkforceMobileWriteAccess,
   workforceMobileWriteFenceResponse,
 } from "@/lib/workforce/mobile-write-fence"
+import { WORKFORCE_GRANULAR_ACCESS_FLAG } from "@/lib/workforce/granular-access-rollout"
 
 const ORG = "org-1"
 const SESSION = {
@@ -1739,5 +1740,363 @@ describe("GET /api/v1/mtm/week — manager truth (prod audit 2026-09-14)", () =>
       reason: null,
     })
     expect(JSON.stringify(json.data)).not.toContain("private text")
+  })
+})
+
+// ─── Owner decision 2026-09-15: a manager reopens today's finished workday ───
+describe("GET /api/v1/mtm/week — manager reopen actions", () => {
+  const WEEK_QUERY = "?agentId=agent-1&days=1&anchor=2026-07-15"
+  const AGENT_USER_ID = "agent-1-user"
+  // Asia/Baku (the tenant default) is UTC+4: 08:00Z is noon of 15 July there.
+  const TODAY = new Date("2026-07-15T00:00:00.000Z")
+  const STARTED_AT = new Date("2026-07-15T05:00:00.000Z")
+  const FINISHED_AT = new Date("2026-07-15T07:30:00.000Z")
+  const FINISH_SAVED_AT = new Date("2026-07-15T07:30:01.000Z")
+  const REOPENED_AT = new Date("2026-07-15T07:40:00.000Z")
+  const MANAGER_SESSION = { ...SESSION, role: "manager", principalType: "session" }
+
+  function todayWorkday(overrides: Record<string, unknown> = {}) {
+    return {
+      id: "workday-today",
+      organizationId: ORG,
+      agentId: "agent-1",
+      workDate: TODAY,
+      status: "COMPLETED",
+      startedAt: STARTED_AT,
+      pausedAt: null,
+      completedAt: FINISHED_AT,
+      totalPausedSeconds: 0,
+      updatedAt: FINISH_SAVED_AT,
+      agent: { userId: AGENT_USER_ID },
+      ...overrides,
+    }
+  }
+
+  function reopenedWorkday(overrides: Record<string, unknown> = {}) {
+    return todayWorkday({ status: "PAUSED", pausedAt: FINISHED_AT, completedAt: null, updatedAt: REOPENED_AT, ...overrides })
+  }
+
+  function journalEvent(id: string, type: string, occurredAt: Date, appliedAt: Date = occurredAt, clientEventId = `${type.toLowerCase()}-${id}`) {
+    return { id, type, occurredAt, appliedAt, clientEventId }
+  }
+
+  const finishedJournal = [
+    journalEvent("event-1", "START", STARTED_AT),
+    journalEvent("event-2", "FINISH", FINISHED_AT),
+  ]
+  const reopenedJournal = [
+    ...finishedJournal,
+    journalEvent("event-3", "REOPEN", FINISHED_AT, REOPENED_AT, "reopen:operation-1"),
+  ]
+
+  const timeApproverGrant = {
+    id: "grant-time-approver-1",
+    organizationId: ORG,
+    principalUserId: SESSION.userId,
+    role: "TIME_APPROVER",
+    scopeKind: "AGENT",
+    scopeTeamId: null,
+    scopeSiteId: null,
+    scopeAgentId: "agent-1",
+    effectiveFrom: new Date("2026-07-01T00:00:00.000Z"),
+    effectiveUntil: null,
+    revocation: null,
+  }
+
+  /**
+   * The week reads the open shift by status; the manager actions read today's
+   * row by date and, for a reopen, any other open shift by excluded id.
+   */
+  function mockWorkdays(today: Record<string, unknown> | null, options: { otherOpenWorkday?: boolean } = {}) {
+    vi.mocked(prisma.mtmAgentWorkday.findFirst).mockImplementation((async (query: { where?: Record<string, unknown> }) => {
+      const where = query?.where ?? {}
+      const workDate = where.workDate
+      if (workDate instanceof Date) return today && workDate.getTime() === TODAY.getTime() ? today : null
+      if ((where.id as { not?: string } | undefined)?.not) return options.otherOpenWorkday ? { id: "workday-other" } : null
+      const statuses = (where.status as { in?: string[] } | undefined)?.in ?? []
+      return today && statuses.includes(String(today.status)) ? today : null
+    }) as never)
+  }
+
+  async function managerActions(query = WEEK_QUERY) {
+    const response = await GET(weekRequest(query))
+    expect(response.status).toBe(200)
+    return (await response.json()).data.workdayContext.managerActions
+  }
+
+  function managerActionsRead(): boolean {
+    return vi.mocked(prisma.mtmAgentWorkday.findFirst).mock.calls
+      .some(([query]) => (query as { where?: { workDate?: unknown } } | undefined)?.where?.workDate instanceof Date)
+  }
+
+  beforeEach(() => {
+    vi.mocked(requireAuth).mockResolvedValue(MANAGER_SESSION as never)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ ...SELECTED_AGENT, userId: AGENT_USER_ID } as never)
+    mockWorkdays(todayWorkday())
+    vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue(finishedJournal as never)
+    vi.mocked(prisma.workforceTimesheetApproval.findFirst).mockResolvedValue(null as never)
+    vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue(null as never)
+    vi.mocked(prisma.workforceTimeCorrection.findMany).mockResolvedValue([] as never)
+    vi.mocked(prisma.workforceWorkdayReopen.findFirst).mockResolvedValue(null as never)
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([] as never)
+  })
+
+  afterEach(() => {
+    vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue([] as never)
+  })
+
+  it("offers a manager in scope the reopen of today's finished day, with the version to send", async () => {
+    expect(await managerActions()).toEqual({
+      reopen: {
+        allowed: true,
+        workdayId: "workday-today",
+        updatedAt: FINISH_SAVED_AT.toISOString(),
+        blockedReason: null,
+      },
+      undoReopen: {
+        allowed: false,
+        workdayId: "workday-today",
+        updatedAt: FINISH_SAVED_AT.toISOString(),
+        blockedReason: "WORKFORCE_WORKDAY_REOPEN_UNDO_NOT_REOPENED",
+      },
+    })
+    // Row, journal and blockers are read on one snapshot.
+    expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), { isolationLevel: "RepeatableRead" })
+    expect(prisma.mtmAgentWorkday.findFirst).toHaveBeenCalledWith({
+      where: { organizationId: ORG, agentId: "agent-1", workDate: TODAY },
+      select: expect.objectContaining({ updatedAt: true, agent: { select: { userId: true } } }),
+    })
+    expect(prisma.workforceTimesheetApproval.findFirst).toHaveBeenCalledWith({
+      where: { organizationId: ORG, agentId: "agent-1", periodStart: { lte: TODAY }, periodEnd: { gte: TODAY } },
+      select: { id: true },
+    })
+  })
+
+  it("keeps the manager actions out of the snapshot identity", async () => {
+    const offered = await (await GET(weekRequest(WEEK_QUERY))).json()
+    vi.mocked(requireAuth).mockResolvedValue({ ...MANAGER_SESSION, principalType: "api_key" } as never)
+    const withheld = await (await GET(weekRequest(WEEK_QUERY))).json()
+
+    expect(offered.data.workdayContext.managerActions.reopen.allowed).toBe(true)
+    expect(withheld.data.workdayContext.managerActions).toBeNull()
+    expect(withheld.data.snapshotId).toBe(offered.data.snapshotId)
+  })
+
+  it.each([
+    ["an approved timesheet", "WORKFORCE_WORKDAY_REOPEN_TIMESHEET_APPROVED", () => {
+      vi.mocked(prisma.workforceTimesheetApproval.findFirst).mockResolvedValue({ id: "approval-1" } as never)
+      // The service's order: the approval is named even when the day was also corrected.
+      vi.mocked(prisma.workforceTimeCorrection.findMany).mockResolvedValue([{ id: "correction-1" }] as never)
+    }],
+    ["a pending time-correction request", "WORKFORCE_WORKDAY_REOPEN_CORRECTION_PENDING", () => {
+      vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue({ id: "request-1" } as never)
+    }],
+    ["a corrected day", "WORKFORCE_WORKDAY_REOPEN_CORRECTED", () => {
+      vi.mocked(prisma.workforceTimeCorrection.findMany).mockResolvedValue([{ id: "correction-1" }] as never)
+    }],
+    ["another open shift", "WORKFORCE_WORKDAY_REOPEN_OPEN_SHIFT_EXISTS", () => {
+      mockWorkdays(todayWorkday(), { otherOpenWorkday: true })
+    }],
+    ["a journal that no longer reproduces the day", "WORKFORCE_WORKDAY_REOPEN_HISTORY_INVALID", () => {
+      vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue([finishedJournal[0]] as never)
+    }],
+  ])("refuses the reopen for %s with the service's 409 code", async (_label, code, arrange) => {
+    arrange()
+    const actions = await managerActions()
+    expect(actions.reopen).toEqual({
+      allowed: false,
+      workdayId: "workday-today",
+      updatedAt: FINISH_SAVED_AT.toISOString(),
+      blockedReason: code,
+    })
+    expect(actions.undoReopen.allowed).toBe(false)
+  })
+
+  it("reports a running or not yet started day by its state, without reading authority or blockers", async () => {
+    mockWorkdays(todayWorkday({ status: "STARTED", completedAt: null }))
+    expect(await managerActions()).toEqual({
+      reopen: {
+        allowed: false,
+        workdayId: "workday-today",
+        updatedAt: FINISH_SAVED_AT.toISOString(),
+        blockedReason: "WORKFORCE_WORKDAY_REOPEN_NOT_COMPLETED",
+      },
+      undoReopen: {
+        allowed: false,
+        workdayId: "workday-today",
+        updatedAt: FINISH_SAVED_AT.toISOString(),
+        blockedReason: "WORKFORCE_WORKDAY_REOPEN_UNDO_NOT_REOPENED",
+      },
+    })
+    expect(prisma.workforceTimesheetApproval.findFirst).not.toHaveBeenCalled()
+    expect(prisma.mtmAgentWorkdayEvent.findMany).not.toHaveBeenCalled()
+    expect(prisma.workforceAccessGrant.findMany).not.toHaveBeenCalled()
+
+    mockWorkdays(null)
+    expect(await managerActions()).toEqual({
+      reopen: { allowed: false, workdayId: null, updatedAt: null, blockedReason: "WORKFORCE_WORKDAY_REOPEN_NOT_COMPLETED" },
+      undoReopen: { allowed: false, workdayId: null, updatedAt: null, blockedReason: "WORKFORCE_WORKDAY_REOPEN_UNDO_NOT_REOPENED" },
+    })
+  })
+
+  it("tells a session whose CRM role lacks Workforce write why it cannot reopen", async () => {
+    vi.mocked(requireAuth).mockResolvedValue({ ...MANAGER_SESSION, role: "support" } as never)
+
+    expect((await managerActions()).reopen).toMatchObject({
+      allowed: false,
+      blockedReason: "WORKFORCE_SESSION_PERMISSION_REQUIRED",
+    })
+    expect(prisma.workforceTimesheetApproval.findFirst).not.toHaveBeenCalled()
+  })
+
+  it("requires a TIME_CORRECT grant once the tenant is on granular Workforce access", async () => {
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      plan: "enterprise",
+      addons: [],
+      features: [WORKFORCE_GRANULAR_ACCESS_FLAG],
+      modules: { mtm: true },
+    } as never)
+
+    expect((await managerActions()).reopen).toMatchObject({ allowed: false, blockedReason: "WORKFORCE_SCOPE_DENIED" })
+    expect(prisma.workforceTimesheetApproval.findFirst).not.toHaveBeenCalled()
+
+    vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([timeApproverGrant] as never)
+    expect((await managerActions()).reopen).toMatchObject({ allowed: true, blockedReason: null })
+  })
+
+  it("offers the undo while the manager's reopen is still the day's last event", async () => {
+    mockWorkdays(reopenedWorkday())
+    vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue(reopenedJournal as never)
+    vi.mocked(prisma.workforceWorkdayReopen.findFirst).mockResolvedValue({ id: "reopen-1" } as never)
+
+    expect(await managerActions()).toEqual({
+      reopen: {
+        allowed: false,
+        workdayId: "workday-today",
+        updatedAt: REOPENED_AT.toISOString(),
+        blockedReason: "WORKFORCE_WORKDAY_REOPEN_NOT_COMPLETED",
+      },
+      undoReopen: {
+        allowed: true,
+        workdayId: "workday-today",
+        updatedAt: REOPENED_AT.toISOString(),
+        blockedReason: null,
+      },
+    })
+    expect(prisma.workforceWorkdayReopen.findFirst).toHaveBeenCalledWith({
+      where: { organizationId: ORG, agentId: "agent-1", workdayId: "workday-today", eventId: "event-3" },
+      select: { id: true },
+    })
+  })
+
+  it.each([
+    ["an ordinary break", false, () => {
+      const pausedAt = new Date("2026-07-15T07:00:00.000Z")
+      mockWorkdays(todayWorkday({ status: "PAUSED", pausedAt, completedAt: null }))
+      vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue([
+        finishedJournal[0],
+        journalEvent("event-2", "PAUSE", pausedAt),
+      ] as never)
+    }],
+    ["a reopen the agent already resumed and paused again", false, () => {
+      const pausedAgainAt = new Date("2026-07-15T07:50:00.000Z")
+      mockWorkdays(reopenedWorkday({ pausedAt: pausedAgainAt, totalPausedSeconds: 600 }))
+      vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue([
+        ...reopenedJournal,
+        journalEvent("event-4", "RESUME", REOPENED_AT),
+        journalEvent("event-5", "PAUSE", pausedAgainAt),
+      ] as never)
+      vi.mocked(prisma.workforceWorkdayReopen.findFirst).mockResolvedValue({ id: "reopen-1" } as never)
+    }],
+    ["a REOPEN event without its ledger row", true, () => {
+      mockWorkdays(reopenedWorkday())
+      vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue(reopenedJournal as never)
+    }],
+  ])("does not offer the undo for %s", async (_label, ledgerRead, arrange) => {
+    arrange()
+    expect((await managerActions()).undoReopen).toMatchObject({
+      allowed: false,
+      blockedReason: "WORKFORCE_WORKDAY_REOPEN_UNDO_NOT_REOPENED",
+    })
+    expect(prisma.workforceWorkdayReopen.findFirst).toHaveBeenCalledTimes(ledgerRead ? 1 : 0)
+  })
+
+  it("refuses the undo when the journal no longer reproduces the reopened day", async () => {
+    mockWorkdays(reopenedWorkday({ totalPausedSeconds: 60 }))
+    vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue(reopenedJournal as never)
+    vi.mocked(prisma.workforceWorkdayReopen.findFirst).mockResolvedValue({ id: "reopen-1" } as never)
+
+    expect((await managerActions()).undoReopen).toMatchObject({
+      allowed: false,
+      blockedReason: "WORKFORCE_WORKDAY_REOPEN_UNDO_HISTORY_INVALID",
+    })
+  })
+
+  it("gives the agent's own view no manager actions", async () => {
+    vi.mocked(resolveMtmRouteActor).mockResolvedValue({
+      agentId: "agent-1",
+      role: "AGENT",
+      scopedAgentIds: ["agent-1"],
+    } as never)
+    expect(await managerActions("?days=1&anchor=2026-07-15")).toBeNull()
+
+    // A manager looking at their own card, and a web admin at the card linked to their user.
+    vi.mocked(resolveMtmRouteActor).mockResolvedValue(MANAGER as never)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ ...SELECTED_AGENT, id: "manager-agent", userId: SESSION.userId } as never)
+    expect(await managerActions("?agentId=manager-agent&days=1&anchor=2026-07-15")).toBeNull()
+    vi.mocked(resolveMtmRouteActor).mockResolvedValue({ agentId: null, role: "ADMIN", scopedAgentIds: null } as never)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ ...SELECTED_AGENT, userId: SESSION.userId } as never)
+    expect(await managerActions()).toBeNull()
+
+    expect(managerActionsRead()).toBe(false)
+  })
+
+  it("gives a mobile token, an API key and a Routes-only tenant no manager actions", async () => {
+    vi.mocked(requireAuth).mockResolvedValue({ ...MANAGER_SESSION, principalType: "api_key" } as never)
+    expect(await managerActions()).toBeNull()
+
+    vi.mocked(requireAuth).mockResolvedValue(MANAGER_SESSION as never)
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      plan: "enterprise",
+      addons: [],
+      features: [],
+      modules: { mtm: true, "workforce-hrm": false },
+    } as never)
+    expect(await managerActions()).toBeNull()
+
+    const mobileAuth = {
+      orgId: ORG,
+      agentId: "manager-agent",
+      userId: SESSION.userId,
+      role: "MANAGER",
+      email: "manager@example.com",
+      name: "Manager",
+    }
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue({
+      plan: "enterprise",
+      addons: [],
+      features: [],
+      modules: { mtm: true },
+    } as never)
+    vi.mocked(getMobileAuth).mockReturnValue(mobileAuth as never)
+    vi.mocked(resolveMobileAuth).mockResolvedValue(mobileAuth as never)
+    const response = await GET(new NextRequest(`http://localhost:3000/api/v1/mtm/week${WEEK_QUERY}`, {
+      headers: { authorization: "Bearer mobile-token" },
+    }))
+    expect(response.status).toBe(200)
+    expect((await response.json()).data.workdayContext.managerActions).toBeNull()
+
+    expect(managerActionsRead()).toBe(false)
+  })
+
+  it("keeps the week readable and offers nothing when the actions cannot be evaluated", async () => {
+    vi.mocked(prisma.workforceTimesheetApproval.findFirst).mockRejectedValue(new Error("database unavailable"))
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined)
+    try {
+      expect(await managerActions()).toBeNull()
+      expect(warn).toHaveBeenCalledWith("[MTM/week GET] Workforce manager actions unavailable", expect.any(Error))
+    } finally {
+      warn.mockRestore()
+    }
   })
 })
