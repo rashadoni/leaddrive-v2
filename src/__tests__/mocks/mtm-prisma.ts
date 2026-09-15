@@ -237,6 +237,7 @@ export interface MtmPrismaMock {
   workforceAttendanceVerification: ModelMock
   workforceMobileWriteFence: ModelMock
   workforceTimeCorrection: ModelMock
+  workforceWorkdayReopen: ModelMock
   workforceTimesheetApproval: ModelMock
   // Region/team hierarchy (M4-5)
   mtmRegion: ModelMock
@@ -309,6 +310,8 @@ export interface MtmPrismaMock {
 export function makeMtmPrismaMock(): MtmPrismaMock {
   const workforceTimeCorrection = makeModel()
   workforceTimeCorrection.create.mockResolvedValue({ id: "workforce-time-correction-1" })
+  const workforceWorkdayReopen = makeModel()
+  workforceWorkdayReopen.create.mockResolvedValue({ id: "workforce-workday-reopen-1" })
   const mock: MtmPrismaMock = {
     mtmAgent: makeModel(),
     mtmAgentLocation: makeModel(),
@@ -409,6 +412,7 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     workforceAttendanceVerification: makeModel(),
     workforceMobileWriteFence: makeModel(),
     workforceTimeCorrection,
+    workforceWorkdayReopen,
     workforceTimesheetApproval: makeModel(),
     mtmRegion: makeModel(),
     mtmTeam: makeModel(),

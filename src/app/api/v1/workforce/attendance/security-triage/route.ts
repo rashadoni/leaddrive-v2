@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { clientIp } from "@/lib/request-ip"
+import { MTM_WORKDAY_REOPEN_UNDO_EVENT_KEY_PREFIX } from "@/lib/mtm/workday"
 import { withWorkforceRlsAuth } from "@/lib/with-workforce-rls-auth"
 import { requireWorkforceAttendanceAdminAddon } from "@/lib/workforce/attendance-route"
 import {
@@ -76,6 +77,14 @@ export const GET = withWorkforceRlsAuth("read", async (req: NextRequest, auth) =
               organizationId: auth.orgId,
               agentId: { in: agentIds },
               serverReceivedAt: { gte: actionSince },
+              // A manager's reopen, and the FINISH that undoes it, are journalled
+              // on the employee's workday but are not attendance actions the
+              // employee performed. No client may use the undo key prefix.
+              type: { not: "REOPEN" },
+              OR: [
+                { clientEventId: null },
+                { NOT: { clientEventId: { startsWith: MTM_WORKDAY_REOPEN_UNDO_EVENT_KEY_PREFIX } } },
+              ],
             },
             _count: { _all: true },
           }),

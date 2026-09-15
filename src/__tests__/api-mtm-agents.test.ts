@@ -217,6 +217,33 @@ describe("GET /api/v1/mtm/agents", () => {
     expect(json.data.agents[0].presence).toEqual({ kind: "paused", since: "2026-09-09T10:05:00.000Z" })
   })
 
+  it("shows the gap of a day a manager reopened as a break that started at the first finish", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    mockAgentAdministrator()
+    vi.mocked(prisma.organization.findUnique).mockResolvedValueOnce({
+      plan: "enterprise", addons: [], features: ["workforce-hrm"], modules: { "workforce-hrm": true },
+    } as never)
+    vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([{ id: "a1", name: "Agent 1" }] as never)
+    vi.mocked(prisma.mtmAgent.count).mockResolvedValue(1)
+    vi.mocked(prisma.mtmAgentWorkday.findMany).mockResolvedValue([
+      { id: "w1", agentId: "a1", status: "PAUSED", startedAt: new Date("2026-09-09T05:00:00Z"), pausedAt: new Date("2026-09-09T14:00:00Z"), completedAt: null },
+    ] as never)
+    // The REOPEN is recorded at the finish it reopens; the manager acted at 14:30.
+    vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValueOnce([
+      { workdayId: "w1", type: "REOPEN", occurredAt: new Date("2026-09-09T14:00:00Z"), appliedAt: new Date("2026-09-09T14:30:00Z") },
+      { workdayId: "w1", type: "FINISH", occurredAt: new Date("2026-09-09T14:00:00Z"), appliedAt: new Date("2026-09-09T14:00:01Z") },
+    ] as never)
+
+    const json = await (await ListAgents(makeReq("/api/v1/mtm/agents"))).json()
+
+    expect(json.data.agents[0].presence).toEqual({ kind: "paused", since: "2026-09-09T14:00:00.000Z" })
+    expect(json.data.agents[0].breaks).toEqual([{ from: "2026-09-09T14:00:00.000Z", to: null }])
+    expect(prisma.mtmAgentWorkdayEvent.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ type: { in: ["PAUSE", "RESUME", "FINISH", "REOPEN"] } }),
+      select: expect.objectContaining({ appliedAt: true }),
+    }))
+  })
+
   it("не отдаёт моменты, когда платный модуль выключен", async () => {
     // Остальные экраны рабочий день при выключенном workforce-hrm прячут.
     // Этот отдавал его мимо проверки.
