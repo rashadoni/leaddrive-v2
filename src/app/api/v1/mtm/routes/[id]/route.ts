@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { hasMtmCoordinates, withNormalizedCoordinates } from "@/lib/mtm/geo-coordinates"
-import { effectiveGeofenceRadius } from "@/lib/mtm/visit-place-check"
+import { checkInGeofenceRadius } from "@/lib/mtm/check-in-geofence"
 import { withRouteFieldRlsAuth, type MtmRlsAuth } from "@/lib/with-mtm-rls-auth"
 import { calculateDistance } from "@/lib/geo-utils"
 import { RouteUpdateSchema, parseBody } from "@/lib/mtm-validators"
@@ -304,7 +304,9 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth, { params }: {
           hasNote: Boolean(visit.notes?.trim() || visit.resultNotes?.trim()),
         }
       })
-      const geofenceRadiusMeters = effectiveGeofenceRadius(customer.geofenceRadius, settings.geofenceRadius)
+      // The radius check-in enforces (clamped 25–10000 m), so the app never
+      // lets through or turns back a visit the server would decide otherwise.
+      const geofenceRadiusMeters = checkInGeofenceRadius(customer.geofenceRadius, settings.geofenceRadius)
       return { ...point, customer, distanceMeters, visits, geofenceRadiusMeters }
     })
     const travelPolicy = resolveMtmRouteTravelPolicy({
