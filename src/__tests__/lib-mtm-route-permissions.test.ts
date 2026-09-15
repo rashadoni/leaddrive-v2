@@ -6,6 +6,7 @@ import {
   canEditMtmRouteDraft,
   canPublishMtmRoute,
   canReviewMtmRouteRequest,
+  canSelfUpdatePublishedMtmRoute,
   canViewMtmRoute,
   canWriteMtmVisitPolicyTeam,
   resolveMtmRouteActor,
@@ -274,5 +275,23 @@ describe("visit policy write rules", () => {
     }
     expect(await resolveMtmVisitPolicyAccess(prisma as any, { organizationId: "org-1", userId: "u", webRole: "sales" }))
       .toEqual({ kind: "admin" })
+  })
+})
+
+describe("canSelfUpdatePublishedMtmRoute", () => {
+  it("follows the self-publish rule on the agent's own planned or started route", () => {
+    for (const status of ["PLANNED", "IN_PROGRESS"] as const) {
+      expect(canSelfUpdatePublishedMtmRoute(agent, { primaryAgentId: "agent-1", status }, true)).toBe(true)
+      expect(canSelfUpdatePublishedMtmRoute(agent, { primaryAgentId: "agent-1", status }, false)).toBe(false)
+      expect(canSelfUpdatePublishedMtmRoute({ ...agent, canSelfPublishRoutes: false }, { primaryAgentId: "agent-1", status }, true)).toBe(false)
+      expect(canSelfUpdatePublishedMtmRoute({ ...agent, canPlanOwnRoutes: false }, { primaryAgentId: "agent-1", status }, true)).toBe(false)
+      expect(canSelfUpdatePublishedMtmRoute(agent, { primaryAgentId: "agent-2", status }, true)).toBe(false)
+    }
+  })
+
+  it("never applies to drafts or finished routes", () => {
+    for (const status of ["DRAFT", "COMPLETED", "INCOMPLETE", "CANCELLED"] as const) {
+      expect(canSelfUpdatePublishedMtmRoute(agent, { primaryAgentId: "agent-1", status }, true)).toBe(false)
+    }
   })
 })

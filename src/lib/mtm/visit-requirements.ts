@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client"
+import { mtmRoutePointCheckInLockKey } from "./route-published-diff"
 import { resolveMtmVisitPolicy } from "./visit-policies"
 
 import { coerceMtmNumberSetting } from "./setting-values"
@@ -61,7 +62,7 @@ export async function lockAndVerifyMtmRoutePointForCheckIn(
 ): Promise<boolean> {
   await tx.$executeRaw`
     SELECT pg_advisory_xact_lock(
-      hashtextextended(${`mtm-route-point-check-in:${input.organizationId}:${input.routePointId}`}, 0)
+      hashtextextended(${mtmRoutePointCheckInLockKey(input.organizationId, input.routePointId)}, 0)
     )
   `
   const where: Prisma.MtmRoutePointWhereInput = {

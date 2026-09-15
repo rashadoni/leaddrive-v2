@@ -13,8 +13,20 @@ import {
   canCreateMtmRouteFor,
   canEditMtmRouteDraft,
   canPublishMtmRoute,
+  canSelfUpdatePublishedMtmRoute,
   resolveMtmRouteActor,
 } from "@/lib/mtm/route-permissions"
+import {
+  applyPublishedRoutePointDiff,
+  diffPublishedRoutePoints,
+  isPublishedRoutePointLocked,
+  isRetryableRouteTransactionConflict,
+  lockPublishedRoutePoints,
+  PublishedRoutePointsChangedError,
+  publishedRouteAuditStops,
+  publishedRoutePointDiffSelect,
+  publishedRouteResultPoints,
+} from "@/lib/mtm/route-published-diff"
 import {
   mtmRouteTargetKey,
   validateMtmMobileRouteTargetEligibility,
@@ -87,6 +99,17 @@ function targetAssignmentRequired(): NonterminalCommandOutcome {
       success: false,
       error: "Route target is unavailable for this employee on this date",
       code: "MTM_ROUTE_TARGET_ASSIGNMENT_REQUIRED",
+    },
+  }
+}
+
+function editForbidden(): NonterminalCommandOutcome {
+  return {
+    responseStatus: 403,
+    result: {
+      success: false,
+      error: "You are not allowed to change this published route",
+      code: "ROUTE_EDIT_FORBIDDEN",
     },
   }
 }
@@ -730,6 +753,247 @@ async function applyPublish(
 }
 
 /**
+ * Change a published (PLANNED) or started (IN_PROGRESS) route from Route
+ * Field. The route keeps its status. Points whose target stays keep their row
+ * id, so visits, change requests and KPI plan facts keep pointing at them;
+ * removed points become sync tombstones; new targets get new rows. A point
+ * with a visit or a non-PENDING status is locked (see route-published-diff).
+ * Every PUBLISH check runs again against the resulting stop list.
+ */
+async function applyUpdatePublished(
+  tx: Prisma.TransactionClient,
+  input: {
+    auth: ExecuteMtmMobileRouteCommandInput["auth"]
+    command: Extract<MtmMobileRouteCommandInput, { command: "UPDATE_PUBLISHED" }>
+    settings: MtmSettingsShape
+    now: Date
+    actor: NonNullable<Awaited<ReturnType<typeof resolveMtmRouteActor>>>
+  },
+): Promise<CommandApplicationOutcome> {
+  const initial = await tx.mtmRoute.findFirst({
+    where: { id: input.command.routeId, organizationId: input.auth.orgId, deletedAt: null },
+    select: { id: true, date: true, agentId: true },
+  })
+  if (!initial) return routeNotFound()
+  await acquireMtmRouteScheduleLocks(tx, {
+    organizationId: input.auth.orgId,
+    date: initial.date,
+    agentIds: [input.auth.agentId],
+  })
+  const route = await tx.mtmRoute.findFirst({
+    where: { id: input.command.routeId, organizationId: input.auth.orgId, deletedAt: null },
+    include: {
+      assignments: { where: { removedAt: null }, select: { agentId: true, role: true } },
+      points: {
+        where: { deletedAt: null },
+        select: publishedRoutePointDiffSelect,
+        orderBy: { orderIndex: "asc" },
+      },
+    },
+  })
+  if (!route) return routeNotFound()
+  if (!isSelfManagedRoute(route, input.auth.agentId)) return forbidden()
+  if (route.status !== "PLANNED" && route.status !== "IN_PROGRESS") {
+    return conflict(
+      "ROUTE_TRANSITION_INVALID",
+      route.status === "DRAFT"
+        ? "Draft routes are changed with UPDATE_DRAFT"
+        : "Finished routes cannot be changed",
+      { currentVersion: route.version, status: route.status },
+    )
+  }
+  if (!canSelfUpdatePublishedMtmRoute(input.actor, {
+    primaryAgentId: route.agentId,
+    assignedAgentIds: route.assignments.map((assignment) => assignment.agentId),
+    status: route.status,
+  }, input.settings.routeSelfPublish)) return editForbidden()
+  if (input.command.payload.expectedVersion !== route.version) {
+    return conflict(
+      "ROUTE_VERSION_CONFLICT",
+      "This route was changed by another user. Reload it before saving.",
+      { currentVersion: route.version, status: route.status },
+    )
+  }
+  const requestedPoints = input.command.payload.points
+  if (requestedPoints.length === 0) return conflict("ROUTE_EMPTY", "A route must contain at least one stop")
+
+  // Point locks (check-in's own lock) come before any route write and before
+  // the diff reads visits: see lockPublishedRoutePoints for the race and the
+  // lock order. The diff is computed only from this fresh read.
+  const existingPoints = await lockPublishedRoutePoints(tx, {
+    organizationId: input.auth.orgId,
+    routeId: route.id,
+    pointIds: route.points.map((point) => point.id),
+  })
+  if (!existingPoints) {
+    return conflict(
+      "ROUTE_VERSION_CONFLICT",
+      "Route stops changed while saving. Reload the route before saving again.",
+      { currentVersion: route.version, status: route.status },
+    )
+  }
+  const diff = diffPublishedRoutePoints(existingPoints, requestedPoints)
+  if (!diff.ok) {
+    return diff.code === "ROUTE_VISITED_POINTS_LOCKED"
+      ? conflict(
+          "ROUTE_VISITED_POINTS_LOCKED",
+          "Visited or skipped stops cannot be removed, reordered or retimed",
+          { pointIds: diff.pointIds, currentVersion: route.version },
+        )
+      : conflict(
+          "ROUTE_POINT_CHANGE_PENDING",
+          "A stop with a pending change request cannot be removed",
+          { pointIds: diff.pointIds, currentVersion: route.version },
+        )
+  }
+
+  const horizon = routeHorizonConflict(route.date, input.settings, input.now)
+  if (horizon) return horizon
+  const calendar = await verifyWorkCalendar(tx, {
+    organizationId: input.auth.orgId,
+    agentId: input.auth.agentId,
+    routeDate: route.date,
+    settings: input.settings,
+  })
+  if (calendar) return calendar
+
+  // Stops with field history are not re-validated: a customer deactivated
+  // after the visit must not make the rest of the day uneditable.
+  const lockedIds = new Set(existingPoints.filter(isPublishedRoutePointLocked).map((point) => point.id))
+  const keptByIndex = new Map(diff.kept.map((point) => [point.orderIndex, point]))
+  const targets = await verifyRouteTargets(tx, {
+    organizationId: input.auth.orgId,
+    agentId: input.auth.agentId,
+    routeDate: route.date,
+    points: requestedPoints.filter((_, index) => !lockedIds.has(keptByIndex.get(index)?.id ?? "")),
+    newPoints: diff.added.map((point) => ({ customerId: point.customerId, contactId: point.contactId })),
+  })
+  if (targets) return targets
+
+  const resultPoints = publishedRouteResultPoints(requestedPoints, diff)
+  if (detectMtmRouteInternalScheduleConflicts(resultPoints).length > 0) {
+    return conflict("ROUTE_POINT_TIME_CONFLICT", "Two route stops cannot use the same meeting time")
+  }
+  const assignments = route.assignments.map((assignment) => ({
+    agentId: assignment.agentId,
+    role: assignment.role as "PRIMARY" | "PARTICIPANT" | "OBSERVER",
+  }))
+  const dedupeKey = buildMtmRouteDedupeKey({
+    date: route.date,
+    primaryAgentId: route.agentId,
+    assignments,
+    points: resultPoints,
+  })
+  const duplicate = await tx.mtmRoute.findFirst({
+    where: { organizationId: input.auth.orgId, dedupeKey, deletedAt: null, id: { not: route.id } },
+    select: { id: true },
+  })
+  if (duplicate) return conflict("ROUTE_DUPLICATE", "An identical route already exists")
+  const existingRoutes = await tx.mtmRoute.findMany({
+    where: {
+      organizationId: input.auth.orgId,
+      id: { not: route.id },
+      date: route.date,
+      status: { in: ["PLANNED", "IN_PROGRESS"] },
+      deletedAt: null,
+    },
+    select: {
+      id: true,
+      status: true,
+      agentId: true,
+      assignments: { select: { agentId: true, removedAt: true } },
+      points: { select: { customerId: true, contactId: true, plannedTime: true, deletedAt: true } },
+    },
+  })
+  const planningSignals = detectMtmRoutePlanningSignals({
+    primaryAgentId: route.agentId,
+    assignments: route.assignments,
+    points: resultPoints,
+  }, existingRoutes)
+  if (planningSignals.conflicts.length > 0) {
+    return conflict("ROUTE_CONFLICT", "Route conflicts require manager approval")
+  }
+
+  const version = route.version + 1
+  const updated = await tx.mtmRoute.updateMany({
+    where: {
+      id: route.id,
+      organizationId: input.auth.orgId,
+      status: route.status,
+      version: input.command.payload.expectedVersion,
+      deletedAt: null,
+    },
+    data: {
+      dedupeKey,
+      totalPoints: requestedPoints.length,
+      version: { increment: 1 },
+      publishedVersion: version,
+    },
+  })
+  if (updated.count !== 1) {
+    const current = await tx.mtmRoute.findFirst({
+      where: { id: route.id, organizationId: input.auth.orgId, deletedAt: null },
+      select: { version: true, publishedVersion: true, status: true },
+    })
+    return conflict(
+      "ROUTE_VERSION_CONFLICT",
+      "This route was changed by another user. Reload it before saving.",
+      { currentVersion: current?.version, publishedVersion: current?.publishedVersion, status: current?.status },
+    )
+  }
+  // Throws PublishedRoutePointsChangedError when a check-in or change request
+  // landed after the read; the whole transaction, route bump included, rolls
+  // back and no receipt is written.
+  await applyPublishedRoutePointDiff(tx, {
+    organizationId: input.auth.orgId,
+    routeId: route.id,
+    diff,
+    now: input.now,
+  })
+  await enqueueMtmRouteNotification(tx, {
+    organizationId: input.auth.orgId,
+    agentId: input.auth.agentId,
+    dedupeKey: `route:${route.id}:published:${version}:${input.auth.agentId}`,
+    title: "Route updated",
+    body: `Route for ${routeDateKey(route.date)} was changed.`,
+    type: "task",
+    metadata: { routeId: route.id, publishedVersion: version, event: "route_updated" },
+  })
+  return applied(200, {
+    id: route.id,
+    status: route.status,
+    version,
+    publishedVersion: version,
+    publishedAt: route.publishedAt?.toISOString() ?? null,
+    totalPoints: requestedPoints.length,
+    keptPointIds: diff.kept.map((point) => point.id),
+    removedPointIds: diff.removed.map((point) => point.id),
+    addedPointCount: diff.added.length,
+  }, {
+    action: "ROUTE_UPDATE",
+    routeId: route.id,
+    agentId: input.auth.agentId,
+    oldData: {
+      status: route.status,
+      version: route.version,
+      publishedVersion: route.publishedVersion,
+      totalPoints: route.totalPoints,
+      stops: publishedRouteAuditStops(existingPoints),
+    },
+    newData: {
+      status: route.status,
+      version,
+      publishedVersion: version,
+      totalPoints: requestedPoints.length,
+      stops: publishedRouteAuditStops(requestedPoints),
+      removedPointIds: diff.removed.map((point) => point.id),
+      coordination: planningSignals.coordination,
+      command: "UPDATE_PUBLISHED",
+    },
+  })
+}
+
+/**
  * Start a published route only after the agent has started their field day.
  *
  * Route start used to be independent from the workday. That made a route look
@@ -869,6 +1133,9 @@ async function applyRouteCommand(
   if (input.command.command === "PUBLISH") {
     return applyPublish(tx, { ...input, command: input.command })
   }
+  if (input.command.command === "UPDATE_PUBLISHED") {
+    return applyUpdatePublished(tx, { ...input, command: input.command })
+  }
   return applyStart(tx, { ...input, command: input.command })
 }
 
@@ -963,6 +1230,19 @@ export async function executeMtmMobileRouteCommand(
       timeout: MOBILE_ROUTE_COMMAND_TRANSACTION_TIMEOUT_MS,
     })
   } catch (error) {
+    if (error instanceof PublishedRoutePointsChangedError || isRetryableRouteTransactionConflict(error)) {
+      // Rolled back, nothing pinned: the client reloads and retries with a
+      // new operation ID or the same one.
+      return {
+        responseStatus: 409,
+        result: {
+          success: false,
+          error: "Route stops changed while saving. Reload the route before saving again.",
+          code: "ROUTE_VERSION_CONFLICT",
+        },
+        replayed: false,
+      }
+    }
     if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error
     // A rare race with a pre-existing deployment, manual repair, or a backend
     // that ignored the advisory lock can still hit the unique receipt fence.

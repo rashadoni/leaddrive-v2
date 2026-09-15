@@ -406,17 +406,17 @@ describe("PUT /api/v1/mtm/routes/[id]", () => {
     expect(prisma.mtmRoutePoint.createMany).not.toHaveBeenCalled()
   })
 
-  it("keeps a published route immutable even for an administrator", async () => {
+  it("keeps a finished route immutable even for an administrator", async () => {
     vi.mocked(prisma.mtmRoute.findFirst).mockResolvedValue({
       id: "r1",
       agentId: "a1",
       date: new Date("2026-04-10"),
-      status: "PLANNED",
+      status: "COMPLETED",
       version: 2,
       updatedAt: new Date("2026-04-09T12:00:00.000Z"),
       totalPoints: 1,
       assignments: [{ agentId: "a1", role: "PRIMARY" }],
-      points: [{ id: "p1", customerId: "c1", plannedTime: null, orderIndex: 0, status: "PENDING" }],
+      points: [{ id: "p1", customerId: "c1", plannedTime: null, orderIndex: 0, status: "VISITED" }],
     } as any)
 
     const res = await PUT(
@@ -432,7 +432,7 @@ describe("PUT /api/v1/mtm/routes/[id]", () => {
     expect(prisma.mtmRoutePoint.updateMany).not.toHaveBeenCalled()
   })
 
-  it("requires the change-request workflow for an in-progress route", async () => {
+  it("refuses to remove a visited stop from an in-progress route", async () => {
     vi.mocked(prisma.mtmRoute.findFirst).mockResolvedValue({
       id: "r1",
       agentId: "a1",
@@ -442,7 +442,7 @@ describe("PUT /api/v1/mtm/routes/[id]", () => {
       updatedAt: new Date("2026-04-09T12:00:00.000Z"),
       totalPoints: 1,
       assignments: [{ agentId: "a1", role: "PRIMARY" }],
-      points: [{ id: "p1", customerId: "c1", plannedTime: null, orderIndex: 0, status: "VISITED" }],
+      points: [{ id: "p1", customerId: "c1", contactId: null, plannedTime: null, orderIndex: 0, status: "VISITED" }],
     } as any)
 
     const res = await PUT(
@@ -452,8 +452,9 @@ describe("PUT /api/v1/mtm/routes/[id]", () => {
     const response = await res.json()
     expect({ status: res.status, response }).toMatchObject({
       status: 409,
-      response: { code: "ROUTE_PUBLISHED_IMMUTABLE" },
+      response: { code: "ROUTE_VISITED_POINTS_LOCKED", pointIds: ["p1"] },
     })
+    expect(prisma.mtmRoute.updateMany).not.toHaveBeenCalled()
   })
 
   it("rejects a stale draft update before replacing points", async () => {

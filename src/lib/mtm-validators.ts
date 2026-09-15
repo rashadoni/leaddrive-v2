@@ -544,6 +544,8 @@ export const RouteUpdateSchema = z.object({
   status: MtmRouteStatus.optional(),
   notes: longString,
   points: z.array(RoutePointInput).max(200).optional(),
+  /** Published edits only: a manager's reason to accept planning conflicts. */
+  overrideReason: z.string().trim().min(3).max(1000).optional(),
 }).superRefine((value, ctx) => {
   validateRouteOwnership(value, ctx, false)
   validateRoutePoints(value, ctx)
@@ -591,6 +593,18 @@ export const MtmMobileRouteCommandSchema = z.discriminatedUnion("command", [
   z.object({
     operationId: MobileRouteCommandOperationId,
     command: z.literal("UPDATE_DRAFT"),
+    routeId: cuid,
+    payload: z.object({
+      expectedVersion: z.number().int().positive(),
+      points: MobileRouteCommandPoints,
+    }).strict(),
+  }).strict(),
+  z.object({
+    operationId: MobileRouteCommandOperationId,
+    // Change a PLANNED or IN_PROGRESS route. Points use the UPDATE_DRAFT
+    // shape; the server keeps points whose target stays, so visits and
+    // change requests keep their stop.
+    command: z.literal("UPDATE_PUBLISHED"),
     routeId: cuid,
     payload: z.object({
       expectedVersion: z.number().int().positive(),
