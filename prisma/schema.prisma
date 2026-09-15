@@ -6784,6 +6784,12 @@ model MtmVisit {
   checkInLng      Float?
   checkOutLat     Float?
   checkOutLng     Float?
+  // The customer pin and check-in zone as they were at check-in. Place checks
+  // read these, so editing a customer's coordinates later does not rewrite
+  // the verdict of visits already made. Null on visits made before 2026-09-15.
+  checkInCustomerLat    Float?
+  checkInCustomerLng    Float?
+  checkInGeofenceRadius Int?
   duration        Int? // minutes
   notes           String?
   outcome         MtmVisitOutcome?

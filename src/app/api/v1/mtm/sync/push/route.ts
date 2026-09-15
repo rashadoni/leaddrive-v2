@@ -32,7 +32,7 @@ import {
 } from "@/lib/mtm/field-scope"
 import { VisitActionResultSchema } from "@/lib/mtm-validators"
 import { getMtmSettings } from "@/lib/mtm-settings"
-import { clampCheckInGeofenceRadius as geofenceRadius, createAlertOutOfZoneReader } from "@/lib/mtm/check-in-geofence"
+import { clampCheckInGeofenceRadius as geofenceRadius, createAlertOutOfZoneReader, mtmVisitPlaceSnapshot } from "@/lib/mtm/check-in-geofence"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { canApplyMobileTaskTransition, type MobileTaskStatus } from "@/lib/mtm/mobile-task"
 import {
@@ -332,6 +332,7 @@ async function applyOp(
             contactId: routePoint?.contactId ?? contactId,
             routeId: routePoint?.routeId ?? null, routePointId: routePoint?.id ?? null,
             status: "CHECKED_IN", checkInAt, checkInLat, checkInLng,
+            ...(await mtmVisitPlaceSnapshot(tx, orgId, customer)),
             notes: typeof d.notes === "string" ? d.notes : null,
           },
           select: { id: true, status: true, checkInAt: true, customerId: true },

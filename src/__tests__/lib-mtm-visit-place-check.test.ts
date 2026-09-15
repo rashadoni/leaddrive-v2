@@ -148,6 +148,35 @@ describe("one label set for every page", () => {
   })
 })
 
+describe("a visit is judged against the pin it was made against", () => {
+  // 2026-09-15: the pins of ADV-Store 1/22 were moved back after a test; two
+  // finished visits turned from «Zonada 44 m» into «Zonadan kənar 10.5 km».
+  const fix = { checkInLat: 40.4126246, checkInLng: 49.9516237, checkOutLat: 40.4126246, checkOutLng: 49.9516237 }
+  const movedCustomer = { latitude: 40.369208, longitude: 49.841409, geofenceRadius: null }
+
+  it("uses the stored pin and zone, not the customer's current ones", () => {
+    const place = visitPlaceSummary({
+      status: "CHECKED_OUT", ...fix,
+      checkInCustomerLat: 40.4129, checkInCustomerLng: 49.952, checkInGeofenceRadius: 250,
+      customer: movedCustomer,
+    }, 100)
+    expect([place.verdict, place.checkIn.distanceMeters, place.radiusMeters]).toEqual(["at_point", 44, 250])
+  })
+
+  it("keeps the old rule for visits made before the snapshot existed", () => {
+    const place = visitPlaceSummary({ status: "CHECKED_OUT", ...fix, customer: movedCustomer }, 250)
+    expect([place.verdict, place.radiusMeters]).toEqual(["outside", 250])
+  })
+
+  it("ignores a half or empty snapshot", () => {
+    const place = visitPlaceSummary({
+      status: "CHECKED_OUT", ...fix, checkInCustomerLat: 40.4129, checkInCustomerLng: null, checkInGeofenceRadius: 250,
+      customer: movedCustomer,
+    }, 100)
+    expect([place.verdict, place.radiusMeters]).toEqual(["outside", 100])
+  })
+})
+
 describe("nobody re-implements the rule", () => {
   it("visit-review re-exports the same functions", () => {
     expect(reviewModule.visitPlaceSummary).toBe(placeModule.visitPlaceSummary)

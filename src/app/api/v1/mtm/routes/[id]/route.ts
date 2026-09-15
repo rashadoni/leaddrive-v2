@@ -124,6 +124,9 @@ const routeDetailInclude = {
           checkInLng: true,
           checkOutLat: true,
           checkOutLng: true,
+          checkInCustomerLat: true,
+          checkInCustomerLng: true,
+          checkInGeofenceRadius: true,
           notes: true,
           resultNotes: true,
           _count: { select: { photos: true } },
@@ -148,6 +151,9 @@ type RoutePointVisitRow = {
   checkInLng: number | null
   checkOutLat: number | null
   checkOutLng: number | null
+  checkInCustomerLat: number | null
+  checkInCustomerLng: number | null
+  checkInGeofenceRadius: number | null
   notes: string | null
   resultNotes: string | null
   _count?: { photos: number }
@@ -297,6 +303,10 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth, { params }: {
           checkInLng: locationVisible ? visit.checkInLng : null,
           checkOutLat: locationVisible ? visit.checkOutLat : null,
           checkOutLng: locationVisible ? visit.checkOutLng : null,
+          // The pin and zone the visit was made against (visitPlaceSummary).
+          checkInCustomerLat: visit.checkInCustomerLat,
+          checkInCustomerLng: visit.checkInCustomerLng,
+          checkInGeofenceRadius: visit.checkInGeofenceRadius,
           // Says the blanks above are redaction, not a visit without GPS.
           locationHidden: !locationVisible,
           photoCount: visit._count?.photos ?? 0,

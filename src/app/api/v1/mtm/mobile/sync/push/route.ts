@@ -17,7 +17,7 @@ import {
 import { calculateDistance } from "@/lib/geo-utils"
 import { MTM_CHECK_IN_ERROR, checkInConflict, type MtmCheckInErrorCode, type MtmCheckInErrorDetails } from "@/lib/mtm/check-in-errors"
 import { hasMtmCoordinates } from "@/lib/mtm/geo-coordinates"
-import { clampCheckInGeofenceRadius as geofenceRadius, createAlertOutOfZoneReader } from "@/lib/mtm/check-in-geofence"
+import { clampCheckInGeofenceRadius as geofenceRadius, createAlertOutOfZoneReader, mtmVisitPlaceSnapshot } from "@/lib/mtm/check-in-geofence"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { BrandPotentialCreateSchema, BrandPotentialEndSchema, VisitActionResultSchema } from "@/lib/mtm-validators"
 import { brandPotentialRequestHash, utcBrandPotentialDate } from "@/lib/mtm/brand-potential"
@@ -1150,6 +1150,7 @@ export const POST = withMobileRls(async (req, auth) => {
                     checkInAt,
                     checkInLat: data.checkInLat ?? null,
                     checkInLng: data.checkInLng ?? null,
+                    ...(await mtmVisitPlaceSnapshot(tx, orgId, customer)),
                     notes: data.notes ?? null,
                   },
                   select: { id: true, status: true, checkInAt: true, customerId: true, contactId: true, routeId: true, routePointId: true },
