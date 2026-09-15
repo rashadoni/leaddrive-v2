@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
+import { useMtmFieldContacts } from "@/hooks/use-mtm-org-settings"
 import { useLocale, useTranslations } from "next-intl"
 import {
   ArrowLeft,
@@ -335,6 +336,9 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
   const searchParams = useSearchParams()
   const { data: session } = useSession()
   const orgId = session?.user?.organizationId
+  // Organization switch: when field contacts are off the tab, its count and
+  // links to contact cards disappear. Data and the section API are untouched.
+  const { enabled: fieldContactsEnabled } = useMtmFieldContacts(session?.user)
   const [summary, setSummary] = useState<OrganizationSummary | null>(null)
   const [commercial, setCommercial] = useState<CommercialSummary | null>(null)
   const [coordinateVerification, setCoordinateVerification] = useState<CoordinateVerification | null>(null)
@@ -677,7 +681,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
         <div className="grid divide-y border-t border-zinc-200 bg-muted/25 dark:border-zinc-700 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
           {[
             [t("detail.etalonId"), summary.code || "—"],
-            [t("detail.contacts"), numberFormatter.format(summary._count.contactWorkplaces)],
+            ...(fieldContactsEnabled ? [[t("detail.contacts"), numberFormatter.format(summary._count.contactWorkplaces)]] : []),
             [t("detail.visits"), numberFormatter.format(summary._count.visits)],
             [t("detail.gps"), hasCoordinates ? t("detail.coordinatesRecorded") : t("detail.coordinatesMissing")],
           ].map(([label, value]) => (
@@ -689,7 +693,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
         </div>
       </header>
 
-      <Tabs value={activeSection} onValueChange={selectSection}>
+      <Tabs value={!fieldContactsEnabled && activeSection === "contacts" ? "details" : activeSection} onValueChange={selectSection}>
         <div className="overflow-x-auto pb-1">
           <TabsList className="h-auto min-w-max justify-start p-1">
             {([
@@ -700,7 +704,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
               ["staff", UsersRound],
               ["promotions", Megaphone],
               ["files", FileText],
-            ] as const).map(([section, Icon]) => (
+            ] as const).filter(([section]) => fieldContactsEnabled || section !== "contacts").map(([section, Icon]) => (
               <TabsTrigger key={section} value={section} className="min-h-10 gap-2 px-3">
                 <Icon className="h-4 w-4" />
                 {t(`detail.tabs.${section}`)}
@@ -815,7 +819,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
           </section>
         </TabsContent>
 
-        <TabsContent value="contacts">
+        {fieldContactsEnabled ? <TabsContent value="contacts">
           <SectionFrame title={t("detail.contactsTitle")} description={t("detail.contactsDescription")}>
             <SectionState loading={sectionLoading === "contacts"} error={sectionError} retry={() => void loadDetailSection("contacts")} t={t}>
               {contacts?.length ? (
@@ -857,7 +861,7 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
               ) : <EmptySection icon={Stethoscope} title={t("detail.noContacts")} description={t("detail.noContactsDescription")} />}
             </SectionState>
           </SectionFrame>
-        </TabsContent>
+        </TabsContent> : null}
 
         <TabsContent value="visits">
           <SectionFrame title={t("detail.visitsTitle")} description={t("detail.visitsDescription")}>

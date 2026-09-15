@@ -1,4 +1,5 @@
 import { MtmContactDetail } from "@/components/mtm/contact-detail"
+import { FieldContactsGate } from "@/components/mtm/field-contacts-gate"
 
 export default async function MtmContactDetailPage({
   params,
@@ -6,5 +7,9 @@ export default async function MtmContactDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  return <MtmContactDetail contactId={id} />
+  return (
+    <FieldContactsGate>
+      <MtmContactDetail contactId={id} />
+    </FieldContactsGate>
+  )
 }

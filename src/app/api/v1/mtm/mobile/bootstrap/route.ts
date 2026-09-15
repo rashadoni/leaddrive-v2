@@ -8,6 +8,7 @@ import {
   mobileFieldPermissions,
 } from "@/lib/mtm/mobile-capabilities"
 import { cartoBasemapsApiKey } from "@/lib/carto-basemap"
+import { routeTargetTypesForFieldContacts } from "@/lib/mtm/route-target-types"
 import { buildMtmMobileCapabilityManifest } from "@/lib/mtm/mobile-capability-manifest"
 import {
   MTM_MOBILE_SYNC_V2_ROUTE_STREAM,
@@ -456,6 +457,11 @@ export const GET = withMobileRls(async (req, auth) => {
           // that their administrator has turned off.
           canPlanOwnRoutes,
           canSelfPublishRoutes,
+          // UI visibility only. OFF hides the app's contact screens; the
+          // contact stream and APIs keep working so visits never lose the
+          // contact they reference. Older APKs ignore the key and keep showing
+          // contacts, which is the safe side of this switch.
+          fieldContactsEnabled: settings.fieldContactsEnabled !== false,
           workforce: {
             enabled: workforceEnabled,
             configVersion: attendance.configVersion,
@@ -466,7 +472,10 @@ export const GET = withMobileRls(async (req, auth) => {
         // The same tenant-owned labels and data scopes drive both web and
         // mobile planners. The APK must never fall back to hard-coded
         // "doctor/pharmacy" buttons after an administrator changes them.
-        routeTargetTypes: routeFieldEnabled ? settings.routeTargetTypes : [],
+        // Doctor targets are field contacts: hidden with them, config kept.
+        routeTargetTypes: routeFieldEnabled
+          ? routeTargetTypesForFieldContacts(settings.routeTargetTypes, settings.fieldContactsEnabled !== false)
+          : [],
         sync: routeFieldEnabled ? {
           horizon: "ACTIVE_FIELD_SCOPE",
           scopeVersion: null,

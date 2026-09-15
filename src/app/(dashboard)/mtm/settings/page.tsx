@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
+import { useSession } from "next-auth/react"
+import { notifyMtmSettingsChanged } from "@/hooks/use-mtm-org-settings"
 import { toast } from "sonner"
 import { PageDescription } from "@/components/page-description"
 import { HelpButton } from "@/components/help/help-button"
-import { Settings, Save, Satellite, MapPin, Camera, BellRing, Flag, Clock3, LifeBuoy } from "lucide-react"
+import { Settings, Save, Satellite, MapPin, Camera, BellRing, Flag, Clock3, LifeBuoy, UsersRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
@@ -41,6 +43,10 @@ function stringSettingValue(value: SettingValue, fallback: string): string {
 export default function MtmSettingsPage() {
   const t = useTranslations("nav")
   const ts = useTranslations("mtmSettingsPage")
+  const { data: session } = useSession()
+  // Mirrors the PUT guard: only an administrator changes admin-only switches.
+  const viewerRole = (session?.user as { role?: string } | undefined)?.role ?? ""
+  const canChangeAdminOnly = viewerRole === "admin" || viewerRole === "superadmin"
   const [settings, setSettings] = useState<Record<string, SettingValue>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -72,6 +78,9 @@ export default function MtmSettingsPage() {
         toast.error(`Failed to save settings: ${body?.error || res.statusText}`)
       } else {
         toast.success(ts("savedToast"))
+        if (typeof settings.fieldContactsEnabled === "boolean") {
+          notifyMtmSettingsChanged({ fieldContactsEnabled: settings.fieldContactsEnabled })
+        }
       }
     } catch (e) {
       toast.error(`Failed to save settings: ${e instanceof Error ? e.message : "Network error"}`)
@@ -100,6 +109,13 @@ export default function MtmSettingsPage() {
       items: [
         { key: "supportEmail", labelKey: "lblSupportEmail", hintKey: "hintSupportEmail", type: "text" },
         { key: "supportPhone", labelKey: "lblSupportPhone", hintKey: "hintSupportPhone", type: "text" },
+      ],
+    },
+    {
+      titleKey: "groupFieldContacts",
+      icon: UsersRound,
+      items: [
+        { key: "fieldContactsEnabled", labelKey: "lblFieldContacts", hintKey: "hintFieldContacts", type: "boolean", adminOnly: true },
       ],
     },
     {
@@ -204,8 +220,10 @@ export default function MtmSettingsPage() {
                         type="button"
                         role="switch"
                         aria-checked={!!settings[item.key]}
+                        aria-label={ts(item.labelKey)}
+                        disabled={"adminOnly" in item && item.adminOnly === true && !canChangeAdminOnly}
                         onClick={() => updateSetting(item.key, !settings[item.key])}
-                        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${settings[item.key] ? "bg-primary" : "bg-muted"}`}
+                        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${settings[item.key] ? "bg-primary" : "bg-muted"}`}
                       >
                         <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings[item.key] ? "translate-x-6" : "translate-x-1"}`} />
                       </button>
@@ -241,10 +259,14 @@ export default function MtmSettingsPage() {
           )
         })}
       </div>
-      <ContactRequiredFieldSettings
-        value={settings.contactRequiredFields}
-        onChange={(value) => updateSetting("contactRequiredFields", value)}
-      />
+      {/* Hidden with field contacts; the stored value stays in `settings` and
+          is saved back unchanged, so turning contacts on restores it. */}
+      {settings.fieldContactsEnabled !== false ? (
+        <ContactRequiredFieldSettings
+          value={settings.contactRequiredFields}
+          onChange={(value) => updateSetting("contactRequiredFields", value)}
+        />
+      ) : null}
       <ContactDictionarySettings />
       <OrganizationAttributePackageSettings />
       <CoveragePolicyAdmin />

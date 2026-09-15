@@ -422,6 +422,28 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
     })
   })
 
+  it("reports field contacts as enabled for a tenant that never configured the switch", async () => {
+    const json = await (await GET(request())).json()
+    expect(json.data.policies.fieldContactsEnabled).toBe(true)
+    expect(json.data.routeTargetTypes.map((target: { direction: string }) => target.direction)).toContain("DOCTOR")
+    // UI visibility only: the contact stream stays advertised either way.
+    expect(json.data.sync.streams).toContain("contacts")
+  })
+
+  it("reports field contacts as disabled once an administrator turns them off", async () => {
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([
+      { key: "fieldContactsEnabled", value: false },
+    ] as never)
+    const json = await (await GET(request())).json()
+    expect(json.data.policies.fieldContactsEnabled).toBe(false)
+    expect(json.data.policies).toMatchObject({ photoWatermark: false, canPlanOwnRoutes: true })
+    expect(json.data.sync.streams).toContain("contacts")
+    // Doctor planner buttons go with the contacts; other targets stay.
+    const directions = json.data.routeTargetTypes.map((target: { direction: string }) => target.direction)
+    expect(directions).not.toContain("DOCTOR")
+    expect(directions).toContain("PHARMACY")
+  })
+
   it("advertises enabled attendance add-ons without claiming an enforcement policy", async () => {
     vi.mocked(resolveMobileAuth).mockResolvedValue({
       ...mobileAuth("AGENT"),

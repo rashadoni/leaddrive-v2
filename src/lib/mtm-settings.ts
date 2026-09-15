@@ -103,6 +103,13 @@ export const MTM_SETTING_DEFAULTS = {
   enforceWorkCalendarForRoutes: false,
   visitPoliciesEnabled: true,
   excelImportsEnabled: true,
+  // Field contacts (doctors, pharmacists… attached to customer places). Pharma
+  // tenants depend on them; an order-taking field tenant finds the menu entry
+  // confusing. OFF hides the web menu entries and tells the field app to hide
+  // its contact screens (bootstrap `policies.fieldContactsEnabled`). It never
+  // deletes data and never gates the contact APIs: visits, imports and old
+  // APKs keep reading contacts. Default ON — no change for existing tenants.
+  fieldContactsEnabled: true,
 } as const
 
 type WidenSetting<T> = T extends boolean

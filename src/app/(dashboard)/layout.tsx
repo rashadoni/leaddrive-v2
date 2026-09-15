@@ -12,7 +12,8 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { CommandSearch } from "@/components/command-search"
 import { AppLauncher } from "@/components/app-launcher"
 import { LauncherPrefsProvider } from "@/contexts/launcher-prefs-context"
-import { isNavItemEnabled, orgFromSession, matchNavItem } from "@/lib/nav-items"
+import { isNavItemEnabled, matchNavItem } from "@/lib/nav-items"
+import { useNavOrgContext } from "@/hooks/use-mtm-org-settings"
 import { ModuleDisabled } from "@/components/module-disabled"
 import { AiAssistantPanel } from "@/components/ai-assistant-panel"
 import { VoiceOrb } from "@/components/ai/voice-orb"
@@ -58,7 +59,10 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   // The outbox sync wants the token rotation too: it re-runs when the token is
   // re-issued, which is what tells it the credentials it drains with are fresh.
   const outboxSessionKey = outboxSession ? `${sessionIdentity}:${session?.iat ?? ""}` : ""
-  const org = orgFromSession(user)
+  // Carries organization menu switches (e.g. field contacts). The page guard
+  // below uses isNavItemEnabled, which ignores them: a hidden page still opens
+  // by URL and explains itself instead of claiming the module is disabled.
+  const org = useNavOrgContext(user)
   const mtmSyncItem = matchNavItem("/mtm/promotions")
   const mtmSyncEnabled = Boolean(mtmSyncItem && isNavItemEnabled(org, mtmSyncItem))
 

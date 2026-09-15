@@ -16024,7 +16024,10 @@
     "lblVisitPolicies": "Ziyarət əməliyyatları qaydaları",
     "hintVisitPolicies": "Agent qrupları üçün məcburi, ixtiyari və gizli əməliyyatları aktiv et",
     "lblExcelImports": "Excel idxalı",
-    "hintExcelImports": "Səlahiyyətli istifadəçilərə MTM Excel kitablarını yoxlamağa və tətbiq etməyə icazə ver"
+    "hintExcelImports": "Səlahiyyətli istifadəçilərə MTM Excel kitablarını yoxlamağa və tətbiq etməyə icazə ver",
+    "groupFieldContacts": "Sahə kontaktları",
+    "lblFieldContacts": "Sahə kontaktları (həkim, əczaçı və s.)",
+    "hintFieldContacts": "Söndürüldükdə menyudan və agent tətbiqindən kontaktlar gizlədilir; məlumatlar silinmir."
   },
   "mtmKpiPolicyAdmin": {
     "title": "Plan və GPS KPI formulasının təsdiqi",
@@ -24819,5 +24822,11 @@
     "deviceRevoked": "Etibarlı cihaz ləğv edildi.",
     "deviceApproveFailed": "Bu cihazı təsdiqləmək mümkün olmadı.",
     "deviceRevokeFailed": "Bu cihazı ləğv etmək mümkün olmadı."
+  },
+  "mtmFieldContactsDisabled": {
+    "title": "Sahə kontaktları söndürülüb",
+    "body": "Təşkilatınız sahə kontaktlarını (həkim, əczaçı və s.) menyudan və agent tətbiqindən gizlədib. Məlumatlar silinməyib.",
+    "openSettings": "Parametrlərdə yandır",
+    "askAdmin": "Yenidən yandırmaq üçün administratora müraciət edin."
   }
 }

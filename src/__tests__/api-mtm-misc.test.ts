@@ -457,6 +457,18 @@ describe("GET /api/v1/mtm/settings", () => {
     expect(json.data.teamScheduleVisibilityEnabled).toBe(false)
     expect(json.data.taskSelfCreate).toBe(true)
     expect(json.data.taskSelfRecurring).toBe(true)
+    // Field contacts stay visible for every tenant that never touched the switch.
+    expect(json.data.fieldContactsEnabled).toBe(true)
+  })
+
+  it("reads a stored field contacts switch", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([
+      { key: "fieldContactsEnabled", value: false },
+    ] as any)
+
+    const json = await (await GetSettings(makeReq("/api/v1/mtm/settings"))).json()
+    expect(json.data.fieldContactsEnabled).toBe(false)
   })
 })
 
@@ -515,6 +527,49 @@ describe("PUT /api/v1/mtm/settings", () => {
     expect(prisma.mtmSetting.upsert).toHaveBeenCalledWith(expect.objectContaining({
       create: expect.objectContaining({ key: "supportPhone", value: "+994 12 555 01 01" }),
     }))
+  })
+
+  it("lets an administrator turn field contacts off", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(requireAuth).mockResolvedValue({ orgId: ORG, role: "admin", userId: "u1" } as any)
+    vi.mocked(prisma.mtmSetting.upsert).mockResolvedValue({} as any)
+
+    const res = await UpdateSettings(makeJsonReq("/api/v1/mtm/settings", "PUT", { fieldContactsEnabled: false }))
+
+    expect(res.status).toBe(200)
+    expect(prisma.mtmSetting.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      create: expect.objectContaining({ key: "fieldContactsEnabled", value: false }),
+    }))
+  })
+
+  it.each([false, true])("silently ignores the field contacts switch (%s) from a manager", async (value) => {
+    // The settings page PUTs the whole object. A manager's save must succeed
+    // for the other keys and must never write the administrator-only switch,
+    // whatever value their (possibly stale) page carries.
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(requireAuth).mockResolvedValue({ orgId: ORG, role: "manager", userId: "u2" } as any)
+    vi.mocked(prisma.mtmSetting.upsert).mockResolvedValue({} as any)
+
+    const res = await UpdateSettings(makeJsonReq("/api/v1/mtm/settings", "PUT", {
+      gpsInterval: 20,
+      fieldContactsEnabled: value,
+    }))
+
+    expect(res.status).toBe(200)
+    expect(prisma.mtmSetting.upsert).toHaveBeenCalledTimes(1)
+    expect(prisma.mtmSetting.upsert).not.toHaveBeenCalledWith(expect.objectContaining({
+      create: expect.objectContaining({ key: "fieldContactsEnabled" }),
+    }))
+  })
+
+  it("rejects a non-boolean field contacts switch", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(requireAuth).mockResolvedValue({ orgId: ORG, role: "admin", userId: "u1" } as any)
+
+    const res = await UpdateSettings(makeJsonReq("/api/v1/mtm/settings", "PUT", { fieldContactsEnabled: "no" }))
+
+    expect(res.status).toBe(400)
+    expect(prisma.mtmSetting.upsert).not.toHaveBeenCalled()
   })
 
   it("rejects an invalid tenant support email", async () => {
