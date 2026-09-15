@@ -95,6 +95,21 @@ export function canPublishMtmRoute(
   return isAgentInRouteScope(actor, target.primaryAgentId)
 }
 
+/**
+ * Route Field's UPDATE_PUBLISHED: an agent who may publish their own routes
+ * may also change them after publishing (owner decision 2026-09-15). The
+ * rule is exactly the self-publish rule, applied to PLANNED and IN_PROGRESS
+ * routes; finished routes stay immutable records.
+ */
+export function canSelfUpdatePublishedMtmRoute(
+  actor: MtmRouteActor,
+  target: MtmRouteAccessTarget,
+  selfPublishEnabled: boolean,
+): boolean {
+  if (target.status !== "PLANNED" && target.status !== "IN_PROGRESS") return false
+  return canPublishMtmRoute(actor, { ...target, status: "DRAFT" }, selfPublishEnabled)
+}
+
 export function canReviewMtmRouteRequest(
   actor: MtmRouteActor,
   requestedByAgentId: string,

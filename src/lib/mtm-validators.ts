@@ -599,6 +599,18 @@ export const MtmMobileRouteCommandSchema = z.discriminatedUnion("command", [
   }).strict(),
   z.object({
     operationId: MobileRouteCommandOperationId,
+    // Change a PLANNED or IN_PROGRESS route. Points use the UPDATE_DRAFT
+    // shape; the server keeps points whose target stays, so visits and
+    // change requests keep their stop.
+    command: z.literal("UPDATE_PUBLISHED"),
+    routeId: cuid,
+    payload: z.object({
+      expectedVersion: z.number().int().positive(),
+      points: MobileRouteCommandPoints,
+    }).strict(),
+  }).strict(),
+  z.object({
+    operationId: MobileRouteCommandOperationId,
     command: z.literal("PUBLISH"),
     routeId: cuid,
     payload: z.object({

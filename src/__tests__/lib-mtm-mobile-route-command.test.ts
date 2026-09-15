@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   canCreateMtmRouteFor: vi.fn(),
   canEditMtmRouteDraft: vi.fn(),
   canPublishMtmRoute: vi.fn(),
+  canSelfUpdatePublishedMtmRoute: vi.fn(),
   validateMtmRouteTargets: vi.fn(),
   validateMtmMobileRouteTargetEligibility: vi.fn(),
   acquireMtmRouteScheduleLocks: vi.fn(),
@@ -24,6 +25,7 @@ vi.mock("@/lib/mtm/route-permissions", () => ({
   canCreateMtmRouteFor: mocks.canCreateMtmRouteFor,
   canEditMtmRouteDraft: mocks.canEditMtmRouteDraft,
   canPublishMtmRoute: mocks.canPublishMtmRoute,
+  canSelfUpdatePublishedMtmRoute: mocks.canSelfUpdatePublishedMtmRoute,
 }))
 vi.mock("@/lib/mtm/route-targets", () => ({
   mtmRouteTargetKey: (point: { customerId: string; contactId?: string | null }) => point.contactId
@@ -72,6 +74,9 @@ beforeEach(() => {
   mocks.canCreateMtmRouteFor.mockReturnValue(true)
   mocks.canEditMtmRouteDraft.mockReturnValue(true)
   mocks.canPublishMtmRoute.mockReturnValue(true)
+  mocks.canSelfUpdatePublishedMtmRoute.mockReturnValue(true)
+  mocks.detectMtmRouteInternalScheduleConflicts.mockReturnValue([])
+  mocks.detectMtmRoutePlanningSignals.mockReturnValue({ conflicts: [], coordination: [] })
   mocks.validateMtmRouteTargets.mockResolvedValue({
     ok: true,
     missingCustomerIds: [],
@@ -566,3 +571,390 @@ describe("MTM mobile route-command state machine", () => {
     expect(prisma.mtmRoute.updateMany).not.toHaveBeenCalled()
   })
 })
+
+describe("UPDATE_PUBLISHED: changing a published route from Route Field", () => {
+  const routeDate = new Date("2026-09-02T00:00:00.000Z")
+
+  function stop(
+    id: string,
+    customerId: string,
+    orderIndex: number,
+    extra: { status?: string; visits?: number; changeRequests?: number; plannedTime?: Date | null } = {},
+  ) {
+    return {
+      id,
+      customerId,
+      contactId: null,
+      orderIndex,
+      plannedTime: extra.plannedTime ?? null,
+      status: extra.status ?? "PENDING",
+      _count: { visits: extra.visits ?? 0, changeRequests: extra.changeRequests ?? 0 },
+    }
+  }
+
+  function givenRoute(status: string, points: ReturnType<typeof stop>[], version = 4) {
+    vi.mocked(prisma.mtmRoute.findFirst)
+      .mockResolvedValueOnce({ id: "route-1", date: routeDate, agentId: "agent-1" } as never)
+      .mockResolvedValueOnce({
+        id: "route-1",
+        agentId: "agent-1",
+        date: routeDate,
+        status,
+        version,
+        publishedVersion: version,
+        publishedAt: new Date("2026-09-01T18:00:00.000Z"),
+        totalPoints: points.length,
+        assignments: [{ agentId: "agent-1", role: "PRIMARY" }],
+        points,
+      } as never)
+  }
+
+  function updatePublished(
+    points: Array<{ customerId: string; plannedTime?: string | null }>,
+    options: { expectedVersion?: number; operationId?: string } = {},
+  ) {
+    return MtmMobileRouteCommandSchema.parse({
+      operationId: options.operationId ?? "route-command-update-published-001",
+      command: "UPDATE_PUBLISHED",
+      routeId: "route-1",
+      payload: { expectedVersion: options.expectedVersion ?? 4, points },
+    })
+  }
+
+  beforeEach(() => {
+    vi.mocked(prisma.mtmRouteNotificationOutbox.upsert).mockResolvedValue({ id: "outbox-1" } as never)
+    vi.mocked(prisma.mtmRoutePoint.updateMany).mockResolvedValue({ count: 1 } as never)
+  })
+
+  it("keeps surviving stop ids, soft-deletes removed stops, adds new ones and reorders on a PLANNED route", async () => {
+    givenRoute("PLANNED", [stop("p1", "c1", 0), stop("p2", "c2", 1), stop("p3", "c3", 2)])
+
+    const result = await executeMtmMobileRouteCommand({
+      auth,
+      deviceId: "rf-device-1",
+      command: updatePublished([
+        { customerId: "c3", plannedTime: "2026-09-02T09:00:00.000Z" },
+        { customerId: "c4" },
+        { customerId: "c1" },
+      ]),
+      now,
+    })
+
+    expect(result).toMatchObject({
+      responseStatus: 200,
+      replayed: false,
+      result: {
+        success: true,
+        data: {
+          id: "route-1",
+          status: "PLANNED",
+          version: 5,
+          publishedVersion: 5,
+          publishedAt: "2026-09-01T18:00:00.000Z",
+          totalPoints: 3,
+          keptPointIds: ["p3", "p1"],
+          removedPointIds: ["p2"],
+          addedPointCount: 1,
+        },
+      },
+    })
+    expect(prisma.mtmRoute.updateMany).toHaveBeenCalledWith({
+      where: { id: "route-1", organizationId: "org-1", status: "PLANNED", version: 4, deletedAt: null },
+      data: { dedupeKey: "route-dedupe", totalPoints: 3, version: { increment: 1 }, publishedVersion: 5 },
+    })
+    // Removal is a tombstone, never a physical delete, and never recreates kept rows.
+    expect(prisma.mtmRoutePoint.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ id: { in: ["p2"] }, status: "PENDING" }),
+      data: { deletedAt: now, version: { increment: 1 } },
+    }))
+    expect(prisma.mtmRoutePoint.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ id: "p3" }),
+      data: { orderIndex: 0, plannedTime: new Date("2026-09-02T09:00:00.000Z"), version: { increment: 1 } },
+    }))
+    expect(prisma.mtmRoutePoint.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ id: "p1" }),
+      data: { orderIndex: 2, plannedTime: null, version: { increment: 1 } },
+    }))
+    expect(prisma.mtmRoutePoint.createMany).toHaveBeenCalledWith({
+      data: [{ organizationId: "org-1", routeId: "route-1", customerId: "c4", contactId: null, orderIndex: 1, plannedTime: null }],
+    })
+    expect(prisma.mtmRoutePoint.deleteMany).not.toHaveBeenCalled()
+    expect(mocks.validateMtmMobileRouteTargetEligibility).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      points: [{ customerId: "c4", contactId: null }],
+    }))
+    expect(mocks.detectMtmRoutePlanningSignals).toHaveBeenCalled()
+    expect(prisma.mtmRouteNotificationOutbox.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { organizationId_dedupeKey: { organizationId: "org-1", dedupeKey: "route:route-1:published:5:agent-1" } },
+    }))
+    expect(prisma.mtmMobileRouteCommandReceipt.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        command: "UPDATE_PUBLISHED",
+        targetRouteId: "route-1",
+        outcome: "APPLIED",
+        responseStatus: 200,
+      }),
+    })
+    expect(prisma.mtmRouteNotificationOutbox.upsert.mock.invocationCallOrder[0])
+      .toBeLessThan(prisma.mtmMobileRouteCommandReceipt.create.mock.invocationCallOrder[0]!)
+    expect(result.audit).toMatchObject({
+      action: "ROUTE_UPDATE",
+      routeId: "route-1",
+      oldData: {
+        status: "PLANNED",
+        version: 4,
+        stops: [
+          { id: "p1", customerId: "c1" },
+          { id: "p2", customerId: "c2" },
+          { id: "p3", customerId: "c3" },
+        ],
+      },
+      newData: {
+        status: "PLANNED",
+        version: 5,
+        publishedVersion: 5,
+        removedPointIds: ["p2"],
+        command: "UPDATE_PUBLISHED",
+        stops: [
+          { customerId: "c3", plannedTime: "2026-09-02T09:00:00.000Z" },
+          { customerId: "c4" },
+          { customerId: "c1" },
+        ],
+      },
+    })
+  })
+
+  it("refuses an agent without the self-publish grant with ROUTE_EDIT_FORBIDDEN and pins nothing", async () => {
+    mocks.canSelfUpdatePublishedMtmRoute.mockReturnValue(false)
+    givenRoute("PLANNED", [stop("p1", "c1", 0)])
+
+    await expect(executeMtmMobileRouteCommand({
+      auth,
+      deviceId: "rf-device-1",
+      command: updatePublished([{ customerId: "c1" }, { customerId: "c2" }]),
+      now,
+    })).resolves.toMatchObject({ responseStatus: 403, result: { success: false, code: "ROUTE_EDIT_FORBIDDEN" } })
+    expect(prisma.mtmRoute.updateMany).not.toHaveBeenCalled()
+    expect(prisma.mtmMobileRouteCommandReceipt.create).not.toHaveBeenCalled()
+  })
+
+  it("refuses a route owned by another agent", async () => {
+    vi.mocked(prisma.mtmRoute.findFirst)
+      .mockResolvedValueOnce({ id: "route-1", date: routeDate, agentId: "agent-2" } as never)
+      .mockResolvedValueOnce({
+        id: "route-1",
+        agentId: "agent-2",
+        date: routeDate,
+        status: "PLANNED",
+        version: 4,
+        assignments: [{ agentId: "agent-2", role: "PRIMARY" }],
+        points: [stop("p1", "c1", 0)],
+      } as never)
+    await expect(executeMtmMobileRouteCommand({
+      auth,
+      deviceId: "rf-device-1",
+      command: updatePublished([{ customerId: "c1" }]),
+      now,
+    })).resolves.toMatchObject({ responseStatus: 403, result: { code: "MTM_ROUTE_SCOPE_DENIED" } })
+    expect(prisma.mtmRoute.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("answers a stale version with ROUTE_VERSION_CONFLICT", async () => {
+    givenRoute("PLANNED", [stop("p1", "c1", 0)], 6)
+
+    await expect(executeMtmMobileRouteCommand({
+      auth,
+      deviceId: "rf-device-1",
+      command: updatePublished([{ customerId: "c1" }], { expectedVersion: 4 }),
+      now,
+    })).resolves.toMatchObject({
+      responseStatus: 409,
+      result: { code: "ROUTE_VERSION_CONFLICT", currentVersion: 6, status: "PLANNED" },
+    })
+    expect(prisma.mtmRoute.updateMany).not.toHaveBeenCalled()
+    expect(prisma.mtmRoutePoint.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("refuses finished routes and drafts with ROUTE_TRANSITION_INVALID", async () => {
+    for (const [index, status] of ["COMPLETED", "CANCELLED", "INCOMPLETE", "DRAFT"].entries()) {
+      givenRoute(status, [stop("p1", "c1", 0)])
+      await expect(executeMtmMobileRouteCommand({
+        auth,
+        deviceId: "rf-device-1",
+        command: updatePublished([{ customerId: "c1" }], { operationId: `route-command-finished-00${index}` }),
+        now,
+      })).resolves.toMatchObject({ responseStatus: 409, result: { code: "ROUTE_TRANSITION_INVALID", status } })
+    }
+    expect(prisma.mtmRoute.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("locks visited stops of an IN_PROGRESS route against removal and reordering", async () => {
+    const started = () => [
+      stop("p1", "c1", 0, { status: "VISITED", visits: 1 }),
+      stop("p2", "c2", 1, { status: "SKIPPED" }),
+      stop("p3", "c3", 2),
+    ]
+    givenRoute("IN_PROGRESS", started())
+    await expect(executeMtmMobileRouteCommand({
+      auth,
+      deviceId: "rf-device-1",
+      command: updatePublished([{ customerId: "c2" }, { customerId: "c3" }], { operationId: "route-command-locked-001" }),
+      now,
+    })).resolves.toMatchObject({
+      responseStatus: 409,
+      result: { success: false, code: "ROUTE_VISITED_POINTS_LOCKED", pointIds: ["p1"] },
+    })
+
+    givenRoute("IN_PROGRESS", started())
+    await expect(executeMtmMobileRouteCommand({
+      auth,
+      deviceId: "rf-device-1",
+      command: updatePublished(
+        [{ customerId: "c2" }, { customerId: "c1" }, { customerId: "c3" }],
+        { operationId: "route-command-locked-002" },
+      ),
+      now,
+    })).resolves.toMatchObject({
+      responseStatus: 409,
+      result: { code: "ROUTE_VISITED_POINTS_LOCKED", pointIds: ["p1", "p2"] },
+    })
+    expect(prisma.mtmRoute.updateMany).not.toHaveBeenCalled()
+    expect(prisma.mtmMobileRouteCommandReceipt.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ outcome: "CONFLICT", responseStatus: 409, command: "UPDATE_PUBLISHED" }),
+    })
+
+    givenRoute("IN_PROGRESS", started())
+    await expect(executeMtmMobileRouteCommand({
+      auth,
+      deviceId: "rf-device-1",
+      command: updatePublished(
+        [{ customerId: "c1" }, { customerId: "c2" }, { customerId: "c9" }],
+        { operationId: "route-command-locked-003" },
+      ),
+      now,
+    })).resolves.toMatchObject({
+      responseStatus: 200,
+      result: { success: true, data: { status: "IN_PROGRESS", version: 5, removedPointIds: ["p3"], addedPointCount: 1 } },
+    })
+    expect(prisma.mtmRoute.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ status: "IN_PROGRESS", version: 4 }),
+    }))
+  })
+
+  it("refuses to remove a stop with a pending route change request", async () => {
+    givenRoute("PLANNED", [stop("p1", "c1", 0, { changeRequests: 1 }), stop("p2", "c2", 1)])
+
+    await expect(executeMtmMobileRouteCommand({
+      auth,
+      deviceId: "rf-device-1",
+      command: updatePublished([{ customerId: "c2" }]),
+      now,
+    })).resolves.toMatchObject({
+      responseStatus: 409,
+      result: { code: "ROUTE_POINT_CHANGE_PENDING", pointIds: ["p1"] },
+    })
+    expect(prisma.mtmRoutePoint.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("refuses an empty stop list", async () => {
+    givenRoute("PLANNED", [stop("p1", "c1", 0)])
+    await expect(executeMtmMobileRouteCommand({ auth, deviceId: "rf-device-1", command: updatePublished([]), now }))
+      .resolves.toMatchObject({ responseStatus: 409, result: { code: "ROUTE_EMPTY" } })
+  })
+
+  it("re-runs the publish planning checks against the edited stop list", async () => {
+    givenRoute("PLANNED", [stop("p1", "c1", 0)])
+    mocks.detectMtmRoutePlanningSignals.mockReturnValue({ conflicts: [{ kind: "AGENT_BUSY" }], coordination: [] } as never)
+    await expect(executeMtmMobileRouteCommand({
+      auth,
+      deviceId: "rf-device-1",
+      command: updatePublished([{ customerId: "c1" }, { customerId: "c2" }]),
+      now,
+    })).resolves.toMatchObject({ responseStatus: 409, result: { code: "ROUTE_CONFLICT" } })
+
+    givenRoute("PLANNED", [stop("p1", "c1", 0)])
+    mocks.detectMtmRoutePlanningSignals.mockReturnValue({ conflicts: [], coordination: [] })
+    mocks.detectMtmRouteInternalScheduleConflicts.mockReturnValue([{ plannedTime: "x" }] as never)
+    await expect(executeMtmMobileRouteCommand({
+      auth,
+      deviceId: "rf-device-1",
+      command: updatePublished([{ customerId: "c1" }, { customerId: "c2" }], { operationId: "route-command-time-001" }),
+      now,
+    })).resolves.toMatchObject({ responseStatus: 409, result: { code: "ROUTE_POINT_TIME_CONFLICT" } })
+
+    givenRoute("PLANNED", [stop("p1", "c1", 0)])
+    mocks.detectMtmRouteInternalScheduleConflicts.mockReturnValue([])
+    await expect(executeMtmMobileRouteCommand({
+      auth,
+      deviceId: "rf-device-1",
+      command: updatePublished([{ customerId: "c1" }], { operationId: "route-command-horizon-001" }),
+      now: new Date("2026-09-20T10:00:00.000Z"),
+    })).resolves.toMatchObject({ responseStatus: 409, result: { code: "MOBILE_ROUTE_COMMAND_DATE_OUTSIDE_HORIZON" } })
+    expect(prisma.mtmRoute.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("rolls back without a receipt when a stop was checked in between read and write", async () => {
+    givenRoute("PLANNED", [stop("p1", "c1", 0), stop("p2", "c2", 1)])
+    vi.mocked(prisma.mtmRoutePoint.updateMany).mockResolvedValueOnce({ count: 0 } as never)
+
+    await expect(executeMtmMobileRouteCommand({
+      auth,
+      deviceId: "rf-device-1",
+      command: updatePublished([{ customerId: "c2" }]),
+      now,
+    })).resolves.toMatchObject({ responseStatus: 409, replayed: false, result: { code: "ROUTE_VERSION_CONFLICT" } })
+    expect(prisma.mtmMobileRouteCommandReceipt.create).not.toHaveBeenCalled()
+    expect(prisma.mtmRouteNotificationOutbox.upsert).not.toHaveBeenCalled()
+  })
+
+  it("replays a receipt without a second write or a second notification", async () => {
+    const command = updatePublished([{ customerId: "c1" }])
+    vi.mocked(prisma.mtmMobileRouteCommandReceipt.findUnique).mockResolvedValue({
+      organizationId: "org-1",
+      agentId: "agent-1",
+      deviceId: "rf-device-1",
+      operationId: command.operationId,
+      command: "UPDATE_PUBLISHED",
+      targetRouteId: "route-1",
+      requestHash: hashMtmMobileRouteCommand({ command: "UPDATE_PUBLISHED", targetRouteId: "route-1", payload: command.payload }),
+      responseStatus: 200,
+      result: { success: true, data: { id: "route-1", status: "PLANNED", version: 5, publishedVersion: 5 } },
+      expiresAt: new Date("2026-12-01T10:00:00.000Z"),
+    } as never)
+
+    await expect(executeMtmMobileRouteCommand({ auth, deviceId: "rf-device-1", command, now }))
+      .resolves.toMatchObject({
+        responseStatus: 200,
+        replayed: true,
+        result: { success: true, data: { version: 5, publishedVersion: 5 } },
+      })
+    expect(prisma.mtmRoute.updateMany).not.toHaveBeenCalled()
+    expect(prisma.mtmRoutePoint.updateMany).not.toHaveBeenCalled()
+    expect(prisma.mtmRouteNotificationOutbox.upsert).not.toHaveBeenCalled()
+    expect(prisma.mtmMobileRouteCommandReceipt.create).not.toHaveBeenCalled()
+  })
+
+  it("accepts exactly the UPDATE_DRAFT point shape and nothing more", () => {
+    expect(() => MtmMobileRouteCommandSchema.parse({
+      operationId: "route-command-shape-001",
+      command: "UPDATE_PUBLISHED",
+      routeId: "route-1",
+      payload: {
+        expectedVersion: 4,
+        points: [{ customerId: "c1", contactId: "d1", plannedTime: "2026-09-02T09:00:00.000Z" }],
+      },
+    })).not.toThrow()
+    expect(MtmMobileRouteCommandSchema.safeParse({
+      operationId: "route-command-shape-002",
+      command: "UPDATE_PUBLISHED",
+      routeId: "route-1",
+      payload: { expectedVersion: 4, points: [{ customerId: "c1", id: "p1" }] },
+    }).success).toBe(false)
+    expect(MtmMobileRouteCommandSchema.safeParse({
+      operationId: "route-command-shape-003",
+      command: "UPDATE_PUBLISHED",
+      routeId: "route-1",
+      payload: { expectedVersion: 4, points: [{ customerId: "c1" }, { customerId: "c1" }] },
+    }).success).toBe(false)
+  })
+})
+

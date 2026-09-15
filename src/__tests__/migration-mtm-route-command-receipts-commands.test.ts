@@ -33,7 +33,7 @@ const allowed = latestCheck.split(",").map((value) => value.trim().replace(/^'|'
 
 describe("route-command receipts accept every command the server parses", () => {
   it("reads a non-empty grammar and check", () => {
-    expect(grammar).toEqual(["CREATE_DRAFT", "UPDATE_DRAFT", "PUBLISH", "START"])
+    expect(grammar).toEqual(["CREATE_DRAFT", "UPDATE_DRAFT", "PUBLISH", "START", "UPDATE_PUBLISHED"])
     expect(allowed.length).toBeGreaterThan(0)
   })
 
