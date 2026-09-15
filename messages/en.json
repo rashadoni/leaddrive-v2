@@ -21585,6 +21585,8 @@
     "smsNotSetTooltip": "SMS 2FA not configured",
     "smsResetConfirm": "Reset SMS 2FA for this user? They will be able to log in without an SMS code until they re-enable it.",
     "require2faTooltip": "Require 2FA on login (any method)",
+    "twoFactorConfigured": "configured",
+    "twoFactorSetupPending": "set up at next login",
     "statTotal": "Total",
     "statActive": "Active",
     "statInactive": "Inactive",
