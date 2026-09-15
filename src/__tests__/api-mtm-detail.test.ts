@@ -1081,8 +1081,9 @@ describe("POST /api/v1/mtm/mobile/location", () => {
   })
 
   it("refuses a point from the gap of a day a manager reopened (it counts as a break)", async () => {
-    // FINISH 14:00, manager REOPEN 14:30, agent not resumed yet: the row is
-    // PAUSED from 14:00, so a point captured at 14:10 is not work.
+    // FINISH 14:00, manager REOPEN at 14:30 (recorded at the 14:00 finish it
+    // reopens), agent not resumed yet: the row is PAUSED from 14:00, so a point
+    // captured at 14:10 is not work.
     vi.mocked(resolveMobileAuth).mockResolvedValue(routeMobileAuth("a1") as any)
     vi.mocked(prisma.mtmAgentLocation.findFirst).mockResolvedValue(null)
     vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({
@@ -1092,8 +1093,8 @@ describe("POST /api/v1/mtm/mobile/location", () => {
       completedAt: null,
     } as never)
     vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue([
-      { type: "FINISH", occurredAt: new Date("2026-07-14T14:00:00.000Z") },
-      { type: "REOPEN", occurredAt: new Date("2026-07-14T14:30:00.000Z") },
+      { type: "FINISH", occurredAt: new Date("2026-07-14T14:00:00.000Z"), appliedAt: new Date("2026-07-14T14:00:01.000Z") },
+      { type: "REOPEN", occurredAt: new Date("2026-07-14T14:00:00.000Z"), appliedAt: new Date("2026-07-14T14:30:00.000Z") },
     ] as never)
 
     const res = await POST(makeJsonReq("/api/v1/mtm/mobile/location", {
@@ -1107,6 +1108,7 @@ describe("POST /api/v1/mtm/mobile/location", () => {
     expect(json.code).toBe("MTM_LOCATION_WORKDAY_PAUSED")
     expect(prisma.mtmAgentWorkdayEvent.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ type: { in: ["PAUSE", "RESUME", "FINISH", "REOPEN"] } }),
+      select: { type: true, occurredAt: true, appliedAt: true },
     }))
     expect(prisma.mtmAgentLocation.create).not.toHaveBeenCalled()
   })

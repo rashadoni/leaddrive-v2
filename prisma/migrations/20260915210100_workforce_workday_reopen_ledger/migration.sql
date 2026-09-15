@@ -11,6 +11,12 @@
 -- Additive only: one new table and a replacement of the completed-workday guard
 -- function that keeps every existing branch and adds the single reopen path.
 -- No historical workday, event or correction is rewritten.
+--
+-- Rollback: once any REOPEN row exists, a revert must keep this table, the
+-- REOPEN enum value and the REOPEN case of the journal replay. Code from before
+-- this change cannot read those rows (an unknown enum value throws in the
+-- Prisma client, and the old replay rejects the event type), so reverting them
+-- would break every reader of a reopened day, not only the reopen feature.
 
 SET lock_timeout = '3s';
 
@@ -65,9 +71,11 @@ ALTER TABLE "workforce_workday_reopens"
 -- A tenant-scoped FK cannot prove the referenced rows describe one reopen.
 -- The ledger is written after its REOPEN event and before the projection
 -- moves, so at insert time the workday must still be exactly the completed
--- state it leaves, the event must be this workday's REOPEN, the after facts
--- must be that state paused at its finish, and the actor is never the
--- employee's own linked user.
+-- state it leaves, the event must be this workday's REOPEN recorded at the
+-- instant of the finish it reopens (the pause starts there; the ledger row's
+-- own occurredAt is the server time the manager acted), the after facts must
+-- be that state paused at its finish, and the actor is never the employee's
+-- own linked user.
 CREATE OR REPLACE FUNCTION workforce_validate_workday_reopen_insert()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -109,7 +117,7 @@ BEGIN
      OR event_agent_id <> NEW."agentId"
      OR event_workday_id <> NEW."workdayId"
      OR event_type <> 'REOPEN'
-     OR event_occurred_at <> NEW."occurredAt" THEN
+     OR event_occurred_at IS DISTINCT FROM workday_row."completedAt" THEN
     RAISE EXCEPTION 'Workforce workday reopen must reference its own REOPEN journal event' USING ERRCODE = '23514';
   END IF;
 
@@ -129,10 +137,21 @@ CREATE TRIGGER workforce_workday_reopens_validate_insert
   FOR EACH ROW EXECUTE FUNCTION workforce_validate_workday_reopen_insert();
 
 -- Reopen facts are history like correction facts: ordinary application code
--- cannot revise or delete them.
+-- cannot revise or delete them. Like every Workforce table after H3 it owns its
+-- rejection function, so the migration does not depend on an older migration's
+-- helper (a database built by `prisma db push` has no functions at all).
+CREATE OR REPLACE FUNCTION workforce_reject_workday_reopen_mutation()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RAISE EXCEPTION 'Workforce workday reopen facts are immutable' USING ERRCODE = '55000';
+END;
+$$;
+
 CREATE TRIGGER workforce_workday_reopens_append_only
   BEFORE UPDATE OR DELETE ON "workforce_workday_reopens"
-  FOR EACH ROW EXECUTE FUNCTION workforce_reject_immutable_mutation();
+  FOR EACH ROW EXECUTE FUNCTION workforce_reject_workday_reopen_mutation();
 
 ALTER TABLE "workforce_workday_reopens" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "workforce_workday_reopens" FORCE ROW LEVEL SECURITY;

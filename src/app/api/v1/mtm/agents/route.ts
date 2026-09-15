@@ -215,12 +215,12 @@ export const GET = withRls(async (req, auth) => {
               type: { in: [...MTM_WORKDAY_PAUSE_EVENT_TYPES] },
             },
             orderBy: { occurredAt: "asc" },
-            select: { workdayId: true, type: true, occurredAt: true },
+            select: { workdayId: true, type: true, occurredAt: true, appliedAt: true },
           })
-          const byWorkday = new Map<string, Array<{ type: string; occurredAt: Date }>>()
+          const byWorkday = new Map<string, Array<{ type: string; occurredAt: Date; appliedAt: Date | null }>>()
           for (const event of events) {
             const list = byWorkday.get(event.workdayId) ?? []
-            list.push({ type: event.type, occurredAt: event.occurredAt })
+            list.push({ type: event.type, occurredAt: event.occurredAt, appliedAt: event.appliedAt })
             byWorkday.set(event.workdayId, list)
           }
           for (const day of days) {

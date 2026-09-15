@@ -29,10 +29,11 @@ import {
   type WorkforceShiftSnapshotForCalculation,
   type WorkforceTimesheetWorkday,
 } from "@/lib/workforce/timesheet-rehydration"
-import type {
-  WorkforceTimeCorrectionReplayFact,
-  WorkforceWorkdayEventFact,
-  WorkforceWorkdayEventType,
+import {
+  WORKFORCE_WORKDAY_JOURNAL_ORDER,
+  type WorkforceTimeCorrectionReplayFact,
+  type WorkforceWorkdayEventFact,
+  type WorkforceWorkdayEventType,
 } from "@/lib/workforce/workday-facts-replay"
 
 const WorkforceDateKey = z.string().refine(isDateKey, "must be YYYY-MM-DD")
@@ -247,7 +248,7 @@ async function rebuildApprovalRows(
   const [events, corrections]: [WorkforceWorkdayEventRecord[], WorkforceCorrectionRecord[]] = await Promise.all([
     tx.mtmAgentWorkdayEvent.findMany({
       where: { organizationId: scope.organizationId, agentId: scope.agentId, workdayId: { in: workdayIds } },
-      orderBy: [{ workdayId: "asc" }, { occurredAt: "asc" }, { id: "asc" }],
+      orderBy: [{ workdayId: "asc" }, ...WORKFORCE_WORKDAY_JOURNAL_ORDER],
       select: { id: true, workdayId: true, type: true, occurredAt: true },
     }),
     tx.workforceTimeCorrection.findMany({

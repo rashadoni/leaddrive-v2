@@ -131,3 +131,50 @@ export async function writeWorkforceWorkdayReopenAuditInTransaction(
     },
   })
 }
+
+/**
+ * Records a manager undoing a mistaken reopen in the same transaction as the
+ * restoring FINISH event and the completed projection. The journal event has
+ * no actor column, so this record is where the manager, the undone reopen and
+ * the exact before/after facts are kept.
+ */
+export async function writeWorkforceWorkdayReopenUndoAuditInTransaction(
+  tx: Prisma.TransactionClient,
+  input: {
+    scope: WorkdayScope
+    reopenId: string
+    reopenEventId: string
+    eventId: string
+    actorUserId: string
+    operationId: string
+    reason: string
+    authorizationSource: string
+    beforeWorkday: WorkforceWorkdayCorrectionFacts
+    afterWorkday: WorkforceWorkdayCorrectionFacts
+    requestMetadata?: WorkforceAuditRequestMetadata
+  },
+): Promise<void> {
+  await tx.mtmAuditLog.create({
+    data: {
+      organizationId: input.scope.organizationId,
+      agentId: input.scope.agentId,
+      action: "WORKDAY_REOPEN_UNDO",
+      entity: "workday",
+      entityId: input.afterWorkday.id,
+      metadataKind: "workforce_workday_reopen_undo",
+      oldData: { workday: input.beforeWorkday } as Prisma.InputJsonValue,
+      newData: {
+        workday: input.afterWorkday,
+        reopenId: input.reopenId,
+        reopenEventId: input.reopenEventId,
+        eventId: input.eventId,
+        actorUserId: input.actorUserId,
+        operationId: input.operationId,
+        reason: input.reason,
+        authorizationSource: input.authorizationSource,
+      } as Prisma.InputJsonValue,
+      ipAddress: input.requestMetadata?.ipAddress ?? null,
+      userAgent: input.requestMetadata?.userAgent ?? null,
+    },
+  })
+}

@@ -22,6 +22,7 @@ import {
 } from "@/lib/workforce/workday-correction-facts"
 import {
   replayWorkforceWorkdayFacts,
+  WORKFORCE_WORKDAY_JOURNAL_ORDER,
   workforceReplayMatchesWorkdayCorrectionFacts,
   WorkforceWorkdayFactsReplayError,
   type WorkforceWorkdayEventFact,
@@ -29,8 +30,8 @@ import {
 } from "@/lib/workforce/workday-facts-replay"
 
 /**
- * A manager reopens the employee's finished shift for today. The body carries
- * no times: the reopened state is fully determined by the finished workday.
+ * A manager reopens the employee's finished shift for today, or undoes that
+ * reopen. The body carries no times: the day's own facts determine them.
  */
 export const WorkforceWorkdayReopenSchema = z.object({
   operationId: z.string().trim().min(8).max(128),
@@ -51,7 +52,8 @@ export type WorkforceWorkdayReopenConflictCode =
   | "WORKFORCE_WORKDAY_REOPEN_CORRECTED"
   | "WORKFORCE_WORKDAY_REOPEN_HISTORY_INVALID"
 
-type WorkforceWorkdayReopenContext = {
+/** Request context shared by the reopen and undo services. */
+export type WorkforceWorkdayReopenContext = {
   organizationId: string
   userId: string
   /** A C7 TIME_APPROVER grant may authorize a principal without a CRM actor. */
@@ -99,7 +101,7 @@ function reopenConflict(
   })
 }
 
-const reopenWorkdaySelect = {
+export const workforceReopenWorkdaySelect = {
   id: true,
   organizationId: true,
   agentId: true,
@@ -113,14 +115,16 @@ const reopenWorkdaySelect = {
   agent: { select: { userId: true } },
 } satisfies Prisma.MtmAgentWorkdaySelect
 
-function reopenRequestHash(params: {
+/** Binds a reopen or undo operation id to its actor, target and exact body. */
+export function workforceWorkdayReopenRequestHash(params: {
+  action: "REOPEN" | "REOPEN_UNDO"
   workdayId: string
   actorUserId: string
   input: WorkforceWorkdayReopenInput
 }): string {
   const payload = {
     version: 1,
-    action: "REOPEN",
+    action: params.action,
     workdayId: params.workdayId,
     actorUserId: params.actorUserId,
     operationId: params.input.operationId,
@@ -130,17 +134,50 @@ function reopenRequestHash(params: {
   return createHash("sha256").update(JSON.stringify(payload)).digest("hex")
 }
 
-async function tenantTimezone(organizationId: string): Promise<string> {
+/** Today's date key in the tenant timezone: the only day a manager may touch. */
+export async function workforceTenantToday(organizationId: string, now: Date): Promise<string> {
   const settings = await getMtmSettings(organizationId)
-  return isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
+  return currentDateKey(now, isValidTimezone(settings.timezone) ? settings.timezone : "UTC")
 }
 
-function journalFacts(events: ReadonlyArray<{ id: string; type: string; occurredAt: Date }>): WorkforceWorkdayEventFact[] {
+export function workforceWorkdayJournalFacts(
+  events: ReadonlyArray<{ id: string; type: string; occurredAt: Date }>,
+): WorkforceWorkdayEventFact[] {
   return events.map((event) => ({
     id: event.id,
     type: event.type as WorkforceWorkdayEventType,
     occurredAt: event.occurredAt.toISOString(),
   }))
+}
+
+/**
+ * Exactly the authority of a direct manager time correction: the legacy CRM
+ * manager scope before C7 cutover, a TIME_CORRECT grant after it. Returns the
+ * audit label of the authority used, or null when the principal is refused.
+ * The caller still refuses the employee's own day separately.
+ */
+export async function authorizeWorkforceWorkdayManagerAction(
+  tx: Prisma.TransactionClient,
+  params: { organizationId: string; userId: string; actor: WorkforceActor | null; agentId: string },
+): Promise<string | null> {
+  const organization = await tx.organization.findUnique({
+    where: { id: params.organizationId },
+    select: { features: true },
+  })
+  if (!workforceGranularAccessEnabled(organization?.features)) {
+    const actor = params.actor
+    if (!actor || actor.role === "AGENT" || !isAgentInWorkforceScope(actor, params.agentId)) return null
+    return actor.role
+  }
+  const access = await decidePersistedWorkforceAccess({
+    db: tx as WorkforceAccessGrantReaderDb,
+    organizationId: params.organizationId,
+    principalUserId: params.userId,
+    selfAgentId: null,
+    permission: "TIME_CORRECT",
+    resource: { organizationId: params.organizationId, agentId: params.agentId },
+  })
+  return access.allowed ? "WORKFORCE_GRANT" : null
 }
 
 /**
@@ -176,34 +213,24 @@ export async function reopenWorkforceWorkday(
   }
 
   const expectedUpdatedAt = new Date(input.expectedUpdatedAt)
-  const immutableRequestHash = reopenRequestHash({ workdayId, actorUserId: userId, input })
-  const today = currentDateKey(now, await tenantTimezone(organizationId))
+  const immutableRequestHash = workforceWorkdayReopenRequestHash({
+    action: "REOPEN",
+    workdayId,
+    actorUserId: userId,
+    input,
+  })
+  const today = await workforceTenantToday(organizationId, now)
   const clientEventId = `reopen:${input.operationId}`
 
   try {
     return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const organization = await tx.organization.findUnique({
-        where: { id: organizationId },
-        select: { features: true },
+      const authorizationSource = await authorizeWorkforceWorkdayManagerAction(tx, {
+        organizationId,
+        userId,
+        actor,
+        agentId: initial.agentId,
       })
-      const granularAccess = workforceGranularAccessEnabled(organization?.features)
-      // Exactly the authority of a direct manager time correction: the legacy
-      // CRM manager scope before C7 cutover, a TIME_CORRECT grant after it.
-      if (!granularAccess) {
-        if (!actor || actor.role === "AGENT" || !isAgentInWorkforceScope(actor, initial.agentId)) {
-          return { kind: "forbidden" as const }
-        }
-      } else {
-        const access = await decidePersistedWorkforceAccess({
-          db: tx as WorkforceAccessGrantReaderDb,
-          organizationId,
-          principalUserId: userId,
-          selfAgentId: null,
-          permission: "TIME_CORRECT",
-          resource: { organizationId, agentId: initial.agentId },
-        })
-        if (!access.allowed) return { kind: "forbidden" as const }
-      }
+      if (!authorizationSource) return { kind: "forbidden" as const }
       // Legacy timestamp-without-time-zone fields stay deterministic while the
       // guard compares them with the ledger's canonical UTC facts.
       await tx.$executeRaw`SELECT set_config('TimeZone', 'UTC', true)`
@@ -237,7 +264,7 @@ export async function reopenWorkforceWorkday(
         await lockMtmWorkdayTransitions(tx, { organizationId, agentId: initial.agentId })
         const current = await tx.mtmAgentWorkday.findFirst({
           where: { id: workdayId, organizationId, agentId: initial.agentId },
-          select: reopenWorkdaySelect,
+          select: workforceReopenWorkdaySelect,
         })
         if (!current) throw new WorkdayReopenProblem({ kind: "not_found" })
         // Repeat the self check under the lock that returns the replay: an
@@ -259,13 +286,14 @@ export async function reopenWorkforceWorkday(
       await lockMtmWorkdayTransitions(tx, { organizationId, agentId: initial.agentId })
       const workday = await tx.mtmAgentWorkday.findFirst({
         where: { id: workdayId, organizationId, agentId: initial.agentId },
-        select: reopenWorkdaySelect,
+        select: workforceReopenWorkdaySelect,
       })
       if (!workday) throw new WorkdayReopenProblem({ kind: "not_found" })
       if (workday.agent.userId === userId) return { kind: "forbidden" as const }
 
       const beforeWorkday = workforceWorkdayCorrectionFacts(workday)
-      if (workday.status !== "COMPLETED" || !workday.completedAt) {
+      const finishedAt = workday.completedAt
+      if (workday.status !== "COMPLETED" || !finishedAt) {
         throw reopenConflict(
           "WORKFORCE_WORKDAY_REOPEN_NOT_COMPLETED",
           "Only a completed workday can be reopened",
@@ -322,7 +350,7 @@ export async function reopenWorkforceWorkday(
         }),
         tx.mtmAgentWorkdayEvent.findMany({
           where: { organizationId, agentId: initial.agentId, workdayId },
-          orderBy: [{ occurredAt: "asc" }, { id: "asc" }],
+          orderBy: [...WORKFORCE_WORKDAY_JOURNAL_ORDER],
           select: { id: true, type: true, occurredAt: true },
         }),
         tx.mtmAgentWorkdayEvent.findFirst({
@@ -375,8 +403,7 @@ export async function reopenWorkforceWorkday(
       }
       // Prove the immutable journal reproduces the row before a REOPEN extends
       // it, and that the extended journal reproduces exactly the reopened row.
-      // A finish claimed later than the server clock fails the second replay.
-      const journal = journalFacts(events)
+      const journal = workforceWorkdayJournalFacts(events)
       let historyProblem: string | null = null
       try {
         const replayed = replayWorkforceWorkdayFacts({ workdayId, events: journal })
@@ -385,7 +412,7 @@ export async function reopenWorkforceWorkday(
         } else {
           const reopened = replayWorkforceWorkdayFacts({
             workdayId,
-            events: [...journal, { id: "pending-workday-reopen", type: "REOPEN", occurredAt: now.toISOString() }],
+            events: [...journal, { id: "pending-workday-reopen", type: "REOPEN", occurredAt: finishedAt.toISOString() }],
           })
           if (!workforceReplayMatchesWorkdayCorrectionFacts(reopened, afterWorkday)) {
             historyProblem = "Reopened workday journal does not reproduce the reopened projection"
@@ -410,10 +437,17 @@ export async function reopenWorkforceWorkday(
           workdayId,
           clientEventId,
           type: "REOPEN",
-          occurredAt: now,
-          claimedAt: now,
-          capturedAt: now,
-          queuedAt: now,
+          // The pause starts at the recorded finish, whatever clock the phone
+          // stamped it with (up to five minutes ahead of the server). Recording
+          // the REOPEN at that instant keeps the journal ordered and lets the
+          // employee's RESUME carry any time after the finish. The moment the
+          // manager acted is the server receipt/application time below, and
+          // the ledger row and audit record keep it too.
+          occurredAt: finishedAt,
+          claimedAt: finishedAt,
+          capturedAt: finishedAt,
+          // No client outbox ever held this server-produced fact.
+          queuedAt: null,
           serverReceivedAt: now,
           appliedAt: now,
           schemaVersion: WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION,
@@ -451,7 +485,7 @@ export async function reopenWorkforceWorkday(
         where: { id: workdayId },
         data: {
           status: "PAUSED",
-          pausedAt: workday.completedAt,
+          pausedAt: finishedAt,
           completedAt: null,
         },
       })
@@ -462,7 +496,7 @@ export async function reopenWorkforceWorkday(
         actorUserId: userId,
         operationId: input.operationId,
         reason: input.reason,
-        authorizationSource: granularAccess ? "WORKFORCE_GRANT" : actor!.role,
+        authorizationSource,
         beforeWorkday,
         afterWorkday,
         requestMetadata: audit,

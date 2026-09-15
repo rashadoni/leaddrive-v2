@@ -85,19 +85,23 @@ describe("workday pauses (field UX audit A7)", () => {
   })
 
   describe("a day a manager reopened after it was finished", () => {
+    // A REOPEN is recorded at the instant of the FINISH it reopens; the moment
+    // the manager acted is its server application time.
+    const applied = (hhmm: string) => at(hhmm)
+
     it("asks the journal for REOPEN along with the break events", () => {
       expect(MTM_WORKDAY_PAUSE_EVENT_TYPES).toEqual(["PAUSE", "RESUME", "FINISH", "REOPEN"])
     })
 
-    it("treats the time from the first finish to RESUME as a break", () => {
+    it("treats the time from the finish to RESUME as a break", () => {
       // The workday row banks exactly this gap into totalPausedSeconds on
       // RESUME, so a point captured at 14:10 is not work either.
       const pauses = mtmWorkdayPauses([
-        { type: "START", occurredAt: at("08:00") },
-        { type: "FINISH", occurredAt: at("14:00") },
-        { type: "REOPEN", occurredAt: at("14:30") },
-        { type: "RESUME", occurredAt: at("15:00") },
-        { type: "FINISH", occurredAt: at("18:00") },
+        { type: "START", occurredAt: at("08:00"), appliedAt: applied("08:00") },
+        { type: "FINISH", occurredAt: at("14:00"), appliedAt: applied("14:00") },
+        { type: "REOPEN", occurredAt: at("14:00"), appliedAt: applied("14:30") },
+        { type: "RESUME", occurredAt: at("15:00"), appliedAt: applied("15:00") },
+        { type: "FINISH", occurredAt: at("18:00"), appliedAt: applied("18:00") },
       ])
 
       expect(pauses).toEqual([{ from: at("14:00"), to: at("15:00") }])
@@ -107,39 +111,54 @@ describe("workday pauses (field UX audit A7)", () => {
 
     it("keeps the break open while the reopened day waits for the agent", () => {
       expect(mtmWorkdayPauses([
-        { type: "FINISH", occurredAt: at("14:00") },
-        { type: "REOPEN", occurredAt: at("14:30") },
+        { type: "FINISH", occurredAt: at("14:00"), appliedAt: applied("14:00") },
+        { type: "REOPEN", occurredAt: at("14:00"), appliedAt: applied("14:30") },
+      ])).toEqual([{ from: at("14:00"), to: null }])
+    })
+
+    it("puts the FINISH before its REOPEN by application time, whatever order the rows arrive in", () => {
+      expect(mtmWorkdayPauses([
+        { type: "REOPEN", occurredAt: at("14:00"), appliedAt: applied("14:30") },
+        { type: "FINISH", occurredAt: at("14:00"), appliedAt: applied("14:00") },
       ])).toEqual([{ from: at("14:00"), to: null }])
     })
 
     it("continues a break the first finish closed instead of splitting it at the finish", () => {
       expect(mtmWorkdayPauses([
-        { type: "PAUSE", occurredAt: at("13:00") },
-        { type: "FINISH", occurredAt: at("14:00") },
-        { type: "REOPEN", occurredAt: at("14:30") },
-        { type: "RESUME", occurredAt: at("15:00") },
+        { type: "PAUSE", occurredAt: at("13:00"), appliedAt: applied("13:00") },
+        { type: "FINISH", occurredAt: at("14:00"), appliedAt: applied("14:00") },
+        { type: "REOPEN", occurredAt: at("14:00"), appliedAt: applied("14:30") },
+        { type: "RESUME", occurredAt: at("15:00"), appliedAt: applied("15:00") },
       ])).toEqual([{ from: at("13:00"), to: at("15:00") }])
     })
 
-    it("does not reuse an earlier finish for a later reopen", () => {
+    it("leaves the day's breaks exactly as before when the reopen is undone", () => {
+      // Undo is a FINISH at the reopened instant, applied after the REOPEN.
       expect(mtmWorkdayPauses([
-        { type: "FINISH", occurredAt: at("12:00") },
-        { type: "REOPEN", occurredAt: at("12:10") },
-        { type: "RESUME", occurredAt: at("12:20") },
-        { type: "FINISH", occurredAt: at("16:00") },
-        { type: "REOPEN", occurredAt: at("16:05") },
-        { type: "RESUME", occurredAt: at("16:30") },
+        { type: "FINISH", occurredAt: at("14:00"), appliedAt: applied("14:00") },
+        { type: "REOPEN", occurredAt: at("14:00"), appliedAt: applied("14:30") },
+        { type: "FINISH", occurredAt: at("14:00"), appliedAt: applied("14:35") },
+      ])).toEqual([])
+      expect(mtmWorkdayPauses([
+        { type: "PAUSE", occurredAt: at("13:00"), appliedAt: applied("13:00") },
+        { type: "FINISH", occurredAt: at("14:00"), appliedAt: applied("14:00") },
+        { type: "REOPEN", occurredAt: at("14:00"), appliedAt: applied("14:30") },
+        { type: "FINISH", occurredAt: at("14:00"), appliedAt: applied("14:35") },
+      ])).toEqual([{ from: at("13:00"), to: at("14:00") }])
+    })
+
+    it("handles a second reopen of the same day", () => {
+      expect(mtmWorkdayPauses([
+        { type: "FINISH", occurredAt: at("12:00"), appliedAt: applied("12:00") },
+        { type: "REOPEN", occurredAt: at("12:00"), appliedAt: applied("12:10") },
+        { type: "RESUME", occurredAt: at("12:20"), appliedAt: applied("12:20") },
+        { type: "FINISH", occurredAt: at("16:00"), appliedAt: applied("16:00") },
+        { type: "REOPEN", occurredAt: at("16:00"), appliedAt: applied("16:05") },
+        { type: "RESUME", occurredAt: at("16:30"), appliedAt: applied("16:30") },
       ])).toEqual([
         { from: at("12:00"), to: at("12:20") },
         { from: at("16:00"), to: at("16:30") },
       ])
-    })
-
-    it("starts at the reopen itself when the finish is outside the events it was given", () => {
-      expect(mtmWorkdayPauses([
-        { type: "REOPEN", occurredAt: at("14:30") },
-        { type: "RESUME", occurredAt: at("15:00") },
-      ])).toEqual([{ from: at("14:30"), to: at("15:00") }])
     })
   })
 

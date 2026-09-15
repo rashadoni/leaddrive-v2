@@ -11,6 +11,7 @@ import { isAgentInWorkforceScope, type WorkforceActor } from "@/lib/workforce/ac
 import { workforceGranularAccessEnabled } from "@/lib/workforce/granular-access-rollout"
 import {
   replayWorkforceWorkdayFacts,
+  WORKFORCE_WORKDAY_JOURNAL_ORDER,
   workforceReplayMatchesWorkdayCorrectionFacts,
   WorkforceWorkdayFactsReplayError,
   type WorkforceWorkdayEventType,
@@ -260,7 +261,7 @@ export async function correctWorkforceTimeDirectly(
       const [events, corrections] = await Promise.all([
         tx.mtmAgentWorkdayEvent.findMany({
           where: { organizationId, agentId: initial.agentId, workdayId },
-          orderBy: [{ occurredAt: "asc" }, { id: "asc" }],
+          orderBy: [...WORKFORCE_WORKDAY_JOURNAL_ORDER],
           select: { id: true, type: true, occurredAt: true },
         }),
         tx.workforceTimeCorrection.findMany({

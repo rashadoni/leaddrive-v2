@@ -13,6 +13,20 @@ export const WORKFORCE_WORKDAY_EVENT_TYPES = ["START", "PAUSE", "RESUME", "FINIS
 
 export type WorkforceWorkdayEventType = typeof WORKFORCE_WORKDAY_EVENT_TYPES[number]
 
+/**
+ * The one order in which the journal is read for replay. Instants decide,
+ * except around a REOPEN: it is recorded at the instant of the FINISH it
+ * reopens, and a manager's undo FINISH shares that instant too. There the
+ * server's application time decides — the FINISH was applied before the
+ * REOPEN, the REOPEN before its undo. Rows older than `appliedAt` never share
+ * an instant with another event, so sorting them first changes nothing.
+ */
+export const WORKFORCE_WORKDAY_JOURNAL_ORDER = [
+  { occurredAt: "asc" },
+  { appliedAt: { sort: "asc", nulls: "first" } },
+  { id: "asc" },
+] as const
+
 export type WorkforceWorkdayEventFact = {
   /** Stable event identity from the canonical append-only workday journal. */
   id: string
@@ -269,6 +283,7 @@ function replayJournal(input: {
   let completedAt: string | null = null
   let pauseStartedAt: string | null = null
   let previousOccurredAt = Number.NEGATIVE_INFINITY
+  let previousType: WorkforceWorkdayEventType | null = null
   const eventIds = new Set<string>()
   const pauseIntervals: Array<{ startedAt: string; endedAt: string | null }> = []
 
@@ -279,8 +294,17 @@ function replayJournal(input: {
     if (!EVENT_TYPES.has(event.type)) fail(`events[${index}].type is invalid`)
     const occurredAt = canonicalUtcInstant(`events[${index}].occurredAt`, event.occurredAt)
     const occurredAtMs = instantMs(`events[${index}].occurredAt`, occurredAt)
-    if (occurredAtMs <= previousOccurredAt) fail("workday events must be in strict chronological order")
+    // Instants strictly increase, with one exception: a REOPEN is recorded at
+    // the instant of the FINISH it reopens (phones may stamp that FINISH a few
+    // minutes ahead of the server), and the transition right after a REOPEN —
+    // a manager's undo FINISH, or a RESUME at that very moment — may share it.
+    const sharesReopenInstant = occurredAtMs === previousOccurredAt
+      && ((event.type === "REOPEN" && previousType === "FINISH") || previousType === "REOPEN")
+    if (occurredAtMs < previousOccurredAt || (occurredAtMs === previousOccurredAt && !sharesReopenInstant)) {
+      fail("workday events must be in strict chronological order")
+    }
     previousOccurredAt = occurredAtMs
+    previousType = event.type
 
     switch (event.type) {
       case "START":
@@ -295,13 +319,17 @@ function replayJournal(input: {
         break
       case "RESUME":
         if (status !== "PAUSED" || pauseStartedAt == null) fail("RESUME is only valid for a paused workday")
-        pauseIntervals.push({ startedAt: pauseStartedAt, endedAt: occurredAt })
+        // Only a reopened pause can end at its own start instant; a pause of no
+        // duration is not a pause interval.
+        if (occurredAt !== pauseStartedAt) pauseIntervals.push({ startedAt: pauseStartedAt, endedAt: occurredAt })
         pauseStartedAt = null
         status = "STARTED"
         break
       case "FINISH":
         if (status === "PAUSED" && pauseStartedAt != null) {
-          pauseIntervals.push({ startedAt: pauseStartedAt, endedAt: occurredAt })
+          // An undone reopen finishes at the instant it paused: the day is
+          // restored exactly, with no extra (empty) pause interval.
+          if (occurredAt !== pauseStartedAt) pauseIntervals.push({ startedAt: pauseStartedAt, endedAt: occurredAt })
           pauseStartedAt = null
         } else if (status !== "STARTED") {
           fail("FINISH is only valid for a started or paused workday")
@@ -315,6 +343,7 @@ function replayJournal(input: {
         // again) becomes a pause interval and never worked time. The FINISH
         // before it stays in the journal as the closure's history.
         if (status !== "COMPLETED" || completedAt == null) fail("REOPEN is only valid for a completed workday")
+        if (occurredAt !== completedAt) fail("REOPEN must be recorded at the finish it reopens")
         pauseStartedAt = completedAt
         completedAt = null
         status = "PAUSED"

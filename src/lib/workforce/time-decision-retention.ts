@@ -151,7 +151,7 @@ export async function planWorkforceTimeDecisionRetention(
         { metadataKind: { startsWith: "workforce_" } },
         { metadataKind: { in: ["workday_transition", "hrm_request_decision"] } },
         { action: { startsWith: "WORKFORCE_" } },
-        { action: { in: ["WORKDAY_START", "WORKDAY_PAUSE", "WORKDAY_RESUME", "WORKDAY_FINISH", "WORKDAY_REOPEN", "HRM_REQUEST_DECISION"] } },
+        { action: { in: ["WORKDAY_START", "WORKDAY_PAUSE", "WORKDAY_RESUME", "WORKDAY_FINISH", "WORKDAY_REOPEN", "WORKDAY_REOPEN_UNDO", "HRM_REQUEST_DECISION"] } },
       ],
     } }),
   ])

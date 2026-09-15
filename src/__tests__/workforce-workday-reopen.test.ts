@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("@/lib/prisma", async () => {
   const { makeMtmPrismaMock } = await import("./mocks/mtm-prisma")
@@ -17,12 +17,19 @@ import { workforceWorkdayCorrectionFacts } from "@/lib/workforce/workday-correct
 import {
   replayWorkforceWorkdayFacts,
   workforceReplayMatchesWorkdayCorrectionFacts,
+  type WorkforceWorkdayEventType,
 } from "@/lib/workforce/workday-facts-replay"
 import {
   reopenWorkforceWorkday,
   WorkforceWorkdayReopenSchema,
   type WorkforceWorkdayReopenInput,
 } from "@/lib/workforce/workday-reopen"
+import type { MtmPrismaMock } from "./mocks/mtm-prisma"
+import {
+  installInMemoryWorkdayJournal,
+  type InMemoryWorkdayJournal,
+  type MemoryRow,
+} from "./mocks/workday-journal-memory"
 
 const ORGANIZATION_ID = "org-workforce"
 const WORKDAY_ID = "workday-1"
@@ -32,6 +39,7 @@ const MANAGER_USER_ID = "manager-user-1"
 const MANAGER = { agentId: "manager-agent-1", role: "MANAGER" as const, scopedAgentIds: [AGENT_ID] }
 // Asia/Baku is UTC+4: 14:30Z is 18:30 on the same local day as the workday.
 const NOW = new Date("2026-09-15T14:30:00.000Z")
+const FINISHED_AT = new Date("2026-09-15T14:00:00.000Z")
 const UPDATED_AT = new Date("2026-09-15T14:00:01.000Z")
 
 const beforeFacts = {
@@ -59,7 +67,7 @@ function completedWorkday(overrides: Record<string, unknown> = {}) {
     status: "COMPLETED",
     startedAt: new Date("2026-09-15T05:00:00.000Z"),
     pausedAt: null,
-    completedAt: new Date("2026-09-15T14:00:00.000Z"),
+    completedAt: FINISHED_AT,
     totalPausedSeconds: 30 * 60,
     updatedAt: UPDATED_AT,
     agent: { userId: AGENT_USER_ID },
@@ -71,7 +79,7 @@ const journal = [
   { id: "event-1", type: "START", occurredAt: new Date("2026-09-15T05:00:00.000Z") },
   { id: "event-2", type: "PAUSE", occurredAt: new Date("2026-09-15T09:00:00.000Z") },
   { id: "event-3", type: "RESUME", occurredAt: new Date("2026-09-15T09:30:00.000Z") },
-  { id: "event-4", type: "FINISH", occurredAt: new Date("2026-09-15T14:00:00.000Z") },
+  { id: "event-4", type: "FINISH", occurredAt: FINISHED_AT },
 ]
 
 const input: WorkforceWorkdayReopenInput = {
@@ -128,6 +136,12 @@ function executeRawCallIndex(fragment: string): number {
   ))
 }
 
+function firstCallData(method: unknown): Record<string, unknown> {
+  const calls = (method as { mock: { calls: unknown[][] } }).mock.calls
+  const query = calls[0]?.[0] as { data?: Record<string, unknown> } | undefined
+  return query?.data ?? {}
+}
+
 describe("manager reopen of today's finished Workforce workday", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -135,14 +149,15 @@ describe("manager reopen of today's finished Workforce workday", () => {
     vi.mocked(getMtmSettings).mockResolvedValue({ timezone: "Asia/Baku" } as never)
     vi.mocked(prisma.organization.findUnique).mockResolvedValue({ features: [] } as never)
     vi.mocked(prisma.workforceAccessGrant.findMany).mockResolvedValue([] as never)
-    vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue(journal as never)
-    vi.mocked(prisma.mtmAgentWorkdayEvent.findFirst).mockResolvedValue(null as never)
-    vi.mocked(prisma.mtmAgentWorkdayEvent.create).mockResolvedValue({ id: "event-reopen" } as never)
-    vi.mocked(prisma.workforceWorkdayReopen.findFirst).mockResolvedValue(null as never)
-    vi.mocked(prisma.workforceWorkdayReopen.create).mockResolvedValue({ id: "reopen-1" } as never)
-    vi.mocked(prisma.workforceTimeCorrection.findMany).mockResolvedValue([] as never)
-    vi.mocked(prisma.workforceTimesheetApproval.findFirst).mockResolvedValue(null as never)
-    vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue(null as never)
+    vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockReset().mockResolvedValue(journal as never)
+    vi.mocked(prisma.mtmAgentWorkdayEvent.findFirst).mockReset().mockResolvedValue(null as never)
+    vi.mocked(prisma.mtmAgentWorkdayEvent.create).mockReset().mockResolvedValue({ id: "event-reopen" } as never)
+    vi.mocked(prisma.workforceWorkdayReopen.findFirst).mockReset().mockResolvedValue(null as never)
+    vi.mocked(prisma.workforceWorkdayReopen.create).mockReset().mockResolvedValue({ id: "reopen-1" } as never)
+    vi.mocked(prisma.mtmAgentWorkday.update).mockReset()
+    vi.mocked(prisma.workforceTimeCorrection.findMany).mockReset().mockResolvedValue([] as never)
+    vi.mocked(prisma.workforceTimesheetApproval.findFirst).mockReset().mockResolvedValue(null as never)
+    vi.mocked(prisma.mtmHrmRequest.findFirst).mockReset().mockResolvedValue(null as never)
   })
 
   it("pauses the day at its finish and writes the event, ledger, projection and audit in one transaction", async () => {
@@ -154,6 +169,8 @@ describe("manager reopen of today's finished Workforce workday", () => {
       data: { reopenId: "reopen-1", eventId: "event-reopen", workday: afterFacts },
     })
     expect(prisma.$transaction).toHaveBeenCalledTimes(1)
+    // The journal event sits at the instant the pause starts (the finish);
+    // the moment the manager acted is its server receipt/application time.
     expect(prisma.mtmAgentWorkdayEvent.create).toHaveBeenCalledWith({
       select: { id: true },
       data: expect.objectContaining({
@@ -162,8 +179,10 @@ describe("manager reopen of today's finished Workforce workday", () => {
         workdayId: WORKDAY_ID,
         clientEventId: "reopen:reopen-operation-1",
         type: "REOPEN",
-        occurredAt: NOW,
-        claimedAt: NOW,
+        occurredAt: FINISHED_AT,
+        claimedAt: FINISHED_AT,
+        capturedAt: FINISHED_AT,
+        queuedAt: null,
         serverReceivedAt: NOW,
         appliedAt: NOW,
         schemaVersion: 4,
@@ -173,7 +192,7 @@ describe("manager reopen of today's finished Workforce workday", () => {
         note: input.reason,
       }),
     })
-    const eventData = vi.mocked(prisma.mtmAgentWorkdayEvent.create).mock.calls[0]![0] as unknown as { data: { requestHash: string } }
+    const eventData = firstCallData(prisma.mtmAgentWorkdayEvent.create)
     expect(prisma.workforceWorkdayReopen.create).toHaveBeenCalledWith({
       select: { id: true },
       data: {
@@ -182,7 +201,7 @@ describe("manager reopen of today's finished Workforce workday", () => {
         workdayId: WORKDAY_ID,
         eventId: "event-reopen",
         operationId: input.operationId,
-        requestHash: eventData.data.requestHash,
+        requestHash: eventData.requestHash,
         actorUserId: MANAGER_USER_ID,
         reason: input.reason,
         beforeFacts,
@@ -194,7 +213,7 @@ describe("manager reopen of today's finished Workforce workday", () => {
     // from pausedAt, exactly as for an ordinary break.
     expect(prisma.mtmAgentWorkday.update).toHaveBeenCalledWith({
       where: { id: WORKDAY_ID },
-      data: { status: "PAUSED", pausedAt: new Date("2026-09-15T14:00:00.000Z"), completedAt: null },
+      data: { status: "PAUSED", pausedAt: FINISHED_AT, completedAt: null },
     })
     expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -236,6 +255,30 @@ describe("manager reopen of today's finished Workforce workday", () => {
     expect(executeRawCallIndex("app.workforce_correction_id")).toBe(-1)
   })
 
+  it("reopens within minutes of a finish the phone stamped ahead of the server", async () => {
+    // Agent taps "finish" by mistake with a clock three minutes fast, calls the
+    // manager, who reopens one minute later by the server's clock.
+    const phoneFinish = new Date("2026-09-15T14:33:00.000Z")
+    mockWorkdayLookups(completedWorkday({ completedAt: phoneFinish }))
+    vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue([
+      ...journal.slice(0, 3),
+      { id: "event-4", type: "FINISH", occurredAt: phoneFinish },
+    ] as never)
+
+    await expect(reopen({ now: new Date("2026-09-15T14:31:00.000Z") })).resolves.toMatchObject({
+      kind: "success",
+      data: { workday: { status: "PAUSED", pausedAt: phoneFinish.toISOString(), completedAt: null } },
+    })
+    expect(firstCallData(prisma.mtmAgentWorkdayEvent.create)).toMatchObject({
+      occurredAt: phoneFinish,
+      serverReceivedAt: new Date("2026-09-15T14:31:00.000Z"),
+    })
+    expect(prisma.mtmAgentWorkday.update).toHaveBeenCalledWith({
+      where: { id: WORKDAY_ID },
+      data: { status: "PAUSED", pausedAt: phoneFinish, completedAt: null },
+    })
+  })
+
   it("serializes with every workday writer and fences the operation key", async () => {
     await reopen()
 
@@ -249,9 +292,14 @@ describe("manager reopen of today's finished Workforce workday", () => {
     ))).toBe(true)
   })
 
-  it("asks only about this employee's other open shift, approvals covering the date, and pending corrections of this day", async () => {
+  it("reads the journal in server application order and asks only about this employee's day", async () => {
     await reopen()
 
+    expect(prisma.mtmAgentWorkdayEvent.findMany).toHaveBeenCalledWith({
+      where: { organizationId: ORGANIZATION_ID, agentId: AGENT_ID, workdayId: WORKDAY_ID },
+      orderBy: [{ occurredAt: "asc" }, { appliedAt: { sort: "asc", nulls: "first" } }, { id: "asc" }],
+      select: { id: true, type: true, occurredAt: true },
+    })
     expect(prisma.mtmAgentWorkday.findFirst).toHaveBeenNthCalledWith(3, {
       where: {
         organizationId: ORGANIZATION_ID,
@@ -283,7 +331,6 @@ describe("manager reopen of today's finished Workforce workday", () => {
   })
 
   it("returns 404 semantics for an unknown workday before any transaction", async () => {
-    mockWorkdayLookups(null)
     vi.mocked(prisma.mtmAgentWorkday.findFirst).mockReset().mockResolvedValueOnce(null as never)
 
     await expect(reopen()).resolves.toEqual({ kind: "not_found" })
@@ -382,17 +429,6 @@ describe("manager reopen of today's finished Workforce workday", () => {
         journal.filter((event) => event.type !== "RESUME") as never,
       ),
     ],
-    [
-      "WORKFORCE_WORKDAY_REOPEN_HISTORY_INVALID",
-      "a finish claimed later than the server clock",
-      () => {
-        mockWorkdayLookups(completedWorkday({ completedAt: new Date("2026-09-15T14:33:00.000Z") }))
-        vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue([
-          ...journal.slice(0, 3),
-          { id: "event-4", type: "FINISH", occurredAt: new Date("2026-09-15T14:33:00.000Z") },
-        ] as never)
-      },
-    ],
   ])("answers %s for %s without writing anything", async (code, _label, arrange) => {
     arrange()
 
@@ -417,17 +453,18 @@ describe("manager reopen of today's finished Workforce workday", () => {
 
   it("acknowledges a retried operation once more without applying it twice", async () => {
     await reopen()
-    const ledger = vi.mocked(prisma.workforceWorkdayReopen.create).mock.calls[0]![0] as unknown as {
-      data: { requestHash: string }
-    }
+    const requestHash = firstCallData(prisma.workforceWorkdayReopen.create).requestHash
     vi.clearAllMocks()
+    vi.mocked(prisma.mtmAgentWorkdayEvent.create).mockReset()
+    vi.mocked(prisma.workforceWorkdayReopen.create).mockReset()
+    vi.mocked(prisma.mtmAgentWorkday.update).mockReset()
     vi.mocked(prisma.workforceWorkdayReopen.findFirst).mockResolvedValue({
       id: "reopen-1",
       workdayId: WORKDAY_ID,
       agentId: AGENT_ID,
       eventId: "event-reopen",
       actorUserId: MANAGER_USER_ID,
-      requestHash: ledger.data.requestHash,
+      requestHash,
     } as never)
     // The employee already resumed after the first, successful response.
     mockWorkdayLookups(completedWorkday({
@@ -457,10 +494,11 @@ describe("manager reopen of today's finished Workforce workday", () => {
     ["a different manager", { userId: "manager-user-2" }],
   ])("refuses to reuse an operation id with %s", async (_label, overrides) => {
     await reopen()
-    const ledger = vi.mocked(prisma.workforceWorkdayReopen.create).mock.calls[0]![0] as unknown as {
-      data: { requestHash: string }
-    }
+    const requestHash = firstCallData(prisma.workforceWorkdayReopen.create).requestHash
     vi.clearAllMocks()
+    vi.mocked(prisma.mtmAgentWorkdayEvent.create).mockReset()
+    vi.mocked(prisma.workforceWorkdayReopen.create).mockReset()
+    vi.mocked(prisma.mtmAgentWorkday.update).mockReset()
     mockWorkdayLookups()
     vi.mocked(prisma.workforceWorkdayReopen.findFirst).mockResolvedValue({
       id: "reopen-1",
@@ -468,7 +506,7 @@ describe("manager reopen of today's finished Workforce workday", () => {
       agentId: AGENT_ID,
       eventId: "event-reopen",
       actorUserId: MANAGER_USER_ID,
-      requestHash: ledger.data.requestHash,
+      requestHash,
     } as never)
 
     await expect(reopen(overrides)).resolves.toMatchObject({
@@ -514,132 +552,80 @@ describe("manager reopen of today's finished Workforce workday", () => {
  * the immutable journal replays, and the gap must never become worked time.
  */
 describe("reopened workday through the canonical state machine", () => {
-  type Row = Record<string, unknown>
   const SCOPE = { organizationId: ORGANIZATION_ID, agentId: AGENT_ID }
-  let clock = new Date("2026-09-15T00:00:00.000Z")
-  let workdays: Map<string, Row>
-  let events: Row[]
-  let reopens: Row[]
+  let memory: InMemoryWorkdayJournal
 
-  function matches(row: Row, where: Record<string, unknown> = {}): boolean {
-    return Object.entries(where).every(([key, condition]) => {
-      const value = row[key]
-      if (condition instanceof Date) return value instanceof Date && value.getTime() === condition.getTime()
-      if (condition && typeof condition === "object") {
-        const filter = condition as { in?: unknown[]; not?: unknown }
-        if (filter.in) return filter.in.includes(value)
-        if ("not" in filter) return value !== filter.not
-        throw new Error(`unsupported filter on ${key}`)
-      }
-      return value === condition
-    })
+  /** Moves the one server clock every writer reads (`new Date()` included). */
+  function serverClockAt(at: string): Date {
+    const now = new Date(at)
+    vi.setSystemTime(now)
+    memory.setClock(now)
+    return now
   }
 
-  function byOccurredAt(direction: "asc" | "desc") {
-    return (left: Row, right: Row) => {
-      const delta = (left.occurredAt as Date).getTime() - (right.occurredAt as Date).getTime()
-      return direction === "asc" ? delta || String(left.id).localeCompare(String(right.id)) : -delta
-    }
-  }
-
-  function workdayRow(id = WORKDAY_ID): Row {
-    const row = workdays.get(id)
-    if (!row) throw new Error("workday missing")
-    return row
-  }
-
-  async function act(action: "START" | "PAUSE" | "RESUME" | "FINISH", occurredAt: string) {
-    clock = new Date(occurredAt)
+  /** An employee action stamped by the phone at `phoneAt`, received at `serverAt`. */
+  async function act(action: "START" | "PAUSE" | "RESUME" | "FINISH", phoneAt: string, serverAt: string = phoneAt) {
+    const received = serverClockAt(serverAt)
     const parsed = parseMtmWorkdayEvent(
       action === "START"
-        ? { action, id: WORKDAY_ID, occurredAt }
-        : { action, workdayId: WORKDAY_ID, occurredAt },
-      `${action.toLowerCase()}-${occurredAt}`,
+        ? { action, id: WORKDAY_ID, occurredAt: phoneAt }
+        : { action, workdayId: WORKDAY_ID, occurredAt: phoneAt },
+      `${action.toLowerCase()}-${phoneAt}`,
       "Asia/Baku",
-      clock,
+      received,
     )
     expect(parsed.error).toBeNull()
-    const result = await applyMtmWorkdayEvent(prisma as never, SCOPE, parsed.input!)
-    expect(result.status).toBe("ok")
+    return applyMtmWorkdayEvent(prisma as never, SCOPE, parsed.input!)
+  }
+
+  function row(): MemoryRow {
+    return memory.workday(WORKDAY_ID)
   }
 
   function replayMatchesRow() {
     const facts = replayWorkforceWorkdayFacts({
       workdayId: WORKDAY_ID,
-      events: [...events].sort(byOccurredAt("asc")).map((event) => ({
+      events: memory.journal(WORKDAY_ID).map((event) => ({
         id: String(event.id),
-        type: event.type as "START",
+        type: event.type as WorkforceWorkdayEventType,
         occurredAt: (event.occurredAt as Date).toISOString(),
       })),
     })
-    const row = workdayRow()
-    expect(workforceReplayMatchesWorkdayCorrectionFacts(facts, workforceWorkdayCorrectionFacts(row as never))).toBe(true)
+    expect(workforceReplayMatchesWorkdayCorrectionFacts(facts, workforceWorkdayCorrectionFacts(row() as never))).toBe(true)
     return facts
   }
 
-  async function managerReopensAt(at: string) {
-    clock = new Date(at)
+  function managerReopensAt(serverAt: string) {
+    const now = serverClockAt(serverAt)
     return reopenWorkforceWorkday({
       organizationId: ORGANIZATION_ID,
       userId: MANAGER_USER_ID,
       actor: MANAGER,
       workdayId: WORKDAY_ID,
       input: {
-        operationId: `reopen-${at}`,
-        expectedUpdatedAt: (workdayRow().updatedAt as Date).toISOString(),
+        operationId: `reopen-${serverAt}`,
+        expectedUpdatedAt: (row().updatedAt as Date).toISOString(),
         reason: "Finished by mistake",
       },
-      now: clock,
+      now,
     })
   }
 
   beforeEach(() => {
     vi.clearAllMocks()
-    workdays = new Map()
-    events = []
-    reopens = []
+    // Only Date is faked: the state machine stamps appliedAt with new Date(),
+    // and the journal orders a REOPEN after its FINISH by that server time.
+    vi.useFakeTimers({ toFake: ["Date"] })
     vi.mocked(getMtmSettings).mockResolvedValue({ timezone: "Asia/Baku" } as never)
     vi.mocked(prisma.organization.findUnique).mockReset().mockResolvedValue({ features: [] } as never)
     vi.mocked(prisma.workforceTimeCorrection.findMany).mockReset().mockResolvedValue([] as never)
     vi.mocked(prisma.workforceTimesheetApproval.findFirst).mockReset().mockResolvedValue(null as never)
     vi.mocked(prisma.mtmHrmRequest.findFirst).mockReset().mockResolvedValue(null as never)
-    vi.mocked(prisma.mtmAgentWorkday.findFirst).mockReset().mockImplementation((async (args: { where?: Row }) => {
-      const row = [...workdays.values()].find((candidate) => matches(candidate, args.where))
-      return row ? { ...row, agent: { userId: AGENT_USER_ID } } : null
-    }) as never)
-    vi.mocked(prisma.mtmAgentWorkday.create).mockReset().mockImplementation((async (args: { data: Row }) => {
-      const row = { totalPausedSeconds: 0, pausedAt: null, completedAt: null, ...args.data, createdAt: clock, updatedAt: clock }
-      workdays.set(String(row.id), row)
-      return { ...row }
-    }) as never)
-    vi.mocked(prisma.mtmAgentWorkday.update).mockReset().mockImplementation((async (args: { where: { id: string }; data: Row }) => {
-      const row = { ...workdayRow(args.where.id), ...args.data, updatedAt: clock }
-      workdays.set(args.where.id, row)
-      return { ...row }
-    }) as never)
-    vi.mocked(prisma.mtmAgentWorkdayEvent.findFirst).mockReset().mockImplementation((async (args: {
-      where?: Row
-      orderBy?: { occurredAt?: "asc" | "desc" }
-    }) => {
-      const found = events.filter((event) => matches(event, args.where)).sort(byOccurredAt(args.orderBy?.occurredAt ?? "asc"))
-      return found[0] ?? null
-    }) as never)
-    vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockReset().mockImplementation((async (args: { where?: Row }) => (
-      events.filter((event) => matches(event, args.where)).sort(byOccurredAt("asc"))
-    )) as never)
-    vi.mocked(prisma.mtmAgentWorkdayEvent.create).mockReset().mockImplementation((async (args: { data: Row }) => {
-      const event = { id: `event-${events.length + 1}`, ...args.data }
-      events.push(event)
-      return { ...event }
-    }) as never)
-    vi.mocked(prisma.workforceWorkdayReopen.findFirst).mockReset().mockImplementation((async (args: { where?: Row }) => (
-      reopens.find((reopenRow) => matches(reopenRow, args.where)) ?? null
-    )) as never)
-    vi.mocked(prisma.workforceWorkdayReopen.create).mockReset().mockImplementation((async (args: { data: Row }) => {
-      const reopenRow = { id: `reopen-${reopens.length + 1}`, ...args.data }
-      reopens.push(reopenRow)
-      return { id: reopenRow.id }
-    }) as never)
+    memory = installInMemoryWorkdayJournal(prisma as unknown as MtmPrismaMock, { agentUserId: AGENT_USER_ID })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it("banks the gap from the first finish to RESUME as pause and replays the row exactly", async () => {
@@ -647,24 +633,30 @@ describe("reopened workday through the canonical state machine", () => {
     await act("FINISH", "2026-09-15T13:00:00.000Z")
 
     await expect(managerReopensAt("2026-09-15T13:20:00.000Z")).resolves.toMatchObject({ kind: "success" })
-    expect(workdayRow()).toMatchObject({
+    expect(row()).toMatchObject({
       status: "PAUSED",
       pausedAt: new Date("2026-09-15T13:00:00.000Z"),
       completedAt: null,
       totalPausedSeconds: 0,
     })
+    expect(memory.journal(WORKDAY_ID).at(-1)).toMatchObject({
+      type: "REOPEN",
+      occurredAt: new Date("2026-09-15T13:00:00.000Z"),
+      appliedAt: new Date("2026-09-15T13:20:00.000Z"),
+    })
+    expect(memory.reopens[0]).toMatchObject({ occurredAt: new Date("2026-09-15T13:20:00.000Z") })
     replayMatchesRow()
 
-    await act("RESUME", "2026-09-15T13:50:00.000Z")
-    await act("FINISH", "2026-09-15T15:00:00.000Z")
+    await expect(act("RESUME", "2026-09-15T13:50:00.000Z")).resolves.toMatchObject({ status: "ok" })
+    await expect(act("FINISH", "2026-09-15T15:00:00.000Z")).resolves.toMatchObject({ status: "ok" })
 
-    expect(workdayRow()).toMatchObject({
+    expect(row()).toMatchObject({
       status: "COMPLETED",
       completedAt: new Date("2026-09-15T15:00:00.000Z"),
       totalPausedSeconds: 50 * 60,
     })
     const facts = replayMatchesRow()
-    expect(events.map((event) => event.type)).toEqual(["START", "FINISH", "REOPEN", "RESUME", "FINISH"])
+    expect(memory.journal(WORKDAY_ID).map((event) => event.type)).toEqual(["START", "FINISH", "REOPEN", "RESUME", "FINISH"])
     expect(calculateWorkforceTimesheetDay({
       asOf: "2026-09-15T15:00:00.000Z",
       schedule: {
@@ -686,32 +678,56 @@ describe("reopened workday through the canonical state machine", () => {
     }).fact).toMatchObject({ workedSeconds: 10 * 60 * 60 - 50 * 60, pausedSeconds: 50 * 60 })
   })
 
+  it("reopens one minute after a finish the phone stamped three minutes ahead", async () => {
+    await act("START", "2026-09-15T05:00:00.000Z")
+    await expect(act("FINISH", "2026-09-15T13:03:00.000Z", "2026-09-15T13:00:00.000Z"))
+      .resolves.toMatchObject({ status: "ok" })
+
+    await expect(managerReopensAt("2026-09-15T13:01:00.000Z")).resolves.toMatchObject({
+      kind: "success",
+      data: { workday: { status: "PAUSED", pausedAt: "2026-09-15T13:03:00.000Z" } },
+    })
+    replayMatchesRow()
+
+    await expect(act("RESUME", "2026-09-15T13:06:00.000Z", "2026-09-15T13:05:00.000Z"))
+      .resolves.toMatchObject({ status: "ok" })
+    await expect(act("FINISH", "2026-09-15T15:00:00.000Z")).resolves.toMatchObject({ status: "ok" })
+    expect(row()).toMatchObject({ status: "COMPLETED", totalPausedSeconds: 3 * 60 })
+    replayMatchesRow()
+  })
+
+  it("accepts a RESUME the phone stamped before the reopen but after the finish", async () => {
+    await act("START", "2026-09-15T05:00:00.000Z")
+    await act("FINISH", "2026-09-15T13:00:00.000Z")
+    await expect(managerReopensAt("2026-09-15T13:05:00.000Z")).resolves.toMatchObject({ kind: "success" })
+
+    // The phone runs behind the server: its RESUME claims 13:04:30.
+    await expect(act("RESUME", "2026-09-15T13:04:30.000Z", "2026-09-15T13:05:10.000Z"))
+      .resolves.toMatchObject({ status: "ok" })
+
+    expect(row()).toMatchObject({ status: "STARTED", pausedAt: null, totalPausedSeconds: 270 })
+    replayMatchesRow()
+  })
+
+  it("still refuses a RESUME claimed before the finish it would continue", async () => {
+    await act("START", "2026-09-15T05:00:00.000Z")
+    await act("FINISH", "2026-09-15T13:00:00.000Z")
+    await managerReopensAt("2026-09-15T13:20:00.000Z")
+
+    await expect(act("RESUME", "2026-09-15T12:59:00.000Z", "2026-09-15T13:21:00.000Z")).resolves.toMatchObject({
+      status: "conflict",
+      code: "MTM_WORKDAY_EVENT_OUT_OF_ORDER",
+    })
+    replayMatchesRow()
+  })
+
   it("banks the whole reopened pause when the employee finishes again without resuming", async () => {
     await act("START", "2026-09-15T05:00:00.000Z")
     await act("FINISH", "2026-09-15T13:00:00.000Z")
     await expect(managerReopensAt("2026-09-15T13:20:00.000Z")).resolves.toMatchObject({ kind: "success" })
     await act("FINISH", "2026-09-15T14:00:00.000Z")
 
-    expect(workdayRow()).toMatchObject({ status: "COMPLETED", totalPausedSeconds: 60 * 60 })
-    replayMatchesRow()
-  })
-
-  it("keeps the employee from resuming before the moment of the reopen", async () => {
-    await act("START", "2026-09-15T05:00:00.000Z")
-    await act("FINISH", "2026-09-15T13:00:00.000Z")
-    await managerReopensAt("2026-09-15T13:20:00.000Z")
-
-    clock = new Date("2026-09-15T13:21:00.000Z")
-    const parsed = parseMtmWorkdayEvent(
-      { action: "RESUME", workdayId: WORKDAY_ID, occurredAt: "2026-09-15T13:10:00.000Z" },
-      "resume-before-reopen",
-      "Asia/Baku",
-      clock,
-    )
-    await expect(applyMtmWorkdayEvent(prisma as never, SCOPE, parsed.input!)).resolves.toMatchObject({
-      status: "conflict",
-      code: "MTM_WORKDAY_EVENT_OUT_OF_ORDER",
-    })
+    expect(row()).toMatchObject({ status: "COMPLETED", totalPausedSeconds: 60 * 60 })
     replayMatchesRow()
   })
 
@@ -725,8 +741,8 @@ describe("reopened workday through the canonical state machine", () => {
     await act("RESUME", "2026-09-15T15:15:00.000Z")
     await act("FINISH", "2026-09-15T17:00:00.000Z")
 
-    expect(workdayRow()).toMatchObject({ status: "COMPLETED", totalPausedSeconds: 45 * 60 })
-    expect(reopens).toHaveLength(2)
+    expect(row()).toMatchObject({ status: "COMPLETED", totalPausedSeconds: 45 * 60 })
+    expect(memory.reopens).toHaveLength(2)
     replayMatchesRow()
   })
 
@@ -737,7 +753,7 @@ describe("reopened workday through the canonical state machine", () => {
       kind: "conflict",
       code: "WORKFORCE_WORKDAY_REOPEN_NOT_COMPLETED",
     })
-    expect(events.map((event) => event.type)).toEqual(["START"])
-    expect(reopens).toHaveLength(0)
+    expect(memory.events.map((event) => event.type)).toEqual(["START"])
+    expect(memory.reopens).toHaveLength(0)
   })
 })

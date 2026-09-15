@@ -70,8 +70,10 @@ describe("Workforce workday reopen migrations", () => {
     )
     expect(ledgerMigration.match(/CREATE POLICY/g)).toHaveLength(2)
     expect(ledgerMigration).toContain(
-      'CREATE TRIGGER workforce_workday_reopens_append_only\n  BEFORE UPDATE OR DELETE ON "workforce_workday_reopens"\n  FOR EACH ROW EXECUTE FUNCTION workforce_reject_immutable_mutation();',
+      'CREATE TRIGGER workforce_workday_reopens_append_only\n  BEFORE UPDATE OR DELETE ON "workforce_workday_reopens"\n  FOR EACH ROW EXECUTE FUNCTION workforce_reject_workday_reopen_mutation();',
     )
+    expect(functionBody(ledgerMigration, "workforce_reject_workday_reopen_mutation"))
+      .toContain("RAISE EXCEPTION 'Workforce workday reopen facts are immutable' USING ERRCODE = '55000';")
     expect(ledgerMigration).toContain(
       "EXECUTE format('GRANT SELECT, INSERT ON TABLE public.%I TO %I', 'workforce_workday_reopens', app_owner);",
     )
@@ -118,6 +120,31 @@ describe("Workforce workday reopen migrations", () => {
     expect(guard.indexOf("NULLIF(reopen_id, '')")).toBeLessThan(
       guard.indexOf("Completed Workforce workday cannot reopen or become invalid"),
     )
+    // An undo is an ordinary FINISH of a PAUSED day: the guard returns before
+    // any COMPLETED-only branch, so it needs no reopen or correction context.
+    expect(guard.indexOf(`IF OLD."status" <> 'COMPLETED' THEN`)).toBeLessThan(guard.indexOf("NULLIF(reopen_id, '')"))
+    expect(guard).not.toMatch(/now\(\)|CURRENT_TIMESTAMP|occurredAt/)
+  })
+
+  it("creates every function its triggers run, so a database built by `prisma db push` can apply it", () => {
+    // db push creates tables but no functions; the shared H3 helper
+    // workforce_reject_immutable_mutation() does not exist there.
+    const executed = [...ledgerMigration.matchAll(/EXECUTE FUNCTION (\w+)\(\)/g)].map((match) => match[1])
+
+    expect(executed).toEqual(["workforce_validate_workday_reopen_insert", "workforce_reject_workday_reopen_mutation"])
+    for (const name of executed) {
+      expect(ledgerMigration, name).toContain(`CREATE OR REPLACE FUNCTION ${name}()`)
+    }
+    expect(ledgerMigration).not.toContain("workforce_reject_immutable_mutation")
+  })
+
+  it("carries the rollback rule: the enum value and the REOPEN replay case stay", () => {
+    for (const sql of [enumMigration, ledgerMigration]) {
+      expect(sql).toMatch(/-- Rollback:/)
+      expect(sql).toContain("REOPEN case of the journal")
+    }
+    expect(enumMigration).toContain("never drop this value")
+    expect(ledgerMigration).toContain("a revert must keep this table, the")
   })
 
   it("admits a ledger row only for this workday's REOPEN event, current facts and a non-employee actor", () => {
@@ -130,6 +157,10 @@ describe("Workforce workday reopen migrations", () => {
     expect(validator).toContain('workforce_workday_fact_matches(NEW."beforeFacts", workday_row)')
     expect(validator).toContain(`NEW."afterFacts"->>'pausedAt' IS DISTINCT FROM NEW."beforeFacts"->>'completedAt'`)
     expect(validator).toContain(`event_type <> 'REOPEN'`)
+    // The REOPEN is recorded at the finish it reopens; the ledger's own
+    // occurredAt is the server time the manager acted and is not compared.
+    expect(validator).toContain('event_occurred_at IS DISTINCT FROM workday_row."completedAt"')
+    expect(validator).not.toContain('NEW."occurredAt"')
     expect(validator).toContain('event_workday_id <> NEW."workdayId"')
     expect(validator).toContain('linked_user_id = NEW."actorUserId"')
   })

@@ -225,7 +225,7 @@ export const POST = withMobileRls(async (req, auth) => {
           type: { in: [...MTM_WORKDAY_PAUSE_EVENT_TYPES] },
         },
         orderBy: { occurredAt: "asc" },
-        select: { type: true, occurredAt: true },
+        select: { type: true, occurredAt: true, appliedAt: true },
       })
       if (isDuringMtmWorkdayPause(recordedAt, mtmWorkdayPauses(pauseEvents))) {
         return NextResponse.json(
@@ -490,7 +490,7 @@ export const GET = withMobileRls(async (req, auth) => {
           type: { in: [...MTM_WORKDAY_PAUSE_EVENT_TYPES] },
         },
         orderBy: { occurredAt: "asc" },
-        select: { type: true, occurredAt: true },
+        select: { type: true, occurredAt: true, appliedAt: true },
       }),
     ])
     const workforceEnabled = auth.tenantCapabilities?.workforceHrm === true
