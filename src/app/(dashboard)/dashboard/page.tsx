@@ -30,6 +30,7 @@ import { resolveQuickActions } from "@/lib/dashboard/quick-actions"
 import type { DashboardWidgetConfig } from "@/lib/dashboard/widget-registry"
 import { hasModule } from "@/lib/modules"
 import { orgFromSession } from "@/lib/nav-items"
+import { useNavOrgContext } from "@/hooks/use-mtm-org-settings"
 
 type WidgetConfigMap = Record<string, Partial<DashboardWidgetConfig>>
 type DashboardTranslator = (key: string, values?: Record<string, string | number>) => string
@@ -177,6 +178,10 @@ export default function DashboardPage() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   useAutoTour("dashboard")
   const org = useMemo(() => orgFromSession(session?.user), [session?.user])
+  // Quick actions are a menu surface: they follow the organization switches
+  // (field contacts, pharmacy promotions) like the sidebar does. Kept apart
+  // from `org` so loading the switches does not re-run the data effects.
+  const navOrg = useNavOrgContext(session?.user)
 
   useEffect(() => {
     let cancelled = false
@@ -243,8 +248,8 @@ export default function DashboardPage() {
   // Resolved against this user's navigation, so an action for a module the
   // tenant no longer has drops out instead of rendering a link into a 403.
   const quickActions = useMemo(
-    () => resolveQuickActions(quickActionHrefs, org),
-    [org, quickActionHrefs],
+    () => resolveQuickActions(quickActionHrefs, navOrg),
+    [navOrg, quickActionHrefs],
   )
 
   // Tell the shell whether the hero is showing a Da Vinci field, so it can drop
