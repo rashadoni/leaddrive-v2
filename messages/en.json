@@ -11113,6 +11113,7 @@
     "policyWindowConflict": "Another active rule with the same team, visit type and priority already covers these dates. Change the priority or the dates.",
     "policyNotFound": "This rule no longer exists. Refresh the page.",
     "policiesDisabled": "Visit rules are turned off for the organization.",
+    "policyPhotoMinAboveMax": "The photo minimum cannot exceed the per-visit photo limit. Lower the minimum or raise the photo limit in the settings.",
     "previewAgentNotFound": "This employee is not available for the preview.",
     "previewCustomerNotFound": "This customer is not available for the preview.",
     "validationFailed": "Some fields are filled in incorrectly. Check the form and try again.",
@@ -16324,6 +16325,8 @@
     }
   },
   "mtmVisitPolicies": {
+    "featureDisabled": "Visit rules are turned off — existing rules are not applied.",
+    "featureDisabledAdminHint": "To turn them on, enable the visit action policies switch in the field settings on this page. Saved rules were not deleted and will apply again.",
     "title": "Visit action policies",
     "description": "Set the actions agents see for each team and visit type. Rules are snapshotted when a visit starts.",
     "activeCount": "{count} active",

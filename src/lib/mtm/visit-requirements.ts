@@ -1,6 +1,9 @@
 import { Prisma } from "@prisma/client"
 import { resolveMtmVisitPolicy } from "./visit-policies"
 
+/** MTM_SETTING_DEFAULTS.maxPhotosPerVisit — kept literal to avoid importing the prisma-bound settings module. */
+const DEFAULT_MAX_PHOTOS_PER_VISIT = 10
+
 /**
  * Serialize every writer that can create a CHECKED_IN visit for one agent.
  * The transaction-scoped key is shared by direct web, web PWA sync, and native
@@ -167,11 +170,40 @@ export async function getVisitCompletionReadiness(
   }
   completed.set("PHOTO", Math.max(completed.get("PHOTO") ?? 0, visit._count.photos))
 
-  const missing = (visit.requirementSnapshot?.requirements ?? []).flatMap((requirement) => {
+  const requirements = visit.requirementSnapshot?.requirements ?? []
+  // A PHOTO minimum above maxPhotosPerVisit can never be met — uploads stop at
+  // the cap. Rules are validated on save now, but a snapshot taken from an
+  // older rule (or after the cap was lowered) must not lock the agent in the
+  // visit: the requirement counts as met at the cap. Read only when needed.
+  const photoCapRequirement = requirements.find((requirement) => (
+    requirement.actionKey === "PHOTO" && requirement.minCount > (completed.get("PHOTO") ?? 0)
+  ))
+  let maxPhotosPerVisit: number | null = null
+  if (photoCapRequirement && tx.mtmSetting) {
+    const row = await tx.mtmSetting.findFirst({
+      where: { organizationId: input.organizationId, key: "maxPhotosPerVisit" },
+      select: { value: true },
+    })
+    const parsed = row?.value == null ? Number.NaN : Number(row.value)
+    maxPhotosPerVisit = Number.isFinite(parsed) ? parsed : DEFAULT_MAX_PHOTOS_PER_VISIT
+    if (photoCapRequirement.minCount > maxPhotosPerVisit) {
+      console.warn("[MTM/visit-requirements] PHOTO minCount above maxPhotosPerVisit; capping at the limit", {
+        organizationId: input.organizationId,
+        visitId: visit.id,
+        minCount: photoCapRequirement.minCount,
+        maxPhotosPerVisit,
+      })
+    }
+  }
+
+  const missing = requirements.flatMap((requirement) => {
     const completedCount = completed.get(requirement.actionKey) ?? 0
-    return completedCount < requirement.minCount ? [{
+    const requiredCount = requirement.actionKey === "PHOTO" && maxPhotosPerVisit !== null
+      ? Math.min(requirement.minCount, Math.max(0, maxPhotosPerVisit))
+      : requirement.minCount
+    return completedCount < requiredCount ? [{
       actionKey: requirement.actionKey,
-      requiredCount: requirement.minCount,
+      requiredCount,
       completedCount,
       allowWaiver: requirement.allowWaiver,
       code: "MTM_VISIT_ACTION_REQUIRED" as const,

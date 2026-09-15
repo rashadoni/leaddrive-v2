@@ -56,6 +56,44 @@ describe("visit policy API", () => {
     expect(prisma.mtmVisitPolicy.create).not.toHaveBeenCalled()
   })
 
+  it("returns the caller's access with the disabled flag so the screen can word the notice", async () => {
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "visitPoliciesEnabled", value: false }] as never)
+    const response = await listPolicies(new NextRequest(new URL("/api/v1/mtm/visit-policies", "http://localhost:3000")))
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.data).toMatchObject({ policies: [], featureDisabled: true, access: { kind: "admin", canWriteOrganizationWide: true } })
+    expect(prisma.mtmVisitPolicy.findMany).not.toHaveBeenCalled()
+  })
+
+  it("refuses a PHOTO minimum above maxPhotosPerVisit on create and update", async () => {
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "maxPhotosPerVisit", value: 5 }] as never)
+    const actions = [{ actionKey: "PHOTO", mode: "REQUIRED", minCount: 6, allowWaiver: false }]
+    const created = await createPolicy(request("/api/v1/mtm/visit-policies", {
+      name: "Too many photos",
+      visitType: "DEFAULT",
+      priority: 100,
+      effectiveFrom: "2026-07-13T00:00:00.000Z",
+      isActive: true,
+      actions,
+    }))
+    expect(created.status).toBe(400)
+    expect(await created.json()).toMatchObject({ code: "MTM_POLICY_PHOTO_MIN_ABOVE_MAX", minCount: 6, maxPhotosPerVisit: 5 })
+    expect(prisma.mtmVisitPolicy.create).not.toHaveBeenCalled()
+
+    vi.mocked(prisma.mtmVisitPolicy.findFirst).mockResolvedValueOnce({ id: "policy-1", teamId: null, actions: [] } as never)
+    const updated = await updatePolicy(
+      new NextRequest(new URL("/api/v1/mtm/visit-policies/policy-1", "http://localhost:3000"), {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ actions }),
+      }),
+      { params: Promise.resolve({ id: "policy-1" }) },
+    )
+    expect(updated.status).toBe(400)
+    expect(await updated.json()).toMatchObject({ code: "MTM_POLICY_PHOTO_MIN_ABOVE_MAX" })
+    expect(prisma.mtmVisitPolicy.update).not.toHaveBeenCalled()
+  })
+
   it("rejects an overlapping active policy at the same scope and priority", async () => {
     vi.mocked(prisma.mtmVisitPolicy.findFirst).mockResolvedValue({ id: "policy-existing", name: "Existing" } as never)
     const response = await createPolicy(request("/api/v1/mtm/visit-policies", {

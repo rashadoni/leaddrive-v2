@@ -1187,6 +1187,47 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
     }))
   })
 
+  it("refuses an out-of-zone check-in without an alert when alertOutOfZone is off, and alerts when on", async () => {
+    for (const alertOutOfZone of [false, true]) {
+      vi.mocked(prisma.mtmAlert.create).mockClear()
+      vi.mocked(prisma.mtmVisit.create).mockClear()
+      vi.mocked(prisma.mtmRoutePoint.findFirst).mockResolvedValue({
+        id: "point-1",
+        routeId: "route-1",
+        customerId: "cust-1",
+        contactId: null,
+        route: { status: "PLANNED", assignments: [] },
+      } as any)
+      vi.mocked(prisma.mtmCustomer.findFirst).mockResolvedValue({
+        id: "cust-1", category: "B", objectType: "CLINIC", latitude: 40.4, longitude: 49.8, geofenceRadius: 50,
+      } as any)
+      vi.mocked(prisma.mtmSetting.findFirst).mockImplementation((async ({ where }: any) => (
+        where.key === "alertOutOfZone" ? { value: alertOutOfZone } : null
+      )) as never)
+
+      const response = await PushPOST(makePushReq({ operations: [{
+        operationId: `op-out-of-zone-${alertOutOfZone}`,
+        op: "create",
+        entity: "visits",
+        data: {
+          id: `field-visit-zone-${alertOutOfZone}`,
+          customerId: "cust-1",
+          routeId: "route-1",
+          routePointId: "point-1",
+          checkInLat: 41.0,
+          checkInLng: 50.5,
+        },
+        clientTimestamp: Date.now(),
+      }] }))
+      const body = await response.json()
+
+      expect(body.results[0]).toMatchObject({ status: "conflict", serverData: { code: "MTM_VISIT_OUT_OF_ZONE", geofenceRadius: 50 } })
+      expect(prisma.mtmVisit.create).not.toHaveBeenCalled()
+      expect(prisma.mtmAlert.create).toHaveBeenCalledTimes(alertOutOfZone ? 1 : 0)
+    }
+    vi.mocked(prisma.mtmSetting.findFirst).mockResolvedValue(null)
+  })
+
   it("rejects an ad-hoc contact outside the tenant customer before visit creation", async () => {
     vi.mocked(prisma.mtmContact.findFirst).mockResolvedValue(null)
 

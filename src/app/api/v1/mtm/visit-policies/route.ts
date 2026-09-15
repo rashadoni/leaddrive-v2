@@ -5,6 +5,7 @@ import { withRouteFieldWebRlsAuth } from "@/lib/with-mtm-rls-auth"
 import { VisitPolicyCreateSchema, parseBody } from "@/lib/mtm-validators"
 import { writeMtmAudit } from "@/lib/mtm-audit"
 import { getMtmSettings } from "@/lib/mtm-settings"
+import { photoMinAboveMaxResponseBody, photoMinCountAboveMax } from "@/lib/mtm/visit-policies"
 import {
   visitPolicyAccessFor,
   visitPolicyReadDenied,
@@ -37,7 +38,16 @@ export const GET = withRouteFieldWebRlsAuth("read", async (_req, auth) => {
   const access = await visitPolicyAccessFor(auth)
   if (access.kind === "none") return visitPolicyReadDenied(access)
   const settings = await getMtmSettings(auth.orgId)
-  if (!settings.visitPoliciesEnabled) return NextResponse.json({ success: true, data: { policies: [], featureDisabled: true } })
+  const accessBlock = {
+    // Lets the settings screen word a read-only rule for the right person.
+    kind: access.kind,
+    canWriteOrganizationWide: access.kind === "admin",
+    writableTeamIds: access.kind === "admin" ? null : access.writableTeamIds,
+  }
+  // Off: stored rules are not listed and — since resolveMtmVisitPolicy honours
+  // the same switch — not applied either. `access` still tells the screen who
+  // is looking, so an administrator gets the "turn it on" hint.
+  if (!settings.visitPoliciesEnabled) return NextResponse.json({ success: true, data: { policies: [], featureDisabled: true, access: accessBlock } })
   // Managers and supervisors see the rules that apply to their people:
   // organization-wide rules plus rules bound to their teams.
   const scopeWhere: Prisma.MtmVisitPolicyWhereInput = access.kind === "admin"
@@ -55,12 +65,7 @@ export const GET = withRouteFieldWebRlsAuth("read", async (_req, auth) => {
     success: true,
     data: {
       policies,
-      access: {
-        // Lets the settings screen word a read-only rule for the right person.
-        kind: access.kind,
-        canWriteOrganizationWide: access.kind === "admin",
-        writableTeamIds: access.kind === "admin" ? null : access.writableTeamIds,
-      },
+      access: accessBlock,
     },
   })
 })
@@ -74,6 +79,10 @@ export const POST = withRouteFieldWebRlsAuth("write", async (req, auth) => {
   const parsed = parseBody(VisitPolicyCreateSchema, await req.json().catch(() => null))
   if (!parsed.ok) return parsed.response
   const body = parsed.data
+  const photoMinAboveMax = photoMinCountAboveMax(body.actions, settings.maxPhotosPerVisit)
+  if (photoMinAboveMax !== null) {
+    return NextResponse.json(photoMinAboveMaxResponseBody(photoMinAboveMax, settings.maxPhotosPerVisit), { status: 400 })
+  }
   const visitType = body.visitType.toUpperCase()
   const effectiveFrom = new Date(body.effectiveFrom)
   const effectiveTo = body.effectiveTo ? new Date(body.effectiveTo) : null

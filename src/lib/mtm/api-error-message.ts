@@ -18,6 +18,7 @@ export type MtmApiErrorKey =
   | "policyWindowConflict"
   | "policyNotFound"
   | "policiesDisabled"
+  | "policyPhotoMinAboveMax"
   | "previewAgentNotFound"
   | "previewCustomerNotFound"
   | "validationFailed"
@@ -37,6 +38,7 @@ const CODE_KEYS: Record<string, MtmApiErrorKey> = {
   MTM_POLICY_WINDOW_CONFLICT: "policyWindowConflict",
   MTM_POLICY_NOT_FOUND: "policyNotFound",
   MTM_VISIT_POLICIES_DISABLED: "policiesDisabled",
+  MTM_POLICY_PHOTO_MIN_ABOVE_MAX: "policyPhotoMinAboveMax",
   MTM_VISIT_AGENT_NOT_FOUND: "previewAgentNotFound",
   MTM_VISIT_CUSTOMER_NOT_FOUND: "previewCustomerNotFound",
   MTM_POLICY_PREVIEW_FAILED: "policyPreviewFailed",

@@ -11109,6 +11109,7 @@
     "policyWindowConflict": "Bu tarixləri eyni komanda, ziyarət növü və prioritetli başqa aktiv qayda artıq əhatə edir. Prioriteti və ya tarixləri dəyişin.",
     "policyNotFound": "Bu qayda artıq yoxdur. Səhifəni yeniləyin.",
     "policiesDisabled": "Ziyarət qaydaları təşkilat üçün söndürülüb.",
+    "policyPhotoMinAboveMax": "Foto minimumu bir ziyarət üçün icazə verilən foto limitindən çox ola bilməz. Minimumu azaldın və ya parametrlərdə foto limitini artırın.",
     "previewAgentNotFound": "Bu əməkdaş önbaxış üçün əlçatan deyil.",
     "previewCustomerNotFound": "Bu müştəri önbaxış üçün əlçatan deyil.",
     "validationFailed": "Bəzi sahələr səhv doldurulub. Formanı yoxlayıb yenidən cəhd edin.",
@@ -16320,6 +16321,8 @@
     }
   },
   "mtmVisitPolicies": {
+    "featureDisabled": "Ziyarət qaydaları söndürülüb — mövcud qaydalar tətbiq olunmur.",
+    "featureDisabledAdminHint": "Yandırmaq üçün bu səhifədəki sahə parametrlərində ziyarət əməliyyatları qaydaları açarını aktivləşdirin. Saxlanmış qaydalar silinməyib və yenidən tətbiq olunacaq.",
     "title": "Ziyarət əməliyyatları qaydaları",
     "description": "Hər agent qrupu və ziyarət növü üçün görünən əməliyyatları təyin edin. Qaydalar ziyarət başlayanda sabitlənir.",
     "activeCount": "{count} aktiv",

@@ -773,6 +773,22 @@ describe("POST /api/v1/mtm/visits", () => {
     expect(prisma.mtmAlert.create).not.toHaveBeenCalled()
   })
 
+  it("clamps the customer radius like both sync paths (5 m is not a real geofence → 100 m)", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(prisma.mtmCustomer.findFirst).mockResolvedValue({
+      id: "cust-1", name: "Customer A", category: "B", objectType: "OTHER", latitude: 40.41, longitude: 49.87, geofenceRadius: 5,
+    } as any)
+    vi.mocked(calculateDistance).mockReturnValue(60) // > 5 m raw, < 100 m clamped
+    vi.mocked(prisma.mtmVisit.create).mockResolvedValue({ id: "v-clamped" } as any)
+
+    const res = await POST(makePostReq({
+      agentId: "agent-1", customerId: "cust-1",
+      latitude: 40.4095, longitude: 49.868,
+    }))
+    expect(res.status).toBe(201)
+    expect(prisma.mtmAlert.create).not.toHaveBeenCalled()
+  })
+
   it("blocks visit when outside geofence and no force flag", async () => {
     vi.mocked(getOrgId).mockResolvedValue(ORG)
     vi.mocked(prisma.mtmCustomer.findFirst).mockResolvedValue({
