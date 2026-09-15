@@ -444,6 +444,17 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
     expect(directions).toContain("PHARMACY")
   })
 
+  it("sends the organization's check-in zone as check-in enforces it", async () => {
+    expect((await (await GET(request())).json()).data.policies.checkInGeofenceRadiusMeters).toBe(100)
+
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "geofenceRadius", value: 250 }] as never)
+    expect((await (await GET(request())).json()).data.policies.checkInGeofenceRadiusMeters).toBe(250)
+
+    // Clamped like check-in: a stored 50000 is enforced as 10000.
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "geofenceRadius", value: 50000 }] as never)
+    expect((await (await GET(request())).json()).data.policies.checkInGeofenceRadiusMeters).toBe(10000)
+  })
+
   it("reports pharmacy promotions as enabled for a tenant that never configured the switch", async () => {
     const json = await (await GET(request())).json()
     expect(json.data.policies.pharmacyPromotionsEnabled).toBe(true)

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withMobileRls } from "@/lib/with-mobile-rls"
 import { getMtmSettings } from "@/lib/mtm-settings"
+import { checkInGeofenceRadius } from "@/lib/mtm/check-in-geofence"
 import {
   hasMobilePermission,
   mobileCapabilities,
@@ -471,6 +472,11 @@ export const GET = withMobileRls(async (req, auth) => {
           // screens and entry points; promotion APIs keep answering and older
           // APKs keep showing them.
           pharmacyPromotionsEnabled: settings.pharmacyPromotionsEnabled !== false,
+          // The organization's check-in zone, as check-in enforces it. The app
+          // checked a hard-coded 100 m before sending and turned agents back at
+          // 150 m when the zone was 250 m (Redmi Pad SE, 2026-09-15). A
+          // customer's own radius still arrives with its route point.
+          checkInGeofenceRadiusMeters: checkInGeofenceRadius(null, settings.geofenceRadius),
           workforce: {
             enabled: workforceEnabled,
             configVersion: attendance.configVersion,
