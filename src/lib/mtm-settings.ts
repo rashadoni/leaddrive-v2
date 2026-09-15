@@ -110,6 +110,14 @@ export const MTM_SETTING_DEFAULTS = {
   // deletes data and never gates the contact APIs: visits, imports and old
   // APKs keep reading contacts. Default ON — no change for existing tenants.
   fieldContactsEnabled: true,
+  // Pharmacy promotions as a whole (menu, /mtm/promotions pages, the customer
+  // card tab, the agent app's promotion screens via bootstrap
+  // `policies.pharmacyPromotionsEnabled`). Pharma tenants need them; an
+  // order-taking tenant does not. OFF only hides: promotion APIs, the offline
+  // outbox drain and all data stay. Independent of
+  // `pharmacyPromotionPostingEnabled`, which governs submit/review/posting.
+  // Default ON — no change for existing tenants.
+  pharmacyPromotionsEnabled: true,
 } as const
 
 type WidenSetting<T> = T extends boolean

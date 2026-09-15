@@ -16042,9 +16042,11 @@
     "hintVisitPolicies": "Enable team-specific required, optional, and hidden visit actions",
     "lblExcelImports": "Excel imports",
     "hintExcelImports": "Allow authorized users to validate and apply MTM Excel workbooks",
-    "groupFieldContacts": "Field contacts",
+    "groupModules": "Modules",
     "lblFieldContacts": "Field contacts (doctors, pharmacists, etc.)",
-    "hintFieldContacts": "When off, contacts are hidden from the menu and the agent app; no data is deleted."
+    "hintFieldContacts": "When off, contacts are hidden from the menu and the agent app; no data is deleted.",
+    "lblPharmacyPromotions": "Pharmacy promotions",
+    "hintPharmacyPromotions": "When off, hidden from the menu and the agent app; no data is deleted."
   },
   "mtmKpiPolicyAdmin": {
     "title": "Plan and GPS KPI formula approval",
@@ -24843,6 +24845,12 @@
   "mtmFieldContactsDisabled": {
     "title": "Field contacts are turned off",
     "body": "Your organization has hidden field contacts (doctors, pharmacists, etc.) from the menu and the agent app. No data was deleted.",
+    "openSettings": "Turn on in settings",
+    "askAdmin": "Ask an administrator to turn them back on."
+  },
+  "mtmPharmacyPromotionsDisabled": {
+    "title": "Pharmacy promotions are turned off",
+    "body": "Your organization has hidden pharmacy promotions from the menu and the agent app. No data was deleted.",
     "openSettings": "Turn on in settings",
     "askAdmin": "Ask an administrator to turn them back on."
   }

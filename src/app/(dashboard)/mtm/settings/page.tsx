@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { useSession } from "next-auth/react"
-import { notifyMtmSettingsChanged } from "@/hooks/use-mtm-org-settings"
+import { notifyMtmSettingsChanged, type MtmNavOrgSettings } from "@/hooks/use-mtm-org-settings"
+import { NAV_ORG_SETTING_KEYS } from "@/lib/nav-items"
 import { toast } from "sonner"
 import { PageDescription } from "@/components/page-description"
 import { HelpButton } from "@/components/help/help-button"
-import { Settings, Save, Satellite, MapPin, Camera, BellRing, Flag, Clock3, LifeBuoy, UsersRound } from "lucide-react"
+import { Settings, Save, Satellite, MapPin, Camera, BellRing, Flag, Clock3, LifeBuoy, LayoutGrid } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
@@ -78,9 +79,12 @@ export default function MtmSettingsPage() {
         toast.error(`Failed to save settings: ${body?.error || res.statusText}`)
       } else {
         toast.success(ts("savedToast"))
-        if (typeof settings.fieldContactsEnabled === "boolean") {
-          notifyMtmSettingsChanged({ fieldContactsEnabled: settings.fieldContactsEnabled })
+        const moduleSwitches: MtmNavOrgSettings = {}
+        for (const key of NAV_ORG_SETTING_KEYS) {
+          const value = settings[key]
+          if (typeof value === "boolean") moduleSwitches[key] = value
         }
+        if (Object.keys(moduleSwitches).length > 0) notifyMtmSettingsChanged(moduleSwitches)
       }
     } catch (e) {
       toast.error(`Failed to save settings: ${e instanceof Error ? e.message : "Network error"}`)
@@ -112,10 +116,13 @@ export default function MtmSettingsPage() {
       ],
     },
     {
-      titleKey: "groupFieldContacts",
-      icon: UsersRound,
+      // Whole-feature switches: hide a surface from menus and the agent app,
+      // never delete data. Administrator-only, mirrored by the PUT guard.
+      titleKey: "groupModules",
+      icon: LayoutGrid,
       items: [
         { key: "fieldContactsEnabled", labelKey: "lblFieldContacts", hintKey: "hintFieldContacts", type: "boolean", adminOnly: true },
+        { key: "pharmacyPromotionsEnabled", labelKey: "lblPharmacyPromotions", hintKey: "hintPharmacyPromotions", type: "boolean", adminOnly: true },
       ],
     },
     {

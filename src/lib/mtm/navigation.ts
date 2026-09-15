@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react"
+import type { NavOrgSettingKey } from "@/lib/nav-items"
 import {
   Activity,
   AlertTriangle,
@@ -39,7 +40,7 @@ export interface MtmToolNavigationItem {
   /** Reuses the established, fully localized label in the `nav` namespace. */
   navKey: string
   /** Organization switch that hides this tool when explicitly false. */
-  orgSetting?: "fieldContactsEnabled"
+  orgSetting?: NavOrgSettingKey
 }
 
 export interface MtmToolNavigationGroup {
@@ -70,7 +71,7 @@ export const MTM_TOOL_GROUPS = [
     key: "work",
     items: [
       { href: "/mtm/tasks", icon: ClipboardList, navKey: "mtmTasks" },
-      { href: "/mtm/promotions", icon: FileBadge, navKey: "mtmPromotions" },
+      { href: "/mtm/promotions", icon: FileBadge, navKey: "mtmPromotions", orgSetting: "pharmacyPromotionsEnabled" },
     ],
   },
   {
@@ -110,7 +111,7 @@ export const MTM_TOOL_GROUPS = [
  * when explicitly false; a group left without items disappears.
  */
 export function visibleMtmToolGroups(
-  orgSettings: Partial<Record<"fieldContactsEnabled", boolean>> = {},
+  orgSettings: Partial<Record<NavOrgSettingKey, boolean>> = {},
 ): MtmToolNavigationGroup[] {
   return MTM_TOOL_GROUPS
     .map((group) => ({

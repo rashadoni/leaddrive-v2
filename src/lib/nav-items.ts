@@ -97,7 +97,9 @@ export interface NavItem {
   orgSetting?: NavOrgSettingKey
 }
 
-export type NavOrgSettingKey = "fieldContactsEnabled"
+/** MTM settings keys that hide a menu surface when explicitly false. */
+export const NAV_ORG_SETTING_KEYS = ["fieldContactsEnabled", "pharmacyPromotionsEnabled"] as const
+export type NavOrgSettingKey = (typeof NAV_ORG_SETTING_KEYS)[number]
 
 export type SupportNavSection = "work" | "team" | "rules"
 
@@ -297,7 +299,7 @@ export const navItems: NavItem[] = [
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/routes", icon: Route, tKey: "mtmRoutes", group: "Route & Field" },
   { module: "mtm", href: "/mtm/operations", icon: Radio, tKey: "mtmOperations", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/visits", icon: CheckSquare, tKey: "mtmVisits", group: "Route & Field" },
-  { module: "mtm", href: "/mtm/promotions", icon: FileBadge, tKey: "mtmPromotions", group: "Route & Field" },
+  { module: "mtm", href: "/mtm/promotions", icon: FileBadge, tKey: "mtmPromotions", group: "Route & Field", orgSetting: "pharmacyPromotionsEnabled" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/tasks", icon: ClipboardList, tKey: "mtmTasks", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/customers", icon: Building2, tKey: "mtmCustomers", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/contacts", icon: Users, tKey: "mtmContacts", group: "Route & Field", orgSetting: "fieldContactsEnabled" },
