@@ -52,6 +52,20 @@ describe("Gemini Live audio worklets", () => {
     expect(audio.samples.every((sample) => Math.abs(sample - 0.25) < 0.0001)).toBe(true)
   })
 
+  it("reports loud input only as UI signal activity", () => {
+    const Capture = loadProcessor("public/gemini-live-capture.worklet.js", 48_000)
+    const capture = new Capture({ processorOptions: { targetSampleRate: 16_000 } })
+
+    capture.process([[new Float32Array(128).fill(0.25)]])
+    expect(capture.port.messages).toContainEqual({ type: "signal_activity", active: true })
+    expect(capture.port.messages.some(
+      (message) => (message as { type?: string }).type === "activity",
+    )).toBe(false)
+
+    for (let i = 0; i < 50; i += 1) capture.process([[new Float32Array(128)]])
+    expect(capture.port.messages).toContainEqual({ type: "signal_activity", active: false })
+  })
+
   it("bounds playback, resamples 24 kHz output, and fences stale generations", () => {
     const Playback = loadProcessor("public/gemini-live-playback.worklet.js", 48_000)
     const playback = new Playback({
