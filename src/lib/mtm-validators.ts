@@ -218,6 +218,16 @@ const ContactFieldsSchema = z.object({
 })
 
 export const ContactCreateSchema = ContactFieldsSchema.extend({
+  clientType: z.object({
+    dictionaryId: cuid,
+    code: z.string().trim().min(1).max(80).regex(/^[A-Z0-9][A-Z0-9_-]*$/),
+    values: z.record(z.string(), z.union([
+      z.string().max(2000),
+      z.number().finite(),
+      z.boolean(),
+      z.null(),
+    ])).refine((values) => Object.keys(values).length <= 50, "At most 50 client type values are allowed"),
+  }).strict().optional().nullable(),
   primaryWorkplace: z.object({
     customerId: cuid,
     jobTitle: optionalString,
@@ -265,6 +275,16 @@ const ContactDictionaryMultiSelectionSchema = z.object({
 export const ContactDictionaryAssignmentSetSchema = z.object({
   expectedStateHash: z.string().regex(/^[a-f0-9]{64}$/),
   reason: z.string().trim().min(3).max(1000),
+  clientType: z.object({
+    dictionaryId: cuid,
+    code: ContactDictionaryEntryCodeSchema,
+    values: z.record(z.string(), z.union([
+      z.string().max(2000),
+      z.number().finite(),
+      z.boolean(),
+      z.null(),
+    ])).refine((values) => Object.keys(values).length <= 50, "At most 50 client type values are allowed"),
+  }).strict().nullable().default(null),
   psychotype: z.object({
     dictionaryId: cuid,
     code: ContactDictionaryEntryCodeSchema,

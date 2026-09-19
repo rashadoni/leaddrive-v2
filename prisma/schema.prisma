@@ -5011,6 +5011,7 @@ enum MtmDoctorScoringFormulaStatus {
 }
 
 enum MtmContactDictionaryKind {
+  CLIENT_TYPE
   PSYCHOTYPE
   PRODUCT_CATEGORY
   BRAND_CATEGORY
@@ -6109,6 +6110,9 @@ model MtmContact {
   addressDistrict       String?
   addressStreet         String?
   productCategory       String?
+  /// Values for fields defined by the active CLIENT_TYPE dictionary entry.
+  /// The signed dictionary is the schema; this JSON stores only tenant data.
+  categoryData          Json                @default("{}")
   verificationStatus    String              @default("UNVERIFIED")
   consentStatus         String              @default("UNKNOWN")
   contactPreference     String?

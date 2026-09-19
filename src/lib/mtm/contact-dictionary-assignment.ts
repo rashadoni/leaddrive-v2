@@ -10,6 +10,7 @@ import type { ContactDictionaryAssignmentSetSchema } from "@/lib/mtm-validators"
 import type { z } from "zod"
 
 export const CONTACT_MASTER_DICTIONARY_KINDS = [
+  "CLIENT_TYPE",
   "PSYCHOTYPE",
   "PRODUCT_CATEGORY",
   "BRAND_CATEGORY",
@@ -43,7 +44,7 @@ type DictionaryRow = {
 }
 
 type AssignmentClient = Pick<Prisma.TransactionClient,
-  "mtmContactDictionaryAssignment" | "mtmContactDictionary" | "$queryRaw"
+  "mtmContactDictionaryAssignment" | "mtmContactDictionary" | "mtmContact" | "$queryRaw"
 >
 
 export class ContactDictionaryAssignmentConflict extends Error {
@@ -89,6 +90,11 @@ function desiredRows(input: ContactDictionaryAssignmentSet): Array<{
   entryCode: string
 }> {
   return [
+    ...(input.clientType ? [{
+      kind: "CLIENT_TYPE" as const,
+      dictionaryId: input.clientType.dictionaryId,
+      entryCode: input.clientType.code,
+    }] : []),
     ...(input.psychotype ? [{
       kind: "PSYCHOTYPE" as const,
       dictionaryId: input.psychotype.dictionaryId,
@@ -105,6 +111,41 @@ function desiredRows(input: ContactDictionaryAssignmentSet): Array<{
       entryCode,
     })) ?? []),
   ]
+}
+
+function validateClientTypeValues(entry: ContactDictionaryEntry, values: Record<string, unknown>): void {
+  const fields = entry.fields ?? []
+  const fieldByKey = new Map(fields.map((field) => [field.key, field]))
+  for (const key of Object.keys(values)) {
+    if (!fieldByKey.has(key)) {
+      throw new ContactDictionaryAssignmentConflict(
+        "MTM_CONTACT_CLIENT_TYPE_FIELD_INVALID",
+        `Field ${key} is not part of the selected client type`,
+        422,
+      )
+    }
+  }
+  for (const field of fields) {
+    const value = values[field.key]
+    const empty = value === undefined || value === null || value === ""
+    if (field.required && empty) {
+      throw new ContactDictionaryAssignmentConflict(
+        "MTM_CONTACT_CLIENT_TYPE_FIELD_REQUIRED",
+        `Field ${field.key} is required for the selected client type`,
+        422,
+      )
+    }
+    if (empty) continue
+    if (field.type === "NUMBER" && typeof value !== "number") {
+      throw new ContactDictionaryAssignmentConflict("MTM_CONTACT_CLIENT_TYPE_FIELD_INVALID", `Field ${field.key} must be a number`, 422)
+    }
+    if (field.type !== "NUMBER" && typeof value !== "string") {
+      throw new ContactDictionaryAssignmentConflict("MTM_CONTACT_CLIENT_TYPE_FIELD_INVALID", `Field ${field.key} must be text`, 422)
+    }
+    if (field.type === "SELECT" && !field.options?.some((option) => option.code === value)) {
+      throw new ContactDictionaryAssignmentConflict("MTM_CONTACT_CLIENT_TYPE_FIELD_INVALID", `Field ${field.key} has an unsupported option`, 422)
+    }
+  }
 }
 
 export async function validateContactDictionaryAssignmentSet(
@@ -134,12 +175,16 @@ export async function validateContactDictionaryAssignmentSet(
         422,
       )
     }
-    if (!governed.entries.some((entry) => entry.code === row.entryCode)) {
+    const entry = governed.entries.find((candidate) => candidate.code === row.entryCode)
+    if (!entry) {
       throw new ContactDictionaryAssignmentConflict(
         "MTM_CONTACT_DICTIONARY_ENTRY_INVALID",
         `Entry ${row.entryCode} is not part of the signed dictionary`,
         422,
       )
+    }
+    if (row.kind === "CLIENT_TYPE" && input.clientType) {
+      validateClientTypeValues(entry, input.clientType.values)
     }
   }
   return byId
@@ -217,6 +262,11 @@ export async function applyContactDictionaryAssignmentSet(
       })),
     })
   }
+
+  await client.mtmContact.updateMany({
+    where: { organizationId: args.organizationId, id: args.contactId, deletedAt: null },
+    data: { categoryData: (args.input.clientType?.values ?? {}) as Prisma.InputJsonValue },
+  })
 
   const after = await readContactDictionaryAssignmentState(client, args.organizationId, args.contactId)
   return { ended: toEnd.length, created: toCreate.length, stateHash: after.hash }

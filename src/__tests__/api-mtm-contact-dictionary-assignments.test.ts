@@ -149,7 +149,7 @@ describe("SWM03 contact dictionary assignment API", () => {
     expect(response.status).toBe(201)
     expect(prisma.mtmContactDictionaryAssignment.createMany).not.toHaveBeenCalled()
     expect(prisma.mtmContactChangeRequest.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ kind: "DICTIONARY_ASSIGNMENTS", payload: payload() }),
+      data: expect.objectContaining({ kind: "DICTIONARY_ASSIGNMENTS", payload: { ...payload(), clientType: null } }),
     }))
   })
 })

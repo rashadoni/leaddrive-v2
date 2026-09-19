@@ -6,11 +6,50 @@ const DictionaryCode = z.string().trim().min(1).max(80).regex(/^[A-Z0-9][A-Z0-9_
 const Sha256 = z.string().regex(/^[a-fA-F0-9]{64}$/)
 
 export const ContactDictionaryKindSchema = z.enum([
+  "CLIENT_TYPE",
   "PSYCHOTYPE",
   "PRODUCT_CATEGORY",
   "BRAND_CATEGORY",
   "TASK_GROUP",
 ])
+
+const ClientTypeFieldKey = z.string().trim().min(1).max(80)
+  .regex(/^[a-z][a-zA-Z0-9_]*$/)
+
+const ClientTypeFieldOptionSchema = z.object({
+  code: DictionaryCode,
+  labels: z.object({
+    ru: DictionaryLabel,
+    az: DictionaryLabel,
+    en: DictionaryLabel,
+  }).strict(),
+}).strict()
+
+export const ClientTypeFieldSchema = z.object({
+  key: ClientTypeFieldKey,
+  order: z.number().int().min(0).max(100_000),
+  type: z.enum(["TEXT", "TEXTAREA", "PHONE", "EMAIL", "NUMBER", "DATE", "SELECT"]),
+  required: z.boolean().default(false),
+  labels: z.object({
+    ru: DictionaryLabel,
+    az: DictionaryLabel,
+    en: DictionaryLabel,
+  }).strict(),
+  options: z.array(ClientTypeFieldOptionSchema).max(100).optional(),
+}).strict().superRefine((field, ctx) => {
+  if (field.type === "SELECT" && (!field.options || field.options.length === 0)) {
+    ctx.addIssue({ code: "custom", path: ["options"], message: "Select fields require options" })
+  }
+  if (field.type !== "SELECT" && field.options !== undefined) {
+    ctx.addIssue({ code: "custom", path: ["options"], message: "Only select fields accept options" })
+  }
+  if (field.options) {
+    const codes = field.options.map((option) => option.code)
+    if (new Set(codes).size !== codes.length) {
+      ctx.addIssue({ code: "custom", path: ["options"], message: "Field option codes must be unique" })
+    }
+  }
+})
 
 export const ContactDictionaryEntrySchema = z.object({
   code: DictionaryCode,
@@ -25,6 +64,7 @@ export const ContactDictionaryEntrySchema = z.object({
     az: z.string().trim().max(500),
     en: z.string().trim().max(500),
   }).strict().optional(),
+  fields: z.array(ClientTypeFieldSchema).max(50).optional(),
 }).strict()
 
 export const ContactDictionaryEntriesSchema = z.array(ContactDictionaryEntrySchema)
@@ -39,6 +79,17 @@ export const ContactDictionaryEntriesSchema = z.array(ContactDictionaryEntrySche
     if (new Set(orders).size !== orders.length) {
       ctx.addIssue({ code: "custom", message: "Dictionary entry order values must be unique" })
     }
+    entries.forEach((entry, entryIndex) => {
+      const fields = entry.fields ?? []
+      const keys = fields.map((field) => field.key)
+      if (new Set(keys).size !== keys.length) {
+        ctx.addIssue({ code: "custom", path: [entryIndex, "fields"], message: "Field keys must be unique inside a client type" })
+      }
+      const fieldOrders = fields.map((field) => field.order)
+      if (new Set(fieldOrders).size !== fieldOrders.length) {
+        ctx.addIssue({ code: "custom", path: [entryIndex, "fields"], message: "Field order values must be unique inside a client type" })
+      }
+    })
   })
 
 export const ContactDictionaryCreateSchema = z.object({
@@ -73,6 +124,19 @@ export function contactDictionaryHash(entries: ContactDictionaryEntry[]): string
         az: entry.description.az,
         en: entry.description.en,
       } } : {}),
+      ...(entry.fields ? { fields: [...entry.fields]
+        .sort((left, right) => left.order - right.order || left.key.localeCompare(right.key))
+        .map((field) => ({
+          key: field.key,
+          order: field.order,
+          type: field.type,
+          required: field.required,
+          labels: { ru: field.labels.ru, az: field.labels.az, en: field.labels.en },
+          ...(field.options ? { options: field.options.map((option) => ({
+            code: option.code,
+            labels: { ru: option.labels.ru, az: option.labels.az, en: option.labels.en },
+          })) } : {}),
+        })) } : {}),
     }))
   return createHash("sha256").update(JSON.stringify(canonical)).digest("hex")
 }

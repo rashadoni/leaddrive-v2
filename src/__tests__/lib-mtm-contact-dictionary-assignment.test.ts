@@ -64,6 +64,7 @@ describe("SWM03 governed contact category assignments", () => {
     }
     const client = {
       $queryRaw: vi.fn().mockResolvedValue([]),
+      mtmContact: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
       mtmContactDictionary: { findMany: vi.fn().mockResolvedValue([dictionary()]) },
       mtmContactDictionaryAssignment: {
         findMany: vi.fn()
@@ -100,6 +101,60 @@ describe("SWM03 governed contact category assignments", () => {
         effectiveFrom: NOW,
       })],
     })
+    expect(client.mtmContact.updateMany).toHaveBeenCalledWith({
+      where: { organizationId: "org-1", id: "cm000000000000000000001", deletedAt: null },
+      data: { categoryData: {} },
+    })
+  })
+
+  it("stores only fields governed by the selected client type", async () => {
+    const clientTypeEntries: ContactDictionaryEntry[] = [{
+      code: "DOCTOR",
+      order: 1,
+      labels: { ru: "Врач", az: "Həkim", en: "Doctor" },
+      fields: [{
+        key: "specialty",
+        order: 1,
+        type: "TEXT",
+        required: true,
+        labels: { ru: "Специальность", az: "İxtisas", en: "Specialty" },
+      }],
+    }]
+    const clientTypeDictionary = dictionary({
+      id: "cm000000000000000000202",
+      kind: "CLIENT_TYPE",
+      entries: clientTypeEntries,
+      entriesHash: contactDictionaryHash(clientTypeEntries),
+    })
+    const emptyHash = contactDictionaryAssignmentStateHash([])
+    const client = {
+      $queryRaw: vi.fn().mockResolvedValue([]),
+      mtmContact: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      mtmContactDictionary: { findMany: vi.fn().mockResolvedValue([clientTypeDictionary]) },
+      mtmContactDictionaryAssignment: {
+        findMany: vi.fn().mockResolvedValueOnce([]).mockResolvedValueOnce([]),
+        updateMany: vi.fn(),
+        createMany: vi.fn().mockResolvedValue({ count: 1 }),
+      },
+    }
+
+    await applyContactDictionaryAssignmentSet(client as never, {
+      organizationId: "org-1",
+      contactId: "cm000000000000000000001",
+      input: {
+        expectedStateHash: emptyHash,
+        reason: "Set doctor category",
+        clientType: { dictionaryId: clientTypeDictionary.id, code: "DOCTOR", values: { specialty: "Cardiology" } },
+        psychotype: null,
+        productCategories: null,
+        brandCategories: null,
+      },
+      source: "ADMIN",
+    })
+
+    expect(client.mtmContact.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: { categoryData: { specialty: "Cardiology" } },
+    }))
   })
 
   it("fails closed when the state changed before save", async () => {

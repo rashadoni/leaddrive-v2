@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { BriefcaseBusiness, CircleAlert, Loader2, Search, UserRoundPlus } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -19,6 +19,21 @@ import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 
 type ContactType = "DOCTOR" | "PHARMACIST" | "OTHER"
+type Labels = { ru: string; az: string; en: string }
+type ClientTypeField = {
+  key: string
+  order: number
+  type: "TEXT" | "TEXTAREA" | "PHONE" | "EMAIL" | "NUMBER" | "DATE" | "SELECT"
+  required: boolean
+  labels: Labels
+  options?: Array<{ code: string; labels: Labels }>
+}
+type ClientTypeDictionary = {
+  id: string
+  kind: string
+  status: string
+  entries: Array<{ code: string; order: number; labels: Labels; fields?: ClientTypeField[] }>
+}
 
 type OrganizationOption = {
   id: string
@@ -59,6 +74,14 @@ function organizationLabel(organization: OrganizationOption): string {
   return [organization.name, place].filter(Boolean).join(" · ")
 }
 
+function localized(labels: Labels, locale: string): string {
+  return locale.startsWith("az") ? labels.az : locale.startsWith("ru") ? labels.ru : labels.en
+}
+
+function legacyContactType(code: string): ContactType {
+  return code === "DOCTOR" ? "DOCTOR" : code === "PHARMACIST" ? "PHARMACIST" : "OTHER"
+}
+
 export function MtmContactCreateDialog({
   open,
   onOpenChange,
@@ -69,7 +92,11 @@ export function MtmContactCreateDialog({
   onCreated: () => Promise<void> | void
 }) {
   const t = useTranslations("mtmContactCreate")
+  const locale = useLocale()
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
+  const [clientTypeDictionary, setClientTypeDictionary] = useState<ClientTypeDictionary | null>(null)
+  const [clientTypeCode, setClientTypeCode] = useState("")
+  const [clientTypeValues, setClientTypeValues] = useState<Record<string, string>>({})
   const [organizations, setOrganizations] = useState<OrganizationOption[]>([])
   const [organizationSearch, setOrganizationSearch] = useState("")
   const [searching, setSearching] = useState(false)
@@ -79,6 +106,10 @@ export function MtmContactCreateDialog({
   const selectedOrganization = useMemo(
     () => organizations.find((organization) => organization.id === form.customerId),
     [form.customerId, organizations],
+  )
+  const selectedClientType = useMemo(
+    () => clientTypeDictionary?.entries.find((entry) => entry.code === clientTypeCode) ?? null,
+    [clientTypeCode, clientTypeDictionary],
   )
 
   const loadOrganizations = useCallback(async (query: string) => {
@@ -102,18 +133,43 @@ export function MtmContactCreateDialog({
     }
   }, [t])
 
+  const loadClientTypes = useCallback(async () => {
+    try {
+      const response = await fetch("/api/v1/mtm/contact-dictionaries")
+      const result = await response.json().catch(() => null) as {
+        success?: boolean
+        data?: { dictionaries?: ClientTypeDictionary[] }
+      } | null
+      if (!response.ok || !result?.success) return
+      const dictionary = result.data?.dictionaries?.find((candidate) => candidate.kind === "CLIENT_TYPE" && candidate.status === "ACTIVE") ?? null
+      setClientTypeDictionary(dictionary)
+      const first = [...(dictionary?.entries ?? [])].sort((left, right) => left.order - right.order)[0]
+      setClientTypeCode(first?.code ?? "")
+      setClientTypeValues({})
+      if (first) setForm((current) => ({ ...current, type: legacyContactType(first.code) }))
+    } catch {
+      setClientTypeDictionary(null)
+    }
+  }, [])
+
   useEffect(() => {
     if (!open) return
     setForm(EMPTY_FORM)
     setOrganizationSearch("")
     setError("")
     setSaving(false)
-    void loadOrganizations("")
-  }, [loadOrganizations, open])
+    void Promise.all([loadOrganizations(""), loadClientTypes()])
+  }, [loadClientTypes, loadOrganizations, open])
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((current) => ({ ...current, [key]: value }))
     setError("")
+  }
+
+  const selectClientType = (code: string) => {
+    setClientTypeCode(code)
+    setClientTypeValues({})
+    update("type", legacyContactType(code))
   }
 
   const submit = async (event: FormEvent) => {
@@ -124,6 +180,11 @@ export function MtmContactCreateDialog({
     }
     if (!form.customerId) {
       setError(t("workplaceRequired"))
+      return
+    }
+    const missingCategoryField = selectedClientType?.fields?.find((field) => field.required && !clientTypeValues[field.key]?.trim())
+    if (missingCategoryField) {
+      setError(t("categoryFieldRequired", { field: localized(missingCategoryField.labels, locale) }))
       return
     }
 
@@ -141,6 +202,15 @@ export function MtmContactCreateDialog({
           specialtyName: form.type === "DOCTOR" ? form.specialtyName.trim() || null : null,
           phone: form.phone.trim() || null,
           notes: form.notes.trim() || null,
+          ...(clientTypeDictionary && selectedClientType ? {
+            clientType: {
+              dictionaryId: clientTypeDictionary.id,
+              code: selectedClientType.code,
+              values: Object.fromEntries((selectedClientType.fields ?? [])
+                .filter((field) => clientTypeValues[field.key]?.trim())
+                .map((field) => [field.key, field.type === "NUMBER" ? Number(clientTypeValues[field.key]) : clientTypeValues[field.key].trim()])),
+            },
+          } : {}),
           primaryWorkplace: {
             customerId: form.customerId,
             jobTitle: form.jobTitle.trim() || null,
@@ -187,16 +257,37 @@ export function MtmContactCreateDialog({
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5 sm:col-span-2">
                 <Label htmlFor="contact-create-type">{t("type")} *</Label>
-                <Select id="contact-create-type" value={form.type} onChange={(event) => update("type", event.target.value as ContactType)}>
-                  <option value="DOCTOR">{t("types.DOCTOR")}</option>
-                  <option value="PHARMACIST">{t("types.PHARMACIST")}</option>
-                  <option value="OTHER">{t("types.OTHER")}</option>
-                </Select>
+                {clientTypeDictionary ? (
+                  <Select id="contact-create-type" value={clientTypeCode} onChange={(event) => selectClientType(event.target.value)}>
+                    {[...clientTypeDictionary.entries].sort((left, right) => left.order - right.order).map((entry) => <option key={entry.code} value={entry.code}>{localized(entry.labels, locale)}</option>)}
+                  </Select>
+                ) : (
+                  <Select id="contact-create-type" value={form.type} onChange={(event) => update("type", event.target.value as ContactType)}>
+                    <option value="DOCTOR">{t("types.DOCTOR")}</option>
+                    <option value="PHARMACIST">{t("types.PHARMACIST")}</option>
+                    <option value="OTHER">{t("types.OTHER")}</option>
+                  </Select>
+                )}
               </div>
               <div className="space-y-1.5"><Label htmlFor="contact-create-last-name">{t("lastName")} *</Label><Input id="contact-create-last-name" value={form.lastName} onChange={(event) => update("lastName", event.target.value)} autoComplete="family-name" /></div>
               <div className="space-y-1.5"><Label htmlFor="contact-create-first-name">{t("firstName")} *</Label><Input id="contact-create-first-name" value={form.firstName} onChange={(event) => update("firstName", event.target.value)} autoComplete="given-name" /></div>
               <div className="space-y-1.5"><Label htmlFor="contact-create-middle-name">{t("middleName")}</Label><Input id="contact-create-middle-name" value={form.middleName} onChange={(event) => update("middleName", event.target.value)} autoComplete="additional-name" /></div>
-              {form.type === "DOCTOR" ? <div className="space-y-1.5"><Label htmlFor="contact-create-specialty">{t("specialty")}</Label><Input id="contact-create-specialty" value={form.specialtyName} onChange={(event) => update("specialtyName", event.target.value)} placeholder={t("specialtyPlaceholder")} /></div> : null}
+              {form.type === "DOCTOR" && !selectedClientType?.fields?.some((field) => field.key === "specialty") ? <div className="space-y-1.5"><Label htmlFor="contact-create-specialty">{t("specialty")}</Label><Input id="contact-create-specialty" value={form.specialtyName} onChange={(event) => update("specialtyName", event.target.value)} placeholder={t("specialtyPlaceholder")} /></div> : null}
+              {(selectedClientType?.fields ?? []).sort((left, right) => left.order - right.order).map((field) => (
+                <div key={field.key} className={field.type === "TEXTAREA" ? "space-y-1.5 sm:col-span-2" : "space-y-1.5"}>
+                  <Label htmlFor={`contact-create-category-${field.key}`}>{localized(field.labels, locale)}{field.required ? " *" : ""}</Label>
+                  {field.type === "SELECT" ? (
+                    <Select id={`contact-create-category-${field.key}`} value={clientTypeValues[field.key] ?? ""} onChange={(event) => setClientTypeValues((current) => ({ ...current, [field.key]: event.target.value }))}>
+                      <option value="">{t("categoryFieldPlaceholder")}</option>
+                      {(field.options ?? []).map((option) => <option key={option.code} value={option.code}>{localized(option.labels, locale)}</option>)}
+                    </Select>
+                  ) : field.type === "TEXTAREA" ? (
+                    <Textarea id={`contact-create-category-${field.key}`} rows={3} value={clientTypeValues[field.key] ?? ""} onChange={(event) => setClientTypeValues((current) => ({ ...current, [field.key]: event.target.value }))} />
+                  ) : (
+                    <Input id={`contact-create-category-${field.key}`} type={field.type === "DATE" ? "date" : field.type === "NUMBER" ? "number" : field.type === "EMAIL" ? "email" : "text"} inputMode={field.type === "PHONE" ? "tel" : field.type === "NUMBER" ? "decimal" : undefined} value={clientTypeValues[field.key] ?? ""} onChange={(event) => setClientTypeValues((current) => ({ ...current, [field.key]: event.target.value }))} />
+                  )}
+                </div>
+              ))}
             </div>
           </section>
 
