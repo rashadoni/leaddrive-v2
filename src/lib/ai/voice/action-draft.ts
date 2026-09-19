@@ -469,7 +469,15 @@ async function duplicateWarnings(
       orderBy: { createdAt: "desc" },
       take: 5,
     })
-    const safeCandidates = candidates.map((candidate) => ({
+    const safeCandidates = candidates.map((candidate: {
+      id: string
+      name: string
+      companyId: string | null
+      contactId: string | null
+      stage: string
+      valueAmount: unknown
+      currency: string
+    }) => ({
       ...candidate,
       valueAmount: typeof candidate.valueAmount === "number"
         ? candidate.valueAmount
@@ -598,9 +606,11 @@ export async function createAiVoiceActionDraft(
 
     void logAudit(auth.orgId, "voice_action_drafted", "ai_action_intent", created.id, undefined, {
       userId: auth.userId,
-      actionType: input.actionType,
-      voiceSessionId: input.voiceSessionId,
-      revision,
+      newValue: {
+        actionType: input.actionType,
+        voiceSessionId: input.voiceSessionId,
+        revision,
+      },
     })
     return serializeIntent(created, false)
   } catch (error) {

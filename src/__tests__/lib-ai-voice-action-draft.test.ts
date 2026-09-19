@@ -5,11 +5,13 @@ const deps = vi.hoisted(() => ({
   intentFindFirst: vi.fn(),
   intentUpdateMany: vi.fn(async () => ({ count: 0 })),
   intentCreate: vi.fn(),
-  sessionFindFirst: vi.fn(async () => ({ id: "voice-1" })),
+  sessionFindFirst: vi.fn<() => Promise<{ id: string } | null>>(async () => ({ id: "voice-1" })),
   leadFindFirst: vi.fn(),
   leadFindMany: vi.fn(async () => []),
   dealFindMany: vi.fn(async () => []),
-  fieldPermissionFindMany: vi.fn(async () => []),
+  fieldPermissionFindMany: vi.fn<
+    () => Promise<Array<{ fieldName: string; access: string }>>
+  >(async () => []),
   applyRecordFilter: vi.fn(async (_orgId, _userId, _role, _entityType, where) => where),
   logAudit: vi.fn(async () => {}),
   org: {
