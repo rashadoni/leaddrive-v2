@@ -1,6 +1,6 @@
 # CRM Voice Assistant: Canonical Command Layer Audit
 
-Status: C1.1 complete; first command extraction implemented
+Status: C1.1 complete; task and lead create commands implemented
 
 Date: 2026-09-19
 
@@ -39,6 +39,9 @@ The implementation order is:
    context.
 2. `createTaskCommand` and REST parity tests.
 3. `createLeadCommand` and the existing field-permission fallback correction.
+   Implemented: the REST route now shares the strict command, forbidden fields
+   fail closed, tenant-owned assignees and pipelines are validated, and direct
+   command callers receive possible-duplicate and assignment-state metadata.
 4. `updateLeadCommand` with an explicit voice field allow-list and stale-write
    protection.
 5. `createDealCommand` with complete pipeline/stage/user/campaign ownership
