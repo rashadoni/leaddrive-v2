@@ -1,17 +1,13 @@
 import type { Deal } from "@prisma/client"
-import { prisma, logAudit } from "@/lib/prisma"
+import { prisma } from "@/lib/prisma"
 import { getFieldPermissions } from "@/lib/field-filter"
-import { executeWorkflows } from "@/lib/workflow-engine"
-import { createNotification } from "@/lib/notifications"
-import { fireWebhooks } from "@/lib/webhooks"
 import { DEFAULT_CURRENCY } from "@/lib/constants"
-import { trackContactEvent } from "@/lib/contact-events"
-import { sendSlackNotification, formatDealNotification } from "@/lib/slack"
 import { decimalToNumber } from "@/lib/prisma-decimal"
 import type { CrmCommandActorContext } from "../actor-context"
 import { validationError } from "../errors"
 import { requireWritableFields } from "../field-permissions"
 import { createDealCommandSchema, type CreateDealCommandInput } from "../schemas/deal"
+import { dispatchDealCreatedEffects } from "./effects"
 
 export type CreatedDealEntity = Omit<Deal, "valueAmount"> & {
   valueAmount: number
@@ -171,38 +167,8 @@ export async function createDealCommand(
     },
   })
 
-  const dealValue = decimalToNumber(deal.valueAmount)
+  const dealValue = dispatchDealCreatedEffects(orgId, deal)
   const entity = { ...deal, valueAmount: dealValue }
-  logAudit(orgId, "create", "deal", deal.id, deal.name)
-  executeWorkflows(orgId, "deal", "created", deal).catch(() => {})
-  createNotification({
-    organizationId: orgId,
-    type: "success",
-    title: "Новая сделка",
-    message: `Создана сделка «${deal.name}»${dealValue ? ` на ${dealValue} ${deal.currency}` : ""}`,
-    entityType: "deal",
-    entityId: deal.id,
-  }).catch(() => {})
-  fireWebhooks(orgId, "deal.created", {
-    id: deal.id,
-    name: deal.name,
-    valueAmount: dealValue,
-    stage: deal.stage,
-  }).catch(() => {})
-  if (deal.contactId) {
-    trackContactEvent(orgId, deal.contactId, "deal_created", {
-      dealId: deal.id,
-      name: deal.name,
-    }).catch(() => {})
-  }
-  prisma.channelConfig.findMany({
-    where: { organizationId: orgId, channelType: "slack", isActive: true },
-  }).then((configs) => {
-    const message = formatDealNotification({ name: deal.name, value: dealValue, stage: deal.stage })
-    for (const config of configs) {
-      if (config.webhookUrl) sendSlackNotification(config.webhookUrl, message).catch(() => {})
-    }
-  }).catch(() => {})
 
   return {
     entity,

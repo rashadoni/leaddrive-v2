@@ -189,7 +189,9 @@ the command, intent, confirmation, and security layers are ready.
 - [ ] P0.2 Confirm pilot roles: internal administrators first, then a small
       manager/sales cohort.
 - [ ] P0.3 Approve the action/field/permission/risk matrix.
-- [ ] P0.4 Approve the v1 rule that every write requires a button press.
+- [x] P0.4 Approve the v1 rule that every write requires a button press.
+      Confirmed by the product owner on 2026-09-19; background speech can
+      never authorize a CRM mutation.
 - [ ] P0.5 Define default task board, column, assignee behavior, and required
       custom fields.
 - [ ] P0.6 Define the standard lead fields allowed in v1.
@@ -339,8 +341,10 @@ No voice write tools are enabled in this phase.
       strict command; pipeline stages and tenant references are validated,
       accepted tags are persisted, and direct callers receive non-blocking
       duplicate warnings.
-- [ ] C1.7 Implement `convertLeadToDealCommand` separately from ordinary deal
-      creation.
+- [x] C1.7 Implement `convertLeadToDealCommand` separately from ordinary deal
+      creation. Lead claim, company/contact resolution, deal creation, and lead
+      status update now share one transaction; voice commits require
+      `expectedUpdatedAt`, and concurrent conversion cannot create two deals.
 - [x] C1.8 Define trusted `actorContext` containing organization, user, role,
       and source.
 - [ ] C1.9 Make field permissions fail closed.

@@ -84,3 +84,14 @@ export const updateLeadCommandSchema = z.strictObject({
 })
 
 export type UpdateLeadCommandInput = z.infer<typeof updateLeadCommandSchema>
+
+export const convertLeadToDealCommandSchema = z.strictObject({
+  dealTitle: z.string().min(1).max(200),
+  dealStage: z.string().min(1).max(100).optional(),
+  dealValue: nonNegativeFinancialAmountSchema.optional(),
+  createCompany: z.boolean().optional(),
+  pipelineId: z.string().min(1).optional(),
+  expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
+})
+
+export type ConvertLeadToDealCommandInput = z.infer<typeof convertLeadToDealCommandSchema>
