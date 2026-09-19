@@ -181,3 +181,35 @@ production deploy этого нового среза.
 повторной проверкой всех прав/target revision, execution lease, идемпотентным
 результатом и immutable event ledger. До готовности этого контура write-tool
 для модели не открывать.
+
+## Продолжение 2026-09-19: confirmation-proof foundation
+
+Начат следующий safety-lane этап commit-контура. Аудит канонических CRM-команд
+показал, что они используют собственные транзакционные границы и запускают
+побочные эффекты. Поэтому простой CAS-переход intent в `executing` пока
+недостаточен: авария после CRM-записи, но до сохранения receipt-result, создаёт
+неопределённый результат и риск дубля при retry.
+
+Реализован первый безопасный срез без CRM-записи:
+
+- модель и миграция append-only `AiActionIntentEvent`;
+- tenant-bound composite foreign keys, forced RLS и только SELECT/INSERT
+  application policies;
+- database-триггеры, запрещающие прямые UPDATE, DELETE и TRUNCATE;
+- закрытый словарь lifecycle-событий и проверки revision/hash/JSON shape;
+- `POST /api/v1/ai/voice/actions/:id/confirmation`;
+- 256-bit одноразовый proof token сроком 60 секунд, хранимый только как
+  domain-separated SHA-256 hash;
+- повторная проверка receipt revision/payload hash, целостности normalized
+  payload, роли, модулей, полей, активной voice-сессии, target visibility и
+  target `updatedAt`;
+- `private, no-store`, same-origin JSON guard и отдельный rate limit.
+
+Проверки на текущем рубеже: Prisma schema validate — успешно; целевой набор 7
+файлов/43 теста — успешно; targeted ESLint и `git diff --check` — успешно.
+
+Точка остановки этой записи: confirmation proof и база event ledger готовы
+локально. Commit endpoint всё ещё отсутствует, `confirmedAt` не меняется,
+канонические CRM-команды не вызываются. Далее: checkpoint/PR/CI/deploy этого
+фундамента, затем атомарная интеграция остальных lifecycle events и устранение
+crash ambiguity до включения I1.5.

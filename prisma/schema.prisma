@@ -295,6 +295,7 @@ model Organization {
   voiceSessionTurns               VoiceSessionTurn[]
   voiceMonthlyUsage               VoiceMonthlyUsage[]
   aiActionIntents                 AiActionIntent[]
+  aiActionIntentEvents            AiActionIntentEvent[]
   voiceCallSessions               VoiceCallSession[]
   voiceCallQueues                 VoiceCallQueue[]
   voiceCallQueueItems             VoiceCallQueueItem[]
@@ -760,6 +761,7 @@ model User {
 
   // Explicitly confirmed CRM mutations proposed by the in-CRM voice assistant.
   aiActionIntents AiActionIntent[] @relation("AiActionIntentUser")
+  aiActionIntentEvents AiActionIntentEvent[] @relation("AiActionIntentEventUser")
 
   @@unique([organizationId, email])
   @@unique([organizationId, id])
@@ -3002,6 +3004,7 @@ model AiActionIntent {
   parentIntentId           String?
   parentIntent             AiActionIntent?  @relation("AiActionIntentTree", fields: [organizationId, parentIntentId], references: [organizationId, id], onDelete: Cascade, onUpdate: Cascade)
   childIntents             AiActionIntent[] @relation("AiActionIntentTree")
+  events                   AiActionIntentEvent[]
   actionType               String           @db.VarChar(64)
   rawPayload               Json             @default("{}")
   normalizedPayload        Json             @default("{}")
@@ -3038,6 +3041,31 @@ model AiActionIntent {
   @@index([organizationId, targetEntityType, targetEntityId], map: "ai_action_intents_org_target_idx")
   @@index([organizationId, parentIntentId], map: "ai_action_intents_org_parent_idx")
   @@map("ai_action_intents")
+}
+
+/// Append-only evidence for user-visible confirmation and later execution
+/// transitions. Event payloads contain bounded metadata only, never microphone
+/// audio, transcripts, raw CRM payloads, confirmation tokens or secrets.
+model AiActionIntentEvent {
+  id               String         @id @default(cuid())
+  organizationId   String
+  organization     Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  intentId         String
+  intent           AiActionIntent @relation(fields: [organizationId, intentId], references: [organizationId, id], onDelete: Cascade, onUpdate: Cascade)
+  userId           String
+  user             User           @relation("AiActionIntentEventUser", fields: [organizationId, userId], references: [organizationId, id], onDelete: Cascade, onUpdate: Cascade)
+  eventType        String         @db.VarChar(64)
+  intentRevision   Int
+  payloadHash      String         @db.Char(64)
+  correlationId    String?        @db.VarChar(191)
+  eventData        Json           @default("{}")
+  createdAt        DateTime       @default(now())
+
+  @@unique([organizationId, id], map: "ai_action_intent_events_org_id_key")
+  @@unique([organizationId, intentId, eventType, correlationId], map: "ai_action_intent_events_correlation_key")
+  @@index([organizationId, intentId, createdAt], map: "ai_action_intent_events_org_intent_created_idx")
+  @@index([organizationId, userId, createdAt], map: "ai_action_intent_events_org_user_created_idx")
+  @@map("ai_action_intent_events")
 }
 
 model KbEmbedding {

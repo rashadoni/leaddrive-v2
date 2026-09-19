@@ -4,6 +4,7 @@ import type { AuthResult } from "@/lib/api-auth"
 const deps = vi.hoisted(() => ({
   intentFindFirst: vi.fn(),
   intentUpdateMany: vi.fn(async () => ({ count: 1 })),
+  eventCreate: vi.fn(async () => ({ id: "confirmation-event-1" })),
   sessionFindFirst: vi.fn(async () => ({ id: "voice-1" })),
   leadFindFirst: vi.fn(),
   leadFindMany: vi.fn(async () => []),
@@ -24,6 +25,7 @@ vi.mock("@/lib/prisma", () => ({
       findFirst: deps.intentFindFirst,
       updateMany: deps.intentUpdateMany,
     },
+    aiActionIntentEvent: { create: deps.eventCreate },
     voiceSession: { findFirst: deps.sessionFindFirst },
     lead: { findFirst: deps.leadFindFirst, findMany: deps.leadFindMany },
     deal: { findMany: deps.dealFindMany },
@@ -43,8 +45,10 @@ vi.mock("@/lib/sharing-rules", () => ({
 import {
   cancelAiVoiceActionDraft,
   getActiveAiVoiceActionDraft,
+  issueAiVoiceActionConfirmationProof,
   updateAiVoiceActionDraft,
 } from "@/lib/ai/voice/action-draft"
+import { hashAiActionIntentPayload } from "@/lib/ai/voice/action-intent"
 
 const auth: AuthResult = {
   orgId: "org-1",
@@ -205,5 +209,69 @@ describe("AI voice action draft lifecycle", () => {
       intentId: "intent-1",
       expectedRevision: 1,
     })).rejects.toMatchObject({ code: "INTENT_NOT_CANCELLABLE", status: 409 })
+  })
+
+  it("issues a short-lived confirmation proof without storing the raw token", async () => {
+    const normalizedPayload = { title: "Call Ali" }
+    const payloadHash = hashAiActionIntentPayload({
+      actionType: "create_task",
+      revision: 1,
+      normalizedPayload,
+    })
+    deps.intentFindFirst.mockResolvedValueOnce(storedIntent({
+      normalizedPayload,
+      payloadHash,
+    }))
+
+    const proof = await issueAiVoiceActionConfirmationProof(auth, {
+      intentId: "intent-1",
+      expectedRevision: 1,
+      payloadHash,
+    })
+
+    expect(proof).toMatchObject({
+      confirmationEventId: "confirmation-event-1",
+      intentId: "intent-1",
+      revision: 1,
+      payloadHash,
+    })
+    expect(proof.confirmationToken).toMatch(/^[A-Za-z0-9_-]{43}$/)
+    const eventData = deps.eventCreate.mock.calls[0]?.[0]?.data
+    expect(eventData).toMatchObject({
+      organizationId: "org-1",
+      intentId: "intent-1",
+      userId: "user-1",
+      eventType: "confirmation_proof_issued",
+      intentRevision: 1,
+      payloadHash,
+    })
+    expect(eventData.eventData.tokenHash).toMatch(/^[0-9a-f]{64}$/)
+    expect(JSON.stringify(eventData)).not.toContain(proof.confirmationToken)
+  })
+
+  it("rejects stale receipt identity and stored hash tampering before proof issuance", async () => {
+    const normalizedPayload = { title: "Call Ali" }
+    const payloadHash = hashAiActionIntentPayload({
+      actionType: "create_task",
+      revision: 1,
+      normalizedPayload,
+    })
+    deps.intentFindFirst.mockResolvedValueOnce(storedIntent({ normalizedPayload, payloadHash }))
+    await expect(issueAiVoiceActionConfirmationProof(auth, {
+      intentId: "intent-1",
+      expectedRevision: 2,
+      payloadHash,
+    })).rejects.toMatchObject({ code: "CONFIRMATION_MISMATCH", status: 409 })
+
+    deps.intentFindFirst.mockResolvedValueOnce(storedIntent({
+      normalizedPayload: { title: "Tampered" },
+      payloadHash,
+    }))
+    await expect(issueAiVoiceActionConfirmationProof(auth, {
+      intentId: "intent-1",
+      expectedRevision: 1,
+      payloadHash,
+    })).rejects.toMatchObject({ code: "INTENT_INTEGRITY_FAILED", status: 409 })
+    expect(deps.eventCreate).not.toHaveBeenCalled()
   })
 })

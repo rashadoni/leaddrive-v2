@@ -19,6 +19,7 @@ const deps = vi.hoisted(() => ({
   updateDraft: vi.fn(),
   cancelDraft: vi.fn(),
   getActiveDraft: vi.fn(),
+  issueConfirmation: vi.fn(),
   checkVoicePilotAccess: vi.fn(async () => ({ ok: true as const })),
   checkRateLimit: vi.fn(() => true),
 }))
@@ -51,12 +52,14 @@ vi.mock("@/lib/ai/voice/action-draft", async () => {
     updateAiVoiceActionDraft: deps.updateDraft,
     cancelAiVoiceActionDraft: deps.cancelDraft,
     getActiveAiVoiceActionDraft: deps.getActiveDraft,
+    issueAiVoiceActionConfirmationProof: deps.issueConfirmation,
   }
 })
 
 import { PATCH } from "@/app/api/v1/ai/voice/actions/[id]/route"
 import { POST as CANCEL } from "@/app/api/v1/ai/voice/actions/[id]/cancel/route"
 import { GET as ACTIVE } from "@/app/api/v1/ai/voice/actions/active/route"
+import { POST as CONFIRM } from "@/app/api/v1/ai/voice/actions/[id]/confirmation/route"
 
 const receipt = {
   id: "intent-1",
@@ -91,6 +94,14 @@ beforeEach(() => {
   deps.updateDraft.mockResolvedValue(receipt)
   deps.cancelDraft.mockResolvedValue({ ...receipt, state: "cancelled" })
   deps.getActiveDraft.mockResolvedValue(receipt)
+  deps.issueConfirmation.mockResolvedValue({
+    confirmationEventId: "confirmation-event-1",
+    confirmationToken: "a".repeat(43),
+    intentId: "intent-1",
+    revision: 2,
+    payloadHash: "a".repeat(64),
+    expiresAt: "2026-09-19T12:02:00.000Z",
+  })
 })
 
 describe("AI voice action draft lifecycle routes", () => {
@@ -169,5 +180,39 @@ describe("AI voice action draft lifecycle routes", () => {
       { expectedRevision: 1 },
     ), routeContext)
     expect(response.status).toBe(429)
+  })
+
+  it("records an explicit confirmation event without executing an action", async () => {
+    const response = await CONFIRM(mutationRequest(
+      "/api/v1/ai/voice/actions/intent-1/confirmation",
+      "POST",
+      { expectedRevision: 2, payloadHash: "a".repeat(64), confirmed: true },
+    ), routeContext)
+
+    expect(response.status).toBe(201)
+    expect(response.headers.get("cache-control")).toBe("private, no-store")
+    expect(deps.issueConfirmation).toHaveBeenCalledWith(
+      expect.objectContaining({ orgId: "org-1", userId: "user-1" }),
+      {
+        intentId: "intent-1",
+        expectedRevision: 2,
+        payloadHash: "a".repeat(64),
+      },
+    )
+    expect(await response.json()).toMatchObject({
+      success: true,
+      data: { confirmationEventId: "confirmation-event-1" },
+    })
+  })
+
+  it("rejects confirmation without the literal user-confirmed marker", async () => {
+    const response = await CONFIRM(mutationRequest(
+      "/api/v1/ai/voice/actions/intent-1/confirmation",
+      "POST",
+      { expectedRevision: 2, payloadHash: "a".repeat(64), confirmed: false },
+    ), routeContext)
+
+    expect(response.status).toBe(400)
+    expect(deps.issueConfirmation).not.toHaveBeenCalled()
   })
 })
