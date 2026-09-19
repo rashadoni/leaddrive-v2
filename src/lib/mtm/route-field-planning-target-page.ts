@@ -12,6 +12,7 @@ export type RouteFieldPlanningTargetPageContext = {
   agentId: string
   date: string
   kind: RouteFieldPlanningTargetKind
+  targetId: string | null
   search: string
   objectType: string | null
   organizationKind: string | null
@@ -55,6 +56,7 @@ function isCursor(value: unknown): value is RouteFieldPlanningTargetPageCursor {
     && isNonEmptyString(cursor.date)
     && (cursor.kind === "organization" || cursor.kind === "contact")
     && isPhaseForKind(cursor.phase, cursor.kind)
+    && isNullableString(cursor.targetId)
     && typeof cursor.search === "string"
     && isNullableString(cursor.objectType)
     && isNullableString(cursor.organizationKind)
@@ -118,6 +120,7 @@ export function readRouteFieldPlanningTargetPage(
     || decoded.agentId !== expected.agentId
     || decoded.date !== expected.date
     || decoded.kind !== expected.kind
+    || decoded.targetId !== expected.targetId
     || decoded.search !== expected.search
     || decoded.objectType !== expected.objectType
     || decoded.organizationKind !== expected.organizationKind
