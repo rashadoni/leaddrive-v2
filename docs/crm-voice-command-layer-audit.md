@@ -1,6 +1,6 @@
 # CRM Voice Assistant: Canonical Command Layer Audit
 
-Status: C1.1 complete; task create, lead create/update, and deal create commands implemented
+Status: C1.1 complete; task create, lead create/update/conversion, and deal create commands implemented
 
 Date: 2026-09-19
 
@@ -25,6 +25,13 @@ Implementation update:
   duplicate warnings, and the existing deal-created effects.
 - `POST /api/v1/deals` is an HTTP adapter over that command. Accepted tags are
   now persisted instead of being silently ignored.
+- `convertLeadToDealCommand` now owns the strict conversion contract, record
+  visibility, pipeline/stage routing, stale voice-draft protection, and the
+  atomic lead claim plus company/contact/deal mutation.
+- `POST /api/v1/leads/:id/convert` is an HTTP adapter over that command.
+  Concurrent conversion attempts are rejected before they can create a second
+  deal, and successful conversion dispatches both canonical deal-created and
+  lead-converted effects.
 
 ## 1. Decision
 
@@ -60,6 +67,11 @@ The implementation order is:
    tags are persisted, and direct command callers receive possible-duplicate
    warnings.
 6. `convertLeadToDealCommand` as its own atomic operation.
+   Implemented: REST conversion shares the strict command; a conditional lead
+   claim prevents concurrent duplicate deals, voice callers must present the
+   reviewed `expectedUpdatedAt`, pipeline stages and inherited assignees are
+   tenant-validated, and deal plus lead conversion effects are dispatched from
+   the committed result.
 7. Durable effect delivery for side effects that cannot be part of the record
    transaction.
 
