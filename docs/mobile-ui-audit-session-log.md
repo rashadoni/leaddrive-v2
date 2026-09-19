@@ -40,3 +40,12 @@ This file is append-only. It preserves requirements, decisions, implementation e
 - ADB was checked again through both the local server and forwarded server at `127.0.0.1:35037`; both device lists remained empty, so no physical-device visual claim has been made.
 - Per the user's explicit instruction, removed the three Social Monitoring-specific requirements from the shared deploy workflow: standalone page-manifest assertion, queue-scheduler smoke, and authenticated browser smoke/evidence upload. General build, security, database, MTM, scheduler, revision, ping, and asset smokes remain intact.
 - Current continuation point: finish and smoke-check the active production deployment, publish the deploy-gate cleanup through review/CI, then install build 256 and complete portrait/landscape visual verification as soon as ADB exposes the device.
+
+## 2026-09-19 — production completion and deploy-gate cleanup
+
+- Server PR `rashadoni/leaddrive-v2#241` deployed successfully in workflow run `35467618741`; atomic deployment, database-path ping, deployed revision, login page, and hashed asset smokes all passed.
+- Deploy-gate cleanup PR `rashadoni/leaddrive-v2#242` passed static checks and the full TypeScript gate, then merged as `b594797fb65059f4ae9192a3d5a4e60f9e9d14e5`.
+- The next main commit `df65ee2bb1c33cd73c23465687809ee316c03c0f` contained the cleanup and superseded the first control run through the workflow concurrency rule.
+- Final production workflow run `35470189884` completed successfully. Its actual deploy job contained the general security, database, MTM, scheduler, tenant-isolation, ping, revision, and asset checks, and contained no Social Monitoring step.
+- Mobile release remains `v3.3.0-build256`; the verified APK is staged at `/tmp/leaddrive-mtm-build256/leaddrive-mtm-v3.3.0.apk` for installation.
+- Current continuation point: both code releases and production deployment are complete. Physical portrait/landscape verification is the only unfinished item; resume by installing build 256 when the forwarded or local ADB server lists the phone/tablet.
