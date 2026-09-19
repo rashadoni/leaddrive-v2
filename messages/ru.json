@@ -16013,6 +16013,8 @@
     "routeTargetNumber": "Тип {number}",
     "routeTargetEnabled": "Показывать в планировщике",
     "routeTargetDelete": "Удалить тип",
+    "routeTargetMoveUp": "Переместить выше",
+    "routeTargetMoveDown": "Переместить ниже",
     "routeTargetLabelAZ": "Название — азербайджанский",
     "routeTargetLabelRU": "Название — русский",
     "routeTargetLabelEN": "Название — английский",

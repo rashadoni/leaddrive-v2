@@ -125,15 +125,12 @@ export function parseMtmRouteTargetTypes(raw: unknown):
 }
 
 /**
- * Doctor targets are field contacts. When the organization turns field
- * contacts off, planners (web and field app) stop offering them; the stored
- * configuration is kept so turning contacts back on restores it unchanged.
+ * Planning categories are administrator-owned and independent from the
+ * general contacts-directory switch. A tenant may hide the full directory
+ * while still allowing agents to plan visits to the doctors assigned to them.
  */
-export function routeTargetTypesForFieldContacts(
-  targets: MtmRouteTargetType[],
-  fieldContactsEnabled: boolean,
-): MtmRouteTargetType[] {
-  return fieldContactsEnabled ? targets : targets.filter((target) => target.direction !== "DOCTOR")
+export function routeTargetTypesForPlanning(targets: MtmRouteTargetType[]): MtmRouteTargetType[] {
+  return targets
 }
 
 export function coerceMtmRouteTargetTypes(raw: unknown): MtmRouteTargetType[] {

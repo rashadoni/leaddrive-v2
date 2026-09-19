@@ -16009,6 +16009,8 @@
     "routeTargetNumber": "Tip {number}",
     "routeTargetEnabled": "Planlaşdırıcıda göstər",
     "routeTargetDelete": "Tipi sil",
+    "routeTargetMoveUp": "Yuxarı daşı",
+    "routeTargetMoveDown": "Aşağı daşı",
     "routeTargetLabelAZ": "Ad — azərbaycanca",
     "routeTargetLabelRU": "Ad — rusca",
     "routeTargetLabelEN": "Ad — ingiliscə",

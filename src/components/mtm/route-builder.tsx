@@ -47,7 +47,7 @@ import type { MtmRouteAssignment, MtmRouteCustomer, MtmRoutePoint, MtmRouteRecor
 import {
   coerceMtmRouteTargetTypes,
   routeTargetLabel,
-  routeTargetTypesForFieldContacts,
+  routeTargetTypesForPlanning,
   type MtmRouteTargetType,
 } from "@/lib/mtm/route-target-types"
 import type { MtmRoutePlannerContext, MtmRoutePlannerFilters } from "@/lib/mtm/route-planner-context"
@@ -683,9 +683,8 @@ export function MtmRouteBuilder({
         if (agentResult.success) setAgents(agentResult.data.agents ?? [])
         else setError(explainError(agentResult))
         if (settingsResult.success) {
-          const configured = routeTargetTypesForFieldContacts(
+          const configured = routeTargetTypesForPlanning(
             coerceMtmRouteTargetTypes(settingsResult.data?.routeTargetTypes),
-            settingsResult.data?.fieldContactsEnabled !== false,
           )
           setRouteTargetTypes(configured)
           const requestedDirection = initialData ? "ORGANIZATION" : initialDirection ?? initialPlannerContext?.direction ?? "ORGANIZATION"

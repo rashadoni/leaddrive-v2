@@ -25,7 +25,7 @@ import {
 import {
   coerceMtmRouteTargetTypes,
   routeTargetLabel,
-  routeTargetTypesForFieldContacts,
+  routeTargetTypesForPlanning,
   type MtmRouteTargetDirection,
   type MtmRouteTargetType,
 } from "@/lib/mtm/route-target-types"
@@ -239,9 +239,8 @@ export function MtmRoutePlanningMatrix({
         return visibleAgents.find((agent) => agent.id === preferredAgentId)?.id ?? visibleAgents[0]?.id ?? ""
       })
       if (settingsResult.success) {
-        setTargetTypes(routeTargetTypesForFieldContacts(
+        setTargetTypes(routeTargetTypesForPlanning(
           coerceMtmRouteTargetTypes(settingsResult.data?.routeTargetTypes),
-          settingsResult.data?.fieldContactsEnabled !== false,
         ))
       }
     }).catch((loadError: unknown) => {

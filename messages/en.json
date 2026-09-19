@@ -16013,6 +16013,8 @@
     "routeTargetNumber": "Type {number}",
     "routeTargetEnabled": "Show in planner",
     "routeTargetDelete": "Delete type",
+    "routeTargetMoveUp": "Move up",
+    "routeTargetMoveDown": "Move down",
     "routeTargetLabelAZ": "Name — Azerbaijani",
     "routeTargetLabelRU": "Name — Russian",
     "routeTargetLabelEN": "Name — English",

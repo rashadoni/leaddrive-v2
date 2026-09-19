@@ -438,9 +438,9 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
     expect(json.data.policies.fieldContactsEnabled).toBe(false)
     expect(json.data.policies).toMatchObject({ photoWatermark: false, canPlanOwnRoutes: true })
     expect(json.data.sync.streams).toContain("contacts")
-    // Doctor planner buttons go with the contacts; other targets stay.
+    // Planning categories are independent from the full contacts directory.
     const directions = json.data.routeTargetTypes.map((target: { direction: string }) => target.direction)
-    expect(directions).not.toContain("DOCTOR")
+    expect(directions).toContain("DOCTOR")
     expect(directions).toContain("PHARMACY")
   })
 

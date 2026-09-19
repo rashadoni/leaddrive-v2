@@ -1,6 +1,6 @@
 "use client"
 
-import { Plus, Route, Trash2 } from "lucide-react"
+import { ArrowDown, ArrowUp, Plus, Route, Trash2 } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -49,6 +49,15 @@ export function RouteTargetTypeSettings({
     }])
   }
 
+  function moveRow(index: number, direction: -1 | 1) {
+    const nextIndex = index + direction
+    if (nextIndex < 0 || nextIndex >= rows.length) return
+    const next = [...rows]
+    const [row] = next.splice(index, 1)
+    next.splice(nextIndex, 0, row)
+    onChange(next)
+  }
+
   return (
     <section className="border-y border-zinc-200 bg-card py-4 dark:border-zinc-700" aria-labelledby="route-target-types-title">
       <div className="flex flex-col gap-3 px-4 sm:flex-row sm:items-start sm:justify-between">
@@ -75,6 +84,28 @@ export function RouteTargetTypeSettings({
                   <p className="text-xs text-muted-foreground">{row.labels.az}</p>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="min-h-11 min-w-11"
+                    aria-label={t("routeTargetMoveUp")}
+                    onClick={() => moveRow(index, -1)}
+                    disabled={index === 0}
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="min-h-11 min-w-11"
+                    aria-label={t("routeTargetMoveDown")}
+                    onClick={() => moveRow(index, 1)}
+                    disabled={index === rows.length - 1}
+                  >
+                    <ArrowDown className="h-4 w-4" />
+                  </Button>
                   <button
                     type="button"
                     role="switch"
