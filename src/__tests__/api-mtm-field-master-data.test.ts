@@ -138,6 +138,49 @@ describe("MTM contacts and organizations", () => {
     expect(prisma.mtmAuditLog.create).toHaveBeenCalled()
   })
 
+  it("creates the client and primary workplace as one contact write", async () => {
+    vi.mocked(prisma.mtmCustomer.findFirst).mockResolvedValue({ id: "customer-1" } as any)
+    vi.mocked(prisma.mtmContact.create).mockResolvedValue({
+      id: "contact-2",
+      organizationId: ORG,
+      firstName: "Aysel",
+      lastName: "Aliyeva",
+      displayName: "Aliyeva Aysel",
+      type: "DOCTOR",
+    } as any)
+
+    const response = await createContact(jsonRequest("/api/v1/mtm/contacts", "POST", {
+      firstName: "Aysel",
+      lastName: "Aliyeva",
+      type: "DOCTOR",
+      specialtyName: "Cardiologist",
+      primaryWorkplace: {
+        customerId: "customer-1",
+        jobTitle: "Doctor",
+        phone: "+994500000000",
+      },
+    }))
+
+    expect(response.status).toBe(201)
+    expect(prisma.mtmCustomer.findFirst).toHaveBeenCalledWith({
+      where: expect.objectContaining({ id: "customer-1", organizationId: ORG, deletedAt: null }),
+      select: { id: true },
+    })
+    expect(prisma.mtmContact.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        displayName: "Aliyeva Aysel",
+        workplaces: {
+          create: expect.objectContaining({
+            organizationId: ORG,
+            customerId: "customer-1",
+            isPrimary: true,
+            jobTitle: "Doctor",
+          }),
+        },
+      }),
+    })
+  })
+
   it("scopes an agent contact list instead of returning every tenant contact", async () => {
     vi.mocked(requireAuth).mockResolvedValue(AGENT_AUTH)
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "agent-1", role: "AGENT" } as any)

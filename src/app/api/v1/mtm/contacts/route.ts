@@ -403,6 +403,24 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
     if (!target) return NextResponse.json({ error: "Duplicate target not found", code: "MTM_CONTACT_DUPLICATE_TARGET_INVALID" }, { status: 400 })
   }
 
+  if (body.primaryWorkplace) {
+    const workplace = await prisma.mtmCustomer.findFirst({
+      where: {
+        id: body.primaryWorkplace.customerId,
+        organizationId: auth.orgId,
+        deletedAt: null,
+        status: { not: "INACTIVE" },
+      },
+      select: { id: true },
+    })
+    if (!workplace) {
+      return NextResponse.json({
+        error: "Primary workplace not found",
+        code: "MTM_CONTACT_WORKPLACE_INVALID",
+      }, { status: 400 })
+    }
+  }
+
   try {
     const contact = await prisma.mtmContact.create({
       data: {
@@ -444,6 +462,22 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
         verifiedBy: body.verificationStatus === "VERIFIED" ? auth.userId || null : null,
         duplicateOfContactId: body.duplicateOfContactId ?? null,
         notes: body.notes ?? null,
+        ...(body.primaryWorkplace ? {
+          workplaces: {
+            create: {
+              organizationId: auth.orgId,
+              customerId: body.primaryWorkplace.customerId,
+              jobTitle: body.primaryWorkplace.jobTitle ?? null,
+              department: body.primaryWorkplace.department ?? null,
+              room: body.primaryWorkplace.room ?? null,
+              phone: body.primaryWorkplace.phone ?? null,
+              isPrimary: true,
+              source: "ADMIN",
+              createdBy: auth.userId || null,
+              updatedBy: auth.userId || null,
+            },
+          },
+        } : {}),
       },
     })
 

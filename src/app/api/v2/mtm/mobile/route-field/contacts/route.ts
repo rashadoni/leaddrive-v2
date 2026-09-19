@@ -17,6 +17,7 @@ import {
 const ROUTE_FIELD_CONTACT_DEFAULT_PAGE_SIZE = 25
 const ROUTE_FIELD_CONTACT_MAX_PAGE_SIZE = 50
 const ROUTE_FIELD_CONTACT_SEARCH_MAX_LENGTH = 120
+const ROUTE_FIELD_CONTACT_TYPES = new Set(["DOCTOR", "PHARMACIST", "OTHER"])
 
 /** Fixed, no-manager-data projection for Route Field catalog cards. */
 const routeFieldContactListSelect = (customerScope: Prisma.MtmCustomerWhereInput) => ({
@@ -132,9 +133,13 @@ export const GET = withMobileRls(async (req, auth) => {
   if (search.length > ROUTE_FIELD_CONTACT_SEARCH_MAX_LENGTH) {
     return noStoreJson({ error: "Search is too long", code: "MTM_ROUTE_FIELD_CONTACT_SEARCH_TOO_LONG" }, { status: 400 })
   }
+  const requestedType = params.get("type") ?? ""
+  if (requestedType && !ROUTE_FIELD_CONTACT_TYPES.has(requestedType)) {
+    return noStoreJson({ error: "Invalid contact type", code: "MTM_ROUTE_FIELD_CONTACT_TYPE_INVALID" }, { status: 400 })
+  }
   const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
   const asOf = currentDateKey(new Date(), timezone)
-  const context = { organizationId: auth.orgId, agentId: actor.agentId, asOf, search }
+  const context = { organizationId: auth.orgId, agentId: actor.agentId, asOf, search, type: requestedType }
   const rawPage = params.get("page")
   let page: ReturnType<typeof readRouteFieldContactPage> | null = null
   if (rawPage) {
@@ -151,6 +156,7 @@ export const GET = withMobileRls(async (req, auth) => {
   const asOfDate = new Date(`${asOf}T00:00:00.000Z`)
   const customerScope = customerScopeForActor(actor, asOfDate)
   const filters: Prisma.MtmContactWhereInput[] = [contactScopeForActor(actor, asOfDate)]
+  if (requestedType) filters.push({ type: requestedType as "DOCTOR" | "PHARMACIST" | "OTHER" })
   const searchWhere = contactSearchWhere(search, customerScope)
   if (searchWhere) filters.push(searchWhere)
   if (page) {

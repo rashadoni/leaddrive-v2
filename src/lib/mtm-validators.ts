@@ -179,7 +179,7 @@ export const MtmContactVerificationStatus = z.enum(["UNVERIFIED", "VERIFIED", "R
 export const MtmContactConsentStatus = z.enum(["UNKNOWN", "GRANTED", "REVOKED"])
 export const MtmContactPreference = z.enum(["PHONE", "EMAIL", "WHATSAPP", "VIBER", "TELEGRAM", "DO_NOT_CONTACT"])
 
-export const ContactCreateSchema = z.object({
+const ContactFieldsSchema = z.object({
   externalCode: optionalString,
   firstName: z.string().trim().min(1).max(120),
   lastName: z.string().trim().min(1).max(120),
@@ -216,7 +216,17 @@ export const ContactCreateSchema = z.object({
   duplicateOfContactId: cuid.optional().nullable(),
   notes: longString,
 })
-export const ContactUpdateSchema = ContactCreateSchema.partial()
+
+export const ContactCreateSchema = ContactFieldsSchema.extend({
+  primaryWorkplace: z.object({
+    customerId: cuid,
+    jobTitle: optionalString,
+    department: optionalString,
+    room: optionalString,
+    phone: optionalString,
+  }).optional(),
+})
+export const ContactUpdateSchema = ContactFieldsSchema.partial()
 export const ContactDirectUpdateSchema = ContactUpdateSchema.extend({
   expectedContactUpdatedAt: z.string().datetime({ offset: true }).optional(),
 })

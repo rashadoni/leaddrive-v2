@@ -27,6 +27,7 @@ import {
   UserMinus,
   UserPlus,
   UserRound,
+  UserRoundPlus,
   UsersRound,
   X,
 } from "lucide-react"
@@ -42,6 +43,7 @@ import {
 } from "@/components/mtm/contact-transfer-dialog"
 import { ContactTransferReceiptPanel } from "@/components/mtm/contact-transfer-receipt-panel"
 import { ContactAssignmentDialog } from "@/components/mtm/contact-assignment-dialog"
+import { MtmContactCreateDialog } from "@/components/mtm/contact-create-dialog"
 import {
   applyContactTransferReconciliation,
   loadContactTransferReceipt,
@@ -290,6 +292,7 @@ export function MtmContactExplorer() {
   const [transferOpen, setTransferOpen] = useState(false)
   const [assignmentOpen, setAssignmentOpen] = useState(false)
   const [assignmentMode, setAssignmentMode] = useState<"ASSIGN" | "UNASSIGN">("ASSIGN")
+  const [createOpen, setCreateOpen] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const [advancedOpen, setAdvancedOpen] = useState(
     ADVANCED_FILTER_KEYS.some((key) => Boolean(initial.filters[key])),
@@ -655,10 +658,16 @@ export function MtmContactExplorer() {
           <PageDescription icon={UsersRound} title={t("title")} description={t("subtitle")} />
           <HelpButton slug="mtm-contacts" variant="label" />
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={refresh} disabled={loading}>
-          <RefreshCw className={`mr-1 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          {t("refresh")}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" size="sm" className="min-h-11" onClick={() => setCreateOpen(true)}>
+            <UserRoundPlus className="mr-1.5 h-4 w-4" />
+            {t("createClient")}
+          </Button>
+          <Button type="button" variant="outline" size="sm" className="min-h-11" onClick={refresh} disabled={loading}>
+            <RefreshCw className={`mr-1 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            {t("refresh")}
+          </Button>
+        </div>
       </div>
 
       <MtmWorkflowGuide
@@ -1131,6 +1140,14 @@ export function MtmContactExplorer() {
             toast.success(t("routeFlowReturningToRoute", { count: result.summary.changed }))
             router.push(routeAssignmentHandoff.returnTo)
           }
+        }}
+      />
+      <MtmContactCreateDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={() => {
+          setPage(1)
+          refresh()
         }}
       />
       <Dialog

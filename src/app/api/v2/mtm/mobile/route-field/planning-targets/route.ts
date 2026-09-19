@@ -24,6 +24,7 @@ const ROUTE_FIELD_PLANNING_TARGET_DEFAULT_LIMIT = 25
 const ROUTE_FIELD_PLANNING_TARGET_MAX_LIMIT = 50
 const ROUTE_FIELD_PLANNING_TARGET_SEARCH_MAX_LENGTH = 120
 const ROUTE_FIELD_PLANNING_TARGET_KIND_MAX_LENGTH = 120
+const ROUTE_FIELD_PLANNING_TARGET_ID_MAX_LENGTH = 191
 const ROUTE_FIELD_PLANNING_OBJECT_TYPES = new Set(["PHARMACY", "CLINIC", "STORE", "OTHER"])
 
 type PlanningTargetKind = "organization" | "contact"
@@ -216,6 +217,10 @@ export const GET = withMobileRls(async (req, auth) => {
   if (search.length > ROUTE_FIELD_PLANNING_TARGET_SEARCH_MAX_LENGTH) {
     return noStoreJson({ error: "Search is too long", code: "MTM_ROUTE_FIELD_PLANNING_TARGET_SEARCH_TOO_LONG" }, { status: 400 })
   }
+  const targetId = params.get("targetId")?.trim() || null
+  if (targetId && targetId.length > ROUTE_FIELD_PLANNING_TARGET_ID_MAX_LENGTH) {
+    return noStoreJson({ error: "Planning target id is invalid", code: "MTM_ROUTE_FIELD_PLANNING_TARGET_ID_INVALID" }, { status: 400 })
+  }
   const organizationKind = normaliseSearch(params.get("organizationKind")) || null
   if (organizationKind && organizationKind.length > ROUTE_FIELD_PLANNING_TARGET_KIND_MAX_LENGTH) {
     return noStoreJson({ error: "Organization kind is too long", code: "MTM_ROUTE_FIELD_PLANNING_TARGET_KIND_TOO_LONG" }, { status: 400 })
@@ -231,6 +236,7 @@ export const GET = withMobileRls(async (req, auth) => {
     agentId: actor.agentId,
     date,
     kind,
+    targetId,
     search,
     objectType,
     organizationKind,
@@ -262,6 +268,7 @@ export const GET = withMobileRls(async (req, auth) => {
     const filters: Prisma.MtmCustomerWhereInput[] = [
       eligibleFieldCustomerWhere({ agentId: actor.agentId, date: routeDate }),
     ]
+    if (targetId) filters.push({ id: targetId })
     const afterPage = customerKeysetFilter(page)
     if (afterPage) filters.push(afterPage)
     if (search) {
@@ -301,7 +308,7 @@ export const GET = withMobileRls(async (req, auth) => {
     // "territory", and the shared vocabulary has no word for it. A wrong
     // reason sends the agent to a manager over a typo; no reason lets the
     // screen say the plain thing.
-    const callerNarrowed = Boolean(search || organizationKind || objectType)
+    const callerNarrowed = Boolean(targetId || search || organizationKind || objectType)
     let eligibility: { reason: MtmFieldEligibilityReason } | null = null
     if (pageRows.length === 0 && !page && !callerNarrowed) {
       const [agentRow, eligibleTotal] = await Promise.all([
@@ -375,6 +382,7 @@ export const GET = withMobileRls(async (req, auth) => {
     return noStoreJson({ error: "Invalid planning target page", code: "MTM_ROUTE_FIELD_PLANNING_TARGET_PAGE_INVALID" }, { status: 400 })
   }
   const contactFilters: Prisma.MtmContactWhereInput[] = []
+  if (targetId) contactFilters.push({ id: targetId })
   const searchWhere = planningContactSearchWhere(search)
   if (searchWhere) contactFilters.push(searchWhere)
   const afterPage = contactKeysetFilter(page)
@@ -437,7 +445,7 @@ export const GET = withMobileRls(async (req, auth) => {
   // Explaining emptiness there would say "no assignments" to an agent whose
   // second phase is about to return people. Only an exhausted search speaks.
   let contactEligibility: { reason: MtmFieldEligibilityReason } | null = null
-  if (targets.length === 0 && nextPage === null && !Boolean(search)) {
+  if (targets.length === 0 && nextPage === null && !Boolean(targetId || search)) {
     const [agentRow, eligibleTotal] = await Promise.all([
       prisma.mtmAgent.findFirst({
         where: { id: actor.agentId, organizationId: auth.orgId },
