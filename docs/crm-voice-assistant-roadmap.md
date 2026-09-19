@@ -323,9 +323,9 @@ No voice write tools are enabled in this phase.
 
 ### Tasks
 
-- [ ] C1.1 Inventory validation, permissions, field rules, workflows,
+- [x] C1.1 Inventory validation, permissions, field rules, workflows,
       notifications, webhooks, audit, and custom-field handling in current REST
-      routes.
+      routes. See `docs/crm-voice-command-layer-audit.md`.
 - [ ] C1.2 Extract shared strict schemas for task, lead, and deal operations.
 - [ ] C1.3 Implement `createTaskCommand`.
 - [ ] C1.4 Implement `createLeadCommand`.
