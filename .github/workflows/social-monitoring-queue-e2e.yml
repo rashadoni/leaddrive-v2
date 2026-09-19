@@ -5,7 +5,6 @@ on:
     paths:
       - "prisma/migrations/20260801160000_social_monitoring_server_run_queue/**"
       - "scripts/social-monitoring-server-queue-e2e.mjs"
-      - "messages/*.json"
       - "src/app/(dashboard)/social-monitoring/**"
       - "src/app/api/cron/social-monitoring-run-jobs/**"
       - "src/app/api/v1/social/monitoring-run-jobs/**"
