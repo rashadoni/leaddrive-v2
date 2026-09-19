@@ -174,6 +174,18 @@ describe("middleware", async () => {
     expect(res.status).toBe(200)
   })
 
+  it("keeps admin demo previews behind authentication", async () => {
+    const res = await authMiddleware(makeReq({
+      pathname: "/demo-preview/request-1",
+      host: "app.leaddrivecrm.org",
+      auth: null,
+    }))
+
+    expect(res.status).toBe(307)
+    expect(res.headers.get("location")).toContain("/login")
+    expect(res.headers.get("location")).toContain("callbackUrl=%2Fdemo-preview%2Frequest-1")
+  })
+
   it("serves the demo request page on the app host as a stable edge fallback", async () => {
     const res = await authMiddleware(makeReq({
       pathname: "/demo",

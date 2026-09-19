@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { demoRejectSchema } from "@/lib/demo-center/validation"
+import { runWithRlsBypass } from "@/lib/rls-context"
 import { requireSuperAdmin } from "@/lib/superadmin-guard"
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -11,7 +12,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const { id } = await params
   const now = new Date()
-  const result = await prisma.$transaction(async (tx) => {
+  const result = await runWithRlsBypass(() => prisma.$transaction(async (tx) => {
     const requestRow = await tx.demoRequest.updateMany({
       where: { id, status: { not: "REJECTED" } },
       data: {
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       })
     }
     return true
-  })
+  }))
 
   if (!result) return NextResponse.json({ success: false, error: "Request was not found or is already rejected" }, { status: 409 })
   return NextResponse.json({ success: true, status: "REJECTED" })

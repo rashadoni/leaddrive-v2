@@ -15,12 +15,15 @@ progress, and a terminal completion screen.
 2. A superadmin opens **Admin → Demo Center** and reviews the request.
 3. The superadmin selects and orders any of the 19 approved module demos, then
    sets link validity, absolute session duration, and inactivity timeout.
-4. **Issue access** creates a fresh capability link and sends it to the
+4. **Preview selected** opens the current playlist in the same synthetic player
+   without creating a grant, sending email, consuming a client session, or
+   recording client access events. The preview remains superadmin-only.
+5. **Issue access** creates a fresh capability link and sends it to the
    prospect. Reissuing revokes every earlier usable link for that request.
-5. The prospect opens the link, receives a six-digit email code, verifies it,
+6. The prospect opens the link, receives a six-digit email code, verifies it,
    and explicitly starts the session. Merely opening or scanning the email does
    not consume access.
-6. Admins can follow the access event history or revoke the grant immediately.
+7. Admins can follow the access event history or revoke the grant immediately.
 
 ## One-session contract
 

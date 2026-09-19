@@ -24,6 +24,7 @@ import {
   MessageSquare,
   Phone,
   Radio,
+  RotateCcw,
   Settings,
   Shield,
   Sparkles,
@@ -55,6 +56,8 @@ export interface DemoPlayerProps {
   sessionExpiresAt?: string
   idleExpiresAt?: string
   onAccessLost?: () => void
+  /** Superadmin preview: identical synthetic scenes without grant events or session expiry. */
+  previewMode?: boolean
 }
 
 const MODULE_ICONS: Record<DemoModuleId, LucideIcon> = {
@@ -178,7 +181,7 @@ function stepsBeforeModule(modules: readonly DemoModuleManifest[], moduleIndex: 
     .reduce((sum, module) => sum + module.steps.length, 0)
 }
 
-export function DemoPlayer({ token, company, watermark, modules, serverNow, sessionExpiresAt, idleExpiresAt, onAccessLost }: DemoPlayerProps) {
+export function DemoPlayer({ token, company, watermark, modules, serverNow, sessionExpiresAt, idleExpiresAt, onAccessLost, previewMode = false }: DemoPlayerProps) {
   const [moduleIndex, setModuleIndex] = useState(0)
   const [stepIndex, setStepIndex] = useState(0)
   const [activatedSteps, setActivatedSteps] = useState<ReadonlySet<string>>(
@@ -286,6 +289,7 @@ export function DemoPlayer({ token, company, watermark, modules, serverNow, sess
       stepId?: string,
       metadata?: Record<string, string | number | boolean | null>,
     ): Promise<boolean> => {
+      if (previewMode) return true
       if (!token.trim()) return false
 
       const controller = new AbortController()
@@ -315,7 +319,7 @@ export function DemoPlayer({ token, company, watermark, modules, serverNow, sess
         window.clearTimeout(timeout)
       }
     },
-    [onAccessLost, token],
+    [onAccessLost, previewMode, token],
   )
 
   useEffect(() => {
@@ -438,6 +442,23 @@ export function DemoPlayer({ token, company, watermark, modules, serverNow, sess
     })
   }
 
+  const restartPreview = () => {
+    try {
+      window.sessionStorage.removeItem(progressStorageKey(token))
+    } catch {
+      // Preview progress is optional and local to this browser tab.
+    }
+    completedTokensRef.current.delete(token || "anonymous-demo")
+    openedModulesRef.current.clear()
+    viewedStepsRef.current.clear()
+    setModuleIndex(0)
+    setStepIndex(0)
+    setActivatedSteps(new Set())
+    setVisitedSteps(new Set())
+    setCompletionError(null)
+    setIsComplete(false)
+  }
+
   if (!currentModule || !step) {
     return (
       <section
@@ -506,11 +527,11 @@ export function DemoPlayer({ token, company, watermark, modules, serverNow, sess
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-orange-800">
-                  Məxfi demo
+                  {previewMode ? "Admin ön baxışı" : "Məxfi demo"}
                 </span>
               </div>
               <p className="truncate text-xs text-muted-foreground">
-                Yalnız {safeCompany} üçün hazırlanıb
+                {previewMode ? `${safeCompany} üçün müştəri görünüşü` : `Yalnız ${safeCompany} üçün hazırlanıb`}
               </p>
             </div>
           </div>
@@ -663,9 +684,16 @@ export function DemoPlayer({ token, company, watermark, modules, serverNow, sess
                     sintetik ssenari ilə tanış oldunuz. Bu təqdimatda heç bir real
                     müştəri və ya şirkət hesabı məlumatı istifadə edilməyib.
                   </p>
-                  <p className="mx-auto mt-8 w-fit rounded-full bg-muted px-4 py-2 text-sm font-medium text-muted-foreground">
-                    Birdəfəlik sessiya bağlandı — pəncərəni bağlaya bilərsiniz
-                  </p>
+                  {previewMode ? (
+                    <Button type="button" variant="outline" onClick={restartPreview} className="mt-8 min-h-11 rounded-full px-5">
+                      <RotateCcw className="size-4" aria-hidden="true" />
+                      Ön baxışı yenidən başlat
+                    </Button>
+                  ) : (
+                    <p className="mx-auto mt-8 w-fit rounded-full bg-muted px-4 py-2 text-sm font-medium text-muted-foreground">
+                      Birdəfəlik sessiya bağlandı — pəncərəni bağlaya bilərsiniz
+                    </p>
+                  )}
                 </div>
               </div>
             ) : (
