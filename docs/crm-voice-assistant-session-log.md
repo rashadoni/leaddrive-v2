@@ -279,3 +279,30 @@ CI PR #244: static checks и полный unit baseline прошли. Первы
 production-код ошибок не добавил. Проверка события переписана через типобезопасный
 `toHaveBeenCalledWith`, без изменения runtime-поведения. Далее нужен повторный
 CI этого fix-коммита.
+
+## Итог 2026-09-20: атомарный draft ledger на production
+
+Срез полностью завершён и развёрнут:
+
+- основной checkpoint `27cab7ab0`;
+- type-safe test fix `681f8e5fc`;
+- PR #244;
+- повторный CI: scope, secret scan, runner policy, static checks, полный unit
+  baseline и defect-shaped typecheck — успешно;
+- merge SHA `921aa9d3406dc37e0e8716de11c82d3d6cd3ecae`;
+- deploy workflow `35476428436` — успешно, включая quality/security gates,
+  immutable artifact, atomic production switch и post-deploy smoke;
+- независимый `/api/v1/ping` вернул `{"ok":true}`;
+- независимый `/api/v1/public/build-info` подтвердил точный
+  `artifactSha=921aa9d3406dc37e0e8716de11c82d3d6cd3ecae`.
+
+На production события `drafted`, `draft_updated`, `cancelled` и `expired`
+теперь атомарны с изменением intent. Голосовая CRM-запись всё ещё выключена:
+commit endpoint отсутствует, confirmation proof не потребляется, execution
+lease и terminal result ещё не реализованы.
+
+Точка остановки: следующий технический риск — crash ambiguity между успешной
+канонической CRM-командой и сохранением receipt-result. Следующее действие —
+сделать command/result boundary идемпотентной и восстановимой для пяти команд,
+а затем включать single-use proof consumption, execution CAS/lease и commit
+endpoint.
