@@ -10,6 +10,7 @@ describe("MTM contact create request migration", () => {
     expect(migration).toContain('ALTER TABLE "mtm_contact_create_requests" ENABLE ROW LEVEL SECURITY')
     expect(migration).toContain('ALTER TABLE "mtm_contact_create_requests" FORCE ROW LEVEL SECURITY')
     expect(migration).toContain('CREATE POLICY "tenant_isolation"')
+    expect(migration.match(/current_setting\('app\.rls_bypass', true\) = 'on'/g)).toHaveLength(2)
     expect(migration).toContain('UNIQUE ("organizationId", "idempotencyKey")')
     expect(schema).toContain("model MtmContactCreateRequest")
   })

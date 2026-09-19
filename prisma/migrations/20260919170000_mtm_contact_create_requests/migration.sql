@@ -35,5 +35,11 @@ CREATE INDEX "mtm_contact_create_requests_approved_contact_idx" ON "mtm_contact_
 ALTER TABLE "mtm_contact_create_requests" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "mtm_contact_create_requests" FORCE ROW LEVEL SECURITY;
 CREATE POLICY "tenant_isolation" ON "mtm_contact_create_requests"
-  USING ("organizationId" = current_setting('app.current_organization_id', true))
-  WITH CHECK ("organizationId" = current_setting('app.current_organization_id', true));
+  USING (
+    "organizationId" = current_setting('app.current_organization_id', true)
+    OR current_setting('app.rls_bypass', true) = 'on'
+  )
+  WITH CHECK (
+    "organizationId" = current_setting('app.current_organization_id', true)
+    OR current_setting('app.rls_bypass', true) = 'on'
+  );
