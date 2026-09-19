@@ -75,7 +75,7 @@ export const GET = withMobileRls(async (_req, auth) => {
           ...product,
           document: product.document?.deletedAt ? null : product.document,
           downloadUrl: product.document && !product.document.deletedAt
-            ? `/api/v1/mtm/mobile/documents/${product.document.id}/download`
+            ? `/api/v1/mtm/mobile/documents/${product.document.id}/download?view=inline`
             : null,
         })),
       },

@@ -11,7 +11,7 @@ import { withMobileRls } from "@/lib/with-mobile-rls"
 
 type RouteContext = { params: Promise<{ documentId: string }> }
 
-export const GET = withMobileRls<RouteContext>(async (_req, auth, { params }) => {
+export const GET = withMobileRls<RouteContext>(async (req, auth, { params }) => {
   const forbidden = await requireMtmMobileMediaAccess(auth)
   if (forbidden) return forbidden
 
@@ -118,12 +118,22 @@ export const GET = withMobileRls<RouteContext>(async (_req, auth, { params }) =>
       data: { downloadedAt: new Date() },
     })
 
+    const inlineRequested = new URL(req.url).searchParams.get("view") === "inline"
+    const inlineAllowed = [
+      "application/pdf",
+      "application/vnd.ms-powerpoint",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ].includes(document.mimeType.toLowerCase())
+    const disposition = contentDispositionAttachment(document.fileName)
+
     return new NextResponse(bytes as unknown as BodyInit, {
       status: 200,
       headers: {
         "Content-Type": document.mimeType,
         "Content-Length": String(bytes.byteLength),
-        "Content-Disposition": contentDispositionAttachment(document.fileName),
+        "Content-Disposition": inlineRequested && inlineAllowed
+          ? disposition.replace(/^attachment/i, "inline")
+          : disposition,
         "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",
       },

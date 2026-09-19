@@ -68,7 +68,7 @@ describe("mobile product presentation catalog", () => {
     expect(json.data.groups.map((group: { id: string }) => group.id)).toEqual(["portfolio", "line"])
     expect(json.data.products[0]).toMatchObject({
       id: "product-1",
-      downloadUrl: "/api/v1/mtm/mobile/documents/document-1/download",
+      downloadUrl: "/api/v1/mtm/mobile/documents/document-1/download?view=inline",
     })
   })
 })
