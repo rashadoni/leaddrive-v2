@@ -213,3 +213,69 @@ production deploy этого нового среза.
 канонические CRM-команды не вызываются. Далее: checkpoint/PR/CI/deploy этого
 фундамента, затем атомарная интеграция остальных lifecycle events и устранение
 crash ambiguity до включения I1.5.
+
+## Итог 2026-09-19: confirmation proof на production
+
+Confirmation-proof foundation завершён и развёрнут:
+
+- основной checkpoint `34e09912d`;
+- type-fix тестового mock `62d9e001d`;
+- PR #243;
+- первый CI выявил один новый `TS2339` только в типизации test mock; runtime,
+  migration и static gates были зелёными;
+- повторный CI: scope, secret scan, runner policy, static checks и полный
+  typecheck — успешно;
+- merge SHA `df65ee2bb1c33cd73c23465687809ee316c03c0f`;
+- deploy workflow `35470189884` — успешно;
+- независимый `/api/v1/ping` вернул `{"ok":true}`;
+- независимый `/api/v1/public/build-info` подтвердил
+  `artifactSha=df65ee2bb1c33cd73c23465687809ee316c03c0f`.
+
+На production теперь есть append-only event-ledger foundation и endpoint
+выдачи короткоживущего confirmation proof. Голосовая CRM-запись всё ещё
+невозможна: commit endpoint отсутствует, intent не переходит в `executing`,
+канонические команды не вызываются.
+
+Точка остановки: I1.14 выполнен частично — таблица, RLS, immutability и событие
+`confirmation_proof_issued` готовы, но остальные lifecycle transitions ещё не
+пишутся атомарно. Следующее действие: адаптировать канонические команды и
+receipt-result к атомарной/idempotent execution boundary, затем реализовать
+single-use proof consumption, CAS claim, lease recovery и commit endpoint.
+
+## Продолжение 2026-09-20: атомарный ledger draft lifecycle
+
+Закрыт следующий участок I1.14 без включения CRM-записей:
+
+- `drafted` создаётся в одной транзакции с новым `AiActionIntent`;
+- `draft_updated` создаётся в одной транзакции с revision-CAS обновлением;
+- `cancelled` создаётся в одной транзакции с CAS-отменой;
+- `expired` создаётся в одной транзакции с TTL-CAS переходом;
+- проигравший CAS не оставляет ложного события;
+- прежнее массовое TTL-обновление без forensic evidence заменено на
+  идентифицированный переход единственного активного root intent;
+- event metadata ограничена состоянием/ревизией/причиной и не содержит raw
+  payload, аудио, transcript или секреты.
+
+Проверки текущего дерева:
+
+- 8 целевых test files / 49 tests — успешно;
+- targeted ESLint — успешно;
+- `git diff --check` — успешно;
+- полный `npm run typecheck` и `npm run build` — NOT RUN локально по host
+  contract; полный typecheck должен выполнить GitHub CI.
+
+Точка остановки этой записи: draft/update/cancel/expiry lifecycle теперь
+пишется атомарно в immutable ledger, но I1.14 ещё не завершён. Commit endpoint
+отсутствует, proof не потребляется, состояния `executing`/`succeeded`/`failed`
+не включены, CRM-команды не вызываются.
+
+Следующее действие: checkpoint commit, push, PR и CI/deploy этого среза. После
+этого — устранение crash ambiguity между канонической CRM-командой и сохранением
+receipt-result, затем single-use proof consumption, execution CAS/lease и
+commit endpoint.
+
+CI PR #244: static checks и полный unit baseline прошли. Первый typecheck gate
+обнаружил один новый `TS2339` только в чтении `mock.calls` нового unit-теста;
+production-код ошибок не добавил. Проверка события переписана через типобезопасный
+`toHaveBeenCalledWith`, без изменения runtime-поведения. Далее нужен повторный
+CI этого fix-коммита.

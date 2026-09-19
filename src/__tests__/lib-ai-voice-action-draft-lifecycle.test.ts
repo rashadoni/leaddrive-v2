@@ -9,9 +9,9 @@ type EventCreateArgs = {
     eventType: string
     intentRevision: number
     payloadHash: string
-    eventData: { tokenHash: string; expiresAt: string }
+    eventData: Record<string, unknown>
   }
-  select: { id: true }
+  select?: { id: true }
 }
 
 const deps = vi.hoisted(() => ({
@@ -34,20 +34,28 @@ const deps = vi.hoisted(() => ({
   },
 }))
 
-vi.mock("@/lib/prisma", () => ({
-  prisma: {
+vi.mock("@/lib/prisma", () => {
+  const transactionClient = {
     aiActionIntent: {
       findFirst: deps.intentFindFirst,
       updateMany: deps.intentUpdateMany,
     },
     aiActionIntentEvent: { create: deps.eventCreate },
-    voiceSession: { findFirst: deps.sessionFindFirst },
-    lead: { findFirst: deps.leadFindFirst, findMany: deps.leadFindMany },
-    deal: { findMany: deps.dealFindMany },
-    fieldPermission: { findMany: deps.fieldPermissionFindMany },
-  },
-  logAudit: deps.logAudit,
-}))
+  }
+  return {
+    prisma: {
+      ...transactionClient,
+      $transaction: async (
+        callback: (tx: typeof transactionClient) => Promise<unknown>,
+      ) => callback(transactionClient),
+      voiceSession: { findFirst: deps.sessionFindFirst },
+      lead: { findFirst: deps.leadFindFirst, findMany: deps.leadFindMany },
+      deal: { findMany: deps.dealFindMany },
+      fieldPermission: { findMany: deps.fieldPermissionFindMany },
+    },
+    logAudit: deps.logAudit,
+  }
+})
 
 vi.mock("@/lib/api-auth", () => ({
   getOrgModuleContext: vi.fn(async () => deps.org),
@@ -142,6 +150,16 @@ describe("AI voice action draft lifecycle", () => {
         revision: 2,
       }),
     })
+    expect(deps.eventCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        eventType: "draft_updated",
+        intentRevision: 2,
+      }),
+    })
+    expect(deps.eventCreate.mock.calls[0]?.[0]?.data.eventData).toEqual({
+      fromRevision: 1,
+      toRevision: 2,
+    })
   })
 
   it("replays an exact edit retry but rejects a conflicting stale revision", async () => {
@@ -165,8 +183,23 @@ describe("AI voice action draft lifecycle", () => {
     })).rejects.toMatchObject({ code: "REVISION_CONFLICT", status: 409 })
   })
 
-  it("restores only an active root owned by the authenticated user and tenant", async () => {
+  it("does not append an update event when the revision CAS loses", async () => {
     deps.intentFindFirst.mockResolvedValueOnce(storedIntent())
+    deps.intentUpdateMany.mockResolvedValueOnce({ count: 0 })
+
+    await expect(updateAiVoiceActionDraft(auth, {
+      intentId: "intent-1",
+      expectedRevision: 1,
+      payload: { title: "Concurrent edit" },
+    })).rejects.toMatchObject({ code: "REVISION_CONFLICT", status: 409 })
+
+    expect(deps.eventCreate).not.toHaveBeenCalled()
+  })
+
+  it("restores only an active root owned by the authenticated user and tenant", async () => {
+    deps.intentFindFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(storedIntent())
 
     const result = await getActiveAiVoiceActionDraft(auth, "voice-1")
 
@@ -200,6 +233,12 @@ describe("AI voice action draft lifecycle", () => {
       }),
       data: expect.objectContaining({ state: "cancelled" }),
     })
+    expect(deps.eventCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        eventType: "cancelled",
+        intentRevision: 1,
+      }),
+    })
 
     deps.intentFindFirst.mockResolvedValueOnce(storedIntent({ state: "cancelled" }))
     const replay = await cancelAiVoiceActionDraft(auth, {
@@ -218,6 +257,16 @@ describe("AI voice action draft lifecycle", () => {
       expectedRevision: 1,
       payload: { title: "Too late" },
     })).rejects.toMatchObject({ code: "INTENT_EXPIRED", status: 409 })
+    expect(deps.eventCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        eventType: "expired",
+        intentRevision: 1,
+        eventData: {
+          fromState: "awaiting_confirmation",
+          reason: "ttl_elapsed",
+        },
+      }),
+    })
 
     deps.intentFindFirst.mockResolvedValueOnce(storedIntent({ state: "executing" }))
     await expect(cancelAiVoiceActionDraft(auth, {
