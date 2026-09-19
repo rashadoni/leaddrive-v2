@@ -64,7 +64,7 @@ export const GET = withRouteFieldRlsAuth("read", async (
         },
         contact: { select: { id: true, displayName: true } },
         route: { select: { id: true, name: true, date: true } },
-        routePoint: { select: { id: true, orderIndex: true, plannedTime: true } },
+        routePoint: { select: { id: true, orderIndex: true } },
         participants: { select: { agentId: true, role: true, joinedAt: true, leftAt: true } },
         requirementSnapshot: {
           select: { requirements: { select: { id: true, actionKey: true, mode: true, minCount: true } } },
@@ -72,6 +72,29 @@ export const GET = withRouteFieldRlsAuth("read", async (
         actionResults: {
           orderBy: { createdAt: "asc" },
           select: { id: true, actionKey: true, status: true, evidence: true, completedAt: true },
+        },
+        presentationSessions: {
+          orderBy: { openedAt: "asc" },
+          select: {
+            id: true,
+            openedAt: true,
+            lastViewedAt: true,
+            closedAt: true,
+            activeDurationSeconds: true,
+            openLat: true,
+            openLng: true,
+            closeLat: true,
+            closeLng: true,
+            pageCount: true,
+            lastPage: true,
+            pagesViewed: true,
+            pageEvents: true,
+            presentationVersion: true,
+            product: {
+              select: { id: true, name: true, group: { select: { id: true, name: true } } },
+            },
+            document: { select: { id: true, title: true, fileName: true, mimeType: true } },
+          },
         },
         // The grid shows the first photos; the count and the PHOTO step use _count.
         _count: { select: { photos: true } },
@@ -112,6 +135,7 @@ export const GET = withRouteFieldRlsAuth("read", async (
     ])
 
     const { participants: _authorizationEvidence, _count: counts, ...publicVisit } = visit
+    void _authorizationEvidence
     const primaryAgentVisible = isAgentInRouteScope(actor, visit.agentId)
     const timezone = isValidTimezone(settings.timezone) ? settings.timezone : "UTC"
 

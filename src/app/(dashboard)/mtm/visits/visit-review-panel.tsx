@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
-import { AlertTriangle, CheckCircle2, Circle, Clock, ListChecks, MapPin, Route as RouteIcon, UserRound, X } from "lucide-react"
+import { AlertTriangle, CheckCircle2, Circle, Clock, FileText, ListChecks, MapPin, Route as RouteIcon, UserRound, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { SignaturePreview } from "@/components/mtm/visit-signature-preview"
 import { VisitPhotoGrid } from "@/components/mtm/visit-photo-grid"
@@ -51,9 +51,27 @@ export interface VisitReviewData {
     }
     contact: { id: string; displayName: string | null } | null
     route: { id: string; name: string | null; date: string } | null
-    routePoint: { id: string; orderIndex: number; plannedTime: string | null } | null
+    routePoint: { id: string; orderIndex: number } | null
     requirementSnapshot: { requirements: Array<{ id: string; actionKey: string; mode: string; minCount: number }> } | null
     actionResults: Array<{ id: string; actionKey: string; status: string; evidence: Record<string, unknown> | null; completedAt: string | null }>
+    presentationSessions: Array<{
+      id: string
+      openedAt: string
+      lastViewedAt: string
+      closedAt: string | null
+      activeDurationSeconds: number
+      openLat: number | null
+      openLng: number | null
+      closeLat: number | null
+      closeLng: number | null
+      pageCount: number | null
+      lastPage: number | null
+      pagesViewed: number[] | null
+      pageEvents: Array<{ page: number; viewedAt: string }> | null
+      presentationVersion: string | null
+      product: { id: string; name: string; group: { id: string; name: string } }
+      document: { id: string; title: string | null; fileName: string; mimeType: string } | null
+    }>
     photos: Array<{ id: string; url: string; thumbnailUrl: string | null; status: string; createdAt: string }>
     /** True when the primary agent is outside the reviewer's scope; agent and route are withheld then. */
     primaryAgentHidden?: boolean
@@ -271,7 +289,6 @@ export function VisitReviewPanel({ visitId, refreshToken, closeHref, onVisitLoad
                 <span>
                   {visit.route.name || t("review.routeUnnamed")}
                   {visit.routePoint ? ` · ${t("review.routePoint", { number: visit.routePoint.orderIndex + 1 })}` : ""}
-                  {visit.routePoint?.plannedTime ? <span className="block text-muted-foreground">{t("review.plannedAt", { time: formatTime(visit.routePoint.plannedTime) })}</span> : null}
                 </span>
               </p>
             ) : (
@@ -296,6 +313,66 @@ export function VisitReviewPanel({ visitId, refreshToken, closeHref, onVisitLoad
             {placeRow(t("review.placeCheckIn"), place.checkIn, "checkIn")}
             {placeRow(t("review.placeCheckOut"), place.checkOut, "checkOut")}
           </dl>
+        </div>
+
+        <div className="py-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <FileText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              {t("review.presentationsTitle")}
+            </h3>
+            <span className="text-xs text-muted-foreground">
+              {t("review.presentationsCount", { count: visit.presentationSessions.length })}
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">{t("review.presentationEvidenceNote")}</p>
+          {visit.presentationSessions.length ? (
+            <ul className="mt-3 space-y-2" data-testid="mtm-visit-presentation-sessions">
+              {visit.presentationSessions.map((session) => {
+                const viewedPages = Array.isArray(session.pagesViewed) ? session.pagesViewed.length : 0
+                const latitude = session.openLat ?? session.closeLat
+                const longitude = session.openLng ?? session.closeLng
+                return (
+                  <li key={session.id} className="rounded-xl border border-zinc-200 p-3 dark:border-zinc-800">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-medium text-foreground">{session.product.name}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {session.product.group.name}
+                          {session.document ? ` · ${session.document.title || session.document.fileName}` : ""}
+                          {session.presentationVersion ? ` · v${session.presentationVersion}` : ""}
+                        </p>
+                      </div>
+                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                        {formatTime(session.openedAt)} → {formatTime(session.closedAt || session.lastViewedAt)}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      <span>{t("review.presentationActiveTime", { minutes: Math.max(1, Math.ceil(session.activeDurationSeconds / 60)) })}</span>
+                      {session.pageCount || viewedPages ? (
+                        <span>{t("review.presentationPages", { viewed: viewedPages, total: session.pageCount ?? "—" })}</span>
+                      ) : null}
+                      {latitude != null && longitude != null ? (
+                        <a
+                          className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                          href={`https://www.google.com/maps?q=${latitude},${longitude}`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
+                          {t("review.presentationLocation")}
+                        </a>
+                      ) : (
+                        <span>{t("review.presentationNoLocation")}</span>
+                      )}
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          ) : (
+            <p className="mt-3 text-sm text-muted-foreground">{t("review.noPresentations")}</p>
+          )}
         </div>
 
         <div className="py-4">

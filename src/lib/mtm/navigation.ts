@@ -12,6 +12,7 @@ import {
   FileBarChart,
   FileBadge,
   MapPin,
+  PackageOpen,
   Radio,
   Route,
   Settings,
@@ -80,6 +81,7 @@ export const MTM_TOOL_GROUPS = [
       { href: "/mtm/customers", icon: Building2, navKey: "mtmCustomers" },
       { href: "/mtm/contacts", icon: Users, navKey: "mtmContacts", orgSetting: "fieldContactsEnabled" },
       { href: "/mtm/agents", icon: UserCog, navKey: "mtmAgents" },
+      { href: "/mtm/products", icon: PackageOpen, navKey: "mtmProducts" },
     ],
   },
   {

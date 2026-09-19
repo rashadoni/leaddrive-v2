@@ -6,6 +6,7 @@ import { resolveMobileDocumentStoragePath } from "@/lib/mtm/mobile-document"
 import { requireMtmMobileMediaAccess } from "@/lib/mtm/mobile-media-guard"
 import { mtmMediaObjectReadFailureResponse } from "@/lib/mtm/media-object-http"
 import { readCommittedMtmMediaObject, toMtmReservedMediaObject } from "@/lib/mtm/media-object-lifecycle"
+import { expandVisibleProductGroupIds } from "@/lib/mtm/product-group-access"
 import { withMobileRls } from "@/lib/with-mobile-rls"
 
 type RouteContext = { params: Promise<{ documentId: string }> }
@@ -20,6 +21,20 @@ export const GET = withMobileRls<RouteContext>(async (_req, auth, { params }) =>
   }
 
   try {
+    const productGroups = await prisma.mtmProductGroup.findMany({
+      where: { organizationId: auth.orgId, isActive: true },
+      select: {
+        id: true,
+        parentId: true,
+        members: { where: { agentId: auth.agentId }, select: { id: true } },
+      },
+    })
+    const visibleProductGroupIds = expandVisibleProductGroupIds(productGroups.map((group) => ({
+      id: group.id,
+      parentId: group.parentId,
+      hasDirectMembership: group.members.length > 0,
+    })))
+
     const document = await prisma.mtmDocument.findFirst({
       where: {
         id: documentId,
@@ -37,6 +52,15 @@ export const GET = withMobileRls<RouteContext>(async (_req, auth, { params }) =>
               },
             },
           },
+          ...(visibleProductGroupIds.size > 0 ? [{
+            products: {
+              some: {
+                organizationId: auth.orgId,
+                groupId: { in: [...visibleProductGroupIds] },
+                isActive: true,
+              },
+            },
+          }] : []),
         ],
       },
       select: {

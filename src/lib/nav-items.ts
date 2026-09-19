@@ -27,7 +27,7 @@ import {
   CreditCard, BellRing, Lock,
   // Phase 7 Industry Cloud icons
   HeartPulse, Umbrella, Landmark, Tv2, Flame,
-  ClipboardPlus, FileBadge, FileCheck, Radio,
+  ClipboardPlus, FileBadge, FileCheck, Radio, PackageOpen,
 } from "lucide-react"
 
 export interface NavItem {
@@ -306,6 +306,7 @@ export const navItems: NavItem[] = [
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/photos", icon: Camera, tKey: "mtmPhotos", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/alerts", icon: AlertTriangle, tKey: "mtmAlerts", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/agents", icon: UserCog, tKey: "mtmAgents", group: "Route & Field" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/products", icon: PackageOpen, tKey: "mtmProducts", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/analytics", icon: BarChart3, tKey: "mtmAnalytics", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/leaderboard", icon: Trophy, tKey: "mtmLeaderboard", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/activity", icon: Activity, tKey: "mtmActivity", group: "Route & Field" },

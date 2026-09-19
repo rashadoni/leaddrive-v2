@@ -67,7 +67,7 @@ export const GET = withMobileRls(async (
         },
       },
       route: { select: { id: true, name: true, date: true, status: true } },
-      routePoint: { select: { id: true, orderIndex: true, plannedTime: true, status: true } },
+      routePoint: { select: { id: true, orderIndex: true, status: true } },
       requirementSnapshot: {
         select: {
           id: true,
@@ -97,6 +97,22 @@ export const GET = withMobileRls(async (
           evidence: true,
           completedAt: true,
           createdAt: true,
+        },
+      },
+      presentationSessions: {
+        orderBy: { openedAt: "asc" },
+        select: {
+          id: true,
+          productId: true,
+          documentId: true,
+          presentationVersion: true,
+          openedAt: true,
+          lastViewedAt: true,
+          closedAt: true,
+          activeDurationSeconds: true,
+          pageCount: true,
+          lastPage: true,
+          pagesViewed: true,
         },
       },
       photos: {
