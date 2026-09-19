@@ -35,7 +35,9 @@ export const GET = withRlsSessionAuth(async (req, auth) => {
 
   try {
     const draft = await getActiveAiVoiceActionDraft(auth, parsed.data.voiceSessionId)
-    return NextResponse.json({ success: true, data: draft })
+    return NextResponse.json({ success: true, data: draft }, {
+      headers: { "Cache-Control": "private, no-store" },
+    })
   } catch (error) {
     if (error instanceof AiVoiceActionDraftError) {
       return NextResponse.json({
