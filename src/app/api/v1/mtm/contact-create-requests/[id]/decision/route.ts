@@ -33,7 +33,7 @@ export const POST = withRouteFieldRlsAuth<RouteContext>("write", async (req, aut
     include: { approvedContact: { select: { id: true, displayName: true } } },
   })
   if (!requestRecord) return NextResponse.json({ error: "Not found" }, { status: 404 })
-  if (actor.scopedAgentIds !== null && !actor.scopedAgentIds.has(requestRecord.requestedByAgentId)) {
+  if (actor.scopedAgentIds !== null && !actor.scopedAgentIds.includes(requestRecord.requestedByAgentId)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
   if (actor.agentId === requestRecord.requestedByAgentId) {

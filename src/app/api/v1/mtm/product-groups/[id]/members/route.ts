@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
@@ -19,6 +20,17 @@ const ReplaceMembersSchema = z.object({
     seen.add(member.agentId)
   })
 })
+
+type ProductGroupScopeRow = {
+  id: string
+  parentId: string | null
+  members: Array<{ id: string }>
+}
+
+type ProductGroupAgentRow = {
+  id: string
+  role: string
+}
 
 export const PUT = withRouteFieldRlsAuth("write", async (
   req,
@@ -50,7 +62,7 @@ export const PUT = withRouteFieldRlsAuth("write", async (
         select: { id: true },
       },
     },
-  })
+  }) as ProductGroupScopeRow[]
   const groupExists = groups.some((group) => group.id === id)
   if (!groupExists) {
     return NextResponse.json({ error: "Product group not found", code: "MTM_PRODUCT_GROUP_NOT_FOUND" }, { status: 404 })
@@ -84,7 +96,7 @@ export const PUT = withRouteFieldRlsAuth("write", async (
       status: "ACTIVE",
     },
     select: { id: true, role: true },
-  })
+  }) as ProductGroupAgentRow[]
   if (agents.length !== parsed.data.members.length) {
     return NextResponse.json({ error: "One or more agents are invalid", code: "MTM_PRODUCT_GROUP_AGENT_INVALID" }, { status: 422 })
   }
@@ -100,7 +112,7 @@ export const PUT = withRouteFieldRlsAuth("write", async (
   }
 
   try {
-    const members = await prisma.$transaction(async (tx) => {
+    const members = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.mtmProductGroupMember.deleteMany({
         where: { organizationId: auth.orgId, groupId: id },
       })
