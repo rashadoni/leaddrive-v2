@@ -45,7 +45,7 @@ describe("dedicated Social Monitoring smoke operator", () => {
     expect(browserSmoke).not.toContain('json: "true"')
   })
 
-  it("keeps the production smoke read-only while checking the global-search wizard", () => {
+  it("keeps the optional operator smoke read-only without making it a shared deploy gate", () => {
     expect(browserSmoke).toContain('getByTestId("social-profile-global-search-hint")')
     expect(browserSmoke).toContain('getByTestId("social-profile-select-all").count()')
     expect(browserSmoke).toContain('locator("#saved-source-search").count()')
@@ -57,7 +57,8 @@ describe("dedicated Social Monitoring smoke operator", () => {
     expect(browserSmoke).not.toContain("deleted_own_sources_visible")
     expect(browserSmoke).not.toContain('getByTestId("social-paid-run-confirm").click')
     expect(browserSmoke).not.toContain('getByText("Monitorinqi başlat").click')
-    expect(deployWorkflow).toContain("Upload Social Monitoring browser evidence")
-    expect(deployWorkflow).toContain("social-monitoring-wizard-smoke.png")
+    expect(deployWorkflow).not.toContain("Authenticated Social Monitoring browser smoke")
+    expect(deployWorkflow).not.toContain("Upload Social Monitoring browser evidence")
+    expect(deployWorkflow).not.toContain("social-monitoring-wizard-smoke.png")
   })
 })
