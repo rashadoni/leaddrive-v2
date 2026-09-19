@@ -64,7 +64,7 @@ function sessionMtmApiBlocked(authUser: SessionModuleGateUser): boolean {
 // click redirects are loaded by unauthenticated recipients (email clients, SMS).
 // Without this, the auth middleware 307→/login and open/click/attribution silently
 // under-count. The routes themselves are RLS-context-wrapped (runWithRlsBypass).
-const publicPaths = ["/login", "/forgot-password", "/reset-password", "/api/auth", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password", "/api/v1/auth/sms-otp", "/api/v1/public", "/api/v1/ping", "/api/v1/sign/", "/api/v1/tracking/", "/sign/", "/ticket-closure/", "/portal", "/home", "/pricing", "/plans", "/features", "/demo", "/about", "/contact", "/blog", "/legal", "/landing", "/marketing", "/embed/", "/s/", "/widget.js", "/track.js", "/offline", "/c/", "/f/"]
+const publicPaths = ["/login", "/forgot-password", "/reset-password", "/api/auth", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password", "/api/v1/auth/sms-otp", "/api/v1/public", "/api/v1/demo-request", "/api/v1/ping", "/api/v1/sign/", "/api/v1/tracking/", "/sign/", "/ticket-closure/", "/demo-access/", "/portal", "/home", "/pricing", "/plans", "/features", "/demo", "/about", "/contact", "/blog", "/legal", "/landing", "/marketing", "/embed/", "/s/", "/widget.js", "/track.js", "/offline", "/c/", "/f/"]
 const publicExactPaths = new Set(["/manifest.json", "/sw.js", "/unsubscribe"])
 
 /**
@@ -245,7 +245,12 @@ function withCspHeaders(response: NextResponse, nonce: string, allowSameOriginFr
     response.headers.set("X-Frame-Options", "DENY")
   }
   response.headers.set("X-Content-Type-Options", "nosniff")
-  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
+  const isPrivateDemo = !!pathname && matchesPublicPath(pathname, "/demo-access/")
+  response.headers.set("Referrer-Policy", isPrivateDemo ? "no-referrer" : "strict-origin-when-cross-origin")
+  if (isPrivateDemo) {
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, private")
+    response.headers.set("Pragma", "no-cache")
+  }
   response.headers.set("X-XSS-Protection", "1; mode=block")
   const cameraPolicy = pathname === "/loyalty/pos" ? "camera=(self)" : "camera=()"
   // `pathname` is optional here — 29 of the 31 call sites omit it (marketing-host
@@ -438,11 +443,26 @@ const authMiddleware = auth(async (req) => {
 
   // Rate limit public API POST endpoints (these bypass auth but must not bypass
   // rate limits). This must run BEFORE the public-path early return below.
-  if (pathname.startsWith("/api/v1/public/") && req.method === "POST") {
+  if ((pathname.startsWith("/api/v1/public/") || pathname === "/api/v1/demo-request") && req.method === "POST") {
     const ip = clientIp(req)
 
+    // A guided demo emits lifecycle events while the prospect navigates. Give
+    // each capability link its own API-sized bucket so normal interaction (or
+    // colleagues sharing one corporate NAT) cannot exhaust the 10/min public
+    // lead-form bucket. Hash the bearer token before it enters memory/logs.
+    if (pathname.startsWith("/api/v1/public/demo-access/")) {
+      const capability = pathname.split("/")[5] || pathname
+      const capabilityHash = await hashForRateLimit(capability)
+      const key = `demo:${ip}:${capabilityHash}`
+      if (!checkRateLimit(key, RATE_LIMIT_CONFIG.api)) {
+        log429("demo", key, pathname.replace(capability, "[redacted]"))
+        return withCspHeaders(
+          NextResponse.json({ error: "Too many demo requests. Please slow down." }, { status: 429 }),
+          nonce,
+        )
+      }
     // Stricter limit for AI chat (expensive)
-    if (pathname.includes("/portal-chat")) {
+    } else if (pathname.includes("/portal-chat")) {
       const key = `chat:${ip}`
       if (!checkRateLimit(key, RATE_LIMIT_CONFIG.ai)) {
         log429("chat", key, pathname)
@@ -468,9 +488,12 @@ const authMiddleware = auth(async (req) => {
   // otherwise enumeration requests return early without consuming a bucket.
   if (pathname.startsWith("/api/v1/public/") && req.method === "GET") {
     const ip = clientIp(req)
-    const key = `pub-get:${ip}`
+    const isDemoAccess = pathname.startsWith("/api/v1/public/demo-access/")
+    const capability = isDemoAccess ? pathname.split("/")[5] || pathname : null
+    const capabilityHash = capability ? await hashForRateLimit(capability) : null
+    const key = capabilityHash ? `demo:${ip}:${capabilityHash}` : `pub-get:${ip}`
     if (!checkRateLimit(key, RATE_LIMIT_CONFIG.api)) {
-      log429("public-get", key, pathname)
+      log429(isDemoAccess ? "demo" : "public-get", key, capability ? pathname.replace(capability, "[redacted]") : pathname)
       return withCspHeaders(
         NextResponse.json({ error: "Too many requests" }, { status: 429 }),
         nonce,

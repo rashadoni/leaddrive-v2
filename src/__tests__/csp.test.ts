@@ -133,6 +133,18 @@ describe("middleware CSP headers", () => {
     expect(res.headers.get("Content-Security-Policy-Report-Only")).toBeTruthy()
   })
 
+  it("keeps private demo tokens out of referrers and shared caches", async () => {
+    const res = await authMiddleware(makeReq({
+      pathname: `/demo-access/${"a".repeat(64)}`,
+      host: "app.leaddrivecrm.org",
+    }))
+
+    expect(res.status).toBe(200)
+    expect(res.headers.get("Referrer-Policy")).toBe("no-referrer")
+    expect(res.headers.get("Cache-Control")).toContain("no-store")
+    expect(res.headers.get("Pragma")).toBe("no-cache")
+  })
+
   it("omits frame-ancestors and X-Frame-Options for the cross-origin chat widget", async () => {
     const res = await authMiddleware(makeReq({ pathname: "/embed/chat/session-1", host: "app.leaddrivecrm.org" }))
     const csp = res.headers.get("Content-Security-Policy")

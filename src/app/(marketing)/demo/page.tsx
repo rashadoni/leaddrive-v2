@@ -7,12 +7,13 @@ import { Particles } from "@/components/ui/particles"
 import {
   ArrowRight, Send, Building2, User, Mail, Phone, MessageSquare, Sparkles,
 } from "lucide-react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 
 /* ── Demo request form ── */
-function DemoRequestForm({ t }: { t: (key: string) => string }) {
+function DemoRequestForm({ t, locale }: { t: (key: string) => string; locale: string }) {
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   if (submitted) {
     return (
@@ -31,81 +32,138 @@ function DemoRequestForm({ t }: { t: (key: string) => string }) {
       onSubmit={async (e) => {
         e.preventDefault()
         setLoading(true)
-        const form = e.target as HTMLFormElement
-        const data = Object.fromEntries(new FormData(form))
+        setError(null)
+        const form = e.currentTarget
+        const data = new FormData(form)
         try {
-          await fetch("/api/v1/demo-request", {
+          const response = await fetch("/api/v1/public/demo-requests", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data),
+            body: JSON.stringify({
+              name: data.get("name"),
+              company: data.get("company"),
+              jobTitle: data.get("jobTitle"),
+              email: data.get("email"),
+              phone: data.get("phone"),
+              message: data.get("message"),
+              requestedModules: [],
+              locale: ["az", "ru", "en"].includes(locale) ? locale : "az",
+              consent: data.has("consent"),
+              website: data.get("website"),
+            }),
           })
-        } catch {}
-        setSubmitted(true)
+          const result = await response.json().catch(() => ({})) as { error?: string }
+          if (!response.ok) throw new Error(result.error || t("formError"))
+          setSubmitted(true)
+        } catch (requestError) {
+          setError(requestError instanceof Error ? requestError.message : t("formError"))
+        } finally {
+          setLoading(false)
+        }
       }}
       className="space-y-4"
     >
+      <div className="absolute -left-[9999px]" aria-hidden="true">
+        <label htmlFor="demo-website">Website</label>
+        <input id="demo-website" name="website" type="text" tabIndex={-1} autoComplete="off" />
+      </div>
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-medium text-[#001E3C]/60 mb-1.5">{t("labelName")}</label>
+          <label htmlFor="demo-name" className="block text-xs font-medium text-[#001E3C]/60 mb-1.5">{t("labelName")}</label>
           <div className="relative">
             <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#001E3C]/40" />
             <input
               required
+              id="demo-name"
               name="name"
               type="text"
+              maxLength={120}
               placeholder={t("placeholderName")}
               className="w-full rounded-lg border border-[#001E3C]/10 bg-white pl-10 pr-4 py-2.5 text-sm text-[#001E3C] placeholder:text-[#001E3C]/40 focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]/20 transition-colors"
             />
           </div>
         </div>
         <div>
-          <label className="block text-xs font-medium text-[#001E3C]/60 mb-1.5">{t("labelCompany")}</label>
+          <label htmlFor="demo-company" className="block text-xs font-medium text-[#001E3C]/60 mb-1.5">{t("labelCompany")}</label>
           <div className="relative">
             <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#001E3C]/40" />
             <input
               required
+              id="demo-company"
               name="company"
               type="text"
+              maxLength={160}
               placeholder={t("placeholderCompany")}
               className="w-full rounded-lg border border-[#001E3C]/10 bg-white pl-10 pr-4 py-2.5 text-sm text-[#001E3C] placeholder:text-[#001E3C]/40 focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]/20 transition-colors"
             />
           </div>
         </div>
       </div>
+      <div>
+        <label htmlFor="demo-job-title" className="block text-xs font-medium text-[#001E3C]/60 mb-1.5">{t("labelJobTitle")}</label>
+        <input
+          id="demo-job-title"
+          name="jobTitle"
+          type="text"
+          maxLength={120}
+          placeholder={t("placeholderJobTitle")}
+          className="w-full rounded-lg border border-[#001E3C]/10 bg-white px-4 py-2.5 text-sm text-[#001E3C] placeholder:text-[#001E3C]/40 focus:border-[#EA580C] focus:outline-none focus:ring-2 focus:ring-[#EA580C]/20 transition-colors"
+        />
+      </div>
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-medium text-[#001E3C]/60 mb-1.5">{t("labelEmail")}</label>
+          <label htmlFor="demo-email" className="block text-xs font-medium text-[#001E3C]/60 mb-1.5">{t("labelEmail")}</label>
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#001E3C]/40" />
             <input
               required
+              id="demo-email"
               name="email"
               type="email"
+              maxLength={254}
               placeholder="email@company.com"
               className="w-full rounded-lg border border-[#001E3C]/10 bg-white pl-10 pr-4 py-2.5 text-sm text-[#001E3C] placeholder:text-[#001E3C]/40 focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]/20 transition-colors"
             />
           </div>
         </div>
         <div>
-          <label className="block text-xs font-medium text-[#001E3C]/60 mb-1.5">{t("labelPhone")}</label>
+          <label htmlFor="demo-phone" className="block text-xs font-medium text-[#001E3C]/60 mb-1.5">{t("labelPhone")}</label>
           <div className="relative">
             <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#001E3C]/40" />
             <input
+              id="demo-phone"
               name="phone"
               type="tel"
+              maxLength={40}
               placeholder="+994 XX XXX XX XX"
               className="w-full rounded-lg border border-[#001E3C]/10 bg-white pl-10 pr-4 py-2.5 text-sm text-[#001E3C] placeholder:text-[#001E3C]/40 focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]/20 transition-colors"
             />
           </div>
         </div>
       </div>
+      <label className="flex cursor-pointer items-start gap-3 text-xs leading-5 text-[#001E3C]/65">
+        <input
+          required
+          name="consent"
+          type="checkbox"
+          className="mt-0.5 h-4 w-4 rounded border-[#001E3C]/20 accent-[#EA580C]"
+        />
+        <span>{t("consent")}</span>
+      </label>
+      {error ? (
+        <p role="alert" className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">
+          {error}
+        </p>
+      ) : null}
       <div>
-        <label className="block text-xs font-medium text-[#001E3C]/60 mb-1.5">{t("labelMessage")}</label>
+        <label htmlFor="demo-message" className="block text-xs font-medium text-[#001E3C]/60 mb-1.5">{t("labelMessage")}</label>
         <div className="relative">
           <MessageSquare className="absolute left-3 top-3 h-4 w-4 text-[#001E3C]/40" />
           <textarea
+            id="demo-message"
             name="message"
             rows={3}
+            maxLength={2000}
             placeholder={t("placeholderMessage")}
             className="w-full rounded-lg border border-[#001E3C]/10 bg-white pl-10 pr-4 py-2.5 text-sm text-[#001E3C] placeholder:text-[#001E3C]/40 focus:border-[#EA580C] focus:outline-none focus:ring-1 focus:ring-[#EA580C]/20 transition-colors resize-none"
           />
@@ -125,6 +183,7 @@ function DemoRequestForm({ t }: { t: (key: string) => string }) {
 
 export default function DemoPage() {
   const t = useTranslations("demo")
+  const locale = useLocale()
 
   return (
     <div>
@@ -173,7 +232,7 @@ export default function DemoPage() {
               <div className="rounded-2xl border border-[#001E3C]/10 bg-white shadow-lg p-6 lg:p-8">
                 <h2 className="text-lg font-semibold text-[#001E3C] mb-1">{t("requestDemo")}</h2>
                 <p className="text-sm text-[#001E3C]/60 mb-6">{t("formDescription")}</p>
-                <DemoRequestForm t={t} />
+                <DemoRequestForm t={t} locale={locale} />
               </div>
             </div>
           </div>
