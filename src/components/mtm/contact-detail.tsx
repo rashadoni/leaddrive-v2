@@ -141,6 +141,7 @@ type Contact = {
   addressDistrict: string | null
   addressStreet: string | null
   productCategory: string | null
+  categoryData: Record<string, unknown>
   verificationStatus: string
   consentStatus: string
   contactPreference: string | null
@@ -662,6 +663,7 @@ export function MtmContactDetail({ contactId }: { contactId: string }) {
             <MtmContactDictionaryAssignmentPanel
               contactId={contact.id}
               contactUpdatedAt={contact.updatedAt}
+              categoryData={contact.categoryData ?? {}}
               stateHash={payload.dictionaryAssignmentStateHash}
               dictionaries={payload.availableContactDictionaries}
               assignments={contact.dictionaryAssignments}

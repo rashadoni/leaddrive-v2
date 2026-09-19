@@ -6,6 +6,8 @@ const detail = readFileSync(join(process.cwd(), "src/components/mtm/contact-deta
 const panel = readFileSync(join(process.cwd(), "src/components/mtm/contact-dictionary-assignment-panel.tsx"), "utf8")
 const contactApi = readFileSync(join(process.cwd(), "src/app/api/v1/mtm/contacts/[id]/route.ts"), "utf8")
 const mobileSync = readFileSync(join(process.cwd(), "src/app/api/v1/mtm/mobile/sync/pull/route.ts"), "utf8")
+const settings = readFileSync(join(process.cwd(), "src/app/(dashboard)/mtm/settings/contact-dictionary-settings.tsx"), "utf8")
+const createDialog = readFileSync(join(process.cwd(), "src/components/mtm/contact-create-dialog.tsx"), "utf8")
 
 describe("SWM03 contact dictionary UI contract", () => {
   it("renders governed master data before assessment snapshots and potentials", () => {
@@ -36,5 +38,15 @@ describe("SWM03 contact dictionary UI contract", () => {
     expect(contactApi).toContain("dictionaryAssignmentStateHash")
     expect(mobileSync).toContain("contact-core-v4-governed-dictionaries")
     expect(mobileSync).toContain("dictionaryAssignments")
+  })
+
+  it("lets tenant administrators manage client categories without editing JSON", () => {
+    expect(settings).toContain("ClientTypeBuilder")
+    expect(settings).toContain("addCategory")
+    expect(settings).toContain("addField")
+    expect(settings).toContain("createNewVersion")
+    expect(createDialog).toContain("loadClientTypes")
+    expect(createDialog).toContain("categoryFieldRequired")
+    expect(createDialog).toContain("clientType:")
   })
 })

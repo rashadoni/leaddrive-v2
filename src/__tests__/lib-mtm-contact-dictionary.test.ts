@@ -42,6 +42,51 @@ describe("MTM contact dictionary contract", () => {
     }).success).toBe(false)
   })
 
+  it("accepts tenant client types with category-specific fields", () => {
+    const clientTypes = [{
+      code: "DOCTOR",
+      order: 1,
+      labels: { ru: "Врач", az: "Həkim", en: "Doctor" },
+      fields: [{
+        key: "specialty",
+        order: 1,
+        type: "TEXT",
+        required: true,
+        labels: { ru: "Специальность", az: "İxtisas", en: "Specialty" },
+      }],
+    }]
+    const parsed = ContactDictionaryCreateSchema.safeParse({
+      kind: "CLIENT_TYPE",
+      version: 1,
+      nameRu: "Типы клиентов",
+      nameAz: "Müştəri növləri",
+      nameEn: "Client types",
+      entries: clientTypes,
+      sourceSystem: "LeadDrive administration",
+      sourceObservedAt: "2026-09-19T20:00:00.000Z",
+      effectiveFrom: "2026-09-19",
+    })
+    expect(parsed.success).toBe(true)
+    if (parsed.success) {
+      expect(contactDictionaryHash(parsed.data.entries)).toBe(contactDictionaryHash([...parsed.data.entries]))
+    }
+  })
+
+  it("rejects a select client field without options", () => {
+    expect(ContactDictionaryEntriesSchema.safeParse([{
+      code: "DOCTOR",
+      order: 1,
+      labels: { ru: "Врач", az: "Həkim", en: "Doctor" },
+      fields: [{
+        key: "specialty",
+        order: 1,
+        type: "SELECT",
+        required: true,
+        labels: { ru: "Специальность", az: "İxtisas", en: "Specialty" },
+      }],
+    }]).success).toBe(false)
+  })
+
   it("recognizes only complete signed lifecycle states", () => {
     const active = {
       status: "ACTIVE",

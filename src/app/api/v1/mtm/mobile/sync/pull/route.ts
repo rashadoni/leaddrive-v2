@@ -500,6 +500,7 @@ export const GET = withMobileRls(async (req, auth) => {
                 addressDistrict: true,
                 addressStreet: true,
                 productCategory: true,
+                categoryData: true,
                 verificationStatus: true,
                 consentStatus: true,
                 contactPreference: true,

@@ -19,6 +19,10 @@ import { contactCoveragePeriod, contactCoverageState } from "@/lib/mtm/contact-l
 import { CoverageSnapshotExplanationSchema } from "@/lib/mtm/coverage-policy"
 import { readGovernedCoverageMany } from "@/lib/mtm/coverage-read"
 import { writeMtmAudit } from "@/lib/mtm-audit"
+import {
+  ContactDictionaryAssignmentConflict,
+  validateContactDictionaryAssignmentSet,
+} from "@/lib/mtm/contact-dictionary-assignment"
 
 function utcDate(value: string): Date {
   return new Date(`${value}T00:00:00.000Z`)
@@ -422,6 +426,16 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
   }
 
   try {
+    if (body.clientType) {
+      await validateContactDictionaryAssignmentSet(prisma, auth.orgId, {
+        expectedStateHash: "0".repeat(64),
+        reason: "Contact creation",
+        clientType: body.clientType,
+        psychotype: null,
+        productCategories: null,
+        brandCategories: null,
+      })
+    }
     const contact = await prisma.mtmContact.create({
       data: {
         organizationId: auth.orgId,
@@ -454,6 +468,7 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
         addressDistrict: body.addressDistrict ?? null,
         addressStreet: body.addressStreet ?? null,
         productCategory: body.productCategory ?? null,
+        categoryData: (body.clientType?.values ?? {}) as Prisma.InputJsonValue,
         verificationStatus: body.verificationStatus ?? "UNVERIFIED",
         consentStatus: body.consentStatus ?? "UNKNOWN",
         contactPreference: body.contactPreference ?? null,
@@ -478,6 +493,19 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
             },
           },
         } : {}),
+        ...(body.clientType ? {
+          dictionaryAssignments: {
+            create: {
+              organizationId: auth.orgId,
+              dictionaryId: body.clientType.dictionaryId,
+              kind: "CLIENT_TYPE",
+              entryCode: body.clientType.code,
+              source: "CONTACT_CREATE",
+              createdByUserId: auth.userId || null,
+              approvedByUserId: auth.userId || null,
+            },
+          },
+        } : {}),
       },
     })
 
@@ -494,6 +522,9 @@ export const POST = withRouteFieldRlsAuth("write", async (req, auth) => {
 
     return NextResponse.json({ success: true, data: contact }, { status: 201 })
   } catch (error) {
+    if (error instanceof ContactDictionaryAssignmentConflict) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: error.status })
+    }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return NextResponse.json({ error: "A contact with this external code already exists", code: "MTM_CONTACT_DUPLICATE" }, { status: 409 })
     }
