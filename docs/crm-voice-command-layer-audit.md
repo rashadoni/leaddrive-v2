@@ -1,6 +1,6 @@
 # CRM Voice Assistant: Canonical Command Layer Audit
 
-Status: C1.1 complete; implementation not started
+Status: C1.1 complete; first command extraction implemented
 
 Date: 2026-09-19
 
@@ -9,6 +9,17 @@ before the in-CRM voice assistant receives proposal tools.
 
 This document is an implementation audit, not a claim that voice writes are
 enabled. The assistant still has no CRM commit tool.
+
+Implementation update:
+
+- `createTaskCommand` now owns strict parsing, fail-closed field permissions,
+  tenant checks, board policy, task-key retry, the task transaction, and current
+  post-commit effects.
+- `POST /api/v1/tasks` is an HTTP adapter over that command.
+- Primary assignee and related-record tenant checks were added.
+- Task, collaborator rows, and the created activity now commit atomically.
+- Durable idempotency receipts and external-effect outbox delivery remain open
+  under C1.12 and the action-intent phase. No voice caller can invoke commit.
 
 ## 1. Decision
 
