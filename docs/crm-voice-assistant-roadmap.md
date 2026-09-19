@@ -239,19 +239,19 @@ action -> allowed fields -> required permission -> resolvers
 
 ### Tasks
 
-- [ ] A2.1 Rename the worklet event from generic `activity` to a name that
+- [x] A2.1 Rename the worklet event from generic `activity` to a name that
       clearly describes an unconfirmed signal level.
-- [ ] A2.2 Keep local RMS activity for the microphone visualization only.
-- [ ] A2.3 Remove playback interruption from the local RMS event handler.
-- [ ] A2.4 Remove speaking-state changes, watchdog clearing, and new-turn state
+- [x] A2.2 Keep local RMS activity for the microphone visualization only.
+- [x] A2.3 Remove playback interruption from the local RMS event handler.
+- [x] A2.4 Remove speaking-state changes, watchdog clearing, and new-turn state
       transitions from the local RMS event handler.
-- [ ] A2.5 Make Gemini `serverContent.interrupted` the only initial authority for
+- [x] A2.5 Make Gemini `serverContent.interrupted` the only initial authority for
       provider-controlled barge-in.
-- [ ] A2.6 Separate `signal_detected`, `candidate_speech`, confirmed speech, and
+- [x] A2.6 Separate `signal_detected`, `candidate_speech`, confirmed speech, and
       confirmed interruption in the client state machine.
-- [ ] A2.7 Verify reconnect and watchdog behavior after removing the local
+- [x] A2.7 Verify reconnect and watchdog behavior after removing the local
       functional interruption.
-- [ ] A2.8 Add unit tests for AudioWorklet events and session transitions.
+- [x] A2.8 Add unit tests for AudioWorklet events and session transitions.
 - [ ] A2.9 Run the fixture matrix and manual browser checks.
 
 ### Exit gate
@@ -753,6 +753,7 @@ implementation branch that advances the roadmap.
 | 2026-09-19 | Discovery | Complete | Roadmap audit | CRM browser assistant scope confirmed; PBX excluded. |
 | 2026-09-19 | Audio diagnosis | Complete | Roadmap audit | Local RMS `activity` is incorrectly coupled to playback interruption. |
 | 2026-09-19 | Roadmap | Complete | This document | Ordered implementation plan and release gates recorded. |
+| 2026-09-19 | P0 audio hotfix | Code complete | Targeted Vitest 32/32; targeted ESLint | Local RMS is UI-only; Gemini interruption/transcription owns turn state. Manual browser/noise matrix remains open. |
 
 ## 21. References
 

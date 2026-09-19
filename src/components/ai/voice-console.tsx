@@ -184,6 +184,7 @@ function ConsoleInner({
   const [active, setActive] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [phase, setPhase] = useState<VoiceUiPhase>("listening")
+  const [signalActive, setSignalActive] = useState(false)
   const [lastTranscript, setLastTranscript] = useState<string | null>(null)
   const [transcriptionWarning, setTranscriptionWarning] = useState(false)
   const [micSilent, setMicSilent] = useState(false)
@@ -214,7 +215,7 @@ function ConsoleInner({
   const startedAtRef = useRef(0)
   const lastActivityRef = useRef(0)
   const failureStreakRef = useRef(0)
-  const speechActiveRef = useRef(false)
+  const confirmedSpeechActiveRef = useRef(false)
   const responseWatchdogRef = useRef<number | null>(null)
   const utteranceWatchdogRef = useRef<number | null>(null)
   const nudgedRef = useRef(false)
@@ -418,7 +419,7 @@ function ConsoleInner({
     }
     streamRef.current?.getTracks().forEach((track) => track.stop())
     streamRef.current = null
-    speechActiveRef.current = false
+    confirmedSpeechActiveRef.current = false
     nudgedRef.current = false
     transcriptDraftRef.current = ""
     handledToolCallsRef.current.clear()
@@ -429,6 +430,7 @@ function ConsoleInner({
     generationInProgressRef.current = false
     setActive(false)
     setIsSpeaking(false)
+    setSignalActive(false)
     setPhase("listening")
     setLastTranscript(null)
     setTranscriptionWarning(false)
@@ -481,7 +483,7 @@ function ConsoleInner({
     clearUtteranceWatchdog()
     const generation = generationRef.current
     utteranceWatchdogRef.current = window.setTimeout(() => {
-      if (generationRef.current === generation && speechActiveRef.current) {
+      if (generationRef.current === generation && confirmedSpeechActiveRef.current) {
         void failConversation(t("noResponse"), "speech_timeout", "speech_timeout", generation)
       }
     }, MAX_UTTERANCE_MS * 2)
@@ -583,9 +585,26 @@ function ConsoleInner({
       transcriptDraftRef.current = `${transcriptDraftRef.current}${transcript.text}`.slice(-TRANSCRIPT_PREVIEW_LIMIT)
       setTranscriptionWarning(false)
       if (transcript.finished) {
+        confirmedSpeechActiveRef.current = false
+        clearUtteranceWatchdog()
         const text = transcriptDraftRef.current.trim()
         setLastTranscript(text ? text.slice(0, TRANSCRIPT_PREVIEW_LIMIT) : null)
         transcriptDraftRef.current = ""
+        if (lostSpeechDuringReconnectRef.current && !reconnectingRef.current && liveSessionRef.current) {
+          lostSpeechDuringReconnectRef.current = false
+          liveSessionRef.current.sendRealtimeInput({
+            text: "The connection briefly interrupted the user's speech. Apologize in the current language and ask them to repeat only their last sentence.",
+          })
+        }
+        if (!playbackActiveRef.current) {
+          setPhase("processing")
+          armResponseWatchdog()
+        }
+      } else {
+        confirmedSpeechActiveRef.current = true
+        armUtteranceWatchdog()
+        setLastTranscript(null)
+        if (!playbackActiveRef.current) setPhase("user_speaking")
       }
     }
 
@@ -594,8 +613,18 @@ function ConsoleInner({
       playbackActiveRef.current = false
       generationInProgressRef.current = false
       setIsSpeaking(false)
-      setPhase(speechActiveRef.current ? "user_speaking" : "listening")
-      clearResponseWatchdog()
+      if (transcript?.finished) {
+        confirmedSpeechActiveRef.current = false
+        clearUtteranceWatchdog()
+        setPhase("processing")
+        armResponseWatchdog()
+      } else {
+        confirmedSpeechActiveRef.current = true
+        armUtteranceWatchdog()
+        setLastTranscript(null)
+        setPhase("user_speaking")
+        clearResponseWatchdog()
+      }
     }
 
     let decodedParts: Float32Array[]
@@ -611,6 +640,8 @@ function ConsoleInner({
       return
     }
     if (decodedParts.length > 0) {
+      confirmedSpeechActiveRef.current = false
+      clearUtteranceWatchdog()
       playbackActiveRef.current = true
       generationInProgressRef.current = true
       nudgedRef.current = false
@@ -627,6 +658,8 @@ function ConsoleInner({
 
     const calls = geminiFunctionCalls(message)
     if (calls.length > 0) {
+      confirmedSpeechActiveRef.current = false
+      clearUtteranceWatchdog()
       generationInProgressRef.current = true
       void runToolCalls(calls, generation)
     }
@@ -637,10 +670,12 @@ function ConsoleInner({
     }
 
     if (message.serverContent?.turnComplete) {
+      confirmedSpeechActiveRef.current = false
+      clearUtteranceWatchdog()
       generationInProgressRef.current = false
       clearResponseWatchdog()
       nudgedRef.current = false
-      setPhase(speechActiveRef.current ? "user_speaking" : "listening")
+      setPhase("listening")
       tryDeferredReconnectRef.current()
     }
 
@@ -670,7 +705,15 @@ function ConsoleInner({
       }, Math.max(0, (remaining ?? TOOL_TIMEOUT_MS) - GO_AWAY_SAFETY_MARGIN_MS))
       tryDeferredReconnectRef.current()
     }
-  }, [armResponseWatchdog, clearResponseWatchdog, failConversation, runToolCalls, t])
+  }, [
+    armResponseWatchdog,
+    armUtteranceWatchdog,
+    clearResponseWatchdog,
+    clearUtteranceWatchdog,
+    failConversation,
+    runToolCalls,
+    t,
+  ])
 
   const prepareAudio = useCallback(async (
     stream: MediaStream,
@@ -705,7 +748,7 @@ function ConsoleInner({
       if (generationRef.current !== generation || !sessionRef.current) return
       if (event.data?.type === "audio" && event.data.samples instanceof Float32Array) {
         if (reconnectingRef.current) {
-          if (speechActiveRef.current) lostSpeechDuringReconnectRef.current = true
+          if (confirmedSpeechActiveRef.current) lostSpeechDuringReconnectRef.current = true
           return
         }
         try {
@@ -718,31 +761,12 @@ function ConsoleInner({
         } catch {
           // onerror/onclose owns terminal transport handling.
         }
-      } else if (event.data?.type === "activity") {
-        speechActiveRef.current = event.data.active === true
-        lastActivityRef.current = Date.now()
-        if (speechActiveRef.current) {
-          playbackNode.port.postMessage({ type: "interrupt", generation })
-          playbackActiveRef.current = false
-          setIsSpeaking(false)
-          clearResponseWatchdog()
-          armUtteranceWatchdog()
-          setLastTranscript(null)
-          setPhase("user_speaking")
-        } else {
-          clearUtteranceWatchdog()
-          if (lostSpeechDuringReconnectRef.current && !reconnectingRef.current && liveSessionRef.current) {
-            lostSpeechDuringReconnectRef.current = false
-            liveSessionRef.current.sendRealtimeInput({
-              text: "The connection briefly interrupted the user's speech. Apologize in the current language and ask them to repeat only their last sentence.",
-            })
-            setPhase("processing")
-            armResponseWatchdog()
-            return
-          }
-          setPhase("processing")
-          armResponseWatchdog()
-        }
+      } else if (event.data?.type === "signal_activity") {
+        // A local RMS threshold detects loud input, not speech. Music,
+        // ringtones, and office noise may all reach this path, so it is only a
+        // visual hint. Provider-confirmed transcript/interruption events own
+        // turn state, watchdogs, and playback interruption.
+        setSignalActive(event.data.active === true)
       }
     }
     playbackNode.port.onmessage = (event) => {
@@ -761,7 +785,7 @@ function ConsoleInner({
     }
     playbackNode.port.postMessage({ type: "reset", generation })
     return { captureContext, playbackContext, captureNode, playbackNode, source, silentGain }
-  }, [armResponseWatchdog, armUtteranceWatchdog, clearResponseWatchdog, clearUtteranceWatchdog, failConversation, t, trace])
+  }, [trace])
 
   const connectGemini = useCallback(async (
     credential: TokenInfo,
@@ -846,7 +870,7 @@ function ConsoleInner({
     if (pendingReconnectTimerRef.current !== null) window.clearTimeout(pendingReconnectTimerRef.current)
     pendingReconnectTimerRef.current = null
     reconnectAttemptsRef.current += 1
-    if (speechActiveRef.current) lostSpeechDuringReconnectRef.current = true
+    if (confirmedSpeechActiveRef.current) lostSpeechDuringReconnectRef.current = true
     clearResponseWatchdog()
     if (!playbackActiveRef.current) {
       setPhase("processing")
@@ -865,13 +889,13 @@ function ConsoleInner({
         try { previous?.close() } catch { /* old socket is already closing */ }
       }
       setActive(true)
-      setPhase(speechActiveRef.current
+      setPhase(confirmedSpeechActiveRef.current
         ? "user_speaking"
         : playbackActiveRef.current
           ? "responding"
           : "listening")
       flushPendingToolResponsesRef.current(generation)
-      if (lostSpeechDuringReconnectRef.current && !speechActiveRef.current) {
+      if (lostSpeechDuringReconnectRef.current && !confirmedSpeechActiveRef.current) {
         lostSpeechDuringReconnectRef.current = false
         resumed.sendRealtimeInput({
           text: "The connection briefly interrupted the user's speech. Apologize in the current language and ask them to repeat only their last sentence.",
@@ -1052,7 +1076,7 @@ function ConsoleInner({
       if (isCurrent()) void stop("max_duration", t("sessionLimit"))
     }, session.maxSessionSeconds * 1000)
     const idle = window.setInterval(() => {
-      if (!isCurrent() || speechActiveRef.current) return
+      if (!isCurrent() || confirmedSpeechActiveRef.current) return
       if (Date.now() - lastActivityRef.current >= IDLE_STOP_MS) void stop("idle", t("idleStopped"))
     }, IDLE_CHECK_MS)
     return () => {
@@ -1090,6 +1114,7 @@ function ConsoleInner({
     }
   }, [closeMedia])
 
+  const hearingSignal = phase === "user_speaking" || (phase === "listening" && signalActive)
   const label = error
     ? error
     : starting
@@ -1098,7 +1123,7 @@ function ConsoleInner({
         ? notice ?? t("idle")
         : isSpeaking
           ? t("speaking")
-          : phase === "user_speaking"
+          : hearingSignal
             ? t("hearing")
             : phase === "processing" || phase === "responding"
               ? t("processing")
@@ -1113,7 +1138,7 @@ function ConsoleInner({
           ? "bg-muted-foreground/70 shadow-black/20"
           : isSpeaking
             ? "bg-primary shadow-primary/50"
-            : phase === "user_speaking"
+            : hearingSignal
               ? "bg-sky-500 shadow-sky-500/50"
               : phase === "processing" || phase === "responding"
                 ? "bg-amber-500 shadow-amber-500/40"
@@ -1184,7 +1209,7 @@ function ConsoleInner({
         active
           ? isSpeaking
             ? "border-primary bg-primary/10 animate-pulse"
-            : phase === "user_speaking"
+            : hearingSignal
               ? "border-sky-500 bg-sky-500/10"
               : phase === "processing" || phase === "responding"
                 ? "border-amber-500 bg-amber-500/10 animate-pulse"

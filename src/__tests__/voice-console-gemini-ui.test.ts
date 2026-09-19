@@ -328,16 +328,36 @@ describe("VoiceConsole Gemini Live lifecycle", () => {
     expect(playback.port.sent.at(-1)?.message).toEqual({ type: "interrupt", generation: 1 })
   })
 
-  it("flushes queued playback synchronously on local speech before Gemini confirms interruption", async () => {
+  it("keeps queued playback when local loudness has not been confirmed as speech", async () => {
     await start()
     const capture = FakeWorkletNode.nodes.get("gemini-live-capture")!
     const playback = FakeWorkletNode.nodes.get("gemini-live-playback")!
     act(() => gemini.callbacks!.onmessage({
       serverContent: { modelTurn: { parts: [{ inlineData: { data: "AAA=", mimeType: "audio/pcm;rate=24000" } }] } },
     }))
-    act(() => capture.port.emit({ type: "activity", active: true }))
-    expect(playback.port.sent.at(-1)?.message).toEqual({ type: "interrupt", generation: 1 })
+    const interruptsBefore = playback.port.sent.filter(
+      ({ message }) => (message as { type?: string }).type === "interrupt",
+    ).length
+
+    act(() => capture.port.emit({ type: "signal_activity", active: true }))
+
+    expect(playback.port.sent.filter(
+      ({ message }) => (message as { type?: string }).type === "interrupt",
+    )).toHaveLength(interruptsBefore)
+    expect(container.textContent).toContain("Speaking")
+  })
+
+  it("moves turn state only after provider-confirmed speech", async () => {
+    await start()
+    act(() => gemini.callbacks!.onmessage({
+      serverContent: { inputTranscription: { text: "hello", finished: false } },
+    }))
     expect(container.textContent).toContain("I can hear you")
+
+    act(() => gemini.callbacks!.onmessage({
+      serverContent: { inputTranscription: { text: "", finished: true } },
+    }))
+    expect(container.textContent).toContain("Preparing an answer")
   })
 
   it("fails closed once without enqueueing malformed provider audio", async () => {
@@ -638,7 +658,9 @@ describe("VoiceConsole Gemini Live lifecycle", () => {
     const capture = FakeWorkletNode.nodes.get("gemini-live-capture")!
     act(() => {
       gemini.callbacks!.onmessage({ sessionResumptionUpdate: { resumable: true, newHandle: "resume-speech" } })
-      capture.port.emit({ type: "activity", active: true })
+      gemini.callbacks!.onmessage({
+        serverContent: { inputTranscription: { text: "part", finished: false } },
+      })
     })
     let release!: () => void
     gemini.connectBarrier = new Promise<void>((resolve) => { release = resolve })
@@ -652,7 +674,9 @@ describe("VoiceConsole Gemini Live lifecycle", () => {
       gemini.connectBarrier = null
       await flush()
     })
-    act(() => capture.port.emit({ type: "activity", active: false }))
+    act(() => gemini.callbacks!.onmessage({
+      serverContent: { inputTranscription: { text: "", finished: true } },
+    }))
     expect(gemini.session.sendRealtimeInput).toHaveBeenLastCalledWith({
       text: expect.stringContaining("ask them to repeat only their last sentence"),
     })
