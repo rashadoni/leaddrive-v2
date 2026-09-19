@@ -174,6 +174,29 @@ describe("middleware", async () => {
     expect(res.status).toBe(200)
   })
 
+  it("serves the demo request page on the app host as a stable edge fallback", async () => {
+    const res = await authMiddleware(makeReq({
+      pathname: "/demo",
+      host: "app.leaddrivecrm.org",
+      auth: null,
+    }))
+
+    expect(res.status).toBe(200)
+    expect(res.headers.get("location")).toBeNull()
+    expect(forwardedRequestHeader(res, "x-request-pathname")).toBe("/demo")
+  })
+
+  it("continues redirecting other marketing pages from the app host", async () => {
+    const res = await authMiddleware(makeReq({
+      pathname: "/pricing",
+      host: "app.leaddrivecrm.org",
+      auth: null,
+    }))
+
+    expect(res.status).toBe(307)
+    expect(res.headers.get("location")).toBe("https://leaddrivecrm.org/pricing")
+  })
+
   it.each([
     ["app.leaddrivecrm.org", "/login"],
     ["localhost", "/api/health"],

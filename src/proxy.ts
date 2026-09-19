@@ -136,6 +136,13 @@ const VOICE_AGENT_INTERNAL_PATHS = new Set([
 // Marketing-only paths served on leaddrivecrm.org
 const marketingPaths = ["/home", "/pricing", "/plans", "/features", "/demo", "/about", "/contact", "/blog", "/legal", "/landing", "/marketing"]
 
+// The marketing apex currently sits behind a Cloudflare-managed site that
+// redirects unknown paths to `/`. Keep the demo request page available on the
+// application host as a stable fallback so campaigns can link to a route that
+// is served by this deployment even when the marketing edge has not yet added
+// `/demo` to its route table.
+const appHostedMarketingPaths = ["/demo"]
+
 // Hostnames for domain-based routing (from env or defaults)
 function getMarketingHosts(): string[] {
   const url = process.env.NEXT_PUBLIC_MARKETING_URL || "https://leaddrivecrm.org"
@@ -162,6 +169,10 @@ function isAppHost(host: string): boolean {
 
 function isMarketingPath(pathname: string): boolean {
   return marketingPaths.some((p) => pathname === p || pathname.startsWith(p + "/"))
+}
+
+function isAppHostedMarketingPath(pathname: string): boolean {
+  return appHostedMarketingPaths.some((p) => pathname === p || pathname.startsWith(p + "/"))
 }
 
 // Tenant Builder: subdomain routing for {slug}.leaddrivecrm.org
@@ -341,7 +352,7 @@ const authMiddleware = auth(async (req) => {
 
   if (!CRM_ONLY_MODE && isAppHost(host)) {
     // On app domain: marketing paths → redirect to marketing domain
-    if (isMarketingPath(pathname)) {
+    if (isMarketingPath(pathname) && !isAppHostedMarketingPath(pathname)) {
       const marketingUrl = new URL(`${process.env.NEXT_PUBLIC_MARKETING_URL || "https://leaddrivecrm.org"}${pathname}`)
       marketingUrl.search = req.nextUrl.search
       return withCspHeaders(NextResponse.redirect(marketingUrl), nonce)
