@@ -22,7 +22,7 @@ CREATE TABLE "mtm_contact_create_requests" (
   "updatedAt" TIMESTAMP(3) NOT NULL,
   CONSTRAINT "mtm_contact_create_requests_pkey" PRIMARY KEY ("id"),
   CONSTRAINT "mtm_contact_create_requests_org_idempotency_key" UNIQUE ("organizationId", "idempotencyKey"),
-  CONSTRAINT "mtm_contact_create_requests_org_fk" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT "mtm_contact_create_requests_org_fk" FOREIGN KEY ("organizationId") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT "mtm_contact_create_requests_agent_fk" FOREIGN KEY ("organizationId", "requestedByAgentId") REFERENCES "mtm_agents"("organizationId", "id") ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT "mtm_contact_create_requests_contact_fk" FOREIGN KEY ("organizationId", "approvedContactId") REFERENCES "mtm_contacts"("organizationId", "id") ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT "mtm_contact_create_requests_customer_fk" FOREIGN KEY ("organizationId", "approvedCustomerId") REFERENCES "mtm_customers"("organizationId", "id") ON DELETE RESTRICT ON UPDATE CASCADE

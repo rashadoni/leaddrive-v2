@@ -15,6 +15,8 @@ describe("MTM contact create request migration", () => {
   })
 
   it("keeps agent, approved contact and clinic foreign keys tenant-safe", () => {
+    expect(migration).toContain('FOREIGN KEY ("organizationId") REFERENCES "organizations"("id")')
+    expect(migration).not.toContain('REFERENCES "Organization"')
     expect(migration).toContain('FOREIGN KEY ("organizationId", "requestedByAgentId") REFERENCES "mtm_agents"("organizationId", "id")')
     expect(migration).toContain('FOREIGN KEY ("organizationId", "approvedContactId") REFERENCES "mtm_contacts"("organizationId", "id")')
     expect(migration).toContain('FOREIGN KEY ("organizationId", "approvedCustomerId") REFERENCES "mtm_customers"("organizationId", "id")')
