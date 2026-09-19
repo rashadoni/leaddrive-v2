@@ -1,6 +1,6 @@
 # CRM Voice Assistant Roadmap
 
-Status: proposed implementation roadmap; Phase 0 product decisions pending
+Status: implementation in progress; Phase 0 product decisions pending
 
 Owner: LeadDrive CRM
 
@@ -215,19 +215,25 @@ action -> allowed fields -> required permission -> resolvers
 
 ### Tasks
 
-- [ ] A1.1 Add a deterministic AudioWorklet/session test harness.
+- [x] A1.1 Add a deterministic AudioWorklet/session test harness.
 - [ ] A1.2 Build fixtures for silence, clean RU/AZ/EN speech, instrumental
       music, vocal music, ringtone, television, keyboard, cough, office noise,
       and real speech over assistant playback.
-- [ ] A1.3 Capture requested and applied microphone settings with
+- [x] A1.3 Capture requested and applied microphone settings with
       `getCapabilities()` and `getSettings()`.
-- [ ] A1.4 Record technical session events without raw audio or full transcript
+- [x] A1.4 Record technical session events without raw audio or full transcript
       storage.
-- [ ] A1.5 Distinguish local level activity, provider speech activity, provider
+- [x] A1.5 Distinguish local level activity, provider speech activity, provider
       interruption, playback stop, and state transition telemetry.
 - [ ] A1.6 Establish a false-interruption baseline for each supported browser,
       device type, microphone, speakers, and headphones.
 - [ ] A1.7 Add a reproducible manual QA script.
+
+The deterministic harness currently covers synthetic silence, instrumental
+tone, ringtone, keyboard impulses, and seeded office noise. These fixtures
+prove that the local capture path cannot emit an interruption. A1.2 remains
+open until consented real RU/AZ/EN speech and mixed-background recordings are
+available; generated test signals are not presented as real-language evidence.
 
 ### Exit gate
 

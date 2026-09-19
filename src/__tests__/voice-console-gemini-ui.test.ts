@@ -76,11 +76,28 @@ import { VoiceConsole } from "@/components/ai/voice-console"
 
 class FakeTrack {
   stop = vi.fn()
+  getSettings() {
+    return {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+      sampleRate: 48_000,
+      channelCount: 1,
+    }
+  }
+  getCapabilities() {
+    return {
+      echoCancellation: [true, false],
+      noiseSuppression: [true, false],
+      autoGainControl: [true, false],
+    }
+  }
 }
 
 class FakeStream {
   track = new FakeTrack()
   getTracks() { return [this.track] }
+  getAudioTracks() { return [this.track] }
 }
 
 class FakePort {
@@ -295,6 +312,20 @@ describe("VoiceConsole Gemini Live lifecycle", () => {
     expect(container.textContent).toContain("Preparing an answer")
   })
 
+  it("reports requested and applied microphone processing without device data", async () => {
+    await start()
+    const settingsTrace = fetchMock.mock.calls.map(([input, init]) => ({
+      url: String(input),
+      body: init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : null,
+    })).find(({ url, body }) => url.endsWith("/voice/trace") && body?.tool === "voice_audio_settings")
+
+    expect(settingsTrace?.body).toEqual(expect.objectContaining({
+      args: { keys: [] },
+      outcome: "req_on.ec_1_y.ns_1_y.ag_1_y.sr_48000.ch_1",
+    }))
+    expect(JSON.stringify(settingsTrace)).not.toContain("deviceId")
+  })
+
   it("streams 16 kHz microphone PCM directly into Gemini Live", async () => {
     await start()
     const capture = FakeWorkletNode.nodes.get("gemini-live-capture")!
@@ -326,6 +357,10 @@ describe("VoiceConsole Gemini Live lifecycle", () => {
 
     act(() => gemini.callbacks!.onmessage({ serverContent: { interrupted: true } }))
     expect(playback.port.sent.at(-1)?.message).toEqual({ type: "interrupt", generation: 1 })
+    expect(fetchMock.mock.calls.some(([input, init]) =>
+      String(input).endsWith("/voice/trace")
+      && JSON.parse(String(init?.body)).outcome === "provider_interrupted",
+    )).toBe(true)
   })
 
   it("keeps queued playback when local loudness has not been confirmed as speech", async () => {
@@ -345,6 +380,10 @@ describe("VoiceConsole Gemini Live lifecycle", () => {
       ({ message }) => (message as { type?: string }).type === "interrupt",
     )).toHaveLength(interruptsBefore)
     expect(container.textContent).toContain("Speaking")
+    expect(fetchMock.mock.calls.some(([input, init]) =>
+      String(input).endsWith("/voice/trace")
+      && JSON.parse(String(init?.body)).outcome === "local_signal_started",
+    )).toBe(true)
   })
 
   it("moves turn state only after provider-confirmed speech", async () => {
@@ -599,7 +638,10 @@ describe("VoiceConsole Gemini Live lifecycle", () => {
       })
       await flush()
     })
-    const traceCall = fetchMock.mock.calls.find(([input]) => String(input).endsWith("/voice/trace"))
+    const traceCall = fetchMock.mock.calls.find(([input, init]) => {
+      if (!String(input).endsWith("/voice/trace")) return false
+      return JSON.parse(String(init?.body)).tool === "navigate_to_section"
+    })
     const traceBody = JSON.parse(String(traceCall?.[1]?.body))
     expect(traceBody.args).toEqual({ keys: ["section", "filter"] })
     expect(JSON.stringify(traceBody)).not.toContain("customer private query")

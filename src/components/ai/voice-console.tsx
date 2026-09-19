@@ -16,6 +16,10 @@ import {
   type MicrophoneProblem,
 } from "@/lib/ai/voice/microphone-diagnosis"
 import {
+  microphoneProcessingTrace,
+  readMicrophoneProcessingSnapshot,
+} from "@/lib/ai/voice/microphone-processing"
+import {
   isVoiceSection,
   voiceSectionFromLocation,
   voiceSectionNavItem,
@@ -74,6 +78,8 @@ const TRACE_ARG_KEYS: Readonly<Record<string, readonly string[]>> = {
   get_current_screen: [],
   voice_gemini_error: ["code"],
   voice_transcription: ["status"],
+  voice_audio_settings: [],
+  voice_audio_event: ["event"],
 }
 
 function traceArgumentKeys(tool: string, args: unknown): string[] {
@@ -245,6 +251,11 @@ function ConsoleInner({
       keepalive: true,
     }).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (!active) return
+    trace("voice_audio_event", { event: phase }, `phase_${phase}`)
+  }, [active, phase, trace])
 
   const callTool = useCallback(async (tool: VoiceToolName, filter: unknown): Promise<string> => {
     const current = sessionRef.current
@@ -582,9 +593,13 @@ function ConsoleInner({
 
     const transcript = geminiInputTranscript(message)
     if (transcript) {
+      const wasConfirmedSpeech = confirmedSpeechActiveRef.current
       transcriptDraftRef.current = `${transcriptDraftRef.current}${transcript.text}`.slice(-TRANSCRIPT_PREVIEW_LIMIT)
       setTranscriptionWarning(false)
       if (transcript.finished) {
+        if (wasConfirmedSpeech) {
+          trace("voice_audio_event", { event: "provider_speech_finished" }, "provider_speech_finished")
+        }
         confirmedSpeechActiveRef.current = false
         clearUtteranceWatchdog()
         const text = transcriptDraftRef.current.trim()
@@ -601,6 +616,9 @@ function ConsoleInner({
           armResponseWatchdog()
         }
       } else {
+        if (!wasConfirmedSpeech) {
+          trace("voice_audio_event", { event: "provider_speech_started" }, "provider_speech_started")
+        }
         confirmedSpeechActiveRef.current = true
         armUtteranceWatchdog()
         setLastTranscript(null)
@@ -609,6 +627,7 @@ function ConsoleInner({
     }
 
     if (message.serverContent?.interrupted) {
+      trace("voice_audio_event", { event: "provider_interrupted" }, "provider_interrupted")
       audioPipelineRef.current?.playbackNode.port.postMessage({ type: "interrupt", generation })
       playbackActiveRef.current = false
       generationInProgressRef.current = false
@@ -713,6 +732,7 @@ function ConsoleInner({
     failConversation,
     runToolCalls,
     t,
+    trace,
   ])
 
   const prepareAudio = useCallback(async (
@@ -767,6 +787,11 @@ function ConsoleInner({
         // visual hint. Provider-confirmed transcript/interruption events own
         // turn state, watchdogs, and playback interruption.
         setSignalActive(event.data.active === true)
+        trace(
+          "voice_audio_event",
+          { event: event.data.active === true ? "local_signal_started" : "local_signal_finished" },
+          event.data.active === true ? "local_signal_started" : "local_signal_finished",
+        )
       }
     }
     playbackNode.port.onmessage = (event) => {
@@ -774,6 +799,7 @@ function ConsoleInner({
       if (event.data?.type === "drained") {
         playbackActiveRef.current = false
         setIsSpeaking(false)
+        trace("voice_audio_event", { event: "playback_drained" }, "playback_drained")
       }
       if (event.data?.type === "overflow") {
         // The playback buffer grows with the answer, so this now means ten
@@ -985,6 +1011,14 @@ function ConsoleInner({
         return
       }
       streamRef.current = stream
+      const microphoneTrack = stream.getAudioTracks()[0]
+      if (microphoneTrack) {
+        trace(
+          "voice_audio_settings",
+          {},
+          microphoneProcessingTrace(readMicrophoneProcessingSnapshot(microphoneTrack)),
+        )
+      }
       startMicMeter(stream)
 
       const credential = await withDeadline(async (signal) => {
@@ -1054,7 +1088,7 @@ function ConsoleInner({
     } finally {
       if (generationRef.current === generation) setStarting(false)
     }
-  }, [armResponseWatchdog, connectGemini, locale, prepareAudio, startMicMeter, stop, t])
+  }, [armResponseWatchdog, connectGemini, locale, prepareAudio, startMicMeter, stop, t, trace])
 
   useEffect(() => {
     if (!session) return
