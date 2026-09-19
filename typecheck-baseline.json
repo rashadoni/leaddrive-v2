@@ -21,7 +21,6 @@
     "src/app/api/cron/social-web-news/route.ts TS2322": 1,
     "src/app/api/v1/audit-log/route.ts TS2339": 2,
     "src/app/api/v1/deal-velocity/route.ts TS2339": 7,
-    "src/app/api/v1/leads/[id]/convert/route.ts TS2322": 1,
     "src/app/api/v1/leads/[id]/route.ts TS2339": 1,
     "src/app/api/v1/mtm/contacts/route.ts TS2322": 1,
     "src/app/api/v1/mtm/contacts/route.ts TS2339": 8,
