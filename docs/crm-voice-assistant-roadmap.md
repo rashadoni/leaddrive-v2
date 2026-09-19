@@ -397,17 +397,17 @@ collecting -> awaiting_confirmation -> executing -> succeeded | failed
 
 - [x] I1.1 Add the Prisma schema, migration, tenant indexes, and uniqueness
       constraints.
-- [ ] I1.2 Add an action registry mapping action type to schema, permission,
+- [x] I1.2 Add an action registry mapping action type to schema, permission,
       risk level, command, dedupe policy, and preview renderer.
-- [ ] I1.3 Add `POST /api/v1/ai/voice/actions/draft`.
+- [x] I1.3 Add `POST /api/v1/ai/voice/actions/draft`.
 - [ ] I1.4 Add `PATCH /api/v1/ai/voice/actions/:id`.
 - [ ] I1.5 Add `POST /api/v1/ai/voice/actions/:id/commit`.
 - [ ] I1.6 Add `POST /api/v1/ai/voice/actions/:id/cancel`.
 - [ ] I1.7 Add `GET /api/v1/ai/voice/actions/active`.
-- [ ] I1.8 Enforce one active root action context per voice session. A later
+- [x] I1.8 Enforce one active root action context per voice session. A later
       compound plan is the root aggregate; its ordered child intents do not
       compete with that root uniqueness constraint.
-- [ ] I1.9 Add a default ten-minute TTL, configurable by action risk.
+- [x] I1.9 Add a default ten-minute TTL, configurable by action risk.
 - [ ] I1.10 Add compare-and-swap transition from confirmation to execution.
 - [ ] I1.11 Recheck tenant, module permission, field permission, and record
       filter during commit.
@@ -424,6 +424,18 @@ canonical SHA-256 payload hash, and ten-minute default TTL. Lease fields are
 present, but execution claiming/recovery remains disabled until I1.5, I1.10,
 and I1.13 are implemented. See
 `docs/crm-voice-action-intent-foundation.md`.
+
+Draft API note (2026-09-19): the server now has a runtime-frozen registry for
+the five planned v1 actions and a same-origin, browser-session-only draft
+endpoint. The endpoint rechecks the voice pilot gate, role permission, tenant
+module, field permission, voice-session ownership, target visibility and target
+revision before persisting an unconfirmed receipt. Standard create actions use
+the ten-minute TTL; sensitive update/conversion drafts use five minutes.
+Idempotent retries replay the same receipt, conflicting key reuse is rejected,
+and the database remains the final concurrency guard for one active root.
+Possible lead/deal duplicates are returned as receipt warnings. There is still
+no commit route and no model-visible write tool. See
+`docs/crm-voice-action-draft-api.md`.
 
 ### Exit gate
 
