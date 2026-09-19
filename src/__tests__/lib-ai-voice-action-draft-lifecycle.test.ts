@@ -1,10 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { AuthResult } from "@/lib/api-auth"
 
+type EventCreateArgs = {
+  data: {
+    organizationId: string
+    intentId: string
+    userId: string
+    eventType: string
+    intentRevision: number
+    payloadHash: string
+    eventData: { tokenHash: string; expiresAt: string }
+  }
+  select: { id: true }
+}
+
 const deps = vi.hoisted(() => ({
   intentFindFirst: vi.fn(),
   intentUpdateMany: vi.fn(async () => ({ count: 1 })),
-  eventCreate: vi.fn(async () => ({ id: "confirmation-event-1" })),
+  eventCreate: vi.fn<(args: EventCreateArgs) => Promise<{ id: string }>>(
+    async () => ({ id: "confirmation-event-1" }),
+  ),
   sessionFindFirst: vi.fn(async () => ({ id: "voice-1" })),
   leadFindFirst: vi.fn(),
   leadFindMany: vi.fn(async () => []),
