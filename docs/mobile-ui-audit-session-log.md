@@ -31,3 +31,12 @@ This file is append-only. It preserves requirements, decisions, implementation e
 
 - Next: checkpoint-commit the server and mobile changes, push feature branches, open/observe CI, then merge/deploy only after green required checks.
 - After a tablet becomes visible in ADB: install the resulting mobile build and verify Clients, route planning/month calendar, configurable category fields, presentations, maps, and navigation in portrait and landscape.
+
+## 2026-09-19 — release and deploy continuation
+
+- The previous continuation point is superseded: server PR `rashadoni/leaddrive-v2#241` and mobile PR `rashadoni/leaddrive-mtm#66` were merged after green CI.
+- Mobile main produced release `v3.3.0-build256`; the APK was downloaded and its published SHA-256 checksum passed.
+- Server production workflow run `35467618741` passed quality/security and artifact-build jobs; the atomic production deployment was still running when this entry was appended.
+- ADB was checked again through both the local server and forwarded server at `127.0.0.1:35037`; both device lists remained empty, so no physical-device visual claim has been made.
+- Per the user's explicit instruction, removed the three Social Monitoring-specific requirements from the shared deploy workflow: standalone page-manifest assertion, queue-scheduler smoke, and authenticated browser smoke/evidence upload. General build, security, database, MTM, scheduler, revision, ping, and asset smokes remain intact.
+- Current continuation point: finish and smoke-check the active production deployment, publish the deploy-gate cleanup through review/CI, then install build 256 and complete portrait/landscape visual verification as soon as ADB exposes the device.

@@ -644,12 +644,6 @@ jobs:
             MANIFEST_COPIED=$((MANIFEST_COPIED + 1))
           done < <(find .next/server/app -name '*_client-reference-manifest.js')
           echo "::notice::Copied $MANIFEST_COPIED client-reference-manifest file(s)"
-          if [ -f ".next/server/app/(dashboard)/social-monitoring/page_client-reference-manifest.js" ] \
-             && [ ! -f ".next/standalone/.next/server/app/(dashboard)/social-monitoring/page_client-reference-manifest.js" ]; then
-            echo "::error::social-monitoring client-reference-manifest missing from standalone"
-            exit 1
-          fi
-
           mkdir -p .next/standalone/node_modules
           cp -r node_modules/.prisma .next/standalone/node_modules/.prisma
           cp -r node_modules/@prisma .next/standalone/node_modules/@prisma
@@ -1386,34 +1380,6 @@ jobs:
       # things and none is a precondition for another, so each one now reports
       # its own verdict. A failure among them still marks the job red; it just no
       # longer decides what else gets to be measured.
-      - name: Verify Social Monitoring queue scheduler
-        if: ${{ !cancelled() && steps.deploy_atomic.outcome == 'success' && env.DEPLOYMENT_MODE == 'normal' }}
-        run: |
-          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
-            'set -euo pipefail
-             CRONTAB="$(crontab -l 2>/dev/null)"
-             ACTIVE_COUNT="$(printf "%s\n" "$CRONTAB" | awk '\''
-               $0 !~ /^[[:space:]]*#/ &&
-               $0 ~ /cron-trigger\.sh \/api\/cron\/social-monitoring-run-jobs/ { count++ }
-               END { print count + 0 }
-             '\'')"
-             if [ "$ACTIVE_COUNT" -ne 1 ]; then
-               echo "FATAL: expected exactly one active Social Monitoring queue cron; found $ACTIVE_COUNT"
-               exit 1
-             fi
-             if ! systemctl is-active --quiet cron.service; then
-               echo "FATAL: cron.service is not active"
-               exit 1
-             fi
-             SMOKE_ENDPOINT="/api/cron/social-monitoring-run-jobs?organizationId=codex-prod-smoke-no-such-org&limit=1&maxItemsPerJob=1"
-             SMOKE_OUTPUT="$(CRON_TRIGGER_LOCK_WAIT_SECONDS=120 /usr/local/lib/leaddrive-v2/ops/current/cron-scripts/cron-trigger.sh "$SMOKE_ENDPOINT")"
-             printf "%s\n" "$SMOKE_OUTPUT"
-             if ! printf "%s\n" "$SMOKE_OUTPUT" | grep -Fq "\"selected\":0,\"claimed\":0"; then
-               echo "FATAL: Social Monitoring queue smoke did not return an empty successful drain"
-               exit 1
-             fi'
-
       - name: Verify callback commitment scheduler
         if: ${{ !cancelled() && steps.deploy_atomic.outcome == 'success' && env.DEPLOYMENT_MODE == 'normal' }}
         run: |
@@ -1726,34 +1692,6 @@ jobs:
             fi
           done
           echo "Feature smoke passed: page 200, CSS + JS assets 200"
-
-      - name: Authenticated Social Monitoring browser smoke
-        if: ${{ !cancelled() && steps.deploy_atomic.outcome == 'success' && env.DEPLOYMENT_MODE == 'normal' }}
-        # The account is supplied only through GitHub Actions secrets. Keep the
-        # deploy green while the secret-managed account is being provisioned,
-        # but make the missing gate explicit in the run log.
-        env:
-          SOCIAL_SMOKE_BASE_URL: ${{ secrets.NEXTAUTH_URL }}
-          SOCIAL_SMOKE_EMAIL: ${{ secrets.SOCIAL_SMOKE_EMAIL }}
-          SOCIAL_SMOKE_PASSWORD: ${{ secrets.SOCIAL_SMOKE_PASSWORD }}
-          SOCIAL_SMOKE_ORG_SLUG: ${{ secrets.SOCIAL_SMOKE_ORG_SLUG }}
-        run: |
-          if [ -z "$SOCIAL_SMOKE_EMAIL" ] || [ -z "$SOCIAL_SMOKE_PASSWORD" ]; then
-            echo "::warning::Authenticated Social Monitoring smoke skipped: configure SOCIAL_SMOKE_EMAIL and SOCIAL_SMOKE_PASSWORD repository secrets"
-            exit 0
-          fi
-          npm ci --ignore-scripts
-          npx playwright install --with-deps chromium
-          node scripts/social-monitoring-browser-smoke.mjs
-
-      - name: Upload Social Monitoring browser evidence
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: social-monitoring-browser-smoke-${{ github.sha }}
-          path: social-monitoring-wizard-smoke.png
-          if-no-files-found: ignore
-          retention-days: 7
 
   recovery:
     name: Recover verified retained production artifact
