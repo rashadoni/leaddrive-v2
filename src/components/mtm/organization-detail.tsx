@@ -28,6 +28,8 @@ import {
   Trash2,
   Upload,
   UserRound,
+  UserMinus,
+  UserPlus,
   UsersRound,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -900,6 +902,16 @@ export function MtmOrganizationDetail({ organizationId }: { organizationId: stri
           <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,0.7fr)]">
             <SectionFrame title={t("detail.assignmentHistory")} description={t("detail.assignmentHistoryDescription")}>
               <SectionState loading={sectionLoading === "staff"} error={sectionError} retry={() => void loadDetailSection("staff")} t={t}>
+                {canManage ? (
+                  <div className="mb-4 flex flex-wrap gap-2 border-b border-zinc-200 pb-4 dark:border-zinc-700">
+                    <Button asChild size="sm">
+                      <Link href={`/mtm/customers?assignmentTarget=${encodeURIComponent(organizationId)}&assignmentMode=ASSIGN`}><UserPlus className="h-4 w-4" />{explorer("assign")}</Link>
+                    </Button>
+                    <Button asChild size="sm" variant="outline">
+                      <Link href={`/mtm/customers?assignmentTarget=${encodeURIComponent(organizationId)}&assignmentMode=UNASSIGN`}><UserMinus className="h-4 w-4" />{explorer("unassign")}</Link>
+                    </Button>
+                  </div>
+                ) : null}
                 {staff?.agentAssignments.length ? (
                   <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
                     {staff.agentAssignments.map((assignment) => (
