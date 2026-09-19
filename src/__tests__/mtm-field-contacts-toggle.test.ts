@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 import { accessibleNavItems, isNavItemEnabled, matchNavItem } from "@/lib/nav-items"
 import { visibleMtmToolGroups } from "@/lib/mtm/navigation"
 import { MTM_SETTING_DEFAULTS } from "@/lib/mtm-settings"
-import { MTM_ROUTE_TARGET_TYPE_DEFAULTS, routeTargetTypesForFieldContacts } from "@/lib/mtm/route-target-types"
+import { MTM_ROUTE_TARGET_TYPE_DEFAULTS, routeTargetTypesForPlanning } from "@/lib/mtm/route-target-types"
 import { mtmRouteAssignmentCatalogHref } from "@/lib/mtm/route-links"
 
 const source = (path: string) => readFileSync(resolve(path), "utf8")
@@ -65,7 +65,9 @@ describe("field contacts organization switch", () => {
 
   it("shows a localized notice on /mtm/contacts instead of a 404 when off", () => {
     const page = source("src/app/(dashboard)/mtm/contacts/page.tsx")
-    expect(page).toMatch(/<FieldContactsGate>\s*<MtmContactExplorer \/>\s*<\/FieldContactsGate>/)
+    const gated = page.slice(page.indexOf("<FieldContactsGate>"), page.indexOf("</FieldContactsGate>") + "</FieldContactsGate>".length)
+    expect(gated).toContain("<MtmContactExplorer />")
+    expect(gated).toContain("<ContactCreateRequestQueue />")
 
     expect(source("src/components/mtm/field-contacts-gate.tsx"))
       .toContain('<MtmFeatureGate feature="fieldContactsEnabled">{children}</MtmFeatureGate>')
@@ -105,16 +107,15 @@ describe("field contacts organization switch", () => {
       .toMatch(/<FieldContactsGate>\s*<MtmContactDetail contactId=\{id\} \/>\s*<\/FieldContactsGate>/)
   })
 
-  it("stops offering doctor targets to planners while keeping the stored config", () => {
-    const off = routeTargetTypesForFieldContacts(MTM_ROUTE_TARGET_TYPE_DEFAULTS, false)
-    expect(off.some((target) => target.direction === "DOCTOR")).toBe(false)
+  it("keeps administrator-owned doctor route categories when the contacts directory is hidden", () => {
+    const off = routeTargetTypesForPlanning(MTM_ROUTE_TARGET_TYPE_DEFAULTS)
+    expect(off.some((target) => target.direction === "DOCTOR")).toBe(true)
     expect(off.map((target) => target.id)).toContain("all-customers")
-    expect(routeTargetTypesForFieldContacts(MTM_ROUTE_TARGET_TYPE_DEFAULTS, true)).toEqual(MTM_ROUTE_TARGET_TYPE_DEFAULTS)
+    expect(routeTargetTypesForPlanning(MTM_ROUTE_TARGET_TYPE_DEFAULTS)).toEqual(MTM_ROUTE_TARGET_TYPE_DEFAULTS)
     expect(MTM_ROUTE_TARGET_TYPE_DEFAULTS.some((target) => target.direction === "DOCTOR")).toBe(true)
 
     for (const path of ["src/components/mtm/route-builder.tsx", "src/components/mtm/route-planning-matrix.tsx"]) {
-      expect(source(path), path).toContain("routeTargetTypesForFieldContacts(")
-      expect(source(path), path).toContain("settingsResult.data?.fieldContactsEnabled !== false")
+      expect(source(path), path).toContain("routeTargetTypesForPlanning(")
     }
   })
 

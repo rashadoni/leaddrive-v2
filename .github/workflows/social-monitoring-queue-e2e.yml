@@ -3,7 +3,6 @@ name: Social Monitoring queue E2E
 on:
   pull_request:
     paths:
-      - "prisma/schema.prisma"
       - "prisma/migrations/20260801160000_social_monitoring_server_run_queue/**"
       - "scripts/social-monitoring-server-queue-e2e.mjs"
       - "messages/*.json"

@@ -161,6 +161,7 @@ model Organization {
   mtmContactTransfers                 MtmContactTransferOperation[]
   mtmContactAssignmentOperations      MtmContactAssignmentOperation[]
   mtmContactChangeRequests            MtmContactChangeRequest[]
+  mtmContactCreateRequests               MtmContactCreateRequest[]
   mtmDoctorScoringFormulas            MtmDoctorScoringFormula[]
   mtmDoctorAssessments                MtmDoctorAssessment[]
   mtmContactDictionaries              MtmContactDictionary[]
@@ -184,6 +185,10 @@ model Organization {
   mtmMessageReceipts                  MtmMessageReceipt[]
   mtmDocuments                        MtmDocument[]
   mtmDocumentAssignments              MtmDocumentAssignment[]
+  mtmProductGroups                       MtmProductGroup[]
+  mtmProductGroupMembers                 MtmProductGroupMember[]
+  mtmProducts                            MtmProduct[]
+  mtmPresentationSessions                MtmPresentationSession[]
   mtmMediaObjects                     MtmMediaObject[]
   mtmHrmRequests                      MtmHrmRequest[]
   workforcePolicies                   WorkforcePolicy[]
@@ -5061,6 +5066,11 @@ enum MtmVisitActionStatus {
   WAIVED
 }
 
+enum MtmProductGroupMemberRole {
+  MANAGER
+  AGENT
+}
+
 enum MtmApprovalStatus {
   DRAFT
   SUBMITTED
@@ -5667,6 +5677,7 @@ model MtmAgent {
   managedCustomers          MtmCustomer[]                @relation("MtmCustomerManagingManager")
   contactAssignments        MtmContactAgentAssignment[]
   contactChangeRequests     MtmContactChangeRequest[]
+  contactCreateRequests                MtmContactCreateRequest[]
   enteredDoctorAssessments  MtmDoctorAssessment[]        @relation("MtmDoctorAssessmentEnteredBy")
   reviewedDoctorAssessments MtmDoctorAssessment[]        @relation("MtmDoctorAssessmentReviewedBy")
   fieldPotentials           MtmFieldPotential[]          @relation("MtmFieldPotentialAgent")
@@ -5712,6 +5723,8 @@ model MtmAgent {
   pharmacyRewardRequests    MtmPharmacyRewardClaim[]        @relation("MtmPharmacyRewardClaimAgent")
   pharmacyPromotionEvents   MtmPharmacyPromotionEvent[]     @relation("MtmPharmacyEventAgent")
   pharmacyPromotionOperations MtmPharmacyPromotionOperation[] @relation("MtmPharmacyOperationAgent")
+  productGroupMemberships              MtmProductGroupMember[]
+  presentationSessions                 MtmPresentationSession[]
 
   onboarding MtmOnboarding?
 
@@ -5863,6 +5876,7 @@ model MtmCustomer {
   visits                 MtmVisit[]
   tasks                  MtmTask[]
   approvedRequests       MtmCustomerCreateRequest[]
+  approvedContactCreateRequests MtmContactCreateRequest[]
   externalSalesDocuments MtmExternalSalesDocument[]
   salesPlanLines         MtmSalesPlanLine[]
   contactWorkplaces      MtmContactWorkplace[]
@@ -5876,6 +5890,7 @@ model MtmCustomer {
   departments              MtmCustomerDepartment[]
   coordinateVerifications  MtmCustomerCoordinateVerification[]
   documents                MtmDocument[]
+  presentationSessions          MtmPresentationSession[]
 
   @@unique([organizationId, code])
   @@unique([organizationId, id])
@@ -6057,6 +6072,7 @@ model MtmContact {
   visits            MtmVisit[]
   commitments       MtmCommitment[]
   changeRequests    MtmContactChangeRequest[]
+  approvedCreateRequests   MtmContactCreateRequest[]        @relation("MtmApprovedContactCreateRequests")
   doctorAssessments MtmDoctorAssessment[]
   dictionaryAssignments MtmContactDictionaryAssignment[]
   pharmacyPromotionTargets MtmPharmacyPromotionTarget[]
@@ -6249,6 +6265,42 @@ model MtmContactChangeRequest {
   @@index([organizationId, contactId, submittedAt])
   @@index([requestedByAgentId, status])
   @@map("mtm_contact_change_requests")
+}
+
+/// Agent-proposed doctor/contact. Approval creates the contact, its clinic
+/// workplace and the requesting agent's assignment in one transaction.
+model MtmContactCreateRequest {
+  id                 String            @id @default(cuid())
+  organizationId     String
+  organization       Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  requestedByAgentId String
+  requestedByAgent   MtmAgent          @relation(fields: [organizationId, requestedByAgentId], references: [organizationId, id], onDelete: Cascade)
+  status             MtmApprovalStatus @default(SUBMITTED)
+  idempotencyKey     String
+  requestHash        String
+  displayName        String
+  specialtyName      String?
+  phone              String?
+  clinicName         String
+  address            String?
+  notes              String?
+  duplicateSnapshot  Json?
+  approvedContactId  String?
+  approvedContact    MtmContact?       @relation("MtmApprovedContactCreateRequests", fields: [organizationId, approvedContactId], references: [organizationId, id], onDelete: Restrict)
+  approvedCustomerId String?
+  approvedCustomer   MtmCustomer?      @relation(fields: [organizationId, approvedCustomerId], references: [organizationId, id], onDelete: Restrict)
+  reviewedBy         String?
+  decisionComment    String?
+  submittedAt        DateTime          @default(now())
+  reviewedAt         DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, status, submittedAt])
+  @@index([requestedByAgentId, status])
+  @@index([approvedContactId])
+  @@map("mtm_contact_create_requests")
 }
 
 model MtmContactWorkplace {
@@ -6818,6 +6870,7 @@ model MtmVisit {
   documents              MtmDocument[]
   fieldPotentialEvidence MtmFieldPotentialEvidence[]
   pharmacyPromotionExecutions MtmPharmacyPromotionExecution[]
+  presentationSessions        MtmPresentationSession[]
 
   @@unique([organizationId, id])
   @@index([organizationId])
@@ -7586,6 +7639,8 @@ model MtmDocument {
   /// relation and continue to resolve through their existing local key.
   mediaObject MtmMediaObject? @relation("MtmDocumentObject")
   assignments MtmDocumentAssignment[]
+  products                  MtmProduct[]
+  presentationSessions      MtmPresentationSession[]
   messages    MtmMessage[]
   pharmacyPromotionEvidence MtmPharmacyPromotionEvidence[] @relation("MtmPharmacyEvidenceDocument")
 
@@ -7620,6 +7675,120 @@ model MtmDocumentAssignment {
   @@unique([documentId, agentId])
   @@index([organizationId, agentId, assignedAt])
   @@map("mtm_document_assignments")
+}
+
+/// Hierarchical catalog used to decide which product presentations are
+/// available to each field agent. This is deliberately independent from the
+/// HR/team hierarchy: one manager or agent can work with several portfolios.
+model MtmProductGroup {
+  id             String            @id @default(cuid())
+  organizationId String
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parentId       String?
+  parent         MtmProductGroup?  @relation("MtmProductGroupTree", fields: [organizationId, parentId], references: [organizationId, id], onDelete: Restrict)
+  children       MtmProductGroup[] @relation("MtmProductGroupTree")
+  name           String
+  description    String?
+  sortOrder      Int               @default(0)
+  isActive       Boolean           @default(true)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  members  MtmProductGroupMember[]
+  products MtmProduct[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, parentId, name])
+  @@index([organizationId, parentId, isActive, sortOrder])
+  @@map("mtm_product_groups")
+}
+
+model MtmProductGroupMember {
+  id             String                    @id @default(cuid())
+  organizationId String
+  organization   Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  groupId        String
+  group          MtmProductGroup           @relation(fields: [organizationId, groupId], references: [organizationId, id], onDelete: Cascade)
+  agentId        String
+  agent          MtmAgent                  @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Cascade)
+  role           MtmProductGroupMemberRole
+  assignedBy     String?
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  @@unique([organizationId, groupId, agentId])
+  @@index([organizationId, agentId, role])
+  @@map("mtm_product_group_members")
+}
+
+/// A product is represented in the field by its current presentation file.
+/// Sessions retain their own document/version snapshot, so replacing the
+/// current file never rewrites historical evidence.
+model MtmProduct {
+  id                  String          @id @default(cuid())
+  organizationId      String
+  organization        Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  groupId             String
+  group               MtmProductGroup @relation(fields: [organizationId, groupId], references: [organizationId, id], onDelete: Restrict)
+  name                String
+  description         String?
+  presentationVersion String?
+  documentId          String?
+  document            MtmDocument?    @relation(fields: [organizationId, documentId], references: [organizationId, id], onDelete: Restrict)
+  sortOrder           Int             @default(0)
+  isActive            Boolean         @default(true)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  presentationSessions MtmPresentationSession[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, groupId, name])
+  @@index([organizationId, groupId, isActive, sortOrder])
+  @@index([organizationId, documentId])
+  @@map("mtm_products")
+}
+
+/// Durable proof that the authenticated agent opened a presentation. Progress
+/// can advance until close; a closed session is immutable at the API boundary.
+/// It intentionally proves app activity, not that the customer watched it.
+model MtmPresentationSession {
+  id                    String       @id @default(cuid())
+  organizationId        String
+  organization          Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  clientSessionId       String
+  visitId               String
+  visit                 MtmVisit     @relation(fields: [organizationId, visitId], references: [organizationId, id], onDelete: Restrict)
+  agentId               String
+  agent                 MtmAgent     @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Restrict)
+  customerId            String
+  customer              MtmCustomer  @relation(fields: [organizationId, customerId], references: [organizationId, id], onDelete: Restrict)
+  productId             String
+  product               MtmProduct   @relation(fields: [organizationId, productId], references: [organizationId, id], onDelete: Restrict)
+  documentId            String?
+  document              MtmDocument? @relation(fields: [organizationId, documentId], references: [organizationId, id], onDelete: Restrict)
+  presentationVersion   String?
+  openedAt              DateTime
+  lastViewedAt          DateTime
+  closedAt              DateTime?
+  activeDurationSeconds Int          @default(0)
+  openLat               Float?
+  openLng               Float?
+  closeLat              Float?
+  closeLng              Float?
+  pageCount             Int?
+  lastPage              Int?
+  pagesViewed           Json?
+  pageEvents            Json?
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  @@unique([organizationId, agentId, clientSessionId])
+  @@unique([organizationId, id])
+  @@index([organizationId, visitId, openedAt])
+  @@index([organizationId, productId, openedAt])
+  @@index([organizationId, agentId, openedAt])
+  @@map("mtm_presentation_sessions")
 }
 
 model MtmMessage {

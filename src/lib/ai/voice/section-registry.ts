@@ -193,6 +193,7 @@ export const SECTION_DESCRIPTORS: Record<string, SectionDescriptor> = {
     createdField: "createdAt",
   },
   mtm_customers: { model: "mtmCustomer", permission: "tpm", module: "mtm", createdField: "createdAt" },
+  mtm_products: { model: "mtmProduct", permission: "tpm", module: "mtm", createdField: "createdAt" },
 }
 
 /**

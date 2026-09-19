@@ -9,7 +9,7 @@ import {
   mobileFieldPermissions,
 } from "@/lib/mtm/mobile-capabilities"
 import { cartoBasemapsApiKey } from "@/lib/carto-basemap"
-import { routeTargetTypesForFieldContacts } from "@/lib/mtm/route-target-types"
+import { routeTargetTypesForPlanning } from "@/lib/mtm/route-target-types"
 import { buildMtmMobileCapabilityManifest } from "@/lib/mtm/mobile-capability-manifest"
 import {
   MTM_MOBILE_SYNC_V2_ROUTE_STREAM,
@@ -487,9 +487,10 @@ export const GET = withMobileRls(async (req, auth) => {
         // The same tenant-owned labels and data scopes drive both web and
         // mobile planners. The APK must never fall back to hard-coded
         // "doctor/pharmacy" buttons after an administrator changes them.
-        // Doctor targets are field contacts: hidden with them, config kept.
+        // Planning categories remain administrator-owned even when the full
+        // contacts directory is hidden; assigned doctors can still be routed.
         routeTargetTypes: routeFieldEnabled
-          ? routeTargetTypesForFieldContacts(settings.routeTargetTypes, settings.fieldContactsEnabled !== false)
+          ? routeTargetTypesForPlanning(settings.routeTargetTypes)
           : [],
         sync: routeFieldEnabled ? {
           horizon: "ACTIVE_FIELD_SCOPE",

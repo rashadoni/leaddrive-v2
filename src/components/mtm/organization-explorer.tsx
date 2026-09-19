@@ -384,6 +384,8 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
   const defaultSavedViewApplied = useRef(false)
   const latestListRequest = useRef(0)
   const latestFacetRequest = useRef(0)
+  const directAssignment = useRef<{ organizationId: string; mode: "ASSIGN" | "UNASSIGN" } | null>(null)
+  const directAssignmentHandled = useRef(false)
 
   const requestHeaders = useMemo<Record<string, string>>(
     () => orgId ? { "x-organization-id": orgId } : {},
@@ -394,6 +396,9 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
     if (initialized.current || typeof window === "undefined") return
     initialized.current = true
     const params = new URLSearchParams(window.location.search)
+    const directId = params.get("assignmentTarget")?.trim()
+    const directMode = params.get("assignmentMode") === "UNASSIGN" ? "UNASSIGN" : "ASSIGN"
+    if (directId && directId.length <= 128) directAssignment.current = { organizationId: directId, mode: directMode }
     initialUrlHadState.current = params.size > 0
     const restored = organizationFiltersFromSearchParams(params)
     setFilters(restored)
@@ -501,7 +506,22 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
     void loadOrganizations()
   }, [loadOrganizations])
 
-  const organizations = data?.organizations ?? []
+  useEffect(() => {
+    const direct = directAssignment.current
+    if (!direct || directAssignmentHandled.current || !data?.capabilities.canManage) return
+    directAssignmentHandled.current = true
+    setSelected(new Set([direct.organizationId]))
+    setAssignmentMode(direct.mode)
+    setTargetAgentId("")
+    setEffectiveFrom(data.asOf || localDateKey())
+    setAssignmentReason("")
+    setPreview(null)
+    setAssignmentResult(null)
+    setAssignmentIdempotencyKey(crypto.randomUUID())
+    setAssignmentOpen(true)
+  }, [data?.asOf, data?.capabilities.canManage])
+
+  const organizations = useMemo(() => data?.organizations ?? [], [data?.organizations])
   const total = data?.total ?? 0
   const pageIds = useMemo(
     () => organizations.map((organization) => organization.id),
