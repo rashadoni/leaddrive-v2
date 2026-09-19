@@ -395,7 +395,7 @@ collecting -> awaiting_confirmation -> executing -> succeeded | failed
 
 ### Tasks
 
-- [ ] I1.1 Add the Prisma schema, migration, tenant indexes, and uniqueness
+- [x] I1.1 Add the Prisma schema, migration, tenant indexes, and uniqueness
       constraints.
 - [ ] I1.2 Add an action registry mapping action type to schema, permission,
       risk level, command, dedupe policy, and preview renderer.
@@ -415,6 +415,15 @@ collecting -> awaiting_confirmation -> executing -> succeeded | failed
 - [ ] I1.13 Add lease/recovery handling for interrupted execution.
 - [ ] I1.14 Add an immutable intent event/audit ledger.
 - [ ] I1.15 Add per-user, per-tenant, and per-action rate limits.
+
+Foundation note (2026-09-19): `AiActionIntent` now has tenant-safe composite
+foreign keys, forced RLS using the canonical `app.org_id` context, lifecycle
+checks, caller/provider idempotency keys, and a partial unique index for one
+active root per user voice session. Shared primitives define the state graph,
+canonical SHA-256 payload hash, and ten-minute default TTL. Lease fields are
+present, but execution claiming/recovery remains disabled until I1.5, I1.10,
+and I1.13 are implemented. See
+`docs/crm-voice-action-intent-foundation.md`.
 
 ### Exit gate
 

@@ -294,6 +294,7 @@ model Organization {
   voiceSessions                   VoiceSession[]
   voiceSessionTurns               VoiceSessionTurn[]
   voiceMonthlyUsage               VoiceMonthlyUsage[]
+  aiActionIntents                 AiActionIntent[]
   voiceCallSessions               VoiceCallSession[]
   voiceCallQueues                 VoiceCallQueue[]
   voiceCallQueueItems             VoiceCallQueueItem[]
@@ -756,6 +757,9 @@ model User {
   // (toUser side).
   delegatingApprovals UserApprovalDelegate[] @relation("DelegatingUser")
   delegateApprovals   UserApprovalDelegate[] @relation("DelegateRecipient")
+
+  // Explicitly confirmed CRM mutations proposed by the in-CRM voice assistant.
+  aiActionIntents AiActionIntent[] @relation("AiActionIntentUser")
 
   @@unique([organizationId, email])
   @@unique([organizationId, id])
@@ -2980,6 +2984,60 @@ model AiPendingAction {
 
   @@index([organizationId, status])
   @@map("ai_pending_actions")
+}
+
+/// Durable proposal/confirmation boundary for CRM writes initiated by the
+/// in-CRM voice assistant. Raw payload means provider tool arguments only;
+/// microphone audio and full transcripts are deliberately not stored here.
+/// State and cross-field coherence are enforced again by database CHECKs in
+/// the migration because Prisma cannot express the lifecycle invariants.
+model AiActionIntent {
+  id                      String           @id @default(cuid())
+  organizationId          String
+  organization            Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId                   String
+  user                     User             @relation("AiActionIntentUser", fields: [organizationId, userId], references: [organizationId, id], onDelete: Cascade, onUpdate: Cascade)
+  voiceSessionId           String
+  voiceSession             VoiceSession     @relation(fields: [organizationId, voiceSessionId], references: [organizationId, id], onDelete: Cascade, onUpdate: Cascade)
+  parentIntentId           String?
+  parentIntent             AiActionIntent?  @relation("AiActionIntentTree", fields: [organizationId, parentIntentId], references: [organizationId, id], onDelete: Cascade, onUpdate: Cascade)
+  childIntents             AiActionIntent[] @relation("AiActionIntentTree")
+  actionType               String           @db.VarChar(64)
+  rawPayload               Json             @default("{}")
+  normalizedPayload        Json             @default("{}")
+  preview                  Json             @default("{}")
+  warnings                 Json             @default("[]")
+  state                    String           @default("collecting") @db.VarChar(32)
+  revision                 Int              @default(1)
+  payloadHash              String           @db.Char(64)
+  idempotencyKey           String           @db.VarChar(200)
+  providerToolCallId       String?          @db.VarChar(255)
+  targetEntityType         String?          @db.VarChar(64)
+  targetEntityId           String?          @db.VarChar(191)
+  expectedUpdatedAt        DateTime?
+  resultEntityType         String?          @db.VarChar(64)
+  resultEntityId           String?          @db.VarChar(191)
+  resultPayload            Json?
+  errorCode                String?          @db.VarChar(64)
+  errorDetail              Json?
+  expiresAt                DateTime
+  confirmedAt              DateTime?
+  executionStartedAt       DateTime?
+  executionLeaseToken      String?          @db.Uuid
+  executionLeaseExpiresAt  DateTime?
+  completedAt              DateTime?
+  createdAt                DateTime         @default(now())
+  updatedAt                DateTime         @updatedAt
+
+  @@unique([organizationId, id], map: "ai_action_intents_org_id_key")
+  @@unique([organizationId, userId, idempotencyKey], map: "ai_action_intents_org_user_idempotency_key")
+  @@unique([organizationId, voiceSessionId, providerToolCallId], map: "ai_action_intents_org_session_provider_call_key")
+  @@index([organizationId, userId, state, createdAt], map: "ai_action_intents_org_user_state_created_idx")
+  @@index([organizationId, voiceSessionId, state], map: "ai_action_intents_org_session_state_idx")
+  @@index([organizationId, state, expiresAt], map: "ai_action_intents_org_state_expiry_idx")
+  @@index([organizationId, targetEntityType, targetEntityId], map: "ai_action_intents_org_target_idx")
+  @@index([organizationId, parentIntentId], map: "ai_action_intents_org_parent_idx")
+  @@map("ai_action_intents")
 }
 
 model KbEmbedding {
@@ -21321,7 +21379,8 @@ model VoiceSession {
   createdAt                DateTime     @default(now())
   updatedAt                DateTime     @updatedAt
 
-  turns VoiceSessionTurn[]
+  turns         VoiceSessionTurn[]
+  actionIntents AiActionIntent[]
 
   @@unique([organizationId, id], map: "voice_sessions_org_id_key")
   @@index([organizationId, status], map: "voice_sessions_org_status_idx")
