@@ -273,3 +273,9 @@ single-use proof consumption, CAS claim, lease recovery и commit endpoint.
 этого — устранение crash ambiguity между канонической CRM-командой и сохранением
 receipt-result, затем single-use proof consumption, execution CAS/lease и
 commit endpoint.
+
+CI PR #244: static checks и полный unit baseline прошли. Первый typecheck gate
+обнаружил один новый `TS2339` только в чтении `mock.calls` нового unit-теста;
+production-код ошибок не добавил. Проверка события переписана через типобезопасный
+`toHaveBeenCalledWith`, без изменения runtime-поведения. Далее нужен повторный
+CI этого fix-коммита.

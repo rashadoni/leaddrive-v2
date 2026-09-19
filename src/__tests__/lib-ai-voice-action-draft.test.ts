@@ -149,11 +149,11 @@ describe("AI voice action draft service", () => {
         userId: "user-1",
         eventType: "drafted",
         intentRevision: 1,
+        eventData: {
+          actionType: "create_task",
+          voiceSessionId: "voice-1",
+        },
       }),
-    })
-    expect(deps.eventCreate.mock.calls[0]?.[0]?.data.eventData).toEqual({
-      actionType: "create_task",
-      voiceSessionId: "voice-1",
     })
     const createData = deps.intentCreate.mock.calls[0]?.[0]?.data
     expect(createData).not.toHaveProperty("confirmedAt")
