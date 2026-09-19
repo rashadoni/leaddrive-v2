@@ -326,7 +326,7 @@ No voice write tools are enabled in this phase.
 - [x] C1.1 Inventory validation, permissions, field rules, workflows,
       notifications, webhooks, audit, and custom-field handling in current REST
       routes. See `docs/crm-voice-command-layer-audit.md`.
-- [ ] C1.2 Extract shared strict schemas for task, lead, and deal operations.
+- [x] C1.2 Extract shared strict schemas for task, lead, and deal operations.
 - [x] C1.3 Implement `createTaskCommand`. The REST adapter now uses the shared
       command; the assistant still has no commit tool.
 - [x] C1.4 Implement `createLeadCommand`. The REST adapter now shares the
@@ -335,7 +335,10 @@ No voice write tools are enabled in this phase.
 - [x] C1.5 Implement `updateLeadCommand`. REST updates now share the command;
       voice callers have an explicit safe-field allow-list and must supply
       `expectedUpdatedAt`, enforced atomically to reject stale commits.
-- [ ] C1.6 Implement `createDealCommand`.
+- [x] C1.6 Implement `createDealCommand`. The REST adapter now uses the shared
+      strict command; pipeline stages and tenant references are validated,
+      accepted tags are persisted, and direct callers receive non-blocking
+      duplicate warnings.
 - [ ] C1.7 Implement `convertLeadToDealCommand` separately from ordinary deal
       creation.
 - [x] C1.8 Define trusted `actorContext` containing organization, user, role,
