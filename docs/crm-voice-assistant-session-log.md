@@ -113,3 +113,36 @@ Production artifact: `67e3f28007184377ff0914438ad4f60d4a32c069`
 Точка остановки этой записи: реализация и первичные целевые тесты готовы;
 документация обновляется, после чего следуют финальные проверки, commit, PR, CI,
 merge и production deploy.
+
+## Продолжение 2026-09-19: завершение draft API и жизненный цикл черновика
+
+Первый срез завершён через PR #239. Полный CI прошёл, PR слит в `main` merge
+commit `7cb5de3aa0dbbddb1064e92ac578f8bce4cf26ba`. Production workflow
+`35464733335` запущен для этого точного SHA; на момент этой записи quality и
+security gates уже прошли, production artifact ещё собирается.
+
+Не дожидаясь сборки, начат следующий безопасный срез Phase 5:
+
+- `PATCH /api/v1/ai/voice/actions/:id` для редактирования только
+  неподтверждённого receipt по ожидаемой ревизии;
+- `GET /api/v1/ai/voice/actions/active` для восстановления одного активного
+  root receipt текущего пользователя и voice-сессии;
+- `POST /api/v1/ai/voice/actions/:id/cancel` для безопасной отмены до
+  исполнения;
+- повторная проверка tenant/user/session, voice gate, текущих разрешений,
+  видимости и версии target-записи;
+- compare-and-swap для edit/cancel, безопасный replay идентичного edit и
+  повторной отмены;
+- пересчёт нормализованного payload hash, preview, duplicate warnings и TTL
+  после редактирования;
+- строгие request envelopes, same-origin JSON guard для мутаций и раздельные
+  per-user rate limits.
+
+Важная граница сохраняется: commit endpoint по-прежнему отсутствует, команды
+CRM не вызываются, лиды/сделки/задачи не изменяются. Целевой регрессионный набор
+на этом рубеже: 6 файлов, 35 тестов — успешно; targeted ESLint и
+`git diff --check` — успешно.
+
+Точка остановки этой записи: код, тесты и документация lifecycle-среза готовы
+локально; далее нужны checkpoint commit, push, PR, CI, merge и отдельный
+production deploy этого нового среза.

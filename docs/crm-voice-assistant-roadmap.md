@@ -400,10 +400,10 @@ collecting -> awaiting_confirmation -> executing -> succeeded | failed
 - [x] I1.2 Add an action registry mapping action type to schema, permission,
       risk level, command, dedupe policy, and preview renderer.
 - [x] I1.3 Add `POST /api/v1/ai/voice/actions/draft`.
-- [ ] I1.4 Add `PATCH /api/v1/ai/voice/actions/:id`.
+- [x] I1.4 Add `PATCH /api/v1/ai/voice/actions/:id`.
 - [ ] I1.5 Add `POST /api/v1/ai/voice/actions/:id/commit`.
-- [ ] I1.6 Add `POST /api/v1/ai/voice/actions/:id/cancel`.
-- [ ] I1.7 Add `GET /api/v1/ai/voice/actions/active`.
+- [x] I1.6 Add `POST /api/v1/ai/voice/actions/:id/cancel`.
+- [x] I1.7 Add `GET /api/v1/ai/voice/actions/active`.
 - [x] I1.8 Enforce one active root action context per voice session. A later
       compound plan is the root aggregate; its ordered child intents do not
       compete with that root uniqueness constraint.
@@ -436,6 +436,15 @@ and the database remains the final concurrency guard for one active root.
 Possible lead/deal duplicates are returned as receipt warnings. There is still
 no commit route and no model-visible write tool. See
 `docs/crm-voice-action-draft-api.md`.
+
+Draft lifecycle note (2026-09-19): a session-authenticated user can now restore
+their one active root receipt, replace the payload of an unconfirmed receipt,
+or cancel it. Edits use the receipt revision as a compare-and-swap token,
+rehash the normalized payload, regenerate warnings/preview, recheck current
+permissions and target visibility/version, and safely replay an identical
+network retry. All reads and transitions are bound to organization, user and
+voice session. None of these routes can execute a CRM command. See
+`docs/crm-voice-action-draft-lifecycle-api.md`.
 
 ### Exit gate
 

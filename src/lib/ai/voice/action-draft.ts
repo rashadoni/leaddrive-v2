@@ -13,6 +13,7 @@ import {
 } from "./action-intent"
 import {
   getAiVoiceActionDefinition,
+  isAiVoiceActionType,
   parseAiVoiceActionPayload,
   type AiVoiceActionPreviewContext,
   type AiVoiceActionType,
@@ -45,6 +46,8 @@ export type CreateAiVoiceActionDraftInput = Readonly<{
 
 type StoredIntent = Readonly<{
   id: string
+  organizationId: string
+  userId: string
   voiceSessionId: string
   actionType: string
   rawPayload: unknown
@@ -59,6 +62,17 @@ type StoredIntent = Readonly<{
   expiresAt: Date
   createdAt: Date
   updatedAt: Date
+}>
+
+export type UpdateAiVoiceActionDraftInput = Readonly<{
+  intentId: string
+  expectedRevision: number
+  payload: JsonObject
+}>
+
+export type CancelAiVoiceActionDraftInput = Readonly<{
+  intentId: string
+  expectedRevision: number
 }>
 
 export type AiVoiceActionDraftResponse = Readonly<{
@@ -95,6 +109,58 @@ function serializeIntent(intent: StoredIntent, replayed: boolean): AiVoiceAction
     updatedAt: intent.updatedAt.toISOString(),
     replayed,
   }
+}
+
+async function findOwnedIntent(auth: AuthResult, intentId: string): Promise<StoredIntent> {
+  const intent = await prisma.aiActionIntent.findFirst({
+    where: {
+      id: intentId,
+      organizationId: auth.orgId,
+      userId: auth.userId,
+      parentIntentId: null,
+    },
+  }) as StoredIntent | null
+  if (!intent) {
+    throw new AiVoiceActionDraftError("INTENT_NOT_FOUND", "The action draft was not found", 404)
+  }
+  return intent
+}
+
+async function assertActiveVoiceSession(
+  auth: AuthResult,
+  voiceSessionId: string,
+): Promise<void> {
+  const session = await prisma.voiceSession.findFirst({
+    where: {
+      id: voiceSessionId,
+      organizationId: auth.orgId,
+      userId: auth.userId,
+      status: "active",
+      expiresAt: { gt: new Date() },
+    },
+    select: { id: true },
+  })
+  if (!session) {
+    throw new AiVoiceActionDraftError(
+      "VOICE_SESSION_INACTIVE",
+      "The voice session is not active",
+      409,
+    )
+  }
+}
+
+async function expireIntent(intent: StoredIntent, now: Date): Promise<void> {
+  await prisma.aiActionIntent.updateMany({
+    where: {
+      id: intent.id,
+      organizationId: intent.organizationId,
+      userId: intent.userId,
+      state: { in: [...ACTIVE_DRAFT_STATES] },
+      revision: intent.revision,
+      expiresAt: { lte: now },
+    },
+    data: { state: "expired", completedAt: now },
+  })
 }
 
 function firstPayloadIssue(
@@ -521,23 +587,7 @@ export async function createAiVoiceActionDraft(
   }
 
   const now = new Date()
-  const session = await prisma.voiceSession.findFirst({
-    where: {
-      id: input.voiceSessionId,
-      organizationId: auth.orgId,
-      userId: auth.userId,
-      status: "active",
-      expiresAt: { gt: now },
-    },
-    select: { id: true },
-  })
-  if (!session) {
-    throw new AiVoiceActionDraftError(
-      "VOICE_SESSION_INACTIVE",
-      "The voice session is not active",
-      409,
-    )
-  }
+  await assertActiveVoiceSession(auth, input.voiceSessionId)
 
   const bound = await bindTarget(auth, input, parsed.data)
   const definition = getAiVoiceActionDefinition(input.actionType)
@@ -634,4 +684,219 @@ export async function createAiVoiceActionDraft(
       concurrentActive ? { activeIntentId: concurrentActive.id } : undefined,
     )
   }
+}
+
+/**
+ * Replace the payload of an unconfirmed receipt. The expected revision is a
+ * compare-and-swap token: concurrent edits cannot silently overwrite each
+ * other and a retry of the exact same edit returns the stored revision.
+ */
+export async function updateAiVoiceActionDraft(
+  auth: AuthResult,
+  input: UpdateAiVoiceActionDraftInput,
+): Promise<AiVoiceActionDraftResponse> {
+  const existing = await findOwnedIntent(auth, input.intentId)
+  if (!isAiVoiceActionType(existing.actionType)) {
+    throw new AiVoiceActionDraftError("INVALID_STORED_ACTION", "The stored action is invalid", 409)
+  }
+  if (existing.state !== "awaiting_confirmation") {
+    throw new AiVoiceActionDraftError(
+      "INTENT_NOT_EDITABLE",
+      "Only an unconfirmed action draft can be edited",
+      409,
+      { state: existing.state },
+    )
+  }
+
+  const now = new Date()
+  if (existing.expiresAt.getTime() <= now.getTime()) {
+    await expireIntent(existing, now)
+    throw new AiVoiceActionDraftError("INTENT_EXPIRED", "The action draft has expired", 409)
+  }
+
+  const parsed = parseAiVoiceActionPayload(existing.actionType, input.payload)
+  if (!parsed.success) throw firstPayloadIssue(parsed.issues)
+  if (
+    existing.actionType === "update_lead"
+    && Object.keys(parsed.data).every((field) => field === "expectedUpdatedAt")
+  ) {
+    throw new AiVoiceActionDraftError(
+      "EMPTY_UPDATE",
+      "At least one lead field must be changed",
+      400,
+    )
+  }
+
+  if (existing.revision === input.expectedRevision + 1) {
+    try {
+      if (
+        canonicalizeAiActionIntentJson(existing.rawPayload)
+        === canonicalizeAiActionIntentJson(input.payload)
+      ) {
+        await assertActionAccess(auth, existing.actionType, parsed.data)
+        await assertReplayTargetAccess(auth, existing)
+        return serializeIntent(existing, true)
+      }
+    } catch (error) {
+      if (error instanceof AiVoiceActionDraftError) throw error
+    }
+  }
+  if (existing.revision !== input.expectedRevision) {
+    throw new AiVoiceActionDraftError(
+      "REVISION_CONFLICT",
+      "The action draft was changed by another request",
+      409,
+      { currentRevision: existing.revision },
+    )
+  }
+
+  await assertActiveVoiceSession(auth, existing.voiceSessionId)
+  await assertActionAccess(auth, existing.actionType, parsed.data)
+  await assertReplayTargetAccess(auth, existing)
+  const bound = await bindTarget(auth, {
+    voiceSessionId: existing.voiceSessionId,
+    actionType: existing.actionType,
+    payload: input.payload,
+    idempotencyKey: "edit-does-not-replace-root-idempotency-key",
+    ...(existing.targetEntityId ? { targetEntityId: existing.targetEntityId } : {}),
+  }, parsed.data)
+  const definition = getAiVoiceActionDefinition(existing.actionType)
+  const revision = existing.revision + 1
+  const warnings = await duplicateWarnings(auth, existing.actionType, bound.normalizedPayload)
+  const preview = definition.renderPreview(bound.normalizedPayload, bound.previewContext)
+  const payloadHash = hashAiActionIntentPayload({
+    actionType: existing.actionType,
+    revision,
+    normalizedPayload: bound.normalizedPayload,
+  })
+  const expiresAt = aiActionIntentExpiresAt(now, definition.ttlMs)
+
+  const changed = await prisma.aiActionIntent.updateMany({
+    where: {
+      id: existing.id,
+      organizationId: auth.orgId,
+      userId: auth.userId,
+      state: "awaiting_confirmation",
+      revision: input.expectedRevision,
+      expiresAt: { gt: now },
+    },
+    data: {
+      rawPayload: input.payload as Prisma.InputJsonValue,
+      normalizedPayload: bound.normalizedPayload as Prisma.InputJsonValue,
+      preview: preview as unknown as Prisma.InputJsonValue,
+      warnings: warnings as Prisma.InputJsonValue,
+      revision,
+      payloadHash,
+      expectedUpdatedAt: bound.expectedUpdatedAt,
+      expiresAt,
+    },
+  })
+  if (changed.count !== 1) {
+    throw new AiVoiceActionDraftError(
+      "REVISION_CONFLICT",
+      "The action draft was changed by another request",
+      409,
+    )
+  }
+
+  const updated = await findOwnedIntent(auth, existing.id)
+  void logAudit(auth.orgId, "voice_action_draft_updated", "ai_action_intent", existing.id, undefined, {
+    userId: auth.userId,
+    newValue: { actionType: existing.actionType, revision },
+  })
+  return serializeIntent(updated, false)
+}
+
+/** Return the caller's only active root receipt for one owned voice session. */
+export async function getActiveAiVoiceActionDraft(
+  auth: AuthResult,
+  voiceSessionId: string,
+): Promise<AiVoiceActionDraftResponse | null> {
+  await assertActiveVoiceSession(auth, voiceSessionId)
+  const now = new Date()
+  await prisma.aiActionIntent.updateMany({
+    where: {
+      organizationId: auth.orgId,
+      userId: auth.userId,
+      voiceSessionId,
+      parentIntentId: null,
+      state: { in: [...ACTIVE_DRAFT_STATES] },
+      expiresAt: { lte: now },
+    },
+    data: { state: "expired", completedAt: now },
+  })
+  const active = await prisma.aiActionIntent.findFirst({
+    where: {
+      organizationId: auth.orgId,
+      userId: auth.userId,
+      voiceSessionId,
+      parentIntentId: null,
+      state: { in: ["collecting", "awaiting_confirmation", "executing"] },
+    },
+  }) as StoredIntent | null
+  if (!active) return null
+  if (!isAiVoiceActionType(active.actionType)) {
+    throw new AiVoiceActionDraftError("INVALID_STORED_ACTION", "The stored action is invalid", 409)
+  }
+  const parsed = parseAiVoiceActionPayload(active.actionType, active.rawPayload)
+  if (!parsed.success) {
+    throw new AiVoiceActionDraftError("INVALID_STORED_PAYLOAD", "The stored action is invalid", 409)
+  }
+  await assertActionAccess(auth, active.actionType, parsed.data)
+  await assertReplayTargetAccess(auth, active)
+  return serializeIntent(active, false)
+}
+
+/** Cancel an unconfirmed receipt without invoking any CRM command. */
+export async function cancelAiVoiceActionDraft(
+  auth: AuthResult,
+  input: CancelAiVoiceActionDraftInput,
+): Promise<AiVoiceActionDraftResponse> {
+  const existing = await findOwnedIntent(auth, input.intentId)
+  if (existing.state === "cancelled") return serializeIntent(existing, true)
+  if (existing.state !== "collecting" && existing.state !== "awaiting_confirmation") {
+    throw new AiVoiceActionDraftError(
+      "INTENT_NOT_CANCELLABLE",
+      "The action draft can no longer be cancelled",
+      409,
+      { state: existing.state },
+    )
+  }
+  const now = new Date()
+  if (existing.expiresAt.getTime() <= now.getTime()) {
+    await expireIntent(existing, now)
+    throw new AiVoiceActionDraftError("INTENT_EXPIRED", "The action draft has expired", 409)
+  }
+  if (existing.revision !== input.expectedRevision) {
+    throw new AiVoiceActionDraftError(
+      "REVISION_CONFLICT",
+      "The action draft was changed by another request",
+      409,
+      { currentRevision: existing.revision },
+    )
+  }
+  const changed = await prisma.aiActionIntent.updateMany({
+    where: {
+      id: existing.id,
+      organizationId: auth.orgId,
+      userId: auth.userId,
+      state: { in: ["collecting", "awaiting_confirmation"] },
+      revision: input.expectedRevision,
+      expiresAt: { gt: now },
+    },
+    data: { state: "cancelled", completedAt: now },
+  })
+  if (changed.count !== 1) {
+    throw new AiVoiceActionDraftError(
+      "REVISION_CONFLICT",
+      "The action draft was changed by another request",
+      409,
+    )
+  }
+  const cancelled = await findOwnedIntent(auth, existing.id)
+  void logAudit(auth.orgId, "voice_action_cancelled", "ai_action_intent", existing.id, undefined, {
+    userId: auth.userId,
+    newValue: { actionType: existing.actionType, revision: existing.revision },
+  })
+  return serializeIntent(cancelled, false)
 }
