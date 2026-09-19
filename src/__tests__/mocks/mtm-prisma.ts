@@ -249,6 +249,7 @@ export interface MtmPrismaMock {
   // Onboarding (M5+)
   mtmOnboarding: ModelMock
   mtmCustomerCreateRequest: ModelMock
+  mtmContactCreateRequest: ModelMock
   mtmContactChangeRequest: ModelMock
   mtmImportJob: ModelMock
   mtmImportRowError: ModelMock
@@ -426,6 +427,7 @@ export function makeMtmPrismaMock(): MtmPrismaMock {
     mtmTeam: makeModel(),
     mtmOnboarding: makeModel(),
     mtmCustomerCreateRequest: makeModel(),
+    mtmContactCreateRequest: makeModel(),
     mtmContactChangeRequest: makeModel(),
     mtmImportJob: makeModel(),
     mtmImportRowError: makeModel(),
