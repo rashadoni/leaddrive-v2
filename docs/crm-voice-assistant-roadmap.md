@@ -446,6 +446,16 @@ network retry. All reads and transitions are bound to organization, user and
 voice session. None of these routes can execute a CRM command. See
 `docs/crm-voice-action-draft-lifecycle-api.md`.
 
+Confirmation-proof foundation note (2026-09-19): an append-only, tenant-RLS
+event table and a session-only confirmation endpoint now provide a short-lived
+one-time proof bound to the reviewed intent ID, revision and payload hash. The
+raw proof token is returned once, never stored, and the endpoint repeats the
+permission, active-session, target-visibility, target-version and stored-hash
+checks. This is only the first part of I1.14: existing draft/update/cancel and
+future execution transitions still need to be written atomically into the
+ledger. The endpoint cannot execute a CRM command. See
+`docs/crm-voice-action-confirmation-proof.md`.
+
 ### Exit gate
 
 - Double click and repeated model tool calls produce exactly one CRM mutation.

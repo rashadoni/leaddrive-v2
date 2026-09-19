@@ -146,3 +146,70 @@ CRM не вызываются, лиды/сделки/задачи не изме�
 Точка остановки этой записи: код, тесты и документация lifecycle-среза готовы
 локально; далее нужны checkpoint commit, push, PR, CI, merge и отдельный
 production deploy этого нового среза.
+
+## Итог 2026-09-19: lifecycle API на production
+
+Первый draft API с закрытым реестром действий успешно опубликован:
+
+- PR #239;
+- merge SHA `7cb5de3aa0dbbddb1064e92ac578f8bce4cf26ba`;
+- deploy workflow `35464733335` — успешно;
+- независимые `/api/v1/ping` и `/api/v1/public/build-info` подтвердили этот SHA.
+
+Следующий lifecycle-срез также полностью завершён:
+
+- PR #240;
+- checkpoint commits `d17177ef6` и `ad7d637f6`;
+- CI: secret scan, scope, runner policy, static checks и полный typecheck —
+  успешно;
+- merge SHA `ca30f24f59aa072fb2951358eeaa4d0e0843a8a2`;
+- deploy workflow `35466531731` — успешно;
+- независимый `/api/v1/ping` вернул `{"ok":true}`;
+- независимый `/api/v1/public/build-info` подтвердил
+  `artifactSha=ca30f24f59aa072fb2951358eeaa4d0e0843a8a2`.
+
+На production теперь доступны безопасные операции с receipt: создать draft,
+получить активный, отредактировать неподтверждённый по revision-CAS и отменить.
+Ответ active receipt защищён `Cache-Control: private, no-store`.
+
+Точка остановки: I1.1, I1.2, I1.3, I1.4, I1.6, I1.7, I1.8 и I1.9
+завершены. Commit endpoint отсутствует, подтверждение через UI ещё не
+реализовано, CRM-записи голосом не выполняются.
+
+Следующее действие: спроектировать и реализовать только серверную безопасную
+цепочку commit — I1.5, I1.10–I1.15 — с обязательным UI confirmation proof,
+повторной проверкой всех прав/target revision, execution lease, идемпотентным
+результатом и immutable event ledger. До готовности этого контура write-tool
+для модели не открывать.
+
+## Продолжение 2026-09-19: confirmation-proof foundation
+
+Начат следующий safety-lane этап commit-контура. Аудит канонических CRM-команд
+показал, что они используют собственные транзакционные границы и запускают
+побочные эффекты. Поэтому простой CAS-переход intent в `executing` пока
+недостаточен: авария после CRM-записи, но до сохранения receipt-result, создаёт
+неопределённый результат и риск дубля при retry.
+
+Реализован первый безопасный срез без CRM-записи:
+
+- модель и миграция append-only `AiActionIntentEvent`;
+- tenant-bound composite foreign keys, forced RLS и только SELECT/INSERT
+  application policies;
+- database-триггеры, запрещающие прямые UPDATE, DELETE и TRUNCATE;
+- закрытый словарь lifecycle-событий и проверки revision/hash/JSON shape;
+- `POST /api/v1/ai/voice/actions/:id/confirmation`;
+- 256-bit одноразовый proof token сроком 60 секунд, хранимый только как
+  domain-separated SHA-256 hash;
+- повторная проверка receipt revision/payload hash, целостности normalized
+  payload, роли, модулей, полей, активной voice-сессии, target visibility и
+  target `updatedAt`;
+- `private, no-store`, same-origin JSON guard и отдельный rate limit.
+
+Проверки на текущем рубеже: Prisma schema validate — успешно; целевой набор 7
+файлов/43 теста — успешно; targeted ESLint и `git diff --check` — успешно.
+
+Точка остановки этой записи: confirmation proof и база event ledger готовы
+локально. Commit endpoint всё ещё отсутствует, `confirmedAt` не меняется,
+канонические CRM-команды не вызываются. Далее: checkpoint/PR/CI/deploy этого
+фундамента, затем атомарная интеграция остальных lifecycle events и устранение
+crash ambiguity до включения I1.5.

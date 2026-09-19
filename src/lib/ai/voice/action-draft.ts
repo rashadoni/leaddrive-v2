@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from "node:crypto"
 import { Prisma } from "@prisma/client"
 import type { AuthResult } from "@/lib/api-auth"
 import { getOrgModuleContext } from "@/lib/api-auth"
@@ -51,6 +52,7 @@ type StoredIntent = Readonly<{
   voiceSessionId: string
   actionType: string
   rawPayload: unknown
+  normalizedPayload: unknown
   state: string
   revision: number
   payloadHash: string
@@ -74,6 +76,23 @@ export type CancelAiVoiceActionDraftInput = Readonly<{
   intentId: string
   expectedRevision: number
 }>
+
+export type IssueAiVoiceActionConfirmationInput = Readonly<{
+  intentId: string
+  expectedRevision: number
+  payloadHash: string
+}>
+
+export type AiVoiceActionConfirmationProof = Readonly<{
+  confirmationEventId: string
+  confirmationToken: string
+  intentId: string
+  revision: number
+  payloadHash: string
+  expiresAt: string
+}>
+
+const CONFIRMATION_PROOF_TTL_MS = 60_000
 
 export type AiVoiceActionDraftResponse = Readonly<{
   id: string
@@ -161,6 +180,13 @@ async function expireIntent(intent: StoredIntent, now: Date): Promise<void> {
     },
     data: { state: "expired", completedAt: now },
   })
+}
+
+function hashConfirmationToken(token: string): string {
+  return createHash("sha256")
+    .update("leaddrive:ai-action-confirmation:v1\n", "utf8")
+    .update(token, "utf8")
+    .digest("hex")
 }
 
 function firstPayloadIssue(
@@ -899,4 +925,89 @@ export async function cancelAiVoiceActionDraft(
     newValue: { actionType: existing.actionType, revision: existing.revision },
   })
   return serializeIntent(cancelled, false)
+}
+
+/**
+ * Mint a short-lived, one-time proof for an explicit receipt-button action.
+ * The raw token is returned once and never persisted. This function still
+ * cannot execute a CRM command or move the intent into `executing`.
+ */
+export async function issueAiVoiceActionConfirmationProof(
+  auth: AuthResult,
+  input: IssueAiVoiceActionConfirmationInput,
+): Promise<AiVoiceActionConfirmationProof> {
+  const existing = await findOwnedIntent(auth, input.intentId)
+  if (!isAiVoiceActionType(existing.actionType)) {
+    throw new AiVoiceActionDraftError("INVALID_STORED_ACTION", "The stored action is invalid", 409)
+  }
+  if (existing.state !== "awaiting_confirmation") {
+    throw new AiVoiceActionDraftError(
+      "INTENT_NOT_CONFIRMABLE",
+      "Only an unconfirmed action draft can be confirmed",
+      409,
+      { state: existing.state },
+    )
+  }
+
+  const now = new Date()
+  if (existing.expiresAt.getTime() <= now.getTime()) {
+    await expireIntent(existing, now)
+    throw new AiVoiceActionDraftError("INTENT_EXPIRED", "The action draft has expired", 409)
+  }
+  if (existing.revision !== input.expectedRevision || existing.payloadHash !== input.payloadHash) {
+    throw new AiVoiceActionDraftError(
+      "CONFIRMATION_MISMATCH",
+      "The reviewed action no longer matches the current draft",
+      409,
+      { currentRevision: existing.revision, currentPayloadHash: existing.payloadHash },
+    )
+  }
+
+  const calculatedHash = hashAiActionIntentPayload({
+    actionType: existing.actionType,
+    revision: existing.revision,
+    normalizedPayload: existing.normalizedPayload,
+  })
+  if (calculatedHash !== existing.payloadHash) {
+    throw new AiVoiceActionDraftError(
+      "INTENT_INTEGRITY_FAILED",
+      "The action draft could not be verified",
+      409,
+    )
+  }
+
+  const parsed = parseAiVoiceActionPayload(existing.actionType, existing.rawPayload)
+  if (!parsed.success) {
+    throw new AiVoiceActionDraftError("INVALID_STORED_PAYLOAD", "The stored action is invalid", 409)
+  }
+  await assertActiveVoiceSession(auth, existing.voiceSessionId)
+  await assertActionAccess(auth, existing.actionType, parsed.data)
+  await assertReplayTargetAccess(auth, existing)
+
+  const confirmationToken = randomBytes(32).toString("base64url")
+  const expiresAt = new Date(now.getTime() + CONFIRMATION_PROOF_TTL_MS)
+  const event = await prisma.aiActionIntentEvent.create({
+    data: {
+      organizationId: auth.orgId,
+      intentId: existing.id,
+      userId: auth.userId,
+      eventType: "confirmation_proof_issued",
+      intentRevision: existing.revision,
+      payloadHash: existing.payloadHash,
+      eventData: {
+        tokenHash: hashConfirmationToken(confirmationToken),
+        expiresAt: expiresAt.toISOString(),
+      },
+    },
+    select: { id: true },
+  })
+
+  return {
+    confirmationEventId: event.id,
+    confirmationToken,
+    intentId: existing.id,
+    revision: existing.revision,
+    payloadHash: existing.payloadHash,
+    expiresAt: expiresAt.toISOString(),
+  }
 }
