@@ -3,12 +3,13 @@ export type CrmCommandErrorCode =
   | "FORBIDDEN"
   | "FORBIDDEN_FIELD"
   | "NOT_FOUND"
+  | "STALE_WRITE"
 
 export class CrmCommandError extends Error {
   constructor(
     readonly code: CrmCommandErrorCode,
     message: string,
-    readonly status: 400 | 403 | 404,
+    readonly status: 400 | 403 | 404 | 409,
     readonly safeDetails?: Readonly<Record<string, unknown>>,
   ) {
     super(message)
@@ -26,4 +27,8 @@ export function forbiddenError(message = "Forbidden"): CrmCommandError {
 
 export function notFoundError(message: string): CrmCommandError {
   return new CrmCommandError("NOT_FOUND", message, 404)
+}
+
+export function staleWriteError(message = "The record changed after it was reviewed"): CrmCommandError {
+  return new CrmCommandError("STALE_WRITE", message, 409)
 }

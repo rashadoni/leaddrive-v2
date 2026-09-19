@@ -332,7 +332,9 @@ No voice write tools are enabled in this phase.
 - [x] C1.4 Implement `createLeadCommand`. The REST adapter now shares the
       strict command, forbidden fields fail closed, and direct callers receive
       non-blocking duplicate and assignment-state metadata.
-- [ ] C1.5 Implement `updateLeadCommand`.
+- [x] C1.5 Implement `updateLeadCommand`. REST updates now share the command;
+      voice callers have an explicit safe-field allow-list and must supply
+      `expectedUpdatedAt`, enforced atomically to reject stale commits.
 - [ ] C1.6 Implement `createDealCommand`.
 - [ ] C1.7 Implement `convertLeadToDealCommand` separately from ordinary deal
       creation.
