@@ -21360,3 +21360,95 @@ model VoiceMonthlyUsage {
   @@unique([organizationId, userId, yearMonth], map: "voice_monthly_usage_org_user_month_key")
   @@map("voice_monthly_usage")
 }
+
+// Private Demo Center control-plane records. These rows do not belong to a
+// customer tenant: only explicit RLS-bypass operations and superadmins may
+// access them. Prospects never receive a tenant session or tenant API access.
+model DemoRequest {
+  id               String    @id @default(cuid())
+  name             String
+  company          String
+  jobTitle         String?
+  email            String
+  emailNormalized  String
+  emailDomain      String
+  phone            String?
+  message          String?   @db.Text
+  requestedModules String[]  @default([])
+  locale           String    @default("az")
+  status           String    @default("SUBMITTED") // SUBMITTED | UNDER_REVIEW | FULFILLED | REJECTED
+  source           String    @default("website")
+  consentAt        DateTime
+  reviewedBy       String?
+  reviewedAt       DateTime?
+  rejectionReason  String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  grants DemoGrant[]
+
+  @@index([status, createdAt], map: "demo_requests_status_created_idx")
+  @@index([emailNormalized, createdAt], map: "demo_requests_email_created_idx")
+  @@index([emailDomain], map: "demo_requests_domain_idx")
+  @@map("demo_requests")
+}
+
+model DemoGrant {
+  id                     String      @id @default(cuid())
+  requestId              String
+  request                DemoRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  status                 String      @default("ISSUING") // ISSUING | SENT | OTP_SENT | OTP_VERIFIED | ACTIVE | COMPLETED | EXPIRED | REVOKED | DELIVERY_FAILED
+  tokenHash              String      @unique
+  tokenHint              String
+  moduleIds              String[]
+  locale                 String      @default("az")
+  watermark              String
+  linkExpiresAt          DateTime
+  sessionDurationMinutes Int         @default(120)
+  inactivityMinutes      Int         @default(30)
+  otpHash                String?
+  otpExpiresAt           DateTime?
+  otpSentAt              DateTime?
+  otpAttempts            Int         @default(0)
+  otpSendCount           Int         @default(0)
+  verificationHash       String?     @unique
+  verificationExpiresAt  DateTime?
+  verifiedAt             DateTime?
+  sentAt                 DateTime?
+  openedAt               DateTime?
+  deliveryMessageId      String?
+  deliveryError          String?
+  sessionHash            String?     @unique
+  sessionStartedAt       DateTime?
+  sessionLastSeenAt      DateTime?
+  sessionExpiresAt       DateTime?
+  completedAt            DateTime?
+  revokedAt              DateTime?
+  revokedBy              String?
+  revocationReason       String?
+  createdBy              String
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
+
+  events DemoAccessEvent[]
+
+  @@index([requestId, createdAt], map: "demo_grants_request_created_idx")
+  @@index([status, linkExpiresAt], map: "demo_grants_status_expiry_idx")
+  @@index([sessionHash, status], map: "demo_grants_session_status_idx")
+  @@map("demo_grants")
+}
+
+model DemoAccessEvent {
+  id         String    @id @default(cuid())
+  grantId    String
+  grant      DemoGrant @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  eventType  String
+  moduleId   String?
+  stepId     String?
+  metadata   Json      @default("{}")
+  occurredAt DateTime  @default(now())
+
+  @@index([grantId, occurredAt], map: "demo_access_events_grant_time_idx")
+  @@index([eventType, occurredAt], map: "demo_access_events_type_time_idx")
+  @@map("demo_access_events")
+}

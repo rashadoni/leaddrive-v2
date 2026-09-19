@@ -22,6 +22,7 @@ vi.mock("@/lib/prisma", () => ({
     lead: { findMany: vi.fn() },
     task: { findMany: vi.fn() },
     organization: { findUnique: vi.fn() },
+    demoRequest: { create: vi.fn() },
   },
 }))
 
@@ -72,7 +73,6 @@ import { GET as orgPlanGET } from "@/app/api/v1/organization/plan/route"
 
 import { prisma } from "@/lib/prisma"
 import { getOrgId, getSession, requireAuth, requireSessionAuth } from "@/lib/api-auth"
-import { sendEmail } from "@/lib/email"
 
 /* ── helpers ─────────────────────────────────────────────── */
 
@@ -495,10 +495,21 @@ describe("Search", () => {
 
 describe("Demo Request", () => {
   it("POST succeeds with valid fields", async () => {
+    vi.mocked(prisma.demoRequest.create).mockResolvedValue({
+      id: "demo-request-1",
+      name: "John",
+      company: "Acme",
+      jobTitle: null,
+      email: "j@acme.com",
+      phone: null,
+      message: null,
+      requestedModules: [],
+    } as never)
+
     const res = await demoRequestPOST(
       new Request("http://localhost:3000/api/v1/demo-request", {
         method: "POST",
-        body: JSON.stringify({ name: "John", company: "Acme", email: "j@acme.com" }),
+        body: JSON.stringify({ name: "John", company: "Acme", email: "j@acme.com", consent: true }),
         headers: { "Content-Type": "application/json" },
       })
     )
