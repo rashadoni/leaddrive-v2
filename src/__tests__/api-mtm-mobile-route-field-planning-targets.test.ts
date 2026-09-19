@@ -281,6 +281,21 @@ describe("GET /api/v2/mtm/mobile/route-field/planning-targets", () => {
     expect(await replay.json()).toMatchObject({ code: "MTM_ROUTE_FIELD_PLANNING_TARGET_PAGE_INVALID" })
   })
 
+  it("looks up one exact date-eligible organization for quick route add", async () => {
+    vi.mocked(prisma.mtmCustomer.findMany).mockResolvedValueOnce([
+      organization("customer-quick", "Quick Clinic"),
+    ] as never)
+
+    const response = await lookup("?kind=organization&date=2026-08-30&targetId=customer-quick&search=Quick%20Clinic")
+    expect(response.status).toBe(200)
+    const query = vi.mocked(prisma.mtmCustomer.findMany).mock.calls[0][0] as { where: unknown }
+    expect(JSON.stringify(query.where)).toContain('"id":"customer-quick"')
+    expect(await response.json()).toMatchObject({
+      success: true,
+      data: { targets: [{ kind: "organization", customerId: "customer-quick", name: "Quick Clinic" }] },
+    })
+  })
+
   it("fails closed for an ambiguous direct workplace and never falls through in the same request", async () => {
     const ambiguous = contact("contact-ambiguous", "Dr. Ambiguous", [
       workplace("customer-a", false),
