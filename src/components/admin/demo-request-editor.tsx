@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowDown, ArrowUp, Check, Clock3, KeyRound, RotateCcw, Send, ShieldX } from "lucide-react"
+import { ArrowDown, ArrowUp, Check, Clock3, Eye, KeyRound, RotateCcw, Send, ShieldX } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -46,6 +46,10 @@ export function DemoRequestEditor({
   const [success, setSuccess] = useState<string | null>(null)
   const latestGrant = grants[0]
   const selectedModules = useMemo(() => selected.map((id) => modules.find((module) => module.id === id)).filter(Boolean) as ModuleOption[], [modules, selected])
+  const previewHref = useMemo(() => {
+    const params = new URLSearchParams({ modules: selected.join(",") })
+    return `/demo-preview/${requestId}?${params.toString()}`
+  }, [requestId, selected])
 
   function toggle(moduleId: string) {
     setSuccess(null)
@@ -192,15 +196,24 @@ export function DemoRequestEditor({
           <Setting label="Session limit" suffix="minutes" value={sessionMinutes} onChange={setSessionMinutes} min={15} max={240} />
           <Setting label="Idle timeout" suffix="minutes" value={inactivityMinutes} onChange={setInactivityMinutes} min={5} max={60} />
         </div>
-        <div className="mt-5 flex flex-col gap-3 rounded-xl bg-zinc-900 p-5 text-zinc-100 sm:flex-row sm:items-center sm:justify-between dark:bg-zinc-100 dark:text-zinc-900">
+        <div className="mt-5 flex flex-col gap-4 rounded-xl bg-zinc-900 p-5 text-zinc-100 lg:flex-row lg:items-center lg:justify-between dark:bg-zinc-100 dark:text-zinc-900">
           <div className="flex items-start gap-3">
             <KeyRound className="mt-0.5 h-5 w-5 text-orange-400" />
-            <div><p className="text-sm font-semibold">OTP + one browser + one session</p><p className="mt-1 max-w-xl text-xs leading-5 text-zinc-400 dark:text-zinc-600">Opening the email does not consume access. Reissuing creates a fresh token and revokes the previous open grant.</p></div>
+            <div><p className="text-sm font-semibold">Preview first, then issue one protected session</p><p className="mt-1 max-w-xl text-xs leading-5 text-zinc-400 dark:text-zinc-600">Preview uses only synthetic data and sends nothing. Issuing creates the OTP-protected client link and revokes the previous open grant.</p></div>
           </div>
-          <Button type="button" disabled={busy !== null || !selected.length || requestStatus === "REJECTED"} onClick={issueDemo} className="shrink-0 bg-orange-600 text-white hover:bg-orange-700">
-            {busy === "issue" ? <Clock3 className="h-4 w-4 animate-spin" /> : latestGrant ? <RotateCcw className="h-4 w-4" /> : <Send className="h-4 w-4" />}
-            {latestGrant ? "Reissue and send" : "Issue and send"}
-          </Button>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            {selected.length ? (
+              <Button asChild variant="outline" className="min-h-11 shrink-0 border-zinc-600 bg-transparent text-zinc-100 hover:bg-zinc-800 hover:text-white dark:border-zinc-400 dark:text-zinc-900 dark:hover:bg-zinc-200">
+                <a href={previewHref} target="_blank" rel="noreferrer"><Eye className="h-4 w-4" />Preview selected</a>
+              </Button>
+            ) : (
+              <Button type="button" variant="outline" disabled className="min-h-11 shrink-0 border-zinc-600 bg-transparent text-zinc-100 dark:border-zinc-400 dark:text-zinc-900"><Eye className="h-4 w-4" />Preview selected</Button>
+            )}
+            <Button type="button" disabled={busy !== null || !selected.length || requestStatus === "REJECTED"} onClick={issueDemo} className="min-h-11 shrink-0 bg-orange-600 text-white hover:bg-orange-700">
+              {busy === "issue" ? <Clock3 className="h-4 w-4 animate-spin" /> : latestGrant ? <RotateCcw className="h-4 w-4" /> : <Send className="h-4 w-4" />}
+              {latestGrant ? "Reissue and send" : "Issue and send"}
+            </Button>
+          </div>
         </div>
         {success ? <p className="mt-3 flex items-center gap-2 text-sm font-medium text-emerald-700"><Check className="h-4 w-4" />{success}</p> : null}
         {error ? <p role="alert" className="mt-3 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p> : null}
