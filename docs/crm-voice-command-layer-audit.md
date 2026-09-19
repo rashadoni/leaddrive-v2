@@ -1,6 +1,6 @@
 # CRM Voice Assistant: Canonical Command Layer Audit
 
-Status: C1.1 complete; task and lead create commands implemented
+Status: C1.1 complete; task create, lead create, and lead update commands implemented
 
 Date: 2026-09-19
 
@@ -44,6 +44,10 @@ The implementation order is:
    command callers receive possible-duplicate and assignment-state metadata.
 4. `updateLeadCommand` with an explicit voice field allow-list and stale-write
    protection.
+   Implemented: REST updates share the command, forbidden fields fail closed,
+   assignee and pipeline references are tenant-validated, and voice updates
+   require an atomically checked `expectedUpdatedAt`. Status, conversion,
+   scoring, and qualification fields remain outside the generic voice update.
 5. `createDealCommand` with complete pipeline/stage/user/campaign ownership
    validation.
 6. `convertLeadToDealCommand` as its own atomic operation.

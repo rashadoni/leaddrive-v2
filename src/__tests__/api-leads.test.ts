@@ -63,6 +63,14 @@ vi.mock("@/lib/lead-assignment", () => ({
   applyLeadAssignmentRules: vi.fn().mockResolvedValue(undefined),
 }))
 
+vi.mock("@/lib/ai/lead-scoring", () => ({
+  scoreLeadNow: vi.fn().mockResolvedValue(50),
+}))
+
+vi.mock("@/lib/unified-profile/profile-builder", () => ({
+  refreshProfileForSource: vi.fn().mockResolvedValue(undefined),
+}))
+
 vi.mock("@/lib/inbox/customer-stage", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/inbox/customer-stage")>()
   return {
@@ -87,6 +95,7 @@ import { executeWorkflows } from "@/lib/workflow-engine"
 import { setLeadReportedCustomerStages } from "@/lib/inbox/customer-stage"
 import { getFieldPermissions, filterWritableFields } from "@/lib/field-filter"
 import { createLeadCommand } from "@/lib/crm-commands/lead/create-lead"
+import { updateLeadCommand } from "@/lib/crm-commands/lead/update-lead"
 
 const SESSION = {
   orgId: "org-1",
@@ -693,6 +702,137 @@ describe("PUT /api/v1/leads/:id", () => {
 
     expect(res.status).toBe(400)
     expect(prisma.lead.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("fails closed when update field permissions reject a supplied field", async () => {
+    vi.mocked(getSession).mockResolvedValue({ ...SESSION, role: "sales" } as never)
+    vi.mocked(getFieldPermissions).mockResolvedValueOnce({ notes: "visible" })
+    vi.mocked(filterWritableFields).mockImplementationOnce((data) => {
+      const allowed = { ...data }
+      delete allowed.notes
+      return allowed
+    })
+
+    const res = await PUT(
+      makeRequest("http://localhost:3000/api/v1/leads/l1", {
+        method: "PUT",
+        body: JSON.stringify({ notes: "must not be silently dropped" }),
+      }),
+      makeParams("l1"),
+    )
+
+    expect(res.status).toBe(403)
+    expect(await res.json()).toMatchObject({
+      error: "Forbidden",
+      code: "FORBIDDEN_FIELD",
+    })
+    expect(prisma.lead.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("rejects an update assignee outside the organization", async () => {
+    vi.mocked(getSession).mockResolvedValue(SESSION as never)
+    vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(null)
+
+    const res = await PUT(
+      makeRequest("http://localhost:3000/api/v1/leads/l1", {
+        method: "PUT",
+        body: JSON.stringify({ assignedTo: "other-org-user" }),
+      }),
+      makeParams("l1"),
+    )
+
+    expect(res.status).toBe(400)
+    expect(await res.json()).toMatchObject({
+      error: "Assignee must be an active member of this organization",
+    })
+    expect(prisma.lead.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("returns 409 when expectedUpdatedAt is stale", async () => {
+    vi.mocked(getSession).mockResolvedValue(SESSION as never)
+    vi.mocked(prisma.lead.findFirst).mockResolvedValueOnce({
+      id: "l1",
+      updatedAt: new Date("2026-09-19T12:00:00.000Z"),
+    } as never)
+
+    const res = await PUT(
+      makeRequest("http://localhost:3000/api/v1/leads/l1", {
+        method: "PUT",
+        body: JSON.stringify({
+          contactName: "Stale name",
+          expectedUpdatedAt: "2026-09-19T11:59:00.000Z",
+        }),
+      }),
+      makeParams("l1"),
+    )
+
+    expect(res.status).toBe(409)
+    expect(await res.json()).toMatchObject({ code: "STALE_WRITE" })
+    expect(prisma.lead.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("requires a version and enforces the voice update allow-list", async () => {
+    const actor = {
+      organizationId: "org-1",
+      userId: "user-1",
+      role: "admin" as const,
+      source: "voice" as const,
+      voiceSessionId: "voice-1",
+    }
+
+    await expect(updateLeadCommand(actor, "l1", {
+      notes: "Confirmed note",
+    })).rejects.toMatchObject({
+      code: "VALIDATION_FAILED",
+      message: "expectedUpdatedAt is required for voice updates",
+    })
+    await expect(updateLeadCommand(actor, "l1", {
+      status: "converted",
+      expectedUpdatedAt: "2026-09-19T12:00:00.000Z",
+    })).rejects.toMatchObject({
+      code: "FORBIDDEN_FIELD",
+      status: 403,
+    })
+    expect(prisma.lead.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("atomically guards an allowed voice update with expectedUpdatedAt", async () => {
+    const version = new Date("2026-09-19T12:00:00.000Z")
+    const updated = {
+      id: "l1",
+      organizationId: "org-1",
+      contactName: "Alice",
+      companyName: null,
+      assignedTo: "user-1",
+      notes: "Confirmed note",
+      updatedAt: new Date("2026-09-19T12:01:00.000Z"),
+    }
+    vi.mocked(prisma.lead.findFirst)
+      .mockResolvedValueOnce({ id: "l1", updatedAt: version } as never)
+      .mockResolvedValueOnce(updated as never)
+    vi.mocked(prisma.lead.updateMany).mockResolvedValueOnce({ count: 1 } as never)
+
+    const result = await updateLeadCommand({
+      organizationId: "org-1",
+      userId: "user-1",
+      role: "admin",
+      source: "voice",
+      voiceSessionId: "voice-1",
+    }, "l1", {
+      notes: "Confirmed note",
+      expectedUpdatedAt: version.toISOString(),
+    })
+
+    expect(prisma.lead.updateMany).toHaveBeenCalledWith({
+      where: {
+        AND: [
+          { id: "l1", organizationId: "org-1" },
+          { updatedAt: version },
+        ],
+      },
+      data: { notes: "Confirmed note" },
+    })
+    expect(result.entity).toBe(updated)
   })
 
   it("returns 404 when lead not found (count===0)", async () => {
