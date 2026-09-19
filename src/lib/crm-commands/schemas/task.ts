@@ -26,7 +26,7 @@ export const createTaskCommandSchema = z.strictObject({
     .nullable()
     .optional(),
   recurrenceCount: z.number().int().min(0).max(10_000).nullable().optional(),
-  customFields: z.record(z.string(), z.unknown()).optional(),
+  customFields: z.record(z.string(), z.json()).optional(),
   collaboratorIds: z.array(z.string().min(1)).max(20).optional(),
 }).superRefine((data, context) => {
   if (Boolean(data.relatedType) !== Boolean(data.relatedId)) {

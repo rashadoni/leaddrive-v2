@@ -51,6 +51,24 @@ describe("CRM command foundation", () => {
     }).success).toBe(false)
   })
 
+  it("accepts JSON custom fields and rejects non-JSON command values", () => {
+    expect(createTaskCommandSchema.safeParse({
+      title: "Call customer",
+      customFields: {
+        channel: "voice",
+        score: 7,
+        qualified: true,
+        notes: null,
+        tags: ["priority", "follow-up"],
+        metadata: { locale: "ru" },
+      },
+    }).success).toBe(true)
+    expect(createTaskCommandSchema.safeParse({
+      title: "Call customer",
+      customFields: { invalid: undefined },
+    }).success).toBe(false)
+  })
+
   it("reports forbidden fields instead of silently removing them", () => {
     expect(() => requireWritableFields(
       { title: "Visible", description: "Not editable" },
