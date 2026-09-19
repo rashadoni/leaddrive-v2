@@ -1,6 +1,6 @@
 # CRM Voice Action-Intent Foundation
 
-Status: schema foundation implemented; action APIs and commit execution remain disabled
+Status: schema foundation and draft API implemented; commit execution remains disabled
 
 Last updated: 2026-09-19
 
@@ -73,15 +73,23 @@ The database rejects incoherent combinations such as:
   atomically and recover an interrupted attempt without issuing a second CRM
   mutation.
 
-## Deliberately not enabled by this slice
+## Draft layer added after the foundation
+
+The next implementation slice added a runtime-frozen action registry and
+`POST /api/v1/ai/voice/actions/draft`. The route can create only an
+unconfirmed, server-owned receipt. It performs session, tenant, role, module,
+field, target, revision, TTL, duplicate-warning and idempotency checks. See
+`docs/crm-voice-action-draft-api.md` for its contract.
+
+## Deliberately not enabled
 
 - no model-visible write or commit tool;
-- no draft, edit, active, cancel, or commit API;
-- no action registry or command dispatch;
+- no edit, active, cancel, or commit API;
+- no command dispatch;
 - no confirmation UI;
 - no mutation of leads, deals, or tasks through an action intent.
 
-The next slice adds the closed action registry and server-only schemas used to
-build validated drafts. Commit remains unavailable until the API, receipt UI,
-explicit confirmation evidence, command re-authorization, compare-and-swap,
-and idempotent result replay are all in place.
+The next slice adds edit/cancel/active lifecycle APIs or starts the receipt UI
+in shadow mode. Commit remains unavailable until the receipt UI, explicit
+confirmation evidence, command re-authorization, compare-and-swap, and
+idempotent result replay are all in place.
