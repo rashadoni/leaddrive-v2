@@ -451,10 +451,15 @@ event table and a session-only confirmation endpoint now provide a short-lived
 one-time proof bound to the reviewed intent ID, revision and payload hash. The
 raw proof token is returned once, never stored, and the endpoint repeats the
 permission, active-session, target-visibility, target-version and stored-hash
-checks. This is only the first part of I1.14: existing draft/update/cancel and
-future execution transitions still need to be written atomically into the
-ledger. The endpoint cannot execute a CRM command. See
+checks. The endpoint cannot execute a CRM command. See
 `docs/crm-voice-action-confirmation-proof.md`.
+
+Draft-ledger note (2026-09-20): `drafted`, `draft_updated`, `cancelled` and
+`expired` are appended in the same database transaction as their corresponding
+intent create/update. Compare-and-swap losers do not append false evidence,
+and automatic TTL expiry no longer performs an unaudited bulk update. I1.14
+remains incomplete until confirmation consumption, execution claim/recovery
+and terminal result transitions use the same atomic ledger boundary.
 
 ### Exit gate
 

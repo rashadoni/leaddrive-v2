@@ -50,9 +50,11 @@ reject direct UPDATE, DELETE and TRUNCATE operations while preserving required
 foreign-key cascades.
 
 The table is intentionally general enough for later `confirmation_consumed`,
-`execution_claimed`, lease recovery and terminal result events. I1.14 is not
-complete until every lifecycle transition is appended atomically with its
-state change.
+`execution_claimed`, lease recovery and terminal result events. As of
+2026-09-20, `drafted`, `draft_updated`, `cancelled` and `expired` are appended
+in the same transaction as the corresponding intent mutation; a failed
+compare-and-swap appends nothing. I1.14 is not complete until the remaining
+execution lifecycle transitions follow the same rule.
 
 ## Safety boundary
 
