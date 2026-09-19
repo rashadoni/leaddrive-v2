@@ -4,6 +4,7 @@ import { getDemoModules } from "@/lib/demo-center/catalog"
 import { sendDemoAccessEmail } from "@/lib/demo-center/email"
 import { issueCapabilityToken } from "@/lib/demo-center/security"
 import { demoGrantIssueSchema } from "@/lib/demo-center/validation"
+import { runWithRlsBypass } from "@/lib/rls-context"
 import { requireSuperAdmin } from "@/lib/superadmin-guard"
 
 const REVOCABLE_STATUSES = ["ISSUING", "SENT", "OTP_SENT", "OTP_VERIFIED", "ACTIVE", "DELIVERY_FAILED"]
@@ -29,7 +30,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   const { id: requestId } = await params
-  const demoRequest = await prisma.demoRequest.findUnique({ where: { id: requestId } })
+  const demoRequest = await runWithRlsBypass(() =>
+    prisma.demoRequest.findUnique({ where: { id: requestId } }),
+  )
   if (!demoRequest) return NextResponse.json({ success: false, error: "Demo request not found" }, { status: 404 })
   if (demoRequest.status === "REJECTED") {
     return NextResponse.json({ success: false, error: "Rejected requests cannot be issued" }, { status: 409 })
@@ -40,7 +43,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const issued = issueCapabilityToken()
   const moduleManifests = getDemoModules(parsed.data.moduleIds)
 
-  const grant = await prisma.$transaction(async (tx) => {
+  const grant = await runWithRlsBypass(() => prisma.$transaction(async (tx) => {
     // Lock the request row first in every issue/finalize path. This serializes
     // concurrent clicks with rejection and prevents a stale issue from
     // resurrecting a request that an administrator has already rejected.
@@ -101,7 +104,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         },
       },
     })
-  })
+  }))
 
   if (!grant) {
     return NextResponse.json({ success: false, error: "The request was rejected while access was being issued" }, { status: 409 })
@@ -117,7 +120,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   })
 
   if (!delivery.success) {
-    const recordedFailure = await prisma.$transaction(async (tx) => {
+    const recordedFailure = await runWithRlsBypass(() => prisma.$transaction(async (tx) => {
       const updated = await tx.demoGrant.updateMany({
         where: { id: grant.id, status: "ISSUING" },
         data: { status: "DELIVERY_FAILED", deliveryError: delivery.error || "Email delivery failed" },
@@ -127,7 +130,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         data: { grantId: grant.id, eventType: "DELIVERY_FAILED", metadata: { providerError: delivery.error || "unknown" } },
       })
       return true
-    })
+    }))
     if (!recordedFailure) {
       return NextResponse.json(
         { success: false, error: "Access was revoked while the email was being prepared" },
@@ -140,7 +143,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     )
   }
 
-  const finalized = await prisma.$transaction(async (tx) => {
+  const finalized = await runWithRlsBypass(() => prisma.$transaction(async (tx) => {
     // Request-first locking matches reject/reissue ordering. Throwing on the
     // second compare-and-set rolls this update back instead of reviving a
     // grant that was revoked while the provider was sending the email.
@@ -158,7 +161,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     await tx.demoAccessEvent.create({ data: { grantId: grant.id, eventType: "SENT" } })
     return true
-  }).catch((error) => {
+  })).catch((error) => {
     if (error instanceof DemoGrantTransitionConflict) return false
     throw error
   })

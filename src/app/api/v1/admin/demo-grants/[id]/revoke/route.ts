@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
+import { runWithRlsBypass } from "@/lib/rls-context"
 import { requireSuperAdmin } from "@/lib/superadmin-guard"
 
 const inputSchema = z.object({ reason: z.string().trim().min(3).max(500).default("Revoked by administrator") })
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const { id } = await params
   const now = new Date()
-  const revoked = await prisma.$transaction(async (tx) => {
+  const revoked = await runWithRlsBypass(() => prisma.$transaction(async (tx) => {
     const updated = await tx.demoGrant.updateMany({
       where: { id, status: { in: REVOCABLE } },
       data: {
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       data: { grantId: id, eventType: "REVOKED", metadata: { reason: parsed.data.reason, actorId: actor.userId } },
     })
     return true
-  })
+  }))
 
   if (!revoked) return NextResponse.json({ success: false, error: "Grant is already closed or was not found" }, { status: 409 })
   return NextResponse.json({ success: true, status: "REVOKED" })
