@@ -1,6 +1,6 @@
 # CRM Voice Assistant: Canonical Command Layer Audit
 
-Status: C1.1 complete; task create, lead create, and lead update commands implemented
+Status: C1.1 complete; task create, lead create/update, and deal create commands implemented
 
 Date: 2026-09-19
 
@@ -20,6 +20,11 @@ Implementation update:
 - Task, collaborator rows, and the created activity now commit atomically.
 - Durable idempotency receipts and external-effect outbox delivery remain open
   under C1.12 and the action-intent phase. No voice caller can invoke commit.
+- `createDealCommand` now owns strict parsing, fail-closed field permissions,
+  pipeline/stage validation, tenant checks for all referenced records,
+  duplicate warnings, and the existing deal-created effects.
+- `POST /api/v1/deals` is an HTTP adapter over that command. Accepted tags are
+  now persisted instead of being silently ignored.
 
 ## 1. Decision
 
@@ -50,6 +55,10 @@ The implementation order is:
    scoring, and qualification fields remain outside the generic voice update.
 5. `createDealCommand` with complete pipeline/stage/user/campaign ownership
    validation.
+   Implemented: the REST route now shares the strict command, forbidden fields
+   fail closed, pipeline stages and referenced tenant records are validated,
+   tags are persisted, and direct command callers receive possible-duplicate
+   warnings.
 6. `convertLeadToDealCommand` as its own atomic operation.
 7. Durable effect delivery for side effects that cannot be part of the record
    transaction.

@@ -6,8 +6,10 @@ vi.mock("@/lib/prisma", () => ({
     deal: { groupBy: vi.fn().mockResolvedValue([]), findMany: vi.fn(), findFirst: vi.fn(), count: vi.fn(), create: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn() },
     pipeline: { findFirst: vi.fn() },
     pipelineStage: { findMany: vi.fn().mockResolvedValue([]), findFirst: vi.fn() },
-    user: { findMany: vi.fn() },
+    user: { findMany: vi.fn(), findFirst: vi.fn() },
     contact: { findMany: vi.fn(), findFirst: vi.fn() },
+    company: { findFirst: vi.fn() },
+    campaign: { findFirst: vi.fn() },
     dealContactRole: { findMany: vi.fn() },
     task: { count: vi.fn(), updateMany: vi.fn() },
     activity: { createMany: vi.fn() },
@@ -40,6 +42,8 @@ import { GET, POST } from "@/app/api/v1/deals/route"
 import { GET as GET_BY_ID, PUT, DELETE } from "@/app/api/v1/deals/[id]/route"
 import { prisma } from "@/lib/prisma"
 import { getSession, getOrgId } from "@/lib/api-auth"
+import { getFieldPermissions, filterWritableFields } from "@/lib/field-filter"
+import { createDealCommand } from "@/lib/crm-commands/deal/create-deal"
 
 const SESSION = { orgId: "org-1", userId: "user-1", role: "admin", email: "a@b.com", name: "Test" }
 
@@ -56,6 +60,7 @@ beforeEach(() => {
   vi.mocked(getSession).mockResolvedValue(SESSION as any)
   vi.mocked(getOrgId).mockResolvedValue("org-1")
   vi.mocked(prisma.channelConfig.findMany).mockResolvedValue([] as any)
+  vi.mocked(prisma.deal.findMany).mockResolvedValue([] as any)
 })
 
 // ─── GET /api/v1/deals ───────────────────────────────────────────────
@@ -177,6 +182,35 @@ describe("POST /api/v1/deals", () => {
     expect(res.status).toBe(400)
   })
 
+  it("rejects unknown command fields instead of silently stripping them", async () => {
+    const res = await POST(makeReq("http://localhost:3000/api/v1/deals", {
+      method: "POST",
+      body: JSON.stringify({ name: "Deal", organizationId: "model-invented-tenant" }),
+    }))
+
+    expect(res.status).toBe(400)
+    expect(prisma.deal.create).not.toHaveBeenCalled()
+  })
+
+  it("fails closed when field permissions reject a supplied field", async () => {
+    vi.mocked(getSession).mockResolvedValue({ ...SESSION, role: "sales" } as any)
+    vi.mocked(getFieldPermissions).mockResolvedValueOnce({ notes: "visible" })
+    vi.mocked(filterWritableFields).mockImplementationOnce((data) => {
+      const allowed = { ...data }
+      delete allowed.notes
+      return allowed
+    })
+
+    const res = await POST(makeReq("http://localhost:3000/api/v1/deals", {
+      method: "POST",
+      body: JSON.stringify({ name: "Deal", notes: "must not be silently dropped" }),
+    }))
+
+    expect(res.status).toBe(403)
+    expect(await res.json()).toMatchObject({ error: "Forbidden", code: "FORBIDDEN_FIELD" })
+    expect(prisma.deal.create).not.toHaveBeenCalled()
+  })
+
   it("resolves default pipeline when pipelineId not provided", async () => {
     vi.mocked(prisma.pipeline.findFirst).mockResolvedValue({ id: "pipe-1" } as any)
     vi.mocked(prisma.pipelineStage.findFirst).mockResolvedValue({ probability: 25 } as any)
@@ -199,8 +233,13 @@ describe("POST /api/v1/deals", () => {
 
     // Should have used pipeline stage probability
     expect(prisma.pipelineStage.findFirst).toHaveBeenCalledWith({
-      where: { pipelineId: "pipe-1", name: "LEAD" },
-      select: { probability: true },
+      where: {
+        organizationId: "org-1",
+        pipelineId: "pipe-1",
+        name: "LEAD",
+        isActive: true,
+      },
+      select: { id: true, probability: true },
     })
 
     // Verify deal.create was called with resolved pipelineId and probability
@@ -240,6 +279,46 @@ describe("POST /api/v1/deals", () => {
 
     expect(res.status).toBe(400)
     expect((await res.json()).error).toBe("Invalid pipelineId")
+    expect(prisma.deal.create).not.toHaveBeenCalled()
+  })
+
+  it("rejects a stage outside the selected pipeline even with explicit probability", async () => {
+    vi.mocked(prisma.pipeline.findFirst).mockResolvedValue({ id: "pipe-1" } as any)
+    vi.mocked(prisma.pipelineStage.findFirst).mockResolvedValue(null)
+
+    const res = await POST(makeReq("http://localhost:3000/api/v1/deals", {
+      method: "POST",
+      body: JSON.stringify({
+        name: "Wrong stage",
+        pipelineId: "pipe-1",
+        stage: "FOREIGN_STAGE",
+        probability: 90,
+      }),
+    }))
+
+    expect(res.status).toBe(400)
+    expect(await res.json()).toMatchObject({ error: "Invalid stage for pipeline" })
+    expect(prisma.deal.create).not.toHaveBeenCalled()
+  })
+
+  it("rejects cross-tenant campaign and assignee references", async () => {
+    vi.mocked(prisma.campaign.findFirst).mockResolvedValueOnce(null)
+    const campaignResponse = await POST(makeReq("http://localhost:3000/api/v1/deals", {
+      method: "POST",
+      body: JSON.stringify({ name: "Campaign deal", campaignId: "foreign-campaign" }),
+    }))
+    expect(campaignResponse.status).toBe(400)
+    expect(await campaignResponse.json()).toMatchObject({ error: "Invalid campaignId" })
+
+    vi.mocked(prisma.user.findFirst).mockResolvedValueOnce(null)
+    const assigneeResponse = await POST(makeReq("http://localhost:3000/api/v1/deals", {
+      method: "POST",
+      body: JSON.stringify({ name: "Assigned deal", assignedTo: "foreign-user" }),
+    }))
+    expect(assigneeResponse.status).toBe(400)
+    expect(await assigneeResponse.json()).toMatchObject({
+      error: "Assignee must be an active member of this organization",
+    })
     expect(prisma.deal.create).not.toHaveBeenCalled()
   })
 
@@ -306,6 +385,81 @@ describe("POST /api/v1/deals", () => {
     expect(json.success).toBe(true)
     expect(json.data.id).toBe("d1")
     expect(json.data.name).toBe("Big Deal")
+  })
+
+  it("persists tags that the command accepts", async () => {
+    vi.mocked(prisma.pipeline.findFirst).mockResolvedValue(null as any)
+    vi.mocked(prisma.deal.create).mockResolvedValue({
+      id: "d-tags",
+      name: "Tagged Deal",
+      stage: "LEAD",
+      valueAmount: 0,
+      currency: "USD",
+      tags: ["priority", "renewal"],
+      contactId: null,
+      company: null,
+      campaign: null,
+    } as any)
+
+    const res = await POST(makeReq("http://localhost:3000/api/v1/deals", {
+      method: "POST",
+      body: JSON.stringify({ name: "Tagged Deal", tags: ["priority", "renewal"] }),
+    }))
+
+    expect(res.status).toBe(201)
+    expect((vi.mocked(prisma.deal.create).mock.calls[0][0] as any).data.tags)
+      .toEqual(["priority", "renewal"])
+  })
+
+  it("returns non-blocking duplicate warnings from the shared command", async () => {
+    const duplicate = {
+      id: "d-existing",
+      name: "Renewal",
+      companyId: null,
+      contactId: null,
+      stage: "LEAD",
+      valueAmount: 1200,
+      currency: "USD",
+    }
+    const created = {
+      id: "d-new",
+      organizationId: "org-1",
+      name: "Renewal",
+      companyId: null,
+      contactId: null,
+      campaignId: null,
+      pipelineId: null,
+      stage: "LEAD",
+      valueAmount: 1500,
+      currency: "USD",
+      probability: 10,
+      expectedClose: null,
+      assignedTo: "user-1",
+      notes: null,
+      tags: [],
+      company: null,
+      campaign: null,
+    }
+    vi.mocked(prisma.pipeline.findFirst).mockResolvedValueOnce(null as any)
+    vi.mocked(prisma.deal.findMany).mockResolvedValueOnce([duplicate] as any)
+    vi.mocked(prisma.deal.create).mockResolvedValueOnce(created as any)
+
+    const result = await createDealCommand({
+      organizationId: "org-1",
+      userId: "user-1",
+      role: "admin",
+      source: "voice",
+      voiceSessionId: "voice-1",
+    }, {
+      name: "Renewal",
+      valueAmount: 1500,
+    })
+
+    expect(result.warnings).toEqual([{
+      code: "POSSIBLE_DUPLICATE",
+      candidates: [duplicate],
+    }])
+    expect(result.entity.valueAmount).toBe(1500)
   })
 })
 
