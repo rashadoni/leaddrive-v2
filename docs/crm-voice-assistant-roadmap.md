@@ -329,7 +329,9 @@ No voice write tools are enabled in this phase.
 - [ ] C1.2 Extract shared strict schemas for task, lead, and deal operations.
 - [x] C1.3 Implement `createTaskCommand`. The REST adapter now uses the shared
       command; the assistant still has no commit tool.
-- [ ] C1.4 Implement `createLeadCommand`.
+- [x] C1.4 Implement `createLeadCommand`. The REST adapter now shares the
+      strict command, forbidden fields fail closed, and direct callers receive
+      non-blocking duplicate and assignment-state metadata.
 - [ ] C1.5 Implement `updateLeadCommand`.
 - [ ] C1.6 Implement `createDealCommand`.
 - [ ] C1.7 Implement `convertLeadToDealCommand` separately from ordinary deal

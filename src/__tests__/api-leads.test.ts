@@ -85,6 +85,8 @@ import { applyLeadAssignmentRules } from "@/lib/lead-assignment"
 import { createNotification } from "@/lib/notifications"
 import { executeWorkflows } from "@/lib/workflow-engine"
 import { setLeadReportedCustomerStages } from "@/lib/inbox/customer-stage"
+import { getFieldPermissions, filterWritableFields } from "@/lib/field-filter"
+import { createLeadCommand } from "@/lib/crm-commands/lead/create-lead"
 
 const SESSION = {
   orgId: "org-1",
@@ -250,6 +252,44 @@ describe("POST /api/v1/leads", () => {
     expect(body.error).toBeDefined()
   })
 
+  it("rejects unknown command fields instead of silently stripping them", async () => {
+    vi.mocked(getSession).mockResolvedValue(SESSION as never)
+
+    const res = await POST(
+      makeRequest("http://localhost:3000/api/v1/leads", {
+        method: "POST",
+        body: JSON.stringify({ contactName: "Bob", organizationId: "model-invented-tenant" }),
+      }),
+    )
+
+    expect(res.status).toBe(400)
+    expect(prisma.lead.create).not.toHaveBeenCalled()
+  })
+
+  it("fails closed when field permissions reject a supplied field", async () => {
+    vi.mocked(getSession).mockResolvedValue({ ...SESSION, role: "sales" } as never)
+    vi.mocked(getFieldPermissions).mockResolvedValueOnce({ notes: "visible" })
+    vi.mocked(filterWritableFields).mockImplementationOnce((data) => {
+      const allowed = { ...data }
+      delete allowed.notes
+      return allowed
+    })
+
+    const res = await POST(
+      makeRequest("http://localhost:3000/api/v1/leads", {
+        method: "POST",
+        body: JSON.stringify({ contactName: "Bob", notes: "must not be restored" }),
+      }),
+    )
+
+    expect(res.status).toBe(403)
+    expect(await res.json()).toMatchObject({
+      error: "Forbidden",
+      code: "FORBIDDEN_FIELD",
+    })
+    expect(prisma.lead.create).not.toHaveBeenCalled()
+  })
+
   it("rejects a negative estimated value on create", async () => {
     vi.mocked(getSession).mockResolvedValue(SESSION as never)
 
@@ -406,6 +446,67 @@ describe("POST /api/v1/leads", () => {
     expect(prisma.lead.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ pipelineId: "pipe-event" }),
     }))
+  })
+
+  it("rejects a pipeline outside the organization", async () => {
+    vi.mocked(getSession).mockResolvedValue(SESSION as never)
+    vi.mocked(prisma.pipeline.findMany).mockResolvedValue([
+      { id: "pipe-local", name: "Sales", isDefault: true },
+    ] as never)
+
+    const res = await POST(
+      makeRequest("http://localhost:3000/api/v1/leads", {
+        method: "POST",
+        body: JSON.stringify({ contactName: "Foreign pipeline", pipelineId: "pipe-other-org" }),
+      }),
+    )
+
+    expect(res.status).toBe(400)
+    expect(await res.json()).toMatchObject({ error: "Invalid pipelineId" })
+    expect(prisma.lead.create).not.toHaveBeenCalled()
+  })
+
+  it("returns non-blocking duplicate warnings from the shared command", async () => {
+    const duplicate = {
+      id: "lead-existing",
+      contactName: "Existing Bob",
+      companyName: null,
+      email: "bob@example.com",
+      phone: null,
+      phoneWhatsApp: null,
+    }
+    const created = {
+      id: "lead-new",
+      organizationId: "org-1",
+      contactName: "Bob",
+      companyName: null,
+      email: "BOB@example.com",
+      phone: null,
+      phoneWhatsApp: null,
+      assignedTo: "user-1",
+    }
+    vi.mocked(prisma.lead.findMany).mockResolvedValueOnce([duplicate] as never)
+    vi.mocked(prisma.lead.create).mockResolvedValueOnce(created as never)
+
+    const result = await createLeadCommand({
+      organizationId: "org-1",
+      userId: "user-1",
+      role: "admin",
+      source: "voice",
+      voiceSessionId: "voice-1",
+    }, {
+      contactName: "Bob",
+      email: "BOB@example.com",
+    })
+
+    expect(prisma.lead.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ organizationId: "org-1" }),
+    }))
+    expect(result.warnings).toEqual([{
+      code: "POSSIBLE_DUPLICATE",
+      candidates: [duplicate],
+    }])
+    expect(result.entity).toBe(created)
   })
 
   it("assigns an explicitly selected active seller and skips automatic rules", async () => {
