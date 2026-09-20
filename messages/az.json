@@ -23945,13 +23945,80 @@
     "saving": "Saxlanılır…",
     "saved": "Saxlanıldı"
   },
+  "aiVoiceActions": {
+    "fields": {
+      "title": "Başlıq",
+      "description": "Təsvir",
+      "priority": "Prioritet",
+      "dueDate": "Son tarix",
+      "assignedTo": "Məsul",
+      "relatedType": "Əlaqəli",
+      "relatedId": "Əlaqəli qeyd",
+      "contactName": "Kontakt",
+      "companyName": "Şirkət",
+      "email": "Email",
+      "phone": "Telefon",
+      "phoneWhatsApp": "WhatsApp",
+      "telegramHandle": "Telegram",
+      "source": "Mənbə",
+      "sourceDetail": "Mənbə təfərrüatı",
+      "sourceProfileUrl": "Mənbə profili",
+      "interest": "Maraq",
+      "brand": "Brend",
+      "category": "Kateqoriya",
+      "status": "Status",
+      "estimatedValue": "Təxmini məbləğ",
+      "pipelineId": "Satqı kanalı",
+      "notes": "Qeydlər",
+      "name": "Ad",
+      "companyId": "Şirkət",
+      "contactId": "Kontakt",
+      "campaignId": "Kampaniya",
+      "stage": "Mərhələ",
+      "valueAmount": "Məbləğ",
+      "currency": "Valyuta",
+      "probability": "Ehtimal",
+      "expectedClose": "Gözlənilən bağlanma",
+      "tags": "Teqlər",
+      "dealTitle": "Sövdələşmənin adı",
+      "dealStage": "Sövdələşmə mərhələsi",
+      "dealValue": "Sövdələşmə məbləği",
+      "createCompany": "Şirkəti də yarat"
+    },
+    "values": {
+      "status": {
+        "new": "Yeni",
+        "contacted": "Əlaqə saxlanılıb",
+        "qualified": "Kvalifikasiya olunub",
+        "lost": "İtirilib",
+        "converted": "Çevrilib"
+      },
+      "priority": {
+        "low": "Aşağı",
+        "medium": "Orta",
+        "high": "Yüksək"
+      },
+      "relatedType": {
+        "lead": "Lid",
+        "deal": "Sövdələşmə",
+        "contact": "Kontakt",
+        "company": "Şirkət",
+        "ticket": "Müraciət"
+      }
+    }
+  },
   "voice": {
     "receipt": {
       "ariaLabel": "Hazırlanmış CRM əməliyyatı",
       "dismiss": "Qaralamanı gizlət",
-      "fieldsPrepared": "Hazırlanmış sahələr: {count}",
-      "warningsPrepared": "Baxılmalı xəbərdarlıqlar: {count}",
-      "shadowNotice": "CRM-ə heç nə yazılmayıb. Bu, yalnız baxış üçün qaralamadır — təsdiq düymələri hələ aktiv deyil və səslə deyilən «hə» heç vaxt dəyişikliyə icazə vermir.",
+      "emptyValue": "—",
+      "yes": "Bəli",
+      "no": "Xeyr",
+      "pressNotice": "Düyməni basmayana qədər CRM-ə heç nə yazılmır. Səslə deyilən «hə» sayılmır.",
+      "cancel": "Ləğv et",
+      "retry": "Yenidən cəhd et",
+      "refresh": "Qaralamanı yenilə",
+      "openResult": "Qeydi aç",
       "state": {
         "collecting": "Toplanır",
         "awaiting_confirmation": "Təsdiqinizi gözləyir",
@@ -23963,6 +24030,25 @@
         "update_lead": "Lidi dəyiş",
         "create_deal": "Sövdələşmə yarat",
         "convert_lead_to_deal": "Lidi sövdələşməyə çevir"
+      },
+      "confirm": {
+        "create_task": "Tapşırıq yarat",
+        "create_lead": "Lid yarat",
+        "update_lead": "Dəyişiklikləri saxla",
+        "create_deal": "Sövdələşmə yarat",
+        "convert_lead_to_deal": "Sövdələşməyə çevir"
+      },
+      "warning": {
+        "POSSIBLE_DUPLICATE": "Oxşar qeyd artq mövcuddur:"
+      },
+      "result": {
+        "done": "Hazırdır. Qeyd saxlanıldı.",
+        "alreadyDone": "Artq edilib — bu əməliyyat əvvəlcə saxlanılmışdı.",
+        "failed": "CRM bu əməliyyatı qəbul etmədi. Düzəliş edib yenidən diqtə edin.",
+        "stale": "Qaralama artıq qeydlə uyğun gəlmir. Yeniləyib bir daha yoxlayın.",
+        "forbidden": "Bu əməliyyat üçün icazəniz yoxdur.",
+        "rateLimited": "Çox sayıda ardıcıl əməliyyat. {seconds} saniyə sonra yenidən cəhd edin.",
+        "retriable": "CRM ilə əlaqə qurulmadı. Heç nə itməyib — bir daha basn."
       }
     },
     "title": "Səslə idarəetmə",

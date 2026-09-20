@@ -787,12 +787,26 @@ describe("PUT /api/v1/leads/:id", () => {
       message: "expectedUpdatedAt is required for voice updates",
     })
     await expect(updateLeadCommand(actor, "l1", {
-      status: "converted",
+      score: 100,
       expectedUpdatedAt: "2026-09-19T12:00:00.000Z",
     })).rejects.toMatchObject({
       code: "FORBIDDEN_FIELD",
       status: 403,
     })
+    // A voice caller may move a lead's status, but `converted` promises a deal
+    // and only the conversion command creates one. The shortcut stays closed
+    // even though the field itself is now allowed.
+    await expect(updateLeadCommand(actor, "l1", {
+      status: "converted",
+      expectedUpdatedAt: "2026-09-19T12:00:00.000Z",
+    })).rejects.toMatchObject({
+      code: "CONVERSION_REQUIRES_COMMAND",
+      status: 403,
+    })
+    await expect(updateLeadCommand(actor, "l1", {
+      status: "nonsense",
+      expectedUpdatedAt: "2026-09-19T12:00:00.000Z",
+    })).rejects.toMatchObject({ code: "VALIDATION_FAILED" })
     expect(prisma.lead.updateMany).not.toHaveBeenCalled()
   })
 

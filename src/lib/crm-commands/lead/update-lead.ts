@@ -30,6 +30,7 @@ const VOICE_UPDATE_FIELDS = new Set([
   "interest",
   "brand",
   "category",
+  "status",
   "priority",
   "estimatedValue",
   "notes",
@@ -63,6 +64,22 @@ function enforceVoiceContract(input: UpdateLeadCommandInput): void {
   }
   if (input.priority && !["low", "medium", "high"].includes(input.priority)) {
     throw validationError("Invalid lead priority")
+  }
+  // A voice caller may move a lead along its status, but not to `converted`.
+  // That word promises a deal, and only convertLeadToDealCommand creates one
+  // — in the same transaction that claims the lead. Allowing the shortcut
+  // would leave converted leads with nothing to show for it.
+  if (input.status !== undefined) {
+    if (input.status === "converted") {
+      throw new CrmCommandError(
+        "CONVERSION_REQUIRES_COMMAND",
+        "Converting a lead must go through the lead conversion action",
+        403,
+      )
+    }
+    if (!["new", "contacted", "qualified", "lost"].includes(input.status)) {
+      throw validationError("Invalid lead status")
+    }
   }
 }
 

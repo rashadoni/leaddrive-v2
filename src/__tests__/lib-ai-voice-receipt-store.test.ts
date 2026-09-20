@@ -1,11 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
-  assertNoVoiceReceiptWriteApi,
   createVoiceReceiptStore,
   fetchActiveVoiceReceipt,
   normalizeVoiceReceipt,
-  VOICE_RECEIPT_COMMIT_ENABLED,
 } from "@/lib/ai/voice/receipt-store"
 
 const SESSION = "voice-session-1"
@@ -29,7 +27,10 @@ function serverReceipt(overrides: Record<string, unknown> = {}) {
         { key: "phone", labelKey: "leads.phone", after: "+994 50 123 45 67" },
       ],
     },
-    warnings: [{ code: "possible_duplicate_lead", leadId: "lead-9" }],
+    warnings: [{
+      code: "POSSIBLE_DUPLICATE",
+      candidates: [{ id: "lead-9", contactName: "Ali Mammadov", email: "ali@example.com" }],
+    }],
     target: null,
     expiresAt: "2026-09-20T12:10:00.000Z",
     createdAt: "2026-09-20T12:00:00.000Z",
@@ -47,7 +48,10 @@ describe("voice receipt normalization", () => {
     expect(result.receipt.id).toBe("intent-1")
     expect(result.receipt.state).toBe("awaiting_confirmation")
     expect(result.receipt.preview?.fields).toHaveLength(2)
-    expect(result.receipt.warnings.map((w) => w.code)).toEqual(["possible_duplicate_lead"])
+    expect(result.receipt.warnings.map((w) => w.code)).toEqual(["POSSIBLE_DUPLICATE"])
+    expect(result.receipt.warnings[0].candidates).toEqual([
+      { id: "lead-9", entityType: "lead", label: "Ali Mammadov" },
+    ])
     expect(result.receipt.expiresAtMs).toBe(Date.parse("2026-09-20T12:10:00.000Z"))
   })
 
@@ -191,31 +195,69 @@ describe("voice receipt store", () => {
     expect(listener).not.toHaveBeenCalled()
   })
 
-  // Shadow mode is the point of this slice: the store must have no way to
-  // write, so that the only future path to a CRM mutation is the explicit
-  // button of roadmap U1.8.
-  it("exposes no commit, confirm or execute capability", () => {
+  it("keeps a commit to one in-flight request", () => {
     const store = createVoiceReceiptStore(SESSION)
-    expect(VOICE_RECEIPT_COMMIT_ENABLED).toBe(false)
-    expect(() => assertNoVoiceReceiptWriteApi(store)).not.toThrow()
-    expect(Object.keys(store).sort()).toEqual([
-      "adopt",
-      "beginLoad",
-      "clearReceipt",
-      "dismiss",
-      "fail",
-      "getState",
-      "pruneExpired",
-      "reveal",
-      "subscribe",
-      "voiceSessionId",
-    ])
+    store.adopt(serverReceipt())
+
+    expect(store.claimCommit()).toBe(true)
+    expect(store.getState().committing).toBe(true)
+    // The double click. The server refuses a second proof for the same
+    // receipt, but the client should not send one in the first place.
+    expect(store.claimCommit()).toBe(false)
+
+    store.settleCommit({ kind: "retriable", code: "NETWORK" })
+    expect(store.getState().committing).toBe(false)
+    expect(store.claimCommit()).toBe(true)
   })
 
-  it("fails the guard if a write-shaped method is ever added", () => {
+  it("refuses to commit when there is nothing on screen", () => {
     const store = createVoiceReceiptStore(SESSION)
-    const tampered = { ...store, commit: () => {} } as unknown as typeof store
-    expect(() => assertNoVoiceReceiptWriteApi(tampered)).toThrow(/write-shaped/i)
+    expect(store.claimCommit()).toBe(false)
+  })
+
+  it("never starts a second write after a success", () => {
+    const store = createVoiceReceiptStore(SESSION)
+    store.adopt(serverReceipt())
+    store.claimCommit()
+    store.settleCommit({ kind: "succeeded", entityType: "lead", entityId: "lead-1", replayed: false })
+
+    expect(store.claimCommit()).toBe(false)
+    expect(store.getState().outcome).toMatchObject({ kind: "succeeded" })
+  })
+
+  it("lets a recoverable outcome be cleared and retried", () => {
+    const store = createVoiceReceiptStore(SESSION)
+    store.adopt(serverReceipt())
+    store.claimCommit()
+    store.settleCommit({ kind: "stale", code: "INTENT_REVISION_MISMATCH" })
+
+    store.clearOutcome()
+    expect(store.getState().outcome).toBeNull()
+    expect(store.claimCommit()).toBe(true)
+  })
+
+  it("does not carry a result onto a different receipt", () => {
+    const store = createVoiceReceiptStore(SESSION)
+    store.adopt(serverReceipt())
+    store.claimCommit()
+    store.settleCommit({ kind: "succeeded", entityType: "lead", entityId: "lead-1", replayed: false })
+
+    store.adopt(serverReceipt({ revision: 2 }))
+    expect(store.getState().outcome).toMatchObject({ kind: "succeeded" })
+
+    store.adopt(serverReceipt({ id: "intent-2" }))
+    expect(store.getState().outcome).toBeNull()
+  })
+
+  // The CRM record exists; its link must outlive the draft's TTL.
+  it("does not prune a receipt whose action succeeded", () => {
+    const store = createVoiceReceiptStore(SESSION)
+    store.adopt(serverReceipt())
+    store.claimCommit()
+    store.settleCommit({ kind: "succeeded", entityType: "lead", entityId: "lead-1", replayed: false })
+
+    expect(store.pruneExpired(Date.parse("2026-09-20T12:10:00.000Z") + 1)).toBe(false)
+    expect(store.getState().receipt).not.toBeNull()
   })
 })
 

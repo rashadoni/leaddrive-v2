@@ -70,6 +70,8 @@ vi.mock("next-intl", () => ({
       : labels[key] ?? key,
     { has: () => false },
   ),
+  // The console now also renders the receipt surface, which formats dates.
+  useFormatter: () => ({ dateTime: (value: Date) => value.toISOString() }),
 }))
 
 import { VoiceConsole } from "@/components/ai/voice-console"

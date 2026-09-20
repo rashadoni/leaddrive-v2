@@ -197,8 +197,13 @@ the command, intent, confirmation, and security layers are ready.
 - [ ] P0.6 Define the standard lead fields allowed in v1.
 - [ ] P0.7 Confirm that "fill a lead card" includes two separate modes: update
       a saved lead and populate the currently open unsaved lead form.
-- [ ] P0.8 Keep status, conversion, score, system fields, deletion, and bulk
-      updates out of the initial lead-update allow-list.
+- [x] P0.8 Keep conversion, score, system fields, deletion and bulk updates out
+      of the lead-update allow-list. **Amended 2026-09-20 by the owner**, who
+      asked to change a lead's status by voice: `status` is now inside the
+      allow-list, but `converted` is not reachable through it. That word
+      promises a deal, and only `convertLeadToDealCommand` creates one — the
+      shortcut would leave converted leads with nothing behind them. Score,
+      deletion and bulk updates remain out.
 - [ ] P0.9 Define supported browser/device matrix.
 - [ ] P0.10 Define privacy and retention rules for telemetry, drafts, and audit.
 - [ ] P0.11 Define feature flags and tenant/global kill switches.
@@ -517,17 +522,34 @@ Start this phase in shadow mode with commit disabled.
       The same component becomes an edge-pinned sheet below 768 px, with safe
       area padding, no backdrop and no focus trap: the CRM record behind the
       receipt has to stay readable while the draft is checked against it.
-- [ ] U1.4 Render normalized fields, warnings, related records, and defaults.
-- [ ] U1.5 Render before/after diffs for updates.
-- [ ] U1.6 Implement missing-information and ambiguous-candidate flows.
-- [ ] U1.7 Implement duplicate-warning flow.
-- [ ] U1.8 Add explicit outcome buttons: create, save, keep draft, cancel.
-- [ ] U1.9 Add edit, retry, open-result, and safe recovery actions.
-- [ ] U1.10 Restore an active draft after reload or reconnect.
-- [ ] U1.11 Add all terminal and error states.
-- [ ] U1.12 Add RU/AZ/EN copy.
-- [ ] U1.13 Verify keyboard navigation, screen-reader labels, focus movement,
-      contrast, and 44 px touch targets.
+- [x] U1.4 Render normalized fields, warnings, related records, and defaults.
+      Values come from the server's normalized payload, never from what the
+      assistant said. `expectedUpdatedAt` is hidden: it is the optimistic lock
+      the client echoes back, not a field the user is deciding about.
+- [x] U1.5 Render before/after diffs for updates. Unchanged fields are listed
+      but not dressed up as edits.
+- [x] U1.6 Implement missing-information and ambiguous-candidate flows.
+      Resolution happens server-side and returns a clarification the assistant
+      asks about; zero or several matches never become a silent choice.
+- [x] U1.7 Implement duplicate-warning flow. The warning names the matching
+      record and links to it.
+- [x] U1.8 Add explicit outcome buttons. The button names the operation
+      ("Create lead", "Save changes"), because "Confirm" tells the reader
+      nothing about what they are confirming.
+- [x] U1.9 Add retry, open-result and safe recovery actions. Editing the
+      receipt's fields in place is NOT done: correcting by voice re-drafts, and
+      an in-panel form is a separate design. Tracked as U1.9a below.
+- [ ] U1.9a Edit a prepared receipt in place, without re-dictating it.
+- [x] U1.10 Restore an active draft after reload or reconnect, via
+      `GET /actions/active` bound to the authenticated voice session.
+- [x] U1.11 Add all terminal and error states. Failures are classified by what
+      the user can do next — retry, start over, ask for access, wait — rather
+      than by status code. A 5xx during commit is never shown as a failed
+      action: the mutation may have run.
+- [x] U1.12 Add RU/AZ/EN copy, including localized values for closed
+      vocabularies such as lead status.
+- [x] U1.13 Verify keyboard navigation, screen-reader labels, focus movement
+      and 44 px touch targets. Contrast on real devices remains a manual check.
 
 ### Exit gate
 
@@ -551,16 +573,26 @@ There is deliberately no `commit_*` tool.
 
 ### Tasks
 
-- [ ] V1.1 Define strict tool schemas and reject unknown fields.
-- [ ] V1.2 Add server-side resolvers for users, leads, contacts, companies,
-      pipelines, stages, boards, and related records.
-- [ ] V1.3 Accept human-readable names from the model and return signed or
-      server-bound candidate tokens; never trust model-supplied raw IDs.
-- [ ] V1.4 Require clarification when zero or multiple candidates remain.
-- [ ] V1.5 Send the validated draft to the shared action-receipt store.
+- [x] V1.1 Define strict tool schemas and reject unknown fields.
+- [x] V1.2 Add server-side resolvers for users and leads, plus the record the
+      browser has on screen. Contacts, companies, pipelines, stages and boards
+      are not resolved yet — no shipped action needs them; see V1.2a.
+- [ ] V1.2a Resolvers for contacts, companies, pipelines, stages and boards,
+      when `create_deal` and `convert_lead_to_deal` are exposed to the model.
+- [x] V1.3 Accept human-readable names from the model and never trust a
+      model-supplied identifier. A test walks every proposal tool's published
+      parameters and fails on an id-shaped one.
+- [x] V1.4 Require clarification when zero or multiple candidates remain. The
+      clarification carries labels only, never the candidate ids.
+- [x] V1.5 Send the validated draft to the shared action-receipt store, keyed
+      on the provider tool-call id so a retried call replays one receipt.
 - [ ] V1.6 Treat all CRM record text as untrusted content and harden prompts
-      against instruction injection.
-- [ ] V1.7 Prevent the model from marking its own draft as confirmed.
+      against instruction injection. The structural half is done — the model's
+      best outcome is a draft the user must press a button to execute — but the
+      prompt-level hardening and its adversarial fixtures are not.
+- [x] V1.7 Prevent the model from marking its own draft as confirmed. The
+      propose endpoint cannot execute a command, and the confirmation proof is
+      minted only by a button press.
 - [ ] V1.8 Add tool-call ceilings, timeouts, retries, and idempotency.
 - [ ] V1.9 Add structured audit metadata linking provider tool call, voice
       session, intent, actor, and final record.
@@ -858,7 +890,8 @@ implementation branch that advances the roadmap.
 | 2026-09-19 | P0 audio hotfix | Code complete | Targeted Vitest 32/32; targeted ESLint | Local RMS is UI-only; Gemini interruption/transcription owns turn state. Manual browser/noise matrix remains open. |
 | 2026-09-20 | Execution boundary | Production deployed | PR #245; merge `a7f6c2654`; deploy `35479290362` | Internal-only atomic CRM mutation/result/`succeeded` event; commit remains disabled. |
 | 2026-09-20 | Commit adapter | Production deployed | PR #249; merge `ffcbaa3a4`; active artifact `a9891d6cb`; deploy `35499744499` | Session-only endpoint and three rate-limit scopes are live; receipt UI remains open and no model write-tool is exposed. |
-| 2026-09-20 | Receipt UI shell (U1.1-U1.3) | Production deployed | PR #257; merge `1bbc59e1e`; active artifact `6cca1a5a8`; deploy `35512069725` | Shadow mode: session-scoped store, anchored desktop panel, mobile bottom sheet. No confirm control, no write request, no model commit tool. U1.4-U1.13 remain open. |
+| 2026-09-20 | Receipt UI shell (U1.1-U1.3) | Production deployed | PR #257; merge `1bbc59e1e`; active artifact `6cca1a5a8`; deploy `35512069725` | Shadow mode: session-scoped store, anchored desktop panel, mobile bottom sheet. No confirm control, no write request, no model commit tool. |
+| 2026-09-20 | Voice actions end to end (U1.4-U1.13, V1.1-V1.5, V1.7) | Code complete | Targeted Vitest: 121 files / 1211 tests green, 2 known-baseline reds unchanged; targeted ESLint; i18n parity; runner policy | Speech now prepares a receipt for create_task, create_lead and update_lead; an explicit button executes it. Lead status is inside the voice allow-list, `converted` is not. U1.9a, V1.2a, V1.6 and V1.8-V1.10 remain open. |
 
 ## 21. References
 
