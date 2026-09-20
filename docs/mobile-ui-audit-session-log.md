@@ -87,3 +87,11 @@ This file is append-only. It preserves requirements, decisions, implementation e
 - Mobile verification passed: `npx tsc --noEmit`, `git diff --check`, and 21 targeted Jest tests across route simplification, Today route clients, route state, and visit-workspace mapping.
 - Server verification passed: translation parity, targeted ESLint, `git diff --check`, and 23 targeted Vitest tests for visit-policy resolution and checkout readiness. Full server TypeScript/build remains for CI under the Contabo workload rules.
 - Current continuation point: checkpoint the mobile, server, and journal changes; push both feature branches; open and observe CI; merge/release/deploy only after green gates; install the resulting APK and repeat the route, team-message, and doctor-request scenarios after the demo agent logs in again.
+
+## 2026-09-20 — release build 262 and production rollout
+
+- The previous continuation point is superseded. Mobile PR `rashadoni/leaddrive-mtm#68` passed its complete CI matrix and merged to `main` as `950c5a586ee23cbd646b33a084b2346922161365`.
+- The official mobile main workflow `35480532120` passed and published release `v3.3.0-build262`. Its APK and published SHA-256 checksum were downloaded; `sha256sum -c` passed. The verified APK is staged at `/tmp/leaddrive-mtm-build262.ig3VY1/leaddrive-mtm-v3.3.0.apk`.
+- Server PR `rashadoni/leaddrive-v2#246` passed static checks, the full TypeScript gate and scope checks, then merged to `main` as `1f4fe9d0e045d4c059277ad48e5ef4d4924097f9`.
+- Server production workflow `35480923284` completed successfully. Quality/security gates, immutable production build, atomic deploy, scheduler checks, tenant-isolation coverage, public DB-path ping, served-revision verification and login/assets smoke all passed.
+- Current continuation point: the phone is intentionally disconnected while release/deploy work completes. Ask the user to reconnect it, install build 262 over the existing app without clearing data, confirm `versionCode=1262`, and physically verify Today, route/active-visit simplification, team messages, new-doctor request, and portrait/landscape behavior. Check the Wi-Fi tablet afterward if ADB exposes it.
