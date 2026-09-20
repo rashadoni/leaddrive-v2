@@ -227,3 +227,21 @@ Audit of existing legal pages, routing, Meta OAuth scopes, persisted data, reten
   Sentry DSN is configured in the canonical production environment. Sentry is
   therefore disclosed as an optional/code-supported provider, not reported as
   a current production transfer.
+
+## 2026-09-20 — production release and legal-language smoke finding
+
+- PR 252 passed its final static, typecheck, scope, runner-policy and secret-scan
+  gates and was squash-merged to `main` as
+  `972e7a889c129ae5a3d97619a42458c2f147c344`.
+- GitHub Actions deployment 35503808779 completed successfully, including the
+  SHA-bound production build, quality/security gates, atomic Contabo rollout,
+  revision verification and post-deploy smoke.
+- External smoke confirmed `/api/v1/ping` returns 200 and all three canonical
+  `www.leaddrivecrm.org/legal/*` URLs redirect to public app-host documents
+  returning 200 with the new processor disclosures.
+- The same smoke caught a language defect: `?lang=en`, `?lang=ru` and
+  `?lang=az` all rendered the request-default Russian bundle. The pages parsed
+  the query, but next-intl had already selected its message bundle from the
+  middleware `x-locale` header. A follow-up fix now lets valid legal `?lang=`
+  values override the locale cookie before rendering; invalid values retain
+  the existing cookie/default behavior.
