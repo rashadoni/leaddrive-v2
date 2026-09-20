@@ -501,9 +501,22 @@ Start this phase in shadow mode with commit disabled.
 
 ### Tasks
 
-- [ ] U1.1 Add a client intent store scoped to the authenticated voice session.
-- [ ] U1.2 Build the desktop anchored receipt panel.
-- [ ] U1.3 Build the responsive mobile bottom sheet.
+- [x] U1.1 Add a client intent store scoped to the authenticated voice session.
+      `src/lib/ai/voice/receipt-store.ts` takes the voice session id as a
+      constructor argument and rejects any server payload carrying a different
+      one, so a receipt cannot survive a reconnect into the wrong session. It
+      accepts a payload whole or not at all, holds only non-terminal receipts,
+      prunes a receipt whose server TTL has passed, and has no commit, confirm
+      or execute method — `assertNoVoiceReceiptWriteApi` makes that a test.
+- [x] U1.2 Build the desktop anchored receipt panel.
+      `src/components/ai/voice-receipt-surface.tsx` positions itself from the
+      orb's measured rect and portals into the shell's voice status layer, so
+      it follows the launcher between the header slot and the floating corner
+      instead of assuming one of them.
+- [x] U1.3 Build the responsive mobile bottom sheet.
+      The same component becomes an edge-pinned sheet below 768 px, with safe
+      area padding, no backdrop and no focus trap: the CRM record behind the
+      receipt has to stay readable while the draft is checked against it.
 - [ ] U1.4 Render normalized fields, warnings, related records, and defaults.
 - [ ] U1.5 Render before/after diffs for updates.
 - [ ] U1.6 Implement missing-information and ambiguous-candidate flows.
@@ -844,7 +857,8 @@ implementation branch that advances the roadmap.
 | 2026-09-19 | Roadmap | Complete | This document | Ordered implementation plan and release gates recorded. |
 | 2026-09-19 | P0 audio hotfix | Code complete | Targeted Vitest 32/32; targeted ESLint | Local RMS is UI-only; Gemini interruption/transcription owns turn state. Manual browser/noise matrix remains open. |
 | 2026-09-20 | Execution boundary | Production deployed | PR #245; merge `a7f6c2654`; deploy `35479290362` | Internal-only atomic CRM mutation/result/`succeeded` event; commit remains disabled. |
-| 2026-09-20 | Commit adapter | Code complete | Targeted Vitest 29/29; targeted ESLint | Session-only endpoint and three rate-limit scopes; receipt UI remains open. |
+| 2026-09-20 | Commit adapter | Production deployed | PR #249; merge `ffcbaa3a4`; active artifact `a9891d6cb`; deploy `35499744499` | Session-only endpoint and three rate-limit scopes are live; receipt UI remains open and no model write-tool is exposed. |
+| 2026-09-20 | Receipt UI shell (U1.1-U1.3) | Code complete | Targeted Vitest 35/35 (`lib-ai-voice-receipt-store`, `voice-receipt-surface-ui`); targeted ESLint; `npm run i18n:check` | Shadow mode: session-scoped store, anchored desktop panel, mobile bottom sheet. No confirm control, no write request, no model commit tool. U1.4-U1.13 remain open. |
 
 ## 21. References
 
