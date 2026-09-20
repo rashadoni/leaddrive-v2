@@ -3355,8 +3355,8 @@ model ChannelMessage {
   @@index([organizationId, contactId])
   @@index([organizationId, leadId])
   @@index([conversationId])
-  // NOTE: TWO PARTIAL unique indexes back inbound dedup (P2002 race guard); Prisma's @@unique
-  // can't express a partial (WHERE) index, so neither is declared here. Do NOT "fix" the
+  // NOTE: THREE PARTIAL unique indexes back inbound dedup (P2002 race guard); Prisma's @@unique
+  // can't express a partial (WHERE) index, so none of them is declared here. Do NOT "fix" the
   // resulting migrate-diff drift by dropping them:
   //   • `channel_messages_inbound_external_uniq` on (organizationId, externalId)
   //     WHERE direction='inbound' AND channelType IN ('sms','email') AND externalId IS NOT NULL
@@ -3364,6 +3364,10 @@ model ChannelMessage {
   //   • `channel_messages_tiktok_inbound_external_uniq` on (organizationId, externalId)
   //     WHERE direction='inbound' AND channelType='tiktok' AND externalId IS NOT NULL
   //     — migration 20260620050000_inbound_tiktok_external_unique (G3, chatwoot bridge).
+  //   • `channel_messages_meta_inbound_external_uniq` on (organizationId, externalId)
+  //     WHERE direction='inbound' AND channelType IN ('whatsapp','facebook','instagram')
+  //     AND externalId IS NOT NULL
+  //     — migration 20260920160000_meta_inbound_idempotency (Meta App Review security gate).
   @@map("channel_messages")
 }
 

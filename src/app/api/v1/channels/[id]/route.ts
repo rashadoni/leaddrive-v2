@@ -9,6 +9,7 @@ import { publicChannelConfig } from "@/lib/channels/public-channel-config"
 import { channelIdsClaimedElsewhere } from "@/lib/channels/inbound-claim"
 import { emailIntakeSettingsError } from "@/lib/ticketing/email-intake"
 import { validateChatwootBaseUrl } from "@/lib/chatwoot"
+import { auditChannelChange, changedCredentialFields } from "@/lib/channels/channel-credential-audit"
 
 const updateChannelSchema = z.object({
   channelType: z.string().min(1).optional(),
@@ -83,7 +84,7 @@ export async function PUT(
 ) {
   const gate = await gateChannelsAccess(req)
   if (gate instanceof NextResponse) return gate
-  const { orgId } = gate
+  const { orgId, userId } = gate
   const { id } = await params
   const body = await req.json()
   const parsed = updateChannelSchema.safeParse(body)
@@ -163,6 +164,11 @@ export async function PUT(
       }
       const updated = await prisma.channelConfig.findFirst({ where: { id, organizationId: orgId } })
       if (updated) {
+        await auditChannelChange({
+          req, orgId, userId, action: "update",
+          channelId: updated.id, channelType: updated.channelType, configName: updated.configName,
+          credentialFields: changedCredentialFields(body),
+        })
         await syncTikTokDmConnectionForChannelConfig(updated).catch((error) => {
           console.error("[channels PUT] TikTok ChannelConnection sync failed", error)
         })
@@ -185,7 +191,7 @@ export async function DELETE(
 ) {
   const gate = await gateChannelsAccess(req)
   if (gate instanceof NextResponse) return gate
-  const { orgId } = gate
+  const { orgId, userId } = gate
   const { id } = await params
 
   return runWithTenant(gate.orgId, async () => {
@@ -239,6 +245,13 @@ export async function DELETE(
             },
           })
         }
+        await auditChannelChange({
+          req, orgId, userId, action: "disconnect",
+          channelId: id, channelType: row.channelType,
+          // Disconnect clears every credential column; naming them is what makes the trail useful
+          // when asked "when did this integration stop holding tokens".
+          credentialFields: ["apiKey", "appSecret", "accessToken", "verifyToken", "botToken"],
+        })
         return NextResponse.json({ success: true, data: { disconnected: id } })
       }
 
@@ -262,6 +275,10 @@ export async function DELETE(
         }
         return NextResponse.json({ error: "Not found" }, { status: 404 })
       }
+      await auditChannelChange({
+        req, orgId, userId, action: "delete",
+        channelId: id, channelType: row.channelType,
+      })
       return NextResponse.json({ success: true, data: { deleted: id } })
     } catch (e) {
       console.error(e)

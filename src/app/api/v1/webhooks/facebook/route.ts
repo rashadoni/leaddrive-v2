@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma"
 import { upsertSocialConversation } from "@/lib/facebook"
 import { notifyConversationRecipients } from "@/lib/social/notify-recipients"
 import { isIgLogin } from "@/lib/social/tenant-meta-app"
+import { isDuplicateInsert } from "@/lib/social/meta-inbound-idempotency"
+import { sanitizeLog } from "@/lib/sanitize"
 import { resolveMetaSenderName } from "@/lib/social/meta-sender-profile"
 import { runWithTenant, runWithRlsBypass } from "@/lib/rls-context"
 import type { ChannelConfig } from "@prisma/client"
@@ -241,23 +243,35 @@ export async function POST(req: NextRequest) {
         )
 
         const messageMetadata = { senderId, pageId, platform }
-        const inboundMessage = await prisma.channelMessage.create({
-          data: {
-            organizationId: channel.organizationId,
-            channelConfigId: channel.id,
-            channelType: platform,
-            direction: "inbound",
-            from: senderId,
-            to: pageId,
-            body: text,
-            status: "delivered",
-            externalId: externalMessageId,
-            mediaUrl,
-            messageType: messageType || "text",
-            conversationId: conv.id,
-            metadata: messageMetadata,
-          },
-        })
+        // The duplicate check above is a read-then-skip, so two CONCURRENT redeliveries of the same
+        // `mid` can both pass it. The partial unique index (migration 20260920160000) makes the
+        // loser fail here with P2002 instead of inserting a second copy.
+        let inboundMessage: Awaited<ReturnType<typeof prisma.channelMessage.create>>
+        try {
+          inboundMessage = await prisma.channelMessage.create({
+            data: {
+              organizationId: channel.organizationId,
+              channelConfigId: channel.id,
+              channelType: platform,
+              direction: "inbound",
+              from: senderId,
+              to: pageId,
+              body: text,
+              status: "delivered",
+              externalId: externalMessageId,
+              mediaUrl,
+              messageType: messageType || "text",
+              conversationId: conv.id,
+              metadata: messageMetadata,
+            },
+          })
+        } catch (e) {
+          if (isDuplicateInsert(e)) {
+            console.log(`[FB Webhook] concurrent duplicate delivery for mid=${sanitizeLog(String(externalMessageId))} — skipping`)
+            continue
+          }
+          throw e
+        }
 
         // Phase 2b + collaborators — notify the assignee AND every internal participant (deduped).
         // Fail-soft, never blocks the 200 owed to Meta.
