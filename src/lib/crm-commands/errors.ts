@@ -4,6 +4,10 @@ export type CrmCommandErrorCode =
   | "FORBIDDEN_FIELD"
   | "NOT_FOUND"
   | "STALE_WRITE"
+  // Not FORBIDDEN_FIELD: the field is allowed, the value is the problem.
+  // `status: "converted"` has to go through convertLeadToDealCommand, which
+  // creates the deal the word promises.
+  | "CONVERSION_REQUIRES_COMMAND"
 
 export class CrmCommandError extends Error {
   constructor(

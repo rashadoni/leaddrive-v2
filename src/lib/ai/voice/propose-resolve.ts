@@ -53,6 +53,10 @@ export type VoiceScreenContext = Readonly<{
 
 const MAX_CANDIDATES = 5
 
+/** The selected shapes, named so the callbacks below are not implicitly any. */
+type UserRow = Readonly<{ id: string; name: string; email: string }>
+type LeadRow = Readonly<{ id: string; contactName: string; companyName: string | null }>
+
 function personLabel(user: Readonly<{ name: string; email: string }>): string {
   return user.name.trim() || user.email
 }
@@ -89,20 +93,20 @@ async function resolveAssignee(
 
   // An exact full-name match settles the common "two Aysels, one of them is
   // exactly who was named" case without guessing between genuine near-misses.
-  const exact = users.filter((user) => personLabel(user).toLowerCase() === spokenName.toLowerCase())
+  const exact = users.filter((user: UserRow) => personLabel(user).toLowerCase() === spokenName.toLowerCase())
   if (exact.length === 1) return { ok: true, userId: exact[0].id }
 
   return {
     ok: false,
     code: users.length === 0 ? "ASSIGNEE_NOT_FOUND" : "ASSIGNEE_AMBIGUOUS",
-    candidates: users.slice(0, MAX_CANDIDATES).map((user) => ({
+    candidates: users.slice(0, MAX_CANDIDATES).map((user: UserRow) => ({
       id: user.id,
       label: personLabel(user),
     })),
   }
 }
 
-function leadLabel(lead: Readonly<{ contactName: string; companyName: string | null }>): string {
+function leadLabel(lead: LeadRow): string {
   return lead.companyName?.trim()
     ? `${lead.contactName} (${lead.companyName.trim()})`
     : lead.contactName
@@ -131,14 +135,14 @@ async function resolveLeadByName(
 
   if (leads.length === 1) return { ok: true, leadId: leads[0].id }
   const exact = leads.filter(
-    (lead) => lead.contactName.trim().toLowerCase() === spokenName.toLowerCase(),
+    (lead: LeadRow) => lead.contactName.trim().toLowerCase() === spokenName.toLowerCase(),
   )
   if (exact.length === 1) return { ok: true, leadId: exact[0].id }
 
   return {
     ok: false,
     code: leads.length === 0 ? "LEAD_NOT_FOUND" : "LEAD_AMBIGUOUS",
-    candidates: leads.slice(0, MAX_CANDIDATES).map((lead) => ({
+    candidates: leads.slice(0, MAX_CANDIDATES).map((lead: LeadRow) => ({
       id: lead.id,
       label: leadLabel(lead),
     })),

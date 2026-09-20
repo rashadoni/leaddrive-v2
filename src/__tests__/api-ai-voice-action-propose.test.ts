@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 
+/** Both branches, so a denial fixture is assignable to the mock. */
+type VoicePilotGate = { ok: true } | { ok: false; reason: string }
+
 type AuthContext = {
   orgId: string
   userId: string
@@ -14,7 +17,7 @@ type RouteHandler = (req: NextRequest, auth: AuthContext) => Promise<Response>
 const deps = vi.hoisted(() => ({
   createDraft: vi.fn(),
   resolveProposal: vi.fn(),
-  checkVoicePilotAccess: vi.fn(async () => ({ ok: true as const })),
+  checkVoicePilotAccess: vi.fn<() => Promise<VoicePilotGate>>(async () => ({ ok: true })),
   checkRateLimit: vi.fn(() => true),
 }))
 
