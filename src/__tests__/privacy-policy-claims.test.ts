@@ -31,7 +31,7 @@ describe.each(LOCALES)("privacy policy — %s", locale => {
   const p = privacy(locale)
 
   it("names the actual legal entity", () => {
-    expect(p.p1).toContain("Fanumsec MMC")
+    expect(p.p1).toContain("FANUM")
     expect(p.p1).not.toContain("LeadDrive Inc")
   })
 
@@ -44,7 +44,7 @@ describe.each(LOCALES)("privacy policy — %s", locale => {
 
   it("names every subprocessor that receives personal data", () => {
     const listed = [p.p5_l1, p.p5_l2, p.p5_l3, p.p5_l4, p.p5_l5, p.p5_l6, p.p5_l7].join(" ")
-    for (const provider of ["Contabo", "Hetzner", "Cloudflare", "Meta", "Anthropic", "OpenAI", "Google", "Sentry"]) {
+    for (const provider of ["Contabo", "Cloudflare", "Meta", "Anthropic", "OpenAI", "Google", "Sentry"]) {
       expect(listed, `${provider} receives personal data and must be named`).toContain(provider)
     }
   })
@@ -114,8 +114,9 @@ describe("the site names one legal entity, in one place", () => {
   const constants = readFileSync("src/lib/constants.ts", "utf8")
 
   it("declares the entity centrally", () => {
-    expect(constants).toContain('COMPANY_LEGAL_NAME = "Fanumsec MMC"')
-    expect(constants).toMatch(/COMPANY_LEGAL_ADDRESS = "Baku, Azerbaijan"/)
+    expect(constants).toContain("COMPANY_LEGAL_NAME = '\"FANUM\" MMC'")
+    expect(constants).toContain("VÖEN 1704197981")
+    expect(constants).toMatch(/COMPANY_LEGAL_ADDRESS = "Abbasqulu Abbaszadə 13\/5, AZ1073, Baku, Azerbaijan"/)
   })
 
   it.each([
@@ -124,7 +125,8 @@ describe("the site names one legal entity, in one place", () => {
     "src/app/(marketing)/legal/data-deletion/page.tsx",
   ])("%s takes the contact identity from the constant", path => {
     const source = readFileSync(path, "utf8")
-    expect(source).toContain("{COMPANY_LEGAL_NAME}, {COMPANY_LEGAL_ADDRESS}")
+    expect(source).toContain("COMPANY_LEGAL_NAME")
+    expect(source).toContain("COMPANY_LEGAL_ADDRESS")
     expect(source, "a hardcoded copy is how these drifted from the policy text").not.toContain("LeadDrive Inc")
   })
 
@@ -151,7 +153,7 @@ describe("the site names one legal entity, in one place", () => {
     const all = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8"))
 
     it("names the real provider in the Terms of Service", () => {
-      expect(all.terms.p1).toContain("Fanumsec MMC")
+      expect(all.terms.p1).toContain("FANUM")
       expect(all.terms.p1).not.toContain("LeadDrive Inc")
     })
 

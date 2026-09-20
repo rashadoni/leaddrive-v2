@@ -192,7 +192,7 @@ export async function DELETE(
     try {
       const row = await prisma.channelConfig.findFirst({
         where: { id, organizationId: orgId },
-        select: { channelType: true },
+        select: { channelType: true, pageId: true },
       })
       if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
@@ -201,6 +201,45 @@ export async function DELETE(
           { error: "VoIP configuration must be managed through the dedicated VoIP endpoint" },
           { status: 403 },
         )
+      }
+
+      if (["facebook", "instagram", "whatsapp"].includes(row.channelType)) {
+        await prisma.channelConfig.updateMany({
+          where: { id, organizationId: orgId },
+          data: {
+            isActive: false,
+            botToken: null,
+            apiKey: null,
+            appSecret: null,
+            accessToken: null,
+            verifyToken: null,
+          },
+        })
+        await prisma.channelConnection.updateMany({
+          where: { organizationId: orgId, channelConfigId: id },
+          data: {
+            status: "disabled",
+            apiKey: null,
+            accessToken: null,
+            refreshToken: null,
+            secretRef: null,
+          },
+        })
+        if ((row.channelType === "facebook" || row.channelType === "instagram") && row.pageId) {
+          await prisma.socialAccount.updateMany({
+            where: {
+              organizationId: orgId,
+              platform: row.channelType,
+              handle: row.pageId,
+            },
+            data: {
+              isActive: false,
+              accessToken: null,
+              tokenExpiresAt: null,
+            },
+          })
+        }
+        return NextResponse.json({ success: true, data: { disconnected: id } })
       }
 
       const result = await prisma.channelConfig.deleteMany({

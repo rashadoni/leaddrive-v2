@@ -10,6 +10,10 @@
   be verified from the provider contract/panel before making a legal claim)
 - GitHub: `rashadoni/leaddrive-v2`, branch `main`
 
+The former repository `rashadrahimov/leaddrive-v2` and former Hetzner host
+`46.224.171.53` are permanently retired. They must not be used for Git, CI,
+deployment, inspection, recovery, or copied into new runbooks.
+
 > For multi-client deploy behavior see the rule block in `CLAUDE.md` ("Деплой — ВСЕГДА спрашивать куда") and `clients/registry.json`.
 
 ## Release route
@@ -161,8 +165,7 @@ reset, or `systemctl enable` is not a recovery shortcut.
 The Actions run must prove `/api/v1/ping`, login assets, feature smokes, and
 that `/api/v1/public/build-info.artifactSha` equals the complete deployed
 commit SHA. Use `clients/registry.json` and the current workflow secrets for
-routing; the historical `leaddrive-prod` SSH alias may still resolve to the old
-host and is not deployment evidence.
+routing; an SSH alias or remembered address is never deployment evidence.
 
 The workflow accepts only `SERVER_HOST=13.140.132.245` and verifies it against
 the pre-pinned `SERVER_SSH_KNOWN_HOSTS` secret with strict host-key checking;

@@ -198,6 +198,36 @@ describe("middleware", async () => {
     expect(forwardedRequestHeader(res, "x-request-pathname")).toBe("/demo")
   })
 
+  it.each(["/legal/privacy", "/legal/terms", "/legal/data-deletion"])(
+    "serves %s on the app host for Meta App Review",
+    async (pathname) => {
+      const res = await authMiddleware(makeReq({
+        pathname,
+        host: "app.leaddrivecrm.org",
+        auth: null,
+      }))
+
+      expect(res.status).toBe(200)
+      expect(res.headers.get("location")).toBeNull()
+      expect(forwardedRequestHeader(res, "x-request-pathname")).toBe(pathname)
+    },
+  )
+
+  it.each(["zeytun", "fanumsec", "brandprotection", "future-client"])(
+    "serves public legal documents on dynamic tenant host %s",
+    async (slug) => {
+      const res = await authMiddleware(makeReq({
+        pathname: "/legal/privacy",
+        host: slug + ".leaddrivecrm.org",
+        auth: null,
+      }))
+
+      expect(res.status).toBe(200)
+      expect(res.headers.get("location")).toBeNull()
+      expect(forwardedRequestHeader(res, "x-tenant-slug")).toBe(slug)
+    },
+  )
+
   it("continues redirecting other marketing pages from the app host", async () => {
     const res = await authMiddleware(makeReq({
       pathname: "/pricing",

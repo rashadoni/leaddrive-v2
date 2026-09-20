@@ -670,10 +670,10 @@ const catalogCards = (c: (typeof copy)[LocaleKey]): CatalogCard[] => [
     icon: AtSign,
     logo: "◎",
     accent: "from-orange-500/18 via-stone-500/8 to-transparent border-orange-400/20",
-    // Instagram Direct rides the LINKED Facebook Page's messages webhook, and only the facebook
-    // callback creates a ChannelConfig for it — instagram/start would finish "successfully" and leave
-    // the card grey. (INSTAGRAM_APP_ID is also unset in production.)
-    oauthStart: "/api/v1/social/oauth/facebook/start?from=channels-instagram",
+    // Meta App Review evaluates Instagram Login separately from Facebook
+    // Login. Keep the catalog action on the flow that requests the declared
+    // instagram_business_* permissions.
+    oauthStart: "/api/v1/social/oauth/instagram/start?from=channels-instagram",
     action: { type: "form", channelType: "instagram", presetName: "Instagram Direct" },
   },
   {
