@@ -18,6 +18,53 @@ const bodySchema = z.object({
 
 const duplicateSelect = { id: true, displayName: true, specialtyName: true, phone: true } as const
 
+/**
+ * The agent's own requests, newest first.
+ *
+ * Until now a request left the phone and vanished: the field app had no way
+ * to say whether a manager had approved the doctor, asked for more or turned
+ * it down, and the agent's only signal was the doctor quietly appearing in
+ * their list days later — or never. Scope is the agent themselves; a request
+ * belongs to whoever filed it.
+ */
+export const GET = withMobileRls(async (req, auth) => {
+  const permission = requireMobilePermission(auth, "ROUTE_EXECUTE")
+  if (permission) return permission
+  const actor = await resolveMtmRouteActor(prisma, {
+    organizationId: auth.orgId,
+    userId: auth.userId,
+    webRole: auth.role,
+    agentId: auth.agentId,
+  })
+  if (!actor?.agentId || actor.role !== "AGENT" || actor.agentId !== auth.agentId) {
+    return NextResponse.json({ error: "Forbidden", code: "MTM_ROUTE_FIELD_AGENT_REQUIRED" }, { status: 403 })
+  }
+  // `Number(null)` is 0, not NaN: without the explicit "absent" case a request
+  // with no `limit` asked for one row.
+  const limitParam = new URL(req.url).searchParams.get("limit")
+  const requested = limitParam === null ? Number.NaN : Number(limitParam)
+  const limit = Number.isFinite(requested) && requested >= 1 ? Math.min(50, Math.floor(requested)) : 20
+  const requests = await prisma.mtmContactCreateRequest.findMany({
+    where: { organizationId: auth.orgId, requestedByAgentId: actor.agentId },
+    orderBy: { submittedAt: "desc" },
+    take: limit,
+    select: {
+      id: true,
+      status: true,
+      displayName: true,
+      specialtyName: true,
+      clinicName: true,
+      phone: true,
+      decisionComment: true,
+      submittedAt: true,
+      reviewedAt: true,
+      approvedContactId: true,
+      approvedCustomerId: true,
+    },
+  })
+  return NextResponse.json({ success: true, data: { requests } })
+}, { requiredCapability: "route-field" })
+
 export const POST = withMobileRls(async (req, auth) => {
   const permission = requireMobilePermission(auth, "ROUTE_EXECUTE")
   if (permission) return permission
