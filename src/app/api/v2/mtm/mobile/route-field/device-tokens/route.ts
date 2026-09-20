@@ -28,7 +28,14 @@ const removeSchema = z.object({
   token: z.string().trim().min(20).max(4096),
 })
 
-async function fieldAgent(auth: { orgId: string; userId?: string | null; role?: string | null; agentId?: string | null }) {
+type MobileAuth = Parameters<Parameters<typeof withMobileRls>[0]>[1]
+
+/**
+ * The agent this request belongs to, or null when the token is not a field
+ * agent's. Takes the handler's own auth object so the narrowing the mobile
+ * middleware already did is not thrown away and rebuilt by hand.
+ */
+async function fieldAgent(auth: MobileAuth): Promise<string | null> {
   const actor = await resolveMtmRouteActor(prisma, {
     organizationId: auth.orgId,
     userId: auth.userId,
