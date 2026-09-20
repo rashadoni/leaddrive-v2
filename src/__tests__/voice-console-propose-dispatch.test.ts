@@ -59,7 +59,8 @@ describe("which tool names the console treats as proposals", () => {
       "commit_create_task",
       "propose",
       "propose_delete_lead",
-      "propose_create_deal",
+      "propose_create_invoice",
+      "propose_create_dealX",
       "list_tasks",
       "",
     ]) {

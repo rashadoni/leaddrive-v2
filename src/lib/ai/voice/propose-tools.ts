@@ -30,6 +30,7 @@ export const VOICE_PROPOSE_TOOL_NAMES = [
   "propose_create_lead",
   "propose_update_lead",
   "propose_convert_lead_to_deal",
+  "propose_create_deal",
 ] as const
 
 export type VoiceProposeToolName = (typeof VOICE_PROPOSE_TOOL_NAMES)[number]
@@ -40,6 +41,7 @@ export const VOICE_PROPOSE_ACTION_TYPES: Readonly<Record<VoiceProposeToolName, A
     propose_create_lead: "create_lead",
     propose_update_lead: "update_lead",
     propose_convert_lead_to_deal: "convert_lead_to_deal",
+    propose_create_deal: "create_deal",
   })
 
 const personName = z.string().trim().min(2).max(120)
@@ -130,6 +132,32 @@ export const VOICE_PROPOSE_SCHEMAS = {
     dealValue: z.number().nonnegative().finite().optional(),
     createCompany: z.boolean().optional(),
   }),
+  /**
+   * A deal that does not come from a lead.
+   *
+   * Company and contact are names here too, resolved server-side. Stage,
+   * pipeline and probability are absent for the same reason as in conversion,
+   * plus a sharper one: `createDealCommand` falls back to the literal stage
+   * name "LEAD" when none is given, and then validates it against the
+   * pipeline's real stage names — so on any organization whose first stage is
+   * called something else, "create a deal" would simply fail. The resolver
+   * therefore looks up the entry stage of the organization's default pipeline
+   * and passes it explicitly.
+   *
+   * Tags and campaign are not here yet; they need their own resolvers and no
+   * spoken sentence has asked for them. Tracked as V1.2b.
+   */
+  propose_create_deal: z.strictObject({
+    name: shortText,
+    companyName: shortText.optional(),
+    contactName: shortText.optional(),
+    valueAmount: z.number().nonnegative().finite().optional(),
+    /** ISO 4217, e.g. AZN or USD. Amounts of different currencies never sum. */
+    currency: z.string().trim().min(3).max(5).optional(),
+    expectedClose: day.optional(),
+    assigneeName: personName.optional(),
+    notes: longText.optional(),
+  }),
 } as const satisfies Record<VoiceProposeToolName, z.ZodTypeAny>
 
 export type VoiceProposeArgs<T extends VoiceProposeToolName> =
@@ -144,6 +172,8 @@ const DESCRIPTIONS: Readonly<Record<VoiceProposeToolName, string>> = {
     "Prepare a change to ONE existing lead for the user to confirm on screen. This does NOT save anything. Omit leadName to change the lead currently open on the user's screen; otherwise give the name the user said. Send only the fields being changed. Use propose_convert_lead_to_deal to turn a lead into a deal; this tool cannot set the status to converted.",
   propose_convert_lead_to_deal:
     "Prepare turning ONE lead into a deal, for the user to confirm on screen. This does NOT convert anything: it shows a receipt the user must press a button to execute. Omit leadName for the lead currently open on the user's screen. Do not pass a stage or a pipeline — the CRM chooses them from the lead. Omit dealTitle unless the user named the deal.",
+  propose_create_deal:
+    "Prepare a NEW deal that does not come from a lead, for the user to confirm on screen. This does NOT create the deal: it shows a receipt the user must press a button to execute. Name the company and contact as the user says them; never invent an id. Do not pass a stage, pipeline or probability — the CRM chooses them. If the user is converting an existing lead, use propose_convert_lead_to_deal instead.",
 }
 
 function proposeParameters(name: VoiceProposeToolName): {

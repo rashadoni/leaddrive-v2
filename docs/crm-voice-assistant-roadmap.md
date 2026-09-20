@@ -577,12 +577,14 @@ There is deliberately no `commit_*` tool.
 - [x] V1.2 Add server-side resolvers for users and leads, plus the record the
       browser has on screen. Contacts, companies, pipelines, stages and boards
       are not resolved yet — no shipped action needs them; see V1.2a.
-- [ ] V1.2a Resolvers for contacts, companies, pipelines, stages and boards,
-      when `create_deal` is exposed to the model. `convert_lead_to_deal` no
-      longer needs them: it takes neither a stage nor a pipeline, because the
-      command resolves both from the lead and validates any requested stage
-      against that pipeline's real names — a model guessing "Qualified" would
-      simply be refused.
+- [x] V1.2a Resolvers for companies, contacts and the organization's own entry
+      stage, added with `propose_create_deal`. Stage is read from the default
+      pipeline's configured stages, never hardcoded: `createDealCommand` falls
+      back to the literal name "LEAD" and then validates it against that
+      pipeline, so an organization whose first stage is called something else
+      could not create a deal at all.
+- [ ] V1.2b Resolvers for campaigns, boards and deal tags, when a spoken
+      sentence needs them.
 - [x] V1.3 Accept human-readable names from the model and never trust a
       model-supplied identifier. A test walks every proposal tool's published
       parameters and fails on an id-shaped one.
@@ -895,6 +897,7 @@ implementation branch that advances the roadmap.
 | 2026-09-20 | Execution boundary | Production deployed | PR #245; merge `a7f6c2654`; deploy `35479290362` | Internal-only atomic CRM mutation/result/`succeeded` event; commit remains disabled. |
 | 2026-09-20 | Commit adapter | Production deployed | PR #249; merge `ffcbaa3a4`; active artifact `a9891d6cb`; deploy `35499744499` | Session-only endpoint and three rate-limit scopes are live; receipt UI remains open and no model write-tool is exposed. |
 | 2026-09-20 | Receipt UI shell (U1.1-U1.3) | Production deployed | PR #257; merge `1bbc59e1e`; active artifact `6cca1a5a8`; deploy `35512069725` | Shadow mode: session-scoped store, anchored desktop panel, mobile bottom sheet. No confirm control, no write request, no model commit tool. |
+| 2026-09-20 | Deal creation by voice (V1.2a) | Code complete | Targeted Vitest 1386 green / 2 known-baseline reds; targeted ESLint; i18n parity | `propose_create_deal` resolves company and contact by name and reads the org's own entry stage. No stage, pipeline, probability or id from the model. |
 | 2026-09-20 | Lead conversion by voice | Production deployed | PR #274; merge `685b21857`; active artifact `68f4d358773adef3f123d504d49016268aab707b`; deploy `35520924701` | `propose_convert_lead_to_deal` runs the transactional conversion command, so the deal the word promises is actually created. No stage or pipeline from the model. |
 | 2026-09-20 | Voice actions end to end (U1.4-U1.13, V1.1-V1.5, V1.7) | Production deployed | PR #268; merge `32483389c`; active artifact `32483389c776e01ff5e444b8c69f72f61c9be6ef`; deploy `35517342493` | Speech now prepares a receipt for create_task, create_lead and update_lead; an explicit button executes it. Lead status is inside the voice allow-list, `converted` is not. U1.9a, V1.2a, V1.6 and V1.8-V1.10 remain open. |
 
