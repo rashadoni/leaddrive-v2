@@ -188,7 +188,7 @@ describe("Journey snapshot: the story end to end", () => {
     expect(progress.requiredDone).toBe(progress.requiredTotal)
     expect(progress.sectionsDone).toBe(progress.sectionsTotal)
     expect(sectionStatus(done, manifest, "source")).toBe("done")
-    expect(reachableRoutes(done, manifest).sort()).toEqual(["/boards", "/campaigns", "/deals", "/inbox", "/leads", "/quotes"])
+    expect([...reachableRoutes(done, manifest)].sort()).toEqual(["/boards", "/campaigns", "/deals", "/inbox", "/leads", "/quotes"])
   })
 
   it("never applies an effect twice: replaying a transition on the same records is a no-op", () => {
