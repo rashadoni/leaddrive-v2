@@ -29,6 +29,7 @@ export const VOICE_PROPOSE_TOOL_NAMES = [
   "propose_create_task",
   "propose_create_lead",
   "propose_update_lead",
+  "propose_convert_lead_to_deal",
 ] as const
 
 export type VoiceProposeToolName = (typeof VOICE_PROPOSE_TOOL_NAMES)[number]
@@ -38,6 +39,7 @@ export const VOICE_PROPOSE_ACTION_TYPES: Readonly<Record<VoiceProposeToolName, A
     propose_create_task: "create_task",
     propose_create_lead: "create_lead",
     propose_update_lead: "update_lead",
+    propose_convert_lead_to_deal: "convert_lead_to_deal",
   })
 
 const personName = z.string().trim().min(2).max(120)
@@ -108,6 +110,26 @@ export const VOICE_PROPOSE_SCHEMAS = {
     assigneeName: personName.optional(),
     notes: longText.optional(),
   }),
+  /**
+   * Conversion carries no stage and no pipeline, and that is not a
+   * simplification either.
+   *
+   * `Deal.stage` is a free string and pipelines are configured per
+   * organization — production holds seven spellings of five stages. The
+   * command already resolves the pipeline from the lead and validates any
+   * requested stage against that pipeline's real stage names, so a model
+   * guessing "Qualified" would simply be refused. Letting it guess would turn
+   * "convert this lead" into a coin flip; leaving both out makes the command's
+   * own default the answer, and the receipt shows what that default produced.
+   */
+  propose_convert_lead_to_deal: z.strictObject({
+    /** Omit to convert the lead currently open on screen. */
+    leadName: shortText.optional(),
+    /** Omit to name the deal after the lead's company or contact. */
+    dealTitle: shortText.optional(),
+    dealValue: z.number().nonnegative().finite().optional(),
+    createCompany: z.boolean().optional(),
+  }),
 } as const satisfies Record<VoiceProposeToolName, z.ZodTypeAny>
 
 export type VoiceProposeArgs<T extends VoiceProposeToolName> =
@@ -119,7 +141,9 @@ const DESCRIPTIONS: Readonly<Record<VoiceProposeToolName, string>> = {
   propose_create_lead:
     "Prepare a new lead for the user to confirm on screen. This does NOT create the lead: it shows a receipt the user must press a button to execute. Pass only what the user actually said; never guess a phone, email or owner.",
   propose_update_lead:
-    "Prepare a change to ONE existing lead for the user to confirm on screen. This does NOT save anything. Omit leadName to change the lead currently open on the user's screen; otherwise give the name the user said. Send only the fields being changed. To convert a lead into a deal, say that this must be done on screen — this tool cannot do it.",
+    "Prepare a change to ONE existing lead for the user to confirm on screen. This does NOT save anything. Omit leadName to change the lead currently open on the user's screen; otherwise give the name the user said. Send only the fields being changed. Use propose_convert_lead_to_deal to turn a lead into a deal; this tool cannot set the status to converted.",
+  propose_convert_lead_to_deal:
+    "Prepare turning ONE lead into a deal, for the user to confirm on screen. This does NOT convert anything: it shows a receipt the user must press a button to execute. Omit leadName for the lead currently open on the user's screen. Do not pass a stage or a pipeline — the CRM chooses them from the lead. Omit dealTitle unless the user named the deal.",
 }
 
 function proposeParameters(name: VoiceProposeToolName): {

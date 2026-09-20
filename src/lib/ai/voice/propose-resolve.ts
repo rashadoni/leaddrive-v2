@@ -149,6 +149,28 @@ async function resolveLeadByName(
   }
 }
 
+/**
+ * The lead behind an id the browser supplied, if the caller may see it.
+ *
+ * Used only to name a deal after the lead the user is converting. The id came
+ * from the browser's location, not the model, and this read goes through the
+ * same record filter as everything else — so an id for someone else's lead
+ * simply resolves to nothing.
+ */
+async function readLeadLabel(auth: AuthResult, leadId: string): Promise<string | null> {
+  const where = await applyRecordFilter(auth.orgId, auth.userId, auth.role, "lead", {
+    id: leadId,
+    organizationId: auth.orgId,
+  })
+  const leads = await prisma.lead.findMany({
+    where,
+    select: { id: true, contactName: true, companyName: true },
+    take: 1,
+  })
+  const lead = leads[0] as LeadRow | undefined
+  return lead ? (lead.companyName?.trim() || lead.contactName.trim() || null) : null
+}
+
 /** Record types a voice task may be attached to from the current screen. */
 const RELATABLE_SCREEN_TYPES = new Set(["lead", "deal", "contact", "company", "ticket"])
 
@@ -198,7 +220,7 @@ export async function resolveVoiceProposal(
     }
   }
 
-  if (tool === "propose_update_lead") {
+  if (tool === "propose_update_lead" || tool === "propose_convert_lead_to_deal") {
     if (typeof args.leadName === "string") {
       const lead = await resolveLeadByName(auth, args.leadName)
       if (!lead.ok) {
@@ -215,13 +237,29 @@ export async function resolveVoiceProposal(
         candidates: [],
       }
     }
+  }
 
-    if (Object.keys(payload).length === 0) {
+  if (tool === "propose_update_lead" && Object.keys(payload).length === 0) {
+    return {
+      kind: "invalid",
+      issues: [{ path: "(root)", message: "Name at least one field to change" }],
+    }
+  }
+
+  if (tool === "propose_convert_lead_to_deal" && typeof payload.dealTitle !== "string") {
+    // "Convert this lead" is the whole sentence people actually say. Naming
+    // the deal after the lead is deterministic, and the receipt shows the name
+    // before anything is created — unlike a title the model would invent.
+    const label = targetEntityId ? await readLeadLabel(auth, targetEntityId) : null
+    if (!label) {
       return {
-        kind: "invalid",
-        issues: [{ path: "(root)", message: "Name at least one field to change" }],
+        kind: "clarify",
+        code: "LEAD_NOT_FOUND",
+        field: "leadName",
+        candidates: [],
       }
     }
+    payload.dealTitle = label
   }
 
   return {
