@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { getLocale, getTranslations } from "next-intl/server"
 import { notFound, redirect } from "next/navigation"
 import { ArrowLeft, Building2, CalendarClock, Mail, Phone, ShieldCheck, UserRound } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -11,6 +12,8 @@ import { isSuperAdminSession } from "@/lib/superadmin-guard"
 
 export default async function DemoRequestDetailPage({ params }: { params: Promise<{ id: string }> }) {
   if (!(await isSuperAdminSession())) redirect("/dashboard")
+  const t = await getTranslations("admin.demoCenter")
+  const locale = await getLocale()
   const { id } = await params
   const request = await runWithRlsBypass(() =>
     prisma.demoRequest.findUnique({
@@ -25,6 +28,15 @@ export default async function DemoRequestDetailPage({ params }: { params: Promis
   )
   if (!request) notFound()
 
+  // Named and typed rather than inlined: the chain was long enough that
+  // TypeScript lost the element type and every callback silently became any.
+  type GrantWithEvents = (typeof request.grants)[number]
+  type TrailRow = { event: GrantWithEvents["events"][number]; grant: GrantWithEvents }
+  const accessTrail: TrailRow[] = request.grants
+    .flatMap((grant: GrantWithEvents) => grant.events.map((event) => ({ event, grant })))
+    .sort((a: TrailRow, b: TrailRow) => b.event.occurredAt.getTime() - a.event.occurredAt.getTime())
+    .slice(0, 60)
+
   const moduleOptions = DEMO_MODULE_CATALOG.map(({ id: moduleId, title, summary }) => ({ id: moduleId, title, summary }))
   const moduleTitle = new Map(moduleOptions.map((module) => [module.id, module.title]))
 
@@ -32,7 +44,7 @@ export default async function DemoRequestDetailPage({ params }: { params: Promis
     <div className="space-y-8">
       <header className="border-b border-zinc-200 pb-7 dark:border-zinc-800">
         <Button asChild variant="ghost" size="sm" className="-ml-3 mb-4">
-          <Link href="/admin/demo-requests"><ArrowLeft className="h-4 w-4" />Demo requests</Link>
+          <Link href="/admin/demo-requests"><ArrowLeft className="h-4 w-4" />{t("backToRequests")}</Link>
         </Button>
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -41,10 +53,10 @@ export default async function DemoRequestDetailPage({ params }: { params: Promis
               <span className="text-xs text-zinc-500">Request {request.id.slice(-8)}</span>
             </div>
             <h1 className="mt-3 text-3xl font-bold tracking-tight text-zinc-950 dark:text-zinc-50">{request.company}</h1>
-            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Choose and order the exact demos this prospect may open.</p>
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{t("detailSubtitle")}</p>
           </div>
           <div className="flex items-center gap-2 text-xs text-zinc-500">
-            <CalendarClock className="h-4 w-4" /> Requested {request.createdAt.toLocaleString("en-GB")}
+            <CalendarClock className="h-4 w-4" /> {t("requested")} {request.createdAt.toLocaleString(locale)}
           </div>
         </div>
       </header>
@@ -69,17 +81,17 @@ export default async function DemoRequestDetailPage({ params }: { params: Promis
 
         <aside className="space-y-7">
           <section>
-            <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">Prospect</h2>
+            <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">{t("prospect")}</h2>
             <dl className="mt-4 space-y-4 text-sm">
-              <ContactRow icon={Building2} label="Company" value={request.company} />
-              <ContactRow icon={UserRound} label="Contact" value={`${request.name}${request.jobTitle ? ` · ${request.jobTitle}` : ""}`} />
-              <ContactRow icon={Mail} label="Corporate email" value={request.email} href={`mailto:${request.email}`} />
-              <ContactRow icon={Phone} label="Phone" value={request.phone || "Not provided"} href={request.phone ? `tel:${request.phone}` : undefined} />
+              <ContactRow icon={Building2} label={t("company")} value={request.company} />
+              <ContactRow icon={UserRound} label={t("contact")} value={`${request.name}${request.jobTitle ? ` · ${request.jobTitle}` : ""}`} />
+              <ContactRow icon={Mail} label={t("corporateEmail")} value={request.email} href={`mailto:${request.email}`} />
+              <ContactRow icon={Phone} label={t("phone")} value={request.phone || t("notProvided")} href={request.phone ? `tel:${request.phone}` : undefined} />
             </dl>
           </section>
           {request.message ? (
             <section className="border-t border-zinc-200 pt-6 dark:border-zinc-800">
-              <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">Request note</h2>
+              <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">{t("requestNote")}</h2>
               <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-zinc-700 dark:text-zinc-300">{request.message}</p>
             </section>
           ) : null}
@@ -87,7 +99,7 @@ export default async function DemoRequestDetailPage({ params }: { params: Promis
             <div className="flex items-start gap-3">
               <ShieldCheck className="mt-0.5 h-5 w-5 text-emerald-700" />
               <p className="text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-                Starting a demo never creates a tenant account. Only the selected static manifests are returned after OTP verification.
+                {t("noTenantNote")}
               </p>
             </div>
           </section>
@@ -96,13 +108,13 @@ export default async function DemoRequestDetailPage({ params }: { params: Promis
 
       {request.grants.length ? (
         <section className="border-t border-zinc-200 pt-7 dark:border-zinc-800">
-          <h2 className="text-lg font-semibold text-zinc-950 dark:text-zinc-50">Access history</h2>
+          <h2 className="text-lg font-semibold text-zinc-950 dark:text-zinc-50">{t("accessHistory")}</h2>
           <div className="mt-4 divide-y divide-zinc-200 rounded-xl border border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900">
-            {request.grants.flatMap((grant) => grant.events.map((event) => ({ event, grant }))).sort((a, b) => b.event.occurredAt.getTime() - a.event.occurredAt.getTime()).slice(0, 60).map(({ event, grant }) => (
+            {accessTrail.map(({ event, grant }) => (
               <div key={event.id} className="grid gap-1 px-4 py-3 text-sm sm:grid-cols-[150px_1fr_auto] sm:items-center">
                 <span className="font-medium text-zinc-900 dark:text-zinc-100">{event.eventType.replaceAll("_", " ")}</span>
                 <span className="text-zinc-500">{event.moduleId ? moduleTitle.get(event.moduleId) || event.moduleId : `Grant ···${grant.tokenHint}`}{event.stepId ? ` · ${event.stepId}` : ""}</span>
-                <time className="text-xs tabular-nums text-zinc-400">{event.occurredAt.toLocaleString("en-GB")}</time>
+                <time className="text-xs tabular-nums text-zinc-400">{event.occurredAt.toLocaleString(locale)}</time>
               </div>
             ))}
           </div>

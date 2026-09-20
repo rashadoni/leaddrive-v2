@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { getLocale, getTranslations } from "next-intl/server"
 import { redirect } from "next/navigation"
 import { ArrowRight, Building2, Clock3, Eye, Inbox, ShieldCheck } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -15,20 +16,10 @@ const statusStyle: Record<string, string> = {
   REJECTED: "border-zinc-300 bg-zinc-100 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200",
 }
 
-const grantLabel: Record<string, string> = {
-  SENT: "Link sent",
-  OTP_SENT: "OTP sent",
-  OTP_VERIFIED: "Verified",
-  ACTIVE: "In session",
-  COMPLETED: "Completed",
-  EXPIRED: "Expired",
-  REVOKED: "Revoked",
-  DELIVERY_FAILED: "Delivery failed",
-  ISSUING: "Preparing",
-}
-
 export default async function DemoRequestsPage() {
   if (!(await isSuperAdminSession())) redirect("/dashboard")
+  const t = await getTranslations("admin.demoCenter")
+  const locale = await getLocale()
 
   const [requests, submitted, activeSessions, completed] = await runWithRlsBypass(() =>
     Promise.all([
@@ -39,7 +30,7 @@ export default async function DemoRequestsPage() {
           grants: {
             take: 1,
             orderBy: { createdAt: "desc" },
-            select: { id: true, status: true, moduleIds: true, sentAt: true, sessionStartedAt: true, completedAt: true },
+            select: { id: true, status: true, moduleIds: true, scenarioId: true, sentAt: true, sessionStartedAt: true, completedAt: true },
           },
         },
       }),
@@ -50,28 +41,28 @@ export default async function DemoRequestsPage() {
   )
 
   const stats = [
-    { label: "Awaiting review", value: submitted, icon: Inbox },
-    { label: "Active sessions", value: activeSessions, icon: Eye },
-    { label: "Completed", value: completed, icon: ShieldCheck },
+    { label: t("awaitingReview"), value: submitted, icon: Inbox },
+    { label: t("activeSessions"), value: activeSessions, icon: Eye },
+    { label: t("completed"), value: completed, icon: ShieldCheck },
   ]
 
   return (
     <div className="space-y-8">
       <header className="grid gap-5 border-b border-zinc-200 pb-7 dark:border-zinc-800 lg:grid-cols-[1fr_auto] lg:items-end">
         <div className="max-w-3xl">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-orange-700">Private sales workspace</p>
-          <h1 className="text-3xl font-bold tracking-tight text-zinc-950 dark:text-zinc-50">Demo Center</h1>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-orange-700">{t("subtitle")}</p>
+          <h1 className="text-3xl font-bold tracking-tight text-zinc-950 dark:text-zinc-50">{t("title")}</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-            Review corporate requests, choose any of the 19 curated module tours, and issue one protected browser session.
+            {t("headerBody")}
           </p>
         </div>
         <div className="flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-4 py-2 text-xs font-medium text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
           <ShieldCheck className="h-4 w-4 text-emerald-700" />
-          Tenant access is never granted
+          {t("neverTenant")}
         </div>
       </header>
 
-      <section className="grid gap-4 sm:grid-cols-3" aria-label="Demo request summary">
+      <section className="grid gap-4 sm:grid-cols-3" aria-label={t("summaryAria")}>
         {stats.map((stat) => {
           const Icon = stat.icon
           return (
@@ -89,14 +80,14 @@ export default async function DemoRequestsPage() {
       {requests.length === 0 ? (
         <Card className="flex min-h-72 flex-col items-center justify-center border-dashed p-10 text-center shadow-none">
           <Inbox className="h-8 w-8 text-zinc-400" />
-          <h2 className="mt-4 text-lg font-semibold">No demo requests yet</h2>
-          <p className="mt-2 max-w-md text-sm text-muted-foreground">New corporate requests from the public demo form will appear here.</p>
-          <Button asChild variant="outline" className="mt-5"><Link href="/demo">Open public form</Link></Button>
+          <h2 className="mt-4 text-lg font-semibold">{t("emptyTitle")}</h2>
+          <p className="mt-2 max-w-md text-sm text-muted-foreground">{t("emptyBody")}</p>
+          <Button asChild variant="outline" className="mt-5"><Link href="/demo">{t("openPublicForm")}</Link></Button>
         </Card>
       ) : (
         <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
           <div className="hidden grid-cols-[minmax(220px,1.2fr)_minmax(190px,1fr)_150px_150px_48px] gap-4 border-b border-zinc-200 bg-zinc-50 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950/60 dark:text-zinc-400 md:grid">
-            <span>Company</span><span>Contact</span><span>Request</span><span>Access</span><span />
+            <span>{t("colCompany")}</span><span>{t("colContact")}</span><span>{t("colRequest")}</span><span>{t("colAccess")}</span><span />
           </div>
           <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
             {requests.map((request) => {
@@ -111,18 +102,18 @@ export default async function DemoRequestsPage() {
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"><Building2 className="h-4 w-4" /></span>
                     <div className="min-w-0">
                       <p className="truncate font-semibold text-zinc-950 dark:text-zinc-50">{request.company}</p>
-                      <p className="mt-0.5 flex items-center gap-1 text-xs text-zinc-500"><Clock3 className="h-3 w-3" />{request.createdAt.toLocaleDateString("en-GB")}</p>
+                      <p className="mt-0.5 flex items-center gap-1 text-xs text-zinc-500"><Clock3 className="h-3 w-3" />{request.createdAt.toLocaleDateString(locale)}</p>
                     </div>
                   </div>
                   <div className="min-w-0 text-sm">
                     <p className="truncate font-medium text-zinc-800 dark:text-zinc-200">{request.name}</p>
                     <p className="truncate text-zinc-500">{request.email}</p>
                   </div>
-                  <div><Badge variant="outline" className={statusStyle[request.status] || ""}>{request.status.replaceAll("_", " ")}</Badge></div>
+                  <div><Badge variant="outline" className={statusStyle[request.status] || ""}>{t(`requestStatus.${request.status}` as never)}</Badge></div>
                   <div className="text-sm text-zinc-600">
                     {grant ? (
-                      <><p className="font-medium text-zinc-800 dark:text-zinc-200">{grantLabel[grant.status] || grant.status}</p><p className="mt-0.5 text-xs">{grant.moduleIds.length} modules</p></>
-                    ) : <span className="text-zinc-400">Not issued</span>}
+                      <><p className="font-medium text-zinc-800 dark:text-zinc-200">{t(`grant.${grant.status}` as never)}</p><p className="mt-0.5 text-xs">{grant.scenarioId ? t("journeyIssued") : t("modulesIssued", { count: grant.moduleIds.length })}</p></>
+                    ) : <span className="text-zinc-400">{t("notIssued")}</span>}
                   </div>
                   <ArrowRight className="hidden h-4 w-4 text-zinc-400 transition-transform group-hover:translate-x-1 md:block" />
                 </Link>

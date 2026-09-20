@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { ArrowDown, ArrowUp, Check, Clock3, Eye, KeyRound, RotateCcw, Send, ShieldX } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -37,6 +38,7 @@ export function DemoRequestEditor({
   grants: GrantSummary[]
 }) {
   const router = useRouter()
+  const t = useTranslations("admin.demoCenter")
   const validRequested = requestedModuleIds.filter((id) => modules.some((module) => module.id === id))
   // What the prospect actually receives. The guided journey is the default:
   // the module playlist is the older shape the owner asked to replace, kept
@@ -80,7 +82,7 @@ export function DemoRequestEditor({
 
   async function issueDemo() {
     const journey = mode === "journey"
-    if (!journey && !selected.length) return setError("Select at least one module before issuing access.")
+    if (!journey && !selected.length) return setError(t("errSelectModule"))
     setBusy("issue")
     setError(null)
     setSuccess(null)
@@ -98,13 +100,13 @@ export function DemoRequestEditor({
         }),
       })
       const result = await response.json().catch(() => ({})) as { error?: string }
-      if (!response.ok) throw new Error(result.error || "The demo could not be issued")
+      if (!response.ok) throw new Error(result.error || t("errIssue"))
       setSuccess(journey
-        ? `Access email sent for the guided journey (${journeySectionCount} sections).`
-        : `Access email sent with ${selected.length} selected module${selected.length === 1 ? "" : "s"}.`)
+        ? t("okJourney", { sections: journeySectionCount })
+        : t("okModules", { count: selected.length }))
       router.refresh()
     } catch (issueError) {
-      setError(issueError instanceof Error ? issueError.message : "The demo could not be issued")
+      setError(issueError instanceof Error ? issueError.message : t("errIssue"))
     } finally {
       setBusy(null)
     }
@@ -117,14 +119,14 @@ export function DemoRequestEditor({
       const response = await fetch(`/api/v1/admin/demo-grants/${grantId}/revoke`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason: "Revoked from Demo Center" }),
+        body: JSON.stringify({ reason: t("revokedFromCenter") }),
       })
       const result = await response.json().catch(() => ({})) as { error?: string }
-      if (!response.ok) throw new Error(result.error || "Access could not be revoked")
-      setSuccess("Demo access revoked immediately.")
+      if (!response.ok) throw new Error(result.error || t("errRevoke"))
+      setSuccess(t("okRevoked"))
       router.refresh()
     } catch (revokeError) {
-      setError(revokeError instanceof Error ? revokeError.message : "Access could not be revoked")
+      setError(revokeError instanceof Error ? revokeError.message : t("errRevoke"))
     } finally {
       setBusy(null)
     }
@@ -141,11 +143,11 @@ export function DemoRequestEditor({
         body: JSON.stringify({ reason }),
       })
       const result = await response.json().catch(() => ({})) as { error?: string }
-      if (!response.ok) throw new Error(result.error || "Request could not be rejected")
-      setSuccess("Request rejected and every open grant revoked.")
+      if (!response.ok) throw new Error(result.error || t("errReject"))
+      setSuccess(t("okRejected"))
       router.refresh()
     } catch (rejectError) {
-      setError(rejectError instanceof Error ? rejectError.message : "Request could not be rejected")
+      setError(rejectError instanceof Error ? rejectError.message : t("errReject"))
     } finally {
       setBusy(null)
     }
@@ -154,7 +156,7 @@ export function DemoRequestEditor({
   return (
     <div className="space-y-8">
       <section>
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">1 · Choose what the prospect receives</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">{t("step1")}</p>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <button
             type="button"
@@ -162,9 +164,9 @@ export function DemoRequestEditor({
             aria-pressed={mode === "journey"}
             className={`rounded-xl border p-4 text-left transition-colors ${mode === "journey" ? "border-orange-500 bg-orange-50 dark:bg-orange-950/20" : "border-zinc-200 hover:border-zinc-300 dark:border-zinc-700"}`}
           >
-            <span className="text-sm font-semibold text-zinc-950 dark:text-zinc-50">Guided journey</span>
+            <span className="text-sm font-semibold text-zinc-950 dark:text-zinc-50">{t("journeyTitle")}</span>
             <span className="mt-1 block text-xs leading-5 text-zinc-500">
-              {PROSPECT_TO_CLOSED_WON.title} — {journeySectionCount} sections, ~{journeyMinutes} min, on the real product screens.
+              {t("journeyBody", { sections: journeySectionCount, minutes: journeyMinutes })}
             </span>
           </button>
           <button
@@ -173,9 +175,9 @@ export function DemoRequestEditor({
             aria-pressed={mode === "modules"}
             className={`rounded-xl border p-4 text-left transition-colors ${mode === "modules" ? "border-orange-500 bg-orange-50 dark:bg-orange-950/20" : "border-zinc-200 hover:border-zinc-300 dark:border-zinc-700"}`}
           >
-            <span className="text-sm font-semibold text-zinc-950 dark:text-zinc-50">Module playlist</span>
+            <span className="text-sm font-semibold text-zinc-950 dark:text-zinc-50">{t("playlistTitle")}</span>
             <span className="mt-1 block text-xs leading-5 text-zinc-500">
-              The older synthetic tour across 19 module summaries. Kept for requests already planned that way.
+              {t("playlistBody")}
             </span>
           </button>
         </div>
@@ -184,12 +186,12 @@ export function DemoRequestEditor({
       <section className={mode === "modules" ? "" : "hidden"}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">2 · Build the playlist</p>
-            <h2 className="mt-2 text-xl font-semibold text-zinc-950 dark:text-zinc-50">Choose from 19 demos</h2>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">{t("step2")}</p>
+            <h2 className="mt-2 text-xl font-semibold text-zinc-950 dark:text-zinc-50">{t("chooseModules")}</h2>
           </div>
           <div className="flex gap-2">
-            <Button type="button" variant="ghost" size="sm" onClick={() => setSelected([])}>Clear</Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => setSelected(modules.map((module) => module.id))}>Select all</Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setSelected([])}>{t("clear")}</Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => setSelected(modules.map((module) => module.id))}>{t("selectAll")}</Button>
           </div>
         </div>
 
@@ -229,38 +231,38 @@ export function DemoRequestEditor({
               </li>
             ))}
           </ol>
-        ) : <p className="mt-4 rounded-xl border border-dashed border-zinc-300 px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">Select modules above to create the prospect&apos;s private playlist.</p>}
+        ) : <p className="mt-4 rounded-xl border border-dashed border-zinc-300 px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">{t("orderHint")}</p>}
       </section>
 
       <section className="border-t border-zinc-200 pt-7 dark:border-zinc-800">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">3 · Issue one session</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          <Setting label="Link valid for" suffix="days" value={linkValidDays} onChange={setLinkValidDays} min={1} max={30} />
-          <Setting label="Session limit" suffix="minutes" value={sessionMinutes} onChange={setSessionMinutes} min={15} max={240} />
-          <Setting label="Idle timeout" suffix="minutes" value={inactivityMinutes} onChange={setInactivityMinutes} min={5} max={60} />
+          <Setting label={t("linkValidFor")} suffix={t("days")} value={linkValidDays} onChange={setLinkValidDays} min={1} max={30} />
+          <Setting label={t("sessionLimit")} suffix={t("minutes")} value={sessionMinutes} onChange={setSessionMinutes} min={15} max={240} />
+          <Setting label={t("idleTimeout")} suffix={t("minutes")} value={inactivityMinutes} onChange={setInactivityMinutes} min={5} max={60} />
         </div>
         <div className="mt-5 flex flex-col gap-4 rounded-xl bg-zinc-900 p-5 text-zinc-100 lg:flex-row lg:items-center lg:justify-between dark:bg-zinc-100 dark:text-zinc-900">
           <div className="flex items-start gap-3">
             <KeyRound className="mt-0.5 h-5 w-5 text-orange-400" />
-            <div><p className="text-sm font-semibold">Preview first, then issue one protected session</p><p className="mt-1 max-w-xl text-xs leading-5 text-zinc-400 dark:text-zinc-600">Preview uses only synthetic data and sends nothing. Issuing creates the OTP-protected client link and revokes the previous open grant.</p></div>
+            <div><p className="text-sm font-semibold">{t("issueTitle")}</p><p className="mt-1 max-w-xl text-xs leading-5 text-zinc-400 dark:text-zinc-600">Preview uses only synthetic data and sends nothing. Issuing creates the OTP-protected client link and revokes the previous open grant.</p></div>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
             {/* The preview always shows what "Issue and send" would deliver —
                 two buttons here invited previewing one and issuing the other. */}
             {mode === "journey" ? (
               <Button asChild variant="outline" className="min-h-11 shrink-0 border-zinc-600 bg-transparent text-zinc-100 hover:bg-zinc-800 hover:text-white dark:border-zinc-400 dark:text-zinc-900 dark:hover:bg-zinc-200">
-                <a href={journeyPreviewHref} target="_blank" rel="noreferrer"><Eye className="h-4 w-4" />Preview guided journey</a>
+                <a href={journeyPreviewHref} target="_blank" rel="noreferrer"><Eye className="h-4 w-4" />{t("previewJourney")}</a>
               </Button>
             ) : selected.length ? (
               <Button asChild variant="outline" className="min-h-11 shrink-0 border-zinc-600 bg-transparent text-zinc-100 hover:bg-zinc-800 hover:text-white dark:border-zinc-400 dark:text-zinc-900 dark:hover:bg-zinc-200">
-                <a href={previewHref} target="_blank" rel="noreferrer"><Eye className="h-4 w-4" />Preview selected</a>
+                <a href={previewHref} target="_blank" rel="noreferrer"><Eye className="h-4 w-4" />{t("previewSelected")}</a>
               </Button>
             ) : (
-              <Button type="button" variant="outline" disabled className="min-h-11 shrink-0 border-zinc-600 bg-transparent text-zinc-100 dark:border-zinc-400 dark:text-zinc-900"><Eye className="h-4 w-4" />Preview selected</Button>
+              <Button type="button" variant="outline" disabled className="min-h-11 shrink-0 border-zinc-600 bg-transparent text-zinc-100 dark:border-zinc-400 dark:text-zinc-900"><Eye className="h-4 w-4" />{t("previewSelected")}</Button>
             )}
             <Button type="button" disabled={busy !== null || (mode === "modules" && !selected.length) || requestStatus === "REJECTED"} onClick={issueDemo} className="min-h-11 shrink-0 bg-orange-600 text-white hover:bg-orange-700">
               {busy === "issue" ? <Clock3 className="h-4 w-4 animate-spin" /> : latestGrant ? <RotateCcw className="h-4 w-4" /> : <Send className="h-4 w-4" />}
-              {latestGrant ? "Reissue and send" : "Issue and send"}
+              {latestGrant ? t("reissueAndSend") : t("issueAndSend")}
             </Button>
           </div>
         </div>
@@ -270,7 +272,7 @@ export function DemoRequestEditor({
 
       {grants.length ? (
         <section className="border-t border-zinc-200 pt-7 dark:border-zinc-800">
-          <h2 className="text-base font-semibold">Issued access</h2>
+          <h2 className="text-base font-semibold">{t("issuedAccess")}</h2>
           <div className="mt-4 space-y-3">
             {grants.map((grant) => (
               <div key={grant.id} className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:flex-row sm:items-center sm:justify-between">
@@ -279,7 +281,7 @@ export function DemoRequestEditor({
                   <p className="mt-2 text-xs text-zinc-500">Expires {new Date(grant.expiresAt).toLocaleString("en-GB")}{grant.openedAt ? ` · opened ${new Date(grant.openedAt).toLocaleString("en-GB")}` : ""}</p>
                 </div>
                 {!CLOSED_GRANT_STATUSES.has(grant.status) && grant.status !== "DELIVERY_FAILED" ? (
-                  <Button type="button" variant="outline" size="sm" disabled={busy !== null} onClick={() => revoke(grant.id)}><ShieldX className="h-4 w-4" />Revoke access</Button>
+                  <Button type="button" variant="outline" size="sm" disabled={busy !== null} onClick={() => revoke(grant.id)}><ShieldX className="h-4 w-4" />{t("revokeAccess")}</Button>
                 ) : null}
               </div>
             ))}
@@ -289,10 +291,10 @@ export function DemoRequestEditor({
 
       {requestStatus !== "REJECTED" ? (
         <details className="border-t border-zinc-200 pt-6 dark:border-zinc-800">
-          <summary className="cursor-pointer text-sm font-medium text-zinc-600">Reject this request</summary>
+          <summary className="cursor-pointer text-sm font-medium text-zinc-600">{t("rejectTitle")}</summary>
           <form action={reject} className="mt-4 flex flex-col gap-3 sm:flex-row">
-            <Input required minLength={3} maxLength={500} name="reason" placeholder="Reason recorded in the admin history" />
-            <Button type="submit" variant="destructive" disabled={busy !== null}>Reject and revoke</Button>
+            <Input required minLength={3} maxLength={500} name="reason" placeholder={t("rejectReasonPlaceholder")} />
+            <Button type="submit" variant="destructive" disabled={busy !== null}>{t("rejectAndRevoke")}</Button>
           </form>
         </details>
       ) : null}

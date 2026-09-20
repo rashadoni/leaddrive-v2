@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { DemoLocaleProvider } from "@/components/demo-center/journey/demo-locale"
 import { OpenDemo } from "@/components/demo-center/journey/open-demo"
 
 export const dynamic = "force-dynamic"
@@ -27,5 +28,9 @@ export default async function OpenDemoPage({
 }) {
   const query = await searchParams
   const first = (value?: string | string[]) => (Array.isArray(value) ? value[0] : value)
-  return <OpenDemo name={first(query.name)} company={first(query.company)} />
+  return (
+    <DemoLocaleProvider>
+      <OpenDemo name={first(query.name)} company={first(query.company)} />
+    </DemoLocaleProvider>
+  )
 }
