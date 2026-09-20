@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { withMobileRls } from "@/lib/with-mobile-rls"
 import { requireMobilePermission } from "@/lib/mtm/mobile-capabilities"
 import { resolveMtmRouteActor } from "@/lib/mtm/route-permissions"
+import { pushConfigured } from "@/lib/mtm/push-send"
 
 /**
  * Where a push can be delivered.
@@ -97,7 +98,11 @@ export const POST = withMobileRls(async (req, auth) => {
     })
   }
 
-  return NextResponse.json({ success: true, data: saved })
+  // Whether this deployment can send at all. The app shows it on the
+  // notifications screen: a phone whose address arrived but whose server has
+  // no key is silent for a reason nobody could see from the phone, and an
+  // agent who believes the phone will buzz stops opening the app.
+  return NextResponse.json({ success: true, data: { ...saved, pushEnabled: pushConfigured() } })
 }, { requiredCapability: "route-field" })
 
 export const DELETE = withMobileRls(async (req, auth) => {
