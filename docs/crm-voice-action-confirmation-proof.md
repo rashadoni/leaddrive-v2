@@ -61,5 +61,7 @@ execution lifecycle transitions follow the same rule.
 This endpoint does not set `confirmedAt`, move the intent to `executing`, call
 a canonical CRM command, or mutate a lead, deal or task. A commit route is not
 present. The future route must consume the event/token once, repeat all access
-and target checks, claim execution by compare-and-swap, and close the crash
-window between the CRM mutation and stored result before writes are enabled.
+and target checks, and claim execution by compare-and-swap. The internal atomic
+command/result boundary is now implemented separately; it remains unreachable
+until that commit route and lease lifecycle are complete. See
+`docs/crm-voice-action-execution-boundary.md`.

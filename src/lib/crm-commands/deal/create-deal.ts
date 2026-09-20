@@ -1,9 +1,13 @@
-import type { Deal } from "@prisma/client"
+import type { Deal, Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { getFieldPermissions } from "@/lib/field-filter"
 import { DEFAULT_CURRENCY } from "@/lib/constants"
 import { decimalToNumber } from "@/lib/prisma-decimal"
 import type { CrmCommandActorContext } from "../actor-context"
+import {
+  dispatchOrDeferCommandEffects,
+  type CrmCommandExecutionContext,
+} from "../execution-context"
 import { validationError } from "../errors"
 import { requireWritableFields } from "../field-permissions"
 import { createDealCommandSchema, type CreateDealCommandInput } from "../schemas/deal"
@@ -38,10 +42,11 @@ function firstValidationMessage(error: { issues: Array<{ message: string }> }): 
 }
 
 async function findDuplicateCandidates(
+  db: Pick<Prisma.TransactionClient, "deal">,
   organizationId: string,
   input: CreateDealCommandInput,
 ): Promise<DealDuplicateCandidate[]> {
-  const candidates = await prisma.deal.findMany({
+  const candidates = await db.deal.findMany({
     where: {
       organizationId,
       name: { equals: input.name, mode: "insensitive" },
@@ -69,11 +74,13 @@ async function findDuplicateCandidates(
 export async function createDealCommand(
   actor: CrmCommandActorContext,
   rawInput: unknown,
+  execution?: CrmCommandExecutionContext,
 ): Promise<CreateDealCommandResult> {
   const parsed = createDealCommandSchema.safeParse(rawInput)
   if (!parsed.success) throw validationError(firstValidationMessage(parsed.error))
 
   const { organizationId: orgId, role, userId } = actor
+  const db = execution?.transaction ?? prisma
   const fieldPermissions = await getFieldPermissions(orgId, role, "deal")
   const input = requireWritableFields(
     parsed.data as Record<string, unknown>,
@@ -82,28 +89,28 @@ export async function createDealCommand(
   ) as CreateDealCommandInput
 
   if (input.contactId) {
-    const contact = await prisma.contact.findFirst({
+    const contact = await db.contact.findFirst({
       where: { id: input.contactId, organizationId: orgId },
       select: { id: true },
     })
     if (!contact) throw validationError("Invalid contactId")
   }
   if (input.companyId) {
-    const company = await prisma.company.findFirst({
+    const company = await db.company.findFirst({
       where: { id: input.companyId, organizationId: orgId },
       select: { id: true },
     })
     if (!company) throw validationError("Invalid companyId")
   }
   if (input.campaignId) {
-    const campaign = await prisma.campaign.findFirst({
+    const campaign = await db.campaign.findFirst({
       where: { id: input.campaignId, organizationId: orgId },
       select: { id: true },
     })
     if (!campaign) throw validationError("Invalid campaignId")
   }
   if (input.assignedTo) {
-    const assignee = await prisma.user.findFirst({
+    const assignee = await db.user.findFirst({
       where: { id: input.assignedTo, organizationId: orgId, isActive: true },
       select: { id: true },
     })
@@ -112,13 +119,13 @@ export async function createDealCommand(
 
   let pipelineId = input.pipelineId ?? null
   if (pipelineId) {
-    const selectedPipeline = await prisma.pipeline.findFirst({
+    const selectedPipeline = await db.pipeline.findFirst({
       where: { id: pipelineId, organizationId: orgId, isActive: true },
       select: { id: true },
     })
     if (!selectedPipeline) throw validationError("Invalid pipelineId")
   } else {
-    const defaultPipeline = await prisma.pipeline.findFirst({
+    const defaultPipeline = await db.pipeline.findFirst({
       where: { organizationId: orgId, isDefault: true, isActive: true },
       select: { id: true },
     })
@@ -128,7 +135,7 @@ export async function createDealCommand(
   const stage = input.stage ?? "LEAD"
   let probability = input.probability
   if (pipelineId) {
-    const pipelineStage = await prisma.pipelineStage.findFirst({
+    const pipelineStage = await db.pipelineStage.findFirst({
       where: {
         organizationId: orgId,
         pipelineId,
@@ -143,8 +150,8 @@ export async function createDealCommand(
     throw validationError("A pipeline is required when stage is provided")
   }
 
-  const duplicateCandidates = await findDuplicateCandidates(orgId, input)
-  const deal = await prisma.deal.create({
+  const duplicateCandidates = await findDuplicateCandidates(db, orgId, input)
+  const deal = await db.deal.create({
     data: {
       organizationId: orgId,
       name: input.name,
@@ -167,7 +174,10 @@ export async function createDealCommand(
     },
   })
 
-  const dealValue = dispatchDealCreatedEffects(orgId, deal)
+  const dealValue = decimalToNumber(deal.valueAmount)
+  dispatchOrDeferCommandEffects(execution, () => {
+    dispatchDealCreatedEffects(orgId, deal)
+  })
   const entity = { ...deal, valueAmount: dealValue }
 
   return {

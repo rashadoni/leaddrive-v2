@@ -279,3 +279,60 @@ CI PR #244: static checks и полный unit baseline прошли. Первы
 production-код ошибок не добавил. Проверка события переписана через типобезопасный
 `toHaveBeenCalledWith`, без изменения runtime-поведения. Далее нужен повторный
 CI этого fix-коммита.
+
+## Итог 2026-09-20: атомарный draft ledger на production
+
+Срез полностью завершён и развёрнут:
+
+- основной checkpoint `27cab7ab0`;
+- type-safe test fix `681f8e5fc`;
+- PR #244;
+- повторный CI: scope, secret scan, runner policy, static checks, полный unit
+  baseline и defect-shaped typecheck — успешно;
+- merge SHA `921aa9d3406dc37e0e8716de11c82d3d6cd3ecae`;
+- deploy workflow `35476428436` — успешно, включая quality/security gates,
+  immutable artifact, atomic production switch и post-deploy smoke;
+- независимый `/api/v1/ping` вернул `{"ok":true}`;
+- независимый `/api/v1/public/build-info` подтвердил точный
+  `artifactSha=921aa9d3406dc37e0e8716de11c82d3d6cd3ecae`.
+
+На production события `drafted`, `draft_updated`, `cancelled` и `expired`
+теперь атомарны с изменением intent. Голосовая CRM-запись всё ещё выключена:
+commit endpoint отсутствует, confirmation proof не потребляется, execution
+lease и terminal result ещё не реализованы.
+
+Точка остановки: следующий технический риск — crash ambiguity между успешной
+канонической CRM-командой и сохранением receipt-result. Следующее действие —
+сделать command/result boundary идемпотентной и восстановимой для пяти команд,
+а затем включать single-use proof consumption, execution CAS/lease и commit
+endpoint.
+
+## Продолжение 2026-09-20: атомарная execution boundary
+
+Устранено crash ambiguity между CRM-записью и сохранением результата intent:
+
+- пять канонических команд принимают внутренний transaction context;
+- CRM-мутация, переход intent в `succeeded`, минимальный result receipt и
+  immutable-событие `succeeded` выполняются в одной транзакции;
+- terminal compare-and-swap привязан к tenant, user, revision, payload hash,
+  lease token и неистёкшему lease;
+- при проигранном CAS или ошибке команды вся CRM-мутация откатывается;
+- после успешного commit повтор с тем же lease возвращает сохранённый результат
+  и не вызывает команду повторно;
+- workflows, notifications, webhooks, scoring, audit helpers и rollups
+  откладываются до успешного завершения транзакции.
+
+Важные ограничения сохранены: executor внутренний, API-маршрута commit нет,
+confirmation proof ещё не потребляется, execution claim/recovery ещё не
+реализованы, write-tool модели не добавлен. Надёжная повторная доставка внешних
+побочных эффектов остаётся отдельной задачей transactional outbox (C1.12).
+
+Проверки текущего дерева: targeted ESLint — успешно; 5 целевых test files / 228
+tests — успешно. Полный typecheck/build локально не запускались по host
+contract и должны пройти в GitHub CI.
+
+Точка остановки этой записи: код, unit/regression tests и архитектурная
+документация execution boundary готовы локально. Следующее действие —
+checkpoint commit, push, PR, полный CI, merge и production deploy. После этого
+можно реализовывать атомарное single-use proof consumption + execution claim и
+lease recovery до появления commit endpoint.

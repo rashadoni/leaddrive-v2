@@ -7,6 +7,10 @@ import { createNotification } from "@/lib/notifications"
 import { fireWebhooks } from "@/lib/webhooks"
 import { triggerSurveysOnLeadConverted } from "@/lib/survey-triggers"
 import type { CrmCommandActorContext } from "../actor-context"
+import {
+  dispatchOrDeferCommandEffects,
+  type CrmCommandExecutionContext,
+} from "../execution-context"
 import { notFoundError, staleWriteError, validationError } from "../errors"
 import { requireWritableFields } from "../field-permissions"
 import {
@@ -170,6 +174,7 @@ export async function convertLeadToDealCommand(
   actor: CrmCommandActorContext,
   leadId: string,
   rawInput: unknown,
+  execution?: CrmCommandExecutionContext,
 ): Promise<ConvertLeadToDealCommandResult> {
   const parsed = convertLeadToDealCommandSchema.safeParse(rawInput)
   if (!parsed.success) throw validationError(firstValidationMessage(parsed.error))
@@ -184,7 +189,7 @@ export async function convertLeadToDealCommand(
     organizationId: orgId,
   })
 
-  const transactionResult = await prisma.$transaction(async (tx) => {
+  const executeConversion = async (tx: Prisma.TransactionClient) => {
     const lead = await tx.lead.findFirst({ where: visibleWhere })
     if (!lead) throw notFoundError("Lead not found")
     if (lead.status === "converted") throw validationError("Lead already converted")
@@ -298,14 +303,19 @@ export async function convertLeadToDealCommand(
       },
       convertedLead,
     }
-  })
+  }
+  const transactionResult = execution?.transaction
+    ? await executeConversion(execution.transaction)
+    : await prisma.$transaction(executeConversion)
 
-  dispatchDealCreatedEffects(orgId, transactionResult.result.deal)
-  dispatchLeadConvertedEffects(
-    orgId,
-    userId,
-    transactionResult.convertedLead,
-    transactionResult.result,
-  )
+  dispatchOrDeferCommandEffects(execution, () => {
+    dispatchDealCreatedEffects(orgId, transactionResult.result.deal)
+    dispatchLeadConvertedEffects(
+      orgId,
+      userId,
+      transactionResult.convertedLead,
+      transactionResult.result,
+    )
+  })
   return transactionResult.result
 }

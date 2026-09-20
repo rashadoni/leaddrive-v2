@@ -20,6 +20,10 @@ import {
 } from "@/lib/tasks/board-hierarchy"
 import { isValidTaskType, isValidEventType } from "@/lib/tasks/task-types"
 import type { CrmCommandActorContext } from "../actor-context"
+import {
+  dispatchOrDeferCommandEffects,
+  type CrmCommandExecutionContext,
+} from "../execution-context"
 import { forbiddenError, validationError } from "../errors"
 import { requireWritableFields } from "../field-permissions"
 import { createTaskCommandSchema, type CreateTaskCommandInput } from "../schemas/task"
@@ -42,11 +46,13 @@ function isTaskKeyRace(error: unknown): boolean {
 export async function createTaskCommand(
   actor: CrmCommandActorContext,
   rawInput: unknown,
+  execution?: CrmCommandExecutionContext,
 ): Promise<CreateTaskCommandResult> {
   const parsed = createTaskCommandSchema.safeParse(rawInput)
   if (!parsed.success) throw validationError(firstValidationMessage(parsed.error))
 
   const { organizationId: orgId, userId, role } = actor
+  const db = execution?.transaction ?? prisma
   const fieldPermissions = await getFieldPermissions(orgId, role, "task")
   const input = requireWritableFields(
     parsed.data as Record<string, unknown>,
@@ -69,7 +75,7 @@ export async function createTaskCommand(
   }
 
   if (input.assignedTo) {
-    const assignee = await prisma.user.findFirst({
+    const assignee = await db.user.findFirst({
       where: { id: input.assignedTo, organizationId: orgId, isActive: true },
       select: { id: true },
     })
@@ -82,7 +88,7 @@ export async function createTaskCommand(
   }
 
   if (input.projectId) {
-    const project = await prisma.project.findFirst({
+    const project = await db.project.findFirst({
       where: { id: input.projectId, organizationId: orgId },
       select: { id: true },
     })
@@ -91,7 +97,7 @@ export async function createTaskCommand(
 
   let divisionKey: string | null = null
   if (input.divisionId) {
-    const division = await prisma.division.findFirst({
+    const division = await db.division.findFirst({
       where: { id: input.divisionId, organizationId: orgId },
       select: {
         id: true,
@@ -109,11 +115,11 @@ export async function createTaskCommand(
 
     const [sectionRow, departmentRow] = userId
       ? await Promise.all([
-          prisma.boardPermission.findUnique({
+          db.boardPermission.findUnique({
             where: { userId_divisionId: { userId, divisionId: division.id } },
           }),
           division.parentDivisionId
-            ? prisma.boardPermission.findUnique({
+            ? db.boardPermission.findUnique({
                 where: { userId_divisionId: { userId, divisionId: division.parentDivisionId } },
               })
             : Promise.resolve(null),
@@ -150,7 +156,7 @@ export async function createTaskCommand(
   const collaboratorIds = [...new Set(input.collaboratorIds ?? [])]
     .filter((id) => id !== input.assignedTo)
   if (collaboratorIds.length > 0) {
-    const memberCount = await prisma.user.count({
+    const memberCount = await db.user.count({
       where: { id: { in: collaboratorIds }, organizationId: orgId },
     })
     if (memberCount !== collaboratorIds.length) {
@@ -185,36 +191,46 @@ export async function createTaskCommand(
   let task: Task | null = null
   const maxKeyRetries = 3
   try {
-    for (let attempt = 0; attempt < maxKeyRetries; attempt += 1) {
-      const taskKey = divisionKey ? await generateTaskKey(prisma, orgId, divisionKey) : null
-      try {
-        task = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-          const created = await tx.task.create({ data: { ...baseData, taskKey } })
-          if (collaboratorIds.length > 0) {
-            await tx.taskCollaborator.createMany({
-              data: collaboratorIds.map((collaboratorId) => ({
-                organizationId: orgId,
-                taskId: created.id,
-                userId: collaboratorId,
-              })),
-              skipDuplicates: true,
-            })
-          }
-          await tx.taskActivity.create({
-            data: {
-              organizationId: orgId,
-              taskId: created.id,
-              userId,
-              action: "created",
-              newValue: created.status,
-            },
-          })
-          return created
+    const createInTransaction = async (tx: Prisma.TransactionClient, taskKey: string | null) => {
+      const created = await tx.task.create({ data: { ...baseData, taskKey } })
+      if (collaboratorIds.length > 0) {
+        await tx.taskCollaborator.createMany({
+          data: collaboratorIds.map((collaboratorId) => ({
+            organizationId: orgId,
+            taskId: created.id,
+            userId: collaboratorId,
+          })),
+          skipDuplicates: true,
         })
-        break
-      } catch (error) {
-        if (taskKey && isTaskKeyRace(error) && attempt < maxKeyRetries - 1) continue
-        throw error
+      }
+      await tx.taskActivity.create({
+        data: {
+          organizationId: orgId,
+          taskId: created.id,
+          userId,
+          action: "created",
+          newValue: created.status,
+        },
+      })
+      return created
+    }
+
+    if (execution?.transaction) {
+      const taskKey = divisionKey
+        ? await generateTaskKey(execution.transaction, orgId, divisionKey)
+        : null
+      task = await createInTransaction(execution.transaction, taskKey)
+    } else {
+      for (let attempt = 0; attempt < maxKeyRetries; attempt += 1) {
+        const taskKey = divisionKey ? await generateTaskKey(prisma, orgId, divisionKey) : null
+        try {
+          task = await prisma.$transaction((tx: Prisma.TransactionClient) =>
+            createInTransaction(tx, taskKey))
+          break
+        } catch (error) {
+          if (taskKey && isTaskKeyRace(error) && attempt < maxKeyRetries - 1) continue
+          throw error
+        }
       }
     }
   } catch (error) {
@@ -224,27 +240,30 @@ export async function createTaskCommand(
     throw error
   }
   if (!task) throw new Error("Task creation did not produce a record")
+  const createdTask = task
 
-  logAudit(orgId, "create", "task", task.id, task.title)
-  if (task.projectId) {
-    recalcProjectCompletion(task.projectId, orgId).catch((error) =>
-      console.error("[createTaskCommand] rollup failed", error),
-    )
-  }
-  executeWorkflows(orgId, "task", "created", task).catch(() => {})
-  const urgent = task.priority === "urgent" || task.priority === "critical"
-  createNotification({
-    organizationId: orgId,
-    userId: task.assignedTo || "",
-    type: urgent ? "warning" : "info",
-    title: "New Task",
-    message: `Task created: "${task.title}"${urgent ? ` (${String(task.priority).toUpperCase()})` : ""}`,
-    entityType: "task",
-    entityId: task.id,
-    push: true,
-    kind: "task.created",
-    email: Boolean(task.assignedTo) && task.assignedTo !== userId,
-  }).catch(() => {})
+  dispatchOrDeferCommandEffects(execution, () => {
+    logAudit(orgId, "create", "task", createdTask.id, createdTask.title)
+    if (createdTask.projectId) {
+      recalcProjectCompletion(createdTask.projectId, orgId).catch((error) =>
+        console.error("[createTaskCommand] rollup failed", error),
+      )
+    }
+    executeWorkflows(orgId, "task", "created", createdTask).catch(() => {})
+    const urgent = createdTask.priority === "urgent" || createdTask.priority === "critical"
+    createNotification({
+      organizationId: orgId,
+      userId: createdTask.assignedTo || "",
+      type: urgent ? "warning" : "info",
+      title: "New Task",
+      message: `Task created: "${createdTask.title}"${urgent ? ` (${String(createdTask.priority).toUpperCase()})` : ""}`,
+      entityType: "task",
+      entityId: createdTask.id,
+      push: true,
+      kind: "task.created",
+      email: Boolean(createdTask.assignedTo) && createdTask.assignedTo !== userId,
+    }).catch(() => {})
+  })
 
-  return { entity: task }
+  return { entity: createdTask }
 }
