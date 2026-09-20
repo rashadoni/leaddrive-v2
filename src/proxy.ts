@@ -64,7 +64,7 @@ function sessionMtmApiBlocked(authUser: SessionModuleGateUser): boolean {
 // click redirects are loaded by unauthenticated recipients (email clients, SMS).
 // Without this, the auth middleware 307→/login and open/click/attribution silently
 // under-count. The routes themselves are RLS-context-wrapped (runWithRlsBypass).
-const publicPaths = ["/login", "/forgot-password", "/reset-password", "/api/auth", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password", "/api/v1/auth/sms-otp", "/api/v1/public", "/api/v1/demo-request", "/api/v1/ping", "/api/v1/sign/", "/api/v1/tracking/", "/sign/", "/ticket-closure/", "/demo-access/", "/portal", "/home", "/pricing", "/plans", "/features", "/demo", "/about", "/contact", "/blog", "/legal", "/landing", "/marketing", "/embed/", "/s/", "/widget.js", "/track.js", "/offline", "/c/", "/f/"]
+const publicPaths = ["/login", "/forgot-password", "/reset-password", "/api/auth", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password", "/api/v1/auth/sms-otp", "/api/v1/public", "/api/v1/demo-request", "/api/v1/ping", "/api/v1/sign/", "/api/v1/tracking/", "/sign/", "/ticket-closure/", "/demo-access/", "/demo-open", "/portal", "/home", "/pricing", "/plans", "/features", "/demo", "/about", "/contact", "/blog", "/legal", "/landing", "/marketing", "/embed/", "/s/", "/widget.js", "/track.js", "/offline", "/c/", "/f/"]
 const publicExactPaths = new Set(["/manifest.json", "/sw.js", "/unsubscribe"])
 
 /**
@@ -132,6 +132,12 @@ const VOICE_AGENT_INTERNAL_PATHS = new Set([
   SOFTPHONE_VERIFY_TICKET_PATH,
   VOICE_AGENT_CALL_CONTINUATION_PATH,
 ])
+
+// `/demo-open` is public and deliberately NOT a marketing path: the open demo
+// is a full-screen product surface, so it must not inherit the marketing
+// layout (navbar, footer, floating buttons, live-chat widget) the way
+// anything under `/demo/` does. It sits beside `/demo-access` and
+// `/demo-preview` at the app root for that reason.
 
 // Marketing-only paths served on leaddrivecrm.org
 const marketingPaths = ["/home", "/pricing", "/plans", "/features", "/demo", "/about", "/contact", "/blog", "/legal", "/landing", "/marketing"]

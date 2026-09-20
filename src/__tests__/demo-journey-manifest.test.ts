@@ -330,7 +330,7 @@ describe("Guided journey intro clips", () => {
 describe("The open demo", () => {
   const shell = read("src/components/demo-center/journey/open-demo.tsx")
   const guide = read("src/components/demo-center/journey/demo-journey-guide.tsx")
-  const route = read("src/app/(marketing)/demo/start/page.tsx")
+  const route = read("src/app/demo-open/page.tsx")
 
   /** Comments explain why the gate is absent, so they must not be searched
    *  for the very words that would prove it is present. */
@@ -352,6 +352,33 @@ describe("The open demo", () => {
 
   it("serves no help-library media to an unverified visitor", () => {
     expect(guide).toContain('variant !== "open"')
+  })
+
+  it("lives outside the marketing layout, and is reachable without a session", () => {
+    // This shipped wrong once. The page sat in `src/app/(marketing)/demo/start`,
+    // so the marketing layout wrapped a full-screen product surface: navbar in
+    // the visitor's own language above an Azerbaijani demo, plus a footer,
+    // floating buttons and the live-chat widget on top of it. A route group is
+    // invisible in the URL, so nothing about `/demo/start` hinted at the
+    // chrome it inherited — only opening production showed it.
+    expect(existsSync(path.join(ROOT, "src/app/(marketing)/demo/start/page.tsx"))).toBe(false)
+    expect(existsSync(path.join(ROOT, "src/app/demo-open/page.tsx"))).toBe(true)
+
+    // Public, or the visitor meets a login form instead of the demo. The
+    // matcher compares whole segments, so "/demo" does not cover "/demo-open".
+    const proxy = read("src/proxy.ts")
+    const publicLine = proxy.split("\n").find((line) => line.startsWith("const publicPaths"))
+    expect(publicLine).toBeDefined()
+    expect(publicLine).toContain('"/demo-open"')
+
+    // And it must stay off the marketing list, or the app host would send it
+    // to the marketing site, which serves no such page.
+    const marketingLine = proxy.split("\n").find((line) => line.startsWith("const marketingPaths"))
+    expect(marketingLine).toBeDefined()
+    expect(marketingLine).not.toContain("demo-open")
+
+    // The only way in is the button on /demo; a stale href is a dead end.
+    expect(read("src/app/(marketing)/demo/page.tsx")).toContain('"/demo-open"')
   })
 
   it("does not post what the visitor types about themselves", () => {

@@ -199,7 +199,12 @@ function OpenDemoLauncher({ t }: { t: (key: string) => string }) {
   const params = new URLSearchParams()
   if (name.trim()) params.set("name", name.trim())
   if (company.trim()) params.set("company", company.trim())
-  const href = params.toString() ? `/demo/start?${params.toString()}` : "/demo/start"
+  // `/demo-open`, not `/demo/start`: the demo is a full-screen product
+  // surface and must not inherit the marketing layout. Anything under
+  // `/demo/` does — navbar, footer, floating buttons and the live-chat
+  // widget would sit on top of it. Its real siblings are `/demo-access`
+  // and `/demo-preview`, which live at the app root for the same reason.
+  const href = params.toString() ? `/demo-open?${params.toString()}` : "/demo-open"
 
   return (
     <div className="rounded-2xl border border-[#EA580C]/25 bg-white p-6 shadow-lg lg:p-8">
