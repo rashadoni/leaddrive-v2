@@ -26,6 +26,7 @@ export const DEMO_JOURNEY_STRINGS = {
   skip: "Keç",
   observe: "Baxın",
   waiting: "Hərəkət gözlənilir",
+  stepOnScene: "Bu addım ekranda göstərilir",
   resultTitle: "Nəticə",
   anchorMissingTitle: "Element ekranda tapılmadı",
   anchorMissingBody: "Bu addımın göstərməli olduğu element hazırda görünmür. Bələdçidən davam edə bilərsiniz.",
