@@ -427,3 +427,41 @@ recovery replay/concurrency, active-lease rejection, terminal failure/replay и
 полного static-check/typecheck. Следующее действие — расширенный targeted test
 gate, затем завершить/развернуть #247 и отдельным checkpoint провести новый
 execution slice через PR/CI/deploy.
+
+## Итог 2026-09-20: routing cleanup и execution claim на production
+
+Коррекция маршрута завершена отдельно:
+
+- checkpoint `44ed4ce6c`;
+- PR #247, merge SHA `3401b98c02e035437f3acba2f05401cea5d1dd42`;
+- все PR checks, включая static/unit baseline и typecheck, успешны;
+- deploy workflow `35494290654` успешен;
+- независимый ping вернул `{"ok":true}`, public build-info подтвердил точный
+  artifact SHA `3401b98c02e035437f3acba2f05401cea5d1dd42`.
+
+Внутренний execution claim/lease/failure срез также завершён:
+
+- checkpoint `5de7d3c02`;
+- PR #248, merge SHA `3e49f16f3db104daeda09cdc98bce0c8316332c9`;
+- локально: targeted ESLint, `git diff --check`, 9 voice/command test files и
+  69 tests — успешно;
+- PR CI: scope, secret scan, runner policy, static checks/full unit baseline и
+  typecheck — успешно;
+- deploy workflow `35495445690` успешен, включая quality/security gates,
+  production build, SHA-bound artifact, atomic server deploy и post-deploy
+  smoke;
+- независимый ping вернул `{"ok":true}`, public build-info подтвердил точный
+  artifact SHA `3e49f16f3db104daeda09cdc98bce0c8316332c9`.
+
+Текущее состояние: на production есть внутренние single-use proof consumption,
+CAS claim, retry-safe lease recovery, bounded terminal failure и атомарная
+command/result boundary для пяти CRM-команд. Голосовой помощник всё ещё не
+может изменять CRM, потому что публичный commit endpoint и model write-tools
+отсутствуют.
+
+Точка остановки: I1.10-I1.14 закрыты на внутренней границе. Следующее действие —
+I1.5 + I1.15: session-only same-origin commit endpoint с per-user/per-tenant/
+per-action rate limits, который композиционно вызывает claim, executor и
+безопасную классификацию terminal/retriable ошибок. Только после его отдельной
+проверки можно подключать UI-кнопку; model write-tools остаются ещё более
+поздним отдельным этапом.
