@@ -6,7 +6,8 @@
 //   node scripts/check-social-accounts.mjs                      # brandprotection
 //   node scripts/check-social-accounts.mjs --slug=<tenant-slug>
 //
-// Prints platforms/handles/config names ONLY — no tokens, secrets or ids.
+// Prints platforms/handles/config names and non-secret OAuth app ids only —
+// never token or secret values.
 
 import crypto from "node:crypto"
 import { makeScriptPrisma } from "./_rls.mjs"
@@ -106,7 +107,16 @@ async function main() {
 
   const configs = await prisma.channelConfig.findMany({
     where: { organizationId: org.id },
-    select: { channelType: true, configName: true, isActive: true, pageId: true },
+    select: {
+      channelType: true,
+      configName: true,
+      isActive: true,
+      pageId: true,
+      appId: true,
+      appSecret: true,
+      verifyToken: true,
+      settings: true,
+    },
     orderBy: [{ channelType: "asc" }, { configName: "asc" }],
   })
   console.log(`--- ChannelConfigs: ${configs.length} ---`)
@@ -114,6 +124,22 @@ async function main() {
     console.log(
       `  ${c.isActive ? "●" : "○"} ${c.channelType.padEnd(18)} "${c.configName}"` +
       `${c.pageId ? "  [page-bound]" : ""}`,
+    )
+  }
+  const metaAppConfigs = configs.filter((c) =>
+    ["facebook", "instagram"].includes(c.channelType) && c.appId,
+  )
+  console.log(`--- Tenant Meta app configs: ${metaAppConfigs.length} (secret values hidden) ---`)
+  for (const c of metaAppConfigs) {
+    const settings = c.settings && typeof c.settings === "object" && !Array.isArray(c.settings)
+      ? c.settings
+      : {}
+    console.log(
+      `  ${c.channelType.padEnd(10)} surface=${settings.igLogin === true ? "instagram_login" : "facebook_login"}` +
+      ` appId=${c.appId}` +
+      ` appSecret=${c.appSecret ? "yes" : "no"}` +
+      ` verifyToken=${c.verifyToken ? "yes" : "no"}` +
+      `${c.pageId ? " pageBound=yes" : " pageBound=no"}`,
     )
   }
 
