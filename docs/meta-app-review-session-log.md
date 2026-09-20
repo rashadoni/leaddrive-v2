@@ -132,3 +132,27 @@ Audit of existing legal pages, routing, Meta OAuth scopes, persisted data, reten
 - Corrected the isolated mock, aligned the OAuth assertion with Instagram
   Login, and replaced the remaining public/commercial identity copies with the
   registered '"FANUM" MMC' name across all locales and the proposal deck.
+
+## 2026-09-20 — production release and reviewer account
+
+- PR 250 ('https://github.com/rashadoni/leaddrive-v2/pull/250') passed its
+  corrected static and typecheck gates and was merged to 'main' as
+  'a9891d6cb6d46ea56e8177eb6dfe298da4ec21bf'.
+- GitHub Actions production run 35499744499 completed successfully, including
+  the immutable build artifact, quality/security jobs, Contabo deployment and
+  post-deploy smoke checks.
+- External logged-out smoke returned HTTP 200 for '/api/v1/ping',
+  '/legal/privacy?lang=en', '/legal/terms?lang=en' and
+  '/legal/data-deletion?lang=en'; the legal pages rendered their expected
+  English titles.
+- Manual workflow run 35500612435 completed successfully and upserted the
+  dedicated admin 'meta-review@leaddrivecrm.org' in the existing 'leaddrive'
+  tenant-poligon. Its generated password remains only in the root-readable
+  production file '/root/leaddrive-credentials/leaddrive-meta-review.pass'; no
+  credential was copied into GitHub Actions, source control or this journal.
+- The Meta demo recording remains pending. It requires owner-supplied Meta
+  test assets/login plus a synthetic sender so the complete connect -> inbound
+  message -> CRM reply flow can be captured without customer data.
+- WhatsApp shared-app onboarding remains a documented implementation gap:
+  webhook send/receive and manual tenant credentials exist, but Meta Embedded
+  Signup is not yet implemented and must not be claimed in App Review.
