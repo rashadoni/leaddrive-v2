@@ -295,3 +295,94 @@ describe("attaching a task to what is on screen", () => {
     }
   })
 })
+
+describe("turning a lead into a deal", () => {
+  it("names the deal after the lead when the user did not name it", async () => {
+    mocks.findManyLeads.mockResolvedValue([
+      { id: "lead-5", contactName: "Ali Mammadov", companyName: "Azmart" },
+    ])
+
+    const result = await resolveVoiceProposal(
+      auth,
+      "propose_convert_lead_to_deal",
+      {},
+      { recordType: "lead", recordId: "lead-5" },
+    )
+
+    expect(result).toEqual({
+      kind: "resolved",
+      actionType: "convert_lead_to_deal",
+      payload: { dealTitle: "Azmart" },
+      targetEntityId: "lead-5",
+    })
+  })
+
+  it("falls back to the contact when the lead has no company", async () => {
+    mocks.findManyLeads.mockResolvedValue([
+      { id: "lead-5", contactName: "Ali Mammadov", companyName: null },
+    ])
+    const result = await resolveVoiceProposal(
+      auth,
+      "propose_convert_lead_to_deal",
+      {},
+      { recordType: "lead", recordId: "lead-5" },
+    )
+    expect(result).toMatchObject({ payload: { dealTitle: "Ali Mammadov" } })
+  })
+
+  it("keeps a title the user actually said, without reading the lead", async () => {
+    const result = await resolveVoiceProposal(
+      auth,
+      "propose_convert_lead_to_deal",
+      { dealTitle: "Azmart tyres Q4", dealValue: 12000 },
+      { recordType: "lead", recordId: "lead-5" },
+    )
+    expect(result).toMatchObject({
+      payload: { dealTitle: "Azmart tyres Q4", dealValue: 12000 },
+      targetEntityId: "lead-5",
+    })
+    expect(mocks.findManyLeads).not.toHaveBeenCalled()
+  })
+
+  it("resolves a spoken lead name the same way an update does", async () => {
+    mocks.findManyLeads.mockResolvedValue([
+      { id: "lead-9", contactName: "Ali Mammadov", companyName: "Azmart" },
+    ])
+    const result = await resolveVoiceProposal(
+      auth,
+      "propose_convert_lead_to_deal",
+      { leadName: "Ali", dealTitle: "Azmart" },
+      {},
+    )
+    expect(result).toMatchObject({ targetEntityId: "lead-9" })
+  })
+
+  it("asks which lead when the user is not looking at one", async () => {
+    const result = await resolveVoiceProposal(auth, "propose_convert_lead_to_deal", {}, {})
+    expect(result).toMatchObject({ kind: "clarify", code: "LEAD_TARGET_REQUIRED" })
+  })
+
+  it("does not invent a title for a lead the caller cannot see", async () => {
+    // The record filter returns nothing, so there is no lead to name it after.
+    mocks.findManyLeads.mockResolvedValue([])
+    const result = await resolveVoiceProposal(
+      auth,
+      "propose_convert_lead_to_deal",
+      {},
+      { recordType: "lead", recordId: "someone-elses-lead" },
+    )
+    expect(result).toMatchObject({ kind: "clarify", code: "LEAD_NOT_FOUND" })
+  })
+
+  it("refuses a stage or a pipeline from the model", async () => {
+    for (const extra of [{ dealStage: "QUALIFIED" }, { pipelineId: "pipe-1" }]) {
+      const result = await resolveVoiceProposal(
+        auth,
+        "propose_convert_lead_to_deal",
+        { dealTitle: "Azmart", ...extra },
+        { recordType: "lead", recordId: "lead-5" },
+      )
+      expect(result.kind, JSON.stringify(extra)).toBe("invalid")
+    }
+  })
+})
