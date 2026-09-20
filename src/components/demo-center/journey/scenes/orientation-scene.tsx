@@ -6,12 +6,12 @@ import { DEMO_JOURNEY_STRINGS as S } from "../strings"
 
 /** Orientation: the prospect meets the reduced LeadDrive shell. The sidebar,
  *  guide panel and watermark carry the anchors; the centre only says hello. */
-export function OrientationScene({ snapshot }: DemoSceneProps) {
+export function OrientationScene({ snapshot, variant }: DemoSceneProps) {
   const { identity } = snapshot
   return (
     <div data-testid="demo-scene-orientation" className="mx-auto max-w-2xl space-y-4">
       <div className="rounded-xl border border-zinc-200 bg-card p-6 dark:border-zinc-700">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{S.badgePrivate}</p>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{variant === "preview" ? S.badgePreview : variant === "open" ? S.badgeOpen : S.badgePrivate}</p>
         <h1 className="mt-2 text-2xl font-bold tracking-tight">{S.welcome(identity.name)}</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{S.welcomeBody(identity.company)}</p>
         <ul className="mt-4 space-y-2 text-sm">

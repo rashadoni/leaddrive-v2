@@ -43,7 +43,7 @@ import { OrientationScene } from "./scenes/orientation-scene"
 import { QuoteScene } from "./scenes/quote-scene"
 import { ScenePending } from "./scenes/scene-pending"
 import { SummaryScene } from "./scenes/summary-scene"
-import type { DemoSceneProps } from "./scene-props"
+import type { DemoJourneyVariant, DemoSceneProps } from "./scene-props"
 import { DEMO_JOURNEY_STRINGS as S } from "./strings"
 
 /**
@@ -88,7 +88,7 @@ const SCENES: Record<string, ComponentType<DemoSceneProps>> = {
  *             no approval. Progress persists in this browser, but nothing
  *             that costs money or serves internal media is switched on.
  */
-export type DemoJourneyVariant = "granted" | "preview" | "open"
+export type { DemoJourneyVariant }
 
 export interface DemoJourneyPlayerProps {
   /** Capability token; meaningful only for the granted variant. */
@@ -120,7 +120,6 @@ export function DemoJourneyPlayer({
   onAccessLost,
   variant = "granted",
 }: DemoJourneyPlayerProps) {
-  const previewMode = variant === "preview"
   const persistProgress = variant !== "preview"
   const [snapshot, setSnapshot] = useState<DemoJourneySnapshot | null>(null)
   const [viewSectionId, setViewSectionId] = useState<string | null>(null)
@@ -224,7 +223,7 @@ export function DemoJourneyPlayer({
     section: viewSection,
     step,
     reviewMode,
-    previewMode,
+    variant,
     dispatch,
     hint,
   }
