@@ -10,6 +10,10 @@ import { findSalesPipeline } from "@/lib/pipeline-routing"
 import { azerbaijaniLocalPart } from "@/lib/inbox/customer-phone"
 import { scoreLeadNow } from "@/lib/ai/lead-scoring"
 import type { CrmCommandActorContext } from "../actor-context"
+import {
+  dispatchOrDeferCommandEffects,
+  type CrmCommandExecutionContext,
+} from "../execution-context"
 import { validationError } from "../errors"
 import { requireWritableFields } from "../field-permissions"
 import { createLeadCommandSchema, type CreateLeadCommandInput } from "../schemas/lead"
@@ -61,6 +65,7 @@ function phoneVariants(...values: Array<string | undefined>): string[] {
 }
 
 async function findDuplicateCandidates(
+  db: Pick<Prisma.TransactionClient, "lead">,
   organizationId: string,
   input: CreateLeadCommandInput,
 ): Promise<LeadDuplicateCandidate[]> {
@@ -86,7 +91,7 @@ async function findDuplicateCandidates(
   }
   if (or.length === 0) return []
 
-  return prisma.lead.findMany({
+  return db.lead.findMany({
     where: { organizationId, OR: or },
     select: {
       id: true,
@@ -101,79 +106,13 @@ async function findDuplicateCandidates(
   })
 }
 
-export async function createLeadCommand(
+function dispatchCreatedLeadEffects(
   actor: CrmCommandActorContext,
-  rawInput: unknown,
-): Promise<CreateLeadCommandResult> {
-  const parsed = createLeadCommandSchema.safeParse(rawInput)
-  if (!parsed.success) throw validationError(firstValidationMessage(parsed.error))
-
-  const { organizationId: orgId, role, userId } = actor
-  const fieldPermissions = await getFieldPermissions(orgId, role, "lead")
-  const input = requireWritableFields(
-    parsed.data as Record<string, unknown>,
-    fieldPermissions,
-    role,
-  ) as CreateLeadCommandInput
-
-  let assignedTo = userId
-  if (input.assignedTo) {
-    const seller = await prisma.user.findFirst({
-      where: {
-        id: input.assignedTo,
-        organizationId: orgId,
-        role: "sales",
-        isActive: true,
-      },
-      select: { id: true },
-    })
-    if (!seller) {
-      throw validationError("Selected seller is inactive or does not belong to this organization")
-    }
-    assignedTo = seller.id
-  }
-
-  const activePipelines = await prisma.pipeline.findMany({
-    where: { organizationId: orgId, isActive: true },
-    select: { id: true, name: true, isDefault: true },
-  })
-  let pipelineId = input.pipelineId
-  if (pipelineId && !activePipelines.some((pipeline) => pipeline.id === pipelineId)) {
-    throw validationError("Invalid pipelineId")
-  }
-  if (!pipelineId && role === "sales") {
-    pipelineId = findSalesPipeline(activePipelines)?.id
-  }
-
-  const duplicateCandidates = await findDuplicateCandidates(orgId, input)
-  const lead = await prisma.lead.create({
-    data: {
-      organizationId: orgId,
-      contactName: input.contactName,
-      companyName: input.companyName,
-      email: input.email || null,
-      phone: input.phone,
-      phoneWhatsApp: input.phoneWhatsApp,
-      telegramHandle: input.telegramHandle,
-      source: input.source,
-      sourceDetail: input.sourceDetail,
-      sourceProfileUrl: input.sourceProfileUrl || null,
-      interest: input.interest,
-      brand: input.brand,
-      category: input.category,
-      status: input.status || "new",
-      priority: input.priority || "medium",
-      estimatedValue: input.estimatedValue,
-      notes: input.notes,
-      assignedTo,
-      pipelineId: pipelineId ?? null,
-    },
-  })
-
-  await scoreLeadNow(orgId, lead.id)
+  lead: Lead,
+  automaticAssignment: boolean,
+): void {
+  const { organizationId: orgId, userId } = actor
   logAudit(orgId, "create", "lead", lead.id, lead.contactName)
-
-  const automaticAssignment = !input.assignedTo && role !== "sales"
   if (automaticAssignment) applyLeadAssignmentRules(orgId, lead).catch(() => {})
   executeWorkflows(orgId, "lead", "created", lead).catch(() => {})
   refreshProfileForSource(prisma, orgId, "lead", lead.id).catch((error) =>
@@ -205,6 +144,89 @@ export async function createLeadCommand(
     contactName: lead.contactName,
     companyName: lead.companyName,
   }).catch(() => {})
+}
+
+export async function createLeadCommand(
+  actor: CrmCommandActorContext,
+  rawInput: unknown,
+  execution?: CrmCommandExecutionContext,
+): Promise<CreateLeadCommandResult> {
+  const parsed = createLeadCommandSchema.safeParse(rawInput)
+  if (!parsed.success) throw validationError(firstValidationMessage(parsed.error))
+
+  const { organizationId: orgId, role, userId } = actor
+  const db = execution?.transaction ?? prisma
+  const fieldPermissions = await getFieldPermissions(orgId, role, "lead")
+  const input = requireWritableFields(
+    parsed.data as Record<string, unknown>,
+    fieldPermissions,
+    role,
+  ) as CreateLeadCommandInput
+
+  let assignedTo = userId
+  if (input.assignedTo) {
+    const seller = await db.user.findFirst({
+      where: {
+        id: input.assignedTo,
+        organizationId: orgId,
+        role: "sales",
+        isActive: true,
+      },
+      select: { id: true },
+    })
+    if (!seller) {
+      throw validationError("Selected seller is inactive or does not belong to this organization")
+    }
+    assignedTo = seller.id
+  }
+
+  const activePipelines = await db.pipeline.findMany({
+    where: { organizationId: orgId, isActive: true },
+    select: { id: true, name: true, isDefault: true },
+  })
+  let pipelineId = input.pipelineId
+  if (pipelineId && !activePipelines.some((pipeline) => pipeline.id === pipelineId)) {
+    throw validationError("Invalid pipelineId")
+  }
+  if (!pipelineId && role === "sales") {
+    pipelineId = findSalesPipeline(activePipelines)?.id
+  }
+
+  const duplicateCandidates = await findDuplicateCandidates(db, orgId, input)
+  const lead = await db.lead.create({
+    data: {
+      organizationId: orgId,
+      contactName: input.contactName,
+      companyName: input.companyName,
+      email: input.email || null,
+      phone: input.phone,
+      phoneWhatsApp: input.phoneWhatsApp,
+      telegramHandle: input.telegramHandle,
+      source: input.source,
+      sourceDetail: input.sourceDetail,
+      sourceProfileUrl: input.sourceProfileUrl || null,
+      interest: input.interest,
+      brand: input.brand,
+      category: input.category,
+      status: input.status || "new",
+      priority: input.priority || "medium",
+      estimatedValue: input.estimatedValue,
+      notes: input.notes,
+      assignedTo,
+      pipelineId: pipelineId ?? null,
+    },
+  })
+
+  const automaticAssignment = !input.assignedTo && role !== "sales"
+  if (execution?.transaction) {
+    dispatchOrDeferCommandEffects(execution, async () => {
+      await scoreLeadNow(orgId, lead.id)
+      dispatchCreatedLeadEffects(actor, lead, automaticAssignment)
+    })
+  } else {
+    await scoreLeadNow(orgId, lead.id)
+    dispatchCreatedLeadEffects(actor, lead, automaticAssignment)
+  }
 
   return {
     entity: lead,

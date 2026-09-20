@@ -11,6 +11,10 @@ import {
 } from "@/lib/inbox/customer-stage"
 import { scoreLeadNow } from "@/lib/ai/lead-scoring"
 import type { CrmCommandActorContext } from "../actor-context"
+import {
+  dispatchOrDeferCommandEffects,
+  type CrmCommandExecutionContext,
+} from "../execution-context"
 import { CrmCommandError, notFoundError, staleWriteError, validationError } from "../errors"
 import { requireWritableFields } from "../field-permissions"
 import { updateLeadCommandSchema, type UpdateLeadCommandInput } from "../schemas/lead"
@@ -96,12 +100,14 @@ export async function updateLeadCommand(
   actor: CrmCommandActorContext,
   leadId: string,
   rawInput: unknown,
+  execution?: CrmCommandExecutionContext,
 ): Promise<UpdateLeadCommandResult> {
   const parsed = updateLeadCommandSchema.safeParse(rawInput)
   if (!parsed.success) throw validationError(firstValidationMessage(parsed.error))
   if (actor.source === "voice") enforceVoiceContract(parsed.data)
 
   const { organizationId: orgId, userId, role } = actor
+  const db = execution?.transaction ?? prisma
   const { expectedUpdatedAt, ...requestedData } = parsed.data
   const fieldPermissions = await getFieldPermissions(orgId, role, "lead")
   const input = requireWritableFields(
@@ -114,7 +120,7 @@ export async function updateLeadCommand(
     id: leadId,
     organizationId: orgId,
   })
-  const visibleLead = await prisma.lead.findFirst({
+  const visibleLead = await db.lead.findFirst({
     where: visibleWhere,
     select: { id: true, updatedAt: true },
   })
@@ -130,14 +136,14 @@ export async function updateLeadCommand(
   }
 
   if (input.assignedTo) {
-    const assignee = await prisma.user.findFirst({
+    const assignee = await db.user.findFirst({
       where: { id: input.assignedTo, organizationId: orgId, isActive: true },
       select: { id: true },
     })
     if (!assignee) throw validationError("Assignee must be an active member of this organization")
   }
   if (input.pipelineId) {
-    const pipeline = await prisma.pipeline.findFirst({
+    const pipeline = await db.pipeline.findFirst({
       where: { id: input.pipelineId, organizationId: orgId, isActive: true },
       select: { id: true },
     })
@@ -164,7 +170,7 @@ export async function updateLeadCommand(
     const mutationWhere = expectedDate
       ? { AND: [visibleWhere, { updatedAt: expectedDate }] }
       : visibleWhere
-    const result = await prisma.lead.updateMany({
+    const result = await db.lead.updateMany({
       where: mutationWhere,
       data: regularWritableData,
     })
@@ -177,6 +183,9 @@ export async function updateLeadCommand(
 
   let conversationsUpdated = 0
   if (requestedOutcomes) {
+    if (execution?.transaction) {
+      throw new TypeError("Transactional voice updates cannot mutate lead qualification stages")
+    }
     try {
       const stageResult = await setLeadReportedCustomerStages(prisma, {
         organizationId: orgId,
@@ -194,46 +203,56 @@ export async function updateLeadCommand(
   }
   if (updatedCount === 0) throw validationError("No writable fields")
 
-  await scoreLeadNow(orgId, leadId)
-  const updated = await prisma.lead.findFirst({ where: { id: leadId, organizationId: orgId } })
+  const updated = await db.lead.findFirst({ where: { id: leadId, organizationId: orgId } })
   if (!updated) throw notFoundError("Not found")
 
-  logAudit(orgId, "update", "lead", leadId, updated.contactName, { newValue: input })
-  const triggerEvent = input.status ? "status_changed" : "updated"
-  executeWorkflows(orgId, "lead", triggerEvent, updated).catch(() => {})
+  const dispatchEffects = () => {
+    logAudit(orgId, "update", "lead", leadId, updated.contactName, { newValue: input })
+    const triggerEvent = input.status ? "status_changed" : "updated"
+    executeWorkflows(orgId, "lead", triggerEvent, updated).catch(() => {})
 
-  if (
-    Object.prototype.hasOwnProperty.call(regularWritableData, "assignedTo")
-    && updated.assignedTo
-    && updated.assignedTo !== userId
-  ) {
-    createNotification({
-      organizationId: orgId,
-      userId: updated.assignedTo,
-      type: "info",
-      title: "Вам назначен лид",
-      message: `«${updated.contactName}»${updated.companyName ? ` (${updated.companyName})` : ""}`,
-      entityType: "lead",
-      entityId: leadId,
-      push: true,
-      email: true,
+    if (
+      Object.prototype.hasOwnProperty.call(regularWritableData, "assignedTo")
+      && updated.assignedTo
+      && updated.assignedTo !== userId
+    ) {
+      createNotification({
+        organizationId: orgId,
+        userId: updated.assignedTo,
+        type: "info",
+        title: "Вам назначен лид",
+        message: `«${updated.contactName}»${updated.companyName ? ` (${updated.companyName})` : ""}`,
+        entityType: "lead",
+        entityId: leadId,
+        push: true,
+        email: true,
+      }).catch(() => {})
+    }
+
+    if (input.status) {
+      createNotification({
+        organizationId: orgId,
+        type: input.status === "converted" ? "success" : input.status === "lost" ? "warning" : "info",
+        title: input.status === "converted" ? "Лид конвертирован!" : "Смена статуса лида",
+        message: `Лид «${updated.contactName}»: статус → ${input.status}`,
+        entityType: "lead",
+        entityId: leadId,
+      }).catch(() => {})
+    }
+    fireWebhooks(orgId, "lead.updated", {
+      id: updated.id,
+      contactName: updated.contactName,
     }).catch(() => {})
   }
-
-  if (input.status) {
-    createNotification({
-      organizationId: orgId,
-      type: input.status === "converted" ? "success" : input.status === "lost" ? "warning" : "info",
-      title: input.status === "converted" ? "Лид конвертирован!" : "Смена статуса лида",
-      message: `Лид «${updated.contactName}»: статус → ${input.status}`,
-      entityType: "lead",
-      entityId: leadId,
-    }).catch(() => {})
+  if (execution?.transaction) {
+    dispatchOrDeferCommandEffects(execution, async () => {
+      await scoreLeadNow(orgId, leadId)
+      dispatchEffects()
+    })
+  } else {
+    await scoreLeadNow(orgId, leadId)
+    dispatchEffects()
   }
-  fireWebhooks(orgId, "lead.updated", {
-    id: updated.id,
-    contactName: updated.contactName,
-  }).catch(() => {})
 
   return {
     entity: updated,

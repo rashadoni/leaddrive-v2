@@ -306,3 +306,33 @@ lease и terminal result ещё не реализованы.
 сделать command/result boundary идемпотентной и восстановимой для пяти команд,
 а затем включать single-use proof consumption, execution CAS/lease и commit
 endpoint.
+
+## Продолжение 2026-09-20: атомарная execution boundary
+
+Устранено crash ambiguity между CRM-записью и сохранением результата intent:
+
+- пять канонических команд принимают внутренний transaction context;
+- CRM-мутация, переход intent в `succeeded`, минимальный result receipt и
+  immutable-событие `succeeded` выполняются в одной транзакции;
+- terminal compare-and-swap привязан к tenant, user, revision, payload hash,
+  lease token и неистёкшему lease;
+- при проигранном CAS или ошибке команды вся CRM-мутация откатывается;
+- после успешного commit повтор с тем же lease возвращает сохранённый результат
+  и не вызывает команду повторно;
+- workflows, notifications, webhooks, scoring, audit helpers и rollups
+  откладываются до успешного завершения транзакции.
+
+Важные ограничения сохранены: executor внутренний, API-маршрута commit нет,
+confirmation proof ещё не потребляется, execution claim/recovery ещё не
+реализованы, write-tool модели не добавлен. Надёжная повторная доставка внешних
+побочных эффектов остаётся отдельной задачей transactional outbox (C1.12).
+
+Проверки текущего дерева: targeted ESLint — успешно; 5 целевых test files / 228
+tests — успешно. Полный typecheck/build локально не запускались по host
+contract и должны пройти в GitHub CI.
+
+Точка остановки этой записи: код, unit/regression tests и архитектурная
+документация execution boundary готовы локально. Следующее действие —
+checkpoint commit, push, PR, полный CI, merge и production deploy. После этого
+можно реализовывать атомарное single-use proof consumption + execution claim и
+lease recovery до появления commit endpoint.
