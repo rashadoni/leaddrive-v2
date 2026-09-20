@@ -56,8 +56,13 @@ export {
  * Steps the field app cannot perform yet. A policy may still list them, but a
  * reviewer seeing "Presentation: not done" on every visit would read a gap in
  * the agent's work where there is only a gap in the product.
+ *
+ * `NEXT_ACTION` joined them on 2026-09-20: the field app dropped it in the
+ * September audit (`RouteScreen` filters it out by name), so the row could
+ * only ever read "not done". The owner's verdict on seeing it in the office
+ * card was blunter than that.
  */
-export const FIELD_APP_UNSUPPORTED_ACTIONS: ReadonlySet<string> = new Set(["PRESENTATION", "STOCK_CHECK", "CHECKLIST"])
+export const FIELD_APP_UNSUPPORTED_ACTIONS: ReadonlySet<string> = new Set(["PRESENTATION", "STOCK_CHECK", "CHECKLIST", "NEXT_ACTION"])
 
 export interface ReviewRequirement {
   actionKey: string
@@ -108,6 +113,13 @@ export function reviewActionRows(input: {
       return { actionKey: requirement.actionKey, required: requirement.mode === "REQUIRED", minCount, count, done: count >= minCount }
     })
     .filter((row) => !FIELD_APP_UNSUPPORTED_ACTIONS.has(row.actionKey) || row.count > 0)
+    // An optional step with nothing behind it is not information. The demo
+    // organization marks all five steps optional, so the card read as five
+    // lines of "not done" under a visit where the agent had in fact shown a
+    // presentation — while the field app, which lists required steps only,
+    // had never offered those five. Optional stays visible once it carries a
+    // result, because then it is evidence of work.
+    .filter((row) => row.required || row.count > 0)
     .sort((left, right) => Number(right.required) - Number(left.required))
 }
 

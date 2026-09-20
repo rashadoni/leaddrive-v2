@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
-import { AlertTriangle, CheckCircle2, Circle, Clock, FileText, ListChecks, MapPin, Route as RouteIcon, UserRound, X } from "lucide-react"
+import { AlertTriangle, CheckCircle2, Circle, Clock, FileText, ListChecks, MapPin, UserRound, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { SignaturePreview } from "@/components/mtm/visit-signature-preview"
 import { VisitPhotoGrid } from "@/components/mtm/visit-photo-grid"
@@ -255,23 +255,97 @@ export function VisitReviewPanel({ visitId, refreshToken, closeHref, onVisitLoad
   }
 
   const blockTitle = (text: string) => <h3 className="text-sm font-semibold text-foreground">{text}</h3>
+  /**
+   * "787 мин" is a number a reviewer has to convert before it means anything;
+   * "13 ч 7 мин" is the thing they were looking for — a visit that stayed open
+   * all day.
+   */
+  const durationText = duration == null
+    ? null
+    : duration >= 60
+      ? t("review.durationHm", { hours: Math.floor(duration / 60), minutes: duration % 60 })
+      : t("review.duration", { minutes: duration })
+
+  const mapHref = (latitude?: number | null, longitude?: number | null) => (
+    latitude != null && longitude != null ? `https://www.google.com/maps?q=${latitude},${longitude}` : null
+  )
+
+  const placeTone = (check: PlaceCheck | null) => {
+    if (!check) return "text-muted-foreground"
+    if (check.state === "at_point") return "text-emerald-700 dark:text-emerald-300"
+    if (check.state === "outside" || check.state === "no_gps") return "text-amber-700 dark:text-amber-300"
+    return "text-muted-foreground"
+  }
+
+  // One line of facts instead of four blocks of one line each.
+  const facts: Array<{ key: string; icon: ReactNode; text: string; tone?: string; href?: string | null }> = []
+  facts.push({
+    key: "time",
+    icon: <Clock className="h-4 w-4 text-muted-foreground" aria-hidden="true" />,
+    text: `${formatTime(visit.checkInAt)} → ${visit.checkOutAt ? formatTime(visit.checkOutAt) : t("notFinished")}${durationText ? ` · ${durationText}` : ""}`,
+  })
+  facts.push({
+    key: "place",
+    icon: <MapPin className="h-4 w-4 text-muted-foreground" aria-hidden="true" />,
+    text: place.checkIn?.state === "at_point"
+      ? tPlace("atPoint")
+      : place.checkIn?.state === "outside"
+        ? tPlace("outside", { distance: distanceText(place.checkIn.distanceMeters ?? 0) })
+        : place.checkIn?.state === "no_gps"
+          ? tPlace("noGps")
+          : tPlace("noPin"),
+    tone: placeTone(place.checkIn),
+    href: mapHref(visit.checkInLat, visit.checkInLng),
+  })
+  facts.push({
+    key: "presentations",
+    icon: <FileText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />,
+    text: t("review.presentationsCount", { count: visit.presentationSessions.length }),
+  })
+  facts.push({
+    key: "photos",
+    icon: <Circle className="h-4 w-4 text-muted-foreground" aria-hidden="true" />,
+    text: t("review.photosCount", { count: photoCount }),
+  })
+  facts.push({
+    key: "signature",
+    icon: signature
+      ? <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+      : <Circle className="h-4 w-4 text-muted-foreground" aria-hidden="true" />,
+    text: signature ? t("review.factSignature") : t("review.factNoSignature"),
+  })
+
+  // What the visit does not have is one quiet line at the end, not three
+  // half-empty blocks in the middle.
+  const missing: string[] = []
+  if (!photoCount) missing.push(t("review.photosTitle"))
+  if (!visit.notes?.trim()) missing.push(t("review.noteTitle"))
+  if (!hasResult) missing.push(t("review.resultTitle"))
+  if (!visit.presentationSessions.length) missing.push(t("review.presentationsTitle"))
 
   return shell(
     <>
-      <header className="flex items-start justify-between gap-3 border-b border-zinc-200 p-4 dark:border-zinc-800 sm:p-5">
+      <header className="flex items-start justify-between gap-3 border-b border-zinc-200 p-4 dark:border-zinc-800 sm:px-5 sm:py-4">
         <div className="min-w-0">
-          <span className={`inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-semibold ${visitStatusClasses(visit.status)}`}>
-            {t(visitStatusKey(visit.status))}
-          </span>
-          <h2 id="visit-review-title" className="mt-2 text-xl font-semibold text-foreground">{visit.customer.name || t("unknownCustomer")}</h2>
-          <p className="mt-1 flex items-start gap-1.5 text-sm text-muted-foreground">
-            <MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-            <span>{locationLine || t("noAddress")}</span>
-          </p>
-          <p className="mt-1 flex items-center gap-1.5 text-sm text-foreground">
-            <UserRound className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <span>{visit.agent?.name || t("unknownAgent")}</span>
-            {visit.contact?.displayName ? <span className="text-muted-foreground">· {t("review.contact", { name: visit.contact.displayName })}</span> : null}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-semibold ${visitStatusClasses(visit.status)}`}>
+              {t(visitStatusKey(visit.status))}
+            </span>
+            <h2 id="visit-review-title" className="text-lg font-semibold text-foreground sm:text-xl">{visit.customer.name || t("unknownCustomer")}</h2>
+          </div>
+          <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+            <span className="inline-flex items-start gap-1.5">
+              <MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>{locationLine || t("noAddress")}</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-foreground">
+              <UserRound className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span>{visit.agent?.name || t("unknownAgent")}</span>
+              {visit.contact?.displayName ? <span className="text-muted-foreground">· {t("review.contact", { name: visit.contact.displayName })}</span> : null}
+            </span>
+            <Link href={`/mtm/customers/${visit.customer.id}`} className="font-medium text-primary hover:underline">
+              {t("review.openCustomer")}
+            </Link>
           </p>
         </div>
         <Button asChild variant="ghost" size="icon" className="min-h-11 min-w-11 shrink-0">
@@ -279,110 +353,113 @@ export function VisitReviewPanel({ visitId, refreshToken, closeHref, onVisitLoad
         </Button>
       </header>
 
-      <div className="divide-y divide-zinc-200 px-4 dark:divide-zinc-800 sm:px-5">
-        <div className="grid gap-4 py-4 md:grid-cols-2">
-          <div>
-            {blockTitle(t("review.planTitle"))}
-            {visit.route ? (
-              <p className="mt-2 flex items-start gap-1.5 text-sm text-foreground">
-                <RouteIcon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                <span>
-                  {visit.route.name || t("review.routeUnnamed")}
-                  {visit.routePoint ? ` · ${t("review.routePoint", { number: visit.routePoint.orderIndex + 1 })}` : ""}
-                </span>
-              </p>
-            ) : (
-              <p className="mt-2 text-sm text-muted-foreground">{visit.primaryAgentHidden ? t("review.routeHidden") : t("review.unplanned")}</p>
-            )}
-          </div>
-          <div>
-            {blockTitle(t("review.actualTitle"))}
-            <p className="mt-2 flex items-start gap-1.5 text-sm text-foreground">
-              <Clock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-              <span className="tabular-nums">
-                {formatFull(visit.checkInAt)} → {visit.checkOutAt ? formatTime(visit.checkOutAt) : t("notFinished")}
-                {duration != null ? <span className="block text-muted-foreground">{t("review.duration", { minutes: duration })}</span> : null}
-              </span>
-            </p>
-          </div>
-        </div>
-
-        <div className="py-4">
-          {blockTitle(t("review.placeTitle"))}
-          <dl className="mt-1 divide-y divide-zinc-100 dark:divide-zinc-800/60">
-            {placeRow(t("review.placeCheckIn"), place.checkIn, "checkIn")}
-            {placeRow(t("review.placeCheckOut"), place.checkOut, "checkOut")}
-          </dl>
-        </div>
-
-        <div className="py-4">
-          <div className="flex flex-wrap items-baseline justify-between gap-3">
-            <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <FileText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-              {t("review.presentationsTitle")}
-            </h3>
-            <span className="text-xs text-muted-foreground">
-              {t("review.presentationsCount", { count: visit.presentationSessions.length })}
+      <div className="border-b border-zinc-200 bg-muted/30 px-4 py-2.5 dark:border-zinc-800 sm:px-5">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm" data-testid="mtm-visit-review-facts">
+          {facts.map((item) => (
+            <span key={item.key} className={`inline-flex items-center gap-1.5 ${item.tone || "text-foreground"}`}>
+              {item.icon}
+              {item.href
+                ? <a className="font-medium hover:underline" href={item.href} target="_blank" rel="noreferrer">{item.text}</a>
+                : <span className="tabular-nums">{item.text}</span>}
             </span>
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">{t("review.presentationEvidenceNote")}</p>
-          {visit.presentationSessions.length ? (
-            <ul className="mt-3 space-y-2" data-testid="mtm-visit-presentation-sessions">
-              {visit.presentationSessions.map((session) => {
-                const viewedPages = Array.isArray(session.pagesViewed) ? session.pagesViewed.length : 0
-                const latitude = session.openLat ?? session.closeLat
-                const longitude = session.openLng ?? session.closeLng
-                return (
-                  <li key={session.id} className="rounded-xl border border-zinc-200 p-3 dark:border-zinc-800">
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="font-medium text-foreground">{session.product.name}</p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {session.product.group.name}
-                          {session.document ? ` · ${session.document.title || session.document.fileName}` : ""}
-                          {session.presentationVersion ? ` · v${session.presentationVersion}` : ""}
-                        </p>
-                      </div>
-                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                        {formatTime(session.openedAt)} → {formatTime(session.closedAt || session.lastViewedAt)}
-                      </span>
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      <span>{t("review.presentationActiveTime", { minutes: Math.max(1, Math.ceil(session.activeDurationSeconds / 60)) })}</span>
-                      {session.pageCount || viewedPages ? (
-                        <span>{t("review.presentationPages", { viewed: viewedPages, total: session.pageCount ?? "—" })}</span>
-                      ) : null}
-                      {latitude != null && longitude != null ? (
-                        <a
-                          className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
-                          href={`https://www.google.com/maps?q=${latitude},${longitude}`}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
-                          {t("review.presentationLocation")}
-                        </a>
-                      ) : (
-                        <span>{t("review.presentationNoLocation")}</span>
-                      )}
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
-          ) : (
-            <p className="mt-3 text-sm text-muted-foreground">{t("review.noPresentations")}</p>
-          )}
+          ))}
         </div>
+      </div>
 
-        <div className="py-4">
-          <div className="flex items-baseline justify-between gap-3">
-            {blockTitle(t("review.photosTitle"))}
-            <span className="text-xs text-muted-foreground">{t("review.photosCount", { count: photoCount })}</span>
-          </div>
-          <div className="mt-3">
-            {visit.photos.length ? (
-              <>
+      <div className="grid lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+        <div className="divide-y divide-zinc-200 px-4 dark:divide-zinc-800 sm:px-5 lg:border-r lg:border-zinc-200 lg:dark:border-zinc-800">
+          <section className="py-3">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              {blockTitle(t("review.sectionProgress"))}
+              <span className="text-xs text-muted-foreground">
+                {visit.route
+                  ? `${visit.route.name || t("review.routeUnnamed")}${visit.routePoint ? ` · ${t("review.routePoint", { number: visit.routePoint.orderIndex + 1 })}` : ""}`
+                  : visit.primaryAgentHidden ? t("review.routeHidden") : t("review.unplanned")}
+              </span>
+            </div>
+            <dl className="mt-1 divide-y divide-zinc-100 dark:divide-zinc-800/60">
+              {placeRow(t("review.placeCheckIn"), place.checkIn, "checkIn")}
+              {placeRow(t("review.placeCheckOut"), place.checkOut, "checkOut")}
+            </dl>
+            <p className="mt-1 flex flex-wrap gap-x-4 text-xs">
+              {mapHref(visit.checkInLat, visit.checkInLng) ? (
+                <a className="inline-flex items-center gap-1 font-medium text-primary hover:underline" href={mapHref(visit.checkInLat, visit.checkInLng) as string} target="_blank" rel="noreferrer">
+                  <MapPin className="h-3.5 w-3.5" aria-hidden="true" />{t("review.placeCheckIn")} · {t("review.mapLink")}
+                </a>
+              ) : null}
+              {mapHref(visit.checkOutLat, visit.checkOutLng) ? (
+                <a className="inline-flex items-center gap-1 font-medium text-primary hover:underline" href={mapHref(visit.checkOutLat, visit.checkOutLng) as string} target="_blank" rel="noreferrer">
+                  <MapPin className="h-3.5 w-3.5" aria-hidden="true" />{t("review.placeCheckOut")} · {t("review.mapLink")}
+                </a>
+              ) : null}
+            </p>
+          </section>
+
+          {visit.presentationSessions.length ? (
+            <section className="py-3">
+              <div className="flex flex-wrap items-baseline justify-between gap-3">
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <FileText className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                  {t("review.presentationsTitle")}
+                </h3>
+                <span className="text-xs text-muted-foreground">
+                  {t("review.presentationsCount", { count: visit.presentationSessions.length })}
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">{t("review.presentationEvidenceNote")}</p>
+              <ul className="mt-2 space-y-2" data-testid="mtm-visit-presentation-sessions">
+                {visit.presentationSessions.map((session) => {
+                  const viewedPages = Array.isArray(session.pagesViewed) ? session.pagesViewed.length : 0
+                  const latitude = session.openLat ?? session.closeLat
+                  const longitude = session.openLng ?? session.closeLng
+                  return (
+                    <li key={session.id} className="rounded-xl border border-zinc-200 p-2.5 dark:border-zinc-800">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-medium text-foreground">{session.product.name}</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {session.product.group.name}
+                            {session.document ? ` · ${session.document.title || session.document.fileName}` : ""}
+                            {session.presentationVersion ? ` · v${session.presentationVersion}` : ""}
+                          </p>
+                        </div>
+                        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                          {formatTime(session.openedAt)} → {formatTime(session.closedAt || session.lastViewedAt)}
+                        </span>
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                        <span>{t("review.presentationActiveTime", { minutes: Math.max(1, Math.ceil(session.activeDurationSeconds / 60)) })}</span>
+                        {session.pageCount || viewedPages ? (
+                          <span>{t("review.presentationPages", { viewed: viewedPages, total: session.pageCount ?? "—" })}</span>
+                        ) : null}
+                        {latitude != null && longitude != null ? (
+                          <a
+                            className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                            href={`https://www.google.com/maps?q=${latitude},${longitude}`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
+                            {t("review.presentationLocation")}
+                          </a>
+                        ) : (
+                          <span>{t("review.presentationNoLocation")}</span>
+                        )}
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            </section>
+          ) : null}
+
+          {visit.photos.length ? (
+            <section className="py-3">
+              <div className="flex items-baseline justify-between gap-3">
+                {blockTitle(t("review.photosTitle"))}
+                <span className="text-xs text-muted-foreground">{t("review.photosCount", { count: photoCount })}</span>
+              </div>
+              <div className="mt-2">
                 <VisitPhotoGrid
                   photos={visit.photos}
                   formatTime={(value) => formatTime(value)}
@@ -392,92 +469,92 @@ export function VisitReviewPanel({ visitId, refreshToken, closeHref, onVisitLoad
                 {photoCount > visit.photos.length ? (
                   <p className="mt-2 text-xs text-muted-foreground">{t("review.morePhotos", { count: photoCount - visit.photos.length })}</p>
                 ) : null}
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">{t("review.noPhotos")}</p>
-            )}
-          </div>
+              </div>
+            </section>
+          ) : null}
         </div>
 
-        {signature ? (
-          <div className="py-4">
-            {blockTitle(tw("actions.SIGNATURE"))}
-            <SignaturePreview evidence={signature.evidence} label={tw("actions.SIGNATURE")} />
-            <p className="mt-2 text-xs text-muted-foreground">
-              {[signerName ? t("review.signedBy", { name: signerName }) : null, signedAt ? t("review.signedAt", { time: formatTime(signedAt) }) : null].filter(Boolean).join(" · ")}
-            </p>
-          </div>
-        ) : null}
+        <div className="divide-y divide-zinc-200 border-t border-zinc-200 px-4 dark:divide-zinc-800 dark:border-zinc-800 sm:px-5 lg:border-t-0">
+          {visit.notes?.trim() || hasResult ? (
+            <section className="py-3">
+              {blockTitle(t("review.sectionOutcome"))}
+              {visit.notes?.trim() ? (
+                <p className="mt-2 whitespace-pre-line text-sm text-foreground">{visit.notes}</p>
+              ) : null}
+              {hasResult ? (
+                <dl className="mt-2 space-y-1 text-sm">
+                  {visit.outcome ? <div className="flex gap-2"><dt className="text-muted-foreground">{tw("outcome")}:</dt><dd className="font-medium text-foreground">{tw(`outcomes.${visit.outcome}`)}</dd></div> : null}
+                  {visit.potential && visit.potential !== "UNKNOWN" ? <div className="flex gap-2"><dt className="text-muted-foreground">{tw("potential")}:</dt><dd className="font-medium text-foreground">{tw(`potentials.${visit.potential}`)}</dd></div> : null}
+                  {visit.resultNotes ? <div><dt className="sr-only">{t("review.resultNote")}</dt><dd className="whitespace-pre-line text-foreground">{visit.resultNotes}</dd></div> : null}
+                  {visit.nextActionDueAt ? <div className="text-muted-foreground">{t("review.nextActionDue", { date: formatFull(visit.nextActionDueAt) })}</div> : null}
+                </dl>
+              ) : null}
+            </section>
+          ) : null}
 
-        <div className="grid gap-4 py-4 md:grid-cols-2">
-          <div>
-            {blockTitle(t("review.noteTitle"))}
-            {visit.notes?.trim()
-              ? <p className="mt-2 whitespace-pre-line text-sm text-foreground">{visit.notes}</p>
-              : <p className="mt-2 text-sm text-muted-foreground">{t("review.noNote")}</p>}
-          </div>
-          <div>
-            {blockTitle(t("review.resultTitle"))}
-            {hasResult ? (
-              <dl className="mt-2 space-y-1 text-sm">
-                {visit.outcome ? <div className="flex gap-2"><dt className="text-muted-foreground">{tw("outcome")}:</dt><dd className="font-medium text-foreground">{tw(`outcomes.${visit.outcome}`)}</dd></div> : null}
-                {visit.potential && visit.potential !== "UNKNOWN" ? <div className="flex gap-2"><dt className="text-muted-foreground">{tw("potential")}:</dt><dd className="font-medium text-foreground">{tw(`potentials.${visit.potential}`)}</dd></div> : null}
-                {visit.resultNotes ? <div><dt className="sr-only">{t("review.resultNote")}</dt><dd className="whitespace-pre-line text-foreground">{visit.resultNotes}</dd></div> : null}
-                {visit.nextActionDueAt ? <div className="text-muted-foreground">{t("review.nextActionDue", { date: formatFull(visit.nextActionDueAt) })}</div> : null}
-              </dl>
-            ) : (
-              <p className="mt-2 text-sm text-muted-foreground">{t("review.noResult")}</p>
-            )}
-          </div>
-        </div>
+          {signature ? (
+            <section className="py-3">
+              {blockTitle(tw("actions.SIGNATURE"))}
+              <SignaturePreview evidence={signature.evidence} label={tw("actions.SIGNATURE")} />
+              <p className="mt-2 text-xs text-muted-foreground">
+                {[signerName ? t("review.signedBy", { name: signerName }) : null, signedAt ? t("review.signedAt", { time: formatTime(signedAt) }) : null].filter(Boolean).join(" · ")}
+              </p>
+            </section>
+          ) : null}
 
-        <div className="py-4">
-          {blockTitle(t("review.actionsTitle"))}
           {actionRows.length ? (
-            <ul className="mt-2 divide-y divide-zinc-100 dark:divide-zinc-800/60" data-testid="mtm-visit-review-actions">
-              {actionRows.map((row) => (
-                <li key={row.actionKey} className="flex items-center justify-between gap-3 py-2 text-sm">
-                  <span className="flex items-center gap-2 text-foreground">
-                    {row.done
-                      ? <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-                      : <Circle className={`h-4 w-4 ${row.required ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`} aria-hidden="true" />}
-                    {tw(`actions.${row.actionKey}`)}
-                    <span className="text-xs text-muted-foreground">{row.required ? t("review.actionRequired") : t("review.actionOptional")}</span>
-                  </span>
-                  <span className={`text-xs font-medium ${row.done ? "text-emerald-700 dark:text-emerald-300" : row.required ? "text-amber-700 dark:text-amber-300" : "text-muted-foreground"}`}>
-                    {row.done ? t("review.actionDone") : t("review.actionNotDone")}
-                    {row.minCount > 1 || row.count > 1 ? ` · ${row.count}/${row.minCount}` : ""}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-2 text-sm text-muted-foreground">{t("review.noActions")}</p>
-          )}
-        </div>
+            <section className="py-3">
+              {blockTitle(t("review.actionsTitle"))}
+              <ul className="mt-1 divide-y divide-zinc-100 text-sm dark:divide-zinc-800/60" data-testid="mtm-visit-review-actions">
+                {actionRows.map((row) => (
+                  <li key={row.actionKey} className="flex items-center justify-between gap-3 py-1.5">
+                    <span className="flex items-center gap-2 text-foreground">
+                      {row.done
+                        ? <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                        : <Circle className={`h-4 w-4 ${row.required ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`} aria-hidden="true" />}
+                      {tw(`actions.${row.actionKey}`)}
+                      <span className="text-xs text-muted-foreground">{row.required ? t("review.actionRequired") : t("review.actionOptional")}</span>
+                    </span>
+                    <span className={`text-xs font-medium ${row.done ? "text-emerald-700 dark:text-emerald-300" : row.required ? "text-amber-700 dark:text-amber-300" : "text-muted-foreground"}`}>
+                      {row.done ? t("review.actionDone") : t("review.actionNotDone")}
+                      {row.minCount > 1 || row.count > 1 ? ` · ${row.count}/${row.minCount}` : ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
 
-        <div className="py-4">
-          <div className="flex flex-wrap items-baseline justify-between gap-3">
-            <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <ListChecks className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-              {t("review.openTasks", { count: data.openTasks.count })}
-            </h3>
-            {data.openTasks.count > 0 ? (
-              <Link href="/mtm/tasks" className="text-sm font-medium text-primary hover:underline">{t("review.openTasksLink")}</Link>
+          <section className="py-3">
+            <div className="flex flex-wrap items-baseline justify-between gap-3">
+              <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <ListChecks className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                {t("review.openTasksShort")}
+              </h3>
+              <span className="text-xs text-muted-foreground">{t("review.openTasks", { count: data.openTasks.count })}</span>
+            </div>
+            {data.openTasks.items.length ? (
+              <ul className="mt-1.5 space-y-1 text-sm">
+                {data.openTasks.items.map((task) => (
+                  <li key={task.id} className="flex flex-wrap items-baseline justify-between gap-x-3">
+                    <span className="min-w-0 truncate text-foreground">{task.title}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {tw(`priorities.${task.priority}`)}
+                      {task.dueDate ? ` · ${t("review.taskDue", { date: formatFull(task.dueDate) })}` : ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             ) : null}
-          </div>
-          {data.openTasks.items.length ? (
-            <ul className="mt-2 space-y-1 text-sm">
-              {data.openTasks.items.map((task) => (
-                <li key={task.id} className="flex flex-wrap items-baseline justify-between gap-x-3">
-                  <span className="min-w-0 truncate text-foreground">{task.title}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {tw(`priorities.${task.priority}`)}
-                    {task.dueDate ? ` · ${t("review.taskDue", { date: formatFull(task.dueDate) })}` : ""}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            {data.openTasks.count > 0 ? (
+              <Link href="/mtm/tasks" className="mt-1.5 inline-block text-sm font-medium text-primary hover:underline">{t("review.openTasksLink")}</Link>
+            ) : null}
+          </section>
+
+          {missing.length ? (
+            <section className="py-3">
+              <p className="text-xs text-muted-foreground">{t("review.nothingRecorded", { items: missing.join(", ").toLocaleLowerCase(locale) })}</p>
+            </section>
           ) : null}
         </div>
       </div>

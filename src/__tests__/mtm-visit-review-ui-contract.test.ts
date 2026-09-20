@@ -173,3 +173,42 @@ describe("the agent's own execution view", () => {
     expect(workspace).not.toContain("{reminder.priority}</span>")
   })
 })
+
+/**
+ * Compaction of the visit card (owner, 2026-09-20: «детали визита слишком
+ * растянутые, можно компактно красиво… сделай аудит»). One visit used to take
+ * about four screens: nine stacked blocks in a single column, each holding one
+ * or two lines, and three of them saying that nothing was recorded.
+ */
+describe("the visit card reads in one screen", () => {
+  it("puts time, place, presentations, photos and signature on one strip", () => {
+    expect(panel).toContain('data-testid="mtm-visit-review-facts"')
+    expect(panel).toContain('t("review.factSignature")')
+    expect(panel).toContain('t("review.factNoSignature")')
+  })
+
+  it("splits what happened from the outcome instead of stacking everything", () => {
+    expect(panel).toContain("lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]")
+    expect(panel).toContain('t("review.sectionProgress")')
+    expect(panel).toContain('t("review.sectionOutcome")')
+  })
+
+  it("says what is missing once, quietly, instead of an empty block each", () => {
+    expect(panel).toContain('t("review.nothingRecorded"')
+    // The empty-state blocks are gone: sections render only with content.
+    expect(panel).toContain("{visit.presentationSessions.length ? (")
+    expect(panel).toContain("{visit.photos.length ? (")
+    expect(panel).toContain("{visit.notes?.trim() || hasResult ? (")
+  })
+
+  it("shows a 13-hour visit as hours, and links both fixes to a map", () => {
+    expect(panel).toContain('t("review.durationHm"')
+    expect(panel).toContain("const mapHref = (latitude?: number | null, longitude?: number | null)")
+    expect(panel).toContain('t("review.mapLink")')
+  })
+
+  it("offers the customer card from the header", () => {
+    expect(panel).toContain('href={`/mtm/customers/${visit.customer.id}`}')
+    expect(panel).toContain('t("review.openCustomer")')
+  })
+})
