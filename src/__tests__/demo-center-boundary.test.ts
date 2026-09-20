@@ -47,8 +47,13 @@ const CLIENT_DIRS = ["src/components/demo-center", "src/app/demo-access"]
 const CLIENT_FORBIDDEN = ["@/lib/prisma", "@/lib/api-auth", "@/lib/rls-context", "@/lib/auth", "next-auth", "@/lib/session"]
 const PUBLIC_DEMO_API_PREFIX = "/api/v1/public/demo-"
 
-const PURE_DIR = "src/lib/demo-center/journey"
-const PURE_ALLOWED_EXTERNAL = new Set(["@/lib/modules"])
+/** Directories that must stay pure, with what each may import besides its
+ *  own relative files. The assistant's policy and grounding are pure so they
+ *  can be reasoned about and tested without a database or a model call. */
+const PURE_DIRS: ReadonlyArray<{ dir: string; allowed: ReadonlySet<string> }> = [
+  { dir: "src/lib/demo-center/journey", allowed: new Set(["@/lib/modules"]) },
+  { dir: "src/lib/demo-center/assistant", allowed: new Set(["@/lib/demo-center/journey"]) },
+]
 
 const PUBLIC_ROUTE_DIRS = ["src/app/api/v1/public/demo-access", "src/app/api/v1/public/demo-requests"]
 const PUBLIC_ROUTE_FORBIDDEN_TOKENS = [
@@ -85,19 +90,22 @@ describe("Demo Center trust boundary", () => {
     }
   })
 
-  it("the journey contract stays pure", () => {
-    const files = sourceFiles(PURE_DIR)
-    expect(files.length).toBeGreaterThan(0)
-    for (const file of files) {
-      const source = readFileSync(file, "utf8")
-      const where = path.relative(ROOT, file)
-      for (const specifier of importSpecifiers(source)) {
-        const ok = specifier.startsWith("./") || specifier.startsWith("../") || PURE_ALLOWED_EXTERNAL.has(specifier)
-        expect(ok, `${where} imports ${specifier}`).toBe(true)
+  it("the journey contract and the assistant policy stay pure", () => {
+    for (const { dir, allowed } of PURE_DIRS) {
+      const files = sourceFiles(dir)
+      expect(files.length, dir).toBeGreaterThan(0)
+      for (const file of files) {
+        const source = readFileSync(file, "utf8")
+        const where = path.relative(ROOT, file)
+        for (const specifier of importSpecifiers(source)) {
+          const ok = specifier.startsWith("./") || specifier.startsWith("../") || allowed.has(specifier)
+          expect(ok, `${where} imports ${specifier}`).toBe(true)
+        }
+        expect(source.includes("fetch("), `${where} performs network calls`).toBe(false)
+        expect(source.includes("process.env"), `${where} reads the environment`).toBe(false)
+        expect(/from ["']react["']/.test(source), `${where} imports React`).toBe(false)
+        expect(source.includes("@/lib/prisma"), `${where} touches the database`).toBe(false)
       }
-      expect(source.includes("fetch("), `${where} performs network calls`).toBe(false)
-      expect(source.includes("process.env"), `${where} reads the environment`).toBe(false)
-      expect(/from ["']react["']/.test(source), `${where} imports React`).toBe(false)
     }
   })
 

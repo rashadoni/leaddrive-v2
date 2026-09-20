@@ -257,6 +257,35 @@ export function createJourneyRecords(identity: DemoProspectIdentity, now: Date):
 }
 
 /**
+ * Rebuilds the records a journey would hold at `state`, from the identity
+ * alone.
+ *
+ * The server uses this so it never has to trust a snapshot posted by the
+ * browser: the client may say which state it reached, but every string in
+ * the result comes from the database or from this file. Walking the happy
+ * path is enough because each effect is idempotent and keyed to its own
+ * target state.
+ */
+export function rebuildRecordsAtState(
+  identity: DemoProspectIdentity,
+  state: DemoJourneyState,
+  now: Date,
+  happyPath: readonly DemoJourneyState[],
+): DemoJourneyRecords {
+  let records = createJourneyRecords(identity, now)
+  for (const step of happyPath) {
+    records = applyTransitionEffects(records, step, identity, now)
+    if (step === state) break
+  }
+  // Alternative call outcomes are not on the happy path; apply the one asked
+  // for so a declined or failed call still reads correctly.
+  if (state.startsWith("CALL_") && !happyPath.includes(state)) {
+    records = applyTransitionEffects(records, state, identity, now)
+  }
+  return records
+}
+
+/**
  * Applies the record-level consequence of entering `to`. Idempotent per
  * target state: applying the same transition twice yields the same records,
  * which is what makes refresh and retry safe.
