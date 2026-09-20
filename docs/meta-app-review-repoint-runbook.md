@@ -59,54 +59,57 @@ Nothing below can be done from a session; all of it needs the owner's account.
    without a `code`, so a missing permission here looks like a broken login,
    not a configuration error.
 
-## Step 3 — update the canonical environment
+## Step 3 — deliver the new credentials through the operator job
 
-The application environment is `/etc/leaddrive/app.env`, root-owned and mode
-0600. `/opt/leaddrive-v2/.env` is a symlink to it, and `scripts/server-deploy.sh`
-refuses to deploy if either the ownership, the mode or the symlink target is
-wrong. Therefore the file is replaced through a staging file that already
-carries the right posture — never with a bare `sed -i`, which rewrites the
-inode and can drop the mode.
+Do **not** edit the production environment over SSH. The repository already has
+an operator job for exactly this, `.github/workflows/set-social-app-secrets.yml`,
+and it now carries the Facebook keys as well. It asserts the env-file posture,
+takes the app-env lock, stages the replacement atomically, restarts PM2 with the
+merged environment and pings `/api/v1/ping` afterwards. Secrets never reach a
+log — the job prints only which keys were set or skipped.
 
-Run on the production host as root, substituting the three real values:
+This also means no production secret is ever pasted into a terminal.
 
-```bash
-sudo bash -c '
-set -euo pipefail
-f=/etc/leaddrive/app.env
-cp -a "$f" "$f.bak-$(date +%F-%H%M%S)"
-tmp=$(mktemp /etc/leaddrive/.app.env.XXXXXX)
-chown root:root "$tmp"; chmod 0600 "$tmp"
-sed -e "s|^FACEBOOK_APP_ID=.*|FACEBOOK_APP_ID=2414060595720618|" \
-    -e "s|^FACEBOOK_APP_SECRET=.*|FACEBOOK_APP_SECRET=REPLACE_FB_SECRET|" \
-    -e "s|^INSTAGRAM_APP_ID=.*|INSTAGRAM_APP_ID=REPLACE_IG_APP_ID|" \
-    -e "s|^INSTAGRAM_APP_SECRET=.*|INSTAGRAM_APP_SECRET=REPLACE_IG_SECRET|" \
-    "$f" > "$tmp"
-mv -f "$tmp" "$f"
-stat -c "%U %a %n" "$f"
-grep -E "^(FACEBOOK|INSTAGRAM)_APP_ID=" "$f"
-'
-```
-
-The final two lines are the check: the posture must print `root 600` and the
-two IDs must be the new ones. Secrets are never echoed.
-
-## Step 4 — restart production through the gated path
-
-Editing the file alone changes nothing at runtime. The process environment
-lives in the PM2 dump and is injected when the process is created, so the
-running app keeps the old app IDs until the process is recreated.
-
-Use the normal deployment rather than a hand-rolled `pm2 restart`: it holds the
-production lock, recreates the process, health-checks and rolls back by itself.
+1. Repo → Settings → Secrets and variables → Actions. Add or update:
+   - `FACEBOOK_APP_ID` = `2414060595720618`
+   - `FACEBOOK_APP_SECRET` = that app's secret
+   - `INSTAGRAM_APP_ID` = the Instagram-Login app from step 1
+   - `INSTAGRAM_APP_SECRET` = that app's secret
+2. Run the job:
 
 ```bash
-gh workflow run deploy.yml --repo rashadoni/leaddrive-v2 -f deployment_mode=normal
+gh workflow run set-social-app-secrets.yml --repo rashadoni/leaddrive-v2
 ```
 
-Do not re-run an older deploy run to achieve this. A re-run can consume an
-artifact that the first run already took, which has made a red "Deploy
-atomically" step mean nothing in the past.
+Keys whose secret is unset are skipped, so the job is inert until the secrets
+exist and it can be re-run safely for rotation.
+
+The run's log is the confirmation: each key prints either `staged for canonical
+app env` or `secret not set — skipped`, and the tail prints `ping HTTP 200`.
+
+## Step 4 — confirm the running process actually changed
+
+The job restarts PM2 with `--update-env`, so the change is live immediately. It
+is still worth confirming that the running process, not just the file, moved:
+
+```bash
+ssh root@13.140.132.245 "pm2 jlist | python3 -c \"
+import json,sys
+for a in json.load(sys.stdin):
+    e=a.get('pm2_env',{})
+    for k in ('FACEBOOK_APP_ID','INSTAGRAM_APP_ID'):
+        if k in e: print(a.get('name'), k, '=', e[k])
+\""
+```
+
+Both IDs must be the new ones. Reading `/etc/leaddrive/app.env` alone does not
+prove this: the process environment is injected when the process is created, so
+a file that has been updated and a process that has not is exactly the failure
+this check catches.
+
+No separate deploy is needed for the credential change. The next ordinary
+deploy will recreate the process from the same updated file, so the two stay
+consistent.
 
 ## Step 5 — re-point the tenant side
 
