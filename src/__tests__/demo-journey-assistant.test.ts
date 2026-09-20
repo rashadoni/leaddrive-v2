@@ -6,7 +6,7 @@
  * from outside. The rest is policy — what it refuses and in what language.
  */
 import { describe, expect, it } from "vitest"
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync, readdirSync } from "node:fs"
 import path from "node:path"
 import { buildAssistantGrounding } from "@/lib/demo-center/assistant/context"
 import {
@@ -151,6 +151,67 @@ describe("Records rebuilt from identity alone", () => {
   it("handles a call outcome that is not on the happy path", () => {
     const declined = rebuildRecordsAtState(identity, "CALL_DECLINED", NOW, DEMO_JOURNEY_HAPPY_PATH)
     expect(declined.lead?.timeline.some((entry) => entry.id === "tl-call")).toBe(true)
+  })
+})
+
+describe("Access-trail event types", () => {
+  /** The live CHECK constraint, read from the newest migration that sets it. */
+  function allowedEventTypes(): Set<string> {
+    const dir = path.join(ROOT, "prisma/migrations")
+    const owning = readdirSync(dir)
+      .filter((name) => {
+        const file = path.join(dir, name, "migration.sql")
+        return existsSync(file) && readFileSync(file, "utf8").includes("demo_access_events_type_check")
+      })
+      .sort()
+      .at(-1)
+    expect(owning, "no migration defines demo_access_events_type_check").toBeDefined()
+    const sql = readFileSync(path.join(dir, owning!, "migration.sql"), "utf8")
+    const list = sql.slice(sql.lastIndexOf("demo_access_events_type_check"))
+    const body = list.slice(list.indexOf("("), list.indexOf("))") + 1)
+    return new Set(Array.from(body.matchAll(/'([A-Z_]+)'/g), (match) => match[1]))
+  }
+
+  /** Every literal the demo code writes into demo_access_events.eventType. */
+  function writtenEventTypes(): Set<string> {
+    const files = [
+      ROUTE,
+      "src/app/api/v1/public/demo-access/[token]/events/route.ts",
+      "src/app/api/v1/public/demo-access/[token]/start/route.ts",
+      "src/app/api/v1/public/demo-access/[token]/otp/route.ts",
+      "src/app/api/v1/public/demo-access/[token]/verify/route.ts",
+      "src/app/api/v1/public/demo-access/[token]/route.ts",
+      "src/app/api/v1/admin/demo-requests/[id]/issue/route.ts",
+      "src/app/api/v1/admin/demo-requests/[id]/reject/route.ts",
+      "src/app/api/v1/admin/demo-grants/[id]/revoke/route.ts",
+      "src/lib/demo-center/access.ts",
+      "src/lib/demo-center/validation.ts",
+    ]
+    const written = new Set<string>()
+    for (const file of files) {
+      const full = path.join(ROOT, file)
+      if (!existsSync(full)) continue
+      const source = readFileSync(full, "utf8")
+      for (const [, value] of source.matchAll(/eventType:\s*"([A-Z_]+)"/g)) written.add(value)
+      // `const ASKED = "ASSISTANT_ASKED"` and the enum in validation.ts.
+      for (const [, value] of source.matchAll(/^const [A-Z_]+ = "([A-Z_]+)"$/gm)) written.add(value)
+      for (const [, value] of source.matchAll(/z\.enum\(\[([^\]]+)\]\)/g)) {
+        for (const [, name] of value.matchAll(/"([A-Z_]+)"/g)) written.add(name)
+      }
+    }
+    return written
+  }
+
+  it("admits every type the code writes — an unlisted one fails the insert after the spend", () => {
+    const allowed = allowedEventTypes()
+    expect(allowed.size).toBeGreaterThan(5)
+    for (const type of writtenEventTypes()) {
+      expect(allowed.has(type), `demo_access_events_type_check does not admit "${type}"`).toBe(true)
+    }
+  })
+
+  it("admits the assistant's own event", () => {
+    expect(allowedEventTypes().has("ASSISTANT_ASKED")).toBe(true)
   })
 })
 
