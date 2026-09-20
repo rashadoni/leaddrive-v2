@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { notFound, redirect } from "next/navigation"
 import { DemoPlayer } from "@/components/demo-center/demo-player"
 import { DemoJourneyPlayer } from "@/components/demo-center/journey/demo-journey-player"
+import { DemoLocaleProvider } from "@/components/demo-center/journey/demo-locale"
 import { getDemoModules } from "@/lib/demo-center/catalog"
 import {
   DEMO_SOURCE_CHANNELS,
@@ -62,14 +63,16 @@ export default async function DemoRequestPreviewPage({
     const manifest = rawScenarioParam ? getDemoJourneyScenario(rawScenarioParam) : null
     if (!manifest) redirect("/admin/demo-requests")
     return (
+      <DemoLocaleProvider>
       <DemoJourneyPlayer
         token={`admin-sample-${manifest.scenarioId}-${manifest.version}`}
         manifest={manifest}
         identity={SAMPLE_IDENTITY}
         company={SAMPLE_IDENTITY.company}
         watermark={`Nümunə · Admin ön baxışı`}
-        previewMode
+        variant="preview"
       />
+      </DemoLocaleProvider>
     )
   }
 
@@ -97,14 +100,16 @@ export default async function DemoRequestPreviewPage({
     }
 
     return (
+      <DemoLocaleProvider>
       <DemoJourneyPlayer
         token={`admin-preview-${request.id}-${manifest.scenarioId}-${manifest.version}`}
         manifest={manifest}
         identity={identity}
         company={request.company}
         watermark={`${request.company} · Admin ön baxışı`}
-        previewMode
+        variant="preview"
       />
+      </DemoLocaleProvider>
     )
   }
 

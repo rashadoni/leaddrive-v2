@@ -181,6 +181,61 @@ function DemoRequestForm({ t, locale }: { t: (key: string) => string; locale: st
   )
 }
 
+/**
+ * Open the demo right here.
+ *
+ * The reference product did not put its guided tour behind a request form —
+ * "Getting Started" sat next to Home and opened on click. This is that: one
+ * button into the story. The corporate request form stays on the page for
+ * prospects who want a private, watermarked session, but it no longer blocks
+ * anyone from simply looking at the product.
+ *
+ * The two fields are optional and never leave the browser: they only decide
+ * whose name the lead in the story carries.
+ */
+function OpenDemoLauncher({ t }: { t: (key: string) => string }) {
+  const [name, setName] = useState("")
+  const [company, setCompany] = useState("")
+  const params = new URLSearchParams()
+  if (name.trim()) params.set("name", name.trim())
+  if (company.trim()) params.set("company", company.trim())
+  const href = params.toString() ? `/demo/start?${params.toString()}` : "/demo/start"
+
+  return (
+    <div className="rounded-2xl border border-[#EA580C]/25 bg-white p-6 shadow-lg lg:p-8">
+      <h2 className="text-lg font-semibold text-[#001E3C]">{t("openTitle")}</h2>
+      <p className="mt-1 text-sm text-[#001E3C]/60">{t("openSubtitle")}</p>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <label className="block">
+          <span className="text-xs text-[#001E3C]/60">{t("openNameLabel")}</span>
+          <input
+            value={name}
+            onChange={(event) => setName(event.target.value.slice(0, 80))}
+            className="mt-1 w-full rounded-lg border border-[#001E3C]/15 px-3 py-2 text-sm focus:border-[#EA580C] focus:outline-none"
+          />
+        </label>
+        <label className="block">
+          <span className="text-xs text-[#001E3C]/60">{t("openCompanyLabel")}</span>
+          <input
+            value={company}
+            onChange={(event) => setCompany(event.target.value.slice(0, 120))}
+            className="mt-1 w-full rounded-lg border border-[#001E3C]/15 px-3 py-2 text-sm focus:border-[#EA580C] focus:outline-none"
+          />
+        </label>
+      </div>
+
+      <Link
+        href={href}
+        className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#EA580C] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#c2410c]"
+      >
+        {t("openStart")} <ArrowRight className="h-4 w-4" />
+      </Link>
+      <p className="mt-3 text-xs leading-relaxed text-[#001E3C]/50">{t("openHint")}</p>
+    </div>
+  )
+}
+
 export default function DemoPage() {
   const t = useTranslations("demo")
   const locale = useLocale()
@@ -227,13 +282,18 @@ export default function DemoPage() {
               </div>
             </div>
 
-            {/* Right: Form */}
-            <div>
-              <div className="rounded-2xl border border-[#001E3C]/10 bg-white shadow-lg p-6 lg:p-8">
-                <h2 className="text-lg font-semibold text-[#001E3C] mb-1">{t("requestDemo")}</h2>
-                <p className="text-sm text-[#001E3C]/60 mb-6">{t("formDescription")}</p>
-                <DemoRequestForm t={t} locale={locale} />
-              </div>
+            {/* Right: open the demo now, or ask for a private one */}
+            <div className="space-y-4">
+              <OpenDemoLauncher t={t} />
+              <details className="rounded-2xl border border-[#001E3C]/10 bg-white shadow-lg">
+                <summary className="cursor-pointer list-none p-6 lg:p-8">
+                  <span className="text-lg font-semibold text-[#001E3C]">{t("requestDemo")}</span>
+                  <span className="mt-1 block text-sm text-[#001E3C]/60">{t("formDescription")}</span>
+                </summary>
+                <div className="px-6 pb-6 lg:px-8 lg:pb-8">
+                  <DemoRequestForm t={t} locale={locale} />
+                </div>
+              </details>
             </div>
           </div>
         </div>
