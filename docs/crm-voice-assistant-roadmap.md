@@ -408,12 +408,12 @@ collecting -> awaiting_confirmation -> executing -> succeeded | failed
       compound plan is the root aggregate; its ordered child intents do not
       compete with that root uniqueness constraint.
 - [x] I1.9 Add a default ten-minute TTL, configurable by action risk.
-- [ ] I1.10 Add compare-and-swap transition from confirmation to execution.
-- [ ] I1.11 Recheck tenant, module permission, field permission, and record
+- [x] I1.10 Add compare-and-swap transition from confirmation to execution.
+- [x] I1.11 Recheck tenant, module permission, field permission, and record
       filter during commit.
-- [ ] I1.12 Return the stored result for idempotent commit retries.
-- [ ] I1.13 Add lease/recovery handling for interrupted execution.
-- [ ] I1.14 Add an immutable intent event/audit ledger.
+- [x] I1.12 Return the stored result for idempotent commit retries.
+- [x] I1.13 Add lease/recovery handling for interrupted execution.
+- [x] I1.14 Add an immutable intent event/audit ledger.
 - [ ] I1.15 Add per-user, per-tenant, and per-action rate limits.
 
 Foundation note (2026-09-19): `AiActionIntent` now has tenant-safe composite
@@ -465,10 +465,19 @@ Execution-boundary note (2026-09-20): all five canonical commands can now join
 an existing transaction and defer external effects. The internal executor
 atomically commits the CRM mutation, minimal receipt result and immutable
 `succeeded` event, while a committed-result retry replays without invoking the
-command again. It remains internal-only: proof consumption, execution claim,
-lease recovery and the commit endpoint are still disabled. External-effect
-durability remains tracked by C1.12. See
+command again. External-effect durability remains tracked by C1.12. See
 `docs/crm-voice-action-execution-boundary.md`.
+
+Execution-claim note (2026-09-20): internal orchestration now validates and
+single-consumes the exact confirmation proof, repeats mutable permissions and
+target checks, atomically claims `executing`, issues a 60-second UUID lease,
+recovers only the exact expired lease, and records bounded terminal failures.
+Every mutation shares a transaction with its immutable event. Same-proof
+retries replay the existing claim even after proof expiry; competing proofs,
+active leases and stale workers fail closed. I1.10-I1.14 are complete at the
+internal boundary, but voice writes remain disabled until I1.5 adds the
+session-only commit adapter and its rate limit. See
+`docs/crm-voice-action-execution-claim.md`.
 
 ### Exit gate
 

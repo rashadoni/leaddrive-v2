@@ -69,6 +69,7 @@ import {
   cancelAiVoiceActionDraft,
   getActiveAiVoiceActionDraft,
   issueAiVoiceActionConfirmationProof,
+  revalidateAiVoiceActionExecutionAccess,
   updateAiVoiceActionDraft,
 } from "@/lib/ai/voice/action-draft"
 import { hashAiActionIntentPayload } from "@/lib/ai/voice/action-intent"
@@ -337,5 +338,72 @@ describe("AI voice action draft lifecycle", () => {
       payloadHash,
     })).rejects.toMatchObject({ code: "INTENT_INTEGRITY_FAILED", status: 409 })
     expect(deps.eventCreate).not.toHaveBeenCalled()
+  })
+
+  it("revalidates the exact owned execution identity and active voice session", async () => {
+    const normalizedPayload = { title: "Call Ali" }
+    const payloadHash = hashAiActionIntentPayload({
+      actionType: "create_task",
+      revision: 1,
+      normalizedPayload,
+    })
+    deps.intentFindFirst.mockResolvedValueOnce(storedIntent({ normalizedPayload, payloadHash }))
+
+    await revalidateAiVoiceActionExecutionAccess(auth, {
+      intentId: "intent-1",
+      expectedRevision: 1,
+      payloadHash,
+      expectedState: "awaiting_confirmation",
+    })
+
+    expect(deps.intentFindFirst).toHaveBeenCalledWith({
+      where: {
+        id: "intent-1",
+        organizationId: "org-1",
+        userId: "user-1",
+        parentIntentId: null,
+      },
+    })
+    expect(deps.sessionFindFirst).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        id: "voice-1",
+        organizationId: "org-1",
+        userId: "user-1",
+        status: "active",
+      }),
+      select: { id: true },
+    })
+  })
+
+  it("rejects changed state or tampered payload before an execution claim", async () => {
+    const normalizedPayload = { title: "Call Ali" }
+    const payloadHash = hashAiActionIntentPayload({
+      actionType: "create_task",
+      revision: 1,
+      normalizedPayload,
+    })
+    deps.intentFindFirst.mockResolvedValueOnce(storedIntent({
+      normalizedPayload,
+      payloadHash,
+      state: "executing",
+    }))
+    await expect(revalidateAiVoiceActionExecutionAccess(auth, {
+      intentId: "intent-1",
+      expectedRevision: 1,
+      payloadHash,
+      expectedState: "awaiting_confirmation",
+    })).rejects.toMatchObject({ code: "INTENT_STATE_CHANGED", status: 409 })
+
+    deps.intentFindFirst.mockResolvedValueOnce(storedIntent({
+      normalizedPayload: { title: "Tampered" },
+      payloadHash,
+    }))
+    await expect(revalidateAiVoiceActionExecutionAccess(auth, {
+      intentId: "intent-1",
+      expectedRevision: 1,
+      payloadHash,
+      expectedState: "awaiting_confirmation",
+    })).rejects.toMatchObject({ code: "INTENT_INTEGRITY_FAILED", status: 409 })
+    expect(deps.sessionFindFirst).not.toHaveBeenCalled()
   })
 })

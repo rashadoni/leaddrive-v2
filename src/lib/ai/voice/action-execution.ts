@@ -11,6 +11,7 @@ import {
   type CrmCommandPostCommitEffect,
 } from "@/lib/crm-commands/execution-context"
 import { hashAiActionIntentPayload } from "./action-intent"
+import { hashAiVoiceActionExecutionLeaseToken } from "./action-execution-lease"
 import {
   getAiVoiceActionDefinition,
   isAiVoiceActionType,
@@ -272,7 +273,7 @@ export async function executeClaimedAiVoiceAction(
         eventType: "succeeded",
         intentRevision: intent.revision,
         payloadHash: intent.payloadHash,
-        correlationId: input.executionLeaseToken,
+        correlationId: hashAiVoiceActionExecutionLeaseToken(input.executionLeaseToken),
         eventData: {
           resultEntityType: result.entityType,
           resultEntityId: result.entityId,

@@ -213,10 +213,11 @@ describe("AI voice claimed action execution boundary", () => {
       expect(deps.eventCreate).toHaveBeenCalledWith({
         data: expect.objectContaining({
           eventType: "succeeded",
-          correlationId: leaseToken,
+          correlationId: expect.stringMatching(/^[0-9a-f]{64}$/),
           eventData: { resultEntityType: entityType, resultEntityId: entityId },
         }),
       })
+      expect(JSON.stringify(deps.eventCreate.mock.calls)).not.toContain(leaseToken)
       expect(deps.effect).toHaveBeenCalledOnce()
     },
   )
