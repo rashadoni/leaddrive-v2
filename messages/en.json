@@ -23940,6 +23940,25 @@
     "saved": "Saved"
   },
   "voice": {
+    "receipt": {
+      "ariaLabel": "Prepared CRM action",
+      "dismiss": "Hide this draft",
+      "fieldsPrepared": "Prepared fields: {count}",
+      "warningsPrepared": "Warnings to review: {count}",
+      "shadowNotice": "Nothing has been written to the CRM. This is a draft for review only — confirmation buttons are not enabled yet, and a spoken “yes” never authorizes a change.",
+      "state": {
+        "collecting": "Being collected",
+        "awaiting_confirmation": "Awaiting your confirmation",
+        "executing": "Being executed"
+      },
+      "action": {
+        "create_task": "Create task",
+        "create_lead": "Create lead",
+        "update_lead": "Update lead",
+        "create_deal": "Create deal",
+        "convert_lead_to_deal": "Convert lead into deal"
+      }
+    },
     "title": "Voice control",
     "subtitle": "Ask about deals, tasks, the inbox or the field team. The assistant only reads — it does not change anything in the CRM.",
     "idle": "Ready",

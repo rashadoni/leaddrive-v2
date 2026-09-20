@@ -509,3 +509,188 @@ bottom sheet; endpoint не должен подключаться к UI без �
 без аргументов, а test-specific implementation принимал key. Production-код не
 затронут. Mock получил явную сигнатуру `(key, config)`, после чего целевые
 проверки и CI должны быть повторены без изменения typecheck baseline.
+
+## Итог 2026-09-20: session-only commit adapter на production
+
+I1.5 и I1.15 завершены и развернуты:
+
+- основной checkpoint `e5162c478` добавил browser-session-only commit endpoint,
+  строгий proof contract, replay/recovery, terminal/retriable error handling,
+  три rate-limit scope и отдельный regression suite;
+- checkpoint `e4f94d6ac` исправил только TypeScript-сигнатуру hoisted mock,
+  обнаруженную первым blocking typecheck;
+- локально повторно прошли 6 voice/command test files / 45 tests, отдельный
+  commit suite 8/8, targeted ESLint и `git diff --check`;
+- повторный PR CI `35498152909` прошёл scope, runner policy, secret scan,
+  полный static/unit baseline и typecheck;
+- PR #249 слит в `main`, merge SHA
+  `ffcbaa3a427c514deacc478dc3296b331f0fab27`;
+- исходный deploy run `35498959331` был отменён concurrency-механизмом после
+  следующего merge PR #250, а не из-за ошибки кода или production deploy;
+- следующий актуальный run `35499744499` собрал и развернул `main` с нашим
+  изменением; quality/security, production build, immutable artifact, atomic
+  deploy, встроенные public/revision/feature smoke и artifact retention прошли;
+- независимый public ping вернул `{"ok":true}`, build-info подтвердил активный
+  artifact SHA `a9891d6cb6d46ea56e8177eb6dfe298da4ec21bf`;
+- анонимный POST к новому commit route получил `307` на login, то есть
+  production middleware не пропускает вызов без браузерной сессии;
+- повторный поиск подтвердил, что устаревшие `rashadrahimov/leaddrive-v2` и
+  `46.224.171.53` в репозитории отсутствуют.
+
+Текущее состояние: защищённая серверная commit boundary для пяти канонических
+CRM-команд находится на production, но голосовой помощник ещё не вызывает её:
+receipt UI не реализован, явная пользовательская кнопка подтверждения не
+подключена, model write-tools по-прежнему намеренно отсутствуют.
+
+Точка остановки: backend I1.5/I1.15 развернут и независимо проверен. Следующее
+действие — U1.1-U1.3: session-scoped receipt store, desktop receipt panel и
+mobile bottom sheet, затем подключение явной кнопки подтверждения к commit
+endpoint без выдачи write-tool самой модели.
+
+## Пакет продолжения в Codex Cloud — 2026-09-20
+
+Проверенная исходная точка:
+
+- GitHub: `rashadoni/leaddrive-v2`; устаревшие repository/host references
+  `rashadrahimov/leaddrive-v2` и `46.224.171.53` использовать запрещено;
+- в Codex Cloud рабочий путь должен быть `/workspace/leaddrive-v2`;
+- production содержит PR #249, merge
+  `ffcbaa3a427c514deacc478dc3296b331f0fab27`; активный более новый artifact
+  `a9891d6cb6d46ea56e8177eb6dfe298da4ec21bf` также содержит этот merge;
+- полный контекст этой сессии находится в remote branch
+  `origin/codex/crm-voice-assistant-roadmap`, checkpoint `9f17130e8`;
+- новую реализацию следует начинать с чистого актуального `origin/main` в новой
+  ветке `codex/crm-voice-receipt-ui`, а этот журнал читать из указанной
+  continuity-ветки; не переносить старую feature branch поверх нового main.
+
+Непосредственный следующий срез — только U1.1-U1.3, в shadow mode:
+
+1. Добавить client intent/receipt store, жёстко привязанный к текущей
+   аутентифицированной voice session.
+2. Восстанавливать активный receipt через
+   `GET /api/v1/ai/voice/actions/active?voiceSessionId=...` при reconnect/reload
+   настолько, насколько требуется store foundation.
+3. Сделать компактную desktop-панель рядом с существующим assistant orb.
+4. Сделать responsive mobile bottom sheet, сохраняя контекст CRM-страницы.
+5. Покрыть store, session isolation, desktop/mobile rendering и отсутствие
+   скрытого commit целевыми тестами.
+
+Ограничения этого среза:
+
+- не добавлять Gemini/model `commit_*` или другие прямые write-tools;
+- не считать голосовое «да» подтверждением;
+- пока не вызывать commit endpoint из store автоматически и не выполнять write
+  при появлении receipt;
+- не доверять model-supplied IDs, tenant/user/permissions;
+- не превращать обычный receipt в full-screen modal;
+- сохранить текущий noise fix: локальный RMS остаётся только UI-индикатором и
+  не останавливает ответ;
+- scope остаётся CRM browser assistant; PBX/SIP сюда не относится.
+
+Следующие срезы после U1.1-U1.3:
+
+- U1.4-U1.13: поля/warnings/defaults, update diff, ambiguity, duplicate flow,
+  явные create/save/keep/cancel, edit/retry/open/recovery, restore, terminal
+  states, RU/AZ/EN и accessibility;
+- V1.1-V1.10: proposal-only Gemini tools, server-side entity resolution,
+  candidate tokens, ambiguity и prompt-injection hardening; commit tool всё
+  равно запрещён;
+- T1/L1/L2/LF1/L3/D1/D2: поочерёдные product/action slices и отдельные
+  shadow/canary gates для task, lead create/update/form assist/custom fields,
+  deal и lead conversion;
+- C1.9-C1.14: оставшиеся отмеченные roadmap command-layer parity/permission/
+  side-effect/outbox проверки; часть поведения уже могла появиться в поздних
+  slices, поэтому перед отметкой нужна проверка кода и тестовых доказательств;
+- P0.1-P0.3, P0.5-P0.12: продуктовые правила, allow-lists, browser matrix,
+  privacy, flags, SLO/stop conditions до реального rollout;
+- A1.2/A1.6/A1.7/A2.9 и A3.1-A3.15: реальные consented audio fixtures,
+  browser/device matrix, baseline и measurement-driven audio hardening;
+- Q1-Q4: action-specific security/quality gates, затем полный regression gate;
+- M1.1-M1.10 только после стабильных single actions;
+- R1.1-R1.15: flags, telemetry, shadow -> admin canary -> limited cohort и
+  независимые kill switches.
+
+Готовый стартовый запрос для Codex Cloud:
+
+> Продолжи CRM voice assistant в `rashadoni/leaddrive-v2`. Работай в Cloud из
+> `/workspace/leaddrive-v2`. Сначала прочитай `AGENTS.md`,
+> `docs/crm-voice-assistant-roadmap.md` и журнал из
+> `origin/codex/crm-voice-assistant-roadmap` checkpoint `9f17130e8`. Создай
+> чистую ветку `codex/crm-voice-receipt-ui` от актуального `origin/main`.
+> Реализуй только U1.1-U1.3 в shadow mode: session-scoped receipt store,
+> desktop anchored receipt panel и responsive mobile bottom sheet. Не добавляй
+> model commit/write-tool, не выполняй CRM write автоматически и не используй
+> spoken confirmation. Добавь целевые тесты, проверь responsive/accessibility
+> foundation, обнови roadmap и append-only session journal, сделай checkpoint
+> commit. Push/deploy разрешены, но production deploy только через обычный
+> reviewed main -> GitHub Actions flow. Не используй устаревшие
+> `rashadrahimov/leaddrive-v2` или `46.224.171.53`.
+
+## Итог 2026-09-20: receipt UI shell U1.1-U1.3 в shadow mode
+
+Ветка `codex/crm-voice-receipt-ui` создана от актуального `origin/main`
+(`778a55feb`), а не поверх старой feature branch, как и просил пакет
+продолжения. Журнал восстановлен: записи, жившие только в continuity-ветке
+`origin/codex/crm-voice-assistant-roadmap`, добавлены в этот файл перед
+текущей записью, чтобы постоянная история лежала в `main`.
+
+Что сделано:
+
+- **U1.1** `src/lib/ai/voice/receipt-store.ts` — client intent store,
+  привязанный к одному voice session id. Id передаётся в конструктор, и каждый
+  `adopt` сверяет с ним `voiceSessionId` из ответа сервера: чужой receipt
+  отбрасывается, а не отображается. Payload принимается целиком или никак —
+  `normalizeVoiceReceipt` возвращает null вместо частично починенного объекта.
+  Держатся только неконечные состояния (`collecting`, `awaiting_confirmation`,
+  `executing`); терминальные — это уже не открытое решение пользователя и
+  относятся к U1.11. `pruneExpired` перестаёт показывать черновик, чей
+  серверный TTL прошёл, и никогда его не продлевает.
+- **U1.2** `src/components/ai/voice-receipt-surface.tsx` — компактная панель,
+  позиционируемая по измеренному прямоугольнику орба и портируемая в слой
+  `dashboard-voice-status-layer`. Именно по рамке орба, а не по фиксированному
+  углу: орб живёт то в слоте шапки, то в правом нижнем углу
+  (`voice-orb.tsx`), и панель обязана ходить за своим же контролом.
+- **U1.3** Тот же компонент ниже 768 px становится bottom sheet, прижатым к
+  краю, с `safe-area-inset-bottom`. Намеренно не full-screen modal, без
+  backdrop и без focus trap: карточка CRM за квитанцией должна оставаться
+  читаемой, иначе проверять черновик не с чем. Своей области прокрутки
+  поверхность не заводит.
+- RU/AZ/EN строки добавлены в `messages/*.json` (`voice.receipt.*`),
+  `npm run i18n:check` — parity OK.
+
+Границы этого среза соблюдены:
+
+- модели не добавлено ни `commit_*`, ни любого другого write-tool;
+- в UI нет кнопки подтверждения — она относится к U1.8, и до неё коммита нет;
+- единственный сетевой вызов поверхности — `GET
+  /api/v1/ai/voice/actions/active?voiceSessionId=...`, same-origin, с cookie
+  браузерной сессии; тест проверяет, что ни один запрос не уходит на
+  `commit`/`confirmation`/`cancel`/`draft` и что метод всегда GET;
+- закрытие панели локальное: серверный черновик не отменяется и сетевого
+  запроса не порождает;
+- голосовое «да» подтверждением по-прежнему не является — об этом прямо
+  сказано текстом в самой панели (`voice.receipt.shadowNotice`);
+- локальный RMS остаётся UI-индикатором, аудиотракт не трогали.
+
+Проверки, выполненные в этом дереве:
+
+- `npx vitest run src/__tests__/lib-ai-voice-receipt-store.test.ts
+  src/__tests__/voice-receipt-surface-ui.test.ts` — 2 файла, 35 тестов,
+  зелёные;
+- соседние `voice-console-gemini-ui`, `voice-orb-session-race`,
+  `lib-ai-voice-action-draft` — 3 файла, 40 тестов, зелёные;
+- targeted ESLint по пяти изменённым файлам — чисто;
+- `npm run lint:pii-columns` — all clear; `node scripts/check-translations.js`
+  — parity OK; `git diff --check` — чисто.
+- `npx tsc --noEmit` — NOT RUN локально намеренно: графу типов нужно ~12 ГБ,
+  dev-бокс уходит в OOM и печатает пустой лог, из-за чего локальный «ноль
+  ошибок» неотличим от краша (см. `CLAUDE.md`). Авторитетное чтение — CI-лог
+  PR.
+
+Точка остановки: U1.1-U1.3 реализованы в shadow mode и закоммичены.
+Следующее действие — U1.4-U1.13: рендер нормализованных полей, warnings,
+related records и defaults; before/after diff для update; missing-information
+и ambiguous-candidate; duplicate flow; явные кнопки create/save/keep/cancel,
+которые и будут первым вызовом commit endpoint; edit/retry/open-result;
+restore после reload; терминальные и error states; полный обход клавиатурой и
+скринридером.

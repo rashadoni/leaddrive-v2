@@ -23936,6 +23936,25 @@
     "saved": "Saxlanıldı"
   },
   "voice": {
+    "receipt": {
+      "ariaLabel": "Hazırlanmış CRM əməliyyatı",
+      "dismiss": "Qaralamanı gizlət",
+      "fieldsPrepared": "Hazırlanmış sahələr: {count}",
+      "warningsPrepared": "Baxılmalı xəbərdarlıqlar: {count}",
+      "shadowNotice": "CRM-ə heç nə yazılmayıb. Bu, yalnız baxış üçün qaralamadır — təsdiq düymələri hələ aktiv deyil və səslə deyilən «hə» heç vaxt dəyişikliyə icazə vermir.",
+      "state": {
+        "collecting": "Toplanır",
+        "awaiting_confirmation": "Təsdiqinizi gözləyir",
+        "executing": "İcra olunur"
+      },
+      "action": {
+        "create_task": "Tapşırıq yarat",
+        "create_lead": "Lid yarat",
+        "update_lead": "Lidi dəyiş",
+        "create_deal": "Sövdələşmə yarat",
+        "convert_lead_to_deal": "Lidi sövdələşməyə çevir"
+      }
+    },
     "title": "Səslə idarəetmə",
     "subtitle": "Sövdələr, tapşırıqlar, gələn mesajlar və ya sahə komandası haqqında soruşun. Assistent yalnız oxuyur — CRM-də heç nə dəyişmir.",
     "idle": "Hazır",
