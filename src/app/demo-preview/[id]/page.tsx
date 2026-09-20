@@ -30,6 +30,22 @@ function sourceChannelOf(value: string | null | undefined): DemoSourceChannel {
     : "website"
 }
 
+/**
+ * `/demo-preview/sample?scenario=…` — the guided journey with a stand-in
+ * prospect, so the owner can review the experience before any corporate
+ * request exists. Superadmin-only and effect-free like every other preview;
+ * the identity below is invented and never reaches the database.
+ */
+const SAMPLE_ID = "sample"
+const SAMPLE_IDENTITY: DemoProspectIdentity = {
+  name: "Nigar Əliyeva",
+  company: "Xəzər Logistika MMC",
+  jobTitle: "Satış direktoru",
+  emailMasked: "ni•••@xezerlogistika.az",
+  phoneMasked: "+994 ••••• 67",
+  sourceChannel: "instagram",
+}
+
 export default async function DemoRequestPreviewPage({
   params,
   searchParams,
@@ -40,6 +56,23 @@ export default async function DemoRequestPreviewPage({
   if (!(await isSuperAdminSession())) redirect("/dashboard")
 
   const [{ id }, query] = await Promise.all([params, searchParams])
+  const rawScenarioParam = Array.isArray(query.scenario) ? query.scenario[0] : query.scenario
+
+  if (id === SAMPLE_ID) {
+    const manifest = rawScenarioParam ? getDemoJourneyScenario(rawScenarioParam) : null
+    if (!manifest) redirect("/admin/demo-requests")
+    return (
+      <DemoJourneyPlayer
+        token={`admin-sample-${manifest.scenarioId}-${manifest.version}`}
+        manifest={manifest}
+        identity={SAMPLE_IDENTITY}
+        company={SAMPLE_IDENTITY.company}
+        watermark={`Nümunə · Admin ön baxışı`}
+        previewMode
+      />
+    )
+  }
+
   const request = await runWithRlsBypass(() =>
     prisma.demoRequest.findUnique({
       where: { id },
@@ -50,9 +83,8 @@ export default async function DemoRequestPreviewPage({
 
   // Guided journey preview. Effect-free by construction: the journey player
   // never fetches, and preview mode keeps its progress in memory only.
-  const rawScenario = Array.isArray(query.scenario) ? query.scenario[0] : query.scenario
-  if (rawScenario) {
-    const manifest = getDemoJourneyScenario(rawScenario)
+  if (rawScenarioParam) {
+    const manifest = getDemoJourneyScenario(rawScenarioParam)
     if (!manifest) redirect(`/admin/demo-requests/${request.id}`)
 
     const identity: DemoProspectIdentity = {

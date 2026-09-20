@@ -174,10 +174,13 @@ TASK_CREATED — путь без звонка всегда проходим; и�
 
 ## Как посмотреть
 
-Суперадмин → **Admin → Demo Center** → заявка → **Preview guided journey**.
-Открывается `/demo-preview/<id>?scenario=prospect-to-closed-won`: тот же
-рендерер, что увидит клиент, с данными этой заявки, без отправок и без
-записи прогресса.
+Одной ссылкой, без заявки:
+`/demo-preview/sample?scenario=prospect-to-closed-won` — тот же рендерер с
+выдуманным проспектом. Только для суперадмина, ничего не отправляет и
+прогресс не пишет.
+
+С данными конкретной заявки: **Admin → Demo Center** → заявка →
+**Preview guided journey** (`/demo-preview/<id>?scenario=…`).
 
 ## Проверка
 
