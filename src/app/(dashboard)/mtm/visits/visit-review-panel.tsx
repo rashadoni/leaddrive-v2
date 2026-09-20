@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
-import { AlertTriangle, CheckCircle2, Circle, Clock, FileText, ListChecks, MapPin, UserRound, X } from "lucide-react"
+import { AlertTriangle, Camera, CheckCircle2, Circle, Clock, FileText, Flag, ListChecks, LogIn, LogOut, MapPin, Minus, PenLine, Presentation, UserRound, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { SignaturePreview } from "@/components/mtm/visit-signature-preview"
 import { VisitPhotoGrid } from "@/components/mtm/visit-photo-grid"
 import { formatDateTime, formatTime as formatClockTime } from "@/lib/format-date"
 import { useMtmDistanceText } from "@/components/mtm/visit-place-badge"
+import { visitRoadmap, visitRoadmapProgress, type VisitRoadmapStep } from "@/lib/mtm/visit-roadmap"
 import {
   reviewActionRows,
   visitDurationMinutes,
@@ -99,6 +100,72 @@ export function visitStatusClasses(status: string): string {
  */
 /** What the page may reuse from a review load instead of fetching the visit again. */
 export type ReviewedVisitFacts = Pick<VisitReviewData["visit"], "id" | "status" | "checkOutAt" | "duration" | "checkOutLat" | "checkOutLng">
+
+const ROADMAP_ICON: Record<string, typeof LogIn> = {
+  checkIn: LogIn,
+  presentation: Presentation,
+  photo: Camera,
+  signature: PenLine,
+  tasks: ListChecks,
+  result: Flag,
+  checkOut: LogOut,
+}
+
+/**
+ * The visit as checkpoints: one row of circles a supervisor reads at a
+ * glance, instead of four blocks they read in words. Green is evidence, red
+ * is a step the policy asked for and nobody recorded, pale is a step this
+ * visit never asked for — never red, or every optional step would accuse the
+ * agent of skipping it.
+ */
+function RoadmapTrack({ steps, t }: { steps: VisitRoadmapStep[]; t: Translator }) {
+  return (
+    <ol className="flex flex-wrap items-start gap-y-3" data-testid="mtm-visit-roadmap">
+      {steps.map((step, index) => {
+        const Icon = ROADMAP_ICON[step.key] ?? Circle
+        const tone = step.state === "done"
+          ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
+          : step.state === "missing"
+            ? "border-red-500 bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300"
+            : "border-zinc-300 bg-muted text-muted-foreground dark:border-zinc-700"
+        const detail = step.detailKey === "openedCount"
+          ? t("review.stepOpened", { count: step.count ?? 0 })
+          : step.detailKey === "photoCount"
+            ? t("review.stepPhotos", { count: step.count ?? 0 })
+            : step.detailKey === "taskCount"
+              ? t("review.stepTasksCount", { done: step.count ?? 0, total: step.total ?? 0 })
+              : step.detailKey === "visitOpen"
+                ? t("review.stepVisitOpen")
+                : step.detailKey === "required"
+                  ? t("review.stepRequired")
+                  : step.detailKey === "notRequired"
+                    ? t("review.stepNotRequired")
+                    : null
+        return (
+          <li key={step.key} className="flex min-w-[104px] flex-1 items-start gap-2">
+            <div className="flex flex-col items-center">
+              <span className={`flex h-9 w-9 items-center justify-center rounded-full border-2 ${tone}`}>
+                {step.state === "done"
+                  ? <CheckCircle2 className="h-4.5 w-4.5" aria-hidden="true" />
+                  : step.state === "missing"
+                    ? <X className="h-4.5 w-4.5" aria-hidden="true" />
+                    : <Minus className="h-4.5 w-4.5" aria-hidden="true" />}
+              </span>
+            </div>
+            <div className="min-w-0 pt-0.5">
+              <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                <Icon className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                {t(`review.step${step.key.charAt(0).toUpperCase()}${step.key.slice(1)}`)}
+              </p>
+              {detail ? <p className="text-xs text-muted-foreground">{detail}</p> : null}
+            </div>
+            {index === steps.length - 1 ? null : <span className="mt-4 hidden h-0.5 flex-1 bg-zinc-200 dark:bg-zinc-800 lg:block" aria-hidden="true" />}
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
 
 export function VisitReviewPanel({ visitId, refreshToken, closeHref, onVisitLoaded }: {
   visitId: string
@@ -209,6 +276,21 @@ export function VisitReviewPanel({ visitId, refreshToken, closeHref, onVisitLoad
     agentNote: visit.notes,
     resultNote: visit.resultNotes,
   })
+  const roadmap = visitRoadmap({
+    status: visit.status,
+    checkInAt: visit.checkInAt,
+    checkOutAt: visit.checkOutAt,
+    outcome: visit.outcome,
+    resultNotes: visit.resultNotes,
+    notes: visit.notes,
+    photoCount,
+    presentationCount: visit.presentationSessions.length,
+    tasksDone: 0,
+    tasksTotal: 0,
+    requirements: visit.requirementSnapshot?.requirements ?? [],
+    actionResults: visit.actionResults,
+  })
+  const roadmapProgress = visitRoadmapProgress(roadmap)
   const signature = visit.actionResults.filter((item) => item.actionKey === "SIGNATURE" && item.status === "COMPLETED").at(-1) ?? null
   const signerName = typeof signature?.evidence?.signerName === "string" && signature.evidence.signerName.trim() ? signature.evidence.signerName.trim() : null
   const signedAt = typeof signature?.evidence?.signedAt === "string" ? signature.evidence.signedAt : signature?.completedAt ?? null
@@ -363,6 +445,18 @@ export function VisitReviewPanel({ visitId, refreshToken, closeHref, onVisitLoad
                 : <span className="tabular-nums">{item.text}</span>}
             </span>
           ))}
+        </div>
+      </div>
+
+      <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800 sm:px-5">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h3 className="text-sm font-semibold text-foreground">{t("review.roadmapTitle")}</h3>
+          <span className="text-xs text-muted-foreground">
+            {t("review.roadmapProgress", { done: roadmapProgress.done, total: roadmapProgress.total })}
+          </span>
+        </div>
+        <div className="mt-2">
+          <RoadmapTrack steps={roadmap} t={t} />
         </div>
       </div>
 

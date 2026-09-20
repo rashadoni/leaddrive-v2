@@ -212,3 +212,19 @@ describe("the visit card reads in one screen", () => {
     expect(panel).toContain('t("review.openCustomer")')
   })
 })
+
+describe("the office card shows the visit as a road", () => {
+  it("draws checkpoints instead of asking the supervisor to read four blocks", () => {
+    expect(panel).toContain('data-testid="mtm-visit-roadmap"')
+    expect(panel).toContain("visitRoadmap({")
+    expect(panel).toContain('t("review.roadmapTitle")')
+    expect(panel).toContain('t("review.roadmapProgress"')
+  })
+
+  it("keeps red for a missed required step and pale for one never asked for", () => {
+    expect(panel).toContain('step.state === "done"')
+    expect(panel).toContain('step.state === "missing"')
+    expect(panel).toContain("border-red-500")
+    expect(panel).toContain("border-emerald-500")
+  })
+})
