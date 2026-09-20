@@ -2,15 +2,21 @@ import { z } from "zod"
 import { GovernedDoctorScoringDefinitionSchema } from "@/lib/mtm/professional-glossary"
 
 // Reusable primitives
-const optionalString = z.string().trim().min(1).max(500).optional().nullable()
-const longString = z.string().max(2000).optional().nullable()
+//
+// A web form posts every untouched input as "". Requiring at least one
+// character therefore refused an organization whose address, phone or contact
+// person had always been empty: the manager changed only the coordinates and
+// got "Validation failed" on three fields they never touched. An empty
+// optional field means "unknown", exactly like null — the same rule the
+// coordinate pair already follows below.
+const emptyStringAsNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value)
+const optionalString = z.preprocess(emptyStringAsNull, z.string().trim().min(1).max(500).optional().nullable())
+const longString = z.preprocess(emptyStringAsNull, z.string().max(2000).optional().nullable())
 // Coerce string-encoded numbers (common from form encoding / legacy clients) before range check.
 const latitude = z.coerce.number().finite().gte(-90).lte(90)
 const longitude = z.coerce.number().finite().gte(-180).lte(180)
-// Web forms post untouched inputs as "". Coercing "" to 0 is how customers
-// ended up at (0, 0) in the Gulf of Guinea (field UX audit 2026-09-05, M-02),
-// so an empty string is "unknown" here, exactly like null.
-const emptyStringAsNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value)
+// Coercing "" to 0 is how customers ended up at (0, 0) in the Gulf of Guinea
+// (field UX audit 2026-09-05, M-02), so an empty string is "unknown" here too.
 const latitudeField = z.preprocess(emptyStringAsNull, latitude.optional().nullable())
 const longitudeField = z.preprocess(emptyStringAsNull, longitude.optional().nullable())
 
