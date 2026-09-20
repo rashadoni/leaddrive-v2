@@ -284,8 +284,8 @@ or neural dependency before the hotfix has been evaluated.
 
 ### Tasks
 
-- [ ] A3.1 Centralize audio thresholds and provider activity settings in a
-      typed configuration module.
+- [x] A3.1 Centralize audio thresholds and provider activity settings in a
+      typed configuration module (`src/lib/ai/voice/audio-policy.ts`).
 - [ ] A3.2 Add an adaptive noise floor instead of relying on one fixed RMS
       threshold.
 - [ ] A3.3 Add a candidate/confirmed/rejected speech state machine.
@@ -302,11 +302,18 @@ or neural dependency before the hotfix has been evaluated.
 - [ ] A3.9 Keep heavy inference outside the AudioWorklet callback.
 - [ ] A3.10 Measure whether denoising such as RNNoise is still required after
       VAD and browser processing are correct.
-- [ ] A3.11 Add a `noisy_environment` mode.
-- [ ] A3.12 Provide a fallback that disables automatic barge-in or uses
-      push-to-talk in very noisy conditions.
-- [ ] A3.13 Add an accessible UI indicator for unavailable or unapplied browser
-      noise processing.
+- [x] A3.11 Add a noisy-room mode. One field: `activityHandling` becomes
+      `NO_INTERRUPTION`, so nothing the microphone hears can cut the assistant
+      off. Detection is deliberately NOT loosened with it — the detector is
+      what tells the assistant the user has finished speaking, and relaxing it
+      would trade interruptions for half-heard questions.
+- [x] A3.12 Provide a fallback that disables automatic barge-in in very noisy
+      conditions. Chosen over push-to-talk because it keeps the conversation
+      hands-free; the cost is that the user cannot interrupt by voice either,
+      and the UI says so.
+- [x] A3.13 Add a UI indicator for unapplied browser noise processing. Only a
+      reported `off` warns; `unknown` is the common answer from browsers that
+      do not report the setting back, and warning on it would cry wolf.
 - [ ] A3.14 Verify CPU, memory, battery, and latency on real desktop and mobile
       devices.
 - [ ] A3.15 Evaluate any Gemini Live model change behind a separate canary flag;
@@ -912,6 +919,7 @@ implementation branch that advances the roadmap.
 | 2026-09-20 | Execution boundary | Production deployed | PR #245; merge `a7f6c2654`; deploy `35479290362` | Internal-only atomic CRM mutation/result/`succeeded` event; commit remains disabled. |
 | 2026-09-20 | Commit adapter | Production deployed | PR #249; merge `ffcbaa3a4`; active artifact `a9891d6cb`; deploy `35499744499` | Session-only endpoint and three rate-limit scopes are live; receipt UI remains open and no model write-tool is exposed. |
 | 2026-09-20 | Receipt UI shell (U1.1-U1.3) | Production deployed | PR #257; merge `1bbc59e1e`; active artifact `6cca1a5a8`; deploy `35512069725` | Shadow mode: session-scoped store, anchored desktop panel, mobile bottom sheet. No confirm control, no write request, no model commit tool. |
+| 2026-09-20 | Noisy-room mode (A3.1, A3.11-A3.13) | Code complete | Targeted Vitest 1444 green / 2 known-baseline reds; targeted ESLint; i18n parity; pii-columns | Barge-in policy minted into the token per session. Music can no longer interrupt; measurement (A1.6, A2.9) still open. |
 | 2026-09-20 | Edit a receipt in place (U1.9a) | Production deployed | PR #284; merge `77f020788`; active artifact `77f020788d87b42a070e621cc5146a5fb51a7e4c`; deploy `35526045273` | Fields become inputs, the save replaces the payload under the on-screen revision, and no confirm button exists while the form is open. |
 | 2026-09-20 | Untrusted record text (V1.6) | Production deployed | PR #281; merge `90f09ae4e`; shipped in artifact `77f020788` | Record text declared data, not instructions. The stale read-only claim removed from the prompt and from the user-facing copy it had also made false. |
 | 2026-09-20 | Deal creation by voice (V1.2a) | Production deployed | PR #279; merge `6dc2ad2c7`; shipped in artifact `77f020788` | `propose_create_deal` resolves company and contact by name and reads the org's own entry stage. No stage, pipeline, probability or id from the model. |
