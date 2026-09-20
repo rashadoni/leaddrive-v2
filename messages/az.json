@@ -14083,6 +14083,7 @@
     "code": "Kod",
     "contactPerson": "Əlaqə şəxsi",
     "district": "Rayon",
+    "invalidFields": "Bu sahələri yoxlayın",
     "latitude": "Enlik",
     "longitude": "Uzunluq",
     "catA": "A — Əsas hesab",

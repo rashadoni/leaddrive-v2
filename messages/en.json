@@ -14087,6 +14087,7 @@
     "code": "Code",
     "contactPerson": "Contact Person",
     "district": "District",
+    "invalidFields": "Check these fields",
     "latitude": "Latitude",
     "longitude": "Longitude",
     "catA": "A — Key Account",

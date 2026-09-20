@@ -14087,6 +14087,7 @@
     "code": "Код",
     "contactPerson": "Контактное лицо",
     "district": "Район",
+    "invalidFields": "Проверьте поля",
     "latitude": "Широта",
     "longitude": "Долгота",
     "catA": "A — Ключевой",

@@ -21,6 +21,46 @@ interface CustomerFormProps {
   apiBasePath?: "/api/v1/mtm/customers" | "/api/v1/mtm/organizations"
 }
 
+/**
+ * The API answers a rejected form with English prose and a `details` array
+ * (`[{ path, message }]`). Printed as it is, a manager on a Russian page read
+ * "Validation failed" and had to guess which of a dozen inputs was meant.
+ * The field is the only part that helps; the sentence is the screen's job.
+ */
+export function saveErrorMessage(
+  body: unknown,
+  labels: { tc: (key: string) => string; tf: (key: string) => string },
+): string {
+  const details = body && typeof body === "object" ? (body as { details?: unknown }).details : null
+  const fields = Array.isArray(details)
+    ? details
+      .map((issue) => (issue && typeof issue === "object" ? String((issue as { path?: unknown }).path ?? "") : ""))
+      .filter(Boolean)
+    : []
+  const named = fields.map((field) => fieldLabel(field, labels))
+  if (named.length) return `${labels.tf("invalidFields")}: ${[...new Set(named)].join(", ")}`
+  const message = body && typeof body === "object" ? (body as { error?: unknown }).error : null
+  return typeof message === "string" && message && message !== "Validation failed"
+    ? message
+    : labels.tc("failedToSave")
+}
+
+function fieldLabel(field: string, labels: { tc: (key: string) => string; tf: (key: string) => string }): string {
+  switch (field) {
+    case "name": return labels.tc("name")
+    case "code": return labels.tf("code")
+    case "address": return labels.tc("address")
+    case "city": return labels.tc("city")
+    case "district": return labels.tf("district")
+    case "phone": return labels.tc("phone")
+    case "contactPerson": return labels.tf("contactPerson")
+    case "notes": return labels.tc("notes")
+    case "latitude":
+    case "longitude": return labels.tf("location")
+    default: return field
+  }
+}
+
 export function MtmCustomerForm({
   open,
   onOpenChange,
@@ -68,7 +108,7 @@ export function MtmCustomerForm({
         body: JSON.stringify(form),
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || tc("failedToSave"))
+      if (!res.ok) throw new Error(saveErrorMessage(json, { tc, tf }))
       onSaved()
       onOpenChange(false)
     } catch (err: any) { setError(err.message) } finally { setSaving(false) }

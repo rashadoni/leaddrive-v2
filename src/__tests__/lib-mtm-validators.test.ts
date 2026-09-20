@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { TaskUpdateSchema, VisitCreateSchema, AlertUpdateSchema } from "@/lib/mtm-validators"
+import { CustomerUpdateSchema, TaskUpdateSchema, VisitCreateSchema, AlertUpdateSchema } from "@/lib/mtm-validators"
 
 // Regression tests for validators that mobile (MTMobileApp/) depends on.
 // Architect round 18 flagged: critical-path mobile bug-fixes (M-02 task.result)
@@ -82,5 +82,43 @@ describe("AlertUpdateSchema", () => {
 
   it("rejects missing isResolved", () => {
     expect(() => AlertUpdateSchema.parse({})).toThrow()
+  })
+})
+
+describe("CustomerUpdateSchema — a web form posts untouched inputs as \"\"", () => {
+  /**
+   * Changing only the coordinates of ADV-DEMO Store 3 was refused with
+   * "Validation failed" on address, phone and contact person: fields the
+   * manager never touched, empty in the record since it was created. An empty
+   * optional field means "unknown", the same as null.
+   */
+  it("treats an empty optional field as unknown instead of refusing the save", () => {
+    const parsed = CustomerUpdateSchema.parse({
+      code: "ADV-DEMO-STORE-3",
+      name: "ADV-DEMO Store 3",
+      category: "B",
+      status: "ACTIVE",
+      address: "",
+      city: "Baku",
+      district: "Narimanov",
+      latitude: "40.401150",
+      longitude: "49.835100",
+      phone: "",
+      contactPerson: "",
+      notes: "",
+    })
+    expect(parsed.address).toBeNull()
+    expect(parsed.phone).toBeNull()
+    expect(parsed.contactPerson).toBeNull()
+    expect(parsed.notes).toBeNull()
+    expect(parsed.city).toBe("Baku")
+    expect(parsed.latitude).toBeCloseTo(40.40115)
+    expect(parsed.longitude).toBeCloseTo(49.8351)
+  })
+
+  it("still keeps a real value and still rejects a half coordinate pair", () => {
+    expect(CustomerUpdateSchema.parse({ address: "  Abbasqulu Abbaszadə 13  " }).address)
+      .toBe("Abbasqulu Abbaszadə 13")
+    expect(() => CustomerUpdateSchema.parse({ latitude: 40.4 })).toThrow()
   })
 })
