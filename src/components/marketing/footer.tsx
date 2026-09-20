@@ -2,11 +2,13 @@
 
 import Link from "next/link"
 import { Logo } from "@/components/logo"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { COMPANY_EMAIL, COMPANY_LEGAL_NAME } from "@/lib/constants"
+import { legalLocale } from "@/components/marketing/legal-document-nav"
 
 function useFooterLinks() {
   const t = useTranslations("marketing")
+  const locale = legalLocale(useLocale())
   return {
     [t("footer.product")]: [
       { label: t("nav.modules"), href: "/#modules" },
@@ -28,9 +30,9 @@ function useFooterLinks() {
       { label: t("footer.faq"), href: "/home#faq" },
     ],
     [t("footer.legal")]: [
-      { label: t("footer.privacy"), href: "/legal/privacy" },
-      { label: t("footer.terms"), href: "/legal/terms" },
-      { label: t("footer.dataDeletion"), href: "/legal/data-deletion" },
+      { label: t("footer.privacy"), href: `/legal/privacy?lang=${locale}` },
+      { label: t("footer.terms"), href: `/legal/terms?lang=${locale}` },
+      { label: t("footer.dataDeletion"), href: `/legal/data-deletion?lang=${locale}` },
     ],
   }
 }
