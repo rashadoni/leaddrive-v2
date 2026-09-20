@@ -54,6 +54,16 @@ photographed or copied by a determined recipient. Watermarks, one-session
 expiry, and revocation deter casual sharing; they do not make screen capture
 technically impossible.
 
+## Guided journey (next content model)
+
+The fixed «module → three cards» content of `src/lib/demo-center/catalog.ts`
+is being replaced by a versioned scenario that runs through real LeadDrive
+screens. The contract, coverage inventory and trust-boundary tests live in
+`src/lib/demo-center/journey/` and are described in
+`docs/demo-guided-journey.md`. Until the renderer lands, the player below
+still serves the catalog; the access, OTP and one-session lifecycle in this
+document stay unchanged.
+
 ## Voice phase
 
 The current release is intentionally silent. Narration must use the approved
