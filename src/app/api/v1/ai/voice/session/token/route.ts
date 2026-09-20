@@ -7,7 +7,7 @@ import { checkRateLimit } from "@/lib/rate-limit"
 import { checkVoicePilotAccess } from "@/lib/ai/voice/gate"
 import { getOrgModuleContext } from "@/lib/api-auth"
 import { accessibleVoiceSectionKeys } from "@/lib/ai/voice/read-access"
-import { MAX_SESSION_SECONDS, readVoicePilotConfig } from "@/lib/ai/voice/config"
+import { MAX_SESSION_SECONDS, readVoicePilotConfig, voiceWritesEnabled } from "@/lib/ai/voice/config"
 import {
   createGeminiLiveToken,
   GEMINI_LIVE_API_VERSION,
@@ -100,6 +100,10 @@ export const POST = withRlsAuth("ai", "read", async (req, auth) => {
       allowedSections,
       maxSessionSeconds: MAX_SESSION_SECONDS,
       ...(parsed.data.audioMode ? { audioMode: parsed.data.audioMode } : {}),
+      // Resolved here and sealed into the token: the tools and the prompt the
+      // model receives must agree with the switch, or it will offer to prepare
+      // actions the server then refuses.
+      writesEnabled: voiceWritesEnabled(),
     })
 
     const finalized = await prisma.voiceSession.updateMany({

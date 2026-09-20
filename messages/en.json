@@ -24169,6 +24169,7 @@
         "failed": "The CRM refused this action. Correct it and dictate it again.",
         "stale": "This draft no longer matches the record. Reload it and check again.",
         "forbidden": "You do not have the right to perform this action.",
+        "disabled": "Voice actions are switched off right now. Nothing was saved — make this change on screen.",
         "rateLimited": "Too many actions in a row. Try again in {seconds} seconds.",
         "retriable": "Could not reach the CRM. Nothing was lost — press again."
       }
