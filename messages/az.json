@@ -24023,6 +24023,15 @@
     }
   },
   "voice": {
+    "noiseSuppressionOff": "Brauzer bu mikrofon üçün səs-küyün azaldılmasını aktiv etmədi.",
+    "audioMode": {
+      "legend": "Harada olduğunuz",
+      "auto": "Sakit",
+      "noisy": "Səs-küylü",
+      "autoHint": "Assistenti danışaraq kəsə bilərsiniz. İş masası üçün uyğundur.",
+      "noisyHint": "Ətrafdakı musiqi və səslər assistenti kəsməyəcək. Siz də danışaraq kəsə bilməyəcəksiniz — dayandırma düyməsindən istifadə edin.",
+      "restartNeeded": "Tətbiq etmək üçün assistenti dayandırıb yenidən başladın."
+    },
     "receipt": {
       "ariaLabel": "Hazırlanmış CRM əməliyyatı",
       "dismiss": "Qaralamanı gizlət",

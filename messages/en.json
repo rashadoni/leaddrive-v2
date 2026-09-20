@@ -24027,6 +24027,15 @@
     }
   },
   "voice": {
+    "noiseSuppressionOff": "Your browser did not switch on noise suppression for this microphone.",
+    "audioMode": {
+      "legend": "Where you are",
+      "auto": "Quiet place",
+      "noisy": "Noisy place",
+      "autoHint": "You can interrupt the assistant by speaking. Best at a desk.",
+      "noisyHint": "Music and voices around you cannot cut the assistant off. You cannot interrupt it by speaking either — use the stop button.",
+      "restartNeeded": "Stop and start the assistant to apply this."
+    },
     "receipt": {
       "ariaLabel": "Prepared CRM action",
       "dismiss": "Hide this draft",

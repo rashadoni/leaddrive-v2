@@ -34,6 +34,15 @@ vi.mock("@google/genai", () => ({
     }
     constructor(input: unknown) { gemini.constructorArgs.push(input) }
   },
+  // The console now imports the audio policy, which names these enums. They
+  // are string enums, so the real values are the strings themselves.
+  ActivityHandling: {
+    START_OF_ACTIVITY_INTERRUPTS: "START_OF_ACTIVITY_INTERRUPTS",
+    NO_INTERRUPTION: "NO_INTERRUPTION",
+  },
+  StartSensitivity: { START_SENSITIVITY_LOW: "START_SENSITIVITY_LOW" },
+  EndSensitivity: { END_SENSITIVITY_LOW: "END_SENSITIVITY_LOW" },
+  TurnCoverage: { TURN_INCLUDES_ONLY_ACTIVITY: "TURN_INCLUDES_ONLY_ACTIVITY" },
 }))
 
 vi.mock("next/navigation", () => ({
@@ -312,6 +321,25 @@ describe("VoiceConsole Gemini Live lifecycle", () => {
       config: { sessionResumption: {} },
     }))
     expect(container.textContent).toContain("Preparing an answer")
+  })
+
+  // The room is chosen before the token is minted, because the barge-in policy
+  // is sealed into that token: the browser cannot loosen it mid-session.
+  it("asks the server to mint the token for the room the user picked", async () => {
+    try { window.localStorage.setItem("leaddrive:voice-audio-mode", "noisy") } catch { /* ignore */ }
+    await start()
+    const mint = fetchMock.mock.calls.find(([input]) => String(input).endsWith("/session/token"))
+    expect(JSON.parse(String((mint?.[1] as RequestInit).body))).toEqual({
+      voiceSessionId: "voice-session-1",
+      audioMode: "noisy",
+    })
+    try { window.localStorage.removeItem("leaddrive:voice-audio-mode") } catch { /* ignore */ }
+  })
+
+  it("defaults to the desk policy when nothing was chosen on this device", async () => {
+    await start()
+    const mint = fetchMock.mock.calls.find(([input]) => String(input).endsWith("/session/token"))
+    expect(JSON.parse(String((mint?.[1] as RequestInit).body))).toMatchObject({ audioMode: "auto" })
   })
 
   it("reports requested and applied microphone processing without device data", async () => {

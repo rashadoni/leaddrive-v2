@@ -25,6 +25,11 @@ import {
   readMicrophoneProcessingSnapshot,
 } from "@/lib/ai/voice/microphone-processing"
 import {
+  DEFAULT_VOICE_AUDIO_MODE,
+  isVoiceAudioMode,
+  type VoiceAudioMode,
+} from "@/lib/ai/voice/audio-policy"
+import {
   isVoiceSection,
   voiceSectionFromLocation,
   voiceSectionNavItem,
@@ -75,6 +80,24 @@ const MAX_RECONNECT_ATTEMPTS = 2
 const PLAYBACK_BUFFER_SECONDS = 30
 const GO_AWAY_SAFETY_MARGIN_MS = 500
 const LIVE_CONNECT_TIMEOUT_MS = 15_000
+
+const AUDIO_MODE_STORAGE_KEY = "leaddrive:voice-audio-mode"
+
+/**
+ * Where the user is, remembered per device rather than per account: the same
+ * person is at a desk on their laptop and in a café on their phone, and the
+ * microphone differs with them.
+ */
+function readStoredAudioMode(): VoiceAudioMode {
+  if (typeof window === "undefined") return DEFAULT_VOICE_AUDIO_MODE
+  try {
+    const stored = window.localStorage.getItem(AUDIO_MODE_STORAGE_KEY)
+    return isVoiceAudioMode(stored) ? stored : DEFAULT_VOICE_AUDIO_MODE
+  } catch {
+    // Private window or blocked site data.
+    return DEFAULT_VOICE_AUDIO_MODE
+  }
+}
 
 const TRACE_ARG_KEYS: Readonly<Record<string, readonly string[]>> = {
   navigate_to_section: ["section", "filter"],
@@ -199,6 +222,31 @@ function ConsoleInner({
   const [lastTranscript, setLastTranscript] = useState<string | null>(null)
   const [transcriptionWarning, setTranscriptionWarning] = useState(false)
   const [micSilent, setMicSilent] = useState(false)
+  const [audioMode, setAudioMode] = useState<VoiceAudioMode>(DEFAULT_VOICE_AUDIO_MODE)
+  // The token mint reads the ref, not the state: it runs inside the start
+  // sequence, where a state value captured at render time would be stale.
+  const modeRef = useRef<VoiceAudioMode>(DEFAULT_VOICE_AUDIO_MODE)
+  // The browser may decline the noise processing we ask for; we already read
+  // that back, and until now only wrote it to telemetry.
+  const [noiseSuppressionOff, setNoiseSuppressionOff] = useState(false)
+
+  // Read after mount: the stored value must not diverge between the server
+  // render and the first client render.
+  useEffect(() => {
+    const stored = readStoredAudioMode()
+    setAudioMode(stored)
+    modeRef.current = stored
+  }, [])
+
+  const chooseAudioMode = useCallback((next: VoiceAudioMode) => {
+    setAudioMode(next)
+    modeRef.current = next
+    try {
+      window.localStorage.setItem(AUDIO_MODE_STORAGE_KEY, next)
+    } catch {
+      // The choice still applies to this session.
+    }
+  }, [])
 
   const sessionRef = useRef<SessionInfo | null>(null)
   // The receipt panel is positioned from the orb's own box, wherever the shell
@@ -1076,11 +1124,12 @@ function ConsoleInner({
       streamRef.current = stream
       const microphoneTrack = stream.getAudioTracks()[0]
       if (microphoneTrack) {
-        trace(
-          "voice_audio_settings",
-          {},
-          microphoneProcessingTrace(readMicrophoneProcessingSnapshot(microphoneTrack)),
-        )
+        const processing = readMicrophoneProcessingSnapshot(microphoneTrack)
+        trace("voice_audio_settings", {}, microphoneProcessingTrace(processing))
+        // Only "off" earns the warning. "unknown" is the common answer from
+        // browsers that do not report the setting back, and warning on it
+        // would cry wolf on every Safari session.
+        setNoiseSuppressionOff(processing.noiseSuppression.applied === "off")
       }
       startMicMeter(stream)
 
@@ -1089,7 +1138,9 @@ function ConsoleInner({
           method: "POST",
           credentials: "same-origin",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ voiceSessionId: started.voiceSessionId }),
+          // The mode is minted into the token, so it is fixed for the life of
+          // this session: the browser cannot raise its own privileges later.
+          body: JSON.stringify({ voiceSessionId: started.voiceSessionId, audioMode: modeRef.current }),
           signal,
         })
         const body = await response.json()
@@ -1241,7 +1292,7 @@ function ConsoleInner({
                 ? "bg-amber-500 shadow-amber-500/40"
                 : "bg-emerald-500 shadow-emerald-500/50"
     const inline = Boolean(orbPortalTarget)
-    const showInlineMessage = Boolean(error || notice || micSilent || transcriptionWarning)
+    const showInlineMessage = Boolean(error || notice || micSilent || transcriptionWarning || noiseSuppressionOff)
     const orbControl = (
       <div
         ref={orbControlRef}
@@ -1269,13 +1320,14 @@ function ConsoleInner({
             <Mic className={inline ? "h-4 w-4" : "h-5 w-5"} />
           </span>
         </button>
-        {(error || notice || active || micSilent || transcriptionWarning) && (() => {
+        {(error || notice || active || micSilent || transcriptionWarning || noiseSuppressionOff) && (() => {
           const tone = error ? "bg-destructive text-destructive-foreground" : "bg-background text-muted-foreground"
           const statusText = (
             <>
               <span className="block">{label}</span>
               {!error && lastTranscript && <span data-sentry-mask className="mt-0.5 block max-w-[15rem] truncate text-foreground">{t("heard", { text: lastTranscript })}</span>}
               {!error && micSilent && <span className="mt-0.5 block max-w-[15rem] text-amber-700 dark:text-amber-300">{t("micSilent")}</span>}
+              {!error && noiseSuppressionOff && <span className="mt-0.5 block max-w-[15rem] text-amber-700 dark:text-amber-300">{t("noiseSuppressionOff")}</span>}
               {!error && transcriptionWarning && <span className="mt-0.5 block max-w-[15rem] text-amber-700 dark:text-amber-300">{t("transcriptionUnavailable")}</span>}
             </>
           )
@@ -1324,6 +1376,36 @@ function ConsoleInner({
       {lastTranscript && active && <p data-sentry-mask className="max-w-md text-center text-sm text-muted-foreground">{t("heard", { text: lastTranscript })}</p>}
       {micSilent && active && <p className="max-w-md text-center text-xs text-amber-700 dark:text-amber-300">{t("micSilent")}</p>}
       {transcriptionWarning && active && <p className="max-w-md text-center text-xs text-amber-700 dark:text-amber-300">{t("transcriptionUnavailable")}</p>}
+      {noiseSuppressionOff && active && <p className="max-w-md text-center text-xs text-amber-700 dark:text-amber-300">{t("noiseSuppressionOff")}</p>}
+
+      <fieldset className="flex flex-col items-center gap-2" data-testid="voice-audio-mode">
+        <legend className="sr-only">{t("audioMode.legend")}</legend>
+        <div className="inline-flex rounded-lg border p-0.5" role="radiogroup" aria-label={t("audioMode.legend")}>
+          {(["auto", "noisy"] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              role="radio"
+              aria-checked={audioMode === mode}
+              data-testid={`voice-audio-mode-${mode}`}
+              onClick={() => chooseAudioMode(mode)}
+              className={[
+                "h-11 rounded-md px-4 text-sm font-medium outline-none transition-colors",
+                "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                audioMode === mode
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              ].join(" ")}
+            >
+              {t(`audioMode.${mode}`)}
+            </button>
+          ))}
+        </div>
+        <p className="max-w-md text-center text-xs text-muted-foreground">
+          {t(`audioMode.${audioMode}Hint`)}
+          {active ? ` ${t("audioMode.restartNeeded")}` : ""}
+        </p>
+      </fieldset>
       {error && <p className="text-sm text-destructive">{error}</p>}
       {!error && notice && <p className="text-sm text-muted-foreground">{notice}</p>}
       <VoiceReceiptSurface voiceSessionId={session?.voiceSessionId ?? null} />
