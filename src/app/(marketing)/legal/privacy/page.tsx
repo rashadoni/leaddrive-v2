@@ -1,7 +1,8 @@
 import { AnimateIn } from "@/components/marketing/animate-in"
+import { LegalDocumentNav, legalLocale } from "@/components/marketing/legal-document-nav"
 import Link from "next/link"
 import type { Metadata } from "next"
-import { COMPANY_EMAIL, COMPANY_LEGAL_ADDRESS, COMPANY_LEGAL_NAME } from "@/lib/constants"
+import { COMPANY_LEGAL_ADDRESS, COMPANY_LEGAL_NAME, COMPANY_PRIVACY_EMAIL, COMPANY_REGISTRATION_NUMBER } from "@/lib/constants"
 import { getTranslations } from "next-intl/server"
 
 export const metadata: Metadata = {
@@ -9,8 +10,9 @@ export const metadata: Metadata = {
   description: "LeadDrive CRM privacy policy — how your data is collected, used and protected.",
 }
 
-export default async function PrivacyPage() {
-  const t = await getTranslations("privacy")
+export default async function PrivacyPage({ searchParams }: { searchParams: Promise<{ lang?: string | string[] }> }) {
+  const locale = legalLocale((await searchParams).lang)
+  const t = await getTranslations({ locale, namespace: "privacy" })
   return (
     <div className="min-h-screen bg-white">
       <section className="pt-32 pb-24">
@@ -19,6 +21,8 @@ export default async function PrivacyPage() {
             <h1 className="text-4xl font-bold text-[#001E3C] tracking-tight mb-2">{t("title")}</h1>
             <p className="text-sm text-[#001E3C]/40 mb-12">{t("lastUpdated")}</p>
           </AnimateIn>
+
+          <LegalDocumentNav locale={locale} path="/legal/privacy" />
 
           <div className="prose max-w-none space-y-8 text-[#001E3C]/70 text-sm leading-relaxed">
             <AnimateIn delay={0.1}>
@@ -38,6 +42,7 @@ export default async function PrivacyPage() {
                 <li>{t("p2_l4")}</li>
                 <li>{t("p2_l5")}</li>
                 <li>{t("p2_l6")}</li>
+                <li>{t("p2_l7")}</li>
               </ul>
             </section>
 
@@ -105,8 +110,12 @@ export default async function PrivacyPage() {
                 <li>{t("p8_l2")}</li>
                 <li>{t("p8_l3")}</li>
                 <li>{t("p8_l4")}</li>
+                <li>{t("p8_l5")}</li>
               </ul>
               <p className="mt-3">{t("p8_usage")}</p>
+              <p className="mt-3">{t("p8_ai")}</p>
+              <p className="mt-3">{t("p8_access")}</p>
+              <p className="mt-3">{t("p8_retention")}</p>
               <p className="mt-3">
                 {t("p8_deletion")}{" "}
                 <Link href="/legal/data-deletion" className="underline text-[#001E3C] hover:opacity-70">
@@ -132,8 +141,9 @@ export default async function PrivacyPage() {
               <h2 className="text-lg font-semibold text-[#001E3C] mb-3">{t("s10")}</h2>
               <p>{t("p10")}</p>
               <p className="mt-2">
-                {COMPANY_EMAIL}<br />
-                {COMPANY_LEGAL_NAME}, {COMPANY_LEGAL_ADDRESS}
+                <a href={`mailto:${COMPANY_PRIVACY_EMAIL}`} className="underline hover:opacity-70">{COMPANY_PRIVACY_EMAIL}</a><br />
+                {COMPANY_LEGAL_NAME}, {COMPANY_REGISTRATION_NUMBER}<br />
+                {COMPANY_LEGAL_ADDRESS}
               </p>
             </section>
           </div>

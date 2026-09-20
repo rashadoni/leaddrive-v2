@@ -1,156 +1,139 @@
 # Meta App Review submission — LeadDrive CRM
 
-App ID: **1276226757359622**
+App ID: **2414060595720618**
 Reviewer-facing name: **LeadDrive CRM**
-Business Verification: pending
+Operator: **"FANUM" MMC (VÖEN 1704197981)**
 
----
+This document reflects the implementation audited on 2026-09-20. Do not paste
+permissions from one login surface into the review for another.
 
-## Permissions to request
+## Public URLs
 
-| Permission | Used for | Justification |
-|---|---|---|
-| `pages_show_list` | Auto-granted | List Pages a connecting tenant admins so they can pick which to monitor |
-| `pages_read_engagement` | Auto-granted | Read post + comment metadata on the tenant's own Pages for the unified inbox |
-| `pages_read_user_content` | **Review needed** | Pull user comments and tagged posts so a CRM operator can reply, escalate to a ticket, or convert into a lead |
-| `business_management` | Auto-granted | Resolve which Business Portfolio a Page belongs to during OAuth |
-| `instagram_basic` | Auto-granted | Identify the Instagram Business account linked to each connected Page |
-| `instagram_manage_comments` | **Review needed** | Read comments on tenant's Instagram media + replies so the same inbox covers IG, and let operators reply directly |
-| `pages_messaging` | **Review needed** | FB Page Messenger DMs in the unified inbox — see **Messaging extension** below |
-| `instagram_manage_messages` | **Review needed** | Instagram Direct DMs in the unified inbox — see **Messaging extension** below |
+Use these application-host URLs until the separately managed Cloudflare
+marketing site serves the same '/legal/*' routes:
 
-**Inbox-DM extension** (`pages_messaging` + `instagram_manage_messages`) is now **ACTIVE and needs its
-own Advanced Access** — see the **Messaging extension** section below. (Without it: FB subscribe fails
-`(#200) pages_messaging`; IG fails `(#3) capability`.)
+- Privacy Policy: 'https://app.leaddrivecrm.org/legal/privacy?lang=en'
+- Terms of Service: 'https://app.leaddrivecrm.org/legal/terms?lang=en'
+- Data Deletion: 'https://app.leaddrivecrm.org/legal/data-deletion?lang=en'
 
----
+The desired canonical URLs are the equivalent paths on
+'https://www.leaddrivecrm.org'. They currently require a Cloudflare route
+change outside this repository.
 
-## Use case description (paste into App Review form)
+## Permission matrix
 
-LeadDrive CRM is a SaaS CRM for B2B service companies. Our customers (tenants)
-connect their own Facebook Pages and linked Instagram Business accounts so they
-can manage social interactions in one inbox alongside email, web chat, and
-support tickets.
+### Facebook Login
 
-After a tenant signs in with Facebook through our app, they pick which Pages
-they admin. We then:
+The Facebook connect action calls '/api/v1/social/oauth/facebook/start'.
 
-1. Periodically poll comments on each connected Page's recent posts and pull
-   posts/media that tag the Page or the linked Instagram account.
-2. Show every comment + tagged post in the tenant's Social Monitoring inbox.
-3. Run AI sentiment classification (positive / neutral / negative) so the
-   operator can prioritize negative reactions.
-4. Let the operator (a) reply to a comment from the inbox, (b) one-click
-   convert it into a CRM Lead, Ticket, or Task, or (c) ignore it.
-5. When negative comments spike, send a push notification to admins.
+| Permission | Implemented use |
+|---|---|
+| 'public_profile' | Identify the connecting Meta user during OAuth. |
+| 'pages_show_list' | List Pages administered by the connecting tenant user. |
+| 'pages_read_engagement' | Read Page post and engagement metadata. |
+| 'pages_read_user_content' | Read visitor posts and comments shown in Social Monitoring. |
+| 'business_management' | Resolve the tenant's Business/Page assets. |
+| 'pages_manage_metadata' | Subscribe the selected Page to supported webhooks. |
+| 'pages_messaging' | Receive and reply to Messenger conversations in the CRM inbox. |
+| 'instagram_basic' | Resolve an Instagram professional account linked to a selected Page. |
+| 'instagram_manage_comments' | Read and reply to comments for the linked Instagram account. |
+| 'instagram_manage_messages' | Legacy Facebook-Login path for linked-account Instagram messaging. Request only if this path remains in the submitted use case. |
 
-We do **not** scrape pages the tenant doesn't admin, do **not** post on the
-tenant's behalf without explicit operator action, and do **not** use the data
-for advertising lookalikes.
+### Instagram Login
 
----
+The Instagram catalog action calls
+'/api/v1/social/oauth/instagram/start', authorizes at 'api.instagram.com', and
+requests exactly:
 
-## How permissions are exercised (for the screencast)
+| Permission | Implemented use |
+|---|---|
+| 'instagram_business_basic' | Identify the tenant's Instagram professional account. |
+| 'instagram_business_manage_messages' | Receive and send Instagram Direct messages in the CRM inbox. |
 
-Recording must be 60-120 seconds, no audio required. Show:
+This is the flow that must be recorded for a review request containing
+'instagram_business_*'. A Facebook consent screen is not evidence for those
+permissions.
 
-1. **Tenant onboarding** (~10s)
-   - `https://app.leaddrivecrm.org/social-monitoring`
-   - Empty checklist visible. Click *Connect Facebook Page*.
-2. **OAuth flow** (~15s)
-   - Facebook prompt appears. Tester approves the listed permissions.
-   - Browser returns to `/social-monitoring?connected=facebook&pages=N&ig=M`.
-3. **Polling fetches comments** (~15s)
-   - Click *Refresh all*. Inbox populates with comments and tagged posts.
-4. **Reply** (~15s) — exercises `pages_read_user_content` /
-   `instagram_manage_comments`
-   - Open a comment, click *Reply*, type a short reply, hit *Send reply*.
-   - Mention status flips to *replied*.
-5. **Convert to Lead** (~10s)
-   - Click *→ Lead*. Confirmation. Click the *Lead ↗* link to show the new
-     Lead in `/leads/<id>`.
-6. **Sentiment + spike** (~10s) — optional bonus
-   - Show the Analytics panel with the negative-mention chart.
+### WhatsApp Business Platform
 
-Tester account:
-- Use the developer's own Facebook (already added in App Roles → Testers)
-- Or any Facebook user added under App Roles → Testers before submission
+Current status: **not ready for shared-app onboarding**.
 
----
+The current UI asks each tenant to enter an access token, Phone Number ID,
+WhatsApp Business Account ID, verify token and app secret. The repository has
+webhook receive/send support, but no Meta Embedded Signup or WhatsApp OAuth
+flow through App ID '2414060595720618'. Therefore:
 
-## Messaging extension — `pages_messaging` + `instagram_manage_messages`
+- do not claim that another tenant can connect WhatsApp through this app yet;
+- do not submit a recording of manual token entry as OAuth/Embedded Signup;
+- implement and test Embedded Signup before requesting the corresponding
+  WhatsApp advanced access/use case.
 
-> The **inbox DM** capability (FB Messenger + IG Direct in the unified inbox), separate from the
-> comment/mention monitoring above — it needs its OWN Advanced Access. **Verify exact permission names +
-> dashboard paths in App Review; Meta renames them** (Facebook-Login path = `instagram_manage_messages`;
-> the newer Instagram-Login API = `instagram_business_manage_messages`).
+## Reviewer use-case text
 
-| Permission | Status | Justification |
-|---|---|---|
-| `pages_messaging` | **Review needed** | Receive + send Facebook Page Messenger DMs in the tenant's inbox; subscribe the Page to the `messages` webhook |
-| `instagram_manage_messages` | **Review needed** | Receive + send Instagram Direct messages for the tenant's linked IG Business account in the same inbox |
+LeadDrive CRM is a multi-tenant SaaS CRM. A customer administrator connects
+only Facebook Pages and Instagram professional accounts that they are
+authorised to manage. LeadDrive receives supported comments and direct
+messages, displays them in that tenant's inbox, and lets an authorised CRM
+operator send a reply. The data is isolated by organisation. LeadDrive does
+not sell Meta data, create advertising audiences from it, or send a message
+without an operator action or tenant-configured automation.
 
-### The capability must be ENABLED before it works at all
-`(#3) Application does not have the capability` — seen even for the app admin's OWN IG in Dev mode —
-means the IG-messaging capability isn't added to the app yet, **not** merely "not approved". Add the
-Instagram messaging use case (runbook **A2**) FIRST. Then: Dev mode works for app roles (testers/admins)
-on their own linked accounts; **real client accounts need Advanced Access (this review).**
-`pages_messaging` behaves the same — works for testers in Dev, needs Advanced Access for clients (that's
-why a non-tester client's FB subscribe returns `(#200)` until App Review lands).
+LeadDrive may classify sentiment or draft a response with configured AI
+providers. Those transfers and the applicable retention/deletion behaviour are
+disclosed in the public Privacy Policy.
 
-### Use case description (paste into each messaging permission's request form)
-In addition to comment monitoring, LeadDrive lets a tenant manage their Facebook Page Messenger and
-Instagram Direct conversations in the same unified inbox. After a tenant connects their Page (and the
-linked Instagram Business account), we: (1) subscribe the Page to the `messages` webhook so new direct
-messages arrive in real time; (2) optionally import existing conversation history via the Conversations
-API; (3) display every DM thread in the operator's inbox; (4) let the operator reply directly from the
-inbox. We only access direct messages for Pages / IG accounts the tenant admins, and never send a
-message without an explicit operator action.
+## Permission evidence to record
 
-### Screencast for the messaging permissions (60-120s, no audio)
-1. **Connect** (~15s) — `app.leaddrivecrm.org/social-monitoring` → *Connect Facebook Page* → approve
-   `pages_messaging` + `instagram_manage_messages` in the OAuth dialog → return to `?connected=facebook`.
-2. **Receive a DM** (~20s) — from a SECOND account, send a Messenger DM to the connected Page (and an IG
-   Direct to the linked IG). Open `/inbox` → the thread appears under channel *Facebook* / *Instagram*.
-3. **Reply** (~15s) — open the thread, type a reply, *Send* → show it delivered on the sender's side.
-4. **Import history** (~10s, optional) — *Import conversations* → existing threads populate the inbox.
+Record separate, short clips when Meta presents separate permission review
+fields:
 
-> Tester setup: developer's own FB/IG under App Roles → Testers, with the Page linked to a **Professional**
-> (Business/Creator) IG account — IG messaging review is rejected if the IG isn't Professional + linked.
+1. Start from 'Settings → Channels' in a dedicated review tenant.
+2. Click the provider card and show the matching Meta/Instagram consent
+   surface.
+3. Return to LeadDrive and show the connected asset.
+4. From a second test account, send a direct message to the connected asset.
+5. Open the new conversation in LeadDrive Inbox.
+6. Send a clearly test-labelled reply from LeadDrive.
+7. Show the reply on the sender side.
 
----
+For comment permissions, use a separate test post/comment and show the comment
+appearing in Social Monitoring followed by an operator reply. Do not use a
+comment demonstration as evidence for a messaging permission.
 
-## Required fields elsewhere in App Settings
+## Reviewer test account
 
-- **Privacy Policy URL** → `https://leaddrivecrm.org/legal/privacy`
-- **Terms of Service URL** → `https://leaddrivecrm.org/legal/terms`
-- **Data Deletion Instructions URL** → `https://leaddrivecrm.org/legal/data-deletion`
-- **App Icon** → 1024×1024 LeadDrive logo PNG
-- **App Category** → Business and Pages
-- **Business Use** → Yes (managing tenant social accounts as a B2B SaaS)
+Create a dedicated LeadDrive tenant and user; do not reuse production customer
+data. Store the credentials only in the approved password manager and paste
+them into Meta's reviewer-instructions field. The Meta test user must have
+access to test-only Pages/professional accounts and be assigned the necessary
+App Role while the app is in development mode.
 
----
+The deterministic setup and recording checklist are in
+'docs/meta-app-review-demo-runbook.md'.
 
-## Pre-submission checklist
+## Pre-submission gate
 
-- [ ] Business Portfolio verified (legal docs uploaded in Meta Business Suite)
-- [ ] Domain `leaddrivecrm.org` verified in Business Settings → Brand Safety
-- [ ] Privacy + Terms + Data Deletion pages live and reachable
-- [ ] App Icon uploaded
-- [ ] Tester(s) added under App Roles → Testers
-- [ ] Screencast recorded for each requested permission and uploaded
-- [ ] Use case text pasted into each permission's request form
-- [ ] **(Messaging)** Instagram messaging use case added to the app first (else `(#3)` even for testers)
-- [ ] **(Messaging)** IG account is Professional (Business/Creator) + linked to the Page
-- [ ] **(Messaging)** Screencast shows a real DM arriving in `/inbox` + an operator reply delivered
+- [ ] Business verification completed for "FANUM" MMC.
+- [ ] Domain ownership verified for 'leaddrivecrm.org'.
+- [ ] App ID in every screenshot and configuration is '2414060595720618'.
+- [ ] All three legal URLs return HTTP 200 without authentication.
+- [ ] Instagram card opens Instagram Login and the consent request contains
+      'instagram_business_basic' and 'instagram_business_manage_messages'.
+- [ ] Facebook review requests contain only permissions exercised in the
+      submitted Facebook recording.
+- [ ] Dedicated LeadDrive review tenant and Meta test assets contain no real
+      customer data.
+- [ ] Inbound message and outbound reply are visible in each messaging clip.
+- [ ] WhatsApp Embedded Signup is implemented before claiming shared-app
+      WhatsApp onboarding.
 
----
+## Accuracy notes
 
-## Reviewer notes — anti-rejection tips
-
-- Keep the screencast under 2 minutes; reviewers skip long ones.
-- Show one explicit operator action per permission (reply = read+manage_comments).
-- Don't show the developer dashboard — only `app.leaddrivecrm.org` end-user UI.
-- If asked about user data flow: data stays per-tenant (`organizationId` filter
-  on every query); tokens are AES-256-GCM encrypted at rest.
-- Spelling: keep "Facebook Page" capitalized; reviewers reject sloppy copy.
+- OAuth tokens in 'SocialAccount.accessToken' are AES-256-GCM encrypted.
+  Some channel credential fields are access-restricted and masked but are not
+  all application-field-encrypted; do not tell reviewers that every token is
+  encrypted at the application layer.
+- Disconnecting a Meta channel stops it and clears locally stored channel
+  credentials. Existing CRM conversation history is handled under the
+  published retention/deletion policy. The tenant should also remove
+  LeadDrive from Meta Business Integrations to revoke provider-side access.

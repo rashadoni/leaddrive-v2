@@ -137,11 +137,10 @@ const VOICE_AGENT_INTERNAL_PATHS = new Set([
 const marketingPaths = ["/home", "/pricing", "/plans", "/features", "/demo", "/about", "/contact", "/blog", "/legal", "/landing", "/marketing"]
 
 // The marketing apex currently sits behind a Cloudflare-managed site that
-// redirects unknown paths to `/`. Keep the demo request page available on the
-// application host as a stable fallback so campaigns can link to a route that
-// is served by this deployment even when the marketing edge has not yet added
-// `/demo` to its route table.
-const appHostedMarketingPaths = ["/demo"]
+// redirects unknown paths to `/`. Keep the demo request and legal pages
+// available on the application host as stable fallbacks. Meta App Review must
+// be able to open the policies without relying on a separate edge route table.
+const appHostedMarketingPaths = ["/demo", "/legal"]
 
 // Hostnames for domain-based routing (from env or defaults)
 function getMarketingHosts(): string[] {
