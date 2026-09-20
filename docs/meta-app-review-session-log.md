@@ -212,3 +212,14 @@ Audit of existing legal pages, routing, Meta OAuth scopes, persisted data, reten
   and the final conversation-to-lead step. Video capture remains blocked until
   the separate Meta-settings session securely saves the new Facebook and
   Instagram Login app credentials and provides test-only social assets.
+- Read-only production runs 35503001643 and 35503009776 confirmed Bright Data
+  live routing is enabled globally but the `leaddrive` tenant has its paid
+  collection emergency stop active and no current operational provider run.
+  The tenant has 12 active `sales` assignees, so conversation-to-lead does not
+  require creating another CRM user. App IDs remain the old values and no new
+  Meta app row was created.
+- PR 252 CI found that the expanded list had accidentally displaced Sentry
+  from the rendered disclosure. Sentry is restored as a named diagnostic
+  subprocessor, its configurable US/Germany storage region and project-based
+  retention are disclosed, and the safe diagnostic now reports only the DSN
+  hostname so the active region can be resolved without exposing credentials.
