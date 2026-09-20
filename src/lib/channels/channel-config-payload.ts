@@ -27,6 +27,7 @@ export interface ChannelConfigFormData {
   displayName: string
   igLogin: boolean
   appReviewOnly: boolean
+  loginConfigId: string
   chatwootBaseUrl: string
   chatwootAccountId: string
   chatwootWebhookSecret: string
@@ -126,6 +127,13 @@ export function buildChannelPayload(form: ChannelConfigFormData) {
       // the tenant default, which is the precise accident the flag exists to prevent.
       ...((form.channelType === "facebook" || form.channelType === "instagram") && form.appReviewOnly
         ? { appReviewOnly: true }
+        : {}),
+      // Facebook Login for Business configuration id. Meta's docs state that "config_id has replaced
+      // scope (which should not be used)", so an app set up that way needs this instead of a scope
+      // list — without it the dialog rejects the request and, if it opens at all, the grant lands on
+      // the selected assets and /me/accounts comes back empty.
+      ...((form.channelType === "facebook" || form.channelType === "instagram") && form.loginConfigId.trim()
+        ? { loginConfigId: form.loginConfigId.trim() }
         : {}),
     },
     isActive: form.isActive,

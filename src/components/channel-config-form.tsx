@@ -148,6 +148,8 @@ const localCopy: Record<Loc, Record<string, string>> = {
     metaVerifyTokenHint: "Any random string — it must match the Verify Token in your Meta app's Webhook config.",
     metaAppReviewOnlyLabel: "Staging app (Meta App Review) — do not use for existing channels",
     metaAppReviewOnlyHint: "Keeps this Meta app isolated: it is used only when a connection names it explicitly, so the channels already connected in this workspace keep running on the app they use today.",
+    metaLoginConfigLabel: "Facebook Login for Business — configuration ID",
+    metaLoginConfigHint: "Only for apps that use Facebook Login for Business. Meta replaced the permission list with a configuration, so leaving this empty makes the dialog refuse the request or return no Pages. Find it in your app under Facebook Login for Business → Configurations.",
     metaConnectFacebook: "Connect Facebook Page →",
     metaConnectInstagram: "Connect Instagram account →",
     metaOneClickTitle: "Connect with LeadDrive's Meta app",
@@ -235,6 +237,8 @@ const localCopy: Record<Loc, Record<string, string>> = {
     metaVerifyTokenHint: "Любая строка — она должна совпадать с Verify Token в настройках webhook вашего Meta-приложения.",
     metaAppReviewOnlyLabel: "Тестовое приложение (Meta App Review) — не использовать для существующих каналов",
     metaAppReviewOnlyHint: "Изолирует это Meta-приложение: оно применяется, только когда подключение указывает его явно, поэтому уже подключённые каналы продолжают работать на прежнем приложении.",
+    metaLoginConfigLabel: "Facebook Login for Business — ID конфигурации",
+    metaLoginConfigHint: "Только для приложений на Facebook Login for Business. Meta заменила список разрешений конфигурацией, поэтому без неё диалог отклоняет запрос или возвращает пустой список страниц. Найти: в приложении → Facebook Login for Business → Конфигурации.",
     metaConnectFacebook: "Подключить Facebook Page →",
     metaConnectInstagram: "Подключить Instagram account →",
     metaOneClickTitle: "Подключение через приложение LeadDrive",
@@ -322,6 +326,8 @@ const localCopy: Record<Loc, Record<string, string>> = {
     metaVerifyTokenHint: "İstənilən sətir — Meta tətbiqin webhook konfiqurasiyasındakı Verify Token ilə eyni olmalıdır.",
     metaAppReviewOnlyLabel: "Sınaq tətbiqi (Meta App Review) — mövcud kanallar üçün istifadə edilməsin",
     metaAppReviewOnlyHint: "Bu Meta tətbiqini təcrid edir: yalnız bağlantı onu açıq şəkildə göstərəndə işlədilir, ona görə artıq qoşulmuş kanallar indiki tətbiqlə işləməyə davam edir.",
+    metaLoginConfigLabel: "Facebook Login for Business — konfiqurasiya ID-si",
+    metaLoginConfigHint: "Yalnız Facebook Login for Business istifadə edən tətbiqlər üçün. Meta icazə siyahısını konfiqurasiya ilə əvəz etdi, ona görə bu boş qalsa dialoq sorğunu rədd edir və ya heç bir səhifə qaytarmır. Tətbiqdə: Facebook Login for Business → Konfiqurasiyalar.",
     metaConnectFacebook: "Facebook Page qoş →",
     metaConnectInstagram: "Instagram account qoş →",
     metaOneClickTitle: "LeadDrive-ın Meta tətbiqi ilə qoşulma",
@@ -860,6 +866,7 @@ export function ChannelConfigForm({
     displayName: "",
     igLogin: false,
     appReviewOnly: false,
+    loginConfigId: "",
     chatwootBaseUrl: "",
     chatwootAccountId: "",
     chatwootWebhookSecret: "",
@@ -928,6 +935,7 @@ export function ChannelConfigForm({
         displayName: initialData?.displayName || "",
         igLogin: normalizedSettings.igLogin === true,
         appReviewOnly: normalizedSettings.appReviewOnly === true,
+        loginConfigId: asString(normalizedSettings.loginConfigId),
         chatwootBaseUrl: asString(normalizedSettings.baseUrl),
         chatwootAccountId: normalizedSettings.accountId != null ? String(normalizedSettings.accountId) : "",
         chatwootWebhookSecret: asString(normalizedSettings.webhookSecret),
@@ -2181,6 +2189,17 @@ export function ChannelConfigForm({
                         reconnect in that workspace runs through (the org-wide resolver takes the most
                         recently updated row). Ticking this keeps the new app reachable only by the
                         connection that names it. */}
+                    <div>
+                      <Label htmlFor="loginConfigId" className="text-sm font-medium">{c.metaLoginConfigLabel}</Label>
+                      <Input
+                        id="loginConfigId"
+                        value={form.loginConfigId}
+                        onChange={(e) => update("loginConfigId", e.target.value)}
+                        placeholder="1234567890123456"
+                        className="mt-1.5 font-mono text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">{c.metaLoginConfigHint}</p>
+                    </div>
                     <div className="rounded-md border border-dashed p-3">
                       <label htmlFor="appReviewOnly" className="flex items-start gap-2 cursor-pointer">
                         <input

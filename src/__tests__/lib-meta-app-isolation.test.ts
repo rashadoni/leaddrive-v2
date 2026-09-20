@@ -98,7 +98,7 @@ describe("getPinnedMetaApp", () => {
   it("resolves the named row and scopes the lookup to the caller's org", async () => {
     findFirst.mockResolvedValue(row())
     const r = await getPinnedMetaApp("org_1", "cfg_1", "facebook")
-    expect(r).toEqual({ configId: "cfg_1", appId: "2414060595720618", appSecret: "s", hasVerifyToken: true })
+    expect(r).toEqual({ configId: "cfg_1", appId: "2414060595720618", appSecret: "s", hasVerifyToken: true, loginConfigId: null })
     expect(findFirst.mock.calls[0][0].where).toEqual({ id: "cfg_1", organizationId: "org_1" })
   })
 

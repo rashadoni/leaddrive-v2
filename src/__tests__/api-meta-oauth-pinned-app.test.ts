@@ -79,13 +79,49 @@ describe("facebook/start with ?app=", () => {
     expect(statePayload(res).app).toBe("cfg_staged")
   })
 
-  it("always requests the permissions under review, even with no existing channel", async () => {
+  it("requests the Messenger surface and nothing else", async () => {
+    // Changed deliberately on 2026-09-20. Asking for the monitoring and Instagram permissions on a
+    // staged app does not merely request too much — Facebook refuses the entire dialog:
+    //   "Invalid Scopes: pages_read_engagement, pages_read_user_content, instagram_basic,
+    //    instagram_manage_messages"
+    // Instagram is a separate app and a separate submission, so it cannot be in this request.
     findFirst.mockResolvedValue(STAGED)
     count.mockResolvedValue(0)
     const res = await fbStart(fbReq("?app=cfg_staged"))
+    const scope = (new URL(res.headers.get("location")!).searchParams.get("scope") || "").split(",")
+    expect(scope).toEqual([
+      "public_profile",
+      "pages_show_list",
+      "business_management",
+      "pages_messaging",
+      "pages_manage_metadata",
+    ])
+  })
+
+  it("sends config_id INSTEAD of scope when the tenant runs Facebook Login for Business", async () => {
+    // Meta: "config_id has replaced scope (which should not be used)". Sending both is what produced
+    // an Invalid Scopes rejection, and a scope-only request is what produced an empty /me/accounts.
+    findFirst.mockResolvedValue({ ...STAGED, settings: { appReviewOnly: true, loginConfigId: "1122334455" } })
+    const res = await fbStart(fbReq("?app=cfg_staged"))
+    const params = new URL(res.headers.get("location")!).searchParams
+    expect(params.get("config_id")).toBe("1122334455")
+    expect(params.get("scope")).toBeNull()
+  })
+
+  it("keeps sending scope when no configuration id is set", async () => {
+    findFirst.mockResolvedValue(STAGED)
+    const res = await fbStart(fbReq("?app=cfg_staged"))
+    const params = new URL(res.headers.get("location")!).searchParams
+    expect(params.get("config_id")).toBeNull()
+    expect(params.get("scope")).toContain("pages_messaging")
+  })
+
+  it("an unpinned flow keeps the historical scope list untouched", async () => {
+    count.mockResolvedValue(1)
+    const res = await fbStart(fbReq("?from=channels-facebook"))
     const scope = new URL(res.headers.get("location")!).searchParams.get("scope") || ""
-    for (const p of ["pages_messaging", "pages_manage_metadata", "instagram_manage_messages"]) {
-      expect(scope).toContain(p)
+    for (const p of ["pages_read_engagement", "instagram_basic", "instagram_manage_messages"]) {
+      expect(scope, `existing tenants must keep ${p}`).toContain(p)
     }
   })
 

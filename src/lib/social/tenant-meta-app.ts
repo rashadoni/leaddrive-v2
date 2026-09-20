@@ -145,6 +145,20 @@ export type PinnedMetaApp = {
   appId: string
   appSecret: string
   hasVerifyToken: boolean
+  /**
+   * The Facebook Login for Business configuration id, from `settings.loginConfigId`.
+   *
+   * Facebook Login for Business replaces `scope` with a configuration created in the app dashboard:
+   * Meta's own documentation states that "config_id has replaced scope (which should not be used)".
+   * An app set up that way rejects a `scope` request outright — observed on 2026-09-20 as
+   * "Invalid Scopes: pages_read_engagement, pages_read_user_content, instagram_basic,
+   * instagram_manage_messages" — and, even when a reduced scope list gets the dialog open, the grant
+   * is recorded against the selected assets rather than the user's Page roles, so `/me/accounts`
+   * comes back empty and the connect fails with `no_admined_pages`.
+   *
+   * Null when the tenant has not entered one, in which case the flow falls back to `scope`.
+   */
+  loginConfigId: string | null
 }
 
 /**
@@ -189,5 +203,18 @@ export async function getPinnedMetaApp(
     if (igLogin) return null
   }
 
-  return { configId: cfg.id, appId: cfg.appId, appSecret: cfg.appSecret, hasVerifyToken: true }
+  return {
+    configId: cfg.id,
+    appId: cfg.appId,
+    appSecret: cfg.appSecret,
+    hasVerifyToken: true,
+    loginConfigId: readLoginConfigId(cfg.settings),
+  }
+}
+
+/** `settings.loginConfigId` — the Facebook Login for Business configuration id, when set. */
+export function readLoginConfigId(settings: unknown): string | null {
+  if (!settings || typeof settings !== "object" || Array.isArray(settings)) return null
+  const raw = (settings as { loginConfigId?: unknown }).loginConfigId
+  return typeof raw === "string" && raw.trim() ? raw.trim() : null
 }
