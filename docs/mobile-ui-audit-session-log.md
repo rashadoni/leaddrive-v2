@@ -118,3 +118,15 @@ This file is append-only. It preserves requirements, decisions, implementation e
 - Team-message list and thread reads now use the deployed v1 API.
 - Verification passed: 78 focused API-client Jest tests, 3 field-UX/message contract tests, `npx tsc --noEmit`, targeted ESLint with zero warnings/errors, and `git diff --check`. Full Android build is intentionally reserved for GitHub CI under the Contabo workload contract.
 - Current continuation point: push checkpoint `8de33bf`, open and observe the mobile PR, merge only after green CI, wait for the official main APK release, checksum-verify/install it on the connected phone, then re-test login and continue the route, messages, new-doctor, portrait/landscape and tablet acceptance flows.
+
+## 2026-09-20 — build 266 authentication recovery and Today-route duplication
+
+- The previous continuation point is superseded. Mobile PR `rashadoni/leaddrive-mtm#70` passed its required checks and merged to `main` as `0718615746157215616f75117ece46b68ac47523`.
+- Official release `v3.3.0-build266` was checksum-verified, installed on the connected Galaxy S23 Ultra, and reported `versionCode=1266`, `versionName=3.3.0`.
+- Physical launch acceptance passed: the saved agent session opened the Today screen without a false “Access revoked” banner, the paused workday was restored, and the manager announcement appeared in the unread-message banner. This confirms the authoritative same-token session validation and deployed v1 message reads on the real phone.
+- The same physical screenshot exposed a remaining Today-screen defect: `ADV-DEMO Store 3` appeared once as a 27/33 heavyweight hero title and again as route point 1; the remaining-point count was also printed twice before point 2.
+- Mobile work now continues in `/mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-mobile-authoritative-session-revoke`, branch `codex/today-route-dedup`, checkpoint `0db665d`.
+- The Today route card now has one compact header, one remaining-point count, and one flat ordered list. Each customer appears once; the actual `nextPoint` row receives the short localized marker `Следующая` / `Next` / `Növbəti`. The next customer name and address are no longer repeated as a separate hero block.
+- Local verification passed: 14 targeted Jest tests, targeted ESLint with zero warnings/errors, `npx tsc --noEmit`, and `git diff --check`.
+- Mobile PR `rashadoni/leaddrive-mtm#71` is open. Scope and test checks passed; the signed Android APK/AAB build is running.
+- Current continuation point: wait for PR 71 Android CI, merge after green, wait for the official main APK release, checksum-verify and install it without clearing data, then visually confirm on the real phone that each route point and the remaining count appear once. Continue the broader route/message/new-doctor portrait/landscape/tablet acceptance after this regression is closed.
