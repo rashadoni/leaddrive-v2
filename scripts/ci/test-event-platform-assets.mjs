@@ -965,7 +965,7 @@ assert.ok(
     && !buildJob.includes("SERVER_HOST")
     && !/^\s*scp(?:\s|$)/m.test(buildJob)
     && deployJob.includes("Download SHA-bound deploy artifact")
-    && deployJob.includes("actions/download-artifact@v4")
+    && deployJob.includes("actions/download-artifact@v8")
     && downloadedArtifactVerificationStart >= 0
     && stagedArtifactStart > downloadedArtifactVerificationStart
     && downloadedArtifactVerification.includes('tar -xOzf "$artifact" ./.deploy-sha')
