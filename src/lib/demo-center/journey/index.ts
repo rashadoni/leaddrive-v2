@@ -22,3 +22,19 @@ export function getDemoJourneyScenario(scenarioId: string): DemoJourneyManifest 
     ? DEMO_JOURNEY_SCENARIOS[scenarioId]
     : null
 }
+
+/**
+ * Clip slugs any approved scenario may play. The capability-gated video
+ * route serves nothing outside this set, so a demo link cannot be turned
+ * into a general-purpose CDN for the whole help-video library.
+ */
+export function demoJourneyClipSlugs(): ReadonlySet<string> {
+  const slugs = new Set<string>()
+  for (const manifest of Object.values(DEMO_JOURNEY_SCENARIOS)) {
+    if (!manifest.capabilities.video) continue
+    for (const section of manifest.sections) {
+      if (section.intro) slugs.add(section.intro.slug)
+    }
+  }
+  return slugs
+}

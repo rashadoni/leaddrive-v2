@@ -26,6 +26,8 @@ import { DEMO_JOURNEY_STRINGS as S } from "./strings"
 export interface DemoJourneyGuideProps {
   manifest: DemoJourneyManifest
   snapshot: DemoJourneySnapshot
+  /** Capability token — the demo's own video route is scoped to it. */
+  token: string
   /** Section shown in the scene (frontier or review). */
   section: DemoJourneySection
   /** Frontier step when it belongs to the shown section. */
@@ -48,6 +50,7 @@ export interface DemoJourneyGuideProps {
 export function DemoJourneyGuide({
   manifest,
   snapshot,
+  token,
   section,
   step,
   stepIndex,
@@ -152,7 +155,7 @@ export function DemoJourneyGuide({
       )}
 
       {section.intro && manifest.capabilities.video && (
-        <IntroClip slug={section.intro.slug} caption={section.intro.caption} status={section.intro.status} canPlay={previewMode} />
+        <IntroClip slug={section.intro.slug} caption={section.intro.caption} status={section.intro.status} token={token} previewMode={previewMode} />
       )}
 
       {section.assistantPrompts?.length ? (
@@ -204,27 +207,35 @@ export function DemoJourneyGuide({
 /**
  * Short intro clip from the help-video pipeline.
  *
- * `canPlay` is false in a prospect's session on purpose: the pipeline serves
- * its files from `/api/help-videos/[file]`, which calls `requireAuth`, so a
- * capability-only session gets 401 and the player would sit broken. Until a
- * capability-gated public route exists (Phase F), the prospect sees the
- * caption and an honest note instead of a dead frame; the superadmin preview,
- * which is authenticated, plays the real file.
+ * The pipeline's own route (`/api/help-videos/[file]`) calls `requireAuth`,
+ * so it works in the authenticated superadmin preview but would answer 401
+ * to a prospect, who holds a capability session and no tenant session. The
+ * prospect therefore streams the same bytes through the demo's own gated
+ * route, scoped to their token.
  */
 function IntroClip({
   slug,
   caption,
   status,
-  canPlay,
+  token,
+  previewMode,
 }: {
   slug: string
   caption: string
   status: "available" | "planned"
-  canPlay: boolean
+  token: string
+  previewMode: boolean
 }) {
   const [playing, setPlaying] = useState(false)
-  const entry = status === "available" && canPlay ? getHelpVideoForSlug(slug, "az") : null
-  const assets = entry ? getHelpVideoAsset(entry, "az") : null
+  const entry = status === "available" ? getHelpVideoForSlug(slug, "az") : null
+  const assets = !entry
+    ? null
+    : previewMode
+      ? getHelpVideoAsset(entry, "az")
+      : {
+          videoSrc: `/api/v1/public/demo-access/${encodeURIComponent(token)}/video/${encodeURIComponent(`${slug}.az`)}.VOICE.mp4`,
+          posterSrc: `/api/v1/public/demo-access/${encodeURIComponent(token)}/video/${encodeURIComponent(`${slug}.az`)}.poster.jpg`,
+        }
 
   return (
     <div data-testid="demo-intro-clip" className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
@@ -248,7 +259,7 @@ function IntroClip({
           </button>
         )
       ) : (
-        <p className="mt-2 text-[11px] text-muted-foreground">{canPlay ? S.clipPlanned : S.clipUnavailableHere}</p>
+        <p className="mt-2 text-[11px] text-muted-foreground">{S.clipPlanned}</p>
       )}
     </div>
   )

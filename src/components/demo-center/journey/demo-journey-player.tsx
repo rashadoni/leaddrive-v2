@@ -296,6 +296,7 @@ export function DemoJourneyPlayer({
             <DemoJourneyGuide
               manifest={manifest}
               snapshot={snapshot}
+              token={token}
               section={viewSection}
               step={step}
               stepIndex={Math.max(0, stepIndex)}
