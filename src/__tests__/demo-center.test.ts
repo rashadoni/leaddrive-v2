@@ -180,3 +180,29 @@ describe("Demo Center telemetry hygiene", () => {
     expect(event.breadcrumbs[0]?.message).toBe("POST /api/v1/public/demo-access/[redacted]/events")
   })
 })
+
+describe("Demo Center grant shape: scenario or modules", () => {
+  it("issues a guided scenario without a module list", () => {
+    const parsed = demoGrantIssueSchema.safeParse({ scenarioId: "prospect-to-closed-won" })
+    expect(parsed.success).toBe(true)
+    if (parsed.success) expect(parsed.data.moduleIds).toEqual([])
+  })
+
+  it("refuses both at once — the player would have to guess which was granted", () => {
+    expect(demoGrantIssueSchema.safeParse({
+      scenarioId: "prospect-to-closed-won",
+      moduleIds: ["crm"],
+    }).success).toBe(false)
+  })
+
+  it("refuses neither — that link would open nothing", () => {
+    expect(demoGrantIssueSchema.safeParse({}).success).toBe(false)
+    expect(demoGrantIssueSchema.safeParse({ moduleIds: [] }).success).toBe(false)
+  })
+
+  it("refuses a scenario the server does not approve", () => {
+    for (const scenarioId of ["salesforce-clone", "__proto__", "constructor", "prospect-to-closed-won-x"]) {
+      expect(demoGrantIssueSchema.safeParse({ scenarioId }).success, scenarioId).toBe(false)
+    }
+  })
+})

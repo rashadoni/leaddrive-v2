@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { PROSPECT_TO_CLOSED_WON, activeSections } from "@/lib/demo-center/journey"
 
 interface ModuleOption { id: string; title: string; summary: string }
 interface GrantSummary {
@@ -37,6 +38,11 @@ export function DemoRequestEditor({
 }) {
   const router = useRouter()
   const validRequested = requestedModuleIds.filter((id) => modules.some((module) => module.id === id))
+  // What the prospect actually receives. The guided journey is the default:
+  // the module playlist is the older shape the owner asked to replace, kept
+  // selectable only so an in-flight request can still be served the way it
+  // was planned.
+  const [mode, setMode] = useState<"journey" | "modules">("journey")
   const [selected, setSelected] = useState<string[]>(validRequested)
   const [linkValidDays, setLinkValidDays] = useState(7)
   const [sessionMinutes, setSessionMinutes] = useState(120)
@@ -53,6 +59,8 @@ export function DemoRequestEditor({
   // Guided journey preview — the replacement for the module playlist. It does
   // not depend on the module selection: the scenario decides what is shown.
   const journeyPreviewHref = `/demo-preview/${requestId}?scenario=prospect-to-closed-won`
+  const journeySectionCount = activeSections(PROSPECT_TO_CLOSED_WON).length
+  const journeyMinutes = PROSPECT_TO_CLOSED_WON.estimatedMinutes
 
   function toggle(moduleId: string) {
     setSuccess(null)
@@ -71,7 +79,8 @@ export function DemoRequestEditor({
   }
 
   async function issueDemo() {
-    if (!selected.length) return setError("Select at least one module before issuing access.")
+    const journey = mode === "journey"
+    if (!journey && !selected.length) return setError("Select at least one module before issuing access.")
     setBusy("issue")
     setError(null)
     setSuccess(null)
@@ -80,7 +89,8 @@ export function DemoRequestEditor({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          moduleIds: selected,
+          // A grant is one or the other; the API refuses both or neither.
+          ...(journey ? { scenarioId: PROSPECT_TO_CLOSED_WON.scenarioId } : { moduleIds: selected }),
           linkValidDays,
           sessionDurationMinutes: sessionMinutes,
           inactivityMinutes,
@@ -89,7 +99,9 @@ export function DemoRequestEditor({
       })
       const result = await response.json().catch(() => ({})) as { error?: string }
       if (!response.ok) throw new Error(result.error || "The demo could not be issued")
-      setSuccess(`Access email sent with ${selected.length} selected module${selected.length === 1 ? "" : "s"}.`)
+      setSuccess(journey
+        ? `Access email sent for the guided journey (${journeySectionCount} sections).`
+        : `Access email sent with ${selected.length} selected module${selected.length === 1 ? "" : "s"}.`)
       router.refresh()
     } catch (issueError) {
       setError(issueError instanceof Error ? issueError.message : "The demo could not be issued")
@@ -142,9 +154,37 @@ export function DemoRequestEditor({
   return (
     <div className="space-y-8">
       <section>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">1 · Choose what the prospect receives</p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => { setMode("journey"); setSuccess(null) }}
+            aria-pressed={mode === "journey"}
+            className={`rounded-xl border p-4 text-left transition-colors ${mode === "journey" ? "border-orange-500 bg-orange-50 dark:bg-orange-950/20" : "border-zinc-200 hover:border-zinc-300 dark:border-zinc-700"}`}
+          >
+            <span className="text-sm font-semibold text-zinc-950 dark:text-zinc-50">Guided journey</span>
+            <span className="mt-1 block text-xs leading-5 text-zinc-500">
+              {PROSPECT_TO_CLOSED_WON.title} — {journeySectionCount} sections, ~{journeyMinutes} min, on the real product screens.
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => { setMode("modules"); setSuccess(null) }}
+            aria-pressed={mode === "modules"}
+            className={`rounded-xl border p-4 text-left transition-colors ${mode === "modules" ? "border-orange-500 bg-orange-50 dark:bg-orange-950/20" : "border-zinc-200 hover:border-zinc-300 dark:border-zinc-700"}`}
+          >
+            <span className="text-sm font-semibold text-zinc-950 dark:text-zinc-50">Module playlist</span>
+            <span className="mt-1 block text-xs leading-5 text-zinc-500">
+              The older synthetic tour across 19 module summaries. Kept for requests already planned that way.
+            </span>
+          </button>
+        </div>
+      </section>
+
+      <section className={mode === "modules" ? "" : "hidden"}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">1 · Build the playlist</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">2 · Build the playlist</p>
             <h2 className="mt-2 text-xl font-semibold text-zinc-950 dark:text-zinc-50">Choose from 19 demos</h2>
           </div>
           <div className="flex gap-2">
@@ -205,17 +245,20 @@ export function DemoRequestEditor({
             <div><p className="text-sm font-semibold">Preview first, then issue one protected session</p><p className="mt-1 max-w-xl text-xs leading-5 text-zinc-400 dark:text-zinc-600">Preview uses only synthetic data and sends nothing. Issuing creates the OTP-protected client link and revokes the previous open grant.</p></div>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
-            {selected.length ? (
+            {/* The preview always shows what "Issue and send" would deliver —
+                two buttons here invited previewing one and issuing the other. */}
+            {mode === "journey" ? (
+              <Button asChild variant="outline" className="min-h-11 shrink-0 border-zinc-600 bg-transparent text-zinc-100 hover:bg-zinc-800 hover:text-white dark:border-zinc-400 dark:text-zinc-900 dark:hover:bg-zinc-200">
+                <a href={journeyPreviewHref} target="_blank" rel="noreferrer"><Eye className="h-4 w-4" />Preview guided journey</a>
+              </Button>
+            ) : selected.length ? (
               <Button asChild variant="outline" className="min-h-11 shrink-0 border-zinc-600 bg-transparent text-zinc-100 hover:bg-zinc-800 hover:text-white dark:border-zinc-400 dark:text-zinc-900 dark:hover:bg-zinc-200">
                 <a href={previewHref} target="_blank" rel="noreferrer"><Eye className="h-4 w-4" />Preview selected</a>
               </Button>
             ) : (
               <Button type="button" variant="outline" disabled className="min-h-11 shrink-0 border-zinc-600 bg-transparent text-zinc-100 dark:border-zinc-400 dark:text-zinc-900"><Eye className="h-4 w-4" />Preview selected</Button>
             )}
-            <Button asChild variant="outline" className="min-h-11 shrink-0 border-zinc-600 bg-transparent text-zinc-100 hover:bg-zinc-800 hover:text-white dark:border-zinc-400 dark:text-zinc-900 dark:hover:bg-zinc-200">
-              <a href={journeyPreviewHref} target="_blank" rel="noreferrer"><Eye className="h-4 w-4" />Preview guided journey</a>
-            </Button>
-            <Button type="button" disabled={busy !== null || !selected.length || requestStatus === "REJECTED"} onClick={issueDemo} className="min-h-11 shrink-0 bg-orange-600 text-white hover:bg-orange-700">
+            <Button type="button" disabled={busy !== null || (mode === "modules" && !selected.length) || requestStatus === "REJECTED"} onClick={issueDemo} className="min-h-11 shrink-0 bg-orange-600 text-white hover:bg-orange-700">
               {busy === "issue" ? <Clock3 className="h-4 w-4 animate-spin" /> : latestGrant ? <RotateCcw className="h-4 w-4" /> : <Send className="h-4 w-4" />}
               {latestGrant ? "Reissue and send" : "Issue and send"}
             </Button>

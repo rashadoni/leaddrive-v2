@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getDemoModules } from "@/lib/demo-center/catalog"
+import {
+  DEMO_SOURCE_CHANNELS,
+  getDemoJourneyScenario,
+  type DemoProspectIdentity,
+  type DemoSourceChannel,
+} from "@/lib/demo-center/journey"
 import { expireDemoGrantIfNeeded, noStoreHeaders, validRawDemoToken } from "@/lib/demo-center/access"
 import {
   anonymizedClientMetadata,
   demoSessionCookieName,
   demoVerificationCookieName,
   maskEmail,
+  maskPhone,
   secureHashMatches,
 } from "@/lib/demo-center/security"
 import { publicAccessState } from "@/lib/demo-center/session"
@@ -23,7 +30,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const isLifecycleProbe = request.nextUrl.searchParams.get("probe") === "1"
     const grant = await prisma.demoGrant.findUnique({
       where: { tokenHash: hashOneTimeToken(token) },
-      include: { request: { select: { company: true, email: true, name: true } } },
+      include: {
+        request: {
+          select: { company: true, email: true, name: true, jobTitle: true, phone: true, source: true },
+        },
+      },
     })
     if (!grant) return NextResponse.json({ success: false, state: "unavailable" }, { status: 404, headers: noStoreHeaders() })
 
@@ -52,6 +63,25 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const selectedModules = getDemoModules(grant.moduleIds)
     const publicModules = selectedModules.map(({ id, title, summary }) => ({ id, title, summary }))
+
+    // A grant issued for a scenario opens the guided journey; one issued
+    // before scenarios existed keeps opening the module player it was made
+    // for. The manifest is resolved from the grant, never from the URL.
+    const scenario = grant.scenarioId ? getDemoJourneyScenario(grant.scenarioId) : null
+    const scenarioPayload = scenario
+      ? { scenarioId: scenario.scenarioId, scenarioVersion: scenario.version }
+      : null
+    const identity: DemoProspectIdentity | null = scenario
+      ? {
+          name: grant.request.name,
+          company: grant.request.company,
+          jobTitle: grant.request.jobTitle,
+          // The player never receives the raw contact details it displays.
+          emailMasked: maskEmail(grant.request.email),
+          phoneMasked: grant.request.phone ? maskPhone(grant.request.phone) : null,
+          sourceChannel: sourceChannelOf(grant.request.source),
+        }
+      : null
     if (state !== "active") {
       if (isLifecycleProbe) {
         return NextResponse.json({ success: true, state }, { headers: noStoreHeaders() })
@@ -61,7 +91,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         state,
         company: grant.request.company,
         recipient: maskEmail(grant.request.email),
-        modules: publicModules,
+        ...(scenario
+          ? { scenario: { ...scenarioPayload, title: scenario.title, summary: scenario.summary, sections: scenario.sections.length } }
+          : { modules: publicModules }),
         linkExpiresAt: grant.linkExpiresAt,
         sessionDurationMinutes: grant.sessionDurationMinutes,
         inactivityMinutes: grant.inactivityMinutes,
@@ -96,7 +128,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       company: grant.request.company,
       recipient: maskEmail(grant.request.email),
       watermark: grant.watermark,
-      modules: selectedModules,
+      ...(scenario ? { scenario: scenarioPayload, identity } : { modules: selectedModules }),
       sessionStartedAt: grant.sessionStartedAt,
       sessionExpiresAt: grant.sessionExpiresAt,
       idleExpiresAt: idleExpiry(responseLastSeenAt, grant.inactivityMinutes),
@@ -109,4 +141,12 @@ function idleExpiry(lastSeenAt: Date | null, inactivityMinutes: number): Date | 
   return lastSeenAt
     ? new Date(lastSeenAt.getTime() + inactivityMinutes * 60_000)
     : null
+}
+
+/** The request's stored source, narrowed to a channel the scenario draws. */
+function sourceChannelOf(value: string | null | undefined): DemoSourceChannel {
+  const candidate = (value ?? "").toLowerCase()
+  return (DEMO_SOURCE_CHANNELS as readonly string[]).includes(candidate)
+    ? (candidate as DemoSourceChannel)
+    : "website"
 }

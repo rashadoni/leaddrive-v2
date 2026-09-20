@@ -21496,6 +21496,11 @@ model DemoGrant {
   tokenHash              String      @unique
   tokenHint              String
   moduleIds              String[]
+  /// Guided scenario this grant was issued for. Null on grants issued before
+  /// scenarios existed — those keep opening the module player. Set together
+  /// with scenarioVersion or not at all (demo_grants_scenario_pair_check).
+  scenarioId             String?
+  scenarioVersion        Int?
   locale                 String      @default("az")
   watermark              String
   linkExpiresAt          DateTime
