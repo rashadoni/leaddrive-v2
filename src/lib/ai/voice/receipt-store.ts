@@ -1,11 +1,12 @@
 /**
  * Client-side receipt store for the voice action-intent UI (roadmap U1.1).
  *
- * SHADOW MODE. This module deliberately has no way to write anything. It reads
- * the caller's one active receipt and holds it for rendering; committing stays
- * behind an explicit button that a later slice (U1.8) wires to
- * `POST /api/v1/ai/voice/actions/:id/commit`. `assertNoVoiceReceiptWriteApi`
- * below is the executable form of that promise, and a test calls it.
+ * The store itself still cannot write. It holds the receipt and the result of
+ * a commit; the commit lives in `receipt-commit.ts` and is reachable only from
+ * the onClick of a button whose label names the operation. What guarantees the
+ * model cannot write is not this file but the tool contract, which has no
+ * write tool at all — `src/__tests__/voice-model-cannot-write.test.ts` is the
+ * executable form of that.
  *
  * Why a store bound to ONE voice session id, rather than a plain useState:
  *
@@ -21,13 +22,23 @@
  *   partially repaired object.
  */
 
-/** Whether the receipt UI may commit. Stays false until roadmap U1.8. */
-export const VOICE_RECEIPT_COMMIT_ENABLED = false as const
+import type { VoiceCommitOutcome } from "./receipt-commit"
 
 /**
- * States in which a receipt is still the user's open decision. A terminal
- * receipt (succeeded/failed/cancelled/expired/stale) is not a pending action
- * and is not shown by this slice; U1.11 adds the terminal presentation.
+ * Whether the receipt UI offers a confirmation button (roadmap U1.8, on since
+ * 2026-09-20). It gates the BUTTON, never the model: there is no model write
+ * tool to gate.
+ */
+export const VOICE_RECEIPT_COMMIT_ENABLED = true as const
+
+/**
+ * States in which a receipt is still the user's open decision.
+ *
+ * A receipt the server already reports as terminal is not adopted: whatever
+ * finished it happened elsewhere (another tab, the TTL sweeper, a previous
+ * session), and re-showing it as a pending action would invite a second press.
+ * The terminal states the user does see are the ones produced HERE, by their
+ * own button, and they live in `outcome`.
  */
 export const VOICE_RECEIPT_OPEN_STATES = [
   "collecting",
@@ -56,9 +67,16 @@ export type VoiceReceiptPreview = Readonly<{
   fields: readonly VoiceReceiptField[]
 }>
 
+/** One existing record a duplicate warning matched, named well enough to judge. */
+export type VoiceReceiptDuplicateCandidate = Readonly<{
+  id: string
+  entityType: "lead" | "deal"
+  label: string
+}>
+
 export type VoiceReceiptWarning = Readonly<{
   code: string
-  [key: string]: unknown
+  candidates: readonly VoiceReceiptDuplicateCandidate[]
 }>
 
 export type VoiceReceipt = Readonly<{
@@ -89,6 +107,10 @@ export type VoiceReceiptStoreState = Readonly<{
   dismissed: boolean
   errorCode: string | null
   lastRejection: VoiceReceiptRejectionReason | null
+  /** A confirmation is in flight. Guards a double click into one request. */
+  committing: boolean
+  /** What the last confirmation did, once the server has answered. */
+  outcome: VoiceCommitOutcome | null
 }>
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -139,14 +161,46 @@ function normalizePreview(value: unknown): VoiceReceiptPreview | null {
   return { contract: 1, actionType, operation, entityType, titleKey, target, fields }
 }
 
-function normalizeWarnings(value: unknown): readonly VoiceReceiptWarning[] {
+/**
+ * Name the matched record the way the user would recognise it.
+ *
+ * "A similar record already exists" without saying WHICH one is not a warning,
+ * it is an obstacle — the roadmap asks for enough identifying detail to
+ * choose. The order below is the order a person reads a lead by.
+ */
+function candidateLabel(raw: Record<string, unknown>): string | null {
+  for (const key of ["name", "contactName", "companyName", "email", "phone", "phoneWhatsApp"]) {
+    const value = raw[key]
+    if (typeof value === "string" && value.trim()) return value.trim()
+  }
+  return null
+}
+
+function normalizeCandidates(
+  value: unknown,
+  entityType: "lead" | "deal",
+): readonly VoiceReceiptDuplicateCandidate[] {
   if (!Array.isArray(value)) return []
+  const candidates: VoiceReceiptDuplicateCandidate[] = []
+  for (const raw of value) {
+    if (!isPlainObject(raw)) continue
+    const id = readString(raw, "id")
+    const label = candidateLabel(raw)
+    if (!id || !label) continue
+    candidates.push({ id, entityType, label })
+  }
+  return candidates
+}
+
+function normalizeWarnings(value: unknown, actionType: string): readonly VoiceReceiptWarning[] {
+  if (!Array.isArray(value)) return []
+  const entityType = actionType === "create_deal" ? "deal" : "lead"
   const warnings: VoiceReceiptWarning[] = []
   for (const raw of value) {
     if (!isPlainObject(raw)) continue
     const code = readString(raw, "code")
     if (!code) continue
-    warnings.push({ ...raw, code })
+    warnings.push({ code, candidates: normalizeCandidates(raw.candidates, entityType) })
   }
   return warnings
 }
@@ -217,7 +271,7 @@ export function normalizeVoiceReceipt(
       revision: revision as number,
       payloadHash,
       preview: normalizePreview(raw.preview),
-      warnings: normalizeWarnings(raw.warnings),
+      warnings: normalizeWarnings(raw.warnings, actionType),
       target,
       expiresAtMs,
     },
@@ -228,6 +282,18 @@ export type VoiceReceiptStore = Readonly<{
   voiceSessionId: string
   getState: () => VoiceReceiptStoreState
   subscribe: (listener: () => void) => () => void
+  /**
+   * Claim the single in-flight confirmation slot. Returns false when one is
+   * already running, which is the double-click guard: the server is idempotent
+   * for the same proof, but a second proof for the same receipt is refused, so
+   * the honest client behaviour is to send one request, not to rely on the
+   * refusal.
+   */
+  claimCommit: () => boolean
+  /** Record what the confirmation did and release the slot. */
+  settleCommit: (outcome: VoiceCommitOutcome) => void
+  /** Drop a recoverable outcome so the same button can be pressed again. */
+  clearOutcome: () => void
   /** Mark a load in flight. Keeps any receipt already on screen. */
   beginLoad: () => void
   /** Accept a server payload, or reject it and say why. */
@@ -256,6 +322,8 @@ export function createVoiceReceiptStore(voiceSessionId: string): VoiceReceiptSto
     dismissed: false,
     errorCode: null,
     lastRejection: null,
+    committing: false,
+    outcome: null,
   }
   const listeners = new Set<() => void>()
 
@@ -273,6 +341,15 @@ export function createVoiceReceiptStore(voiceSessionId: string): VoiceReceiptSto
         listeners.delete(listener)
       }
     },
+    claimCommit: () => {
+      // A settled success is final. Re-pressing must not start a second write,
+      // even though the server would replay rather than duplicate it.
+      if (state.committing || state.outcome?.kind === "succeeded" || !state.receipt) return false
+      set({ committing: true, outcome: null })
+      return true
+    },
+    settleCommit: (outcome) => set({ committing: false, outcome }),
+    clearOutcome: () => set({ outcome: null }),
     beginLoad: () => set({ status: "loading", errorCode: null }),
     adopt: (raw) => {
       const result = normalizeVoiceReceipt(raw, voiceSessionId)
@@ -290,6 +367,8 @@ export function createVoiceReceiptStore(voiceSessionId: string): VoiceReceiptSto
         // A genuinely new receipt reopens the surface; a refresh of the one the
         // user just closed does not reopen itself.
         dismissed: sameReceipt ? state.dismissed : false,
+        // A result belongs to the receipt it came from, never to the next one.
+        outcome: sameReceipt ? state.outcome : null,
       })
       return result
     },
@@ -298,6 +377,9 @@ export function createVoiceReceiptStore(voiceSessionId: string): VoiceReceiptSto
     dismiss: () => set({ dismissed: true }),
     reveal: () => set({ dismissed: false }),
     pruneExpired: (nowMs) => {
+      // A succeeded receipt is a result, not a pending draft: the CRM record
+      // exists and its link must survive the draft TTL.
+      if (state.outcome?.kind === "succeeded") return false
       if (!state.receipt || state.receipt.expiresAtMs > nowMs) return false
       set({ receipt: null, lastRejection: null })
       return true
@@ -333,23 +415,4 @@ export async function fetchActiveVoiceReceipt(
   const body = (await response.json()) as unknown
   if (!isPlainObject(body)) return null
   return body.data ?? null
-}
-
-/**
- * Executable shadow-mode guarantee (roadmap U1 exit gate: "the model has no
- * commit capability", "a write is impossible without the receipt and explicit
- * button press"). A test calls this so that adding `store.commit()` in a later
- * edit fails the suite instead of silently shipping a hidden write path.
- */
-export function assertNoVoiceReceiptWriteApi(store: VoiceReceiptStore): void {
-  const forbidden = /commit|confirm|execute|write|mutate|submit|send/i
-  const offenders = Object.keys(store).filter((key) => forbidden.test(key))
-  if (offenders.length > 0) {
-    throw new Error(
-      `Voice receipt store exposes a write-shaped method in shadow mode: ${offenders.join(", ")}`,
-    )
-  }
-  if (VOICE_RECEIPT_COMMIT_ENABLED) {
-    throw new Error("Voice receipt commit must stay disabled until roadmap U1.8")
-  }
 }

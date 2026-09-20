@@ -23939,13 +23939,58 @@
     "saving": "Сохранение…",
     "saved": "Сохранено"
   },
+  "aiVoiceActions": {
+    "fields": {
+      "title": "Заголовок",
+      "description": "Описание",
+      "priority": "Приоритет",
+      "dueDate": "Срок",
+      "assignedTo": "Ответственный",
+      "relatedType": "Связано с",
+      "relatedId": "Связанная запись",
+      "contactName": "Контакт",
+      "companyName": "Компания",
+      "email": "Email",
+      "phone": "Телефон",
+      "phoneWhatsApp": "WhatsApp",
+      "telegramHandle": "Telegram",
+      "source": "Источник",
+      "sourceDetail": "Детали источника",
+      "sourceProfileUrl": "Профиль источника",
+      "interest": "Интерес",
+      "brand": "Бренд",
+      "category": "Категория",
+      "estimatedValue": "Оценочная сумма",
+      "pipelineId": "Воронка",
+      "notes": "Заметки",
+      "name": "Название",
+      "companyId": "Компания",
+      "contactId": "Контакт",
+      "campaignId": "Кампания",
+      "stage": "Стадия",
+      "valueAmount": "Сумма",
+      "currency": "Валюта",
+      "probability": "Вероятность",
+      "expectedClose": "Ожидаемое закрытие",
+      "tags": "Теги",
+      "dealTitle": "Название сделки",
+      "dealStage": "Стадия сделки",
+      "dealValue": "Сумма сделки",
+      "createCompany": "Создать и компанию"
+    }
+  },
   "voice": {
     "receipt": {
       "ariaLabel": "Подготовленное действие в CRM",
       "dismiss": "Скрыть черновик",
-      "fieldsPrepared": "Подготовлено полей: {count}",
-      "warningsPrepared": "Предупреждений к проверке: {count}",
-      "shadowNotice": "В CRM ничего не записано. Это черновик только для проверки — кнопки подтверждения пока не включены, а сказанное вслух «да» никогда не разрешает изменение.",
+      "emptyValue": "—",
+      "yes": "Да",
+      "no": "Нет",
+      "pressNotice": "Пока вы не нажмёте кнопку, в CRM ничего не запишется. Сказанное вслух «да» не считается.",
+      "cancel": "Отменить",
+      "retry": "Повторить",
+      "refresh": "Обновить черновик",
+      "openResult": "Открыть запись",
       "state": {
         "collecting": "Собирается",
         "awaiting_confirmation": "Ждёт вашего подтверждения",
@@ -23957,6 +24002,25 @@
         "update_lead": "Изменить лид",
         "create_deal": "Создать сделку",
         "convert_lead_to_deal": "Превратить лид в сделку"
+      },
+      "confirm": {
+        "create_task": "Создать задачу",
+        "create_lead": "Создать лид",
+        "update_lead": "Сохранить изменения",
+        "create_deal": "Создать сделку",
+        "convert_lead_to_deal": "Превратить в сделку"
+      },
+      "warning": {
+        "POSSIBLE_DUPLICATE": "Похожая запись уже есть:"
+      },
+      "result": {
+        "done": "Готово. Запись сохранена.",
+        "alreadyDone": "Уже сделано — это действие было сохранено раньше.",
+        "failed": "CRM отклонила это действие. Исправьте и продиктуйте заново.",
+        "stale": "Черновик больше не соответствует записи. Обновите и проверьте ещё раз.",
+        "forbidden": "У вас нет прав на это действие.",
+        "rateLimited": "Слишком много действий подряд. Повторите через {seconds} секунд.",
+        "retriable": "Не удалось связаться с CRM. Ничего не потеряно — нажмите ещё раз."
       }
     },
     "title": "Голосовое управление",

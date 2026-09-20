@@ -23939,13 +23939,58 @@
     "saving": "Saving…",
     "saved": "Saved"
   },
+  "aiVoiceActions": {
+    "fields": {
+      "title": "Title",
+      "description": "Description",
+      "priority": "Priority",
+      "dueDate": "Due date",
+      "assignedTo": "Assignee",
+      "relatedType": "Related to",
+      "relatedId": "Related record",
+      "contactName": "Contact",
+      "companyName": "Company",
+      "email": "Email",
+      "phone": "Phone",
+      "phoneWhatsApp": "WhatsApp",
+      "telegramHandle": "Telegram",
+      "source": "Source",
+      "sourceDetail": "Source detail",
+      "sourceProfileUrl": "Source profile",
+      "interest": "Interest",
+      "brand": "Brand",
+      "category": "Category",
+      "estimatedValue": "Estimated value",
+      "pipelineId": "Pipeline",
+      "notes": "Notes",
+      "name": "Name",
+      "companyId": "Company",
+      "contactId": "Contact",
+      "campaignId": "Campaign",
+      "stage": "Stage",
+      "valueAmount": "Amount",
+      "currency": "Currency",
+      "probability": "Probability",
+      "expectedClose": "Expected close",
+      "tags": "Tags",
+      "dealTitle": "Deal name",
+      "dealStage": "Deal stage",
+      "dealValue": "Deal amount",
+      "createCompany": "Create the company too"
+    }
+  },
   "voice": {
     "receipt": {
       "ariaLabel": "Prepared CRM action",
       "dismiss": "Hide this draft",
-      "fieldsPrepared": "Prepared fields: {count}",
-      "warningsPrepared": "Warnings to review: {count}",
-      "shadowNotice": "Nothing has been written to the CRM. This is a draft for review only — confirmation buttons are not enabled yet, and a spoken “yes” never authorizes a change.",
+      "emptyValue": "—",
+      "yes": "Yes",
+      "no": "No",
+      "pressNotice": "Nothing is written until you press the button. A spoken “yes” does not count.",
+      "cancel": "Cancel",
+      "retry": "Try again",
+      "refresh": "Reload the draft",
+      "openResult": "Open the record",
       "state": {
         "collecting": "Being collected",
         "awaiting_confirmation": "Awaiting your confirmation",
@@ -23957,6 +24002,25 @@
         "update_lead": "Update lead",
         "create_deal": "Create deal",
         "convert_lead_to_deal": "Convert lead into deal"
+      },
+      "confirm": {
+        "create_task": "Create task",
+        "create_lead": "Create lead",
+        "update_lead": "Save changes",
+        "create_deal": "Create deal",
+        "convert_lead_to_deal": "Convert into deal"
+      },
+      "warning": {
+        "POSSIBLE_DUPLICATE": "A similar record already exists:"
+      },
+      "result": {
+        "done": "Done. The record has been saved.",
+        "alreadyDone": "Already done — this action had been saved before.",
+        "failed": "The CRM refused this action. Correct it and dictate it again.",
+        "stale": "This draft no longer matches the record. Reload it and check again.",
+        "forbidden": "You do not have the right to perform this action.",
+        "rateLimited": "Too many actions in a row. Try again in {seconds} seconds.",
+        "retriable": "Could not reach the CRM. Nothing was lost — press again."
       }
     },
     "title": "Voice control",
