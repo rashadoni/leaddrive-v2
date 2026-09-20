@@ -529,9 +529,22 @@ const authMiddleware = auth(async (req) => {
     const legalLocaleQuery = pathname.startsWith("/legal/")
       ? req.nextUrl.searchParams.get("lang")
       : null
-    const publicLocale = legalLocaleQuery === "en" || legalLocaleQuery === "ru" || legalLocaleQuery === "az"
-      ? legalLocaleQuery
-      : localeCookie
+    // The guided demo exists in exactly one language — the scenario's — so it
+    // is pinned here rather than by nesting a second provider inside the page.
+    // Nesting worked, but the visitor then downloaded two complete message
+    // bundles: the root one in their cookie language plus Azerbaijani on top,
+    // 3.1 MB of HTML on the page whose whole job is to sell the product.
+    // Setting the locale before the root provider renders means one bundle.
+    // The literal is guarded against the manifest by a test; importing the
+    // scenario here would drag it into the middleware bundle.
+    const demoLocale =
+      matchesPublicPath(pathname, "/demo-open") || matchesPublicPath(pathname, "/demo-access/")
+        ? "az"
+        : null
+    const publicLocale = demoLocale
+      ?? (legalLocaleQuery === "en" || legalLocaleQuery === "ru" || legalLocaleQuery === "az"
+        ? legalLocaleQuery
+        : localeCookie)
     if (publicLocale) {
       requestHeaders.set("x-locale", publicLocale)
     }
