@@ -929,3 +929,20 @@ PR #268 слит в `main`, merge SHA `32483389c776e01ff5e444b8c69f72f61c9be6ef`
 зелёные**, красными остались те же два файла из `test-baseline.json`; targeted
 ESLint чисто; i18n parity OK; `git diff --check` чисто. `npx tsc --noEmit`
 локально NOT RUN (OOM, см. `CLAUDE.md`) — читаем CI-лог PR.
+
+## Проверка на проде 2026-09-20: конвертация голосом
+
+PR #274 слит в `main`, merge SHA `685b21857d292ffe5bd67a5eb06fa2fbbb699e55`.
+Обязательные проверки зелёные, оба блокирующих базлайна на месте:
+`check-typecheck-baseline: 66 gated pair(s) now, 66 in baseline` и
+`check-test-baseline: 18 failing file(s), 18 in baseline`.
+
+Собственный деплой мержа (`35520536580`) снова отменён concurrency — в те же
+минуты смержились #272 и #275. Это третий такой случай за день и он по-прежнему
+не провал: актуальный прогон `35520924701` собрал и выкатил `68f4d358773a`, а
+`git merge-base --is-ancestor 685b21857 68f4d3587` подтверждает, что наш merge
+внутри задеплоенного артефакта.
+
+Независимая проверка: `GET /api/v1/ping` → `{"ok":true}`,
+`GET /api/v1/public/build-info` → `artifactSha
+68f4d358773adef3f123d504d49016268aab707b`.
