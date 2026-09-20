@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { redactOAuthProviderText } from "@/lib/oauth-redaction"
 
 export async function sendFacebookMessage(
   psid: string,
@@ -14,7 +15,7 @@ export async function sendFacebookMessage(
       body: JSON.stringify({ recipient: { id: psid }, message: { text } }),
     })
     if (!res.ok) {
-      console.error("Facebook send error:", await res.text())
+      console.error("Facebook send error:", redactOAuthProviderText(await res.text()))
       return false
     }
     return true
@@ -38,7 +39,7 @@ export async function sendInstagramMessage(
       body: JSON.stringify({ recipient: { id: igsid }, message: { text } }),
     })
     if (!res.ok) {
-      console.error("Instagram send error:", await res.text())
+      console.error("Instagram send error:", redactOAuthProviderText(await res.text()))
       return false
     }
     return true

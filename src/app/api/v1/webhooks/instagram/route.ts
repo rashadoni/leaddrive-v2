@@ -4,6 +4,8 @@ import { upsertSocialConversation } from "@/lib/facebook"
 import { notifyConversationRecipients } from "@/lib/social/notify-recipients"
 import { resolveMetaSenderName } from "@/lib/social/meta-sender-profile"
 import { isIgLogin } from "@/lib/social/tenant-meta-app"
+import { isDuplicateInsert } from "@/lib/social/meta-inbound-idempotency"
+import { sanitizeLog } from "@/lib/sanitize"
 import { runWithTenant, runWithRlsBypass } from "@/lib/rls-context"
 import { createHmac, timingSafeEqual } from "crypto"
 import type { ChannelConfig } from "@prisma/client"
@@ -190,23 +192,38 @@ export async function POST(req: NextRequest) {
         )
 
         const messageMetadata = { senderId, igAccountId, platform: "instagram", igLogin: true }
-        const inboundMessage = await prisma.channelMessage.create({
-          data: {
-            organizationId: channel.organizationId,
-            channelConfigId: channel.id,
-            channelType: "instagram",
-            direction: "inbound",
-            from: senderId,
-            to: igAccountId,
-            body: text,
-            status: "delivered",
-            externalId: externalMessageId,
-            mediaUrl,
-            messageType: messageType || "text",
-            conversationId: conv.id,
-            metadata: messageMetadata,
-          },
-        })
+        // The duplicate check above is a read-then-skip, so two CONCURRENT redeliveries of the same
+        // `mid` can both pass it and both insert. Since migration 20260920160000 the partial unique
+        // index also covers `instagram`, so the loser now fails here with P2002 — and this catch is
+        // what keeps that from aborting the rest of the delivery. Without it the error would unwind to
+        // the POST handler's outer catch, which answers Meta 200: every remaining message in the same
+        // payload would be silently dropped and never redelivered.
+        let inboundMessage: Awaited<ReturnType<typeof prisma.channelMessage.create>>
+        try {
+          inboundMessage = await prisma.channelMessage.create({
+            data: {
+              organizationId: channel.organizationId,
+              channelConfigId: channel.id,
+              channelType: "instagram",
+              direction: "inbound",
+              from: senderId,
+              to: igAccountId,
+              body: text,
+              status: "delivered",
+              externalId: externalMessageId,
+              mediaUrl,
+              messageType: messageType || "text",
+              conversationId: conv.id,
+              metadata: messageMetadata,
+            },
+          })
+        } catch (e) {
+          if (isDuplicateInsert(e)) {
+            console.log(`[IG Webhook] concurrent duplicate delivery for mid=${sanitizeLog(String(externalMessageId))} — skipping`)
+            continue
+          }
+          throw e
+        }
 
         // Collaborators — notify the assignee AND every internal participant (deduped). Fail-soft.
         notifyConversationRecipients(channel.organizationId, conv.id, conv.assignedTo, {
