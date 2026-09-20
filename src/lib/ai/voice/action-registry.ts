@@ -141,6 +141,11 @@ const UPDATE_LEAD_FIELDS = [
   "interest",
   "brand",
   "category",
+  // Status is here and `converted` is not reachable through it: conversion is
+  // its own transactional command, and setting the word directly would mark a
+  // lead converted with no deal behind it. The voice schema in
+  // propose-tools.ts omits `converted`, and update-lead.ts refuses it again.
+  "status",
   "priority",
   "estimatedValue",
   "assignedTo",

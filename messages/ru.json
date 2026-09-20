@@ -23960,6 +23960,7 @@
       "interest": "Интерес",
       "brand": "Бренд",
       "category": "Категория",
+      "status": "Статус",
       "estimatedValue": "Оценочная сумма",
       "pipelineId": "Воронка",
       "notes": "Заметки",
@@ -23977,6 +23978,27 @@
       "dealStage": "Стадия сделки",
       "dealValue": "Сумма сделки",
       "createCompany": "Создать и компанию"
+    },
+    "values": {
+      "status": {
+        "new": "Новый",
+        "contacted": "Связались",
+        "qualified": "Квалифицирован",
+        "lost": "Потерян",
+        "converted": "Конвертирован"
+      },
+      "priority": {
+        "low": "Низкий",
+        "medium": "Средний",
+        "high": "Высокий"
+      },
+      "relatedType": {
+        "lead": "Лид",
+        "deal": "Сделка",
+        "contact": "Контакт",
+        "company": "Компания",
+        "ticket": "Обращение"
+      }
     }
   },
   "voice": {

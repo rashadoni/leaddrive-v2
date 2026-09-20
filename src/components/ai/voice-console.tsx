@@ -8,7 +8,11 @@ import { useLocale, useTranslations } from "next-intl"
 import { Mic } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { VoiceInlineStatus } from "@/components/ai/voice-inline-status"
-import { VoiceReceiptSurface } from "@/components/ai/voice-receipt-surface"
+import {
+  VoiceReceiptSurface,
+  VOICE_RECEIPT_CHANGED_EVENT,
+} from "@/components/ai/voice-receipt-surface"
+import { isVoiceProposeToolName, type VoiceProposeToolName } from "@/lib/ai/voice/propose-tools"
 import { VOICE_TOOL_NAMES, type VoiceToolName } from "@/lib/ai/voice/read-tools"
 import {
   diagnoseMicrophoneFailure,
@@ -29,7 +33,7 @@ import {
   VOICE_SECTION_KEYS,
 } from "@/lib/ai/voice/sections"
 import { SECTION_FILTERS } from "@/lib/ai/voice/section-registry"
-import { recordRoute } from "@/lib/ai/voice/record-types"
+import { recordFromPath, recordRoute } from "@/lib/ai/voice/record-types"
 import { buildSectionInfo } from "@/lib/ai/voice/section-info"
 import {
   base64Pcm16ToFloat32,
@@ -237,7 +241,7 @@ function ConsoleInner({
   const flushPendingToolResponsesRef = useRef<(generation: number) => void>(() => {})
   const playbackActiveRef = useRef(false)
   const generationInProgressRef = useRef(false)
-  const executeToolRef = useRef<(name: string, args: unknown) => Promise<string>>(async () => UNAVAILABLE)
+  const executeToolRef = useRef<(name: string, args: unknown, toolCallId?: string) => Promise<string>>(async () => UNAVAILABLE)
 
   const trace = useCallback((tool: string, args: unknown, outcome: string) => {
     const current = sessionRef.current
@@ -349,13 +353,68 @@ function ConsoleInner({
     return "OK: запись открыта на экране. Расскажи о ней и продолжай."
   }, [router, trace])
 
-  const executeTool = useCallback(async (name: string, args: unknown): Promise<string> => {
+  /**
+   * A proposal from the model becomes a receipt on screen — and nothing else.
+   *
+   * The model's arguments are forwarded verbatim; the server resolves every
+   * name inside the caller's tenant. The one thing the client contributes is
+   * `screen`, read from the browser's own location, which is how "change the
+   * phone" knows which lead is meant without the model naming an id.
+   *
+   * The string returned here goes back to the model as the tool result, so it
+   * says plainly that nothing has been saved — otherwise the assistant
+   * announces a task that does not exist yet.
+   */
+  const propose = useCallback(async (tool: VoiceProposeToolName, args: unknown, toolCallId?: string): Promise<string> => {
+    const current = sessionRef.current
+    if (!current) return "NO_SESSION: попроси пользователя снова включить микрофон."
+    const record = recordFromPath(pathname || "/")
+    try {
+      const response = await fetch("/api/v1/ai/voice/actions/propose", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          voiceSessionId: current.voiceSessionId,
+          tool,
+          args: (args ?? {}) as Record<string, unknown>,
+          ...(toolCallId ? { providerToolCallId: toolCallId } : {}),
+          ...(record ? { screen: { recordType: record.type, recordId: record.id } } : {}),
+        }),
+      })
+      const body = await response.json().catch(() => null) as
+        | { success?: boolean; needsClarification?: boolean; field?: string; candidates?: string[]; code?: string }
+        | null
+
+      if (body?.needsClarification) {
+        trace("propose", { tool, code: body.code }, "clarify")
+        const options = (body.candidates ?? []).join(", ")
+        return `NEEDS_CLARIFICATION (${body.code}): спроси пользователя, что имелось в виду в поле ${body.field}.${options ? ` Подходят: ${options}.` : " Совпадений нет."} Ничего не сохранено.`
+      }
+      if (!response.ok || body?.success !== true) {
+        trace("propose", { tool, code: body?.code }, "rejected")
+        return `REJECTED (${body?.code ?? response.status}): подготовить не удалось, ничего не сохранено. Объясни пользователя и попроси уточнить.`
+      }
+
+      trace("propose", { tool }, "ok")
+      // The receipt surface owns its own data; tell it to re-read rather than
+      // handing it a payload from here.
+      window.dispatchEvent(new CustomEvent(VOICE_RECEIPT_CHANGED_EVENT))
+      return "OK: черновик показан на экране. Скажи пользователю, что нужно нажать кнопку подтверждения — без нажатия в CRM ничего не записано."
+    } catch {
+      trace("propose", { tool }, "error")
+      return "ERROR: не удалось подготовить черновик. Ничего не сохранено."
+    }
+  }, [pathname, trace])
+
+  const executeTool = useCallback(async (name: string, args: unknown, toolCallId?: string): Promise<string> => {
     if (name === "navigate_to_section") return navigate(args)
     if (name === "get_current_screen") return currentScreen()
     if (name === "open_record") return openRecord(args)
+    if (isVoiceProposeToolName(name)) return propose(name, args, toolCallId)
     if ((VOICE_TOOL_NAMES as readonly string[]).includes(name)) return callTool(name as VoiceToolName, args)
     return "UNKNOWN_TOOL: this tool is not available."
-  }, [callTool, currentScreen, navigate, openRecord])
+  }, [callTool, currentScreen, navigate, openRecord, propose])
   executeToolRef.current = executeTool
 
   const clearResponseWatchdog = useCallback(() => {
@@ -527,7 +586,7 @@ function ConsoleInner({
       const id = call.id ?? ""
       try {
         if (cancelledToolCallsRef.current.has(id)) return null
-        const output = await executeToolRef.current(call.name ?? "", call.args ?? {})
+        const output = await executeToolRef.current(call.name ?? "", call.args ?? {}, id || undefined)
         if (cancelledToolCallsRef.current.has(id) || generationRef.current !== generation) return null
         return geminiFunctionResponse(call, output)
       } finally {

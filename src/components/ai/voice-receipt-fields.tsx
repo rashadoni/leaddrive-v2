@@ -43,6 +43,12 @@ export type ReceiptValueFormatter = Readonly<{
   yes: string
   no: string
   formatDate: (iso: string) => string
+  /**
+   * Localized name for a closed-vocabulary value, or null when the field has
+   * no vocabulary. Reading "qualified" aloud to an Azerbaijani user is not a
+   * confirmation, it is a password.
+   */
+  enumLabel: (fieldKey: string, value: string) => string | null
 }>
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)?$/
@@ -55,16 +61,23 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:Z|
  * of detail people skim past — which is exactly what a confirmation must not
  * let them do.
  */
-export function formatReceiptValue(value: unknown, format: ReceiptValueFormatter): string {
+export function formatReceiptValue(
+  value: unknown,
+  format: ReceiptValueFormatter,
+  fieldKey = "",
+): string {
   if (value === null || value === undefined || value === "") return format.empty
   if (typeof value === "boolean") return value ? format.yes : format.no
   if (typeof value === "number") return String(value)
   if (Array.isArray(value)) {
-    const parts = value.map((item) => formatReceiptValue(item, format)).filter((p) => p !== format.empty)
+    const parts = value
+      .map((item) => formatReceiptValue(item, format, fieldKey))
+      .filter((part) => part !== format.empty)
     return parts.length > 0 ? parts.join(", ") : format.empty
   }
   if (typeof value === "string") {
-    return ISO_DATE.test(value) ? format.formatDate(value) : value
+    return format.enumLabel(fieldKey, value)
+      ?? (ISO_DATE.test(value) ? format.formatDate(value) : value)
   }
   return JSON.stringify(value)
 }
@@ -96,13 +109,13 @@ export function VoiceReceiptFieldList({
               {hasBefore && changed && (
                 <>
                   <span data-testid={`voice-receipt-before-${field.key}`} className="text-muted-foreground line-through decoration-muted-foreground/60">
-                    {formatReceiptValue(field.before, format)}
+                    {formatReceiptValue(field.before, format, field.key)}
                   </span>
                   <span aria-hidden="true" className="px-1 text-muted-foreground">→</span>
                 </>
               )}
               <span data-testid={`voice-receipt-after-${field.key}`}>
-                {formatReceiptValue(field.after, format)}
+                {formatReceiptValue(field.after, format, field.key)}
               </span>
             </dd>
           </div>

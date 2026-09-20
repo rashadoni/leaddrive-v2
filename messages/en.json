@@ -23960,6 +23960,7 @@
       "interest": "Interest",
       "brand": "Brand",
       "category": "Category",
+      "status": "Status",
       "estimatedValue": "Estimated value",
       "pipelineId": "Pipeline",
       "notes": "Notes",
@@ -23977,6 +23978,27 @@
       "dealStage": "Deal stage",
       "dealValue": "Deal amount",
       "createCompany": "Create the company too"
+    },
+    "values": {
+      "status": {
+        "new": "New",
+        "contacted": "Contacted",
+        "qualified": "Qualified",
+        "lost": "Lost",
+        "converted": "Converted"
+      },
+      "priority": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      },
+      "relatedType": {
+        "lead": "Lead",
+        "deal": "Deal",
+        "contact": "Contact",
+        "company": "Company",
+        "ticket": "Ticket"
+      }
     }
   },
   "voice": {

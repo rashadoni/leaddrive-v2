@@ -23956,6 +23956,7 @@
       "interest": "Maraq",
       "brand": "Brend",
       "category": "Kateqoriya",
+      "status": "Status",
       "estimatedValue": "Təxmini məbləğ",
       "pipelineId": "Satqı kanalı",
       "notes": "Qeydlər",
@@ -23973,6 +23974,27 @@
       "dealStage": "Sövdələşmə mərhələsi",
       "dealValue": "Sövdələşmə məbləği",
       "createCompany": "Şirkəti də yarat"
+    },
+    "values": {
+      "status": {
+        "new": "Yeni",
+        "contacted": "Əlaqə saxlanılıb",
+        "qualified": "Kvalifikasiya olunub",
+        "lost": "İtirilib",
+        "converted": "Çevrilib"
+      },
+      "priority": {
+        "low": "Aşağı",
+        "medium": "Orta",
+        "high": "Yüksək"
+      },
+      "relatedType": {
+        "lead": "Lid",
+        "deal": "Sövdələşmə",
+        "contact": "Kontakt",
+        "company": "Şirkət",
+        "ticket": "Müraciət"
+      }
     }
   },
   "voice": {

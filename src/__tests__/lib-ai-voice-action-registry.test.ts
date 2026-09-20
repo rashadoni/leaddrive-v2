@@ -61,14 +61,20 @@ describe("AI voice action registry", () => {
       priority: "high",
     })).toMatchObject({ success: true })
 
+    // Status is inside the voice allow-list since 2026-09-20 (the owner asked
+    // to change it by voice). Score is not: it is a system field.
+    expect(parseAiVoiceActionPayload("update_lead", {
+      notes: "Call on Monday",
+      status: "qualified",
+    })).toMatchObject({ success: true })
+
     const update = parseAiVoiceActionPayload("update_lead", {
       notes: "Call on Monday",
-      status: "converted",
       score: 100,
     })
     expect(update).toMatchObject({ success: false })
     if (!update.success) {
-      expect(update.issues.map((issue) => issue.path[0])).toEqual(["status", "score"])
+      expect(update.issues.map((issue) => issue.path[0])).toEqual(["score"])
     }
 
     const task = parseAiVoiceActionPayload("create_task", {

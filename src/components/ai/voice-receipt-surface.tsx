@@ -57,6 +57,20 @@ import {
 const MOBILE_QUERY = "(max-width: 767px)"
 const EXPIRY_TICK_MS = 15_000
 
+/**
+ * Fired by the console when a model proposal produced a draft.
+ *
+ * An event rather than a prop, because the surface must stay the only reader
+ * of the receipt: the console says "something changed", and the surface asks
+ * the server what it is. If the console handed over the draft payload, there
+ * would be two places that decide what the user is looking at, and only one of
+ * them checks the voice session binding.
+ */
+export const VOICE_RECEIPT_CHANGED_EVENT = "leaddrive:voice-receipt-changed"
+
+/** Payload fields whose values come from a closed, translatable vocabulary. */
+const ENUM_FIELDS = new Set(["status", "priority", "relatedType"])
+
 type ReceiptLayout = "anchored" | "sheet" | "inline"
 
 function useIsMobileViewport(): boolean {
@@ -178,6 +192,17 @@ function useActiveVoiceReceipt(voiceSessionId: string | null) {
     void load(store, controller.signal)
   }, [store, load])
 
+  useEffect(() => {
+    if (!store || typeof window === "undefined") return
+    const controller = new AbortController()
+    const onChanged = () => void load(store, controller.signal)
+    window.addEventListener(VOICE_RECEIPT_CHANGED_EVENT, onChanged)
+    return () => {
+      controller.abort()
+      window.removeEventListener(VOICE_RECEIPT_CHANGED_EVENT, onChanged)
+    }
+  }, [store, load])
+
   return { store, state, reload }
 }
 
@@ -284,7 +309,15 @@ export function VoiceReceiptSurface({
           : { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" },
       )
     },
-  }), [t, formatter])
+    enumLabel: (fieldKey: string, value: string) => {
+      if (!ENUM_FIELDS.has(fieldKey)) return null
+      const translated = tFields(`values.${fieldKey}.${value}` as never)
+      // Unknown values exist: `Lead.status` is a free string in production and
+      // carries seven spellings of five statuses. Showing the raw value beats
+      // showing a message key.
+      return translated.includes(".") ? value : translated
+    },
+  }), [t, tFields, formatter])
 
   if (!store || !receipt || !visible) return null
 

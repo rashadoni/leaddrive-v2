@@ -8,6 +8,7 @@ import {
   type VoiceSectionLocale,
 } from "./section-aliases"
 import { VOICE_SECTION_KEYS } from "./sections"
+import { voiceProposeTools } from "./propose-tools"
 
 /** Provider-neutral JSON Schema used by Gemini Live function declarations. */
 export type VoiceToolParameters = {
@@ -236,5 +237,8 @@ export function voiceTools(
   return [
     ...clientTools(allowed, catalog),
     ...serverToolNames.map((name) => serverTool(name, allowed)),
+    // Proposal tools. They prepare a receipt and nothing else; there is no
+    // `commit_*` counterpart anywhere in this contract, by design.
+    ...voiceProposeTools(),
   ]
 }
