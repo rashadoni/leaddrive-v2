@@ -427,3 +427,85 @@ recovery replay/concurrency, active-lease rejection, terminal failure/replay и
 полного static-check/typecheck. Следующее действие — расширенный targeted test
 gate, затем завершить/развернуть #247 и отдельным checkpoint провести новый
 execution slice через PR/CI/deploy.
+
+## Итог 2026-09-20: routing cleanup и execution claim на production
+
+Коррекция маршрута завершена отдельно:
+
+- checkpoint `44ed4ce6c`;
+- PR #247, merge SHA `3401b98c02e035437f3acba2f05401cea5d1dd42`;
+- все PR checks, включая static/unit baseline и typecheck, успешны;
+- deploy workflow `35494290654` успешен;
+- независимый ping вернул `{"ok":true}`, public build-info подтвердил точный
+  artifact SHA `3401b98c02e035437f3acba2f05401cea5d1dd42`.
+
+Внутренний execution claim/lease/failure срез также завершён:
+
+- checkpoint `5de7d3c02`;
+- PR #248, merge SHA `3e49f16f3db104daeda09cdc98bce0c8316332c9`;
+- локально: targeted ESLint, `git diff --check`, 9 voice/command test files и
+  69 tests — успешно;
+- PR CI: scope, secret scan, runner policy, static checks/full unit baseline и
+  typecheck — успешно;
+- deploy workflow `35495445690` успешен, включая quality/security gates,
+  production build, SHA-bound artifact, atomic server deploy и post-deploy
+  smoke;
+- независимый ping вернул `{"ok":true}`, public build-info подтвердил точный
+  artifact SHA `3e49f16f3db104daeda09cdc98bce0c8316332c9`.
+
+Текущее состояние: на production есть внутренние single-use proof consumption,
+CAS claim, retry-safe lease recovery, bounded terminal failure и атомарная
+command/result boundary для пяти CRM-команд. Голосовой помощник всё ещё не
+может изменять CRM, потому что публичный commit endpoint и model write-tools
+отсутствуют.
+
+Точка остановки: I1.10-I1.14 закрыты на внутренней границе. Следующее действие —
+I1.5 + I1.15: session-only same-origin commit endpoint с per-user/per-tenant/
+per-action rate limits, который композиционно вызывает claim, executor и
+безопасную классификацию terminal/retriable ошибок. Только после его отдельной
+проверки можно подключать UI-кнопку; model write-tools остаются ещё более
+поздним отдельным этапом.
+
+## Продолжение 2026-09-20: session-only commit adapter
+
+Реализованы I1.5 и I1.15:
+
+- добавлен `POST /api/v1/ai/voice/actions/:id/commit` со строгим proof body;
+- endpoint принимает только аутентифицированную браузерную сессию,
+  same-origin `application/json` и повторно проверяет voice pilot gate;
+- bearer/API-key, cross-origin, лишние authority-поля и некорректные ID/proof
+  отклоняются до execution claim;
+- отдельные минутные buckets ограничивают пользователя (20), tenant (200) и
+  конкретный intent (10);
+- adapter композиционно вызывает single-use proof claim, возвращает сохранённый
+  terminal result, восстанавливает только точную истёкшую lease и выполняет
+  canonical command через атомарную command/result boundary;
+- контролируемые `CrmCommandError` и повреждённые stored-action состояния
+  переводятся в bounded `failed`; неизвестные database/process ошибки не
+  финализируются и возвращают `COMMIT_RETRY_REQUIRED`/503 для безопасного retry;
+- confirmation token и execution lease не возвращаются клиенту и не попадают в
+  лог; ответы помечены `Cache-Control: private, no-store`;
+- Gemini Live tool contract проверен отдельным регресс-тестом: commit и пять
+  канонических CRM write-команд модели не выдаются.
+
+Добавлен отдельный API regression suite. На этой точке 3 целевых файла / 29
+тестов для claim/executor/commit прошли; обновлённый commit suite — 8/8;
+targeted ESLint и `git diff --check` прошли. Полный build/typecheck локально не
+запускались по Contabo host contract и должны выполняться в GitHub CI.
+
+Расширенный pre-commit gate: 6 файлов / 45 тестов для commit, draft lifecycle,
+claim, executor, tool wiring и Gemini provider fence — успешно.
+
+Точка остановки: код, тесты и документация I1.5/I1.15 готовы локально и ещё не
+закоммичены. Следующее действие — checkpoint commit, push, PR, полный CI, merge,
+production deploy и независимый smoke. После deploy следующий продуктовый
+срез — U1.1-U1.3: session-scoped receipt store, desktop receipt panel и mobile
+bottom sheet; endpoint не должен подключаться к UI без явной кнопки
+подтверждения, model write-tool не добавляется.
+
+Первый CI run PR #249 (`35497372979`) прошёл scope, secret scan, runner policy
+и полный static/unit baseline, но blocking typecheck выявил один новый TS2345 в
+новом тесте: hoisted mock `checkRateLimit` был выведен TypeScript как функция
+без аргументов, а test-specific implementation принимал key. Production-код не
+затронут. Mock получил явную сигнатуру `(key, config)`, после чего целевые
+проверки и CI должны быть повторены без изменения typecheck baseline.

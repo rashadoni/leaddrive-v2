@@ -19,8 +19,8 @@ type RouteContext = { params: Promise<{ id: string }> }
 
 /**
  * Record an explicit receipt-button confirmation and return a short-lived
- * proof. This endpoint cannot execute a CRM command; a later commit route must
- * consume the proof exactly once after repeating every authorization check.
+ * proof. This endpoint cannot execute a CRM command; the separate commit route
+ * consumes the proof exactly once after repeating every authorization check.
  */
 export const POST = withRlsSessionAuth<RouteContext>(async (req, auth, ctx) => {
   const mutationGuard = guardInteractiveJsonMutation(req)

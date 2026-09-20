@@ -1,6 +1,7 @@
 # CRM voice action execution claim
 
-Status: internal lifecycle implemented; commit endpoint remains disabled.
+Status: internal lifecycle and session-only commit adapter implemented; receipt
+UI is not wired yet.
 
 ## Boundary
 
@@ -51,9 +52,11 @@ current unexpired execution lease to `failed` and appends the immutable
 `failed` event in one transaction. Raw exceptions, stack traces, tokens,
 payloads, audio and transcripts are never written to the event ledger.
 
-## Remaining release gate
+## HTTP adapter
 
-No HTTP endpoint calls this layer yet. I1.5 must add a same-origin,
-browser-session-only, rate-limited commit adapter that composes claim,
-execution and safe failure classification. Until that adapter and its tests are
-released, pressing the microphone cannot create or update CRM records.
+The same-origin, browser-session-only commit endpoint now composes claim,
+recovery, execution and bounded terminal failure. It applies separate user,
+tenant and individual-intent rate limits and keeps infrastructure failures
+recoverable. The model has no commit tool. The remaining product gate is the
+explicit receipt UI and its later action-specific rollout flags/canaries. See
+`docs/crm-voice-action-commit-api.md`.

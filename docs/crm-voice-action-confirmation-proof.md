@@ -1,15 +1,15 @@
 # CRM voice action confirmation proof
 
-Status: proof issuance and internal single-use consumption implemented; commit
-endpoint remains disabled.
+Status: proof issuance, single-use consumption and session-only commit adapter
+implemented; receipt UI is not wired yet.
 
 ## Purpose
 
 The model may propose an action, but it never receives a commit capability.
 The browser receipt UI will call a separate session-only endpoint after the
 user activates an explicit confirmation button. That endpoint records durable
-evidence and returns a short-lived proof which a future commit endpoint must
-consume exactly once.
+evidence and returns a short-lived proof which the separate commit endpoint
+consumes exactly once.
 
 ## Endpoint
 
