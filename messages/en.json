@@ -15880,6 +15880,9 @@
     "employeePlaceholder": "Employee name",
     "lastPositionContract": "The live map shows only fresh and delayed coordinates. Stale positions remain available in History.",
     "stalePositionsHidden": "Stale positions hidden from the live map: {count}. Open History to review them.",
+    "lastKnownShown": "Last known positions shown in grey: {count}. They are where the phone last reported, not where the agent is now.",
+    "showLastKnown": "Show last known",
+    "hideLastKnown": "Hide them",
     "appPresence": "App presence",
     "presence": {
       "online": "Online",
@@ -15972,6 +15975,10 @@
       "loading": "Loading…",
       "rosterLoadFailed": "Could not load employees",
       "loadFailed": "Could not load GPS history",
+      "errorInvalidRange": "The date and times do not form a real interval. Check the day and the From/To times.",
+      "errorAgentNotFound": "This employee no longer exists.",
+      "errorAgentOutOfScope": "This employee is outside your team.",
+      "errorTimezoneFixed": "The organization time zone has changed — reopen the page.",
       "retry": "Retry",
       "retryEmployees": "Reload employees",
       "retryHistory": "Reload history",
@@ -16055,6 +16062,7 @@
         "VISIT": "Actual visit",
         "STOP": "GPS stop",
         "TELEMETRY_GAP": "Missing segment",
+        "WORKDAY_PAUSE": "Workday on hold",
         "IMPOSSIBLE_JUMP": "Impossible jump",
         "LOW_ACCURACY": "Low accuracy"
       },

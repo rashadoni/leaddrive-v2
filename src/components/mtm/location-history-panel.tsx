@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { historyErrorMessage } from "@/lib/mtm/location-history-errors"
 import dynamic from "next/dynamic"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
@@ -55,6 +56,7 @@ type HistoryData = {
     stopCount: number
     visitCount: number
     gapCount: number
+    pausedGapCount?: number
     anomalyCount: number
   }
   workday: {
@@ -118,7 +120,7 @@ type HistoryData = {
     startedAt: string
     endedAt: string
     durationSeconds: number
-    reason: "TELEMETRY_GAP"
+    reason: "TELEMETRY_GAP" | "WORKDAY_PAUSED"
     startLatitude: number
     startLongitude: number
     endLatitude: number
@@ -366,7 +368,7 @@ export function LocationHistoryPanel() {
       }
     } catch (reason) {
       if (controller.signal.aborted || historyRequestRef.current !== controller) return
-      setHistoryError(reason instanceof Error ? reason.message : t("loadFailed"))
+      setHistoryError(historyErrorMessage(reason instanceof Error ? reason.message : "", t))
       setData(null)
     } finally {
       if (historyRequestRef.current === controller) {

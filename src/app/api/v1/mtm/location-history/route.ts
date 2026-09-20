@@ -16,6 +16,7 @@ import {
   calculateHistoryDistance,
   detectHistoryAnomalies,
   detectHistoryGaps,
+  type HistoryPauseInterval,
   detectHistoryStops,
   downsampleHistoryPoints,
   prepareHistoryPoints,
@@ -324,7 +325,36 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
   const rawTruncated = rawLocations.length === LOCATION_HISTORY_MAX_RAW_POINTS
   const distanceMeters = rawTruncated ? null : calculateHistoryDistance(prepared.points)
   const gapThresholdSeconds = Math.max(settings.offlineThresholdSeconds, settings.gpsInterval * 3)
-  const gaps = detectHistoryGaps(prepared.points, gapThresholdSeconds)
+  /**
+   * The workday's own PAUSE/RESUME events, so a break is not reported as a
+   * telemetry failure. The app stops tracking while the workday is on hold —
+   * the silence that follows is expected, and the day's card should say which
+   * silence was which.
+   */
+  const pauseEvents = workforceEnabled
+    ? await prisma.mtmAgentWorkdayEvent.findMany({
+      where: {
+        organizationId: auth.orgId,
+        agentId,
+        type: { in: ["PAUSE", "RESUME"] },
+        occurredAt: { gte: from, lte: to },
+      },
+      orderBy: { occurredAt: "asc" },
+      select: { type: true, occurredAt: true },
+    })
+    : []
+  const pauses: HistoryPauseInterval[] = []
+  for (const event of pauseEvents) {
+    if (event.type === "PAUSE") {
+      // A second PAUSE without a RESUME cannot open a second interval.
+      if (!pauses.length || pauses[pauses.length - 1].endedAt) {
+        pauses.push({ startedAt: event.occurredAt, endedAt: null })
+      }
+    } else if (pauses.length && !pauses[pauses.length - 1].endedAt) {
+      pauses[pauses.length - 1].endedAt = event.occurredAt
+    }
+  }
+  const gaps = detectHistoryGaps(prepared.points, gapThresholdSeconds, pauses)
   const stops = detectHistoryStops({
     points: prepared.points,
     visits: visits as HistoryVisit[],
@@ -429,7 +459,9 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         lastPointAt: prepared.points.at(-1)?.recordedAt ?? null,
         stopCount: stops.length,
         visitCount: visits.length,
-        gapCount: gaps.length,
+        // Only unexplained silence: a pause is reported as a pause.
+        gapCount: gaps.filter((gap) => gap.reason === "TELEMETRY_GAP").length,
+        pausedGapCount: gaps.filter((gap) => gap.reason === "WORKDAY_PAUSED").length,
         anomalyCount: anomalies.length,
       },
       workday,

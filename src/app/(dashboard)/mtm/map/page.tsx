@@ -138,6 +138,17 @@ export default function MtmMapPage() {
   const tAlerts = useTranslations("mtmAlertsPage")
   const tUnits = useTranslations("mtmMap.distanceUnits")
   const [rosterSnapshot, setRosterSnapshot] = useState<LiveRosterSnapshot | null>(null)
+  /**
+   * Last known positions on the live map.
+   *
+   * A stale coordinate must never be presented as a current one — that rule
+   * stays. But hiding it altogether answered the manager's only question,
+   * "where is my agent", with an empty map: a phone that stopped reporting an
+   * hour ago is exactly when someone looks. The marker is drawn grey and
+   * square, the popup carries the time it was recorded, and the live counters
+   * above still count it as stale.
+   */
+  const [showLastKnown, setShowLastKnown] = useState(true)
   const [teamFilter, setTeamFilter] = useState("")
   const [employeeFilter, setEmployeeFilter] = useState("")
   const [debouncedEmployeeFilter, setDebouncedEmployeeFilter] = useState("")
@@ -554,7 +565,8 @@ export default function MtmMapPage() {
   // map only receives finite, bounded coordinates with an evidence timestamp.
   const mapAgents: LiveMapAgent[] = filteredAgents.flatMap((agent) => {
     const freshness = agent.freshness
-    if (!hasRenderableLivePosition(freshness, agent.workdayState, workforceEnabled) ||
+    const lastKnown = showLastKnown && freshness === "STALE"
+    if ((!hasRenderableLivePosition(freshness, agent.workdayState, workforceEnabled) && !lastKnown) ||
         typeof agent.latitude !== "number" || !Number.isFinite(agent.latitude) ||
         agent.latitude < -90 || agent.latitude > 90 ||
         typeof agent.longitude !== "number" || !Number.isFinite(agent.longitude) ||
@@ -562,7 +574,7 @@ export default function MtmMapPage() {
         typeof agent.recordedAt !== "string" || !Number.isFinite(Date.parse(agent.recordedAt))) return []
     return [{ ...agent, freshness, latitude: agent.latitude, longitude: agent.longitude, recordedAt: agent.recordedAt }]
   })
-  const hiddenStalePositions = filteredAgents.filter((agent) => agent.freshness === "STALE").length
+  const stalePositions = filteredAgents.filter((agent) => agent.freshness === "STALE").length
 
   // Plan versus fact for the selected employee's day. The same summary feeds
   // the numbered map markers and the stop list under the employee card.
@@ -778,10 +790,19 @@ export default function MtmMapPage() {
       </div>
 
       {/* Main: Map + Right sidebar */}
-      {hiddenStalePositions > 0 ? (
-        <div role="status" className="flex items-center gap-2 rounded-lg border border-zinc-300 bg-muted/40 px-3 py-2 text-xs text-muted-foreground dark:border-zinc-700">
+      {stalePositions > 0 ? (
+        <div role="status" className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-300 bg-muted/40 px-3 py-2 text-xs text-muted-foreground dark:border-zinc-700">
           <History className="h-3.5 w-3.5 shrink-0" />
-          {tMap("stalePositionsHidden", { count: hiddenStalePositions })}
+          {showLastKnown
+            ? tMap("lastKnownShown", { count: stalePositions })
+            : tMap("stalePositionsHidden", { count: stalePositions })}
+          <button
+            type="button"
+            onClick={() => setShowLastKnown((value) => !value)}
+            className="font-semibold text-foreground underline underline-offset-2"
+          >
+            {showLastKnown ? tMap("hideLastKnown") : tMap("showLastKnown")}
+          </button>
         </div>
       ) : null}
       {/* Owner rule (audit 2026-09-14): the page scrolls as one. The employee
