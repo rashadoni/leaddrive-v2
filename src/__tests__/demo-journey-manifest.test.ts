@@ -397,6 +397,20 @@ describe("The open demo", () => {
     expect(read("src/app/demo-access/[token]/page.tsx")).not.toContain("DemoLocaleProvider")
   })
 
+  it("never tells a public visitor the session is confidential", () => {
+    // The orientation screen greeted everyone with "Məxfi demo" — private
+    // demo — because it was written before the open variant existed. On the
+    // public page that is simply untrue, and it is the first thing a prospect
+    // reads. The badge has to follow who is actually looking.
+    const orientation = read("src/components/demo-center/journey/scenes/orientation-scene.tsx")
+    expect(orientation).toContain("variant")
+    expect(orientation).not.toMatch(/\{\s*S\.badgePrivate\s*\}/)
+
+    // Scenes can only follow it if the player hands it over.
+    expect(read("src/components/demo-center/journey/demo-journey-player.tsx")).toContain("    variant,")
+    expect(read("src/components/demo-center/journey/scene-props.ts")).toContain("variant: DemoJourneyVariant")
+  })
+
   it("does not post what the visitor types about themselves", () => {
     expect(shell).not.toContain("method:")
     expect(route).not.toContain("prisma")
