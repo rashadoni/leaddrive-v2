@@ -195,6 +195,55 @@ export async function commitVoiceReceipt(
   }
 }
 
+/**
+ * Replace the payload of an unconfirmed draft (roadmap U1.9a).
+ *
+ * The endpoint REPLACES rather than merges, so the caller sends the whole
+ * payload; `buildEditedReceiptPayload` rebuilds it from the receipt the user
+ * is looking at. `expectedRevision` is the compare-and-swap token — a draft
+ * that changed underneath, in another tab or by a newer proposal, is rejected
+ * rather than silently overwritten.
+ *
+ * Still not a write: the result is another unconfirmed draft, and the button
+ * is still what executes it.
+ */
+export async function editVoiceReceipt(
+  input: Readonly<{
+    intentId: string
+    revision: number
+    payload: Record<string, unknown>
+    signal?: AbortSignal
+  }>,
+): Promise<
+  | Readonly<{ ok: true; draft: unknown }>
+  | Readonly<{ ok: false; outcome: VoiceCommitOutcome }>
+> {
+  const response = await fetch(
+    `/api/v1/ai/voice/actions/${encodeURIComponent(input.intentId)}`,
+    {
+      method: "PATCH",
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ expectedRevision: input.revision, payload: input.payload }),
+      signal: input.signal,
+    },
+  )
+  const body = (await response.json().catch(() => null)) as unknown
+  if (response.status !== 200) {
+    const retryAfter = Number(response.headers?.get?.("Retry-After") ?? "")
+    return {
+      ok: false,
+      outcome: failureOutcome(
+        response.status,
+        body,
+        Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 60,
+      ),
+    }
+  }
+  return { ok: true, draft: isRecord(body) ? body.data : null }
+}
+
 /** Discard a draft without executing it. Never touches the commit route. */
 export async function cancelVoiceReceipt(
   input: Readonly<{ intentId: string; revision: number; signal?: AbortSignal }>,

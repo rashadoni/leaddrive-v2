@@ -24038,6 +24038,9 @@
       "retry": "Try again",
       "refresh": "Reload the draft",
       "openResult": "Open the record",
+      "edit": "Edit",
+      "saveDraft": "Save the draft",
+      "cancelEdit": "Cancel editing",
       "state": {
         "collecting": "Being collected",
         "awaiting_confirmation": "Awaiting your confirmation",

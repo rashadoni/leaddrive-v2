@@ -14,12 +14,16 @@ import { AlertTriangle, ArrowUpRight, Check, Loader2, X } from "lucide-react"
 import { useFormatter, useTranslations } from "next-intl"
 import { VOICE_STATUS_LAYER_ID } from "@/components/ai/voice-inline-status"
 import {
+  buildEditedReceiptPayload,
+  VoiceReceiptFieldForm,
   VoiceReceiptFieldList,
+  type ReceiptEdits,
   type ReceiptValueFormatter,
 } from "@/components/ai/voice-receipt-fields"
 import {
   cancelVoiceReceipt,
   commitVoiceReceipt,
+  editVoiceReceipt,
   voiceResultHref,
   type VoiceCommitOutcome,
 } from "@/lib/ai/voice/receipt-commit"
@@ -246,6 +250,11 @@ export function VoiceReceiptSurface({
   const isMobile = useIsMobileViewport()
   const { store, state, reload } = useActiveVoiceReceipt(voiceSessionId)
   const inFlight = useRef<AbortController | null>(null)
+  // Edit mode (roadmap U1.9a). Correcting by voice re-drafts the whole action;
+  // this is for the one word that came out wrong.
+  const [editing, setEditing] = useState(false)
+  const [edits, setEdits] = useState<ReceiptEdits>({})
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => () => inFlight.current?.abort(), [])
 
@@ -282,6 +291,34 @@ export function VoiceReceiptSurface({
     }
   }, [store])
 
+  const saveEdits = useCallback(async () => {
+    if (!store) return
+    const current = store.getState().receipt
+    if (!current?.preview || saving) return
+    setSaving(true)
+    try {
+      const result = await editVoiceReceipt({
+        intentId: current.id,
+        // The compare-and-swap token: a draft that moved underneath is
+        // rejected rather than silently overwritten.
+        revision: current.revision,
+        payload: buildEditedReceiptPayload(current.preview.fields, edits),
+      })
+      if (result.ok) {
+        store.adopt(result.draft)
+        setEdits({})
+        setEditing(false)
+        return
+      }
+      store.settleCommit(result.outcome)
+      setEditing(false)
+    } catch {
+      store.settleCommit({ kind: "retriable", code: "NETWORK" })
+    } finally {
+      setSaving(false)
+    }
+  }, [store, edits, saving])
+
   const discard = useCallback(async () => {
     if (!store) return
     const current = store.getState().receipt
@@ -291,6 +328,14 @@ export function VoiceReceiptSurface({
     if (!current) return
     await cancelVoiceReceipt({ intentId: current.id, revision: current.revision }).catch(() => {})
   }, [store])
+
+  const fieldLabel = useCallback((field: { key: string }) => {
+    // An untranslated key must read as the field, not as a dotted path: a
+    // receipt is the last line of defence and has to stay legible even when a
+    // label is missing.
+    const translated = tFields(`fields.${field.key}` as never)
+    return translated.includes(".") ? field.key : translated
+  }, [tFields])
 
   const format: ReceiptValueFormatter = useMemo(() => ({
     empty: t("receipt.emptyValue"),
@@ -371,20 +416,21 @@ export function VoiceReceiptSurface({
       </div>
 
       <div className="px-4 pb-4 pt-3 text-xs leading-relaxed">
-        {preview && (
+        {preview && (editing ? (
+          <VoiceReceiptFieldForm
+            fields={preview.fields}
+            edits={edits}
+            onChange={(key, value) => setEdits((previous) => ({ ...previous, [key]: value }))}
+            label={fieldLabel}
+          />
+        ) : (
           <VoiceReceiptFieldList
             fields={preview.fields}
             isUpdate={isUpdate}
             format={format}
-            label={(field) => {
-              // An untranslated key must read as the field, not as a dotted
-              // path: a receipt is the last line of defence and has to stay
-              // legible even when a label is missing.
-              const translated = tFields(`fields.${field.key}` as never)
-              return translated.includes(".") ? field.key : translated
-            }}
+            label={fieldLabel}
           />
-        )}
+        ))}
 
         {receipt.warnings.length > 0 && !succeeded && (
           <ul data-testid="voice-receipt-warnings" className="mt-3 space-y-1">
@@ -458,17 +504,33 @@ export function VoiceReceiptSurface({
           : (
             <button
               type="button"
-              onClick={() => void confirm()}
-              disabled={committing}
-              data-testid="voice-receipt-confirm"
+              onClick={() => void (editing ? saveEdits() : confirm())}
+              disabled={committing || saving}
+              data-testid={editing ? "voice-receipt-save-edit" : "voice-receipt-confirm"}
               className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground outline-none transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-60"
             >
-              {committing && <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />}
-              {isRetriable(outcome) ? t("receipt.retry") : t(confirmLabelKey(receipt.actionType))}
+              {(committing || saving) && <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />}
+              {editing
+                ? t("receipt.saveDraft")
+                : isRetriable(outcome)
+                  ? t("receipt.retry")
+                  : t(confirmLabelKey(receipt.actionType))}
             </button>
           )}
 
-        {!succeeded && (
+        {!succeeded && !editing && preview && preview.fields.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            disabled={committing}
+            data-testid="voice-receipt-edit"
+            className="inline-flex h-11 items-center justify-center rounded-md border px-4 text-sm font-medium outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-60"
+          >
+            {t("receipt.edit")}
+          </button>
+        )}
+
+        {!succeeded && !editing && (
           <button
             type="button"
             onClick={() => void discard()}
@@ -477,6 +539,20 @@ export function VoiceReceiptSurface({
             className="inline-flex h-11 items-center justify-center rounded-md border px-4 text-sm font-medium outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-60"
           >
             {t("receipt.cancel")}
+          </button>
+        )}
+
+        {editing && (
+          <button
+            type="button"
+            onClick={() => {
+              setEdits({})
+              setEditing(false)
+            }}
+            data-testid="voice-receipt-edit-cancel"
+            className="inline-flex h-11 items-center justify-center rounded-md border px-4 text-sm font-medium outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            {t("receipt.cancelEdit")}
           </button>
         )}
 
