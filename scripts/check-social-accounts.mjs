@@ -105,6 +105,11 @@ async function main() {
     ` oauthAccounts=${youtubeOauthAccounts} ---`,
   )
 
+  const activeSalesAssignees = await prisma.user.count({
+    where: { organizationId: org.id, role: "sales", isActive: true },
+  })
+  console.log(`--- Active sales assignees for lead conversion: ${activeSalesAssignees} ---`)
+
   const configs = await prisma.channelConfig.findMany({
     where: { organizationId: org.id },
     select: {

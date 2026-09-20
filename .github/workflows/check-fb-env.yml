@@ -66,6 +66,7 @@ jobs:
           echo "VISION_OCR_PROVIDER     = $(read_env VISION_OCR_PROVIDER)"
           echo "APIFY_API_TOKEN set     = $(has_env APIFY_API_TOKEN)"
           echo "BRIGHT_DATA_API_TOKEN set= $(has_env BRIGHT_DATA_API_TOKEN)"
+          echo "BRIGHT_DATA live routing = $(read_env SOCIAL_BRIGHT_DATA_LIVE_ROUTING)"
           echo "AZURE_SPEECH_KEY set    = $(has_env AZURE_SPEECH_KEY)"
 
           BACKUP_ENV="/etc/leaddrive/backup.env"

@@ -177,3 +177,38 @@ Audit of existing legal pages, routing, Meta OAuth scopes, persisted data, reten
   or bypassed by automation.
 - Added a safe diagnostic that prints tenant Meta app IDs and only boolean
   secret/verify-token presence. It never prints secret or token values.
+
+## 2026-09-20 — legal precision, provider audit and safe replacement flow
+
+- Reconfirmed the active task route before production work: repository
+  'rashadoni/leaddrive-v2', branch 'codex/meta-app-review', registered
+  production host '13.140.132.245', application path '/opt/leaddrive-v2', and
+  GitHub Actions as the only release path. The obsolete Hetzner application
+  server and old 'rashadrahimov' GitHub identity remain superseded; Hetzner
+  Object Storage is still an actual backup subprocessor and is not the old
+  application server.
+- Public processor disclosures were aligned to the inspected implementation:
+  Contabo production hosting in France; immutable Hetzner Object Storage
+  backups in Helsinki with 16/63/400-day retention; Cloudflare edge services;
+  Meta; optional Anthropic, OpenAI and Google AI/OCR paths; and Bright Data for
+  public Social Monitoring rather than private Meta inbox messages.
+- Safe production presence checks confirmed Anthropic, OpenAI, Gemini, Google
+  Vision and Bright Data credentials; Apify and Azure Speech were absent.
+  The Google Vision provider defaults active when its provider selector is
+  unset. No secret or token value was printed. Bright Data's live-routing flag
+  is being added to the read-only diagnostic so configured credentials are not
+  confused with an enabled transfer.
+- The privacy policy now states actual Meta fields, purposes, staff/provider
+  access, AI payload boundaries, active-system deletion within 30 days and
+  immutable-backup expiry up to 400 days. Translation parity and diff checks
+  passed locally.
+- Found and fixed a replacement-flow defect before connection: the Meta
+  connect guide's default 'new' mode could reuse and edit the existing live
+  channel row. New mode now keeps a fresh row, existing mode selects the live
+  row, and a fresh Instagram row defaults to the separate Instagram Login
+  surface. No existing tenant connection was mutated.
+- Updated the reviewer runbook with exact Facebook/Instagram callback and
+  tenant webhook URLs, parallel-row setup, a required synthetic sales assignee
+  and the final conversation-to-lead step. Video capture remains blocked until
+  the separate Meta-settings session securely saves the new Facebook and
+  Instagram Login app credentials and provides test-only social assets.

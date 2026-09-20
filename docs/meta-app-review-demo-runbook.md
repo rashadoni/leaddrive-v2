@@ -14,6 +14,9 @@ to Meta assets.
 - Instagram professional test account: 'leaddrive_review_test'
 - A second Meta/Instagram test user that can send inbound messages
 - App ID: '2414060595720618'
+- Separate Instagram Login App ID: obtain it from the Instagram API setup in
+  Meta and save it only in the new Instagram configuration row. Do not assume
+  that it equals the Facebook App ID.
 
 Do not use 'zeytun', 'fanumsec' or 'brandprotection' for this recording. The
 'leaddrive' organization is the internal tenant-poligon for this purpose, not
@@ -42,8 +45,26 @@ valid evidence for Meta.
 3. Confirm the test user has the required app role while the app is in
    development mode.
 4. Confirm the Page/Instagram account is test-only and has messaging enabled.
-5. Clear old test conversations so the new inbound event is unambiguous.
-6. Disable desktop notifications and hide browser bookmarks/password-manager
+5. In **Settings → Channels**, choose **New connection**. Create new Facebook
+   and Instagram configuration rows; do not edit or disconnect the existing
+   live rows. Save the Facebook app ID '2414060595720618' in the Facebook row
+   and the separate Instagram Login App ID in the Instagram row. Enter secrets
+   only in the masked production form.
+6. Confirm the new app uses these exact public endpoints:
+
+   - Facebook OAuth callback:
+     'https://app.leaddrivecrm.org/api/v1/social/oauth/facebook/callback'
+   - Instagram Login callback:
+     'https://app.leaddrivecrm.org/api/v1/social/oauth/instagram/callback'
+   - Facebook Messenger webhook:
+     'https://app.leaddrivecrm.org/api/v1/webhooks/facebook?t=leaddrive'
+   - Instagram Login webhook:
+     'https://app.leaddrivecrm.org/api/v1/webhooks/instagram?t=leaddrive'
+
+7. Confirm a synthetic user with the CRM `sales` role is available as the lead
+   assignee. The conversion endpoint deliberately rejects non-sales assignees.
+8. Clear old test conversations so the new inbound event is unambiguous.
+9. Disable desktop notifications and hide browser bookmarks/password-manager
    popovers before recording.
 
 ## 90-second Instagram recording
@@ -59,6 +80,9 @@ valid evidence for Meta.
 6. Open LeadDrive Inbox and show that exact new conversation.
 7. Reply 'TEST — reply sent from LeadDrive CRM'.
 8. Show the delivered reply in the sender account.
+9. Return to that conversation, choose **Create lead**, assign the synthetic
+   sales user, and save.
+10. Open the created lead and show that its contact/conversation are linked.
 
 Record Facebook separately using its Facebook Login card and Messenger test
 Page. Record comment permissions separately in Social Monitoring.
@@ -81,6 +105,7 @@ Save the unedited master outside Git and record in the session log:
 - date/time and app mode;
 - provider/test asset names;
 - permissions visibly exercised;
+- created synthetic lead ID and its assigned synthetic sales user;
 - confirmation that the data was synthetic.
 
 ## Current blocker
@@ -88,3 +113,8 @@ Save the unedited master outside Git and record in the session log:
 WhatsApp cannot use this scenario yet because the application has no Embedded
 Signup/shared-app OAuth implementation. Manual WABA credential entry is not a
 substitute for that recording.
+
+The recording is also blocked until the separate Meta-settings session saves
+the new Facebook and Instagram Login application credentials and supplies the
+test-only Page, Instagram professional account, and sender user. Do not record
+the historical accounts already present in the `leaddrive` tenant.
