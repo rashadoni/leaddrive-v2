@@ -156,3 +156,24 @@ Audit of existing legal pages, routing, Meta OAuth scopes, persisted data, reten
 - WhatsApp shared-app onboarding remains a documented implementation gap:
   webhook send/receive and manual tenant credentials exist, but Meta Embedded
   Signup is not yet implemented and must not be claimed in App Review.
+
+## 2026-09-20 — connection preflight exposed old live app IDs
+
+- User authorised connecting the Meta test assets to the existing 'leaddrive'
+  tenant-poligon.
+- Read-only production workflow 35501149218 confirmed that the shared runtime
+  still uses Facebook App ID '1276226757359622' and Instagram App ID
+  '782807994549098', not the review App ID '2414060595720618'. Both old app
+  secrets and redirect URIs are present.
+- Read-only tenant workflow 35501246096 confirmed that 'leaddrive' has no
+  complete tenant app configuration for '2414060595720618'. Its existing
+  Facebook/Instagram account rows are bound to old app IDs and include real
+  historical page names, so they must not be used as synthetic reviewer
+  evidence.
+- No OAuth connection was started against the wrong app. The CRM Channels page
+  and Meta dashboard for App ID '2414060595720618' were opened for the owner.
+  The remaining mandatory step is an interactive Meta login/2FA plus secure
+  provision of that app's secret; neither can be recovered from source control
+  or bypassed by automation.
+- Added a safe diagnostic that prints tenant Meta app IDs and only boolean
+  secret/verify-token presence. It never prints secret or token values.
