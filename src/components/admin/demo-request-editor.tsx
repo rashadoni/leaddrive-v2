@@ -50,6 +50,9 @@ export function DemoRequestEditor({
     const params = new URLSearchParams({ modules: selected.join(",") })
     return `/demo-preview/${requestId}?${params.toString()}`
   }, [requestId, selected])
+  // Guided journey preview — the replacement for the module playlist. It does
+  // not depend on the module selection: the scenario decides what is shown.
+  const journeyPreviewHref = `/demo-preview/${requestId}?scenario=prospect-to-closed-won`
 
   function toggle(moduleId: string) {
     setSuccess(null)
@@ -209,6 +212,9 @@ export function DemoRequestEditor({
             ) : (
               <Button type="button" variant="outline" disabled className="min-h-11 shrink-0 border-zinc-600 bg-transparent text-zinc-100 dark:border-zinc-400 dark:text-zinc-900"><Eye className="h-4 w-4" />Preview selected</Button>
             )}
+            <Button asChild variant="outline" className="min-h-11 shrink-0 border-zinc-600 bg-transparent text-zinc-100 hover:bg-zinc-800 hover:text-white dark:border-zinc-400 dark:text-zinc-900 dark:hover:bg-zinc-200">
+              <a href={journeyPreviewHref} target="_blank" rel="noreferrer"><Eye className="h-4 w-4" />Preview guided journey</a>
+            </Button>
             <Button type="button" disabled={busy !== null || !selected.length || requestStatus === "REJECTED"} onClick={issueDemo} className="min-h-11 shrink-0 bg-orange-600 text-white hover:bg-orange-700">
               {busy === "issue" ? <Clock3 className="h-4 w-4 animate-spin" /> : latestGrant ? <RotateCcw className="h-4 w-4" /> : <Send className="h-4 w-4" />}
               {latestGrant ? "Reissue and send" : "Issue and send"}

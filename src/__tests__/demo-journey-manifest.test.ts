@@ -12,6 +12,7 @@ import { existsSync, readFileSync } from "node:fs"
 import path from "node:path"
 import {
   DEMO_ANCHORS,
+  DEMO_BUILT_AREAS,
   DEMO_COVERAGE_TARGET_PERCENT,
   DEMO_JOURNEY_SCENARIOS,
   DEMO_JOURNEY_STATES,
@@ -151,34 +152,55 @@ describe("Guided journey manifest: prospect-to-closed-won v1", () => {
 })
 
 describe("Guided journey anchors", () => {
-  it("names only kebab-case ids in known areas", () => {
+  it("names only kebab-case ids with a label", () => {
     for (const [id, anchor] of Object.entries(DEMO_ANCHORS)) {
       expect(id).toMatch(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/)
-      expect(anchor.files.length).toBeGreaterThan(0)
-      expect(anchor.label.trim()).not.toBe("")
+      expect(anchor.label.trim(), id).not.toBe("")
     }
   })
 
-  it("finds every anchor marked real on the real page today", () => {
+  it("every anchor with a scene is actually rendered by it", () => {
     for (const [id, anchor] of Object.entries(DEMO_ANCHORS)) {
-      if (anchor.source !== "real") continue
-      const present = anchor.files.some((file) => {
+      if (!anchor.scene) continue
+      const full = path.join(ROOT, anchor.scene)
+      expect(existsSync(full), `anchor "${id}" → missing scene ${anchor.scene}`).toBe(true)
+      expect(readFileSync(full, "utf8").includes(`data-tour-id="${id}"`), `${anchor.scene} does not render "${id}"`).toBe(true)
+    }
+  })
+
+  it("every listed product file really carries the shared id", () => {
+    for (const [id, anchor] of Object.entries(DEMO_ANCHORS)) {
+      for (const file of anchor.productFiles) {
         const full = path.join(ROOT, file)
-        if (!existsSync(full)) return false
+        expect(existsSync(full), `anchor "${id}" → ${file}`).toBe(true)
         const source = readFileSync(full, "utf8")
-        return source.includes(`data-tour-id="${id}"`) || source.includes(`tourId="${id}"`)
-      })
-      expect(present, `anchor "${id}" is marked real but none of ${anchor.files.join(", ")} carries it`).toBe(true)
+        expect(
+          source.includes(`data-tour-id="${id}"`) || source.includes(`tourId="${id}"`),
+          `${file} is listed for "${id}" but does not carry it`,
+        ).toBe(true)
+      }
     }
   })
 
-  it("points planned anchors at real product files (the demo shell may not exist yet)", () => {
-    for (const [id, anchor] of Object.entries(DEMO_ANCHORS)) {
-      if (anchor.source !== "planned") continue
-      for (const file of anchor.files) {
-        if (file.startsWith("src/components/demo-center/")) continue
-        expect(existsSync(path.join(ROOT, file)), `anchor "${id}" → ${file}`).toBe(true)
+  it("a built area may not leave any of its step anchors unrendered", () => {
+    for (const section of manifest.sections) {
+      if (!DEMO_BUILT_AREAS.includes(section.area)) continue
+      for (const step of section.steps) {
+        const anchor = DEMO_ANCHORS[step.anchor]
+        expect(anchor, step.anchor).toBeDefined()
+        expect(anchor.scene, `"${step.id}" points at "${step.anchor}", which no built scene renders`).not.toBeNull()
       }
+    }
+  })
+
+  it("the renderer registers a scene for every section of a built area", () => {
+    const player = read("src/components/demo-center/journey/demo-journey-player.tsx")
+    const map = player.slice(player.indexOf("const SCENES"), player.indexOf("export interface DemoJourneyPlayerProps"))
+    expect(map.length).toBeGreaterThan(0)
+    for (const section of manifest.sections) {
+      if (!DEMO_BUILT_AREAS.includes(section.area)) continue
+      const registered = map.includes(`"${section.id}":`) || map.includes(`${section.id}:`)
+      expect(registered, `section "${section.id}" is in a built area but the renderer has no scene for it`).toBe(true)
     }
   })
 })

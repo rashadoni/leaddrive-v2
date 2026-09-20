@@ -12,6 +12,7 @@ import {
   isCorporateEmail,
   issueBrowserCredential,
   maskEmail,
+  maskPhone,
   secureHashMatches,
 } from "@/lib/demo-center/security"
 import {
@@ -96,6 +97,19 @@ describe("Demo Center request and credential security", () => {
     expect(isCorporateEmail("buyer@outlook.com")).toBe(false)
     expect(emailDomain(" Buyer@Enterprise.AZ ")).toBe("enterprise.az")
     expect(maskEmail("buyer@enterprise.az")).toBe("bu•••@enterprise.az")
+  })
+
+  it("masks a phone down to prefix and last two digits, and refuses fragments", () => {
+    const masked = maskPhone("+994 50 123 45 67")
+    expect(masked).not.toBeNull()
+    expect(masked).toContain("+994")
+    expect(masked!.endsWith("67")).toBe(true)
+    // Nothing between the prefix and the tail survives.
+    expect(masked).not.toContain("50")
+    expect(masked).not.toContain("123")
+    expect(masked).not.toContain("45")
+    expect(maskPhone("0123")).toBeNull()
+    expect(maskPhone("   ")).toBeNull()
   })
 
   it("uses six-digit OTPs and constant-time-verifiable browser credentials", () => {
