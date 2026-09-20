@@ -45,6 +45,7 @@ export const POST = withRouteFieldRlsAuth<RouteContext>("write", async (req, aut
   }
 
   try {
+    const assignmentDate = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`)
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const claimed = await tx.mtmContactCreateRequest.updateMany({
         where: { id, organizationId: auth.orgId, status: { in: ["SUBMITTED", "IN_REVIEW", "NEEDS_INFO"] } },
@@ -71,6 +72,7 @@ export const POST = withRouteFieldRlsAuth<RouteContext>("write", async (req, aut
         where: { organizationId: auth.orgId, deletedAt: null, name: { equals: requestRecord.clinicName, mode: "insensitive" } },
         select: { id: true },
       })
+      let customerWasCreated = false
       if (!customer) {
         customer = await tx.mtmCustomer.create({
           data: {
@@ -83,6 +85,36 @@ export const POST = withRouteFieldRlsAuth<RouteContext>("write", async (req, aut
             notes: `Created from approved doctor request ${requestRecord.id}`,
           },
           select: { id: true },
+        })
+        customerWasCreated = true
+      }
+
+      const activeCustomerAssignment = await tx.mtmCustomerAgentAssignment.findFirst({
+        where: {
+          organizationId: auth.orgId,
+          customerId: customer.id,
+          agentId: requestRecord.requestedByAgentId,
+          deletedAt: null,
+          effectiveFrom: { lte: assignmentDate },
+          OR: [{ effectiveTo: null }, { effectiveTo: { gt: assignmentDate } }],
+        },
+        select: { id: true },
+      })
+      if (!activeCustomerAssignment) {
+        await tx.mtmCustomerAgentAssignment.create({
+          data: {
+            organizationId: auth.orgId,
+            customerId: customer.id,
+            agentId: requestRecord.requestedByAgentId,
+            // A new clinic has no owner. An existing clinic may already have a
+            // different PRIMARY owner, so approval grants workplace visibility
+            // without silently transferring that clinic away from them.
+            role: customerWasCreated ? "PRIMARY" : "SECONDARY",
+            effectiveFrom: assignmentDate,
+            source: "CONTACT_CREATE_APPROVAL",
+            assignedBy: auth.userId || null,
+            reason: "Approved new doctor workplace",
+          },
         })
       }
       const names = splitContactName(requestRecord.displayName)
