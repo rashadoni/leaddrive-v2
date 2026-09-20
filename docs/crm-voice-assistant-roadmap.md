@@ -844,7 +844,7 @@ implementation branch that advances the roadmap.
 | 2026-09-19 | Roadmap | Complete | This document | Ordered implementation plan and release gates recorded. |
 | 2026-09-19 | P0 audio hotfix | Code complete | Targeted Vitest 32/32; targeted ESLint | Local RMS is UI-only; Gemini interruption/transcription owns turn state. Manual browser/noise matrix remains open. |
 | 2026-09-20 | Execution boundary | Production deployed | PR #245; merge `a7f6c2654`; deploy `35479290362` | Internal-only atomic CRM mutation/result/`succeeded` event; commit remains disabled. |
-| 2026-09-20 | Commit adapter | Code complete | Targeted Vitest 29/29; targeted ESLint | Session-only endpoint and three rate-limit scopes; receipt UI remains open. |
+| 2026-09-20 | Commit adapter | Production deployed | PR #249; merge `ffcbaa3a4`; active artifact `a9891d6cb`; deploy `35499744499` | Session-only endpoint and three rate-limit scopes are live; receipt UI remains open and no model write-tool is exposed. |
 
 ## 21. References
 

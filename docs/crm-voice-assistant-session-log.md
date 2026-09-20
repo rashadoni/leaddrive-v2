@@ -509,3 +509,40 @@ bottom sheet; endpoint не должен подключаться к UI без �
 без аргументов, а test-specific implementation принимал key. Production-код не
 затронут. Mock получил явную сигнатуру `(key, config)`, после чего целевые
 проверки и CI должны быть повторены без изменения typecheck baseline.
+
+## Итог 2026-09-20: session-only commit adapter на production
+
+I1.5 и I1.15 завершены и развернуты:
+
+- основной checkpoint `e5162c478` добавил browser-session-only commit endpoint,
+  строгий proof contract, replay/recovery, terminal/retriable error handling,
+  три rate-limit scope и отдельный regression suite;
+- checkpoint `e4f94d6ac` исправил только TypeScript-сигнатуру hoisted mock,
+  обнаруженную первым blocking typecheck;
+- локально повторно прошли 6 voice/command test files / 45 tests, отдельный
+  commit suite 8/8, targeted ESLint и `git diff --check`;
+- повторный PR CI `35498152909` прошёл scope, runner policy, secret scan,
+  полный static/unit baseline и typecheck;
+- PR #249 слит в `main`, merge SHA
+  `ffcbaa3a427c514deacc478dc3296b331f0fab27`;
+- исходный deploy run `35498959331` был отменён concurrency-механизмом после
+  следующего merge PR #250, а не из-за ошибки кода или production deploy;
+- следующий актуальный run `35499744499` собрал и развернул `main` с нашим
+  изменением; quality/security, production build, immutable artifact, atomic
+  deploy, встроенные public/revision/feature smoke и artifact retention прошли;
+- независимый public ping вернул `{"ok":true}`, build-info подтвердил активный
+  artifact SHA `a9891d6cb6d46ea56e8177eb6dfe298da4ec21bf`;
+- анонимный POST к новому commit route получил `307` на login, то есть
+  production middleware не пропускает вызов без браузерной сессии;
+- повторный поиск подтвердил, что устаревшие `rashadrahimov/leaddrive-v2` и
+  `46.224.171.53` в репозитории отсутствуют.
+
+Текущее состояние: защищённая серверная commit boundary для пяти канонических
+CRM-команд находится на production, но голосовой помощник ещё не вызывает её:
+receipt UI не реализован, явная пользовательская кнопка подтверждения не
+подключена, model write-tools по-прежнему намеренно отсутствуют.
+
+Точка остановки: backend I1.5/I1.15 развернут и независимо проверен. Следующее
+действие — U1.1-U1.3: session-scoped receipt store, desktop receipt panel и
+mobile bottom sheet, затем подключение явной кнопки подтверждения к commit
+endpoint без выдачи write-tool самой модели.
