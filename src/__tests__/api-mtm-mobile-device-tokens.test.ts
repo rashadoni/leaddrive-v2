@@ -48,6 +48,25 @@ describe("registering a device for push", () => {
   })
 
   /**
+   * The phone cannot see whether this deployment has a sending key, so the
+   * answer travels back with the registration. Without it an agent reads
+   * "the address is registered" and still gets nothing, with no way to tell
+   * a broken phone from a server that was never given a key.
+   */
+  it("tells the phone whether this server can send at all", async () => {
+    delete process.env.MTM_PUSH_SERVICE_ACCOUNT
+    const off = await POST(request("POST", { token: TOKEN }))
+    expect((await off.json()).data.pushEnabled).toBe(false)
+
+    process.env.MTM_PUSH_SERVICE_ACCOUNT = JSON.stringify({
+      project_id: "p", client_email: "a@b.c", private_key: "-----BEGIN PRIVATE KEY-----\nx\n-----END PRIVATE KEY-----\n",
+    })
+    const on = await POST(request("POST", { token: TOKEN }))
+    expect((await on.json()).data.pushEnabled).toBe(true)
+    delete process.env.MTM_PUSH_SERVICE_ACCOUNT
+  })
+
+  /**
    * The same phone handed to another agent must not deliver to both: the row
    * moves to whoever is signed in now.
    */
