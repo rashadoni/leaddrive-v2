@@ -69,7 +69,17 @@ export async function notifyAgents(input: NotifyAgentsInput): Promise<NotifyAgen
     select: { token: true },
   })
   const tokens = [...new Set(rows.map((row) => row.token).filter(Boolean))]
-  if (tokens.length === 0) return empty
+  if (tokens.length === 0) {
+    /**
+     * Usually true and unremarkable: an agent without the app has no address.
+     * It is logged anyway because the other way to get here is a read that
+     * returned nothing — RLS is fail-closed, so a lost tenant context is
+     * silently indistinguishable from "nobody installed it". One line with a
+     * count tells the two apart later.
+     */
+    console.info("[mtm/push] no address for these agents — agents=%d", agentIds.length)
+    return empty
+  }
 
   const send = input.send ?? sendPushMessages
   const deliveries: PushDelivery[] = await send({

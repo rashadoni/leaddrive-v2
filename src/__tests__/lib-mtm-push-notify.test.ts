@@ -120,6 +120,24 @@ describe("delivering to the agents' phones", () => {
     warn.mockRestore()
   })
 
+  /**
+   * RLS is fail-closed: a query without tenant context returns zero rows, not
+   * an error. That looks exactly like "nobody installed the app", so the
+   * count goes in the log and the two can be told apart afterwards.
+   */
+  it("notes an empty address list instead of returning in silence", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => {})
+    const db = client([])
+    const send = vi.fn()
+    await notifyAgents({
+      client: db, organizationId: "org-1", agentIds: ["agent-1", "agent-2"],
+      title: "x", body: "y", configured: true, send: send as never,
+    })
+    expect(info.mock.calls.map((call) => call.join(" ")).join("\n")).toContain("[mtm/push] no address")
+    expect(send).not.toHaveBeenCalled()
+    info.mockRestore()
+  })
+
   it("keeps the lock-screen line short and on one line", () => {
     expect(pushBody("  два   пробела\nи перенос  ")).toBe("два пробела и перенос")
     const long = pushBody("я".repeat(400))
