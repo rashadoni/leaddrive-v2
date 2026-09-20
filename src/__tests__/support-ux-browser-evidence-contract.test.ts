@@ -279,7 +279,6 @@ describe("Support UX browser evidence contract", () => {
     expect(workflow).toContain("scripts/seed-support-ux-evidence.ts");
     expect(workflow).toContain("Production targets are forbidden");
     expect(workflow).toContain("13.140.132.245");
-    expect(workflow).toContain("46.224.171.53");
     expect(workflow).toContain('echo "::add-mask::$value"');
     expect(workflow).toContain("secrets.SUPPORT_EVIDENCE_BASE_URL");
     expect(workflow).toContain("npm run support:ux:scan");

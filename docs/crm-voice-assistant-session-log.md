@@ -362,3 +362,30 @@ confirmation proof, выполнить compare-and-swap claim в `executing` и 
 lease recovery/terminal failure semantics. Только после их проверки можно
 подключать commit endpoint; UI-кнопка и model write-tools остаются отдельными
 последующими этапами.
+
+## Коррекция маршрутизации 2026-09-20
+
+Пользователь подтвердил, что прежний GitHub-владелец и прежний production-host
+больше не существуют и не должны использоваться ни в правилах, ни в активной
+документации, ни в deploy-контрактах.
+
+Исправлено:
+
+- глобальный host contract указывает `rashadoni/leaddrive-v2` и
+  зарегистрированный Contabo-host `13.140.132.245`;
+- SSH alias `leaddrive-prod` больше не направлен на выведенный из эксплуатации
+  адрес;
+- активные файлы репозитория не содержат прежних GitHub/IP-значений;
+- deploy допускает только зарегистрированный host или заполнение
+  отсутствующего/пустого `SHARED_SERVER_IP`; неизвестный target отклоняется;
+- исторические документы сохраняют смысл свидетельств без удалённого адреса,
+  а GitHub-ссылки переведены на текущего владельца.
+
+Проверки на этой точке: `bash -n scripts/server-deploy.sh`, `node --check
+scripts/ci/test-event-platform-assets.mjs` и `git diff --check` — успешно.
+Целевые контрактные тесты запускаются следующим действием.
+
+Точка остановки: незакоммиченная повторная проверка execution-доступа в
+`src/lib/ai/voice/action-draft.ts` сохранена отдельно от коррекции маршрута.
+После отдельного checkpoint коррекции продолжается proof consumption +
+execution claim/lease recovery.
