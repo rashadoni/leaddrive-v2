@@ -229,6 +229,71 @@ Evidence keys: **[C]** code, **[T]** test, **[P]** production observation.
 
 ---
 
+## 4b. Second hardening pass (2026-09-20)
+
+Three defects found by re-auditing the first pass rather than trusting it. All fixed.
+
+1. **A regression the first pass introduced.** The partial unique index covers
+   whatsapp/facebook/instagram, but only the WhatsApp and Facebook handlers were taught to treat the
+   resulting P2002 as "already ingested". The Instagram handler had only a read-then-skip guard, so a
+   concurrent redelivery threw, unwound to a POST handler that answers Meta **200**, and every
+   remaining message in that delivery was dropped and never redelivered. Fixed; the test for it fails
+   against the pre-fix handler, which is how it was verified.
+   [C] `src/app/api/v1/webhooks/instagram/route.ts` · [T] `meta-security-hardening.test.ts`
+
+2. **A credential could reach Sentry.** `instagram-login.ts` carries the Instagram-Login token as a
+   URL query parameter — the shape Meta's token endpoints require — and logged caught fetch errors
+   verbatim. A thrown fetch error can carry the request URL, and this project ships errors to Sentry,
+   a named subprocessor. Every log line in that module now goes through the existing redactor, and
+   provider error bodies in `facebook.ts` are redacted too.
+   [C] `src/lib/social/instagram-login.ts`, `src/lib/facebook.ts`, `src/lib/oauth-redaction.ts`
+
+3. **A blank field could wipe a live credential.** `z.string().optional()` accepts `""`, and the PUT
+   payload was spread straight into the update — so `{"appSecret": ""}` overwrote a stored secret
+   with an empty string. The UI never sends that, but the API accepted it, and both the webhook
+   signature check and the OAuth exchange fail closed on an empty secret, so the damage would have
+   surfaced later as "messages stopped arriving". Blank now means *keep*; deliberate clearing stays
+   on DELETE, which nulls every credential together and writes a `disconnect` audit entry.
+   [C] `src/app/api/v1/channels/[id]/route.ts`
+
+**Verified and left alone:**
+
+- Facebook/Instagram outbound already use `Authorization: Bearer`, not a token in the URL
+  ([C] `src/lib/facebook.ts`), and the page-subscribe call sends the token in the POST body
+  ([C] `src/lib/social/meta-subscribe.ts`).
+- The OAuth callbacks compare cookie against `state` for equality, verify the HMAC with
+  `timingSafeEqual` behind a length check, enforce a 30-minute TTL, and require a matching session on
+  the cookie-less path.
+- The Instagram webhook binds the tenant through `?t=`, refuses the env secret when `?t` is present,
+  and resolves the account by oldest claim.
+
+## 4c. Residual risks — stated, not fixed
+
+1. **The OAuth `state` is not single-use.** Within its 30-minute window the same signed state could be
+   presented again. Exploiting that also requires an unused authorization `code`, which Meta issues
+   single-use and short-lived to the registered redirect URI, so the practical window is small — but
+   the guarantee is "signed, bound and expiring", not "consumed once". Closing it properly means a
+   server-side nonce store with its own expiry and cleanup; that was not added late in an audit that
+   had already produced one regression from a schema change.
+
+2. **The WhatsApp WABA id (`entry.id`) is not cross-checked.** The tenant is bound by the `?t=` slug
+   *and* the payload's `phone_number_id`, and the signature proves the sender holds that tenant's app
+   secret — so a forged WABA id with a matching phone number id would already require the tenant's
+   secret. Adding a third fail-closed check on live WhatsApp traffic was judged a worse trade than the
+   marginal gain.
+
+3. **No rate limiting on the webhook endpoints**, at either the application or the nginx layer.
+   Cloudflare fronts the domain. Meta's delivery is bursty by design, so a naive per-endpoint limit
+   would drop legitimate traffic; this needs a measured threshold, not a guess.
+
+4. **`channel_configs` credentials are not column-encrypted** (§2, §4.2). Encrypting them touches
+   every send path and every webhook signature check at once, on live customer connections.
+
+5. **The Instagram-Login send path is unverified.** `src/lib/social/instagram-login.ts` says in its
+   own header that the `graph.instagram.com/me/messages` shape is under-documented and should be
+   confirmed against a live token. Confirming it means sending a real message, which was out of scope
+   here. **The App Review demo requires an outbound Instagram reply, so verify this before recording.**
+
 ## 5. Notes for the reviewer submission
 
 - The demo must be recorded against App ID **2414060595720618**. Confirm it on Meta's own consent

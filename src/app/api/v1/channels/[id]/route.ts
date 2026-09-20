@@ -116,6 +116,21 @@ export async function PUT(
           settings: d.settings ?? row.settings,
         })
 
+      // "Leave blank to keep the stored value" is the contract the UI states and the form honours
+      // (`buildChannelPayload` turns an empty field into `undefined`). The API did not enforce it:
+      // `z.string().optional()` accepts "", and the payload is spread straight into `updateMany`, so
+      // a PUT carrying `{"appSecret": ""}` silently overwrote a live credential with an empty string
+      // and broke the channel — a webhook signature check and an OAuth exchange both fail closed on
+      // an empty secret, so the failure would surface later, as "messages stopped arriving".
+      //
+      // Clearing a credential on purpose has its own route: DELETE nulls all of them together and
+      // writes a `disconnect` audit entry. So a blank here can only ever mean "keep".
+      for (const field of ["botToken", "apiKey", "appSecret", "accessToken", "verifyToken"] as const) {
+        // `d` is the object the update below spreads, so drop the key there rather than relying on
+        // it aliasing `parsed.data`.
+        if (typeof d[field] === "string" && d[field]!.trim() === "") delete d[field]
+      }
+
       const data = isWa
         ? {
             ...d,
