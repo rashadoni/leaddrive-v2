@@ -152,9 +152,32 @@ describe("review action rows", () => {
     { actionKey: "FEEDBACK", mode: "HIDDEN", minCount: 1 },
   ]
 
-  it("hides steps the field app cannot perform and steps the policy hides", () => {
+  it("hides steps the field app cannot perform, steps the policy hides and empty optional ones", () => {
+    // Only the required photo survives: VISIT_NOTE and SIGNATURE are optional
+    // with nothing recorded, and the demo organization marks every step
+    // optional — which is how the card filled up with "not done" rows the
+    // agent was never offered. NEXT_ACTION and CHECKLIST are not in the app.
     const rows = reviewActionRows({ requirements, actionResults: [], photoCount: 0 })
-    expect(rows.map((row) => row.actionKey)).toEqual(["PHOTO", "VISIT_NOTE", "SIGNATURE"])
+    expect(rows.map((row) => row.actionKey)).toEqual(["PHOTO"])
+  })
+
+  it("brings an optional step back as soon as it carries a result", () => {
+    const rows = reviewActionRows({
+      requirements,
+      actionResults: [{ actionKey: "VISIT_NOTE", status: "COMPLETED" }],
+      photoCount: 0,
+    })
+    expect(rows.map((row) => row.actionKey)).toEqual(["PHOTO", "VISIT_NOTE"])
+    expect(rows.find((row) => row.actionKey === "VISIT_NOTE")).toMatchObject({ done: true, required: false })
+  })
+
+  it("never lists the step the field app removed", () => {
+    const rows = reviewActionRows({
+      requirements: [...requirements, { actionKey: "NEXT_ACTION", mode: "REQUIRED", minCount: 1 }],
+      actionResults: [],
+      photoCount: 0,
+    })
+    expect(rows.map((row) => row.actionKey)).not.toContain("NEXT_ACTION")
   })
 
   it("still shows an unsupported step when it does carry a result", () => {
@@ -170,13 +193,17 @@ describe("review action rows", () => {
   it("treats the agent's written note as the visit note instead of '0/1'", () => {
     const withNote = reviewActionRows({ requirements, actionResults: [], photoCount: 0, agentNote: "E2E yoxlama" })
     expect(withNote.find((row) => row.actionKey === "VISIT_NOTE")?.done).toBe(true)
+    // Blank note, optional step, nothing recorded: the row is dropped rather
+    // than printed as a reproach.
     const blank = reviewActionRows({ requirements, actionResults: [], photoCount: 0, agentNote: "   " })
-    expect(blank.find((row) => row.actionKey === "VISIT_NOTE")?.done).toBe(false)
+    expect(blank.find((row) => row.actionKey === "VISIT_NOTE")).toBeUndefined()
   })
 
   it("counts a signature only when it was completed or waived", () => {
+    // A pending signature counts as nothing, so an optional signature row is
+    // not shown at all.
     const pending = reviewActionRows({ requirements, actionResults: [{ actionKey: "SIGNATURE", status: "PENDING" }], photoCount: 0 })
-    expect(pending.find((row) => row.actionKey === "SIGNATURE")?.done).toBe(false)
+    expect(pending.find((row) => row.actionKey === "SIGNATURE")).toBeUndefined()
     const signed = reviewActionRows({ requirements, actionResults: [{ actionKey: "SIGNATURE", status: "COMPLETED" }], photoCount: 0 })
     expect(signed.find((row) => row.actionKey === "SIGNATURE")?.done).toBe(true)
   })
