@@ -56,6 +56,30 @@ jobs:
           echo "TIKTOK_CLIENT_KEY       = $(read_env TIKTOK_CLIENT_KEY)"
           echo "TIKTOK_REDIRECT_URI     = $(read_env TIKTOK_REDIRECT_URI)"
           echo "TIKTOK_CLIENT_SECRET set= $(has_env TIKTOK_CLIENT_SECRET)"
+          echo ""
+          echo "--- Meta-review processor presence (credentials hidden) ---"
+          echo "ANTHROPIC_API_KEY set   = $(has_env ANTHROPIC_API_KEY)"
+          echo "OPENAI_API_KEY set      = $(has_env OPENAI_API_KEY)"
+          echo "GOOGLE_AI_API_KEY set   = $(has_env GOOGLE_AI_API_KEY)"
+          echo "GEMINI_API_KEY set      = $(has_env GEMINI_API_KEY)"
+          echo "AZURE_SPEECH_KEY set    = $(has_env AZURE_SPEECH_KEY)"
+
+          BACKUP_ENV="/etc/leaddrive/backup.env"
+          if [ -f "$BACKUP_ENV" ]; then
+            read_backup_env() {
+              grep -E "^[[:space:]]*(export[[:space:]]+)?$1=" "$BACKUP_ENV" | head -1 \
+                | sed -E 's/^[^=]*=//' | tr -d '"'"'"''
+            }
+            endpoint="$(read_backup_env BACKUP_S3_ENDPOINT)"
+            endpoint_host="$(printf '%s' "$endpoint" | sed -E 's#^[a-zA-Z]+://##; s#/.*$##')"
+            echo "BACKUP_S3_ENDPOINT host = ${endpoint_host:-unset}"
+            echo "BACKUP_S3_REGION        = $(read_backup_env BACKUP_S3_REGION)"
+            echo "BACKUP daily days       = $(read_backup_env BACKUP_RETENTION_DAILY_DAYS)"
+            echo "BACKUP weekly days      = $(read_backup_env BACKUP_RETENTION_WEEKLY_DAYS)"
+            echo "BACKUP monthly days     = $(read_backup_env BACKUP_RETENTION_MONTHLY_DAYS)"
+          else
+            echo "BACKUP_ENV present      = no"
+          fi
           REMOTE
       - name: Cleanup
         if: always()
