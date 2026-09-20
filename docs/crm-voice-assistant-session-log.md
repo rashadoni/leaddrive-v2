@@ -502,3 +502,10 @@ production deploy и независимый smoke. После deploy следу�
 срез — U1.1-U1.3: session-scoped receipt store, desktop receipt panel и mobile
 bottom sheet; endpoint не должен подключаться к UI без явной кнопки
 подтверждения, model write-tool не добавляется.
+
+Первый CI run PR #249 (`35497372979`) прошёл scope, secret scan, runner policy
+и полный static/unit baseline, но blocking typecheck выявил один новый TS2345 в
+новом тесте: hoisted mock `checkRateLimit` был выведен TypeScript как функция
+без аргументов, а test-specific implementation принимал key. Production-код не
+затронут. Mock получил явную сигнатуру `(key, config)`, после чего целевые
+проверки и CI должны быть повторены без изменения typecheck baseline.

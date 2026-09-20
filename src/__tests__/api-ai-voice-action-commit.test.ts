@@ -16,10 +16,14 @@ type RouteHandler<C = unknown> = (
   auth: AuthContext,
   ctx: C,
 ) => Promise<Response>
+type RateLimitCheck = (
+  key: string,
+  config: { maxRequests: number; windowMs: number },
+) => boolean
 
 const deps = vi.hoisted(() => ({
   checkVoicePilotAccess: vi.fn(async () => ({ ok: true as const })),
-  checkRateLimit: vi.fn(() => true),
+  checkRateLimit: vi.fn<RateLimitCheck>(() => true),
   claim: vi.fn(),
   recover: vi.fn(),
   fail: vi.fn(),
