@@ -84,11 +84,27 @@ describe.each(LOCALES)("privacy policy — %s", locale => {
     // So this guard is not about wording. Before anyone restores the stronger sentence, the timer
     // has to be enabled, green, and uploading under Object Lock — otherwise the policy goes back to
     // describing a control that is switched off, which is precisely the finding F-13 was raised for.
-    const backupClaims = `${p.p4} ${p.p7_note}`
+    // p5_l2 is included deliberately: the subprocessor list made the same promise in a second
+    // place, attributed to Hetzner in Helsinki. Hetzner was decommissioned in September 2026 and
+    // holds nothing; the offsite copies sit on a second Contabo host (verified 2026-09-20 by
+    // finding them there). A policy claim is only as true as its least-checked sentence.
+    const backupClaims = `${p.p4} ${p.p7_note} ${p.p5_l2}`
     expect(backupClaims).not.toMatch(/encrypted backups|зашифрованные резервные|şifrəli backup/i)
     expect(backupClaims).not.toMatch(/immutable retention|неизменяемы в течение срока|dəyişdirilməzdir/i)
     expect(backupClaims).not.toMatch(/destroyed automatically|уничтожаются автоматически|avtomatik məhv/i)
     expect(backupClaims).not.toMatch(/\b400\b/)
+  })
+
+  it("does not name a subprocessor that no longer processes anything", () => {
+    // Hetzner was dropped in September 2026 and the server deleted. Naming it as the holder of
+    // backups points a data subject's rights, and a regulator's letter, at a company that has none
+    // of their data.
+    const allSubprocessors = [
+      p.p5_l1, p.p5_l2, p.p5_l3, p.p5_l4, p.p5_l5,
+      p.p5_l6, p.p5_l7, p.p5_l8, p.p5_l9,
+    ].join(" ")
+    expect(allSubprocessors).not.toMatch(/Hetzner/i)
+    expect(allSubprocessors).not.toMatch(/Helsinki|Хельсинки/i)
   })
 
   it("discloses Workforce location purpose, lifecycle, roles and employee rights", () => {

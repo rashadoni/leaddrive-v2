@@ -174,6 +174,22 @@ Evidence keys: **[C]** code, **[T]** test, **[P]** production observation.
 5. **Hosting region is not contractually pinned.** The Privacy Policy says plan-specific regions
    "remain under review". Do not state a processing region to Meta.
 
+   ⚠️ One region claim is still published and **unverified**: `privacy.p5_l1` says production runs on
+   "the registered host in France". Production is the Contabo VPS `13.140.132.245`
+   (`vmi3554743.contaboserver.net`). `AGENTS.md` forbids inferring a physical region from an IP
+   address, and the Contabo panel is owner-only, so this was left exactly as it stands rather than
+   guessed at in either direction. Verify it in the Contabo contract before repeating it to Meta or
+   to a customer.
+
+7. ✅ **Fixed in this change — the subprocessor list named a company that holds nothing.**
+   `privacy.p5_l2` said *"Hetzner Online GmbH — encrypted immutable backups in Helsinki, Finland …
+   16/63/400 days … destroyed automatically."* Hetzner was dropped in September 2026 and the server
+   deleted, so it holds no data at all. The offsite copies are in fact on a **second Contabo host**
+   — confirmed on 2026-09-20 by finding 55 backup files sitting there, the oldest from 4 September,
+   i.e. never pruned, against fourteen kept on production. Every element of that sentence was wrong:
+   the provider, the country, the encryption, the immutability and the retention. It now describes
+   the second Contabo host, and `privacy-policy-claims.test.ts` fails if Hetzner or Helsinki returns.
+
 6. 🟠 **Backups are weaker than the policy used to claim — policy corrected, control still off.**
    The policy stated *"encrypted backups are held under immutable retention … residual copies can
    persist for up to 400 days and are then destroyed automatically."* Production does not do that:
