@@ -30,3 +30,17 @@
 - Full build and browser verification were not run on Contabo; the repository
   contract assigns the production build to GitHub CI. Nothing has been pushed,
   merged or deployed in this phase.
+
+## 2026-09-20 — GitHub release in progress
+
+- Branch `codex/legal-links-footer` was pushed and PR 255 passed scope,
+  runner-policy, secret-scan, static and typecheck gates.
+- PR 255 was squash-merged to `main` as
+  `778a55feb5365f6a3dd447fb5b629975f26399c1`.
+- Production workflow 35508393131 is still in progress. Quality/security gates
+  completed successfully; the last observed active step was `Build Next.js
+  standalone` in `Production build & publish artifact`.
+- Resume by waiting for workflow 35508393131. If successful, smoke
+  `/api/v1/ping`, the marketing home footer and the tenant/app login legal
+  links in EN/RU/AZ. Confirm privacy targets `/legal/privacy?lang=...`, never
+  `/privacy`.
