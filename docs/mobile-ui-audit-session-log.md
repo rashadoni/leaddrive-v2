@@ -172,3 +172,9 @@ This file is append-only. It preserves requirements, decisions, implementation e
 - Today currently normalizes away route-point contact detail and may show the same clinic name for two different doctors. Prefer the contact/person display name with the clinic as secondary context.
 - Team Messages has no FCM/background notification pipeline, only 30-second focused polling and foreground refresh.
 - New-doctor requests have no mobile history/status screen, and managers are not proactively pushed; they see the queue in `/mtm/contacts` on load/refresh.
+
+## 2026-09-20 — server deploy completed after Cloud checkpoint
+
+- The in-progress server status above is superseded. Production workflow `35501471856` completed successfully: quality/security, immutable build, atomic deployment, scheduler and tenant-isolation checks, public database-path ping, exact revision, login page and hashed assets all passed.
+- Independent public verification returned `{"ok":true}` from `https://app.leaddrivecrm.org/api/v1/ping` and exact deployed `artifactSha=c4f08f90ae1868cffdb666768fe9bd3ae564aea5` from `/api/v1/public/build-info`.
+- The server code for the new-doctor-request recovery is therefore live. Its physical mobile submit/approval/sync acceptance remains NOT RUN and is still the next server-backed E2E scenario for Cloud.
