@@ -891,7 +891,7 @@ implementation branch that advances the roadmap.
 | 2026-09-20 | Execution boundary | Production deployed | PR #245; merge `a7f6c2654`; deploy `35479290362` | Internal-only atomic CRM mutation/result/`succeeded` event; commit remains disabled. |
 | 2026-09-20 | Commit adapter | Production deployed | PR #249; merge `ffcbaa3a4`; active artifact `a9891d6cb`; deploy `35499744499` | Session-only endpoint and three rate-limit scopes are live; receipt UI remains open and no model write-tool is exposed. |
 | 2026-09-20 | Receipt UI shell (U1.1-U1.3) | Production deployed | PR #257; merge `1bbc59e1e`; active artifact `6cca1a5a8`; deploy `35512069725` | Shadow mode: session-scoped store, anchored desktop panel, mobile bottom sheet. No confirm control, no write request, no model commit tool. |
-| 2026-09-20 | Voice actions end to end (U1.4-U1.13, V1.1-V1.5, V1.7) | Code complete | Targeted Vitest: 121 files / 1211 tests green, 2 known-baseline reds unchanged; targeted ESLint; i18n parity; runner policy | Speech now prepares a receipt for create_task, create_lead and update_lead; an explicit button executes it. Lead status is inside the voice allow-list, `converted` is not. U1.9a, V1.2a, V1.6 and V1.8-V1.10 remain open. |
+| 2026-09-20 | Voice actions end to end (U1.4-U1.13, V1.1-V1.5, V1.7) | Production deployed | PR #268; merge `32483389c`; active artifact `32483389c776e01ff5e444b8c69f72f61c9be6ef`; deploy `35517342493` | Speech now prepares a receipt for create_task, create_lead and update_lead; an explicit button executes it. Lead status is inside the voice allow-list, `converted` is not. U1.9a, V1.2a, V1.6 and V1.8-V1.10 remain open. |
 
 ## 21. References
 
