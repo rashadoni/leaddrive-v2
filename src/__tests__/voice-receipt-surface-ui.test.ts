@@ -128,6 +128,12 @@ async function render(node: ReturnType<typeof createElement>) {
   })
 }
 
+/** React tracks the value on the node, so a plain assignment is swallowed. */
+function nativeInputValue(input: HTMLInputElement, value: string) {
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set
+  setter?.call(input, value)
+}
+
 async function click(testId: string) {
   const el = document.querySelector<HTMLElement>(`[data-testid="${testId}"]`)
   expect(el, `missing [data-testid="${testId}"]`).not.toBeNull()
@@ -494,5 +500,86 @@ describe("accessibility", () => {
 
     expect(document.querySelector('[data-testid="voice-receipt-outcome"]')?.getAttribute("role"))
       .toBe("alert")
+  })
+})
+
+describe("correcting a draft without re-dictating it", () => {
+  async function openEditor() {
+    fetchMock.mockReturnValueOnce(jsonResponse(serverReceipt()))
+    await render(createElement(VoiceReceiptSurface, { voiceSessionId: SESSION }))
+    await click("voice-receipt-edit")
+  }
+
+  it("turns the fields into inputs holding what the server normalized", async () => {
+    await openEditor()
+    const input = document.querySelector<HTMLInputElement>(
+      '[data-testid="voice-receipt-input-contactName"]',
+    )
+    expect(input?.value).toBe("Ali Mammadov")
+    // The read view is gone while editing; two versions of the same values on
+    // screen is how a user confirms the one they did not change.
+    expect(document.querySelector('[data-testid="voice-receipt-fields"]')).toBeNull()
+  })
+
+  it("replaces the whole payload, carrying the unedited fields", async () => {
+    await openEditor()
+
+    const input = document.querySelector<HTMLInputElement>(
+      '[data-testid="voice-receipt-input-contactName"]',
+    )
+    await act(async () => {
+      nativeInputValue(input as HTMLInputElement, "Ali Mammadli")
+      input?.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+
+    fetchMock.mockReturnValueOnce(jsonResponse(serverReceipt({ revision: 4 })))
+    await click("voice-receipt-save-edit")
+
+    const patch = (fetchMock.mock.calls as [string, RequestInit][])
+      .find(([, init]) => init?.method === "PATCH")
+    expect(patch?.[0]).toBe("/api/v1/ai/voice/actions/intent-1")
+    expect(JSON.parse(String(patch?.[1].body))).toEqual({
+      // The compare-and-swap token is the revision that was on screen.
+      expectedRevision: 3,
+      payload: { contactName: "Ali Mammadli", phone: "+994 50 123 45 67" },
+    })
+  })
+
+  it("shows the saved draft and leaves edit mode", async () => {
+    await openEditor()
+    fetchMock.mockReturnValueOnce(jsonResponse(serverReceipt({ revision: 4 })))
+    await click("voice-receipt-save-edit")
+
+    expect(document.querySelector('[data-testid="voice-receipt-form"]')).toBeNull()
+    expect(document.querySelector('[data-testid="voice-receipt-confirm"]')).not.toBeNull()
+  })
+
+  // While the form is open the payload on screen is not the payload the server
+  // holds, so committing it would confirm something the user is not looking at.
+  it("offers no confirm button while the form is open", async () => {
+    await openEditor()
+    expect(document.querySelector('[data-testid="voice-receipt-confirm"]')).toBeNull()
+    expect(document.querySelector('[data-testid="voice-receipt-cancel"]')).toBeNull()
+    expect(document.querySelector('[data-testid="voice-receipt-save-edit"]')).not.toBeNull()
+  })
+
+  it("discards the edits when the user backs out", async () => {
+    await openEditor()
+    const before = fetchMock.mock.calls.length
+    await click("voice-receipt-edit-cancel")
+
+    expect(document.querySelector('[data-testid="voice-receipt-form"]')).toBeNull()
+    expect(text("voice-receipt-after-contactName")).toBe("Ali Mammadov")
+    // Backing out of a form is not a server operation.
+    expect(fetchMock.mock.calls.length).toBe(before)
+  })
+
+  it("reports a draft that moved underneath instead of overwriting it", async () => {
+    await openEditor()
+    fetchMock.mockReturnValueOnce(errorResponse(409, "INTENT_REVISION_MISMATCH"))
+    await click("voice-receipt-save-edit")
+
+    expect(panel()?.dataset.outcome).toBe("stale")
+    expect(text("voice-receipt-outcome")).toBe("receipt.result.stale")
   })
 })

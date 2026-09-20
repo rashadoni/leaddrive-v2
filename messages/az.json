@@ -24034,6 +24034,9 @@
       "retry": "Yenidən cəhd et",
       "refresh": "Qaralamanı yenilə",
       "openResult": "Qeydi aç",
+      "edit": "Dəyiş",
+      "saveDraft": "Qaralamanı saxla",
+      "cancelEdit": "Redaktəni ləğv et",
       "state": {
         "collecting": "Toplanır",
         "awaiting_confirmation": "Təsdiqinizi gözləyir",

@@ -124,3 +124,114 @@ export function VoiceReceiptFieldList({
     </dl>
   )
 }
+
+/**
+ * What the user typed, per field. A string is what a text input gives back;
+ * `null` means the field was cleared.
+ */
+export type ReceiptEdits = Readonly<Record<string, string | number | boolean | null>>
+
+/**
+ * Rebuild the whole payload for a PATCH, because the endpoint replaces rather
+ * than merges.
+ *
+ * Built from EVERY preview field, not just the visible ones, so that hiding a
+ * field from the reader stays a presentation choice and can never drop it from
+ * the payload. Only the values come from the edits.
+ *
+ * `expectedUpdatedAt` is not among them: no action previews it, because
+ * `bindTarget` re-derives that token from the live record on every draft
+ * write. That is what makes an edit revalidate against the record as it is
+ * now, rather than as it was when the draft was first prepared.
+ *
+ * A cleared field is omitted rather than sent as null or "". Omission means
+ * "do not set this", which is correct for a create — several create schemas
+ * reject null outright — and means "do not change this" for an update. Clearing
+ * a saved value is a separate gesture this form does not offer, rather than one
+ * it half-implements.
+ *
+ * Rebuilding from the preview is lossless because the registry previews every
+ * field a voice caller may send, except the server-derived `expectedUpdatedAt`;
+ * `voice-receipt-edit.test.ts` pins exactly that.
+ */
+export function buildEditedReceiptPayload(
+  fields: readonly VoiceReceiptField[],
+  edits: ReceiptEdits,
+): Record<string, unknown> {
+  const payload: Record<string, unknown> = {}
+  for (const field of fields) {
+    const edited = Object.prototype.hasOwnProperty.call(edits, field.key)
+    const value = edited ? edits[field.key] : field.after
+    if (value === null || value === undefined) continue
+    if (typeof value === "string" && value.trim() === "") continue
+    payload[field.key] = typeof value === "string" && typeof field.after === "number"
+      ? Number(value)
+      : value
+  }
+  return payload
+}
+
+/** The value a text input should start from. */
+export function editableFieldValue(field: VoiceReceiptField): string | boolean {
+  if (typeof field.after === "boolean") return field.after
+  if (field.after === null || field.after === undefined) return ""
+  if (typeof field.after === "number") return String(field.after)
+  if (typeof field.after === "string") return field.after
+  return JSON.stringify(field.after)
+}
+
+export function VoiceReceiptFieldForm({
+  fields,
+  edits,
+  onChange,
+  label,
+}: {
+  fields: readonly VoiceReceiptField[]
+  edits: ReceiptEdits
+  onChange: (key: string, value: string | boolean) => void
+  label: (field: VoiceReceiptField) => string
+}) {
+  const visible = visibleReceiptFields(fields)
+  if (visible.length === 0) return null
+
+  return (
+    <div data-testid="voice-receipt-form" className="space-y-2">
+      {visible.map((field) => {
+        const current = Object.prototype.hasOwnProperty.call(edits, field.key)
+          ? edits[field.key]
+          : editableFieldValue(field)
+        const isBoolean = typeof editableFieldValue(field) === "boolean"
+        const inputId = `voice-receipt-field-${field.key}`
+        return (
+          <div key={field.key} className="flex items-center gap-2">
+            <label htmlFor={inputId} className="w-28 shrink-0 truncate text-muted-foreground">
+              {label(field)}
+            </label>
+            {isBoolean
+              ? (
+                <input
+                  id={inputId}
+                  type="checkbox"
+                  data-testid={`voice-receipt-input-${field.key}`}
+                  checked={current === true}
+                  onChange={(event) => onChange(field.key, event.target.checked)}
+                  className="h-5 w-5 rounded border outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                />
+              )
+              : (
+                <input
+                  id={inputId}
+                  type="text"
+                  data-sentry-mask
+                  data-testid={`voice-receipt-input-${field.key}`}
+                  value={typeof current === "string" ? current : String(current ?? "")}
+                  onChange={(event) => onChange(field.key, event.target.value)}
+                  className="h-9 min-w-0 flex-1 rounded-md border bg-background px-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                />
+              )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}

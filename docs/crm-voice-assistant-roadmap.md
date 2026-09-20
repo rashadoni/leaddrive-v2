@@ -539,7 +539,14 @@ Start this phase in shadow mode with commit disabled.
 - [x] U1.9 Add retry, open-result and safe recovery actions. Editing the
       receipt's fields in place is NOT done: correcting by voice re-drafts, and
       an in-panel form is a separate design. Tracked as U1.9a below.
-- [ ] U1.9a Edit a prepared receipt in place, without re-dictating it.
+- [x] U1.9a Edit a prepared receipt in place, without re-dictating it. The
+      form rebuilds the whole payload, because `PATCH /actions/:id` replaces
+      rather than merges, and sends the revision that was on screen as the
+      compare-and-swap token. A cleared field is omitted rather than sent as
+      null: omission means "do not set this" on a create — several create
+      schemas reject null outright — and "do not change this" on an update.
+      Clearing a saved value stays a separate gesture rather than a
+      half-implemented one.
 - [x] U1.10 Restore an active draft after reload or reconnect, via
       `GET /actions/active` bound to the authenticated voice session.
 - [x] U1.11 Add all terminal and error states. Failures are classified by what
@@ -905,6 +912,7 @@ implementation branch that advances the roadmap.
 | 2026-09-20 | Execution boundary | Production deployed | PR #245; merge `a7f6c2654`; deploy `35479290362` | Internal-only atomic CRM mutation/result/`succeeded` event; commit remains disabled. |
 | 2026-09-20 | Commit adapter | Production deployed | PR #249; merge `ffcbaa3a4`; active artifact `a9891d6cb`; deploy `35499744499` | Session-only endpoint and three rate-limit scopes are live; receipt UI remains open and no model write-tool is exposed. |
 | 2026-09-20 | Receipt UI shell (U1.1-U1.3) | Production deployed | PR #257; merge `1bbc59e1e`; active artifact `6cca1a5a8`; deploy `35512069725` | Shadow mode: session-scoped store, anchored desktop panel, mobile bottom sheet. No confirm control, no write request, no model commit tool. |
+| 2026-09-20 | Edit a receipt in place (U1.9a) | Code complete | Targeted Vitest 1430 green / 2 known-baseline reds; targeted ESLint; i18n parity; pii-columns | Fields become inputs, the save replaces the payload under the on-screen revision, and no confirm button exists while the form is open. |
 | 2026-09-20 | Untrusted record text (V1.6) | Code complete | Targeted Vitest 897 green across 89 voice/gemini files; targeted ESLint; i18n parity | Record text declared data, not instructions. The stale read-only claim removed from the prompt and from the user-facing copy it had also made false. |
 | 2026-09-20 | Deal creation by voice (V1.2a) | Code complete | Targeted Vitest 1386 green / 2 known-baseline reds; targeted ESLint; i18n parity | `propose_create_deal` resolves company and contact by name and reads the org's own entry stage. No stage, pipeline, probability or id from the model. |
 | 2026-09-20 | Lead conversion by voice | Production deployed | PR #274; merge `685b21857`; active artifact `68f4d358773adef3f123d504d49016268aab707b`; deploy `35520924701` | `propose_convert_lead_to_deal` runs the transactional conversion command, so the deal the word promises is actually created. No stage or pipeline from the model. |
