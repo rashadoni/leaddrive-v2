@@ -90,9 +90,32 @@ export async function notifyAgents(input: NotifyAgentsInput): Promise<NotifyAgen
     })
   }
 
-  return {
+  const result: NotifyAgentsResult = {
     sent: deliveries.filter((delivery) => delivery.ok).length,
     failed: deliveries.filter((delivery) => !delivery.ok).length,
     retired: retire.length,
   }
+
+  /**
+   * One line when a round delivered nothing.
+   *
+   * Everything above is fire-and-forget by design, and the call sites catch
+   * only a throw — so a push that Google refuses used to leave no trace at
+   * all. That is the worst shape a failure can take here: the manager sees
+   * the message saved, the agent's phone stays silent, and nobody can tell
+   * whether it was the phone, the address or the server. Counts and an error
+   * code carry no customer data and are exactly what the next person needs.
+   */
+  if (result.sent === 0 && result.failed > 0) {
+    const firstError = deliveries.find((delivery) => !delivery.ok && "error" in delivery)
+    console.warn(
+      "[mtm/push] nothing delivered — addresses=%d failed=%d retired=%d firstError=%s",
+      tokens.length,
+      result.failed,
+      result.retired,
+      firstError && !firstError.ok ? firstError.error : "unknown",
+    )
+  }
+
+  return result
 }

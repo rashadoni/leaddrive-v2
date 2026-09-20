@@ -79,6 +79,47 @@ describe("delivering to the agents' phones", () => {
     expect(send).not.toHaveBeenCalled()
   })
 
+  /**
+   * Fire-and-forget plus a resolved promise means a refused push leaves no
+   * trace: the message is saved, the phone is silent, and nothing says which
+   * of the three parts failed. One line with counts and the error code costs
+   * nothing and carries no customer data.
+   */
+  it("says so in the log when a round delivered nothing", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const db = client(["t-1", "t-2"])
+    const send = vi.fn().mockResolvedValue([
+      { token: "t-1", ok: false, retire: false, error: "HTTP_403" },
+      { token: "t-2", ok: false, retire: false, error: "HTTP_403" },
+    ])
+    const result = await notifyAgents({
+      client: db, organizationId: "org-1", agentIds: ["agent-1"],
+      title: "x", body: "y", configured: true, send: send as never,
+    })
+    expect(result).toMatchObject({ sent: 0, failed: 2 })
+    const line = warn.mock.calls.map((call) => call.join(" ")).join("\n")
+    expect(line).toContain("[mtm/push] nothing delivered")
+    expect(line).toContain("HTTP_403")
+    // Never the address itself: the log is for counts and causes.
+    expect(line).not.toContain("t-1")
+    warn.mockRestore()
+  })
+
+  it("stays quiet when at least one phone got it", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const db = client(["t-1", "t-2"])
+    const send = vi.fn().mockResolvedValue([
+      { token: "t-1", ok: true },
+      { token: "t-2", ok: false, retire: false, error: "NETWORK" },
+    ])
+    await notifyAgents({
+      client: db, organizationId: "org-1", agentIds: ["agent-1"],
+      title: "x", body: "y", configured: true, send: send as never,
+    })
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
   it("keeps the lock-screen line short and on one line", () => {
     expect(pushBody("  два   пробела\nи перенос  ")).toBe("два пробела и перенос")
     const long = pushBody("я".repeat(400))
