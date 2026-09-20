@@ -44,7 +44,16 @@ describe("dashboard AI launcher placement", () => {
     expect(voiceConsole).toContain("if (orbPortalTarget) return createPortal(orbControl, orbPortalTarget)")
     expect(voiceConsole).toContain("if (!showFloatingOrb) return null")
     expect(voiceConsole).toContain('inline ? "h-9 w-9" : "h-14 w-14"')
-    expect(voiceConsole).toContain("const showInlineMessage = Boolean(error || notice || micSilent || transcriptionWarning)")
+    // The inline line appears only when there is something to say. Its list of
+    // conditions grows as new warnings are added (unapplied noise suppression,
+    // 2026-09-20), so pin that each one participates rather than their order —
+    // the previous literal broke on an addition that was entirely correct.
+    const inlineMessage = voiceConsole.match(/const showInlineMessage = Boolean\(([^)]*)\)/)
+    expect(inlineMessage, "showInlineMessage must stay a single Boolean of the message conditions")
+      .not.toBeNull()
+    for (const condition of ["error", "notice", "micSilent", "transcriptionWarning", "noiseSuppressionOff"]) {
+      expect(inlineMessage?.[1], condition).toContain(condition)
+    }
     expect(voiceConsole).toContain("showInlineMessage")
     expect(voice).toContain('data-placement={activeInlineHost ? "inline" : "floating"}')
     expect(voiceConsole).toContain('data-placement={inline ? "inline" : "floating"}')
