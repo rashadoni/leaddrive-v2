@@ -74,3 +74,30 @@
 - For the record, `leaddrivecrm.org/legal/{privacy,terms,data-deletion}`
   already `302` to the app's localized pages, so the destinations are reachable
   from that host even though the footer does not advertise them.
+
+## 2026-09-20 — marketing footer: resolved, no change needed
+
+Owner's instruction was conditional: add the CRM legal links to the
+`leaddrivecrm.org` footer **if Meta requires it**. Meta does not, so the
+footer is left alone.
+
+- Meta's requirement is that the Privacy Policy, Terms of Service and User Data
+  Deletion URLs are set in the App Dashboard (Settings → Basic) and resolve
+  publicly over HTTPS without a login or any other user action. Footer
+  placement is a general discoverability practice, not a Meta rule, and it is
+  absent from Meta's Basic Settings documentation.
+- The URLs actually submitted to Meta are the ones in
+  `docs/meta-app-review-submission.md`, and all three were re-verified
+  end-to-end on 2026-09-20, unauthenticated and with no cookies:
+  - `https://www.leaddrivecrm.org/legal/privacy` → 302 →
+    `app.leaddrivecrm.org/legal/privacy?lang=en` → 200, `<h1>Privacy Policy`
+  - `.../legal/terms` → 200, `<h1>Terms of Service`
+  - `.../legal/data-deletion` → 200, `<h1>Data Deletion Instructions`
+  One hop each, English, no login wall. This is exactly what a reviewer opens.
+- So the open point recorded earlier in this log is closed. The
+  `rashadoni/leaddrive-site` footer keeps linking its own `/privacy`, which is
+  the FANUM MMC operator policy and a current document in its own right, not a
+  stale copy of the CRM policy.
+- If the footer is ever revisited, it is a product decision about visitor
+  discoverability, not a compliance blocker, and the work belongs in
+  `rashadoni/leaddrive-site`.
