@@ -9,16 +9,12 @@ permissions from one login surface into the review for another.
 
 ## Public URLs
 
-Use these application-host URLs until the separately managed Cloudflare
-marketing site serves the same '/legal/*' routes:
+Use these canonical public URLs. They redirect to the matching English CRM
+document and work without authentication:
 
-- Privacy Policy: 'https://app.leaddrivecrm.org/legal/privacy?lang=en'
-- Terms of Service: 'https://app.leaddrivecrm.org/legal/terms?lang=en'
-- Data Deletion: 'https://app.leaddrivecrm.org/legal/data-deletion?lang=en'
-
-The desired canonical URLs are the equivalent paths on
-'https://www.leaddrivecrm.org'. They currently require a Cloudflare route
-change outside this repository.
+- Privacy Policy: 'https://www.leaddrivecrm.org/legal/privacy'
+- Terms of Service: 'https://www.leaddrivecrm.org/legal/terms'
+- Data Deletion: 'https://www.leaddrivecrm.org/legal/data-deletion'
 
 ## Permission matrix
 
@@ -96,6 +92,8 @@ fields:
 5. Open the new conversation in LeadDrive Inbox.
 6. Send a clearly test-labelled reply from LeadDrive.
 7. Show the reply on the sender side.
+8. Convert the conversation into a lead, assign the synthetic sales user, and
+   show the resulting linked lead.
 
 For comment permissions, use a separate test post/comment and show the comment
 appearing in Social Monitoring followed by an operator reply. Do not use a
@@ -135,6 +133,8 @@ The deterministic setup and recording checklist are in
 - [ ] The 'leaddrive' reviewer workspace and Meta test assets show only
       synthetic review data; no customer records are visible.
 - [ ] Inbound message and outbound reply are visible in each messaging clip.
+- [ ] The same synthetic conversation is converted to a lead and the linked
+      lead is visible.
 - [ ] WhatsApp Embedded Signup is implemented before claiming shared-app
       WhatsApp onboarding.
 

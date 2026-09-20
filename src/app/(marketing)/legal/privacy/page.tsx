@@ -78,6 +78,8 @@ export default async function PrivacyPage({ searchParams }: { searchParams: Prom
                 <li>{t("p5_l5")}</li>
                 <li>{t("p5_l6")}</li>
                 <li>{t("p5_l7")}</li>
+                <li>{t("p5_l8")}</li>
+                <li>{t("p5_l9")}</li>
               </ul>
               <p className="mt-3">{t("p5_note")}</p>
             </section>

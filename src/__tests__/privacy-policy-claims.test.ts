@@ -43,7 +43,10 @@ describe.each(LOCALES)("privacy policy — %s", locale => {
   })
 
   it("names every subprocessor that receives personal data", () => {
-    const listed = [p.p5_l1, p.p5_l2, p.p5_l3, p.p5_l4, p.p5_l5, p.p5_l6, p.p5_l7].join(" ")
+    const listed = [
+      p.p5_l1, p.p5_l2, p.p5_l3, p.p5_l4, p.p5_l5,
+      p.p5_l6, p.p5_l7, p.p5_l8, p.p5_l9,
+    ].join(" ")
     for (const provider of ["Contabo", "Cloudflare", "Meta", "Anthropic", "OpenAI", "Google", "Sentry"]) {
       expect(listed, `${provider} receives personal data and must be named`).toContain(provider)
     }
@@ -82,7 +85,7 @@ describe.each(LOCALES)("privacy policy — %s", locale => {
 describe("the privacy page renders the corrected sections", () => {
   const page = readFileSync("src/app/(marketing)/legal/privacy/page.tsx", "utf8")
 
-  it.each(["p5_l1", "p5_l5", "p5_l7", "p5_note", "p7_note"])(
+  it.each(["p5_l1", "p5_l5", "p5_l7", "p5_l9", "p5_note", "p7_note"])(
     "renders %s — a translated key nothing displays is not a disclosure",
     key => {
       expect(page).toContain(`t("${key}")`)

@@ -132,3 +132,98 @@ Audit of existing legal pages, routing, Meta OAuth scopes, persisted data, reten
 - Corrected the isolated mock, aligned the OAuth assertion with Instagram
   Login, and replaced the remaining public/commercial identity copies with the
   registered '"FANUM" MMC' name across all locales and the proposal deck.
+
+## 2026-09-20 — production release and reviewer account
+
+- PR 250 ('https://github.com/rashadoni/leaddrive-v2/pull/250') passed its
+  corrected static and typecheck gates and was merged to 'main' as
+  'a9891d6cb6d46ea56e8177eb6dfe298da4ec21bf'.
+- GitHub Actions production run 35499744499 completed successfully, including
+  the immutable build artifact, quality/security jobs, Contabo deployment and
+  post-deploy smoke checks.
+- External logged-out smoke returned HTTP 200 for '/api/v1/ping',
+  '/legal/privacy?lang=en', '/legal/terms?lang=en' and
+  '/legal/data-deletion?lang=en'; the legal pages rendered their expected
+  English titles.
+- Manual workflow run 35500612435 completed successfully and upserted the
+  dedicated admin 'meta-review@leaddrivecrm.org' in the existing 'leaddrive'
+  tenant-poligon. Its generated password remains only in the root-readable
+  production file '/root/leaddrive-credentials/leaddrive-meta-review.pass'; no
+  credential was copied into GitHub Actions, source control or this journal.
+- The Meta demo recording remains pending. It requires owner-supplied Meta
+  test assets/login plus a synthetic sender so the complete connect -> inbound
+  message -> CRM reply flow can be captured without customer data.
+- WhatsApp shared-app onboarding remains a documented implementation gap:
+  webhook send/receive and manual tenant credentials exist, but Meta Embedded
+  Signup is not yet implemented and must not be claimed in App Review.
+
+## 2026-09-20 — connection preflight exposed old live app IDs
+
+- User authorised connecting the Meta test assets to the existing 'leaddrive'
+  tenant-poligon.
+- Read-only production workflow 35501149218 confirmed that the shared runtime
+  still uses Facebook App ID '1276226757359622' and Instagram App ID
+  '782807994549098', not the review App ID '2414060595720618'. Both old app
+  secrets and redirect URIs are present.
+- Read-only tenant workflow 35501246096 confirmed that 'leaddrive' has no
+  complete tenant app configuration for '2414060595720618'. Its existing
+  Facebook/Instagram account rows are bound to old app IDs and include real
+  historical page names, so they must not be used as synthetic reviewer
+  evidence.
+- No OAuth connection was started against the wrong app. The CRM Channels page
+  and Meta dashboard for App ID '2414060595720618' were opened for the owner.
+  The remaining mandatory step is an interactive Meta login/2FA plus secure
+  provision of that app's secret; neither can be recovered from source control
+  or bypassed by automation.
+- Added a safe diagnostic that prints tenant Meta app IDs and only boolean
+  secret/verify-token presence. It never prints secret or token values.
+
+## 2026-09-20 — legal precision, provider audit and safe replacement flow
+
+- Reconfirmed the active task route before production work: repository
+  'rashadoni/leaddrive-v2', branch 'codex/meta-app-review', registered
+  production host '13.140.132.245', application path '/opt/leaddrive-v2', and
+  GitHub Actions as the only release path. The obsolete Hetzner application
+  server and old 'rashadrahimov' GitHub identity remain superseded; Hetzner
+  Object Storage is still an actual backup subprocessor and is not the old
+  application server.
+- Public processor disclosures were aligned to the inspected implementation:
+  Contabo production hosting in France; immutable Hetzner Object Storage
+  backups in Helsinki with 16/63/400-day retention; Cloudflare edge services;
+  Meta; optional Anthropic, OpenAI and Google AI/OCR paths; and Bright Data for
+  public Social Monitoring rather than private Meta inbox messages.
+- Safe production presence checks confirmed Anthropic, OpenAI, Gemini, Google
+  Vision and Bright Data credentials; Apify and Azure Speech were absent.
+  The Google Vision provider defaults active when its provider selector is
+  unset. No secret or token value was printed. Bright Data's live-routing flag
+  is being added to the read-only diagnostic so configured credentials are not
+  confused with an enabled transfer.
+- The privacy policy now states actual Meta fields, purposes, staff/provider
+  access, AI payload boundaries, active-system deletion within 30 days and
+  immutable-backup expiry up to 400 days. Translation parity and diff checks
+  passed locally.
+- Found and fixed a replacement-flow defect before connection: the Meta
+  connect guide's default 'new' mode could reuse and edit the existing live
+  channel row. New mode now keeps a fresh row, existing mode selects the live
+  row, and a fresh Instagram row defaults to the separate Instagram Login
+  surface. No existing tenant connection was mutated.
+- Updated the reviewer runbook with exact Facebook/Instagram callback and
+  tenant webhook URLs, parallel-row setup, a required synthetic sales assignee
+  and the final conversation-to-lead step. Video capture remains blocked until
+  the separate Meta-settings session securely saves the new Facebook and
+  Instagram Login app credentials and provides test-only social assets.
+- Read-only production runs 35503001643 and 35503009776 confirmed Bright Data
+  live routing is enabled globally but the `leaddrive` tenant has its paid
+  collection emergency stop active and no current operational provider run.
+  The tenant has 12 active `sales` assignees, so conversation-to-lead does not
+  require creating another CRM user. App IDs remain the old values and no new
+  Meta app row was created.
+- PR 252 CI found that the expanded list had accidentally displaced Sentry
+  from the rendered disclosure. Sentry is restored as a named diagnostic
+  subprocessor, its configurable US/Germany storage region and project-based
+  retention are disclosed, and the safe diagnostic now reports only the DSN
+  hostname so the active region can be resolved without exposing credentials.
+- Follow-up read-only run 35503210122 confirmed that neither server nor public
+  Sentry DSN is configured in the canonical production environment. Sentry is
+  therefore disclosed as an optional/code-supported provider, not reported as
+  a current production transfer.

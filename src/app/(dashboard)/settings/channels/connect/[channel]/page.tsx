@@ -2540,14 +2540,14 @@ function ChannelConnectInner() {
   const orgId = session?.user?.organizationId
   const orgSlug = session?.user?.organizationSlug
   const isWhatsAppCallingGuide = guide?.id === "whatsapp-business-calls"
-  // Facebook/Instagram connect in one OAuth click, which creates the ChannelConfig server-side. The
-  // card must then EDIT that row: without the snapshot the form stays in create mode and a save
-  // would produce a second channel of the same type.
+  // Meta OAuth creates the delivering ChannelConfig server-side. "Existing" must edit that row,
+  // while "new" must stay a fresh row so a tenant can stage a replacement app without touching its
+  // currently delivering connection.
   const isMetaOneClickGuide = guide?.formChannelId === "facebook" || guide?.formChannelId === "instagram"
-  // The callback reports what the OAuth wired for the whole Meta login, not for the card the user is
-  // standing on — and the Instagram card deliberately starts the FACEBOOK flow, because IG Direct is
-  // delivered through the linked Page's webhook. So a Page with no linked Instagram business account
-  // comes back as ?connected=facebook&pages=1&ig=0: real for Facebook, nothing at all for Instagram.
+  // A Facebook callback reports every asset wired by that Facebook Login round trip, not merely the
+  // catalog card the user stood on. A Page with no linked Instagram business account can therefore
+  // come back as ?connected=facebook&pages=1&ig=0: real for Facebook, nothing for Instagram. The
+  // separate Instagram Login card returns through its own callback and reports the IG account.
   // A green "Channel connected" on the Instagram card in that state is simply false, and it is the
   // state the user is least able to diagnose on their own — hence the explicit explanation below.
   const oauthPageCount = positiveCountParam(oauthPages)
@@ -2659,6 +2659,7 @@ function ChannelConnectInner() {
             guide.formChannelId === "atl-sms" ? { smsProvider: "atl" } :
             guide.formChannelId === "twilio-sms" ? { smsProvider: "twilio" } :
             guide.formChannelId === "vonage-sms" ? { smsProvider: "vonage" } :
+            guide.formChannelId === "instagram" ? { igLogin: true } :
             undefined,
           isActive: true,
         }
@@ -2687,7 +2688,7 @@ function ChannelConnectInner() {
           displayName: whatsappMessagingChannel.displayName || undefined,
           settings: whatsappMessagingChannel.settings || undefined,
         }
-      : isMetaOneClickGuide && metaFormInitialData
+      : isMetaOneClickGuide && mode === "existing" && metaFormInitialData
       ? metaFormInitialData
       : formInitialData
 

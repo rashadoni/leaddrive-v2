@@ -37,6 +37,19 @@ describe("Meta App Review public contract", () => {
     expect(start).toContain('"instagram_business_manage_messages"')
   })
 
+  it("stages replacement Meta apps without editing an existing live connection", () => {
+    const connect = readFileSync(
+      "src/app/(dashboard)/settings/channels/connect/[channel]/page.tsx",
+      "utf8",
+    )
+    expect(connect).toContain(
+      'isMetaOneClickGuide && mode === "existing" && metaFormInitialData',
+    )
+    expect(connect).toContain(
+      'guide.formChannelId === "instagram" ? { igLogin: true }',
+    )
+  })
+
   it("does not promise an unimplemented deletion callback or account button", () => {
     for (const locale of LOCALES) {
       const deletion = JSON.parse(
