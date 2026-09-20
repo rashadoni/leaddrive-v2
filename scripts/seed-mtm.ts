@@ -313,9 +313,9 @@ async function main() {
         defaultAction("PRESENTATION", "REQUIRED"),
         defaultAction("STOCK_CHECK", "OPTIONAL"),
         defaultAction("VISIT_NOTE", "OPTIONAL"),
-        defaultAction("CHECKLIST", "OPTIONAL"),
+        defaultAction("CHECKLIST", "HIDDEN"),
         defaultAction("FEEDBACK", "OPTIONAL"),
-        defaultAction("NEXT_ACTION", "REQUIRED", { objectTypes: ["DOCTOR"] }),
+        defaultAction("NEXT_ACTION", "HIDDEN"),
       ],
     },
     {
@@ -326,9 +326,9 @@ async function main() {
         defaultAction("PRESENTATION", "HIDDEN"),
         defaultAction("STOCK_CHECK", "REQUIRED"),
         defaultAction("VISIT_NOTE", "OPTIONAL"),
-        defaultAction("CHECKLIST", "OPTIONAL"),
+        defaultAction("CHECKLIST", "HIDDEN"),
         defaultAction("FEEDBACK", "OPTIONAL"),
-        defaultAction("NEXT_ACTION", "OPTIONAL"),
+        defaultAction("NEXT_ACTION", "HIDDEN"),
       ],
     },
   ]

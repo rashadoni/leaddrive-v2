@@ -17,7 +17,7 @@ import {
   type VisitPolicyUiAccess,
 } from "@/lib/mtm/visit-policy-ui-access"
 
-const ACTION_KEYS = ["PHOTO", "PRESENTATION", "STOCK_CHECK", "VISIT_NOTE", "CHECKLIST", "FEEDBACK", "NEXT_ACTION", "SIGNATURE"] as const
+const ACTION_KEYS = ["PHOTO", "PRESENTATION", "STOCK_CHECK", "VISIT_NOTE", "FEEDBACK", "SIGNATURE"] as const
 const MODES = ["REQUIRED", "OPTIONAL", "HIDDEN"] as const
 const CATEGORIES = ["A", "B", "C", "D"] as const
 const OBJECT_TYPES = ["PHARMACY", "CLINIC", "DOCTOR", "STORE", "OTHER"] as const

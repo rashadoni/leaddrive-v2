@@ -15,6 +15,17 @@ export const MTM_VISIT_ACTION_KEYS = [
 export type MtmVisitActionKey = typeof MTM_VISIT_ACTION_KEYS[number]
 export type MtmRequirementMode = "REQUIRED" | "OPTIONAL" | "HIDDEN"
 
+/**
+ * These generic form steps were part of the original policy prototype, but
+ * duplicate the focused task/result flows used by field agents. Keep the keys
+ * for historical records while preventing them from appearing in, or blocking,
+ * the simplified mobile visit.
+ */
+export const MTM_SIMPLIFIED_VISIT_HIDDEN_ACTIONS: ReadonlySet<string> = new Set([
+  "CHECKLIST",
+  "NEXT_ACTION",
+])
+
 export interface ResolvedVisitRequirement {
   actionKey: MtmVisitActionKey
   mode: MtmRequirementMode
@@ -57,7 +68,13 @@ export function visitPoliciesEnabled(stored: unknown): boolean {
 }
 
 function defaultRequirement(actionKey: MtmVisitActionKey): ResolvedVisitRequirement {
-  return { actionKey, mode: "OPTIONAL", minCount: 1, conditions: null, allowWaiver: false }
+  return {
+    actionKey,
+    mode: MTM_SIMPLIFIED_VISIT_HIDDEN_ACTIONS.has(actionKey) ? "HIDDEN" : "OPTIONAL",
+    minCount: 1,
+    conditions: null,
+    allowWaiver: false,
+  }
 }
 
 export async function resolveMtmVisitPolicy(
@@ -145,6 +162,7 @@ export async function resolveMtmVisitPolicy(
     sourcePolicyId: selected.id,
     sourcePolicyName: selected.name,
     requirements: MTM_VISIT_ACTION_KEYS.map((actionKey) => {
+      if (MTM_SIMPLIFIED_VISIT_HIDDEN_ACTIONS.has(actionKey)) return defaultRequirement(actionKey)
       const action = configured.get(actionKey)
       if (!action) return defaultRequirement(actionKey)
       const matches = conditionsMatch(action.conditions, customer)

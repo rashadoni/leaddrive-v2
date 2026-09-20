@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client"
 import { mtmRoutePointCheckInLockKey } from "./route-published-diff"
-import { resolveMtmVisitPolicy } from "./visit-policies"
+import { MTM_SIMPLIFIED_VISIT_HIDDEN_ACTIONS, resolveMtmVisitPolicy } from "./visit-policies"
 
 import { coerceMtmNumberSetting } from "./setting-values"
 
@@ -216,6 +216,9 @@ export async function getVisitCompletionReadiness(
   }
 
   const missing = requirements.flatMap((requirement) => {
+    // Historical snapshots can still contain these retired prototype steps as
+    // REQUIRED. They must not trap an agent inside an already-started visit.
+    if (MTM_SIMPLIFIED_VISIT_HIDDEN_ACTIONS.has(requirement.actionKey)) return []
     const completedCount = completed.get(requirement.actionKey) ?? 0
     const requiredCount = effectiveRequirementMinCount(requirement.actionKey, requirement.minCount, maxPhotosPerVisit)
     return completedCount < requiredCount ? [{

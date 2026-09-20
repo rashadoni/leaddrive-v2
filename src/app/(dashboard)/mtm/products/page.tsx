@@ -92,7 +92,10 @@ export default function MtmProductCatalogPage() {
   const fieldAgents = agents.filter((agent) => agent.role === "AGENT")
 
   const createGroup = async () => {
-    if (!groupForm.name.trim()) return
+    if (!groupForm.name.trim()) {
+      setError(t("groupNameRequired"))
+      return
+    }
     setBusy("group")
     setError("")
     try {
@@ -104,12 +107,15 @@ export default function MtmProductCatalogPage() {
           parentId: groupForm.parentId || null,
         }),
       })
-      if (!response.ok) throw new Error()
+      if (!response.ok) {
+        const body = await response.json().catch(() => null)
+        throw new Error(body?.error || t("saveFailed"))
+      }
       setGroupForm({ name: "", parentId: "" })
       setNotice(t("groupCreated"))
       await load()
-    } catch {
-      setError(t("saveFailed"))
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : t("saveFailed"))
     } finally {
       setBusy("")
     }
@@ -144,7 +150,11 @@ export default function MtmProductCatalogPage() {
   }
 
   const createProduct = async () => {
-    if (!selectedGroup?.canManage || !productForm.name.trim() || !presentationFile) return
+    if (!selectedGroup?.canManage) return
+    if (!productForm.name.trim() || !presentationFile) {
+      setError(t("productFieldsRequired"))
+      return
+    }
     setBusy("product")
     setError("")
     try {
@@ -155,7 +165,7 @@ export default function MtmProductCatalogPage() {
       uploadBody.set("clientDocumentId", clientDocumentId)
       const uploadResponse = await fetch("/api/v1/mtm/products/upload", { method: "POST", body: uploadBody })
       const uploadJson = await uploadResponse.json().catch(() => null)
-      if (!uploadResponse.ok || !uploadJson?.data?.document?.id) throw new Error()
+      if (!uploadResponse.ok || !uploadJson?.data?.document?.id) throw new Error(uploadJson?.error || t("saveFailed"))
 
       const productResponse = await fetch("/api/v1/mtm/products", {
         method: "POST",
@@ -167,15 +177,18 @@ export default function MtmProductCatalogPage() {
           documentId: uploadJson.data.document.id,
         }),
       })
-      if (!productResponse.ok) throw new Error()
+      if (!productResponse.ok) {
+        const body = await productResponse.json().catch(() => null)
+        throw new Error(body?.error || t("saveFailed"))
+      }
       setProductForm({ name: "", version: "" })
       setPresentationFile(null)
       const fileInput = document.getElementById("mtm-product-presentation") as HTMLInputElement | null
       if (fileInput) fileInput.value = ""
       setNotice(t("productCreated"))
       await load()
-    } catch {
-      setError(t("saveFailed"))
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : t("saveFailed"))
     } finally {
       setBusy("")
     }
@@ -197,7 +210,7 @@ export default function MtmProductCatalogPage() {
           <option value="">{t("rootGroup")}</option>
           {groups.filter((group) => group.canManage).map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
         </Select>
-        <Button className="min-h-11" disabled={!groupForm.name.trim() || busy === "group"} onClick={() => void createGroup()}>
+        <Button className="min-h-11" disabled={busy === "group"} onClick={() => void createGroup()}>
           <FolderPlus className="mr-2 h-4 w-4" />{t("createGroup")}
         </Button>
       </section>
@@ -271,7 +284,7 @@ export default function MtmProductCatalogPage() {
                     <input id="mtm-product-presentation" type="file" accept=".pdf,.ppt,.pptx,application/pdf,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation" className="block min-h-11 w-full rounded-lg border border-zinc-200 bg-background p-2 text-sm dark:border-zinc-800" onChange={(event) => setPresentationFile(event.target.files?.[0] ?? null)} />
                   </label>
                 </div>
-                <Button className="mt-3 min-h-11 w-full sm:w-auto" disabled={!selectedGroup.canManage || !productForm.name.trim() || !presentationFile || busy === "product"} onClick={() => void createProduct()}>
+                <Button className="mt-3 min-h-11 w-full sm:w-auto" disabled={!selectedGroup.canManage || busy === "product"} onClick={() => void createProduct()}>
                   <FileUp className="mr-2 h-4 w-4" />{t("uploadAndCreate")}
                 </Button>
               </section>
