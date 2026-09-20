@@ -162,6 +162,7 @@ model Organization {
   mtmContactAssignmentOperations      MtmContactAssignmentOperation[]
   mtmContactChangeRequests            MtmContactChangeRequest[]
   mtmContactCreateRequests               MtmContactCreateRequest[]
+  mtmDeviceTokens                        MtmDeviceToken[]
   mtmDoctorScoringFormulas            MtmDoctorScoringFormula[]
   mtmDoctorAssessments                MtmDoctorAssessment[]
   mtmContactDictionaries              MtmContactDictionary[]
@@ -5769,6 +5770,7 @@ model MtmAgent {
   contactAssignments        MtmContactAgentAssignment[]
   contactChangeRequests     MtmContactChangeRequest[]
   contactCreateRequests                MtmContactCreateRequest[]
+  deviceTokens                         MtmDeviceToken[]
   enteredDoctorAssessments  MtmDoctorAssessment[]        @relation("MtmDoctorAssessmentEnteredBy")
   reviewedDoctorAssessments MtmDoctorAssessment[]        @relation("MtmDoctorAssessmentReviewedBy")
   fieldPotentials           MtmFieldPotential[]          @relation("MtmFieldPotentialAgent")
@@ -6363,6 +6365,36 @@ model MtmContactChangeRequest {
 
 /// Agent-proposed doctor/contact. Approval creates the contact, its clinic
 /// workplace and the requesting agent's assignment in one transaction.
+/// Where a push can actually be delivered: one row per installation.
+///
+/// The field app talks to Firebase Cloud Messaging, which addresses a device
+/// by a token it issues and rotates on its own. The token is the address, not
+/// a secret about the agent, and it belongs to the installation — signing out
+/// removes it, because the next person to sign in on that phone must not
+/// receive the previous agent's notifications.
+model MtmDeviceToken {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentId        String
+  agent          MtmAgent     @relation(fields: [organizationId, agentId], references: [organizationId, id], onDelete: Cascade)
+  token          String
+  platform       String       @default("android")
+  /// Installation identity, so a reinstall replaces its own row instead of
+  /// leaving a dead token behind.
+  deviceId       String?
+  appVersion     String?
+  lastSeenAt     DateTime     @default(now())
+  /// Set when FCM says the token is gone, instead of deleting the history.
+  disabledAt     DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([organizationId, token])
+  @@index([organizationId, agentId, disabledAt])
+  @@map("mtm_device_tokens")
+}
+
 model MtmContactCreateRequest {
   id                 String            @id @default(cuid())
   organizationId     String

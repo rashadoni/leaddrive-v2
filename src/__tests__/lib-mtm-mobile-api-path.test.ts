@@ -23,3 +23,14 @@ describe("versioned MTM mobile API path boundary", () => {
     expect(isMtmMobileApiPath("/api/v2/mtm/mobile/unknown")).toBe(false)
   })
 })
+
+describe("push registration is a mobile path", () => {
+  it("lets a mobile token reach the device registry", () => {
+    expect(isMtmApiPath("/api/v2/mtm/mobile/route-field/device-tokens")).toBe(true)
+    expect(isMtmMobileApiPath("/api/v2/mtm/mobile/route-field/device-tokens")).toBe(true)
+  })
+
+  it("keeps the allowlist exact", () => {
+    expect(isMtmApiPath("/api/v2/mtm/mobile/route-field/device-tokens/device-1")).toBe(false)
+  })
+})
