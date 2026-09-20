@@ -68,3 +68,21 @@ Audit of existing legal pages, routing, Meta OAuth scopes, persisted data, reten
 - No reviewer account was created and no recording was captured: both require
   a deployed revision plus owner-supplied Meta test assets and a dedicated
   tenant choice. No production mutation, push, merge or deploy occurred.
+
+## 2026-09-20 — marketing-host route prepared
+
+- Located the separate marketing repository at
+  'https://github.com/rashadoni/leaddrive-site.git' and created clean branch
+  'codex/meta-app-review-legal-routes'.
+- Commit '1313878' replaces the three relevant legacy home redirects with
+  exact temporary redirects from the public '/legal/privacy',
+  '/legal/terms' and '/legal/data-deletion' paths to their English public
+  app-host documents. The unrelated '/legal/*' legacy fallback remains.
+- This makes the requested 'www.leaddrivecrm.org/legal/*' entry points
+  deployable, but neither repository has been pushed, merged or deployed.
+- Meta's current Instagram API material was cross-checked against Meta's
+  official Postman workspace: the current Instagram Login scopes use the
+  'instagram_business_*' names and the older unprefixed scope names were
+  deprecated in 2025. Meta's current materials also describe Embedded Signup
+  as the onboarding path for business customers, reinforcing the identified
+  WhatsApp implementation gap.
