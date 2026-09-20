@@ -16753,7 +16753,7 @@
     "p3_l4": "Qanuni öhdəliklərimizin yerinə yetirilməsi",
     "p3_l5": "«Marşrutlar və Sahə işi» (MTM) və «Heyət» modullarından istifadə edən müştərilər üçün sahə marşrutlarının, ziyarətlərin və iş vaxtının yoxlanılması",
     "s4": "4. Məlumatların qorunması",
-    "p4": "LeadDrive qeydləri müştərilər üzrə ayırır, autentifikasiya və rol əsaslı giriş tətbiq edir. Seçilmiş həssas CRM sahələri və Social Monitoring OAuth tokenləri tətbiq səviyyəsində AES-256-GCM ilə şifrələnir. Kanal credentials-ları tətbiq cavablarında gizlədilir və yalnız səlahiyyətli server proseslərinə açıqdır, lakin ChannelConfig-də hər credential hazırda ayrıca sahə şifrələməsi ilə qorunmur. Bağlantılar TLS istifadə edir; ehtiyat nüsxələr şifrəli və saxlama müddətində dəyişdirilməzdir. Production diski ayrıca şifrələnmir.",
+    "p4": "LeadDrive qeydləri müştərilər üzrə ayırır, autentifikasiya və rol əsaslı giriş tətbiq edir. Seçilmiş həssas CRM sahələri və Social Monitoring OAuth tokenləri tətbiq səviyyəsində AES-256-GCM ilə şifrələnir. Kanal credentials-ları tətbiq cavablarında gizlədilir və yalnız səlahiyyətli server proseslərinə açıqdır, lakin ChannelConfig-də hər credential hazırda ayrıca sahə şifrələməsi ilə qorunmur. Bağlantılar TLS istifadə edir. Baza ehtiyat nüsxələri hazırda sıxılmış PostgreSQL dump-larıdır və özləri şifrələnmir; onlar production hostunda saxlanılır və ayrıca ehtiyat nüsxə hostuna köçürülür. Production diski ayrıca şifrələnmir.",
     "s5": "5. Üçüncü tərəflər və alt-emalçılar",
     "p5": "Şəxsi məlumatlarınız satılmır və icarəyə verilmir. Yalnız xidmətin işləməsi üçün zəruri olan provayderlərə ötürülür; aşağıda hər birinin nə aldığı və harada emal etdiyi göstərilib:",
     "s6": "6. Cookies",
@@ -16796,7 +16796,7 @@
     "p5_l8": "Bright Data Ltd. — şəxsi Meta Inbox mesajları deyil, seçimli açıq Social Monitoring məlumatlarının toplanması. Emal İsraildən və qlobal şəbəkə ilə idarə olunur; realtime snapshot-lar 7 gün, batch snapshot-lar 16 gün saxlanılır",
     "p5_l9": "Sentry, Inc. — seçimli tətbiq xətalarının diaqnostikası: sorğu və cihaz metadatası, stack trace-lər və maskalama nəzarətlərinə baxmayaraq şəxsi məlumat ehtiva edə bilən xəta konteksti. Sentry ABŞ və Almaniya saxlama regionları təklif edir; aktiv layihə regionu və hadisələrin saxlanma müddəti müqavilə üzrə layihə konfiqurasiyası ilə idarə olunur",
     "p5_note": "Provayder emal regionları Azərbaycan və AİA xaricində ola bilər. LeadDrive ötürməni yalnız istifadə olunan funksiya üçün lazım olan məlumatlarla məhdudlaşdırır və provayder müqavilələrindən və mövcud transfer təminatlarından istifadə edir. Yuxarıda göstərilməyən region və tarifə bağlı saxlama parametrləri nəzərdən keçirilir. Təhlükəsizlik, sui-istifadənin qarşısının alınması və legal hold istisnaları normal silinmə müddətlərini uzada bilər.",
-    "p7_note": "Yoxlanmış silmə sorğusu aktiv sistemlərdə 30 təqvim günü ərzində tamamlanır. Dəyişdirilməz şifrəli backup-lar müddət bitənədək sətir üzrə redaktə edilmir, buna görə qalıq nüsxələr 400 günədək qala və sonra avtomatik məhv edilə bilər."
+    "p7_note": "Yoxlanmış silmə sorğusu aktiv sistemlərdə 30 təqvim günü ərzində tamamlanır. Ehtiyat nüsxələr gündəlik götürülür: production hostunda son on dörd nüsxə saxlanılır və ayrıca ehtiyat nüsxə hostuna köçürülür, orada nüsxələri hazırda avtomatik cədvəl deyil, operator silir. Buna görə qalıq nüsxə həmin silinməyə qədər qala bilər; ehtiyat nüsxələr sətir üzrə redaktə edilmir."
   },
   "dataDeletion": {
     "title": "Məlumat Silmə Təlimatları",

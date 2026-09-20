@@ -10,6 +10,7 @@ import { publicChannelConfig } from "@/lib/channels/public-channel-config"
 import { channelIdsClaimedElsewhere } from "@/lib/channels/inbound-claim"
 import { emailIntakeSettingsError } from "@/lib/ticketing/email-intake"
 import { validateChatwootBaseUrl } from "@/lib/chatwoot"
+import { auditChannelChange, changedCredentialFields } from "@/lib/channels/channel-credential-audit"
 
 const createChannelSchema = z.object({
   channelType: z.string().min(1),
@@ -109,7 +110,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const gate = await gateChannelsAccess(req)
   if (gate instanceof NextResponse) return gate
-  const { orgId } = gate
+  const { orgId, userId } = gate
 
   return runWithTenant(orgId, async () => {
     const body = await req.json()
@@ -202,6 +203,11 @@ export async function POST(req: NextRequest) {
       }
 
       if (!channel) throw new Error("Channel creation completed without a channel")
+      await auditChannelChange({
+        req, orgId, userId, action: "create",
+        channelId: channel.id, channelType: channel.channelType, configName: channel.configName,
+        credentialFields: changedCredentialFields(body),
+      })
       await syncTikTokDmConnectionForChannelConfig(channel).catch((error) => {
         console.error("[channels POST] TikTok ChannelConnection sync failed", error)
       })

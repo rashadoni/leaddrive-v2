@@ -11,6 +11,12 @@ import type { Role } from "@/lib/permissions"
 export type ChannelsAccess = {
   orgId: string
   role: Extract<Role, "admin" | "superadmin">
+  /**
+   * Who is acting. Channel config holds third-party credentials, so every change to it is written
+   * to the audit log — and an audit entry without an actor answers none of the questions an audit
+   * is for ("who rotated this secret, and when").
+   */
+  userId: string
 }
 
 /**
@@ -46,10 +52,10 @@ export async function gateChannelsAccess(
     )
   }
 
-  const { orgId, role } = session
-  if (role === "superadmin") return { orgId, role }
-  if (await orgHasModule(orgId, "omnichannel")) return { orgId, role }
+  const { orgId, role, userId } = session
+  if (role === "superadmin") return { orgId, role, userId }
+  if (await orgHasModule(orgId, "omnichannel")) return { orgId, role, userId }
   const existing = await prisma.channelConfig.count({ where: { organizationId: orgId } })
-  if (existing > 0) return { orgId, role } // grandfather — never lock out a tenant already using channels
+  if (existing > 0) return { orgId, role, userId } // grandfather — never lock out a tenant already using channels
   return moduleDisabledResponse("omnichannel")
 }

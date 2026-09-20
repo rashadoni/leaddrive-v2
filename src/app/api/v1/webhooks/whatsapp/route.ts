@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import { alreadyIngested, isDuplicateInsert } from "@/lib/social/meta-inbound-idempotency"
 import { sendWhatsAppMessage, resolveWhatsAppConfig } from "@/lib/whatsapp"
 import { fetchAndStoreWaMedia } from "@/lib/whatsapp-media"
 import { sanitizeForPrompt, sanitizeLog } from "@/lib/sanitize"
@@ -921,6 +922,14 @@ async function processMessages(
     const waId = msg.from || msg.from_user_id || msg.from_parent_user_id || "" // sender's phone number or BSUID
     if (!waId) continue
     const messageId = msg.id // wamid.xxx
+    // Replay guard. Meta redelivers a webhook it did not get a prompt 2xx for, with the SAME wamid.
+    // Without this every redelivery created another inbound row, another notification and could fire
+    // the auto-reply again — i.e. send a second real message to the customer. The concurrent-retry
+    // race is closed underneath by the partial unique index (see meta-inbound-idempotency.ts).
+    if (await alreadyIngested(orgId, "whatsapp", messageId)) {
+      console.log(`[WA Webhook] duplicate delivery for wamid=${sanitizeLog(String(messageId))} — skipping`)
+      continue
+    }
     const timestamp = msg.timestamp // unix timestamp
     const contactProfile = contacts?.find((c) => c.wa_id === waId)
     const senderName = waContactName(contactProfile ?? null, waId)
@@ -1133,30 +1142,42 @@ async function processMessages(
       }
     }
 
-    // Create inbound message
-    const savedMsg = await prisma.channelMessage.create({
-      data: {
-        organizationId: orgId,
-        channelConfigId: channelConfig.id,
-        direction: "inbound",
-        channelType: "whatsapp",
-        contactId,
-        leadId,
-        from: senderName,
-        to: "system",
-        body: text,
-        mediaUrl: mediaUrl ?? undefined,
-        status: "delivered",
-        externalId: messageId,
-        metadata: {
-          waPhone: waId,
-          waMessageId: messageId,
-          waMessageType: messageType,
-          profileName: senderName,
-          timestamp: timestamp ? Number(timestamp) : undefined,
+    // Create inbound message.
+    // The P2002 catch below is the TOCTOU backstop for the guard above: two concurrent
+    // redeliveries can both pass `alreadyIngested`, and the partial unique index makes the loser
+    // fail here rather than insert a duplicate.
+    let savedMsg: Awaited<ReturnType<typeof prisma.channelMessage.create>>
+    try {
+      savedMsg = await prisma.channelMessage.create({
+        data: {
+          organizationId: orgId,
+          channelConfigId: channelConfig.id,
+          direction: "inbound",
+          channelType: "whatsapp",
+          contactId,
+          leadId,
+          from: senderName,
+          to: "system",
+          body: text,
+          mediaUrl: mediaUrl ?? undefined,
+          status: "delivered",
+          externalId: messageId,
+          metadata: {
+            waPhone: waId,
+            waMessageId: messageId,
+            waMessageType: messageType,
+            profileName: senderName,
+            timestamp: timestamp ? Number(timestamp) : undefined,
+          },
         },
-      },
-    })
+      })
+    } catch (e) {
+      if (isDuplicateInsert(e)) {
+        console.log(`[WA Webhook] concurrent duplicate delivery for wamid=${sanitizeLog(String(messageId))} — skipping`)
+        continue
+      }
+      throw e
+    }
 
     // Option-D D-2 — link this message to a persisted SocialConversation so the
     // unified inbox can carry status/assignment/snooze for WhatsApp threads.

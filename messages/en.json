@@ -16757,7 +16757,7 @@
     "p3_l4": "Fulfilling legal obligations",
     "p3_l5": "Verifying field routes, visits and working time for tenants using the Route & Field (MTM) and Workforce modules",
     "s4": "4. Data Protection",
-    "p4": "LeadDrive separates records by tenant and applies authenticated role-based access. Selected sensitive CRM fields and Social Monitoring OAuth tokens are encrypted at application level with AES-256-GCM. Channel credentials are masked from application responses and restricted to authorised server-side processes, but not every ChannelConfig credential is currently field-encrypted in the database. Connections use TLS; encrypted backups are held under immutable retention. The production disk is not separately encrypted.",
+    "p4": "LeadDrive separates records by tenant and applies authenticated role-based access. Selected sensitive CRM fields and Social Monitoring OAuth tokens are encrypted at application level with AES-256-GCM. Channel credentials are masked from application responses and restricted to authorised server-side processes, but not every ChannelConfig credential is currently field-encrypted in the database. Connections use TLS. Database backups are currently compressed PostgreSQL dumps that are not themselves encrypted, held on the production host and copied to a separate backup host. The production disk is not separately encrypted.",
     "s5": "5. Third Parties and Subprocessors",
     "p5": "Your personal data is not sold or rented. It is shared only with the providers needed to deliver the service, listed below with what each one receives and where it is processed:",
     "s6": "6. Cookies",
@@ -16800,7 +16800,7 @@
     "p5_l8": "Bright Data Ltd. — optional public Social Monitoring collection, not private Meta inbox messages. Processing is operated from Israel and through a global network; real-time result snapshots are retained 7 days and batch snapshots 16 days",
     "p5_l9": "Sentry, Inc. — optional application error diagnostics: request and device metadata, stack traces and error context, which can contain personal data despite masking controls. Sentry offers United States and Germany storage regions; the active project region and event retention are controlled by the contracted project configuration",
     "p5_note": "Provider processing regions can include countries outside Azerbaijan and the EEA. LeadDrive limits transfers to the feature being used and applies provider contracts and available transfer safeguards. Plan-specific regions and retention not stated above remain under review. Provider safety, abuse-prevention and legal-hold exceptions can extend the stated normal deletion periods.",
-    "p7_note": "Verified deletion requests are completed in active systems within 30 calendar days. Encrypted backups are held under immutable retention and cannot be altered record by record before it expires, so residual copies can persist for up to 400 days and are then destroyed automatically."
+    "p7_note": "Verified deletion requests are completed in active systems within 30 calendar days. Backups are taken daily: the production host keeps the fourteen most recent and copies them to a separate backup host, where copies are currently removed by an operator rather than on an automatic schedule. A residual copy in a backup can therefore persist until that removal, and backups cannot be edited record by record."
   },
   "dataDeletion": {
     "title": "Data Deletion Instructions",
