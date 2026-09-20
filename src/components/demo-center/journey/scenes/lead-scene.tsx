@@ -219,7 +219,7 @@ function LeadListView({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneP
   )
 }
 
-function LeadCardView({ snapshot, step, reviewMode, dispatch, hint, lead }: DemoSceneProps & { lead: DemoLeadRecord }) {
+export function LeadCardView({ snapshot, step, reviewMode, dispatch, hint, lead }: DemoSceneProps & { lead: DemoLeadRecord }) {
   const t = useTranslations("leads")
   const tc = useTranslations("common")
   const locale = useLocale()

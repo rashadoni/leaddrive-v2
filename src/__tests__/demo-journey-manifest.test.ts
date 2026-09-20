@@ -193,6 +193,17 @@ describe("Guided journey anchors", () => {
     }
   })
 
+  it("keeps the demo chrome's own copy Azerbaijani too", () => {
+    // The manifest test above covers scenario copy; the guide panel, coach
+    // mark and summary read from strings.ts, which no locale file guards.
+    const strings = read("src/components/demo-center/journey/strings.ts")
+    const body = strings.slice(strings.indexOf("DEMO_JOURNEY_STRINGS"))
+    for (const literal of body.match(/"[^"\\]*"|`[^`\\]*`/g) ?? []) {
+      expect(literal, literal).not.toMatch(/[А-Яа-яЁё]/)
+      expect(literal.toLowerCase(), literal).not.toContain("salesforce")
+    }
+  })
+
   it("the renderer registers a scene for every section of a built area", () => {
     const player = read("src/components/demo-center/journey/demo-journey-player.tsx")
     const map = player.slice(player.indexOf("const SCENES"), player.indexOf("export interface DemoJourneyPlayerProps"))

@@ -135,13 +135,19 @@ export interface DemoDealRecord {
   readonly wonAt: string | null
 }
 
-/** Demo pipeline stages; the last one is the won stage. Real tenants keep
- *  their own vocabulary (`orgStageVocabulary`), this is the sample's. */
+/**
+ * Demo pipeline stages; the last one is the won stage.
+ *
+ * `labelKey` names a key in the product's own `deals` namespace, so the demo
+ * says exactly what the product says. Real tenants keep their own vocabulary
+ * (`orgStageVocabulary`) — this is the sample's, and it is never written
+ * into a tenant.
+ */
 export const DEMO_DEAL_STAGES = [
-  { key: "qualification", label: "Kvalifikasiya", probability: 20 },
-  { key: "proposal", label: "Təklif", probability: 45 },
-  { key: "negotiation", label: "Danışıqlar", probability: 70 },
-  { key: "won", label: "Qazanıldı", probability: 100 },
+  { key: "qualified", labelKey: "stageQualified", probability: 20 },
+  { key: "proposal", labelKey: "stageProposal", probability: 45 },
+  { key: "negotiation", labelKey: "stageNegotiation", probability: 70 },
+  { key: "won", labelKey: "stageWon", probability: 100 },
 ] as const
 
 export interface DemoQuoteLine {

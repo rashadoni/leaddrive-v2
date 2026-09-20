@@ -34,8 +34,13 @@ import { cn } from "@/lib/utils"
 import { DemoCoachMark } from "./demo-coach-mark"
 import { DemoJourneyGuide } from "./demo-journey-guide"
 import { DemoJourneySidebar } from "./demo-journey-sidebar"
+import { BoardScene } from "./scenes/board-scene"
+import { CampaignScene } from "./scenes/campaign-scene"
+import { DealScene } from "./scenes/deal-scene"
+import { InboxScene } from "./scenes/inbox-scene"
 import { LeadScene } from "./scenes/lead-scene"
 import { OrientationScene } from "./scenes/orientation-scene"
+import { QuoteScene } from "./scenes/quote-scene"
 import { ScenePending } from "./scenes/scene-pending"
 import { SummaryScene } from "./scenes/summary-scene"
 import type { DemoSceneProps } from "./scene-props"
@@ -56,9 +61,16 @@ import { DEMO_JOURNEY_STRINGS as S } from "./strings"
 
 const SCENES: Record<string, ComponentType<DemoSceneProps>> = {
   orientation: OrientationScene,
+  source: CampaignScene,
+  conversation: InboxScene,
+  "ai-reply": InboxScene,
   "lead-created": LeadScene,
   "lead-qualified": LeadScene,
   "ai-call": LeadScene,
+  task: BoardScene,
+  deal: DealScene,
+  quote: QuoteScene,
+  "closed-won": DealScene,
   summary: SummaryScene,
 }
 
