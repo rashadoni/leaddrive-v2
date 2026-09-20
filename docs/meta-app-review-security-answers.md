@@ -4,8 +4,7 @@ Ready-to-paste answers for Meta app **2414060595720618**, with the evidence behi
 
 Every claim here was verified against the running system on **2026-09-20**, not inferred from code
 that looks right. Where the code and production disagree, production wins and the answer says so.
-Section 4 is the list of honest "no" answers — read it before filling anything in, because two of
-them contradict a claim our own published Privacy Policy currently makes.
+Section 4 is the list of honest "no" answers — read it before filling anything in.
 
 Evidence keys: **[C]** code, **[T]** test, **[P]** production observation.
 
@@ -175,12 +174,11 @@ Evidence keys: **[C]** code, **[T]** test, **[P]** production observation.
 5. **Hosting region is not contractually pinned.** The Privacy Policy says plan-specific regions
    "remain under review". Do not state a processing region to Meta.
 
-6. 🔴 **BLOCKER — backups are not what the Privacy Policy says they are.**
-   The policy states *"encrypted backups are held under immutable retention … residual copies can
-   persist for up to 400 days and are then destroyed automatically."* Production does not currently
-   do that:
+6. 🟠 **Backups are weaker than the policy used to claim — policy corrected, control still off.**
+   The policy stated *"encrypted backups are held under immutable retention … residual copies can
+   persist for up to 400 days and are then destroyed automatically."* Production does not do that:
 
-   | | Published claim | Verified on production 2026-09-20 |
+   | | Claim published until 2026-09-20 | Verified on production 2026-09-20 |
    |---|---|---|
    | Encryption | encrypted | **not encrypted** — plain `pg_dump -Fc` custom dump |
    | Immutability | immutable retention | **mutable** — plain files copied by `rsync` over SSH |
@@ -194,13 +192,24 @@ Evidence keys: **[C]** code, **[T]** test, **[P]** production observation.
    PostgreSQL on port 55432). What runs instead is `leaddrive-daily-backup.timer` →
    `/usr/local/sbin/leaddrive-backup.sh`, the plain unencrypted rsync job above.
 
-   **Until this is resolved, do not answer Meta's backup/encryption questions, and do not submit.**
-   Two ways out, and they are not equivalent:
-   - *Restore the control* — fix the canary step and re-enable `leaddrive-postgres-backup.timer`.
-     The published claim then becomes true again. Needs the S3 credentials and the offline `age`
-     recipient, so it is owner work.
-   - *Amend the policy* — publish what actually runs. This publicly downgrades a security claim and
-     is a commercial decision, not an engineering one.
+   **Owner decision, 2026-09-20: do both, in this order.**
+
+   - ✅ *Step 1 — done in this change.* The Privacy Policy no longer claims encryption, immutability
+     or a 400-day automatic destruction for backups. `privacy.p4` and `privacy.p7_note` in all three
+     locales now describe what actually runs: a compressed, unencrypted dump, fourteen kept on the
+     production host, copied to a separate backup host where copies are removed by an operator
+     rather than on a schedule. The published text is therefore true again as of this deploy, and
+     `privacy-policy-claims.test.ts` holds it there.
+   - ⏳ *Step 2 — owner.* Fix the restore canary (the scratch PostgreSQL on port 55432 that the
+     2026-09-07 run could not reach) and enable `leaddrive-postgres-backup.timer`. This needs the S3
+     credentials and the offline `age` recipient, so it cannot be done from a session.
+   - ⏳ *Step 3 — after step 2 is green.* Restore the stronger wording in a separate change, once the
+     timer is enabled, succeeding, and uploading under Object Lock. The guard in
+     `privacy-policy-claims.test.ts` deliberately fails if the stronger sentence comes back, so this
+     step means re-verifying production, not editing a string.
+
+   **Answering Meta:** until step 2 is green, answer the backup questions from the *current* state —
+   backups are not encrypted at rest and not immutable. Do not quote the 400-day figure.
 
 ---
 

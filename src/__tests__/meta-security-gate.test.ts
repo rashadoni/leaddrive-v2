@@ -313,7 +313,11 @@ describe("the published policy does not overclaim", () => {
     expect(privacy.p4).toMatch(/not every ChannelConfig credential is currently field-encrypted/i)
   })
 
-  it("keeps the backup window honest rather than promising instant erasure", () => {
-    expect(privacy.p7_note).toContain("400")
+  it("does not promise a backup protection production does not run", () => {
+    // Verified on production 2026-09-20: the encrypted/Object-Lock backup timer is disabled and its
+    // last run failed on 2026-09-07; an unencrypted pg_dump runs instead. See §4 of
+    // docs/meta-app-review-security-answers.md — this is the blocker that gates the submission.
+    expect(privacy.p7_note).toMatch(/30/)
+    expect(`${privacy.p4} ${privacy.p7_note}`).not.toMatch(/encrypted backups|immutable retention/i)
   })
 })

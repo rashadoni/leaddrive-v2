@@ -65,10 +65,30 @@ describe.each(LOCALES)("privacy policy — %s", locale => {
   })
 
   it("states the real deletion window instead of promising the impossible", () => {
-    // Object Lock keeps backups immutable for up to 400 days. "Deleted
-    // immediately" is a promise the system cannot keep.
+    // "Deleted immediately" is a promise no system with backups can keep, so the note must state a
+    // real active-systems window.
     expect(p.p7_note).toBeTruthy()
-    expect(p.p7_note).toContain("400")
+    expect(p.p7_note).toMatch(/30/)
+  })
+
+  it("does not claim a backup protection that production does not run", () => {
+    // F-13, second pass — verified on production 2026-09-20.
+    //
+    // The policy used to promise "encrypted backups under immutable retention … up to 400 days …
+    // destroyed automatically". The repository does contain that path
+    // (`scripts/backup/postgres-backup.sh`: age encryption, S3 Object Lock in COMPLIANCE mode,
+    // 16/63/400-day tiers) — but it was NOT running: `leaddrive-postgres-backup.timer` was disabled
+    // and inactive, and its last attempt on 2026-09-07 failed on the restore canary. What actually
+    // ran was an unencrypted `pg_dump` rsynced to a second host with no automatic pruning.
+    //
+    // So this guard is not about wording. Before anyone restores the stronger sentence, the timer
+    // has to be enabled, green, and uploading under Object Lock — otherwise the policy goes back to
+    // describing a control that is switched off, which is precisely the finding F-13 was raised for.
+    const backupClaims = `${p.p4} ${p.p7_note}`
+    expect(backupClaims).not.toMatch(/encrypted backups|зашифрованные резервные|şifrəli backup/i)
+    expect(backupClaims).not.toMatch(/immutable retention|неизменяемы в течение срока|dəyişdirilməzdir/i)
+    expect(backupClaims).not.toMatch(/destroyed automatically|уничтожаются автоматически|avtomatik məhv/i)
+    expect(backupClaims).not.toMatch(/\b400\b/)
   })
 
   it("discloses Workforce location purpose, lifecycle, roles and employee rights", () => {
