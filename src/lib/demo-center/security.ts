@@ -47,6 +47,22 @@ export function maskEmail(value: string): string {
   return `${visible}${"•".repeat(Math.max(3, local.length - visible.length))}@${domain}`
 }
 
+/**
+ * Masks a phone for display inside the demo. The prospect must recognise
+ * their own number without the full one being rendered into a page that can
+ * be screenshotted or shared: the country prefix and the last two digits
+ * stay, everything between them is replaced.
+ */
+export function maskPhone(value: string): string | null {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  const digits = trimmed.replace(/\D/g, "")
+  if (digits.length < 6) return null
+  const prefix = trimmed.startsWith("+") ? `+${digits.slice(0, 3)}` : digits.slice(0, 3)
+  const tail = digits.slice(-2)
+  return `${prefix} ${"•".repeat(Math.max(3, digits.length - prefix.replace("+", "").length - 2))} ${tail}`
+}
+
 export function issueCapabilityToken(): { token: string; tokenHash: string; tokenHint: string } {
   const pair = generateOneTimeToken()
   return { ...pair, tokenHint: pair.token.slice(-6) }

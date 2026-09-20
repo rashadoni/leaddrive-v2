@@ -1,0 +1,118 @@
+"use client"
+
+import { useMemo } from "react"
+import { useTranslations } from "next-intl"
+import { ChevronRight } from "lucide-react"
+import { Logo } from "@/components/logo"
+import { NAV_ACTIVE_BAR, NAV_ACTIVE_ICON, NAV_GROUP_LABEL, NAV_GROUP_ORDER, navItems, type NavItem } from "@/lib/nav-items"
+import { cn } from "@/lib/utils"
+import { DEMO_JOURNEY_STRINGS as S } from "./strings"
+
+/**
+ * The product sidebar, reduced to the scenario's visible routes.
+ *
+ * Same item list, icons, group order, labels and row styling as
+ * `src/components/sidebar.tsx`, so the prospect sees LeadDrive's own
+ * navigation — only fewer entries. Rows are buttons that move the demo view,
+ * never links into the tenant application; a route the story has not
+ * reached yet is disabled.
+ */
+export interface DemoJourneySidebarProps {
+  visibleRoutes: readonly string[]
+  reachableRoutes: readonly string[]
+  activeRoute: string | null
+  onNavigate: (route: string) => void
+}
+
+export function DemoJourneySidebar({ visibleRoutes, reachableRoutes, activeRoute, onNavigate }: DemoJourneySidebarProps) {
+  const t = useTranslations("nav")
+
+  const groups = useMemo(() => {
+    const visible = new Set(visibleRoutes)
+    const byGroup = new Map<string, NavItem[]>()
+    for (const item of navItems) {
+      if (!visible.has(item.href)) continue
+      const list = byGroup.get(item.group) ?? []
+      list.push(item)
+      byGroup.set(item.group, list)
+    }
+    return NAV_GROUP_ORDER.filter((group) => byGroup.has(group)).map((group) => ({ group, items: byGroup.get(group)! }))
+  }, [visibleRoutes])
+
+  const reachable = new Set(reachableRoutes)
+
+  return (
+    <aside
+      data-tour-id="demo-sidebar"
+      data-testid="demo-sidebar"
+      aria-label={S.sidebarAria}
+      className="flex w-16 flex-col overflow-hidden bg-sidebar-bg backdrop-blur-xl lg:w-64"
+    >
+      <div className="flex h-14 items-center justify-between border-b border-white/10 px-4">
+        <span className="flex items-center gap-2">
+          <Logo size="sm" sidebar />
+        </span>
+      </div>
+      <nav className="sidebar-scroll flex-1 overflow-y-auto p-2">
+        {groups.map(({ group, items }, groupIndex) => (
+          <div key={group} className={cn(groupIndex > 0 && "mt-3 border-t border-white/[0.06] pt-3")}>
+            <div
+              data-group={group}
+              className={cn(
+                "mb-1.5 hidden w-full items-center justify-between rounded-md px-3 py-1 lg:flex",
+                "select-none text-[11px] font-semibold uppercase tracking-wider",
+                NAV_GROUP_LABEL,
+              )}
+            >
+              <span>{t(`groups.${group}`)}</span>
+              <ChevronRight className="h-3 w-3 shrink-0 rotate-90 opacity-60" />
+            </div>
+            {groupIndex > 0 && <hr className="mx-3 my-1 border-white/[0.06] lg:hidden" />}
+            <div className="space-y-0.5">
+              {items.map((item) => {
+                const Icon = item.icon
+                const isActive = activeRoute === item.href
+                const enabled = reachable.has(item.href)
+                const label = t(item.tKey)
+                return (
+                  <button
+                    key={item.href}
+                    type="button"
+                    onClick={() => enabled && onNavigate(item.href)}
+                    disabled={!enabled}
+                    aria-current={isActive ? "page" : undefined}
+                    data-nav-href={item.href}
+                    data-nav-active={isActive ? "true" : undefined}
+                    title={enabled ? label : `${label} — ${S.notReachable}`}
+                    className={cn(
+                      "relative flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-left text-sm transition-all duration-150",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 motion-reduce:transition-none",
+                      isActive
+                        ? cn(
+                            "bg-white/[0.12] font-medium text-white before:absolute before:left-0 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-r",
+                            NAV_ACTIVE_BAR,
+                          )
+                        : enabled
+                          ? "text-white/60 hover:bg-white/[0.06] hover:text-white/90"
+                          : "cursor-not-allowed text-white/30",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "relative flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-all",
+                        isActive ? NAV_ACTIVE_ICON : enabled ? "text-white/40" : "text-white/25",
+                      )}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="hidden flex-1 truncate lg:inline">{label}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </nav>
+    </aside>
+  )
+}

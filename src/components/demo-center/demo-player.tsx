@@ -43,6 +43,13 @@ import type {
   DemoStep,
   DemoTone,
 } from "@/lib/demo-center/catalog"
+import {
+  clockOffset,
+  deadlineAnnouncement,
+  formatRemaining,
+  nearestDeadline,
+  secondsUntil,
+} from "@/lib/demo-center/session-clock"
 
 type DemoEventType = "MODULE_OPENED" | "STEP_VIEWED" | "COMPLETED"
 
@@ -1117,32 +1124,6 @@ function StatusBadge({ record, className }: { record: DemoStep["records"][number
   return <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium", tone.badge, className)}><span className={cn("size-1.5 rounded-full", tone.dot)} />{record.status}</span>
 }
 
-function secondsUntil(value?: string, offsetMs = 0): number | null {
-  if (!value) return null
-  const deadline = Date.parse(value)
-  if (!Number.isFinite(deadline)) return null
-  return Math.max(0, Math.ceil((deadline - (Date.now() + offsetMs)) / 1_000))
-}
-
-function clockOffset(serverNow?: string): number {
-  if (!serverNow) return 0
-  const parsed = Date.parse(serverNow)
-  return Number.isFinite(parsed) ? parsed - Date.now() : 0
-}
-
-function nearestDeadline(
-  sessionExpiresAt?: string,
-  idleExpiresAt?: string,
-): { value: string; kind: "session" | "idle" } | null {
-  const candidates = [
-    sessionExpiresAt ? { value: sessionExpiresAt, kind: "session" as const, time: Date.parse(sessionExpiresAt) } : null,
-    idleExpiresAt ? { value: idleExpiresAt, kind: "idle" as const, time: Date.parse(idleExpiresAt) } : null,
-  ].filter((candidate): candidate is NonNullable<typeof candidate> => !!candidate && Number.isFinite(candidate.time))
-
-  const nearest = candidates.sort((left, right) => left.time - right.time)[0]
-  return nearest ? { value: nearest.value, kind: nearest.kind } : null
-}
-
 function firstUnvisitedStep(
   modules: readonly DemoModuleManifest[],
   visited: ReadonlySet<string>,
@@ -1152,23 +1133,6 @@ function firstUnvisitedStep(
     if (stepIndex >= 0) return { moduleIndex, stepIndex }
   }
   return null
-}
-
-function deadlineAnnouncement(
-  remainingSeconds: number | null,
-  kind: "session" | "idle" | null,
-): string {
-  if (remainingSeconds === null || ![60, 30, 10, 0].includes(remainingSeconds)) return ""
-  if (remainingSeconds === 0) return "Demo sessiyasının vaxtı bitdi."
-  return `${kind === "idle" ? "Fəaliyyətsizlik limitinə" : "Sessiyanın bitməsinə"} ${formatRemaining(remainingSeconds)} qalıb.`
-}
-
-function formatRemaining(seconds: number): string {
-  const hours = Math.floor(seconds / 3_600)
-  const minutes = Math.floor((seconds % 3_600) / 60)
-  const rest = seconds % 60
-  if (hours > 0) return `${hours}:${String(minutes).padStart(2, "0")}:${String(rest).padStart(2, "0")}`
-  return `${minutes}:${String(rest).padStart(2, "0")}`
 }
 
 function progressStorageKey(token: string): string {

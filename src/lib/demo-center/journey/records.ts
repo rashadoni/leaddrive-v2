@@ -1,0 +1,463 @@
+/**
+ * Synthetic, session-scoped records for the guided journey.
+ *
+ * The prospect's own identity (name, company, position, masked contacts)
+ * seeds a small CRM world: the campaign that «brought» them, their inbound
+ * conversation, and — as the journey advances — their lead, task, deal and
+ * quote. Every amount, date and message is a sample; nothing here reads a
+ * tenant. Effects are applied per journey transition by
+ * `applyTransitionEffects`, so refresh/retry replays the same result.
+ */
+import type { DemoJourneyState } from "./types"
+
+export const DEMO_SOURCE_CHANNELS = ["website", "instagram", "whatsapp", "referral", "event"] as const
+export type DemoSourceChannel = (typeof DEMO_SOURCE_CHANNELS)[number]
+
+export interface DemoProspectIdentity {
+  readonly name: string
+  readonly company: string
+  readonly jobTitle: string | null
+  /** Already masked by the server (`r***@company.az`). */
+  readonly emailMasked: string
+  /** Already masked by the server (`+994 ** *** 12 34`) or null. */
+  readonly phoneMasked: string | null
+  readonly sourceChannel: DemoSourceChannel
+}
+
+/** The synthetic manager who «works» the prospect's record. */
+export const DEMO_MANAGER_NAME = "Aysel Məmmədova"
+
+export interface DemoCampaignRecord {
+  readonly id: string
+  readonly name: string
+  readonly channel: DemoSourceChannel
+  readonly status: "sent"
+  readonly audience: number
+  readonly sent: number
+  readonly opened: number
+  readonly clicked: number
+  readonly sentAt: string
+}
+
+export interface DemoMessageRecord {
+  readonly id: string
+  readonly direction: "inbound" | "outbound"
+  readonly author: string
+  readonly text: string
+  readonly at: string
+  readonly ai: boolean
+  /** Outbound demo messages never leave the session. */
+  readonly delivery: "received" | "simulated"
+}
+
+export interface DemoAiDraft {
+  readonly text: string
+  readonly quality: number
+  readonly reason: string
+  readonly createdAt: string
+}
+
+export interface DemoConversationRecord {
+  readonly id: string
+  readonly channel: DemoSourceChannel
+  readonly contactName: string
+  readonly companyName: string
+  readonly status: "opened" | "closed"
+  readonly assignedTo: string
+  readonly unread: number
+  readonly messages: readonly DemoMessageRecord[]
+  readonly aiDraft: DemoAiDraft | null
+}
+
+export type DemoLeadStatus = "new" | "contacted" | "qualified" | "converted" | "lost"
+
+export interface DemoActivityRecord {
+  readonly id: string
+  readonly type: "note" | "call" | "email" | "meeting" | "message"
+  readonly subject: string
+  readonly description: string
+  readonly createdAt: string
+  readonly createdByName: string
+}
+
+export interface DemoTimelineEntry {
+  readonly id: string
+  readonly kind: "message" | "email" | "activity" | "task" | "call" | "deal" | "quote"
+  readonly title: string
+  readonly subtitle?: string
+  readonly date: string
+  readonly channel?: string
+}
+
+export interface DemoLeadRecord {
+  readonly id: string
+  readonly contactName: string
+  readonly companyName: string
+  readonly jobTitle: string | null
+  readonly email: string
+  readonly phone: string | null
+  readonly source: DemoSourceChannel
+  readonly sourceDetail: string
+  readonly status: DemoLeadStatus
+  readonly priority: "low" | "medium" | "high"
+  readonly score: number
+  readonly scoreDetails: { readonly reasoning: string; readonly factors: Readonly<Record<string, number>> }
+  readonly estimatedValue: number
+  readonly currency: "AZN"
+  readonly assignedToName: string
+  readonly createdAt: string
+  readonly convertedAt: string | null
+  readonly activities: readonly DemoActivityRecord[]
+  readonly timeline: readonly DemoTimelineEntry[]
+}
+
+export interface DemoTaskRecord {
+  readonly id: string
+  readonly title: string
+  readonly status: "todo" | "in_progress" | "done"
+  readonly priority: "low" | "medium" | "high"
+  readonly dueAt: string
+  readonly assigneeName: string
+  readonly relatedLeadId: string
+  readonly createdAt: string
+  readonly comments: readonly { readonly id: string; readonly author: string; readonly text: string; readonly at: string }[]
+}
+
+export interface DemoDealRecord {
+  readonly id: string
+  readonly title: string
+  readonly stageIndex: number
+  readonly amount: number
+  readonly currency: "AZN"
+  readonly probability: number
+  readonly expectedCloseAt: string
+  readonly createdAt: string
+  readonly wonAt: string | null
+}
+
+/** Demo pipeline stages; the last one is the won stage. Real tenants keep
+ *  their own vocabulary (`orgStageVocabulary`), this is the sample's. */
+export const DEMO_DEAL_STAGES = [
+  { key: "qualification", label: "Kvalifikasiya", probability: 20 },
+  { key: "proposal", label: "Təklif", probability: 45 },
+  { key: "negotiation", label: "Danışıqlar", probability: 70 },
+  { key: "won", label: "Qazanıldı", probability: 100 },
+] as const
+
+export interface DemoQuoteLine {
+  readonly id: string
+  readonly product: string
+  readonly quantity: number
+  readonly unitPrice: number
+}
+
+export interface DemoQuoteRecord {
+  readonly id: string
+  readonly quoteNumber: string
+  readonly status: "draft" | "sent" | "viewed" | "accepted"
+  readonly lines: readonly DemoQuoteLine[]
+  readonly vatPercent: number
+  readonly validUntil: string
+  readonly createdAt: string
+  readonly sentAt: string | null
+  readonly viewedAt: string | null
+  readonly acceptedAt: string | null
+}
+
+export interface DemoJourneyRecords {
+  readonly campaign: DemoCampaignRecord
+  readonly conversation: DemoConversationRecord
+  readonly lead: DemoLeadRecord | null
+  readonly task: DemoTaskRecord | null
+  readonly deal: DemoDealRecord | null
+  readonly quote: DemoQuoteRecord | null
+}
+
+const CHANNEL_CAMPAIGN: Readonly<Record<DemoSourceChannel, { name: string; sourceDetail: string }>> = {
+  website: { name: "Veb-sayt: demo forması", sourceDetail: "leaddrive.az / demo" },
+  instagram: { name: "Instagram: CRM tanıtımı", sourceDetail: "Instagram reklamı" },
+  whatsapp: { name: "WhatsApp: müraciət xətti", sourceDetail: "WhatsApp Business" },
+  referral: { name: "Tövsiyə proqramı", sourceDetail: "Tərəfdaş tövsiyəsi" },
+  event: { name: "Tədbir: CRM seminarı", sourceDetail: "Bakı, seminar" },
+}
+
+export const DEMO_CHANNEL_LABELS: Readonly<Record<DemoSourceChannel, string>> = {
+  website: "Veb-çat",
+  instagram: "Instagram",
+  whatsapp: "WhatsApp",
+  referral: "E-poçt",
+  event: "E-poçt",
+}
+
+function iso(base: Date, offsetMinutes: number): string {
+  return new Date(base.getTime() + offsetMinutes * 60_000).toISOString()
+}
+
+function firstName(name: string): string {
+  return name.trim().split(/\s+/)[0] || name
+}
+
+export function quoteTotals(quote: Pick<DemoQuoteRecord, "lines" | "vatPercent">): { net: number; vat: number; gross: number } {
+  const net = quote.lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0)
+  const vat = Math.round(net * quote.vatPercent) / 100
+  return { net, vat, gross: net + vat }
+}
+
+export function createJourneyRecords(identity: DemoProspectIdentity, now: Date): DemoJourneyRecords {
+  const campaignMeta = CHANNEL_CAMPAIGN[identity.sourceChannel]
+  return {
+    campaign: {
+      id: "cmp-demo-1",
+      name: campaignMeta.name,
+      channel: identity.sourceChannel,
+      status: "sent",
+      audience: 1240,
+      sent: 1240,
+      opened: 468,
+      clicked: 97,
+      sentAt: iso(now, -3 * 24 * 60),
+    },
+    conversation: {
+      id: "conv-demo-1",
+      channel: identity.sourceChannel,
+      contactName: identity.name,
+      companyName: identity.company,
+      status: "opened",
+      assignedTo: DEMO_MANAGER_NAME,
+      unread: 1,
+      messages: [
+        {
+          id: "msg-1",
+          direction: "inbound",
+          author: identity.name,
+          text: `Salam! ${identity.company} üçün satış komandasına CRM axtarırıq. Lidləri və sövdələşmələri bir yerdə görmək istəyirik. Demo mümkündür?`,
+          at: iso(now, -42),
+          ai: false,
+          delivery: "received",
+        },
+      ],
+      aiDraft: {
+        text: `Salam, ${firstName(identity.name)}! Təşəkkür edirik. LeadDrive-da lidlər, sövdələşmələr və bütün yazışmalar bir kartda toplanır. Sizə uyğun vaxtda 20 dəqiqəlik demo göstərə bilərik — sabah 11:00 və ya 15:00 münasibdir?`,
+        quality: 86,
+        reason: "drafts_only",
+        createdAt: iso(now, -40),
+      },
+    },
+    lead: null,
+    task: null,
+    deal: null,
+    quote: null,
+  }
+}
+
+/**
+ * Applies the record-level consequence of entering `to`. Idempotent per
+ * target state: applying the same transition twice yields the same records,
+ * which is what makes refresh and retry safe.
+ */
+export function applyTransitionEffects(
+  records: DemoJourneyRecords,
+  to: DemoJourneyState,
+  identity: DemoProspectIdentity,
+  now: Date,
+): DemoJourneyRecords {
+  const at = now.toISOString()
+  switch (to) {
+    case "CONVERSATION_OPENED":
+      return { ...records, conversation: { ...records.conversation, unread: 0 } }
+
+    case "AI_REPLIED": {
+      const draft = records.conversation.aiDraft
+      if (!draft || records.conversation.messages.some((message) => message.id === "msg-ai-1")) return records
+      return {
+        ...records,
+        conversation: {
+          ...records.conversation,
+          aiDraft: null,
+          messages: [
+            ...records.conversation.messages,
+            { id: "msg-ai-1", direction: "outbound", author: DEMO_MANAGER_NAME, text: draft.text, at, ai: true, delivery: "simulated" },
+          ],
+        },
+      }
+    }
+
+    case "LEAD_CREATED": {
+      if (records.lead) return records
+      const campaignMeta = CHANNEL_CAMPAIGN[identity.sourceChannel]
+      const inbound = records.conversation.messages[0]
+      return {
+        ...records,
+        lead: {
+          id: "lead-demo-1",
+          contactName: identity.name,
+          companyName: identity.company,
+          jobTitle: identity.jobTitle,
+          email: identity.emailMasked,
+          phone: identity.phoneMasked,
+          source: identity.sourceChannel,
+          sourceDetail: campaignMeta.sourceDetail,
+          status: "new",
+          priority: "high",
+          score: 72,
+          scoreDetails: {
+            reasoning: "Müraciət konkretdir (satış komandası üçün CRM), şirkət və vəzifə doldurulub, ilk cavab 2 dəqiqə ərzində verilib. Demo istəyi — yüksək niyyət siqnalıdır.",
+            factors: { engagement: 82, fit: 74, intent: 88, recency: 95 },
+          },
+          estimatedValue: 4_800,
+          currency: "AZN",
+          assignedToName: DEMO_MANAGER_NAME,
+          createdAt: at,
+          convertedAt: null,
+          activities: [
+            {
+              id: "act-1",
+              type: "message",
+              subject: "Gələn müraciət",
+              description: inbound?.text ?? "",
+              createdAt: inbound?.at ?? at,
+              createdByName: identity.name,
+            },
+            {
+              id: "act-2",
+              type: "email",
+              subject: "AI cavabı göndərildi (simulyasiya)",
+              description: records.conversation.messages.find((message) => message.ai)?.text ?? "",
+              createdAt: at,
+              createdByName: DEMO_MANAGER_NAME,
+            },
+          ],
+          timeline: [
+            { id: "tl-1", kind: "message", title: "Gələn müraciət", subtitle: DEMO_CHANNEL_LABELS[identity.sourceChannel], date: inbound?.at ?? at, channel: identity.sourceChannel },
+            { id: "tl-2", kind: "email", title: "AI cavabı (simulyasiya)", subtitle: DEMO_MANAGER_NAME, date: at },
+            { id: "tl-3", kind: "activity", title: "Lider kartı yaradıldı", subtitle: `Mənbə: ${campaignMeta.name}`, date: at },
+          ],
+        },
+      }
+    }
+
+    case "LEAD_QUALIFIED": {
+      if (!records.lead || records.lead.status === "qualified") return records
+      return {
+        ...records,
+        lead: {
+          ...records.lead,
+          status: "qualified",
+          timeline: [...records.lead.timeline, { id: "tl-4", kind: "activity", title: "Status: Kvalifikasiya edildi", subtitle: DEMO_MANAGER_NAME, date: at }],
+        },
+      }
+    }
+
+    case "CALL_SKIPPED":
+    case "CALL_DECLINED":
+    case "CALL_BLOCKED": {
+      if (!records.lead || records.lead.timeline.some((entry) => entry.id === "tl-call")) return records
+      const title = to === "CALL_DECLINED" ? "AI zəngi: müştəri imtina etdi" : to === "CALL_BLOCKED" ? "AI zəngi: yoxlama keçmədi" : "AI zəngi bu sessiyada deaktivdir"
+      return {
+        ...records,
+        lead: { ...records.lead, timeline: [...records.lead.timeline, { id: "tl-call", kind: "call", title, date: at }] },
+      }
+    }
+
+    case "TASK_CREATED": {
+      if (records.task || !records.lead) return records
+      return {
+        ...records,
+        task: {
+          id: "task-demo-1",
+          title: `İzləmə: ${identity.name} (${identity.company}) — demo vaxtını razılaşdır`,
+          status: "todo",
+          priority: "high",
+          dueAt: iso(now, 24 * 60),
+          assigneeName: DEMO_MANAGER_NAME,
+          relatedLeadId: records.lead.id,
+          createdAt: at,
+          comments: [
+            { id: "cmt-1", author: "LeadDrive", text: "Tapşırıq kvalifikasiyadan sonra avtomatik yaradıldı.", at },
+          ],
+        },
+        lead: {
+          ...records.lead,
+          timeline: [...records.lead.timeline, { id: "tl-task", kind: "task", title: "İzləmə tapşırığı yaradıldı", subtitle: "Son tarix: sabah", date: at }],
+        },
+      }
+    }
+
+    case "DEAL_CREATED": {
+      if (records.deal || !records.lead) return records
+      return {
+        ...records,
+        deal: {
+          id: "deal-demo-1",
+          title: `${identity.company} — LeadDrive CRM`,
+          stageIndex: 0,
+          amount: records.lead.estimatedValue,
+          currency: "AZN",
+          probability: DEMO_DEAL_STAGES[0].probability,
+          expectedCloseAt: iso(now, 14 * 24 * 60),
+          createdAt: at,
+          wonAt: null,
+        },
+        lead: {
+          ...records.lead,
+          status: "converted",
+          convertedAt: at,
+          timeline: [...records.lead.timeline, { id: "tl-deal", kind: "deal", title: "Sövdələşməyə çevrildi", subtitle: `${identity.company} — LeadDrive CRM`, date: at }],
+        },
+      }
+    }
+
+    case "DEAL_ADVANCED": {
+      if (!records.deal || records.deal.stageIndex >= 1) return records
+      return { ...records, deal: { ...records.deal, stageIndex: 1, probability: DEMO_DEAL_STAGES[1].probability } }
+    }
+
+    case "QUOTE_CREATED": {
+      if (records.quote) return records
+      return {
+        ...records,
+        quote: {
+          id: "quote-demo-1",
+          quoteNumber: "KT-2026-0418",
+          status: "draft",
+          lines: [
+            { id: "ql-1", product: "LeadDrive CRM · 10 istifadəçi", quantity: 1, unitPrice: 990 },
+            { id: "ql-2", product: "Omni-Channel modulu", quantity: 1, unitPrice: 350 },
+          ],
+          vatPercent: 18,
+          validUntil: iso(now, 14 * 24 * 60),
+          createdAt: at,
+          sentAt: null,
+          viewedAt: null,
+          acceptedAt: null,
+        },
+      }
+    }
+
+    case "QUOTE_SENT": {
+      if (!records.quote || records.quote.status !== "draft") return records
+      return { ...records, quote: { ...records.quote, status: "sent", sentAt: at } }
+    }
+
+    case "QUOTE_ACCEPTED": {
+      if (!records.quote || records.quote.status === "accepted") return records
+      return { ...records, quote: { ...records.quote, status: "accepted", viewedAt: records.quote.viewedAt ?? at, acceptedAt: at } }
+    }
+
+    case "CLOSED_WON": {
+      if (!records.deal || records.deal.wonAt) return records
+      const wonIndex = DEMO_DEAL_STAGES.length - 1
+      const gross = records.quote ? quoteTotals(records.quote).gross : records.deal.amount
+      return {
+        ...records,
+        deal: { ...records.deal, stageIndex: wonIndex, probability: 100, amount: gross, wonAt: at },
+        lead: records.lead
+          ? { ...records.lead, timeline: [...records.lead.timeline, { id: "tl-won", kind: "deal", title: "Sövdələşmə qazanıldı", subtitle: `Mənbə: ${records.campaign.name}`, date: at }] }
+          : records.lead,
+      }
+    }
+
+    default:
+      return records
+  }
+}
