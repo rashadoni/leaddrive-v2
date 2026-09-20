@@ -32,6 +32,11 @@ const SHELL = "src/components/demo-center/journey/demo-journey-player.tsx"
 const SIDEBAR = "src/components/demo-center/journey/demo-journey-sidebar.tsx"
 const GUIDE = "src/components/demo-center/journey/demo-journey-guide.tsx"
 const LEAD_SCENE = "src/components/demo-center/journey/scenes/lead-scene.tsx"
+const CAMPAIGN_SCENE = "src/components/demo-center/journey/scenes/campaign-scene.tsx"
+const INBOX_SCENE = "src/components/demo-center/journey/scenes/inbox-scene.tsx"
+const BOARD_SCENE = "src/components/demo-center/journey/scenes/board-scene.tsx"
+const DEAL_SCENE = "src/components/demo-center/journey/scenes/deal-scene.tsx"
+const QUOTE_SCENE = "src/components/demo-center/journey/scenes/quote-scene.tsx"
 const SUMMARY_SCENE = "src/components/demo-center/journey/scenes/summary-scene.tsx"
 
 /* Real product files */
@@ -54,22 +59,22 @@ export const DEMO_ANCHORS: Readonly<Record<string, DemoAnchorDefinition>> = {
   "journey-finish": { area: "summary", scene: SUMMARY_SCENE, productFiles: [], label: "Close session / contact sales" },
 
   /* ── Marketing → Campaigns ── */
-  "campaigns-stats": { area: "campaigns", scene: null, productFiles: [CAMPAIGNS_PAGE], label: "Status cards" },
-  "campaigns-list": { area: "campaigns", scene: null, productFiles: [CAMPAIGNS_PAGE], label: "Campaign cards" },
-  "campaigns-new": { area: "campaigns", scene: null, productFiles: [CAMPAIGNS_PAGE], label: "New campaign" },
-  "campaigns-tabs": { area: "campaigns", scene: null, productFiles: [], label: "List / analytics switch" },
-  "campaigns-analytics": { area: "campaigns", scene: null, productFiles: [], label: "Campaign analytics" },
-  "campaign-detail": { area: "campaigns", scene: null, productFiles: [], label: "Campaign card" },
+  "campaigns-stats": { area: "campaigns", scene: CAMPAIGN_SCENE, productFiles: [CAMPAIGNS_PAGE], label: "Status cards" },
+  "campaigns-list": { area: "campaigns", scene: CAMPAIGN_SCENE, productFiles: [CAMPAIGNS_PAGE], label: "Campaign cards" },
+  "campaigns-new": { area: "campaigns", scene: CAMPAIGN_SCENE, productFiles: [CAMPAIGNS_PAGE], label: "New campaign" },
+  "campaigns-tabs": { area: "campaigns", scene: CAMPAIGN_SCENE, productFiles: [], label: "List / analytics switch" },
+  "campaigns-analytics": { area: "campaigns", scene: CAMPAIGN_SCENE, productFiles: [], label: "Campaign analytics" },
+  "campaign-detail": { area: "campaigns", scene: CAMPAIGN_SCENE, productFiles: [], label: "Campaign card" },
 
   /* ── Communication → Inbox ── */
-  "inbox-views": { area: "inbox", scene: null, productFiles: [], label: "All / Me / Unassigned / … views" },
-  "inbox-status-tabs": { area: "inbox", scene: null, productFiles: [], label: "Opened / Closed / Snoozed" },
-  "inbox-filters": { area: "inbox", scene: null, productFiles: [], label: "Channel / folder / lifecycle filters" },
-  "inbox-conversations": { area: "inbox", scene: null, productFiles: [], label: "Conversation list" },
-  "inbox-thread": { area: "inbox", scene: null, productFiles: [], label: "Message thread" },
-  "inbox-composer": { area: "inbox", scene: null, productFiles: [], label: "Reply / internal note composer" },
-  "inbox-ai-draft": { area: "inbox", scene: null, productFiles: [], label: "AI draft review panel" },
-  "inbox-contact-panel": { area: "inbox", scene: null, productFiles: [], label: "Contact side panel" },
+  "inbox-views": { area: "inbox", scene: INBOX_SCENE, productFiles: [], label: "All / Me / Unassigned / … views" },
+  "inbox-status-tabs": { area: "inbox", scene: INBOX_SCENE, productFiles: [], label: "Opened / Closed / Snoozed" },
+  "inbox-filters": { area: "inbox", scene: INBOX_SCENE, productFiles: [], label: "Channel / folder / lifecycle filters" },
+  "inbox-conversations": { area: "inbox", scene: INBOX_SCENE, productFiles: [], label: "Conversation list" },
+  "inbox-thread": { area: "inbox", scene: INBOX_SCENE, productFiles: [], label: "Message thread" },
+  "inbox-composer": { area: "inbox", scene: INBOX_SCENE, productFiles: [], label: "Reply / internal note composer" },
+  "inbox-ai-draft": { area: "inbox", scene: INBOX_SCENE, productFiles: [], label: "AI draft review panel" },
+  "inbox-contact-panel": { area: "inbox", scene: INBOX_SCENE, productFiles: [], label: "Contact side panel" },
 
   /* ── Sales → Leads (list) ── */
   "leads-list": { area: "leads", scene: LEAD_SCENE, productFiles: [LEADS_LIST], label: "Lead list heading" },
@@ -96,49 +101,49 @@ export const DEMO_ANCHORS: Readonly<Record<string, DemoAnchorDefinition>> = {
   "lead-ai-call": { area: "leads", scene: LEAD_SCENE, productFiles: [], label: "AI call action (disabled in v1)" },
 
   /* ── CRM → Boards (the task surface; /tasks is unlinked from the sidebar) ── */
-  "boards-index": { area: "tasks", scene: null, productFiles: [], label: "Board list by department" },
-  "board-header": { area: "tasks", scene: null, productFiles: [], label: "Board header" },
-  "board-tabs": { area: "tasks", scene: null, productFiles: [], label: "Board / reports switch" },
-  "board-toolbar": { area: "tasks", scene: null, productFiles: [], label: "Mine / created-by-me / search" },
-  "board-columns": { area: "tasks", scene: null, productFiles: [], label: "Stage columns" },
-  "board-card": { area: "tasks", scene: null, productFiles: [], label: "Task card" },
-  "board-card-menu": { area: "tasks", scene: null, productFiles: [], label: "Card quick menu" },
-  "board-reports": { area: "tasks", scene: null, productFiles: [], label: "Board reports" },
-  "task-status": { area: "tasks", scene: null, productFiles: [TASK_DETAIL], label: "Task status" },
-  "task-info": { area: "tasks", scene: null, productFiles: [], label: "Task info card" },
-  "task-comments": { area: "tasks", scene: null, productFiles: [], label: "Comments" },
+  "boards-index": { area: "tasks", scene: BOARD_SCENE, productFiles: [], label: "Board list by department" },
+  "board-header": { area: "tasks", scene: BOARD_SCENE, productFiles: [], label: "Board header" },
+  "board-tabs": { area: "tasks", scene: BOARD_SCENE, productFiles: [], label: "Board / reports switch" },
+  "board-toolbar": { area: "tasks", scene: BOARD_SCENE, productFiles: [], label: "Mine / created-by-me / search" },
+  "board-columns": { area: "tasks", scene: BOARD_SCENE, productFiles: [], label: "Stage columns" },
+  "board-card": { area: "tasks", scene: BOARD_SCENE, productFiles: [], label: "Task card" },
+  "board-card-menu": { area: "tasks", scene: BOARD_SCENE, productFiles: [], label: "Card quick menu" },
+  "board-reports": { area: "tasks", scene: BOARD_SCENE, productFiles: [], label: "Board reports" },
+  "task-status": { area: "tasks", scene: BOARD_SCENE, productFiles: [TASK_DETAIL], label: "Task status" },
+  "task-info": { area: "tasks", scene: BOARD_SCENE, productFiles: [], label: "Task info card" },
+  "task-comments": { area: "tasks", scene: BOARD_SCENE, productFiles: [], label: "Comments" },
 
   /* ── Sales → Deals (board) ── */
-  "deals-view-tabs": { area: "deals", scene: null, productFiles: [], label: "Kanban / list / analytics" },
-  "deals-pipeline-select": { area: "deals", scene: null, productFiles: [DEALS_BOARD], label: "Pipeline select" },
-  "deals-new": { area: "deals", scene: null, productFiles: [DEALS_BOARD], label: "New deal" },
-  "deals-summary": { area: "deals", scene: null, productFiles: [DEALS_BOARD], label: "Funnel summary" },
-  "deals-kanban": { area: "deals", scene: null, productFiles: [], label: "Kanban board" },
-  "deals-card": { area: "deals", scene: null, productFiles: [DEALS_BOARD], label: "Deal card on the board" },
-  "deals-list": { area: "deals", scene: null, productFiles: [], label: "List view" },
-  "deal-detail-sheet": { area: "deals", scene: null, productFiles: [], label: "Quick-view sheet" },
+  "deals-view-tabs": { area: "deals", scene: DEAL_SCENE, productFiles: [], label: "Kanban / list / analytics" },
+  "deals-pipeline-select": { area: "deals", scene: DEAL_SCENE, productFiles: [DEALS_BOARD], label: "Pipeline select" },
+  "deals-new": { area: "deals", scene: DEAL_SCENE, productFiles: [DEALS_BOARD], label: "New deal" },
+  "deals-summary": { area: "deals", scene: DEAL_SCENE, productFiles: [DEALS_BOARD], label: "Funnel summary" },
+  "deals-kanban": { area: "deals", scene: DEAL_SCENE, productFiles: [], label: "Kanban board" },
+  "deals-card": { area: "deals", scene: DEAL_SCENE, productFiles: [DEALS_BOARD], label: "Deal card on the board" },
+  "deals-list": { area: "deals", scene: DEAL_SCENE, productFiles: [], label: "List view" },
+  "deal-detail-sheet": { area: "deals", scene: DEAL_SCENE, productFiles: [], label: "Quick-view sheet" },
 
   /* ── Sales → Deal card ── */
-  "deal-stage-progress": { area: "deals", scene: null, productFiles: [DEAL_CARD], label: "Stage chevrons" },
-  "deal-sidebar": { area: "deals", scene: null, productFiles: [DEAL_CARD], label: "Data sidebar" },
-  "deal-kpi-chips": { area: "deals", scene: null, productFiles: [DEAL_CARD], label: "KPI chips" },
-  "deal-customer-details": { area: "deals", scene: null, productFiles: [], label: "Customer details" },
-  "deal-quick-actions": { area: "deals", scene: null, productFiles: [DEAL_CARD], label: "Quick action bar" },
-  "deal-timeline": { area: "deals", scene: null, productFiles: [DEAL_CARD], label: "Unified timeline" },
-  "deal-ai-prediction": { area: "deals", scene: null, productFiles: [DEAL_CARD], label: "AI prediction" },
-  "deal-ai-suggestions": { area: "deals", scene: null, productFiles: [DEAL_CARD], label: "AI suggestions" },
-  "deal-next-best-offers": { area: "deals", scene: null, productFiles: [], label: "Next best offers" },
+  "deal-stage-progress": { area: "deals", scene: DEAL_SCENE, productFiles: [DEAL_CARD], label: "Stage chevrons" },
+  "deal-sidebar": { area: "deals", scene: DEAL_SCENE, productFiles: [DEAL_CARD], label: "Data sidebar" },
+  "deal-kpi-chips": { area: "deals", scene: DEAL_SCENE, productFiles: [DEAL_CARD], label: "KPI chips" },
+  "deal-customer-details": { area: "deals", scene: DEAL_SCENE, productFiles: [], label: "Customer details" },
+  "deal-quick-actions": { area: "deals", scene: DEAL_SCENE, productFiles: [DEAL_CARD], label: "Quick action bar" },
+  "deal-timeline": { area: "deals", scene: DEAL_SCENE, productFiles: [DEAL_CARD], label: "Unified timeline" },
+  "deal-ai-prediction": { area: "deals", scene: DEAL_SCENE, productFiles: [DEAL_CARD], label: "AI prediction" },
+  "deal-ai-suggestions": { area: "deals", scene: DEAL_SCENE, productFiles: [DEAL_CARD], label: "AI suggestions" },
+  "deal-next-best-offers": { area: "deals", scene: DEAL_SCENE, productFiles: [], label: "Next best offers" },
 
   /* ── Sales → Quotes ── */
-  "quotes-new": { area: "quotes", scene: null, productFiles: [], label: "New quote" },
-  "quotes-filters": { area: "quotes", scene: null, productFiles: [], label: "Search + status filter" },
-  "quotes-table": { area: "quotes", scene: null, productFiles: [], label: "Quote table" },
-  "quote-create-dialog": { area: "quotes", scene: null, productFiles: [], label: "Create dialog" },
-  "quote-header": { area: "quotes", scene: null, productFiles: [], label: "Number, status, linked deal" },
-  "quote-transition": { area: "quotes", scene: null, productFiles: [], label: "Status transition buttons" },
-  "quote-customer": { area: "quotes", scene: null, productFiles: [], label: "Customer block" },
-  "quote-line-items": { area: "quotes", scene: null, productFiles: [], label: "Line items" },
-  "quote-summary": { area: "quotes", scene: null, productFiles: [], label: "Totals and validity" },
+  "quotes-new": { area: "quotes", scene: QUOTE_SCENE, productFiles: [], label: "New quote" },
+  "quotes-filters": { area: "quotes", scene: QUOTE_SCENE, productFiles: [], label: "Search + status filter" },
+  "quotes-table": { area: "quotes", scene: QUOTE_SCENE, productFiles: [], label: "Quote table" },
+  "quote-create-dialog": { area: "quotes", scene: QUOTE_SCENE, productFiles: [], label: "Create dialog" },
+  "quote-header": { area: "quotes", scene: QUOTE_SCENE, productFiles: [], label: "Number, status, linked deal" },
+  "quote-transition": { area: "quotes", scene: QUOTE_SCENE, productFiles: [], label: "Status transition buttons" },
+  "quote-customer": { area: "quotes", scene: QUOTE_SCENE, productFiles: [], label: "Customer block" },
+  "quote-line-items": { area: "quotes", scene: QUOTE_SCENE, productFiles: [], label: "Line items" },
+  "quote-summary": { area: "quotes", scene: QUOTE_SCENE, productFiles: [], label: "Totals and validity" },
 }
 
 export function isDemoAnchor(id: string): boolean {
@@ -148,4 +153,6 @@ export function isDemoAnchor(id: string): boolean {
 /** Areas whose scene is built today. A section in one of these areas must
  *  have every one of its anchors rendered — that is what stops a half-built
  *  scene from shipping with a coach mark pointing at nothing. */
-export const DEMO_BUILT_AREAS: readonly DemoJourneyArea[] = ["shell", "summary", "leads"]
+export const DEMO_BUILT_AREAS: readonly DemoJourneyArea[] = [
+  "shell", "summary", "campaigns", "inbox", "leads", "tasks", "deals", "quotes",
+]
