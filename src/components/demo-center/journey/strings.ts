@@ -37,7 +37,6 @@ export const DEMO_JOURNEY_STRINGS = {
   hintDisabled: "Bu demoda mövcud deyil",
   clipTitle: "Qısa klip",
   clipPlanned: "Klip hazırlanır",
-  clipUnavailableHere: "Video bu sessiyada açılmır — bələdçi mətni hər addımı izah edir.",
   clipPlay: "Klipi izlə",
   assistantTitle: "Da Vinci-dən soruşun",
   assistantOff: "Köməkçi bu sessiyada deaktivdir",
