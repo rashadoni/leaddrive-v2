@@ -3,6 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mocks = vi.hoisted(() => ({
   findManyUsers: vi.fn(),
   findManyLeads: vi.fn(),
+  findManyCompanies: vi.fn(),
+  findManyContacts: vi.fn(),
+  findFirstPipeline: vi.fn(),
+  findFirstStage: vi.fn(),
   applyRecordFilter: vi.fn(),
 }))
 
@@ -10,6 +14,10 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     user: { findMany: mocks.findManyUsers },
     lead: { findMany: mocks.findManyLeads },
+    company: { findMany: mocks.findManyCompanies },
+    contact: { findMany: mocks.findManyContacts },
+    pipeline: { findFirst: mocks.findFirstPipeline },
+    pipelineStage: { findFirst: mocks.findFirstStage },
   },
 }))
 
@@ -31,6 +39,14 @@ const auth = {
 beforeEach(() => {
   mocks.findManyUsers.mockReset()
   mocks.findManyLeads.mockReset()
+  mocks.findManyCompanies.mockReset()
+  mocks.findManyContacts.mockReset()
+  mocks.findFirstPipeline.mockReset()
+  mocks.findFirstStage.mockReset()
+  mocks.findManyCompanies.mockResolvedValue([])
+  mocks.findManyContacts.mockResolvedValue([])
+  mocks.findFirstPipeline.mockResolvedValue(null)
+  mocks.findFirstStage.mockResolvedValue(null)
   mocks.applyRecordFilter.mockReset()
   mocks.applyRecordFilter.mockImplementation(async (_o, _u, _r, _t, where) => where)
 })
@@ -381,6 +397,125 @@ describe("turning a lead into a deal", () => {
         "propose_convert_lead_to_deal",
         { dealTitle: "Azmart", ...extra },
         { recordType: "lead", recordId: "lead-5" },
+      )
+      expect(result.kind, JSON.stringify(extra)).toBe("invalid")
+    }
+  })
+})
+
+describe("creating a deal that does not come from a lead", () => {
+  it("resolves company and contact names into ids the server read", async () => {
+    mocks.findManyCompanies.mockResolvedValue([{ id: "co-1", name: "Azmart MMC" }])
+    mocks.findManyContacts.mockResolvedValue([{ id: "ct-1", fullName: "Ali Mammadov" }])
+
+    const result = await resolveVoiceProposal(
+      auth,
+      "propose_create_deal",
+      { name: "Azmart tyres Q4", companyName: "Azmart", contactName: "Ali", valueAmount: 12000 },
+      {},
+    )
+
+    expect(result).toMatchObject({
+      kind: "resolved",
+      actionType: "create_deal",
+      payload: { name: "Azmart tyres Q4", companyId: "co-1", contactId: "ct-1", valueAmount: 12000 },
+    })
+    if (result.kind !== "resolved") return
+    // The spoken names are not CRM fields and must not reach the payload.
+    expect(Object.keys(result.payload)).not.toContain("companyName")
+    expect(Object.keys(result.payload)).not.toContain("contactName")
+  })
+
+  it("asks which company instead of taking the first match", async () => {
+    mocks.findManyCompanies.mockResolvedValue([
+      { id: "co-1", name: "Azmart MMC" },
+      { id: "co-2", name: "Azmart Logistics" },
+    ])
+    const result = await resolveVoiceProposal(
+      auth,
+      "propose_create_deal",
+      { name: "Q4", companyName: "Azmart" },
+      {},
+    )
+    expect(result).toMatchObject({
+      kind: "clarify",
+      code: "COMPANY_AMBIGUOUS",
+      field: "companyName",
+      candidates: [
+        { id: "co-1", label: "Azmart MMC" },
+        { id: "co-2", label: "Azmart Logistics" },
+      ],
+    })
+  })
+
+  it("says when no such company exists rather than creating a nameless deal", async () => {
+    mocks.findManyCompanies.mockResolvedValue([])
+    const result = await resolveVoiceProposal(
+      auth,
+      "propose_create_deal",
+      { name: "Q4", companyName: "Nowhere" },
+      {},
+    )
+    expect(result).toMatchObject({ kind: "clarify", code: "COMPANY_NOT_FOUND", candidates: [] })
+  })
+
+  it("asks which contact when several share a name", async () => {
+    mocks.findManyContacts.mockResolvedValue([
+      { id: "ct-1", fullName: "Ali Mammadov" },
+      { id: "ct-2", fullName: "Ali Huseynov" },
+    ])
+    const result = await resolveVoiceProposal(
+      auth,
+      "propose_create_deal",
+      { name: "Q4", contactName: "Ali" },
+      {},
+    )
+    expect(result).toMatchObject({ kind: "clarify", code: "CONTACT_AMBIGUOUS", field: "contactName" })
+  })
+
+  // createDealCommand falls back to the literal stage name "LEAD" and then
+  // validates it against the pipeline's own stage names, so an organization
+  // whose first stage is called something else could not create a deal at all.
+  it("passes the organization's own first stage, never a hardcoded name", async () => {
+    mocks.findFirstPipeline.mockResolvedValue({ id: "pipe-1" })
+    mocks.findFirstStage.mockResolvedValue({ name: "Yeni" })
+
+    const result = await resolveVoiceProposal(auth, "propose_create_deal", { name: "Q4" }, {})
+
+    expect(result).toMatchObject({ payload: { name: "Q4", stage: "Yeni" } })
+    expect(mocks.findFirstPipeline.mock.calls[0][0].where).toMatchObject({
+      organizationId: "org-1",
+      isDefault: true,
+      isActive: true,
+    })
+    expect(mocks.findFirstStage.mock.calls[0][0].orderBy).toEqual({ sortOrder: "asc" })
+  })
+
+  it("sends no stage when the organization has no default pipeline", async () => {
+    mocks.findFirstPipeline.mockResolvedValue(null)
+    const result = await resolveVoiceProposal(auth, "propose_create_deal", { name: "Q4" }, {})
+    expect(result).toEqual({ kind: "resolved", actionType: "create_deal", payload: { name: "Q4" } })
+  })
+
+  it("refuses a stage, pipeline or probability from the model", async () => {
+    for (const extra of [{ stage: "LEAD" }, { pipelineId: "pipe-1" }, { probability: 50 }]) {
+      const result = await resolveVoiceProposal(
+        auth,
+        "propose_create_deal",
+        { name: "Q4", ...extra },
+        {},
+      )
+      expect(result.kind, JSON.stringify(extra)).toBe("invalid")
+    }
+  })
+
+  it("refuses a company or contact id from the model", async () => {
+    for (const extra of [{ companyId: "co-1" }, { contactId: "ct-1" }, { assignedTo: "user-1" }]) {
+      const result = await resolveVoiceProposal(
+        auth,
+        "propose_create_deal",
+        { name: "Q4", ...extra },
+        {},
       )
       expect(result.kind, JSON.stringify(extra)).toBe("invalid")
     }

@@ -29,6 +29,9 @@ import type { AiVoiceActionType } from "./action-registry"
  *    glance.
  */
 
+type CompanyRow = Readonly<{ id: string; name: string }>
+type ContactRow = Readonly<{ id: string; fullName: string }>
+
 export type VoiceProposeResolution =
   | Readonly<{
     kind: "resolved"
@@ -39,8 +42,17 @@ export type VoiceProposeResolution =
   /** The model must ask the user before a draft can be prepared. */
   | Readonly<{
     kind: "clarify"
-    code: "ASSIGNEE_NOT_FOUND" | "ASSIGNEE_AMBIGUOUS" | "LEAD_NOT_FOUND" | "LEAD_AMBIGUOUS" | "LEAD_TARGET_REQUIRED"
-    field: "assigneeName" | "leadName"
+    code:
+      | "ASSIGNEE_NOT_FOUND"
+      | "ASSIGNEE_AMBIGUOUS"
+      | "LEAD_NOT_FOUND"
+      | "LEAD_AMBIGUOUS"
+      | "LEAD_TARGET_REQUIRED"
+      | "COMPANY_NOT_FOUND"
+      | "COMPANY_AMBIGUOUS"
+      | "CONTACT_NOT_FOUND"
+      | "CONTACT_AMBIGUOUS"
+    field: "assigneeName" | "leadName" | "companyName" | "contactName"
     candidates: readonly Readonly<{ id: string; label: string }>[]
   }>
   | Readonly<{ kind: "invalid"; issues: readonly Readonly<{ path: string; message: string }>[] }>
@@ -171,6 +183,93 @@ async function readLeadLabel(auth: AuthResult, leadId: string): Promise<string |
   return lead ? (lead.companyName?.trim() || lead.contactName.trim() || null) : null
 }
 
+/**
+ * One company or contact by the name the user spoke.
+ *
+ * Same shape as the colleague lookup, and for the same reason: `contains`
+ * matching finds "Azmart" inside "Azmart MMC", which is how people talk, and
+ * that routinely produces several rows. An exact match settles the common
+ * case; anything else is a question.
+ */
+type NamedMatch =
+  | Readonly<{ ok: true; id: string }>
+  | Readonly<{ ok: false; ambiguous: boolean; candidates: Readonly<{ id: string; label: string }>[] }>
+
+function matchNamedRecord(
+  rows: readonly Readonly<{ id: string; label: string }>[],
+  spokenName: string,
+): NamedMatch {
+  if (rows.length === 1) return { ok: true, id: rows[0].id }
+  const exact = rows.filter((row) => row.label.trim().toLowerCase() === spokenName.toLowerCase())
+  if (exact.length === 1) return { ok: true, id: exact[0].id }
+  return {
+    ok: false,
+    ambiguous: rows.length > 0,
+    candidates: rows.slice(0, MAX_CANDIDATES),
+  }
+}
+
+async function resolveCompany(auth: AuthResult, spokenName: string) {
+  const where = await applyRecordFilter(auth.orgId, auth.userId, auth.role, "company", {
+    organizationId: auth.orgId,
+    name: { contains: spokenName, mode: "insensitive" },
+  })
+  const rows = await prisma.company.findMany({
+    where,
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+    take: MAX_CANDIDATES + 1,
+  })
+  return matchNamedRecord(
+    (rows as CompanyRow[]).map((row: CompanyRow) => ({ id: row.id, label: row.name })),
+    spokenName,
+  )
+}
+
+async function resolveContact(auth: AuthResult, spokenName: string) {
+  const where = await applyRecordFilter(auth.orgId, auth.userId, auth.role, "contact", {
+    organizationId: auth.orgId,
+    fullName: { contains: spokenName, mode: "insensitive" },
+  })
+  const rows = await prisma.contact.findMany({
+    where,
+    select: { id: true, fullName: true },
+    orderBy: { fullName: "asc" },
+    take: MAX_CANDIDATES + 1,
+  })
+  return matchNamedRecord(
+    (rows as ContactRow[]).map((row: ContactRow) => ({ id: row.id, label: row.fullName })),
+    spokenName,
+  )
+}
+
+/**
+ * The first stage of the organization's default pipeline.
+ *
+ * `createDealCommand` falls back to the literal name "LEAD" when no stage is
+ * given and then checks it against that pipeline's real stage names, so an
+ * organization whose first stage is called "Yeni" or "Новый" cannot create a
+ * deal without one. Stage names are never hardcoded here: this reads the
+ * organization's own configured stages, which is the same rule the rest of the
+ * codebase follows for `Deal.stage`.
+ *
+ * Null means no default pipeline exists, and the command's own pipeline-less
+ * path is then correct.
+ */
+async function resolveEntryStage(auth: AuthResult): Promise<string | null> {
+  const pipeline = await prisma.pipeline.findFirst({
+    where: { organizationId: auth.orgId, isDefault: true, isActive: true },
+    select: { id: true },
+  })
+  if (!pipeline) return null
+  const stage = await prisma.pipelineStage.findFirst({
+    where: { organizationId: auth.orgId, pipelineId: pipeline.id, isActive: true },
+    orderBy: { sortOrder: "asc" },
+    select: { name: true },
+  })
+  return stage?.name ?? null
+}
+
 /** Record types a voice task may be attached to from the current screen. */
 const RELATABLE_SCREEN_TYPES = new Set(["lead", "deal", "contact", "company", "ticket"])
 
@@ -260,6 +359,37 @@ export async function resolveVoiceProposal(
       }
     }
     payload.dealTitle = label
+  }
+
+  if (tool === "propose_create_deal") {
+    if (typeof args.companyName === "string") {
+      const company = await resolveCompany(auth, args.companyName)
+      if (!company.ok) {
+        return {
+          kind: "clarify",
+          code: company.ambiguous ? "COMPANY_AMBIGUOUS" : "COMPANY_NOT_FOUND",
+          field: "companyName",
+          candidates: company.candidates,
+        }
+      }
+      payload.companyId = company.id
+      delete payload.companyName
+    }
+    if (typeof args.contactName === "string") {
+      const contact = await resolveContact(auth, args.contactName)
+      if (!contact.ok) {
+        return {
+          kind: "clarify",
+          code: contact.ambiguous ? "CONTACT_AMBIGUOUS" : "CONTACT_NOT_FOUND",
+          field: "contactName",
+          candidates: contact.candidates,
+        }
+      }
+      payload.contactId = contact.id
+      delete payload.contactName
+    }
+    const stage = await resolveEntryStage(auth)
+    if (stage) payload.stage = stage
   }
 
   return {

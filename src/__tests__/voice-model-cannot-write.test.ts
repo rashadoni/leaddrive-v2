@@ -48,7 +48,7 @@ describe("the voice model has no write capability", () => {
   it("keeps every proposal tool pointed at a draft, never at an execution", () => {
     for (const tool of VOICE_PROPOSE_TOOL_NAMES) {
       expect(VOICE_PROPOSE_ACTION_TYPES[tool])
-        .toMatch(/^(create_task|create_lead|update_lead|convert_lead_to_deal)$/)
+        .toMatch(/^(create_task|create_lead|update_lead|convert_lead_to_deal|create_deal)$/)
     }
   })
 
@@ -81,11 +81,16 @@ describe("the voice model has no write capability", () => {
 
   it("does not let the model choose a deal stage or pipeline", () => {
     // `Deal.stage` is a free string and pipelines are per-organization, so a
-    // guessed stage is either refused or silently wrong. The command picks
-    // both from the lead.
+    // guessed stage is either refused or silently wrong. The server picks it
+    // from the lead, or from the organization's own default pipeline.
     const convert = voiceTools().find((tool) => tool.name === "propose_convert_lead_to_deal")
     expect(Object.keys(convert?.parameters.properties ?? {}).sort())
       .toEqual(["createCompany", "dealTitle", "dealValue", "leadName"])
+
+    const create = voiceTools().find((tool) => tool.name === "propose_create_deal")
+    for (const forbidden of ["stage", "pipelineId", "probability"]) {
+      expect(Object.keys(create?.parameters.properties ?? {}), forbidden).not.toContain(forbidden)
+    }
   })
 
   it("keeps the client-side tool surface to navigation and screen context", () => {
