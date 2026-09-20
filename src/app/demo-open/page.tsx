@@ -1,5 +1,4 @@
 import type { Metadata } from "next"
-import { DemoLocaleProvider } from "@/components/demo-center/journey/demo-locale"
 import { OpenDemo } from "@/components/demo-center/journey/open-demo"
 
 export const dynamic = "force-dynamic"
@@ -10,6 +9,13 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
   referrer: "no-referrer",
 }
+
+/*
+ * The locale is pinned by the proxy (`x-locale: az` for this path), not by a
+ * provider here: the root provider then loads the one bundle the demo needs.
+ * A nested provider would render the same screen but ship a second complete
+ * message bundle on top of the first.
+ */
 
 /**
  * The demo, open to anyone, on its own page.
@@ -28,9 +34,5 @@ export default async function OpenDemoPage({
 }) {
   const query = await searchParams
   const first = (value?: string | string[]) => (Array.isArray(value) ? value[0] : value)
-  return (
-    <DemoLocaleProvider>
-      <OpenDemo name={first(query.name)} company={first(query.company)} />
-    </DemoLocaleProvider>
-  )
+  return <OpenDemo name={first(query.name)} company={first(query.company)} />
 }

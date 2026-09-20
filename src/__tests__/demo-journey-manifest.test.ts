@@ -381,6 +381,22 @@ describe("The open demo", () => {
     expect(read("src/app/(marketing)/demo/page.tsx")).toContain('"/demo-open"')
   })
 
+  it("is pinned to the scenario language by the proxy, not by a second bundle", () => {
+    // The proxy cannot import the scenario — that would pull the whole
+    // manifest into the middleware bundle — so it carries the language as a
+    // literal. This is what keeps that literal honest if the scenario ever
+    // moves to another language.
+    const proxy = read("src/proxy.ts")
+    const pinned = proxy.match(/matchesPublicPath\(pathname, "\/demo-open"\)[\s\S]{0,160}?\?\s*"([a-z]{2})"/)
+    expect(pinned, "proxy no longer pins a demo locale").not.toBeNull()
+    expect(pinned![1]).toBe(PROSPECT_TO_CLOSED_WON.locale)
+
+    // And the public pages must not re-pin it on top of the root provider:
+    // that was the 3.1 MB page, two complete message bundles deep.
+    expect(read("src/app/demo-open/page.tsx")).not.toContain("DemoLocaleProvider")
+    expect(read("src/app/demo-access/[token]/page.tsx")).not.toContain("DemoLocaleProvider")
+  })
+
   it("does not post what the visitor types about themselves", () => {
     expect(shell).not.toContain("method:")
     expect(route).not.toContain("prisma")

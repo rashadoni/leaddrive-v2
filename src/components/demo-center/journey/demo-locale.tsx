@@ -12,10 +12,16 @@ import { PROSPECT_TO_CLOSED_WON } from "@/lib/demo-center/journey"
  * viewer got a Russian sidebar next to Azerbaijani instructions. That
  * half-and-half screen is exactly what a prospect should never see.
  *
- * Nesting a provider pins the whole subtree to the manifest's locale, so the
- * two halves always agree. A language switch becomes possible the day the
- * scenario itself carries ru/en copy — until then switching would only move
- * the seam rather than remove it.
+ * The two public demo routes no longer need this: the proxy sets
+ * `x-locale: az` for them, so the root provider loads the right bundle and
+ * only that one. What remains is the admin preview, which is reached through
+ * the authenticated branch — there the locale header carries the admin's own
+ * cookie, and the demo has to be re-pinned around the player. The admin is one
+ * person on an internal page, so the second bundle costs nothing that matters.
+ *
+ * A language switch becomes possible the day the scenario itself carries
+ * ru/en copy — until then switching would only move the seam rather than
+ * remove it.
  */
 export async function DemoLocaleProvider({ children }: { children: ReactNode }) {
   const locale = PROSPECT_TO_CLOSED_WON.locale

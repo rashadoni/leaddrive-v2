@@ -225,6 +225,37 @@ describe("middleware", async () => {
     expect(forwardedRequestHeader(res, "x-locale")).toBe("en")
   })
 
+  it.each(["/demo-open", "/demo-access/abc123"])(
+    "pins %s to the scenario language whatever the visitor's cookie says",
+    async (pathname) => {
+      // The demo's guide text exists only in Azerbaijani. Letting the root
+      // provider follow the cookie produced a Russian sidebar beside
+      // Azerbaijani instructions; pinning it here also spares the visitor a
+      // second complete message bundle.
+      const res = await authMiddleware(makeReq({
+        pathname,
+        host: "app.leaddrivecrm.org",
+        auth: null,
+        cookies: { NEXT_LOCALE: "ru" },
+      }))
+
+      expect(res.status).toBe(200)
+      expect(forwardedRequestHeader(res, "x-locale")).toBe("az")
+    },
+  )
+
+  it("leaves every other public page on the visitor's own language", async () => {
+    const res = await authMiddleware(makeReq({
+      pathname: "/demo",
+      host: "app.leaddrivecrm.org",
+      auth: null,
+      cookies: { NEXT_LOCALE: "ru" },
+    }))
+
+    expect(res.status).toBe(200)
+    expect(forwardedRequestHeader(res, "x-locale")).toBe("ru")
+  })
+
   it("does not forward an unsupported legal locale", async () => {
     const res = await authMiddleware(makeReq({
       pathname: "/legal/privacy?lang=invalid",
