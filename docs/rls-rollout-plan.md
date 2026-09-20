@@ -64,7 +64,7 @@ Instant, non-destructive (no data change): `ALTER TABLE "<t>" DISABLE ROW LEVEL 
 or `DROP POLICY tenant_isolation ON "<t>";`.
 
 ## Deploy / ops notes (see memory)
-- Deploy from `origin/main` (github rashadrahimov/leaddrive-v2). Prod: registered host `13.140.132.245`,
+- Deploy from `origin/main` (github rashadoni/leaddrive-v2). Prod: registered host `13.140.132.245`,
   `/opt/leaddrive-v2`, PM2 `leaddrive-v2`, port 3001.
 - **Server `next build` needs `NODE_OPTIONS=--max-old-space-size=4096`** or it OOMs
   (see memory `deploy-build-heap-oom`).

@@ -445,7 +445,7 @@ jobs:
             test -n "${!name}" || { echo "Missing required GitHub Secret: $name"; exit 1; }
           done
           case "$SCREENSHOT_BASE_URL" in
-            *leaddrivecrm.org*|*13.140.132.245*|*46.224.171.53*) echo "Production targets are forbidden for Support UX evidence"; exit 1 ;;
+            *leaddrivecrm.org*|*13.140.132.245*) echo "Production targets are forbidden for Support UX evidence"; exit 1 ;;
           esac
 
       - name: Install Chromium on the ephemeral hosted runner

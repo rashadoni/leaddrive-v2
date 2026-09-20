@@ -336,3 +336,56 @@ contract и должны пройти в GitHub CI.
 checkpoint commit, push, PR, полный CI, merge и production deploy. После этого
 можно реализовывать атомарное single-use proof consumption + execution claim и
 lease recovery до появления commit endpoint.
+
+## Итог 2026-09-20: execution boundary на production
+
+Срез полностью завершён и развёрнут:
+
+- checkpoint commit `aaa176df8`;
+- PR #245;
+- PR CI: scope, secret scan, runner policy, static checks, полный unit baseline
+  и defect-shaped typecheck — успешно;
+- merge SHA `a7f6c2654ffe1b3fb1f80df1e8b303c515dae19d`;
+- deploy workflow `35479290362` — успешно, включая quality/security gates,
+  production build, SHA-bound artifact, атомарный deploy и post-deploy smoke;
+- независимый `/api/v1/ping` вернул `{"ok":true}`;
+- независимый `/api/v1/public/build-info` подтвердил точный
+  `artifactSha=a7f6c2654ffe1b3fb1f80df1e8b303c515dae19d`.
+
+На production теперь присутствует внутренняя атомарная command/result boundary
+для всех пяти канонических CRM-команд. Голосовая CRM-запись по-прежнему
+выключена: commit endpoint отсутствует, proof не потребляется, execution claim
+и lease recovery ещё не включены, write-tool модели отсутствует.
+
+Точка остановки: следующий безопасный срез — атомарно потребить single-use
+confirmation proof, выполнить compare-and-swap claim в `executing` и добавить
+lease recovery/terminal failure semantics. Только после их проверки можно
+подключать commit endpoint; UI-кнопка и model write-tools остаются отдельными
+последующими этапами.
+
+## Коррекция маршрутизации 2026-09-20
+
+Пользователь подтвердил, что прежний GitHub-владелец и прежний production-host
+больше не существуют и не должны использоваться ни в правилах, ни в активной
+документации, ни в deploy-контрактах.
+
+Исправлено:
+
+- глобальный host contract указывает `rashadoni/leaddrive-v2` и
+  зарегистрированный Contabo-host `13.140.132.245`;
+- SSH alias `leaddrive-prod` больше не направлен на выведенный из эксплуатации
+  адрес;
+- активные файлы репозитория не содержат прежних GitHub/IP-значений;
+- deploy допускает только зарегистрированный host или заполнение
+  отсутствующего/пустого `SHARED_SERVER_IP`; неизвестный target отклоняется;
+- исторические документы сохраняют смысл свидетельств без удалённого адреса,
+  а GitHub-ссылки переведены на текущего владельца.
+
+Проверки на этой точке: `bash -n scripts/server-deploy.sh`, `node --check
+scripts/ci/test-event-platform-assets.mjs` и `git diff --check` — успешно.
+Целевые контрактные тесты запускаются следующим действием.
+
+Точка остановки: незакоммиченная повторная проверка execution-доступа в
+`src/lib/ai/voice/action-draft.ts` сохранена отдельно от коррекции маршрута.
+После отдельного checkpoint коррекции продолжается proof consumption +
+execution claim/lease recovery.

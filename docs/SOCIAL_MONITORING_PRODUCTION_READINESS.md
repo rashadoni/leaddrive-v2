@@ -181,13 +181,13 @@ Aggregate dry-run result:
 - Full local `npx tsc --noEmit`: NOT COMPLETED because the repository-wide
   process entered sustained swap thrashing after 14 minutes with no
   diagnostics.
-- PR #388: https://github.com/rashadrahimov/leaddrive-v2/pull/388
+- PR #388: https://github.com/rashadoni/leaddrive-v2/pull/388
 - CI static checks (including full TypeScript compile-check and unit tests):
-  https://github.com/rashadrahimov/leaddrive-v2/actions/runs/29647434019 — passed
+  https://github.com/rashadoni/leaddrive-v2/actions/runs/29647434019 — passed
   in 6m20s.
-- CI scan: https://github.com/rashadrahimov/leaddrive-v2/actions/runs/29647434005
+- CI scan: https://github.com/rashadoni/leaddrive-v2/actions/runs/29647434005
   — passed in 18s.
-- Production deployment: https://github.com/rashadrahimov/leaddrive-v2/actions/runs/29647883037
+- Production deployment: https://github.com/rashadoni/leaddrive-v2/actions/runs/29647883037
   — success; build, exact-artifact deploy and post-deploy smoke all passed.
 - Production merge/live commit: `665ea1e377d586ffb063ca260f400cb6230841cb`.
 - Independent production ping on 2026-07-18: HTTP 200, database `ok`, six
@@ -231,9 +231,9 @@ Aggregate dry-run result:
   diagnostics. It still reports the pre-existing `src/lib/auth.ts:88` implicit
   `any`; that file is unchanged from `origin/main`. Full PR CI remains the
   authoritative repository-wide typecheck.
-- PR #389: https://github.com/rashadrahimov/leaddrive-v2/pull/389
-- PR static checks: https://github.com/rashadrahimov/leaddrive-v2/actions/runs/29650864840 — passed in 6m39s, including full TypeScript compile-check and unit tests.
-- PR secret scan: https://github.com/rashadrahimov/leaddrive-v2/actions/runs/29650864844 — passed in 15s.
+- PR #389: https://github.com/rashadoni/leaddrive-v2/pull/389
+- PR static checks: https://github.com/rashadoni/leaddrive-v2/actions/runs/29650864840 — passed in 6m39s, including full TypeScript compile-check and unit tests.
+- PR secret scan: https://github.com/rashadoni/leaddrive-v2/actions/runs/29650864844 — passed in 15s.
 - Production deploy: covered by workflow `29658543797` for the descendant main
   commit `eb2d4cffa5dfb1d553bdda0cd56d552021a440df`; artifact verification, deploy,
   public ping, and login/assets smoke passed.

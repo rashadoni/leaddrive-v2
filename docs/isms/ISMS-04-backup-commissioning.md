@@ -16,7 +16,7 @@
 
 Read-only проверка нового production-хоста `13.140.132.245` выполнена
 2026-09-05 workflow run
-[`33960218044`](https://github.com/rashadrahimov/leaddrive-v2/actions/runs/33960218044)
+[`33960218044`](https://github.com/rashadoni/leaddrive-v2/actions/runs/33960218044)
 на SHA `d94f648ccf39fd1080e2c5254124972a82f36c0e`. Проверка завершилась
 `failure` и зафиксировала три машинных блокера, не раскрывая значения
 `/etc/leaddrive/backup.env`:
@@ -84,8 +84,8 @@ PII-значения для контрольного чтения не разр�
 
 ## 0a. Историческое evidence старого хоста — не текущий production-контроль
 
-Следующие факты были получены 2026-08-24/25 на прежнем production-хосте
-`46.224.171.53`. Они сохраняются как incident/audit history, но **не переносятся**
+Следующие факты были получены 2026-08-24/25 на прежнем production-хосте,
+адрес которого удалён из активной документации. Они сохраняются как incident/audit history, но **не переносятся**
 на `13.140.132.245`: toolchain, env, systemd state, локальные markers и
 возможность расшифровки должны быть доказаны заново на новом хосте.
 
@@ -319,7 +319,7 @@ evidence reference/digest, host, exact candidate, дату учения, RTO, д
 
 | Дата | Исполнитель | Результат | Затраченное время | Замечания |
 |---|---|---|---|---|
-| 2026-08-24/25 | прежний production | Исторический partial pass | не зафиксировано | `46.224.171.53`: dump + scratch canary + upload/Object Lock; не является evidence нового хоста и не доказывает archive decrypt/secrets/PII |
+| 2026-08-24/25 | прежний production | Исторический partial pass | не зафиксировано | Выведенный из эксплуатации хост: dump + scratch canary + upload/Object Lock; не является evidence нового хоста и не доказывает archive decrypt/secrets/PII |
 | 2026-09-05 | GitHub Actions read-only diagnostic | **NO-GO** | < 1 мин | `13.140.132.245`, run `33960218044`: encryption off; `age`/`aws` отсутствуют; старый DB timer active при последнем exit status 2; DB/secrets/runtime candidates, operator/signed restore/catalog evidence отсутствуют |
 
 ---
