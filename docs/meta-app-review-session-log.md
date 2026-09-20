@@ -223,3 +223,7 @@ Audit of existing legal pages, routing, Meta OAuth scopes, persisted data, reten
   subprocessor, its configurable US/Germany storage region and project-based
   retention are disclosed, and the safe diagnostic now reports only the DSN
   hostname so the active region can be resolved without exposing credentials.
+- Follow-up read-only run 35503210122 confirmed that neither server nor public
+  Sentry DSN is configured in the canonical production environment. Sentry is
+  therefore disclosed as an optional/code-supported provider, not reported as
+  a current production transfer.
