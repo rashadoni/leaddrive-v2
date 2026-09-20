@@ -694,3 +694,45 @@ related records и defaults; before/after diff для update; missing-informatio
 которые и будут первым вызовом commit endpoint; edit/retry/open-result;
 restore после reload; терминальные и error states; полный обход клавиатурой и
 скринридером.
+
+## Проверка на проде 2026-09-20: receipt UI shell U1.1-U1.3
+
+Владелец дал «давай» на смерженный список; PR #257 слит в `main`, merge SHA
+`1bbc59e1e64b357cc3586af55e526b940e7fbe8c`.
+
+Перед мержем все пять обязательных проверок были зелёные, и оба блокирующих
+базлайна не сдвинулись:
+
+- `check-test-baseline: 18 failing file(s), 18 in baseline` — два новых
+  тестовых файла зелёные и в базлайн не попали;
+- `check-typecheck-baseline: 66 gated pair(s) now, 66 in baseline
+  (1056 errors total)` — новых дефектных семейств не появилось.
+
+Деплой, и почему первый прогон красный не был:
+
+- собственный run мержа `35511956094` был **отменён concurrency-механизмом**
+  («a higher priority waiting request for prod-build-refs/heads/main exists»)
+  через секунды после старта, потому что другая сессия смержила PR #258. Это
+  ровно та ловушка, что уже описана в записи про `35498959331`: отмена по
+  concurrency — это не провал кода и не провал деплоя;
+- актуальный прогон `35512069725` собрал и развернул `6cca1a5a8`, в который
+  наш merge входит (`git merge-base --is-ancestor 1bbc59e1e 6cca1a5a8` — да).
+  Production build, quality/security gates, атомарная выкатка с post-deploy
+  smoke и capping артефактов прошли.
+
+Независимая проверка после выкатки:
+
+- `GET /api/v1/ping` → `{"ok":true}`;
+- `GET /api/v1/public/build-info` → `sha 6cca1a5a8da7`, `artifactSha
+  6cca1a5a8da7cd56aee4cfbc9321ac00e2159b9f`, `builtAt 2026-09-20T13:01:54Z` —
+  то есть активный артефакт действительно содержит receipt UI shell;
+- анонимный `POST /api/v1/ai/voice/actions/test-intent/commit` → `307` на
+  `/login`: commit boundary по-прежнему не пускает вызов без браузерной
+  сессии, и ничего из этого среза её не ослабило.
+
+Текущее состояние: shadow-mode поверхность квитанции на проде, но увидеть её
+пока нельзя — черновик никто не создаёт, потому что у модели нет ни одного
+write/propose-инструмента, а draft endpoint из клиента не вызывается.
+
+Точка остановки: U1.1-U1.3 на проде и проверены. Следующее действие —
+U1.4-U1.13.
