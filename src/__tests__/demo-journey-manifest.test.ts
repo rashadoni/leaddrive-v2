@@ -326,3 +326,40 @@ describe("Guided journey intro clips", () => {
     }
   })
 })
+
+describe("The open demo", () => {
+  const shell = read("src/components/demo-center/journey/open-demo.tsx")
+  const guide = read("src/components/demo-center/journey/demo-journey-guide.tsx")
+  const route = read("src/app/(marketing)/demo/start/page.tsx")
+
+  /** Comments explain why the gate is absent, so they must not be searched
+   *  for the very words that would prove it is present. */
+  const code = (source: string) => source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "")
+
+  it("opens the story with no gate: nothing is fetched, nothing is verified", () => {
+    const body = code(shell) + code(route)
+    for (const forbidden of ["fetch(", "/api/", "otpHash", "sessionHash", "demoGrant"]) {
+      expect(body, forbidden).not.toContain(forbidden)
+    }
+    expect(shell).toContain('variant="open"')
+    expect(route).toContain("OpenDemo")
+  })
+
+  it("keeps the paid assistant off for an unverified visitor", () => {
+    // Only a granted session may spend a model call.
+    expect(guide).toContain('variant !== "granted"')
+  })
+
+  it("serves no help-library media to an unverified visitor", () => {
+    expect(guide).toContain('variant !== "open"')
+  })
+
+  it("does not post what the visitor types about themselves", () => {
+    expect(shell).not.toContain("method:")
+    expect(route).not.toContain("prisma")
+  })
+
+  it("stays out of search results", () => {
+    expect(route).toContain("index: false")
+  })
+})

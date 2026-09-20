@@ -68,7 +68,7 @@ export default async function DemoRequestPreviewPage({
         identity={SAMPLE_IDENTITY}
         company={SAMPLE_IDENTITY.company}
         watermark={`Nümunə · Admin ön baxışı`}
-        previewMode
+        variant="preview"
       />
     )
   }
@@ -103,7 +103,7 @@ export default async function DemoRequestPreviewPage({
         identity={identity}
         company={request.company}
         watermark={`${request.company} · Admin ön baxışı`}
-        previewMode
+        variant="preview"
       />
     )
   }

@@ -16702,6 +16702,12 @@
     }
   },
   "demo": {
+    "openTitle": "Demonu indi açın",
+    "openSubtitle": "E-poçt və təsdiq kodu tələb olunmur — məhsul dərhal açılır.",
+    "openNameLabel": "Adınız",
+    "openCompanyLabel": "Şirkətiniz",
+    "openStart": "Demonu aç",
+    "openHint": "Adınızı yazsanız, hekayədəki lider siz olacaqsınız. Bu məlumat brauzerinizdən kənara çıxmır.",
     "badge": "Şəxsi demo",
     "heroTitle1": "LeadDrive CRM-i",
     "heroTitle2": "kəşf edin",

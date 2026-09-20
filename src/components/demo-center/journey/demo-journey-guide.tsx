@@ -14,6 +14,7 @@ import {
   type DemoJourneySnapshot,
   type DemoJourneyStep,
 } from "@/lib/demo-center/journey"
+import type { DemoJourneyVariant } from "./demo-journey-player"
 import { cn } from "@/lib/utils"
 import { DEMO_JOURNEY_STRINGS as S } from "./strings"
 
@@ -35,7 +36,7 @@ export interface DemoJourneyGuideProps {
   stepIndex: number
   progress: DemoJourneyProgress
   reviewMode: boolean
-  previewMode: boolean
+  variant: DemoJourneyVariant
   anchorMissing: boolean
   resultBanner: string | null
   canBack: boolean
@@ -56,7 +57,7 @@ export function DemoJourneyGuide({
   stepIndex,
   progress,
   reviewMode,
-  previewMode,
+  variant,
   anchorMissing,
   resultBanner,
   canBack,
@@ -155,13 +156,13 @@ export function DemoJourneyGuide({
       )}
 
       {section.intro && manifest.capabilities.video && (
-        <IntroClip slug={section.intro.slug} caption={section.intro.caption} status={section.intro.status} token={token} previewMode={previewMode} />
+        <IntroClip slug={section.intro.slug} caption={section.intro.caption} status={section.intro.status} token={token} variant={variant} />
       )}
 
       <DemoAssistant
         enabled={manifest.capabilities.assistant}
         token={token}
-        previewMode={previewMode}
+        variant={variant}
         snapshot={snapshot}
         prompts={section.assistantPrompts ?? []}
       />
@@ -219,13 +220,13 @@ export function DemoJourneyGuide({
 function DemoAssistant({
   enabled,
   token,
-  previewMode,
+  variant,
   snapshot,
   prompts,
 }: {
   enabled: boolean
   token: string
-  previewMode: boolean
+  variant: DemoJourneyVariant
   snapshot: DemoJourneySnapshot
   prompts: readonly string[]
 }) {
@@ -235,14 +236,17 @@ function DemoAssistant({
   const [remaining, setRemaining] = useState<number | null>(null)
   const [asking, setAsking] = useState(false)
 
-  if (!enabled) {
+  // The reference product kept its assistant behind an explicit activation
+  // too. In the open demo the switch stays off: nobody has verified who is
+  // asking, and every answer is a paid model call.
+  if (!enabled || variant !== "granted") {
     if (!prompts.length) return null
     return (
       <div data-tour-id="demo-assistant" className="rounded-lg border border-dashed border-zinc-200 p-3 dark:border-zinc-700">
         <p className="flex items-center gap-1.5 text-xs font-semibold">
           <Sparkles className="h-3.5 w-3.5 text-[hsl(var(--ai-from))]" aria-hidden="true" /> {S.assistantTitle}
         </p>
-        <p className="mt-1 text-xs text-muted-foreground">{S.assistantOff}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{variant === "open" ? S.assistantOpenDemo : variant === "preview" ? S.assistantPreviewOnly : S.assistantOff}</p>
       </div>
     )
   }
@@ -250,11 +254,6 @@ function DemoAssistant({
   const ask = async (text: string) => {
     const trimmed = text.trim()
     if (!trimmed || asking) return
-    if (previewMode) {
-      setAnswer(null)
-      setError(S.assistantPreviewOnly)
-      return
-    }
     setAsking(true)
     setError(null)
     setAnswer(null)
@@ -346,19 +345,21 @@ function IntroClip({
   caption,
   status,
   token,
-  previewMode,
+  variant,
 }: {
   slug: string
   caption: string
   status: "available" | "planned"
   token: string
-  previewMode: boolean
+  variant: DemoJourneyVariant
 }) {
   const [playing, setPlaying] = useState(false)
-  const entry = status === "available" ? getHelpVideoForSlug(slug, "az") : null
+  // The open demo streams nothing: its viewer is unverified, and these files
+  // are the product's own help library, not public marketing assets.
+  const entry = status === "available" && variant !== "open" ? getHelpVideoForSlug(slug, "az") : null
   const assets = !entry
     ? null
-    : previewMode
+    : variant === "preview"
       ? getHelpVideoAsset(entry, "az")
       : {
           videoSrc: `/api/v1/public/demo-access/${encodeURIComponent(token)}/video/${encodeURIComponent(`${slug}.az`)}.VOICE.mp4`,
@@ -387,7 +388,7 @@ function IntroClip({
           </button>
         )
       ) : (
-        <p className="mt-2 text-[11px] text-muted-foreground">{S.clipPlanned}</p>
+        <p className="mt-2 text-[11px] text-muted-foreground">{variant === "open" ? S.clipOpenDemo : S.clipPlanned}</p>
       )}
     </div>
   )

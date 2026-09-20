@@ -74,8 +74,26 @@ const SCENES: Record<string, ComponentType<DemoSceneProps>> = {
   summary: SummaryScene,
 }
 
+/**
+ * How this player was opened. Three paths behave differently in ways that
+ * used to be spelled as loose booleans, which is how they drift:
+ *
+ *   granted — a prospect's issued, OTP-verified session. Progress persists,
+ *             clips stream through the demo's own gated route, the assistant
+ *             answers.
+ *   preview — the authenticated superadmin looking at what will be sent.
+ *             Nothing is stored and nothing is spent; clips play through the
+ *             pipeline's normal route because the viewer is signed in.
+ *   open    — the public demo anyone can start from /demo, with no email and
+ *             no approval. Progress persists in this browser, but nothing
+ *             that costs money or serves internal media is switched on.
+ */
+export type DemoJourneyVariant = "granted" | "preview" | "open"
+
 export interface DemoJourneyPlayerProps {
+  /** Capability token; meaningful only for the granted variant. */
   token: string
+  variant?: DemoJourneyVariant
   manifest: DemoJourneyManifest
   identity: DemoProspectIdentity
   company: string
@@ -84,7 +102,6 @@ export interface DemoJourneyPlayerProps {
   sessionExpiresAt?: string
   idleExpiresAt?: string
   onAccessLost?: () => void
-  previewMode?: boolean
 }
 
 function storageKey(token: string): string {
@@ -101,8 +118,10 @@ export function DemoJourneyPlayer({
   sessionExpiresAt,
   idleExpiresAt,
   onAccessLost,
-  previewMode = false,
+  variant = "granted",
 }: DemoJourneyPlayerProps) {
+  const previewMode = variant === "preview"
+  const persistProgress = variant !== "preview"
   const [snapshot, setSnapshot] = useState<DemoJourneySnapshot | null>(null)
   const [viewSectionId, setViewSectionId] = useState<string | null>(null)
   const [anchorMissing, setAnchorMissing] = useState(false)
@@ -113,7 +132,7 @@ export function DemoJourneyPlayer({
   // discarded by parseSnapshot and the story starts over.
   useEffect(() => {
     let restored: DemoJourneySnapshot | null = null
-    if (!previewMode && typeof window !== "undefined") {
+    if (persistProgress && typeof window !== "undefined") {
       try {
         restored = parseSnapshot(window.sessionStorage.getItem(storageKey(token)), manifest)
       } catch {
@@ -124,16 +143,16 @@ export function DemoJourneyPlayer({
     setViewSectionId(null)
     // identity/manifest are stable per grant; token identifies the session.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, previewMode])
+  }, [token, variant])
 
   useEffect(() => {
-    if (previewMode || !snapshot || typeof window === "undefined") return
+    if (!persistProgress || !snapshot || typeof window === "undefined") return
     try {
       window.sessionStorage.setItem(storageKey(token), serializeSnapshot(snapshot))
     } catch {
       /* private mode / blocked storage: the story still runs in memory */
     }
-  }, [previewMode, snapshot, token])
+  }, [persistProgress, snapshot, token])
 
   /* ── session clock ── */
   const offset = useMemo(() => clockOffset(serverNow), [serverNow])
@@ -253,10 +272,10 @@ export function DemoJourneyPlayer({
               <Image src="/logo.svg" alt="LeadDrive CRM" width={132} height={32} priority className="h-8 w-auto shrink-0" />
               <div className="min-w-0">
                 <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-orange-800">
-                  {previewMode ? S.badgePreview : S.badgePrivate}
+                  {variant === "preview" ? S.badgePreview : variant === "open" ? S.badgeOpen : S.badgePrivate}
                 </span>
                 <p className="truncate text-xs text-muted-foreground">
-                  {previewMode ? S.forCompanyPreview(company) : S.forCompany(company)}
+                  {variant === "preview" ? S.forCompanyPreview(company) : variant === "open" ? S.openIntro : S.forCompany(company)}
                 </p>
               </div>
             </div>
@@ -302,7 +321,7 @@ export function DemoJourneyPlayer({
               stepIndex={Math.max(0, stepIndex)}
               progress={progress}
               reviewMode={reviewMode}
-              previewMode={previewMode}
+              variant={variant}
               anchorMissing={anchorMissing}
               resultBanner={resultBanner}
               canBack={canBack}

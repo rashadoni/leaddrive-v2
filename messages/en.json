@@ -16706,6 +16706,12 @@
     }
   },
   "demo": {
+    "openTitle": "Open the demo now",
+    "openSubtitle": "No email, no verification code — the product opens straight away.",
+    "openNameLabel": "Your name",
+    "openCompanyLabel": "Your company",
+    "openStart": "Open the demo",
+    "openHint": "Add your name and you become the lead in the story. Nothing you type here leaves your browser.",
     "badge": "Private demo",
     "heroTitle1": "Discover LeadDrive CRM",
     "heroTitle2": "explore it",
