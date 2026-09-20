@@ -62,6 +62,10 @@ jobs:
           echo "OPENAI_API_KEY set      = $(has_env OPENAI_API_KEY)"
           echo "GOOGLE_AI_API_KEY set   = $(has_env GOOGLE_AI_API_KEY)"
           echo "GEMINI_API_KEY set      = $(has_env GEMINI_API_KEY)"
+          echo "GOOGLE_VISION_API_KEY set= $(has_env GOOGLE_VISION_API_KEY)"
+          echo "VISION_OCR_PROVIDER     = $(read_env VISION_OCR_PROVIDER)"
+          echo "APIFY_API_TOKEN set     = $(has_env APIFY_API_TOKEN)"
+          echo "BRIGHT_DATA_API_TOKEN set= $(has_env BRIGHT_DATA_API_TOKEN)"
           echo "AZURE_SPEECH_KEY set    = $(has_env AZURE_SPEECH_KEY)"
 
           BACKUP_ENV="/etc/leaddrive/backup.env"
