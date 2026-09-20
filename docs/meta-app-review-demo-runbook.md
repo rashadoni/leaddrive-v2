@@ -6,16 +6,19 @@ to Meta assets.
 
 ## Required assets
 
-- LeadDrive tenant: 'Meta Review Demo' at
-  'https://metareview.leaddrivecrm.org'
-- LeadDrive reviewer user: a dedicated email stored in the password manager
+- LeadDrive tenant: existing 'leaddrive' tenant at
+  'https://app.leaddrivecrm.org'
+- LeadDrive reviewer user: 'meta-review@leaddrivecrm.org'; its password is
+  generated server-side and retrieved from the root-only credential store
 - Facebook test Page: 'LeadDrive Review Page'
 - Instagram professional test account: 'leaddrive_review_test'
 - A second Meta/Instagram test user that can send inbound messages
 - App ID: '2414060595720618'
 
-Do not use 'zeytun', 'fanumsec' or 'brandprotection' for this recording: they
-are current tenant namespaces, not disposable Meta fixtures. Never commit
+Do not use 'zeytun', 'fanumsec' or 'brandprotection' for this recording. The
+'leaddrive' organization is the internal tenant-poligon for this purpose, not
+a customer workspace. Use its dedicated reviewer user and verify before each
+take that no real customer record is visible. Never commit
 passwords, access tokens, app secrets, phone numbers belonging to
 real people, or the final reviewer credentials.
 
@@ -45,7 +48,7 @@ valid evidence for Meta.
 
 ## 90-second Instagram recording
 
-1. Sign in at 'https://metareview.leaddrivecrm.org'.
+1. Sign in at 'https://app.leaddrivecrm.org' as the dedicated reviewer user.
 2. Open 'Settings → Channels'; click **Instagram**.
 3. Complete Instagram Login and approve the requested
    'instagram_business_basic' and

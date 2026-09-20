@@ -87,7 +87,8 @@ disclosed in the public Privacy Policy.
 Record separate, short clips when Meta presents separate permission review
 fields:
 
-1. Start from 'Settings → Channels' in a dedicated review tenant.
+1. Start from 'Settings → Channels' in the 'leaddrive' tenant at
+   'https://app.leaddrivecrm.org'.
 2. Click the provider card and show the matching Meta/Instagram consent
    surface.
 3. Return to LeadDrive and show the connected asset.
@@ -109,9 +110,11 @@ LeadDrive uses dynamic tenant hosts of the form
 entry point and is not a tenant slug. New customer subdomains are provisioned
 without adding a hostname allowlist to the application.
 
-Create a dedicated 'metareview.leaddrivecrm.org' tenant and reviewer user; do
-not reuse any current customer tenant or production customer data. Store the
-credentials only in the approved password manager and paste
+Use the existing internal 'leaddrive' tenant-poligon through
+'https://app.leaddrivecrm.org' with the dedicated
+'meta-review@leaddrivecrm.org' reviewer user. Before recording, verify that every visible
+conversation and account is a test fixture and that no customer data appears.
+Store the credentials only in the approved password manager and paste
 them into Meta's reviewer-instructions field. The Meta test user must have
 access to test-only Pages/professional accounts and be assigned the necessary
 App Role while the app is in development mode.
@@ -129,8 +132,8 @@ The deterministic setup and recording checklist are in
       'instagram_business_basic' and 'instagram_business_manage_messages'.
 - [ ] Facebook review requests contain only permissions exercised in the
       submitted Facebook recording.
-- [ ] Dedicated 'metareview.leaddrivecrm.org' tenant and Meta test assets
-      contain no real customer data.
+- [ ] The 'leaddrive' reviewer workspace and Meta test assets show only
+      synthetic review data; no customer records are visible.
 - [ ] Inbound message and outbound reply are visible in each messaging clip.
 - [ ] WhatsApp Embedded Signup is implemented before claiming shared-app
       WhatsApp onboarding.

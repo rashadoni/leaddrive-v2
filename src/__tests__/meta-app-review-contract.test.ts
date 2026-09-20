@@ -49,4 +49,13 @@ describe("Meta App Review public contract", () => {
       expect(text).not.toMatch(/Close Account/i)
     }
   })
+
+  it("locks reviewer provisioning to the existing leaddrive sandbox", () => {
+    const script = readFileSync("scripts/ensure-meta-review-user.mjs", "utf8")
+    expect(script).toContain('const TENANT_SLUG = "leaddrive"')
+    expect(script).toContain('const REVIEWER_EMAIL = "meta-review@leaddrivecrm.org"')
+    expect(script).toContain('CONFIRM_PROD !== "meta-review:leaddrive"')
+    expect(script).not.toContain("process.env.REVIEWER_EMAIL")
+    expect(script).not.toContain("process.env.TENANT_SLUG")
+  })
 })

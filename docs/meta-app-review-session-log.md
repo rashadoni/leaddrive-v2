@@ -99,3 +99,25 @@ Audit of existing legal pages, routing, Meta OAuth scopes, persisted data, reten
   'metareview.leaddrivecrm.org' tenant so no current customer workspace is
   exposed during recording. Added middleware coverage for the named tenants
   plus an arbitrary future tenant host.
+
+## 2026-09-20 — reviewer tenant selected
+
+- User superseded the proposed new 'metareview' tenant: no tenant is to be
+  created. Meta Review will use the existing 'leaddrive' organization at
+  'https://app.leaddrivecrm.org'.
+- Updated the dossier and recording runbook accordingly. A dedicated reviewer
+  user and synthetic-only visible workspace remain required.
+- Corrected another legacy identity entry in 'clients/registry.json':
+  'LeadDrive Inc., Warsaw' is replaced by LeadDrive CRM operated by
+  '"FANUM" MMC, Baku', consistent with the permanent routing/legal correction.
+
+## 2026-09-20 — sandbox role confirmed
+
+- User clarified that the existing 'leaddrive' organization is the designated
+  internal tenant-poligon. It is therefore the approved Meta reviewer tenant;
+  no new organization will be provisioned.
+- Added a locked operator script and manual GitHub Actions workflow that only
+  upserts 'meta-review@leaddrivecrm.org' as an admin in organization
+  'leaddrive'. The password is generated on the production server and stored
+  at '/root/leaddrive-credentials/leaddrive-meta-review.pass' with mode 0600;
+  it is never printed or transferred through GitHub Actions.
