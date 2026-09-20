@@ -47,7 +47,10 @@ export async function getTenantMetaApp(
     select: { appId: true, appSecret: true, settings: true },
     orderBy: { updatedAt: "desc" },
   })
-  const cfg = cfgs.find((c: { appId: string | null; appSecret: string | null; settings: unknown }) => !isIgLogin(c.settings))
+  const cfg = cfgs.find(
+    (c: { appId: string | null; appSecret: string | null; settings: unknown }) =>
+      !isIgLogin(c.settings) && !isAppReviewOnly(c.settings),
+  )
   if (cfg?.appId && cfg?.appSecret) {
     return { appId: cfg.appId, appSecret: cfg.appSecret }
   }
@@ -61,6 +64,32 @@ export function isIgLogin(settings: unknown): boolean {
     typeof settings === "object" &&
     !Array.isArray(settings) &&
     (settings as { igLogin?: unknown }).igLogin === true
+  )
+}
+
+/**
+ * True when a ChannelConfig row is a STAGED Meta app that must never become the tenant's default.
+ *
+ * Why this marker exists. `getTenantMetaApp` picks the newest qualifying row for the WHOLE
+ * organization, so the moment a second Meta app is entered anywhere in that tenant it silently
+ * becomes the app every Facebook/Instagram OAuth in that tenant runs through — including a
+ * *reconnect* of an already-live customer Page. On the `leaddrive` tenant that is not theoretical:
+ * it holds five active Facebook rows for real customer Pages alongside the App Review sandbox, and
+ * `docs/meta-app-review-repoint-runbook.md` already warned that with several qualifying rows "the
+ * resolver's `updatedAt DESC` ordering picks the winner, not you".
+ *
+ * A row marked `settings.appReviewOnly = true` is therefore invisible to BOTH org-wide resolvers.
+ * It is reachable only by explicitly naming its id (`?app=<channelConfigId>` on an OAuth start, which
+ * travels on in the signed state to the callback). That is what keeps a new, under-review Meta app
+ * isolated to the connection it was staged for while every existing channel keeps resolving exactly
+ * as it did before the row existed.
+ */
+export function isAppReviewOnly(settings: unknown): boolean {
+  return (
+    !!settings &&
+    typeof settings === "object" &&
+    !Array.isArray(settings) &&
+    (settings as { appReviewOnly?: unknown }).appReviewOnly === true
   )
 }
 
@@ -79,7 +108,7 @@ export async function getTenantInstagramLoginApp(
   organizationId: string,
 ): Promise<{ appId: string; appSecret: string } | null> {
   if (!organizationId) return null
-  const cfg = await prisma.channelConfig.findFirst({
+  const cfgs = await prisma.channelConfig.findMany({
     where: {
       organizationId,
       channelType: "instagram",
@@ -93,11 +122,72 @@ export async function getTenantInstagramLoginApp(
       // true }` there is NULL-UNSAFE (would drop FB rows lacking the key — see getTenantMetaApp + prisma#7836).
       settings: { path: ["igLogin"], equals: true },
     },
-    select: { appId: true, appSecret: true },
+    select: { appId: true, appSecret: true, settings: true },
     orderBy: { updatedAt: "desc" },
   })
+  // The appReviewOnly exclusion is in JS for the same NULL-safety reason as the FB side: a Prisma
+  // `NOT { path: ["appReviewOnly"], equals: true }` would drop every row whose settings lacks the key,
+  // i.e. every ordinary IG-Login row.
+  const cfg = cfgs.find(
+    (c: { appId: string | null; appSecret: string | null; settings: unknown }) => !isAppReviewOnly(c.settings),
+  )
   if (cfg?.appId && cfg?.appSecret) {
     return { appId: cfg.appId, appSecret: cfg.appSecret }
   }
   return null
+}
+
+/** Which OAuth surface a pinned app row has to serve. */
+export type MetaLoginSurface = "facebook" | "instagram-login"
+
+export type PinnedMetaApp = {
+  configId: string
+  appId: string
+  appSecret: string
+  hasVerifyToken: boolean
+}
+
+/**
+ * Resolve the Meta app credentials of ONE explicitly named ChannelConfig row — the "pinned" app.
+ *
+ * This is the isolated path used by the App Review staging flow (`?app=<channelConfigId>`), and it
+ * differs from the org-wide resolvers above in the two ways that matter:
+ *
+ *  1. It reads exactly the row it was given. No `updatedAt DESC` race, so the app the consent screen
+ *     shows is the app the callback exchanges the code against even if another row is edited midway.
+ *  2. It FAILS CLOSED. There is no env fallback anywhere on this path. A caller that asked for a
+ *     specific app and cannot have it must surface an error, never quietly run the shared production
+ *     app instead — that substitution is precisely how a demo recording ends up showing the wrong App
+ *     ID (`docs/meta-app-review-session-log.md`), which is worth an entire rejected submission.
+ *
+ * The row must belong to `organizationId` (checked here as well as by RLS), carry the full
+ * appId+appSecret+verifyToken triple, and match the requested surface — a Facebook-Login start must
+ * not pick up an Instagram-Login app row, and vice versa.
+ */
+export async function getPinnedMetaApp(
+  organizationId: string,
+  channelConfigId: string,
+  surface: MetaLoginSurface,
+): Promise<PinnedMetaApp | null> {
+  if (!organizationId || !channelConfigId) return null
+  const cfg = await prisma.channelConfig.findFirst({
+    where: { id: channelConfigId, organizationId },
+    select: { id: true, channelType: true, appId: true, appSecret: true, verifyToken: true, settings: true },
+  })
+  if (!cfg) return null
+  if (!cfg.appId || !cfg.appSecret) return null
+  // The verify token is what the tenant registers in their own Meta app's webhook setup. Requiring it
+  // keeps the pinned row the same shape as every other Model B app-config row, so a pinned connection
+  // can actually receive webhooks rather than only completing an OAuth.
+  if (!cfg.verifyToken) return null
+
+  const igLogin = isIgLogin(cfg.settings)
+  if (surface === "instagram-login") {
+    if (cfg.channelType !== "instagram" || !igLogin) return null
+  } else {
+    if (cfg.channelType !== "facebook" && cfg.channelType !== "instagram") return null
+    if (igLogin) return null
+  }
+
+  return { configId: cfg.id, appId: cfg.appId, appSecret: cfg.appSecret, hasVerifyToken: true }
 }

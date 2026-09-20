@@ -532,7 +532,7 @@ describe("Meta one-click — checks with no executable surface", () => {
       join(process.cwd(), "src/app/api/v1/social/oauth/facebook/start/route.ts"),
       "utf8",
     )
-    expect(facebookStart).toContain("const usesSocialInbox = Boolean(returnKey) ||")
+    expect(facebookStart).toContain("Boolean(returnKey) || (await prisma.channelConfig.count({")
   })
 
   it("no longer sells step 3 as just save it", () => {

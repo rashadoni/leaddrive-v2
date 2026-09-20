@@ -3,7 +3,7 @@ import crypto from "crypto"
 import { prisma } from "@/lib/prisma"
 import { getOrgId } from "@/lib/api-auth"
 import { runWithTenant } from "@/lib/rls-context"
-import { getTenantInstagramLoginApp } from "@/lib/social/tenant-meta-app"
+import { getTenantInstagramLoginApp, getPinnedMetaApp, isAppReviewOnly } from "@/lib/social/tenant-meta-app"
 import { redactOAuthProviderText } from "@/lib/oauth-redaction"
 import { normalizeOAuthReturnKey, oauthReturnUrl } from "@/lib/social/oauth-return"
 
@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
   } catch {
     return redirectError(req, "bad_signature")
   }
-  const payload = JSON.parse(payloadStr) as { orgId: string; state: string; ts: number; ret?: string }
+  const payload = JSON.parse(payloadStr) as { orgId: string; state: string; ts: number; ret?: string; app?: string }
   // Trusted only from here on — the HMAC was just verified. Branches above keep the static default.
   const ret = normalizeOAuthReturnKey(payload.ret)
   if (Date.now() - payload.ts > 30 * 60 * 1000) return redirectError(req, "expired", ret)
@@ -99,9 +99,14 @@ export async function GET(req: NextRequest) {
   // Model B: use the SAME IG-Login app the start route used — the tenant's own appId/appSecret (resolved
   // by the signed-state orgId), with env fallback to LeadDrive's shared IG-Login app. appSecret is read
   // server-side only (token exchange below).
-  const tenantApp = await getTenantInstagramLoginApp(payload.orgId)
-  const appId = tenantApp?.appId || process.env.INSTAGRAM_APP_ID
-  const appSecret = tenantApp?.appSecret || process.env.INSTAGRAM_APP_SECRET
+  // A PINNED flow names its Instagram-Login app inside the signed state; honour that id rather than
+  // re-running the org-wide lookup, and fail closed rather than falling back to env (mirrors
+  // oauth/facebook/callback — same reasoning, same consequence if it were allowed to substitute).
+  const pinnedApp = payload.app ? await getPinnedMetaApp(payload.orgId, payload.app, "instagram-login") : null
+  if (payload.app && !pinnedApp) return redirectError(req, "not_configured", ret)
+  const tenantApp = pinnedApp ? null : await getTenantInstagramLoginApp(payload.orgId)
+  const appId = pinnedApp?.appId || tenantApp?.appId || process.env.INSTAGRAM_APP_ID
+  const appSecret = pinnedApp?.appSecret || tenantApp?.appSecret || process.env.INSTAGRAM_APP_SECRET
   const redirectUri = process.env.INSTAGRAM_REDIRECT_URI
   if (!appId || !appSecret || !redirectUri) return redirectError(req, "not_configured", ret)
 
@@ -158,15 +163,31 @@ export async function GET(req: NextRequest) {
   // 4) ChannelConfig(instagram) holding the IG-Login token. Keyed on (org, instagram, pageId=igUserId).
   //    settings.igLogin marks this as the Instagram-Login (Path B) row; the token is stored raw in
   //    apiKey to match the existing ChannelConfig send-path convention (see inbox-channel.ts).
-  const existing = await prisma.channelConfig.findFirst({
+  // A STAGED (pinned) connect must not read-modify-write a row that already exists: the update below
+  // overwrites `apiKey` and forces `isActive: true`, so staging the app under review against an
+  // account whose row somebody deliberately switched off would silently turn it back on. In staged
+  // mode only a row that is itself staged may be updated; otherwise a separate staged row is created
+  // and the existing one is left exactly as it stands.
+  const staged = Boolean(pinnedApp)
+  const candidates = await prisma.channelConfig.findMany({
     where: { organizationId: payload.orgId, channelType: "instagram", pageId: userId },
     select: { id: true, settings: true },
+    orderBy: { createdAt: "asc" },
   })
+  const existing = staged
+    ? candidates.find((c: { id: string; settings: unknown }) => isAppReviewOnly(c.settings)) || null
+    : candidates[0] || null
+  if (staged && !existing && candidates.length > 0) {
+    console.warn(
+      `[instagram-oauth] staged connect for IG ${userId}: ${candidates.length} existing row(s) left untouched`,
+    )
+  }
   const prevSettings =
     existing?.settings && typeof existing.settings === "object" && !Array.isArray(existing.settings)
       ? (existing.settings as Record<string, unknown>)
       : {}
-  const settings = { ...prevSettings, igLogin: true, tokenExpiresAt: expiresAt, username }
+  const settings: Record<string, unknown> = { ...prevSettings, igLogin: true, tokenExpiresAt: expiresAt, username }
+  if (staged) settings.appReviewOnly = true
   if (existing) {
     await prisma.channelConfig.update({
       where: { id: existing.id },
@@ -177,7 +198,7 @@ export async function GET(req: NextRequest) {
       data: {
         organizationId: payload.orgId,
         channelType: "instagram",
-        configName: displayName,
+        configName: staged ? `${displayName} (App Review)` : displayName,
         pageId: userId,
         apiKey: longToken,
         // appId/appSecret are env-global for the single IG-Login app (read from env by the webhook +

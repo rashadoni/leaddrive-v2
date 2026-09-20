@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { subscribePageToMessages } from "./meta-subscribe"
+import { isAppReviewOnly } from "./tenant-meta-app"
 
 /**
  * Idempotently make a Facebook page / linked Instagram account an INBOX channel (FB/IG multi-tenant,
@@ -17,14 +18,37 @@ import { subscribePageToMessages } from "./meta-subscribe"
  * (manual entry + WhatsApp/SMS all store the send token raw; the send path reads it raw). Encrypting
  * every ChannelConfig token is a separate cross-cutting change, out of scope here.
  */
+export type EnsureInboxChannelOptions = {
+  /**
+   * The OAuth that produced this token was PINNED to a staged Meta app (App Review), so this call
+   * must not touch anything that already works.
+   *
+   * Two behaviours change, and both exist because the OAuth callback loops over EVERY page the
+   * connecting Meta user administers — not just the one being tested. On a tenant like `leaddrive`,
+   * which holds live customer Pages next to the review sandbox, the ordinary path would have:
+   *
+   *   - overwritten each live row's `apiKey` with a token minted by the app under review, and forced
+   *     `isActive: true` on rows somebody had deliberately switched off; and
+   *   - called `subscribed_apps` on those real Pages, moving real customers' DM delivery onto an app
+   *     that is still in development.
+   *
+   * Staged mode therefore (a) confines the upsert to rows that are themselves staged, so a
+   * pre-existing row is never read-modify-written, and (b) performs NO subscription — subscribing a
+   * real asset is a deliberate act, done one page at a time through the explicit subscribe endpoint.
+   */
+  staged?: boolean
+}
+
 export async function ensureInboxChannelForPage(
   organizationId: string,
   channelType: "facebook" | "instagram",
   pageId: string,
   configName: string,
   pageToken: string,
-): Promise<{ created: boolean; subscribed: boolean }> {
+  options: EnsureInboxChannelOptions = {},
+): Promise<{ created: boolean; subscribed: boolean; skippedExisting?: boolean }> {
   if (!organizationId || !pageId || !pageToken) return { created: false, subscribed: false }
+  const staged = options.staged === true
 
   // Subscribe to Meta's DM webhook. A Facebook PAGE subscribes directly via subscribed_apps.
   // Instagram Direct, however, is delivered through the LINKED Facebook Page's `messages` webhook —
@@ -33,23 +57,50 @@ export async function ensureInboxChannelForPage(
   // its DMs ride the linked page's subscription (which the FB side of this same OAuth subscribes).
   // We persist the outcome on settings.inboxSubscribed so the Social Monitoring banner can prompt a
   // re-connect when a real subscribe fails (a missing pages_messaging scope).
+  //
+  // A STAGED connect subscribes nothing at all — see EnsureInboxChannelOptions.staged.
   const sub: { success: boolean; error?: string } =
-    channelType === "instagram"
-      ? { success: true }
-      : await subscribePageToMessages(pageId, pageToken)
-  if (!sub.success) {
+    staged
+      ? { success: false, error: "staged: subscription deferred to an explicit action" }
+      : channelType === "instagram"
+        ? { success: true }
+        : await subscribePageToMessages(pageId, pageToken)
+  if (!sub.success && !staged) {
     console.warn(`[inbox-channel] subscribe failed for ${channelType} page ${pageId}: ${sub.error}`)
   }
 
-  const existing = await prisma.channelConfig.findFirst({
+  // In staged mode the candidate set is restricted to staged rows. A live row for the same pageId is
+  // left exactly as it is — not updated, not re-activated, not re-subscribed.
+  const candidates = await prisma.channelConfig.findMany({
     where: { organizationId, channelType, pageId },
     select: { id: true, settings: true },
+    orderBy: { createdAt: "asc" },
   })
+  const existing = staged
+    ? candidates.find((c: { id: string; settings: unknown }) => isAppReviewOnly(c.settings)) || null
+    : candidates[0] || null
+
+  if (staged && !existing && candidates.length > 0) {
+    // There IS a live row for this page and we are staging. Creating a second row is still correct —
+    // inbound stays with the older (live) claim by `rankInboundChannels`, so this cannot steal a
+    // customer's DMs — but say so, because "connected" on a staged card must not be read as "this
+    // page now delivers here".
+    console.warn(
+      `[inbox-channel] staged connect for ${channelType} page ${pageId}: ${candidates.length} existing row(s) left untouched`,
+    )
+  }
+
   const prevSettings =
     existing?.settings && typeof existing.settings === "object" && !Array.isArray(existing.settings)
       ? (existing.settings as Record<string, unknown>)
       : {}
-  const settings = { ...prevSettings, inboxSubscribed: sub.success }
+  const settings: Record<string, unknown> = { ...prevSettings, inboxSubscribed: sub.success }
+  if (staged) {
+    settings.appReviewOnly = true
+    // Distinguishes "Meta refused the subscription" from "we deliberately did not ask". The channel
+    // card reads inboxSubscribed for its warning; without this the two look identical.
+    settings.subscriptionPending = true
+  }
 
   let created = false
   if (existing) {
@@ -68,7 +119,7 @@ export async function ensureInboxChannelForPage(
       data: {
         organizationId,
         channelType,
-        configName,
+        configName: staged ? `${configName} (App Review)` : configName,
         pageId,
         apiKey: pageToken,
         isActive: true,
@@ -78,5 +129,9 @@ export async function ensureInboxChannelForPage(
     created = true
   }
 
-  return { created, subscribed: sub.success }
+  return {
+    created,
+    subscribed: sub.success,
+    ...(staged && !existing && candidates.length > 0 ? { skippedExisting: true } : {}),
+  }
 }

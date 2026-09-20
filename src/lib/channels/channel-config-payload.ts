@@ -26,6 +26,7 @@ export interface ChannelConfigFormData {
   verifyToken: string
   displayName: string
   igLogin: boolean
+  appReviewOnly: boolean
   chatwootBaseUrl: string
   chatwootAccountId: string
   chatwootWebhookSecret: string
@@ -117,6 +118,15 @@ export function buildChannelPayload(form: ChannelConfigFormData) {
       ...(form.accountSid ? { accountSid: form.accountSid } : {}),
       ...(form.confirmationCode ? { confirmationCode: form.confirmationCode } : {}),
       ...(form.channelType === "instagram" && form.igLogin ? { igLogin: true } : {}),
+      // A STAGED Meta app, isolated from the tenant's live channels: `appReviewOnly` hides the row
+      // from the org-wide resolvers in lib/social/tenant-meta-app.ts, so entering a second Meta app
+      // (e.g. one under App Review) cannot become the app that an existing channel's reconnect runs
+      // through. It must be re-sent on every save — this builder rebuilds `settings` from scratch, so
+      // omitting it here would silently clear the flag on the next edit and promote the staged app to
+      // the tenant default, which is the precise accident the flag exists to prevent.
+      ...((form.channelType === "facebook" || form.channelType === "instagram") && form.appReviewOnly
+        ? { appReviewOnly: true }
+        : {}),
     },
     isActive: form.isActive,
   } as Record<string, unknown>

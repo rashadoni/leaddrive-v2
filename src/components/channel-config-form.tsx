@@ -146,6 +146,8 @@ const localCopy: Record<Loc, Record<string, string>> = {
     metaAppSecretPlaceholder: "Meta app secret",
     metaVerifyTokenPlaceholder: "a-random-string-you-choose",
     metaVerifyTokenHint: "Any random string — it must match the Verify Token in your Meta app's Webhook config.",
+    metaAppReviewOnlyLabel: "Staging app (Meta App Review) — do not use for existing channels",
+    metaAppReviewOnlyHint: "Keeps this Meta app isolated: it is used only when a connection names it explicitly, so the channels already connected in this workspace keep running on the app they use today.",
     metaConnectFacebook: "Connect Facebook Page →",
     metaConnectInstagram: "Connect Instagram account →",
     metaOneClickTitle: "Connect with LeadDrive's Meta app",
@@ -231,6 +233,8 @@ const localCopy: Record<Loc, Record<string, string>> = {
     metaAppSecretPlaceholder: "секрет Meta-приложения",
     metaVerifyTokenPlaceholder: "любая-длинная-строка",
     metaVerifyTokenHint: "Любая строка — она должна совпадать с Verify Token в настройках webhook вашего Meta-приложения.",
+    metaAppReviewOnlyLabel: "Тестовое приложение (Meta App Review) — не использовать для существующих каналов",
+    metaAppReviewOnlyHint: "Изолирует это Meta-приложение: оно применяется, только когда подключение указывает его явно, поэтому уже подключённые каналы продолжают работать на прежнем приложении.",
     metaConnectFacebook: "Подключить Facebook Page →",
     metaConnectInstagram: "Подключить Instagram account →",
     metaOneClickTitle: "Подключение через приложение LeadDrive",
@@ -316,6 +320,8 @@ const localCopy: Record<Loc, Record<string, string>> = {
     metaAppSecretPlaceholder: "Meta tətbiq secret",
     metaVerifyTokenPlaceholder: "istənilən-uzun-sətir",
     metaVerifyTokenHint: "İstənilən sətir — Meta tətbiqin webhook konfiqurasiyasındakı Verify Token ilə eyni olmalıdır.",
+    metaAppReviewOnlyLabel: "Sınaq tətbiqi (Meta App Review) — mövcud kanallar üçün istifadə edilməsin",
+    metaAppReviewOnlyHint: "Bu Meta tətbiqini təcrid edir: yalnız bağlantı onu açıq şəkildə göstərəndə işlədilir, ona görə artıq qoşulmuş kanallar indiki tətbiqlə işləməyə davam edir.",
     metaConnectFacebook: "Facebook Page qoş →",
     metaConnectInstagram: "Instagram account qoş →",
     metaOneClickTitle: "LeadDrive-ın Meta tətbiqi ilə qoşulma",
@@ -853,6 +859,7 @@ export function ChannelConfigForm({
     verifyToken: "",
     displayName: "",
     igLogin: false,
+    appReviewOnly: false,
     chatwootBaseUrl: "",
     chatwootAccountId: "",
     chatwootWebhookSecret: "",
@@ -920,6 +927,7 @@ export function ChannelConfigForm({
         verifyToken: initialData?.verifyToken || "",
         displayName: initialData?.displayName || "",
         igLogin: normalizedSettings.igLogin === true,
+        appReviewOnly: normalizedSettings.appReviewOnly === true,
         chatwootBaseUrl: asString(normalizedSettings.baseUrl),
         chatwootAccountId: normalizedSettings.accountId != null ? String(normalizedSettings.accountId) : "",
         chatwootWebhookSecret: asString(normalizedSettings.webhookSecret),
@@ -2046,7 +2054,14 @@ export function ChannelConfigForm({
                         // separate Instagram-Login app below.
                         const provider = form.igLogin ? "instagram" : "facebook"
                         const from = form.channelType === "instagram" ? "channels-instagram" : "channels-facebook"
-                        window.location.href = `/api/v1/social/oauth/${provider}/start?from=${from}`
+                        // A staged (App Review) row is deliberately invisible to the org-wide resolver,
+                        // so the connect MUST name it — `?app=<id>`. Without this the start route would
+                        // resolve some other row, or the shared env app, and the consent screen would
+                        // show an App ID the user did not stage.
+                        const pin = form.appReviewOnly && isEdit && initialData?.id
+                          ? `&app=${encodeURIComponent(initialData.id)}`
+                          : ""
+                        window.location.href = `/api/v1/social/oauth/${provider}/start?from=${from}${pin}`
                       }}
                       className="w-full rounded-lg bg-orange-500 py-2.5 text-sm font-medium text-white transition-colors hover:bg-orange-600"
                     >
@@ -2160,6 +2175,26 @@ export function ChannelConfigForm({
                           {credentialStateHint(hasStoredMetaVerifyToken)}
                         </p>
                       )}
+                    </div>
+                    {/* Isolation switch. Without it, a second Meta app entered in a workspace that
+                        already has live channels silently becomes the app EVERY Facebook/Instagram
+                        reconnect in that workspace runs through (the org-wide resolver takes the most
+                        recently updated row). Ticking this keeps the new app reachable only by the
+                        connection that names it. */}
+                    <div className="rounded-md border border-dashed p-3">
+                      <label htmlFor="appReviewOnly" className="flex items-start gap-2 cursor-pointer">
+                        <input
+                          id="appReviewOnly"
+                          type="checkbox"
+                          checked={form.appReviewOnly}
+                          onChange={(e) => update("appReviewOnly", e.target.checked)}
+                          className="mt-0.5"
+                        />
+                        <span className="text-sm font-medium">{c.metaAppReviewOnlyLabel}</span>
+                      </label>
+                      <p className="text-xs text-muted-foreground mt-1 ml-6">
+                        {c.metaAppReviewOnlyHint}
+                      </p>
                     </div>
                     {metaOAuthBlockedByOwnApp ? (
                       <p className="text-xs text-amber-700">
