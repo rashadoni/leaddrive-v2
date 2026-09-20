@@ -86,3 +86,16 @@ Audit of existing legal pages, routing, Meta OAuth scopes, persisted data, reten
   deprecated in 2025. Meta's current materials also describe Embedded Signup
   as the onboarding path for business customers, reinforcing the identified
   WhatsApp implementation gap.
+
+## 2026-09-20 — dynamic tenant-domain clarification
+
+- User confirmed the active host model includes
+  'zeytun.leaddrivecrm.org', 'fanumsec.leaddrivecrm.org',
+  'brandprotection.leaddrivecrm.org' and the shared
+  'app.leaddrivecrm.org', with more customer subdomains added over time.
+- The implementation already resolves '{slug}.leaddrivecrm.org' dynamically;
+  no static customer-domain allowlist is required or desirable.
+- Updated the reviewer materials to reserve a separate
+  'metareview.leaddrivecrm.org' tenant so no current customer workspace is
+  exposed during recording. Added middleware coverage for the named tenants
+  plus an arbitrary future tenant host.
