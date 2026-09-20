@@ -70,6 +70,11 @@
 
 ## Прод и деплой
 
+- Канонический GitHub — только `rashadoni/leaddrive-v2`; прод — только Contabo
+  `13.140.132.245`, `/opt/leaddrive-v2`. Старые `rashadrahimov/leaddrive-v2` и
+  Hetzner `46.224.171.53` выведены из эксплуатации навсегда: не использовать их
+  для Git, CI, инспекции, деплоя, восстановления или новых инструкций.
+
 - Пуш в `main` **автоматически деплоит на прод** (`.github/workflows/deploy.yml`):
   security-гейты → сборка → tarball → scp → `scripts/server-deploy.sh`
   (атомарный swap, `prisma migrate deploy` fail-fast, health-check `/api/v1/ping`,

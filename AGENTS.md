@@ -1,5 +1,18 @@
 # AGENTS.md — LeadDrive Codex operating rules
 
+## Canonical repository and production routing
+
+- The only active GitHub repository is `rashadoni/leaddrive-v2`, with
+  `origin=https://github.com/rashadoni/leaddrive-v2.git`.
+- LeadDrive production is the Contabo host `13.140.132.245`, application path
+  `/opt/leaddrive-v2`.
+- `rashadrahimov/leaddrive-v2` and the former Hetzner host `46.224.171.53` are
+  permanently retired. Never use them as a source-control, CI, deployment,
+  inspection, recovery, or documentation target.
+- Production releases travel only through the reviewed `main` branch and
+  `.github/workflows/deploy.yml`; never copy or build a feature worktree on the
+  production host.
+
 ## GitHub return — prepared 2026-09-09
 
 The owner authorized returning source control and normal Linux CI to a new,
