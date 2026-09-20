@@ -121,3 +121,14 @@ Audit of existing legal pages, routing, Meta OAuth scopes, persisted data, reten
   'leaddrive'. The password is generated on the production server and stored
   at '/root/leaddrive-credentials/leaddrive-meta-review.pass' with mode 0600;
   it is never printed or transferred through GitHub Actions.
+
+## 2026-09-20 — first PR CI correction
+
+- PR 250 static baseline identified three task-related failures: one mock
+  leaked the previous Meta channel into the missing-channel test; the existing
+  Instagram catalog test still required the superseded Facebook flow; and the
+  company-identity guard exposed remaining 'Fanumsec MMC' copies in About and
+  the proposal generator.
+- Corrected the isolated mock, aligned the OAuth assertion with Instagram
+  Login, and replaced the remaining public/commercial identity copies with the
+  registered '"FANUM" MMC' name across all locales and the proposal deck.

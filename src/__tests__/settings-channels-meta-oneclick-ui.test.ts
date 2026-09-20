@@ -358,15 +358,15 @@ describe("Channel catalog — what the screen claims about a Meta channel", () =
     expect(hint).not.toContain("Page and its token")
   })
 
-  it("keeps Model A at one click and starts Instagram through the Facebook flow", async () => {
+  it("starts Facebook and Instagram through their matching OAuth flows", async () => {
     await renderCatalog([])
     // One click, straight from the card, for a tenant with nothing configured yet.
     expect(oauthLink("facebook")?.getAttribute("href"))
       .toBe("/api/v1/social/oauth/facebook/start?from=channels-facebook")
-    // Instagram Direct rides the LINKED Page's messages webhook, and only the facebook callback wires
-    // a ChannelConfig for it, so the Instagram card deliberately starts the facebook flow.
+    // Instagram Login is the review surface for instagram_business_* and must
+    // not be replaced by evidence from a Facebook Login consent screen.
     expect(oauthLink("instagram")?.getAttribute("href"))
-      .toBe("/api/v1/social/oauth/facebook/start?from=channels-instagram")
+      .toBe("/api/v1/social/oauth/instagram/start?from=channels-instagram")
     expect(connectedBadge("facebook")).toBeNull()
     expect(container.querySelector('[data-testid="channel-card-connected-badge"]')).toBeNull()
   })

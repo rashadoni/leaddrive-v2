@@ -26,8 +26,8 @@ const LIGHT_PURPLE = "F5F3FF"
 
 // Keep in step with COMPANY_LEGAL_* in src/lib/constants.ts —
 // company-identity-claims.test.ts fails if this drifts back.
-pptx.author = "Fanumsec MMC"
-pptx.company = "Fanumsec MMC"
+pptx.author = '"FANUM" MMC'
+pptx.company = '"FANUM" MMC'
 pptx.title = "LeadDrive CRM — Kommersiya Təklifi"
 pptx.layout = "LAYOUT_WIDE" // 13.33 x 7.5
 
@@ -137,7 +137,7 @@ function addBenefitCard(slide, x, y, w, h, icon, title, desc, color) {
   })
   slide.addShape(pptx.ShapeType.roundRect, { x: 0.8, y: 5.2, w: 3.0, h: 0.55, fill: { color: WHITE }, rectRadius: 0.28 })
   slide.addText("Demo Sifariş Edin  →", { x: 0.8, y: 5.2, w: 3.0, h: 0.55, fontSize: 13, color: PRIMARY, fontFace: "Arial", bold: true, align: "center", valign: "middle" })
-  slide.addText("Fanumsec MMC  |  Bakı, Azərbaycan  |  leaddrivecrm.org", {
+  slide.addText('"FANUM" MMC  |  Bakı, Azərbaycan  |  leaddrivecrm.org', {
     x: 0.8, y: 6.7, w: 7, h: 0.35, fontSize: 11, color: WHITE, fontFace: "Arial", transparency: 30,
   })
 
@@ -558,7 +558,7 @@ function addBenefitCard(slide, x, y, w, h, icon, title, desc, color) {
 
   slide.addShape(pptx.ShapeType.roundRect, { x: 4.2, y: 5.8, w: 5.0, h: 0.7, fill: { color: WHITE }, rectRadius: 0.35 })
   slide.addText("Demo Sifariş Edin  →", { x: 4.2, y: 5.8, w: 5.0, h: 0.7, fontSize: 18, color: PRIMARY, fontFace: "Arial", bold: true, align: "center", valign: "middle" })
-  slide.addText("© 2026 Fanumsec MMC  |  Bakı, Azərbaycan  |  Bütün hüquqlar qorunur", {
+  slide.addText('© 2026 "FANUM" MMC  |  Bakı, Azərbaycan  |  Bütün hüquqlar qorunur', {
     x: 0.8, y: 6.9, w: 12, h: 0.3, fontSize: 10, color: WHITE, fontFace: "Arial", align: "center", transparency: 30,
   })
 }

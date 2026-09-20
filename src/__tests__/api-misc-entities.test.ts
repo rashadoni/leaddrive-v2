@@ -501,6 +501,7 @@ describe("Channels", () => {
   })
 
   it("DELETE returns 404 for missing channel", async () => {
+    vi.mocked(prisma.channelConfig.findFirst).mockResolvedValue(null)
     vi.mocked(prisma.channelConfig.deleteMany).mockResolvedValue({ count: 0 } as any)
 
     const res = await channelsDELETE(req("/api/v1/channels/nope", { method: "DELETE" }), params("nope"))
