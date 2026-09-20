@@ -88,7 +88,14 @@ describe("Gemini Live CRM voice", () => {
     expect(prompt).toContain("Azerbaijani, Russian and English")
     expect(prompt).toContain("Address the user as Rashad")
     expect(prompt).toContain("only read CRM data through the supplied tools")
-    expect(prompt).toContain("Never claim that you changed, deleted, sent, or created CRM data")
+    // This used to pin "all available CRM tools are read-only". The propose_*
+    // tools made that false, and the rules below say something stronger: the
+    // assistant may prepare, must not claim it did anything, and must not
+    // treat a spoken yes as permission.
+    expect(prompt).toContain("Never say that something was created, changed, converted or saved")
+    expect(prompt).toContain("only PREPARE a draft")
+    expect(prompt).toContain("press the button")
+    expect(prompt).not.toContain("all available CRM tools are read-only")
   })
 
   it("mints a one-use token with the complete session configuration constrained server-side", async () => {

@@ -24071,7 +24071,7 @@
       }
     },
     "title": "Voice control",
-    "subtitle": "Ask about deals, tasks, the inbox or the field team. The assistant only reads — it does not change anything in the CRM.",
+    "subtitle": "Ask about deals, tasks, the inbox or the field team. The assistant can also prepare a task, a lead, a deal or a change to a lead — it writes nothing until you press the button on the draft.",
     "idle": "Ready",
     "listening": "Listening",
     "hearing": "I can hear you…",
@@ -24092,7 +24092,7 @@
     "exDeals": "Deals and pipeline",
     "exInbox": "Inbox and who is waiting",
     "exField": "Field team and visits",
-    "readOnlyNote": "The assistant only reads. It cannot create, change, send or delete anything in the CRM — any action stays a decision you make on screen.",
+    "readOnlyNote": "The assistant reads the CRM, and can prepare an action for you to check. It never writes on its own: a draft appears on screen and nothing is saved until you press its button. Saying “yes” out loud is not enough — that is deliberate, because a television or a colleague can say yes.",
     "micDenied": "Your browser blocked the microphone. Allow it via the icon in the address bar, then try again.",
     "staleBuild": "The page is out of date after an update. Reload it (Cmd+Shift+R) and try again.",
     "idleStopped": "Stopped after a minute of silence. Click to start again.",

@@ -592,10 +592,18 @@ There is deliberately no `commit_*` tool.
       clarification carries labels only, never the candidate ids.
 - [x] V1.5 Send the validated draft to the shared action-receipt store, keyed
       on the provider tool-call id so a retried call replays one receipt.
-- [ ] V1.6 Treat all CRM record text as untrusted content and harden prompts
-      against instruction injection. The structural half is done — the model's
-      best outcome is a draft the user must press a button to execute — but the
-      prompt-level hardening and its adversarial fixtures are not.
+- [x] V1.6 Treat all CRM record text as untrusted content and harden prompts
+      against instruction injection. Tool results are declared data, not
+      instructions; only the person speaking may ask for an action; values for
+      a proposal may not be taken from record text the user did not say. The
+      stale "all CRM tools are read-only" claim is gone from both the system
+      instruction and the page copy — an instruction the model can see is
+      false invites it to pick which rule to believe, and copy that promises
+      the assistant cannot act is how a user stops reading the receipt.
+      Contract-level, pinned by `voice-prompt-injection-contract.test.ts`;
+      behavioural evals against a live model remain open as V1.6a.
+- [ ] V1.6a Adversarial evals against a live model, using records whose text
+      contains injected instructions.
 - [x] V1.7 Prevent the model from marking its own draft as confirmed. The
       propose endpoint cannot execute a command, and the confirmation proof is
       minted only by a button press.
@@ -897,6 +905,7 @@ implementation branch that advances the roadmap.
 | 2026-09-20 | Execution boundary | Production deployed | PR #245; merge `a7f6c2654`; deploy `35479290362` | Internal-only atomic CRM mutation/result/`succeeded` event; commit remains disabled. |
 | 2026-09-20 | Commit adapter | Production deployed | PR #249; merge `ffcbaa3a4`; active artifact `a9891d6cb`; deploy `35499744499` | Session-only endpoint and three rate-limit scopes are live; receipt UI remains open and no model write-tool is exposed. |
 | 2026-09-20 | Receipt UI shell (U1.1-U1.3) | Production deployed | PR #257; merge `1bbc59e1e`; active artifact `6cca1a5a8`; deploy `35512069725` | Shadow mode: session-scoped store, anchored desktop panel, mobile bottom sheet. No confirm control, no write request, no model commit tool. |
+| 2026-09-20 | Untrusted record text (V1.6) | Code complete | Targeted Vitest 897 green across 89 voice/gemini files; targeted ESLint; i18n parity | Record text declared data, not instructions. The stale read-only claim removed from the prompt and from the user-facing copy it had also made false. |
 | 2026-09-20 | Deal creation by voice (V1.2a) | Code complete | Targeted Vitest 1386 green / 2 known-baseline reds; targeted ESLint; i18n parity | `propose_create_deal` resolves company and contact by name and reads the org's own entry stage. No stage, pipeline, probability or id from the model. |
 | 2026-09-20 | Lead conversion by voice | Production deployed | PR #274; merge `685b21857`; active artifact `68f4d358773adef3f123d504d49016268aab707b`; deploy `35520924701` | `propose_convert_lead_to_deal` runs the transactional conversion command, so the deal the word promises is actually created. No stage or pipeline from the model. |
 | 2026-09-20 | Voice actions end to end (U1.4-U1.13, V1.1-V1.5, V1.7) | Production deployed | PR #268; merge `32483389c`; active artifact `32483389c776e01ff5e444b8c69f72f61c9be6ef`; deploy `35517342493` | Speech now prepares a receipt for create_task, create_lead and update_lead; an explicit button executes it. Lead status is inside the voice allow-list, `converted` is not. U1.9a, V1.2a, V1.6 and V1.8-V1.10 remain open. |
