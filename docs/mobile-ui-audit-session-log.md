@@ -130,3 +130,12 @@ This file is append-only. It preserves requirements, decisions, implementation e
 - Local verification passed: 14 targeted Jest tests, targeted ESLint with zero warnings/errors, `npx tsc --noEmit`, and `git diff --check`.
 - Mobile PR `rashadoni/leaddrive-mtm#71` is open. Scope and test checks passed; the signed Android APK/AAB build is running.
 - Current continuation point: wait for PR 71 Android CI, merge after green, wait for the official main APK release, checksum-verify and install it without clearing data, then visually confirm on the real phone that each route point and the remaining count appear once. Continue the broader route/message/new-doctor portrait/landscape/tablet acceptance after this regression is closed.
+
+## 2026-09-20 — build 268 Today-route physical acceptance
+
+- The previous continuation point is superseded. Mobile PR `rashadoni/leaddrive-mtm#71` passed scope, tests and the signed Android APK/AAB build, then merged to `main` as `f64a3c945bd402252a90d744444df46eeb5a927f`.
+- Official main workflow `35497877375` passed and published prerelease `v3.3.0-build268`. Its APK and published SHA-256 file were downloaded; `sha256sum -c` passed.
+- Build 268 installed successfully over build 266 without clearing application data. The connected Galaxy S23 Ultra reports `versionCode=1268`, `versionName=3.3.0`, and preserved the authenticated agent session and paused workday.
+- Real-device portrait acceptance passed. The Today card shows one compact “Маршрут на сегодня” header, one `Осталось точек: 2` line, one `ADV-DEMO Store 3` row with the `Следующая` marker, and one separate `ADV-Store 1` row. UI-automation counts for all four strings are exactly one.
+- Real-device landscape acceptance passed after forced rotation: the same four route strings each occur once and all six navigation destinations remain present. The temporary rotation override was removed; final settings are `accelerometer_rotation=1`, `user_rotation=0`, and the phone was returned to portrait.
+- Current continuation point: the reported Today-screen duplication and oversized next-client hero are fixed, merged, released, installed and physically verified. Resume the broader outstanding acceptance scope at the route/active-visit actions, team-message interaction, new-doctor request delivery/status, and physical Wi-Fi tablet when it becomes visible in ADB.
