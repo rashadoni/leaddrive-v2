@@ -64,6 +64,7 @@ export type AiVoiceActionExecutionClaim = Readonly<{
   state: "executing" | "succeeded" | "failed"
   revision: number
   payloadHash: string
+  errorCode: string | null
   executionLeaseToken: string
   executionLeaseExpiresAt: string
   replayed: boolean
@@ -182,6 +183,7 @@ function serializeClaim(
     !["executing", "succeeded", "failed"].includes(intent.state)
     || !intent.executionLeaseToken
     || !intent.executionLeaseExpiresAt
+    || (intent.state === "failed" && (!intent.errorCode || !SAFE_ERROR_CODE.test(intent.errorCode)))
   ) {
     throw new AiVoiceActionExecutionClaimError(
       "INVALID_EXECUTION_CLAIM",
@@ -194,6 +196,7 @@ function serializeClaim(
     state: intent.state as AiVoiceActionExecutionClaim["state"],
     revision: intent.revision,
     payloadHash: intent.payloadHash,
+    errorCode: intent.errorCode,
     executionLeaseToken: intent.executionLeaseToken,
     executionLeaseExpiresAt: intent.executionLeaseExpiresAt.toISOString(),
     replayed,

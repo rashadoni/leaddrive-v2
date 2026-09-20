@@ -32,7 +32,8 @@ const draftRequestSchema = z.strictObject({
  * This endpoint deliberately cannot execute a CRM command. It accepts only an
  * authenticated same-origin browser session, re-derives actor/tenant identity,
  * validates the closed action registry and returns a receipt that a later UI
- * can display. A separate commit endpoint does not exist yet.
+ * can display. The separate commit endpoint accepts only the browser-issued
+ * confirmation proof; the model never receives commit authority.
  */
 export const POST = withRlsSessionAuth(async (req, auth) => {
   const mutationGuard = guardInteractiveJsonMutation(req)

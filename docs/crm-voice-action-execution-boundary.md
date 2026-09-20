@@ -1,6 +1,7 @@
 # CRM voice action execution boundary
 
-Status: internal foundation implemented; commit remains disabled.
+Status: internal boundary and session-only commit adapter implemented; receipt
+UI is not wired yet.
 
 ## Purpose
 
@@ -10,8 +11,8 @@ window where a lead, deal or task could be committed but the action receipt
 could remain unknown and a retry could create a duplicate.
 
 The internal executor accepts only an action already claimed with an execution
-lease. It is deliberately not exposed by an API route and is not available to
-the model.
+lease. The session-only commit route composes this executor but does not expose
+it as a model tool.
 
 ## Atomic boundary
 
@@ -44,11 +45,10 @@ retriable delivery remain required by roadmap item C1.12.
 
 ## Safety boundary
 
-There is still no commit route and no model-visible write tool, so voice-created
-CRM records remain disabled. The separate internal claim lifecycle now rechecks
+There is now a session-only commit route but still no model-visible write tool
+or receipt UI. The separate internal claim lifecycle rechecks
 tenant, role, module, field and target permissions, atomically consumes the
 single-use proof, claims an execution lease, recovers an expired lease and can
-settle a bounded terminal failure before/around this executor. The remaining
-step is a rate-limited, session-only commit adapter that composes those internal
-boundaries without exposing commit authority to the model. See
-`docs/crm-voice-action-execution-claim.md`.
+settle a bounded terminal failure before/around this executor. See
+`docs/crm-voice-action-execution-claim.md` and
+`docs/crm-voice-action-commit-api.md`.

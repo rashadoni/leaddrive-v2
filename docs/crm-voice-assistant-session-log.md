@@ -465,3 +465,40 @@ per-action rate limits, который композиционно вызывае
 безопасную классификацию terminal/retriable ошибок. Только после его отдельной
 проверки можно подключать UI-кнопку; model write-tools остаются ещё более
 поздним отдельным этапом.
+
+## Продолжение 2026-09-20: session-only commit adapter
+
+Реализованы I1.5 и I1.15:
+
+- добавлен `POST /api/v1/ai/voice/actions/:id/commit` со строгим proof body;
+- endpoint принимает только аутентифицированную браузерную сессию,
+  same-origin `application/json` и повторно проверяет voice pilot gate;
+- bearer/API-key, cross-origin, лишние authority-поля и некорректные ID/proof
+  отклоняются до execution claim;
+- отдельные минутные buckets ограничивают пользователя (20), tenant (200) и
+  конкретный intent (10);
+- adapter композиционно вызывает single-use proof claim, возвращает сохранённый
+  terminal result, восстанавливает только точную истёкшую lease и выполняет
+  canonical command через атомарную command/result boundary;
+- контролируемые `CrmCommandError` и повреждённые stored-action состояния
+  переводятся в bounded `failed`; неизвестные database/process ошибки не
+  финализируются и возвращают `COMMIT_RETRY_REQUIRED`/503 для безопасного retry;
+- confirmation token и execution lease не возвращаются клиенту и не попадают в
+  лог; ответы помечены `Cache-Control: private, no-store`;
+- Gemini Live tool contract проверен отдельным регресс-тестом: commit и пять
+  канонических CRM write-команд модели не выдаются.
+
+Добавлен отдельный API regression suite. На этой точке 3 целевых файла / 29
+тестов для claim/executor/commit прошли; обновлённый commit suite — 8/8;
+targeted ESLint и `git diff --check` прошли. Полный build/typecheck локально не
+запускались по Contabo host contract и должны выполняться в GitHub CI.
+
+Расширенный pre-commit gate: 6 файлов / 45 тестов для commit, draft lifecycle,
+claim, executor, tool wiring и Gemini provider fence — успешно.
+
+Точка остановки: код, тесты и документация I1.5/I1.15 готовы локально и ещё не
+закоммичены. Следующее действие — checkpoint commit, push, PR, полный CI, merge,
+production deploy и независимый smoke. После deploy следующий продуктовый
+срез — U1.1-U1.3: session-scoped receipt store, desktop receipt panel и mobile
+bottom sheet; endpoint не должен подключаться к UI без явной кнопки
+подтверждения, model write-tool не добавляется.

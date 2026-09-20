@@ -401,7 +401,7 @@ collecting -> awaiting_confirmation -> executing -> succeeded | failed
       risk level, command, dedupe policy, and preview renderer.
 - [x] I1.3 Add `POST /api/v1/ai/voice/actions/draft`.
 - [x] I1.4 Add `PATCH /api/v1/ai/voice/actions/:id`.
-- [ ] I1.5 Add `POST /api/v1/ai/voice/actions/:id/commit`.
+- [x] I1.5 Add `POST /api/v1/ai/voice/actions/:id/commit`.
 - [x] I1.6 Add `POST /api/v1/ai/voice/actions/:id/cancel`.
 - [x] I1.7 Add `GET /api/v1/ai/voice/actions/active`.
 - [x] I1.8 Enforce one active root action context per voice session. A later
@@ -414,15 +414,14 @@ collecting -> awaiting_confirmation -> executing -> succeeded | failed
 - [x] I1.12 Return the stored result for idempotent commit retries.
 - [x] I1.13 Add lease/recovery handling for interrupted execution.
 - [x] I1.14 Add an immutable intent event/audit ledger.
-- [ ] I1.15 Add per-user, per-tenant, and per-action rate limits.
+- [x] I1.15 Add per-user, per-tenant, and per-action rate limits.
 
 Foundation note (2026-09-19): `AiActionIntent` now has tenant-safe composite
 foreign keys, forced RLS using the canonical `app.org_id` context, lifecycle
 checks, caller/provider idempotency keys, and a partial unique index for one
 active root per user voice session. Shared primitives define the state graph,
-canonical SHA-256 payload hash, and ten-minute default TTL. Lease fields are
-present, but execution claiming/recovery remains disabled until I1.5, I1.10,
-and I1.13 are implemented. See
+canonical SHA-256 payload hash, and ten-minute default TTL. The initially empty
+lease fields are now used by the later execution-claim and commit slices. See
 `docs/crm-voice-action-intent-foundation.md`.
 
 Draft API note (2026-09-19): the server now has a runtime-frozen registry for
@@ -433,8 +432,8 @@ revision before persisting an unconfirmed receipt. Standard create actions use
 the ten-minute TTL; sensitive update/conversion drafts use five minutes.
 Idempotent retries replay the same receipt, conflicting key reuse is rejected,
 and the database remains the final concurrency guard for one active root.
-Possible lead/deal duplicates are returned as receipt warnings. There is still
-no commit route and no model-visible write tool. See
+Possible lead/deal duplicates are returned as receipt warnings. The later
+session-only commit route exists, while the model still has no write tool. See
 `docs/crm-voice-action-draft-api.md`.
 
 Draft lifecycle note (2026-09-19): a session-authenticated user can now restore
@@ -457,9 +456,9 @@ checks. The endpoint cannot execute a CRM command. See
 Draft-ledger note (2026-09-20): `drafted`, `draft_updated`, `cancelled` and
 `expired` are appended in the same database transaction as their corresponding
 intent create/update. Compare-and-swap losers do not append false evidence,
-and automatic TTL expiry no longer performs an unaudited bulk update. I1.14
-remains incomplete until confirmation consumption, execution claim/recovery
-and terminal result transitions use the same atomic ledger boundary.
+and automatic TTL expiry no longer performs an unaudited bulk update. The later
+claim/execution slices completed I1.14 for confirmation consumption, recovery
+and terminal transitions.
 
 Execution-boundary note (2026-09-20): all five canonical commands can now join
 an existing transaction and defer external effects. The internal executor
@@ -475,9 +474,18 @@ recovers only the exact expired lease, and records bounded terminal failures.
 Every mutation shares a transaction with its immutable event. Same-proof
 retries replay the existing claim even after proof expiry; competing proofs,
 active leases and stale workers fail closed. I1.10-I1.14 are complete at the
-internal boundary, but voice writes remain disabled until I1.5 adds the
-session-only commit adapter and its rate limit. See
+internal boundary and the later I1.5/I1.15 slice connects it only to the
+session-authenticated HTTP adapter. See
 `docs/crm-voice-action-execution-claim.md`.
+
+Commit-adapter note (2026-09-20): a strict same-origin, browser-session-only
+endpoint now composes proof claim, lease recovery, canonical execution and
+bounded terminal failure. It applies user, tenant and individual-intent rate
+limits, returns stored success/failure on repeat, leaves infrastructure errors
+recoverable and never exposes the proof or lease in responses. Bearer callers
+are rejected and the Gemini Live contract still contains no commit/write tool.
+The receipt UI and action-specific rollout flags/canaries remain later phases.
+See `docs/crm-voice-action-commit-api.md`.
 
 ### Exit gate
 
@@ -836,6 +844,7 @@ implementation branch that advances the roadmap.
 | 2026-09-19 | Roadmap | Complete | This document | Ordered implementation plan and release gates recorded. |
 | 2026-09-19 | P0 audio hotfix | Code complete | Targeted Vitest 32/32; targeted ESLint | Local RMS is UI-only; Gemini interruption/transcription owns turn state. Manual browser/noise matrix remains open. |
 | 2026-09-20 | Execution boundary | Production deployed | PR #245; merge `a7f6c2654`; deploy `35479290362` | Internal-only atomic CRM mutation/result/`succeeded` event; commit remains disabled. |
+| 2026-09-20 | Commit adapter | Code complete | Targeted Vitest 29/29; targeted ESLint | Session-only endpoint and three rate-limit scopes; receipt UI remains open. |
 
 ## 21. References
 
