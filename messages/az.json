@@ -24067,7 +24067,7 @@
       }
     },
     "title": "Səslə idarəetmə",
-    "subtitle": "Sövdələr, tapşırıqlar, gələn mesajlar və ya sahə komandası haqqında soruşun. Assistent yalnız oxuyur — CRM-də heç nə dəyişmir.",
+    "subtitle": "Sövdələr, tapşırıqlar, gələn mesajlar və ya sahə komandası haqqında soruşun. Assistent həmçinin tapşırıq, lid, sövdələşmə və ya lidə dəyişiklik hazırlaya bilər — qaralamadakı düyməni basmayana qədər heç nə yazılmır.",
     "idle": "Hazır",
     "listening": "Dinləyirəm",
     "hearing": "Sizi eşidirəm…",
@@ -24088,7 +24088,7 @@
     "exDeals": "Sövdələr və satış boru xətti",
     "exInbox": "Gələn qutu və gözləyənlər",
     "exField": "Sahə komandası və səfərlər",
-    "readOnlyNote": "Assistent yalnız oxuyur. O, CRM-də heç nə yarada, dəyişə, göndərə və ya silə bilməz — hər hansı əməliyyat ekranda sizin qərarınız olaraq qalır.",
+    "readOnlyNote": "Assistent CRM-i oxuyur və yoxlamağınız üçün əməliyyat hazırlaya bilər. Özü heç nə yazmır: ekranda qaralama görünür və düyməni basmayana qədər heç nə saxlanılmır. Səslə deyilən «hə» kifayət deyil — bu qəsdəndir, çünki «hə»ni televizor və ya həmkar da deyə bilər.",
     "micDenied": "Brauzer mikrofona icazə vermədi. Ünvan sətrindəki nişandan icazə verin və yenidən cəhd edin.",
     "staleBuild": "Səhifə yenilənmədən sonra köhnəlib. Yeniləyin (Cmd+Shift+R) və yenidən cəhd edin.",
     "idleStopped": "Bir dəqiqəlik sükutdan sonra dayandırıldı. Yenidən başlamaq üçün klikləyin.",
