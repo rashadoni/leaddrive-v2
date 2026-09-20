@@ -245,3 +245,18 @@ Audit of existing legal pages, routing, Meta OAuth scopes, persisted data, reten
   middleware `x-locale` header. A follow-up fix now lets valid legal `?lang=`
   values override the locale cookie before rendering; invalid values retain
   the existing cookie/default behavior.
+
+## 2026-09-20 — legal-language fix deployed
+
+- PR 254 passed all required checks and was squash-merged to `main` as
+  `679a2a7381b13e6b15b30bc8b18a34861007d4de`.
+- GitHub Actions deployment 35506074310 completed successfully, including the
+  production build, quality/security gates, immutable artifact rollout,
+  revision check and post-deploy smoke.
+- Production `/api/v1/ping` returned `{"ok":true}`. Direct public app-host
+  checks returned 200 and the expected distinct H1 values for `?lang=en`
+  (`Privacy Policy`), `?lang=ru` (`Политика конфиденциальности`) and
+  `?lang=az` (`Məxfilik Siyasəti`).
+- The three canonical `www.leaddrivecrm.org/legal/*` review URLs return 200
+  after redirecting to the English app-host documents. The `www` redirect is
+  intentionally canonical English; localized public links use the app host.
