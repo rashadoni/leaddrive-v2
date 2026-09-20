@@ -11123,6 +11123,8 @@
     "loading": "Məhsul kataloqu yüklənir",
     "loadFailed": "Məhsul kataloqunu yükləmək alınmadı.",
     "saveFailed": "Dəyişiklikləri saxlamaq alınmadı. Sahələri yoxlayıb yenidən cəhd edin.",
+    "groupNameRequired": "Qrupun adını daxil edin.",
+    "productFieldsRequired": "Məhsulun adını daxil edin və PDF və ya PowerPoint faylı seçin.",
     "groupCreated": "Məhsul qrupu yaradıldı.",
     "membersSaved": "Agent təyinatları saxlanıldı.",
     "productCreated": "Məhsul və təqdimat yaradıldı.",

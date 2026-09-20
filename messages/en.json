@@ -11127,6 +11127,8 @@
     "loading": "Loading product catalog",
     "loadFailed": "The product catalog could not be loaded.",
     "saveFailed": "Changes could not be saved. Check the fields and try again.",
+    "groupNameRequired": "Enter a group name.",
+    "productFieldsRequired": "Enter a product name and choose a PDF or PowerPoint file.",
     "groupCreated": "Product group created.",
     "membersSaved": "Agent assignments saved.",
     "productCreated": "Product and presentation created.",
