@@ -29,6 +29,7 @@ function baseForm(overrides: Partial<ChannelConfigFormData>): ChannelConfigFormD
     displayName: "",
     igLogin: false,
     appReviewOnly: false,
+    loginConfigId: "",
     chatwootBaseUrl: "",
     chatwootAccountId: "",
     chatwootWebhookSecret: "",

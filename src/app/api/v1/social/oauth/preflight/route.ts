@@ -8,6 +8,7 @@ import {
   getPinnedMetaApp,
   isIgLogin,
   isAppReviewOnly,
+  readLoginConfigId,
 } from "@/lib/social/tenant-meta-app"
 
 /**
@@ -155,6 +156,11 @@ export const GET = withSocialConnectAuth("write", async (req, auth) => {
         // `ready` is the whole point: all three parts present means a pinned start will resolve
         // instead of erroring. A missing part is exactly what used to fall through to the env app.
         ready: Boolean(r.appId && r.appSecret && r.verifyToken),
+        // Facebook Login for Business: when set, the dialog is driven by this configuration and no
+        // `scope` is sent at all. Reported so the operator can tell, before running the flow, which
+        // of the two shapes their retry will actually use.
+        loginConfigId: readLoginConfigId(r.settings),
+        authMode: readLoginConfigId(r.settings) ? "config_id" : "scope",
         startUrl: r.channelType === "whatsapp" ? null : `${APP_URL}${startPath}`,
       }
     })
@@ -168,6 +174,16 @@ export const GET = withSocialConnectAuth("write", async (req, auth) => {
     pinnedRequest: pinnedConfigId
       ? { configId: pinnedConfigId, resolvedFacebook: Boolean(pinnedFb), resolvedInstagramLogin: Boolean(pinnedIg) }
       : null,
+    // The exact permission set a STAGED Facebook Messenger connect requests. Kept on the response so
+    // it can be compared against what the app has enabled before a dialog is opened — an app missing
+    // one of these answers "Invalid Scopes" and refuses the whole request.
+    stagedMessengerScopes: [
+      "public_profile",
+      "pages_show_list",
+      "business_management",
+      "pages_messaging",
+      "pages_manage_metadata",
+    ],
     webhookFields: {
       facebookPage: DM_SUBSCRIBED_FIELDS,
       instagram: ["messages"],

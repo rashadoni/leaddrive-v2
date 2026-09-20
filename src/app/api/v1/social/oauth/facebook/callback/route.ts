@@ -6,6 +6,7 @@ import { ensureInboxChannelForPage } from "@/lib/social/inbox-channel"
 import { getOrgId } from "@/lib/api-auth"
 import { runWithTenant } from "@/lib/rls-context"
 import { getTenantMetaApp, getPinnedMetaApp } from "@/lib/social/tenant-meta-app"
+import { enumerateGrantedPages } from "@/lib/social/meta-granted-assets"
 import { redactOAuthProviderText } from "@/lib/oauth-redaction"
 import { compileOrganizationSourceRoutePlans } from "@/lib/social/source-route-plan"
 import { normalizeOAuthReturnKey, oauthReturnUrl } from "@/lib/social/oauth-return"
@@ -165,9 +166,41 @@ export async function GET(req: NextRequest) {
     return redirectError(req, "pages_fetch_failed", ret)
   }
   const pagesJson = await pagesRes.json() as { data: Array<Page & { instagram_business_account?: { id: string; username?: string } }> }
-  const pages = pagesJson.data || []
+  let pages = pagesJson.data || []
+
+  // Facebook Login for Business: an EMPTY /me/accounts is not the same as "no pages".
+  //
+  // /me/accounts lists Pages by the user's own Page roles. In the business-login flow the person
+  // instead picks assets in Meta's selector, and the grant is recorded against those assets — so
+  // someone who reaches a Page only through a business portfolio finishes a fully-consented login
+  // with an empty list. Observed 2026-09-20: Page 373662722735767 and business 1170592885027596 both
+  // selected and confirmed by Meta, and this callback still answered `no_admined_pages`.
+  //
+  // The documented way to read what a token actually got is debug_token's `granular_scopes`, whose
+  // `target_ids` name the granting entities per permission. So ask that, then fetch each Page by id.
+  let grantDiagnostic = ""
   if (pages.length === 0) {
-    return NextResponse.redirect(publicUrl(req, oauthReturnUrl(ret, { error: "no_admined_pages" })))
+    const granted = await enumerateGrantedPages(GRAPH, appId, appSecret, longJson.access_token)
+    if (granted.pages.length > 0) {
+      console.log(`[facebook-oauth] /me/accounts empty; business-login grant resolved ${granted.pages.length} page(s)`)
+      pages = granted.pages
+    } else {
+      // Say WHICH permissions the token carries. "no_admined_pages" alone sent the last debugging
+      // session looking at Page roles, when the answer was in the grant.
+      grantDiagnostic = granted.error
+        ? `debug_token_failed`
+        : granted.grantedScopes.length > 0
+          ? `granted:${granted.grantedScopes.slice(0, 8).join("+")}`
+          : "no_granted_scopes"
+      console.error(`[facebook-oauth] no pages after business-login enumeration (${grantDiagnostic})`)
+    }
+  }
+  if (pages.length === 0) {
+    return NextResponse.redirect(
+      publicUrl(req, oauthReturnUrl(ret, {
+        error: grantDiagnostic ? `no_admined_pages: ${grantDiagnostic}` : "no_admined_pages",
+      })),
+    )
   }
 
   let fbCount = 0
