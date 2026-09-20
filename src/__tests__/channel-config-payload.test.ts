@@ -28,6 +28,7 @@ function baseForm(overrides: Partial<ChannelConfigFormData>): ChannelConfigFormD
     verifyToken: "",
     displayName: "",
     igLogin: false,
+    appReviewOnly: false,
     chatwootBaseUrl: "",
     chatwootAccountId: "",
     chatwootWebhookSecret: "",
@@ -120,5 +121,40 @@ describe("channel config payload builder", () => {
     expect(serialized).not.toContain("businessAccountId")
     expect(serialized).not.toContain("verifyToken")
     expect(serialized).not.toContain("appSecret")
+  })
+})
+
+describe("staged Meta app marker", () => {
+  // The builder rebuilds `settings` from scratch on every save, so a flag it does not re-emit is a
+  // flag that disappears on the next edit. For this one that is not cosmetic: losing it promotes the
+  // app under review to the tenant-wide default, which is exactly what it exists to prevent.
+  it("re-emits appReviewOnly so an edit cannot silently clear it", () => {
+    for (const channelType of ["facebook", "instagram"]) {
+      const payload = buildChannelPayload(baseForm({
+        channelType,
+        appId: "2414060595720618",
+        appSecret: "s",
+        verifyToken: "v",
+        appReviewOnly: true,
+      })) as { settings: Record<string, unknown> }
+      expect(payload.settings.appReviewOnly).toBe(true)
+    }
+  })
+
+  it("omits the marker entirely when the app is not staged", () => {
+    const payload = buildChannelPayload(baseForm({
+      channelType: "facebook",
+      appId: "1276226757359622",
+      appReviewOnly: false,
+    })) as { settings: Record<string, unknown> }
+    expect(payload.settings).not.toHaveProperty("appReviewOnly")
+  })
+
+  it("does not leak the marker onto non-Meta channels", () => {
+    const payload = buildChannelPayload(baseForm({
+      channelType: "whatsapp",
+      appReviewOnly: true,
+    })) as { settings: Record<string, unknown> }
+    expect(payload.settings).not.toHaveProperty("appReviewOnly")
   })
 })

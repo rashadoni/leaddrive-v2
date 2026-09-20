@@ -62,10 +62,10 @@ describe("getTenantMetaApp (Facebook-Login surface)", () => {
 
 describe("getTenantInstagramLoginApp", () => {
   it("requires channelType=instagram + settings.igLogin=true + the full triple", async () => {
-    findFirst.mockResolvedValue({ appId: "ig1", appSecret: "igsek" })
+    findMany.mockResolvedValue([{ appId: "ig1", appSecret: "igsek", settings: { igLogin: true } }])
     const r = await getTenantInstagramLoginApp("org_1")
     expect(r).toEqual({ appId: "ig1", appSecret: "igsek" })
-    const where = findFirst.mock.calls[0][0].where
+    const where = findMany.mock.calls[0][0].where
     expect(where.organizationId).toBe("org_1")
     expect(where.channelType).toBe("instagram")
     expect(where.appId).toEqual({ not: null })
@@ -75,13 +75,13 @@ describe("getTenantInstagramLoginApp", () => {
   })
 
   it("returns null when the org has no IG-Login app config (→ env fallback)", async () => {
-    findFirst.mockResolvedValue(null)
+    findMany.mockResolvedValue([])
     expect(await getTenantInstagramLoginApp("org_1")).toBeNull()
   })
 
   it("returns null for empty orgId without hitting the DB", async () => {
-    findFirst.mockReset()
+    findMany.mockReset()
     expect(await getTenantInstagramLoginApp("")).toBeNull()
-    expect(findFirst).not.toHaveBeenCalled()
+    expect(findMany).not.toHaveBeenCalled()
   })
 })

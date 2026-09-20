@@ -5,7 +5,7 @@ import { encryptToken } from "@/lib/secure-token"
 import { ensureInboxChannelForPage } from "@/lib/social/inbox-channel"
 import { getOrgId } from "@/lib/api-auth"
 import { runWithTenant } from "@/lib/rls-context"
-import { getTenantMetaApp } from "@/lib/social/tenant-meta-app"
+import { getTenantMetaApp, getPinnedMetaApp } from "@/lib/social/tenant-meta-app"
 import { redactOAuthProviderText } from "@/lib/oauth-redaction"
 import { compileOrganizationSourceRoutePlans } from "@/lib/social/source-route-plan"
 import { normalizeOAuthReturnKey, oauthReturnUrl } from "@/lib/social/oauth-return"
@@ -94,7 +94,7 @@ export async function GET(req: NextRequest) {
   } catch {
     return redirectError(req, "bad_signature")
   }
-  const payload = JSON.parse(payloadStr) as { orgId: string; state: string; ts: number; ret?: string }
+  const payload = JSON.parse(payloadStr) as { orgId: string; state: string; ts: number; ret?: string; app?: string }
   // First point where the payload is HMAC-verified, so this is the first place `ret` may be trusted.
   // Re-normalising on the consuming side keeps the whitelist authoritative even if the issuing side
   // ever changes. Errors raised ABOVE this line must keep the static default — `ret` is unproven there.
@@ -121,9 +121,17 @@ export async function GET(req: NextRequest) {
   // Model B (per-tenant Meta app): use the SAME app the start route used — the tenant's own
   // appId/appSecret from their FB/IG ChannelConfig (resolved by the signed-state orgId), with env
   // fallback to LeadDrive's shared app. appSecret is read server-side only (token exchange below).
-  const tenantApp = await getTenantMetaApp(payload.orgId)
-  const appId = tenantApp?.appId || process.env.FACEBOOK_APP_ID
-  const appSecret = tenantApp?.appSecret || process.env.FACEBOOK_APP_SECRET
+  // A PINNED flow (`?app=<channelConfigId>` on the start route) names its Meta app inside the signed
+  // state. Honour that id instead of re-running the org-wide `updatedAt DESC` lookup: the app that
+  // issued this code is the only app whose secret can redeem it, and on a tenant holding several Meta
+  // apps the org-wide lookup can legitimately return a different row than the start route saw. No env
+  // fallback on this path — a pinned flow that cannot resolve its app must fail, not silently swap in
+  // the shared production app.
+  const pinnedApp = payload.app ? await getPinnedMetaApp(payload.orgId, payload.app, "facebook") : null
+  if (payload.app && !pinnedApp) return redirectError(req, "not_configured", ret)
+  const tenantApp = pinnedApp ? null : await getTenantMetaApp(payload.orgId)
+  const appId = pinnedApp?.appId || tenantApp?.appId || process.env.FACEBOOK_APP_ID
+  const appSecret = pinnedApp?.appSecret || tenantApp?.appSecret || process.env.FACEBOOK_APP_SECRET
   const redirectUri = process.env.FACEBOOK_REDIRECT_URI
   if (!appId || !appSecret || !redirectUri) return redirectError(req, "not_configured", ret)
 
@@ -193,7 +201,7 @@ export async function GET(req: NextRequest) {
     fbCount++
     // Also wire this page as an INBOX channel (ChannelConfig + Meta DM-webhook subscription) so its
     // Messenger DMs reach the inbox, not just Social Monitoring. Idempotent + fail-soft.
-    await ensureInboxChannelForPage(payload.orgId, "facebook", page.id, page.name, page.access_token)
+    await ensureInboxChannelForPage(payload.orgId, "facebook", page.id, page.name, page.access_token, { staged: Boolean(pinnedApp) })
 
     const ig = page.instagram_business_account
     if (ig) {
@@ -223,7 +231,7 @@ export async function GET(req: NextRequest) {
         },
       })
       igCount++
-      await ensureInboxChannelForPage(payload.orgId, "instagram", ig.id, `${page.name} / @${igHandle}`, page.access_token)
+      await ensureInboxChannelForPage(payload.orgId, "instagram", ig.id, `${page.name} / @${igHandle}`, page.access_token, { staged: Boolean(pinnedApp) })
     }
   }
 

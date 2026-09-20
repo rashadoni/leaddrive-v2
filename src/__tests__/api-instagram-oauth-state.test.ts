@@ -13,6 +13,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     channelConfig: {
       findFirst: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
       create: vi.fn().mockResolvedValue({ id: "channel-1" }),
       update: vi.fn().mockResolvedValue({ id: "channel-1" }),
     },
@@ -51,6 +52,7 @@ beforeEach(() => {
   delete process.env.INSTAGRAM_APP_SECRET
   delete process.env.INSTAGRAM_REDIRECT_URI
   vi.mocked(prisma.channelConfig.findFirst).mockResolvedValue(null as never)
+  vi.mocked(prisma.channelConfig.findMany).mockResolvedValue([] as never)
   vi.mocked(prisma.channelConfig.create).mockResolvedValue({ id: "channel-1" } as never)
   vi.mocked(prisma.channelConfig.update).mockResolvedValue({ id: "channel-1" } as never)
   vi.mocked(getOrgId).mockResolvedValue(undefined as never) // no session by default

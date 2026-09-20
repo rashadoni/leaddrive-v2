@@ -125,6 +125,10 @@ describe("FB OAuth callback signed-state acceptance", () => {
     const pagesUrl = new URL(String(pagesCall?.[0]))
     expect(pagesUrl.searchParams.has("access_token")).toBe(false)
     expect((pagesCall?.[1] as RequestInit).headers).toMatchObject({ Authorization: "Bearer LONG_USER_TOKEN" })
-    expect(ensureInboxChannelForPage).toHaveBeenCalledWith("org1", "facebook", "PAGE_1", "Brand Page", "PAGE_TOKEN")
+    expect(ensureInboxChannelForPage).toHaveBeenCalledWith(
+      "org1", "facebook", "PAGE_1", "Brand Page", "PAGE_TOKEN",
+      // Unpinned flow => not staged => the ordinary subscribe-and-update path, unchanged.
+      { staged: false },
+    )
   })
 })

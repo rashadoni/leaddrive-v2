@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
  * page to the DM webhook, idempotently + fail-soft.
  */
 vi.mock("@/lib/prisma", () => ({
-  prisma: { channelConfig: { findFirst: vi.fn(), update: vi.fn(), create: vi.fn() } },
+  prisma: { channelConfig: { findMany: vi.fn(), update: vi.fn(), create: vi.fn() } },
 }))
 vi.mock("@/lib/social/meta-subscribe", () => ({ subscribePageToMessages: vi.fn() }))
 
@@ -20,7 +20,7 @@ beforeEach(() => {
 
 describe("ensureInboxChannelForPage", () => {
   it("creates a ChannelConfig + subscribes when none exists for the page", async () => {
-    vi.mocked(prisma.channelConfig.findFirst).mockResolvedValue(null as never)
+    vi.mocked(prisma.channelConfig.findMany).mockResolvedValue([] as never)
     const r = await ensureInboxChannelForPage("org1", "facebook", "PAGE1", "Nokaut", "PAGE_TOKEN")
     expect(r.created).toBe(true)
     expect(r.subscribed).toBe(true)
@@ -33,7 +33,7 @@ describe("ensureInboxChannelForPage", () => {
   })
 
   it("updates (not creates) when a ChannelConfig already exists for the page (idempotent)", async () => {
-    vi.mocked(prisma.channelConfig.findFirst).mockResolvedValue({ id: "cc1" } as never)
+    vi.mocked(prisma.channelConfig.findMany).mockResolvedValue([{ id: "cc1", settings: {} }] as never)
     const r = await ensureInboxChannelForPage("org1", "facebook", "PAGE2", "Page2", "TOKEN2")
     expect(r.created).toBe(false)
     expect(prisma.channelConfig.update).toHaveBeenCalled()
@@ -42,7 +42,7 @@ describe("ensureInboxChannelForPage", () => {
   })
 
   it("Instagram SKIPS the direct subscribe (IG ids return #3) — subscribed:true via the linked page", async () => {
-    vi.mocked(prisma.channelConfig.findFirst).mockResolvedValue(null as never)
+    vi.mocked(prisma.channelConfig.findMany).mockResolvedValue([] as never)
     const r = await ensureInboxChannelForPage("org1", "instagram", "IG1", "Kishi", "TOKEN")
     expect(r.created).toBe(true)
     expect(r.subscribed).toBe(true)
@@ -52,7 +52,7 @@ describe("ensureInboxChannelForPage", () => {
   })
 
   it("is fail-soft on subscribe failure — the channel is still created", async () => {
-    vi.mocked(prisma.channelConfig.findFirst).mockResolvedValue(null as never)
+    vi.mocked(prisma.channelConfig.findMany).mockResolvedValue([] as never)
     vi.mocked(subscribePageToMessages).mockResolvedValueOnce({ success: false, error: "bad token" })
     const r = await ensureInboxChannelForPage("org1", "facebook", "P", "N", "T")
     expect(r.created).toBe(true)
@@ -63,6 +63,6 @@ describe("ensureInboxChannelForPage", () => {
     expect((await ensureInboxChannelForPage("", "facebook", "P", "N", "T")).created).toBe(false)
     expect((await ensureInboxChannelForPage("o", "facebook", "", "N", "T")).created).toBe(false)
     expect((await ensureInboxChannelForPage("o", "facebook", "P", "N", "")).created).toBe(false)
-    expect(prisma.channelConfig.findFirst).not.toHaveBeenCalled()
+    expect(prisma.channelConfig.findMany).not.toHaveBeenCalled()
   })
 })
