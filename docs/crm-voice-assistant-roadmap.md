@@ -826,7 +826,7 @@ implementation branch that advances the roadmap.
 | 2026-09-19 | Audio diagnosis | Complete | Roadmap audit | Local RMS `activity` is incorrectly coupled to playback interruption. |
 | 2026-09-19 | Roadmap | Complete | This document | Ordered implementation plan and release gates recorded. |
 | 2026-09-19 | P0 audio hotfix | Code complete | Targeted Vitest 32/32; targeted ESLint | Local RMS is UI-only; Gemini interruption/transcription owns turn state. Manual browser/noise matrix remains open. |
-| 2026-09-20 | Execution boundary | Code complete | Targeted Vitest 228/228; targeted ESLint | Internal-only atomic CRM mutation/result/`succeeded` event; commit remains disabled. |
+| 2026-09-20 | Execution boundary | Production deployed | PR #245; merge `a7f6c2654`; deploy `35479290362` | Internal-only atomic CRM mutation/result/`succeeded` event; commit remains disabled. |
 
 ## 21. References
 

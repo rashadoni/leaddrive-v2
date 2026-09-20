@@ -336,3 +336,29 @@ contract и должны пройти в GitHub CI.
 checkpoint commit, push, PR, полный CI, merge и production deploy. После этого
 можно реализовывать атомарное single-use proof consumption + execution claim и
 lease recovery до появления commit endpoint.
+
+## Итог 2026-09-20: execution boundary на production
+
+Срез полностью завершён и развёрнут:
+
+- checkpoint commit `aaa176df8`;
+- PR #245;
+- PR CI: scope, secret scan, runner policy, static checks, полный unit baseline
+  и defect-shaped typecheck — успешно;
+- merge SHA `a7f6c2654ffe1b3fb1f80df1e8b303c515dae19d`;
+- deploy workflow `35479290362` — успешно, включая quality/security gates,
+  production build, SHA-bound artifact, атомарный deploy и post-deploy smoke;
+- независимый `/api/v1/ping` вернул `{"ok":true}`;
+- независимый `/api/v1/public/build-info` подтвердил точный
+  `artifactSha=a7f6c2654ffe1b3fb1f80df1e8b303c515dae19d`.
+
+На production теперь присутствует внутренняя атомарная command/result boundary
+для всех пяти канонических CRM-команд. Голосовая CRM-запись по-прежнему
+выключена: commit endpoint отсутствует, proof не потребляется, execution claim
+и lease recovery ещё не включены, write-tool модели отсутствует.
+
+Точка остановки: следующий безопасный срез — атомарно потребить single-use
+confirmation proof, выполнить compare-and-swap claim в `executing` и добавить
+lease recovery/terminal failure semantics. Только после их проверки можно
+подключать commit endpoint; UI-кнопка и model write-tools остаются отдельными
+последующими этапами.
