@@ -36,6 +36,8 @@ export type VoiceCommitOutcome =
   | Readonly<{ kind: "stale"; code: string }>
   /** Permission or pilot gate said no. */
   | Readonly<{ kind: "forbidden"; code: string }>
+  /** Voice writes are switched off. Not the user's rights — the feature's. */
+  | Readonly<{ kind: "disabled" }>
   /** Too many commits; the same button will work again shortly. */
   | Readonly<{ kind: "rate_limited"; retryAfterSeconds: number }>
   /** Nothing was decided — infrastructure or network. Retrying is safe. */
@@ -67,6 +69,10 @@ function isRecord(value: unknown): value is JsonRecord {
 function errorCode(body: unknown, fallback: string): string {
   if (isRecord(body) && typeof body.code === "string" && body.code) return body.code
   return fallback
+}
+
+function reasonCode(body: unknown): string | null {
+  return isRecord(body) && typeof body.reason === "string" ? body.reason : null
 }
 
 function errorMessage(body: unknown, fallback: string): string {
@@ -117,6 +123,10 @@ function failureOutcome(
 
   const code = errorCode(body, `HTTP_${status}`)
   if (code === "COMMIT_RETRY_REQUIRED") return { kind: "retriable", code }
+  // The switch, not the person. Telling someone they lack the right to do
+  // something the whole organization cannot do right now sends them to an
+  // administrator who has nothing to grant them.
+  if (status === 403 && reasonCode(body) === "voice_writes_disabled") return { kind: "disabled" }
   if (status === 403) return { kind: "forbidden", code }
   if (STALE_CODES.has(code)) return { kind: "stale", code }
   if (status === 404) return { kind: "stale", code }

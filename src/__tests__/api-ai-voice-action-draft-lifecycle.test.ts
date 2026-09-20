@@ -37,6 +37,8 @@ vi.mock("@/lib/with-rls", () => ({
 
 vi.mock("@/lib/ai/voice/gate", () => ({
   checkVoicePilotAccess: deps.checkVoicePilotAccess,
+  // Write routes run the write gate, which wraps the pilot gate.
+  checkVoiceWriteAccess: deps.checkVoicePilotAccess,
 }))
 
 vi.mock("@/lib/rate-limit", () => ({

@@ -24165,6 +24165,7 @@
         "failed": "CRM bu əməliyyatı qəbul etmədi. Düzəliş edib yenidən diqtə edin.",
         "stale": "Qaralama artıq qeydlə uyğun gəlmir. Yeniləyib bir daha yoxlayın.",
         "forbidden": "Bu əməliyyat üçün icazəniz yoxdur.",
+        "disabled": "Səsli əməliyyatlar hazırda söndürülüb. Heç nə saxlanılmadı — dəyişikliyi ekranda edin.",
         "rateLimited": "Çox sayıda ardıcıl əməliyyat. {seconds} saniyə sonra yenidən cəhd edin.",
         "retriable": "CRM ilə əlaqə qurulmadı. Heç nə itməyib — bir daha basn."
       }

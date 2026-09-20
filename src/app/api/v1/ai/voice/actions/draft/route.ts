@@ -3,7 +3,7 @@ import { z } from "zod"
 import { withRlsSessionAuth } from "@/lib/with-rls"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { guardInteractiveJsonMutation } from "@/lib/social/review-apply-request"
-import { checkVoicePilotAccess } from "@/lib/ai/voice/gate"
+import { checkVoiceWriteAccess } from "@/lib/ai/voice/gate"
 import {
   AI_VOICE_ACTION_TYPES,
   type AiVoiceActionType,
@@ -39,7 +39,7 @@ export const POST = withRlsSessionAuth(async (req, auth) => {
   const mutationGuard = guardInteractiveJsonMutation(req)
   if (mutationGuard) return mutationGuard
 
-  const gate = await checkVoicePilotAccess(auth)
+  const gate = await checkVoiceWriteAccess(auth)
   if (!gate.ok) {
     return NextResponse.json({ error: "Forbidden", reason: gate.reason }, { status: 403 })
   }

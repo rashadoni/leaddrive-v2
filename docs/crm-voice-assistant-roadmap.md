@@ -206,7 +206,14 @@ the command, intent, confirmation, and security layers are ready.
       deletion and bulk updates remain out.
 - [ ] P0.9 Define supported browser/device matrix.
 - [ ] P0.10 Define privacy and retention rules for telemetry, drafts, and audit.
-- [ ] P0.11 Define feature flags and tenant/global kill switches.
+- [x] P0.11 Define the kill switch for voice writes, separate from the one for
+      voice itself: `VOICE_WRITE_ENABLED=false`. Reading the CRM aloud and
+      preparing a change to it are different features with different risk, and
+      they shared one switch — so turning off the writes meant turning off the
+      assistant, which is the kind of cost that stops a switch from being
+      pulled. Per-tenant flags remain open as P0.11a.
+- [ ] P0.11a Per-tenant and per-action flags, needed once more than one
+      organization has the writes.
 - [ ] P0.12 Define success metrics and rollout stop conditions.
 
 ### Exit gate
@@ -919,6 +926,7 @@ implementation branch that advances the roadmap.
 | 2026-09-20 | Execution boundary | Production deployed | PR #245; merge `a7f6c2654`; deploy `35479290362` | Internal-only atomic CRM mutation/result/`succeeded` event; commit remains disabled. |
 | 2026-09-20 | Commit adapter | Production deployed | PR #249; merge `ffcbaa3a4`; active artifact `a9891d6cb`; deploy `35499744499` | Session-only endpoint and three rate-limit scopes are live; receipt UI remains open and no model write-tool is exposed. |
 | 2026-09-20 | Receipt UI shell (U1.1-U1.3) | Production deployed | PR #257; merge `1bbc59e1e`; active artifact `6cca1a5a8`; deploy `35512069725` | Shadow mode: session-scoped store, anchored desktop panel, mobile bottom sheet. No confirm control, no write request, no model commit tool. |
+| 2026-09-20 | Write kill switch (P0.11) | Code complete | Targeted Vitest: 202 files / 3172 green, 2 known-baseline reds; targeted ESLint; i18n parity; pii-columns | `VOICE_WRITE_ENABLED=false` removes the proposal tools, their prompt lines and the five mutating routes, leaving reads untouched. |
 | 2026-09-20 | Noisy-room mode (A3.1, A3.11-A3.13) | Production deployed | PR #290; merge `d16e6a830`; active artifact `d16e6a830a867d75db154116cb3180bf76642111`; deploy `35531765494` | Barge-in policy minted into the token per session. Music can no longer interrupt; measurement (A1.6, A2.9) still open. |
 | 2026-09-20 | Edit a receipt in place (U1.9a) | Production deployed | PR #284; merge `77f020788`; active artifact `77f020788d87b42a070e621cc5146a5fb51a7e4c`; deploy `35526045273` | Fields become inputs, the save replaces the payload under the on-screen revision, and no confirm button exists while the form is open. |
 | 2026-09-20 | Untrusted record text (V1.6) | Production deployed | PR #281; merge `90f09ae4e`; shipped in artifact `77f020788` | Record text declared data, not instructions. The stale read-only claim removed from the prompt and from the user-facing copy it had also made false. |
