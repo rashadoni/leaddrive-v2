@@ -546,3 +546,82 @@ receipt UI не реализован, явная пользовательска�
 действие — U1.1-U1.3: session-scoped receipt store, desktop receipt panel и
 mobile bottom sheet, затем подключение явной кнопки подтверждения к commit
 endpoint без выдачи write-tool самой модели.
+
+## Пакет продолжения в Codex Cloud — 2026-09-20
+
+Проверенная исходная точка:
+
+- GitHub: `rashadoni/leaddrive-v2`; устаревшие repository/host references
+  `rashadrahimov/leaddrive-v2` и `46.224.171.53` использовать запрещено;
+- в Codex Cloud рабочий путь должен быть `/workspace/leaddrive-v2`;
+- production содержит PR #249, merge
+  `ffcbaa3a427c514deacc478dc3296b331f0fab27`; активный более новый artifact
+  `a9891d6cb6d46ea56e8177eb6dfe298da4ec21bf` также содержит этот merge;
+- полный контекст этой сессии находится в remote branch
+  `origin/codex/crm-voice-assistant-roadmap`, checkpoint `9f17130e8`;
+- новую реализацию следует начинать с чистого актуального `origin/main` в новой
+  ветке `codex/crm-voice-receipt-ui`, а этот журнал читать из указанной
+  continuity-ветки; не переносить старую feature branch поверх нового main.
+
+Непосредственный следующий срез — только U1.1-U1.3, в shadow mode:
+
+1. Добавить client intent/receipt store, жёстко привязанный к текущей
+   аутентифицированной voice session.
+2. Восстанавливать активный receipt через
+   `GET /api/v1/ai/voice/actions/active?voiceSessionId=...` при reconnect/reload
+   настолько, насколько требуется store foundation.
+3. Сделать компактную desktop-панель рядом с существующим assistant orb.
+4. Сделать responsive mobile bottom sheet, сохраняя контекст CRM-страницы.
+5. Покрыть store, session isolation, desktop/mobile rendering и отсутствие
+   скрытого commit целевыми тестами.
+
+Ограничения этого среза:
+
+- не добавлять Gemini/model `commit_*` или другие прямые write-tools;
+- не считать голосовое «да» подтверждением;
+- пока не вызывать commit endpoint из store автоматически и не выполнять write
+  при появлении receipt;
+- не доверять model-supplied IDs, tenant/user/permissions;
+- не превращать обычный receipt в full-screen modal;
+- сохранить текущий noise fix: локальный RMS остаётся только UI-индикатором и
+  не останавливает ответ;
+- scope остаётся CRM browser assistant; PBX/SIP сюда не относится.
+
+Следующие срезы после U1.1-U1.3:
+
+- U1.4-U1.13: поля/warnings/defaults, update diff, ambiguity, duplicate flow,
+  явные create/save/keep/cancel, edit/retry/open/recovery, restore, terminal
+  states, RU/AZ/EN и accessibility;
+- V1.1-V1.10: proposal-only Gemini tools, server-side entity resolution,
+  candidate tokens, ambiguity и prompt-injection hardening; commit tool всё
+  равно запрещён;
+- T1/L1/L2/LF1/L3/D1/D2: поочерёдные product/action slices и отдельные
+  shadow/canary gates для task, lead create/update/form assist/custom fields,
+  deal и lead conversion;
+- C1.9-C1.14: оставшиеся отмеченные roadmap command-layer parity/permission/
+  side-effect/outbox проверки; часть поведения уже могла появиться в поздних
+  slices, поэтому перед отметкой нужна проверка кода и тестовых доказательств;
+- P0.1-P0.3, P0.5-P0.12: продуктовые правила, allow-lists, browser matrix,
+  privacy, flags, SLO/stop conditions до реального rollout;
+- A1.2/A1.6/A1.7/A2.9 и A3.1-A3.15: реальные consented audio fixtures,
+  browser/device matrix, baseline и measurement-driven audio hardening;
+- Q1-Q4: action-specific security/quality gates, затем полный regression gate;
+- M1.1-M1.10 только после стабильных single actions;
+- R1.1-R1.15: flags, telemetry, shadow -> admin canary -> limited cohort и
+  независимые kill switches.
+
+Готовый стартовый запрос для Codex Cloud:
+
+> Продолжи CRM voice assistant в `rashadoni/leaddrive-v2`. Работай в Cloud из
+> `/workspace/leaddrive-v2`. Сначала прочитай `AGENTS.md`,
+> `docs/crm-voice-assistant-roadmap.md` и журнал из
+> `origin/codex/crm-voice-assistant-roadmap` checkpoint `9f17130e8`. Создай
+> чистую ветку `codex/crm-voice-receipt-ui` от актуального `origin/main`.
+> Реализуй только U1.1-U1.3 в shadow mode: session-scoped receipt store,
+> desktop anchored receipt panel и responsive mobile bottom sheet. Не добавляй
+> model commit/write-tool, не выполняй CRM write автоматически и не используй
+> spoken confirmation. Добавь целевые тесты, проверь responsive/accessibility
+> foundation, обнови roadmap и append-only session journal, сделай checkpoint
+> commit. Push/deploy разрешены, но production deploy только через обычный
+> reviewed main -> GitHub Actions flow. Не используй устаревшие
+> `rashadrahimov/leaddrive-v2` или `46.224.171.53`.
