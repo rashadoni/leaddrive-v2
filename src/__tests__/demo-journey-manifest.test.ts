@@ -411,6 +411,25 @@ describe("The open demo", () => {
     expect(read("src/components/demo-center/journey/scene-props.ts")).toContain("variant: DemoJourneyVariant")
   })
 
+  it("does not print the same step twice, in the coach mark and in the panel", () => {
+    // The coach mark is pinned to the control it is talking about and clamped
+    // into the viewport, so it always carries the step. The panel used to
+    // repeat the whole card — same words, second «İrəli» — on the one screen
+    // whose job is to be clear.
+    const guide = read("src/components/demo-center/journey/demo-journey-guide.tsx")
+    expect(guide).toContain("const stepIsOnScene")
+
+    // The instruction and the step's buttons must sit behind that flag.
+    const gated = guide.slice(guide.indexOf("stepIsOnScene ? ("), guide.indexOf("{anchorMissing &&"))
+    expect(gated).not.toBe("")
+    expect(gated).toContain("step.instruction")
+    expect(gated).toContain("S.next")
+
+    // And the panel must be told when a coach mark is actually there.
+    expect(read("src/components/demo-center/journey/demo-journey-player.tsx"))
+      .toContain("sceneHasCoachMark={Boolean(Scene)}")
+  })
+
   it("does not post what the visitor types about themselves", () => {
     expect(shell).not.toContain("method:")
     expect(route).not.toContain("prisma")

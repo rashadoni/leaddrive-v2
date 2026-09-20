@@ -38,6 +38,8 @@ export interface DemoJourneyGuideProps {
   reviewMode: boolean
   variant: DemoJourneyVariant
   anchorMissing: boolean
+  /** The scene can host a coach mark, which then carries this same step. */
+  sceneHasCoachMark: boolean
   resultBanner: string | null
   canBack: boolean
   canSkip: boolean
@@ -59,6 +61,7 @@ export function DemoJourneyGuide({
   reviewMode,
   variant,
   anchorMissing,
+  sceneHasCoachMark,
   resultBanner,
   canBack,
   canSkip,
@@ -71,6 +74,14 @@ export function DemoJourneyGuide({
   const sections = activeSections(manifest)
   const sectionIndex = sections.findIndex((candidate) => candidate.id === section.id)
   const mode = step && step.action !== "observe" && step.action !== "wait" ? "action" : "observe"
+
+  // The coach mark already shows this step's instruction and its buttons,
+  // pinned to the control it is talking about. Repeating the whole card here
+  // put the same words and the same «İrəli» on screen twice at once — noise
+  // on the one screen whose job is to be clear. So while the coach mark is
+  // up, the panel keeps only where-you-are; when the anchor is missing there
+  // is no coach mark, and the panel expands to carry the step on its own.
+  const stepIsOnScene = sceneHasCoachMark && !anchorMissing && !reviewMode
 
   return (
     <aside
@@ -108,6 +119,10 @@ export function DemoJourneyGuide({
             {S.stepOf(stepIndex + 1, section.steps.length)}
           </p>
           <p className="mt-1 text-sm font-semibold leading-tight">{step.title}</p>
+          {stepIsOnScene ? (
+            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{S.stepOnScene}</p>
+          ) : (
+          <>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{step.instruction}</p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <span
@@ -136,6 +151,8 @@ export function DemoJourneyGuide({
               )}
             </div>
           </div>
+          </>
+          )}
           {anchorMissing && (
             <div role="alert" className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-900">
               <p className="flex items-center gap-1.5 font-semibold"><AlertTriangle className="h-3.5 w-3.5" /> {S.anchorMissingTitle}</p>

@@ -322,6 +322,7 @@ export function DemoJourneyPlayer({
               reviewMode={reviewMode}
               variant={variant}
               anchorMissing={anchorMissing}
+              sceneHasCoachMark={Boolean(Scene)}
               resultBanner={resultBanner}
               canBack={canBack}
               canSkip={canSkip}
