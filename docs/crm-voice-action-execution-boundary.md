@@ -44,8 +44,11 @@ retriable delivery remain required by roadmap item C1.12.
 
 ## Safety boundary
 
-There is still no commit route. This slice does not consume confirmation proof,
-claim an action, recover expired leases, expose a write tool to the model or
-enable voice-created CRM records. The future commit slice must first recheck
-tenant, role, module, field and target permissions, atomically consume the
-single-use proof and claim an execution lease before calling this executor.
+There is still no commit route and no model-visible write tool, so voice-created
+CRM records remain disabled. The separate internal claim lifecycle now rechecks
+tenant, role, module, field and target permissions, atomically consumes the
+single-use proof, claims an execution lease, recovers an expired lease and can
+settle a bounded terminal failure before/around this executor. The remaining
+step is a rate-limited, session-only commit adapter that composes those internal
+boundaries without exposing commit authority to the model. See
+`docs/crm-voice-action-execution-claim.md`.

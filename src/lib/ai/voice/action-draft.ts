@@ -84,6 +84,13 @@ export type IssueAiVoiceActionConfirmationInput = Readonly<{
   payloadHash: string
 }>
 
+export type RevalidateAiVoiceActionExecutionInput = Readonly<{
+  intentId: string
+  expectedRevision: number
+  payloadHash: string
+  expectedState: "awaiting_confirmation" | "executing"
+}>
+
 export type AiVoiceActionConfirmationProof = Readonly<{
   confirmationEventId: string
   confirmationToken: string
@@ -444,6 +451,58 @@ async function assertReplayTargetAccess(
       409,
     )
   }
+}
+
+/**
+ * Repeat the mutable authorization and target checks immediately before a
+ * first execution claim or an expired-lease recovery. It deliberately returns
+ * no payload: the atomic claim/executor must re-read the tenant-owned intent.
+ */
+export async function revalidateAiVoiceActionExecutionAccess(
+  auth: AuthResult,
+  input: RevalidateAiVoiceActionExecutionInput,
+): Promise<void> {
+  const existing = await findOwnedIntent(auth, input.intentId)
+  if (!isAiVoiceActionType(existing.actionType)) {
+    throw new AiVoiceActionDraftError("INVALID_STORED_ACTION", "The stored action is invalid", 409)
+  }
+  if (existing.state !== input.expectedState) {
+    throw new AiVoiceActionDraftError(
+      "INTENT_STATE_CHANGED",
+      "The action state changed before execution",
+      409,
+      { state: existing.state },
+    )
+  }
+  if (
+    existing.revision !== input.expectedRevision
+    || existing.payloadHash !== input.payloadHash
+  ) {
+    throw new AiVoiceActionDraftError(
+      "EXECUTION_IDENTITY_MISMATCH",
+      "The reviewed action no longer matches the stored intent",
+      409,
+    )
+  }
+  const calculatedHash = hashAiActionIntentPayload({
+    actionType: existing.actionType,
+    revision: existing.revision,
+    normalizedPayload: existing.normalizedPayload,
+  })
+  if (calculatedHash !== existing.payloadHash) {
+    throw new AiVoiceActionDraftError(
+      "INTENT_INTEGRITY_FAILED",
+      "The action intent could not be verified",
+      409,
+    )
+  }
+  const parsed = parseAiVoiceActionPayload(existing.actionType, existing.normalizedPayload)
+  if (!parsed.success) {
+    throw new AiVoiceActionDraftError("INVALID_STORED_PAYLOAD", "The stored action is invalid", 409)
+  }
+  await assertActiveVoiceSession(auth, existing.voiceSessionId)
+  await assertActionAccess(auth, existing.actionType, parsed.data)
+  await assertReplayTargetAccess(auth, existing)
 }
 
 function targetPreviewContext(lead: LeadDraftTarget): AiVoiceActionPreviewContext {

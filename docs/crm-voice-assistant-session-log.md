@@ -373,6 +373,8 @@ lease recovery/terminal failure semantics. Только после их пров
 
 - глобальный host contract указывает `rashadoni/leaddrive-v2` и
   зарегистрированный Contabo-host `13.140.132.245`;
+- системный `codex-project-context` распознаёт текущего GitHub-владельца, а
+  сохранённые backup-копии глобальных правил больше не содержат прежний маршрут;
 - SSH alias `leaddrive-prod` больше не направлен на выведенный из эксплуатации
   адрес;
 - активные файлы репозитория не содержат прежних GitHub/IP-значений;
@@ -389,3 +391,39 @@ scripts/ci/test-event-platform-assets.mjs` и `git diff --check` — успеш�
 `src/lib/ai/voice/action-draft.ts` сохранена отдельно от коррекции маршрута.
 После отдельного checkpoint коррекции продолжается proof consumption +
 execution claim/lease recovery.
+
+## Продолжение 2026-09-20: proof consumption и execution lease
+
+Реализован внутренний, пока не доступный через HTTP слой выполнения:
+
+- проверка confirmation-event, exact intent/revision/payload hash и
+  domain-separated token hash с constant-time comparison;
+- unused proof истекает через 60 секунд, но уже использованный proof можно
+  безопасно повторить после TTL и получить сохранённый claim;
+- перед первым claim повторяются active voice session, role/module/field
+  permissions, record filter, target visibility/version и payload integrity;
+- proof consumption, CAS `awaiting_confirmation -> executing`, UUID lease,
+  `confirmation_consumed` и `execution_claimed` атомарны;
+- competing proof не может получить lease, а конкурентный retry того же proof
+  возвращает claim победителя;
+- recovery меняет только точную истёкшую lease после повторной авторизации;
+  потерянный recovery-response повторяется по хешу прежней lease без новой
+  ротации и без сохранения сырого прежнего токена в event data;
+- terminal failure требует ограниченный uppercase error code, опциональный
+  безопасный текст до 500 символов и атомарно пишет `failed` event;
+- public commit endpoint и model write-tool по-прежнему отсутствуют, поэтому
+  голос ещё не может изменить CRM.
+
+Добавлены defect-shaped тесты на first claim, proof expiry/token mismatch,
+same-proof replay, competing proof, concurrent CAS retry, lease recovery,
+recovery replay/concurrency, active-lease rejection, terminal failure/replay и
+повторную проверку execution access. Сырые lease capabilities дополнительно
+убраны из immutable events: ledger получает только domain-separated hashes.
+На текущей точке 3 целевых файла / 31 тест и расширенный voice/command набор
+9 файлов / 69 тестов, targeted ESLint и `git diff --check` проходят.
+
+Точка остановки: код и документация внутреннего claim/lease/failure слоя готовы
+локально, но ещё не закоммичены. Параллельно cleanup PR #247 ожидает завершения
+полного static-check/typecheck. Следующее действие — расширенный targeted test
+gate, затем завершить/развернуть #247 и отдельным checkpoint провести новый
+execution slice через PR/CI/deploy.

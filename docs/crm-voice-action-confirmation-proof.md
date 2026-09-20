@@ -1,6 +1,7 @@
 # CRM voice action confirmation proof
 
-Status: foundation implemented; commit remains disabled.
+Status: proof issuance and internal single-use consumption implemented; commit
+endpoint remains disabled.
 
 ## Purpose
 
@@ -49,19 +50,18 @@ database checks for revision, payload hash and JSON shape. Database triggers
 reject direct UPDATE, DELETE and TRUNCATE operations while preserving required
 foreign-key cascades.
 
-The table is intentionally general enough for later `confirmation_consumed`,
-`execution_claimed`, lease recovery and terminal result events. As of
-2026-09-20, `drafted`, `draft_updated`, `cancelled` and `expired` are appended
-in the same transaction as the corresponding intent mutation; a failed
-compare-and-swap appends nothing. I1.14 is not complete until the remaining
-execution lifecycle transitions follow the same rule.
+The table records `drafted`, `draft_updated`, `cancelled`, `expired`,
+`confirmation_consumed`, `execution_claimed`, `execution_lease_recovered`,
+`succeeded` and `failed` in the same transaction as their corresponding intent
+mutation. A failed compare-and-swap appends nothing. Proof issuance remains an
+immutable event of its own because it does not mutate the intent.
 
 ## Safety boundary
 
 This endpoint does not set `confirmedAt`, move the intent to `executing`, call
 a canonical CRM command, or mutate a lead, deal or task. A commit route is not
-present. The future route must consume the event/token once, repeat all access
-and target checks, and claim execution by compare-and-swap. The internal atomic
-command/result boundary is now implemented separately; it remains unreachable
-until that commit route and lease lifecycle are complete. See
+present. Internal orchestration can now consume the event/token once, repeat
+all access and target checks, and claim execution by compare-and-swap, but it
+is unreachable from HTTP and unavailable to the model. See
+`docs/crm-voice-action-execution-claim.md` and
 `docs/crm-voice-action-execution-boundary.md`.
