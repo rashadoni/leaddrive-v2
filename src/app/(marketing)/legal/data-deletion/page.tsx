@@ -1,6 +1,7 @@
 import { AnimateIn } from "@/components/marketing/animate-in"
+import { LegalDocumentNav, legalLocale } from "@/components/marketing/legal-document-nav"
 import type { Metadata } from "next"
-import { COMPANY_EMAIL, COMPANY_LEGAL_ADDRESS, COMPANY_LEGAL_NAME } from "@/lib/constants"
+import { COMPANY_LEGAL_ADDRESS, COMPANY_LEGAL_NAME, COMPANY_PRIVACY_EMAIL, COMPANY_REGISTRATION_NUMBER } from "@/lib/constants"
 import { getTranslations } from "next-intl/server"
 
 export const metadata: Metadata = {
@@ -8,8 +9,9 @@ export const metadata: Metadata = {
   description: "How to request deletion of your personal data from LeadDrive CRM, including data collected through Meta (Facebook, Instagram) integrations.",
 }
 
-export default async function DataDeletionPage() {
-  const t = await getTranslations("dataDeletion")
+export default async function DataDeletionPage({ searchParams }: { searchParams: Promise<{ lang?: string | string[] }> }) {
+  const locale = legalLocale((await searchParams).lang)
+  const t = await getTranslations({ locale, namespace: "dataDeletion" })
   return (
     <div className="min-h-screen bg-white">
       <section className="pt-32 pb-24">
@@ -19,6 +21,8 @@ export default async function DataDeletionPage() {
             <p className="text-sm text-[#001E3C]/40 mb-8">{t("lastUpdated")}</p>
             <p className="text-[#001E3C]/70 text-sm leading-relaxed mb-12">{t("intro")}</p>
           </AnimateIn>
+
+          <LegalDocumentNav locale={locale} path="/legal/data-deletion" />
 
           <div className="prose max-w-none space-y-8 text-[#001E3C]/70 text-sm leading-relaxed">
             <AnimateIn delay={0.1}>
@@ -58,7 +62,7 @@ export default async function DataDeletionPage() {
                 </li>
                 <li>
                   <strong className="text-[#001E3C]">{t("p3_l3_title")}</strong>{" "}
-                  {t("p3_l3_body", { email: COMPANY_EMAIL })}
+                  {t("p3_l3_body", { email: COMPANY_PRIVACY_EMAIL })}
                 </li>
               </ol>
             </section>
@@ -82,8 +86,9 @@ export default async function DataDeletionPage() {
               <h2 className="text-lg font-semibold text-[#001E3C] mb-3">{t("s7")}</h2>
               <p>{t("p7")}</p>
               <p className="mt-2">
-                {COMPANY_EMAIL}<br />
-                {COMPANY_LEGAL_NAME}, {COMPANY_LEGAL_ADDRESS}
+                <a href={`mailto:${COMPANY_PRIVACY_EMAIL}`} className="underline hover:opacity-70">{COMPANY_PRIVACY_EMAIL}</a><br />
+                {COMPANY_LEGAL_NAME}, {COMPANY_REGISTRATION_NUMBER}<br />
+                {COMPANY_LEGAL_ADDRESS}
               </p>
             </section>
           </div>

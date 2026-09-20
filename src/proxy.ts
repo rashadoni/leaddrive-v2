@@ -137,11 +137,10 @@ const VOICE_AGENT_INTERNAL_PATHS = new Set([
 const marketingPaths = ["/home", "/pricing", "/plans", "/features", "/demo", "/about", "/contact", "/blog", "/legal", "/landing", "/marketing"]
 
 // The marketing apex currently sits behind a Cloudflare-managed site that
-// redirects unknown paths to `/`. Keep the demo request page available on the
-// application host as a stable fallback so campaigns can link to a route that
-// is served by this deployment even when the marketing edge has not yet added
-// `/demo` to its route table.
-const appHostedMarketingPaths = ["/demo"]
+// redirects unknown paths to `/`. Keep the demo request and legal pages
+// available on the application host as stable fallbacks. Meta App Review must
+// be able to open the policies without relying on a separate edge route table.
+const appHostedMarketingPaths = ["/demo", "/legal"]
 
 // Hostnames for domain-based routing (from env or defaults)
 function getMarketingHosts(): string[] {
@@ -516,10 +515,19 @@ const authMiddleware = auth(async (req) => {
   if (publicExactPaths.has(pathname) || publicPaths.some((p) => matchesPublicPath(pathname, p))) {
     const requestHeaders = trustedRequestHeaders(req, tenantSlug)
     requestHeaders.set("x-nonce", nonce)
-    // Inject locale for i18n on public/marketing pages
+    // Legal documents expose stable reviewer-facing language links. next-intl loads the message
+    // bundle from x-locale before the page renders, so reading ?lang= only inside the page is too
+    // late: every link otherwise renders in the request default (currently Russian). A valid legal
+    // query wins over the browser cookie; malformed values fall back to the normal cookie/default.
     const localeCookie = req.cookies.get("NEXT_LOCALE")?.value
-    if (localeCookie) {
-      requestHeaders.set("x-locale", localeCookie)
+    const legalLocaleQuery = pathname.startsWith("/legal/")
+      ? req.nextUrl.searchParams.get("lang")
+      : null
+    const publicLocale = legalLocaleQuery === "en" || legalLocaleQuery === "ru" || legalLocaleQuery === "az"
+      ? legalLocaleQuery
+      : localeCookie
+    if (publicLocale) {
+      requestHeaders.set("x-locale", publicLocale)
     }
     return withCspHeaders(
       NextResponse.next({ request: { headers: requestHeaders } }),

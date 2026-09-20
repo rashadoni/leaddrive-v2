@@ -2,7 +2,7 @@
 
 **Status: not a supported flow.** Verified against production on 2026-08-03.
 This document exists so the next person does not "fix" the OAuth `callbackUrl`
-the way [PR #681](https://github.com/rashadrahimov/leaddrive-v2/pull/681) fixed
+the way [PR #681](https://github.com/rashadoni/leaddrive-v2/pull/681) fixed
 sign-**out**, and expect it to work.
 
 ## Verdict

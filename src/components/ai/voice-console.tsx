@@ -8,6 +8,7 @@ import { useLocale, useTranslations } from "next-intl"
 import { Mic } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { VoiceInlineStatus } from "@/components/ai/voice-inline-status"
+import { VoiceReceiptSurface } from "@/components/ai/voice-receipt-surface"
 import { VOICE_TOOL_NAMES, type VoiceToolName } from "@/lib/ai/voice/read-tools"
 import {
   diagnoseMicrophoneFailure,
@@ -196,6 +197,9 @@ function ConsoleInner({
   const [micSilent, setMicSilent] = useState(false)
 
   const sessionRef = useRef<SessionInfo | null>(null)
+  // The receipt panel is positioned from the orb's own box, wherever the shell
+  // has put it (header slot or floating corner).
+  const orbControlRef = useRef<HTMLDivElement>(null)
   const liveSessionRef = useRef<GeminiLiveSession | null>(null)
   const credentialRef = useRef<TokenInfo | null>(null)
   const resumptionHandleRef = useRef<string | null>(null)
@@ -1180,9 +1184,11 @@ function ConsoleInner({
     const inline = Boolean(orbPortalTarget)
     const showInlineMessage = Boolean(error || notice || micSilent || transcriptionWarning)
     const orbControl = (
-      <div className={inline
-        ? "relative flex shrink-0 flex-col items-center"
-        : "fixed bottom-24 right-6 z-50 flex flex-col items-center gap-2"}
+      <div
+        ref={orbControlRef}
+        className={inline
+          ? "relative flex shrink-0 flex-col items-center"
+          : "fixed bottom-24 right-6 z-50 flex flex-col items-center gap-2"}
       >
         <button
           type="button"
@@ -1229,6 +1235,10 @@ function ConsoleInner({
             </span>
           )
         })()}
+        <VoiceReceiptSurface
+          voiceSessionId={session?.voiceSessionId ?? null}
+          anchorRef={orbControlRef}
+        />
       </div>
     )
     if (orbPortalTarget) return createPortal(orbControl, orbPortalTarget)
@@ -1257,6 +1267,7 @@ function ConsoleInner({
       {transcriptionWarning && active && <p className="max-w-md text-center text-xs text-amber-700 dark:text-amber-300">{t("transcriptionUnavailable")}</p>}
       {error && <p className="text-sm text-destructive">{error}</p>}
       {!error && notice && <p className="text-sm text-muted-foreground">{notice}</p>}
+      <VoiceReceiptSurface voiceSessionId={session?.voiceSessionId ?? null} />
       {!active ? (
         <Button onClick={() => void (starting || sessionRef.current ? stop("user") : start())} size="lg">
           {starting || sessionRef.current ? t("stop") : t("start")}

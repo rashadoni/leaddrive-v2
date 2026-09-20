@@ -5,6 +5,7 @@ const deps = vi.hoisted(() => ({
   intentFindFirst: vi.fn(),
   intentUpdateMany: vi.fn(async () => ({ count: 0 })),
   intentCreate: vi.fn(),
+  eventCreate: vi.fn(async () => ({ id: "draft-event-1" })),
   sessionFindFirst: vi.fn<() => Promise<{ id: string } | null>>(async () => ({ id: "voice-1" })),
   leadFindFirst: vi.fn(),
   leadFindMany: vi.fn(async () => []),
@@ -21,20 +22,29 @@ const deps = vi.hoisted(() => ({
   },
 }))
 
-vi.mock("@/lib/prisma", () => ({
-  prisma: {
+vi.mock("@/lib/prisma", () => {
+  const transactionClient = {
     aiActionIntent: {
       findFirst: deps.intentFindFirst,
       updateMany: deps.intentUpdateMany,
       create: deps.intentCreate,
     },
-    voiceSession: { findFirst: deps.sessionFindFirst },
-    lead: { findFirst: deps.leadFindFirst, findMany: deps.leadFindMany },
-    deal: { findMany: deps.dealFindMany },
-    fieldPermission: { findMany: deps.fieldPermissionFindMany },
-  },
-  logAudit: deps.logAudit,
-}))
+    aiActionIntentEvent: { create: deps.eventCreate },
+  }
+  return {
+    prisma: {
+      ...transactionClient,
+      $transaction: async (
+        callback: (tx: typeof transactionClient) => Promise<unknown>,
+      ) => callback(transactionClient),
+      voiceSession: { findFirst: deps.sessionFindFirst },
+      lead: { findFirst: deps.leadFindFirst, findMany: deps.leadFindMany },
+      deal: { findMany: deps.dealFindMany },
+      fieldPermission: { findMany: deps.fieldPermissionFindMany },
+    },
+    logAudit: deps.logAudit,
+  }
+})
 
 vi.mock("@/lib/api-auth", () => ({
   getOrgModuleContext: vi.fn(async () => deps.org),
@@ -130,6 +140,19 @@ describe("AI voice action draft service", () => {
         voiceSessionId: "voice-1",
         actionType: "create_task",
         state: "awaiting_confirmation",
+      }),
+    })
+    expect(deps.eventCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        organizationId: "org-1",
+        intentId: "intent-created",
+        userId: "user-1",
+        eventType: "drafted",
+        intentRevision: 1,
+        eventData: {
+          actionType: "create_task",
+          voiceSessionId: "voice-1",
+        },
       }),
     })
     const createData = deps.intentCreate.mock.calls[0]?.[0]?.data

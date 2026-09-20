@@ -163,6 +163,24 @@ describe("visit completion requirements", () => {
     expect(tx.mtmRoute.update).not.toHaveBeenCalled()
   })
 
+  it("does not let retired prototype steps block an existing visit", async () => {
+    const tx = transactionClient({
+      ...activeVisit,
+      requirementSnapshot: {
+        requirements: [
+          { id: "req-checklist", actionKey: "CHECKLIST", minCount: 1, allowWaiver: false },
+          { id: "req-next", actionKey: "NEXT_ACTION", minCount: 1, allowWaiver: false },
+        ],
+      },
+      actionResults: [],
+      _count: { photos: 0 },
+    })
+
+    const result = await completeMtmVisit(tx as never, { organizationId: "org-1", visitId: "visit-1" })
+
+    expect(result.status).toBe("completed")
+  })
+
   it("completes explicitly and marks the linked stop and route once requirements pass", async () => {
     const tx = transactionClient({ ...activeVisit, _count: { photos: 2 } })
     const result = await completeMtmVisit(tx as never, {
@@ -231,7 +249,8 @@ describe("requirement snapshot honours the visit-policy switch", () => {
     await createVisitRequirementSnapshot(tx as never, input)
     const data = tx.mtmVisitRequirementSnapshot.create.mock.calls[0][0].data
     expect(data.sourcePolicyId).toBeNull()
-    expect(data.requirements.create.every((item: { mode: string }) => item.mode === "OPTIONAL")).toBe(true)
+    expect(data.requirements.create.filter((item: { actionKey: string }) => ["CHECKLIST", "NEXT_ACTION"].includes(item.actionKey)).every((item: { mode: string }) => item.mode === "HIDDEN")).toBe(true)
+    expect(data.requirements.create.filter((item: { actionKey: string }) => !["CHECKLIST", "NEXT_ACTION"].includes(item.actionKey)).every((item: { mode: string }) => item.mode === "OPTIONAL")).toBe(true)
   })
 
   it("snapshots the active rule while the switch is on", async () => {

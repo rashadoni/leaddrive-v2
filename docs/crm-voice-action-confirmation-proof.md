@@ -1,14 +1,15 @@
 # CRM voice action confirmation proof
 
-Status: foundation implemented; commit remains disabled.
+Status: proof issuance, single-use consumption and session-only commit adapter
+implemented; receipt UI is not wired yet.
 
 ## Purpose
 
 The model may propose an action, but it never receives a commit capability.
 The browser receipt UI will call a separate session-only endpoint after the
 user activates an explicit confirmation button. That endpoint records durable
-evidence and returns a short-lived proof which a future commit endpoint must
-consume exactly once.
+evidence and returns a short-lived proof which the separate commit endpoint
+consumes exactly once.
 
 ## Endpoint
 
@@ -49,15 +50,18 @@ database checks for revision, payload hash and JSON shape. Database triggers
 reject direct UPDATE, DELETE and TRUNCATE operations while preserving required
 foreign-key cascades.
 
-The table is intentionally general enough for later `confirmation_consumed`,
-`execution_claimed`, lease recovery and terminal result events. I1.14 is not
-complete until every lifecycle transition is appended atomically with its
-state change.
+The table records `drafted`, `draft_updated`, `cancelled`, `expired`,
+`confirmation_consumed`, `execution_claimed`, `execution_lease_recovered`,
+`succeeded` and `failed` in the same transaction as their corresponding intent
+mutation. A failed compare-and-swap appends nothing. Proof issuance remains an
+immutable event of its own because it does not mutate the intent.
 
 ## Safety boundary
 
 This endpoint does not set `confirmedAt`, move the intent to `executing`, call
 a canonical CRM command, or mutate a lead, deal or task. A commit route is not
-present. The future route must consume the event/token once, repeat all access
-and target checks, claim execution by compare-and-swap, and close the crash
-window between the CRM mutation and stored result before writes are enabled.
+present. Internal orchestration can now consume the event/token once, repeat
+all access and target checks, and claim execution by compare-and-swap, but it
+is unreachable from HTTP and unavailable to the model. See
+`docs/crm-voice-action-execution-claim.md` and
+`docs/crm-voice-action-execution-boundary.md`.

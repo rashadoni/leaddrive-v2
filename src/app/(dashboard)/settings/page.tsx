@@ -1,9 +1,10 @@
 "use client"
 
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 import { ChevronRight, CreditCard, Users, Zap, LayoutDashboard, Lock, FileText, Plug, Keyboard, BellRing, Globe2, Building2, Bot, Sparkles } from "lucide-react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { InfoHint } from "@/components/info-hint"
 import { PageDescription } from "@/components/page-description"
 import { DidYouKnow } from "@/components/did-you-know"
@@ -14,6 +15,7 @@ import { HelpButton } from "@/components/help/help-button"
 export default function SettingsPage() {
   const router = useRouter()
   const t = useTranslations("settings")
+  const locale = useLocale()
   useAutoTour("settingsHub")
 
   // Overview grid for the org-level settings. Since every page below also has
@@ -72,6 +74,16 @@ export default function SettingsPage() {
           )
         })}
       </div>
+
+      <section aria-labelledby="settings-legal-title" className="border-t pt-5">
+        <h2 id="settings-legal-title" className="text-sm font-semibold">{t("legalDocumentsTitle")}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{t("legalDocumentsDesc")}</p>
+        <nav aria-label={t("legalDocumentsTitle")} className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+          <Link className="text-primary hover:underline" href={"/legal/privacy?lang=" + locale}>{t("privacyPolicy")}</Link>
+          <Link className="text-primary hover:underline" href={"/legal/terms?lang=" + locale}>{t("termsOfService")}</Link>
+          <Link className="text-primary hover:underline" href={"/legal/data-deletion?lang=" + locale}>{t("dataDeletion")}</Link>
+        </nav>
+      </section>
     </div>
   )
 }

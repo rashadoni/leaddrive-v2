@@ -213,3 +213,526 @@ production deploy этого нового среза.
 канонические CRM-команды не вызываются. Далее: checkpoint/PR/CI/deploy этого
 фундамента, затем атомарная интеграция остальных lifecycle events и устранение
 crash ambiguity до включения I1.5.
+
+## Итог 2026-09-19: confirmation proof на production
+
+Confirmation-proof foundation завершён и развёрнут:
+
+- основной checkpoint `34e09912d`;
+- type-fix тестового mock `62d9e001d`;
+- PR #243;
+- первый CI выявил один новый `TS2339` только в типизации test mock; runtime,
+  migration и static gates были зелёными;
+- повторный CI: scope, secret scan, runner policy, static checks и полный
+  typecheck — успешно;
+- merge SHA `df65ee2bb1c33cd73c23465687809ee316c03c0f`;
+- deploy workflow `35470189884` — успешно;
+- независимый `/api/v1/ping` вернул `{"ok":true}`;
+- независимый `/api/v1/public/build-info` подтвердил
+  `artifactSha=df65ee2bb1c33cd73c23465687809ee316c03c0f`.
+
+На production теперь есть append-only event-ledger foundation и endpoint
+выдачи короткоживущего confirmation proof. Голосовая CRM-запись всё ещё
+невозможна: commit endpoint отсутствует, intent не переходит в `executing`,
+канонические команды не вызываются.
+
+Точка остановки: I1.14 выполнен частично — таблица, RLS, immutability и событие
+`confirmation_proof_issued` готовы, но остальные lifecycle transitions ещё не
+пишутся атомарно. Следующее действие: адаптировать канонические команды и
+receipt-result к атомарной/idempotent execution boundary, затем реализовать
+single-use proof consumption, CAS claim, lease recovery и commit endpoint.
+
+## Продолжение 2026-09-20: атомарный ledger draft lifecycle
+
+Закрыт следующий участок I1.14 без включения CRM-записей:
+
+- `drafted` создаётся в одной транзакции с новым `AiActionIntent`;
+- `draft_updated` создаётся в одной транзакции с revision-CAS обновлением;
+- `cancelled` создаётся в одной транзакции с CAS-отменой;
+- `expired` создаётся в одной транзакции с TTL-CAS переходом;
+- проигравший CAS не оставляет ложного события;
+- прежнее массовое TTL-обновление без forensic evidence заменено на
+  идентифицированный переход единственного активного root intent;
+- event metadata ограничена состоянием/ревизией/причиной и не содержит raw
+  payload, аудио, transcript или секреты.
+
+Проверки текущего дерева:
+
+- 8 целевых test files / 49 tests — успешно;
+- targeted ESLint — успешно;
+- `git diff --check` — успешно;
+- полный `npm run typecheck` и `npm run build` — NOT RUN локально по host
+  contract; полный typecheck должен выполнить GitHub CI.
+
+Точка остановки этой записи: draft/update/cancel/expiry lifecycle теперь
+пишется атомарно в immutable ledger, но I1.14 ещё не завершён. Commit endpoint
+отсутствует, proof не потребляется, состояния `executing`/`succeeded`/`failed`
+не включены, CRM-команды не вызываются.
+
+Следующее действие: checkpoint commit, push, PR и CI/deploy этого среза. После
+этого — устранение crash ambiguity между канонической CRM-командой и сохранением
+receipt-result, затем single-use proof consumption, execution CAS/lease и
+commit endpoint.
+
+CI PR #244: static checks и полный unit baseline прошли. Первый typecheck gate
+обнаружил один новый `TS2339` только в чтении `mock.calls` нового unit-теста;
+production-код ошибок не добавил. Проверка события переписана через типобезопасный
+`toHaveBeenCalledWith`, без изменения runtime-поведения. Далее нужен повторный
+CI этого fix-коммита.
+
+## Итог 2026-09-20: атомарный draft ledger на production
+
+Срез полностью завершён и развёрнут:
+
+- основной checkpoint `27cab7ab0`;
+- type-safe test fix `681f8e5fc`;
+- PR #244;
+- повторный CI: scope, secret scan, runner policy, static checks, полный unit
+  baseline и defect-shaped typecheck — успешно;
+- merge SHA `921aa9d3406dc37e0e8716de11c82d3d6cd3ecae`;
+- deploy workflow `35476428436` — успешно, включая quality/security gates,
+  immutable artifact, atomic production switch и post-deploy smoke;
+- независимый `/api/v1/ping` вернул `{"ok":true}`;
+- независимый `/api/v1/public/build-info` подтвердил точный
+  `artifactSha=921aa9d3406dc37e0e8716de11c82d3d6cd3ecae`.
+
+На production события `drafted`, `draft_updated`, `cancelled` и `expired`
+теперь атомарны с изменением intent. Голосовая CRM-запись всё ещё выключена:
+commit endpoint отсутствует, confirmation proof не потребляется, execution
+lease и terminal result ещё не реализованы.
+
+Точка остановки: следующий технический риск — crash ambiguity между успешной
+канонической CRM-командой и сохранением receipt-result. Следующее действие —
+сделать command/result boundary идемпотентной и восстановимой для пяти команд,
+а затем включать single-use proof consumption, execution CAS/lease и commit
+endpoint.
+
+## Продолжение 2026-09-20: атомарная execution boundary
+
+Устранено crash ambiguity между CRM-записью и сохранением результата intent:
+
+- пять канонических команд принимают внутренний transaction context;
+- CRM-мутация, переход intent в `succeeded`, минимальный result receipt и
+  immutable-событие `succeeded` выполняются в одной транзакции;
+- terminal compare-and-swap привязан к tenant, user, revision, payload hash,
+  lease token и неистёкшему lease;
+- при проигранном CAS или ошибке команды вся CRM-мутация откатывается;
+- после успешного commit повтор с тем же lease возвращает сохранённый результат
+  и не вызывает команду повторно;
+- workflows, notifications, webhooks, scoring, audit helpers и rollups
+  откладываются до успешного завершения транзакции.
+
+Важные ограничения сохранены: executor внутренний, API-маршрута commit нет,
+confirmation proof ещё не потребляется, execution claim/recovery ещё не
+реализованы, write-tool модели не добавлен. Надёжная повторная доставка внешних
+побочных эффектов остаётся отдельной задачей transactional outbox (C1.12).
+
+Проверки текущего дерева: targeted ESLint — успешно; 5 целевых test files / 228
+tests — успешно. Полный typecheck/build локально не запускались по host
+contract и должны пройти в GitHub CI.
+
+Точка остановки этой записи: код, unit/regression tests и архитектурная
+документация execution boundary готовы локально. Следующее действие —
+checkpoint commit, push, PR, полный CI, merge и production deploy. После этого
+можно реализовывать атомарное single-use proof consumption + execution claim и
+lease recovery до появления commit endpoint.
+
+## Итог 2026-09-20: execution boundary на production
+
+Срез полностью завершён и развёрнут:
+
+- checkpoint commit `aaa176df8`;
+- PR #245;
+- PR CI: scope, secret scan, runner policy, static checks, полный unit baseline
+  и defect-shaped typecheck — успешно;
+- merge SHA `a7f6c2654ffe1b3fb1f80df1e8b303c515dae19d`;
+- deploy workflow `35479290362` — успешно, включая quality/security gates,
+  production build, SHA-bound artifact, атомарный deploy и post-deploy smoke;
+- независимый `/api/v1/ping` вернул `{"ok":true}`;
+- независимый `/api/v1/public/build-info` подтвердил точный
+  `artifactSha=a7f6c2654ffe1b3fb1f80df1e8b303c515dae19d`.
+
+На production теперь присутствует внутренняя атомарная command/result boundary
+для всех пяти канонических CRM-команд. Голосовая CRM-запись по-прежнему
+выключена: commit endpoint отсутствует, proof не потребляется, execution claim
+и lease recovery ещё не включены, write-tool модели отсутствует.
+
+Точка остановки: следующий безопасный срез — атомарно потребить single-use
+confirmation proof, выполнить compare-and-swap claim в `executing` и добавить
+lease recovery/terminal failure semantics. Только после их проверки можно
+подключать commit endpoint; UI-кнопка и model write-tools остаются отдельными
+последующими этапами.
+
+## Коррекция маршрутизации 2026-09-20
+
+Пользователь подтвердил, что прежний GitHub-владелец и прежний production-host
+больше не существуют и не должны использоваться ни в правилах, ни в активной
+документации, ни в deploy-контрактах.
+
+Исправлено:
+
+- глобальный host contract указывает `rashadoni/leaddrive-v2` и
+  зарегистрированный Contabo-host `13.140.132.245`;
+- системный `codex-project-context` распознаёт текущего GitHub-владельца, а
+  сохранённые backup-копии глобальных правил больше не содержат прежний маршрут;
+- SSH alias `leaddrive-prod` больше не направлен на выведенный из эксплуатации
+  адрес;
+- активные файлы репозитория не содержат прежних GitHub/IP-значений;
+- deploy допускает только зарегистрированный host или заполнение
+  отсутствующего/пустого `SHARED_SERVER_IP`; неизвестный target отклоняется;
+- исторические документы сохраняют смысл свидетельств без удалённого адреса,
+  а GitHub-ссылки переведены на текущего владельца.
+
+Проверки на этой точке: `bash -n scripts/server-deploy.sh`, `node --check
+scripts/ci/test-event-platform-assets.mjs` и `git diff --check` — успешно.
+Целевые контрактные тесты запускаются следующим действием.
+
+Точка остановки: незакоммиченная повторная проверка execution-доступа в
+`src/lib/ai/voice/action-draft.ts` сохранена отдельно от коррекции маршрута.
+После отдельного checkpoint коррекции продолжается proof consumption +
+execution claim/lease recovery.
+
+## Продолжение 2026-09-20: proof consumption и execution lease
+
+Реализован внутренний, пока не доступный через HTTP слой выполнения:
+
+- проверка confirmation-event, exact intent/revision/payload hash и
+  domain-separated token hash с constant-time comparison;
+- unused proof истекает через 60 секунд, но уже использованный proof можно
+  безопасно повторить после TTL и получить сохранённый claim;
+- перед первым claim повторяются active voice session, role/module/field
+  permissions, record filter, target visibility/version и payload integrity;
+- proof consumption, CAS `awaiting_confirmation -> executing`, UUID lease,
+  `confirmation_consumed` и `execution_claimed` атомарны;
+- competing proof не может получить lease, а конкурентный retry того же proof
+  возвращает claim победителя;
+- recovery меняет только точную истёкшую lease после повторной авторизации;
+  потерянный recovery-response повторяется по хешу прежней lease без новой
+  ротации и без сохранения сырого прежнего токена в event data;
+- terminal failure требует ограниченный uppercase error code, опциональный
+  безопасный текст до 500 символов и атомарно пишет `failed` event;
+- public commit endpoint и model write-tool по-прежнему отсутствуют, поэтому
+  голос ещё не может изменить CRM.
+
+Добавлены defect-shaped тесты на first claim, proof expiry/token mismatch,
+same-proof replay, competing proof, concurrent CAS retry, lease recovery,
+recovery replay/concurrency, active-lease rejection, terminal failure/replay и
+повторную проверку execution access. Сырые lease capabilities дополнительно
+убраны из immutable events: ledger получает только domain-separated hashes.
+На текущей точке 3 целевых файла / 31 тест и расширенный voice/command набор
+9 файлов / 69 тестов, targeted ESLint и `git diff --check` проходят.
+
+Точка остановки: код и документация внутреннего claim/lease/failure слоя готовы
+локально, но ещё не закоммичены. Параллельно cleanup PR #247 ожидает завершения
+полного static-check/typecheck. Следующее действие — расширенный targeted test
+gate, затем завершить/развернуть #247 и отдельным checkpoint провести новый
+execution slice через PR/CI/deploy.
+
+## Итог 2026-09-20: routing cleanup и execution claim на production
+
+Коррекция маршрута завершена отдельно:
+
+- checkpoint `44ed4ce6c`;
+- PR #247, merge SHA `3401b98c02e035437f3acba2f05401cea5d1dd42`;
+- все PR checks, включая static/unit baseline и typecheck, успешны;
+- deploy workflow `35494290654` успешен;
+- независимый ping вернул `{"ok":true}`, public build-info подтвердил точный
+  artifact SHA `3401b98c02e035437f3acba2f05401cea5d1dd42`.
+
+Внутренний execution claim/lease/failure срез также завершён:
+
+- checkpoint `5de7d3c02`;
+- PR #248, merge SHA `3e49f16f3db104daeda09cdc98bce0c8316332c9`;
+- локально: targeted ESLint, `git diff --check`, 9 voice/command test files и
+  69 tests — успешно;
+- PR CI: scope, secret scan, runner policy, static checks/full unit baseline и
+  typecheck — успешно;
+- deploy workflow `35495445690` успешен, включая quality/security gates,
+  production build, SHA-bound artifact, atomic server deploy и post-deploy
+  smoke;
+- независимый ping вернул `{"ok":true}`, public build-info подтвердил точный
+  artifact SHA `3e49f16f3db104daeda09cdc98bce0c8316332c9`.
+
+Текущее состояние: на production есть внутренние single-use proof consumption,
+CAS claim, retry-safe lease recovery, bounded terminal failure и атомарная
+command/result boundary для пяти CRM-команд. Голосовой помощник всё ещё не
+может изменять CRM, потому что публичный commit endpoint и model write-tools
+отсутствуют.
+
+Точка остановки: I1.10-I1.14 закрыты на внутренней границе. Следующее действие —
+I1.5 + I1.15: session-only same-origin commit endpoint с per-user/per-tenant/
+per-action rate limits, который композиционно вызывает claim, executor и
+безопасную классификацию terminal/retriable ошибок. Только после его отдельной
+проверки можно подключать UI-кнопку; model write-tools остаются ещё более
+поздним отдельным этапом.
+
+## Продолжение 2026-09-20: session-only commit adapter
+
+Реализованы I1.5 и I1.15:
+
+- добавлен `POST /api/v1/ai/voice/actions/:id/commit` со строгим proof body;
+- endpoint принимает только аутентифицированную браузерную сессию,
+  same-origin `application/json` и повторно проверяет voice pilot gate;
+- bearer/API-key, cross-origin, лишние authority-поля и некорректные ID/proof
+  отклоняются до execution claim;
+- отдельные минутные buckets ограничивают пользователя (20), tenant (200) и
+  конкретный intent (10);
+- adapter композиционно вызывает single-use proof claim, возвращает сохранённый
+  terminal result, восстанавливает только точную истёкшую lease и выполняет
+  canonical command через атомарную command/result boundary;
+- контролируемые `CrmCommandError` и повреждённые stored-action состояния
+  переводятся в bounded `failed`; неизвестные database/process ошибки не
+  финализируются и возвращают `COMMIT_RETRY_REQUIRED`/503 для безопасного retry;
+- confirmation token и execution lease не возвращаются клиенту и не попадают в
+  лог; ответы помечены `Cache-Control: private, no-store`;
+- Gemini Live tool contract проверен отдельным регресс-тестом: commit и пять
+  канонических CRM write-команд модели не выдаются.
+
+Добавлен отдельный API regression suite. На этой точке 3 целевых файла / 29
+тестов для claim/executor/commit прошли; обновлённый commit suite — 8/8;
+targeted ESLint и `git diff --check` прошли. Полный build/typecheck локально не
+запускались по Contabo host contract и должны выполняться в GitHub CI.
+
+Расширенный pre-commit gate: 6 файлов / 45 тестов для commit, draft lifecycle,
+claim, executor, tool wiring и Gemini provider fence — успешно.
+
+Точка остановки: код, тесты и документация I1.5/I1.15 готовы локально и ещё не
+закоммичены. Следующее действие — checkpoint commit, push, PR, полный CI, merge,
+production deploy и независимый smoke. После deploy следующий продуктовый
+срез — U1.1-U1.3: session-scoped receipt store, desktop receipt panel и mobile
+bottom sheet; endpoint не должен подключаться к UI без явной кнопки
+подтверждения, model write-tool не добавляется.
+
+Первый CI run PR #249 (`35497372979`) прошёл scope, secret scan, runner policy
+и полный static/unit baseline, но blocking typecheck выявил один новый TS2345 в
+новом тесте: hoisted mock `checkRateLimit` был выведен TypeScript как функция
+без аргументов, а test-specific implementation принимал key. Production-код не
+затронут. Mock получил явную сигнатуру `(key, config)`, после чего целевые
+проверки и CI должны быть повторены без изменения typecheck baseline.
+
+## Итог 2026-09-20: session-only commit adapter на production
+
+I1.5 и I1.15 завершены и развернуты:
+
+- основной checkpoint `e5162c478` добавил browser-session-only commit endpoint,
+  строгий proof contract, replay/recovery, terminal/retriable error handling,
+  три rate-limit scope и отдельный regression suite;
+- checkpoint `e4f94d6ac` исправил только TypeScript-сигнатуру hoisted mock,
+  обнаруженную первым blocking typecheck;
+- локально повторно прошли 6 voice/command test files / 45 tests, отдельный
+  commit suite 8/8, targeted ESLint и `git diff --check`;
+- повторный PR CI `35498152909` прошёл scope, runner policy, secret scan,
+  полный static/unit baseline и typecheck;
+- PR #249 слит в `main`, merge SHA
+  `ffcbaa3a427c514deacc478dc3296b331f0fab27`;
+- исходный deploy run `35498959331` был отменён concurrency-механизмом после
+  следующего merge PR #250, а не из-за ошибки кода или production deploy;
+- следующий актуальный run `35499744499` собрал и развернул `main` с нашим
+  изменением; quality/security, production build, immutable artifact, atomic
+  deploy, встроенные public/revision/feature smoke и artifact retention прошли;
+- независимый public ping вернул `{"ok":true}`, build-info подтвердил активный
+  artifact SHA `a9891d6cb6d46ea56e8177eb6dfe298da4ec21bf`;
+- анонимный POST к новому commit route получил `307` на login, то есть
+  production middleware не пропускает вызов без браузерной сессии;
+- повторный поиск подтвердил, что устаревшие `rashadrahimov/leaddrive-v2` и
+  `46.224.171.53` в репозитории отсутствуют.
+
+Текущее состояние: защищённая серверная commit boundary для пяти канонических
+CRM-команд находится на production, но голосовой помощник ещё не вызывает её:
+receipt UI не реализован, явная пользовательская кнопка подтверждения не
+подключена, model write-tools по-прежнему намеренно отсутствуют.
+
+Точка остановки: backend I1.5/I1.15 развернут и независимо проверен. Следующее
+действие — U1.1-U1.3: session-scoped receipt store, desktop receipt panel и
+mobile bottom sheet, затем подключение явной кнопки подтверждения к commit
+endpoint без выдачи write-tool самой модели.
+
+## Пакет продолжения в Codex Cloud — 2026-09-20
+
+Проверенная исходная точка:
+
+- GitHub: `rashadoni/leaddrive-v2`; устаревшие repository/host references
+  `rashadrahimov/leaddrive-v2` и `46.224.171.53` использовать запрещено;
+- в Codex Cloud рабочий путь должен быть `/workspace/leaddrive-v2`;
+- production содержит PR #249, merge
+  `ffcbaa3a427c514deacc478dc3296b331f0fab27`; активный более новый artifact
+  `a9891d6cb6d46ea56e8177eb6dfe298da4ec21bf` также содержит этот merge;
+- полный контекст этой сессии находится в remote branch
+  `origin/codex/crm-voice-assistant-roadmap`, checkpoint `9f17130e8`;
+- новую реализацию следует начинать с чистого актуального `origin/main` в новой
+  ветке `codex/crm-voice-receipt-ui`, а этот журнал читать из указанной
+  continuity-ветки; не переносить старую feature branch поверх нового main.
+
+Непосредственный следующий срез — только U1.1-U1.3, в shadow mode:
+
+1. Добавить client intent/receipt store, жёстко привязанный к текущей
+   аутентифицированной voice session.
+2. Восстанавливать активный receipt через
+   `GET /api/v1/ai/voice/actions/active?voiceSessionId=...` при reconnect/reload
+   настолько, насколько требуется store foundation.
+3. Сделать компактную desktop-панель рядом с существующим assistant orb.
+4. Сделать responsive mobile bottom sheet, сохраняя контекст CRM-страницы.
+5. Покрыть store, session isolation, desktop/mobile rendering и отсутствие
+   скрытого commit целевыми тестами.
+
+Ограничения этого среза:
+
+- не добавлять Gemini/model `commit_*` или другие прямые write-tools;
+- не считать голосовое «да» подтверждением;
+- пока не вызывать commit endpoint из store автоматически и не выполнять write
+  при появлении receipt;
+- не доверять model-supplied IDs, tenant/user/permissions;
+- не превращать обычный receipt в full-screen modal;
+- сохранить текущий noise fix: локальный RMS остаётся только UI-индикатором и
+  не останавливает ответ;
+- scope остаётся CRM browser assistant; PBX/SIP сюда не относится.
+
+Следующие срезы после U1.1-U1.3:
+
+- U1.4-U1.13: поля/warnings/defaults, update diff, ambiguity, duplicate flow,
+  явные create/save/keep/cancel, edit/retry/open/recovery, restore, terminal
+  states, RU/AZ/EN и accessibility;
+- V1.1-V1.10: proposal-only Gemini tools, server-side entity resolution,
+  candidate tokens, ambiguity и prompt-injection hardening; commit tool всё
+  равно запрещён;
+- T1/L1/L2/LF1/L3/D1/D2: поочерёдные product/action slices и отдельные
+  shadow/canary gates для task, lead create/update/form assist/custom fields,
+  deal и lead conversion;
+- C1.9-C1.14: оставшиеся отмеченные roadmap command-layer parity/permission/
+  side-effect/outbox проверки; часть поведения уже могла появиться в поздних
+  slices, поэтому перед отметкой нужна проверка кода и тестовых доказательств;
+- P0.1-P0.3, P0.5-P0.12: продуктовые правила, allow-lists, browser matrix,
+  privacy, flags, SLO/stop conditions до реального rollout;
+- A1.2/A1.6/A1.7/A2.9 и A3.1-A3.15: реальные consented audio fixtures,
+  browser/device matrix, baseline и measurement-driven audio hardening;
+- Q1-Q4: action-specific security/quality gates, затем полный regression gate;
+- M1.1-M1.10 только после стабильных single actions;
+- R1.1-R1.15: flags, telemetry, shadow -> admin canary -> limited cohort и
+  независимые kill switches.
+
+Готовый стартовый запрос для Codex Cloud:
+
+> Продолжи CRM voice assistant в `rashadoni/leaddrive-v2`. Работай в Cloud из
+> `/workspace/leaddrive-v2`. Сначала прочитай `AGENTS.md`,
+> `docs/crm-voice-assistant-roadmap.md` и журнал из
+> `origin/codex/crm-voice-assistant-roadmap` checkpoint `9f17130e8`. Создай
+> чистую ветку `codex/crm-voice-receipt-ui` от актуального `origin/main`.
+> Реализуй только U1.1-U1.3 в shadow mode: session-scoped receipt store,
+> desktop anchored receipt panel и responsive mobile bottom sheet. Не добавляй
+> model commit/write-tool, не выполняй CRM write автоматически и не используй
+> spoken confirmation. Добавь целевые тесты, проверь responsive/accessibility
+> foundation, обнови roadmap и append-only session journal, сделай checkpoint
+> commit. Push/deploy разрешены, но production deploy только через обычный
+> reviewed main -> GitHub Actions flow. Не используй устаревшие
+> `rashadrahimov/leaddrive-v2` или `46.224.171.53`.
+
+## Итог 2026-09-20: receipt UI shell U1.1-U1.3 в shadow mode
+
+Ветка `codex/crm-voice-receipt-ui` создана от актуального `origin/main`
+(`778a55feb`), а не поверх старой feature branch, как и просил пакет
+продолжения. Журнал восстановлен: записи, жившие только в continuity-ветке
+`origin/codex/crm-voice-assistant-roadmap`, добавлены в этот файл перед
+текущей записью, чтобы постоянная история лежала в `main`.
+
+Что сделано:
+
+- **U1.1** `src/lib/ai/voice/receipt-store.ts` — client intent store,
+  привязанный к одному voice session id. Id передаётся в конструктор, и каждый
+  `adopt` сверяет с ним `voiceSessionId` из ответа сервера: чужой receipt
+  отбрасывается, а не отображается. Payload принимается целиком или никак —
+  `normalizeVoiceReceipt` возвращает null вместо частично починенного объекта.
+  Держатся только неконечные состояния (`collecting`, `awaiting_confirmation`,
+  `executing`); терминальные — это уже не открытое решение пользователя и
+  относятся к U1.11. `pruneExpired` перестаёт показывать черновик, чей
+  серверный TTL прошёл, и никогда его не продлевает.
+- **U1.2** `src/components/ai/voice-receipt-surface.tsx` — компактная панель,
+  позиционируемая по измеренному прямоугольнику орба и портируемая в слой
+  `dashboard-voice-status-layer`. Именно по рамке орба, а не по фиксированному
+  углу: орб живёт то в слоте шапки, то в правом нижнем углу
+  (`voice-orb.tsx`), и панель обязана ходить за своим же контролом.
+- **U1.3** Тот же компонент ниже 768 px становится bottom sheet, прижатым к
+  краю, с `safe-area-inset-bottom`. Намеренно не full-screen modal, без
+  backdrop и без focus trap: карточка CRM за квитанцией должна оставаться
+  читаемой, иначе проверять черновик не с чем. Своей области прокрутки
+  поверхность не заводит.
+- RU/AZ/EN строки добавлены в `messages/*.json` (`voice.receipt.*`),
+  `npm run i18n:check` — parity OK.
+
+Границы этого среза соблюдены:
+
+- модели не добавлено ни `commit_*`, ни любого другого write-tool;
+- в UI нет кнопки подтверждения — она относится к U1.8, и до неё коммита нет;
+- единственный сетевой вызов поверхности — `GET
+  /api/v1/ai/voice/actions/active?voiceSessionId=...`, same-origin, с cookie
+  браузерной сессии; тест проверяет, что ни один запрос не уходит на
+  `commit`/`confirmation`/`cancel`/`draft` и что метод всегда GET;
+- закрытие панели локальное: серверный черновик не отменяется и сетевого
+  запроса не порождает;
+- голосовое «да» подтверждением по-прежнему не является — об этом прямо
+  сказано текстом в самой панели (`voice.receipt.shadowNotice`);
+- локальный RMS остаётся UI-индикатором, аудиотракт не трогали.
+
+Проверки, выполненные в этом дереве:
+
+- `npx vitest run src/__tests__/lib-ai-voice-receipt-store.test.ts
+  src/__tests__/voice-receipt-surface-ui.test.ts` — 2 файла, 35 тестов,
+  зелёные;
+- соседние `voice-console-gemini-ui`, `voice-orb-session-race`,
+  `lib-ai-voice-action-draft` — 3 файла, 40 тестов, зелёные;
+- targeted ESLint по пяти изменённым файлам — чисто;
+- `npm run lint:pii-columns` — all clear; `node scripts/check-translations.js`
+  — parity OK; `git diff --check` — чисто.
+- `npx tsc --noEmit` — NOT RUN локально намеренно: графу типов нужно ~12 ГБ,
+  dev-бокс уходит в OOM и печатает пустой лог, из-за чего локальный «ноль
+  ошибок» неотличим от краша (см. `CLAUDE.md`). Авторитетное чтение — CI-лог
+  PR.
+
+Точка остановки: U1.1-U1.3 реализованы в shadow mode и закоммичены.
+Следующее действие — U1.4-U1.13: рендер нормализованных полей, warnings,
+related records и defaults; before/after diff для update; missing-information
+и ambiguous-candidate; duplicate flow; явные кнопки create/save/keep/cancel,
+которые и будут первым вызовом commit endpoint; edit/retry/open-result;
+restore после reload; терминальные и error states; полный обход клавиатурой и
+скринридером.
+
+## Проверка на проде 2026-09-20: receipt UI shell U1.1-U1.3
+
+Владелец дал «давай» на смерженный список; PR #257 слит в `main`, merge SHA
+`1bbc59e1e64b357cc3586af55e526b940e7fbe8c`.
+
+Перед мержем все пять обязательных проверок были зелёные, и оба блокирующих
+базлайна не сдвинулись:
+
+- `check-test-baseline: 18 failing file(s), 18 in baseline` — два новых
+  тестовых файла зелёные и в базлайн не попали;
+- `check-typecheck-baseline: 66 gated pair(s) now, 66 in baseline
+  (1056 errors total)` — новых дефектных семейств не появилось.
+
+Деплой, и почему первый прогон красный не был:
+
+- собственный run мержа `35511956094` был **отменён concurrency-механизмом**
+  («a higher priority waiting request for prod-build-refs/heads/main exists»)
+  через секунды после старта, потому что другая сессия смержила PR #258. Это
+  ровно та ловушка, что уже описана в записи про `35498959331`: отмена по
+  concurrency — это не провал кода и не провал деплоя;
+- актуальный прогон `35512069725` собрал и развернул `6cca1a5a8`, в который
+  наш merge входит (`git merge-base --is-ancestor 1bbc59e1e 6cca1a5a8` — да).
+  Production build, quality/security gates, атомарная выкатка с post-deploy
+  smoke и capping артефактов прошли.
+
+Независимая проверка после выкатки:
+
+- `GET /api/v1/ping` → `{"ok":true}`;
+- `GET /api/v1/public/build-info` → `sha 6cca1a5a8da7`, `artifactSha
+  6cca1a5a8da7cd56aee4cfbc9321ac00e2159b9f`, `builtAt 2026-09-20T13:01:54Z` —
+  то есть активный артефакт действительно содержит receipt UI shell;
+- анонимный `POST /api/v1/ai/voice/actions/test-intent/commit` → `307` на
+  `/login`: commit boundary по-прежнему не пускает вызов без браузерной
+  сессии, и ничего из этого среза её не ослабило.
+
+Текущее состояние: shadow-mode поверхность квитанции на проде, но увидеть её
+пока нельзя — черновик никто не создаёт, потому что у модели нет ни одного
+write/propose-инструмента, а draft endpoint из клиента не вызывается.
+
+Точка остановки: U1.1-U1.3 на проде и проверены. Следующее действие —
+U1.4-U1.13.

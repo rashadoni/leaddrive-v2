@@ -74,7 +74,7 @@ describe("MTM visit policy resolution", () => {
     expect(result.requirements.find((item) => item.actionKey === "STOCK_CHECK")?.mode).toBe("HIDDEN")
   })
 
-  it("returns an optional compatibility policy when no policy exists", async () => {
+  it("returns a simplified compatibility policy when no policy exists", async () => {
     const result = await resolveMtmVisitPolicy(client([]) as never, {
       organizationId: "org-1",
       agentId: "agent-1",
@@ -82,7 +82,30 @@ describe("MTM visit policy resolution", () => {
     })
 
     expect(result.sourcePolicyId).toBeNull()
-    expect(result.requirements.every((item) => item.mode === "OPTIONAL")).toBe(true)
+    expect(result.requirements.filter((item) => ["CHECKLIST", "NEXT_ACTION"].includes(item.actionKey)).every((item) => item.mode === "HIDDEN")).toBe(true)
+    expect(result.requirements.filter((item) => !["CHECKLIST", "NEXT_ACTION"].includes(item.actionKey)).every((item) => item.mode === "OPTIONAL")).toBe(true)
+  })
+
+  it("retires checklist and next-action steps even when an older policy requires them", async () => {
+    const result = await resolveMtmVisitPolicy(client([{
+      id: "policy-legacy",
+      name: "Legacy visit form",
+      teamId: "team-1",
+      visitType: "DEFAULT",
+      priority: 1,
+      effectiveFrom: new Date("2026-01-01"),
+      actions: [
+        { actionKey: "CHECKLIST", mode: "REQUIRED", minCount: 1, conditions: null, allowWaiver: false },
+        { actionKey: "NEXT_ACTION", mode: "REQUIRED", minCount: 1, conditions: null, allowWaiver: false },
+      ],
+    }]) as never, {
+      organizationId: "org-1",
+      agentId: "agent-1",
+      customerId: "customer-1",
+    })
+
+    expect(result.requirements.find((item) => item.actionKey === "CHECKLIST")?.mode).toBe("HIDDEN")
+    expect(result.requirements.find((item) => item.actionKey === "NEXT_ACTION")?.mode).toBe("HIDDEN")
   })
 
   it("detects overlapping effective windows", () => {
@@ -144,6 +167,7 @@ describe("visitPoliciesEnabled switch in the resolver", () => {
     }) as never, input)
     expect(result.requirements.find((item) => item.actionKey === "PHOTO")?.mode).toBe("REQUIRED")
     expect(result.requirements.find((item) => item.actionKey === "PRESENTATION")?.mode).toBe("OPTIONAL")
+    expect(result.requirements.find((item) => item.actionKey === "CHECKLIST")?.mode).toBe("HIDDEN")
   })
 
   it("applies rules when the switch is on or was never stored", async () => {

@@ -1226,7 +1226,6 @@ for (const requiredDeployGuard of [
   "candidate artifact must not claim the one-release Fund atomic prerequisite contract",
   "extracted candidate falsely claims the Fund atomic prerequisite contract",
   "EXPECTED_SHARED_SERVER_IP=\"13.140.132.245\"",
-  "LEGACY_SHARED_SERVER_IP=\"46.224.171.53\"",
   "migrate_registered_shared_server_ip",
   "SHARED_SERVER_IP migration did not produce the registered production host",
   'chown -hR root:root -- "$APP_DIR/.next/standalone"',

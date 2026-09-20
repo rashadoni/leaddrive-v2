@@ -97,7 +97,6 @@ EVENT_PLATFORM_ATOMIC_PREREQUISITE_SHA="8fbd00c410c6908df65be999e11f2564afcd9a67
 EVENT_PLATFORM_ATOMIC_PREREQUISITE_MARKER=".event-platform-fund-atomic-insert-first-v1"
 EVENT_PLATFORM_ATOMIC_PREREQUISITE_CONTRACT="fund-transaction-atomic-insert-first-v1"
 EXPECTED_SHARED_SERVER_IP="13.140.132.245"
-LEGACY_SHARED_SERVER_IP="46.224.171.53"
 BACKUP_EVIDENCE_ROOT="/etc/leaddrive/backup-evidence"
 BACKUP_CUSTODY_MARKER="$BACKUP_EVIDENCE_ROOT/key-custody.env"
 BACKUP_OFFLINE_RESTORE_MARKER="$BACKUP_EVIDENCE_ROOT/offline-restore-current.env"
@@ -242,7 +241,7 @@ assert_dotenv_key_allowed() {
     OPERATIONS_LOGROTATE_FILES|EVENT_PLATFORM_*|LOG_EVIDENCE_*|LOG_GENESIS_*|LOG_BOOTSTRAP_*|\
     REVIEWED_LOG_CURSOR_AWK_RE|BACKUP_EVIDENCE_ROOT|BACKUP_CUSTODY_MARKER|\
     BACKUP_OFFLINE_RESTORE_MARKER|BACKUP_BOOTSTRAP_RESTORE_MARKER|BACKUP_OFFLINE_ALLOWED_SIGNERS|BACKUP_SIGNED_EVIDENCE_DIR|\
-    EXPECTED_SHARED_SERVER_IP|LEGACY_SHARED_SERVER_IP|\
+    EXPECTED_SHARED_SERVER_IP|\
     PATH|IFS|CDPATH|GLOBIGNORE|BASH_ENV|ENV|SHELLOPTS|BASHOPTS|BASH_COMPAT|\
     LD_*|NODE_OPTIONS|NODE_PATH|NPM_CONFIG_*|npm_config_*|\
     TAR_OPTIONS|CURL_HOME|XDG_CONFIG_HOME|HOME|TMPDIR|TMP|TEMP|PG*)
@@ -696,7 +695,7 @@ validate_shared_server_ip_source() {
     "$EXPECTED_SHARED_SERVER_IP")
       log "Tenant DNS target matches the registered production host"
       ;;
-    ""|"$LEGACY_SHARED_SERVER_IP")
+    "")
       if [ "${DEPLOY_PREFLIGHT_ONLY:-0}" = "1" ]; then
         fatal "SHARED_SERVER_IP must be migrated to the registered production host before preflight can pass"
       fi
@@ -715,12 +714,6 @@ migrate_registered_shared_server_ip() {
     fatal "$APP_ENV_FILE contains duplicate SHARED_SERVER_IP assignments"
   case "$configured" in
     "$EXPECTED_SHARED_SERVER_IP") ;;
-    "$LEGACY_SHARED_SERVER_IP")
-      rewrite_exact_app_env_value \
-        "SHARED_SERVER_IP" \
-        "$LEGACY_SHARED_SERVER_IP" \
-        "$EXPECTED_SHARED_SERVER_IP"
-      ;;
     "")
       matches="$(grep -Ec '^[[:space:]]*(export[[:space:]]+)?SHARED_SERVER_IP[[:space:]]*=' "$APP_ENV_FILE" || true)"
       case "$matches" in

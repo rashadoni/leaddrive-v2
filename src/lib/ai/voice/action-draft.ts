@@ -23,6 +23,7 @@ import {
 type JsonObject = Record<string, unknown>
 
 const ACTIVE_DRAFT_STATES = ["collecting", "awaiting_confirmation"] as const
+type DraftLifecycleEventType = "drafted" | "draft_updated" | "cancelled" | "expired"
 
 export class AiVoiceActionDraftError extends Error {
   constructor(
@@ -81,6 +82,13 @@ export type IssueAiVoiceActionConfirmationInput = Readonly<{
   intentId: string
   expectedRevision: number
   payloadHash: string
+}>
+
+export type RevalidateAiVoiceActionExecutionInput = Readonly<{
+  intentId: string
+  expectedRevision: number
+  payloadHash: string
+  expectedState: "awaiting_confirmation" | "executing"
 }>
 
 export type AiVoiceActionConfirmationProof = Readonly<{
@@ -168,18 +176,63 @@ async function assertActiveVoiceSession(
   }
 }
 
-async function expireIntent(intent: StoredIntent, now: Date): Promise<void> {
-  await prisma.aiActionIntent.updateMany({
-    where: {
-      id: intent.id,
+async function appendDraftLifecycleEvent(
+  tx: Prisma.TransactionClient,
+  intent: Pick<StoredIntent, "id" | "organizationId" | "userId" | "revision" | "payloadHash">,
+  eventType: DraftLifecycleEventType,
+  eventData: Prisma.InputJsonObject,
+): Promise<void> {
+  await tx.aiActionIntentEvent.create({
+    data: {
       organizationId: intent.organizationId,
+      intentId: intent.id,
       userId: intent.userId,
+      eventType,
+      intentRevision: intent.revision,
+      payloadHash: intent.payloadHash,
+      eventData,
+    },
+  })
+}
+
+async function expireIntent(intent: StoredIntent, now: Date): Promise<boolean> {
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const changed = await tx.aiActionIntent.updateMany({
+      where: {
+        id: intent.id,
+        organizationId: intent.organizationId,
+        userId: intent.userId,
+        state: { in: [...ACTIVE_DRAFT_STATES] },
+        revision: intent.revision,
+        expiresAt: { lte: now },
+      },
+      data: { state: "expired", completedAt: now },
+    })
+    if (changed.count !== 1) return false
+    await appendDraftLifecycleEvent(tx, intent, "expired", {
+      fromState: intent.state,
+      reason: "ttl_elapsed",
+    })
+    return true
+  })
+}
+
+async function expireOwnedSessionDraft(
+  auth: AuthResult,
+  voiceSessionId: string,
+  now: Date,
+): Promise<void> {
+  const expired = await prisma.aiActionIntent.findFirst({
+    where: {
+      organizationId: auth.orgId,
+      userId: auth.userId,
+      voiceSessionId,
+      parentIntentId: null,
       state: { in: [...ACTIVE_DRAFT_STATES] },
-      revision: intent.revision,
       expiresAt: { lte: now },
     },
-    data: { state: "expired", completedAt: now },
-  })
+  }) as StoredIntent | null
+  if (expired) await expireIntent(expired, now)
 }
 
 function hashConfirmationToken(token: string): string {
@@ -398,6 +451,58 @@ async function assertReplayTargetAccess(
       409,
     )
   }
+}
+
+/**
+ * Repeat the mutable authorization and target checks immediately before a
+ * first execution claim or an expired-lease recovery. It deliberately returns
+ * no payload: the atomic claim/executor must re-read the tenant-owned intent.
+ */
+export async function revalidateAiVoiceActionExecutionAccess(
+  auth: AuthResult,
+  input: RevalidateAiVoiceActionExecutionInput,
+): Promise<void> {
+  const existing = await findOwnedIntent(auth, input.intentId)
+  if (!isAiVoiceActionType(existing.actionType)) {
+    throw new AiVoiceActionDraftError("INVALID_STORED_ACTION", "The stored action is invalid", 409)
+  }
+  if (existing.state !== input.expectedState) {
+    throw new AiVoiceActionDraftError(
+      "INTENT_STATE_CHANGED",
+      "The action state changed before execution",
+      409,
+      { state: existing.state },
+    )
+  }
+  if (
+    existing.revision !== input.expectedRevision
+    || existing.payloadHash !== input.payloadHash
+  ) {
+    throw new AiVoiceActionDraftError(
+      "EXECUTION_IDENTITY_MISMATCH",
+      "The reviewed action no longer matches the stored intent",
+      409,
+    )
+  }
+  const calculatedHash = hashAiActionIntentPayload({
+    actionType: existing.actionType,
+    revision: existing.revision,
+    normalizedPayload: existing.normalizedPayload,
+  })
+  if (calculatedHash !== existing.payloadHash) {
+    throw new AiVoiceActionDraftError(
+      "INTENT_INTEGRITY_FAILED",
+      "The action intent could not be verified",
+      409,
+    )
+  }
+  const parsed = parseAiVoiceActionPayload(existing.actionType, existing.normalizedPayload)
+  if (!parsed.success) {
+    throw new AiVoiceActionDraftError("INVALID_STORED_PAYLOAD", "The stored action is invalid", 409)
+  }
+  await assertActiveVoiceSession(auth, existing.voiceSessionId)
+  await assertActionAccess(auth, existing.actionType, parsed.data)
+  await assertReplayTargetAccess(auth, existing)
 }
 
 function targetPreviewContext(lead: LeadDraftTarget): AiVoiceActionPreviewContext {
@@ -626,17 +731,7 @@ export async function createAiVoiceActionDraft(
   })
   const preview = definition.renderPreview(bound.normalizedPayload, bound.previewContext)
 
-  await prisma.aiActionIntent.updateMany({
-    where: {
-      organizationId: auth.orgId,
-      userId: auth.userId,
-      voiceSessionId: input.voiceSessionId,
-      parentIntentId: null,
-      state: { in: [...ACTIVE_DRAFT_STATES] },
-      expiresAt: { lte: now },
-    },
-    data: { state: "expired", completedAt: now },
-  })
+  await expireOwnedSessionDraft(auth, input.voiceSessionId, now)
 
   const active = await prisma.aiActionIntent.findFirst({
     where: {
@@ -658,27 +753,34 @@ export async function createAiVoiceActionDraft(
   }
 
   try {
-    const created = await prisma.aiActionIntent.create({
-      data: {
-        organizationId: auth.orgId,
-        userId: auth.userId,
-        voiceSessionId: input.voiceSessionId,
+    const created = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const intent = await tx.aiActionIntent.create({
+        data: {
+          organizationId: auth.orgId,
+          userId: auth.userId,
+          voiceSessionId: input.voiceSessionId,
+          actionType: input.actionType,
+          rawPayload: input.payload as Prisma.InputJsonValue,
+          normalizedPayload: bound.normalizedPayload as Prisma.InputJsonValue,
+          preview: preview as unknown as Prisma.InputJsonValue,
+          warnings: warnings as Prisma.InputJsonValue,
+          state: "awaiting_confirmation",
+          revision,
+          payloadHash,
+          idempotencyKey: input.idempotencyKey,
+          providerToolCallId: input.providerToolCallId,
+          targetEntityType: bound.targetEntityType,
+          targetEntityId: bound.targetEntityId,
+          expectedUpdatedAt: bound.expectedUpdatedAt,
+          expiresAt: aiActionIntentExpiresAt(now, definition.ttlMs),
+        },
+      }) as StoredIntent
+      await appendDraftLifecycleEvent(tx, intent, "drafted", {
         actionType: input.actionType,
-        rawPayload: input.payload as Prisma.InputJsonValue,
-        normalizedPayload: bound.normalizedPayload as Prisma.InputJsonValue,
-        preview: preview as unknown as Prisma.InputJsonValue,
-        warnings: warnings as Prisma.InputJsonValue,
-        state: "awaiting_confirmation",
-        revision,
-        payloadHash,
-        idempotencyKey: input.idempotencyKey,
-        providerToolCallId: input.providerToolCallId,
-        targetEntityType: bound.targetEntityType,
-        targetEntityId: bound.targetEntityId,
-        expectedUpdatedAt: bound.expectedUpdatedAt,
-        expiresAt: aiActionIntentExpiresAt(now, definition.ttlMs),
-      },
-    }) as StoredIntent
+        voiceSessionId: input.voiceSessionId,
+      })
+      return intent
+    })
 
     void logAudit(auth.orgId, "voice_action_drafted", "ai_action_intent", created.id, undefined, {
       userId: auth.userId,
@@ -797,25 +899,38 @@ export async function updateAiVoiceActionDraft(
   })
   const expiresAt = aiActionIntentExpiresAt(now, definition.ttlMs)
 
-  const changed = await prisma.aiActionIntent.updateMany({
-    where: {
-      id: existing.id,
-      organizationId: auth.orgId,
-      userId: auth.userId,
-      state: "awaiting_confirmation",
-      revision: input.expectedRevision,
-      expiresAt: { gt: now },
-    },
-    data: {
-      rawPayload: input.payload as Prisma.InputJsonValue,
-      normalizedPayload: bound.normalizedPayload as Prisma.InputJsonValue,
-      preview: preview as unknown as Prisma.InputJsonValue,
-      warnings: warnings as Prisma.InputJsonValue,
-      revision,
-      payloadHash,
-      expectedUpdatedAt: bound.expectedUpdatedAt,
-      expiresAt,
-    },
+  const changed = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const result = await tx.aiActionIntent.updateMany({
+      where: {
+        id: existing.id,
+        organizationId: auth.orgId,
+        userId: auth.userId,
+        state: "awaiting_confirmation",
+        revision: input.expectedRevision,
+        expiresAt: { gt: now },
+      },
+      data: {
+        rawPayload: input.payload as Prisma.InputJsonValue,
+        normalizedPayload: bound.normalizedPayload as Prisma.InputJsonValue,
+        preview: preview as unknown as Prisma.InputJsonValue,
+        warnings: warnings as Prisma.InputJsonValue,
+        revision,
+        payloadHash,
+        expectedUpdatedAt: bound.expectedUpdatedAt,
+        expiresAt,
+      },
+    })
+    if (result.count === 1) {
+      await appendDraftLifecycleEvent(tx, {
+        ...existing,
+        revision,
+        payloadHash,
+      }, "draft_updated", {
+        fromRevision: existing.revision,
+        toRevision: revision,
+      })
+    }
+    return result
   })
   if (changed.count !== 1) {
     throw new AiVoiceActionDraftError(
@@ -840,17 +955,7 @@ export async function getActiveAiVoiceActionDraft(
 ): Promise<AiVoiceActionDraftResponse | null> {
   await assertActiveVoiceSession(auth, voiceSessionId)
   const now = new Date()
-  await prisma.aiActionIntent.updateMany({
-    where: {
-      organizationId: auth.orgId,
-      userId: auth.userId,
-      voiceSessionId,
-      parentIntentId: null,
-      state: { in: [...ACTIVE_DRAFT_STATES] },
-      expiresAt: { lte: now },
-    },
-    data: { state: "expired", completedAt: now },
-  })
+  await expireOwnedSessionDraft(auth, voiceSessionId, now)
   const active = await prisma.aiActionIntent.findFirst({
     where: {
       organizationId: auth.orgId,
@@ -901,16 +1006,25 @@ export async function cancelAiVoiceActionDraft(
       { currentRevision: existing.revision },
     )
   }
-  const changed = await prisma.aiActionIntent.updateMany({
-    where: {
-      id: existing.id,
-      organizationId: auth.orgId,
-      userId: auth.userId,
-      state: { in: ["collecting", "awaiting_confirmation"] },
-      revision: input.expectedRevision,
-      expiresAt: { gt: now },
-    },
-    data: { state: "cancelled", completedAt: now },
+  const changed = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const result = await tx.aiActionIntent.updateMany({
+      where: {
+        id: existing.id,
+        organizationId: auth.orgId,
+        userId: auth.userId,
+        state: { in: ["collecting", "awaiting_confirmation"] },
+        revision: input.expectedRevision,
+        expiresAt: { gt: now },
+      },
+      data: { state: "cancelled", completedAt: now },
+    })
+    if (result.count === 1) {
+      await appendDraftLifecycleEvent(tx, existing, "cancelled", {
+        fromState: existing.state,
+        reason: "user_cancelled",
+      })
+    }
+    return result
   })
   if (changed.count !== 1) {
     throw new AiVoiceActionDraftError(

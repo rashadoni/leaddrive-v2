@@ -1,6 +1,7 @@
 import { AnimateIn } from "@/components/marketing/animate-in"
+import { LegalDocumentNav, legalLocale } from "@/components/marketing/legal-document-nav"
 import type { Metadata } from "next"
-import { COMPANY_EMAIL, COMPANY_LEGAL_ADDRESS, COMPANY_LEGAL_NAME } from "@/lib/constants"
+import { COMPANY_LEGAL_ADDRESS, COMPANY_LEGAL_NAME, COMPANY_PRIVACY_EMAIL, COMPANY_REGISTRATION_NUMBER } from "@/lib/constants"
 import { getTranslations } from "next-intl/server"
 
 export const metadata: Metadata = {
@@ -8,8 +9,9 @@ export const metadata: Metadata = {
   description: "LeadDrive CRM terms of service — platform usage rules and conditions.",
 }
 
-export default async function TermsPage() {
-  const t = await getTranslations("terms")
+export default async function TermsPage({ searchParams }: { searchParams: Promise<{ lang?: string | string[] }> }) {
+  const locale = legalLocale((await searchParams).lang)
+  const t = await getTranslations({ locale, namespace: "terms" })
   return (
     <div className="min-h-screen bg-white">
       <section className="pt-32 pb-24">
@@ -18,6 +20,8 @@ export default async function TermsPage() {
             <h1 className="text-4xl font-bold text-[#001E3C] tracking-tight mb-2">{t("title")}</h1>
             <p className="text-sm text-[#001E3C]/40 mb-12">{t("lastUpdated")}</p>
           </AnimateIn>
+
+          <LegalDocumentNav locale={locale} path="/legal/terms" />
 
           <div className="prose max-w-none space-y-8 text-[#001E3C]/70 text-sm leading-relaxed">
             <AnimateIn delay={0.1}>
@@ -75,6 +79,11 @@ export default async function TermsPage() {
             </section>
 
             <section>
+              <h2 className="text-lg font-semibold text-[#001E3C] mb-3">{t("sMeta")}</h2>
+              <p>{t("pMeta")}</p>
+            </section>
+
+            <section>
               <h2 className="text-lg font-semibold text-[#001E3C] mb-3">{t("s8")}</h2>
               <p>{t("p8")}</p>
             </section>
@@ -88,8 +97,9 @@ export default async function TermsPage() {
               <h2 className="text-lg font-semibold text-[#001E3C] mb-3">{t("s10")}</h2>
               <p>{t("p10")}</p>
               <p className="mt-2">
-                {COMPANY_EMAIL}<br />
-                {COMPANY_LEGAL_NAME}, {COMPANY_LEGAL_ADDRESS}
+                <a href={`mailto:${COMPANY_PRIVACY_EMAIL}`} className="underline hover:opacity-70">{COMPANY_PRIVACY_EMAIL}</a><br />
+                {COMPANY_LEGAL_NAME}, {COMPANY_REGISTRATION_NUMBER}<br />
+                {COMPANY_LEGAL_ADDRESS}
               </p>
             </section>
           </div>
