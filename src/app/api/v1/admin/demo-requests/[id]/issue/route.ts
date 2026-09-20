@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getDemoModules } from "@/lib/demo-center/catalog"
+import { getDemoJourneyScenario } from "@/lib/demo-center/journey"
 import { sendDemoAccessEmail } from "@/lib/demo-center/email"
 import { issueCapabilityToken } from "@/lib/demo-center/security"
 import { demoGrantIssueSchema } from "@/lib/demo-center/validation"
@@ -42,6 +43,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const linkExpiresAt = new Date(now.getTime() + parsed.data.linkValidDays * 86_400_000)
   const issued = issueCapabilityToken()
   const moduleManifests = getDemoModules(parsed.data.moduleIds)
+  // Validation already refused an unknown id and refused both/neither, so a
+  // scenario here is one the server itself approves.
+  const scenario = parsed.data.scenarioId ? getDemoJourneyScenario(parsed.data.scenarioId) : null
 
   const grant = await runWithRlsBypass(() => prisma.$transaction(async (tx) => {
     // Lock the request row first in every issue/finalize path. This serializes
@@ -85,6 +89,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         tokenHash: issued.tokenHash,
         tokenHint: issued.tokenHint,
         moduleIds: parsed.data.moduleIds,
+        scenarioId: scenario?.scenarioId ?? null,
+        // Pinned, not resolved at open time: a prospect finishes the manifest
+        // they were granted even if a newer version ships mid-session.
+        scenarioVersion: scenario?.version ?? null,
         locale: parsed.data.locale,
         watermark: `${demoRequest.company} • ${demoRequest.email}`,
         linkExpiresAt,
@@ -95,6 +103,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           create: {
             eventType: "ISSUED",
             metadata: {
+              scenarioId: scenario?.scenarioId ?? null,
+              scenarioVersion: scenario?.version ?? null,
               moduleCount: parsed.data.moduleIds.length,
               linkValidDays: parsed.data.linkValidDays,
               sessionDurationMinutes: parsed.data.sessionDurationMinutes,
@@ -115,7 +125,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     name: demoRequest.name,
     company: demoRequest.company,
     token: issued.token,
-    moduleNames: moduleManifests.map((module) => module.title),
+    moduleNames: scenario ? [scenario.title] : moduleManifests.map((module) => module.title),
     linkExpiresAt,
   })
 

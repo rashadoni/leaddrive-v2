@@ -40,6 +40,12 @@ export const DEMO_JOURNEY_STRINGS = {
   clipPlay: "Klipi izlə",
   assistantTitle: "Da Vinci-dən soruşun",
   assistantOff: "Köməkçi bu sessiyada deaktivdir",
+  assistantPlaceholder: "Bu ekran haqqında sualınızı yazın…",
+  assistantAsk: "Soruş",
+  assistantAsking: "Soruşulur…",
+  assistantFailed: "Köməkçi cavab vermədi. Bir az sonra yenidən cəhd edin.",
+  assistantRemaining: (left: number) => `${left} sual qalıb`,
+  assistantPreviewOnly: "Admin ön baxışında köməkçi sual qəbul etmir — o, müştərinin canlı sessiyasında işləyir.",
   pendingSceneTitle: "Səhnə hazırlanır",
   pendingSceneBody: (title: string) =>
     `«${title}» səhnəsi növbəti mərhələdə real LeadDrive ekranı üzərində qurulacaq. Bu bildiriş yalnız admin ön baxışında görünür.`,

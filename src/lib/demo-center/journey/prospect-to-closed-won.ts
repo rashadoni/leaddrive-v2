@@ -35,7 +35,10 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
     liveCall: false,
     video: true,
     narration: false,
-    assistant: false,
+    // Owner decision 2026-09-20: on, 50 questions per session, Sonnet. The
+    // assistant explains the screen and the story; commercial questions are
+    // refused by policy rather than improvised (assistant/policy.ts).
+    assistant: true,
   },
   estimatedMinutes: 27,
   sections: [

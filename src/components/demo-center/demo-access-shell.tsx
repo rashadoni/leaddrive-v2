@@ -7,11 +7,21 @@ import { ArrowRight, BarChart3, CheckCircle2, Clock3, KeyRound, Layers3, LoaderC
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import type { DemoModuleManifest } from "@/lib/demo-center/catalog"
+import { getDemoJourneyScenario, type DemoProspectIdentity } from "@/lib/demo-center/journey"
+import { DemoJourneyPlayer } from "@/components/demo-center/journey/demo-journey-player"
 import { DemoPlayer } from "@/components/demo-center/demo-player"
 
 type AccessState = "ready_for_otp" | "otp_sent" | "verified" | "active" | "active_elsewhere" | "completed" | "expired" | "revoked" | "connection_lost" | "unavailable"
 
 interface ModulePreview { id: string; title: string; summary: string }
+/** Present only on grants issued for a guided scenario. */
+interface ScenarioPreview {
+  scenarioId: string
+  scenarioVersion: number
+  title?: string
+  summary?: string
+  sections?: number
+}
 interface AccessPayload {
   success: boolean
   state: AccessState
@@ -19,6 +29,8 @@ interface AccessPayload {
   recipient?: string
   watermark?: string
   modules?: ModulePreview[] | DemoModuleManifest[]
+  scenario?: ScenarioPreview
+  identity?: DemoProspectIdentity
   linkExpiresAt?: string
   serverNow?: string
   sessionExpiresAt?: string
@@ -196,6 +208,28 @@ export function DemoAccessShell({ token }: { token: string }) {
 
   if (loading && !payload) return <LoadingScreen />
 
+  // A scenario grant opens the guided journey. The manifest is looked up by
+  // the id the SERVER returned, so a tampered payload cannot summon one the
+  // grant was not issued for; an unknown id falls through to the states
+  // below rather than rendering an empty player.
+  if (payload?.state === "active" && payload.company && payload.watermark && payload.scenario && payload.identity) {
+    const manifest = getDemoJourneyScenario(payload.scenario.scenarioId)
+    if (manifest && manifest.version === payload.scenario.scenarioVersion) {
+      return <DemoJourneyPlayer
+        key={token}
+        token={token}
+        manifest={manifest}
+        identity={payload.identity}
+        company={payload.company}
+        watermark={payload.watermark}
+        serverNow={payload.serverNow}
+        sessionExpiresAt={payload.sessionExpiresAt}
+        idleExpiresAt={payload.idleExpiresAt}
+        onAccessLost={handleAccessLost}
+      />
+    }
+  }
+
   if (payload?.state === "active" && payload.company && payload.watermark && payload.modules) {
     return <DemoPlayer
       key={token}
@@ -282,7 +316,7 @@ export function DemoAccessShell({ token }: { token: string }) {
               <>
                 <div className="flex items-center gap-3 text-sm font-semibold text-[#17384a]"><StateIcon icon={LockKeyhole} /><span>Demo hazırdır</span></div>
                 <p className="mt-3 text-sm leading-6 text-[#5b7280]">Başladıqdan sonra sessiya bu brauzerə bağlanacaq. Səhifəni yeniləyə və qısa internet kəsilməsindən sonra davam edə bilərsiniz.</p>
-                <ModuleList modules={modules} />
+                <GrantContents scenario={payload?.scenario} modules={modules} />
                 <Button onClick={startDemo} disabled={action !== null} className="mt-6 min-h-14 rounded-full bg-[#172f3f] px-7 text-base text-white shadow-[inset_0_-2px_3px_rgba(0,0,0,0.28)] hover:bg-[#0a2540]">
                   {action === "start" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4 fill-current" />}Demonu başlat<ArrowRight className="h-4 w-4" />
                 </Button>
@@ -299,7 +333,7 @@ export function DemoAccessShell({ token }: { token: string }) {
             )}
 
             {error ? <p role="alert" className="mt-5 rounded-2xl border border-[#e9b8aa] bg-[#fff4ef] px-4 py-3 text-sm text-[#8f2f21]">{error}</p> : null}
-            {(state === "ready_for_otp" || state === "otp_sent") && modules.length ? <ModuleList modules={modules} /> : null}
+            {state === "ready_for_otp" || state === "otp_sent" ? <GrantContents scenario={payload?.scenario} modules={modules} /> : null}
             </div>
 
             <p className="order-4 mt-6 flex items-start gap-2 text-xs leading-5 text-[#516d7c]">
@@ -309,7 +343,7 @@ export function DemoAccessShell({ token }: { token: string }) {
           </section>
 
           <section aria-label="Demo önizləməsi" className="relative mx-auto w-full max-w-4xl">
-            <DemoPreview moduleCount={modules.length} company={payload?.company} />
+            <DemoPreview moduleCount={modules.length} sectionCount={payload?.scenario?.sections} company={payload?.company} />
           </section>
         </div>
 
@@ -324,6 +358,27 @@ export function DemoAccessShell({ token }: { token: string }) {
 
 function StateIcon({ icon: Icon }: { icon: typeof Mail }) {
   return <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#fff0e5] text-[#c64f1c]"><Icon className="h-4 w-4" /></span>
+}
+
+/**
+ * What the prospect was granted, in the lobby before they start: one guided
+ * scenario, or the legacy module playlist. Never both — the grant is one or
+ * the other by construction.
+ */
+function GrantContents({ scenario, modules }: { scenario?: ScenarioPreview; modules: readonly ModulePreview[] }) {
+  if (scenario) {
+    return (
+      <div className="mt-6 rounded-2xl border border-[#dbe5e9] bg-white/70 p-4">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#516d7c]">
+          Sizin marşrutunuz{typeof scenario.sections === "number" ? ` · ${scenario.sections} bölmə` : ""}
+        </p>
+        {scenario.title ? <p className="mt-2 text-sm font-semibold text-[#17384a]">{scenario.title}</p> : null}
+        {scenario.summary ? <p className="mt-1 text-sm leading-6 text-[#5b7280]">{scenario.summary}</p> : null}
+      </div>
+    )
+  }
+  if (!modules.length) return null
+  return <ModuleList modules={modules} />
 }
 
 function ModuleList({ modules }: { modules: readonly ModulePreview[] }) {
@@ -374,7 +429,7 @@ function LoadingScreen() {
   return <main className="flex min-h-dvh items-center justify-center bg-[radial-gradient(100%_100%_at_85%_0%,#ffe2c2_0%,#e7f8f2_22%,#ffffff_58%)] text-[#0a2540]"><div className="text-center"><LoaderCircle className="mx-auto h-7 w-7 animate-spin text-[#d65b28]" /><p className="mt-4 text-sm font-medium">Şəxsi demo hazırlanır…</p></div></main>
 }
 
-function DemoPreview({ moduleCount, company }: { moduleCount: number; company?: string }) {
+function DemoPreview({ moduleCount, sectionCount, company }: { moduleCount: number; sectionCount?: number; company?: string }) {
   return (
     <div className="relative overflow-hidden rounded-[26px] border border-black/[0.07] bg-[#f8faf9]/95 p-3 shadow-[0_28px_90px_-38px_rgba(10,37,64,0.38)] backdrop-blur-sm sm:p-4">
       <div className="relative aspect-[16/10] overflow-hidden rounded-[20px] border border-[#dfe8eb] bg-[#f8fafc]">
@@ -437,7 +492,7 @@ function DemoPreview({ moduleCount, company }: { moduleCount: number; company?: 
           <div className="max-w-xs rounded-2xl border border-white/65 bg-white/88 px-5 py-4 text-center shadow-xl backdrop-blur-md">
             <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[#eaf1f3] text-[#0a2540]"><Layers3 className="h-4 w-4" /></span>
             <p className="mt-3 text-sm font-semibold text-[#0a2540]">{company ? `${company} üçün demo` : "Şəxsi demo"}</p>
-            <p className="mt-1 text-xs text-[#5b7280]">Önizləmə · {moduleCount || 0} seçilmiş modul · bir sessiya</p>
+            <p className="mt-1 text-xs text-[#5b7280]">Önizləmə · {typeof sectionCount === "number" ? `${sectionCount} bölmə` : `${moduleCount || 0} seçilmiş modul`} · bir sessiya</p>
           </div>
         </div>
       </div>

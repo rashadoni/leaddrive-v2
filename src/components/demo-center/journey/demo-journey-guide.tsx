@@ -158,18 +158,13 @@ export function DemoJourneyGuide({
         <IntroClip slug={section.intro.slug} caption={section.intro.caption} status={section.intro.status} token={token} previewMode={previewMode} />
       )}
 
-      {section.assistantPrompts?.length ? (
-        <div data-tour-id="demo-assistant" className="rounded-lg border border-dashed border-zinc-200 p-3 dark:border-zinc-700">
-          <p className="flex items-center gap-1.5 text-xs font-semibold"><Sparkles className="h-3.5 w-3.5 text-[hsl(var(--ai-from))]" /> {S.assistantTitle}</p>
-          {manifest.capabilities.assistant ? (
-            <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
-              {section.assistantPrompts.map((prompt) => <li key={prompt}>· {prompt}</li>)}
-            </ul>
-          ) : (
-            <p className="mt-1 text-xs text-muted-foreground">{S.assistantOff}</p>
-          )}
-        </div>
-      ) : null}
+      <DemoAssistant
+        enabled={manifest.capabilities.assistant}
+        token={token}
+        previewMode={previewMode}
+        snapshot={snapshot}
+        prompts={section.assistantPrompts ?? []}
+      />
 
       <ol className="space-y-1.5" aria-label={S.guide}>
         {sections.map((candidate, index) => {
@@ -213,6 +208,139 @@ export function DemoJourneyGuide({
  * prospect therefore streams the same bytes through the demo's own gated
  * route, scoped to their token.
  */
+/**
+ * Ask-the-assistant box.
+ *
+ * The browser sends only its position in the story — the server rebuilds the
+ * records from the grant, so nothing typed here reaches the model as fact.
+ * In the superadmin preview there is no capability session to spend a paid
+ * call against, so the box explains itself instead of calling.
+ */
+function DemoAssistant({
+  enabled,
+  token,
+  previewMode,
+  snapshot,
+  prompts,
+}: {
+  enabled: boolean
+  token: string
+  previewMode: boolean
+  snapshot: DemoJourneySnapshot
+  prompts: readonly string[]
+}) {
+  const [question, setQuestion] = useState("")
+  const [answer, setAnswer] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [remaining, setRemaining] = useState<number | null>(null)
+  const [asking, setAsking] = useState(false)
+
+  if (!enabled) {
+    if (!prompts.length) return null
+    return (
+      <div data-tour-id="demo-assistant" className="rounded-lg border border-dashed border-zinc-200 p-3 dark:border-zinc-700">
+        <p className="flex items-center gap-1.5 text-xs font-semibold">
+          <Sparkles className="h-3.5 w-3.5 text-[hsl(var(--ai-from))]" aria-hidden="true" /> {S.assistantTitle}
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">{S.assistantOff}</p>
+      </div>
+    )
+  }
+
+  const ask = async (text: string) => {
+    const trimmed = text.trim()
+    if (!trimmed || asking) return
+    if (previewMode) {
+      setAnswer(null)
+      setError(S.assistantPreviewOnly)
+      return
+    }
+    setAsking(true)
+    setError(null)
+    setAnswer(null)
+    try {
+      const response = await fetch(`/api/v1/public/demo-access/${encodeURIComponent(token)}/assistant`, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: trimmed,
+          state: snapshot.state,
+          sectionId: snapshot.sectionId,
+          stepId: snapshot.stepId,
+        }),
+      })
+      const payload = await response.json().catch(() => null) as
+        { success?: boolean; answer?: string; error?: string; remaining?: number } | null
+      if (typeof payload?.remaining === "number") setRemaining(payload.remaining)
+      if (!response.ok || !payload?.success || !payload.answer) {
+        setError(payload?.error ?? S.assistantFailed)
+        return
+      }
+      setAnswer(payload.answer)
+      setQuestion("")
+    } catch {
+      setError(S.assistantFailed)
+    } finally {
+      setAsking(false)
+    }
+  }
+
+  return (
+    <div data-tour-id="demo-assistant" className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+      <p className="flex items-center gap-1.5 text-xs font-semibold">
+        <Sparkles className="h-3.5 w-3.5 text-[hsl(var(--ai-from))]" aria-hidden="true" /> {S.assistantTitle}
+        {remaining !== null && (
+          <span className="ml-auto font-normal tabular-nums text-muted-foreground">{S.assistantRemaining(remaining)}</span>
+        )}
+      </p>
+
+      {prompts.length > 0 && (
+        <ul className="mt-2 space-y-1">
+          {prompts.map((prompt) => (
+            <li key={prompt}>
+              <button
+                type="button"
+                onClick={() => { setQuestion(prompt); void ask(prompt) }}
+                disabled={asking}
+                className="text-left text-xs text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline disabled:opacity-50"
+              >
+                · {prompt}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <form
+        className="mt-2"
+        onSubmit={(event) => { event.preventDefault(); void ask(question) }}
+      >
+        <label htmlFor="demo-assistant-question" className="sr-only">{S.assistantTitle}</label>
+        <textarea
+          id="demo-assistant-question"
+          rows={2}
+          value={question}
+          onChange={(event) => setQuestion(event.target.value)}
+          placeholder={S.assistantPlaceholder}
+          maxLength={500}
+          className="w-full resize-none rounded-md border border-zinc-200 bg-background p-2 text-xs dark:border-zinc-700"
+        />
+        <Button type="submit" size="sm" className="mt-1.5 h-7 w-full text-xs" disabled={asking || !question.trim()}>
+          {asking ? S.assistantAsking : S.assistantAsk}
+        </Button>
+      </form>
+
+      {answer && (
+        <p role="status" aria-live="polite" className="mt-2 rounded-md bg-muted/60 p-2.5 text-xs leading-relaxed">{answer}</p>
+      )}
+      {error && (
+        <p role="alert" className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2.5 text-xs leading-relaxed text-amber-900">{error}</p>
+      )}
+    </div>
+  )
+}
+
 function IntroClip({
   slug,
   caption,
