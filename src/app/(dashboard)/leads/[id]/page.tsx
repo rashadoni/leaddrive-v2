@@ -44,6 +44,7 @@ import { LeadBrowserCallAction } from "@/components/leads/lead-browser-call-acti
 import { LeadVoicePermission } from "@/components/leads/lead-voice-permission"
 import { CollapsibleSection } from "@/components/crm/collapsible-section"
 import { CustomerDetailsCards } from "@/components/crm/customer-details-cards"
+import { VOICE_RECORD_CHANGED_EVENT, type VoiceRecordChangedDetail } from "@/lib/ai/voice/voice-confirmation"
 
 // Shared between the timeline icon lookup AND the Add Activity Type select options.
 // Order here defines the order in the Select dropdown.
@@ -405,6 +406,18 @@ export default function LeadDetailPage() {
   // holds the page unmounted until the session is authenticated.
   useEffect(() => {
     if (id && orgId) fetchLead()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, orgId])
+
+  // A voice edit to THIS lead was just saved: show the new values, so the user
+  // can see on the card whether everything is right.
+  useEffect(() => {
+    const onChanged = (event: Event) => {
+      const detail = (event as CustomEvent<VoiceRecordChangedDetail>).detail
+      if (detail?.entityType === "lead" && detail.entityId === id) void fetchLead()
+    }
+    window.addEventListener(VOICE_RECORD_CHANGED_EVENT, onChanged)
+    return () => window.removeEventListener(VOICE_RECORD_CHANGED_EVENT, onChanged)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, orgId])
 

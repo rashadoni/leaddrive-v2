@@ -239,6 +239,11 @@ export type VoiceReceiptOutcomeDetail = Readonly<{
   /** How it ended: a commit outcome kind, or "cancelled". */
   kind: string
   entityType?: string
+  /**
+   * The saved record, so the console can open it on screen. It never reaches
+   * the model: `voiceOutcomeMessage` below reads enums only.
+   */
+  entityId?: string
   /** Who decided: a spoken answer or the button. */
   via: "voice" | "button"
 }>
@@ -259,13 +264,23 @@ export function voiceOutcomeMessage(detail: VoiceReceiptOutcomeDetail): string {
     const entity = detail.entityType === "task" || detail.entityType === "lead" || detail.entityType === "deal"
       ? detail.entityType
       : "record"
-    return `CRM_RESULT: ${who} The ${entity} is saved in the CRM. Tell the user in one short sentence, then ask if they need anything else.`
+    // Owner, 2026-09-21: after a change the result must be on screen, so the
+    // user sees whether everything is right. The console opens it.
+    return `CRM_RESULT: ${who} The ${entity} is saved in the CRM and is now open on the user's screen. Tell the user in one short sentence that it is saved and ask them to check on screen that everything is right.`
   }
   if (detail.kind === "retriable" || detail.kind === "rate_limited") {
     return `CRM_RESULT: ${who} The CRM did not answer, nothing was saved yet. Tell the user and ask them to try the confirm button again in a moment.`
   }
   return `CRM_RESULT: ${who} The CRM refused it (${detail.kind}); nothing was saved. Tell the user plainly and follow the message on screen. Do not claim it was saved.`
 }
+
+/**
+ * A record the user is looking at changed underneath its page. Pages that load
+ * their data in the browser listen and re-read; `router.refresh()` would not
+ * reach them.
+ */
+export const VOICE_RECORD_CHANGED_EVENT = "leaddrive:voice-record-changed"
+export type VoiceRecordChangedDetail = Readonly<{ entityType: "task" | "lead" | "deal"; entityId: string }>
 
 /** The answer to a propose call that put a draft on screen. */
 export const VOICE_DRAFT_SHOWN =

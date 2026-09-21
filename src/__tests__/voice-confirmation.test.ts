@@ -247,3 +247,39 @@ describe("the console hears the user, not the model", () => {
     expect(dispatcher).not.toMatch(/VOICE_RECEIPT_COMMAND_EVENT|confirmationGateRef/)
   })
 })
+
+/**
+ * Owner, 2026-09-21: after a change or a creation the assistant opens the
+ * record, so the user sees on screen whether everything is right.
+ */
+describe("the saved record is shown", () => {
+  const console_ = readFileSync("src/components/ai/voice-console.tsx", "utf8")
+  const leadPage = readFileSync("src/app/(dashboard)/leads/[id]/page.tsx", "utf8")
+  const showResult = console_.slice(
+    console_.indexOf("showResultRef.current = (detail) =>"),
+    console_.indexOf("}, [pathname, router])", console_.indexOf("showResultRef.current = (detail) =>")),
+  )
+
+  it("tells the model the record is on screen and asks the user to check it", () => {
+    const message = voiceOutcomeMessage({ receiptId: "i", kind: "succeeded", entityType: "task", entityId: "t1", via: "voice" })
+    expect(message).toMatch(/now open on the user's screen/)
+    expect(message).toMatch(/check on screen that everything is right/)
+    // The id opens the page; it is not read to the model.
+    expect(message).not.toContain("t1")
+  })
+
+  it("opens the saved record, and only after a success", () => {
+    expect(showResult).toMatch(/if \(detail\.kind !== "succeeded" \|\| !entityId\) return/)
+    expect(showResult).toMatch(/router\.push\(href\)/)
+    expect(showResult).toMatch(/const href = voiceResultHref\(entityType, entityId\)/)
+  })
+
+  // Already on the lead's card: its data lives in the browser, so a
+  // navigation to the same address would show the old values.
+  it("re-reads the card the user is already on instead of navigating to it", () => {
+    expect(showResult).toMatch(/if \(pathname === href\)[\s\S]{0,200}VOICE_RECORD_CHANGED_EVENT/)
+    expect(leadPage).toMatch(
+      /detail\?\.entityType === "lead" && detail\.entityId === id\) void fetchLead\(\)[\s\S]{0,100}addEventListener\(VOICE_RECORD_CHANGED_EVENT/,
+    )
+  })
+})
