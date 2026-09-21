@@ -28,7 +28,6 @@ import {
   X,
 } from "lucide-react"
 import { PageDescription } from "@/components/page-description"
-import { MtmWorkflowGuide } from "@/components/mtm/mtm-workflow-guide"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -39,7 +38,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { createDateFormatter } from "@/lib/format-date"
 import { defaultBroadcastAudience, operationsRoleKey } from "@/lib/mtm/operations-audience"
-import { mtmViewerKey } from "@/lib/mtm/viewer-key"
 
 type Agent = {
   id: string
@@ -216,7 +214,6 @@ function AudiencePicker({
 export default function MtmOperationsPage() {
   const { data: session } = useSession()
   const t = useTranslations("mtmOperationsPage")
-  const tGuideCommon = useTranslations("mtmCommon")
   const locale = useLocale()
   const orgId = session?.user?.organizationId ? String(session.user.organizationId) : undefined
   const [data, setData] = useState<OperationsData | null>(null)
@@ -420,18 +417,6 @@ export default function MtmOperationsPage() {
         {canReviewHrm ? <Card className="overflow-hidden"><CardContent className="flex items-center gap-3 p-4"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-950/40 dark:text-fuchsia-300"><CalendarCheck2 className="h-5 w-5" /></span><div><p className="text-2xl font-semibold tabular-nums">{data?.counts.pendingHrm ?? 0}</p><p className="text-xs text-muted-foreground">{t("pendingHrm")}</p></div></CardContent></Card> : null}
       </div>
 
-      <MtmWorkflowGuide
-        dismissId="operations-clarity-guide"
-        viewerKey={mtmViewerKey(session)}
-        dismissLabel={tGuideCommon("hintDismiss")}
-        title={t("clarityGuide.title")}
-        description={t("clarityGuide.description")}
-        steps={[
-          { title: t("messagesTab"), description: t("composeDescription"), icon: Send, active: activeSection === "messages", onClick: () => setActiveSection("messages") },
-          { title: t("documentsTab"), description: t("assignDocumentDescription"), icon: FileText, active: activeSection === "documents", onClick: () => setActiveSection("documents") },
-          ...(canReviewHrm ? [{ title: t("hrmTab"), description: t("hrmRequestsDescription"), icon: CalendarCheck2, active: activeSection === "hrm", onClick: () => setActiveSection("hrm") }] : []),
-        ]}
-      />
 
       <Tabs value={activeSection} onValueChange={(value) => setActiveSection(value as "messages" | "documents" | "hrm")}>
         <TabsList className={`grid h-auto w-full sm:w-auto ${canReviewHrm ? "grid-cols-3" : "grid-cols-2"}`}>

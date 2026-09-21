@@ -56,9 +56,6 @@ import { PharmacyPromotionAgentCapture } from "@/components/mtm/pharmacy-promoti
 import { PharmacyPromotionCampaignAdmin } from "@/components/mtm/pharmacy-promotion-campaign-admin"
 import { PharmacyPromotionDefinitionAdmin } from "@/components/mtm/pharmacy-promotion-definition-admin"
 import { HelpButton } from "@/components/help/help-button"
-import { useSession } from "next-auth/react"
-import { MtmWorkflowGuide } from "@/components/mtm/mtm-workflow-guide"
-import { mtmViewerKey } from "@/lib/mtm/viewer-key"
 import {
   PHARMACY_PROMOTION_SECONDARY_COLUMNS,
   pharmacyPromotionColumnsFromParam,
@@ -631,8 +628,6 @@ function ReviewDialog({ rows, open, onOpenChange, onApplied }: {
 
 export function PharmacyPromotionWorkspace() {
   const t = useTranslations("mtmPharmacyPromotions")
-  const tGuideCommon = useTranslations("mtmCommon")
-  const { data: guideSession } = useSession()
   const locale = useLocale()
   const router = useRouter()
   const pathname = usePathname()
@@ -1132,22 +1127,6 @@ export function PharmacyPromotionWorkspace() {
         </section>
       ) : null}
 
-      <MtmWorkflowGuide
-        dismissId="promotions-clarity-guide"
-        viewerKey={mtmViewerKey(guideSession)}
-        dismissLabel={tGuideCommon("hintDismiss")}
-        title={t("clarityGuide.title")}
-        description={t("clarityGuide.description")}
-        steps={availableViews.map((candidate) => ({
-          title: t(`view.${candidate}`),
-          icon: candidate === "registry" ? FilePlus2 : candidate === "review" ? ClipboardCheck : Building2,
-          active: view === candidate,
-          onClick: () => {
-            setSelectedSavedViewId("")
-            replaceParams({ view: candidate, page: null, ready: candidate === "review" ? draft.ready || null : null })
-          },
-        }))}
-      />
 
       {data && !data.capabilities.postingEnabled && view !== "campaigns" ? (
         <div className="flex gap-3 border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-100">

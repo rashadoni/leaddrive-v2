@@ -28,7 +28,6 @@ import { AdvisorRecordWidget } from "@/components/ai/advisor-record-widget"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { HelpButton } from "@/components/help/help-button"
 import { MtmVisitForm } from "@/components/mtm/visit-form"
-import { MtmWorkflowGuide } from "@/components/mtm/mtm-workflow-guide"
 import { PageDescription } from "@/components/page-description"
 import { Button } from "@/components/ui/button"
 import {
@@ -178,7 +177,6 @@ export default function MtmVisitsPage() {
   const focusSelectedRef = useRef<string | null>(null)
   const lastRefreshAtRef = useRef(0)
   const viewerKey = String(session?.user?.id ?? session?.user?.email ?? "")
-  const tCommon = useTranslations("mtmCommon")
   // The list does not depend on which visit is open: opening a row must not reload 200 rows.
   const listIdentityKey = `${String(orgId ?? "")}:${viewerKey}:${historyRange}`
   const activeIdentityKey = `${String(orgId ?? "")}:${viewerKey}`
@@ -461,7 +459,6 @@ export default function MtmVisitsPage() {
   const focusPending = Boolean(focusedVisitId && !activeResolved && !focusedVisitUnavailable)
   const showReview = Boolean(focusedVisitId && activeResolved && !focusedOwnExecution && !focusedVisitUnavailable)
   // The three-step guide teaches how to execute a visit; office users review.
-  const showGuide = viewer?.role === "AGENT"
   const subtitle = !activeResolved ? t("subtitleNeutral") : viewer?.role === "AGENT" ? t("subtitleAgent") : t("subtitle")
 
   function refreshAll() {
@@ -600,21 +597,6 @@ export default function MtmVisitsPage() {
           </Button>
         </div>
       </div>
-
-      {showGuide ? (
-        <MtmWorkflowGuide
-          dismissId="visits-clarity-guide"
-          viewerKey={viewerKey}
-          dismissLabel={tCommon("hintDismiss")}
-          title={t("clarityGuide.title")}
-          description={t("clarityGuide.description")}
-          steps={[
-            { title: t("activeVisitTitle"), description: t("activeVisitHint"), icon: Clock },
-            { title: t("historyTitle"), description: t("historyHint"), icon: Search },
-            { title: t("add"), description: t("editShort"), icon: Pencil },
-          ]}
-        />
-      ) : null}
 
       {focusedVisitUnavailable && focusedVisitId ? (
         <div role="status" className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">

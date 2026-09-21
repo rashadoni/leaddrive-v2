@@ -34,9 +34,6 @@ import {
 import { toast } from "sonner"
 import { PageDescription } from "@/components/page-description"
 import { HelpButton } from "@/components/help/help-button"
-import { useSession } from "next-auth/react"
-import { MtmWorkflowGuide } from "@/components/mtm/mtm-workflow-guide"
-import { mtmViewerKey } from "@/lib/mtm/viewer-key"
 import {
   ContactTransferDialog,
   type ContactTransferAgent,
@@ -266,8 +263,6 @@ function statusVariant(status: string): "success" | "warning" | "outline" {
 
 export function MtmContactExplorer() {
   const t = useTranslations("mtmContactExplorer")
-  const tGuideCommon = useTranslations("mtmCommon")
-  const { data: guideSession } = useSession()
   const locale = useLocale()
   const router = useRouter()
   const pathname = usePathname()
@@ -670,18 +665,6 @@ export function MtmContactExplorer() {
         </div>
       </div>
 
-      <MtmWorkflowGuide
-        dismissId="contacts-clarity-guide"
-        viewerKey={mtmViewerKey(guideSession)}
-        dismissLabel={tGuideCommon("hintDismiss")}
-        title={t("clarityGuide.title")}
-        description={t("clarityGuide.description")}
-        steps={[
-          { title: t("search"), icon: Search },
-          { title: t("workplace"), icon: Building2 },
-          { title: t("assignAction"), icon: UserPlus },
-        ]}
-      />
 
       {isRouteDoctorFlow && routeAssignmentHandoff ? (
         <section data-testid="mtm-route-assignment-handoff" className="flex flex-col gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
