@@ -13683,6 +13683,7 @@
     "statCheckedIn": "Nöqtədə",
     "statCheckedOut": "Tamamlanmış",
     "statAvgDuration": "Ort. müddət",
+    "statMedianDuration": "Median müddət",
     "statGpsConfirmed": "GPS təsdiqli",
     "hintTotal": "Qeydə alınmış ziyarətlərin ümumi sayı",
     "hintCheckedIn": "Aktiv giriş olan ziyarətlər",

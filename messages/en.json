@@ -13687,6 +13687,7 @@
     "statCheckedIn": "Checked In",
     "statCheckedOut": "Checked Out",
     "statAvgDuration": "Avg Duration",
+    "statMedianDuration": "Median duration",
     "statGpsConfirmed": "GPS confirmed",
     "hintTotal": "Total number of recorded visits",
     "hintCheckedIn": "Currently checked-in visits",
