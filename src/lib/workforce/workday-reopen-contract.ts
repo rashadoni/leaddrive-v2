@@ -39,6 +39,19 @@ export const WORKFORCE_WORKDAY_REOPEN_UNDO_CONFLICT_CODES = [
 
 export type WorkforceWorkdayReopenUndoConflictCode = typeof WORKFORCE_WORKDAY_REOPEN_UNDO_CONFLICT_CODES[number]
 
+/** 409 codes of POST /api/v1/workforce/workdays/:id/close. */
+export const WORKFORCE_WORKDAY_CLOSE_CONFLICT_CODES = [
+  "WORKFORCE_WORKDAY_CLOSE_NOT_LEFT_OPEN",
+  "WORKFORCE_WORKDAY_CLOSE_FINISH_OUT_OF_RANGE",
+  "WORKFORCE_WORKDAY_CLOSE_VERSION_CONFLICT",
+  "WORKFORCE_WORKDAY_CLOSE_IDEMPOTENCY_MISMATCH",
+  "WORKFORCE_WORKDAY_CLOSE_TIMESHEET_APPROVED",
+  "WORKFORCE_WORKDAY_CLOSE_CORRECTION_PENDING",
+  "WORKFORCE_WORKDAY_CLOSE_HISTORY_INVALID",
+] as const
+
+export type WorkforceWorkdayCloseConflictCode = typeof WORKFORCE_WORKDAY_CLOSE_CONFLICT_CODES[number]
+
 /**
  * 403 codes both endpoints answer to a principal who may not act on the
  * employee: a session without Workforce write (`withWorkforceSessionAuth`),
@@ -56,6 +69,7 @@ export type WorkforceWorkdayManagerActionDenialCode = typeof WORKFORCE_WORKDAY_M
 export type WorkforceWorkdayManagerActionBlockedReason =
   | WorkforceWorkdayReopenConflictCode
   | WorkforceWorkdayReopenUndoConflictCode
+  | WorkforceWorkdayCloseConflictCode
   | WorkforceWorkdayManagerActionDenialCode
 
 /**
@@ -71,7 +85,22 @@ export type WorkforceWorkdayManagerAction = {
   blockedReason: WorkforceWorkdayManagerActionBlockedReason | null
 }
 
+/**
+ * Closing a shift the employee left open. Unlike reopen and undo it targets
+ * the open workday, whatever its date, and carries the finish the form starts
+ * from: the employee's last trace in that shift (see workday-close-left-open).
+ */
+export type WorkforceWorkdayCloseAction = WorkforceWorkdayManagerAction & {
+  suggestedFinishAt: string | null
+  /** The finish must be later than this instant: the shift's last journal event. */
+  earliestFinishAfter: string | null
+  /** The employee's last GPS point or visit in the shift; null when there is none. */
+  lastTraceAt: string | null
+}
+
 export type WorkforceWorkdayManagerActions = {
   reopen: WorkforceWorkdayManagerAction
   undoReopen: WorkforceWorkdayManagerAction
+  /** Absent in snapshots cached before the close action existed. */
+  close?: WorkforceWorkdayCloseAction | null
 }

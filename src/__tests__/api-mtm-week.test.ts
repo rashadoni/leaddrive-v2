@@ -1864,6 +1864,16 @@ describe("GET /api/v1/mtm/week — manager reopen actions", () => {
         updatedAt: FINISH_SAVED_AT.toISOString(),
         blockedReason: "WORKFORCE_WORKDAY_REOPEN_UNDO_NOT_REOPENED",
       },
+      // A finished day has no open shift to close.
+      close: {
+        allowed: false,
+        workdayId: null,
+        updatedAt: null,
+        blockedReason: "WORKFORCE_WORKDAY_CLOSE_NOT_LEFT_OPEN",
+        suggestedFinishAt: null,
+        earliestFinishAfter: null,
+        lastTraceAt: null,
+      },
     })
     // Row, journal and blockers are read on one snapshot.
     expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), { isolationLevel: "RepeatableRead" })
@@ -1932,6 +1942,16 @@ describe("GET /api/v1/mtm/week — manager reopen actions", () => {
         updatedAt: FINISH_SAVED_AT.toISOString(),
         blockedReason: "WORKFORCE_WORKDAY_REOPEN_UNDO_NOT_REOPENED",
       },
+      // Three hours into today's shift is work, not a shift left open.
+      close: {
+        allowed: false,
+        workdayId: "workday-today",
+        updatedAt: FINISH_SAVED_AT.toISOString(),
+        blockedReason: "WORKFORCE_WORKDAY_CLOSE_NOT_LEFT_OPEN",
+        suggestedFinishAt: null,
+        earliestFinishAfter: null,
+        lastTraceAt: null,
+      },
     })
     expect(prisma.workforceTimesheetApproval.findFirst).not.toHaveBeenCalled()
     expect(prisma.mtmAgentWorkdayEvent.findMany).not.toHaveBeenCalled()
@@ -1941,6 +1961,15 @@ describe("GET /api/v1/mtm/week — manager reopen actions", () => {
     expect(await managerActions()).toEqual({
       reopen: { allowed: false, workdayId: null, updatedAt: null, blockedReason: "WORKFORCE_WORKDAY_REOPEN_NOT_COMPLETED" },
       undoReopen: { allowed: false, workdayId: null, updatedAt: null, blockedReason: "WORKFORCE_WORKDAY_REOPEN_UNDO_NOT_REOPENED" },
+      close: {
+        allowed: false,
+        workdayId: null,
+        updatedAt: null,
+        blockedReason: "WORKFORCE_WORKDAY_CLOSE_NOT_LEFT_OPEN",
+        suggestedFinishAt: null,
+        earliestFinishAfter: null,
+        lastTraceAt: null,
+      },
     })
   })
 
@@ -1987,10 +2016,91 @@ describe("GET /api/v1/mtm/week — manager reopen actions", () => {
         updatedAt: REOPENED_AT.toISOString(),
         blockedReason: null,
       },
+      close: {
+        allowed: false,
+        workdayId: "workday-today",
+        updatedAt: REOPENED_AT.toISOString(),
+        blockedReason: "WORKFORCE_WORKDAY_CLOSE_NOT_LEFT_OPEN",
+        suggestedFinishAt: null,
+        earliestFinishAfter: null,
+        lastTraceAt: null,
+      },
     })
     expect(prisma.workforceWorkdayReopen.findFirst).toHaveBeenCalledWith({
       where: { organizationId: ORG, agentId: "agent-1", workdayId: "workday-today", eventId: "event-3" },
       select: { id: true },
+    })
+  })
+
+  /**
+   * Audit 2026-09-21: shifts left open for weeks, and no manager action to end
+   * them. The close targets the open shift whatever its date and starts the
+   * form at the agent's last trace in it, rounded up to a minute.
+   */
+  describe("close of a shift the agent left open", () => {
+    const LEFT_OPEN_STARTED_AT = new Date("2026-07-13T05:00:00.000Z")
+    const LEFT_OPEN_SAVED_AT = new Date("2026-07-13T05:00:01.000Z")
+
+    function leftOpenWorkday(overrides: Record<string, unknown> = {}) {
+      return todayWorkday({
+        id: "workday-left-open",
+        workDate: new Date("2026-07-13T00:00:00.000Z"),
+        status: "STARTED",
+        startedAt: LEFT_OPEN_STARTED_AT,
+        completedAt: null,
+        updatedAt: LEFT_OPEN_SAVED_AT,
+        ...overrides,
+      })
+    }
+
+    beforeEach(() => {
+      mockWorkdays(leftOpenWorkday())
+      vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue([
+        journalEvent("event-1", "START", LEFT_OPEN_STARTED_AT),
+      ] as never)
+      vi.mocked(prisma.mtmAgentLocation.findFirst).mockResolvedValue(null as never)
+      vi.mocked(prisma.mtmVisit.findFirst).mockResolvedValue(null as never)
+    })
+
+    it("offers the close with the finish at the agent's last trace in the shift", async () => {
+      vi.mocked(prisma.mtmAgentLocation.findFirst).mockResolvedValue({ recordedAt: new Date("2026-07-13T09:10:30.000Z") } as never)
+      vi.mocked(prisma.mtmVisit.findFirst).mockResolvedValue({
+        checkInAt: new Date("2026-07-13T10:00:00.000Z"),
+        checkOutAt: new Date("2026-07-13T10:20:15.000Z"),
+      } as never)
+
+      expect((await managerActions()).close).toEqual({
+        allowed: true,
+        workdayId: "workday-left-open",
+        updatedAt: LEFT_OPEN_SAVED_AT.toISOString(),
+        blockedReason: null,
+        suggestedFinishAt: "2026-07-13T10:21:00.000Z",
+        earliestFinishAfter: LEFT_OPEN_STARTED_AT.toISOString(),
+        lastTraceAt: "2026-07-13T10:20:15.000Z",
+      })
+      // Traces are read inside the shift, not from later days.
+      expect(prisma.mtmAgentLocation.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({ workdayId: "workday-left-open", recordedAt: { lte: new Date("2026-07-14T05:00:00.000Z") } }),
+      }))
+    })
+
+    it("starts a shift with no trace one minute after its last event and says there is none", async () => {
+      const close = (await managerActions()).close
+      expect(close).toMatchObject({ allowed: true, suggestedFinishAt: "2026-07-13T05:01:00.000Z", lastTraceAt: null })
+    })
+
+    it("names a missing mandatory 2FA instead of offering the close", async () => {
+      vi.mocked(prisma.user.findFirst).mockResolvedValue(NO_MFA_USER as never)
+      expect((await managerActions()).close).toMatchObject({
+        allowed: false,
+        blockedReason: "WORKFORCE_ATTENDANCE_MFA_REQUIRED",
+        suggestedFinishAt: "2026-07-13T05:01:00.000Z",
+      })
+    })
+
+    it("refuses a day an approved timesheet already covers", async () => {
+      vi.mocked(prisma.workforceTimesheetApproval.findFirst).mockResolvedValue({ id: "approval-1" } as never)
+      expect((await managerActions()).close).toMatchObject({ allowed: false, blockedReason: "WORKFORCE_WORKDAY_CLOSE_TIMESHEET_APPROVED" })
     })
   })
 

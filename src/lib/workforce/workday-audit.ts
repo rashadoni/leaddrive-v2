@@ -178,3 +178,48 @@ export async function writeWorkforceWorkdayReopenUndoAuditInTransaction(
     },
   })
 }
+
+/**
+ * Records a manager closing a shift the employee left open, in the same
+ * transaction as the FINISH event and the completed projection. The journal
+ * event has no actor column; this record keeps the manager, the reason, the
+ * finish the form suggested and the exact before/after facts.
+ */
+export async function writeWorkforceWorkdayCloseAuditInTransaction(
+  tx: Prisma.TransactionClient,
+  input: {
+    scope: WorkdayScope
+    eventId: string
+    actorUserId: string
+    operationId: string
+    reason: string
+    authorizationSource: string
+    suggestedFinishAt: string
+    beforeWorkday: WorkforceWorkdayCorrectionFacts
+    afterWorkday: WorkforceWorkdayCorrectionFacts
+    requestMetadata?: WorkforceAuditRequestMetadata
+  },
+): Promise<void> {
+  await tx.mtmAuditLog.create({
+    data: {
+      organizationId: input.scope.organizationId,
+      agentId: input.scope.agentId,
+      action: "WORKDAY_CLOSE_LEFT_OPEN",
+      entity: "workday",
+      entityId: input.afterWorkday.id,
+      metadataKind: "workforce_workday_close_left_open",
+      oldData: { workday: input.beforeWorkday } as Prisma.InputJsonValue,
+      newData: {
+        workday: input.afterWorkday,
+        eventId: input.eventId,
+        actorUserId: input.actorUserId,
+        operationId: input.operationId,
+        reason: input.reason,
+        authorizationSource: input.authorizationSource,
+        suggestedFinishAt: input.suggestedFinishAt,
+      } as Prisma.InputJsonValue,
+      ipAddress: input.requestMetadata?.ipAddress ?? null,
+      userAgent: input.requestMetadata?.userAgent ?? null,
+    },
+  })
+}
