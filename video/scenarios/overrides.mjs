@@ -914,12 +914,15 @@ const RL_BY_CHANNEL = ["div:has(> :text-is('Kanallar üzrə'))", ":text-is('Kana
 const RL_RAIL = ["aside:has(nav) nav", "aside nav"];
 const RL_CHANNELS = ["WhatsApp", "Telegram", "TikTok", "SMS", "Email", "Web Chat", "VoIP"];
 const railItem = (name) => [`aside nav button:has-text('${name}')`];
-// 9:16 only: zoom onto the active zone; square frames keep the whole screen.
-const tall = (p) => { const v = p.viewportSize(); return Boolean(v && v.height > v.width); };
-const zoom = async (p, h, sel, scale = 1.7) => { if (tall(p)) await h.focus(sel, scale); };
-// At 1080 px the thread header overflows; Playwright's scroll-into-view then
-// pans the whole inbox sideways. Snap every scroller back after such a click.
-const unscroll = (p) => p.evaluate(() => {
+// 9:16 is recorded as a phone (GUIDE_DEVICE_SCALE=2 → 540×960 CSS px): the
+// inbox panes then sit side by side in a horizontal scroller and opening a
+// thread pans to it, so nothing is zoomed and scrollLeft is left alone. The
+// square (1080 CSS px, three panes) is zoomed onto the active zone instead.
+const tall = (p) => { const v = p.viewportSize() || globalThis.__guideViewport; return Boolean(v && v.height > v.width); };
+const zoom = async (p, h, sel, scale = 1.45) => { if (!tall(p)) await h.focus(sel, scale); };
+// Square only: at 1080 px the thread header overflows and Playwright's
+// scroll-into-view pans the whole inbox sideways — snap every scroller back.
+const unscroll = (p) => tall(p) ? Promise.resolve() : p.evaluate(() => {
   for (const el of document.querySelectorAll("*")) if (el.scrollLeft) el.scrollLeft = 0;
   window.scrollTo(0, window.scrollY);
 }).catch(() => {});
@@ -928,9 +931,10 @@ const unscroll = (p) => p.evaluate(() => {
 const clickIf = async (p, h, sel) => {
   if (await p.locator(sel[0]).first().isVisible().catch(() => false)) await h.click(sel);
 };
-// Square frames: the inbox thread's empty middle is the one free zone — the
-// top centre would cover the conversation list and its 02:14 row.
-const threadBox = (p) => (tall(p) ? null : { left: "61vw", top: "40vh", width: "35vw" });
+// Square frames: after the zoom the thread fills the right half and its empty
+// middle is the one free zone — the top centre would cover the list's 02:14
+// row. On the phone the top centre sits over the app bar and is fine.
+const threadBox = (p) => (tall(p) ? null : { left: "58vw", top: "42vh", width: "38vw" });
 // Analytics cards render only after their request returns; without this the
 // frame catches the spinner and h.moveTo falls back to the middle of <main>.
 const waitFor = (p, sel, ms = 15000) => p.locator(sel[0]).first().waitFor({ state: "visible", timeout: ms }).catch(() => {});
@@ -3479,8 +3483,13 @@ export default {
         },
         do: async (p, l, h) => {
           await h.card({ title: "Gecə 2:14. Müştəri yazır.", sub: "Kim cavab verir?", dim: 0.62 });
-          // Behind the card: open the 02:14 thread so scene 2 starts on it.
+          // Behind the card: open the 02:14 thread and ask the AI for a reply
+          // now — the answer takes 5–8 s, longer than scene 2's narration, so
+          // it lands while scene 2 is on screen instead of after it.
           await p.locator(RL_ROW[0]).first().click({ timeout: 8000 }).catch(() => {});
+          await unscroll(p);
+          await p.locator(RL_AI_BTN[0]).first().click({ timeout: 5000 }).catch(() => {});
+          await p.locator(RL_AI_SUGGEST[0]).first().click({ timeout: 3000 }).catch(() => {});
           await unscroll(p);
         },
       },
@@ -3495,23 +3504,24 @@ export default {
           await h.caption("*AI cavab təklifi* — saniyələr içində", { box: threadBox(p) });
           await zoom(p, h, RL_THREAD);
           await h.moveTo(RL_IN_BUBBLE);
-          await clickIf(p, h, RL_AI_BTN);
-          await clickIf(p, h, RL_AI_SUGGEST);
-          await unscroll(p);
-          await waitComposer(p, 9000);
+          await h.holdUntil(0.3);
+          await h.moveTo(RL_AI_BTN);
+          await waitComposer(p, 6000);
+          await h.holdUntil(0.6);
           await h.moveTo(RL_COMPOSER);
         },
       },
       // 3 — Chatbot auto-replies, 24/7.
       {
         route: "/inbox/chatbot-rules",
+        ready: RL_CB_MASTER,
         voice: {
           az: "Gecə də, bayramda da — avtomatik cavablar işləyir, müştəri gözləmir.",
           ru: "И ночью, и в праздники — автоответы работают, клиент не ждёт.",
         },
         do: async (p, l, h) => {
           await h.caption("Avtomatik cavab: *AKTİV* · 24/7");
-          await zoom(p, h, RL_CB_MASTER, 1.5);
+          await zoom(p, h, RL_CB_MASTER, 1.3);
           await h.moveTo(RL_CB_MASTER);
           await h.holdUntil(0.55);
           await h.moveTo(RL_CB_RULE);
@@ -3520,6 +3530,7 @@ export default {
       // 4 — The team takes the hard question: assign, convert to a lead.
       {
         route: "/inbox",
+        ready: RL_ROW,
         voice: {
           az: "Çətin sualı komanda götürür: bir kliklə əməkdaşa təyin edin, söhbəti lidə çevirin — satıcı artıq işə başlayır.",
           ru: "Сложный вопрос берёт команда: одним кликом назначаете сотрудника, превращаете чат в лид — продавец уже в работе.",
@@ -3543,6 +3554,7 @@ export default {
       // 5 — Morning: analytics.
       {
         route: "/inbox/analytics",
+        ready: RL_FRT,
         voice: {
           az: "Səhər açılır — hər söhbətə cavab verilib. İlk cavab vaxtı, həll olunan söhbətlər, kanallar üzrə yük — hamısı bir ekranda.",
           ru: "Утро — на каждый чат отвечено. Время первого ответа, решённые чаты, нагрузка по каналам — всё на одном экране.",
@@ -3550,24 +3562,25 @@ export default {
         do: async (p, l, h) => {
           await h.caption("Səhər 7:24. *Hər söhbətə cavab verilib.*");
           await waitFor(p, RL_FRT);
-          await zoom(p, h, RL_FRT, 1.5);
+          await zoom(p, h, RL_FRT, 1.3);
           await h.moveTo(RL_FRT);
           await h.holdUntil(0.55);
           await waitFor(p, RL_BY_CHANNEL, 5000);
-          await zoom(p, h, RL_BY_CHANNEL, 1.5);
+          await zoom(p, h, RL_BY_CHANNEL, 1.3);
           await h.moveTo(RL_BY_CHANNEL);
         },
       },
       // 6 — One inbox, every channel (no Instagram/Facebook — owner, 2026-09-21).
       {
         route: "/inbox",
+        ready: RL_RAIL,
         voice: {
           az: "WhatsApp, Telegram, TikTok, SMS, e-poçt, saytdakı çat və zənglər — hamısı bir gələnlər qutusunda.",
           ru: "WhatsApp, Telegram, TikTok, SMS, почта, чат на сайте и звонки — всё в одном инбоксе.",
         },
         do: async (p, l, h) => {
           await h.caption("Bir gələnlər qutusu. *Bütün kanallar.*", { box: threadBox(p) });
-          await zoom(p, h, RL_RAIL, 1.8);
+          await zoom(p, h, RL_RAIL, 1.4);
           for (const [i, name] of RL_CHANNELS.entries()) {
             await h.moveTo(railItem(name));
             await h.holdUntil(0.1 + (0.8 * (i + 1)) / RL_CHANNELS.length);

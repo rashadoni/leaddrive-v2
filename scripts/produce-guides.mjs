@@ -39,6 +39,13 @@
  *              for anything that must NOT land in the help-video manifest
  *   GUIDE_BURN_SUBS=1  burn the scene narration into the picture as subtitles
  *              (an .srt is always written next to the mp4)
+ *   GUIDE_DEVICE_SCALE  render at N device px per CSS px; the CSS viewport becomes
+ *              frame ÷ N (1080×1920 at 2 → a 540×960 phone-sized page, so the
+ *              app renders its mobile layout at full video resolution). Done with
+ *              a real window DPR (--force-device-scale-factor + window size, no
+ *              viewport emulation): the screencast only ever delivers CSS-pixel
+ *              frames under emulated deviceScaleFactor, and Playwright pads rather
+ *              than upscales them.
  *   GUIDE_TIMEZONE / GUIDE_BROWSER_LOCALE  browser clock + number/time format,
  *              e.g. Asia/Baku + az-AZ so on-screen times read like a Baku user's
  *   GUIDE_TIGHT=1  cut the silent page-load gaps between scenes (every route
@@ -132,9 +139,10 @@ const videoSize = {
   width: Number(process.env.GUIDE_VIDEO_W || 1280),
   height: Number(process.env.GUIDE_VIDEO_H || 720),
 };
+const deviceScale = Number(process.env.GUIDE_DEVICE_SCALE || 1);
 const BURN_SUBS = envFlag("GUIDE_BURN_SUBS");
 const TIGHT = envFlag("GUIDE_TIGHT");
-const viewport = { ...videoSize };
+const viewport = { width: Math.round(videoSize.width / deviceScale), height: Math.round(videoSize.height / deviceScale) };
 
 // CSS injected at document-start on EVERY page (so it also covers the clean
 // poster, taken before the cursor). Hides the floating help widget AND the
@@ -321,11 +329,16 @@ async function produceLanguage(lang) {
   // 3) One login per language (single "role"), then record every section.
   const api = await request.newContext({ baseURL: baseUrl });
   const userId = await loginWithRetry(api);
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    args: deviceScale > 1
+      ? [`--force-device-scale-factor=${deviceScale}`, `--window-size=${viewport.width},${viewport.height}`, "--hide-scrollbars"]
+      : [],
+  });
+  globalThis.__guideViewport = viewport; // scenarios read it: viewportSize() is null without emulation
   const context = await browser.newContext({
     storageState: await api.storageState(),
-    viewport,
-    deviceScaleFactor: 1,
+    ...(deviceScale > 1 ? { viewport: null } : { viewport, deviceScaleFactor: 1 }),
     recordVideo: { dir: tmpRoot, size: videoSize },
     ...(process.env.GUIDE_TIMEZONE ? { timezoneId: process.env.GUIDE_TIMEZONE } : {}),
     ...(process.env.GUIDE_BROWSER_LOCALE ? { locale: process.env.GUIDE_BROWSER_LOCALE } : {}),
@@ -413,6 +426,13 @@ async function recordSection(context, slug, lang, audio, out, poster) {
       if (unit.route && unit.route !== currentRoute) {
         await gotoRoute(unit.route);
         await injectCursor(page); // navigation blew away the overlay
+      }
+      // A scene may name the element its picture depends on (`ready`); the
+      // voice waits for it, so a page that fetches after mount (analytics
+      // KPIs) is not caught mid-spinner.
+      if (unit.ready) {
+        const loc = await firstLocator(page, unit.ready);
+        await loc?.waitFor({ state: "visible", timeout: 15000 }).catch(() => {});
       }
 
       offsets[i] = Date.now() - t0;           // when scene i's voice begins
