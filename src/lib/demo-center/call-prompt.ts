@@ -16,6 +16,13 @@
 /** Consent-audit marker the demo's dispatch puts on every call it places. */
 export const DEMO_CALL_AUDIT_VIA = "demo_center"
 
+/**
+ * The call event the runtime-config endpoint writes, once per call, when the
+ * PBX asks for that call's prompt. Its existence is the evidence that the PBX
+ * asks per call at all — the demo will not place a live call before it.
+ */
+export const PROMPT_SERVED_EVENT = "voice_runtime_prompt_served"
+
 export function isDemoPlacedCall(consentAudit: unknown): boolean {
   return Boolean(
     consentAudit

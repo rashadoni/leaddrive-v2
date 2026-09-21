@@ -8,7 +8,12 @@ import {
   composeVoiceAgentInstruction,
   TECHNICAL_VOICE_POLICY_VERSION,
 } from "@/lib/voice-agent/default-prompt"
-import { buildDemoCallPrompt, demoCallFirstName, isDemoPlacedCall } from "@/lib/demo-center/call-prompt"
+import {
+  buildDemoCallPrompt,
+  demoCallFirstName,
+  isDemoPlacedCall,
+  PROMPT_SERVED_EVENT,
+} from "@/lib/demo-center/call-prompt"
 
 export const dynamic = "force-dynamic"
 
@@ -31,7 +36,6 @@ function authorized(request: NextRequest): boolean {
 }
 
 /** One row per call: which prompt this call was given. */
-export const PROMPT_SERVED_EVENT = "voice_runtime_prompt_served"
 const PROMPT_SERVED_HASH = "voice_runtime_prompt_served:v1"
 
 /**
