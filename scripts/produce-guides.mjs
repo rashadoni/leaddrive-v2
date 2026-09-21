@@ -39,6 +39,8 @@
  *              for anything that must NOT land in the help-video manifest
  *   GUIDE_BURN_SUBS=1  burn the scene narration into the picture as subtitles
  *              (an .srt is always written next to the mp4)
+ *   GUIDE_TIMEZONE / GUIDE_BROWSER_LOCALE  browser clock + number/time format,
+ *              e.g. Asia/Baku + az-AZ so on-screen times read like a Baku user's
  *   GUIDE_TIGHT=1  cut the silent page-load gaps between scenes (every route
  *              change otherwise leaves 2–4 s of loading with no voice)
  *   FORCE=1    re-record/overwrite existing valid videos (else resume = skip)
@@ -325,6 +327,8 @@ async function produceLanguage(lang) {
     viewport,
     deviceScaleFactor: 1,
     recordVideo: { dir: tmpRoot, size: videoSize },
+    ...(process.env.GUIDE_TIMEZONE ? { timezoneId: process.env.GUIDE_TIMEZONE } : {}),
+    ...(process.env.GUIDE_BROWSER_LOCALE ? { locale: process.env.GUIDE_BROWSER_LOCALE } : {}),
   });
   await context.addCookies([{ name: "NEXT_LOCALE", value: lang, url: baseUrl }]);
   await installInitScripts(context, lang, userId);
