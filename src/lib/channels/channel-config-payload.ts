@@ -1,5 +1,23 @@
 export type SmsProvider = "atl" | "twilio" | "vonage"
 
+/**
+ * The channel types this form configures — the type picker in components/channel-config-form is typed against
+ * this list. Any other row the catalog can open here (Social Monitoring, Slack, Teams, web chat) keeps its
+ * settings in its own screen, so the PUT route leaves them alone (lib/channels/server-owned-settings).
+ */
+export const CHANNEL_FORM_TYPES = [
+  "email",
+  "telegram",
+  "whatsapp",
+  "sms",
+  "facebook",
+  "instagram",
+  "vkontakte",
+  "chatwoot",
+] as const
+
+export type ChannelFormType = (typeof CHANNEL_FORM_TYPES)[number]
+
 export interface ChannelConfigFormData {
   configName: string
   channelType: string
@@ -114,9 +132,10 @@ export function buildChannelPayload(form: ChannelConfigFormData) {
     appId: form.appId || undefined,
     appSecret: form.appSecret || undefined,
     pageId: form.pageId || undefined,
-    // Only the keys this form owns. On a Facebook/Instagram row the keys the server writes (the Meta
-    // subscription outcome, the Instagram token metadata, the reply policy) are kept by the PUT route —
-    // lib/channels/meta-server-settings — so they are neither echoed back here nor erased by a save.
+    // Only the keys this form owns. The keys other screens and endpoints write (the reply policy, the Meta
+    // subscription outcome, WhatsApp templates, webhook secrets, …) are kept by the PUT route —
+    // lib/channels/meta-server-settings for Facebook/Instagram, lib/channels/server-owned-settings for the
+    // rest — so they are neither echoed back here nor erased by a save.
     settings: {
       ...(form.chatId ? { chatId: form.chatId } : {}),
       ...(form.accountSid ? { accountSid: form.accountSid } : {}),

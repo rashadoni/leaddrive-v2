@@ -11,7 +11,7 @@ import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from "
 import { Check, Copy, Mail, Send, MessageSquare, Smartphone, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { emailIntakeRoutesFromSettings } from "@/lib/ticketing/email-intake"
-import { buildChannelPayload, type ChannelConfigFormData, type SmsProvider } from "@/lib/channels/channel-config-payload"
+import { buildChannelPayload, type ChannelConfigFormData, type ChannelFormType, type SmsProvider } from "@/lib/channels/channel-config-payload"
 import { channelConnectionState } from "@/lib/channels/live-connection"
 import { metaConnectionReason } from "@/lib/channels/connection-reason"
 
@@ -77,7 +77,9 @@ const channelTypes = [
   { value: "instagram", label: "Instagram", icon: MessageSquare },
   { value: "vkontakte", label: "VKontakte", icon: MessageSquare },
   { value: "chatwoot", label: "TikTok via Chatwoot", icon: MessageSquare },
-]
+  // Typed against the list the PUT route trusts: a type offered here but missing there would have its settings
+  // ignored on save (lib/channels/server-owned-settings).
+] satisfies ReadonlyArray<{ value: ChannelFormType; label: string; icon: typeof Mail }>
 
 const localCopy: Record<Loc, Record<string, string>> = {
   en: {
