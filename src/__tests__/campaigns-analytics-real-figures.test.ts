@@ -68,7 +68,6 @@ function asApiRow(c: LegendCampaign, i: number): CampaignAnalyticsRecord {
 }
 
 const DEMO = (DEMO_LEGEND_CAMPAIGNS as LegendCampaign[]).map(asApiRow)
-const byName = (fragment: string) => DEMO.find((c) => c.name.includes(fragment))!
 
 function campaign(overrides: Partial<CampaignAnalyticsRecord>): CampaignAnalyticsRecord {
   return {
@@ -88,26 +87,46 @@ function campaign(overrides: Partial<CampaignAnalyticsRecord>): CampaignAnalytic
   }
 }
 
+/** An SMS campaign from before SMS clicks moved to touchpoints: it still carries them. */
+const LEGACY_SMS = campaign({
+  id: "legacy-sms",
+  name: "SMS: köhnə kliklər",
+  type: "sms",
+  totalRecipients: 2314,
+  totalSent: 2291,
+  totalClicked: 96,
+  sentAt: "2026-09-15T08:00:00.000Z",
+})
+
 describe("campaign analytics figures, on the demo tenant's campaigns", () => {
   it("rates count only the sends of campaigns that record the step", () => {
     const s = summarizeCampaigns(DEMO)
     expect(s.sent).toBe(1829 + 603 + 2291)
-    // Opens: the email campaign and the WhatsApp one carry opens; the SMS
-    // campaign's 2,291 sends cannot be opened and must not dilute the rate.
-    expect(s.opened).toMatchObject({ count: 763 + 487, base: 1829 + 603 })
-    expect(s.opened!.percent).toBeCloseTo((1250 / 2432) * 100, 6)
-    expect(s.clicked).toMatchObject({ count: 214 + 141 + 96, base: 1829 + 603 + 2291 })
-    expect(s.bounced).toMatchObject({ count: 18 + 23, base: 1829 + 2291 })
+    // Only the email campaign records opens and clicks (#367 made the stand
+    // stop giving WhatsApp and SMS counters the product never writes); the
+    // WhatsApp and SMS sends must not dilute its rates.
+    expect(s.opened).toMatchObject({ count: 763, base: 1829 })
+    expect(s.opened!.percent).toBeCloseTo((763 / 1829) * 100, 6)
+    expect(s.clicked).toMatchObject({ count: 214, base: 1829 })
+    // Nothing writes Campaign.totalBounced, and the stand no longer pretends it does.
+    expect(s.bounced).toBeNull()
     expect(s.budget).toBe(340 + 185 + 229 + 64 + 410 + 118)
   })
 
-  it("ranks top campaigns by what recipients did, and never reports SMS opens as 0%", () => {
+  it("ranks top campaigns by what recipients did", () => {
     const top = topCampaigns(DEMO)
-    expect(top.map((c) => c.type)).toEqual(["email", "whatsapp", "sms"])
+    expect(top.map((c) => c.type)).toEqual(["email"])
+    expect(top[0].openRate).toBeCloseTo((763 / 1829) * 100, 6)
+  })
+
+  it("never reports SMS opens as 0% for a record that does carry SMS clicks", () => {
+    // Older records can carry counters the product no longer writes on the
+    // Campaign row (an SMS click is now only an attribution touchpoint).
+    const top = topCampaigns([...DEMO, LEGACY_SMS])
+    expect(top.map((c) => c.type)).toEqual(["email", "sms"])
     const sms = top.find((c) => c.type === "sms")!
     expect(sms.openRate).toBeNull()
     expect(sms.clickRate).toBeCloseTo((96 / 2291) * 100, 6)
-    expect(top[0].openRate).toBeCloseTo((763 / 1829) * 100, 6)
   })
 
   it("puts sends in the month they went out and nothing outside the window", () => {
@@ -277,18 +296,20 @@ describe("Campaigns → Analitika tab as rendered", () => {
     expect(widget("automation")).toContain("noJourneys")
     expect(widget("templates")).toContain("noTemplates")
     expect(widget("kpi-roi")).toContain("roiNoWonDeals")
-    // The campaign widgets do have records, and show them.
+    // The campaign widgets do have records, and show them — and nothing
+    // writes bounces, so there is no bounce figure to show.
     expect(widget("kpi-sent")).toContain("4.7K")
-    expect(widget("kpi-open-rate")).toContain("51.4%")
-    expect(widget("kpi-click-rate")).toContain("9.5%")
-    expect(widget("kpi-bounce")).toContain("1.0%")
+    expect(widget("kpi-open-rate")).toContain("41.7%")
+    expect(widget("kpi-click-rate")).toContain("11.7%")
+    expect(widget("kpi-bounce")).toContain("—")
   })
 
   it("prints «—», not «0.0%», for the opens of an SMS campaign in the top list", async () => {
-    serve({ roi: roiWithoutDeals(DEMO) })
-    await renderTab(DEMO)
+    const withLegacy = [...DEMO, LEGACY_SMS]
+    serve({ roi: roiWithoutDeals(withLegacy) })
+    await renderTab(withLegacy)
     const rows = Array.from(container.querySelectorAll('[data-testid="campaigns-analytics-top"] .min-w-0'))
-    const smsRow = rows.find((row) => row.textContent?.includes(byName("SMS: həftəsonu").name))
+    const smsRow = rows.find((row) => row.textContent?.includes(LEGACY_SMS.name))
     expect(smsRow?.textContent).toContain("— topOpen")
     expect(smsRow?.textContent).not.toContain("0.0%")
   })
