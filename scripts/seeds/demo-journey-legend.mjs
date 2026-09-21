@@ -16,6 +16,15 @@ const DAY = 24 * 60 * 60_000
 const nowMs = Date.now()
 export const daysAgo = (d) => new Date(nowMs - d * DAY)
 export const inDays = (d) => new Date(nowMs + d * DAY)
+// A moment on a Baku working day, `dayOffset` days from today (Asia/Baku is
+// UTC+4 all year). Activities show their time of day; a call "at 21:55"
+// because the seeder happened to run then reads as a made-up record.
+const BAKU = 4 * 60 * 60_000
+export const bakuAt = (dayOffset, hhmm) => {
+  const [h, m] = hhmm.split(":").map(Number)
+  const baku = new Date(nowMs + BAKU)
+  return new Date(Date.UTC(baku.getUTCFullYear(), baku.getUTCMonth(), baku.getUTCDate() + dayOffset, h, m) - BAKU)
+}
 
 // The reel's team (scripts/seeds/inbox-reel-demo.mjs); looked up by name and
 // left unassigned if that seed has not run.
@@ -77,16 +86,16 @@ export const LEADS = [
     interest: "Anbar ofisi üçün 14 iş yeri: masa, kreslo və arxiv şkafları, quraşdırma ilə birlikdə",
     notes: "Ölçü görüşü razılaşdırılıb. Büdcə təsdiqlənib, təklif bu həftə gözlənilir.", createdDays: 9,
     activities: [
-      { type: "call", subject: "Tanışlıq zəngi", description: "Ehtiyacı dəqiqləşdirdik: 14 iş yeri, quraşdırma ilə.", days: 8 },
-      { type: "email", subject: "Kataloq göndərildi", description: "Ofis mebeli kataloqu və qiymət aralığı.", days: 6 },
-      { type: "meeting", subject: "Anbar ofisində ölçü görüşü", description: "Tural Kərimov ofisə baxıb ölçüləri götürəcək.", days: 2 },
+      { type: "call", subject: "Tanışlıq zəngi", description: "Ehtiyacı dəqiqləşdirdik: 14 iş yeri, quraşdırma ilə.", days: 8, at: "11:20" },
+      { type: "email", subject: "Kataloq göndərildi", description: "Ofis mebeli kataloqu və qiymət aralığı.", days: 6, at: "15:05" },
+      { type: "meeting", subject: "Anbar ofisində ölçü görüşü", description: "Tural Kərimov ofisə baxıb ölçüləri götürəcək.", days: 2, at: "16:40", planned: [1, "11:30"] },
     ],
   },
   {
     contactName: "Nigar Əliyeva", companyName: company(2), email: `nigar@${MAIL}`, source: "instagram",
     status: "qualified", customerStage: "potential", category: "prospect", priority: "high", assign: "sebine", estimatedValue: 5960,
     interest: "Dizayn studiyası üçün 8 iş masası və görüş otağı mebeli", createdDays: 12,
-    activities: [{ type: "call", subject: "Studiyanın planı soruşuldu", description: "Plan e-poçtla gələcək.", days: 5 }],
+    activities: [{ type: "call", subject: "Studiyanın planı soruşuldu", description: "Plan e-poçtla gələcək.", days: 5, at: "12:45" }],
   },
   {
     contactName: "Rəşad Hüseynov", companyName: company(1), email: `resad.h@${MAIL}`, source: "referral",
@@ -107,7 +116,7 @@ export const LEADS = [
     contactName: "Cavid Məlikov", email: `cavid.m@${MAIL}`, source: "whatsapp",
     status: "qualified", customerStage: "interested", category: "regular", priority: "medium", assign: "aynur", estimatedValue: 1870,
     interest: "Künc divanı, 12 aya hissə-hissə ödənişlə", notes: "Sənədləri bu gün göndərəcək — təcili.", createdDays: 5,
-    activities: [{ type: "call", subject: "Hissə-hissə ödəniş şərtləri", description: "Şərtlər izah edildi, razıdır.", days: 1 }],
+    activities: [{ type: "call", subject: "Hissə-hissə ödəniş şərtləri", description: "Şərtlər izah edildi, razıdır.", days: 1, at: "17:10" }],
   },
   {
     contactName: "Lamiyə Hacıyeva", email: `lamiye.h@${MAIL}`, source: "tiktok",
