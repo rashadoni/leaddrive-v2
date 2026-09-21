@@ -644,7 +644,7 @@ describe("answering the draft by voice", () => {
     })
     expect(panel()?.dataset.outcome).toBe("succeeded")
     // The model hears how it ended — and only enums, never record text.
-    expect(outcomes).toEqual([{ receiptId: "intent-1", kind: "succeeded", entityType: "lead", via: "voice" }])
+    expect(outcomes).toEqual([{ receiptId: "intent-1", kind: "succeeded", entityType: "lead", entityId: "lead-42", via: "voice" }])
     // Settled: nothing is waiting for an answer any more.
     expect(states.at(-1)).toBeNull()
   })
@@ -686,7 +686,7 @@ describe("answering the draft by voice", () => {
       .mockReturnValueOnce(commitResponse())
     await render(createElement(VoiceReceiptSurface, { voiceSessionId: SESSION }))
     await click("voice-receipt-confirm")
-    expect(outcomes).toEqual([{ receiptId: "intent-1", kind: "succeeded", entityType: "lead", via: "button" }])
+    expect(outcomes).toEqual([{ receiptId: "intent-1", kind: "succeeded", entityType: "lead", entityId: "lead-42", via: "button" }])
   })
 
   it("withdraws the waiting draft when it leaves the screen", async () => {

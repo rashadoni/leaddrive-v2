@@ -293,6 +293,7 @@ export function VoiceReceiptSurface({
       receiptId: current.id,
       kind: result.kind,
       entityType: result.kind === "succeeded" ? result.entityType : undefined,
+      entityId: result.kind === "succeeded" ? result.entityId : undefined,
       via,
     })
     const controller = new AbortController()

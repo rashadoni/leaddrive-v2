@@ -25,13 +25,16 @@ import {
   VOICE_RECEIPT_COMMAND_EVENT,
   VOICE_RECEIPT_OUTCOME_EVENT,
   VOICE_RECEIPT_STATE_EVENT,
+  VOICE_RECORD_CHANGED_EVENT,
   VOICE_DRAFT_SHOWN,
   voiceOutcomeMessage,
   type ConfirmationGate,
   type VoiceReceiptCommandDetail,
   type VoiceReceiptOutcomeDetail,
   type VoiceReceiptStateDetail,
+  type VoiceRecordChangedDetail,
 } from "@/lib/ai/voice/voice-confirmation"
+import { voiceResultHref } from "@/lib/ai/voice/receipt-commit"
 import {
   diagnoseMicrophoneFailure,
   microphoneMessageKey,
@@ -1324,6 +1327,26 @@ function ConsoleInner({
     }
   }, [session, stop, t])
 
+  // Owner, 2026-09-21: after a change or a creation the record opens, so the
+  // user sees whether everything is right. On the record's own page it is
+  // re-read instead — its data lives in the browser, a refresh would not reach it.
+  const showResultRef = useRef<(detail: VoiceReceiptOutcomeDetail) => void>(() => {})
+  useEffect(() => {
+    showResultRef.current = (detail) => {
+      const { entityType, entityId } = detail
+      if (detail.kind !== "succeeded" || !entityId) return
+      if (entityType !== "task" && entityType !== "lead" && entityType !== "deal") return
+      const href = voiceResultHref(entityType, entityId)
+      if (pathname === href) {
+        window.dispatchEvent(new CustomEvent<VoiceRecordChangedDetail>(VOICE_RECORD_CHANGED_EVENT, {
+          detail: { entityType, entityId },
+        }))
+      } else {
+        router.push(href)
+      }
+    }
+  }, [pathname, router])
+
   // Voice confirmation: the receipt surface says which draft is waiting for an
   // answer, and reports how it ended so the model can say it out loud.
   useEffect(() => {
@@ -1333,6 +1356,7 @@ function ConsoleInner({
     }
     const onOutcome = (event: Event) => {
       const detail = (event as CustomEvent<VoiceReceiptOutcomeDetail>).detail
+      if (detail) showResultRef.current(detail)
       const live = liveSessionRef.current
       if (!detail || !live || !sessionRef.current) return
       try { live.sendRealtimeInput({ text: voiceOutcomeMessage(detail) }) } catch { /* socket closing */ }
