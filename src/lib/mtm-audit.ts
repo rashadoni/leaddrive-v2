@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { NextRequest } from "next/server"
+import { currentAuditActorUserId } from "@/lib/audit-actor-context"
 
 /**
  * Canonical audit-action constants. Exported so callers don't risk
@@ -58,17 +59,22 @@ export async function writeMtmAudit(params: {
   oldData?: unknown
   newData?: unknown
   req?: NextRequest // to extract IP and user agent
+  /** The office user who acted; defaults to the signed-in user of the request. */
+  actorUserId?: string | null
 }) {
   const ipAddress =
     params.req?.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
     params.req?.headers.get("x-real-ip") ||
     null
   const userAgent = params.req?.headers.get("user-agent") || null
+  const actorUserId = params.actorUserId ?? currentAuditActorUserId()
 
   await prisma.mtmAuditLog.create({
     data: {
       organizationId: params.organizationId,
       agentId: params.agentId ?? null,
+      // Only when known: rows without an office actor keep their old shape.
+      ...(actorUserId ? { actorUserId } : {}),
       action: params.action,
       entity: params.entity,
       entityId: params.entityId ?? null,

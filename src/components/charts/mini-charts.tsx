@@ -17,9 +17,13 @@ export function MiniBarChart({ data, color = "bg-violet-400", height = "h-8" }: 
   )
 }
 
-export function MiniLineChart({ data, color = "stroke-emerald-400" }: { data: number[]; color?: string }) {
+/**
+ * `max` puts several lines on one scale. Without it each line is stretched to
+ * its own peak, so 30 opens draw as high as 3,000 sends.
+ */
+export function MiniLineChart({ data, color = "stroke-emerald-400", max: scaleMax }: { data: number[]; color?: string; max?: number }) {
   if (data.length < 2) return null
-  const max = Math.max(...data, 1)
+  const max = Math.max(...data, scaleMax ?? 0, 1)
   const min = Math.min(...data, 0)
   const range = max - min || 1
   const w = 120

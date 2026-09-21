@@ -139,6 +139,7 @@ const copy = {
     notConnected: "Open setup",
     configure: "Configure",
     configureConnected: "Edit setup",
+    openVoipSettings: "Open VoIP settings",
     openGuide: "Open guide",
     callingReadinessBadge: "Readiness checklist",
     comingSoon: "Roadmap",
@@ -154,6 +155,7 @@ const copy = {
     cardNextStep: "Next step",
     cardVerify: "Verify",
     cardConnectedHint: "Saved in LeadDrive. Edit credentials or send a controlled test before automation.",
+    cardVoipSettingsHint: "Managed in VoIP settings. Change the provider, its credentials or the on/off switch there.",
     cardDraftBadge: "Draft",
     cardDraftStatus: "Connection not finished",
     cardDraftHint: "The channel row is saved, but Meta has not returned a Page yet, so no message will arrive. Finish Connect with Meta.",
@@ -308,6 +310,7 @@ const copy = {
     notConnected: "Открыть настройку",
     configure: "Настроить",
     configureConnected: "Изменить настройку",
+    openVoipSettings: "Открыть настройки VoIP",
     openGuide: "Открыть инструкцию",
     callingReadinessBadge: "Чеклист готовности",
     comingSoon: "В разработке",
@@ -323,6 +326,7 @@ const copy = {
     cardNextStep: "Следующий шаг",
     cardVerify: "Проверка",
     cardConnectedHint: "Канал сохранён в LeadDrive. Измените ключи или отправьте контролируемый тест перед автоматизацией.",
+    cardVoipSettingsHint: "Управляется в настройках VoIP. Провайдера, его ключи и переключатель звонков меняют там.",
     cardDraftBadge: "Черновик",
     cardDraftStatus: "Подключение не завершено",
     cardDraftHint: "Запись канала сохранена, но Meta ещё не вернула страницу, поэтому сообщения приходить не будут. Завершите «Подключить через Meta».",
@@ -475,6 +479,7 @@ const copy = {
     notConnected: "Qurulmanı aç",
     configure: "Tənzimlə",
     configureConnected: "Qurulmanı dəyiş",
+    openVoipSettings: "VoIP parametrlərini aç",
     openGuide: "Təlimatı aç",
     callingReadinessBadge: "Hazırlıq checklist-i",
     comingSoon: "Planlaşdırılır",
@@ -490,6 +495,7 @@ const copy = {
     cardNextStep: "Növbəti addım",
     cardVerify: "Yoxlama",
     cardConnectedHint: "Kanal LeadDrive-da saxlanılıb. Avtomatizasiyadan əvvəl açarları dəyişin və ya kontrollu test göndərin.",
+    cardVoipSettingsHint: "VoIP parametrlərində idarə olunur. Provayderi və onun açarlarını orada dəyişin, zəngləri də orada yandırıb-söndürün.",
     cardDraftBadge: "Qaralama",
     cardDraftStatus: "Qoşulma tamamlanmayıb",
     cardDraftHint: "Kanal qeydi saxlanılıb, amma Meta hələ səhifə qaytarmayıb, ona görə mesaj gəlməyəcək. «Meta ilə qoş» addımını tamamlayın.",
@@ -1512,6 +1518,7 @@ export default function ChannelsPage() {
 function ChannelsPageInner() {
   const { data: session } = useSession()
   const t = useTranslations("settings")
+  const tc = useTranslations("common")
   const locale = normalizeLocale(useLocale())
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -1581,13 +1588,21 @@ function ChannelsPageInner() {
     router.replace("/settings/channels")
   }, [cards, router, searchParams])
 
+  // The confirm dialog shows what this throws and stays open. It used to refetch whatever the answer was, so a refused
+  // delete — every press of the trash on a VoIP card met a 403 — closed the dialog and left the row with nothing on
+  // screen saying why. A 403 carries its reason in `message` next to a bare "Forbidden" in `error`, so `message` goes
+  // first; an answer without either (a proxy's HTML error page) still needs words, or the dialog's alert stays empty.
   const handleDelete = async () => {
     if (!deleteId) return
-    await fetch(`/api/v1/channels/${deleteId}`, {
+    const res = await fetch(`/api/v1/channels/${deleteId}`, {
       method: "DELETE",
       headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>,
     })
     fetchChannels()
+    if (res.ok) return
+    const body = (await res.json().catch(() => null)) as { error?: unknown; message?: unknown } | null
+    const reason = [body?.message, body?.error].find((value): value is string => typeof value === "string" && value.trim() !== "")
+    throw new Error(reason || tc("errorDeleteFailed"))
   }
 
   const sendTestWhatsApp = async () => {
@@ -2306,6 +2321,15 @@ function ChannelsPageInner() {
                       const brokenStatus = connectionState ? cardBrokenStatus(c, connectionState, claimedCopy) : null
                       const brokenHint = connectionState ? cardBrokenHint(c, connectionState, claimedCopy) : null
                       const guideHref = guideHrefForCard(card)
+                      // A row whose type has its own screen (lib/channels/dedicated-channel-types) is changed and switched
+                      // off there: the channels API refuses to edit or delete it. Of those rows only VoIP's reach a card —
+                      // the catalog lists the others nowhere — and every VoIP card links to /settings/voip, hence the VoIP
+                      // copy. The card used to offer Edit, which opened the channel form whose save is refused, and a trash
+                      // whose DELETE always came back 403.
+                      const ownScreenHref =
+                        connected && isDedicatedChannelType(connected.channelType) && card.action.type === "link"
+                          ? card.action.href
+                          : null
                       const Icon = card.icon
                       return (
                         <article
@@ -2401,18 +2425,32 @@ function ChannelsPageInner() {
                               </div>
                               <div className="rounded-lg bg-zinc-50 px-3 py-2 text-xs leading-5 text-zinc-600">
                                 <span className="font-semibold text-zinc-800">{connectionLive ? c.cardVerify : c.cardNextStep}: </span>
-                                {connectionLive
-                                  ? c.cardConnectedHint
-                                  : connectionBroken && brokenHint
-                                    ? brokenHint
-                                    : card.action.type === "disabled"
-                                      ? c.cardRoadmapHint
-                                      : c.cardNewHint}
+                                {ownScreenHref
+                                  ? c.cardVoipSettingsHint
+                                  : connectionLive
+                                    ? c.cardConnectedHint
+                                    : connectionBroken && brokenHint
+                                      ? brokenHint
+                                      : card.action.type === "disabled"
+                                        ? c.cardRoadmapHint
+                                        : c.cardNewHint}
                               </div>
                             </div>
 
                             <div className="mt-auto flex items-center justify-between gap-2 border-t border-zinc-200 pt-4">
-                              {connected && (connectionLive || !card.oauthStart) ? (
+                              {ownScreenHref ? (
+                                <Button
+                                  asChild
+                                  size="sm"
+                                  variant="secondary"
+                                  className="h-9 flex-1 justify-center gap-2 border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+                                >
+                                  <Link href={ownScreenHref} aria-label={`${c.openVoipSettings}: ${card.title}`}>
+                                    <Workflow className="h-4 w-4" />
+                                    {c.openVoipSettings}
+                                  </Link>
+                                </Button>
+                              ) : connected && (connectionLive || !card.oauthStart) ? (
                                 <>
                                   <Button
                                     size="sm"
@@ -2994,7 +3032,10 @@ function ChannelsPageInner() {
         </DialogContent>
       </Dialog>
 
+      {/* Keyed by the row: the dialog keeps its last refusal in its own state, and without a fresh instance per row the
+          next delete would open under the previous row's reason. */}
       <DeleteConfirmDialog
+        key={deleteId ?? "closed"}
         open={!!deleteId}
         onOpenChange={(open) => { if (!open) setDeleteId(null) }}
         onConfirm={handleDelete}

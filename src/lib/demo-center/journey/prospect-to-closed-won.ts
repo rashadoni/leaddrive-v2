@@ -134,7 +134,10 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
         {
           id: "source-analytics",
           title: "Nə işlədi",
-          instruction: "«Analitika» vərəqi kampaniyanın açılış və klik göstəricilərini göstərir — burada nümunə rəqəmlərdir.",
+          // The rates here are the session's fixed sample (records.ts), whatever
+          // channel the prospect chose. In the product only email campaigns record
+          // opens and clicks (src/lib/campaigns/analytics.ts), so the copy says so.
+          instruction: "Kampaniyanın açılma və klik faizi — burada nümunə rəqəmlərdir. Real hesabda açılma və klikləri e-poçt kampaniyaları qeydə alır, «Analitika» vərəqi isə onları bütün kampaniyalar üzrə ümumiləşdirir.",
           anchor: "campaigns-analytics",
           placement: "bottom",
           action: "observe",

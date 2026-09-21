@@ -9280,6 +9280,10 @@ model MtmAuditLog {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   agentId        String?
   agent          MtmAgent?    @relation(fields: [agentId], references: [id], onDelete: SetNull) // F-18: enable join for agent name in reports/activity
+  /// The signed-in office user who acted (audit 2026-09-21). Null for mobile
+  /// agents (agentId names them), API keys, jobs and rows written before it.
+  /// No relation: a deleted user must not erase who did what.
+  actorUserId    String?
   action         String
   entity         String
   entityId       String?
