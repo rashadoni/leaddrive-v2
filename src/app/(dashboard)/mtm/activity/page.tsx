@@ -14,7 +14,7 @@ import { Select } from "@/components/ui/select"
 import { HelpButton } from "@/components/help/help-button"
 import {
   actionMeta, actionLabelKey, TONE_CLASSES, activityRowHref, kindKey,
-  relativeTime, dayKeyOf, dayLabel, type ActivitySubject,
+  relativeTime, dayKeyOf, dayLabel, activityActorName, activityDataSummary, type ActivitySubject,
 } from "@/lib/mtm/activity-actions"
 import { mtmAccessErrorKey, type MtmAccessErrorKey } from "@/lib/mtm/access-error"
 import { formatDate } from "@/lib/format-date"
@@ -102,7 +102,7 @@ export default function MtmActivityPage() {
     const head = [t("colTime"), t("colAgent"), t("colAction"), t("colDetails")]
     const rows = logs.map(l => [
       new Date(l.createdAt).toISOString(),
-      l.agent?.name || t("systemActor"),
+      activityActorName(l, t),
       t(actionLabelKey(l.action)),
       detailsOf(l).label,
     ])
@@ -122,6 +122,10 @@ export default function MtmActivityPage() {
     // manager needs is WHERE — the customer's name, resolved by the API.
     const subject = l.subject as ActivitySubject | undefined
     if (subject?.customerName) return { label: subject.customerName, title: l.entityId ?? null }
+    // Audit 2026-09-21: «Запись» said nothing about a broadcast or a bulk
+    // assignment; the row's own facts do.
+    const summary = activityDataSummary(l, tt)
+    if (summary) return { label: summary, title: l.entityId ?? null }
     const k = kindKey(l.metadataKind)
     if (k) return { label: t(k), title: null }
     return mtmActivityEntityText(l, t)
@@ -251,7 +255,7 @@ export default function MtmActivityPage() {
         className={`flex items-center gap-3 px-4 py-2.5 border-b last:border-0 border-zinc-100 dark:border-zinc-800 ${clickable ? "cursor-pointer hover:bg-muted/40" : ""}`}
       >
         {/* agent avatar / initials */}
-        <Avatar name={log.agent?.name} avatar={log.agent?.avatar} />
+        <Avatar name={log.actor?.name ?? log.agent?.name} avatar={log.actor ? null : log.agent?.avatar} />
         {/* action icon + label */}
         {/* min-w-0 + truncate below sm: long localized actions ("Xəbərdarlıq
             yenidən açıldı") used to push the row past the right edge. */}
@@ -261,7 +265,7 @@ export default function MtmActivityPage() {
         </span>
         {/* agent name + details */}
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-medium truncate">{log.agent?.name || t("systemActor")}</div>
+          <div className="text-sm font-medium truncate">{activityActorName(log, t)}</div>
           {(() => {
             const details = detailsOf(log)
             return <div className="text-xs text-muted-foreground truncate" title={details.title ?? undefined}>{details.label}</div>
