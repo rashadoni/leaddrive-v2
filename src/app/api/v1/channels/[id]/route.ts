@@ -11,6 +11,7 @@ import { emailIntakeSettingsError } from "@/lib/ticketing/email-intake"
 import { validateChatwootBaseUrl } from "@/lib/chatwoot"
 import { auditChannelChange, changedCredentialFields } from "@/lib/channels/channel-credential-audit"
 import { isMetaInboxChannelType, mergeMetaSettingsForUpdate } from "@/lib/channels/meta-server-settings"
+import { channelSettingsForUpdate } from "@/lib/channels/server-owned-settings"
 
 const updateChannelSchema = z.object({
   channelType: z.string().min(1).optional(),
@@ -135,12 +136,19 @@ export async function PUT(
         if (typeof d[field] === "string" && d[field]!.trim() === "") delete d[field]
       }
 
+      // Every other type: a save must not erase what other screens and endpoints wrote, nor touch the settings of a
+      // row the form does not configure at all (lib/channels/server-owned-settings).
+      const otherTypeSettings = !isMeta && d.settings !== undefined
+        ? { settings: channelSettingsForUpdate(row.channelType, d.settings, row.settings) }
+        : {}
+
       const data = isWa
         ? {
             ...d,
             apiKey:      d.accessToken       ?? d.apiKey,
             phoneNumber: d.phoneNumberId     ?? d.phoneNumber,
             webhookUrl:  d.businessAccountId ?? d.webhookUrl,
+            ...otherTypeSettings,
           }
         : isTikTokChatwoot
           ? {
@@ -149,7 +157,7 @@ export async function PUT(
             }
         : isMeta && d.settings !== undefined
           ? { ...d, settings: mergeMetaSettingsForUpdate(d.settings, row.settings) }
-        : d
+        : { ...d, ...otherTypeSettings }
 
       if ((data.channelType ?? row.channelType) === "chatwoot") {
         try {
