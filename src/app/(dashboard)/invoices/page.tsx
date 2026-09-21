@@ -32,10 +32,14 @@ interface Invoice {
   companyId?: string
   status: string
   totalAmount?: number
+  paidAmount?: number
   currency: string
+  issueDate?: string
   dueDate?: string
   balanceDue?: number
   createdAt: string
+  /** Recorded payments — present because the list asks for them (include=payments). */
+  payments?: { amount: number; currency: string; paymentDate: string }[]
 }
 
 interface InvoiceStats {
@@ -95,6 +99,7 @@ export default function InvoicesPage() {
   const dealIdFilter = searchParams.get("dealId")
   useAutoTour("invoices")
   const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [invoiceTotal, setInvoiceTotal] = useState<number | undefined>(undefined)
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<string>("")
   const [tab, setTab] = useState<"analytics" | "list">("list")
@@ -126,13 +131,16 @@ export default function InvoicesPage() {
     setLoading(true)
     try {
       const res = await fetch(
-        `/api/v1/invoices?limit=500${statusFilter ? `&status=${statusFilter}` : ""}${dealIdFilter ? `&dealId=${dealIdFilter}` : ""}`,
+        `/api/v1/invoices?limit=500&include=payments${statusFilter ? `&status=${statusFilter}` : ""}${dealIdFilter ? `&dealId=${dealIdFilter}` : ""}`,
         {
           headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>,
         }
       )
       const json = await res.json()
-      if (json.success) setInvoices(json.data.invoices)
+      if (json.success) {
+        setInvoices(json.data.invoices)
+        setInvoiceTotal(typeof json.data.total === "number" ? json.data.total : undefined)
+      }
     } catch (err) {
       console.error(err)
     } finally {
@@ -445,23 +453,17 @@ export default function InvoicesPage() {
           <InvoicesAnalytics
             invoices={invoices.map(inv => ({
               id: inv.id,
-              invoiceNumber: inv.invoiceNumber,
-              title: inv.title,
-              amount: inv.totalAmount || 0,
-              paidAmount: (inv as any).paidAmount || 0,
               status: inv.status,
+              amount: inv.totalAmount || 0,
+              paidAmount: inv.paidAmount || 0,
               currency: inv.currency,
+              issueDate: inv.issueDate,
               dueDate: inv.dueDate,
-              company: inv.company ? { name: inv.company.name } : undefined,
               createdAt: inv.createdAt,
+              payments: inv.payments,
             }))}
-            stats={{
-              totalInvoiced: stats.totalInvoiced,
-              totalPaid: stats.totalPaid,
-              totalOutstanding: stats.totalOutstanding,
-              totalOverdue: stats.totalOverdue,
-            }}
-            currency={stats.currency || DEFAULT_CURRENCY}
+            total={invoiceTotal}
+            orgId={orgId}
           />
         </>
       ) : (

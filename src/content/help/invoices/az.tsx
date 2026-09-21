@@ -96,8 +96,13 @@ export default function InvoicesHelpAz() {
             «Ödəniş progressi» başlığı, yanında ödənilən / yekun məbləğ və yaşıl faiz; altında dolu
             zolaq; daha aşağıda rəngli nöqtələrlə say bölgüsü — <strong>Ödənilib</strong> (yaşıl),{" "}
             <strong>Gözləyir</strong> (narıncı), <strong>Gecikdirilmiş</strong> (qırmızı) və{" "}
-            <strong>Qismən ödənilib</strong> (sarı). Daha aşağıda gəlir, ödəniş statusu və debitor borcu
-            kimi qrafiklər gəlir.
+            <strong>Qismən ödənilib</strong> (sarı). Daha aşağıda qrafiklər gəlir: aylar üzrə gəlir,
+            ödəniş statusu, debitor borcu, həftəlik yığım, avto-fakturalar və valyuta üzrə bölgü. Onlar
+            yalnız qeydlərdə olanı göstərir. Müxtəlif valyutalarda məbləğlər toplanmır: qrafik ən böyük
+            valyuta ilə gedir, digərləri yanında sadalanır. Həftəlik yığım fakturalara qeydə alınmış
+            ödənişləri ödəniş tarixinə görə sayır, ona görə də ödəniş qeydə alınmadan ödənilmiş kimi
+            işarələnən faktura sütunlara düşmür. Avto-fakturalar aktiv təkrarlanan faktura qaydalarınızdır,
+            ən yaxın işə düşən birinci. Qeyd yoxdursa, qrafik «—» göstərir və ya bunu yazır.
           </HelpCallout>
         </HelpStep>
         <HelpStep n={4}>

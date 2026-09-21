@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useTranslations, useLocale } from "next-intl"
 import { MiniBarChart, MiniDonut } from "@/components/charts/mini-charts"
 import { cn } from "@/lib/utils"
@@ -12,64 +12,115 @@ import {
   BarChart3,
   PieChart,
 } from "lucide-react"
-import { DEFAULT_CURRENCY } from "@/lib/constants"
 import { formatDate } from "@/lib/format-date"
+import { getCurrencySymbol } from "@/lib/currency"
+import { formatBucket, formatExtras, type MoneyBucket } from "@/lib/deal-money"
+import {
+  averageDaysToPay,
+  billingByCurrency,
+  changeOnPrevious,
+  monthlyAverage,
+  monthlyBilled,
+  paidWithoutRecordedPayment,
+  receivablesAging,
+  recurringSummary,
+  weeklyCollections,
+  type CurrencySeries,
+  type InvoiceAnalyticsRecord,
+  type RecurringRuleRecord,
+} from "@/lib/invoices/analytics"
 
-interface Invoice {
-  id: string
-  invoiceNumber: string
-  title?: string
-  amount: number
-  paidAmount?: number
-  status: string
-  currency?: string
-  dueDate?: string
-  company?: { name: string }
-  createdAt: string
-}
+// Every figure on this tab comes from src/lib/invoices/analytics.ts, which may
+// not produce a number that no record holds. Where the records cannot answer,
+// the tab prints «—» or says why. Money is never added across currencies: each
+// chart leads with its largest currency and lists the others beside it.
 
 interface InvoicesAnalyticsProps {
-  invoices: Invoice[]
-  stats: {
-    totalInvoiced: number
-    totalPaid: number
-    totalOutstanding: number
-    totalOverdue: number
-  }
-  currency?: string
+  invoices: InvoiceAnalyticsRecord[]
+  /** How many invoices match; `invoices` may be only the latest of them. */
+  total?: number
+  orgId?: string | null
+}
+
+const WEEKS = 8
+const MONTHS = 12
+
+// Every status an invoice can hold, so the legend adds up to the count in the middle.
+const STATUS_ORDER = ["paid", "sent", "viewed", "overdue", "partially_paid", "draft", "cancelled", "refunded"]
+const STATUS_COLORS: Record<string, string> = {
+  paid: "#22c55e",
+  sent: "#3b82f6",
+  viewed: "#06b6d4",
+  overdue: "#ef4444",
+  partially_paid: "#f59e0b",
+  draft: "#6b7280",
+  cancelled: "#a855f7",
+  refunded: "#64748b",
 }
 
 // --- Helpers ---
 
-const currencySymbols: Record<string, string> = { USD: "$", EUR: "€", AZN: "₼", RUB: "₽", GBP: "£" }
-
-function getCurrencySymbol(currency: string): string {
-  return currencySymbols[currency] || currency
-}
-
-function formatCompact(n: number, currency = DEFAULT_CURRENCY) {
+function formatCompact(n: number, currency: string) {
   const sym = getCurrencySymbol(currency)
   if (n >= 1_000_000) return `${sym}${(n / 1_000_000).toFixed(1)}M`
   if (n >= 1_000) return `${sym}${(n / 1_000).toFixed(1)}K`
   return `${sym}${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
+function formatFull(n: number, currency: string) {
+  return `${getCurrencySymbol(currency)}${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+function asBucket(series: CurrencySeries): MoneyBucket {
+  return { currency: series.currency, value: series.total, count: series.count }
+}
+
+/** The largest currency, spelled out, and the others after it — never one sum. */
+function MoneyLine({ label, series }: { label: string; series: CurrencySeries[] }) {
+  if (series.length === 0) return null
+  const extras = formatExtras(series.slice(1).map(asBucket))
+  return (
+    <p className="text-[11px] text-muted-foreground">
+      {label}: <span className="font-medium text-foreground">{formatBucket(asBucket(series[0]))}</span>
+      {extras && <span className="ml-2">{extras}</span>}
+    </p>
+  )
+}
+
+function Muted({ children }: { children: React.ReactNode }) {
+  return <p className="text-sm text-muted-foreground">{children}</p>
+}
+
+// --- Recurring rules: GET /api/v1/recurring-invoices ---
+
+type Source<T> = { state: "loading" } | { state: "ready"; data: T } | { state: "failed" }
+
+function useRecurringRules(orgId: string | null | undefined): Source<RecurringRuleRecord[]> {
+  const [source, setSource] = useState<Source<RecurringRuleRecord[]>>({ state: "loading" })
+  useEffect(() => {
+    const controller = new AbortController()
+    const headers: Record<string, string> = orgId ? { "x-organization-id": String(orgId) } : {}
+    fetch("/api/v1/recurring-invoices", { headers, signal: controller.signal })
+      .then(async (res) => {
+        const json = res.ok ? await res.json() : null
+        const rows = json?.success && Array.isArray(json.data) ? (json.data as RecurringRuleRecord[]) : null
+        if (!controller.signal.aborted) setSource(rows ? { state: "ready", data: rows } : { state: "failed" })
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setSource({ state: "failed" })
+      })
+    return () => controller.abort()
+  }, [orgId])
+  return source
+}
+
 // --- Component ---
 
-export function InvoicesAnalytics({ invoices, stats, currency = DEFAULT_CURRENCY }: InvoicesAnalyticsProps) {
+export function InvoicesAnalytics({ invoices, total, orgId }: InvoicesAnalyticsProps) {
   const t = useTranslations("invoices")
   const tc = useTranslations("common")
   const locale = useLocale()
-
-  // Status colors & labels
-  const statusColors: Record<string, string> = {
-    paid: "#22c55e",
-    sent: "#3b82f6",
-    overdue: "#ef4444",
-    partially_paid: "#f59e0b",
-    draft: "#6b7280",
-    cancelled: "#a855f7",
-  }
+  const recurring = useRecurringRules(orgId)
 
   // Compute status distribution from real data
   const statusCounts = useMemo(() => {
@@ -84,86 +135,36 @@ export function InvoicesAnalytics({ invoices, stats, currency = DEFAULT_CURRENCY
   const totalInvoiceCount = invoices.length
 
   const donutSegments = useMemo(() => {
-    const order = ["paid", "sent", "overdue", "partially_paid", "draft", "cancelled"]
-    return order
+    return STATUS_ORDER
       .filter((s) => statusCounts[s])
       .map((s) => ({
         pct: totalInvoiceCount > 0 ? (statusCounts[s] / totalInvoiceCount) * 100 : 0,
-        color: statusColors[s],
+        color: STATUS_COLORS[s],
         label: t(`status.${s}`),
         count: statusCounts[s],
       }))
   }, [statusCounts, totalInvoiceCount, t])
 
-  // Revenue trend - derive monthly totals from createdAt, pad to 12 months
-  const monthlyRevenue = useMemo(() => {
-    const now = new Date()
-    const months: number[] = Array(12).fill(0)
-    for (const inv of invoices) {
-      const d = new Date(inv.createdAt)
-      const diffMonths =
-        (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth())
-      if (diffMonths >= 0 && diffMonths < 12) {
-        months[11 - diffMonths] += inv.amount
-      }
-    }
-    return months
-  }, [invoices])
+  const billed = useMemo(() => monthlyBilled(invoices, new Date(), MONTHS), [invoices])
+  const weekly = useMemo(() => weeklyCollections(invoices, new Date(), WEEKS), [invoices])
+  const aging = useMemo(() => receivablesAging(invoices, new Date()), [invoices])
+  const standing = useMemo(() => billingByCurrency(invoices), [invoices])
+  const daysToPay = useMemo(() => averageDaysToPay(invoices), [invoices])
+  const unrecordedPaid = useMemo(() => paidWithoutRecordedPayment(invoices), [invoices])
 
-  const revenueTrendPct = useMemo(() => {
-    const curr = monthlyRevenue[11] || 0
-    const prev = monthlyRevenue[10] || 1
-    return Math.round(((curr - prev) / prev) * 100)
-  }, [monthlyRevenue])
+  const trendLead = billed.byCurrency[0] ?? null
+  const trendChange = trendLead ? changeOnPrevious(trendLead.values) : null
+  const monthlyAvg = trendLead ? monthlyAverage(trendLead) : null
+  const weeklyLead = weekly.byCurrency[0] ?? null
+  const agingLead = aging[0] ?? null
+  const rateLead = standing[0] ?? null
+  const rules = recurring.state === "ready" ? recurringSummary(recurring.data) : null
 
-  // Month labels — derive short names from locale-aware Date formatting
-  const localeMap: Record<string, string> = { ru: "ru-RU", en: "en-US", az: "az-AZ" }
-  const monthLabels = useMemo(() => {
-    const loc = localeMap[locale] || locale
-    return Array.from({ length: 12 }, (_, i) => {
-      const d = new Date(2026, i, 1)
-      return d.toLocaleString(loc, { month: "short" }).replace(".", "")
-    })
-  }, [locale])
-
-  const displayMonthLabels = useMemo(() => {
-    const currMonth = new Date().getMonth()
-    const ordered = [
-      ...monthLabels.slice(currMonth + 1),
-      ...monthLabels.slice(0, currMonth + 1),
-    ]
-    return ordered.filter((_, i) => i % 2 === 0)
-  }, [monthLabels])
-
-  // Accounts receivable aging - derive from dueDate, using ACTUAL outstanding
-  const agingBuckets = useMemo(() => {
-    const now = Date.now()
-    const buckets = [0, 0, 0, 0, 0]
-    for (const inv of invoices) {
-      if (["paid", "cancelled", "draft"].includes(inv.status.toLowerCase())) continue
-      const outstanding = inv.amount - (inv.paidAmount || 0)
-      if (outstanding <= 0) continue
-      if (!inv.dueDate) {
-        buckets[0] += outstanding
-        continue
-      }
-      const dueTime = new Date(inv.dueDate).getTime()
-      const daysOverdue = Math.floor((now - dueTime) / 86_400_000)
-      // Not yet overdue → bucket 0 (current)
-      if (daysOverdue <= 0) {
-        buckets[0] += outstanding
-      } else if (daysOverdue <= 30) {
-        buckets[1] += outstanding
-      } else if (daysOverdue <= 60) {
-        buckets[2] += outstanding
-      } else if (daysOverdue <= 90) {
-        buckets[3] += outstanding
-      } else {
-        buckets[4] += outstanding
-      }
-    }
-    return buckets
-  }, [invoices])
+  const monthLabels = billed.months
+    .map((m) => formatDate(new Date(m.year, m.month, 1), locale, { month: "short" }).replace(".", ""))
+    .filter((_, i) => i % 2 === 0)
+  const weekLabels = weekly.weeks.map((w) => formatDate(w, locale, { day: "2-digit", month: "2-digit" }))
+  const weekTitles = weekLeadTitles(weekly.weeks, weeklyLead, locale)
 
   const daysLabel = tc("days")
   const agingLabels = [
@@ -174,124 +175,67 @@ export function InvoicesAnalytics({ invoices, stats, currency = DEFAULT_CURRENCY
     `90+ ${daysLabel}`,
   ]
   const agingColors = ["bg-emerald-500", "bg-blue-500", "bg-yellow-500", "bg-orange-500", "bg-red-500"]
-  const agingTotal = agingBuckets.reduce((a, b) => a + b, 0)
 
-  // Weekly collection - derived data (8 weeks)
-  const weeklyCollection = useMemo(() => {
-    const base = stats.totalPaid / 12 / 4
-    return Array.from({ length: 8 }, (_, i) => Math.round(base * (0.7 + Math.random() * 0.6 + i * 0.03)))
-  }, [stats.totalPaid])
-
-  const collectionRate = stats.totalInvoiced > 0 ? Math.round((stats.totalPaid / stats.totalInvoiced) * 100) : 0
-
-  // DSO calculation
-  const avgPayDays = useMemo(() => {
-    const paidInvoices = invoices.filter(inv => inv.status.toLowerCase() === "paid")
-    if (paidInvoices.length === 0) return 0
-    // Approximate DSO from data
-    return Math.round((stats.totalOutstanding / Math.max(stats.totalInvoiced / 365, 1)))
-  }, [invoices, stats])
-
-  const monthlyInvoiceAvg = formatCompact(stats.totalInvoiced / Math.max(invoices.length > 0 ? 12 : 1, 1), currency)
-
-  // Recurring invoices from actual data
-  const autoInvoices = useMemo(() => {
-    return invoices
-      .filter((inv: any) => inv.recurringInvoiceId)
-      .slice(0, 5)
-      .map(inv => ({
-        company: inv.company?.name || "—",
-        frequency: t("monthly"),
-        next: inv.dueDate ? formatDate(inv.dueDate, locale) : "—",
-        amount: formatCompact(inv.amount, inv.currency || currency),
-      }))
-  }, [invoices, currency, t, locale])
-
-  // Fallback auto-invoices if none found
-  const displayAutoInvoices = autoInvoices.length > 0 ? autoInvoices : [
-    { company: "TechCorp Solutions", frequency: t("monthly"), next: formatDate(new Date(2026, 3, 15), locale), amount: formatCompact(2400, currency) },
-    { company: "DataFlow Inc.", frequency: t("monthly"), next: formatDate(new Date(2026, 4, 1), locale), amount: formatCompact(3800, currency) },
-    { company: "CloudNet Systems", frequency: t("quarterly"), next: formatDate(new Date(2026, 6, 1), locale), amount: formatCompact(12000, currency) },
-  ]
-
-  // Currency breakdown - derive from invoices
-  const currencyData = useMemo(() => {
-    const map: Record<string, { total: number; paid: number }> = {}
-    for (const inv of invoices) {
-      const c = inv.currency || DEFAULT_CURRENCY
-      if (!map[c]) map[c] = { total: 0, paid: 0 }
-      map[c].total += inv.amount
-      if (inv.status.toLowerCase() === "paid") map[c].paid += inv.amount
-      else map[c].paid += inv.paidAmount || 0
-    }
-    return Object.entries(map)
-      .sort((a, b) => b[1].total - a[1].total)
-      .slice(0, 3)
-      .map(([cur, data]) => ({
-        currency: cur,
-        symbol: getCurrencySymbol(cur),
-        total: data.total,
-        paid: data.paid,
-        pct: data.total > 0 ? Math.round((data.paid / data.total) * 100) : 0,
-      }))
-  }, [invoices])
-
-  const displayCurrency = currencyData.length > 0 ? currencyData : [
-    { currency: DEFAULT_CURRENCY, symbol: "₼", total: 0, paid: 0, pct: 0 },
-  ]
-
-  // Translated section titles
-  const titleRevenueTrend = t("revenueTrend")
-  const titlePaymentStatus = t("paymentStatus")
-  const titleDebtorDebt = t("debtorDebt")
-  const titleWeeklyCollection = t("weeklyCollection")
-  const titleAutoInvoices = t("autoInvoices")
-  const titleByCurrency = t("byCurrency")
-  const labelCollectionRate = t("collectionRate")
-  const labelAvgPayDays = t("avgPayDays")
-  const labelMonthlyAvg = t("monthlyAvg")
-  const labelPaid = t("labelPaid")
-  const labelRemaining = t("labelRemaining")
-  const labelActive = t("active")
-  const labelTotal = tc("total")
+  const frequencyLabel = (frequency: string, interval: number) => {
+    const known = ["daily", "weekly", "monthly", "quarterly", "yearly"].includes(frequency)
+    const label = known ? t(frequency) : frequency
+    return interval > 1 ? `${interval} × ${label}` : label
+  }
 
   return (
     <div className="space-y-4">
+      {total != null && total > invoices.length && (
+        <p className="text-xs text-muted-foreground">{t("analyticsBasedOnLatest", { count: invoices.length, total })}</p>
+      )}
+
       {/* Row 1: Revenue Trend + Payment Status */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Revenue Trend */}
-        <div className="bg-card text-card-foreground border border-zinc-200 dark:border-zinc-700 rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4">
+        {/* Revenue Trend — the largest currency; the others are listed, not added */}
+        <div
+          data-testid="invoices-analytics-trend"
+          className="bg-card text-card-foreground border border-zinc-200 dark:border-zinc-700 rounded-xl p-5"
+        >
+          <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              <h3 className="text-sm font-semibold">{titleRevenueTrend}</h3>
+              <h3 className="text-sm font-semibold">{t("revenueTrend")}</h3>
             </div>
-            <span
-              className={cn(
-                "text-xs font-medium px-2 py-0.5 rounded-full",
-                revenueTrendPct >= 0
-                  ? "bg-emerald-500/10 text-emerald-500"
-                  : "bg-red-500/10 text-red-500"
-              )}
-            >
-              {revenueTrendPct >= 0 ? "↑" : "↓"} {Math.abs(revenueTrendPct)}%
-            </span>
+            {trendChange != null && (
+              <span
+                className={cn(
+                  "text-xs font-medium px-2 py-0.5 rounded-full",
+                  trendChange >= 0
+                    ? "bg-emerald-500/10 text-emerald-500"
+                    : "bg-red-500/10 text-red-500"
+                )}
+              >
+                {trendChange >= 0 ? "↑" : "↓"} {Math.abs(Math.round(trendChange))}%
+              </span>
+            )}
           </div>
-          <div className="h-32">
-            <RevenueTrendChart data={monthlyRevenue} />
-          </div>
-          <div className="flex justify-between mt-3 text-xs text-muted-foreground">
-            {displayMonthLabels.map((m) => (
-              <span key={m}>{m}</span>
-            ))}
-          </div>
+          <p className="text-[11px] text-muted-foreground mb-3">{t("revenueTrendBasis")}</p>
+          {trendLead ? (
+            <>
+              <div className="h-32">
+                <RevenueTrendChart data={trendLead.values} />
+              </div>
+              <div className="flex justify-between mt-3 mb-2 text-xs text-muted-foreground">
+                {monthLabels.map((m, i) => (
+                  <span key={`${m}-${i}`}>{m}</span>
+                ))}
+              </div>
+              <MoneyLine label={t("lastMonths", { count: MONTHS })} series={billed.byCurrency} />
+            </>
+          ) : (
+            <Muted>{t("noBilledInPeriod", { count: MONTHS })}</Muted>
+          )}
         </div>
 
         {/* Payment Status Donut */}
         <div className="bg-card text-card-foreground border border-zinc-200 dark:border-zinc-700 rounded-xl p-5">
           <div className="flex items-center gap-2 mb-4">
             <PieChart className="h-4 w-4 text-muted-foreground" />
-            <h3 className="text-sm font-semibold">{titlePaymentStatus}</h3>
+            <h3 className="text-sm font-semibold">{t("paymentStatus")}</h3>
           </div>
           <div className="flex items-center gap-6">
             <div className="relative">
@@ -319,140 +263,216 @@ export function InvoicesAnalytics({ invoices, stats, currency = DEFAULT_CURRENCY
 
       {/* Row 2: Accounts Receivable Aging + Weekly Collection */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Accounts Receivable Aging */}
-        <div className="bg-card text-card-foreground border border-zinc-200 dark:border-zinc-700 rounded-xl p-5">
+        {/* Accounts Receivable Aging — the largest currency owed */}
+        <div
+          data-testid="invoices-analytics-aging"
+          className="bg-card text-card-foreground border border-zinc-200 dark:border-zinc-700 rounded-xl p-5"
+        >
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4 text-muted-foreground" />
-              <h3 className="text-sm font-semibold">{titleDebtorDebt}</h3>
+              <h3 className="text-sm font-semibold">{t("debtorDebt")}</h3>
             </div>
-            <span className="text-xs text-muted-foreground">
-              {labelTotal}: {formatCompact(agingTotal, currency)}
-            </span>
+            {agingLead && (
+              <span className="text-xs text-muted-foreground">
+                {tc("total")}: {formatCompact(agingLead.total, agingLead.currency)}
+              </span>
+            )}
           </div>
-          <div className="space-y-3">
-            {agingBuckets.map((val, i) => {
-              const pct = agingTotal > 0 ? (val / agingTotal) * 100 : 0
-              return (
-                <div key={i} className="flex items-center gap-3">
-                  <span className="text-xs text-muted-foreground w-20 shrink-0">
-                    {agingLabels[i]}
-                  </span>
-                  <div className="flex-1 h-5 bg-muted/30 rounded-full overflow-hidden">
-                    <div
-                      className={cn("h-full rounded-full", agingColors[i])}
-                      style={{ width: `${Math.max(pct, 2)}%` }}
-                    />
-                  </div>
-                  <span className="text-xs font-medium w-20 text-right">
-                    {formatCompact(val, currency)}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
+          {agingLead ? (
+            <>
+              <div className="space-y-3">
+                {agingLead.values.map((val, i) => {
+                  const pct = agingLead.total > 0 ? (val / agingLead.total) * 100 : 0
+                  return (
+                    <div key={i} className="flex items-center gap-3">
+                      <span className="text-xs text-muted-foreground w-20 shrink-0">
+                        {agingLabels[i]}
+                      </span>
+                      <div className="flex-1 h-5 bg-muted/30 rounded-full overflow-hidden">
+                        <div
+                          className={cn("h-full rounded-full", agingColors[i])}
+                          style={{ width: `${val > 0 ? Math.max(pct, 2) : 0}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-medium w-20 text-right">
+                        {formatCompact(val, agingLead.currency)}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+              {aging.length > 1 && (
+                <p className="mt-3 text-[11px] text-muted-foreground">
+                  {t("otherCurrencies")}: {formatExtras(aging.slice(1).map(asBucket))}
+                </p>
+              )}
+            </>
+          ) : (
+            <Muted>{t("noOutstanding")}</Muted>
+          )}
         </div>
 
-        {/* Weekly Collection */}
-        <div className="bg-card text-card-foreground border border-zinc-200 dark:border-zinc-700 rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-4">
+        {/* Weekly Collection — recorded payments by payment date */}
+        <div
+          data-testid="invoices-analytics-weekly"
+          className="bg-card text-card-foreground border border-zinc-200 dark:border-zinc-700 rounded-xl p-5"
+        >
+          <div className="flex items-center gap-2 mb-1">
             <CalendarClock className="h-4 w-4 text-muted-foreground" />
-            <h3 className="text-sm font-semibold">{titleWeeklyCollection}</h3>
+            <h3 className="text-sm font-semibold">{t("weeklyCollection")}</h3>
           </div>
-          <MiniBarChart data={weeklyCollection} color="bg-violet-500" height="h-24" />
-          <div className="flex justify-between mt-1 text-[10px] text-muted-foreground mb-3">
-            {["H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8"].map((w) => (
-              <span key={w}>{w}</span>
-            ))}
-          </div>
-          <div className="grid grid-cols-3 gap-2 pt-3 border-t">
-            <div className="text-center">
-              <p className="text-lg font-bold">{collectionRate}%</p>
-              <p className="text-[10px] text-muted-foreground">{labelCollectionRate}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-lg font-bold">{avgPayDays}</p>
-              <p className="text-[10px] text-muted-foreground">{labelAvgPayDays}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-lg font-bold">{monthlyInvoiceAvg}</p>
-              <p className="text-[10px] text-muted-foreground">{labelMonthlyAvg}</p>
-            </div>
+          <p className="text-[11px] text-muted-foreground mb-3">{t("weeklyCollectionBasis")}</p>
+          {weeklyLead ? (
+            <>
+              <div data-testid="invoices-analytics-weekly-bars">
+                <MiniBarChart data={weeklyLead.values} titles={weekTitles} zeroIsEmpty color="bg-violet-500" height="h-24" />
+              </div>
+              <div className="flex mt-1 text-[10px] text-muted-foreground mb-2">
+                {weekLabels.map((w, i) => (
+                  <span key={`${w}-${i}`} className="flex-1 text-center">{w}</span>
+                ))}
+              </div>
+              <MoneyLine label={t("lastWeeks", { count: WEEKS })} series={weekly.byCurrency} />
+            </>
+          ) : (
+            <Muted>{t("noPaymentsInWeeks", { count: WEEKS })}</Muted>
+          )}
+          {unrecordedPaid > 0 && (
+            <p className="mt-1 text-[11px] text-muted-foreground">{t("paidWithoutPayment", { count: unrecordedPaid })}</p>
+          )}
+          <div className="grid grid-cols-3 gap-2 pt-3 mt-3 border-t">
+            <MiniStat
+              testId="collection-rate"
+              value={rateLead?.percent != null ? `${Math.round(rateLead.percent)}%` : "—"}
+              label={standing.length > 1 && rateLead ? `${t("collectionRate")} · ${rateLead.currency}` : t("collectionRate")}
+              note={rateLead?.percent != null ? undefined : t("noBilledYet")}
+            />
+            <MiniStat
+              testId="days-to-pay"
+              value={daysToPay ? String(daysToPay.days) : "—"}
+              label={t("avgPayDays")}
+              note={daysToPay ? t("overInvoices", { count: daysToPay.count }) : t("noSettledPayments")}
+            />
+            <MiniStat
+              testId="monthly-avg"
+              value={monthlyAvg && trendLead ? formatCompact(monthlyAvg.value, trendLead.currency) : "—"}
+              label={t("monthlyAvg")}
+              note={monthlyAvg ? t("overMonths", { count: monthlyAvg.months }) : t("noBilledInPeriod", { count: MONTHS })}
+            />
           </div>
         </div>
       </div>
 
       {/* Row 3: Auto-invoices + Currency Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Auto-invoices */}
-        <div className="bg-card text-card-foreground border border-zinc-200 dark:border-zinc-700 rounded-xl p-5">
+        {/* Auto-invoices — active recurring rules, soonest run first */}
+        <div
+          data-testid="invoices-analytics-recurring"
+          className="bg-card text-card-foreground border border-zinc-200 dark:border-zinc-700 rounded-xl p-5"
+        >
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Repeat className="h-4 w-4 text-muted-foreground" />
-              <h3 className="text-sm font-semibold">{titleAutoInvoices}</h3>
+              <h3 className="text-sm font-semibold">{t("autoInvoices")}</h3>
             </div>
-            <span className="text-xs font-medium bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full">
-              {displayAutoInvoices.length} {labelActive}
-            </span>
+            {rules && (
+              <span className="text-xs font-medium bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full">
+                {t("activeRules", { count: rules.active })}
+              </span>
+            )}
           </div>
-          <div className="space-y-2.5">
-            {displayAutoInvoices.map((item, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between text-xs py-1.5 border-b last:border-0 border-zinc-200/50 dark:border-zinc-700/50"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium truncate">{item.company}</p>
-                  <p className="text-muted-foreground">
-                    {item.frequency} · {t("nextRun")}: {item.next}
-                  </p>
+          {recurring.state === "loading" ? (
+            <Muted>…</Muted>
+          ) : recurring.state === "failed" ? (
+            <Muted>{t("dataUnavailable")}</Muted>
+          ) : rules && rules.upcoming.length > 0 ? (
+            <div className="space-y-2.5">
+              {rules.upcoming.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between text-xs py-1.5 border-b last:border-0 border-zinc-200/50 dark:border-zinc-700/50"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium truncate">{item.name}</p>
+                    <p className="text-muted-foreground">
+                      {frequencyLabel(item.frequency, item.intervalCount)} · {t("nextRun")}:{" "}
+                      {item.nextRunDate ? formatDate(item.nextRunDate, locale) : "—"}
+                    </p>
+                  </div>
+                  <span className="font-semibold ml-3 shrink-0">{formatCompact(item.amount, item.currency)}</span>
                 </div>
-                <span className="font-semibold ml-3 shrink-0">{item.amount}</span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <Muted>{t("noRecurringRules")}</Muted>
+          )}
         </div>
 
-        {/* Currency Breakdown */}
-        <div className="bg-card text-card-foreground border border-zinc-200 dark:border-zinc-700 rounded-xl p-5">
+        {/* Currency Breakdown — billed invoices only */}
+        <div
+          data-testid="invoices-analytics-currency"
+          className="bg-card text-card-foreground border border-zinc-200 dark:border-zinc-700 rounded-xl p-5"
+        >
           <div className="flex items-center gap-2 mb-4">
             <Coins className="h-4 w-4 text-muted-foreground" />
-            <h3 className="text-sm font-semibold">{titleByCurrency}</h3>
+            <h3 className="text-sm font-semibold">{t("byCurrency")}</h3>
           </div>
-          <div className="space-y-4">
-            {displayCurrency.map((c) => (
-              <div key={c.currency}>
-                <div className="flex items-center justify-between text-xs mb-1.5">
-                  <span className="font-semibold">
-                    {c.currency}{" "}
-                    <span className="font-normal text-muted-foreground">
-                      {c.symbol}
-                      {c.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          {standing.length === 0 ? (
+            <Muted>{t("noBilledYet")}</Muted>
+          ) : (
+            <div className="space-y-4">
+              {standing.map((c) => (
+                <div key={c.currency}>
+                  <div className="flex items-center justify-between text-xs mb-1.5">
+                    <span className="font-semibold">
+                      {c.currency}{" "}
+                      <span className="font-normal text-muted-foreground">{formatFull(c.billed, c.currency)}</span>
                     </span>
-                  </span>
-                  <span className="text-muted-foreground">{c.pct}% {labelPaid.toLowerCase()}</span>
+                    <span className="text-muted-foreground">
+                      {c.percent != null ? `${Math.round(c.percent)}%` : "—"} {t("labelPaid").toLowerCase()}
+                    </span>
+                  </div>
+                  <div className="h-3 bg-muted/30 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-500 rounded-full transition-all"
+                      style={{ width: `${Math.min(100, c.percent ?? 0)}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+                    <span>
+                      {t("labelPaid")}: {formatFull(c.paid, c.currency)}
+                    </span>
+                    <span>
+                      {t("labelRemaining")}: {formatFull(c.outstanding, c.currency)}
+                    </span>
+                  </div>
                 </div>
-                <div className="h-3 bg-muted/30 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-emerald-500 rounded-full transition-all"
-                    style={{ width: `${c.pct}%` }}
-                  />
-                </div>
-                <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-                  <span>
-                    {labelPaid}: {c.symbol}
-                    {c.paid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                  <span>
-                    {labelRemaining}: {c.symbol}
-                    {(c.total - c.paid).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
+    </div>
+  )
+}
+
+function weekLeadTitles(weeks: Date[], lead: CurrencySeries | null, locale: string): string[] | undefined {
+  if (!lead) return undefined
+  return weeks.map((start, i) => {
+    const end = new Date(start)
+    end.setDate(end.getDate() + 6)
+    const range = `${formatDate(start, locale, { day: "2-digit", month: "2-digit" })}–${formatDate(end, locale, { day: "2-digit", month: "2-digit" })}`
+    return `${range}: ${formatBucket({ currency: lead.currency, value: lead.values[i], count: 0 })}`
+  })
+}
+
+function MiniStat({ testId, value, label, note }: { testId: string; value: string; label: string; note?: string }) {
+  return (
+    <div data-testid={`invoices-analytics-${testId}`} className="text-center min-w-0">
+      <p className="text-lg font-bold">{value}</p>
+      <p className="text-[10px] text-muted-foreground">{label}</p>
+      {note && <p className="text-[10px] leading-snug text-muted-foreground/80 break-words">{note}</p>}
     </div>
   )
 }

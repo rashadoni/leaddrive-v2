@@ -2,15 +2,34 @@
 
 import { cn } from "@/lib/utils"
 
-export function MiniBarChart({ data, color = "bg-violet-400", height = "h-8" }: { data: number[]; color?: string; height?: string }) {
+/**
+ * Every bar is drawn at least 4% tall so a small value stays visible — and so,
+ * by default, is a zero. `zeroIsEmpty` draws a zero as nothing, so an empty
+ * week cannot pass for a week with a little money in it. `titles` labels each
+ * bar on hover.
+ */
+export function MiniBarChart({
+  data,
+  color = "bg-violet-400",
+  height = "h-8",
+  zeroIsEmpty = false,
+  titles,
+}: {
+  data: number[]
+  color?: string
+  height?: string
+  zeroIsEmpty?: boolean
+  titles?: string[]
+}) {
   const max = Math.max(...data, 1)
   return (
     <div className={cn("flex items-end gap-[2px]", height)}>
       {data.map((v, i) => (
         <div
           key={i}
+          title={titles?.[i]}
           className={cn("flex-1 rounded-t-sm", color)}
-          style={{ height: `${Math.max((v / max) * 100, 4)}%` }}
+          style={{ height: zeroIsEmpty && !(v > 0) ? "0%" : `${Math.max((v / max) * 100, 4)}%` }}
         />
       ))}
     </div>
