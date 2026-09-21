@@ -28,7 +28,7 @@ const db = vi.hoisted(() => ({
   taskActivityCreateMany: vi.fn(async () => ({ count: 1 })),
   dealFindFirst: vi.fn(),
   dealUpdateMany: vi.fn(async () => ({ count: 1 })),
-  userFindFirst: vi.fn(async () => ({ id: "user-2" })),
+  userFindFirst: vi.fn(async (): Promise<{ id: string } | null> => ({ id: "user-2" })),
   divisionFindFirst: vi.fn(async () => ({ headUserId: null, parentDivisionId: null, parent: null })),
   boardPermissionFindUnique: vi.fn(async () => null),
   applyRecordFilter: vi.fn(async (_o: string, _u: string, _r: string, _t: string, where: object) => where),
