@@ -35,6 +35,7 @@ export type EnsureInboxChannelOptions = {
    * Staged mode therefore (a) confines the upsert to rows that are themselves staged, so a
    * pre-existing row is never read-modify-written, and (b) performs NO subscription — subscribing a
    * real asset is a deliberate act, done one page at a time through the explicit subscribe endpoint.
+   * For the same reason the Facebook callback writes no SocialAccount at all on a staged connect.
    */
   staged?: boolean
 }
