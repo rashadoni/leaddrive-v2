@@ -260,9 +260,10 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
       requires: [],
       entryStates: ["AI_REPLIED"],
       exitStates: ["LEAD_CREATED"],
-      // Not shown to prospects: the recorded clip was filmed in LeadDrive Inc.
-      // and its frames carry real leads — names, companies, amounts. It stays
-      // "planned" until it is re-recorded on the synthetic `demo` tenant.
+      // Not shown to prospects: the recorded clip was filmed on LeadDrive
+      // Inc.'s own records (the owner's test data, 2026-09-21), not on the
+      // synthetic `demo` stand a prospect should be walked through. It stays
+      // "planned" until it is re-recorded there.
       intro: { slug: "leads", caption: "Liderlər siyahısı və kart — bir dəqiqəlik icmal.", status: "planned" },
       assistantPrompts: ["Bu liderin mənbəyi nədir?", "Lider kartında hansı vərəqlər var?"],
       steps: [

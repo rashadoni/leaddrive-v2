@@ -338,11 +338,12 @@ describe("Guided journey intro clips", () => {
     }
   })
 
-  it("shows prospects only clips checked to carry no real customer data", () => {
-    // 2026-09-21: the help library's leads and boards clips were filmed in
-    // LeadDrive Inc. and show real leads and tasks with client names. A clip
-    // enters the demo only after its frames were looked at, and is listed
-    // here with what it shows, so the next one gets looked at too.
+  it("shows prospects only clips whose frames were looked at", () => {
+    // 2026-09-21: the help library's leads and boards clips turned out to be
+    // filmed on LeadDrive Inc.'s own records (the owner's test data) rather
+    // than on a clean stand. A clip enters the demo only after its frames were
+    // looked at, and is listed here with what it shows, so the next one gets
+    // looked at too.
     const CHECKED_SYNTHETIC: Record<string, string> = {
       "deal-detail": "a TEST deal («TEST: GlobalTech Analytics Platform»)",
       quotes: "test quotes (3232, sa, ADV-DEMO-Q-001, q-2026-v333, Q-TRACK-001)",
