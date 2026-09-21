@@ -9,7 +9,7 @@
  * back/forward can never repeat an effect.
  */
 import { applyTransitionEffects, createJourneyRecords, type DemoJourneyRecords, type DemoProspectIdentity } from "./records"
-import { canTransition, isTerminalJourneyState } from "./state"
+import { canTransition, isTerminalJourneyState, journeyPath } from "./state"
 import type { DemoJourneyManifest, DemoJourneySection, DemoJourneyState, DemoJourneyStep } from "./types"
 import { DEMO_JOURNEY_STATES } from "./types"
 
@@ -41,6 +41,7 @@ export type DemoJourneyAction =
   | { readonly type: "skip-step"; readonly stepId: string }
   | { readonly type: "ui"; readonly path: string; readonly value: DemoUiValue }
   | { readonly type: "transition"; readonly stepId: string; readonly to: DemoJourneyState }
+  | { readonly type: "outcome"; readonly stepId: string; readonly to: DemoJourneyState }
   | { readonly type: "expire" }
   | { readonly type: "revoke" }
 
@@ -191,6 +192,19 @@ export function reduceJourney(
         records: applyTransitionEffects(snapshot.records, action.to, snapshot.identity, now),
         completedAt: action.to === "COMPLETED" ? now.toISOString() : snapshot.completedAt,
       }
+      return { ok: true, snapshot: closeStep(moved, manifest, step.id, now), completedStep: step.id, transitioned: action.to }
+    }
+
+    case "outcome": {
+      if (action.stepId !== step.id) return fail(`"${action.stepId}" is not the current step ("${step.id}")`)
+      const rule = step.completion
+      if (rule.kind !== "outcome") return fail(`"${step.id}" does not wait for an outcome`)
+      if (!rule.to.includes(action.to)) return fail(`"${step.id}" cannot end in ${action.to}`)
+      const path = journeyPath(snapshot.state, action.to)
+      if (!path) return fail(`no legal path ${snapshot.state} → ${action.to}`)
+      let records = snapshot.records
+      for (const state of path) records = applyTransitionEffects(records, state, snapshot.identity, now)
+      const moved: DemoJourneySnapshot = { ...snapshot, state: action.to, records }
       return { ok: true, snapshot: closeStep(moved, manifest, step.id, now), completedStep: step.id, transitioned: action.to }
     }
 

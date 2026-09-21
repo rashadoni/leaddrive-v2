@@ -120,11 +120,19 @@ export type DemoJourneyEvent = (typeof DEMO_JOURNEY_EVENTS)[number]
  * «Complete» without the action happening is exactly what we refuse to
  * copy). `snapshot` requires a field of the session snapshot to hold a value
  * (a tab switched, a record field changed) without moving the journey state.
+ *
+ * `outcome` is for a step whose result the demo does not decide: the real
+ * world does. A live AI call can be answered, missed, busy, refused by the
+ * policy, or left uncertain, and the story must record which one happened
+ * rather than pretend. The step closes on any listed state, reached along a
+ * legal path of transitions (queued → calling → answered), and every listed
+ * state must end the section. The first entry is the story's own ending.
  */
 export type DemoCompletionRule =
   | { readonly kind: "viewed" }
   | { readonly kind: "transition"; readonly to: DemoJourneyState }
   | { readonly kind: "snapshot"; readonly path: string; readonly equals: string | number | boolean }
+  | { readonly kind: "outcome"; readonly to: readonly DemoJourneyState[] }
 
 /**
  * A short clip from the existing help-video pipeline

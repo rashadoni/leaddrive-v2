@@ -77,6 +77,38 @@ export function isTerminalJourneyState(state: DemoJourneyState): boolean {
   return DEMO_JOURNEY_TERMINAL_STATES.includes(state)
 }
 
+/**
+ * The shortest legal walk from `from` to `to`, excluding `from` itself, or
+ * null if the transitions do not connect them. An `outcome` step uses it to
+ * pass through the states the world went through (queued, calling) on the way
+ * to what actually happened.
+ */
+export function journeyPath(from: DemoJourneyState, to: DemoJourneyState): readonly DemoJourneyState[] | null {
+  if (from === to) return null
+  const previous = new Map<DemoJourneyState, DemoJourneyState>()
+  const queue: DemoJourneyState[] = [from]
+  const seen = new Set<DemoJourneyState>([from])
+  while (queue.length) {
+    const current = queue.shift()!
+    for (const next of DEMO_JOURNEY_TRANSITIONS[current]) {
+      if (seen.has(next)) continue
+      seen.add(next)
+      previous.set(next, current)
+      if (next === to) {
+        const path: DemoJourneyState[] = [to]
+        let cursor = current
+        while (cursor !== from) {
+          path.unshift(cursor)
+          cursor = previous.get(cursor)!
+        }
+        return path
+      }
+      queue.push(next)
+    }
+  }
+  return null
+}
+
 export function canTransition(from: DemoJourneyState, to: DemoJourneyState): boolean {
   if (from === to) return false
   if (isTerminalJourneyState(from)) return false

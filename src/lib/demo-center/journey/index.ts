@@ -7,6 +7,7 @@ export * from "./snapshot"
 export { DEMO_PRODUCT_AREAS_WITH_COVERAGE } from "./coverage-index"
 export { validateJourneyManifest } from "./validate"
 export { PROSPECT_TO_CLOSED_WON } from "./prospect-to-closed-won"
+export * from "./live-call"
 
 import { PROSPECT_TO_CLOSED_WON } from "./prospect-to-closed-won"
 import type { DemoJourneyManifest } from "./types"
