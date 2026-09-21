@@ -192,6 +192,14 @@ the command, intent, confirmation, and security layers are ready.
 - [x] P0.4 Approve the v1 rule that every write requires a button press.
       Confirmed by the product owner on 2026-09-19; background speech can
       never authorize a CRM mutation.
+      **Amended by the owner on 2026-09-21:** a spoken "да" to the receipt on
+      screen is enough; the button stays as an alternative. The model still
+      cannot execute anything. The app decides from the user's own microphone
+      transcript (`src/lib/ai/voice/voice-confirmation.ts`), and only a pure
+      yes/no counts. It must answer a draft already on screen, come within 30 s
+      after the assistant asked, and not overlap the assistant's voice or its
+      echo tail. It then runs the button's exact path: one-time proof, commit,
+      double-press guard.
 - [ ] P0.5 Define default task board, column, assignee behavior, and required
       custom fields.
 - [ ] P0.6 Define the standard lead fields allowed in v1.
@@ -963,6 +971,7 @@ implementation branch that advances the roadmap.
 | 2026-09-20 | Execution boundary | Production deployed | PR #245; merge `a7f6c2654`; deploy `35479290362` | Internal-only atomic CRM mutation/result/`succeeded` event; commit remains disabled. |
 | 2026-09-20 | Commit adapter | Production deployed | PR #249; merge `ffcbaa3a4`; active artifact `a9891d6cb`; deploy `35499744499` | Session-only endpoint and three rate-limit scopes are live; receipt UI remains open and no model write-tool is exposed. |
 | 2026-09-20 | Receipt UI shell (U1.1-U1.3) | Production deployed | PR #257; merge `1bbc59e1e`; active artifact `6cca1a5a8`; deploy `35512069725` | Shadow mode: session-scoped store, anchored desktop panel, mobile bottom sheet. No confirm control, no write request, no model commit tool. |
+| 2026-09-21 | Confirm by voice; create in its section (P0.4 amended) | Code complete | Branch `codex/voice-confirm-by-voice`; targeted Vitest + mutation checks | Owner's voice test: a spoken yes now executes the receipt through the button's path, decided by app code from the user's transcript and never by the model. Prompt: open the section first, ask once what else to add, list fields only on request. |
 | 2026-09-21 | Audit provenance and fabrication proof (V1.9, V1.10) | Production deployed | PR #314; merge `759b10a90`; shipped in artifact `a37ec1d776fe9edb32e6b39618e8d5f1a27ea635`; migration applied by deploy `35594125227` | Every CRM audit row from the five commands names its actor; the produced record is indexed back to its intent. Closes Phase 7 (V1). |
 | 2026-09-21 | Tool-call ceilings (V1.8) | Production deployed | Targeted Vitest: 544 files / 5699 green, 8 known-baseline reds; targeted ESLint; i18n parity | Per-turn and per-session read ceilings, a proposal ceiling that does not refill, and a deadline on the proposal call. |
 | 2026-09-21 | Side-effect parity (C1.11) | Production deployed | Targeted Vitest: 649 files / 10464 green, 8 known-baseline reds; targeted ESLint; i18n parity | Effects cannot escape an open transaction; voice and REST produce the same set, the transaction only changes when. |

@@ -24171,7 +24171,7 @@
       "emptyValue": "—",
       "yes": "Yes",
       "no": "No",
-      "pressNotice": "Nothing is written until you press the button. A spoken “yes” does not count.",
+      "pressNotice": "Say “yes” when the assistant asks, or press the button. Nothing is written to the CRM before that.",
       "cancel": "Cancel",
       "retry": "Try again",
       "refresh": "Reload the draft",

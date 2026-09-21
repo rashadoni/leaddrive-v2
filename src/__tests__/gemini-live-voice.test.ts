@@ -91,10 +91,10 @@ describe("Gemini Live CRM voice", () => {
     // This used to pin "all available CRM tools are read-only". The propose_*
     // tools made that false, and the rules below say something stronger: the
     // assistant may prepare, must not claim it did anything, and must not
-    // treat a spoken yes as permission.
+    // decide on its own that the user confirmed: the app hears the answer.
     expect(prompt).toContain("Never say that something was created, changed, converted or saved")
     expect(prompt).toContain("only PREPARE a draft")
-    expect(prompt).toContain("press the button")
+    expect(prompt).toContain("The app itself hears the user's own short answer")
     expect(prompt).not.toContain("all available CRM tools are read-only")
   })
 
