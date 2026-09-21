@@ -1,6 +1,6 @@
 import type { PrismaClient } from "@prisma/client"
 import { availableWorkdayActions } from "@/lib/mtm/operational-week"
-import { isMtmWorkdayReopenUndoEventKey, type MtmWorkdayAction } from "@/lib/mtm/workday"
+import { isMtmWorkdayManagerFinishEventKey, type MtmWorkdayAction } from "@/lib/mtm/workday"
 import {
   workforceAttendancePolicyManifest,
   WorkforceAttendancePolicyError,
@@ -440,7 +440,7 @@ export function workforceEmployeeTodayServerOutcome(lastEvent: {
   clientEventId?: string | null
 } | null): WorkforceEmployeeTodayServerOutcome {
   if (!lastEvent || !lastEvent.serverReceivedAt || !lastEvent.appliedAt) return null
-  if (isMtmWorkdayReopenUndoEventKey(lastEvent.clientEventId)) return null
+  if (isMtmWorkdayManagerFinishEventKey(lastEvent.clientEventId)) return null
   const action = lastEvent.type
   if (action !== "START" && action !== "PAUSE" && action !== "RESUME" && action !== "FINISH") return null
   return {

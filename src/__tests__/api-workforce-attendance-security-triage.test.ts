@@ -89,7 +89,7 @@ describe("GET /api/v1/workforce/attendance/security-triage", () => {
     expect(prisma.mtmAgentWorkdayEvent.updateMany).not.toHaveBeenCalled()
   })
 
-  it("counts only the employee's own attendance actions, not a manager's reopen or its undo", async () => {
+  it("counts only the employee's own attendance actions, not a manager's reopen, its undo or a close", async () => {
     await invoke(request(), AUTH)
 
     expect(prisma.mtmAgentWorkdayEvent.groupBy).toHaveBeenCalledWith(expect.objectContaining({
@@ -97,7 +97,10 @@ describe("GET /api/v1/workforce/attendance/security-triage", () => {
         type: { not: "REOPEN" },
         OR: [
           { clientEventId: null },
-          { NOT: { clientEventId: { startsWith: "reopen-undo:" } } },
+          { AND: [
+            { NOT: { clientEventId: { startsWith: "reopen-undo:" } } },
+            { NOT: { clientEventId: { startsWith: "close-left-open:" } } },
+          ] },
         ],
       }),
     }))

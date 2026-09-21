@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 import {
+  WORKFORCE_WORKDAY_CLOSE_CONFLICT_CODES,
   WORKFORCE_WORKDAY_MANAGER_ACTION_DENIAL_CODES,
   WORKFORCE_WORKDAY_REOPEN_CONFLICT_CODES,
   WORKFORCE_WORKDAY_REOPEN_REASON_MAX_LENGTH,
@@ -65,6 +66,9 @@ describe("operational week: manager reopen of today's workday", () => {
       "WORKFORCE_ATTENDANCE_MFA_REQUIRED",
       "WORKFORCE_SCOPE_DENIED",
       "WORKFORCE_SESSION_PERMISSION_REQUIRED",
+      "WORKFORCE_WORKDAY_CLOSE_CORRECTION_PENDING",
+      "WORKFORCE_WORKDAY_CLOSE_HISTORY_INVALID",
+      "WORKFORCE_WORKDAY_CLOSE_TIMESHEET_APPROVED",
       "WORKFORCE_WORKDAY_REOPEN_CORRECTED",
       "WORKFORCE_WORKDAY_REOPEN_CORRECTION_PENDING",
       "WORKFORCE_WORKDAY_REOPEN_HISTORY_INVALID",
@@ -83,9 +87,9 @@ describe("operational week: manager reopen of today's workday", () => {
     expect(sourceBetween("function clientOperationId(prefix: string)", "\n}\n")).toContain("crypto.randomUUID()")
 
     const dialog = sourceBetween("<Dialog open={Boolean(managerWorkdayTarget)}", "</Dialog>")
-    expect(dialog).toContain('"managerWorkday.undoTitle" : "managerWorkday.reopenTitle"')
-    expect(dialog).toContain('"managerWorkday.undoConsequence" : "managerWorkday.reopenConsequence"')
-    expect(dialog).toContain('t("managerWorkday.historyNote")')
+    expect(dialog).toContain('"managerWorkday.undoTitle" : managerWorkdayTarget?.kind === "close" ? "managerWorkday.closeTitle" : "managerWorkday.reopenTitle"')
+    expect(dialog).toContain('"managerWorkday.undoConsequence" : managerWorkdayTarget?.kind === "close" ? "managerWorkday.closeConsequence" : "managerWorkday.reopenConsequence"')
+    expect(dialog).toContain('"managerWorkday.closeHistoryNote" : "managerWorkday.historyNote"')
     expect(dialog).toContain('data-testid="mtm-week-workday-manager-error"')
     expect(dialog).toContain('role="alert"')
   })
@@ -99,20 +103,21 @@ describe("operational week: manager reopen of today's workday", () => {
     const dialog = sourceBetween("<Dialog open={Boolean(managerWorkdayTarget)}", "</Dialog>")
     expect(dialog).toContain("<Textarea")
     expect(dialog).toContain("maxLength={WORKFORCE_WORKDAY_REOPEN_REASON_MAX_LENGTH}")
-    expect(dialog).toContain("disabled={managerWorkdayPending || !managerWorkdayReasonValid || Boolean(managerWorkdayError?.final)}")
+    expect(dialog).toContain("disabled={managerWorkdayPending || !managerWorkdayReasonValid || !managerWorkdayFinishValid || Boolean(managerWorkdayError?.final)}")
 
     const submit = sourceBetween("async function submitManagerWorkdayAction()", "\n  }\n")
-    expect(submit).toContain("if (!target || managerWorkdayPending || !managerWorkdayReasonValid || managerWorkdayError?.final) return")
+    expect(submit).toContain("if (!target || managerWorkdayPending || !managerWorkdayReasonValid || !managerWorkdayFinishValid || managerWorkdayError?.final) return")
   })
 
   it("sends the operation id, the version the week showed and the trimmed reason, then refetches", () => {
     const submit = sourceBetween("async function submitManagerWorkdayAction()", "\n  }\n")
-    expect(submit).toContain('const action = target.kind === "reopen" ? "reopen" : "reopen/undo"')
+    expect(submit).toContain("const action = MANAGER_WORKDAY_ACTION_PATHS[target.kind]")
+    expect(sourceBetween("const MANAGER_WORKDAY_ACTION_PATHS", "}")).toContain('undoReopen: "reopen/undo"')
     expect(submit).toContain("`/api/v1/workforce/workdays/${encodeURIComponent(target.workdayId)}/${action}`")
     expect(submit).toContain("operationId: target.operationId")
     expect(submit).toContain("expectedUpdatedAt: target.expectedUpdatedAt")
     expect(submit).toContain("reason: managerWorkdayReason.trim()")
-    expect(submit).toContain('toast.success(t(target.kind === "reopen" ? "managerWorkday.reopenSucceeded" : "managerWorkday.undoSucceeded"))')
+    expect(submit).toContain('toast.success(t(target.kind === "reopen" ? "managerWorkday.reopenSucceeded" : target.kind === "close" ? "managerWorkday.closeSucceeded" : "managerWorkday.undoSucceeded"))')
     // A refusal keeps the dialog and the typed reason; a 409 also ends this attempt.
     expect(submit).toContain("const final = response.status === 409")
     expect(submit).toContain('managerWorkdayFailureMessage(firstString(result, "code"), target.kind, response.status)')
@@ -124,6 +129,7 @@ describe("operational week: manager reopen of today's workday", () => {
     const codes = [
       ...WORKFORCE_WORKDAY_REOPEN_CONFLICT_CODES,
       ...WORKFORCE_WORKDAY_REOPEN_UNDO_CONFLICT_CODES,
+      ...WORKFORCE_WORKDAY_CLOSE_CONFLICT_CODES,
       ...WORKFORCE_WORKDAY_MANAGER_ACTION_DENIAL_CODES,
     ]
     expect(codes).toContain("WORKFORCE_ATTENDANCE_MFA_REQUIRED")
@@ -155,7 +161,7 @@ describe("operational week: manager reopen of today's workday", () => {
     // The same code the Workforce access screen localizes, per action here.
     const access = readFileSync("src/components/workforce/workforce-access-management.tsx", "utf8")
     expect(access).toContain('if (code === "WORKFORCE_ATTENDANCE_MFA_REQUIRED") return t("mfaRequired")')
-    expect(ui).toContain('WORKFORCE_ATTENDANCE_MFA_REQUIRED: { reopen: "mfaRequiredReopen", undoReopen: "mfaRequiredUndo" },')
+    expect(ui).toContain('WORKFORCE_ATTENDANCE_MFA_REQUIRED: { reopen: "mfaRequiredReopen", undoReopen: "mfaRequiredUndo", close: "mfaRequiredClose" },')
     expect(sourceBetween("function managerWorkdayFailureMessageKey(", "\n}\n")).toContain('return typeof key === "string" ? key : key[kind]')
     // Explained in the workday cell instead of a button, so no dialog opens.
     expect(sourceBetween("const MANAGER_WORKDAY_EXPLAINED_REFUSALS", "])")).toContain('"WORKFORCE_ATTENDANCE_MFA_REQUIRED"')
@@ -164,7 +170,7 @@ describe("operational week: manager reopen of today's workday", () => {
     expect(managerWorkdayMessages.az.failure.mfaRequiredUndo).toBe("Bərpanı ləğv etmək üçün hesabınızda 2FA məcburi olmalıdır — Parametrlər → İstifadəçilər")
     const unclear: string[] = []
     for (const locale of LOCALES) {
-      for (const key of ["mfaRequiredReopen", "mfaRequiredUndo"]) {
+      for (const key of ["mfaRequiredReopen", "mfaRequiredUndo", "mfaRequiredClose"]) {
         const text = String(managerWorkdayMessages[locale]?.failure?.[key] ?? "")
         if (!text.includes("2FA") || !text.includes("→")) unclear.push(`${locale}.managerWorkday.failure.${key}`)
       }

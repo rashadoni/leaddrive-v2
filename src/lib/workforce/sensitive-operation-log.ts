@@ -10,6 +10,7 @@ export function logWorkforceSensitiveOperationFailure(input: {
     | "review-workday-correction"
     | "review-workday-reopen"
     | "review-workday-reopen-undo"
+    | "review-workday-close"
     | "review-timesheet-approval-export"
     | "preview-timesheet-approval-export"
     | "authorize-approved-timesheet-report"

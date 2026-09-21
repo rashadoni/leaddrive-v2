@@ -71,6 +71,7 @@ import { cn } from "@/lib/utils"
 import { useMtmFieldContacts } from "@/hooks/use-mtm-org-settings"
 import { createDateFormatter } from "@/lib/format-date"
 import type { MtmManagerWorkdayState } from "@/lib/mtm/workday-open-anomaly"
+import { localDateTimeToUnambiguousUtc } from "@/lib/timezone"
 import { summarizeTeamToday, teamTodayForScope, teamTodayScopeKey, type ClassifiedTeamRow } from "@/lib/mtm/team-today-summary"
 import {
   WORKFORCE_WORKDAY_REOPEN_REASON_MAX_LENGTH,
@@ -80,8 +81,14 @@ import {
 
 type WeekDays = 1 | 5 | 7
 type WorkdayAction = "START" | "PAUSE" | "RESUME" | "FINISH"
-type ManagerWorkdayActionKind = "reopen" | "undoReopen"
-const MANAGER_WORKDAY_ACTION_KINDS: readonly ManagerWorkdayActionKind[] = ["reopen", "undoReopen"]
+type ManagerWorkdayActionKind = "reopen" | "undoReopen" | "close"
+/** Today's actions, explained under the workday header. The close lives on the left-open notice. */
+const MANAGER_WORKDAY_ACTION_KINDS: readonly Exclude<ManagerWorkdayActionKind, "close">[] = ["reopen", "undoReopen"]
+const MANAGER_WORKDAY_ACTION_PATHS: Record<ManagerWorkdayActionKind, string> = {
+  reopen: "reopen",
+  undoReopen: "reopen/undo",
+  close: "close",
+}
 
 const OPERATIONAL_TASK_ATTENTION = new Set<OperationalWeekTaskAttention>(["OVERDUE", "RETURNED", "ACTIVE"])
 const OPERATIONAL_TASK_ATTENTION_RANK: Record<OperationalWeekTaskAttention, number> = { OVERDUE: 0, RETURNED: 1, ACTIVE: 2 }
@@ -129,11 +136,18 @@ const MANAGER_WORKDAY_REFUSAL_MESSAGE_KEYS: Record<WorkforceWorkdayManagerAction
   WORKFORCE_WORKDAY_REOPEN_UNDO_VERSION_CONFLICT: "versionConflict",
   WORKFORCE_WORKDAY_REOPEN_UNDO_IDEMPOTENCY_MISMATCH: "idempotencyMismatch",
   WORKFORCE_WORKDAY_REOPEN_UNDO_HISTORY_INVALID: "historyInvalid",
+  WORKFORCE_WORKDAY_CLOSE_NOT_LEFT_OPEN: "notLeftOpen",
+  WORKFORCE_WORKDAY_CLOSE_FINISH_OUT_OF_RANGE: "finishOutOfRange",
+  WORKFORCE_WORKDAY_CLOSE_VERSION_CONFLICT: "versionConflict",
+  WORKFORCE_WORKDAY_CLOSE_IDEMPOTENCY_MISMATCH: "idempotencyMismatch",
+  WORKFORCE_WORKDAY_CLOSE_TIMESHEET_APPROVED: "closeTimesheetApproved",
+  WORKFORCE_WORKDAY_CLOSE_CORRECTION_PENDING: "closeCorrectionPending",
+  WORKFORCE_WORKDAY_CLOSE_HISTORY_INVALID: "historyInvalid",
   WORKFORCE_SESSION_PERMISSION_REQUIRED: "forbidden",
   WORKFORCE_SCOPE_DENIED: "forbidden",
   // As on the Workforce access screen, a missing mandatory MFA factor is a
   // localized instruction — here with where it is switched on.
-  WORKFORCE_ATTENDANCE_MFA_REQUIRED: { reopen: "mfaRequiredReopen", undoReopen: "mfaRequiredUndo" },
+  WORKFORCE_ATTENDANCE_MFA_REQUIRED: { reopen: "mfaRequiredReopen", undoReopen: "mfaRequiredUndo", close: "mfaRequiredClose" },
 }
 const MANAGER_WORKDAY_FAILURE_MESSAGE_KEYS: Readonly<Record<string, ManagerWorkdayMessageKey>> = {
   ...MANAGER_WORKDAY_REFUSAL_MESSAGE_KEYS,
@@ -152,6 +166,9 @@ const MANAGER_WORKDAY_EXPLAINED_REFUSALS = new Set<string>([
   "WORKFORCE_WORKDAY_REOPEN_CORRECTED",
   "WORKFORCE_WORKDAY_REOPEN_HISTORY_INVALID",
   "WORKFORCE_WORKDAY_REOPEN_UNDO_HISTORY_INVALID",
+  "WORKFORCE_WORKDAY_CLOSE_TIMESHEET_APPROVED",
+  "WORKFORCE_WORKDAY_CLOSE_CORRECTION_PENDING",
+  "WORKFORCE_WORKDAY_CLOSE_HISTORY_INVALID",
   "WORKFORCE_SESSION_PERMISSION_REQUIRED",
   "WORKFORCE_SCOPE_DENIED",
   "WORKFORCE_ATTENDANCE_MFA_REQUIRED",
@@ -357,9 +374,20 @@ interface ManagerWorkdayAction {
   blockedReason: string | null
 }
 
+interface ManagerWorkdayCloseAction extends ManagerWorkdayAction {
+  /** Where the finish field starts: the agent's last trace in the shift. */
+  suggestedFinishAt: string | null
+  /** The finish must be later than this: the shift's last journal event. */
+  earliestFinishAfter: string | null
+  /** The agent's last GPS point or visit in the shift, or null. */
+  lastTraceAt: string | null
+}
+
 interface ManagerWorkdayActions {
   reopen: ManagerWorkdayAction
   undoReopen: ManagerWorkdayAction
+  /** Absent in snapshots cached before the close existed. */
+  close: ManagerWorkdayCloseAction | null
 }
 
 interface ManagerWorkdayDialogTarget {
@@ -835,11 +863,59 @@ function normalizeManagerWorkdayAction(value: unknown): ManagerWorkdayAction | n
   }
 }
 
+function normalizeManagerWorkdayCloseAction(value: unknown): ManagerWorkdayCloseAction | null {
+  const action = normalizeManagerWorkdayAction(value)
+  if (!action) return null
+  const source = record(value)
+  const suggestedFinishAt = firstString(source, "suggestedFinishAt")
+  const earliestFinishAfter = firstString(source, "earliestFinishAfter")
+  // Without the bound the form cannot validate a finish: never offer it.
+  return {
+    ...action,
+    allowed: action.allowed && Boolean(suggestedFinishAt && earliestFinishAfter),
+    suggestedFinishAt,
+    earliestFinishAfter,
+    lastTraceAt: firstString(source, "lastTraceAt"),
+  }
+}
+
 function normalizeManagerWorkdayActions(value: unknown): ManagerWorkdayActions | null {
   const source = record(value)
   const reopen = normalizeManagerWorkdayAction(source.reopen)
   const undoReopen = normalizeManagerWorkdayAction(source.undoReopen)
-  return reopen && undoReopen ? { reopen, undoReopen } : null
+  return reopen && undoReopen ? { reopen, undoReopen, close: normalizeManagerWorkdayCloseAction(source.close) } : null
+}
+
+/** An instant as the value of an <input type="datetime-local"> in the tenant timezone. */
+function tenantDateTimeInputValue(value: string | null, timezone: string): string {
+  if (!value) return ""
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ""
+  try {
+    // eslint-disable-next-line no-restricted-syntax -- reads wall-clock parts for an <input type="datetime-local"> value, not display text
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(date)
+    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+    return `${values.year}-${values.month}-${values.day}T${values.hour}:${values.minute}`
+  } catch {
+    return ""
+  }
+}
+
+/** The finish the manager typed, as a UTC instant, or null when it names no single real time. */
+function tenantDateTimeInputInstant(value: string, timezone: string): Date | null {
+  try {
+    return localDateTimeToUnambiguousUtc(value, timezone)
+  } catch {
+    return null
+  }
 }
 
 function managerWorkdayFailureMessageKey(code: string | null, kind: ManagerWorkdayActionKind): string | null {
@@ -1285,6 +1361,7 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
   const [cancellationDetails, setCancellationDetails] = useState("")
   const [managerWorkdayTarget, setManagerWorkdayTarget] = useState<ManagerWorkdayDialogTarget | null>(null)
   const [managerWorkdayReason, setManagerWorkdayReason] = useState("")
+  const [managerWorkdayFinish, setManagerWorkdayFinish] = useState("")
   const [managerWorkdayPending, setManagerWorkdayPending] = useState(false)
   /** `final`: the day moved on (409), so this dialog can no longer succeed. */
   const [managerWorkdayError, setManagerWorkdayError] = useState<{ message: string; final: boolean } | null>(null)
@@ -1844,11 +1921,12 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
     if (!action?.allowed || !action.workdayId || !action.updatedAt) return
     setManagerWorkdayReason("")
     setManagerWorkdayError(null)
+    setManagerWorkdayFinish(kind === "close" && facts ? tenantDateTimeInputValue(facts.managerWorkdayActions?.close?.suggestedFinishAt ?? null, facts.timezone) : "")
     setManagerWorkdayTarget({
       kind,
       workdayId: action.workdayId,
       expectedUpdatedAt: action.updatedAt,
-      operationId: clientOperationId(kind === "reopen" ? "workday-reopen" : "workday-reopen-undo"),
+      operationId: clientOperationId(kind === "reopen" ? "workday-reopen" : kind === "close" ? "workday-close" : "workday-reopen-undo"),
     })
   }
 
@@ -1856,19 +1934,31 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
     if (managerWorkdayPending) return
     setManagerWorkdayTarget(null)
     setManagerWorkdayReason("")
+    setManagerWorkdayFinish("")
     setManagerWorkdayError(null)
   }
 
   const managerWorkdayReasonLength = managerWorkdayReason.trim().length
   const managerWorkdayReasonValid = managerWorkdayReasonLength >= WORKFORCE_WORKDAY_REOPEN_REASON_MIN_LENGTH
     && managerWorkdayReasonLength <= WORKFORCE_WORKDAY_REOPEN_REASON_MAX_LENGTH
+  const managerCloseAction = facts?.managerWorkdayActions?.close ?? null
+  const managerWorkdayFinishInstant = managerWorkdayTarget?.kind === "close" && facts
+    ? tenantDateTimeInputInstant(managerWorkdayFinish, facts.timezone)
+    : null
+  // The server bound, checked here so the button says why before a round trip.
+  const managerWorkdayFinishValid = managerWorkdayTarget?.kind !== "close" || Boolean(
+    managerWorkdayFinishInstant
+      && managerCloseAction?.earliestFinishAfter
+      && managerWorkdayFinishInstant.getTime() > Date.parse(managerCloseAction.earliestFinishAfter)
+      && managerWorkdayFinishInstant.getTime() <= Date.now(),
+  )
 
   async function submitManagerWorkdayAction() {
     const target = managerWorkdayTarget
-    if (!target || managerWorkdayPending || !managerWorkdayReasonValid || managerWorkdayError?.final) return
+    if (!target || managerWorkdayPending || !managerWorkdayReasonValid || !managerWorkdayFinishValid || managerWorkdayError?.final) return
     setManagerWorkdayPending(true)
     setManagerWorkdayError(null)
-    const action = target.kind === "reopen" ? "reopen" : "reopen/undo"
+    const action = MANAGER_WORKDAY_ACTION_PATHS[target.kind]
     try {
       const { response, body } = await fetchOperationalWeekJsonWithTimeout(`/api/v1/workforce/workdays/${encodeURIComponent(target.workdayId)}/${action}`, {
         method: "POST",
@@ -1880,6 +1970,7 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
           operationId: target.operationId,
           expectedUpdatedAt: target.expectedUpdatedAt,
           reason: managerWorkdayReason.trim(),
+          ...(target.kind === "close" && managerWorkdayFinishInstant ? { finishedAt: managerWorkdayFinishInstant.toISOString() } : {}),
         }),
       })
       const result = record(body)
@@ -1890,7 +1981,7 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
         if (final) refreshAfterPlanMutation()
         return
       }
-      toast.success(t(target.kind === "reopen" ? "managerWorkday.reopenSucceeded" : "managerWorkday.undoSucceeded"))
+      toast.success(t(target.kind === "reopen" ? "managerWorkday.reopenSucceeded" : target.kind === "close" ? "managerWorkday.closeSucceeded" : "managerWorkday.undoSucceeded"))
       setManagerWorkdayTarget(null)
       setManagerWorkdayReason("")
       refreshAfterPlanMutation()
@@ -1998,6 +2089,28 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
       <span className="inline-flex items-center gap-2 text-xs text-muted-foreground" data-testid="mtm-week-workday-manager-blocked">
         <Info className="h-4 w-4 shrink-0" />{managerWorkdayFailureMessage(actions[refusalKind].blockedReason, refusalKind)}
       </span>
+    ) : null
+  }
+
+  /**
+   * Audit 2026-09-21: the left-open notice ends in the action that resolves
+   * it — or in the one reason the manager cannot take it — instead of asking
+   * them to contact the agent.
+   */
+  function renderManagerCloseControl() {
+    const close = facts?.managerWorkdayActions?.close
+    if (!close || !managerView || facts?.workdayCapability.canMutateSelf || cachedSnapshot) return null
+    if (close.allowed) {
+      return (
+        <Button type="button" variant="destructive" className="mt-2 min-h-11" data-testid="mtm-week-workday-close" disabled={managerWorkdayPending || !workdayMutationLive} onClick={() => openManagerWorkdayDialog("close")}>
+          <Square className="h-4 w-4" />{t("managerWorkday.closeAction")}
+        </Button>
+      )
+    }
+    return close.blockedReason && MANAGER_WORKDAY_EXPLAINED_REFUSALS.has(close.blockedReason) ? (
+      <p className="mt-1 inline-flex items-center gap-2 text-xs" data-testid="mtm-week-workday-close-blocked">
+        <Info className="h-4 w-4 shrink-0" />{managerWorkdayFailureMessage(close.blockedReason, "close")}
+      </p>
     ) : null
   }
 
@@ -3199,7 +3312,7 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
           {facts.workdayCapability.enabled && leftOpenWorkday && !facts.workdayCapability.canMutateSelf ? (
             <div className="border-t border-zinc-200 bg-red-50 px-4 py-3 text-sm text-red-950 dark:border-zinc-700 dark:bg-red-950/25 dark:text-red-100" role="status" data-testid="mtm-week-workday-left-open">
               <p className="inline-flex items-center gap-2 font-semibold"><AlertTriangle className="h-4 w-4" />{leftOpenLabel(leftOpenWorkday, facts.timezone)}</p>
-              <p className="mt-1 text-xs leading-5">{t("workdayLeftOpenHint")}</p>
+              {renderManagerCloseControl() ?? <p className="mt-1 text-xs leading-5">{t("workdayLeftOpenHint")}</p>}
             </div>
           ) : null}
           {/* The close/continue instruction is for the agent who can act on it. */}
@@ -3392,14 +3505,37 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
       }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t(managerWorkdayTarget?.kind === "undoReopen" ? "managerWorkday.undoTitle" : "managerWorkday.reopenTitle")}</DialogTitle>
+            <DialogTitle>{t(managerWorkdayTarget?.kind === "undoReopen" ? "managerWorkday.undoTitle" : managerWorkdayTarget?.kind === "close" ? "managerWorkday.closeTitle" : "managerWorkday.reopenTitle")}</DialogTitle>
             <DialogDescription>{facts?.selectedAgent.name || "—"}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4" data-testid="mtm-week-workday-manager-dialog">
             <p className="bg-muted/60 px-3 py-2 text-xs leading-5 text-muted-foreground">
-              {t(managerWorkdayTarget?.kind === "undoReopen" ? "managerWorkday.undoConsequence" : "managerWorkday.reopenConsequence")}
-              {" "}{t("managerWorkday.historyNote")}
+              {t(managerWorkdayTarget?.kind === "undoReopen" ? "managerWorkday.undoConsequence" : managerWorkdayTarget?.kind === "close" ? "managerWorkday.closeConsequence" : "managerWorkday.reopenConsequence")}
+              {" "}{t(managerWorkdayTarget?.kind === "close" ? "managerWorkday.closeHistoryNote" : "managerWorkday.historyNote")}
             </p>
+            {managerWorkdayTarget?.kind === "close" && facts ? (
+              <div className="space-y-1.5">
+                <Label htmlFor="operational-week-manager-workday-finish">{t("managerWorkday.finishLabel")}</Label>
+                <Input
+                  id="operational-week-manager-workday-finish"
+                  type="datetime-local"
+                  value={managerWorkdayFinish}
+                  onChange={(event) => setManagerWorkdayFinish(event.target.value)}
+                  disabled={managerWorkdayPending}
+                  required
+                  data-testid="mtm-week-workday-close-finish"
+                  aria-invalid={!managerWorkdayFinishValid}
+                  aria-describedby="operational-week-manager-workday-finish-hint"
+                />
+                <p id="operational-week-manager-workday-finish-hint" className={cn("text-xs", managerWorkdayFinishValid ? "text-muted-foreground" : "text-red-700 dark:text-red-300")}>
+                  {managerWorkdayFinishValid
+                    ? managerCloseAction?.lastTraceAt
+                      ? t("managerWorkday.finishSuggested", { time: formatTenantTimestamp(managerCloseAction.lastTraceAt, locale, facts.timezone, { dateStyle: "medium", timeStyle: "short" }) })
+                      : t("managerWorkday.finishNoTrace")
+                    : t("managerWorkday.finishInvalid", { time: formatTenantTimestamp(managerCloseAction?.earliestFinishAfter ?? null, locale, facts.timezone, { dateStyle: "medium", timeStyle: "short" }) })}
+                </p>
+              </div>
+            ) : null}
             <div className="space-y-1.5">
               <Label htmlFor="operational-week-manager-workday-reason">{t("managerWorkday.reasonLabel")}</Label>
               <Textarea
@@ -3408,7 +3544,7 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
                 onChange={(event) => setManagerWorkdayReason(event.target.value)}
                 rows={4}
                 maxLength={WORKFORCE_WORKDAY_REOPEN_REASON_MAX_LENGTH}
-                placeholder={t("managerWorkday.reasonPlaceholder")}
+                placeholder={t(managerWorkdayTarget?.kind === "close" ? "managerWorkday.closeReasonPlaceholder" : "managerWorkday.reasonPlaceholder")}
                 disabled={managerWorkdayPending}
                 required
                 data-dialog-initial-focus
@@ -3431,11 +3567,11 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
             <Button type="button" variant="outline" disabled={managerWorkdayPending} onClick={closeManagerWorkdayDialog}>{t("cancelDialog")}</Button>
             <Button
               type="button"
-              disabled={managerWorkdayPending || !managerWorkdayReasonValid || Boolean(managerWorkdayError?.final)}
+              disabled={managerWorkdayPending || !managerWorkdayReasonValid || !managerWorkdayFinishValid || Boolean(managerWorkdayError?.final)}
               onClick={() => void submitManagerWorkdayAction()}
             >
               {managerWorkdayPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> : null}
-              {t(managerWorkdayTarget?.kind === "undoReopen" ? "managerWorkday.confirmUndo" : "managerWorkday.confirmReopen")}
+              {t(managerWorkdayTarget?.kind === "undoReopen" ? "managerWorkday.confirmUndo" : managerWorkdayTarget?.kind === "close" ? "managerWorkday.confirmClose" : "managerWorkday.confirmReopen")}
             </Button>
           </DialogFooter>
         </DialogContent>
