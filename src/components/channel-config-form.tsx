@@ -2069,7 +2069,13 @@ export function ChannelConfigForm({
                         const pin = form.appReviewOnly && isEdit && initialData?.id
                           ? `&app=${encodeURIComponent(initialData.id)}`
                           : ""
-                        window.location.href = `/api/v1/social/oauth/${provider}/start?from=${from}${pin}`
+                        // The row Connect was pressed on. The callback returns the user to it (or to
+                        // the row the connect actually wired) instead of the page guessing one — on a
+                        // workspace with several customers' Pages the guess was someone else's channel.
+                        const origin = isEdit && initialData?.id
+                          ? `&channelId=${encodeURIComponent(initialData.id)}`
+                          : ""
+                        window.location.href = `/api/v1/social/oauth/${provider}/start?from=${from}${pin}${origin}`
                       }}
                       className="w-full rounded-lg bg-orange-500 py-2.5 text-sm font-medium text-white transition-colors hover:bg-orange-600"
                     >

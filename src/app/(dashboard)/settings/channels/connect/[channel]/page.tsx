@@ -281,6 +281,11 @@ const copy = {
     oauthCheckingTitle: "Checking what actually got wired",
     oauthCheckingDesc: "Meta has reported back. LeadDrive is reading the saved channel before it calls anything connected.",
     oauthUnverifiedDesc: "Meta has reported back, but LeadDrive could not read this workspace's channels, so it cannot confirm that the connection works. Reload the page, and open the channel catalog if it fails again.",
+    oauthUnidentifiedTitle: "Meta finished the connection",
+    oauthUnidentifiedDesc: "Meta returned {pages} Facebook Page(s) and {ig} Instagram account(s). This page cannot tell which saved channel came from this connection, so it opens none of them — check each one in the channel list.",
+    noRowTitle: "No channel is open here",
+    noRowDesc: "This page opens a channel only when it knows exactly which one you mean. Here it does not, so no channel's settings are shown. Open the channel list and pick the channel you want to edit.",
+    noRowAction: "Open the channel list",
     helpBanner: "Need help connecting this channel? Use the guide below before entering credentials.",
     additionalResources: "Additional Resources",
     videoTutorial: "Step-by-step setup guide",
@@ -725,6 +730,11 @@ const copy = {
     oauthCheckingTitle: "Проверяем, что подключилось на самом деле",
     oauthCheckingDesc: "Meta ответила. LeadDrive читает сохранённый канал, прежде чем называть что-либо подключённым.",
     oauthUnverifiedDesc: "Meta ответила, но LeadDrive не смог прочитать каналы этого рабочего пространства и не может подтвердить, что подключение работает. Обновите страницу, а если снова не выйдет — откройте каталог каналов.",
+    oauthUnidentifiedTitle: "Meta завершила подключение",
+    oauthUnidentifiedDesc: "Meta вернула страниц Facebook: {pages}, аккаунтов Instagram: {ig}. Эта страница не может определить, какой сохранённый канал относится к этому подключению, поэтому не открывает ни один — проверьте каждый в списке каналов.",
+    noRowTitle: "Здесь не открыт ни один канал",
+    noRowDesc: "Эта страница открывает канал, только когда точно знает, какой именно нужен. Здесь это неизвестно, поэтому настройки ни одного канала не показаны. Откройте список каналов и выберите канал, который хотите изменить.",
+    noRowAction: "Открыть список каналов",
     helpBanner: "Нужна помощь с подключением канала? Сначала пройдите инструкцию ниже, потом вводите ключи.",
     additionalResources: "Полезные материалы",
     videoTutorial: "Пошаговая инструкция подключения",
@@ -1152,6 +1162,11 @@ const copy = {
     oauthCheckingTitle: "Əslində nəyin qoşulduğunu yoxlayırıq",
     oauthCheckingDesc: "Meta cavab verdi. LeadDrive nəyisə qoşulmuş adlandırmazdan əvvəl saxlanılmış kanalı oxuyur.",
     oauthUnverifiedDesc: "Meta cavab verdi, amma LeadDrive bu iş sahəsinin kanallarını oxuya bilmədi və qoşulmanın işlədiyini təsdiqləyə bilmir. Səhifəni yeniləyin, yenə alınmasa kanal kataloqunu açın.",
+    oauthUnidentifiedTitle: "Meta qoşulmanı tamamladı",
+    oauthUnidentifiedDesc: "Meta {pages} Facebook səhifəsi və {ig} Instagram hesabı qaytardı. Bu səhifə hansı saxlanılmış kanalın bu qoşulmaya aid olduğunu müəyyən edə bilmir, ona görə heç birini açmır — hər birini kanallar siyahısında yoxlayın.",
+    noRowTitle: "Burada heç bir kanal açılmayıb",
+    noRowDesc: "Bu səhifə kanalı yalnız hansının lazım olduğunu dəqiq bildikdə açır. Burada bu məlum deyil, ona görə heç bir kanalın tənzimləmələri göstərilmir. Kanallar siyahısını açın və dəyişmək istədiyiniz kanalı seçin.",
+    noRowAction: "Kanallar siyahısını aç",
     helpBanner: "Kanal qoşmaq üçün kömək lazımdır? Açarları yazmazdan əvvəl aşağıdakı təlimatdan keçin.",
     additionalResources: "Əlavə materiallar",
     videoTutorial: "Addım-addım qoşulma təlimatı",
@@ -2600,9 +2615,18 @@ function ChannelConnectInner() {
   )
   const channelsError = channelsSnapshot?.orgId === String(orgId || "") ? channelsSnapshot.error : null
   const channelsLoading = needsChannelSnapshot && Boolean(orgId) && channelsSnapshot?.orgId !== String(orgId || "")
+  const metaFormChannelType = isMetaOneClickGuide ? guide?.formChannelId : undefined
+  // `channels` is this session's own workspace list (the API scopes it to the session's org), so an id
+  // that belongs to another tenant simply is not found here. A Meta card additionally opens only a row
+  // of its own type: the Facebook card never an Instagram row, whatever the URL says.
   const requestedChannel = useMemo(
-    () => requestedChannelId ? channels.find((channel) => channel.id === requestedChannelId) || null : null,
-    [channels, requestedChannelId]
+    () => {
+      if (!requestedChannelId) return null
+      const match = channels.find((channel) => channel.id === requestedChannelId) || null
+      if (match && metaFormChannelType && match.channelType !== metaFormChannelType) return null
+      return match
+    },
+    [channels, requestedChannelId, metaFormChannelType]
   )
   const whatsappMessagingChannel = useMemo(
     () => channels.find((channel) => channel.channelType === "whatsapp" && channel.isActive)
@@ -2610,20 +2634,46 @@ function ChannelConnectInner() {
       || null,
     [channels]
   )
-  const metaFormChannelType = isMetaOneClickGuide ? guide?.formChannelId : undefined
-  const existingMetaChannel = useMemo(
-    () => {
-      if (!metaFormChannelType) return null
+  const existingMetaPick = useMemo(
+    (): { row: ChannelConfigSummary | null; ambiguous: boolean } => {
+      if (!metaFormChannelType) return { row: null, ambiguous: false }
       const matches = channels.filter((channel) => channel.channelType === metaFormChannelType)
       // Same preference as the catalog: a Model B tenant can hold a Meta-app config row AND the page
       // row OAuth wrote. Editing the delivering one keeps the form's connection state truthful.
-      return matches.find((channel) => channelIsLiveConnection(channel))
-        || matches.find((channel) => channel.isActive)
-        || matches[0]
-        || null
+      // Applied tier by tier, and a tier with more than one row is not an answer: a workspace that
+      // holds several customers' Pages has several live rows, and "the first" of them is somebody
+      // else's channel. Then no row is picked and the user chooses one in the channel list.
+      const tier = [
+        matches.filter((channel) => channelIsLiveConnection(channel)),
+        matches.filter((channel) => channel.isActive),
+        matches,
+      ].find((candidates) => candidates.length > 0)
+      if (!tier) return { row: null, ambiguous: false }
+      return tier.length === 1 ? { row: tier[0], ambiguous: false } : { row: null, ambiguous: true }
     },
     [channels, metaFormChannelType]
   )
+  const existingMetaChannel = existingMetaPick.row
+  // When may the page pick "the" Meta row itself (existingMetaChannel)? Only when nobody said which.
+  //
+  // Back from a Meta round trip (`connected` or `error`), the callback names the row in `channelId`:
+  // the one it wired, or the one the connect was started from (lib/social/oauth-return.ts). With that
+  // id missing the page used to fall back to the first live row of the type — on a workspace holding
+  // several customers' Pages that put another customer's channel ("Andrologiya.az", tenant leaddrive,
+  // 2026-09-21) directly under "Channel connected", editable and savable. And a URL that names a row
+  // gets that row or none: an id that is not in this workspace's list is not a licence to show another.
+  // Where the guess IS allowed it still needs a single answer (existingMetaPick) — the wizard's own
+  // step links drop `channelId`, so an ambiguous guess was one click away from the same screen.
+  // In all three cases the page withholds the form and shows a neutral summary (metaNoRowBlock).
+  const oauthReturn = isMetaOneClickGuide && Boolean(oauthConnected || oauthError)
+  const metaRowGuessAllowed = !oauthReturn && !requestedChannelId
+  const metaRowWithheld =
+    isMetaOneClickGuide
+    && !requestedChannel
+    && (!metaRowGuessAllowed || (mode === "existing" && existingMetaPick.ambiguous))
+  // Not decided yet — the session or the channel list is still on its way. Show nothing rather than
+  // flash a summary (or a form) that the next render takes back.
+  const metaRowPending = metaRowWithheld && (!orgId || channelsLoading)
   // Memoised so its identity is stable across re-renders: ChannelConfigForm resets its fields
   // whenever `initialData` changes, and a fresh object each render would wipe what the user typed.
   const metaFormInitialData = useMemo(
@@ -2688,6 +2738,8 @@ function ChannelConnectInner() {
           displayName: whatsappMessagingChannel.displayName || undefined,
           settings: whatsappMessagingChannel.settings || undefined,
         }
+      : metaRowWithheld
+      ? null
       : isMetaOneClickGuide && mode === "existing" && metaFormInitialData
       ? metaFormInitialData
       : formInitialData
@@ -2698,28 +2750,40 @@ function ChannelConnectInner() {
   // came to sit directly above the form's "Not delivering — Meta refused the subscription" on the very
   // same screen, and how it survived a missing channel row and a switched-off one.
   //
-  // So the banner reads the SAME row the form below it renders (`effectiveFormInitialData` resolves to
-  // requestedChannel, else the Meta row) through the SAME predicate the catalog uses. Two elements of
-  // one screen, one source of truth: whatever they say, they now say together.
-  const oauthBannerRow = isMetaOneClickGuide ? (requestedChannel || existingMetaChannel) : null
+  // So the banner reads the SAME row the form below it renders through the SAME predicate the catalog
+  // uses. Two elements of one screen, one source of truth: whatever they say, they now say together.
+  // The banner only shows on an OAuth return, and there the form renders the named row or none at all
+  // (metaRowGuessAllowed) — so the banner judges requestedChannel, never a row the page picked itself.
+  const oauthBannerRow = isMetaOneClickGuide ? requestedChannel : null
   const oauthBannerRowState = oauthBannerRow ? channelConnectionState(oauthBannerRow) : null
   // "There is no row" is a verdict, and it is only available once the channel list is in hand. While
   // it is still loading, or the session has no org yet, or the list failed to load, the page knows
   // nothing beyond the URL — the exact half-truth this banner exists to stop repeating. Say so
   // instead of guessing in either direction.
   const oauthRowUnknown = !oauthBannerRow && (!orgId || channelsLoading || Boolean(channelsError))
-  const oauthBannerTone: "success" | "pending" | "warning" =
+  // Meta wired something for this card and the workspace does hold rows of this type, yet none was
+  // named — several Pages connected in one go, or the id no longer resolves. "Holds no channel" would be
+  // false, and any one of them could be the wrong customer's: say that the connect finished, no more.
+  const oauthRowUnidentified =
+    !oauthBannerRow
+    && !oauthRowUnknown
+    && channels.some((channel) => channel.channelType === metaFormChannelType)
+  const oauthBannerTone: "success" | "pending" | "neutral" | "warning" =
     // Meta itself reported nothing for this card — no row lookup can rescue that.
     !oauthWiredForThisChannel
       ? "warning"
       : oauthRowUnknown
         ? "pending"
-        : oauthBannerRowState === "live"
-          ? "success"
-          : "warning"
+        : oauthRowUnidentified
+          ? "neutral"
+          : oauthBannerRowState === "live"
+            ? "success"
+            : "warning"
   const oauthBannerTitle =
     oauthBannerTone === "pending"
       ? c.oauthCheckingTitle
+      : oauthBannerTone === "neutral"
+      ? c.oauthUnidentifiedTitle
       : oauthBannerTone === "success"
         ? c.oauthSuccessTitle
         // A stored, wired Page that is switched off or unsubscribed IS connected — it just does not
@@ -2734,6 +2798,10 @@ function ChannelConnectInner() {
   const oauthBannerDesc =
     oauthBannerTone === "pending"
       ? (channelsError ? c.oauthUnverifiedDesc : c.oauthCheckingDesc)
+      : oauthBannerTone === "neutral"
+      ? c.oauthUnidentifiedDesc
+          .replace("{pages}", String(oauthPageCount))
+          .replace("{ig}", String(oauthIgCount))
       : oauthBannerTone === "success"
         ? c.oauthSuccessDesc
             .replace("{pages}", String(oauthPageCount))
@@ -2994,7 +3062,21 @@ function ChannelConnectInner() {
       />
     </div>
   ) : null
-  const externalCredentialActions = !effectiveFormInitialData ? (
+  // Where a Meta card withholds its form (metaRowWithheld), the only way on is the channel list — not
+  // externalCredentialActions, whose links lead straight back to this page without the row id.
+  const metaNoRowBlock = metaRowWithheld && !metaRowPending ? (
+    <div data-testid="meta-no-row" className="mt-6 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+      <p className="text-sm font-semibold text-zinc-800">{c.noRowTitle}</p>
+      <p className="mt-1 text-sm leading-6 text-zinc-600">{c.noRowDesc}</p>
+      <Button asChild className="mt-4 gap-2 bg-orange-600 text-white hover:bg-orange-700">
+        <Link href="/settings/channels">
+          {c.noRowAction}
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      </Button>
+    </div>
+  ) : null
+  const externalCredentialActions = !effectiveFormInitialData && !metaRowWithheld ? (
     <div className="mt-6 flex flex-wrap gap-4">
       <Button asChild className="gap-2 bg-orange-600 text-white hover:bg-orange-700">
         <Link href={credentialHref}>
@@ -4158,7 +4240,7 @@ function ChannelConnectInner() {
                       "mt-5 rounded-2xl border p-4",
                       oauthBannerTone === "success"
                         ? "border-emerald-200 bg-emerald-50"
-                        : oauthBannerTone === "pending"
+                        : (oauthBannerTone === "pending" || oauthBannerTone === "neutral")
                           ? "border-zinc-200 bg-zinc-50"
                           : "border-amber-200 bg-amber-50",
                     )}
@@ -4167,7 +4249,7 @@ function ChannelConnectInner() {
                       "text-sm font-semibold",
                       oauthBannerTone === "success"
                         ? "text-emerald-800"
-                        : oauthBannerTone === "pending"
+                        : (oauthBannerTone === "pending" || oauthBannerTone === "neutral")
                           ? "text-zinc-800"
                           : "text-amber-900",
                     )}>
@@ -4177,7 +4259,7 @@ function ChannelConnectInner() {
                       "mt-1 text-sm leading-6",
                       oauthBannerTone === "success"
                         ? "text-emerald-700"
-                        : oauthBannerTone === "pending"
+                        : (oauthBannerTone === "pending" || oauthBannerTone === "neutral")
                           ? "text-zinc-600"
                           : "text-amber-800",
                     )}>
@@ -4197,6 +4279,7 @@ function ChannelConnectInner() {
                   <TikTokChannelHub orgId={orgId} locale={loc} />
                 ) : null}
                 {credentialFormBlock}
+                {metaNoRowBlock}
                 {externalCredentialActions}
                 <div className="mt-6 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
                   <div className="flex flex-col gap-3 border-b border-zinc-200 bg-zinc-50 px-5 py-4 md:flex-row md:items-start md:justify-between">
