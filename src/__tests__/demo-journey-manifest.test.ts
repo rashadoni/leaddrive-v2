@@ -347,6 +347,12 @@ describe("Guided journey intro clips", () => {
     const CHECKED_SYNTHETIC: Record<string, string> = {
       "deal-detail": "a TEST deal («TEST: GlobalTech Analytics Platform»)",
       quotes: "test quotes (3232, sa, ADV-DEMO-Q-001, q-2026-v333, Q-TRACK-001)",
+      // Filmed on the `demo` stand, 2026-09-21: «Demo Mebel», invented in
+      // scripts/seeds/demo-journey-legend.mjs and scripts/seeds/inbox-reel-demo.mjs.
+      "demo-campaigns": "six invented campaigns, «Payız kolleksiyası» opened",
+      "demo-inbox": "the Omni-channel reel's invented conversations, Aysu Nəbiyeva's thread opened",
+      "demo-leads": "fourteen invented leads, «Leyla Məmmədova» (Northline Logistics) opened",
+      "demo-boards": "the invented «Satış» and «Marketinq» boards, task SAT-1 opened",
     }
     for (const section of manifest.sections) {
       if (section.intro?.status !== "available") continue

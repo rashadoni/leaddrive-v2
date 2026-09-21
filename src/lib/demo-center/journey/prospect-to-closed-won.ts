@@ -104,6 +104,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
       requires: [],
       entryStates: ["STARTED"],
       exitStates: ["SOURCE_SEEN"],
+      intro: { slug: "demo-campaigns", caption: "Kampaniyalar — kanal, alıcılar və nəticə bir dəqiqədə.", status: "available" },
       assistantPrompts: ["Bu kampaniya hansı kanalla göndərilib?", "Kampaniyanın nəticəsi necə ölçülür?"],
       steps: [
         {
@@ -156,6 +157,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
       requires: [],
       entryStates: ["SOURCE_SEEN"],
       exitStates: ["CONVERSATION_OPENED"],
+      intro: { slug: "demo-inbox", caption: "Gələnlər qutusu — bütün kanallar bir siyahıda.", status: "available" },
       assistantPrompts: ["Hansı kanallar dəstəklənir?", "Cavab verilməmiş dialoqları necə taparam?"],
       steps: [
         {
@@ -260,11 +262,10 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
       requires: [],
       entryStates: ["AI_REPLIED"],
       exitStates: ["LEAD_CREATED"],
-      // Not shown to prospects: the recorded clip was filmed on LeadDrive
-      // Inc.'s own records (the owner's test data, 2026-09-21), not on the
-      // synthetic `demo` stand a prospect should be walked through. It stays
-      // "planned" until it is re-recorded there.
-      intro: { slug: "leads", caption: "Lidlər siyahısı və kart — bir dəqiqəlik icmal.", status: "planned" },
+      // Filmed on the synthetic `demo` stand (scripts/seeds/demo-journey-clips.mjs).
+      // The help library's own leads clip shows LeadDrive Inc.'s test records
+      // and stays out of the demo (2026-09-21).
+      intro: { slug: "demo-leads", caption: "Lidlər siyahısı və kart — bir dəqiqəlik icmal.", status: "available" },
       assistantPrompts: ["Bu lidin mənbəyi nədir?", "Lid kartında hansı vərəqlər var?"],
       steps: [
         {
@@ -424,6 +425,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
       requires: [],
       entryStates: ["CALL_SKIPPED", "CALL_DECLINED", "CALL_RESULT_RECORDED", "CALL_NO_ANSWER", "CALL_BUSY", "CALL_BLOCKED", "CALL_FAILED", "CALL_ATTENTION_REQUIRED"],
       exitStates: ["TASK_CREATED"],
+      intro: { slug: "demo-boards", caption: "Komandanın lövhələri — tapşırıqlar, süzgəclər və hesabatlar.", status: "available" },
       assistantPrompts: ["Tapşırıq niyə avtomatik yarandı?", "Tapşırığı başqasına necə verə bilərəm?"],
       steps: [
         {
