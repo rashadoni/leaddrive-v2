@@ -95,6 +95,13 @@ export async function upsertSocialConversation(
       lastMessageAt: new Date(),
       unreadCount: { increment: 1 },
       contactName,
+      // Follow the connection that just delivered the customer's message. Replies go out through the
+      // conversation's bound connection, and it used to stay pinned to whichever one received the FIRST
+      // message: switch that connection off (a reconnected Page, a retired Meta app) and every existing
+      // conversation kept receiving but answered «… не настроен» on send. Found 2026-09-21 on the
+      // Lead Drive CRM Page. The connection that received THIS message is live by construction, and for
+      // WhatsApp it is also the number whose 24-hour window the customer just opened.
+      ...(channelConfigId ? { channelConfigId } : {}),
     },
   })
   return { ...updated, wasCreated: false as const }
