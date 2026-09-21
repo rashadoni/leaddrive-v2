@@ -27,9 +27,10 @@ import { CHANNEL_FORM_TYPES } from "@/lib/channels/channel-config-payload"
  */
 
 /**
- * The reply policy, owned by `PATCH /api/v1/settings/channel-reply` for EVERY channel type: that endpoint lists and
- * writes all of a workspace's rows, and the webhooks of WhatsApp, Telegram, VK, TikTok/Chatwoot, Facebook and
- * Instagram read it. One list for all types, so a key the endpoint gains is protected everywhere at once. (The
+ * The reply policy, owned by `PATCH /api/v1/settings/channel-reply` for EVERY conversation channel type: that endpoint
+ * lists and writes every row of a workspace except those with a screen of their own (Social Monitoring, Slack, Teams,
+ * VoIP — lib/channels/dedicated-channel-types), and the webhooks of WhatsApp, Telegram, VK, TikTok/Chatwoot, Facebook
+ * and Instagram read it. One list for all types, so a key the endpoint gains is protected everywhere at once. (The
  * Facebook/Instagram list in meta-server-settings carries the same seven; a test holds the two together.)
  */
 export const REPLY_POLICY_SETTING_KEYS = [
