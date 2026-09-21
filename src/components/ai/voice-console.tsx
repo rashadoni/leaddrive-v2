@@ -13,6 +13,11 @@ import {
   VOICE_RECEIPT_CHANGED_EVENT,
 } from "@/components/ai/voice-receipt-surface"
 import { isVoiceProposeToolName, type VoiceProposeToolName } from "@/lib/ai/voice/propose-tools"
+import {
+  createVoiceToolBudget,
+  voiceToolBudgetMessage,
+  type VoiceToolBudget,
+} from "@/lib/ai/voice/tool-budget"
 import { VOICE_TOOL_NAMES, type VoiceToolName } from "@/lib/ai/voice/read-tools"
 import {
   diagnoseMicrophoneFailure,
@@ -277,6 +282,9 @@ function ConsoleInner({
   const startedAtRef = useRef(0)
   const lastActivityRef = useRef(0)
   const failureStreakRef = useRef(0)
+  // Ceilings on how much the model may do in one breath. Counted here because
+  // this is where a runaway loop actually runs.
+  const toolBudgetRef = useRef<VoiceToolBudget>(createVoiceToolBudget())
   const confirmedSpeechActiveRef = useRef(false)
   const responseWatchdogRef = useRef<number | null>(null)
   const utteranceWatchdogRef = useRef<number | null>(null)
@@ -417,11 +425,16 @@ function ConsoleInner({
     const current = sessionRef.current
     if (!current) return "NO_SESSION: попроси пользователя снова включить микрофон."
     const record = recordFromPath(pathname || "/")
+    // The same deadline every read call gets. Without it a hung proposal keeps
+    // the tool response outstanding and the conversation waits on it.
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), TOOL_TIMEOUT_MS)
     try {
       const response = await fetch("/api/v1/ai/voice/actions/propose", {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           voiceSessionId: current.voiceSessionId,
           tool,
@@ -452,17 +465,34 @@ function ConsoleInner({
     } catch {
       trace("propose", { tool }, "error")
       return "ERROR: не удалось подготовить черновик. Ничего не сохранено."
+    } finally {
+      window.clearTimeout(timeout)
     }
   }, [pathname, trace])
 
   const executeTool = useCallback(async (name: string, args: unknown, toolCallId?: string): Promise<string> => {
+    // Navigation and screen context are free: they touch no data, cost nothing
+    // and are how the assistant keeps up with the user rather than working.
     if (name === "navigate_to_section") return navigate(args)
     if (name === "get_current_screen") return currentScreen()
     if (name === "open_record") return openRecord(args)
-    if (isVoiceProposeToolName(name)) return propose(name, args, toolCallId)
-    if ((VOICE_TOOL_NAMES as readonly string[]).includes(name)) return callTool(name as VoiceToolName, args)
+
+    if (isVoiceProposeToolName(name)) {
+      const verdict = toolBudgetRef.current.claim("propose")
+      if (!verdict.ok) {
+        trace("propose", { tool: name, code: verdict.reason }, "budget_exhausted")
+        return voiceToolBudgetMessage(verdict.reason)
+      }
+      return propose(name, args, toolCallId)
+    }
+
+    if ((VOICE_TOOL_NAMES as readonly string[]).includes(name)) {
+      const verdict = toolBudgetRef.current.claim("read")
+      if (!verdict.ok) return voiceToolBudgetMessage(verdict.reason)
+      return callTool(name as VoiceToolName, args)
+    }
     return "UNKNOWN_TOOL: this tool is not available."
-  }, [callTool, currentScreen, navigate, openRecord, propose])
+  }, [callTool, currentScreen, navigate, openRecord, propose, trace])
   executeToolRef.current = executeTool
 
   const clearResponseWatchdog = useCallback(() => {
@@ -545,6 +575,7 @@ function ConsoleInner({
     nudgedRef.current = false
     transcriptDraftRef.current = ""
     handledToolCallsRef.current.clear()
+    toolBudgetRef.current = createVoiceToolBudget()
     inFlightToolCallsRef.current.clear()
     pendingToolResponsesRef.current.clear()
     cancelledToolCallsRef.current.clear()
@@ -803,6 +834,9 @@ function ConsoleInner({
       confirmedSpeechActiveRef.current = false
       clearUtteranceWatchdog()
       generationInProgressRef.current = false
+      // The answer is finished, so the next one gets a fresh per-turn
+      // allowance. The session and proposal counts deliberately carry over.
+      toolBudgetRef.current.endTurn()
       clearResponseWatchdog()
       nudgedRef.current = false
       setPhase("listening")
