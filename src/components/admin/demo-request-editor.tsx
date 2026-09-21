@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { ArrowDown, ArrowUp, Check, Clock3, Eye, KeyRound, RotateCcw, Send, ShieldX } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -15,6 +15,9 @@ interface GrantSummary {
   id: string
   status: string
   moduleIds: string[]
+  /** Issued for a guided scenario rather than a module playlist. */
+  journey: boolean
+  liveCallEnabled: boolean
   sentAt: string | null
   openedAt: string | null
   sessionStartedAt: string | null
@@ -39,6 +42,7 @@ export function DemoRequestEditor({
 }) {
   const router = useRouter()
   const t = useTranslations("admin.demoCenter")
+  const locale = useLocale()
   const validRequested = requestedModuleIds.filter((id) => modules.some((module) => module.id === id))
   // What the prospect actually receives. The guided journey is the default:
   // the module playlist is the older shape the owner asked to replace, kept
@@ -49,6 +53,7 @@ export function DemoRequestEditor({
   const [linkValidDays, setLinkValidDays] = useState(7)
   const [sessionMinutes, setSessionMinutes] = useState(120)
   const [inactivityMinutes, setInactivityMinutes] = useState(30)
+  const [liveCall, setLiveCall] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -92,7 +97,7 @@ export function DemoRequestEditor({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           // A grant is one or the other; the API refuses both or neither.
-          ...(journey ? { scenarioId: PROSPECT_TO_CLOSED_WON.scenarioId } : { moduleIds: selected }),
+          ...(journey ? { scenarioId: PROSPECT_TO_CLOSED_WON.scenarioId, liveCallEnabled: liveCall } : { moduleIds: selected }),
           linkValidDays,
           sessionDurationMinutes: sessionMinutes,
           inactivityMinutes,
@@ -218,16 +223,16 @@ export function DemoRequestEditor({
         </div>
       </section>
 
-      <section className="border-t border-zinc-200 pt-7 dark:border-zinc-800">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">2 · Set the story order</p>
+      <section className={`border-t border-zinc-200 pt-7 dark:border-zinc-800 ${mode === "modules" ? "" : "hidden"}`}>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">2 · {t("storyOrder")}</p>
         {selectedModules.length ? (
           <ol className="mt-4 divide-y divide-zinc-200 rounded-xl border border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900">
             {selectedModules.map((module, index) => (
               <li key={module.id} className="flex min-h-14 items-center gap-3 px-3 py-2">
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-xs font-semibold text-white dark:bg-zinc-100 dark:text-zinc-900">{index + 1}</span>
                 <span className="min-w-0 flex-1 truncate text-sm font-medium">{module.title}</span>
-                <Button type="button" variant="ghost" size="icon" disabled={index === 0} onClick={() => move(module.id, -1)} aria-label={`Move ${module.title} earlier`}><ArrowUp className="h-4 w-4" /></Button>
-                <Button type="button" variant="ghost" size="icon" disabled={index === selectedModules.length - 1} onClick={() => move(module.id, 1)} aria-label={`Move ${module.title} later`}><ArrowDown className="h-4 w-4" /></Button>
+                <Button type="button" variant="ghost" size="icon" disabled={index === 0} onClick={() => move(module.id, -1)} aria-label={t("moveEarlier", { title: module.title })}><ArrowUp className="h-4 w-4" /></Button>
+                <Button type="button" variant="ghost" size="icon" disabled={index === selectedModules.length - 1} onClick={() => move(module.id, 1)} aria-label={t("moveLater", { title: module.title })}><ArrowDown className="h-4 w-4" /></Button>
               </li>
             ))}
           </ol>
@@ -235,16 +240,30 @@ export function DemoRequestEditor({
       </section>
 
       <section className="border-t border-zinc-200 pt-7 dark:border-zinc-800">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">3 · Issue one session</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">3 · {t("step3")}</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <Setting label={t("linkValidFor")} suffix={t("days")} value={linkValidDays} onChange={setLinkValidDays} min={1} max={30} />
           <Setting label={t("sessionLimit")} suffix={t("minutes")} value={sessionMinutes} onChange={setSessionMinutes} min={15} max={240} />
           <Setting label={t("idleTimeout")} suffix={t("minutes")} value={inactivityMinutes} onChange={setInactivityMinutes} min={5} max={60} />
         </div>
+        {mode === "journey" ? (
+          <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+            <input
+              type="checkbox"
+              checked={liveCall}
+              onChange={(event) => setLiveCall(event.target.checked)}
+              className="mt-1 h-4 w-4 accent-orange-600"
+            />
+            <span>
+              <span className="block text-sm font-semibold text-zinc-900 dark:text-zinc-100">{t("liveCallTitle")}</span>
+              <span className="mt-1 block text-xs leading-5 text-zinc-500">{t("liveCallBody")}</span>
+            </span>
+          </label>
+        ) : null}
         <div className="mt-5 flex flex-col gap-4 rounded-xl bg-zinc-900 p-5 text-zinc-100 lg:flex-row lg:items-center lg:justify-between dark:bg-zinc-100 dark:text-zinc-900">
           <div className="flex items-start gap-3">
             <KeyRound className="mt-0.5 h-5 w-5 text-orange-400" />
-            <div><p className="text-sm font-semibold">{t("issueTitle")}</p><p className="mt-1 max-w-xl text-xs leading-5 text-zinc-400 dark:text-zinc-600">Preview uses only synthetic data and sends nothing. Issuing creates the OTP-protected client link and revokes the previous open grant.</p></div>
+            <div><p className="text-sm font-semibold">{t("issueTitle")}</p><p className="mt-1 max-w-xl text-xs leading-5 text-zinc-400 dark:text-zinc-600">{t("issueBody")}</p></div>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
             {/* The preview always shows what "Issue and send" would deliver —
@@ -277,8 +296,15 @@ export function DemoRequestEditor({
             {grants.map((grant) => (
               <div key={grant.id} className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <div className="flex flex-wrap items-center gap-2"><Badge variant="outline">{grant.status.replaceAll("_", " ")}</Badge><span className="text-xs text-zinc-500">{grant.moduleIds.length} modules</span></div>
-                  <p className="mt-2 text-xs text-zinc-500">Expires {new Date(grant.expiresAt).toLocaleString("en-GB")}{grant.openedAt ? ` · opened ${new Date(grant.openedAt).toLocaleString("en-GB")}` : ""}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline">{grant.status.replaceAll("_", " ")}</Badge>
+                    <span className="text-xs text-zinc-500">{grant.journey ? t("grantJourney") : t("grantModules", { count: grant.moduleIds.length })}</span>
+                    {grant.liveCallEnabled ? <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100 dark:bg-orange-950/40 dark:text-orange-300">{t("liveCallOn")}</Badge> : null}
+                  </div>
+                  <p className="mt-2 text-xs text-zinc-500">
+                    {t("grantExpires", { date: new Date(grant.expiresAt).toLocaleString(locale) })}
+                    {grant.openedAt ? ` · ${t("grantOpened", { date: new Date(grant.openedAt).toLocaleString(locale) })}` : ""}
+                  </p>
                 </div>
                 {!CLOSED_GRANT_STATUSES.has(grant.status) && grant.status !== "DELIVERY_FAILED" ? (
                   <Button type="button" variant="outline" size="sm" disabled={busy !== null} onClick={() => revoke(grant.id)}><ShieldX className="h-4 w-4" />{t("revokeAccess")}</Button>

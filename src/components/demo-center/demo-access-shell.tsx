@@ -7,8 +7,9 @@ import { ArrowRight, BarChart3, CheckCircle2, Clock3, KeyRound, Layers3, LoaderC
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import type { DemoModuleManifest } from "@/lib/demo-center/catalog"
-import { getDemoJourneyScenario, type DemoProspectIdentity } from "@/lib/demo-center/journey"
+import { getDemoJourneyScenario, withLiveCall, type DemoProspectIdentity } from "@/lib/demo-center/journey"
 import { DemoJourneyPlayer } from "@/components/demo-center/journey/demo-journey-player"
+import type { DemoLiveCallState } from "@/components/demo-center/journey/demo-live-call"
 import { DemoPlayer } from "@/components/demo-center/demo-player"
 
 type AccessState = "ready_for_otp" | "otp_sent" | "verified" | "active" | "active_elsewhere" | "completed" | "expired" | "revoked" | "connection_lost" | "unavailable"
@@ -31,6 +32,8 @@ interface AccessPayload {
   modules?: ModulePreview[] | DemoModuleManifest[]
   scenario?: ScenarioPreview
   identity?: DemoProspectIdentity
+  /** Booleans only: whether this grant may place a real AI call, and how far the prospect got. */
+  liveCall?: DemoLiveCallState | null
   linkExpiresAt?: string
   serverNow?: string
   sessionExpiresAt?: string
@@ -218,7 +221,10 @@ export function DemoAccessShell({ token }: { token: string }) {
       return <DemoJourneyPlayer
         key={token}
         token={token}
-        manifest={manifest}
+        // The live-call variant replaces only the call section; the grant
+        // decides, via the server, which one this prospect walks.
+        manifest={payload.liveCall?.enabled ? withLiveCall(manifest) : manifest}
+        liveCall={payload.liveCall?.enabled ? payload.liveCall : undefined}
         identity={payload.identity}
         company={payload.company}
         watermark={payload.watermark}

@@ -93,6 +93,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         // Pinned, not resolved at open time: a prospect finishes the manifest
         // they were granted even if a newer version ships mid-session.
         scenarioVersion: scenario?.version ?? null,
+        // The admin allowed one real AI call to the prospect's proven phone,
+        // and is the one on whose behalf it is placed.
+        liveCallEnabled: Boolean(scenario) && parsed.data.liveCallEnabled,
         locale: parsed.data.locale,
         watermark: `${demoRequest.company} • ${demoRequest.email}`,
         linkExpiresAt,
@@ -106,6 +109,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
               scenarioId: scenario?.scenarioId ?? null,
               scenarioVersion: scenario?.version ?? null,
               moduleCount: parsed.data.moduleIds.length,
+              liveCallEnabled: Boolean(scenario) && parsed.data.liveCallEnabled,
               linkValidDays: parsed.data.linkValidDays,
               sessionDurationMinutes: parsed.data.sessionDurationMinutes,
               inactivityMinutes: parsed.data.inactivityMinutes,

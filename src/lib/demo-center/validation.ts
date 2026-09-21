@@ -51,8 +51,13 @@ export const demoGrantIssueSchema = z.object({
   sessionDurationMinutes: z.number().int().min(15).max(240).default(120),
   inactivityMinutes: z.number().int().min(5).max(60).default(30),
   locale: z.enum(["az", "ru", "en"]).default("az"),
+  /** A real AI call to the prospect's proven phone. Only in a guided scenario. */
+  liveCallEnabled: z.boolean().default(false),
 }).superRefine((value, context) => {
   const hasScenario = !!value.scenarioId
+  if (value.liveCallEnabled && !hasScenario) {
+    context.addIssue({ code: "custom", path: ["liveCallEnabled"], message: "A live call needs a guided scenario" })
+  }
   const hasModules = value.moduleIds.length > 0
   if (hasScenario && hasModules) {
     context.addIssue({ code: "custom", path: ["scenarioId"], message: "Choose a scenario or modules, not both" })
