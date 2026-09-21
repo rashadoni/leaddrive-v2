@@ -21,8 +21,8 @@ rows for real customer Pages — Sport&Diet `1078733058880813`, Andrologiya.az
 `182013225466892`, Nokaut.az `520731194744134`, «Мыслители прошлого»
 `373662722735767` — plus a WhatsApp row already on `2414060595720618`.
 
-Two mechanisms made "just enter the new app there" unsafe, and both are now
-closed in code:
+Three mechanisms made "just enter the new app there" unsafe, and all three are
+now closed in code:
 
 1. **`getTenantMetaApp` resolves per ORGANIZATION**, newest qualifying row
    first. A second Meta app entered anywhere in the tenant would have become the
@@ -34,6 +34,16 @@ closed in code:
    review would therefore have re-pointed real customers' DM delivery onto it,
    and switched back on the Instagram row the owner deliberately disabled on
    2026-09-11.
+3. **The same loop also rewrote Social Monitoring.** For every Page, and every
+   linked Instagram account, it upserted the `social_accounts` row with the new
+   token and `isActive: true`. That table has no staged flag: the pollers,
+   `POST /api/v1/social/enable-inbox` (which re-wires inbox channels from these
+   tokens through the ordinary, non-staged path) and the meta-social webhook
+   all read it as live. The staged consent carries only the Messenger scopes,
+   so such a token cannot even read a Page's feed. This one was closed a day
+   later than the other two: staged connects on 2026-09-20 21:20 and
+   2026-09-21 13:47 UTC rewrote the row of Page `373662722735767`, and its
+   polling has not succeeded since.
 
 ## How the isolation works
 
@@ -45,7 +55,8 @@ closed in code:
 - The id travels inside the HMAC-signed `state`, so the callback redeems the
   code against the same app that issued it.
 - A pinned connect runs in **staged mode**: it only ever writes a row that is
-  itself staged, and it subscribes nothing.
+  itself staged, it writes no Social Monitoring account (`social_accounts`)
+  and does not recompile monitoring route plans, and it subscribes nothing.
 
 ## Setup
 

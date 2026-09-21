@@ -58,6 +58,7 @@ async function redactedProviderText(res: Response): Promise<string> {
  *     user keeps admin access).
  *  5. Upsert one SocialAccount per Page. If the Page has a linked Instagram
  *     Business account, also upsert a SocialAccount for `instagram`.
+ *     A STAGED (pinned `?app=`) connect skips this step entirely — see the loop.
  */
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -221,6 +222,9 @@ export async function GET(req: NextRequest) {
     )
   }
 
+  // Pages / Instagram accounts this round trip wired. The channel card reads them as "was anything
+  // connected", so a staged connect counts the staged inbox rows it wired even though it writes no
+  // SocialAccount.
   let fbCount = 0
   let igCount = 0
   // Rows of the return card's type that this round trip created or updated. The loop below wires EVERY
@@ -228,71 +232,92 @@ export async function GET(req: NextRequest) {
   const returnCardType = oauthReturnChannelType(ret)
   const wiredForReturnCard: string[] = []
 
+  // A PINNED connect is staged (App Review): it wires staged inbox rows and writes NO SocialAccount.
+  //
+  // SocialAccount has no staged flag, so every reader takes a row as live: the Social Monitoring
+  // pollers; `POST /social/enable-inbox`, which re-wires inbox channels from these tokens through the
+  // ORDINARY path — onto the Page's oldest ChannelConfig, with `isActive: true`, subscribing the Page
+  // with the same token; and the meta-social webhook's Page → organization lookup. Nor can the token
+  // serve monitoring: the staged consent asks for the Messenger scopes only (oauth/facebook/start), not
+  // pages_read_engagement or instagram_basic.
+  //
+  // Observed on production before this guard existed: staged connects on tenant `leaddrive`
+  // (2026-09-20 21:20 and 2026-09-21 13:47 UTC) replaced the Social Monitoring token of Page
+  // 373662722735767 with one minted by app 2414060595720618, and polling of that Page has not succeeded
+  // since the minute before the first of them.
+  const staged = Boolean(pinnedApp)
+
   for (const page of pages) {
-    const encryptedPageToken = encryptToken(page.access_token, `oauth:facebook:${page.id}`)
-
-    await prisma.socialAccount.upsert({
-      where: {
-        organizationId_platform_handle: {
-          organizationId: payload.orgId,
-          platform: "facebook",
-          handle: page.id,
-        },
-      },
-      update: {
-        accessToken: encryptedPageToken,
-        displayName: page.name,
-        isActive: true,
-      },
-      create: {
-        organizationId: payload.orgId,
-        platform: "facebook",
-        handle: page.id,
-        displayName: page.name,
-        accessToken: encryptedPageToken,
-        isActive: true,
-      },
-    })
-    fbCount++
-    // Also wire this page as an INBOX channel (ChannelConfig + Meta DM-webhook subscription) so its
-    // Messenger DMs reach the inbox, not just Social Monitoring. Idempotent + fail-soft.
-    const pageChannel = await ensureInboxChannelForPage(payload.orgId, "facebook", page.id, page.name, page.access_token, { staged: Boolean(pinnedApp) })
-    if (returnCardType === "facebook" && pageChannel.channelId) wiredForReturnCard.push(pageChannel.channelId)
-
-    const ig = page.instagram_business_account
-    if (ig) {
-      // Instagram reuses the Page access token for Graph API calls.
-      const encryptedIg = encryptToken(page.access_token, `oauth:instagram:${ig.id}`)
-      const igHandle = (ig as { username?: string }).username || ig.id
+    if (!staged) {
+      const encryptedPageToken = encryptToken(page.access_token, `oauth:facebook:${page.id}`)
       await prisma.socialAccount.upsert({
         where: {
           organizationId_platform_handle: {
             organizationId: payload.orgId,
-            platform: "instagram",
-            handle: ig.id,
+            platform: "facebook",
+            handle: page.id,
           },
         },
         update: {
-          accessToken: encryptedIg,
-          displayName: `${page.name} / @${igHandle}`,
+          accessToken: encryptedPageToken,
+          displayName: page.name,
           isActive: true,
         },
         create: {
           organizationId: payload.orgId,
-          platform: "instagram",
-          handle: ig.id,
-          displayName: `${page.name} / @${igHandle}`,
-          accessToken: encryptedIg,
+          platform: "facebook",
+          handle: page.id,
+          displayName: page.name,
+          accessToken: encryptedPageToken,
           isActive: true,
         },
       })
+    }
+    fbCount++
+    // Also wire this page as an INBOX channel (ChannelConfig + Meta DM-webhook subscription) so its
+    // Messenger DMs reach the inbox, not just Social Monitoring. Idempotent + fail-soft.
+    const pageChannel = await ensureInboxChannelForPage(payload.orgId, "facebook", page.id, page.name, page.access_token, { staged })
+    if (returnCardType === "facebook" && pageChannel.channelId) wiredForReturnCard.push(pageChannel.channelId)
+
+    const ig = page.instagram_business_account
+    if (ig) {
+      const igHandle = (ig as { username?: string }).username || ig.id
+      if (!staged) {
+        // Instagram reuses the Page access token for Graph API calls.
+        const encryptedIg = encryptToken(page.access_token, `oauth:instagram:${ig.id}`)
+        await prisma.socialAccount.upsert({
+          where: {
+            organizationId_platform_handle: {
+              organizationId: payload.orgId,
+              platform: "instagram",
+              handle: ig.id,
+            },
+          },
+          update: {
+            accessToken: encryptedIg,
+            displayName: `${page.name} / @${igHandle}`,
+            isActive: true,
+          },
+          create: {
+            organizationId: payload.orgId,
+            platform: "instagram",
+            handle: ig.id,
+            displayName: `${page.name} / @${igHandle}`,
+            accessToken: encryptedIg,
+            isActive: true,
+          },
+        })
+      }
       igCount++
-      const igChannel = await ensureInboxChannelForPage(payload.orgId, "instagram", ig.id, `${page.name} / @${igHandle}`, page.access_token, { staged: Boolean(pinnedApp) })
+      const igChannel = await ensureInboxChannelForPage(payload.orgId, "instagram", ig.id, `${page.name} / @${igHandle}`, page.access_token, { staged })
       if (returnCardType === "instagram" && igChannel.channelId) wiredForReturnCard.push(igChannel.channelId)
     }
   }
 
-  await compileOrganizationSourceRoutePlans(payload.orgId)
+  // Recompiling is not a no-op: besides re-reading SocialAccount it resets every monitoring source's
+  // failure count and circuit breaker (lib/social/source-route-plan). A staged connect changed none of
+  // its inputs, so it leaves live monitoring state alone.
+  if (!staged) await compileOrganizationSourceRoutePlans(payload.orgId)
 
   const res = NextResponse.redirect(
     publicUrl(req, oauthReturnUrl(
