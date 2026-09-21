@@ -114,6 +114,9 @@ export function buildChannelPayload(form: ChannelConfigFormData) {
     appId: form.appId || undefined,
     appSecret: form.appSecret || undefined,
     pageId: form.pageId || undefined,
+    // Only the keys this form owns. On a Facebook/Instagram row the keys the server writes (the Meta
+    // subscription outcome, the Instagram token metadata, the reply policy) are kept by the PUT route —
+    // lib/channels/meta-server-settings — so they are neither echoed back here nor erased by a save.
     settings: {
       ...(form.chatId ? { chatId: form.chatId } : {}),
       ...(form.accountSid ? { accountSid: form.accountSid } : {}),
