@@ -3,6 +3,7 @@ import crypto from "crypto"
 import { withSocialConnectAuth } from "@/lib/social/oauth-access"
 import { getTenantInstagramLoginApp, getPinnedMetaApp } from "@/lib/social/tenant-meta-app"
 import { normalizeOAuthReturnKey } from "@/lib/social/oauth-return"
+import { resolveOAuthReturnChannel } from "@/lib/social/oauth-return-channel"
 
 /**
  * Start the Instagram-Login OAuth flow ("Path B").
@@ -28,6 +29,11 @@ export const GET = withSocialConnectAuth("write", async (req, auth) => {
   const orgId = auth.orgId
   // Opt-in return target — a whitelisted KEY, never a path (see lib/social/oauth-return.ts).
   const returnKey = normalizeOAuthReturnKey(new URL(req.url).searchParams.get("from"))
+  // The row Connect was pressed on, verified against this org and the card's type — so the card
+  // reopens that channel afterwards instead of guessing one (mirrors oauth/facebook/start).
+  const originChannelId = returnKey
+    ? await resolveOAuthReturnChannel(orgId, returnKey, new URL(req.url).searchParams.get("channelId"))
+    : null
 
   // Model B: prefer the tenant's OWN Instagram-Login app (from their igLogin ChannelConfig); fall back
   // to env (LeadDrive's shared IG-Login app). The redirect URI is always the shared LeadDrive callback —
@@ -54,12 +60,13 @@ export const GET = withSocialConnectAuth("write", async (req, auth) => {
   }
 
   const state = base64url(crypto.randomBytes(16))
-  // Without ?from and ?app the payload is byte-for-byte the historical one. `app` carries the pinned
-  // config id to the callback inside the HMAC-signed payload, so the app that issued the code is
-  // always the app whose secret redeems it (mirrors oauth/facebook/start).
+  // Without ?from, ?app and ?channelId the payload is byte-for-byte the historical one. `app` carries
+  // the pinned config id to the callback inside the HMAC-signed payload, so the app that issued the
+  // code is always the app whose secret redeems it (mirrors oauth/facebook/start).
   const payloadFields: Record<string, unknown> = { orgId, state, ts: Date.now() }
   if (returnKey) payloadFields.ret = returnKey
   if (pinnedApp) payloadFields.app = pinnedApp.configId
+  if (originChannelId) payloadFields.channelId = originChannelId
   const payload = JSON.stringify(payloadFields)
   const secret = process.env.NEXTAUTH_SECRET || "ld-social-oauth"
   const sig = crypto.createHmac("sha256", secret).update(payload).digest("hex")

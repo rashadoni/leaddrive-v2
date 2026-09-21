@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { withSocialConnectAuth } from "@/lib/social/oauth-access"
 import { getTenantMetaApp, getPinnedMetaApp } from "@/lib/social/tenant-meta-app"
 import { normalizeOAuthReturnKey } from "@/lib/social/oauth-return"
+import { resolveOAuthReturnChannel } from "@/lib/social/oauth-return-channel"
 
 /**
  * Start Facebook (Meta Graph) OAuth flow. The same token covers Instagram
@@ -25,6 +26,13 @@ export const GET = withSocialConnectAuth("write", async (req, auth) => {
   // the callback resolves redirects with new URL(path, origin), so accepting a path would be an open
   // redirect). Absent/unknown => null => the historical /social-monitoring destination.
   const returnKey = normalizeOAuthReturnKey(new URL(req.url).searchParams.get("from"))
+  // `?channelId=<id>` — the row the user pressed Connect on. The callback hands it back (or the row it
+  // actually wired) so the card reopens THAT channel; without it the card fell back to "some row of this
+  // type", which on a workspace holding several customers' Pages was another customer's channel. Only
+  // meaningful on a channel return target, and only for a row of this org and of that card's type.
+  const originChannelId = returnKey
+    ? await resolveOAuthReturnChannel(orgId, returnKey, new URL(req.url).searchParams.get("channelId"))
+    : null
 
   // `?app=<channelConfigId>` PINS this flow to one specific Meta app row (the App Review staging
   // path). It is the isolated route: the named row's creds are the only ones acceptable, and there is
@@ -55,8 +63,8 @@ export const GET = withSocialConnectAuth("write", async (req, auth) => {
   }
 
   const state = base64url(crypto.randomBytes(16))
-  // Without ?from and ?app the payload stays byte-for-byte what it always was, so the signed-state
-  // shape (and every flow that depends on it) is untouched for the existing entry points.
+  // Without ?from, ?app and ?channelId the payload stays byte-for-byte what it always was, so the
+  // signed-state shape (and every flow that depends on it) is untouched for the existing entry points.
   //
   // `app` carries the pinned config id across to the callback INSIDE the HMAC-signed payload. That is
   // what makes the pin hold end-to-end: the callback re-resolves the app from this id rather than
@@ -65,6 +73,8 @@ export const GET = withSocialConnectAuth("write", async (req, auth) => {
   const payloadFields: Record<string, unknown> = { orgId, state, ts: Date.now() }
   if (returnKey) payloadFields.ret = returnKey
   if (pinnedApp) payloadFields.app = pinnedApp.configId
+  // Signed like everything else here, and still re-checked against the org on the way back.
+  if (originChannelId) payloadFields.channelId = originChannelId
   const payload = JSON.stringify(payloadFields)
   const secret = process.env.NEXTAUTH_SECRET || "ld-social-oauth"
   const sig = crypto.createHmac("sha256", secret).update(payload).digest("hex")

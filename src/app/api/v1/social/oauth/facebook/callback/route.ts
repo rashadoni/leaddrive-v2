@@ -9,7 +9,13 @@ import { getTenantMetaApp, getPinnedMetaApp } from "@/lib/social/tenant-meta-app
 import { enumerateGrantedPages } from "@/lib/social/meta-granted-assets"
 import { redactOAuthProviderText } from "@/lib/oauth-redaction"
 import { compileOrganizationSourceRoutePlans } from "@/lib/social/source-route-plan"
-import { normalizeOAuthReturnKey, oauthReturnUrl } from "@/lib/social/oauth-return"
+import {
+  normalizeOAuthReturnKey,
+  oauthReturnChannelType,
+  oauthReturnUrl,
+  pickOAuthReturnChannelId,
+} from "@/lib/social/oauth-return"
+import { resolveOAuthReturnChannel } from "@/lib/social/oauth-return-channel"
 
 const GRAPH = "https://graph.facebook.com/v21.0"
 
@@ -95,7 +101,14 @@ export async function GET(req: NextRequest) {
   } catch {
     return redirectError(req, "bad_signature")
   }
-  const payload = JSON.parse(payloadStr) as { orgId: string; state: string; ts: number; ret?: string; app?: string }
+  const payload = JSON.parse(payloadStr) as {
+    orgId: string
+    state: string
+    ts: number
+    ret?: string
+    app?: string
+    channelId?: unknown
+  }
   // First point where the payload is HMAC-verified, so this is the first place `ret` may be trusted.
   // Re-normalising on the consuming side keeps the whitelist authoritative even if the issuing side
   // ever changes. Errors raised ABOVE this line must keep the static default — `ret` is unproven there.
@@ -119,6 +132,11 @@ export async function GET(req: NextRequest) {
   // tenant-Meta-app read + all SocialAccount upserts + inbox-channel wiring under
   // tenant context so the writes/reads are RLS-scoped (prod no-op while RLS OFF).
   return runWithTenant(payload.orgId, async () => {
+  // The row the connect was started from. Signed, but re-checked here against the org and the card's
+  // type all the same — the start route verified it up to 30 minutes ago, and a row can be deleted or
+  // retyped since. Every redirect from here on carries it, so a failed connect lands the user back on
+  // their own channel rather than on some other row of the workspace.
+  const originChannelId = await resolveOAuthReturnChannel(payload.orgId, ret, payload.channelId)
   // Model B (per-tenant Meta app): use the SAME app the start route used — the tenant's own
   // appId/appSecret from their FB/IG ChannelConfig (resolved by the signed-state orgId), with env
   // fallback to LeadDrive's shared app. appSecret is read server-side only (token exchange below).
@@ -129,12 +147,12 @@ export async function GET(req: NextRequest) {
   // fallback on this path — a pinned flow that cannot resolve its app must fail, not silently swap in
   // the shared production app.
   const pinnedApp = payload.app ? await getPinnedMetaApp(payload.orgId, payload.app, "facebook") : null
-  if (payload.app && !pinnedApp) return redirectError(req, "not_configured", ret)
+  if (payload.app && !pinnedApp) return redirectError(req, "not_configured", ret, originChannelId)
   const tenantApp = pinnedApp ? null : await getTenantMetaApp(payload.orgId)
   const appId = pinnedApp?.appId || tenantApp?.appId || process.env.FACEBOOK_APP_ID
   const appSecret = pinnedApp?.appSecret || tenantApp?.appSecret || process.env.FACEBOOK_APP_SECRET
   const redirectUri = process.env.FACEBOOK_REDIRECT_URI
-  if (!appId || !appSecret || !redirectUri) return redirectError(req, "not_configured", ret)
+  if (!appId || !appSecret || !redirectUri) return redirectError(req, "not_configured", ret, originChannelId)
 
   // 1) short-lived user token
   const shortRes = await fetch(
@@ -142,7 +160,7 @@ export async function GET(req: NextRequest) {
   )
   if (!shortRes.ok) {
     console.error("[facebook-oauth] short token failed:", await redactedProviderText(shortRes))
-    return redirectError(req, "token_exchange_failed", ret)
+    return redirectError(req, "token_exchange_failed", ret, originChannelId)
   }
   const shortJson = await shortRes.json() as TokenJson
 
@@ -152,7 +170,7 @@ export async function GET(req: NextRequest) {
   )
   if (!longRes.ok) {
     console.error("[facebook-oauth] long token failed:", await redactedProviderText(longRes))
-    return redirectError(req, "long_token_failed", ret)
+    return redirectError(req, "long_token_failed", ret, originChannelId)
   }
   const longJson = await longRes.json() as TokenJson
 
@@ -163,7 +181,7 @@ export async function GET(req: NextRequest) {
   )
   if (!pagesRes.ok) {
     console.error("[facebook-oauth] /me/accounts failed:", await redactedProviderText(pagesRes))
-    return redirectError(req, "pages_fetch_failed", ret)
+    return redirectError(req, "pages_fetch_failed", ret, originChannelId)
   }
   const pagesJson = await pagesRes.json() as { data: Array<Page & { instagram_business_account?: { id: string; username?: string } }> }
   let pages = pagesJson.data || []
@@ -199,12 +217,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(
       publicUrl(req, oauthReturnUrl(ret, {
         error: grantDiagnostic ? `no_admined_pages: ${grantDiagnostic}` : "no_admined_pages",
-      })),
+      }, originChannelId)),
     )
   }
 
   let fbCount = 0
   let igCount = 0
+  // Rows of the return card's type that this round trip created or updated. The loop below wires EVERY
+  // Page the Meta user granted, so the card is told which of them to open instead of picking one.
+  const returnCardType = oauthReturnChannelType(ret)
+  const wiredForReturnCard: string[] = []
 
   for (const page of pages) {
     const encryptedPageToken = encryptToken(page.access_token, `oauth:facebook:${page.id}`)
@@ -234,7 +256,8 @@ export async function GET(req: NextRequest) {
     fbCount++
     // Also wire this page as an INBOX channel (ChannelConfig + Meta DM-webhook subscription) so its
     // Messenger DMs reach the inbox, not just Social Monitoring. Idempotent + fail-soft.
-    await ensureInboxChannelForPage(payload.orgId, "facebook", page.id, page.name, page.access_token, { staged: Boolean(pinnedApp) })
+    const pageChannel = await ensureInboxChannelForPage(payload.orgId, "facebook", page.id, page.name, page.access_token, { staged: Boolean(pinnedApp) })
+    if (returnCardType === "facebook" && pageChannel.channelId) wiredForReturnCard.push(pageChannel.channelId)
 
     const ig = page.instagram_business_account
     if (ig) {
@@ -264,22 +287,28 @@ export async function GET(req: NextRequest) {
         },
       })
       igCount++
-      await ensureInboxChannelForPage(payload.orgId, "instagram", ig.id, `${page.name} / @${igHandle}`, page.access_token, { staged: Boolean(pinnedApp) })
+      const igChannel = await ensureInboxChannelForPage(payload.orgId, "instagram", ig.id, `${page.name} / @${igHandle}`, page.access_token, { staged: Boolean(pinnedApp) })
+      if (returnCardType === "instagram" && igChannel.channelId) wiredForReturnCard.push(igChannel.channelId)
     }
   }
 
   await compileOrganizationSourceRoutePlans(payload.orgId)
 
   const res = NextResponse.redirect(
-    publicUrl(req, oauthReturnUrl(ret, { connected: "facebook", pages: String(fbCount), ig: String(igCount) })),
+    publicUrl(req, oauthReturnUrl(
+      ret,
+      { connected: "facebook", pages: String(fbCount), ig: String(igCount) },
+      pickOAuthReturnChannelId(originChannelId, wiredForReturnCard),
+    )),
   )
   res.cookies.delete("ld_fb_oauth")
   return res
   })
 }
 
-function redirectError(req: NextRequest, code: string, ret?: string | null): NextResponse {
+function redirectError(req: NextRequest, code: string, ret?: string | null, channelId?: string | null): NextResponse {
   // `ret` omitted => /social-monitoring, exactly as before. URLSearchParams (inside oauthReturnUrl)
   // does the encoding, so codes like `facebook_denied: <detail>` stay safe without manual escaping.
-  return NextResponse.redirect(publicUrl(req, oauthReturnUrl(ret, { error: code })))
+  // `channelId` is passed only once it has been verified against the org (see originChannelId).
+  return NextResponse.redirect(publicUrl(req, oauthReturnUrl(ret, { error: code }, channelId)))
 }

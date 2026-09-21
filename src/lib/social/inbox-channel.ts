@@ -46,7 +46,17 @@ export async function ensureInboxChannelForPage(
   configName: string,
   pageToken: string,
   options: EnsureInboxChannelOptions = {},
-): Promise<{ created: boolean; subscribed: boolean; skippedExisting?: boolean }> {
+): Promise<{
+  created: boolean
+  subscribed: boolean
+  skippedExisting?: boolean
+  /**
+   * The row this call created or updated. The OAuth callbacks hand it back to the channel card so the
+   * card opens the channel that was actually connected — not whichever row of the workspace it would
+   * otherwise pick. Absent only when the call wrote nothing (missing org, page or token).
+   */
+  channelId?: string
+}> {
   if (!organizationId || !pageId || !pageToken) return { created: false, subscribed: false }
   const staged = options.staged === true
 
@@ -103,11 +113,13 @@ export async function ensureInboxChannelForPage(
   }
 
   let created = false
+  let channelId: string
   if (existing) {
     await prisma.channelConfig.update({
       where: { id: existing.id },
       data: { apiKey: pageToken, isActive: true, settings },
     })
+    channelId = existing.id
   } else {
     // Page rows are TOKEN carriers only (pageId + page access token). They must NOT stamp the env
     // (LeadDrive shared) appId/appSecret: in Model B that env secret would land in a tenant's scope and,
@@ -115,7 +127,7 @@ export async function ensureInboxChannelForPage(
     // (a cross-tenant write — Codex finding). The tenant's OWN appId/appSecret + verifyToken live on
     // their Meta-app config row; the webhook + OAuth resolvers select THAT row (appSecret IS NOT NULL),
     // never a page row. (LeadDrive's own no-?t path verifies via env directly, not via any page row.)
-    await prisma.channelConfig.create({
+    const row = await prisma.channelConfig.create({
       data: {
         organizationId,
         channelType,
@@ -125,13 +137,16 @@ export async function ensureInboxChannelForPage(
         isActive: true,
         settings,
       },
+      select: { id: true },
     })
+    channelId = row.id
     created = true
   }
 
   return {
     created,
     subscribed: sub.success,
+    channelId,
     ...(staged && !existing && candidates.length > 0 ? { skippedExisting: true } : {}),
   }
 }

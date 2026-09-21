@@ -16,6 +16,8 @@ import { subscribePageToMessages } from "@/lib/social/meta-subscribe"
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(subscribePageToMessages).mockResolvedValue({ success: true })
+  // Prisma's create returns the row (here: the selected id), which the OAuth callbacks hand back.
+  vi.mocked(prisma.channelConfig.create).mockResolvedValue({ id: "cc-new" } as never)
 })
 
 describe("ensureInboxChannelForPage", () => {
@@ -24,6 +26,8 @@ describe("ensureInboxChannelForPage", () => {
     const r = await ensureInboxChannelForPage("org1", "facebook", "PAGE1", "Nokaut", "PAGE_TOKEN")
     expect(r.created).toBe(true)
     expect(r.subscribed).toBe(true)
+    // The id of the row it wrote — the channel card opens exactly this one after the connect.
+    expect(r.channelId).toBe("cc-new")
     const data = (vi.mocked(prisma.channelConfig.create).mock.calls[0][0] as { data: Record<string, unknown> }).data
     expect(data.channelType).toBe("facebook")
     expect(data.pageId).toBe("PAGE1")
@@ -36,6 +40,7 @@ describe("ensureInboxChannelForPage", () => {
     vi.mocked(prisma.channelConfig.findMany).mockResolvedValue([{ id: "cc1", settings: {} }] as never)
     const r = await ensureInboxChannelForPage("org1", "facebook", "PAGE2", "Page2", "TOKEN2")
     expect(r.created).toBe(false)
+    expect(r.channelId).toBe("cc1")
     expect(prisma.channelConfig.update).toHaveBeenCalled()
     expect(prisma.channelConfig.create).not.toHaveBeenCalled()
     expect(subscribePageToMessages).toHaveBeenCalledWith("PAGE2", "TOKEN2")
@@ -60,6 +65,7 @@ describe("ensureInboxChannelForPage", () => {
   })
 
   it("no-ops (no DB) without org/page/token", async () => {
+    expect((await ensureInboxChannelForPage("", "facebook", "P", "N", "T")).channelId).toBeUndefined()
     expect((await ensureInboxChannelForPage("", "facebook", "P", "N", "T")).created).toBe(false)
     expect((await ensureInboxChannelForPage("o", "facebook", "", "N", "T")).created).toBe(false)
     expect((await ensureInboxChannelForPage("o", "facebook", "P", "N", "")).created).toBe(false)
