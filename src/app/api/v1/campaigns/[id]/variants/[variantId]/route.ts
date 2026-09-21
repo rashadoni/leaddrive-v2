@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { withRlsAuth } from "@/lib/with-rls"
+import { sanitizeEmailHtml, stripHtmlToText } from "@/lib/sanitize"
 
 const updateVariantSchema = z.object({
   name: z.string().min(1).max(255).optional(),
@@ -24,9 +25,13 @@ export const PUT = withRlsAuth("campaigns", "write", async (req, { orgId }, { pa
     return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
   }
 
+  const data = { ...parsed.data }
+  if (typeof data.htmlBody === "string") data.htmlBody = sanitizeEmailHtml(data.htmlBody)
+  if (typeof data.subject === "string") data.subject = stripHtmlToText(data.subject)
+
   const result = await prisma.campaignVariant.updateMany({
     where: { id: variantId, campaignId: id },
-    data: parsed.data,
+    data,
   })
   if (result.count === 0) return NextResponse.json({ error: "Variant not found" }, { status: 404 })
 

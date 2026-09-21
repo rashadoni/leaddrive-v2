@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { withRls } from "@/lib/with-rls"
+import { sanitizeEmailHtml, stripHtmlToText } from "@/lib/sanitize"
 
 const updateTemplateSchema = z.object({
   name: z.string().min(1).max(255).optional(),
@@ -37,10 +38,14 @@ export const PUT = withRls(async (req, { orgId }, { params }: { params: Promise<
   const parsed = updateTemplateSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
 
+  const data = { ...parsed.data }
+  if (typeof data.htmlBody === "string") data.htmlBody = sanitizeEmailHtml(data.htmlBody)
+  if (typeof data.subject === "string") data.subject = stripHtmlToText(data.subject)
+
   try {
     const result = await prisma.emailTemplate.updateMany({
       where: { id, organizationId: orgId },
-      data: parsed.data,
+      data,
     })
     if (result.count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 })
     const updated = await prisma.emailTemplate.findFirst({ where: { id, organizationId: orgId } })

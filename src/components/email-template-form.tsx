@@ -864,7 +864,10 @@ export function EmailTemplateForm({ open, onOpenChange, onSaved, initialData, or
                           if (isShowingCode) {
                             const html = current.innerText
                             update("htmlBody", html)
-                            current.innerHTML = html
+                            // Sanitize before rendering the just-typed source —
+                            // the load paths (223/232) already do; this toggle
+                            // must not be the one raw sink back into the DOM.
+                            current.innerHTML = sanitizeRichHtml(html)
                             current.removeAttribute("data-raw")
                           } else {
                             current.innerText = current.innerHTML
