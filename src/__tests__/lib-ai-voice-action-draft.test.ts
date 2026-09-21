@@ -10,6 +10,11 @@ const deps = vi.hoisted(() => ({
   leadFindFirst: vi.fn(),
   leadFindMany: vi.fn(async () => []),
   dealFindMany: vi.fn(async () => []),
+  taskFindFirst: vi.fn(),
+  dealFindFirst: vi.fn(),
+  userFindMany: vi.fn(async () => [] as Array<{ id: string; name: string | null; email: string }>),
+  companyFindMany: vi.fn(async () => [] as Array<{ id: string; name: string }>),
+  contactFindMany: vi.fn(async () => [] as Array<{ id: string; fullName: string }>),
   fieldPermissionFindMany: vi.fn<
     () => Promise<Array<{ fieldName: string; access: string }>>
   >(async () => []),
@@ -39,7 +44,11 @@ vi.mock("@/lib/prisma", () => {
       ) => callback(transactionClient),
       voiceSession: { findFirst: deps.sessionFindFirst },
       lead: { findFirst: deps.leadFindFirst, findMany: deps.leadFindMany },
-      deal: { findMany: deps.dealFindMany },
+      deal: { findMany: deps.dealFindMany, findFirst: deps.dealFindFirst },
+      task: { findFirst: deps.taskFindFirst },
+      user: { findMany: deps.userFindMany },
+      company: { findMany: deps.companyFindMany },
+      contact: { findMany: deps.contactFindMany },
       fieldPermission: { findMany: deps.fieldPermissionFindMany },
     },
     logAudit: deps.logAudit,
@@ -249,6 +258,116 @@ describe("AI voice action draft service", () => {
       "lead",
       { id: "lead-1", organizationId: "org-1" },
     )
+  })
+
+  // Owner request 2026-09-21: tasks are edited by voice like leads — bound to
+  // the task the user may see, at the version they saw, with a before/after.
+  it("binds task updates to the visible task version and names the people in the diff", async () => {
+    const updatedAt = new Date("2026-09-19T11:58:00.000Z")
+    deps.taskFindFirst.mockResolvedValueOnce({
+      id: "task-1",
+      title: "Call Ali",
+      description: null,
+      priority: "medium",
+      dueDate: new Date("2026-09-20T00:00:00.000Z"),
+      assignedTo: "user-1",
+      status: "pending",
+      updatedAt,
+    })
+    deps.userFindMany.mockResolvedValueOnce([
+      { id: "user-1", name: "Rashad", email: "r@example.com" },
+      { id: "user-2", name: "Aysel", email: "a@example.com" },
+    ])
+
+    await createAiVoiceActionDraft(auth, {
+      voiceSessionId: "voice-1",
+      actionType: "update_task",
+      targetEntityId: "task-1",
+      payload: { dueDate: "2026-09-26", assignedTo: "user-2" },
+      idempotencyKey: "draft:task-update:0001",
+    })
+
+    const data = deps.intentCreate.mock.calls[0]?.[0]?.data
+    expect(data).toMatchObject({
+      targetEntityType: "task",
+      targetEntityId: "task-1",
+      expectedUpdatedAt: updatedAt,
+      normalizedPayload: { expectedUpdatedAt: updatedAt.toISOString() },
+    })
+    expect(data.preview.target).toEqual({ entityType: "task", id: "task-1", label: "Call Ali" })
+    expect(data.preview.fields).toEqual([
+      {
+        key: "dueDate",
+        labelKey: "ai.voice.actions.fields.dueDate",
+        before: "2026-09-20T00:00:00.000Z",
+        after: "2026-09-26",
+      },
+      {
+        key: "assignedTo",
+        labelKey: "ai.voice.actions.fields.assignedTo",
+        before: "user-1",
+        after: "user-2",
+        // A receipt that says "user-2" asks the user to confirm what they
+        // cannot check.
+        beforeLabel: "Rashad",
+        afterLabel: "Aysel",
+      },
+    ])
+    expect(deps.userFindMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { organizationId: "org-1", id: { in: ["user-1", "user-2"] } },
+    }))
+    expect(deps.applyRecordFilter).toHaveBeenCalledWith(
+      "org-1", "user-1", "manager", "task", { id: "task-1", organizationId: "org-1" },
+    )
+  })
+
+  it("refuses to draft a change to a task the user cannot see", async () => {
+    deps.taskFindFirst.mockResolvedValueOnce(null)
+    await expect(createAiVoiceActionDraft(auth, {
+      voiceSessionId: "voice-1",
+      actionType: "update_task",
+      targetEntityId: "task-9",
+      payload: { title: "x" },
+      idempotencyKey: "draft:task-update:0002",
+    })).rejects.toMatchObject({ code: "TARGET_NOT_FOUND" })
+    expect(deps.intentCreate).not.toHaveBeenCalled()
+  })
+
+  it("names a deal's company instead of printing its id", async () => {
+    deps.dealFindFirst.mockResolvedValueOnce({
+      id: "deal-1",
+      name: "Azmart",
+      companyId: null,
+      contactId: null,
+      valueAmount: 1000,
+      currency: "AZN",
+      expectedClose: null,
+      assignedTo: "user-1",
+      notes: null,
+      stage: "Negotiation",
+      updatedAt: new Date("2026-09-19T11:57:00.000Z"),
+    })
+    deps.companyFindMany.mockResolvedValueOnce([{ id: "company-1", name: "Azmart MMC" }])
+
+    await createAiVoiceActionDraft(auth, {
+      voiceSessionId: "voice-1",
+      actionType: "update_deal",
+      targetEntityId: "deal-1",
+      payload: { companyId: "company-1", valueAmount: 2000 },
+      idempotencyKey: "draft:deal-update:0001",
+    })
+
+    const fields = deps.intentCreate.mock.calls[0]?.[0]?.data.preview.fields
+    expect(fields).toEqual([
+      {
+        key: "companyId",
+        labelKey: "ai.voice.actions.fields.companyId",
+        before: null,
+        after: "company-1",
+        afterLabel: "Azmart MMC",
+      },
+      { key: "valueAmount", labelKey: "ai.voice.actions.fields.valueAmount", before: 1000, after: 2000 },
+    ])
   })
 
   it("fails closed when the role, tenant module, field, or session cannot authorize the draft", async () => {

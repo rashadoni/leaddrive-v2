@@ -8,13 +8,17 @@ import {
 } from "@/lib/ai/voice/action-registry"
 
 describe("AI voice action registry", () => {
-  it("is a closed five-action allowlist with no executable callback", () => {
+  // Seven since 2026-09-21: the owner asked for tasks and deals to be edited
+  // by voice like leads. Growing this list is a decision, so it stays pinned.
+  it("is a closed seven-action allowlist with no executable callback", () => {
     expect(AI_VOICE_ACTION_TYPES).toEqual([
       "create_task",
       "create_lead",
       "update_lead",
       "create_deal",
       "convert_lead_to_deal",
+      "update_task",
+      "update_deal",
     ])
     expect(Object.keys(AI_VOICE_ACTION_REGISTRY)).toEqual(AI_VOICE_ACTION_TYPES)
     expect(isAiVoiceActionType("create_lead")).toBe(true)
@@ -24,6 +28,30 @@ describe("AI voice action registry", () => {
       expect(definition).not.toHaveProperty("execute")
       expect(definition.permissions.length).toBeGreaterThan(0)
       expect(definition.ttlMs).toBeGreaterThan(0)
+    }
+  })
+
+  it("binds task and deal updates to their record and its version, like a lead update", () => {
+    for (const [actionType, entityType, command] of [
+      ["update_task", "task", "updateTaskCommand"],
+      ["update_deal", "deal", "updateDealCommand"],
+    ] as const) {
+      expect(getAiVoiceActionDefinition(actionType)).toMatchObject({
+        command,
+        risk: "sensitive",
+        dedupePolicy: "target_revision",
+        operation: "update",
+        resultEntityType: entityType,
+        target: { entityType, requestField: "targetEntityId", bindExpectedUpdatedAt: true },
+      })
+    }
+  })
+
+  // A stage move can mark a deal won: cashback, surveys, loyalty. Not by voice.
+  it("keeps stage, pipeline and probability out of a voice deal update", () => {
+    const fields = getAiVoiceActionDefinition("update_deal").allowedFields
+    for (const field of ["stage", "pipelineId", "probability", "lostReason", "meddpicc"]) {
+      expect(fields, field).not.toContain(field)
     }
   })
 

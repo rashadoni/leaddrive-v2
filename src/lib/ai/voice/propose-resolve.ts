@@ -52,7 +52,13 @@ export type VoiceProposeResolution =
       | "COMPANY_AMBIGUOUS"
       | "CONTACT_NOT_FOUND"
       | "CONTACT_AMBIGUOUS"
-    field: "assigneeName" | "leadName" | "companyName" | "contactName"
+      | "TASK_NOT_FOUND"
+      | "TASK_AMBIGUOUS"
+      | "TASK_TARGET_REQUIRED"
+      | "DEAL_NOT_FOUND"
+      | "DEAL_AMBIGUOUS"
+      | "DEAL_TARGET_REQUIRED"
+    field: "assigneeName" | "leadName" | "companyName" | "contactName" | "taskTitle" | "dealName" | "status"
     candidates: readonly Readonly<{ id: string; label: string }>[]
   }>
   | Readonly<{ kind: "invalid"; issues: readonly Readonly<{ path: string; message: string }>[] }>
@@ -270,6 +276,77 @@ async function resolveEntryStage(auth: AuthResult): Promise<string | null> {
   return stage?.name ?? null
 }
 
+type TaskRow = Readonly<{ id: string; title: string }>
+type DealRow = Readonly<{ id: string; name: string }>
+
+/** One task by the title the user spoke, among the tasks this user may see. */
+async function resolveTaskByTitle(auth: AuthResult, spokenTitle: string) {
+  const where = await applyRecordFilter(auth.orgId, auth.userId, auth.role, "task", {
+    organizationId: auth.orgId,
+    title: { contains: spokenTitle, mode: "insensitive" },
+  })
+  const rows = await prisma.task.findMany({
+    where,
+    select: { id: true, title: true },
+    orderBy: { updatedAt: "desc" },
+    take: MAX_CANDIDATES + 1,
+  })
+  return matchNamedRecord(
+    (rows as TaskRow[]).map((row: TaskRow) => ({ id: row.id, label: row.title })),
+    spokenTitle,
+  )
+}
+
+/** One deal by the name the user spoke, among the deals this user may see. */
+async function resolveDealByName(auth: AuthResult, spokenName: string) {
+  const where = await applyRecordFilter(auth.orgId, auth.userId, auth.role, "deal", {
+    organizationId: auth.orgId,
+    name: { contains: spokenName, mode: "insensitive" },
+  })
+  const rows = await prisma.deal.findMany({
+    where,
+    select: { id: true, name: true },
+    orderBy: { updatedAt: "desc" },
+    take: MAX_CANDIDATES + 1,
+  })
+  return matchNamedRecord(
+    (rows as DealRow[]).map((row: DealRow) => ({ id: row.id, label: row.name })),
+    spokenName,
+  )
+}
+
+/**
+ * The stored status that a spoken task status means, for THIS task.
+ *
+ * A board task lives in the Kanban vocabulary (todo / in_progress / done) and
+ * a list task in the legacy one (pending / in_progress / completed /
+ * cancelled). Writing "completed" onto a board task would leave it in no
+ * column; writing "done" onto a list task would skip the list's own "done".
+ * Null means the meaning has no value for this task (a board has no
+ * "cancelled"), which becomes a question to the user rather than a guess.
+ */
+async function taskStatusFor(
+  auth: AuthResult,
+  taskId: string,
+  spoken: string,
+): Promise<string | null> {
+  const where = await applyRecordFilter(auth.orgId, auth.userId, auth.role, "task", {
+    id: taskId,
+    organizationId: auth.orgId,
+  })
+  const tasks = await prisma.task.findMany({ where, select: { id: true, divisionId: true }, take: 1 })
+  const task = tasks[0] as Readonly<{ id: string; divisionId: string | null }> | undefined
+  if (!task) return null
+  const board: Record<string, string> = { open: "todo", in_progress: "in_progress", done: "done" }
+  const list: Record<string, string> = {
+    open: "pending",
+    in_progress: "in_progress",
+    done: "completed",
+    cancelled: "cancelled",
+  }
+  return (task.divisionId ? board : list)[spoken] ?? null
+}
+
 /** Record types a voice task may be attached to from the current screen. */
 const RELATABLE_SCREEN_TYPES = new Set(["lead", "deal", "contact", "company", "ticket"])
 
@@ -298,7 +375,13 @@ export async function resolveVoiceProposal(
   for (const [key, value] of Object.entries(args)) {
     if (value === undefined) continue
     // Handled below; these are instructions to the resolver, not CRM fields.
-    if (key === "assigneeName" || key === "leadName" || key === "relateToCurrentRecord") continue
+    if (
+      key === "assigneeName"
+      || key === "leadName"
+      || key === "relateToCurrentRecord"
+      || key === "taskTitle"
+      || key === "dealName"
+    ) continue
     payload[key] = value
   }
 
@@ -361,7 +444,62 @@ export async function resolveVoiceProposal(
     payload.dealTitle = label
   }
 
-  if (tool === "propose_create_deal") {
+  if (tool === "propose_update_task") {
+    if (typeof args.taskTitle === "string") {
+      const task = await resolveTaskByTitle(auth, args.taskTitle)
+      if (!task.ok) {
+        return {
+          kind: "clarify",
+          code: task.ambiguous ? "TASK_AMBIGUOUS" : "TASK_NOT_FOUND",
+          field: "taskTitle",
+          candidates: task.candidates,
+        }
+      }
+      targetEntityId = task.id
+    } else if (screen.recordType === "task" && screen.recordId) {
+      targetEntityId = screen.recordId
+    } else {
+      return { kind: "clarify", code: "TASK_TARGET_REQUIRED", field: "taskTitle", candidates: [] }
+    }
+    if (typeof args.status === "string") {
+      const status = await taskStatusFor(auth, targetEntityId, args.status)
+      if (!status) {
+        return {
+          kind: "invalid",
+          issues: [{ path: "status", message: `This task has no "${args.status}" status` }],
+        }
+      }
+      payload.status = status
+    }
+  }
+
+  if (tool === "propose_update_deal") {
+    if (typeof args.dealName === "string") {
+      const deal = await resolveDealByName(auth, args.dealName)
+      if (!deal.ok) {
+        return {
+          kind: "clarify",
+          code: deal.ambiguous ? "DEAL_AMBIGUOUS" : "DEAL_NOT_FOUND",
+          field: "dealName",
+          candidates: deal.candidates,
+        }
+      }
+      targetEntityId = deal.id
+    } else if (screen.recordType === "deal" && screen.recordId) {
+      targetEntityId = screen.recordId
+    } else {
+      return { kind: "clarify", code: "DEAL_TARGET_REQUIRED", field: "dealName", candidates: [] }
+    }
+  }
+
+  if ((tool === "propose_update_task" || tool === "propose_update_deal") && Object.keys(payload).length === 0) {
+    return {
+      kind: "invalid",
+      issues: [{ path: "(root)", message: "Name at least one field to change" }],
+    }
+  }
+
+  if (tool === "propose_create_deal" || tool === "propose_update_deal") {
     if (typeof args.companyName === "string") {
       const company = await resolveCompany(auth, args.companyName)
       if (!company.ok) {
@@ -388,8 +526,10 @@ export async function resolveVoiceProposal(
       payload.contactId = contact.id
       delete payload.contactName
     }
-    const stage = await resolveEntryStage(auth)
-    if (stage) payload.stage = stage
+    if (tool === "propose_create_deal") {
+      const stage = await resolveEntryStage(auth)
+      if (stage) payload.stage = stage
+    }
   }
 
   return {

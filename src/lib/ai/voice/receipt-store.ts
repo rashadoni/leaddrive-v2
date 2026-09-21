@@ -55,6 +55,9 @@ export type VoiceReceiptField = Readonly<{
   labelKey: string
   before?: unknown
   after: unknown
+  /** The name behind an id-valued field, written by the server with the draft. */
+  beforeLabel?: string
+  afterLabel?: string
 }>
 
 export type VoiceReceiptPreview = Readonly<{
@@ -141,11 +144,16 @@ function normalizePreview(value: unknown): VoiceReceiptPreview | null {
     const key = readString(raw, "key")
     const labelKey = readString(raw, "labelKey")
     if (!key || !labelKey) return null
-    fields.push(
-      Object.prototype.hasOwnProperty.call(raw, "before")
-        ? { key, labelKey, before: raw.before, after: raw.after }
-        : { key, labelKey, after: raw.after },
-    )
+    const afterLabel = readString(raw, "afterLabel")
+    const beforeLabel = readString(raw, "beforeLabel")
+    fields.push({
+      key,
+      labelKey,
+      ...(Object.prototype.hasOwnProperty.call(raw, "before") ? { before: raw.before } : {}),
+      after: raw.after,
+      ...(afterLabel ? { afterLabel } : {}),
+      ...(beforeLabel ? { beforeLabel } : {}),
+    })
   }
 
   let target: VoiceReceiptPreview["target"]

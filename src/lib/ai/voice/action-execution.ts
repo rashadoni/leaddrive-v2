@@ -6,6 +6,8 @@ import { createLeadCommand } from "@/lib/crm-commands/lead/create-lead"
 import { updateLeadCommand } from "@/lib/crm-commands/lead/update-lead"
 import { createDealCommand } from "@/lib/crm-commands/deal/create-deal"
 import { convertLeadToDealCommand } from "@/lib/crm-commands/lead/convert-lead-to-deal"
+import { updateTaskCommand } from "@/lib/crm-commands/task/update-task"
+import { updateDealCommand } from "@/lib/crm-commands/deal/update-deal"
 import {
   dispatchCollectedCommandEffects,
   type CrmCommandPostCommitEffect,
@@ -149,6 +151,16 @@ async function runCanonicalCommand(
     entityId = (await updateLeadCommand(actor, intent.targetEntityId, payload, execution)).entity.id
   } else if (intent.actionType === "create_deal") {
     entityId = (await createDealCommand(actor, payload, execution)).entity.id
+  } else if (intent.actionType === "update_task") {
+    if (!intent.targetEntityId) {
+      throw new AiVoiceActionExecutionError("TARGET_REQUIRED", "The action target is missing", 409)
+    }
+    entityId = (await updateTaskCommand(actor, intent.targetEntityId, payload, execution)).entity.id
+  } else if (intent.actionType === "update_deal") {
+    if (!intent.targetEntityId) {
+      throw new AiVoiceActionExecutionError("TARGET_REQUIRED", "The action target is missing", 409)
+    }
+    entityId = (await updateDealCommand(actor, intent.targetEntityId, payload, execution)).entity.id
   } else {
     if (!intent.targetEntityId) {
       throw new AiVoiceActionExecutionError("TARGET_REQUIRED", "The action target is missing", 409)

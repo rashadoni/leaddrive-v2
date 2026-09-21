@@ -20,11 +20,15 @@ const DB_IDS = {
   lead: "db-lead-0001",
   company: "db-company-0001",
   contact: "db-contact-0001",
+  task: "db-task-0001",
+  deal: "db-deal-0001",
 } as const
 
 const mocks = vi.hoisted(() => ({
   users: vi.fn(),
   leads: vi.fn(),
+  tasks: vi.fn(),
+  deals: vi.fn(),
   companies: vi.fn(),
   contacts: vi.fn(),
   pipeline: vi.fn(),
@@ -35,6 +39,8 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     user: { findMany: mocks.users },
     lead: { findMany: mocks.leads },
+    task: { findMany: mocks.tasks },
+    deal: { findMany: mocks.deals },
     company: { findMany: mocks.companies },
     contact: { findMany: mocks.contacts },
     pipeline: { findFirst: mocks.pipeline },
@@ -80,6 +86,12 @@ const POISONED_ARGS: Record<VoiceProposeToolName, Record<string, unknown>> = {
   propose_create_deal: {
     name: POISON, companyName: POISON, contactName: POISON, assigneeName: POISON, notes: POISON,
   },
+  propose_update_task: {
+    taskTitle: POISON, title: POISON, description: POISON, assigneeName: POISON,
+  },
+  propose_update_deal: {
+    dealName: POISON, name: POISON, companyName: POISON, contactName: POISON, assigneeName: POISON, notes: POISON,
+  },
 }
 
 beforeEach(() => {
@@ -88,6 +100,8 @@ beforeEach(() => {
   mocks.leads.mockResolvedValue([{ id: DB_IDS.lead, contactName: POISON, companyName: null }])
   mocks.companies.mockResolvedValue([{ id: DB_IDS.company, name: POISON }])
   mocks.contacts.mockResolvedValue([{ id: DB_IDS.contact, fullName: POISON }])
+  mocks.tasks.mockResolvedValue([{ id: DB_IDS.task, title: POISON, divisionId: null }])
+  mocks.deals.mockResolvedValue([{ id: DB_IDS.deal, name: POISON }])
   mocks.pipeline.mockResolvedValue(null)
   mocks.stage.mockResolvedValue(null)
 })
@@ -127,6 +141,15 @@ describe("no proposal tool lets the model choose a record", () => {
 
     const update = await resolveVoiceProposal(auth, "propose_update_lead", POISONED_ARGS.propose_update_lead, {})
     expect(update).toMatchObject({ targetEntityId: DB_IDS.lead })
+
+    const taskUpdate = await resolveVoiceProposal(auth, "propose_update_task", POISONED_ARGS.propose_update_task, {})
+    expect(taskUpdate).toMatchObject({ targetEntityId: DB_IDS.task, payload: { assignedTo: DB_IDS.user } })
+
+    const dealUpdate = await resolveVoiceProposal(auth, "propose_update_deal", POISONED_ARGS.propose_update_deal, {})
+    expect(dealUpdate).toMatchObject({
+      targetEntityId: DB_IDS.deal,
+      payload: { companyId: DB_IDS.company, contactId: DB_IDS.contact, assignedTo: DB_IDS.user },
+    })
   })
 
   // The subtle case: text the user dictated legitimately ends up in the payload

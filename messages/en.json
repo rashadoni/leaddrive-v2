@@ -24151,12 +24151,23 @@
         "contacted": "Contacted",
         "qualified": "Qualified",
         "lost": "Lost",
-        "converted": "Converted"
+        "converted": "Converted",
+        "pending": "To do",
+        "todo": "To do",
+        "in_progress": "In progress",
+        "testing": "Testing",
+        "review": "Review",
+        "done": "Done",
+        "completed": "Completed",
+        "cancelled": "Cancelled",
+        "backlog": "Backlog"
       },
       "priority": {
         "low": "Low",
         "medium": "Medium",
-        "high": "High"
+        "high": "High",
+        "urgent": "Urgent",
+        "critical": "Critical"
       },
       "relatedType": {
         "lead": "Lead",
@@ -24200,6 +24211,8 @@
         "create_task": "Create task",
         "create_lead": "Create lead",
         "update_lead": "Update lead",
+        "update_task": "Update task",
+        "update_deal": "Update deal",
         "create_deal": "Create deal",
         "convert_lead_to_deal": "Convert lead into deal"
       },
@@ -24207,6 +24220,8 @@
         "create_task": "Create task",
         "create_lead": "Create lead",
         "update_lead": "Save changes",
+        "update_task": "Save task",
+        "update_deal": "Save deal",
         "create_deal": "Create deal",
         "convert_lead_to_deal": "Convert into deal"
       },

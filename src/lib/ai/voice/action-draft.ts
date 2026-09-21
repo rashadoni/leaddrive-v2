@@ -16,7 +16,9 @@ import {
   getAiVoiceActionDefinition,
   isAiVoiceActionType,
   parseAiVoiceActionPayload,
+  type AiVoiceActionPreview,
   type AiVoiceActionPreviewContext,
+  type AiVoiceActionTargetType,
   type AiVoiceActionType,
 } from "./action-registry"
 
@@ -428,19 +430,221 @@ async function resolveLeadTarget(
   return lead
 }
 
+/**
+ * The record an update draft is bound to, read through the caller's own
+ * record filter. `before` holds exactly the fields a receipt can show, in the
+ * shape the preview renders; `updatedAt` becomes the draft's optimistic lock.
+ */
+type DraftTarget = Readonly<{
+  entityType: AiVoiceActionTargetType
+  id: string
+  label: string
+  status: string | null
+  updatedAt: Date
+  before: JsonObject
+}>
+
+async function resolveTaskTarget(auth: AuthResult, targetEntityId: string): Promise<DraftTarget> {
+  const where = await applyRecordFilter(auth.orgId, auth.userId, auth.role, "task", {
+    id: targetEntityId,
+    organizationId: auth.orgId,
+  })
+  const task = await prisma.task.findFirst({
+    where,
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      priority: true,
+      dueDate: true,
+      assignedTo: true,
+      status: true,
+      updatedAt: true,
+    },
+  })
+  if (!task) {
+    throw new AiVoiceActionDraftError("TARGET_NOT_FOUND", "The target record was not found", 404)
+  }
+  return {
+    entityType: "task",
+    id: task.id,
+    label: task.title,
+    status: task.status,
+    updatedAt: task.updatedAt,
+    before: {
+      title: task.title,
+      description: task.description,
+      priority: task.priority,
+      dueDate: task.dueDate ? task.dueDate.toISOString() : null,
+      assignedTo: task.assignedTo,
+      status: task.status,
+    },
+  }
+}
+
+async function resolveDealTarget(auth: AuthResult, targetEntityId: string): Promise<DraftTarget> {
+  const where = await applyRecordFilter(auth.orgId, auth.userId, auth.role, "deal", {
+    id: targetEntityId,
+    organizationId: auth.orgId,
+  })
+  const deal = await prisma.deal.findFirst({
+    where,
+    select: {
+      id: true,
+      name: true,
+      companyId: true,
+      contactId: true,
+      valueAmount: true,
+      currency: true,
+      expectedClose: true,
+      assignedTo: true,
+      notes: true,
+      stage: true,
+      updatedAt: true,
+    },
+  })
+  if (!deal) {
+    throw new AiVoiceActionDraftError("TARGET_NOT_FOUND", "The target record was not found", 404)
+  }
+  return {
+    entityType: "deal",
+    id: deal.id,
+    label: deal.name,
+    status: deal.stage,
+    updatedAt: deal.updatedAt,
+    before: {
+      name: deal.name,
+      companyId: deal.companyId,
+      contactId: deal.contactId,
+      // Decimal in the database; the receipt compares and prints numbers.
+      valueAmount: deal.valueAmount === null || deal.valueAmount === undefined ? null : Number(deal.valueAmount),
+      currency: deal.currency,
+      expectedClose: deal.expectedClose ? deal.expectedClose.toISOString() : null,
+      assignedTo: deal.assignedTo,
+      notes: deal.notes,
+    },
+  }
+}
+
+async function resolveLeadDraftTarget(auth: AuthResult, targetEntityId: string): Promise<DraftTarget> {
+  const lead = await resolveLeadTarget(auth, targetEntityId)
+  const before: JsonObject = { ...lead }
+  delete before.id
+  delete before.updatedAt
+  return {
+    entityType: "lead",
+    id: lead.id,
+    label: lead.contactName,
+    status: lead.status,
+    updatedAt: lead.updatedAt,
+    before,
+  }
+}
+
+function resolveDraftTarget(
+  auth: AuthResult,
+  entityType: AiVoiceActionTargetType,
+  targetEntityId: string,
+): Promise<DraftTarget> {
+  if (entityType === "task") return resolveTaskTarget(auth, targetEntityId)
+  if (entityType === "deal") return resolveDealTarget(auth, targetEntityId)
+  return resolveLeadDraftTarget(auth, targetEntityId)
+}
+
+/** Preview fields whose value is an id of another record, and where to name it. */
+const REFERENCE_FIELDS: Readonly<Record<string, "user" | "company" | "contact">> = {
+  assignedTo: "user",
+  companyId: "company",
+  contactId: "contact",
+}
+
+/**
+ * Put names next to the ids a receipt would otherwise print.
+ *
+ * Read inside the organisation only, never through the model: the ids were
+ * resolved by the server, and the names come from the same rows. An id that
+ * no longer resolves keeps no label, so the receipt shows it as it is rather
+ * than a name that is not true.
+ */
+async function labelPreviewReferences(
+  auth: AuthResult,
+  preview: AiVoiceActionPreview,
+): Promise<AiVoiceActionPreview> {
+  const wanted = { user: new Set<string>(), company: new Set<string>(), contact: new Set<string>() }
+  for (const field of preview.fields) {
+    const kind = REFERENCE_FIELDS[field.key]
+    if (!kind) continue
+    for (const value of [field.before, field.after]) {
+      if (typeof value === "string" && value) wanted[kind].add(value)
+    }
+  }
+  if (wanted.user.size + wanted.company.size + wanted.contact.size === 0) return preview
+
+  const [users, companies, contacts] = await Promise.all([
+    wanted.user.size
+      ? prisma.user.findMany({
+        where: { organizationId: auth.orgId, id: { in: [...wanted.user] } },
+        select: { id: true, name: true, email: true },
+      })
+      : [],
+    wanted.company.size
+      ? prisma.company.findMany({
+        where: { organizationId: auth.orgId, id: { in: [...wanted.company] } },
+        select: { id: true, name: true },
+      })
+      : [],
+    wanted.contact.size
+      ? prisma.contact.findMany({
+        where: { organizationId: auth.orgId, id: { in: [...wanted.contact] } },
+        select: { id: true, fullName: true },
+      })
+      : [],
+  ])
+  const names = {
+    user: new Map<string, string>(
+      (users as { id: string; name: string | null; email: string }[])
+        .map((row) => [row.id, row.name?.trim() || row.email]),
+    ),
+    company: new Map<string, string>(
+      (companies as { id: string; name: string }[]).map((row) => [row.id, row.name]),
+    ),
+    contact: new Map<string, string>(
+      (contacts as { id: string; fullName: string }[]).map((row) => [row.id, row.fullName]),
+    ),
+  }
+  return {
+    ...preview,
+    fields: preview.fields.map((field) => {
+      const kind = REFERENCE_FIELDS[field.key]
+      if (!kind) return field
+      const label = (value: unknown) => (typeof value === "string" ? names[kind].get(value) : undefined)
+      const afterLabel = label(field.after)
+      const beforeLabel = label(field.before)
+      return {
+        ...field,
+        ...(afterLabel ? { afterLabel } : {}),
+        ...(beforeLabel ? { beforeLabel } : {}),
+      }
+    }),
+  }
+}
+
 async function assertReplayTargetAccess(
   auth: AuthResult,
   existing: StoredIntent,
 ): Promise<void> {
   if (!existing.targetEntityType && !existing.targetEntityId) return
-  if (existing.targetEntityType !== "lead" || !existing.targetEntityId) {
+  const expectedType = isAiVoiceActionType(existing.actionType)
+    ? getAiVoiceActionDefinition(existing.actionType).target?.entityType
+    : undefined
+  if (!expectedType || existing.targetEntityType !== expectedType || !existing.targetEntityId) {
     throw new AiVoiceActionDraftError(
       "INVALID_STORED_TARGET",
       "The stored draft target is invalid",
       409,
     )
   }
-  const target = await resolveLeadTarget(auth, existing.targetEntityId)
+  const target = await resolveDraftTarget(auth, expectedType, existing.targetEntityId)
   if (
     existing.expectedUpdatedAt
     && target.updatedAt.getTime() !== existing.expectedUpdatedAt.getTime()
@@ -505,16 +709,13 @@ export async function revalidateAiVoiceActionExecutionAccess(
   await assertReplayTargetAccess(auth, existing)
 }
 
-function targetPreviewContext(lead: LeadDraftTarget): AiVoiceActionPreviewContext {
-  const before: JsonObject = { ...lead }
-  delete before.id
-  delete before.updatedAt
+function targetPreviewContext(target: DraftTarget): AiVoiceActionPreviewContext {
   return {
     target: {
-      entityType: "lead",
-      id: lead.id,
-      label: lead.contactName,
-      before,
+      entityType: target.entityType,
+      id: target.id,
+      label: target.label,
+      before: target.before,
     },
   }
 }
@@ -525,7 +726,7 @@ async function bindTarget(
   normalizedPayload: JsonObject,
 ): Promise<{
   normalizedPayload: JsonObject
-  targetEntityType: "lead" | null
+  targetEntityType: AiVoiceActionTargetType | null
   targetEntityId: string | null
   expectedUpdatedAt: Date | null
   previewContext?: AiVoiceActionPreviewContext
@@ -554,8 +755,8 @@ async function bindTarget(
       400,
     )
   }
-  const lead = await resolveLeadTarget(auth, input.targetEntityId)
-  if (input.actionType === "convert_lead_to_deal" && lead.status === "converted") {
+  const target = await resolveDraftTarget(auth, definition.target.entityType, input.targetEntityId)
+  if (input.actionType === "convert_lead_to_deal" && target.status === "converted") {
     throw new AiVoiceActionDraftError(
       "TARGET_ALREADY_CONVERTED",
       "The lead has already been converted",
@@ -566,23 +767,23 @@ async function bindTarget(
   const requestedVersion = typeof normalizedPayload.expectedUpdatedAt === "string"
     ? new Date(normalizedPayload.expectedUpdatedAt)
     : null
-  if (requestedVersion && requestedVersion.getTime() !== lead.updatedAt.getTime()) {
+  if (requestedVersion && requestedVersion.getTime() !== target.updatedAt.getTime()) {
     throw new AiVoiceActionDraftError(
       "STALE_TARGET",
       "The target record changed before the draft was prepared",
       409,
     )
   }
-  const expectedUpdatedAt = lead.updatedAt
+  const expectedUpdatedAt = target.updatedAt
   return {
     normalizedPayload: {
       ...normalizedPayload,
       expectedUpdatedAt: expectedUpdatedAt.toISOString(),
     },
-    targetEntityType: "lead",
-    targetEntityId: lead.id,
+    targetEntityType: target.entityType,
+    targetEntityId: target.id,
     expectedUpdatedAt,
-    previewContext: targetPreviewContext(lead),
+    previewContext: targetPreviewContext(target),
   }
 }
 
@@ -699,12 +900,12 @@ export async function createAiVoiceActionDraft(
   const parsed = parseAiVoiceActionPayload(input.actionType, input.payload)
   if (!parsed.success) throw firstPayloadIssue(parsed.issues)
   if (
-    input.actionType === "update_lead"
+    getAiVoiceActionDefinition(input.actionType).operation === "update"
     && Object.keys(parsed.data).every((field) => field === "expectedUpdatedAt")
   ) {
     throw new AiVoiceActionDraftError(
       "EMPTY_UPDATE",
-      "At least one lead field must be changed",
+      "At least one field must be changed",
       400,
     )
   }
@@ -729,7 +930,10 @@ export async function createAiVoiceActionDraft(
     revision,
     normalizedPayload: bound.normalizedPayload,
   })
-  const preview = definition.renderPreview(bound.normalizedPayload, bound.previewContext)
+  const preview = await labelPreviewReferences(
+    auth,
+    definition.renderPreview(bound.normalizedPayload, bound.previewContext),
+  )
 
   await expireOwnedSessionDraft(auth, input.voiceSessionId, now)
 
@@ -845,12 +1049,12 @@ export async function updateAiVoiceActionDraft(
   const parsed = parseAiVoiceActionPayload(existing.actionType, input.payload)
   if (!parsed.success) throw firstPayloadIssue(parsed.issues)
   if (
-    existing.actionType === "update_lead"
+    getAiVoiceActionDefinition(existing.actionType).operation === "update"
     && Object.keys(parsed.data).every((field) => field === "expectedUpdatedAt")
   ) {
     throw new AiVoiceActionDraftError(
       "EMPTY_UPDATE",
-      "At least one lead field must be changed",
+      "At least one field must be changed",
       400,
     )
   }
@@ -891,7 +1095,10 @@ export async function updateAiVoiceActionDraft(
   const definition = getAiVoiceActionDefinition(existing.actionType)
   const revision = existing.revision + 1
   const warnings = await duplicateWarnings(auth, existing.actionType, bound.normalizedPayload)
-  const preview = definition.renderPreview(bound.normalizedPayload, bound.previewContext)
+  const preview = await labelPreviewReferences(
+    auth,
+    definition.renderPreview(bound.normalizedPayload, bound.previewContext),
+  )
   const payloadHash = hashAiActionIntentPayload({
     actionType: existing.actionType,
     revision,
