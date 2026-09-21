@@ -172,6 +172,14 @@ const RULES = [
   { name: "Qiymət sorğusu", triggerValue: "qiymət,neçəyə,dəyər,endirim", responseText: "Təşəkkür edirik! Dəqiq qiyməti və aktual endirimi menecerimiz iş saatlarında yazacaq.", channelTypes: ["whatsapp", "telegram", "tiktok"], priority: 40, matchCount: 142 },
 ]
 
+// Knowledge base the AI reply suggestion reads (src/lib/inbox/kb-context.ts
+// falls back to a keyword match of the customer's words, >3 letters, as
+// substrings — so the articles repeat the hero's own wording).
+const KB = [
+  { title: "«Bakı» künc divanı — satışdadır", content: "«Bakı» künc divanı satışdadır, anbarda boz və bej rəngdə var. Ölçü: 280 × 180 sm, açılan yataq yeri və yataq dəsti üçün qutu. Qiyməti 1 890 AZN, 12 aya qədər faizsiz hissə-hissə ödəniş mümkündür." },
+  { title: "Çatdırılma: Bakı, Sumqayıt, Xırdalan", content: "Bakı, Sumqayıt və Xırdalana çatdırmaq 1–3 iş günü çəkir. Bu həftə sifariş edilən divanı Xırdalana cümə günü çatdırırıq. Çatdırılma və quraşdırma pulsuzdur; kuryer bir saat əvvəl zəng edir." },
+]
+
 const prisma = await makeScriptPrisma()
 try {
   const org = await prisma.organization.findUnique({ where: { slug } })
@@ -309,6 +317,12 @@ try {
     await prisma.organization.update({ where: { id: orgId }, data: { features: [...features, "chatbotAutoReply"] } })
   }
   console.log(`  chatbot rules: ${RULES.length} active, auto-reply on`)
+
+  await prisma.kbArticle.deleteMany({ where: { organizationId: orgId, tags: { has: SEED_TAG } } })
+  for (const a of KB) {
+    await prisma.kbArticle.create({ data: { ...a, organizationId: orgId, status: "published", tags: [SEED_TAG] } })
+  }
+  console.log(`  knowledge base: ${KB.length} published articles`)
   console.log(`✔ done — hero thread at ${new Date(heroMs).toISOString()} (02:14 Baku)`)
 } finally {
   await prisma.$disconnect()

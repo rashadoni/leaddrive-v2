@@ -435,7 +435,13 @@ async function recordSection(context, slug, lang, audio, out, poster) {
     await page.close(); // finalizes this page's webm
   }
 
-  const webm = await page.video().path();
+  // saveAs() waits until the encoder has flushed the whole file; path() alone
+  // can hand over a webm that is still being written — at 1080×1080 the tail
+  // (the end card) went missing and tpad froze the last written frame.
+  const recorded = await page.video().path();
+  const webm = recorded.replace(/\.webm$/, ".final.webm");
+  await page.video().saveAs(webm);
+  rmSync(recorded, { force: true });
   const cues = isDo ? buildCues(units, audio, offsets, lang) : [];
   const ends = units.map((_, i) => (typeof offsets[i] === "number" ? offsets[i] + (audio[i]?.durationMs ?? 0) + TAIL_MS : undefined));
   muxSection(webm, audio, offsets, out, cues, ends);
@@ -974,20 +980,22 @@ function makeHelpers(page, scene) {
       }, { title, sub, cta, url, chips, logo, dim }).catch(() => {});
     },
     // Short headline pill at the top of the frame (subtitles own the bottom).
-    // `*word*` renders the word in the accent colour.
-    async caption(text) {
-      await page.evaluate((t) => {
+    // `*word*` renders the word in the accent colour. `left: true` pins it to
+    // the top-left so it leaves a right-hand zone (e.g. the inbox thread) clear.
+    async caption(text, { left = false } = {}) {
+      await page.evaluate(({ t, left }) => {
         document.getElementById("ld-reel-caption")?.remove();
         if (!t) return;
         const el = document.createElement("div");
         el.id = "ld-reel-caption";
+        if (left) { el.style.left = "11vmin"; el.style.setProperty("--ld-tx", "0"); el.style.maxWidth = "46vw"; }
         for (const [i, part] of t.split("*").entries()) {
           const n = document.createElement(i % 2 ? "em" : "span");
           n.textContent = part;
           el.appendChild(n);
         }
         document.body.appendChild(el);
-      }, text).catch(() => {});
+      }, { t: text, left }).catch(() => {});
     },
     async clearOverlays() {
       await page.evaluate(() => { for (const id of ["ld-reel-card", "ld-reel-caption"]) document.getElementById(id)?.remove(); }).catch(() => {});
