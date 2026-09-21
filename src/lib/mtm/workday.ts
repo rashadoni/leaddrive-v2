@@ -146,25 +146,14 @@ const MAX_CLOCK_SKEW_MS = MTM_WORKDAY_MAX_CLOCK_SKEW_MS
  */
 export const MTM_WORKDAY_REOPEN_EVENT_KEY_PREFIX = "reopen:"
 export const MTM_WORKDAY_REOPEN_UNDO_EVENT_KEY_PREFIX = "reopen-undo:"
-/** A manager's FINISH of a shift the employee left open (audit 2026-09-21). */
-export const MTM_WORKDAY_CLOSE_LEFT_OPEN_EVENT_KEY_PREFIX = "close-left-open:"
 
 export function isMtmWorkdayReopenUndoEventKey(clientEventId: string | null | undefined): boolean {
   return typeof clientEventId === "string" && clientEventId.startsWith(MTM_WORKDAY_REOPEN_UNDO_EVENT_KEY_PREFIX)
 }
 
-/** A FINISH the manager wrote — the undo of a reopen or the close of a left-open shift. */
-export function isMtmWorkdayManagerFinishEventKey(clientEventId: string | null | undefined): boolean {
-  return typeof clientEventId === "string" && (
-    clientEventId.startsWith(MTM_WORKDAY_REOPEN_UNDO_EVENT_KEY_PREFIX)
-    || clientEventId.startsWith(MTM_WORKDAY_CLOSE_LEFT_OPEN_EVENT_KEY_PREFIX)
-  )
-}
-
 function isManagerWorkdayEventKey(clientEventId: string): boolean {
   return clientEventId.startsWith(MTM_WORKDAY_REOPEN_EVENT_KEY_PREFIX)
     || clientEventId.startsWith(MTM_WORKDAY_REOPEN_UNDO_EVENT_KEY_PREFIX)
-    || clientEventId.startsWith(MTM_WORKDAY_CLOSE_LEFT_OPEN_EVENT_KEY_PREFIX)
 }
 /** The owner-approved maximum age for an offline Workforce attendance claim. */
 export const WORKFORCE_WORKDAY_OFFLINE_HORIZON_MS = 7 * 24 * 60 * 60 * 1000
