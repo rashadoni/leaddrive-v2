@@ -43,6 +43,8 @@ beforeEach(() => {
   findMany.mockReset()
   update.mockReset()
   create.mockReset()
+  // Prisma's create returns the row; ensureInboxChannelForPage hands its id to the OAuth callbacks.
+  create.mockResolvedValue({ id: "created_row" })
   subscribePageToMessages.mockReset()
   subscribePageToMessages.mockResolvedValue({ success: true })
 })

@@ -132,11 +132,6 @@ export async function GET(req: NextRequest) {
   // tenant-Meta-app read + all SocialAccount upserts + inbox-channel wiring under
   // tenant context so the writes/reads are RLS-scoped (prod no-op while RLS OFF).
   return runWithTenant(payload.orgId, async () => {
-  // The row the connect was started from. Signed, but re-checked here against the org and the card's
-  // type all the same — the start route verified it up to 30 minutes ago, and a row can be deleted or
-  // retyped since. Every redirect from here on carries it, so a failed connect lands the user back on
-  // their own channel rather than on some other row of the workspace.
-  const originChannelId = await resolveOAuthReturnChannel(payload.orgId, ret, payload.channelId)
   // Model B (per-tenant Meta app): use the SAME app the start route used — the tenant's own
   // appId/appSecret from their FB/IG ChannelConfig (resolved by the signed-state orgId), with env
   // fallback to LeadDrive's shared app. appSecret is read server-side only (token exchange below).
@@ -147,7 +142,12 @@ export async function GET(req: NextRequest) {
   // fallback on this path — a pinned flow that cannot resolve its app must fail, not silently swap in
   // the shared production app.
   const pinnedApp = payload.app ? await getPinnedMetaApp(payload.orgId, payload.app, "facebook") : null
-  if (payload.app && !pinnedApp) return redirectError(req, "not_configured", ret, originChannelId)
+  if (payload.app && !pinnedApp) return redirectError(req, "not_configured", ret)
+  // The row the connect was started from. Signed, but re-checked here against the org and the card's
+  // type all the same — the start route verified it up to 30 minutes ago, and a row can be deleted or
+  // retyped since. Every redirect below carries it, so a failed connect lands the user back on their
+  // own channel rather than on some other row of the workspace.
+  const originChannelId = await resolveOAuthReturnChannel(payload.orgId, ret, payload.channelId)
   const tenantApp = pinnedApp ? null : await getTenantMetaApp(payload.orgId)
   const appId = pinnedApp?.appId || tenantApp?.appId || process.env.FACEBOOK_APP_ID
   const appSecret = pinnedApp?.appSecret || tenantApp?.appSecret || process.env.FACEBOOK_APP_SECRET

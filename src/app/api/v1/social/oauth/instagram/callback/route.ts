@@ -109,9 +109,6 @@ export async function GET(req: NextRequest) {
   // tenant-app read + ChannelConfig upsert under tenant context so the writes/reads
   // are RLS-scoped (prod no-op while RLS OFF). Redirect semantics preserved.
   return runWithTenant(payload.orgId, async () => {
-  // The row the connect was started from, re-checked against the org and the card's type (mirrors
-  // oauth/facebook/callback). Failed connects return to it; a successful one returns to the row below.
-  const originChannelId = await resolveOAuthReturnChannel(payload.orgId, ret, payload.channelId)
   // Model B: use the SAME IG-Login app the start route used — the tenant's own appId/appSecret (resolved
   // by the signed-state orgId), with env fallback to LeadDrive's shared IG-Login app. appSecret is read
   // server-side only (token exchange below).
@@ -119,7 +116,10 @@ export async function GET(req: NextRequest) {
   // re-running the org-wide lookup, and fail closed rather than falling back to env (mirrors
   // oauth/facebook/callback — same reasoning, same consequence if it were allowed to substitute).
   const pinnedApp = payload.app ? await getPinnedMetaApp(payload.orgId, payload.app, "instagram-login") : null
-  if (payload.app && !pinnedApp) return redirectError(req, "not_configured", ret, originChannelId)
+  if (payload.app && !pinnedApp) return redirectError(req, "not_configured", ret)
+  // The row the connect was started from, re-checked against the org and the card's type (mirrors
+  // oauth/facebook/callback). Failed connects return to it; a successful one returns to the row below.
+  const originChannelId = await resolveOAuthReturnChannel(payload.orgId, ret, payload.channelId)
   const tenantApp = pinnedApp ? null : await getTenantInstagramLoginApp(payload.orgId)
   const appId = pinnedApp?.appId || tenantApp?.appId || process.env.INSTAGRAM_APP_ID
   const appSecret = pinnedApp?.appSecret || tenantApp?.appSecret || process.env.INSTAGRAM_APP_SECRET
