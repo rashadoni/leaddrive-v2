@@ -16,6 +16,7 @@ import { isVoiceProposeToolName, type VoiceProposeToolName } from "@/lib/ai/voic
 import {
   createVoiceToolBudget,
   voiceToolBudgetMessage,
+  VOICE_TOOL_BUDGET,
   type VoiceToolBudget,
 } from "@/lib/ai/voice/tool-budget"
 import { VOICE_TOOL_NAMES, type VoiceToolName } from "@/lib/ai/voice/read-tools"
@@ -135,6 +136,8 @@ type VoiceUiPhase = "listening" | "user_speaking" | "processing" | "responding"
 type SessionInfo = {
   voiceSessionId: string
   maxSessionSeconds: number
+  /** The server's per-conversation tool-call ceiling. */
+  maxToolCalls?: number
   heartbeatIntervalSeconds: number
   remainingSeconds: number
   firstName?: string
@@ -336,8 +339,20 @@ function ConsoleInner({
         signal: controller.signal,
       })
       if (!response.ok) {
-        if (generationRef.current === generation) failureStreakRef.current += 1
-        return UNAVAILABLE
+        // Only a server failure means the CRM is out of reach. A 4xx is the
+        // CRM answering — wrong arguments, a section this role cannot read,
+        // the conversation's tool budget spent — and counting it here ended
+        // the whole conversation after two model mistakes, with the message
+        // "lost the link to CRM data". The owner saw it as the microphone
+        // switching off when the assistant moved to another section, because
+        // that is exactly when it reads a page it has not seen yet.
+        if (response.status >= 500) {
+          if (generationRef.current === generation) failureStreakRef.current += 1
+          return UNAVAILABLE
+        }
+        const refusal = await response.json().catch(() => null) as { error?: string } | null
+        if (response.status === 409) return voiceToolBudgetMessage("session_exhausted")
+        return `REFUSED (${response.status}): ${refusal?.error ?? "the request was rejected"}. The CRM is reachable — correct the request or tell the user plainly what is not available.`
       }
       const body = await response.json()
       if (generationRef.current !== generation) return UNAVAILABLE
@@ -1130,6 +1145,14 @@ function ConsoleInner({
         return
       }
       sessionRef.current = started
+      // The budget follows the server's own ceiling. A looser client budget
+      // never fires: the server refuses first, and that refusal used to end
+      // the conversation as "lost the link to CRM data".
+      toolBudgetRef.current = createVoiceToolBudget(
+        typeof started.maxToolCalls === "number" && started.maxToolCalls > 0
+          ? { ...VOICE_TOOL_BUDGET, callsPerSession: Math.min(VOICE_TOOL_BUDGET.callsPerSession, started.maxToolCalls) }
+          : VOICE_TOOL_BUDGET,
+      )
       setSession(started)
       startedAtRef.current = Date.now()
       lastActivityRef.current = Number.POSITIVE_INFINITY

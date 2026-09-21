@@ -463,6 +463,76 @@ describe("VoiceConsole Gemini Live lifecycle", () => {
     expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/session/end"))).toBe(false)
   })
 
+  // The owner's report: "when it moves to another section the microphone
+  // switches off". Moving to a section is when the assistant reads a page it
+  // has not seen, and every non-2xx used to count as a lost connection — two
+  // of them ended the conversation as "lost the link to CRM data".
+  describe("a refused read is not a lost connection", () => {
+    async function readWith(status: number, body: unknown, id: string) {
+      fetchMock.mockImplementationOnce(async () => json(body, status))
+      await act(async () => {
+        gemini.callbacks!.onmessage({
+          toolCall: { functionCalls: [{ id, name: "get_leads_summary", args: {} }] },
+        })
+        await flush()
+      })
+    }
+
+    function outputFor(id: string): string {
+      const call = gemini.session.sendToolResponse.mock.calls
+        .map(([arg]) => arg as { functionResponses: Array<{ id: string; response: { output: unknown } }> })
+        .flatMap((arg) => arg.functionResponses)
+        .find((response) => response.id === id)
+      return JSON.stringify(call?.response.output ?? null)
+    }
+
+    it("keeps talking after several refused reads", async () => {
+      await start()
+      await readWith(400, { error: "Unknown filter" }, "bad-1")
+      await readWith(400, { error: "Unknown filter" }, "bad-2")
+      await readWith(403, { error: "Forbidden" }, "bad-3")
+
+      // Past two heartbeats: the old failure streak would have stopped here.
+      await act(async () => {
+        vi.advanceTimersByTime(40_000)
+        await flush()
+      })
+
+      expect(container.textContent).not.toContain("Lost the link to CRM data")
+      expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/session/end"))).toBe(false)
+    })
+
+    it("hands the refusal back to the model, so it can correct itself", async () => {
+      await start()
+      await readWith(400, { error: "Unknown filter" }, "bad-arg")
+      const output = outputFor("bad-arg")
+      expect(output).toContain("REFUSED (400)")
+      expect(output).toContain("Unknown filter")
+      expect(output).toContain("The CRM is reachable")
+    })
+
+    // The server's tool-call ceiling answers 409. That is the conversation's
+    // budget being spent, and the user should hear so — not a dropped line.
+    it("turns the server's tool ceiling into a spoken limit, not a hang-up", async () => {
+      await start()
+      await readWith(409, { error: "Session is not active or has reached its tool-call limit" }, "limit")
+      expect(outputFor("limit")).toContain("TOOL_BUDGET_SESSION")
+      expect(container.textContent).not.toContain("Lost the link to CRM data")
+    })
+
+    // The guard still has a job: a server that is actually failing.
+    it("still stops when the CRM itself is failing", async () => {
+      await start()
+      await readWith(502, { error: "Bad gateway" }, "down-1")
+      await readWith(503, { error: "Unavailable" }, "down-2")
+      await act(async () => {
+        vi.advanceTimersByTime(40_000)
+        await flush()
+      })
+      expect(container.textContent).toContain("Lost the link to CRM data")
+    })
+  })
+
   it("returns browser navigation tool results through Gemini's function-response channel", async () => {
     await start()
     await act(async () => {
