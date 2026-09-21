@@ -725,6 +725,60 @@ and ask the owner when they become necessary:
 - production release route after the repository/deployment discrepancy in
   section 14 is reconciled.
 
+### Owner decisions taken 2026-09-21
+
+Asked one at a time and answered by the owner. They close the matching open
+items above; anything not listed here is still open.
+
+| Topic | Decision |
+|---|---|
+| Organisation that owns verified demo leads | **LeadDrive Inc.** (slug `leaddrive`). Client organisations are never candidates. |
+| Live demo call | **Yes** — a real AI call to the prospect's verified phone, disabled by default until its gates pass. |
+| Line and caller ID | Owner's answer, verbatim: «номер у меня в пбх». Implemented as: LeadDrive Inc.'s existing Asterisk line through the owner's PBX; the number the prospect sees is whatever the PBX outbound route sends, not a CRM setting. |
+| Recording and retention | Text transcript only, never audio. The agent discloses it in its first sentence, and the prospect consents with an explicit checkbox before the call. Demo-call transcripts are deleted after **90 days**. |
+| Human handoff | No live transfer. On a request for a person, price, contract or payment the agent promises a callback and a task is created for the owner in LeadDrive Inc. with the call summary. |
+| Script | The script below, with a verbatim opening line. |
+| Narration for the missing clips (campaigns, inbox, boards) | Google Gemini TTS, voice **Kore**, the same as the existing leads, deal and quote clips. The owner listens before anything is published. |
+
+Routine defaults, stated to the owner but not separately decided by them:
+
+- phone verification by SMS through LeadDrive Inc.'s existing ATL SMS channel;
+- calls only inside LeadDrive Inc.'s existing voice calling hours (Asia/Baku);
+  outside them the call is not placed and the demo says so;
+- one call per verified phone per grant, and no automatic redial — an unknown
+  provider outcome is never redialled, as everywhere else in the voice agent;
+- spending stays inside LeadDrive Inc.'s existing voice budget.
+
+The callback promise is deliberately «qısa zamanda» rather than «bu gün»: the
+owner works alone and a call can land at 18:00, so "today" would be a promise
+nobody is guaranteed to keep.
+
+#### Approved demo-call script (Azerbaijani)
+
+Opening line, verbatim:
+
+> Salam, {ad}! Mən LeadDrive-ın AI köməkçisiyəm — demoda zəng sifariş etmişdiniz. Xəbərdar edirəm: söhbətimiz mətn şəklində qeydə alınır. Danışmaq üçün iki dəqiqəniz var?
+
+Questions, one at a time:
+
+1. Şirkətinizdə satışla neçə nəfər məşğul olur?
+2. Müştərilər sizə əsasən haradan yazır — Instagram, WhatsApp, telefon, sayt?
+3. Hazırda satışda ən çox vaxtı nə alır, harada müştəri itirirsiniz?
+
+On a request for a person, price, contract or payment:
+
+> Menecerimiz qısa zamanda sizə zəng edəcək.
+
+and a callback task is created for the owner. On a request not to be called
+again, the opt-out is recorded and the call ends politely.
+
+Closing line:
+
+> Təşəkkür edirəm! Demoya qayıdın — növbəti addım artıq ekranda sizi gözləyir.
+
+At most three minutes. Never promises prices, discounts, deadlines or
+integrations.
+
 ## 13. Acceptance criteria
 
 The first journey is acceptable only when all of the following have evidence:
