@@ -67,6 +67,8 @@ const PUBLIC_ROUTE_FORBIDDEN_TOKENS = [
   // else, so a route cannot pick an organisation or a lead on its own.
   "@/lib/crm-commands",
   "@/lib/inbound-lead-match",
+  "@/lib/sms",
+  "@/lib/voice-agent",
   // The link to the internal lead is control-plane data: no public route
   // may even name it, let alone put it in a response.
   "internalLeadId",
@@ -118,17 +120,23 @@ describe("Demo Center trust boundary", () => {
     }
   })
 
-  it("the prospect lead enters one tenant only, and that tenant comes from server config", () => {
-    // This module is the single sanctioned place where a public demo request
-    // reaches tenant data. Every tenant scope in it must be the configured
-    // organisation, and that value may have no other source.
-    const source = readFileSync(path.join(ROOT, "src/lib/demo-center/prospect-lead.ts"), "utf8")
-    const scopes = source.match(/runWithTenant\(/g) ?? []
-    const configuredScopes = source.match(/runWithTenant\(organizationId,/g) ?? []
-    expect(scopes.length).toBeGreaterThan(0)
-    expect(configuredScopes.length).toBe(scopes.length)
-    expect(source).toContain("const organizationId = demoLeadOrganizationId()")
-    expect(source.match(/\borganizationId\s*=(?!=)/g) ?? []).toHaveLength(1)
+  it("demo code enters a tenant through one door, and the door picks the tenant itself", () => {
+    // A public demo request reaches somebody's real CRM in a few places: the
+    // prospect's lead, the phone code SMS, the call permission. None of them
+    // may choose the organisation. There is exactly one tenant scope in all of
+    // src/lib/demo-center, in sales-org.ts, and its organisation comes from
+    // server configuration and nowhere else.
+    // Code, not prose: the door's own comment names the call it guards.
+    const code = (source: string) => source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "")
+    const scopes = sourceFiles("src/lib/demo-center").flatMap((file) =>
+      Array.from(code(readFileSync(file, "utf8")).matchAll(/runWithTenant\(/g), () => path.relative(ROOT, file)),
+    )
+    expect(scopes).toEqual(["src/lib/demo-center/sales-org.ts"])
+
+    const door = code(readFileSync(path.join(ROOT, "src/lib/demo-center/sales-org.ts"), "utf8"))
+    expect(door).toContain("const organizationId = await resolveDemoSalesOrganization()")
+    expect(door).toContain("runWithTenant(organizationId,")
+    expect(door.match(/\borganizationId\s*=(?!=)/g) ?? []).toHaveLength(1)
   })
 
   it("public demo routes never resolve a tenant session or enter a tenant RLS context", () => {

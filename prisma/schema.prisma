@@ -21545,6 +21545,9 @@ model DemoGrant {
   /// with scenarioVersion or not at all (demo_grants_scenario_pair_check).
   scenarioId             String?
   scenarioVersion        Int?
+  /// The admin allowed a real AI call to the prospect's verified phone for
+  /// this grant. Off unless ticked at issue time.
+  liveCallEnabled        Boolean     @default(false)
   locale                 String      @default("az")
   watermark              String
   linkExpiresAt          DateTime
@@ -21574,12 +21577,36 @@ model DemoGrant {
   createdAt              DateTime    @default(now())
   updatedAt              DateTime    @updatedAt
 
-  events DemoAccessEvent[]
+  events             DemoAccessEvent[]
+  phoneVerifications DemoPhoneVerification[]
 
   @@index([requestId, createdAt], map: "demo_grants_request_created_idx")
   @@index([status, linkExpiresAt], map: "demo_grants_status_expiry_idx")
   @@index([sessionHash, status], map: "demo_grants_session_status_idx")
   @@map("demo_grants")
+}
+
+/// The journal of a prospect proving a phone and agreeing to one AI call.
+/// One row per phone per grant; the code hash, its limits, the moment the
+/// phone was proven and the exact consent wording the prospect agreed to.
+model DemoPhoneVerification {
+  id             String    @id @default(cuid())
+  grantId        String
+  grant          DemoGrant @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  phoneE164      String
+  otpHash        String?
+  otpExpiresAt   DateTime?
+  otpSentAt      DateTime?
+  otpSendCount   Int       @default(0)
+  otpAttempts    Int       @default(0)
+  verifiedAt     DateTime?
+  consentAt      DateTime?
+  consentVersion String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([grantId, phoneE164], map: "demo_phone_verifications_grant_phone_key")
+  @@map("demo_phone_verifications")
 }
 
 model DemoAccessEvent {
