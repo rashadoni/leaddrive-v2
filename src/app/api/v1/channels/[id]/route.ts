@@ -10,6 +10,7 @@ import { channelIdsClaimedElsewhere } from "@/lib/channels/inbound-claim"
 import { emailIntakeSettingsError } from "@/lib/ticketing/email-intake"
 import { validateChatwootBaseUrl } from "@/lib/chatwoot"
 import { auditChannelChange, changedCredentialFields } from "@/lib/channels/channel-credential-audit"
+import { isMetaInboxChannelType, mergeMetaSettingsForUpdate } from "@/lib/channels/meta-server-settings"
 
 const updateChannelSchema = z.object({
   channelType: z.string().min(1).optional(),
@@ -115,6 +116,9 @@ export async function PUT(
           configName: d.configName ?? row.configName,
           settings: d.settings ?? row.settings,
         })
+      // The form sends `settings` rebuilt from its own fields only; on a Meta row that must not erase the
+      // keys the server wrote (lib/channels/meta-server-settings).
+      const isMeta = isMetaInboxChannelType(row.channelType) || isMetaInboxChannelType(d.channelType)
 
       // "Leave blank to keep the stored value" is the contract the UI states and the form honours
       // (`buildChannelPayload` turns an empty field into `undefined`). The API did not enforce it:
@@ -143,6 +147,8 @@ export async function PUT(
               ...d,
               settings: tiktokChannelConfigSettings(mergeTikTokSettingsForUpdate(d.settings ?? {}, row.settings)),
             }
+        : isMeta && d.settings !== undefined
+          ? { ...d, settings: mergeMetaSettingsForUpdate(d.settings, row.settings) }
         : d
 
       if ((data.channelType ?? row.channelType) === "chatwoot") {
