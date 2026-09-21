@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
+import { nextWiderPeriod } from "@/lib/mtm/empty-period-fallback"
 import {
   AlertTriangle,
   ArrowLeft,
@@ -93,6 +94,13 @@ type ActiveVisitRow = {
 type VisitViewer = { agentId: string | null; role: string }
 
 type HistoryRange = "today" | "7d" | "30d" | "all"
+/** Narrowest to widest, exactly as the control offers them. */
+const HISTORY_RANGE_ORDER: readonly HistoryRange[] = ["today", "7d", "30d", "all"]
+
+/** The control's own wording, so the notice names periods exactly as the chips do. */
+function rangeLabelKey(range: HistoryRange): string {
+  return range === "today" ? "rangeToday" : range === "7d" ? "range7Days" : range === "30d" ? "range30Days" : "rangeAll"
+}
 
 type VisitMeta = {
   total: number | null
@@ -156,6 +164,29 @@ export default function MtmVisitsPage() {
   const [activeFilter, setActiveFilter] = useState("all")
   const [sortBy, setSortBy] = useState("date_desc")
   const [historyRange, setHistoryRange] = useState<HistoryRange>("today")
+  // Audit 2026-09-21: the page opened on «Сегодня» and showed a full set of
+  // controls around nothing while a week of visits sat one click away.
+  const [rangeChosenByUser, setRangeChosenByUser] = useState(false)
+  const [widenedFrom, setWidenedFrom] = useState<HistoryRange | null>(null)
+
+  /**
+   * If today is empty, show the nearest period that is not — once, and say
+   * so. A screen that answers «ничего нет» while a week of visits sits one
+   * click away makes the reader do the search.
+   */
+  useEffect(() => {
+    const wider = nextWiderPeriod({
+      order: HISTORY_RANGE_ORDER,
+      current: historyRange,
+      rows: visits.length,
+      userChose: rangeChosenByUser,
+      alreadyWidened: widenedFrom !== null,
+      loading,
+    })
+    if (!wider) return
+    setWidenedFrom(historyRange)
+    setHistoryRange(wider)
+  }, [historyRange, visits.length, rangeChosenByUser, widenedFrom, loading])
   const orgId = session?.user?.organizationId
   const focusedVisitId = searchParams.get("visitId")
   const returnHref = operationalWeekReturnHref(searchParams.get("returnTo"))
@@ -735,13 +766,22 @@ export default function MtmVisitsPage() {
                   type="button"
                   aria-pressed={historyRange === range.value}
                   className={`min-h-10 rounded-lg px-3 text-sm font-medium transition-colors ${historyRange === range.value ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-                  onClick={() => setHistoryRange(range.value)}
+                  onClick={() => {
+                    setRangeChosenByUser(true)
+                    setWidenedFrom(null)
+                    setHistoryRange(range.value)
+                  }}
                 >
                   {t(range.label)}
                 </button>
               ))}
             </div>
           </div>
+          {widenedFrom ? (
+            <p role="status" data-testid="mtm-visits-widened" className="text-sm text-muted-foreground">
+              {t("widenedNotice", { from: t(rangeLabelKey(widenedFrom)), to: t(rangeLabelKey(historyRange)) })}
+            </p>
+          ) : null}
 
           <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-zinc-200 bg-zinc-200 dark:border-zinc-800 dark:bg-zinc-800 sm:grid-cols-4">
             <div className="bg-card p-3 sm:p-4">

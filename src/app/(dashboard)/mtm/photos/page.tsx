@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { useLocale, useTranslations } from "next-intl"
 import { formatDateTime } from "@/lib/format-date"
 import { mtmPhotoPeriodStart, type MtmPhotoPeriod } from "@/lib/mtm/photo-period"
+import { nextWiderPeriod } from "@/lib/mtm/empty-period-fallback"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
 import { mtmPhotoThumbnailUrl, type MtmPhotoThumbnailWidth } from "@/lib/mtm/photo-thumbnail-url"
 import { PhotoThumbnailImg } from "@/components/mtm/photo-thumbnail-img"
@@ -37,6 +38,13 @@ type MtmPhotoRow = {
 }
 
 type PhotoPeriod = MtmPhotoPeriod
+/** Narrowest to widest, exactly as the select offers them. */
+const PHOTO_PERIOD_ORDER: readonly PhotoPeriod[] = ["today", "week", "all"]
+
+/** The control's own wording, so the notice names periods exactly as the options do. */
+function periodLabelKey(period: PhotoPeriod): string {
+  return period === "today" ? "periodToday" : period === "week" ? "periodWeek" : "periodAll"
+}
 
 /**
  * A tile whose file is gone says so, instead of a browser's broken-image icon.
@@ -85,6 +93,10 @@ export default function MtmPhotosPage() {
   // Land on this week's photos: the newest rows of a tenant can be seeded
   // placeholders, and "all" is one click away.
   const [period, setPeriod] = useState<PhotoPeriod>("week")
+  // Audit 2026-09-21: the page opened on «Эта неделя» with four zeros while
+  // 1367 photos were stored, and asked the manager to widen it themselves.
+  const [periodChosenByUser, setPeriodChosenByUser] = useState(false)
+  const [widenedFrom, setWidenedFrom] = useState<PhotoPeriod | null>(null)
   const [agentFilter, setAgentFilter] = useState("")
   const [knownAgents, setKnownAgents] = useState<Map<string, string>>(() => new Map())
   // Same source of "today" as every other MTM screen: the organization's
@@ -172,6 +184,25 @@ export default function MtmPhotosPage() {
     })
   }, [period, photos, timezone])
 
+  /**
+   * The nearest period with photos, once, and said aloud. Measured on the
+   * period alone — the agent and status filters are the reader's own choices
+   * and an empty result under them is an answer, not a wrong default.
+   */
+  useEffect(() => {
+    const wider = nextWiderPeriod({
+      order: PHOTO_PERIOD_ORDER,
+      current: period,
+      rows: periodPhotos.length,
+      userChose: periodChosenByUser,
+      alreadyWidened: widenedFrom !== null,
+      loading,
+    })
+    if (!wider) return
+    setWidenedFrom(period)
+    setPeriod(wider)
+  }, [period, periodPhotos.length, periodChosenByUser, widenedFrom, loading])
+
   const filtered = periodPhotos.filter(p => {
     if (activeFilter !== "all" && p.status !== activeFilter) return false
     if (search) { const s = search.toLowerCase(); if (!p.agent?.name?.toLowerCase().includes(s)) return false }
@@ -243,10 +274,19 @@ export default function MtmPhotosPage() {
         <ColorStatCard label={t("statRejected")} value={statusCounts["REJECTED"] || 0} icon={<XCircle className="h-4 w-4" />} hint={t("hintRejected")} />
       </div>
 
+      {widenedFrom ? (
+        <p role="status" data-testid="mtm-photos-widened" className="text-sm text-muted-foreground">
+          {t("widenedNotice", { from: t(periodLabelKey(widenedFrom)), to: t(periodLabelKey(period)) })}
+        </p>
+      ) : null}
       <div className="flex flex-wrap items-end gap-2">
         <label className="grid gap-1 text-xs font-medium">
           {t("periodLabel")}
-          <Select data-testid="mtm-photos-period" value={period} onChange={(event) => setPeriod(event.target.value as PhotoPeriod)} className="min-h-10 w-[180px]">
+          <Select data-testid="mtm-photos-period" value={period} onChange={(event) => {
+            setPeriodChosenByUser(true)
+            setWidenedFrom(null)
+            setPeriod(event.target.value as PhotoPeriod)
+          }} className="min-h-10 w-[180px]">
             <option value="today">{t("periodToday")}</option>
             <option value="week">{t("periodWeek")}</option>
             <option value="all">{t("periodAll")}</option>
