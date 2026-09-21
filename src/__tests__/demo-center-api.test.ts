@@ -2,8 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 
 const sendDemoOtpEmail = vi.hoisted(() => vi.fn())
+const ensureDemoProspectLead = vi.hoisted(() => vi.fn())
 
 vi.mock("@/lib/demo-center/email", () => ({ sendDemoOtpEmail }))
+vi.mock("@/lib/demo-center/prospect-lead", () => ({ ensureDemoProspectLead }))
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: vi.fn(),
@@ -47,6 +49,7 @@ function request(path: string, cookieName: string, cookieValue: string, body?: u
 function grant(overrides: Record<string, unknown> = {}) {
   return {
     id: "grant-1",
+    requestId: "request-1",
     status: "OTP_VERIFIED",
     linkExpiresAt: FUTURE,
     verificationExpiresAt: FUTURE,
@@ -67,6 +70,7 @@ function grant(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   vi.clearAllMocks()
   sendDemoOtpEmail.mockResolvedValue({ success: true, messageId: "otp-message-1" })
+  ensureDemoProspectLead.mockResolvedValue({ status: "LINKED", leadId: "lead-1", mode: "already" })
   vi.mocked(prisma.$transaction).mockImplementation(async (callback) => {
     const run = callback as unknown as (client: typeof prisma) => Promise<unknown>
     return await run(prisma) as never
@@ -228,6 +232,8 @@ describe("Demo Center one-session API", () => {
       where: expect.objectContaining({ status: "OTP_VERIFIED", sessionStartedAt: null }),
       data: expect.objectContaining({ status: "ACTIVE", verificationHash: null }),
     }))
+    // Second chance for the lead, in case the attempt at verification failed.
+    expect(ensureDemoProspectLead).toHaveBeenCalledWith("request-1", expect.any(Date))
   })
 
   it("rejects a losing concurrent start instead of creating a second session", async () => {

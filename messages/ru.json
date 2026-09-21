@@ -1134,6 +1134,7 @@
     "sourceReferral": "Реферал",
     "sourceColdCall": "Холодный звонок",
     "sourceLinkedin": "LinkedIn",
+    "sourceDemo": "Демо",
     "sourceEmail": "Email",
     "sourceEvent": "Мероприятие",
     "sourceOther": "Другое",
@@ -14151,6 +14152,13 @@
   },
   "admin": {
     "demoCenter": {
+      "leadLink": "Лид в CRM",
+      "leadLinkLinked": "Связан",
+      "leadLinkPending": "Создаётся",
+      "leadLinkFailed": "Не создан — повторим при старте демо",
+      "leadLinkUnconfigured": "Не настроена организация для лидов из демо",
+      "leadLinkNone": "Появится, когда клиент подтвердит почту",
+      "openLead": "Открыть лида",
       "requestStatus": {
         "SUBMITTED": "Отправлена",
         "UNDER_REVIEW": "На проверке",

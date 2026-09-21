@@ -96,6 +96,7 @@ const SOURCE_BADGE_CLASSES: Record<string, string> = {
   cold_call: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
   linkedin:  "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
   email:     "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
+  demo:      "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-400",
 }
 // Category includes "regular" — that value pre-existed in old data, the
 // filter dropdown, and lead-form.tsx. Omitting it would render those leads
@@ -134,6 +135,8 @@ export default function LeadsPage() {
   const sourceLabels: Record<string, string> = {
     website: t("sourceWebsite"), referral: t("sourceReferral"), cold_call: t("sourceColdCall"),
     linkedin: t("sourceLinkedin"), email: t("sourceEmail"),
+    // A prospect who verified their email in a private demo (src/lib/demo-center/prospect-lead.ts).
+    demo: t("sourceDemo"),
   }
 
   const [leads, setLeads] = useState<Lead[]>([])
