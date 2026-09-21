@@ -9,9 +9,8 @@ import { HelpButton } from "@/components/help/help-button"
 import { OperationalWeekHome } from "@/components/mtm/operational-week-home"
 import { Button } from "@/components/ui/button"
 import { createDateFormatter, formatDate, formatTime } from "@/lib/format-date"
-import Link from "next/link"
 import {
-  MapPin, Route, CheckSquare,
+  MapPin,
   Check, LifeBuoy, Mail, Megaphone, Phone,
 } from "lucide-react"
 
@@ -139,18 +138,15 @@ export default function MtmDashboardPage() {
         />
       </div>
 
-      {/* One clear daily path. Administration and reports remain in “All MTM tools”. */}
-      <section aria-labelledby="mtm-next-step" className="flex flex-col gap-3 border-y border-zinc-200 py-4 dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <p id="mtm-next-step" className="text-sm font-semibold">{td("nextStepTitle")}</p>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{td("nextStepHint")}</p>
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <Link href="/mtm/routes"><Button className="min-h-11 w-full sm:w-auto"><Route className="mr-2 h-4 w-4" />{td("openPlan")}</Button></Link>
-          <Link href="/mtm/visits"><Button variant="outline" className="min-h-11 w-full sm:w-auto"><CheckSquare className="mr-2 h-4 w-4" />{td("openVisits")}</Button></Link>
-          <Link href="/mtm/map"><Button variant="ghost" className="min-h-11 w-full sm:w-auto"><MapPin className="mr-2 h-4 w-4" />{td("openMap")}</Button></Link>
-        </div>
-      </section>
+      {/* Audit 2026-09-21: the first fact of the day belongs above the fold.
+          With a live announcement the 96 px skeleton and the message body
+          pushed the team summary below the fold on a 390×844 phone, so the
+          operational week comes first and the announcement follows it. */}
+      <OperationalWeekHome
+        key={`${orgId || "no-org"}:${session?.user?.id || session?.user?.email || "no-viewer"}`}
+        organizationId={orgId ? String(orgId) : null}
+        viewerId={session?.user?.id || session?.user?.email || null}
+      />
 
       {operationalLoading ? (
         <div className="h-24 animate-pulse border-y border-zinc-200 bg-muted/40 motion-reduce:animate-none dark:border-zinc-700" aria-label={td("announcementLoading")} />
@@ -214,13 +210,6 @@ export default function MtmDashboardPage() {
           ) : null}
         </section>
       ) : null}
-
-      <OperationalWeekHome
-        key={`${orgId || "no-org"}:${session?.user?.id || session?.user?.email || "no-viewer"}`}
-        organizationId={orgId ? String(orgId) : null}
-        viewerId={session?.user?.id || session?.user?.email || null}
-      />
-
     </div>
   )
 }
