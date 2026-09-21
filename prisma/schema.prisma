@@ -21513,6 +21513,17 @@ model DemoRequest {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
+  /// The one lead this verified prospect became in LeadDrive's own CRM.
+  /// A control-plane reference into another tenant: no foreign key, never
+  /// returned by any public route. See src/lib/demo-center/prospect-lead.ts.
+  internalLeadId             String?
+  internalLeadOrganizationId String?
+  leadLinkStatus             String?   // PENDING | LINKED | FAILED | UNCONFIGURED
+  leadLinkedAt               DateTime?
+  /// Also the claim's lease: a PENDING row older than the lease may be re-claimed.
+  leadLinkUpdatedAt          DateTime?
+  leadLinkError              String?
+
   grants DemoGrant[]
 
   @@index([status, createdAt], map: "demo_requests_status_created_idx")

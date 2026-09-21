@@ -9,6 +9,7 @@ import {
   secureHashMatches,
 } from "@/lib/demo-center/security"
 import { hashOneTimeToken } from "@/lib/one-time-token"
+import { ensureDemoProspectLead } from "@/lib/demo-center/prospect-lead"
 import { runWithRlsBypass } from "@/lib/rls-context"
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ token: string }> }) {
@@ -87,6 +88,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       }
       return NextResponse.json({ success: false, error: "Demo artıq başladılıb" }, { status: 409, headers: noStoreHeaders() })
     }
+
+    // A second chance for the lead: the attempt at verification may have failed
+    // or been cut off by a restart. Linking is idempotent, so on the usual path
+    // this is a single read that finds the lead already linked.
+    await ensureDemoProspectLead(grant.requestId, now)
 
     return activeResponse(token, verifiedCredential, sessionExpiresAt, false)
   })

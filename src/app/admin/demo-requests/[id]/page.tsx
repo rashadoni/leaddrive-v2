@@ -37,6 +37,20 @@ export default async function DemoRequestDetailPage({ params }: { params: Promis
     .sort((a: TrailRow, b: TrailRow) => b.event.occurredAt.getTime() - a.event.occurredAt.getTime())
     .slice(0, 60)
 
+  // Which CRM the verified prospect landed in. Superadmin-only page; the same
+  // ids are never selected by any public route.
+  const leadOrganization = request.internalLeadOrganizationId
+    ? await runWithRlsBypass(() =>
+        prisma.organization.findUnique({ where: { id: request.internalLeadOrganizationId! }, select: { name: true } }),
+      )
+    : null
+  const leadLinkLabel =
+    request.leadLinkStatus === "LINKED" ? t("leadLinkLinked")
+    : request.leadLinkStatus === "PENDING" ? t("leadLinkPending")
+    : request.leadLinkStatus === "FAILED" ? t("leadLinkFailed")
+    : request.leadLinkStatus === "UNCONFIGURED" ? t("leadLinkUnconfigured")
+    : t("leadLinkNone")
+
   const moduleOptions = DEMO_MODULE_CATALOG.map(({ id: moduleId, title, summary }) => ({ id: moduleId, title, summary }))
   const moduleTitle = new Map(moduleOptions.map((module) => [module.id, module.title]))
 
@@ -88,6 +102,19 @@ export default async function DemoRequestDetailPage({ params }: { params: Promis
               <ContactRow icon={Mail} label={t("corporateEmail")} value={request.email} href={`mailto:${request.email}`} />
               <ContactRow icon={Phone} label={t("phone")} value={request.phone || t("notProvided")} href={request.phone ? `tel:${request.phone}` : undefined} />
             </dl>
+          </section>
+          <section className="border-t border-zinc-200 pt-6 dark:border-zinc-800">
+            <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">{t("leadLink")}</h2>
+            <p className="mt-3 text-sm font-medium text-zinc-800 dark:text-zinc-200">{leadLinkLabel}</p>
+            {request.leadLinkStatus === "LINKED" && request.internalLeadId ? (
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                {leadOrganization?.name ?? request.internalLeadOrganizationId} ·{" "}
+                <Link className="text-orange-700 hover:underline" href={`/leads/${request.internalLeadId}`}>{t("openLead")}</Link>
+              </p>
+            ) : null}
+            {request.leadLinkStatus === "FAILED" && request.leadLinkError ? (
+              <p className="mt-1 break-words text-xs text-zinc-500">{request.leadLinkError}</p>
+            ) : null}
           </section>
           {request.message ? (
             <section className="border-t border-zinc-200 pt-6 dark:border-zinc-800">

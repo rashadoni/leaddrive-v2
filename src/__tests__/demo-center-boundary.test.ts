@@ -63,6 +63,15 @@ const PUBLIC_ROUTE_FORBIDDEN_TOKENS = [
   "requireAuth(",
   "withRlsAuth(",
   "runWithTenant(",
+  // Tenant CRM writes go through @/lib/demo-center/prospect-lead and nowhere
+  // else, so a route cannot pick an organisation or a lead on its own.
+  "@/lib/crm-commands",
+  "@/lib/inbound-lead-match",
+  // The link to the internal lead is control-plane data: no public route
+  // may even name it, let alone put it in a response.
+  "internalLeadId",
+  "internalLeadOrganizationId",
+  "leadLink",
 ]
 
 describe("Demo Center trust boundary", () => {
@@ -107,6 +116,19 @@ describe("Demo Center trust boundary", () => {
         expect(source.includes("@/lib/prisma"), `${where} touches the database`).toBe(false)
       }
     }
+  })
+
+  it("the prospect lead enters one tenant only, and that tenant comes from server config", () => {
+    // This module is the single sanctioned place where a public demo request
+    // reaches tenant data. Every tenant scope in it must be the configured
+    // organisation, and that value may have no other source.
+    const source = readFileSync(path.join(ROOT, "src/lib/demo-center/prospect-lead.ts"), "utf8")
+    const scopes = source.match(/runWithTenant\(/g) ?? []
+    const configuredScopes = source.match(/runWithTenant\(organizationId,/g) ?? []
+    expect(scopes.length).toBeGreaterThan(0)
+    expect(configuredScopes.length).toBe(scopes.length)
+    expect(source).toContain("const organizationId = demoLeadOrganizationId()")
+    expect(source.match(/\borganizationId\s*=(?!=)/g) ?? []).toHaveLength(1)
   })
 
   it("public demo routes never resolve a tenant session or enter a tenant RLS context", () => {

@@ -12,6 +12,7 @@ import {
 } from "@/lib/demo-center/security"
 import { demoOtpSchema } from "@/lib/demo-center/validation"
 import { hashOneTimeToken } from "@/lib/one-time-token"
+import { ensureDemoProspectLead } from "@/lib/demo-center/prospect-lead"
 import { runWithRlsBypass } from "@/lib/rls-context"
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ token: string }> }) {
@@ -74,6 +75,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     await prisma.demoAccessEvent.create({
       data: { grantId: grant.id, eventType: "OTP_VERIFIED", metadata: anonymizedClientMetadata(request) },
     })
+
+    // The email is now proven, so the prospect becomes a lead in LeadDrive's
+    // own CRM. It never throws and its outcome is never shown here: the
+    // prospect's demo does not depend on the sales side, and nothing about the
+    // internal lead may reach this response.
+    await ensureDemoProspectLead(grant.requestId, now)
 
     const response = NextResponse.json({ success: true, state: "verified" }, { headers: noStoreHeaders() })
     response.cookies.set(

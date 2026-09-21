@@ -1132,6 +1132,7 @@
     "sourceReferral": "Referans",
     "sourceColdCall": "Soyuq zəng",
     "sourceLinkedin": "LinkedIn",
+    "sourceDemo": "Demo",
     "sourceEmail": "Email",
     "sourceEvent": "Tədbir",
     "sourceOther": "Digər",
@@ -14147,6 +14148,13 @@
   },
   "admin": {
     "demoCenter": {
+      "leadLink": "CRM-də lid",
+      "leadLinkLinked": "Bağlanıb",
+      "leadLinkPending": "Yaradılır",
+      "leadLinkFailed": "Yaradılmadı — demo başlayanda yenidən cəhd ediləcək",
+      "leadLinkUnconfigured": "Demo lidləri üçün təşkilat qurulmayıb",
+      "leadLinkNone": "Müştəri e-poçtunu təsdiqləyəndə yaranacaq",
+      "openLead": "Lidi aç",
       "requestStatus": {
         "SUBMITTED": "Göndərilib",
         "UNDER_REVIEW": "Baxışdadır",

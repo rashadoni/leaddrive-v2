@@ -1,6 +1,11 @@
 import type { Role } from "@/lib/permissions"
 
-export type CrmCommandSource = "rest" | "voice"
+/**
+ * `demo` is the demo centre acting on its own: a prospect who verified their
+ * email in a private demo becomes a lead in LeadDrive's CRM with no user
+ * behind the write (src/lib/demo-center/prospect-lead.ts).
+ */
+export type CrmCommandSource = "rest" | "voice" | "demo"
 
 /**
  * Trusted command identity. Adapters build this from authenticated server
