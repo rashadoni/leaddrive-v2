@@ -20,25 +20,23 @@ new app.
 
 ## Step 1 — read this before planning the Instagram side
 
-`INSTAGRAM_APP_ID` **cannot** be set to `2414060595720618`.
+`INSTAGRAM_APP_ID` **cannot** be set to `2414060595720618`, but no second Meta
+app is needed either.
 
-Instagram Login is a separate Meta app from the Facebook Login app, with its
-own app ID and secret. This is not a convention — the resolver enforces it.
-`getTenantInstagramLoginApp` in `src/lib/social/tenant-meta-app.ts` exists
-specifically so an Instagram-Login OAuth never picks up the Facebook-Login
-credentials, and `src/app/api/v1/social/oauth/instagram/start/route.ts` states
-it in the header comment: *"INSTAGRAM_APP_ID = the dedicated IG app, NOT the
-Facebook app id."*
+Verified in the Meta dashboard on 2026-09-21: the Instagram side of the review
+app is the **Instagram product inside `2414060595720618`** ("Instagram API
+setup" → "Instagram app ID / Instagram app secret"). That product has its own
+ID and secret, and that ID is `782807994549098` — the value production already
+carries in `INSTAGRAM_APP_ID`. It sits in the "Lead Drive" portfolio because the
+parent app does. The staged Instagram-Login configuration row for the review
+uses exactly this pair, and the Instagram Login consent screen it opens names
+the app "CRM-IG" with client_id `782807994549098`.
 
-So the Instagram side needs an Instagram-Login app that sits in the same
-"Lead Drive" portfolio as `2414060595720618`. Two possibilities, and only the
-Meta dashboard can tell which one holds:
-
-- such an app already exists in that portfolio → use its ID and secret;
-- it does not → create it, which is owner work and adds its own review scope.
-
-The current `782807994549098` was never traced to a portfolio. Do not assume
-it belongs to "Lead Drive" because it is in production.
+The resolver split still matters: `getTenantInstagramLoginApp` in
+`src/lib/social/tenant-meta-app.ts` exists so an Instagram-Login OAuth never
+picks up the Facebook-Login credentials, and
+`src/app/api/v1/social/oauth/instagram/start/route.ts` says so in its header
+comment. "Separate credentials" is the rule — not "separate Meta app".
 
 ## Step 2 — owner-only preparation in the Meta dashboard
 
