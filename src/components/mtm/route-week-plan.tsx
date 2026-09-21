@@ -315,7 +315,7 @@ export function MtmRouteWeekPlan({
                 const dayRoutes = routesByAgentAndDate.get(`${agent.id}:${dateKey(day)}`) ?? []
                 const canCreateForAgent = canCreateRoutes && (canManageAssignments || !selfAgentId || selfAgentId === agent.id)
                 return (
-                  <div key={dateKey(day)} className="space-y-1 border-r border-zinc-200 p-1.5 last:border-r-0 dark:border-zinc-700">
+                  <div key={dateKey(day)} className="group space-y-1 border-r border-zinc-200 p-1.5 last:border-r-0 dark:border-zinc-700">
                     {dayRoutes.map((route) => {
                       // The row already names the agent; the cell said it again
                       // (audit 2026-09-14). It now says how the day went:
@@ -354,19 +354,21 @@ export function MtmRouteWeekPlan({
                       </button>
                       )
                     })}
-                    {dayRoutes.length === 0 ? (
+                    {/* Audit 2026-09-21: 17 agents × 7 days printed up to 119 dashed
+                        «+ Запланировать» blocks. An empty cell is now empty; its
+                        «+» appears on hover or focus and stays visible on touch.
+                        Without the right to plan, nothing is drawn: the page
+                        already states why in one line. */}
+                    {dayRoutes.length === 0 && canCreateForAgent ? (
                       <button
                         type="button"
                         data-testid="mtm-week-empty-cell-action"
-                        className="flex min-h-11 w-full items-center justify-center gap-1 rounded-lg border border-dashed border-zinc-300 px-2 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/60 hover:bg-primary/5 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-zinc-300 disabled:hover:bg-transparent disabled:hover:text-muted-foreground dark:border-zinc-700"
+                        className="flex min-h-11 w-full items-center justify-center rounded-lg text-muted-foreground opacity-0 transition-opacity hover:bg-primary/5 hover:text-primary focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100 [@media(hover:none)]:opacity-100"
                         onClick={() => onCreateRoute({ date: dateKey(day), agentId: agent.id })}
-                        disabled={!canCreateForAgent}
-                        title={canCreateForAgent
-                          ? t("planRouteForAgentOnDate", { employee: agent.name, date: formatDate(day, locale) })
-                          : t("selfPlanningDisabled")}
+                        title={t("planRouteForAgentOnDate", { employee: agent.name, date: formatDate(day, locale) })}
                         aria-label={t("planRouteForAgentOnDate", { employee: agent.name, date: formatDate(day, locale) })}
                       >
-                        <Plus className="h-3.5 w-3.5" />{t("planRoute")}
+                        <Plus className="h-4 w-4" />
                       </button>
                     ) : null}
                   </div>
