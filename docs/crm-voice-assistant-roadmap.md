@@ -649,7 +649,15 @@ There is deliberately no `commit_*` tool.
 - [x] V1.7 Prevent the model from marking its own draft as confirmed. The
       propose endpoint cannot execute a command, and the confirmation proof is
       minted only by a button press.
-- [ ] V1.8 Add tool-call ceilings, timeouts, retries, and idempotency.
+- [x] V1.8 Add tool-call ceilings, timeouts and idempotency.
+      `src/lib/ai/voice/tool-budget.ts` counts what one answer and one
+      conversation may spend; the per-turn allowance refills when the answer
+      finishes, the session and proposal counts do not. A proposal now carries
+      the same 15-second deadline every read already had. Idempotency was
+      already in place at both ends — the client drops a repeated provider
+      tool-call id, and the server keys the draft on it. Retries are
+      deliberately NOT added: a refused proposal is a question for the user,
+      not something to attempt again.
 - [ ] V1.9 Add structured audit metadata linking provider tool call, voice
       session, intent, actor, and final record.
 - [ ] V1.10 Add contract tests proving the model cannot commit or fabricate a
@@ -947,6 +955,7 @@ implementation branch that advances the roadmap.
 | 2026-09-20 | Execution boundary | Production deployed | PR #245; merge `a7f6c2654`; deploy `35479290362` | Internal-only atomic CRM mutation/result/`succeeded` event; commit remains disabled. |
 | 2026-09-20 | Commit adapter | Production deployed | PR #249; merge `ffcbaa3a4`; active artifact `a9891d6cb`; deploy `35499744499` | Session-only endpoint and three rate-limit scopes are live; receipt UI remains open and no model write-tool is exposed. |
 | 2026-09-20 | Receipt UI shell (U1.1-U1.3) | Production deployed | PR #257; merge `1bbc59e1e`; active artifact `6cca1a5a8`; deploy `35512069725` | Shadow mode: session-scoped store, anchored desktop panel, mobile bottom sheet. No confirm control, no write request, no model commit tool. |
+| 2026-09-21 | Tool-call ceilings (V1.8) | Code complete | Targeted Vitest: 544 files / 5699 green, 8 known-baseline reds; targeted ESLint; i18n parity | Per-turn and per-session read ceilings, a proposal ceiling that does not refill, and a deadline on the proposal call. |
 | 2026-09-21 | Side-effect parity (C1.11) | Code complete | Targeted Vitest: 649 files / 10464 green, 8 known-baseline reds; targeted ESLint; i18n parity | Effects cannot escape an open transaction; voice and REST produce the same set, the transaction only changes when. |
 | 2026-09-21 | Command parity (C1.9, C1.10, C1.14) | Production deployed | PR #304; merge `da5966c3b`; active artifact `da5966c3be6596bf0fdfcdd37552554bd88e1568`; deploy `35572848857` | Field permissions fail closed on writes; tenant scoping verified and pinned. |
 | 2026-09-20 | Write kill switch (P0.11) | Production deployed | PR #296; merge `8765421d0`; shipped in artifact `c572906bd13a0711ea54e289565062a9f3043935` | `VOICE_WRITE_ENABLED=false` removes the proposal tools, their prompt lines and the five mutating routes, leaving reads untouched. |
