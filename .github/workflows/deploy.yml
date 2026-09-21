@@ -1434,6 +1434,29 @@ jobs:
                exit 1
              fi'
 
+      - name: Verify the campaign scheduled-send scheduler
+        if: ${{ !cancelled() && steps.deploy_atomic.outcome == 'success' }}
+        run: |
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            'set -euo pipefail
+             CRONTAB="$(crontab -l 2>/dev/null)"
+             ACTIVE_COUNT="$(printf "%s\n" "$CRONTAB" | awk '\''
+               $0 !~ /^[[:space:]]*#/ &&
+               $0 ~ /cron-trigger\.sh \/api\/cron\/campaign-scheduled-send/ { count++ }
+               END { print count + 0 }
+             '\'')"
+             if [ "$ACTIVE_COUNT" -ne 1 ]; then
+               echo "FATAL: expected exactly one active campaign scheduled-send cron; found $ACTIVE_COUNT"
+               exit 1
+             fi
+             SMOKE_OUTPUT="$(CRON_TRIGGER_LOCK_WAIT_SECONDS=120 /usr/local/lib/leaddrive-v2/ops/current/cron-scripts/cron-trigger.sh "/api/cron/campaign-scheduled-send?smoke=1")"
+             printf "%s\n" "$SMOKE_OUTPUT"
+             if ! printf "%s\n" "$SMOKE_OUTPUT" | grep -Fq '\''"smoke":true'\''; then
+               echo "FATAL: campaign scheduled-send cron smoke was not side-effect-free and successful"
+               exit 1
+             fi'
+
       - name: Verify missed inbound reconciliation scheduler
         if: ${{ !cancelled() && steps.deploy_atomic.outcome == 'success' && env.DEPLOYMENT_MODE == 'normal' }}
         run: |
