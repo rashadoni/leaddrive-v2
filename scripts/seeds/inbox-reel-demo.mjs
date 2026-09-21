@@ -81,6 +81,13 @@ const THREADS = [
   { ch: "whatsapp", who: 0, ago: 0, hero: true, state: "open", assign: null, msgs: [
     ["in", "Salam! Bu divan hələ satışdadır? Qiyməti neçəyədir, bu həftə çatdırırsınız?"],
   ] },
+  // The reel's «team takes over» beat: a hard question the AI hands to a
+  // person, the person answers, the customer buys. Open and assigned to Aynur.
+  { ch: "whatsapp", who: 20, ago: 6, reply: 3, by: "aynur", state: "open", assign: "aynur", msgs: [
+    ["in", "Salam! 3 metrlik künc divanı öz ölçümə düzəltmək olar? Rəng nümunəsini görmək istəyirəm."],
+    ["out", "Salam, Xədicə xanım! Bəli, fərdi ölçüdə hazırlayırıq — 10–12 iş günü. Rəng nümunələrini indi göndərirəm."],
+    ["in", "Əla, sifariş verirəm!"],
+  ] },
   { ch: "whatsapp", who: 1, ago: 95, reply: 1, by: "ai", state: "open", assign: null, msgs: [
     ["in", "Axşamınız xeyir. Sabah neçədə açılırsınız?"],
     ["out", "Axşamınız xeyir! Mağazamız hər gün 10:00–20:00 işləyir, sifarişi isə indi də saytda və ya burada qeyd edə bilərsiniz."],
