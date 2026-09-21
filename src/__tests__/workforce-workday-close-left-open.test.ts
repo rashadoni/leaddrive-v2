@@ -173,8 +173,10 @@ describe("a manager closing a shift the agent left open", () => {
     // The extended journal reproduces exactly the row that was written.
     const replayed = replayWorkforceWorkdayFacts({
       workdayId: WORKDAY_ID,
-      events: [...startedJournal, { ...journalEvent("event-close", "FINISH", FINISH), clientEventId: String(event.clientEventId) }]
-        .map((row) => ({ ...row, occurredAt: row.occurredAt.toISOString(), appliedAt: row.appliedAt.toISOString() })),
+      events: [
+        { id: "event-1", type: "START", occurredAt: STARTED_AT.toISOString(), appliedAt: STARTED_AT.toISOString(), clientEventId: "mtm-event-1" },
+        { id: "event-close", type: "FINISH", occurredAt: FINISH.toISOString(), appliedAt: NOW.toISOString(), clientEventId: String(event.clientEventId) },
+      ],
     })
     expect(workforceReplayMatchesWorkdayCorrectionFacts(replayed, after as never)).toBe(true)
   })
