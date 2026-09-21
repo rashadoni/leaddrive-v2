@@ -15,9 +15,9 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
   scenarioId: "prospect-to-closed-won",
   version: 1,
   locale: "az",
-  title: "İlk lideriniz: müraciətdən sövdələşməyə",
+  title: "İlk lidiniz: müraciətdən sövdələşməyə",
   summary:
-    "Siz özünüz LeadDrive-da lider olursunuz və öz hekayənizi izləyirsiniz: kampaniya, yazışma, AI cavabı, lider, tapşırıq, sövdələşmə, kommersiya təklifi və qazanılmış nəticə.",
+    "Siz özünüz LeadDrive-da lid olursunuz və öz hekayənizi izləyirsiniz: kampaniya, yazışma, AI cavabı, lid, tapşırıq, sövdələşmə, kommersiya təklifi və qazanılmış nəticə.",
   navGroups: ["crm", "sales", "omnichannel", "marketing"],
   visibleRoutes: [
     "/campaigns",
@@ -128,7 +128,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
           required: true,
           completion: { kind: "transition", to: "SOURCE_SEEN" },
           covers: ["campaigns.list", "campaigns.detail"],
-          result: "Kampaniya açıldı. Bu kampaniya sizin liderinizin mənbəyi kimi qeyd olunacaq.",
+          result: "Kampaniya açıldı. Bu kampaniya sizin lidinizin mənbəyi kimi qeyd olunacaq.",
           analyticsEvent: "journey.transition",
         },
         {
@@ -251,8 +251,8 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
     },
     {
       id: "lead-created",
-      title: "Siz artıq LeadDrive-da lidersiniz",
-      summary: "Dialoqdan lider kartı yaranır: ad, şirkət, vəzifə, mənbə və bütün tarixçə bir yerdə.",
+      title: "Siz artıq LeadDrive-da lidsiniz",
+      summary: "Dialoqdan lid kartı yaranır: ad, şirkət, vəzifə, mənbə və bütün tarixçə bir yerdə.",
       area: "leads",
       route: "/leads/[id]",
       navGroup: "sales",
@@ -264,12 +264,12 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
       // Inc.'s own records (the owner's test data, 2026-09-21), not on the
       // synthetic `demo` stand a prospect should be walked through. It stays
       // "planned" until it is re-recorded there.
-      intro: { slug: "leads", caption: "Liderlər siyahısı və kart — bir dəqiqəlik icmal.", status: "planned" },
-      assistantPrompts: ["Bu liderin mənbəyi nədir?", "Lider kartında hansı vərəqlər var?"],
+      intro: { slug: "leads", caption: "Lidlər siyahısı və kart — bir dəqiqəlik icmal.", status: "planned" },
+      assistantPrompts: ["Bu lidin mənbəyi nədir?", "Lid kartında hansı vərəqlər var?"],
       steps: [
         {
           id: "lead-list-stats",
-          title: "Liderlər siyahısı",
+          title: "Lidlər siyahısı",
           instruction: "Yuxarıda statistika və status filtrləri; alətlər panelində axtarış, kateqoriya, mənbə və görünüş.",
           anchor: "leads-status-filter",
           placement: "bottom",
@@ -289,13 +289,13 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
           required: true,
           completion: { kind: "transition", to: "LEAD_CREATED" },
           covers: ["leads.list.kanban"],
-          result: "Lider kartı açıldı: ad, şirkət, vəzifə və mənbə — kampaniya — dolduruldu.",
+          result: "Lid kartı açıldı: ad, şirkət, vəzifə və mənbə — kampaniya — dolduruldu.",
           analyticsEvent: "journey.transition",
         },
         {
           id: "lead-details",
           title: "Kartda nə var",
-          instruction: "«Detallar» vərəqi: liderin və müştərinin məlumatları, mənbə, qeydlər. Yuxarıda əsas göstəricilər.",
+          instruction: "«Detallar» vərəqi: lidin və müştərinin məlumatları, mənbə, qeydlər. Yuxarıda əsas göstəricilər.",
           anchor: "lead-details",
           placement: "top",
           action: "observe",
@@ -320,7 +320,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
         {
           id: "lead-sentiment-tasks",
           title: "Əhval və tapşırıqlar",
-          instruction: "«Əhval» yazışmanın tonunu göstərir, «Tapşırıqlar» — bu liderlə bağlı işləri. Hələlik boşdur; birazdan dolacaq.",
+          instruction: "«Əhval» yazışmanın tonunu göstərir, «Tapşırıqlar» — bu lidlə bağlı işləri. Hələlik boşdur; birazdan dolacaq.",
           anchor: "lead-tabs",
           placement: "bottom",
           action: "observe",
@@ -333,8 +333,8 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
     },
     {
       id: "lead-qualified",
-      title: "Lider nə qədər hazırdır",
-      summary: "Da Vinci lideri qiymətləndirir və növbəti addımı təklif edir; menecer statusu irəli aparır.",
+      title: "Lid nə qədər hazırdır",
+      summary: "Da Vinci lidi qiymətləndirir və növbəti addımı təklif edir; menecer statusu irəli aparır.",
       area: "leads",
       route: "/leads/[id]",
       navGroup: "sales",
@@ -342,7 +342,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
       requires: [],
       entryStates: ["LEAD_CREATED"],
       exitStates: ["LEAD_QUALIFIED"],
-      assistantPrompts: ["Bal nəyə görə hesablanır?", "Kvalifikasiya olunmuş lider nə deməkdir?"],
+      assistantPrompts: ["Bal nəyə görə hesablanır?", "Kvalifikasiya olunmuş lid nə deməkdir?"],
       steps: [
         {
           id: "lead-scoring",
@@ -367,7 +367,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
           required: true,
           completion: { kind: "transition", to: "LEAD_QUALIFIED" },
           covers: ["leads.card.status-bar"],
-          result: "Lider kvalifikasiya olundu; dəyişiklik lentə yazıldı.",
+          result: "Lid kvalifikasiya olundu; dəyişiklik lentə yazıldı.",
           analyticsEvent: "journey.transition",
         },
       ],
@@ -416,7 +416,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
     {
       id: "task",
       title: "Növbəti addım unudulmur",
-      summary: "Kvalifikasiyadan sonra sistem özü izləmə tapşırığı yaradır və komandanın lövhəsinə qoyur: kim, nə vaxt, hansı liderlə.",
+      summary: "Kvalifikasiyadan sonra sistem özü izləmə tapşırığı yaradır və komandanın lövhəsinə qoyur: kim, nə vaxt, hansı lidlə.",
       area: "tasks",
       route: "/boards/[divisionId]",
       navGroup: "crm",
@@ -449,13 +449,13 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
           required: true,
           completion: { kind: "transition", to: "TASK_CREATED" },
           covers: ["tasks.board-columns", "tasks.board-card", "tasks.board-card-menu", "tasks.detail.info"],
-          result: "Tapşırıq açıldı: məsul — siz, son tarix — sabah, əlaqə — sizin lider.",
+          result: "Tapşırıq açıldı: məsul — siz, son tarix — sabah, əlaqə — sizin lid.",
           analyticsEvent: "journey.transition",
         },
         {
           id: "task-detail",
           title: "Tapşırığın içi",
-          instruction: "Burada status dəyişdirilir, şərh yazılır, liderə bir kliklə keçilir. Kartı sütunlar arasında sürükləmək də olar.",
+          instruction: "Burada status dəyişdirilir, şərh yazılır, lidə bir kliklə keçilir. Kartı sütunlar arasında sürükləmək də olar.",
           anchor: "task-info",
           placement: "left",
           action: "observe",
@@ -480,8 +480,8 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
     },
     {
       id: "deal",
-      title: "Liderdən sövdələşməyə",
-      summary: "Lider sövdələşməyə çevrilir və boru xəttində irəliləyir: mərhələ, məbləğ, ehtimal, növbəti addım.",
+      title: "Liddən sövdələşməyə",
+      summary: "Lid sövdələşməyə çevrilir və boru xəttində irəliləyir: mərhələ, məbləğ, ehtimal, növbəti addım.",
       area: "deals",
       route: "/deals/[id]",
       navGroup: "sales",
@@ -494,8 +494,8 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
       steps: [
         {
           id: "deal-convert",
-          title: "Lideri çevirin",
-          instruction: "Lider kartında «Çevir» düyməsini basın və sövdələşmənin adını təsdiqləyin.",
+          title: "Lidi çevirin",
+          instruction: "Lid kartında «Çevir» düyməsini basın və sövdələşmənin adını təsdiqləyin.",
           anchor: "leads-convert",
           placement: "bottom",
           action: "confirm",
@@ -647,7 +647,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
           required: true,
           completion: { kind: "transition", to: "CLOSED_WON" },
           covers: ["deals.card.stage-progress"],
-          result: "Sövdələşmə qazanıldı. Lentdə: kampaniya → dialoq → lider → tapşırıq → təklif → qazanıldı.",
+          result: "Sövdələşmə qazanıldı. Lentdə: kampaniya → dialoq → lid → tapşırıq → təklif → qazanıldı.",
           analyticsEvent: "journey.transition",
         },
       ],

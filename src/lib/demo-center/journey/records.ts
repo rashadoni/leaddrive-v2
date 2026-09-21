@@ -365,7 +365,7 @@ export function applyTransitionEffects(
           timeline: [
             { id: "tl-1", kind: "message", title: "Gələn müraciət", subtitle: DEMO_CHANNEL_LABELS[identity.sourceChannel], date: inbound?.at ?? at, channel: identity.sourceChannel },
             { id: "tl-2", kind: "email", title: "AI cavabı (simulyasiya)", subtitle: DEMO_MANAGER_NAME, date: at },
-            { id: "tl-3", kind: "activity", title: "Lider kartı yaradıldı", subtitle: `Mənbə: ${campaignMeta.name}`, date: at },
+            { id: "tl-3", kind: "activity", title: "Lid kartı yaradıldı", subtitle: `Mənbə: ${campaignMeta.name}`, date: at },
           ],
         },
       }

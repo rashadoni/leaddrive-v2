@@ -43,7 +43,7 @@ export function buildAssistantGrounding(
   lines.push(`Hekayənin vəziyyəti (texniki ad): ${snapshot.state}.`)
   lines.push("")
 
-  lines.push("Demo iştirakçısı (o, həm də bu hekayədəki liderdir):")
+  lines.push("Demo iştirakçısı (o, həm də bu hekayədəki liddir):")
   lines.push(`- Ad: ${identity.name}`)
   lines.push(`- Şirkət: ${identity.company}`)
   if (identity.jobTitle) lines.push(`- Vəzifə: ${identity.jobTitle}`)
@@ -65,14 +65,14 @@ export function buildAssistantGrounding(
   if (records.lead) {
     const lead = records.lead
     lines.push(
-      `- Lider: ${lead.contactName} (${lead.companyName}), status ${lead.status}, bal ${lead.score}/100, `
+      `- Lid: ${lead.contactName} (${lead.companyName}), status ${lead.status}, bal ${lead.score}/100, `
       + `prioritet ${lead.priority}, təxmini dəyər ${money(lead.estimatedValue)}, mənbə ${lead.sourceDetail}, `
       + `məsul ${lead.assignedToName}.`,
     )
     lines.push(`  Balın izahı: ${lead.scoreDetails.reasoning}`)
     lines.push(`  Lentdə: ${lead.timeline.map((entry) => entry.title).join("; ")}.`)
   } else {
-    lines.push("- Lider hələ yaradılmayıb.")
+    lines.push("- Lid hələ yaradılmayıb.")
   }
 
   if (records.task) {

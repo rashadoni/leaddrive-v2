@@ -116,7 +116,7 @@ describe("Assistant grounding", () => {
 
   it("grows with the story instead of inventing it up front", () => {
     const atStart = buildAssistantGrounding(snapshot, PROSPECT_TO_CLOSED_WON)
-    expect(atStart).toContain("Lider hələ yaradılmayıb")
+    expect(atStart).toContain("Lid hələ yaradılmayıb")
 
     const later = buildAssistantGrounding(
       { ...snapshot, state: "CLOSED_WON", records: rebuildRecordsAtState(identity, "CLOSED_WON", NOW, DEMO_JOURNEY_HAPPY_PATH) },
@@ -124,7 +124,7 @@ describe("Assistant grounding", () => {
     )
     expect(later).toContain("QAZANILIB")
     expect(later).toContain("Kommersiya təklifi")
-    expect(later).not.toContain("Lider hələ yaradılmayıb")
+    expect(later).not.toContain("Lid hələ yaradılmayıb")
   })
 
   it("says plainly that the call is off, so the assistant cannot imply one happened", () => {

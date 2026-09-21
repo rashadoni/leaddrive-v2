@@ -65,7 +65,7 @@ function liveCallSection(section: DemoJourneySection): DemoJourneySection {
         required: true,
         completion: { kind: "outcome", to: DEMO_LIVE_CALL_OUTCOMES },
         covers: [],
-        result: "Zəngin nəticəsi liderin kartına yazıldı — nə baş veribsə, onu da göstəririk.",
+        result: "Zəngin nəticəsi lidin kartına yazıldı — nə baş veribsə, onu da göstəririk.",
         analyticsEvent: "journey.transition",
       },
     ],
