@@ -41,10 +41,12 @@ export default function CampaigndetailHelpEn() {
         </p>
         <p>
           Below the header are two rows of metric cards. The first row has four colored cards:{" "}
-          <strong>Sent</strong> (delivered count — sent minus bounces), <strong>Bounces</strong>,{" "}
-          <strong>Unsubscribes</strong>, and <strong>Spam</strong>. The second row:{" "}
-          <strong>Opens</strong>, <strong>Open Rate</strong>, <strong>Clicks</strong>, and{" "}
-          <strong>Click Rate</strong> — hover any of them for a short explanation.
+          <strong>Sent</strong>, <strong>Bounces</strong>, <strong>Unsubscribes</strong>, and{" "}
+          <strong>Spam</strong>. The second row: <strong>Opens</strong>, <strong>Open Rate</strong>,{" "}
+          <strong>Clicks</strong>, and <strong>Click Rate</strong> — hover the ⓘ for a short
+          explanation. Opens, clicks, bounces and spam complaints are recorded for email campaigns
+          only: on an SMS, WhatsApp or Telegram campaign — and on any campaign before it is sent —
+          these cards show «—», not 0.
         </p>
         <p>
           Further down are the tabs: <HelpKey>Compose</HelpKey> (draft only),{" "}
@@ -53,12 +55,12 @@ export default function CampaigndetailHelpEn() {
           <HelpKey>A/B Test Results</HelpKey> tab.
         </p>
         <dl className="rounded-md border p-3">
-          <HelpDef term="Sent (green card)">Number of delivered messages — total sent minus bounces.</HelpDef>
-          <HelpDef term="Bounces">Number of messages that bounced (could not be delivered).</HelpDef>
-          <HelpDef term="Unsubscribes">Number of recipients who unsubscribed after this campaign.</HelpDef>
-          <HelpDef term="Spam">Number of messages marked as spam.</HelpDef>
-          <HelpDef term="Open Rate">Percentage of recipients who opened the message (opens ÷ sent).</HelpDef>
-          <HelpDef term="Click Rate">Percentage of recipients who clicked a link in the message.</HelpDef>
+          <HelpDef term="Sent (green card)">Number of messages sent.</HelpDef>
+          <HelpDef term="Bounces">Emails the recipient’s mail server rejected, as reported by the email provider.</HelpDef>
+          <HelpDef term="Unsubscribes">Recipients skipped at sending because they had already unsubscribed.</HelpDef>
+          <HelpDef term="Spam">Recipients who marked the email as spam, as reported by the email provider.</HelpDef>
+          <HelpDef term="Open Rate">Share of sent emails that were opened (opens ÷ sent); each recipient counts once.</HelpDef>
+          <HelpDef term="Click Rate">Share of sent emails in which a link was clicked (clicks ÷ sent).</HelpDef>
           <HelpDef term="Status">The campaign's stage — it decides which buttons and tabs are visible.</HelpDef>
         </dl>
       </HelpSection>
@@ -108,7 +110,8 @@ export default function CampaigndetailHelpEn() {
           <HelpCallout kind="see" label="What you'll see">
             As soon as a date is picked, a second <HelpKey>Schedule</HelpKey> button appears next to{" "}
             <HelpKey>Send Now</HelpKey>. After you click it, the campaign is saved, its status becomes{" "}
-            <strong>Scheduled</strong>, and it will send automatically at the chosen time.
+            <strong>Scheduled</strong>. The date is a plan: the campaign does not go out by itself when
+            it comes — press <HelpKey>Send Campaign</HelpKey> at the top of the page to send it.
           </HelpCallout>
         </HelpStep>
       </HelpSection>
@@ -130,7 +133,8 @@ export default function CampaigndetailHelpEn() {
           </p>
           <HelpCallout kind="see" label="What you'll see">
             Each row shows the percentage next to its label and a fill bar below it — open is blue,
-            click is green, bounce is red.
+            click is green, bounce is red. A rate the channel does not record shows «—» with an
+            empty bar.
           </HelpCallout>
         </HelpStep>
         <HelpStep n={3}>

@@ -126,10 +126,13 @@ describe("campaign analytics figures, on the demo tenant's campaigns", () => {
 })
 
 describe("campaign analytics figures a record cannot back", () => {
-  it("reports no bounce rate while nothing writes Campaign.totalBounced", () => {
-    const s = summarizeCampaigns([campaign({ totalSent: 1200, totalOpened: 300, totalClicked: 40 })])
-    expect(s.bounced).toBeNull()
-    expect(s.opened!.percent).toBeCloseTo(25, 6)
+  it("reports bounces only for channels whose provider reports them", () => {
+    // Email bounces arrive through the Resend webhook, so an email campaign
+    // with none is a measured 0; SMS reports none, so it has no bounce rate.
+    const email = summarizeCampaigns([campaign({ totalSent: 1200, totalOpened: 300, totalClicked: 40 })])
+    expect(email.bounced).toEqual({ count: 0, base: 1200, percent: 0 })
+    expect(email.opened!.percent).toBeCloseTo(25, 6)
+    expect(summarizeCampaigns([campaign({ type: "sms", totalSent: 1200 })]).bounced).toBeNull()
   })
 
   it("reports no open or click rate for channels that do not record them", () => {

@@ -23,6 +23,7 @@ export type CampaignAnalyticsRecord = {
   totalOpened: number
   totalClicked: number
   totalBounced?: number | null
+  totalSpam?: number | null
   budget?: number | null
   sentAt?: string | null
   createdAt: string
@@ -41,16 +42,20 @@ export type JourneyAnalyticsRecord = {
 /** `count` out of `base`, with the base stated so nobody has to guess it. */
 export type Rate = { count: number; base: number; percent: number }
 
-type Counter = "totalOpened" | "totalClicked" | "totalBounced"
+export type Counter = "totalOpened" | "totalClicked" | "totalBounced" | "totalSpam"
 
 /**
  * The channels whose send pipeline writes each counter onto the Campaign row.
  *
  * Opens and clicks: email only — the tracking pixel and the link redirect
- * (src/app/api/v1/tracking/open, …/click). An SMS link click is recorded as an
- * attribution touchpoint (…/tracking/sms-click), not on the campaign.
- * Bounces: nothing. The Resend webhook marks the EmailLog row, and no writer
- * increments Campaign.totalBounced. When one starts, add its channel here.
+ * (src/app/api/v1/tracking/open, …/click), each once per recipient. An SMS
+ * link click is recorded as an attribution touchpoint (…/tracking/sms-click),
+ * not on the campaign.
+ * Bounces and spam complaints: email only — the Resend webhook
+ * (src/app/api/v1/public/resend-webhook) counts a log's first «bounced» or
+ * «complained» event onto the campaign. Resend is first in the send chain;
+ * the rare email that falls back to Postmark or the tenant's own SMTP reports
+ * neither, so its bounces are missing from the count.
  *
  * A zero on a channel that cannot record the step is "not measured", not "0%":
  * counting SMS sends into the open rate is what put an SMS campaign with
@@ -59,7 +64,8 @@ type Counter = "totalOpened" | "totalClicked" | "totalBounced"
 const RECORDED_BY_CHANNEL: Record<Counter, readonly string[]> = {
   totalOpened: ["email"],
   totalClicked: ["email"],
-  totalBounced: [],
+  totalBounced: ["email"],
+  totalSpam: ["email"],
 }
 
 /**
@@ -70,6 +76,11 @@ const RECORDED_BY_CHANNEL: Record<Counter, readonly string[]> = {
 export function recordsCounter(campaign: CampaignAnalyticsRecord, counter: Counter): boolean {
   if (!(campaign.totalSent > 0)) return false
   return RECORDED_BY_CHANNEL[counter].includes(campaign.type) || (campaign[counter] ?? 0) > 0
+}
+
+/** The count a campaign's record holds for `counter`, or null when it cannot hold one. */
+export function recordedCount(campaign: CampaignAnalyticsRecord, counter: Counter): number | null {
+  return recordsCounter(campaign, counter) ? campaign[counter] ?? 0 : null
 }
 
 /** The rate of `counter` over the sends of the campaigns that record it. */

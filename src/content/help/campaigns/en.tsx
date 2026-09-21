@@ -37,7 +37,8 @@ export default function CampaignsHelpEn() {
           / <HelpKey>List</HelpKey>) and the blue <HelpKey>New Campaign</HelpKey> button. Beneath them
           are five status cards: <strong>Draft</strong>, <strong>Scheduled</strong>,{" "}
           <strong>Sending</strong>, <strong>Sent</strong>, and <strong>Cancelled</strong> — each
-          counting the campaigns in that status.
+          counting the campaigns in that status. Hover the ⓘ next to a card title to see what it
+          counts.
         </p>
         <p>
           In the <HelpKey>List</HelpKey> tab, a search box sits below the status cards, followed by the
@@ -48,11 +49,11 @@ export default function CampaignsHelpEn() {
         </p>
         <dl className="rounded-md border p-3">
           <HelpDef term="Draft">A campaign that hasn't been sent yet and can still be edited.</HelpDef>
-          <HelpDef term="Scheduled">A campaign set to send at a future date.</HelpDef>
+          <HelpDef term="Scheduled">A campaign with a planned send date. It does not go out by itself when that date comes — open it and press <HelpKey>Send Campaign</HelpKey>.</HelpDef>
           <HelpDef term="Sending">A campaign currently going out to recipients.</HelpDef>
           <HelpDef term="Sent">A finished campaign — from then on the card opens as a read-only summary.</HelpDef>
           <HelpDef term="Cancelled">A campaign that was stopped or cancelled.</HelpDef>
-          <HelpDef term="Type">Channel: <strong>Email</strong> (📧) or <strong>SMS</strong> (📱).</HelpDef>
+          <HelpDef term="Type">Channel: <strong>Email</strong>, <strong>SMS</strong>, <strong>WhatsApp</strong> or <strong>Telegram</strong>.</HelpDef>
           <HelpDef term="Recipients">The number of contacts/leads the campaign targets (shown on the card with a people icon).</HelpDef>
           <HelpDef term="A/B test">Testing two or more variants (subject, content, or send time) on a small audience to pick a winner.</HelpDef>
         </dl>
@@ -222,8 +223,10 @@ export default function CampaignsHelpEn() {
         <HelpCallout kind="see" label="What you'll see">
           Every figure comes from your organization’s own records. Open and click rates count only
           the campaigns whose channel records that step, so SMS sends do not lower the open rate.
-          Where no record holds a figure — bounces, while none has been recorded, or ROI when no won
-          deal is linked to a campaign — the card shows «—» and the reason. “Top campaigns” are ranked
+          Opens, clicks and bounces are recorded for email campaigns only; bounces come from the
+          email provider’s delivery reports. Where no record holds a figure — for example bounces
+          when no email campaign has been sent, or ROI when no won deal is linked to a campaign — the
+          card shows «—» and the reason. “Top campaigns” are ranked
           by clicks. The Segments, Automation and Templates panels count your real segments, journeys
           and email templates, and say so when there are none.
         </HelpCallout>
