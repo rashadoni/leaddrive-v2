@@ -24147,12 +24147,23 @@
         "contacted": "Əlaqə saxlanılıb",
         "qualified": "Kvalifikasiya olunub",
         "lost": "İtirilib",
-        "converted": "Çevrilib"
+        "converted": "Çevrilib",
+        "pending": "İcra olunacaq",
+        "todo": "İcra olunacaq",
+        "in_progress": "İcrada",
+        "testing": "Test",
+        "review": "Yoxlamada",
+        "done": "Hazırdır",
+        "completed": "Tamamlanıb",
+        "cancelled": "Ləğv edilib",
+        "backlog": "Backlog"
       },
       "priority": {
         "low": "Aşağı",
         "medium": "Orta",
-        "high": "Yüksək"
+        "high": "Yüksək",
+        "urgent": "Təcili",
+        "critical": "Kritik"
       },
       "relatedType": {
         "lead": "Lid",
@@ -24196,6 +24207,8 @@
         "create_task": "Tapşırıq yarat",
         "create_lead": "Lid yarat",
         "update_lead": "Lidi dəyiş",
+        "update_task": "Tapşırığı dəyiş",
+        "update_deal": "Sövdələşməni dəyiş",
         "create_deal": "Sövdələşmə yarat",
         "convert_lead_to_deal": "Lidi sövdələşməyə çevir"
       },
@@ -24203,6 +24216,8 @@
         "create_task": "Tapşırıq yarat",
         "create_lead": "Lid yarat",
         "update_lead": "Dəyişiklikləri saxla",
+        "update_task": "Tapşırığı saxla",
+        "update_deal": "Sövdələşməni saxla",
         "create_deal": "Sövdələşmə yarat",
         "convert_lead_to_deal": "Sövdələşməyə çevir"
       },

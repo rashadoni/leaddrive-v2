@@ -5,6 +5,8 @@ const mocks = vi.hoisted(() => ({
   findManyLeads: vi.fn(),
   findManyCompanies: vi.fn(),
   findManyContacts: vi.fn(),
+  findManyTasks: vi.fn(),
+  findManyDeals: vi.fn(),
   findFirstPipeline: vi.fn(),
   findFirstStage: vi.fn(),
   applyRecordFilter: vi.fn(),
@@ -16,6 +18,8 @@ vi.mock("@/lib/prisma", () => ({
     lead: { findMany: mocks.findManyLeads },
     company: { findMany: mocks.findManyCompanies },
     contact: { findMany: mocks.findManyContacts },
+    task: { findMany: mocks.findManyTasks },
+    deal: { findMany: mocks.findManyDeals },
     pipeline: { findFirst: mocks.findFirstPipeline },
     pipelineStage: { findFirst: mocks.findFirstStage },
   },
@@ -45,6 +49,10 @@ beforeEach(() => {
   mocks.findFirstStage.mockReset()
   mocks.findManyCompanies.mockResolvedValue([])
   mocks.findManyContacts.mockResolvedValue([])
+  mocks.findManyTasks.mockReset()
+  mocks.findManyDeals.mockReset()
+  mocks.findManyTasks.mockResolvedValue([{ id: "task-1", title: "Call Ali", divisionId: null }])
+  mocks.findManyDeals.mockResolvedValue([{ id: "deal-1", name: "Azmart" }])
   mocks.findFirstPipeline.mockResolvedValue(null)
   mocks.findFirstStage.mockResolvedValue(null)
   mocks.applyRecordFilter.mockReset()
@@ -519,5 +527,98 @@ describe("creating a deal that does not come from a lead", () => {
       )
       expect(result.kind, JSON.stringify(extra)).toBe("invalid")
     }
+  })
+})
+
+/**
+ * Tasks and deals by voice (owner request, 2026-09-21). Same rules as leads:
+ * the record is the one on screen or one the user names, never an id from the
+ * model; a spoken status is a meaning mapped onto the task's own vocabulary.
+ */
+describe("changing a task or a deal", () => {
+  const onTask = { recordType: "task", recordId: "task-1" }
+  const onDeal = { recordType: "deal", recordId: "deal-1" }
+
+  it("changes the task on screen when no title is given", async () => {
+    const result = await resolveVoiceProposal(auth, "propose_update_task", { dueDate: "2026-09-26" }, onTask)
+    expect(result).toEqual({
+      kind: "resolved",
+      actionType: "update_task",
+      payload: { dueDate: "2026-09-26" },
+      targetEntityId: "task-1",
+    })
+  })
+
+  it("asks which task when none is open and none is named", async () => {
+    const result = await resolveVoiceProposal(auth, "propose_update_task", { dueDate: "2026-09-26" }, {})
+    expect(result).toMatchObject({ kind: "clarify", code: "TASK_TARGET_REQUIRED" })
+  })
+
+  it("asks which task when the title matches several", async () => {
+    mocks.findManyTasks.mockResolvedValue([
+      { id: "task-1", title: "Call Ali" },
+      { id: "task-2", title: "Call Ali again" },
+    ])
+    const result = await resolveVoiceProposal(auth, "propose_update_task", { taskTitle: "Ali", status: "done" }, {})
+    expect(result).toMatchObject({ kind: "clarify", code: "TASK_AMBIGUOUS", field: "taskTitle" })
+  })
+
+  // "Закрой задачу": a list task is completed, a board task is done. The
+  // wrong word would leave a board task in no column.
+  it("maps done onto the task's own vocabulary", async () => {
+    const list = await resolveVoiceProposal(auth, "propose_update_task", { status: "done" }, onTask)
+    expect(list).toMatchObject({ payload: { status: "completed" } })
+
+    mocks.findManyTasks.mockResolvedValue([{ id: "task-1", divisionId: "board-1" }])
+    const board = await resolveVoiceProposal(auth, "propose_update_task", { status: "done" }, onTask)
+    expect(board).toMatchObject({ payload: { status: "done" } })
+
+    const reopened = await resolveVoiceProposal(auth, "propose_update_task", { status: "open" }, onTask)
+    expect(reopened).toMatchObject({ payload: { status: "todo" } })
+  })
+
+  it("does not invent a cancelled column a board does not have", async () => {
+    mocks.findManyTasks.mockResolvedValue([{ id: "task-1", divisionId: "board-1" }])
+    const result = await resolveVoiceProposal(auth, "propose_update_task", { status: "cancelled" }, onTask)
+    expect(result.kind).toBe("invalid")
+  })
+
+  it("refuses a change that changes nothing", async () => {
+    expect((await resolveVoiceProposal(auth, "propose_update_task", {}, onTask)).kind).toBe("invalid")
+    expect((await resolveVoiceProposal(auth, "propose_update_deal", {}, onDeal)).kind).toBe("invalid")
+  })
+
+  it("changes the deal on screen, resolving company and contact by name", async () => {
+    mocks.findManyCompanies.mockResolvedValue([{ id: "company-1", name: "Azmart MMC" }])
+    const result = await resolveVoiceProposal(
+      auth,
+      "propose_update_deal",
+      { valueAmount: 2000, companyName: "Azmart" },
+      onDeal,
+    )
+    expect(result).toEqual({
+      kind: "resolved",
+      actionType: "update_deal",
+      payload: { valueAmount: 2000, companyId: "company-1" },
+      targetEntityId: "deal-1",
+    })
+    // An update is not a creation: it never gets the entry stage.
+    expect(mocks.findFirstPipeline).not.toHaveBeenCalled()
+  })
+
+  it("finds a named deal among the deals the user may see", async () => {
+    const result = await resolveVoiceProposal(auth, "propose_update_deal", { dealName: "Azmart", notes: "call" }, {})
+    expect(result).toMatchObject({ targetEntityId: "deal-1" })
+    expect(mocks.applyRecordFilter).toHaveBeenCalledWith("org-1", "user-1", "manager", "deal", expect.anything())
+  })
+
+  it("does not target a deal from a lead's screen", async () => {
+    const result = await resolveVoiceProposal(
+      auth,
+      "propose_update_deal",
+      { notes: "call" },
+      { recordType: "lead", recordId: "lead-1" },
+    )
+    expect(result).toMatchObject({ kind: "clarify", code: "DEAL_TARGET_REQUIRED" })
   })
 })

@@ -48,7 +48,7 @@ describe("the voice model has no write capability", () => {
   it("keeps every proposal tool pointed at a draft, never at an execution", () => {
     for (const tool of VOICE_PROPOSE_TOOL_NAMES) {
       expect(VOICE_PROPOSE_ACTION_TYPES[tool])
-        .toMatch(/^(create_task|create_lead|update_lead|convert_lead_to_deal|create_deal)$/)
+        .toMatch(/^(create_task|create_lead|update_lead|convert_lead_to_deal|create_deal|update_task|update_deal)$/)
     }
   })
 

@@ -30,6 +30,8 @@ const deps = vi.hoisted(() => {
     updateLead: vi.fn(),
     createDeal: vi.fn(),
     convertLead: vi.fn(),
+    updateTask: vi.fn(),
+    updateDeal: vi.fn(),
     effect: vi.fn(),
     commandExecutions: [] as CommandExecution[],
   }
@@ -52,6 +54,12 @@ vi.mock("@/lib/crm-commands/lead/update-lead", () => ({
 }))
 vi.mock("@/lib/crm-commands/deal/create-deal", () => ({
   createDealCommand: deps.createDeal,
+}))
+vi.mock("@/lib/crm-commands/task/update-task", () => ({
+  updateTaskCommand: deps.updateTask,
+}))
+vi.mock("@/lib/crm-commands/deal/update-deal", () => ({
+  updateDealCommand: deps.updateDeal,
 }))
 vi.mock("@/lib/crm-commands/lead/convert-lead-to-deal", () => ({
   convertLeadToDealCommand: deps.convertLead,
@@ -145,6 +153,24 @@ beforeEach(() => {
     captureEffect(execution)
     return { entity: { id: "deal-1" } }
   })
+  deps.updateTask.mockImplementation(async (
+    _actor: unknown,
+    _targetId: unknown,
+    _payload: unknown,
+    execution: CommandExecution,
+  ) => {
+    captureEffect(execution)
+    return { entity: { id: "task-1" } }
+  })
+  deps.updateDeal.mockImplementation(async (
+    _actor: unknown,
+    _targetId: unknown,
+    _payload: unknown,
+    execution: CommandExecution,
+  ) => {
+    captureEffect(execution)
+    return { entity: { id: "deal-1" } }
+  })
   deps.convertLead.mockImplementation(async (
     _actor: unknown,
     _targetId: unknown,
@@ -169,6 +195,22 @@ describe("AI voice claimed action execution boundary", () => {
       "lead-1",
     ],
     ["create_deal", { name: "Ali deal" }, null, deps.createDeal, "deal", "deal-1"],
+    [
+      "update_task",
+      { status: "completed", expectedUpdatedAt: "2026-09-20T00:00:00.000Z" },
+      "task-1",
+      deps.updateTask,
+      "task",
+      "task-1",
+    ],
+    [
+      "update_deal",
+      { valueAmount: 2000, expectedUpdatedAt: "2026-09-20T00:00:00.000Z" },
+      "deal-1",
+      deps.updateDeal,
+      "deal",
+      "deal-1",
+    ],
     [
       "convert_lead_to_deal",
       { dealTitle: "Ali deal", expectedUpdatedAt: "2026-09-20T00:00:00.000Z" },
@@ -288,5 +330,36 @@ describe("AI voice claimed action execution boundary", () => {
 
     expect(deps.createTask).not.toHaveBeenCalled()
     expect(deps.intentUpdateMany).not.toHaveBeenCalled()
+  })
+})
+
+describe("task and deal updates reach the record the receipt named", () => {
+  it.each([
+    ["update_task", deps.updateTask, "task-7", { title: "x" }],
+    ["update_deal", deps.updateDeal, "deal-7", { notes: "x" }],
+  ] as const)("%s runs as the voice actor against the stored target", async (actionType, command, target, fields) => {
+    const payload = { ...fields, expectedUpdatedAt: "2026-09-20T00:00:00.000Z" }
+    deps.intentFindFirst.mockResolvedValueOnce(storedIntent(actionType, payload, { targetEntityId: target }))
+    await executeClaimedAiVoiceAction(auth, { intentId: "intent-1", executionLeaseToken: leaseToken })
+    expect(command).toHaveBeenCalledWith(
+      expect.objectContaining({ source: "voice", userId: "user-1", actionIntentId: "intent-1" }),
+      target,
+      payload,
+      expect.objectContaining({ transaction: deps.transactionClient }),
+    )
+  })
+
+  it.each([
+    ["update_task", { title: "x" }],
+    ["update_deal", { notes: "x" }],
+  ] as const)("%s without a stored target runs nothing", async (actionType, fields) => {
+    deps.intentFindFirst.mockResolvedValueOnce(storedIntent(
+      actionType,
+      { ...fields, expectedUpdatedAt: "2026-09-20T00:00:00.000Z" },
+    ))
+    await expect(executeClaimedAiVoiceAction(auth, { intentId: "intent-1", executionLeaseToken: leaseToken }))
+      .rejects.toBeInstanceOf(AiVoiceActionExecutionError)
+    expect(deps.updateTask).not.toHaveBeenCalled()
+    expect(deps.updateDeal).not.toHaveBeenCalled()
   })
 })

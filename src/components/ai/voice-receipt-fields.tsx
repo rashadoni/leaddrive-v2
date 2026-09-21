@@ -109,13 +109,13 @@ export function VoiceReceiptFieldList({
               {hasBefore && changed && (
                 <>
                   <span data-testid={`voice-receipt-before-${field.key}`} className="text-muted-foreground line-through decoration-muted-foreground/60">
-                    {formatReceiptValue(field.before, format, field.key)}
+                    {field.beforeLabel ?? formatReceiptValue(field.before, format, field.key)}
                   </span>
                   <span aria-hidden="true" className="px-1 text-muted-foreground">→</span>
                 </>
               )}
               <span data-testid={`voice-receipt-after-${field.key}`}>
-                {formatReceiptValue(field.after, format, field.key)}
+                {field.afterLabel ?? formatReceiptValue(field.after, format, field.key)}
               </span>
             </dd>
           </div>
@@ -171,6 +171,9 @@ export function buildEditedReceiptPayload(
   return payload
 }
 
+/** Id-valued fields: named by the server, never typed into the form. */
+const REFERENCE_FIELD_KEYS = new Set(["assignedTo", "companyId", "contactId", "relatedId", "pipelineId"])
+
 /** The value a text input should start from. */
 export function editableFieldValue(field: VoiceReceiptField): string | boolean {
   if (typeof field.after === "boolean") return field.after
@@ -202,6 +205,20 @@ export function VoiceReceiptFieldForm({
           : editableFieldValue(field)
         const isBoolean = typeof editableFieldValue(field) === "boolean"
         const inputId = `voice-receipt-field-${field.key}`
+        // A person, company or contact is chosen by name, by voice — the
+        // server resolves it. Typing an id here would be neither possible
+        // for the user nor checked like a spoken name, so it is shown, kept
+        // in the payload, and not offered for editing.
+        if (REFERENCE_FIELD_KEYS.has(field.key)) {
+          return (
+            <div key={field.key} className="flex items-center gap-2" data-testid={`voice-receipt-fixed-${field.key}`}>
+              <span className="w-28 shrink-0 truncate text-muted-foreground">{label(field)}</span>
+              <span data-sentry-mask className="min-w-0 flex-1 break-words font-medium">
+                {field.afterLabel ?? String(field.after ?? "")}
+              </span>
+            </div>
+          )
+        }
         return (
           <div key={field.key} className="flex items-center gap-2">
             <label htmlFor={inputId} className="w-28 shrink-0 truncate text-muted-foreground">

@@ -283,3 +283,15 @@ describe("the saved record is shown", () => {
     )
   })
 })
+
+describe("the task and deal cards re-read themselves after a voice edit", () => {
+  it.each([
+    ["src/components/tasks/task-detail-view.tsx", "task", "taskId", "fetchTask"],
+    ["src/app/(dashboard)/deals/[id]/page.tsx", "deal", "id", "fetchDeal"],
+  ])("%s", (path, entityType, idName, fetcher) => {
+    const source = readFileSync(path, "utf8")
+    expect(source).toMatch(new RegExp(
+      `detail\\?\\.entityType === "${entityType}" && detail\\.entityId === ${idName}\\) void ${fetcher}\\(\\)[\\s\\S]{0,100}addEventListener\\(VOICE_RECORD_CHANGED_EVENT`,
+    ))
+  })
+})

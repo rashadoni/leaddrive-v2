@@ -24151,12 +24151,23 @@
         "contacted": "Связались",
         "qualified": "Квалифицирован",
         "lost": "Потерян",
-        "converted": "Конвертирован"
+        "converted": "Конвертирован",
+        "pending": "К выполнению",
+        "todo": "К выполнению",
+        "in_progress": "В работе",
+        "testing": "Тестирование",
+        "review": "На проверке",
+        "done": "Готово",
+        "completed": "Выполнена",
+        "cancelled": "Отменена",
+        "backlog": "Бэклог"
       },
       "priority": {
         "low": "Низкий",
         "medium": "Средний",
-        "high": "Высокий"
+        "high": "Высокий",
+        "urgent": "Срочный",
+        "critical": "Критический"
       },
       "relatedType": {
         "lead": "Лид",
@@ -24200,6 +24211,8 @@
         "create_task": "Создать задачу",
         "create_lead": "Создать лид",
         "update_lead": "Изменить лид",
+        "update_task": "Изменить задачу",
+        "update_deal": "Изменить сделку",
         "create_deal": "Создать сделку",
         "convert_lead_to_deal": "Превратить лид в сделку"
       },
@@ -24207,6 +24220,8 @@
         "create_task": "Создать задачу",
         "create_lead": "Создать лид",
         "update_lead": "Сохранить изменения",
+        "update_task": "Сохранить задачу",
+        "update_deal": "Сохранить сделку",
         "create_deal": "Создать сделку",
         "convert_lead_to_deal": "Превратить в сделку"
       },

@@ -1,13 +1,13 @@
 import type { z } from "zod"
 import type { Module, Action } from "@/lib/permissions"
 import type { ModuleId } from "@/lib/modules"
-import { createTaskCommandSchema } from "@/lib/crm-commands/schemas/task"
+import { createTaskCommandSchema, updateTaskCommandSchema } from "@/lib/crm-commands/schemas/task"
 import {
   convertLeadToDealCommandSchema,
   createLeadCommandSchema,
   updateLeadCommandSchema,
 } from "@/lib/crm-commands/schemas/lead"
-import { createDealCommandSchema } from "@/lib/crm-commands/schemas/deal"
+import { createDealCommandSchema, updateDealCommandSchema } from "@/lib/crm-commands/schemas/deal"
 import { DEFAULT_AI_ACTION_INTENT_TTL_MS } from "./action-intent"
 
 export const AI_VOICE_ACTION_TYPES = [
@@ -16,6 +16,8 @@ export const AI_VOICE_ACTION_TYPES = [
   "update_lead",
   "create_deal",
   "convert_lead_to_deal",
+  "update_task",
+  "update_deal",
 ] as const
 
 export type AiVoiceActionType = (typeof AI_VOICE_ACTION_TYPES)[number]
@@ -26,6 +28,8 @@ export type AiVoiceActionCommand =
   | "updateLeadCommand"
   | "createDealCommand"
   | "convertLeadToDealCommand"
+  | "updateTaskCommand"
+  | "updateDealCommand"
 export type AiVoiceActionDedupePolicy =
   | "idempotency_key"
   | "lead_contact_coordinates"
@@ -38,8 +42,11 @@ export type AiVoiceActionPermission = Readonly<{
   tenantModule: ModuleId
 }>
 
+/** The kinds of record a voice update may target. */
+export type AiVoiceActionTargetType = "lead" | "task" | "deal"
+
 export type AiVoiceActionTarget = Readonly<{
-  entityType: "lead"
+  entityType: AiVoiceActionTargetType
   requestField: "targetEntityId"
   bindExpectedUpdatedAt: true
 }>
@@ -49,6 +56,13 @@ export type AiVoiceActionPreviewField = Readonly<{
   labelKey: string
   before?: unknown
   after: unknown
+  /**
+   * The name behind an id-valued field (assignee, company, contact), read by
+   * the server when the draft is written. A receipt that says "clx9…" asks the
+   * user to confirm something they cannot check.
+   */
+  beforeLabel?: string
+  afterLabel?: string
 }>
 
 export type AiVoiceActionPreview = Readonly<{
@@ -58,7 +72,7 @@ export type AiVoiceActionPreview = Readonly<{
   entityType: "task" | "lead" | "deal"
   titleKey: string
   target?: Readonly<{
-    entityType: "lead"
+    entityType: AiVoiceActionTargetType
     id: string
     label: string
   }>
@@ -69,7 +83,7 @@ type JsonObject = Record<string, unknown>
 
 export type AiVoiceActionPreviewContext = Readonly<{
   target?: Readonly<{
-    entityType: "lead"
+    entityType: AiVoiceActionTargetType
     id: string
     label: string
     before: JsonObject
@@ -170,6 +184,34 @@ const CREATE_DEAL_FIELDS = [
   "tags",
 ] as const
 
+// The voice subset of the task update. Status is here with its values mapped
+// by the resolver to the task's own vocabulary (board: todo/in_progress/done,
+// list: pending/in_progress/completed/cancelled), so the board's move gate
+// in updateTaskCommand applies exactly as for a drag.
+const UPDATE_TASK_FIELDS = [
+  "title",
+  "description",
+  "priority",
+  "dueDate",
+  "assignedTo",
+  "status",
+  "expectedUpdatedAt",
+] as const
+
+// No stage, pipeline or probability: a stage move can mark a deal won, which
+// pays cashback and surveys the customer. See update-deal.ts.
+const UPDATE_DEAL_FIELDS = [
+  "name",
+  "companyId",
+  "contactId",
+  "valueAmount",
+  "currency",
+  "expectedClose",
+  "assignedTo",
+  "notes",
+  "expectedUpdatedAt",
+] as const
+
 const CONVERT_LEAD_FIELDS = [
   "dealTitle",
   "dealStage",
@@ -233,6 +275,18 @@ function createPreviewRenderer(input: {
 
 const LEAD_TARGET: AiVoiceActionTarget = {
   entityType: "lead",
+  requestField: "targetEntityId",
+  bindExpectedUpdatedAt: true,
+}
+
+const TASK_TARGET: AiVoiceActionTarget = {
+  entityType: "task",
+  requestField: "targetEntityId",
+  bindExpectedUpdatedAt: true,
+}
+
+const DEAL_TARGET: AiVoiceActionTarget = {
+  entityType: "deal",
   requestField: "targetEntityId",
   bindExpectedUpdatedAt: true,
 }
@@ -360,6 +414,50 @@ export const AI_VOICE_ACTION_REGISTRY: Readonly<Record<AiVoiceActionType, AiVoic
       operation: "convert",
       entityType: "deal",
       previewFields: CONVERT_LEAD_FIELDS.filter((field) => field !== "expectedUpdatedAt"),
+    }),
+  },
+  update_task: {
+    actionType: "update_task",
+    command: "updateTaskCommand",
+    commandSchema: updateTaskCommandSchema.strict(),
+    allowedFields: UPDATE_TASK_FIELDS,
+    permissions: WRITE_TASKS,
+    fieldPermissionEntity: "task",
+    fieldPermissionNames: (payload) => ownPayloadFields(payload, ["expectedUpdatedAt"]),
+    risk: "sensitive",
+    ttlMs: SENSITIVE_TTL_MS,
+    dedupePolicy: "target_revision",
+    target: TASK_TARGET,
+    operation: "update",
+    resultEntityType: "task",
+    previewFields: UPDATE_TASK_FIELDS.filter((field) => field !== "expectedUpdatedAt"),
+    renderPreview: createPreviewRenderer({
+      actionType: "update_task",
+      operation: "update",
+      entityType: "task",
+      previewFields: UPDATE_TASK_FIELDS.filter((field) => field !== "expectedUpdatedAt"),
+    }),
+  },
+  update_deal: {
+    actionType: "update_deal",
+    command: "updateDealCommand",
+    commandSchema: updateDealCommandSchema.strict(),
+    allowedFields: UPDATE_DEAL_FIELDS,
+    permissions: WRITE_DEALS,
+    fieldPermissionEntity: "deal",
+    fieldPermissionNames: (payload) => ownPayloadFields(payload, ["expectedUpdatedAt"]),
+    risk: "sensitive",
+    ttlMs: SENSITIVE_TTL_MS,
+    dedupePolicy: "target_revision",
+    target: DEAL_TARGET,
+    operation: "update",
+    resultEntityType: "deal",
+    previewFields: UPDATE_DEAL_FIELDS.filter((field) => field !== "expectedUpdatedAt"),
+    renderPreview: createPreviewRenderer({
+      actionType: "update_deal",
+      operation: "update",
+      entityType: "deal",
+      previewFields: UPDATE_DEAL_FIELDS.filter((field) => field !== "expectedUpdatedAt"),
     }),
   },
 })

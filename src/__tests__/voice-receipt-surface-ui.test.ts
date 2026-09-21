@@ -696,3 +696,63 @@ describe("answering the draft by voice", () => {
     expect(states.at(-1)).toBeNull()
   })
 })
+
+/**
+ * Names, not ids (2026-09-21). A receipt that says "user-2" asks the user to
+ * confirm something they cannot check; the server writes the name next to it.
+ */
+describe("a person on the receipt", () => {
+  function taskUpdateReceipt() {
+    return serverReceipt({
+      id: "intent-1",
+      actionType: "update_task",
+      target: { entityType: "task", id: "task-1" },
+      preview: {
+        contract: 1,
+        actionType: "update_task",
+        operation: "update",
+        entityType: "task",
+        titleKey: "ai.voice.actions.update_task.title",
+        target: { entityType: "task", id: "task-1", label: "Call Ali" },
+        fields: [
+          { key: "assignedTo", labelKey: "x", before: "user-1", after: "user-2", beforeLabel: "Rashad", afterLabel: "Aysel" },
+          { key: "title", labelKey: "x", before: "Call Ali", after: "Call Ali back" },
+        ],
+      },
+    })
+  }
+
+  it("is shown by name before and after", async () => {
+    fetchMock.mockReturnValue(jsonResponse(taskUpdateReceipt()))
+    await render(createElement(VoiceReceiptSurface, { voiceSessionId: SESSION }))
+    expect(text("voice-receipt-after-assignedTo")).toBe("Aysel")
+    expect(text("voice-receipt-before-assignedTo")).toBe("Rashad")
+    expect(panel()?.textContent).not.toContain("user-2")
+  })
+
+  // An id cannot be typed by a person, and a typed one would skip the check a
+  // spoken name gets. It stays in the payload untouched.
+  it("is not offered for typing, and survives an edit of another field", async () => {
+    fetchMock.mockReturnValueOnce(jsonResponse(taskUpdateReceipt()))
+    await render(createElement(VoiceReceiptSurface, { voiceSessionId: SESSION }))
+    await click("voice-receipt-edit")
+
+    expect(document.querySelector('[data-testid="voice-receipt-input-assignedTo"]')).toBeNull()
+    expect(text("voice-receipt-fixed-assignedTo")).toContain("Aysel")
+
+    const input = document.querySelector<HTMLInputElement>('[data-testid="voice-receipt-input-title"]')
+    await act(async () => {
+      nativeInputValue(input as HTMLInputElement, "Call Ali on Friday")
+      input?.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+    fetchMock.mockReturnValueOnce(jsonResponse(taskUpdateReceipt()))
+    await click("voice-receipt-save-edit")
+
+    const patch = (fetchMock.mock.calls as [string, RequestInit][])
+      .find(([, init]) => init?.method === "PATCH")
+    expect(JSON.parse(String(patch?.[1].body)).payload).toEqual({
+      assignedTo: "user-2",
+      title: "Call Ali on Friday",
+    })
+  })
+})
