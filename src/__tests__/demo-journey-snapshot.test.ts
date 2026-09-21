@@ -50,6 +50,8 @@ function actionFor(snapshot: DemoJourneySnapshot): DemoJourneyAction {
       return { type: "ui", path: step.completion.path, value: step.completion.equals }
     case "transition":
       return { type: "transition", stepId: step.id, to: step.completion.to }
+    case "outcome":
+      return { type: "outcome", stepId: step.id, to: step.completion.to[0] }
   }
 }
 

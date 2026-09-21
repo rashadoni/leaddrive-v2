@@ -6,7 +6,7 @@
 import { GROUP_MODULE_IDS } from "@/lib/modules"
 import { isDemoAnchor, DEMO_ANCHORS } from "./anchors"
 import { coverageAreaFor, DEMO_PRODUCT_AREAS_WITH_COVERAGE } from "./coverage-index"
-import { canTransition } from "./state"
+import { canTransition, journeyPath } from "./state"
 import {
   DEMO_CAPABILITY_IDS,
   DEMO_JOURNEY_AREAS,
@@ -116,6 +116,21 @@ export function validateJourneyManifest(manifest: DemoJourneyManifest): string[]
         if (!step.result) push(`${at}: a transition step must describe its visible result`)
       }
       if (rule.kind === "snapshot" && !rule.path.trim()) push(`${at}: snapshot rule needs a path`)
+      if (rule.kind === "outcome") {
+        // What the world decides must be walkable from here, must end the
+        // section, and the step must be the section's last: nothing after it
+        // could know which state it starts from.
+        if (rule.to.length === 0) push(`${at}: an outcome step needs at least one outcome`)
+        for (const target of rule.to) {
+          if (!has(DEMO_JOURNEY_STATES, target)) push(`${at}: unknown outcome state "${target}"`)
+          else if (!journeyPath(cursor, target)) push(`${at}: no legal path ${cursor} → ${target}`)
+          if (!section.exitStates.includes(target)) push(`${at}: outcome ${target} does not end the section`)
+        }
+        if (section.steps[section.steps.length - 1] !== step) push(`${at}: an outcome step must be the last in its section`)
+        if (!step.required) push(`${at}: an outcome step must be required`)
+        if (!step.result) push(`${at}: an outcome step must describe its visible result`)
+        if (rule.to[0] && has(DEMO_JOURNEY_STATES, rule.to[0])) cursor = rule.to[0]
+      }
 
       for (const covered of step.covers) {
         const area = covered.split(".")[0]
