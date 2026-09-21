@@ -72,7 +72,7 @@ export const DEMO_JOURNEY_COVERAGE: readonly DemoCoverageArea[] = [
   },
   {
     area: "leads",
-    title: "Sales → Liderlər (список и карточка)",
+    title: "Sales → Lidlər (список и карточка)",
     routes: ["/leads", "/leads/[id]"],
     sections: [
       { id: "leads.list.header", label: "Шапка: вкладки Рабочее пространство / Аналитика, инсайты, «Новый лид»", included: true, kind: "observe" },
