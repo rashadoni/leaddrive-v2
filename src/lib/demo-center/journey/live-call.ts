@@ -14,6 +14,16 @@ import type { DemoJourneyManifest, DemoJourneySection, DemoJourneyState } from "
  * the scenario reaches both variants, and the manifest tests validate both.
  */
 
+/**
+ * The wording the prospect agrees to, and its version. Shown next to the
+ * checkbox by the browser and recorded by the server with the proven phone;
+ * both read it from here, so what was agreed to and what was shown cannot
+ * differ. A change of meaning needs a new version.
+ */
+export const DEMO_CALL_CONSENT_VERSION = "demo-call-consent-v1"
+export const DEMO_CALL_CONSENT_TEXT =
+  "LeadDrive-ın AI köməkçisinin bu nömrəyə bir dəfə zəng etməsinə razıyam. Söhbət mətn şəklində qeydə alınır və 90 gün saxlanılır."
+
 /** Every way a real call can end, the story's own ending first. */
 export const DEMO_LIVE_CALL_OUTCOMES = [
   "CALL_RESULT_RECORDED",
@@ -47,8 +57,10 @@ function liveCallSection(section: DemoJourneySection): DemoJourneySection {
         title: "Telefonunuza zəng",
         instruction:
           "Nömrənizi təsdiqləyin, razılıq verin və «Zəng et» düyməsini basın. LeadDrive-ın AI köməkçisi telefonunuza zəng edəcək.",
-        anchor: consent.anchor,
-        placement: consent.placement,
+        // The call controls live in the guide panel: scenes only render the
+        // snapshot and never fetch, and asking for a call is a request.
+        anchor: "demo-guide-panel",
+        placement: "left",
         action: "confirm",
         required: true,
         completion: { kind: "outcome", to: DEMO_LIVE_CALL_OUTCOMES },

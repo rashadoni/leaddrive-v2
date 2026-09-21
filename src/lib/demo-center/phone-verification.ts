@@ -30,10 +30,10 @@ import { generateDemoOtp } from "./security"
  *    organisation, exactly as for the demo lead.
  */
 
-export const DEMO_CALL_CONSENT_VERSION = "demo-call-consent-v1"
-/** Shown next to the checkbox, word for word what the version above refers to. */
-export const DEMO_CALL_CONSENT_TEXT =
-  "LeadDrive-ın AI köməkçisinin bu nömrəyə bir dəfə zəng etməsinə razıyam. Söhbət mətn şəklində qeydə alınır və 90 gün saxlanılır."
+// The wording and its version live in the pure journey module, so the
+// browser shows exactly what the server records.
+export { DEMO_CALL_CONSENT_TEXT, DEMO_CALL_CONSENT_VERSION } from "./journey/live-call"
+import { DEMO_CALL_CONSENT_VERSION } from "./journey/live-call"
 
 export const DEMO_PHONE_OTP_TTL_MS = 10 * 60_000
 export const DEMO_PHONE_RESEND_COOLDOWN_MS = 60_000

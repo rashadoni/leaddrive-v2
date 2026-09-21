@@ -45,6 +45,7 @@ import { ScenePending } from "./scenes/scene-pending"
 import { SummaryScene } from "./scenes/summary-scene"
 import type { DemoJourneyVariant, DemoSceneProps } from "./scene-props"
 import { DEMO_JOURNEY_STRINGS as S } from "./strings"
+import type { DemoLiveCallState } from "./demo-live-call"
 
 /**
  * The guided journey renderer.
@@ -102,6 +103,8 @@ export interface DemoJourneyPlayerProps {
   sessionExpiresAt?: string
   idleExpiresAt?: string
   onAccessLost?: () => void
+  /** A grant with a real AI call: pass `withLiveCall(manifest)` as `manifest` too. */
+  liveCall?: DemoLiveCallState
 }
 
 function storageKey(token: string): string {
@@ -118,6 +121,7 @@ export function DemoJourneyPlayer({
   sessionExpiresAt,
   idleExpiresAt,
   onAccessLost,
+  liveCall,
   variant = "granted",
 }: DemoJourneyPlayerProps) {
   const persistProgress = variant !== "preview"
@@ -335,6 +339,8 @@ export function DemoJourneyPlayer({
                 else if (!step.required) dispatch({ type: "skip-step", stepId: step.id })
               }}
               onExitReview={() => setViewSectionId(null)}
+              liveCall={liveCall}
+              onOutcome={(to) => step && dispatch({ type: "outcome", stepId: step.id, to })}
             />
           </div>
         </div>

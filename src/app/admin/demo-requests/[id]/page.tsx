@@ -85,6 +85,8 @@ export default async function DemoRequestDetailPage({ params }: { params: Promis
             id: grant.id,
             status: grant.status,
             moduleIds: grant.moduleIds,
+            journey: Boolean(grant.scenarioId),
+            liveCallEnabled: grant.liveCallEnabled,
             sentAt: grant.sentAt?.toISOString() || null,
             openedAt: grant.openedAt?.toISOString() || null,
             sessionStartedAt: grant.sessionStartedAt?.toISOString() || null,

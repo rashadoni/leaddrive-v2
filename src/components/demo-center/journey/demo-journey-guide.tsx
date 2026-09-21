@@ -12,11 +12,13 @@ import {
   type DemoJourneyProgress,
   type DemoJourneySection,
   type DemoJourneySnapshot,
+  type DemoJourneyState,
   type DemoJourneyStep,
 } from "@/lib/demo-center/journey"
 import type { DemoJourneyVariant } from "./demo-journey-player"
 import { cn } from "@/lib/utils"
 import { DEMO_JOURNEY_STRINGS as S } from "./strings"
+import { DemoLiveCall, type DemoLiveCallState } from "./demo-live-call"
 
 /**
  * The guide panel: where the prospect is in the story, what to do now, and
@@ -48,6 +50,10 @@ export interface DemoJourneyGuideProps {
   onSkip: () => void
   onContinueFromGuide: () => void
   onExitReview: () => void
+  /** Present on a grant whose admin allowed a real AI call. */
+  liveCall?: DemoLiveCallState
+  /** Record how the real call ended; only an `outcome` step accepts it. */
+  onOutcome?: (to: DemoJourneyState) => void
 }
 
 export function DemoJourneyGuide({
@@ -70,6 +76,8 @@ export function DemoJourneyGuide({
   onSkip,
   onContinueFromGuide,
   onExitReview,
+  liveCall,
+  onOutcome,
 }: DemoJourneyGuideProps) {
   const sections = activeSections(manifest)
   const sectionIndex = sections.findIndex((candidate) => candidate.id === section.id)
@@ -175,6 +183,10 @@ export function DemoJourneyGuide({
       {section.intro && manifest.capabilities.video && (
         <IntroClip slug={section.intro.slug} caption={section.intro.caption} status={section.intro.status} token={token} variant={variant} />
       )}
+
+      {step && step.completion.kind === "outcome" && !reviewMode && variant === "granted" && liveCall?.enabled && onOutcome ? (
+        <DemoLiveCall token={token} initial={liveCall} onOutcome={onOutcome} />
+      ) : null}
 
       <DemoAssistant
         enabled={manifest.capabilities.assistant}
