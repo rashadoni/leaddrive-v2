@@ -33,7 +33,7 @@
  * =====================================================================
  */
 import { makeScriptPrisma } from "../_rls.mjs"
-import { BOARDS, CAMPAIGNS, CANONICAL_COLUMNS, LEADS, TASKS, TEAM, daysAgo, inDays } from "./demo-journey-legend.mjs"
+import { BOARDS, CAMPAIGNS, CANONICAL_COLUMNS, LEADS, TASKS, TEAM, bakuAt, daysAgo, inDays } from "./demo-journey-legend.mjs"
 
 const ALLOWED_SLUGS = new Set(["demo"])
 
@@ -145,9 +145,9 @@ for (const l of LEADS) {
         relatedType: "lead",
         relatedId: lead.id,
         createdBy: userId(l.assign),
-        completedAt: a.type === "meeting" ? null : daysAgo(a.days),
-        scheduledAt: a.type === "meeting" ? inDays(1) : null,
-        createdAt: daysAgo(a.days),
+        completedAt: a.planned ? null : bakuAt(-a.days, a.at),
+        scheduledAt: a.planned ? bakuAt(...a.planned) : null,
+        createdAt: bakuAt(-a.days, a.at),
       },
     })
   }
