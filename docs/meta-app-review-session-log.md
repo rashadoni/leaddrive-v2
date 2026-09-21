@@ -355,3 +355,46 @@ screencast shows credential verification and template sync.
 
 The app itself is still **not published**.
 
+## 2026-09-21 (evening) — preparing a possible resubmission
+
+Nothing here changes the submission under review; it prepares the second round.
+
+- **Instagram and WhatsApp messaging demos are impossible before publication.**
+  Meta states it on both configuration pages: webhooks for Instagram (Instagram
+  Login) and WhatsApp are not delivered to an unpublished app, including from
+  admins and testers. Messenger is the exception — role holders' messages are
+  delivered. So `instagram_business_manage_messages` and
+  `whatsapp_business_messaging` can only get a real screencast after the app is
+  published.
+- **The Instagram webhook must stay without `?t=`.** The Instagram product of
+  `2414060595720618` is `782807994549098`, the same ID production carries in
+  `INSTAGRAM_APP_ID`; its callback is the shared path for every tenant.
+- **#317 — a staged row can no longer outrank a live claim.** On the Instagram
+  webhook the review tenant's staged Instagram-Login row for @leaddrive.az ranked
+  above Fanumsec's live row; after publication real Direct would have landed in
+  the review sandbox. Staged rows now rank last (still ingesting when they are the
+  only claimant).
+- **Old Messenger connection of the Lead Drive CRM Page switched off** (owner's
+  decision) — row `cmq3imyda000250xyo0gkmomu`, app `1276226757359622`, which was no
+  longer subscribed to the Page. Messages for the Page now land on the staged row
+  and replies go out through the app under review. Re-enable it to undo.
+- **#320 — a conversation follows the connection that delivered its latest
+  message.** It used to stay bound to its first connection forever; with that one
+  switched off, inbound kept arriving while every reply failed with «… не
+  настроен». Verified on production: new message → rebinding → reply delivered.
+- **#334 (separate session) — after Connect with Meta the page opens the channel
+  that was connected**, not the organization's most recent row (it had shown
+  another tenant customer's Page in the form). Verified on production.
+- **Screencasts re-recorded for a resubmission**: `pages_messaging` (real screen
+  recording of the CRM from a headless browser signed in as the reviewer account,
+  inbox filtered to the test conversation, Messenger chat list cropped out),
+  Facebook Page connection and Instagram connection — all with English captions in
+  a bar under the frame. Files are local to the session, not in the repository.
+- The Facebook profile name of a Messenger sender cannot be read yet (`GET
+  /{psid}` → code 100/33): it needs the Business Asset User Profile Access
+  feature, so the inbox shows the Page-scoped ID instead of a name.
+- The owner offered the second account (Rocky Marciano, an app admin) as the
+  reviewer's test account. Its credentials are the owner's to enter into the
+  access-codes field; the password he shared in chat is weak and exposed, and he
+  was asked to replace it first. Nothing was stored anywhere.
+
