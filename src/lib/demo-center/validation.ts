@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { DEMO_MODULE_IDS, isDemoModuleId } from "@/lib/demo-center/catalog"
-import { getDemoJourneyScenario } from "@/lib/demo-center/journey"
+import { DEMO_JOURNEY_STATES, JOURNEY_REPORT_NAMES, getDemoJourneyScenario } from "@/lib/demo-center/journey"
 import { isCorporateEmail, normalizeEmail } from "@/lib/demo-center/security"
 
 const optionalText = (max: number) => z.string().trim().max(max).optional().or(z.literal(""))
@@ -94,6 +94,16 @@ export const demoEventSchema = z.object({
     context.addIssue({ code: "custom", path: ["moduleId"], message: "A valid module is required" })
   }
 })
+
+/** A guided story's progress report (journey/telemetry.ts). Strict: an extra
+ *  field is refused rather than silently dropped. */
+export const demoJourneyReportSchema = z.object({
+  eventType: z.literal("JOURNEY"),
+  name: z.enum(JOURNEY_REPORT_NAMES),
+  sectionId: z.string().min(1).max(64),
+  stepId: z.string().min(1).max(120).optional(),
+  to: z.enum(DEMO_JOURNEY_STATES).optional(),
+}).strict()
 
 export const demoRejectSchema = z.object({
   reason: z.string().trim().min(3).max(500),

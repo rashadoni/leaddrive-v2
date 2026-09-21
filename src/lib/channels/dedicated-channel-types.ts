@@ -2,7 +2,8 @@
  * Channel types whose ChannelConfig rows belong to their own screen and endpoint, never to the channel form. The
  * generic channels API (`POST /api/v1/channels`, `PUT`/`DELETE /api/v1/channels/[id]`) refuses to create, change or
  * delete such a row, or to turn another row into one, and the channel catalog lists one only where a card shows it
- * (VoIP's).
+ * (VoIP's). None of them is a conversation channel, so the reply-policy matrix (`/api/v1/settings/channel-reply`)
+ * neither lists nor writes one — that route's header gives the reason per type.
  *
  * Found 2026-09-21: the catalog listed every row the API returns under "Other connected channels", with the form's Edit
  * and a Delete, and a workspace's Social Monitoring rows were among them. Social Monitoring finds each of its two rows by

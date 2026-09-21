@@ -54,7 +54,11 @@ export interface DemoJourneyGuideProps {
   liveCall?: DemoLiveCallState
   /** Record how the real call ended; only an `outcome` step accepts it. */
   onOutcome?: (to: DemoJourneyState) => void
+  /** A clip was started, played to the end, or failed — for the session's report. */
+  onClipEvent?: (name: DemoClipEvent) => void
 }
+
+export type DemoClipEvent = "video.started" | "video.completed" | "video.error"
 
 export function DemoJourneyGuide({
   manifest,
@@ -78,6 +82,7 @@ export function DemoJourneyGuide({
   onExitReview,
   liveCall,
   onOutcome,
+  onClipEvent,
 }: DemoJourneyGuideProps) {
   const sections = activeSections(manifest)
   const sectionIndex = sections.findIndex((candidate) => candidate.id === section.id)
@@ -181,7 +186,7 @@ export function DemoJourneyGuide({
       )}
 
       {section.intro && manifest.capabilities.video && (
-        <IntroClip slug={section.intro.slug} caption={section.intro.caption} status={section.intro.status} token={token} variant={variant} />
+        <IntroClip slug={section.intro.slug} caption={section.intro.caption} status={section.intro.status} token={token} variant={variant} onClipEvent={onClipEvent} />
       )}
 
       {step && step.completion.kind === "outcome" && !reviewMode && variant === "granted" && liveCall?.enabled && onOutcome ? (
@@ -375,12 +380,14 @@ function IntroClip({
   status,
   token,
   variant,
+  onClipEvent,
 }: {
   slug: string
   caption: string
   status: "available" | "planned"
   token: string
   variant: DemoJourneyVariant
+  onClipEvent?: (name: DemoClipEvent) => void
 }) {
   const [playing, setPlaying] = useState(false)
   // The open demo streams nothing: its viewer is unverified, and these files
@@ -402,11 +409,22 @@ function IntroClip({
       {assets ? (
         playing ? (
           // Sound only after the prospect asked for it; captions travel with the file.
-          <video className="mt-2 w-full rounded-md" controls autoPlay poster={assets.posterSrc} src={assets.videoSrc} />
+          <video
+            className="mt-2 w-full rounded-md"
+            controls
+            autoPlay
+            poster={assets.posterSrc}
+            src={assets.videoSrc}
+            onEnded={() => onClipEvent?.("video.completed")}
+            onError={() => onClipEvent?.("video.error")}
+          />
         ) : (
           <button
             type="button"
-            onClick={() => setPlaying(true)}
+            onClick={() => {
+              setPlaying(true)
+              onClipEvent?.("video.started")
+            }}
             className="group relative mt-2 block w-full overflow-hidden rounded-md border border-zinc-200 dark:border-zinc-700"
           >
             {/* eslint-disable-next-line @next/next/no-img-element -- poster from the help-video pipeline, sized by CSS */}
