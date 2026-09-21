@@ -55,6 +55,7 @@ import {
   type ChannelConnectionState,
 } from "@/lib/channels/live-connection"
 import { metaConnectionReason, metaSubscriptionPendingLabels } from "@/lib/channels/connection-reason"
+import { isDedicatedChannelType } from "@/lib/channels/dedicated-channel-types"
 
 interface ChannelConfig {
   id: string
@@ -1704,7 +1705,13 @@ function ChannelsPageInner() {
       card.channelType || "",
     ].join(" ").toLowerCase().includes(q)
   })
-  const unmatchedChannels = channels.filter((channel) => {
+  // A row that belongs to its own screen (lib/channels/dedicated-channel-types) is listed only where a card shows it —
+  // VoIP's. Social Monitoring's settings rows and the Slack/Teams notification hooks have no card and are not channels:
+  // "Other connected channels" used to offer them the channel form's Edit and a Delete, and the "active" count below
+  // counted them. They are managed on their own screens, and the channels API refuses to edit or delete them.
+  const listedChannels = channels.filter((channel) =>
+    connectedByCard.primaryIds.has(channel.id) || !isDedicatedChannelType(channel.channelType))
+  const unmatchedChannels = listedChannels.filter((channel) => {
     if (activeTab !== "all") return false
     if (connectedByCard.primaryIds.has(channel.id)) return false
     if (!q) return true
@@ -1721,7 +1728,7 @@ function ChannelsPageInner() {
   // empty Meta row is created with isActive=true, so counting isActive alone counted drafts as wins.
   // The isActive term is now implied by the predicate for every type; it stays as a cheap guard for
   // callers that hand us a row with the column unselected.
-  const activeCount = channels.filter((cn) => cn.isActive && channelIsLiveConnection(cn)).length
+  const activeCount = listedChannels.filter((cn) => cn.isActive && channelIsLiveConnection(cn)).length
   const availableCount = cards.filter(card => card.action.type !== "disabled").length
   const ConnectIcon = connectCard?.icon
   const connectTutorial = useMemo(

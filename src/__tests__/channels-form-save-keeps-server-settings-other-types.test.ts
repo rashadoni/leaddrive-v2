@@ -21,7 +21,8 @@ import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vite
  *    message — and the form has no field for either;
  *  - dropped the Vonage API key, whose field the API leaves empty on every edit;
  *  - wiped a workspace's Social Monitoring configuration when its row, listed under "Other connected channels",
- *    was opened in this form and saved.
+ *    was opened in this form and saved. Such rows are now refused outright and no longer listed there
+ *    (channels-catalog-keeps-dedicated-rows.test.ts).
  *
  * Nothing here is a hand-written settings object: rows come from the real create route fed the form's own payload,
  * settings from the real endpoints that own them, the save is the real form's submit handed to the real PUT handler,
@@ -114,6 +115,9 @@ function rowMatches(row: StoredRow, where: Record<string, unknown>): boolean {
     const actual = (row as unknown as Record<string, unknown>)[key]
     if (expected && typeof expected === "object" && "not" in expected) {
       return actual !== (expected as { not: unknown }).not
+    }
+    if (expected && typeof expected === "object" && "notIn" in expected) {
+      return !(expected as { notIn: unknown[] }).notIn.includes(actual)
     }
     return actual === expected
   })
@@ -219,7 +223,6 @@ import {
 import { GET as readLeadGroup, PUT as setLeadGroup } from "@/app/api/v1/social/whatsapp-group-settings/route"
 import { POST as vkWebhook } from "@/app/api/v1/webhooks/vkontakte/route"
 import { POST as smsInboundWebhook } from "@/app/api/v1/webhooks/sms-inbound/route"
-import { getSocialMonitoringSettings, saveSocialMonitoringSettings } from "@/lib/social/monitoring-settings"
 import { aiReplyEnabled } from "@/lib/inbox/reply-mode"
 import { REPLY_POLICY_SETTING_KEYS, serverOwnedSettingKeys } from "@/lib/channels/server-owned-settings"
 import { META_SERVER_OWNED_SETTING_KEYS } from "@/lib/channels/meta-server-settings"
@@ -616,22 +619,6 @@ describe("saving the channel form keeps what other screens and endpoints wrote",
 
       expect(await policyInMatrix(id)).toEqual(before)
     }
-  })
-
-  it("leaves a Social Monitoring row's configuration alone when the catalog opens it in this form", async () => {
-    // "Other connected channels" lists every row of the workspace — this one included — with an Edit button.
-    await saveSocialMonitoringSettings("org_1", {
-      schedule: { enabled: false, cadenceMinutes: 90, reportWindowDays: 3 },
-      searchIndex: { enabled: true, limit: 25 },
-    })
-    const before = await getSocialMonitoringSettings("org_1")
-    expect(before.schedule).toMatchObject({ enabled: false, cadenceMinutes: 90, reportWindowDays: 3 })
-    const id = [...store.rows.values()].find((row) => row.channelType === "social_monitoring")!.id
-
-    await openForm(id)
-    await save()
-
-    expect(await getSocialMonitoringSettings("org_1")).toEqual(before)
   })
 
   it("does not let any other client write or erase what those endpoints own", async () => {

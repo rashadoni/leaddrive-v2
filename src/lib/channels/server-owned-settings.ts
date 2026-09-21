@@ -17,8 +17,10 @@ import { CHANNEL_FORM_TYPES } from "@/lib/channels/channel-config-payload"
  *     (F-26), and the form has no field for either;
  *   - the Vonage API key: the API never returns it (F-33 strips credential-shaped keys), so its field is empty on
  *     every edit;
- *   - the whole configuration of a row the form does not configure at all — the catalog lists every row under
- *     "Other connected channels" and opens this same form for it, a workspace's Social Monitoring row included.
+ *   - the whole configuration of a row the form does not configure at all. The catalog opens this same form for any
+ *     row no card covers ("Other connected channels"). Social Monitoring, Slack, Teams and VoIP rows no longer get
+ *     there — the route refuses them outright (lib/channels/dedicated-channel-types) — but a leftover row of another
+ *     type can.
  *
  * Three rules follow. Keys the form owns (`chatId`, `confirmationCode`, `smsProvider`, `atlLogin`, `emailIntake`, …)
  * are in none of the lists below, so leaving one out of a save still clears it, exactly as before.

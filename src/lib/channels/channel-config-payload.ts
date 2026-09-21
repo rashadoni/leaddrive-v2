@@ -2,8 +2,9 @@ export type SmsProvider = "atl" | "twilio" | "vonage"
 
 /**
  * The channel types this form configures — the type picker in components/channel-config-form is typed against
- * this list. Any other row the catalog can open here (Social Monitoring, Slack, Teams, web chat) keeps its
- * settings in its own screen, so the PUT route leaves them alone (lib/channels/server-owned-settings).
+ * this list. The PUT route refuses rows that have a screen of their own (Social Monitoring, Slack, Teams, VoIP —
+ * lib/channels/dedicated-channel-types) and leaves the settings of any other row alone
+ * (lib/channels/server-owned-settings).
  */
 export const CHANNEL_FORM_TYPES = [
   "email",
