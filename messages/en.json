@@ -14152,6 +14152,18 @@
   },
   "admin": {
     "demoCenter": {
+      "liveCallUnavailable": "Available once the PBX asks for each call's own prompt — until then a demo call would speak with the line's current identity.",
+      "grantJourney": "Guided journey",
+      "grantModules": "Modules: {count}",
+      "grantExpires": "Expires {date}",
+      "grantOpened": "opened {date}",
+      "storyOrder": "Set the story order",
+      "issueBody": "Preview uses only synthetic data and sends nothing. Issuing creates the code-protected client link and revokes the previous open one.",
+      "moveEarlier": "Move {title} earlier",
+      "moveLater": "Move {title} later",
+      "liveCallTitle": "Real AI call to the prospect",
+      "liveCallBody": "The prospect proves their phone with an SMS code and agrees; then LeadDrive Inc.'s AI agent calls them once, on your behalf, within the calling hours. You get the follow-up task.",
+      "liveCallOn": "Live AI call allowed",
       "leadLink": "Lead in CRM",
       "leadLinkLinked": "Linked",
       "leadLinkPending": "Being created",
