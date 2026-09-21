@@ -79,9 +79,9 @@ const THREADS = [
   // The hero — 02:14 at night, still waiting: the reel opens it, asks the AI
   // for a reply, opens the assignee picker and the lead dialog.
   { ch: "whatsapp", who: 0, ago: 0, hero: true, state: "open", assign: null, msgs: [
-    ["in", "Salam, kimsə var? 🙂 «Bakı» künc divanı hələ satışdadır? Bu həftə Xırdalana çatdırmaq olar?"],
+    ["in", "Salam, kimsə var? «Bakı» künc divanı hələ satışdadır? Bu həftə Xırdalana çatdırmaq olar?"],
   ] },
-  { ch: "whatsapp", who: 1, ago: 95, reply: 1, by: "ai", state: "resolved", assign: null, msgs: [
+  { ch: "whatsapp", who: 1, ago: 95, reply: 1, by: "ai", state: "open", assign: null, msgs: [
     ["in", "Axşamınız xeyir. Sabah neçədə açılırsınız?"],
     ["out", "Axşamınız xeyir! Mağazamız hər gün 10:00–20:00 işləyir, sifarişi isə indi də saytda və ya burada qeyd edə bilərsiniz."],
     ["in", "Təşəkkürlər!"],
@@ -106,7 +106,7 @@ const THREADS = [
     ["in", "Əla, sifariş verirəm. Ünvanı yazıram."],
     ["out", "Təşəkkür edirik! Sifarişiniz qeydə alındı, çatdırılma cümə axşamı olacaq."],
   ] },
-  { ch: "email", who: 6, ago: 16 * 60, reply: 6, by: "orxan", state: "resolved", assign: "orxan", subject: "Sifariş #4821 — çatdırılma tarixi", msgs: [
+  { ch: "email", who: 6, ago: 16 * 60, reply: 6, by: "orxan", state: "open", assign: "orxan", subject: "Sifariş #4821 — çatdırılma tarixi", msgs: [
     ["in", "Salam, 4821 nömrəli sifarişimin çatdırılma tarixini dəyişmək istəyirəm — şənbə günü evdə olmayacağam."],
     ["out", "Salam, Aysu xanım! Çatdırılmanı bazar gününə, 12:00–15:00 arasına keçirdik. Kuryer bir saat əvvəl zəng edəcək."],
   ] },
@@ -115,11 +115,11 @@ const THREADS = [
     ["out", "Salam, Fuad bəy! Bəli, 10 ədəddən yuxarı sifarişdə korporativ qiymət tətbiq olunur. Kommersiya təklifini e-poçtla göndərirəm."],
     ["in", "Təklif gəldi, razıyıq."],
   ] },
-  { ch: "sms", who: 8, ago: 18 * 60, reply: 4, by: "orxan", state: "resolved", assign: "orxan", msgs: [
+  { ch: "sms", who: 8, ago: 18 * 60, reply: 4, by: "orxan", state: "open", assign: "orxan", msgs: [
     ["in", "Sifarişim yoldadır?"],
     ["out", "Bəli, Sevinc xanım, kuryer 14:00-da ünvanınızda olacaq."],
   ] },
-  { ch: "voip", who: 9, ago: 19 * 60, reply: 0, by: "sebine", state: "resolved", assign: "sebine", msgs: [
+  { ch: "voip", who: 9, ago: 19 * 60, reply: 0, by: "sebine", state: "open", assign: "sebine", msgs: [
     ["in", "Gələn zəng — 3 dəq 12 san"],
     ["out", "Zəng cavablandı: Səbinə Rzayeva. Müştəri divanın rəng seçimini soruşdu, nümunələr WhatsApp-a göndərildi."],
   ] },
@@ -172,6 +172,14 @@ const RULES = [
   { name: "Qiymət sorğusu", triggerValue: "qiymət,neçəyə,dəyər,endirim", responseText: "Təşəkkür edirik! Dəqiq qiyməti və aktual endirimi menecerimiz iş saatlarında yazacaq.", channelTypes: ["whatsapp", "telegram", "tiktok"], priority: 40, matchCount: 142 },
 ]
 
+// Knowledge base the AI reply suggestion reads (src/lib/inbox/kb-context.ts
+// falls back to a keyword match of the customer's words, >3 letters, as
+// substrings — so the articles repeat the hero's own wording).
+const KB = [
+  { title: "«Bakı» künc divanı — satışdadır", content: "«Bakı» künc divanı satışdadır, anbarda boz və bej rəngdə var. Ölçü: 280 × 180 sm, açılan yataq yeri və yataq dəsti üçün qutu. Qiyməti 1 890 AZN, 12 aya qədər faizsiz hissə-hissə ödəniş mümkündür." },
+  { title: "Çatdırılma: Bakı, Sumqayıt, Xırdalan", content: "Bakı, Sumqayıt və Xırdalana çatdırmaq 1–3 iş günü çəkir. Bu həftə sifariş edilən divanı Xırdalana cümə günü çatdırırıq. Çatdırılma və quraşdırma pulsuzdur; kuryer bir saat əvvəl zəng edir." },
+]
+
 const prisma = await makeScriptPrisma()
 try {
   const org = await prisma.organization.findUnique({ where: { slug } })
@@ -217,9 +225,13 @@ try {
   let nConv = 0; let nMsg = 0; let nWeb = 0
   for (const [idx, t] of THREADS.entries()) {
     const name = CUSTOMERS[t.who]
-    const phone = `+994 50 555 01${String(10 + t.who).padStart(2, "0")}`
+    // A WhatsApp thread with a phone mounts the WhatsApp call control, which
+    // shows "WhatsApp not configured" on a tenant without real credentials —
+    // so only SMS/VoIP customers get a (fictional) number.
+    const usesPhone = t.ch === "sms" || t.ch === "voip"
+    const phone = usesPhone ? `+994 50 555 01${String(10 + t.who).padStart(2, "0")}` : null
     const email = `${name.split(" ")[0].toLowerCase().normalize("NFD").replace(/[^a-z]/g, "")}${t.who}@${MAIL_DOMAIN}`
-    const handle = `${email.split("@")[0]}`
+    const handle = email.split("@")[0].replace(/\d+$/, "") + ".baku"
     const start = heroMs - t.ago * MIN
     // Message times: first inbound at `start`, first reply `reply` minutes
     // later, the rest a few minutes apart.
@@ -261,7 +273,10 @@ try {
       metadata: { seed: SEED_TAG },
     } })
     nConv += 1
-    const customerAddr = t.ch === "email" ? email : t.ch === "telegram" || t.ch === "tiktok" ? `@${handle}` : phone
+    // The list shows the inbound `from` unless it is all digits, so chat
+    // channels carry the customer's name and phone channels bare digits (the
+    // contact's name wins then).
+    const customerAddr = usesPhone ? phone.replace(/\D/g, "") : t.ch === "tiktok" ? handle : name
     for (const [i, [dir, body]] of t.msgs.entries()) {
       const inbound = dir === "in"
       const ai = !inbound && t.by === "ai"
@@ -278,7 +293,6 @@ try {
         createdAt: at(times[i]),
         metadata: {
           seed: SEED_TAG,
-          ...(t.ch === "whatsapp" ? { waPhone: phone.replace(/\D/g, "") } : {}),
           ...(t.ch === "telegram" ? { chatId: `reel-${t.who}` } : {}),
           ...(ai ? { aiAutoReply: true, autoReply: true, authorType: "ai" } : {}),
           ...(agentKey ? { authorType: "operator", authorUserId: agentIds[agentKey], authorName: agentName(agentKey), sentVia: "leaddrive_inbox" } : {}),
@@ -303,6 +317,12 @@ try {
     await prisma.organization.update({ where: { id: orgId }, data: { features: [...features, "chatbotAutoReply"] } })
   }
   console.log(`  chatbot rules: ${RULES.length} active, auto-reply on`)
+
+  await prisma.kbArticle.deleteMany({ where: { organizationId: orgId, tags: { has: SEED_TAG } } })
+  for (const a of KB) {
+    await prisma.kbArticle.create({ data: { ...a, organizationId: orgId, status: "published", tags: [SEED_TAG] } })
+  }
+  console.log(`  knowledge base: ${KB.length} published articles`)
   console.log(`✔ done — hero thread at ${new Date(heroMs).toISOString()} (02:14 Baku)`)
 } finally {
   await prisma.$disconnect()

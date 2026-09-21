@@ -917,6 +917,17 @@ const railItem = (name) => [`aside nav button:has-text('${name}')`];
 // 9:16 only: zoom onto the active zone; square frames keep the whole screen.
 const tall = (p) => { const v = p.viewportSize(); return Boolean(v && v.height > v.width); };
 const zoom = async (p, h, sel, scale = 1.7) => { if (tall(p)) await h.focus(sel, scale); };
+// At 1080 px the thread header overflows; Playwright's scroll-into-view then
+// pans the whole inbox sideways. Snap every scroller back after such a click.
+const unscroll = (p) => p.evaluate(() => {
+  for (const el of document.querySelectorAll("*")) if (el.scrollLeft) el.scrollLeft = 0;
+  window.scrollTo(0, window.scrollY);
+}).catch(() => {});
+// The AI suggestion takes a few seconds; wait for the composer to fill.
+const waitComposer = (p, ms) => p.waitForFunction(
+  () => (document.querySelector("input[placeholder^='Mesajınızı yazın']")?.value || "").length > 20,
+  null, { timeout: ms },
+).catch(() => {});
 
 export default {
   boards: {
@@ -3457,6 +3468,9 @@ export default {
         },
         do: async (p, l, h) => {
           await h.card({ title: "Gecə 2:14. Müştəri yazır.", sub: "Kim cavab verir?", dim: 0.62 });
+          // Behind the card: open the 02:14 thread so scene 2 starts on it.
+          await p.locator(RL_ROW[0]).first().click({ timeout: 8000 }).catch(() => {});
+          await unscroll(p);
         },
       },
       // 2 — AI drafts the reply from the knowledge base.
@@ -3467,15 +3481,13 @@ export default {
         },
         do: async (p, l, h) => {
           await h.clearOverlays();
-          await h.caption("*AI cavab təklifi* — saniyələr içində");
-          await h.click(RL_ROW);
+          await h.caption("*AI cavab təklifi* — saniyələr içində", { left: !tall(p) });
           await zoom(p, h, RL_THREAD);
           await h.moveTo(RL_IN_BUBBLE);
-          await h.holdUntil(0.3);
           await h.click(RL_AI_BTN);
-          await h.holdUntil(0.5);
           await h.click(RL_AI_SUGGEST);
-          await h.holdUntil(0.85);
+          await unscroll(p);
+          await waitComposer(p, 9000);
           await h.moveTo(RL_COMPOSER);
         },
       },
@@ -3502,14 +3514,17 @@ export default {
           ru: "Сложный вопрос берёт команда: одним кликом назначаете сотрудника, превращаете чат в лид — продавец уже в работе.",
         },
         do: async (p, l, h) => {
-          await h.caption("Çətin sualı *komanda* götürür");
-          await h.click(RL_ROW);
+          await h.caption("Çətin sualı *komanda* götürür", { left: !tall(p) });
+          await p.locator(RL_ROW[0]).first().click({ timeout: 8000 }).catch(() => {});
+          await unscroll(p);
           await zoom(p, h, RL_THREAD);
           await h.click(RL_ASSIGN);            // opens the picker — selecting would PATCH
+          await unscroll(p);
           await h.holdUntil(0.35);
           await p.keyboard.press("Escape").catch(() => {});
           await h.click(RL_CONVERT);           // dialog open = read-only GET
-          await h.holdUntil(0.8);
+          await unscroll(p);
+          await h.holdUntil(0.85);
           await h.click(RL_DIALOG_CANCEL);
         },
       },
