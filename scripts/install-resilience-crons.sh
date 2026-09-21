@@ -56,6 +56,7 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   /cron-trigger\.sh \/api\/cron\/missed-inbound-reconciliation/ { next }
   /cron-trigger\.sh \/api\/cron\/mtm-cleanup/ { next }
   /cron-trigger\.sh \/api\/cron\/mtm-route-day-close/ { next }
+  /cron-trigger\.sh \/api\/cron\/demo-call-retention/ { next }
   { print }
 ' "$CURRENT" > "$CLEAN"
 
@@ -96,6 +97,10 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # noisy tenant turn a single cleanup into an unbounded job.  The endpoint
   # owns the PostgreSQL lease; cron is only the durable external heartbeat.
   printf '%s\n' "*/15 * * * * $TRIGGER /api/cron/mtm-cleanup >> $LOG 2>&1"
+  # A demo call's words are kept for 90 days — the AI agent says so in its
+  # first sentence, and the prospect agreed to exactly that. Daily is plenty
+  # for a 90-day promise; the endpoint touches only calls the demo placed.
+  printf '%s\n' "17 3 * * * $TRIGGER /api/cron/demo-call-retention >> $LOG 2>&1"
   # A route stays PLANNED/IN_PROGRESS until a person closes it, so an ordinary
   # interrupted day never ended: prod had fourteen August routes sitting in the
   # "in progress" list. This sweep retires days that are over to INCOMPLETE.
