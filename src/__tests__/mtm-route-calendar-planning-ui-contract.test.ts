@@ -63,12 +63,24 @@ describe("MTM calendar-first planning UI contract", () => {
     expect(page).not.toContain("routeDetailsRef.current?.scrollIntoView")
   })
 
-  it("offers an explicit accessible action on empty month and week cells", () => {
+  // Audit 2026-09-21: up to 119 dashed «+ Запланировать» blocks on one team
+  // week. The action stays on every empty cell, labelled for screen readers,
+  // but as a quiet «+» that appears on hover/focus and is always shown on touch.
+  it("offers a quiet accessible action on empty month and week cells", () => {
     expect(calendar).toContain('data-testid="mtm-route-calendar"')
-    expect(calendar).toContain("day.routes.length === 0")
     expect(calendar).toContain("onCreateRoute(key)")
+    expect(calendar.match(/data-testid="mtm-route-calendar-plan"/g)).toHaveLength(1)
+    expect(calendar).not.toContain("isCurrentMonth && day.routes.length > 0 ?")
     expect(week).toContain('data-testid="mtm-week-empty-cell-action"')
     expect(week).toContain("onCreateRoute({ date: dateKey(day), agentId: agent.id })")
+    expect(week).toContain("dayRoutes.length === 0 && canCreateForAgent ?")
+    expect(week).toContain('className="group space-y-1 border-r')
+    for (const source of [calendar, week]) {
+      expect(source).toContain("group-hover:opacity-100")
+      expect(source).toContain("[@media(hover:none)]:opacity-100")
+      expect(source).not.toContain('<Plus className="h-3.5 w-3.5" />{t("planRoute")}')
+      expect(source).not.toContain("border-dashed")
+    }
     expect(week).toContain('className="sticky left-0')
     expect(week).not.toContain("border-l-2")
   })
