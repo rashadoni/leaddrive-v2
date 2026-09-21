@@ -79,9 +79,11 @@ describe("office review never renders the agent's execution forms", () => {
     expect(page).not.toContain('description={t("subtitle")}')
   })
 
-  it("keeps the three-step execution guide away from office users", () => {
-    expect(page).toContain('const showGuide = viewer?.role === "AGENT"')
-    expect(page).toMatch(/\{showGuide \? \(\s*<MtmWorkflowGuide/)
+  // Owner, 2026-09-21: the three-step guide explained the screen instead of
+  // being one, on every screen it appeared. It is gone for every role.
+  it("has no three-step guide for anyone", () => {
+    expect(page).not.toContain("<MtmWorkflowGuide")
+    expect(page).not.toContain("showGuide")
   })
 })
 

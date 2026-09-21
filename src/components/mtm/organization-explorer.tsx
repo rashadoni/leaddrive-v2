@@ -38,9 +38,6 @@ import {
 } from "lucide-react"
 import { PageDescription } from "@/components/page-description"
 import { HelpButton } from "@/components/help/help-button"
-import { useSession } from "next-auth/react"
-import { MtmWorkflowGuide } from "@/components/mtm/mtm-workflow-guide"
-import { mtmViewerKey } from "@/lib/mtm/viewer-key"
 import { MtmCustomerForm } from "@/components/mtm/customer-form"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { Button } from "@/components/ui/button"
@@ -326,8 +323,6 @@ function FacetSelect({
 
 export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
   const t = useTranslations("mtmCustomers")
-  const tGuideCommon = useTranslations("mtmCommon")
-  const { data: guideSession } = useSession()
   const tx = useTranslations("mtmCustomers")
   const locale = useLocale()
   const router = useRouter()
@@ -1064,18 +1059,6 @@ export function MtmOrganizationExplorer({ orgId }: { orgId?: string }) {
         </div>
       </div>
 
-      <MtmWorkflowGuide
-        dismissId="organizations-clarity-guide"
-        viewerKey={mtmViewerKey(guideSession)}
-        dismissLabel={tGuideCommon("hintDismiss")}
-        title={tx("explorer.clarityGuide.title")}
-        description={tx("explorer.clarityGuide.description")}
-        steps={[
-          { title: tx("explorer.search"), icon: Search },
-          { title: tx("explorer.scopeTitle"), icon: UserRoundCheck },
-          { title: tx("explorer.addToRoute"), icon: CalendarPlus },
-        ]}
-      />
 
       {isRouteOrganizationFlow && routeAssignmentHandoff ? (
         <section data-testid="mtm-route-assignment-handoff" className="flex flex-col gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
