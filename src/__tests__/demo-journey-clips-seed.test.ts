@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
-import { CAMPAIGNS, LEADS, MAIL, TASKS } from "../../scripts/seeds/demo-journey-legend.mjs"
+import { CAMPAIGNS, LEADS as LEGEND_LEADS, MAIL, TASKS as LEGEND_TASKS } from "../../scripts/seeds/demo-journey-legend.mjs"
 
 /**
  * The guided demo's intro clips are filmed on this stand, and a prospect
@@ -13,6 +13,11 @@ const seeder = readFileSync("scripts/seeds/demo-journey-clips.mjs", "utf8")
 const rescorer = readFileSync("scripts/seeds/demo-journey-clips-rescore.mjs", "utf8")
 const workflow = readFileSync(".github/workflows/seed-demo-journey-clips.yml", "utf8")
 const reel = readFileSync("scripts/seeds/inbox-reel-demo.mjs", "utf8")
+
+// The legend is plain JS, whose rows differ in which optional fields they
+// carry; read them through the shape the checks below rely on.
+const LEADS = LEGEND_LEADS as ReadonlyArray<{ contactName: string; email?: string }>
+const TASKS = LEGEND_TASKS as Record<string, ReadonlyArray<{ title: string; lead?: string }>>
 
 /** Comments explain what the file must not do; only code is searched. */
 const code = (source: string) => source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "")
