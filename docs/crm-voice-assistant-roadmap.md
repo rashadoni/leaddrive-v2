@@ -380,8 +380,14 @@ No voice write tools are enabled in this phase.
       assignee, pipeline, company, contact and project by `organizationId`, and
       `resolveRelated` scopes a task's related record the same way. Pinned by
       `crm-command-parity.test.ts` so it cannot be dropped silently.
-- [ ] C1.11 Preserve all canonical workflows, notifications, webhooks, CDP
-      updates, Slack actions, and audit events.
+- [x] C1.11 Preserve all canonical workflows, notifications, webhooks, CDP
+      updates and audit events on the voice path. The mechanism already
+      existed — a command fires its effects straight away, or hands them to a
+      collector the adapter flushes after its wider transaction commits — and
+      what was added is the proof. Proved behaviourally against
+      `updateLeadCommand`, whose branch is hand-written and could be silently
+      backwards. Slack actions are not wired to any of the five commands, so
+      there is nothing to preserve there yet.
 - [ ] C1.12 Introduce a transactional outbox where external side effects cannot
       safely share the record transaction.
 - [ ] C1.13 Route current REST operations through the same command services.
@@ -941,6 +947,7 @@ implementation branch that advances the roadmap.
 | 2026-09-20 | Execution boundary | Production deployed | PR #245; merge `a7f6c2654`; deploy `35479290362` | Internal-only atomic CRM mutation/result/`succeeded` event; commit remains disabled. |
 | 2026-09-20 | Commit adapter | Production deployed | PR #249; merge `ffcbaa3a4`; active artifact `a9891d6cb`; deploy `35499744499` | Session-only endpoint and three rate-limit scopes are live; receipt UI remains open and no model write-tool is exposed. |
 | 2026-09-20 | Receipt UI shell (U1.1-U1.3) | Production deployed | PR #257; merge `1bbc59e1e`; active artifact `6cca1a5a8`; deploy `35512069725` | Shadow mode: session-scoped store, anchored desktop panel, mobile bottom sheet. No confirm control, no write request, no model commit tool. |
+| 2026-09-21 | Side-effect parity (C1.11) | Code complete | Targeted Vitest: 649 files / 10464 green, 8 known-baseline reds; targeted ESLint; i18n parity | Effects cannot escape an open transaction; voice and REST produce the same set, the transaction only changes when. |
 | 2026-09-21 | Command parity (C1.9, C1.10, C1.14) | Production deployed | PR #304; merge `da5966c3b`; active artifact `da5966c3be6596bf0fdfcdd37552554bd88e1568`; deploy `35572848857` | Field permissions fail closed on writes; tenant scoping verified and pinned. |
 | 2026-09-20 | Write kill switch (P0.11) | Production deployed | PR #296; merge `8765421d0`; shipped in artifact `c572906bd13a0711ea54e289565062a9f3043935` | `VOICE_WRITE_ENABLED=false` removes the proposal tools, their prompt lines and the five mutating routes, leaving reads untouched. |
 | 2026-09-20 | Noisy-room mode (A3.1, A3.11-A3.13) | Production deployed | PR #290; merge `d16e6a830`; active artifact `d16e6a830a867d75db154116cb3180bf76642111`; deploy `35531765494` | Barge-in policy minted into the token per session. Music can no longer interrupt; measurement (A1.6, A2.9) still open. |
