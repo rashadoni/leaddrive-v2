@@ -32,11 +32,8 @@ vi.mock("@/lib/inbound-lead-match", () => ({ matchInboundLeadId: mockMatchInboun
 vi.mock("@/lib/crm-commands/lead/create-lead", () => ({ createLeadCommand: mockCreateLeadCommand }))
 
 import { prisma } from "@/lib/prisma"
-import {
-  DEMO_LEAD_CLAIM_LEASE_MS,
-  demoLeadOrganizationId,
-  ensureDemoProspectLead,
-} from "@/lib/demo-center/prospect-lead"
+import { DEMO_LEAD_CLAIM_LEASE_MS, ensureDemoProspectLead } from "@/lib/demo-center/prospect-lead"
+import { demoSalesOrganizationId as demoLeadOrganizationId } from "@/lib/demo-center/sales-org"
 
 const SALES_ORG = "org-leaddrive-inc"
 const NOW = new Date("2026-09-21T12:00:00.000Z")

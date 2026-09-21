@@ -69,6 +69,16 @@ export const demoOtpSchema = z.object({
   code: z.string().trim().regex(/^\d{6}$/),
 })
 
+export const demoPhoneCodeSchema = z.union([
+  z.object({ useRequestPhone: z.literal(true) }).strict(),
+  z.object({ phone: z.string().trim().min(7).max(32) }).strict(),
+])
+
+export const demoPhoneVerifySchema = z.object({
+  code: z.string().trim().regex(/^\d{6}$/),
+  consent: z.boolean(),
+}).strict()
+
 export const demoEventSchema = z.object({
   eventType: z.enum(["MODULE_OPENED", "STEP_VIEWED", "COMPLETED"]),
   moduleId: z.string().optional(),

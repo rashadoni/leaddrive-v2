@@ -8,6 +8,7 @@ import {
   type DemoSourceChannel,
 } from "@/lib/demo-center/journey"
 import { expireDemoGrantIfNeeded, noStoreHeaders, validRawDemoToken } from "@/lib/demo-center/access"
+import { demoLiveCallState } from "@/lib/demo-center/phone-verification"
 import {
   anonymizedClientMetadata,
   demoSessionCookieName,
@@ -121,6 +122,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       }, { headers: noStoreHeaders() })
     }
 
+    // Booleans only: whether a live call is on, whether the request's own
+    // number can be used without retyping, whether a phone is already proven.
+    const liveCall = scenario ? await demoLiveCallState(grant, grant.request.phone) : null
+
     return NextResponse.json({
       success: true,
       state,
@@ -128,7 +133,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       company: grant.request.company,
       recipient: maskEmail(grant.request.email),
       watermark: grant.watermark,
-      ...(scenario ? { scenario: scenarioPayload, identity } : { modules: selectedModules }),
+      ...(scenario ? { scenario: scenarioPayload, identity, liveCall } : { modules: selectedModules }),
       sessionStartedAt: grant.sessionStartedAt,
       sessionExpiresAt: grant.sessionExpiresAt,
       idleExpiresAt: idleExpiry(responseLastSeenAt, grant.inactivityMinutes),

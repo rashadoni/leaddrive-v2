@@ -1,9 +1,10 @@
 import { prisma } from "@/lib/prisma"
-import { runWithRlsBypass, runWithTenant } from "@/lib/rls-context"
+import { runWithRlsBypass } from "@/lib/rls-context"
 import { matchInboundLeadId } from "@/lib/inbound-lead-match"
 import { isPlausibleLeadPhone } from "@/lib/inbox/customer-phone"
 import { createLeadCommand } from "@/lib/crm-commands/lead/create-lead"
 import type { CrmCommandActorContext } from "@/lib/crm-commands/actor-context"
+import { inDemoSalesOrganization, resolveDemoSalesOrganization } from "./sales-org"
 
 /**
  * A prospect who proved their email in a private demo becomes exactly one
@@ -13,11 +14,8 @@ import type { CrmCommandActorContext } from "@/lib/crm-commands/actor-context"
  * rules are strict:
  *
  *  - The organisation comes from server configuration only, never from the
- *    request. The owner chose LeadDrive Inc. (2026-09-21). By default it is
- *    the voice agent's organisation, and that is not a convenience: the demo's
- *    live call is placed by the voice agent, which serves exactly one
- *    organisation, so a demo lead anywhere else could never be called.
- *    `DEMO_LEAD_ORGANIZATION_ID` overrides it if that ever changes.
+ *    request: every tenant write goes through ./sales-org, the demo's single
+ *    door into a tenant. The owner chose LeadDrive Inc. (2026-09-21).
  *
  *  - Only verified identity links. The email was proven with a one-time code;
  *    the phone on the form was not, so it is stored on a new lead but never
@@ -45,17 +43,6 @@ export type DemoLeadLinkStatus = "PENDING" | "LINKED" | "FAILED" | "UNCONFIGURED
 export type DemoLeadLinkResult =
   | { status: "LINKED"; leadId: string; mode: "created" | "matched" | "already" }
   | { status: "PENDING" | "FAILED" | "UNCONFIGURED" | "NOT_VERIFIED" | "NOT_FOUND" }
-
-type DemoLeadEnv = Partial<Record<"DEMO_LEAD_ORGANIZATION_ID" | "VOICE_AGENT_ORGANIZATION_ID", string>>
-
-export function demoLeadOrganizationId(
-  env: DemoLeadEnv = {
-    DEMO_LEAD_ORGANIZATION_ID: process.env.DEMO_LEAD_ORGANIZATION_ID,
-    VOICE_AGENT_ORGANIZATION_ID: process.env.VOICE_AGENT_ORGANIZATION_ID,
-  },
-): string | null {
-  return env.DEMO_LEAD_ORGANIZATION_ID?.trim() || env.VOICE_AGENT_ORGANIZATION_ID?.trim() || null
-}
 
 function formatUtc(date: Date): string {
   return `${date.toISOString().slice(0, 16).replace("T", " ")} UTC`
@@ -147,13 +134,7 @@ async function linkDemoProspectLead(requestId: string, now: Date): Promise<DemoL
   const verifiedAt = request.grants[0]?.verifiedAt
   if (!verifiedAt) return { status: "NOT_VERIFIED" }
 
-  const organizationId = demoLeadOrganizationId()
-  const organization = organizationId
-    ? await runWithRlsBypass(() =>
-        prisma.organization.findFirst({ where: { id: organizationId, isActive: true }, select: { id: true } }),
-      )
-    : null
-  if (!organizationId || !organization) {
+  if (!(await resolveDemoSalesOrganization())) {
     await markRequest(requestId, { leadLinkStatus: "UNCONFIGURED", leadLinkError: null }, now)
     return { status: "UNCONFIGURED" }
   }
@@ -177,7 +158,7 @@ async function linkDemoProspectLead(requestId: string, now: Date): Promise<DemoL
   )
   if (!claimed.count) return { status: "PENDING" }
 
-  const { leadId, mode } = await runWithTenant(organizationId, async () => {
+  const entered = await inDemoSalesOrganization(async (organizationId) => {
     const existing = await matchInboundLeadId(organizationId, { email: request.email })
     if (existing) {
       await prisma.activity.create({
@@ -215,6 +196,12 @@ async function linkDemoProspectLead(requestId: string, now: Date): Promise<DemoL
     })
     return { leadId: created.entity.id, mode: "created" as const }
   })
+  if (!entered) {
+    // The organisation was deactivated between the check and the write.
+    await markRequest(requestId, { leadLinkStatus: "UNCONFIGURED", leadLinkError: null }, now)
+    return { status: "UNCONFIGURED" }
+  }
+  const { organizationId, value: { leadId, mode } } = entered
 
   await runWithRlsBypass(() =>
     prisma.demoRequest.updateMany({
