@@ -34,6 +34,7 @@ import {
   topCampaigns,
   type CampaignAnalyticsRecord,
 } from "@/lib/campaigns/analytics"
+import { roiVerdict } from "@/lib/campaigns/roi"
 
 type LegendCampaign = {
   name: string
@@ -161,20 +162,21 @@ describe("campaign analytics figures a record cannot back", () => {
     expect(topCampaigns([campaign({ type: "sms", totalSent: 2291 })])).toEqual([])
   })
 
+  const azn = (value: number) => ({ currency: "AZN", value, count: 1 })
+
   it("has no ROI without won deals linked to a campaign — not -100%", () => {
-    expect(campaignRoi({ summary: { totalRevenue: 0, totalCost: 1346, totalRoi: -100 }, campaigns: [{ deals: [] }] }))
+    expect(campaignRoi({ summary: { roi: roiVerdict([], { currency: "AZN", value: 1346 }) } }))
       .toEqual({ kind: "no-revenue" })
   })
 
-  it("has no ROI when the linked deals are in more than one currency", () => {
-    const deals = [{ currency: "AZN" }, { currency: "USD" }]
-    expect(campaignRoi({ summary: { totalRevenue: 9000, totalCost: 1000, totalRoi: 800 }, campaigns: [{ deals }] }))
-      .toEqual({ kind: "several-currencies" })
+  it("has no ROI when the won deals are in more than one currency", () => {
+    const revenue = [azn(5000), { currency: "USD", value: 4000, count: 1 }]
+    expect(campaignRoi({ summary: { roi: roiVerdict(revenue, { currency: "AZN", value: 1000 }) } }))
+      .toEqual({ kind: "currency-mismatch", revenueCurrencies: ["AZN", "USD"], costCurrency: "AZN" })
   })
 
   it("passes the Campaign ROI page's own figure through when revenue is real", () => {
-    const deals = [{ currency: "AZN" }, { currency: "AZN" }]
-    expect(campaignRoi({ summary: { totalRevenue: 2600, totalCost: 2000, totalRoi: 30 }, campaigns: [{ deals }] }))
+    expect(campaignRoi({ summary: { roi: roiVerdict([azn(2600)], { currency: "AZN", value: 2000 }) } }))
       .toEqual({ kind: "value", percent: 30 })
   })
 
@@ -238,10 +240,10 @@ describe("Campaigns → Analitika tab as rendered", () => {
 
   /** What GET /api/v1/campaign-roi returns for these campaigns when no deal points at any of them. */
   function roiWithoutDeals(campaigns: CampaignAnalyticsRecord[]) {
-    const totalCost = campaigns.reduce((s, c) => s + (c.budget ?? 0), 0)
+    const cost = { currency: "AZN", value: campaigns.reduce((s, c) => s + (c.budget ?? 0), 0) }
     return {
       campaigns: campaigns.map((c) => ({ id: c.id, deals: [] })),
-      summary: { totalRevenue: 0, totalCost, totalRoi: totalCost > 0 ? -100 : 0 },
+      summary: { revenue: [], cost, roi: roiVerdict([], cost) },
     }
   }
 
@@ -302,6 +304,22 @@ describe("Campaigns → Analitika tab as rendered", () => {
     expect(widget("kpi-open-rate")).toContain("41.7%")
     expect(widget("kpi-click-rate")).toContain("11.7%")
     expect(widget("kpi-bounce")).toContain("—")
+  })
+
+  it("shows the Campaign ROI page's verdict: «—» for mixed currencies, the figure when one currency", async () => {
+    const cost = { currency: "AZN", value: 500 }
+    const mixed = [{ currency: "AZN", value: 2000, count: 1 }, { currency: "USD", value: 4000, count: 1 }]
+    serve({ roi: { campaigns: [], summary: { revenue: mixed, cost, roi: roiVerdict(mixed, cost) } } })
+    await renderTab(DEMO)
+    expect(widget("kpi-roi")).toContain("roiCurrencyMismatch")
+    expect(widget("kpi-roi")).not.toContain("%")
+
+    act(() => root.unmount())
+    root = createRoot(container)
+    const manat = [{ currency: "AZN", value: 2000, count: 1 }]
+    serve({ roi: { campaigns: [], summary: { revenue: manat, cost, roi: roiVerdict(manat, cost) } } })
+    await renderTab(DEMO)
+    expect(widget("kpi-roi")).toContain("+300%")
   })
 
   it("prints «—», not «0.0%», for the opens of an SMS campaign in the top list", async () => {

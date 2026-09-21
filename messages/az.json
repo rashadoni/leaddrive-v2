@@ -3548,7 +3548,7 @@
     "notRecorded": "qeydə alınmır",
     "noSendsYet": "Hələ heç nə göndərilməyib",
     "roiNoWonDeals": "kampaniyalardan qazanılmış sövdələşmə yoxdur",
-    "roiSeveralCurrencies": "sövdələşmələr bir neçə valyutadadır",
+    "roiCurrencyMismatch": "gəlir {revenue}, büdcə {cost} ilə — müqayisə üçün məzənnə yoxdur",
     "roiNoBudget": "büdcə təyin edilməyib",
     "dataUnavailable": "Yükləmək alınmadı",
     "basedOnLatest": "Son {count} qeyd üzrə (cəmi {total})",
@@ -9265,10 +9265,10 @@
     "pageDescription": "Kampaniya ROI təhlili: hər marketinq kampaniyası üçün investisiya gəlirini ölçün",
     "attributed": "Atribusiya",
     "attributedHint": "Çoxtəmaslı atribusiya gəliri — hər udulmuş sövdənin dəyəri ona toxunan bütün kampaniyalar arasında standart model üzrə bölünür. Birbaşa rəqəm yalnız sövdəyə bağlı kampaniyanı sayır.",
-    "attributedSummary": "Çoxtəmaslı atribusiya (model: {model}) — {revenue} kampaniyalar arasında bölündü, {roi}% qarışıq ROI.",
-    "hintTotalRevenue": "Marketinq kampaniyalarına aid edilən ümumi gəlir",
-    "hintTotalCost": "Bütün marketinq kampaniyalarına çəkilən ümumi xərc",
-    "hintRoi": "İnvestisiya gəliri = (Gəlir - Xərc) / Xərc × 100%",
+    "attributedSummary": "Çoxtəmaslı atribusiya (model: {model}) — {revenue} kampaniyalar arasında bölündü; qarışıq ROI: {roi}.",
+    "hintTotalRevenue": "Kampaniyalara bağlı udulmuş sövdələşmələrin dəyəri. Hər valyuta ayrıca göstərilir — müxtəlif valyutalarda məbləğlər toplanmır.",
+    "hintTotalCost": "Göndərilmiş kampaniyaların büdcələri. Faktiki xərc məhsulda qeydə alınmır, ona görə daxil edilmiş büdcə götürülür; qaralamalar, planlaşdırılmış və ləğv edilmiş kampaniyalar sayılmır.",
+    "hintRoi": "İnvestisiya gəliri = (Gəlir − Xərc) / Xərc × 100%. Yalnız gəlir və xərc eyni valyutada olanda hesablanır — çevirmək üçün məzənnə yoxdur.",
     "hintSendRate": "Alıcılara uğurla çatdırılmış mesajların faizi",
     "hintOpenRate": "Çatdırılmış mesajların açılma faizi",
     "hintClickRate": "Açılmış mesajlarda linkə klik faizi",
@@ -9283,7 +9283,13 @@
     "avgAllCampaigns": "Bütün kampaniyaların ortalaması",
     "sentAt": "Göndərilmə tarixi",
     "linkedDeals": "Əlaqəli sövdələşmələr",
-    "noLinkedDeals": "Bu kampaniyaya bağlı sövdələşmə yoxdur"
+    "noLinkedDeals": "Bu kampaniyaya bağlı sövdələşmə yoxdur",
+    "costBasis": "{total} kampaniyadan {launched} göndərilmişin büdcəsi",
+    "notSent": "göndərilməyib",
+    "roiNoRevenue": "kampaniyalardan udulmuş sövdələşmə yoxdur",
+    "roiNotLaunched": "göndərilməyib — büdcə hələ xərc deyil",
+    "roiNoCost": "büdcə daxil edilməyib",
+    "roiCurrencyMismatch": "gəlir {revenue}, büdcə {cost} ilə — müqayisə üçün məzənnə yoxdur"
   },
   "finance": {
     "ba": {

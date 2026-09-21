@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useTranslations, useLocale } from "next-intl"
 import { cn } from "@/lib/utils"
 import { formatDate } from "@/lib/format-date"
+import { getCurrencySymbol } from "@/lib/currency"
 import { MiniLineChart, MiniDonut } from "@/components/charts/mini-charts"
 import {
   Send,
@@ -95,16 +96,10 @@ const readJourneys = rowsFrom<JourneyAnalyticsRecord>("journeys")
 
 function readRoi(data: unknown): CampaignRoiSource | null {
   const body = asObject(data)
-  const summary = asObject(body?.summary)
-  if (!summary || !Array.isArray(body?.campaigns)) return null
-  return {
-    summary: {
-      totalRevenue: Number(summary.totalRevenue) || 0,
-      totalCost: Number(summary.totalCost) || 0,
-      totalRoi: Number(summary.totalRoi) || 0,
-    },
-    campaigns: body.campaigns as CampaignRoiSource["campaigns"],
-  }
+  const roi = asObject(asObject(body?.summary)?.roi)
+  // No verdict (an older response shape) reads as "couldn't load", never as a number.
+  if (!roi || typeof roi.kind !== "string") return null
+  return { summary: { roi: roi as CampaignRoiSource["summary"]["roi"] } }
 }
 
 function useSource<T>(url: string, orgId: string | null | undefined, read: (data: unknown) => T | null): Source<T> {
@@ -304,8 +299,14 @@ export function CampaignsAnalytics({ campaigns, total, orgId }: CampaignsAnalyti
         return { value: `${figureOf.percent > 0 ? "+" : ""}${Math.round(figureOf.percent)}%` }
       case "no-revenue":
         return { value: "—", note: t("roiNoWonDeals") }
-      case "several-currencies":
-        return { value: "—", note: t("roiSeveralCurrencies") }
+      case "currency-mismatch":
+        return {
+          value: "—",
+          note: t("roiCurrencyMismatch", {
+            revenue: figureOf.revenueCurrencies.map((c) => getCurrencySymbol(c)).join(", "),
+            cost: getCurrencySymbol(figureOf.costCurrency),
+          }),
+        }
       case "no-budget":
         return { value: "—", note: t("roiNoBudget") }
     }
