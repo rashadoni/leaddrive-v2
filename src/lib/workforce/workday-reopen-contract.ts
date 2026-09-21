@@ -54,9 +54,9 @@ export type WorkforceWorkdayCloseConflictCode = typeof WORKFORCE_WORKDAY_CLOSE_C
 
 /**
  * 403 codes both endpoints answer to a principal who may not act on the
- * employee: a session without Workforce write (`withWorkforceSessionAuth`),
- * one outside the manager time-correction authority, or one without the
- * mandatory MFA of `requireWorkforceAttendanceSecurityMfa`.
+ * employee: a session without Workforce write (`withWorkforceSessionAuth`)
+ * or one outside the manager time-correction authority. The MFA code is kept
+ * for snapshots and clients from before 2FA became a recommendation here.
  */
 export const WORKFORCE_WORKDAY_MANAGER_ACTION_DENIAL_CODES = [
   "WORKFORCE_SESSION_PERMISSION_REQUIRED",
@@ -103,4 +103,9 @@ export type WorkforceWorkdayManagerActions = {
   undoReopen: WorkforceWorkdayManagerAction
   /** Absent in snapshots cached before the close action existed. */
   close?: WorkforceWorkdayCloseAction | null
+  /**
+   * Whether the viewing manager has an enrolled 2FA factor. Recommended, not
+   * required, for these actions (owner decision 2026-09-21).
+   */
+  mfaEnrolled?: boolean
 }

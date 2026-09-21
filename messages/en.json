@@ -14936,6 +14936,7 @@
         "reasonHint": "{count} characters — from {min} to {max}",
         "confirmReopen": "Reopen workday",
         "confirmUndo": "Undo reopen",
+        "mfaRecommended": "We recommend enabling 2FA for your account — Settings → Users. The action works without it; the history will note that 2FA was off.",
         "closeAction": "Close shift",
         "closeTitle": "Close the shift the agent left open?",
         "closeConsequence": "The shift ends at the time you set. Time after it is not counted as work.",

@@ -1,9 +1,6 @@
 import type { Prisma } from "@prisma/client"
 import type { WorkforceActor } from "@/lib/workforce/actor"
-import {
-  WORKFORCE_ATTENDANCE_MFA_REQUIRED_CODE,
-  workforceAttendanceSecurityMfaSatisfied,
-} from "@/lib/workforce/attendance-route"
+import { workforceAttendanceSecurityMfaSatisfied } from "@/lib/workforce/attendance-route"
 import { workforceWorkdayCorrectionFacts } from "@/lib/workforce/workday-correction-facts"
 import { workforceWorkdayEventFact } from "@/lib/workforce/workday-facts-replay"
 import {
@@ -93,10 +90,10 @@ function permitted(workday: ActionWorkday): WorkforceWorkdayManagerAction {
  * It evaluates the reopen and undo services' own predicates, without their
  * locks and writes. Facts that belong to the day come first (a running shift
  * is simply "not finished", not "forbidden"), then the manager's authority,
- * then what else keeps the day closed, and last the endpoints' mandatory MFA:
- * that instruction is worth reading only on a day the manager could otherwise
- * change. The services decide again under their locks, so an answer that went
- * stale in between is refused there with the same code.
+ * then what else keeps the day closed. 2FA is not a refusal: `mfaEnrolled`
+ * only lets the dialog recommend it. The services decide again under their
+ * locks, so an answer that went stale in between is refused there with the
+ * same code.
  *
  * Returns null for the employee's own day: there is nothing a manager could do
  * on it.
@@ -107,7 +104,14 @@ export async function resolveWorkforceWorkdayManagerActions(
 ): Promise<WorkforceWorkdayManagerActions | null> {
   const todayActions = await resolveTodayActions(db, params)
   if (!todayActions) return null
-  return { ...todayActions, close: await resolveCloseAction(db, params) }
+  const close = await resolveCloseAction(db, params)
+  // Owner decision 2026-09-21: 2FA is recommended, not required, for these
+  // actions. The dialog recommends it when the manager has none.
+  const mfaEnrolled = await workforceAttendanceSecurityMfaSatisfied(db, params.organizationId, {
+    userId: params.userId,
+    principalType: params.principalType,
+  })
+  return { ...todayActions, close, mfaEnrolled }
 }
 
 type ResolveParams = {
@@ -159,14 +163,6 @@ async function resolveTodayActions(
     return authority ? null : "WORKFORCE_SCOPE_DENIED"
   }
 
-  /** An action nothing else refuses, unless the manager lacks the endpoints' MFA. */
-  async function permittedUnlessMfaMissing(target: ActionWorkday): Promise<WorkforceWorkdayManagerAction> {
-    const mfa = await workforceAttendanceSecurityMfaSatisfied(db, organizationId, {
-      userId,
-      principalType: params.principalType,
-    })
-    return mfa ? permitted(target) : refused(target, WORKFORCE_ATTENDANCE_MFA_REQUIRED_CODE)
-  }
 
   // Today's finished day: the reopen may apply, the undo cannot.
   const finishedAt = workday.completedAt
@@ -187,7 +183,7 @@ async function resolveTodayActions(
         appliedAt: now,
         clientEventId: workforceWorkdayReopenEventKey(PREVIEW_OPERATION_ID),
       }) ? "WORKFORCE_WORKDAY_REOPEN_HISTORY_INVALID" : null)
-    return { reopen: blocked ? refused(workday, blocked) : await permittedUnlessMfaMissing(workday), undoReopen }
+    return { reopen: blocked ? refused(workday, blocked) : permitted(workday), undoReopen }
   }
 
   // Today's paused day: only a manager's reopen the employee has not acted on
@@ -219,7 +215,7 @@ async function resolveTodayActions(
     })
       ? "WORKFORCE_WORKDAY_REOPEN_UNDO_HISTORY_INVALID"
       : null
-  return { reopen, undoReopen: blocked ? refused(workday, blocked) : await permittedUnlessMfaMissing(workday) }
+  return { reopen, undoReopen: blocked ? refused(workday, blocked) : permitted(workday) }
 }
 
 function closeRefused(
@@ -285,12 +281,5 @@ async function resolveCloseAction(
     clientEventId: workforceWorkdayCloseEventKey(PREVIEW_OPERATION_ID),
   })
   if ("problem" in replay) return closeRefused(workday, "WORKFORCE_WORKDAY_CLOSE_HISTORY_INVALID", suggestion)
-
-  const mfa = await workforceAttendanceSecurityMfaSatisfied(db, organizationId, {
-    userId,
-    principalType: params.principalType,
-  })
-  return mfa
-    ? { ...permitted(workday), ...suggestion }
-    : closeRefused(workday, WORKFORCE_ATTENDANCE_MFA_REQUIRED_CODE, suggestion)
+  return { ...permitted(workday), ...suggestion }
 }
