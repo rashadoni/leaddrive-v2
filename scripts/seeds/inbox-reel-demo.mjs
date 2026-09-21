@@ -259,8 +259,12 @@ try {
       continue
     }
 
-    const contact = await prisma.contact.findFirst({ where: { organizationId: orgId, fullName: name } })
-      || await prisma.contact.create({ data: { organizationId: orgId, fullName: name, phone, email, source: t.ch } })
+    // Update, don't just reuse: a contact left over from an earlier run may
+    // still carry a phone, and that alone mounts the WhatsApp call control.
+    const found = await prisma.contact.findFirst({ where: { organizationId: orgId, fullName: name } })
+    const contact = found
+      ? await prisma.contact.update({ where: { id: found.id }, data: { phone, email, source: t.ch } })
+      : await prisma.contact.create({ data: { organizationId: orgId, fullName: name, phone, email, source: t.ch } })
     const conv = await prisma.socialConversation.create({ data: {
       organizationId: orgId, platform: t.ch, externalId: `reel-${String(idx).padStart(2, "0")}-${t.ch}`,
       contactId: contact.id, contactName: name, status: resolved ? "resolved" : "open",

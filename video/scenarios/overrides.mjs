@@ -923,6 +923,17 @@ const unscroll = (p) => p.evaluate(() => {
   for (const el of document.querySelectorAll("*")) if (el.scrollLeft) el.scrollLeft = 0;
   window.scrollTo(0, window.scrollY);
 }).catch(() => {});
+// Click only what is really there: h.click falls back to the centre of <main>
+// when a selector misses, which in the inbox opens a random thread.
+const clickIf = async (p, h, sel) => {
+  if (await p.locator(sel[0]).first().isVisible().catch(() => false)) await h.click(sel);
+};
+// Square frames: the inbox thread's empty middle is the one free zone — the
+// top centre would cover the conversation list and its 02:14 row.
+const threadBox = (p) => (tall(p) ? null : { left: "61vw", top: "40vh", width: "35vw" });
+// Analytics cards render only after their request returns; without this the
+// frame catches the spinner and h.moveTo falls back to the middle of <main>.
+const waitFor = (p, sel, ms = 15000) => p.locator(sel[0]).first().waitFor({ state: "visible", timeout: ms }).catch(() => {});
 // The AI suggestion takes a few seconds; wait for the composer to fill.
 const waitComposer = (p, ms) => p.waitForFunction(
   () => (document.querySelector("input[placeholder^='Mesajınızı yazın']")?.value || "").length > 20,
@@ -3481,11 +3492,11 @@ export default {
         },
         do: async (p, l, h) => {
           await h.clearOverlays();
-          await h.caption("*AI cavab təklifi* — saniyələr içində", { left: !tall(p) });
+          await h.caption("*AI cavab təklifi* — saniyələr içində", { box: threadBox(p) });
           await zoom(p, h, RL_THREAD);
           await h.moveTo(RL_IN_BUBBLE);
-          await h.click(RL_AI_BTN);
-          await h.click(RL_AI_SUGGEST);
+          await clickIf(p, h, RL_AI_BTN);
+          await clickIf(p, h, RL_AI_SUGGEST);
           await unscroll(p);
           await waitComposer(p, 9000);
           await h.moveTo(RL_COMPOSER);
@@ -3514,18 +3525,19 @@ export default {
           ru: "Сложный вопрос берёт команда: одним кликом назначаете сотрудника, превращаете чат в лид — продавец уже в работе.",
         },
         do: async (p, l, h) => {
-          await h.caption("Çətin sualı *komanda* götürür", { left: !tall(p) });
+          await h.caption("Çətin sualı *komanda* götürür", { box: threadBox(p) });
           await p.locator(RL_ROW[0]).first().click({ timeout: 8000 }).catch(() => {});
           await unscroll(p);
           await zoom(p, h, RL_THREAD);
-          await h.click(RL_ASSIGN);            // opens the picker — selecting would PATCH
+          await clickIf(p, h, RL_ASSIGN);      // opens the picker — selecting would PATCH
           await unscroll(p);
           await h.holdUntil(0.35);
           await p.keyboard.press("Escape").catch(() => {});
-          await h.click(RL_CONVERT);           // dialog open = read-only GET
+          await h.caption("");                 // the lead dialog fills the frame
+          await clickIf(p, h, RL_CONVERT);     // dialog open = read-only GET
           await unscroll(p);
           await h.holdUntil(0.85);
-          await h.click(RL_DIALOG_CANCEL);
+          await clickIf(p, h, RL_DIALOG_CANCEL);
         },
       },
       // 5 — Morning: analytics.
@@ -3537,9 +3549,11 @@ export default {
         },
         do: async (p, l, h) => {
           await h.caption("Səhər 7:24. *Hər söhbətə cavab verilib.*");
+          await waitFor(p, RL_FRT);
           await zoom(p, h, RL_FRT, 1.5);
           await h.moveTo(RL_FRT);
           await h.holdUntil(0.55);
+          await waitFor(p, RL_BY_CHANNEL, 5000);
           await zoom(p, h, RL_BY_CHANNEL, 1.5);
           await h.moveTo(RL_BY_CHANNEL);
         },
@@ -3552,7 +3566,7 @@ export default {
           ru: "WhatsApp, Telegram, TikTok, SMS, почта, чат на сайте и звонки — всё в одном инбоксе.",
         },
         do: async (p, l, h) => {
-          await h.caption("Bir gələnlər qutusu. *Bütün kanallar.*");
+          await h.caption("Bir gələnlər qutusu. *Bütün kanallar.*", { box: threadBox(p) });
           await zoom(p, h, RL_RAIL, 1.8);
           for (const [i, name] of RL_CHANNELS.entries()) {
             await h.moveTo(railItem(name));

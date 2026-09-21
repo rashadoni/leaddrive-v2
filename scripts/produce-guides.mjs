@@ -153,7 +153,7 @@ const GUIDE_CSS = [
   "@keyframes ldPilotPulse{to{transform:translate(-50%,-50%) scale(1.25);opacity:0;}}",
   // Marketing overlays (h.card / h.caption). Injected DOM only — the product is
   // never modified. Sizes use vmin so one scenario reads at 1:1 and 9:16 alike.
-  "#ld-reel-card{position:fixed;inset:0;z-index:2147483640;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2.4vmin;padding:8vmin;text-align:center;color:#fff;font-family:Inter,system-ui,sans-serif;animation:ldReelIn .45s ease-out both;}",
+  "#ld-reel-card{pointer-events:none;position:fixed;inset:0;z-index:2147483640;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2.4vmin;padding:8vmin;text-align:center;color:#fff;font-family:Inter,system-ui,sans-serif;animation:ldReelIn .45s ease-out both;}",
   "#ld-reel-card .t{font-size:8.2vmin;font-weight:800;line-height:1.08;letter-spacing:-.02em;max-width:88vmin;}",
   "#ld-reel-card .s{font-size:4.6vmin;font-weight:500;opacity:.88;max-width:84vmin;}",
   "#ld-reel-card img{height:11vmin;margin-bottom:1vmin;}",
@@ -161,7 +161,7 @@ const GUIDE_CSS = [
   "#ld-reel-card .u{font-size:3.4vmin;opacity:.8;letter-spacing:.02em;}",
   "#ld-reel-card .chips{display:flex;flex-wrap:wrap;justify-content:center;gap:1.4vmin;max-width:84vmin;}",
   "#ld-reel-card .chips span{padding:1vmin 2.4vmin;border-radius:999px;background:rgba(255,255,255,.14);font-size:3vmin;font-weight:600;}",
-  "#ld-reel-caption{position:fixed;left:50%;top:3.2vmin;z-index:2147483641;transform:translateX(-50%);max-width:90vw;padding:1.8vmin 3.6vmin;border-radius:2vmin;background:rgba(17,24,39,.9);color:#fff;font-family:Inter,system-ui,sans-serif;font-size:4.2vmin;font-weight:700;line-height:1.2;text-align:center;box-shadow:0 1.2vmin 3.6vmin rgba(15,23,42,.3);animation:ldReelIn .35s ease-out both;}",
+  "#ld-reel-caption{pointer-events:none;position:fixed;left:50%;top:3.2vmin;z-index:2147483641;transform:translateX(-50%);max-width:90vw;padding:1.8vmin 3.6vmin;border-radius:2vmin;background:rgba(17,24,39,.9);color:#fff;font-family:Inter,system-ui,sans-serif;font-size:4.2vmin;font-weight:700;line-height:1.2;text-align:center;box-shadow:0 1.2vmin 3.6vmin rgba(15,23,42,.3);animation:ldReelIn .35s ease-out both;}",
   "#ld-reel-caption em{font-style:normal;color:#FF7A3D;}",
   "@keyframes ldReelIn{from{opacity:0;transform:translate(var(--ld-tx,0),1.2vmin)}to{opacity:1;transform:translate(var(--ld-tx,0),0)}}",
   "#ld-reel-caption{--ld-tx:-50%;}",
@@ -980,22 +980,27 @@ function makeHelpers(page, scene) {
       }, { title, sub, cta, url, chips, logo, dim }).catch(() => {});
     },
     // Short headline pill at the top of the frame (subtitles own the bottom).
-    // `*word*` renders the word in the accent colour. `left: true` pins it to
-    // the top-left so it leaves a right-hand zone (e.g. the inbox thread) clear.
-    async caption(text, { left = false } = {}) {
-      await page.evaluate(({ t, left }) => {
+    // `*word*` renders the word in the accent colour. `box` moves it off the
+    // top centre onto an empty zone of the page, e.g. { left: "62vw", top:
+    // "42vh", width: "34vw" }. Overlays never take pointer events, so the
+    // scenario can keep clicking the page underneath.
+    async caption(text, { box = null } = {}) {
+      await page.evaluate(({ t, box }) => {
         document.getElementById("ld-reel-caption")?.remove();
         if (!t) return;
         const el = document.createElement("div");
         el.id = "ld-reel-caption";
-        if (left) { el.style.left = "11vmin"; el.style.setProperty("--ld-tx", "0"); el.style.maxWidth = "46vw"; }
+        if (box) {
+          el.style.setProperty("--ld-tx", "0");
+          el.style.left = box.left; el.style.top = box.top; el.style.maxWidth = box.width; el.style.width = box.width;
+        }
         for (const [i, part] of t.split("*").entries()) {
           const n = document.createElement(i % 2 ? "em" : "span");
           n.textContent = part;
           el.appendChild(n);
         }
         document.body.appendChild(el);
-      }, { t: text, left }).catch(() => {});
+      }, { t: text, box }).catch(() => {});
     },
     async clearOverlays() {
       await page.evaluate(() => { for (const id of ["ld-reel-card", "ld-reel-caption"]) document.getElementById(id)?.remove(); }).catch(() => {});
