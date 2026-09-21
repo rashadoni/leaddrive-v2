@@ -3548,7 +3548,7 @@
     "notRecorded": "не фиксируется",
     "noSendsYet": "Пока ничего не отправлено",
     "roiNoWonDeals": "нет выигранных сделок из кампаний",
-    "roiSeveralCurrencies": "сделки в разных валютах",
+    "roiCurrencyMismatch": "выручка в {revenue}, бюджет в {cost} — курсов для сравнения нет",
     "roiNoBudget": "бюджет не задан",
     "dataUnavailable": "Не удалось загрузить",
     "basedOnLatest": "По последним {count} (всего {total})",

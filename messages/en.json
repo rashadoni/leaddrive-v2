@@ -3548,7 +3548,7 @@
     "notRecorded": "not recorded",
     "noSendsYet": "Nothing sent yet",
     "roiNoWonDeals": "no won deals from campaigns",
-    "roiSeveralCurrencies": "deals in several currencies",
+    "roiCurrencyMismatch": "revenue in {revenue}, budget in {cost} — no exchange rates to compare",
     "roiNoBudget": "no budget set",
     "dataUnavailable": "Couldn't load",
     "basedOnLatest": "Based on the latest {count} (of {total})",

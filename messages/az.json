@@ -3548,7 +3548,7 @@
     "notRecorded": "qeydə alınmır",
     "noSendsYet": "Hələ heç nə göndərilməyib",
     "roiNoWonDeals": "kampaniyalardan qazanılmış sövdələşmə yoxdur",
-    "roiSeveralCurrencies": "sövdələşmələr bir neçə valyutadadır",
+    "roiCurrencyMismatch": "gəlir {revenue}, büdcə {cost} ilə — müqayisə üçün məzənnə yoxdur",
     "roiNoBudget": "büdcə təyin edilməyib",
     "dataUnavailable": "Yükləmək alınmadı",
     "basedOnLatest": "Son {count} qeyd üzrə (cəmi {total})",

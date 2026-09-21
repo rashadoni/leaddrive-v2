@@ -229,6 +229,8 @@ export default function CampaignsHelpAz() {
           addımı qeydə alan kanalın kampaniyaları üzrə hesablanır, ona görə SMS göndərişləri açılma
           faizini aşağı salmır. Rəqəmi heç bir qeyd saxlamırsa — hələ heç bir bounce qeydə alınmayıbsa
           və ya kampaniyaya bağlı qazanılmış sövdələşmə yoxdursa ROI — kartda «—» və səbəbi görünür.
+          ROI «Kampaniya ROI» səhifəsindəki eyni rəqəmdir: yalnız qazanılmış sövdələşmələr və
+          göndərilmiş kampaniyaların büdcələri bir valyutada olanda rəqəm görünür.
           «Ən yaxşı kampaniyalar» klik sayına görə sıralanır. «Seqmentlər», «Avtomatlaşdırma» və
           «Şablonlar» panelləri real seqmentlərinizi, zəncirlərinizi və e-poçt şablonlarınızı sayır,
           yoxdursa bunu yazır.
