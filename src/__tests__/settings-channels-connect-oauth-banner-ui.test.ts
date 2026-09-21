@@ -327,6 +327,72 @@ describe("Meta OAuth return banner", () => {
     })
   })
 
+  describe("a staged App Review connect", () => {
+    // Since PR #334 the callback hands back the staged row it wired, so this is the screen a staged
+    // connect lands on — the one recorded for Meta App Review. The row is exactly what
+    // ensureInboxChannelForPage({ staged: true }) stores: Page and token, inboxSubscribed:false, and the
+    // two markers that say nobody asked Meta for the subscription. It used to read "Meta refused the
+    // message subscription — run Connect with Meta again", about a request that was never made.
+    const stagedFacebookRow: ApiChannel = {
+      ...wiredFacebookRow,
+      id: "fb-staged",
+      configName: "Acme Page (App Review)",
+      settings: { inboxSubscribed: false, appReviewOnly: true, subscriptionPending: true },
+    }
+    const stagedInstagramRow: ApiChannel = {
+      ...wiredInstagramRow,
+      id: "ig-staged",
+      configName: "Acme Page / @acme (App Review)",
+      settings: { inboxSubscribed: false, appReviewOnly: true, subscriptionPending: true },
+    }
+
+    it("says connected for App Review, subscription not requested — no refusal, no reconnect, no congratulations", async () => {
+      await renderConnect(
+        "facebook",
+        "stage=connect&mode=existing&connected=facebook&pages=1&ig=0&channelId=fb-staged",
+        [stagedFacebookRow],
+      )
+      expect(tone()).toBe("warning")
+      expect(bannerTitle()).toBe("Connected for App Review — message subscription not requested yet")
+      expect(bannerReason()).toMatch(/^Delivery not confirmed\. This channel is connected for App Review only/)
+      expect(bannerReason()).toContain("Subscribe this Page explicitly")
+      for (const text of [bannerTitle(), bannerReason()]) {
+        expect(text).not.toContain("refused")
+        expect(text).not.toContain("Run Connect with Meta again")
+        expect(text).not.toContain("Channel connected")
+      }
+      // Same row, same sentence, wherever the user looks.
+      expect(formState()).toBe(bannerReason())
+    })
+
+    it("says the same about the Instagram half of a staged Facebook-login connect", async () => {
+      await renderConnect(
+        "instagram",
+        "stage=connect&mode=existing&connected=facebook&pages=1&ig=1&channelId=ig-staged",
+        [stagedInstagramRow],
+      )
+      expect(tone()).toBe("warning")
+      expect(bannerTitle()).toBe("Connected for App Review — message subscription not requested yet")
+      // The subscribe endpoint refuses an Instagram row; the sentence points at the linked Page.
+      expect(bannerReason()).toContain("linked Facebook Page")
+      expect(formState()).toBe(bannerReason())
+    })
+
+    it("still reports a refusal once the explicit subscribe has asked Meta and been refused", async () => {
+      // api/v1/social/oauth/subscribe deletes the marker whatever Meta answers. After a refusal the row is
+      // staged but no longer pending, and the refusal wording is the true one again.
+      await renderConnect(
+        "facebook",
+        "stage=connect&mode=existing&connected=facebook&pages=1&ig=0&channelId=fb-staged",
+        [{ ...stagedFacebookRow, settings: { inboxSubscribed: false, appReviewOnly: true } }],
+      )
+      expect(tone()).toBe("warning")
+      expect(bannerTitle()).toBe("Connected, but not delivering yet")
+      expect(bannerReason()).toContain("Meta refused the message subscription")
+      expect(formState()).toBe(bannerReason())
+    })
+  })
+
   describe("before the answer is known", () => {
     it("claims nothing while the channel list is still in flight", async () => {
       routeParams.channel = "facebook"

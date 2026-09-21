@@ -54,6 +54,7 @@ import {
   channelIsLiveConnection,
   type ChannelConnectionState,
 } from "@/lib/channels/live-connection"
+import { metaConnectionReason, metaSubscriptionPendingLabels } from "@/lib/channels/connection-reason"
 
 interface ChannelConfig {
   id: string
@@ -161,6 +162,11 @@ const copy = {
     cardReconnectBadge: "Reconnect needed",
     cardReconnectStatus: "Meta is not delivering messages",
     cardReconnectHint: "Meta refused the message subscription for this Page — usually a missing messaging permission — so DMs never reach Inbox. Run Connect with Meta again and approve every permission it asks for.",
+    // A staged App Review row that never asked Meta for its subscription. All three strings come from
+    // lib/channels/connection-reason, so the card, the form and the return banner cannot drift apart.
+    cardAppReviewBadge: metaSubscriptionPendingLabels("en").badge,
+    cardAppReviewStatus: metaSubscriptionPendingLabels("en").title,
+    cardAppReviewHint: metaConnectionReason("en", "subscriptionPending"),
     cardNewHint: "Open the guided setup. It shows what to prepare, what to paste, and how to test delivery.",
     cardRoadmapHint: "This provider is visible for planning, but connection is not enabled yet.",
     catalogFlowTitle: "How channel setup works",
@@ -325,6 +331,9 @@ const copy = {
     cardReconnectBadge: "Нужно переподключить",
     cardReconnectStatus: "Meta не доставляет сообщения",
     cardReconnectHint: "Meta отказала в подписке на сообщения этой страницы — обычно из-за не выданного разрешения на переписку — поэтому входящие не доходят до Inbox. Запустите «Подключить через Meta» ещё раз и подтвердите все запрошенные разрешения.",
+    cardAppReviewBadge: metaSubscriptionPendingLabels("ru").badge,
+    cardAppReviewStatus: metaSubscriptionPendingLabels("ru").title,
+    cardAppReviewHint: metaConnectionReason("ru", "subscriptionPending"),
     cardNewHint: "Откройте пошаговую настройку. Она покажет, что подготовить, какие ключи вставить и как проверить доставку.",
     cardRoadmapHint: "Провайдер показан для планирования, но подключение ещё не включено.",
     catalogFlowTitle: "Как работает подключение канала",
@@ -489,6 +498,9 @@ const copy = {
     cardReconnectBadge: "Yenidən qoşulmalıdır",
     cardReconnectStatus: "Meta mesajları çatdırmır",
     cardReconnectHint: "Meta bu səhifə üçün mesaj abunəliyini rədd edib — adətən yazışma icazəsi verilmədiyinə görə — ona görə DM-lər Inbox-a çatmır. «Meta ilə qoş» addımını yenidən işə salın və istənilən bütün icazələri təsdiqləyin.",
+    cardAppReviewBadge: metaSubscriptionPendingLabels("az").badge,
+    cardAppReviewStatus: metaSubscriptionPendingLabels("az").title,
+    cardAppReviewHint: metaConnectionReason("az", "subscriptionPending"),
     cardNewHint: "Addım-addım qurulmanı açın. Nə hazırlamaq, hansı açarları yazmaq və çatdırılmanı necə yoxlamaq göstərilir.",
     cardRoadmapHint: "Provayder planlama üçün görünür, amma qoşulma hələ aktiv deyil.",
     catalogFlowTitle: "Kanal qoşulması necə işləyir",
@@ -1448,12 +1460,16 @@ function channelLabel(channel: ChannelConfig) {
  * (needsReconnect → re-run OAuth and grant the messaging permission). Labelling all three "Draft"
  * would send two of the three users to the wrong fix. A fourth, claimedElsewhere, has no fix the user can
  * apply at all: another workspace connected the same account first and the webhook routes to it, so the
- * copy sends them to support instead of to a button.
+ * copy sends them to support instead of to a button. A fifth, subscriptionPending, is not a failure: a
+ * staged App Review connect deliberately asks Meta for nothing, so the row says "connected for App
+ * Review, message subscription not requested yet" instead of claiming a refusal and sending the user back
+ * through OAuth.
  */
 function cardBrokenBadge(c: (typeof copy)[LocaleKey], state: ChannelConnectionState, claimed: ClaimedElsewhereCopy) {
   if (state === "draft") return c.cardDraftBadge
   if (state === "paused") return c.cardPausedBadge
   if (state === "claimedElsewhere") return claimed.badge
+  if (state === "subscriptionPending") return c.cardAppReviewBadge
   if (state === "needsReconnect") return c.cardReconnectBadge
   return null
 }
@@ -1462,6 +1478,7 @@ function cardBrokenStatus(c: (typeof copy)[LocaleKey], state: ChannelConnectionS
   if (state === "draft") return c.cardDraftStatus
   if (state === "paused") return c.cardPausedStatus
   if (state === "claimedElsewhere") return claimed.status
+  if (state === "subscriptionPending") return c.cardAppReviewStatus
   if (state === "needsReconnect") return c.cardReconnectStatus
   return null
 }
@@ -1470,6 +1487,7 @@ function cardBrokenHint(c: (typeof copy)[LocaleKey], state: ChannelConnectionSta
   if (state === "draft") return c.cardDraftHint
   if (state === "paused") return c.cardPausedHint
   if (state === "claimedElsewhere") return claimed.hint
+  if (state === "subscriptionPending") return c.cardAppReviewHint
   if (state === "needsReconnect") return c.cardReconnectHint
   return null
 }

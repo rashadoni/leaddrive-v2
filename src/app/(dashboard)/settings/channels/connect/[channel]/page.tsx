@@ -34,7 +34,7 @@ import { ChannelConfigForm } from "@/components/channel-config-form"
 import { TikTokChannelHub } from "@/components/channels/tiktok-channel-hub"
 import { cn } from "@/lib/utils"
 import { channelConnectionState, channelIsLiveConnection } from "@/lib/channels/live-connection"
-import { metaConnectionReason } from "@/lib/channels/connection-reason"
+import { metaConnectionReason, metaSubscriptionPendingLabels } from "@/lib/channels/connection-reason"
 
 type Loc = "en" | "ru" | "az"
 type ConnectMode = "new" | "existing"
@@ -2791,10 +2791,14 @@ function ChannelConnectInner() {
         // has nothing left to fix.
         : oauthWiredForThisChannel && oauthBannerRowState === "claimedElsewhere"
           ? ts("channelClaimedElsewhere.title")
-          : oauthWiredForThisChannel
-            && (oauthBannerRowState === "paused" || oauthBannerRowState === "needsReconnect")
-            ? c.oauthNotDeliveringTitle
-            : c.oauthPartialTitle
+          // A staged (App Review) connect that did exactly what it is built to do: store the Page and ask
+          // Meta for nothing. Its own title says so, in the words the catalog card uses for the same row.
+          : oauthWiredForThisChannel && oauthBannerRowState === "subscriptionPending"
+            ? metaSubscriptionPendingLabels(loc).title
+            : oauthWiredForThisChannel
+              && (oauthBannerRowState === "paused" || oauthBannerRowState === "needsReconnect")
+              ? c.oauthNotDeliveringTitle
+              : c.oauthPartialTitle
   const oauthBannerDesc =
     oauthBannerTone === "pending"
       ? (channelsError ? c.oauthUnverifiedDesc : c.oauthCheckingDesc)

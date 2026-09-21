@@ -3,9 +3,11 @@ import {
   channelConnectionState,
   channelIsLiveConnection,
   metaInboxSubscribedFlag,
+  metaSubscriptionDeferred,
   type ChannelConnectionInput,
   type ChannelConnectionState,
 } from "@/lib/channels/live-connection"
+import { metaConnectionReason, metaSubscriptionPendingLabels } from "@/lib/channels/connection-reason"
 
 /**
  * The predicate that decides whether the UI is allowed to say "Connected". It used to live inline in
@@ -90,6 +92,57 @@ const rows: Row[] = [
   {
     name: "instagram row whose subscribe failed",
     channel: { ...liveMetaRow, channelType: "instagram", settings: { inboxSubscribed: false } },
+    state: "needsReconnect",
+  },
+  // A STAGED (App Review) connect deliberately asks Meta for nothing: ensureInboxChannelForPage writes
+  // inboxSubscribed:false next to appReviewOnly + subscriptionPending. That false is not a refusal, and the
+  // row is not live either — no DM arrives until the Page is subscribed explicitly.
+  {
+    name: "staged connect: the subscription was deliberately never requested",
+    channel: {
+      ...liveMetaRow,
+      settings: { inboxSubscribed: false, appReviewOnly: true, subscriptionPending: true },
+    },
+    state: "subscriptionPending",
+  },
+  {
+    name: "the Instagram half of a staged Facebook-login connect carries the same markers",
+    channel: {
+      ...liveMetaRow,
+      channelType: "instagram",
+      settings: { inboxSubscribed: false, appReviewOnly: true, subscriptionPending: true },
+    },
+    state: "subscriptionPending",
+  },
+  {
+    name: "staged row after the explicit subscribe asked Meta and was refused (the marker is gone)",
+    channel: { ...liveMetaRow, settings: { inboxSubscribed: false, appReviewOnly: true } },
+    state: "needsReconnect",
+  },
+  {
+    name: "staged row after the explicit subscribe succeeded",
+    channel: { ...liveMetaRow, settings: { inboxSubscribed: true, appReviewOnly: true } },
+    state: "live",
+  },
+  {
+    name: "a later live connect subscribed the staged row before the marker was cleaned up — the flag wins",
+    channel: {
+      ...liveMetaRow,
+      settings: { inboxSubscribed: true, appReviewOnly: true, subscriptionPending: true },
+    },
+    state: "live",
+  },
+  {
+    name: "a stray marker on a row that is not staged does not soften a real refusal",
+    channel: { ...liveMetaRow, settings: { inboxSubscribed: false, subscriptionPending: true } },
+    state: "needsReconnect",
+  },
+  {
+    name: "markers stored as strings are not the markers this project writes",
+    channel: {
+      ...liveMetaRow,
+      settings: { inboxSubscribed: false, appReviewOnly: "true", subscriptionPending: "true" },
+    },
     state: "needsReconnect",
   },
   {
@@ -197,6 +250,12 @@ describe("channelConnectionState", () => {
     // An unwired or switched-off row still gets the fix it can act on first.
     expect(channelConnectionState({ ...liveMetaRow, hasAccessToken: false, claimedElsewhere: true })).toBe("draft")
     expect(channelConnectionState({ ...liveMetaRow, isActive: false, claimedElsewhere: true })).toBe("paused")
+    // A staged row whose subscription is pending gets the same precedence as a refused one: wiring, the
+    // switch and a winning claim elsewhere all come first, because subscribing cannot fix any of them.
+    const staged = { inboxSubscribed: false, appReviewOnly: true, subscriptionPending: true }
+    expect(channelConnectionState({ ...liveMetaRow, hasAccessToken: false, settings: staged })).toBe("draft")
+    expect(channelConnectionState({ ...liveMetaRow, isActive: false, settings: staged })).toBe("paused")
+    expect(channelConnectionState({ ...liveMetaRow, claimedElsewhere: true, settings: staged })).toBe("claimedElsewhere")
   })
 })
 
@@ -254,5 +313,64 @@ describe("metaInboxSubscribedFlag", () => {
     for (const row of rowsToCheck) {
       expect(metaInboxSubscribedFlag(row.settings) === false).toBe(row.needsReconnect)
     }
+  })
+})
+
+describe("metaSubscriptionDeferred", () => {
+  it("needs both markers a staged connect writes, as real booleans", () => {
+    expect(metaSubscriptionDeferred({ appReviewOnly: true, subscriptionPending: true })).toBe(true)
+    expect(metaSubscriptionDeferred({ appReviewOnly: true })).toBe(false)
+    expect(metaSubscriptionDeferred({ subscriptionPending: true })).toBe(false)
+    expect(metaSubscriptionDeferred({ appReviewOnly: true, subscriptionPending: "true" })).toBe(false)
+    expect(metaSubscriptionDeferred(null)).toBe(false)
+    expect(metaSubscriptionDeferred([{ appReviewOnly: true, subscriptionPending: true }])).toBe(false)
+  })
+})
+
+describe("the words for a staged row whose subscription is pending", () => {
+  // Every screen prints these for the state (the return banner, the form, the catalog card and the
+  // "other channels" row), so what matters is what they can and cannot make the reader believe.
+  // What LeadDrive knows about such a row is that IT never asked Meta for the subscription. It cannot see a
+  // subscription made by hand on Meta's side — the review Page had one on 2026-09-21 and was receiving DMs —
+  // so the words may claim neither delivery nor its absence: the verdict is "unconfirmed".
+  const cases = [
+    { locale: "en", verdict: "Delivery not confirmed.", refusal: /refused/i, notRequested: "not requested yet" },
+    { locale: "ru", verdict: "Доставка не подтверждена.", refusal: /отказал/i, notRequested: "ещё не запрошена" },
+    { locale: "az", verdict: "Çatdırılma təsdiqlənməyib.", refusal: /rədd/i, notRequested: "hələ istənilməyib" },
+  ]
+
+  for (const { locale, verdict, refusal, notRequested } of cases) {
+    it(`${locale}: says App Review and not requested, and never claims Meta refused anything`, () => {
+      const sentence = metaConnectionReason(locale, "subscriptionPending")
+      const { title, badge } = metaSubscriptionPendingLabels(locale)
+      // Leads with the verdict, so no reading of it can come away with "connected, messages arrive".
+      expect(sentence.startsWith(verdict)).toBe(true)
+      expect(title).toContain(notRequested)
+      for (const text of [sentence, title, badge]) {
+        expect(text).toContain("App Review")
+        expect(text).not.toMatch(refusal)
+      }
+      // The refusal wording still exists — for the rows it is true of.
+      expect(metaConnectionReason(locale, "needsReconnect")).toMatch(refusal)
+    })
+  }
+
+  it("claims no delivery either way in English — neither the live row's promise nor the refused row's denial", () => {
+    const sentence = metaConnectionReason("en", "subscriptionPending")
+    expect(sentence).not.toContain("inbound messages reach Inbox")
+    expect(sentence).not.toContain("never reach Inbox")
+    expect(sentence).not.toMatch(/^Connected\./)
+  })
+
+  it("tells an Instagram account to go through its linked Facebook Page", () => {
+    // api/v1/social/oauth/subscribe answers 400 for an instagram row: IG Direct rides the Page.
+    expect(metaConnectionReason("en", "subscriptionPending")).toContain("linked Facebook Page")
+    expect(metaConnectionReason("ru", "subscriptionPending")).toContain("страниц")
+    expect(metaConnectionReason("az", "subscriptionPending")).toContain("Facebook səhifəsində")
+  })
+
+  it("falls back to English for a locale it does not know", () => {
+    expect(metaConnectionReason("de", "subscriptionPending")).toBe(metaConnectionReason("en", "subscriptionPending"))
+    expect(metaSubscriptionPendingLabels("de")).toEqual(metaSubscriptionPendingLabels("en"))
   })
 })
