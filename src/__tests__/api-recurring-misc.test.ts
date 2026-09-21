@@ -20,7 +20,7 @@ vi.mock("@/lib/prisma", () => ({
       findFirst: vi.fn(),
     },
     campaignInfluence: {
-      groupBy: vi.fn(),
+      findMany: vi.fn(),
     },
     pipelineStage: {
       findMany: vi.fn(),
@@ -96,7 +96,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(getOrgId).mockResolvedValue("org-1")
   vi.mocked(prisma.attributionModel.findFirst).mockResolvedValue(null as never)
-  vi.mocked(prisma.campaignInfluence.groupBy).mockResolvedValue([] as never)
+  vi.mocked(prisma.campaignInfluence.findMany).mockResolvedValue([] as never)
   vi.mocked(prisma.pipelineStage.findMany).mockResolvedValue([] as never)
   vi.mocked(prisma.task.updateMany).mockResolvedValue({ count: 0 } as never)
 })
@@ -218,8 +218,8 @@ describe("GET /api/v1/campaign-roi", () => {
         sentAt: new Date(),
         createdAt: new Date(),
         deals: [
-          { id: "d1", name: "Deal A", stage: "WON", valueAmount: 5000, currency: "USD" },
-          { id: "d2", name: "Deal B", stage: "NEGOTIATION", valueAmount: 2000, currency: "USD" },
+          { id: "d1", name: "Deal A", stage: "WON", valueAmount: 5000, currency: "AZN" },
+          { id: "d2", name: "Deal B", stage: "NEGOTIATION", valueAmount: 2000, currency: "AZN" },
         ],
       },
     ] as never)
@@ -228,10 +228,10 @@ describe("GET /api/v1/campaign-roi", () => {
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.success).toBe(true)
-    expect(json.data.campaigns[0].revenue).toBe(5000)
+    expect(json.data.campaigns[0].revenue).toEqual([{ currency: "AZN", value: 5000, count: 1 }])
     expect(json.data.campaigns[0].wonDeals).toBe(1)
-    expect(json.data.campaigns[0].roi).toBe(400) // (5000-1000)/1000 * 100
-    expect(json.data.summary.totalRevenue).toBe(5000)
+    expect(json.data.campaigns[0].roi).toEqual({ kind: "value", percent: 400, currency: "AZN" }) // (5000-1000)/1000 * 100
+    expect(json.data.summary.revenue).toEqual([{ currency: "AZN", value: 5000, count: 1 }])
   })
 })
 

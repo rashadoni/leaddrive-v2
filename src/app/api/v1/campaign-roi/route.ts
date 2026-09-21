@@ -3,6 +3,29 @@ import { prisma } from "@/lib/prisma"
 import { decimalToNumber } from "@/lib/prisma-decimal"
 import { withRls } from "@/lib/with-rls"
 import { orgStageVocabulary } from "@/lib/deal-stage-vocabulary"
+import {
+  CAMPAIGN_BUDGET_CURRENCY,
+  campaignCost,
+  campaignLaunched,
+  mergeBuckets,
+  revenueBuckets,
+  roiVerdict,
+} from "@/lib/campaigns/roi"
+
+type CampaignRow = {
+  id: string
+  name: string
+  status: string
+  type: string
+  budget: number
+  totalRecipients: number
+  totalSent: number
+  totalOpened: number
+  totalClicked: number
+  sentAt: Date | null
+  createdAt: Date
+  deals: { id: string; name: string; stage: string; valueAmount: unknown; currency: string | null }[]
+}
 
 export const GET = withRls(async (_req, { orgId }) => {
 
@@ -29,43 +52,51 @@ export const GET = withRls(async (_req, { orgId }) => {
     // full value). The attribution engine instead splits each won deal's revenue
     // across every campaign that touched it. Surface that as a parallel
     // `attributedRevenue` per campaign from the org's default (or latest active)
-    // attribution model's influences — non-breaking: direct fields stay intact.
+    // attribution model's influences, grouped by currency like the direct figure.
     const model = await prisma.attributionModel.findFirst({
       where: { organizationId: orgId, status: { not: "archived" } },
       orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
       select: { id: true, name: true, modelType: true },
     })
-    const attrByCampaign = new Map<string, number>()
+    // Attributed revenue is a share of a deal's value, so it is in that deal's
+    // currency — read it per influence with the deal's currency and bucket it,
+    // instead of a groupBy that would add AZN shares to USD shares.
+    const attrByCampaign = new Map<string, { valueAmount: number; currency: string | null }[]>()
     if (model) {
-      const grouped = await prisma.campaignInfluence.groupBy({
-        by: ["campaignId"],
+      const influences = await prisma.campaignInfluence.findMany({
         // #18 — realized (won) only; ROI must reflect closed revenue, not the
         // probability-weighted pipeline projection.
         where: { organizationId: orgId, modelId: model.id, kind: "won" },
-        _sum: { attributedRevenue: true },
+        select: { campaignId: true, attributedRevenue: true, deal: { select: { currency: true } } },
       })
-      for (const g of grouped as { campaignId: string; _sum: { attributedRevenue: unknown } }[]) {
-        attrByCampaign.set(g.campaignId, decimalToNumber(g._sum.attributedRevenue))
+      for (const inf of influences as { campaignId: string; attributedRevenue: unknown; deal: { currency: string | null } | null }[]) {
+        const rows = attrByCampaign.get(inf.campaignId) ?? []
+        rows.push({ valueAmount: decimalToNumber(inf.attributedRevenue), currency: inf.deal?.currency ?? null })
+        attrByCampaign.set(inf.campaignId, rows)
       }
     }
 
-    // Resolve won stages the SAME way the recompute worker does (PipelineStage
-    // .isWon ∪ "WON"), so the direct revenue and the attributed overlay are
-    // computed over the same deal set even for orgs with custom won stages.
     /*
-     * `wonStageNames` alone is configured stages ∪ the literal "WON", which
-     * still misses `CLOSED_WON` and other stored spellings. The vocabulary
-     * resolves what the org actually holds.
+     * Won stages come from what the org actually stores (configured isWon
+     * stages, `WON`, `CLOSED_WON`, localized spellings) — the same resolution
+     * the attribution recompute uses, so direct and attributed revenue are
+     * computed over the same deal set.
      */
     const wonNames = new Set((await orgStageVocabulary(orgId)).wonStages)
 
-    const data = campaigns.map((c: any) => {
-      const wonDeals = c.deals.filter((d: any) => wonNames.has(d.stage))
-      const revenue = wonDeals.reduce((sum: number, d: any) => sum + decimalToNumber(d.valueAmount), 0)
-      const cost = c.budget || 0
-      const roi = cost > 0 ? ((revenue - cost) / cost) * 100 : 0
-      const attributedRevenue = attrByCampaign.get(c.id) ?? 0
-      const attributedRoi = cost > 0 ? ((attributedRevenue - cost) / cost) * 100 : 0
+    const data = (campaigns as unknown as CampaignRow[]).map((c) => {
+      const deals = c.deals.map((d) => ({
+        id: d.id,
+        name: d.name,
+        stage: d.stage,
+        amount: decimalToNumber(d.valueAmount),
+        currency: String(d.currency || CAMPAIGN_BUDGET_CURRENCY).toUpperCase(),
+      }))
+      const wonDeals = deals.filter((d) => wonNames.has(d.stage))
+      const revenue = revenueBuckets(wonDeals.map((d) => ({ valueAmount: d.amount, currency: d.currency })))
+      const attributedRevenue = revenueBuckets(attrByCampaign.get(c.id) ?? [])
+      const launched = campaignLaunched(c)
+      const cost = { currency: CAMPAIGN_BUDGET_CURRENCY, value: campaignCost(c) }
       return {
         id: c.id,
         name: c.name,
@@ -77,40 +108,43 @@ export const GET = withRls(async (_req, { orgId }) => {
         totalOpened: c.totalOpened,
         totalClicked: c.totalClicked,
         sentAt: c.sentAt,
+        launched,
+        /** Won-deal revenue per currency, largest first. */
         revenue,
         attributedRevenue,
-        attributedRoi,
-        totalDeals: c.deals.length,
+        /** Budget counted as cost — 0 until the campaign has gone out. */
+        cost,
+        roi: roiVerdict(revenue, cost, { launched }),
+        attributedRoi: roiVerdict(attributedRevenue, cost, { launched }),
+        totalDeals: deals.length,
         wonDeals: wonDeals.length,
-        roi,
         createdAt: c.createdAt,
-        deals: c.deals.map((d: any) => ({
-          id: d.id,
-          name: d.name,
-          stage: d.stage,
-          amount: decimalToNumber(d.valueAmount),
-          currency: d.currency,
-        })),
+        deals,
       }
     })
 
-    const totalRevenue = data.reduce((s: number, c: any) => s + c.revenue, 0)
-    const totalCost = data.reduce((s: number, c: any) => s + c.budget, 0)
-    const totalRoi = totalCost > 0 ? ((totalRevenue - totalCost) / totalCost) * 100 : 0
-    const totalAttributedRevenue = data.reduce((s: number, c: any) => s + c.attributedRevenue, 0)
-    const totalAttributedRoi = totalCost > 0 ? ((totalAttributedRevenue - totalCost) / totalCost) * 100 : 0
+    const totalRevenue = mergeBuckets(data.map((c) => c.revenue))
+    const totalAttributedRevenue = mergeBuckets(data.map((c) => c.attributedRevenue))
+    const launchedCount = data.filter((c) => c.launched).length
+    const totalCost = {
+      currency: CAMPAIGN_BUDGET_CURRENCY,
+      value: data.reduce((s, c) => s + c.cost.value, 0),
+    }
 
     return NextResponse.json({
       success: true,
       data: {
         campaigns: data,
         summary: {
-          totalRevenue,
-          totalCost,
-          totalRoi,
+          revenue: totalRevenue,
+          cost: totalCost,
+          /** What `cost` is made of, so a screen can say it rather than imply spend. */
+          costBasis: "budget-of-launched",
+          roi: roiVerdict(totalRevenue, totalCost),
+          attributedRevenue: totalAttributedRevenue,
+          attributedRoi: roiVerdict(totalAttributedRevenue, totalCost),
           campaignCount: data.length,
-          totalAttributedRevenue,
-          totalAttributedRoi,
+          launchedCount,
           attributionModel: model ? { name: model.name, modelType: model.modelType } : null,
         },
       },
