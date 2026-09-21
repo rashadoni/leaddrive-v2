@@ -757,7 +757,6 @@ export default function MtmVisitsPage() {
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <h2 id="visit-history-title" className="text-lg font-semibold text-foreground">{t("historyTitle")}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{t("historyHint")}</p>
             </div>
             <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1 sm:flex" role="group" aria-label={t("rangeLabel")}>
               {HISTORY_RANGES.map((range) => (

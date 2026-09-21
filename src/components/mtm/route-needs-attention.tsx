@@ -72,7 +72,6 @@ export function MtmRouteNeedsAttention({ active, orgId, refreshVersion }: RouteN
             </span>
             <h2 id="mtm-needs-attention-heading" className="text-base font-semibold">{t("needsAttentionTitle")}</h2>
           </div>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{t("needsAttentionDescription")}</p>
         </div>
         {!loading && !failed ? (
           <p className="shrink-0 text-sm font-medium" aria-live="polite">

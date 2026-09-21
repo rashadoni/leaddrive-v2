@@ -459,7 +459,6 @@ export function MtmRoutePlanningMatrix({
 
                         <section aria-labelledby={`picker-${day.date}`}>
                           <h3 id={`picker-${day.date}`} className="font-semibold">{t("weekPlannerAddTitle")}</h3>
-                          <p className="mt-0.5 text-xs text-muted-foreground">{t("weekPlannerAddHint")}</p>
                           <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label={t("weekPlannerTargetType")}>
                             {enabledTargetTypes.map((target) => (
                               <Button

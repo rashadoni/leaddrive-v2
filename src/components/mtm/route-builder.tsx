@@ -1835,7 +1835,6 @@ export function MtmRouteBuilder({
             <div className="mb-2 flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-lg font-semibold">{t("stepAddCustomers")}</h3>
-                <p className="mt-0.5 text-sm text-muted-foreground">{t("stepAddCustomersHint")}</p>
               </div>
               <span className="text-xs tabular-nums text-muted-foreground">{t("stopCount", { count: stops.length })}</span>
             </div>

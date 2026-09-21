@@ -245,7 +245,6 @@ export function MtmRouteWeekPlan({
       <div className="flex flex-col gap-2 border-b border-zinc-200 px-3 py-2 dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-base font-semibold">{t("weekPlanTitle")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("weekPlanHint")}</p>
           {rangeLoading ? <p role="status" className="mt-1 text-xs text-muted-foreground">{t("weekLoading")}</p> : null}
           {rangeError ? (
             <div role="alert" className="mt-1 flex flex-wrap items-center gap-2 text-xs text-amber-700 dark:text-amber-300">
