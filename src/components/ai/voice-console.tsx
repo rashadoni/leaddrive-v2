@@ -21,6 +21,18 @@ import {
 } from "@/lib/ai/voice/tool-budget"
 import { VOICE_TOOL_NAMES, type VoiceToolName } from "@/lib/ai/voice/read-tools"
 import {
+  createConfirmationGate,
+  VOICE_RECEIPT_COMMAND_EVENT,
+  VOICE_RECEIPT_OUTCOME_EVENT,
+  VOICE_RECEIPT_STATE_EVENT,
+  VOICE_DRAFT_SHOWN,
+  voiceOutcomeMessage,
+  type ConfirmationGate,
+  type VoiceReceiptCommandDetail,
+  type VoiceReceiptOutcomeDetail,
+  type VoiceReceiptStateDetail,
+} from "@/lib/ai/voice/voice-confirmation"
+import {
   diagnoseMicrophoneFailure,
   microphoneMessageKey,
   readMicrophoneEnvironment,
@@ -299,6 +311,9 @@ function ConsoleInner({
   const cancelledToolCallsRef = useRef(new Set<string>())
   const flushPendingToolResponsesRef = useRef<(generation: number) => void>(() => {})
   const playbackActiveRef = useRef(false)
+  // Hears the user's own "да" to a receipt on screen. Decided here, from the
+  // microphone transcript — never by the model (see voice-confirmation.ts).
+  const confirmationGateRef = useRef<ConfirmationGate>(createConfirmationGate())
   const generationInProgressRef = useRef(false)
   const executeToolRef = useRef<(name: string, args: unknown, toolCallId?: string) => Promise<string>>(async () => UNAVAILABLE)
 
@@ -476,7 +491,7 @@ function ConsoleInner({
       // The receipt surface owns its own data; tell it to re-read rather than
       // handing it a payload from here.
       window.dispatchEvent(new CustomEvent(VOICE_RECEIPT_CHANGED_EVENT))
-      return "OK: черновик показан на экране. Скажи пользователю, что нужно нажать кнопку подтверждения — без нажатия в CRM ничего не записано."
+      return VOICE_DRAFT_SHOWN
     } catch {
       trace("propose", { tool }, "error")
       return "ERROR: не удалось подготовить черновик. Ничего не сохранено."
@@ -595,6 +610,7 @@ function ConsoleInner({
     pendingToolResponsesRef.current.clear()
     cancelledToolCallsRef.current.clear()
     playbackActiveRef.current = false
+    confirmationGateRef.current = createConfirmationGate()
     generationInProgressRef.current = false
     setActive(false)
     setIsSpeaking(false)
@@ -751,6 +767,7 @@ function ConsoleInner({
     const transcript = geminiInputTranscript(message)
     if (transcript) {
       const wasConfirmedSpeech = confirmedSpeechActiveRef.current
+      confirmationGateRef.current.userSpeech(transcript.text, Date.now())
       transcriptDraftRef.current = `${transcriptDraftRef.current}${transcript.text}`.slice(-TRANSCRIPT_PREVIEW_LIMIT)
       setTranscriptionWarning(false)
       if (transcript.finished) {
@@ -787,6 +804,7 @@ function ConsoleInner({
       trace("voice_audio_event", { event: "provider_interrupted" }, "provider_interrupted")
       audioPipelineRef.current?.playbackNode.port.postMessage({ type: "interrupt", generation })
       playbackActiveRef.current = false
+      confirmationGateRef.current.setAssistantSpeaking(false, Date.now())
       generationInProgressRef.current = false
       setIsSpeaking(false)
       if (transcript?.finished) {
@@ -819,6 +837,7 @@ function ConsoleInner({
       confirmedSpeechActiveRef.current = false
       clearUtteranceWatchdog()
       playbackActiveRef.current = true
+      confirmationGateRef.current.setAssistantSpeaking(true, Date.now())
       generationInProgressRef.current = true
       nudgedRef.current = false
       setIsSpeaking(true)
@@ -852,6 +871,19 @@ function ConsoleInner({
       // The answer is finished, so the next one gets a fresh per-turn
       // allowance. The session and proposal counts deliberately carry over.
       toolBudgetRef.current.endTurn()
+      // The model has answered whatever the user just said, so that utterance
+      // is complete: the provider never marks it finished itself.
+      const decision = confirmationGateRef.current.assistantFinishedTurn(Date.now())
+      if (decision.action !== "ignore") {
+        trace("voice_audio_event", { event: `voice_${decision.action}` }, `voice_${decision.action}`)
+        window.dispatchEvent(new CustomEvent<VoiceReceiptCommandDetail>(VOICE_RECEIPT_COMMAND_EVENT, {
+          detail: { command: decision.action, receiptId: decision.receiptId },
+        }))
+      } else if (!["no_utterance", "no_receipt", "not_an_answer"].includes(decision.reason)) {
+        // A yes or no was heard and deliberately not acted on. Worth a trace:
+        // it is exactly what the owner will ask about after a test.
+        trace("voice_audio_event", { event: "voice_answer_ignored" }, `voice_ignored_${decision.reason}`)
+      }
       clearResponseWatchdog()
       nudgedRef.current = false
       setPhase("listening")
@@ -958,6 +990,7 @@ function ConsoleInner({
       if (generationRef.current !== generation || event.data?.generation !== generation) return
       if (event.data?.type === "drained") {
         playbackActiveRef.current = false
+        confirmationGateRef.current.setAssistantSpeaking(false, Date.now())
         setIsSpeaking(false)
         trace("voice_audio_event", { event: "playback_drained" }, "playback_drained")
       }
@@ -1290,6 +1323,27 @@ function ConsoleInner({
       window.clearInterval(idle)
     }
   }, [session, stop, t])
+
+  // Voice confirmation: the receipt surface says which draft is waiting for an
+  // answer, and reports how it ended so the model can say it out loud.
+  useEffect(() => {
+    const onState = (event: Event) => {
+      const detail = (event as CustomEvent<VoiceReceiptStateDetail>).detail
+      confirmationGateRef.current.setPendingReceipt(detail?.receiptId ?? null, Date.now())
+    }
+    const onOutcome = (event: Event) => {
+      const detail = (event as CustomEvent<VoiceReceiptOutcomeDetail>).detail
+      const live = liveSessionRef.current
+      if (!detail || !live || !sessionRef.current) return
+      try { live.sendRealtimeInput({ text: voiceOutcomeMessage(detail) }) } catch { /* socket closing */ }
+    }
+    window.addEventListener(VOICE_RECEIPT_STATE_EVENT, onState)
+    window.addEventListener(VOICE_RECEIPT_OUTCOME_EVENT, onOutcome)
+    return () => {
+      window.removeEventListener(VOICE_RECEIPT_STATE_EVENT, onState)
+      window.removeEventListener(VOICE_RECEIPT_OUTCOME_EVENT, onOutcome)
+    }
+  }, [])
 
   const armedOnce = useRef(false)
   useEffect(() => {

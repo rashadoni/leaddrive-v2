@@ -6,6 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { VoiceReceiptSurface } from "@/components/ai/voice-receipt-surface"
 import { VOICE_STATUS_LAYER_ID } from "@/components/ai/voice-inline-status"
+import {
+  VOICE_RECEIPT_COMMAND_EVENT,
+  VOICE_RECEIPT_OUTCOME_EVENT,
+  VOICE_RECEIPT_STATE_EVENT,
+  type VoiceReceiptOutcomeDetail,
+} from "@/lib/ai/voice/voice-confirmation"
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean })
   .IS_REACT_ACT_ENVIRONMENT = true
@@ -301,7 +307,7 @@ describe("what the receipt shows", () => {
     expect(link?.getAttribute("href")).toBe("/leads/lead-9")
   })
 
-  it("states that nothing happens until the button is pressed", async () => {
+  it("states that nothing happens until the user says yes or presses the button", async () => {
     fetchMock.mockReturnValue(jsonResponse(serverReceipt()))
     await render(createElement(VoiceReceiptSurface, { voiceSessionId: SESSION }))
     expect(text("voice-receipt-press-notice")).toBe("receipt.pressNotice")
@@ -581,5 +587,112 @@ describe("correcting a draft without re-dictating it", () => {
 
     expect(panel()?.dataset.outcome).toBe("stale")
     expect(text("voice-receipt-outcome")).toBe("receipt.result.stale")
+  })
+})
+
+/**
+ * Confirming by voice (owner decision, 2026-09-21). The console decides that
+ * the user answered; this component only executes, through exactly the same
+ * path as the button — one-time proof, then commit, with the double-press
+ * guard — and only for the draft that is waiting on screen.
+ */
+describe("answering the draft by voice", () => {
+  const states: (string | null)[] = []
+  const outcomes: VoiceReceiptOutcomeDetail[] = []
+  const onState = (event: Event) => states.push((event as CustomEvent).detail.receiptId)
+  const onOutcome = (event: Event) => outcomes.push((event as CustomEvent).detail)
+
+  beforeEach(() => {
+    states.length = 0
+    outcomes.length = 0
+    window.addEventListener(VOICE_RECEIPT_STATE_EVENT, onState)
+    window.addEventListener(VOICE_RECEIPT_OUTCOME_EVENT, onOutcome)
+  })
+  afterEach(() => {
+    window.removeEventListener(VOICE_RECEIPT_STATE_EVENT, onState)
+    window.removeEventListener(VOICE_RECEIPT_OUTCOME_EVENT, onOutcome)
+  })
+
+  async function say(command: "confirm" | "cancel", receiptId = "intent-1") {
+    await act(async () => {
+      window.dispatchEvent(new CustomEvent(VOICE_RECEIPT_COMMAND_EVENT, { detail: { command, receiptId } }))
+    })
+  }
+
+  it("announces the draft that is waiting for an answer", async () => {
+    fetchMock.mockReturnValue(jsonResponse(serverReceipt()))
+    await render(createElement(VoiceReceiptSurface, { voiceSessionId: SESSION }))
+    expect(states.at(-1)).toBe("intent-1")
+  })
+
+  it("executes a spoken yes exactly as a press", async () => {
+    fetchMock
+      .mockReturnValueOnce(jsonResponse(serverReceipt()))
+      .mockReturnValueOnce(proofResponse())
+      .mockReturnValueOnce(commitResponse())
+    await render(createElement(VoiceReceiptSurface, { voiceSessionId: SESSION }))
+    await say("confirm")
+
+    expect(postCalls().map(([url]) => url)).toEqual([
+      "/api/v1/ai/voice/actions/intent-1/confirmation",
+      "/api/v1/ai/voice/actions/intent-1/commit",
+    ])
+    expect(JSON.parse(String(postCalls()[0][1].body))).toEqual({
+      expectedRevision: 3,
+      payloadHash: "a".repeat(64),
+      confirmed: true,
+    })
+    expect(panel()?.dataset.outcome).toBe("succeeded")
+    // The model hears how it ended — and only enums, never record text.
+    expect(outcomes).toEqual([{ receiptId: "intent-1", kind: "succeeded", entityType: "lead", via: "voice" }])
+    // Settled: nothing is waiting for an answer any more.
+    expect(states.at(-1)).toBeNull()
+  })
+
+  it("cancels on a spoken no", async () => {
+    fetchMock
+      .mockReturnValueOnce(jsonResponse(serverReceipt()))
+      .mockReturnValueOnce(jsonResponse({ id: "intent-1", state: "cancelled" }))
+    await render(createElement(VoiceReceiptSurface, { voiceSessionId: SESSION }))
+    await say("cancel")
+
+    expect(panel()).toBeNull()
+    expect(postCalls().map(([url]) => url)).toEqual(["/api/v1/ai/voice/actions/intent-1/cancel"])
+    expect(outcomes).toEqual([{ receiptId: "intent-1", kind: "cancelled", via: "voice" }])
+  })
+
+  // A yes aimed at a draft that was replaced must not land on its successor.
+  it("ignores an answer meant for another draft", async () => {
+    fetchMock.mockReturnValue(jsonResponse(serverReceipt()))
+    await render(createElement(VoiceReceiptSurface, { voiceSessionId: SESSION }))
+    await say("confirm", "intent-0")
+    expect(postCalls()).toHaveLength(0)
+  })
+
+  // The form is open: what is on screen is not what the server holds.
+  it("ignores an answer while the user is editing the draft", async () => {
+    fetchMock.mockReturnValue(jsonResponse(serverReceipt()))
+    await render(createElement(VoiceReceiptSurface, { voiceSessionId: SESSION }))
+    await click("voice-receipt-edit")
+    expect(states.at(-1)).toBeNull()
+    await say("confirm")
+    expect(postCalls()).toHaveLength(0)
+  })
+
+  it("tells the model about a press too, so it does not ask again", async () => {
+    fetchMock
+      .mockReturnValueOnce(jsonResponse(serverReceipt()))
+      .mockReturnValueOnce(proofResponse())
+      .mockReturnValueOnce(commitResponse())
+    await render(createElement(VoiceReceiptSurface, { voiceSessionId: SESSION }))
+    await click("voice-receipt-confirm")
+    expect(outcomes).toEqual([{ receiptId: "intent-1", kind: "succeeded", entityType: "lead", via: "button" }])
+  })
+
+  it("withdraws the waiting draft when it leaves the screen", async () => {
+    fetchMock.mockReturnValue(jsonResponse(serverReceipt()))
+    await render(createElement(VoiceReceiptSurface, { voiceSessionId: SESSION }))
+    await click("voice-receipt-dismiss")
+    expect(states.at(-1)).toBeNull()
   })
 })

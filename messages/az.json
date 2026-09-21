@@ -24167,7 +24167,7 @@
       "emptyValue": "—",
       "yes": "Bəli",
       "no": "Xeyr",
-      "pressNotice": "Düyməni basmayana qədər CRM-ə heç nə yazılmır. Səslə deyilən «hə» sayılmır.",
+      "pressNotice": "Assistent soruşanda «hə» deyin və ya düyməni basın. O vaxta qədər CRM-ə heç nə yazılmır.",
       "cancel": "Ləğv et",
       "retry": "Yenidən cəhd et",
       "refresh": "Qaralamanı yenilə",

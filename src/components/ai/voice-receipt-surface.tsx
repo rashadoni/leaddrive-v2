@@ -21,6 +21,14 @@ import {
   type ReceiptValueFormatter,
 } from "@/components/ai/voice-receipt-fields"
 import {
+  VOICE_RECEIPT_COMMAND_EVENT,
+  VOICE_RECEIPT_OUTCOME_EVENT,
+  VOICE_RECEIPT_STATE_EVENT,
+  type VoiceReceiptCommandDetail,
+  type VoiceReceiptOutcomeDetail,
+  type VoiceReceiptStateDetail,
+} from "@/lib/ai/voice/voice-confirmation"
+import {
   cancelVoiceReceipt,
   commitVoiceReceipt,
   editVoiceReceipt,
@@ -222,6 +230,18 @@ function confirmLabelKey(actionType: string): string {
   return `receipt.confirm.${actionType}`
 }
 
+function announceState(receiptId: string | null) {
+  if (typeof window === "undefined") return
+  window.dispatchEvent(new CustomEvent<VoiceReceiptStateDetail>(VOICE_RECEIPT_STATE_EVENT, {
+    detail: { receiptId },
+  }))
+}
+
+function announceOutcome(detail: VoiceReceiptOutcomeDetail) {
+  if (typeof window === "undefined") return
+  window.dispatchEvent(new CustomEvent<VoiceReceiptOutcomeDetail>(VOICE_RECEIPT_OUTCOME_EVENT, { detail }))
+}
+
 function outcomeTone(outcome: VoiceCommitOutcome | null): string {
   if (!outcome) return ""
   if (outcome.kind === "succeeded") return "text-emerald-700 dark:text-emerald-300"
@@ -265,10 +285,16 @@ export function VoiceReceiptSurface({
   const layout: ReceiptLayout = isMobile ? "sheet" : anchorRef ? "anchored" : "inline"
   const placement = useAnchorPlacement(anchorRef, visible && layout === "anchored")
 
-  const confirm = useCallback(async () => {
+  const confirm = useCallback(async (via: VoiceReceiptOutcomeDetail["via"] = "button") => {
     if (!store) return
     const current = store.getState().receipt
     if (!current || !store.claimCommit()) return
+    const report = (result: VoiceCommitOutcome) => announceOutcome({
+      receiptId: current.id,
+      kind: result.kind,
+      entityType: result.kind === "succeeded" ? result.entityType : undefined,
+      via,
+    })
     const controller = new AbortController()
     inFlight.current = controller
     try {
@@ -282,9 +308,11 @@ export function VoiceReceiptSurface({
         signal: controller.signal,
       })
       store.settleCommit(result)
+      report(result)
     } catch {
       if (!controller.signal.aborted) {
         store.settleCommit({ kind: "retriable", code: "NETWORK" })
+        report({ kind: "retriable", code: "NETWORK" })
       }
     } finally {
       if (inFlight.current === controller) inFlight.current = null
@@ -319,15 +347,46 @@ export function VoiceReceiptSurface({
     }
   }, [store, edits, saving])
 
-  const discard = useCallback(async () => {
+  const discard = useCallback(async (via: VoiceReceiptOutcomeDetail["via"] = "button") => {
     if (!store) return
     const current = store.getState().receipt
     // Close first: cancelling is about the user's intent, and a slow or failed
     // network call must not keep a rejected draft on screen.
     store.dismiss()
     if (!current) return
+    announceOutcome({ receiptId: current.id, kind: "cancelled", via })
     await cancelVoiceReceipt({ intentId: current.id, revision: current.revision }).catch(() => {})
   }, [store])
+
+  // Voice confirmation. The draft is "waiting for an answer" only while it is
+  // on screen, untouched and unsettled — the same moment the button means
+  // "execute". The console decides whether what the user said was an answer;
+  // this component only executes, exactly as a press would.
+  const awaitingReceiptId = visible && receipt && !editing && !committing && !saving && !outcome
+    ? receipt.id
+    : null
+  useEffect(() => {
+    announceState(awaitingReceiptId)
+  }, [awaitingReceiptId])
+  useEffect(() => () => announceState(null), [])
+
+  const commandRef = useRef({ confirm, discard, awaitingReceiptId })
+  useEffect(() => {
+    commandRef.current = { confirm, discard, awaitingReceiptId }
+  })
+  useEffect(() => {
+    const onCommand = (event: Event) => {
+      const detail = (event as CustomEvent<VoiceReceiptCommandDetail>).detail
+      const current = commandRef.current
+      // Only the draft that was waiting, and only while it still is: a
+      // command for a replaced or edited draft is dropped, not redirected.
+      if (!detail || !current.awaitingReceiptId || detail.receiptId !== current.awaitingReceiptId) return
+      if (detail.command === "confirm") void current.confirm("voice")
+      else void current.discard("voice")
+    }
+    window.addEventListener(VOICE_RECEIPT_COMMAND_EVENT, onCommand)
+    return () => window.removeEventListener(VOICE_RECEIPT_COMMAND_EVENT, onCommand)
+  }, [])
 
   const fieldLabel = useCallback((field: { key: string }) => {
     // An untranslated key must read as the field, not as a dotted path: a
@@ -504,7 +563,7 @@ export function VoiceReceiptSurface({
           : (
             <button
               type="button"
-              onClick={() => void (editing ? saveEdits() : confirm())}
+              onClick={() => void (editing ? saveEdits() : confirm("button"))}
               disabled={committing || saving}
               data-testid={editing ? "voice-receipt-save-edit" : "voice-receipt-confirm"}
               className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground outline-none transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-60"
@@ -533,7 +592,7 @@ export function VoiceReceiptSurface({
         {!succeeded && !editing && (
           <button
             type="button"
-            onClick={() => void discard()}
+            onClick={() => void discard("button")}
             disabled={committing}
             data-testid="voice-receipt-cancel"
             className="inline-flex h-11 items-center justify-center rounded-md border px-4 text-sm font-medium outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-60"
