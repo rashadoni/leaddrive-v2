@@ -123,4 +123,29 @@ describe("GET /api/v1/social/enable-inbox (inbox status / reconnect banner)", ()
     ] as never)
     expect((await (await GET(req())).json()).needsReconnect).toBe(false)
   })
+
+  it("needsReconnect=false for a staged App Review row — its subscription was never requested, not refused", async () => {
+    // ensureInboxChannelForPage({ staged: true }) writes inboxSubscribed:false with these two markers.
+    // A re-connect banner over it would send the tenant to re-run an OAuth that has nothing to fix.
+    vi.mocked(prisma.socialAccount.count).mockResolvedValue(2 as never)
+    vi.mocked(prisma.channelConfig.findMany).mockResolvedValue([
+      { settings: { inboxSubscribed: true } },
+      { settings: { inboxSubscribed: false, appReviewOnly: true, subscriptionPending: true } },
+    ] as never)
+    const json = await (await GET(req())).json()
+    expect(json.needsReconnect).toBe(false)
+    // Wired, and honestly not subscribed.
+    expect(json.wired).toBe(2)
+    expect(json.subscribed).toBe(1)
+  })
+
+  it("still flags a real refusal beside a staged row — including a staged row whose explicit subscribe Meta refused", async () => {
+    vi.mocked(prisma.socialAccount.count).mockResolvedValue(2 as never)
+    vi.mocked(prisma.channelConfig.findMany).mockResolvedValue([
+      { settings: { inboxSubscribed: false, appReviewOnly: true, subscriptionPending: true } },
+      // The subscribe endpoint deletes the marker whatever Meta answers, so this one WAS refused.
+      { settings: { inboxSubscribed: false, appReviewOnly: true } },
+    ] as never)
+    expect((await (await GET(req())).json()).needsReconnect).toBe(true)
+  })
 })

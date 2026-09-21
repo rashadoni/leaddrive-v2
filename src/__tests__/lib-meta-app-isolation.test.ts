@@ -181,4 +181,33 @@ describe("ensureInboxChannelForPage — staged connects leave live rows alone", 
     expect(update.mock.calls[0][0].data.settings.appReviewOnly).toBeUndefined()
     expect(r.subscribed).toBe(true)
   })
+
+  it("drops the not-requested marker when an ordinary connect of a staged row does ask Meta", async () => {
+    // The ordinary connect updates the oldest row for the Page, and when that is the staged one it really
+    // calls subscribed_apps. The screens read `subscriptionPending` as "nobody asked Meta yet", so leaving
+    // it behind would print a refusal from this very call as "not requested".
+    findMany.mockResolvedValue([
+      { id: "staged_row", settings: { inboxSubscribed: false, appReviewOnly: true, subscriptionPending: true } },
+    ])
+    subscribePageToMessages.mockResolvedValueOnce({ success: false, error: "(#200) permission missing" })
+    await ensureInboxChannelForPage("org_1", "facebook", "PAGE_1", "Test Page", "tok")
+    const written = update.mock.calls[0][0].data.settings
+    expect(written.inboxSubscribed).toBe(false)
+    expect(written).not.toHaveProperty("subscriptionPending")
+    // Whether the row stays staged is the operator's decision, not this call's.
+    expect(written.appReviewOnly).toBe(true)
+  })
+
+  it("keeps the marker on a staged re-connect, which still asks Meta for nothing", async () => {
+    findMany.mockResolvedValue([
+      { id: "staged_row", settings: { inboxSubscribed: false, appReviewOnly: true, subscriptionPending: true } },
+    ])
+    await ensureInboxChannelForPage("org_1", "facebook", "PAGE_1", "Test Page", "tok2", { staged: true })
+    expect(subscribePageToMessages).not.toHaveBeenCalled()
+    expect(update.mock.calls[0][0].data.settings).toMatchObject({
+      inboxSubscribed: false,
+      appReviewOnly: true,
+      subscriptionPending: true,
+    })
+  })
 })

@@ -165,6 +165,7 @@ const localCopy: Record<Loc, Record<string, string>> = {
     metaStateNew: "Not connected yet. Saving this form only creates the channel; messages start arriving after Connect with Meta finishes.",
     metaStatePaused: metaConnectionReason("en", "paused"),
     metaStateReconnect: metaConnectionReason("en", "needsReconnect"),
+    metaStateAppReview: metaConnectionReason("en", "subscriptionPending"),
     metaManualFallback: "Auto-filled after Connect. Enter manually only as a fallback:",
     metaPageIdLabel: "Page ID",
     metaPageIdPlaceholder: "Your Facebook Page ID",
@@ -254,6 +255,7 @@ const localCopy: Record<Loc, Record<string, string>> = {
     metaStateNew: "Ещё не подключено. Сохранение формы только создаёт канал; сообщения пойдут после завершения «Подключить через Meta».",
     metaStatePaused: metaConnectionReason("ru", "paused"),
     metaStateReconnect: metaConnectionReason("ru", "needsReconnect"),
+    metaStateAppReview: metaConnectionReason("ru", "subscriptionPending"),
     metaManualFallback: "Заполняется автоматически после подключения. Вручную вводите только как резервный вариант:",
     metaPageIdLabel: "Page ID",
     metaPageIdPlaceholder: "ID вашей Facebook Page",
@@ -343,6 +345,7 @@ const localCopy: Record<Loc, Record<string, string>> = {
     metaStateNew: "Hələ qoşulmayıb. Bu formanı saxlamaq yalnız kanalı yaradır; mesajlar «Meta ilə qoş» tamamlandıqdan sonra gəlməyə başlayır.",
     metaStatePaused: metaConnectionReason("az", "paused"),
     metaStateReconnect: metaConnectionReason("az", "needsReconnect"),
+    metaStateAppReview: metaConnectionReason("az", "subscriptionPending"),
     metaManualFallback: "Qoşulmadan sonra avtomatik doldurulur. Manual yalnız fallback üçün yazın:",
     metaPageIdLabel: "Page ID",
     metaPageIdPlaceholder: "Facebook Page ID-niz",
@@ -1069,8 +1072,8 @@ export function ChannelConfigForm({
     && form.appId.trim() === (initialData?.appId || "").trim()
   const metaOAuthBlockedByOwnApp = declaresOwnMetaApp && !ownMetaAppIdSaved
   // Honest connection state, from the SAME predicate the catalog uses (lib/channels/live-connection):
-  // a saved row is not a connection, and neither is a wired row that is switched off or one whose Meta
-  // message subscription explicitly failed.
+  // a saved row is not a connection, and neither is a wired row that is switched off, one whose Meta
+  // message subscription explicitly failed, or a staged one whose subscription was never requested.
   const metaConnectionState = channelConnectionState({
     channelType: form.channelType,
     pageId: initialData?.pageId,
@@ -1081,8 +1084,9 @@ export function ChannelConfigForm({
   })
   const metaConnectionLive = isMetaChannel && isEdit && metaConnectionState === "live"
   // Each non-live state has a different fix, and the user cannot guess which one applies: an
-  // unfinished OAuth, a channel someone switched off, a subscription Meta refused, and an account another
-  // workspace connected first all look identical from the outside.
+  // unfinished OAuth, a channel someone switched off, a subscription Meta refused, a staged App Review
+  // connect that never asked for one, and an account another workspace connected first all look
+  // identical from the outside.
   const metaConnectionMessage = metaConnectionLive
     ? c.metaStateConnected.replace("{page}", initialData?.pageId || "")
     : !isEdit
@@ -1091,9 +1095,11 @@ export function ChannelConfigForm({
         ? c.metaStatePaused
         : metaConnectionState === "claimedElsewhere"
           ? ts("channelClaimedElsewhere.reason")
-          : metaConnectionState === "needsReconnect"
-            ? c.metaStateReconnect
-            : c.metaStateDraft
+          : metaConnectionState === "subscriptionPending"
+            ? c.metaStateAppReview
+            : metaConnectionState === "needsReconnect"
+              ? c.metaStateReconnect
+              : c.metaStateDraft
   const hasStoredChatwootWebhookSecret = form.channelType === "chatwoot" && isEdit && initialData?.hasWebhookSecret
   const credentialStateHint = (isStored?: boolean) => (isStored ? c.storedCredentialHint : c.missingCredentialHint)
   const moveToSetupStep = (index: number) => {

@@ -107,9 +107,15 @@ export async function ensureInboxChannelForPage(
   const settings: Record<string, unknown> = { ...prevSettings, inboxSubscribed: sub.success }
   if (staged) {
     settings.appReviewOnly = true
-    // Distinguishes "Meta refused the subscription" from "we deliberately did not ask". The channel
-    // card reads inboxSubscribed for its warning; without this the two look identical.
+    // Distinguishes "Meta refused the subscription" from "we deliberately did not ask". Every channel
+    // screen reads it (lib/channels/live-connection → `subscriptionPending`): without it a staged row
+    // reads "Meta refused, reconnect", which is false.
     settings.subscriptionPending = true
+  } else {
+    // This call did answer the question — it asked Meta (or, for Instagram, rides the linked Page) — so
+    // a marker inherited from an earlier staged connect of the same row no longer holds. Left in place, a
+    // refusal right here would be shown as "not requested yet". Same rule as api/v1/social/oauth/subscribe.
+    delete settings.subscriptionPending
   }
 
   let created = false
