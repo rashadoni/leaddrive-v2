@@ -658,10 +658,18 @@ There is deliberately no `commit_*` tool.
       tool-call id, and the server keys the draft on it. Retries are
       deliberately NOT added: a refused proposal is a question for the user,
       not something to attempt again.
-- [ ] V1.9 Add structured audit metadata linking provider tool call, voice
-      session, intent, actor, and final record.
-- [ ] V1.10 Add contract tests proving the model cannot commit or fabricate a
-      trusted entity selection.
+- [x] V1.9 Link provider tool call, voice session, intent, actor and final
+      record. The intent table already held the chain; two things were
+      missing. Four of the five commands wrote their CRM audit row with no
+      actor, so the log recorded that a lead appeared and hid who made it —
+      for a click and for a voice command alike. And only the record an action
+      acts ON was indexed, so "where did this lead come from" meant a full scan;
+      `ai_action_intents_org_result_idx` now indexes the record it produced.
+- [x] V1.10 Contract tests proving the model cannot commit or fabricate a
+      trusted entity selection. Every argument of every proposal tool is
+      poisoned with a value that looks exactly like a CRM id, and no reference
+      field of the resolved payload may carry it. Mutation-checked: making the
+      resolver trust the spoken name as an id fails five cases.
 
 ### Exit gate
 
@@ -955,6 +963,7 @@ implementation branch that advances the roadmap.
 | 2026-09-20 | Execution boundary | Production deployed | PR #245; merge `a7f6c2654`; deploy `35479290362` | Internal-only atomic CRM mutation/result/`succeeded` event; commit remains disabled. |
 | 2026-09-20 | Commit adapter | Production deployed | PR #249; merge `ffcbaa3a4`; active artifact `a9891d6cb`; deploy `35499744499` | Session-only endpoint and three rate-limit scopes are live; receipt UI remains open and no model write-tool is exposed. |
 | 2026-09-20 | Receipt UI shell (U1.1-U1.3) | Production deployed | PR #257; merge `1bbc59e1e`; active artifact `6cca1a5a8`; deploy `35512069725` | Shadow mode: session-scoped store, anchored desktop panel, mobile bottom sheet. No confirm control, no write request, no model commit tool. |
+| 2026-09-21 | Audit provenance and fabrication proof (V1.9, V1.10) | Code complete | Targeted Vitest: 907 files / 12043 green, reds all in test-baseline.json; targeted ESLint (no new errors); prisma validate; i18n parity | Every CRM audit row from the five commands names its actor; the produced record is indexed back to its intent. Closes Phase 7 (V1). |
 | 2026-09-21 | Tool-call ceilings (V1.8) | Code complete | Targeted Vitest: 544 files / 5699 green, 8 known-baseline reds; targeted ESLint; i18n parity | Per-turn and per-session read ceilings, a proposal ceiling that does not refill, and a deadline on the proposal call. |
 | 2026-09-21 | Side-effect parity (C1.11) | Code complete | Targeted Vitest: 649 files / 10464 green, 8 known-baseline reds; targeted ESLint; i18n parity | Effects cannot escape an open transaction; voice and REST produce the same set, the transaction only changes when. |
 | 2026-09-21 | Command parity (C1.9, C1.10, C1.14) | Production deployed | PR #304; merge `da5966c3b`; active artifact `da5966c3be6596bf0fdfcdd37552554bd88e1568`; deploy `35572848857` | Field permissions fail closed on writes; tenant scoping verified and pinned. |

@@ -112,7 +112,7 @@ function dispatchCreatedLeadEffects(
   automaticAssignment: boolean,
 ): void {
   const { organizationId: orgId, userId } = actor
-  logAudit(orgId, "create", "lead", lead.id, lead.contactName)
+  logAudit(orgId, "create", "lead", lead.id, lead.contactName, { userId: userId ?? undefined })
   if (automaticAssignment) applyLeadAssignmentRules(orgId, lead).catch(() => {})
   executeWorkflows(orgId, "lead", "created", lead).catch(() => {})
   refreshProfileForSource(prisma, orgId, "lead", lead.id).catch((error) =>

@@ -309,7 +309,7 @@ export async function convertLeadToDealCommand(
     : await prisma.$transaction(executeConversion)
 
   dispatchOrDeferCommandEffects(execution, () => {
-    dispatchDealCreatedEffects(orgId, transactionResult.result.deal)
+    dispatchDealCreatedEffects(orgId, transactionResult.result.deal, userId)
     dispatchLeadConvertedEffects(
       orgId,
       userId,

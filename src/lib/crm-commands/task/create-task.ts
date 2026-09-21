@@ -243,7 +243,9 @@ export async function createTaskCommand(
   const createdTask = task
 
   dispatchOrDeferCommandEffects(execution, () => {
-    logAudit(orgId, "create", "task", createdTask.id, createdTask.title)
+    logAudit(orgId, "create", "task", createdTask.id, createdTask.title, {
+      userId: userId ?? undefined,
+    })
     if (createdTask.projectId) {
       recalcProjectCompletion(createdTask.projectId, orgId).catch((error) =>
         console.error("[createTaskCommand] rollup failed", error),

@@ -176,7 +176,7 @@ export async function createDealCommand(
 
   const dealValue = decimalToNumber(deal.valueAmount)
   dispatchOrDeferCommandEffects(execution, () => {
-    dispatchDealCreatedEffects(orgId, deal)
+    dispatchDealCreatedEffects(orgId, deal, userId)
   })
   const entity = { ...deal, valueAmount: dealValue }
 
