@@ -232,6 +232,8 @@ export default function CampaignsHelpAz() {
           bounce e-poçt provayderinin çatdırılma hesabatlarından gəlir. Rəqəmi heç bir qeyd
           saxlamırsa — məsələn, hələ heç bir e-poçt kampaniyası göndərilməyibsə bounce, və ya
           kampaniyaya bağlı qazanılmış sövdələşmə yoxdursa ROI — kartda «—» və səbəbi görünür.
+          ROI «Kampaniya ROI» səhifəsindəki eyni rəqəmdir: yalnız qazanılmış sövdələşmələr və
+          göndərilmiş kampaniyaların büdcələri bir valyutada olanda rəqəm görünür.
           «Ən yaxşı kampaniyalar» klik sayına görə sıralanır. «Seqmentlər», «Avtomatlaşdırma» və
           «Şablonlar» panelləri real seqmentlərinizi, zəncirlərinizi və e-poçt şablonlarınızı sayır,
           yoxdursa bunu yazır.

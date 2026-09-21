@@ -9,7 +9,7 @@
  */
 import {
   Activity, AlertTriangle, Camera, CheckCircle2, Eye, Flag, Link2, ListChecks, ListPlus, LogIn, LogOut,
-  Megaphone, Pause, PencilLine, Play, RotateCcw, Route, Send, Settings, ShieldAlert, ShieldCheck, ShoppingCart, Store,
+  Building2, FileUp, Megaphone, MessageSquare, Pause, PencilLine, Play, RotateCcw, Route, Send, Settings, ShieldAlert, ShieldCheck, ShoppingCart, Store,
   Trash2, UserCog, UserMinus, UserPlus, type LucideIcon,
 } from "lucide-react"
 
@@ -81,17 +81,49 @@ const META: Record<string, ActionMeta> = {
   WORKDAY_RESUME:      { icon: Play,          tone: "sky" },
   WORKDAY_FINISH:      { icon: Flag,          tone: "slate" },
   OPERATIONAL_ANNOUNCEMENT_ACKNOWLEDGE: { icon: Megaphone, tone: "slate" },
+  // Audit 2026-09-21: written on prod but shown as a bare «Действие».
+  WORKDAY_REOPEN:      { icon: RotateCcw,     tone: "amber" },
+  WORKDAY_REOPEN_UNDO: { icon: Flag,          tone: "slate" },
+  HRM_REQUEST_DECISION: { icon: ShieldCheck,  tone: "teal" },
+  MESSAGE_BROADCAST:   { icon: Megaphone,     tone: "sky" },
+  MESSAGE_DIRECT_SEND: { icon: MessageSquare, tone: "sky" },
+  FIELD_ORGANIZATION_UPDATE: { icon: Building2, tone: "sky" },
+  ORGANIZATION_BULK_ASSIGN: { icon: UserPlus, tone: "emerald" },
+  ORGANIZATION_BULK_UNASSIGN: { icon: UserMinus, tone: "amber" },
+  FIELD_ASSIGNMENT_UPSERT: { icon: UserCog,   tone: "sky" },
+  FIELD_PRODUCT_PRESENTATION_UPLOAD: { icon: FileUp, tone: "purple" },
+  ORDER_CREATE:        { icon: ShoppingCart,  tone: "emerald" },
+}
+
+/**
+ * The first mobile writers used lowercase verbs; those rows are still in the
+ * journal. They mean exactly the canonical actions.
+ */
+const LEGACY_ACTIONS: Record<string, string> = {
+  check_in: "CHECK_IN",
+  check_out: "CHECK_OUT",
+  upload_photo: "PHOTO_UPLOAD",
+  complete_task: "TASK_COMPLETE",
+  create_order: "ORDER_CREATE",
+  login: "MOBILE_LOGIN",
+  resolve_alert: "ALERT_RESOLVE",
+}
+
+/** The canonical code of an action as the journal stores it. */
+export function canonicalAction(action: string): string {
+  return LEGACY_ACTIONS[action] ?? action
 }
 
 const FALLBACK: ActionMeta = { icon: Activity, tone: "slate" }
 
 export function actionMeta(action: string): ActionMeta {
-  return META[action] ?? FALLBACK
+  return META[canonicalAction(action)] ?? FALLBACK
 }
 
 /** i18n key under `mtmActivity.action.*`; unknown codes → `action.unknown`. */
 export function actionLabelKey(action: string): string {
-  return `action.${action in META ? action : "unknown"}`
+  const code = canonicalAction(action)
+  return `action.${code in META ? code : "unknown"}`
 }
 
 /** Compliance codes a supervisor should be able to isolate in one click:
@@ -111,6 +143,60 @@ const ENTITY_ROUTES: Record<string, string> = {
 export function entityHref(entity: string | null | undefined): string | null {
   if (!entity) return null
   return ENTITY_ROUTES[entity.toLowerCase()] ?? null
+}
+
+/** The office user the activity API resolved as the actor, when known. */
+export interface ActivityActor {
+  userId: string
+  name: string
+}
+
+/**
+ * Who a row says acted. The employee the row is about when they did it on the
+ * phone, else the office user the journal recorded, else an honest «not
+ * recorded» — never «System» for a person nobody wrote down.
+ */
+export function activityActorName(
+  log: { agent?: { name?: string | null } | null; actor?: ActivityActor | null },
+  t: (key: string) => string,
+): string {
+  return log.actor?.name || log.agent?.name || t("actorNotRecorded")
+}
+
+function numberOrLength(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value
+  if (Array.isArray(value)) return value.length
+  return null
+}
+
+/**
+ * A short phrase for rows that are about something other than a customer:
+ * how many recipients a message had, how many organizations changed hands,
+ * which presentation was uploaded. Null when the row carries no such fact.
+ */
+export function activityDataSummary(
+  log: { action: string; newData?: unknown },
+  t: (key: string, values?: Record<string, unknown>) => string,
+): string | null {
+  const data = log.newData && typeof log.newData === "object" && !Array.isArray(log.newData)
+    ? log.newData as Record<string, unknown>
+    : {}
+  switch (canonicalAction(log.action)) {
+    case "MESSAGE_BROADCAST":
+    case "MESSAGE_DIRECT_SEND": {
+      const count = numberOrLength(data.recipientAgentIds)
+      return count != null ? t("detailRecipients", { count }) : null
+    }
+    case "ORGANIZATION_BULK_ASSIGN":
+    case "ORGANIZATION_BULK_UNASSIGN": {
+      const count = numberOrLength(data.changed) ?? numberOrLength(data.organizationIds)
+      return count != null ? t("detailOrganizations", { count }) : null
+    }
+    case "FIELD_PRODUCT_PRESENTATION_UPLOAD":
+      return typeof data.title === "string" && data.title.trim() ? data.title.trim() : null
+    default:
+      return null
+  }
 }
 
 /** What the activity API resolved a row to be about (see activity/route.ts). */
@@ -138,6 +224,7 @@ const KIND_KEY: Record<string, string> = {
   login_failed: "kindLoginFailed",
   auto_link: "kindAutoLink",
   settings_change: "kindSettingsChange",
+  settings_update: "kindSettingsChange",
 }
 
 export function kindKey(metadataKind: string | null | undefined): string | null {

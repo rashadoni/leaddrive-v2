@@ -226,7 +226,8 @@ export default function CampaignsHelpEn() {
           Opens, clicks and bounces are recorded for email campaigns only; bounces come from the
           email provider’s delivery reports. Where no record holds a figure — for example bounces
           when no email campaign has been sent, or ROI when no won deal is linked to a campaign — the
-          card shows «—» and the reason. “Top campaigns” are ranked
+          card shows «—» and the reason. ROI is the same figure as on the Campaign ROI page: a number
+          only when the won deals and the budgets of sent campaigns are in one currency. “Top campaigns” are ranked
           by clicks. The Segments, Automation and Templates panels count your real segments, journeys
           and email templates, and say so when there are none.
         </HelpCallout>

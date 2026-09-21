@@ -65,7 +65,40 @@ function stringValue(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null
 }
 
-type ActivityLog = { entity: string; entityId: string | null; newData: unknown; oldData: unknown }
+type ActivityLog = {
+  entity: string
+  entityId: string | null
+  newData: unknown
+  oldData: unknown
+  actorUserId?: string | null
+}
+
+/**
+ * The office user who acted, when the row knows it. New rows carry
+ * `actorUserId` (audit 2026-09-21); settings changes and field assignments
+ * already recorded it inside their payload.
+ */
+function actorUserIdOf(log: ActivityLog): string | null {
+  const data = jsonRecord(log.newData)
+  return stringValue(log.actorUserId)
+    ?? stringValue(jsonRecord(data.actor).userId)
+    ?? stringValue(data.actor)
+    ?? stringValue(data.assignedBy)
+}
+
+/** Names of the office users behind a page of rows, looked up once. */
+async function activityActors(orgId: string, logs: ActivityLog[]): Promise<Array<{ userId: string; name: string } | null>> {
+  const ids = [...new Set(logs.map(actorUserIdOf).filter((id): id is string => Boolean(id)))]
+  const users = ids.length
+    ? await prisma.user.findMany({ where: { organizationId: orgId, id: { in: ids } }, select: { id: true, name: true, email: true } })
+    : []
+  const nameOf = new Map<string, string | null>((users ?? []).map((user: { id: string; name: string | null; email: string | null }) => [user.id, stringValue(user.name) ?? stringValue(user.email)] as const))
+  return logs.map((log) => {
+    const userId = actorUserIdOf(log)
+    const name = userId ? nameOf.get(userId) ?? null : null
+    return userId && name ? { userId, name } : null
+  })
+}
 
 /**
  * What a row is about, in words a manager reads: the customer's name, and the
@@ -75,6 +108,11 @@ type ActivityLog = { entity: string; entityId: string | null; newData: unknown; 
 async function activitySubjects(orgId: string, logs: ActivityLog[]) {
   const visitIdOf = (log: ActivityLog) =>
     log.entity === "visit" ? stringValue(log.entityId) : stringValue(jsonRecord(log.newData).visitId)
+  // A customer or field-organization edit is about the row it names.
+  const customerIdOf = (log: ActivityLog) =>
+    stringValue(jsonRecord(log.newData).customerId)
+    ?? stringValue(jsonRecord(log.oldData).customerId)
+    ?? (log.entity === "customer" ? stringValue(log.entityId) : null)
   const routeIdOf = (log: ActivityLog) =>
     log.entity === "route" ? stringValue(log.entityId) : stringValue(jsonRecord(log.newData).routeId)
 
@@ -83,7 +121,7 @@ async function activitySubjects(orgId: string, logs: ActivityLog[]) {
   for (const log of logs) {
     const data = jsonRecord(log.newData)
     if (stringValue(data.customerName)) continue
-    const customerId = stringValue(data.customerId) ?? stringValue(jsonRecord(log.oldData).customerId)
+    const customerId = customerIdOf(log)
     if (customerId) customerIds.add(customerId)
     else {
       const visitId = visitIdOf(log)
@@ -104,7 +142,7 @@ async function activitySubjects(orgId: string, logs: ActivityLog[]) {
   return logs.map((log) => {
     const data = jsonRecord(log.newData)
     const visitId = visitIdOf(log)
-    const customerId = stringValue(data.customerId) ?? stringValue(jsonRecord(log.oldData).customerId)
+    const customerId = customerIdOf(log)
     return {
       customerName: stringValue(data.customerName)
         ?? (customerId ? customerName.get(customerId) ?? null : null)
@@ -189,13 +227,13 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
       prisma.mtmAuditLog.count({ where: auditWhere }),
     ])
 
-    const subjects = await activitySubjects(orgId, logs)
+    const [subjects, actors] = await Promise.all([activitySubjects(orgId, logs), activityActors(orgId, logs)])
 
     return NextResponse.json({
       success: true,
       data: {
         kpi: { totalActivities, totalCheckIns, totalCheckOuts, totalPhotos, totalViolations },
-        logs: logs.map((log: (typeof logs)[number], index: number) => ({ ...log, subject: subjects[index] })),
+        logs: logs.map((log: (typeof logs)[number], index: number) => ({ ...log, subject: subjects[index], actor: actors[index] })),
         timezone,
         total,
         page,

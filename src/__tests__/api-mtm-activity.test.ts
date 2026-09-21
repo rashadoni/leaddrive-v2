@@ -379,3 +379,38 @@ describe("GET /api/v1/mtm/activity — manager feed (2026-09-14)", () => {
     expect((vi.mocked(prisma.mtmAuditLog.findMany).mock.calls[0][0] as any).where.action).toEqual({ in: ["ROUTE_START", "ROUTE_COMPLETE"] })
   })
 })
+
+/**
+ * Audit 2026-09-21: 96 rows, each «? · Действие · Система · Запись». The
+ * journal did not say who acted when the actor was in the office.
+ */
+describe("GET /api/v1/mtm/activity — who acted (2026-09-21)", () => {
+  it("names the office user from actorUserId, from a settings payload and from an assignment", async () => {
+    vi.mocked(prisma.mtmAuditLog.findMany).mockResolvedValue([
+      { id: "log-1", action: "CUSTOMER_UPDATE", entity: "customer", entityId: "cust-1", agentId: null, agent: null, actorUserId: "user-a", newData: { latitude: 1 }, oldData: null, createdAt: new Date() },
+      { id: "log-2", action: "SETTINGS_UPDATE", entity: "settings", entityId: null, agentId: null, agent: null, actorUserId: null, newData: { actor: { userId: "user-b", role: "admin" } }, oldData: null, createdAt: new Date() },
+      { id: "log-3", action: "FIELD_ASSIGNMENT_UPSERT", entity: "customer_assignment", entityId: "as-1", agentId: null, agent: null, actorUserId: null, newData: { assignedBy: "user-a" }, oldData: null, createdAt: new Date() },
+      { id: "log-4", action: "MESSAGE_BROADCAST", entity: "message_thread", entityId: "th-1", agentId: null, agent: null, actorUserId: null, newData: { recipientAgentIds: ["a", "b"] }, oldData: null, createdAt: new Date() },
+    ] as never)
+    vi.mocked(prisma.mtmCustomer.findMany).mockResolvedValue([{ id: "cust-1", name: "Zeytun Aptek" }] as never)
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      { id: "user-a", name: "Rashad Rahimov", email: "r@example.com" },
+      { id: "user-b", name: "", email: "office@example.com" },
+    ] as never)
+
+    const body = await (await GET(makeReq("/api/v1/mtm/activity?period=7d"))).json()
+    const logs = body.data.logs
+
+    expect(logs[0].actor).toEqual({ userId: "user-a", name: "Rashad Rahimov" })
+    // A customer edit is about the customer it names.
+    expect(logs[0].subject.customerName).toBe("Zeytun Aptek")
+    expect(logs[1].actor).toEqual({ userId: "user-b", name: "office@example.com" })
+    expect(logs[2].actor).toEqual({ userId: "user-a", name: "Rashad Rahimov" })
+    // Nobody recorded: no invented actor.
+    expect(logs[3].actor).toBeNull()
+    expect(prisma.user.findMany).toHaveBeenCalledWith({
+      where: { organizationId: ORG, id: { in: ["user-a", "user-b"] } },
+      select: { id: true, name: true, email: true },
+    })
+  })
+})

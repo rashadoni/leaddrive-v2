@@ -32,7 +32,10 @@ export const TEAM = { aynur: "Aynur Həsənli", tural: "Tural Kərimov", sebine:
 const company = (i) => COMPANIES[i].name
 export const MAIL = "demo-journey.example"
 
-// Sent campaigns carry the numbers a sent campaign has; nothing is left in a
+// Sent campaigns carry only the numbers the product itself records, so the
+// stand never looks better than a real tenant (src/lib/campaigns/analytics.ts):
+// opens, clicks and bounces exist for email alone (bounces arrive through the
+// Resend webhook), and unsubscribes are the recipients the send skipped. Nothing is left in a
 // state some worker would pick up and send ("sending", "ab_testing").
 export const CAMPAIGNS = [
   {
@@ -46,14 +49,14 @@ export const CAMPAIGNS = [
     name: "WhatsApp: «Nar» mətbəx dəstinin təqdimatı",
     description: "Mətbəx mebeli soruşan müştərilərə yeni dəstin şəkilləri və ölçüləri.",
     type: "whatsapp", status: "sent",
-    totalRecipients: 612, totalSent: 603, totalOpened: 487, totalClicked: 141,
+    totalRecipients: 612, totalSent: 603,
     budget: 185, actualCost: 172, sentAt: daysAgo(11), createdAt: daysAgo(13),
   },
   {
     name: "SMS: həftəsonu sərgi salonunda endirim",
     description: "Nərimanovdakı sərgi salonuna dəvət, şənbə və bazar günü.",
     type: "sms", status: "sent",
-    totalRecipients: 2314, totalSent: 2291, totalOpened: 0, totalClicked: 96, totalBounced: 23,
+    totalRecipients: 2314, totalSent: 2291,
     budget: 229, actualCost: 211, sentAt: daysAgo(6), createdAt: daysAgo(7),
   },
   {

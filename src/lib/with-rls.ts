@@ -16,6 +16,7 @@ import {
   type Action,
 } from "./permissions"
 import { runWithTenant, runWithRlsBypass } from "./rls-context"
+import { runWithAuditActor } from "./audit-actor-context"
 
 /** What withRls hands the wrapped handler: the resolved tenant + (when present)
  *  the full session. Resolved ONCE under bypass so the handler never re-calls
@@ -140,7 +141,8 @@ export function withRls<C = unknown>(
     const denied = roleDenial(req, resolved.session)
     if (denied) return denied
 
-    return runWithTenant(resolved.orgId, () => handler(req, resolved as RlsAuth, ctx as C))
+    const rls = resolved
+    return runWithAuditActor(rls.session ?? {}, () => runWithTenant(rls.orgId, () => handler(req, rls, ctx as C)))
   }
 
   return wrapped as WrappedRouteHandler<C>
@@ -191,7 +193,9 @@ export function withRlsAuth<C = unknown>(
     }
     // requireAuth returns a NextResponse for every denial (401/403/2FA/cross-tenant).
     if (isAuthError(auth)) return auth
-    return runWithTenant(auth.orgId, () => handler(req, auth as AuthResult, ctx as C))
+    // The audit writer names the office user behind this request (see audit-actor-context).
+    const resolved = auth as AuthResult
+    return runWithAuditActor(resolved, () => runWithTenant(resolved.orgId, () => handler(req, resolved, ctx as C)))
   }
 
   return wrapped as WrappedRouteHandler<C>
@@ -216,7 +220,8 @@ export function withRlsSessionAuth<C = unknown>(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
     if (isAuthError(session)) return session
-    return runWithTenant(session.orgId, () => handler(req, session as AuthResult, ctx as C))
+    const resolved = session as AuthResult
+    return runWithAuditActor(resolved, () => runWithTenant(resolved.orgId, () => handler(req, resolved, ctx as C)))
   }
 
   return wrapped as WrappedRouteHandler<C>
