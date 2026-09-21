@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest"
 
-import { requiresTwoFactorSetup, resolveTwoFactorMethod } from "@/lib/two-factor-policy"
+import {
+  requireTwoFactorToggleUpdate,
+  requiresTwoFactorSetup,
+  resolveTwoFactorMethod,
+  twoFactorAdminStatus,
+} from "@/lib/two-factor-policy"
 
 const BASE = {
   require2fa: false,
@@ -45,5 +50,41 @@ describe("two-factor policy", () => {
       smsAuthEnabled: true,
       verifiedPhone: "+994000000000",
     })).toBe("totp")
+  })
+})
+
+describe("two-factor status an administrator reads in Settings → Users", () => {
+  it("keeps the requirement and an enrolled factor independent", () => {
+    expect(twoFactorAdminStatus({ ...BASE, totpEnabled: true })).toEqual({
+      required: false,
+      configured: true,
+      setupPending: false,
+    })
+    expect(twoFactorAdminStatus({ ...BASE, require2fa: true, totpEnabled: true })).toEqual({
+      required: true,
+      configured: true,
+      setupPending: false,
+    })
+    expect(twoFactorAdminStatus({ ...BASE, require2fa: true })).toEqual({
+      required: true,
+      configured: false,
+      setupPending: true,
+    })
+    expect(twoFactorAdminStatus(BASE)).toEqual({ required: false, configured: false, setupPending: false })
+  })
+
+  it("counts SMS as configured only with a verified phone", () => {
+    expect(twoFactorAdminStatus({ ...BASE, smsAuthEnabled: true }).configured).toBe(false)
+    expect(twoFactorAdminStatus({ ...BASE, smsAuthEnabled: true, verifiedPhone: "+994000000000" }).configured).toBe(true)
+  })
+
+  it("saves the opposite of the stored requirement, whatever factors are enrolled", () => {
+    // Prod bug: the switch showed "required OR enrolled" and saved its opposite,
+    // so for an enrolled user every click saved false.
+    expect(requireTwoFactorToggleUpdate({ ...BASE, totpEnabled: true })).toEqual({ require2fa: true })
+    expect(requireTwoFactorToggleUpdate({ ...BASE, smsAuthEnabled: true, verifiedPhone: "+994000000000" })).toEqual({ require2fa: true })
+    expect(requireTwoFactorToggleUpdate({ ...BASE, require2fa: true, totpEnabled: true })).toEqual({ require2fa: false })
+    expect(requireTwoFactorToggleUpdate(BASE)).toEqual({ require2fa: true })
+    expect(requireTwoFactorToggleUpdate({ ...BASE, require2fa: true })).toEqual({ require2fa: false })
   })
 })

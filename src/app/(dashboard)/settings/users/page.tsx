@@ -21,6 +21,7 @@ import { toast } from "sonner"
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
+import { UserTwoFactorControls, type UserTwoFactorUpdate } from "@/components/settings/user-two-factor-controls"
 
 interface User extends Record<string, unknown> {
   id: string
@@ -661,6 +662,19 @@ export default function UsersSettingsPage() {
     fetchUsers()
   }
 
+  const updateUserTwoFactor = async (userId: string, update: UserTwoFactorUpdate) => {
+    const res = await fetch(`/api/v1/users/${userId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...(orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>),
+      },
+      body: JSON.stringify(update),
+    })
+    if (!res.ok) toast.error(tc("saveFailed"))
+    fetchUsers()
+  }
+
   const handleToggleActive = async (user: User) => {
     await fetch(`/api/v1/users/${user.id}`, {
       method: "PUT",
@@ -868,84 +882,11 @@ export default function UsersSettingsPage() {
       // which made every row in the table three lines tall. They stay on one
       // line now and the column carries its own width instead.
       className: "whitespace-nowrap",
-      render: (item: User) => {
-        const anyMethodActive = item.totpEnabled || item.smsAuthEnabled
-        return (
-          <div className="flex flex-nowrap items-center gap-1.5">
-            {/* TOTP status pill — clickable to reset */}
-            <button
-              type="button"
-              title={item.totpEnabled ? tu("totpSetTooltip") : tu("totpNotSetTooltip")}
-              className={`text-[10px] px-1.5 py-0.5 rounded border font-medium transition ${
-                item.totpEnabled
-                  ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                  : "bg-muted/40 text-muted-foreground border-muted"
-              }`}
-              onClick={async (e) => {
-                e.stopPropagation()
-                if (!item.totpEnabled) return
-                if (!confirm(tu("totpResetConfirm"))) return
-                await fetch(`/api/v1/users/${item.id}`, {
-                  method: "PUT",
-                  headers: { "Content-Type": "application/json", ...(orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>) },
-                  body: JSON.stringify({ resetTotp: true }),
-                })
-                fetchUsers()
-              }}
-            >
-              TOTP {item.totpEnabled ? "✓" : "—"}
-            </button>
-            {/* SMS status pill — clickable to reset */}
-            <button
-              type="button"
-              title={
-                item.smsAuthEnabled
-                  ? tu("smsSetTooltip", { phone: item.verifiedPhone || "—" })
-                  : tu("smsNotSetTooltip")
-              }
-              className={`text-[10px] px-1.5 py-0.5 rounded border font-medium transition ${
-                item.smsAuthEnabled
-                  ? "bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100"
-                  : "bg-muted/40 text-muted-foreground border-muted"
-              }`}
-              onClick={async (e) => {
-                e.stopPropagation()
-                if (!item.smsAuthEnabled) return
-                if (!confirm(tu("smsResetConfirm"))) return
-                await fetch(`/api/v1/users/${item.id}`, {
-                  method: "PUT",
-                  headers: { "Content-Type": "application/json", ...(orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>) },
-                  body: JSON.stringify({ resetSms: true }),
-                })
-                fetchUsers()
-              }}
-            >
-              SMS {item.smsAuthEnabled ? "✓" : "—"}
-            </button>
-            {/* Require 2FA toggle */}
-            <button
-              type="button"
-              title={tu("require2faTooltip")}
-              className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors ${
-                item.require2fa || anyMethodActive ? "bg-green-500" : "bg-muted-foreground/40"
-              }`}
-              onClick={async (e) => {
-                e.stopPropagation()
-                await fetch(`/api/v1/users/${item.id}`, {
-                  method: "PUT",
-                  headers: { "Content-Type": "application/json", ...(orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>) },
-                  body: JSON.stringify({ require2fa: !(item.require2fa || anyMethodActive) }),
-                })
-                fetchUsers()
-              }}
-            >
-              <span className={`pointer-events-none inline-block h-3 w-3 rounded-full bg-white shadow transform transition-transform ${
-                item.require2fa || anyMethodActive ? "translate-x-3" : "translate-x-0"
-              }`} />
-            </button>
-          </div>
-        )
-      },
+      // TOTP and SMS factors, the "Require 2FA" switch (the stored requirement
+      // only) and whether a factor is set up — see UserTwoFactorControls.
+      render: (item: User) => (
+        <UserTwoFactorControls user={item} onUpdate={(update) => updateUserTwoFactor(item.id, update)} />
+      ),
     },
     {
       // The microphone used to sit as a second unlabelled switch inside the 2FA

@@ -21801,6 +21801,8 @@
     "smsNotSetTooltip": "SMS 2FA не настроен",
     "smsResetConfirm": "Сбросить SMS 2FA для этого пользователя? Он сможет войти без SMS-кода, пока не активирует снова.",
     "require2faTooltip": "Требовать 2FA при входе (любой метод)",
+    "twoFactorConfigured": "настроена",
+    "twoFactorSetupPending": "настройка при следующем входе",
     "statTotal": "Всего",
     "statActive": "Активные",
     "statInactive": "Отключённые",
