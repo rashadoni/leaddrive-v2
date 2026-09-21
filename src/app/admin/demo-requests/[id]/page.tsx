@@ -10,6 +10,14 @@ import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { isSuperAdminSession } from "@/lib/superadmin-guard"
 import { demoCallAgentReady } from "@/lib/demo-center/demo-call"
+import {
+  REPORTED_JOURNEY_EVENTS,
+  activeSections,
+  getDemoJourneyScenario,
+  summarizeJourney,
+  withLiveCall,
+  type DemoJourneyManifest,
+} from "@/lib/demo-center/journey"
 
 export default async function DemoRequestDetailPage({ params }: { params: Promise<{ id: string }> }) {
   if (!(await isSuperAdminSession())) redirect("/dashboard")
@@ -56,6 +64,66 @@ export default async function DemoRequestDetailPage({ params }: { params: Promis
 
   const moduleOptions = DEMO_MODULE_CATALOG.map(({ id: moduleId, title, summary }) => ({ id: moduleId, title, summary }))
   const moduleTitle = new Map(moduleOptions.map((module) => [module.id, module.title]))
+
+  // How far each guided session got (src/lib/demo-center/journey/telemetry.ts).
+  // Read separately from the 50-row trail above: a finished story reports
+  // more than that, and the summary must count all of it.
+  const journeyManifest = (grant: GrantWithEvents): DemoJourneyManifest | null => {
+    const scenario = grant.scenarioId ? getDemoJourneyScenario(grant.scenarioId) : null
+    return scenario && grant.liveCallEnabled ? withLiveCall(scenario) : scenario
+  }
+  const journeyGrants = request.grants.filter((grant: GrantWithEvents) => journeyManifest(grant))
+  const journeyRows = journeyGrants.length
+    ? await runWithRlsBypass(() =>
+        prisma.demoAccessEvent.findMany({
+          where: { grantId: { in: journeyGrants.map((grant) => grant.id) }, eventType: { in: [...REPORTED_JOURNEY_EVENTS] } },
+          select: { grantId: true, eventType: true, stepId: true, metadata: true, occurredAt: true },
+          orderBy: { occurredAt: "asc" },
+          take: 2000,
+        }),
+      )
+    : []
+  const journeyProgress = journeyGrants.map((grant) => {
+    const manifest = journeyManifest(grant)!
+    const sections = activeSections(manifest)
+    return {
+      grant,
+      sections,
+      summary: summarizeJourney(manifest, journeyRows.filter((row) => row.grantId === grant.id)),
+    }
+  })
+  const sectionTitle = new Map<string, string>()
+  const stepTitle = new Map<string, string>()
+  for (const { sections } of journeyProgress) {
+    for (const section of sections) {
+      sectionTitle.set(section.id, section.title)
+      for (const step of section.steps) stepTitle.set(step.id, step.title)
+    }
+  }
+  const journeyEventLabel: Record<string, string> = {
+    "journey.section_opened": t("journeyEventSectionOpened"),
+    "journey.step_completed": t("journeyEventStepCompleted"),
+    "journey.step_skipped": t("journeyEventStepSkipped"),
+    "journey.transition": t("journeyEventTransition"),
+    "journey.completed": t("journeyEventCompleted"),
+    "video.started": t("journeyEventVideoStarted"),
+    "video.completed": t("journeyEventVideoCompleted"),
+    "video.error": t("journeyEventVideoError"),
+  }
+  const clipSection = (slug: string, sections: readonly { id: string; title: string; intro?: { slug: string } }[]) =>
+    sections.find((section) => section.intro?.slug === slug)?.title ?? slug
+  const eventDetail = (event: GrantWithEvents["events"][number], grant: GrantWithEvents): string => {
+    const metadata = event.metadata && typeof event.metadata === "object" && !Array.isArray(event.metadata)
+      ? (event.metadata as Record<string, unknown>)
+      : {}
+    const sectionId = typeof metadata.sectionId === "string" ? metadata.sectionId : null
+    if (sectionId) {
+      const step = event.stepId ? stepTitle.get(event.stepId) : null
+      return [sectionTitle.get(sectionId) ?? sectionId, step].filter(Boolean).join(" · ")
+    }
+    const where = event.moduleId ? moduleTitle.get(event.moduleId) || event.moduleId : `Grant ···${grant.tokenHint}`
+    return `${where}${event.stepId ? ` · ${event.stepId}` : ""}`
+  }
 
   return (
     <div className="space-y-8">
@@ -139,14 +207,58 @@ export default async function DemoRequestDetailPage({ params }: { params: Promis
         </aside>
       </section>
 
+      {journeyProgress.length ? (
+        <section className="border-t border-zinc-200 pt-7 dark:border-zinc-800" data-testid="demo-journey-progress">
+          <h2 className="text-lg font-semibold text-zinc-950 dark:text-zinc-50">{t("journeyProgress")}</h2>
+          <div className="mt-4 space-y-3">
+            {journeyProgress.map(({ grant, sections, summary }) => (
+              <div key={grant.id} className="rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm dark:border-zinc-800 dark:bg-zinc-900">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">Grant ···{grant.tokenHint}</span>
+                  {summary.completed ? <Badge variant="outline">{t("journeyCompleted")}</Badge> : null}
+                </div>
+                {summary.lastActivityAt ? (
+                  <>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                      <div className="h-full rounded-full bg-orange-500" style={{ width: `${Math.round((summary.sectionsReached / Math.max(1, summary.sectionsTotal)) * 100)}%` }} />
+                    </div>
+                    <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+                      {t("journeySections", { done: summary.sectionsReached, total: summary.sectionsTotal })}
+                      {" · "}
+                      {t("journeySteps", { done: summary.stepsDone, total: summary.stepsRequired })}
+                    </p>
+                    {summary.furthestSectionId && !summary.completed ? (
+                      <p className="mt-1 text-zinc-600 dark:text-zinc-400">
+                        {t("journeyStoppedAt", { section: sectionTitle.get(summary.furthestSectionId) ?? summary.furthestSectionId })}
+                      </p>
+                    ) : null}
+                    {summary.clipsStarted.length ? (
+                      <p className="mt-1 text-zinc-600 dark:text-zinc-400">
+                        {t("journeyClips")}:{" "}
+                        {summary.clipsStarted
+                          .map((slug) => `${clipSection(slug, sections)} (${summary.clipsCompleted.includes(slug) ? t("journeyClipWatched") : t("journeyClipStarted")})`)
+                          .join(", ")}
+                      </p>
+                    ) : null}
+                    <p className="mt-1 text-xs text-zinc-400">{t("journeyLastActivity", { time: summary.lastActivityAt.toLocaleString(locale) })}</p>
+                  </>
+                ) : (
+                  <p className="mt-1 text-zinc-500">{t("journeyNoActivity")}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       {request.grants.length ? (
         <section className="border-t border-zinc-200 pt-7 dark:border-zinc-800">
           <h2 className="text-lg font-semibold text-zinc-950 dark:text-zinc-50">{t("accessHistory")}</h2>
           <div className="mt-4 divide-y divide-zinc-200 rounded-xl border border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900">
             {accessTrail.map(({ event, grant }) => (
               <div key={event.id} className="grid gap-1 px-4 py-3 text-sm sm:grid-cols-[150px_1fr_auto] sm:items-center">
-                <span className="font-medium text-zinc-900 dark:text-zinc-100">{event.eventType.replaceAll("_", " ")}</span>
-                <span className="text-zinc-500">{event.moduleId ? moduleTitle.get(event.moduleId) || event.moduleId : `Grant ···${grant.tokenHint}`}{event.stepId ? ` · ${event.stepId}` : ""}</span>
+                <span className="font-medium text-zinc-900 dark:text-zinc-100">{journeyEventLabel[event.eventType] ?? event.eventType.replaceAll("_", " ")}</span>
+                <span className="text-zinc-500">{eventDetail(event, grant)}</span>
                 <time className="text-xs tabular-nums text-zinc-400">{event.occurredAt.toLocaleString(locale)}</time>
               </div>
             ))}

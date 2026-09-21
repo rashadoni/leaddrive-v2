@@ -11,6 +11,7 @@ import {
   createJourneySnapshot,
   findSection,
   journeyProgress,
+  journeyReportsBetween,
   parseSnapshot,
   reachableRoutes,
   reduceJourney,
@@ -33,6 +34,7 @@ import {
 import { cn } from "@/lib/utils"
 import { DemoCoachMark } from "./demo-coach-mark"
 import { DemoJourneyGuide } from "./demo-journey-guide"
+import { createJourneyReporter, type JourneyReporter } from "./journey-reporter"
 import { DemoJourneySidebar } from "./demo-journey-sidebar"
 import { BoardScene } from "./scenes/board-scene"
 import { CampaignScene } from "./scenes/campaign-scene"
@@ -131,6 +133,39 @@ export function DemoJourneyPlayer({
   const [resultBanner, setResultBanner] = useState<string | null>(null)
   const liveRegionRef = useRef<HTMLParagraphElement>(null)
 
+  // Only a granted session tells the server how far it got (telemetry.ts):
+  // the admin preview and the open demo have no session to report to. The
+  // answers also carry the new idle deadline, so an active prospect is no
+  // longer locked out by a countdown nothing refreshed.
+  const [idleDeadline, setIdleDeadline] = useState(idleExpiresAt)
+  useEffect(() => setIdleDeadline(idleExpiresAt), [idleExpiresAt])
+  const accessLostRef = useRef(onAccessLost)
+  useEffect(() => {
+    accessLostRef.current = onAccessLost
+  }, [onAccessLost])
+  const reporterRef = useRef<JourneyReporter | null>(null)
+  useEffect(() => {
+    reporterRef.current = variant === "granted"
+      ? createJourneyReporter(token, { onIdleExpiresAt: setIdleDeadline, onAccessLost: () => accessLostRef.current?.() })
+      : null
+  }, [token, variant])
+  const frontierRef = useRef<{ sectionId: string; stepId: string } | null>(null)
+  useEffect(() => {
+    frontierRef.current = snapshot ? { sectionId: snapshot.sectionId, stepId: snapshot.stepId } : null
+  }, [snapshot])
+  useEffect(() => {
+    if (variant !== "granted") return
+    const onActivity = () => {
+      const at = frontierRef.current
+      if (at) reporterRef.current?.activity(at.sectionId, at.stepId)
+    }
+    const kinds = ["pointerdown", "keydown", "wheel", "touchstart"] as const
+    for (const kind of kinds) window.addEventListener(kind, onActivity, { passive: true })
+    return () => {
+      for (const kind of kinds) window.removeEventListener(kind, onActivity)
+    }
+  }, [variant])
+
   // Restore the session's own progress; a stale or foreign snapshot is
   // discarded by parseSnapshot and the story starts over.
   useEffect(() => {
@@ -166,7 +201,7 @@ export function DemoJourneyPlayer({
     () => nearestDeadline(sessionExpiresAt, idleExpiresAt)?.kind ?? null,
   )
   useEffect(() => {
-    const nearest = nearestDeadline(sessionExpiresAt, idleExpiresAt)
+    const nearest = nearestDeadline(sessionExpiresAt, idleDeadline)
     setDeadlineKind(nearest?.kind ?? null)
     if (!nearest) {
       setRemaining(null)
@@ -180,7 +215,7 @@ export function DemoJourneyPlayer({
     tick()
     const timer = setInterval(tick, 1_000)
     return () => clearInterval(timer)
-  }, [sessionExpiresAt, idleExpiresAt, offset, onAccessLost])
+  }, [sessionExpiresAt, idleDeadline, offset, onAccessLost])
 
   const hint = useCallback((message: string) => {
     toast.info(message)
@@ -195,6 +230,11 @@ export function DemoJourneyPlayer({
         return result
       }
       setSnapshot(result.snapshot)
+      const reporter = reporterRef.current
+      if (reporter) {
+        for (const report of journeyReportsBetween(snapshot, result.snapshot)) reporter.report(report)
+        reporter.activity(result.snapshot.sectionId, result.snapshot.stepId)
+      }
       if (result.completedStep) {
         const completed = manifest.sections.flatMap((section) => section.steps).find((step) => step.id === result.completedStep)
         setResultBanner(completed?.result ?? null)
@@ -330,6 +370,7 @@ export function DemoJourneyPlayer({
               resultBanner={resultBanner}
               canBack={canBack}
               canSkip={canSkip}
+              onClipEvent={(name) => reporterRef.current?.report({ eventType: "JOURNEY", name, sectionId: viewSection.id })}
               onNext={() => step && dispatch({ type: "complete-step", stepId: step.id })}
               onBack={goBack}
               onSkip={() => step && dispatch({ type: "skip-step", stepId: step.id })}
