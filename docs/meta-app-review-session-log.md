@@ -300,3 +300,58 @@ Audit of existing legal pages, routing, Meta OAuth scopes, persisted data, reten
   leave no frame; `find` references are invalidated by every navigation; the
   dashboard's inner `main` element scrolls, not `window`.
 
+## 2026-09-21 — submitted for App Review
+
+Submission `2418323735294304` was sent and Meta shows **"Идет проверка"** with the
+usual "most requests are reviewed within 20 days". Seven permissions went in:
+`pages_messaging`, `pages_show_list`, `pages_manage_metadata`,
+`instagram_business_basic`, `instagram_business_manage_messages`,
+`public_profile`, `whatsapp_business_management`. The submission can no longer be
+edited or withdrawn.
+
+Two real defects had to be fixed before any of it could work, and both were
+invisible from the code:
+
+- **The Messenger webhook pointed at `https://v2.leaddrivecrm.org/api/v1/webhooks/facebook`,
+  without `?t=<slug>`.** That host resolves and serves the app, so nothing looked
+  broken, but without the slug the request never reaches the tenant's own verify
+  token or app secret. Changed to
+  `https://app.leaddrivecrm.org/api/v1/webhooks/facebook?t=leaddrive` with a fresh
+  verify token stored on the staged config row. Meta ran its own verification GET
+  against it (nginx, 11:12 UTC, `hub.challenge`, 200).
+- **Meta Business Agent (Meta's AI) was enabled on the Page and owned every
+  thread.** Under the Handover Protocol the app was a secondary receiver, so
+  inbound messages went to the `standby` field instead of `messages` — production
+  had recorded zero webhook POSTs ever — and `POST /{page-id}/messages` failed with
+  `(#10) another app currently controls this thread`. `take_thread_control`
+  answered `(#27) not supported` (only the primary receiver may take control) and
+  `request_thread_control` returned `{"success":true}` without transferring
+  anything. The owner turned the agent off in Business Suite → Inbox → Meta
+  Business Agent. Turning it back on will re-break delivery; that is the trade to
+  be aware of, not a setting to flip casually.
+
+With both fixed, the whole path works end to end and was recorded as the
+`pages_messaging` screencast: a message sent in Messenger appears in the CRM inbox
+within seconds, a reply typed in the inbox arrives back in Messenger. The reply
+was also sent once directly through `POST /{page-id}/messages` with the staged
+Page token, which is what flipped the required API test call for `pages_messaging`
+to "Выполнено".
+
+A third thing surfaced while reading production and is worth keeping:
+**`now() - interval` in a psql session on production hides fresh rows.** The
+inbound message was in `channel_messages` the whole time; the window compared a
+CEST `now()` against a UTC `createdAt` and returned nothing, which read exactly
+like "the webhook did not store anything". Query by absolute timestamp
+(`order by "createdAt" desc limit N`) before concluding a row is missing.
+
+`whatsapp_business_messaging` was removed from the request. Meta states it on the
+WhatsApp configuration page: unpublished apps receive only test webhooks from the
+app dashboard, and production data — including from admins, developers and
+testers — is not delivered until the app is published. A truthful screencast of an
+inbound WhatsApp message is therefore impossible before publication, so the
+permission goes in its own submission afterwards. `whatsapp_business_management`
+stayed: it needs no webhook, its API test calls are already complete, and its
+screencast shows credential verification and template sync.
+
+The app itself is still **not published**.
+
