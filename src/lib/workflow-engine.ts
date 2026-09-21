@@ -4,6 +4,7 @@ import { fireWebhooks } from "@/lib/webhooks"
 import { requestOutboundWebhook } from "@/lib/integrations/webhook-url-guard"
 import { sendSlackNotification, formatGenericNotification } from "@/lib/slack"
 import { sendEmail } from "@/lib/email"
+import { renderWorkflowTemplate } from "@/lib/workflow-template"
 import { sendSms } from "@/lib/sms"
 import { decimalToNumber } from "@/lib/prisma-decimal"
 import { recordStageTransition } from "@/lib/revenue-intelligence/transition-recorder"
@@ -295,8 +296,16 @@ async function executeAction(
       if (recipientEmail) {
         await sendEmail({
           to: recipientEmail,
-          subject: config.subject || `[LeadDrive] Notification for ${entityType} #${entity.id}`,
-          html: config.body || config.template || `<p>Workflow notification for ${entityType}.</p>`,
+          subject: renderWorkflowTemplate(
+            config.subject || `[LeadDrive] Notification for ${entityType} #${entity.id}`,
+            entity,
+            "header",
+          ),
+          html: renderWorkflowTemplate(
+            config.body || config.template || `<p>Workflow notification for ${entityType}.</p>`,
+            entity,
+            "html",
+          ),
           organizationId: orgId,
           templateId: config.templateId,
         }).catch(err => console.error(`[Workflow] send_email failed:`, err))
@@ -312,9 +321,11 @@ async function executeAction(
         || (entity as any).fromNumber
         || (entity as any).toNumber
       if (recipientPhone) {
-        const message = (config.message || config.body || `[LeadDrive] Notification for ${entityType}`)
-          .toString()
-          .replace(/\{\{(\w+)\}\}/g, (_: string, k: string) => String((entity as any)[k] ?? ""))
+        const message = renderWorkflowTemplate(
+          (config.message || config.body || `[LeadDrive] Notification for ${entityType}`).toString(),
+          entity,
+          "text",
+        )
         await sendSms({ to: recipientPhone, message, organizationId: orgId })
           .catch(err => console.error(`[Workflow] send_sms failed:`, err))
       } else {
