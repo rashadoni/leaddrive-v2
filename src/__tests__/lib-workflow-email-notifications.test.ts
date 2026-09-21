@@ -17,6 +17,7 @@ vi.mock("@/lib/prisma", () => ({
     lead: { updateMany: vi.fn() },
     ticket: { updateMany: vi.fn() },
     contact: { updateMany: vi.fn() },
+    user: { findFirst: vi.fn() },
   },
 }))
 
@@ -305,6 +306,40 @@ describe("workflow-engine: executeWorkflows", () => {
     // sendEmail is mocked via the email.ts mock chain; we just check it doesn't throw
     await executeWorkflows("org-1", "contact", "created", { id: "c1", email: "user@example.com" })
     // The workflow calls sendEmail internally - we verify no error was thrown
+  })
+
+  it("send_email ignores an arbitrary external config.to (no open relay) and falls back to the entity", async () => {
+    const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    vi.mocked(mockPrisma.user.findFirst).mockResolvedValue(null) // not an org member
+    mockPrisma.workflowRule.findMany.mockResolvedValue([
+      {
+        conditions: null,
+        actions: [{ actionType: "send_email", actionConfig: { to: "attacker@evil.com", subject: "Hi", body: "<p>x</p>" }, actionOrder: 1 }],
+      },
+    ])
+    await executeWorkflows("org-1", "contact", "created", { id: "c1", email: "owner@example.com" })
+    expect(mockPrisma.user.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { organizationId: "org-1", email: { equals: "attacker@evil.com", mode: "insensitive" } },
+      }),
+    )
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("ignoring non-org recipient"))
+    consoleSpy.mockRestore()
+  })
+
+  it("send_email honors config.to when it is a user in the same org (internal notification)", async () => {
+    const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    vi.mocked(mockPrisma.user.findFirst).mockResolvedValue({ id: "u-ops" } as any)
+    mockPrisma.workflowRule.findMany.mockResolvedValue([
+      {
+        conditions: null,
+        actions: [{ actionType: "send_email", actionConfig: { to: "ops@org.com", subject: "Hi", body: "<p>x</p>" }, actionOrder: 1 }],
+      },
+    ])
+    await executeWorkflows("org-1", "deal", "created", { id: "d1", email: "customer@example.com" })
+    expect(mockPrisma.user.findFirst).toHaveBeenCalled()
+    expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining("ignoring non-org recipient"))
+    consoleSpy.mockRestore()
   })
 
   it("skips send_email when no recipient is available", async () => {

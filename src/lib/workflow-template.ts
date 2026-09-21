@@ -23,8 +23,33 @@
  * the rule author's own markup and is sent as written.
  */
 
+import { sanitizeEmailHtml, stripHtmlToText } from "@/lib/sanitize"
+
 /** Where the rendered text is going, which decides how a value is made safe. */
 export type WorkflowTemplateTarget = "html" | "text" | "header"
+
+/**
+ * Sanitize the customer-facing text fields of a workflow action config before
+ * it is STORED, so a stored-XSS payload never reaches the database (defense in
+ * depth alongside the authoritative sanitize at the `sendEmail` send point).
+ * HTML bodies get the outbound-email profile; `subject`/`message`/`title` are
+ * reduced to plain text. Every other key (webhook `url`, `delayMinutes`,
+ * `field`/`value`, `assignTo`, …) and any non-string value passes through
+ * untouched.
+ */
+export function sanitizeWorkflowActionConfig<T>(config: T): T {
+  if (!config || typeof config !== "object" || Array.isArray(config)) return config
+  const c = { ...(config as Record<string, unknown>) }
+  for (const key of ["body", "template"]) {
+    const v = c[key]
+    if (typeof v === "string") c[key] = sanitizeEmailHtml(v)
+  }
+  for (const key of ["subject", "message", "title"]) {
+    const v = c[key]
+    if (typeof v === "string") c[key] = stripHtmlToText(v)
+  }
+  return c as T
+}
 
 const VARIABLE = /\{\{\s*(\w+)\s*\}\}/g
 

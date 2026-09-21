@@ -9,6 +9,7 @@ import {
   createSecureSmtpTransport,
   sanitizeMailHeaders,
 } from "@/lib/secure-smtp"
+import { sanitizeEmailHtml } from "@/lib/sanitize"
 
 interface SmtpConfig {
   smtpHost: string
@@ -258,6 +259,16 @@ export async function sendEmail({
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Invalid email header" }
   }
+
+  // Authoritative XSS/HTML choke point. EVERY sender flows through here —
+  // workflow send_email, campaigns, sales sequences, transactional mail — so
+  // sanitizing once, before the body is logged to `email_logs` or handed to any
+  // provider, covers them all. A workflow/template author who stored
+  // `<img src=x onerror=…>` (as happened 2026-07-24) can no longer make the
+  // platform's signed domain emit an event handler or a `<script>`. Callers
+  // that build trusted internal HTML (password reset, ticket replies) pass the
+  // rich subset this profile keeps, so nothing legitimate is lost.
+  html = sanitizeEmailHtml(html)
 
   // Respect global opt-out unless this is a transactional email. We look up by
   // (organizationId, email) — if any row has surveyId=null we treat it as a

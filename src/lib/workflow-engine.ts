@@ -5,6 +5,7 @@ import { requestOutboundWebhook } from "@/lib/integrations/webhook-url-guard"
 import { sendSlackNotification, formatGenericNotification } from "@/lib/slack"
 import { sendEmail } from "@/lib/email"
 import { renderWorkflowTemplate } from "@/lib/workflow-template"
+import { sanitizeLog } from "@/lib/sanitize"
 import { sendSms } from "@/lib/sms"
 import { decimalToNumber } from "@/lib/prisma-decimal"
 import { recordStageTransition } from "@/lib/revenue-intelligence/transition-recorder"
@@ -205,6 +206,47 @@ function evaluateConditions(conditions: any, entity: Record<string, any>): boole
   return true
 }
 
+/**
+ * Decide who a `send_email` action may actually reach.
+ *
+ * The stored body is the rule author's HTML (sanitized at the send choke point
+ * in `sendEmail`), and `config.to` was previously honored verbatim — so a rule
+ * could send author-controlled HTML to ANY outside mailbox from the platform's
+ * signed domain, i.e. an open relay. A workflow legitimately notifies the
+ * triggering record's own contact, or a fixed INTERNAL address (an ops inbox).
+ * So `config.to` is honored only when it is the triggering entity's own address
+ * or a user in the same org; anything else falls back to the entity address and
+ * is logged. No `config.to` → the entity's address, exactly as before.
+ */
+async function resolveWorkflowEmailRecipient(
+  orgId: string,
+  config: Record<string, any>,
+  entity: Record<string, any>,
+  entityType: string,
+): Promise<string | undefined> {
+  const entityEmail = (entity as any).email || (entity as any).contactEmail
+  const requested = typeof config.to === "string" ? config.to.trim() : ""
+  if (!requested) return entityEmail || undefined
+
+  const normalized = requested.toLowerCase()
+  if (typeof entityEmail === "string" && entityEmail.toLowerCase() === normalized) {
+    return requested
+  }
+  try {
+    const member = await prisma.user.findFirst({
+      where: { organizationId: orgId, email: { equals: requested, mode: "insensitive" } },
+      select: { id: true },
+    })
+    if (member) return requested
+  } catch (e) {
+    console.error("[Workflow] send_email recipient check failed:", e)
+  }
+  console.warn(
+    `[Workflow] send_email — ignoring non-org recipient ${sanitizeLog(requested)} for ${entityType} ${entity.id}; using entity address`,
+  )
+  return entityEmail || undefined
+}
+
 async function executeAction(
   orgId: string,
   entityType: string,
@@ -292,7 +334,7 @@ async function executeAction(
     }
 
     case "send_email": {
-      const recipientEmail = config.to || (entity as any).email || (entity as any).contactEmail
+      const recipientEmail = await resolveWorkflowEmailRecipient(orgId, config, entity, entityType)
       if (recipientEmail) {
         await sendEmail({
           to: recipientEmail,
