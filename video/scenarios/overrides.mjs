@@ -886,6 +886,38 @@ const BD_FILTER_TYPE = ["main select >> nth=1", "main"];
 const BD_FILTER_PRIORITY = ["main select >> nth=3", "main select >> nth=2", "main"];
 const BD_COLUMNS = ["main :text('BACKLOG')", "main :text('Backlog')", "main"];
 
+// ── omnichannel-reel — MARKETING cut, not a help guide ──────────────────────
+// Storyboard: docs/omnichannel-reel-scenario.md (WhatChimp formula: night →
+// AI answers → team takes over → morning, all answered → channels → CTA).
+// Record with GUIDE_OUT_DIR (never video/player), GUIDE_VIDEO_W/H 1080×1080 or
+// 1080×1920 and GUIDE_BURN_SUBS=1. Owner decisions 2026-09-21: CTA is
+// «Demo sorğusu» (the site's own button — there is no self-serve trial), and
+// Instagram/Facebook stay OUT of the channel list until Meta App Review passes.
+// Nothing here saves: the assignee picker and the lead dialog are opened and
+// dismissed. «Cavab təklif et» does call the AI (one aiInteractionLog row, a
+// few cents of budget) and fills the composer without sending.
+// Inbox has no tour ids: rows are role=button, rail items are plain buttons with
+// hard-coded English channel labels (src/lib/inbox-channels.ts).
+const RL_ROW = ["section div[role='button'][tabindex='0']"];
+const RL_IN_BUBBLE = [".justify-start .rounded-bl-md", "main"];
+const RL_AI_BTN = ["[title='AI cavab təklifi']"];
+const RL_AI_SUGGEST = ["button:has-text('Cavab təklif et')"];
+const RL_COMPOSER = ["input[placeholder^='Mesajınızı yazın']"];
+const RL_ASSIGN = ["[title='Təyin et']"];
+const RL_CONVERT = ["button:has-text('Lidə çevir')"];
+const RL_DIALOG_CANCEL = ["[role='dialog'] button:has-text('Ləğv et')", "[role='dialog'] [aria-label='Bağla']"];
+const RL_THREAD = ["main section:nth-of-type(3)", "main"];
+const RL_CB_MASTER = ["[data-tour-id='cb-master']"];
+const RL_CB_RULE = ["[data-tour-id='cb-rules'] .divide-y > div", "[data-tour-id='cb-rules']"];
+const RL_FRT = ["div.border.rounded-lg:has(:text-is('İlk cavabın medianı'))", ":text-is('İlk cavabın medianı')"];
+const RL_BY_CHANNEL = ["div:has(> :text-is('Kanallar üzrə'))", ":text-is('Kanallar üzrə')"];
+const RL_RAIL = ["aside:has(nav) nav", "aside nav"];
+const RL_CHANNELS = ["WhatsApp", "Telegram", "TikTok", "SMS", "Email", "Web Chat", "VoIP"];
+const railItem = (name) => [`aside nav button:has-text('${name}')`];
+// 9:16 only: zoom onto the active zone; square frames keep the whole screen.
+const tall = (p) => { const v = p.viewportSize(); return Boolean(v && v.height > v.width); };
+const zoom = async (p, h, sel, scale = 1.7) => { if (tall(p)) await h.focus(sel, scale); };
+
 export default {
   boards: {
     route: "/boards",
@@ -3409,6 +3441,129 @@ export default {
           ru: "И весь состав сгруппирован по менеджеру — структура команды прямо перед вами: кто кому подчиняется, насколько велика каждая группа. Вот раздел «Агенты»: не визитница, а командный центр — добавляйте, открывайте, связывайтесь и ведите всю полевую команду с одного экрана.",
         },
         do: async (p, l, h) => { await h.moveTo(AG_GROUP); await h.hover(AG_GROUP); },
+      },
+    ],
+  },
+
+  "omnichannel-reel": {
+    route: "/inbox",
+    title: { az: "Omni-channel Inbox", en: "Omni-channel Inbox", ru: "Omni-channel Inbox" },
+    scenes: [
+      // 1 — Hook: night, a customer writes.
+      {
+        voice: {
+          az: "Gecə saat ikidir. Müştəri yazır: «Kimsə var?» Kim cavab verir?",
+          ru: "Два часа ночи. Клиент пишет: «Есть кто-нибудь?» Кто отвечает?",
+        },
+        do: async (p, l, h) => {
+          await h.card({ title: "Gecə 2:14. Müştəri yazır.", sub: "Kim cavab verir?", dim: 0.62 });
+        },
+      },
+      // 2 — AI drafts the reply from the knowledge base.
+      {
+        voice: {
+          az: "LeadDrive-da süni intellekt cavabı hazırlayır: müştərinin sualına saniyələr içində, sizin bilik bazanızdan.",
+          ru: "В LeadDrive ответ готовит ИИ: на вопрос клиента — за секунды, из вашей базы знаний.",
+        },
+        do: async (p, l, h) => {
+          await h.clearOverlays();
+          await h.caption("*AI cavab təklifi* — saniyələr içində");
+          await h.click(RL_ROW);
+          await zoom(p, h, RL_THREAD);
+          await h.moveTo(RL_IN_BUBBLE);
+          await h.holdUntil(0.3);
+          await h.click(RL_AI_BTN);
+          await h.holdUntil(0.5);
+          await h.click(RL_AI_SUGGEST);
+          await h.holdUntil(0.85);
+          await h.moveTo(RL_COMPOSER);
+        },
+      },
+      // 3 — Chatbot auto-replies, 24/7.
+      {
+        route: "/inbox/chatbot-rules",
+        voice: {
+          az: "Gecə də, bayramda da — avtomatik cavablar işləyir, müştəri gözləmir.",
+          ru: "И ночью, и в праздники — автоответы работают, клиент не ждёт.",
+        },
+        do: async (p, l, h) => {
+          await h.caption("Avtomatik cavab: *AKTİV* · 24/7");
+          await zoom(p, h, RL_CB_MASTER, 1.5);
+          await h.moveTo(RL_CB_MASTER);
+          await h.holdUntil(0.55);
+          await h.moveTo(RL_CB_RULE);
+        },
+      },
+      // 4 — The team takes the hard question: assign, convert to a lead.
+      {
+        route: "/inbox",
+        voice: {
+          az: "Çətin sualı komanda götürür: bir kliklə əməkdaşa təyin edin, söhbəti lidə çevirin — satıcı artıq işə başlayır.",
+          ru: "Сложный вопрос берёт команда: одним кликом назначаете сотрудника, превращаете чат в лид — продавец уже в работе.",
+        },
+        do: async (p, l, h) => {
+          await h.caption("Çətin sualı *komanda* götürür");
+          await h.click(RL_ROW);
+          await zoom(p, h, RL_THREAD);
+          await h.click(RL_ASSIGN);            // opens the picker — selecting would PATCH
+          await h.holdUntil(0.35);
+          await p.keyboard.press("Escape").catch(() => {});
+          await h.click(RL_CONVERT);           // dialog open = read-only GET
+          await h.holdUntil(0.8);
+          await h.click(RL_DIALOG_CANCEL);
+        },
+      },
+      // 5 — Morning: analytics.
+      {
+        route: "/inbox/analytics",
+        voice: {
+          az: "Səhər açılır — hər söhbətə cavab verilib. İlk cavab vaxtı, həll olunan söhbətlər, kanallar üzrə yük — hamısı bir ekranda.",
+          ru: "Утро — на каждый чат отвечено. Время первого ответа, решённые чаты, нагрузка по каналам — всё на одном экране.",
+        },
+        do: async (p, l, h) => {
+          await h.caption("Səhər 7:24. *Hər söhbətə cavab verilib.*");
+          await zoom(p, h, RL_FRT, 1.5);
+          await h.moveTo(RL_FRT);
+          await h.holdUntil(0.55);
+          await zoom(p, h, RL_BY_CHANNEL, 1.5);
+          await h.moveTo(RL_BY_CHANNEL);
+        },
+      },
+      // 6 — One inbox, every channel (no Instagram/Facebook — owner, 2026-09-21).
+      {
+        route: "/inbox",
+        voice: {
+          az: "WhatsApp, Telegram, TikTok, SMS, e-poçt, saytdakı çat və zənglər — hamısı bir gələnlər qutusunda.",
+          ru: "WhatsApp, Telegram, TikTok, SMS, почта, чат на сайте и звонки — всё в одном инбоксе.",
+        },
+        do: async (p, l, h) => {
+          await h.caption("Bir gələnlər qutusu. *Bütün kanallar.*");
+          await zoom(p, h, RL_RAIL, 1.8);
+          for (const [i, name] of RL_CHANNELS.entries()) {
+            await h.moveTo(railItem(name));
+            await h.holdUntil(0.1 + (0.8 * (i + 1)) / RL_CHANNELS.length);
+          }
+        },
+      },
+      // 7 — End card + CTA.
+      {
+        voice: {
+          az: "LeadDrive. Bir gələnlər qutusu, bir süni intellekt. Bu gün başlayın.",
+          ru: "LeadDrive. Один инбокс, один ИИ. Начните сегодня.",
+        },
+        do: async (p, l, h) => {
+          await h.focus(null);
+          await h.clearOverlays();
+          await h.card({
+            logo: true,
+            title: "LeadDrive",
+            sub: "Bir gələnlər qutusu. Bir AI.",
+            chips: ["WhatsApp", "Telegram", "TikTok", "SMS", "E-poçt", "Veb-çat", "Zənglər"],
+            cta: "Demo sorğusu",
+            url: "leaddrivecrm.org",
+            dim: 0.94,
+          });
+        },
       },
     ],
   },
