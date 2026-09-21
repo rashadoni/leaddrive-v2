@@ -27,6 +27,7 @@ import {
   validateJourneyManifest,
   type DemoJourneyState,
 } from "@/lib/demo-center/journey"
+import { getHelpVideoForSlug } from "@/content/help/video-assets"
 
 const ROOT = process.cwd()
 const read = (relative: string) => readFileSync(path.join(ROOT, relative), "utf8")
@@ -323,6 +324,33 @@ describe("Guided journey intro clips", () => {
         expect(existsSync(poster), `${section.id}: ${poster}`).toBe(true)
       }
       expect(section.intro.caption.trim()).not.toBe("")
+    }
+  })
+
+  it("marks a clip available only when the help library will actually serve it", () => {
+    // A file on disk is not enough: the demo's own video route asks the help
+    // library's gate, and a card for a clip it refuses can only ever say
+    // "being prepared". The reverse does not hold — a clip the library
+    // serves may still be withheld from prospects (see the next test).
+    for (const section of manifest.sections) {
+      if (section.intro?.status !== "available") continue
+      expect(getHelpVideoForSlug(section.intro.slug, "az"), `${section.id}: ${section.intro.slug}`).not.toBeNull()
+    }
+  })
+
+  it("shows prospects only clips checked to carry no real customer data", () => {
+    // 2026-09-21: the help library's leads and boards clips were filmed in
+    // LeadDrive Inc. and show real leads and tasks with client names. A clip
+    // enters the demo only after its frames were looked at, and is listed
+    // here with what it shows, so the next one gets looked at too.
+    const CHECKED_SYNTHETIC: Record<string, string> = {
+      "deal-detail": "a TEST deal («TEST: GlobalTech Analytics Platform»)",
+      quotes: "test quotes (3232, sa, ADV-DEMO-Q-001, q-2026-v333, Q-TRACK-001)",
+    }
+    for (const section of manifest.sections) {
+      if (section.intro?.status !== "available") continue
+      expect(CHECKED_SYNTHETIC, `${section.id}: clip "${section.intro.slug}" was never checked for real data`)
+        .toHaveProperty([section.intro.slug])
     }
   })
 })
