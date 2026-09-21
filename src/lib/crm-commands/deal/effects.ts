@@ -20,10 +20,14 @@ type DealCreatedEffectEntity = Pick<
 export function dispatchDealCreatedEffects(
   organizationId: string,
   deal: DealCreatedEffectEntity,
+  /** Who performed it. An audit row without an actor hides the answer. */
+  actorUserId?: string | null,
 ): number {
   const dealValue = decimalToNumber(deal.valueAmount)
 
-  logAudit(organizationId, "create", "deal", deal.id, deal.name)
+  logAudit(organizationId, "create", "deal", deal.id, deal.name, {
+    userId: actorUserId ?? undefined,
+  })
   executeWorkflows(organizationId, "deal", "created", deal).catch(() => {})
   createNotification({
     organizationId,

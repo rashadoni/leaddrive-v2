@@ -517,7 +517,12 @@ describe("Lead Convert", () => {
     )
 
     expect(res.status).toBe(201)
-    expect(logAudit).toHaveBeenCalledWith("org-1", "create", "deal", "d1", "Effect Deal")
+    // The deal a conversion creates now names who performed it. This assertion
+    // used to pin the call WITHOUT an actor — the audit row recorded that a
+    // deal appeared and hid who made it (roadmap V1.9).
+    expect(logAudit).toHaveBeenCalledWith("org-1", "create", "deal", "d1", "Effect Deal", {
+      userId: "user-1",
+    })
     expect(logAudit).toHaveBeenCalledWith(
       "org-1",
       "convert",

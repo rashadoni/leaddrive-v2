@@ -224,7 +224,10 @@ export async function updateLeadCommand(
   if (!updated) throw notFoundError("Not found")
 
   const dispatchEffects = () => {
-    logAudit(orgId, "update", "lead", leadId, updated.contactName, { newValue: input })
+    logAudit(orgId, "update", "lead", leadId, updated.contactName, {
+      newValue: input,
+      userId: userId ?? undefined,
+    })
     const triggerEvent = input.status ? "status_changed" : "updated"
     executeWorkflows(orgId, "lead", triggerEvent, updated).catch(() => {})
 

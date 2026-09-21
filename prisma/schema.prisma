@@ -3040,6 +3040,7 @@ model AiActionIntent {
   @@index([organizationId, voiceSessionId, state], map: "ai_action_intents_org_session_state_idx")
   @@index([organizationId, state, expiresAt], map: "ai_action_intents_org_state_expiry_idx")
   @@index([organizationId, targetEntityType, targetEntityId], map: "ai_action_intents_org_target_idx")
+  @@index([organizationId, resultEntityType, resultEntityId], map: "ai_action_intents_org_result_idx")
   @@index([organizationId, parentIntentId], map: "ai_action_intents_org_parent_idx")
   @@map("ai_action_intents")
 }
