@@ -25,6 +25,9 @@ vi.mock("@/lib/prisma", () => ({
 vi.mock("@/lib/api-auth", () => ({ getSession: vi.fn(), getOrgId: vi.fn() }))
 vi.mock("@/lib/field-filter", () => ({
   getFieldPermissions: vi.fn().mockResolvedValue([]),
+  // Strict loader used by the command layer; same fixture, it only
+  // differs when the table cannot be read.
+  requireFieldPermissions: vi.fn().mockResolvedValue([]),
   filterEntityFields: vi.fn().mockImplementation((data) => data),
   filterWritableFields: vi.fn().mockImplementation((data) => data),
 }))

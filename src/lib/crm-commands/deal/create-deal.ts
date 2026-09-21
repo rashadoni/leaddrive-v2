@@ -1,6 +1,6 @@
 import type { Deal, Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
-import { getFieldPermissions } from "@/lib/field-filter"
+import { requireFieldPermissions } from "@/lib/field-filter"
 import { DEFAULT_CURRENCY } from "@/lib/constants"
 import { decimalToNumber } from "@/lib/prisma-decimal"
 import type { CrmCommandActorContext } from "../actor-context"
@@ -81,7 +81,7 @@ export async function createDealCommand(
 
   const { organizationId: orgId, role, userId } = actor
   const db = execution?.transaction ?? prisma
-  const fieldPermissions = await getFieldPermissions(orgId, role, "deal")
+  const fieldPermissions = await requireFieldPermissions(orgId, role, "deal")
   const input = requireWritableFields(
     parsed.data as Record<string, unknown>,
     fieldPermissions,

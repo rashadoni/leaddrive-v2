@@ -1,6 +1,6 @@
 import type { Lead, Prisma } from "@prisma/client"
 import { prisma, logAudit } from "@/lib/prisma"
-import { getFieldPermissions } from "@/lib/field-filter"
+import { requireFieldPermissions } from "@/lib/field-filter"
 import { executeWorkflows } from "@/lib/workflow-engine"
 import { createNotification } from "@/lib/notifications"
 import { applyLeadAssignmentRules } from "@/lib/lead-assignment"
@@ -156,7 +156,7 @@ export async function createLeadCommand(
 
   const { organizationId: orgId, role, userId } = actor
   const db = execution?.transaction ?? prisma
-  const fieldPermissions = await getFieldPermissions(orgId, role, "lead")
+  const fieldPermissions = await requireFieldPermissions(orgId, role, "lead")
   const input = requireWritableFields(
     parsed.data as Record<string, unknown>,
     fieldPermissions,

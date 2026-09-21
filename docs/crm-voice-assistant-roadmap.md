@@ -368,15 +368,28 @@ No voice write tools are enabled in this phase.
       `expectedUpdatedAt`, and concurrent conversion cannot create two deals.
 - [x] C1.8 Define trusted `actorContext` containing organization, user, role,
       and source.
-- [ ] C1.9 Make field permissions fail closed.
-- [ ] C1.10 Reject cross-tenant users, entities, pipelines, stages, and related
-      records.
+- [x] C1.9 Make field permissions fail closed. `getFieldPermissions` answered
+      an unreadable table with an empty map — which every caller correctly
+      reads as "nothing is restricted" — and cached that emptiness for a
+      minute. On a read path that is a tolerable default; on a write it made a
+      database blip open every restricted field for sixty seconds. Writes now
+      use `requireFieldPermissions`, which raises instead, and neither loader
+      caches a failure any more.
+- [x] C1.10 Reject cross-tenant users, entities, pipelines, stages and related
+      records. Verified rather than added: all five commands already scope the
+      assignee, pipeline, company, contact and project by `organizationId`, and
+      `resolveRelated` scopes a task's related record the same way. Pinned by
+      `crm-command-parity.test.ts` so it cannot be dropped silently.
 - [ ] C1.11 Preserve all canonical workflows, notifications, webhooks, CDP
       updates, Slack actions, and audit events.
 - [ ] C1.12 Introduce a transactional outbox where external side effects cannot
       safely share the record transaction.
 - [ ] C1.13 Route current REST operations through the same command services.
-- [ ] C1.14 Add REST-versus-command parity tests.
+- [x] C1.14 Add REST-versus-command parity tests. They cover the guarantees
+      rather than re-testing each command: permissions fail closed on a write,
+      every command loads them the strict way, the assignee is tenant-scoped,
+      and the voice allow-list stays a subset of what the command schema
+      accepts. C1.11-C1.13 remain open.
 
 ### Exit gate
 
@@ -928,6 +941,7 @@ implementation branch that advances the roadmap.
 | 2026-09-20 | Execution boundary | Production deployed | PR #245; merge `a7f6c2654`; deploy `35479290362` | Internal-only atomic CRM mutation/result/`succeeded` event; commit remains disabled. |
 | 2026-09-20 | Commit adapter | Production deployed | PR #249; merge `ffcbaa3a4`; active artifact `a9891d6cb`; deploy `35499744499` | Session-only endpoint and three rate-limit scopes are live; receipt UI remains open and no model write-tool is exposed. |
 | 2026-09-20 | Receipt UI shell (U1.1-U1.3) | Production deployed | PR #257; merge `1bbc59e1e`; active artifact `6cca1a5a8`; deploy `35512069725` | Shadow mode: session-scoped store, anchored desktop panel, mobile bottom sheet. No confirm control, no write request, no model commit tool. |
+| 2026-09-21 | Command parity (C1.9, C1.10, C1.14) | Code complete | Targeted Vitest: 647 files / 10446 green, 8 known-baseline reds; targeted ESLint; i18n parity; pii-columns | Field permissions fail closed on writes; tenant scoping verified and pinned. |
 | 2026-09-20 | Write kill switch (P0.11) | Production deployed | PR #296; merge `8765421d0`; shipped in artifact `c572906bd13a0711ea54e289565062a9f3043935` | `VOICE_WRITE_ENABLED=false` removes the proposal tools, their prompt lines and the five mutating routes, leaving reads untouched. |
 | 2026-09-20 | Noisy-room mode (A3.1, A3.11-A3.13) | Production deployed | PR #290; merge `d16e6a830`; active artifact `d16e6a830a867d75db154116cb3180bf76642111`; deploy `35531765494` | Barge-in policy minted into the token per session. Music can no longer interrupt; measurement (A1.6, A2.9) still open. |
 | 2026-09-20 | Edit a receipt in place (U1.9a) | Production deployed | PR #284; merge `77f020788`; active artifact `77f020788d87b42a070e621cc5146a5fb51a7e4c`; deploy `35526045273` | Fields become inputs, the save replaces the payload under the on-screen revision, and no confirm button exists while the form is open. |

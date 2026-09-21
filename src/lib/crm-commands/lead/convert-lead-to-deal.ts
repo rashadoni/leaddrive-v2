@@ -1,6 +1,6 @@
 import type { Contact, Deal, Lead, Pipeline, PipelineStage, Prisma } from "@prisma/client"
 import { prisma, logAudit } from "@/lib/prisma"
-import { getFieldPermissions } from "@/lib/field-filter"
+import { requireFieldPermissions } from "@/lib/field-filter"
 import { applyRecordFilter } from "@/lib/sharing-rules"
 import { executeWorkflows } from "@/lib/workflow-engine"
 import { createNotification } from "@/lib/notifications"
@@ -181,7 +181,7 @@ export async function convertLeadToDealCommand(
   requireVoiceVersion(actor, parsed.data)
 
   const { organizationId: orgId, userId, role } = actor
-  const fieldPermissions = await getFieldPermissions(orgId, role, "deal")
+  const fieldPermissions = await requireFieldPermissions(orgId, role, "deal")
   requireDealFieldsWritable(parsed.data, fieldPermissions, role)
 
   const visibleWhere = await applyRecordFilter(orgId, userId ?? "", role, "lead", {
