@@ -79,7 +79,7 @@ const THREADS = [
   // The hero — 02:14 at night, still waiting: the reel opens it, asks the AI
   // for a reply, opens the assignee picker and the lead dialog.
   { ch: "whatsapp", who: 0, ago: 0, hero: true, state: "open", assign: null, msgs: [
-    ["in", "Salam, kimsə var? «Bakı» künc divanı hələ satışdadır? Bu həftə Xırdalana çatdırmaq olar?"],
+    ["in", "Salam! Bu divan hələ satışdadır? Qiyməti neçəyədir, bu həftə çatdırırsınız?"],
   ] },
   { ch: "whatsapp", who: 1, ago: 95, reply: 1, by: "ai", state: "open", assign: null, msgs: [
     ["in", "Axşamınız xeyir. Sabah neçədə açılırsınız?"],
@@ -176,8 +176,8 @@ const RULES = [
 // falls back to a keyword match of the customer's words, >3 letters, as
 // substrings — so the articles repeat the hero's own wording).
 const KB = [
-  { title: "«Bakı» künc divanı — satışdadır", content: "«Bakı» künc divanı satışdadır, anbarda boz və bej rəngdə var. Ölçü: 280 × 180 sm, açılan yataq yeri və yataq dəsti üçün qutu. Qiyməti 1 890 AZN, 12 aya qədər faizsiz hissə-hissə ödəniş mümkündür." },
-  { title: "Çatdırılma: Bakı, Sumqayıt, Xırdalan", content: "Bakı, Sumqayıt və Xırdalana çatdırmaq 1–3 iş günü çəkir. Bu həftə sifariş edilən divanı Xırdalana cümə günü çatdırırıq. Çatdırılma və quraşdırma pulsuzdur; kuryer bir saat əvvəl zəng edir." },
+  { title: "Künc divan — satışdadır, qiyməti", content: "Künc divan satışdadır, anbarda boz və bej rəngdə var. Qiyməti 1 890 AZN, 12 aya qədər faizsiz hissə-hissə ödəniş mümkündür. Ölçü: 280 × 180 sm, açılan yataq yeri." },
+  { title: "Çatdırılma: bu həftə, Bakı daxilində pulsuz", content: "Bakı, Sumqayıt və Xırdalana çatdırırsınız? Bəli: 1–3 iş günü. Bu həftə sifariş edilən divanı cümə günü çatdırırıq. Çatdırılma və quraşdırma pulsuzdur; kuryer bir saat əvvəl zəng edir." },
 ]
 
 const prisma = await makeScriptPrisma()
