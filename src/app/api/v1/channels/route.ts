@@ -11,6 +11,7 @@ import { channelIdsClaimedElsewhere } from "@/lib/channels/inbound-claim"
 import { emailIntakeSettingsError } from "@/lib/ticketing/email-intake"
 import { validateChatwootBaseUrl } from "@/lib/chatwoot"
 import { auditChannelChange, changedCredentialFields } from "@/lib/channels/channel-credential-audit"
+import { dedicatedChannelTypeError } from "@/lib/channels/dedicated-channel-types"
 
 const createChannelSchema = z.object({
   channelType: z.string().min(1),
@@ -123,12 +124,10 @@ export async function POST(req: NextRequest) {
       // the transition. Remove the mirror once all readers switched to new
       // columns exclusively.
       const d = parsed.data
-      if (d.channelType === "voip") {
-        return NextResponse.json(
-          { error: "VoIP configuration must be managed through the dedicated VoIP endpoint" },
-          { status: 403 },
-        )
-      }
+      // Social Monitoring, Slack, Teams and VoIP rows are created by their own screens
+      // (lib/channels/dedicated-channel-types).
+      const dedicatedError = dedicatedChannelTypeError(d.channelType)
+      if (dedicatedError) return NextResponse.json({ error: dedicatedError }, { status: 403 })
       const credentialsError = whatsappChannelCredentialsError(d)
       if (credentialsError) return NextResponse.json({ error: credentialsError }, { status: 400 })
       const intakeSettingsError = emailIntakeSettingsError(d.channelType, d.settings)

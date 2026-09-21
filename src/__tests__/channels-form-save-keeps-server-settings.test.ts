@@ -103,6 +103,9 @@ function rowMatches(row: StoredRow, where: Record<string, unknown>): boolean {
     if (expected && typeof expected === "object" && "not" in expected) {
       return actual !== (expected as { not: unknown }).not
     }
+    if (expected && typeof expected === "object" && "notIn" in expected) {
+      return !(expected as { notIn: unknown[] }).notIn.includes(actual)
+    }
     return actual === expected
   })
 }

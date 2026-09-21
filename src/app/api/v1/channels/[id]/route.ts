@@ -12,6 +12,7 @@ import { validateChatwootBaseUrl } from "@/lib/chatwoot"
 import { auditChannelChange, changedCredentialFields } from "@/lib/channels/channel-credential-audit"
 import { isMetaInboxChannelType, mergeMetaSettingsForUpdate } from "@/lib/channels/meta-server-settings"
 import { channelSettingsForUpdate } from "@/lib/channels/server-owned-settings"
+import { DEDICATED_CHANNEL_TYPES, dedicatedChannelTypeError } from "@/lib/channels/dedicated-channel-types"
 
 const updateChannelSchema = z.object({
   channelType: z.string().min(1).optional(),
@@ -99,12 +100,10 @@ export async function PUT(
       if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
       const d = parsed.data
-      if (row.channelType === "voip" || d.channelType === "voip") {
-        return NextResponse.json(
-          { error: "VoIP configuration must be managed through the dedicated VoIP endpoint" },
-          { status: 403 },
-        )
-      }
+      // A row owned by its own screen is not edited here, nor another row turned into one
+      // (lib/channels/dedicated-channel-types).
+      const dedicatedError = dedicatedChannelTypeError(row.channelType, d.channelType)
+      if (dedicatedError) return NextResponse.json({ error: dedicatedError }, { status: 403 })
       const isWa = row?.channelType === "whatsapp" || d.channelType === "whatsapp"
       const credentialsError = whatsappChannelCredentialsError(d, row)
       if (credentialsError) return NextResponse.json({ error: credentialsError }, { status: 400 })
@@ -174,7 +173,7 @@ export async function PUT(
         where: {
           id,
           organizationId: orgId,
-          channelType: { not: "voip" },
+          channelType: { notIn: DEDICATED_CHANNEL_TYPES },
         },
         data,
       })
@@ -183,12 +182,8 @@ export async function PUT(
           where: { id, organizationId: orgId },
           select: { channelType: true },
         })
-        if (current?.channelType === "voip") {
-          return NextResponse.json(
-            { error: "VoIP configuration must be managed through the dedicated VoIP endpoint" },
-            { status: 403 },
-          )
-        }
+        const currentError = dedicatedChannelTypeError(current?.channelType)
+        if (currentError) return NextResponse.json({ error: currentError }, { status: 403 })
         return NextResponse.json({ error: "Not found" }, { status: 404 })
       }
       const updated = await prisma.channelConfig.findFirst({ where: { id, organizationId: orgId } })
@@ -231,12 +226,8 @@ export async function DELETE(
       })
       if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-      if (row.channelType === "voip") {
-        return NextResponse.json(
-          { error: "VoIP configuration must be managed through the dedicated VoIP endpoint" },
-          { status: 403 },
-        )
-      }
+      const dedicatedError = dedicatedChannelTypeError(row.channelType)
+      if (dedicatedError) return NextResponse.json({ error: dedicatedError }, { status: 403 })
 
       if (["facebook", "instagram", "whatsapp"].includes(row.channelType)) {
         await prisma.channelConfig.updateMany({
@@ -288,7 +279,7 @@ export async function DELETE(
         where: {
           id,
           organizationId: orgId,
-          channelType: { not: "voip" },
+          channelType: { notIn: DEDICATED_CHANNEL_TYPES },
         },
       })
       if (result.count === 0) {
@@ -296,12 +287,8 @@ export async function DELETE(
           where: { id, organizationId: orgId },
           select: { channelType: true },
         })
-        if (current?.channelType === "voip") {
-          return NextResponse.json(
-            { error: "VoIP configuration must be managed through the dedicated VoIP endpoint" },
-            { status: 403 },
-          )
-        }
+        const currentError = dedicatedChannelTypeError(current?.channelType)
+        if (currentError) return NextResponse.json({ error: currentError }, { status: 403 })
         return NextResponse.json({ error: "Not found" }, { status: 404 })
       }
       await auditChannelChange({

@@ -48,6 +48,7 @@ vi.mock("@/lib/integrations/webhook-url-guard", async (importOriginal) => {
 
 import { GET as GET_LIST, POST } from "@/app/api/v1/channels/route"
 import { GET as GET_ONE, PUT } from "@/app/api/v1/channels/[id]/route"
+import { DEDICATED_CHANNEL_TYPES } from "@/lib/channels/dedicated-channel-types"
 
 const channelRow = {
   id: "ch_1",
@@ -197,7 +198,7 @@ describe("channel config secret response redaction", () => {
       where: {
         id: "ch_1",
         organizationId: "org_1",
-        channelType: { not: "voip" },
+        channelType: { notIn: DEDICATED_CHANNEL_TYPES },
       },
       data: expect.objectContaining({ configName: "WA Updated" }),
     })
@@ -311,7 +312,7 @@ describe("channel config secret response redaction", () => {
       where: {
         id: "ch_tiktok",
         organizationId: "org_1",
-        channelType: { not: "voip" },
+        channelType: { notIn: DEDICATED_CHANNEL_TYPES },
       },
       data: {
         channelType: "chatwoot",
