@@ -67,6 +67,9 @@ vi.mock("@/lib/api-auth", () => ({
 
 vi.mock("@/lib/field-filter", () => ({
   getFieldPermissions: vi.fn().mockResolvedValue([]),
+  // Strict loader used by the command layer; same fixture, it only
+  // differs when the table cannot be read.
+  requireFieldPermissions: vi.fn().mockResolvedValue([]),
   filterEntityFields: vi.fn().mockImplementation((data: any) => data),
   filterWritableFields: vi.fn().mockImplementation((data: any) => data),
 }))

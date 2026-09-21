@@ -2,7 +2,7 @@ import type { Prisma, Task } from "@prisma/client"
 import { prisma, logAudit } from "@/lib/prisma"
 import { executeWorkflows } from "@/lib/workflow-engine"
 import { createNotification } from "@/lib/notifications"
-import { getFieldPermissions } from "@/lib/field-filter"
+import { requireFieldPermissions } from "@/lib/field-filter"
 import { resolveRelated } from "@/lib/resolve-related"
 import { validateRequiredCustomFields } from "@/lib/custom-fields-validation"
 import { recalcProjectCompletion } from "@/lib/project-rollup"
@@ -53,7 +53,7 @@ export async function createTaskCommand(
 
   const { organizationId: orgId, userId, role } = actor
   const db = execution?.transaction ?? prisma
-  const fieldPermissions = await getFieldPermissions(orgId, role, "task")
+  const fieldPermissions = await requireFieldPermissions(orgId, role, "task")
   const input = requireWritableFields(
     parsed.data as Record<string, unknown>,
     fieldPermissions,

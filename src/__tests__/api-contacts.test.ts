@@ -29,6 +29,9 @@ vi.mock("@/lib/field-filter", async (importOriginal) => {
   return {
     ...actual,
     getFieldPermissions: vi.fn().mockResolvedValue({}),
+    // Strict loader used by the command layer; same fixture, it only
+    // differs when the table cannot be read.
+    requireFieldPermissions: vi.fn().mockResolvedValue({}),
   }
 })
 

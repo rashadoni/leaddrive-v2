@@ -1,6 +1,6 @@
 import type { Lead } from "@prisma/client"
 import { prisma, logAudit } from "@/lib/prisma"
-import { getFieldPermissions } from "@/lib/field-filter"
+import { requireFieldPermissions } from "@/lib/field-filter"
 import { applyRecordFilter } from "@/lib/sharing-rules"
 import { executeWorkflows } from "@/lib/workflow-engine"
 import { fireWebhooks } from "@/lib/webhooks"
@@ -126,7 +126,7 @@ export async function updateLeadCommand(
   const { organizationId: orgId, userId, role } = actor
   const db = execution?.transaction ?? prisma
   const { expectedUpdatedAt, ...requestedData } = parsed.data
-  const fieldPermissions = await getFieldPermissions(orgId, role, "lead")
+  const fieldPermissions = await requireFieldPermissions(orgId, role, "lead")
   const input = requireWritableFields(
     requestedData as Record<string, unknown>,
     fieldPermissions,

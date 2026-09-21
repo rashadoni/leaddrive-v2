@@ -35,6 +35,9 @@ vi.mock("@/lib/permissions", () => ({
 
 vi.mock("@/lib/field-filter", () => ({
   getFieldPermissions: vi.fn().mockResolvedValue({}),
+  // Strict loader used by the command layer; same fixture, it only
+  // differs when the table cannot be read.
+  requireFieldPermissions: vi.fn().mockResolvedValue({}),
   filterWritableFields: (value: Record<string, unknown>) => state.writable ? value : {},
 }))
 

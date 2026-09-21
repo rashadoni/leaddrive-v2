@@ -10,15 +10,28 @@ vi.mock("@/lib/prisma", () => ({
   },
 }))
 
-vi.mock("@/lib/field-filter", () => ({
-  getFieldPermissions: vi.fn(async (_orgId: string, _role: string, entityType: string) => {
+vi.mock("@/lib/field-filter", () => {
+  // Defined inside the factory: vi.mock is hoisted above every top-level
+  // binding, so a shared const declared outside is still in its temporal dead
+  // zone when this runs.
+  const fixture = async (
+    _orgId: string,
+    _role: string,
+    entityType: string,
+  ): Promise<Record<string, string>> => {
     if (entityType === "deal") return { valueAmount: "hidden", probability: "hidden" }
     if (entityType === "contact") return { email: "hidden" }
     if (entityType === "invoice") return { balanceDue: "hidden" }
     if (entityType === "mtm_visit") return { customerId: "hidden" }
     return {}
-  }),
-}))
+  }
+  return {
+    getFieldPermissions: vi.fn(fixture),
+    // The command layer's strict loader. Same fixture: the two differ only in
+    // how they answer a table that cannot be read.
+    requireFieldPermissions: vi.fn(fixture),
+  }
+})
 
 vi.mock("@/lib/ai/advisor/signals", () => ({
   collectAdvisorSignals: vi.fn(async () => []),

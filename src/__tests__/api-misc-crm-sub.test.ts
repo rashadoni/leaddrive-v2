@@ -41,6 +41,9 @@ vi.mock("@/lib/webhooks", () => ({
 
 vi.mock("@/lib/field-filter", () => ({
   getFieldPermissions: vi.fn().mockResolvedValue({}),
+  // Strict loader used by the command layer; same fixture, it only
+  // differs when the table cannot be read.
+  requireFieldPermissions: vi.fn().mockResolvedValue({}),
   filterWritableFields: vi.fn().mockImplementation((data) => data),
   filterEntityFields: vi.fn().mockImplementation((data) => data),
 }))
