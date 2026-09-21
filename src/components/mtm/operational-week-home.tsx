@@ -388,6 +388,8 @@ interface ManagerWorkdayActions {
   undoReopen: ManagerWorkdayAction
   /** Absent in snapshots cached before the close existed. */
   close: ManagerWorkdayCloseAction | null
+  /** False only when the server said the manager has no 2FA: then the dialog recommends it. */
+  mfaEnrolled: boolean
 }
 
 interface ManagerWorkdayDialogTarget {
@@ -883,7 +885,9 @@ function normalizeManagerWorkdayActions(value: unknown): ManagerWorkdayActions |
   const source = record(value)
   const reopen = normalizeManagerWorkdayAction(source.reopen)
   const undoReopen = normalizeManagerWorkdayAction(source.undoReopen)
-  return reopen && undoReopen ? { reopen, undoReopen, close: normalizeManagerWorkdayCloseAction(source.close) } : null
+  return reopen && undoReopen
+    ? { reopen, undoReopen, close: normalizeManagerWorkdayCloseAction(source.close), mfaEnrolled: source.mfaEnrolled !== false }
+    : null
 }
 
 /** An instant as the value of an <input type="datetime-local"> in the tenant timezone. */
@@ -3559,6 +3563,11 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
                 })}
               </p>
             </div>
+            {facts?.managerWorkdayActions?.mfaEnrolled === false ? (
+              <p className="inline-flex items-start gap-2 text-xs text-muted-foreground" data-testid="mtm-week-workday-mfa-recommended">
+                <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />{t("managerWorkday.mfaRecommended")}
+              </p>
+            ) : null}
             {managerWorkdayError ? (
               <p className="text-sm text-red-700 dark:text-red-300" role="alert" data-testid="mtm-week-workday-manager-error">{managerWorkdayError.message}</p>
             ) : null}

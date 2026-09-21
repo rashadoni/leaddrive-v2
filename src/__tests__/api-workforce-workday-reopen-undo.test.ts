@@ -17,7 +17,7 @@ vi.mock("@/lib/workforce/workday-reopen-undo", async (importOriginal) => ({
   undoWorkforceWorkdayReopen: vi.fn(),
 }))
 vi.mock("@/lib/workforce/attendance-route", () => ({
-  requireWorkforceAttendanceSecurityMfa: vi.fn(),
+  workforceAttendanceSecurityMfaSatisfied: vi.fn(),
 }))
 vi.mock("@/lib/workforce/direct-time-correction-rate-limit", () => ({
   requireWorkforceDirectTimeCorrectionRateLimit: vi.fn(),
@@ -26,7 +26,7 @@ vi.mock("@/lib/workforce/direct-time-correction-rate-limit", () => ({
 import { POST as undoPost } from "@/app/api/v1/workforce/workdays/[id]/reopen/undo/route"
 import { withWorkforceSessionAuth } from "@/lib/with-workforce-rls-auth"
 import { prisma } from "@/lib/prisma"
-import { requireWorkforceAttendanceSecurityMfa } from "@/lib/workforce/attendance-route"
+import { workforceAttendanceSecurityMfaSatisfied } from "@/lib/workforce/attendance-route"
 import { requireWorkforceDirectTimeCorrectionRateLimit } from "@/lib/workforce/direct-time-correction-rate-limit"
 import { undoWorkforceWorkdayReopen } from "@/lib/workforce/workday-reopen-undo"
 
@@ -80,7 +80,7 @@ function post(payload: unknown = body, id = "workday-1", auth = AUTH) {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.mocked(requireWorkforceAttendanceSecurityMfa).mockResolvedValue(null)
+  vi.mocked(workforceAttendanceSecurityMfaSatisfied).mockResolvedValue(true)
   vi.mocked(requireWorkforceDirectTimeCorrectionRateLimit).mockResolvedValue(null)
   vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(null as never)
 })
@@ -116,11 +116,11 @@ describe("POST /api/v1/workforce/workdays/:id/reopen/undo", () => {
       actor: { agentId: null, role: "ADMIN", scopedAgentIds: null },
       workdayId: "workday-1",
       input: body,
-      audit: { ipAddress: "203.0.113.72", userAgent: expect.stringMatching(/^workforce-undo-test-agent/) },
+      audit: { ipAddress: "203.0.113.72", userAgent: expect.stringMatching(/^workforce-undo-test-agent/), mfaEnrolled: true },
     })
     const audit = vi.mocked(undoWorkforceWorkdayReopen).mock.calls[0]?.[0]?.audit
     expect(audit?.userAgent).toHaveLength(500)
-    expect(requireWorkforceAttendanceSecurityMfa).toHaveBeenCalledWith("org-workforce", AUTH)
+    expect(workforceAttendanceSecurityMfaSatisfied).toHaveBeenCalledWith(expect.anything(), "org-workforce", AUTH)
     expect(requireWorkforceDirectTimeCorrectionRateLimit).toHaveBeenCalledWith({
       organizationId: "org-workforce",
       principalUserId: "admin-1",
@@ -207,14 +207,20 @@ describe("POST /api/v1/workforce/workdays/:id/reopen/undo", () => {
     expect(undoWorkforceWorkdayReopen).not.toHaveBeenCalled()
   })
 
-  it("does not resolve an actor, workday or rate bucket when MFA is denied", async () => {
-    vi.mocked(requireWorkforceAttendanceSecurityMfa).mockResolvedValueOnce(new Response(null, { status: 403 }) as never)
+  // Owner decision 2026-09-21: 2FA is recommended, not required, for the
+  // manager's workday actions; the audit records whether it was enrolled.
+  it("proceeds without 2FA and records that it was off", async () => {
+    vi.mocked(workforceAttendanceSecurityMfaSatisfied).mockResolvedValueOnce(false)
+    vi.mocked(undoWorkforceWorkdayReopen).mockResolvedValue({
+      kind: "success",
+      idempotent: false,
+      data: { eventId: "event-undo", workday: restoredWorkday },
+    } as never)
 
     const response = await post()
 
-    expect(response.status).toBe(403)
-    expect(requireWorkforceDirectTimeCorrectionRateLimit).not.toHaveBeenCalled()
-    expect(undoWorkforceWorkdayReopen).not.toHaveBeenCalled()
+    expect(response.status).toBe(200)
+    expect(vi.mocked(undoWorkforceWorkdayReopen).mock.calls[0]?.[0]?.audit).toMatchObject({ mfaEnrolled: false })
   })
 
   it("shares the manager time-correction rate budget", async () => {

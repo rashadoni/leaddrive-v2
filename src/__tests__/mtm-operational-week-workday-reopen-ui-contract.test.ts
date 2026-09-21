@@ -178,6 +178,19 @@ describe("operational week: manager reopen of today's workday", () => {
     expect(unclear).toEqual([])
   })
 
+  // Owner decision 2026-09-21: 2FA is recommended, not required, for the
+  // manager's workday actions — one muted line in the dialog, never a refusal.
+  it("recommends 2FA in the dialog when the manager has none, without blocking the action", () => {
+    const dialog = sourceBetween("<Dialog open={Boolean(managerWorkdayTarget)}", "</Dialog>")
+    expect(dialog).toContain("facts?.managerWorkdayActions?.mfaEnrolled === false ?")
+    expect(dialog).toContain('data-testid="mtm-week-workday-mfa-recommended"')
+    expect(dialog).toContain('t("managerWorkday.mfaRecommended")')
+    expect(ui).toContain("mfaEnrolled: source.mfaEnrolled !== false")
+    for (const locale of LOCALES) {
+      expect(String(managerWorkdayMessages[locale]?.mfaRecommended)).toContain("2FA")
+    }
+  })
+
   it("speaks the owner's Azerbaijani and localizes every dialog string", () => {
     expect(managerWorkdayMessages.az.reopenAction).toBe("Günü bərpa et")
     expect(managerWorkdayMessages.az.undoAction).toBe("Bərpanı ləğv et")

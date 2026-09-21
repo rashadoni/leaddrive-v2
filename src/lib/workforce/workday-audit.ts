@@ -9,6 +9,12 @@ type AuditEvent = Record<string, unknown> & { id: string }
 export type WorkforceAuditRequestMetadata = {
   ipAddress?: string | null
   userAgent?: string | null
+  /**
+   * Whether the acting manager had an enrolled mandatory 2FA factor. Recorded
+   * on the manager's workday actions, where 2FA is recommended, not required
+   * (owner decision 2026-09-21); null when the lookup failed.
+   */
+  mfaEnrolled?: boolean | null
 }
 
 export function workforceAuditRequestMetadata(headers: Headers): WorkforceAuditRequestMetadata {
@@ -125,6 +131,7 @@ export async function writeWorkforceWorkdayReopenAuditInTransaction(
         operationId: input.operationId,
         reason: input.reason,
         authorizationSource: input.authorizationSource,
+        ...(input.requestMetadata?.mfaEnrolled !== undefined ? { mfaEnrolled: input.requestMetadata.mfaEnrolled } : {}),
       } as Prisma.InputJsonValue,
       ipAddress: input.requestMetadata?.ipAddress ?? null,
       userAgent: input.requestMetadata?.userAgent ?? null,
@@ -172,6 +179,7 @@ export async function writeWorkforceWorkdayReopenUndoAuditInTransaction(
         operationId: input.operationId,
         reason: input.reason,
         authorizationSource: input.authorizationSource,
+        ...(input.requestMetadata?.mfaEnrolled !== undefined ? { mfaEnrolled: input.requestMetadata.mfaEnrolled } : {}),
       } as Prisma.InputJsonValue,
       ipAddress: input.requestMetadata?.ipAddress ?? null,
       userAgent: input.requestMetadata?.userAgent ?? null,
@@ -216,6 +224,7 @@ export async function writeWorkforceWorkdayCloseAuditInTransaction(
         operationId: input.operationId,
         reason: input.reason,
         authorizationSource: input.authorizationSource,
+        ...(input.requestMetadata?.mfaEnrolled !== undefined ? { mfaEnrolled: input.requestMetadata.mfaEnrolled } : {}),
         suggestedFinishAt: input.suggestedFinishAt,
       } as Prisma.InputJsonValue,
       ipAddress: input.requestMetadata?.ipAddress ?? null,

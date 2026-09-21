@@ -14932,6 +14932,7 @@
         "reasonHint": "{count} simvol (ən azı {min}, ən çoxu {max})",
         "confirmReopen": "Günü bərpa et",
         "confirmUndo": "Bərpanı ləğv et",
+        "mfaRecommended": "Hesabınız üçün 2FA-nı aktiv etməyi tövsiyə edirik — Parametrlər → İstifadəçilər. Əməliyyat onsuz da icra olunacaq; tarixçədə 2FA-nın olmadığı qeyd ediləcək.",
         "closeAction": "Növbəni bağla",
         "closeTitle": "Agentin bağlamadığı növbə bağlansın?",
         "closeConsequence": "Növbə göstərdiyiniz vaxtda bitəcək. Ondan sonrakı vaxt iş vaxtı sayılmır.",
