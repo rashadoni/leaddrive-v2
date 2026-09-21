@@ -311,7 +311,10 @@ export function DemoJourneyPlayer({
             activeRoute={activeRoute}
             onNavigate={navigate}
           />
-          <div className="grid min-w-0 flex-1 lg:grid-cols-[minmax(0,1fr)_340px]">
+          {/* One shrinkable column below lg: without it the implicit auto column
+              took the guide panel's min-content width (343px on a 375px
+              phone) and the whole demo scrolled sideways, text cut off. */}
+          <div className="grid min-w-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px]">
             <main id="demo-scene" className="min-w-0 overflow-y-auto p-4 sm:p-6">
               {Scene ? <Scene {...sceneProps} /> : <ScenePending section={viewSection} />}
             </main>

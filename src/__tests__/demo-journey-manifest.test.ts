@@ -365,6 +365,15 @@ describe("The open demo", () => {
    *  for the very words that would prove it is present. */
   const code = (source: string) => source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "")
 
+  it("fits a phone: the scene and guide share one shrinkable column below lg", () => {
+    // 2026-09-21, measured at 375px: with no columns declared the implicit
+    // auto column took the guide's min-content width and the page was 407px
+    // wide, cutting the right edge of every line. `grid-cols-1` is
+    // minmax(0, 1fr), which lets the column shrink to the screen.
+    const player = read("src/components/demo-center/journey/demo-journey-player.tsx")
+    expect(player).toContain('className="grid min-w-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px]"')
+  })
+
   it("opens the story with no gate: nothing is fetched, nothing is verified", () => {
     const body = code(shell) + code(route)
     for (const forbidden of ["fetch(", "/api/", "otpHash", "sessionHash", "demoGrant"]) {
