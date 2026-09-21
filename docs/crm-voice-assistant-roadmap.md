@@ -211,7 +211,9 @@ the command, intent, confirmation, and security layers are ready.
       preparing a change to it are different features with different risk, and
       they shared one switch — so turning off the writes meant turning off the
       assistant, which is the kind of cost that stops a switch from being
-      pulled. Per-tenant flags remain open as P0.11a.
+      pulled. **Operate it through a deploy, never by hand on the live
+      process** — see the 2026-09-21 incident in the session log. Per-tenant
+      flags remain open as P0.11a.
 - [ ] P0.11a Per-tenant and per-action flags, needed once more than one
       organization has the writes.
 - [ ] P0.12 Define success metrics and rollout stop conditions.
