@@ -82,6 +82,7 @@ function refusal(result: Extract<RequestDemoCallResult, { ok: false }>): { statu
       return { status: 409, error: "Zəng hazırlanır. Bir az sonra yenidən cəhd edin." }
     case "phone_mismatch":
       return { status: 409, error: "Bu nömrəyə zəng edə bilmirik. Menecerimiz sizinlə əlaqə saxlayacaq." }
+    case "agent_not_ready":
     case "no_caller":
     case "unconfigured":
       return { status: 503, error: "Zəng hazırda mümkün deyil" }

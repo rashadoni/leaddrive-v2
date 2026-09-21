@@ -21,6 +21,7 @@ vi.mock("@/lib/prisma", () => ({
     user: { findFirst: vi.fn() },
     lead: { findFirst: vi.fn(), updateMany: vi.fn() },
     voiceCallSession: { findUnique: vi.fn() },
+    callEvent: { findFirst: vi.fn() },
   },
 }))
 vi.mock("@/lib/rls-context", () => ({
@@ -31,6 +32,7 @@ vi.mock("@/lib/voice-agent/dispatch-manual-lead-call", () => ({ dispatchManualLe
 
 import { prisma } from "@/lib/prisma"
 import {
+  demoCallAgentReady,
   demoCallIdempotencyKey,
   demoCallOutcome,
   demoCallStatus,
@@ -66,6 +68,24 @@ beforeEach(() => {
     callLog: { status: "dispatching" },
   } as never)
   mockDispatch.mockResolvedValue({ kind: "dispatched", sessionId: "session-1", callLogId: "call-log-1" })
+  // The PBX has asked for a per-call prompt recently: the agent can speak as LeadDrive.
+  vi.mocked(prisma.callEvent.findFirst).mockResolvedValue({ id: "event-1" } as never)
+})
+
+describe("whether the agent can speak as LeadDrive", () => {
+  it("needs recent evidence that the PBX asks for each call's own prompt", async () => {
+    await expect(demoCallAgentReady()).resolves.toBe(true)
+    expect(prisma.callEvent.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ organizationId: SALES_ORG, eventType: "voice_runtime_prompt_served" }),
+    }))
+  })
+
+  it("places no call before that — the line's own prompt belongs to someone else", async () => {
+    vi.mocked(prisma.callEvent.findFirst).mockResolvedValue(null)
+
+    await expect(requestDemoCall({ grant })).resolves.toEqual({ ok: false, code: "agent_not_ready" })
+    expect(mockDispatch).not.toHaveBeenCalled()
+  })
 })
 
 describe("the idempotency key", () => {

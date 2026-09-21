@@ -4,10 +4,12 @@ import { NextRequest } from "next/server"
 const sendDemoAccessEmail = vi.hoisted(() => vi.fn())
 const requireSuperAdmin = vi.hoisted(() => vi.fn())
 const runWithRlsBypass = vi.hoisted(() => vi.fn(async (callback: () => unknown) => await callback()))
+const demoCallAgentReady = vi.hoisted(() => vi.fn())
 
 vi.mock("@/lib/demo-center/email", () => ({ sendDemoAccessEmail }))
 vi.mock("@/lib/superadmin-guard", () => ({ requireSuperAdmin }))
 vi.mock("@/lib/rls-context", () => ({ runWithRlsBypass }))
+vi.mock("@/lib/demo-center/demo-call", () => ({ demoCallAgentReady }))
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: vi.fn(),
@@ -34,11 +36,11 @@ import { prisma } from "@/lib/prisma"
 
 const REQUEST_ID = "request-1"
 
-function issueRequest() {
+function issueRequest(body?: Record<string, unknown>) {
   return new NextRequest(`http://localhost:3000/api/v1/admin/demo-requests/${REQUEST_ID}/issue`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
+    body: JSON.stringify(body ?? {
       moduleIds: ["crm", "sales"],
       linkValidDays: 7,
       sessionDurationMinutes: 120,
@@ -162,5 +164,47 @@ describe("Demo Center admin issuance races", () => {
 
     expect(response.status).toBe(200)
     expect(runWithRlsBypass).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("Demo Center: a live call at issue time", () => {
+  const liveJourney = {
+    scenarioId: "prospect-to-closed-won",
+    liveCallEnabled: true,
+    linkValidDays: 7,
+    sessionDurationMinutes: 120,
+    inactivityMinutes: 30,
+    locale: "az",
+  }
+
+  it("is refused until the PBX asks for each call's own prompt", async () => {
+    demoCallAgentReady.mockResolvedValue(false)
+
+    const response = await issueDemo(issueRequest(liveJourney), { params: Promise.resolve({ id: REQUEST_ID }) })
+
+    expect(response.status).toBe(409)
+    expect(prisma.demoGrant.create).not.toHaveBeenCalled()
+  })
+
+  it("is recorded on the grant once the agent can speak as LeadDrive", async () => {
+    demoCallAgentReady.mockResolvedValue(true)
+    vi.mocked(prisma.demoRequest.updateMany).mockResolvedValue({ count: 1 })
+    vi.mocked(prisma.demoGrant.updateMany).mockResolvedValue({ count: 1 })
+
+    const response = await issueDemo(issueRequest(liveJourney), { params: Promise.resolve({ id: REQUEST_ID }) })
+
+    expect(response.status).toBe(201)
+    expect(prisma.demoGrant.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ liveCallEnabled: true, scenarioId: "prospect-to-closed-won" }),
+    }))
+  })
+
+  it("is never asked about for an ordinary grant", async () => {
+    vi.mocked(prisma.demoRequest.updateMany).mockResolvedValue({ count: 1 })
+    vi.mocked(prisma.demoGrant.updateMany).mockResolvedValue({ count: 1 })
+
+    await issueDemo(issueRequest(), { params: Promise.resolve({ id: REQUEST_ID }) })
+
+    expect(demoCallAgentReady).not.toHaveBeenCalled()
   })
 })

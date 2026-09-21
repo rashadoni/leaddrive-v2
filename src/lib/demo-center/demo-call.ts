@@ -5,6 +5,7 @@ import { isManagerOrAbove } from "@/lib/constants"
 import { normalizeManualLeadPhone, type ManualLeadAiBlocker } from "@/lib/voice-agent/manual-lead-call"
 import { dispatchManualLeadAiCall } from "@/lib/voice-agent/dispatch-manual-lead-call"
 import type { DemoJourneyState } from "./journey"
+import { PROMPT_SERVED_EVENT } from "./call-prompt"
 import { DEMO_LEAD_SOURCE } from "./prospect-lead"
 import { inDemoSalesOrganization } from "./sales-org"
 
@@ -29,6 +30,10 @@ import { inDemoSalesOrganization } from "./sales-org"
  *    again.
  *  - What the prospect learns: a phase and, at the end, which of the
  *    journey's call outcomes happened. Never an id, a number or a transcript.
+ *  - Only once the agent can speak as LeadDrive. The line's own prompt
+ *    belongs to another business's calls; a demo call gets the demo script
+ *    only when the PBX asks for each call's prompt. Until the CRM has seen the
+ *    PBX do that, no demo call is placed at all.
  */
 
 export type DemoCallPhase = "none" | "queued" | "calling" | "ended"
@@ -41,7 +46,7 @@ export interface DemoCallStatus {
 
 export type RequestDemoCallResult =
   | { ok: true; status: DemoCallStatus }
-  | { ok: false; code: "not_enabled" | "phone_not_verified" | "lead_not_ready" | "no_caller" | "phone_mismatch" | "unconfigured" }
+  | { ok: false; code: "not_enabled" | "agent_not_ready" | "phone_not_verified" | "lead_not_ready" | "no_caller" | "phone_mismatch" | "unconfigured" }
   | { ok: false; code: "blocked"; reason: ManualLeadAiBlocker | "paused" | "error"; retryable: boolean }
 
 type Grant = { id: string; status: string; liveCallEnabled: boolean; createdBy: string; requestId: string }
@@ -61,6 +66,26 @@ export function demoCallIdempotencyKey(grantId: string): string {
   const hex = createHash("sha256").update(`demo-live-call:${grantId}`).digest("hex")
   const variant = ((Number.parseInt(hex[16], 16) & 0x3) | 0x8).toString(16)
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-5${hex.slice(13, 16)}-${variant}${hex.slice(17, 20)}-${hex.slice(20, 32)}`
+}
+
+/** How recent the evidence must be that the PBX asks for each call's prompt. */
+export const PER_CALL_PROMPT_EVIDENCE_DAYS = 30
+
+/**
+ * Whether the voice agent can speak as LeadDrive on a demo call: the PBX has
+ * recently asked the CRM for a specific call's prompt (runtime-config records
+ * that once per call). Without it the agent would use the line's prompt.
+ */
+export async function demoCallAgentReady(now: Date = new Date()): Promise<boolean> {
+  const since = new Date(now.getTime() - PER_CALL_PROMPT_EVIDENCE_DAYS * 24 * 60 * 60_000)
+  const entered = await inDemoSalesOrganization(async (organizationId) => {
+    const seen = await prisma.callEvent.findFirst({
+      where: { organizationId, eventType: PROMPT_SERVED_EVENT, receivedAt: { gte: since } },
+      select: { id: true },
+    })
+    return Boolean(seen)
+  })
+  return entered?.value ?? false
 }
 
 function callableGrant(grant: Grant): boolean {
@@ -124,6 +149,7 @@ export async function demoCallStatus(grant: Pick<Grant, "id">): Promise<DemoCall
 export async function requestDemoCall(params: { grant: Grant }): Promise<RequestDemoCallResult> {
   const { grant } = params
   if (!callableGrant(grant)) return { ok: false, code: "not_enabled" }
+  if (!(await demoCallAgentReady())) return { ok: false, code: "agent_not_ready" }
 
   const verification = await runWithRlsBypass(() =>
     prisma.demoPhoneVerification.findFirst({

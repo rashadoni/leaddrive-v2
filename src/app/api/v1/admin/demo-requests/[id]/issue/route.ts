@@ -7,6 +7,7 @@ import { issueCapabilityToken } from "@/lib/demo-center/security"
 import { demoGrantIssueSchema } from "@/lib/demo-center/validation"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { requireSuperAdmin } from "@/lib/superadmin-guard"
+import { demoCallAgentReady } from "@/lib/demo-center/demo-call"
 
 const REVOCABLE_STATUSES = ["ISSUING", "SENT", "OTP_SENT", "OTP_VERIFIED", "ACTIVE", "DELIVERY_FAILED"]
 
@@ -27,6 +28,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json(
       { success: false, error: parsed.error.issues[0]?.message || "Check the demo settings" },
       { status: 400 },
+    )
+  }
+
+  // A live call needs the agent to speak as LeadDrive, which it does only once
+  // the PBX asks for each call's own prompt. Refused here too, not only in
+  // the admin screen, so a crafted request cannot tick it early.
+  if (parsed.data.liveCallEnabled && !(await demoCallAgentReady())) {
+    return NextResponse.json(
+      { success: false, error: "A live call is not available yet: the PBX does not ask for a per-call prompt" },
+      { status: 409 },
     )
   }
 

@@ -14152,6 +14152,7 @@
   },
   "admin": {
     "demoCenter": {
+      "liveCallUnavailable": "Available once the PBX asks for each call's own prompt — until then a demo call would speak with the line's current identity.",
       "grantJourney": "Guided journey",
       "grantModules": "Modules: {count}",
       "grantExpires": "Expires {date}",

@@ -14148,6 +14148,7 @@
   },
   "admin": {
     "demoCenter": {
+      "liveCallUnavailable": "PBX hər zəng üçün ayrıca təlimat istəməyə başlayanda əlçatan olacaq — o vaxta qədər demo zəngi xəttin indiki adından danışardı.",
       "grantJourney": "Bələdçili marşrut",
       "grantModules": "Modullar: {count}",
       "grantExpires": "Bitir: {date}",

@@ -9,6 +9,7 @@ import { DEMO_MODULE_CATALOG } from "@/lib/demo-center/catalog"
 import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { isSuperAdminSession } from "@/lib/superadmin-guard"
+import { demoCallAgentReady } from "@/lib/demo-center/demo-call"
 
 export default async function DemoRequestDetailPage({ params }: { params: Promise<{ id: string }> }) {
   if (!(await isSuperAdminSession())) redirect("/dashboard")
@@ -51,6 +52,8 @@ export default async function DemoRequestDetailPage({ params }: { params: Promis
     : request.leadLinkStatus === "UNCONFIGURED" ? t("leadLinkUnconfigured")
     : t("leadLinkNone")
 
+  const liveCallAvailable = await demoCallAgentReady()
+
   const moduleOptions = DEMO_MODULE_CATALOG.map(({ id: moduleId, title, summary }) => ({ id: moduleId, title, summary }))
   const moduleTitle = new Map(moduleOptions.map((module) => [module.id, module.title]))
 
@@ -79,6 +82,7 @@ export default async function DemoRequestDetailPage({ params }: { params: Promis
         <DemoRequestEditor
           requestId={request.id}
           requestStatus={request.status}
+          liveCallAvailable={liveCallAvailable}
           requestedModuleIds={request.requestedModules}
           modules={moduleOptions}
           grants={request.grants.map((grant) => ({
