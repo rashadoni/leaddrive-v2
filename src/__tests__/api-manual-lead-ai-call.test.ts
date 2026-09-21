@@ -431,3 +431,30 @@ describe("POST /api/v1/leads/:id/ai-call", () => {
     )
   })
 })
+
+describe("dispatchManualLeadAiCall, called without HTTP", () => {
+  // The demo centre places the one call a prospect agreed to through this same
+  // function. Its only addition is who consented, recorded beside the
+  // canonical fields — never instead of them.
+  it("records a caller's extra consent facts next to the canonical ones", async () => {
+    mocks.initiateCall.mockImplementation(async (params: { correlationId: string }) => ({
+      success: true,
+      callSid: params.correlationId,
+    }))
+    const { dispatchManualLeadAiCall } = await import("@/lib/voice-agent/dispatch-manual-lead-call")
+
+    const result = await dispatchManualLeadAiCall({
+      auth: { orgId: "org-1", userId: "user-1", role: "admin" },
+      leadId: "lead-1",
+      idempotencyKey: IDEMPOTENCY_KEY,
+      consentAuditExtra: { via: "demo_center", demoGrantId: "grant-1", consentConfirmed: false },
+    })
+
+    expect(result).toEqual({ kind: "dispatched", sessionId: "session-1", callLogId: "call-log-1" })
+    const audit = mocks.prisma.callLog.create.mock.calls[0][0].data.consentAudit
+    expect(audit).toMatchObject({ via: "demo_center", demoGrantId: "grant-1", scope: "sales" })
+    // A caller cannot overwrite the canonical fields with its extras.
+    expect(audit.consentConfirmed).toBe(true)
+    expect(audit.attestedByUserId).toBe("user-1")
+  })
+})
