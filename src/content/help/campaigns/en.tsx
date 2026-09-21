@@ -220,9 +220,12 @@ export default function CampaignsHelpEn() {
           <strong>Segments</strong>, <strong>Automation</strong>, and <strong>Templates</strong>.
         </p>
         <HelpCallout kind="see" label="What you'll see">
-          The KPI cards and funnel values are computed from your campaigns' actual sent / opened /
-          clicked totals. If nothing has been sent yet, these read near 0% and the "Top campaigns"
-          panel shows "No campaigns yet".
+          Every figure comes from your organization’s own records. Open and click rates count only
+          the campaigns whose channel records that step, so SMS sends do not lower the open rate.
+          Where no record holds a figure — bounces, while none has been recorded, or ROI when no won
+          deal is linked to a campaign — the card shows «—» and the reason. “Top campaigns” are ranked
+          by clicks. The Segments, Automation and Templates panels count your real segments, journeys
+          and email templates, and say so when there are none.
         </HelpCallout>
       </HelpSection>
 

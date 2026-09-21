@@ -225,9 +225,13 @@ export default function CampaignsHelpAz() {
           <strong>Avtomatlaşdırma</strong> və <strong>Şablonlar</strong> ümumi panelləri yer alır.
         </p>
         <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-          KPI kartları və huni dəyərləri sizin kampaniyalarınızın faktiki göndərmə / açılma / klik
-          cəmlərindən hesablanır. Hələ heç nə göndərilməyibsə bu göstəricilər 0%-ə yaxın görünür və
-          «Ən yaxşı kampaniyalar» panelində «Hələ kampaniya yoxdur» yazılır.
+          Bütün rəqəmlər təşkilatınızın öz qeydlərindən götürülür. Açılma və klik faizləri yalnız bu
+          addımı qeydə alan kanalın kampaniyaları üzrə hesablanır, ona görə SMS göndərişləri açılma
+          faizini aşağı salmır. Rəqəmi heç bir qeyd saxlamırsa — hələ heç bir bounce qeydə alınmayıbsa
+          və ya kampaniyaya bağlı qazanılmış sövdələşmə yoxdursa ROI — kartda «—» və səbəbi görünür.
+          «Ən yaxşı kampaniyalar» klik sayına görə sıralanır. «Seqmentlər», «Avtomatlaşdırma» və
+          «Şablonlar» panelləri real seqmentlərinizi, zəncirlərinizi və e-poçt şablonlarınızı sayır,
+          yoxdursa bunu yazır.
         </HelpCallout>
       </HelpSection>
 

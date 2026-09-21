@@ -26,6 +26,7 @@ interface Campaign {
   totalSent: number
   totalOpened: number
   totalClicked: number
+  totalBounced?: number
   budget?: number
   templateId?: string
   segmentId?: string
@@ -221,7 +222,7 @@ export default function CampaignsPage() {
       </div>
 
       {tab === "analytics" ? (
-        <CampaignsAnalytics campaigns={campaigns} />
+        <CampaignsAnalytics campaigns={campaigns} total={total} orgId={orgId} />
       ) : (
         <>
           {/* Search */}
