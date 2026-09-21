@@ -13642,6 +13642,7 @@
     }
   },
   "mtmVisitsPage": {
+    "widenedNotice": "«{from}» üçün ziyarət yoxdur — «{to}» göstərilir.",
     "title": "Ziyarətlər",
     "subtitle": "Agentlərin ziyarətlərinə baxın: vaxt, yer, foto, imza",
     "subtitleAgent": "Hazırkı ziyarətiniz və ziyarət tarixçəniz",
@@ -13913,6 +13914,7 @@
     }
   },
   "mtmPhotosPage": {
+    "widenedNotice": "«{from}» üçün foto yoxdur — «{to}» göstərilir.",
     "title": "Şəkillər",
     "subtitle": "Şəkil qalereyası və yoxlama sistemi",
     "noResults": "Şəkil tapılmadı",

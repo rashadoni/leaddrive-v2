@@ -13646,6 +13646,7 @@
     }
   },
   "mtmVisitsPage": {
+    "widenedNotice": "No visits for «{from}» — showing «{to}».",
     "title": "Visits",
     "subtitle": "Review your agents' visits: time, place, photos, signature",
     "subtitleAgent": "Your visit in progress and your visit history",
@@ -13917,6 +13918,7 @@
     }
   },
   "mtmPhotosPage": {
+    "widenedNotice": "No photos for «{from}» — showing «{to}».",
     "title": "Photos",
     "subtitle": "Photo gallery with review system",
     "noResults": "No photos match the filter",
