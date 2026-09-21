@@ -252,7 +252,6 @@ export function MtmContactCreateDialog({
           <section className="space-y-3" aria-labelledby="contact-create-person">
             <div>
               <h3 id="contact-create-person" className="text-sm font-semibold">{t("personSection")}</h3>
-              <p className="mt-1 text-xs text-muted-foreground">{t("personHint")}</p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5 sm:col-span-2">

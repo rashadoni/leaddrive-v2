@@ -1261,7 +1261,6 @@ export function PharmacyPromotionWorkspace() {
               <div data-testid="mtm-pharmacy-column-toolbar" className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/20 px-3 py-2.5">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold">{tabletLandscape ? t("tabletWorkspaceTitle") : t("tableSettingsTitle")}</p>
-                  <p className="text-xs text-muted-foreground">{tabletLandscape ? t("tabletWorkspaceHint") : t("tableSettingsHint")}</p>
                 </div>
                 <div className="flex min-h-11 items-center gap-2">
                   <Select aria-label={t("densityLabel")} value={density} className="min-h-11 min-w-[150px]" onChange={(event) => changeDensity(event.target.value as "compact" | "comfortable")}>

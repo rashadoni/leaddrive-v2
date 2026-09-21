@@ -161,7 +161,6 @@ export function MtmRouteCalendar({
             <CalendarDays className="h-5 w-5 text-primary" aria-hidden="true" />
             <h2 className="text-base font-semibold">{t("calendarTitle")}</h2>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">{t("calendarHint")}</p>
         </div>
         <div className="flex items-center justify-between gap-1 sm:justify-end">
           <Button data-testid="mtm-route-calendar-previous-month" variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("previousMonth")} onClick={() => moveMonth(-1)}>
