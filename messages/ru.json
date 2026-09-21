@@ -13687,6 +13687,7 @@
     "statCheckedIn": "На точке",
     "statCheckedOut": "Завершено",
     "statAvgDuration": "Ср. длительность",
+    "statMedianDuration": "Медиана длительности",
     "statGpsConfirmed": "GPS подтверждён",
     "hintTotal": "Общее количество записанных визитов",
     "hintCheckedIn": "Визиты с активным чекином",

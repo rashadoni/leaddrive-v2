@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useLocale, useTranslations } from "next-intl"
 import { toast } from "sonner"
+import { medianVisitDurationMinutes } from "@/lib/mtm/visit-duration-median"
 import { nextWiderPeriod } from "@/lib/mtm/empty-period-fallback"
 import {
   AlertTriangle,
@@ -477,10 +478,7 @@ export default function MtmVisitsPage() {
   const statusCounts: Record<string, number> = {}
   for (const visit of visits) statusCounts[visit.status] = (statusCounts[visit.status] || 0) + 1
   const focusedVisit = focusedVisitId ? visits.find((visit) => visit.id === focusedVisitId) || null : null
-  const visitsWithDuration = visits.filter((visit) => visit.duration != null)
-  const averageDuration = visitsWithDuration.length > 0
-    ? Math.round(visitsWithDuration.reduce((sum, visit) => sum + (visit.duration || 0), 0) / visitsWithDuration.length)
-    : 0
+  const medianDuration = medianVisitDurationMinutes(visits)
   const confirmedGps = visits.filter((visit) => visitPlaceSummary(visit, meta.geofenceRadius).verdict === "at_point").length
   const displayedTotal = meta.totalExact && meta.total != null ? meta.total : visits.length
   const ownActiveVisits = activeVisits.filter((visit) => isOwnVisitExecution(viewer, { agentId: visit.agentId, status: "CHECKED_IN" }))
@@ -774,8 +772,10 @@ export default function MtmVisitsPage() {
               <p className="mt-1 text-2xl font-semibold tabular-nums">{statusCounts.CHECKED_OUT || 0}</p>
             </div>
             <div className="bg-card p-3 sm:p-4">
-              <p className="text-xs font-medium text-muted-foreground">{t("statAvgDuration")}</p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums">{averageDuration} <span className="text-sm font-medium text-muted-foreground">{t("min")}</span></p>
+              <p className="text-xs font-medium text-muted-foreground">{t("statMedianDuration")}</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums" data-testid="mtm-visits-median-duration">
+                {medianDuration == null ? "—" : <>{medianDuration} <span className="text-sm font-medium text-muted-foreground">{t("min")}</span></>}
+              </p>
             </div>
             <div className="bg-card p-3 sm:p-4">
               <p className="text-xs font-medium text-muted-foreground">{t("statGpsConfirmed")}</p>
