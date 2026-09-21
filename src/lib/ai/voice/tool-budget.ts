@@ -25,6 +25,18 @@
  * on the tenth failed attempt.
  */
 
+/**
+ * The shape, separate from the values. Without it `as const` gives the
+ * constant literal types (`8`, `120`, `12`) and the factory below would only
+ * accept those exact numbers — which is fine for production and useless for a
+ * test that wants to exhaust a ceiling in two calls instead of a hundred.
+ */
+export type VoiceToolBudgetLimits = Readonly<{
+  callsPerTurn: number
+  callsPerSession: number
+  proposalsPerSession: number
+}>
+
 export const VOICE_TOOL_BUDGET = {
   /** Read calls the model may make while composing one answer. */
   callsPerTurn: 8,
@@ -36,7 +48,7 @@ export const VOICE_TOOL_BUDGET = {
    * is not the case this pilot serves, and a model looping on a refusal is.
    */
   proposalsPerSession: 12,
-} as const
+} as const satisfies VoiceToolBudgetLimits
 
 export type VoiceToolKind = "read" | "propose"
 
@@ -53,7 +65,7 @@ export type VoiceToolBudget = Readonly<{
 }>
 
 export function createVoiceToolBudget(
-  limits: typeof VOICE_TOOL_BUDGET = VOICE_TOOL_BUDGET,
+  limits: VoiceToolBudgetLimits = VOICE_TOOL_BUDGET,
 ): VoiceToolBudget {
   let turn = 0
   let session = 0
