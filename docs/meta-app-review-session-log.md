@@ -245,3 +245,58 @@ Audit of existing legal pages, routing, Meta OAuth scopes, persisted data, reten
   middleware `x-locale` header. A follow-up fix now lets valid legal `?lang=`
   values override the locale cookie before rendering; invalid values retain
   the existing cookie/default behavior.
+
+## 2026-09-21 — screencasts, submission form and reviewer account
+
+- Screencasts were recorded from the owner's Chrome against production with
+  the CRM interface switched to English through the `NEXT_LOCALE` cookie (the
+  owner's account settings were not touched; the cookie was set back to `ru`
+  afterwards). The Facebook Login for Business dialog ignores a `locale`
+  parameter and stays in the account language, so the Meta part of the
+  recordings is in Russian; the reviewer instructions are in English.
+- Three recordings exist: Facebook Page connection (config_id flow, Page "Lead
+  Drive CRM"), Instagram Login connection (@leaddrive.az) and the WhatsApp
+  settings page with the "Verify" credential check. Each was exported from the
+  recorder as a GIF, dropped into the CRM's own inbox upload endpoint, copied
+  from the production upload directory and converted with ffmpeg to H.264 MP4
+  (the App Review uploader accepts `video/*` only). The upload files remain
+  under the leaddrive tenant's inbox upload directory and can be deleted.
+- Every recording re-ran the staged OAuth path only. The channel-row snapshot
+  taken before the work and the one taken after differ solely in the four
+  `appReviewOnly` rows (new Page/Instagram tokens); no live row changed.
+- Submission draft `2418323735294304`: "Verification", "App settings", "Data
+  handling" and "Reviewer instructions" are complete. In "Allowed usage" the
+  descriptions, terms confirmations and (where available) screencasts are
+  saved for all eight permissions. `business_management` was removed from the
+  request: the Facebook Login for Business configuration does not grant it,
+  the code makes no business-level call, and Meta requires a test call for it.
+- Data handling answers, as entered: platform data is accessible to
+  processors (Contabo GmbH — hosting/backups; Cloudflare, Inc. — TLS proxy and
+  CDN; OpenAI, L.L.C. — optional voice-message transcription); the controller
+  is "FANUM" MMC, Azerbaijan; no government national-security requests in the
+  last twelve months; no formal policy for such requests is in place ("none of
+  the above"). The Contabo processing country is entered as Germany until the
+  owner confirms the VPS region from the Contabo panel — the privacy policy's
+  "France" wording remains unverified.
+- Reviewer account `meta-review@leaddrivecrm.org` (admin in the `leaddrive`
+  tenant, created 2026-09-20 by the operator workflow): its password was reset
+  through the dedicated reset-password endpoint, the login was verified from
+  the dev box against production, and the new value was written to the
+  root-only credential file on the production host and into the access-codes
+  field of the submission. It appears nowhere in the repository.
+- Test API calls: `GET /{page-id}/subscribed_apps` was executed with the staged
+  Page token (pages_manage_metadata); Meta shows completed calls with up to 24 h
+  delay. The WhatsApp permissions already show "Done" on the Testing page.
+- Still blocking submission: `pages_messaging` needs an inbound Messenger
+  message from a Facebook account with a role in the app (the owner's second
+  account is an app admin) followed by a reply sent with the staged Page token;
+  `whatsapp_business_messaging` and `instagram_business_manage_messages` need
+  inbox screencasts with a test inbound message (Instagram additionally needs
+  the sender to hold an Instagram tester role while the app is in development
+  mode). The Instagram card currently carries the connection recording as a
+  placeholder.
+- Tooling note for the next session: the Chrome recorder captures a frame per
+  `computer`/`navigate` action only, so clicks made through `javascript_tool`
+  leave no frame; `find` references are invalidated by every navigation; the
+  dashboard's inner `main` element scrolls, not `window`.
+
