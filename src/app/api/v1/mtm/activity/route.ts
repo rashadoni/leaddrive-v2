@@ -92,7 +92,7 @@ async function activityActors(orgId: string, logs: ActivityLog[]): Promise<Array
   const users = ids.length
     ? await prisma.user.findMany({ where: { organizationId: orgId, id: { in: ids } }, select: { id: true, name: true, email: true } })
     : []
-  const nameOf = new Map((users ?? []).map((user: { id: string; name: string | null; email: string | null }) => [user.id, stringValue(user.name) ?? stringValue(user.email)] as const))
+  const nameOf = new Map<string, string | null>((users ?? []).map((user: { id: string; name: string | null; email: string | null }) => [user.id, stringValue(user.name) ?? stringValue(user.email)] as const))
   return logs.map((log) => {
     const userId = actorUserIdOf(log)
     const name = userId ? nameOf.get(userId) ?? null : null

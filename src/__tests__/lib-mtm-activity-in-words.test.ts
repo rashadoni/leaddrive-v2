@@ -93,7 +93,7 @@ describe("the audit writer records the office user of the request", () => {
     })
     await writeMtmAudit({ organizationId: "org", agentId: null, action: "ROUTE_DAY_CLOSE", entity: "route", entityId: "r" })
 
-    const rows = vi.mocked(prisma.mtmAuditLog.create).mock.calls.map(([query]) => (query as { data: Record<string, unknown> }).data)
+    const rows = vi.mocked(prisma.mtmAuditLog.create).mock.calls.map(([query]: unknown[]) => (query as { data: Record<string, unknown> }).data)
     expect(rows[0].actorUserId).toBe("user-1")
     expect(rows[1]).not.toHaveProperty("actorUserId")
     expect(rows[2]).not.toHaveProperty("actorUserId")
