@@ -500,8 +500,10 @@ export function LocationHistoryPanel() {
               onChange={(event) => {
                 invalidateHistory()
                 const start = event.target.value
-                // Picking a new start keeps a one-day window unless a range was chosen.
-                const end = toDate === date ? start : clampHistoryEndDate(start, toDate)
+                // Owner 2026-09-22: the end stays where it is (today by default);
+                // it moves only when the new start passes it or the window
+                // would exceed its limit.
+                const end = clampHistoryEndDate(start, toDate)
                 setDate(start)
                 setToDate(end)
                 const historyWindow = defaultHistoryWindow(end, timezone)

@@ -12,6 +12,7 @@ import {
   LOCATION_HISTORY_MAX_OUTPUT_POINTS,
   LOCATION_HISTORY_MAX_RANGE_DAYS,
   LOCATION_HISTORY_MAX_RAW_POINTS,
+  LOCATION_HISTORY_MAX_RAW_POINTS_RANGE,
   buildHistoryCsv,
   buildHistoryTimeline,
   calculateHistoryDistance,
@@ -135,6 +136,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
   to = new Date(to.getTime() + 59_999)
   const rangeDays = Math.round((Date.parse(`${toDate}T00:00:00.000Z`) - Date.parse(`${date}T00:00:00.000Z`)) / 86_400_000) + 1
   const multiDay = rangeDays > 1
+  const rawLimit = multiDay ? LOCATION_HISTORY_MAX_RAW_POINTS_RANGE : LOCATION_HISTORY_MAX_RAW_POINTS
   if (rangeDays > LOCATION_HISTORY_MAX_RANGE_DAYS || to <= from || to.getTime() - from.getTime() > (rangeDays * 24 + 2) * 60 * 60 * 1_000) {
     return denied("MTM_GPS_INVALID_RANGE", 400)
   }
@@ -160,7 +162,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         recordedAt: { gte: from, lte: to },
       },
       orderBy: [{ recordedAt: "asc" }, { id: "asc" }],
-      take: LOCATION_HISTORY_MAX_RAW_POINTS,
+      take: rawLimit,
       select: {
         id: true,
         latitude: true,
@@ -343,7 +345,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     rawLocations,
     maxAccuracyMeters,
   )
-  const rawTruncated = rawLocations.length === LOCATION_HISTORY_MAX_RAW_POINTS
+  const rawTruncated = rawLocations.length === rawLimit
   const distanceMeters = rawTruncated ? null : calculateHistoryDistance(prepared.points)
   const gapThresholdSeconds = Math.max(settings.offlineThresholdSeconds, settings.gpsInterval * 3)
   /**

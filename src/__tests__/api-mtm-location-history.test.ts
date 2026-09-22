@@ -405,10 +405,10 @@ describe("GET /api/v1/mtm/location-history", () => {
     expect(body.data.workdays).toEqual([expect.objectContaining({ id: "wd-20", workDate: "2026-09-20" })])
   })
 
-  it("refuses a range longer than seven days or ending before it starts", async () => {
+  it("refuses a range longer than two weeks or ending before it starts", async () => {
     vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "agent-1", name: "Anar", role: "AGENT", team: null } as never)
-    expect((await GET(request("?agentId=agent-1&date=2026-09-01&toDate=2026-09-08"))).status).toBe(400)
+    expect((await GET(request("?agentId=agent-1&date=2026-09-01&toDate=2026-09-15"))).status).toBe(400)
     expect((await GET(request("?agentId=agent-1&date=2026-09-10&toDate=2026-09-09"))).status).toBe(400)
-    expect((await GET(request("?agentId=agent-1&date=2026-09-01&toDate=2026-09-07"))).status).toBe(200)
+    expect((await GET(request("?agentId=agent-1&date=2026-09-01&toDate=2026-09-14"))).status).toBe(200)
   })
 })
