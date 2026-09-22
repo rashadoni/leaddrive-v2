@@ -10,7 +10,8 @@ import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from "
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useTranslations } from "next-intl"
 import { Plus, Trash2, Package, ChevronDown } from "lucide-react"
-import { DEFAULT_CURRENCY, CURRENCY_SYMBOLS } from "@/lib/constants"
+import { CURRENCY_SYMBOLS } from "@/lib/constants"
+import { useCurrencyField } from "@/lib/use-org-default-currency"
 
 interface OfferItem {
   id: string
@@ -70,7 +71,8 @@ export function OfferForm({ open, onOpenChange, onSaved, initialData, orgId, dea
   const [voen, setVoen] = useState("")
   const [contactPerson, setContactPerson] = useState("")
   const [contractNumber, setContractNumber] = useState("")
-  const [currency, setCurrency] = useState(DEFAULT_CURRENCY)
+  // A new offer starts in the organisation's currency, not the browser's "USD".
+  const { currency, setCurrency, resetCurrency } = useCurrencyField()
   const [includeVat, setIncludeVat] = useState(false)
   const [discount, setDiscount] = useState(0)
   const [validUntil, setValidUntil] = useState("")
@@ -146,7 +148,7 @@ export function OfferForm({ open, onOpenChange, onSaved, initialData, orgId, dea
       setVoen(initialData.voen || "")
       setContactPerson(initialData.contactPerson || "")
       setContractNumber(initialData.contractNumber || "")
-      setCurrency(initialData.currency || DEFAULT_CURRENCY)
+      resetCurrency(initialData.currency)
       setIncludeVat(initialData.includeVat || false)
       setDiscount(initialData.discount || 0)
       setValidUntil(initialData.validUntil ? new Date(initialData.validUntil).toISOString().split("T")[0] : "")
@@ -174,7 +176,7 @@ export function OfferForm({ open, onOpenChange, onSaved, initialData, orgId, dea
       setVoen("")
       setContactPerson("")
       setContractNumber("")
-      setCurrency(DEFAULT_CURRENCY)
+      resetCurrency()
       setIncludeVat(false)
       setDiscount(0)
       setValidUntil("")
@@ -182,7 +184,7 @@ export function OfferForm({ open, onOpenChange, onSaved, initialData, orgId, dea
       setClientMode("crm")
       setItems([{ id: "item-1", name: "", quantity: 1, unitPrice: 0, discount: 0 }])
     }
-  }, [open, initialData, dealId])
+  }, [open, initialData, dealId, resetCurrency])
 
   // Item operations
   const addItem = useCallback(() => {

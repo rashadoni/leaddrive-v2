@@ -2,7 +2,7 @@
 
 import { useMemo } from "react"
 import { useTranslations } from "next-intl"
-import { ChevronRight } from "lucide-react"
+import { ChevronRight, Lock } from "lucide-react"
 import { Logo } from "@/components/logo"
 import { NAV_ACTIVE_BAR, NAV_ACTIVE_ICON, NAV_GROUP_LABEL, NAV_GROUP_ORDER, navItems, type NavItem } from "@/lib/nav-items"
 import { cn } from "@/lib/utils"
@@ -14,17 +14,19 @@ import { DEMO_JOURNEY_STRINGS as S } from "./strings"
  * Same item list, icons, group order, labels and row styling as
  * `src/components/sidebar.tsx`, so the prospect sees LeadDrive's own
  * navigation — only fewer entries. Rows are buttons that move the demo view,
- * never links into the tenant application; a route the story has not
- * reached yet is disabled.
+ * never links into the tenant application. A route the story has not
+ * reached yet shows a lock and, when clicked, says that the guide will lead
+ * there — a silently greyed-out row read as broken (owner, 2026-09-22).
  */
 export interface DemoJourneySidebarProps {
   visibleRoutes: readonly string[]
   reachableRoutes: readonly string[]
   activeRoute: string | null
   onNavigate: (route: string) => void
+  onLocked: (label: string) => void
 }
 
-export function DemoJourneySidebar({ visibleRoutes, reachableRoutes, activeRoute, onNavigate }: DemoJourneySidebarProps) {
+export function DemoJourneySidebar({ visibleRoutes, reachableRoutes, activeRoute, onNavigate, onLocked }: DemoJourneySidebarProps) {
   const t = useTranslations("nav")
 
   const groups = useMemo(() => {
@@ -78,8 +80,9 @@ export function DemoJourneySidebar({ visibleRoutes, reachableRoutes, activeRoute
                   <button
                     key={item.href}
                     type="button"
-                    onClick={() => enabled && onNavigate(item.href)}
-                    disabled={!enabled}
+                    onClick={() => (enabled ? onNavigate(item.href) : onLocked(label))}
+                    aria-disabled={enabled ? undefined : true}
+                    data-nav-locked={enabled ? undefined : "true"}
                     aria-current={isActive ? "page" : undefined}
                     data-nav-href={item.href}
                     data-nav-active={isActive ? "true" : undefined}
@@ -94,7 +97,7 @@ export function DemoJourneySidebar({ visibleRoutes, reachableRoutes, activeRoute
                           )
                         : enabled
                           ? "text-white/60 hover:bg-white/[0.06] hover:text-white/90"
-                          : "cursor-not-allowed text-white/30",
+                          : "text-white/35 hover:bg-white/[0.04] hover:text-white/50",
                     )}
                   >
                     <span
@@ -106,6 +109,12 @@ export function DemoJourneySidebar({ visibleRoutes, reachableRoutes, activeRoute
                       <Icon className="h-3.5 w-3.5" />
                     </span>
                     <span className="hidden flex-1 truncate lg:inline">{label}</span>
+                    {!enabled ? (
+                      <Lock
+                        aria-hidden="true"
+                        className="absolute right-1 top-1 h-2.5 w-2.5 text-white/40 lg:static lg:h-3 lg:w-3 lg:shrink-0"
+                      />
+                    ) : null}
                   </button>
                 )
               })}

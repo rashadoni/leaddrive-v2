@@ -11,6 +11,7 @@ import { Select } from "@/components/ui/select"
 import { dateInputValueInTimezone, formatInTimezone } from "@/lib/timezone"
 import { formatTime } from "@/lib/format-date"
 import { visitPlaceSummary } from "@/lib/mtm/visit-place-check"
+import { addDays, clampHistoryEndDate, MAX_RANGE_DAYS } from "@/lib/mtm/history-range"
 import { VisitPlaceBadge } from "@/components/mtm/visit-place-badge"
 
 const LocationHistoryMap = dynamic(() => import("@/components/mtm/location-history-map"), { ssr: false })
@@ -27,7 +28,7 @@ type HistoryData = {
   // Old cached responses predate the split and are the bundled MTM contract.
   // Treat the omitted marker as Workforce-enabled for a non-breaking UI read.
   capabilities?: { workforce?: boolean }
-  range: { date: string; from: string; to: string; timezone: string }
+  range: { date: string; toDate?: string; days?: number; from: string; to: string; timezone: string }
   policy: {
     maxAccuracyMeters: number
     stopRadiusMeters: number
@@ -82,6 +83,14 @@ type HistoryData = {
     startedAt: string
     completedAt: string | null
   } | null
+  /** Each day's shift when the window spans several days. Older responses omit it. */
+  workdays?: Array<{
+    id: string
+    status: "STARTED" | "PAUSED" | "COMPLETED"
+    workDate: string
+    startedAt: string
+    completedAt: string | null
+  }>
   points: Array<{
     id: string
     latitude: number
@@ -211,6 +220,7 @@ function defaultHistoryWindow(date: string, timezone: string): { from: string; t
   return { from: "00:00", to: "23:59" }
 }
 
+
 /**
  * "Now" for the end of today's window, rounded up to the next minute and kept
  * on today. Review of #205: in the first minute after midnight the window was
@@ -235,6 +245,7 @@ export function LocationHistoryPanel() {
   const [timezone, setTimezone] = useState("Asia/Baku")
   const [agentId, setAgentId] = useState("")
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [toDate, setToDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [from, setFrom] = useState("00:00")
   const [to, setTo] = useState("23:59")
   // True while the window is the automatic one for the chosen date; any manual
@@ -298,8 +309,9 @@ export function LocationHistoryPanel() {
       // A link from a live-feed alert names the minutes around the event.
       const fromParam = searchParams.get("from") ?? ""
       const toParam = searchParams.get("to") ?? ""
-      const linkedWindow = HH_MM.test(fromParam) && HH_MM.test(toParam) && fromParam < toParam
-      const historyWindow = linkedWindow ? { from: fromParam, to: toParam } : defaultHistoryWindow(resolvedDate, body.data.timezone)
+      const resolvedToDate = clampHistoryEndDate(resolvedDate, searchParams.get("toDate") ?? resolvedDate)
+      const linkedWindow = HH_MM.test(fromParam) && HH_MM.test(toParam) && (fromParam < toParam || resolvedToDate > resolvedDate)
+      const historyWindow = linkedWindow ? { from: fromParam, to: toParam } : defaultHistoryWindow(resolvedToDate, body.data.timezone)
       autoWindowRef.current = !linkedWindow
       setFrom(historyWindow.from)
       setTo(historyWindow.to)
@@ -307,6 +319,7 @@ export function LocationHistoryPanel() {
       setAgents(roster)
       setTimezone(body.data.timezone)
       setDate(resolvedDate)
+      setToDate(resolvedToDate)
       setAccuracy(body.data.policy.maxAccuracyMeters)
       setAgentId(resolvedAgentId)
       if (selectedFromUrl && resolvedAgentId) {
@@ -341,7 +354,7 @@ export function LocationHistoryPanel() {
     setLoadingHistory(true)
     setHistoryError("")
     setData(null)
-    const isToday = date === dateInputValueInTimezone(new Date(), timezone)
+    const isToday = toDate === dateInputValueInTimezone(new Date(), timezone)
     // Pressing «Show» again later today should include what happened since.
     const effectiveTo = autoWindowRef.current && isToday ? tenantClockNowCeil(timezone) : to
     if (effectiveTo !== to) setTo(effectiveTo)
@@ -354,6 +367,7 @@ export function LocationHistoryPanel() {
         timezone,
         accuracy: String(accuracy),
       })
+      if (toDate !== date) params.set("toDate", toDate)
       const response = await fetch(`/api/v1/mtm/location-history?${params}`, { signal: controller.signal })
       const body = await response.json().catch(() => null)
       if (!response.ok || !body?.success) throw new Error(body?.code || body?.error || response.statusText)
@@ -361,7 +375,7 @@ export function LocationHistoryPanel() {
       setData(body.data)
       if (autoWindowRef.current && isToday) {
         const dayStart = (body.data as HistoryData).workday?.startedAt ?? (body.data as HistoryData).summary.firstPointAt
-        if (dayStart && dateInputValueInTimezone(dayStart, timezone) === date) {
+        if (dayStart && date === toDate && dateInputValueInTimezone(dayStart, timezone) === date) {
           const start = tenantClock(dayStart, timezone)
           if (start < effectiveTo) setFrom(start)
         }
@@ -376,7 +390,7 @@ export function LocationHistoryPanel() {
         setLoadingHistory(false)
       }
     }
-  }, [accuracy, agentId, date, from, t, timezone, to])
+  }, [accuracy, agentId, date, from, t, timezone, to, toDate])
 
   useEffect(() => {
     const requested = requestedHistoryLoadRef.current
@@ -404,8 +418,9 @@ export function LocationHistoryPanel() {
       timezone,
       accuracy: String(accuracy),
       format: "csv",
+      ...(toDate !== date ? { toDate } : {}),
     })}`
-  }, [accuracy, agentId, date, from, timezone, to])
+  }, [accuracy, agentId, date, from, timezone, to, toDate])
 
   const formatMoment = (value: string, options?: Intl.DateTimeFormatOptions) =>
     formatInTimezone(value, timezone, options ?? { dateStyle: "short", timeStyle: "short" }, locale)
@@ -455,7 +470,7 @@ export function LocationHistoryPanel() {
           void loadHistory()
         }}
       >
-        <div className="grid gap-3 sm:grid-cols-2 @min-[64rem]:grid-cols-[minmax(220px,1.4fr)_160px_130px_130px_150px_auto] @min-[64rem]:items-end">
+        <div className="grid gap-3 sm:grid-cols-2 @min-[64rem]:grid-cols-[minmax(200px,1.4fr)_150px_150px_110px_110px_130px_auto] @min-[64rem]:items-end">
           <label className="space-y-1 text-xs font-medium">
             <span>{t("agent")}</span>
             <Select
@@ -475,15 +490,41 @@ export function LocationHistoryPanel() {
             </Select>
           </label>
           <label className="space-y-1 text-xs font-medium">
-            <span>{t("date")}</span>
+            <span>{t("dateFrom")}</span>
             <input
+              data-testid="mtm-location-history-date-from"
               className="min-h-11 w-full rounded-md border bg-background px-3 text-sm"
               type="date"
               value={date}
               onChange={(event) => {
                 invalidateHistory()
-                setDate(event.target.value)
-                const historyWindow = defaultHistoryWindow(event.target.value, timezone)
+                const start = event.target.value
+                // Picking a new start keeps a one-day window unless a range was chosen.
+                const end = toDate === date ? start : clampHistoryEndDate(start, toDate)
+                setDate(start)
+                setToDate(end)
+                const historyWindow = defaultHistoryWindow(end, timezone)
+                autoWindowRef.current = true
+                setFrom(historyWindow.from)
+                setTo(historyWindow.to)
+              }}
+              required
+            />
+          </label>
+          <label className="space-y-1 text-xs font-medium">
+            <span>{t("dateTo")}</span>
+            <input
+              data-testid="mtm-location-history-date-to"
+              className="min-h-11 w-full rounded-md border bg-background px-3 text-sm"
+              type="date"
+              value={toDate}
+              min={date}
+              max={addDays(date, MAX_RANGE_DAYS - 1)}
+              onChange={(event) => {
+                invalidateHistory()
+                const end = clampHistoryEndDate(date, event.target.value)
+                setToDate(end)
+                const historyWindow = defaultHistoryWindow(end, timezone)
                 autoWindowRef.current = true
                 setFrom(historyWindow.from)
                 setTo(historyWindow.to)
@@ -538,7 +579,7 @@ export function LocationHistoryPanel() {
             {loadingHistory ? t("loading") : t("show")}
           </Button>
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">{t("timezoneHint", { timezone })}</p>
+        <p className="mt-2 text-xs text-muted-foreground">{t("timezoneHint", { timezone })} {t("rangeHint", { days: MAX_RANGE_DAYS })}</p>
       </form>
 
       {rosterError && (
@@ -719,7 +760,18 @@ export function LocationHistoryPanel() {
             <aside className="space-y-3">
               {data.capabilities?.workforce !== false ? <section className="rounded-lg border border-zinc-200 bg-card p-3 dark:border-zinc-700">
                 <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold"><Clock3 className="h-4 w-4" />{t("workday")}</h3>
-                {data.workday ? (
+                {(data.range.days ?? 1) > 1 ? (
+                  data.workdays?.length ? (
+                    <ul data-testid="mtm-history-range-workdays" className="space-y-1 text-xs">
+                      {data.workdays.map((row) => (
+                        <li key={row.id} className="flex justify-between gap-2">
+                          <span className="text-muted-foreground">{formatMoment(row.startedAt, { day: "numeric", month: "short" })}</span>
+                          <span className="tabular-nums">{formatMoment(row.startedAt, { hour: "2-digit", minute: "2-digit" })}–{row.completedAt ? formatMoment(row.completedAt, { hour: "2-digit", minute: "2-digit" }) : t("workdayStillOpen")}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : <p className="text-xs text-muted-foreground">{t("noWorkdaysInRange")}</p>
+                ) : data.workday ? (
                   <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-2 text-xs">
                     <dt className="text-muted-foreground">{t("status")}</dt><dd>{t(`workdayStatus.${data.workday.status}`)}</dd>
                     <dt className="text-muted-foreground">{t("workdayStart")}</dt><dd>{formatMoment(data.workday.startedAt)}</dd>

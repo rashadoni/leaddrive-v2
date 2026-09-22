@@ -22,6 +22,8 @@ export const DEMO_CALL_AUDIT_VIA = "demo_center"
  * asks per call at all — the demo will not place a live call before it.
  */
 export const PROMPT_SERVED_EVENT = "voice_runtime_prompt_served"
+/** Its dedupe hash: one prompt-served row per call, whoever writes it. */
+export const PROMPT_SERVED_HASH = "voice_runtime_prompt_served:v1"
 
 export function isDemoPlacedCall(consentAudit: unknown): boolean {
   return Boolean(
@@ -64,7 +66,7 @@ Qaydalar:
 - Qiymət, endirim, müqavilə, inteqrasiya və ya müddət barədə heç nə vəd etmə və uydurma.
 - Müştəri insanla danışmaq, qiymət, müqavilə və ya ödəniş barədə soruşarsa, de: "Menecerimiz qısa zamanda sizə zəng edəcək." — və bunu növbəti addım kimi qeyd et.
 - Müştəri bir daha zəng edilməməsini istəsə, hörmətlə təsdiqlə və zəngi bitir.
-- Zəng üç dəqiqədən uzun çəkməsin.
+- Zəng ən çoxu iki dəqiqə çəkir (sahibkarın qərarı, 2026-09-22). Üçüncü cavabdan sonra dərhal xülasəyə keç; söhbət uzanarsa, sualı qısalt və iki dəqiqə dolmadan xülasə et, sağollaş və zəngi bitir.
 
 Sonda eşitdiklərini bir cümlə ilə xülasə et və de: "Təşəkkür edirəm! Demoya qayıdın — növbəti addım artıq ekranda sizi gözləyir."`
 }

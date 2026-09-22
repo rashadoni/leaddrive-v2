@@ -1,12 +1,14 @@
 "use client"
 
 import { useState } from "react"
-import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Circle, CircleDot, PlayCircle, SkipForward, Sparkles } from "lucide-react"
+import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Circle, CircleDot, Play, PlayCircle, SkipForward, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { getHelpVideoAsset, getHelpVideoForSlug } from "@/content/help/video-assets"
 import {
+  DEMO_PUBLIC_CLIP_SLUGS,
   activeSections,
+  demoPublicClipUrl,
   sectionStatus,
   type DemoJourneyManifest,
   type DemoJourneyProgress,
@@ -54,6 +56,8 @@ export interface DemoJourneyGuideProps {
   liveCall?: DemoLiveCallState
   /** Record how the real call ended; only an `outcome` step accepts it. */
   onOutcome?: (to: DemoJourneyState) => void
+  /** Brings back the coach card the prospect put away; absent while it is shown. */
+  onShowCoach?: () => void
   /** A clip was started, played to the end, or failed — for the session's report. */
   onClipEvent?: (name: DemoClipEvent) => void
 }
@@ -83,6 +87,7 @@ export function DemoJourneyGuide({
   liveCall,
   onOutcome,
   onClipEvent,
+  onShowCoach,
 }: DemoJourneyGuideProps) {
   const sections = activeSections(manifest)
   const sectionIndex = sections.findIndex((candidate) => candidate.id === section.id)
@@ -164,6 +169,11 @@ export function DemoJourneyGuide({
               )}
             </div>
           </div>
+          {onShowCoach && !anchorMissing && (
+            <Button size="sm" variant="outline" className="mt-2 h-7 text-xs" onClick={onShowCoach} data-testid="demo-coach-show">
+              {S.coachShow}
+            </Button>
+          )}
           </>
           )}
           {anchorMissing && (
@@ -374,7 +384,7 @@ function DemoAssistant({
   )
 }
 
-function IntroClip({
+export function IntroClip({
   slug,
   caption,
   status,
@@ -390,21 +400,33 @@ function IntroClip({
   onClipEvent?: (name: DemoClipEvent) => void
 }) {
   const [playing, setPlaying] = useState(false)
-  // The open demo streams nothing: its viewer is unverified, and these files
-  // are the product's own help library, not public marketing assets.
-  const entry = status === "available" && variant !== "open" ? getHelpVideoForSlug(slug, "az") : null
+  // The open demo's viewer is unverified, so it streams only the clips filmed
+  // on the invented demo stand (public-clips.ts); a help-library clip in the
+  // story stays behind a grant and the card says where to watch it.
+  const openClip = variant === "open" && DEMO_PUBLIC_CLIP_SLUGS.has(slug)
+  const entry = status === "available" && (variant !== "open" || openClip) ? getHelpVideoForSlug(slug, "az") : null
   const assets = !entry
     ? null
     : variant === "preview"
       ? getHelpVideoAsset(entry, "az")
-      : {
-          videoSrc: `/api/v1/public/demo-access/${encodeURIComponent(token)}/video/${encodeURIComponent(`${slug}.az`)}.VOICE.mp4`,
-          posterSrc: `/api/v1/public/demo-access/${encodeURIComponent(token)}/video/${encodeURIComponent(`${slug}.az`)}.poster.jpg`,
-        }
+      : variant === "open"
+        ? { videoSrc: demoPublicClipUrl(slug, "video"), posterSrc: demoPublicClipUrl(slug, "poster") }
+        : {
+            videoSrc: `/api/v1/public/demo-access/${encodeURIComponent(token)}/video/${encodeURIComponent(`${slug}.az`)}.VOICE.mp4`,
+            posterSrc: `/api/v1/public/demo-access/${encodeURIComponent(token)}/video/${encodeURIComponent(`${slug}.az`)}.poster.jpg`,
+          }
 
   return (
-    <div data-testid="demo-intro-clip" className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{S.clipTitle}</p>
+    <div
+      data-testid="demo-intro-clip"
+      className={cn(
+        "rounded-lg border p-3",
+        assets ? "border-orange-200 bg-orange-50/50 dark:border-orange-900/50 dark:bg-orange-950/20" : "border-zinc-200 dark:border-zinc-700",
+      )}
+    >
+      <p className={cn("flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em]", assets ? "text-orange-800 dark:text-orange-300" : "text-muted-foreground")}>
+        {assets ? <PlayCircle className="h-3.5 w-3.5" aria-hidden="true" /> : null} {S.clipTitle}
+      </p>
       <p className="mt-1 text-xs leading-relaxed">{caption}</p>
       {assets ? (
         playing ? (
@@ -419,18 +441,28 @@ function IntroClip({
             onError={() => onClipEvent?.("video.error")}
           />
         ) : (
+          // It has to read as a video at a glance: the owner looked at the
+          // poster alone on 2026-09-22 and did not guess it played.
           <button
             type="button"
+            data-testid="demo-intro-clip-play"
             onClick={() => {
               setPlaying(true)
               onClipEvent?.("video.started")
             }}
-            className="group relative mt-2 block w-full overflow-hidden rounded-md border border-zinc-200 dark:border-zinc-700"
+            className="group mt-2 block w-full text-left"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element -- poster from the help-video pipeline, sized by CSS */}
-            <img src={assets.posterSrc} alt="" className="aspect-video w-full object-cover" />
-            <span className="absolute inset-0 flex items-center justify-center bg-black/30 text-white transition-colors group-hover:bg-black/40">
-              <PlayCircle className="h-9 w-9" /> <span className="sr-only">{S.clipPlay}</span>
+            <span className="relative block overflow-hidden rounded-md border border-zinc-200 dark:border-zinc-700">
+              {/* eslint-disable-next-line @next/next/no-img-element -- poster from the help-video pipeline, sized by CSS */}
+              <img src={assets.posterSrc} alt="" className="aspect-video w-full object-cover" />
+              <span className="absolute inset-0 flex items-center justify-center bg-black/35 transition-colors group-hover:bg-black/45">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#FF4D00] text-white shadow-lg ring-4 ring-white/40 transition-transform group-hover:scale-105">
+                  <Play className="ml-0.5 h-5 w-5 fill-current" aria-hidden="true" />
+                </span>
+              </span>
+            </span>
+            <span className="mt-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-md bg-[#FF4D00] text-xs font-semibold text-white transition-colors group-hover:bg-[#e64500]">
+              <Play className="h-3.5 w-3.5 fill-current" aria-hidden="true" /> {S.clipWatch}
             </span>
           </button>
         )

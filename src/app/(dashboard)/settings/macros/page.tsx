@@ -22,6 +22,7 @@ import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
 import { DidYouKnow } from "@/components/did-you-know"
+import { PageHeader } from "@/components/page-header"
 
 interface MacroAction {
   type: string
@@ -501,18 +502,25 @@ export default function MacrosSettingsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 data-tour-id="macros-header" className="text-2xl font-bold tracking-tight flex items-center gap-2">
+      <PageHeader
+        title={
+          <>
             {t("title")} <TourReplayButton tourId="macros" /> <HelpButton slug="macros" variant="label" />
-          </h1>
-          <p className="text-muted-foreground">{t("subtitle")}</p>
-          <PageDescription text={t("description")} />
-        </div>
-        <Button data-tour-id="macros-new" onClick={() => { resetForm(); setShowForm(true) }}>
-          <Plus className="h-4 w-4 mr-1" /> {t("newMacro")}
-        </Button>
-      </div>
+          </>
+        }
+        titleTourId="macros-header"
+        description={
+          <>
+            <p className="text-muted-foreground">{t("subtitle")}</p>
+            <PageDescription text={t("description")} />
+          </>
+        }
+        actions={
+          <Button data-tour-id="macros-new" onClick={() => { resetForm(); setShowForm(true) }}>
+            <Plus className="h-4 w-4 mr-1" /> {t("newMacro")}
+          </Button>
+        }
+      />
 
       <DidYouKnow page="macros" className="mb-0" />
 

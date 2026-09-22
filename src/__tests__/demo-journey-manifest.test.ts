@@ -17,6 +17,7 @@ import {
   DEMO_JOURNEY_SCENARIOS,
   DEMO_JOURNEY_STATES,
   DEMO_JOURNEY_TRANSITIONS,
+  DEMO_PUBLIC_CLIP_SLUGS,
   DEMO_PRODUCT_AREAS_WITH_COVERAGE,
   PROSPECT_TO_CLOSED_WON,
   applyTransition,
@@ -86,6 +87,16 @@ describe("Guided journey manifest: prospect-to-closed-won v1", () => {
     // pages, not the full navigation of the four groups.
     expect(manifest.visibleRoutes.length).toBeLessThanOrEqual(8)
     expect(inScope.length).toBeGreaterThan(manifest.visibleRoutes.length * 4)
+  })
+
+  it("shows no sidebar entry the story never opens", () => {
+    // Owner, 2026-09-22: "почему другие разделы не активны?" — /contacts and
+    // /dashboard sat in the menu greyed out for the whole demo, because no
+    // section ever went there.
+    const storyRoutes = new Set(
+      manifest.sections.filter((section) => section.navGroup !== "demo").map((section) => section.route.replace(/\/\[[a-zA-Z]+\]$/, "")),
+    )
+    for (const route of manifest.visibleRoutes) expect(storyRoutes, route).toContain(route)
   })
 
   it("keeps every section on a visible route and in a visible group", () => {
@@ -394,8 +405,22 @@ describe("The open demo", () => {
     expect(guide).toContain('variant !== "granted"')
   })
 
-  it("serves no help-library media to an unverified visitor", () => {
-    expect(guide).toContain('variant !== "open"')
+  it("serves an unverified visitor only the clips filmed on the invented stand", () => {
+    // Owner decision 2026-09-22: the stand's own clips play in the open demo
+    // too; the help library's clips (real organisations' records) stay behind
+    // a grant. Both the card and the public route check the same list.
+    expect(guide).toContain('variant === "open" && DEMO_PUBLIC_CLIP_SLUGS.has(slug)')
+    const publicRoute = read("src/app/api/v1/public/demo-clips/[file]/route.ts")
+    expect(publicRoute).toContain("DEMO_PUBLIC_CLIP_SLUGS.has(parsed.slug)")
+    const intros = new Map(manifest.sections.flatMap((section) => (section.intro ? [[section.intro.slug, section.intro.status] as const] : [])))
+    for (const slug of DEMO_PUBLIC_CLIP_SLUGS) {
+      // Filmed on the stand (the demo-* names), and really played by the story.
+      expect(slug.startsWith("demo-"), slug).toBe(true)
+      expect(intros.get(slug), slug).toBe("available")
+    }
+    for (const [slug] of intros) {
+      if (!slug.startsWith("demo-")) expect(DEMO_PUBLIC_CLIP_SLUGS.has(slug), `${slug} is a help-library clip`).toBe(false)
+    }
   })
 
   it("lives outside the marketing layout, and is reachable without a session", () => {
@@ -469,9 +494,13 @@ describe("The open demo", () => {
     expect(gated).toContain("step.instruction")
     expect(gated).toContain("S.next")
 
-    // And the panel must be told when a coach mark is actually there.
-    expect(read("src/components/demo-center/journey/demo-journey-player.tsx"))
-      .toContain("sceneHasCoachMark={Boolean(Scene)}")
+    // And the panel must be told when a coach mark is actually there: the
+    // scene has one and the prospect has not put it away (× or Escape), in
+    // which case the panel carries the step again.
+    const player = read("src/components/demo-center/journey/demo-journey-player.tsx")
+    expect(player).toContain("const coachShown = Boolean(step && Scene) && hiddenCoachKey !== coachKey")
+    expect(player).toContain("sceneHasCoachMark={coachShown}")
+    expect(player).toContain("{step && coachShown && (")
   })
 
   it("does not post what the visitor types about themselves", () => {

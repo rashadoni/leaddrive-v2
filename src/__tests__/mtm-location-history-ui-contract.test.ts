@@ -59,11 +59,12 @@ describe("SWM-10 GPS history presentation contract", () => {
   it("lays out the full filter row from the panel width instead of the viewport", () => {
     expect(panel).toContain('data-testid="mtm-location-history-filter-form"')
     expect(panel).toContain('className="@container rounded-lg')
-    expect(panel).toContain("@min-[64rem]:grid-cols-[minmax(220px,1.4fr)_160px_130px_130px_150px_auto]")
+    // Two date columns since the range (owner 2026-09-22).
+    expect(panel).toContain("@min-[64rem]:grid-cols-[minmax(200px,1.4fr)_150px_150px_110px_110px_130px_auto]")
     expect(panel).toContain('data-testid="mtm-location-history-accuracy"')
     expect(panel).toContain('data-testid="mtm-location-history-submit"')
     expect(panel).toContain("@min-[64rem]:w-auto")
-    expect(panel).not.toContain("lg:grid-cols-[minmax(220px,1.4fr)_160px_130px_130px_150px_auto]")
+    expect(panel).not.toContain("lg:grid-cols-[minmax(200px,1.4fr)_150px_150px_110px_110px_130px_auto]")
     expect(panel).not.toContain("lg:w-auto")
   })
 
@@ -149,6 +150,22 @@ describe("SWM-10 GPS history presentation contract", () => {
       expect(history.replayTitle).toEqual(expect.any(String))
       expect(history.replayPosition).toEqual(expect.any(String))
       expect(history.playbackRate).toEqual(expect.any(String))
+    }
+  })
+
+  // Owner 2026-09-22: «why can't I set a range of dates to see where he was these days».
+  it("chooses a range of up to seven days and lists each day's shift", async () => {
+    const { clampHistoryEndDate } = await import("@/lib/mtm/history-range")
+    expect(clampHistoryEndDate("2026-09-20", "2026-09-22")).toBe("2026-09-22")
+    expect(clampHistoryEndDate("2026-09-20", "2026-09-19")).toBe("2026-09-20")
+    expect(clampHistoryEndDate("2026-09-20", "2026-10-30")).toBe("2026-09-26")
+    expect(panel).toContain('data-testid="mtm-location-history-date-to"')
+    expect(panel).toContain('if (toDate !== date) params.set("toDate", toDate)')
+    expect(panel).toContain('data-testid="mtm-history-range-workdays"')
+    for (const messages of locales) {
+      for (const key of ["dateFrom", "dateTo", "rangeHint", "workdayStillOpen", "noWorkdaysInRange"]) {
+        expect(messages.mtmMap.history[key]).toEqual(expect.any(String))
+      }
     }
   })
 })

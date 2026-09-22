@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils"
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
+import { PageHeader } from "@/components/page-header"
 
 interface WorkflowAction {
   id: string
@@ -223,26 +224,32 @@ export default function WorkflowsPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+      <PageHeader
+        title={
+          <>
             <Workflow className="h-6 w-6 text-primary" />
             {t("title")} <TourReplayButton tourId="workflows" /> <HelpButton slug="settings-workflows" variant="label" />
-          </h1>
-          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
-          <p className="text-sm text-muted-foreground mt-1">{ts("hintWorkflows")}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link href="/settings/workflows/templates">
-            <Button variant="outline" className="gap-1.5">
-              <Sparkles className="h-4 w-4" /> {t("browseTemplates")}
+          </>
+        }
+        description={
+          <>
+            <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
+            <p className="text-sm text-muted-foreground mt-1">{ts("hintWorkflows")}</p>
+          </>
+        }
+        actions={
+          <>
+            <Link href="/settings/workflows/templates">
+              <Button variant="outline" className="gap-1.5">
+                <Sparkles className="h-4 w-4" /> {t("browseTemplates")}
+              </Button>
+            </Link>
+            <Button data-tour-id="workflows-new" onClick={() => { setEditData(undefined); setShowForm(true) }} className="gap-1.5">
+              <Plus className="h-4 w-4" /> {t("newWorkflow")}
             </Button>
-          </Link>
-          <Button data-tour-id="workflows-new" onClick={() => { setEditData(undefined); setShowForm(true) }} className="gap-1.5">
-            <Plus className="h-4 w-4" /> {t("newWorkflow")}
-          </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* First-visit onboarding — points users at the templates gallery */}
       {showOnboarding && (

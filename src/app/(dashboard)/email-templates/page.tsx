@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils"
 import { InfoHint } from "@/components/info-hint"
 import { ContentScoreBadge, type ContentScoreFactors } from "@/components/content-perf/content-score-badge"
 import { PageDescription } from "@/components/page-description"
+import { PageHeader } from "@/components/page-header"
 import { EMAIL_TEMPLATE_LIBRARY, type LibraryTemplate } from "@/lib/email-templates-library"
 
 interface EmailTemplate {
@@ -167,20 +168,20 @@ export default function EmailTemplatesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">{t("title")} <HelpButton slug="email-templates" variant="label" /></h1>
-          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setShowLibrary(true)}>
-            <LayoutTemplate className="h-4 w-4 mr-1" /> {t("startFromTemplate")}
-          </Button>
-          <Button onClick={() => { setEditData(undefined); setShowForm(true) }}>
-            <Plus className="h-4 w-4 mr-1" /> {t("newTemplate")}
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title={<>{t("title")} <HelpButton slug="email-templates" variant="label" /></>}
+        description={<p className="text-sm text-muted-foreground">{t("subtitle")}</p>}
+        actions={
+          <>
+            <Button variant="outline" onClick={() => setShowLibrary(true)}>
+              <LayoutTemplate className="h-4 w-4 mr-1" /> {t("startFromTemplate")}
+            </Button>
+            <Button onClick={() => { setEditData(undefined); setShowForm(true) }}>
+              <Plus className="h-4 w-4 mr-1" /> {t("newTemplate")}
+            </Button>
+          </>
+        }
+      />
 
       <PageDescription text={t("pageDescription")} />
 

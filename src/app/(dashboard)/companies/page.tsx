@@ -58,6 +58,7 @@ const COMPANY_STATUS_BADGE_CLASSES: Record<string, string> = {
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
+import { PageHeader } from "@/components/page-header"
 
 export default function CompaniesPage() {
   const { data: session } = useSession()
@@ -234,15 +235,15 @@ export default function CompaniesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">{t("title")} ({filtered.length}) <TourReplayButton tourId="companies" /> <HelpButton slug="companies" variant="label" /></h1>
-          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
-        </div>
-        <Button data-tour-id="companies-new" onClick={() => { setEditData(undefined); setFormOpen(true) }}>
-          <Plus className="h-4 w-4 mr-1" /> {t("add")}
-        </Button>
-      </div>
+      <PageHeader
+        title={<>{t("title")} ({filtered.length}) <TourReplayButton tourId="companies" /> <HelpButton slug="companies" variant="label" /></>}
+        description={<p className="text-sm text-muted-foreground">{t("subtitle")}</p>}
+        actions={
+          <Button data-tour-id="companies-new" onClick={() => { setEditData(undefined); setFormOpen(true) }}>
+            <Plus className="h-4 w-4 mr-1" /> {t("add")}
+          </Button>
+        }
+      />
       <PageDescription text={t("pageDescription")} />
       <DidYouKnow page="companies" className="mb-4" />
 

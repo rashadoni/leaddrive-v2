@@ -8,11 +8,13 @@ import { hashOneTimeToken } from "@/lib/one-time-token"
 import { runWithRlsBypass } from "@/lib/rls-context"
 
 /**
- * Send a one-time SMS code to the phone the prospect wants the AI to call.
+ * Send a one-time SMS code to the phone the AI will call.
  *
- * Only inside an active session of a grant whose admin allowed a live call.
- * The browser either names a number or asks for "the one on my request"; in
- * the second case the number is resolved here and never leaves the server.
+ * Only inside an active session of a grant whose admin allowed a live call,
+ * and only to the phone on the prospect's own request (owner decision
+ * 2026-09-22): the browser merely asks for "the one on my request", the
+ * number is resolved here and never leaves the server, and no other number
+ * can be named — nobody can use a demo to have the agent ring someone else.
  */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
@@ -35,8 +37,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ success: false, error: "Aktiv demo sessiyası tapılmadı" }, { status: 401, headers: noStoreHeaders() })
     }
 
-    const phone = "useRequestPhone" in parsed.data ? grant.request.phone ?? "" : parsed.data.phone
-    const result = await sendDemoPhoneCode({ grant, phone, now })
+    const result = await sendDemoPhoneCode({ grant, phone: grant.request.phone ?? "", now })
     if (result.ok) {
       return NextResponse.json(
         { success: true, state: result.state === "already_verified" ? "verified" : "code_sent" },
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
 const FAILURES: Record<Extract<SendDemoPhoneCodeResult, { ok: false }>["code"], { status: number; error: string }> = {
   not_enabled: { status: 403, error: "Bu demoda zəng aktiv deyil" },
-  invalid_phone: { status: 400, error: "Azərbaycan mobil nömrəsini daxil edin: +994 XX XXX XX XX" },
+  invalid_phone: { status: 400, error: "Zəng yalnız sorğuda göstərdiyiniz Azərbaycan mobil nömrəsinə edilir, sorğuda isə belə nömrə yoxdur." },
   too_many: { status: 429, error: "Kod göndərmə limiti bitib" },
   cooldown: { status: 429, error: "Yeni kodu bir az sonra istəyin" },
   sms_failed: { status: 502, error: "SMS göndərilmədi. Bir az sonra yenidən cəhd edin." },

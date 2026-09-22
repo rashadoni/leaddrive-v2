@@ -13,7 +13,9 @@ import {
   demoCallFirstName,
   isDemoPlacedCall,
   PROMPT_SERVED_EVENT,
+  PROMPT_SERVED_HASH,
 } from "@/lib/demo-center/call-prompt"
+import { claimConnectingDemoCall } from "@/lib/demo-center/call-prompt-match"
 
 export const dynamic = "force-dynamic"
 
@@ -35,14 +37,15 @@ function authorized(request: NextRequest): boolean {
   return left.length === right.length && timingSafeEqual(left, right)
 }
 
-/** One row per call: which prompt this call was given. */
-const PROMPT_SERVED_HASH = "voice_runtime_prompt_served:v1"
 
 /**
  * PBX-only prompt endpoint. It never returns contacts, leads, or credentials.
  *
- * Asked without `callId` it answers exactly as it always has: the
- * organisation's own prompt for every call. Asked with the `callId` the CRM
+ * Asked without `callId` it answers with the organisation's own prompt —
+ * except for the one request that belongs to a demo call's connect burst
+ * (src/lib/demo-center/call-prompt-match.ts): the PBX names the connecting
+ * call in its sibling requests of the same second, and that demo call gets
+ * the demo's script. Every other call is answered exactly as before. Asked with the `callId` the CRM
  * minted for one call, it answers for that call: a call the demo placed gets
  * the demo's approved script (src/lib/demo-center/call-prompt.ts) instead of
  * the organisation's prompt, whose identity belongs to other people's sales
@@ -99,6 +102,32 @@ export async function GET(request: NextRequest) {
   })
 
   if (!callId) {
+    // Never at the line's expense: if matching fails for any reason, every
+    // call — the demo's included — gets the organisation's prompt as before.
+    const demo = await runWithTenant(organizationId, async () => {
+      const call = await claimConnectingDemoCall(organizationId)
+      if (!call) return null
+      const lead = call.leadId
+        ? await prisma.lead.findFirst({ where: { id: call.leadId, organizationId }, select: { contactName: true } })
+        : null
+      return { prompt: buildDemoCallPrompt({ firstName: demoCallFirstName(lead?.contactName) }) }
+    }).catch((error: unknown) => {
+      console.error("[voice-runtime-config] demo match failed", {
+        errorType: error instanceof Error ? error.name : "unknown",
+      })
+      return null
+    })
+    if (demo) {
+      return NextResponse.json(
+        {
+          enabled: Boolean(settings),
+          prompt: demo.prompt,
+          variant: "demo",
+          technicalVoicePolicyVersion: TECHNICAL_VOICE_POLICY_VERSION,
+        },
+        { headers: { "Cache-Control": "no-store" } },
+      )
+    }
     return NextResponse.json(
       {
         enabled: Boolean(settings),
