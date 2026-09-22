@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { isSuperAdminSession } from "@/lib/superadmin-guard"
 import { demoCallAgentReady } from "@/lib/demo-center/demo-call"
+import { normalizeDemoPhone } from "@/lib/demo-center/phone-verification"
 import {
   REPORTED_JOURNEY_EVENTS,
   activeSections,
@@ -61,6 +62,8 @@ export default async function DemoRequestDetailPage({ params }: { params: Promis
     : t("leadLinkNone")
 
   const liveCallAvailable = await demoCallAgentReady()
+  // The live call rings only the request's own phone; say so before issuing.
+  const requestPhoneCallable = Boolean(normalizeDemoPhone(request.phone ?? ""))
 
   const moduleOptions = DEMO_MODULE_CATALOG.map(({ id: moduleId, title, summary }) => ({ id: moduleId, title, summary }))
   const moduleTitle = new Map(moduleOptions.map((module) => [module.id, module.title]))
@@ -151,6 +154,7 @@ export default async function DemoRequestDetailPage({ params }: { params: Promis
           requestId={request.id}
           requestStatus={request.status}
           liveCallAvailable={liveCallAvailable}
+          requestPhoneCallable={requestPhoneCallable}
           requestedModuleIds={request.requestedModules}
           modules={moduleOptions}
           grants={request.grants.map((grant) => ({

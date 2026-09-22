@@ -14168,6 +14168,7 @@
   "admin": {
     "demoCenter": {
       "liveCallUnavailable": "Dayandırılıb: son cavablanan demo zəngi demo ssenarisini almadı, ona görə PBX-in təlimat sorğuları yoxlanana qədər yeni demo zəngi edilmir.",
+      "liveCallNoPhone": "Sorğuda Azərbaycan mobil nömrəsi yoxdur, zəng isə yalnız sorğudakı nömrəyə edilir.",
       "journeyProgress": "Ssenarinin gedişi",
       "journeyNoActivity": "Ssenari hələ heç nə bildirməyib.",
       "journeySections": "{total} bölmədən {done}",

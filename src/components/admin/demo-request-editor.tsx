@@ -30,6 +30,7 @@ const CLOSED_GRANT_STATUSES = new Set(["COMPLETED", "EXPIRED", "REVOKED"])
 export function DemoRequestEditor({
   requestId,
   liveCallAvailable,
+  requestPhoneCallable,
   requestStatus,
   requestedModuleIds,
   modules,
@@ -38,6 +39,8 @@ export function DemoRequestEditor({
   requestId: string
   /** The agent can speak as LeadDrive on a demo call (the PBX asks per call). */
   liveCallAvailable: boolean
+  /** The request carries an Azerbaijani mobile: the only number the live call may ring. */
+  requestPhoneCallable: boolean
   requestStatus: string
   requestedModuleIds: string[]
   modules: ModuleOption[]
@@ -100,7 +103,7 @@ export function DemoRequestEditor({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           // A grant is one or the other; the API refuses both or neither.
-          ...(journey ? { scenarioId: PROSPECT_TO_CLOSED_WON.scenarioId, liveCallEnabled: liveCall && liveCallAvailable } : { moduleIds: selected }),
+          ...(journey ? { scenarioId: PROSPECT_TO_CLOSED_WON.scenarioId, liveCallEnabled: liveCall && liveCallAvailable && requestPhoneCallable } : { moduleIds: selected }),
           linkValidDays,
           sessionDurationMinutes: sessionMinutes,
           inactivityMinutes,
@@ -253,8 +256,8 @@ export function DemoRequestEditor({
           <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
             <input
               type="checkbox"
-              checked={liveCall && liveCallAvailable}
-              disabled={!liveCallAvailable}
+              checked={liveCall && liveCallAvailable && requestPhoneCallable}
+              disabled={!liveCallAvailable || !requestPhoneCallable}
               onChange={(event) => setLiveCall(event.target.checked)}
               className="mt-1 h-4 w-4 accent-orange-600 disabled:opacity-40"
             />
@@ -263,6 +266,8 @@ export function DemoRequestEditor({
               <span className="mt-1 block text-xs leading-5 text-zinc-500">{t("liveCallBody")}</span>
               {!liveCallAvailable ? (
                 <span className="mt-1 block text-xs leading-5 text-amber-700 dark:text-amber-400">{t("liveCallUnavailable")}</span>
+              ) : !requestPhoneCallable ? (
+                <span className="mt-1 block text-xs leading-5 text-amber-700 dark:text-amber-400">{t("liveCallNoPhone")}</span>
               ) : null}
             </span>
           </label>
