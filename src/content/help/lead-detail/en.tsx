@@ -229,8 +229,10 @@ export default function LeadDetailHelpEn() {
           <HelpCallout kind="see" label="What you'll see">
             The reasoning text, three big numbers — <strong>Grade</strong>, <strong>Score</strong>,{" "}
             <strong>Conversion</strong> — and below them the scoring factors with percent bars (Recency,
-            Deal Potential, Source Quality, Engagement Level, Contact Completeness). When the recalculation
-            finishes, the KPI card score updates too.
+            Deal Potential, Source Quality, Engagement Level, Contact Completeness). <strong>Conversion</strong>{" "}
+            is Da Vinci&apos;s own estimate and shows “—” when there is none — any change to the lead
+            rescores it without a probability. When the recalculation finishes, the KPI card score updates
+            too.
           </HelpCallout>
         </HelpStep>
       </HelpSection>

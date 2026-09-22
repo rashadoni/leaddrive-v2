@@ -21,3 +21,19 @@ export function modelConversionProbability(scoreDetails: unknown): number | null
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 100) return null
   return Math.round(value)
 }
+
+/**
+ * Highest (or lowest) probability first; a lead without one goes after every
+ * lead that has one, whichever the direction — no value is made up for it.
+ */
+export function compareProbabilities(a: number | null, b: number | null, direction: "asc" | "desc"): number {
+  if (a == null || b == null) return a == null ? (b == null ? 0 : 1) : -1
+  return direction === "desc" ? b - a : a - b
+}
+
+/** The mean over the leads the model estimated, with how many that is; null when none. */
+export function averageProbability(values: readonly (number | null)[]): { value: number; count: number } | null {
+  const known = values.filter((v): v is number => v != null)
+  if (known.length === 0) return null
+  return { value: Math.round(known.reduce((sum, v) => sum + v, 0) / known.length), count: known.length }
+}

@@ -22,6 +22,8 @@ import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
 import { LeadsAnalytics } from "@/components/leads/leads-analytics"
+import { modelConversionProbability } from "@/lib/leads/conversion-probability"
+import { InfoHint } from "@/components/info-hint"
 import { LateCallbacksPanel } from "@/components/leads/late-callbacks-panel"
 import { LeadBrowserCallAction } from "@/components/leads/lead-browser-call-action"
 import { PageDescription } from "@/components/page-description"
@@ -891,8 +893,11 @@ export default function LeadsPage() {
               ) : (
                 filtered.map((lead) => {
                   const letter = getGrade(lead.score)
-                  const convProb = (lead.scoreDetails as any)?.conversionProb ?? Math.round(lead.score * 0.85)
-                  const convColor = convProb >= 50
+                  // Only Da Vinci's own estimate — never the score × 0.85.
+                  const convProb = modelConversionProbability(lead.scoreDetails)
+                  const convColor = convProb == null
+                    ? "text-muted-foreground"
+                    : convProb >= 50
                     ? "text-emerald-600 dark:text-emerald-400"
                     : convProb >= 30
                     ? "text-amber-600 dark:text-amber-400"
@@ -927,8 +932,11 @@ export default function LeadsPage() {
                               {letter}
                             </span>
                             <h3 className="text-base font-semibold leading-snug">{lead.contactName}</h3>
-                            <span className={cn("text-sm font-semibold tabular-nums ml-auto", convColor)}>
-                              {convProb}%
+                            <span
+                              className={cn("text-sm font-semibold tabular-nums ml-auto", convColor)}
+                              title={convProb == null ? t("convProbNone") : undefined}
+                            >
+                              {convProb == null ? "—" : `${convProb}%`}
                             </span>
                           </div>
                           {lead.companyName && (
@@ -1050,7 +1058,7 @@ export default function LeadsPage() {
                         { key: "name",       label: t("colLead"),       className: "min-w-[180px]" },
                         { key: "company",    label: t("colCompany"),    className: "min-w-[130px]" },
                         { key: null,         label: t("colContacts"),   className: "min-w-[200px]" },
-                        { key: "conversion", label: t("colConversion"), className: "min-w-[100px]" },
+                        { key: "conversion", label: t("colConversion"), className: "min-w-[100px]", hint: t("convProbLifetime") },
                         { key: "source",     label: t("colSource"),     className: "min-w-[110px]" },
                         { key: null,         label: t("colCategory"),   className: "min-w-[90px]" },
                         { key: "status",     label: t("colStatus"),     className: "min-w-[80px]" },
@@ -1075,6 +1083,10 @@ export default function LeadsPage() {
                           >
                             <span className="inline-flex items-center gap-1">
                               {col.label}
+                              {"hint" in col && col.hint && (
+                                // Hovering explains; a click here must not re-sort the column.
+                                <span onClick={(e) => e.stopPropagation()}><InfoHint text={col.hint} size={11} /></span>
+                              )}
                               {SortIcon && (
                                 <SortIcon className={cn("h-3 w-3", isActive ? "text-[#FF4D00]" : "opacity-30")} />
                               )}
@@ -1093,7 +1105,7 @@ export default function LeadsPage() {
                       </tr>
                     ) : filtered.map(lead => {
                       const letter   = getGrade(lead.score)
-                      const convProb = (lead.scoreDetails as any)?.conversionProb ?? Math.round(lead.score * 0.85)
+                      const convProb = modelConversionProbability(lead.scoreDetails)
                       return (
                         <tr
                           key={lead.id}
@@ -1176,15 +1188,19 @@ export default function LeadsPage() {
                             </div>
                           </td>
 
-                          {/* Conversion probability */}
+                          {/* Conversion probability — Da Vinci's own estimate, or «—» */}
                           <td className="px-4 py-3">
-                            <span className={cn(
-                              "text-sm font-semibold tabular-nums",
-                              convProb >= 50 ? "text-emerald-600 dark:text-emerald-400" :
-                              convProb >= 30 ? "text-amber-600 dark:text-amber-400" :
-                              "text-[#FF4D00]"
-                            )}>
-                              {convProb}%
+                            <span
+                              className={cn(
+                                "text-sm font-semibold tabular-nums",
+                                convProb == null ? "text-muted-foreground" :
+                                convProb >= 50 ? "text-emerald-600 dark:text-emerald-400" :
+                                convProb >= 30 ? "text-amber-600 dark:text-amber-400" :
+                                "text-[#FF4D00]"
+                              )}
+                              title={convProb == null ? t("convProbNone") : undefined}
+                            >
+                              {convProb == null ? "—" : `${convProb}%`}
                             </span>
                           </td>
 

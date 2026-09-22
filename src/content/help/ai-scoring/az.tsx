@@ -6,8 +6,9 @@
  * lidlərin Da Vinci ilə qiymətləndirilməsi (bal, qrad, çevrilmə ehtimalı, izah),
  * nəticə cədvəli, sıralama, "Hamısını qiymətləndir" və sətir üzrə "Yenidən hesabla".
  * Faktlar src/app/(dashboard)/ai-scoring/page.tsx + src/app/api/v1/lead-scoring/route.ts
- * ilə üz-üzə yoxlanıb (getGrade həddləri, qayda əsaslı amil çəkiləri, conversionProb =
- * score * 0.85, PiiMasker mask/unmask). Agent konfiqurasiyası bura DAXİL DEYİL.
+ * ilə üz-üzə yoxlanıb (getGrade həddləri, qayda əsaslı amil çəkiləri, conversionProb
+ * yalnız model qaytaranda, əks halda GET null verir, PiiMasker mask/unmask). Agent
+ * konfiqurasiyası bura DAXİL DEYİL.
  */
 import {
   HelpScenario,
@@ -48,10 +49,10 @@ export default function AiScoringHelpAz() {
         <dl className="rounded-md border p-3">
           <HelpDef term="Bal (Score)">0–100 arası tam ədəd — lidin keyfiyyət qiyməti. Cədvəldə «Bal» sütununda qalın görünür.</HelpDef>
           <HelpDef term="Qrad (A–F)">Balın hərf qarşılığı sabit həddlərlə: A = 80–100, B = 60–79, C = 40–59, D = 20–39, F = 20-dən aşağı. Rəngli dairə kimi göstərilir (A yaşıl, B mavi, C sarı, D narıncı, F qırmızı).</HelpDef>
-          <HelpDef term="Konversiya">Lidin satışa çevrilmə ehtimalı (%). 50%+ yaşıl, 30–49% sarı, aşağısı qırmızı rənglənir.</HelpDef>
+          <HelpDef term="Konversiya">Lidin satışa çevrilmə ehtimalı (%), Da Vinci-nin qiymətləndirdiyi kimi. 50%+ yaşıl, 30–49% sarı, aşağısı qırmızı rənglənir; qiymət yoxdursa, «—».</HelpDef>
           <HelpDef term="Statistika">Da Vinci-nin bal üçün verdiyi qısa izah (mətn) — balı qaldıran güclü tərəflər və onu saxlayan boşluqlar. Yanında bənövşəyi parıltı ikonası olur; izah yoxdursa «—» görünür.</HelpDef>
           <HelpDef term="Ort. bal">Bütün lidlərin orta balı, 100-dən. Lid yoxdursa 0.</HelpDef>
-          <HelpDef term="Ehtimal">Bütün lidlər üzrə orta çevrilmə ehtimalı (%).</HelpDef>
+          <HelpDef term="Ehtimal">Da Vinci-nin qiymətləndirdiyi lidlər üzrə orta ehtimal (%) və onların sayı; heç birinin qiyməti yoxdursa, «—».</HelpDef>
           <HelpDef term="Cəmi sessiyalar">İndiyə qədər ən azı bir dəfə həqiqətən qiymətləndirilmiş lidlərin sayı.</HelpDef>
           <HelpDef term="Da Vinci nişanı">Başlıq altında parıltı ikonalı «Da Vinci» nişanı — yalnız son hesablama əsl AI açarı ilə aparılanda görünür; əks halda şəffaf qayda əsaslı formul işləyir.</HelpDef>
         </dl>
@@ -163,9 +164,10 @@ export default function AiScoringHelpAz() {
           hesablanıb — bu da etibarlıdır və şəffaf çəkilərə əsaslanır: e-poçt (+15), telefon (+10),
           şirkət (+10), mənbə (referans +20 / sayt +15 / e-poçt +10 / digər +5), prioritet (yüksək +15
           / orta +10 / digər +5), status (çevrilib +20 / kvalifikasiya +15 / əlaqə qurulub +10),
-          təxmini dəyər (+10) və 10 simvoldan uzun qeyd (+5); cəm 100 ilə məhdudlaşır, konversiya isə
-          baldan (balın ~85%-i) çıxarılır. Fərq sadəcə <strong>Statistika</strong> izahlarının daha
-          qısa olmasındadır.
+          təxmini dəyər (+10) və 10 simvoldan uzun qeyd (+5); cəm 100 ilə məhdudlaşır. Qayda əsaslı
+          formul konversiya ehtimalı vermir, ona görə də <strong>Konversiya</strong> sütununda «—»
+          görünür, <strong>Statistika</strong> izahları isə daha qısadır. Da Vinci-nin ehtimalı da yalnız
+          lid növbəti dəfə dəyişənə qədər qalır: istənilən düzəliş balı ehtimalsız yenidən hesablayır.
         </p>
       </HelpCallout>
 

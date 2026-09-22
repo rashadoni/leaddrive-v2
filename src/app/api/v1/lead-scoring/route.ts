@@ -5,6 +5,7 @@ import { PiiMasker } from "@/lib/ai/pii-masker"
 import Anthropic from "@anthropic-ai/sdk"
 import { getAnthropicClient } from "@/lib/ai/anthropic-client"
 import { decimalToNumber } from "@/lib/prisma-decimal"
+import { modelConversionProbability } from "@/lib/leads/conversion-probability"
 
 function getGrade(score: number): string {
   if (score >= 80) return "A"
@@ -219,7 +220,8 @@ export const GET = withRls(async (_req, { orgId }) => {
           score: l.score,
           scoreDetails: l.scoreDetails,
           grade: getGrade(l.score),
-          conversionProb: details.conversionProb ?? Math.round(l.score * 0.85),
+          // Only the model's own estimate; null otherwise — never the score × 0.85.
+          conversionProb: modelConversionProbability(details),
           reasoning: details.reasoning || null,
           lastScoredAt: l.lastScoredAt,
           estimatedValue: l.estimatedValue,
