@@ -178,11 +178,18 @@ export async function verifyDemoPhoneCode(params: {
     if (row.otpExpiresAt <= now) return { state: "expired" as const }
     if (row.otpAttempts >= DEMO_PHONE_MAX_ATTEMPTS) return { state: "too_many_attempts" as const }
 
-    if (!/^\d{6}$/.test(params.code) || !(await bcrypt.compare(params.code, row.otpHash))) {
-      await prisma.demoPhoneVerification.updateMany({
-        where: { id: row.id, otpHash: row.otpHash, otpAttempts: { lt: DEMO_PHONE_MAX_ATTEMPTS } },
-        data: { otpAttempts: { increment: 1 } },
-      })
+    if (!/^\d{6}$/.test(params.code)) return { state: "wrong_code" as const, attemptsRemaining: Math.max(0, DEMO_PHONE_MAX_ATTEMPTS - row.otpAttempts) }
+    // The attempt is taken before the comparison, atomically: parallel
+    // requests each reading the same count could otherwise all compare.
+    const reserved = await prisma.demoPhoneVerification.updateMany({
+      where: { id: row.id, otpHash: row.otpHash, verifiedAt: null, otpAttempts: { lt: DEMO_PHONE_MAX_ATTEMPTS } },
+      data: { otpAttempts: { increment: 1 } },
+    })
+    if (reserved.count !== 1) {
+      const now2 = await prisma.demoPhoneVerification.findFirst({ where: { id: row.id }, select: { otpHash: true, verifiedAt: true } })
+      return now2?.otpHash === row.otpHash && !now2.verifiedAt ? { state: "too_many_attempts" as const } : { state: "already_used" as const }
+    }
+    if (!(await bcrypt.compare(params.code, row.otpHash))) {
       return { state: "wrong_code" as const, attemptsRemaining: Math.max(0, DEMO_PHONE_MAX_ATTEMPTS - row.otpAttempts - 1) }
     }
 

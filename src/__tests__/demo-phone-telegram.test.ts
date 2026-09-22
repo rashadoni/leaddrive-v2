@@ -409,6 +409,38 @@ describe("the bot, when the prospect shares a contact", () => {
   })
 })
 
+describe("where the code goes, and when the page is told to stop", () => {
+  it("puts the code on the demo whose link this chat opened, and does not guess between two", async () => {
+    const other = pendingRow({ id: "verification-2", grantId: "grant-2", telegramUserId: "999" })
+    const mine = pendingRow({ telegramUserId: String(TG_USER) })
+    vi.mocked(prisma.demoPhoneVerification.findMany).mockImplementation((async (args: { where: Record<string, unknown> }) =>
+      "OR" in args.where ? [other, mine] : [{ id: "verification-1", otpSendCount: 0, otpSentAt: null }]) as never)
+    await consume(contactMessage(PHONE))
+    expect(vi.mocked(prisma.demoPhoneVerification.updateMany).mock.calls[0][0]).toMatchObject({ where: { id: "verification-1" } })
+
+    vi.clearAllMocks()
+    vi.mocked(prisma.demoPhoneVerification.findMany).mockResolvedValue([
+      pendingRow({ id: "verification-2", grantId: "grant-2", telegramUserId: "999" }),
+      pendingRow({ id: "verification-3", grantId: "grant-3", telegramUserId: "998" }),
+    ] as never)
+    await consume(contactMessage(PHONE))
+    expect(prisma.demoPhoneVerification.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("tells the page when no code can come any more, and makes no link that could only end in «limit reached»", async () => {
+    const { demoPhoneProofState } = await import("@/lib/demo-center/phone-telegram")
+    const usedUp = { verifiedAt: null, telegramLinkExpiresAt: new Date(NOW.getTime() + 60_000), telegramLinkIssueCount: 2, otpHash: "h", otpExpiresAt: new Date(NOW.getTime() - 1), otpAttempts: 0, otpSendCount: 3 }
+    vi.mocked(prisma.demoPhoneVerification.findMany).mockResolvedValue([usedUp] as never)
+    await expect(demoPhoneProofState("grant-1", NOW)).resolves.toMatchObject({ codeSent: false, exhausted: true })
+    await expect(issueDemoTelegramLink({ grant, phone: PHONE, consent: true, now: NOW })).resolves.toEqual({ ok: false, code: "too_many" })
+
+    // A code with its tries used up is not one the page can ask for.
+    const triedOut = { ...usedUp, otpExpiresAt: new Date(NOW.getTime() + 60_000), otpAttempts: 5, otpSendCount: 1 }
+    vi.mocked(prisma.demoPhoneVerification.findMany).mockResolvedValue([triedOut] as never)
+    await expect(demoPhoneProofState("grant-1", NOW)).resolves.toMatchObject({ codeSent: false, exhausted: false, linkOpen: true })
+  })
+})
+
 describe("the sales organisation's inbox keeps its bot", () => {
   it("lets ordinary messages and contacts through untouched", async () => {
     await expect(consume({ text: "Salam, qiymət nədir?", chat: { id: 1, type: "private" }, from: { id: 1 } })).resolves.toBe(false)
@@ -501,6 +533,6 @@ describe("the public Telegram route", () => {
     vi.mocked(prisma.demoPhoneVerification.findMany).mockResolvedValue([{ verifiedAt: null, telegramLinkExpiresAt: new Date(Date.now() + 60_000) }] as never)
 
     const response = await call("GET", undefined, `${demoSessionCookieName(RAW)}=${credential.credential}`)
-    expect(await response.json()).toEqual({ success: true, verified: false, linkOpen: true, codeSent: false })
+    expect(await response.json()).toEqual({ success: true, verified: false, linkOpen: true, codeSent: false, exhausted: false })
   })
 })

@@ -142,3 +142,11 @@ describe("the validator guards outcome steps", () => {
     expect(problems).toMatch(/an outcome step must be the last in its section/)
   })
 })
+
+describe("the live call's words", () => {
+  it("never mention SMS: the demo's code comes only through Telegram (owner, 2026-09-22)", () => {
+    const section = withLiveCall(PROSPECT_TO_CLOSED_WON).sections.find((candidate) => candidate.id === "ai-call")!
+    const words = [section.title, section.summary, ...section.steps.flatMap((step) => [step.title, step.instruction, step.fallback ?? "", step.targetLabel ?? "", step.result ?? ""])]
+    expect(words.filter((text) => /SMS/i.test(text))).toEqual([])
+  })
+})

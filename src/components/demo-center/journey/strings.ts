@@ -137,6 +137,7 @@ export const DEMO_JOURNEY_STRINGS = {
   liveCallConsentHere: "Razılığınızı qeyd edin",
   liveCallTelegramExpired: "Keçidin müddəti bitdi — yeni keçid alın.",
   liveCallTelegramNewLink: "Yeni keçid al",
+  liveCallProofClosed: "Bu demoda Telegram kodları və keçidləri bitib, ona görə zəng artıq mümkün deyil. Hekayəyə zəngsiz davam edin.",
   liveCallTelegramUnavailable: "Telegram ilə təsdiq hazırda mümkün deyil, demoda isə kod yalnız Telegram-a göndərilir. Hekayəyə zəngsiz davam edə bilərsiniz.",
   liveCallNoRequestPhone: "Sorğunuzda Azərbaycan mobil nömrəsi göstərilməyib, zəng isə yalnız həmin nömrəyə edilir. Hekayəyə zəngsiz davam edə bilərsiniz.",
   liveCallCodeLabel: "Telegram-dakı kod",

@@ -319,7 +319,7 @@ export function DemoCoachMark({
         >
           {offBelow ? <ArrowDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> : <ArrowUp className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
           {/* It only scrolls, so it says where the action is, not the action. */}
-          <span className="truncate">{offBelow ? S.coachChipBelow(arrowLabel) : S.coachChipAbove(arrowLabel)}</span>
+          <span className="truncate">{offBelow ? S.coachChipBelow(pointsAtControl ? label : title) : S.coachChipAbove(pointsAtControl ? label : title)}</span>
         </button>
       )
     }
@@ -327,15 +327,21 @@ export function DemoCoachMark({
     // the words sit beyond it. Above the control, or below when there is no room.
     const glyph = 18
     const pillHeight = 26
-    const above = ring.top - 4 - glyph - 4 - pillHeight >= VIEWPORT_MARGIN
+    const room = 4 + glyph + 4 + pillHeight
+    const above = ring.top - room >= VIEWPORT_MARGIN
+    const below = !above && ring.top + ring.height + room <= viewHeight - VIEWPORT_MARGIN
+    // A region as tall as the screen (the sidebar, the guide, the watermark):
+    // the words sit just inside its visible top and the arrow points down into it.
+    const inside = !above && !below
     const centre = clamp(ring.left + ring.width / 2, VIEWPORT_MARGIN + glyph / 2, viewWidth - VIEWPORT_MARGIN - glyph / 2)
-    const glyphTop = above ? ring.top - 4 - glyph : ring.top + ring.height + 4
+    const insidePillTop = clamp(Math.max(ring.top, 0) + PADDING + 4, VIEWPORT_MARGIN, viewHeight - VIEWPORT_MARGIN - room)
+    const glyphTop = above ? ring.top - 4 - glyph : below ? ring.top + ring.height + 4 : insidePillTop + pillHeight + 4
     const pillWidth = Math.min(240, viewWidth - VIEWPORT_MARGIN * 2)
-    const Glyph = above ? ArrowDown : ArrowUp
+    const Glyph = above || inside ? ArrowDown : ArrowUp
     return (
       <>
         {ringElement}
-        <div aria-hidden="true" data-testid="demo-coach-arrow" data-side={above ? "top" : "bottom"} className="pointer-events-none">
+        <div aria-hidden="true" data-testid="demo-coach-arrow" data-side={above ? "top" : below ? "bottom" : "inside"} className="pointer-events-none">
           <Glyph
             className={cn("fixed z-[10002] text-[#c2410c] drop-shadow", !reducedMotion && "motion-safe:animate-bounce")}
             style={{ left: centre - glyph / 2, top: glyphTop, width: glyph, height: glyph }}
@@ -346,7 +352,7 @@ export function DemoCoachMark({
             style={{
               left: clamp(centre - pillWidth / 2, VIEWPORT_MARGIN, Math.max(VIEWPORT_MARGIN, viewWidth - pillWidth - VIEWPORT_MARGIN)),
               width: pillWidth,
-              top: above ? glyphTop - 4 - pillHeight : glyphTop + glyph + 4,
+              top: above ? glyphTop - 4 - pillHeight : below ? glyphTop + glyph + 4 : insidePillTop,
             }}
           >
             <span className="max-w-full truncate rounded-full bg-[#c2410c] px-3 py-1 text-xs font-semibold leading-[18px] text-white shadow-lg">{arrowLabel}</span>

@@ -54,8 +54,10 @@ export function DemoLiveCall({
   // only its hash is stored, so the bot's button in Telegram is the way on.
   const [telegramLink, setTelegramLink] = useState<{ url: string | null; qr: string | null } | null>(null)
   const [telegramExpired, setTelegramExpired] = useState(false)
-  /** The bot has written its code in Telegram. */
+  /** The bot has written a code that can still be typed (server state, both ways). */
   const [codeSent, setCodeSent] = useState(false)
+  /** No code and no link left: the call cannot happen in this demo any more. */
+  const [proofClosed, setProofClosed] = useState(false)
   const callButtonRef = useRef<HTMLButtonElement>(null)
   const telegramRef = useRef<HTMLDivElement>(null)
   const codeRef = useRef<HTMLInputElement>(null)
@@ -121,9 +123,10 @@ export function DemoLiveCall({
     let cancelled = false
     void (async () => {
       const response = await fetch(`${base}/phone/telegram`, { cache: "no-store" }).catch(() => null)
-      const payload = await response?.json().catch(() => null) as { verified?: boolean; linkOpen?: boolean; codeSent?: boolean } | null
+      const payload = await response?.json().catch(() => null) as { verified?: boolean; linkOpen?: boolean; codeSent?: boolean; exhausted?: boolean } | null
       if (cancelled || !payload) return
       if (payload.verified) setStage((current) => (current === "phone" ? "ready" : current))
+      else if (payload.exhausted) setProofClosed(true)
       else if (payload.linkOpen || payload.codeSent) {
         if (payload.codeSent) {
           codeSentRef.current = true
@@ -165,17 +168,26 @@ export function DemoLiveCall({
     const tick = async () => {
       if (cancelled) return
       const response = await fetch(`${base}/phone/telegram`, { cache: "no-store" }).catch(() => null)
-      const payload = await response?.json().catch(() => null) as { verified?: boolean; linkOpen?: boolean; codeSent?: boolean } | null
+      const payload = await response?.json().catch(() => null) as { verified?: boolean; linkOpen?: boolean; codeSent?: boolean; exhausted?: boolean } | null
       if (cancelled) return
       if (payload?.verified) {
         setNotice(null)
         setStage("ready")
         return
       }
-      if (payload?.codeSent && !codeSentRef.current) {
-        codeSentRef.current = true
-        focusCodeNext.current = true
-        setCodeSent(true)
+      if (payload?.exhausted) {
+        setProofClosed(true)
+        return
+      }
+      // Follow the server both ways (a network blip, payload null, changes
+      // nothing): a code that expired or ran out of tries is not «sent» any
+      // more, and the digits typed for it go with it.
+      if (payload && (payload.codeSent === true) !== codeSentRef.current) {
+        const sent = payload.codeSent === true
+        codeSentRef.current = sent
+        focusCodeNext.current = sent
+        setCodeSent(sent)
+        if (!sent) setCode("")
       }
       if (payload && payload.linkOpen === false && !payload.codeSent) {
         setTelegramExpired(true)
@@ -188,7 +200,14 @@ export function DemoLiveCall({
       cancelled = true
       if (timer) clearTimeout(timer)
     }
-  }, [stage, base, telegramLink])
+  }, [stage, base, telegramLink, proofClosed])
+
+  const forgetCode = () => {
+    codeSentRef.current = false
+    focusCodeNext.current = false
+    setCodeSent(false)
+    setCode("")
+  }
 
   async function openTelegram() {
     if (!consent) {
@@ -204,11 +223,13 @@ export function DemoLiveCall({
       return
     }
     if (payload.success && typeof payload.url === "string") {
+      forgetCode()
       setTelegramLink({ url: payload.url, qr: typeof payload.qr === "string" ? payload.qr : null })
       setTelegramExpired(false)
       setStage("telegram")
       return
     }
+    if (payload.code === "too_many" || payload.code === "not_enabled") setProofClosed(true)
     setNotice(payload.error ?? S.liveCallFailed)
   }
 
@@ -221,8 +242,14 @@ export function DemoLiveCall({
     setNotice(null)
     const payload = await post("/phone/verify", { code: code.trim(), consent: true })
     setBusy(false)
-    if (payload.success) setStage("ready")
-    else setNotice(payload.error ?? S.liveCallFailed)
+    if (payload.success) {
+      setStage("ready")
+      return
+    }
+    // A dead code: the way on is the bot again, so the arrow goes back to
+    // «Telegram-ı açın» (and the QR comes back).
+    if (payload.code === "expired" || payload.code === "too_many_attempts" || payload.code === "no_code") forgetCode()
+    setNotice(payload.error ?? S.liveCallFailed)
   }
 
   async function requestCall() {
@@ -247,7 +274,7 @@ export function DemoLiveCall({
 
   const withoutCall = () => onOutcome(blocked ? "CALL_BLOCKED" : "CALL_DECLINED")
   // The only way on when there is nothing to prove the phone with, or the call cannot be retried.
-  const declineIsTheWay = (stage === "phone" && !canProve) || (stage === "ready" && blocked !== null && !blocked.retryable)
+  const declineIsTheWay = proofClosed || (stage === "phone" && !canProve) || (stage === "ready" && blocked !== null && !blocked.retryable)
 
   return (
     <section
@@ -269,7 +296,11 @@ export function DemoLiveCall({
           : ""}
       </p>
 
-      {stage === "phone" ? (
+      {proofClosed && (stage === "phone" || stage === "telegram") ? (
+        <p className="mt-2 leading-relaxed text-amber-900 dark:text-amber-200">{S.liveCallProofClosed}</p>
+      ) : null}
+
+      {stage === "phone" && !proofClosed ? (
         <div className="mt-2 space-y-2">
           {!initial.requestPhoneUsable ? (
             <p className="leading-relaxed text-amber-900 dark:text-amber-200">{S.liveCallNoRequestPhone}</p>
@@ -294,7 +325,7 @@ export function DemoLiveCall({
         </div>
       ) : null}
 
-      {stage === "telegram" && telegramLink ? (
+      {stage === "telegram" && telegramLink && !proofClosed ? (
         <div ref={telegramRef} tabIndex={-1} className="mt-2 space-y-2 outline-none" data-testid="demo-live-call-telegram-link">
           {telegramExpired ? null : (
             <ol className="list-decimal space-y-0.5 pl-4 leading-relaxed">
@@ -328,6 +359,8 @@ export function DemoLiveCall({
             <p className="leading-relaxed text-amber-900 dark:text-amber-200">{S.liveCallTelegramExpired}</p>
           ) : (
             <>
+              {/* Back after a reload the agreement is asked again, before the code (one box at a time). */}
+              {!telegramLink.url ? <ConsentBox checked={consent} onChange={setConsent} marked={!consent} /> : null}
               <p aria-hidden="true" className="flex items-center gap-1.5 text-muted-foreground">
                 {codeSent ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" /> : <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
                 {codeSent ? S.liveCallCodeArrived : S.liveCallTelegramWaiting}
@@ -341,14 +374,14 @@ export function DemoLiveCall({
                 placeholder="000000"
                 aria-label={S.liveCallCodeLabel}
                 className="h-8 w-full rounded-md border border-input bg-background px-2 text-center text-sm tracking-[0.4em]"
-                {...(codeSent && code.length !== 6 ? { ...demoTarget(DEMO_LIVE_CALL_STEP_ID), ...demoLabel(S.liveCallCodeHere) } : {})}
+                {...(consent && codeSent && code.length !== 6 ? { ...demoTarget(DEMO_LIVE_CALL_STEP_ID), ...demoLabel(S.liveCallCodeHere) } : {})}
               />
               <Button
                 size="sm"
                 className="h-8 w-full"
                 disabled={busy || code.length !== 6}
                 onClick={verify}
-                {...(code.length === 6 ? { ...demoTarget(DEMO_LIVE_CALL_STEP_ID), ...demoLabel(S.liveCallVerify) } : {})}
+                {...(consent && code.length === 6 ? { ...demoTarget(DEMO_LIVE_CALL_STEP_ID), ...demoLabel(S.liveCallVerify) } : {})}
               >
                 {S.liveCallVerify}
               </Button>
@@ -357,15 +390,16 @@ export function DemoLiveCall({
           {telegramExpired || !telegramLink.url ? (
             <>
               {/* A new link needs the agreement again (it is not kept across a
-                  reload). The box stays mounted when ticked, so it can be read and unticked. */}
-              <ConsentBox checked={consent} onChange={setConsent} marked={telegramExpired && !consent} />
+                  reload). The box stays mounted when ticked, so it can be read
+                  and unticked; after a reload it sits above the code instead. */}
+              {telegramExpired ? <ConsentBox checked={consent} onChange={setConsent} marked={!consent} /> : null}
               <Button
                 size="sm"
                 variant={telegramExpired ? "default" : "outline"}
                 className="h-8 w-full text-xs"
                 disabled={busy}
                 onClick={openTelegram}
-                {...(telegramExpired && consent ? { ...demoTarget(DEMO_LIVE_CALL_STEP_ID), ...demoLabel(S.liveCallTelegramNewLink) } : {})}
+                {...((telegramExpired || !codeSent) && consent ? { ...demoTarget(DEMO_LIVE_CALL_STEP_ID), ...demoLabel(S.liveCallTelegramNewLink) } : {})}
               >
                 {S.liveCallTelegramNewLink}
               </Button>

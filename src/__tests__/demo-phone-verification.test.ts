@@ -178,6 +178,20 @@ describe("proving the phone and agreeing to the call", () => {
     })
   })
 
+  it("takes the attempt before comparing, so parallel guesses cannot all be checked", async () => {
+    const row = pending({ otpAttempts: 4, otpHash: "same" })
+    vi.mocked(prisma.demoPhoneVerification.findFirst)
+      .mockResolvedValueOnce(null) // no phone proven yet
+      .mockResolvedValueOnce(row as never) // the newest code
+      .mockResolvedValueOnce({ otpHash: "same", verifiedAt: null } as never) // re-read after losing the attempt
+    // Another request took the last attempt a moment ago.
+    vi.mocked(prisma.demoPhoneVerification.updateMany).mockResolvedValueOnce({ count: 0 })
+    const compare = vi.spyOn(bcrypt, "compare")
+    await expect(verifyDemoPhoneCode({ grant, code: "123456", consent: true, now: NOW })).resolves.toEqual({ ok: false, code: "too_many_attempts" })
+    expect(compare).not.toHaveBeenCalled()
+    compare.mockRestore()
+  })
+
   it("refuses without the checkbox, before looking at the code", async () => {
     await expect(verifyDemoPhoneCode({ grant, code: "123456", consent: false, now: NOW }))
       .resolves.toEqual({ ok: false, code: "consent_required" })

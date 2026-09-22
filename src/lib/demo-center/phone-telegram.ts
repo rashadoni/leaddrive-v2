@@ -6,6 +6,7 @@ import { runWithRlsBypass } from "@/lib/rls-context"
 import { DEMO_CALL_CONSENT_TEXT } from "./journey/live-call"
 import {
   callableGrant,
+  DEMO_PHONE_MAX_ATTEMPTS,
   DEMO_PHONE_MAX_SENDS_PER_GRANT,
   DEMO_PHONE_OTP_TTL_MS,
   DEMO_PHONE_RESEND_COOLDOWN_MS,
@@ -108,13 +109,12 @@ export async function issueDemoTelegramLink(params: {
   const token = randomBytes(24).toString("base64url")
   const expiresAt = new Date(now.getTime() + DEMO_TELEGRAM_LINK_TTL_MS)
   const prepared = await runWithRlsBypass(async () => {
-    const rows = await prisma.demoPhoneVerification.findMany({
-      where: { grantId },
-      select: { verifiedAt: true, telegramLinkIssueCount: true },
-    })
+    const rows: ProofRow[] = await prisma.demoPhoneVerification.findMany({ where: { grantId }, select: PROOF_ROW_SELECT })
     if (rows.some((row) => row.verifiedAt)) return "already_verified" as const
     const issued = rows.reduce((total, row) => total + row.telegramLinkIssueCount, 0)
-    if (issued >= DEMO_TELEGRAM_MAX_LINKS_PER_GRANT) return "too_many" as const
+    // A link that could only end in «code limit reached» is not worth making.
+    const codesUsedUp = rows.reduce((total, row) => total + row.otpSendCount, 0) >= DEMO_PHONE_MAX_SENDS_PER_GRANT
+    if (issued >= DEMO_TELEGRAM_MAX_LINKS_PER_GRANT || (codesUsedUp && !rows.some((row) => liveCode(row, now)))) return "too_many" as const
     // A new link retires the previous one. The Telegram user who opened the
     // old one stays bound: the binding only routes their next contact here and
     // proves nothing, so their old share button keeps working with the new link.
@@ -132,21 +132,53 @@ export async function issueDemoTelegramLink(params: {
 }
 
 /** What the demo page polls while the prospect is in Telegram. */
+type ProofRow = {
+  verifiedAt: Date | null
+  telegramLinkExpiresAt: Date | null
+  telegramLinkIssueCount: number
+  otpHash: string | null
+  otpExpiresAt: Date | null
+  otpAttempts: number
+  otpSendCount: number
+}
+const PROOF_ROW_SELECT = {
+  verifiedAt: true,
+  telegramLinkExpiresAt: true,
+  telegramLinkIssueCount: true,
+  otpHash: true,
+  otpExpiresAt: true,
+  otpAttempts: true,
+  otpSendCount: true,
+} as const
+
+/** A code the page can still ask for: written, unexpired, with tries left. */
+function liveCode(row: ProofRow, now: Date): boolean {
+  return !row.verifiedAt && Boolean(row.otpHash) && Boolean(row.otpExpiresAt && row.otpExpiresAt > now) && row.otpAttempts < DEMO_PHONE_MAX_ATTEMPTS
+}
+
+/** Nothing left to prove the phone with: no live code, and the codes or the links are used up. */
+function proofExhausted(rows: readonly ProofRow[], now: Date): boolean {
+  if (rows.some((row) => row.verifiedAt || liveCode(row, now))) return false
+  const codes = rows.reduce((total, row) => total + row.otpSendCount, 0)
+  const links = rows.reduce((total, row) => total + row.telegramLinkIssueCount, 0)
+  const linkOpen = rows.some((row) => row.telegramLinkExpiresAt && row.telegramLinkExpiresAt > now)
+  return codes >= DEMO_PHONE_MAX_SENDS_PER_GRANT || (links >= DEMO_TELEGRAM_MAX_LINKS_PER_GRANT && !linkOpen)
+}
+
 export async function demoPhoneProofState(
   grantId: string,
   now = new Date(),
-): Promise<{ verified: boolean; linkOpen: boolean; codeSent: boolean }> {
-  const rows = await runWithRlsBypass(() =>
-    prisma.demoPhoneVerification.findMany({
-      where: { grantId },
-      select: { verifiedAt: true, telegramLinkExpiresAt: true, otpHash: true, otpExpiresAt: true },
-    }),
+): Promise<{ verified: boolean; linkOpen: boolean; codeSent: boolean; exhausted: boolean }> {
+  const rows: ProofRow[] = await runWithRlsBypass(() =>
+    prisma.demoPhoneVerification.findMany({ where: { grantId }, select: PROOF_ROW_SELECT }),
   )
   return {
     verified: rows.some((row) => row.verifiedAt),
     linkOpen: rows.some((row) => !row.verifiedAt && row.telegramLinkExpiresAt && row.telegramLinkExpiresAt > now),
-    // The bot has written a code the page can now ask for.
-    codeSent: rows.some((row) => !row.verifiedAt && row.otpHash && row.otpExpiresAt && row.otpExpiresAt > now),
+    // The bot has written a code the page can still ask for.
+    codeSent: rows.some((row) => liveCode(row, now)),
+    // The page stops offering Telegram and points at «continue without the call».
+    exhausted: proofExhausted(rows, now),
   }
 }
 
@@ -292,6 +324,7 @@ async function shareContact(params: { botToken: string; chatId: number; messageI
         verifiedAt: true,
         telegramLinkHash: true,
         telegramLinkExpiresAt: true,
+        telegramUserId: true,
         grant: { select: { status: true, liveCallEnabled: true, sessionExpiresAt: true } },
       },
     }),
@@ -346,7 +379,10 @@ async function shareContact(params: { botToken: string; chatId: number; messageI
       return true
     }
     const shared = normalizeTelegramPhone(original.contact.phone_number)
-    const row = shared ? open.find((candidate) => candidate.phoneE164 === shared) : undefined
+    // The link this chat opened wins; with several demos on the same number
+    // and none opened here, the code is not put on a guess.
+    const matching = shared ? open.filter((candidate) => candidate.phoneE164 === shared) : []
+    const row = matching.find((candidate) => candidate.telegramUserId === String(chatId)) ?? (matching.length === 1 ? matching[0] : undefined)
     if (!row) {
       await finish(DEMO_TELEGRAM_TEXT.otherNumber)
       return true
@@ -389,18 +425,21 @@ async function shareContact(params: { botToken: string; chatId: number; messageI
           if ((error as { code?: unknown } | null)?.code === "P2002") return { count: 0 }
           throw error
         })
-      if (updated.count !== 1) return "gone" as const
-      await prisma.demoAccessEvent.create({
-        data: { grantId: row.grantId, eventType: "PHONE_CODE_SENT", metadata: { delivered: true, phoneTail: row.phoneE164.slice(-2), method: "telegram" } },
-      })
-      return "sent" as const
+      return updated.count === 1 ? ("sent" as const) : ("gone" as const)
     })
-    await finish(
-      issued === "sent" ? DEMO_TELEGRAM_TEXT.code(code)
-        : issued === "cooldown" ? DEMO_TELEGRAM_TEXT.codeCooldown
-        : issued === "limit" ? DEMO_TELEGRAM_TEXT.codeLimit
-        : DEMO_TELEGRAM_TEXT.linkDead,
-    )
+    if (issued === "sent") {
+      // Delivered in the edited «checking» message, or in a fresh one if the
+      // edit fails; the trail records what really happened.
+      let delivery = await finish(DEMO_TELEGRAM_TEXT.code(code))
+      if (!delivery?.ok) delivery = await telegram(botToken, "sendMessage", { chat_id: chatId, text: DEMO_TELEGRAM_TEXT.code(code) })
+      await runWithRlsBypass(() =>
+        prisma.demoAccessEvent.create({
+          data: { grantId: row.grantId, eventType: "PHONE_CODE_SENT", metadata: { delivered: Boolean(delivery?.ok), phoneTail: row.phoneE164.slice(-2), method: "telegram" } },
+        }),
+      ).catch((error) => logFailure("code event", error))
+      return true
+    }
+    await finish(issued === "cooldown" ? DEMO_TELEGRAM_TEXT.codeCooldown : issued === "limit" ? DEMO_TELEGRAM_TEXT.codeLimit : DEMO_TELEGRAM_TEXT.linkDead)
     return true
   } catch (error) {
     logFailure("contact", error)

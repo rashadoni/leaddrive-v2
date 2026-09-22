@@ -49,7 +49,7 @@ function liveCallSection(section: DemoJourneySection): DemoJourneySection {
       {
         ...consent,
         instruction:
-          "Zəng yalnız sizin razılığınızla olur: nömrəni SMS kodu ilə təsdiqləyirsiniz və ayrıca razılıq verirsiniz. Söhbət mətn şəklində qeydə alınır.",
+          "Zəng yalnız sizin razılığınızla olur: nömrənin sizin olduğunu Telegram-da təsdiqləyirsiniz — bot sizə 6 rəqəmli kod yazır, onu burada daxil edirsiniz — və ayrıca razılıq verirsiniz. Söhbət mətn şəklində qeydə alınır.",
         fallback: "Zəng paneli görünmürsə, bələdçidən davam edin.",
       },
       {
