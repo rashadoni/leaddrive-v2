@@ -214,10 +214,12 @@ export default function CampaignsPage() {
 
       {/* Stats — 5 status cards */}
       <div data-tour-id="campaigns-stats" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <ColorStatCard label={t("statusDraft")} value={statusCounts.draft} icon={<Megaphone className="h-4 w-4" />} hint={t("hintTotalCampaigns")} />
-        <ColorStatCard label={t("statusScheduled")} value={statusCounts.scheduled} icon={<Megaphone className="h-4 w-4" />} hint={t("hintSentMonth")} />
-        <ColorStatCard label={t("statusSending")} value={statusCounts.sending} icon={<Megaphone className="h-4 w-4" />} hint={t("hintOpenRate")} />
-        <ColorStatCard label={t("statusSent")} value={statusCounts.sent} icon={<Megaphone className="h-4 w-4" />} hint={t("hintClickRate")} />
+        {/* Each hint describes the count on its own card. Sending and
+            Cancelled carry none: no screen sets either status today. */}
+        <ColorStatCard label={t("statusDraft")} value={statusCounts.draft} icon={<Megaphone className="h-4 w-4" />} hint={t("hintStatusDraft")} />
+        <ColorStatCard label={t("statusScheduled")} value={statusCounts.scheduled} icon={<Megaphone className="h-4 w-4" />} hint={t("hintStatusScheduled")} />
+        <ColorStatCard label={t("statusSending")} value={statusCounts.sending} icon={<Megaphone className="h-4 w-4" />} />
+        <ColorStatCard label={t("statusSent")} value={statusCounts.sent} icon={<Megaphone className="h-4 w-4" />} hint={t("hintStatusSent")} />
         <ColorStatCard label={t("statusCancelled")} value={statusCounts.cancelled} icon={<Megaphone className="h-4 w-4" />} />
       </div>
 

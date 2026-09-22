@@ -109,8 +109,8 @@ describe("campaign analytics figures, on the demo tenant's campaigns", () => {
     expect(s.opened).toMatchObject({ count: 763, base: 1829 })
     expect(s.opened!.percent).toBeCloseTo((763 / 1829) * 100, 6)
     expect(s.clicked).toMatchObject({ count: 214, base: 1829 })
-    // Nothing writes Campaign.totalBounced, and the stand no longer pretends it does.
-    expect(s.bounced).toBeNull()
+    // Bounces: email only (the Resend webhook), so the base is the email sends.
+    expect(s.bounced).toMatchObject({ count: 18, base: 1829 })
     expect(s.budget).toBe(340 + 185 + 229 + 64 + 410 + 118)
   })
 
@@ -146,10 +146,13 @@ describe("campaign analytics figures, on the demo tenant's campaigns", () => {
 })
 
 describe("campaign analytics figures a record cannot back", () => {
-  it("reports no bounce rate while nothing writes Campaign.totalBounced", () => {
-    const s = summarizeCampaigns([campaign({ totalSent: 1200, totalOpened: 300, totalClicked: 40 })])
-    expect(s.bounced).toBeNull()
-    expect(s.opened!.percent).toBeCloseTo(25, 6)
+  it("reports bounces only for channels whose provider reports them", () => {
+    // Email bounces arrive through the Resend webhook, so an email campaign
+    // with none is a measured 0; SMS reports none, so it has no bounce rate.
+    const email = summarizeCampaigns([campaign({ totalSent: 1200, totalOpened: 300, totalClicked: 40 })])
+    expect(email.bounced).toEqual({ count: 0, base: 1200, percent: 0 })
+    expect(email.opened!.percent).toBeCloseTo(25, 6)
+    expect(summarizeCampaigns([campaign({ type: "sms", totalSent: 1200 })]).bounced).toBeNull()
   })
 
   it("reports no open or click rate for channels that do not record them", () => {
@@ -298,12 +301,12 @@ describe("Campaigns → Analitika tab as rendered", () => {
     expect(widget("automation")).toContain("noJourneys")
     expect(widget("templates")).toContain("noTemplates")
     expect(widget("kpi-roi")).toContain("roiNoWonDeals")
-    // The campaign widgets do have records, and show them — and nothing
-    // writes bounces, so there is no bounce figure to show.
+    // The campaign widgets do have records, and show them; bounces are the
+    // email campaign's own, over its own sends.
     expect(widget("kpi-sent")).toContain("4.7K")
     expect(widget("kpi-open-rate")).toContain("41.7%")
     expect(widget("kpi-click-rate")).toContain("11.7%")
-    expect(widget("kpi-bounce")).toContain("—")
+    expect(widget("kpi-bounce")).toContain("1.0%")
   })
 
   it("shows the Campaign ROI page's verdict: «—» for mixed currencies, the figure when one currency", async () => {
