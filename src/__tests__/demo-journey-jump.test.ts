@@ -16,6 +16,7 @@ import {
   reduceJourney,
   sectionJumpTarget,
   sectionStatus,
+  summarizeJourney,
   withLiveCall,
   type DemoJourneyAction,
   type DemoJourneyManifest,
@@ -83,12 +84,20 @@ describe("opening a section ahead of the story", () => {
     expect(snapshot.records.task).toBeNull()
   })
 
-  it("spaces the staged records in time, so the lead's history still reads in order", () => {
-    const { snapshot } = jump(start(), "deal")
-    const lead = snapshot.records.lead!
-    expect(Date.parse(lead.createdAt)).toBeLessThan(NOW.getTime())
+  it("stages records between the story's last move and now, so the lead's history still reads in order", () => {
+    // The prospect opened their own card a moment ago, then jumps to the deals.
+    let snapshot = jump(start(), "lead-created").snapshot
+    const later = (seconds: number) => new Date(NOW.getTime() + seconds * 1000)
+    for (let guard = 0; snapshot.stepId !== "lead-details"; guard += 1) {
+      snapshot = reduceJourney(snapshot, actionFor(snapshot), manifest, later(5)).snapshot
+      if (guard > 10) throw new Error("did not open the card")
+    }
+    const { snapshot: jumped } = reduceJourney(snapshot, { type: "open-section", sectionId: "deal" }, manifest, later(35))
+    const lead = jumped.records.lead!
     const dates = lead.timeline.map((entry) => Date.parse(entry.date))
     expect(dates).toEqual([...dates].sort((a, b) => a - b))
+    expect(Math.max(...dates)).toBeLessThanOrEqual(later(35).getTime())
+    expect(Math.min(...dates.slice(-2))).toBeGreaterThanOrEqual(later(5).getTime())
   })
 
   it("lets the story carry on from there to the end with the ordinary rules", () => {
@@ -125,18 +134,36 @@ describe("what a jump refuses", () => {
     expect(jump(start(), "no-such-section").ok).toBe(false)
   })
 
-  it("never moves while a real call is on the line", () => {
-    for (const state of ["CALL_QUEUED", "CALLING"] as const) {
-      expect(jump({ ...start(), state }, "deal").ok, state).toBe(false)
-    }
-  })
-
-  it("stops at the real AI call instead of skipping it", () => {
+  it("stops at the real AI call instead of skipping it, and does not let a second click past it", () => {
     const live = withLiveCall(manifest)
     expect(sectionJumpTarget(start(live), live, "deal")).toMatchObject({ ok: true, section: { id: "ai-call" } })
-    const result = jump(start(live), "deal", live)
-    expect(result.snapshot.sectionId).toBe("ai-call")
-    expect(result.snapshot.state).toBe("LEAD_QUALIFIED")
+    const stopped = jump(start(live), "deal", live).snapshot
+    expect(stopped).toMatchObject({ sectionId: "ai-call", state: "LEAD_QUALIFIED" })
+    // While the call step waits — before the call, or while the phone rings
+    // (the snapshot does not show that) — nothing jumps away from it.
+    for (const sectionId of ["task", "deal", "quote"]) {
+      const again = jump(stopped, sectionId, live)
+      expect(again.ok, sectionId).toBe(false)
+      expect(again.snapshot).toBe(stopped)
+    }
+    expect(stopped.records.lead?.timeline.some((entry) => entry.id === "tl-call")).toBe(false)
+  })
+
+  it("lets the story move on once the call step has its outcome", () => {
+    const live = withLiveCall(manifest)
+    const stopped = jump(start(live), "deal", live).snapshot
+    const atCall = reduceJourney(stopped, { type: "complete-step", stepId: "ai-call-consent-control" }, live, NOW).snapshot
+    expect(atCall.stepId).toBe("ai-call-live")
+    const declined = reduceJourney(atCall, { type: "outcome", stepId: "ai-call-live", to: "CALL_DECLINED" }, live, NOW)
+    expect(declined.ok).toBe(true)
+    const onward = jump(declined.snapshot, "deal", live)
+    expect(onward.ok).toBe(true)
+    expect(onward.snapshot.sectionId).toBe("deal")
+  })
+
+  it("without a live call, the call step is just passed on the way", () => {
+    const { snapshot } = jump(start(), "task")
+    expect(snapshot.state).toBe("CALL_SKIPPED")
   })
 })
 
@@ -151,6 +178,16 @@ describe("progress after a jump", () => {
 })
 
 describe("what the admin hears about a jump", () => {
+  it("does not count jumped-over sections as walked", () => {
+    const at = (minutes: number) => new Date(NOW.getTime() + minutes * 60_000)
+    const summary = summarizeJourney(manifest, [
+      { eventType: "journey.section_opened", stepId: null, metadata: { sectionId: "closed-won" }, occurredAt: at(1) },
+      { eventType: "journey.step_completed", stepId: "closed-won-move", metadata: { sectionId: "closed-won" }, occurredAt: at(2) },
+    ])
+    expect(summary.sectionsReached).toBe(1)
+    expect(summary.furthestSectionId).toBe("closed-won")
+  })
+
   it("only that the section was opened — the staged states were not walked", () => {
     const before = start()
     const { snapshot: after } = jump(before, "conversation")

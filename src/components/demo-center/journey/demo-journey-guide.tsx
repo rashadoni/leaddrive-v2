@@ -137,7 +137,7 @@ export function DemoJourneyGuide({
       {reviewMode ? (
         <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
           <p className="font-semibold">{S.reviewMode}</p>
-          <p className="mt-1 leading-relaxed">{S.reviewBody}</p>
+          <p className="mt-1 leading-relaxed">{sectionStatus(snapshot, manifest, section.id) === "passed" ? S.reviewPassedBody : S.reviewBody}</p>
           <Button size="sm" className="mt-2 h-8" onClick={onExitReview}>
             {S.backToCurrent} <ChevronRight className="ml-1 h-3.5 w-3.5" />
           </Button>

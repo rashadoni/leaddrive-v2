@@ -14,6 +14,7 @@ import {
   journeyReportsBetween,
   parseSnapshot,
   reachableRoutes,
+  awaitingOutcome,
   reduceJourney,
   sectionJumpTarget,
   serializeSnapshot,
@@ -271,7 +272,7 @@ export function DemoJourneyPlayer({
   const openSection = (sectionId: string) => {
     const jump = sectionJumpTarget(snapshot, manifest, sectionId)
     if (!jump.ok) {
-      hint(snapshot.state === "CALL_QUEUED" || snapshot.state === "CALLING" ? S.jumpCallInFlight : S.jumpRefused)
+      hint(awaitingOutcome(snapshot, manifest) ? S.jumpWaitsForCall : S.jumpRefused)
       return
     }
     const result = dispatch({ type: "open-section", sectionId })
@@ -283,10 +284,17 @@ export function DemoJourneyPlayer({
 
   const openChapter = (sectionId: string) => {
     const index = sections.findIndex((section) => section.id === sectionId)
-    setAnchorMissing(false)
-    if (index === frontierIndex) setViewSectionId(null)
-    else if (index >= 0 && index < frontierIndex) setViewSectionId(sectionId)
-    else openSection(sectionId)
+    if (index === frontierIndex) {
+      // Back from review the coach mark searches again and reports; already
+      // on the frontier nothing changes, and the guide's recovery must stay.
+      if (reviewMode) {
+        setAnchorMissing(false)
+        setViewSectionId(null)
+      }
+    } else if (index >= 0 && index < frontierIndex) {
+      setAnchorMissing(false)
+      setViewSectionId(sectionId)
+    } else openSection(sectionId)
   }
 
   const Scene = SCENES[viewSection.id]
@@ -393,7 +401,7 @@ export function DemoJourneyPlayer({
               phone) and the whole demo scrolled sideways, text cut off. */}
           <div className="grid min-w-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px]">
             <main id="demo-scene" className="min-w-0 overflow-y-auto p-4 sm:p-6">
-              {Scene ? <Scene {...sceneProps} /> : <ScenePending section={viewSection} />}
+              {Scene ? <Scene key={viewSection.id} {...sceneProps} /> : <ScenePending section={viewSection} />}
             </main>
             <DemoJourneyGuide
               manifest={manifest}

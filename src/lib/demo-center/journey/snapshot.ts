@@ -138,18 +138,28 @@ function closeStep(snapshot: DemoJourneySnapshot, manifest: DemoJourneyManifest,
   return advance(closed, manifest)
 }
 
-/** A real call is on the line: the story waits for how it ends. */
-const CALL_IN_FLIGHT: readonly DemoJourneyState[] = ["CALL_QUEUED", "CALLING"]
-/** Staged records are spaced this far apart, so a lead's timeline still reads in order. */
+/** Staged records are spaced up to this far apart, so a lead's timeline still reads in order. */
 const STAGED_STEP_MS = 60_000
+
+/**
+ * The story is on a step that waits for something real to end — the live AI
+ * call: before it is asked for, while it rings, until its outcome comes
+ * back. The snapshot's state does not show a call on the line (the browser
+ * keeps «queued / ringing» itself and records only the outcome), so the
+ * frontier step is what tells.
+ */
+export function awaitingOutcome(snapshot: DemoJourneySnapshot, manifest: DemoJourneyManifest): boolean {
+  const section = findSection(manifest, snapshot.sectionId)
+  return Boolean(section?.steps.some((step) => step.completion.kind === "outcome" && !snapshot.completedSteps.includes(step.id)))
+}
 
 /**
  * Where a jump to `sectionId` really lands, or why it cannot: sections ahead
  * of the story only (behind it, the player shows them read-only), never the
- * story's own shell (orientation, summary), never while a real call is on
- * the line, and never past a section that waits for a real outcome (the live
- * AI call) — the jump stops there, so the one real call is not skipped
- * without the prospect seeing it.
+ * story's own shell (orientation, summary), never away from the live AI call
+ * while it waits for its outcome (the prospect leaves it with «Zəngsiz davam
+ * et» or by calling), and never past it: a jump stops there, so the one real
+ * call is not skipped without the prospect seeing it.
  */
 export function sectionJumpTarget(
   snapshot: DemoJourneySnapshot,
@@ -163,7 +173,7 @@ export function sectionJumpTarget(
   if (!target) return { ok: false, error: `section "${sectionId}" is not in this story` }
   if (target.navGroup === "demo") return { ok: false, error: `"${target.id}" is reached by the story, not opened directly` }
   if (targetIndex <= frontierIndex) return { ok: false, error: `"${target.id}" is not ahead of the story` }
-  if (CALL_IN_FLIGHT.includes(snapshot.state)) return { ok: false, error: "a real call is on the line" }
+  if (awaitingOutcome(snapshot, manifest)) return { ok: false, error: "the live call waits for its outcome" }
   const waitsForOutcome = sections
     .slice(frontierIndex + 1, targetIndex)
     .find((section) => section.steps.some((step) => step.completion.kind === "outcome"))
@@ -248,9 +258,13 @@ export function reduceJourney(
         }
       }
       if (!path || !entry) return fail(`no legal path from ${snapshot.state} to "${target.id}"`)
+      // Staged between the story's last move and now — never before what the
+      // prospect already did, never in the future.
+      const room = Math.max(0, now.getTime() - Date.parse(snapshot.updatedAt))
+      const spacing = path.length > 1 ? Math.min(STAGED_STEP_MS, room / (path.length - 1)) : 0
       let records = snapshot.records
       path.forEach((state, index) => {
-        const at = new Date(now.getTime() - (path!.length - 1 - index) * STAGED_STEP_MS)
+        const at = new Date(now.getTime() - (path!.length - 1 - index) * spacing)
         records = applyTransitionEffects(records, state, snapshot.identity, at)
       })
       const jumped: DemoJourneySnapshot = {
