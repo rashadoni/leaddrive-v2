@@ -6484,7 +6484,7 @@
     },
     "leads": {
       "listTitle": "Focus on What Converts",
-      "listDesc": "Sort by AI Score to see hottest leads on top. Grade A leads convert 5x more — call them within 24 hours.",
+      "listDesc": "Sort by score to bring the leads worth working first to the top. The grade runs from A (highest) to F — start with the A leads.",
       "scoreTitle": "The salesperson's verdict counts most",
       "scoreDesc": "The score weighs the lead qualification most, then reachability: phone, WhatsApp, Telegram, email. It is recalculated whenever the lead is saved — save the qualification and the score updates at once.",
       "statusTitle": "The Qualification Funnel",
