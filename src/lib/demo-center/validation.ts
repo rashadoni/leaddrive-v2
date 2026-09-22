@@ -79,6 +79,8 @@ export const demoOtpSchema = z.object({
  *  cannot be used to point the agent at somebody else's phone. */
 export const demoPhoneCodeSchema = z.object({ useRequestPhone: z.literal(true) }).strict()
 
+export const demoPhoneTelegramSchema = z.object({ consent: z.boolean() }).strict()
+
 export const demoPhoneVerifySchema = z.object({
   code: z.string().trim().regex(/^\d{6}$/),
   consent: z.boolean(),

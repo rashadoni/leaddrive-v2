@@ -206,12 +206,13 @@ describe("proving the phone and agreeing to the call", () => {
       data: expect.objectContaining({
         otpHash: null,
         verifiedAt: NOW,
+        verifiedVia: "sms",
         consentAt: NOW,
         consentVersion: DEMO_CALL_CONSENT_VERSION,
       }),
     })
     expect(prisma.demoAccessEvent.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ eventType: "PHONE_VERIFIED" }),
+      data: expect.objectContaining({ eventType: "PHONE_VERIFIED", metadata: expect.objectContaining({ method: "sms" }) }),
     })
   })
 
@@ -270,11 +271,14 @@ describe("what the player learns", () => {
       enabled: true,
       requestPhoneUsable: true,
       phoneVerified: true,
+      // A proven phone needs no second proof, so the bot is not even asked about.
+      telegramAvailable: false,
     })
     await expect(demoLiveCallState({ id: "grant-1", liveCallEnabled: false }, "+994501234567")).resolves.toEqual({
       enabled: false,
       requestPhoneUsable: false,
       phoneVerified: false,
+      telegramAvailable: false,
     })
   })
 })

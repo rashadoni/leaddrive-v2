@@ -21606,10 +21606,22 @@ model DemoPhoneVerification {
   verifiedAt     DateTime?
   consentAt      DateTime?
   consentVersion String?
+  /// Proof by Telegram (owner, 2026-09-22): SHA-256 of the one-time t.me link
+  /// token, when it lapses, how many links this row issued, and the Telegram
+  /// user who last opened it.
+  telegramLinkHash       String?   @unique(map: "demo_phone_verifications_telegram_link_key")
+  telegramLinkExpiresAt  DateTime?
+  telegramLinkIssueCount Int       @default(0)
+  telegramUserId         String?
+  /// "<chat id>:<message id>" of the contact that proved the phone; one message proves once.
+  telegramProofMessage   String?   @unique(map: "demo_phone_verifications_telegram_proof_key")
+  /// "sms" | "telegram" — which proof the verification rests on.
+  verifiedVia            String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
   @@unique([grantId, phoneE164], map: "demo_phone_verifications_grant_phone_key")
+  @@index([telegramUserId], map: "demo_phone_verifications_telegram_user_idx")
   @@map("demo_phone_verifications")
 }
 

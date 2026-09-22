@@ -5,6 +5,7 @@ import { notifyConversationRecipients } from "@/lib/social/notify-recipients"
 import { fetchAndStoreTelegramMedia } from "@/lib/telegram-media"
 import { matchInboundLeadId } from "@/lib/inbound-lead-match"
 import { runWithTenant, runWithRlsBypass } from "@/lib/rls-context"
+import { consumeDemoTelegramUpdate } from "@/lib/demo-center/phone-telegram"
 
 /**
  * Telegram Bot Webhook — receives incoming messages from Telegram.
@@ -75,6 +76,14 @@ export async function POST(req: NextRequest) {
 
     if (!channelConfig) {
       console.log(`[TG Webhook] No active config for bot token ending ...${sanitizeLog(botToken.slice(-6))}`)
+      return NextResponse.json({ ok: true })
+    }
+
+    // The guided demo proves a prospect's phone through the sales
+    // organisation's bot (src/lib/demo-center/phone-telegram.ts). Its start
+    // links and contact shares are the demo's, never an inbox conversation;
+    // every other message goes on below exactly as before.
+    if (await consumeDemoTelegramUpdate({ botToken, message })) {
       return NextResponse.json({ ok: true })
     }
 
