@@ -5,6 +5,7 @@ import { useLocale } from "next-intl"
 import { cn } from "@/lib/utils"
 import { formatDate } from "@/lib/format-date"
 import { MiniDonut } from "@/components/charts/mini-charts"
+import { modelConversionProbability } from "@/lib/leads/conversion-probability"
 import {
   UserPlus, Flame, TrendingUp, CheckCircle2, XCircle,
   Target, Clock, Zap, BarChart3, ArrowUpRight, ArrowDownRight,
@@ -44,6 +45,8 @@ interface LeadsAnalyticsProps {
     priorityBreakdown: string
     topLeads: string
     conversionProbability: string
+    /** Under «Top leads»: what the ring shows, and why it can read «—». */
+    topLeadsRingNote: string
     score: string
     estimatedValue: string
     conversionFunnel: string
@@ -349,22 +352,27 @@ export function LeadsAnalytics({ leads, labels }: LeadsAnalyticsProps) {
 
         {/* Top Leads */}
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-card p-5">
-          <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+          <h3 className="text-sm font-semibold mb-1 flex items-center gap-2">
             <Flame className="h-4 w-4 text-muted-foreground" />
             {labels.topLeads}
           </h3>
+          <p className="text-[11px] text-muted-foreground mb-3">{labels.topLeadsRingNote}</p>
           {stats.topLeads.length > 0 ? (
             <div className="space-y-2.5">
-              {stats.topLeads.map((lead, i) => {
-                const prob = (lead.scoreDetails as any)?.conversionProb ?? Math.round(lead.score * 0.85)
+              {stats.topLeads.map((lead) => {
+                // Only a probability the scoring model produced — never the
+                // score times 0.85, which is what filled the ring before.
+                const prob = modelConversionProbability(lead.scoreDetails)
                 return (
                   <div key={lead.id} className="flex items-center gap-3">
-                    <div className="relative h-9 w-9 flex-shrink-0">
+                    <div className="relative h-9 w-9 flex-shrink-0" title={labels.conversionProbability}>
                       <svg viewBox="0 0 36 36" className="h-9 w-9 -rotate-90">
                         <circle cx="18" cy="18" r="14" fill="none" stroke="currentColor" className="text-muted" strokeWidth="3" />
-                        <circle cx="18" cy="18" r="14" fill="none" stroke={lead.score >= 80 ? "#22c55e" : lead.score >= 60 ? "#3b82f6" : lead.score >= 40 ? "#f59e0b" : "#ef4444"} strokeWidth="3" strokeDasharray={`${(prob / 100) * 88} 88`} strokeLinecap="round" />
+                        {prob != null && (
+                          <circle cx="18" cy="18" r="14" fill="none" stroke={lead.score >= 80 ? "#22c55e" : lead.score >= 60 ? "#3b82f6" : lead.score >= 40 ? "#f59e0b" : "#ef4444"} strokeWidth="3" strokeDasharray={`${(prob / 100) * 88} 88`} strokeLinecap="round" />
+                        )}
                       </svg>
-                      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold">{prob}%</span>
+                      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold">{prob == null ? "—" : `${prob}%`}</span>
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-medium truncate">{lead.contactName}</p>

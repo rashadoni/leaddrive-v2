@@ -95,8 +95,13 @@ export default function InvoicesHelpEn() {
             A "Payment progress" heading with the paid / total amount and a green percentage; a filled
             bar below it; and further down a count breakdown with colored dots — <strong>Paid</strong>{" "}
             (green), <strong>Waiting</strong> (orange), <strong>Overdue</strong> (red) and{" "}
-            <strong>Partially paid</strong> (yellow). Below that come charts for revenue, payment status
-            and debtor balances.
+            <strong>Partially paid</strong> (yellow). Below that come the charts: revenue by month,
+            payment status, receivables aging, weekly collection, auto-invoices and a breakdown by
+            currency. They show only what the records hold. Money in different currencies is never added
+            together: each chart leads with the largest currency and lists the others next to it. The
+            weekly collection counts payments recorded on invoices, by payment date, so an invoice marked
+            paid without a recorded payment is not in its bars. Auto-invoices are your active recurring
+            rules, soonest run first. Where no record can answer, a chart shows a dash or says so.
           </HelpCallout>
         </HelpStep>
         <HelpStep n={4}>
