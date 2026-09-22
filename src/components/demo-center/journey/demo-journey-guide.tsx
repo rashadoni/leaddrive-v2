@@ -21,6 +21,7 @@ import type { DemoJourneyVariant } from "./demo-journey-player"
 import { cn } from "@/lib/utils"
 import { DEMO_JOURNEY_STRINGS as S } from "./strings"
 import { DemoLiveCall, type DemoLiveCallState } from "./demo-live-call"
+import { DemoLiveWhatsApp } from "./demo-live-whatsapp"
 import { demoTarget } from "./demo-target"
 
 /**
@@ -72,6 +73,9 @@ export interface DemoJourneyGuideProps {
 }
 
 export type DemoClipEvent = "video.started" | "video.completed" | "video.error"
+
+/** Chapters that show the live WhatsApp panel: the prospect's own conversation. */
+const WHATSAPP_SECTIONS = new Set(["conversation", "ai-reply"])
 
 export function DemoJourneyGuide({
   manifest,
@@ -218,6 +222,11 @@ export function DemoJourneyGuide({
       {step && step.completion.kind === "outcome" && !reviewMode && variant === "granted" && liveCall?.enabled && onOutcome ? (
         <DemoLiveCall token={token} initial={liveCall} onOutcome={onOutcome} />
       ) : null}
+
+      {/* The inbox chapters are where a real WhatsApp thread belongs: the
+          panel asks the server whether this session has one and renders
+          nothing when it has not. */}
+      {!reviewMode && variant === "granted" && WHATSAPP_SECTIONS.has(section.id) ? <DemoLiveWhatsApp token={token} /> : null}
 
       <DemoAssistant
         enabled={manifest.capabilities.assistant}

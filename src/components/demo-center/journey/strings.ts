@@ -112,8 +112,19 @@ export const DEMO_JOURNEY_STRINGS = {
     `Bu söhbətə demoda ${limit} mesaj yazmaq olar — limit doldu, ona görə «Göndər» işləmir. Bu, açıq demonun limitidir; real hesabda yazışma limitsizdir. Davam etmək üçün şəxsi demo istəyin.`,
   replySimulatedNote:
     "Mesaj yalnız bu demo ekranında görünür: real hesabda o, müştəriyə seçilmiş kanalla (Instagram, WhatsApp, e-poçt) gedir.",
+  whatsappTitle: "WhatsApp — həqiqətən",
+  whatsappIntro: (number: string) =>
+    `Bu demoda WhatsApp real işləyir: ${number} nömrəsinə yazın — mesajınız LeadDrive-ın Gələnlər qutusuna düşəcək, cavab isə həmin nömrədən sizin telefonunuza gələcək. WhatsApp qaydası belədir: biznes birinci yalnız təsdiqlənmiş şablonla yaza bilər, ona görə söhbəti siz başlayırsınız.`,
+  whatsappWrite: "WhatsApp-da yazın",
+  whatsappQr: "Kompüterdəsiniz? Telefonla skan edin",
+  whatsappWaiting: "Mesajınız gözlənilir…",
+  whatsappPlaceholder: "Cavabınızı yazın — WhatsApp-a gedəcək",
+  whatsappFailed: "Mesaj göndərilmədi. Bir az sonra yenidən cəhd edin.",
+  whatsappLimitBody: (sent: number) =>
+    `Bu demoda WhatsApp-a ${sent} mesaj göndərdiniz — limit budur. Real hesabda yazışma limitsizdir; demoda isə nömrəmizi qorumaq üçün say məhduddur. Söhbətin davamı üçün satış komandası elə WhatsApp-dan yazacaq.`,
+  whatsappRealNote: (number: string) => `Bu mesajlar həqiqətən ${number} nömrəsindən gedir və telefonunuzda görünür.`,
   whatsappPendingNote:
-    "WhatsApp nömrə üzrə kanal kimi görünür; real göndəriş Meta təsdiqindən sonra açılır.",
+    "Nömrə bilindiyi üçün eyni müştəri WhatsApp-da da bu kartda görünür. Şəxsi demoda bu yazışma həqiqətən işləyir — bələdçidəki paneldən.",
   campaignMoneyTitle: "Pul: büdcə və qazanılmış sövdələşmələr",
   campaignMoneyNote:
     "Xərc kimi kampaniyaya yazdığınız büdcə götürülür — faktiki xərci məhsul özü qeydə almır. Gəlir isə yalnız bu kampaniyadan gələn qazanılmış sövdələşmələrdən yığılır, ona görə ROI kliklərə yox, pula baxır.",
