@@ -13,6 +13,9 @@ import { InfoHint } from "@/components/info-hint"
 import { PageDescription } from "@/components/page-description"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
+import { formatAmount, formatBucket, formatExtras, leadBucket, type MoneyBucket } from "@/lib/deal-money"
+import { CAMPAIGN_BUDGET_CURRENCY, type RoiVerdict } from "@/lib/campaigns/roi"
+import { getCurrencySymbol } from "@/lib/currency"
 
 interface CampaignDeal {
   id: string
@@ -34,23 +37,81 @@ interface CampaignROI {
   totalClicked: number
   sentAt: string | null
   createdAt: string
-  revenue: number
-  attributedRevenue: number
-  attributedRoi: number
+  launched: boolean
+  revenue: MoneyBucket[]
+  attributedRevenue: MoneyBucket[]
+  cost: Money
+  roi: RoiVerdict
+  attributedRoi: RoiVerdict
   totalDeals: number
   wonDeals: number
-  roi: number
   deals: CampaignDeal[]
 }
 
+interface Money {
+  currency: string
+  value: number
+}
+
 interface Summary {
-  totalRevenue: number
-  totalCost: number
-  totalRoi: number
+  revenue: MoneyBucket[]
+  cost: Money
+  roi: RoiVerdict
+  attributedRevenue: MoneyBucket[]
+  attributedRoi: RoiVerdict
   campaignCount: number
-  totalAttributedRevenue: number
-  totalAttributedRoi: number
+  launchedCount: number
   attributionModel: { name: string; modelType: string } | null
+}
+
+const EMPTY_SUMMARY: Summary = {
+  revenue: [],
+  cost: { currency: CAMPAIGN_BUDGET_CURRENCY, value: 0 },
+  roi: { kind: "no-revenue" },
+  attributedRevenue: [],
+  attributedRoi: { kind: "no-revenue" },
+  campaignCount: 0,
+  launchedCount: 0,
+  attributionModel: null,
+}
+
+type Translate = (key: string, values?: Record<string, string | number>) => string
+
+/**
+ * Money is shown per currency: the largest leads, the others follow as
+ * "+ 300 $ · 2". The fallback is the budget currency so an empty total reads
+ * "0 ₼" like the cost next to it, never a DEFAULT_CURRENCY dollar.
+ */
+function moneyParts(buckets: MoneyBucket[]): { lead: string; extras: string | null } {
+  const { primary, extras } = leadBucket(buckets, CAMPAIGN_BUDGET_CURRENCY)
+  return { lead: formatBucket(primary), extras: formatExtras(extras) }
+}
+
+function costText(cost: Money): string {
+  return formatBucket({ ...cost, count: 0 })
+}
+
+/** The ROI figure and, when there is none, why — the same wording on every card. */
+function roiParts(verdict: RoiVerdict, tr: Translate): { value: string; note?: string; tone: "up" | "down" | "none" } {
+  switch (verdict.kind) {
+    case "value":
+      return { value: `${verdict.percent.toFixed(1)}%`, tone: verdict.percent > 0 ? "up" : verdict.percent < 0 ? "down" : "none" }
+    case "no-revenue":
+      return { value: "—", note: tr("roiNoRevenue"), tone: "none" }
+    case "not-launched":
+      return { value: "—", note: tr("roiNotLaunched"), tone: "none" }
+    case "no-cost":
+      return { value: "—", note: tr("roiNoCost"), tone: "none" }
+    case "currency-mismatch":
+      return {
+        value: "—",
+        note: tr("roiCurrencyMismatch", {
+          revenue: verdict.revenueCurrencies.map((c) => getCurrencySymbol(c)).join(", "),
+          cost: getCurrencySymbol(verdict.costCurrency),
+        }),
+        tone: "none",
+      }
+  }
 }
 
 // ─── Funnel Step Component ─────────────────────────────────────
@@ -93,6 +154,13 @@ function CampaignCard({
   const locale = useLocale()
   const [expanded, setExpanded] = useState(false)
 
+  const revenue = moneyParts(campaign.revenue)
+  const attributed = moneyParts(campaign.attributedRevenue)
+  const roi = roiParts(campaign.roi, tr)
+  const attributedRoi = roiParts(campaign.attributedRoi, tr)
+  const hasRevenue = campaign.revenue.some((b) => b.value > 0)
+  const hasAttributed = campaign.attributedRevenue.some((b) => b.value > 0)
+
   const openRate = campaign.totalSent > 0 ? (campaign.totalOpened / campaign.totalSent) * 100 : 0
   const clickRate = campaign.totalSent > 0 ? (campaign.totalClicked / campaign.totalSent) * 100 : 0
 
@@ -126,11 +194,22 @@ function CampaignCard({
             </Badge>
           </div>
           <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-            <span>{tc("revenue")}: <strong className={cn("text-foreground", campaign.revenue > 0 && "text-green-600")}>${campaign.revenue.toLocaleString()}</strong></span>
+            <span>
+              {tc("revenue")}: <strong className={cn("text-foreground", hasRevenue && "text-green-600")}>{revenue.lead}</strong>
+              {revenue.extras && <span className="ml-1 text-xs">{revenue.extras}</span>}
+            </span>
             {attributionModelName && (
-              <span title={tr("attributedHint")}>{tr("attributed")}: <strong className={cn("text-foreground", campaign.attributedRevenue > 0 && "text-emerald-600")}>${Math.round(campaign.attributedRevenue).toLocaleString()}</strong></span>
+              <span title={tr("attributedHint")}>
+                {tr("attributed")}: <strong className={cn("text-foreground", hasAttributed && "text-emerald-600")}>{attributed.lead}</strong>
+                {attributed.extras && <span className="ml-1 text-xs">{attributed.extras}</span>}
+              </span>
             )}
-            <span>{tc("cost")}: <strong className="text-foreground">${(campaign.budget || 0).toLocaleString()}</strong></span>
+            <span>
+              {tc("cost")}: <strong className="text-foreground">{campaign.launched ? costText(campaign.cost) : "—"}</strong>
+              {!campaign.launched && (campaign.budget || 0) > 0 && (
+                <span className="ml-1 text-xs">({costText({ currency: campaign.cost.currency, value: campaign.budget })}, {tr("notSent")})</span>
+              )}
+            </span>
             <span>{tr("deals")}: <strong className="text-foreground">{campaign.totalDeals}</strong></span>
             <span>{tr("wonDeals")}: <strong className={cn("text-foreground", campaign.wonDeals > 0 && "text-green-600")}>{campaign.wonDeals}</strong></span>
             <span>{tr("leads")}: <strong className="text-foreground">{campaign.totalRecipients}</strong></span>
@@ -138,15 +217,19 @@ function CampaignCard({
         </div>
         <div className="flex items-center gap-3">
           <div className="flex flex-col items-end">
-            <div className={cn(
-              "text-lg font-bold",
-              campaign.roi > 0 ? "text-green-600" : campaign.roi < 0 ? "text-red-500" : "text-muted-foreground"
-            )}>
-              {campaign.budget > 0 ? `${campaign.roi.toFixed(1)}% ROI` : "—"}
+            <div
+              data-testid="campaign-roi-value"
+              className={cn(
+                "text-lg font-bold",
+                roi.tone === "up" ? "text-green-600" : roi.tone === "down" ? "text-red-500" : "text-muted-foreground"
+              )}
+            >
+              {roi.note ? "—" : `${roi.value} ROI`}
             </div>
-            {attributionModelName && campaign.budget > 0 && (
+            {roi.note && <div className="text-[11px] text-muted-foreground text-right max-w-[16rem]">{roi.note}</div>}
+            {attributionModelName && campaign.attributedRoi.kind === "value" && (
               <div className="text-[11px] text-muted-foreground" title={tr("attributedHint")}>
-                {tr("attributed")}: {campaign.attributedRoi.toFixed(1)}%
+                {tr("attributed")}: {attributedRoi.value}
               </div>
             )}
           </div>
@@ -258,7 +341,7 @@ function CampaignCard({
                           </Badge>
                         </td>
                         <td className="px-3 py-2 text-right font-medium">
-                          ${deal.amount.toLocaleString()}
+                          {formatAmount(deal.amount, deal.currency)}
                         </td>
                       </tr>
                     ))}
@@ -287,7 +370,7 @@ export default function CampaignROIPage() {
   const { data: session } = useSession()
   const orgId = session?.user?.organizationId
   const [campaigns, setCampaigns] = useState<CampaignROI[]>([])
-  const [summary, setSummary] = useState<Summary>({ totalRevenue: 0, totalCost: 0, totalRoi: 0, campaignCount: 0, totalAttributedRevenue: 0, totalAttributedRoi: 0, attributionModel: null })
+  const [summary, setSummary] = useState<Summary>(EMPTY_SUMMARY)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -298,7 +381,7 @@ export default function CampaignROIPage() {
       .then(j => {
         if (j.success) {
           setCampaigns(j.data.campaigns || [])
-          setSummary(j.data.summary)
+          setSummary({ ...EMPTY_SUMMARY, ...j.data.summary })
         }
       })
       .catch(() => {})
@@ -310,6 +393,11 @@ export default function CampaignROIPage() {
   const totalClicked = campaigns.reduce((s, c) => s + c.totalClicked, 0)
   const avgOpenRate = totalSent > 0 ? (totalOpened / totalSent) * 100 : 0
   const avgClickRate = totalSent > 0 ? (totalClicked / totalSent) * 100 : 0
+
+  const totalRevenue = moneyParts(summary.revenue)
+  const totalRoi = roiParts(summary.roi, tr)
+  const totalAttributed = moneyParts(summary.attributedRevenue)
+  const totalAttributedRoi = roiParts(summary.attributedRoi, tr)
 
   if (loading) {
     return (
@@ -337,9 +425,15 @@ export default function CampaignROIPage() {
 
       {/* Stats cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <ColorStatCard label={tc("revenue")} value={`$${summary.totalRevenue.toLocaleString()}`} icon={<DollarSign className="h-4 w-4" />} hint={tr("hintTotalRevenue")} />
-        <ColorStatCard label={tc("cost")} value={`$${summary.totalCost.toLocaleString()}`} icon={<TrendingUp className="h-4 w-4" />} hint={tr("hintTotalCost")} />
-        <ColorStatCard label="ROI" value={`${summary.totalRoi.toFixed(1)}%`} icon={<BarChart3 className="h-4 w-4" />} hint={tr("hintRoi")} />
+        <ColorStatCard label={tc("revenue")} value={totalRevenue.lead} subValue={totalRevenue.extras ?? undefined} icon={<DollarSign className="h-4 w-4" />} hint={tr("hintTotalRevenue")} />
+        <ColorStatCard
+          label={tc("cost")}
+          value={costText(summary.cost)}
+          subValue={tr("costBasis", { launched: summary.launchedCount, total: summary.campaignCount })}
+          icon={<TrendingUp className="h-4 w-4" />}
+          hint={tr("hintTotalCost")}
+        />
+        <ColorStatCard label="ROI" value={totalRoi.value} subValue={totalRoi.note} icon={<BarChart3 className="h-4 w-4" />} hint={tr("hintRoi")} />
         <ColorStatCard label={t("title")} value={summary.campaignCount} icon={<Target className="h-4 w-4" />} />
       </div>
 
@@ -350,8 +444,8 @@ export default function CampaignROIPage() {
           <span className="text-muted-foreground">
             {tr("attributedSummary", {
               model: summary.attributionModel.name,
-              revenue: `$${Math.round(summary.totalAttributedRevenue).toLocaleString()}`,
-              roi: summary.totalAttributedRoi.toFixed(1),
+              revenue: totalAttributed.extras ? `${totalAttributed.lead} ${totalAttributed.extras}` : totalAttributed.lead,
+              roi: totalAttributedRoi.note ? `— (${totalAttributedRoi.note})` : totalAttributedRoi.value,
             })}
           </span>
         </div>

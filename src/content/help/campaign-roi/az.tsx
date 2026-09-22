@@ -40,9 +40,9 @@ export default function CampaignroiHelpAz() {
           yerində «Təhlil üçün kampaniya yoxdur» mətni göstərilir.
         </p>
         <dl className="rounded-md border p-3">
-          <HelpDef term="Gəlir">Marketinq kampaniyalarına aid edilən ümumi gəlir (bütün kampaniyalar üzrə cəm).</HelpDef>
-          <HelpDef term="Xərc">Bütün kampaniyalara çəkilən ümumi xərc — hər kampaniyanın büdcəsindən toplanır.</HelpDef>
-          <HelpDef term="ROI">İnvestisiya gəliri = (Gəlir − Xərc) / Xərc × 100%. Faizlə göstərilir.</HelpDef>
+          <HelpDef term="Gəlir">Kampaniyalara bağlı udulmuş sövdələşmələrin dəyəri, hər valyuta üzrə ayrıca. Müxtəlif valyutalarda sövdələşmələr toplanmır: böyük rəqəm ən böyük valyutadır, qalanları onun altında sadalanır (məsələn «+ 4 000 $ · 1»).</HelpDef>
+          <HelpDef term="Xərc">Həqiqətən göndərilmiş kampaniyaların büdcələri, manatla (₼) — kampaniya ekranlarının büdcəni göstərdiyi valyutada. Faktiki xərc məhsulda qeydə alınmır, ona görə daxil etdiyiniz büdcə götürülür. Qaralamalar, planlaşdırılmış və ləğv edilmiş kampaniyalar sayılmır; kartın altındakı sətir neçə kampaniyanın daxil olduğunu deyir.</HelpDef>
+          <HelpDef term="ROI">İnvestisiya gəliri = (Gəlir − Xərc) / Xərc × 100%. Yalnız bütün gəlir xərclə eyni valyutada olanda hesablanır: məhsulda məzənnə yoxdur, dollarla gəliri manatla büdcə ilə müqayisə etmək olmaz. Əks halda kartda «—» və altında səbəb görünür.</HelpDef>
           <HelpDef term="Kampaniyalar">Təhlilə daxil olan kampaniyaların sayı (dördüncü kart).</HelpDef>
           <HelpDef term="Atribusiya gəliri">Çoxtəmaslı bölgü — hər udulmuş sövdənin dəyəri ona toxunan bütün kampaniyalar arasında standart model üzrə bölünür. «Gəlir» isə yalnız sövdəyə birbaşa bağlı kampaniyanı sayır.</HelpDef>
           <HelpDef term="Konversiya hunisi">Alıcılar → Göndərildi → Açılıb → Kliklənib → Sövdələr → Qazanılmış — kampaniyanın hər mərhələdə neçə nəfəri keçirdiyini göstərən zolaqlar.</HelpDef>
@@ -64,8 +64,8 @@ export default function CampaignroiHelpAz() {
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
             Yüklənmə zamanı qısa müddət boz «skelet» blok görünür, sonra dörd kart dolur. Hər kartın
             yanında «i» ipucu nişanı var; üzərinə gətirdikdə düsturu və izahı açır (məsələn ROI üçün
-            «(Gəlir − Xərc) / Xərc × 100%»). Rəqəmlər dollar (<HelpKey>$</HelpKey>) işarəsi ilə
-            formatlanır.
+            «(Gəlir − Xərc) / Xərc × 100%»). Hər məbləğ öz valyutasının
+            işarəsi ilə yazılır: gəlir — sövdələşmələrin valyutasında, xərc — manatla (<HelpKey>₼</HelpKey>).
           </HelpCallout>
         </HelpStep>
         <HelpStep n={2}>
@@ -74,8 +74,10 @@ export default function CampaignroiHelpAz() {
             təşkilatınızda bir atribusiya modeli quraşdırılıbsa görünür.
           </p>
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-            Yaşıl çərçivəli zolaqda trend ikonu ilə birlikdə «Çoxtəmaslı atribusiya (model: …) — $…
-            kampaniyalar arasında bölündü, …% qarışıq ROI» kimi cümlə çıxır. Model yoxdursa bu zolaq
+            Yaşıl çərçivəli zolaqda trend ikonu ilə birlikdə «Çoxtəmaslı atribusiya (model: …) — …
+            kampaniyalar arasında bölündü; qarışıq ROI: …» kimi cümlə çıxır. Atribusiya məbləğləri
+            udulmuş sövdələşmələrin paylarıdır, ona görə eyni qaydada sövdələşmələrin valyutaları üzrə
+            qruplaşdırılır, qarışıq ROI də eyni valyuta qaydasına tabedir. Model yoxdursa bu zolaq
             ümumiyyətlə görünmür — narahat olmayın, bu normaldır.
           </HelpCallout>
         </HelpStep>
@@ -101,8 +103,10 @@ export default function CampaignroiHelpAz() {
             <HelpKey>Qazanılmış</HelpKey>, <HelpKey>Lidlər</HelpKey> və sağda böyük ROI faizi.
           </p>
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-            Müsbət ROI yaşıl, mənfi ROI qırmızı rənglə yazılır; büdcə sıfırdırsa ROI yerinə «—» tire
-            görünür. Sağda chevron (aşağı ox) ikonu kartın açıla biləcəyini bildirir.
+            Müsbət ROI yaşıl, mənfi ROI qırmızı rənglə yazılır. ROI olmayanda «—» tire və altında səbəb
+            görünür: udulmuş sövdələşmə yoxdur; kampaniya hələ göndərilməyib (büdcəsi hələ plandır,
+            xərcdə «—» və yanında planlaşdırılmış büdcə); büdcə daxil edilməyib; gəlir büdcədən fərqli
+            valyutadadır. Sağda chevron (aşağı ox) ikonu kartın açıla biləcəyini bildirir.
           </HelpCallout>
         </HelpStep>
         <HelpStep n={2}>
@@ -154,7 +158,7 @@ export default function CampaignroiHelpAz() {
             kampaniyaya bağlandığını burada görürsünüz.
           </p>
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-            Cədvəldə <strong>Ad</strong>, <strong>Mərhələ</strong> və <strong>Məbləğ</strong> sütunları
+            Cədvəldə <strong>Ad</strong>, <strong>Mərhələ</strong> və <strong>Məbləğ</strong> (hər biri öz sövdələşməsinin valyutasında) sütunları
             olur; başlıqda mötərizədə sövdə sayı yazılır. Sövdə adı linkdir — yanındakı kiçik ikona ilə
             basanda həmin sövdənin səhifəsinə keçirsiniz. Bağlı sövdə yoxdursa, «Bu kampaniyaya bağlı
             sövdələşmə yoxdur» qutusu görünür.
@@ -164,9 +168,10 @@ export default function CampaignroiHelpAz() {
 
       <HelpCallout kind="tip">
         <p>
-          ROI sütununda «—» tire görsəniz, deməli həmin kampaniyaya büdcə (xərc) daxil edilməyib —
-          xərc olmadan investisiya gəlirini hesablamaq mümkün deyil. Düzgün ROI görmək üçün
-          kampaniyanın büdcəsini doldurun. <strong>Gəlir</strong> və <strong>Atribusiya</strong>{" "}
+          ROI sütununda «—» tire görsəniz, altındakı sətri oxuyun. «Büdcə daxil edilməyib» —
+          kampaniyanın büdcəsini doldurun. «Gəlir $, büdcə ₼ ilə» o deməkdir ki, udulmuş
+          sövdələşmələr büdcədən fərqli valyutadadır: çevirmək üçün məzənnə yoxdur, ona görə səhv ROI
+          əvəzinə heç bir ROI göstərilmir. <strong>Gəlir</strong> və <strong>Atribusiya</strong>{" "}
           fərqini yadda saxlayın: birincisi yalnız sövdəyə birbaşa bağlı kampaniyanı sayır, ikincisi
           isə dəyəri sövdəyə toxunan bütün kampaniyalar arasında bölür.
         </p>

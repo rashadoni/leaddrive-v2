@@ -114,6 +114,13 @@ const HELP_VIDEO_ENTRIES_RAW = [
   { slug: "mtm-activity", routes: ["/mtm/activity"], helpSlugs: ["mtm-activity"] },
   { slug: "mtm-reports", routes: ["/mtm/reports"], helpSlugs: ["mtm-reports"] },
   { slug: "mtm-settings", routes: ["/mtm/settings"], helpSlugs: ["mtm-settings"] },
+  // The guided demo's intro clips (src/lib/demo-center/journey). Filmed on the
+  // synthetic demo stand and played only inside the demo, so they claim no
+  // route: no tenant page ever offers them.
+  { slug: "demo-campaigns", routes: [] },
+  { slug: "demo-inbox", routes: [] },
+  { slug: "demo-leads", routes: [] },
+  { slug: "demo-boards", routes: [] },
 ] as const satisfies readonly HelpVideoEntry[]
 
 export const HELP_VIDEO_ENTRIES: readonly HelpVideoEntry[] = HELP_VIDEO_ENTRIES_RAW

@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { getHelpVideoAsset, getHelpVideoForSlug } from "@/content/help/video-assets"
 import {
+  DEMO_PUBLIC_CLIP_SLUGS,
   activeSections,
+  demoPublicClipUrl,
   sectionStatus,
   type DemoJourneyManifest,
   type DemoJourneyProgress,
@@ -390,17 +392,21 @@ function IntroClip({
   onClipEvent?: (name: DemoClipEvent) => void
 }) {
   const [playing, setPlaying] = useState(false)
-  // The open demo streams nothing: its viewer is unverified, and these files
-  // are the product's own help library, not public marketing assets.
-  const entry = status === "available" && variant !== "open" ? getHelpVideoForSlug(slug, "az") : null
+  // The open demo's viewer is unverified, so it streams only the clips filmed
+  // on the invented demo stand (public-clips.ts); a help-library clip in the
+  // story stays behind a grant and the card says where to watch it.
+  const openClip = variant === "open" && DEMO_PUBLIC_CLIP_SLUGS.has(slug)
+  const entry = status === "available" && (variant !== "open" || openClip) ? getHelpVideoForSlug(slug, "az") : null
   const assets = !entry
     ? null
     : variant === "preview"
       ? getHelpVideoAsset(entry, "az")
-      : {
-          videoSrc: `/api/v1/public/demo-access/${encodeURIComponent(token)}/video/${encodeURIComponent(`${slug}.az`)}.VOICE.mp4`,
-          posterSrc: `/api/v1/public/demo-access/${encodeURIComponent(token)}/video/${encodeURIComponent(`${slug}.az`)}.poster.jpg`,
-        }
+      : variant === "open"
+        ? { videoSrc: demoPublicClipUrl(slug, "video"), posterSrc: demoPublicClipUrl(slug, "poster") }
+        : {
+            videoSrc: `/api/v1/public/demo-access/${encodeURIComponent(token)}/video/${encodeURIComponent(`${slug}.az`)}.VOICE.mp4`,
+            posterSrc: `/api/v1/public/demo-access/${encodeURIComponent(token)}/video/${encodeURIComponent(`${slug}.az`)}.poster.jpg`,
+          }
 
   return (
     <div data-testid="demo-intro-clip" className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">

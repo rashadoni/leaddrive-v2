@@ -14,7 +14,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     campaign: { findMany: vi.fn() },
     attributionModel: { findFirst: vi.fn() },
-    campaignInfluence: { groupBy: vi.fn() },
+    campaignInfluence: { findMany: vi.fn() },
     pipelineStage: { findMany: vi.fn() },
     // orgStageVocabulary reads the spellings the org actually stores, so the
     // won-set is no longer just PipelineStage.isWon ∪ "WON".
@@ -64,9 +64,9 @@ describe("C9 #10 — campaign ROI attribution overlay", () => {
     pr.attributionModel.findFirst.mockResolvedValue({ id: "m1", name: "Linear", modelType: "linear" })
     // cam1 attributed 2000 (less than its 5000 direct — multi-touch split),
     // cam2 attributed 1500 (credited even though it has no directly-linked deal).
-    pr.campaignInfluence.groupBy.mockResolvedValue([
-      { campaignId: "cam1", _sum: { attributedRevenue: 2000 } },
-      { campaignId: "cam2", _sum: { attributedRevenue: 1500 } },
+    pr.campaignInfluence.findMany.mockResolvedValue([
+      { campaignId: "cam1", attributedRevenue: 2000, deal: { currency: "USD" } },
+      { campaignId: "cam2", attributedRevenue: 1500, deal: { currency: "USD" } },
     ])
 
     const res = await GET(req())
@@ -74,22 +74,22 @@ describe("C9 #10 — campaign ROI attribution overlay", () => {
     expect(res.status).toBe(200)
 
     const byId = Object.fromEntries(json.data.campaigns.map((c: any) => [c.id, c]))
-    // Direct revenue untouched (cam1 = its one WON deal; cam2 = 0).
-    expect(byId.cam1.revenue).toBe(5000)
-    expect(byId.cam2.revenue).toBe(0)
-    // Attributed overlay from influences.
-    expect(byId.cam1.attributedRevenue).toBe(2000)
-    expect(byId.cam2.attributedRevenue).toBe(1500)
-    // ROI uses each measure against the budget.
-    expect(byId.cam1.roi).toBeCloseTo((5000 - 1000) / 1000 * 100) // 400
-    expect(byId.cam1.attributedRoi).toBeCloseTo((2000 - 1000) / 1000 * 100) // 100
-    expect(byId.cam2.attributedRoi).toBeCloseTo((1500 - 500) / 500 * 100) // 200
+    // Direct revenue untouched (cam1 = its one WON deal; cam2 = none).
+    expect(byId.cam1.revenue).toEqual([{ currency: "USD", value: 5000, count: 1 }])
+    expect(byId.cam2.revenue).toEqual([])
+    // Attributed overlay from influences, in the deals' currency.
+    expect(byId.cam1.attributedRevenue).toEqual([{ currency: "USD", value: 2000, count: 1 }])
+    expect(byId.cam2.attributedRevenue).toEqual([{ currency: "USD", value: 1500, count: 1 }])
+    // USD revenue against a manat budget: no ROI, and it says why.
+    expect(byId.cam1.roi).toEqual({ kind: "currency-mismatch", revenueCurrencies: ["USD"], costCurrency: "AZN" })
+    // cam2 is a draft — its budget was never spent.
+    expect(byId.cam2.attributedRoi).toEqual({ kind: "not-launched" })
 
     expect(json.data.summary.attributionModel).toEqual({ name: "Linear", modelType: "linear" })
-    expect(json.data.summary.totalAttributedRevenue).toBe(3500)
-    expect(json.data.summary.totalRevenue).toBe(5000)
-    // groupBy scoped to the org + the chosen model.
-    expect(pr.campaignInfluence.groupBy.mock.calls[0][0].where).toMatchObject({
+    expect(json.data.summary.attributedRevenue).toEqual([{ currency: "USD", value: 3500, count: 2 }])
+    expect(json.data.summary.revenue).toEqual([{ currency: "USD", value: 5000, count: 1 }])
+    // Influences scoped to the org + the chosen model.
+    expect(pr.campaignInfluence.findMany.mock.calls[0][0].where).toMatchObject({
       organizationId: "org-1", modelId: "m1",
     })
   })
@@ -102,16 +102,14 @@ describe("C9 #10 — campaign ROI attribution overlay", () => {
     expect(res.status).toBe(200)
 
     // Never queries influences without a model.
-    expect(pr.campaignInfluence.groupBy).not.toHaveBeenCalled()
+    expect(pr.campaignInfluence.findMany).not.toHaveBeenCalled()
     const byId = Object.fromEntries(json.data.campaigns.map((c: any) => [c.id, c]))
-    expect(byId.cam1.revenue).toBe(5000) // direct intact
-    expect(byId.cam1.attributedRevenue).toBe(0)
-    // attributedRoi follows the same formula (0 revenue − 1000 cost → −100%); it
-    // is a don't-care here — the UI only surfaces the overlay when a model exists
-    // (summary.attributionModel != null, asserted below).
-    expect(byId.cam1.attributedRoi).toBe(-100)
+    expect(byId.cam1.revenue).toEqual([{ currency: "USD", value: 5000, count: 1 }]) // direct intact
+    expect(byId.cam1.attributedRevenue).toEqual([])
+    // No attributed revenue is "no ROI", not the −100% the formula would give.
+    expect(byId.cam1.attributedRoi).toEqual({ kind: "no-revenue" })
     expect(json.data.summary.attributionModel).toBeNull()
-    expect(json.data.summary.totalAttributedRevenue).toBe(0)
+    expect(json.data.summary.attributedRevenue).toEqual([])
   })
 
   it("counts custom won stages (PipelineStage.isWon), not just literal 'WON'", async () => {
@@ -134,7 +132,7 @@ describe("C9 #10 — campaign ROI attribution overlay", () => {
     const res = await GET(req())
     const json = await res.json()
     const cam = json.data.campaigns[0]
-    expect(cam.revenue).toBe(4000) // "Closed Won" + "WON", NOT the open deal
+    expect(cam.revenue).toEqual([{ currency: "USD", value: 4000, count: 2 }]) // "Closed Won" + "WON", NOT the open deal
     expect(cam.wonDeals).toBe(2)
   })
 

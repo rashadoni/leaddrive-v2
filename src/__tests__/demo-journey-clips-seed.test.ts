@@ -55,6 +55,20 @@ describe("demo clip stand legend", () => {
     }
   })
 
+  it("records only what the product records for each channel", () => {
+    // src/lib/campaigns/analytics.ts: opens and clicks are written for email
+    // alone (tracking pixel and link redirect), and nothing writes bounces.
+    // A seeded WhatsApp open or an email bounce is a screen no real tenant
+    // can ever have, filmed into a clip that sells the product.
+    for (const campaign of CAMPAIGNS as ReadonlyArray<{ name: string; type: string; totalOpened?: number; totalClicked?: number; totalBounced?: number }>) {
+      if (campaign.type !== "email") {
+        expect(campaign.totalOpened ?? 0, `${campaign.name}: opens`).toBe(0)
+        expect(campaign.totalClicked ?? 0, `${campaign.name}: clicks`).toBe(0)
+      }
+      expect(campaign.totalBounced ?? 0, `${campaign.name}: bounces`).toBe(0)
+    }
+  })
+
   it("leaves no campaign in a state a worker would pick up and send", () => {
     for (const campaign of CAMPAIGNS) {
       expect(["sent", "scheduled", "draft", "cancelled"], campaign.name).toContain(campaign.status)

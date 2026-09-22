@@ -69,6 +69,7 @@ const CUSTOMERS = [
   "Nigar Vəliyeva", "Vüsal Əsgərov", "Ülviyyə Kazımova", "Samir Babayev", "Aytən Mirzəyeva",
   "Ramil Nağıyev", "Könül Paşayeva", "Tərlan Rüstəmov", "Şəbnəm Həsənova", "Orxan Sadıqov",
   "Xədicə Əhmədova", "Murad Zeynalov", "Gülnar İbrahimova", "Elvin Rəhimov", "Səidə Quliyeva",
+  "Aygün Hüseynli",
 ]
 
 // One entry per thread. `ago` = minutes before the hero message the first
@@ -83,9 +84,12 @@ const THREADS = [
   ] },
   // The reel's «team takes over» beat: a hard question the AI hands to a
   // person, the person answers, the customer buys. Open and assigned to Aynur.
-  { ch: "whatsapp", who: 20, ago: 6, reply: 3, by: "aynur", state: "open", assign: "aynur", msgs: [
+  // Its own customer (index 25): the list groups by contact, so a name that
+  // is also in the 30-day history would merge with that older thread.
+  // Resolved, so it stays out of the «Açıq» list the AI beat is built on.
+  { ch: "whatsapp", who: 25, ago: 6, reply: 3, by: "aynur", state: "resolved", assign: "aynur", outcome: "won", msgs: [
     ["in", "Salam! 3 metrlik künc divanı öz ölçümə düzəltmək olar? Rəng nümunəsini görmək istəyirəm."],
-    ["out", "Salam, Xədicə xanım! Bəli, fərdi ölçüdə hazırlayırıq — 10–12 iş günü. Rəng nümunələrini indi göndərirəm."],
+    ["out", "Salam, Aygün xanım! Bəli, fərdi ölçüdə hazırlayırıq — 10–12 iş günü. Rəng nümunələrini indi göndərirəm."],
     ["in", "Əla, sifariş verirəm!"],
   ] },
   { ch: "whatsapp", who: 1, ago: 95, reply: 1, by: "ai", state: "open", assign: null, msgs: [
