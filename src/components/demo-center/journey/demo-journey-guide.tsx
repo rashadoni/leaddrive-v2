@@ -117,7 +117,7 @@ export function DemoJourneyGuide({
       data-tour-id="demo-guide-panel"
       data-testid="demo-guide"
       aria-label={S.guide}
-      className="flex flex-col gap-4 border-t border-border bg-card p-4 lg:sticky lg:top-[73px] lg:max-h-[calc(100dvh-73px)] lg:overflow-y-auto lg:border-l lg:border-t-0"
+      className="flex flex-col gap-4 border-t border-border bg-card p-4 xl:sticky xl:top-[73px] xl:max-h-[calc(100dvh-73px)] xl:overflow-y-auto xl:border-l xl:border-t-0"
     >
       <div>
         <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">

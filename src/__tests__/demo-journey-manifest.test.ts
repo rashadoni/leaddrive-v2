@@ -382,13 +382,32 @@ describe("The open demo", () => {
    *  for the very words that would prove it is present. */
   const code = (source: string) => source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "")
 
-  it("fits a phone: the scene and guide share one shrinkable column below lg", () => {
+  it("lays the inbox out by the width it has, and hides none of the parts the story points at", () => {
+    // 2026-09-22, the owner's laptop: the scene sits beside a 340px guide, so
+    // the product's four fixed columns (176+300+260) left the thread 32px —
+    // text one word per line and «Göndər» unreachable. Window breakpoints
+    // cannot see that; the scene asks its own container instead. The views
+    // rail and the contact panel are two steps' anchors, so neither may be
+    // hidden at any width.
+    const inbox = read("src/components/demo-center/journey/scenes/inbox-scene.tsx")
+    expect(inbox).toContain("@container")
+    expect(inbox).not.toMatch(/lg:grid-cols-\[\d+px_\d+px/)
+    for (const anchor of ["inbox-views", "inbox-contact-panel"]) {
+      const at = inbox.indexOf(`data-tour-id="${anchor}"`)
+      expect(at, anchor).toBeGreaterThan(-1)
+      // The element's own opening tag: from its «<» to the end of that tag.
+      const tag = inbox.slice(inbox.lastIndexOf("<", at), inbox.indexOf(">", at) + 1)
+      expect(/className="[^"]*\bhidden\b/.test(tag), `${anchor} is hidden at some width: ${tag.slice(0, 160)}`).toBe(false)
+    }
+  })
+
+  it("fits a phone: the scene and guide share one shrinkable column below xl", () => {
     // 2026-09-21, measured at 375px: with no columns declared the implicit
     // auto column took the guide's min-content width and the page was 407px
     // wide, cutting the right edge of every line. `grid-cols-1` is
     // minmax(0, 1fr), which lets the column shrink to the screen.
     const player = read("src/components/demo-center/journey/demo-journey-player.tsx")
-    expect(player).toContain('className="grid min-w-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px]"')
+    expect(player).toContain('className="grid min-w-0 flex-1 grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px]"')
   })
 
   it("opens the story with no gate: nothing is fetched, nothing is verified", () => {

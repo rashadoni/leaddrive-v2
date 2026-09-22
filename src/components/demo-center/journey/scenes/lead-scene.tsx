@@ -439,7 +439,7 @@ export function LeadCardView({ snapshot, step, reviewMode, dispatch, hint, lead 
                   <dl className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
                     <Field label={t("modalContactName")} value={lead.contactName} />
                     <Field label={t("colCompany")} value={lead.companyName} />
-                    <Field label={t("source")} value={`${channelLabel} · ${lead.sourceDetail}`} hint={t("hintColSource")} />
+                    <Field label={t("modalSource")} value={`${channelLabel} · ${lead.sourceDetail}`} hint={t("hintColSource")} />
                     <Field label={t("colStatus")} value={statusLabels[lead.status]} />
                     <Field label={tc("assignee")} value={lead.assignedToName} />
                     <Field label={t("modalEstimatedValue")} value={`${lead.estimatedValue.toLocaleString()} ₼`} />
