@@ -112,7 +112,11 @@ export default function CampaigndetailHelpAz() {
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
             Tarix seçilən kimi <HelpKey>İndi göndər</HelpKey> düyməsinin yanında ikinci{" "}
             <HelpKey>Planlaşdır</HelpKey> düyməsi görünür. Basdıqdan sonra kampaniya yadda saxlanır,
-            statusu <strong>Planlaşdırılıb</strong> olur və seçilmiş vaxtda avtomatik göndərilir.
+            statusu <strong>Planlaşdırılıb</strong> olur. Seçilmiş vaxtda — bir dəqiqə ərzində — kampaniya
+            özü, bir dəfə göndərilir. O vaxta qədər onu səhifənin yuxarısındakı{" "}
+            <HelpKey>Kampaniyanı göndər</HelpKey> düyməsi ilə dərhal göndərmək də olar. Kanal göndərə
+            bilmirsə (məsələn, SMS provayderi və ya Telegram botu qoşulmayıb), kampaniya qaralamalara
+            qayıdır və bildiriş alırsınız.
           </HelpCallout>
         </HelpStep>
       </HelpSection>
