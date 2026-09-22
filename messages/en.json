@@ -16065,6 +16065,12 @@
       "hours": "{count} hr"
     },
     "history": {
+      "legendTrack": "Path from GPS points",
+      "legendGap": "No points — path unknown, the line only joins the edges of the gap",
+      "legendPlan": "Planned route and its stops",
+      "legendStop": "Stop (stayed in place)",
+      "legendVisit": "Visit",
+      "legendCurrent": "Position at the playback moment",
       "dateFrom": "From date",
       "dateTo": "To date",
       "rangeHint": "You can choose up to {days} days in a row.",

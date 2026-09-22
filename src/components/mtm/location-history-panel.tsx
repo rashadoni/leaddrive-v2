@@ -12,6 +12,7 @@ import { dateInputValueInTimezone, formatInTimezone } from "@/lib/timezone"
 import { formatTime } from "@/lib/format-date"
 import { visitPlaceSummary } from "@/lib/mtm/visit-place-check"
 import { addDays, clampHistoryEndDate, MAX_RANGE_DAYS } from "@/lib/mtm/history-range"
+import { HISTORY_MAP_COLORS } from "@/lib/mtm/history-path"
 import { VisitPlaceBadge } from "@/components/mtm/visit-place-badge"
 
 const LocationHistoryMap = dynamic(() => import("@/components/mtm/location-history-map"), { ssr: false })
@@ -742,7 +743,8 @@ export function LocationHistoryPanel() {
           </section>
 
           <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
-            <div className="h-[56vh] min-h-[420px] overflow-hidden rounded-lg border border-zinc-200 bg-card xl:sticky xl:top-3 dark:border-zinc-700">
+            <div className="space-y-2 xl:sticky xl:top-3">
+            <div className="h-[56vh] min-h-[420px] overflow-hidden rounded-lg border border-zinc-200 bg-card dark:border-zinc-700">
               <LocationHistoryMap
                 points={data.points}
                 stops={data.stops}
@@ -755,6 +757,16 @@ export function LocationHistoryPanel() {
                 timezone={timezone}
                 playbackIndex={playbackIndex}
               />
+            </div>
+            {/* Owner 2026-09-22: «lines by colours, by pieces — no explanation». */}
+            <ul data-testid="mtm-history-map-legend" className="flex flex-wrap gap-x-4 gap-y-1.5 rounded-lg border border-zinc-200 bg-card px-3 py-2 text-xs text-muted-foreground dark:border-zinc-700">
+              <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block h-1 w-6 rounded-full" style={{ background: HISTORY_MAP_COLORS.track }} />{t("legendTrack")}</li>
+              <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block w-6 border-t-[3px] border-dotted" style={{ borderColor: HISTORY_MAP_COLORS.gap }} />{t("legendGap")}</li>
+              <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block w-6 border-t-[3px] border-dashed" style={{ borderColor: HISTORY_MAP_COLORS.plan }} />{t("legendPlan")}</li>
+              <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block h-3 w-3 rounded-full" style={{ background: HISTORY_MAP_COLORS.stop }} />{t("legendStop")}</li>
+              <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block h-3 w-3 rounded-full" style={{ background: HISTORY_MAP_COLORS.visit }} />{t("legendVisit")}</li>
+              <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block h-3 w-3 rounded-full" style={{ background: HISTORY_MAP_COLORS.current }} />{t("legendCurrent")}</li>
+            </ul>
             </div>
 
             <aside className="space-y-3">

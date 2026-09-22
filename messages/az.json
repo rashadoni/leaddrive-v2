@@ -16061,6 +16061,12 @@
       "hours": "{count} saat"
     },
     "history": {
+      "legendTrack": "GPS nöqtələri üzrə yol",
+      "legendGap": "Nöqtə gəlməyib — yol məlum deyil, xətt yalnız boşluğun kənarlarını birləşdirir",
+      "legendPlan": "Marşrut planı və nöqtələri",
+      "legendStop": "Dayanacaq (yerində durub)",
+      "legendVisit": "Ziyarət",
+      "legendCurrent": "Təkrar oynadılan anda olduğu yer",
       "dateFrom": "Tarixdən",
       "dateTo": "Tarixədək",
       "rangeHint": "Ardıcıl {days} günə qədər seçmək olar.",
