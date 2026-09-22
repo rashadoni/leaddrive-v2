@@ -218,3 +218,37 @@ export function summarizeTeamToday<Row extends TeamTodayRowInput>(
     visitsTruncated: options.visitsTruncated,
   }
 }
+
+/**
+ * Owner 2026-09-22 on the Panel: «here it should be the other way round —
+ * who is going where, who is where». The first thing a row says is the
+ * agent's whereabouts, in this order: at a customer now; on the way to the
+ * next planned stop; the day already closed; the last customer seen. Null
+ * when the data says nothing about it.
+ */
+export type TeamRowWhereabouts =
+  | { kind: "at-customer"; customerName: string | null; since: string }
+  | { kind: "heading"; customerName: string | null; plannedAt: string | null }
+  | { kind: "day-done"; at: string | null; visited: number | null; total: number | null }
+  | { kind: "last-visit"; customerName: string | null; until: string }
+
+export function teamRowWhereabouts(row: {
+  visits: ReadonlyArray<{ customerName: string | null; status: string; checkInAt: string | null; checkOutAt: string | null }>
+  nextStop?: { customerName: string | null; plannedAt: string | null } | null
+  workday?: { kind: string; at?: string | null } | null
+  route?: { visited: number; total: number } | null
+}): TeamRowWhereabouts | null {
+  const last = row.visits.length ? row.visits[row.visits.length - 1] : null
+  if (last && last.status === "CHECKED_IN" && last.checkInAt) {
+    return { kind: "at-customer", customerName: last.customerName, since: last.checkInAt }
+  }
+  const dayDone = row.workday?.kind === "finished"
+  if (!dayDone && row.nextStop) {
+    return { kind: "heading", customerName: row.nextStop.customerName, plannedAt: row.nextStop.plannedAt }
+  }
+  if (dayDone) {
+    return { kind: "day-done", at: row.workday?.at ?? null, visited: row.route?.visited ?? null, total: row.route?.total ?? null }
+  }
+  if (last && last.checkOutAt) return { kind: "last-visit", customerName: last.customerName, until: last.checkOutAt }
+  return null
+}

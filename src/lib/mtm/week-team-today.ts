@@ -19,7 +19,14 @@ export type MtmTeamTodayInput = {
   workforceEnabled: boolean
   agents: ReadonlyArray<{ id: string; name: string; team?: { id: string; name: string } | null }>
   latestLocations: ReadonlyArray<{ agentId: string; recordedAt: Date }>
-  routes: ReadonlyArray<{ agentId: string; status: string; totalPoints: number; visitedPoints: number }>
+  routes: ReadonlyArray<{
+    agentId: string
+    status: string
+    totalPoints: number
+    visitedPoints: number
+    /** The first stop still pending, in route order (at most one per route). */
+    points?: ReadonlyArray<{ orderIndex: number; plannedTime: Date | null; customer?: { name: string | null } | null }>
+  }>
   visits: ReadonlyArray<{
     id: string
     agentId: string
@@ -49,6 +56,11 @@ export type MtmTeamTodayRow = {
   visitCount: number
   openAlerts: number
   workday: MtmManagerWorkdayState | null
+  /**
+   * Where the agent is headed next: the first pending stop of today's
+   * published route (owner 2026-09-22: «кто куда собирается»).
+   */
+  nextStop: { customerName: string | null; plannedAt: string | null } | null
 }
 
 /** Visits per row in the table; the per-agent week holds the rest. */
@@ -91,6 +103,11 @@ export function buildMtmTeamTodayRows(input: MtmTeamTodayInput): MtmTeamTodayRow
       .filter((day) => day.status === "STARTED" || day.status === "PAUSED")
       .sort((left, right) => (right.startedAt?.getTime() ?? 0) - (left.startedAt?.getTime() ?? 0))[0] ?? null
     const lastGps = latestByAgent.get(agent.id) ?? null
+    const pending = (routesByAgent.get(agent.id) ?? [])
+      .flatMap((route) => route.points ?? [])
+      .sort((left, right) =>
+        (left.plannedTime?.getTime() ?? Number.MAX_SAFE_INTEGER) - (right.plannedTime?.getTime() ?? Number.MAX_SAFE_INTEGER)
+        || left.orderIndex - right.orderIndex)[0] ?? null
     return {
       agent: { id: agent.id, name: agent.name, teamName: agent.team?.name ?? null },
       lastGpsAt: lastGps ? lastGps.toISOString() : null,
@@ -106,6 +123,9 @@ export function buildMtmTeamTodayRows(input: MtmTeamTodayInput): MtmTeamTodayRow
       openAlerts: alertsByAgent.get(agent.id) ?? 0,
       workday: input.workforceEnabled
         ? mtmManagerWorkdayState({ today, active, now: input.now, todayKey: input.todayKey })
+        : null,
+      nextStop: pending
+        ? { customerName: pending.customer?.name ?? null, plannedAt: pending.plannedTime ? pending.plannedTime.toISOString() : null }
         : null,
     }
   })

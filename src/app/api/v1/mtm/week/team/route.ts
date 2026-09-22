@@ -124,7 +124,19 @@ export const GET = withMtmRlsAuth("mtm", "read", async (req, auth) => {
         deletedAt: null,
         publishedVersion: { not: null },
       },
-      select: { agentId: true, status: true, totalPoints: true, visitedPoints: true },
+      select: {
+        agentId: true,
+        status: true,
+        totalPoints: true,
+        visitedPoints: true,
+        // «Where is he going»: the first stop still ahead on today's route.
+        points: {
+          where: { deletedAt: null, status: "PENDING" },
+          orderBy: [{ orderIndex: "asc" }, { id: "asc" }],
+          take: 1,
+          select: { orderIndex: true, plannedTime: true, customer: { select: { name: true } } },
+        },
+      },
     }),
     prisma.mtmVisit.findMany({
       where: {

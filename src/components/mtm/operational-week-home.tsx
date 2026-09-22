@@ -28,6 +28,8 @@ import {
   Loader2,
   MapPin,
   MapPinOff,
+  Navigation,
+  History,
   PauseCircle,
   PlayCircle,
   RefreshCw,
@@ -71,7 +73,7 @@ import { cn } from "@/lib/utils"
 import { useMtmFieldContacts } from "@/hooks/use-mtm-org-settings"
 import { createDateFormatter } from "@/lib/format-date"
 import type { MtmManagerWorkdayState } from "@/lib/mtm/workday-open-anomaly"
-import { summarizeTeamToday, teamTodayForScope, teamTodayScopeKey, type ClassifiedTeamRow } from "@/lib/mtm/team-today-summary"
+import { summarizeTeamToday, teamRowWhereabouts, teamTodayForScope, teamTodayScopeKey, type ClassifiedTeamRow } from "@/lib/mtm/team-today-summary"
 import {
   WORKFORCE_WORKDAY_REOPEN_REASON_MAX_LENGTH,
   WORKFORCE_WORKDAY_REOPEN_REASON_MIN_LENGTH,
@@ -253,6 +255,8 @@ interface TeamTodayRow {
   visitCount: number
   openAlerts: number
   workday: MtmManagerWorkdayState | null
+  /** Absent in responses from before «where is he going» existed. */
+  nextStop: { customerName: string | null; plannedAt: string | null } | null
 }
 
 interface TeamToday {
@@ -885,6 +889,12 @@ function normalizeTeamToday(value: unknown, scopeKey: string): TeamToday | null 
       openAlerts: Math.max(0, firstNumber(row, "openAlerts") ?? 0),
       visitCount: Math.max(0, firstNumber(row, "visitCount") ?? 0),
       workday: normalizeManagerWorkday(row.workday),
+      nextStop: (() => {
+        const next = record(row.nextStop)
+        return row.nextStop && typeof row.nextStop === "object"
+          ? { customerName: firstString(next, "customerName"), plannedAt: firstString(next, "plannedAt") }
+          : null
+      })(),
     }]
   })
   const completeness = record(source.completeness)
@@ -2859,7 +2869,29 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
         <div className="min-w-0">
           <button type="button" className="min-h-11 text-left font-semibold hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 md:min-h-0" onClick={(event) => { event.stopPropagation(); openWeek() }}>{row.name}</button>
           {row.teamName ? <span className="ml-2 text-xs text-muted-foreground">{row.teamName}</span> : null}
-          <p className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
+          {(() => {
+            // Owner 2026-09-22: the row first says where the agent is and
+            // where they are going; the facts line below is the detail.
+            const where = teamRowWhereabouts(row)
+            if (!where) return null
+            const name = (value: string | null) => value || t("teamWhereUnknownCustomer")
+            const text = where.kind === "at-customer"
+              ? t("teamWhereAtCustomer", { customer: name(where.customerName), time: shortTime(where.since, timezone) })
+              : where.kind === "heading"
+                ? where.plannedAt
+                  ? t("teamWhereHeadingAt", { customer: name(where.customerName), time: shortTime(where.plannedAt, timezone) })
+                  : t("teamWhereHeading", { customer: name(where.customerName) })
+                : where.kind === "day-done"
+                  ? where.at ? t("teamWhereDayDoneAt", { time: shortTime(where.at, timezone) }) : t("teamWhereDayDone")
+                  : t("teamWhereLastVisit", { customer: name(where.customerName), time: shortTime(where.until, timezone) })
+            const WhereIcon = where.kind === "at-customer" ? MapPin : where.kind === "heading" ? Navigation : where.kind === "day-done" ? CheckCircle2 : History
+            return (
+              <p data-testid="mtm-week-team-row-where" className={cn("mt-0.5 flex items-center gap-1.5 text-sm", where.kind === "at-customer" ? "font-medium text-emerald-700 dark:text-emerald-300" : where.kind === "heading" ? "text-foreground" : "text-muted-foreground")}>
+                <WhereIcon className="h-4 w-4 shrink-0" /><span className="min-w-0 truncate">{text}</span>
+              </p>
+            )
+          })()}
+          <p className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
             {workday && WorkdayIcon ? <span className={cn("inline-flex items-start gap-1.5", workday.className)}><WorkdayIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />{workday.label}</span> : null}
             {entry.flags.includes("in-field-no-plan") ? (
               <span className="text-amber-700 dark:text-amber-300">{t("teamNoRoute")}</span>
@@ -2882,6 +2914,11 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
           </p>
         </div>
         <div className="flex shrink-0 items-start gap-2">
+          {row.lastGpsAt ? (
+            <Link href={`/mtm/map?agentId=${encodeURIComponent(row.agentId)}`} onClick={(event) => event.stopPropagation()} className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-primary hover:underline md:min-h-0">
+              <MapPin className="h-3.5 w-3.5" />{t("teamRowOnMap")}
+            </Link>
+          ) : null}
           {leftOpen ? (
             <Button type="button" variant="outline" size="sm" className="min-h-11 shrink-0 md:min-h-0" onClick={(event) => { event.stopPropagation(); openLeftOpenShift() }}>{t("teamOpenWeek")}</Button>
           ) : null}
@@ -2964,8 +3001,9 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
                   {scoped.generatedAt ? <span className="tabular-nums text-muted-foreground">{t("summaryAsOf", { time: shortTime(scoped.generatedAt, timezone) })}</span> : null}
                 </p>
                 <ul className="border-t border-zinc-200 dark:border-zinc-700">
-                  {summary.problems.map((entry) => renderTeamRow(entry, "problem"))}
+                  {/* Owner 2026-09-22: who is where comes first; problems follow. */}
                   {summary.active.map((entry) => renderTeamRow(entry, "active"))}
+                  {summary.problems.map((entry) => renderTeamRow(entry, "problem"))}
                   {summary.idle.length > 0 ? (
                     // Fourteen «Не начат» rows fold into one line; the count lives
                     // only here. Without workforce-hrm "not started" is unprovable,
