@@ -105,13 +105,35 @@ describe("proving the phone through Telegram", () => {
     verified = true
     await act(async () => { await vi.advanceTimersByTimeAsync(3_100) })
     expect(container.textContent).toContain(S.liveCallVerified)
+    // Proven while the page watched: the call button takes focus.
     expect(document.activeElement?.textContent).toContain(S.liveCallCallNow)
   })
 
-  it("comes back proven when the bot accepted the number while the tab was away", async () => {
+  it("comes back proven when the bot accepted the number while the tab was away, without moving focus", async () => {
     verified = true
     await render(true)
     expect(container.textContent).toContain(S.liveCallVerified)
+    // Restored, not just proven: nothing jumps under the prospect's finger.
+    expect(document.activeElement).toBe(document.body)
+  })
+
+  it("never strands the prospect when the network drops on the way back from Telegram", async () => {
+    await render(true)
+    await act(async () => container.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click())
+    vi.mocked(fetch).mockRejectedValueOnce(new TypeError("Failed to fetch"))
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="demo-live-call-telegram"]')!.click())
+    expect(container.textContent).toContain(S.liveCallFailed)
+    expect(container.querySelector<HTMLButtonElement>('[data-testid="demo-live-call-telegram"]')!.disabled).toBe(false)
+    expect(button(S.liveCallDecline)!.disabled).toBe(false)
+  })
+
+  it("keeps the agreement box on screen once ticked, after a reload", async () => {
+    linkIssued = true
+    await render(true)
+    const box = () => container.querySelector<HTMLInputElement>('input[type="checkbox"]')
+    expect(box()).not.toBeNull()
+    await act(async () => box()!.click())
+    expect(box()?.checked).toBe(true)
   })
 
   it("offers only the SMS code when there is no bot", async () => {

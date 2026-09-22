@@ -29,9 +29,12 @@ import { inDemoSalesOrganization } from "./sales-org"
  * message Telegram does not have gets no reply and proves nothing.
  *
  * No SMS or code is sent to the number, so this path costs nothing. What it
- * proves is weaker than an SMS code in one way, and the owner was told:
- * Telegram checked the number when the account was registered, not that the
- * same person holds the SIM today. The person who owns the account sees the
+ * proves is weaker than an SMS code, and the owner was told: Telegram checked
+ * the number when the account was registered, not that the same person holds
+ * the SIM today. The same gap lets an account that has since moved to a new
+ * number re-send an old card of its own with the sender hidden (it arrives
+ * as a fresh, unforwarded message); the Bot API has no field that tells it
+ * from a tap on the share button. SMS stays for the stronger guarantee. The person who owns the account sees the
  * consent wording in Telegram and agrees by tapping the button; the browser
  * asked for the same agreement before the link was made.
  *
@@ -191,7 +194,7 @@ export async function consumeDemoTelegramUpdate(params: {
   }
   const messageId = typeof message.message_id === "number" ? message.message_id : null
   if (!privateChat || fromId === null || messageId === null) return false
-  return shareContact({ botToken, chatId: fromId, messageId, now })
+  return shareContact({ botToken, chatId: fromId, messageId, claimedPhone: normalizeTelegramPhone(message.contact?.phone_number), now })
 }
 
 /** The token belongs to an active Telegram channel of the demo sales organisation. */
@@ -248,11 +251,20 @@ function sendConsentPrompt(botToken: string, chatId: number) {
   })
 }
 
-async function shareContact(params: { botToken: string; chatId: number; messageId: number; now: Date }): Promise<boolean> {
-  const { botToken, chatId, messageId, now } = params
+async function shareContact(params: { botToken: string; chatId: number; messageId: number; claimedPhone: string | null; now: Date }): Promise<boolean> {
+  const { botToken, chatId, messageId, claimedPhone, now } = params
+  // Routed by who opened a link, or — when somebody else opened the same link
+  // later and took the binding — by the number the share claims. Routing
+  // proves nothing: everything is decided on what Telegram reads back.
   const rows = await runWithRlsBypass(() =>
     prisma.demoPhoneVerification.findMany({
-      where: { telegramUserId: String(chatId), updatedAt: { gt: new Date(now.getTime() - STALE_BUTTON_GRACE_MS) } },
+      where: {
+        updatedAt: { gt: new Date(now.getTime() - STALE_BUTTON_GRACE_MS) },
+        OR: [
+          { telegramUserId: String(chatId) },
+          ...(claimedPhone ? [{ phoneE164: claimedPhone, verifiedAt: null, telegramLinkExpiresAt: { gt: now } }] : []),
+        ],
+      },
       orderBy: { updatedAt: "desc" },
       select: {
         id: true,
@@ -294,8 +306,18 @@ async function shareContact(params: { botToken: string; chatId: number; messageI
       typeof sent?.message_id === "number"
         ? telegram(botToken, "editMessageText", { chat_id: chatId, message_id: sent.message_id, text })
         : telegram(botToken, "sendMessage", { chat_id: chatId, text })
+    const description = typeof (echo as { description?: unknown } | null)?.description === "string" ? (echo as { description: string }).description : ""
+    if (!sent && !/not found/i.test(description)) {
+      // Telegram did not answer (timeout, 429): not a forgery. Say so and give
+      // the button back, so a genuine prospect can simply tap it again.
+      logFailure("contact read-back (Telegram unavailable)", new Error(description || "no answer"))
+      await telegram(botToken, "sendMessage", { chat_id: chatId, text: DEMO_TELEGRAM_TEXT.failed })
+      await sendConsentPrompt(botToken, chatId)
+      return true
+    }
     if (!sent || !original || sent.chat?.id !== chatId || original.message_id !== messageId || original.from?.id !== chatId || !original.contact) {
-      logFailure("contact read-back", new Error("mismatch"))
+      // No such message in this chat: a hand-made update. Nothing to answer.
+      logFailure("contact read-back (no such message)", new Error("mismatch"))
       return true
     }
 
@@ -318,17 +340,25 @@ async function shareContact(params: { botToken: string; chatId: number; messageI
     }
 
     const claimed = await runWithRlsBypass(async () => {
-      const updated = await prisma.demoPhoneVerification.updateMany({
-        where: { id: row.id, telegramLinkHash: row.telegramLinkHash, verifiedAt: null },
-        data: {
-          telegramLinkHash: null,
-          telegramLinkExpiresAt: null,
-          verifiedAt: now,
-          verifiedVia: "telegram",
-          consentAt: now,
-          consentVersion: DEMO_CALL_CONSENT_VERSION,
-        },
-      })
+      // The unique index on telegramProofMessage makes a second use of the
+      // same message fail here, whichever demo it is aimed at.
+      const updated = await prisma.demoPhoneVerification
+        .updateMany({
+          where: { id: row.id, telegramLinkHash: row.telegramLinkHash, verifiedAt: null },
+          data: {
+            telegramLinkHash: null,
+            telegramLinkExpiresAt: null,
+            telegramProofMessage: `${chatId}:${messageId}`,
+            verifiedAt: now,
+            verifiedVia: "telegram",
+            consentAt: now,
+            consentVersion: DEMO_CALL_CONSENT_VERSION,
+          },
+        })
+        .catch((error: unknown) => {
+          if ((error as { code?: unknown } | null)?.code === "P2002") return { count: 0 }
+          throw error
+        })
       if (updated.count !== 1) return false
       await prisma.demoAccessEvent.create({
         data: {
@@ -347,6 +377,7 @@ async function shareContact(params: { botToken: string; chatId: number; messageI
   } catch (error) {
     logFailure("contact", error)
     await telegram(botToken, "sendMessage", { chat_id: chatId, text: DEMO_TELEGRAM_TEXT.failed })
+    await sendConsentPrompt(botToken, chatId)
     return true
   }
 }

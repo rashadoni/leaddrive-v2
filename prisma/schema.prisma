@@ -21613,6 +21613,8 @@ model DemoPhoneVerification {
   telegramLinkExpiresAt  DateTime?
   telegramLinkIssueCount Int       @default(0)
   telegramUserId         String?
+  /// "<chat id>:<message id>" of the contact that proved the phone; one message proves once.
+  telegramProofMessage   String?   @unique(map: "demo_phone_verifications_telegram_proof_key")
   /// "sms" | "telegram" — which proof the verification rests on.
   verifiedVia            String?
   createdAt      DateTime  @default(now())

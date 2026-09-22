@@ -16,7 +16,13 @@ ALTER TABLE "demo_phone_verifications"
   ADD COLUMN "telegramLinkExpiresAt" TIMESTAMP(3),
   ADD COLUMN "telegramLinkIssueCount" INTEGER NOT NULL DEFAULT 0,
   ADD COLUMN "telegramUserId" TEXT,
+  ADD COLUMN "telegramProofMessage" TEXT,
   ADD COLUMN "verifiedVia" TEXT;
+
+-- One Telegram message ("<chat id>:<message id>") proves one phone, once: a
+-- replayed or redelivered update cannot verify a second demo with it.
+CREATE UNIQUE INDEX "demo_phone_verifications_telegram_proof_key"
+  ON "demo_phone_verifications"("telegramProofMessage");
 
 CREATE UNIQUE INDEX "demo_phone_verifications_telegram_link_key"
   ON "demo_phone_verifications"("telegramLinkHash");

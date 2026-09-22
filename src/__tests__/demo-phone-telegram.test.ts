@@ -263,13 +263,17 @@ describe("the bot, when the prospect shares a contact", () => {
     await expect(consume(contactMessage("994501234567"))).resolves.toBe(true)
 
     expect(prisma.demoPhoneVerification.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { telegramUserId: String(TG_USER), updatedAt: { gt: new Date(NOW.getTime() - 24 * 60 * 60_000) } },
+      where: {
+        updatedAt: { gt: new Date(NOW.getTime() - 24 * 60 * 60_000) },
+        OR: [{ telegramUserId: String(TG_USER) }, { phoneE164: PHONE, verifiedAt: null, telegramLinkExpiresAt: { gt: NOW } }],
+      },
     }))
     expect(prisma.demoPhoneVerification.updateMany).toHaveBeenCalledWith({
       where: { id: "verification-1", telegramLinkHash: sha256(TOKEN), verifiedAt: null },
       data: {
         telegramLinkHash: null,
         telegramLinkExpiresAt: null,
+        telegramProofMessage: expect.stringMatching(new RegExp(`^${TG_USER}:\\d+$`)),
         verifiedAt: NOW,
         verifiedVia: "telegram",
         consentAt: NOW,
@@ -350,6 +354,36 @@ describe("the bot, when the prospect shares a contact", () => {
     await expect(consume(contactMessage(PHONE))).resolves.toBe(true)
     expect(prisma.demoAccessEvent.create).not.toHaveBeenCalled()
     expect(prisma.voiceConsent.create).not.toHaveBeenCalled()
+  })
+
+  it("lets one message prove one phone once: a replay aimed at another demo fails on the unique proof", async () => {
+    vi.mocked(prisma.demoPhoneVerification.findMany).mockResolvedValue([pendingRow({ id: "verification-2", grantId: "grant-2" })] as never)
+    vi.mocked(prisma.demoPhoneVerification.updateMany).mockRejectedValue(Object.assign(new Error("Unique constraint failed"), { code: "P2002" }))
+    await expect(consume(contactMessage(PHONE))).resolves.toBe(true)
+    expect(prisma.demoAccessEvent.create).not.toHaveBeenCalled()
+    expect(prisma.voiceConsent.create).not.toHaveBeenCalled()
+    expect(finalText()).toBe(DEMO_TELEGRAM_TEXT.linkDead)
+  })
+
+  it("says so and gives the button back when Telegram does not answer, instead of going silent", async () => {
+    vi.mocked(prisma.demoPhoneVerification.findMany).mockResolvedValue([pendingRow()] as never)
+    const message = contactMessage(PHONE)
+    vi.mocked(fetch).mockImplementationOnce(async () => new Response(JSON.stringify({ ok: false, error_code: 429, description: "Too Many Requests: retry after 3" })))
+    await expect(consume(message)).resolves.toBe(true)
+    expect(prisma.demoPhoneVerification.updateMany).not.toHaveBeenCalled()
+    expect(replies().map((reply) => reply.text)).toContain(DEMO_TELEGRAM_TEXT.failed)
+    expect(replies().at(-1)?.reply_markup).toMatchObject({ keyboard: [[{ request_contact: true }]] })
+  })
+
+  it("still takes the share of a prospect whose link somebody else opened later", async () => {
+    // The row is bound to whoever opened the link last; the prospect's own
+    // share is routed by its number and proven by the read-back.
+    vi.mocked(prisma.demoPhoneVerification.findMany).mockResolvedValue([pendingRow()] as never)
+    await expect(consume(contactMessage(PHONE))).resolves.toBe(true)
+    expect(prisma.demoPhoneVerification.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ OR: expect.arrayContaining([{ phoneE164: PHONE, verifiedAt: null, telegramLinkExpiresAt: { gt: NOW } }]) }),
+    }))
+    expect(finalText()).toBe(DEMO_TELEGRAM_TEXT.verified)
   })
 
   it("answers the old button after the link lapsed, instead of dropping a thread into the inbox", async () => {
