@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { DEMO_WHATSAPP_MAX_CHARS } from "./demo-whatsapp"
 import { DEMO_MODULE_IDS, isDemoModuleId } from "@/lib/demo-center/catalog"
 import { DEMO_JOURNEY_STATES, JOURNEY_REPORT_NAMES, getDemoJourneyScenario } from "@/lib/demo-center/journey"
 import { isCorporateEmail, normalizeEmail } from "@/lib/demo-center/security"
@@ -80,6 +81,11 @@ export const demoOtpSchema = z.object({
 export const demoPhoneCodeSchema = z.object({ useRequestPhone: z.literal(true) }).strict()
 
 export const demoPhoneTelegramSchema = z.object({ consent: z.boolean() }).strict()
+
+/** One message the prospect types in the demo's live WhatsApp thread. */
+export const demoWhatsAppSendSchema = z.object({
+  text: z.string().trim().min(1).max(DEMO_WHATSAPP_MAX_CHARS),
+}).strict()
 
 export const demoPhoneVerifySchema = z.object({
   code: z.string().trim().regex(/^\d{6}$/),
