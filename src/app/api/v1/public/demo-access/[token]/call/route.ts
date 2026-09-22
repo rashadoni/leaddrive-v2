@@ -16,7 +16,10 @@ export async function POST(request: NextRequest, context: { params: Promise<{ to
   return withSession(request, context, async (grant) => {
     const result = await requestDemoCall({ grant })
     if (result.ok) {
-      return NextResponse.json({ success: true, ...result.status }, { headers: noStoreHeaders() })
+      return NextResponse.json(
+        { success: true, ...result.status, ...(result.alreadyCalled ? { alreadyCalled: true } : {}) },
+        { headers: noStoreHeaders() },
+      )
     }
     const { status, error } = refusal(result)
     return NextResponse.json(

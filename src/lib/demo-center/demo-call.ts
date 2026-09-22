@@ -5,7 +5,7 @@ import { isManagerOrAbove } from "@/lib/constants"
 import { normalizeManualLeadPhone, type ManualLeadAiBlocker } from "@/lib/voice-agent/manual-lead-call"
 import { dispatchManualLeadAiCall } from "@/lib/voice-agent/dispatch-manual-lead-call"
 import type { DemoJourneyState } from "./journey"
-import { PROMPT_SERVED_EVENT } from "./call-prompt"
+import { DEMO_CALL_AUDIT_VIA, PROMPT_SERVED_EVENT } from "./call-prompt"
 import { DEMO_LEAD_SOURCE } from "./prospect-lead"
 import { normalizeDemoPhone } from "./phone-verification"
 import { inDemoSalesOrganization } from "./sales-org"
@@ -46,7 +46,7 @@ export interface DemoCallStatus {
 }
 
 export type RequestDemoCallResult =
-  | { ok: true; status: DemoCallStatus }
+  | { ok: true; status: DemoCallStatus; alreadyCalled?: true }
   | { ok: false; code: "not_enabled" | "agent_not_ready" | "phone_not_verified" | "lead_not_ready" | "no_caller" | "phone_mismatch" | "unconfigured" }
   | { ok: false; code: "blocked"; reason: ManualLeadAiBlocker | "paused" | "error"; retryable: boolean }
 
@@ -73,18 +73,36 @@ export function demoCallIdempotencyKey(grantId: string): string {
 export const PER_CALL_PROMPT_EVIDENCE_DAYS = 30
 
 /**
- * Whether the voice agent can speak as LeadDrive on a demo call: the PBX has
- * recently asked the CRM for a specific call's prompt (runtime-config records
- * that once per call). Without it the agent would use the line's prompt.
+ * Whether a demo call will hear the demo's own script rather than the line's
+ * prompt, which belongs to other people's sales calls.
+ *
+ * The script reaches a demo call either when the PBX asks runtime-config for
+ * that call by id, or — what it does today — through its connect burst
+ * (./call-prompt-match.ts). Both record a prompt-served event on the call.
+ * So a demo call is placed by default (owner decision 2026-09-22), and the
+ * evidence can only stop it: if the last demo call that was actually
+ * answered has no such event, the script did not reach it, and no further
+ * demo call is placed until someone looks.
  */
 export async function demoCallAgentReady(now: Date = new Date()): Promise<boolean> {
   const since = new Date(now.getTime() - PER_CALL_PROMPT_EVIDENCE_DAYS * 24 * 60 * 60_000)
   const entered = await inDemoSalesOrganization(async (organizationId) => {
-    const seen = await prisma.callEvent.findFirst({
-      where: { organizationId, eventType: PROMPT_SERVED_EVENT, receivedAt: { gte: since } },
+    const lastAnswered = await prisma.callLog.findFirst({
+      where: {
+        organizationId,
+        consentAudit: { path: ["via"], equals: DEMO_CALL_AUDIT_VIA },
+        duration: { gt: 0 },
+        createdAt: { gte: since },
+      },
+      orderBy: { createdAt: "desc" },
       select: { id: true },
     })
-    return Boolean(seen)
+    if (!lastAnswered) return true
+    const served = await prisma.callEvent.findFirst({
+      where: { organizationId, callLogId: lastAnswered.id, eventType: PROMPT_SERVED_EVENT },
+      select: { id: true },
+    })
+    return Boolean(served)
   })
   return entered?.value ?? false
 }
@@ -215,8 +233,12 @@ export async function requestDemoCall(params: { grant: Grant }): Promise<Request
   const { dispatched } = entered.value
   switch (dispatched.kind) {
     case "dispatched":
-    case "replay":
       return { ok: true, status: await demoCallStatus(grant) }
+    // One call per demo (owner decision 2026-09-22): the idempotency key is
+    // the grant, so asking again returns the call already placed, and the
+    // prospect is told so rather than seeing it quietly "ring" again.
+    case "replay":
+      return { ok: true, status: await demoCallStatus(grant), alreadyCalled: true }
     case "blocked": {
       const reason = dispatched.blockers[0] ?? "provider_unavailable"
       return { ok: false, code: "blocked", reason, retryable: RETRYABLE_BLOCKERS.has(reason) }

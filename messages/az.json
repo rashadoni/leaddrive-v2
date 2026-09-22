@@ -14167,7 +14167,7 @@
   },
   "admin": {
     "demoCenter": {
-      "liveCallUnavailable": "PBX hər zəng üçün ayrıca təlimat istəməyə başlayanda əlçatan olacaq — o vaxta qədər demo zəngi xəttin indiki adından danışardı.",
+      "liveCallUnavailable": "Dayandırılıb: son cavablanan demo zəngi demo ssenarisini almadı, ona görə PBX-in təlimat sorğuları yoxlanana qədər yeni demo zəngi edilmir.",
       "journeyProgress": "Ssenarinin gedişi",
       "journeyNoActivity": "Ssenari hələ heç nə bildirməyib.",
       "journeySections": "{total} bölmədən {done}",

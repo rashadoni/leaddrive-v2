@@ -14171,7 +14171,7 @@
   },
   "admin": {
     "demoCenter": {
-      "liveCallUnavailable": "Available once the PBX asks for each call's own prompt — until then a demo call would speak with the line's current identity.",
+      "liveCallUnavailable": "Paused: the last answered demo call did not get the demo script, so no further demo call is placed until the PBX's prompt requests are checked.",
       "journeyProgress": "Story progress",
       "journeyNoActivity": "The story has not reported anything yet.",
       "journeySections": "{done} of {total} sections",
