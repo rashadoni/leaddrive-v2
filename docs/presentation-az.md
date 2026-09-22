@@ -65,7 +65,7 @@ LeadDrive-da **Da Vinci AI sizin üçün düşünür**:
 |---------|---------------------|
 | Sövdəni açırsan, baxırsan, bağlayırsan | **AI deyir: "Bu sövdə 3 həftədir hərəkətsizdir, zəng edin"** |
 | Biletə cavab yazmağa başlayırsan | **AI Draft — KB + oxşar həll edilmiş biletlərdən cavab hazırlayır** |
-| Lidi əl ilə qiymətləndirirsən | **AI hər 6 saatda 8 faktor üzrə avtomatik score verir** |
+| Lidi əl ilə qiymətləndirirsən | **Lid saxlananda bal avtomatik hesablanır — ən çox satıcının rəyi, sonra əlaqə vasitələri nəzərə alınır** |
 | Hesabatı Excel-də hazırlayırsan | **AI Commentary — 2 abzas executive summary yazır** |
 | Müştəri WhatsApp-da yazır, heç kim cavab vermir | **Da Vinci avtocavab — KB-dən, 24/7** |
 | Faktura ödənməyib, heç kim bilmir | **AI 8-ci gündən xatırlatma zənciri başladır** |
@@ -94,7 +94,7 @@ Hər gün işə gəldikdə bir baxışda:
 - Klaviatura qısayolları: R=cavab, N=qeyd, J/K=naviqasiya
 
 ### 👤 Lidlər — Satış hunisi
-- **AI Scoring**: 8 faktor üzrə avtomatik qiymətləndirmə
+- **Lid balı**: ən çox satıcının rəyinə və əlaqə vasitələrinə əsaslanır, lid hər dəfə saxlananda yenidən hesablanır
 - A = isti (birinci zəng edin), F = soyuq (Journey ilə nurture edin)
 - Convert = Kontakt + Şirkət + Sövdə bir klikdə
 
