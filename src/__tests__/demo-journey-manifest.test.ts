@@ -484,9 +484,13 @@ describe("The open demo", () => {
     expect(gated).toContain("step.instruction")
     expect(gated).toContain("S.next")
 
-    // And the panel must be told when a coach mark is actually there.
-    expect(read("src/components/demo-center/journey/demo-journey-player.tsx"))
-      .toContain("sceneHasCoachMark={Boolean(Scene)}")
+    // And the panel must be told when a coach mark is actually there: the
+    // scene has one and the prospect has not put it away (× or Escape), in
+    // which case the panel carries the step again.
+    const player = read("src/components/demo-center/journey/demo-journey-player.tsx")
+    expect(player).toContain("const coachShown = Boolean(step && Scene) && hiddenCoachKey !== coachKey")
+    expect(player).toContain("sceneHasCoachMark={coachShown}")
+    expect(player).toContain("{step && coachShown && (")
   })
 
   it("does not post what the visitor types about themselves", () => {

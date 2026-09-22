@@ -56,6 +56,8 @@ export interface DemoJourneyGuideProps {
   liveCall?: DemoLiveCallState
   /** Record how the real call ended; only an `outcome` step accepts it. */
   onOutcome?: (to: DemoJourneyState) => void
+  /** Brings back the coach card the prospect put away; absent while it is shown. */
+  onShowCoach?: () => void
   /** A clip was started, played to the end, or failed — for the session's report. */
   onClipEvent?: (name: DemoClipEvent) => void
 }
@@ -85,6 +87,7 @@ export function DemoJourneyGuide({
   liveCall,
   onOutcome,
   onClipEvent,
+  onShowCoach,
 }: DemoJourneyGuideProps) {
   const sections = activeSections(manifest)
   const sectionIndex = sections.findIndex((candidate) => candidate.id === section.id)
@@ -166,6 +169,11 @@ export function DemoJourneyGuide({
               )}
             </div>
           </div>
+          {onShowCoach && !anchorMissing && (
+            <Button size="sm" variant="outline" className="mt-2 h-7 text-xs" onClick={onShowCoach} data-testid="demo-coach-show">
+              {S.coachShow}
+            </Button>
+          )}
           </>
           )}
           {anchorMissing && (
