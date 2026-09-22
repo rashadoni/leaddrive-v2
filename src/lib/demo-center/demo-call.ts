@@ -7,6 +7,7 @@ import { dispatchManualLeadAiCall } from "@/lib/voice-agent/dispatch-manual-lead
 import type { DemoJourneyState } from "./journey"
 import { PROMPT_SERVED_EVENT } from "./call-prompt"
 import { DEMO_LEAD_SOURCE } from "./prospect-lead"
+import { normalizeDemoPhone } from "./phone-verification"
 import { inDemoSalesOrganization } from "./sales-org"
 
 /**
@@ -162,10 +163,14 @@ export async function requestDemoCall(params: { grant: Grant }): Promise<Request
   const request = await runWithRlsBypass(() =>
     prisma.demoRequest.findUnique({
       where: { id: grant.requestId },
-      select: { internalLeadId: true, internalLeadOrganizationId: true, leadLinkStatus: true },
+      select: { internalLeadId: true, internalLeadOrganizationId: true, leadLinkStatus: true, phone: true },
     }),
   )
   if (request?.leadLinkStatus !== "LINKED" || !request.internalLeadId) return { ok: false, code: "lead_not_ready" }
+  // Only the phone on the prospect's own request is ever called; a
+  // verification of any other number (none can be made now, but rows made
+  // before that rule, or a request edited since, can exist) is not enough.
+  if (normalizeDemoPhone(request.phone ?? "")?.e164 !== verification.phoneE164) return { ok: false, code: "phone_mismatch" }
   const leadId = request.internalLeadId
 
   const entered = await inDemoSalesOrganization(async (organizationId) => {
