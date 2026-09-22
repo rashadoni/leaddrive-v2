@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { nonNegativeFinancialAmountSchema } from "@/lib/validation/numeric"
 import { prisma, logAudit } from "@/lib/prisma"
+import { scoreLeadNow } from "@/lib/ai/lead-scoring"
 import { withRlsAuth } from "@/lib/with-rls"
 import { withInboxSessionWrite } from "@/lib/inbox/route-auth"
 import { getSalesAssignmentCandidates } from "@/lib/inbox/sales-assignment"
@@ -391,6 +392,10 @@ export const POST = withInboxSessionWrite(async (req, { orgId, userId }, { param
         sourceProfileUrl: result.lead.sourceProfileUrl,
       },
     })
+    // After the transaction, never inside it: the scorer reads the lead back
+    // through its own connection. Both branches are scored, because the handoff
+    // also rewrites the contact details of a lead the conversation already had.
+    await scoreLeadNow(orgId, result.lead.id)
     return NextResponse.json({
       success: true,
       data: {

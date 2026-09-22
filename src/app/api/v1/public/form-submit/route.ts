@@ -5,6 +5,7 @@ import { consumePublicRateLimit } from "@/lib/public-abuse-guard"
 import { clientIp } from "@/lib/request-ip"
 import { runWithTenant } from "@/lib/rls-context"
 import { applyLeadAssignmentRules } from "@/lib/lead-assignment"
+import { scoreLeadNow } from "@/lib/ai/lead-scoring"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -148,6 +149,10 @@ export async function POST(req: NextRequest) {
     // awaited inside the tenant scope). No authenticated user → owner from assignee.
     const { autoEnrollLeadIntoSequences } = await import("@/lib/sequences-auto-enroll")
     await autoEnrollLeadIntoSequences({ organizationId: page.organizationId, userId: null, leadId: result.lead.id, source: result.lead.source })
+
+    // After the transaction, never inside it: the scorer reads the lead back
+    // through its own connection and would not see an uncommitted row.
+    await scoreLeadNow(page.organizationId, result.lead.id)
 
     return NextResponse.json(
       { success: true },

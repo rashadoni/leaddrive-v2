@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { consumePublicRateLimit } from "@/lib/public-abuse-guard"
 import { clientIp } from "@/lib/request-ip"
 import { runWithTenant } from "@/lib/rls-context"
+import { scoreLeadNow } from "@/lib/ai/lead-scoring"
 import { validateSubmission } from "@/lib/form-builder/validate-submission"
 import type { FormFieldSchema } from "@/lib/form-builder/types"
 import { ipFromRequest } from "@/lib/audit/compliance-audit"
@@ -169,6 +170,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
             where: { id: submission.id },
             data: { leadId: lead.id },
           })
+          // Arrives scored rather than at a placeholder 0/100 (never throws).
+          await scoreLeadNow(organizationId, lead.id)
         } catch (leadErr) {
           // Lead-creation failure does NOT abort the submission.
           // User gets a successful confirmation; ops sees the warn
