@@ -177,7 +177,7 @@ describe("Demo Center: a live call at issue time", () => {
     locale: "az",
   }
 
-  it("is refused until the PBX asks for each call's own prompt", async () => {
+  it("is refused while live calls are paused", async () => {
     demoCallAgentReady.mockResolvedValue(false)
 
     const response = await issueDemo(issueRequest(liveJourney), { params: Promise.resolve({ id: REQUEST_ID }) })

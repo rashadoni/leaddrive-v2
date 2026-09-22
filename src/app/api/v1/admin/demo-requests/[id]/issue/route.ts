@@ -31,12 +31,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     )
   }
 
-  // A live call needs the agent to speak as LeadDrive, which it does only once
-  // the PBX asks for each call's own prompt. Refused here too, not only in
-  // the admin screen, so a crafted request cannot tick it early.
+  // A live call needs the agent to speak with the demo's own script. It does
+  // by default; the gate closes only after an answered demo call went without
+  // it (demoCallAgentReady). Refused here too, not only in the admin screen,
+  // so a crafted request cannot tick it while paused.
   if (parsed.data.liveCallEnabled && !(await demoCallAgentReady())) {
     return NextResponse.json(
-      { success: false, error: "A live call is not available yet: the PBX does not ask for a per-call prompt" },
+      { success: false, error: "Live calls are paused: the last answered demo call did not get the demo script" },
       { status: 409 },
     )
   }
