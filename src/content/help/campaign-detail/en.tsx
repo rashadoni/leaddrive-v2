@@ -110,8 +110,11 @@ export default function CampaigndetailHelpEn() {
           <HelpCallout kind="see" label="What you'll see">
             As soon as a date is picked, a second <HelpKey>Schedule</HelpKey> button appears next to{" "}
             <HelpKey>Send Now</HelpKey>. After you click it, the campaign is saved, its status becomes{" "}
-            <strong>Scheduled</strong>. The date is a plan: the campaign does not go out by itself when
-            it comes — press <HelpKey>Send Campaign</HelpKey> at the top of the page to send it.
+            <strong>Scheduled</strong>. At the chosen time — within a minute of it — the campaign goes out
+            by itself, once. Until then you can still send it right away with{" "}
+            <HelpKey>Send Campaign</HelpKey> at the top of the page. If the channel cannot send (for
+            example, no SMS provider or Telegram bot is connected), the campaign returns to drafts and
+            you get a notification.
           </HelpCallout>
         </HelpStep>
       </HelpSection>

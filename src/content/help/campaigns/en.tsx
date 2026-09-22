@@ -49,7 +49,7 @@ export default function CampaignsHelpEn() {
         </p>
         <dl className="rounded-md border p-3">
           <HelpDef term="Draft">A campaign that hasn't been sent yet and can still be edited.</HelpDef>
-          <HelpDef term="Scheduled">A campaign with a planned send date. It does not go out by itself when that date comes — open it and press <HelpKey>Send Campaign</HelpKey>.</HelpDef>
+          <HelpDef term="Scheduled">A campaign with a send time. It goes out by itself at that time; until then it can still be edited or sent right away.</HelpDef>
           <HelpDef term="Sending">A campaign currently going out to recipients.</HelpDef>
           <HelpDef term="Sent">A finished campaign — from then on the card opens as a read-only summary.</HelpDef>
           <HelpDef term="Cancelled">A campaign that was stopped or cancelled.</HelpDef>
@@ -98,7 +98,9 @@ export default function CampaignsHelpEn() {
           </p>
           <HelpCallout kind="see" label="What you'll see">
             The template list shows "Loading..." until ready, then "— No template —" plus your
-            existing templates. Schedule send is a date-time picker; budget accepts numbers only.
+            existing templates. Schedule send is a date-time picker; budget accepts numbers only. On a
+            new campaign the date is only a note — the campaign stays a draft. To have it sent
+            automatically, open it and click <HelpKey>Schedule</HelpKey> on the Compose tab.
           </HelpCallout>
         </HelpStep>
         <HelpStep n={4}>

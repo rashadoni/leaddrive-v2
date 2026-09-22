@@ -3541,7 +3541,7 @@
     "hintOpens": "Məktubu açan alıcılar — hər biri bir dəfə sayılır. Yalnız e-poçt üçün qeydə alınır.",
     "hintClicks": "Linkə keçən alıcılar — hər biri bir dəfə sayılır. Yalnız e-poçt üçün qeydə alınır.",
     "hintStatusDraft": "Hələ göndərilməmiş kampaniyalar. Onları redaktə etmək olar.",
-    "hintStatusScheduled": "Göndərmə tarixi təyin olunmuş kampaniyalar. Onlar avtomatik göndərilmir — kampaniyanı açıb «Kampaniyanı göndər» düyməsini basın.",
+    "hintStatusScheduled": "Göndərmə vaxtı təyin olunmuş kampaniyalar. Hər biri öz vaxtında özü göndərilir.",
     "hintStatusSent": "Ən azı bir alıcıya çatmış kampaniyalar. A/B test qalib variant göndəriləndən sonra burada sayılır.",
     "hintBounces": "Alıcının poçt serverinin qəbul etmədiyi məktublar — e-poçt provayderinin hesabatına görə.",
     "hintUnsubscribes": "Artıq abunəlikdən çıxdığı üçün göndərişdə buraxılan alıcılar.",

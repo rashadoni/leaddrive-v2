@@ -3541,7 +3541,7 @@
     "hintOpens": "Recipients who opened the email, each counted once. Recorded for email only.",
     "hintClicks": "Recipients who clicked a link, each counted once. Recorded for email only.",
     "hintStatusDraft": "Campaigns not sent yet. They can still be edited.",
-    "hintStatusScheduled": "Campaigns with a planned send date. They are not sent automatically — open the campaign and press «Send Campaign».",
+    "hintStatusScheduled": "Campaigns with a send time. Each goes out by itself at its time.",
     "hintStatusSent": "Campaigns that reached at least one recipient. An A/B test is counted here once its winning variant has been sent.",
     "hintBounces": "Emails the recipient's mail server rejected, as reported by the email provider.",
     "hintUnsubscribes": "Recipients skipped at sending because they had already unsubscribed.",
