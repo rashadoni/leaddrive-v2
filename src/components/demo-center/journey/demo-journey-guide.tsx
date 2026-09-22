@@ -65,6 +65,8 @@ export interface DemoJourneyGuideProps {
    * anywhere and the story stopped there.
    */
   onGuideAction?: () => void
+  /** Opens a chapter: behind the story read-only, ahead of it by jumping. */
+  onOpenChapter?: (sectionId: string) => void
   /** A clip was started, played to the end, or failed — for the session's report. */
   onClipEvent?: (name: DemoClipEvent) => void
 }
@@ -96,6 +98,7 @@ export function DemoJourneyGuide({
   onClipEvent,
   onShowCoach,
   onGuideAction,
+  onOpenChapter,
 }: DemoJourneyGuideProps) {
   const sections = activeSections(manifest)
   const sectionIndex = sections.findIndex((candidate) => candidate.id === section.id)
@@ -245,9 +248,23 @@ export function DemoJourneyGuide({
               ) : (
                 <Circle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
               )}
-              <span className="min-w-0 flex-1">
-                <span className={cn("block truncate", status === "current" && "font-semibold")}>{index + 1}. {candidate.title}</span>
-              </span>
+              {/* Any chapter opens (owner, 2026-09-22): the story's own shell
+                  ahead of the frontier (the summary) is the one exception. */}
+              {onOpenChapter && !opensLater(candidate, status) ? (
+                <button
+                  type="button"
+                  onClick={() => onOpenChapter(candidate.id)}
+                  aria-current={shown ? "step" : undefined}
+                  className="min-w-0 flex-1 text-left hover:underline"
+                >
+                  <span className={cn("block truncate", status === "current" && "font-semibold")}>{index + 1}. {candidate.title}</span>
+                  {status === "passed" ? <span className="block text-[10px] text-muted-foreground">{S.chapterPassed}</span> : null}
+                </button>
+              ) : (
+                <span className="min-w-0 flex-1">
+                  <span className={cn("block truncate", status === "current" && "font-semibold")}>{index + 1}. {candidate.title}</span>
+                </span>
+              )}
               <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground">{S.minutes(candidate.estimatedMinutes)}</span>
             </li>
           )
@@ -255,6 +272,11 @@ export function DemoJourneyGuide({
       </ol>
     </aside>
   )
+}
+
+/** The summary opens when the story gets there; everything else opens now. */
+function opensLater(section: DemoJourneySection, status: ReturnType<typeof sectionStatus>): boolean {
+  return section.navGroup === "demo" && status === "upcoming"
 }
 
 /**

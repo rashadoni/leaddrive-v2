@@ -42,6 +42,7 @@ export type DemoJourneyAction =
   | { readonly type: "ui"; readonly path: string; readonly value: DemoUiValue }
   | { readonly type: "transition"; readonly stepId: string; readonly to: DemoJourneyState }
   | { readonly type: "outcome"; readonly stepId: string; readonly to: DemoJourneyState }
+  | { readonly type: "open-section"; readonly sectionId: string }
   | { readonly type: "expire" }
   | { readonly type: "revoke" }
 
@@ -137,6 +138,38 @@ function closeStep(snapshot: DemoJourneySnapshot, manifest: DemoJourneyManifest,
   return advance(closed, manifest)
 }
 
+/** A real call is on the line: the story waits for how it ends. */
+const CALL_IN_FLIGHT: readonly DemoJourneyState[] = ["CALL_QUEUED", "CALLING"]
+/** Staged records are spaced this far apart, so a lead's timeline still reads in order. */
+const STAGED_STEP_MS = 60_000
+
+/**
+ * Where a jump to `sectionId` really lands, or why it cannot: sections ahead
+ * of the story only (behind it, the player shows them read-only), never the
+ * story's own shell (orientation, summary), never while a real call is on
+ * the line, and never past a section that waits for a real outcome (the live
+ * AI call) — the jump stops there, so the one real call is not skipped
+ * without the prospect seeing it.
+ */
+export function sectionJumpTarget(
+  snapshot: DemoJourneySnapshot,
+  manifest: DemoJourneyManifest,
+  sectionId: string,
+): { ok: true; section: DemoJourneySection } | { ok: false; error: string } {
+  const sections = activeSections(manifest)
+  const targetIndex = sections.findIndex((section) => section.id === sectionId)
+  const frontierIndex = sections.findIndex((section) => section.id === snapshot.sectionId)
+  const target = sections[targetIndex]
+  if (!target) return { ok: false, error: `section "${sectionId}" is not in this story` }
+  if (target.navGroup === "demo") return { ok: false, error: `"${target.id}" is reached by the story, not opened directly` }
+  if (targetIndex <= frontierIndex) return { ok: false, error: `"${target.id}" is not ahead of the story` }
+  if (CALL_IN_FLIGHT.includes(snapshot.state)) return { ok: false, error: "a real call is on the line" }
+  const waitsForOutcome = sections
+    .slice(frontierIndex + 1, targetIndex)
+    .find((section) => section.steps.some((step) => step.completion.kind === "outcome"))
+  return { ok: true, section: waitsForOutcome ?? target }
+}
+
 export function reduceJourney(
   snapshot: DemoJourneySnapshot,
   action: DemoJourneyAction,
@@ -195,6 +228,43 @@ export function reduceJourney(
       return { ok: true, snapshot: closeStep(moved, manifest, step.id, now), completedStep: step.id, transitioned: action.to }
     }
 
+    case "open-section": {
+      // Owner, 2026-09-22: «если клиент сразу интересуется, например,
+      // омни-каналом, зачем ему обязательно переходить по всем разделам?»
+      // The story jumps to the section and stages what the sections in
+      // between would have produced — the same record effects, in the same
+      // order — so the section opens on the data it expects, never empty.
+      const jump = sectionJumpTarget(snapshot, manifest, action.sectionId)
+      if (!jump.ok) return fail(jump.error)
+      const target = jump.section
+      let path: readonly DemoJourneyState[] | null = null
+      let entry: DemoJourneyState | null = null
+      for (const candidate of target.entryStates) {
+        const walk = candidate === snapshot.state ? [] : journeyPath(snapshot.state, candidate)
+        if (walk) {
+          path = walk
+          entry = candidate
+          break
+        }
+      }
+      if (!path || !entry) return fail(`no legal path from ${snapshot.state} to "${target.id}"`)
+      let records = snapshot.records
+      path.forEach((state, index) => {
+        const at = new Date(now.getTime() - (path!.length - 1 - index) * STAGED_STEP_MS)
+        records = applyTransitionEffects(records, state, snapshot.identity, at)
+      })
+      const jumped: DemoJourneySnapshot = {
+        ...snapshot,
+        state: entry,
+        records,
+        sectionId: target.id,
+        stepId: target.steps[0].id,
+        visitedSections: snapshot.visitedSections.includes(target.id) ? snapshot.visitedSections : [...snapshot.visitedSections, target.id],
+        updatedAt: now.toISOString(),
+      }
+      return { ok: true, snapshot: jumped, ...(entry !== snapshot.state ? { transitioned: entry } : {}) }
+    }
+
     case "outcome": {
       if (action.stepId !== step.id) return fail(`"${action.stepId}" is not the current step ("${step.id}")`)
       const rule = step.completion
@@ -224,8 +294,9 @@ export function journeyProgress(snapshot: DemoJourneySnapshot, manifest: DemoJou
   const sections = activeSections(manifest)
   const required = sections.flatMap((section) => section.steps.filter((step) => step.required).map((step) => step.id))
   const done = new Set(snapshot.completedSteps)
-  const currentIndex = sections.findIndex((section) => section.id === snapshot.sectionId)
-  const sectionsDone = snapshot.state === "COMPLETED" ? sections.length : Math.max(0, currentIndex)
+  // A section counts when its own steps were done — not because the story
+  // jumped past it.
+  const sectionsDone = sections.filter((section) => sectionStatus(snapshot, manifest, section.id) === "done").length
   return {
     requiredTotal: required.length,
     requiredDone: required.filter((id) => done.has(id)).length,
@@ -234,30 +305,30 @@ export function journeyProgress(snapshot: DemoJourneySnapshot, manifest: DemoJou
   }
 }
 
+/** "passed": behind the story because the prospect jumped over it; its
+ *  records are staged and it opens read-only, but it was not walked. */
 export function sectionStatus(
   snapshot: DemoJourneySnapshot,
   manifest: DemoJourneyManifest,
   sectionId: string,
-): "done" | "current" | "upcoming" {
-  if (snapshot.state === "COMPLETED") return "done"
+): "done" | "current" | "passed" | "upcoming" {
   const sections = activeSections(manifest)
   const currentIndex = sections.findIndex((section) => section.id === snapshot.sectionId)
   const index = sections.findIndex((section) => section.id === sectionId)
   if (index < 0) return "upcoming"
-  if (index < currentIndex) return "done"
-  if (index === currentIndex) return "current"
+  const walked = sections[index].steps.every((step) => !step.required || snapshot.completedSteps.includes(step.id))
+  if (index === currentIndex && snapshot.state !== "COMPLETED") return "current"
+  if (index <= currentIndex) return walked ? "done" : "passed"
   return "upcoming"
 }
 
-/** Sidebar routes the prospect may open: every route whose section has been
- *  reached. Nothing ahead of the story is clickable. */
-export function reachableRoutes(snapshot: DemoJourneySnapshot, manifest: DemoJourneyManifest): readonly string[] {
+/** Sidebar routes the prospect may open: all of them (owner, 2026-09-22).
+ *  Behind the story a route opens read-only; ahead of it, it jumps. */
+export function reachableRoutes(_snapshot: DemoJourneySnapshot, manifest: DemoJourneyManifest): readonly string[] {
   const routes = new Set<string>()
-  for (const section of manifest.sections) {
+  for (const section of activeSections(manifest)) {
     if (section.navGroup === "demo") continue
-    if (snapshot.visitedSections.includes(section.id) || snapshot.state === "COMPLETED") {
-      routes.add(section.route.replace(/\/\[[a-zA-Z]+\]$/, ""))
-    }
+    routes.add(section.route.replace(/\/\[[a-zA-Z]+\]$/, ""))
   }
   return [...routes]
 }

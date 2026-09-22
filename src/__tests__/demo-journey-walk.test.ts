@@ -92,59 +92,95 @@ function control(step: DemoJourneyStep): HTMLElement | null {
   return named ? buttonWithText(named, target) : null
 }
 
+async function renderPlayer() {
+  await act(async () => {
+    root.render(
+      createElement(NextIntlClientProvider, {
+        locale: "az",
+        messages,
+        timeZone: "Asia/Baku",
+        children: createElement(DemoJourneyPlayer, {
+          variant: "open",
+          token: TOKEN,
+          manifest: PROSPECT_TO_CLOSED_WON,
+          identity: {
+            name: "Nigar Əliyeva",
+            company: "Xəzər Logistika MMC",
+            jobTitle: "Satış direktoru",
+            emailMasked: "ni•••@xezerlogistika.az",
+            phoneMasked: "+994 ••••• 67",
+            sourceChannel: "instagram",
+          },
+          company: "Xəzər Logistika MMC",
+          watermark: "Xəzər Logistika MMC · Açıq demo",
+        }),
+      }),
+    )
+  })
+  await settle()
+}
+
+/** Walks from wherever the story is to its end; returns the steps taken. */
+async function walkToEnd(): Promise<string[]> {
+  const walked: string[] = []
+  for (let guard = 0; guard < 200; guard += 1) {
+    const { stepId, state } = frontier()
+    if (state === "COMPLETED") break
+    const step = steps.get(stepId)
+    expect(step, `unknown frontier step ${stepId}`).toBeDefined()
+
+    let moved = false
+    // A step may take a first click that opens its second control (a dialog).
+    for (let press = 0; press < 3 && !moved; press += 1) {
+      const element = control(step!)
+      expect(element, `dead end: nothing to press on «${step!.title}» (${stepId})`).not.toBeNull()
+      await act(async () => element!.click())
+      await settle()
+      const after = frontier()
+      moved = after.stepId !== stepId || after.state !== state
+    }
+    expect(moved, `«${step!.title}» (${stepId}) did not move after pressing its control`).toBe(true)
+    walked.push(stepId)
+  }
+  expect(frontier().state).toBe("COMPLETED")
+  // And no click ever landed on the wrong thing.
+  expect(toasts.filter((message) => message.startsWith(S.hintFollow("")))).toEqual([])
+  return walked
+}
+
+const stepIdsFrom = (sectionId: string) => {
+  const sections = PROSPECT_TO_CLOSED_WON.sections
+  return sections.slice(sections.findIndex((section) => section.id === sectionId)).flatMap((section) => section.steps.map((step) => step.id))
+}
+
 describe("the guided story, walked through the real screens", () => {
   it("reaches the end pressing only what the arrow points at", async () => {
-    await act(async () => {
-      root.render(
-        createElement(
-          NextIntlClientProvider,
-          { locale: "az", messages, timeZone: "Asia/Baku" },
-          createElement(DemoJourneyPlayer, {
-            variant: "open",
-            token: TOKEN,
-            manifest: PROSPECT_TO_CLOSED_WON,
-            identity: {
-              name: "Nigar Əliyeva",
-              company: "Xəzər Logistika MMC",
-              jobTitle: "Satış direktoru",
-              emailMasked: "ni•••@xezerlogistika.az",
-              phoneMasked: "+994 ••••• 67",
-              sourceChannel: "instagram",
-            },
-            company: "Xəzər Logistika MMC",
-            watermark: "Xəzər Logistika MMC · Açıq demo",
-          }),
-        ),
-      )
-    })
-    await settle()
-
-    const walked: string[] = []
-    for (let guard = 0; guard < 200; guard += 1) {
-      const { stepId, state } = frontier()
-      if (state === "COMPLETED") break
-      const step = steps.get(stepId)
-      expect(step, `unknown frontier step ${stepId}`).toBeDefined()
-
-      let moved = false
-      // A step may take a first click that opens its second control (a dialog).
-      for (let press = 0; press < 3 && !moved; press += 1) {
-        const element = control(step!)
-        expect(element, `dead end: nothing to press on «${step!.title}» (${stepId})`).not.toBeNull()
-        await act(async () => element!.click())
-        await settle()
-        const after = frontier()
-        moved = after.stepId !== stepId || after.state !== state
-      }
-      expect(moved, `«${step!.title}» (${stepId}) did not move after pressing its control`).toBe(true)
-      walked.push(stepId)
-    }
-
-    expect(frontier().state).toBe("COMPLETED")
+    await renderPlayer()
+    const walked = await walkToEnd()
     // Every step, required or not, was taken in order — none skipped.
-    expect(walked).toEqual(PROSPECT_TO_CLOSED_WON.sections.flatMap((section) => section.steps.map((step) => step.id)))
-    // And no click ever landed on the wrong thing.
-    expect(toasts.filter((message) => message.startsWith(S.hintFollow("")))).toEqual([])
+    expect(walked).toEqual(stepIdsFrom("orientation"))
+  }, 60_000)
+
+  it("starts where the prospect's interest is: the first screen opens the inbox at once", async () => {
+    await renderPlayer()
+    const inbox = document.querySelector<HTMLButtonElement>('[data-start-section="conversation"]')
+    expect(inbox, "the first screen offers the inbox").not.toBeNull()
+    await act(async () => inbox!.click())
+    await settle()
+    expect(frontier()).toMatchObject({ sectionId: "conversation", stepId: "conversation-views" })
+    // The scene the prospect lands on is the real inbox with their conversation, not an empty shell.
+    expect(document.querySelector('[data-demo-target~="conversation-open"]')).not.toBeNull()
+    expect(await walkToEnd()).toEqual(stepIdsFrom("conversation"))
+  }, 60_000)
+
+  it("opens a later section straight from the sidebar and carries on from there", async () => {
+    await renderPlayer()
+    const deals = document.querySelector<HTMLButtonElement>('[data-testid="demo-sidebar"] [data-nav-href="/deals"]')
+    expect(deals?.getAttribute("data-nav-locked")).toBeNull()
+    await act(async () => deals!.click())
+    await settle()
+    expect(frontier().sectionId).toBe("deal")
+    expect(await walkToEnd()).toEqual(stepIdsFrom("deal"))
   }, 60_000)
 })
 

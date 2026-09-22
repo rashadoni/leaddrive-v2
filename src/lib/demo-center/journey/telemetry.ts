@@ -99,8 +99,17 @@ export function acceptJourneyReport(manifest: DemoJourneyManifest, report: DemoJ
   }
 }
 
-/** The reports one move of the story produced: what differs between two snapshots. */
-export function journeyReportsBetween(before: DemoJourneySnapshot, after: DemoJourneySnapshot): DemoJourneyReport[] {
+/**
+ * The reports one move of the story produced: what differs between two
+ * snapshots. A jump to another section (`jumped`) reports only that the
+ * section was opened: the states it staged were not moved through by the
+ * prospect, and a transition filed under the section they left would be
+ * refused by the server anyway.
+ */
+export function journeyReportsBetween(before: DemoJourneySnapshot, after: DemoJourneySnapshot, options: { jumped?: boolean } = {}): DemoJourneyReport[] {
+  if (options.jumped) {
+    return after.sectionId !== before.sectionId ? [{ eventType: "JOURNEY", name: "journey.section_opened", sectionId: after.sectionId }] : []
+  }
   const reports: DemoJourneyReport[] = []
   const done = new Set(before.completedSteps)
   for (const stepId of after.completedSteps) {
