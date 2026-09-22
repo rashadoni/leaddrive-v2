@@ -58,6 +58,7 @@ beforeEach(() => {
     internalLeadId: "lead-1",
     internalLeadOrganizationId: SALES_ORG,
     leadLinkStatus: "LINKED",
+    phone: "050 123 45 67",
   } as never)
   vi.mocked(prisma.user.findFirst).mockResolvedValue({ id: "admin-1", role: "superadmin" } as never)
   vi.mocked(prisma.lead.findFirst).mockResolvedValue({ id: "lead-1", phone: "+994501234567", source: "demo" } as never)
@@ -167,6 +168,20 @@ describe("requesting the call", () => {
       data: { phone: "+994501234567" },
     })
     expect(mockDispatch).toHaveBeenCalled()
+  })
+
+  it("calls only the phone on the prospect's own request", async () => {
+    // A verification of another number cannot be made any more, but a row
+    // from before that rule, or a request edited since, must not be called.
+    vi.mocked(prisma.demoRequest.findUnique).mockResolvedValue({
+      internalLeadId: "lead-1",
+      internalLeadOrganizationId: SALES_ORG,
+      leadLinkStatus: "LINKED",
+      phone: "+994 55 111 22 33",
+    } as never)
+
+    await expect(requestDemoCall({ grant })).resolves.toEqual({ ok: false, code: "phone_mismatch" })
+    expect(mockDispatch).not.toHaveBeenCalled()
   })
 
   it("never rewrites the phone of a lead that existed before the demo", async () => {
