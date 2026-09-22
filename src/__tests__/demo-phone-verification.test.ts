@@ -328,4 +328,31 @@ describe("the public phone route", () => {
     expect(mockSendSms.mock.calls[0][0].to).toBe("+994501234567")
     expect(JSON.stringify(body)).not.toMatch(/994|501234567/)
   })
+
+  it("refuses any number the browser names: only the request's own phone is called", async () => {
+    // Owner decision 2026-09-22: a demo must not be a way to have the agent
+    // ring somebody else's phone.
+    const credential = issueBrowserCredential()
+    vi.mocked(prisma.demoGrant.findUnique).mockResolvedValue(activeGrant(credential.credentialHash) as never)
+
+    const response = await post({ phone: "+994551112233" }, `${demoSessionCookieName(TOKEN)}=${credential.credential}`)
+
+    expect(response.status).toBe(400)
+    expect(mockSendSms).not.toHaveBeenCalled()
+  })
+
+  it("says so when the request has no usable phone, and sends nothing", async () => {
+    const credential = issueBrowserCredential()
+    vi.mocked(prisma.demoGrant.findUnique).mockResolvedValue({
+      ...activeGrant(credential.credentialHash),
+      request: { phone: null },
+    } as never)
+
+    const response = await post({ useRequestPhone: true }, `${demoSessionCookieName(TOKEN)}=${credential.credential}`)
+    const body = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(body.error).toContain("sorğuda")
+    expect(mockSendSms).not.toHaveBeenCalled()
+  })
 })

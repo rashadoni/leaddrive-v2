@@ -21,6 +21,7 @@ import { toast } from "sonner"
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
+import { PageHeader } from "@/components/page-header"
 
 interface User extends Record<string, unknown> {
   id: string
@@ -1004,18 +1005,20 @@ export default function UsersSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+      <PageHeader
+        title={
+          <>
             {tu("titleWithCount", { count: users.length })} <TourReplayButton tourId="users" />
             <HelpButton slug="users" variant="label" />
-          </h1>
-          <p className="text-sm text-muted-foreground">{ts("hintUsers")}</p>
-        </div>
-        <Button data-tour-id="users-new" onClick={() => { setEditUser(undefined); setShowForm(true) }}>
-          <Plus className="h-4 w-4 mr-1" /> {tu("add")}
-        </Button>
-      </div>
+          </>
+        }
+        description={<p className="text-sm text-muted-foreground">{ts("hintUsers")}</p>}
+        actions={
+          <Button data-tour-id="users-new" onClick={() => { setEditUser(undefined); setShowForm(true) }}>
+            <Plus className="h-4 w-4 mr-1" /> {tu("add")}
+          </Button>
+        }
+      />
 
       <div className="grid gap-4 md:grid-cols-4">
         <StatCard title={tu("statTotal")} value={users.length} icon={<Users className="h-4 w-4" />} />

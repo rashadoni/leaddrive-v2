@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/prisma"
-import { DEFAULT_CURRENCY } from "@/lib/constants"
 import { withRls, withRlsAuth } from "@/lib/with-rls"
+import { resolveOrgDefaultCurrency } from "@/lib/org-default-currency"
 
 const invoiceSettingsSchema = z.object({
   numberPrefix: z.string().max(20).optional(),
@@ -39,7 +39,9 @@ export const GET = withRls(async (_req, { orgId }) => {
       numberPrefix: "INV-",
       defaultPaymentTerms: "net30",
       defaultTaxRate: 0.18,
-      defaultCurrency: DEFAULT_CURRENCY,
+      // Nothing configured yet: show what new invoices will start in — the
+      // organisation's base currency — not the deployment's constant.
+      defaultCurrency: await resolveOrgDefaultCurrency(orgId),
       companyName: "",
       companyAddress: "",
       companyVoen: "",

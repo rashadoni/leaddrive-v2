@@ -203,6 +203,7 @@ function EnrollmentTable({ journeyId }: { journeyId: string }) {
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
+import { PageHeader } from "@/components/page-header"
 
 export default function JourneysPage() {
   const { data: session } = useSession()
@@ -413,20 +414,25 @@ export default function JourneysPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 data-tour-id="journeys-header" className="text-2xl font-bold tracking-tight flex items-center gap-2">
+      <PageHeader
+        title={
+          <>
             <Workflow className="h-6 w-6 text-primary" />
             {t("title")} <TourReplayButton tourId="journeys" /> <HelpButton slug="campaign-orchestrator" variant="label" />
-          </h1>
+          </>
+        }
+        titleTourId="journeys-header"
+        description={
           <p className="text-sm text-muted-foreground">
             {t("subtitle")}
           </p>
-        </div>
-        <Button data-tour-id="journeys-new" onClick={() => { setEditData(undefined); setShowForm(true) }} className="gap-1.5">
-          <Plus className="h-4 w-4" /> {t("newJourney")}
-        </Button>
-      </div>
+        }
+        actions={
+          <Button data-tour-id="journeys-new" onClick={() => { setEditData(undefined); setShowForm(true) }} className="gap-1.5">
+            <Plus className="h-4 w-4" /> {t("newJourney")}
+          </Button>
+        }
+      />
 
       <PageDescription text={t("pageDescription")} />
       <DidYouKnow page="journeys" className="mb-4" />

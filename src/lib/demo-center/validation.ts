@@ -74,10 +74,10 @@ export const demoOtpSchema = z.object({
   code: z.string().trim().regex(/^\d{6}$/),
 })
 
-export const demoPhoneCodeSchema = z.union([
-  z.object({ useRequestPhone: z.literal(true) }).strict(),
-  z.object({ phone: z.string().trim().min(7).max(32) }).strict(),
-])
+/** The AI calls only the phone the prospect gave on the request form (owner
+ *  decision 2026-09-22): the browser cannot name any other number, so a demo
+ *  cannot be used to point the agent at somebody else's phone. */
+export const demoPhoneCodeSchema = z.object({ useRequestPhone: z.literal(true) }).strict()
 
 export const demoPhoneVerifySchema = z.object({
   code: z.string().trim().regex(/^\d{6}$/),

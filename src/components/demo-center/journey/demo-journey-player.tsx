@@ -131,6 +131,9 @@ export function DemoJourneyPlayer({
   const [viewSectionId, setViewSectionId] = useState<string | null>(null)
   const [anchorMissing, setAnchorMissing] = useState(false)
   const [resultBanner, setResultBanner] = useState<string | null>(null)
+  // The step whose coach card the prospect put away (× or Escape). A new step
+  // brings its own card back; this one stays in the guide panel.
+  const [hiddenCoachKey, setHiddenCoachKey] = useState<string | null>(null)
   const liveRegionRef = useRef<HTMLParagraphElement>(null)
 
   // Only a granted session tells the server how far it got (telemetry.ts):
@@ -293,6 +296,8 @@ export function DemoJourneyPlayer({
 
   const canBack = !reviewMode && stepIndex > 0
   const canSkip = !reviewMode && !!step && !step.required
+  const coachKey = step ? `${snapshot.sectionId}:${step.id}` : null
+  const coachShown = Boolean(step && Scene) && hiddenCoachKey !== coachKey
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -350,6 +355,7 @@ export function DemoJourneyPlayer({
             reachableRoutes={reachable}
             activeRoute={activeRoute}
             onNavigate={navigate}
+            onLocked={(label) => hint(S.sectionLater(label))}
           />
           {/* One shrinkable column below lg: without it the implicit auto column
               took the guide panel's min-content width (343px on a 375px
@@ -369,7 +375,8 @@ export function DemoJourneyPlayer({
               reviewMode={reviewMode}
               variant={variant}
               anchorMissing={anchorMissing}
-              sceneHasCoachMark={Boolean(Scene)}
+              sceneHasCoachMark={coachShown}
+              onShowCoach={step && Scene && !coachShown ? () => setHiddenCoachKey(null) : undefined}
               resultBanner={resultBanner}
               canBack={canBack}
               canSkip={canSkip}
@@ -391,7 +398,7 @@ export function DemoJourneyPlayer({
 
         <p ref={liveRegionRef} className="sr-only" role="status" aria-live="polite" />
 
-        {step && Scene && (
+        {step && coachShown && (
           <DemoCoachMark
             stepKey={`${snapshot.sectionId}:${step.id}`}
             anchor={step.anchor}
@@ -405,6 +412,7 @@ export function DemoJourneyPlayer({
             onNext={() => dispatch({ type: "complete-step", stepId: step.id })}
             onBack={goBack}
             onSkip={() => dispatch({ type: "skip-step", stepId: step.id })}
+            onClose={() => setHiddenCoachKey(coachKey)}
             onMissing={setAnchorMissing}
           />
         )}

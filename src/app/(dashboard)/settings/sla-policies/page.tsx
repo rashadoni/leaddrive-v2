@@ -14,6 +14,7 @@ import { Plus, Pencil, Trash2, Clock } from "lucide-react"
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
+import { PageHeader } from "@/components/page-header"
 
 interface SlaPolicy extends Record<string, unknown> {
   id: string
@@ -113,18 +114,25 @@ export default function SlaPoliciesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 data-tour-id="sla-header" className="text-2xl font-bold tracking-tight flex items-center gap-2">
+      <PageHeader
+        title={
+          <>
             <Clock className="h-6 w-6" /> {t("slaPolicies")} <TourReplayButton tourId="slaPolicies" /><HelpButton slug="sla-policies" variant="label" />
-          </h1>
-          <p className="text-sm text-muted-foreground">{t("slaPoliciesDesc")}</p>
-          <p className="text-sm text-muted-foreground mt-1">{t("hintSla")}</p>
-        </div>
-        <Button className="gap-2" onClick={() => { setEditData(undefined); setShowForm(true) }}>
-          <Plus className="h-4 w-4" /> {t("addSlaPolicy")}
-        </Button>
-      </div>
+          </>
+        }
+        titleTourId="sla-header"
+        description={
+          <>
+            <p className="text-sm text-muted-foreground">{t("slaPoliciesDesc")}</p>
+            <p className="text-sm text-muted-foreground mt-1">{t("hintSla")}</p>
+          </>
+        }
+        actions={
+          <Button className="gap-2" onClick={() => { setEditData(undefined); setShowForm(true) }}>
+            <Plus className="h-4 w-4" /> {t("addSlaPolicy")}
+          </Button>
+        }
+      />
 
       <Card>
         <CardHeader>

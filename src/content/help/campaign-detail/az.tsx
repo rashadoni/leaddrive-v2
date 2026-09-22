@@ -43,11 +43,12 @@ export default function CampaigndetailHelpAz() {
         </p>
         <p>
           Başlığın altında iki sıra rəqəm kartı var. Birinci sıra dörd rəngli kartdır:{" "}
-          <strong>Göndərildi</strong> (çatdırılmış say — göndərilən minus geri dönmələr),{" "}
-          <strong>Bounces</strong> (geri dönmələr), <strong>Unsubscribes</strong> (abunəlikdən
-          çıxanlar) və <strong>Spam</strong>. İkinci sıra: <strong>Açılışlar</strong>,{" "}
-          <strong>Açılma faizi</strong>, <strong>Kliklər</strong> və <strong>Klik faizi</strong> —
-          hər birinin üzərinə gələndə qısa izah görünür.
+          <strong>Göndərildi</strong>, <strong>Bounces</strong> (geri dönmələr),{" "}
+          <strong>Unsubscribes</strong> (abunəlikdən çıxanlar) və <strong>Spam</strong>. İkinci sıra:{" "}
+          <strong>Açılışlar</strong>, <strong>Açılma faizi</strong>, <strong>Kliklər</strong> və{" "}
+          <strong>Klik faizi</strong> — ⓘ üzərinə gələndə qısa izah görünür. Açılma, klik, geri dönmə
+          və spam şikayətləri yalnız e-poçt kampaniyalarında qeydə alınır: SMS, WhatsApp və Telegram
+          kampaniyalarında — və göndərilməmiş istənilən kampaniyada — bu kartlarda 0 yox, «—» görünür.
         </p>
         <p>
           Daha aşağıda tablar gəlir: <HelpKey>Yazmaq</HelpKey> (yalnız qaralamada),{" "}
@@ -56,12 +57,12 @@ export default function CampaigndetailHelpAz() {
           <HelpKey>A/B test nəticələri</HelpKey> tabı.
         </p>
         <dl className="rounded-md border p-3">
-          <HelpDef term="Göndərildi (yaşıl kart)">Çatdırılmış mesajların sayı — göndərilən ümumi saydan geri dönmələr çıxılmaqla.</HelpDef>
-          <HelpDef term="Bounces">Geri dönmüş (çatdırıla bilməyən) mesajların sayı.</HelpDef>
-          <HelpDef term="Unsubscribes">Bu kampaniyadan sonra abunəlikdən çıxan alıcıların sayı.</HelpDef>
-          <HelpDef term="Spam">Spam kimi işarələnmiş mesajların sayı.</HelpDef>
-          <HelpDef term="Açılma faizi">Mesajı açan alıcıların faizi (açılış ÷ göndərilən).</HelpDef>
-          <HelpDef term="Klik faizi">Mesajdakı linkə klikləyən alıcıların faizi.</HelpDef>
+          <HelpDef term="Göndərildi (yaşıl kart)">Göndərilmiş mesajların sayı.</HelpDef>
+          <HelpDef term="Bounces">Alıcının poçt serverinin qəbul etmədiyi məktublar — e-poçt provayderinin hesabatına görə.</HelpDef>
+          <HelpDef term="Unsubscribes">Artıq abunəlikdən çıxdığı üçün göndərişdə buraxılan alıcılar.</HelpDef>
+          <HelpDef term="Spam">Məktubu spam kimi işarələyən alıcılar — e-poçt provayderinin hesabatına görə.</HelpDef>
+          <HelpDef term="Açılma faizi">Göndərilmiş məktublardan açılanların payı (açılış ÷ göndərilən); hər alıcı bir dəfə sayılır.</HelpDef>
+          <HelpDef term="Klik faizi">Göndərilmiş məktublardan linkə keçilənlərin payı (klik ÷ göndərilən).</HelpDef>
           <HelpDef term="Status">Kampaniyanın mərhələsi — düymələrin və tabların hansının görünməsini müəyyən edir.</HelpDef>
         </dl>
       </HelpSection>
@@ -139,7 +140,7 @@ export default function CampaigndetailHelpAz() {
           </p>
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
             Hər sətirdə adın yanında faiz rəqəmi və altında dolma zolağı var — açılma mavi, klik yaşıl,
-            geri dönmə qırmızı rəngdə.
+            geri dönmə qırmızı rəngdə. Kanalın qeydə almadığı göstərici «—» və boş zolaqla görünür.
           </HelpCallout>
         </HelpStep>
         <HelpStep n={3}>

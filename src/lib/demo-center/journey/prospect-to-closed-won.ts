@@ -26,8 +26,6 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
     "/boards",
     "/deals",
     "/quotes",
-    "/contacts",
-    "/dashboard",
   ],
   capabilities: {
     emailVerification: true,

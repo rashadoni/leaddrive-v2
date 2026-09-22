@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Brain, Sparkles, RefreshCw, Target, TrendingUp, Users, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PageDescription } from "@/components/page-description"
+import { PageHeader } from "@/components/page-header"
 import { LeadItemModal } from "@/components/lead-item-modal"
 import { HelpButton } from "@/components/help/help-button"
 import { averageProbability } from "@/lib/leads/conversion-probability"
@@ -177,22 +178,25 @@ export default function LeadScoringPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">{tai("title")} <HelpButton slug="lead-scoring" variant="label" /></h1>
+      <PageHeader
+        title={<>{tai("title")} <HelpButton slug="lead-scoring" variant="label" /></>}
+        titleClassName="text-3xl font-bold"
+        description={
           <p className="text-muted-foreground mt-1">
             {tai("subtitle")}
           </p>
-        </div>
-        <Button onClick={scoreAll} disabled={scoring || loading} className="ai-glow">
-          {scoring ? (
-            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Sparkles className="mr-2 h-4 w-4" />
-          )}
-          {scoring ? tc("loading") : tai("newAgent")}
-        </Button>
-      </div>
+        }
+        actions={
+          <Button onClick={scoreAll} disabled={scoring || loading} className="ai-glow">
+            {scoring ? (
+              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="mr-2 h-4 w-4" />
+            )}
+            {scoring ? tc("loading") : tai("newAgent")}
+          </Button>
+        }
+      />
 
       <PageDescription text={tai("hintLeadScoringPageDescription")} />
 

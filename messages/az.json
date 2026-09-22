@@ -3536,16 +3536,23 @@
     "pageDescription": "Marketinq kampaniyaları: email/SMS göndərin, WhatsApp/Telegram broadcast-larını yoxlayın və çatdırılma/engagement göstəricilərini izləyin",
     "hintTotalCampaigns": "Ümumi marketinq kampaniyalarının sayı",
     "hintSentMonth": "Cari ayda göndərilmiş kampaniyalar",
-    "hintOpenRate": "Mesajı açan alıcıların faizi",
-    "hintClickRate": "Mesajdakı linkə kliklənmiş alıcıların faizi",
+    "hintOpenRate": "Göndərilmiş məktublardan açılanların payı",
+    "hintClickRate": "Göndərilmiş məktublardan linkə keçilənlərin payı",
     "hintColName": "Kampaniyanın adı",
     "hintColType": "Kanal növü: Email, SMS, WhatsApp və ya Telegram",
     "hintColStatus": "Status: Qaralama → Planlaşdırılıb → Göndərilir → Göndərilib",
     "hintColRecipients": "Hədəf alıcıların sayı",
     "hintColOpened": "Mesajı açan alıcıların sayı",
     "hintColClicked": "Linkə klik edən alıcıların sayı",
-    "hintOpens": "Kampaniyanın ümumi açılma sayı",
-    "hintClicks": "Kampaniyada linklərə ümumi klik sayı",
+    "hintOpens": "Məktubu açan alıcılar — hər biri bir dəfə sayılır. Yalnız e-poçt üçün qeydə alınır.",
+    "hintClicks": "Linkə keçən alıcılar — hər biri bir dəfə sayılır. Yalnız e-poçt üçün qeydə alınır.",
+    "hintStatusDraft": "Hələ göndərilməmiş kampaniyalar. Onları redaktə etmək olar.",
+    "hintStatusScheduled": "Göndərmə vaxtı təyin olunmuş kampaniyalar. Hər biri öz vaxtında özü göndərilir.",
+    "hintStatusSent": "Ən azı bir alıcıya çatmış kampaniyalar. A/B test qalib variant göndəriləndən sonra burada sayılır.",
+    "hintBounces": "Alıcının poçt serverinin qəbul etmədiyi məktublar — e-poçt provayderinin hesabatına görə.",
+    "hintUnsubscribes": "Artıq abunəlikdən çıxdığı üçün göndərişdə buraxılan alıcılar.",
+    "hintSpam": "Məktubu spam kimi işarələyən alıcılar — e-poçt provayderinin hesabatına görə.",
+    "detailEngagementEmailOnly": "Açılmalar, kliklər, geri qayıtmalar və spam şikayətləri yalnız e-poçt kampaniyaları üçün qeydə alınır.",
     "kpiSent": "Göndərilib",
     "kpiOpenRate": "Açılma",
     "kpiClickRate": "Klik",
@@ -6500,7 +6507,7 @@
     },
     "leads": {
       "listTitle": "Konversiyaya fokuslanın",
-      "listDesc": "AI balına görə sıralayın — ən isti lidlər yuxarıda. A dərəcəsi 5x daha çox konversiya edir — 24 saat ərzində zəng edin.",
+      "listDesc": "Bala görə sıralayın — ilk növbədə işlənməli lidlər yuxarıya çıxacaq. Dərəcə A-dan (ən yüksək bal) F-ə qədərdir — A lidlərindən başlayın.",
       "scoreTitle": "Ən çox satıcının rəyi nəzərə alınır",
       "scoreDesc": "Bala ən çox lidin kvalifikasiyası təsir edir, sonra əlaqə vasitələri: telefon, WhatsApp, Telegram, email. Bal lid hər dəfə saxlananda yenidən hesablanır — kvalifikasiyanı saxlayan kimi yenilənir.",
       "statusTitle": "Kvalifikasiya hunisi",
@@ -14183,7 +14190,8 @@
   },
   "admin": {
     "demoCenter": {
-      "liveCallUnavailable": "PBX hər zəng üçün ayrıca təlimat istəməyə başlayanda əlçatan olacaq — o vaxta qədər demo zəngi xəttin indiki adından danışardı.",
+      "liveCallUnavailable": "Dayandırılıb: son cavablanan demo zəngi demo ssenarisini almadı, ona görə PBX-in təlimat sorğuları yoxlanana qədər yeni demo zəngi edilmir.",
+      "liveCallNoPhone": "Sorğuda Azərbaycan mobil nömrəsi yoxdur, zəng isə yalnız sorğudakı nömrəyə edilir.",
       "journeyProgress": "Ssenarinin gedişi",
       "journeyNoActivity": "Ssenari hələ heç nə bildirməyib.",
       "journeySections": "{total} bölmədən {done}",
@@ -22181,45 +22189,43 @@
     }
   },
   "formsListPage": {
-    "formsListPage": {
-      "title": "Formalar",
-      "subtitleBeforeUrl": "Açıq URL-i olan müstəqil formalar. İstənilən yerə yerləşdirin və ya birbaşa",
-      "subtitleAfterUrl": "paylaşın.",
-      "loading": "Yüklənir…",
-      "col": {
-        "name": "Ad",
-        "status": "Status",
-        "views": "Baxışlar",
-        "submissions": "Göndərmələr",
-        "publicUrl": "Açıq URL"
-      },
-      "status": {
-        "draft": "Qaralama",
-        "published": "Dərc edilib",
-        "archived": "Arxivləşdirilib"
-      },
-      "actions": {
-        "newForm": "Yeni forma",
-        "edit": "Redaktə et",
-        "cancel": "Ləğv et"
-      },
-      "empty": {
-        "title": "Hələ forma yoxdur.",
-        "cta": "İlk formanızı yaradın"
-      },
-      "dialog": {
-        "title": "Yeni forma",
-        "nameLabel": "Ad",
-        "namePlaceholder": "Bizimlə əlaqə",
-        "slugLabel": "Slug (açıq URL)",
-        "slugPlaceholder": "contact-us",
-        "slugHint": "Yalnız kiçik hərflər və defislər. 1–64 simvol. Yaradıldıqdan sonra dəyişdirilə bilməz.",
-        "creating": "Yaradılır…",
-        "createDraft": "Qaralama yarat"
-      },
-      "toast": {
-        "createFailed": "Yaradıla bilmədi"
-      }
+    "title": "Formalar",
+    "subtitleBeforeUrl": "Açıq URL-i olan müstəqil formalar. İstənilən yerə yerləşdirin və ya birbaşa",
+    "subtitleAfterUrl": "paylaşın.",
+    "loading": "Yüklənir…",
+    "col": {
+      "name": "Ad",
+      "status": "Status",
+      "views": "Baxışlar",
+      "submissions": "Göndərmələr",
+      "publicUrl": "Açıq URL"
+    },
+    "status": {
+      "draft": "Qaralama",
+      "published": "Dərc edilib",
+      "archived": "Arxivləşdirilib"
+    },
+    "actions": {
+      "newForm": "Yeni forma",
+      "edit": "Redaktə et",
+      "cancel": "Ləğv et"
+    },
+    "empty": {
+      "title": "Hələ forma yoxdur.",
+      "cta": "İlk formanızı yaradın"
+    },
+    "dialog": {
+      "title": "Yeni forma",
+      "nameLabel": "Ad",
+      "namePlaceholder": "Bizimlə əlaqə",
+      "slugLabel": "Slug (açıq URL)",
+      "slugPlaceholder": "contact-us",
+      "slugHint": "Yalnız kiçik hərflər və defislər. 1–64 simvol. Yaradıldıqdan sonra dəyişdirilə bilməz.",
+      "creating": "Yaradılır…",
+      "createDraft": "Qaralama yarat"
+    },
+    "toast": {
+      "createFailed": "Yaradıla bilmədi"
     }
   },
   "formsDetailPage": {

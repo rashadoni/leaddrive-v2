@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react"
 import { useReducedMotion } from "framer-motion"
-import { ChevronLeft, ChevronRight, SkipForward } from "lucide-react"
+import { ChevronLeft, ChevronRight, SkipForward, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { DemoStepPlacement } from "@/lib/demo-center/journey"
@@ -19,7 +19,11 @@ import { DEMO_JOURNEY_STRINGS as S } from "./strings"
  *   - a missing anchor is reported (`onMissing`) instead of silently
  *     skipping the step;
  *   - action steps show no «Next»: they close only when the state changes;
- *   - Escape does not dismiss a required step.
+ *   - × and Escape hide the card and its dim and nothing else: the step is
+ *     neither completed nor skipped, stays in the guide panel, and the
+ *     panel can bring the card back. Without them the card could not be
+ *     put away at all and covered the page it was talking about (reported
+ *     by the owner 2026-09-22 on «Sizi gətirən kampaniya»).
  */
 
 interface Rect {
@@ -43,6 +47,8 @@ export interface DemoCoachMarkProps {
   onNext: () => void
   onBack: () => void
   onSkip: () => void
+  /** Hides the card for this step; the step itself is untouched. */
+  onClose: () => void
   onMissing: (missing: boolean) => void
 }
 
@@ -69,9 +75,23 @@ export function DemoCoachMark({
   onNext,
   onBack,
   onSkip,
+  onClose,
   onMissing,
 }: DemoCoachMarkProps) {
   const reducedMotion = useReducedMotion()
+
+  // Escape puts the card away, like the ×; it never completes a step.
+  const closeRef = useRef(onClose)
+  useEffect(() => {
+    closeRef.current = onClose
+  }, [onClose])
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeRef.current()
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [])
   const [rect, setRect] = useState<Rect | null>(null)
   const [size, setSize] = useState({ width: 340, height: 160 })
   const popoverRef = useRef<HTMLDivElement>(null)
@@ -222,7 +242,19 @@ export function DemoCoachMark({
           !reducedMotion && "animate-in fade-in duration-200",
         )}
       >
-        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{counter}</p>
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{counter}</p>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={S.coachClose}
+            title={S.coachClose}
+            data-testid="demo-coach-close"
+            className="-mr-1 -mt-1 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
         <p className="mt-1 text-sm font-semibold leading-tight">{title}</p>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{instruction}</p>
         <div className="mt-3 flex items-center justify-between gap-2">

@@ -11,6 +11,8 @@ export interface DemoLiveCallState {
   enabled: boolean
   requestPhoneUsable: boolean
   phoneVerified: boolean
+  /** This demo's one call was already placed: watch it, never offer another. */
+  callPlaced?: boolean
 }
 
 type Stage = "phone" | "code" | "ready" | "waiting"
@@ -20,8 +22,9 @@ const POLL_MS = 3_000
 const GIVE_UP_MS = 15 * 60_000
 
 /**
- * The prospect's side of the one real AI call: prove a phone, agree, ask for
- * the call, and watch what happens. The story moves on only with what the
+ * The prospect's side of the one real AI call: prove the phone on their own
+ * request (no other number can be named — owner decision 2026-09-22), agree,
+ * ask for the call, and watch what happens. The story moves on only with what the
  * server reports — answered, missed, busy, refused, uncertain — or with the
  * prospect's own choice to continue without a call. Nothing here decides an
  * outcome by itself.
@@ -35,12 +38,11 @@ export function DemoLiveCall({
   initial: DemoLiveCallState
   onOutcome: (to: DemoJourneyState) => void
 }) {
-  const [stage, setStage] = useState<Stage>(initial.phoneVerified ? "ready" : "phone")
-  const [phone, setPhone] = useState("")
+  const [stage, setStage] = useState<Stage>(initial.callPlaced ? "waiting" : initial.phoneVerified ? "ready" : "phone")
   const [code, setCode] = useState("")
   const [consent, setConsent] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [notice, setNotice] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(initial.callPlaced ? S.liveCallOnlyOnce : null)
   const [blocked, setBlocked] = useState<{ retryable: boolean } | null>(null)
   const [phase, setPhase] = useState<"queued" | "calling">("queued")
   const startedAt = useRef<number | null>(null)
@@ -90,10 +92,10 @@ export function DemoLiveCall({
     }
   }, [stage, base])
 
-  async function sendCode(useRequestPhone: boolean) {
+  async function sendCode() {
     setBusy(true)
     setNotice(null)
-    const payload = await post("/phone", useRequestPhone ? { useRequestPhone: true } : { phone })
+    const payload = await post("/phone", { useRequestPhone: true })
     setBusy(false)
     if (payload.success) {
       setStage(payload.state === "verified" ? "ready" : "code")
@@ -122,6 +124,7 @@ export function DemoLiveCall({
     const payload = await post("/call")
     setBusy(false)
     if (payload.success) {
+      if (payload.alreadyCalled) setNotice(S.liveCallOnlyOnce)
       if (payload.phase === "ended" && payload.outcome) {
         onOutcome(payload.outcome as DemoJourneyState)
         return
@@ -145,30 +148,18 @@ export function DemoLiveCall({
       <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-orange-800 dark:text-orange-300">
         <PhoneCall className="h-3.5 w-3.5" aria-hidden="true" /> {S.liveCallTitle}
       </p>
+      <p className="mt-1 leading-relaxed text-muted-foreground">{S.liveCallRules}</p>
 
       {stage === "phone" ? (
         <div className="mt-2 space-y-2">
           <p className="leading-relaxed text-muted-foreground">{S.liveCallIntro}</p>
           {initial.requestPhoneUsable ? (
-            <Button size="sm" className="h-8 w-full" disabled={busy} onClick={() => sendCode(true)}>
+            <Button size="sm" className="h-8 w-full" disabled={busy} onClick={sendCode}>
               {S.liveCallUseRequestPhone}
             </Button>
-          ) : null}
-          <div className="flex gap-1.5">
-            <input
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              value={phone}
-              onChange={(event) => setPhone(event.target.value.slice(0, 32))}
-              placeholder={S.liveCallPhonePlaceholder}
-              aria-label={S.liveCallOtherPhone}
-              className="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs"
-            />
-            <Button size="sm" variant="outline" className="h-8" disabled={busy || phone.trim().length < 7} onClick={() => sendCode(false)}>
-              {S.liveCallSendCode}
-            </Button>
-          </div>
+          ) : (
+            <p className="leading-relaxed text-amber-900 dark:text-amber-200">{S.liveCallNoRequestPhone}</p>
+          )}
         </div>
       ) : null}
 

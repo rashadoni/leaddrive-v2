@@ -67,6 +67,7 @@ const CATEGORY_BADGE_CLASSES: Record<string, string> = {
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
+import { PageHeader } from "@/components/page-header"
 
 export default function ContactsPage() {
   const router = useRouter()
@@ -319,19 +320,19 @@ export default function ContactsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">{t("title")} <TourReplayButton tourId="contacts" /><HelpButton slug="contacts-list" variant="label" /></h1>
-          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => router.push("/contacts/segments")} className="gap-1.5">
-            <BarChart3 className="h-4 w-4" /> Insights
-          </Button>
-          <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="h-4 w-4 mr-1" /> CSV Import</Button>
-          <Button onClick={handleAdd} data-tour-id="contacts-new"><Plus className="h-4 w-4 mr-1" /> {t("addContact")}</Button>
-        </div>
-      </div>
+      <PageHeader
+        title={<>{t("title")} <TourReplayButton tourId="contacts" /><HelpButton slug="contacts-list" variant="label" /></>}
+        description={<p className="text-sm text-muted-foreground">{t("subtitle")}</p>}
+        actions={
+          <>
+            <Button variant="outline" onClick={() => router.push("/contacts/segments")} className="gap-1.5">
+              <BarChart3 className="h-4 w-4" /> Insights
+            </Button>
+            <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="h-4 w-4 mr-1" /> CSV Import</Button>
+            <Button onClick={handleAdd} data-tour-id="contacts-new"><Plus className="h-4 w-4 mr-1" /> {t("addContact")}</Button>
+          </>
+        }
+      />
 
       <PageDescription text={t("pageDescription")} />
       <DidYouKnow page="contacts" className="mb-4" />

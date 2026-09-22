@@ -37,7 +37,8 @@ export default function CampaignsHelpAz() {
           <HelpKey>Siyahı</HelpKey>) və mavi <HelpKey>Yeni kampaniya</HelpKey> düyməsi. Onların altında
           beş status kartı durur: <strong>Qaralama</strong>, <strong>Planlaşdırılıb</strong>,{" "}
           <strong>Göndərilir</strong>, <strong>Göndərildi</strong> və <strong>Ləğv edildi</strong> —
-          hər biri həmin statusda olan kampaniyaların sayını göstərir.
+          hər biri həmin statusda olan kampaniyaların sayını göstərir. Kartın nəyi saydığını adının
+          yanındakı ⓘ nişanı göstərir.
         </p>
         <p>
           <HelpKey>Siyahı</HelpKey> tabında status kartlarının altında bir axtarış sahəsi, sonra isə
@@ -53,7 +54,7 @@ export default function CampaignsHelpAz() {
           <HelpDef term="Göndərilir">Hazırda alıcılara göndərilməkdə olan kampaniya.</HelpDef>
           <HelpDef term="Göndərildi">Göndərmə bitmiş kampaniya — bundan sonra kart yalnız oxunan icmal kimi açılır.</HelpDef>
           <HelpDef term="Ləğv edildi">Dayandırılmış və ya ləğv edilmiş kampaniya.</HelpDef>
-          <HelpDef term="Növ">Kanal: <strong>Email</strong> (📧) və ya <strong>SMS</strong> (📱).</HelpDef>
+          <HelpDef term="Növ">Kanal: <strong>Email</strong>, <strong>SMS</strong>, <strong>WhatsApp</strong> və ya <strong>Telegram</strong>.</HelpDef>
           <HelpDef term="Alıcılar">Kampaniyanın hədəflədiyi kontakt/lid sayı (kartda insan ikonası ilə göstərilir).</HelpDef>
           <HelpDef term="A/B test">İki və ya daha çox variantı (mövzu, məzmun və ya göndərmə vaxtı) kiçik auditoriyada yoxlayıb qalibi seçmək imkanı.</HelpDef>
         </dl>
@@ -230,8 +231,10 @@ export default function CampaignsHelpAz() {
         <HelpCallout kind="see" label="Ekranda görəcəksiniz">
           Bütün rəqəmlər təşkilatınızın öz qeydlərindən götürülür. Açılma və klik faizləri yalnız bu
           addımı qeydə alan kanalın kampaniyaları üzrə hesablanır, ona görə SMS göndərişləri açılma
-          faizini aşağı salmır. Rəqəmi heç bir qeyd saxlamırsa — hələ heç bir bounce qeydə alınmayıbsa
-          və ya kampaniyaya bağlı qazanılmış sövdələşmə yoxdursa ROI — kartda «—» və səbəbi görünür.
+          faizini aşağı salmır. Açılma, klik və bounce yalnız e-poçt kampaniyalarında qeydə alınır;
+          bounce e-poçt provayderinin çatdırılma hesabatlarından gəlir. Rəqəmi heç bir qeyd
+          saxlamırsa — məsələn, hələ heç bir e-poçt kampaniyası göndərilməyibsə bounce, və ya
+          kampaniyaya bağlı qazanılmış sövdələşmə yoxdursa ROI — kartda «—» və səbəbi görünür.
           ROI «Kampaniya ROI» səhifəsindəki eyni rəqəmdir: yalnız qazanılmış sövdələşmələr və
           göndərilmiş kampaniyaların büdcələri bir valyutada olanda rəqəm görünür.
           «Ən yaxşı kampaniyalar» klik sayına görə sıralanır. «Seqmentlər», «Avtomatlaşdırma» və

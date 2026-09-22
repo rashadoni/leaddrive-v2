@@ -3,6 +3,7 @@ import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
 import { applyLeadAssignmentRules } from "@/lib/lead-assignment"
+import { scoreLeadNow } from "@/lib/ai/lead-scoring"
 import { sanitizeForPrompt } from "@/lib/sanitize"
 import { clientIp } from "@/lib/request-ip"
 import {
@@ -177,6 +178,10 @@ export async function POST(request: NextRequest) {
     // async assignment rules run, in which case the touch is initially unowned).
     const { autoEnrollLeadIntoSequences } = await import("@/lib/sequences-auto-enroll")
     await autoEnrollLeadIntoSequences({ organizationId: org.id, userId: null, leadId: lead.id, source: lead.source })
+
+    // Scored now, inside the tenant scope, so the lead does not sit at a
+    // placeholder 0/100 until someone saves it (never throws).
+    await scoreLeadNow(org.id, lead.id)
 
     // Keep the success envelope independent of tenant existence. Returning the
     // database id only for a real slug turned the old "generic" response into

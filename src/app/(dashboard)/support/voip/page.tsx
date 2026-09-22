@@ -22,6 +22,7 @@ import {
 } from "@/lib/calls/disposition"
 import { MissedInboundQueue } from "@/components/voip/missed-inbound-queue"
 import { CallJournalDetail } from "@/components/voip/call-journal-detail"
+import { PageHeader } from "@/components/page-header"
 import { isManagerOrAbove } from "@/lib/constants"
 
 interface CallLog {
@@ -125,36 +126,38 @@ export default function VoipCallsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+      <PageHeader
+        title={
+          <>
             <Phone className="h-6 w-6 text-violet-600" />
             {t("title")}
             <HelpButton slug="voip" variant="label" />
-          </h1>
-          <PageDescription text={t("description")} />
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card text-sm">
-            {testLoading ? (
-              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-            ) : (
-              <div className={cn("h-2 w-2 rounded-full", connectionOk === true ? "bg-green-500" : connectionOk === false ? "bg-red-500" : "bg-gray-400")} />
-            )}
-            <span className="text-muted-foreground">
-              {connectionOk === true ? t("connectionConnected") : connectionOk === false ? t("connectionDisconnected") : t("connectionChecking")}
-            </span>
-          </div>
-          <Button variant="outline" size="sm" onClick={testConnection} className="gap-1.5">
-            <RefreshCw className="h-3.5 w-3.5" /> {t("testConnection")}
-          </Button>
-          <Link href="/settings/voip">
-            <Button variant="outline" size="sm" className="gap-1.5">
-              <Settings className="h-3.5 w-3.5" /> {tc("settings")}
+          </>
+        }
+        description={<PageDescription text={t("description")} />}
+        actions={
+          <>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-card text-sm">
+              {testLoading ? (
+                <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+              ) : (
+                <div className={cn("h-2 w-2 rounded-full", connectionOk === true ? "bg-green-500" : connectionOk === false ? "bg-red-500" : "bg-gray-400")} />
+              )}
+              <span className="text-muted-foreground">
+                {connectionOk === true ? t("connectionConnected") : connectionOk === false ? t("connectionDisconnected") : t("connectionChecking")}
+              </span>
+            </div>
+            <Button variant="outline" size="sm" onClick={testConnection} className="gap-1.5">
+              <RefreshCw className="h-3.5 w-3.5" /> {t("testConnection")}
             </Button>
-          </Link>
-        </div>
-      </div>
+            <Link href="/settings/voip">
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <Settings className="h-3.5 w-3.5" /> {tc("settings")}
+              </Button>
+            </Link>
+          </>
+        }
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4">

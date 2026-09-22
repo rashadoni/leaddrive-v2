@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 
 /**
@@ -243,7 +244,26 @@ const SCORE_FIELDS = {
   estimatedValue: true,
   notes: true,
   createdAt: true,
+  scoreDetails: true,
 } as const
+
+/**
+ * What a scorer writes into `scoreDetails`: its explanation of the number.
+ *
+ * Everything else in that JSON belongs to whoever put it there. TikTok Lead Ads
+ * keep the provider's lead id in it and find their own leads again by it, so a
+ * rescore that replaced the whole object turned every retry of that webhook into
+ * a phone/email guess. The manual Da Vinci keys are on the list because a rescore
+ * has to drop them: a reasoning written for another number is worse than none.
+ */
+const SCORE_EXPLANATION_KEYS = new Set(["factors", "conversionProb", "grade", "reasoning", "aiPowered"])
+
+function rescoredDetails(previous: unknown, factors: LeadScoreResult["factors"]): Prisma.InputJsonValue {
+  const kept = previous && typeof previous === "object" && !Array.isArray(previous)
+    ? Object.fromEntries(Object.entries(previous).filter(([key]) => !SCORE_EXPLANATION_KEYS.has(key)))
+    : {}
+  return { ...kept, factors } as Prisma.InputJsonValue
+}
 
 /**
  * Score one lead, now, because something happened to it.
@@ -267,7 +287,7 @@ export async function scoreLeadNow(orgId: string, leadId: string): Promise<numbe
     const result = await calculateLeadScore(orgId, lead)
     await prisma.lead.update({
       where: { id: lead.id },
-      data: { score: result.score, scoreDetails: { factors: result.factors }, lastScoredAt: new Date() },
+      data: { score: result.score, scoreDetails: rescoredDetails(lead.scoreDetails, result.factors), lastScoredAt: new Date() },
     })
     return result.score
   } catch (e) {
@@ -295,7 +315,7 @@ export async function recalculateOrgLeadScores(orgId: string): Promise<number> {
     await prisma.lead.update({
       where: { id: lead.id },
       // Stamped so that "never scored" and "scored badly" stop looking alike.
-      data: { score: result.score, scoreDetails: { factors: result.factors }, lastScoredAt: new Date() },
+      data: { score: result.score, scoreDetails: rescoredDetails(lead.scoreDetails, result.factors), lastScoredAt: new Date() },
     })
     updated++
   }

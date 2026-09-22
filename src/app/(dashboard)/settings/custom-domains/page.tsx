@@ -20,6 +20,7 @@ import { PageDescription } from "@/components/page-description"
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
+import { PageHeader } from "@/components/page-header"
 
 interface CustomDomain {
   id: string
@@ -153,20 +154,27 @@ export default function CustomDomainsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 data-tour-id="domains-header" className="text-2xl font-bold tracking-tight flex items-center gap-2">
+      <PageHeader
+        title={
+          <>
             <Globe className="h-6 w-6" />
             {t("title")} <TourReplayButton tourId="customDomains" /><HelpButton slug="custom-domains" variant="label" />
-          </h1>
-          <p className="text-muted-foreground">{t("subtitle")}</p>
-          <PageDescription text={t("description")} />
-        </div>
-        <Button onClick={() => setAddOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          {t("addDomain")}
-        </Button>
-      </div>
+          </>
+        }
+        titleTourId="domains-header"
+        description={
+          <>
+            <p className="text-muted-foreground">{t("subtitle")}</p>
+            <PageDescription text={t("description")} />
+          </>
+        }
+        actions={
+          <Button onClick={() => setAddOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            {t("addDomain")}
+          </Button>
+        }
+      />
 
       {/* How it works — always visible guide */}
       <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-gradient-to-br from-blue-50/80 to-indigo-50/50 dark:from-blue-950/30 dark:to-indigo-950/20 p-6">

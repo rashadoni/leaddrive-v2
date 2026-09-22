@@ -34,15 +34,15 @@ export const MAIL = "demo-journey.example"
 
 // Sent campaigns carry only the numbers the product itself records, so the
 // stand never looks better than a real tenant (src/lib/campaigns/analytics.ts):
-// opens and clicks exist for email alone, nothing writes bounces, and
-// unsubscribes are the recipients the send skipped. Nothing is left in a
+// opens, clicks and bounces exist for email alone (bounces arrive through the
+// Resend webhook), and unsubscribes are the recipients the send skipped. Nothing is left in a
 // state some worker would pick up and send ("sending", "ab_testing").
 export const CAMPAIGNS = [
   {
     name: "Payız kolleksiyası — divan və kreslolar",
     description: "Yeni divan və kreslo modelləri, 12 aya qədər hissə-hissə ödəniş.",
     type: "email", status: "sent", subject: "Payız kolleksiyası gəldi: divanlara 12 ay hissə-hissə ödəniş",
-    totalRecipients: 1847, totalSent: 1829, totalOpened: 763, totalClicked: 214, totalUnsubscribed: 7,
+    totalRecipients: 1847, totalSent: 1829, totalOpened: 763, totalClicked: 214, totalBounced: 18, totalUnsubscribed: 7,
     budget: 340, actualCost: 318, sentAt: daysAgo(16), createdAt: daysAgo(19),
   },
   {
