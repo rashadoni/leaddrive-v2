@@ -99,8 +99,17 @@ export function acceptJourneyReport(manifest: DemoJourneyManifest, report: DemoJ
   }
 }
 
-/** The reports one move of the story produced: what differs between two snapshots. */
-export function journeyReportsBetween(before: DemoJourneySnapshot, after: DemoJourneySnapshot): DemoJourneyReport[] {
+/**
+ * The reports one move of the story produced: what differs between two
+ * snapshots. A jump to another section (`jumped`) reports only that the
+ * section was opened: the states it staged were not moved through by the
+ * prospect, and a transition filed under the section they left would be
+ * refused by the server anyway.
+ */
+export function journeyReportsBetween(before: DemoJourneySnapshot, after: DemoJourneySnapshot, options: { jumped?: boolean } = {}): DemoJourneyReport[] {
+  if (options.jumped) {
+    return after.sectionId !== before.sectionId ? [{ eventType: "JOURNEY", name: "journey.section_opened", sectionId: after.sectionId }] : []
+  }
   const reports: DemoJourneyReport[] = []
   const done = new Set(before.completedSteps)
   for (const stepId of after.completedSteps) {
@@ -159,11 +168,15 @@ export function summarizeJourney(manifest: DemoJourneyManifest, rows: readonly J
   let lastState: string | null = null
   let completed = false
   const done = new Set<string>()
+  const opened = new Set<string>()
   const started: string[] = []
   const finished: string[] = []
   for (const row of sorted) {
     const sectionIndex = order.get(metadataField(row.metadata, "sectionId") ?? "")
-    if (sectionIndex !== undefined && row.eventType.startsWith("journey.")) furthest = Math.max(furthest, sectionIndex)
+    if (sectionIndex !== undefined && row.eventType.startsWith("journey.")) {
+      furthest = Math.max(furthest, sectionIndex)
+      opened.add(sections[sectionIndex].id)
+    }
     if (row.eventType === "journey.step_completed" && row.stepId && required.has(row.stepId)) done.add(row.stepId)
     if (row.eventType === "journey.transition") lastState = metadataField(row.metadata, "to") ?? lastState
     if (row.eventType === "journey.completed") completed = true
@@ -172,9 +185,18 @@ export function summarizeJourney(manifest: DemoJourneyManifest, rows: readonly J
     if (slug && row.eventType === "video.completed" && !finished.includes(slug)) finished.push(slug)
   }
 
+  // Walked, not reached: since a prospect can jump straight to any section
+  // (2026-09-22), the furthest section says nothing about the ones between.
+  // A section counts when its required steps were done (or, with none, when
+  // it was opened) — the rule the prospect's own chapter list uses.
+  const walked = sections.filter((section) => {
+    const requiredHere = section.steps.filter((step) => step.required)
+    return requiredHere.length ? requiredHere.every((step) => done.has(step.id)) : opened.has(section.id)
+  })
+
   return {
     sectionsTotal: sections.length,
-    sectionsReached: completed ? sections.length : furthest + 1,
+    sectionsReached: walked.length,
     furthestSectionId: furthest >= 0 ? sections[furthest].id : null,
     stepsRequired: required.size,
     stepsDone: done.size,

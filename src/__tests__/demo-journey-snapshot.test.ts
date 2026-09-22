@@ -94,8 +94,9 @@ describe("Journey snapshot: creation", () => {
     expect(activeSections(manifest).map((section) => section.id)).toEqual(manifest.sections.map((section) => section.id))
   })
 
-  it("only the orientation shell is reachable before the story moves", () => {
-    expect(reachableRoutes(snapshot, manifest)).toEqual([])
+  it("opens every section's route from the start: behind the story read-only, ahead of it by jumping", () => {
+    // Owner, 2026-09-22: a prospect who came for one module need not walk the rest first.
+    expect([...reachableRoutes(snapshot, manifest)].sort()).toEqual([...manifest.visibleRoutes].sort())
   })
 })
 

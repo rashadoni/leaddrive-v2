@@ -198,6 +198,28 @@ describe("the guided story, walked through the real screens", () => {
     })
     expect(walked).toEqual(stepIdsFrom("orientation"))
   }, 60_000)
+
+  it("starts where the prospect's interest is: the first screen opens the inbox at once", async () => {
+    await renderPlayer()
+    const inbox = document.querySelector<HTMLButtonElement>('[data-start-section="conversation"]')
+    expect(inbox, "the first screen offers the inbox").not.toBeNull()
+    await act(async () => inbox!.click())
+    await settle()
+    expect(frontier()).toMatchObject({ sectionId: "conversation", stepId: "conversation-views" })
+    // The scene the prospect lands on is the real inbox with their conversation, not an empty shell.
+    expect(document.querySelector('[data-demo-target~="conversation-open"]')).not.toBeNull()
+    expect(await walkToEnd()).toEqual(stepIdsFrom("conversation"))
+  }, 60_000)
+
+  it("opens a later section straight from the sidebar and carries on from there", async () => {
+    await renderPlayer()
+    const deals = document.querySelector<HTMLButtonElement>('[data-testid="demo-sidebar"] [data-nav-href="/deals"]')
+    expect(deals?.getAttribute("data-nav-locked")).toBeNull()
+    await act(async () => deals!.click())
+    await settle()
+    expect(frontier().sectionId).toBe("deal")
+    expect(await walkToEnd()).toEqual(stepIdsFrom("deal"))
+  }, 60_000)
 })
 
 describe("the arrow's controls", () => {

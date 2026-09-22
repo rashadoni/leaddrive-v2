@@ -34,4 +34,6 @@ export interface DemoSceneProps {
   variant: DemoJourneyVariant
   dispatch: (action: DemoJourneyAction) => DemoJourneyReduceResult
   hint: (message: string) => void
+  /** Opens a section ahead of the story, staging what lies in between (the orientation's «Nədən başlayaq?»). */
+  openSection?: (sectionId: string) => void
 }

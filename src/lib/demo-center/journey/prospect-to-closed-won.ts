@@ -313,7 +313,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
         {
           id: "lead-timeline",
           title: "Tarixçə itmir",
-          instruction: "«Qarşılıqlı əlaqələr» vərəqinə keçin: az əvvəl açdığınız dialoq və AI cavabı artıq buradadır.",
+          instruction: "«Qarşılıqlı əlaqələr» vərəqinə keçin: müraciətiniz, ona hazırlanan AI cavabı və kartın yaradılması artıq buradadır.",
           anchor: "lead-tabs",
           placement: "bottom",
           action: "click",

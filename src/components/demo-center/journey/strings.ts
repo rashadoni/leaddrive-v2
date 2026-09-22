@@ -17,6 +17,16 @@ export const DEMO_JOURNEY_STRINGS = {
   sessionAbsoluteTitle: "Sessiyanın mütləq limiti",
   sidebarAria: "Demo naviqasiyası",
   notReachable: "Bu bölməyə hələ gəlməmisiniz",
+  jumpedTo: (title: string, stoppedAtCall: boolean) =>
+    stoppedAtCall
+      ? `Real zəng addımı ötürülmür, ona görə əvvəlcə «${title}» açıldı. Əvvəlki addımlar sizin üçün hazırlandı.`
+      : `«${title}» açıldı. Əvvəlki addımlar sizin üçün hazırlandı — onlara menyudan və ya fəsillər siyahısından baxa bilərsiniz.`,
+  jumpWaitsForCall: "Əvvəlcə zəng panelində seçin: zəng edin və ya «Zəngsiz davam et» — sonra istənilən bölməyə keçə bilərsiniz.",
+  jumpRefused: "Bu bölmə hekayənin sonunda özü açılır.",
+  chapterPassed: "sizin üçün hazırlandı — baxmaq olar",
+  reviewPassedBody: "Bu bölmə sizin üçün hazırlanıb — addımlarını özünüz keçməmisiniz. Hekayə cari addımda sizi gözləyir.",
+  chooseTitle: "Nədən başlayaq?",
+  chooseBody: "Sizi maraqlandıran bölməni seçin — oraya dərhal keçəcəksiniz, əvvəlki addımlar isə avtomatik hazırlanacaq. Bütün hekayəni başdan izləmək üçün bələdçidə «İrəli» düyməsini basın.",
   sectionLater: (label: string) => `«${label}» hekayədə sonra açılacaq: bələdçi sizi ora özü aparacaq. Hazırkı addımı bitirin və davam edin.`,
   guide: "Bələdçi",
   sectionOf: (index: number, total: number) => `Bölmə ${index} / ${total}`,

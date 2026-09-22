@@ -14,7 +14,9 @@ import {
   journeyReportsBetween,
   parseSnapshot,
   reachableRoutes,
+  awaitingOutcome,
   reduceJourney,
+  sectionJumpTarget,
   serializeSnapshot,
   type DemoJourneyAction,
   type DemoJourneyManifest,
@@ -235,7 +237,7 @@ export function DemoJourneyPlayer({
       setSnapshot(result.snapshot)
       const reporter = reporterRef.current
       if (reporter) {
-        for (const report of journeyReportsBetween(snapshot, result.snapshot)) reporter.report(report)
+        for (const report of journeyReportsBetween(snapshot, result.snapshot, { jumped: action.type === "open-section" })) reporter.report(report)
         reporter.activity(result.snapshot.sectionId, result.snapshot.stepId)
       }
       if (result.completedStep) {
@@ -263,6 +265,38 @@ export function DemoJourneyPlayer({
   const step = reviewMode ? null : frontierStep
   const progress = journeyProgress(snapshot, manifest)
 
+  const frontierIndex = sections.findIndex((section) => section.id === frontierSection.id)
+
+  // Any section, any time (owner, 2026-09-22). Ahead of the story it jumps
+  // there and stages what lies between; behind it, it opens read-only.
+  const openSection = (sectionId: string) => {
+    const jump = sectionJumpTarget(snapshot, manifest, sectionId)
+    if (!jump.ok) {
+      hint(awaitingOutcome(snapshot, manifest) ? S.jumpWaitsForCall : S.jumpRefused)
+      return
+    }
+    const result = dispatch({ type: "open-section", sectionId })
+    if (!result.ok) return
+    setViewSectionId(null)
+    setAnchorMissing(false)
+    setResultBanner(S.jumpedTo(jump.section.title, jump.section.id !== sectionId))
+  }
+
+  const openChapter = (sectionId: string) => {
+    const index = sections.findIndex((section) => section.id === sectionId)
+    if (index === frontierIndex) {
+      // Back from review the coach mark searches again and reports; already
+      // on the frontier nothing changes, and the guide's recovery must stay.
+      if (reviewMode) {
+        setAnchorMissing(false)
+        setViewSectionId(null)
+      }
+    } else if (index >= 0 && index < frontierIndex) {
+      setAnchorMissing(false)
+      setViewSectionId(sectionId)
+    } else openSection(sectionId)
+  }
+
   const Scene = SCENES[viewSection.id]
   const sceneProps: DemoSceneProps = {
     manifest,
@@ -273,17 +307,22 @@ export function DemoJourneyPlayer({
     variant,
     dispatch,
     hint,
+    openSection,
   }
 
   const activeRoute = viewSection.navGroup === "demo" ? null : viewSection.route.replace(/\/\[[a-zA-Z]+\]$/, "")
 
   const navigate = (route: string) => {
-    const target = [...manifest.sections]
-      .reverse()
-      .find((section) => section.navGroup !== "demo" && section.route.replace(/\/\[[a-zA-Z]+\]$/, "") === route && snapshot.visitedSections.includes(section.id))
-    if (!target) return
-    setViewSectionId(target.id === frontierSection.id ? null : target.id)
-    setAnchorMissing(false)
+    const matching = sections
+      .map((section, index) => ({ section, index }))
+      .filter(({ section }) => section.navGroup !== "demo" && section.route.replace(/\/\[[a-zA-Z]+\]$/, "") === route)
+    if (matching.some(({ index }) => index === frontierIndex)) return openChapter(frontierSection.id)
+    // Behind the story first: a route that is both behind and ahead (the deal
+    // card) shows what was done rather than jumping past the steps between.
+    const behind = matching.filter(({ index }) => index < frontierIndex)
+    if (behind.length) return openChapter(behind[behind.length - 1].section.id)
+    const ahead = matching.find(({ index }) => index > frontierIndex)
+    if (ahead) openSection(ahead.section.id)
   }
 
   const goBack = () => {
@@ -362,7 +401,7 @@ export function DemoJourneyPlayer({
               phone) and the whole demo scrolled sideways, text cut off. */}
           <div className="grid min-w-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px]">
             <main id="demo-scene" className="min-w-0 overflow-y-auto p-4 sm:p-6">
-              {Scene ? <Scene {...sceneProps} /> : <ScenePending section={viewSection} />}
+              {Scene ? <Scene key={viewSection.id} {...sceneProps} /> : <ScenePending section={viewSection} />}
             </main>
             <DemoJourneyGuide
               manifest={manifest}
@@ -390,6 +429,7 @@ export function DemoJourneyPlayer({
                 else if (!step.required) dispatch({ type: "skip-step", stepId: step.id })
               }}
               onExitReview={() => setViewSectionId(null)}
+              onOpenChapter={openChapter}
               onGuideAction={() => {
                 if (step?.completion.kind === "transition") dispatch({ type: "transition", stepId: step.id, to: step.completion.to })
               }}
