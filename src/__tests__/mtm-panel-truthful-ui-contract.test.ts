@@ -90,14 +90,16 @@ describe("MTM Panel for a manager", () => {
     expect(ui).toContain("if (managerView && day.isToday && facts?.managerWorkday)")
   })
 
-  it("names routes by date, numbers stops from 1, hides task ids for managers and words empty days by date", () => {
+  it("names routes by date, numbers stops from 1, hides task ids for managers and says an empty day in one line", () => {
     expect(ui).not.toContain('firstString(source, "name", "title") || id')
     expect(ui).toContain('t("routeFallbackName"')
     expect(ui).toContain("renderPoint(point, day, index + 1)")
     expect(ui).not.toContain("{point.order}")
     expect(ui).toMatch(/\{!managerView \? \(\s*<p className="mt-1 text-\[11px\] text-muted-foreground" title=\{task\.id\}/)
-    expect(ui).toContain('"noPublishedPlanFuture"')
-    expect(ui).toContain('"noPublishedPlanPast"')
+    // Owner 2026-09-22: an empty day is one line («Маршрута нет»), not an icon,
+    // a title and a sentence per past/future date.
+    expect(ui).toContain('t("noRouteThisDay")')
+    expect(ui).not.toContain('`${emptyPlanKey}Hint`')
   })
 
   it("puts visit evidence on point cards as counts, never note text", () => {

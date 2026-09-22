@@ -14757,6 +14757,8 @@
     "supportHint": "Утверждённые для этого клиента контакты полевой поддержки.",
     "scopeUnavailable": "Недоступно для этой ограниченной зоны команды",
     "operationalWeek": {
+      "workdayLeftOpenShort": "Смена не закрыта",
+      "noRouteThisDay": "Маршрута нет",
       "gpsSeenAt": "На связи: {time}",
       "gpsSilentSince": "Нет связи с {time}",
       "openGpsPath": "Путь на карте",
@@ -14844,7 +14846,7 @@
       "accuracyMeters": "±{value} м",
       "openGpsHistory": "Открыть историю GPS",
       "chooseDay": "Выберите день",
-      "stopsCount": "{count, plural, one {# точка} few {# точки} many {# точек} other {# точки}}",
+      "stopsCount": "{count, plural, one {# визит в плане} few {# визита в плане} many {# визитов в плане} other {# визита в плане}}",
       "visibleStopsCount": "{count, plural, one {# видимая точка} few {# видимые точки} many {# видимых точек} other {# видимой точки}}",
       "dayStarted": "Начало в {time}",
       "dayFinished": "Завершение в {time}",
