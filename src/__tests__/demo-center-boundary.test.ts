@@ -55,7 +55,7 @@ const PURE_DIRS: ReadonlyArray<{ dir: string; allowed: ReadonlySet<string> }> = 
   { dir: "src/lib/demo-center/assistant", allowed: new Set(["@/lib/demo-center/journey"]) },
 ]
 
-const PUBLIC_ROUTE_DIRS = ["src/app/api/v1/public/demo-access", "src/app/api/v1/public/demo-requests"]
+const PUBLIC_ROUTE_DIRS = ["src/app/api/v1/public/demo-access", "src/app/api/v1/public/demo-requests", "src/app/api/v1/public/demo-clips"]
 const PUBLIC_ROUTE_FORBIDDEN_TOKENS = [
   "@/lib/api-auth",
   "next-auth",
