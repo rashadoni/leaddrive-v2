@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { nonNegativeFinancialAmountSchema } from "@/lib/validation/numeric"
 import { prisma, logAudit } from "@/lib/prisma"
+import { scoreLeadNow } from "@/lib/ai/lead-scoring"
 import { withSocialMonitoringMutationFence } from "@/lib/social/with-monitoring-mutation-fence"
 import { executeWorkflows } from "@/lib/workflow-engine"
 import { createNotification } from "@/lib/notifications"
@@ -198,6 +199,9 @@ export const POST = withSocialMonitoringMutationFence("leads", "write", async (r
   ).catch((error) => {
     console.error("[social-convert] lead webhook failed", error)
   })
+
+  // Only the lead that won the claim is scored; a lost race deleted its lead above.
+  await scoreLeadNow(orgId, lead.id)
 
   return NextResponse.json({ success: true, data: { leadId: lead.id } })
 })
