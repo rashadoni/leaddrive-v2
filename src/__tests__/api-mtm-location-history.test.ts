@@ -375,4 +375,40 @@ describe("GET /api/v1/mtm/location-history", () => {
       metadataKind: "gps_history_access",
     }))
   })
+
+  // Owner 2026-09-22: «where was he these days and his path».
+  it("shows a range of days: points, routes and each day's shift across the window", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "agent-1", name: "Anar", role: "AGENT", team: null } as never)
+    vi.mocked(prisma.mtmAgentLocation.findMany).mockResolvedValue([] as never)
+    vi.mocked(prisma.mtmVisit.findMany).mockResolvedValue([] as never)
+    vi.mocked(prisma.mtmRoute.findMany).mockResolvedValue([] as never)
+    vi.mocked(prisma.mtmAgentWorkday.findFirst).mockClear()
+    vi.mocked(prisma.mtmAgentWorkday.findMany).mockResolvedValue([
+      { id: "wd-20", status: "COMPLETED", workDate: new Date("2026-09-20T00:00:00.000Z"), startedAt: new Date("2026-09-20T05:00:00.000Z"), completedAt: new Date("2026-09-20T14:00:00.000Z") },
+    ] as never)
+
+    const response = await GET(request("?agentId=agent-1&date=2026-09-20&toDate=2026-09-22&from=00%3A00&to=23%3A59"))
+    expect(response.status).toBe(200)
+    const body = await response.json()
+
+    expect(body.data.range).toMatchObject({ date: "2026-09-20", toDate: "2026-09-22", days: 3 })
+    // 00:00 on the 20th to 23:59:59 on the 22nd, Baku time.
+    expect(body.data.range.from).toBe("2026-09-19T20:00:00.000Z")
+    expect(body.data.range.to).toBe("2026-09-22T19:59:59.999Z")
+    expect(prisma.mtmAgentLocation.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ recordedAt: { gte: new Date("2026-09-19T20:00:00.000Z"), lte: new Date("2026-09-22T19:59:59.999Z") } }),
+    }))
+    expect(prisma.mtmRoute.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ date: { gte: new Date("2026-09-20T00:00:00.000Z"), lte: new Date("2026-09-22T00:00:00.000Z") } }),
+    }))
+    expect(body.data.workday).toBeNull()
+    expect(body.data.workdays).toEqual([expect.objectContaining({ id: "wd-20", workDate: "2026-09-20" })])
+  })
+
+  it("refuses a range longer than seven days or ending before it starts", async () => {
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "agent-1", name: "Anar", role: "AGENT", team: null } as never)
+    expect((await GET(request("?agentId=agent-1&date=2026-09-01&toDate=2026-09-08"))).status).toBe(400)
+    expect((await GET(request("?agentId=agent-1&date=2026-09-10&toDate=2026-09-09"))).status).toBe(400)
+    expect((await GET(request("?agentId=agent-1&date=2026-09-01&toDate=2026-09-07"))).status).toBe(200)
+  })
 })
