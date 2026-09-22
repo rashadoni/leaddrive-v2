@@ -61,7 +61,7 @@ export default function CrmDashboardHelpAz() {
           <HelpDef term="Sövdələşmələr">Satış kanalındakı aktiv sövdələşmələr, alt sətirdə qazanılanların ümumi məbləği.</HelpDef>
           <HelpDef term="Çevrilmə">Kanal çevrilmə nisbəti — qazanılmış sövdələşmələrin bütün sövdələşmələrə payı.</HelpDef>
           <HelpDef term="Ticketlər">Açıq dəstək ticketləri, SLA-nı pozanları nişanlayır.</HelpDef>
-          <HelpDef term="Kampaniyalar">Son kampaniyaların sayı, alt sətirdə sonuncu açılma göstəricisi.</HelpDef>
+          <HelpDef term="Kampaniyalar">Son kampaniyaların sayı, alt sətirdə sonuncu kampaniyanın açılma faizi (göndərilənlərdən açılanlar). Açılma və klikləri yalnız e-poçt qeydə alır, ona görə SMS, WhatsApp və Telegram kampaniyasında, həmçinin hələ göndərilməmiş kampaniyada orada «—» görünür: bu, sıfır deyil, ölçülmür deməkdir.</HelpDef>
         </dl>
       </HelpSection>
 

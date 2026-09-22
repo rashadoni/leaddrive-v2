@@ -9,6 +9,7 @@ export { validateJourneyManifest } from "./validate"
 export { PROSPECT_TO_CLOSED_WON } from "./prospect-to-closed-won"
 export * from "./live-call"
 export * from "./telemetry"
+export * from "./public-clips"
 
 import { PROSPECT_TO_CLOSED_WON } from "./prospect-to-closed-won"
 import type { DemoJourneyManifest } from "./types"

@@ -944,6 +944,57 @@ const waitComposer = (p, ms) => p.waitForFunction(
   null, { timeout: ms },
 ).catch(() => {});
 
+// ── demo-* — the guided demo's intro clips ──────────────────────────────────
+// Filmed on the demo stand (scripts/seeds/demo-journey-clips.mjs plus the
+// Omni-channel reel's inbox), never on a customer's records: on 2026-09-21 the
+// help library's leads and boards clips turned out to show LeadDrive Inc.'s
+// own data, so the demo got clips of its own. Azerbaijani only — the demo is.
+// Nothing here saves: the only clicks open a record, switch a view or close a
+// modal, and every click goes through clickIf, because h.click falls back to
+// the centre of <main> when a selector misses. waitFor comes first wherever a
+// list loads late, for the same reason on the hover side. In the inbox the
+// Omni-channel reel's 02:14 thread is hovered, never opened; the one thread
+// opened (Aysu Nəbiyeva, 0 unread) was agreed with that session.
+// Left out on purpose: the campaigns «Analitika» tab (its segment, automation
+// and revenue widgets are not computed from this tenant's records) and the
+// lead's «Da Vinci ilə yenidən hesabla» and «AI ilə zəng et» buttons.
+// A product tour can still start when a record opens (the task modal's did
+// on 2026-09-21, tour ids in localStorage notwithstanding). Hide its card by
+// its inline z-index (src/components/tour/tour-step.tsx) — never click it.
+const hideTourCards = (p) => p.addStyleTag({ content: "[style*='z-index: 10002']{display:none!important}" }).catch(() => {});
+// Bring a row to the middle of the screen before the narration talks about
+// it; scrollIntoViewIfNeeded alone leaves it on the bottom edge.
+const centre = (p, sel) => p.locator(sel[0]).first().evaluate((el) => el.scrollIntoView({ block: "center" })).catch(() => {});
+const DC_STATS = ["[data-tour-id='campaigns-stats']", "main"];
+const DC_LIST = ["[data-tour-id='campaigns-list']", "main"];
+const DC_HERO = ["[data-tour-id='campaigns-list'] h3:has-text('Payız kolleksiyası')"];
+const DC_KPIS = ["main .grid:has(.bg-green-500)", "main"];
+const DC_RATES = ["main :text('Delivery Rates')", "main"];
+const DC_MONEY = ["main :text('Financial')", "main"];
+
+const DI_ROW = (name) => [`section div[role='button'][tabindex='0']:has-text('${name}')`];
+const DI_UNANSWERED = ["section div[role='button'][tabindex='0'] :text-is('Cavabsız')"];
+const DI_CREATE_LEAD = ["button:has-text('Lid yarat')", "main"];
+
+const DB_TITLE = ["main h1", "main"];
+const DB_SALES = ["main a:has-text('Satış')"];
+const DB_MARKETING = ["main a:has-text('Marketinq')"];
+const DB_COLUMNS = ["main :text-is('IN PROGRESS')", "main :text-is('BACKLOG')", "main"];
+const DB_CARD = ["main span:text-is('SAT-1')"];
+const DB_MODAL_CLOSE = ["div.fixed.inset-0 > div > button[aria-label]"];
+const DB_LOAD = ["main :text('İcraçılara görə yük')", "main"];
+
+const DL_HEAD = ["[data-tour-id='leads-list']", "main"];
+const DL_SCORE = ["[data-tour-id='leads-score']", "main"];
+const DL_BOARD = ["[data-tour-id='leads-convert']", "main"];
+const DL_HERO = ["[data-tour-id='leads-convert'] :text('Leyla Məmmədova')"];
+const DL_KPIS = ["main :text('Bal / Dərəcə')", "main"];
+const DL_DAVINCI_TAB = ["main button:has-text('Da Vinci Reytinq')"];
+const DL_DAVINCI_CARD = ["main :text('Qiymətləndirmə faktorları')", "main :text('Da Vinci Təhlil')", "main"];
+const DL_ACTIVITY_TAB = ["main button:has-text('Fəaliyyətlər')"];
+const DL_TIMELINE = ["main :text('Fəaliyyət zaman cədvəli')", "main"];
+const DL_CONVERT = ["main button:has-text('Sövdələşməyə çevir')"];
+
 export default {
   boards: {
     route: "/boards",
@@ -3605,6 +3656,209 @@ export default {
             url: "leaddrivecrm.org",
             dim: 0.94,
           });
+        },
+      },
+    ],
+  },
+  "demo-campaigns": {
+    route: "/campaigns",
+    title: { az: "Kampaniyalar" },
+    scenes: [
+      {
+        voice: { az: "Bu, «Kampaniyalar» bölməsidir: e-poçt, SMS, WhatsApp və Telegram göndərişləri bir siyahıdadır. Yuxarıda kampaniyalar statuslara görə sayılır — qaralama, planlaşdırılıb, göndərilir, göndərildi və ləğv edildi." },
+        do: async (p, l, h) => {
+          await hideTourCards(p);
+          await waitFor(p, DC_HERO);
+          await h.hover(DC_STATS);
+          await h.holdUntil(0.62);
+          await h.moveTo(DC_LIST);
+        },
+      },
+      {
+        voice: { az: "Hər kartda kanal, alıcıların sayı və nəticə görünür. Məsələn, payız kolleksiyası e-poçtla göndərilib: min səkkiz yüz qırx yeddi alıcıdan min səkkiz yüz iyirmi doqquzuna çatıb." },
+        do: async (p, l, h) => {
+          await centre(p, DC_HERO);
+          await h.hover(DC_HERO);
+          await h.holdUntil(0.8);
+        },
+      },
+      {
+        voice: { az: "Kampaniyanı açırıq. Yuxarıda nəticə var: neçə nəfərə çatdı, neçəsi açdı, neçəsi linkə keçdi — say və faizlə. Bu məktubu hər on nəfərdən dördü açıb." },
+        do: async (p, l, h) => {
+          await clickIf(p, h, DC_HERO);
+          await waitFor(p, DC_KPIS);
+          await h.holdUntil(0.35);
+          await h.hover(DC_KPIS);
+        },
+      },
+      {
+        voice: { az: "Aşağıda çatdırılma faizləri və xərc var: büdcə üç yüz qırx manat idi, göndəriş isə üç yüz on səkkiz manata başa gəlib." },
+        do: async (p, l, h) => {
+          await h.hover(DC_RATES);
+          await h.holdUntil(0.5);
+          await h.moveTo(DC_MONEY);
+        },
+      },
+      {
+        voice: { az: "Beləliklə, hansı kanalın işlədiyi təxminlə yox, rəqəmlə görünür — və növbəti kampaniyanın büdcəsi də buna görə qurulur." },
+        do: async (p, l, h) => {
+          await h.hover(DC_KPIS);
+        },
+      },
+    ],
+  },
+
+  "demo-inbox": {
+    route: "/inbox",
+    title: { az: "Gələnlər qutusu" },
+    scenes: [
+      {
+        voice: { az: "Bu, «Gələnlər» qutusudur: WhatsApp, Telegram, SMS, e-poçt, zənglər və sayt çatı — bütün kanallar bir siyahıda. Solda süzgəclər var: hamısı, mənim, təyin edilməyib və çatbot." },
+        do: async (p, l, h) => {
+          await hideTourCards(p);
+          await waitFor(p, DI_ROW("Aysu Nəbiyeva"));
+          await h.hover(RL_RAIL);
+          await h.holdUntil(0.7);
+          await h.moveTo(RL_ROW);
+        },
+      },
+      {
+        voice: { az: "Hər dialoqda müştəri, son mesaj və vəziyyət görünür. «Cavabsız» nişanı kimin cavab gözlədiyini dərhal göstərir — gecə saat ikidə yazan müştəri də itmir." },
+        do: async (p, l, h) => {
+          await h.moveTo(DI_ROW("Nərmin Əliyeva"));
+          await h.holdUntil(0.5);
+          await h.moveTo(DI_UNANSWERED);
+        },
+      },
+      {
+        voice: { az: "Dialoqu açırıq: ortada yazışma, sağda müştərinin kartı — əlaqə məlumatları və bir kliklə lid yaratmaq düyməsi. Cavab yazmaq və məsul şəxs təyin etmək də elə buradadır." },
+        do: async (p, l, h) => {
+          await clickIf(p, h, DI_ROW("Aysu Nəbiyeva"));
+          await h.sleep(1500);
+          await unscroll(p);
+          await h.holdUntil(0.3);
+          await h.moveTo(RL_THREAD);
+          await h.holdUntil(0.6);
+          await h.moveTo(DI_CREATE_LEAD);
+        },
+      },
+      {
+        voice: { az: "Beləliklə, heç bir müraciət kanallar arasında itmir: hamısı bir növbədədir, hər birinin məsulu və vəziyyəti var." },
+        do: async (p, l, h) => {
+          await h.moveTo(RL_ROW);
+        },
+      },
+    ],
+  },
+
+  "demo-boards": {
+    route: "/boards",
+    title: { az: "Lövhələr" },
+    scenes: [
+      {
+        voice: { az: "«Lövhələr» — komandanın gündəlik işi. Hər şöbənin öz lövhəsi var: burada «Satış» və «Marketinq». Kartda lövhənin adı, rəhbəri və içindəki tapşırıqların sayı görünür." },
+        do: async (p, l, h) => {
+          await hideTourCards(p);
+          await waitFor(p, DB_SALES);
+          await h.hover(DB_TITLE);
+          await h.holdUntil(0.45);
+          await h.moveTo(DB_SALES);
+          await h.holdUntil(0.75);
+          await h.moveTo(DB_MARKETING);
+        },
+      },
+      {
+        voice: { az: "«Satış» lövhəsini açırıq. Sütunlar işin mərhələləridir, kartlar isə tapşırıqlar: nömrəsi, adı, bağlı lid, son tarix, məsul şəxs və çek-list üzrə icra faizi." },
+        do: async (p, l, h) => {
+          await clickIf(p, h, DB_SALES);
+          await waitFor(p, DB_CARD);
+          await h.holdUntil(0.4);
+          await h.hover(DB_COLUMNS);
+          await h.holdUntil(0.75);
+          await h.moveTo(DB_CARD);
+        },
+      },
+      {
+        voice: { az: "Yuxarıdakı süzgəclər lövhəni daraldır: «Mənə təyin olunanlar», tapşırığın növü, prioriteti və məsul şəxs. Beləcə hər kəs öz işini görür." },
+        do: async (p, l, h) => {
+          await h.moveTo(BD_ASSIGNED_ME);
+          await h.holdUntil(0.4);
+          await h.moveTo(BD_FILTER_TYPE);
+          await h.holdUntil(0.7);
+          await h.moveTo(BD_FILTER_PRIORITY);
+        },
+      },
+      {
+        voice: { az: "Kartı açırıq: status, prioritet, son tarix və çek-list bir yerdədir, tapşırıq isə lidə bağlıdır. Bu, satış meneceri Tural Kərimovun Northline Logistics üçün hazırladığı təklifdir." },
+        do: async (p, l, h) => {
+          await clickIf(p, h, DB_CARD);
+          await hideTourCards(p);
+          await h.sleep(1500);
+          await h.holdUntil(0.85);
+          await clickIf(p, h, DB_MODAL_CLOSE);
+        },
+      },
+      {
+        voice: { az: "«Hesabatlar» görünüşü isə rəhbər üçündür: kimdə nə qədər iş var, nə gecikir və tapşırıqlar nə sürətlə bağlanır." },
+        do: async (p, l, h) => {
+          await clickIf(p, h, BD_VIEW_REPORTS);
+          await h.sleep(1500);
+          await h.holdUntil(0.55);
+          await h.moveTo(DB_LOAD);
+        },
+      },
+    ],
+  },
+
+  "demo-leads": {
+    route: "/leads",
+    title: { az: "Lidlər" },
+    scenes: [
+      {
+        voice: { az: "Bu, «Lidlər» bölməsidir — satışın başlanğıcı. Saytdan, Instagram-dan, WhatsApp-dan gələn hər müraciət burada bir kart olur və heç biri itmir. Yuxarıda ümumi say, çevrilənlər, orta bal və isti lidlər görünür." },
+        do: async (p, l, h) => {
+          await hideTourCards(p);
+          await waitFor(p, DL_HERO);
+          await h.hover(DL_HEAD);
+          await h.holdUntil(0.6);
+          await h.hover(DL_SCORE);
+        },
+      },
+      {
+        voice: { az: "Kartlar mərhələlərə düzülüb: yeni, əlaqə quruldu, kvalifikasiya edildi, çevrildi və itirildi. Hər kartda ad, şirkət, məsul satıcı, bal və gözlənilən məbləğ var — kimə birinci zəng etmək lazım olduğu dərhal görünür." },
+        do: async (p, l, h) => {
+          await showBlock(p, "leads-convert");
+          await h.hover(DL_BOARD);
+          await h.holdUntil(0.7);
+          await h.moveTo(DL_HERO);
+        },
+      },
+      {
+        voice: { az: "Lidin kartını açırıq: bal və dərəcə, təxmini dəyər, prioritet və müştərinin nə istədiyi — hamısı bir ekranda." },
+        do: async (p, l, h) => {
+          await clickIf(p, h, DL_HERO);
+          await waitFor(p, DL_DAVINCI_TAB);
+          await h.holdUntil(0.35);
+          await h.hover(DL_KPIS);
+        },
+      },
+      {
+        voice: { az: "«Da Vinci Reytinq» vərəqi balın nədən yığıldığını göstərir: əlaqə tamlığı, əlaqə səviyyəsi, sövdələşmə potensialı. «Fəaliyyətlər» vərəqində isə bütün zənglər, məktublar və görüşlər var." },
+        do: async (p, l, h) => {
+          await clickIf(p, h, DL_DAVINCI_TAB);
+          await waitFor(p, DL_DAVINCI_CARD);
+          await h.hover(DL_DAVINCI_CARD);
+          await h.holdUntil(0.6);
+          await clickIf(p, h, DL_ACTIVITY_TAB);
+          await waitFor(p, DL_TIMELINE);
+          await h.moveTo(DL_TIMELINE);
+        },
+      },
+      {
+        voice: { az: "Lid hazır olanda «Sövdələşməyə çevir» düyməsi onu bir addımda satış hunisinə keçirir — ad, şirkət və məbləğ yenidən yazılmır." },
+        do: async (p, l, h) => {
+          await h.hover(DL_CONVERT);
+          await h.holdUntil(0.8);
         },
       },
     ],

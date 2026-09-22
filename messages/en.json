@@ -5909,7 +5909,7 @@
     "featurePreviewLabel": "What it looks like",
     "previewDailyBriefing": "Every day at 08:00 you receive an email:\n\n📊 Deals: 3 moving, 2 stale\n⚠️ SLA: 2 tickets near breach\n💰 Finance: 1 invoice 5 days overdue\n✅ Suggested: reach out to ACME Corp",
     "previewAnomalyDetection": "Instant alert in Telegram/Slack when:\n• Ticket spike >5 in an hour\n• Outlier invoice (>$10k for a new customer)\n• Engagement drop of 40%+",
-    "previewLeadScoring": "Every new lead gets a 0-100 score:\n• Corporate email +20\n• C-level title +25\n• Referral source +15\n• Open rate >50% +40",
+    "previewLeadScoring": "The 0–100 lead score is recalculated whenever the lead is saved:\n• The salesperson's lead qualification weighs most\n• Next comes reachability: phone, WhatsApp, Telegram, email; a lead with none loses points\n• Then the stated interest, estimated value and recent activity",
     "telegramHelpTitle": "How to get Bot Token and Chat ID",
     "telegramHelpStep1": "1. Open @BotFather in Telegram and send /newbot",
     "telegramHelpStep2": "2. Give your bot a name — BotFather will send back a Bot Token (long string with a colon)",
@@ -6485,8 +6485,8 @@
     "leads": {
       "listTitle": "Focus on What Converts",
       "listDesc": "Sort by AI Score to see hottest leads on top. Grade A leads convert 5x more — call them within 24 hours.",
-      "scoreTitle": "AI Knows Who's Ready",
-      "scoreDesc": "Score updates every 6 hours. Corporate email (+10), C-level title (+20), budget keywords (+10). Low score? Nurture via Journey instead of calling.",
+      "scoreTitle": "The salesperson's verdict counts most",
+      "scoreDesc": "The score weighs the lead qualification most, then reachability: phone, WhatsApp, Telegram, email. It is recalculated whenever the lead is saved — save the qualification and the score updates at once.",
       "statusTitle": "The Qualification Funnel",
       "statusDesc": "Move leads: new → contacted → qualified. Pro tip: A/B-graded qualified leads should be converted immediately before they go cold.",
       "convertTitle": "One Click, Three Results",
@@ -16041,6 +16041,11 @@
       "hours": "{count} hr"
     },
     "history": {
+      "dateFrom": "From date",
+      "dateTo": "To date",
+      "rangeHint": "You can choose up to {days} days in a row.",
+      "workdayStillOpen": "open",
+      "noWorkdaysInRange": "No workdays in these days.",
       "subtitle": "Auditable GPS history, workday, stops and confirmed visits",
       "agent": "Employee",
       "noAgents": "No employees available in your scope",

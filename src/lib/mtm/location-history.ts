@@ -3,6 +3,8 @@ import { calculateDistance } from "@/lib/geo-utils"
 export const LOCATION_HISTORY_DISTANCE_FORMULA = "haversine-r6371000-filtered-v1"
 export const LOCATION_HISTORY_MAX_RAW_POINTS = 5_001
 export const LOCATION_HISTORY_MAX_OUTPUT_POINTS = 1_500
+/** Longest window the history shows at once (owner 2026-09-22: «these days»). */
+export const LOCATION_HISTORY_MAX_RANGE_DAYS = 7
 
 export type HistoryLocationPoint = {
   id: string
