@@ -45,6 +45,21 @@ name: Deploy to Production
 # (cancel-in-progress: false) so a started deploy is never interrupted; the
 # post-deploy smoke runs INSIDE the job so the lock is held until prod is
 # verified. A newer push supersedes a still-pending (not yet started) deploy.
+#
+# WHY a newer push no longer cancels the checks or build in flight
+# (2026-09-22): the build takes ~18 minutes and parallel agent sessions merge
+# every 5–15, so each push cancelled the build before it could finish. On
+# 2026-09-21, 31 of 39 runs ended «cancelled» and a merge waited up to 90
+# minutes to go live — nothing ships until merges pause. Now builds from
+# pushes queue in one slot: the running build always finishes, a newer push
+# replaces only the waiting one, and the newest main is always next. The
+# checks cannot share a queue: two independent queues drop different runs, so
+# the running build can belong to a run whose checks were dropped, and a
+# steady burst leaves production behind without bound again. So every push
+# runs its own checks to the end (~10 min of free public-repo Linux runner
+# time). Result: a merge is live within two builds and one deploy (~45 min),
+# whatever the merge rate. src/__tests__/deploy-queue-progress.test.ts replays
+# the bursts.
 
 on:
   push:
@@ -175,10 +190,12 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     concurrency:
-      # A newer main push supersedes a stale in-progress checks run. Safe to
-      # cancel: read-only CI work, no production side effects.
-      group: ${{ github.event_name == 'workflow_dispatch' && inputs.deployment_mode == 'recovery-bootstrap-resume' && format('prod-bootstrap-resume-checks-{0}', inputs.bootstrap_resume_sha) || format('prod-checks-{0}', github.ref) }}
-      cancel-in-progress: ${{ !(github.event_name == 'workflow_dispatch' && inputs.deployment_mode == 'recovery-bootstrap-resume') }}
+      # Every push gets a checks slot of its own, and nothing cancels it: a
+      # build is only worth finishing if its own run's gates finish too (see
+      # the header). Read-only CI work, no production side effects. A manual
+      # re-deploy still shares one slot and supersedes, as before.
+      group: ${{ github.event_name == 'workflow_dispatch' && inputs.deployment_mode == 'recovery-bootstrap-resume' && format('prod-bootstrap-resume-checks-{0}', inputs.bootstrap_resume_sha) || github.event_name == 'push' && format('prod-checks-{0}-run-{1}', github.ref, github.run_id) || format('prod-checks-{0}', github.ref) }}
+      cancel-in-progress: ${{ github.event_name != 'push' && !(github.event_name == 'workflow_dispatch' && inputs.deployment_mode == 'recovery-bootstrap-resume') }}
 
     steps:
       - name: Checkout code
@@ -463,8 +480,11 @@ jobs:
     permissions:
       contents: read
     concurrency:
+      # One build at a time. A push never cancels the build in flight; it
+      # replaces only a build that is still waiting, so the newest main is
+      # always next (see the header).
       group: ${{ github.event_name == 'workflow_dispatch' && inputs.deployment_mode == 'recovery-bootstrap-resume' && format('prod-bootstrap-resume-build-{0}', inputs.bootstrap_resume_sha) || format('prod-build-{0}', github.ref) }}
-      cancel-in-progress: ${{ !(github.event_name == 'workflow_dispatch' && inputs.deployment_mode == 'recovery-bootstrap-resume') }}
+      cancel-in-progress: ${{ github.event_name != 'push' && !(github.event_name == 'workflow_dispatch' && inputs.deployment_mode == 'recovery-bootstrap-resume') }}
 
     steps:
       - name: Validate workflow-dispatch deployment mode
