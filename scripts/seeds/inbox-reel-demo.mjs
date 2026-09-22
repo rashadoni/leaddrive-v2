@@ -404,7 +404,7 @@ try {
     await prisma.lead.create({ data: {
       organizationId: orgId, contactName: hero.fullName, phoneWhatsApp: "+994505550110", source: "whatsapp", sourceDetail: SEED_TAG,
       interest: "Künc divan «Bakı»", status: "new", priority: "high", score: 72, estimatedValue: 1890, assignedTo: agentIds.aynur,
-      pipelineId: pipeline?.id ?? null, customerStage: "qualified",
+      pipelineId: pipeline?.id ?? null,
     } })
   }
   await prisma.workflowRule.create({ data: {
