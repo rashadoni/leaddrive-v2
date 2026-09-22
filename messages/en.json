@@ -14757,6 +14757,11 @@
     "supportHint": "Tenant-approved contacts for field assistance.",
     "scopeUnavailable": "Unavailable for this bounded team scope",
     "operationalWeek": {
+      "gpsSeenAt": "Last heard from: {time}",
+      "gpsSilentSince": "No contact since {time}",
+      "openGpsPath": "Path on the map",
+      "noPlanInPeriod": "No plan for this period.",
+      "nothingNeedsAttention": "All quiet — nothing to act on.",
       "workdayLeftOpen": "Shift open since {date} {time} ({duration}) — not closed by the agent",
       "workdayOpenDays": "{count, plural, one {# day} other {# days}}",
       "workdayOpenHours": "{count, plural, one {# hour} other {# hours}}",

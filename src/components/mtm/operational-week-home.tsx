@@ -2044,9 +2044,9 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
       delayedSeconds: evidence.delayedSeconds,
     })
     switch (presentedFreshness) {
-      case "ONLINE": return { icon: Wifi, label: t("gps.online"), className: "text-emerald-700 dark:text-emerald-300" }
-      case "DELAYED": return { icon: Clock3, label: t("gps.delayed"), className: "text-amber-700 dark:text-amber-300" }
-      case "STALE": return { icon: WifiOff, label: t("gps.stale"), className: "text-zinc-600 dark:text-zinc-300" }
+      case "ONLINE": return { icon: Wifi, label: t("gps.online"), className: "text-emerald-700 dark:text-emerald-300", seen: true }
+      case "DELAYED": return { icon: Clock3, label: t("gps.delayed"), className: "text-amber-700 dark:text-amber-300", seen: true }
+      case "STALE": return { icon: WifiOff, label: t("gps.stale"), className: "text-zinc-600 dark:text-zinc-300", seen: false }
       case "NO_PERMISSION": return { icon: ShieldAlert, label: t("gps.noPermission"), className: "text-red-700 dark:text-red-300" }
       case "NO_LOCATION": return { icon: MapPinOff, label: t("gps.noLocation"), className: "text-muted-foreground" }
       default: return { icon: MapPinOff, label: t("gps.unknown"), className: "text-muted-foreground" }
@@ -2498,13 +2498,22 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
 
   function renderAttentionRailContent(railId: "compact" | "desktop") {
     if (!facts) return null
+    const attentionTodayInPeriod = facts.days.some((day) => day.date === facts.today)
+    const attentionHasAlerts = (facts.alertGroups ?? []).some((group) => !attentionTodayInPeriod || group.date === facts.today)
+    const attentionHasPlanChanges = pendingCancellations.length > 0
+      || pendingOtherPlanChanges.length > 0
+      || facts.planChanges.some((change) => !facts.pendingPlanChanges.some((pending) => pending.id === change.id))
     return (
       <>
         <div data-testid={`mtm-swm15-coverage-${railId}`} className="px-4 py-5 lg:px-5">
+          {/* Owner 2026-09-22: a period without a plan read «0 / 0 / 0 — not
+              calculated»; it is one sentence. */}
+          {facts.summary.planned === 0 && facts.summary.actual === 0 && facts.summary.cancelled === 0 ? (
+            <p data-testid={`mtm-week-no-plan-${railId}`} className="text-sm text-muted-foreground">{t("noPlanInPeriod")}</p>
+          ) : <>
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-primary">{t("publishedPlan")}</p>
-              <h3 className="mt-1 text-base font-semibold">{t("coverageTitle")}</h3>
+              <h3 className="text-base font-semibold">{t("coverageTitle")}</h3>
             </div>
             <span className="text-3xl font-semibold tabular-nums">{coveragePercentage === null ? "—" : `${Math.round(coveragePercentage)}%`}</span>
           </div>
@@ -2530,13 +2539,15 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
                 ? t("coverageNotApplicable")
                 : facts.summary.formula || t("coverageFormula", { numerator: facts.summary.numerator ?? facts.summary.actual, denominator: facts.summary.denominator ?? facts.summary.planned })}
           </p>
-          {facts.lastSourceAt ? <p className="mt-2 text-xs text-muted-foreground">{t("sourceUpdatedAt", { date: formatTenantTimestamp(facts.lastSourceAt, locale, facts.timezone, { dateStyle: "medium", timeStyle: "short" }) })}</p> : null}
+          </>}
 
+          {/* The base coverage block is shown only with numbers: «formula not
+              signed by the administrator» is a setup fact, not the agent's. */}
+          {baseCoveragePhase === "ready" && baseCoverage?.available && baseCoverage.totals && !cachedSnapshot ? (
           <section className="mt-5 border-t border-zinc-200 pt-5 dark:border-zinc-700" data-testid="mtm-base-coverage">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-primary"><Building2 className="h-3.5 w-3.5" />{t("baseCoverageEyebrow")}</p>
-                <h4 className="mt-1 text-sm font-semibold">{t("baseCoverageTitle")}</h4>
+                <h4 className="inline-flex items-center gap-1.5 text-sm font-semibold"><Building2 className="h-4 w-4 text-primary" />{t("baseCoverageTitle")}</h4>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {baseCoverage?.period.start
                     ? t("baseCoveragePeriod", { date: formatCalendarDay(baseCoverage.period.start, locale, { month: "long", year: "numeric" }) })
@@ -2672,15 +2683,23 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
               </div>
             ) : null}
           </section>
+          ) : null}
         </div>
 
         <section className="border-t border-zinc-200 px-4 py-5 dark:border-zinc-700 md:border-l md:border-t-0 min-[100rem]:border-l-0 min-[100rem]:border-t min-[100rem]:px-5">
           <h3 className="text-base font-semibold">{t("needsAttention")}</h3>
-          <div className="mt-4 space-y-5">
+          {/* Owner 2026-09-22: sections with a zero and a sentence explaining the
+              zero («Оповещения 0 — нерешённых нет») are gone; only what has
+              something to act on is shown, or one calm line. */}
+          {!attentionHasAlerts && !attentionHasPlanChanges && !activeTasks.length ? (
+            <p data-testid={`mtm-week-attention-calm-${railId}`} className="mt-3 text-sm text-muted-foreground">{t("nothingNeedsAttention")}</p>
+          ) : null}
+          <div className="mt-4 space-y-5 [&>section:first-child]:border-t-0 [&>section:first-child]:pt-0">
             {(() => {
               const todayInPeriod = facts.days.some((day) => day.date === facts.today)
               const groups = (facts.alertGroups ?? []).filter((group) => !todayInPeriod || group.date === facts.today)
               const total = groups.reduce((sum, group) => sum + group.count, 0)
+              if (!groups.length) return null
               const alertsHref = withReturnTo(
                 `/mtm/alerts?agentId=${encodeURIComponent(effectiveAgentId)}`,
                 query ? returnPath(query, effectiveAgentId, selectedDay?.date || query.day) : "/mtm",
@@ -2688,19 +2707,15 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
               return (
                 <section data-testid={`mtm-week-alerts-${railId}`}>
                   <div className="flex items-center justify-between gap-2"><h4 className="inline-flex items-center gap-1.5 text-sm font-semibold text-amber-800 dark:text-amber-300"><BellRing className="h-4 w-4" />{t(todayInPeriod ? "alertsToday" : "alertsInPeriod")}</h4><Badge variant={total ? "warning" : "outline"}>{total}{facts.alertsTruncated ? "+" : ""}</Badge></div>
-                  {groups.length ? (
-                    <>
-                      <ul className="mt-1 divide-y divide-zinc-200 dark:divide-zinc-700">{groups.slice(0, 6).map((group) => renderAlertGroup(group, false))}</ul>
-                      <Link href={alertsHref} className="mt-1 inline-flex min-h-11 items-center gap-1 text-xs font-semibold text-primary hover:underline">
-                        {groups.length > 6 ? t("moreAlertGroups", { count: groups.length - 6 }) : t("openAlerts")}<ArrowUpRight className="h-3 w-3 shrink-0" />
-                      </Link>
-                    </>
-                  ) : <p className="mt-2 text-xs text-muted-foreground">{t("noOpenAlerts")}</p>}
+                  <ul className="mt-1 divide-y divide-zinc-200 dark:divide-zinc-700">{groups.slice(0, 6).map((group) => renderAlertGroup(group, false))}</ul>
+                  <Link href={alertsHref} className="mt-1 inline-flex min-h-11 items-center gap-1 text-xs font-semibold text-primary hover:underline">
+                    {groups.length > 6 ? t("moreAlertGroups", { count: groups.length - 6 }) : t("openAlerts")}<ArrowUpRight className="h-3 w-3 shrink-0" />
+                  </Link>
                 </section>
               )
             })()}
-            <section className="border-t border-zinc-200 pt-4 dark:border-zinc-700">
-              <div className="flex items-center justify-between gap-2"><h4 className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-800 dark:text-red-200"><XCircle className="h-4 w-4" />{t("pendingCancellations")}</h4><Badge variant={pendingCancellations.length ? "destructive" : "outline"}>{pendingCancellations.length}</Badge></div>
+            {attentionHasPlanChanges ? <section className="border-t border-zinc-200 pt-4 dark:border-zinc-700">
+              {pendingCancellations.length ? <div className="flex items-center justify-between gap-2"><h4 className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-800 dark:text-red-200"><XCircle className="h-4 w-4" />{t("pendingCancellations")}</h4><Badge variant="destructive">{pendingCancellations.length}</Badge></div> : null}
               {pendingCancellations.length ? (
                 <>
                   <ul className="mt-2 divide-y divide-zinc-200 dark:divide-zinc-700">
@@ -2728,7 +2743,7 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
                     </div>
                   ) : null}
                 </>
-              ) : <p className="mt-2 text-xs text-muted-foreground">{t("noPendingCancellations")}</p>}
+              ) : null}
               {pendingOtherPlanChanges.length ? (
                 <div className="mt-4 border-t border-zinc-200 pt-3 dark:border-zinc-700">
                   <div className="flex items-center justify-between gap-2"><h5 className="text-xs font-semibold text-muted-foreground">{t("pendingPlanChanges")}</h5><Badge variant="warning">{pendingOtherPlanChanges.length}</Badge></div>
@@ -2743,8 +2758,8 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
                   </ul>
                 </div>
               ) : null}
-            </section>
-            <section className="border-t border-zinc-200 pt-4 dark:border-zinc-700">
+            </section> : null}
+            {activeTasks.length ? <section className="border-t border-zinc-200 pt-4 dark:border-zinc-700">
               <div className="flex items-center justify-between gap-2"><h4 className="inline-flex items-center gap-1.5 text-sm font-semibold"><ClipboardList className="h-4 w-4 text-primary" />{t("activeTasks")}</h4><Badge variant={activeTasks.length ? "info" : "outline"}>{activeTasks.length}</Badge></div>
               {activeTasks.length ? (
                 <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground" aria-label={t("taskAttentionSummary", { overdue: overdueTaskCount, returned: returnedTaskCount })}>
@@ -2784,8 +2799,8 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
                           </div>
                           {(task.scheduledStartAt || task.dueAt) ? (
                             <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-                              <div><dt className="text-muted-foreground">{t("taskScheduledStart")}</dt><dd className="mt-0.5 tabular-nums">{formatTenantTimestamp(task.scheduledStartAt, locale, facts.timezone, { dateStyle: "medium", timeStyle: "short" })}</dd></div>
-                              <div><dt className="text-muted-foreground">{t("taskDue")}</dt><dd className="mt-0.5 tabular-nums">{formatTenantTimestamp(task.dueAt, locale, facts.timezone, { dateStyle: "medium", timeStyle: "short" })}</dd></div>
+                              {task.scheduledStartAt ? <div><dt className="text-muted-foreground">{t("taskScheduledStart")}</dt><dd className="mt-0.5 tabular-nums">{formatTenantTimestamp(task.scheduledStartAt, locale, facts.timezone, { dateStyle: "medium", timeStyle: "short" })}</dd></div> : null}
+                              {task.dueAt ? <div><dt className="text-muted-foreground">{t("taskDue")}</dt><dd className="mt-0.5 tabular-nums">{formatTenantTimestamp(task.dueAt, locale, facts.timezone, { dateStyle: "medium", timeStyle: "short" })}</dd></div> : null}
                             </dl>
                           ) : null}
                           {task.returnReason ? <p className="mt-2 bg-amber-50 px-2.5 py-2 text-xs leading-5 text-amber-950 dark:bg-amber-950/25 dark:text-amber-100">{t("taskReturnedReason", { reason: task.returnReason })}</p> : null}
@@ -2800,8 +2815,8 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
                     </Link>
                   </div>
                 </>
-              ) : <p className="mt-2 text-xs text-muted-foreground">{t("noActiveTasks")}</p>}
-            </section>
+              ) : null}
+            </section> : null}
           </div>
         </section>
       </>
@@ -3171,7 +3186,7 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">{facts.selectedAgent.name.slice(0, 1).toUpperCase()}</span>
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">{facts.selectedAgent.name}</p>
-                <p className="truncate text-xs text-muted-foreground">{[facts.selectedAgent.teamName, facts.selectedAgent.regionName].filter(Boolean).join(" · ") || t("scopeConfirmed")}</p>
+                <p className="truncate text-xs text-muted-foreground">{[facts.selectedAgent.teamName, facts.selectedAgent.regionName].filter(Boolean).join(" · ")}</p>
               </div>
             </div>
             {facts.workdayCapability.enabled ? <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-700 lg:border-l lg:border-t-0 lg:px-5">
@@ -3201,7 +3216,6 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
           {facts.workdayCapability.enabled && leftOpenWorkday && !facts.workdayCapability.canMutateSelf ? (
             <div className="border-t border-zinc-200 bg-red-50 px-4 py-3 text-sm text-red-950 dark:border-zinc-700 dark:bg-red-950/25 dark:text-red-100" role="status" data-testid="mtm-week-workday-left-open">
               <p className="inline-flex items-center gap-2 font-semibold"><AlertTriangle className="h-4 w-4" />{leftOpenLabel(leftOpenWorkday, facts.timezone)}</p>
-              <p className="mt-1 text-xs leading-5">{t("workdayLeftOpenHint")}</p>
             </div>
           ) : null}
           {/* The close/continue instruction is for the agent who can act on it. */}
@@ -3215,30 +3229,26 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
             </div>
           ) : null}
 
-          {selectedDay ? (
-            <div className={cn("grid border-t border-zinc-200 bg-muted/20 dark:border-zinc-700 sm:grid-cols-2", facts.workdayCapability.enabled ? "lg:grid-cols-4" : "lg:grid-cols-3")}>
-              {facts.workdayCapability.enabled ? (() => {
-                const workday = dayWorkdayPresentation(selectedDay)
-                const WorkdayIcon = workday.icon
-                return <div className="px-4 py-3 lg:px-5"><p className="text-xs text-muted-foreground">{t("workdayState")}</p><p className={cn("mt-1 inline-flex items-center gap-1.5 text-sm font-medium", workday.className)}><WorkdayIcon className="h-4 w-4" />{workday.label}</p></div>
-              })() : null}
-              {(() => {
-                const gps = gpsPresentation(facts.gps)
-                const GpsIcon = gps.icon
-                return <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-700 sm:border-l sm:border-t-0 lg:px-5"><p className="text-xs text-muted-foreground">{t("gpsFreshness")}</p><p className={cn("mt-1 inline-flex items-center gap-1.5 text-sm font-medium", gps.className)}><GpsIcon className="h-4 w-4" />{gps.label}</p></div>
-              })()}
-              <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-700 lg:border-l lg:border-t-0 lg:px-5"><p className="text-xs text-muted-foreground">{t("lastCoordinate")}</p><p className="mt-1 text-sm font-medium tabular-nums">{formatTenantTimestamp(facts.gps.recordedAt, locale, facts.timezone, { dateStyle: "medium", timeStyle: "short" })}</p></div>
-              <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-700 lg:border-l lg:border-t-0 lg:px-5">
-                <p className="text-xs text-muted-foreground">{t("locationEvidence")}</p>
-                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm">
-                  <span className="inline-flex items-center gap-1"><Crosshair className="h-3.5 w-3.5" />{facts.gps.accuracy === null ? "—" : t("accuracyMeters", { value: Math.round(facts.gps.accuracy) })}</span>
-                  <span className="inline-flex items-center gap-1"><BatteryMedium className="h-3.5 w-3.5" />{facts.gps.battery === null ? "—" : `${Math.round(facts.gps.battery)}%`}</span>
-                </div>
-                {gpsReasonLabel(facts.gps.reason) ? <p className="mt-1 text-xs text-muted-foreground">{gpsReasonLabel(facts.gps.reason)}</p> : null}
-                <Link href={withReturnTo(`/mtm/map?mode=history&agentId=${encodeURIComponent(effectiveAgentId)}&date=${encodeURIComponent(selectedDay.date)}`, returnPath(query!, effectiveAgentId, selectedDay.date))} className="mt-2 inline-flex min-h-11 items-center gap-1 text-xs font-medium text-primary hover:underline md:min-h-0">{t("openGpsHistory")}<ArrowUpRight className="h-3 w-3" /></Link>
+          {/* Owner 2026-09-22: «глаза разбегаются». Four cells — workday state,
+              GPS freshness, last coordinate, «coordinate data» — said one
+              thing: when the agent was last heard from. One line says it. */}
+          {selectedDay ? (() => {
+            const leftOpenShown = Boolean(facts.workdayCapability.enabled && leftOpenWorkday && !facts.workdayCapability.canMutateSelf)
+            const workday = facts.workdayCapability.enabled && !leftOpenShown ? dayWorkdayPresentation(selectedDay) : null
+            const WorkdayIcon = workday?.icon
+            const gps = gpsPresentation(facts.gps)
+            const GpsIcon = gps.icon
+            const seenAt = facts.gps.recordedAt ? formatTenantTimestamp(facts.gps.recordedAt, locale, facts.timezone, { dateStyle: "medium", timeStyle: "short" }) : null
+            const gpsText = seenAt && "seen" in gps ? t(gps.seen ? "gpsSeenAt" : "gpsSilentSince", { time: seenAt }) : gps.label
+            return (
+              <div data-testid="mtm-week-status-line" className="flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-zinc-200 bg-muted/20 px-4 py-2.5 text-sm dark:border-zinc-700 lg:px-5">
+                {workday && WorkdayIcon ? <span className={cn("inline-flex items-center gap-1.5 font-medium", workday.className)}><WorkdayIcon className="h-4 w-4" />{workday.label}</span> : null}
+                <span className={cn("inline-flex items-center gap-1.5 font-medium", gps.className)}><GpsIcon className="h-4 w-4" />{gpsText}</span>
+                {gpsReasonLabel(facts.gps.reason) ? <span className="text-xs text-muted-foreground">{gpsReasonLabel(facts.gps.reason)}</span> : null}
+                <Link href={withReturnTo(`/mtm/map?mode=history&agentId=${encodeURIComponent(effectiveAgentId)}&date=${encodeURIComponent(selectedDay.date)}`, returnPath(query!, effectiveAgentId, selectedDay.date))} className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-primary hover:underline md:min-h-0">{t("openGpsPath")}<ArrowUpRight className="h-3 w-3" /></Link>
               </div>
-            </div>
-          ) : null}
+            )
+          })() : null}
 
           {gpsNeedsRecovery && facts ? (
             <section
