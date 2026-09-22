@@ -12,7 +12,7 @@ import { runWithRlsBypass } from "@/lib/rls-context"
  * Prove the phone on the prospect's own request through Telegram
  * (src/lib/demo-center/phone-telegram.ts): POST makes a one-time t.me link to
  * the sales organisation's bot, GET tells the page whether the bot has
- * accepted the number yet. As with the SMS code, the browser never names a
+ * accepted the number and written its code. The browser never names a
  * number: the one on the request is resolved here.
  */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ token: string }> }) {
@@ -69,8 +69,8 @@ const FAILURES: Record<Extract<IssueDemoTelegramLinkResult, { ok: false }>["code
   not_enabled: { status: 403, error: "Bu demoda zəng aktiv deyil" },
   consent_required: { status: 400, error: "Zəngə razılığınızı təsdiqləyin" },
   invalid_phone: { status: 400, error: "Zəng yalnız sorğuda göstərdiyiniz Azərbaycan mobil nömrəsinə edilir, sorğuda isə belə nömrə yoxdur." },
-  unavailable: { status: 503, error: "Telegram ilə təsdiq hazırda mümkün deyil. SMS kodu istəyin." },
-  too_many: { status: 429, error: "Telegram keçidi limiti bitib. SMS kodu istəyin." },
+  unavailable: { status: 503, error: "Telegram ilə təsdiq hazırda mümkün deyil. Hekayəyə zəngsiz davam edə bilərsiniz." },
+  too_many: { status: 429, error: "Telegram keçidi limiti bitib. Hekayəyə zəngsiz davam edə bilərsiniz." },
 }
 
 function failure(code: keyof typeof FAILURES) {

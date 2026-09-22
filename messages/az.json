@@ -14219,7 +14219,7 @@
       "moveEarlier": "«{title}» yuxarı",
       "moveLater": "«{title}» aşağı",
       "liveCallTitle": "Müştəriyə real AI zəngi",
-      "liveCallBody": "Müştəri nömrəsini SMS kodu ilə təsdiqləyir və razılıq verir; sonra LeadDrive Inc.-in AI agenti ona bir dəfə, sizin adınızdan, zəng saatlarında zəng edir. İzləmə tapşırığı sizə gəlir.",
+      "liveCallBody": "Müştəri nömrəsini Telegram-da təsdiqləyir — LeadDrive botu ilə nömrəsini paylaşır və botun yazdığı kodu daxil edir — və razılıq verir; sonra LeadDrive Inc.-in AI agenti ona bir dəfə, sizin adınızdan, zəng saatlarında zəng edir. İzləmə tapşırığı sizə gəlir.",
       "liveCallOn": "Real AI zəngi icazəlidir",
       "leadLink": "CRM-də lid",
       "leadLinkLinked": "Bağlanıb",

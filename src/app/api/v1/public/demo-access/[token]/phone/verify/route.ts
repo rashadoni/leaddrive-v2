@@ -46,9 +46,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 const FAILURES: Record<Extract<VerifyDemoPhoneCodeResult, { ok: false }>["code"], { status: number; error: string }> = {
   not_enabled: { status: 403, error: "Bu demoda zəng aktiv deyil" },
   consent_required: { status: 400, error: "Zəngə razılığınızı təsdiqləyin" },
-  no_code: { status: 409, error: "Əvvəlcə kod istəyin" },
-  expired: { status: 410, error: "Kodun müddəti bitib. Yeni kod istəyin." },
-  too_many_attempts: { status: 429, error: "Cəhd limiti bitib" },
+  // The demo's code comes only from the Telegram bot (owner, 2026-09-22).
+  no_code: { status: 409, error: "Əvvəlcə Telegram-da nömrənizi paylaşın — bot kodu orada yazacaq." },
+  expired: { status: 410, error: "Kodun müddəti bitib. Telegram-ı yenidən açın və nömrənizi paylaşın — bot yeni kod yazacaq." },
+  too_many_attempts: { status: 429, error: "Cəhd limiti bitib. Telegram-ı yenidən açın və nömrənizi paylaşın — bot yeni kod yazacaq." },
   wrong_code: { status: 401, error: "Kod düzgün deyil" },
   already_used: { status: 409, error: "Kod artıq istifadə edilib" },
 }

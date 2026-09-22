@@ -12,6 +12,12 @@ export function demoTarget(...stepIds: ReadonlyArray<string | false | null | und
   return ids.length ? { "data-demo-target": ids.join(" ") } : {}
 }
 
+/** Words for the arrow when they depend on what the control is at the moment
+ *  (the live-call panel: «Telegram-da kod alın», «Kodu buraya yazın», «Zəng et»). */
+export function demoLabel(label: string): { "data-demo-label": string } {
+  return { "data-demo-label": label }
+}
+
 /** Laid out on screen: an element inside `hidden lg:flex` on a phone is not. */
 export function hasLayoutBox(element: Element): boolean {
   // jsdom has no layout and no checkVisibility; a real browser reports display:none.

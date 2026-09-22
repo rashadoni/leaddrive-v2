@@ -120,8 +120,11 @@ export function DemoCoachMark({
   }, [collapsed])
   const [rect, setRect] = useState<Rect | null>(null)
   // Keyed by step, so a new step never shows the previous step's control.
-  const [targetState, setTargetState] = useState<{ key: string; rect: Rect | null }>({ key: stepKey, rect: null })
+  const [targetState, setTargetState] = useState<{ key: string; rect: Rect | null; label: string | null }>({ key: stepKey, rect: null, label: null })
   const targetRect = targetState.key === stepKey ? targetState.rect : null
+  // A control can name itself for the arrow (`data-demo-label`), e.g. the
+  // live-call panel, whose next control changes as the prospect goes on.
+  const targetOwnLabel = targetState.key === stepKey ? targetState.label : null
   const [viewport, setViewport] = useState({ width: 0, height: 0 })
   const [size, setSize] = useState({ width: 340, height: 160 })
   const popoverRef = useRef<HTMLDivElement>(null)
@@ -211,7 +214,10 @@ export function DemoCoachMark({
       frame = 0
       element = findDemoTarget(targetStepId)
       const next = element ? rectOf(element) : null
-      setTargetState((previous) => (previous.key === stepKey && sameRect(previous.rect, next) ? previous : { key: stepKey, rect: next }))
+      const nextLabel = element?.getAttribute("data-demo-label") ?? null
+      setTargetState((previous) =>
+        previous.key === stepKey && sameRect(previous.rect, next) && previous.label === nextLabel ? previous : { key: stepKey, rect: next, label: nextLabel },
+      )
       if (element) scrollOnce(element)
     }
     // A control that never shows up (or shows late): the region is brought
@@ -226,7 +232,7 @@ export function DemoCoachMark({
     }
     const timer = setTimeout(measure, 0)
     const observer = typeof MutationObserver !== "undefined" ? new MutationObserver(schedule) : null
-    observer?.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-demo-target", "class", "style", "hidden"] })
+    observer?.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-demo-target", "data-demo-label", "class", "style", "hidden"] })
     window.addEventListener("resize", schedule)
     window.addEventListener("scroll", schedule, true)
     return () => {
@@ -271,7 +277,11 @@ export function DemoCoachMark({
     height: focus.height + PADDING * 2,
   }
   const pointsAtControl = mode === "action" && targetRect !== null
-  const label = targetLabel ?? S.coachArrowFallback
+  const label = targetOwnLabel ?? targetLabel ?? S.coachArrowFallback
+  // Arrows everywhere (owner, 2026-09-22: «везде нужны стрелки для
+  // понимания»): at the control on a step to act on, at the region — with
+  // the step's name — on a step that shows something.
+  const arrowLabel = pointsAtControl ? label : S.coachLook(title)
 
   const ringElement = (
     <div
@@ -288,7 +298,6 @@ export function DemoCoachMark({
   )
 
   if (collapsed) {
-    if (!pointsAtControl) return ringElement
     // Entirely out of the viewport; a control at its very edge is still visible.
     const offBelow = ring.top >= viewHeight
     const offAbove = ring.top + ring.height <= 0
@@ -299,13 +308,18 @@ export function DemoCoachMark({
           type="button"
           data-testid="demo-coach-arrow"
           data-docked={offBelow ? "bottom" : "top"}
-          onClick={() => findDemoTarget(targetStepId ?? "")?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "center" })}
+          onClick={() =>
+            (findDemoTarget(targetStepId ?? "") ?? document.querySelector(`[data-tour-id="${anchor}"]`))?.scrollIntoView({
+              behavior: reducedMotion ? "auto" : "smooth",
+              block: "center",
+            })
+          }
           className="fixed left-1/2 z-[10002] flex max-w-[min(80vw,320px)] -translate-x-1/2 items-center gap-1.5 rounded-full bg-[#c2410c] px-3 py-1.5 text-xs font-semibold text-white shadow-lg hover:bg-[#9a3412]"
           style={offBelow ? { bottom: VIEWPORT_MARGIN } : { top: VIEWPORT_MARGIN }}
         >
           {offBelow ? <ArrowDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> : <ArrowUp className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
           {/* It only scrolls, so it says where the action is, not the action. */}
-          <span className="truncate">{offBelow ? S.coachChipBelow(label) : S.coachChipAbove(label)}</span>
+          <span className="truncate">{offBelow ? S.coachChipBelow(pointsAtControl ? label : title) : S.coachChipAbove(pointsAtControl ? label : title)}</span>
         </button>
       )
     }
@@ -313,15 +327,21 @@ export function DemoCoachMark({
     // the words sit beyond it. Above the control, or below when there is no room.
     const glyph = 18
     const pillHeight = 26
-    const above = ring.top - 4 - glyph - 4 - pillHeight >= VIEWPORT_MARGIN
+    const room = 4 + glyph + 4 + pillHeight
+    const above = ring.top - room >= VIEWPORT_MARGIN
+    const below = !above && ring.top + ring.height + room <= viewHeight - VIEWPORT_MARGIN
+    // A region as tall as the screen (the sidebar, the guide, the watermark):
+    // the words sit just inside its visible top and the arrow points down into it.
+    const inside = !above && !below
     const centre = clamp(ring.left + ring.width / 2, VIEWPORT_MARGIN + glyph / 2, viewWidth - VIEWPORT_MARGIN - glyph / 2)
-    const glyphTop = above ? ring.top - 4 - glyph : ring.top + ring.height + 4
+    const insidePillTop = clamp(Math.max(ring.top, 0) + PADDING + 4, VIEWPORT_MARGIN, viewHeight - VIEWPORT_MARGIN - room)
+    const glyphTop = above ? ring.top - 4 - glyph : below ? ring.top + ring.height + 4 : insidePillTop + pillHeight + 4
     const pillWidth = Math.min(240, viewWidth - VIEWPORT_MARGIN * 2)
-    const Glyph = above ? ArrowDown : ArrowUp
+    const Glyph = above || inside ? ArrowDown : ArrowUp
     return (
       <>
         {ringElement}
-        <div aria-hidden="true" data-testid="demo-coach-arrow" data-side={above ? "top" : "bottom"} className="pointer-events-none">
+        <div aria-hidden="true" data-testid="demo-coach-arrow" data-side={above ? "top" : below ? "bottom" : "inside"} className="pointer-events-none">
           <Glyph
             className={cn("fixed z-[10002] text-[#c2410c] drop-shadow", !reducedMotion && "motion-safe:animate-bounce")}
             style={{ left: centre - glyph / 2, top: glyphTop, width: glyph, height: glyph }}
@@ -332,10 +352,10 @@ export function DemoCoachMark({
             style={{
               left: clamp(centre - pillWidth / 2, VIEWPORT_MARGIN, Math.max(VIEWPORT_MARGIN, viewWidth - pillWidth - VIEWPORT_MARGIN)),
               width: pillWidth,
-              top: above ? glyphTop - 4 - pillHeight : glyphTop + glyph + 4,
+              top: above ? glyphTop - 4 - pillHeight : below ? glyphTop + glyph + 4 : insidePillTop,
             }}
           >
-            <span className="max-w-full truncate rounded-full bg-[#c2410c] px-3 py-1 text-xs font-semibold leading-[18px] text-white shadow-lg">{label}</span>
+            <span className="max-w-full truncate rounded-full bg-[#c2410c] px-3 py-1 text-xs font-semibold leading-[18px] text-white shadow-lg">{arrowLabel}</span>
           </span>
         </div>
       </>
@@ -397,9 +417,24 @@ export function DemoCoachMark({
       : { top: clamp(ring.top + ring.height / 2 - cardTop - 6, 12, height - 24), [side === "right" ? "left" : "right"]: -6 }
     : null
 
+  // With the card open the ring gets its own arrow too, on the side away
+  // from the card, so the eye lands on the thing and not only on the text.
+  const glyphAbove = side !== "top" && ring.top - 4 - 18 >= VIEWPORT_MARGIN
+  const glyphLeft = clamp(ring.left + ring.width / 2, VIEWPORT_MARGIN + 9, viewWidth - VIEWPORT_MARGIN - 9) - 9
+  const CardGlyph = glyphAbove ? ArrowDown : ArrowUp
+
   return (
     <>
       {ringElement}
+      {ringOnScreen ? (
+        <CardGlyph
+          aria-hidden="true"
+          data-testid="demo-coach-ring-arrow"
+          className={cn("pointer-events-none fixed z-[10001] text-[#c2410c] drop-shadow", !reducedMotion && "motion-safe:animate-bounce")}
+          style={{ left: glyphLeft, top: glyphAbove ? ring.top - 4 - 18 : ring.top + ring.height + 4, width: 18, height: 18 }}
+          strokeWidth={3}
+        />
+      ) : null}
       <div
         ref={popoverRef}
         tabIndex={-1}

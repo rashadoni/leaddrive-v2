@@ -167,6 +167,31 @@ describe("proving the phone and agreeing to the call", () => {
       .mockResolvedValueOnce(row as never)
   }
 
+  it("is checked like any code and records that the phone was proven through Telegram", async () => {
+    withPending({ ...pending(), telegramProofMessage: "777001:120" })
+    await expect(verifyDemoPhoneCode({ grant, code: "123456", consent: true, now: NOW })).resolves.toEqual({ ok: true, state: "verified" })
+    expect(prisma.demoPhoneVerification.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ verifiedAt: NOW, verifiedVia: "telegram", consentVersion: DEMO_CALL_CONSENT_VERSION }),
+    }))
+    expect(prisma.demoAccessEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ eventType: "PHONE_VERIFIED", metadata: expect.objectContaining({ method: "telegram" }) }),
+    })
+  })
+
+  it("takes the attempt before comparing, so parallel guesses cannot all be checked", async () => {
+    const row = pending({ otpAttempts: 4, otpHash: "same" })
+    vi.mocked(prisma.demoPhoneVerification.findFirst)
+      .mockResolvedValueOnce(null) // no phone proven yet
+      .mockResolvedValueOnce(row as never) // the newest code
+      .mockResolvedValueOnce({ otpHash: "same", verifiedAt: null } as never) // re-read after losing the attempt
+    // Another request took the last attempt a moment ago.
+    vi.mocked(prisma.demoPhoneVerification.updateMany).mockResolvedValueOnce({ count: 0 })
+    const compare = vi.spyOn(bcrypt, "compare")
+    await expect(verifyDemoPhoneCode({ grant, code: "123456", consent: true, now: NOW })).resolves.toEqual({ ok: false, code: "too_many_attempts" })
+    expect(compare).not.toHaveBeenCalled()
+    compare.mockRestore()
+  })
+
   it("refuses without the checkbox, before looking at the code", async () => {
     await expect(verifyDemoPhoneCode({ grant, code: "123456", consent: false, now: NOW }))
       .resolves.toEqual({ ok: false, code: "consent_required" })
@@ -313,50 +338,27 @@ describe("the public phone route", () => {
     }
   }
 
-  it("requires the prospect's own live session", async () => {
-    vi.mocked(prisma.demoGrant.findUnique).mockResolvedValue(activeGrant("some-other-hash") as never)
-    const response = await post({ useRequestPhone: true })
-    expect(response.status).toBe(401)
-    expect(mockSendSms).not.toHaveBeenCalled()
-  })
-
-  it("uses the request's number without ever echoing it", async () => {
+  it("sends no SMS in the demo: the code comes through Telegram only", async () => {
+    // Owner, 2026-09-22: the SMS quota is limited and the demo is free —
+    // «заставим их, чтоб в телеграм приходило».
     const credential = issueBrowserCredential()
     vi.mocked(prisma.demoGrant.findUnique).mockResolvedValue(activeGrant(credential.credentialHash) as never)
 
     const response = await post({ useRequestPhone: true }, `${demoSessionCookieName(TOKEN)}=${credential.credential}`)
     const body = await response.json()
 
-    expect(response.status).toBe(200)
-    expect(body).toEqual({ success: true, state: "code_sent" })
-    expect(mockSendSms.mock.calls[0][0].to).toBe("+994501234567")
-    expect(JSON.stringify(body)).not.toMatch(/994|501234567/)
+    expect(response.status).toBe(410)
+    expect(body).toMatchObject({ success: false, code: "sms_disabled" })
+    expect(body.error).toContain("Telegram")
+    expect(mockSendSms).not.toHaveBeenCalled()
+    expect(prisma.demoPhoneVerification.upsert).not.toHaveBeenCalled()
   })
 
-  it("refuses any number the browser names: only the request's own phone is called", async () => {
-    // Owner decision 2026-09-22: a demo must not be a way to have the agent
-    // ring somebody else's phone.
+  it("still refuses any number the browser names", async () => {
     const credential = issueBrowserCredential()
     vi.mocked(prisma.demoGrant.findUnique).mockResolvedValue(activeGrant(credential.credentialHash) as never)
-
     const response = await post({ phone: "+994551112233" }, `${demoSessionCookieName(TOKEN)}=${credential.credential}`)
-
     expect(response.status).toBe(400)
-    expect(mockSendSms).not.toHaveBeenCalled()
-  })
-
-  it("says so when the request has no usable phone, and sends nothing", async () => {
-    const credential = issueBrowserCredential()
-    vi.mocked(prisma.demoGrant.findUnique).mockResolvedValue({
-      ...activeGrant(credential.credentialHash),
-      request: { phone: null },
-    } as never)
-
-    const response = await post({ useRequestPhone: true }, `${demoSessionCookieName(TOKEN)}=${credential.credential}`)
-    const body = await response.json()
-
-    expect(response.status).toBe(400)
-    expect(body.error).toContain("sorğuda")
     expect(mockSendSms).not.toHaveBeenCalled()
   })
 })
