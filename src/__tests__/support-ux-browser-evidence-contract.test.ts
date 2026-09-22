@@ -298,14 +298,14 @@ describe("Support UX browser evidence contract", () => {
       "SUPPORT_EVIDENCE_APP_MODE: ${{ inputs.target_mode == 'ephemeral' && 'production' || 'remote' }}",
     );
     expect(workflow).toContain("Build isolated production-mode evidence application");
-    expect(workflow).toContain("actions/upload-artifact@v4");
+    expect(workflow).toContain("actions/upload-artifact@v7");
     expect(workflow).toContain("visual_mode:");
     expect(workflow).toContain("baseline_run_id:");
     expect(workflow).toContain("baseline_artifact_name:");
     expect(workflow).toContain("scripts/support-ux-complaint-flow-evidence.mjs");
     expect(workflow).toContain("complaint_flow_status");
     expect(complaintFlow).toContain('SUPPORT_EVIDENCE_TARGET_MODE !== "ephemeral"');
-    expect(workflow).toContain("actions/download-artifact@v4");
+    expect(workflow).toContain("actions/download-artifact@v8");
     expect(workflow).toContain("SUPPORT_EVIDENCE_REQUIRE_BASELINE");
     expect(workflow).toContain("sample_count:");
     expect(workflow).toContain(
