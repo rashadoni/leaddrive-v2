@@ -3,6 +3,7 @@
 import "leaflet/dist/leaflet.css"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { CircleMarker, MapContainer, Polyline, Popup, useMap } from "react-leaflet"
+import { HISTORY_MAP_COLORS, splitHistoryPathAtGaps } from "@/lib/mtm/history-path"
 import L from "leaflet"
 import { useTranslations } from "next-intl"
 import { formatInTimezone } from "@/lib/timezone"
@@ -133,9 +134,9 @@ export default function LocationHistoryMap({
     () => layers.actual ? points.map((point) => [point.latitude, point.longitude] as L.LatLngTuple) : [],
     [layers.actual, points],
   )
-  const actualPath = useMemo(
-    () => visiblePoints.map((point) => [point.latitude, point.longitude] as L.LatLngTuple),
-    [visiblePoints],
+  const actualRuns = useMemo(
+    () => splitHistoryPathAtGaps(visiblePoints, gaps) as L.LatLngTuple[][],
+    [gaps, visiblePoints],
   )
   const activePoint = visiblePoints.at(-1) ?? null
   const playbackAt = playbackPoint ? new Date(playbackPoint.recordedAt).getTime() : Number.POSITIVE_INFINITY
@@ -220,14 +221,14 @@ export default function LocationHistoryMap({
         <MapContainer center={center} zoom={12} className="h-full w-full" scrollWheelZoom>
           <ResizeAndFit coordinates={coordinates} />
           <CartoVectorBasemap />
-          {actualPath.length > 1 && (
-            <Polyline positions={actualPath} pathOptions={{ color: "#2563eb", weight: 4, opacity: 0.78 }} />
-          )}
+          {actualRuns.map((run, index) => (
+            <Polyline key={`actual-${index}`} positions={run} pathOptions={{ color: HISTORY_MAP_COLORS.track, weight: 4, opacity: 0.78 }} />
+          ))}
           {plannedPaths.map((route) => route.coordinates.length > 1 && (
-            <Polyline key={`plan-${route.id}`} positions={route.coordinates} pathOptions={{ color: "#7c3aed", weight: 3, opacity: 0.72, dashArray: "8 6" }} />
+            <Polyline key={`plan-${route.id}`} positions={route.coordinates} pathOptions={{ color: HISTORY_MAP_COLORS.plan, weight: 3, opacity: 0.72, dashArray: "8 6" }} />
           ))}
           {gapSegments.map((gap) => (
-            <Polyline key={gap.id} positions={gap.coordinates} pathOptions={{ color: "#dc2626", weight: 4, opacity: 0.9, dashArray: "3 6" }} />
+            <Polyline key={gap.id} positions={gap.coordinates} pathOptions={{ color: HISTORY_MAP_COLORS.gap, weight: 4, opacity: 0.9, dashArray: "3 6" }} />
           ))}
           {layers.planned && plannedRoutes.flatMap((route) => route.points).map((point) =>
             point.customer.latitude != null && point.customer.longitude != null ? (
@@ -235,7 +236,7 @@ export default function LocationHistoryMap({
                 key={`planned-${point.id}`}
                 center={[point.customer.latitude, point.customer.longitude]}
                 radius={7}
-                pathOptions={{ color: "#6d28d9", fillColor: "#8b5cf6", fillOpacity: 0.75, weight: 2 }}
+                pathOptions={{ color: "#6d28d9", fillColor: HISTORY_MAP_COLORS.plan, fillOpacity: 0.75, weight: 2 }}
               >
                 <Popup><strong>{point.orderIndex + 1}. {point.label}</strong><div>{t(`pointStatus.${point.status}`)}</div>{point.plannedTime && <div>{formatMoment(point.plannedTime)}</div>}</Popup>
               </CircleMarker>
@@ -249,7 +250,7 @@ export default function LocationHistoryMap({
               center={[point.latitude, point.longitude]}
               radius={isActive ? 8 : index === 0 ? 5 : 2}
               pathOptions={isActive
-                ? { color: "#9a3412", fillColor: "#fb923c", fillOpacity: 0.95, weight: 3 }
+                ? { color: "#9a3412", fillColor: HISTORY_MAP_COLORS.current, fillOpacity: 0.95, weight: 3 }
                 : { color: "#1d4ed8", fillColor: "#3b82f6", fillOpacity: 0.75, weight: 1 }}
             >
               <Popup>
@@ -267,7 +268,7 @@ export default function LocationHistoryMap({
               key={stop.id}
               center={[stop.latitude, stop.longitude]}
               radius={9}
-              pathOptions={{ color: "#b45309", fillColor: "#f59e0b", fillOpacity: 0.8, weight: 2 }}
+              pathOptions={{ color: "#b45309", fillColor: HISTORY_MAP_COLORS.stop, fillOpacity: 0.8, weight: 2 }}
             >
               <Popup>
                 <div className="space-y-1 text-xs">
@@ -287,7 +288,7 @@ export default function LocationHistoryMap({
               key={`visit-${visit.id}`}
               center={[visit.latitude, visit.longitude]}
               radius={7}
-              pathOptions={{ color: "#047857", fillColor: "#10b981", fillOpacity: 0.8, weight: 2 }}
+              pathOptions={{ color: "#047857", fillColor: HISTORY_MAP_COLORS.visit, fillOpacity: 0.8, weight: 2 }}
             >
               <Popup>
                 <div className="space-y-1 text-xs">
