@@ -62,6 +62,8 @@ function liveCallSection(section: DemoJourneySection): DemoJourneySection {
         anchor: "demo-guide-panel",
         placement: "left",
         action: "confirm",
+        // True at every stage of the panel: prove the phone, agree, call, wait.
+        targetLabel: "Zəng panelində davam edin",
         required: true,
         completion: { kind: "outcome", to: DEMO_LIVE_CALL_OUTCOMES },
         covers: [],

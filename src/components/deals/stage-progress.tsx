@@ -15,9 +15,11 @@ interface StageProgressProps {
   stages: Stage[]
   currentStage: string
   onStageClick?: (stageKey: string) => void
+  /** Extra data attributes per stage button; the guided demo marks the stage its arrow points at. */
+  stageButtonProps?: (stageKey: string) => Record<`data-${string}`, string> | undefined
 }
 
-export function StageProgress({ stages, currentStage, onStageClick }: StageProgressProps) {
+export function StageProgress({ stages, currentStage, onStageClick, stageButtonProps }: StageProgressProps) {
   // По смыслу, а не по написанию: у организации, переименовавшей проигрышную
   // стадию, полоса не переключалась в проигранный вид, а её чеврон продолжал
   // висеть у каждой открытой сделки.
@@ -48,6 +50,7 @@ export function StageProgress({ stages, currentStage, onStageClick }: StageProgr
               type="button"
               disabled={!isClickable}
               onClick={() => isClickable && onStageClick?.(stage.key)}
+              {...stageButtonProps?.(stage.key)}
               whileHover={isClickable ? { scale: 1.02 } : undefined}
               whileTap={isClickable ? { scale: 0.98 } : undefined}
               className={cn(

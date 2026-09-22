@@ -16,9 +16,10 @@ import { InfoHint } from "@/components/info-hint"
 import { LeadEvaluationCard, LeadOverview, LeadStatBoxes } from "@/components/leads/lead-overview"
 import { formatDate, formatDateTime } from "@/lib/format-date"
 import { getLeadScoreFactorLabel } from "@/lib/leads/score-factor-labels"
-import { DEMO_CHANNEL_LABELS, type DemoLeadRecord } from "@/lib/demo-center/journey"
+import { applyTransitionEffects, DEMO_CHANNEL_LABELS, type DemoLeadRecord } from "@/lib/demo-center/journey"
 import { cn } from "@/lib/utils"
 import type { DemoSceneProps } from "../scene-props"
+import { demoTarget } from "../demo-target"
 import { DEMO_JOURNEY_STRINGS as S } from "../strings"
 
 /**
@@ -87,7 +88,11 @@ function LeadListView({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneP
 
   // Before the card exists the story still shows a board with the prospect's
   // own row in "new": that is what the manager sees the moment the lead lands.
-  const pending: DemoLeadRecord | null = lead
+  // It is the very lead opening it creates (the same record effect), so the
+  // row the prospect clicks is the card they get. Without it the «Yeni»
+  // column was empty on «Öz kartınızı açın» and the story could not go on.
+  const pending: DemoLeadRecord | null =
+    lead ?? (snapshot.state === "AI_REPLIED" ? applyTransitionEffects(records, "LEAD_CREATED", identity, new Date(snapshot.updatedAt)).lead : null)
   const rows = pending ? [pending] : []
   const score = pending?.score ?? 0
 
@@ -187,6 +192,7 @@ function LeadListView({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneP
                       key={row.id}
                       type="button"
                       onClick={openCard}
+                      {...demoTarget("lead-open")}
                       className="w-full rounded-lg border border-zinc-200 bg-card p-3 text-left transition-all hover:border-foreground/30 hover:shadow-sm dark:border-zinc-700"
                     >
                       <span className="mb-1.5 flex items-center gap-2">
@@ -317,6 +323,7 @@ export function LeadCardView({ snapshot, step, reviewMode, dispatch, hint, lead 
               variant="outline"
               className="gap-1.5 text-green-600 hover:border-green-300 hover:text-green-700"
               onClick={convert}
+              {...demoTarget("deal-convert")}
             >
               <ArrowRight className="h-4 w-4" /> {t("modalConvertToDeal")}
             </Button>
@@ -343,6 +350,7 @@ export function LeadCardView({ snapshot, step, reviewMode, dispatch, hint, lead 
                   key={status}
                   type="button"
                   onClick={() => advanceStatus(status)}
+                  {...demoTarget(status === "qualified" && "lead-status-advance")}
                   className={cn(
                     "relative flex-1 rounded-md px-3 py-2.5 text-xs font-medium transition-all hover:opacity-80",
                     isCurrent
@@ -400,6 +408,7 @@ export function LeadCardView({ snapshot, step, reviewMode, dispatch, hint, lead 
                 key={entry.id}
                 type="button"
                 onClick={() => selectTab(entry.id)}
+                {...demoTarget(entry.id === "timeline" && "lead-timeline", entry.id === "ai" && "lead-scoring")}
                 aria-current={tab === entry.id ? "page" : undefined}
                 className={cn(
                   "-mb-px border-b-2 px-3 py-2 text-sm transition-colors",

@@ -156,6 +156,13 @@ export interface DemoJourneyStep {
   readonly anchor: string
   readonly placement: DemoStepPlacement
   readonly action: DemoStepAction
+  /**
+   * Words on the on-screen arrow, verb first («Kampaniyanı açın»). Every step
+   * the prospect acts on has one: the arrow points at the exact control
+   * marked `data-demo-target="<step id>"` and stays when the card is put
+   * away (owner, 2026-09-22: «стрелками показывать, что надо сделать»).
+   */
+  readonly targetLabel?: string
   readonly required: boolean
   readonly completion: DemoCompletionRule
   /** Coverage-inventory section ids this step demonstrates (`<area>.<section>`). */

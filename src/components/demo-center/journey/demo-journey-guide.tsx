@@ -21,6 +21,7 @@ import type { DemoJourneyVariant } from "./demo-journey-player"
 import { cn } from "@/lib/utils"
 import { DEMO_JOURNEY_STRINGS as S } from "./strings"
 import { DemoLiveCall, type DemoLiveCallState } from "./demo-live-call"
+import { demoTarget } from "./demo-target"
 
 /**
  * The guide panel: where the prospect is in the story, what to do now, and
@@ -58,6 +59,12 @@ export interface DemoJourneyGuideProps {
   onOutcome?: (to: DemoJourneyState) => void
   /** Brings back the coach card the prospect put away; absent while it is shown. */
   onShowCoach?: () => void
+  /**
+   * The step's own control lives in this panel: a transition step anchored
+   * on the panel («Zəngsiz davam edin»). Without it that step had no control
+   * anywhere and the story stopped there.
+   */
+  onGuideAction?: () => void
   /** A clip was started, played to the end, or failed — for the session's report. */
   onClipEvent?: (name: DemoClipEvent) => void
 }
@@ -88,6 +95,7 @@ export function DemoJourneyGuide({
   onOutcome,
   onClipEvent,
   onShowCoach,
+  onGuideAction,
 }: DemoJourneyGuideProps) {
   const sections = activeSections(manifest)
   const sectionIndex = sections.findIndex((candidate) => candidate.id === section.id)
@@ -175,6 +183,11 @@ export function DemoJourneyGuide({
             </Button>
           )}
           </>
+          )}
+          {onGuideAction && !reviewMode && step.anchor === "demo-guide-panel" && step.completion.kind === "transition" && (
+            <Button size="sm" className="mt-3 h-8 w-full" onClick={onGuideAction} {...demoTarget(step.id)}>
+              {step.targetLabel ?? S.next} <ChevronRight className="ml-1 h-3.5 w-3.5" />
+            </Button>
           )}
           {anchorMissing && (
             <div role="alert" className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-900">

@@ -489,10 +489,14 @@ describe("The open demo", () => {
     expect(guide).toContain("const stepIsOnScene")
 
     // The instruction and the step's buttons must sit behind that flag.
-    const gated = guide.slice(guide.indexOf("stepIsOnScene ? ("), guide.indexOf("{anchorMissing &&"))
-    expect(gated).not.toBe("")
+    const start = guide.indexOf("stepIsOnScene ? (")
+    const end = guide.indexOf("{onGuideAction &&")
+    expect(start).toBeGreaterThan(-1)
+    expect(end).toBeGreaterThan(start)
+    const gated = guide.slice(start, end)
     expect(gated).toContain("step.instruction")
-    expect(gated).toContain("S.next")
+    // The panel's own «İrəli», not the in-panel «Davam edin» that follows the gate.
+    expect(gated).toMatch(/onClick=\{onNext\}>\s*\{S\.next\}/)
 
     // And the panel must be told when a coach mark is actually there: the
     // scene has one and the prospect has not put it away (× or Escape), in
@@ -500,7 +504,10 @@ describe("The open demo", () => {
     const player = read("src/components/demo-center/journey/demo-journey-player.tsx")
     expect(player).toContain("const coachShown = Boolean(step && Scene) && hiddenCoachKey !== coachKey")
     expect(player).toContain("sceneHasCoachMark={coachShown}")
-    expect(player).toContain("{step && coachShown && (")
+    // Put away, the card collapses to the ring and arrow on the control: it
+    // stays mounted, told that it is collapsed, and the panel carries the words.
+    expect(player).toContain("{step && Scene && !reviewMode && (")
+    expect(player).toContain("collapsed={!coachShown}")
   })
 
   it("does not post what the visitor types about themselves", () => {

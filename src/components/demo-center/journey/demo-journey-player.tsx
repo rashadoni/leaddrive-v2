@@ -390,6 +390,9 @@ export function DemoJourneyPlayer({
                 else if (!step.required) dispatch({ type: "skip-step", stepId: step.id })
               }}
               onExitReview={() => setViewSectionId(null)}
+              onGuideAction={() => {
+                if (step?.completion.kind === "transition") dispatch({ type: "transition", stepId: step.id, to: step.completion.to })
+              }}
               liveCall={liveCall}
               onOutcome={(to) => step && dispatch({ type: "outcome", stepId: step.id, to })}
             />
@@ -398,8 +401,14 @@ export function DemoJourneyPlayer({
 
         <p ref={liveRegionRef} className="sr-only" role="status" aria-live="polite" />
 
-        {step && coachShown && (
+        {/* Put away (× or Escape), the card collapses to the ring and the arrow on
+            the control instead of disappearing: the owner could not tell what
+            to press once the card was closed (2026-09-22). */}
+        {step && Scene && !reviewMode && (
           <DemoCoachMark
+            collapsed={!coachShown}
+            targetStepId={step.action === "observe" || step.action === "wait" ? undefined : step.id}
+            targetLabel={step.targetLabel}
             stepKey={`${snapshot.sectionId}:${step.id}`}
             anchor={step.anchor}
             placement={step.placement}

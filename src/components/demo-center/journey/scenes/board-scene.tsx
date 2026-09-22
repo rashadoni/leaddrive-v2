@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatDate, formatDateTime } from "@/lib/format-date"
 import { cn } from "@/lib/utils"
+import { applyTransitionEffects } from "@/lib/demo-center/journey"
 import type { DemoSceneProps } from "../scene-props"
+import { demoTarget } from "../demo-target"
 import { DEMO_JOURNEY_STRINGS as S } from "../strings"
 
 /**
@@ -34,19 +36,26 @@ export function BoardScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
   const tReports = useTranslations("boardReports")
   const locale = useLocale()
   const { task } = snapshot.records
+  // On «Sizin tapşırığınız» the card the prospect opens is the task opening
+  // creates (the same record effect); before this the column was empty and
+  // the story could not go on.
+  const previewing = !task && (step?.id === "task-boards" || step?.id === "task-open")
+  const cardTask = task ?? (previewing ? applyTransitionEffects(snapshot.records, "TASK_CREATED", snapshot.identity, new Date(snapshot.updatedAt)).task : null)
 
-  const boardOpened = snapshot.ui["board.opened"] === true || snapshot.state !== "CALL_SKIPPED"
+  // The index of boards is the screen of «task-boards» only. It used to key
+  // on CALL_SKIPPED, so after a real call (any other outcome) the board was
+  // already open and the step waiting for «open the board» could not close.
+  const boardOpened = snapshot.ui["board.opened"] === true || step?.id !== "task-boards"
   const [onBoard, setOnBoard] = useState(boardOpened)
   const [tab, setTab] = useState<"board" | "reports">("board")
   const [taskOpen, setTaskOpen] = useState(false)
 
   const openBoard = () => {
-    if (reviewMode) {
+    // Only «task-boards» records the opening; on any later step the board was
+    // already opened, and «←» then the tile just goes back to it (the tile
+    // used to refuse, which stranded the prospect on «Sizin tapşırığınız»).
+    if (reviewMode || step?.id !== "task-boards") {
       setOnBoard(true)
-      return
-    }
-    if (step?.id !== "task-boards") {
-      hint(S.hintFollow(step?.title ?? ""))
       return
     }
     const result = dispatch({ type: "ui", path: "board.opened", value: true })
@@ -74,6 +83,7 @@ export function BoardScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
           <button
             type="button"
             onClick={openBoard}
+            {...demoTarget("task-boards")}
             className="rounded-xl border border-zinc-200 bg-card p-4 text-left transition-all hover:border-foreground/30 hover:shadow-sm dark:border-zinc-700"
           >
             <span className="flex items-center gap-2">
@@ -81,7 +91,7 @@ export function BoardScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
               <span className="text-sm font-semibold">{S.salesBoard}</span>
             </span>
             <span className="mt-2 block text-xs text-muted-foreground">
-              {t("taskCount")}: {task ? 1 : 0}
+              {t("taskCount", { count: cardTask ? 1 : 0 })}
             </span>
           </button>
         </div>
@@ -150,7 +160,7 @@ export function BoardScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
 
           <div data-tour-id="board-columns" className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             {COLUMNS.map((column) => {
-              const cards = column.key === "todo" && task ? [task] : []
+              const cards = column.key === "todo" && cardTask ? [cardTask] : []
               return (
                 <div key={column.key} className="min-w-0">
                   <div className="mb-3 flex items-center justify-between border-b border-zinc-200 pb-2 dark:border-zinc-700">
@@ -164,7 +174,7 @@ export function BoardScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
                         data-tour-id="board-card"
                         className="rounded-lg border border-zinc-200 bg-card p-3 dark:border-zinc-700"
                       >
-                        <button type="button" onClick={openTask} className="block w-full text-left">
+                        <button type="button" onClick={openTask} className="block w-full text-left" {...demoTarget("task-open")}>
                           <span className="block text-xs font-medium leading-snug text-foreground">{card.title}</span>
                           <span className="mt-2 block text-[11px] text-muted-foreground">
                             {tc("assignee")}: {card.assigneeName}
@@ -202,10 +212,10 @@ export function BoardScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
         <div data-tour-id="board-reports" className="space-y-3">
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {([
-              { label: tReports("kpiWip"), value: task ? 1 : 0 },
+              { label: tReports("kpiWip"), value: cardTask ? 1 : 0 },
               { label: tReports("kpiClosed"), value: 0 },
               { label: tReports("kpiOverdue"), value: 0 },
-              { label: tReports("kpiDueSoon"), value: task ? 1 : 0 },
+              { label: tReports("kpiDueSoon"), value: cardTask ? 1 : 0 },
             ]).map((kpi) => (
               <Card key={kpi.label}>
                 <CardContent className="pb-4 pt-4">
