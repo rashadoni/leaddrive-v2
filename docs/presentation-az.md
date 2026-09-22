@@ -95,7 +95,7 @@ Hər gün işə gəldikdə bir baxışda:
 
 ### 👤 Lidlər — Satış hunisi
 - **Lid balı**: ən çox satıcının rəyinə və əlaqə vasitələrinə əsaslanır, lid hər dəfə saxlananda yenidən hesablanır
-- A = isti (birinci zəng edin), F = soyuq (Journey ilə nurture edin)
+- A = isti (birinci zəng edin), F = aşağı bal: adətən lidlə əlaqə vasitəsi yoxdur (əvvəlcə nömrə istəyin) və ya satıcı «Satılmadı» qeyd edib
 - Convert = Kontakt + Şirkət + Sövdə bir klikdə
 
 ### 📧 Inbox — Bütün kanallar bir yerdə
