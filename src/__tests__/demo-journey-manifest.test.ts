@@ -116,6 +116,7 @@ describe("Guided journey manifest: prospect-to-closed-won v1", () => {
       "lead-created",
       "lead-qualified",
       "ai-call",
+      "ai-call-result",
       "task",
       "deal",
       "quote",
@@ -124,14 +125,24 @@ describe("Guided journey manifest: prospect-to-closed-won v1", () => {
     ])
   })
 
-  it("keeps the call exercise off in v1 and truthfully skipped, never faked", () => {
+  it("calls from the card and says, where it matters, that this one is a simulation", () => {
+    // Owner, 2026-09-22: show the call the manager makes from the lead card.
+    // The open demo rings nobody, so the card marks the result as simulated;
+    // a granted demo with the live call rings the prospect's own phone
+    // (withLiveCall replaces this section's second step).
     expect(manifest.capabilities.liveCall).toBe(false)
     expect(manifest.capabilities.phoneVerification).toBe(false)
     const call = manifest.sections.find((section) => section.id === "ai-call")!
-    expect(call.exitStates).toEqual(["CALL_SKIPPED"])
-    const transitions = call.steps.filter((step) => step.completion.kind === "transition")
-    expect(transitions.map((step) => (step.completion as { to: string }).to)).toEqual(["CALL_SKIPPED"])
+    expect(call.exitStates).toEqual(["CALL_RESULT_RECORDED"])
+    const last = call.steps[call.steps.length - 1]
+    expect(last.id).toBe("ai-call-from-card")
+    expect(last.completion).toEqual({ kind: "outcome", to: ["CALL_RESULT_RECORDED"] })
     expect(call.steps.some((step) => step.analyticsEvent === "call.consent_shown")).toBe(true)
+    expect(call.summary).toMatch(/simulyasiya/)
+    // The scene shows the «simulyasiya» mark on every variant but the granted one.
+    const scene = read("src/components/demo-center/journey/scenes/lead-scene.tsx")
+    expect(scene).toContain('variant !== "granted" ?')
+    expect(scene).toContain("S.simulatedSend")
   })
 
   it("never lets an action step complete just by being viewed", () => {
@@ -234,7 +245,7 @@ describe("Guided journey coverage", () => {
   const EXPECTED: Record<string, { included: number; total: number; percent: number }> = {
     campaigns: { included: 5, total: 6, percent: 83 },
     inbox: { included: 8, total: 10, percent: 80 },
-    leads: { included: 18, total: 21, percent: 86 },
+    leads: { included: 20, total: 23, percent: 87 },
     tasks: { included: 11, total: 13, percent: 85 },
     deals: { included: 14, total: 17, percent: 82 },
     quotes: { included: 8, total: 10, percent: 80 },

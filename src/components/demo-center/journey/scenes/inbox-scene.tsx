@@ -58,7 +58,10 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
   }
 
   const sendDraft = () => {
-    if (reviewMode) return
+    if (reviewMode) {
+      hint(S.reviewOnly)
+      return
+    }
     if (step?.id !== "ai-reply-send") {
       hint(S.hintFollow(step?.title ?? ""))
       return

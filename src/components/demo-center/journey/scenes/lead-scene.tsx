@@ -16,9 +16,9 @@ import { InfoHint } from "@/components/info-hint"
 import { LeadEvaluationCard, LeadOverview, LeadStatBoxes } from "@/components/leads/lead-overview"
 import { formatDate, formatDateTime } from "@/lib/format-date"
 import { getLeadScoreFactorLabel } from "@/lib/leads/score-factor-labels"
-import { applyTransitionEffects, DEMO_CHANNEL_LABELS, type DemoLeadRecord } from "@/lib/demo-center/journey"
+import { applyTransitionEffects, DEMO_CHANNEL_LABELS, type DemoActivityRecord, type DemoLeadRecord } from "@/lib/demo-center/journey"
 import { cn } from "@/lib/utils"
-import type { DemoSceneProps } from "../scene-props"
+import type { DemoJourneyVariant, DemoSceneProps } from "../scene-props"
 import { demoTarget } from "../demo-target"
 import { DEMO_JOURNEY_STRINGS as S } from "../strings"
 
@@ -97,7 +97,10 @@ function LeadListView({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneP
   const score = pending?.score ?? 0
 
   const openCard = () => {
-    if (reviewMode) return
+    if (reviewMode) {
+      hint(S.reviewOnly)
+      return
+    }
     if (step?.id !== "lead-open") {
       hint(S.hintFollow(step?.title ?? ""))
       return
@@ -225,7 +228,7 @@ function LeadListView({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneP
   )
 }
 
-export function LeadCardView({ snapshot, step, reviewMode, dispatch, hint, lead }: DemoSceneProps & { lead: DemoLeadRecord }) {
+export function LeadCardView({ snapshot, step, reviewMode, variant, dispatch, hint, lead }: DemoSceneProps & { lead: DemoLeadRecord }) {
   const t = useTranslations("leads")
   const tc = useTranslations("common")
   const locale = useLocale()
@@ -259,7 +262,10 @@ export function LeadCardView({ snapshot, step, reviewMode, dispatch, hint, lead 
   }
 
   const advanceStatus = (status: string) => {
-    if (reviewMode) return
+    if (reviewMode) {
+      hint(S.reviewOnly)
+      return
+    }
     if (step?.id !== "lead-status-advance") {
       hint(S.hintFollow(step?.title ?? ""))
       return
@@ -271,8 +277,27 @@ export function LeadCardView({ snapshot, step, reviewMode, dispatch, hint, lead 
     dispatch({ type: "transition", stepId: step.id, to: "LEAD_QUALIFIED" })
   }
 
+  // «AI ilə zəng et» on the card. In the open demo the call is simulated and
+  // the card says so; a granted demo with the live call rings the prospect's
+  // own phone from the guide panel instead (owner, 2026-09-22).
+  const callFromCard = () => {
+    if (reviewMode) {
+      hint(S.reviewOnly)
+      return
+    }
+    if (step?.id !== "ai-call-from-card") {
+      hint(step ? S.hintFollow(step.title) : S.hintDisabled)
+      return
+    }
+    // Through the states a call really goes through: queued, ringing, result.
+    dispatch({ type: "outcome", stepId: step.id, to: "CALL_RESULT_RECORDED" })
+  }
+
   const convert = () => {
-    if (reviewMode) return
+    if (reviewMode) {
+      hint(S.reviewOnly)
+      return
+    }
     if (step?.id !== "deal-convert") {
       hint(S.hintFollow(step?.title ?? ""))
       return
@@ -280,6 +305,7 @@ export function LeadCardView({ snapshot, step, reviewMode, dispatch, hint, lead 
     dispatch({ type: "transition", stepId: step.id, to: "DEAL_CREATED" })
   }
 
+  const callResult = lead.activities.find((activity) => activity.id === "act-call") ?? null
   const currentIndex = STATUSES.indexOf(lead.status as (typeof STATUSES)[number])
   // "Now" is the snapshot's own clock, not Date.now(): the scene must render
   // the same value on every pass, and the journey already timestamps itself.
@@ -314,7 +340,7 @@ export function LeadCardView({ snapshot, step, reviewMode, dispatch, hint, lead 
           </div>
         </div>
         <div data-tour-id="lead-header-actions" className="flex w-full flex-wrap items-center gap-2">
-          <Button data-tour-id="lead-ai-call" variant="outline" className="gap-1.5" onClick={() => hint(S.hintDisabled)}>
+          <Button data-tour-id="lead-ai-call" variant="outline" className="gap-1.5" onClick={callFromCard} {...demoTarget("ai-call-from-card")}>
             <Phone className="h-4 w-4" /> {t("aiCall.action")}
           </Button>
           {lead.status !== "converted" && (
@@ -378,6 +404,7 @@ export function LeadCardView({ snapshot, step, reviewMode, dispatch, hint, lead 
             />
           </div>
           <VoicePermissionCard onAction={() => hint(S.hintDisabled)} />
+          {callResult ? <CallResultCard entry={callResult} variant={variant} /> : null}
           <LeadEvaluationCard
             score={lead.score}
             factors={lead.scoreDetails.factors}
@@ -579,6 +606,32 @@ function Metric({ value, label }: { value: string; label: string }) {
       <CardContent className="pb-4 pt-4">
         <div className="text-3xl font-bold text-primary">{value}</div>
         <div className="mt-1 text-xs text-muted-foreground">{label}</div>
+      </CardContent>
+    </Card>
+  )
+}
+
+/** What the call left on the card: how long it lasted, how it ended, what the
+ *  assistant wrote. The same line goes to the lead's timeline. */
+function CallResultCard({ entry, variant }: { entry: DemoActivityRecord; variant: DemoJourneyVariant }) {
+  const t = useTranslations("voip")
+  return (
+    <Card data-tour-id="lead-call-result">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <Phone className="h-4 w-4 text-primary" aria-hidden="true" /> {t("callOutcome")}
+          {variant !== "granted" ? (
+            <span className="ml-auto rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">{S.simulatedSend}</span>
+          ) : null}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2 text-sm">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <span className="text-muted-foreground">{t("duration")}: <span className="font-medium text-foreground">2 dəq 04 san</span></span>
+          <span className="text-muted-foreground">{t("callOutcome")}: <span className="font-medium text-foreground">{t("outcomeInterested")}</span></span>
+        </div>
+        <p className="rounded-lg border border-zinc-200 bg-muted/40 p-2.5 text-xs leading-relaxed dark:border-zinc-700">{entry.description}</p>
+        <p className="text-[11px] text-muted-foreground">{S.callResultInTimeline}</p>
       </CardContent>
     </Card>
   )

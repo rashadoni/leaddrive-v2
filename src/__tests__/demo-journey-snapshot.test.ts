@@ -169,11 +169,15 @@ describe("Journey snapshot: the story end to end", () => {
     expect(afterLead.records.conversation.aiDraft).toBeNull()
   })
 
-  it("qualifies the lead, skips the call truthfully and creates exactly one task", () => {
+  it("qualifies the lead, calls from the card and creates exactly one task", () => {
     const afterTask = driveTo(start, "task-detail")
     expect(afterTask.state).toBe("TASK_CREATED")
     expect(afterTask.records.lead?.status).toBe("qualified")
-    expect(afterTask.records.lead?.timeline.some((entry) => entry.id === "tl-call" && entry.title.includes("deaktiv"))).toBe(true)
+    // The call pressed from the card leaves the same pair of records a real
+    // one leaves — the card, not the record, is where the open demo says the
+    // call was simulated.
+    expect(afterTask.records.lead?.timeline.some((entry) => entry.id === "tl-call")).toBe(true)
+    expect(afterTask.records.lead?.activities.some((entry) => entry.id === "act-call")).toBe(true)
     expect(afterTask.records.task?.relatedLeadId).toBe("lead-demo-1")
     expect(afterTask.records.task?.assigneeName).toBeTruthy()
   })

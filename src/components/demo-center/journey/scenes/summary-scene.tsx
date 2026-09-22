@@ -22,7 +22,10 @@ export function SummaryScene({ manifest, snapshot, step, reviewMode, dispatch, h
   const finished = snapshot.state === "COMPLETED"
 
   const finish = () => {
-    if (reviewMode) return
+    if (reviewMode) {
+      hint(S.reviewOnly)
+      return
+    }
     if (step?.id !== "summary-finish") {
       hint(S.hintFollow(step?.title ?? ""))
       return

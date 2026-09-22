@@ -43,7 +43,10 @@ export function QuoteScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
   const [dialogOpen, setDialogOpen] = useState(false)
 
   const openCreateDialog = () => {
-    if (reviewMode) return
+    if (reviewMode) {
+      hint(S.reviewOnly)
+      return
+    }
     if (step?.id !== "quote-create") {
       hint(S.hintFollow(step?.title ?? ""))
       return
@@ -61,7 +64,10 @@ export function QuoteScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
   }
 
   const editLines = () => {
-    if (reviewMode) return
+    if (reviewMode) {
+      hint(S.reviewOnly)
+      return
+    }
     if (step?.id !== "quote-lines") {
       hint(S.hintFollow(step?.title ?? ""))
       return
@@ -70,7 +76,10 @@ export function QuoteScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
   }
 
   const transition = (to: "QUOTE_SENT" | "QUOTE_ACCEPTED", stepId: string) => {
-    if (reviewMode) return
+    if (reviewMode) {
+      hint(S.reviewOnly)
+      return
+    }
     if (step?.id !== stepId) {
       hint(S.hintFollow(step?.title ?? ""))
       return

@@ -86,6 +86,8 @@ export const DEMO_JOURNEY_COVERAGE: readonly DemoCoverageArea[] = [
       { id: "leads.card.status-bar", label: "Полоса статусов лида", included: true, kind: "interactive" },
       { id: "leads.card.overview", label: "Обзор: оценка, evaluation, стат-боксы", included: true, kind: "observe" },
       { id: "leads.card.voice-permission", label: "Согласие на AI-звонок", included: true, kind: "observe" },
+      { id: "leads.card.ai-call", label: "Звонок AI из карточки лида", included: true, kind: "interactive" },
+      { id: "leads.card.call-result", label: "Результат звонка в карточке: длительность, итог, заметка", included: true, kind: "observe" },
       { id: "leads.card.advisor-risk", label: "Виджет Advisor risk", included: false, reason: "Считается фоновыми прогонами Advisor; статичное значение было бы выдуманной метрикой." },
       { id: "leads.card.kpi", label: "KPI-карточки: оценка, приоритет", included: true, kind: "observe" },
       { id: "leads.card.details", label: "Вкладка Детали: данные лида, клиента, заметки", included: true, kind: "interactive" },
