@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { CheckCircle2, Loader2, PhoneCall } from "lucide-react"
+import { CheckCircle2, Loader2, PhoneCall, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DEMO_CALL_CONSENT_TEXT, type DemoJourneyState } from "@/lib/demo-center/journey"
 import { DEMO_JOURNEY_STRINGS as S } from "./strings"
@@ -11,11 +11,13 @@ export interface DemoLiveCallState {
   enabled: boolean
   requestPhoneUsable: boolean
   phoneVerified: boolean
+  /** The phone can be proven through the sales organisation's Telegram bot instead of an SMS code. */
+  telegramAvailable?: boolean
   /** This demo's one call was already placed: watch it, never offer another. */
   callPlaced?: boolean
 }
 
-type Stage = "phone" | "code" | "ready" | "waiting"
+type Stage = "phone" | "telegram" | "code" | "ready" | "waiting"
 
 const POLL_MS = 3_000
 /** A call is at most three minutes; past this the result is the manager's to find. */
@@ -45,6 +47,8 @@ export function DemoLiveCall({
   const [notice, setNotice] = useState<string | null>(initial.callPlaced ? S.liveCallOnlyOnce : null)
   const [blocked, setBlocked] = useState<{ retryable: boolean } | null>(null)
   const [phase, setPhase] = useState<"queued" | "calling">("queued")
+  const [telegramLink, setTelegramLink] = useState<{ url: string; qr: string | null } | null>(null)
+  const [telegramExpired, setTelegramExpired] = useState(false)
   const startedAt = useRef<number | null>(null)
   // The parent re-renders often; polling must not restart with it.
   const outcomeRef = useRef(onOutcome)
@@ -91,6 +95,56 @@ export function DemoLiveCall({
       if (timer) clearTimeout(timer)
     }
   }, [stage, base])
+
+  // While the prospect is in Telegram, watch for the bot to accept the number.
+  useEffect(() => {
+    if (stage !== "telegram") return
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const tick = async () => {
+      if (cancelled) return
+      const response = await fetch(`${base}/phone/telegram`, { cache: "no-store" }).catch(() => null)
+      const payload = await response?.json().catch(() => null) as { verified?: boolean; linkOpen?: boolean } | null
+      if (cancelled) return
+      if (payload?.verified) {
+        setNotice(null)
+        setStage("ready")
+        return
+      }
+      if (payload && payload.linkOpen === false) {
+        setTelegramExpired(true)
+        return
+      }
+      timer = setTimeout(tick, POLL_MS)
+    }
+    timer = setTimeout(tick, POLL_MS)
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+    }
+  }, [stage, base, telegramLink])
+
+  async function openTelegram() {
+    if (!consent) {
+      setNotice(S.liveCallConsentRequired)
+      return
+    }
+    setBusy(true)
+    setNotice(null)
+    const payload = await post("/phone/telegram", { consent: true })
+    setBusy(false)
+    if (payload.success && payload.state === "verified") {
+      setStage("ready")
+      return
+    }
+    if (payload.success && typeof payload.url === "string") {
+      setTelegramLink({ url: payload.url, qr: typeof payload.qr === "string" ? payload.qr : null })
+      setTelegramExpired(false)
+      setStage("telegram")
+      return
+    }
+    setNotice(payload.error ?? S.liveCallFailed)
+  }
 
   async function sendCode() {
     setBusy(true)
@@ -152,14 +206,65 @@ export function DemoLiveCall({
 
       {stage === "phone" ? (
         <div className="mt-2 space-y-2">
-          <p className="leading-relaxed text-muted-foreground">{S.liveCallIntro}</p>
+          <p className="leading-relaxed text-muted-foreground">{initial.telegramAvailable ? S.liveCallIntroTelegram : S.liveCallIntro}</p>
           {initial.requestPhoneUsable ? (
-            <Button size="sm" className="h-8 w-full" disabled={busy} onClick={sendCode}>
-              {S.liveCallUseRequestPhone}
-            </Button>
+            initial.telegramAvailable ? (
+              <>
+                <ConsentBox checked={consent} onChange={setConsent} />
+                <Button size="sm" data-testid="demo-live-call-telegram" className="h-8 w-full" disabled={busy} onClick={openTelegram}>
+                  <Send className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" /> {S.liveCallTelegram}
+                </Button>
+                <Button size="sm" variant="outline" className="h-8 w-full text-xs" disabled={busy} onClick={sendCode}>
+                  {S.liveCallSmsInstead}
+                </Button>
+              </>
+            ) : (
+              <Button size="sm" className="h-8 w-full" disabled={busy} onClick={sendCode}>
+                {S.liveCallUseRequestPhone}
+              </Button>
+            )
           ) : (
             <p className="leading-relaxed text-amber-900 dark:text-amber-200">{S.liveCallNoRequestPhone}</p>
           )}
+        </div>
+      ) : null}
+
+      {stage === "telegram" && telegramLink ? (
+        <div className="mt-2 space-y-2" data-testid="demo-live-call-telegram-link">
+          <p className="leading-relaxed">{S.liveCallTelegramSteps}</p>
+          {telegramExpired ? (
+            <>
+              <p className="leading-relaxed text-amber-900 dark:text-amber-200">{S.liveCallTelegramExpired}</p>
+              <Button size="sm" className="h-8 w-full" disabled={busy} onClick={openTelegram}>
+                {S.liveCallTelegramNewLink}
+              </Button>
+            </>
+          ) : (
+            <>
+              {/* A real link, opened by the prospect's own tap: a window opened after an await is a blocked popup on phones. */}
+              <a
+                href={telegramLink.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-8 w-full items-center justify-center gap-1.5 rounded-md bg-[#229ED9] text-xs font-semibold text-white transition-colors hover:bg-[#1c8cc2]"
+              >
+                <Send className="h-3.5 w-3.5" aria-hidden="true" /> {S.liveCallTelegramOpen}
+              </a>
+              {telegramLink.qr ? (
+                <figure className="hidden flex-col items-center gap-1 sm:flex">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- a data URL the server just made */}
+                  <img src={telegramLink.qr} alt="" className="h-28 w-28 rounded-md border border-zinc-200 bg-white p-1 dark:border-zinc-700" />
+                  <figcaption className="text-center text-[11px] text-muted-foreground">{S.liveCallTelegramQr}</figcaption>
+                </figure>
+              ) : null}
+              <p role="status" aria-live="polite" className="flex items-center gap-1.5 text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> {S.liveCallTelegramWaiting}
+              </p>
+            </>
+          )}
+          <Button size="sm" variant="outline" className="h-8 w-full text-xs" disabled={busy} onClick={sendCode}>
+            {S.liveCallSmsInstead}
+          </Button>
         </div>
       ) : null}
 
@@ -174,10 +279,7 @@ export function DemoLiveCall({
             aria-label={S.liveCallCodeLabel}
             className="h-8 w-full rounded-md border border-input bg-background px-2 text-center text-sm tracking-[0.4em]"
           />
-          <label className="flex cursor-pointer items-start gap-2 leading-relaxed">
-            <input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-orange-600" />
-            <span>{DEMO_CALL_CONSENT_TEXT}</span>
-          </label>
+          <ConsentBox checked={consent} onChange={setConsent} />
           <Button size="sm" className="h-8 w-full" disabled={busy || code.length !== 6} onClick={verify}>
             {S.liveCallVerify}
           </Button>
@@ -218,5 +320,14 @@ export function DemoLiveCall({
         </Button>
       ) : null}
     </section>
+  )
+}
+
+function ConsentBox({ checked, onChange }: { checked: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <label className="flex cursor-pointer items-start gap-2 leading-relaxed">
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-orange-600" />
+      <span>{DEMO_CALL_CONSENT_TEXT}</span>
+    </label>
   )
 }

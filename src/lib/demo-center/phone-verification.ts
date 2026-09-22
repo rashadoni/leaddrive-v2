@@ -5,6 +5,7 @@ import { sendSms } from "@/lib/sms"
 import { normalizeManualLeadPhone } from "@/lib/voice-agent/manual-lead-call"
 import { inDemoSalesOrganization, resolveDemoSalesOrganization } from "./sales-org"
 import { generateDemoOtp } from "./security"
+import { demoTelegramBot } from "./phone-telegram-bot"
 
 /**
  * A prospect proves a phone and agrees to exactly one AI call.
@@ -65,7 +66,7 @@ export type VerifyDemoPhoneCodeResult =
   | { ok: true; state: "verified" }
   | { ok: false; code: "not_enabled" | "consent_required" | "no_code" | "expired" | "too_many_attempts" | "wrong_code" | "already_used"; attemptsRemaining?: number }
 
-function callableGrant(grant: Grant | null): grant is Grant {
+export function callableGrant(grant: Grant | null): grant is Grant {
   return Boolean(grant && grant.status === "ACTIVE" && grant.liveCallEnabled)
 }
 
@@ -192,6 +193,10 @@ export async function verifyDemoPhoneCode(params: {
         otpHash: null,
         otpExpiresAt: null,
         verifiedAt: now,
+        verifiedVia: "sms",
+        // The phone is proven: an open Telegram link for it has nothing left to do.
+        telegramLinkHash: null,
+        telegramLinkExpiresAt: null,
         consentAt: now,
         consentVersion: DEMO_CALL_CONSENT_VERSION,
       },
@@ -201,7 +206,7 @@ export async function verifyDemoPhoneCode(params: {
       data: {
         grantId,
         eventType: "PHONE_VERIFIED",
-        metadata: { consentVersion: DEMO_CALL_CONSENT_VERSION, phoneTail: row.phoneE164.slice(-2) },
+        metadata: { consentVersion: DEMO_CALL_CONSENT_VERSION, phoneTail: row.phoneE164.slice(-2), method: "sms" },
       },
     })
     return { state: "newly_verified" as const, phoneE164: row.phoneE164 }
@@ -211,7 +216,7 @@ export async function verifyDemoPhoneCode(params: {
   if (checked.state === "wrong_code") return { ok: false, code: "wrong_code", attemptsRemaining: checked.attemptsRemaining }
   if (checked.state !== "newly_verified") return { ok: false, code: checked.state }
 
-  await recordCallPermission(checked.phoneE164, now).catch((error) => {
+  await recordDemoCallPermission(checked.phoneE164, now).catch((error) => {
     // The journal already holds the consent; the call step re-checks the
     // permission and will not dial without it.
     console.error("[demo-phone] consent not mirrored to the sales organisation", {
@@ -227,7 +232,7 @@ export async function verifyDemoPhoneCode(params: {
  * register, which is what the call policy reads. Never weakens what is there:
  * a block stays a block, and an open-ended permission is not shortened.
  */
-async function recordCallPermission(phoneE164: string, now: Date): Promise<void> {
+export async function recordDemoCallPermission(phoneE164: string, now: Date): Promise<void> {
   const expiresAt = new Date(now.getTime() + DEMO_CALL_CONSENT_TTL_MS)
   const entered = await inDemoSalesOrganization(async (organizationId) => {
     const key = { organizationId_phoneE164_scope: { organizationId, phoneE164, scope: "sales" } }
@@ -253,10 +258,12 @@ export interface DemoLiveCallState {
   /** The request carries an Azerbaijani mobile the prospect can have coded without retyping it. */
   requestPhoneUsable: boolean
   phoneVerified: boolean
+  /** The sales organisation has a Telegram bot, so the phone can be proven there instead of by SMS. */
+  telegramAvailable: boolean
 }
 
 export async function demoLiveCallState(grant: { id: string; liveCallEnabled: boolean }, requestPhone: string | null): Promise<DemoLiveCallState> {
-  if (!grant.liveCallEnabled) return { enabled: false, requestPhoneUsable: false, phoneVerified: false }
+  if (!grant.liveCallEnabled) return { enabled: false, requestPhoneUsable: false, phoneVerified: false, telegramAvailable: false }
   const verified = await runWithRlsBypass(() =>
     prisma.demoPhoneVerification.findFirst({
       where: { grantId: grant.id, verifiedAt: { not: null } },
@@ -267,5 +274,6 @@ export async function demoLiveCallState(grant: { id: string; liveCallEnabled: bo
     enabled: true,
     requestPhoneUsable: Boolean(requestPhone && normalizeDemoPhone(requestPhone)),
     phoneVerified: Boolean(verified),
+    telegramAvailable: verified ? false : Boolean(await demoTelegramBot().catch(() => null)),
   }
 }
