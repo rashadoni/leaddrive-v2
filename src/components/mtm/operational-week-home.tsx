@@ -2234,12 +2234,13 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
 
   function renderDay(day: WeekDay, compact = false) {
     if (!query || !facts) return null
-    const workday = dayWorkdayPresentation(day)
-    const gps = gpsPresentation(facts.gps)
+    const fullWorkday = dayWorkdayPresentation(day)
+    // The banner above the week tells the left-open story in full; the day
+    // card only names the state (owner 2026-09-22: one fact, said once).
+    const workday = managerView && day.isToday && leftOpenWorkday ? { ...fullWorkday, label: t("workdayLeftOpenShort") } : fullWorkday
     const WorkdayIcon = workday.icon
     const dayAlertGroups = day.alertGroups ?? []
-    const emptyPlanKey = day.date > facts.today ? "noPublishedPlanFuture" : day.date < facts.today ? "noPublishedPlanPast" : "noPublishedPlan"
-    const GpsIcon = gps.icon
+    const dayHasCounts = day.summary.planned + day.summary.actual + day.summary.cancelled > 0
     const orderedRoutes = day.routes.map((route) => ({
       ...route,
       points: [...route.points].sort((left, right) => left.order - right.order || left.id.localeCompare(right.id)),
@@ -2265,17 +2266,16 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{formatCalendarDay(day.date, locale, { weekday: "short" })}</p>
               <p className="text-base font-semibold tabular-nums">{formatCalendarDay(day.date, locale, { day: "numeric", month: "short" })}</p>
             </button>
-            <span className="text-xs text-muted-foreground">{t(planRowsMayBeTruncated ? "visibleStopsCount" : "stopsCount", { count: pointCount })}</span>
+            {pointCount ? <span className="text-xs text-muted-foreground">{t(planRowsMayBeTruncated ? "visibleStopsCount" : "stopsCount", { count: pointCount })}</span> : null}
           </div>
           <div className="mt-2 grid gap-1.5 text-xs">
             {facts.workdayCapability.enabled ? <span className={cn("inline-flex items-center gap-1.5", workday.className)}><WorkdayIcon className="h-3.5 w-3.5" />{workday.label}</span> : null}
-            {day.isToday ? <span className={cn("inline-flex items-center gap-1.5", gps.className)}><GpsIcon className="h-3.5 w-3.5" />{gps.label}</span> : null}
           </div>
-          <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1 text-[11px] tabular-nums text-muted-foreground">
+          {dayHasCounts ? <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1 text-[11px] tabular-nums text-muted-foreground">
             <span className="inline-flex items-center gap-1" aria-label={t("plannedCount", { count: day.summary.planned })}><Clock3 className="h-3 w-3" />{t("plannedShort")} {day.summary.planned}</span>
             <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300" aria-label={t("actualCount", { count: day.summary.actual })}><CheckCircle2 className="h-3 w-3" />{t("actualShort")} {day.summary.actual}</span>
             <span className="inline-flex items-center gap-1 text-red-700 dark:text-red-300" aria-label={t("cancelledCount", { count: day.summary.cancelled })}><XCircle className="h-3 w-3" />{t("cancelledShort")} {day.summary.cancelled}</span>
-          </div>
+          </div> : null}
           {facts.workdayCapability.enabled && day.workday.startedAt ? <p className="mt-2 text-[11px] text-muted-foreground">{t("dayStarted", { time: formatTenantTimestamp(day.workday.startedAt, locale, facts.timezone, { hour: "2-digit", minute: "2-digit" }) })}</p> : null}
           {facts.workdayCapability.enabled && day.workday.finishedAt ? <p className="mt-1 text-[11px] text-muted-foreground">{t("dayFinished", { time: formatTenantTimestamp(day.workday.finishedAt, locale, facts.timezone, { hour: "2-digit", minute: "2-digit" }) })}</p> : null}
         </header>
@@ -2304,11 +2304,17 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
               </section>
             )
           }) : (
-            <div className="flex min-h-32 flex-col items-center justify-center gap-2 py-6 text-center">
-              {planRowsMayBeTruncated ? <AlertTriangle className="h-5 w-5 text-amber-600" /> : <CalendarDays className="h-5 w-5 text-muted-foreground" />}
-              <p className="text-sm font-medium">{t(planRowsMayBeTruncated ? "planRowsLimited" : "noPublishedPlan")}</p>
-              <p className="max-w-[32ch] text-xs text-muted-foreground">{t(planRowsMayBeTruncated ? "planRowsLimitedHint" : `${emptyPlanKey}Hint` as never)}</p>
-            </div>
+            planRowsMayBeTruncated ? (
+              <div className="flex min-h-32 flex-col items-center justify-center gap-2 py-6 text-center">
+                <AlertTriangle className="h-5 w-5 text-amber-600" />
+                <p className="text-sm font-medium">{t("planRowsLimited")}</p>
+                <p className="max-w-[32ch] text-xs text-muted-foreground">{t("planRowsLimitedHint")}</p>
+              </div>
+            ) : (
+              // A day without a route is one quiet line, not an icon, a title and
+              // a sentence explaining that nothing is there.
+              <p data-testid="mtm-week-day-no-route" className="py-4 text-sm text-muted-foreground">{t("noRouteThisDay")}</p>
+            )
           )}
           {day.unplannedVisits.length ? (
             <div className="border-t border-zinc-200 py-2 dark:border-zinc-700">

@@ -48,4 +48,15 @@ describe("the agent's week, for a manager", () => {
       for (const key of ["openGpsPath", "noPlanInPeriod", "nothingNeedsAttention"]) expect(typeof messages[locale][key]).toBe("string")
     }
   })
+
+  it("keeps a day card to what happened: no zero counters, no triple empty state, the shift named once", () => {
+    expect(ui).toContain("const dayHasCounts = day.summary.planned + day.summary.actual + day.summary.cancelled > 0")
+    expect(ui).toContain('data-testid="mtm-week-day-no-route"')
+    expect(ui).toContain('t("workdayLeftOpenShort")')
+    expect(ui).toContain('{pointCount ? <span className="text-xs text-muted-foreground">{t(planRowsMayBeTruncated')
+    for (const locale of ["az", "ru", "en"]) {
+      expect(typeof messages[locale].noRouteThisDay).toBe("string")
+      expect(messages[locale].stopsCount).not.toMatch(/точ|nöqt|stop/i)
+    }
+  })
 })

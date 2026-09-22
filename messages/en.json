@@ -14757,6 +14757,8 @@
     "supportHint": "Tenant-approved contacts for field assistance.",
     "scopeUnavailable": "Unavailable for this bounded team scope",
     "operationalWeek": {
+      "workdayLeftOpenShort": "Shift not closed",
+      "noRouteThisDay": "No route",
       "gpsSeenAt": "Last heard from: {time}",
       "gpsSilentSince": "No contact since {time}",
       "openGpsPath": "Path on the map",
@@ -14844,7 +14846,7 @@
       "accuracyMeters": "±{value} m",
       "openGpsHistory": "Open GPS history",
       "chooseDay": "Choose a day",
-      "stopsCount": "{count, plural, one {# stop} other {# stops}}",
+      "stopsCount": "{count, plural, one {# planned visit} other {# planned visits}}",
       "visibleStopsCount": "{count, plural, one {# visible stop} other {# visible stops}}",
       "dayStarted": "Started {time}",
       "dayFinished": "Finished {time}",

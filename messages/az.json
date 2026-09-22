@@ -14753,6 +14753,8 @@
     "supportHint": "Bu tenant üçün təsdiqlənmiş sahə dəstəyi əlaqələri.",
     "scopeUnavailable": "Bu məhdud komanda əhatəsi üçün əlçatan deyil",
     "operationalWeek": {
+      "workdayLeftOpenShort": "Növbə bağlanmayıb",
+      "noRouteThisDay": "Marşrut yoxdur",
       "gpsSeenAt": "Əlaqədədir: {time}",
       "gpsSilentSince": "{time}-dən əlaqə yoxdur",
       "openGpsPath": "Xəritədə yol",
@@ -14840,7 +14842,7 @@
       "accuracyMeters": "±{value} m",
       "openGpsHistory": "GPS tarixçəsini aç",
       "chooseDay": "Gün seçin",
-      "stopsCount": "{count, plural, one {# nöqtə} other {# nöqtə}}",
+      "stopsCount": "{count, plural, one {Planda # vizit} other {Planda # vizit}}",
       "visibleStopsCount": "{count, plural, one {# görünən nöqtə} other {# görünən nöqtə}}",
       "dayStarted": "{time} vaxtında başlayıb",
       "dayFinished": "{time} vaxtında bitib",
