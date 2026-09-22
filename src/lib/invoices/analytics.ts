@@ -89,7 +89,7 @@ function calendarDaysBetween(from: Date, to: Date): number {
  * record, and it says the whole amount — the reading
  * POST /api/v1/invoices/fix-balances takes ("trust the status (paid offline)").
  */
-export function paidOn(invoice: InvoiceAnalyticsRecord): number {
+export function paidOn(invoice: Pick<InvoiceAnalyticsRecord, "status" | "amount" | "paidAmount">): number {
   const amount = Math.max(0, money(invoice.amount))
   if (invoice.status.toLowerCase() === "paid") return amount
   return Math.min(amount, Math.max(0, money(invoice.paidAmount)))
