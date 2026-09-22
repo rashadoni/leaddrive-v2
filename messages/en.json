@@ -14223,7 +14223,7 @@
       "moveEarlier": "Move {title} earlier",
       "moveLater": "Move {title} later",
       "liveCallTitle": "Real AI call to the prospect",
-      "liveCallBody": "The prospect proves their phone with an SMS code and agrees; then LeadDrive Inc.'s AI agent calls them once, on your behalf, within the calling hours. You get the follow-up task.",
+      "liveCallBody": "The prospect proves their phone in Telegram — shares the number with the LeadDrive bot and types the code it sends — and agrees; then LeadDrive Inc.'s AI agent calls them once, on your behalf, within the calling hours. You get the follow-up task.",
       "liveCallOn": "Live AI call allowed",
       "leadLink": "Lead in CRM",
       "leadLinkLinked": "Linked",

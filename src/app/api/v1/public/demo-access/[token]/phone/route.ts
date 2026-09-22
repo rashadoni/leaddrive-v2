@@ -2,13 +2,22 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { expireDemoGrantIfNeeded, noStoreHeaders, validRawDemoToken } from "@/lib/demo-center/access"
 import { sendDemoPhoneCode, type SendDemoPhoneCodeResult } from "@/lib/demo-center/phone-verification"
+
+/** Owner decision 2026-09-22: no SMS in the demo. */
+const DEMO_PHONE_SMS_ENABLED = false
 import { demoSessionCookieName, secureHashMatches } from "@/lib/demo-center/security"
 import { demoPhoneCodeSchema } from "@/lib/demo-center/validation"
 import { hashOneTimeToken } from "@/lib/one-time-token"
 import { runWithRlsBypass } from "@/lib/rls-context"
 
 /**
- * Send a one-time SMS code to the phone the AI will call.
+ * Send a one-time SMS code to the phone the AI will call — switched off.
+ *
+ * Owner, 2026-09-22: the SMS quota is limited and the demo is free, so the
+ * code comes through Telegram only (./telegram/route.ts,
+ * src/lib/demo-center/phone-telegram.ts). This route answers «use Telegram»
+ * and sends nothing; the SMS machinery stays in phone-verification.ts should
+ * the owner turn it back on.
  *
  * Only inside an active session of a grant whose admin allowed a live call,
  * and only to the phone on the prospect's own request (owner decision
@@ -21,6 +30,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!validRawDemoToken(token)) return unavailable()
   const parsed = demoPhoneCodeSchema.safeParse(await request.json().catch(() => ({})))
   if (!parsed.success) return failure("invalid_phone")
+  if (!DEMO_PHONE_SMS_ENABLED) {
+    return NextResponse.json(
+      { success: false, code: "sms_disabled", error: "Demoda kod yalnız Telegram-a göndərilir — «Telegram ilə təsdiqlə» düyməsini basın." },
+      { status: 410, headers: noStoreHeaders() },
+    )
+  }
 
   return runWithRlsBypass(async () => {
     const grant = await prisma.demoGrant.findUnique({

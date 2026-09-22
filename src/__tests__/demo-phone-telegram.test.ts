@@ -11,6 +11,7 @@
  *     not the demo's goes on exactly as before.
  */
 import { createHash } from "node:crypto"
+import bcrypt from "bcryptjs"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 
@@ -42,7 +43,7 @@ import {
   normalizeTelegramPhone,
 } from "@/lib/demo-center/phone-telegram"
 import { resetDemoTelegramBotCache } from "@/lib/demo-center/phone-telegram-bot"
-import { DEMO_CALL_CONSENT_TEXT, DEMO_CALL_CONSENT_VERSION } from "@/lib/demo-center/phone-verification"
+import { DEMO_CALL_CONSENT_TEXT } from "@/lib/demo-center/phone-verification"
 import { demoSessionCookieName, issueBrowserCredential } from "@/lib/demo-center/security"
 
 const SALES_ORG = "org-leaddrive-inc"
@@ -256,8 +257,9 @@ describe("the bot, when the prospect opens the link", () => {
 })
 
 describe("the bot, when the prospect shares a contact", () => {
-  it("proves the request's phone with the prospect's own fresh contact, as Telegram holds it, and records the consent", async () => {
-    vi.mocked(prisma.demoPhoneVerification.findMany).mockResolvedValue([pendingRow()] as never)
+  it("on the prospect's own fresh contact with the request's number, writes a one-time code in Telegram", async () => {
+    vi.mocked(prisma.demoPhoneVerification.findMany).mockImplementation((async (args: { where: Record<string, unknown> }) =>
+      "OR" in args.where ? [pendingRow()] : [{ id: "verification-1", otpSendCount: 0, otpSentAt: null }]) as never)
 
     // Telegram usually sends the number without "+".
     await expect(consume(contactMessage("994501234567"))).resolves.toBe(true)
@@ -268,26 +270,38 @@ describe("the bot, when the prospect shares a contact", () => {
         OR: [{ telegramUserId: String(TG_USER) }, { phoneE164: PHONE, verifiedAt: null, telegramLinkExpiresAt: { gt: NOW } }],
       },
     }))
-    expect(prisma.demoPhoneVerification.updateMany).toHaveBeenCalledWith({
-      where: { id: "verification-1", telegramLinkHash: sha256(TOKEN), verifiedAt: null },
-      data: {
-        telegramLinkHash: null,
-        telegramLinkExpiresAt: null,
-        telegramProofMessage: expect.stringMatching(new RegExp(`^${TG_USER}:\\d+$`)),
-        verifiedAt: NOW,
-        verifiedVia: "telegram",
-        consentAt: NOW,
-        consentVersion: DEMO_CALL_CONSENT_VERSION,
-      },
+    const update = vi.mocked(prisma.demoPhoneVerification.updateMany).mock.calls[0][0] as { where: unknown; data: Record<string, unknown> }
+    expect(update.where).toEqual({ id: "verification-1", telegramLinkHash: sha256(TOKEN), verifiedAt: null })
+    expect(update.data).toMatchObject({
+      telegramProofMessage: expect.stringMatching(new RegExp(`^${TG_USER}:\\d+$`)),
+      otpExpiresAt: new Date(NOW.getTime() + 10 * 60_000),
+      otpSentAt: NOW,
+      otpAttempts: 0,
+      otpSendCount: { increment: 1 },
     })
+    // Not proven yet: the browser still has to type the code.
+    expect(update.data).not.toHaveProperty("verifiedAt")
+    expect(prisma.voiceConsent.create).not.toHaveBeenCalled()
     expect(prisma.demoAccessEvent.create).toHaveBeenCalledWith({
-      data: { grantId: "grant-1", eventType: "PHONE_VERIFIED", metadata: { consentVersion: DEMO_CALL_CONSENT_VERSION, phoneTail: "67", method: "telegram" } },
+      data: { grantId: "grant-1", eventType: "PHONE_CODE_SENT", metadata: { delivered: true, phoneTail: "67", method: "telegram" } },
     })
-    expect(mockRunWithTenant.mock.calls.some(([org]) => org === SALES_ORG)).toBe(true)
-    expect(prisma.voiceConsent.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ organizationId: SALES_ORG, phoneE164: PHONE, scope: "sales", status: "allowed" }),
-    })
-    expect(finalText()).toBe(DEMO_TELEGRAM_TEXT.verified)
+    // The code in the message is the one whose hash was stored.
+    const code = /(\d{6})/.exec(String(finalText()))?.[1]
+    expect(code, String(finalText())).toBeDefined()
+    expect(await bcrypt.compare(code!, String(update.data.otpHash))).toBe(true)
+  })
+
+  it("keeps to the old code's limits: a minute between codes, a few per grant", async () => {
+    vi.mocked(prisma.demoPhoneVerification.findMany).mockImplementation((async (args: { where: Record<string, unknown> }) =>
+      "OR" in args.where ? [pendingRow()] : [{ id: "verification-1", otpSendCount: 1, otpSentAt: new Date(NOW.getTime() - 10_000) }]) as never)
+    await consume(contactMessage(PHONE))
+    expect(finalText()).toBe(DEMO_TELEGRAM_TEXT.codeCooldown)
+
+    vi.mocked(prisma.demoPhoneVerification.findMany).mockImplementation((async (args: { where: Record<string, unknown> }) =>
+      "OR" in args.where ? [pendingRow()] : [{ id: "verification-1", otpSendCount: 3, otpSentAt: new Date(NOW.getTime() - 3_600_000) }]) as never)
+    await consume(contactMessage(PHONE))
+    expect(finalText()).toBe(DEMO_TELEGRAM_TEXT.codeLimit)
+    expect(prisma.demoPhoneVerification.updateMany).not.toHaveBeenCalled()
   })
 
   it("believes Telegram, not the webhook body: a hand-made update proves nothing", async () => {
@@ -378,12 +392,13 @@ describe("the bot, when the prospect shares a contact", () => {
   it("still takes the share of a prospect whose link somebody else opened later", async () => {
     // The row is bound to whoever opened the link last; the prospect's own
     // share is routed by its number and proven by the read-back.
-    vi.mocked(prisma.demoPhoneVerification.findMany).mockResolvedValue([pendingRow()] as never)
+    vi.mocked(prisma.demoPhoneVerification.findMany).mockImplementation((async (args: { where: Record<string, unknown> }) =>
+      "OR" in args.where ? [pendingRow()] : [{ id: "verification-1", otpSendCount: 0, otpSentAt: null }]) as never)
     await expect(consume(contactMessage(PHONE))).resolves.toBe(true)
     expect(prisma.demoPhoneVerification.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ OR: expect.arrayContaining([{ phoneE164: PHONE, verifiedAt: null, telegramLinkExpiresAt: { gt: NOW } }]) }),
     }))
-    expect(finalText()).toBe(DEMO_TELEGRAM_TEXT.verified)
+    expect(String(finalText())).toMatch(/LeadDrive demo kodu: \d{6}/)
   })
 
   it("answers the old button after the link lapsed, instead of dropping a thread into the inbox", async () => {
@@ -486,6 +501,6 @@ describe("the public Telegram route", () => {
     vi.mocked(prisma.demoPhoneVerification.findMany).mockResolvedValue([{ verifiedAt: null, telegramLinkExpiresAt: new Date(Date.now() + 60_000) }] as never)
 
     const response = await call("GET", undefined, `${demoSessionCookieName(RAW)}=${credential.credential}`)
-    expect(await response.json()).toEqual({ success: true, verified: false, linkOpen: true })
+    expect(await response.json()).toEqual({ success: true, verified: false, linkOpen: true, codeSent: false })
   })
 })

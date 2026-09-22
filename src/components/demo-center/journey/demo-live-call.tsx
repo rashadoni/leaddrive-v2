@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { CheckCircle2, Loader2, PhoneCall, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DEMO_CALL_CONSENT_TEXT, DEMO_LIVE_CALL_STEP_ID, type DemoJourneyState } from "@/lib/demo-center/journey"
-import { demoTarget } from "./demo-target"
+import { demoLabel, demoTarget } from "./demo-target"
 import { DEMO_JOURNEY_STRINGS as S } from "./strings"
 
 /** What the server says about the live call when the session opens. Booleans only. */
@@ -12,13 +12,13 @@ export interface DemoLiveCallState {
   enabled: boolean
   requestPhoneUsable: boolean
   phoneVerified: boolean
-  /** The phone can be proven through the sales organisation's Telegram bot instead of an SMS code. */
+  /** The sales organisation's Telegram bot is there to prove the phone — the only way in the demo. */
   telegramAvailable?: boolean
   /** This demo's one call was already placed: watch it, never offer another. */
   callPlaced?: boolean
 }
 
-type Stage = "phone" | "telegram" | "code" | "ready" | "waiting"
+type Stage = "phone" | "telegram" | "ready" | "waiting"
 
 const POLL_MS = 3_000
 /** A call is at most three minutes; past this the result is the manager's to find. */
@@ -26,11 +26,13 @@ const GIVE_UP_MS = 15 * 60_000
 
 /**
  * The prospect's side of the one real AI call: prove the phone on their own
- * request (no other number can be named — owner decision 2026-09-22), agree,
- * ask for the call, and watch what happens. The story moves on only with what the
- * server reports — answered, missed, busy, refused, uncertain — or with the
- * prospect's own choice to continue without a call. Nothing here decides an
- * outcome by itself.
+ * request (no other number can be named — owner decision 2026-09-22) through
+ * Telegram — share the number with the bot, type the code it writes back
+ * (no SMS in the demo, owner 2026-09-22) — agree, ask for the call, and watch
+ * what happens. The story moves on only with what the server reports —
+ * answered, missed, busy, refused, uncertain — or with the prospect's own
+ * choice to continue without a call. Nothing here decides an outcome by
+ * itself. The control to use next carries the arrow (`data-demo-target`).
  */
 export function DemoLiveCall({
   token,
@@ -51,9 +53,16 @@ export function DemoLiveCall({
   // url is null when the page came back to a link it made before a reload:
   // only its hash is stored, so the bot's button in Telegram is the way on.
   const [telegramLink, setTelegramLink] = useState<{ url: string | null; qr: string | null } | null>(null)
+  const [telegramExpired, setTelegramExpired] = useState(false)
+  /** The bot has written its code in Telegram. */
+  const [codeSent, setCodeSent] = useState(false)
   const callButtonRef = useRef<HTMLButtonElement>(null)
   const telegramRef = useRef<HTMLDivElement>(null)
-  const [telegramExpired, setTelegramExpired] = useState(false)
+  const codeRef = useRef<HTMLInputElement>(null)
+  // Set when the code arrived while the page watched (not restored on load):
+  // only then does the code box take focus.
+  const focusCodeNext = useRef(false)
+  const codeSentRef = useRef(false)
   const startedAt = useRef<number | null>(null)
   // The parent re-renders often; polling must not restart with it.
   const outcomeRef = useRef(onOutcome)
@@ -61,6 +70,7 @@ export function DemoLiveCall({
     outcomeRef.current = onOutcome
   }, [onOutcome])
   const base = `/api/v1/public/demo-access/${encodeURIComponent(token)}`
+  const canProve = initial.requestPhoneUsable && initial.telegramAvailable === true
 
   // Never rejects: a phone coming back from Telegram often has no network for
   // a moment, and a rejected request used to leave every button disabled.
@@ -105,16 +115,20 @@ export function DemoLiveCall({
   }, [stage, base])
 
   // Back from Telegram in a reloaded tab (phones evict heavy tabs): pick up
-  // where the server is — proven, or a link still open — instead of starting over.
+  // where the server is — proven, a code written, or a link still open.
   useEffect(() => {
     if (initial.callPlaced || initial.phoneVerified || !initial.telegramAvailable) return
     let cancelled = false
     void (async () => {
       const response = await fetch(`${base}/phone/telegram`, { cache: "no-store" }).catch(() => null)
-      const payload = await response?.json().catch(() => null) as { verified?: boolean; linkOpen?: boolean } | null
+      const payload = await response?.json().catch(() => null) as { verified?: boolean; linkOpen?: boolean; codeSent?: boolean } | null
       if (cancelled || !payload) return
       if (payload.verified) setStage((current) => (current === "phone" ? "ready" : current))
-      else if (payload.linkOpen) {
+      else if (payload.linkOpen || payload.codeSent) {
+        if (payload.codeSent) {
+          codeSentRef.current = true
+          setCodeSent(true)
+        }
         setTelegramLink((current) => current ?? { url: null, qr: null })
         setStage((current) => (current === "phone" ? "telegram" : current))
       }
@@ -124,33 +138,46 @@ export function DemoLiveCall({
     }
   }, [base, initial.callPlaced, initial.phoneVerified, initial.telegramAvailable])
 
-  // The phone was just proven here — not restored on load — so the one button
-  // that matters takes focus. A stage restored from the server moves nothing.
+  // Focus follows what happened here, never what was restored on load: the
+  // link once it is made, the code box once the bot has written, the call
+  // button once the phone is proven.
   const previousStage = useRef<Stage | null>(null)
   useEffect(() => {
     const before = previousStage.current
     previousStage.current = stage
-    if (stage === "ready" && (before === "telegram" || before === "code")) callButtonRef.current?.focus()
+    if (stage === "ready" && before === "telegram") callButtonRef.current?.focus()
     if (stage === "telegram" && before === "phone" && telegramLink?.url) telegramRef.current?.focus()
   }, [stage, telegramLink])
 
-  // While the prospect is in Telegram — or typing an SMS code with a Telegram
-  // link still open — watch for the bot to accept the number.
   useEffect(() => {
-    if (stage !== "telegram" && !(stage === "code" && initial.telegramAvailable)) return
+    if (codeSent && focusCodeNext.current) {
+      focusCodeNext.current = false
+      codeRef.current?.focus()
+    }
+  }, [codeSent])
+
+  // While the prospect is in Telegram, watch for the bot's code (and for a
+  // proof made in another tab).
+  useEffect(() => {
+    if (stage !== "telegram") return
     let cancelled = false
     let timer: ReturnType<typeof setTimeout> | undefined
     const tick = async () => {
       if (cancelled) return
       const response = await fetch(`${base}/phone/telegram`, { cache: "no-store" }).catch(() => null)
-      const payload = await response?.json().catch(() => null) as { verified?: boolean; linkOpen?: boolean } | null
+      const payload = await response?.json().catch(() => null) as { verified?: boolean; linkOpen?: boolean; codeSent?: boolean } | null
       if (cancelled) return
       if (payload?.verified) {
         setNotice(null)
         setStage("ready")
         return
       }
-      if (payload && payload.linkOpen === false && stage === "telegram") {
+      if (payload?.codeSent && !codeSentRef.current) {
+        codeSentRef.current = true
+        focusCodeNext.current = true
+        setCodeSent(true)
+      }
+      if (payload && payload.linkOpen === false && !payload.codeSent) {
         setTelegramExpired(true)
         return
       }
@@ -161,7 +188,7 @@ export function DemoLiveCall({
       cancelled = true
       if (timer) clearTimeout(timer)
     }
-  }, [stage, base, telegramLink, initial.telegramAvailable])
+  }, [stage, base, telegramLink])
 
   async function openTelegram() {
     if (!consent) {
@@ -180,18 +207,6 @@ export function DemoLiveCall({
       setTelegramLink({ url: payload.url, qr: typeof payload.qr === "string" ? payload.qr : null })
       setTelegramExpired(false)
       setStage("telegram")
-      return
-    }
-    setNotice(payload.error ?? S.liveCallFailed)
-  }
-
-  async function sendCode() {
-    setBusy(true)
-    setNotice(null)
-    const payload = await post("/phone", { useRequestPhone: true })
-    setBusy(false)
-    if (payload.success) {
-      setStage(payload.state === "verified" ? "ready" : "code")
       return
     }
     setNotice(payload.error ?? S.liveCallFailed)
@@ -231,6 +246,8 @@ export function DemoLiveCall({
   }
 
   const withoutCall = () => onOutcome(blocked ? "CALL_BLOCKED" : "CALL_DECLINED")
+  // The only way on when there is nothing to prove the phone with, or the call cannot be retried.
+  const declineIsTheWay = (stage === "phone" && !canProve) || (stage === "ready" && blocked !== null && !blocked.retryable)
 
   return (
     <section
@@ -246,7 +263,7 @@ export function DemoLiveCall({
       {/* One live region for the whole card: a region that unmounts with its stage announces nothing. */}
       <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
         {stage === "telegram"
-          ? telegramExpired ? S.liveCallTelegramExpired : S.liveCallTelegramWaiting
+          ? telegramExpired ? S.liveCallTelegramExpired : codeSent ? S.liveCallCodeArrived : S.liveCallTelegramWaiting
           : stage === "ready" ? S.liveCallVerified
           : stage === "waiting" ? (phase === "calling" ? S.liveCallCalling : S.liveCallQueued)
           : ""}
@@ -254,32 +271,38 @@ export function DemoLiveCall({
 
       {stage === "phone" ? (
         <div className="mt-2 space-y-2">
-          <p className="leading-relaxed text-muted-foreground">{initial.telegramAvailable ? S.liveCallIntroTelegram : S.liveCallIntro}</p>
-          {initial.requestPhoneUsable ? (
-            initial.telegramAvailable ? (
-              <>
-                <ConsentBox checked={consent} onChange={setConsent} />
-                <Button size="sm" data-testid="demo-live-call-telegram" className="h-8 w-full" disabled={busy} onClick={openTelegram}>
-                  <Send className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" /> {S.liveCallTelegram}
-                </Button>
-                <Button size="sm" variant="outline" className="h-8 w-full text-xs" disabled={busy} onClick={sendCode}>
-                  {S.liveCallSmsInstead}
-                </Button>
-              </>
-            ) : (
-              <Button size="sm" className="h-8 w-full" disabled={busy} onClick={sendCode}>
-                {S.liveCallUseRequestPhone}
-              </Button>
-            )
-          ) : (
+          {!initial.requestPhoneUsable ? (
             <p className="leading-relaxed text-amber-900 dark:text-amber-200">{S.liveCallNoRequestPhone}</p>
+          ) : !initial.telegramAvailable ? (
+            <p className="leading-relaxed text-amber-900 dark:text-amber-200">{S.liveCallTelegramUnavailable}</p>
+          ) : (
+            <>
+              <p className="leading-relaxed text-muted-foreground">{S.liveCallIntroTelegram}</p>
+              <ConsentBox checked={consent} onChange={setConsent} marked={!consent} />
+              <Button
+                size="sm"
+                data-testid="demo-live-call-telegram"
+                className="h-8 w-full"
+                disabled={busy}
+                onClick={openTelegram}
+                {...(consent ? { ...demoTarget(DEMO_LIVE_CALL_STEP_ID), ...demoLabel(S.liveCallTelegram) } : {})}
+              >
+                <Send className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" /> {S.liveCallTelegram}
+              </Button>
+            </>
           )}
         </div>
       ) : null}
 
       {stage === "telegram" && telegramLink ? (
         <div ref={telegramRef} tabIndex={-1} className="mt-2 space-y-2 outline-none" data-testid="demo-live-call-telegram-link">
-          {telegramExpired ? null : <p className="leading-relaxed">{telegramLink.url ? S.liveCallTelegramSteps : S.liveCallTelegramResume}</p>}
+          {telegramExpired ? null : (
+            <ol className="list-decimal space-y-0.5 pl-4 leading-relaxed">
+              <li>{telegramLink.url ? S.liveCallTelegramStepOpen : S.liveCallTelegramStepOpenAgain}</li>
+              <li>{S.liveCallTelegramStepShare}</li>
+              <li>{S.liveCallTelegramStepCode}</li>
+            </ol>
+          )}
           {telegramLink.url && !telegramExpired ? (
             <>
               {/* A real link, opened by the prospect's own tap: a window opened after an await is a blocked popup on phones. */}
@@ -288,10 +311,11 @@ export function DemoLiveCall({
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex h-8 w-full items-center justify-center gap-1.5 rounded-md bg-[#1B75A8] text-xs font-semibold text-white transition-colors hover:bg-[#176A99]"
+                {...(!codeSent ? { ...demoTarget(DEMO_LIVE_CALL_STEP_ID), ...demoLabel(S.liveCallTelegramOpen) } : {})}
               >
                 <Send className="h-3.5 w-3.5" aria-hidden="true" /> {S.liveCallTelegramOpen}
               </a>
-              {telegramLink.qr ? (
+              {telegramLink.qr && !codeSent ? (
                 <figure className="hidden flex-col items-center gap-1 sm:flex">
                   {/* eslint-disable-next-line @next/next/no-img-element -- a data URL the server just made */}
                   <img src={telegramLink.qr} alt="" className="h-28 w-28 rounded-md border border-zinc-200 bg-white p-1 dark:border-zinc-700" />
@@ -303,45 +327,49 @@ export function DemoLiveCall({
           {telegramExpired ? (
             <p className="leading-relaxed text-amber-900 dark:text-amber-200">{S.liveCallTelegramExpired}</p>
           ) : (
-            <p aria-hidden="true" className="flex items-center gap-1.5 text-muted-foreground">
-              <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> {S.liveCallTelegramWaiting}
-            </p>
+            <>
+              <p aria-hidden="true" className="flex items-center gap-1.5 text-muted-foreground">
+                {codeSent ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" /> : <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
+                {codeSent ? S.liveCallCodeArrived : S.liveCallTelegramWaiting}
+              </p>
+              <input
+                ref={codeRef}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                value={code}
+                onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="000000"
+                aria-label={S.liveCallCodeLabel}
+                className="h-8 w-full rounded-md border border-input bg-background px-2 text-center text-sm tracking-[0.4em]"
+                {...(codeSent && code.length !== 6 ? { ...demoTarget(DEMO_LIVE_CALL_STEP_ID), ...demoLabel(S.liveCallCodeHere) } : {})}
+              />
+              <Button
+                size="sm"
+                className="h-8 w-full"
+                disabled={busy || code.length !== 6}
+                onClick={verify}
+                {...(code.length === 6 ? { ...demoTarget(DEMO_LIVE_CALL_STEP_ID), ...demoLabel(S.liveCallVerify) } : {})}
+              >
+                {S.liveCallVerify}
+              </Button>
+            </>
           )}
           {telegramExpired || !telegramLink.url ? (
             <>
               {/* A new link needs the agreement again (it is not kept across a
                   reload). The box stays mounted when ticked, so it can be read and unticked. */}
-              <ConsentBox checked={consent} onChange={setConsent} />
-              <Button size="sm" variant={telegramExpired ? "default" : "outline"} className="h-8 w-full text-xs" disabled={busy} onClick={openTelegram}>
+              <ConsentBox checked={consent} onChange={setConsent} marked={telegramExpired && !consent} />
+              <Button
+                size="sm"
+                variant={telegramExpired ? "default" : "outline"}
+                className="h-8 w-full text-xs"
+                disabled={busy}
+                onClick={openTelegram}
+                {...(telegramExpired && consent ? { ...demoTarget(DEMO_LIVE_CALL_STEP_ID), ...demoLabel(S.liveCallTelegramNewLink) } : {})}
+              >
                 {S.liveCallTelegramNewLink}
               </Button>
             </>
-          ) : null}
-          <Button size="sm" variant="outline" className="h-8 w-full text-xs" disabled={busy} onClick={sendCode}>
-            {S.liveCallSmsInstead}
-          </Button>
-        </div>
-      ) : null}
-
-      {stage === "code" ? (
-        <div className="mt-2 space-y-2">
-          <input
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            value={code}
-            onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
-            placeholder="000000"
-            aria-label={S.liveCallCodeLabel}
-            className="h-8 w-full rounded-md border border-input bg-background px-2 text-center text-sm tracking-[0.4em]"
-          />
-          <ConsentBox checked={consent} onChange={setConsent} />
-          <Button size="sm" className="h-8 w-full" disabled={busy || code.length !== 6} onClick={verify}>
-            {S.liveCallVerify}
-          </Button>
-          {initial.telegramAvailable ? (
-            <Button size="sm" variant="outline" className="h-8 w-full text-xs" disabled={busy} onClick={openTelegram}>
-              <Send className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" /> {S.liveCallTelegramInstead}
-            </Button>
           ) : null}
         </div>
       ) : null}
@@ -352,7 +380,15 @@ export function DemoLiveCall({
             <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> {S.liveCallVerified}
           </p>
           {!blocked || blocked.retryable ? (
-            <Button ref={callButtonRef} size="sm" className="h-8 w-full" disabled={busy} onClick={requestCall}>
+            <Button
+              ref={callButtonRef}
+              size="sm"
+              className="h-8 w-full"
+              disabled={busy}
+              onClick={requestCall}
+              {...demoTarget(DEMO_LIVE_CALL_STEP_ID)}
+              {...demoLabel(blocked ? S.liveCallRetry : S.liveCallCallNow)}
+            >
               {blocked ? S.liveCallRetry : S.liveCallCallNow}
             </Button>
           ) : null}
@@ -369,13 +405,27 @@ export function DemoLiveCall({
       {notice ? <p role="alert" className="mt-2 leading-relaxed text-amber-900 dark:text-amber-200">{notice}</p> : null}
 
       {stage === "waiting" && notice === S.liveCallTooLong ? (
-        <Button size="sm" variant="outline" className="mt-2 h-7 w-full text-xs" onClick={() => onOutcome("CALL_ATTENTION_REQUIRED")}>
+        <Button
+          size="sm"
+          variant="outline"
+          className="mt-2 h-7 w-full text-xs"
+          onClick={() => onOutcome("CALL_ATTENTION_REQUIRED")}
+          {...demoTarget(DEMO_LIVE_CALL_STEP_ID)}
+          {...demoLabel(S.liveCallContinue)}
+        >
           {S.liveCallContinue}
         </Button>
       ) : null}
 
       {stage !== "waiting" ? (
-        <Button size="sm" variant="ghost" className="mt-1 h-7 w-full text-xs" disabled={busy} onClick={withoutCall}>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="mt-1 h-7 w-full text-xs"
+          disabled={busy}
+          onClick={withoutCall}
+          {...(declineIsTheWay ? { ...demoTarget(DEMO_LIVE_CALL_STEP_ID), ...demoLabel(S.liveCallDecline) } : {})}
+        >
           {S.liveCallDecline}
         </Button>
       ) : null}
@@ -383,9 +433,12 @@ export function DemoLiveCall({
   )
 }
 
-function ConsentBox({ checked, onChange }: { checked: boolean; onChange: (value: boolean) => void }) {
+function ConsentBox({ checked, onChange, marked = false }: { checked: boolean; onChange: (value: boolean) => void; marked?: boolean }) {
   return (
-    <label className="flex cursor-pointer items-start gap-2 leading-relaxed">
+    <label
+      className="flex cursor-pointer items-start gap-2 leading-relaxed"
+      {...(marked ? { ...demoTarget(DEMO_LIVE_CALL_STEP_ID), ...demoLabel(S.liveCallConsentHere) } : {})}
+    >
       <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-orange-600" />
       <span>{DEMO_CALL_CONSENT_TEXT}</span>
     </label>

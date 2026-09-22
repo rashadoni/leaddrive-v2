@@ -1,45 +1,56 @@
 import { randomBytes } from "node:crypto"
+import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 import { hashOneTimeToken } from "@/lib/one-time-token"
 import { runWithRlsBypass } from "@/lib/rls-context"
-import { DEMO_CALL_CONSENT_TEXT, DEMO_CALL_CONSENT_VERSION } from "./journey/live-call"
-import { callableGrant, normalizeDemoPhone, recordDemoCallPermission } from "./phone-verification"
+import { DEMO_CALL_CONSENT_TEXT } from "./journey/live-call"
+import {
+  callableGrant,
+  DEMO_PHONE_MAX_SENDS_PER_GRANT,
+  DEMO_PHONE_OTP_TTL_MS,
+  DEMO_PHONE_RESEND_COOLDOWN_MS,
+  normalizeDemoPhone,
+} from "./phone-verification"
+import { generateDemoOtp } from "./security"
 import { demoTelegramBot, TELEGRAM_API_BASE } from "./phone-telegram-bot"
 import { inDemoSalesOrganization } from "./sales-org"
 
 /**
- * Proving the demo phone through Telegram instead of an SMS code (owner,
- * 2026-09-22: "смс у меня ограничен").
+ * Proving the demo phone through Telegram — the only way (owner,
+ * 2026-09-22: "смс у меня ограничен", then "заставим их, чтоб в телеграм
+ * приходило … пусть немного повозятся": no SMS in the demo at all).
  *
- * The prospect opens a one-time t.me link to the sales organisation's bot and
- * taps "share my number". Telegram sends us the number its account is
- * registered with, and the bot accepts it only when:
- *   - the contact is the sender's own, shared fresh: contact.user_id equals
- *     the sender and the message is not forwarded (a forwarded card, even of
- *     one's own account, is a snapshot of a number it may have left);
- *   - it equals the phone on the prospect's own demo request, the only number
- *     the AI will ever ring (owner decision 2026-09-22);
- *   - it was shared after the link was made, the link is unexpired and
- *     unused, and the grant still allows the call.
+ * Two proofs, both needed:
+ *   1. The prospect opens a one-time t.me link to the sales organisation's
+ *      bot and taps "share my number". Telegram sends us the number its
+ *      account is registered with, and the bot accepts it only when the
+ *      contact is the sender's own, shared fresh (contact.user_id equals the
+ *      sender, not forwarded — a forwarded card, even of one's own account,
+ *      is a snapshot of a number it may have left), equals the phone on the
+ *      prospect's own demo request (the only number the AI ever rings), was
+ *      shared after the link was made, the link is open and the grant still
+ *      allows the call.
+ *   2. The bot then writes a one-time code in that chat, and the prospect
+ *      types it on the demo page. So the browser asking for the call belongs
+ *      to whoever holds that Telegram account: a link forwarded to the owner
+ *      of somebody else's number is useless without the code they received.
+ *      The code is checked by the SMS code's own verifier
+ *      (./phone-verification.ts): same limits, row, consent and permission.
  *
- * Every one of those facts is read back from Telegram, never from the webhook
- * body: the bot replies to the contact message and Telegram returns the
- * original with the reply. The webhook itself is authenticated only by the
- * bot token in its URL, which access logs keep; a hand-made update naming a
- * message Telegram does not have gets no reply and proves nothing.
+ * Every fact in (1) is read back from Telegram, never from the webhook body:
+ * the bot replies to the contact message and Telegram returns the original
+ * with the reply. The webhook is authenticated only by the bot token in its
+ * URL, which access logs keep; a hand-made update naming a message Telegram
+ * does not have gets no reply and proves nothing.
  *
- * No SMS or code is sent to the number, so this path costs nothing. What it
+ * Nothing is sent to the number itself, so this costs nothing. What it
  * proves is weaker than an SMS code, and the owner was told: Telegram checked
  * the number when the account was registered, not that the same person holds
- * the SIM today. The same gap lets an account that has since moved to a new
- * number re-send an old card of its own with the sender hidden (it arrives
- * as a fresh, unforwarded message); the Bot API has no field that tells it
- * from a tap on the share button. SMS stays for the stronger guarantee. The person who owns the account sees the
- * consent wording in Telegram and agrees by tapping the button; the browser
- * asked for the same agreement before the link was made.
- *
- * The SMS code stays as the fallback for anyone without Telegram on that
- * number. Both proofs end in the same row, consent and call permission.
+ * the SIM today; an account that has since moved to a new number can also
+ * re-send an old card of its own with the sender hidden (it arrives as a
+ * fresh, unforwarded message), and the Bot API has no field that tells it
+ * from a tap on the button. A prospect with no Telegram on the request's
+ * number gets no call; the story goes on without it.
  */
 
 export const DEMO_TELEGRAM_LINK_TTL_MS = 15 * 60_000
@@ -56,16 +67,19 @@ export const DEMO_TELEGRAM_TEXT = {
   consentPrompt: [
     "LeadDrive demo: AI köməkçimiz demo sorğunuzdakı nömrəyə bir dəfə zəng edəcək, söhbət ən çoxu 2 dəqiqə çəkir.",
     DEMO_CALL_CONSENT_TEXT,
-    "Razısınızsa, aşağıdakı «Razıyam, nömrəmi paylaş» düyməsinə basın: Telegram nömrənizi bizə göndərəcək. Nömrənizə SMS və ya reklam göndərilmir; bot yalnız bu söhbətdə təsdiqi yazacaq, nömrəniz isə yalnız bu bir demo zəngi üçün istifadə olunur.",
+    "Razısınızsa, aşağıdakı «Razıyam, nömrəmi paylaş» düyməsinə basın: Telegram nömrənizi bizə göndərəcək, bot isə burada sizə 6 rəqəmli kod yazacaq — onu demo səhifəsində daxil edin. Nömrənizə SMS və ya reklam göndərilmir, nömrəniz yalnız bu bir demo zəngi üçün istifadə olunur.",
   ].join("\n\n"),
   shareButton: "📱 Razıyam, nömrəmi paylaş",
   checking: "⏳ Nömrə yoxlanılır…",
-  verified: "✅ Nömrəniz təsdiqləndi. Demo səhifəsinə qayıdın — zəngi oradan başlada bilərsiniz.",
+  code: (code: string) => `🔐 LeadDrive demo kodu: ${code}\n\nBu kodu demo səhifəsində yazın. 10 dəqiqə etibarlıdır. Kodu heç kimə verməyin.`,
+  codeCooldown: "Kod az əvvəl göndərildi — yuxarıdakı mesaja baxın. Yeni kod bir dəqiqədən sonra.",
+  codeLimit: "Kod limiti bitib. Demo səhifəsində zəngsiz davam edə bilərsiniz.",
+  verified: "✅ Nömrəniz artıq təsdiqlənib. Demo səhifəsinə qayıdın — zəngi oradan başlada bilərsiniz.",
   notOwnContact: "Yalnız öz nömrənizi paylaşa bilərsiniz: aşağıdakı düyməyə basın. Başqasının və ya köhnə, yönləndirilmiş kontakt qəbul edilmir.",
   otherNumber:
-    "Bu Telegram hesabı başqa nömrəyə bağlıdır. Zəng yalnız demo sorğusundakı nömrəyə edilir. Həmin nömrə ilə qeydiyyatda olan Telegram-dan açın və ya demo səhifəsində SMS kodu istəyin.",
+    "Bu Telegram hesabı başqa nömrəyə bağlıdır. Zəng yalnız demo sorğusundakı nömrəyə edilir — keçidi həmin nömrə ilə qeydiyyatda olan Telegram-da açın.",
   linkDead: "Bu keçidin müddəti bitib və ya o artıq istifadə olunub. Demo səhifəsinə qayıdın və yeni keçid alın.",
-  failed: "Hazırda təsdiqləmək alınmadı. Bir az sonra yenidən cəhd edin və ya demo səhifəsində SMS kodu istəyin.",
+  failed: "Hazırda təsdiqləmək alınmadı. Bir az sonra düyməni yenidən basın.",
 } as const
 
 type Grant = { id: string; status: string; liveCallEnabled: boolean }
@@ -118,16 +132,21 @@ export async function issueDemoTelegramLink(params: {
 }
 
 /** What the demo page polls while the prospect is in Telegram. */
-export async function demoPhoneProofState(grantId: string, now = new Date()): Promise<{ verified: boolean; linkOpen: boolean }> {
+export async function demoPhoneProofState(
+  grantId: string,
+  now = new Date(),
+): Promise<{ verified: boolean; linkOpen: boolean; codeSent: boolean }> {
   const rows = await runWithRlsBypass(() =>
     prisma.demoPhoneVerification.findMany({
       where: { grantId },
-      select: { verifiedAt: true, telegramLinkExpiresAt: true },
+      select: { verifiedAt: true, telegramLinkExpiresAt: true, otpHash: true, otpExpiresAt: true },
     }),
   )
   return {
     verified: rows.some((row) => row.verifiedAt),
     linkOpen: rows.some((row) => !row.verifiedAt && row.telegramLinkExpiresAt && row.telegramLinkExpiresAt > now),
+    // The bot has written a code the page can now ask for.
+    codeSent: rows.some((row) => !row.verifiedAt && row.otpHash && row.otpExpiresAt && row.otpExpiresAt > now),
   }
 }
 
@@ -339,40 +358,49 @@ async function shareContact(params: { botToken: string; chatId: number; messageI
       return true
     }
 
-    const claimed = await runWithRlsBypass(async () => {
+    // The number is proven; the browser still has to show it is the same
+    // person. The bot writes a code here and the page asks for it — the old
+    // SMS code's limits: a few codes per grant, a minute apart.
+    const code = generateDemoOtp()
+    const otpHash = await bcrypt.hash(code, 10)
+    const issued = await runWithRlsBypass(async () => {
+      const current = await prisma.demoPhoneVerification.findMany({
+        where: { grantId: row.grantId },
+        select: { id: true, otpSendCount: true, otpSentAt: true },
+      })
+      if (current.reduce((total, candidate) => total + candidate.otpSendCount, 0) >= DEMO_PHONE_MAX_SENDS_PER_GRANT) return "limit" as const
+      const mine = current.find((candidate) => candidate.id === row.id)
+      if (mine?.otpSentAt && now.getTime() - mine.otpSentAt.getTime() < DEMO_PHONE_RESEND_COOLDOWN_MS) return "cooldown" as const
       // The unique index on telegramProofMessage makes a second use of the
       // same message fail here, whichever demo it is aimed at.
       const updated = await prisma.demoPhoneVerification
         .updateMany({
           where: { id: row.id, telegramLinkHash: row.telegramLinkHash, verifiedAt: null },
           data: {
-            telegramLinkHash: null,
-            telegramLinkExpiresAt: null,
             telegramProofMessage: `${chatId}:${messageId}`,
-            verifiedAt: now,
-            verifiedVia: "telegram",
-            consentAt: now,
-            consentVersion: DEMO_CALL_CONSENT_VERSION,
+            otpHash,
+            otpExpiresAt: new Date(now.getTime() + DEMO_PHONE_OTP_TTL_MS),
+            otpSentAt: now,
+            otpAttempts: 0,
+            otpSendCount: { increment: 1 },
           },
         })
         .catch((error: unknown) => {
           if ((error as { code?: unknown } | null)?.code === "P2002") return { count: 0 }
           throw error
         })
-      if (updated.count !== 1) return false
+      if (updated.count !== 1) return "gone" as const
       await prisma.demoAccessEvent.create({
-        data: {
-          grantId: row.grantId,
-          eventType: "PHONE_VERIFIED",
-          metadata: { consentVersion: DEMO_CALL_CONSENT_VERSION, phoneTail: row.phoneE164.slice(-2), method: "telegram" },
-        },
+        data: { grantId: row.grantId, eventType: "PHONE_CODE_SENT", metadata: { delivered: true, phoneTail: row.phoneE164.slice(-2), method: "telegram" } },
       })
-      return true
+      return "sent" as const
     })
-    if (claimed) {
-      await recordDemoCallPermission(row.phoneE164, now).catch((error) => logFailure("consent mirror", error))
-    }
-    await finish(claimed ? DEMO_TELEGRAM_TEXT.verified : DEMO_TELEGRAM_TEXT.linkDead)
+    await finish(
+      issued === "sent" ? DEMO_TELEGRAM_TEXT.code(code)
+        : issued === "cooldown" ? DEMO_TELEGRAM_TEXT.codeCooldown
+        : issued === "limit" ? DEMO_TELEGRAM_TEXT.codeLimit
+        : DEMO_TELEGRAM_TEXT.linkDead,
+    )
     return true
   } catch (error) {
     logFailure("contact", error)

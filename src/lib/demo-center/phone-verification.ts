@@ -193,7 +193,8 @@ export async function verifyDemoPhoneCode(params: {
         otpHash: null,
         otpExpiresAt: null,
         verifiedAt: now,
-        verifiedVia: "sms",
+        // A code the bot wrote after a Telegram contact proof, or an SMS code.
+        verifiedVia: row.telegramProofMessage ? "telegram" : "sms",
         // The phone is proven: an open Telegram link for it has nothing left to do.
         telegramLinkHash: null,
         telegramLinkExpiresAt: null,
@@ -206,7 +207,7 @@ export async function verifyDemoPhoneCode(params: {
       data: {
         grantId,
         eventType: "PHONE_VERIFIED",
-        metadata: { consentVersion: DEMO_CALL_CONSENT_VERSION, phoneTail: row.phoneE164.slice(-2), method: "sms" },
+        metadata: { consentVersion: DEMO_CALL_CONSENT_VERSION, phoneTail: row.phoneE164.slice(-2), method: row.telegramProofMessage ? "telegram" : "sms" },
       },
     })
     return { state: "newly_verified" as const, phoneE164: row.phoneE164 }

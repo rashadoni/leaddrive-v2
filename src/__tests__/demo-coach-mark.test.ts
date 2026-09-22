@@ -112,9 +112,22 @@ describe("demo coach card", () => {
     expect(handlers.onClose).not.toHaveBeenCalled()
   })
 
-  it("marks only the region, with no arrow, on a step that just shows something", async () => {
+  it("points at the region too, with the step's name, on a step that just shows something", async () => {
+    // Owner, 2026-09-22: «везде нужны стрелки для понимания».
     await renderAction({ mode: "observe", collapsed: true })
     expect(document.querySelector('[data-testid="demo-coach-ring"]')?.getAttribute("data-target")).toBe("region")
-    expect(document.querySelector('[data-testid="demo-coach-arrow"]')).toBeNull()
+    expect(document.querySelector('[data-testid="demo-coach-arrow"]')?.textContent).toContain("Sizi gətirən kampaniya")
+  })
+
+  it("puts an arrow on the ring even while the card is open", async () => {
+    await renderAction({ targetStepId: "source-open-campaign", targetLabel: "Kampaniyanı açın" })
+    expect(document.querySelector('[data-testid="demo-coach-card"]')).not.toBeNull()
+    expect(document.querySelector('[data-testid="demo-coach-ring-arrow"]')).not.toBeNull()
+  })
+
+  it("lets a control name itself for the arrow, when its job changes as the prospect goes on", async () => {
+    document.querySelector('[data-demo-target="source-open-campaign"]')!.setAttribute("data-demo-label", "Kodu buraya yazın")
+    await renderAction({ targetStepId: "source-open-campaign", targetLabel: "Kampaniyanı açın", collapsed: true })
+    expect(document.querySelector('[data-testid="demo-coach-arrow"]')?.textContent).toContain("Kodu buraya yazın")
   })
 })
