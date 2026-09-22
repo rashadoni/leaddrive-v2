@@ -9,6 +9,7 @@ import { formatDate } from "@/lib/format-date"
 import { quoteTotals } from "@/lib/demo-center/journey"
 import { cn } from "@/lib/utils"
 import type { DemoSceneProps } from "../scene-props"
+import { demoTarget } from "../demo-target"
 import { DEMO_JOURNEY_STRINGS as S } from "../strings"
 
 /**
@@ -82,7 +83,7 @@ export function QuoteScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
               <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
             </div>
           </div>
-          <Button data-tour-id="quotes-new" onClick={openCreateDialog}>
+          <Button data-tour-id="quotes-new" onClick={openCreateDialog} {...demoTarget("quote-create")}>
             <Plus className="mr-1 h-4 w-4" /> {t("newQuote")}
           </Button>
         </div>
@@ -97,7 +98,7 @@ export function QuoteScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
               <Row label={t("dialog.qty")} value="1" />
             </dl>
             <div className="mt-4 flex items-center gap-2">
-              <Button size="sm" onClick={confirmCreate}>{t("dialog.createDraft")}</Button>
+              <Button size="sm" onClick={confirmCreate} {...demoTarget("quote-create")}>{t("dialog.createDraft")}</Button>
               <Button size="sm" variant="outline" onClick={() => setDialogOpen(false)}>{t("dialog.cancel")}</Button>
             </div>
           </div>
@@ -183,12 +184,12 @@ export function QuoteScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
         </div>
         <div data-tour-id="quote-transition" className="flex flex-wrap items-center gap-2">
           {canSend && (
-            <Button size="sm" onClick={() => transition("QUOTE_SENT", "quote-send")}>
+            <Button size="sm" onClick={() => transition("QUOTE_SENT", "quote-send")} {...demoTarget("quote-send")}>
               {td("actions.markAs.sent")}
             </Button>
           )}
           {canAccept && (
-            <Button size="sm" onClick={() => transition("QUOTE_ACCEPTED", "quote-accept")}>
+            <Button size="sm" onClick={() => transition("QUOTE_ACCEPTED", "quote-accept")} {...demoTarget("quote-accept")}>
               {td("actions.markAs.accepted")}
             </Button>
           )}
@@ -225,6 +226,7 @@ export function QuoteScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
                   <button
                     type="button"
                     onClick={editLines}
+                    {...demoTarget("quote-lines")}
                     className="rounded border border-zinc-200 px-2 py-0.5 text-xs transition-colors hover:border-foreground/40 dark:border-zinc-700"
                   >
                     {line.quantity}

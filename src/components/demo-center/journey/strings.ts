@@ -30,6 +30,7 @@ export const DEMO_JOURNEY_STRINGS = {
   stepOnScene: "Bu addım ekranda göstərilir",
   coachClose: "İpucunu bağla",
   coachShow: "İpucunu ekranda göstər",
+  coachArrowFallback: "Buraya basın",
   resultTitle: "Nəticə",
   anchorMissingTitle: "Element ekranda tapılmadı",
   anchorMissingBody: "Bu addımın göstərməli olduğu element hazırda görünmür. Bələdçidən davam edə bilərsiniz.",

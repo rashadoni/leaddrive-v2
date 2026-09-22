@@ -20,7 +20,13 @@ describe("demo coach card", () => {
     vi.stubGlobal("matchMedia", (query: string) => ({ matches: false, media: query, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} }))
     const anchor = document.createElement("div")
     anchor.setAttribute("data-tour-id", "campaigns-list")
+    const campaign = document.createElement("button")
+    campaign.setAttribute("data-demo-target", "source-open-campaign")
+    campaign.textContent = "Instagram: CRM tanıtımı"
+    anchor.appendChild(campaign)
     document.body.appendChild(anchor)
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => setTimeout(() => callback(0), 0) as unknown as number)
+    vi.stubGlobal("cancelAnimationFrame", (id: number) => clearTimeout(id))
     container = document.createElement("div")
     document.body.appendChild(container)
     root = createRoot(container)
@@ -32,7 +38,7 @@ describe("demo coach card", () => {
     vi.unstubAllGlobals()
   })
 
-  async function renderAction() {
+  async function renderAction(extra: Record<string, unknown> = {}) {
     await act(async () => {
       root.render(createElement(DemoCoachMark, {
         stepKey: "source:source-open-campaign",
@@ -45,6 +51,7 @@ describe("demo coach card", () => {
         canBack: true,
         canSkip: false,
         ...handlers,
+        ...extra,
       }))
     })
     // The anchor is located a tick after mount.
@@ -78,5 +85,36 @@ describe("demo coach card", () => {
     const card = document.querySelector('[data-testid="demo-coach-card"]')
     expect(card?.textContent).toContain("Hərəkət gözlənilir")
     expect(card?.textContent).not.toContain("İrəli")
+  })
+
+  it("points at the exact control and says what to do there", async () => {
+    await renderAction({ targetStepId: "source-open-campaign", targetLabel: "Kampaniyanı açın" })
+    expect(document.querySelector('[data-testid="demo-coach-ring"]')?.getAttribute("data-target")).toBe("control")
+    expect(document.querySelector('[data-testid="demo-coach-card"]')?.textContent).toContain("Kampaniyanı açın")
+  })
+
+  it("keeps the ring and the arrow on the control when the card is put away", async () => {
+    // Owner, 2026-09-22, with the card closed: «тут должно стрелками показывать, что надо сделать».
+    await renderAction({ targetStepId: "source-open-campaign", targetLabel: "Kampaniyanı açın", collapsed: true })
+    expect(document.querySelector('[data-testid="demo-coach-card"]')).toBeNull()
+    const ring = document.querySelector<HTMLElement>('[data-testid="demo-coach-ring"]')
+    expect(ring?.getAttribute("data-target")).toBe("control")
+    // No dim: nothing covers the page once the card is away.
+    expect(ring?.style.boxShadow).toBe("")
+    expect(document.querySelector('[data-testid="demo-coach-arrow"]')?.textContent).toContain("Kampaniyanı açın")
+  })
+
+  it("lets Escape alone once the card is away", async () => {
+    await renderAction({ targetStepId: "source-open-campaign", collapsed: true })
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))
+    })
+    expect(handlers.onClose).not.toHaveBeenCalled()
+  })
+
+  it("marks only the region, with no arrow, on a step that just shows something", async () => {
+    await renderAction({ mode: "observe", collapsed: true })
+    expect(document.querySelector('[data-testid="demo-coach-ring"]')?.getAttribute("data-target")).toBe("region")
+    expect(document.querySelector('[data-testid="demo-coach-arrow"]')).toBeNull()
   })
 })

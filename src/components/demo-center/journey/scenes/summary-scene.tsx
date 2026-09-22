@@ -4,6 +4,7 @@ import { CheckCircle2, Circle, Flag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { activeSections, quoteTotals } from "@/lib/demo-center/journey"
 import type { DemoSceneProps } from "../scene-props"
+import { demoTarget } from "../demo-target"
 import { DEMO_JOURNEY_STRINGS as S } from "../strings"
 
 function formatAzn(amount: number): string {
@@ -71,7 +72,7 @@ export function SummaryScene({ manifest, snapshot, step, reviewMode, dispatch, h
         ) : (
           <>
             <p className="flex-1 text-sm text-muted-foreground">{S.syntheticNote}</p>
-            <Button onClick={finish} className="bg-[#FF4D00] text-white hover:bg-[#e04400]" disabled={reviewMode}>
+            <Button onClick={finish} className="bg-[#FF4D00] text-white hover:bg-[#e04400]" disabled={reviewMode} {...demoTarget("summary-finish")}>
               {S.finish}
             </Button>
           </>

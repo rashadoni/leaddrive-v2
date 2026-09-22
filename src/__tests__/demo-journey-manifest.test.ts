@@ -500,7 +500,10 @@ describe("The open demo", () => {
     const player = read("src/components/demo-center/journey/demo-journey-player.tsx")
     expect(player).toContain("const coachShown = Boolean(step && Scene) && hiddenCoachKey !== coachKey")
     expect(player).toContain("sceneHasCoachMark={coachShown}")
-    expect(player).toContain("{step && coachShown && (")
+    // Put away, the card collapses to the ring and arrow on the control: it
+    // stays mounted, told that it is collapsed, and the panel carries the words.
+    expect(player).toContain("{step && Scene && !reviewMode && (")
+    expect(player).toContain("collapsed={!coachShown}")
   })
 
   it("does not post what the visitor types about themselves", () => {

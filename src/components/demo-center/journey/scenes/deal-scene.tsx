@@ -15,6 +15,7 @@ import { DEMO_DEAL_STAGES } from "@/lib/demo-center/journey"
 import { cn } from "@/lib/utils"
 import { LeadCardView } from "./lead-scene"
 import type { DemoSceneProps } from "../scene-props"
+import { demoTarget } from "../demo-target"
 import { DEMO_JOURNEY_STRINGS as S } from "../strings"
 
 /**
@@ -42,6 +43,17 @@ function DealWorkspace({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
   const [cardOpen, setCardOpen] = useState(snapshot.state !== "DEAL_CREATED")
   const [sheetOpen, setSheetOpen] = useState(false)
   const [sheetTab, setSheetTab] = useState<"overview" | "history" | "activities" | "team">("overview")
+  // «Sövdələşmə kartı» talks about the card, so it opens with the step: the
+  // kanban's advance does not remount the scene, and the card used to stay
+  // shut behind two clicks the step never asked for.
+  // (State adjusted while rendering, once per arrival on the step, so the
+  // prospect can still close the card again.)
+  const onCardStep = step?.id === "deal-card"
+  const [openedForCardStep, setOpenedForCardStep] = useState(false)
+  if (onCardStep && !openedForCardStep) {
+    setOpenedForCardStep(true)
+    setCardOpen(true)
+  }
 
   if (!deal) {
     return <p className="text-sm text-muted-foreground">{t("noDealsInStage")}</p>
@@ -55,13 +67,18 @@ function DealWorkspace({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
     color: stage.key === "won" ? "#22c55e" : "#FF4D00",
   }))
 
-  const advance = () => {
+  const advance = (stageKey?: string) => {
     if (reviewMode) return
     if (step?.id === "deal-advance") {
       dispatch({ type: "transition", stepId: step.id, to: "DEAL_ADVANCED" })
       return
     }
     if (step?.id === "closed-won-move") {
+      // The step says «pick the won stage»; any other stage is not a win.
+      if (stageKey !== undefined && stageKey !== "won") {
+        hint(S.hintFollow(step.title))
+        return
+      }
       dispatch({ type: "transition", stepId: step.id, to: "CLOSED_WON" })
       return
     }
@@ -165,7 +182,7 @@ function DealWorkspace({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
                           </span>
                         </button>
                         {index < DEMO_DEAL_STAGES.length - 1 && (
-                          <Button size="sm" variant="outline" className="mt-2 h-7 w-full text-[11px]" onClick={advance}>
+                          <Button size="sm" variant="outline" className="mt-2 h-7 w-full text-[11px]" onClick={() => advance()} {...demoTarget("deal-advance")}>
                             {S.dragHint}
                           </Button>
                         )}
@@ -261,11 +278,11 @@ function DealWorkspace({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
         </div>
       </div>
 
-      <div data-tour-id="deal-stage-progress">
+      <div data-tour-id="deal-stage-progress" {...demoTarget("closed-won-move")}>
         <StageProgress
           stages={stages}
           currentStage={DEMO_DEAL_STAGES[deal.stageIndex].key}
-          onStageClick={advance}
+          onStageClick={(stageKey) => advance(stageKey)}
         />
       </div>
 

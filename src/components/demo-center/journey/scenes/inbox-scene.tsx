@@ -10,6 +10,7 @@ import { formatDateTime } from "@/lib/format-date"
 import { DEMO_CHANNEL_LABELS } from "@/lib/demo-center/journey"
 import { cn } from "@/lib/utils"
 import type { DemoSceneProps } from "../scene-props"
+import { demoTarget } from "../demo-target"
 import { DEMO_JOURNEY_STRINGS as S } from "../strings"
 
 /**
@@ -136,6 +137,7 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
           <button
             type="button"
             onClick={openThread}
+            {...demoTarget("conversation-open")}
             aria-current={selected ? "true" : undefined}
             className={cn(
               "flex w-full flex-col gap-1 border-b border-border/40 px-3 py-3 text-left transition-colors",
@@ -213,7 +215,7 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
                 </p>
                 <p className="mt-2 text-[11px] text-muted-foreground">{S.aiDraftReason}</p>
                 <div className="mt-3 flex items-center gap-2">
-                  <Button size="sm" onClick={sendDraft}>
+                  <Button size="sm" onClick={sendDraft} {...demoTarget("ai-reply-send")}>
                     <Send className="mr-1 h-3.5 w-3.5" /> {tc("send")}
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => hint(S.hintFollow(step?.title ?? ""))}>

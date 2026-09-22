@@ -2,10 +2,11 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react"
 import { useReducedMotion } from "framer-motion"
-import { ChevronLeft, ChevronRight, SkipForward, X } from "lucide-react"
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, SkipForward, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { DemoStepPlacement } from "@/lib/demo-center/journey"
+import { findDemoTarget } from "./demo-target"
 import { DEMO_JOURNEY_STRINGS as S } from "./strings"
 
 /**
@@ -23,7 +24,12 @@ import { DEMO_JOURNEY_STRINGS as S } from "./strings"
  *     neither completed nor skipped, stays in the guide panel, and the
  *     panel can bring the card back. Without them the card could not be
  *     put away at all and covered the page it was talking about (reported
- *     by the owner 2026-09-22 on «Sizi gətirən kampaniya»).
+ *     by the owner 2026-09-22 on «Sizi gətirən kampaniya»);
+ *   - on a step the prospect acts on, the ring and an arrow point at the
+ *     exact control (`data-demo-target`), not the region around it, and they
+ *     stay on screen when the card is put away — the owner, the same day:
+ *     «тут должно стрелками показывать, что надо сделать». With the card
+ *     away there is no dim and nothing blocks the page.
  */
 
 interface Rect {
@@ -50,6 +56,12 @@ export interface DemoCoachMarkProps {
   /** Hides the card for this step; the step itself is untouched. */
   onClose: () => void
   onMissing: (missing: boolean) => void
+  /** Step id whose `data-demo-target` control the arrow points at (action steps). */
+  targetStepId?: string
+  /** Words on the arrow, verb first. */
+  targetLabel?: string
+  /** The card was put away: only the ring and the arrow stay. */
+  collapsed?: boolean
 }
 
 const PADDING = 6
@@ -57,9 +69,20 @@ const GAP = 14
 const VIEWPORT_MARGIN = 16
 const LOCATE_INTERVAL_MS = 120
 const LOCATE_ATTEMPTS = 25
+const PILL_GAP = 10
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
+}
+
+function rectOf(element: Element): Rect {
+  const box = element.getBoundingClientRect()
+  return { top: box.top, left: box.left, width: box.width, height: box.height }
+}
+
+function sameRect(a: Rect | null, b: Rect | null): boolean {
+  if (!a || !b) return a === b
+  return Math.abs(a.top - b.top) < 0.5 && Math.abs(a.left - b.left) < 0.5 && Math.abs(a.width - b.width) < 0.5 && Math.abs(a.height - b.height) < 0.5
 }
 
 export function DemoCoachMark({
@@ -77,6 +100,9 @@ export function DemoCoachMark({
   onSkip,
   onClose,
   onMissing,
+  targetStepId,
+  targetLabel,
+  collapsed = false,
 }: DemoCoachMarkProps) {
   const reducedMotion = useReducedMotion()
 
@@ -86,15 +112,21 @@ export function DemoCoachMark({
     closeRef.current = onClose
   }, [onClose])
   useEffect(() => {
+    if (collapsed) return
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") closeRef.current()
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [])
+  }, [collapsed])
   const [rect, setRect] = useState<Rect | null>(null)
+  // Keyed by step, so a new step never shows the previous step's control.
+  const [targetState, setTargetState] = useState<{ key: string; rect: Rect | null }>({ key: stepKey, rect: null })
+  const targetRect = targetState.key === stepKey ? targetState.rect : null
+  const [viewport, setViewport] = useState({ width: 0, height: 0 })
   const [size, setSize] = useState({ width: 340, height: 160 })
   const popoverRef = useRef<HTMLDivElement>(null)
+  const scrolledFor = useRef<string | null>(null)
 
   // Locate the anchor. Scenes render tabs and cards a tick after the step
   // changes, so poll briefly before declaring the anchor missing.
@@ -105,15 +137,15 @@ export function DemoCoachMark({
 
     const attach = (found: Element) => {
       const update = () => {
-        const box = found.getBoundingClientRect()
-        setRect({ top: box.top, left: box.left, width: box.width, height: box.height })
+        setRect((previous) => {
+          const next = rectOf(found)
+          return sameRect(previous, next) ? previous : next
+        })
+        setViewport((previous) =>
+          previous.width === window.innerWidth && previous.height === window.innerHeight ? previous : { width: window.innerWidth, height: window.innerHeight },
+        )
       }
       update()
-      const box = found.getBoundingClientRect()
-      if (box.top < 0 || box.bottom > window.innerHeight) {
-        found.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "center" })
-        timer = setTimeout(update, reducedMotion ? 0 : 400)
-      }
       const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null
       observer?.observe(found)
       window.addEventListener("resize", update)
@@ -148,7 +180,44 @@ export function DemoCoachMark({
       if (timer) clearTimeout(timer)
       cleanupPosition?.()
     }
-  }, [anchor, stepKey, onMissing, reducedMotion])
+  }, [anchor, stepKey, onMissing])
+
+  // Follow the exact control. It can appear after a first click (a dialog's
+  // «Create»), so the DOM is watched for the whole step; the page is scrolled
+  // to it once per step, never again, so the prospect's own scrolling wins.
+  useEffect(() => {
+    if (!targetStepId) return
+    let frame = 0
+    let element: HTMLElement | null = null
+    const measure = () => {
+      frame = 0
+      element = findDemoTarget(targetStepId)
+      const next = element ? rectOf(element) : null
+      setTargetState((previous) => (previous.key === stepKey && sameRect(previous.rect, next) ? previous : { key: stepKey, rect: next }))
+      if (element && scrolledFor.current !== stepKey) {
+        scrolledFor.current = stepKey
+        const box = element.getBoundingClientRect()
+        if (box.bottom > window.innerHeight || box.top < 0) {
+          element.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "center", inline: "nearest" })
+        }
+      }
+    }
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(measure)
+    }
+    const timer = setTimeout(measure, 0)
+    const observer = typeof MutationObserver !== "undefined" ? new MutationObserver(schedule) : null
+    observer?.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-demo-target", "class", "style", "hidden"] })
+    window.addEventListener("resize", schedule)
+    window.addEventListener("scroll", schedule, true)
+    return () => {
+      clearTimeout(timer)
+      if (frame) cancelAnimationFrame(frame)
+      observer?.disconnect()
+      window.removeEventListener("resize", schedule)
+      window.removeEventListener("scroll", schedule, true)
+    }
+  }, [targetStepId, stepKey, reducedMotion])
 
   useLayoutEffect(() => {
     const node = popoverRef.current
@@ -159,37 +228,110 @@ export function DemoCoachMark({
         ? previous
         : { width: box.width, height: box.height },
     )
-  }, [title, instruction, counter, mode, rect])
+  }, [title, instruction, counter, mode, rect, targetRect, collapsed])
 
   // Move focus to the card so screen readers announce the step; the control
   // itself stays reachable with Tab.
-  const located = rect !== null
+  const located = rect !== null || targetRect !== null
   useEffect(() => {
-    if (located) popoverRef.current?.focus({ preventScroll: true })
-  }, [stepKey, located])
+    if (located && !collapsed) popoverRef.current?.focus({ preventScroll: true })
+  }, [stepKey, located, collapsed])
 
-  if (!rect) return null
+  const focus = targetRect ?? rect
+  if (!focus) return null
 
+  const viewWidth = viewport.width || window.innerWidth
+  const viewHeight = viewport.height || window.innerHeight
   const ring: Rect = {
-    top: rect.top - PADDING,
-    left: rect.left - PADDING,
-    width: rect.width + PADDING * 2,
-    height: rect.height + PADDING * 2,
+    top: focus.top - PADDING,
+    left: focus.left - PADDING,
+    width: focus.width + PADDING * 2,
+    height: focus.height + PADDING * 2,
+  }
+  const pointsAtControl = mode === "action" && targetRect !== null
+  const label = targetLabel ?? S.coachArrowFallback
+
+  const ringElement = (
+    <div
+      aria-hidden="true"
+      data-testid="demo-coach-ring"
+      data-target={pointsAtControl ? "control" : "region"}
+      className={cn(
+        "pointer-events-none fixed z-[10000] rounded-lg ring-2 ring-[#FF4D00]/80",
+        !reducedMotion && "transition-[top,left,width,height] duration-200",
+        collapsed && pointsAtControl && !reducedMotion && "animate-pulse",
+      )}
+      style={{ ...ring, boxShadow: collapsed ? undefined : "0 0 0 9999px rgba(15, 23, 42, 0.32)" }}
+    />
+  )
+
+  if (collapsed) {
+    if (!pointsAtControl) return ringElement
+    // Entirely out of the viewport; a control at its very edge is still visible.
+    const offBelow = ring.top >= viewHeight
+    const offAbove = ring.top + ring.height <= 0
+    if (offBelow || offAbove) {
+      // Scrolled away from the control: a chip at the edge brings it back.
+      return (
+        <button
+          type="button"
+          data-testid="demo-coach-arrow"
+          data-docked={offBelow ? "bottom" : "top"}
+          onClick={() => findDemoTarget(targetStepId ?? "")?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "center" })}
+          className="fixed left-1/2 z-[10002] flex max-w-[min(80vw,320px)] -translate-x-1/2 items-center gap-1.5 rounded-full bg-[#FF4D00] px-3 py-1.5 text-xs font-semibold text-white shadow-lg"
+          style={offBelow ? { bottom: VIEWPORT_MARGIN } : { top: VIEWPORT_MARGIN }}
+        >
+          {offBelow ? <ArrowDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> : <ArrowUp className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
+          <span className="truncate">{label}</span>
+        </button>
+      )
+    }
+    // The arrow sits above the control, or below it when there is no room.
+    const pillHeight = 30
+    const above = ring.top - PILL_GAP - pillHeight >= VIEWPORT_MARGIN
+    const pillWidth = Math.min(240, viewWidth - VIEWPORT_MARGIN * 2)
+    const centre = ring.left + ring.width / 2
+    return (
+      <>
+        {ringElement}
+        <div
+          aria-hidden="true"
+          data-testid="demo-coach-arrow"
+          data-side={above ? "top" : "bottom"}
+          className="pointer-events-none fixed z-[10002] flex flex-col items-center"
+          style={{
+            left: clamp(centre - pillWidth / 2, VIEWPORT_MARGIN, Math.max(VIEWPORT_MARGIN, viewWidth - pillWidth - VIEWPORT_MARGIN)),
+            width: pillWidth,
+            top: above ? ring.top - PILL_GAP - pillHeight : ring.top + ring.height + PILL_GAP,
+          }}
+        >
+          <span className="flex max-w-full items-center gap-1.5 rounded-full bg-[#FF4D00] px-3 py-1.5 text-xs font-semibold text-white shadow-lg">
+            {above ? (
+              <ArrowDown className={cn("h-3.5 w-3.5 shrink-0", !reducedMotion && "motion-safe:animate-bounce")} aria-hidden="true" />
+            ) : (
+              <ArrowUp className={cn("h-3.5 w-3.5 shrink-0", !reducedMotion && "motion-safe:animate-bounce")} aria-hidden="true" />
+            )}
+            <span className="truncate">{label}</span>
+          </span>
+        </div>
+      </>
+    )
   }
 
-  const maxWidth = Math.min(340, window.innerWidth - VIEWPORT_MARGIN * 2)
+  const maxWidth = Math.min(340, viewWidth - VIEWPORT_MARGIN * 2)
   const width = Math.min(size.width || 340, maxWidth)
-  const height = Math.min(size.height || 160, window.innerHeight - VIEWPORT_MARGIN * 2)
+  const height = Math.min(size.height || 160, viewHeight - VIEWPORT_MARGIN * 2)
 
   const fits = {
-    bottom: ring.top + ring.height + GAP + height <= window.innerHeight - VIEWPORT_MARGIN,
+    bottom: ring.top + ring.height + GAP + height <= viewHeight - VIEWPORT_MARGIN,
     top: ring.top - GAP - height >= VIEWPORT_MARGIN,
-    right: ring.left + ring.width + GAP + width <= window.innerWidth - VIEWPORT_MARGIN,
+    right: ring.left + ring.width + GAP + width <= viewWidth - VIEWPORT_MARGIN,
     left: ring.left - GAP - width >= VIEWPORT_MARGIN,
   }
   const preferred: Exclude<DemoStepPlacement, "auto">[] =
     placement === "auto" ? ["bottom", "top", "right", "left"] : [placement, "bottom", "top", "right", "left"]
-  const side = preferred.find((candidate) => fits[candidate]) ?? "bottom"
+  const fitting = preferred.find((candidate) => fits[candidate])
+  const side = fitting ?? "bottom"
 
   let top: number
   let left: number
@@ -206,6 +348,8 @@ export function DemoCoachMark({
     top = ring.top
     left = ring.left - GAP - width
   }
+  const cardLeft = clamp(left, VIEWPORT_MARGIN, Math.max(VIEWPORT_MARGIN, viewWidth - width - VIEWPORT_MARGIN))
+  const cardTop = clamp(top, VIEWPORT_MARGIN, Math.max(VIEWPORT_MARGIN, viewHeight - height - VIEWPORT_MARGIN))
 
   const popoverStyle: CSSProperties = {
     position: "fixed",
@@ -214,21 +358,22 @@ export function DemoCoachMark({
     maxWidth,
     maxHeight: `calc(100vh - ${VIEWPORT_MARGIN * 2}px)`,
     overflowY: "auto",
-    left: clamp(left, VIEWPORT_MARGIN, Math.max(VIEWPORT_MARGIN, window.innerWidth - width - VIEWPORT_MARGIN)),
-    top: clamp(top, VIEWPORT_MARGIN, Math.max(VIEWPORT_MARGIN, window.innerHeight - height - VIEWPORT_MARGIN)),
+    left: cardLeft,
+    top: cardTop,
   }
+
+  // The card's own arrow: a notch on the edge that faces the control, lined
+  // up with it. Only when the card really sits beside the ring — a card
+  // clamped over it has no side to point from.
+  const caret: CSSProperties | null = fitting
+    ? side === "bottom" || side === "top"
+      ? { left: clamp(ring.left + ring.width / 2 - cardLeft - 6, 12, width - 24), [side === "bottom" ? "top" : "bottom"]: -6 }
+      : { top: clamp(ring.top + ring.height / 2 - cardTop - 6, 12, height - 24), [side === "right" ? "left" : "right"]: -6 }
+    : null
 
   return (
     <>
-      <div
-        aria-hidden="true"
-        data-testid="demo-coach-ring"
-        className={cn(
-          "pointer-events-none fixed z-[10000] rounded-lg ring-2 ring-[#FF4D00]/80",
-          !reducedMotion && "transition-[top,left,width,height] duration-200",
-        )}
-        style={{ ...ring, boxShadow: "0 0 0 9999px rgba(15, 23, 42, 0.32)" }}
-      />
+      {ringElement}
       <div
         ref={popoverRef}
         tabIndex={-1}
@@ -242,6 +387,21 @@ export function DemoCoachMark({
           !reducedMotion && "animate-in fade-in duration-200",
         )}
       >
+        {caret ? (
+          <span
+            aria-hidden="true"
+            data-testid="demo-coach-caret"
+            className="pointer-events-none absolute h-3 w-3 rotate-45 border border-zinc-200 bg-card dark:border-zinc-700"
+            style={{
+              ...caret,
+              // Only the two borders facing the ring show, so the notch reads as part of the card.
+              borderRightColor: side === "bottom" || side === "right" ? "transparent" : undefined,
+              borderBottomColor: side === "bottom" || side === "left" ? "transparent" : undefined,
+              borderLeftColor: side === "top" || side === "left" ? "transparent" : undefined,
+              borderTopColor: side === "top" || side === "right" ? "transparent" : undefined,
+            }}
+          />
+        ) : null}
         <div className="flex items-start justify-between gap-2">
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{counter}</p>
           <button
@@ -257,6 +417,12 @@ export function DemoCoachMark({
         </div>
         <p className="mt-1 text-sm font-semibold leading-tight">{title}</p>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{instruction}</p>
+        {pointsAtControl ? (
+          <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-[#c2410c] dark:text-orange-300">
+            {side === "bottom" ? <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" /> : side === "top" ? <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" /> : <ChevronRight className={cn("h-3.5 w-3.5", side === "right" && "rotate-180")} aria-hidden="true" />}
+            {label}
+          </p>
+        ) : null}
         <div className="mt-3 flex items-center justify-between gap-2">
           <span
             className={cn(

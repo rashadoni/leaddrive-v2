@@ -10,6 +10,7 @@ import { formatDate } from "@/lib/format-date"
 import { DEMO_CHANNEL_LABELS } from "@/lib/demo-center/journey"
 import { cn } from "@/lib/utils"
 import type { DemoSceneProps } from "../scene-props"
+import { demoTarget } from "../demo-target"
 import { DEMO_JOURNEY_STRINGS as S } from "../strings"
 
 /**
@@ -133,6 +134,7 @@ export function CampaignScene({ snapshot, step, reviewMode, dispatch, hint }: De
         <button
           type="button"
           onClick={openCampaign}
+          {...demoTarget("source-open-campaign")}
           className="w-full rounded-xl border border-zinc-200 bg-card p-4 text-left transition-all hover:border-foreground/30 hover:shadow-sm dark:border-zinc-700"
         >
           <span className="flex flex-wrap items-center gap-2">
