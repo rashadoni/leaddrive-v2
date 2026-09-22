@@ -186,8 +186,27 @@ describe("Demo Center: a live call at issue time", () => {
     expect(prisma.demoGrant.create).not.toHaveBeenCalled()
   })
 
+  it("is refused when the request has no Azerbaijani mobile to ring", async () => {
+    // Owner decision 2026-09-22: the call rings only the request's own phone.
+    demoCallAgentReady.mockResolvedValue(true)
+
+    const response = await issueDemo(issueRequest(liveJourney), { params: Promise.resolve({ id: REQUEST_ID }) })
+
+    expect(response.status).toBe(409)
+    expect((await response.json()).error).toContain("request's own phone")
+    expect(prisma.demoGrant.create).not.toHaveBeenCalled()
+  })
+
   it("is recorded on the grant once the agent can speak as LeadDrive", async () => {
     demoCallAgentReady.mockResolvedValue(true)
+    vi.mocked(prisma.demoRequest.findUnique).mockResolvedValue({
+      id: REQUEST_ID,
+      status: "SUBMITTED",
+      name: "Prospect",
+      company: "Example MMC",
+      email: "buyer@example.az",
+      phone: "050 123 45 67",
+    } as never)
     vi.mocked(prisma.demoRequest.updateMany).mockResolvedValue({ count: 1 })
     vi.mocked(prisma.demoGrant.updateMany).mockResolvedValue({ count: 1 })
 

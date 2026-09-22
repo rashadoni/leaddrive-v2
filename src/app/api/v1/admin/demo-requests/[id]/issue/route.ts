@@ -8,6 +8,7 @@ import { demoGrantIssueSchema } from "@/lib/demo-center/validation"
 import { runWithRlsBypass } from "@/lib/rls-context"
 import { requireSuperAdmin } from "@/lib/superadmin-guard"
 import { demoCallAgentReady } from "@/lib/demo-center/demo-call"
+import { normalizeDemoPhone } from "@/lib/demo-center/phone-verification"
 
 const REVOCABLE_STATUSES = ["ISSUING", "SENT", "OTP_SENT", "OTP_VERIFIED", "ACTIVE", "DELIVERY_FAILED"]
 
@@ -46,6 +47,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     prisma.demoRequest.findUnique({ where: { id: requestId } }),
   )
   if (!demoRequest) return NextResponse.json({ success: false, error: "Demo request not found" }, { status: 404 })
+  // The live call only ever rings the phone on the request (owner decision
+  // 2026-09-22). With no Azerbaijani mobile there it cannot happen at all, so
+  // it is not offered to the prospect as a button that can only fail.
+  if (parsed.data.liveCallEnabled && !normalizeDemoPhone(demoRequest.phone ?? "")) {
+    return NextResponse.json(
+      { success: false, error: "This request has no Azerbaijani mobile number, and the live call only ever rings the request's own phone" },
+      { status: 409 },
+    )
+  }
   if (demoRequest.status === "REJECTED") {
     return NextResponse.json({ success: false, error: "Rejected requests cannot be issued" }, { status: 409 })
   }
