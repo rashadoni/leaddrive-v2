@@ -65,6 +65,11 @@ export const DEMO_ANCHORS: Readonly<Record<string, DemoAnchorDefinition>> = {
   "campaigns-tabs": { area: "campaigns", scene: CAMPAIGN_SCENE, productFiles: [], label: "List / analytics switch" },
   "campaigns-analytics": { area: "campaigns", scene: CAMPAIGN_SCENE, productFiles: [], label: "Campaign analytics" },
   "campaign-detail": { area: "campaigns", scene: CAMPAIGN_SCENE, productFiles: [], label: "Campaign card" },
+  // Composed from the campaign ROI screen rather than mirroring one element
+  // of it, so no product file is listed — same as the other demo-composed
+  // campaign anchors above.
+  "campaign-funnel": { area: "campaigns", scene: CAMPAIGN_SCENE, productFiles: [], label: "Conversion funnel" },
+  "campaign-roi": { area: "campaigns", scene: CAMPAIGN_SCENE, productFiles: [], label: "Campaign money and ROI" },
 
   /* ── Communication → Inbox ── */
   "inbox-views": { area: "inbox", scene: INBOX_SCENE, productFiles: [], label: "All / Me / Unassigned / … views" },

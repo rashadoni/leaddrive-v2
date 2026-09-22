@@ -243,7 +243,7 @@ describe("Guided journey coverage", () => {
   /** Hand-checked numbers; docs/demo-guided-journey.md quotes them. Change
    *  both on purpose, never one to make the other pass. */
   const EXPECTED: Record<string, { included: number; total: number; percent: number }> = {
-    campaigns: { included: 5, total: 6, percent: 83 },
+    campaigns: { included: 7, total: 8, percent: 88 },
     inbox: { included: 8, total: 10, percent: 80 },
     leads: { included: 20, total: 23, percent: 87 },
     tasks: { included: 11, total: 13, percent: 85 },

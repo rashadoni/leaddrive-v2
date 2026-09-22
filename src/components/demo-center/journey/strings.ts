@@ -101,6 +101,22 @@ export const DEMO_JOURNEY_STRINGS = {
   aiDraftReason: "Yalnız qaralama rejimi: cavabı operator təsdiqləməyincə göndərilmir.",
   aiDraftDiscard: "İmtina et",
   contactPanelTitle: "Müştəri",
+  limitTitle: "Demo limiti",
+  contactPhoneLabel: "Telefon",
+  contactPhoneFromRequest: "Sorğuda göstərdiyiniz nömrə",
+  contactPhoneMissing: "Sorğuda nömrə göstərilməyib",
+  channelActive: "aktiv",
+  replyLeft: (left: number, limit: number) => `Bu demoda ${limit} mesajdan ${left} qalıb`,
+  replySend: "Göndər",
+  replyLimitBody: (limit: number) =>
+    `Bu söhbətə demoda ${limit} mesaj yazmaq olar — limit doldu, ona görə «Göndər» işləmir. Bu, açıq demonun limitidir; real hesabda yazışma limitsizdir. Davam etmək üçün şəxsi demo istəyin.`,
+  replySimulatedNote:
+    "Mesaj yalnız bu demo ekranında görünür: real hesabda o, müştəriyə seçilmiş kanalla (Instagram, WhatsApp, e-poçt) gedir.",
+  whatsappPendingNote:
+    "WhatsApp nömrə üzrə kanal kimi görünür; real göndəriş Meta təsdiqindən sonra açılır.",
+  campaignMoneyTitle: "Pul: büdcə və qazanılmış sövdələşmələr",
+  campaignMoneyNote:
+    "Xərc kimi kampaniyaya yazdığınız büdcə götürülür — faktiki xərci məhsul özü qeydə almır. Gəlir isə yalnız bu kampaniyadan gələn qazanılmış sövdələşmələrdən yığılır, ona görə ROI kliklərə yox, pula baxır.",
   callResultInTimeline: "Eyni yazı lidin «Qarşılıqlı əlaqələr» lentinə düşdü.",
   reviewOnly: "Bu, keçdiyiniz bölmədir — burada yalnız baxmaq olar. Bələdçidəki «Cari addıma qayıt» düyməsi sizi hekayəyə qaytarır.",
   linkedLead: "Bağlı lid",

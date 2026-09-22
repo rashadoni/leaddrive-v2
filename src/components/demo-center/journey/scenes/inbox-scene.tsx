@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import {
-  Bot, Filter, Inbox as InboxIcon, Search, Send, Sparkles, StickyNote, User, UserPlus, UserX, Users,
+  Bot, Filter, Inbox as InboxIcon, Phone, Search, Send, Sparkles, StickyNote, User, UserPlus, UserX, Users,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { formatDateTime } from "@/lib/format-date"
@@ -11,7 +11,19 @@ import { DEMO_CHANNEL_LABELS } from "@/lib/demo-center/journey"
 import { cn } from "@/lib/utils"
 import type { DemoSceneProps } from "../scene-props"
 import { demoTarget } from "../demo-target"
+import { DemoLimitNotice } from "../demo-limit-notice"
 import { DEMO_JOURNEY_STRINGS as S } from "../strings"
+
+/**
+ * How many messages a prospect may write into the demo thread.
+ *
+ * Owner, 2026-09-22: «и то с ограничением на 5 сообщений». The composer is
+ * the one place in the demo that takes free text into the story, so it is
+ * capped and the cap explains itself. The count lives in the snapshot's `ui`
+ * map, so leaving the chapter and coming back does not hand out five more.
+ */
+const DEMO_REPLY_LIMIT = 5
+const REPLIES_SENT = "inbox.replies"
 
 /**
  * Communication → Inbox: the prospect's own inbound message, and the AI draft
@@ -43,6 +55,27 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
   const threadOpen = snapshot.state !== "SOURCE_SEEN"
   const [selected, setSelected] = useState(threadOpen)
   const [composer, setComposer] = useState<"reply" | "note">("reply")
+  const [draft, setDraft] = useState("")
+  const [mine, setMine] = useState<readonly { id: string; text: string; at: string; kind: "reply" | "note" }[]>([])
+  const sentCount = Number(snapshot.ui[REPLIES_SENT] ?? 0)
+  const left = Math.max(0, DEMO_REPLY_LIMIT - sentCount)
+
+  const sendOwn = () => {
+    const text = draft.trim()
+    if (!text) return
+    if (reviewMode) {
+      hint(S.reviewOnly)
+      return
+    }
+    if (left === 0) return
+    const result = dispatch({ type: "ui", path: REPLIES_SENT, value: sentCount + 1 })
+    if (!result.ok) {
+      hint(S.demoButtonHint)
+      return
+    }
+    setMine((current) => [...current, { id: `own-${sentCount + 1}`, text, at: new Date().toISOString(), kind: composer }])
+    setDraft("")
+  }
 
   const openThread = () => {
     if (reviewMode) {
@@ -209,6 +242,24 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
                   </div>
                 </div>
               ))}
+
+              {/* What the prospect wrote here themselves — inside the demo only. */}
+              {mine.map((message) => (
+                <div key={message.id} className={cn("flex", message.kind === "note" ? "justify-center" : "justify-end")}>
+                  <div
+                    className={cn(
+                      "max-w-[85%] rounded-xl px-3 py-2 text-sm",
+                      message.kind === "note" ? "border border-amber-300/70 bg-amber-50 dark:border-amber-500/40 dark:bg-amber-500/10" : "bg-primary/10",
+                    )}
+                  >
+                    <p className="leading-relaxed">{message.text}</p>
+                    <p className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                      <span>{message.kind === "note" ? t("notePrivate") : S.simulatedSend}</span>
+                      <span className="ml-auto">{formatDateTime(message.at, locale)}</span>
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
 
             {conversation.aiDraft && (
@@ -259,12 +310,30 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
                 </span>
               </div>
               <textarea
-                readOnly
                 rows={2}
-                onClick={() => hint(S.demoButtonHint)}
+                value={draft}
+                disabled={left === 0}
+                onChange={(event) => setDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                    event.preventDefault()
+                    sendOwn()
+                  }
+                }}
                 placeholder={composer === "reply" ? t("composer_reply") : t("addNote")}
-                className="w-full resize-none rounded-lg border border-zinc-200 bg-background p-2.5 text-sm dark:border-zinc-700"
+                className="w-full resize-none rounded-lg border border-zinc-200 bg-background p-2.5 text-sm disabled:opacity-60 dark:border-zinc-700"
               />
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <Button size="sm" onClick={sendOwn} disabled={left === 0 || draft.trim().length === 0}>
+                  <Send className="mr-1 h-3.5 w-3.5" /> {S.replySend}
+                </Button>
+                {left > 0 && <span className="text-[10px] tabular-nums text-muted-foreground">{S.replyLeft(left, DEMO_REPLY_LIMIT)}</span>}
+              </div>
+              {left === 0 ? (
+                <DemoLimitNotice className="mt-2" body={S.replyLimitBody(DEMO_REPLY_LIMIT)} />
+              ) : (
+                <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">{S.replySimulatedNote}</p>
+              )}
             </div>
           </>
         )}
@@ -279,9 +348,32 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
               <p className="mt-1 text-sm font-semibold">{conversation.contactName}</p>
               <p className="text-xs text-muted-foreground">{conversation.companyName}</p>
             </div>
+            {/* The phone from the prospect's own request: the CRM knows it
+                from the moment the request came in, which is also why the AI
+                call can only ever ring that number. */}
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{S.contactPhoneLabel}</p>
+              <p className="mt-1 flex items-center gap-1.5 text-sm font-medium tabular-nums">
+                <Phone className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                {snapshot.identity.phoneMasked ?? "—"}
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                {snapshot.identity.phoneMasked ? S.contactPhoneFromRequest : S.contactPhoneMissing}
+              </p>
+            </div>
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t("channels")}</p>
-              <p className="mt-1 text-sm">{channelLabel}</p>
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">{channelLabel}</span>
+                {snapshot.identity.phoneMasked && channelLabel !== DEMO_CHANNEL_LABELS.whatsapp && (
+                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300">
+                    {DEMO_CHANNEL_LABELS.whatsapp} · {S.channelActive}
+                  </span>
+                )}
+              </div>
+              {snapshot.identity.phoneMasked && (
+                <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">{S.whatsappPendingNote}</p>
+              )}
             </div>
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t("tags")}</p>

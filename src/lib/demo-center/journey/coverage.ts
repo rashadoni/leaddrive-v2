@@ -50,6 +50,8 @@ export const DEMO_JOURNEY_COVERAGE: readonly DemoCoverageArea[] = [
       { id: "campaigns.list", label: "Список кампаний: получатели, отправлено", included: true, kind: "interactive" },
       { id: "campaigns.detail", label: "Карточка кампании: статус, аудитория, канал", included: true, kind: "interactive" },
       { id: "campaigns.analytics", label: "Вкладка аналитики: открытия / клики", included: true, kind: "observe" },
+      { id: "campaigns.funnel", label: "Воронка кампании: получатели → лиды → сделки → выигранные", included: true, kind: "observe" },
+      { id: "campaigns.roi", label: "Деньги кампании: бюджет, выручка, ROI", included: true, kind: "observe" },
       { id: "campaigns.editor", label: "Создание / редактирование кампании", included: false, reason: "Демо ничего не рассылает; редактор кампании — работа администратора, а не часть истории лида." },
     ],
   },
