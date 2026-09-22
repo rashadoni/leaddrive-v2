@@ -101,8 +101,9 @@ export function ColorStatCard({
         className
       )}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2">
+        {/* min-w-0: without it a long label pushes the icon out of the card. */}
+        <div className="flex min-w-0 items-center gap-2">
           <span className="text-xs font-medium text-muted-foreground truncate">
             {label}
           </span>

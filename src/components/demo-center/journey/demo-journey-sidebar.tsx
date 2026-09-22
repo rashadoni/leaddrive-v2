@@ -48,11 +48,13 @@ export function DemoJourneySidebar({ visibleRoutes, reachableRoutes, activeRoute
       data-tour-id="demo-sidebar"
       data-testid="demo-sidebar"
       aria-label={S.sidebarAria}
-      className="flex w-16 flex-col overflow-hidden bg-sidebar-bg backdrop-blur-xl lg:w-64"
+      className="flex w-16 shrink-0 flex-col overflow-hidden bg-sidebar-bg backdrop-blur-xl 2xl:w-64"
     >
       <div className="flex h-14 items-center justify-between border-b border-white/10 px-4">
         <span className="flex items-center gap-2">
-          <Logo size="sm" sidebar />
+          {/* The mark alone while the sidebar is icons, the full name from 2xl. */}
+          <span className="2xl:hidden"><Logo size="sm" sidebar collapsed /></span>
+          <span className="hidden 2xl:inline"><Logo size="sm" sidebar /></span>
         </span>
       </div>
       <nav className="sidebar-scroll flex-1 overflow-y-auto p-2">
@@ -61,7 +63,7 @@ export function DemoJourneySidebar({ visibleRoutes, reachableRoutes, activeRoute
             <div
               data-group={group}
               className={cn(
-                "mb-1.5 hidden w-full items-center justify-between rounded-md px-3 py-1 lg:flex",
+                "mb-1.5 hidden w-full items-center justify-between rounded-md px-3 py-1 2xl:flex",
                 "select-none text-[11px] font-semibold uppercase tracking-wider",
                 NAV_GROUP_LABEL,
               )}
@@ -69,7 +71,7 @@ export function DemoJourneySidebar({ visibleRoutes, reachableRoutes, activeRoute
               <span>{t(`groups.${group}`)}</span>
               <ChevronRight className="h-3 w-3 shrink-0 rotate-90 opacity-60" />
             </div>
-            {groupIndex > 0 && <hr className="mx-3 my-1 border-white/[0.06] lg:hidden" />}
+            {groupIndex > 0 && <hr className="mx-3 my-1 border-white/[0.06] 2xl:hidden" />}
             <div className="space-y-0.5">
               {items.map((item) => {
                 const Icon = item.icon
@@ -108,11 +110,11 @@ export function DemoJourneySidebar({ visibleRoutes, reachableRoutes, activeRoute
                     >
                       <Icon className="h-3.5 w-3.5" />
                     </span>
-                    <span className="hidden flex-1 truncate lg:inline">{label}</span>
+                    <span className="hidden flex-1 truncate 2xl:inline">{label}</span>
                     {!enabled ? (
                       <Lock
                         aria-hidden="true"
-                        className="absolute right-1 top-1 h-2.5 w-2.5 text-white/40 lg:static lg:h-3 lg:w-3 lg:shrink-0"
+                        className="absolute right-1 top-1 h-2.5 w-2.5 text-white/40 2xl:static 2xl:h-3 2xl:w-3 2xl:shrink-0"
                       />
                     ) : null}
                   </button>

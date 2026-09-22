@@ -361,7 +361,8 @@ export function DemoJourneyPlayer({
                 <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-orange-800">
                   {variant === "preview" ? S.badgePreview : variant === "open" ? S.badgeOpen : S.badgePrivate}
                 </span>
-                <p className="truncate text-xs text-muted-foreground">
+                {/* The line that says nothing is really sent must be readable on a phone. */}
+                <p className="text-xs leading-snug text-muted-foreground line-clamp-2 sm:truncate">
                   {variant === "preview" ? S.forCompanyPreview(company) : variant === "open" ? S.openIntro : S.forCompany(company)}
                 </p>
               </div>
@@ -396,10 +397,15 @@ export function DemoJourneyPlayer({
             onNavigate={navigate}
             onLocked={(label) => hint(S.sectionLater(label))}
           />
-          {/* One shrinkable column below lg: without it the implicit auto column
+          {/* One shrinkable column below xl: without it the implicit auto column
               took the guide panel's min-content width (343px on a 375px
-              phone) and the whole demo scrolled sideways, text cut off. */}
-          <div className="grid min-w-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px]">
+              phone) and the whole demo scrolled sideways, text cut off.
+              The guide sits beside the scene only from xl: the scenes are
+              the product's own screens, laid out for its full content width,
+              and at 1024-1279px a 340px guide left them 430-680px — the
+              inbox thread was squeezed to 32px and «Göndər» could not be
+              pressed (owner's screen, 2026-09-22). */}
+          <div className="grid min-w-0 flex-1 grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px]">
             <main id="demo-scene" className="min-w-0 overflow-y-auto p-4 sm:p-6">
               {Scene ? <Scene key={viewSection.id} {...sceneProps} /> : <ScenePending section={viewSection} />}
             </main>
