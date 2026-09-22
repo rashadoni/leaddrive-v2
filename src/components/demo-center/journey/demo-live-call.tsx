@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react"
 import { CheckCircle2, Loader2, PhoneCall } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { DEMO_CALL_CONSENT_TEXT, type DemoJourneyState } from "@/lib/demo-center/journey"
+import { DEMO_CALL_CONSENT_TEXT, DEMO_LIVE_CALL_STEP_ID, type DemoJourneyState } from "@/lib/demo-center/journey"
+import { demoTarget } from "./demo-target"
 import { DEMO_JOURNEY_STRINGS as S } from "./strings"
 
 /** What the server says about the live call when the session opens. Booleans only. */
@@ -141,6 +142,7 @@ export function DemoLiveCall({
 
   return (
     <section
+      {...demoTarget(DEMO_LIVE_CALL_STEP_ID)}
       data-testid="demo-live-call"
       aria-label={S.liveCallTitle}
       className="rounded-lg border border-orange-200 bg-orange-50/60 p-3 text-xs dark:border-orange-900/50 dark:bg-orange-950/20"

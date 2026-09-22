@@ -12,7 +12,7 @@
  */
 import { readFileSync } from "node:fs"
 import path from "node:path"
-import { act, createElement } from "react"
+import { act, createElement, type ComponentProps } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { NextIntlClientProvider } from "next-intl"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -31,7 +31,7 @@ vi.mock("next/image", () => ({ default: (props: Record<string, unknown>) => crea
 import { DemoJourneyPlayer } from "@/components/demo-center/journey/demo-journey-player"
 import { findDemoTarget } from "@/components/demo-center/journey/demo-target"
 import { DEMO_JOURNEY_STRINGS as S } from "@/components/demo-center/journey/strings"
-import { PROSPECT_TO_CLOSED_WON, type DemoJourneyStep } from "@/lib/demo-center/journey"
+import { DEMO_LIVE_CALL_STEP_ID, PROSPECT_TO_CLOSED_WON, withLiveCall, type DemoJourneyStep } from "@/lib/demo-center/journey"
 
 const messages = JSON.parse(readFileSync(path.join(process.cwd(), "messages/az.json"), "utf8"))
 const TOKEN = "walk-test-token-0001"
@@ -86,65 +86,117 @@ function control(step: DemoJourneyStep): HTMLElement | null {
   }
   const target = findDemoTarget(step.id)
   if (!target) return null
+  // The prospect presses what the arrow shows: the coach mark must ring this very control.
+  expect(document.querySelector('[data-testid="demo-coach-ring"]')?.getAttribute("data-target"), `no arrow on «${step.title}»`).toBe("control")
   if (target.matches("button, a, input")) return target
   // A marked region (the product's stage bar): press the part the arrow names.
   const named = /«([^»]+)»/.exec(step.targetLabel ?? "")?.[1]
   return named ? buttonWithText(named, target) : null
 }
 
-describe("the guided story, walked through the real screens", () => {
-  it("reaches the end pressing only what the arrow points at", async () => {
-    await act(async () => {
-      root.render(
-        createElement(
-          NextIntlClientProvider,
-          { locale: "az", messages, timeZone: "Asia/Baku" },
-          createElement(DemoJourneyPlayer, {
-            variant: "open",
-            token: TOKEN,
-            manifest: PROSPECT_TO_CLOSED_WON,
-            identity: {
-              name: "Nigar Əliyeva",
-              company: "Xəzər Logistika MMC",
-              jobTitle: "Satış direktoru",
-              emailMasked: "ni•••@xezerlogistika.az",
-              phoneMasked: "+994 ••••• 67",
-              sourceChannel: "instagram",
-            },
+async function renderPlayer() {
+  await act(async () => {
+    root.render(
+      createElement(
+        NextIntlClientProvider,
+        // Children go as the third argument; the props type insists on them too.
+        { locale: "az", messages, timeZone: "Asia/Baku" } as ComponentProps<typeof NextIntlClientProvider>,
+        createElement(DemoJourneyPlayer, {
+          variant: "open",
+          token: TOKEN,
+          manifest: PROSPECT_TO_CLOSED_WON,
+          identity: {
+            name: "Nigar Əliyeva",
             company: "Xəzər Logistika MMC",
-            watermark: "Xəzər Logistika MMC · Açıq demo",
-          }),
-        ),
-      )
-    })
-    await settle()
+            jobTitle: "Satış direktoru",
+            emailMasked: "ni•••@xezerlogistika.az",
+            phoneMasked: "+994 ••••• 67",
+            sourceChannel: "instagram",
+          },
+          company: "Xəzər Logistika MMC",
+          watermark: "Xəzər Logistika MMC · Açıq demo",
+        }),
+      ),
+    )
+  })
+  await settle()
+}
 
-    const walked: string[] = []
-    for (let guard = 0; guard < 200; guard += 1) {
-      const { stepId, state } = frontier()
-      if (state === "COMPLETED") break
-      const step = steps.get(stepId)
-      expect(step, `unknown frontier step ${stepId}`).toBeDefined()
-
-      let moved = false
-      // A step may take a first click that opens its second control (a dialog).
-      for (let press = 0; press < 3 && !moved; press += 1) {
-        const element = control(step!)
-        expect(element, `dead end: nothing to press on «${step!.title}» (${stepId})`).not.toBeNull()
-        await act(async () => element!.click())
-        await settle()
-        const after = frontier()
-        moved = after.stepId !== stepId || after.state !== state
-      }
-      expect(moved, `«${step!.title}» (${stepId}) did not move after pressing its control`).toBe(true)
-      walked.push(stepId)
+/** Walks from wherever the story is to its end; returns the steps taken.
+ *  `detour` runs once before a step is pressed — a prospect wandering off. */
+async function walkToEnd(detour?: (stepId: string) => Promise<void>): Promise<string[]> {
+  const walked: string[] = []
+  const detoured = new Set<string>()
+  for (let guard = 0; guard < 200; guard += 1) {
+    const { stepId, state } = frontier()
+    if (state === "COMPLETED") break
+    const step = steps.get(stepId)
+    expect(step, `unknown frontier step ${stepId}`).toBeDefined()
+    if (detour && !detoured.has(stepId)) {
+      detoured.add(stepId)
+      await detour(stepId)
     }
 
-    expect(frontier().state).toBe("COMPLETED")
+    let moved = false
+    // A step may take a first click that opens its second control (a dialog).
+    for (let press = 0; press < 3 && !moved; press += 1) {
+      const element = control(step!)
+      expect(element, `dead end: nothing to press on «${step!.title}» (${stepId})`).not.toBeNull()
+      await act(async () => element!.click())
+      await settle()
+      const after = frontier()
+      moved = after.stepId !== stepId || after.state !== state
+    }
+    expect(moved, `«${step!.title}» (${stepId}) did not move after pressing its control`).toBe(true)
+    walked.push(stepId)
+  }
+  expect(frontier().state).toBe("COMPLETED")
+  // And no click ever landed on the wrong thing.
+  expect(toasts.filter((message) => message.startsWith(S.hintFollow("")))).toEqual([])
+  return walked
+}
+
+const stepIdsFrom = (sectionId: string) => {
+  const sections = PROSPECT_TO_CLOSED_WON.sections
+  return sections.slice(sections.findIndex((section) => section.id === sectionId)).flatMap((section) => section.steps.map((step) => step.id))
+}
+
+describe("the guided story, walked through the real screens", () => {
+  it("reaches the end pressing only what the arrow points at", async () => {
+    await renderPlayer()
+    const walked = await walkToEnd()
     // Every step, required or not, was taken in order — none skipped.
-    expect(walked).toEqual(PROSPECT_TO_CLOSED_WON.sections.flatMap((section) => section.steps.map((step) => step.id)))
-    // And no click ever landed on the wrong thing.
-    expect(toasts.filter((message) => message.startsWith(S.hintFollow("")))).toEqual([])
+    expect(walked).toEqual(stepIdsFrom("orientation"))
+  }, 60_000)
+
+  it("survives a prospect who wanders off: back from the board, the kanban on the won step", async () => {
+    await renderPlayer()
+    const press = async (element: Element | null | undefined, what: string) => {
+      expect(element, what).toBeTruthy()
+      await act(async () => (element as HTMLElement).click())
+      await settle()
+    }
+    const walked = await walkToEnd(async (stepId) => {
+      if (stepId === "task-open") {
+        // «←» on the board, then the board's tile: it must open again, not refuse.
+        await press(container.querySelector('button[aria-label="Lövhələr"]'), "the board's back arrow")
+        await press(findDemoTarget("task-boards"), "the boards tile")
+        expect(findDemoTarget("task-open"), "the task card is back").not.toBeNull()
+      }
+      if (stepId === "closed-won-move") {
+        // Back to the pipeline and the kanban's «next stage»: that is not a win.
+        const before = toasts.length
+        await press(container.querySelector('button[aria-label="Satış boru xətti"]'), "the deal card's back arrow")
+        await press(buttonWithText(S.dragHint), "the kanban's next-stage button")
+        expect(frontier().stepId).toBe("closed-won-move")
+        expect(toasts.length).toBeGreaterThan(before)
+        toasts.length = before
+        // Back into the card the way a prospect would: the kanban card, then «Overview».
+        await press(container.querySelector('[data-tour-id="deals-card"] button'), "the deal card")
+        await press(container.querySelector('[data-tour-id="deal-detail-sheet"] button'), "the sheet's overview")
+      }
+    })
+    expect(walked).toEqual(stepIdsFrom("orientation"))
   }, 60_000)
 })
 
@@ -152,14 +204,18 @@ describe("the arrow's controls", () => {
   it("every step the prospect acts on names what to do and marks a real control", () => {
     const sources = [
       "src/components/demo-center/journey/demo-journey-guide.tsx",
+      "src/components/demo-center/journey/demo-live-call.tsx",
       ...["campaign", "inbox", "lead", "board", "deal", "quote", "summary"].map((scene) => `src/components/demo-center/journey/scenes/${scene}-scene.tsx`),
     ].map((file) => readFileSync(path.join(process.cwd(), file), "utf8")).join("\n")
-    for (const step of steps.values()) {
+    const withCall = withLiveCall(PROSPECT_TO_CLOSED_WON).sections.flatMap((section) => section.steps)
+    for (const step of new Map([...steps, ...withCall.map((candidate) => [candidate.id, candidate] as const)]).values()) {
       if (step.action === "observe" || step.action === "wait") continue
       expect(step.targetLabel, `${step.id} has no words for the arrow`).toMatch(/\S/)
       // The guide marks its own step button with the step's id at run time.
-      if (step.anchor === "demo-guide-panel") continue
-      expect(sources.includes(`"${step.id}"`), `${step.id}: no control marks demoTarget("${step.id}")`).toBe(true)
+      if (step.anchor === "demo-guide-panel" && step.completion.kind === "transition") continue
+      // The marker call itself, not any mention of the id (scenes also name steps in their guards).
+      const marked = new RegExp(`demoTarget\\([^)]*"${step.id}"`).test(sources) || (step.id === DEMO_LIVE_CALL_STEP_ID && sources.includes("demoTarget(DEMO_LIVE_CALL_STEP_ID)"))
+      expect(marked, `${step.id}: no control marks demoTarget("${step.id}")`).toBe(true)
     }
   })
 })

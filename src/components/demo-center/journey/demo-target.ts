@@ -12,6 +12,12 @@ export function demoTarget(...stepIds: ReadonlyArray<string | false | null | und
   return ids.length ? { "data-demo-target": ids.join(" ") } : {}
 }
 
+/** Laid out on screen: an element inside `hidden lg:flex` on a phone is not. */
+export function hasLayoutBox(element: Element): boolean {
+  // jsdom has no layout and no checkVisibility; a real browser reports display:none.
+  return typeof element.checkVisibility === "function" ? element.checkVisibility() : true
+}
+
 /** The control to point at for a step: the last visible element marked with it. */
 export function findDemoTarget(stepId: string, root: ParentNode = document): HTMLElement | null {
   if (!/^[a-z0-9-]+$/.test(stepId)) return null
@@ -19,9 +25,7 @@ export function findDemoTarget(stepId: string, root: ParentNode = document): HTM
   for (let index = candidates.length - 1; index >= 0; index -= 1) {
     const candidate = candidates[index]
     if (!candidate.isConnected || candidate.closest("[hidden],[aria-hidden='true']")) continue
-    // jsdom has no layout; a real browser reports no boxes for display:none.
-    const laidOut = typeof candidate.checkVisibility === "function" ? candidate.checkVisibility() : true
-    if (laidOut) return candidate
+    if (hasLayoutBox(candidate)) return candidate
   }
   return null
 }

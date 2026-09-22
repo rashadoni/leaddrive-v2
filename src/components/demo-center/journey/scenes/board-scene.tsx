@@ -39,8 +39,8 @@ export function BoardScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
   // On «Sizin tapşırığınız» the card the prospect opens is the task opening
   // creates (the same record effect); before this the column was empty and
   // the story could not go on.
-  const cardTask =
-    task ?? (step?.id === "task-open" ? applyTransitionEffects(snapshot.records, "TASK_CREATED", snapshot.identity, new Date(snapshot.updatedAt)).task : null)
+  const previewing = !task && (step?.id === "task-boards" || step?.id === "task-open")
+  const cardTask = task ?? (previewing ? applyTransitionEffects(snapshot.records, "TASK_CREATED", snapshot.identity, new Date(snapshot.updatedAt)).task : null)
 
   // The index of boards is the screen of «task-boards» only. It used to key
   // on CALL_SKIPPED, so after a real call (any other outcome) the board was
@@ -51,12 +51,11 @@ export function BoardScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
   const [taskOpen, setTaskOpen] = useState(false)
 
   const openBoard = () => {
-    if (reviewMode) {
+    // Only «task-boards» records the opening; on any later step the board was
+    // already opened, and «←» then the tile just goes back to it (the tile
+    // used to refuse, which stranded the prospect on «Sizin tapşırığınız»).
+    if (reviewMode || step?.id !== "task-boards") {
       setOnBoard(true)
-      return
-    }
-    if (step?.id !== "task-boards") {
-      hint(S.hintFollow(step?.title ?? ""))
       return
     }
     const result = dispatch({ type: "ui", path: "board.opened", value: true })
@@ -92,7 +91,7 @@ export function BoardScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
               <span className="text-sm font-semibold">{S.salesBoard}</span>
             </span>
             <span className="mt-2 block text-xs text-muted-foreground">
-              {t("taskCount")}: {task ? 1 : 0}
+              {t("taskCount", { count: cardTask ? 1 : 0 })}
             </span>
           </button>
         </div>
@@ -213,10 +212,10 @@ export function BoardScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
         <div data-tour-id="board-reports" className="space-y-3">
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {([
-              { label: tReports("kpiWip"), value: task ? 1 : 0 },
+              { label: tReports("kpiWip"), value: cardTask ? 1 : 0 },
               { label: tReports("kpiClosed"), value: 0 },
               { label: tReports("kpiOverdue"), value: 0 },
-              { label: tReports("kpiDueSoon"), value: task ? 1 : 0 },
+              { label: tReports("kpiDueSoon"), value: cardTask ? 1 : 0 },
             ]).map((kpi) => (
               <Card key={kpi.label}>
                 <CardContent className="pb-4 pt-4">

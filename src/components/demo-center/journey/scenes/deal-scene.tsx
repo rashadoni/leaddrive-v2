@@ -67,15 +67,22 @@ function DealWorkspace({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
     color: stage.key === "won" ? "#22c55e" : "#FF4D00",
   }))
 
+  // `stageKey` names the stage clicked on the stage bar; the kanban's
+  // «next stage» button passes none.
   const advance = (stageKey?: string) => {
     if (reviewMode) return
     if (step?.id === "deal-advance") {
+      const next = DEMO_DEAL_STAGES[deal.stageIndex + 1]?.key
+      if (stageKey !== undefined && stageKey !== next) {
+        hint(S.hintFollow(step.title))
+        return
+      }
       dispatch({ type: "transition", stepId: step.id, to: "DEAL_ADVANCED" })
       return
     }
     if (step?.id === "closed-won-move") {
-      // The step says «pick the won stage»; any other stage is not a win.
-      if (stageKey !== undefined && stageKey !== "won") {
+      // The step says «pick the won stage» on the bar; nothing else is a win.
+      if (stageKey !== "won") {
         hint(S.hintFollow(step.title))
         return
       }
@@ -278,11 +285,12 @@ function DealWorkspace({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
         </div>
       </div>
 
-      <div data-tour-id="deal-stage-progress" {...demoTarget("closed-won-move")}>
+      <div data-tour-id="deal-stage-progress">
         <StageProgress
           stages={stages}
           currentStage={DEMO_DEAL_STAGES[deal.stageIndex].key}
           onStageClick={(stageKey) => advance(stageKey)}
+          stageButtonProps={(stageKey) => (stageKey === "won" ? demoTarget("closed-won-move") : undefined)}
         />
       </div>
 

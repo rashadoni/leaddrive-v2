@@ -6,7 +6,7 @@ import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, SkipForward, X } from "l
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { DemoStepPlacement } from "@/lib/demo-center/journey"
-import { findDemoTarget } from "./demo-target"
+import { findDemoTarget, hasLayoutBox } from "./demo-target"
 import { DEMO_JOURNEY_STRINGS as S } from "./strings"
 
 /**
@@ -69,7 +69,6 @@ const GAP = 14
 const VIEWPORT_MARGIN = 16
 const LOCATE_INTERVAL_MS = 120
 const LOCATE_ATTEMPTS = 25
-const PILL_GAP = 10
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
@@ -127,6 +126,20 @@ export function DemoCoachMark({
   const [size, setSize] = useState({ width: 340, height: 160 })
   const popoverRef = useRef<HTMLDivElement>(null)
   const scrolledFor = useRef<string | null>(null)
+  const reducedMotionRef = useRef(reducedMotion)
+  useEffect(() => {
+    reducedMotionRef.current = reducedMotion
+  }, [reducedMotion])
+
+  // Brings a step's region into view, once per step — for steps with no
+  // control to point at, which the control effect below does not scroll to.
+  const scrollOnce = (element: Element) => {
+    if (scrolledFor.current === stepKey) return
+    const box = element.getBoundingClientRect()
+    if (box.top >= 0 && box.bottom <= window.innerHeight) return
+    scrolledFor.current = stepKey
+    element.scrollIntoView({ behavior: reducedMotionRef.current ? "auto" : "smooth", block: "center", inline: "nearest" })
+  }
 
   // Locate the anchor. Scenes render tabs and cards a tick after the step
   // changes, so poll briefly before declaring the anchor missing.
@@ -146,6 +159,7 @@ export function DemoCoachMark({
         )
       }
       update()
+      if (!targetStepId) scrollOnce(found)
       const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null
       observer?.observe(found)
       window.addEventListener("resize", update)
@@ -160,7 +174,9 @@ export function DemoCoachMark({
 
     const locate = () => {
       const found = document.querySelector(`[data-tour-id="${anchor}"]`)
-      if (found) {
+      // Not laid out (a column hidden on a phone) counts as missing: a ring
+      // round a zero-size box in the corner points at nothing.
+      if (found && hasLayoutBox(found)) {
         attach(found)
         return
       }
@@ -180,7 +196,9 @@ export function DemoCoachMark({
       if (timer) clearTimeout(timer)
       cleanupPosition?.()
     }
-  }, [anchor, stepKey, onMissing])
+    // scrollOnce reads only refs and stepKey.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anchor, stepKey, onMissing, targetStepId])
 
   // Follow the exact control. It can appear after a first click (a dialog's
   // «Create»), so the DOM is watched for the whole step; the page is scrolled
@@ -194,14 +212,15 @@ export function DemoCoachMark({
       element = findDemoTarget(targetStepId)
       const next = element ? rectOf(element) : null
       setTargetState((previous) => (previous.key === stepKey && sameRect(previous.rect, next) ? previous : { key: stepKey, rect: next }))
-      if (element && scrolledFor.current !== stepKey) {
-        scrolledFor.current = stepKey
-        const box = element.getBoundingClientRect()
-        if (box.bottom > window.innerHeight || box.top < 0) {
-          element.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "center", inline: "nearest" })
-        }
-      }
+      if (element) scrollOnce(element)
     }
+    // A control that never shows up (or shows late): the region is brought
+    // into view instead, so the prospect is never left on a dimmed page.
+    const fallback = setTimeout(() => {
+      if (findDemoTarget(targetStepId)) return
+      const region = document.querySelector(`[data-tour-id="${anchor}"]`)
+      if (region && hasLayoutBox(region)) scrollOnce(region)
+    }, LOCATE_INTERVAL_MS * 5)
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(measure)
     }
@@ -212,12 +231,15 @@ export function DemoCoachMark({
     window.addEventListener("scroll", schedule, true)
     return () => {
       clearTimeout(timer)
+      clearTimeout(fallback)
       if (frame) cancelAnimationFrame(frame)
       observer?.disconnect()
       window.removeEventListener("resize", schedule)
       window.removeEventListener("scroll", schedule, true)
     }
-  }, [targetStepId, stepKey, reducedMotion])
+    // scrollOnce reads only refs and stepKey.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetStepId, stepKey, anchor])
 
   useLayoutEffect(() => {
     const node = popoverRef.current
@@ -278,40 +300,42 @@ export function DemoCoachMark({
           data-testid="demo-coach-arrow"
           data-docked={offBelow ? "bottom" : "top"}
           onClick={() => findDemoTarget(targetStepId ?? "")?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "center" })}
-          className="fixed left-1/2 z-[10002] flex max-w-[min(80vw,320px)] -translate-x-1/2 items-center gap-1.5 rounded-full bg-[#FF4D00] px-3 py-1.5 text-xs font-semibold text-white shadow-lg"
+          className="fixed left-1/2 z-[10002] flex max-w-[min(80vw,320px)] -translate-x-1/2 items-center gap-1.5 rounded-full bg-[#c2410c] px-3 py-1.5 text-xs font-semibold text-white shadow-lg hover:bg-[#9a3412]"
           style={offBelow ? { bottom: VIEWPORT_MARGIN } : { top: VIEWPORT_MARGIN }}
         >
           {offBelow ? <ArrowDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> : <ArrowUp className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
-          <span className="truncate">{label}</span>
+          {/* It only scrolls, so it says where the action is, not the action. */}
+          <span className="truncate">{offBelow ? S.coachChipBelow(label) : S.coachChipAbove(label)}</span>
         </button>
       )
     }
-    // The arrow sits above the control, or below it when there is no room.
-    const pillHeight = 30
-    const above = ring.top - PILL_GAP - pillHeight >= VIEWPORT_MARGIN
+    // The arrow's tip sits on the control's centre line, right at the ring;
+    // the words sit beyond it. Above the control, or below when there is no room.
+    const glyph = 18
+    const pillHeight = 26
+    const above = ring.top - 4 - glyph - 4 - pillHeight >= VIEWPORT_MARGIN
+    const centre = clamp(ring.left + ring.width / 2, VIEWPORT_MARGIN + glyph / 2, viewWidth - VIEWPORT_MARGIN - glyph / 2)
+    const glyphTop = above ? ring.top - 4 - glyph : ring.top + ring.height + 4
     const pillWidth = Math.min(240, viewWidth - VIEWPORT_MARGIN * 2)
-    const centre = ring.left + ring.width / 2
+    const Glyph = above ? ArrowDown : ArrowUp
     return (
       <>
         {ringElement}
-        <div
-          aria-hidden="true"
-          data-testid="demo-coach-arrow"
-          data-side={above ? "top" : "bottom"}
-          className="pointer-events-none fixed z-[10002] flex flex-col items-center"
-          style={{
-            left: clamp(centre - pillWidth / 2, VIEWPORT_MARGIN, Math.max(VIEWPORT_MARGIN, viewWidth - pillWidth - VIEWPORT_MARGIN)),
-            width: pillWidth,
-            top: above ? ring.top - PILL_GAP - pillHeight : ring.top + ring.height + PILL_GAP,
-          }}
-        >
-          <span className="flex max-w-full items-center gap-1.5 rounded-full bg-[#FF4D00] px-3 py-1.5 text-xs font-semibold text-white shadow-lg">
-            {above ? (
-              <ArrowDown className={cn("h-3.5 w-3.5 shrink-0", !reducedMotion && "motion-safe:animate-bounce")} aria-hidden="true" />
-            ) : (
-              <ArrowUp className={cn("h-3.5 w-3.5 shrink-0", !reducedMotion && "motion-safe:animate-bounce")} aria-hidden="true" />
-            )}
-            <span className="truncate">{label}</span>
+        <div aria-hidden="true" data-testid="demo-coach-arrow" data-side={above ? "top" : "bottom"} className="pointer-events-none">
+          <Glyph
+            className={cn("fixed z-[10002] text-[#c2410c] drop-shadow", !reducedMotion && "motion-safe:animate-bounce")}
+            style={{ left: centre - glyph / 2, top: glyphTop, width: glyph, height: glyph }}
+            strokeWidth={3}
+          />
+          <span
+            className="fixed z-[10002] flex justify-center"
+            style={{
+              left: clamp(centre - pillWidth / 2, VIEWPORT_MARGIN, Math.max(VIEWPORT_MARGIN, viewWidth - pillWidth - VIEWPORT_MARGIN)),
+              width: pillWidth,
+              top: above ? glyphTop - 4 - pillHeight : glyphTop + glyph + 4,
+            }}
+          >
+            <span className="max-w-full truncate rounded-full bg-[#c2410c] px-3 py-1 text-xs font-semibold leading-[18px] text-white shadow-lg">{label}</span>
           </span>
         </div>
       </>
@@ -351,21 +375,23 @@ export function DemoCoachMark({
   const cardLeft = clamp(left, VIEWPORT_MARGIN, Math.max(VIEWPORT_MARGIN, viewWidth - width - VIEWPORT_MARGIN))
   const cardTop = clamp(top, VIEWPORT_MARGIN, Math.max(VIEWPORT_MARGIN, viewHeight - height - VIEWPORT_MARGIN))
 
+  // The card is two layers: the positioned frame (no overflow, so the notch
+  // below can stick out of it) and the body, which may scroll on a very
+  // short screen.
   const popoverStyle: CSSProperties = {
     position: "fixed",
     zIndex: 10002,
     width,
     maxWidth,
-    maxHeight: `calc(100vh - ${VIEWPORT_MARGIN * 2}px)`,
-    overflowY: "auto",
     left: cardLeft,
     top: cardTop,
   }
+  const ringOnScreen = ring.top < viewHeight && ring.top + ring.height > 0
 
   // The card's own arrow: a notch on the edge that faces the control, lined
   // up with it. Only when the card really sits beside the ring — a card
   // clamped over it has no side to point from.
-  const caret: CSSProperties | null = fitting
+  const caret: CSSProperties | null = fitting && ringOnScreen
     ? side === "bottom" || side === "top"
       ? { left: clamp(ring.left + ring.width / 2 - cardLeft - 6, 12, width - 24), [side === "bottom" ? "top" : "bottom"]: -6 }
       : { top: clamp(ring.top + ring.height / 2 - cardTop - 6, 12, height - 24), [side === "right" ? "left" : "right"]: -6 }
@@ -382,26 +408,12 @@ export function DemoCoachMark({
         data-testid="demo-coach-card"
         data-side={side}
         style={popoverStyle}
-        className={cn(
-          "rounded-xl border border-zinc-200 bg-card p-4 shadow-xl outline-none dark:border-zinc-700",
-          !reducedMotion && "animate-in fade-in duration-200",
-        )}
+        className={cn("outline-none", !reducedMotion && "animate-in fade-in duration-200")}
       >
-        {caret ? (
-          <span
-            aria-hidden="true"
-            data-testid="demo-coach-caret"
-            className="pointer-events-none absolute h-3 w-3 rotate-45 border border-zinc-200 bg-card dark:border-zinc-700"
-            style={{
-              ...caret,
-              // Only the two borders facing the ring show, so the notch reads as part of the card.
-              borderRightColor: side === "bottom" || side === "right" ? "transparent" : undefined,
-              borderBottomColor: side === "bottom" || side === "left" ? "transparent" : undefined,
-              borderLeftColor: side === "top" || side === "left" ? "transparent" : undefined,
-              borderTopColor: side === "top" || side === "right" ? "transparent" : undefined,
-            }}
-          />
-        ) : null}
+        <div
+          className="rounded-xl border border-zinc-200 bg-card p-4 shadow-xl dark:border-zinc-700"
+          style={{ maxHeight: `calc(100vh - ${VIEWPORT_MARGIN * 2}px)`, overflowY: "auto" }}
+        >
         <div className="flex items-start justify-between gap-2">
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{counter}</p>
           <button
@@ -450,6 +462,22 @@ export function DemoCoachMark({
             )}
           </div>
         </div>
+        </div>
+        {caret ? (
+          <span
+            aria-hidden="true"
+            data-testid="demo-coach-caret"
+            className="pointer-events-none absolute h-3 w-3 rotate-45 border border-zinc-200 bg-card dark:border-zinc-700"
+            style={{
+              ...caret,
+              // Only the two borders facing the ring show, so the notch reads as part of the card.
+              borderRightColor: side === "bottom" || side === "right" ? "transparent" : undefined,
+              borderBottomColor: side === "bottom" || side === "left" ? "transparent" : undefined,
+              borderLeftColor: side === "top" || side === "left" ? "transparent" : undefined,
+              borderTopColor: side === "top" || side === "right" ? "transparent" : undefined,
+            }}
+          />
+        ) : null}
       </div>
     </>
   )
