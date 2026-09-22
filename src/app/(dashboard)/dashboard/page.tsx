@@ -17,7 +17,7 @@ import { RecentDeals } from "@/components/dashboard/recent-deals"
 import { AiLeadScoring } from "@/components/dashboard/ai-lead-scoring"
 import { AiValueWidget } from "@/components/dashboard/ai-value-widget"
 import { ActivityFeed } from "@/components/dashboard/activity-feed"
-import { CampaignStats } from "@/components/dashboard/campaign-stats"
+import { CampaignStats, campaignRateLabel } from "@/components/dashboard/campaign-stats"
 import { UpcomingEvents } from "@/components/dashboard/upcoming-events"
 import { WeeklyMetrics } from "@/components/dashboard/weekly-metrics"
 import { SegmentsWidget } from "@/components/dashboard/segments-widget"
@@ -67,7 +67,7 @@ type DashboardData = {
   activity: { recent: Record<string, unknown>[] }
   risks: DashboardRisk[]
   forecast: Record<string, unknown>[]
-  campaigns?: Array<{ openRate?: number }>
+  campaigns?: Array<{ openRate?: number | null }>
   events: Record<string, unknown>[]
   weeklyMetrics: unknown
 }
@@ -122,7 +122,8 @@ function fmt(n: number): string {
 function KpiStrip({ data, t }: { data: DashboardData; t: DashboardTranslator }) {
   const { financial, pipeline, leads, operations, campaigns } = data
   const campaignCount = campaigns?.length ?? 0
-  const firstCampaignOpenRate = campaigns?.[0]?.openRate ?? 0
+  // null: the channel does not record opens (only email does) or nothing was sent.
+  const firstCampaignOpenRate = campaigns?.[0]?.openRate
 
   return (
     <div data-tour-id="dashboard-stats" className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
@@ -159,7 +160,11 @@ function KpiStrip({ data, t }: { data: DashboardData; t: DashboardTranslator }) 
       <KpiCard
         title={t("kpiCampaigns")}
         value={campaignCount}
-        sub={campaignCount > 0 ? `↗ ${t("openRateSub", { rate: firstCampaignOpenRate })}` : undefined}
+        sub={campaignCount === 0
+          ? undefined
+          : typeof firstCampaignOpenRate === "number"
+            ? `↗ ${t("openRateSub", { rate: firstCampaignOpenRate })}`
+            : `${campaignRateLabel(firstCampaignOpenRate)} ${t("openRate")}`}
         icon={<Megaphone className="h-5 w-5" />}
       />
     </div>

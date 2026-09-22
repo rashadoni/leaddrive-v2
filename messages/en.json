@@ -3549,7 +3549,7 @@
     "notRecorded": "not recorded",
     "noSendsYet": "Nothing sent yet",
     "roiNoWonDeals": "no won deals from campaigns",
-    "roiSeveralCurrencies": "deals in several currencies",
+    "roiCurrencyMismatch": "revenue in {revenue}, budget in {cost} — no exchange rates to compare",
     "roiNoBudget": "no budget set",
     "dataUnavailable": "Couldn't load",
     "basedOnLatest": "Based on the latest {count} (of {total})",
@@ -9287,10 +9287,10 @@
     "pageDescription": "Campaign ROI analysis: measure return on investment for each marketing campaign",
     "attributed": "Attributed",
     "attributedHint": "Multi-touch attributed revenue — each won deal's value split across every campaign that touched it, per the default attribution model. The direct figure credits only the deal's linked campaign.",
-    "attributedSummary": "Multi-touch attribution (model: {model}) — {revenue} attributed across campaigns, {roi}% blended ROI.",
-    "hintTotalRevenue": "Total revenue attributed to marketing campaigns",
-    "hintTotalCost": "Total spending on all marketing campaigns",
-    "hintRoi": "Return on Investment = (Revenue - Cost) / Cost × 100%",
+    "attributedSummary": "Multi-touch attribution (model: {model}) — {revenue} attributed across campaigns; blended ROI: {roi}.",
+    "hintTotalRevenue": "Value of won deals linked to campaigns. Each currency is shown separately — amounts in different currencies are never added together.",
+    "hintTotalCost": "Budgets of the campaigns that have gone out. The product does not record actual spend, so the entered budget stands in for it; drafts, scheduled and cancelled campaigns are not counted.",
+    "hintRoi": "Return on Investment = (Revenue − Cost) / Cost × 100%. Computed only when revenue and cost are in the same currency — there are no exchange rates to convert between them.",
     "hintSendRate": "Percentage of messages successfully delivered to recipients",
     "hintOpenRate": "Percentage of delivered messages that were opened",
     "hintClickRate": "Percentage of opened messages where a link was clicked",
@@ -9305,7 +9305,13 @@
     "avgAllCampaigns": "Avg. all campaigns",
     "sentAt": "Sent at",
     "linkedDeals": "Linked Deals",
-    "noLinkedDeals": "No deals linked to this campaign"
+    "noLinkedDeals": "No deals linked to this campaign",
+    "costBasis": "Budgets of {launched} of {total} campaigns — those sent",
+    "notSent": "not sent",
+    "roiNoRevenue": "no won deals from campaigns",
+    "roiNotLaunched": "not sent — the budget is not a cost yet",
+    "roiNoCost": "no budget entered",
+    "roiCurrencyMismatch": "revenue in {revenue}, budget in {cost} — no exchange rates to compare"
   },
   "finance": {
     "ba": {

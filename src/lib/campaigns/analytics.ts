@@ -13,6 +13,8 @@
  * the records cannot answer, the answer is `null` and the tab prints «—».
  */
 
+import type { RoiVerdict } from "@/lib/campaigns/roi"
+
 export type CampaignAnalyticsRecord = {
   id: string
   name: string
@@ -204,33 +206,38 @@ export function summarizeTemplates(templates: readonly TemplateAnalyticsRecord[]
   }
 }
 
-/** The part of GET /api/v1/campaign-roi this tab reads. */
+/** The part of GET /api/v1/campaign-roi this tab reads: the server's own ROI verdict. */
 export type CampaignRoiSource = {
-  summary: { totalRevenue: number; totalCost: number; totalRoi: number }
-  campaigns: { deals?: { currency?: string | null }[] | null }[]
+  summary: { roi: RoiVerdict }
 }
 
 export type RoiFigure =
   | { kind: "value"; percent: number }
   | { kind: "no-revenue" }
-  | { kind: "several-currencies" }
+  | { kind: "currency-mismatch"; revenueCurrencies: string[]; costCurrency: string }
   | { kind: "no-budget" }
 
 /**
  * ROI only from revenue the product actually attributes to campaigns: won
- * deals linked to a campaign, the same figure the Campaign ROI page shows.
- * Without such revenue there is no ROI — not -100%, which is what the formula
- * gives for any budget with nothing won. Linked deals in more than one
- * currency get no ROI either: the server sums their amounts as if they were
- * one currency, and no exchange rates exist to convert them.
+ * deals linked to a campaign. The verdict is the Campaign ROI page's own
+ * (`roiVerdict` in src/lib/campaigns/roi.ts) — revenue grouped by currency,
+ * cost = budgets of campaigns that went out, a figure only when both are in
+ * one currency — so this tab can never show an ROI that page does not.
+ * Without won revenue there is no ROI — not -100%, which is what the formula
+ * gives for any budget with nothing won.
  */
 export function campaignRoi(source: CampaignRoiSource): RoiFigure {
-  if (!(source.summary.totalRevenue > 0)) return { kind: "no-revenue" }
-  const currencies = new Set<string>()
-  for (const campaign of source.campaigns) {
-    for (const deal of campaign.deals ?? []) if (deal.currency) currencies.add(deal.currency)
+  const roi = source.summary.roi
+  switch (roi.kind) {
+    case "value":
+      return { kind: "value", percent: roi.percent }
+    case "currency-mismatch":
+      return { kind: "currency-mismatch", revenueCurrencies: roi.revenueCurrencies, costCurrency: roi.costCurrency }
+    case "no-cost":
+    case "not-launched":
+      return { kind: "no-budget" }
+    case "no-revenue":
+    default:
+      return { kind: "no-revenue" }
   }
-  if (currencies.size > 1) return { kind: "several-currencies" }
-  if (!(source.summary.totalCost > 0)) return { kind: "no-budget" }
-  return { kind: "value", percent: source.summary.totalRoi }
 }
