@@ -70,7 +70,10 @@ function DealWorkspace({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
   // `stageKey` names the stage clicked on the stage bar; the kanban's
   // «next stage» button passes none.
   const advance = (stageKey?: string) => {
-    if (reviewMode) return
+    if (reviewMode) {
+      hint(S.reviewOnly)
+      return
+    }
     if (step?.id === "deal-advance") {
       const next = DEMO_DEAL_STAGES[deal.stageIndex + 1]?.key
       if (stageKey !== undefined && stageKey !== next) {

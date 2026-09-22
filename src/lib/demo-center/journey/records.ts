@@ -206,6 +206,24 @@ function firstName(name: string): string {
 /** What the prospect sets on «Mövqelər və cəm»; the draft starts two below it. */
 export const DEMO_QUOTE_LICENCES = 10
 
+/** What each ending of the AI call leaves on the lead. */
+export const DEMO_CALL_OUTCOME_COPY: Partial<Record<DemoJourneyState, { subject: string; note: string; title: string; subtitle: string; duration: string }>> = {
+  CALL_RESULT_RECORDED: {
+    subject: "AI zəngi — cavab verildi (2 dəq 04 san)",
+    note: "Müştəri demo üçün sabah saat 11:00-ı seçdi. Nəticə: maraqlıdır.",
+    title: "AI zəngi: cavab verildi, 2 dəq",
+    subtitle: "Nəticə: maraqlıdır",
+    duration: "2 dəq 04 san",
+  },
+  CALL_NO_ANSWER: { subject: "AI zəngi — cavab verilmədi", note: "Zəngə cavab verilmədi. Növbəti cəhd menecerin tapşırığındadır.", title: "AI zəngi: cavab verilmədi", subtitle: "Yenidən cəhd tapşırıqdadır", duration: "—" },
+  CALL_BUSY: { subject: "AI zəngi — nömrə məşğul", note: "Nömrə məşğul idi; zəng təkrarlanacaq.", title: "AI zəngi: nömrə məşğul", subtitle: "Təkrar cəhd", duration: "—" },
+  CALL_FAILED: { subject: "AI zəngi — texniki xəta", note: "Zəng texniki səbəbdən alınmadı.", title: "AI zəngi: alınmadı", subtitle: "Texniki xəta", duration: "—" },
+  CALL_ATTENTION_REQUIRED: { subject: "AI zəngi — nəticə dəqiqləşdirilir", note: "Zəngin nəticəsi hələ gəlməyib; menecer yoxlayacaq.", title: "AI zəngi: nəticə gözlənilir", subtitle: "Menecer yoxlayır", duration: "—" },
+  CALL_DECLINED: { subject: "AI zəngi — müştəri imtina etdi", note: "Müştəri zəngdən imtina etdi; hekayə zəngsiz davam edir.", title: "AI zəngi: müştəri imtina etdi", subtitle: "Zəngsiz davam", duration: "—" },
+  CALL_BLOCKED: { subject: "AI zəngi — yoxlama keçmədi", note: "Nömrə təsdiqlənmədiyi üçün zəng edilmədi.", title: "AI zəngi: yoxlama keçmədi", subtitle: "Nömrə təsdiqlənməyib", duration: "—" },
+  CALL_SKIPPED: { subject: "AI zəngi — bu sessiyada edilmədi", note: "Bu demo sessiyasında zəng edilmədi.", title: "AI zəngi bu sessiyada edilmədi", subtitle: "Zəngsiz davam", duration: "—" },
+}
+
 export function quoteTotals(quote: Pick<DemoQuoteRecord, "lines" | "vatPercent">): { net: number; vat: number; gross: number } {
   const net = quote.lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0)
   const vat = Math.round(net * quote.vatPercent) / 100
@@ -386,14 +404,28 @@ export function applyTransitionEffects(
       }
     }
 
+    // However a call ends, the card and the timeline say the same thing:
+    // how long it took, how it ended, what the assistant noted.
+    case "CALL_RESULT_RECORDED":
+    case "CALL_NO_ANSWER":
+    case "CALL_BUSY":
+    case "CALL_FAILED":
+    case "CALL_ATTENTION_REQUIRED":
     case "CALL_SKIPPED":
     case "CALL_DECLINED":
     case "CALL_BLOCKED": {
       if (!records.lead || records.lead.timeline.some((entry) => entry.id === "tl-call")) return records
-      const title = to === "CALL_DECLINED" ? "AI zəngi: müştəri imtina etdi" : to === "CALL_BLOCKED" ? "AI zəngi: yoxlama keçmədi" : "AI zəngi bu sessiyada deaktivdir"
+      const outcome = DEMO_CALL_OUTCOME_COPY[to] ?? DEMO_CALL_OUTCOME_COPY.CALL_RESULT_RECORDED
       return {
         ...records,
-        lead: { ...records.lead, timeline: [...records.lead.timeline, { id: "tl-call", kind: "call", title, date: at }] },
+        lead: {
+          ...records.lead,
+          activities: [
+            ...records.lead.activities,
+            { id: "act-call", type: "call", subject: outcome.subject, description: outcome.note, createdAt: at, createdByName: DEMO_MANAGER_NAME },
+          ],
+          timeline: [...records.lead.timeline, { id: "tl-call", kind: "call", title: outcome.title, subtitle: outcome.subtitle, date: at }],
+        },
       }
     }
 

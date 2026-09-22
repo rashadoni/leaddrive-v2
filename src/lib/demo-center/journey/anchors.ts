@@ -98,7 +98,8 @@ export const DEMO_ANCHORS: Readonly<Record<string, DemoAnchorDefinition>> = {
   "lead-sentiment": { area: "leads", scene: LEAD_SCENE, productFiles: [], label: "Sentiment tab" },
   "lead-tasks": { area: "leads", scene: LEAD_SCENE, productFiles: [], label: "Tasks tab" },
   "lead-ai-scoring": { area: "leads", scene: LEAD_SCENE, productFiles: [], label: "Da Vinci scoring tab" },
-  "lead-ai-call": { area: "leads", scene: LEAD_SCENE, productFiles: [], label: "AI call action (disabled in v1)" },
+  "lead-ai-call": { area: "leads", scene: LEAD_SCENE, productFiles: [], label: "AI call action" },
+  "lead-call-result": { area: "leads", scene: LEAD_SCENE, productFiles: [], label: "AI call result on the lead card" },
 
   /* ── CRM → Boards (the task surface; /tasks is unlinked from the sidebar) ── */
   "boards-index": { area: "tasks", scene: BOARD_SCENE, productFiles: [], label: "Board list by department" },

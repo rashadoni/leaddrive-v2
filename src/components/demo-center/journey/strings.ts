@@ -101,6 +101,8 @@ export const DEMO_JOURNEY_STRINGS = {
   aiDraftReason: "Yalnız qaralama rejimi: cavabı operator təsdiqləməyincə göndərilmir.",
   aiDraftDiscard: "İmtina et",
   contactPanelTitle: "Müştəri",
+  callResultInTimeline: "Eyni yazı lidin «Qarşılıqlı əlaqələr» lentinə düşdü.",
+  reviewOnly: "Bu, keçdiyiniz bölmədir — burada yalnız baxmaq olar. Bələdçidəki «Cari addıma qayıt» düyməsi sizi hekayəyə qaytarır.",
   linkedLead: "Bağlı lid",
   boardsTitle: "Lövhələr",
   salesBoard: "Satış lövhəsi",

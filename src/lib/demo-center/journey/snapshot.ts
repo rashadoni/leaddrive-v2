@@ -149,6 +149,9 @@ const STAGED_STEP_MS = 60_000
  * frontier step is what tells.
  */
 export function awaitingOutcome(snapshot: DemoJourneySnapshot, manifest: DemoJourneyManifest): boolean {
+  // Only a real call is worth holding the story for: the open demo's call
+  // from the lead card is one click and rings nobody.
+  if (!manifest.capabilities.liveCall) return false
   const section = findSection(manifest, snapshot.sectionId)
   return Boolean(section?.steps.some((step) => step.completion.kind === "outcome" && !snapshot.completedSteps.includes(step.id)))
 }
@@ -174,9 +177,12 @@ export function sectionJumpTarget(
   if (target.navGroup === "demo") return { ok: false, error: `"${target.id}" is reached by the story, not opened directly` }
   if (targetIndex <= frontierIndex) return { ok: false, error: `"${target.id}" is not ahead of the story` }
   if (awaitingOutcome(snapshot, manifest)) return { ok: false, error: "the live call waits for its outcome" }
-  const waitsForOutcome = sections
-    .slice(frontierIndex + 1, targetIndex)
-    .find((section) => section.steps.some((step) => step.completion.kind === "outcome"))
+  // Only a real call is worth stopping a jump for. In the open demo the call
+  // from the lead card is a simulation, and making it a toll gate on the way
+  // to Deals is exactly what the owner asked us to stop doing.
+  const waitsForOutcome = manifest.capabilities.liveCall
+    ? sections.slice(frontierIndex + 1, targetIndex).find((section) => section.steps.some((step) => step.completion.kind === "outcome"))
+    : undefined
   return { ok: true, section: waitsForOutcome ?? target }
 }
 

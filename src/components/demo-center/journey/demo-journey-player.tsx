@@ -72,6 +72,7 @@ const SCENES: Record<string, ComponentType<DemoSceneProps>> = {
   "lead-created": LeadScene,
   "lead-qualified": LeadScene,
   "ai-call": LeadScene,
+  "ai-call-result": LeadScene,
   task: BoardScene,
   deal: DealScene,
   quote: QuoteScene,

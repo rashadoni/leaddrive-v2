@@ -88,9 +88,10 @@ describe("the live-call variant", () => {
     expect(PROSPECT_TO_CLOSED_WON.capabilities.liveCall).toBe(false)
   })
 
-  it("leaves the ordinary scenario saying, honestly, that the call is off", () => {
+  it("leaves the ordinary scenario with the simulated call from the card", () => {
     const section = PROSPECT_TO_CLOSED_WON.sections.find((candidate) => candidate.id === "ai-call")!
-    expect(section.exitStates).toEqual(["CALL_SKIPPED"])
+    expect(section.exitStates).toEqual(["CALL_RESULT_RECORDED"])
+    expect(section.steps.map((step) => step.id)).toEqual(["ai-call-consent-control", "ai-call-from-card"])
   })
 
   it.each(DEMO_LIVE_CALL_OUTCOMES)("records %s and carries the story on to the end", (outcome) => {
@@ -101,7 +102,7 @@ describe("the live-call variant", () => {
     expect(result.ok).toBe(true)
     expect(result.snapshot.state).toBe(outcome)
     expect(result.snapshot.completedSteps).toContain(DEMO_LIVE_CALL_STEP_ID)
-    expect(result.snapshot.sectionId).toBe("task")
+    expect(result.snapshot.sectionId).toBe("ai-call-result")
 
     expect(drive(live, outcome).state).toBe("COMPLETED")
   })
