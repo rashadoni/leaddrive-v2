@@ -22,6 +22,7 @@ vi.mock("@/lib/prisma", () => ({
     lead: { findFirst: vi.fn(), updateMany: vi.fn() },
     voiceCallSession: { findUnique: vi.fn() },
     callEvent: { findFirst: vi.fn() },
+    callLog: { findFirst: vi.fn() },
   },
 }))
 vi.mock("@/lib/rls-context", () => ({
@@ -69,23 +70,51 @@ beforeEach(() => {
     callLog: { status: "dispatching" },
   } as never)
   mockDispatch.mockResolvedValue({ kind: "dispatched", sessionId: "session-1", callLogId: "call-log-1" })
-  // The PBX has asked for a per-call prompt recently: the agent can speak as LeadDrive.
-  vi.mocked(prisma.callEvent.findFirst).mockResolvedValue({ id: "event-1" } as never)
+  // No demo call has been answered yet: nothing says the script fails to reach one.
+  vi.mocked(prisma.callLog.findFirst).mockResolvedValue(null)
+  vi.mocked(prisma.callEvent.findFirst).mockResolvedValue(null)
 })
 
-describe("whether the agent can speak as LeadDrive", () => {
-  it("needs recent evidence that the PBX asks for each call's own prompt", async () => {
+describe("whether a demo call will hear the demo's script", () => {
+  // Owner decision 2026-09-22: on by default; the connect-burst match gives
+  // the demo call its script (call-prompt-match.ts). Only evidence of failure
+  // stops it.
+  it("is ready by default, before any demo call was answered", async () => {
     await expect(demoCallAgentReady()).resolves.toBe(true)
-    expect(prisma.callEvent.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ organizationId: SALES_ORG, eventType: "voice_runtime_prompt_served" }),
+    expect(prisma.callLog.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ organizationId: SALES_ORG, consentAudit: { path: ["via"], equals: "demo_center" }, duration: { gt: 0 } }),
     }))
   })
 
-  it("places no call before that — the line's own prompt belongs to someone else", async () => {
+  it("stays ready when the last answered demo call was given the script", async () => {
+    vi.mocked(prisma.callLog.findFirst).mockResolvedValue({ id: "call-log-7" } as never)
+    vi.mocked(prisma.callEvent.findFirst).mockResolvedValue({ id: "served-7" } as never)
+    await expect(demoCallAgentReady()).resolves.toBe(true)
+    expect(prisma.callEvent.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: { organizationId: SALES_ORG, callLogId: "call-log-7", eventType: "voice_runtime_prompt_served" },
+    }))
+  })
+
+  it("stops placing demo calls once an answered one went without it", async () => {
+    vi.mocked(prisma.callLog.findFirst).mockResolvedValue({ id: "call-log-7" } as never)
     vi.mocked(prisma.callEvent.findFirst).mockResolvedValue(null)
 
     await expect(requestDemoCall({ grant })).resolves.toEqual({ ok: false, code: "agent_not_ready" })
     expect(mockDispatch).not.toHaveBeenCalled()
+  })
+})
+
+describe("one call per demo", () => {
+  it("tells the prospect when the call was already placed, instead of placing another", async () => {
+    mockDispatch.mockResolvedValue({ kind: "replay", sessionId: "session-1", callLogId: "call-log-1" })
+    const result = await requestDemoCall({ grant })
+    expect(result).toMatchObject({ ok: true, alreadyCalled: true })
+  })
+
+  it("says nothing of the kind on the first call", async () => {
+    const result = await requestDemoCall({ grant })
+    expect(result.ok).toBe(true)
+    expect(result).not.toHaveProperty("alreadyCalled")
   })
 })
 

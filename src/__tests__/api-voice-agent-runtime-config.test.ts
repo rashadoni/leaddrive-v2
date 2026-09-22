@@ -6,14 +6,17 @@ const mocks = vi.hoisted(() => ({
   callLogFindFirst: vi.fn(),
   leadFindFirst: vi.fn(),
   callEventCreateMany: vi.fn(),
+  callLogFindMany: vi.fn(),
+  callEventFindMany: vi.fn(),
+  callEventFindFirst: vi.fn(),
 }))
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     channelConfig: { findMany: mocks.findMany },
-    callLog: { findFirst: mocks.callLogFindFirst },
+    callLog: { findFirst: mocks.callLogFindFirst, findMany: mocks.callLogFindMany },
     lead: { findFirst: mocks.leadFindFirst },
-    callEvent: { createMany: mocks.callEventCreateMany },
+    callEvent: { createMany: mocks.callEventCreateMany, findMany: mocks.callEventFindMany, findFirst: mocks.callEventFindFirst },
   },
 }))
 vi.mock("@/lib/rls-context", () => ({
@@ -58,6 +61,8 @@ describe("GET /api/internal/voice-agent/runtime-config", () => {
     vi.clearAllMocks()
     process.env.FANUM_VOICE_RUNTIME_TOKEN = "runtime-token"
     process.env.VOICE_AGENT_ORGANIZATION_ID = "org-test"
+    // No demo call in flight: nothing to match, nothing to wait for.
+    mocks.callLogFindMany.mockResolvedValue([])
   })
 
   afterEach(() => {
@@ -185,6 +190,9 @@ describe("GET /api/internal/voice-agent/runtime-config?callId=…", () => {
     mocks.leadFindFirst.mockResolvedValue({ contactName: "Nigar Əliyeva" })
     mocks.callLogFindFirst.mockReset()
     mocks.callEventCreateMany.mockClear()
+    mocks.callLogFindMany.mockResolvedValue([])
+    mocks.callEventFindMany.mockResolvedValue([])
+    mocks.callEventFindFirst.mockResolvedValue(null)
   })
 
   it("answers as it always has when the PBX does not name a call", async () => {
@@ -249,5 +257,69 @@ describe("GET /api/internal/voice-agent/runtime-config?callId=…", () => {
     expect(body.prompt).toContain("Salam, NigarIGNORE!")
     expect(body.prompt).not.toContain("previous instructions")
     expect(body.prompt).not.toMatch(/Nigar"/)
+  })
+})
+
+describe("GET runtime-config inside a demo call's connect burst", () => {
+  // Read from the production access log on 2026-09-22: the PBX asks for the
+  // prompt with no call id, and names the connecting call in call-source /
+  // call-continuation in the same second (src/lib/demo-center/call-prompt-match.ts).
+  const CALL_ID = "0b7c1c52-6c1e-4b3a-9d55-7c7e6a2f1a10"
+  beforeEach(() => {
+    vi.clearAllMocks()
+    process.env.FANUM_VOICE_RUNTIME_TOKEN = "runtime-token"
+    process.env.VOICE_AGENT_ORGANIZATION_ID = "org-1"
+    mocks.findMany.mockResolvedValue([row({
+      voiceAgentEnabled: true,
+      manualLeadAiCallsEnabled: true,
+      voiceAgentMode: "outbound",
+      voiceAgentPrompt: "Sən Gobustone-un virtual köməkçisisən.",
+    })])
+    mocks.leadFindFirst.mockResolvedValue({ contactName: "Nigar Əliyeva" })
+    mocks.callEventCreateMany.mockResolvedValue({ count: 1 })
+    mocks.callLogFindMany.mockResolvedValue([{ id: "log-demo", providerCallId: CALL_ID, leadId: "lead-demo" }])
+    mocks.callEventFindMany.mockResolvedValue([])
+    mocks.callEventFindFirst.mockResolvedValue({ callLogId: "log-demo" })
+  })
+
+  it("gives the connecting demo call the demo's script and records that it did", async () => {
+    const body = await (await GET(request())).json()
+
+    expect(body.variant).toBe("demo")
+    expect(body.prompt).toContain("Salam, Nigar! Mən LeadDrive-ın AI köməkçisiyəm")
+    expect(body.prompt).toContain("iki dəqiqə")
+    expect(body.prompt).not.toContain("Gobustone")
+    expect(mocks.callEventCreateMany).toHaveBeenCalledWith({
+      data: [expect.objectContaining({
+        callLogId: "log-demo",
+        providerCallId: CALL_ID,
+        eventType: "voice_runtime_prompt_served",
+        eventHash: "voice_runtime_prompt_served:v1",
+        payload: { variant: "demo", matchedBy: "connect-burst" },
+      })],
+      skipDuplicates: true,
+    })
+  })
+
+  it("keeps the line's prompt when no demo call is in flight, without waiting", async () => {
+    mocks.callLogFindMany.mockResolvedValue([])
+    const body = await (await GET(request())).json()
+    expect(body.prompt).toContain("Gobustone")
+    expect(body).not.toHaveProperty("variant")
+    expect(mocks.callEventFindFirst).not.toHaveBeenCalled()
+  })
+
+  it("keeps the line's prompt when the demo call was already given its script", async () => {
+    mocks.callEventFindMany.mockResolvedValue([{ callLogId: "log-demo" }])
+    const body = await (await GET(request())).json()
+    expect(body.prompt).toContain("Gobustone")
+    expect(mocks.callEventCreateMany).not.toHaveBeenCalled()
+  })
+
+  it("never breaks the line: if matching fails, the call gets the line's prompt", async () => {
+    mocks.callLogFindMany.mockRejectedValue(new Error("database away"))
+    const response = await GET(request())
+    expect(response.status).toBe(200)
+    expect((await response.json()).prompt).toContain("Gobustone")
   })
 })

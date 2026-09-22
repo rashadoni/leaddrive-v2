@@ -122,6 +122,8 @@ export const DEMO_JOURNEY_STRINGS = {
   liveCallContinue: "Davam et",
   liveCallTooLong: "Zəngin nəticəsi hələ gəlmədi. Menecer vəziyyəti dəqiqləşdirəcək — hekayəyə davam edə bilərsiniz.",
   liveCallFailed: "Sorğu alınmadı. Bir az sonra yenidən cəhd edin.",
+  liveCallRules: "Demoda zəng bir dəfə edilir və ən çoxu iki dəqiqə çəkir.",
+  liveCallOnlyOnce: "Bu demoda zəng yalnız bir dəfə edilir — sizin zənginiz artıq sifariş olunub. Nəticəni burada görəcəksiniz.",
   aiSuggestion: "Növbəti addım",
   aiSuggestionBody: "Təklifi hazırlayın və etibarlılıq müddətini 14 günlə məhdudlaşdırın — qərar sürətlənir.",
 } as const
