@@ -314,12 +314,15 @@ export default function InvoicesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">{t("title")} <TourReplayButton tourId="invoices" /><HelpButton slug="invoices" variant="label" /></h1>
+      {/* Wraps instead of overflowing: on a phone the buttons move under the
+          title, and a long label («Təkrarlanan hesab-fakturalar») wraps inside
+          its button rather than widening the page. One line on desktop. */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold tracking-tight flex flex-wrap items-center gap-2">{t("title")} <TourReplayButton tourId="invoices" /><HelpButton slug="invoices" variant="label" /></h1>
           <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex max-w-full flex-wrap items-center gap-2">
           {/* Tab switcher */}
           <div className="flex items-center rounded-lg border border-zinc-200 dark:border-zinc-700 bg-muted/50 p-0.5">
             <button
@@ -343,10 +346,10 @@ export default function InvoicesPage() {
               {tc("list")}
             </button>
           </div>
-          <Button variant="outline" onClick={() => router.push("/invoices/recurring")}>
+          <Button variant="outline" className="h-auto min-h-9 max-w-full whitespace-normal py-1.5" onClick={() => router.push("/invoices/recurring")}>
             <RefreshCw className="h-4 w-4 mr-1" /> {t("recurringInvoices")}
           </Button>
-          <Button data-tour-id="invoices-new" onClick={() => router.push("/invoices/create")}>
+          <Button data-tour-id="invoices-new" className="h-auto min-h-9 max-w-full whitespace-normal py-1.5" onClick={() => router.push("/invoices/create")}>
             <Plus className="h-4 w-4 mr-1" /> {t("newInvoice")}
           </Button>
         </div>
