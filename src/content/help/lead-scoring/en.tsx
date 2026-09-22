@@ -41,12 +41,12 @@ export default function LeadscoringHelpEn() {
         </p>
         <dl className="rounded-md border p-3">
           <HelpDef term="Avg score">Average score of the scored leads (those with a score above 0), out of 100.</HelpDef>
-          <HelpDef term="Probability">Average conversion probability of those leads (as a percentage).</HelpDef>
+          <HelpDef term="Probability">The average over the leads Da Vinci estimated (as a percentage), with how many that is; “—” when none has an estimate.</HelpDef>
           <HelpDef term="Total Sessions">A ratio shown as "leads scored / total leads" (e.g. 12 / 40).</HelpDef>
           <HelpDef term="Active">Whether the last scoring run used real Da Vinci (Yes) or simple rules (No).</HelpDef>
           <HelpDef term="Grade (A–F)">A label by score range: A Hot (80–100), B Warm (60–79), C Neutral (40–59), D Cold (20–39), F Dead (0–19). Each grade card shows the count of leads in that range.</HelpDef>
           <HelpDef term="Score">The lead's 0–100 scoring value; the table is sorted by it, highest first.</HelpDef>
-          <HelpDef term="Conversion">The lead's probability of converting into a deal (as a percentage).</HelpDef>
+          <HelpDef term="Conversion">The lead's probability of converting into a deal (as a percentage), as Da Vinci estimated it; “—” when there is no estimate — any change to the lead rescores it without one.</HelpDef>
         </dl>
         <p>
           The results table has eight columns: <strong>Score</strong> (the grade badge),{" "}

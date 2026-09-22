@@ -47,7 +47,7 @@ export default function leadsHelpEn() {
             (below). It's the colored square at the left of each row and Kanban card.
           </HelpDef>
           <HelpDef term="Score">The 0–100 Da Vinci score — the basis for the grade and for sorting.</HelpDef>
-          <HelpDef term="Conversion">This lead's probability (%) of converting into a deal, derived from its score.</HelpDef>
+          <HelpDef term="Conversion">The probability (%) of this lead converting into a deal, as Da Vinci AI estimated it. “—” means there is no estimate: only a Da Vinci run makes one, and any change to the lead rescores it without a probability.</HelpDef>
           <HelpDef term="Status">The lead's stage: New → Contacted → Qualified → Converted (or Lost).</HelpDef>
           <HelpDef term="Category">A segment label: VIP, Partner, Prospect, Regular, Inactive.</HelpDef>
           <HelpDef term="Source">Where the lead came from: Website, Referral, Cold Call, LinkedIn, Email.</HelpDef>

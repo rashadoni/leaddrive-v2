@@ -12,6 +12,7 @@ import { PageDescription } from "@/components/page-description"
 import { PageHeader } from "@/components/page-header"
 import { LeadItemModal } from "@/components/lead-item-modal"
 import { HelpButton } from "@/components/help/help-button"
+import { averageProbability } from "@/lib/leads/conversion-probability"
 
 interface Lead {
   id: string
@@ -25,7 +26,8 @@ interface Lead {
   score: number
   scoreDetails: any
   grade: "A" | "B" | "C" | "D" | "F"
-  conversionProb: number
+  /** Da Vinci's own estimate; null when the model produced none. */
+  conversionProb: number | null
   reasoning: string
   lastScoredAt: string | null
   estimatedValue: number | null
@@ -156,9 +158,9 @@ export default function LeadScoringPage() {
   const avgScore = scoredLeads.length
     ? Math.round(scoredLeads.reduce((sum, l) => sum + l.score, 0) / scoredLeads.length)
     : 0
-  const avgConversion = scoredLeads.length
-    ? Math.round(scoredLeads.reduce((sum, l) => sum + l.conversionProb, 0) / scoredLeads.length)
-    : 0
+  // Over the leads Da Vinci estimated, not all scored leads: a lead with no
+  // estimate used to count as its score × 0.85.
+  const avgConversion = averageProbability(leads.map((l) => l.conversionProb))
 
   const gradeDescriptions: Record<string, string> = {
     A: t("gradeADesc"), B: t("gradeBDesc"), C: t("gradeCDesc"),
@@ -221,7 +223,12 @@ export default function LeadScoringPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">{tc("probability")}</p>
-                <p className="text-2xl font-bold">{avgConversion}<span className="text-sm font-normal text-muted-foreground"> %</span></p>
+                <p className="text-2xl font-bold" data-testid="lead-scoring-probability">
+                  {avgConversion ? <>{avgConversion.value}<span className="text-sm font-normal text-muted-foreground"> %</span></> : "—"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {avgConversion ? t("convProbBasis", { count: avgConversion.count, total: leads.length }) : t("convProbNoEstimates")}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -253,6 +260,8 @@ export default function LeadScoringPage() {
           </CardContent>
         </Card>
       </div>
+
+      <p className="text-xs text-muted-foreground">{t("convProbLifetime")}</p>
 
       {/* Grade Distribution */}
       <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
@@ -340,7 +349,11 @@ export default function LeadScoringPage() {
                           {lead.source || "—"}
                         </td>
                         <td className="py-3 pr-4">
-                          <span className="font-medium">{lead.conversionProb}%</span>
+                          {lead.conversionProb == null ? (
+                            <span className="font-medium text-muted-foreground" title={t("convProbNone")}>—</span>
+                          ) : (
+                            <span className="font-medium">{lead.conversionProb}%</span>
+                          )}
                         </td>
                         <td className="py-3 pr-4 max-w-[250px]">
                           <p className="text-xs text-muted-foreground line-clamp-2">

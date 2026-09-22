@@ -40,12 +40,12 @@ export default function LeadscoringHelpAz() {
         </p>
         <dl className="rounded-md border p-3">
           <HelpDef term="Ort. bal">Qiymətləndirilmiş lidlərin (balı 0-dan böyük olanların) orta balı, 100 üzərindən.</HelpDef>
-          <HelpDef term="Ehtimal">Həmin lidlərin orta konversiya ehtimalı (faizlə).</HelpDef>
+          <HelpDef term="Ehtimal">Da Vinci-nin qiymətləndirdiyi lidlər üzrə orta ehtimal (faizlə) və onların sayı; qiymət yoxdursa, «—».</HelpDef>
           <HelpDef term="Cəmi sessiyalar">«Neçə lid qiymətləndirilib / cəmi neçə lid var» şəklində nisbət (məs. 12 / 40).</HelpDef>
           <HelpDef term="Aktiv">Sonuncu qiymətləndirmənin əsl Da Vinci ilə (Bəli), yoxsa sadə qaydalarla (Xeyr) aparıldığını göstərir.</HelpDef>
           <HelpDef term="Dərəcə (A–F)">Bal aralığına görə yarlıq: A İsti (80–100), B İlıq (60–79), C Neytral (40–59), D Soyuq (20–39), F Ölü (0–19). Hər dərəcə kartında o aralığa düşən lidlərin sayı yazılır.</HelpDef>
           <HelpDef term="Bal">Lidin 0–100 arasındakı qiymətləndirmə balı; cədvəl ona görə yüksəkdən aşağıya sıralanır.</HelpDef>
-          <HelpDef term="Konversiya">Lidin sövdələşməyə çevrilmə ehtimalı (faizlə).</HelpDef>
+          <HelpDef term="Konversiya">Lidin sövdələşməyə çevrilmə ehtimalı (faizlə), Da Vinci-nin qiymətləndirdiyi kimi; qiymət yoxdursa, «—» — lidin istənilən dəyişikliyi balı ehtimalsız yenidən hesablayır.</HelpDef>
         </dl>
         <p>
           Nəticələr cədvəlinin səkkiz sütunu var: <strong>Bal</strong> (dərəcə nişanı),{" "}
