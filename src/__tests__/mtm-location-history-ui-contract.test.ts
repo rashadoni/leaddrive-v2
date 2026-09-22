@@ -154,11 +154,15 @@ describe("SWM-10 GPS history presentation contract", () => {
   })
 
   // Owner 2026-09-22: «why can't I set a range of dates to see where he was these days».
-  it("chooses a range of up to seven days and lists each day's shift", async () => {
+  it("chooses a range of up to two weeks and lists each day's shift", async () => {
     const { clampHistoryEndDate } = await import("@/lib/mtm/history-range")
     expect(clampHistoryEndDate("2026-09-20", "2026-09-22")).toBe("2026-09-22")
     expect(clampHistoryEndDate("2026-09-20", "2026-09-19")).toBe("2026-09-20")
-    expect(clampHistoryEndDate("2026-09-20", "2026-10-30")).toBe("2026-09-26")
+    expect(clampHistoryEndDate("2026-09-20", "2026-10-30")).toBe("2026-10-03")
+    // Owner 2026-09-22: an earlier start leaves the end on today.
+    expect(clampHistoryEndDate("2026-09-15", "2026-09-22")).toBe("2026-09-22")
+    expect(panel).toContain("const end = clampHistoryEndDate(start, toDate)")
+    expect(panel).not.toContain("toDate === date ? start :")
     expect(panel).toContain('data-testid="mtm-location-history-date-to"')
     expect(panel).toContain('if (toDate !== date) params.set("toDate", toDate)')
     expect(panel).toContain('data-testid="mtm-history-range-workdays"')
