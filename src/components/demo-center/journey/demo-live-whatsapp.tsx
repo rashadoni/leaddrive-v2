@@ -53,6 +53,9 @@ export function DemoLiveWhatsApp({ token }: { token: string }) {
       const payload = (await response?.json().catch(() => null)) as (LiveWhatsApp & { success?: boolean }) | null
       if (cancelled) return
       if (payload?.success) setState(payload)
+      // A session without a live thread says so once; there is nothing to
+      // watch for, so the loop stops instead of polling an empty answer.
+      if (payload?.success && !payload.enabled) return
       timer = setTimeout(tick, POLL_MS)
     }
     timer = setTimeout(tick, 0)
