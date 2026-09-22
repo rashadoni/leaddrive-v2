@@ -25,8 +25,8 @@ const FAILURE_TTL_MS = 60_000
 const usernames = new Map<string, { username: string | null; until: number }>()
 
 export async function demoTelegramBot(now = Date.now()): Promise<DemoTelegramBot | null> {
-  const entered = await inDemoSalesOrganization((organizationId) =>
-    prisma.channelConfig.findFirst({
+  const entered = await inDemoSalesOrganization(async (organizationId) =>
+    await prisma.channelConfig.findFirst({
       where: { organizationId, channelType: "telegram", isActive: true, botToken: { not: null } },
       orderBy: { createdAt: "asc" },
       select: { id: true, organizationId: true, botToken: true },

@@ -47,11 +47,11 @@ beforeEach(() => {
 })
 
 describe("the Telegram webhook and the demo's phone check", () => {
-  it("asks the demo first, with the bot's organisation, token and message", async () => {
+  it("asks the demo first, with the bot token and the message", async () => {
     mockConsume.mockResolvedValue(true)
     const response = await POST(update(contact))
     expect(response.status).toBe(200)
-    expect(mockConsume).toHaveBeenCalledWith({ organizationId: "org-leaddrive-inc", botToken: BOT_TOKEN, message: contact })
+    expect(mockConsume).toHaveBeenCalledWith({ botToken: BOT_TOKEN, message: contact })
   })
 
   it("makes no inbox message of what the demo took", async () => {

@@ -70,13 +70,36 @@ beforeEach(() => {
   vi.mocked(prisma.demoPhoneVerification.updateMany).mockResolvedValue({ count: 1 })
   vi.mocked(prisma.demoAccessEvent.create).mockResolvedValue({ id: "event-1" } as never)
   vi.mocked(prisma.voiceConsent.findUnique).mockResolvedValue(null)
+  vi.mocked(prisma.channelConfig.findFirst).mockImplementation((async (args: { where: { organizationId?: string; botToken?: unknown } }) => {
+    const { organizationId, botToken } = args.where
+    if (organizationId !== SALES_ORG) return null
+    if (typeof botToken === "string" && botToken !== BOT_TOKEN) return null
+    return { id: "tg-channel", organizationId: SALES_ORG, botToken: BOT_TOKEN }
+  }) as never)
+  telegramStore.clear()
   vi.stubGlobal("fetch", vi.fn(async (url: string, init?: { body?: string }) => {
     const method = String(url).split("/").pop() ?? ""
-    telegramCalls.push({ method, body: init?.body ? JSON.parse(init.body) : {} })
+    const body = init?.body ? JSON.parse(init.body) : {}
+    telegramCalls.push({ method, body })
     if (method === "getMe") return new Response(JSON.stringify({ ok: true, result: { username: "LeadDrivebot" } }))
-    return new Response(JSON.stringify({ ok: true, result: { message_id: 1 } }))
+    if (method === "sendMessage" && body.reply_parameters) {
+      // Telegram answers a reply with the original message as it holds it.
+      const original = telegramStore.get(`${body.chat_id}:${body.reply_parameters.message_id}`)
+      if (!original) return new Response(JSON.stringify({ ok: false, description: "Bad Request: message to be replied not found" }))
+      return new Response(JSON.stringify({ ok: true, result: { message_id: 9001, chat: { id: body.chat_id }, text: body.text, reply_to_message: original } }))
+    }
+    return new Response(JSON.stringify({ ok: true, result: { message_id: 9002, chat: { id: body.chat_id } } }))
   }))
 })
+
+/** Messages Telegram really holds, by chat and id. A forged update names one that is not here. */
+const telegramStore = new Map<string, Record<string, unknown>>()
+let nextMessageId = 100
+function sent(message: Record<string, unknown>) {
+  const stored: Record<string, unknown> = { message_id: nextMessageId++, date: Math.floor(NOW.getTime() / 1000), ...message }
+  telegramStore.set(`${(stored.chat as { id: number }).id}:${stored.message_id}`, stored)
+  return stored
+}
 
 const replies = () => telegramCalls.filter((call) => call.method === "sendMessage").map((call) => call.body)
 
@@ -92,7 +115,9 @@ describe("issuing the Telegram link", () => {
 
     const upsert = vi.mocked(prisma.demoPhoneVerification.upsert).mock.calls[0][0]
     expect(upsert.where).toEqual({ grantId_phoneE164: { grantId: "grant-1", phoneE164: PHONE } })
-    expect(upsert.create).toMatchObject({ telegramLinkHash: sha256(token), telegramUserId: null, telegramLinkIssueCount: 1 })
+    expect(upsert.create).toMatchObject({ telegramLinkHash: sha256(token), telegramLinkIssueCount: 1 })
+    // A new link keeps whoever opened the old one bound: their old button then works with it.
+    expect(upsert.update).not.toHaveProperty("telegramUserId")
     expect(upsert.create.telegramLinkExpiresAt).toEqual(new Date(NOW.getTime() + DEMO_TELEGRAM_LINK_TTL_MS))
     expect(JSON.stringify(upsert)).not.toContain(token)
   })
@@ -148,30 +173,46 @@ describe("issuing the Telegram link", () => {
 })
 
 function startMessage(token: string, overrides: Record<string, unknown> = {}) {
-  return { text: `/start d_${token}`, chat: { id: TG_USER, type: "private" }, from: { id: TG_USER }, ...overrides }
+  return sent({ text: `/start d_${token}`, chat: { id: TG_USER, type: "private" }, from: { id: TG_USER }, ...overrides })
 }
 
-function contactMessage(phone: string, userId = TG_USER, fromId = TG_USER) {
-  return { chat: { id: fromId, type: "private" }, from: { id: fromId }, contact: { phone_number: phone, user_id: userId } }
+/** A contact the user really shared: Telegram holds it. */
+function contactMessage(phone: string, userId = TG_USER, extra: Record<string, unknown> = {}) {
+  return sent({ chat: { id: TG_USER, type: "private" }, from: { id: TG_USER }, contact: { phone_number: phone, user_id: userId }, ...extra })
 }
 
 const TOKEN = "A".repeat(32)
-const consume = (message: Record<string, unknown>, organizationId = SALES_ORG) =>
-  consumeDemoTelegramUpdate({ organizationId, botToken: BOT_TOKEN, message, now: NOW })
+const ISSUED_AT = NOW.getTime() - 60_000
+const consume = (message: Record<string, unknown>, botToken = BOT_TOKEN) =>
+  consumeDemoTelegramUpdate({ botToken, message, now: NOW })
 
 function linkRow(overrides: Record<string, unknown> = {}) {
   return {
     id: "verification-1",
     verifiedAt: null,
     telegramLinkHash: sha256(TOKEN),
-    telegramLinkExpiresAt: new Date(NOW.getTime() + 60_000),
+    telegramLinkExpiresAt: new Date(ISSUED_AT + DEMO_TELEGRAM_LINK_TTL_MS),
     grant: openGrant,
     ...overrides,
   }
 }
 
 function pendingRow(overrides: Record<string, unknown> = {}) {
-  return { id: "verification-1", grantId: "grant-1", phoneE164: PHONE, telegramLinkHash: sha256(TOKEN), grant: openGrant, ...overrides }
+  return {
+    id: "verification-1",
+    grantId: "grant-1",
+    phoneE164: PHONE,
+    verifiedAt: null,
+    telegramLinkHash: sha256(TOKEN),
+    telegramLinkExpiresAt: new Date(ISSUED_AT + DEMO_TELEGRAM_LINK_TTL_MS),
+    grant: openGrant,
+    ...overrides,
+  }
+}
+
+const finalText = () => {
+  const edits = telegramCalls.filter((call) => call.method === "editMessageText")
+  return edits.length ? edits[edits.length - 1].body.text : undefined
 }
 
 describe("the bot, when the prospect opens the link", () => {
@@ -187,6 +228,8 @@ describe("the bot, when the prospect opens the link", () => {
     })
     const [message] = replies()
     expect(message.text).toContain(DEMO_CALL_CONSENT_TEXT)
+    // The owner of the number reads what arrives: one confirmation here, then the one call.
+    expect(message.text).not.toContain("heç nə göndərilmir")
     expect(message.reply_markup).toMatchObject({ keyboard: [[{ text: DEMO_TELEGRAM_TEXT.shareButton, request_contact: true }]] })
   })
 
@@ -213,14 +256,14 @@ describe("the bot, when the prospect opens the link", () => {
 })
 
 describe("the bot, when the prospect shares a contact", () => {
-  it("proves the request's phone with the prospect's own contact, and records the consent", async () => {
+  it("proves the request's phone with the prospect's own fresh contact, as Telegram holds it, and records the consent", async () => {
     vi.mocked(prisma.demoPhoneVerification.findMany).mockResolvedValue([pendingRow()] as never)
 
     // Telegram usually sends the number without "+".
     await expect(consume(contactMessage("994501234567"))).resolves.toBe(true)
 
     expect(prisma.demoPhoneVerification.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { telegramUserId: String(TG_USER), verifiedAt: null, telegramLinkExpiresAt: { gt: NOW } },
+      where: { telegramUserId: String(TG_USER), updatedAt: { gt: new Date(NOW.getTime() - 24 * 60 * 60_000) } },
     }))
     expect(prisma.demoPhoneVerification.updateMany).toHaveBeenCalledWith({
       where: { id: "verification-1", telegramLinkHash: sha256(TOKEN), verifiedAt: null },
@@ -240,14 +283,50 @@ describe("the bot, when the prospect shares a contact", () => {
     expect(prisma.voiceConsent.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ organizationId: SALES_ORG, phoneE164: PHONE, scope: "sales", status: "allowed" }),
     })
-    expect(replies()).toEqual([expect.objectContaining({ text: DEMO_TELEGRAM_TEXT.verified, reply_markup: { remove_keyboard: true } })])
+    expect(finalText()).toBe(DEMO_TELEGRAM_TEXT.verified)
   })
 
-  it("refuses somebody else's contact card", async () => {
+  it("believes Telegram, not the webhook body: a hand-made update proves nothing", async () => {
+    // Anyone holding the bot token can POST to the webhook. The update below
+    // names a message Telegram never received.
+    vi.mocked(prisma.demoPhoneVerification.findMany).mockResolvedValue([pendingRow()] as never)
+    const forged = { message_id: 424242, date: Math.floor(NOW.getTime() / 1000), chat: { id: TG_USER, type: "private" }, from: { id: TG_USER }, contact: { phone_number: PHONE, user_id: TG_USER } }
+
+    await expect(consume(forged)).resolves.toBe(true)
+    expect(prisma.demoPhoneVerification.updateMany).not.toHaveBeenCalled()
+    expect(prisma.voiceConsent.create).not.toHaveBeenCalled()
+  })
+
+  it("reads the number from Telegram even when the webhook body says another", async () => {
+    vi.mocked(prisma.demoPhoneVerification.findMany).mockResolvedValue([pendingRow()] as never)
+    const real = contactMessage("+994551112233")
+    // Same message id, but the body claims the request's number.
+    await expect(consume({ ...real, contact: { phone_number: PHONE, user_id: TG_USER } })).resolves.toBe(true)
+    expect(prisma.demoPhoneVerification.updateMany).not.toHaveBeenCalled()
+    expect(finalText()).toBe(DEMO_TELEGRAM_TEXT.otherNumber)
+  })
+
+  it("refuses somebody else's contact card and offers the button again", async () => {
     vi.mocked(prisma.demoPhoneVerification.findMany).mockResolvedValue([pendingRow()] as never)
     await expect(consume(contactMessage(PHONE, 555))).resolves.toBe(true)
     expect(prisma.demoPhoneVerification.updateMany).not.toHaveBeenCalled()
-    expect(replies()[0].text).toBe(DEMO_TELEGRAM_TEXT.notOwnContact)
+    expect(finalText()).toBe(DEMO_TELEGRAM_TEXT.notOwnContact)
+    expect(replies().at(-1)?.reply_markup).toMatchObject({ keyboard: [[{ request_contact: true }]] })
+  })
+
+  it("refuses a forwarded card, even of one's own account: it can carry a number the account has left", async () => {
+    vi.mocked(prisma.demoPhoneVerification.findMany).mockResolvedValue([pendingRow()] as never)
+    await expect(consume(contactMessage(PHONE, TG_USER, { forward_origin: { type: "user", date: 1 } }))).resolves.toBe(true)
+    await expect(consume(contactMessage(PHONE, TG_USER, { forward_date: 1 }))).resolves.toBe(true)
+    expect(prisma.demoPhoneVerification.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("refuses a contact shared before the link was made", async () => {
+    vi.mocked(prisma.demoPhoneVerification.findMany).mockResolvedValue([pendingRow()] as never)
+    const old = contactMessage(PHONE, TG_USER, { date: Math.floor((ISSUED_AT - 60 * 60_000) / 1000) })
+    await expect(consume(old)).resolves.toBe(true)
+    expect(prisma.demoPhoneVerification.updateMany).not.toHaveBeenCalled()
+    expect(finalText()).toBe(DEMO_TELEGRAM_TEXT.linkDead)
   })
 
   it("refuses a Telegram account on another number: only the request's phone is ever called", async () => {
@@ -255,14 +334,14 @@ describe("the bot, when the prospect shares a contact", () => {
     await expect(consume(contactMessage("+994551112233"))).resolves.toBe(true)
     expect(prisma.demoPhoneVerification.updateMany).not.toHaveBeenCalled()
     expect(prisma.voiceConsent.create).not.toHaveBeenCalled()
-    expect(replies()[0].text).toBe(DEMO_TELEGRAM_TEXT.otherNumber)
+    expect(finalText()).toBe(DEMO_TELEGRAM_TEXT.otherNumber)
   })
 
   it("proves nothing for a grant revoked since the link was opened", async () => {
     vi.mocked(prisma.demoPhoneVerification.findMany).mockResolvedValue([pendingRow({ grant: { ...openGrant, status: "REVOKED" } })] as never)
     await expect(consume(contactMessage(PHONE))).resolves.toBe(true)
     expect(prisma.demoPhoneVerification.updateMany).not.toHaveBeenCalled()
-    expect(replies()[0].text).toBe(DEMO_TELEGRAM_TEXT.linkDead)
+    expect(finalText()).toBe(DEMO_TELEGRAM_TEXT.linkDead)
   })
 
   it("loses a race instead of proving twice", async () => {
@@ -272,22 +351,29 @@ describe("the bot, when the prospect shares a contact", () => {
     expect(prisma.demoAccessEvent.create).not.toHaveBeenCalled()
     expect(prisma.voiceConsent.create).not.toHaveBeenCalled()
   })
+
+  it("answers the old button after the link lapsed, instead of dropping a thread into the inbox", async () => {
+    vi.mocked(prisma.demoPhoneVerification.findMany).mockResolvedValue([pendingRow({ telegramLinkExpiresAt: new Date(NOW.getTime() - 1) })] as never)
+    await expect(consume(contactMessage(PHONE))).resolves.toBe(true)
+    expect(prisma.demoPhoneVerification.updateMany).not.toHaveBeenCalled()
+    expect(replies()[0].text).toBe(DEMO_TELEGRAM_TEXT.linkDead)
+  })
 })
 
 describe("the sales organisation's inbox keeps its bot", () => {
   it("lets ordinary messages and contacts through untouched", async () => {
     await expect(consume({ text: "Salam, qiymət nədir?", chat: { id: 1, type: "private" }, from: { id: 1 } })).resolves.toBe(false)
     await expect(consume({ text: "/start", chat: { id: 1, type: "private" }, from: { id: 1 } })).resolves.toBe(false)
-    // A contact from someone with no open demo link is an ordinary inbox message.
+    // A contact from someone who never opened a demo link is an ordinary inbox message.
     await expect(consume(contactMessage(PHONE))).resolves.toBe(false)
     expect(prisma.demoPhoneVerification.updateMany).not.toHaveBeenCalled()
-    expect(replies()).toEqual([])
+    expect(telegramCalls.filter((call) => call.method !== "getMe")).toEqual([])
   })
 
-  it("never acts for any other organisation's bot", async () => {
+  it("never acts for a bot the demo sales organisation does not own", async () => {
     vi.mocked(prisma.demoPhoneVerification.findMany).mockResolvedValue([pendingRow()] as never)
-    await expect(consume(startMessage(TOKEN), "org-brand-protection")).resolves.toBe(false)
-    await expect(consume(contactMessage(PHONE), "org-brand-protection")).resolves.toBe(false)
+    await expect(consume(startMessage(TOKEN), "999:another-organisations-bot")).resolves.toBe(false)
+    await expect(consume(contactMessage(PHONE), "999:another-organisations-bot")).resolves.toBe(false)
     expect(prisma.demoPhoneVerification.findUnique).not.toHaveBeenCalled()
     expect(prisma.demoPhoneVerification.updateMany).not.toHaveBeenCalled()
   })

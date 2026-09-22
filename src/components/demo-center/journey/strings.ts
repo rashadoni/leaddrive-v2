@@ -120,6 +120,7 @@ export const DEMO_JOURNEY_STRINGS = {
   liveCallTelegramWaiting: "Telegram-dan təsdiq gözlənilir…",
   liveCallTelegramExpired: "Keçidin müddəti bitdi. Yeni keçid alın və ya SMS kodu istəyin.",
   liveCallTelegramNewLink: "Yeni keçid al",
+  liveCallTelegramResume: "Telegram-da açdığınız söhbətdə «Razıyam, nömrəmi paylaş» düyməsinə basın — bu səhifə özü yenilənəcək.",
   liveCallNoRequestPhone: "Sorğunuzda Azərbaycan mobil nömrəsi göstərilməyib, zəng isə yalnız həmin nömrəyə edilir. Hekayəyə zəngsiz davam edə bilərsiniz.",
   liveCallCodeLabel: "SMS kodu",
   liveCallVerify: "Təsdiqlə",

@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
     // organisation's bot (src/lib/demo-center/phone-telegram.ts). Its start
     // links and contact shares are the demo's, never an inbox conversation;
     // every other message goes on below exactly as before.
-    if (await consumeDemoTelegramUpdate({ organizationId: channelConfig.organizationId, botToken, message })) {
+    if (await consumeDemoTelegramUpdate({ botToken, message })) {
       return NextResponse.json({ ok: true })
     }
 
