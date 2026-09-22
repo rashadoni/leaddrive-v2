@@ -419,9 +419,14 @@ export function DemoCoachMark({
 
   // With the card open the ring gets its own arrow too, on the side away
   // from the card, so the eye lands on the thing and not only on the text.
-  const glyphAbove = side !== "top" && ring.top - 4 - 18 >= VIEWPORT_MARGIN
+  // A region as tall as the screen (the sidebar, the guide) has no «above»
+  // worth the name — the arrow would land in the header — so it sits just
+  // inside the region's visible top, pointing down into it.
+  const tallRegion = ring.height > viewHeight * 0.5
+  const glyphAbove = !tallRegion && side !== "top" && ring.top - 4 - 18 >= VIEWPORT_MARGIN
+  const glyphTop = tallRegion ? Math.max(ring.top, 0) + PADDING + 8 : glyphAbove ? ring.top - 4 - 18 : ring.top + ring.height + 4
   const glyphLeft = clamp(ring.left + ring.width / 2, VIEWPORT_MARGIN + 9, viewWidth - VIEWPORT_MARGIN - 9) - 9
-  const CardGlyph = glyphAbove ? ArrowDown : ArrowUp
+  const CardGlyph = glyphAbove || tallRegion ? ArrowDown : ArrowUp
 
   return (
     <>
@@ -431,7 +436,7 @@ export function DemoCoachMark({
           aria-hidden="true"
           data-testid="demo-coach-ring-arrow"
           className={cn("pointer-events-none fixed z-[10001] text-[#c2410c] drop-shadow", !reducedMotion && "motion-safe:animate-bounce")}
-          style={{ left: glyphLeft, top: glyphAbove ? ring.top - 4 - 18 : ring.top + ring.height + 4, width: 18, height: 18 }}
+          style={{ left: glyphLeft, top: glyphTop, width: 18, height: 18 }}
           strokeWidth={3}
         />
       ) : null}
