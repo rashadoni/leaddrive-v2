@@ -14757,6 +14757,11 @@
     "supportHint": "Утверждённые для этого клиента контакты полевой поддержки.",
     "scopeUnavailable": "Недоступно для этой ограниченной зоны команды",
     "operationalWeek": {
+      "gpsSeenAt": "На связи: {time}",
+      "gpsSilentSince": "Нет связи с {time}",
+      "openGpsPath": "Путь на карте",
+      "noPlanInPeriod": "На этот период плана нет.",
+      "nothingNeedsAttention": "Всё спокойно — действовать не нужно.",
       "workdayLeftOpen": "Смена открыта с {date} {time} ({duration}) — агент не закрыл",
       "workdayOpenDays": "{count, plural, one {# день} few {# дня} many {# дней} other {# дня}}",
       "workdayOpenHours": "{count, plural, one {# час} few {# часа} many {# часов} other {# часа}}",

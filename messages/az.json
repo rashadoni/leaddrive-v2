@@ -14753,6 +14753,11 @@
     "supportHint": "Bu tenant üçün təsdiqlənmiş sahə dəstəyi əlaqələri.",
     "scopeUnavailable": "Bu məhdud komanda əhatəsi üçün əlçatan deyil",
     "operationalWeek": {
+      "gpsSeenAt": "Əlaqədədir: {time}",
+      "gpsSilentSince": "{time}-dən əlaqə yoxdur",
+      "openGpsPath": "Xəritədə yol",
+      "noPlanInPeriod": "Bu dövr üçün plan yoxdur.",
+      "nothingNeedsAttention": "Hər şey qaydasındadır — tədbir lazım deyil.",
       "workdayLeftOpen": "Növbə {date} {time}-dən açıqdır ({duration}) — agent bağlamayıb",
       "workdayOpenDays": "{count, plural, one {# gün} other {# gün}}",
       "workdayOpenHours": "{count, plural, one {# saat} other {# saat}}",

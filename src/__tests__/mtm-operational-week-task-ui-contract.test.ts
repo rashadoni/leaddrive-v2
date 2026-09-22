@@ -19,7 +19,9 @@ function leafPaths(value: unknown, prefix = ""): string[] {
 
 function taskListSource(ui: string): string {
   const start = ui.indexOf("activeTasks.slice(0, 5).map")
-  const end = ui.indexOf('t("noActiveTasks")', start)
+  // Owner 2026-09-22: an empty task list is no longer announced; the list ends
+  // where its section does.
+  const end = ui.indexOf("</section> : null}", start)
   expect(start).toBeGreaterThan(-1)
   expect(end).toBeGreaterThan(start)
   return ui.slice(start, end)
