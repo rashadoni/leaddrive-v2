@@ -22188,45 +22188,43 @@
     }
   },
   "formsListPage": {
-    "formsListPage": {
-      "title": "Формы",
-      "subtitleBeforeUrl": "Самостоятельные формы с публичным URL. Встраивайте куда угодно или делитесь",
-      "subtitleAfterUrl": "напрямую.",
-      "loading": "Загрузка…",
-      "col": {
-        "name": "Название",
-        "status": "Статус",
-        "views": "Просмотры",
-        "submissions": "Отправки",
-        "publicUrl": "Публичный URL"
-      },
-      "status": {
-        "draft": "Черновик",
-        "published": "Опубликовано",
-        "archived": "В архиве"
-      },
-      "actions": {
-        "newForm": "Новая форма",
-        "edit": "Редактировать",
-        "cancel": "Отмена"
-      },
-      "empty": {
-        "title": "Форм пока нет.",
-        "cta": "Создать первую форму"
-      },
-      "dialog": {
-        "title": "Новая форма",
-        "nameLabel": "Название",
-        "namePlaceholder": "Свяжитесь с нами",
-        "slugLabel": "Slug (публичный URL)",
-        "slugPlaceholder": "contact-us",
-        "slugHint": "Только строчные буквы и дефисы. От 1 до 64 символов. Нельзя изменить после создания.",
-        "creating": "Создание…",
-        "createDraft": "Создать черновик"
-      },
-      "toast": {
-        "createFailed": "Не удалось создать"
-      }
+    "title": "Формы",
+    "subtitleBeforeUrl": "Самостоятельные формы с публичным URL. Встраивайте куда угодно или делитесь",
+    "subtitleAfterUrl": "напрямую.",
+    "loading": "Загрузка…",
+    "col": {
+      "name": "Название",
+      "status": "Статус",
+      "views": "Просмотры",
+      "submissions": "Отправки",
+      "publicUrl": "Публичный URL"
+    },
+    "status": {
+      "draft": "Черновик",
+      "published": "Опубликовано",
+      "archived": "В архиве"
+    },
+    "actions": {
+      "newForm": "Новая форма",
+      "edit": "Редактировать",
+      "cancel": "Отмена"
+    },
+    "empty": {
+      "title": "Форм пока нет.",
+      "cta": "Создать первую форму"
+    },
+    "dialog": {
+      "title": "Новая форма",
+      "nameLabel": "Название",
+      "namePlaceholder": "Свяжитесь с нами",
+      "slugLabel": "Slug (публичный URL)",
+      "slugPlaceholder": "contact-us",
+      "slugHint": "Только строчные буквы и дефисы. От 1 до 64 символов. Нельзя изменить после создания.",
+      "creating": "Создание…",
+      "createDraft": "Создать черновик"
+    },
+    "toast": {
+      "createFailed": "Не удалось создать"
     }
   },
   "formsDetailPage": {

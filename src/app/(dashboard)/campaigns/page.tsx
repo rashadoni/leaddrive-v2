@@ -57,6 +57,7 @@ const typeIcons: Record<string, string> = {
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
+import { PageHeader } from "@/components/page-header"
 
 export default function CampaignsPage() {
   const router = useRouter()
@@ -175,40 +176,40 @@ export default function CampaignsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">{t("title")} <TourReplayButton tourId="campaigns" /> <HelpButton slug="campaigns" variant="label" /></h1>
-          <p className="text-sm text-muted-foreground">{total} {t("title").toLowerCase()}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Tab switcher */}
-          <div className="flex items-center rounded-lg border border-zinc-200 dark:border-zinc-700 bg-muted/50 p-0.5">
-            <button
-              onClick={() => setTab("analytics")}
-              className={cn(
-                "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                tab === "analytics" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <BarChart3 className="h-4 w-4" />
-              {tc("analytics")}
-            </button>
-            <button
-              onClick={() => setTab("list")}
-              className={cn(
-                "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                tab === "list" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <List className="h-4 w-4" />
-              {tc("list")}
-            </button>
-          </div>
-          <Button data-tour-id="campaigns-new" onClick={() => { setEditData(undefined); setShowForm(true) }}>
-            <Plus className="h-4 w-4 mr-1" /> {t("newCampaign")}
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title={<>{t("title")} <TourReplayButton tourId="campaigns" /> <HelpButton slug="campaigns" variant="label" /></>}
+        description={<p className="text-sm text-muted-foreground">{total} {t("title").toLowerCase()}</p>}
+        actions={
+          <>
+            {/* Tab switcher */}
+            <div className="flex items-center rounded-lg border border-zinc-200 dark:border-zinc-700 bg-muted/50 p-0.5">
+              <button
+                onClick={() => setTab("analytics")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                  tab === "analytics" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <BarChart3 className="h-4 w-4" />
+                {tc("analytics")}
+              </button>
+              <button
+                onClick={() => setTab("list")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                  tab === "list" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <List className="h-4 w-4" />
+                {tc("list")}
+              </button>
+            </div>
+            <Button data-tour-id="campaigns-new" onClick={() => { setEditData(undefined); setShowForm(true) }}>
+              <Plus className="h-4 w-4 mr-1" /> {t("newCampaign")}
+            </Button>
+          </>
+        }
+      />
 
       <DidYouKnow page="campaigns" className="mb-4" />
 

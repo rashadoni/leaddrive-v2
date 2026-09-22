@@ -22184,45 +22184,43 @@
     }
   },
   "formsListPage": {
-    "formsListPage": {
-      "title": "Formalar",
-      "subtitleBeforeUrl": "Açıq URL-i olan müstəqil formalar. İstənilən yerə yerləşdirin və ya birbaşa",
-      "subtitleAfterUrl": "paylaşın.",
-      "loading": "Yüklənir…",
-      "col": {
-        "name": "Ad",
-        "status": "Status",
-        "views": "Baxışlar",
-        "submissions": "Göndərmələr",
-        "publicUrl": "Açıq URL"
-      },
-      "status": {
-        "draft": "Qaralama",
-        "published": "Dərc edilib",
-        "archived": "Arxivləşdirilib"
-      },
-      "actions": {
-        "newForm": "Yeni forma",
-        "edit": "Redaktə et",
-        "cancel": "Ləğv et"
-      },
-      "empty": {
-        "title": "Hələ forma yoxdur.",
-        "cta": "İlk formanızı yaradın"
-      },
-      "dialog": {
-        "title": "Yeni forma",
-        "nameLabel": "Ad",
-        "namePlaceholder": "Bizimlə əlaqə",
-        "slugLabel": "Slug (açıq URL)",
-        "slugPlaceholder": "contact-us",
-        "slugHint": "Yalnız kiçik hərflər və defislər. 1–64 simvol. Yaradıldıqdan sonra dəyişdirilə bilməz.",
-        "creating": "Yaradılır…",
-        "createDraft": "Qaralama yarat"
-      },
-      "toast": {
-        "createFailed": "Yaradıla bilmədi"
-      }
+    "title": "Formalar",
+    "subtitleBeforeUrl": "Açıq URL-i olan müstəqil formalar. İstənilən yerə yerləşdirin və ya birbaşa",
+    "subtitleAfterUrl": "paylaşın.",
+    "loading": "Yüklənir…",
+    "col": {
+      "name": "Ad",
+      "status": "Status",
+      "views": "Baxışlar",
+      "submissions": "Göndərmələr",
+      "publicUrl": "Açıq URL"
+    },
+    "status": {
+      "draft": "Qaralama",
+      "published": "Dərc edilib",
+      "archived": "Arxivləşdirilib"
+    },
+    "actions": {
+      "newForm": "Yeni forma",
+      "edit": "Redaktə et",
+      "cancel": "Ləğv et"
+    },
+    "empty": {
+      "title": "Hələ forma yoxdur.",
+      "cta": "İlk formanızı yaradın"
+    },
+    "dialog": {
+      "title": "Yeni forma",
+      "nameLabel": "Ad",
+      "namePlaceholder": "Bizimlə əlaqə",
+      "slugLabel": "Slug (açıq URL)",
+      "slugPlaceholder": "contact-us",
+      "slugHint": "Yalnız kiçik hərflər və defislər. 1–64 simvol. Yaradıldıqdan sonra dəyişdirilə bilməz.",
+      "creating": "Yaradılır…",
+      "createDraft": "Qaralama yarat"
+    },
+    "toast": {
+      "createFailed": "Yaradıla bilmədi"
     }
   },
   "formsDetailPage": {

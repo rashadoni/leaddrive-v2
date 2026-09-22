@@ -87,6 +87,7 @@ const statusBadge = (status: string, label: string) => {
 
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
+import { PageHeader } from "@/components/page-header"
 
 export default function InvoicesPage() {
   const { data: session } = useSession()
@@ -322,43 +323,43 @@ export default function InvoicesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">{t("title")} <TourReplayButton tourId="invoices" /><HelpButton slug="invoices" variant="label" /></h1>
-          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Tab switcher */}
-          <div className="flex items-center rounded-lg border border-zinc-200 dark:border-zinc-700 bg-muted/50 p-0.5">
-            <button
-              onClick={() => setTab("analytics")}
-              className={cn(
-                "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                tab === "analytics" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <BarChart3 className="h-4 w-4" />
-              {tc("analytics")}
-            </button>
-            <button
-              onClick={() => setTab("list")}
-              className={cn(
-                "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                tab === "list" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <List className="h-4 w-4" />
-              {tc("list")}
-            </button>
-          </div>
-          <Button variant="outline" onClick={() => router.push("/invoices/recurring")}>
-            <RefreshCw className="h-4 w-4 mr-1" /> {t("recurringInvoices")}
-          </Button>
-          <Button data-tour-id="invoices-new" onClick={() => router.push("/invoices/create")}>
-            <Plus className="h-4 w-4 mr-1" /> {t("newInvoice")}
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title={<>{t("title")} <TourReplayButton tourId="invoices" /><HelpButton slug="invoices" variant="label" /></>}
+        description={<p className="text-sm text-muted-foreground">{t("subtitle")}</p>}
+        actions={
+          <>
+            {/* Tab switcher */}
+            <div className="flex items-center rounded-lg border border-zinc-200 dark:border-zinc-700 bg-muted/50 p-0.5">
+              <button
+                onClick={() => setTab("analytics")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                  tab === "analytics" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <BarChart3 className="h-4 w-4" />
+                {tc("analytics")}
+              </button>
+              <button
+                onClick={() => setTab("list")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                  tab === "list" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <List className="h-4 w-4" />
+                {tc("list")}
+              </button>
+            </div>
+            <Button variant="outline" onClick={() => router.push("/invoices/recurring")}>
+              <RefreshCw className="h-4 w-4 mr-1" /> {t("recurringInvoices")}
+            </Button>
+            <Button data-tour-id="invoices-new" onClick={() => router.push("/invoices/create")}>
+              <Plus className="h-4 w-4 mr-1" /> {t("newInvoice")}
+            </Button>
+          </>
+        }
+      />
       <PageDescription text={t("pageDescription")} />
 
       <DidYouKnow page="invoices" className="mb-4" />
