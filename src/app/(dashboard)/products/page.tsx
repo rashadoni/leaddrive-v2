@@ -25,6 +25,7 @@ import { useTranslations } from "next-intl"
 import { useCategoryLabel } from "@/lib/status-labels"
 import { DEFAULT_CURRENCY, CURRENCY_SYMBOLS, getCurrencySymbol } from "@/lib/constants"
 import { LINE_TYPES } from "@/lib/cpq/line-types"
+import { useCurrencyField } from "@/lib/use-org-default-currency"
 import {
   getProductCatalogValue,
   isValidProductPrice,
@@ -79,7 +80,8 @@ export default function ProductsPage() {
   const [description, setDescription] = useState("")
   const [category, setCategory] = useState("service")
   const [price, setPrice] = useState("")
-  const [currency, setCurrency] = useState(DEFAULT_CURRENCY)
+  // A new product starts in the organisation's currency, not the browser's "USD".
+  const { currency, setCurrency, resetCurrency } = useCurrencyField()
   const [isActive, setIsActive] = useState(true)
   const [featuresStr, setFeaturesStr] = useState("")
   const [tagsStr, setTagsStr] = useState("")
@@ -101,7 +103,7 @@ export default function ProductsPage() {
 
   function openCreate() {
     setEditItem(null)
-    setName(""); setDescription(""); setCategory("service"); setPrice(""); setCurrency(DEFAULT_CURRENCY)
+    setName(""); setDescription(""); setCategory("service"); setPrice(""); resetCurrency()
     setIsActive(true); setFeaturesStr(""); setTagsStr(""); setSku(""); setProductType("other")
     setFormOpen(true)
   }
@@ -112,7 +114,7 @@ export default function ProductsPage() {
     setDescription(p.description || "")
     setCategory(p.category)
     setPrice(String(p.price))
-    setCurrency(normalizeProductCurrency(p.currency))
+    resetCurrency(normalizeProductCurrency(p.currency))
     setIsActive(p.isActive)
     setFeaturesStr(p.features.join(", "))
     setTagsStr(p.tags.join(", "))
