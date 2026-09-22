@@ -355,6 +355,7 @@ export function DemoJourneyPlayer({
             reachableRoutes={reachable}
             activeRoute={activeRoute}
             onNavigate={navigate}
+            onLocked={(label) => hint(S.sectionLater(label))}
           />
           {/* One shrinkable column below lg: without it the implicit auto column
               took the guide panel's min-content width (343px on a 375px

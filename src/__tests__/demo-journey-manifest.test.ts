@@ -89,6 +89,16 @@ describe("Guided journey manifest: prospect-to-closed-won v1", () => {
     expect(inScope.length).toBeGreaterThan(manifest.visibleRoutes.length * 4)
   })
 
+  it("shows no sidebar entry the story never opens", () => {
+    // Owner, 2026-09-22: "почему другие разделы не активны?" — /contacts and
+    // /dashboard sat in the menu greyed out for the whole demo, because no
+    // section ever went there.
+    const storyRoutes = new Set(
+      manifest.sections.filter((section) => section.navGroup !== "demo").map((section) => section.route.replace(/\/\[[a-zA-Z]+\]$/, "")),
+    )
+    for (const route of manifest.visibleRoutes) expect(storyRoutes, route).toContain(route)
+  })
+
   it("keeps every section on a visible route and in a visible group", () => {
     for (const section of manifest.sections) {
       if (section.navGroup === "demo") continue
