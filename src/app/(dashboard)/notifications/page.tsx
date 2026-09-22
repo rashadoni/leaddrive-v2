@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { ColorStatCard } from "@/components/color-stat-card"
 import { PageDescription } from "@/components/page-description"
 import { HelpButton } from "@/components/help/help-button"
+import { PageHeader } from "@/components/page-header"
 import { cn } from "@/lib/utils"
 import {
   Bell, BellOff, CheckCheck, Settings, Info, AlertTriangle,
@@ -152,17 +153,15 @@ export default function NotificationsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">{t("title")}<HelpButton slug="notifications" variant="label" /></h1>
-          <p className="text-sm text-muted-foreground">{t("count", { count: total })}</p>
-        </div>
-        <div className="flex gap-2">
+      <PageHeader
+        title={<>{t("title")}<HelpButton slug="notifications" variant="label" /></>}
+        description={<p className="text-sm text-muted-foreground">{t("count", { count: total })}</p>}
+        actions={
           <Button variant="outline" size="sm" onClick={markAllRead} disabled={unreadCount === 0}>
             <CheckCheck className="h-4 w-4 mr-1" /> {t("markAllRead")}
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       <PageDescription text={t("pageDescription")} />
 

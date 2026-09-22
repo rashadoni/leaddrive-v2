@@ -8,6 +8,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, 
 import { fmtCurrencyCompact } from "@/lib/utils"
 import { formatDate } from "@/lib/format-date"
 import { HelpButton } from "@/components/help/help-button"
+import { PageHeader } from "@/components/page-header"
 import { canonicalDealStage } from "@/lib/deal-stage-normalization"
 
 interface QuotaRow {
@@ -111,27 +112,28 @@ export default function ForecastPage() {
   return (
     <MotionPage className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold flex items-center gap-2">{t("title")}<HelpButton slug="forecast" variant="label" /></h1>
-          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
-        </div>
-        <div className="flex gap-2">
-          {[1, 2, 3, 4].map(q => (
-            <button
-              key={q}
-              onClick={() => setSelectedQuarter(q)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                selectedQuarter === q
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted hover:bg-muted/80"
-              }`}
-            >
-              Q{q} {year}
-            </button>
-          ))}
-        </div>
-      </div>
+      <PageHeader
+        title={<>{t("title")}<HelpButton slug="forecast" variant="label" /></>}
+        titleClassName="text-xl font-bold"
+        description={<p className="text-sm text-muted-foreground">{t("subtitle")}</p>}
+        actions={
+          <>
+            {[1, 2, 3, 4].map(q => (
+              <button
+                key={q}
+                onClick={() => setSelectedQuarter(q)}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  selectedQuarter === q
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted hover:bg-muted/80"
+                }`}
+              >
+                Q{q} {year}
+              </button>
+            ))}
+          </>
+        }
+      />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

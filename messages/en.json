@@ -22170,45 +22170,43 @@
     }
   },
   "formsListPage": {
-    "formsListPage": {
-      "title": "Forms",
-      "subtitleBeforeUrl": "Standalone forms with a public URL. Embed anywhere or share",
-      "subtitleAfterUrl": "directly.",
-      "loading": "Loading…",
-      "col": {
-        "name": "Name",
-        "status": "Status",
-        "views": "Views",
-        "submissions": "Submissions",
-        "publicUrl": "Public URL"
-      },
-      "status": {
-        "draft": "Draft",
-        "published": "Published",
-        "archived": "Archived"
-      },
-      "actions": {
-        "newForm": "New form",
-        "edit": "Edit",
-        "cancel": "Cancel"
-      },
-      "empty": {
-        "title": "No forms yet.",
-        "cta": "Create your first form"
-      },
-      "dialog": {
-        "title": "New form",
-        "nameLabel": "Name",
-        "namePlaceholder": "Contact us",
-        "slugLabel": "Slug (public URL)",
-        "slugPlaceholder": "contact-us",
-        "slugHint": "Lowercase, dashes only. 1–64 chars. Immutable after create.",
-        "creating": "Creating…",
-        "createDraft": "Create draft"
-      },
-      "toast": {
-        "createFailed": "Create failed"
-      }
+    "title": "Forms",
+    "subtitleBeforeUrl": "Standalone forms with a public URL. Embed anywhere or share",
+    "subtitleAfterUrl": "directly.",
+    "loading": "Loading…",
+    "col": {
+      "name": "Name",
+      "status": "Status",
+      "views": "Views",
+      "submissions": "Submissions",
+      "publicUrl": "Public URL"
+    },
+    "status": {
+      "draft": "Draft",
+      "published": "Published",
+      "archived": "Archived"
+    },
+    "actions": {
+      "newForm": "New form",
+      "edit": "Edit",
+      "cancel": "Cancel"
+    },
+    "empty": {
+      "title": "No forms yet.",
+      "cta": "Create your first form"
+    },
+    "dialog": {
+      "title": "New form",
+      "nameLabel": "Name",
+      "namePlaceholder": "Contact us",
+      "slugLabel": "Slug (public URL)",
+      "slugPlaceholder": "contact-us",
+      "slugHint": "Lowercase, dashes only. 1–64 chars. Immutable after create.",
+      "creating": "Creating…",
+      "createDraft": "Create draft"
+    },
+    "toast": {
+      "createFailed": "Create failed"
     }
   },
   "formsDetailPage": {
