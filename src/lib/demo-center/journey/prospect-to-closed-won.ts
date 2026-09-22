@@ -38,7 +38,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
     // refused by policy rather than improvised (assistant/policy.ts).
     assistant: true,
   },
-  estimatedMinutes: 28,
+  estimatedMinutes: 29,
   sections: [
     {
       id: "orientation",
@@ -94,11 +94,11 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
     {
       id: "source",
       title: "Müraciətiniz haradan gəldi",
-      summary: "Hər lidin mənbəyi var. Formada seçdiyiniz kanal LeadDrive-da kampaniya kimi görünür.",
+      summary: "Hər lidin mənbəyi var. Formada seçdiyiniz kanal LeadDrive-da kampaniya kimi görünür — göndərişlə yanaşı, ondan gələn lidlər, sövdələşmələr və pul da burada sayılır.",
       area: "campaigns",
       route: "/campaigns",
       navGroup: "marketing",
-      estimatedMinutes: 2,
+      estimatedMinutes: 3,
       requires: [],
       entryStates: ["STARTED"],
       exitStates: ["SOURCE_SEEN"],
@@ -132,12 +132,40 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
           analyticsEvent: "journey.transition",
         },
         {
+          id: "source-funnel",
+          title: "Kampaniya nə gətirdi",
+          // The point of the chapter: a mailer counts sends, a CRM counts what
+          // came of them. Both figures are the campaign ROI screen's own
+          // funnel (src/app/(dashboard)/campaign-roi/page.tsx).
+          instruction: "Göndərişin altında əsas rəqəmlər var: neçə lid, neçə sövdələşmə, neçəsi qazanıldı. Adi göndəriş xidməti burada dayanır — CRM isə hər lidi kampaniyaya bağlayır. Bir neçə addımdan sonra siz də bu «Lidlər» sətrinə əlavə olunacaqsınız.",
+          anchor: "campaign-funnel",
+          placement: "top",
+          action: "observe",
+          required: false,
+          completion: { kind: "viewed" },
+          covers: ["campaigns.funnel"],
+          analyticsEvent: "journey.step_viewed",
+        },
+        {
+          id: "source-roi",
+          title: "Kampaniyanın pulu",
+          instruction: "Sağda kampaniyanın pulu: büdcə, gəlir və ROI. Gəlir kliklərdən yox, bu kampaniyadan gələn qazanılmış sövdələşmələrdən yığılır; xərc kimi isə daxil edilmiş büdcə götürülür — məhsul faktiki xərci özü qeydə almır.",
+          anchor: "campaign-roi",
+          placement: "top",
+          action: "observe",
+          required: false,
+          completion: { kind: "viewed" },
+          covers: ["campaigns.roi"],
+          analyticsEvent: "journey.step_viewed",
+        },
+        {
           id: "source-analytics",
-          title: "Nə işlədi",
-          // The rates here are the session's fixed sample (records.ts), whatever
-          // channel the prospect chose. In the product only email campaigns record
-          // opens and clicks (src/lib/campaigns/analytics.ts), so the copy says so.
-          instruction: "Kampaniyanın açılma və klik faizi — burada nümunə rəqəmlərdir. Real hesabda açılma və klikləri e-poçt kampaniyaları qeydə alır, «Analitika» vərəqi isə onları bütün kampaniyalar üzrə ümumiləşdirir.",
+          title: "Açılışlar və kliklər",
+          // Opens and clicks are recorded for email campaigns only; the
+          // product prints «—» and says so on the campaign page itself
+          // (campaigns.detailEngagementEmailOnly), so the demo shows the same
+          // instead of an invented Instagram open rate.
+          instruction: "Açılma və klik faizini yalnız e-poçt kampaniyaları qeydə alır — başqa kanallarda bu sətirlər «—» qalır və ekran özü səbəbini yazır. Burada uydurma rəqəm göstərmirik: hesabatda da eyni şeyi görəcəksiniz.",
           anchor: "campaigns-analytics",
           placement: "bottom",
           action: "observe",
@@ -190,8 +218,8 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
         },
         {
           id: "conversation-contact",
-          title: "Kim yazır",
-          instruction: "Sağ paneldə müştərinin məlumatları, teqlər və mərhələ toplanır. Menecerə başqa yerə keçmək lazım deyil.",
+          title: "Kim yazır və hansı nömrə ilə",
+          instruction: "Sağ paneldə müştərinin məlumatları toplanır: ad, şirkət, teqlər, bağlı lid və sorğuda göstərdiyiniz telefon nömrəsi. Nömrə bilindiyi üçün eyni müştəri WhatsApp-da da bir kart kimi görünür — menecerə başqa yerə keçmək lazım deyil.",
           anchor: "inbox-contact-panel",
           placement: "left",
           action: "observe",
@@ -243,8 +271,8 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
         },
         {
           id: "ai-reply-composer",
-          title: "Əl ilə cavab da mümkündür",
-          instruction: "Aşağıda kompozer: cavab və ya daxili qeyd, hazır şablonlar «/» ilə, AI-ın köməyi ilə mətni qısaltmaq və tərcümə etmək.",
+          title: "İndi özünüz yazın",
+          instruction: "Aşağıdakı kompozerdə özünüz yazıb «Göndər» basın — mesaj söhbətdə görünəcək. Cavab və ya daxili qeyd seçə bilərsiniz. Demoda 5 mesaj limiti var və mesaj bu ekrandan kənara çıxmır; real hesabda o, müştəriyə seçilmiş kanalla gedir.",
           anchor: "inbox-composer",
           placement: "top",
           action: "observe",

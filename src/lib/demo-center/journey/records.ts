@@ -37,6 +37,24 @@ export interface DemoCampaignRecord {
   readonly opened: number
   readonly clicked: number
   readonly sentAt: string
+  /** What was entered for the campaign; the product counts the budget as the cost once it has gone out (src/lib/campaigns/roi.ts). */
+  readonly budget: number
+  /** The funnel the campaign ROI screen draws: leads → deals → won, and the money the won ones brought. */
+  readonly leads: number
+  readonly deals: number
+  readonly wonDeals: number
+  readonly revenue: number
+}
+
+/**
+ * Opens, clicks, bounces and spam are recorded for e-mail campaigns only —
+ * the campaign page says so itself when the campaign is of another type
+ * (`campaigns.detailEngagementEmailOnly`). Two of the demo's channels are
+ * e-mail ones; for the rest the demo shows «—», exactly like a live tenant,
+ * instead of inventing an open rate Instagram never reports.
+ */
+export function campaignRecordsEngagement(channel: DemoSourceChannel): boolean {
+  return channel === "referral" || channel === "event"
 }
 
 export interface DemoMessageRecord {
@@ -243,6 +261,11 @@ export function createJourneyRecords(identity: DemoProspectIdentity, now: Date):
       opened: 468,
       clicked: 97,
       sentAt: iso(now, -3 * 24 * 60),
+      budget: 2400,
+      leads: 37,
+      deals: 6,
+      wonDeals: 2,
+      revenue: 9600,
     },
     conversation: {
       id: "conv-demo-1",
@@ -344,6 +367,9 @@ export function applyTransitionEffects(
       const inbound = records.conversation.messages[0]
       return {
         ...records,
+        // The prospect is now one of this campaign's leads — that link
+        // (Lead.campaignId) is what the campaign ROI screen counts.
+        campaign: { ...records.campaign, leads: records.campaign.leads + 1 },
         lead: {
           id: "lead-demo-1",
           contactName: identity.name,
@@ -457,6 +483,7 @@ export function applyTransitionEffects(
       if (records.deal || !records.lead) return records
       return {
         ...records,
+        campaign: { ...records.campaign, deals: records.campaign.deals + 1 },
         deal: {
           id: "deal-demo-1",
           title: `${identity.company} — LeadDrive CRM`,
@@ -525,6 +552,9 @@ export function applyTransitionEffects(
       const gross = records.quote ? quoteTotals(records.quote).gross : records.deal.amount
       return {
         ...records,
+        // Won money is attributed to the campaign the deal came from, so the
+        // campaign's ROI moves with this one deal.
+        campaign: { ...records.campaign, wonDeals: records.campaign.wonDeals + 1, revenue: records.campaign.revenue + gross },
         deal: { ...records.deal, stageIndex: wonIndex, probability: 100, amount: gross, wonAt: at },
         lead: records.lead
           ? { ...records.lead, timeline: [...records.lead.timeline, { id: "tl-won", kind: "deal", title: "Sövdələşmə qazanıldı", subtitle: `Mənbə: ${records.campaign.name}`, date: at }] }

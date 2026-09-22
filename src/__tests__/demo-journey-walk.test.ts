@@ -122,13 +122,21 @@ async function renderPlayer() {
   await settle()
 }
 
+/** Walks the story until `stopAt` is the step in hand; the screen is left on it. */
+async function walkTo(stopAt: string): Promise<void> {
+  await walkToEnd(undefined, stopAt)
+  expect(frontier().stepId, `never reached ${stopAt}`).toBe(stopAt)
+}
+
 /** Walks from wherever the story is to its end; returns the steps taken.
- *  `detour` runs once before a step is pressed — a prospect wandering off. */
-async function walkToEnd(detour?: (stepId: string) => Promise<void>): Promise<string[]> {
+ *  `detour` runs once before a step is pressed — a prospect wandering off.
+ *  `stopAt` stops in front of that step instead of walking to the end. */
+async function walkToEnd(detour?: (stepId: string) => Promise<void>, stopAt?: string): Promise<string[]> {
   const walked: string[] = []
   const detoured = new Set<string>()
   for (let guard = 0; guard < 200; guard += 1) {
     const { stepId, state } = frontier()
+    if (stepId === stopAt) return walked
     if (state === "COMPLETED") break
     const step = steps.get(stepId)
     expect(step, `unknown frontier step ${stepId}`).toBeDefined()
@@ -154,6 +162,10 @@ async function walkToEnd(detour?: (stepId: string) => Promise<void>): Promise<st
   // And no click ever landed on the wrong thing.
   expect(toasts.filter((message) => message.startsWith(S.hintFollow("")))).toEqual([])
   return walked
+}
+
+function textOf(selector: string): string {
+  return document.querySelector(selector)?.textContent ?? ""
 }
 
 const stepIdsFrom = (sectionId: string) => {
@@ -219,6 +231,76 @@ describe("the guided story, walked through the real screens", () => {
     await settle()
     expect(frontier().sectionId).toBe("deal")
     expect(await walkToEnd()).toEqual(stepIdsFrom("deal"))
+  }, 60_000)
+})
+
+/**
+ * What the owner asked for on 22.09.2026, looking at the demo on his own
+ * screen: the campaign chapter must show the CRM's own work and not invent an
+ * Instagram open rate; the customer card must carry the phone from the
+ * request; and the composer must work — with a limit that says why it stops.
+ */
+describe("what each chapter actually shows", () => {
+  it("does not invent opens and clicks for a channel the product does not record them on", async () => {
+    await renderPlayer()
+    await walkTo("source-analytics")
+    const rates = textOf('[data-tour-id="campaigns-analytics"]')
+    expect(rates).toContain("—")
+    expect(rates).not.toMatch(/\d+%/)
+    // The product's own sentence, from messages/az.json, is on the screen.
+    expect(textOf('[data-testid="demo-scene-campaign-detail"]')).toContain(messages.campaigns.detailEngagementEmailOnly)
+  }, 60_000)
+
+  it("counts what the campaign brought: leads, deals, won money and ROI", async () => {
+    await renderPlayer()
+    await walkTo("source-funnel")
+    const funnel = textOf('[data-tour-id="campaign-funnel"]')
+    expect(funnel).toContain(messages.campaignRoi.leads)
+    expect(funnel).toContain("37")
+    const money = textOf('[data-tour-id="campaign-roi"]')
+    expect(money).toContain("2,400 ₼")
+    expect(money).toContain("9,600 ₼")
+    expect(money).toContain("+300%")
+  }, 60_000)
+
+  it("shows the phone from the request on the customer card, and WhatsApp beside the channel it came from", async () => {
+    await renderPlayer()
+    await walkTo("conversation-contact")
+    const panel = textOf('[data-tour-id="inbox-contact-panel"]')
+    expect(panel).toContain("+994 ••••• 67")
+    expect(panel).toContain(S.contactPhoneFromRequest)
+    expect(panel).toContain("WhatsApp")
+    expect(panel).toContain("Instagram")
+  }, 60_000)
+
+  it("lets the prospect write, and after five messages says why it stops", async () => {
+    await renderPlayer()
+    await walkTo("ai-reply-composer")
+    const composer = () => document.querySelector<HTMLDivElement>('[data-tour-id="inbox-composer"]')!
+    const write = async (text: string) => {
+      const box = composer().querySelector<HTMLTextAreaElement>("textarea")!
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!
+      await act(async () => {
+        setter.call(box, text)
+        box.dispatchEvent(new Event("input", { bubbles: true }))
+      })
+      const send = buttonWithText(S.replySend, composer())
+      if (!send) return false
+      await act(async () => send.click())
+      await settle(0)
+      return true
+    }
+
+    for (let index = 1; index <= 5; index += 1) {
+      expect(await write(`Sualım var — ${index}`), `message ${index} could not be sent`).toBe(true)
+    }
+    const thread = textOf('[data-tour-id="inbox-thread"]') || container.textContent || ""
+    expect(thread).toContain("Sualım var — 5")
+
+    // The sixth is refused, and the screen says why rather than going quiet.
+    expect(await write("Altıncı")).toBe(false)
+    expect(textOf('[data-tour-id="inbox-composer"]')).toContain(S.replyLimitBody(5))
+    expect(composer().querySelector<HTMLTextAreaElement>("textarea")!.disabled).toBe(true)
   }, 60_000)
 })
 
