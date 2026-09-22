@@ -338,6 +338,81 @@ try {
     await prisma.kbArticle.create({ data: { ...a, organizationId: orgId, status: "published", tags: [SEED_TAG] } })
   }
   console.log(`  knowledge base: ${KB.length} published articles`)
+
+  // ── Reel 2 «5 signs your CRM works like a notebook»: pipeline money by
+  // stage, overdue tasks, a call + task on the hero contact, a WhatsApp lead
+  // and a stage-change automation rule. All tagged and reset on every run.
+  const pipeline = await prisma.pipeline.findFirst({ where: { organizationId: orgId, isDefault: true } })
+  const contactByName = async (n) => prisma.contact.findFirst({ where: { organizationId: orgId, fullName: n } })
+  await prisma.task.deleteMany({ where: { organizationId: orgId, customFields: { path: ["seed"], equals: SEED_TAG } } })
+  await prisma.deal.deleteMany({ where: { organizationId: orgId, metadata: { path: ["seed"], equals: SEED_TAG } } })
+  await prisma.lead.deleteMany({ where: { organizationId: orgId, sourceDetail: SEED_TAG } })
+  await prisma.callLog.deleteMany({ where: { organizationId: orgId, callSid: { startsWith: "reel-" } } })
+  await prisma.workflowRule.deleteMany({ where: { organizationId: orgId, name: { startsWith: "[Demo] " } } })
+
+  const DEALS = [
+    ["LEAD", "Künc divan «Bakı»", "Nərmin Əliyeva", 1890, "aynur"],
+    ["LEAD", "Yataq dəsti (boz)", "Elçin Hüseynov", 2400, "aynur"],
+    ["QUALIFIED", "Mətbəx dəsti «Nar»", "Kənan İsmayılov", 4300, "tural"],
+    ["QUALIFIED", "Ofis kresloları ×12", "Fuad Abbasov", 3600, "tural"],
+    ["PROPOSAL", "Fərdi künc divan 3 m", "Aygün Hüseynli", 2750, "aynur"],
+    ["PROPOSAL", "Uşaq otağı dəsti", "Lalə Qasımova", 3100, "sebine"],
+    ["NEGOTIATION", "Restoran mebeli — 24 yer", "Murad Zeynalov", 12800, "sebine"],
+    ["WON", "Ortopedik döşək 180×200", "Nigar Vəliyeva", 640, "aynur"],
+    ["WON", "Qonaq dəsti", "Sevinc Bağırova", 2900, "tural"],
+    ["LOST", "Bağ mebeli", "Ramil Nağıyev", 1500, "sebine"],
+  ]
+  const PROB = { LEAD: 10, QUALIFIED: 25, PROPOSAL: 50, NEGOTIATION: 75, WON: 100, LOST: 0 }
+  const dealIds = {}
+  for (const [stage, what, who, amount, agent] of DEALS) {
+    const c = await contactByName(who)
+    const d = await prisma.deal.create({ data: {
+      organizationId: orgId, pipelineId: pipeline?.id ?? null, contactId: c?.id ?? null,
+      name: `${what} — ${who}`, stage, valueAmount: amount, currency: "AZN", probability: PROB[stage],
+      assignedTo: agentIds[agent], expectedClose: at(nowMs + 14 * DAY), stageChangedAt: at(nowMs - 3 * DAY),
+      metadata: { seed: SEED_TAG },
+    } })
+    dealIds[who] = d.id
+  }
+  console.log(`  deals: ${DEALS.length}`)
+
+  // Overdue tasks (dashboard's «Risklər» banner needs more than three) plus
+  // one on time for the hero contact.
+  const TASKS = [
+    ["Nərmin Əliyeva — rəng nümunələrini göndər", "deal", "Nərmin Əliyeva", -2, "aynur", "high"],
+    ["Kənan İsmayılov — mətbəx ölçülərini dəqiqləşdir", "deal", "Kənan İsmayılov", -1, "tural", "medium"],
+    ["Fuad Abbasov — korporativ təklifi göndər", "deal", "Fuad Abbasov", -3, "tural", "high"],
+    ["Murad Zeynalov — restoran üçün 3D layihə", "deal", "Murad Zeynalov", -5, "sebine", "high"],
+    ["Nərmin Əliyeva — çatdırılma gününü razılaşdır", "contact", "Nərmin Əliyeva", 1, "aynur", "medium"],
+  ]
+  for (const [title, relatedType, who, dueDays, agent, priority] of TASKS) {
+    const relatedId = relatedType === "deal" ? dealIds[who] : (await contactByName(who))?.id
+    await prisma.task.create({ data: {
+      organizationId: orgId, title, status: "pending", priority, dueDate: at(nowMs + dueDays * DAY),
+      assignedTo: agentIds[agent], relatedType, relatedId: relatedId ?? null, customFields: { seed: SEED_TAG },
+    } })
+  }
+  console.log(`  tasks: ${TASKS.length} (4 overdue)`)
+
+  const hero = await contactByName("Nərmin Əliyeva")
+  if (hero) {
+    await prisma.callLog.create({ data: {
+      organizationId: orgId, callSid: "reel-call-nermin", direction: "inbound", fromNumber: "+994505550110", toNumber: "+994125550100",
+      status: "completed", duration: 192, wasAnswered: true, contactId: hero.id, userId: agentIds.aynur,
+      startedAt: at(heroMs + 8 * HOUR), notes: "Divanın rəngini dəqiqləşdirdi, nümunələr WhatsApp-a göndərildi.",
+    } })
+    await prisma.lead.create({ data: {
+      organizationId: orgId, contactName: hero.fullName, phoneWhatsApp: "+994505550110", source: "whatsapp", sourceDetail: SEED_TAG,
+      interest: "Künc divan «Bakı»", status: "new", priority: "high", score: 72, estimatedValue: 1890, assignedTo: agentIds.aynur,
+      pipelineId: pipeline?.id ?? null, customerStage: "qualified",
+    } })
+  }
+  await prisma.workflowRule.create({ data: {
+    organizationId: orgId, name: "[Demo] Mərhələ dəyişəndə — növbəti addım", entityType: "deal", triggerEvent: "stage_changed",
+    conditions: {}, isActive: true,
+    actions: { create: [{ actionType: "create_task", actionOrder: 0, actionConfig: { title: "Növbəti addım: müştəri ilə əlaqə", priority: "high" } }] },
+  } })
+  console.log("  hero call + lead, workflow rule")
   console.log(`✔ done — hero thread at ${new Date(heroMs).toISOString()} (02:14 Baku)`)
 } finally {
   await prisma.$disconnect()
