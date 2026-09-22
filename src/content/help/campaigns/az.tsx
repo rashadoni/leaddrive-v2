@@ -49,7 +49,7 @@ export default function CampaignsHelpAz() {
         </p>
         <dl className="rounded-md border p-3">
           <HelpDef term="Qaralama">Hələ göndərilməyən, redaktə edilə bilən kampaniya.</HelpDef>
-          <HelpDef term="Planlaşdırılıb">Gələcək bir tarixə göndərmə üçün təyin edilmiş kampaniya.</HelpDef>
+          <HelpDef term="Planlaşdırılıb">Göndərmə vaxtı təyin olunmuş kampaniya. Həmin vaxt özü göndərilir; o vaxta qədər onu dəyişmək və ya dərhal göndərmək olar.</HelpDef>
           <HelpDef term="Göndərilir">Hazırda alıcılara göndərilməkdə olan kampaniya.</HelpDef>
           <HelpDef term="Göndərildi">Göndərmə bitmiş kampaniya — bundan sonra kart yalnız oxunan icmal kimi açılır.</HelpDef>
           <HelpDef term="Ləğv edildi">Dayandırılmış və ya ləğv edilmiş kampaniya.</HelpDef>
@@ -100,6 +100,9 @@ export default function CampaignsHelpAz() {
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
             Şablon siyahısı yüklənənə qədər «Yüklənir...», sonra «— Şablonsuz —» və mövcud şablonlar
             görünür. «Göndərmə planla» sahəsi tarix-vaxt seçicisidir; büdcə yalnız rəqəm qəbul edir.
+            Yeni kampaniyada tarix sadəcə qeyddir — kampaniya qaralama olaraq qalır. Avtomatik
+            göndərilməsi üçün onu açıb «Yazmaq» vkladkasında <HelpKey>Planlaşdır</HelpKey> düyməsini
+            basın.
           </HelpCallout>
         </HelpStep>
         <HelpStep n={4}>

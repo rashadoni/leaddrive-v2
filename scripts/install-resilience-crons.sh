@@ -57,6 +57,7 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   /cron-trigger\.sh \/api\/cron\/mtm-cleanup/ { next }
   /cron-trigger\.sh \/api\/cron\/mtm-route-day-close/ { next }
   /cron-trigger\.sh \/api\/cron\/demo-call-retention/ { next }
+  /cron-trigger\.sh \/api\/cron\/campaign-scheduled-send/ { next }
   { print }
 ' "$CURRENT" > "$CLEAN"
 
@@ -108,6 +109,12 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # which no single UTC tick can hit for every tenant. The update is idempotent
   # and leased, so extra ticks cost one bounded query per tenant.
   printf '%s\n' "20 * * * * $TRIGGER /api/cron/mtm-route-day-close >> $LOG 2>&1"
+  # A campaign with status «scheduled» goes out when its scheduledAt comes.
+  # These are real messages to customers' contacts: each campaign is claimed
+  # with one conditional write before sending, so overlapping ticks or a manual
+  # send racing the cron still deliver it once. Every minute, because the
+  # promise to the user is "at the chosen time".
+  printf '%s\n' "* * * * * $TRIGGER /api/cron/campaign-scheduled-send >> $LOG 2>&1"
   # The durable queue drain is required for user-started jobs and is safe to
   # run independently. Keep the legacy marker and all other social workers
   # behind their existing opt-in state. Retaining the marker also ensures an
