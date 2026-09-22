@@ -17,6 +17,7 @@ import {
   DEMO_JOURNEY_SCENARIOS,
   DEMO_JOURNEY_STATES,
   DEMO_JOURNEY_TRANSITIONS,
+  DEMO_PUBLIC_CLIP_SLUGS,
   DEMO_PRODUCT_AREAS_WITH_COVERAGE,
   PROSPECT_TO_CLOSED_WON,
   applyTransition,
@@ -394,8 +395,22 @@ describe("The open demo", () => {
     expect(guide).toContain('variant !== "granted"')
   })
 
-  it("serves no help-library media to an unverified visitor", () => {
-    expect(guide).toContain('variant !== "open"')
+  it("serves an unverified visitor only the clips filmed on the invented stand", () => {
+    // Owner decision 2026-09-22: the stand's own clips play in the open demo
+    // too; the help library's clips (real organisations' records) stay behind
+    // a grant. Both the card and the public route check the same list.
+    expect(guide).toContain('variant === "open" && DEMO_PUBLIC_CLIP_SLUGS.has(slug)')
+    const publicRoute = read("src/app/api/v1/public/demo-clips/[file]/route.ts")
+    expect(publicRoute).toContain("DEMO_PUBLIC_CLIP_SLUGS.has(parsed.slug)")
+    const intros = new Map(manifest.sections.flatMap((section) => (section.intro ? [[section.intro.slug, section.intro.status] as const] : [])))
+    for (const slug of DEMO_PUBLIC_CLIP_SLUGS) {
+      // Filmed on the stand (the demo-* names), and really played by the story.
+      expect(slug.startsWith("demo-"), slug).toBe(true)
+      expect(intros.get(slug), slug).toBe("available")
+    }
+    for (const [slug] of intros) {
+      if (!slug.startsWith("demo-")) expect(DEMO_PUBLIC_CLIP_SLUGS.has(slug), `${slug} is a help-library clip`).toBe(false)
+    }
   })
 
   it("lives outside the marketing layout, and is reachable without a session", () => {
