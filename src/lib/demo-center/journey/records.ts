@@ -203,6 +203,9 @@ function firstName(name: string): string {
   return name.trim().split(/\s+/)[0] || name
 }
 
+/** What the prospect sets on «Mövqelər və cəm»; the draft starts two below it. */
+export const DEMO_QUOTE_LICENCES = 10
+
 export function quoteTotals(quote: Pick<DemoQuoteRecord, "lines" | "vatPercent">): { net: number; vat: number; gross: number } {
   const net = quote.lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0)
   const vat = Math.round(net * quote.vatPercent) / 100
@@ -455,9 +458,12 @@ export function applyTransitionEffects(
           id: "quote-demo-1",
           quoteNumber: "KT-2026-0418",
           status: "draft",
+          // The prospect corrects the licence count on the «Mövqelər və cəm»
+          // step (8 → 10), and the total lands next to the lead's estimate
+          // (4 800 ₼) instead of a third of it.
           lines: [
-            { id: "ql-1", product: "LeadDrive CRM · 10 istifadəçi", quantity: 1, unitPrice: 990 },
-            { id: "ql-2", product: "Omni-Channel modulu", quantity: 1, unitPrice: 350 },
+            { id: "ql-1", product: "LeadDrive CRM · istifadəçi lisenziyası (illik)", quantity: 8, unitPrice: 349 },
+            { id: "ql-2", product: "Omni-Channel modulu", quantity: 1, unitPrice: 590 },
           ],
           vatPercent: 18,
           validUntil: iso(now, 14 * 24 * 60),
@@ -471,7 +477,9 @@ export function applyTransitionEffects(
 
     case "QUOTE_SENT": {
       if (!records.quote || records.quote.status !== "draft") return records
-      return { ...records, quote: { ...records.quote, status: "sent", sentAt: at } }
+      // The licence count the prospect corrected on the previous step.
+      const lines = records.quote.lines.map((line) => (line.id === "ql-1" ? { ...line, quantity: DEMO_QUOTE_LICENCES } : line))
+      return { ...records, quote: { ...records.quote, lines, status: "sent", sentAt: at } }
     }
 
     case "QUOTE_ACCEPTED": {

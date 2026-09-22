@@ -74,7 +74,7 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
   // above, contact below. From 1152px: the product's own four columns.
   return (
     <div className="@container">
-    <div data-testid="demo-scene-inbox" className="grid min-h-[560px] grid-cols-1 overflow-hidden rounded-xl border border-zinc-200 bg-card @3xl:grid-cols-[260px_minmax(0,1fr)] @6xl:grid-cols-[176px_280px_minmax(0,1fr)_260px] dark:border-zinc-700">
+    <div data-testid="demo-scene-inbox" className="grid min-h-[560px] grid-cols-1 content-start overflow-hidden rounded-xl border border-zinc-200 bg-card @3xl:grid-cols-[260px_minmax(0,1fr)] @3xl:grid-rows-[auto_minmax(0,1fr)_auto] @3xl:content-stretch @6xl:grid-cols-[176px_280px_minmax(0,1fr)_260px] @6xl:grid-rows-1 dark:border-zinc-700">
       {/* View rail */}
       <div className="flex flex-col border-b border-border/60 @3xl:col-span-2 @6xl:col-span-1 @6xl:border-b-0 @6xl:border-r">
         <div className="hidden h-12 items-center gap-2 border-b border-border/60 px-3 @6xl:flex">
@@ -178,9 +178,9 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
         ) : (
           <>
             <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border/60 px-4">
-              <span className="truncate text-sm font-semibold">{conversation.contactName}</span>
+              <span className="min-w-0 flex-1 truncate text-sm font-semibold">{conversation.contactName}</span>
               <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{channelLabel}</span>
-              <span className="ml-auto text-xs text-muted-foreground">{tc("assignee")}: {conversation.assignedTo}</span>
+              <span className="hidden shrink-0 whitespace-nowrap text-xs text-muted-foreground @2xl:inline">{tc("assignee")}: {conversation.assignedTo}</span>
             </div>
 
             <div data-tour-id="inbox-thread" className="flex-1 space-y-3 overflow-y-auto p-4">
@@ -272,7 +272,7 @@ export function InboxScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
         {selected ? (
           <>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t("selectConversation")}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{S.contactPanelTitle}</p>
               <p className="mt-1 text-sm font-semibold">{conversation.contactName}</p>
               <p className="text-xs text-muted-foreground">{conversation.companyName}</p>
             </div>

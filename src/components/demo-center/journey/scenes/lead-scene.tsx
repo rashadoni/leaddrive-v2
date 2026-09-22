@@ -127,7 +127,7 @@ function LeadListView({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneP
         </button>
       </div>
 
-      <div data-tour-id="leads-stats" className="grid grid-cols-4 gap-0 overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700">
+      <div data-tour-id="leads-stats" className="grid grid-cols-2 gap-0 overflow-hidden rounded-lg border border-zinc-200 sm:grid-cols-4 dark:border-zinc-700">
         {[
           { value: rows.length, label: t("title") },
           { value: 0, label: t("statusConverted") },
@@ -169,7 +169,7 @@ function LeadListView({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneP
             className="w-full rounded-lg border border-zinc-200 bg-background py-2 pl-9 pr-3 text-sm dark:border-zinc-700"
           />
         </div>
-        <span className="ml-auto text-sm text-muted-foreground">{rows.length}</span>
+        <span className="ml-auto shrink-0 text-sm text-muted-foreground">{t("title")}: {rows.length}</span>
       </div>
 
       <div data-tour-id="leads-kanban" className="grid grid-cols-2 gap-4 lg:grid-cols-5">
@@ -341,7 +341,7 @@ export function LeadCardView({ snapshot, step, reviewMode, dispatch, hint, lead 
       {/* Status pipeline bar */}
       <Card data-tour-id="lead-status-bar">
         <CardContent className="py-4">
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             {STATUSES.map((status, index) => {
               const isCurrent = status === lead.status
               const isActive = index <= currentIndex

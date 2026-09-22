@@ -6,7 +6,7 @@ import { ArrowLeft, Download, FileText, Plus, Search } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { formatDate } from "@/lib/format-date"
-import { quoteTotals } from "@/lib/demo-center/journey"
+import { DEMO_QUOTE_LICENCES, quoteTotals } from "@/lib/demo-center/journey"
 import { cn } from "@/lib/utils"
 import type { DemoSceneProps } from "../scene-props"
 import { demoTarget } from "../demo-target"
@@ -32,7 +32,13 @@ export function QuoteScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
   const t = useTranslations("quotes")
   const td = useTranslations("quotesDetail")
   const locale = useLocale()
-  const { quote, deal, lead } = snapshot.records
+  const { quote: storedQuote, deal, lead } = snapshot.records
+  // The click on the quantity is the edit: the line, the subtotal and the VAT
+  // change with it at once; the sent quote then carries the same number.
+  const linesEdited = snapshot.ui["quote.linesEdited"] === true
+  const quote = storedQuote && linesEdited
+    ? { ...storedQuote, lines: storedQuote.lines.map((line) => (line.id === "ql-1" ? { ...line, quantity: DEMO_QUOTE_LICENCES } : line)) }
+    : storedQuote
   const [detail, setDetail] = useState(!!quote)
   const [dialogOpen, setDialogOpen] = useState(false)
 

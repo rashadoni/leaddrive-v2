@@ -108,7 +108,7 @@ function DealWorkspace({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
       <div data-testid="demo-scene-deals-board" className="space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <div data-tour-id="deals-view-tabs" className="flex items-center gap-1 rounded-lg border border-zinc-200 p-1 dark:border-zinc-700">
               {([
                 { key: "kanban" as const, Icon: Columns3, label: tc("kanban") },
@@ -189,7 +189,7 @@ function DealWorkspace({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
                           </span>
                         </button>
                         {index < DEMO_DEAL_STAGES.length - 1 && (
-                          <Button size="sm" variant="outline" className="mt-2 h-7 w-full text-[11px]" onClick={() => advance()} {...demoTarget("deal-advance")}>
+                          <Button size="sm" variant="outline" className="mt-2 h-7 w-full min-w-0 justify-center overflow-hidden text-[11px]" onClick={() => advance()} {...demoTarget("deal-advance")}>
                             {S.dragHint}
                           </Button>
                         )}

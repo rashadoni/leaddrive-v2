@@ -361,7 +361,8 @@ export function DemoJourneyPlayer({
                 <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-orange-800">
                   {variant === "preview" ? S.badgePreview : variant === "open" ? S.badgeOpen : S.badgePrivate}
                 </span>
-                <p className="truncate text-xs text-muted-foreground">
+                {/* The line that says nothing is really sent must be readable on a phone. */}
+                <p className="text-xs leading-snug text-muted-foreground line-clamp-2 sm:truncate">
                   {variant === "preview" ? S.forCompanyPreview(company) : variant === "open" ? S.openIntro : S.forCompany(company)}
                 </p>
               </div>

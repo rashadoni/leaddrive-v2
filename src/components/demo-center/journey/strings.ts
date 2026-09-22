@@ -100,6 +100,7 @@ export const DEMO_JOURNEY_STRINGS = {
   aiDraftQuality: (score: number) => `keyfiyyət ${score}`,
   aiDraftReason: "Yalnız qaralama rejimi: cavabı operator təsdiqləməyincə göndərilmir.",
   aiDraftDiscard: "İmtina et",
+  contactPanelTitle: "Müştəri",
   linkedLead: "Bağlı lid",
   boardsTitle: "Lövhələr",
   salesBoard: "Satış lövhəsi",
