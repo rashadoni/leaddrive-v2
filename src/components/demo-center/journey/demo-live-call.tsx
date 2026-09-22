@@ -11,6 +11,8 @@ export interface DemoLiveCallState {
   enabled: boolean
   requestPhoneUsable: boolean
   phoneVerified: boolean
+  /** This demo's one call was already placed: watch it, never offer another. */
+  callPlaced?: boolean
 }
 
 type Stage = "phone" | "code" | "ready" | "waiting"
@@ -36,11 +38,11 @@ export function DemoLiveCall({
   initial: DemoLiveCallState
   onOutcome: (to: DemoJourneyState) => void
 }) {
-  const [stage, setStage] = useState<Stage>(initial.phoneVerified ? "ready" : "phone")
+  const [stage, setStage] = useState<Stage>(initial.callPlaced ? "waiting" : initial.phoneVerified ? "ready" : "phone")
   const [code, setCode] = useState("")
   const [consent, setConsent] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [notice, setNotice] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(initial.callPlaced ? S.liveCallOnlyOnce : null)
   const [blocked, setBlocked] = useState<{ retryable: boolean } | null>(null)
   const [phase, setPhase] = useState<"queued" | "calling">("queued")
   const startedAt = useRef<number | null>(null)
@@ -122,6 +124,7 @@ export function DemoLiveCall({
     const payload = await post("/call")
     setBusy(false)
     if (payload.success) {
+      if (payload.alreadyCalled) setNotice(S.liveCallOnlyOnce)
       if (payload.phase === "ended" && payload.outcome) {
         onOutcome(payload.outcome as DemoJourneyState)
         return
@@ -145,6 +148,7 @@ export function DemoLiveCall({
       <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-orange-800 dark:text-orange-300">
         <PhoneCall className="h-3.5 w-3.5" aria-hidden="true" /> {S.liveCallTitle}
       </p>
+      <p className="mt-1 leading-relaxed text-muted-foreground">{S.liveCallRules}</p>
 
       {stage === "phone" ? (
         <div className="mt-2 space-y-2">

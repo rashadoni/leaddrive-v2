@@ -8,6 +8,7 @@ import {
   type DemoSourceChannel,
 } from "@/lib/demo-center/journey"
 import { expireDemoGrantIfNeeded, noStoreHeaders, validRawDemoToken } from "@/lib/demo-center/access"
+import { demoCallStatus } from "@/lib/demo-center/demo-call"
 import { demoLiveCallState } from "@/lib/demo-center/phone-verification"
 import {
   anonymizedClientMetadata,
@@ -124,7 +125,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     // Booleans only: whether a live call is on, whether the request's own
     // number can be used without retyping, whether a phone is already proven.
-    const liveCall = scenario ? await demoLiveCallState(grant, grant.request.phone) : null
+    const liveCall = scenario
+      ? {
+          ...(await demoLiveCallState(grant, grant.request.phone)),
+          // One call per demo: a reload during or after it resumes watching
+          // that call instead of offering a new one.
+          callPlaced: grant.liveCallEnabled ? (await demoCallStatus(grant)).phase !== "none" : false,
+        }
+      : null
 
     return NextResponse.json({
       success: true,
