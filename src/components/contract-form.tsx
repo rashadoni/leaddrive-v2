@@ -9,7 +9,8 @@ import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from "@/components/ui/dialog"
 import { useTranslations } from "next-intl"
-import { DEFAULT_CURRENCY, CURRENCY_SYMBOLS } from "@/lib/constants"
+import { CURRENCY_SYMBOLS } from "@/lib/constants"
+import { useCurrencyField } from "@/lib/use-org-default-currency"
 
 interface ContractFormData {
   contractNumber: string
@@ -41,6 +42,9 @@ interface ContactOption {
   fullName: string
 }
 
+/** The form's own fields; the currency is held by useCurrencyField. */
+type ContractFields = Omit<ContractFormData, "currency">
+
 interface ContractFormProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -54,7 +58,10 @@ export function ContractForm({ open, onOpenChange, onSaved, initialData, orgId }
   const tc = useTranslations("common")
   const tct = useTranslations("contracts")
   const isEdit = !!initialData?.id
-  const [form, setForm] = useState<ContractFormData>({
+  // A new contract starts in the organisation's currency, not the browser's
+  // "USD"; an existing one keeps its own.
+  const { currency, setCurrency, resetCurrency } = useCurrencyField(initialData?.currency)
+  const [form, setForm] = useState<ContractFields>({
     contractNumber: "",
     title: "",
     companyId: "",
@@ -65,7 +72,6 @@ export function ContractForm({ open, onOpenChange, onSaved, initialData, orgId }
     startDate: "",
     endDate: "",
     valueAmount: "",
-    currency: DEFAULT_CURRENCY,
     notes: "",
   })
   const [saving, setSaving] = useState(false)
@@ -119,12 +125,12 @@ export function ContractForm({ open, onOpenChange, onSaved, initialData, orgId }
         startDate: sd,
         endDate: ed,
         valueAmount: initialData?.valueAmount || "",
-        currency: initialData?.currency || DEFAULT_CURRENCY,
         notes: initialData?.notes || "",
       })
+      resetCurrency(initialData?.currency)
       setError("")
     }
-  }, [open, initialData])
+  }, [open, initialData, resetCurrency])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -143,7 +149,7 @@ export function ContractForm({ open, onOpenChange, onSaved, initialData, orgId }
         startDate: form.startDate || undefined,
         endDate: form.endDate || undefined,
         valueAmount: form.valueAmount ? parseFloat(String(form.valueAmount)) : undefined,
-        currency: form.currency,
+        currency,
         notes: form.notes,
         ...(isEdit ? {} : { status: "draft" }),
       }
@@ -166,7 +172,7 @@ export function ContractForm({ open, onOpenChange, onSaved, initialData, orgId }
     }
   }
 
-  const update = (key: keyof ContractFormData, value: string) => setForm((f) => ({ ...f, [key]: value }))
+  const update = (key: keyof ContractFields, value: string) => setForm((f) => ({ ...f, [key]: value }))
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -259,7 +265,7 @@ export function ContractForm({ open, onOpenChange, onSaved, initialData, orgId }
               </div>
               <div>
                 <Label htmlFor="currency">{tc("currency")}</Label>
-                <Select value={form.currency} onChange={(e) => update("currency", e.target.value)}>
+                <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
                   {Object.entries(CURRENCY_SYMBOLS).map(([code, sym]) => (
                     <option key={code} value={code}>{code} ({sym})</option>
                   ))}

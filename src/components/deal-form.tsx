@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from "@/components/ui/dialog"
-import { DEFAULT_CURRENCY, CURRENCY_SYMBOLS, DEFAULT_PIPELINE_STAGES } from "@/lib/constants"
+import { CURRENCY_SYMBOLS, DEFAULT_PIPELINE_STAGES } from "@/lib/constants"
+import { useCurrencyField } from "@/lib/use-org-default-currency"
 
 interface PipelineStage {
   id: string
@@ -50,11 +51,13 @@ export function DealForm({ open, onOpenChange, onSaved, initialData, orgId, pipe
     campaignId: initialData?.campaignId || "",
     stage: initialData?.stage || "LEAD",
     valueAmount: String(initialData?.valueAmount || "0"),
-    currency: initialData?.currency || DEFAULT_CURRENCY,
     probability: String(initialData?.probability || "10"),
     expectedClose: initialData?.expectedClose?.slice(0, 10) || "",
     notes: initialData?.notes || "",
   })
+  // A new deal starts in the organisation's currency, not the browser's "USD";
+  // an existing deal keeps its own.
+  const { currency, setCurrency, resetCurrency } = useCurrencyField(initialData?.currency)
   const [companies, setCompanies] = useState<Array<{ id: string; name: string }>>([])
   const [contacts, setContacts] = useState<Array<{ id: string; name: string }>>([])
   const [campaigns, setCampaigns] = useState<Array<{ id: string; name: string }>>([])
@@ -74,14 +77,14 @@ export function DealForm({ open, onOpenChange, onSaved, initialData, orgId, pipe
         campaignId: initialData?.campaignId || "",
         stage: initialData?.stage || "LEAD",
         valueAmount: String(initialData?.valueAmount || "0"),
-        currency: initialData?.currency || DEFAULT_CURRENCY,
         probability: String(initialData?.probability || "10"),
         expectedClose: initialData?.expectedClose?.slice(0, 10) || "",
         notes: initialData?.notes || "",
       })
+      resetCurrency(initialData?.currency)
       setError("")
     }
-  }, [open, initialData, pipelineId])
+  }, [open, initialData, pipelineId, resetCurrency])
 
   useEffect(() => {
     if (open && orgId) {
@@ -154,7 +157,7 @@ export function DealForm({ open, onOpenChange, onSaved, initialData, orgId, pipe
         pipelineId: form.pipelineId || undefined,
         stage: form.stage,
         valueAmount: parseFloat(form.valueAmount) || 0,
-        currency: form.currency,
+        currency,
         probability: parseInt(form.probability) || 0,
         expectedClose: form.expectedClose || undefined,
         notes: form.notes || undefined,
@@ -321,7 +324,7 @@ export function DealForm({ open, onOpenChange, onSaved, initialData, orgId, pipe
               </div>
               <div>
                 <Label htmlFor="currency">{tc("currency")}</Label>
-                <Select value={form.currency} onChange={e => update("currency", e.target.value)}>
+                <Select value={currency} onChange={e => setCurrency(e.target.value)}>
                   {Object.entries(CURRENCY_SYMBOLS).map(([code, sym]) => (
                     <option key={code} value={code}>{code} {sym}</option>
                   ))}

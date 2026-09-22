@@ -28,7 +28,8 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { DEFAULT_CURRENCY, CURRENCY_SYMBOLS } from "@/lib/constants"
+import { CURRENCY_SYMBOLS } from "@/lib/constants"
+import { useCurrencyField } from "@/lib/use-org-default-currency"
 import { Textarea } from "@/components/ui/textarea"
 import { Select } from "@/components/ui/select"
 import {
@@ -419,12 +420,14 @@ function CreateOrderDialog({
   initialData?: PaymentOrder
 }) {
   const t = useTranslations("finance.pod")
+  // A new payment starts in the organisation's currency, not the browser's
+  // "USD"; picking a bill takes the bill's currency.
+  const { currency, setCurrency, resetCurrency } = useCurrencyField(initialData?.currency)
   const [form, setForm] = useState({
     counterpartyName: initialData?.counterpartyName || "",
     billId: initialData?.billId || "",
     bankAccountId: "",
     amount: initialData ? String(initialData.amount) : "",
-    currency: initialData?.currency || DEFAULT_CURRENCY,
     purpose: initialData?.purpose || "",
     paymentMethod: initialData?.paymentMethod || "bank_transfer",
     bankDetails: initialData?.bankDetails || "",
@@ -444,9 +447,9 @@ function CreateOrderDialog({
         billId: bill.id,
         counterpartyName: bill.vendorName,
         amount: String(bill.balanceDue),
-        currency: bill.currency,
         purpose: t("paymentPurpose", { billNumber: bill.billNumber }),
       }))
+      setCurrency(bill.currency)
     }
   }
 
@@ -457,12 +460,13 @@ function CreateOrderDialog({
       billId: form.billId || undefined,
       bankAccountId: form.bankAccountId || undefined,
       amount: parseFloat(form.amount),
-      currency: form.currency,
+      currency,
       purpose: form.purpose,
       paymentMethod: form.paymentMethod,
       bankDetails: form.bankDetails || undefined,
     })
-    setForm({ counterpartyName: "", billId: "", bankAccountId: "", amount: "", currency: DEFAULT_CURRENCY, purpose: "", paymentMethod: "bank_transfer", bankDetails: "" })
+    setForm({ counterpartyName: "", billId: "", bankAccountId: "", amount: "", purpose: "", paymentMethod: "bank_transfer", bankDetails: "" })
+    resetCurrency()
   }
 
   return (
@@ -496,7 +500,7 @@ function CreateOrderDialog({
             </div>
             <div>
               <Label className="text-xs">{t("currency")}</Label>
-              <Select className="h-9" value={form.currency} onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}>
+              <Select className="h-9" value={currency} onChange={(e) => setCurrency(e.target.value)}>
                 {Object.entries(CURRENCY_SYMBOLS).map(([code, sym]) => (
                   <option key={code} value={code}>{code} {sym}</option>
                 ))}

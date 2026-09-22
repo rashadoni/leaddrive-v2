@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Plus, Trash2, Edit2, Building2, Star } from "lucide-react"
 import type { BankAccount, CreateBankAccountInput } from "@/lib/finance/types"
-import { DEFAULT_CURRENCY } from "@/lib/constants"
+import { useCurrencyField } from "@/lib/use-org-default-currency"
 
 export function BankAccountsManager() {
   const t = useTranslations("finance.ba")
@@ -146,13 +146,14 @@ function BankAccountDialog({ open, onClose, onSave, isPending, isEdit, initial }
   initial?: BankAccount
 }) {
   const t = useTranslations("finance.ba")
+  // A new account starts in the organisation's currency, not the browser's "USD".
+  const { currency, setCurrency, orgCurrency } = useCurrencyField(initial?.currency)
   const [form, setForm] = useState({
     accountName: initial?.accountName || "",
     accountNumber: initial?.accountNumber || "",
     bankName: initial?.bankName || "",
     bankCode: initial?.bankCode || "",
     swiftCode: initial?.swiftCode || "",
-    currency: initial?.currency || DEFAULT_CURRENCY,
     isDefault: initial?.isDefault || false,
   })
 
@@ -164,7 +165,7 @@ function BankAccountDialog({ open, onClose, onSave, isPending, isEdit, initial }
       accountNumber: form.accountNumber || undefined,
       bankCode: form.bankCode || undefined,
       swiftCode: form.swiftCode || undefined,
-      currency: form.currency,
+      currency,
       isDefault: form.isDefault,
     })
   }
@@ -201,7 +202,7 @@ function BankAccountDialog({ open, onClose, onSave, isPending, isEdit, initial }
             </div>
             <div>
               <Label className="text-xs">{t("currency")}</Label>
-              <Input value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })} placeholder={DEFAULT_CURRENCY} />
+              <Input value={currency} onChange={(e) => setCurrency(e.target.value)} placeholder={orgCurrency ?? undefined} />
             </div>
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
