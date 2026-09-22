@@ -489,10 +489,14 @@ describe("The open demo", () => {
     expect(guide).toContain("const stepIsOnScene")
 
     // The instruction and the step's buttons must sit behind that flag.
-    const gated = guide.slice(guide.indexOf("stepIsOnScene ? ("), guide.indexOf("{anchorMissing &&"))
-    expect(gated).not.toBe("")
+    const start = guide.indexOf("stepIsOnScene ? (")
+    const end = guide.indexOf("{onGuideAction &&")
+    expect(start).toBeGreaterThan(-1)
+    expect(end).toBeGreaterThan(start)
+    const gated = guide.slice(start, end)
     expect(gated).toContain("step.instruction")
-    expect(gated).toContain("S.next")
+    // The panel's own «İrəli», not the in-panel «Davam edin» that follows the gate.
+    expect(gated).toMatch(/onClick=\{onNext\}>\s*\{S\.next\}/)
 
     // And the panel must be told when a coach mark is actually there: the
     // scene has one and the prospect has not put it away (× or Escape), in

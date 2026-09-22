@@ -313,7 +313,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
         {
           id: "lead-timeline",
           title: "Tarixçə itmir",
-          instruction: "«Lent» vərəqinə keçin: az əvvəl açdığınız dialoq və AI cavabı artıq buradadır.",
+          instruction: "«Qarşılıqlı əlaqələr» vərəqinə keçin: az əvvəl açdığınız dialoq və AI cavabı artıq buradadır.",
           anchor: "lead-tabs",
           placement: "bottom",
           action: "click",
@@ -354,7 +354,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
         {
           id: "lead-scoring",
           title: "Da Vinci balı",
-          instruction: "«Da Vinci Scoring» vərəqini açın: bal, səbəblər və tövsiyə olunan növbəti addım.",
+          instruction: "«Da Vinci Reytinq» vərəqini açın: bal, səbəblər və tövsiyə olunan növbəti addım.",
           anchor: "lead-tabs",
           placement: "bottom",
           action: "click",
@@ -368,7 +368,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
         {
           id: "lead-status-advance",
           title: "Statusu irəli aparın",
-          instruction: "Status zolağında «Kvalifikasiya olunub» mərhələsini seçin.",
+          instruction: "Status zolağında «Kvalifikasiya edildi» mərhələsini seçin.",
           anchor: "lead-status-bar",
           placement: "bottom",
           action: "choose",
@@ -410,7 +410,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
         {
           id: "ai-call-skip",
           title: "Zəngsiz davam edin",
-          instruction: "«Davam et» düyməsini basın — hekayə tapşırıq addımına keçir.",
+          instruction: "Bələdçidə «Davam edin» düyməsini basın — hekayə tapşırıq addımına keçir.",
           anchor: "demo-guide-panel",
           placement: "left",
           action: "confirm",
@@ -508,7 +508,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
         {
           id: "deal-convert",
           title: "Lidi çevirin",
-          instruction: "Lid kartında «Çevir» düyməsini basın və sövdələşmənin adını təsdiqləyin.",
+          instruction: "Lid kartında «Sövdələşməyə çevir» düyməsini basın.",
           anchor: "leads-convert",
           placement: "bottom",
           action: "confirm",
@@ -589,7 +589,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
         {
           id: "quote-create",
           title: "Yeni təklif",
-          instruction: "«Yeni KP» düyməsini basın, sövdələşmənizi seçin və bir məhsul əlavə edin.",
+          instruction: "«Yeni təklif» düyməsini basın, sonra pəncərədə «Qaralama yarat».",
           anchor: "quotes-new",
           placement: "bottom",
           action: "confirm",
@@ -617,11 +617,11 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
         {
           id: "quote-send",
           title: "Göndərin",
-          instruction: "«Göndər» statusuna keçin. Demoda e-poçt getmir; status və vaxt möhürü qeyd olunur.",
+          instruction: "«Göndərilmiş kimi işarələ» düyməsini basın. Demoda e-poçt getmir; status və vaxt möhürü qeyd olunur.",
           anchor: "quote-transition",
           placement: "bottom",
           action: "confirm",
-          targetLabel: "Göndərildi kimi qeyd edin",
+          targetLabel: "«Göndərilmiş kimi işarələ» basın",
           required: true,
           completion: { kind: "transition", to: "QUOTE_SENT" },
           covers: ["quotes.detail.header"],
@@ -631,11 +631,11 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
         {
           id: "quote-accept",
           title: "Müştəri qəbul edir",
-          instruction: "Müştəri rolunda «Qəbul et» düyməsini basın — real həyatda bunu müştəri linkdən edir.",
+          instruction: "Müştəri rolunda «Qəbul edilmiş kimi işarələ» düyməsini basın — real həyatda bunu müştəri linkdən edir.",
           anchor: "quote-transition",
           placement: "bottom",
           action: "confirm",
-          targetLabel: "Qəbul edildi kimi qeyd edin",
+          targetLabel: "«Qəbul edilmiş kimi işarələ» basın",
           required: true,
           completion: { kind: "transition", to: "QUOTE_ACCEPTED" },
           covers: ["quotes.detail.header", "quotes.detail.summary"],

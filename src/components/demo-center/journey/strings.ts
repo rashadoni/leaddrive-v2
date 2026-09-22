@@ -40,6 +40,8 @@ export const DEMO_JOURNEY_STRINGS = {
   coachClose: "İpucunu bağla",
   coachShow: "İpucunu ekranda göstər",
   coachArrowFallback: "Buraya basın",
+  coachChipBelow: (label: string) => `Aşağıda: ${label}`,
+  coachChipAbove: (label: string) => `Yuxarıda: ${label}`,
   resultTitle: "Nəticə",
   anchorMissingTitle: "Element ekranda tapılmadı",
   anchorMissingBody: "Bu addımın göstərməli olduğu element hazırda görünmür. Bələdçidən davam edə bilərsiniz.",
