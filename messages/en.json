@@ -16034,6 +16034,11 @@
       "hours": "{count} hr"
     },
     "history": {
+      "dateFrom": "From date",
+      "dateTo": "To date",
+      "rangeHint": "You can choose up to {days} days in a row.",
+      "workdayStillOpen": "open",
+      "noWorkdaysInRange": "No workdays in these days.",
       "subtitle": "Auditable GPS history, workday, stops and confirmed visits",
       "agent": "Employee",
       "noAgents": "No employees available in your scope",

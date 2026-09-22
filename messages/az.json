@@ -16030,6 +16030,11 @@
       "hours": "{count} saat"
     },
     "history": {
+      "dateFrom": "Tarixdən",
+      "dateTo": "Tarixədək",
+      "rangeHint": "Ardıcıl {days} günə qədər seçmək olar.",
+      "workdayStillOpen": "açıqdır",
+      "noWorkdaysInRange": "Bu günlər üçün iş günü yoxdur.",
       "subtitle": "Yoxlanılan GPS tarixçəsi, iş günü, dayanacaqlar və təsdiqlənmiş ziyarətlər",
       "agent": "Əməkdaş",
       "noAgents": "Giriş sahənizdə əməkdaş yoxdur",
