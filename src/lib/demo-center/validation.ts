@@ -2,7 +2,7 @@ import { z } from "zod"
 import { DEMO_WHATSAPP_MAX_CHARS } from "./demo-whatsapp"
 import { DEMO_MODULE_IDS, isDemoModuleId } from "@/lib/demo-center/catalog"
 import { DEMO_JOURNEY_STATES, JOURNEY_REPORT_NAMES, getDemoJourneyScenario } from "@/lib/demo-center/journey"
-import { isCorporateEmail, normalizeEmail } from "@/lib/demo-center/security"
+import { normalizeEmail } from "@/lib/demo-center/security"
 
 const optionalText = (max: number) => z.string().trim().max(max).optional().or(z.literal(""))
 
@@ -20,14 +20,9 @@ export const demoRequestSchema = z.object({
   // Honeypot input is intentionally accepted here so bots receive the same
   // generic success response instead of learning which anti-spam check fired.
   website: z.string().max(500).optional(),
-}).superRefine((value, context) => {
-  if (!isCorporateEmail(value.email)) {
-    context.addIssue({
-      code: "custom",
-      path: ["email"],
-      message: "Korporativ e-poçt ünvanından istifadə edin",
-    })
-  }
+  // Owner, 2026-09-23: «убери привязку к почте корпоративному». A gmail
+  // address is how most buyers here write, and the demo is granted by hand
+  // anyway — the address was never the thing that decided it.
 })
 
 /**
