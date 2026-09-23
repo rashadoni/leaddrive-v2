@@ -251,8 +251,8 @@
     "mtmVisits": "Field visit records",
     "mtmPromotions": "Pharmacy promotion operations",
     "mtmTasks": "Field team tasks",
-    "mtmCustomers": "Field customer accounts",
-    "mtmContacts": "Field contacts",
+    "mtmCustomers": "Points of sale and institutions",
+    "mtmContacts": "People: doctors, pharmacists, buyers",
     "mtmPhotos": "Visit photos",
     "mtmAlerts": "Field alerts",
     "mtmAgents": "Field agents",
@@ -539,8 +539,8 @@
     "mtmVisits": "Visits",
     "mtmPromotions": "Pharmacy Promotions",
     "mtmTasks": "Field Tasks",
-    "mtmCustomers": "Field Customers",
-    "mtmContacts": "Field Contacts",
+    "mtmCustomers": "Sites",
+    "mtmContacts": "Clients",
     "mtmPhotos": "Photos",
     "mtmAlerts": "Alerts",
     "mtmAgents": "Agents",
@@ -11286,7 +11286,7 @@
     "colContacts": "Contacts"
   },
   "mtmContactExplorer": {
-    "title": "Field team contacts",
+    "title": "Clients",
     "subtitle": "Personal list, professional profile, workplace, and accountable assignment",
     "createClient": "Add client",
     "clarityGuide": {
@@ -11558,7 +11558,7 @@
     }
   },
   "mtmCustomers": {
-    "title": "Field Customers",
+    "title": "Sites",
     "subtitle": "Stores, pharmacies, outlets",
     "add": "Add Customer",
     "edit": "Edit Customer",
