@@ -525,7 +525,16 @@ export function applyTransitionEffects(
 
     case "DEAL_ADVANCED": {
       if (!records.deal || records.deal.stageIndex >= 1) return records
-      return { ...records, deal: { ...records.deal, stageIndex: 1, probability: DEMO_DEAL_STAGES[1].probability } }
+      // The deal's feed says what the prospect just did: it used to jump from
+      // «converted» straight to «quote accepted», as if the stage and the
+      // sending had happened somewhere else.
+      return {
+        ...records,
+        deal: { ...records.deal, stageIndex: 1, probability: DEMO_DEAL_STAGES[1].probability },
+        lead: records.lead
+          ? { ...records.lead, timeline: [...records.lead.timeline, { id: "tl-deal-stage", kind: "deal", title: "Mərhələ: Kvalifikasiya → Təklif", subtitle: `Ehtimal: ${DEMO_DEAL_STAGES[1].probability}%`, date: at }] }
+          : records.lead,
+      }
     }
 
     case "QUOTE_CREATED": {
@@ -557,7 +566,14 @@ export function applyTransitionEffects(
       if (!records.quote || records.quote.status !== "draft") return records
       // The licence count the prospect corrected on the previous step.
       const lines = records.quote.lines.map((line) => (line.id === "ql-1" ? { ...line, quantity: DEMO_QUOTE_LICENCES } : line))
-      return { ...records, quote: { ...records.quote, lines, status: "sent", sentAt: at } }
+      const sent = { ...records.quote, lines, status: "sent" as const, sentAt: at }
+      return {
+        ...records,
+        quote: sent,
+        lead: records.lead
+          ? { ...records.lead, timeline: [...records.lead.timeline, { id: "tl-quote-sent", kind: "quote", title: `Təklif göndərildi: ${sent.quoteNumber}`, subtitle: demoMoney(quoteTotals(sent).gross), date: at }] }
+          : records.lead,
+      }
     }
 
     case "QUOTE_ACCEPTED": {

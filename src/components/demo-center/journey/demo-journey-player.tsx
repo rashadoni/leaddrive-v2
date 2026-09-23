@@ -80,6 +80,8 @@ const SCENES: Record<string, ComponentType<DemoSceneProps>> = {
   summary: SummaryScene,
 }
 
+const HINT_TOAST_ID = "demo-journey-hint"
+
 /**
  * How this player was opened. Three paths behave differently in ways that
  * used to be spelled as loose booleans, which is how they drift:
@@ -94,6 +96,7 @@ const SCENES: Record<string, ComponentType<DemoSceneProps>> = {
  *             no approval. Progress persists in this browser, but nothing
  *             that costs money or serves internal media is switched on.
  */
+
 export type { DemoJourneyVariant }
 
 export interface DemoJourneyPlayerProps {
@@ -223,8 +226,17 @@ export function DemoJourneyPlayer({
     return () => clearInterval(timer)
   }, [sessionExpiresAt, idleDeadline, offset, onAccessLost])
 
+  // One hint at a time, and none outliving its step: a hint about the step
+  // just finished stayed up on the next one and covered the step counter.
   const hint = useCallback((message: string) => {
-    toast.info(message)
+    toast.info(message, { id: HINT_TOAST_ID })
+  }, [])
+  const hintStepKey = snapshot ? `${snapshot.sectionId}:${snapshot.stepId}` : null
+  useEffect(() => {
+    toast.dismiss(HINT_TOAST_ID)
+  }, [hintStepKey])
+  useEffect(() => () => {
+    toast.dismiss(HINT_TOAST_ID)
   }, [])
 
   const dispatch = useCallback(

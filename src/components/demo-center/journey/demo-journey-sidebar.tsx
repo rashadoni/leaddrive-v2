@@ -45,10 +45,9 @@ export function DemoJourneySidebar({ visibleRoutes, reachableRoutes, activeRoute
 
   return (
     <aside
-      data-tour-id="demo-sidebar"
       data-testid="demo-sidebar"
       aria-label={S.sidebarAria}
-      className="flex w-16 shrink-0 flex-col overflow-hidden bg-sidebar-bg backdrop-blur-xl 2xl:w-64"
+      className="flex w-16 shrink-0 flex-col overflow-x-clip bg-sidebar-bg backdrop-blur-xl 2xl:w-64"
     >
       <div className="flex h-14 items-center justify-between border-b border-white/10 px-4">
         <span className="flex items-center gap-2">
@@ -57,7 +56,11 @@ export function DemoJourneySidebar({ visibleRoutes, reachableRoutes, activeRoute
           <span className="hidden 2xl:inline"><Logo size="sm" sidebar /></span>
         </span>
       </div>
-      <nav className="sidebar-scroll flex-1 overflow-y-auto p-2">
+      {/* The demo scrolls as one page, so a full-height rail left its entries
+          at the top of the page: on a phone the first step's arrow pointed at
+          the empty middle of the dark strip. The entries stay in view instead,
+          and the guide points at them rather than at the strip. */}
+      <nav data-tour-id="demo-sidebar" className="sidebar-scroll sticky top-0 max-h-dvh overflow-y-auto p-2">
         {groups.map(({ group, items }, groupIndex) => (
           <div key={group} className={cn(groupIndex > 0 && "mt-3 border-t border-white/[0.06] pt-3")}>
             <div

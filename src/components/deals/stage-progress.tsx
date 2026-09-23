@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useRef } from "react"
 import { motion } from "framer-motion"
 import { CheckCircle2 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -37,24 +38,42 @@ export function StageProgress({ stages, currentStage, onStageClick, stageButtonP
   const activeStages = isLost ? stages : stages.filter(s => canonicalDealStage(s.key) !== "LOST")
   const currentIdx = activeStages.findIndex(s => canonicalDealStage(s.key) === current)
 
+  /*
+   * Below `sm` every chevron keeps its whole label and the rail scrolls.
+   *
+   * Shrinking the chevrons to fit a phone cut the labels to «K…», «Danı…»,
+   * «Qaza…» — the guided demo then asked to press «Qazanıldı» on a chevron
+   * that did not say so. A scrolling rail hides stages instead, so the current
+   * one is brought into view whenever it changes (horizontally only: the page
+   * itself must not jump).
+   */
+  const railRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const rail = railRef.current
+    const active = rail?.querySelector<HTMLElement>("[data-stage-current]")
+    if (!rail || !active || rail.scrollWidth <= rail.clientWidth) return
+    rail.scrollLeft = active.offsetLeft - (rail.clientWidth - active.offsetWidth) / 2
+  }, [current])
+
   return (
-    <div className="flex items-center gap-0 w-full overflow-x-auto pb-1">
+    <div ref={railRef} className="relative flex items-center gap-0 w-full overflow-x-auto pb-1">
       {activeStages.map((stage, idx) => {
         const isActive = canonicalDealStage(stage.key) === current
         const isDone = !isLost && idx < currentIdx
         const isClickable = !!onStageClick && !isActive
 
         return (
-          <div key={stage.key} className="flex items-center flex-1 min-w-0">
+          <div key={stage.key} className="flex items-center flex-none sm:flex-1 sm:min-w-0">
             <motion.button
               type="button"
               disabled={!isClickable}
               onClick={() => isClickable && onStageClick?.(stage.key)}
               {...stageButtonProps?.(stage.key)}
+              data-stage-current={isActive ? "" : undefined}
               whileHover={isClickable ? { scale: 1.02 } : undefined}
               whileTap={isClickable ? { scale: 0.98 } : undefined}
               className={cn(
-                "relative flex items-center justify-center h-10 flex-1 min-w-0 px-4",
+                "relative flex items-center justify-center h-10 flex-none whitespace-nowrap sm:flex-1 sm:min-w-0 px-4",
                 "text-xs font-semibold transition-all select-none",
                 isActive && "text-white",
                 isDone && "text-white/90",
@@ -75,7 +94,7 @@ export function StageProgress({ stages, currentStage, onStageClick, stageButtonP
                   : "polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%, 12px 50%)",
               }}
             >
-              <span className="truncate">{stage.label}</span>
+              <span className="sm:truncate">{stage.label}</span>
               {isDone && (
                 <motion.span
                   initial={{ scale: 0 }}

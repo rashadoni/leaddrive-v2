@@ -18,9 +18,16 @@ import { NextIntlClientProvider } from "next-intl"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const toasts = vi.hoisted(() => [] as string[])
+// What is on screen right now, by toast id — sonner replaces a toast shown
+// again under the same id and removes it on `dismiss`.
+const liveToasts = vi.hoisted(() => new Map<string, string>())
 vi.mock("sonner", () => ({
   toast: Object.assign((message: string) => toasts.push(String(message)), {
-    info: (message: string) => toasts.push(String(message)),
+    info: (message: string, options?: { id?: string }) => {
+      if (options?.id) liveToasts.set(options.id, String(message))
+      return toasts.push(String(message))
+    },
+    dismiss: (id?: string) => (id === undefined ? liveToasts.clear() : liveToasts.delete(id)),
     success: (message: string) => toasts.push(String(message)),
     error: (message: string) => toasts.push(String(message)),
   }),
@@ -43,6 +50,7 @@ let root: Root
 
 beforeEach(() => {
   toasts.length = 0
+  liveToasts.clear()
   window.sessionStorage.clear()
   vi.stubGlobal("matchMedia", (query: string) => ({ matches: false, media: query, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} }))
   vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => setTimeout(() => callback(performance.now()), 0) as unknown as number)
@@ -209,6 +217,20 @@ describe("the guided story, walked through the real screens", () => {
       }
     })
     expect(walked).toEqual(stepIdsFrom("orientation"))
+  }, 60_000)
+
+  it("clears a hint once its step is done: it used to stay up over the next step's counter", async () => {
+    await renderPlayer()
+    await walkToEnd(async (stepId) => {
+      if (stepId !== "deal-card") return
+      // A quick action the demo does not perform: it says so in a hint.
+      const action = container.querySelector<HTMLButtonElement>('[data-tour-id="deal-quick-actions"] button')
+      expect(action, "a quick action on the deal card").not.toBeNull()
+      await act(async () => action!.click())
+      await settle()
+      expect([...liveToasts.values()]).toEqual([S.demoButtonHint])
+    }, "deal-ai")
+    expect([...liveToasts.values()]).toEqual([])
   }, 60_000)
 
   it("starts where the prospect's interest is: the first screen opens the inbox at once", async () => {

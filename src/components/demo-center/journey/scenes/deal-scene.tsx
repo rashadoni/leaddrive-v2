@@ -193,7 +193,7 @@ function DealWorkspace({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
                           </span>
                         </button>
                         {index < DEMO_DEAL_STAGES.length - 1 && (
-                          <Button size="sm" variant="outline" className="mt-2 h-7 w-full min-w-0 justify-center overflow-hidden text-[11px]" onClick={() => advance()} {...demoTarget("deal-advance")}>
+                          <Button size="sm" variant="outline" className="mt-2 h-auto min-h-9 w-full min-w-0 justify-center whitespace-normal py-1.5 text-center text-[11px] leading-tight" onClick={() => advance()} {...demoTarget("deal-advance")}>
                             {S.dragHint}
                           </Button>
                         )}

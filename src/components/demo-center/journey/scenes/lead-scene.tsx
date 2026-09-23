@@ -76,7 +76,6 @@ export function LeadScene(props: DemoSceneProps) {
 
 function LeadListView({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneProps) {
   const t = useTranslations("leads")
-  const tc = useTranslations("common")
   const locale = useLocale()
   const { identity, records } = snapshot
   const lead = records.lead
@@ -223,7 +222,6 @@ function LeadListView({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneP
           )
         })}
       </div>
-      <p className="text-xs text-muted-foreground">{tc("assignee")}: {identity.name}</p>
     </div>
   )
 }
@@ -416,10 +414,10 @@ export function LeadCardView({ snapshot, step, reviewMode, variant, dispatch, hi
 
         <div className="min-w-0 space-y-4">
           <div data-tour-id="lead-kpi" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <ColorStatCard label={t("detailScoreGrade")} value={`${gradeOf(lead.score)} · ${lead.score}`} icon={<Flame className="h-4 w-4" />} hint={t("hintColScore")} />
-            <ColorStatCard label={t("detailDaysSinceCreated")} value={`${daysSinceCreated} ${t("modalDays")}`} icon={<Calendar className="h-4 w-4" />} />
-            <ColorStatCard label={t("modalEstimatedValue")} value={demoMoney(lead.estimatedValue)} icon={<DollarSign className="h-4 w-4" />} />
-            <ColorStatCard label={t("modalPriority")} value={priorityLabels[lead.priority]} icon={<Flame className="h-4 w-4" />} hint={t("hintColPriority")} />
+            <ColorStatCard wrapLabel label={t("detailScoreGrade")} value={`${gradeOf(lead.score)} · ${lead.score}`} icon={<Flame className="h-4 w-4" />} hint={t("hintColScore")} />
+            <ColorStatCard wrapLabel label={t("detailDaysSinceCreated")} value={`${daysSinceCreated} ${t("modalDays")}`} icon={<Calendar className="h-4 w-4" />} />
+            <ColorStatCard wrapLabel label={t("modalEstimatedValue")} value={demoMoney(lead.estimatedValue)} icon={<DollarSign className="h-4 w-4" />} />
+            <ColorStatCard wrapLabel label={t("modalPriority")} value={priorityLabels[lead.priority]} icon={<Flame className="h-4 w-4" />} hint={t("hintColPriority")} />
           </div>
 
           <div data-tour-id="lead-tabs" className="flex flex-wrap gap-x-1 border-b">
