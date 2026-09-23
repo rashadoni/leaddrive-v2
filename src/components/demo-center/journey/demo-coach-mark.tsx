@@ -67,6 +67,8 @@ export interface DemoCoachMarkProps {
 const PADDING = 6
 const GAP = 14
 const VIEWPORT_MARGIN = 16
+/** A card shorter than this says nothing useful, so below it the card may overlap. */
+const MIN_CARD_HEIGHT = 132
 const LOCATE_INTERVAL_MS = 120
 const LOCATE_ATTEMPTS = 25
 
@@ -366,16 +368,31 @@ export function DemoCoachMark({
   const width = Math.min(size.width || 340, maxWidth)
   const height = Math.min(size.height || 160, viewHeight - VIEWPORT_MARGIN * 2)
 
+  // Room beside the ring, per side. The card is placed in it — never over it:
+  // on the owner's screens the card sat exactly on the deal card it said to
+  // click, and on the quote row whose quantity the step asks to change.
+  const space = {
+    bottom: viewHeight - VIEWPORT_MARGIN - (ring.top + ring.height + GAP),
+    top: ring.top - GAP - VIEWPORT_MARGIN,
+    right: viewWidth - VIEWPORT_MARGIN - (ring.left + ring.width + GAP),
+    left: ring.left - GAP - VIEWPORT_MARGIN,
+  }
   const fits = {
-    bottom: ring.top + ring.height + GAP + height <= viewHeight - VIEWPORT_MARGIN,
-    top: ring.top - GAP - height >= VIEWPORT_MARGIN,
-    right: ring.left + ring.width + GAP + width <= viewWidth - VIEWPORT_MARGIN,
-    left: ring.left - GAP - width >= VIEWPORT_MARGIN,
+    bottom: space.bottom >= height,
+    top: space.top >= height,
+    right: space.right >= width,
+    left: space.left >= width,
   }
   const preferred: Exclude<DemoStepPlacement, "auto">[] =
     placement === "auto" ? ["bottom", "top", "right", "left"] : [placement, "bottom", "top", "right", "left"]
   const fitting = preferred.find((candidate) => fits[candidate])
-  const side = fitting ?? "bottom"
+  // Nothing fits whole: take the side with the most room and make the card
+  // shorter there (its body scrolls), which still leaves the control visible.
+  // Only when even that is less than MIN_CARD_HEIGHT does the card land on
+  // top — and a ring that big is hard to hide behind a card anyway.
+  const roomiest = space.bottom >= space.top ? "bottom" : "top"
+  const side = fitting ?? (Math.max(space.bottom, space.top) >= MIN_CARD_HEIGHT ? roomiest : "bottom")
+  const cardHeight = fitting ? height : Math.max(MIN_CARD_HEIGHT, Math.min(height, space[side] ?? height))
 
   let top: number
   let left: number
@@ -383,7 +400,7 @@ export function DemoCoachMark({
     top = ring.top + ring.height + GAP
     left = ring.left
   } else if (side === "top") {
-    top = ring.top - GAP - height
+    top = ring.top - GAP - cardHeight
     left = ring.left
   } else if (side === "right") {
     top = ring.top
@@ -393,7 +410,7 @@ export function DemoCoachMark({
     left = ring.left - GAP - width
   }
   const cardLeft = clamp(left, VIEWPORT_MARGIN, Math.max(VIEWPORT_MARGIN, viewWidth - width - VIEWPORT_MARGIN))
-  const cardTop = clamp(top, VIEWPORT_MARGIN, Math.max(VIEWPORT_MARGIN, viewHeight - height - VIEWPORT_MARGIN))
+  const cardTop = clamp(top, VIEWPORT_MARGIN, Math.max(VIEWPORT_MARGIN, viewHeight - cardHeight - VIEWPORT_MARGIN))
 
   // The card is two layers: the positioned frame (no overflow, so the notch
   // below can stick out of it) and the body, which may scroll on a very
@@ -405,6 +422,7 @@ export function DemoCoachMark({
     maxWidth,
     left: cardLeft,
     top: cardTop,
+    maxHeight: cardHeight,
   }
   const ringOnScreen = ring.top < viewHeight && ring.top + ring.height > 0
 
@@ -414,7 +432,7 @@ export function DemoCoachMark({
   const caret: CSSProperties | null = fitting && ringOnScreen
     ? side === "bottom" || side === "top"
       ? { left: clamp(ring.left + ring.width / 2 - cardLeft - 6, 12, width - 24), [side === "bottom" ? "top" : "bottom"]: -6 }
-      : { top: clamp(ring.top + ring.height / 2 - cardTop - 6, 12, height - 24), [side === "right" ? "left" : "right"]: -6 }
+      : { top: clamp(ring.top + ring.height / 2 - cardTop - 6, 12, cardHeight - 24), [side === "right" ? "left" : "right"]: -6 }
     : null
 
   // With the card open the ring gets its own arrow too, on the side away
@@ -452,7 +470,7 @@ export function DemoCoachMark({
       >
         <div
           className="rounded-xl border border-zinc-200 bg-card p-4 shadow-xl dark:border-zinc-700"
-          style={{ maxHeight: `calc(100vh - ${VIEWPORT_MARGIN * 2}px)`, overflowY: "auto" }}
+          style={{ maxHeight: cardHeight, overflowY: "auto" }}
         >
         <div className="flex items-start justify-between gap-2">
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{counter}</p>
