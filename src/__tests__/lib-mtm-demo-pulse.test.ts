@@ -10,6 +10,8 @@ import { prisma } from "@/lib/prisma"
 import { dayKeyWeekday, demoPulsePosition, planDemoPulseDay } from "@/lib/mtm/demo-pulse-plan"
 import { demoPulseAgents, demoPulseRouteExternalId, pulseDemoAgent } from "@/lib/mtm/demo-pulse"
 import { localDateKeyToUtc } from "@/lib/mtm/mobile-week"
+import { buildDayTrip } from "@/lib/mtm/day-trip"
+import { detectHistoryGaps, detectHistoryStops, type HistoryLocationPoint, type HistoryVisit } from "@/lib/mtm/location-history"
 
 /**
  * Owner decision 2026-09-22: the LeadDrive Inc. demo organization is shown to
@@ -71,6 +73,44 @@ describe("the demo field day", () => {
     expect(between.latitude).toBeCloseTo((from.latitude + to.latitude) / 2, 6)
     expect(demoPulsePosition(day, positions, new Date(day.shiftStartAt.getTime() - 1))).toBeNull()
     expect(demoPulsePosition(day, positions, day.shiftEndAt)).toBeNull()
+  })
+
+  it("reads in the day's route as drives between customers, not as a phone that keeps losing signal", () => {
+    // Prod 2026-09-23: one fix per ten-minute tick showed «no data from the
+    // phone» between every two customers. The pulse now writes a fix a minute.
+    const pulse = readFileSync("src/lib/mtm/demo-pulse.ts", "utf8")
+    expect(pulse).toContain("Array.from({ length: TICK_MINUTES }, (_, index) => lastMinute - TICK_MINUTES + 1 + index)")
+    expect(pulse).toContain("clientLocationId: `${DEMO_KEY}:${agent.id}:m${minute}`")
+
+    const day = plan()!
+    // Baku customers a few kilometres apart.
+    const positions = new Map(CUSTOMERS.map((id, index) => [id, { latitude: 40.37 + index * 0.02, longitude: 49.8 + (index % 3) * 0.03 }]))
+    const points: HistoryLocationPoint[] = []
+    for (let at = day.shiftStartAt.getTime(); at < day.shiftEndAt.getTime(); at += 60_000) {
+      const position = demoPulsePosition(day, positions, new Date(at))
+      if (!position) continue
+      points.push({
+        id: `p${at}`, latitude: position.latitude, longitude: position.longitude, accuracy: 12, speed: null,
+        heading: null, battery: null, isMoving: position.isMoving, recordedAt: new Date(at), workdayId: "w",
+      })
+    }
+    const visits: HistoryVisit[] = day.stops.map((stop, index) => ({
+      id: `v${index}`, customerId: stop.customerId, status: "CHECKED_OUT", checkInAt: stop.checkInAt, checkOutAt: stop.checkOutAt,
+      checkInLat: positions.get(stop.customerId)!.latitude, checkInLng: positions.get(stop.customerId)!.longitude,
+      customer: { name: stop.customerId, address: null, ...positions.get(stop.customerId)! },
+    }))
+    const trip = buildDayTrip({
+      points,
+      stops: detectHistoryStops({ points, visits, radiusMeters: 50, minimumSeconds: 300, offlineThresholdSeconds: 300 }),
+      visits,
+      gaps: detectHistoryGaps(points, 300),
+      workday: { startedAt: day.shiftStartAt, completedAt: day.shiftEndAt },
+    })
+    expect(trip.entries.filter((entry) => entry.kind === "GAP")).toEqual([])
+    expect(trip.summary.visitCount).toBe(5)
+    const legs = trip.entries.map((entry) => entry.kind).join(" ")
+    expect(legs).toMatch(/STAY MOVE STAY MOVE STAY MOVE STAY MOVE STAY/)
+    expect(trip.summary.movingMeters).toBeGreaterThan(3_000)
   })
 })
 

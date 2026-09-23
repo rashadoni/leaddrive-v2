@@ -25,7 +25,7 @@ import {
  * prospects and had nothing after 9 August. Every tick (cron, every ten
  * minutes) creates whatever the clock has passed in the day planned by
  * demo-pulse-plan.ts: the route at 07:00, the shift start, each check-in and
- * check-out, a GPS point, the shift end. Everything is keyed so a repeated or
+ * check-out, a GPS fix for every minute, the shift end. Everything is keyed so a repeated or
  * late tick creates nothing twice.
  *
  * Safety, in order:
@@ -332,33 +332,52 @@ export async function pulseDemoAgent(input: {
       : { visitedPoints },
   })
 
-  // The dot on the live map.
-  const position = demoPulsePosition(day, new Map(customers.map((customer) => [customer.id, customer])), now)
-  if (position && workday.status !== "COMPLETED") {
-    const tick = Math.floor(now.getTime() / (TICK_MINUTES * 60_000))
-    const at = near(position, `${agent.id}:${tick}`, position.isMoving ? 15 : 25)
-    const clientLocationId = `${DEMO_KEY}:${agent.id}:${tick}`
-    const exists = await prisma.mtmAgentLocation.findFirst({ where: { organizationId, agentId: agent.id, clientLocationId }, select: { id: true } })
-    if (!exists) {
+  // The track. Prod 2026-09-23: one fix per ten-minute tick read in the
+  // day's route as «no data from the phone» between every two customers — a
+  // real phone reports every 30 s. Each tick now writes the minutes it covers,
+  // one fix a minute, so a drive is a drive and a stop is a stop.
+  if (workday.status !== "COMPLETED") {
+    const positions = new Map(customers.map((customer) => [customer.id, customer]))
+    const lastMinute = Math.floor(now.getTime() / 60_000)
+    const samples = Array.from({ length: TICK_MINUTES }, (_, index) => lastMinute - TICK_MINUTES + 1 + index)
+      .flatMap((minute) => {
+        const at = new Date(minute * 60_000)
+        const position = demoPulsePosition(day, positions, at)
+        if (!position) return []
+        const place = near(position, `${agent.id}:${minute}`, position.isMoving ? 15 : 12)
+        return [{ at, isMoving: position.isMoving, ...place, clientLocationId: `${DEMO_KEY}:${agent.id}:m${minute}` }]
+      })
+    const existing = new Set((await prisma.mtmAgentLocation.findMany({
+      where: { organizationId, agentId: agent.id, clientLocationId: { in: samples.map((sample) => sample.clientLocationId) } },
+      select: { clientLocationId: true },
+    })).map((row) => row.clientLocationId))
+    const missing = samples.filter((sample) => !existing.has(sample.clientLocationId))
+    if (missing.length) {
       await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-        const row = await tx.mtmAgentLocation.create({
-          data: {
-            organizationId,
-            agentId: agent.id,
-            workdayId,
-            clientLocationId,
-            latitude: at.latitude,
-            longitude: at.longitude,
-            accuracy: 12,
-            isMoving: position.isMoving,
-            recordedAt: now,
-          },
-          select: { id: true },
-        })
+        let latest: { id: string; sample: (typeof missing)[number] } | null = null
+        for (const sample of missing) {
+          const row = await tx.mtmAgentLocation.create({
+            data: {
+              organizationId,
+              agentId: agent.id,
+              workdayId,
+              clientLocationId: sample.clientLocationId,
+              latitude: sample.latitude,
+              longitude: sample.longitude,
+              accuracy: 12,
+              isMoving: sample.isMoving,
+              recordedAt: sample.at,
+            },
+            select: { id: true },
+          })
+          latest = { id: row.id, sample }
+        }
+        if (!latest) return
+        const { sample } = latest
         await advanceMtmAgentLatestLocation(tx, {
-          organizationId, agentId: agent.id, sourceLocationId: row.id, payloadSha256: null,
-          latitude: at.latitude, longitude: at.longitude, accuracy: 12, speed: null, heading: null,
-          altitude: null, battery: null, isMoving: position.isMoving, recordedAt: now, receivedAt: now,
+          organizationId, agentId: agent.id, sourceLocationId: latest.id, payloadSha256: null,
+          latitude: sample.latitude, longitude: sample.longitude, accuracy: 12, speed: null, heading: null,
+          altitude: null, battery: null, isMoving: sample.isMoving, recordedAt: sample.at, receivedAt: now,
         })
         await tx.mtmAgent.updateMany({ where: { id: agent.id, organizationId }, data: { isOnline: true, lastSeenAt: now } })
       })

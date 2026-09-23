@@ -19,6 +19,14 @@ import type { HistoryGap, HistoryLocationPoint, HistoryStop, HistoryVisit } from
 const MIN_GAP_REMAINDER_SECONDS = 60
 /** Movement shorter than this between two anchors is noise, not a drive. */
 const MIN_MOVE_SECONDS = 60
+/**
+ * Closer than this is the same place. Prod 2026-09-23, the owner's phone on
+ * one spot: GPS drift cut the day into 60 rows of «stood 7 min — drove 2 min,
+ * 50 m — stood 12 min». A "drive" that ends where it started is standing.
+ */
+const SAME_PLACE_METERS = 150
+/** A silence this short that starts and ends on one spot is part of standing there. */
+const SAME_PLACE_SILENCE_SECONDS = 30 * 60
 
 export type DayTripStay = {
   kind: "STAY"
@@ -52,6 +60,10 @@ export type DayTripGap = {
   reason: HistoryGap["reason"]
   /** Straight line between the last fix before and the first fix after. */
   displacementMeters: number
+  fromLatitude: number
+  fromLongitude: number
+  toLatitude: number
+  toLongitude: number
 }
 
 export type DayTripEdge = {
@@ -107,6 +119,51 @@ function pathMeters(points: readonly HistoryLocationPoint[]): number {
     )
   }
   return Math.round(meters)
+}
+
+/**
+ * One place, one row; one silence, one row. Two stays on the same spot merge
+ * unless each is a different visit. Back-to-back silences (a phone sending a
+ * fix every ten minutes) merge into one, measured from its first edge to its
+ * last.
+ */
+function mergeNeighbours(entries: readonly DayTripEntry[]): DayTripEntry[] {
+  const merged: DayTripEntry[] = []
+  for (const entry of entries) {
+    const previous = merged[merged.length - 1]
+    if (previous?.kind === "STAY" && entry.kind === "STAY"
+      && !(previous.visit && entry.visit && previous.visit.id !== entry.visit.id)
+      && previous.latitude != null && previous.longitude != null
+      && entry.latitude != null && entry.longitude != null
+      && calculateDistance(previous.latitude, previous.longitude, entry.latitude, entry.longitude) < SAME_PLACE_METERS) {
+      const withVisit = previous.visit ? previous : entry.visit ? entry : previous
+      const startedAt = previous.startedAt
+      const endedAt = entry.endedAt > previous.endedAt ? entry.endedAt : previous.endedAt
+      merged[merged.length - 1] = {
+        ...withVisit,
+        id: previous.id,
+        startedAt,
+        endedAt,
+        durationSeconds: seconds(startedAt.getTime(), endedAt.getTime()),
+      }
+      continue
+    }
+    if (previous?.kind === "GAP" && entry.kind === "GAP" && previous.reason === entry.reason) {
+      merged[merged.length - 1] = {
+        ...previous,
+        endedAt: entry.endedAt,
+        durationSeconds: seconds(previous.startedAt.getTime(), entry.endedAt.getTime()),
+        toLatitude: entry.toLatitude,
+        toLongitude: entry.toLongitude,
+        displacementMeters: Math.round(calculateDistance(
+          previous.fromLatitude, previous.fromLongitude, entry.toLatitude, entry.toLongitude,
+        )),
+      }
+      continue
+    }
+    merged.push(entry)
+  }
+  return merged
 }
 
 export function buildDayTrip(input: {
@@ -171,6 +228,10 @@ export function buildDayTrip(input: {
         displacementMeters: Math.round(calculateDistance(
           gap.startLatitude, gap.startLongitude, gap.endLatitude, gap.endLongitude,
         )),
+        fromLatitude: gap.startLatitude,
+        fromLongitude: gap.startLongitude,
+        toLatitude: gap.endLatitude,
+        toLongitude: gap.endLongitude,
       })))
 
   // 3. Everything between those anchors is movement, measured on the track.
@@ -188,6 +249,18 @@ export function buildDayTrip(input: {
   const dayFrom = Math.min(...candidatesFrom)
   const dayTo = Math.max(...candidatesTo)
 
+  const stayStill = (id: string, from: number, to: number, latitude: number, longitude: number): DayTripStay => ({
+    kind: "STAY",
+    id,
+    startedAt: new Date(from),
+    endedAt: new Date(to),
+    durationSeconds: seconds(from, to),
+    latitude,
+    longitude,
+    open: false,
+    visit: null,
+  })
+
   const entries: DayTripEntry[] = []
   const startAt = input.workday?.startedAt.getTime() ?? firstPointAt ?? dayFrom
   entries.push({ kind: "START", id: "start", at: new Date(startAt), source: input.workday ? "WORKDAY" : "GPS" })
@@ -198,9 +271,15 @@ export function buildDayTrip(input: {
       const at = point.recordedAt.getTime()
       return at >= from && at <= to
     })
-    // No fix at all in the window: nothing is known about it, and the gap
-    // detector only sees silence between two fixes.
-    if (!inside.length) return
+    // Fewer than two fixes in the window: nothing is known about it — the
+    // tail after the last fix to the closed workday is not «stood there».
+    if (inside.length < 2) return
+    const first = inside[0]
+    const last = inside[inside.length - 1]
+    if (calculateDistance(first.latitude, first.longitude, last.latitude, last.longitude) < SAME_PLACE_METERS) {
+      entries.push(stayStill(`still-${from}`, from, to, first.latitude, first.longitude))
+      return
+    }
     entries.push({
       kind: "MOVE",
       id: `move-${from}`,
@@ -218,10 +297,19 @@ export function buildDayTrip(input: {
     const to = anchor.endedAt.getTime()
     if (to <= cursor && anchor.kind === "GAP") continue
     moveBetween(cursor, from)
-    entries.push(anchor)
+    // A short silence that ends where it began: the phone was quiet while
+    // the agent stood there.
+    if (anchor.kind === "GAP" && anchor.reason === "TELEMETRY_GAP"
+      && anchor.displacementMeters < SAME_PLACE_METERS && anchor.durationSeconds <= SAME_PLACE_SILENCE_SECONDS) {
+      entries.push(stayStill(`still-${anchor.id}`, from, to, anchor.fromLatitude, anchor.fromLongitude))
+    } else {
+      entries.push(anchor)
+    }
     cursor = Math.max(cursor, to)
   }
   moveBetween(cursor, dayTo)
+  const legs = mergeNeighbours(entries.splice(1))
+  entries.push(...legs)
 
   const completedAt = input.workday?.completedAt?.getTime()
   if (completedAt != null) entries.push({ kind: "END", id: "end", at: new Date(completedAt), source: "WORKDAY" })
@@ -229,13 +317,14 @@ export function buildDayTrip(input: {
 
   const moves = entries.filter((entry): entry is DayTripMove => entry.kind === "MOVE")
   const gapsKept = entries.filter((entry): entry is DayTripGap => entry.kind === "GAP")
+  const staysKept = entries.filter((entry): entry is DayTripStay => entry.kind === "STAY")
   return {
     entries,
     summary: {
       movingSeconds: moves.reduce((sum, move) => sum + move.durationSeconds, 0),
       movingMeters: moves.reduce((sum, move) => sum + move.distanceMeters, 0),
-      staySeconds: stays.reduce((sum, stay) => sum + stay.durationSeconds, 0),
-      visitCount: stays.filter((stay) => stay.visit).length,
+      staySeconds: staysKept.reduce((sum, stay) => sum + stay.durationSeconds, 0),
+      visitCount: new Set(staysKept.flatMap((stay) => stay.visit ? [stay.visit.id] : [])).size,
       unknownSeconds: gapsKept.filter((gap) => gap.reason === "TELEMETRY_GAP").reduce((sum, gap) => sum + gap.durationSeconds, 0),
       pausedSeconds: gapsKept.filter((gap) => gap.reason === "WORKDAY_PAUSED").reduce((sum, gap) => sum + gap.durationSeconds, 0),
     },

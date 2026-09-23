@@ -16097,7 +16097,7 @@
         "endGps": "Последний сигнал, день не закрыт",
         "move": "В пути",
         "stopWithoutVisit": "Остановка без визита",
-        "visitFor": "Визит, {duration}",
+        "visitFor": "Визит · на месте {duration}",
         "visitOpen": "Визит не закрыт",
         "noSignal": "Нет данных с телефона",
         "noSignalMoved": "{duration}, сместился на {distance} по прямой",

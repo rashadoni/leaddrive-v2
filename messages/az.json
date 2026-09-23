@@ -16093,7 +16093,7 @@
         "endGps": "Son siqnal, gün bağlanmayıb",
         "move": "Yolda",
         "stopWithoutVisit": "Ziyarətsiz dayanma",
-        "visitFor": "Ziyarət, {duration}",
+        "visitFor": "Ziyarət · yerində {duration}",
         "visitOpen": "Ziyarət bağlanmayıb",
         "noSignal": "Telefondan məlumat yoxdur",
         "noSignalMoved": "{duration}, düz xətlə {distance} yer dəyişib",
