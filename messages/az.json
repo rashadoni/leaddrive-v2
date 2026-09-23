@@ -14753,6 +14753,7 @@
     "supportHint": "Bu tenant üçün təsdiqlənmiş sahə dəstəyi əlaqələri.",
     "scopeUnavailable": "Bu məhdud komanda əhatəsi üçün əlçatan deyil",
     "operationalWeek": {
+      "teamRefreshing": "yenilənir…",
       "teamWhereAtCustomer": "{customer} müştərisindədir, {time}-dən",
       "teamWhereHeadingAt": "Növbəti: {customer}, {time}",
       "teamWhereHeading": "Növbəti: {customer}",

@@ -860,6 +860,30 @@ function clientOperationId(prefix: string): string {
     : `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
+/**
+ * The last team list, kept for the tab's lifetime. Numbers of another scope
+ * are never shown (the key is part of the entry), and a stale list is labelled
+ * «обновляется» until the fresh one lands.
+ */
+const TEAM_TODAY_CACHE_KEY = "mtm:week:team-today"
+
+function rememberTeamToday(payload: TeamToday): void {
+  try {
+    window.sessionStorage.setItem(`${TEAM_TODAY_CACHE_KEY}:${payload.scopeKey}`, JSON.stringify(payload))
+  } catch {}
+}
+
+function readTeamToday(scopeKey: string): TeamToday | null {
+  try {
+    const raw = window.sessionStorage.getItem(`${TEAM_TODAY_CACHE_KEY}:${scopeKey}`)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as TeamToday
+    return parsed && parsed.scopeKey === scopeKey && Array.isArray(parsed.rows) ? parsed : null
+  } catch {
+    return null
+  }
+}
+
 function normalizeTeamToday(value: unknown, scopeKey: string): TeamToday | null {
   const source = record(record(value).data)
   if (firstString(source, "mode") !== "TEAM_TODAY") return null
@@ -1306,6 +1330,7 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
   const [cancellationsExpanded, setCancellationsExpanded] = useState(false)
   const [idleExpanded, setIdleExpanded] = useState(false)
   const [teamToday, setTeamToday] = useState<TeamToday | null>(null)
+  const [teamFromCache, setTeamFromCache] = useState(false)
   const [teamPhase, setTeamPhase] = useState<"idle" | "loading" | "ready" | "error">("idle")
   const teamRequestIdRef = useRef(0)
   const requestIdRef = useRef(0)
@@ -1522,6 +1547,15 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
     }
     const controller = new AbortController()
     const scopeKey = teamTodayScopeKey(query)
+    // Owner 2026-09-23: «I open the Panel, it opens, and a second later the
+    // panel is gone». Reading fourteen agents takes seconds, and the screen
+    // showed «loading» every time it was opened. The last list is kept and
+    // shown at once; the fresh one replaces it when it arrives.
+    const cached = readTeamToday(scopeKey)
+    if (cached) {
+      setTeamToday((current) => current && current.scopeKey === scopeKey ? current : cached)
+      setTeamFromCache(true)
+    }
     setTeamPhase((current) => current === "ready" ? current : "loading")
     const params = new URLSearchParams()
     if (query.regionId) params.set("regionId", query.regionId)
@@ -1538,7 +1572,9 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
         if (!normalized) throw new Error("Invalid team response")
         if (requestId !== teamRequestIdRef.current) return
         setTeamToday(normalized)
+        setTeamFromCache(false)
         setTeamPhase("ready")
+        rememberTeamToday(normalized)
       } catch {
         if (controller.signal.aborted || requestId !== teamRequestIdRef.current) return
         setTeamPhase("error")
@@ -2954,7 +2990,8 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
             </p>
           ) : (
             // A text line, not a block skeleton: the summary is one line, so
-            // a 128 px placeholder promised more than what arrives.
+            // a 128 px placeholder promised more than what arrives. Only the
+            // very first open ever sees it — afterwards the last list is shown.
             <p role="status" className="px-4 py-3 text-sm text-muted-foreground lg:px-5">{t("teamLoading")}</p>
           )
         ) : (
@@ -2999,6 +3036,7 @@ export function OperationalWeekHome({ organizationId, viewerId }: OperationalWee
                   {summary.partial ? <span className="text-amber-700 dark:text-amber-300">{t("summaryScopeTruncated", { count: summary.total })}</span> : null}
                   {summary.visitsTruncated ? <span className="text-amber-700 dark:text-amber-300">{t("teamVisitsTruncated")}</span> : null}
                   {scoped.generatedAt ? <span className="tabular-nums text-muted-foreground">{t("summaryAsOf", { time: shortTime(scoped.generatedAt, timezone) })}</span> : null}
+                  {teamFromCache && teamPhase === "loading" ? <span className="text-muted-foreground">{t("teamRefreshing")}</span> : null}
                 </p>
                 <ul className="border-t border-zinc-200 dark:border-zinc-700">
                   {/* Owner 2026-09-22: who is where comes first; problems follow. */}

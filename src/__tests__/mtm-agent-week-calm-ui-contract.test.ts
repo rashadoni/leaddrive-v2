@@ -60,3 +60,20 @@ describe("the agent's week, for a manager", () => {
     }
   })
 })
+
+/**
+ * Owner 2026-09-23: «I open the Panel, it opens, and a second later the panel
+ * is gone» — reading fourteen agents takes seconds and the screen fell back to
+ * «loading» on every visit.
+ */
+describe("the Panel keeps the last team list", () => {
+  it("shows the remembered list at once and marks it as refreshing", () => {
+    expect(ui).toContain("const cached = readTeamToday(scopeKey)")
+    expect(ui).toContain("rememberTeamToday(normalized)")
+    expect(ui).toContain('window.sessionStorage.setItem(`${TEAM_TODAY_CACHE_KEY}:${payload.scopeKey}`')
+    // Never the numbers of another region or team.
+    expect(ui).toContain("parsed.scopeKey === scopeKey && Array.isArray(parsed.rows)")
+    expect(ui).toContain('teamFromCache && teamPhase === "loading" ? <span className="text-muted-foreground">{t("teamRefreshing")}</span>')
+    for (const locale of ["az", "ru", "en"]) expect(typeof messages[locale].teamRefreshing).toBe("string")
+  })
+})
