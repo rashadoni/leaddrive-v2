@@ -14757,6 +14757,7 @@
     "supportHint": "Tenant-approved contacts for field assistance.",
     "scopeUnavailable": "Unavailable for this bounded team scope",
     "operationalWeek": {
+      "teamRefreshing": "refreshing…",
       "teamWhereAtCustomer": "At {customer} since {time}",
       "teamWhereHeadingAt": "Next: {customer} at {time}",
       "teamWhereHeading": "Next: {customer}",

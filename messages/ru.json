@@ -14757,6 +14757,7 @@
     "supportHint": "Утверждённые для этого клиента контакты полевой поддержки.",
     "scopeUnavailable": "Недоступно для этой ограниченной зоны команды",
     "operationalWeek": {
+      "teamRefreshing": "обновляется…",
       "teamWhereAtCustomer": "У клиента {customer} с {time}",
       "teamWhereHeadingAt": "Далее: {customer} в {time}",
       "teamWhereHeading": "Далее: {customer}",
