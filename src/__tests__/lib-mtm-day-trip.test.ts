@@ -97,7 +97,7 @@ describe("the day as a trip", () => {
       "MOVE 09:55-10:10",
       "GAP 10:10-10:50 TELEMETRY_GAP",
       "STAY 10:50-11:30 Klinika Mərkəz",
-      "MOVE 11:30-12:00",
+      // Last fix 11:30, day closed 12:00: the half hour between is not known.
       "END 12:00 WORKDAY",
     ])
 

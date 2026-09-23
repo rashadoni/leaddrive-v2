@@ -16097,7 +16097,7 @@
         "endGps": "Last signal, day still open",
         "move": "On the road",
         "stopWithoutVisit": "Stop, no visit",
-        "visitFor": "Visit, {duration}",
+        "visitFor": "Visit · on site {duration}",
         "visitOpen": "Visit, not checked out",
         "noSignal": "No data from the phone",
         "noSignalMoved": "{duration}, moved {distance} in a straight line",
