@@ -242,7 +242,7 @@ export function QuoteScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
                     type="button"
                     onClick={editLines}
                     {...demoTarget("quote-lines")}
-                    className="rounded border border-zinc-200 px-2 py-0.5 text-xs transition-colors hover:border-foreground/40 dark:border-zinc-700"
+                    className="inline-flex h-10 min-w-10 items-center justify-center rounded-md border border-zinc-200 px-3 text-sm font-medium transition-colors hover:border-foreground/40 dark:border-zinc-700"
                   >
                     {line.quantity}
                   </button>
