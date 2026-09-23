@@ -60,6 +60,34 @@ describe("demo coach card", () => {
     })
   }
 
+  /** jsdom lays nothing out, so the control's box and the viewport are told. */
+  function layout(rect: { top: number; left: number; width: number; height: number }, view: { width: number; height: number }) {
+    const target = document.querySelector<HTMLElement>('[data-demo-target="source-open-campaign"]')!
+    const anchor = document.querySelector<HTMLElement>('[data-tour-id="campaigns-list"]')!
+    const box = { ...rect, right: rect.left + rect.width, bottom: rect.top + rect.height, x: rect.left, y: rect.top, toJSON: () => rect }
+    target.getBoundingClientRect = () => box as DOMRect
+    anchor.getBoundingClientRect = () => box as DOMRect
+    vi.stubGlobal("innerWidth", view.width)
+    vi.stubGlobal("innerHeight", view.height)
+  }
+
+  function cardBox(): { top: number; height: number } {
+    const card = document.querySelector<HTMLElement>('[data-testid="demo-coach-card"]')!
+    return { top: Number.parseFloat(card.style.top), height: Number.parseFloat(String(card.style.maxHeight)) }
+  }
+
+  it("never lands on the control it points at — it takes the roomier side and shortens itself", async () => {
+    // Owner's screens, 2026-09-23: the card sat exactly on the deal card the
+    // step said to click, and on the quote row whose quantity it asks to change.
+    layout({ top: 380, left: 40, width: 300, height: 120 }, { width: 390, height: 640 })
+    await renderAction({ targetStepId: "source-open-campaign", targetLabel: "Kampaniyanı açın" })
+    const card = cardBox()
+    const ringBottom = 380 + 120
+    const above = card.top + card.height <= 380
+    const below = card.top >= ringBottom
+    expect(above || below, `card at ${card.top}+${card.height} overlaps the control 380..${ringBottom}`).toBe(true)
+  })
+
   it("has a close button that puts the card away without touching the step", async () => {
     await renderAction()
     const close = document.querySelector<HTMLButtonElement>('[data-testid="demo-coach-close"]')
