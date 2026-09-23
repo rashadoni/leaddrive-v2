@@ -251,8 +251,8 @@
     "mtmVisits": "Sahə ziyarətləri",
     "mtmPromotions": "Aptek promoları və xallar",
     "mtmTasks": "Sahə komandası tapşırıqları",
-    "mtmCustomers": "Sahə müştəriləri",
-    "mtmContacts": "Sahə kontaktları",
+    "mtmCustomers": "Satış nöqtələri və müəssisələr",
+    "mtmContacts": "İnsanlar: həkimlər, əczaçılar, alıcılar",
     "mtmPhotos": "Ziyarət şəkilləri",
     "mtmAlerts": "Sahə xəbərdarlıqları",
     "mtmAgents": "Sahə agentləri",
@@ -539,8 +539,8 @@
     "mtmVisits": "Vizitlər",
     "mtmPromotions": "Aptek promoları",
     "mtmTasks": "Tapşırıqlar",
-    "mtmCustomers": "Müştərilər",
-    "mtmContacts": "Sahə kontaktları",
+    "mtmCustomers": "Obyektlər",
+    "mtmContacts": "Müştərilər",
     "mtmPhotos": "Fotolar",
     "mtmAlerts": "Xəbərdarlıqlar",
     "mtmAgents": "Agentlər",
@@ -11282,7 +11282,7 @@
     "colContacts": "Əlaqə"
   },
   "mtmContactExplorer": {
-    "title": "Sahə komandasının kontaktları",
+    "title": "Müştərilər",
     "subtitle": "Şəxsi siyahı, peşəkar profil, iş yeri və məsul təyinat",
     "createClient": "Müştəri əlavə et",
     "clarityGuide": {
@@ -11554,7 +11554,7 @@
     }
   },
   "mtmCustomers": {
-    "title": "Sahə müştəriləri",
+    "title": "Obyektlər",
     "subtitle": "Mağazalar, apteklər, satış nöqtələri",
     "add": "Müştəri əlavə et",
     "edit": "Müştərini redaktə et",
