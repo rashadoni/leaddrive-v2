@@ -49,6 +49,15 @@ export function BoardScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
   const [onBoard, setOnBoard] = useState(boardOpened)
   const [tab, setTab] = useState<"board" | "reports">("board")
   const [taskOpen, setTaskOpen] = useState(false)
+  // The step that describes «Hesabatlar» opens that tab itself, once. It used
+  // to narrate the reports while the board — and on a phone the open task —
+  // stayed on screen, so the prospect read about a screen they never saw.
+  const [reportsShownFor, setReportsShownFor] = useState<string | null>(null)
+  if (step?.id === "task-reports" && reportsShownFor !== step.id) {
+    setReportsShownFor(step.id)
+    setTab("reports")
+    setTaskOpen(false)
+  }
 
   const openBoard = () => {
     // Only «task-boards» records the opening; on any later step the board was
@@ -241,7 +250,7 @@ export function BoardScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
             <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
               <Row label={tc("assignee")} value={task.assigneeName} />
               <Row label={tTask("createdAt")} value={formatDateTime(task.createdAt, locale)} />
-              <Row label={S.taskDueTomorrow} value={formatDateTime(task.dueAt, locale)} />
+              <Row label={tTask("colDueDate")} value={formatDateTime(task.dueAt, locale)} />
               <Row label={S.linkedLead} value={snapshot.records.lead?.contactName ?? "—"} />
             </dl>
 

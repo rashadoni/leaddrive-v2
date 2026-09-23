@@ -16,7 +16,7 @@ import { InfoHint } from "@/components/info-hint"
 import { LeadEvaluationCard, LeadOverview, LeadStatBoxes } from "@/components/leads/lead-overview"
 import { formatDate, formatDateTime } from "@/lib/format-date"
 import { getLeadScoreFactorLabel } from "@/lib/leads/score-factor-labels"
-import { applyTransitionEffects, DEMO_CHANNEL_LABELS, type DemoActivityRecord, type DemoLeadRecord } from "@/lib/demo-center/journey"
+import { applyTransitionEffects, DEMO_CHANNEL_LABELS, demoMoney, type DemoActivityRecord, type DemoLeadRecord } from "@/lib/demo-center/journey"
 import { cn } from "@/lib/utils"
 import type { DemoJourneyVariant, DemoSceneProps } from "../scene-props"
 import { demoTarget } from "../demo-target"
@@ -210,7 +210,7 @@ function LeadListView({ snapshot, step, reviewMode, dispatch, hint }: DemoSceneP
                       </span>
                       <span className="mt-2 flex items-center justify-between">
                         <span className="text-[11px] text-muted-foreground">{row.score}/100</span>
-                        <span className="text-xs font-semibold text-foreground">{row.estimatedValue.toLocaleString()} ₼</span>
+                        <span className="text-xs font-semibold text-foreground">{demoMoney(row.estimatedValue)}</span>
                       </span>
                     </button>
                   )
@@ -403,7 +403,7 @@ export function LeadCardView({ snapshot, step, reviewMode, variant, dispatch, hi
               sourceLabel={channelLabel}
             />
           </div>
-          <VoicePermissionCard onAction={() => hint(S.hintDisabled)} />
+          <VoicePermissionCard granted={Boolean(callResult)} onAction={() => hint(S.hintDisabled)} />
           {callResult ? <CallResultCard entry={callResult} variant={variant} /> : null}
           <LeadEvaluationCard
             score={lead.score}
@@ -418,7 +418,7 @@ export function LeadCardView({ snapshot, step, reviewMode, variant, dispatch, hi
           <div data-tour-id="lead-kpi" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <ColorStatCard label={t("detailScoreGrade")} value={`${gradeOf(lead.score)} · ${lead.score}`} icon={<Flame className="h-4 w-4" />} hint={t("hintColScore")} />
             <ColorStatCard label={t("detailDaysSinceCreated")} value={`${daysSinceCreated} ${t("modalDays")}`} icon={<Calendar className="h-4 w-4" />} />
-            <ColorStatCard label={t("modalEstimatedValue")} value={`${lead.estimatedValue.toLocaleString()} ₼`} icon={<DollarSign className="h-4 w-4" />} />
+            <ColorStatCard label={t("modalEstimatedValue")} value={demoMoney(lead.estimatedValue)} icon={<DollarSign className="h-4 w-4" />} />
             <ColorStatCard label={t("modalPriority")} value={priorityLabels[lead.priority]} icon={<Flame className="h-4 w-4" />} hint={t("hintColPriority")} />
           </div>
 
@@ -469,7 +469,7 @@ export function LeadCardView({ snapshot, step, reviewMode, variant, dispatch, hi
                     <Field label={t("modalSource")} value={`${channelLabel} · ${lead.sourceDetail}`} hint={t("hintColSource")} />
                     <Field label={t("colStatus")} value={statusLabels[lead.status]} />
                     <Field label={tc("assignee")} value={lead.assignedToName} />
-                    <Field label={t("modalEstimatedValue")} value={`${lead.estimatedValue.toLocaleString()} ₼`} />
+                    <Field label={t("modalEstimatedValue")} value={demoMoney(lead.estimatedValue)} />
                   </dl>
                 </CardContent>
               </Card>
@@ -643,7 +643,16 @@ function CallResultCard({ entry, variant }: { entry: DemoActivityRecord; variant
  * can be allowed here. The real component fetches the permission ledger,
  * which a public session must never reach.
  */
-function VoicePermissionCard({ onAction }: { onAction: () => void }) {
+/**
+ * The lead card's sales-call permission, as the story leaves it.
+ *
+ * Before the call it is simply not recorded yet; the product's own
+ * «phoneUnavailable» line used to be shown instead, telling the prospect to
+ * add a phone number that the same card prints two rows above. After the call
+ * the permission exists (the call records it — `recordDemoCallPermission`),
+ * so the badge follows.
+ */
+function VoicePermissionCard({ granted, onAction }: { granted: boolean; onAction: () => void }) {
   const t = useTranslations("leads.voicePermission")
   return (
     <Card data-tour-id="lead-voice-permission">
@@ -653,11 +662,21 @@ function VoicePermissionCard({ onAction }: { onAction: () => void }) {
             <ShieldCheck aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
             <span className="min-w-0">{t("title")}</span>
           </CardTitle>
-          <Badge variant="outline" className="shrink-0 border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300">
-            {t("status.unknown")}
+          <Badge
+            variant="outline"
+            className={cn(
+              "shrink-0",
+              granted
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300"
+                : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300",
+            )}
+          >
+            {granted ? t("status.allowed") : t("status.unknown")}
           </Badge>
         </div>
-        <p className="text-xs leading-relaxed text-muted-foreground">{t("phoneUnavailable")}</p>
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          {granted ? t("description.allowed") : t("description.unknown")}
+        </p>
       </CardHeader>
       <CardContent>
         <Button

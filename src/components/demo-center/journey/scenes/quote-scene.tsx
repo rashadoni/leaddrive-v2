@@ -6,7 +6,7 @@ import { ArrowLeft, Download, FileText, Plus, Search } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { formatDate } from "@/lib/format-date"
-import { DEMO_QUOTE_LICENCES, quoteTotals } from "@/lib/demo-center/journey"
+import { DEMO_QUOTE_LICENCES, demoMoney, quoteTotals } from "@/lib/demo-center/journey"
 import { cn } from "@/lib/utils"
 import type { DemoSceneProps } from "../scene-props"
 import { demoTarget } from "../demo-target"
@@ -162,7 +162,7 @@ export function QuoteScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
                   <td className="px-4 py-2 text-muted-foreground">{deal?.title}</td>
                   <td className="px-4 py-2"><Badge className={STATUS_TINT[quote.status]}>{t(`status.${quote.status}`)}</Badge></td>
                   <td className="px-4 py-2 text-muted-foreground">{quote.lines.length}</td>
-                  <td className="px-4 py-2 text-right font-medium">{quoteTotals(quote).gross.toLocaleString()} ₼</td>
+                  <td className="px-4 py-2 text-right font-medium">{demoMoney(quoteTotals(quote).gross)}</td>
                 </tr>
               </tbody>
             </table>
@@ -247,8 +247,8 @@ export function QuoteScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
                     {line.quantity}
                   </button>
                 </td>
-                <td className="px-4 py-2 text-muted-foreground">{line.unitPrice.toLocaleString()} ₼</td>
-                <td className="px-4 py-2 text-right font-medium">{(line.quantity * line.unitPrice).toLocaleString()} ₼</td>
+                <td className="px-4 py-2 text-muted-foreground">{demoMoney(line.unitPrice)}</td>
+                <td className="px-4 py-2 text-right font-medium">{demoMoney((line.quantity * line.unitPrice))}</td>
               </tr>
             ))}
           </tbody>
@@ -258,9 +258,9 @@ export function QuoteScene({ snapshot, step, reviewMode, dispatch, hint }: DemoS
       <div data-tour-id="quote-summary" className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
         <h3 className="mb-2 font-semibold">{td("summary.title")}</h3>
         <dl className="space-y-1.5 text-sm">
-          <Line label={td("summary.subtotal")} value={`${totals.net.toLocaleString()} ₼`} />
-          <Line label={`${S.quoteVat} ${quote.vatPercent}%`} value={`${totals.vat.toLocaleString()} ₼`} />
-          <Line label={td("summary.total")} value={`${totals.gross.toLocaleString()} ₼`} strong />
+          <Line label={td("summary.subtotal")} value={demoMoney(totals.net)} />
+          <Line label={`${S.quoteVat} ${quote.vatPercent}%`} value={demoMoney(totals.vat)} />
+          <Line label={td("summary.total")} value={demoMoney(totals.gross)} strong />
           <Line label={td("field.validUntil")} value={formatDate(quote.validUntil, locale)} />
         </dl>
       </div>

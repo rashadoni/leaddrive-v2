@@ -54,7 +54,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
       steps: [
         {
           id: "orientation-sidebar",
-          title: "Solda — dörd bölmə",
+          title: "Bu demo üçün dörd bölmə",
           instruction: "Bu demo üçün sizə dörd bölmə açılıb: Əsas, Satış, Kommunikasiya və Marketinq. Qalan modullar bilərəkdən gizlədilib ki, hekayəni itirməyəsiniz.",
           anchor: "demo-sidebar",
           placement: "right",
@@ -66,7 +66,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
         },
         {
           id: "orientation-guide",
-          title: "Sağda — bələdçi",
+          title: "Bələdçi paneli",
           instruction: "Bu panel hər addımda nə etməli olduğunuzu göstərir. Addım yalnız real hərəkətdən sonra tamamlanmış sayılır.",
           anchor: "demo-guide-panel",
           placement: "left",
@@ -149,7 +149,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
         {
           id: "source-roi",
           title: "Kampaniyanın pulu",
-          instruction: "Sağda kampaniyanın pulu: büdcə, gəlir və ROI. Gəlir kliklərdən yox, bu kampaniyadan gələn qazanılmış sövdələşmələrdən yığılır; xərc kimi isə daxil edilmiş büdcə götürülür — məhsul faktiki xərci özü qeydə almır.",
+          instruction: "«Pul» kartı: büdcə, gəlir və ROI. Gəlir kliklərdən yox, bu kampaniyadan gələn qazanılmış sövdələşmələrdən yığılır; xərc kimi isə daxil edilmiş büdcə götürülür — məhsul faktiki xərci özü qeydə almır.",
           anchor: "campaign-roi",
           placement: "top",
           action: "observe",
@@ -193,7 +193,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
         {
           id: "conversation-views",
           title: "Kimin dialoqları",
-          instruction: "Solda görünüşlər: Hamısı, Mənim, Məsul yoxdur, Çat-bot. Menecer öz növbəsini bir kliklə görür.",
+          instruction: "Görünüşlər: Hamısı, Mənim, Təyin edilməyib, Digər agentlər, Çatbot, Mənimlə. Menecer öz növbəsini bir kliklə görür.",
           anchor: "inbox-views",
           placement: "right",
           action: "observe",
@@ -219,7 +219,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
         {
           id: "conversation-contact",
           title: "Kim yazır və hansı nömrə ilə",
-          instruction: "Sağ paneldə müştərinin məlumatları toplanır: ad, şirkət, teqlər, bağlı lid və sorğuda göstərdiyiniz telefon nömrəsi. Nömrə bilindiyi üçün eyni müştəri WhatsApp-da da bir kart kimi görünür — menecerə başqa yerə keçmək lazım deyil.",
+          instruction: "Müştəri panelində məlumatlar toplanır: ad, şirkət, teqlər, bağlı lid və sorğuda göstərdiyiniz telefon nömrəsi. Nömrə bilindiyi üçün eyni müştəri WhatsApp-da da bir kart kimi görünür — menecerə başqa yerə keçmək lazım deyil.",
           anchor: "inbox-contact-panel",
           placement: "left",
           action: "observe",
@@ -354,8 +354,8 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
         },
         {
           id: "lead-sentiment-tasks",
-          title: "Əhval və tapşırıqlar",
-          instruction: "«Əhval» yazışmanın tonunu göstərir, «Tapşırıqlar» — bu lidlə bağlı işləri. Hələlik boşdur; birazdan dolacaq.",
+          title: "Tonallıq və tapşırıqlar",
+          instruction: "«Tonallıq» yazışmanın tonunu göstərir, «Tapşırıqlar» — bu lidlə bağlı işləri. Hələlik boşdur; birazdan dolacaq.",
           anchor: "lead-tabs",
           placement: "bottom",
           action: "observe",
@@ -616,7 +616,7 @@ export const PROSPECT_TO_CLOSED_WON: DemoJourneyManifest = {
         {
           id: "deal-ai",
           title: "Da Vinci nə deyir",
-          instruction: "Sağda AI proqnozu, növbəti addım tövsiyəsi və uyğun təkliflər. Bunlar nümunə nəticələrdir.",
+          instruction: "AI proqnozu, növbəti addım tövsiyəsi və uyğun təkliflər — kartın yanında. Bunlar nümunə nəticələrdir.",
           anchor: "deal-ai-suggestions",
           placement: "left",
           action: "observe",
