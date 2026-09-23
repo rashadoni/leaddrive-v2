@@ -13,8 +13,11 @@ describe("MTM calendar-first planning UI contract", () => {
   const matrix = source("src/components/mtm/route-planning-matrix.tsx")
   const rangeClient = source("src/lib/mtm/route-range-client.ts")
 
-  it("opens on a role-named calendar, keeps team week primary, and groups secondary tools", () => {
-    expect(page).toContain('useState<RouteViewMode>("calendar")')
+  it("opens the calendar section on the team calendar and the routes section as a list", () => {
+    // Owner 2026-09-23: the calendar is its own section; routes open as a list.
+    expect(page).toContain('useState<RouteViewMode>(calendarSurface ? "calendar" : "list")')
+    const calendarPage = source("src/app/(dashboard)/mtm/calendar/page.tsx")
+    expect(calendarPage).toContain('<MtmRoutesWorkspace surface="calendar" />')
     expect(page).toContain('data-testid="mtm-routes-view-calendar"')
     expect(page).toContain('data-testid="mtm-routes-view-list"')
     expect(page).toContain('data-testid="mtm-routes-view-week"')

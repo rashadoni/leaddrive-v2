@@ -184,6 +184,8 @@ export const SECTION_DESCRIPTORS: Record<string, SectionDescriptor> = {
     createdField: "createdAt",
   },
   mtm_routes: { model: "mtmRoute", permission: "tpm", module: "mtm", statusField: "status", createdField: "createdAt" },
+  // The calendar section (owner 2026-09-23) reads the same published routes.
+  mtm_calendar: { model: "mtmRoute", permission: "tpm", module: "mtm", statusField: "status", createdField: "createdAt" },
   mtm_tasks: {
     model: "mtmTask",
     permission: "tpm", module: "mtm",

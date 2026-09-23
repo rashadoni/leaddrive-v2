@@ -297,6 +297,7 @@ export const navItems: NavItem[] = [
   { module: "mtm", tenantCapability: "route-field", href: "/mtm", icon: MapPin, tKey: "mtmDashboard", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/map", icon: MapPin, tKey: "mtmMap", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/routes", icon: Route, tKey: "mtmRoutes", group: "Route & Field" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/calendar", icon: CalendarDays, tKey: "mtmCalendar", group: "Route & Field" },
   { module: "mtm", href: "/mtm/operations", icon: Radio, tKey: "mtmOperations", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/visits", icon: CheckSquare, tKey: "mtmVisits", group: "Route & Field" },
   { module: "mtm", href: "/mtm/promotions", icon: FileBadge, tKey: "mtmPromotions", group: "Route & Field", orgSetting: "pharmacyPromotionsEnabled" },

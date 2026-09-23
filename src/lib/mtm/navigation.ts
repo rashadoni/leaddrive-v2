@@ -58,6 +58,8 @@ export interface MtmToolNavigationGroup {
 export const MTM_PRIMARY_NAVIGATION = [
   { href: "/mtm", icon: CalendarDays, labelKey: "today" },
   { href: "/mtm/routes", icon: Route, labelKey: "routes" },
+  // Owner 2026-09-23: the calendar left the routes section and became its own.
+  { href: "/mtm/calendar", icon: CalendarDays, labelKey: "calendar" },
   { href: "/mtm/map", icon: MapPin, labelKey: "map" },
   { href: "/mtm/visits", icon: CheckSquare, labelKey: "visits" },
   { href: "/mtm/analytics", icon: BarChart3, labelKey: "results" },
