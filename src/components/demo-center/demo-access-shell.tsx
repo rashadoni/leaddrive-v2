@@ -288,7 +288,7 @@ export function DemoAccessShell({ token }: { token: string }) {
             {state === "ready_for_otp" || state === "otp_sent" ? (
               <>
                 <div className="flex items-center gap-3 text-sm font-semibold text-[#17384a]"><StateIcon icon={Mail} /><span>Dəvəti e-poçtla təsdiqləyin</span></div>
-                <p className="mt-3 text-sm leading-6 text-[#5b7280]">6 rəqəmli kod <strong className="font-semibold text-[#17384a]">{payload?.recipient || "korporativ e-poçtunuza"}</strong> göndəriləcək. Linki açmaq sessiyanı hələ başlatmır.</p>
+                <p className="mt-3 text-sm leading-6 text-[#5b7280]">6 rəqəmli kod <strong className="font-semibold text-[#17384a]">{payload?.recipient || "e-poçtunuza"}</strong> göndəriləcək. Linki açmaq sessiyanı hələ başlatmır.</p>
                 {state === "ready_for_otp" && !codeSent ? (
                   <Button onClick={sendOtp} disabled={action !== null} className="mt-6 min-h-14 rounded-full bg-[#172f3f] px-6 text-base text-white shadow-[inset_0_-2px_3px_rgba(0,0,0,0.28)] hover:bg-[#0a2540]">
                     {action === "otp" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}Giriş kodunu göndər<ArrowRight className="h-4 w-4" />

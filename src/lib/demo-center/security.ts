@@ -9,35 +9,12 @@ export const DEMO_OTP_RESEND_COOLDOWN_MS = 60 * 1000
 export const DEMO_MAX_OTP_ATTEMPTS = 5
 export const DEMO_MAX_OTP_SENDS = 5
 
-const PERSONAL_EMAIL_DOMAINS = new Set([
-  "aol.com",
-  "gmail.com",
-  "googlemail.com",
-  "hotmail.com",
-  "icloud.com",
-  "live.com",
-  "mail.com",
-  "mail.ru",
-  "msn.com",
-  "outlook.com",
-  "proton.me",
-  "protonmail.com",
-  "yahoo.com",
-  "yandex.com",
-  "yandex.ru",
-])
-
 export function normalizeEmail(value: string): string {
   return value.trim().toLowerCase()
 }
 
 export function emailDomain(value: string): string {
   return normalizeEmail(value).split("@").at(-1) || ""
-}
-
-export function isCorporateEmail(value: string): boolean {
-  const domain = emailDomain(value)
-  return domain.includes(".") && !PERSONAL_EMAIL_DOMAINS.has(domain)
 }
 
 export function maskEmail(value: string): string {

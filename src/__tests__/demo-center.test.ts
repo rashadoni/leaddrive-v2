@@ -9,7 +9,6 @@ import {
   demoSessionCookieName,
   demoVerificationCookieName,
   generateDemoOtp,
-  isCorporateEmail,
   issueBrowserCredential,
   maskEmail,
   maskPhone,
@@ -65,14 +64,7 @@ describe("Demo Center catalog", () => {
 })
 
 describe("Demo Center request and credential security", () => {
-  it("requires consent and a corporate email", () => {
-    expect(demoRequestSchema.safeParse({
-      name: "Rəşad",
-      company: "LeadDrive",
-      email: "rashad@gmail.com",
-      consent: true,
-    }).success).toBe(false)
-
+  it("requires consent, and takes the address as given", () => {
     expect(demoRequestSchema.safeParse({
       name: "Rəşad",
       company: "LeadDrive",
@@ -87,14 +79,25 @@ describe("Demo Center request and credential security", () => {
     }).success).toBe(false)
   })
 
+  it("takes a personal address: the corporate-only rule is gone (owner, 2026-09-23)", () => {
+    const request = {
+      name: "Rəşad Rəhimov",
+      company: "LeadDrive",
+      email: "Rashad@Gmail.com ",
+      locale: "az" as const,
+      consent: true as const,
+    }
+    const parsed = demoRequestSchema.safeParse(request)
+    expect(parsed.success, parsed.success ? "" : JSON.stringify(parsed.error.issues)).toBe(true)
+    expect(parsed.success && parsed.data.email).toBe("rashad@gmail.com")
+  })
+
   it("rejects unapproved grant modules", () => {
     expect(demoGrantIssueSchema.safeParse({ moduleIds: ["crm", "social"] }).success).toBe(false)
     expect(demoGrantIssueSchema.safeParse({ moduleIds: ["crm", "sales"] }).success).toBe(true)
   })
 
-  it("recognizes and masks corporate addresses without exposing the full local part", () => {
-    expect(isCorporateEmail("buyer@enterprise.az")).toBe(true)
-    expect(isCorporateEmail("buyer@outlook.com")).toBe(false)
+  it("masks an address without exposing the full local part", () => {
     expect(emailDomain(" Buyer@Enterprise.AZ ")).toBe("enterprise.az")
     expect(maskEmail("buyer@enterprise.az")).toBe("bu•••@enterprise.az")
   })
