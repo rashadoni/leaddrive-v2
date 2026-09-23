@@ -14,6 +14,7 @@ import { visitPlaceSummary } from "@/lib/mtm/visit-place-check"
 import { addDays, clampHistoryEndDate, MAX_RANGE_DAYS } from "@/lib/mtm/history-range"
 import { HISTORY_MAP_COLORS } from "@/lib/mtm/history-path"
 import { VisitPlaceBadge } from "@/components/mtm/visit-place-badge"
+import { DayTripLedger, type DayTripData, type DayTripFocus } from "@/components/mtm/day-trip-ledger"
 
 const LocationHistoryMap = dynamic(() => import("@/components/mtm/location-history-map"), { ssr: false })
 
@@ -178,6 +179,8 @@ type HistoryData = {
     relatedId: string | null
     confirmed: boolean
   }>
+  /** The day as legs; null when the raw read was cut short. Older responses omit it. */
+  trip?: DayTripData | null
   visits: Array<{
     id: string
     customerId: string
@@ -266,6 +269,7 @@ export function LocationHistoryPanel() {
   const requestedHistoryLoadRef = useRef<{ agentId: string; date: string } | null>(null)
   const [playbackIndex, setPlaybackIndex] = useState(0)
   const [playbackRate, setPlaybackRate] = useState(1)
+  const [tripFocus, setTripFocus] = useState<DayTripFocus | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [layers, setLayers] = useState({
     planned: true,
@@ -435,6 +439,7 @@ export function LocationHistoryPanel() {
   useEffect(() => {
     setIsPlaying(false)
     setPlaybackIndex(playbackLastIndex)
+    setTripFocus(null)
   }, [data, playbackLastIndex])
 
   useEffect(() => {
@@ -758,6 +763,7 @@ export function LocationHistoryPanel() {
                 locale={locale}
                 timezone={timezone}
                 playbackIndex={playbackIndex}
+                focus={tripFocus}
               />
             </div>
             {/* Owner 2026-09-22: «lines by colours, by pieces — no explanation». */}
@@ -772,6 +778,16 @@ export function LocationHistoryPanel() {
             </div>
 
             <aside className="space-y-3">
+              {data.trip && (
+                <DayTripLedger
+                  trip={data.trip}
+                  multiDay={(data.range.days ?? 1) > 1}
+                  focusId={tripFocus?.id ?? null}
+                  onFocus={setTripFocus}
+                  formatMoment={formatMoment}
+                  formatDuration={formatDuration}
+                />
+              )}
               {data.capabilities?.workforce !== false ? <section className="rounded-lg border border-zinc-200 bg-card p-3 dark:border-zinc-700">
                 <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold"><Clock3 className="h-4 w-4" />{t("workday")}</h3>
                 {(data.range.days ?? 1) > 1 ? (
@@ -807,6 +823,9 @@ export function LocationHistoryPanel() {
                 ) : <p className="text-xs text-muted-foreground">{t("noWorkday")}</p>}
               </section> : null}
 
+              {/* The trip above tells the day; stops and raw events stay one click away as evidence. */}
+              <details data-testid="mtm-history-evidence" open={!data.trip} className="group space-y-3">
+              <summary className="flex min-h-11 cursor-pointer items-center rounded-lg border border-zinc-200 bg-card px-3 text-sm font-medium dark:border-zinc-700">{t("trip.evidence")}</summary>
               <section className="rounded-lg border border-zinc-200 bg-card dark:border-zinc-700">
                 <div className="border-b px-3 py-2">
                   <h3 className="text-sm font-semibold">{t("stopDetails")} · {selectedAgent?.name}</h3>
@@ -867,6 +886,7 @@ export function LocationHistoryPanel() {
                   ))}
                 </div>
               </section>
+              </details>
             </aside>
           </div>
 
