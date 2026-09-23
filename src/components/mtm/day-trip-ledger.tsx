@@ -73,7 +73,7 @@ export function DayTripLedger({
   const clock = (value: string) => formatMoment(value, { hour: "2-digit", minute: "2-digit" })
   const dayOf = (value: string) => formatMoment(value, { day: "numeric", month: "long" })
   const { summary } = trip
-  const entryDays = trip.entries.map((entry) => dayOf(entry.kind === "START" || entry.kind === "END" ? entry.at : entry.startedAt))
+  const entryDays = trip.entries.map((entry) => dayOf("at" in entry ? entry.at : entry.startedAt))
 
   return (
     <section data-testid="mtm-day-trip" className="rounded-lg border border-zinc-200 bg-card dark:border-zinc-700" aria-labelledby="day-trip-title">
@@ -92,7 +92,7 @@ export function DayTripLedger({
       <ol className="divide-y">
         {trip.entries.map((entry, index) => {
           const dayHeader = multiDay && entryDays[index] !== entryDays[index - 1] ? entryDays[index] : null
-          const focus: DayTripFocus | null = entry.kind === "START" || entry.kind === "END"
+          const focus: DayTripFocus | null = "at" in entry
             ? null
             : {
                 id: entry.id,
@@ -139,7 +139,7 @@ export function DayTripLedger({
                 : formatDuration(entry.durationSeconds)
               break
           }
-          const time = entry.kind === "START" || entry.kind === "END"
+          const time = "at" in entry
             ? clock(entry.at)
             : `${clock(entry.startedAt)}–${clock(entry.endedAt)}`
 
