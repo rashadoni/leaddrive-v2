@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { COMPANY_EMAIL } from "@/lib/constants"
+import { autoIssueDemoGrant } from "@/lib/demo-center/auto-issue"
 import { getDemoModules } from "@/lib/demo-center/catalog"
 import { sendDemoRequestNotification } from "@/lib/demo-center/email"
 import { emailDomain } from "@/lib/demo-center/security"
@@ -53,6 +54,8 @@ export async function POST(request: Request) {
         company: true,
         jobTitle: true,
         email: true,
+        emailNormalized: true,
+        locale: true,
         phone: true,
         message: true,
         requestedModules: true,
@@ -82,8 +85,14 @@ export async function POST(request: Request) {
     requestedModuleNames,
   }).catch(() => undefined)
 
+  // The invitation goes out by itself (src/lib/demo-center/auto-issue.ts), so
+  // the form's «check your email» is true by the time it is read. A refusal
+  // there is not the prospect's problem: the request is stored, the owner has
+  // it in Demo Center, and the answer stays the same.
+  const invitation = await autoIssueDemoGrant({ request: created }).catch(() => "failed" as const)
+
   return NextResponse.json(
-    { success: true, requestId: created.id, message: "Demo sorğusu qəbul edildi" },
+    { success: true, requestId: created.id, invitation, message: "Demo sorğusu qəbul edildi" },
     { status: 201 },
   )
 }
