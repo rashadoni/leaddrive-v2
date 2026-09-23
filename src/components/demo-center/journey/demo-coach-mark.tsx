@@ -76,6 +76,18 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
 }
 
+/** Cut off on the left or right by the window or by a sideways-scrolling ancestor. */
+export function clippedSideways(element: Element, box: DOMRect = element.getBoundingClientRect()): boolean {
+  if (box.left < 0 || box.right > window.innerWidth) return true
+  for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+    const overflowX = getComputedStyle(parent).overflowX
+    if (overflowX !== "auto" && overflowX !== "scroll" && overflowX !== "hidden") continue
+    const clip = parent.getBoundingClientRect()
+    if (box.left < clip.left - 1 || box.right > clip.right + 1) return true
+  }
+  return false
+}
+
 function rectOf(element: Element): Rect {
   const box = element.getBoundingClientRect()
   return { top: box.top, left: box.left, width: box.width, height: box.height }
@@ -141,9 +153,18 @@ export function DemoCoachMark({
   const scrollOnce = (element: Element) => {
     if (scrolledFor.current === stepKey) return
     const box = element.getBoundingClientRect()
-    if (box.top >= 0 && box.bottom <= window.innerHeight) return
+    const verticallyInView = box.top >= 0 && box.bottom <= window.innerHeight
+    // Sideways too: on a phone the won stage sat past the edge of the
+    // scrolling stage rail, and the arrow pointed at a chevron reading «Q».
+    const sidewaysInView = !clippedSideways(element, box)
+    if (verticallyInView && sidewaysInView) return
     scrolledFor.current = stepKey
-    element.scrollIntoView({ behavior: reducedMotionRef.current ? "auto" : "smooth", block: "center", inline: "nearest" })
+    element.scrollIntoView({
+      behavior: reducedMotionRef.current ? "auto" : "smooth",
+      // Already in view vertically: only the rail moves, the page stays put.
+      block: verticallyInView ? "nearest" : "center",
+      inline: "nearest",
+    })
   }
 
   // Locate the anchor. Scenes render tabs and cards a tick after the step
