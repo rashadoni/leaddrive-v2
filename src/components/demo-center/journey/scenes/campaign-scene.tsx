@@ -93,6 +93,7 @@ export function CampaignScene({ snapshot, step, reviewMode, dispatch, hint }: De
               <p className="flex items-center gap-1.5 text-sm font-semibold">
                 <Target className="h-3.5 w-3.5 text-primary" /> {tr("conversionFunnel")}
               </p>
+              <p className="text-[11px] leading-relaxed text-muted-foreground">{S.campaignFunnelNote}</p>
               {([
                 { label: tr("recipients"), value: campaign.audience },
                 { label: t("kpiSent"), value: campaign.sent },

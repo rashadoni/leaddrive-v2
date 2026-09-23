@@ -125,6 +125,8 @@ export const DEMO_JOURNEY_STRINGS = {
   whatsappRealNote: (number: string) => `Bu mesajlar həqiqətən ${number} nömrəsindən gedir və telefonunuzda görünür.`,
   whatsappPendingNote:
     "Nömrə bilindiyi üçün eyni müştəri WhatsApp-da da bu kartda görünür. Şəxsi demoda bu yazışma həqiqətən işləyir — bələdçidəki paneldən.",
+  campaignFunnelNote:
+    "Bu rəqəmlər bütün kampaniyaya aiddir. Demoda siyahılarda yalnız sizin qeydiniz görünür — sizin lidiniz də bu «Lidlər» sətrinə əlavə olunur.",
   campaignMoneyTitle: "Pul: büdcə və qazanılmış sövdələşmələr",
   campaignMoneyNote:
     "Xərc kimi kampaniyaya yazdığınız büdcə götürülür — faktiki xərci məhsul özü qeydə almır. Gəlir isə yalnız bu kampaniyadan gələn qazanılmış sövdələşmələrdən yığılır, ona görə ROI kliklərə yox, pula baxır.",

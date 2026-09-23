@@ -8,11 +8,13 @@
  * required step, no effect applied twice, no resuming a foreign snapshot.
  */
 import { describe, expect, it } from "vitest"
+import { getLeadScoreFactorLabel } from "@/lib/leads/score-factor-labels"
 import {
   DEMO_DEAL_STAGES,
   PROSPECT_TO_CLOSED_WON,
   activeSections,
   createJourneySnapshot,
+  demoMoney,
   findStep,
   journeyProgress,
   parseSnapshot,
@@ -180,6 +182,32 @@ describe("Journey snapshot: the story end to end", () => {
     expect(afterTask.records.lead?.activities.some((entry) => entry.id === "act-call")).toBe(true)
     expect(afterTask.records.task?.relatedLeadId).toBe("lead-demo-1")
     expect(afterTask.records.task?.assigneeName).toBeTruthy()
+  })
+
+  it("carries one amount from the accepted quote onwards — deal, card and summary agree", () => {
+    // The screens used to disagree at the finish: the deal held the 4,800
+    // estimate, the quote 4,814.40 and the summary a rounded 4,814. The
+    // acceptance is where they are made one number.
+    const afterAccept = driveTo(start, "closed-won-move")
+    const gross = quoteTotals(afterAccept.records.quote!).gross
+    expect(afterAccept.records.quote?.status).toBe("accepted")
+    expect(afterAccept.records.deal?.amount).toBe(gross)
+    expect(afterAccept.records.lead?.timeline.some((entry) => entry.id === "tl-quote-accepted")).toBe(true)
+    expect(demoMoney(gross)).toBe("4,814.40 ₼")
+    // A whole sum keeps no qəpik, so the story does not print 4,800.00.
+    expect(demoMoney(4_800)).toBe("4,800 ₼")
+  })
+
+  it("scores the lead with the product's own factors, so the screen reads them in Azerbaijani", () => {
+    const afterLead = driveTo(start, "lead-details")
+    const factors = Object.keys(afterLead.records.lead!.scoreDetails.factors)
+    expect(factors.length).toBeGreaterThan(0)
+    for (const key of factors) {
+      // Anything the product cannot name falls back to a humanised English
+      // word — which is how «Engagement / Fit / Intent» reached a demo that
+      // sells Azerbaijani AI.
+      expect(getLeadScoreFactorLabel(key, (translationKey) => translationKey), key).not.toBe(key)
+    }
   })
 
   it("reaches closed won with the deal amount taken from the accepted quote", () => {

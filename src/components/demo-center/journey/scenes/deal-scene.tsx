@@ -11,7 +11,7 @@ import { CollapsibleSection } from "@/components/crm/collapsible-section"
 import { CustomerDetailsCards } from "@/components/crm/customer-details-cards"
 import { StageProgress } from "@/components/deals/stage-progress"
 import { formatDate, formatDateTime } from "@/lib/format-date"
-import { DEMO_DEAL_STAGES } from "@/lib/demo-center/journey"
+import { DEMO_DEAL_STAGES, demoMoney, type DemoActivityRecord } from "@/lib/demo-center/journey"
 import { cn } from "@/lib/utils"
 import { LeadCardView } from "./lead-scene"
 import type { DemoSceneProps } from "../scene-props"
@@ -104,6 +104,7 @@ function DealWorkspace({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
     setCardOpen(true)
   }
 
+  const activityCount = (type: DemoActivityRecord["type"]) => (lead?.activities ?? []).filter((entry) => entry.type === type).length
   const daysInFunnel = Math.max(0, Math.round((Date.parse(snapshot.updatedAt) - Date.parse(deal.createdAt)) / 86_400_000))
 
   if (!cardOpen) {
@@ -150,7 +151,7 @@ function DealWorkspace({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
         <div data-tour-id="deals-summary" className="rounded-xl border border-zinc-200 bg-card p-4 dark:border-zinc-700">
           <div className="flex items-baseline justify-between">
             <span className="text-sm text-muted-foreground">{S.dealAmount}</span>
-            <span className="text-lg font-bold">{deal.amount.toLocaleString()} ₼</span>
+            <span className="text-lg font-bold">{demoMoney(deal.amount)}</span>
           </div>
           <div className="mt-3 flex gap-1">
             {DEMO_DEAL_STAGES.map((stage, index) => (
@@ -186,7 +187,7 @@ function DealWorkspace({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
                       <div key={card.id} data-tour-id="deals-card" className="rounded-lg border border-zinc-200 bg-card p-3 dark:border-zinc-700">
                         <button type="button" onClick={() => setSheetOpen(true)} className="block w-full text-left">
                           <span className="block truncate text-xs font-medium">{card.title}</span>
-                          <span className="mt-1 block text-[11px] text-muted-foreground">{card.amount.toLocaleString()} ₼</span>
+                          <span className="mt-1 block text-[11px] text-muted-foreground">{demoMoney(card.amount)}</span>
                           <span className="mt-1 block text-[11px] text-muted-foreground">
                             {S.dealProbability}: {card.probability}%
                           </span>
@@ -222,7 +223,7 @@ function DealWorkspace({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
                   <td className="px-4 py-2"><button type="button" onClick={openCard} className="hover:underline">{deal.title}</button></td>
                   <td className="px-4 py-2 text-muted-foreground">{lead?.companyName}</td>
                   <td className="px-4 py-2 text-muted-foreground">{stageLabel(deal.stageIndex)}</td>
-                  <td className="px-4 py-2 text-right font-medium">{deal.amount.toLocaleString()} ₼</td>
+                  <td className="px-4 py-2 text-right font-medium">{demoMoney(deal.amount)}</td>
                 </tr>
               </tbody>
             </table>
@@ -234,7 +235,7 @@ function DealWorkspace({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">{deal.title}</p>
-                <p className="text-xs text-muted-foreground">{stageLabel(deal.stageIndex)} · {deal.amount.toLocaleString()} ₼</p>
+                <p className="text-xs text-muted-foreground">{stageLabel(deal.stageIndex)} · {demoMoney(deal.amount)}</p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <Button size="sm" onClick={openCard}>{t("tabOverview")}</Button>
@@ -301,7 +302,7 @@ function DealWorkspace({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
         <div className="min-w-0 space-y-4">
           <div data-tour-id="deal-sidebar" className="overflow-hidden rounded-xl border border-zinc-200 bg-card dark:border-zinc-700">
             <div className="space-y-3 p-4 text-sm">
-              <Field label={S.dealAmount} value={`${deal.amount.toLocaleString()} ₼`} />
+              <Field label={S.dealAmount} value={demoMoney(deal.amount)} />
               <Field label={S.dealProbability} value={`${deal.probability}%`} />
               <Field label={S.dealExpectedClose} value={formatDate(deal.expectedCloseAt, locale)} />
               <Field label={tc("assignee")} value={lead?.assignedToName ?? "—"} />
@@ -319,8 +320,10 @@ function DealWorkspace({ snapshot, step, reviewMode, dispatch, hint }: DemoScene
             <div data-tour-id="deal-kpi-chips" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <Chip label={t("kpiDaysInFunnel")} value={String(daysInFunnel)} Icon={Hourglass} />
               <Chip label={t("kpiDaysAtStage")} value={String(daysInFunnel)} Icon={Timer} />
-              <Chip label={t("kpiEmailsSent")} value="1" Icon={Mail} />
-              <Chip label={t("kpiOutgoingCalls")} value="0" Icon={PhoneOutgoing} />
+              {/* Counted from the record, never fixed: «Gedən zənglər: 0» used
+                  to sit above a feed that logged an answered AI call. */}
+              <Chip label={t("kpiEmailsSent")} value={String(activityCount("email"))} Icon={Mail} />
+              <Chip label={t("kpiOutgoingCalls")} value={String(activityCount("call"))} Icon={PhoneOutgoing} />
             </div>
           </CollapsibleSection>
 

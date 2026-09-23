@@ -242,6 +242,21 @@ export const DEMO_CALL_OUTCOME_COPY: Partial<Record<DemoJourneyState, { subject:
   CALL_SKIPPED: { subject: "AI zəngi — bu sessiyada edilmədi", note: "Bu demo sessiyasında zəng edilmədi.", title: "AI zəngi bu sessiyada edilmədi", subtitle: "Zəngsiz davam", duration: "—" },
 }
 
+/**
+ * Money on the demo's screens.
+ *
+ * `toLocaleString()` printed the accepted quote as «4,814.4» — one decimal,
+ * which reads as an unfinished number on the screen a buyer studies hardest.
+ * Whole sums stay whole (4,800 ₼), anything with qəpik gets both digits.
+ */
+export function demoMoney(amount: number): string {
+  const fraction = Math.round(amount * 100) % 100 === 0 ? 0 : 2
+  // The grouping is the browser's, exactly as the product's own screens print
+  // it — a demo that switched to another convention mid-story would look like
+  // two different products.
+  return `${amount.toLocaleString(undefined, { minimumFractionDigits: fraction, maximumFractionDigits: fraction })} ₼`
+}
+
 export function quoteTotals(quote: Pick<DemoQuoteRecord, "lines" | "vatPercent">): { net: number; vat: number; gross: number } {
   const net = quote.lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0)
   const vat = Math.round(net * quote.vatPercent) / 100
@@ -384,7 +399,11 @@ export function applyTransitionEffects(
           score: 72,
           scoreDetails: {
             reasoning: "Müraciət konkretdir (satış komandası üçün CRM), şirkət və vəzifə doldurulub, ilk cavab 2 dəqiqə ərzində verilib. Demo istəyi — yüksək niyyət siqnalıdır.",
-            factors: { engagement: 82, fit: 74, intent: 88, recency: 95 },
+            // The product's own factor keys (src/lib/leads/score-factor-labels.ts):
+            // anything else falls back to a humanised English word, and three of
+            // the four used to read «Engagement / Fit / Intent» on the very
+            // screen that sells the Azerbaijani AI.
+            factors: { engagementLevel: 82, dealPotential: 74, sourceQuality: 88, recency: 95 },
           },
           estimatedValue: 4_800,
           currency: "AZN",
@@ -543,7 +562,18 @@ export function applyTransitionEffects(
 
     case "QUOTE_ACCEPTED": {
       if (!records.quote || records.quote.status === "accepted") return records
-      return { ...records, quote: { ...records.quote, status: "accepted", viewedAt: records.quote.viewedAt ?? at, acceptedAt: at } }
+      const accepted = { ...records.quote, status: "accepted" as const, viewedAt: records.quote.viewedAt ?? at, acceptedAt: at }
+      // The deal follows the accepted quote at once. It used to keep the
+      // estimate until the win, so the last three screens showed 4 800, then
+      // 4 814,40, then 4 814 — three numbers for one deal.
+      return {
+        ...records,
+        quote: accepted,
+        deal: records.deal ? { ...records.deal, amount: quoteTotals(accepted).gross } : records.deal,
+        lead: records.lead
+          ? { ...records.lead, timeline: [...records.lead.timeline, { id: "tl-quote-accepted", kind: "quote", title: "Təklif qəbul edildi", subtitle: demoMoney(quoteTotals(accepted).gross), date: at }] }
+          : records.lead,
+      }
     }
 
     case "CLOSED_WON": {
