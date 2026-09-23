@@ -130,7 +130,14 @@ function canUseRouteView(mode: RouteViewMode, canReview: boolean) {
   return canReview || (mode !== "week" && mode !== "approvals")
 }
 
-export default function MtmRoutesPage() {
+/**
+ * Owner 2026-09-23: «remove the calendar from this section and make a separate
+ * Calendar section, opening on the team calendar». Both surfaces are the same
+ * workspace — the routes, their planner and their dialogs — so the section
+ * only decides which views it offers and which one it opens on.
+ */
+export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" | "calendar" } = {}) {
+  const calendarSurface = surface === "calendar"
   const { data: session } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -152,7 +159,7 @@ export default function MtmRoutesPage() {
   const [search, setSearch] = useState("")
   const [activeFilter, setActiveFilter] = useState("all")
   const [sortBy, setSortBy] = useState("date_desc")
-  const [viewMode, setViewMode] = useState<RouteViewMode>("calendar")
+  const [viewMode, setViewMode] = useState<RouteViewMode>(calendarSurface ? "calendar" : "list")
   const [viewPreferenceReady, setViewPreferenceReady] = useState(false)
   const [advancedViewsOpen, setAdvancedViewsOpen] = useState(false)
   const [selectedRoute, setSelectedRoute] = useState<MtmRouteRecord | null>(null)
@@ -838,10 +845,10 @@ export default function MtmRoutesPage() {
         </div>
         <div data-testid="mtm-route-toolbar" className="flex w-full min-w-0 flex-col gap-2 md:flex-row md:items-center xl:w-auto">
           <nav data-testid="mtm-route-view-switcher" className="flex min-w-0 flex-1 flex-wrap items-center gap-2" aria-label={t("primaryViews")}>
-            <div className={`grid shrink-0 gap-1 rounded-xl border border-zinc-200 bg-muted/30 p-1 dark:border-zinc-700 ${capabilities.canReview ? "grid-cols-2" : "grid-cols-1"}`} role="group" aria-label={t("primaryViews")}>
+            {calendarSurface ? <div className={`grid shrink-0 gap-1 rounded-xl border border-zinc-200 bg-muted/30 p-1 dark:border-zinc-700 ${capabilities.canReview ? "grid-cols-2" : "grid-cols-1"}`} role="group" aria-label={t("primaryViews")}>
               <Button data-testid="mtm-routes-view-calendar" aria-pressed={viewMode === "calendar"} variant={viewMode === "calendar" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => { setViewMode("calendar"); setAdvancedViewsOpen(false) }}><CalendarDays className="mr-1 h-4 w-4" />{primaryCalendarLabel}</Button>
               {capabilities.canReview ? <Button data-testid="mtm-routes-view-week" aria-pressed={viewMode === "week"} variant={viewMode === "week" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => { setViewMode("week"); setAdvancedViewsOpen(false) }}><Columns3 className="mr-1 h-4 w-4" />{t("viewWeek")}</Button> : null}
-            </div>
+            </div> : null}
             <details data-testid="mtm-routes-more-views" className="group relative shrink-0" open={advancedViewsOpen} onToggle={(event) => setAdvancedViewsOpen(event.currentTarget.open)}>
               <summary data-testid="mtm-routes-more-views-toggle" aria-label={advancedViewLabel} title={advancedViewLabel} className={`flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 whitespace-nowrap rounded-xl border px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:min-h-10 [&::-webkit-details-marker]:hidden ${advancedViewActive ? "border-primary/35 bg-primary/5 text-primary" : "border-zinc-200 bg-card hover:bg-muted/60 dark:border-zinc-700"}`}>
                 {advancedViewLabel}<ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
@@ -1211,4 +1218,8 @@ export default function MtmRoutesPage() {
       <DeleteConfirmDialog open={deleteOpen} onOpenChange={setDeleteOpen} onConfirm={confirmDelete} title={t("delete")} itemName={deleteItem?.name || tf("thisRoute")} />
     </div>
   )
+}
+
+export default function MtmRoutesPage() {
+  return <MtmRoutesWorkspace />
 }

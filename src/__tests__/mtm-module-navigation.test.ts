@@ -35,6 +35,8 @@ describe("MTM module navigation", () => {
     expect(MTM_PRIMARY_NAVIGATION.map((item) => item.href)).toEqual([
       "/mtm",
       "/mtm/routes",
+      // Owner 2026-09-23: the calendar is a section of its own.
+      "/mtm/calendar",
       "/mtm/map",
       "/mtm/visits",
       "/mtm/analytics",
