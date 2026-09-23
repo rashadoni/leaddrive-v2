@@ -8,7 +8,7 @@
 import { act, createElement } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { DemoCoachMark } from "@/components/demo-center/journey/demo-coach-mark"
+import { DemoCoachMark, clippedSideways } from "@/components/demo-center/journey/demo-coach-mark"
 
 describe("demo coach card", () => {
   let container: HTMLDivElement
@@ -157,5 +157,28 @@ describe("demo coach card", () => {
     document.querySelector('[data-demo-target="source-open-campaign"]')!.setAttribute("data-demo-label", "Kodu buraya yazın")
     await renderAction({ targetStepId: "source-open-campaign", targetLabel: "Kampaniyanı açın", collapsed: true })
     expect(document.querySelector('[data-testid="demo-coach-arrow"]')?.textContent).toContain("Kodu buraya yazın")
+  })
+})
+
+describe("a target cut off sideways", () => {
+  const box = (left: number, right: number) => ({ left, right, top: 100, bottom: 140, width: right - left, height: 40, x: left, y: 100, toJSON() {} }) as DOMRect
+  const rail = () => {
+    // A phone: 390px window, the stage rail scrolls sideways inside 80..374.
+    vi.stubGlobal("innerWidth", 390)
+    const scroller = document.createElement("div")
+    scroller.style.overflowX = "auto"
+    scroller.getBoundingClientRect = () => box(80, 374)
+    const chevron = document.createElement("button")
+    scroller.appendChild(chevron)
+    document.body.appendChild(scroller)
+    return chevron
+  }
+
+  it("counts a stage past the rail's edge as out of view, though the window still shows part of it", () => {
+    expect(clippedSideways(rail(), box(350, 388))).toBe(true)
+  })
+
+  it("leaves a stage fully inside the rail alone", () => {
+    expect(clippedSideways(rail(), box(200, 300))).toBe(false)
   })
 })
