@@ -26,7 +26,7 @@ import {
 // up as its own identifier. "plan" was renamed to "routes" in all three
 // locales (task T16) — the pill said "Plan" while the page it opened, the
 // breadcrumbs and the URL all said routes.
-export type MtmPrimaryLabelKey = "today" | "routes" | "map" | "visits" | "results"
+export type MtmPrimaryLabelKey = "today" | "routes" | "calendar" | "map" | "visits" | "results"
 export type MtmToolGroupKey = "work" | "reference" | "control" | "analytics" | "administration"
 
 export interface MtmPrimaryNavigationItem {
