@@ -25,6 +25,7 @@ import {
   type HistoryLocationPoint,
   type HistoryVisit,
 } from "@/lib/mtm/location-history"
+import { buildDayTrip } from "@/lib/mtm/day-trip"
 
 const TIME = /^\d{2}:\d{2}$/
 
@@ -411,6 +412,16 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     gaps,
     anomalies,
   })
+  // The day as legs: drove / stood / no signal. Counted on the full accepted
+  // track, not the downsampled map payload; withheld when the raw read was cut
+  // short, for the same reason the distance is.
+  const trip = rawTruncated ? null : buildDayTrip({
+    points: prepared.points,
+    stops,
+    visits: visits as HistoryVisit[],
+    gaps,
+    workday: workday ? { startedAt: workday.startedAt, completedAt: workday.completedAt } : null,
+  })
   const points = downsampleHistoryPoints(prepared.points, outputLimit)
   const exportCsv = searchParams.get("format") === "csv"
 
@@ -509,6 +520,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         })),
       })),
       timeline,
+      trip,
       visits: (visits as HistoryVisit[]).map((visit) => ({
         ...visit,
         confirmed: true,

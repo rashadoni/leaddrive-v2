@@ -78,16 +78,23 @@ type Gap = {
   endLongitude: number
 }
 
-function ResizeAndFit({ coordinates }: { coordinates: L.LatLngTuple[] }) {
+type Focus = {
+  from: string
+  to: string
+  latitude: number | null
+  longitude: number | null
+} | null
+
+function ResizeAndFit({ coordinates, maxZoom }: { coordinates: L.LatLngTuple[]; maxZoom?: number }) {
   const map = useMap()
   useEffect(() => {
     const timer = setTimeout(() => {
       map.invalidateSize()
-      if (coordinates.length === 1) map.setView(coordinates[0], 15)
-      if (coordinates.length > 1) map.fitBounds(L.latLngBounds(coordinates), { padding: [36, 36] })
+      if (coordinates.length === 1) map.setView(coordinates[0], maxZoom ?? 15)
+      if (coordinates.length > 1) map.fitBounds(L.latLngBounds(coordinates), { padding: [36, 36], maxZoom })
     }, 50)
     return () => clearTimeout(timer)
-  }, [coordinates, map])
+  }, [coordinates, map, maxZoom])
   return null
 }
 
@@ -102,6 +109,7 @@ export default function LocationHistoryMap({
   locale,
   timezone,
   playbackIndex,
+  focus = null,
 }: {
   points: Point[]
   stops: Stop[]
@@ -119,6 +127,8 @@ export default function LocationHistoryMap({
   locale: string
   timezone: string
   playbackIndex: number
+  /** A leg picked in the day's trip: its stretch of track is drawn on top and framed. */
+  focus?: Focus
 }) {
   const t = useTranslations("mtmMap.history")
   const containerRef = useRef<HTMLDivElement>(null)
@@ -186,6 +196,25 @@ export default function LocationHistoryMap({
     () => workdayMarkers.filter((marker) => new Date(marker.at).getTime() <= playbackAt),
     [playbackAt, workdayMarkers],
   )
+  const focusPath = useMemo(() => {
+    if (!focus) return []
+    const from = Date.parse(focus.from)
+    const to = Date.parse(focus.to)
+    return points
+      .filter((point) => {
+        const at = Date.parse(point.recordedAt)
+        return at >= from && at <= to
+      })
+      .map((point) => [point.latitude, point.longitude] as L.LatLngTuple)
+  }, [focus, points])
+  const focusFrame = useMemo(() => {
+    if (!focus) return null
+    const place = focus.latitude != null && focus.longitude != null
+      ? [[focus.latitude, focus.longitude] as L.LatLngTuple]
+      : []
+    const frame = [...focusPath, ...place]
+    return frame.length ? frame : null
+  }, [focus, focusPath])
   const coordinates = useMemo(() => [
     ...fullActualPath,
     ...plannedPaths.flatMap((route) => route.coordinates),
@@ -219,11 +248,17 @@ export default function LocationHistoryMap({
     <div ref={containerRef} className="relative h-full min-h-[360px] w-full">
       {ready && (
         <MapContainer center={center} zoom={12} className="h-full w-full" scrollWheelZoom>
-          <ResizeAndFit coordinates={coordinates} />
+          <ResizeAndFit coordinates={focusFrame ?? coordinates} maxZoom={focusFrame ? 16 : undefined} />
           <CartoVectorBasemap />
           {actualRuns.map((run, index) => (
             <Polyline key={`actual-${index}`} positions={run} pathOptions={{ color: HISTORY_MAP_COLORS.track, weight: 4, opacity: 0.78 }} />
           ))}
+          {focusPath.length > 1 && (
+            <Polyline positions={focusPath} pathOptions={{ color: HISTORY_MAP_COLORS.current, weight: 7, opacity: 0.95 }} />
+          )}
+          {focus && focus.latitude != null && focus.longitude != null && (
+            <CircleMarker center={[focus.latitude, focus.longitude]} radius={14} pathOptions={{ color: HISTORY_MAP_COLORS.current, fillOpacity: 0.15, weight: 3 }} />
+          )}
           {plannedPaths.map((route) => route.coordinates.length > 1 && (
             <Polyline key={`plan-${route.id}`} positions={route.coordinates} pathOptions={{ color: HISTORY_MAP_COLORS.plan, weight: 3, opacity: 0.72, dashArray: "8 6" }} />
           ))}
