@@ -161,6 +161,23 @@ export const PUT = withRouteFieldRlsAuth("write", async (req, auth, { params }: 
         return NextResponse.json({ error: "Visit target is invalid", code: "MTM_ROUTE_REFERENCE_INVALID", details: targetValidation }, { status: 400 })
       }
     }
+    /**
+     * Visits audit 2026-09-24. The office edit form sends the visit's status and
+     * its check-in point back with every save, and this route took both at face
+     * value: a completed visit could be set back to «on site» (its check-out and
+     * duration kept, the one-open-visit lock bypassed); closing an agent's open
+     * visit from the office wrote the check-in point as the GPS of the exit; and
+     * editing a completed visit went down the check-out path, answered
+     * «already completed» and saved nothing.
+     *
+     * The phone closes its own visit through this same route, with its own GPS,
+     * and repeats the call from its outbox — that path stays as it was.
+     */
+    if (body.status === "CHECKED_IN" && current.status !== "CHECKED_IN") {
+      return NextResponse.json({ error: "A closed visit cannot be reopened", code: "MTM_VISIT_REOPEN_FORBIDDEN" }, { status: 409 })
+    }
+    const ownPhone = Boolean(actor.agentId) && actor.agentId === current.agentId
+
     const data: Prisma.MtmVisitUncheckedUpdateManyInput = {}
     if (body.agentId) data.agentId = body.agentId
     if (body.customerId) data.customerId = body.customerId
@@ -168,15 +185,17 @@ export const PUT = withRouteFieldRlsAuth("write", async (req, auth, { params }: 
     if (body.notes !== undefined) data.notes = body.notes ?? null
     if (body.status && body.status !== "CHECKED_OUT") data.status = body.status
 
-    // Handle check-out: save checkout GPS + auto-set checkOutAt + calculate duration
-    if (body.status === "CHECKED_OUT") {
+    // Handle check-out: save checkout GPS + auto-set checkOutAt + calculate duration.
+    // Only an open visit is checked out — or the phone repeating its own check-out.
+    if (body.status === "CHECKED_OUT" && (current.status === "CHECKED_IN" || ownPhone)) {
       const result = await prisma.$transaction((tx: Prisma.TransactionClient) => completeMtmVisit(tx, {
         organizationId: auth.orgId,
         visitId: id,
         expectedAgentId: current.agentId,
         checkOutAt: body.checkOutAt ? new Date(body.checkOutAt) : undefined,
-        latitude: body.latitude,
-        longitude: body.longitude,
+        // Where the exit happened is known only to the phone that left.
+        latitude: ownPhone ? body.latitude : null,
+        longitude: ownPhone ? body.longitude : null,
       }))
       if (result.status === "not_found") return NextResponse.json({ error: "Not found" }, { status: 404 })
       if (result.status === "invalid_status") {
@@ -199,14 +218,18 @@ export const PUT = withRouteFieldRlsAuth("write", async (req, auth, { params }: 
         metadataKind: "check_out",
         newData: {
           duration: result.visit.duration,
-          latitude: body.latitude,
-          longitude: body.longitude,
+          latitude: ownPhone ? body.latitude : null,
+          longitude: ownPhone ? body.longitude : null,
           idempotent: result.idempotent,
         },
         req,
       }).catch((e) => console.warn("[MTM/visits/[id] PUT] CHECK_OUT audit failed", e))
-      return NextResponse.json({ success: true, data: result.visit, idempotent: result.idempotent })
-    } else {
+      // An office close that also changed the agent, customer or note saves
+      // those too; the phone's check-out stays a check-out.
+      if (ownPhone || Object.keys(data).length === 0) {
+        return NextResponse.json({ success: true, data: result.visit, idempotent: result.idempotent })
+      }
+    } else if (body.status !== "CHECKED_OUT") {
       // Non-checkout update: lat/lng goes to checkInLat/Lng
       if (body.latitude != null) data.checkInLat = body.latitude
       if (body.longitude != null) data.checkInLng = body.longitude
