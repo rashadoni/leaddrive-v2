@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useTranslations } from "next-intl"
-import { useMtmApiError } from "@/components/mtm/use-mtm-api-error"
+import { explainMtmApiErrorOr, useMtmApiError } from "@/components/mtm/use-mtm-api-error"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -65,7 +65,7 @@ export function MtmVisitForm({ open, onOpenChange, onSaved, initialData, orgId }
         body: JSON.stringify(form),
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || tc("failedToSave"))
+      if (!res.ok) throw new Error(explainMtmApiErrorOr(explainError, json, res.status, json.error || tc("failedToSave")))
       onSaved()
       onOpenChange(false)
     } catch (err: any) { setError(err.message) } finally { setSaving(false) }
