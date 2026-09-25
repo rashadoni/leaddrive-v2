@@ -29,3 +29,13 @@ describe("one agent over a period", () => {
     expect(view).toContain("/mtm/map?mode=history&agentId=")
   })
 })
+
+describe("the routes header with six view tabs", () => {
+  // Prod 2026-09-26 at 1568 px: the tab row wrapped over the heading.
+  it("puts the heading and the tab row on separate lines at every width", () => {
+    const page = readFileSync("src/app/(dashboard)/mtm/routes/page.tsx", "utf8")
+    const header = page.slice(page.indexOf('data-testid="mtm-route-header"'), page.indexOf('data-testid="mtm-route-toolbar"'))
+    expect(header).toContain('className="flex flex-col gap-3 border-b')
+    expect(header).not.toContain("xl:flex-row")
+  })
+})

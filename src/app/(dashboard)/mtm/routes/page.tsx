@@ -816,7 +816,10 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
 
   return (
     <div className="space-y-3">
-      <header data-testid="mtm-route-header" className="flex flex-col gap-3 border-b border-zinc-200 pb-3 dark:border-zinc-700 xl:flex-row xl:items-center">
+      {/* Prod 2026-09-26 at 1568 px: with six view tabs in one row next to the
+          heading, the row wrapped and its second line lay over the heading.
+          The heading keeps its own line; the tabs and actions take the next. */}
+      <header data-testid="mtm-route-header" className="flex flex-col gap-3 border-b border-zinc-200 pb-3 dark:border-zinc-700">
         <div className="flex min-w-0 flex-1 items-start gap-2.5">
           <Route className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
           <div className="min-w-0">
@@ -834,7 +837,7 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
           */}
           <HelpButton slug="mtm-routes" className="shrink-0" />
         </div>
-        <div data-testid="mtm-route-toolbar" className="flex w-full min-w-0 flex-col gap-2 md:flex-row md:items-center xl:w-auto">
+        <div data-testid="mtm-route-toolbar" className="flex w-full min-w-0 flex-col gap-2 md:flex-row md:items-center">
           {/* Owner 2026-09-25: «if I as the architect can't make sense of it, an
               ordinary user won't». Four views hid behind a dropdown next to two
               visible ones; every view is now its own tab in one row, and the
