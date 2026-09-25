@@ -100,3 +100,15 @@ describe("task search", () => {
     expect(route).toContain('{ agent: { name: { contains: search, mode: "insensitive" as const } } },')
   })
 })
+
+describe("switching the task list", () => {
+  // Audit 2026-09-21, general 6: every switch blanked the table into a
+  // skeleton; measured 2026-09-25 a chip answers in 0.3–0.6 s, yet looked
+  // like a full reload.
+  it("keeps the rows, dimmed, until the new ones arrive; the skeleton is for the first load only", () => {
+    const page = readFileSync("src/app/(dashboard)/mtm/tasks/page.tsx", "utf8")
+    expect(page).toContain('{phase === "loading" && !data ? (')
+    expect(page).toContain('phase === "loading" && data ? "space-y-6 opacity-60 transition-opacity"')
+    expect(page).toContain('{!data ? null : <span className="tabular-nums text-muted-foreground">{chip.count}</span>}')
+  })
+})

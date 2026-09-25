@@ -401,7 +401,7 @@ export default function MtmTasksPage() {
                   className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm transition-colors ${pressed ? "border-primary bg-primary/10 font-semibold text-primary" : "border-zinc-200 hover:bg-muted dark:border-zinc-700"}`}
                 >
                   <span className={pressed ? "" : chip.tone}>{chip.label}</span>
-                  {phase === "loading" || !data ? null : <span className="tabular-nums text-muted-foreground">{chip.count}</span>}
+                  {!data ? null : <span className="tabular-nums text-muted-foreground">{chip.count}</span>}
                 </button>
               )
             })}
@@ -419,7 +419,11 @@ export default function MtmTasksPage() {
             </section>
           ) : null}
 
-          {phase === "loading" ? (
+          {/* Audit 2026-09-21 (general 6): every switch blanked the table into a
+              skeleton for a second or two. After the first load the rows stay,
+              dimmed, until the new ones arrive. */}
+          <div className={phase === "loading" && data ? "space-y-6 opacity-60 transition-opacity" : "space-y-6 transition-opacity"} aria-busy={phase === "loading"}>
+          {phase === "loading" && !data ? (
             <div className="space-y-3" role="status"><div className="h-14 animate-pulse rounded-lg bg-muted/60 motion-reduce:animate-none" />{Array.from({ length: 6 }).map((_, index) => <div key={index} className="h-20 animate-pulse rounded-lg bg-muted/40 motion-reduce:animate-none" />)}<span className="sr-only">{t("loading")}</span></div>
           ) : !pageTasks.length && !undatedTasks.length ? (
             <StatePanel icon={ClipboardList} title={activeFilters ? t("noResults") : t("empty")} hint={activeFilters ? t("noResultsHint") : t("emptyHint")} action={activeFilters ? <Button type="button" variant="outline" className="min-h-11" onClick={clearFilters}>{t("clearFilters")}</Button> : canCreate ? <Button type="button" className="min-h-11" onClick={() => setFormOpen(true)}><Plus className="h-4 w-4" />{t("add")}</Button> : undefined} />
@@ -467,6 +471,8 @@ export default function MtmTasksPage() {
           )}
             </>
           )}
+
+          </div>
 
           {data && data.total > data.limit ? (
             <nav className="flex items-center justify-between gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-700" aria-label={t("pagination")}>
