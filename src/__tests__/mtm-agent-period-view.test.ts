@@ -39,3 +39,13 @@ describe("the routes header with six view tabs", () => {
     expect(header).not.toContain("xl:flex-row")
   })
 })
+
+describe("the agent period view before an employee is chosen", () => {
+  // Prod 2026-09-26: the list had not loaded yet and the page said «no routes
+  // and no visits in this period» — about nobody.
+  it("asks to choose an employee instead of reporting zeros", () => {
+    const view = readFileSync("src/components/mtm/agent-period-view.tsx", "utf8")
+    expect(view).toContain('{!agentId ? <p className="text-sm text-muted-foreground">{t("chooseAgentHint")}</p> : (')
+    expect(view).toContain('{agentId && !loading && !error && !days.length ?')
+  })
+})
