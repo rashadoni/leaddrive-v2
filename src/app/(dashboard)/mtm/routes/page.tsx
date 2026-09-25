@@ -27,7 +27,7 @@ import dynamic from "next/dynamic"
 import type { MtmRouteAssignment, MtmRoutePoint, MtmRouteRecord } from "@/components/mtm/route-types"
 import {
   Route, MapPin, User, CheckCircle2, Plus, Pencil, Trash2, Search, Send,
-  ArrowLeft, List, CalendarDays, Clock, Navigation, Eye, X, Columns3, ClipboardCheck, Users, FileSpreadsheet, TableProperties,
+  ArrowLeft, List, CalendarDays, Clock, Navigation, Eye, X, Columns3, ClipboardCheck, Users, UserRound, FileSpreadsheet, TableProperties,
   Camera, PenLine, StickyNote, ArrowDownUp,
 } from "lucide-react"
 import { mtmRouteReturnTarget, type MtmRouteAssignmentDirection } from "@/lib/mtm/route-links"
@@ -43,6 +43,7 @@ import {
 } from "@/lib/mtm/route-planner-context"
 import { formatDate, formatTime } from "@/lib/format-date"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
+import { MtmAgentPeriodView } from "@/components/mtm/agent-period-view"
 import { mtmDurationParts, summarizeMtmRouteExecution } from "@/lib/mtm/route-point-execution"
 import { visitPlaceSummary } from "@/lib/mtm/visit-place-check"
 import { VisitPlaceBadge } from "@/components/mtm/visit-place-badge"
@@ -65,7 +66,7 @@ const pointStatusLabelKey: Partial<Record<MtmRoutePoint["status"], "pointStatusP
   SKIPPED: "pointStatusSkipped",
 }
 
-type RouteViewMode = "list" | "matrix" | "week" | "calendar" | "approvals"
+type RouteViewMode = "list" | "matrix" | "week" | "calendar" | "approvals" | "agent"
 
 interface RouteBuilderPreset {
   date?: string
@@ -121,7 +122,7 @@ function routeAssignmentDirection(value: string | null): MtmRouteAssignmentDirec
 }
 
 function routeViewMode(value: string | null): RouteViewMode | null {
-  return value === "calendar" || value === "week" || value === "list" || value === "matrix" || value === "approvals"
+  return value === "calendar" || value === "week" || value === "list" || value === "matrix" || value === "approvals" || value === "agent"
     ? value
     : null
 }
@@ -844,6 +845,8 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
               {calendarSurface && capabilities.canReview ? <Button data-testid="mtm-routes-view-week" aria-pressed={viewMode === "week"} variant={viewMode === "week" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("week")}><Columns3 className="mr-1 h-4 w-4" />{t("viewWeek")}</Button> : null}
               <Button data-testid="mtm-routes-view-list" aria-pressed={viewMode === "list"} variant={viewMode === "list" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("list")}><List className="mr-1 h-4 w-4" />{t(capabilities.canReview ? "viewList" : "viewMyRoutes")}</Button>
               <Button data-testid="mtm-routes-view-matrix" aria-pressed={viewMode === "matrix"} variant={viewMode === "matrix" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("matrix")}><TableProperties className="mr-1 h-4 w-4" />{t("viewMatrix")}</Button>
+              {/* Owner 2026-09-25: one agent over any period, not only a week. */}
+              <Button data-testid="mtm-routes-view-agent" aria-pressed={viewMode === "agent"} variant={viewMode === "agent" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("agent")}><UserRound className="mr-1 h-4 w-4" />{t("viewAgentPeriod")}</Button>
               {capabilities.canReview ? <Button data-testid="mtm-routes-view-approvals" aria-pressed={viewMode === "approvals"} variant={viewMode === "approvals" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("approvals")}><ClipboardCheck className="mr-1 h-4 w-4" />{t("viewApprovals")}</Button> : null}
             </div>
           </nav>
@@ -1176,6 +1179,8 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
           selfAgentId={capabilities.actorAgentId}
           onCreateRoute={({ date, agentId }) => openNewRoute({ date, agentId, returnView: "week" })}
         />
+      ) : viewMode === "agent" ? (
+        <MtmAgentPeriodView timezone={timezone} initialAgentId={capabilities.canReview ? null : capabilities.actorAgentId} />
       ) : viewMode === "approvals" ? (
         <div className="space-y-4">
           <MtmRouteNeedsAttention orgId={orgId ? String(orgId) : undefined} active refreshVersion={approvalRefreshVersion} />
