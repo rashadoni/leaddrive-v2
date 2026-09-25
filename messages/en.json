@@ -11170,7 +11170,8 @@
     "previewCustomerNotFound": "This customer is not available for the preview.",
     "validationFailed": "Some fields are filled in incorrectly. Check the form and try again.",
     "policyPreviewFailed": "Could not build the preview. Try again later.",
-    "visitReopenForbidden": "A completed or cancelled visit cannot be reopened. If the agent went back to the customer, that is a new visit."
+    "visitReopenForbidden": "A completed or cancelled visit cannot be reopened. If the agent went back to the customer, that is a new visit.",
+    "visitCloseByAgentOnly": "The agent closes the visit himself in the app. If a visit is stuck open, message the agent."
   },
   "mtmProductCatalog": {
     "title": "Products and presentations",

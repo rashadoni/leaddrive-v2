@@ -550,6 +550,10 @@ describe("audit: visits", () => {
   })
 
   it("CHECK_OUT on PUT /visits/[id] with status=CHECKED_OUT", async () => {
+    // Owner 2026-09-25: only the visit's own agent closes it — here from his
+    // own browser session (a web user linked to the agent card).
+    vi.mocked(requireAuth).mockResolvedValue({ orgId: "org-1", userId: "agent-user", role: "manager", email: "a@t.com", name: "Agent" } as any)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "agent-cuid-1", role: "AGENT", canPlanOwnRoutes: false, canSelfPublishRoutes: false } as any)
     vi.mocked(prisma.mtmVisit.findFirst).mockResolvedValue({
       id: "v1",
       agentId: "agent-cuid-1",
