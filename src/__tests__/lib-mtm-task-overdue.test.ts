@@ -48,3 +48,18 @@ describe("the task list opens on work, not on the archive", () => {
     expect(route).toContain('...(status === "OPEN" ? [{ status: { in: [...MTM_OPEN_TASK_STATUSES] } }] : [])')
   })
 })
+
+describe("a task row on a computer", () => {
+  // Tasks audit 2026-09-24: only the title letters and a bare chevron opened
+  // a task; finished rows carried a grey checkbox explained only to a screen
+  // reader; the table scrolled sideways inside its frame; «Asia/Baku» raw.
+  it("opens on a click anywhere, has no dead checkbox and no inner sideways scroll", () => {
+    const page = readFileSync("src/app/(dashboard)/mtm/tasks/page.tsx", "utf8")
+    expect(page).toContain('onClick={() => router.push(href(task.id))}')
+    expect(page).toContain('onClick={(event) => event.stopPropagation()}')
+    expect(page).not.toContain('t("openTaskNamed"')
+    expect(page).not.toContain('t("taskNotReassignable"')
+    expect(page).not.toContain("min-w-[58rem]")
+    expect(page).not.toContain('t("timezoneLabel"')
+  })
+})
