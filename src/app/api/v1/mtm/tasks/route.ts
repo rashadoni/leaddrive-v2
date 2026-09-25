@@ -13,6 +13,7 @@ import {
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { dateInputValueInTimezone, isValidTimezone } from "@/lib/timezone"
 import { MTM_OPEN_TASK_STATUSES, mtmOverdueTaskWhere, mtmTaskOverdueDays } from "@/lib/mtm/task-overdue"
+import { mtmAwaitingReviewTaskWhere } from "@/lib/mtm/task-review-queue"
 import {
   activeMtmTaskGroupCatalog,
   MtmTaskGroupError,
@@ -25,7 +26,8 @@ import {
 } from "@/lib/mtm/task-undated-group"
 
 // OPEN = not completed and not cancelled; the page opens on it (tasks audit 2026-09-24).
-const VALID_STATUSES = new Set(["OPEN", "PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED", "OVERDUE"])
+// AWAITING_REVIEW = completed, neither accepted nor returned (task-review-queue.ts).
+const VALID_STATUSES = new Set(["OPEN", "PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED", "OVERDUE", "AWAITING_REVIEW"])
 const VALID_PRIORITIES = new Set(["LOW", "MEDIUM", "HIGH", "URGENT"])
 const VALID_SORTS = new Set(["due_desc", "due_asc", "priority", "title"])
 
@@ -116,8 +118,9 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         ...(agentId ? [{ agentId }] : []),
         ...(status === "OVERDUE" ? [mtmOverdueTaskWhere(now)] : []),
         ...(status === "OPEN" ? [{ status: { in: [...MTM_OPEN_TASK_STATUSES] } }] : []),
+        ...(status === "AWAITING_REVIEW" ? [mtmAwaitingReviewTaskWhere()] : []),
       ],
-      ...(status && status !== "OVERDUE" && status !== "OPEN" ? { status: status as "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" } : {}),
+      ...(status && status !== "OVERDUE" && status !== "OPEN" && status !== "AWAITING_REVIEW" ? { status: status as "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" } : {}),
       ...(priority ? { priority: priority as "LOW" | "MEDIUM" | "HIGH" | "URGENT" } : {}),
       ...(teamId ? { agent: { teamId } } : {}),
       ...(contactId ? { visit: { contactId } } : {}),
@@ -149,7 +152,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       },
       visit: { select: { id: true, status: true, checkInAt: true, checkOutAt: true } },
     } satisfies Prisma.MtmTaskInclude
-    const [tasks, total, statusCounts, overdueCount, agents, teams, settings, taskGroupCatalog, undatedTasks, undatedTotal] = await Promise.all([
+    const [tasks, total, statusCounts, overdueCount, awaitingReviewCount, agents, teams, settings, taskGroupCatalog, undatedTasks, undatedTotal] = await Promise.all([
       prisma.mtmTask.findMany({
         where: listWhere,
         skip: (page - 1) * limit,
@@ -164,6 +167,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       // wrong value in it. Both come from the same filtered set now.
       prisma.mtmTask.groupBy({ by: ["status"], where, _count: { _all: true } }),
       prisma.mtmTask.count({ where: { ...where, AND: [...where.AND, mtmOverdueTaskWhere(now)] } }),
+      prisma.mtmTask.count({ where: { ...where, AND: [...where.AND, mtmAwaitingReviewTaskWhere()] } }),
       prisma.mtmAgent.findMany({
         where: { organizationId: auth.orgId, status: "ACTIVE", ...agentScope },
         orderBy: { name: "asc" },
@@ -194,12 +198,30 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       undatedGroup ? prisma.mtmTask.count({ where: undatedWhere }) : Promise.resolve(0),
     ])
 
+    // Which completed rows on this page still wait for the manager — the same
+    // rule as the count above, so the badge and the number cannot disagree.
+    const completedIds = tasks.filter((task) => task.status === "COMPLETED").map((task) => task.id)
+    const awaitingIds = completedIds.length
+      ? new Set((await prisma.mtmTask.findMany({
+        where: { organizationId: auth.orgId, id: { in: completedIds }, ...mtmAwaitingReviewTaskWhere() },
+        select: { id: true },
+      })).map((row) => row.id))
+      : new Set<string>()
+
     return NextResponse.json({
       success: true,
       data: {
-        tasks: tasks.map((task) => ({ ...task, overdueDays: mtmTaskOverdueDays(task, now.getTime()) })),
+        tasks: tasks.map((task) => ({
+          ...task,
+          overdueDays: mtmTaskOverdueDays(task, now.getTime()),
+          awaitingReview: awaitingIds.has(task.id),
+        })),
         total,
-        summary: { ...Object.fromEntries(statusCounts.map((row) => [row.status, row._count._all])), OVERDUE: overdueCount },
+        summary: {
+          ...Object.fromEntries(statusCounts.map((row) => [row.status, row._count._all])),
+          OVERDUE: overdueCount,
+          AWAITING_REVIEW: awaitingReviewCount,
+        },
         ...(undatedGroup ? { undatedOpen: { tasks: undatedTasks ?? [], total: undatedTotal } } : {}),
         page,
         limit,

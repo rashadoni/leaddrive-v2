@@ -13424,6 +13424,7 @@
     "next": "Next",
     "pageOf": "Page {page} of {total}",
     "statuses": {
+      "AWAITING_REVIEW": "Awaiting review",
       "PENDING": "Pending",
       "IN_PROGRESS": "In progress",
       "COMPLETED": "Completed",

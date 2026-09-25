@@ -13424,6 +13424,7 @@
     "next": "Далее",
     "pageOf": "Страница {page} из {total}",
     "statuses": {
+      "AWAITING_REVIEW": "Ждёт приёмки",
       "PENDING": "Ожидает",
       "IN_PROGRESS": "В работе",
       "COMPLETED": "Завершена",
