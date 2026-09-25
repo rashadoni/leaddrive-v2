@@ -135,6 +135,11 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         ],
       } : {}),
     }
+    // Tasks audit 2026-09-24: the status is chosen by chips, and each chip
+    // shows its own count over the same filters minus the status itself —
+    // exactly what pressing it will list. The list total then equals the
+    // count on the pressed chip.
+    const chipWhere = { ...where, AND: [scopeWhere, ...(agentId ? [{ agentId }] : [])], status: undefined }
     // Undated open tasks as their own group (see task-undated-group.ts). The
     // paginated list then leaves them out so no row is shown twice; the status
     // summary still counts the whole filtered set, group included.
@@ -168,9 +173,9 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       // loaded and show them next to a server-wide "Всего: 137". Two numbers
       // from two sources side by side is how a page lies without a single
       // wrong value in it. Both come from the same filtered set now.
-      prisma.mtmTask.groupBy({ by: ["status"], where, _count: { _all: true } }),
-      prisma.mtmTask.count({ where: { ...where, AND: [...where.AND, mtmOverdueTaskWhere(now)] } }),
-      prisma.mtmTask.count({ where: { ...where, AND: [...where.AND, mtmAwaitingReviewTaskWhere()] } }),
+      prisma.mtmTask.groupBy({ by: ["status"], where: chipWhere, _count: { _all: true } }),
+      prisma.mtmTask.count({ where: { ...chipWhere, AND: [...chipWhere.AND, mtmOverdueTaskWhere(now)] } }),
+      prisma.mtmTask.count({ where: { ...chipWhere, AND: [...chipWhere.AND, mtmAwaitingReviewTaskWhere()] } }),
       prisma.mtmAgent.findMany({
         where: { organizationId: auth.orgId, status: "ACTIVE", ...agentScope },
         orderBy: { name: "asc" },
@@ -211,6 +216,8 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       })).map((row) => row.id))
       : new Set<string>()
 
+    const byStatus: Record<string, number> = Object.fromEntries(statusCounts.map((row) => [row.status, row._count._all]))
+
     return NextResponse.json({
       success: true,
       data: {
@@ -221,7 +228,9 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         })),
         total,
         summary: {
-          ...Object.fromEntries(statusCounts.map((row) => [row.status, row._count._all])),
+          ...byStatus,
+          // «Open» chip: not completed and not cancelled (task-overdue.ts).
+          OPEN: (byStatus.PENDING ?? 0) + (byStatus.IN_PROGRESS ?? 0) + (byStatus.OVERDUE ?? 0),
           OVERDUE: overdueCount,
           AWAITING_REVIEW: awaitingReviewCount,
         },
