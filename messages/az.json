@@ -13351,6 +13351,7 @@
     }
   },
   "mtmTasksPage": {
+    "openStatuses": "Açıq",
     "overdueBy": "{count} gün gecikir",
     "title": "Sahə tapşırıqları",
     "subtitle": "Sahə komandası üçün əhatə dairəli işi planlaşdırın, icra və yoxlayın",

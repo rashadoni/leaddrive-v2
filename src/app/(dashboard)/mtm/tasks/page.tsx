@@ -81,8 +81,17 @@ const STATUSES = ["PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED", "OVERDUE"]
 const PRIORITIES = ["LOW", "MEDIUM", "HIGH", "URGENT"] as const
 const TASK_SORTS: TaskSort[] = ["due_desc", "due_asc", "priority", "title"]
 
+/**
+ * Tasks audit 2026-09-24: the page opened on every task, latest due date
+ * first — 41 of the first 50 rows were completed, the first one a test task.
+ * It now opens on the open ones, longest overdue first, then the nearest due.
+ * «All» is still one choice away and is kept in the address as status=ALL.
+ */
+const DEFAULT_TASK_STATUS = "OPEN"
+const ALL_TASK_STATUSES = "ALL"
+
 function taskSortFromUrl(value: string | null): TaskSort {
-  return TASK_SORTS.includes(value as TaskSort) ? value as TaskSort : "due_desc"
+  return TASK_SORTS.includes(value as TaskSort) ? value as TaskSort : "due_asc"
 }
 
 const STATUS_VARIANT: Record<string, "outline" | "info" | "success" | "warning" | "destructive"> = {
@@ -128,7 +137,7 @@ export default function MtmTasksPage() {
   const [viewMode, setViewMode] = useState<ViewMode>(searchParams.get("view") === "kanban" ? "kanban" : "list")
   const [searchInput, setSearchInput] = useState(searchParams.get("search") || "")
   const [search, setSearch] = useState(searchParams.get("search") || "")
-  const [status, setStatus] = useState(searchParams.get("status") || "")
+  const [status, setStatus] = useState(searchParams.get("status") || DEFAULT_TASK_STATUS)
   const [priority, setPriority] = useState(searchParams.get("priority") || "")
   const [sort, setSort] = useState<TaskSort>(taskSortFromUrl(searchParams.get("sort")))
   const [agentId, setAgentId] = useState(searchParams.get("agentId") || "")
@@ -158,7 +167,7 @@ export default function MtmTasksPage() {
     setError("")
     const query = new URLSearchParams({ page: String(page), limit: String(limit) })
     if (search) query.set("search", search)
-    if (status) query.set("status", status)
+    if (status && status !== ALL_TASK_STATUSES) query.set("status", status)
     if (priority) query.set("priority", priority)
     query.set("sort", sort)
     query.set("undated", "group")
@@ -230,7 +239,7 @@ export default function MtmTasksPage() {
   const clearFilters = () => {
     setSearchInput("")
     setSearch("")
-    setStatus("")
+    setStatus(DEFAULT_TASK_STATUS)
     setPriority("")
     setAgentId("")
     setTeamId("")
@@ -313,7 +322,8 @@ export default function MtmTasksPage() {
     return counts
   }, [pageTasks])
   const allPageSelected = selectableTasks.length > 0 && selectableTasks.every((task) => selected.includes(task.id))
-  const activeFilters = [search, status, priority, agentId, teamId, contactId].filter(Boolean).length
+  // The page's own default is not a filter the reader chose.
+  const activeFilters = [search, status === DEFAULT_TASK_STATUS ? "" : status, priority, agentId, teamId, contactId].filter(Boolean).length
   const canCreate = capability(data?.capabilities || {}, "canCreate", "CREATE")
   const canCreateRecurring = capability(data?.capabilities || {}, "canCreateRecurring", "CREATE_RECURRING")
   const canBulk = capability(data?.capabilities || {}, "canBulkReassign", "BULK_REASSIGN")
@@ -358,7 +368,8 @@ export default function MtmTasksPage() {
             <Input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder={t("searchPlaceholder")} className="min-h-11 pl-9" aria-label={t("searchPlaceholder")} />
           </div>
           <Select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1) }} className="min-h-11 sm:w-44" aria-label={t("statusFilter")}>
-            <option value="">{t("allStatuses")}</option>
+            <option value={DEFAULT_TASK_STATUS}>{t("openStatuses")}</option>
+            <option value={ALL_TASK_STATUSES}>{t("allStatuses")}</option>
             {STATUSES.map((value) => <option key={value} value={value}>{t(`statuses.${value}`)}</option>)}
           </Select>
           <Select value={sort} onChange={(event) => { setSort(taskSortFromUrl(event.target.value)); setPage(1) }} className="min-h-11" aria-label={t("sortLabel")}>

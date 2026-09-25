@@ -29,7 +29,7 @@ export function mtmUndatedTaskGroupApplies(input: {
   status: string
 }): boolean {
   if (input.principal !== "web" || input.requested !== "group") return false
-  return !input.status || (MTM_TASK_OPEN_STATUSES as readonly string[]).includes(input.status)
+  return !input.status || input.status === "OPEN" || (MTM_TASK_OPEN_STATUSES as readonly string[]).includes(input.status)
 }
 
 export function mtmUndatedOpenTaskWhere(): Prisma.MtmTaskWhereInput {
