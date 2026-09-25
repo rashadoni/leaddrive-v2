@@ -13355,6 +13355,7 @@
     }
   },
   "mtmTasksPage": {
+    "overdueBy": "{count, plural, one {# day late} other {# days late}}",
     "title": "Field Tasks",
     "subtitle": "Plan, execute and review scoped work for the field team",
     "add": "Add task",
