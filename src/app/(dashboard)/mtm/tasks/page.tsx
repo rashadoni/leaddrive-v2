@@ -563,7 +563,7 @@ function TaskList({ tasks, selected, canBulk, allSelected, showSelectAll = true,
         {tasks.map((task) => (
           <article key={task.id} className="py-5">
             <div className="flex items-start gap-3">
-              {canBulk ? <label className="inline-flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center"><input type="checkbox" className="h-5 w-5 accent-primary" checked={selected.includes(task.id)} onChange={() => onToggle(task.id)} disabled={["COMPLETED", "CANCELLED"].includes(task.status)} aria-label={["COMPLETED", "CANCELLED"].includes(task.status) ? t("taskNotReassignable", { title: task.title }) : t("selectTask", { title: task.title })} /></label> : null}
+              {canBulk ? (["COMPLETED", "CANCELLED"].includes(task.status) ? <span className="min-w-11 shrink-0" aria-hidden="true" /> : <label className="inline-flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center"><input type="checkbox" className="h-5 w-5 accent-primary" checked={selected.includes(task.id)} onChange={() => onToggle(task.id)} aria-label={t("selectTask", { title: task.title })} /></label>) : null}
               <Link href={href(task.id)} className="min-w-0 flex-1 space-y-3">
                 <div className="flex flex-wrap gap-2"><Badge variant={STATUS_VARIANT[task.status] || "outline"}>{t(`statuses.${task.status}` as never)}</Badge><Badge variant={PRIORITY_VARIANT[task.priority] || "outline"}>{t(`priorities.${task.priority}` as never)}</Badge></div>
                 <div><h2 className="text-base font-semibold leading-6">{task.title}</h2>{task.description ? <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{task.description}</p> : null}</div>
