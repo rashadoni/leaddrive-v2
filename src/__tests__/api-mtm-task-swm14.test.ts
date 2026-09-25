@@ -1012,7 +1012,7 @@ describe("undated open tasks are a visible group, not the last row of page 3", (
     expect(body.data.undatedOpen).toMatchObject({ total: 3, tasks: [{ id: "task-6" }] })
     expect(body.data.total).toBe(1)
     // The status summary still speaks for the whole filtered set.
-    expect(body.data.summary).toEqual({ PENDING: 4, OVERDUE: 0, AWAITING_REVIEW: 0 })
+    expect(body.data.summary).toEqual({ PENDING: 4, OPEN: 4, OVERDUE: 0, AWAITING_REVIEW: 0 })
 
     const [listCall, undatedCall] = vi.mocked(prisma.mtmTask.findMany).mock.calls.map((call) => call[0] as any)
     expect(listCall.where.NOT).toEqual({ dueDate: null, status: { in: ["PENDING", "IN_PROGRESS", "OVERDUE"] } })
@@ -1057,7 +1057,9 @@ describe("undated open tasks are a visible group, not the last row of page 3", (
     const group = page.indexOf('data-testid="mtm-tasks-undated-group"')
     expect(group).toBeGreaterThan(0)
     expect(group).toBeLessThan(page.indexOf("tasks={pageTasks}"))
-    expect(page).toContain("(data?.total || 0) + undatedTotal")
+    // The total next to the list is the pressed chip's count, which the server
+    // takes over the whole filtered set — undated group included (2026-09-24).
+    expect(page).toContain("count: data?.summary?.OPEN ?? 0")
     // Selecting the page merges into the selection instead of dropping ticked undated tasks.
     expect(page).toContain("[...new Set([...current, ...pageIds])]")
     expect(page).not.toContain("setSelected(allPageSelected ? [] :")
