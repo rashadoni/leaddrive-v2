@@ -13420,6 +13420,7 @@
     "next": "Növbəti",
     "pageOf": "Səhifə {page} / {total}",
     "statuses": {
+      "AWAITING_REVIEW": "Qəbul gözləyir",
       "PENDING": "Gözləyir",
       "IN_PROGRESS": "İcradadır",
       "COMPLETED": "Tamamlanıb",

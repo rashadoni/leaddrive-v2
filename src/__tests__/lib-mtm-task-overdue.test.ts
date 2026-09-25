@@ -26,10 +26,10 @@ describe("a late field task", () => {
     })
     const route = readFileSync("src/app/api/v1/mtm/tasks/route.ts", "utf8")
     expect(route).toContain('...(status === "OVERDUE" ? [mtmOverdueTaskWhere(now)] : [])')
-    expect(route).toContain('...(status && status !== "OVERDUE" && status !== "OPEN" ? { status:')
-    expect(route).toContain("OVERDUE: overdueCount")
+    expect(route).toContain('...(status && status !== "OVERDUE" && status !== "OPEN" && status !== "AWAITING_REVIEW" ? {')
+    expect(route).toContain("OVERDUE: overdueCount,")
     const page = readFileSync("src/app/(dashboard)/mtm/tasks/page.tsx", "utf8")
-    expect(page).toContain('(["PENDING", "IN_PROGRESS", "OVERDUE", "COMPLETED"] as const)')
+    expect(page).toContain('(["PENDING", "IN_PROGRESS", "OVERDUE", "AWAITING_REVIEW", "COMPLETED"] as const)')
     expect(page).toContain('t("overdueBy", { count: task.overdueDays })')
   })
 })
@@ -61,5 +61,34 @@ describe("a task row on a computer", () => {
     expect(page).not.toContain('t("taskNotReassignable"')
     expect(page).not.toContain("min-w-[58rem]")
     expect(page).not.toContain('t("timezoneLabel"')
+  })
+})
+
+describe("tasks awaiting the manager's review", () => {
+  // Tasks audit 2026-09-24 and owner decision 2026-09-25: completed before the
+  // review step started counts as accepted; from then on a completed task
+  // waits until accepted or returned — no auto-accept.
+  it("are completed since the start, with no review event since the start", async () => {
+    const { MTM_TASK_REVIEW_SINCE, mtmAwaitingReviewTaskWhere } = await import("@/lib/mtm/task-review-queue")
+    expect(MTM_TASK_REVIEW_SINCE.toISOString()).toBe("2026-09-25T00:00:00.000Z")
+    expect(mtmAwaitingReviewTaskWhere()).toEqual({
+      status: "COMPLETED",
+      completedAt: { gte: MTM_TASK_REVIEW_SINCE },
+      events: { none: { type: "EDITED", occurredAt: { gte: MTM_TASK_REVIEW_SINCE }, evidence: { path: ["kind"], equals: "MTM_TASK_REVIEW" } } },
+    })
+    // The review route writes exactly that event.
+    const review = readFileSync("src/app/api/v1/mtm/tasks/[id]/review/route.ts", "utf8")
+    expect(review).toContain('kind: "MTM_TASK_REVIEW"')
+    expect(review).toContain('type: "EDITED"')
+  })
+
+  it("are one number and one badge from the same rule", () => {
+    const route = readFileSync("src/app/api/v1/mtm/tasks/route.ts", "utf8")
+    expect(route).toContain("AWAITING_REVIEW: awaitingReviewCount,")
+    expect(route).toContain("...mtmAwaitingReviewTaskWhere() },")
+    expect(route).toContain("awaitingReview: awaitingIds.has(task.id),")
+    const page = readFileSync("src/app/(dashboard)/mtm/tasks/page.tsx", "utf8")
+    expect(page).toContain('task.awaitingReview ? <Badge variant="warning">{t("statuses.AWAITING_REVIEW")}</Badge>')
+    expect(page).toContain('<option value="AWAITING_REVIEW">')
   })
 })

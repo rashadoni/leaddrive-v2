@@ -44,6 +44,8 @@ type TaskSummary = {
   dueDate?: string | null
   /** Days past the due date for an open task; computed by the server. */
   overdueDays?: number | null
+  /** Completed, neither accepted nor returned by a manager; computed by the server. */
+  awaitingReview?: boolean
   progress?: number | null
   version: number
   agentId: string
@@ -369,6 +371,7 @@ export default function MtmTasksPage() {
           </div>
           <Select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1) }} className="min-h-11 sm:w-44" aria-label={t("statusFilter")}>
             <option value={DEFAULT_TASK_STATUS}>{t("openStatuses")}</option>
+            <option value="AWAITING_REVIEW">{t("statuses.AWAITING_REVIEW")}</option>
             <option value={ALL_TASK_STATUSES}>{t("allStatuses")}</option>
             {STATUSES.map((value) => <option key={value} value={value}>{t(`statuses.${value}`)}</option>)}
           </Select>
@@ -416,10 +419,11 @@ export default function MtmTasksPage() {
           <section className="flex flex-col gap-3 border-y border-zinc-200 py-3 dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between" aria-live="polite">
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
               <span className="font-semibold tabular-nums">{phase === "loading" ? t("loading") : t("totalCount", { count: (data?.total || 0) + undatedTotal })}</span>
-              {(["PENDING", "IN_PROGRESS", "OVERDUE", "COMPLETED"] as const).map((value) => {
+              {(["PENDING", "IN_PROGRESS", "OVERDUE", "AWAITING_REVIEW", "COMPLETED"] as const).map((value) => {
                 const count = data?.summary?.[value] ?? pageCounts[value] ?? 0
+                if (value === "AWAITING_REVIEW" && !count) return null
                 return (
-                  <span key={value} className={value === "OVERDUE" && count > 0 ? "font-medium text-red-600 dark:text-red-400" : "text-muted-foreground"}>{t(`statuses.${value}`)}: <span className="font-medium tabular-nums">{count}</span></span>
+                  <span key={value} className={value === "OVERDUE" && count > 0 ? "font-medium text-red-600 dark:text-red-400" : value === "AWAITING_REVIEW" ? "font-medium text-amber-700 dark:text-amber-400" : "text-muted-foreground"}>{t(`statuses.${value}`)}: <span className="font-medium tabular-nums">{count}</span></span>
                 )
               })}
               {!data?.summary ? <span className="text-xs text-muted-foreground">{t("countsOnPage")}</span> : null}
@@ -551,7 +555,7 @@ function TaskList({ tasks, selected, canBulk, allSelected, showSelectAll = true,
                 <td className="px-4 py-3"><span className="flex items-center gap-2"><UserRound className="h-4 w-4 text-muted-foreground" />{task.agent?.name || t("unassigned")}</span></td>
                 <td className="px-4 py-3">{task.customer?.name || "—"}</td>
                 <td className="px-4 py-3"><Badge variant={PRIORITY_VARIANT[task.priority] || "outline"}>{t(`priorities.${task.priority}` as never)}</Badge></td>
-                <td className="px-4 py-3"><Badge variant={STATUS_VARIANT[task.status] || "outline"}>{t(`statuses.${task.status}` as never)}</Badge></td>
+                <td className="px-4 py-3">{task.awaitingReview ? <Badge variant="warning">{t("statuses.AWAITING_REVIEW")}</Badge> : <Badge variant={STATUS_VARIANT[task.status] || "outline"}>{t(`statuses.${task.status}` as never)}</Badge>}</td>
                 <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(task.dueDate)}{task.overdueDays ? <span className="block text-xs font-medium text-red-600 dark:text-red-400">{t("overdueBy", { count: task.overdueDays })}</span> : null}</td>
               </tr>
             ))}
@@ -565,7 +569,7 @@ function TaskList({ tasks, selected, canBulk, allSelected, showSelectAll = true,
             <div className="flex items-start gap-3">
               {canBulk ? (["COMPLETED", "CANCELLED"].includes(task.status) ? <span className="min-w-11 shrink-0" aria-hidden="true" /> : <label className="inline-flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center"><input type="checkbox" className="h-5 w-5 accent-primary" checked={selected.includes(task.id)} onChange={() => onToggle(task.id)} aria-label={t("selectTask", { title: task.title })} /></label>) : null}
               <Link href={href(task.id)} className="min-w-0 flex-1 space-y-3">
-                <div className="flex flex-wrap gap-2"><Badge variant={STATUS_VARIANT[task.status] || "outline"}>{t(`statuses.${task.status}` as never)}</Badge><Badge variant={PRIORITY_VARIANT[task.priority] || "outline"}>{t(`priorities.${task.priority}` as never)}</Badge></div>
+                <div className="flex flex-wrap gap-2">{task.awaitingReview ? <Badge variant="warning">{t("statuses.AWAITING_REVIEW")}</Badge> : <Badge variant={STATUS_VARIANT[task.status] || "outline"}>{t(`statuses.${task.status}` as never)}</Badge>}<Badge variant={PRIORITY_VARIANT[task.priority] || "outline"}>{t(`priorities.${task.priority}` as never)}</Badge></div>
                 <div><h2 className="text-base font-semibold leading-6">{task.title}</h2>{task.description ? <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{task.description}</p> : null}</div>
                 <dl className="grid gap-2 text-sm sm:grid-cols-2">
                   <div className="flex items-center gap-2"><UserRound className="h-4 w-4 text-muted-foreground" /><span>{task.agent?.name || t("unassigned")}</span></div>

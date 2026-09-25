@@ -36,6 +36,7 @@ describe("task due date (field UX audit C11)", () => {
     const route = readFileSync("src/app/api/v1/mtm/tasks/route.ts", "utf8")
     expect(route).toContain('prisma.mtmTask.groupBy({ by: ["status"], where, _count: { _all: true } })')
     // OVERDUE is counted from the due date over the same filtered set (2026-09-24).
-    expect(route).toContain("summary: { ...Object.fromEntries(statusCounts.map((row) => [row.status, row._count._all])), OVERDUE: overdueCount }")
+    expect(route).toContain("...Object.fromEntries(statusCounts.map((row) => [row.status, row._count._all])),")
+    expect(route).toContain("OVERDUE: overdueCount,")
   })
 })
