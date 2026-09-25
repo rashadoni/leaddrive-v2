@@ -424,7 +424,6 @@ export default function MtmTasksPage() {
               })}
               {!data?.summary ? <span className="text-xs text-muted-foreground">{t("countsOnPage")}</span> : null}
             </div>
-            <span className="text-xs text-muted-foreground">{data ? t("timezoneLabel", { timezone: data.timezone }) : null}</span>
           </section>
 
           {canBulk && selected.length ? (
@@ -524,10 +523,13 @@ type TaskProjectionProps = {
 }
 
 function TaskList({ tasks, selected, canBulk, allSelected, showSelectAll = true, onToggleAll, onToggle, href, formatDateTime, t }: TaskProjectionProps & { selected: string[]; canBulk: boolean; allSelected: boolean; showSelectAll?: boolean; onToggleAll: () => void; onToggle: (id: string) => void }) {
+  // Tasks audit 2026-09-24: on a computer only the title letters and a bare
+  // chevron opened a task — 2 spots out of 7 cells. The whole row opens it now.
+  const router = useRouter()
   return (
     <>
       <div className="hidden overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 lg:block">
-        <table className="w-full min-w-[58rem] text-sm">
+        <table className="w-full text-sm">
           <thead className="bg-muted/35 text-left text-xs text-muted-foreground">
             <tr>
               {canBulk && !showSelectAll ? <th className="w-14 px-1 py-1"><span className="sr-only">{t("selectPage")}</span></th> : null}
@@ -538,20 +540,19 @@ function TaskList({ tasks, selected, canBulk, allSelected, showSelectAll = true,
               <th className="px-4 py-3 font-medium">{t("colPriority")}</th>
               <th className="px-4 py-3 font-medium">{t("colStatus")}</th>
               <th className="px-4 py-3 font-medium">{t("colDueDate")}</th>
-              <th className="w-14"><span className="sr-only">{t("openTask")}</span></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">
             {tasks.map((task) => (
-              <tr key={task.id} className="transition-colors hover:bg-muted/25">
-                {canBulk ? <td className="px-1 py-1"><label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center"><input type="checkbox" className="h-5 w-5 accent-primary" checked={selected.includes(task.id)} onChange={() => onToggle(task.id)} disabled={["COMPLETED", "CANCELLED"].includes(task.status)} aria-label={["COMPLETED", "CANCELLED"].includes(task.status) ? t("taskNotReassignable", { title: task.title }) : t("selectTask", { title: task.title })} /></label></td> : null}
-                <td className="max-w-sm px-4 py-3"><Link href={href(task.id)} className="font-semibold hover:text-primary hover:underline">{task.title}</Link>{task.description ? <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{task.description}</p> : null}</td>
+              <tr key={task.id} className="cursor-pointer transition-colors hover:bg-muted/25" onClick={() => router.push(href(task.id))}>
+                {/* A finished task cannot be reassigned: no box at all rather than a grey one. */}
+                {canBulk ? <td className="px-1 py-1" onClick={(event) => event.stopPropagation()}>{["COMPLETED", "CANCELLED"].includes(task.status) ? null : <label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center"><input type="checkbox" className="h-5 w-5 accent-primary" checked={selected.includes(task.id)} onChange={() => onToggle(task.id)} aria-label={t("selectTask", { title: task.title })} /></label>}</td> : null}
+                <td className="max-w-sm px-4 py-3"><Link href={href(task.id)} onClick={(event) => event.stopPropagation()} className="font-semibold hover:text-primary hover:underline">{task.title}</Link>{task.description ? <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{task.description}</p> : null}</td>
                 <td className="px-4 py-3"><span className="flex items-center gap-2"><UserRound className="h-4 w-4 text-muted-foreground" />{task.agent?.name || t("unassigned")}</span></td>
                 <td className="px-4 py-3">{task.customer?.name || "—"}</td>
                 <td className="px-4 py-3"><Badge variant={PRIORITY_VARIANT[task.priority] || "outline"}>{t(`priorities.${task.priority}` as never)}</Badge></td>
                 <td className="px-4 py-3"><Badge variant={STATUS_VARIANT[task.status] || "outline"}>{t(`statuses.${task.status}` as never)}</Badge></td>
                 <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(task.dueDate)}{task.overdueDays ? <span className="block text-xs font-medium text-red-600 dark:text-red-400">{t("overdueBy", { count: task.overdueDays })}</span> : null}</td>
-                <td className="px-2 py-3"><Button asChild variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("openTaskNamed", { title: task.title })}><Link href={href(task.id)}><ChevronRight className="h-4 w-4" /></Link></Button></td>
               </tr>
             ))}
           </tbody>
