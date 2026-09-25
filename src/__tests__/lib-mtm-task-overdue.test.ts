@@ -26,10 +26,25 @@ describe("a late field task", () => {
     })
     const route = readFileSync("src/app/api/v1/mtm/tasks/route.ts", "utf8")
     expect(route).toContain('...(status === "OVERDUE" ? [mtmOverdueTaskWhere(now)] : [])')
-    expect(route).toContain('...(status && status !== "OVERDUE" ? { status:')
+    expect(route).toContain('...(status && status !== "OVERDUE" && status !== "OPEN" ? { status:')
     expect(route).toContain("OVERDUE: overdueCount")
     const page = readFileSync("src/app/(dashboard)/mtm/tasks/page.tsx", "utf8")
     expect(page).toContain('(["PENDING", "IN_PROGRESS", "OVERDUE", "COMPLETED"] as const)')
     expect(page).toContain('t("overdueBy", { count: task.overdueDays })')
+  })
+})
+
+describe("the task list opens on work, not on the archive", () => {
+  // Tasks audit 2026-09-24: 41 of the first 50 rows were completed, the first
+  // a test task; open tasks were five pages further.
+  it("defaults to open tasks, the longest overdue first", () => {
+    const page = readFileSync("src/app/(dashboard)/mtm/tasks/page.tsx", "utf8")
+    expect(page).toContain('const DEFAULT_TASK_STATUS = "OPEN"')
+    expect(page).toContain('useState(searchParams.get("status") || DEFAULT_TASK_STATUS)')
+    expect(page).toContain(': "due_asc"')
+    expect(page).toContain('if (status && status !== ALL_TASK_STATUSES) query.set("status", status)')
+    expect(page).toContain('status === DEFAULT_TASK_STATUS ? "" : status')
+    const route = readFileSync("src/app/api/v1/mtm/tasks/route.ts", "utf8")
+    expect(route).toContain('...(status === "OPEN" ? [{ status: { in: [...MTM_OPEN_TASK_STATUSES] } }] : [])')
   })
 })

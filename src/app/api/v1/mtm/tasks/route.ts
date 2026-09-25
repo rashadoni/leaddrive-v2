@@ -12,7 +12,7 @@ import {
 } from "@/lib/mtm/task-access"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { dateInputValueInTimezone, isValidTimezone } from "@/lib/timezone"
-import { mtmOverdueTaskWhere, mtmTaskOverdueDays } from "@/lib/mtm/task-overdue"
+import { MTM_OPEN_TASK_STATUSES, mtmOverdueTaskWhere, mtmTaskOverdueDays } from "@/lib/mtm/task-overdue"
 import {
   activeMtmTaskGroupCatalog,
   MtmTaskGroupError,
@@ -24,7 +24,8 @@ import {
   mtmUndatedTaskGroupApplies,
 } from "@/lib/mtm/task-undated-group"
 
-const VALID_STATUSES = new Set(["PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED", "OVERDUE"])
+// OPEN = not completed and not cancelled; the page opens on it (tasks audit 2026-09-24).
+const VALID_STATUSES = new Set(["OPEN", "PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED", "OVERDUE"])
 const VALID_PRIORITIES = new Set(["LOW", "MEDIUM", "HIGH", "URGENT"])
 const VALID_SORTS = new Set(["due_desc", "due_asc", "priority", "title"])
 
@@ -110,8 +111,13 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       deletedAt: null,
       // «Overdue» is computed from the due date, never read from the stored
       // status (see task-overdue.ts).
-      AND: [scopeWhere, ...(agentId ? [{ agentId }] : []), ...(status === "OVERDUE" ? [mtmOverdueTaskWhere(now)] : [])],
-      ...(status && status !== "OVERDUE" ? { status: status as "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" } : {}),
+      AND: [
+        scopeWhere,
+        ...(agentId ? [{ agentId }] : []),
+        ...(status === "OVERDUE" ? [mtmOverdueTaskWhere(now)] : []),
+        ...(status === "OPEN" ? [{ status: { in: [...MTM_OPEN_TASK_STATUSES] } }] : []),
+      ],
+      ...(status && status !== "OVERDUE" && status !== "OPEN" ? { status: status as "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" } : {}),
       ...(priority ? { priority: priority as "LOW" | "MEDIUM" | "HIGH" | "URGENT" } : {}),
       ...(teamId ? { agent: { teamId } } : {}),
       ...(contactId ? { visit: { contactId } } : {}),
