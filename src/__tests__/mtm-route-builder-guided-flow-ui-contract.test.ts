@@ -217,15 +217,10 @@ describe("MTM guided route builder UI contract", () => {
     expect(routeCalendar).toContain('onClick={() => onSelectRoute(route)}')
     expect(routesPage).toContain('data-testid="mtm-route-toolbar"')
     expect(routesPage).toContain('data-testid="mtm-route-view-switcher"')
-    expect(routesPage).toContain("grid-cols-2")
-    expect(routesPage).toContain('capabilities.canReview ? "grid-cols-2" : "grid-cols-1"')
+    expect(routesPage).toContain('data-testid="mtm-route-view-tabs"')
     expect(routesPage).toContain("md:flex-row")
     expect(routesPage).toContain("whitespace-nowrap")
-    expect(routesPage).toContain('capabilities.canReview ? "controlAndReports" : "routePlanningTools"')
     expect(routesPage).toContain('t(capabilities.canReview ? "viewList" : "viewMyRoutes")')
-    expect(routesPage.indexOf('data-testid="mtm-routes-more-views-toggle"')).toBeLessThan(
-      routesPage.indexOf('data-testid="mtm-routes-view-list"'),
-    )
     expect(routesPage).toContain('t("excelExchange")')
     expect(routesPage).not.toContain("xl:flex-nowrap")
     expect(routesPage).not.toContain("overflow-x-auto border border-zinc-200")

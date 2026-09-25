@@ -303,11 +303,7 @@ const scenarios = [
     path: (resources) => resources.agentId ? "/mtm/routes" : null,
     fallbackPath: "/mtm/routes",
     prepare: async (page, resources) => {
-      const matrixView = page.getByTestId("mtm-routes-view-matrix")
-      if (!await matrixView.isVisible()) {
-        await page.getByTestId("mtm-routes-more-views-toggle").click()
-      }
-      await matrixView.click()
+      await page.getByTestId("mtm-routes-view-matrix").click()
       await page.getByTestId("mtm-route-planning-matrix").waitFor({ state: "visible" })
       await page.getByTestId("mtm-matrix-agent-select").selectOption(resources.agentId)
       await page.locator(`[data-testid="mtm-route-planning-matrix"][data-loaded-agent-id="${resources.agentId}"]`).waitFor({ state: "visible" })
