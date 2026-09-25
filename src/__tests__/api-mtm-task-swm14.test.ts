@@ -995,8 +995,11 @@ describe("undated open tasks are a visible group, not the last row of page 3", (
     vi.mocked(prisma.mtmTask.findMany)
       .mockResolvedValueOnce([task({ id: "dated", dueDate: new Date("2026-09-20T00:00:00.000Z") })] as never)
       .mockResolvedValueOnce(undated as never)
+    // Counts in call order: the page total, the late tasks (computed from the
+    // due date since 2026-09-24), the undated group.
     vi.mocked(prisma.mtmTask.count)
       .mockResolvedValueOnce(1 as never)
+      .mockResolvedValueOnce(0 as never)
       .mockResolvedValueOnce(3 as never)
     vi.mocked(prisma.mtmTask.groupBy).mockResolvedValue([{ status: "PENDING", _count: { _all: 4 } }] as never)
 
@@ -1007,7 +1010,7 @@ describe("undated open tasks are a visible group, not the last row of page 3", (
     expect(body.data.undatedOpen).toMatchObject({ total: 3, tasks: [{ id: "task-6" }] })
     expect(body.data.total).toBe(1)
     // The status summary still speaks for the whole filtered set.
-    expect(body.data.summary).toEqual({ PENDING: 4 })
+    expect(body.data.summary).toEqual({ PENDING: 4, OVERDUE: 0 })
 
     const [listCall, undatedCall] = vi.mocked(prisma.mtmTask.findMany).mock.calls.map((call) => call[0] as any)
     expect(listCall.where.NOT).toEqual({ dueDate: null, status: { in: ["PENDING", "IN_PROGRESS", "OVERDUE"] } })

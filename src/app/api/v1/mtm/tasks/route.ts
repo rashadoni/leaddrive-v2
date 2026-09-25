@@ -12,6 +12,7 @@ import {
 } from "@/lib/mtm/task-access"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { dateInputValueInTimezone, isValidTimezone } from "@/lib/timezone"
+import { mtmOverdueTaskWhere, mtmTaskOverdueDays } from "@/lib/mtm/task-overdue"
 import {
   activeMtmTaskGroupCatalog,
   MtmTaskGroupError,
@@ -103,11 +104,14 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
 
   try {
     const scopeWhere = mtmTaskScopeWhere(actor)
+    const now = new Date()
     const where = {
       organizationId: auth.orgId,
       deletedAt: null,
-      AND: [scopeWhere, ...(agentId ? [{ agentId }] : [])],
-      ...(status ? { status: status as "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | "OVERDUE" } : {}),
+      // «Overdue» is computed from the due date, never read from the stored
+      // status (see task-overdue.ts).
+      AND: [scopeWhere, ...(agentId ? [{ agentId }] : []), ...(status === "OVERDUE" ? [mtmOverdueTaskWhere(now)] : [])],
+      ...(status && status !== "OVERDUE" ? { status: status as "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" } : {}),
       ...(priority ? { priority: priority as "LOW" | "MEDIUM" | "HIGH" | "URGENT" } : {}),
       ...(teamId ? { agent: { teamId } } : {}),
       ...(contactId ? { visit: { contactId } } : {}),
@@ -139,7 +143,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       },
       visit: { select: { id: true, status: true, checkInAt: true, checkOutAt: true } },
     } satisfies Prisma.MtmTaskInclude
-    const [tasks, total, statusCounts, agents, teams, settings, taskGroupCatalog, undatedTasks, undatedTotal] = await Promise.all([
+    const [tasks, total, statusCounts, overdueCount, agents, teams, settings, taskGroupCatalog, undatedTasks, undatedTotal] = await Promise.all([
       prisma.mtmTask.findMany({
         where: listWhere,
         skip: (page - 1) * limit,
@@ -153,6 +157,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       // from two sources side by side is how a page lies without a single
       // wrong value in it. Both come from the same filtered set now.
       prisma.mtmTask.groupBy({ by: ["status"], where, _count: { _all: true } }),
+      prisma.mtmTask.count({ where: { ...where, AND: [...where.AND, mtmOverdueTaskWhere(now)] } }),
       prisma.mtmAgent.findMany({
         where: { organizationId: auth.orgId, status: "ACTIVE", ...agentScope },
         orderBy: { name: "asc" },
@@ -186,9 +191,9 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     return NextResponse.json({
       success: true,
       data: {
-        tasks,
+        tasks: tasks.map((task) => ({ ...task, overdueDays: mtmTaskOverdueDays(task, now.getTime()) })),
         total,
-        summary: Object.fromEntries(statusCounts.map((row) => [row.status, row._count._all])),
+        summary: { ...Object.fromEntries(statusCounts.map((row) => [row.status, row._count._all])), OVERDUE: overdueCount },
         ...(undatedGroup ? { undatedOpen: { tasks: undatedTasks ?? [], total: undatedTotal } } : {}),
         page,
         limit,

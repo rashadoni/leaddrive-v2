@@ -42,6 +42,8 @@ type TaskSummary = {
   priority: string
   scheduledStartAt?: string | null
   dueDate?: string | null
+  /** Days past the due date for an open task; computed by the server. */
+  overdueDays?: number | null
   progress?: number | null
   version: number
   agentId: string
@@ -403,9 +405,12 @@ export default function MtmTasksPage() {
           <section className="flex flex-col gap-3 border-y border-zinc-200 py-3 dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between" aria-live="polite">
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
               <span className="font-semibold tabular-nums">{phase === "loading" ? t("loading") : t("totalCount", { count: (data?.total || 0) + undatedTotal })}</span>
-              {STATUSES.slice(0, 3).map((value) => (
-                <span key={value} className="text-muted-foreground">{t(`statuses.${value}`)}: <span className="font-medium tabular-nums text-foreground">{data?.summary?.[value] ?? pageCounts[value] ?? 0}</span></span>
-              ))}
+              {(["PENDING", "IN_PROGRESS", "OVERDUE", "COMPLETED"] as const).map((value) => {
+                const count = data?.summary?.[value] ?? pageCounts[value] ?? 0
+                return (
+                  <span key={value} className={value === "OVERDUE" && count > 0 ? "font-medium text-red-600 dark:text-red-400" : "text-muted-foreground"}>{t(`statuses.${value}`)}: <span className="font-medium tabular-nums">{count}</span></span>
+                )
+              })}
               {!data?.summary ? <span className="text-xs text-muted-foreground">{t("countsOnPage")}</span> : null}
             </div>
             <span className="text-xs text-muted-foreground">{data ? t("timezoneLabel", { timezone: data.timezone }) : null}</span>
@@ -534,7 +539,7 @@ function TaskList({ tasks, selected, canBulk, allSelected, showSelectAll = true,
                 <td className="px-4 py-3">{task.customer?.name || "—"}</td>
                 <td className="px-4 py-3"><Badge variant={PRIORITY_VARIANT[task.priority] || "outline"}>{t(`priorities.${task.priority}` as never)}</Badge></td>
                 <td className="px-4 py-3"><Badge variant={STATUS_VARIANT[task.status] || "outline"}>{t(`statuses.${task.status}` as never)}</Badge></td>
-                <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(task.dueDate)}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDateTime(task.dueDate)}{task.overdueDays ? <span className="block text-xs font-medium text-red-600 dark:text-red-400">{t("overdueBy", { count: task.overdueDays })}</span> : null}</td>
                 <td className="px-2 py-3"><Button asChild variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("openTaskNamed", { title: task.title })}><Link href={href(task.id)}><ChevronRight className="h-4 w-4" /></Link></Button></td>
               </tr>
             ))}
@@ -552,7 +557,7 @@ function TaskList({ tasks, selected, canBulk, allSelected, showSelectAll = true,
                 <div><h2 className="text-base font-semibold leading-6">{task.title}</h2>{task.description ? <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{task.description}</p> : null}</div>
                 <dl className="grid gap-2 text-sm sm:grid-cols-2">
                   <div className="flex items-center gap-2"><UserRound className="h-4 w-4 text-muted-foreground" /><span>{task.agent?.name || t("unassigned")}</span></div>
-                  <div className="flex items-center gap-2"><CalendarClock className="h-4 w-4 text-muted-foreground" /><span>{formatDateTime(task.dueDate)}</span></div>
+                  <div className="flex items-center gap-2"><CalendarClock className="h-4 w-4 text-muted-foreground" /><span>{formatDateTime(task.dueDate)}</span>{task.overdueDays ? <span className="text-xs font-medium text-red-600 dark:text-red-400">{t("overdueBy", { count: task.overdueDays })}</span> : null}</div>
                 </dl>
               </Link>
               <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
