@@ -12545,6 +12545,8 @@
     }
   },
   "mtmAgentPeriod": {
+    "chooseAgent": "— Choose an employee —",
+    "chooseAgentHint": "Choose an employee to see their routes and visits for the period.",
     "agent": "Employee",
     "from": "From",
     "to": "To",

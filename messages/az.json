@@ -12541,6 +12541,8 @@
     }
   },
   "mtmAgentPeriod": {
+    "chooseAgent": "— Əməkdaş seçin —",
+    "chooseAgentHint": "Dövr üzrə marşrut və ziyarətləri görmək üçün əməkdaş seçin.",
     "agent": "Əməkdaş",
     "from": "Başlanğıc",
     "to": "Son",

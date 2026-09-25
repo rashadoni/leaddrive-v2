@@ -121,6 +121,7 @@ export function MtmAgentPeriodView({ timezone, initialAgentId }: { timezone: str
         <label className="grid gap-1 text-sm font-medium">
           <span>{t("agent")}</span>
           <Select data-testid="mtm-agent-period-agent" value={agentId} onChange={(event) => setAgentId(event.target.value)} className="min-h-11 min-w-56">
+            {!agentId ? <option value="">{t("chooseAgent")}</option> : null}
             {agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
           </Select>
         </label>
@@ -141,13 +142,17 @@ export function MtmAgentPeriodView({ timezone, initialAgentId }: { timezone: str
 
       {range.from !== from ? <p className="text-xs text-muted-foreground">{t("clamped", { days: AGENT_PERIOD_MAX_DAYS })}</p> : null}
 
-      <p data-testid="mtm-agent-period-summary" className="text-sm">
-        {t("summary", { routes: routes.length, done, planned, visits: visits.length, days: days.length })}
-      </p>
+      {/* Prod 2026-09-26: with the employee list not yet loaded the page said
+          «no routes and no visits» — a claim about nobody. */}
+      {!agentId ? <p className="text-sm text-muted-foreground">{t("chooseAgentHint")}</p> : (
+        <p data-testid="mtm-agent-period-summary" className="text-sm">
+          {t("summary", { routes: routes.length, done, planned, visits: visits.length, days: days.length })}
+        </p>
+      )}
 
       {error ? <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
       {loading && !days.length ? <div className="grid min-h-40 place-items-center"><Loader2 className="h-6 w-6 animate-spin text-primary motion-reduce:animate-none" aria-label={t("loading")} /></div> : null}
-      {!loading && !error && !days.length ? <p className="text-sm text-muted-foreground">{t("empty")}</p> : null}
+      {agentId && !loading && !error && !days.length ? <p className="text-sm text-muted-foreground">{t("empty")}</p> : null}
 
       <ol className={`divide-y divide-zinc-200 rounded-xl border border-zinc-200 dark:divide-zinc-700 dark:border-zinc-700 ${loading ? "opacity-60" : ""}`}>
         {days.map(([day, entry]) => (
