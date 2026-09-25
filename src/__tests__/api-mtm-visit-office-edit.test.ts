@@ -109,15 +109,29 @@ describe("the office edit of a visit", () => {
     expect(data).toEqual({ agentId: "agent-2", notes: "moved to Leyla" })
   })
 
-  it("closes an agent's open visit without writing the check-in point as the GPS of the exit", async () => {
+  /** Owner 2026-09-25: «the office must not close an agent's visit for him». */
+  it("cannot close an agent's open visit", async () => {
     vi.mocked(prisma.mtmVisit.findFirst).mockResolvedValue(visitRow("CHECKED_IN") as never)
     const res = await put({ status: "CHECKED_OUT", notes: "closed from the office", ...checkIn })
+    expect(res.status).toBe(409)
+    expect(await res.json()).toMatchObject({ code: "MTM_VISIT_CLOSE_BY_AGENT_ONLY" })
+    expect(completeMtmVisit).not.toHaveBeenCalled()
+    expect(prisma.mtmVisit.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("never writes a visit's GPS: coordinates from the office are ignored", async () => {
+    vi.mocked(prisma.mtmVisit.findFirst).mockResolvedValue(visitRow("CHECKED_IN") as never)
+    const res = await put({ notes: "wrong customer fixed", latitude: 40.1, longitude: 49.1 })
     expect(res.status).toBe(200)
-    expect(completeMtmVisit).toHaveBeenCalledTimes(1)
-    expect(vi.mocked(completeMtmVisit).mock.calls[0][1]).toMatchObject({ expectedAgentId: "agent-1", latitude: null, longitude: null })
-    // The note typed in the same save is kept.
     const { data } = vi.mocked(prisma.mtmVisit.updateMany).mock.calls[0][0] as { data: Record<string, unknown> }
-    expect(data).toEqual({ notes: "closed from the office" })
+    expect(data).toEqual({ notes: "wrong customer fixed" })
+  })
+
+  it("the office form sends no status and no coordinates", async () => {
+    const { readFileSync } = await import("node:fs")
+    const form = readFileSync("src/components/mtm/visit-form.tsx", "utf8")
+    expect(form).toContain('useState({ agentId: "", customerId: "", notes: "" })')
+    expect(form).not.toMatch(/checkInLat|tf\("latitude"\)|tf\("checkedOut"\)/)
   })
 })
 

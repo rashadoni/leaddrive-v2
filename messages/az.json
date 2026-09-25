@@ -11166,7 +11166,8 @@
     "previewCustomerNotFound": "Bu müştəri önbaxış üçün əlçatan deyil.",
     "validationFailed": "Bəzi sahələr səhv doldurulub. Formanı yoxlayıb yenidən cəhd edin.",
     "policyPreviewFailed": "Önbaxışı qurmaq alınmadı. Bir az sonra yenidən cəhd edin.",
-    "visitReopenForbidden": "Tamamlanmış və ya ləğv edilmiş ziyarəti yenidən açmaq olmaz. Agent müştəriyə qayıdıbsa, bu yeni ziyarətdir."
+    "visitReopenForbidden": "Tamamlanmış və ya ləğv edilmiş ziyarəti yenidən açmaq olmaz. Agent müştəriyə qayıdıbsa, bu yeni ziyarətdir.",
+    "visitCloseByAgentOnly": "Ziyarəti agent özü tətbiqdə bağlayır. Ziyarət açıq qalıbsa, agentə yazın."
   },
   "mtmProductCatalog": {
     "title": "Məhsullar və təqdimatlar",
