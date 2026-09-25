@@ -21,13 +21,14 @@ describe("MTM calendar-first planning UI contract", () => {
     expect(page).toContain('data-testid="mtm-routes-view-calendar"')
     expect(page).toContain('data-testid="mtm-routes-view-list"')
     expect(page).toContain('data-testid="mtm-routes-view-week"')
-    expect(page).toContain('capabilities.canReview ? <Button data-testid="mtm-routes-view-week"')
-    expect(page).toContain('capabilities.canReview ? "grid-cols-2" : "grid-cols-1"')
-    expect(page.indexOf('data-testid="mtm-routes-more-views-toggle"')).toBeLessThan(
+    expect(page).toContain('calendarSurface && capabilities.canReview ? <Button data-testid="mtm-routes-view-week"')
+    // Owner 2026-09-25: every view is its own tab in one row — no dropdown.
+    expect(page).toContain('data-testid="mtm-route-view-tabs"')
+    expect(page).not.toContain('data-testid="mtm-routes-more-views"')
+    expect(page.indexOf('data-testid="mtm-routes-view-week"')).toBeLessThan(
       page.indexOf('data-testid="mtm-routes-view-list"'),
     )
     expect(page).toContain('capabilities.canReview ? "viewTeamCalendar" : "viewMyCalendar"')
-    expect(page).toContain('capabilities.canReview ? "controlAndReports" : "routePlanningTools"')
     expect(page).toContain('t(capabilities.canReview ? "viewList" : "viewMyRoutes")')
     expect(page).toContain('t("excelExchange")')
     expect(page).not.toContain('t("moreViewsShort")')

@@ -12540,7 +12540,22 @@
       "ENDED": "Dövr bitib"
     }
   },
+  "mtmAgentPeriod": {
+    "agent": "Əməkdaş",
+    "from": "Başlanğıc",
+    "to": "Son",
+    "lastDays": "Son {count} gün",
+    "clamped": "{days} gündən uzun dövr son {days} günə qısaldılıb.",
+    "summary": "Marşrut {routes} · nöqtə {done} / {planned} · ziyarət {visits} · işli gün {days}",
+    "loadFailed": "Məlumatı yükləmək alınmadı. Yenidən cəhd edin.",
+    "loading": "Yüklənir",
+    "empty": "Bu dövrdə əməkdaşın nə marşrutu, nə ziyarəti var.",
+    "noVisits": "Ziyarət yoxdur",
+    "stops": "{done} / {planned} nöqtə",
+    "dayOnMap": "Gün xəritədə"
+  },
   "mtmRoutesPage": {
+    "viewAgentPeriod": "Agent dövr üzrə",
     "primaryViews": "Plan görünüşünü seçin",
     "moreViews": "Digər görünüşlər",
     "moreViewsShort": "Digər",

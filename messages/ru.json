@@ -12544,7 +12544,22 @@
       "ENDED": "Период завершён"
     }
   },
+  "mtmAgentPeriod": {
+    "agent": "Сотрудник",
+    "from": "С",
+    "to": "По",
+    "lastDays": "{count, plural, one {Последний # день} few {Последние # дня} many {Последние # дней} other {Последние # дня}}",
+    "clamped": "Период больше {days} дней сокращён до последних {days}.",
+    "summary": "Маршрутов {routes} · выполнено точек {done} из {planned} · визитов {visits} · дней с работой {days}",
+    "loadFailed": "Не удалось загрузить данные. Попробуйте ещё раз.",
+    "loading": "Загрузка",
+    "empty": "За этот период у сотрудника нет ни маршрутов, ни визитов.",
+    "noVisits": "Визитов нет",
+    "stops": "{done} из {planned} точек",
+    "dayOnMap": "День на карте"
+  },
   "mtmRoutesPage": {
+    "viewAgentPeriod": "Агент за период",
     "primaryViews": "Выберите вид плана",
     "moreViews": "Другие режимы",
     "moreViewsShort": "Ещё",

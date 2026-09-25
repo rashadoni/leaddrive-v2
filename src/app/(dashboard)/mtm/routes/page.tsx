@@ -27,7 +27,7 @@ import dynamic from "next/dynamic"
 import type { MtmRouteAssignment, MtmRoutePoint, MtmRouteRecord } from "@/components/mtm/route-types"
 import {
   Route, MapPin, User, CheckCircle2, Plus, Pencil, Trash2, Search, Send,
-  ArrowLeft, List, CalendarDays, Clock, Navigation, ChevronDown, Eye, X, Columns3, ClipboardCheck, Users, FileSpreadsheet, TableProperties,
+  ArrowLeft, List, CalendarDays, Clock, Navigation, Eye, X, Columns3, ClipboardCheck, Users, UserRound, FileSpreadsheet, TableProperties,
   Camera, PenLine, StickyNote, ArrowDownUp,
 } from "lucide-react"
 import { mtmRouteReturnTarget, type MtmRouteAssignmentDirection } from "@/lib/mtm/route-links"
@@ -43,6 +43,7 @@ import {
 } from "@/lib/mtm/route-planner-context"
 import { formatDate, formatTime } from "@/lib/format-date"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
+import { MtmAgentPeriodView } from "@/components/mtm/agent-period-view"
 import { mtmDurationParts, summarizeMtmRouteExecution } from "@/lib/mtm/route-point-execution"
 import { visitPlaceSummary } from "@/lib/mtm/visit-place-check"
 import { VisitPlaceBadge } from "@/components/mtm/visit-place-badge"
@@ -65,7 +66,7 @@ const pointStatusLabelKey: Partial<Record<MtmRoutePoint["status"], "pointStatusP
   SKIPPED: "pointStatusSkipped",
 }
 
-type RouteViewMode = "list" | "matrix" | "week" | "calendar" | "approvals"
+type RouteViewMode = "list" | "matrix" | "week" | "calendar" | "approvals" | "agent"
 
 interface RouteBuilderPreset {
   date?: string
@@ -121,7 +122,7 @@ function routeAssignmentDirection(value: string | null): MtmRouteAssignmentDirec
 }
 
 function routeViewMode(value: string | null): RouteViewMode | null {
-  return value === "calendar" || value === "week" || value === "list" || value === "matrix" || value === "approvals"
+  return value === "calendar" || value === "week" || value === "list" || value === "matrix" || value === "approvals" || value === "agent"
     ? value
     : null
 }
@@ -161,7 +162,6 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
   const [sortBy, setSortBy] = useState("date_desc")
   const [viewMode, setViewMode] = useState<RouteViewMode>(calendarSurface ? "calendar" : "list")
   const [viewPreferenceReady, setViewPreferenceReady] = useState(false)
-  const [advancedViewsOpen, setAdvancedViewsOpen] = useState(false)
   const [selectedRoute, setSelectedRoute] = useState<MtmRouteRecord | null>(null)
   const [routeDetailLoading, setRouteDetailLoading] = useState(false)
   const [focusedRouteUnavailable, setFocusedRouteUnavailable] = useState(false)
@@ -802,16 +802,7 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
     ?? routes.find((route) => route.status === "IN_PROGRESS")?.agentId
     ?? routes[0]?.agentId
     ?? null
-  const advancedViewActive = viewMode === "list" || viewMode === "matrix" || viewMode === "approvals"
   const primaryCalendarLabel = t(capabilities.canReview ? "viewTeamCalendar" : "viewMyCalendar")
-  const planningToolsLabel = t(capabilities.canReview ? "controlAndReports" : "routePlanningTools")
-  const advancedViewLabel = viewMode === "list"
-    ? t(capabilities.canReview ? "viewList" : "viewMyRoutes")
-    : viewMode === "matrix"
-      ? t("viewMatrix")
-      : viewMode === "approvals"
-        ? t("viewApprovals")
-        : planningToolsLabel
 
   if (loading) return (
     <div className="space-y-3" aria-busy="true">
@@ -844,25 +835,24 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
           <HelpButton slug="mtm-routes" className="shrink-0" />
         </div>
         <div data-testid="mtm-route-toolbar" className="flex w-full min-w-0 flex-col gap-2 md:flex-row md:items-center xl:w-auto">
+          {/* Owner 2026-09-25: «if I as the architect can't make sense of it, an
+              ordinary user won't». Four views hid behind a dropdown next to two
+              visible ones; every view is now its own tab in one row, and the
+              Excel exchange is a button with words, not a menu item. */}
           <nav data-testid="mtm-route-view-switcher" className="flex min-w-0 flex-1 flex-wrap items-center gap-2" aria-label={t("primaryViews")}>
-            {calendarSurface ? <div className={`grid shrink-0 gap-1 rounded-xl border border-zinc-200 bg-muted/30 p-1 dark:border-zinc-700 ${capabilities.canReview ? "grid-cols-2" : "grid-cols-1"}`} role="group" aria-label={t("primaryViews")}>
-              <Button data-testid="mtm-routes-view-calendar" aria-pressed={viewMode === "calendar"} variant={viewMode === "calendar" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => { setViewMode("calendar"); setAdvancedViewsOpen(false) }}><CalendarDays className="mr-1 h-4 w-4" />{primaryCalendarLabel}</Button>
-              {capabilities.canReview ? <Button data-testid="mtm-routes-view-week" aria-pressed={viewMode === "week"} variant={viewMode === "week" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => { setViewMode("week"); setAdvancedViewsOpen(false) }}><Columns3 className="mr-1 h-4 w-4" />{t("viewWeek")}</Button> : null}
-            </div> : null}
-            <details data-testid="mtm-routes-more-views" className="group relative shrink-0" open={advancedViewsOpen} onToggle={(event) => setAdvancedViewsOpen(event.currentTarget.open)}>
-              <summary data-testid="mtm-routes-more-views-toggle" aria-label={advancedViewLabel} title={advancedViewLabel} className={`flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 whitespace-nowrap rounded-xl border px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:min-h-10 [&::-webkit-details-marker]:hidden ${advancedViewActive ? "border-primary/35 bg-primary/5 text-primary" : "border-zinc-200 bg-card hover:bg-muted/60 dark:border-zinc-700"}`}>
-                {advancedViewLabel}<ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
-              </summary>
-              <div className="absolute right-0 z-20 mt-2 grid min-w-56 gap-1 rounded-xl border border-zinc-200 bg-card p-2 shadow-lg dark:border-zinc-700">
-                <Button data-testid="mtm-routes-view-list" aria-pressed={viewMode === "list"} variant={viewMode === "list" ? "secondary" : "ghost"} size="sm" className="min-h-11 justify-start" onClick={() => { setViewMode("list"); setAdvancedViewsOpen(false) }}><List className="mr-2 h-4 w-4" />{t(capabilities.canReview ? "viewList" : "viewMyRoutes")}</Button>
-                <Button data-testid="mtm-routes-view-matrix" aria-pressed={viewMode === "matrix"} variant={viewMode === "matrix" ? "secondary" : "ghost"} size="sm" className="min-h-11 justify-start" onClick={() => { setViewMode("matrix"); setAdvancedViewsOpen(false) }}><TableProperties className="mr-2 h-4 w-4" />{t("viewMatrix")}</Button>
-                {capabilities.canReview ? <Button aria-pressed={viewMode === "approvals"} variant={viewMode === "approvals" ? "secondary" : "ghost"} size="sm" className="min-h-11 justify-start" onClick={() => { setViewMode("approvals"); setAdvancedViewsOpen(false) }}><ClipboardCheck className="mr-2 h-4 w-4" />{t("viewApprovals")}</Button> : null}
-                {capabilities.canReview ? <Button data-testid="mtm-routes-excel-exchange" variant="ghost" size="sm" className="min-h-11 justify-start" onClick={() => { setExcelOpen(true); setAdvancedViewsOpen(false) }}><FileSpreadsheet className="mr-2 h-4 w-4" />{t("excelExchange")}</Button> : null}
-              </div>
-            </details>
+            <div data-testid="mtm-route-view-tabs" className="flex min-w-0 flex-wrap gap-1 rounded-xl border border-zinc-200 bg-muted/30 p-1 dark:border-zinc-700" role="group" aria-label={t("primaryViews")}>
+              {calendarSurface ? <Button data-testid="mtm-routes-view-calendar" aria-pressed={viewMode === "calendar"} variant={viewMode === "calendar" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("calendar")}><CalendarDays className="mr-1 h-4 w-4" />{primaryCalendarLabel}</Button> : null}
+              {calendarSurface && capabilities.canReview ? <Button data-testid="mtm-routes-view-week" aria-pressed={viewMode === "week"} variant={viewMode === "week" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("week")}><Columns3 className="mr-1 h-4 w-4" />{t("viewWeek")}</Button> : null}
+              <Button data-testid="mtm-routes-view-list" aria-pressed={viewMode === "list"} variant={viewMode === "list" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("list")}><List className="mr-1 h-4 w-4" />{t(capabilities.canReview ? "viewList" : "viewMyRoutes")}</Button>
+              <Button data-testid="mtm-routes-view-matrix" aria-pressed={viewMode === "matrix"} variant={viewMode === "matrix" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("matrix")}><TableProperties className="mr-1 h-4 w-4" />{t("viewMatrix")}</Button>
+              {/* Owner 2026-09-25: one agent over any period, not only a week. */}
+              <Button data-testid="mtm-routes-view-agent" aria-pressed={viewMode === "agent"} variant={viewMode === "agent" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("agent")}><UserRound className="mr-1 h-4 w-4" />{t("viewAgentPeriod")}</Button>
+              {capabilities.canReview ? <Button data-testid="mtm-routes-view-approvals" aria-pressed={viewMode === "approvals"} variant={viewMode === "approvals" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("approvals")}><ClipboardCheck className="mr-1 h-4 w-4" />{t("viewApprovals")}</Button> : null}
+            </div>
           </nav>
           <div className="flex shrink-0 items-center justify-end gap-2">
             {returnTarget ? <Button asChild variant="outline" className="min-h-11 whitespace-nowrap px-3 lg:min-h-10"><Link href={returnTarget.href}><ArrowLeft className="mr-1 h-4 w-4" />{t(returnTarget.label)}</Link></Button> : null}
+            {capabilities.canReview ? <Button data-testid="mtm-routes-excel-exchange" variant="outline" className="min-h-11 whitespace-nowrap px-3 lg:min-h-10" onClick={() => setExcelOpen(true)}><FileSpreadsheet className="mr-1 h-4 w-4" />{t("excelExchange")}</Button> : null}
             <Button data-testid="mtm-route-builder-open" className="min-h-11 flex-1 whitespace-nowrap px-4 sm:flex-none lg:min-h-10" onClick={() => openNewRoute()} disabled={!capabilities.canCreateRoute} title={!capabilities.canCreateRoute ? t("selfPlanningDisabled") : undefined}><Plus className="mr-1 h-4 w-4" /> {t("add")}</Button>
           </div>
         </div>
@@ -1189,6 +1179,8 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
           selfAgentId={capabilities.actorAgentId}
           onCreateRoute={({ date, agentId }) => openNewRoute({ date, agentId, returnView: "week" })}
         />
+      ) : viewMode === "agent" ? (
+        <MtmAgentPeriodView timezone={timezone} initialAgentId={capabilities.canReview ? null : capabilities.actorAgentId} />
       ) : viewMode === "approvals" ? (
         <div className="space-y-4">
           <MtmRouteNeedsAttention orgId={orgId ? String(orgId) : undefined} active refreshVersion={approvalRefreshVersion} />

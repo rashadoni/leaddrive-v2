@@ -12544,7 +12544,22 @@
       "ENDED": "Period ended"
     }
   },
+  "mtmAgentPeriod": {
+    "agent": "Employee",
+    "from": "From",
+    "to": "To",
+    "lastDays": "{count, plural, one {Last # day} other {Last # days}}",
+    "clamped": "A period longer than {days} days is cut to the last {days}.",
+    "summary": "{routes} routes · {done} of {planned} stops done · {visits} visits · {days} days with work",
+    "loadFailed": "Could not load the data. Try again.",
+    "loading": "Loading",
+    "empty": "No routes and no visits for this employee in this period.",
+    "noVisits": "No visits",
+    "stops": "{done} of {planned} stops",
+    "dayOnMap": "Day on the map"
+  },
   "mtmRoutesPage": {
+    "viewAgentPeriod": "Agent over a period",
     "primaryViews": "Choose how to view the plan",
     "moreViews": "More views",
     "moreViewsShort": "More",
