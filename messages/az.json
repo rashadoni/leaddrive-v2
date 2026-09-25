@@ -13356,7 +13356,7 @@
     "title": "Sahə tapşırıqları",
     "subtitle": "Sahə komandası üçün əhatə dairəli işi planlaşdırın, icra və yoxlayın",
     "add": "Tapşırıq əlavə et",
-    "searchPlaceholder": "Başlıq, təsvir və ya təşkilat üzrə axtar",
+    "searchPlaceholder": "Başlıq, təsvir, təşkilat və ya əməkdaş üzrə axtar",
     "noResults": "Bu filtrlərə uyğun tapşırıq yoxdur",
     "noResultsHint": "Daha çox tapşırıq görmək üçün filtrləri dəyişin və ya təmizləyin.",
     "loading": "Tapşırıqlar yüklənir…",

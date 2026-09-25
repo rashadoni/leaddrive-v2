@@ -92,3 +92,11 @@ describe("tasks awaiting the manager's review", () => {
     expect(page).toContain('<option value="AWAITING_REVIEW">')
   })
 })
+
+describe("task search", () => {
+  // Tasks audit 2026-09-24: searching an agent's surname found nothing.
+  it("also finds tasks by the agent's name", () => {
+    const route = readFileSync("src/app/api/v1/mtm/tasks/route.ts", "utf8")
+    expect(route).toContain('{ agent: { name: { contains: search, mode: "insensitive" as const } } },')
+  })
+})

@@ -129,6 +129,9 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
           { title: { contains: search, mode: "insensitive" as const } },
           { description: { contains: search, mode: "insensitive" as const } },
           { customer: { name: { contains: search, mode: "insensitive" as const } } },
+          // Tasks audit 2026-09-24: «Quliyev» found nothing — the agent's name
+          // was not searched, though it is a column of the same list.
+          { agent: { name: { contains: search, mode: "insensitive" as const } } },
         ],
       } : {}),
     }
