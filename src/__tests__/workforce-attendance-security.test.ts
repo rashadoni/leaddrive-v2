@@ -13,7 +13,9 @@ import {
   verifyWorkforceDeviceSignature,
   workforceAttendanceQrNonceFingerprint,
   workforceDeviceAttendanceChallenge,
+  workforceDeviceAttestationChallengeFingerprint,
   workforceDeviceEnrollmentChallenge,
+  workforceDeviceEnrollmentChallengeFingerprint,
 } from "@/lib/workforce/attendance-security"
 
 const NOW = new Date("2026-08-29T09:00:00.000Z")
@@ -25,6 +27,7 @@ describe("Workforce attendance security primitives", () => {
     expect(absent.locationRequiredActions.size).toBe(0)
     expect(absent.qrRequiredActions.size).toBe(0)
     expect(absent.deviceTrustRequiredActions.size).toBe(0)
+    expect(absent.playIntegrityRequiredActions.size).toBe(0)
 
     const configured = workforceAttendanceRequirements({
       attendance: {
@@ -32,17 +35,20 @@ describe("Workforce attendance security primitives", () => {
         location: { requiredActions: ["START", "FINISH"] },
         qr: { requiredActions: ["START", "FINISH"] },
         deviceTrust: { requiredActions: ["START", "FINISH"] },
+        playIntegrity: { requiredActions: ["START"] },
       },
     })
     expect(configured.locationRequiredActions).toEqual(new Set(["START", "FINISH"]))
     expect(configured.qrRequiredActions).toEqual(new Set(["START", "FINISH"]))
     expect(configured.biometricRequiredActions).toEqual(new Set())
+    expect(configured.playIntegrityRequiredActions).toEqual(new Set(["START"]))
     expect(workforceAttendancePolicyManifest({
       attendance: {
         enforcementVersion: 1,
         location: { requiredActions: ["START", "FINISH"] },
         qr: { requiredActions: ["START", "FINISH"] },
         deviceTrust: { requiredActions: ["START", "FINISH"] },
+        playIntegrity: { requiredActions: ["START"] },
       },
     })).toEqual({
       enforcementVersion: 1,
@@ -50,6 +56,7 @@ describe("Workforce attendance security primitives", () => {
       qrRequiredActions: ["START", "FINISH"],
       deviceTrustRequiredActions: ["START", "FINISH"],
       biometricRequiredActions: [],
+      playIntegrityRequiredActions: ["START"],
     })
 
     expect(() => workforceAttendanceRequirements({
@@ -71,6 +78,13 @@ describe("Workforce attendance security primitives", () => {
         },
       },
     })).toThrow(/hardware attestation/)
+
+    expect(() => workforceAttendanceRequirements({
+      attendance: {
+        enforcementVersion: 1,
+        playIntegrity: { requiredActions: ["START"] },
+      },
+    })).toThrow(/also require device trust/)
 
     expect(workforceAttendancePolicyManifest({
       attendance: {
@@ -160,5 +174,15 @@ describe("Workforce attendance security primitives", () => {
       enrollmentId: "enrollment_1",
       challenge: "AbCdEfGhIjKlMnOpQrStUvWxYz012345",
     })).toContain("workforce-device-enrollment:v1")
+  })
+
+  it("keeps a server-first attestation nonce tenant-bound and separate from proof enrollment", () => {
+    const challenge = "AbCdEfGhIjKlMnOpQrStUvWxYz012345"
+    const attestationFingerprint = workforceDeviceAttestationChallengeFingerprint("org_1", challenge)
+    expect(attestationFingerprint).toMatch(/^[a-f0-9]{64}$/)
+    expect(attestationFingerprint).not.toEqual(workforceDeviceAttestationChallengeFingerprint("org_2", challenge))
+    expect(attestationFingerprint).not.toEqual(workforceDeviceEnrollmentChallengeFingerprint("org_1", challenge))
+    expect(() => workforceDeviceAttestationChallengeFingerprint("org_1", "short"))
+      .toThrow(WorkforceAttendanceSecurityError)
   })
 })

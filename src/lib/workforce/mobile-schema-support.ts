@@ -28,6 +28,7 @@ export const WORKFORCE_MOBILE_SCHEMA_SUPPORT = Object.freeze({
       WORKFORCE_WORKDAY_LEGACY_SCHEMA_VERSION,
       2,
       3,
+      4,
       WORKFORCE_WORKDAY_CURRENT_SCHEMA_VERSION,
     ]),
   }),
