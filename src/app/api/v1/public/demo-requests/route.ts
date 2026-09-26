@@ -3,22 +3,48 @@ import { prisma } from "@/lib/prisma"
 import { COMPANY_EMAIL } from "@/lib/constants"
 import { autoIssueDemoGrant } from "@/lib/demo-center/auto-issue"
 import { getDemoModules } from "@/lib/demo-center/catalog"
+import {
+  DEMO_REQUEST_ALLOWED_HEADERS,
+  DEMO_REQUEST_ALLOWED_METHODS,
+  DEMO_REQUEST_PREFLIGHT_MAX_AGE_SECONDS,
+  withDemoRequestCors,
+} from "@/lib/demo-request-cors"
 import { sendDemoRequestNotification } from "@/lib/demo-center/email"
 import { emailDomain } from "@/lib/demo-center/security"
 import { demoRequestSchema } from "@/lib/demo-center/validation"
 import { runWithRlsBypass } from "@/lib/rls-context"
+
+function jsonResponse(request: Request, body: unknown, init?: ResponseInit) {
+  return withDemoRequestCors(request, NextResponse.json(body, init))
+}
+
+export function OPTIONS(request: Request) {
+  return withDemoRequestCors(
+    request,
+    new NextResponse(null, {
+      status: 204,
+      headers: {
+        Allow: DEMO_REQUEST_ALLOWED_METHODS,
+        "Access-Control-Allow-Methods": DEMO_REQUEST_ALLOWED_METHODS,
+        "Access-Control-Allow-Headers": DEMO_REQUEST_ALLOWED_HEADERS,
+        "Access-Control-Max-Age": String(DEMO_REQUEST_PREFLIGHT_MAX_AGE_SECONDS),
+      },
+    }),
+  )
+}
 
 export async function POST(request: Request) {
   let payload: unknown
   try {
     payload = await request.json()
   } catch {
-    return NextResponse.json({ success: false, error: "Sorğu formatı düzgün deyil" }, { status: 400 })
+    return jsonResponse(request, { success: false, error: "Sorğu formatı düzgün deyil" }, { status: 400 })
   }
 
   const parsed = demoRequestSchema.safeParse(payload)
   if (!parsed.success) {
-    return NextResponse.json(
+    return jsonResponse(
+      request,
       {
         success: false,
         error: parsed.error.issues[0]?.message || "Məlumatları yoxlayın",
@@ -30,7 +56,7 @@ export async function POST(request: Request) {
 
   // Filled honeypots receive the same generic response without creating a row.
   if (parsed.data.website) {
-    return NextResponse.json({ success: true, message: "Demo sorğusu qəbul edildi" }, { status: 201 })
+    return jsonResponse(request, { success: true, message: "Demo sorğusu qəbul edildi" }, { status: 201 })
   }
 
   const created = await runWithRlsBypass(() =>
@@ -64,7 +90,8 @@ export async function POST(request: Request) {
   ).catch(() => null)
 
   if (!created) {
-    return NextResponse.json(
+    return jsonResponse(
+      request,
       { success: false, error: "Sorğunu hazırda saxlaya bilmədik. Bir qədər sonra yenidən cəhd edin." },
       { status: 503 },
     )
@@ -91,7 +118,8 @@ export async function POST(request: Request) {
   // it in Demo Center, and the answer stays the same.
   const invitation = await autoIssueDemoGrant({ request: created }).catch(() => "failed" as const)
 
-  return NextResponse.json(
+  return jsonResponse(
+    request,
     { success: true, requestId: created.id, invitation, message: "Demo sorğusu qəbul edildi" },
     { status: 201 },
   )
