@@ -192,31 +192,41 @@ export const GET = withRouteFieldWebRlsAuth("read", async (req, auth) => {
       }))
 
     } else if (type === "route") {
-      const [byStatus, dates, completedRoutes, pageRows] = await Promise.all([
+      const [byStatus, stops, dates, completedRoutes, pageRows] = await Promise.all([
         prisma.mtmRoute.groupBy({ by: ["status"], where: { ...where, deletedAt: null }, _count: { _all: true } }),
+        // Audit 2026-09-26: «Завершённость 100%» counted routes marked
+        // «Завершён», including one closed at 3 of 5 stops. Execution is stops.
+        prisma.mtmRoute.aggregate({
+          where: { ...where, deletedAt: null, status: { notIn: ["DRAFT", "CANCELLED"] } },
+          _sum: { totalPoints: true, visitedPoints: true },
+        }),
         prisma.mtmRoute.findMany({ where: { ...where, deletedAt: null }, select: { createdAt: true } }),
         prisma.mtmRoute.findMany({ where: { ...where, deletedAt: null, status: "COMPLETED", startedAt: { not: null }, completedAt: { not: null } }, select: { startedAt: true, completedAt: true } }),
         prisma.mtmRoute.findMany({
           where: { ...where, deletedAt: null }, orderBy: { createdAt: "desc" },
           skip: (page - 1) * limit, take: limit,
-          include: { agent: { select: { name: true } }, _count: { select: { points: true } } },
+          include: { agent: { select: { name: true } } },
         }),
       ])
       total = byStatus.reduce((s: number, g: any) => s + g._count._all, 0)
       const completed = byStatus.find((g: any) => g.status === "COMPLETED")?._count._all || 0
+      const plannedStops = stops._sum?.totalPoints ?? 0
+      const visitedStops = stops._sum?.visitedPoints ?? 0
       const avgMin = completedRoutes.length
         ? Math.round(completedRoutes.reduce((s: number, r: any) => s + ((r.completedAt!.getTime() - r.startedAt!.getTime()) / 60000), 0) / completedRoutes.length)
         : 0
       summary = [
         { labelKey: "sum.total", value: total, kind: "number" },
         { labelKey: "sum.completed", value: completed, kind: "number" },
-        { labelKey: "sum.completionRate", value: pct(completed, total), kind: "percent" },
+        { labelKey: "sum.completedStops", value: `${visitedStops} / ${plannedStops}`, kind: "text" },
+        { labelKey: "sum.compliance", value: pct(visitedStops, plannedStops), kind: "percent" },
         { labelKey: "sum.avgDuration", value: avgMin, kind: "minutes" },
       ]
       series = dailySeries(dates.map((d: any) => d.createdAt), startKey, todayKey, timezone)
       rows = pageRows.map((r: any) => ({
         id: r.id, date: r.createdAt, agent: r.agent?.name || "—", status: r.status,
-        points: r._count?.points ?? 0,
+        // Visited of planned: «5» said nothing about a route closed at 3.
+        points: `${r.visitedPoints ?? 0}/${r.totalPoints ?? 0}`,
         duration: r.startedAt && r.completedAt ? Math.round((new Date(r.completedAt).getTime() - new Date(r.startedAt).getTime()) / 60000) : null,
       }))
 

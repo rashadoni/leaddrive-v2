@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { readFile, readdir } from "node:fs/promises"
+import { existsSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { validateActivationEvidence } from "../event-platform/activation-preflight.mjs"
@@ -392,10 +393,10 @@ for (const requiredSshGuard of [
 // The independent human-reviewer half of this guard was removed on 2026-09-06:
 // this solo-owner repository has no separately governed human identity that can
 // approve with self-review prevented, so the rule made every production path
-// impassable rather than protected. Layer 2 of docs/DELIVERY-ARCHITECTURE.md
-// supplies independent review before merge: an agent that did not write the
-// change reviews every pull request, and `agent-review` is required on main.
-// What is asserted here is the environment control that can be satisfied:
+// impassable rather than protected. Layers 1–2 of docs/DELIVERY-ARCHITECTURE.md
+// guard main instead: the five checks GitHub itself runs are required on every
+// pull request. What is asserted here is the environment control that can be
+// satisfied:
 // production is reachable only from main, and inspection failures stay closed.
 assert.ok(
   productionEnvironmentGuard.includes('GH_TOKEN: ${{ inputs.github-token }}')
@@ -418,13 +419,17 @@ assert.ok(
 // and leave the repository with neither. So the replacement is asserted to
 // exist, by name, together with the script that makes it a required check.
 //
-// `agent-review` is required in addition to the five machine checks. The old
-// workflow is deliberately absent because it could report green without a
-// reviewer; a separate agent publishes the status for the exact reviewed SHA.
+// 2026-09-11: the replacement is no longer `agent-review`. The owner dropped it —
+// without an ANTHROPIC_API_KEY it reported green on every PR by design, and it
+// was the ONLY required context, so tests and typecheck were not required at
+// all. 2026-09-26 it came back as a status «another agent» had to publish for
+// the exact SHA (#439/#440); nobody did, every PR stalled, and the owner removed
+// it again the same day, for every session. What is required is what GitHub
+// itself runs. The principle above still holds and is asserted below: the gate
+// must exist, must run on every pull request, and must be what main requires.
 const prChecksWorkflow = await readText(".github/workflows/pr-checks.yml")
 const mainProtectionScript = await readText("scripts/ci/configure-main-protection.sh")
-const agentReviewPublisher = await readText("scripts/ci/publish-agent-review-status.sh")
-const requiredContexts = ["pr-scope", "static-checks", "typecheck", "runner-policy", "scan", "agent-review"]
+const requiredContexts = ["pr-scope", "static-checks", "typecheck", "runner-policy", "scan"]
 // "Runs on every pull request" means no path filter of either sign on the
 // pull_request trigger. The fourth agent review pointed out that checking only
 // `paths:` would let a `paths-ignore:` slip through, and it was right.
@@ -452,8 +457,9 @@ assert.ok(
   "static-checks and typecheck may skip only via pr-scope",
 )
 assert.ok(
-  requiredContexts.every((context) => mainProtectionScript.includes(`"context": "${context}"`)),
-  "main protection must name all five machine checks plus independent agent-review",
+  requiredContexts.every((context) => mainProtectionScript.includes(`"context": "${context}"`))
+    && !mainProtectionScript.includes('"agent-review"'),
+  "main must require the checks GitHub actually runs — pr-scope, static-checks, typecheck, runner-policy, scan — and not the retired agent-review",
 )
 const protectionPayloadMatch = mainProtectionScript.match(/--input - <<'JSON'\n([\s\S]*?)\nJSON/u)
 assert.ok(protectionPayloadMatch, "main protection must send one reviewable JSON payload")
@@ -468,10 +474,9 @@ assert.deepEqual(
       { context: "typecheck", app_id: 15368 },
       { context: "runner-policy", app_id: 15368 },
       { context: "scan", app_id: 15368 },
-      { context: "agent-review", app_id: -1 },
     ],
   },
-  "machine checks must retain the GitHub Actions app binding while agent-review accepts the exact-SHA status publisher",
+  "main must require exactly the five checks GitHub runs, each bound to the GitHub Actions app",
 )
 assert.equal(protectionPayload.enforce_admins, true, "administrators must not bypass main protection")
 assert.deepEqual(
@@ -487,21 +492,8 @@ assert.deepEqual(
 assert.equal(protectionPayload.allow_force_pushes, false, "main must reject force pushes")
 assert.equal(protectionPayload.allow_deletions, false, "main must reject branch deletion")
 assert.ok(
-  agentReviewPublisher.includes("HEAD_SHA must be a full lowercase 40-character commit SHA")
-    && agentReviewPublisher.includes('BASE_REF}" != "main')
-    && agentReviewPublisher.includes('PR_STATE}" != "open')
-    && agentReviewPublisher.includes("refusing stale review"),
-  "agent-review publisher must fail closed on abbreviated/stale SHA, wrong base, and closed PR",
-)
-const publisherTest = spawnSync(
-  process.execPath,
-  [path.join(repoRoot, "scripts/ci/test-publish-agent-review-status.mjs")],
-  { cwd: repoRoot, encoding: "utf8" },
-)
-assert.equal(
-  publisherTest.status,
-  0,
-  `agent-review publisher behavior failed:\n${publisherTest.stdout}\n${publisherTest.stderr}`,
+  !existsSync(path.join(repoRoot, "scripts/ci/publish-agent-review-status.sh")),
+  "the agent-review status publisher is retired with the gate (owner, 2026-09-26)",
 )
 const protectionReadbackTest = spawnSync(
   process.execPath,

@@ -13206,7 +13206,10 @@
       "fri": "Пт",
       "sat": "Сб"
     },
-    "calendarMore": "+ещё {n}",
+    "calendarDayVisited": "выполнено {visited} из {planned} точек",
+    "calendarDayStops": "{count, plural, one {# точка} few {# точки} many {# точек} other {# точки}}",
+    "calendarDayMissed": "{count, plural, one {# маршрут с пропусками} few {# маршрута с пропусками} many {# маршрутов с пропусками} other {# маршрута с пропусками}}",
+    "calendarDayDrafts": "{count, plural, one {# черновик} few {# черновика} many {# черновиков} other {# черновика}}",
     "weekAgentSearch": "Найти сотрудника",
     "weekAgentsHidden": "Скрыто строк: {count} — поиском или как QA-аккаунты",
     "weekTeamFilter": "Фильтр по команде",
@@ -13239,7 +13242,9 @@
       "weekSummaryNoTime": "{visited}/{total}",
       "weekLate": "Опоздание"
     },
-    "allLatest": "Все (последние {shown} из {total})"
+    "allLatest": "Все (последние {shown} из {total})",
+    "loadMoreRoutes": "Показать ещё {count}",
+    "loadMoreRoutesFailed": "Не удалось загрузить следующие маршруты. Попробуйте ещё раз."
   },
   "mtmOperationsPage": {
     "title": "Связь с командой",
@@ -13435,7 +13440,7 @@
     "sortPriority": "Приоритет: сначала срочные",
     "sortTitle": "Название: А–Я",
     "clearFilters": "Очистить фильтры",
-    "contactContext": "Контекст контакта: {id}",
+    "contactContext": "Контакт: {name}",
     "contactContextHint": "Показаны только задачи, связанные с этим контактом.",
     "clearContactContext": "Убрать контекст контакта",
     "viewMode": "Вид задач",
@@ -14052,6 +14057,12 @@
     "statusUpdateFailed": "Статус фото не сохранён: {reason}",
     "networkError": "нет сети",
     "fileMissing": "Файл не найден",
+    "viewModes": "Как показывать фото",
+    "modeGallery": "Галерея",
+    "modeCompare": "Сравнить",
+    "modeBatch": "Выбрать несколько",
+    "reviewUnavailable": "Файла нет — проверять нечего",
+    "deletePhoto": "Удалить фото",
     "periodLabel": "Период",
     "periodToday": "Сегодня",
     "periodWeek": "Эта неделя",
@@ -16899,7 +16910,7 @@
     "records": "{count} записей",
     "lastGenerated": "Последний раз: {date}",
     "view": "Просмотр",
-    "backToReports": "← Назад к отчётам",
+    "backToReports": "Назад к отчётам",
     "noData": "Нет данных для этого типа отчёта",
     "type_daily": "Ежедневный отчёт",
     "type_daily_desc": "Анализ визитов и задач за день",

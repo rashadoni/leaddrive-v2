@@ -13206,7 +13206,10 @@
       "fri": "Fri",
       "sat": "Sat"
     },
-    "calendarMore": "+{n} more",
+    "calendarDayVisited": "{visited} of {planned} stops done",
+    "calendarDayStops": "{count, plural, one {# stop} other {# stops}}",
+    "calendarDayMissed": "{count, plural, one {# route with missed stops} other {# routes with missed stops}}",
+    "calendarDayDrafts": "{count, plural, one {# draft} other {# drafts}}",
     "weekAgentSearch": "Find an agent",
     "weekAgentsHidden": "{count} rows hidden by the search or as QA accounts",
     "weekTeamFilter": "Filter by team",
@@ -13239,7 +13242,9 @@
       "weekSummaryNoTime": "{visited}/{total}",
       "weekLate": "Late"
     },
-    "allLatest": "All (latest {shown} of {total})"
+    "allLatest": "All (latest {shown} of {total})",
+    "loadMoreRoutes": "Show {count} more",
+    "loadMoreRoutesFailed": "Could not load more routes. Try again."
   },
   "mtmOperationsPage": {
     "title": "Team messages",
@@ -13435,7 +13440,7 @@
     "sortPriority": "Priority: urgent first",
     "sortTitle": "Title: A–Z",
     "clearFilters": "Clear filters",
-    "contactContext": "Contact context: {id}",
+    "contactContext": "Contact: {name}",
     "contactContextHint": "Only tasks linked to this contact are shown.",
     "clearContactContext": "Clear contact context",
     "viewMode": "Task view",
@@ -14052,6 +14057,12 @@
     "statusUpdateFailed": "The photo status was not saved: {reason}",
     "networkError": "no network",
     "fileMissing": "File not found",
+    "viewModes": "How to show photos",
+    "modeGallery": "Gallery",
+    "modeCompare": "Compare",
+    "modeBatch": "Select several",
+    "reviewUnavailable": "No file — nothing to review",
+    "deletePhoto": "Delete photo",
     "periodLabel": "Period",
     "periodToday": "Today",
     "periodWeek": "This week",
@@ -16899,7 +16910,7 @@
     "records": "{count} records",
     "lastGenerated": "Last generated: {date}",
     "view": "View",
-    "backToReports": "← Back to Reports",
+    "backToReports": "Back to Reports",
     "noData": "No data for this report type",
     "type_daily": "Daily Report",
     "type_daily_desc": "Daily visit and task results analysis",

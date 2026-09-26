@@ -41,12 +41,13 @@ self-review prevented. The old rule therefore did not protect production; it
 made every path to production impassable — the merged work of an entire day sat
 undeployed behind it.
 
-What replaces it is `docs/DELIVERY-ARCHITECTURE.md` layer 2: every pull request
-is read by an agent that did not write it. `agent-review` is the sixth required
-context on `main`, alongside `pr-scope`, `static-checks`, `typecheck`,
-`runner-policy` and `scan`; it never replaces those machine gates. Re-adding an
-environment-reviewer requirement before provisioning a genuinely independent
-human reviewer would stop all deployments again. CI assertions in
+What guards `main` instead is `docs/DELIVERY-ARCHITECTURE.md` layers 1–2: the
+five checks GitHub itself runs — `pr-scope`, `static-checks`, `typecheck`,
+`runner-policy`, `scan` — are required on every pull request. There is no AI
+reviewer in the gate: `agent-review` was retired on 2026-09-11 and, after a
+same-day-reverted return on 2026-09-26, must not come back in any form.
+Re-adding an environment-reviewer requirement before provisioning a genuinely
+independent human reviewer would stop all deployments again. CI assertions in
 `scripts/ci/test-event-platform-assets.mjs` guard both boundaries.
 
 Each production artifact is retained by GitHub Actions for 30 days, contains no

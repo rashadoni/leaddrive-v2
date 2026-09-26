@@ -13202,7 +13202,10 @@
       "fri": "C.",
       "sat": "Ş."
     },
-    "calendarMore": "+daha {n}",
+    "calendarDayVisited": "{planned} nöqtədən {visited} yerinə yetirilib",
+    "calendarDayStops": "{count} nöqtə",
+    "calendarDayMissed": "{count} marşrut natamam",
+    "calendarDayDrafts": "{count} qaralama",
     "weekAgentSearch": "Əməkdaş tapın",
     "weekAgentsHidden": "Gizlədilən sətir: {count} — axtarış və ya QA hesabları",
     "weekTeamFilter": "Komandaya görə süzgəc",
@@ -13235,7 +13238,9 @@
       "weekSummaryNoTime": "{visited}/{total}",
       "weekLate": "Gecikmə"
     },
-    "allLatest": "Hamısı (son {shown} / {total})"
+    "allLatest": "Hamısı (son {shown} / {total})",
+    "loadMoreRoutes": "Daha {count} göstər",
+    "loadMoreRoutesFailed": "Növbəti marşrutları yükləmək alınmadı. Yenidən cəhd edin."
   },
   "mtmOperationsPage": {
     "title": "Komanda ilə əlaqə",
@@ -13431,7 +13436,7 @@
     "sortPriority": "Prioritet: təcili əvvəl",
     "sortTitle": "Başlıq: əlifba sırası",
     "clearFilters": "Filtrləri təmizlə",
-    "contactContext": "Kontakt konteksti: {id}",
+    "contactContext": "Kontakt: {name}",
     "contactContextHint": "Yalnız bu kontaktla əlaqəli tapşırıqlar göstərilir.",
     "clearContactContext": "Kontakt kontekstini sil",
     "viewMode": "Tapşırıq görünüşü",
@@ -14048,6 +14053,12 @@
     "statusUpdateFailed": "Fotonun statusu saxlanmadı: {reason}",
     "networkError": "şəbəkə yoxdur",
     "fileMissing": "Fayl tapılmadı",
+    "viewModes": "Şəkilləri necə göstərmək",
+    "modeGallery": "Qalereya",
+    "modeCompare": "Müqayisə et",
+    "modeBatch": "Bir neçəsini seç",
+    "reviewUnavailable": "Fayl yoxdur — yoxlanılacaq bir şey yoxdur",
+    "deletePhoto": "Şəkli sil",
     "periodLabel": "Dövr",
     "periodToday": "Bu gün",
     "periodWeek": "Bu həftə",
@@ -16895,7 +16906,7 @@
     "records": "{count} qeyd",
     "lastGenerated": "Son yaradılma: {date}",
     "view": "Bax",
-    "backToReports": "← Hesabatlara qayıt",
+    "backToReports": "Hesabatlara qayıt",
     "noData": "Bu hesabat növü üçün məlumat yoxdur",
     "type_daily": "Gündəlik hesabat",
     "type_daily_desc": "Gündəlik vizit və tapşırıq nəticələrinin təhlili",

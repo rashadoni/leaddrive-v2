@@ -38,9 +38,6 @@ const expectedChecks = [
   { context: "typecheck", app_id: 15368 },
   { context: "runner-policy", app_id: 15368 },
   { context: "scan", app_id: 15368 },
-  // GitHub normalizes the request sentinel app_id=-1 to null in protection
-  // readback. Both represent the deliberately unbound custom status context.
-  { context: "agent-review", app_id: null },
 ]
 
 const validReadback = {
@@ -75,23 +72,16 @@ try {
 
   const requestedPayload = JSON.parse(await readFile(payloadPath, "utf8"))
   assert.deepEqual(
-    requestedPayload.required_status_checks.checks.at(-1),
-    { context: "agent-review", app_id: -1 },
-    "the write request must explicitly allow any app to publish agent-review",
+    requestedPayload.required_status_checks.checks,
+    expectedChecks,
+    "the write request must require exactly the five GitHub Actions checks",
   )
 
-  const echoedSentinel = structuredClone(validReadback)
-  echoedSentinel.required_status_checks.checks.at(-1).app_id = -1
-  const echoedSentinelResult = runConfigurator(echoedSentinel)
-  assert.equal(
-    echoedSentinelResult.status,
-    0,
-    `an API that echoes the equivalent -1 sentinel must remain valid:\n${echoedSentinelResult.stderr}`,
-  )
-
+  // Owner 2026-09-26: the AI review gate must not come back for any session.
   for (const [label, mutate] of [
-    ["missing agent-review", (value) => value.required_status_checks.checks.pop()],
-    ["missing agent app binding", (value) => { delete value.required_status_checks.checks.at(-1).app_id }],
+    ["agent-review required again", (value) => value.required_status_checks.checks.push({ context: "agent-review", app_id: null })],
+    ["missing scan", (value) => value.required_status_checks.checks.pop()],
+    ["unbound machine check", (value) => { delete value.required_status_checks.checks.at(-1).app_id }],
     ["wrong machine app", (value) => { value.required_status_checks.checks[0].app_id = null }],
     ["admin bypass", (value) => { value.enforce_admins.enabled = false }],
     ["missing PR-only rule", (value) => { value.required_pull_request_reviews = null }],

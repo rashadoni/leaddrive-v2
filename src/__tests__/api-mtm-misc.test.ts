@@ -312,6 +312,19 @@ describe("GET /api/v1/mtm/tasks", () => {
     expect(callArgs.where.status).toBe("PENDING")
     expect(callArgs.where.priority).toBe("URGENT")
   })
+
+  // Tasks audit 2026-09-24: the contact chip read «Контекст контакта: cmf8x…».
+  it("names the contact the list is narrowed to, from this organization only", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(prisma.mtmTask.findMany).mockResolvedValue([] as any)
+    vi.mocked(prisma.mtmTask.count).mockResolvedValue(0)
+    vi.mocked(prisma.mtmContact.findFirst).mockResolvedValue({ id: "c1", displayName: "Dr. Aynur Məmmədova" } as any)
+
+    const res = await ListTasks(makeReq("/api/v1/mtm/tasks?contactId=c1"))
+    const json = await res.json()
+    expect(json.data.contact).toEqual({ id: "c1", displayName: "Dr. Aynur Məmmədova" })
+    expect((vi.mocked(prisma.mtmContact.findFirst).mock.calls[0][0] as any).where).toEqual({ id: "c1", organizationId: ORG })
+  })
 })
 
 // ─── POST /api/v1/mtm/tasks ────────────────────────────────
@@ -394,6 +407,37 @@ describe("GET /api/v1/mtm/photos", () => {
     const callArgs = vi.mocked(prisma.mtmPhoto.findMany).mock.calls[0][0] as any
     expect(callArgs.where.agentId).toBe("a1")
     expect(callArgs.where.status).toBe("APPROVED")
+  })
+
+  // Audit 2026-09-26: «all» read 200 while 1367 photos were stored — the page
+  // counted its own newest 200. The period and the counts are the server's.
+  it("filters by period and counts every status of it, not the page", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(prisma.mtmPhoto.findMany).mockResolvedValue([] as any)
+    vi.mocked(prisma.mtmPhoto.count).mockResolvedValue(32)
+    vi.mocked(prisma.mtmPhoto.groupBy).mockResolvedValue([
+      { status: "PENDING", _count: { _all: 32 } },
+      { status: "APPROVED", _count: { _all: 1317 } },
+      { status: "REJECTED", _count: { _all: 18 } },
+    ] as any)
+
+    const res = await ListPhotos(makeReq("/api/v1/mtm/photos?status=PENDING&since=2026-09-20T20:00:00.000Z"))
+    const json = await res.json()
+    expect(json.data.byStatus).toEqual({ PENDING: 32, APPROVED: 1317, REJECTED: 18 })
+    const listWhere = (vi.mocked(prisma.mtmPhoto.findMany).mock.calls[0][0] as any).where
+    expect(listWhere.createdAt).toEqual({ gte: new Date("2026-09-20T20:00:00.000Z") })
+    expect(listWhere.status).toBe("PENDING")
+    // The chips count the period across statuses: no status filter there.
+    const countWhere = (vi.mocked(prisma.mtmPhoto.groupBy).mock.calls[0][0] as any).where
+    expect(countWhere.createdAt).toEqual({ gte: new Date("2026-09-20T20:00:00.000Z") })
+    expect(countWhere.status).toBeUndefined()
+  })
+
+  it("refuses a period start that is not a date", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    const res = await ListPhotos(makeReq("/api/v1/mtm/photos?since=yesterday"))
+    expect(res.status).toBe(400)
+    expect(prisma.mtmPhoto.findMany).not.toHaveBeenCalled()
   })
 })
 
