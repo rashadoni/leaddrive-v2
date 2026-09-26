@@ -5,6 +5,7 @@ import {
   type WorkforceExceptionCaseDraft,
   type WorkforceExceptionDecisionDraft,
 } from "@/lib/workforce/exception-case-ledger"
+import { MAX_WORKFORCE_EXCEPTION_DECISIONS } from "@/lib/workforce/exception-workbench"
 
 type WorkforceExceptionCaseWriteData = Omit<WorkforceExceptionCaseDraft, "links"> & WorkforceExceptionCaseDraft["links"]
 type StoredCase = Omit<WorkforceExceptionCaseWriteData, "expectedWorkDate"> & { id: string; expectedWorkDate: string | Date | null }
@@ -49,8 +50,9 @@ export type WorkforceExceptionCaseWriterDb = WorkforceExceptionCasePersistenceDb
     findMany: (args: {
       where: { organizationId: string; caseId: string }
       orderBy: readonly [{ createdAt: "asc" }, { id: "asc" }]
-      select: { decisionCode: true }
-    }) => Promise<readonly { decisionCode: string }[]>
+      take: number
+      select: { decisionCode: true; createdAt: true }
+    }) => Promise<readonly { decisionCode: string; createdAt: Date }[]>
   }
   workforceExceptionCaseLookup: {
     findFirst: (args: { where: { id: string; organizationId: string }; select: { id: true } }) => Promise<{ id: string } | null>
@@ -77,7 +79,8 @@ export class WorkforceExceptionCaseWriterError extends Error {
       | "WORKFORCE_EXCEPTION_CASE_NOT_AUTHORIZED"
       | "WORKFORCE_EXCEPTION_CASE_WRITE_CONFLICT"
       | "WORKFORCE_EXCEPTION_DECISION_WRITE_CONFLICT"
-      | "WORKFORCE_EXCEPTION_DECISION_CASE_NOT_FOUND",
+      | "WORKFORCE_EXCEPTION_DECISION_CASE_NOT_FOUND"
+      | "WORKFORCE_EXCEPTION_DECISION_HISTORY_LIMIT_EXCEEDED",
     message: string = code,
   ) {
     super(message)
@@ -337,6 +340,10 @@ export async function appendAuthorizedPolicyWorkforceExceptionDecision(input: {
   db: WorkforceExceptionCaseWriterDb
   draft: WorkforceExceptionDecisionDraft
   authorize: WorkforceExceptionCaseAuthorization
+  validateContext: (input: {
+    draft: WorkforceExceptionDecisionDraft
+    priorDecisions: readonly { decisionCode: string; createdAt: Date }[]
+  }) => void | Promise<void>
 }): Promise<{ decisionId: string; idempotent: boolean }> {
   const basic = canonicalDecisionDraft(input.draft)
   await requireAuthorization(input.authorize, {
@@ -383,11 +390,24 @@ export async function appendAuthorizedPolicyWorkforceExceptionDecision(input: {
   const prior = await input.db.workforceExceptionDecision.findMany({
     where: { organizationId: basic.organizationId, caseId: basic.caseId },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-    select: { decisionCode: true },
+    take: MAX_WORKFORCE_EXCEPTION_DECISIONS + 1,
+    select: { decisionCode: true, createdAt: true },
   })
+  if (prior.length >= MAX_WORKFORCE_EXCEPTION_DECISIONS) {
+    throw new WorkforceExceptionCaseWriterError(
+      "WORKFORCE_EXCEPTION_DECISION_HISTORY_LIMIT_EXCEEDED",
+      "The Workforce exception decision history has reached the reviewed bound",
+    )
+  }
+  const priorDecisionCodes = prior.map((decision) => decision.decisionCode)
+  // This callback deliberately runs only after the stream lock, exact replay
+  // check and ordered history read. A route can therefore validate linked
+  // response/correction state in the same serializable transaction without a
+  // stale preflight authorizing an incompatible resolution.
+  await input.validateContext({ draft: basic, priorDecisions: prior })
   const canonical = createDraftPolicyWorkforceExceptionDecisionDraft({
     ...basic,
-    priorDecisionCodes: prior.map((decision) => decision.decisionCode),
+    priorDecisionCodes,
   })
   try {
     const created = await input.db.workforceExceptionDecision.create({ data: canonical })

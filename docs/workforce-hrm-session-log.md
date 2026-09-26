@@ -99,3 +99,54 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Fresh shell syntax, dedicated configurator behavior, full delivery asset and diff-whitespace checks pass. Independent rereview returned GREEN with zero remaining findings and measured the complete follow-up at `13,546` bytes. Heavy build/typecheck/browser/Android/load checks remain `NOT RUN` locally and stay delegated to CI.
 - Precise stopping point: the normalization repair and exact negative coverage are locally green and independently reviewed; live six-context protection remains active.
 - Next action: checkpoint, push and open the narrow PR, publish pending then independently reviewed exact-SHA `agent-review`, wait all machine gates, merge normally and rerun the merged configurator for a zero-exit exact live readback.
+
+## 2026-09-26 — PR #440 deployed and branch protection verified
+
+- PR #440 exact head `ae52e4941b71754961ddb7b4437d9edf9bb4cf30` passed `pr-scope`, `static-checks`, `typecheck`, `runner-policy`, `scan` and the now-required exact-SHA independent `agent-review`, then merged normally as `ea3e3c539a2d92cda4978e753508796ae28c3a13`.
+- Deploy run `36258347026` passed quality/security, produced the SHA-bound artifact, deployed through the registered GitHub Actions route and completed post-deploy smoke. Independent public checks returned HTTP 200 with `{"ok":true}` from `/api/v1/ping` and exact `artifactSha=ea3e3c539a2d92cda4978e753508796ae28c3a13` from `/api/v1/public/build-info`.
+- The merged `scripts/ci/configure-main-protection.sh rashadoni/leaddrive-v2` now exits zero. Independent REST readback confirms `strict=false`, the five GitHub Actions contexts with `app_id=15368`, required `agent-review` with GitHub-normalized `app_id=null`, `enforce_admins=true`, a non-null zero-approval PR-only rule and force-push/deletion disabled.
+- The delivery-control discrepancy is resolved without weakening a check. Product progress remains `81/161`, phase gates remain `14/15`, C5 remains 81% and C9 remains 99%; physical Android/QR/GPS/biometric, isolated load/restore and human pilot evidence remain `NOT RUN`.
+- Precise stopping point: PR #440 production and live protection receipts are complete; branch `codex/workforce-exception-workbench-backend` starts exactly from the deployed merge SHA.
+- Next action: complete the scoped WF-C6 backend workbench slice, obtain an independent exact-diff review, then publish it as a separate sub-400 KB PR with all mandatory gates.
+
+## 2026-09-26 — scoped exception-workbench backend prepared (partial)
+
+- The manager queue now performs a bounded metadata-only scan, resolves immutable historical team plus persisted site scope, applies `TEAM_EXCEPTION_READ`/`TEAM_EXCEPTION_DECIDE` per case and loads names/lifecycle context only for authorized ids. Legacy tenant-admin access remains read-only; no database case id is returned.
+- Each offered non-terminal action receives a principal/action/revision-bound, short-lived AES-GCM body token. The fixed `POST /api/v1/workforce/exception-decisions` route rechecks case, historical scope, live grant, exact decision count and bounded context under the existing per-case decision lock. The former database-id route is a uniform tombstone.
+- Independent design review found a real concurrency boundary: linked request/response writers do not yet all take the same case lock, so terminal resolution could race a correction mutation even under serializable isolation. This slice therefore exposes only `ACKNOWLEDGE`, `REQUEST_EMPLOYEE_RESPONSE` and `REQUEST_TIME_CORRECTION`; resolution/reopen stay unavailable until the shared-lock cutover and disposable-PostgreSQL race proof.
+- Existing `ESCALATE_TO_HR` history stays valid but is not newly offered. A same-case correction request counts as employee visibility, old visibility before the latest request/reopen does not, and an applied status is recognized only from one approved exact linked request plus its one immutable correction fact. No reasons, request ids or proof are returned.
+- Targeted evidence is green: 12 Vitest files / 59 tests, scoped ESLint, the recursive RLS gap scan (552 organization-scoped models, zero gaps) and `git diff --check`. The cached dependency tree had the exact current lockfile hash. Full typecheck/build, browser E2E, Android, load, applied-RLS/concurrency and physical/staging checks are `NOT RUN` locally under host policy and remain required where applicable in CI/heavy environments.
+- Progress remains honestly `81/161`, `14/15`, C5 81% and C9 99%; this partial safety slice does not close WF-C6-002 or WF-C6-005.
+- Precise stopping point: source, focused tests and evidence are ready in the shared worktree but not yet checkpointed; independent pre-commit review of the complete diff is next.
+- Next action: resolve every independent finding, checkpoint only task-owned paths, push/open a sub-400 KB PR, prove the live required `agent-review` plus machine gates on the exact head, then merge/deploy before beginning the shared-lock terminal-action slice.
+
+## 2026-09-26 — per-case queue-auth boundary verified
+
+- The granular queue wrapper now has an explicit `PER_CASE` mode. It validates the session, tenant capability and feature cutover, then deliberately defers resource authorization to the queue handler's bounded metadata-first historical team/site filtering instead of requiring a broad organization grant or a legacy CRM role.
+- A focused regression proves that a valid non-admin session reaches the per-case handler without an organization-grant lookup. The default `ORGANIZATION` mode and pre-cutover tenant-admin behavior remain unchanged.
+- Fresh local evidence passes: 13 focused Vitest files / 85 tests, targeted ESLint for every changed TypeScript/test file, recursive RLS context scan (552 organization-scoped models, zero gaps) and `git diff --check`. The reused dependency tree matched the current lockfile exactly.
+- Full local typecheck/build, browser E2E, Android, load, migration apply, disposable-PostgreSQL concurrency and physical/staging evidence remain `NOT RUN` under the Contabo workload policy; exact-head CI and independent review remain mandatory.
+- Progress remains `81/161`, `14/15`, C5 81% and C9 99%; no completion credit or terminal action is introduced.
+- Precise stopping point: the complete moving-tree diff is ready for the independent reviewer to freeze and assess; no source has been checkpointed yet.
+- Next action: resolve any finding, receive a green rereview of the frozen full diff, checkpoint only task-owned paths and publish the sub-400 KB PR for exact-SHA gates.
+
+## 2026-09-26 — scoped workbench frozen review RED; six repairs prepared
+
+- Independent review froze the complete diff against `ea3e3c539a2d92cda4978e753508796ae28c3a13` at fingerprint `09491251d0b461e4a8d8765a9860ed8b6560cde9eeeef23f34382fb935b87eef` and `115,991` upper-bound bytes, then returned RED with six findings. No checkpoint or review status was published from that result.
+- The write endpoint no longer applies a legacy CRM-role gate before the actor-independent grant model. A dedicated session/capability boundary requires the granular cutover, while the service rechecks Workforce capability, live cutover, historical resource scope and the exact `TEAM_EXCEPTION_DECIDE` grant inside its serializable transaction.
+- A valid 64-decision stream now exposes no new action and the writer rejects a 65th append after its replay-first check. Top-level employee-response/next-action projection now uses the same current request/reopen cycle as decision availability.
+- The metadata pre-scan requires at least one active, unrevoked, known-role and role/scope-valid exception-read grant. Token parsing now rejects non-canonical base64url trailing pad bits by exact decode/re-encode comparison.
+- Regression coverage includes a `support` CRM role with a valid granular boundary, feature rollback after token issue, exactly 64 decisions, a response older than the latest request, a revoked-only grant and an alternate textual encoding of identical authenticated bytes.
+- Fresh repair evidence passes: 13 focused Vitest files / 94 tests and targeted ESLint for every changed TypeScript/test file. Recursive RLS scan and final diff checks are the next local gates. Full typecheck/build, browser E2E, Android, load, migration apply, disposable-PostgreSQL concurrency and physical/staging remain `NOT RUN` locally.
+- Progress remains `81/161`, `14/15`, C5 81% and C9 99%; no completion or phase-gate credit is added.
+- Precise stopping point: all six review findings are repaired in the uncommitted worktree; the updated complete diff has not yet received independent rereview.
+- Next action: rerun recursive RLS/diff checks, freeze the repaired tree, require independent zero-finding rereview, then checkpoint and publish the exact head for mandatory CI.
+
+## 2026-09-26 — scoped workbench repaired-diff rereview GREEN
+
+- Independent rereview covered the complete repaired diff from base `ea3e3c539a2d92cda4978e753508796ae28c3a13` and returned GREEN with zero remaining findings. It confirmed every one of the six RED repairs and that resolution/reopen remain unavailable behind the shared-lock terminal fence.
+- The frozen receipt fingerprint was `a9227b49d1ff9799b06dea4c3e73e1e301110e3c88d9f4cd0e65bfd4899e1115`, computed from the base marker, binary tracked diff and sorted untracked path/hash/content tuples. The complete upper-bound size was `136,811` bytes (`90,667` tracked patch plus `46,144` untracked content), below the 400 KB PR limit.
+- Local evidence remains 13 focused files / 94 tests, targeted ESLint, recursive RLS scan (552/0) and diff check. Full local typecheck/build, browser E2E, Android, load, migration apply and disposable-PostgreSQL checks remain `NOT RUN`; GitHub exact-SHA gates are mandatory.
+- Progress remains `81/161`, `14/15`, C5 81% and C9 99%; this review receipt does not add product or gate credit.
+- Precise stopping point: the implementation and independent rereview are green; only this append-only review receipt was added afterward and needs a final document-delta integrity check before checkpoint.
+- Next action: verify the receipt-only delta, create the path-scoped checkpoint commit, push/open the sub-400 KB PR and publish `agent-review=pending` for its exact head before remote-head review.
