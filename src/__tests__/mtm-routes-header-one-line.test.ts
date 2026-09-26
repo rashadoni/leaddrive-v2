@@ -21,7 +21,8 @@ describe("C5 tail: the routes heading is one line", () => {
   it("keeps the heading and drops the paragraph under it", () => {
     const page = readFileSync(PAGE, "utf8")
     const header = page.slice(page.indexOf('data-testid="mtm-route-header"'), page.indexOf('data-testid="mtm-route-toolbar"'))
-    expect(header).toContain('<h1 className="text-lg font-semibold leading-6 text-foreground">{t("title")}</h1>')
+    // Routes audit 2026-09-26: the Calendar section is titled «Calendar», not «Routes».
+    expect(header).toContain('<h1 className="text-lg font-semibold leading-6 text-foreground">{t(calendarSurface ? "calendarTitle" : "title")}</h1>')
     expect(header).not.toContain('{t("subtitle")}')
   })
 

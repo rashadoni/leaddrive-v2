@@ -823,7 +823,7 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
         <div className="flex min-w-0 flex-1 items-start gap-2.5">
           <Route className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
           <div className="min-w-0">
-            <h1 className="text-lg font-semibold leading-6 text-foreground">{t("title")}</h1>
+            <h1 className="text-lg font-semibold leading-6 text-foreground">{t(calendarSurface ? "calendarTitle" : "title")}</h1>
           </div>
           {/*
             Audit W-05 / task C5. Measured on the owner's screen at 1470x675:
