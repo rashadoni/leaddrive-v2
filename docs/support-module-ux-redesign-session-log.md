@@ -299,3 +299,16 @@ Next: checkpoint the workflow correction, integrate the newest `origin/main`,
 re-run only merge-affected targeted gates, push, and dispatch one fresh
 high-profile matrix on the new exact SHA after confirming the evidence queue is
 idle.
+
+### Latest-main integration after build correction
+
+- The cold-build correction was checkpointed as `99c74afec`, then current
+  `origin/main` (`cb9a886ab`) was merged without conflict. The merge contains
+  the latest MTM and Workforce work but does not alter the VoIP/evidence task
+  surface.
+- The merge-affected workflow contract test remains green at 17/17, workflow
+  YAML parsing and branch-vs-main whitespace checks pass, and AZ/RU/EN parity
+  passes at 23,599 EN leaf keys with zero RU/AZ drift.
+
+Next: push this exact tree and run one corrected high-profile matrix after the
+queue-idle check.
