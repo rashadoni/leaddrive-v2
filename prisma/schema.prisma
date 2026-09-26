@@ -21543,6 +21543,8 @@ model DemoGrant {
   status                 String      @default("ISSUING") // ISSUING | SENT | OTP_SENT | OTP_VERIFIED | ACTIVE | COMPLETED | EXPIRED | REVOKED | DELIVERY_FAILED
   tokenHash              String      @unique
   tokenHint              String
+  /// Module playlist, 1..19 entries — or empty on a scenario grant. Exactly
+  /// one of the two (demo_grants_modules_or_scenario_check).
   moduleIds              String[]
   /// Guided scenario this grant was issued for. Null on grants issued before
   /// scenarios existed — those keep opening the module player. Set together

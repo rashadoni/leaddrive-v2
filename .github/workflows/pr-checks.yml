@@ -174,6 +174,16 @@ jobs:
         env:
           EVENT_PLATFORM_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
 
+      - name: Demo Center database constraints gate
+        # Every demo migration replayed on a real Postgres, and the real
+        # issuing path run against it. From 2026-09-20 to 09-24 no demo link
+        # could be issued on prod — a CHECK rejected every scenario grant —
+        # while all unit tests, which mock Prisma, stayed green.
+        run: npx vitest run src/__tests__/demo-center-db-constraints.test.ts
+        env:
+          DEMO_CENTER_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:${{ env.EVENT_PLATFORM_PG_PORT }}/event_platform_test
+          DEMO_CENTER_DB_GATE: required
+
       - name: Previous Prisma client rollback-window gate
         run: node scripts/event-platform-legacy-client-probe.mjs
         env:
