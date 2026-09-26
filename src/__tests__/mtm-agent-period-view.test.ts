@@ -146,3 +146,17 @@ describe("the agent period on a real phone (prod 2026-09-26, the owner's own)", 
     expect(period.days[0].distanceMeters).toBeLessThan(5_000)
   })
 })
+
+describe("routes audit 2026-09-26: the week planner", () => {
+  it("is named for what it does, carries no instructions, and keeps test accounts apart", () => {
+    for (const locale of ["ru", "az", "en"]) {
+      const page = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).mtmRoutesPage
+      expect(page.viewMatrix).not.toBe(page.viewWeek)
+      expect(page.weekPlannerSubtitle).toBeUndefined()
+      expect(page.weekPlannerReadOnlyHint).toBeUndefined()
+    }
+    const planner = readFileSync("src/components/mtm/route-planning-matrix.tsx", "utf8")
+    expect(planner).toContain('<optgroup label={t("testAccounts")}>')
+    expect(planner).toContain("[...visibleWeekPlanAgents(rows), ...rows.filter(isQaWeekPlanAgent)]")
+  })
+})
