@@ -280,7 +280,7 @@ export default function KbArticleDetailPage() {
                 <Link
                   key={related.id}
                   href={`/knowledge-base/${related.id}?returnTo=${encodedReturnTo}`}
-                  className="block rounded-lg px-2 py-2 outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+                  className="block rounded-lg px-2 py-2 outline-none transition-colors motion-reduce:transition-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <span className="line-clamp-2 text-sm font-medium">{related.title}</span>
                   <span className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">

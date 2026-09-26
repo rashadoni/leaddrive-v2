@@ -206,7 +206,7 @@ export default function PortalKnowledgeBasePage() {
               data-testid="portal-knowledge-article-row"
               data-article-id={article.id}
               onClick={() => void viewArticle(article.id)}
-              className="flex min-h-20 w-full items-center gap-3 px-4 py-3 text-left outline-none transition-colors first:rounded-t-xl last:rounded-b-xl hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+              className="flex min-h-20 w-full items-center gap-3 px-4 py-3 text-left outline-none transition-colors motion-reduce:transition-none first:rounded-t-xl last:rounded-b-xl hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
             >
               <BookOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
               <span className="min-w-0 flex-1">

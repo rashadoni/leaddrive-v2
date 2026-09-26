@@ -500,7 +500,7 @@ export default function KnowledgeBasePage() {
           {categoriesError && (
             <div data-testid="knowledge-base-categories-error" role="alert" className="mt-2 rounded-lg border border-destructive/30 p-2 text-xs">
               <p>{categoriesError}</p>
-              {categoriesErrorRetryable && <button data-testid="knowledge-base-categories-retry" className="mt-1 min-h-11 font-medium underline underline-offset-2" onClick={() => void fetchCategories()}>{t("retry")}</button>}
+              {categoriesErrorRetryable && <button data-testid="knowledge-base-categories-retry" className="mt-1 min-h-11 rounded-sm font-medium underline underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => void fetchCategories()}>{t("retry")}</button>}
             </div>
           )}
         </aside>
@@ -578,7 +578,7 @@ export default function KnowledgeBasePage() {
                       aria-controls={panelId}
                       data-testid="knowledge-base-category-toggle"
                       onClick={() => toggleCategory(categoryId)}
-                      className="flex min-h-11 w-full items-center gap-2 border-b bg-muted/30 px-3 text-left text-sm outline-none transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                      className="flex min-h-11 w-full items-center gap-2 border-b bg-muted/30 px-3 text-left text-sm outline-none transition-colors motion-reduce:transition-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                     >
                       {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                       <FolderOpen className="h-4 w-4 text-muted-foreground" />
@@ -744,7 +744,7 @@ function CategoryFilterButton({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "mb-0.5 w-full rounded-lg px-3 py-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+        "mb-0.5 min-h-11 w-full rounded-lg px-3 py-2 text-left outline-none transition-colors motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring",
         active ? "bg-foreground text-background" : "hover:bg-muted",
       )}
     >
@@ -843,8 +843,9 @@ function ArticleRow({
 }
 
 function LibrarySkeleton() {
+  const t = useTranslations("kb")
   return (
-    <div data-testid="knowledge-base-loading" aria-busy="true" aria-label="Loading" className="divide-y">
+    <div data-testid="knowledge-base-loading" aria-busy="true" aria-label={t("loadingArticles")} className="divide-y">
       {[0, 1, 2, 3, 4].map((index) => (
         <div key={index} className="flex min-h-[4.25rem] animate-pulse items-center gap-3 px-3 py-2 motion-reduce:animate-none">
           <div className="h-4 w-4 rounded bg-muted" />

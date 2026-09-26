@@ -1250,7 +1250,7 @@ Final completion evidence (2026-09-26):
 
 ## 12. Workstream 5 — Knowledge Base
 
-**Status: IN PROGRESS — recovery-evidence checkpoint `7e489b1e7`; CI/browser gates pending**
+**Status: IN PROGRESS — restored in current tree; exact-SHA CI/browser gates pending**
 **Route:** `/knowledge-base`
 **Primary file:** `src/app/(dashboard)/knowledge-base/page.tsx`
 
@@ -1352,6 +1352,17 @@ Current verification evidence (2026-09-05):
   Exact-SHA matrix run `34001165886` for `7e489b1e7` ended in GitHub Actions
   `startup_failure` before job creation (`total_count: 0`), so rendered execution
   is **NOT RUN** and no KB checkbox is closed.
+- Current-tree integration on 2026-09-26 is checkpointed from restored product
+  commit `1497f5d70` and recovery commit `57e7245d5`. Nine focused suites pass
+  with 154/154 assertions. A stricter scoped scan found and corrected seven
+  integration defects (reduced-motion fallbacks, a 44 px category target,
+  retry focus visibility, and a localized loading label); the rerun covers the
+  four visible KB TSX files with zero findings. ESLint for all changed sources
+  passed, followed by a changed-pages-only rerun and 13/13 relevant contract
+  assertions after the corrections. `git diff --check` passes. Full local
+  typecheck/build remains **NOT RUN** under the recorded host OOM/workload
+  constraint; the unchanged AZ/RU/EN catalogs do not require a repeated local
+  parity run. Exact-SHA GitHub build and browser evidence remain mandatory.
 
 ## 13. Workstream 6 — Ticket Categories
 

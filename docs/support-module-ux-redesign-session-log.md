@@ -499,3 +499,60 @@ and high exact-SHA evidence before closing Workstream 4.
 Next: checkpoint the VoIP plan/journal closure, then restore and verify
 Workstream 5 Knowledge Base from implementation checkpoint `a0a68b220` and
 recovery checkpoint `7e489b1e7` without replacing newer shared evidence code.
+
+## 2026-09-26 — Workstream 5 Knowledge Base restored
+
+- VoIP plan/journal closure was checkpointed and pushed as `0002390d8`; the
+  worktree was clean before starting the next section.
+- Historical product checkpoint `a0a68b220` was restored as `1497f5d70`. The
+  only conflicts were the main KB page and AZ/RU/EN catalogs. Resolution kept
+  the compact two-pane library/header/error contract while preserving the newer
+  `loadingArticles` key and complete `slaPolicyUi` namespace in every locale.
+  JSON parsing and whitespace checks passed before continuing the cherry-pick.
+- Historical recovery checkpoint `7e489b1e7` was restored as `57e7245d5`.
+  Product selectors, list/detail/portal recovery behavior and the KB-specific
+  contract test applied. Six shared evidence files conflicted because current
+  `main` already contains later supersets for every remaining Support section.
+- Each current shared blob was inspected for the exact KB scenario, fixture ID,
+  runner dispatch and contract markers before preserving it. The current KB
+  flow runner also uses the hardened `captureSupportEvidenceScreenshot` helper,
+  while the historical incoming blob used raw `page.screenshot`; replacing the
+  current file would have regressed the evidence framework.
+- The combined KB delta is path-scoped to 16 product/test files. Observable
+  contracts for the two-pane category UI, publication labels, action menu,
+  return context, undo, list/detail/form states and portal publication boundary
+  are present. No unrelated current shared evidence file changed.
+
+Next: run resource-aware KB-only syntax, focused Vitest, changed-source ESLint,
+AZ/RU/EN parity, scoped anti-pattern and diff checks; correct any integration
+regression before pushing and dispatching exact-SHA browser evidence.
+
+### Workstream 5 current-tree integration self-audit
+
+- Resource inspection showed 14 GB available memory, 331 GB free disk and no
+  memory pressure before targeted verification. Runner syntax passed. Nine
+  focused suites passed with 154/154 assertions.
+- Changed-source ESLint passed for every new or modified KB source and contract
+  file. The two previously documented legacy aggregate suites were excluded
+  only from lint because their unchanged `no-explicit-any` debt is outside this
+  section; both complete relevant Vitest suites passed. The AZ/RU/EN catalogs
+  have no KB delta from the restored base, so their already-green parity gate
+  was not repeated.
+- The current scanner is stricter than the historical checkpoint and initially
+  reported seven findings across the four visible KB TSX files: missing
+  reduced-motion fallbacks, one undersized category filter target, one retry
+  control without a visible keyboard focus contract, and one hard-coded loading
+  label. Product markup was corrected without changing scanner rules or
+  thresholds. The scoped rerun passes with zero findings.
+- After those corrections, ESLint for the three changed pages passed and the
+  two directly affected contract suites passed 13/13 assertions. `git diff
+  --check` passes. The UI retains every role, recovery, state, 44 px,
+  accessibility and evidence assertion; no gate, scenario or timeout was
+  removed or weakened.
+- Full local typecheck/build remains **NOT RUN**: the historical 2 GB heap OOM
+  and remote-alt workload policy require the exact-SHA GitHub build gate rather
+  than a heavier Contabo retry.
+
+Next: checkpoint and push the current-tree KB integration, then run and inspect
+the exact-SHA desktop keyboard, mobile touchscreen and full high-density
+GitHub Actions evidence gates before closing Workstream 5.
