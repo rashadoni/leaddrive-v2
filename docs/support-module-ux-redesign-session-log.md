@@ -579,3 +579,48 @@ GitHub Actions evidence gates before closing Workstream 5.
 
 Next: checkpoint and push this CI-gate correction, then rerun all KB exact-SHA
 gates on the new commit; retain `36268522169` only as diagnostic evidence.
+
+### Workstream 5 diagnostic browser self-audit and correction
+
+- Diagnostic run `36268522169` passed fixture generation, Chromium install and
+  the exact-SHA production build. Its mutating flow produced all nine outcomes:
+  four passed and five failed. The static capture completed all three selected
+  scenarios but correctly failed the list and portal accessibility audits.
+- The independently downloaded artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36268522169`. Manual
+  inspection of all five failure screenshots showed that the two dashboard
+  failures were healthy loaded states instead of injected errors, while the
+  three portal failures had redirected to login or inherited the prior draft
+  mutation. This ruled out hidden product loading failures and identified the
+  harness/auth/cleanup causes.
+- The KB flow had incorrectly authenticated a portal customer through the
+  dashboard credentials callback. It now uses `/api/v1/public/portal-auth`,
+  verifies the disposable tenant, installs the `portal-token` cookie and primes
+  the `portal-user` state. Article/category interception now uses exact URL-path
+  predicates and verifies that the synthetic request was observed. Publication
+  evidence restores the original fixture status in `finally` through the
+  authenticated API and reopens the article to prove restoration, so a failed
+  portal assertion cannot cascade into later scenarios.
+- Mobile/tablet flow activation now scrolls the target into view, rejects
+  targets below 44 px, proves `document.elementFromPoint()` resolves to the
+  intended interactive control, and uses `page.touchscreen.tap()`. Desktop uses
+  the same helper with keyboard activation. Neither modality nor sizing gate is
+  inferred from viewport metadata alone.
+- Static evidence found a real 3.61:1 orange/white contrast failure on the KB
+  create action and real shared portal defects: three unnamed buttons, one
+  unlabeled chat input, small navigation/chat targets and the same low-contrast
+  orange. The KB CTA and portal shell/chat now use local orange-700 contrast,
+  localized accessible names, visible focus, reduced-motion fallbacks, 44 px
+  targets and viewport-bounded widget sizing. The expanded scoped scanner now
+  includes the rendered portal layout/widget and passes six files with zero
+  findings.
+- Runner syntax passes. Changed-source ESLint has zero errors (one unchanged
+  unused portal-chat helper warning remains visible), and browser/flow/KB contract suites pass
+  31/31 assertions. No assertion, timeout, role, scenario, accessibility,
+  performance or fixture-restoration gate was removed. Run `36268966684` was
+  canceled before its build because this product/harness correction changes the
+  required exact SHA.
+
+Next: checkpoint and push the diagnostic correction, rerun the mandatory
+desktop gate with the dedicated KB validation step, inspect its artifact, then
+run mobile touchscreen and full high-density matrix gates on the same SHA.

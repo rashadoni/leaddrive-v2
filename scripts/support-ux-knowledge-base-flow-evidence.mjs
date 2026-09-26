@@ -44,6 +44,9 @@ const viewports = {
 const outputDirectory = process.env.SUPPORT_EVIDENCE_OUTPUT_DIR
   || path.join("artifacts", "support-ux", new Date().toISOString().slice(0, 10))
 const articleId = requiredEnv("SUPPORT_EVIDENCE_KB_ARTICLE_ID")
+const articleApiPath = `/api/v1/kb/${articleId}`
+const isArticleApiUrl = (url) => url.pathname === articleApiPath
+const isCategoryApiUrl = (url) => url.pathname === "/api/v1/kb-categories"
 const manager = {
   email: requiredEnv("SUPPORT_EVIDENCE_MANAGER_EMAIL"),
   password: requiredEnv("SUPPORT_EVIDENCE_MANAGER_PASSWORD"),
@@ -51,21 +54,42 @@ const manager = {
 const customer = {
   email: requiredEnv("SUPPORT_EVIDENCE_PORTAL_EMAIL"),
   password: requiredEnv("SUPPORT_EVIDENCE_PORTAL_PASSWORD"),
+  slug: requiredEnv("SUPPORT_EVIDENCE_PORTAL_SLUG"),
 }
 
-async function authenticate(context, account, callbackPath) {
+async function authenticateManager(context) {
   const csrfResponse = await context.request.get("/api/auth/csrf")
   const csrf = await csrfResponse.json()
   const response = await context.request.post("/api/auth/callback/credentials", {
     form: {
       csrfToken: csrf.csrfToken,
-      email: account.email,
-      password: account.password,
-      callbackUrl: baseUrl + callbackPath,
+      email: manager.email,
+      password: manager.password,
+      callbackUrl: baseUrl + "/knowledge-base",
       json: "true",
     },
   })
-  if (!response.ok()) throw new Error("knowledge_base_authentication_failed")
+  if (!response.ok()) throw new Error("knowledge_base_manager_authentication_failed")
+}
+
+async function authenticateCustomer(context) {
+  const response = await context.request.post("/api/v1/public/portal-auth", { data: customer })
+  const body = await response.json().catch(() => null)
+  if (!response.ok() || !body?.success || !body?.data || !body?.token) {
+    throw new Error("knowledge_base_customer_authentication_failed")
+  }
+  assertDemoTenant(JSON.stringify(body.data), demoOrganization, "Knowledge Base customer authentication")
+  await context.addCookies([{
+    name: "portal-token",
+    value: body.token,
+    url: baseUrl,
+    httpOnly: true,
+    secure: baseUrl.startsWith("https:"),
+    sameSite: "Lax",
+  }])
+  await context.addInitScript((portalUser) => {
+    localStorage.setItem("portal-user", JSON.stringify(portalUser))
+  }, body.data)
 }
 
 async function dismissTour(page) {
@@ -90,6 +114,11 @@ async function openArticle(page) {
   assertDemoTenant(await page.locator("body").innerText(), demoOrganization, "Knowledge article")
 }
 
+async function restoreArticleStatus(context, status) {
+  const response = await context.request.put(articleApiPath, { data: { status } })
+  if (!response.ok()) throw new Error(`knowledge_base_fixture_restore_failed_${response.status()}`)
+}
+
 function jsonFailure(message, status = 503) {
   return { status, contentType: "application/json", body: JSON.stringify({ success: false, error: message }) }
 }
@@ -102,6 +131,36 @@ function emptyLibraryResponse() {
       success: true,
       data: { articles: [], total: 0, page: 1, limit: 500, search: "", summary: { total: 0, published: 0, draft: 0, views: 0, categories: [] } },
     }),
+  }
+}
+
+async function activateEvidenceTarget(page, locator, keyboardKey = "Enter") {
+  await locator.waitFor({ state: "visible", timeout: 30_000 })
+  if (viewportName === "desktop") {
+    await locator.focus()
+    await locator.press(keyboardKey)
+    return { inputModality: "keyboard", hitTarget: true }
+  }
+
+  await locator.scrollIntoViewIfNeeded()
+  const box = await locator.boundingBox()
+  if (!box) throw new Error("knowledge_base_touch_target_unmeasurable")
+  if (box.width < 44 || box.height < 44) {
+    throw new Error(`knowledge_base_touch_target_too_small_${Math.round(box.width)}x${Math.round(box.height)}`)
+  }
+  const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+  const hitTarget = await locator.evaluate((element, center) => {
+    const hit = document.elementFromPoint(center.x, center.y)
+    if (!hit) return false
+    const interactive = hit.closest("button,a,input,select,textarea,[role='button']")
+    return hit === element || interactive === element || element.contains(hit)
+  }, point)
+  if (!hitTarget) throw new Error("knowledge_base_touch_hit_test_failed")
+  await page.touchscreen.tap(point.x, point.y)
+  return {
+    inputModality: "playwright-touchscreen",
+    hitTarget,
+    targetSize: { width: Math.round(box.width), height: Math.round(box.height) },
   }
 }
 
@@ -153,8 +212,8 @@ async function recordStep(page, id, action) {
 const managerPage = await managerContext.newPage()
 const customerPage = await customerContext.newPage()
 try {
-  await authenticate(managerContext, manager, "/knowledge-base")
-  await authenticate(customerContext, customer, "/portal/knowledge-base")
+  await authenticateManager(managerContext)
+  await authenticateCustomer(customerContext)
 
   await recordStep(managerPage, "library-load-failure-and-keyboard-recovery", async () => {
     const libraryPattern = /\/api\/v1\/kb\?/
@@ -163,8 +222,7 @@ try {
     await managerPage.goto("/knowledge-base", { waitUntil: "domcontentloaded" })
     await managerPage.getByTestId("knowledge-base-load-error").waitFor({ state: "visible" })
     await managerPage.unroute(libraryPattern, deny)
-    await managerPage.getByTestId("knowledge-base-load-retry").focus()
-    await managerPage.getByTestId("knowledge-base-load-retry").press("Enter")
+    const retryActivation = await activateEvidenceTarget(managerPage, managerPage.getByTestId("knowledge-base-load-retry"))
     await managerPage.locator("[data-testid='knowledge-base-workspace'][data-state='ready']").waitFor({ state: "visible" })
 
     const forbid = async (route) => route.fulfill(jsonFailure("Synthetic permission denial", 403))
@@ -174,16 +232,24 @@ try {
     if (await managerPage.getByTestId("knowledge-base-load-retry").count() !== 0) throw new Error("library_permission_offered_misleading_retry")
     await managerPage.unroute(libraryPattern, forbid)
     await openLibrary(managerPage)
-    return { errorObserved: true, keyboardRetry: true, recoverySucceeded: true, permissionStateObserved: true, misleadingRetryAbsent: true }
+    return {
+      errorObserved: true,
+      keyboardRetry: retryActivation.inputModality === "keyboard",
+      physicalTouchRetry: retryActivation.inputModality === "playwright-touchscreen",
+      retryActivation,
+      recoverySucceeded: true,
+      permissionStateObserved: true,
+      misleadingRetryAbsent: true,
+    }
   })
 
   await recordStep(managerPage, "category-partial-failure-and-recovery", async () => {
     const deny = async (route) => route.fulfill(jsonFailure("Synthetic category failure"))
-    await managerPage.route("**/api/v1/kb-categories", deny)
+    await managerPage.route(isCategoryApiUrl, deny)
     await openLibrary(managerPage)
     await managerPage.getByTestId("knowledge-base-categories-error").waitFor({ state: "visible" })
     if (await managerPage.getByTestId("knowledge-base-article-row").count() === 0) throw new Error("category_failure_removed_article_snapshot")
-    await managerPage.unroute("**/api/v1/kb-categories", deny)
+    await managerPage.unroute(isCategoryApiUrl, deny)
     await managerPage.getByTestId("knowledge-base-categories-retry").click()
     await managerPage.getByTestId("knowledge-base-categories-error").waitFor({ state: "hidden" })
     return { articleSnapshotPreserved: true, retrySucceeded: true }
@@ -220,79 +286,94 @@ try {
   })
 
   await recordStep(managerPage, "article-load-failure-permission-and-recovery", async () => {
-    const articlePattern = new RegExp(`/api/v1/kb/${articleId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`)
-    const deny = async (route) => route.fulfill(jsonFailure("Synthetic article failure"))
-    await managerPage.route(articlePattern, deny)
+    let transientInterceptions = 0
+    const deny = async (route) => {
+      transientInterceptions += 1
+      await route.fulfill(jsonFailure("Synthetic article failure"))
+    }
+    await managerPage.route(isArticleApiUrl, deny)
     await managerPage.goto(`/knowledge-base/${encodeURIComponent(articleId)}`, { waitUntil: "domcontentloaded" })
     await managerPage.getByTestId("knowledge-article-load-error").waitFor({ state: "visible" })
-    await managerPage.unroute(articlePattern, deny)
+    if (transientInterceptions < 1) throw new Error("article_transient_failure_not_intercepted")
+    await managerPage.unroute(isArticleApiUrl, deny)
     await managerPage.getByTestId("knowledge-article-load-retry").click()
     await managerPage.getByTestId("knowledge-article-workspace").waitFor({ state: "visible" })
 
-    const forbid = async (route) => route.fulfill(jsonFailure("Synthetic permission denial", 403))
-    await managerPage.route(articlePattern, forbid)
+    let permissionInterceptions = 0
+    const forbid = async (route) => {
+      permissionInterceptions += 1
+      await route.fulfill(jsonFailure("Synthetic permission denial", 403))
+    }
+    await managerPage.route(isArticleApiUrl, forbid)
     await managerPage.reload({ waitUntil: "domcontentloaded" })
     await managerPage.getByTestId("knowledge-article-load-error").waitFor({ state: "visible" })
+    if (permissionInterceptions < 1) throw new Error("article_permission_failure_not_intercepted")
     if (await managerPage.getByTestId("knowledge-article-load-retry").count() !== 0) throw new Error("article_permission_offered_misleading_retry")
-    await managerPage.unroute(articlePattern, forbid)
+    await managerPage.unroute(isArticleApiUrl, forbid)
     await openArticle(managerPage)
     return { transientRetrySucceeded: true, permissionStateObserved: true, misleadingRetryAbsent: true }
   })
 
   await recordStep(managerPage, "edit-form-recovery", async () => {
     await openArticle(managerPage)
-    const categoryDeny = async (route) => route.fulfill(jsonFailure("Synthetic category picker failure"))
-    await managerPage.route("**/api/v1/kb-categories", categoryDeny)
+    let categoryInterceptions = 0
+    const categoryDeny = async (route) => {
+      categoryInterceptions += 1
+      await route.fulfill(jsonFailure("Synthetic category picker failure"))
+    }
+    await managerPage.route(isCategoryApiUrl, categoryDeny)
     await managerPage.getByTestId("knowledge-article-edit").click()
     await managerPage.getByTestId("knowledge-article-categories-retry").waitFor({ state: "visible" })
-    await managerPage.unroute("**/api/v1/kb-categories", categoryDeny)
+    if (categoryInterceptions < 1) throw new Error("article_category_failure_not_intercepted")
+    await managerPage.unroute(isCategoryApiUrl, categoryDeny)
     await managerPage.getByTestId("knowledge-article-categories-retry").click()
     await managerPage.getByTestId("knowledge-article-categories-retry").waitFor({ state: "hidden" })
 
     const saveDeny = async (route) => route.request().method() === "PUT"
       ? route.fulfill(jsonFailure("Synthetic article save failure"))
       : route.continue()
-    await managerPage.route(`**/api/v1/kb/${articleId}`, saveDeny)
+    await managerPage.route(isArticleApiUrl, saveDeny)
     const originalTitle = await managerPage.locator("#title").inputValue()
     await managerPage.getByTestId("knowledge-article-submit").focus()
     await managerPage.getByTestId("knowledge-article-submit").press("Enter")
     await managerPage.getByTestId("knowledge-article-save-error").waitFor({ state: "visible" })
     if (await managerPage.locator("#title").inputValue() !== originalTitle) throw new Error("save_failure_discarded_form_values")
-    await managerPage.unroute(`**/api/v1/kb/${articleId}`, saveDeny)
+    await managerPage.unroute(isArticleApiUrl, saveDeny)
     await managerPage.getByTestId("knowledge-article-submit").click()
     await managerPage.getByTestId("knowledge-article-form").waitFor({ state: "hidden" })
     return { categoryRetrySucceeded: true, keyboardSubmit: true, valuesPreserved: true, saveRetrySucceeded: true }
   })
 
   await recordStep(managerPage, "publication-failure-portal-boundary-and-restore", async () => {
-
     await openArticle(managerPage)
     const initialStatus = await managerPage.getByTestId("knowledge-article-status").getAttribute("data-status")
+    if (initialStatus !== "published" && initialStatus !== "draft") throw new Error("knowledge_base_fixture_status_invalid")
     const nextStatus = initialStatus === "published" ? "draft" : "published"
     const denyPut = async (route) => route.request().method() === "PUT"
       ? route.fulfill(jsonFailure("Synthetic publication failure"))
       : route.continue()
-    await managerPage.route(`**/api/v1/kb/${articleId}`, denyPut)
-    await managerPage.getByTestId("knowledge-article-publication").click()
-    const dialog = managerPage.getByRole("dialog")
-    await dialog.locator("button").last().click()
-    await dialog.getByRole("alert").waitFor({ state: "visible" })
-    if (await managerPage.getByTestId("knowledge-article-status").getAttribute("data-status") !== initialStatus) throw new Error("publication_failure_changed_status")
-    await managerPage.unroute(`**/api/v1/kb/${articleId}`, denyPut)
-    await dialog.locator("button").last().click()
-    await dialog.waitFor({ state: "hidden" })
-    await managerPage.locator(`[data-testid='knowledge-article-status'][data-status='${nextStatus}']`).waitFor({ state: "visible" })
+    try {
+      await managerPage.route(isArticleApiUrl, denyPut)
+      await managerPage.getByTestId("knowledge-article-publication").click()
+      const dialog = managerPage.getByRole("dialog")
+      await dialog.locator("button").last().click()
+      await dialog.getByRole("alert").waitFor({ state: "visible" })
+      if (await managerPage.getByTestId("knowledge-article-status").getAttribute("data-status") !== initialStatus) throw new Error("publication_failure_changed_status")
+      await managerPage.unroute(isArticleApiUrl, denyPut)
+      await dialog.locator("button").last().click()
+      await dialog.waitFor({ state: "hidden" })
+      await managerPage.locator(`[data-testid='knowledge-article-status'][data-status='${nextStatus}']`).waitFor({ state: "visible" })
 
-    await customerPage.goto("/portal/knowledge-base", { waitUntil: "domcontentloaded" })
-    await customerPage.locator("[data-testid='portal-knowledge-workspace'][data-state='ready']").waitFor({ state: "visible" })
-    const portalCount = await customerPage.locator(`[data-testid='portal-knowledge-article-row'][data-article-id='${articleId}']`).count()
-    if ((nextStatus === "published" && portalCount !== 1) || (nextStatus === "draft" && portalCount !== 0)) throw new Error("portal_publication_boundary_failed")
-
-    await managerPage.getByTestId("knowledge-article-publication").click()
-    const restoreDialog = managerPage.getByRole("dialog")
-    await restoreDialog.locator("button").last().click()
-    await restoreDialog.waitFor({ state: "hidden" })
-    await managerPage.locator(`[data-testid='knowledge-article-status'][data-status='${initialStatus}']`).waitFor({ state: "visible" })
+      await customerPage.goto("/portal/knowledge-base", { waitUntil: "domcontentloaded" })
+      await customerPage.locator("[data-testid='portal-knowledge-workspace'][data-state='ready']").waitFor({ state: "visible" })
+      const portalCount = await customerPage.locator(`[data-testid='portal-knowledge-article-row'][data-article-id='${articleId}']`).count()
+      if ((nextStatus === "published" && portalCount !== 1) || (nextStatus === "draft" && portalCount !== 0)) throw new Error("portal_publication_boundary_failed")
+    } finally {
+      await managerPage.unroute(isArticleApiUrl, denyPut).catch(() => undefined)
+      await restoreArticleStatus(managerContext, initialStatus)
+      await openArticle(managerPage)
+      await managerPage.locator(`[data-testid='knowledge-article-status'][data-status='${initialStatus}']`).waitFor({ state: "visible" })
+    }
     return { failedMutationRolledBack: true, retrySucceeded: true, portalBoundaryVerified: true, fixtureRestored: true }
   })
 
@@ -303,14 +384,19 @@ try {
     await customerPage.goto("/portal/knowledge-base", { waitUntil: "domcontentloaded" })
     await customerPage.getByTestId("portal-knowledge-load-error").waitFor({ state: "visible" })
     await customerPage.unroute(listPattern, deny)
-    await customerPage.getByTestId("portal-knowledge-load-retry").focus()
-    await customerPage.getByTestId("portal-knowledge-load-retry").press("Enter")
+    const retryActivation = await activateEvidenceTarget(customerPage, customerPage.getByTestId("portal-knowledge-load-retry"))
     await customerPage.locator("[data-testid='portal-knowledge-workspace'][data-state='ready']").waitFor({ state: "visible" })
     await customerPage.getByTestId("portal-knowledge-search").fill("no-result-support-evidence")
     await customerPage.getByTestId("portal-knowledge-empty-state").waitFor({ state: "visible" })
     await customerPage.getByTestId("portal-knowledge-clear-filters").click()
     await customerPage.getByTestId("portal-knowledge-list").waitFor({ state: "visible" })
-    return { keyboardRetry: true, recoverySucceeded: true, noResultsReset: true }
+    return {
+      keyboardRetry: retryActivation.inputModality === "keyboard",
+      physicalTouchRetry: retryActivation.inputModality === "playwright-touchscreen",
+      retryActivation,
+      recoverySucceeded: true,
+      noResultsReset: true,
+    }
   })
 
   await recordStep(customerPage, "portal-article-failure-and-recovery", async () => {

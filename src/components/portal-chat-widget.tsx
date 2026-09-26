@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react"
-import { useRouter } from "next/navigation"
 import { MessageSquare, X, Send, Bot, User, TicketPlus, Ticket, FileText, Loader2, Star, Headphones, CheckCircle, Clock, AlertCircle } from "lucide-react"
 import { useTranslations } from "next-intl"
 
@@ -68,13 +67,13 @@ function saveChat(key: string, messages: Message[], sessionId: string | null, tr
 export function PortalChatWidget({ userName }: PortalChatWidgetProps) {
   const t = useTranslations("portal")
 
-  const statusLabel = (s: string) => {
+  const statusLabel = useCallback((s: string) => {
     const map: Record<string, string> = {
       new: t("statusNew"), open: t("statusOpen"), in_progress: t("statusInProgress"),
       waiting: t("statusWaiting"), resolved: t("statusResolved"), closed: t("statusClosed"),
     }
     return map[s] || s
-  }
+  }, [t])
 
   const [open, setOpen] = useState(true)
   const [messages, setMessages] = useState<Message[]>([])
@@ -88,8 +87,6 @@ export function PortalChatWidget({ userName }: PortalChatWidgetProps) {
   const [csatSending, setCsatSending] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const router = useRouter()
-
   const storageKey = getStorageKey(userName)
 
   // Load chat from localStorage on mount + validate session still exists on server
@@ -144,7 +141,7 @@ export function PortalChatWidget({ userName }: PortalChatWidgetProps) {
       }
       if (discoveredTickets.length > 0) setTrackedTickets(discoveredTickets)
     }
-  }, [])
+  }, [storageKey])
 
   // Save chat to localStorage on every change
   useEffect(() => {
@@ -226,7 +223,7 @@ export function PortalChatWidget({ userName }: PortalChatWidgetProps) {
         }
       } catch { /* ignore polling errors */ }
     }
-  }, [])
+  }, [statusLabel, t])
 
   // Poll every 10 seconds when there are tracked tickets (always poll, chat always open)
   useEffect(() => {
@@ -481,22 +478,23 @@ export function PortalChatWidget({ userName }: PortalChatWidgetProps) {
     <>
       {/* Chat popup */}
       {open && (
-        <div className="fixed bottom-20 right-5 w-[380px] h-[520px] glass-panel rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden">
+        <div className="fixed bottom-20 right-5 z-50 flex h-[min(520px,calc(100dvh-7rem))] w-[calc(100vw-2rem)] max-w-[380px] flex-col overflow-hidden rounded-2xl border bg-card shadow-xl">
           {/* Header */}
-          <div className="bg-gradient-to-r from-[hsl(var(--ai-from))] to-[hsl(var(--ai-to))] px-4 py-3 flex items-center gap-3">
+          <div className="flex items-center gap-3 bg-slate-900 px-4 py-3 dark:bg-slate-800">
             <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
               <Bot className="h-5 w-5 text-white" />
             </div>
             <div className="flex-1">
-              <h3 className="text-white font-semibold text-sm">Da Vinci</h3>
+              <h3 className="text-sm font-semibold text-white">{t("chatTitle")}</h3>
               <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                <span className="text-white/80 text-xs">Online</span>
+                <div className="h-2 w-2 animate-pulse rounded-full bg-green-400 motion-reduce:animate-none" />
+                <span className="text-xs text-white/80">{t("chatOnline")}</span>
               </div>
             </div>
             {/* New chat button */}
             {messages.length > 0 && (
               <button
+                type="button"
                 onClick={() => {
                   setMessages([])
                   setSessionId(null)
@@ -504,7 +502,7 @@ export function PortalChatWidget({ userName }: PortalChatWidgetProps) {
                   setCsatTicketId(null)
                   localStorage.removeItem(storageKey)
                 }}
-                className="text-white/70 hover:text-white text-xs border border-white/30 rounded-full px-2 py-0.5"
+                className="min-h-11 rounded-full border border-white/30 px-3 text-xs text-white/80 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
               >
                 {t("chatNewChat")}
               </button>
@@ -541,7 +539,7 @@ export function PortalChatWidget({ userName }: PortalChatWidgetProps) {
                 </div>
                 <div className="bg-card rounded-lg rounded-tl-none p-3 shadow-[0_1px_3px_rgba(0,0,0,0.05)] border border-zinc-200 dark:border-zinc-700">
                   <div className="flex items-center gap-1.5">
-                    <Loader2 className="h-3.5 w-3.5 text-[hsl(var(--ai-from))] animate-spin" />
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-[hsl(var(--ai-from))] motion-reduce:animate-none" />
                     <span className="text-xs text-muted-foreground">{t("chatThinking")}</span>
                   </div>
                 </div>
@@ -560,10 +558,12 @@ export function PortalChatWidget({ userName }: PortalChatWidgetProps) {
                     {[1, 2, 3, 4, 5].map(i => (
                       <button
                         key={i}
+                        type="button"
+                        aria-label={t("chatRatingValue", { rating: i })}
                         onClick={() => setCsatRating(i)}
                         onMouseEnter={() => setCsatHover(i)}
                         onMouseLeave={() => setCsatHover(0)}
-                        className="p-0.5 transition-transform hover:scale-110"
+                        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg transition-transform motion-reduce:transition-none motion-reduce:hover:scale-100 hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         <Star className={`h-6 w-6 ${
                           i <= (csatHover || csatRating)
@@ -580,9 +580,10 @@ export function PortalChatWidget({ userName }: PortalChatWidgetProps) {
                   </div>
                   {csatRating > 0 && (
                     <button
+                      type="button"
                       onClick={handleSubmitCsat}
                       disabled={csatSending}
-                      className="text-xs bg-primary text-primary-foreground rounded-full px-3 py-1 hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                      className="min-h-11 rounded-full bg-orange-700 px-3 text-xs text-white transition-colors motion-reduce:transition-none hover:bg-orange-800 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       {csatSending ? t("chatSubmitting") : t("chatSubmitRating")}
                     </button>
@@ -596,20 +597,23 @@ export function PortalChatWidget({ userName }: PortalChatWidgetProps) {
           {messages.length === 0 && (
             <div className="px-4 py-2 border-t border-zinc-200 dark:border-zinc-700 bg-background flex gap-2 overflow-x-auto">
               <button
+                type="button"
                 onClick={() => handleSend(t("chatMyTickets"))}
-                className="flex items-center gap-1 text-xs text-muted-foreground border border-zinc-200 dark:border-zinc-700 rounded-full px-3 py-1.5 hover:bg-muted/50 whitespace-nowrap transition-colors"
+                className="flex min-h-11 items-center gap-1 whitespace-nowrap rounded-full border border-zinc-200 px-3 text-xs text-muted-foreground transition-colors motion-reduce:transition-none hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:border-zinc-700"
               >
                 <Ticket className="h-3 w-3" /> {t("chatMyTickets")}
               </button>
               <button
+                type="button"
                 onClick={() => handleSend(t("chatNewTicket"))}
-                className="flex items-center gap-1 text-xs text-muted-foreground border border-zinc-200 dark:border-zinc-700 rounded-full px-3 py-1.5 hover:bg-muted/50 whitespace-nowrap transition-colors"
+                className="flex min-h-11 items-center gap-1 whitespace-nowrap rounded-full border border-zinc-200 px-3 text-xs text-muted-foreground transition-colors motion-reduce:transition-none hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:border-zinc-700"
               >
                 <TicketPlus className="h-3 w-3" /> {t("chatNewTicket")}
               </button>
               <button
+                type="button"
                 onClick={() => handleSend(t("chatContracts"))}
-                className="flex items-center gap-1 text-xs text-muted-foreground border border-zinc-200 dark:border-zinc-700 rounded-full px-3 py-1.5 hover:bg-muted/50 whitespace-nowrap transition-colors"
+                className="flex min-h-11 items-center gap-1 whitespace-nowrap rounded-full border border-zinc-200 px-3 text-xs text-muted-foreground transition-colors motion-reduce:transition-none hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:border-zinc-700"
               >
                 <FileText className="h-3 w-3" /> {t("chatContracts")}
               </button>
@@ -621,17 +625,20 @@ export function PortalChatWidget({ userName }: PortalChatWidgetProps) {
             <div className="flex gap-2 items-center">
               <input
                 ref={inputRef}
+                aria-label={t("chatPlaceholder")}
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && handleSend()}
                 placeholder={t("chatPlaceholder")}
                 disabled={sending}
-                className="flex-1 text-sm text-foreground rounded-full border border-zinc-200 dark:border-zinc-700 bg-muted/50 px-4 py-2.5 outline-none focus:border-ring focus:ring-1 focus:ring-ring disabled:opacity-50 transition-colors placeholder:text-muted-foreground"
+                className="min-h-11 flex-1 rounded-full border border-zinc-200 bg-muted/50 px-4 py-2.5 text-sm text-foreground outline-none transition-colors motion-reduce:transition-none placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring disabled:opacity-50 dark:border-zinc-700"
               />
               <button
+                type="button"
+                aria-label={t("chatSend")}
                 onClick={() => handleSend()}
                 disabled={sending || !input.trim()}
-                className="w-9 h-9 rounded-full bg-primary hover:bg-primary/90 disabled:opacity-40 flex items-center justify-center transition-colors"
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-orange-700 transition-colors motion-reduce:transition-none hover:bg-orange-800 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <Send className="h-4 w-4 text-white" />
               </button>
@@ -642,8 +649,10 @@ export function PortalChatWidget({ userName }: PortalChatWidgetProps) {
 
       {/* Toggle button */}
       <button
+        type="button"
+        aria-label={open ? t("chatClose") : t("chatOpen")}
         onClick={() => setOpen(!open)}
-        className="fixed bottom-5 right-5 w-14 h-14 rounded-full bg-primary hover:bg-primary/90 shadow-lg flex items-center justify-center z-50 transition-all hover:scale-105"
+        className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-orange-700 shadow-lg transition-all motion-reduce:transition-none motion-reduce:hover:scale-100 hover:scale-105 hover:bg-orange-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         {open ? (
           <X className="h-6 w-6 text-white" />

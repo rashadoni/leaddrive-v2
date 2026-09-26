@@ -319,7 +319,9 @@ jobs:
           SUPPORT_UX_SCAN_ROOTS: >-
             src/app/(dashboard)/knowledge-base,
             src/app/portal/knowledge-base,
-            src/components/kb-article-form.tsx
+            src/app/portal/layout.tsx,
+            src/components/kb-article-form.tsx,
+            src/components/portal-chat-widget.tsx
         run: |
           node --check scripts/support-ux-browser-evidence.mjs
           node --check scripts/support-ux-knowledge-base-flow-evidence.mjs
@@ -339,7 +341,9 @@ jobs:
             src/app/\(dashboard\)/knowledge-base/page.tsx \
             src/app/\(dashboard\)/knowledge-base/\[id\]/page.tsx \
             src/app/portal/knowledge-base/page.tsx \
+            src/app/portal/layout.tsx \
             src/components/kb-article-form.tsx \
+            src/components/portal-chat-widget.tsx \
             src/app/api/v1/kb-categories/\[id\]/route.ts \
             src/app/api/v1/kb-categories/route.ts \
             src/app/api/v1/kb/\[id\]/route.ts \

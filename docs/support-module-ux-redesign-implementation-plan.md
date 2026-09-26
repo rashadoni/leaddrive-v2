@@ -1371,6 +1371,21 @@ Current verification evidence (2026-09-05):
   API/UX/recovery suite and shared visual/performance contracts. Its workflow
   contract passes 17/17 assertions; all accepted KB runs must use the newer
   exact SHA after this gate correction.
+- Diagnostic desktop run `36268522169` passed its exact-SHA production build
+  and exposed five flow failures plus rendered accessibility defects. Artifact
+  inspection traced them to the legacy dashboard auth call being reused for a
+  portal customer, brittle request interception, non-transactional fixture
+  cleanup after a failed assertion, unnamed shared portal controls, an
+  unlabeled chat input, orange/white contrast of 3.61:1, and shared portal
+  targets below 44 px. The runner now uses portal-auth with the token/local
+  storage contract, URL-path predicates and counters, fail-safe API restore,
+  and scroll-aware Playwright touchscreen hit testing with a 44 px minimum.
+  The rendered product uses localized accessible names, focus/reduced-motion
+  states, responsive portal shell/widget sizing, 44 px controls and local
+  orange-700 contrast. Expanded six-file scanning passes with zero findings;
+  changed-source ESLint has zero errors and the three affected contract suites
+  pass 31/31 assertions. Obsolete run `36268966684` was canceled before its
+  build; a new checkpoint and exact-SHA rerun are required.
 
 ## 13. Workstream 6 — Ticket Categories
 

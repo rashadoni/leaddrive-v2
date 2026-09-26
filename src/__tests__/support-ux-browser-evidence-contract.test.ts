@@ -321,6 +321,8 @@ describe("Support UX browser evidence contract", () => {
     expect(workflow).toContain("contains(inputs.scenarios, 'portal-knowledge')");
     expect(workflow).toContain("src/app/(dashboard)/knowledge-base,");
     expect(workflow).toContain("src/app/portal/knowledge-base,");
+    expect(workflow).toContain("src/app/portal/layout.tsx,");
+    expect(workflow).toContain("src/components/portal-chat-widget.tsx");
     expect(workflow).toContain("support-ux-knowledge-base-flow-evidence-contract.test.ts");
     expect(complaintFlow).toContain('SUPPORT_EVIDENCE_TARGET_MODE !== "ephemeral"');
     expect(workflow).toContain("actions/download-artifact@v4");

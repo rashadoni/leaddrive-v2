@@ -7,6 +7,8 @@ const list = readFileSync("src/app/(dashboard)/knowledge-base/page.tsx", "utf8")
 const detail = readFileSync("src/app/(dashboard)/knowledge-base/[id]/page.tsx", "utf8")
 const form = readFileSync("src/components/kb-article-form.tsx", "utf8")
 const portal = readFileSync("src/app/portal/knowledge-base/page.tsx", "utf8")
+const portalLayout = readFileSync("src/app/portal/layout.tsx", "utf8")
+const portalChat = readFileSync("src/components/portal-chat-widget.tsx", "utf8")
 
 describe("Knowledge Base mutating evidence contract", () => {
   it("fails closed outside the disposable loopback tenant", () => {
@@ -34,8 +36,24 @@ describe("Knowledge Base mutating evidence contract", () => {
     expect(flow).toContain("knowledge_return_context_lost")
     expect(flow).toContain("article_permission_offered_misleading_retry")
     expect(flow).toContain("library_permission_offered_misleading_retry")
+    expect(flow).toContain('context.request.post("/api/v1/public/portal-auth"')
+    expect(flow).toContain('name: "portal-token"')
+    expect(flow).toContain('localStorage.setItem("portal-user"')
+    expect(flow).toContain("isArticleApiUrl")
+    expect(flow).toContain("isCategoryApiUrl")
+    expect(flow).toContain("restoreArticleStatus(managerContext, initialStatus)")
     expect(flow).toContain('"knowledge-base-flow-evidence.json"')
     expect(flow).toContain("report.results.length !== 9")
+  })
+
+  it("proves physical touch targets without weakening desktop keyboard evidence", () => {
+    expect(flow).toContain('inputModality: "keyboard"')
+    expect(flow).toContain('inputModality: "playwright-touchscreen"')
+    expect(flow).toContain("scrollIntoViewIfNeeded()")
+    expect(flow).toContain("document.elementFromPoint")
+    expect(flow).toContain("box.width < 44 || box.height < 44")
+    expect(flow).toContain("page.touchscreen.tap(point.x, point.y)")
+    expect(flow).toContain("physicalTouchRetry")
   })
 
   it("uses stable observable state selectors", () => {
@@ -56,6 +74,15 @@ describe("Knowledge Base mutating evidence contract", () => {
     expect(form).toContain('data-testid="knowledge-article-save-error"')
     expect(portal).toContain('data-testid="portal-knowledge-workspace"')
     expect(portal).toContain('data-testid="portal-knowledge-article-row"')
+    expect(list).toContain("bg-orange-700")
+    expect(portalLayout).toContain('aria-label={t("signOut")}')
+    expect(portalLayout).toContain("text-orange-700")
+    expect(portalChat).toContain('aria-label={t("chatSend")}')
+    expect(portalChat).toContain('aria-label={open ? t("chatClose") : t("chatOpen")}')
+    expect(portalChat).toContain('aria-label={t("chatPlaceholder")}')
+    expect(portalChat).not.toContain("glass-panel")
+    expect(portalChat).not.toContain("shadow-2xl")
+    expect(portalChat).not.toContain("bg-gradient")
   })
 
   it("runs only for Knowledge Base scenarios in mutating ephemeral mode", () => {

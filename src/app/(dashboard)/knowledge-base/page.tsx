@@ -435,7 +435,7 @@ export default function KnowledgeBasePage() {
             </Button>
             <Button
               data-testid="knowledge-base-new-article"
-              className="min-h-11 flex-1 px-4 sm:flex-none"
+              className="min-h-11 flex-1 bg-orange-700 px-4 text-white hover:bg-orange-800 sm:flex-none"
               onClick={() => { setEditData(undefined); setShowForm(true) }}
               data-tour-id="kb-new"
             >
@@ -561,7 +561,7 @@ export default function KnowledgeBasePage() {
               <p className="mt-1 max-w-md text-sm text-muted-foreground">{hasFilters ? t("noResultsDescription") : t("emptyDescription")}</p>
               <div className="mt-4 flex flex-wrap justify-center gap-2">
                 {hasFilters && <Button data-testid="knowledge-base-clear-filters" variant="outline" className="min-h-11" onClick={clearFilters}>{t("clearFilters")}</Button>}
-                {canWrite && <Button data-testid="knowledge-base-empty-create" className="min-h-11" onClick={() => { setEditData(undefined); setShowForm(true) }}><Plus />{t("newArticle")}</Button>}
+                {canWrite && <Button data-testid="knowledge-base-empty-create" className="min-h-11 bg-orange-700 text-white hover:bg-orange-800" onClick={() => { setEditData(undefined); setShowForm(true) }}><Plus />{t("newArticle")}</Button>}
               </div>
             </div>
           ) : filterCategory === "all" ? (

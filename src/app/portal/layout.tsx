@@ -30,18 +30,19 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
 
     const stored = localStorage.getItem("portal-user")
     if (stored) {
-      setUser(JSON.parse(stored))
+      const storedUser = JSON.parse(stored) as PortalUser
       fetch("/api/v1/public/portal-config")
         .then((r) => r.json())
         .then((j) => {
           setLoyaltyEnabled(!!j?.data?.features?.loyalty)
           setSupportAiEnabled(j?.data?.features?.supportAi === true)
+          setUser(storedUser)
         })
-        .catch(() => {})
+        .catch(() => setUser(storedUser))
     } else {
       router.push("/portal/login")
     }
-  }, [pathname])
+  }, [pathname, router])
 
   const handleLogout = async () => {
     localStorage.removeItem("portal-user")
@@ -57,27 +58,27 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-zinc-200 dark:border-zinc-700 bg-card shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <span className="text-lg font-bold text-primary">{t("title")}</span>
-            <nav className="flex items-center gap-4 text-sm">
-              <Link href="/portal/tickets" className={`flex items-center gap-1.5 transition-colors ${pathname === "/portal/tickets" || pathname === "/portal" ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}>
+        <div className="mx-auto flex min-h-14 max-w-5xl flex-wrap items-center justify-between gap-2 px-4 py-1">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-6 gap-y-1">
+            <span className="text-lg font-bold text-orange-700 dark:text-orange-400">{t("title")}</span>
+            <nav className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto text-sm sm:gap-4">
+              <Link href="/portal/tickets" className={`flex min-h-11 shrink-0 items-center gap-1.5 transition-colors motion-reduce:transition-none ${pathname === "/portal/tickets" || pathname === "/portal" ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}>
                 <Ticket className="h-4 w-4" /> {t("myTickets")}
               </Link>
-              <Link href="/portal/knowledge-base" className={`flex items-center gap-1.5 transition-colors ${pathname === "/portal/knowledge-base" ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}>
+              <Link href="/portal/knowledge-base" className={`flex min-h-11 shrink-0 items-center gap-1.5 transition-colors motion-reduce:transition-none ${pathname === "/portal/knowledge-base" ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}>
                 <BookOpen className="h-4 w-4" /> {t("knowledgeBase")}
               </Link>
               {loyaltyEnabled && (
-                <Link href="/portal/loyalty" className={`flex items-center gap-1.5 transition-colors ${pathname === "/portal/loyalty" ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}>
+                <Link href="/portal/loyalty" className={`flex min-h-11 shrink-0 items-center gap-1.5 transition-colors motion-reduce:transition-none ${pathname === "/portal/loyalty" ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}>
                   <Sparkles className="h-4 w-4" /> {t("loyalty.title")}
                 </Link>
               )}
             </nav>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">{user?.fullName || ""}</span>
-            <span className="text-xs text-muted-foreground">{user?.companyName || ""}</span>
-            <button onClick={handleLogout} className="text-muted-foreground hover:text-foreground transition-colors">
+          <div className="ml-auto flex items-center gap-3">
+            <span className="hidden text-sm text-muted-foreground sm:inline">{user?.fullName || ""}</span>
+            <span className="hidden text-xs text-muted-foreground md:inline">{user?.companyName || ""}</span>
+            <button type="button" aria-label={t("signOut")} onClick={handleLogout} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors motion-reduce:transition-none hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <LogOut className="h-4 w-4" />
             </button>
           </div>
