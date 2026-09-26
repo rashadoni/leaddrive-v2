@@ -312,6 +312,19 @@ describe("GET /api/v1/mtm/tasks", () => {
     expect(callArgs.where.status).toBe("PENDING")
     expect(callArgs.where.priority).toBe("URGENT")
   })
+
+  // Tasks audit 2026-09-24: the contact chip read «Контекст контакта: cmf8x…».
+  it("names the contact the list is narrowed to, from this organization only", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(prisma.mtmTask.findMany).mockResolvedValue([] as any)
+    vi.mocked(prisma.mtmTask.count).mockResolvedValue(0)
+    vi.mocked(prisma.mtmContact.findFirst).mockResolvedValue({ id: "c1", displayName: "Dr. Aynur Məmmədova" } as any)
+
+    const res = await ListTasks(makeReq("/api/v1/mtm/tasks?contactId=c1"))
+    const json = await res.json()
+    expect(json.data.contact).toEqual({ id: "c1", displayName: "Dr. Aynur Məmmədova" })
+    expect((vi.mocked(prisma.mtmContact.findFirst).mock.calls[0][0] as any).where).toEqual({ id: "c1", organizationId: ORG })
+  })
 })
 
 // ─── POST /api/v1/mtm/tasks ────────────────────────────────

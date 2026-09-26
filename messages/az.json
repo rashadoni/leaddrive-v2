@@ -13432,7 +13432,7 @@
     "sortPriority": "Prioritet: təcili əvvəl",
     "sortTitle": "Başlıq: əlifba sırası",
     "clearFilters": "Filtrləri təmizlə",
-    "contactContext": "Kontakt konteksti: {id}",
+    "contactContext": "Kontakt: {name}",
     "contactContextHint": "Yalnız bu kontaktla əlaqəli tapşırıqlar göstərilir.",
     "clearContactContext": "Kontakt kontekstini sil",
     "viewMode": "Tapşırıq görünüşü",

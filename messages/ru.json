@@ -13436,7 +13436,7 @@
     "sortPriority": "Приоритет: сначала срочные",
     "sortTitle": "Название: А–Я",
     "clearFilters": "Очистить фильтры",
-    "contactContext": "Контекст контакта: {id}",
+    "contactContext": "Контакт: {name}",
     "contactContextHint": "Показаны только задачи, связанные с этим контактом.",
     "clearContactContext": "Убрать контекст контакта",
     "viewMode": "Вид задач",

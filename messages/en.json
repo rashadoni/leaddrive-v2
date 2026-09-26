@@ -13436,7 +13436,7 @@
     "sortPriority": "Priority: urgent first",
     "sortTitle": "Title: A–Z",
     "clearFilters": "Clear filters",
-    "contactContext": "Contact context: {id}",
+    "contactContext": "Contact: {name}",
     "contactContextHint": "Only tasks linked to this contact are shown.",
     "clearContactContext": "Clear contact context",
     "viewMode": "Task view",
