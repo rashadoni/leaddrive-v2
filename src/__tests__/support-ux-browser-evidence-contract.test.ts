@@ -315,6 +315,13 @@ describe("Support UX browser evidence contract", () => {
     expect(workflow).toContain("baseline_artifact_name:");
     expect(workflow).toContain("scripts/support-ux-complaint-flow-evidence.mjs");
     expect(workflow).toContain("complaint_flow_status");
+    expect(workflow).toContain("Validate section-scoped Knowledge Base evidence");
+    expect(workflow).toContain("contains(inputs.scenarios, 'knowledge-base')");
+    expect(workflow).toContain("contains(inputs.scenarios, 'knowledge-article')");
+    expect(workflow).toContain("contains(inputs.scenarios, 'portal-knowledge')");
+    expect(workflow).toContain("src/app/(dashboard)/knowledge-base,");
+    expect(workflow).toContain("src/app/portal/knowledge-base,");
+    expect(workflow).toContain("support-ux-knowledge-base-flow-evidence-contract.test.ts");
     expect(complaintFlow).toContain('SUPPORT_EVIDENCE_TARGET_MODE !== "ephemeral"');
     expect(workflow).toContain("actions/download-artifact@v4");
     expect(workflow).toContain("SUPPORT_EVIDENCE_REQUIRE_BASELINE");

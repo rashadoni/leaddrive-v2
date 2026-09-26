@@ -556,3 +556,26 @@ regression before pushing and dispatching exact-SHA browser evidence.
 Next: checkpoint and push the current-tree KB integration, then run and inspect
 the exact-SHA desktop keyboard, mobile touchscreen and full high-density
 GitHub Actions evidence gates before closing Workstream 5.
+
+### Workstream 5 CI gate self-audit
+
+- Current-tree integration was checkpointed and pushed as `0a10fb1e1`.
+  Desktop diagnostic run `36268522169` is SHA-bound to that checkpoint and
+  continues through fixture creation, production build and browser capture.
+- Inspection of the live job revealed that the current workflow's dedicated
+  section validation branches cover Service Desk, Agent Desktop and VoIP only.
+  A non-`all` Knowledge Base dispatch therefore skipped the section-scoped
+  syntax, lint, i18n and contract step even though build and browser flow still
+  run. This diagnostic run will not be accepted as the mandatory KB gate.
+- Added a dedicated Knowledge Base validation branch for all three KB scenario
+  IDs. It keeps the four-file scoped anti-pattern scan and requires runner
+  syntax, i18n parity, changed-source/shared-evidence ESLint, the complete KB
+  API/UX/recovery suite, visual/performance contracts and anti-pattern contract
+  before fixture/build/capture. A static workflow contract now makes the branch
+  and all scenario predicates mandatory.
+- The changed workflow contract passes 17/17 assertions and ESLint; whitespace
+  validation passes. No existing workflow branch, test, threshold, scenario or
+  timeout was removed or relaxed.
+
+Next: checkpoint and push this CI-gate correction, then rerun all KB exact-SHA
+gates on the new commit; retain `36268522169` only as diagnostic evidence.

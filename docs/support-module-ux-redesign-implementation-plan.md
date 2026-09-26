@@ -1363,6 +1363,14 @@ Current verification evidence (2026-09-05):
   typecheck/build remains **NOT RUN** under the recorded host OOM/workload
   constraint; the unchanged AZ/RU/EN catalogs do not require a repeated local
   parity run. Exact-SHA GitHub build and browser evidence remain mandatory.
+- CI self-audit found that non-`all` KB dispatches did not enter any of the
+  workflow's existing section-scoped validation branches. Diagnostic run
+  `36268522169` therefore cannot close the gate even if its build/flows pass.
+  The current branch adds a Knowledge Base validation step covering every KB
+  scenario predicate, scoped UX scan, syntax, i18n, lint, the complete focused
+  API/UX/recovery suite and shared visual/performance contracts. Its workflow
+  contract passes 17/17 assertions; all accepted KB runs must use the newer
+  exact SHA after this gate correction.
 
 ## 13. Workstream 6 — Ticket Categories
 

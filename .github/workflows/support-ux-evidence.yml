@@ -313,6 +313,63 @@ jobs:
             src/__tests__/voip-business-hours-ui.test.ts \
             src/__tests__/voip-ux-contract.test.ts
 
+      - name: Validate section-scoped Knowledge Base evidence
+        if: ${{ inputs.scenarios != 'all' && (contains(inputs.scenarios, 'knowledge-base') || contains(inputs.scenarios, 'knowledge-article') || contains(inputs.scenarios, 'portal-knowledge')) }}
+        env:
+          SUPPORT_UX_SCAN_ROOTS: >-
+            src/app/(dashboard)/knowledge-base,
+            src/app/portal/knowledge-base,
+            src/components/kb-article-form.tsx
+        run: |
+          node --check scripts/support-ux-browser-evidence.mjs
+          node --check scripts/support-ux-knowledge-base-flow-evidence.mjs
+          node --check scripts/support-ux-screenshot.mjs
+          node --check scripts/support-ux-visual-compare.mjs
+          node --check scripts/support-ux-performance-compare.mjs
+          npm run support:ux:scan
+          npm run i18n:check
+          npx eslint \
+            scripts/support-ux-browser-evidence.mjs \
+            scripts/support-ux-knowledge-base-flow-evidence.mjs \
+            scripts/support-ux-screenshot.mjs \
+            scripts/support-ux-visual-compare.mjs \
+            scripts/support-ux-performance-compare.mjs \
+            scripts/check-support-ux-anti-patterns.mjs \
+            scripts/seed-support-ux-evidence.ts \
+            src/app/\(dashboard\)/knowledge-base/page.tsx \
+            src/app/\(dashboard\)/knowledge-base/\[id\]/page.tsx \
+            src/app/portal/knowledge-base/page.tsx \
+            src/components/kb-article-form.tsx \
+            src/app/api/v1/kb-categories/\[id\]/route.ts \
+            src/app/api/v1/kb-categories/route.ts \
+            src/app/api/v1/kb/\[id\]/route.ts \
+            src/app/api/v1/kb/route.ts \
+            src/app/api/v1/public/portal-kb/route.ts \
+            src/__tests__/api-kb-ux.test.ts \
+            src/__tests__/knowledge-base-ux-contract.test.ts \
+            src/__tests__/no-session-object-in-effect-deps.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-knowledge-base-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+          npx vitest run \
+            src/__tests__/api-kb.test.ts \
+            src/__tests__/api-kb-ux.test.ts \
+            src/__tests__/api-misc-system.test.ts \
+            src/__tests__/api-portal.test.ts \
+            src/__tests__/knowledge-base-ux-contract.test.ts \
+            src/__tests__/no-session-object-in-effect-deps.test.ts \
+            src/__tests__/support-ux-browser-evidence-contract.test.ts \
+            src/__tests__/support-ux-evidence-seed-contract.test.ts \
+            src/__tests__/support-ux-knowledge-base-flow-evidence-contract.test.ts \
+            src/__tests__/support-ux-visual-compare.test.ts \
+            src/__tests__/support-ux-performance-compare.test.ts \
+            src/__tests__/support-ux-performance-contract.test.ts \
+            src/__tests__/support-ux-anti-pattern-scan.test.ts
+
       - name: Validate evidence contract and scoped source
         if: ${{ inputs.scenarios == 'all' }}
         run: |
