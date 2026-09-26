@@ -12545,20 +12545,52 @@
     }
   },
   "mtmAgentPeriod": {
-    "chooseAgent": "— Выберите сотрудника —",
-    "chooseAgentHint": "Выберите сотрудника, чтобы увидеть его маршруты и визиты за период.",
     "agent": "Сотрудник",
+    "chooseAgent": "— Выберите сотрудника —",
+    "chooseAgentHint": "Выберите сотрудника, чтобы увидеть его работу за период.",
     "from": "С",
     "to": "По",
-    "lastDays": "{count, plural, one {Последний # день} few {Последние # дня} many {Последние # дней} other {Последние # дня}}",
-    "clamped": "Период больше {days} дней сокращён до последних {days}.",
-    "summary": "Маршрутов {routes} · выполнено точек {done} из {planned} · визитов {visits} · дней с работой {days}",
-    "loadFailed": "Не удалось загрузить данные. Попробуйте ещё раз.",
     "loading": "Загрузка",
-    "empty": "За этот период у сотрудника нет ни маршрутов, ни визитов.",
-    "noVisits": "Визитов нет",
-    "stops": "{done} из {planned} точек",
-    "dayOnMap": "День на карте"
+    "loadFailed": "Не удалось загрузить данные. Попробуйте ещё раз.",
+    "presets": {
+      "thisWeek": "Эта неделя",
+      "lastWeek": "Прошлая неделя",
+      "thisMonth": "Этот месяц",
+      "last30": "Последние 30 дней"
+    },
+    "cards": {
+      "workDays": "Рабочие дни",
+      "inField": "В поле",
+      "visitsPlan": "Визиты / план",
+      "distance": "Путь"
+    },
+    "columns": {
+      "day": "День",
+      "workday": "Рабочий день",
+      "visits": "Визиты",
+      "distance": "Путь",
+      "status": "Итог"
+    },
+    "statuses": {
+      "FULL": "Полностью",
+      "PARTIAL": "{count, plural, one {Осталась # точка} few {Осталось # точки} many {Осталось # точек} other {Осталось # точки}}",
+      "NOT_WORKED": "Не работал",
+      "UNPLANNED": "Без плана",
+      "DAY_OFF": "Выходной",
+      "UPCOMING": "Впереди"
+    },
+    "open": "не закрыт",
+    "minutes": "{minutes} мин",
+    "hoursMinutes": "{hours} ч {minutes} мин",
+    "started": "начал день",
+    "ended": "закрыл день",
+    "lastSignal": "последний сигнал",
+    "onRoad": "в пути {duration}, {distance}",
+    "noSignal": "нет данных {duration}",
+    "pause": "перерыв {duration}",
+    "stop": "стоянка {duration}",
+    "noTrack": "В этот день нет GPS.",
+    "openOnMap": "Открыть на карте"
   },
   "mtmRoutesPage": {
     "viewAgentPeriod": "Агент за период",
