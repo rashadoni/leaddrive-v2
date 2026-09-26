@@ -14,6 +14,8 @@ const axeSource = await readFile(require.resolve("axe-core/axe.min.js"), "utf8")
 
 const { baseUrl, hostname } = requireScreenshotTarget()
 const demoOrganization = requireDemoTenant()
+const evidenceTargetMode = (process.env.SUPPORT_EVIDENCE_TARGET_MODE || "").trim()
+const serviceWorkers = evidenceTargetMode === "ephemeral" ? "block" : "allow"
 const commit = (process.env.SUPPORT_EVIDENCE_COMMIT || "").trim()
 if (!/^[0-9a-f]{7,40}$/i.test(commit)) throw new Error("SUPPORT_EVIDENCE_COMMIT must be an exact Git commit")
 
@@ -184,7 +186,7 @@ async function authenticate(context, role) {
 }
 
 async function authenticateRole(browser, role) {
-  const context = await browser.newContext({ baseURL: baseUrl, serviceWorkers: "block" })
+  const context = await browser.newContext({ baseURL: baseUrl, serviceWorkers })
   try {
     const portalUser = await authenticate(context, role)
     return {
@@ -622,10 +624,10 @@ const report = {
 
 const browser = await chromium.launch({ headless: true })
 try {
+  const authenticatedByRole = new Map()
   for (const role of roles) {
-    let authenticated
     try {
-      authenticated = await authenticateRole(browser, role)
+      authenticatedByRole.set(role.key, await authenticateRole(browser, role))
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error)
       for (const locale of selectedLocales) {
@@ -635,8 +637,11 @@ try {
           }
         }
       }
-      continue
     }
+  }
+  for (const role of roles) {
+    const authenticated = authenticatedByRole.get(role.key)
+    if (!authenticated) continue
     for (const locale of selectedLocales) {
       for (const theme of selectedThemes) {
         for (const viewportName of selectedViewports) {
@@ -649,7 +654,7 @@ try {
             colorScheme: theme,
             reducedMotion: "reduce",
             hasTouch: expectsTouch,
-            serviceWorkers: "block",
+            serviceWorkers,
             storageState: authenticated.storageState,
           })
           await context.route("**/api/v1/public/csp-report", async (route) => {

@@ -1396,6 +1396,21 @@ Current verification evidence (2026-09-05):
   stable Knowledge Base metadata. The expanded seven-file scan passes with zero
   findings, changed-source ESLint passes, runner syntax passes, and the affected
   contracts pass 32/32. A newer exact-SHA desktop rerun remains required.
+- Exact-SHA run `36271772314` passed the section validation, disposable fixture
+  gate and cold production build. Its mutating artifact advances to 9/9 passed
+  recovery outcomes, including fail-safe fixture restoration, and manual review
+  confirms healthy list, detail, edit-recovery and portal recovery compositions.
+  The static runner correctly rejected both dashboard cells after Serwist read
+  `waiting` from Playwright's blocked registration, then blocked the customer
+  cell when portal authentication followed those CSP-producing captures and
+  met the shared public-POST limit. The evidence-only production build now
+  disables service-worker registration while every ephemeral browser context
+  still blocks workers, and the static runner authenticates every selected role
+  before opening any scenario page. Remote read-only evidence continues to
+  allow the target's real worker. Runner syntax, `git diff --check`, focused
+  ESLint and the corrected browser contract pass; the KB flow contract also
+  passes. No product, a11y, touch, performance, scenario or timeout gate was
+  removed or relaxed. A new exact-SHA desktop rerun remains mandatory.
 
 ## 13. Workstream 6 — Ticket Categories
 

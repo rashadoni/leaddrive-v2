@@ -654,3 +654,41 @@ run mobile touchscreen and full high-density matrix gates on the same SHA.
 Next: checkpoint and push the service-worker/title correction, repeat the
 desktop exact-SHA gate, inspect the artifact, then run mobile touchscreen and
 full high-density matrix evidence on the same SHA.
+
+### Workstream 5 third browser self-audit
+
+- Exact-SHA run `36271772314` passed the dedicated Knowledge Base validation,
+  disposable fixture setup, Chromium install and cold production build. The
+  independently downloaded artifact is retained at
+  `/mnt/HC_Volume_106454338/codex-alt-data/support-ux-36271772314`.
+- All nine mutating recovery outcomes pass. This includes keyboard recovery,
+  category partial failure, empty-state recovery, filter/category return
+  context, article permission/error recovery, edit/save recovery, publication
+  rollback and retry, portal list recovery and portal article recovery. The
+  publication result proves `fixtureRestored: true`.
+- Static list and article cells have zero axe, touch, overflow, environment and
+  primary-work findings, but correctly fail because each records four Serwist
+  page errors: Playwright's `serviceWorkers: "block"` returns no registration
+  and Serwist then reads `registration.waiting`. The subsequent customer role
+  is blocked when portal auth meets the shared public-POST rate limit after the
+  manager pages emit synthetic CSP reports.
+- The evidence-only cold build now sets `LEADDRIVE_DISABLE_SERVICE_WORKER=1`,
+  and `next.config.ts` uses that explicit opt-out in addition to the unchanged
+  development opt-out. Ephemeral contexts remain worker-blocked so request
+  injections cannot be bypassed; remote read-only evidence allows the real
+  target worker. The shared static runner authenticates every selected role
+  before any scenario page is opened, preventing evidence instrumentation from
+  starving a later portal login.
+- Manual review of the list, detail, edit-recovery and portal-recovery captures
+  confirms the intended compact library hierarchy, readable article layout,
+  preserved publication state and bounded portal/chat composition. Runner
+  syntax and `git diff --check` pass; focused ESLint passes; the KB flow
+  contract passed 5/5 and the corrected browser contract passes 17/17. The
+  initial combined contract invocation exposed only an over-literal new test
+  matcher, corrected to assert the exact auth and matrix contexts. No runtime
+  contract, accessibility rule, interaction modality, scenario, timeout or
+  build gate was weakened.
+
+Next: checkpoint and push this evidence-isolation correction, rerun the desktop
+exact-SHA gate, inspect its artifact, then run mobile touchscreen and the full
+high-density matrix on the same green SHA.

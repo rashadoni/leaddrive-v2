@@ -577,6 +577,7 @@ jobs:
           NEXT_BUILD_CPUS: "1"
           NEXT_WEBPACK_PARALLELISM: "1"
           LEADDRIVE_COLD_PRODUCTION_BUILD: "1"
+          LEADDRIVE_DISABLE_SERVICE_WORKER: "1"
           NEXT_PUBLIC_CARTO_BASEMAPS_API_KEY: ${{ secrets.CARTO_BASEMAPS_API_KEY }}
         run: |
           ulimit -c 0

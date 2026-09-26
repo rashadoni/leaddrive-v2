@@ -14,6 +14,7 @@ const workflow = readFileSync(
   ".github/workflows/support-ux-evidence.yml",
   "utf8",
 );
+const nextConfig = readFileSync("next.config.ts", "utf8");
 const sidebar = readFileSync("src/components/sidebar.tsx", "utf8");
 const dashboardLayout = readFileSync("src/app/(dashboard)/layout.tsx", "utf8");
 const screenshotHelper = readFileSync("scripts/support-ux-screenshot.mjs", "utf8");
@@ -105,9 +106,13 @@ describe("Support UX browser evidence contract", () => {
 
   it("reuses one authenticated session per role across the evidence matrix", () => {
     expect(runner).toContain("async function authenticateRole(browser, role)");
-    expect(runner).toContain("authenticated = await authenticateRole(browser, role)");
+    expect(runner).toContain("const authenticatedByRole = new Map()");
+    expect(runner).toContain("authenticatedByRole.set(role.key, await authenticateRole(browser, role))");
+    expect(runner).toContain("const authenticated = authenticatedByRole.get(role.key)");
     expect(runner).toContain("storageState: authenticated.storageState");
-    expect(runner.match(/serviceWorkers: "block"/g)).toHaveLength(2);
+    expect(runner).toContain('const serviceWorkers = evidenceTargetMode === "ephemeral" ? "block" : "allow"');
+    expect(runner).toContain("browser.newContext({ baseURL: baseUrl, serviceWorkers })");
+    expect(runner).toContain("serviceWorkers,\n            storageState: authenticated.storageState");
     expect(runner).toContain(
       "primeEvidenceStorage(context, theme, authenticated.portalUser)",
     );
@@ -302,6 +307,9 @@ describe("Support UX browser evidence contract", () => {
     expect(workflow).toContain("npx next build --webpack");
     expect(workflow).toContain("bash scripts/ci/prepare-hosted-build-runner.sh");
     expect(workflow).toContain('LEADDRIVE_COLD_PRODUCTION_BUILD: "1"');
+    expect(workflow).toContain('LEADDRIVE_DISABLE_SERVICE_WORKER: "1"');
+    expect(nextConfig).toContain('process.env.LEADDRIVE_DISABLE_SERVICE_WORKER === "1"');
+    expect(nextConfig).toContain("disable: disableServiceWorker");
     expect(workflow).toContain("ulimit -c 0");
     expect(workflow).toContain("node .next/standalone/server.js");
     expect(workflow).toContain("cp -R .next/static .next/standalone/.next/static");

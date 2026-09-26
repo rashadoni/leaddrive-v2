@@ -7,11 +7,13 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts")
 const nextBuildCpus = process.env.NEXT_BUILD_CPUS
   ? Number(process.env.NEXT_BUILD_CPUS)
   : undefined
+const disableServiceWorker = process.env.NODE_ENV === "development"
+  || process.env.LEADDRIVE_DISABLE_SERVICE_WORKER === "1"
 
 const withSerwist = withSerwistInit({
   swSrc: "src/sw.ts",
   swDest: "public/sw.js",
-  disable: process.env.NODE_ENV === "development",
+  disable: disableServiceWorker,
   // Precache the offline fallback page so the SW can serve it without a
   // network request. revision:null means the SW does NOT use a hash to
   // fingerprint this entry — instead serwist re-fetches and re-caches /offline
