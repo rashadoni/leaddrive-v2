@@ -160,3 +160,12 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Progress remains `81/161`, `14/15`, C5 81% and C9 99%; no completion or gate credit is added from this repair.
 - Precise stopping point: the type-inference repair and evidence are uncommitted; the former remote `agent-review=success` belongs only to `702b9830e3107d71bf0fc69f3ffb2585b76e3852` and must not be reused.
 - Next action: obtain independent read-only review of this repair delta, checkpoint/push it, publish pending for the new exact head, require a fresh remote-head review and rerun all mandatory gates.
+
+## 2026-09-26 — PR #441 reviewed, merged and deployed
+
+- Independent exact-remote-head review of `089fbe39b14cd381ad5e4e698c59013bbf528efe` returned GREEN with zero findings and published `agent-review=success` only for that SHA. The reviewed binary diff from deployed base `ea3e3c539a2d92cda4978e753508796ae28c3a13` had SHA-256 `201c647f5df09012e65afe03ccfb1b60e42c264dbfb2800f36074871c7ebfee3` and measured 145,593 bytes.
+- Replacement CI run `36264419536` passed `pr-scope`, `static-checks`, `typecheck`, `runner-policy`, `scan` and the exact-SHA `agent-review`; the PR-only production build was correctly skipped. PR #441 was `MERGEABLE/CLEAN` and merged normally with an expected-head guard, without admin bypass, as `13cc5bd51a76f28f8c9d434ab0f6e9337e4b95af`.
+- Exact-merge deploy run `36265543226` passed quality/security, built and verified the SHA-bound standalone artifact, deployed atomically to the registered production route and passed scheduler, tenant-isolation, ping, revision and hashed-asset smoke checks. Independent public reads returned `{"ok":true}` from `/api/v1/ping` and `artifactSha=13cc5bd51a76f28f8c9d434ab0f6e9337e4b95af` from `/api/v1/public/build-info`.
+- Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%. Full local build/typecheck/browser/Android/load, physical Android/QR/GPS/biometric, isolated load/restore and human pilot evidence remain `NOT RUN` under the Contabo policy; CI supplied the completed build/typecheck gates for this exact release.
+- Precise stopping point: branch `codex/workforce-exception-shared-lock-cutover` starts cleanly from the deployed merge SHA; terminal resolution/reopen remain unavailable exactly as reviewed.
+- Next action: give every linked request/response writer the shared per-case lock plus post-lock lifecycle guard, prove both race orders on disposable PostgreSQL, independently review and release that cutover before a separate terminal-action enablement PR.
