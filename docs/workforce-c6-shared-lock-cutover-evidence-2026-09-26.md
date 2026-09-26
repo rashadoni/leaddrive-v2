@@ -225,3 +225,23 @@ no longer sufficient for merge. The repaired complete diff must receive a new
 author-independent read-only review, then all five exact-head GitHub contexts
 must rerun and pass. No baseline, required context or protection rule is
 weakened.
+
+The required fresh review then returned GREEN with zero findings on exact
+base/merge-base `aaeff0dccd2437aa3bba37f74dccf60ff1e46b98` and head
+`167cbc68f4e210ca4bdca38a9b1ab5a37de3c793`. Its complete binary diff was
+22 files / 168,276 bytes with SHA-256
+`1120175a486278b0a1e24a715ea4c25ee63f22003ea6eb6fbb228305b346abed`.
+The reviewer independently confirmed that the 12-field Prisma projection is
+unchanged, the payload type removes only the invalid `null`/`never` narrowing,
+and runtime replay/mismatch and `request-key -> case` sequencing remain the
+same. The full writer inventory, acyclic lock graph, tenant/grant/resource
+revalidation, no-post-abort-query behavior and old GitHub failure receipt were
+also reconfirmed with no finding.
+
+Reviewer-side dependency-free checks passed: RLS 552/0, assets 27/86/5,
+runner policy 37, i18n 23,582/0/0 and diff whitespace. Reviewer-side focused
+Vitest was `NOT RUN` because the intentionally removed `node_modules` tree was
+absent; no dependency install or symlink restoration was performed. The
+primary's already recorded two-file / six-test run remains the executed local
+test receipt. All five replacement exact-head GitHub contexts are still
+required before merge.

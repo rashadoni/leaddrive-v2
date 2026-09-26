@@ -260,3 +260,13 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%. The source change invalidates the earlier exact-head GREEN receipt; no task or gate credit is added and terminal resolution/reopen remain fenced.
 - Precise stopping point: the type defect is repaired and narrow tests/lint pass in the working tree; the source and append-only receipts are not yet checkpointed, independently reviewed or pushed.
 - Next action: run diff integrity checks, create a path-scoped checkpoint, freeze the new complete identity, obtain an author-independent zero-finding review, push, and require all five replacement exact-head gates before merge.
+
+## 2026-09-27 — PR #451 repaired complete-diff review GREEN
+
+- The type repair and failure receipts were checkpointed as `167cbc68f4e210ca4bdca38a9b1ab5a37de3c793`. The frozen identity was base/merge-base `aaeff0dccd2437aa3bba37f74dccf60ff1e46b98`, binary diff SHA-256 `1120175a486278b0a1e24a715ea4c25ee63f22003ea6eb6fbb228305b346abed`, 168,276 bytes and 22 files; the worktree was clean.
+- James performed a fresh author-independent review of the entire diff and returned GREEN with zero findings. He confirmed the Prisma select/payload repair removes only the invalid `null`/`never` narrowing, preserves the same 12 runtime fields and does not change replay, mismatch or `request-key -> case` ordering.
+- The review also reconfirmed the complete writer inventory, acyclic `workday/request-key -> case -> response/operation` lock graph, post-lock tenant/grant/resource validation, absence of post-abort queries and tenant leaks, and exact GitHub run `36275235795` evidence.
+- Reviewer-side dependency-free checks pass: RLS 552/0, event assets 27/86/5, runner policy 37, i18n 23,582/0/0 and diff whitespace. His focused Vitest repeat is `NOT RUN` because `node_modules` was intentionally absent; he did not install or restore it. The primary's already recorded two-file / six-test run and route ESLint remain the executed narrow checks.
+- Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%. No completion credit is added; terminal resolution/reopen remain fenced and all five replacement exact-head checks remain mandatory.
+- Precise stopping point: source is checkpointed and independently GREEN; this append-only three-document review receipt is the only uncommitted delta.
+- Next action: checkpoint and independently verify the receipt-only delta, push the resulting exact head to PR #451, then require all five checks before merge.
