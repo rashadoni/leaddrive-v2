@@ -13206,7 +13206,10 @@
       "fri": "Fri",
       "sat": "Sat"
     },
-    "calendarMore": "+{n} more",
+    "calendarDayVisited": "{visited} of {planned} stops done",
+    "calendarDayStops": "{count, plural, one {# stop} other {# stops}}",
+    "calendarDayMissed": "{count, plural, one {# route with missed stops} other {# routes with missed stops}}",
+    "calendarDayDrafts": "{count, plural, one {# draft} other {# drafts}}",
     "weekAgentSearch": "Find an agent",
     "weekAgentsHidden": "{count} rows hidden by the search or as QA accounts",
     "weekTeamFilter": "Filter by team",
@@ -13239,7 +13242,9 @@
       "weekSummaryNoTime": "{visited}/{total}",
       "weekLate": "Late"
     },
-    "allLatest": "All (latest {shown} of {total})"
+    "allLatest": "All (latest {shown} of {total})",
+    "loadMoreRoutes": "Show {count} more",
+    "loadMoreRoutesFailed": "Could not load more routes. Try again."
   },
   "mtmOperationsPage": {
     "title": "Team messages",

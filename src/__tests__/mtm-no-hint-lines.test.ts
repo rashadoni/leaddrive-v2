@@ -26,6 +26,9 @@ const RETIRED_HINTS = [
   "tableSettingsHint",
   "personHint",
   "weekPlanHint",
+  // Routes audit 2026-09-26, «Согласования».
+  "approvalQueueSubtitle",
+  "customerApprovalQueueSubtitleFriendly",
 ]
 
 function sources(dir: string): string[] {
