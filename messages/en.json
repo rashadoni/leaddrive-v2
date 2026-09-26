@@ -12588,6 +12588,7 @@
     "openOnMap": "Open the day's route on the map"
   },
   "mtmRoutesPage": {
+    "testAccounts": "Test accounts",
     "calendarTitle": "Calendar",
     "weekIdleAgents": "{count, plural, one {# employee without a plan this week} other {# employees without a plan this week}}",
     "weekShowIdle": "Show",
@@ -12663,10 +12664,9 @@
     "draft": "Draft",
     "viewList": "All routes",
     "viewMyRoutes": "My routes",
-    "viewMatrix": "Week plan",
+    "viewMatrix": "Plan the week",
     "matrixTitle": "Plan visits across several days",
-    "weekPlannerTitle": "Week plan by day",
-    "weekPlannerSubtitle": "Review the week and open the needed day in the day planner.",
+    "weekPlannerTitle": "Plan the week day by day",
     "weekPlannerWeekStarts": "Week starts",
     "weekPlannerPreviousWeek": "Previous week",
     "weekPlannerNextWeek": "Next week",
@@ -12695,7 +12695,6 @@
     "weekPlannerNoChanges": "All changes are saved",
     "weekPlannerReset": "Discard changes",
     "weekPlannerSave": "Save weekly plan",
-    "weekPlannerReadOnlyHint": "Use the week plan to review days. Make changes in the day planner.",
     "matrixSubtitle": "Choose a customer, then mark the workdays for the visit. A separate editable route draft is created for each day.",
     "matrixLoadFailed": "Could not load the planning matrix.",
     "matrixSaveFailed": "Could not apply all matrix changes.",

@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { formatDate } from "@/lib/format-date"
+import { isQaWeekPlanAgent, visibleWeekPlanAgents } from "@/lib/mtm/week-plan-agents"
 import { dateInputValueInTimezone, formatInTimezone } from "@/lib/timezone"
 import {
   normalizeMtmRouteTimeSlot,
@@ -230,9 +231,12 @@ export function MtmRoutePlanningMatrix({
     ]).then(([agentResult, settingsResult]) => {
       if (!agentResult?.success) setError(explainError(agentResult))
       const rows = (agentResult.data?.agents ?? []) as Agent[]
+      // Routes audit 2026-09-26: [QA-SWISSMED] test accounts sat among real
+      // people. Real people first; test accounts after them in their own group
+      // (the SwissMed evidence run still selects its QA agent here by id).
       const visibleAgents = !canManageAssignments && selfAgentId
         ? rows.filter((agent) => agent.id === selfAgentId)
-        : rows
+        : [...visibleWeekPlanAgents(rows), ...rows.filter(isQaWeekPlanAgent)]
       setAgents(visibleAgents)
       setAgentId((current) => {
         if (current && visibleAgents.some((agent) => agent.id === current)) return current
@@ -349,14 +353,18 @@ export function MtmRoutePlanningMatrix({
               <CalendarDays className="h-5 w-5 text-primary" aria-hidden="true" />
               <h2 className="text-lg font-semibold">{t("weekPlannerTitle")}</h2>
             </div>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{t("weekPlannerSubtitle")}</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-[minmax(220px,1fr)_minmax(260px,1fr)]">
             <label className="space-y-1 text-xs">
               <span className="text-muted-foreground">{t("primaryAgent")}</span>
               <Select data-testid="mtm-matrix-agent-select" value={agentId} onChange={(event) => setAgentId(event.target.value)} disabled={loading}>
                 <option value="">{t("selectAgent")}</option>
-                {agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
+                {agents.filter((agent) => !isQaWeekPlanAgent(agent)).map((agent) => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
+                {agents.some(isQaWeekPlanAgent) ? (
+                  <optgroup label={t("testAccounts")}>
+                    {agents.filter(isQaWeekPlanAgent).map((agent) => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
+                  </optgroup>
+                ) : null}
               </Select>
             </label>
             <div className="space-y-1 text-xs">
@@ -524,12 +532,6 @@ export function MtmRoutePlanningMatrix({
         </div>
       )}
 
-      <footer className="sticky bottom-0 z-10 border-t border-zinc-200 bg-card/95 px-4 py-3 backdrop-blur dark:border-zinc-700">
-        <div className="flex items-start gap-2 text-sm text-muted-foreground" role="status">
-          <CalendarDays className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>{t("weekPlannerReadOnlyHint")}</span>
-        </div>
-      </footer>
     </section>
   )
 }
