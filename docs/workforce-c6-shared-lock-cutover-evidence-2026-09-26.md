@@ -6,9 +6,12 @@ This slice started from deployed `main` SHA
 `13cc5bd51a76f28f8c9d434ab0f6e9337e4b95af`. Immediately before its frozen
 review, current `origin/main` SHA `5ab179e524b3047132201eb5170a631fa9d0b63c`
 was merged without conflict; its only intervening product paths are unrelated
-MTM planner UI/i18n files. The slice closes the concurrency prerequisite found
-during the scoped exception-workbench review; it does not enable terminal
-resolution or reopen actions and adds no roadmap credit.
+MTM planner UI/i18n files. After the RED-review repairs, `origin/main` advanced
+again to `a18728b2b2ef20d9ac5f6f568647a23263db51ce` through unrelated MTM and
+delivery-policy PRs and was merged without conflict as integration commit
+`c49911e751a59a192d4a5201bc2af9b4f090739d`. The slice closes the concurrency
+prerequisite found during the scoped exception-workbench review; it does not
+enable terminal resolution or reopen actions and adds no roadmap credit.
 
 ## Safety invariant
 
@@ -100,6 +103,16 @@ web/mobile submit and cancellation replays before the lifecycle guard. Unit
 regressions and the expanded real-PostgreSQL proof cover all three findings.
 A new complete-tree independent rereview remains mandatory.
 
+## Delivery-gate reconciliation
+
+The integrated current `main` intentionally retires the GitHub
+`agent-review` status and its publisher under the owner's repository-wide
+delivery contract. This slice does not restore that status, alter branch
+protection or add a paid review workflow. The active task nevertheless
+requires a separate author-independent read-only review, so a zero-finding
+complete-diff rereview remains a process prerequisite in addition to all five
+required GitHub checks.
+
 ## Local evidence in this tree
 
 - PASS — 7 focused Vitest files: 161 tests passed.
@@ -109,9 +122,13 @@ A new complete-tree independent rereview remains mandatory.
 - PASS — recursive RLS context scan: 552 organization-scoped models, 0 gaps.
 - PASS — event-platform/delivery asset contract: 27 domains, 86 topics,
   5 concrete schemas.
+- PASS — GitHub runner policy across 37 workflow files.
 - PASS — `git diff --check` before the documentation checkpoint.
 - PASS — the same focused tests, ESLint, RLS scan and delivery asset contract
-  after integrating current `origin/main`.
+  after integrating exact current `origin/main` SHA
+  `a18728b2b2ef20d9ac5f6f568647a23263db51ce`. The successful repeat used an
+  existing dependency cache whose package-lock SHA-256 exactly matched this
+  tree (`54c9be2264ef8e1ec5f8b0d9c545ba868c24de938ee0cf3734f4c475e62c816f`).
 
 `NOT RUN` locally by Contabo workload policy: full typecheck, production build,
 browser E2E, Android/Gradle, load, physical-device and pilot checks. Exact-head
