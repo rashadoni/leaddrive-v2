@@ -95,7 +95,16 @@ import {
 } from "@/lib/mtm/mobile-hrm"
 import { recordMtmMobileV1SyncActivity } from "@/lib/mtm/mobile-sync-telemetry"
 import { evaluateWorkforceMobileWriteAccess } from "@/lib/workforce/mobile-write-fence"
-import { workforceHrmRequestSubmissionMatches } from "@/lib/workforce/hrm-request-idempotency"
+import {
+  lockWorkforceHrmRequestClientKey,
+  workforceHrmRequestSubmissionMatches,
+} from "@/lib/workforce/hrm-request-idempotency"
+import { lockWorkforceExceptionDecisionStream } from "@/lib/workforce/exception-case-writer"
+import {
+  requireWorkforceExceptionLinkedMutationAfterLock,
+  WorkforceExceptionLinkedMutationError,
+  type WorkforceExceptionLinkedMutationDb,
+} from "@/lib/workforce/exception-linked-mutation"
 import {
   workforceAndroidMutationReleaseBlock,
   WORKFORCE_ANDROID_VERSION_CODE_HEADER,
@@ -2387,6 +2396,11 @@ export const POST = withMobileRls(async (req, auth) => {
           && opType === "create"
           && hrmRequestCreateInput
         ) {
+          await lockWorkforceHrmRequestClientKey(tx, {
+            organizationId: orgId,
+            agentId,
+            clientRequestId: hrmRequestCreateInput.clientRequestId,
+          })
           const existing = await tx.mtmHrmRequest.findFirst({
             where: {
               organizationId: orgId,
@@ -2440,20 +2454,78 @@ export const POST = withMobileRls(async (req, auth) => {
                   select: { id: true },
                 })
               : null
-            const overlap = await tx.mtmHrmRequest.findFirst({
-              where: {
-                organizationId: orgId,
-                agentId,
-                status: { in: ["PENDING", "APPROVED"] },
-                startDate: { lte: hrmRequestCreateInput.endDate },
-                endDate: { gte: hrmRequestCreateInput.startDate },
-                ...(hrmRequestCreateInput.type === "TIME_CORRECTION"
-                  ? { type: "TIME_CORRECTION", correctionWorkdayId: hrmRequestCreateInput.correctionWorkdayId }
-                  : { type: { in: ["LEAVE", "ABSENCE"] } }),
-              },
-              select: { id: true, type: true, status: true, startDate: true, endDate: true },
-            })
-            if (hrmRequestCreateInput.type === "TIME_CORRECTION" && !correctionWorkday) {
+            let linkedCaseUnavailable = false
+            let linkedReplay: typeof existing = null
+            if (hrmRequestCreateInput.exceptionCaseId && correctionWorkday && exceptionCase) {
+              try {
+                const linkedDb = tx as unknown as WorkforceExceptionLinkedMutationDb
+                await lockWorkforceExceptionDecisionStream(linkedDb, {
+                  organizationId: orgId, caseId: hrmRequestCreateInput.exceptionCaseId,
+                })
+                linkedReplay = await tx.mtmHrmRequest.findFirst({
+                  where: {
+                    organizationId: orgId,
+                    agentId,
+                    clientRequestId: hrmRequestCreateInput.clientRequestId,
+                  },
+                  select: {
+                    id: true,
+                    clientRequestId: true,
+                    type: true,
+                    status: true,
+                    startDate: true,
+                    endDate: true,
+                    correctionWorkdayId: true,
+                    exceptionCaseId: true,
+                    requestedStartAt: true,
+                    requestedEndAt: true,
+                    reason: true,
+                    submittedAt: true,
+                  },
+                })
+                if (!linkedReplay) {
+                  await requireWorkforceExceptionLinkedMutationAfterLock({
+                    db: linkedDb,
+                    organizationId: orgId,
+                    caseId: hrmRequestCreateInput.exceptionCaseId,
+                  })
+                }
+              } catch (error) {
+                if (!(error instanceof WorkforceExceptionLinkedMutationError)) throw error
+                linkedCaseUnavailable = true
+              }
+            }
+            // For a linked request this read is deliberately after the case
+            // fence. Resolution and request creation therefore cannot both
+            // validate a pre-mutation snapshot and commit in opposite tables.
+            const overlap = (
+              hrmRequestCreateInput.type !== "TIME_CORRECTION" || correctionWorkday
+            ) && (!hrmRequestCreateInput.exceptionCaseId || exceptionCase)
+              && !linkedCaseUnavailable && !linkedReplay
+              ? await tx.mtmHrmRequest.findFirst({
+                  where: {
+                    organizationId: orgId,
+                    agentId,
+                    status: { in: ["PENDING", "APPROVED"] },
+                    startDate: { lte: hrmRequestCreateInput.endDate },
+                    endDate: { gte: hrmRequestCreateInput.startDate },
+                    ...(hrmRequestCreateInput.type === "TIME_CORRECTION"
+                      ? { type: "TIME_CORRECTION", correctionWorkdayId: hrmRequestCreateInput.correctionWorkdayId }
+                      : { type: { in: ["LEAVE", "ABSENCE"] } }),
+                  },
+                  select: { id: true, type: true, status: true, startDate: true, endDate: true },
+                })
+              : null
+            if (linkedReplay) {
+              if (!workforceHrmRequestSubmissionMatches(linkedReplay, hrmRequestCreateInput)) {
+                opStatus = "conflict"
+                errorMsg = "This request id was already used for different request details"
+                serverData = { code: "WORKFORCE_SELF_REQUEST_IDEMPOTENCY_MISMATCH" }
+              } else {
+                serverId = linkedReplay.id
+                serverData = { ...linkedReplay, idempotent: true }
+              }
+            } else if (hrmRequestCreateInput.type === "TIME_CORRECTION" && !correctionWorkday) {
               opStatus = "conflict"
               errorMsg = "Workday not found for time correction"
               serverData = { code: "MTM_HRM_WORKDAY_NOT_FOUND" }
@@ -2461,6 +2533,10 @@ export const POST = withMobileRls(async (req, auth) => {
               // An unavailable, foreign or reassigned case is deliberately
               // indistinguishable to the mobile client; it cannot become an
               // exception-ID oracle or a correction source for another user.
+              opStatus = "conflict"
+              errorMsg = "Selected Workforce exception is unavailable"
+              serverData = { code: "WORKFORCE_SELF_EXCEPTION_UNAVAILABLE" }
+            } else if (linkedCaseUnavailable) {
               opStatus = "conflict"
               errorMsg = "Selected Workforce exception is unavailable"
               serverData = { code: "WORKFORCE_SELF_EXCEPTION_UNAVAILABLE" }
@@ -2531,7 +2607,7 @@ export const POST = withMobileRls(async (req, auth) => {
         ) {
           const request = await tx.mtmHrmRequest.findFirst({
             where: { id: hrmRequestCancelInput.id, organizationId: orgId, agentId },
-            select: { id: true, status: true, cancelledAt: true },
+            select: { id: true, status: true, cancelledAt: true, exceptionCaseId: true },
           })
           if (!request) {
             opStatus = "conflict"
@@ -2545,40 +2621,89 @@ export const POST = withMobileRls(async (req, auth) => {
             errorMsg = "A decided HRM request cannot be cancelled"
             serverData = { code: "MTM_HRM_REQUEST_ALREADY_DECIDED", status: request.status }
           } else {
-            const cancelled = await tx.mtmHrmRequest.updateMany({
-              where: { id: request.id, organizationId: orgId, agentId, status: "PENDING" },
-              data: { status: "CANCELLED", cancelledAt: hrmRequestCancelInput.cancelledAt },
-            })
-            if (cancelled.count !== 1) {
-              opStatus = "conflict"
-              errorMsg = "HRM request changed before it could be cancelled"
-              serverData = { code: "WORKFORCE_SELF_REQUEST_CONCURRENT_CHANGE" }
-            } else {
-              const updated = await tx.mtmHrmRequest.findFirst({
-                where: { id: request.id, organizationId: orgId, agentId },
-                select: { id: true, status: true, cancelledAt: true, updatedAt: true },
-              })
-              if (!updated) {
+            let linkedCaseUnavailable = false
+            let linkedRequestChanged = false
+            let handledAfterLock = false
+            if (request.exceptionCaseId) {
+              try {
+                const linkedDb = tx as unknown as WorkforceExceptionLinkedMutationDb
+                const lockedCaseId = request.exceptionCaseId
+                await lockWorkforceExceptionDecisionStream(linkedDb, {
+                  organizationId: orgId, caseId: lockedCaseId,
+                })
+                const current = await tx.mtmHrmRequest.findFirst({
+                  where: { id: hrmRequestCancelInput.id, organizationId: orgId, agentId },
+                  select: { id: true, status: true, cancelledAt: true, exceptionCaseId: true },
+                })
+                if (!current || current.exceptionCaseId !== lockedCaseId) {
+                  linkedRequestChanged = true
+                } else if (current.status === "CANCELLED") {
+                  serverId = current.id
+                  serverData = { ...current, idempotent: true }
+                  handledAfterLock = true
+                } else if (current.status !== "PENDING") {
+                  opStatus = "conflict"
+                  errorMsg = "A decided HRM request cannot be cancelled"
+                  serverData = { code: "MTM_HRM_REQUEST_ALREADY_DECIDED", status: current.status }
+                  handledAfterLock = true
+                } else {
+                  await requireWorkforceExceptionLinkedMutationAfterLock({
+                    db: linkedDb,
+                    organizationId: orgId,
+                    caseId: lockedCaseId,
+                  })
+                }
+              } catch (error) {
+                if (!(error instanceof WorkforceExceptionLinkedMutationError)) throw error
+                linkedCaseUnavailable = true
+              }
+            }
+            if (!handledAfterLock) {
+              if (linkedRequestChanged) {
                 opStatus = "conflict"
                 errorMsg = "HRM request changed before it could be cancelled"
                 serverData = { code: "WORKFORCE_SELF_REQUEST_CONCURRENT_CHANGE" }
+              } else if (linkedCaseUnavailable) {
+                opStatus = "conflict"
+                errorMsg = "Selected Workforce exception is unavailable"
+                serverData = { code: "WORKFORCE_SELF_EXCEPTION_UNAVAILABLE" }
               } else {
-                await tx.mtmAuditLog.create({
-                  data: {
-                    organizationId: orgId,
-                    agentId,
-                    action: "WORKFORCE_SELF_REQUEST_CANCELLED",
-                    entity: "hrm_request",
-                    entityId: updated.id,
-                    metadataKind: "workforce_self_request",
-                    oldData: { status: "PENDING" },
-                    newData: { status: "CANCELLED" },
-                    ipAddress: null,
-                    userAgent: null,
-                  },
+                const cancelled = await tx.mtmHrmRequest.updateMany({
+                  where: { id: request.id, organizationId: orgId, agentId, status: "PENDING" },
+                  data: { status: "CANCELLED", cancelledAt: hrmRequestCancelInput.cancelledAt },
                 })
-                serverId = updated.id
-                serverData = updated
+                if (cancelled.count !== 1) {
+                  opStatus = "conflict"
+                  errorMsg = "HRM request changed before it could be cancelled"
+                  serverData = { code: "WORKFORCE_SELF_REQUEST_CONCURRENT_CHANGE" }
+                } else {
+                  const updated = await tx.mtmHrmRequest.findFirst({
+                    where: { id: request.id, organizationId: orgId, agentId },
+                    select: { id: true, status: true, cancelledAt: true, updatedAt: true },
+                  })
+                  if (!updated) {
+                    opStatus = "conflict"
+                    errorMsg = "HRM request changed before it could be cancelled"
+                    serverData = { code: "WORKFORCE_SELF_REQUEST_CONCURRENT_CHANGE" }
+                  } else {
+                    await tx.mtmAuditLog.create({
+                      data: {
+                        organizationId: orgId,
+                        agentId,
+                        action: "WORKFORCE_SELF_REQUEST_CANCELLED",
+                        entity: "hrm_request",
+                        entityId: updated.id,
+                        metadataKind: "workforce_self_request",
+                        oldData: { status: "PENDING" },
+                        newData: { status: "CANCELLED" },
+                        ipAddress: null,
+                        userAgent: null,
+                      },
+                    })
+                    serverId = updated.id
+                    serverData = updated
+                  }
+                }
               }
             }
           }

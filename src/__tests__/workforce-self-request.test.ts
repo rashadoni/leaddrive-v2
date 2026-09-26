@@ -49,6 +49,7 @@ beforeEach(() => {
   vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue(null as never)
   vi.mocked(prisma.mtmHrmRequest.create).mockResolvedValue(requestRecord() as never)
   vi.mocked(prisma.mtmHrmRequest.updateMany).mockResolvedValue({ count: 1 } as never)
+  vi.mocked(prisma.workforceExceptionDecision.findMany).mockResolvedValue([] as never)
 })
 
 describe("Workforce employee self-service requests", () => {
@@ -139,6 +140,106 @@ describe("Workforce employee self-service requests", () => {
     expect(JSON.stringify(vi.mocked(prisma.mtmAuditLog.create).mock.calls)).not.toContain("case-1")
   })
 
+  it("serializes a new linked correction with the case and rejects a resolved lifecycle", async () => {
+    vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({ id: "workday-1" } as never)
+    vi.mocked(prisma.workforceExceptionCase.findFirst).mockResolvedValue({ id: "case-1" } as never)
+    vi.mocked(prisma.workforceExceptionDecision.findMany).mockResolvedValue([
+      { decisionCode: "ACKNOWLEDGE" },
+      { decisionCode: "RESOLVE_NO_CHANGE" },
+    ] as never)
+
+    await expect(submitWorkforceSelfRequest({
+      organizationId: ORGANIZATION_ID,
+      actor: ACTOR,
+      input: input({
+        type: "TIME_CORRECTION",
+        startDate: "2026-08-28",
+        endDate: "2026-08-28",
+        correctionWorkdayId: "workday-1",
+        exceptionCaseId: "case-1",
+        requestedStartLocal: "2026-08-28T09:00",
+        reason: "Clock-in needs correction",
+      }),
+      timezone: "Asia/Baku",
+    })).resolves.toMatchObject({
+      kind: "conflict",
+      code: "WORKFORCE_EXCEPTION_LINKED_MUTATION_RESOLVED",
+    })
+
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(2)
+    expect(prisma.mtmHrmRequest.create).not.toHaveBeenCalled()
+  })
+
+  it("returns an exact linked submission replay without reopening its case lifecycle", async () => {
+    vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue(requestRecord({
+      type: "TIME_CORRECTION",
+      startDate: new Date("2026-08-28T00:00:00.000Z"),
+      endDate: new Date("2026-08-28T00:00:00.000Z"),
+      correctionWorkdayId: "workday-1",
+      exceptionCaseId: "case-1",
+      requestedStartAt: new Date("2026-08-28T05:00:00.000Z"),
+      reason: "Clock-in needs correction",
+    }) as never)
+
+    await expect(submitWorkforceSelfRequest({
+      organizationId: ORGANIZATION_ID,
+      actor: ACTOR,
+      input: input({
+        type: "TIME_CORRECTION",
+        startDate: "2026-08-28",
+        endDate: "2026-08-28",
+        correctionWorkdayId: "workday-1",
+        exceptionCaseId: "case-1",
+        requestedStartLocal: "2026-08-28T09:00",
+        reason: "Clock-in needs correction",
+      }),
+      timezone: "Asia/Baku",
+    })).resolves.toMatchObject({ kind: "success", idempotent: true })
+
+    expect(vi.mocked(prisma.$executeRaw).mock.calls.map((call: unknown[]) => call[1]))
+      .toEqual(["workforce-hrm-request:org-workforce:agent-1:request-key-123"])
+    expect(prisma.workforceExceptionDecision.findMany).not.toHaveBeenCalled()
+  })
+
+  it("rechecks an exact linked submission after waiting for the case lock", async () => {
+    vi.mocked(prisma.mtmHrmRequest.findFirst)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(requestRecord({
+        type: "TIME_CORRECTION",
+        startDate: new Date("2026-08-28T00:00:00.000Z"),
+        endDate: new Date("2026-08-28T00:00:00.000Z"),
+        correctionWorkdayId: "workday-1",
+        exceptionCaseId: "case-1",
+        requestedStartAt: new Date("2026-08-28T05:00:00.000Z"),
+        reason: "Clock-in needs correction",
+      }) as never)
+    vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({ id: "workday-1" } as never)
+    vi.mocked(prisma.workforceExceptionCase.findFirst).mockResolvedValue({ id: "case-1" } as never)
+
+    await expect(submitWorkforceSelfRequest({
+      organizationId: ORGANIZATION_ID,
+      actor: ACTOR,
+      input: input({
+        type: "TIME_CORRECTION",
+        startDate: "2026-08-28",
+        endDate: "2026-08-28",
+        correctionWorkdayId: "workday-1",
+        exceptionCaseId: "case-1",
+        requestedStartLocal: "2026-08-28T09:00",
+        reason: "Clock-in needs correction",
+      }),
+      timezone: "Asia/Baku",
+    })).resolves.toMatchObject({ kind: "success", idempotent: true })
+
+    expect(vi.mocked(prisma.$executeRaw).mock.calls.map((call: unknown[]) => call[1]))
+      .toEqual([
+        "workforce-hrm-request:org-workforce:agent-1:request-key-123",
+        "workforce-exception-decision:org-workforce:case-1",
+      ])
+    expect(prisma.workforceExceptionDecision.findMany).not.toHaveBeenCalled()
+    expect(prisma.mtmHrmRequest.create).not.toHaveBeenCalled()
+  })
+
   it("rejects a case source hint on a non-correction request", () => {
     expect(() => input({ exceptionCaseId: "case-1" })).toThrow("correction fields are valid only for a time correction")
   })
@@ -163,6 +264,11 @@ describe("Workforce employee self-service requests", () => {
       code: "WORKFORCE_SELF_REQUEST_IDEMPOTENCY_MISMATCH",
     })
     expect(prisma.mtmHrmRequest.create).not.toHaveBeenCalled()
+    expect(vi.mocked(prisma.$executeRaw).mock.calls.map((call: unknown[]) => call[1]))
+      .toEqual([
+        "workforce-hrm-request:org-workforce:agent-1:request-key-123",
+        "workforce-hrm-request:org-workforce:agent-1:request-key-123",
+      ])
   })
 
   it("does not submit a correction for a different employee workday", async () => {
@@ -262,6 +368,54 @@ describe("Workforce employee self-service requests", () => {
       actor: ACTOR,
       requestId: "request-1",
     })).resolves.toMatchObject({ kind: "success", idempotent: true, data: { status: "CANCELLED" } })
+  })
+
+  it("rejects a new linked cancellation after case resolution", async () => {
+    vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue(requestRecord({
+      type: "TIME_CORRECTION",
+      correctionWorkdayId: "workday-1",
+      exceptionCaseId: "case-1",
+    }) as never)
+    vi.mocked(prisma.workforceExceptionDecision.findMany).mockResolvedValue([
+      { decisionCode: "ACKNOWLEDGE" },
+      { decisionCode: "RESOLVE_NO_CHANGE" },
+    ] as never)
+
+    await expect(cancelWorkforceSelfRequest({
+      organizationId: ORGANIZATION_ID,
+      actor: ACTOR,
+      requestId: "request-1",
+    })).resolves.toMatchObject({
+      kind: "conflict",
+      code: "WORKFORCE_EXCEPTION_LINKED_MUTATION_RESOLVED",
+    })
+    expect(prisma.mtmHrmRequest.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("rechecks a completed linked cancellation after waiting for the case lock", async () => {
+    vi.mocked(prisma.mtmHrmRequest.findFirst)
+      .mockResolvedValueOnce(requestRecord({
+        type: "TIME_CORRECTION",
+        correctionWorkdayId: "workday-1",
+        exceptionCaseId: "case-1",
+      }) as never)
+      .mockResolvedValueOnce(requestRecord({
+        type: "TIME_CORRECTION",
+        status: "CANCELLED",
+        correctionWorkdayId: "workday-1",
+        exceptionCaseId: "case-1",
+        cancelledAt: new Date("2026-08-28T10:00:00.000Z"),
+      }) as never)
+
+    await expect(cancelWorkforceSelfRequest({
+      organizationId: ORGANIZATION_ID,
+      actor: ACTOR,
+      requestId: "request-1",
+    })).resolves.toMatchObject({ kind: "success", idempotent: true, data: { status: "CANCELLED" } })
+
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(1)
+    expect(prisma.workforceExceptionDecision.findMany).not.toHaveBeenCalled()
+    expect(prisma.mtmHrmRequest.updateMany).not.toHaveBeenCalled()
   })
 
   it("never lets an administrator submit or cancel an employee request as if it were their own", async () => {

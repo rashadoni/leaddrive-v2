@@ -33,15 +33,16 @@ export type RecordWorkforceExceptionDecisionInput = {
  * Appends a scoped v1 manager decision. The action token is intentionally not
  * an input here: callers may use it only to recover `caseId`, while this
  * service independently rechecks the tenant case, historical resource scope,
- * live grant and linked lifecycle context in one serializable transaction.
+ * live grant and linked lifecycle context in one transaction.
  */
 export async function recordScopedWorkforceExceptionDecision(
   input: RecordWorkforceExceptionDecisionInput,
 ): Promise<{ decisionId: string; idempotent: boolean } | null> {
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    // This live transaction snapshot is the write-side rollout fence. A token
-    // issued before tenant rollback is only a locator and cannot preserve the
-    // old authority mode after granular access or Workforce is disabled.
+    // This is an authorization preflight, not the write-side authority proof.
+    // A token issued before tenant rollback is only a locator and cannot
+    // preserve the old mode after granular access or Workforce is disabled;
+    // validateContext repeats the mutable checks after the per-case lock.
     const organization = await tx.organization.findUnique({
       where: { id: input.organizationId },
       select: { plan: true, addons: true, features: true, modules: true },
@@ -83,15 +84,15 @@ export async function recordScopedWorkforceExceptionDecision(
       teamId: historicalTeam?.teamId ?? null,
       siteId: exceptionCase.segment?.siteId ?? null,
     }
-    const canDecide = async () => (await decidePersistedWorkforceAccess({
+    const canDecide = async (candidateResource: typeof resource) => (await decidePersistedWorkforceAccess({
       db: tx as unknown as WorkforceAccessGrantReaderDb,
       organizationId: input.organizationId,
       principalUserId: input.principalUserId,
       selfAgentId: null,
       permission: "TEAM_EXCEPTION_DECIDE",
-      resource,
+      resource: candidateResource,
     })).allowed
-    if (!await canDecide()) return null
+    if (!await canDecide(resource)) return null
 
     return appendAuthorizedPolicyWorkforceExceptionDecision({
       db: {
@@ -116,9 +117,18 @@ export async function recordScopedWorkforceExceptionDecision(
         && request.caseId === input.caseId
         && request.actorUserId === input.principalUserId,
       validateContext: async ({ draft, priorDecisions }) => {
-        // Re-read authority after the per-case decision lock. The token and an
-        // earlier queue read are locators/previews only, never capabilities.
-        if (!await canDecide()) throw new WorkforceExceptionWorkbenchContextError()
+        // Re-read tenant mode and authority after the per-case decision lock.
+        // The token and every earlier read are locators/previews only, never
+        // capabilities.
+        const currentOrganization = await tx.organization.findUnique({
+          where: { id: input.organizationId },
+          select: { plan: true, addons: true, features: true, modules: true },
+        })
+        if (!currentOrganization
+          || !isTenantCapabilityEnabled("workforce-hrm", currentOrganization)
+          || !workforceGranularAccessEnabled(currentOrganization.features)) {
+          throw new WorkforceExceptionWorkbenchContextError()
+        }
         if (priorDecisions.length !== input.expectedDecisionCount) {
           throw new WorkforceExceptionWorkbenchContextError("WORKFORCE_EXCEPTION_ACTION_TOKEN_STALE")
         }
@@ -129,6 +139,9 @@ export async function recordScopedWorkforceExceptionDecision(
             agentId: true,
             kind: true,
             workdayId: true,
+            workdayEvent: { select: { occurredAt: true } },
+            workday: { select: { startedAt: true } },
+            segment: { select: { siteId: true } },
             employeeResponses: {
               orderBy: [{ createdAt: "desc" }, { id: "desc" }],
               take: 1,
@@ -150,8 +163,32 @@ export async function recordScopedWorkforceExceptionDecision(
             },
           },
         })
-        if (!contextCase || contextCase.kind !== exceptionCase.kind
+        if (!contextCase || contextCase.agentId !== exceptionCase.agentId
+          || contextCase.kind !== exceptionCase.kind
           || contextCase.workdayId !== exceptionCase.workdayId) {
+          throw new WorkforceExceptionWorkbenchContextError()
+        }
+        // A linked correction may change the workday start while this
+        // transaction waits for the case fence. Rebuild the historical scope
+        // from the post-lock row instead of authorizing against the preflight
+        // resource captured above.
+        const currentScopeInstant = contextCase.workdayEvent?.occurredAt
+          ?? contextCase.workday?.startedAt
+          ?? null
+        const currentHistoricalTeam = currentScopeInstant == null
+          ? null
+          : await resolveWorkforceHistoricalTeamMembership(tx, {
+              organizationId: input.organizationId,
+              agentId: contextCase.agentId,
+              workdayStartedAt: currentScopeInstant,
+            })
+        const currentResource = {
+          organizationId: input.organizationId,
+          agentId: contextCase.agentId,
+          teamId: currentHistoricalTeam?.teamId ?? null,
+          siteId: contextCase.segment?.siteId ?? null,
+        }
+        if (!await canDecide(currentResource)) {
           throw new WorkforceExceptionWorkbenchContextError()
         }
         const context = evaluateWorkforceExceptionWorkbenchContext({
@@ -183,5 +220,11 @@ export async function recordScopedWorkforceExceptionDecision(
         })
       },
     })
-  }, { isolationLevel: "Serializable" })
+  // The per-case advisory lock may wait behind an employee response or linked
+  // request writer. READ COMMITTED is intentional: a repeatable/serializable
+  // snapshot opened by the authorization preflight could stay older than the
+  // writer that committed while this transaction waited, defeating the
+  // post-lock context read. Mutable authorization is re-read in
+  // validateContext immediately before the immutable decision append.
+  }, { isolationLevel: "ReadCommitted" })
 }

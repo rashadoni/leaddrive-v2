@@ -4,6 +4,13 @@ import { addDateKeyDays, isDateKey } from "@/lib/mtm/mobile-week"
 import { localDateTimeToUnambiguousUtc } from "@/lib/timezone"
 import type { WorkforceActor } from "@/lib/workforce/actor"
 import { prisma } from "@/lib/prisma"
+import { lockWorkforceExceptionDecisionStream } from "@/lib/workforce/exception-case-writer"
+import {
+  requireWorkforceExceptionLinkedMutationAfterLock,
+  WorkforceExceptionLinkedMutationError,
+  type WorkforceExceptionLinkedMutationDb,
+} from "@/lib/workforce/exception-linked-mutation"
+import { lockWorkforceHrmRequestClientKey } from "@/lib/workforce/hrm-request-idempotency"
 
 const WorkforceDateKey = z.string().refine(isDateKey, "must be a real YYYY-MM-DD date")
 const WorkforceLocalDateTime = z.string().regex(
@@ -191,6 +198,14 @@ export async function submitWorkforceSelfRequest(
   }
 
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    // clientRequestId is unique across every case for this employee. Take its
+    // global fence before the first replay read, then take any case fence only
+    // for a genuinely new linked mutation.
+    await lockWorkforceHrmRequestClientKey(tx, {
+      organizationId: context.organizationId,
+      agentId,
+      clientRequestId: context.input.clientRequestId,
+    })
     const existing = await tx.mtmHrmRequest.findFirst({
       where: {
         organizationId: context.organizationId,
@@ -257,6 +272,57 @@ export async function submitWorkforceSelfRequest(
             "The selected workday is not available for a time correction",
           )
         }
+        try {
+          const linkedDb = tx as unknown as WorkforceExceptionLinkedMutationDb
+          await lockWorkforceExceptionDecisionStream(linkedDb, {
+            organizationId: context.organizationId, caseId: exceptionCaseId,
+          })
+          // A concurrent identical submit may have committed while this
+          // transaction waited for the case fence. Re-read the idempotency key
+          // before the lifecycle guard so a later resolution cannot turn a
+          // completed retry into an overlap or unavailable conflict.
+          const replay = await tx.mtmHrmRequest.findFirst({
+            where: {
+              organizationId: context.organizationId,
+              agentId,
+              clientRequestId: context.input.clientRequestId,
+            },
+            select: {
+              id: true,
+              type: true,
+              status: true,
+              startDate: true,
+              endDate: true,
+              correctionWorkdayId: true,
+              exceptionCaseId: true,
+              requestedStartAt: true,
+              requestedEndAt: true,
+              reason: true,
+              submittedAt: true,
+              cancelledAt: true,
+            },
+          })
+          if (replay) {
+            if (!sameSubmission(replay, requestValues)) {
+              return conflict(
+                "WORKFORCE_SELF_REQUEST_IDEMPOTENCY_MISMATCH",
+                "This request id was already used for different request details",
+              )
+            }
+            return { kind: "success" as const, data: replay as RequestData, idempotent: true }
+          }
+          await requireWorkforceExceptionLinkedMutationAfterLock({
+            db: linkedDb,
+            organizationId: context.organizationId,
+            caseId: exceptionCaseId,
+          })
+        } catch (error) {
+          if (!(error instanceof WorkforceExceptionLinkedMutationError)) throw error
+          return conflict(
+            error.code,
+            "This exception is no longer available for a linked correction request",
+          )
+        }
       }
     }
 
@@ -297,6 +363,7 @@ export async function submitWorkforceSelfRequest(
         startDate: true,
         endDate: true,
         correctionWorkdayId: true,
+        exceptionCaseId: true,
         requestedStartAt: true,
         requestedEndAt: true,
         submittedAt: true,
@@ -334,7 +401,7 @@ export async function cancelWorkforceSelfRequest(
   if (!agentId) return { kind: "forbidden" }
 
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    const request = await tx.mtmHrmRequest.findFirst({
+    let request = await tx.mtmHrmRequest.findFirst({
       where: { id: context.requestId, organizationId: context.organizationId, agentId },
       select: {
         id: true,
@@ -343,6 +410,7 @@ export async function cancelWorkforceSelfRequest(
         startDate: true,
         endDate: true,
         correctionWorkdayId: true,
+        exceptionCaseId: true,
         requestedStartAt: true,
         requestedEndAt: true,
         submittedAt: true,
@@ -359,6 +427,61 @@ export async function cancelWorkforceSelfRequest(
         "A decided Workforce request cannot be cancelled",
         request as Pick<RequestData, "id" | "type" | "status" | "startDate" | "endDate">,
       )
+    }
+
+    if (request.exceptionCaseId) {
+      try {
+        const linkedDb = tx as unknown as WorkforceExceptionLinkedMutationDb
+        const lockedCaseId = request.exceptionCaseId
+        await lockWorkforceExceptionDecisionStream(linkedDb, {
+          organizationId: context.organizationId, caseId: lockedCaseId,
+        })
+        const current = await tx.mtmHrmRequest.findFirst({
+          where: { id: context.requestId, organizationId: context.organizationId, agentId },
+          select: {
+            id: true,
+            type: true,
+            status: true,
+            startDate: true,
+            endDate: true,
+            correctionWorkdayId: true,
+            exceptionCaseId: true,
+            requestedStartAt: true,
+            requestedEndAt: true,
+            submittedAt: true,
+            cancelledAt: true,
+          },
+        })
+        if (!current) return { kind: "not_found" as const }
+        if (current.status === "CANCELLED") {
+          return { kind: "success" as const, data: current as RequestData, idempotent: true }
+        }
+        if (current.status !== "PENDING") {
+          return conflict(
+            "WORKFORCE_SELF_REQUEST_ALREADY_DECIDED",
+            "A decided Workforce request cannot be cancelled",
+            current as Pick<RequestData, "id" | "type" | "status" | "startDate" | "endDate">,
+          )
+        }
+        if (current.exceptionCaseId !== lockedCaseId) {
+          return conflict(
+            "WORKFORCE_SELF_REQUEST_CONCURRENT_CHANGE",
+            "The Workforce request changed before it could be cancelled",
+          )
+        }
+        request = current
+        await requireWorkforceExceptionLinkedMutationAfterLock({
+          db: linkedDb,
+          organizationId: context.organizationId,
+          caseId: lockedCaseId,
+        })
+      } catch (error) {
+        if (!(error instanceof WorkforceExceptionLinkedMutationError)) throw error
+        return conflict(
+          error.code,
+          "This exception is no longer available for a linked request cancellation",
+        )
+      }
     }
 
     const cancelledAt = new Date()

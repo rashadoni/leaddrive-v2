@@ -119,6 +119,12 @@ export const POST = withWorkforceSessionAuth<EmployeeExceptionResponseRouteConte
   } catch (error) {
     if (error instanceof WorkforceExceptionEmployeeResponseWriterError) {
       if (error.code === "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_NOT_AUTHORIZED") return workforceScopeDenied()
+      if (error.code === "WORKFORCE_EXCEPTION_EMPLOYEE_RESPONSE_CASE_UNAVAILABLE") {
+        return NextResponse.json({
+          error: "This exception is unavailable for an employee response",
+          code: error.code,
+        }, { status: 409 })
+      }
       return NextResponse.json({ error: "This response id was already used for different case details", code: error.code }, { status: 409 })
     }
     if (responseConstraint(error)) {
