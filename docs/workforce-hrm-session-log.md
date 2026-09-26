@@ -50,3 +50,13 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Both boundaries now normalize `null` to `undefined`; no baseline or gate changed. Local typecheck remains `NOT RUN` because dependencies are absent and heavy verification belongs to CI.
 - Precise stopping point: checkpoint and push the two-line type-boundary repair without staging the preserved delivery-control patch.
 - Next action: require fresh exact-SHA machine CI and independent rereview before merge.
+
+## 2026-09-26 — PR #198 merged and production verified
+
+- Final PR head `81ca9a130862b13d50223e66d4de4f81a64b3dcf` passed `pr-scope`, `static-checks`, `typecheck`, `runner-policy`, `scan`, Android debug lint/unit and an exact-SHA independent rereview with zero findings. No admin bypass was used.
+- PR #198 merged normally as `cb9a886ab888b28e8098a735dfac3ff93875d4d5`. GitHub deploy run `36250578124` passed quality/security, built and uploaded the immutable SHA-bound artifact, deployed atomically to the registered production target and passed its post-deploy smoke.
+- Independent public verification returned HTTP 200 with `{"ok":true}` from `/api/v1/ping`; `/api/v1/public/build-info` returned HTTP 200 with `artifactSha=cb9a886ab888b28e8098a735dfac3ff93875d4d5`.
+- Progress remains honestly `81/161`, `14/15`, C5 81% and C9 99%. Physical Android/QR/GPS/biometric, isolated load/restore and human pilot evidence remain `NOT RUN`; no 100% claim is made.
+- Work continues in the same worktree on new branch `codex/workforce-agent-review-gate`, based exactly on the deployed merge SHA. Live protection currently preserves five GitHub Actions checks with `app_id=15368`, `enforce_admins=true`, a non-null zero-approval PR-only rule and force-push/deletion disabled, but lacks required `agent-review`.
+- Precise stopping point: the PR #198 release is complete; the preserved delivery-control patch is still uncommitted and must not be applied in its unsafe legacy form.
+- Next action: create a separate reviewed delivery-control PR that adds exact-SHA `agent-review` without weakening admin enforcement, PR-only protection or app bindings, then verify the live readback after merge.
