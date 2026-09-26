@@ -37,6 +37,44 @@ type WorkforceExceptionCandidate = {
   segment: { siteId: string | null } | null
 }
 
+const workforceExceptionDetailSelect = {
+  id: true,
+  agentId: true,
+  kind: true,
+  createdAt: true,
+  evidenceId: true,
+  workdayId: true,
+  agent: { select: { name: true } },
+  decisions: {
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    take: MAX_WORKFORCE_EXCEPTION_DECISIONS + 1,
+    select: { decisionCode: true, createdAt: true },
+  },
+  employeeResponses: {
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: 1,
+    select: { createdAt: true },
+  },
+  correctionRequests: {
+    orderBy: [{ submittedAt: "asc" }, { id: "asc" }],
+    take: MAX_WORKFORCE_EXCEPTION_CORRECTION_REQUESTS + 1,
+    select: {
+      id: true,
+      agentId: true,
+      correctionWorkdayId: true,
+      exceptionCaseId: true,
+      type: true,
+      status: true,
+      submittedAt: true,
+      workforceTimeCorrections: { take: 2, select: { requestId: true } },
+    },
+  },
+} satisfies Prisma.WorkforceExceptionCaseSelect
+
+type WorkforceExceptionDetail = Prisma.WorkforceExceptionCaseGetPayload<{
+  select: typeof workforceExceptionDetailSelect
+}>
+
 function denied(code: string, error: string, status = 403) {
   return NextResponse.json({ error, code }, { status, headers: workforceSensitiveResponseHeaders })
 }
@@ -172,40 +210,8 @@ export const GET = withWorkforceSessionExceptionQueueAuth(async (_req: NextReque
     const readableIds = readableCandidates.map((candidate) => candidate.id)
     const detailRows = readableIds.length === 0 ? [] : await prisma.workforceExceptionCase.findMany({
       where: { organizationId: auth.orgId, id: { in: readableIds } },
-      select: {
-        id: true,
-        agentId: true,
-        kind: true,
-        createdAt: true,
-        evidenceId: true,
-        workdayId: true,
-        agent: { select: { name: true } },
-        decisions: {
-          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-          take: MAX_WORKFORCE_EXCEPTION_DECISIONS + 1,
-          select: { decisionCode: true, createdAt: true },
-        },
-        employeeResponses: {
-          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-          take: 1,
-          select: { createdAt: true },
-        },
-        correctionRequests: {
-          orderBy: [{ submittedAt: "asc" }, { id: "asc" }],
-          take: MAX_WORKFORCE_EXCEPTION_CORRECTION_REQUESTS + 1,
-          select: {
-            id: true,
-            agentId: true,
-            correctionWorkdayId: true,
-            exceptionCaseId: true,
-            type: true,
-            status: true,
-            submittedAt: true,
-            workforceTimeCorrections: { take: 2, select: { requestId: true } },
-          },
-        },
-      },
-    })
+      select: workforceExceptionDetailSelect,
+    }) as WorkforceExceptionDetail[]
     if (detailRows.length !== readableIds.length) {
       return denied("WORKFORCE_EXCEPTION_QUEUE_UNAVAILABLE", "Unable to load Workforce exception review.", 503)
     }

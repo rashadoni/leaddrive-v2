@@ -150,3 +150,13 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Progress remains `81/161`, `14/15`, C5 81% and C9 99%; this review receipt does not add product or gate credit.
 - Precise stopping point: the implementation and independent rereview are green; only this append-only review receipt was added afterward and needs a final document-delta integrity check before checkpoint.
 - Next action: verify the receipt-only delta, create the path-scoped checkpoint commit, push/open the sub-400 KB PR and publish `agent-review=pending` for its exact head before remote-head review.
+
+## 2026-09-26 — PR #441 exact-head typecheck finding repaired
+
+- Draft PR #441 opened from checkpoint `702b9830e3107d71bf0fc69f3ffb2585b76e3852`. Independent remote-head review returned GREEN with zero findings, so `agent-review=success` was published and the PR was moved to ready-for-review.
+- `pr-scope`, `runner-policy`, `scan`, `agent-review` and `static-checks` passed. Required `typecheck` failed honestly after 19m12s: its defect-shaped baseline classifier found one new family, 18 TS2339 diagnostics in `src/app/api/v1/workforce/exceptions/route.ts`; the baseline remained unchanged.
+- Root cause was compile-time only but real: the inline nested Prisma detail selection lost payload inference and `detailRows` became `{}`. It is now a module-level value checked with `Prisma.WorkforceExceptionCaseSelect`, and rows use the exact derived `Prisma.WorkforceExceptionCaseGetPayload` type.
+- Fresh local evidence passes: the same 13 focused files / 94 tests, route/test ESLint and `git diff --check`. Full local typecheck remains `NOT RUN` under the Contabo heavy-work policy; replacement exact-SHA CI is authoritative.
+- Progress remains `81/161`, `14/15`, C5 81% and C9 99%; no completion or gate credit is added from this repair.
+- Precise stopping point: the type-inference repair and evidence are uncommitted; the former remote `agent-review=success` belongs only to `702b9830e3107d71bf0fc69f3ffb2585b76e3852` and must not be reused.
+- Next action: obtain independent read-only review of this repair delta, checkpoint/push it, publish pending for the new exact head, require a fresh remote-head review and rerun all mandatory gates.

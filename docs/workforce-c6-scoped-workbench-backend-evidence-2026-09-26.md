@@ -104,6 +104,21 @@ PASS  git diff --check
 PASS  independent repaired-diff rereview (0 findings)
 ```
 
+## Exact-SHA typecheck repair
+
+The first ready-for-review head `702b9830e3107d71bf0fc69f3ffb2585b76e3852`
+passed `static-checks` and every other required gate except `typecheck`.
+The blocking baseline classifier reported one new defect-shaped family:
+18 TS2339 diagnostics in the queue route. The inline nested Prisma selection
+had lost its payload inference, so detail rows became `{}` to TypeScript even
+though focused runtime tests passed.
+
+The detail selection is now one module-level
+`Prisma.WorkforceExceptionCaseSelect` value and its rows use the corresponding
+`Prisma.WorkforceExceptionCaseGetPayload`. No baseline was changed. The 13
+focused files / 94 tests, route-scoped ESLint and diff check pass again; a new
+exact-SHA independent review and GitHub `typecheck` rerun remain mandatory.
+
 `NOT RUN`: full local typecheck/build, browser E2E, Android, load, migration
 apply, disposable-PostgreSQL RLS/concurrency and physical/staging pilot.
 Contabo is limited to small sequential targeted checks; the exact-SHA GitHub
