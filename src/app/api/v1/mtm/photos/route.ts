@@ -767,6 +767,15 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
   if (status && !parsedStatus) {
     return NextResponse.json({ error: "Invalid photo status" }, { status: 400 })
   }
+  // The gallery's period («today», «this week») as its first instant. The page
+  // used to cut the newest 200 photos by date in the browser, so «all» read
+  // 200 while 1367 were stored and the counters added up the page, not the
+  // period (audit 2026-09-26).
+  const sinceParam = searchParams.get("since") || ""
+  const since = sinceParam ? new Date(sinceParam) : null
+  if (since && !Number.isFinite(since.getTime())) {
+    return NextResponse.json({ error: "Invalid since" }, { status: 400 })
+  }
   const page = Math.max(1, parseInt(searchParams.get("page") || "1"))
   const limit = Math.min(200, Math.max(1, parseInt(searchParams.get("limit") || "50")))
 
@@ -775,9 +784,12 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     const where: Prisma.MtmPhotoWhereInput = { organizationId: orgId, ...mtmPhotoFieldScopeWhere(scope) }
     if (agentId) where.agentId = agentId
     if (visitId) where.visitId = visitId
+    if (since) where.createdAt = { gte: since }
+    // Counted before the status filter: the status chips are counts of it.
+    const statusScope: Prisma.MtmPhotoWhereInput = { ...where }
     if (parsedStatus) where.status = parsedStatus
 
-    const [photos, total] = await Promise.all([
+    const [photos, total, statusGroups] = await Promise.all([
       prisma.mtmPhoto.findMany({
         where,
         skip: (page - 1) * limit,
@@ -789,9 +801,12 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         },
       }),
       prisma.mtmPhoto.count({ where }),
+      prisma.mtmPhoto.groupBy({ by: ["status"], where: statusScope, _count: { _all: true } }),
     ])
+    const byStatus: Record<string, number> = {}
+    for (const group of statusGroups) byStatus[group.status] = group._count._all
 
-    return NextResponse.json({ success: true, data: { photos, total, page, limit } })
+    return NextResponse.json({ success: true, data: { photos, total, page, limit, byStatus } })
   } catch (e) {
     console.error("[MTM/photos GET]", e)
     return NextResponse.json({ error: "Failed to load photos" }, { status: 500 })
