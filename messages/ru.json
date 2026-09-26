@@ -12564,33 +12564,28 @@
       "visitsPlan": "Визиты / план",
       "distance": "Путь"
     },
-    "columns": {
-      "day": "День",
-      "workday": "Рабочий день",
-      "visits": "Визиты",
-      "distance": "Путь",
-      "status": "Итог"
-    },
     "statuses": {
       "FULL": "Полностью",
       "PARTIAL": "{count, plural, one {Осталась # точка} few {Осталось # точки} many {Осталось # точек} other {Осталось # точки}}",
       "NOT_WORKED": "Не работал",
       "UNPLANNED": "Без плана",
       "DAY_OFF": "Выходной",
-      "UPCOMING": "Впереди"
+      "UPCOMING": "Впереди",
+      "SHIFT_OPEN": "Смена не закрыта",
+      "GPS_ONLY": "Без смены, GPS есть"
     },
     "open": "не закрыт",
     "minutes": "{minutes} мин",
     "hoursMinutes": "{hours} ч {minutes} мин",
-    "started": "начал день",
-    "ended": "закрыл день",
-    "lastSignal": "последний сигнал",
-    "onRoad": "в пути {duration}, {distance}",
-    "noSignal": "нет данных {duration}",
-    "pause": "перерыв {duration}",
-    "stop": "стоянка {duration}",
-    "noTrack": "В этот день нет GPS.",
-    "openOnMap": "Открыть на карте"
+    "openSince": "Смена открыта с {date}",
+    "workdayFact": "Смена {from}–{to}",
+    "fieldFact": "в поле {duration}",
+    "distanceFact": "путь {distance}",
+    "planFact": "визиты {visits} из {planned}",
+    "signalFact": "GPS с {from} до {to}",
+    "noVisits": "Визитов не было.",
+    "visitOpen": "не закрыт",
+    "openOnMap": "Открыть маршрут дня на карте"
   },
   "mtmRoutesPage": {
     "calendarTitle": "Календарь",

@@ -12560,33 +12560,28 @@
       "visitsPlan": "Ziyarətlər / plan",
       "distance": "Yol"
     },
-    "columns": {
-      "day": "Gün",
-      "workday": "İş günü",
-      "visits": "Ziyarət",
-      "distance": "Yol",
-      "status": "Nəticə"
-    },
     "statuses": {
       "FULL": "Tam",
       "PARTIAL": "{count} nöqtə qalıb",
       "NOT_WORKED": "İşləməyib",
       "UNPLANNED": "Plansız",
       "DAY_OFF": "İstirahət",
-      "UPCOMING": "Qarşıda"
+      "UPCOMING": "Qarşıda",
+      "SHIFT_OPEN": "Növbə bağlanmayıb",
+      "GPS_ONLY": "Növbəsiz, GPS var"
     },
     "open": "açıqdır",
     "minutes": "{minutes} dəq",
     "hoursMinutes": "{hours} s {minutes} dəq",
-    "started": "günə başladı",
-    "ended": "günü bağladı",
-    "lastSignal": "son siqnal",
-    "onRoad": "yolda {duration}, {distance}",
-    "noSignal": "məlumat yoxdur {duration}",
-    "pause": "fasilə {duration}",
-    "stop": "dayanma {duration}",
-    "noTrack": "Bu gün GPS yoxdur.",
-    "openOnMap": "Xəritədə aç"
+    "openSince": "Növbə {date} tarixindən açıqdır",
+    "workdayFact": "Növbə {from}–{to}",
+    "fieldFact": "sahədə {duration}",
+    "distanceFact": "yol {distance}",
+    "planFact": "ziyarət {visits} / {planned}",
+    "signalFact": "GPS {from}–{to}",
+    "noVisits": "Ziyarət olmayıb.",
+    "visitOpen": "açıqdır",
+    "openOnMap": "Günün marşrutunu xəritədə aç"
   },
   "mtmRoutesPage": {
     "calendarTitle": "Təqvim",

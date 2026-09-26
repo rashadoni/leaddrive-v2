@@ -58,13 +58,26 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
       where: {
         organizationId: auth.orgId,
         agentId,
-        workDate: { gte: new Date(`${from}T00:00:00.000Z`), lte: new Date(`${to}T00:00:00.000Z`) },
+        // The period's own shifts, plus one opened earlier and still open then.
+        OR: [
+          { workDate: { gte: new Date(`${from}T00:00:00.000Z`), lte: new Date(`${to}T00:00:00.000Z`) } },
+          { workDate: { lt: new Date(`${from}T00:00:00.000Z`) }, OR: [{ completedAt: null }, { completedAt: { gte: rangeStart } }] },
+        ],
       },
+      orderBy: { workDate: "asc" },
       select: { workDate: true, startedAt: true, completedAt: true, totalPausedSeconds: true },
     }),
     prisma.mtmVisit.findMany({
       where: { organizationId: auth.orgId, agentId, deletedAt: null, checkInAt: { gte: rangeStart, lt: rangeEnd } },
-      select: { checkInAt: true, status: true },
+      orderBy: { checkInAt: "asc" },
+      select: {
+        id: true,
+        checkInAt: true,
+        checkOutAt: true,
+        status: true,
+        customer: { select: { name: true } },
+        contact: { select: { displayName: true } },
+      },
     }),
     prisma.mtmRoute.findMany({
       where: {

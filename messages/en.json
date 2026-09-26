@@ -12564,33 +12564,28 @@
       "visitsPlan": "Visits / plan",
       "distance": "Distance"
     },
-    "columns": {
-      "day": "Day",
-      "workday": "Workday",
-      "visits": "Visits",
-      "distance": "Distance",
-      "status": "Result"
-    },
     "statuses": {
       "FULL": "Complete",
       "PARTIAL": "{count, plural, one {# stop left} other {# stops left}}",
       "NOT_WORKED": "Did not work",
       "UNPLANNED": "No plan",
       "DAY_OFF": "Day off",
-      "UPCOMING": "Upcoming"
+      "UPCOMING": "Upcoming",
+      "SHIFT_OPEN": "Shift left open",
+      "GPS_ONLY": "No shift, GPS moving"
     },
     "open": "open",
     "minutes": "{minutes} min",
     "hoursMinutes": "{hours} h {minutes} min",
-    "started": "started the day",
-    "ended": "closed the day",
-    "lastSignal": "last signal",
-    "onRoad": "on the road {duration}, {distance}",
-    "noSignal": "no data {duration}",
-    "pause": "break {duration}",
-    "stop": "stop {duration}",
-    "noTrack": "No GPS this day.",
-    "openOnMap": "Open on the map"
+    "openSince": "Shift open since {date}",
+    "workdayFact": "Shift {from}–{to}",
+    "fieldFact": "in the field {duration}",
+    "distanceFact": "distance {distance}",
+    "planFact": "visits {visits} of {planned}",
+    "signalFact": "GPS from {from} to {to}",
+    "noVisits": "No visits.",
+    "visitOpen": "open",
+    "openOnMap": "Open the day's route on the map"
   },
   "mtmRoutesPage": {
     "calendarTitle": "Calendar",

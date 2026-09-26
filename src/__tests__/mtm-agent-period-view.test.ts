@@ -52,10 +52,11 @@ describe("one agent over a period", () => {
     expect(period.days.map((day) => [day.date, day.status, day.remaining])).toEqual([
       ["2026-09-21", "FULL", 0],
       ["2026-09-22", "PARTIAL", 2],
-      ["2026-09-23", "NOT_WORKED", 4], // planned, never started
-      ["2026-09-24", "DAY_OFF", 0], // a draft never reached the agent
-      ["2026-09-25", "DAY_OFF", 0],
-      ["2026-09-26", "DAY_OFF", 0],
+      // Tuesday's shift was never closed: the days after say so (prod 2026-09-26).
+      ["2026-09-23", "SHIFT_OPEN", 4],
+      ["2026-09-24", "SHIFT_OPEN", 0], // a draft never reached the agent
+      ["2026-09-25", "SHIFT_OPEN", 0],
+      ["2026-09-26", "SHIFT_OPEN", 0],
       ["2026-09-27", "UPCOMING", 2],
     ])
   })
@@ -66,7 +67,9 @@ describe("one agent over a period", () => {
     // 09:20 → last fix 13:00 Baku, not «now» days later.
     expect(tuesday.fieldSeconds).toBe((3 * 60 + 40) * 60)
     expect(tuesday.visits).toBe(1) // the cancelled one does not count
-    expect(tuesday.distanceMeters).toBeGreaterThan(6_000)
+    expect(period.days[0].visitList.map((visit) => visit.checkInAt)).toEqual(["2026-09-21T05:45:00.000Z", "2026-09-21T07:00:00.000Z"])
+    // Fixes an hour apart are not driving: nobody knows the road in between.
+    expect(tuesday.distanceMeters).toBe(0)
   })
 
   it("sums the four numbers over past days only", () => {
@@ -89,10 +92,13 @@ describe("ready periods", () => {
 })
 
 describe("the agent period screen", () => {
-  it("reads the new endpoint, unfolds a day from the GPS history and links to the map", () => {
+  it("reads the new endpoint, shows every day open with its visits, and links to the map", () => {
+    // Owner 2026-09-26: «expanded, more informative — whom he met on which
+    // date and how long».
     const view = readFileSync("src/components/mtm/agent-period-view.tsx", "utf8")
     expect(view).toContain("/api/v1/mtm/agent-period?")
-    expect(view).toContain("/api/v1/mtm/location-history?")
+    expect(view).toContain("day.visitList.map((visit) =>")
+    expect(view).toContain('<span className="block truncate font-medium text-foreground">{visit.customerName}</span>')
     expect(view).toContain('data-testid="mtm-agent-period-cards"')
     expect(view).toContain('data-testid="mtm-agent-period-days"')
     expect(view).toContain("/mtm/map?mode=history&agentId=")
@@ -112,5 +118,31 @@ describe("routes audit 2026-09-26: team week and titles", () => {
     expect(week).toContain('t("weekStopsMissed", { count: route.totalPoints - route.visitedPoints })')
     const page = readFileSync("src/app/(dashboard)/mtm/routes/page.tsx", "utf8")
     expect(page).toContain('t(calendarSurface ? "calendarTitle" : "title")')
+  })
+})
+
+describe("the agent period on a real phone (prod 2026-09-26, the owner's own)", () => {
+  // A shift opened on 20.09 and never closed; the phone flew Baku → Frankfurt
+  // → Milan → Barcelona and drove there. Every day read «day off» with 5 810 km.
+  const flight = [
+    { id: "a", latitude: 40.40, longitude: 49.85, accuracy: 10, speed: null, heading: null, battery: null, isMoving: true, recordedAt: new Date("2026-09-23T03:00:00.000Z"), workdayId: null },
+    { id: "b", latitude: 50.05, longitude: 8.57, accuracy: 10, speed: null, heading: null, battery: null, isMoving: true, recordedAt: new Date("2026-09-23T08:30:00.000Z"), workdayId: null },
+    { id: "c", latitude: 50.06, longitude: 8.60, accuracy: 10, speed: null, heading: null, battery: null, isMoving: true, recordedAt: new Date("2026-09-23T08:35:00.000Z"), workdayId: null },
+  ]
+  const period = buildAgentPeriod({
+    from: "2026-09-23", to: "2026-09-23", timezone: "Asia/Baku", now: new Date("2026-09-26T08:00:00.000Z"), maxAccuracyMeters: 100,
+    workdays: [{ workDate: new Date("2026-09-20T00:00:00.000Z"), startedAt: new Date("2026-09-19T23:48:18.000Z"), completedAt: null, totalPausedSeconds: 0 }],
+    visits: [], routes: [], points: flight,
+  })
+
+  it("says the shift was left open, not «day off», and counts no field time for it", () => {
+    expect(period.days[0]).toMatchObject({ status: "SHIFT_OPEN", fieldSeconds: 0, workday: { carriedOver: true } })
+    expect(period.summary.workedDays).toBe(0)
+  })
+
+  it("counts driving only — a flight or a silence is not road", () => {
+    // Baku → Frankfurt in 5.5 h is dropped; the 5-minute taxi hop stays.
+    expect(period.days[0].distanceMeters).toBeGreaterThan(1_000)
+    expect(period.days[0].distanceMeters).toBeLessThan(5_000)
   })
 })
