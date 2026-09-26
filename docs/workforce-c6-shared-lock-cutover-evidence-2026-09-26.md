@@ -195,3 +195,33 @@ an independent confirmation before publication.
 browser E2E, Android/Gradle, load, physical-device and pilot checks. Exact-head
 GitHub gates, the opt-in PostgreSQL proof and an independent read-only review
 remain mandatory before merge.
+
+## PR #451 exact-head typecheck repair
+
+The ready PR run `36275235795` evaluated exact head
+`881ae07a42df09bde44ee59aacd5863354894da2`. `pr-scope`, `runner-policy`,
+`scan` and `static-checks` passed; the static job ran and passed all seven real
+PostgreSQL advisory-lock races. The blocking `typecheck` job correctly rejected
+two new defect-shaped pairs in the mobile sync push route: one additional
+TS2322 and one additional TS2339.
+
+The runtime query was sound, but its annotation was not. `typeof existing` was
+declared inside the branch where control flow had already narrowed `existing`
+to `null`, so the post-case-lock replay read was assigned to `null` and later
+narrowed to `never`. The repair defines one Prisma-checked replay select and
+derives its exact `MtmHrmRequestGetPayload` once; both pre-lock and post-lock
+reads reuse it. This changes no query fields, lock order, replay comparison or
+response behavior.
+
+Fresh local evidence after the repair:
+
+- PASS — mobile HRM and linked-exception route tests: 2 files / 6 tests;
+- PASS — ESLint for the changed mobile sync route;
+- NOT RUN — full local typecheck/build, browser E2E, Android/Gradle, load,
+  physical-device and pilot checks under Contabo workload policy.
+
+Because source changed after the prior GREEN identity, that review receipt is
+no longer sufficient for merge. The repaired complete diff must receive a new
+author-independent read-only review, then all five exact-head GitHub contexts
+must rerun and pass. No baseline, required context or protection rule is
+weakened.

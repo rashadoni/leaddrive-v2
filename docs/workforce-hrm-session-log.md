@@ -249,3 +249,14 @@ corrections as new entries that explicitly supersede the earlier fact.
 - Full local typecheck/build, browser E2E, Android, load, physical-device and pilot checks remain `NOT RUN`; PostgreSQL execution and five exact-head contexts remain delegated to CI. Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%; terminal resolution/reopen remain fenced.
 - Precise stopping point: latest main is integrated with an unchanged reviewed task diff and every permitted local gate is green; only this append-only integration receipt is uncommitted.
 - Next action: checkpoint this receipt, freeze the new exact base/head identity, obtain final independent confirmation, remove the temporary dependency symlink, then push/open the draft PR and wait for all five required checks.
+
+## 2026-09-27 — PR #451 typecheck RED and exact payload repair
+
+- PR #451 ready run `36275235795` evaluated exact head `881ae07a42df09bde44ee59aacd5863354894da2`. `pr-scope`, `runner-policy`, `scan` and `static-checks` passed; importantly, the static job executed and passed the seven-test disposable-PostgreSQL shared-lock race gate.
+- The required `typecheck` context failed after 21m35s. Its blocking baseline comparison found exactly two new defect-shaped pairs in `src/app/api/v1/mtm/mobile/sync/push/route.ts`: TS2322 increased 20→21 and TS2339 increased 1→2. Merge was not attempted.
+- Root cause was a real annotation defect in our new linked replay path: `let linkedReplay: typeof existing` appeared inside the `else` branch where TypeScript had already narrowed `existing` to `null`, making the later assigned row invalid and the truthy branch `never`.
+- The narrow repair introduces one `Prisma.MtmHrmRequestSelect`-checked replay projection and derives its exact `MtmHrmRequestGetPayload`; both replay reads reuse the same projection. Runtime fields, advisory-lock order, lifecycle guard and replay/mismatch semantics are unchanged.
+- Fresh permitted local evidence passes two focused mobile-HRM files / six tests plus ESLint for the changed route. Full local typecheck/build, browser E2E, Android, load, physical-device and pilot checks remain `NOT RUN` under Contabo workload policy.
+- Progress remains `81/161`, `14/15`, C5 81%, C6 20% and C9 99%. The source change invalidates the earlier exact-head GREEN receipt; no task or gate credit is added and terminal resolution/reopen remain fenced.
+- Precise stopping point: the type defect is repaired and narrow tests/lint pass in the working tree; the source and append-only receipts are not yet checkpointed, independently reviewed or pushed.
+- Next action: run diff integrity checks, create a path-scoped checkpoint, freeze the new complete identity, obtain an author-independent zero-finding review, push, and require all five replacement exact-head gates before merge.

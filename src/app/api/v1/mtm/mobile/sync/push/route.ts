@@ -111,6 +111,25 @@ import {
 } from "@/lib/workforce/mobile-release-policy"
 import { mtmAlertMessage } from "@/lib/mtm/alert-messages"
 
+const mobileHrmRequestReplaySelect = {
+  id: true,
+  clientRequestId: true,
+  type: true,
+  status: true,
+  startDate: true,
+  endDate: true,
+  correctionWorkdayId: true,
+  exceptionCaseId: true,
+  requestedStartAt: true,
+  requestedEndAt: true,
+  reason: true,
+  submittedAt: true,
+} satisfies Prisma.MtmHrmRequestSelect
+
+type MobileHrmRequestReplay = Prisma.MtmHrmRequestGetPayload<{
+  select: typeof mobileHrmRequestReplaySelect
+}>
+
 /**
  * POST /api/v1/mtm/mobile/sync/push
  *
@@ -2407,20 +2426,7 @@ export const POST = withMobileRls(async (req, auth) => {
               agentId,
               clientRequestId: hrmRequestCreateInput.clientRequestId,
             },
-            select: {
-              id: true,
-              clientRequestId: true,
-              type: true,
-              status: true,
-              startDate: true,
-              endDate: true,
-              correctionWorkdayId: true,
-              exceptionCaseId: true,
-              requestedStartAt: true,
-              requestedEndAt: true,
-              reason: true,
-              submittedAt: true,
-            },
+            select: mobileHrmRequestReplaySelect,
           })
           if (existing) {
             if (!workforceHrmRequestSubmissionMatches(existing, hrmRequestCreateInput)) {
@@ -2455,7 +2461,7 @@ export const POST = withMobileRls(async (req, auth) => {
                 })
               : null
             let linkedCaseUnavailable = false
-            let linkedReplay: typeof existing = null
+            let linkedReplay: MobileHrmRequestReplay | null = null
             if (hrmRequestCreateInput.exceptionCaseId && correctionWorkday && exceptionCase) {
               try {
                 const linkedDb = tx as unknown as WorkforceExceptionLinkedMutationDb
@@ -2468,20 +2474,7 @@ export const POST = withMobileRls(async (req, auth) => {
                     agentId,
                     clientRequestId: hrmRequestCreateInput.clientRequestId,
                   },
-                  select: {
-                    id: true,
-                    clientRequestId: true,
-                    type: true,
-                    status: true,
-                    startDate: true,
-                    endDate: true,
-                    correctionWorkdayId: true,
-                    exceptionCaseId: true,
-                    requestedStartAt: true,
-                    requestedEndAt: true,
-                    reason: true,
-                    submittedAt: true,
-                  },
+                  select: mobileHrmRequestReplaySelect,
                 })
                 if (!linkedReplay) {
                   await requireWorkforceExceptionLinkedMutationAfterLock({
