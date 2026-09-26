@@ -16910,7 +16910,7 @@
     "records": "{count} записей",
     "lastGenerated": "Последний раз: {date}",
     "view": "Просмотр",
-    "backToReports": "← Назад к отчётам",
+    "backToReports": "Назад к отчётам",
     "noData": "Нет данных для этого типа отчёта",
     "type_daily": "Ежедневный отчёт",
     "type_daily_desc": "Анализ визитов и задач за день",

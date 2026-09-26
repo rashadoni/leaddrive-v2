@@ -16906,7 +16906,7 @@
     "records": "{count} qeyd",
     "lastGenerated": "Son yaradılma: {date}",
     "view": "Bax",
-    "backToReports": "← Hesabatlara qayıt",
+    "backToReports": "Hesabatlara qayıt",
     "noData": "Bu hesabat növü üçün məlumat yoxdur",
     "type_daily": "Gündəlik hesabat",
     "type_daily_desc": "Gündəlik vizit və tapşırıq nəticələrinin təhlili",
