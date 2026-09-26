@@ -11,7 +11,9 @@ const LEGACY_MTM_API_PREFIX = "/api/v1/mtm/"
 const LEGACY_MTM_MOBILE_API_PREFIX = "/api/v1/mtm/mobile/"
 const V2_MTM_MOBILE_EXACT_PATHS = new Set([
   "/api/v2/mtm/mobile/location/batch",
+  "/api/v2/mtm/mobile/route-field/contact-create-requests",
   "/api/v2/mtm/mobile/route-field/contacts",
+  "/api/v2/mtm/mobile/route-field/device-tokens",
   "/api/v2/mtm/mobile/route-field/organizations",
   "/api/v2/mtm/mobile/route-field/planning-targets",
   "/api/v2/mtm/mobile/sync/routes",

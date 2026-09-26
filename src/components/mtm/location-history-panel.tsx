@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { historyErrorMessage } from "@/lib/mtm/location-history-errors"
 import dynamic from "next/dynamic"
 import Link from "next/link"
 import { useLocale, useTranslations } from "next-intl"
@@ -8,6 +9,12 @@ import { Activity, AlertTriangle, CheckCircle2, Clock3, Download, Layers3, Locat
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
 import { dateInputValueInTimezone, formatInTimezone } from "@/lib/timezone"
+import { formatTime } from "@/lib/format-date"
+import { visitPlaceSummary } from "@/lib/mtm/visit-place-check"
+import { addDays, clampHistoryEndDate, MAX_RANGE_DAYS } from "@/lib/mtm/history-range"
+import { HISTORY_MAP_COLORS } from "@/lib/mtm/history-path"
+import { VisitPlaceBadge } from "@/components/mtm/visit-place-badge"
+import { DayTripLedger, type DayTripData, type DayTripFocus } from "@/components/mtm/day-trip-ledger"
 
 const LocationHistoryMap = dynamic(() => import("@/components/mtm/location-history-map"), { ssr: false })
 
@@ -23,7 +30,7 @@ type HistoryData = {
   // Old cached responses predate the split and are the bundled MTM contract.
   // Treat the omitted marker as Workforce-enabled for a non-breaking UI read.
   capabilities?: { workforce?: boolean }
-  range: { date: string; from: string; to: string; timezone: string }
+  range: { date: string; toDate?: string; days?: number; from: string; to: string; timezone: string }
   policy: {
     maxAccuracyMeters: number
     stopRadiusMeters: number
@@ -32,6 +39,8 @@ type HistoryData = {
     distanceFormula: string
     impossibleSpeedKmh: number
     autoTrackingSupported: boolean
+    /** Organization default; older responses omit it. */
+    geofenceRadiusMeters?: number
   }
   quality: {
     rawPointCount: number
@@ -50,6 +59,7 @@ type HistoryData = {
     stopCount: number
     visitCount: number
     gapCount: number
+    pausedGapCount?: number
     anomalyCount: number
   }
   workday: {
@@ -64,6 +74,25 @@ type HistoryData = {
     endLatitude: number | null
     endLongitude: number | null
   } | null
+  /**
+   * No workday dated on the selected day, but one started earlier covers it
+   * (open overnight, or closed during this day). Older responses omit it.
+   */
+  carriedOverWorkday?: {
+    id: string
+    status: "STARTED" | "PAUSED" | "COMPLETED"
+    workDate: string
+    startedAt: string
+    completedAt: string | null
+  } | null
+  /** Each day's shift when the window spans several days. Older responses omit it. */
+  workdays?: Array<{
+    id: string
+    status: "STARTED" | "PAUSED" | "COMPLETED"
+    workDate: string
+    startedAt: string
+    completedAt: string | null
+  }>
   points: Array<{
     id: string
     latitude: number
@@ -102,7 +131,7 @@ type HistoryData = {
     startedAt: string
     endedAt: string
     durationSeconds: number
-    reason: "TELEMETRY_GAP"
+    reason: "TELEMETRY_GAP" | "WORKDAY_PAUSED"
     startLatitude: number
     startLongitude: number
     endLatitude: number
@@ -150,6 +179,8 @@ type HistoryData = {
     relatedId: string | null
     confirmed: boolean
   }>
+  /** The day as legs; null when the raw read was cut short. Older responses omit it. */
+  trip?: DayTripData | null
   visits: Array<{
     id: string
     customerId: string
@@ -158,14 +189,52 @@ type HistoryData = {
     checkOutAt: string | null
     checkInLat: number | null
     checkInLng: number | null
+    checkOutLat?: number | null
+    checkOutLng?: number | null
+    checkInCustomerLat?: number | null
+    checkInCustomerLng?: number | null
+    checkInGeofenceRadius?: number | null
     confirmed: true
     customer: {
       name: string
       address: string | null
       latitude: number | null
       longitude: number | null
+      geofenceRadius?: number | null
     }
   }>
+}
+
+const HH_MM = /^([01]\d|2[0-3]):[0-5]\d$/
+
+/** Wall-clock HH:MM in the tenant's timezone, for the time inputs. */
+function tenantClock(value: Date | string, timezone: string): string {
+  return formatTime(value, "az", { hour: "2-digit", minute: "2-digit", timeZone: timezone })
+}
+
+/**
+ * The window a date opens with. Prod audit 2026-09-14: the fixed 07:00–19:00
+ * cut off an 18:49–18:53 visit's tail and everything after seven. A past day
+ * opens whole; today opens from midnight to now, and once the day's data is in
+ * the start snaps to the workday start or the first GPS point.
+ */
+function defaultHistoryWindow(date: string, timezone: string): { from: string; to: string } {
+  const today = dateInputValueInTimezone(new Date(), timezone)
+  if (date === today) return { from: "00:00", to: tenantClockNowCeil(timezone) }
+  return { from: "00:00", to: "23:59" }
+}
+
+
+/**
+ * "Now" for the end of today's window, rounded up to the next minute and kept
+ * on today. Review of #205: in the first minute after midnight the window was
+ * 00:00–00:00, an empty range.
+ */
+function tenantClockNowCeil(timezone: string): string {
+  const now = new Date()
+  const next = new Date(now.getTime() + 60_000)
+  if (dateInputValueInTimezone(next, timezone) !== dateInputValueInTimezone(now, timezone)) return "23:59"
+  return tenantClock(next, timezone)
 }
 
 function distanceLabel(meters: number | null, unavailable: string): string {
@@ -180,8 +249,12 @@ export function LocationHistoryPanel() {
   const [timezone, setTimezone] = useState("Asia/Baku")
   const [agentId, setAgentId] = useState("")
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
-  const [from, setFrom] = useState("07:00")
-  const [to, setTo] = useState("19:00")
+  const [toDate, setToDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [from, setFrom] = useState("00:00")
+  const [to, setTo] = useState("23:59")
+  // True while the window is the automatic one for the chosen date; any manual
+  // edit of the time inputs hands control to the user.
+  const autoWindowRef = useRef(true)
   const [accuracy, setAccuracy] = useState(100)
   const [data, setData] = useState<HistoryData | null>(null)
   const [loadingRoster, setLoadingRoster] = useState(true)
@@ -196,6 +269,7 @@ export function LocationHistoryPanel() {
   const requestedHistoryLoadRef = useRef<{ agentId: string; date: string } | null>(null)
   const [playbackIndex, setPlaybackIndex] = useState(0)
   const [playbackRate, setPlaybackRate] = useState(1)
+  const [tripFocus, setTripFocus] = useState<DayTripFocus | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [layers, setLayers] = useState({
     planned: true,
@@ -237,10 +311,20 @@ export function LocationHistoryPanel() {
       const resolvedDate = selectedDate && /^\d{4}-\d{2}-\d{2}$/.test(selectedDate)
         ? selectedDate
         : dateInputValueInTimezone(new Date(), body.data.timezone)
+      // A link from a live-feed alert names the minutes around the event.
+      const fromParam = searchParams.get("from") ?? ""
+      const toParam = searchParams.get("to") ?? ""
+      const resolvedToDate = clampHistoryEndDate(resolvedDate, searchParams.get("toDate") ?? resolvedDate)
+      const linkedWindow = HH_MM.test(fromParam) && HH_MM.test(toParam) && (fromParam < toParam || resolvedToDate > resolvedDate)
+      const historyWindow = linkedWindow ? { from: fromParam, to: toParam } : defaultHistoryWindow(resolvedToDate, body.data.timezone)
+      autoWindowRef.current = !linkedWindow
+      setFrom(historyWindow.from)
+      setTo(historyWindow.to)
 
       setAgents(roster)
       setTimezone(body.data.timezone)
       setDate(resolvedDate)
+      setToDate(resolvedToDate)
       setAccuracy(body.data.policy.maxAccuracyMeters)
       setAgentId(resolvedAgentId)
       if (selectedFromUrl && resolvedAgentId) {
@@ -275,23 +359,35 @@ export function LocationHistoryPanel() {
     setLoadingHistory(true)
     setHistoryError("")
     setData(null)
+    const isToday = toDate === dateInputValueInTimezone(new Date(), timezone)
+    // Pressing «Show» again later today should include what happened since.
+    const effectiveTo = autoWindowRef.current && isToday ? tenantClockNowCeil(timezone) : to
+    if (effectiveTo !== to) setTo(effectiveTo)
     try {
       const params = new URLSearchParams({
         agentId,
         date,
         from,
-        to,
+        to: effectiveTo,
         timezone,
         accuracy: String(accuracy),
       })
+      if (toDate !== date) params.set("toDate", toDate)
       const response = await fetch(`/api/v1/mtm/location-history?${params}`, { signal: controller.signal })
       const body = await response.json().catch(() => null)
       if (!response.ok || !body?.success) throw new Error(body?.code || body?.error || response.statusText)
       if (controller.signal.aborted || historyRequestRef.current !== controller) return
       setData(body.data)
+      if (autoWindowRef.current && isToday) {
+        const dayStart = (body.data as HistoryData).workday?.startedAt ?? (body.data as HistoryData).summary.firstPointAt
+        if (dayStart && date === toDate && dateInputValueInTimezone(dayStart, timezone) === date) {
+          const start = tenantClock(dayStart, timezone)
+          if (start < effectiveTo) setFrom(start)
+        }
+      }
     } catch (reason) {
       if (controller.signal.aborted || historyRequestRef.current !== controller) return
-      setHistoryError(reason instanceof Error ? reason.message : t("loadFailed"))
+      setHistoryError(historyErrorMessage(reason instanceof Error ? reason.message : "", t))
       setData(null)
     } finally {
       if (historyRequestRef.current === controller) {
@@ -299,7 +395,7 @@ export function LocationHistoryPanel() {
         setLoadingHistory(false)
       }
     }
-  }, [accuracy, agentId, date, from, t, timezone, to])
+  }, [accuracy, agentId, date, from, t, timezone, to, toDate])
 
   useEffect(() => {
     const requested = requestedHistoryLoadRef.current
@@ -327,8 +423,9 @@ export function LocationHistoryPanel() {
       timezone,
       accuracy: String(accuracy),
       format: "csv",
+      ...(toDate !== date ? { toDate } : {}),
     })}`
-  }, [accuracy, agentId, date, from, timezone, to])
+  }, [accuracy, agentId, date, from, timezone, to, toDate])
 
   const formatMoment = (value: string, options?: Intl.DateTimeFormatOptions) =>
     formatInTimezone(value, timezone, options ?? { dateStyle: "short", timeStyle: "short" }, locale)
@@ -342,6 +439,7 @@ export function LocationHistoryPanel() {
   useEffect(() => {
     setIsPlaying(false)
     setPlaybackIndex(playbackLastIndex)
+    setTripFocus(null)
   }, [data, playbackLastIndex])
 
   useEffect(() => {
@@ -378,7 +476,7 @@ export function LocationHistoryPanel() {
           void loadHistory()
         }}
       >
-        <div className="grid gap-3 sm:grid-cols-2 @min-[64rem]:grid-cols-[minmax(220px,1.4fr)_160px_130px_130px_150px_auto] @min-[64rem]:items-end">
+        <div className="grid gap-3 sm:grid-cols-2 @min-[64rem]:grid-cols-[minmax(200px,1.4fr)_150px_150px_110px_110px_130px_auto] @min-[64rem]:items-end">
           <label className="space-y-1 text-xs font-medium">
             <span>{t("agent")}</span>
             <Select
@@ -398,14 +496,46 @@ export function LocationHistoryPanel() {
             </Select>
           </label>
           <label className="space-y-1 text-xs font-medium">
-            <span>{t("date")}</span>
+            <span>{t("dateFrom")}</span>
             <input
+              data-testid="mtm-location-history-date-from"
               className="min-h-11 w-full rounded-md border bg-background px-3 text-sm"
               type="date"
               value={date}
               onChange={(event) => {
                 invalidateHistory()
-                setDate(event.target.value)
+                const start = event.target.value
+                // Owner 2026-09-22: the end stays where it is (today by default);
+                // it moves only when the new start passes it or the window
+                // would exceed its limit.
+                const end = clampHistoryEndDate(start, toDate)
+                setDate(start)
+                setToDate(end)
+                const historyWindow = defaultHistoryWindow(end, timezone)
+                autoWindowRef.current = true
+                setFrom(historyWindow.from)
+                setTo(historyWindow.to)
+              }}
+              required
+            />
+          </label>
+          <label className="space-y-1 text-xs font-medium">
+            <span>{t("dateTo")}</span>
+            <input
+              data-testid="mtm-location-history-date-to"
+              className="min-h-11 w-full rounded-md border bg-background px-3 text-sm"
+              type="date"
+              value={toDate}
+              min={date}
+              max={addDays(date, MAX_RANGE_DAYS - 1)}
+              onChange={(event) => {
+                invalidateHistory()
+                const end = clampHistoryEndDate(date, event.target.value)
+                setToDate(end)
+                const historyWindow = defaultHistoryWindow(end, timezone)
+                autoWindowRef.current = true
+                setFrom(historyWindow.from)
+                setTo(historyWindow.to)
               }}
               required
             />
@@ -418,6 +548,7 @@ export function LocationHistoryPanel() {
               value={from}
               onChange={(event) => {
                 invalidateHistory()
+                autoWindowRef.current = false
                 setFrom(event.target.value)
               }}
               required
@@ -431,6 +562,7 @@ export function LocationHistoryPanel() {
               value={to}
               onChange={(event) => {
                 invalidateHistory()
+                autoWindowRef.current = false
                 setTo(event.target.value)
               }}
               required
@@ -455,7 +587,7 @@ export function LocationHistoryPanel() {
             {loadingHistory ? t("loading") : t("show")}
           </Button>
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">{t("timezoneHint", { timezone })}</p>
+        <p className="mt-2 text-xs text-muted-foreground">{t("timezoneHint", { timezone })} {t("rangeHint", { days: MAX_RANGE_DAYS })}</p>
       </form>
 
       {rosterError && (
@@ -617,7 +749,8 @@ export function LocationHistoryPanel() {
             )}
           </section>
 
-          <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
+            <div className="space-y-2 xl:sticky xl:top-3">
             <div className="h-[56vh] min-h-[420px] overflow-hidden rounded-lg border border-zinc-200 bg-card dark:border-zinc-700">
               <LocationHistoryMap
                 points={data.points}
@@ -630,27 +763,75 @@ export function LocationHistoryPanel() {
                 locale={locale}
                 timezone={timezone}
                 playbackIndex={playbackIndex}
+                focus={tripFocus}
               />
+            </div>
+            {/* Owner 2026-09-22: «lines by colours, by pieces — no explanation». */}
+            <ul data-testid="mtm-history-map-legend" className="flex flex-wrap gap-x-4 gap-y-1.5 rounded-lg border border-zinc-200 bg-card px-3 py-2 text-xs text-muted-foreground dark:border-zinc-700">
+              <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block h-1 w-6 rounded-full" style={{ background: HISTORY_MAP_COLORS.track }} />{t("legendTrack")}</li>
+              <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block w-6 border-t-[3px] border-dotted" style={{ borderColor: HISTORY_MAP_COLORS.gap }} />{t("legendGap")}</li>
+              <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block w-6 border-t-[3px] border-dashed" style={{ borderColor: HISTORY_MAP_COLORS.plan }} />{t("legendPlan")}</li>
+              <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block h-3 w-3 rounded-full" style={{ background: HISTORY_MAP_COLORS.stop }} />{t("legendStop")}</li>
+              <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block h-3 w-3 rounded-full" style={{ background: HISTORY_MAP_COLORS.visit }} />{t("legendVisit")}</li>
+              <li className="flex items-center gap-1.5"><span aria-hidden="true" className="inline-block h-3 w-3 rounded-full" style={{ background: HISTORY_MAP_COLORS.current }} />{t("legendCurrent")}</li>
+            </ul>
             </div>
 
             <aside className="space-y-3">
+              {data.trip && (
+                <DayTripLedger
+                  trip={data.trip}
+                  multiDay={(data.range.days ?? 1) > 1}
+                  focusId={tripFocus?.id ?? null}
+                  onFocus={setTripFocus}
+                  formatMoment={formatMoment}
+                  formatDuration={formatDuration}
+                />
+              )}
               {data.capabilities?.workforce !== false ? <section className="rounded-lg border border-zinc-200 bg-card p-3 dark:border-zinc-700">
                 <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold"><Clock3 className="h-4 w-4" />{t("workday")}</h3>
-                {data.workday ? (
+                {(data.range.days ?? 1) > 1 ? (
+                  data.workdays?.length ? (
+                    <ul data-testid="mtm-history-range-workdays" className="space-y-1 text-xs">
+                      {data.workdays.map((row) => (
+                        <li key={row.id} className="flex justify-between gap-2">
+                          <span className="text-muted-foreground">{formatMoment(row.startedAt, { day: "numeric", month: "short" })}</span>
+                          <span className="tabular-nums">{formatMoment(row.startedAt, { hour: "2-digit", minute: "2-digit" })}–{row.completedAt ? formatMoment(row.completedAt, { hour: "2-digit", minute: "2-digit" }) : t("workdayStillOpen")}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : <p className="text-xs text-muted-foreground">{t("noWorkdaysInRange")}</p>
+                ) : data.workday ? (
                   <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-2 text-xs">
                     <dt className="text-muted-foreground">{t("status")}</dt><dd>{t(`workdayStatus.${data.workday.status}`)}</dd>
                     <dt className="text-muted-foreground">{t("workdayStart")}</dt><dd>{formatMoment(data.workday.startedAt)}</dd>
                     <dt className="text-muted-foreground">{t("workdayEnd")}</dt><dd>{data.workday.completedAt ? formatMoment(data.workday.completedAt) : "—"}</dd>
                   </dl>
+                ) : data.carriedOverWorkday ? (
+                  // Audit 2026-09-14: the history said "no workday" while the live
+                  // map showed the same workday active since the previous evening.
+                  <p data-testid="mtm-history-carried-workday" className="text-xs">
+                    {data.carriedOverWorkday.completedAt
+                      ? t("workdayCarriedClosed", {
+                        since: formatMoment(data.carriedOverWorkday.startedAt, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
+                        until: formatMoment(data.carriedOverWorkday.completedAt, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
+                      })
+                      : t("workdayOpenSince", {
+                        since: formatMoment(data.carriedOverWorkday.startedAt, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
+                      })}
+                  </p>
                 ) : <p className="text-xs text-muted-foreground">{t("noWorkday")}</p>}
               </section> : null}
 
+              {/* The trip above tells the day; stops and raw events stay one click away as evidence. */}
+              <details data-testid="mtm-history-evidence" open={!data.trip} className="group space-y-3">
+              <summary className="flex min-h-11 cursor-pointer items-center rounded-lg border border-zinc-200 bg-card px-3 text-sm font-medium dark:border-zinc-700">{t("trip.evidence")}</summary>
               <section className="rounded-lg border border-zinc-200 bg-card dark:border-zinc-700">
                 <div className="border-b px-3 py-2">
                   <h3 className="text-sm font-semibold">{t("stopDetails")} · {selectedAgent?.name}</h3>
                   <p className="text-xs text-muted-foreground">{t("stopPolicy", { radius: data.policy.stopRadiusMeters, minutes: data.policy.stopMinimumMinutes })}</p>
                 </div>
-                <div className="max-h-[390px] divide-y overflow-y-auto">
+                <div data-testid="mtm-location-history-stops" className="divide-y">
                   {!data.stops.length && <p className="p-4 text-xs text-muted-foreground">{t("noStops")}</p>}
                   {data.stops.map((stop) => (
                     <article
@@ -662,7 +843,7 @@ export function LocationHistoryPanel() {
                         <span className="whitespace-nowrap text-muted-foreground">{formatDuration(stop.durationSeconds)}</span>
                       </div>
                       <div className="flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground">
-                        <span>{t("accuracy")}: {stop.averageAccuracy == null ? "—" : `${stop.averageAccuracy} m`}</span>
+                        <span>{t("accuracy")}: {stop.averageAccuracy == null ? "—" : `${Math.round(stop.averageAccuracy)} m`}</span>
                         <span>{t("battery")}: {stop.batteryStart == null ? "—" : stop.batteryStart === stop.batteryEnd ? `${Math.round(stop.batteryStart)}%` : `${Math.round(stop.batteryStart)}–${Math.round(stop.batteryEnd ?? stop.batteryStart)}%`}</span>
                         <span>{stop.connectivity === "ONLINE" ? t("online") : t("offlineGaps")}</span>
                       </div>
@@ -681,7 +862,7 @@ export function LocationHistoryPanel() {
                   <h3 className="text-sm font-semibold">{t("timeline")}</h3>
                   <p className="text-xs text-muted-foreground">{t("timelineHint")}</p>
                 </div>
-                <div className="max-h-[360px] divide-y overflow-y-auto">
+                <div data-testid="mtm-location-history-timeline" className="divide-y">
                   {!data.timeline.length && <p className="p-4 text-xs text-muted-foreground">{t("noTimeline")}</p>}
                   {data.timeline.map((event, index) => (
                     <div
@@ -705,6 +886,7 @@ export function LocationHistoryPanel() {
                   ))}
                 </div>
               </section>
+              </details>
             </aside>
           </div>
 
@@ -716,8 +898,8 @@ export function LocationHistoryPanel() {
                   <div key={anomaly.id} className="rounded-md border bg-background/80 p-2 text-xs">
                     <div className="flex justify-between gap-2"><strong>{t(`anomaly.${anomaly.type}`)}</strong><time className="text-muted-foreground">{formatMoment(anomaly.startedAt, { timeStyle: "short" })}</time></div>
                     <div className="mt-1 text-muted-foreground">
-                      {anomaly.type === "IMPOSSIBLE_JUMP" && t("jumpDetail", { distance: anomaly.detail.distanceMeters ?? 0, speed: anomaly.detail.speedKmh ?? 0 })}
-                      {anomaly.type === "LOW_ACCURACY" && t("accuracyDetail", { accuracy: anomaly.detail.accuracyMeters ?? 0 })}
+                      {anomaly.type === "IMPOSSIBLE_JUMP" && t("jumpDetail", { distance: Math.round(anomaly.detail.distanceMeters ?? 0), speed: Math.round(anomaly.detail.speedKmh ?? 0) })}
+                      {anomaly.type === "LOW_ACCURACY" && t("accuracyDetail", { accuracy: Math.round(anomaly.detail.accuracyMeters ?? 0) })}
                       {anomaly.type === "MISSING_SEGMENT" && t("gapDetail", { minutes: Math.round((anomaly.detail.durationSeconds ?? 0) / 60) })}
                     </div>
                   </div>
@@ -743,30 +925,31 @@ export function LocationHistoryPanel() {
                 </thead>
                 <tbody className="divide-y">
                   {!data.visits.length && <tr><td colSpan={4} className="px-4 py-6 text-center text-xs text-muted-foreground">{t("noVisits")}</td></tr>}
-                  {data.visits.map((visit) => (
+                  {data.visits.map((visit) => {
+                    // One rule with the visit review and the route detail.
+                    const place = visitPlaceSummary(visit, data.policy.geofenceRadiusMeters)
+                    return (
                     <tr key={visit.id}>
                       <td className="px-4 py-2.5"><div className="font-medium">{visit.customer.name}</div><div className="text-xs text-muted-foreground">{visit.customer.address || "—"}</div></td>
                       <td className="px-4 py-2.5 tabular-nums">{formatMoment(visit.checkInAt)}{visit.checkOutAt ? ` – ${formatMoment(visit.checkOutAt, { timeStyle: "short" })}` : ""}</td>
                       <td className="px-4 py-2.5">{t(`visitStatuses.${visit.status}`)}</td>
                       <td className="px-4 py-2.5">
-                        <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300"><CheckCircle2 className="h-3.5 w-3.5" />{t("confirmed")}</span>
+                        <VisitPlaceBadge place={place} showDistanceDetail />
                         <div className="mt-1 flex gap-2 text-xs">
                           <Link className="text-primary hover:underline" href={`/mtm/visits?visitId=${visit.id}`}>{t("openVisit")}</Link>
                           <Link className="text-primary hover:underline" href={`/mtm/customers/${visit.customerId}`}>{t("openOrganization")}</Link>
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
           </section>
 
           <p className="text-xs text-muted-foreground">
-            {t("methodNote", {
-              formula: data.policy.distanceFormula,
-              accuracy: data.policy.maxAccuracyMeters,
-            })} {data.policy.autoTrackingSupported ? t("autoTrackingAvailable") : t("autoTrackingUnavailable")}
+            {t("methodNote", { accuracy: Math.round(data.policy.maxAccuracyMeters) })}
           </p>
         </>
       )}

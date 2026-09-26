@@ -56,6 +56,40 @@ jobs:
           echo "TIKTOK_CLIENT_KEY       = $(read_env TIKTOK_CLIENT_KEY)"
           echo "TIKTOK_REDIRECT_URI     = $(read_env TIKTOK_REDIRECT_URI)"
           echo "TIKTOK_CLIENT_SECRET set= $(has_env TIKTOK_CLIENT_SECRET)"
+          echo ""
+          echo "--- Meta-review processor presence (credentials hidden) ---"
+          echo "ANTHROPIC_API_KEY set   = $(has_env ANTHROPIC_API_KEY)"
+          echo "OPENAI_API_KEY set      = $(has_env OPENAI_API_KEY)"
+          echo "GOOGLE_AI_API_KEY set   = $(has_env GOOGLE_AI_API_KEY)"
+          echo "GEMINI_API_KEY set      = $(has_env GEMINI_API_KEY)"
+          echo "GOOGLE_VISION_API_KEY set= $(has_env GOOGLE_VISION_API_KEY)"
+          echo "VISION_OCR_PROVIDER     = $(read_env VISION_OCR_PROVIDER)"
+          echo "APIFY_API_TOKEN set     = $(has_env APIFY_API_TOKEN)"
+          echo "BRIGHT_DATA_API_TOKEN set= $(has_env BRIGHT_DATA_API_TOKEN)"
+          echo "BRIGHT_DATA live routing = $(read_env SOCIAL_BRIGHT_DATA_LIVE_ROUTING)"
+          echo "AZURE_SPEECH_KEY set    = $(has_env AZURE_SPEECH_KEY)"
+          sentry_dsn="$(read_env SENTRY_DSN || true)"
+          [ -n "$sentry_dsn" ] || sentry_dsn="$(read_env NEXT_PUBLIC_SENTRY_DSN || true)"
+          sentry_host="$(printf '%s' "$sentry_dsn" | sed -E 's#^[a-zA-Z]+://([^@]+@)?##; s#/.*$##; s/:.*$//')"
+          echo "SENTRY_DSN set          = $([ -n "$sentry_dsn" ] && echo yes || echo no)"
+          echo "SENTRY ingest host      = ${sentry_host:-unset}"
+
+          BACKUP_ENV="/etc/leaddrive/backup.env"
+          if [ -f "$BACKUP_ENV" ]; then
+            read_backup_env() {
+              grep -E "^[[:space:]]*(export[[:space:]]+)?$1=" "$BACKUP_ENV" | head -1 \
+                | sed -E 's/^[^=]*=//' | tr -d '"'"'"''
+            }
+            endpoint="$(read_backup_env BACKUP_S3_ENDPOINT)"
+            endpoint_host="$(printf '%s' "$endpoint" | sed -E 's#^[a-zA-Z]+://##; s#/.*$##')"
+            echo "BACKUP_S3_ENDPOINT host = ${endpoint_host:-unset}"
+            echo "BACKUP_S3_REGION        = $(read_backup_env BACKUP_S3_REGION)"
+            echo "BACKUP daily days       = $(read_backup_env BACKUP_RETENTION_DAILY_DAYS)"
+            echo "BACKUP weekly days      = $(read_backup_env BACKUP_RETENTION_WEEKLY_DAYS)"
+            echo "BACKUP monthly days     = $(read_backup_env BACKUP_RETENTION_MONTHLY_DAYS)"
+          else
+            echo "BACKUP_ENV present      = no"
+          fi
           REMOTE
       - name: Cleanup
         if: always()

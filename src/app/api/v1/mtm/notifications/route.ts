@@ -1,25 +1,58 @@
 import { Prisma } from "@prisma/client"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { withRls } from "@/lib/with-rls"
+import { withRls, type RlsAuth } from "@/lib/with-rls"
+import {
+  isAgentInFieldScope,
+  mtmAgentOutOfScopeResponse,
+  mtmFieldScopeRequiredResponse,
+  resolveMtmFieldScope,
+  type MtmFieldScope,
+} from "@/lib/mtm/field-access"
 import { notificationDomainPredicate } from "@/lib/mtm/notification-domain"
 import { productCapabilitiesForMixedSurface } from "@/lib/workforce-capability"
 
 type NotificationIdRow = { id: string }
 type NotificationCountRow = { count: number }
 
+/**
+ * Notifications are addressed to agents, so the web inbox follows the caller's
+ * field scope (audit 2026-09-14): an agent sees their own, a manager or
+ * supervisor their agents', an admin everyone's. Before, any `?agentId` was
+ * accepted and the unfiltered list was the whole organization. API keys (no
+ * session) stay organization-wide. Returns a response to send instead when the
+ * caller has no scope.
+ */
+async function notificationScopePredicate(
+  orgId: string,
+  session: RlsAuth["session"],
+): Promise<{ predicate: Prisma.Sql; scope: MtmFieldScope | null } | Response> {
+  if (!session) return { predicate: Prisma.empty, scope: null }
+  const scope = await resolveMtmFieldScope(prisma, {
+    organizationId: orgId,
+    userId: session.userId,
+    webRole: session.role,
+  })
+  if (scope.kind === "none") return mtmFieldScopeRequiredResponse()
+  if (scope.kind === "organization") return { predicate: Prisma.empty, scope }
+  return { predicate: Prisma.sql`AND "agentId" IN (${Prisma.join(scope.agentIds)})`, scope }
+}
+
 // GET /api/v1/mtm/notifications?agentId=...&unreadOnly=true&limit=50
 // Web admin / supervisor view.
-export const GET = withRls(async (req, { orgId }) => {
+export const GET = withRls(async (req, { orgId, session }) => {
   const { searchParams } = new URL(req.url)
   const agentId = searchParams.get("agentId") || ""
   const unreadOnly = searchParams.get("unreadOnly") === "true"
   const limit = Math.min(200, Math.max(1, parseInt(searchParams.get("limit") || "50")))
 
   try {
+    const scoped = await notificationScopePredicate(orgId, session)
+    if (scoped instanceof Response) return scoped
+    if (agentId && scoped.scope && !isAgentInFieldScope(scoped.scope, agentId)) return mtmAgentOutOfScopeResponse()
     const capabilities = await productCapabilitiesForMixedSurface(orgId, "MTM/notifications GET")
     const domainPredicate = notificationDomainPredicate(capabilities)
-    const agentPredicate = agentId ? Prisma.sql`AND "agentId" = ${agentId}` : Prisma.empty
+    const agentPredicate = agentId ? Prisma.sql`AND "agentId" = ${agentId}` : scoped.predicate
     const unreadPredicate = unreadOnly ? Prisma.sql`AND "isRead" = FALSE` : Prisma.empty
     const [idRows, unreadRows] = await Promise.all([
       prisma.$queryRaw<NotificationIdRow[]>`
@@ -64,8 +97,12 @@ export const GET = withRls(async (req, { orgId }) => {
 
 // PATCH /api/v1/mtm/notifications  body: { ids?: string[], isRead: boolean, all?: boolean }
 // Mark a list (or all unread) as read/unread for the calling user's org.
-export const PATCH = withRls(async (req, { orgId }) => {
+export const PATCH = withRls(async (req, { orgId, session }) => {
   try {
+    // Marking read is scoped like reading: `all: true` from a manager touches
+    // only their agents' notifications, never another team's inbox.
+    const scoped = await notificationScopePredicate(orgId, session)
+    if (scoped instanceof Response) return scoped
     const body = await req.json()
     const isRead = !!body.isRead
     const capabilities = await productCapabilitiesForMixedSurface(orgId, "MTM/notifications PATCH")
@@ -87,6 +124,7 @@ export const PATCH = withRls(async (req, { orgId }) => {
       SET "isRead" = ${isRead}
       WHERE "organizationId" = ${orgId}
         AND ${domainPredicate}
+        ${scoped.predicate}
         ${targetPredicate}
     `
     return NextResponse.json({ success: true, data: { updated } })

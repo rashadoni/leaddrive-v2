@@ -284,6 +284,11 @@ describe("GET /api/v1/mtm/mobile/week", () => {
     expect(tuesday.routes[0].points[0].visitPolicy.requirements).toEqual(expect.arrayContaining([
       expect.objectContaining({ actionKey: "VISIT_NOTE", mode: "OPTIONAL", minCount: 1 }),
     ]))
+    // visitPoliciesEnabled comes from the week's single getMtmSettings read,
+    // not from one mtmSetting.findFirst per (day × customer).
+    const switchReads = vi.mocked(prisma.mtmSetting.findFirst).mock.calls
+      .filter(([args]: any) => args?.where?.key === "visitPoliciesEnabled")
+    expect(switchReads).toHaveLength(0)
     expect(json.data.summary).toMatchObject({
       routes: 1,
       plannedStops: 2,

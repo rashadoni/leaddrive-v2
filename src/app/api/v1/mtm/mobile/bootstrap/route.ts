@@ -2,12 +2,14 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withMobileRls } from "@/lib/with-mobile-rls"
 import { getMtmSettings } from "@/lib/mtm-settings"
+import { checkInGeofenceRadius } from "@/lib/mtm/check-in-geofence"
 import {
   hasMobilePermission,
   mobileCapabilities,
   mobileFieldPermissions,
 } from "@/lib/mtm/mobile-capabilities"
 import { cartoBasemapsApiKey } from "@/lib/carto-basemap"
+import { routeTargetTypesForPlanning } from "@/lib/mtm/route-target-types"
 import { buildMtmMobileCapabilityManifest } from "@/lib/mtm/mobile-capability-manifest"
 import {
   MTM_MOBILE_SYNC_V2_ROUTE_STREAM,
@@ -22,7 +24,7 @@ import {
 import { readMtmMobileMediaUploadPolicy } from "@/lib/mtm/mobile-media-guard"
 import { readMtmMobileGpsBatchPilot } from "@/lib/mtm/mobile-gps-guard"
 import { recordMtmMobileApkObservation } from "@/lib/mtm/mobile-sync-telemetry"
-import { currentDateKey, localDateKeyToUtc } from "@/lib/mtm/mobile-week"
+import { currentDateKey } from "@/lib/mtm/mobile-week"
 import { isValidTimezone } from "@/lib/timezone"
 import {
   workforceAttendancePolicyManifest,
@@ -48,6 +50,7 @@ type MobileAttendanceManifest = {
   status: "NOT_CONFIGURED" | "ACTIVE" | "INVALID"
   enforcementVersion: 1 | null
   configVersion: string | null
+  locationRequiredActions: WorkforceAttendanceAction[]
   qrRequiredActions: WorkforceAttendanceAction[]
   deviceTrustRequiredActions: WorkforceAttendanceAction[]
   biometricRequiredActions: WorkforceAttendanceAction[]
@@ -62,6 +65,7 @@ function unconfiguredAttendanceManifest(input: {
     status: "NOT_CONFIGURED",
     enforcementVersion: null,
     configVersion: null,
+    locationRequiredActions: [],
     qrRequiredActions: [],
     deviceTrustRequiredActions: [],
     biometricRequiredActions: [],
@@ -122,6 +126,7 @@ async function mobileAttendanceManifest(input: {
       status: "ACTIVE",
       enforcementVersion: attendance.enforcementVersion,
       configVersion,
+      locationRequiredActions: attendance.locationRequiredActions,
       qrRequiredActions: attendance.qrRequiredActions,
       deviceTrustRequiredActions: attendance.deviceTrustRequiredActions,
       biometricRequiredActions: attendance.biometricRequiredActions,
@@ -349,10 +354,13 @@ export const GET = withMobileRls(async (req, auth) => {
     // census without storing client state or withholding the v1 contract from
     // an old APK. The telemetry helper hashes tenant/principal identifiers and
     // rejects unsafe version strings before logging.
+    const buildSha = req.headers.get("x-workforce-app-build")
+    const platform = req.headers.get("x-workforce-client-platform")
+    const deviceClass = req.headers.get("x-workforce-device-class")
     recordMtmMobileApkObservation({
       organizationId: auth.orgId,
       agentId: auth.agentId,
-      apkVersion: req.headers.get("x-field-apk-version"),
+      apkVersion: req.headers.get("x-workforce-app-version") ?? req.headers.get("x-field-apk-version"),
       protocolPreferred: manifest.protocol.preferred,
       cohorts: {
         routes: manifest.syncV2.routes,
@@ -362,9 +370,17 @@ export const GET = withMobileRls(async (req, auth) => {
         gps: manifest.gps.batches,
         media: manifest.media.uploads,
       },
+      ...(buildSha || platform || deviceClass
+        ? { diagnostics: { buildSha, platform, deviceClass } }
+        : {}),
     })
     const date = currentDateKey(now, timezone)
-    const todayWorkDate = localDateKeyToUtc(date, timezone)
+    // workDate is a @db.Date written as `${workDateKey}T00:00:00.000Z`
+    // (lib/mtm/workday.ts). The tenant-midnight instant from
+    // localDateKeyToUtc is the previous UTC day in Asia/Baku, so today's
+    // finished shift never matched and the app offered START again, which the
+    // server refused with MTM_WORKDAY_ALREADY_EXISTS (Redmi Pad SE, 2026-09-15).
+    const todayWorkDate = new Date(`${date}T00:00:00.000Z`)
     // A Route Field agent needs only their own field-session boundary to
     // start a route and transmit GPS. This is deliberately narrower than the
     // Workforce module: it does not expose a workforce stream, attendance
@@ -447,6 +463,20 @@ export const GET = withMobileRls(async (req, auth) => {
           // that their administrator has turned off.
           canPlanOwnRoutes,
           canSelfPublishRoutes,
+          // UI visibility only. OFF hides the app's contact screens; the
+          // contact stream and APIs keep working so visits never lose the
+          // contact they reference. Older APKs ignore the key and keep showing
+          // contacts, which is the safe side of this switch.
+          fieldContactsEnabled: settings.fieldContactsEnabled !== false,
+          // Same contract for pharmacy promotions: OFF hides the app's promotion
+          // screens and entry points; promotion APIs keep answering and older
+          // APKs keep showing them.
+          pharmacyPromotionsEnabled: settings.pharmacyPromotionsEnabled !== false,
+          // The organization's check-in zone, as check-in enforces it. The app
+          // checked a hard-coded 100 m before sending and turned agents back at
+          // 150 m when the zone was 250 m (Redmi Pad SE, 2026-09-15). A
+          // customer's own radius still arrives with its route point.
+          checkInGeofenceRadiusMeters: checkInGeofenceRadius(null, settings.geofenceRadius),
           workforce: {
             enabled: workforceEnabled,
             configVersion: attendance.configVersion,
@@ -457,7 +487,11 @@ export const GET = withMobileRls(async (req, auth) => {
         // The same tenant-owned labels and data scopes drive both web and
         // mobile planners. The APK must never fall back to hard-coded
         // "doctor/pharmacy" buttons after an administrator changes them.
-        routeTargetTypes: routeFieldEnabled ? settings.routeTargetTypes : [],
+        // Planning categories remain administrator-owned even when the full
+        // contacts directory is hidden; assigned doctors can still be routed.
+        routeTargetTypes: routeFieldEnabled
+          ? routeTargetTypesForPlanning(settings.routeTargetTypes)
+          : [],
         sync: routeFieldEnabled ? {
           horizon: "ACTIVE_FIELD_SCOPE",
           scopeVersion: null,

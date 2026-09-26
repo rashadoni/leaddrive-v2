@@ -94,8 +94,48 @@ describe("MTM route detail hydration UI contract", () => {
     expect(routesPage).toContain('dark:bg-red-950/20 dark:text-red-300')
   })
 
-  it("formats route-detail visit times in the selected application locale", () => {
-    expect(routesPage).toContain('formatTime(new Date(p.visitedAt), locale)')
+  it("formats route-detail visit times in the selected application locale and the tenant timezone", () => {
+    expect(routesPage).toContain('formatTime(new Date(value), locale, { hour: "2-digit", minute: "2-digit", timeZone: timezone })')
+    expect(routesPage).toContain('t("stopFact.closedAt", { time: tenantTime(p.visitedAt) })')
     expect(routesPage).not.toContain('toLocaleTimeString(')
+  })
+
+  it("shows plan versus fact for every stop instead of one unlabelled time (audit 2026-09-14)", () => {
+    expect(routesPage).toContain("summarizeMtmRouteExecution(selectedRoute?.points ?? [])")
+    expect(routesPage).toContain('t("stopFact.planned", { time: tenantTime(p.plannedTime) })')
+    expect(routesPage).toContain('t("stopFact.fact", { from: tenantTime(fact.checkInAt), to: tenantTime(fact.checkOutAt) })')
+    expect(routesPage).toContain('t("stopFact.late", { delay: durationLabel(fact.delayMinutes) })')
+    expect(routesPage).toContain('t("stopFact.outOfOrder", { actual: fact.actualSequence })')
+    // Zone through the visit review's rule and the shared badge (2026-09-14).
+    expect(routesPage).toContain('<VisitPlaceBadge place={place} size="xs" />')
+    expect(routesPage).not.toContain("stopFact.outOfZone")
+    // A co-participant's withheld coordinates are not "no GPS" (review of #208).
+    expect(routesPage).toContain("const place = visit && !visit.locationHidden ? visitPlaceSummary({")
+    expect(routesPage).toContain('{visit?.locationHidden ? (')
+    expect(routesPage).toContain('{tPlace("locationHidden")}')
+    for (const locale of ["az", "ru", "en"]) {
+      const placeMessages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")).mtmPlaceCheck
+      expect(placeMessages.locationHidden, locale).toEqual(expect.any(String))
+    }
+    expect(routesPage).toContain('href={`/mtm/visits?visitId=${encodeURIComponent(visit.id)}`}')
+    expect(routesPage).not.toContain("h ${routeMetrics.duration % 60}m")
+    // The chip reports the server total, not the page size.
+    expect(routesPage).toContain('t("allLatest", { shown: routes.length, total: routesTotal })')
+    // The dialog map frames every stop and check-in instead of centring on stop 1.
+    expect(routeMap).toContain("<FitRouteBounds positions={framedPositions} />")
+    expect(routeMap).toContain("map.fitBounds(L.latLngBounds(positions), { padding: [32, 32], maxZoom: 16 })")
+    // A resize only re-measures; it must not undo the user's zoom.
+    expect(routeMap).not.toContain("new ResizeObserver(() => fit())")
+    // «Not visited» only once the moment has passed or the route is closed.
+    expect(routesPage).toContain("isStopOverdue(p, selectedRoute.status)")
+    expect(routesPage).toContain("return Number.isFinite(planned) && planned < now")
+  })
+
+  it("summarises the day in a team-week cell instead of repeating the agent's name", () => {
+    const week = readFileSync("src/components/mtm/route-week-plan.tsx", "utf8")
+    expect(week).not.toContain("{route.name || route.agent?.name}")
+    expect(week).toContain('t("stopFact.weekSummary", {')
+    expect(week).toContain('t("stopFact.weekLate")')
+    expect(routesPage).toContain("timezone={timezone}")
   })
 })

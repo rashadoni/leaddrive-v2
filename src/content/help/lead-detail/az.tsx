@@ -234,8 +234,10 @@ export default function LeadDetailHelpAz() {
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
             İzah mətni, üç böyük rəqəm — <strong>Dərəcə</strong>, <strong>Bal</strong>,{" "}
             <strong>Konversiya</strong> — və altda faiz zolaqları ilə qiymətləndirmə faktorları
-            (Yaxınlıq, Sövdələşmə potensialı, Mənbə keyfiyyəti, Əlaqə səviyyəsi, Əlaqə tamlığı) göstərilir.
-            Yenidən hesablama bitəndə KPI kartındakı bal da yenilənir.
+            (Yaxınlıq, Sövdələşmə potensialı, Mənbə keyfiyyəti, Əlaqə səviyyəsi, Əlaqə tamlığı) göstərilir.{" "}
+            <strong>Konversiya</strong> Da Vinci-nin öz qiymətidir; yoxdursa, «—» görünür — lidin istənilən
+            dəyişikliyi balı ehtimalsız yenidən hesablayır. Yenidən hesablama bitəndə KPI kartındakı bal da
+            yenilənir.
           </HelpCallout>
         </HelpStep>
       </HelpSection>

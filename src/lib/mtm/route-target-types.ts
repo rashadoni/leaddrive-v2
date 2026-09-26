@@ -124,6 +124,15 @@ export function parseMtmRouteTargetTypes(raw: unknown):
   return { success: true, data: result }
 }
 
+/**
+ * Planning categories are administrator-owned and independent from the
+ * general contacts-directory switch. A tenant may hide the full directory
+ * while still allowing agents to plan visits to the doctors assigned to them.
+ */
+export function routeTargetTypesForPlanning(targets: MtmRouteTargetType[]): MtmRouteTargetType[] {
+  return targets
+}
+
 export function coerceMtmRouteTargetTypes(raw: unknown): MtmRouteTargetType[] {
   const parsed = parseMtmRouteTargetTypes(raw)
   const configured = (parsed.success ? parsed.data : MTM_ROUTE_TARGET_TYPE_DEFAULTS).map((entry) => ({

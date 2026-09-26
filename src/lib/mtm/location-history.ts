@@ -3,6 +3,14 @@ import { calculateDistance } from "@/lib/geo-utils"
 export const LOCATION_HISTORY_DISTANCE_FORMULA = "haversine-r6371000-filtered-v1"
 export const LOCATION_HISTORY_MAX_RAW_POINTS = 5_001
 export const LOCATION_HISTORY_MAX_OUTPUT_POINTS = 1_500
+/**
+ * Longest window the history shows at once. Owner 2026-09-22: «these days»,
+ * then: picking an earlier start must leave the end on today — a week back
+ * from today is eight calendar days, so the window is two weeks.
+ */
+export const LOCATION_HISTORY_MAX_RANGE_DAYS = 14
+/** Raw rows read for a window longer than a day; the map still gets the downsampled output. */
+export const LOCATION_HISTORY_MAX_RAW_POINTS_RANGE = 20_001
 
 export type HistoryLocationPoint = {
   id: string
@@ -60,7 +68,7 @@ export type HistoryGap = {
   startedAt: Date
   endedAt: Date
   durationSeconds: number
-  reason: "TELEMETRY_GAP"
+  reason: "TELEMETRY_GAP" | "WORKDAY_PAUSED"
   startLatitude: number
   startLongitude: number
   endLatitude: number
@@ -91,6 +99,7 @@ export type HistoryTimelineEvent = {
     | "VISIT"
     | "STOP"
     | "TELEMETRY_GAP"
+    | "WORKDAY_PAUSE"
     | "IMPOSSIBLE_JUMP"
     | "LOW_ACCURACY"
   source: "WORKDAY" | "PLAN" | "VISIT" | "GPS"
@@ -173,9 +182,32 @@ export function calculateHistoryDistance(points: HistoryLocationPoint[]): number
   return Math.round(meters)
 }
 
+/** A stretch of the day the agent put the workday on hold. */
+export type HistoryPauseInterval = { startedAt: Date; endedAt: Date | null }
+
+/**
+ * How much of a gap a single pause accounts for. A break does not start at
+ * the exact second the last coordinate arrived, so the match is by share of
+ * the gap, not by equality.
+ */
+const PAUSE_EXPLAINS_GAP_SHARE = 0.9
+
+function overlapSeconds(aFrom: number, aTo: number, bFrom: number, bTo: number): number {
+  return Math.max(0, Math.min(aTo, bTo) - Math.max(aFrom, bFrom)) / 1_000
+}
+
+/**
+ * Why the phone was silent decides what the day's card says. A pause the
+ * agent pressed themselves is not a telemetry failure, and calling it one
+ * costs twice: the manager sees "GPS quality problems" on an ordinary lunch
+ * break, and a real outage no longer stands out among them. The workday's own
+ * PAUSE/RESUME events are the evidence — the app stops tracking on pause by
+ * design, so the silence is expected, dated and explainable.
+ */
 export function detectHistoryGaps(
   points: HistoryLocationPoint[],
   gapThresholdSeconds: number,
+  pauses: readonly HistoryPauseInterval[] = [],
 ): HistoryGap[] {
   const gaps: HistoryGap[] = []
   for (let index = 1; index < points.length; index += 1) {
@@ -183,12 +215,20 @@ export function detectHistoryGaps(
       (points[index].recordedAt.getTime() - points[index - 1].recordedAt.getTime()) / 1_000,
     )
     if (durationSeconds > gapThresholdSeconds) {
+      const from = points[index - 1].recordedAt.getTime()
+      const to = points[index].recordedAt.getTime()
+      const paused = pauses.some((pause) => overlapSeconds(
+        from,
+        to,
+        pause.startedAt.getTime(),
+        pause.endedAt ? pause.endedAt.getTime() : to,
+      ) >= durationSeconds * PAUSE_EXPLAINS_GAP_SHARE)
       gaps.push({
         id: `gap-${points[index - 1].id}-${points[index].id}`,
         startedAt: points[index - 1].recordedAt,
         endedAt: points[index].recordedAt,
         durationSeconds,
-        reason: "TELEMETRY_GAP",
+        reason: paused ? "WORKDAY_PAUSED" : "TELEMETRY_GAP",
         startLatitude: points[index - 1].latitude,
         startLongitude: points[index - 1].longitude,
         endLatitude: points[index].latitude,
@@ -206,7 +246,8 @@ export function detectHistoryAnomalies(input: {
   maxAccuracyMeters: number
   impossibleSpeedKmh: number
 }): HistoryAnomaly[] {
-  const anomalies: HistoryAnomaly[] = input.gaps.map((gap) => ({
+  // A paused workday explains itself; only unexplained silence is an anomaly.
+  const anomalies: HistoryAnomaly[] = input.gaps.filter((gap) => gap.reason === "TELEMETRY_GAP").map((gap) => ({
     id: `missing-${gap.id}`,
     type: "MISSING_SEGMENT",
     startedAt: gap.startedAt,
@@ -348,6 +389,7 @@ const TIMELINE_PRIORITY: Record<HistoryTimelineEvent["kind"], number> = {
   VISIT: 30,
   STOP: 40,
   TELEMETRY_GAP: 50,
+  WORKDAY_PAUSE: 50,
   IMPOSSIBLE_JUMP: 60,
   LOW_ACCURACY: 70,
   WORKDAY_END: 80,
@@ -424,13 +466,14 @@ export function buildHistoryTimeline(input: {
     })
   }
   for (const gap of input.gaps) {
+    const paused = gap.reason === "WORKDAY_PAUSED"
     events.push({
       id: gap.id,
       at: gap.startedAt,
       endedAt: gap.endedAt,
-      kind: "TELEMETRY_GAP",
-      source: "GPS",
-      label: "telemetry_gap",
+      kind: paused ? "WORKDAY_PAUSE" : "TELEMETRY_GAP",
+      source: paused ? "WORKDAY" : "GPS",
+      label: paused ? "workday_pause" : "telemetry_gap",
       relatedId: null,
       confirmed: true,
     })

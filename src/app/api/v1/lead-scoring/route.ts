@@ -5,6 +5,7 @@ import { PiiMasker } from "@/lib/ai/pii-masker"
 import Anthropic from "@anthropic-ai/sdk"
 import { getAnthropicClient } from "@/lib/ai/anthropic-client"
 import { decimalToNumber } from "@/lib/prisma-decimal"
+import { modelConversionProbability } from "@/lib/leads/conversion-probability"
 
 function getGrade(score: number): string {
   if (score >= 80) return "A"
@@ -55,8 +56,18 @@ const LANG_FALLBACKS: Record<string, { ruleBasedFallback: string; aiComplete: st
   az: { ruleBasedFallback: "Da Vinci — qayda əsaslı təhlil", aiComplete: "Da Vinci təhlili tamamlandı" },
 }
 
-// Rule-based fallback when no API key
-function scoreLeadRuleBased(lead: any, locale: string = "en"): { score: number; factors: Record<string, number>; conversionProb: number; reasoning: string } {
+type ScoreResult = {
+  score: number
+  factors: Record<string, number>
+  /** Only a probability the model itself returned; the rule-based scheme has none. */
+  conversionProb: number | null
+  reasoning: string
+  /** Whether the model produced this result — not merely whether a key is configured. */
+  aiPowered: boolean
+}
+
+// Rule-based fallback when no API key, or when the model call fails
+function scoreLeadRuleBased(lead: any, locale: string = "en"): ScoreResult {
   const factors: Record<string, number> = {}
   let score = 0
 
@@ -77,7 +88,9 @@ function scoreLeadRuleBased(lead: any, locale: string = "en"): { score: number; 
   if (lead.notes && lead.notes.length > 10) { factors.notes = 5; score += 5 }
 
   score = Math.min(score, 100)
-  const conversionProb = Math.round(score * 0.85)
+  // No conversionProb: this scheme adds up points and has no probability
+  // model. It used to store round(score × 0.85), which the leads analytics tab
+  // then printed as the lead's chance of converting.
 
   // Build meaningful reasoning from factors in user's language
   const L = LANG_LABELS[locale] || LANG_LABELS.en
@@ -100,7 +113,7 @@ function scoreLeadRuleBased(lead: any, locale: string = "en"): { score: number; 
   const fb = LANG_FALLBACKS[locale] || LANG_FALLBACKS.en
   const reasoning = parts.length > 0 ? parts.join(". ") + "." : fb.ruleBasedFallback
 
-  return { score, factors, conversionProb, reasoning }
+  return { score, factors, conversionProb: null, reasoning, aiPowered: false }
 }
 
 // AI-powered scoring with Claude
@@ -110,7 +123,7 @@ async function scoreLeadWithAI(
   activities: any[],
   deals: any[],
   locale: string = "en",
-): Promise<{ score: number; factors: Record<string, number>; conversionProb: number; reasoning: string }> {
+): Promise<ScoreResult> {
   const leadContext = `
 Lead: ${lead.contactName}
 Company: ${lead.companyName || "Unknown"}
@@ -166,11 +179,16 @@ Respond ONLY with valid JSON (no markdown, no explanation outside JSON):
 
     const rawText = response.content[0].type === "text" ? response.content[0].text : ""
     const parsed = JSON.parse(piiMasker.unmask(rawText))
+    const probability = parsed.conversionProb
     return {
       score: Math.min(100, Math.max(0, parsed.score || 0)),
       factors: parsed.factors || {},
-      conversionProb: Math.min(100, Math.max(0, parsed.conversionProb || 0)),
+      // A missing figure stays missing, not 0%.
+      conversionProb: typeof probability === "number" && Number.isFinite(probability)
+        ? Math.min(100, Math.max(0, probability))
+        : null,
       reasoning: parsed.reasoning || (LANG_FALLBACKS[locale] || LANG_FALLBACKS.en).aiComplete,
+      aiPowered: true,
     }
   } catch (e) {
     console.error("Da Vinci scoring failed, using rule-based fallback:", e)
@@ -202,7 +220,8 @@ export const GET = withRls(async (_req, { orgId }) => {
           score: l.score,
           scoreDetails: l.scoreDetails,
           grade: getGrade(l.score),
-          conversionProb: details.conversionProb ?? Math.round(l.score * 0.85),
+          // Only the model's own estimate; null otherwise — never the score × 0.85.
+          conversionProb: modelConversionProbability(details),
           reasoning: details.reasoning || null,
           lastScoredAt: l.lastScoredAt,
           estimatedValue: l.estimatedValue,
@@ -238,7 +257,7 @@ export const POST = withRls(async (req, { orgId }) => {
   const results: Array<{ id: string; name: string; score: number; grade: string }> = []
 
   for (const lead of leads) {
-    let result: { score: number; factors: Record<string, number>; conversionProb: number; reasoning: string }
+    let result: ScoreResult
 
     if (useAI && client) {
       // Fetch related data for Da Vinci context
@@ -265,10 +284,12 @@ export const POST = withRls(async (req, { orgId }) => {
         score: result.score,
         scoreDetails: {
           factors: result.factors,
-          conversionProb: result.conversionProb,
+          ...(result.conversionProb != null ? { conversionProb: result.conversionProb } : {}),
           grade: getGrade(result.score),
           reasoning: result.reasoning,
-          aiPowered: useAI,
+          // The model's own result, not "a key is configured": a failed call
+          // falls back to the rule-based scheme, and used to be stamped true.
+          aiPowered: result.aiPowered,
         },
         lastScoredAt: new Date(),
       },

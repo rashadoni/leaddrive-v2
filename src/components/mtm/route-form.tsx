@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useTranslations } from "next-intl"
+import { useMtmApiError } from "@/components/mtm/use-mtm-api-error"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -21,6 +22,7 @@ interface RouteFormProps {
 export function MtmRouteForm({ open, onOpenChange, onSaved, initialData, orgId }: RouteFormProps) {
   const tc = useTranslations("common")
   const tf = useTranslations("mtmForms")
+  const explainError = useMtmApiError()
   const isEdit = !!initialData?.id
   const [form, setForm] = useState({ name: "", agentId: "", date: "", status: "PLANNED", notes: "" })
   const [points, setPoints] = useState<{ customerId: string }[]>([])
@@ -43,7 +45,10 @@ export function MtmRouteForm({ open, onOpenChange, onSaved, initialData, orgId }
         fetch("/api/v1/mtm/agents?limit=200", { headers }).then(r => r.json()),
         fetch("/api/v1/mtm/customers?limit=200", { headers }).then(r => r.json()),
       ]).then(([a, c]) => {
+        // Without a field card the agent list is refused; say so instead of
+        // leaving the dropdown silently empty.
         if (a.success) setAgents(a.data.agents || [])
+        else setError(explainError(a))
         if (c.success) setCustomers(c.data.customers || [])
       }).catch(() => {})
     }

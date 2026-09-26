@@ -2,17 +2,21 @@
 
 import { useEffect, useMemo, useReducer, useState } from "react"
 import { useTranslations } from "next-intl"
+import { useMtmApiError } from "@/components/mtm/use-mtm-api-error"
 import { ChevronLeft, ChevronRight, MapPin, Plus, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { MtmRouteRecord } from "@/components/mtm/route-types"
 import { fetchMtmRoutesInRange } from "@/lib/mtm/route-range-client"
-import { formatDate } from "@/lib/format-date"
+import { formatDate, formatTime } from "@/lib/format-date"
+import { summarizeMtmRouteExecution } from "@/lib/mtm/route-point-execution"
 import { mtmStatusLabel } from "@/lib/mtm/status-labels"
 import { visibleWeekPlanAgents } from "@/lib/mtm/week-plan-agents"
 
 interface RouteWeekPlanProps {
   orgId?: string
   locale: string
+  /** Tenant timezone for the check-in window in each cell. */
+  timezone?: string
   refreshVersion: number
   initialDate?: string | null
   onSelectRoute: (route: MtmRouteRecord) => void
@@ -39,12 +43,14 @@ interface RouteAgent {
 interface AgentsState {
   agents: RouteAgent[]
   loading: boolean
+  /** Localized reason the list was refused, e.g. no field card. */
+  message?: string
 }
 
 type AgentsAction =
   | { type: "loading" }
   | { type: "loaded"; agents: RouteAgent[] }
-  | { type: "failed" }
+  | { type: "failed"; message?: string }
 
 function agentsReducer(state: AgentsState, action: AgentsAction): AgentsState {
   switch (action.type) {
@@ -53,7 +59,7 @@ function agentsReducer(state: AgentsState, action: AgentsAction): AgentsState {
     case "loaded":
       return { agents: action.agents, loading: false }
     case "failed":
-      return { agents: [], loading: false }
+      return { agents: [], loading: false, message: action.message }
     default:
       return state
   }
@@ -102,9 +108,20 @@ function dateFromKey(value: string): Date {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T12:00:00`) : new Date()
 }
 
+/** Agent ids that have at least one route in the loaded week. */
+function routesByAgentAndDateKeys(routes: readonly MtmRouteRecord[]): string[] {
+  const ids: string[] = []
+  for (const route of routes) {
+    if (route.agentId) ids.push(route.agentId)
+    for (const assignment of route.assignments ?? []) ids.push(assignment.agentId)
+  }
+  return ids
+}
+
 export function MtmRouteWeekPlan({
   orgId,
   locale,
+  timezone,
   refreshVersion,
   initialDate,
   onSelectRoute,
@@ -116,6 +133,7 @@ export function MtmRouteWeekPlan({
 }: RouteWeekPlanProps) {
   const t = useTranslations("mtmRoutesPage")
   const statusT = useTranslations("mtmStatus")
+  const explainError = useMtmApiError()
   const [weekStart, setWeekStart] = useState(() => startOfWeek(initialDate ? dateFromKey(initialDate) : new Date()))
   const [agentsState, dispatchAgents] = useReducer(agentsReducer, { agents: [], loading: true })
   const [rangeState, dispatchRange] = useReducer(routeRangeReducer, { routes: [], loading: true, error: false })
@@ -143,13 +161,13 @@ export function MtmRouteWeekPlan({
       .then((result) => {
         if (controller.signal.aborted) return
         if (result.success) dispatchAgents({ type: "loaded", agents: result.data?.agents ?? [] })
-        else dispatchAgents({ type: "failed" })
+        else dispatchAgents({ type: "failed", message: explainError(result) })
       })
       .catch(() => {
         if (!controller.signal.aborted) dispatchAgents({ type: "failed" })
       })
     return () => controller.abort()
-  }, [orgId])
+  }, [explainError, orgId])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -175,7 +193,7 @@ export function MtmRouteWeekPlan({
 
   const [agentSearch, setAgentSearch] = useState("")
   const [agentTeamId, setAgentTeamId] = useState("")
-  const { agents: availableAgents, loading: agentsLoading } = agentsState
+  const { agents: availableAgents, loading: agentsLoading, message: agentsMessage } = agentsState
   const { routes: routesForWeek, loading: rangeLoading, error: rangeError } = rangeState
 
   const allAgents = useMemo(() => {
@@ -211,6 +229,21 @@ export function MtmRouteWeekPlan({
   }, [allAgents])
   const hiddenCount = allAgents.length - agents.length
 
+  // Routes audit 2026-09-26: alphabetical order put four agents without a
+  // single route on top and the working ones below. Agents with a plan this
+  // week come first; the rest fold into one line, still one click away for
+  // planning (and always shown while searching or when nobody has a plan).
+  const [showIdle, setShowIdle] = useState(false)
+  const busyAgentIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const key of routesByAgentAndDateKeys(routesForWeek)) ids.add(key)
+    return ids
+  }, [routesForWeek])
+  const busyAgents = agents.filter((agent) => busyAgentIds.has(agent.id))
+  const idleAgents = agents.filter((agent) => !busyAgentIds.has(agent.id))
+  const foldIdle = !showIdle && !agentSearch && busyAgents.length > 0 && idleAgents.length > 0
+  const visibleAgents = foldIdle ? busyAgents : [...busyAgents, ...idleAgents]
+
   const routesByAgentAndDate = useMemo(() => {
     const result = new Map<string, MtmRouteRecord[]>()
     for (const route of routesForWeek) {
@@ -237,7 +270,6 @@ export function MtmRouteWeekPlan({
       <div className="flex flex-col gap-2 border-b border-zinc-200 px-3 py-2 dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-base font-semibold">{t("weekPlanTitle")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("weekPlanHint")}</p>
           {rangeLoading ? <p role="status" className="mt-1 text-xs text-muted-foreground">{t("weekLoading")}</p> : null}
           {rangeError ? (
             <div role="alert" className="mt-1 flex flex-wrap items-center gap-2 text-xs text-amber-700 dark:text-amber-300">
@@ -300,40 +332,70 @@ export function MtmRouteWeekPlan({
             ))}
           </div>
 
-          {agents.map((agent) => (
+          {visibleAgents.map((agent) => (
             <div key={agent.id} className="grid min-h-16 grid-cols-[180px_repeat(7,minmax(100px,1fr))] border-b border-zinc-200 last:border-b-0 dark:border-zinc-700">
               <div className="sticky left-0 z-10 border-r border-zinc-200 bg-card px-3 py-2 text-sm font-medium dark:border-zinc-700">{agent.name}</div>
               {days.map((day) => {
                 const dayRoutes = routesByAgentAndDate.get(`${agent.id}:${dateKey(day)}`) ?? []
                 const canCreateForAgent = canCreateRoutes && (canManageAssignments || !selfAgentId || selfAgentId === agent.id)
                 return (
-                  <div key={dateKey(day)} className="space-y-1 border-r border-zinc-200 p-1.5 last:border-r-0 dark:border-zinc-700">
-                    {dayRoutes.map((route) => (
+                  <div key={dateKey(day)} className="group space-y-1 border-r border-zinc-200 p-1.5 last:border-r-0 dark:border-zinc-700">
+                    {dayRoutes.map((route) => {
+                      // The row already names the agent; the cell said it again
+                      // (audit 2026-09-14). It now says how the day went:
+                      // «2/2 · 16:46–18:53», and whether a stop started late.
+                      const execution = summarizeMtmRouteExecution(route.points ?? [])
+                      const clock = (value: string) => formatTime(new Date(value), locale, {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        ...(timezone ? { timeZone: timezone } : {}),
+                      })
+                      const summary = execution.firstCheckInAt && execution.lastCheckOutAt
+                        ? t("stopFact.weekSummary", {
+                            visited: route.visitedPoints,
+                            total: route.totalPoints,
+                            from: clock(execution.firstCheckInAt),
+                            to: clock(execution.lastCheckOutAt),
+                          })
+                        : t("stopFact.weekSummaryNoTime", { visited: route.visitedPoints, total: route.totalPoints })
+                      return (
                       <button
                         key={route.id}
                         type="button"
+                        data-testid="mtm-week-route-cell"
                         onClick={() => onSelectRoute(route)}
                         className="block min-h-11 w-full rounded-lg border border-zinc-200 bg-muted/60 px-2 py-1.5 text-left hover:border-primary/50 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:border-zinc-700"
                       >
-                        <span className="block truncate text-xs font-medium">{route.name || route.agent?.name}</span>
+                        <span className="flex items-center gap-1 text-xs font-medium tabular-nums">
+                          <span className="truncate">{summary}</span>
+                          {execution.lateCount > 0 ? (
+                            <span className="shrink-0 rounded bg-red-50 px-1 text-[10px] font-medium text-red-700 dark:bg-red-950/30 dark:text-red-300">{t("stopFact.weekLate")}</span>
+                          ) : null}
+                        </span>
                         <span className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
-                          <MapPin className="h-3 w-3" /> {route.totalPoints} {t("points")} · {mtmStatusLabel(statusT, "route", route.status)}
+                          <MapPin className="h-3 w-3 shrink-0" /> <span className="truncate">{route.name ? `${route.name} · ` : ""}{(route.status === "COMPLETED" || route.status === "INCOMPLETE") && route.visitedPoints < route.totalPoints
+                            // «Tamamlanıb» at 3 of 5 stops read as a job done (audit 2026-09-26).
+                            ? <span className="text-amber-700 dark:text-amber-300">{t("weekStopsMissed", { count: route.totalPoints - route.visitedPoints })}</span>
+                            : mtmStatusLabel(statusT, "route", route.status)}</span>
                         </span>
                       </button>
-                    ))}
-                    {dayRoutes.length === 0 ? (
+                      )
+                    })}
+                    {/* Audit 2026-09-21: 17 agents × 7 days printed up to 119 dashed
+                        «+ Запланировать» blocks. An empty cell is now empty; its
+                        «+» appears on hover or focus and stays visible on touch.
+                        Without the right to plan, nothing is drawn: the page
+                        already states why in one line. */}
+                    {dayRoutes.length === 0 && canCreateForAgent ? (
                       <button
                         type="button"
                         data-testid="mtm-week-empty-cell-action"
-                        className="flex min-h-11 w-full items-center justify-center gap-1 rounded-lg border border-dashed border-zinc-300 px-2 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/60 hover:bg-primary/5 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-zinc-300 disabled:hover:bg-transparent disabled:hover:text-muted-foreground dark:border-zinc-700"
+                        className="flex min-h-11 w-full items-center justify-center rounded-lg text-muted-foreground opacity-0 transition-opacity hover:bg-primary/5 hover:text-primary focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100 [@media(hover:none)]:opacity-100"
                         onClick={() => onCreateRoute({ date: dateKey(day), agentId: agent.id })}
-                        disabled={!canCreateForAgent}
-                        title={canCreateForAgent
-                          ? t("planRouteForAgentOnDate", { employee: agent.name, date: formatDate(day, locale) })
-                          : t("selfPlanningDisabled")}
+                        title={t("planRouteForAgentOnDate", { employee: agent.name, date: formatDate(day, locale) })}
                         aria-label={t("planRouteForAgentOnDate", { employee: agent.name, date: formatDate(day, locale) })}
                       >
-                        <Plus className="h-3.5 w-3.5" />{t("planRoute")}
+                        <Plus className="h-4 w-4" />
                       </button>
                     ) : null}
                   </div>
@@ -342,13 +404,19 @@ export function MtmRouteWeekPlan({
             </div>
           ))}
 
+          {idleAgents.length > 0 && busyAgents.length > 0 && !agentSearch ? (
+            <div data-testid="mtm-week-idle-agents" className="flex items-center gap-3 border-b border-zinc-200 px-3 py-2 text-sm text-muted-foreground dark:border-zinc-700">
+              <span>{t("weekIdleAgents", { count: idleAgents.length })}</span>
+              <Button type="button" variant="outline" size="sm" className="min-h-10" onClick={() => setShowIdle((current) => !current)}>{showIdle ? t("weekHideIdle") : t("weekShowIdle")}</Button>
+            </div>
+          ) : null}
           {agents.length > 0 && hiddenCount > 0 ? (
             <div className="border-t border-zinc-200 px-3 py-1.5 text-xs text-muted-foreground dark:border-zinc-700">
               {t("weekAgentsHidden", { count: hiddenCount })}
             </div>
           ) : null}
           {agents.length === 0 ? (
-            <div className="flex min-h-40 items-center justify-center text-sm text-muted-foreground">{agentsLoading ? t("loading") : t("weekNoAgents")}</div>
+            <div className="flex min-h-40 items-center justify-center text-sm text-muted-foreground">{agentsLoading ? t("loading") : agentsMessage || t("weekNoAgents")}</div>
           ) : null}
         </div>
       </div>

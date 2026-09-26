@@ -1,11 +1,15 @@
 /**
  * Unit tests for assertMtmAdmin (src/lib/mtm/auth-gate.ts).
  *
- * Covers the three branches directly:
- *   1. No mobile JWT (web admin panel) → null (allow)
- *   2. Phase 1 rejection: JWT role is not admin → 403, no DB hit
- *   3. Phase 2 pass: JWT is admin + DB confirms → null (allow)
- *   4. Phase 2 rejection: JWT claims admin but DB returns null (stale JWT) → 403
+ * Regions and teams define managers' territories, so their writes are
+ * administrator-only (scope audit 2026-09-14). Before, every web caller passed
+ * ("web admin panel: unrestricted") and a mobile MANAGER qualified too.
+ *
+ *   1. Browser session: web admin/superadmin → allow without a query.
+ *   2. Browser session: other web roles → allow only when the user's oldest
+ *      ACTIVE MTM card is ADMIN.
+ *   3. API key (no session, no JWT) → allow.
+ *   4. Mobile JWT: ADMIN only, re-checked in the database (stale JWT → 403).
  */
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { NextRequest } from "next/server"
@@ -17,8 +21,7 @@ vi.mock("@/lib/mobile-auth", () => ({
 import { assertMtmAdmin } from "@/lib/mtm/auth-gate"
 import { getMobileAuth } from "@/lib/mobile-auth"
 
-// Minimal Prisma stub — only mtmAgent.findFirst is needed
-function makeDb(result: { id: string } | null) {
+function makeDb(result: { id?: string; role?: string } | null) {
   return {
     mtmAgent: {
       findFirst: vi.fn().mockResolvedValue(result),
@@ -32,93 +35,76 @@ function req(): NextRequest {
 
 const ORG = "org-test"
 
+function session(role: string) {
+  return { orgId: ORG, userId: "user-1", role, email: "u@example.com", name: "U" } as any
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(getMobileAuth).mockReturnValue(null)
 })
 
-describe("assertMtmAdmin", () => {
-  it("returns null (allow) when there is no mobile JWT (web admin panel)", async () => {
-    vi.mocked(getMobileAuth).mockReturnValue(null)
+describe("assertMtmAdmin — browser session", () => {
+  it("allows a web admin or superadmin without a database lookup", async () => {
+    for (const role of ["admin", "superadmin"]) {
+      const db = makeDb(null)
+      expect(await assertMtmAdmin(req(), { orgId: ORG, session: session(role) }, db as any)).toBeNull()
+      expect(db.mtmAgent.findFirst).not.toHaveBeenCalled()
+    }
+  })
+
+  it("refuses a web manager whose card is not ADMIN — the old 'web is unrestricted' hole", async () => {
+    const db = makeDb({ role: "MANAGER" })
+    const result = await assertMtmAdmin(req(), { orgId: ORG, session: session("manager") }, db as any)
+    expect(result!.status).toBe(403)
+    expect(await result!.json()).toMatchObject({ code: "MTM_STRUCTURE_ADMIN_REQUIRED" })
+  })
+
+  it("refuses a web user without any MTM card", async () => {
     const db = makeDb(null)
-    const result = await assertMtmAdmin(req(), ORG, db as any)
-
-    expect(result).toBeNull()
-    // No DB call needed for web admin panel callers
-    expect(db.mtmAgent.findFirst).not.toHaveBeenCalled()
-  })
-
-  it("returns 403 (Phase 1) when JWT role is AGENT — no DB hit", async () => {
-    vi.mocked(getMobileAuth).mockReturnValue({ agentId: "a1", role: "AGENT" } as any)
-    const db = makeDb({ id: "a1" }) // DB would allow, but Phase 1 blocks first
-    const result = await assertMtmAdmin(req(), ORG, db as any)
-
-    expect(result).not.toBeNull()
-    const body = await result!.json()
+    const result = await assertMtmAdmin(req(), { orgId: ORG, session: session("sales") }, db as any)
     expect(result!.status).toBe(403)
-    expect(body.error).toBe("Forbidden")
-    // Phase 1 must short-circuit before hitting the DB
-    expect(db.mtmAgent.findFirst).not.toHaveBeenCalled()
   })
 
-  it("returns 403 (Phase 1) when JWT role is SUPERVISOR — no DB hit", async () => {
-    vi.mocked(getMobileAuth).mockReturnValue({ agentId: "a1", role: "SUPERVISOR" } as any)
-    const db = makeDb({ id: "a1" })
-    const result = await assertMtmAdmin(req(), ORG, db as any)
-
-    expect(result!.status).toBe(403)
-    expect(db.mtmAgent.findFirst).not.toHaveBeenCalled()
+  it("allows a web user whose oldest ACTIVE card is MTM ADMIN, looked up inside the tenant", async () => {
+    const db = makeDb({ role: "ADMIN" })
+    expect(await assertMtmAdmin(req(), { orgId: ORG, session: session("manager") }, db as any)).toBeNull()
+    expect(db.mtmAgent.findFirst).toHaveBeenCalledWith({
+      where: { organizationId: ORG, userId: "user-1", status: "ACTIVE" },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      select: { role: true },
+    })
   })
+})
 
-  it("returns null (allow) when JWT=ADMIN and DB confirms the role", async () => {
-    vi.mocked(getMobileAuth).mockReturnValue({ agentId: "a1", role: "ADMIN" } as any)
-    const db = makeDb({ id: "a1" })
-    const result = await assertMtmAdmin(req(), ORG, db as any)
-
-    expect(result).toBeNull()
-    // DB re-check must be called with org-scoped where clause
-    expect(db.mtmAgent.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ id: "a1", organizationId: ORG }),
-      }),
-    )
-  })
-
-  it("returns null (allow) when JWT=MANAGER and DB confirms the role", async () => {
-    vi.mocked(getMobileAuth).mockReturnValue({ agentId: "a2", role: "MANAGER" } as any)
-    const db = makeDb({ id: "a2" })
-    const result = await assertMtmAdmin(req(), ORG, db as any)
-
-    expect(result).toBeNull()
-  })
-
-  it("returns 403 (Phase 2, stale JWT) when JWT=MANAGER but DB returns null", async () => {
-    // Simulates a demoted agent: JWT still claims MANAGER, DB row downgraded
-    vi.mocked(getMobileAuth).mockReturnValue({ agentId: "a1", role: "MANAGER" } as any)
-    const db = makeDb(null) // DB: agent no longer holds an admin role
-    const result = await assertMtmAdmin(req(), ORG, db as any)
-
-    expect(result).not.toBeNull()
-    expect(result!.status).toBe(403)
-    // DB re-check WAS called (Phase 1 passed, Phase 2 denied)
-    expect(db.mtmAgent.findFirst).toHaveBeenCalledTimes(1)
-  })
-
-  it("returns 403 (Phase 2, stale JWT) when JWT=ADMIN but DB returns null", async () => {
-    vi.mocked(getMobileAuth).mockReturnValue({ agentId: "a1", role: "ADMIN" } as any)
+describe("assertMtmAdmin — API key and mobile JWT", () => {
+  it("allows an API key (no session, no JWT) without a lookup", async () => {
     const db = makeDb(null)
-    const result = await assertMtmAdmin(req(), ORG, db as any)
-
-    expect(result!.status).toBe(403)
-    expect(db.mtmAgent.findFirst).toHaveBeenCalledTimes(1)
+    expect(await assertMtmAdmin(req(), { orgId: ORG, session: null }, db as any)).toBeNull()
+    expect(db.mtmAgent.findFirst).not.toHaveBeenCalled()
   })
 
-  it("DB re-check WHERE clause includes organizationId (cross-tenant guard)", async () => {
+  it.each(["AGENT", "SUPERVISOR", "MANAGER"])("refuses a %s token without a lookup", async (role) => {
+    vi.mocked(getMobileAuth).mockReturnValue({ agentId: "a1", role } as any)
+    const db = makeDb({ id: "a1" })
+    const result = await assertMtmAdmin(req(), { orgId: ORG, session: null }, db as any)
+    expect(result!.status).toBe(403)
+    expect(db.mtmAgent.findFirst).not.toHaveBeenCalled()
+  })
+
+  it("allows an ADMIN token when the database confirms the role in the same tenant", async () => {
     vi.mocked(getMobileAuth).mockReturnValue({ agentId: "a1", role: "ADMIN" } as any)
     const db = makeDb({ id: "a1" })
-    await assertMtmAdmin(req(), ORG, db as any)
-
+    expect(await assertMtmAdmin(req(), { orgId: ORG, session: null }, db as any)).toBeNull()
     const call = db.mtmAgent.findFirst.mock.calls[0][0] as any
-    expect(call.where.organizationId).toBe(ORG)
-    expect(call.where.id).toBe("a1")
+    expect(call.where).toMatchObject({ id: "a1", organizationId: ORG, role: "ADMIN", status: "ACTIVE" })
+  })
+
+  it("refuses a stale ADMIN token the database no longer confirms", async () => {
+    vi.mocked(getMobileAuth).mockReturnValue({ agentId: "a1", role: "ADMIN" } as any)
+    const db = makeDb(null)
+    const result = await assertMtmAdmin(req(), { orgId: ORG, session: null }, db as any)
+    expect(result!.status).toBe(403)
+    expect(db.mtmAgent.findFirst).toHaveBeenCalledTimes(1)
   })
 })

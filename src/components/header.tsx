@@ -117,6 +117,14 @@ export function Header({ orgName, userName, userAvatar, onOpenLauncher, sessionL
       </div>
 
       <div data-testid="global-header-actions" className="flex shrink-0 items-center gap-1 sm:gap-2">
+        {/* The voice assistant's microphone portals here (VoiceOrb). The slot
+            collapses to nothing for everyone outside the voice pilot; who sees
+            the control is still decided by the pilot gate, not by the header. */}
+        <div
+          id="header-voice-assistant-slot"
+          data-testid="header-voice-assistant-slot"
+          className="flex shrink-0 items-center empty:hidden"
+        />
         <NotificationBell />
 
         <LanguageSwitcher />

@@ -161,7 +161,6 @@ export function MtmRouteCalendar({
             <CalendarDays className="h-5 w-5 text-primary" aria-hidden="true" />
             <h2 className="text-base font-semibold">{t("calendarTitle")}</h2>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">{t("calendarHint")}</p>
         </div>
         <div className="flex items-center justify-between gap-1 sm:justify-end">
           <Button data-testid="mtm-route-calendar-previous-month" variant="ghost" size="icon" className="min-h-11 min-w-11" aria-label={t("previousMonth")} onClick={() => moveMonth(-1)}>
@@ -307,7 +306,11 @@ export function MtmRouteCalendar({
             >
               <div className="mb-1 flex min-h-9 items-center justify-between gap-1">
                 <span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${isToday ? "bg-primary text-primary-foreground" : ""}`}>{day.date.getDate()}</span>
-                {isCurrentMonth && day.routes.length > 0 ? (
+                {/* Audit 2026-09-21: a dashed «+ Запланировать» block in every
+                    empty day filled the month with ~25 identical buttons. One
+                    quiet «+» in the day header serves full and empty days alike:
+                    it appears on hover or focus and stays visible on touch. */}
+                {isCurrentMonth ? (
                   <Button data-testid="mtm-route-calendar-plan" variant="ghost" size="icon" className="min-h-11 min-w-11 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100" aria-label={t("planRouteOnDate", { date: formatDate(day.date, locale) })} onClick={() => onCreateRoute(key)} disabled={!canCreateRoutes} title={canCreateRoutes ? t("planRouteOnDate", { date: formatDate(day.date, locale) }) : t("selfPlanningDisabled")}>
                     <Plus className="h-4 w-4" />
                   </Button>
@@ -337,18 +340,6 @@ export function MtmRouteCalendar({
                   </button>
                 ))}
                 {day.routes.length > 3 ? <div className="px-1 text-[11px] text-muted-foreground">{t("calendarMore", { n: day.routes.length - 3 })}</div> : null}
-                {isCurrentMonth && day.routes.length === 0 ? (
-                  <button
-                    type="button"
-                    data-testid="mtm-route-calendar-plan"
-                    className="flex min-h-11 w-full items-center justify-center gap-1 rounded-lg border border-dashed border-zinc-300 px-2 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/60 hover:bg-primary/5 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-zinc-300 disabled:hover:bg-transparent disabled:hover:text-muted-foreground dark:border-zinc-700 xl:min-h-9"
-                    onClick={() => onCreateRoute(key)}
-                    disabled={!canCreateRoutes}
-                    title={canCreateRoutes ? t("planRouteOnDate", { date: formatDate(day.date, locale) }) : t("selfPlanningDisabled")}
-                  >
-                    <Plus className="h-3.5 w-3.5" />{t("planRoute")}
-                  </button>
-                ) : null}
               </div>
             </div>
           )

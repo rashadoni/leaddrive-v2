@@ -89,6 +89,20 @@ describe("GET /api/v1/workforce/attendance/security-triage", () => {
     expect(prisma.mtmAgentWorkdayEvent.updateMany).not.toHaveBeenCalled()
   })
 
+  it("counts only the employee's own attendance actions, not a manager's reopen or its undo", async () => {
+    await invoke(request(), AUTH)
+
+    expect(prisma.mtmAgentWorkdayEvent.groupBy).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        type: { not: "REOPEN" },
+        OR: [
+          { clientEventId: null },
+          { NOT: { clientEventId: { startsWith: "reopen-undo:" } } },
+        ],
+      }),
+    }))
+  })
+
   it("does not read verification/enrollment/event aggregates when there are no active agents", async () => {
     vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([] as never)
 

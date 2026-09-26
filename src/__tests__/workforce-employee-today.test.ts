@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   workforceEmployeeSegmentTransition,
   workforceEmployeeTodayProjection,
+  workforceEmployeeTodayServerOutcome,
 } from "@/lib/workforce/employee-today"
 
 const assignment = {
@@ -122,6 +123,33 @@ describe("employee Workforce Today projection", () => {
   it("does not manufacture attendance on a non-working day or missing assignment", () => {
     expect(project({ calendar: { attendanceExpected: false } }).action.blockedReason).toBe("NON_WORKING_DAY")
     expect(project({ assignment: { ...assignment, state: "UNAVAILABLE" } }).action.blockedReason).toBe("ASSIGNMENT_UNAVAILABLE")
+  })
+
+  it("shows a receipt only for the employee's own last action, never for a manager reopen", () => {
+    const applied = {
+      type: "FINISH",
+      attendanceReviewState: "NOT_REQUIRED",
+      serverReceivedAt: new Date("2026-09-14T14:00:01.000Z"),
+      appliedAt: new Date("2026-09-14T14:00:01.100Z"),
+    }
+
+    expect(workforceEmployeeTodayServerOutcome(applied)).toEqual({
+      state: "APPLIED",
+      action: "FINISH",
+      serverReceivedAt: "2026-09-14T14:00:01.000Z",
+      appliedAt: "2026-09-14T14:00:01.100Z",
+    })
+    expect(workforceEmployeeTodayServerOutcome({ ...applied, attendanceReviewState: "LEGACY_UNKNOWN" })?.state)
+      .toBe("LEGACY_APPLIED")
+    // After a reopen the day is paused again; "your FINISH was applied" would
+    // contradict it, and the REOPEN itself is not the employee's action.
+    expect(workforceEmployeeTodayServerOutcome({ ...applied, type: "REOPEN" })).toBeNull()
+    // The manager's undo of a reopen is a FINISH, but not the employee's: the
+    // day reads as finished from its status, with no receipt in their name.
+    expect(workforceEmployeeTodayServerOutcome({ ...applied, clientEventId: "reopen-undo:operation-1" })).toBeNull()
+    expect(workforceEmployeeTodayServerOutcome({ ...applied, clientEventId: "finish-from-phone" })?.action).toBe("FINISH")
+    expect(workforceEmployeeTodayServerOutcome({ ...applied, serverReceivedAt: null })).toBeNull()
+    expect(workforceEmployeeTodayServerOutcome(null)).toBeNull()
   })
 
   it("keeps the server receipt distinct from a pending human review", () => {

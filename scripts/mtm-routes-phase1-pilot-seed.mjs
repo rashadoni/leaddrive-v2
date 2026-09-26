@@ -239,7 +239,7 @@ try {
       createdBy: manager.userId,
       actions: [
         action("PRESENTATION", "REQUIRED"),
-        action("NEXT_ACTION", "REQUIRED", { objectTypes: ["DOCTOR"] }),
+        action("NEXT_ACTION", "HIDDEN"),
         action("PHOTO", "OPTIONAL"),
         action("STOCK_CHECK", "OPTIONAL"),
       ],

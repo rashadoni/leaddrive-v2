@@ -293,6 +293,46 @@ describe("GET /api/v1/mtm/routes", () => {
     expect(callArgs.orderBy).toEqual([{ date: "desc" }, { createdAt: "desc" }])
   })
 
+  it("returns the point customer's city, which the field planner shows when there is no street address", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(prisma.mtmRoute.findMany).mockResolvedValue([])
+    vi.mocked(prisma.mtmRoute.count).mockResolvedValue(0)
+
+    await GET(makeReq("/api/v1/mtm/routes"))
+
+    const callArgs = vi.mocked(prisma.mtmRoute.findMany).mock.calls[0][0] as any
+    expect(callArgs.include.points.include.customer.select).toMatchObject({ id: true, name: true, address: true, city: true })
+  })
+
+  it("sends stop coordinates and geofence radius, without which the live map drew no stops (audit 2026-09-14)", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(prisma.mtmRoute.findMany).mockResolvedValue([])
+    vi.mocked(prisma.mtmRoute.count).mockResolvedValue(0)
+
+    await GET(makeReq("/api/v1/mtm/routes?agentId=agent-1&date=2026-09-14"))
+
+    const callArgs = vi.mocked(prisma.mtmRoute.findMany).mock.calls[0][0] as any
+    expect(callArgs.include.points.include.customer.select).toEqual({
+      id: true,
+      name: true,
+      address: true,
+      city: true,
+      latitude: true,
+      longitude: true,
+      geofenceRadius: true,
+    })
+    // The stop's fact travels as times only: no check-in coordinates and no
+    // agent identity in the list payload.
+    expect(callArgs.include.points.include.visits).toEqual({
+      where: { deletedAt: null },
+      select: { id: true, status: true, checkInAt: true, checkOutAt: true },
+      orderBy: { checkInAt: "asc" },
+    })
+    // Scope and tenant filters are unchanged by the richer select.
+    expect(callArgs.where.organizationId).toBe(ORG)
+    expect(callArgs.where.deletedAt).toBeNull()
+  })
+
   it("filters by agentId", async () => {
     vi.mocked(getOrgId).mockResolvedValue(ORG)
     vi.mocked(prisma.mtmRoute.findMany).mockResolvedValue([])

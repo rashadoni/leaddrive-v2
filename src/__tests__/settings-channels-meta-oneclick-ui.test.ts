@@ -109,6 +109,7 @@ vi.mock("@/components/ui/button", () => ({
 // row the same way.
 import ChannelsPage from "@/app/(dashboard)/settings/channels/page"
 import { ChannelConfigForm } from "@/components/channel-config-form"
+import { metaConnectionReason } from "@/lib/channels/connection-reason"
 
 /** jsdom ships no matchMedia; the catalog reads prefers-reduced-motion for its tutorial autoplay. */
 function stubMatchMedia() {
@@ -145,6 +146,21 @@ const wiredFacebookPage: ApiChannel = {
   hasAccessToken: true,
   settings: { inboxSubscribed: true },
 }
+
+/**
+ * What a STAGED (App Review) connect stores for a Page: wired and on, but its message subscription was
+ * deliberately never requested — ensureInboxChannelForPage({ staged: true }) writes inboxSubscribed:false
+ * with the two markers that say so.
+ */
+const stagedFacebookPage: ApiChannel = {
+  ...wiredFacebookPage,
+  id: "fb-staged",
+  configName: "Acme Page (App Review)",
+  settings: { inboxSubscribed: false, appReviewOnly: true, subscriptionPending: true },
+}
+
+/** The one sentence all three screens print for that row (lib/channels/connection-reason). */
+const appReviewPendingSentence = metaConnectionReason("en", "subscriptionPending")
 
 async function flushMicrotasks(rounds = 12): Promise<void> {
   await act(async () => {
@@ -229,6 +245,38 @@ describe("Channel catalog — what the screen claims about a Meta channel", () =
     expect(connectedBadge("facebook")).toBeNull()
     expect(brokenBadge("facebook")?.textContent).toContain("Reconnect needed")
     expect(activeCount()).toContain("0 active")
+  })
+
+  it("tells a staged App Review page apart from a refused one, and from a working one", async () => {
+    // It used to wear "Reconnect needed — Meta refused the message subscription" straight after a staged
+    // connect, although nobody had asked Meta for the subscription at all.
+    await renderCatalog([stagedFacebookPage])
+    expect(connectedBadge("facebook")).toBeNull()
+    expect(brokenBadge("facebook")?.textContent).toContain("App Review only")
+    const text = card("facebook")?.textContent || ""
+    expect(text).toContain("Connected for App Review — message subscription not requested yet")
+    expect(text).toContain(appReviewPendingSentence)
+    expect(text).not.toContain("Reconnect needed")
+    expect(text).not.toContain("Meta refused")
+    // Not a working connection, so the header counter does not count it either.
+    expect(activeCount()).toContain("0 active")
+  })
+
+  it("badges a staged page in the other-channels list as App Review, next to a live customer page", async () => {
+    // Tenant leaddrive holds live customer Pages and the review sandbox side by side; the card shows the
+    // live one, and the staged row lands in "Other connected channels".
+    await renderCatalog([
+      wiredFacebookPage,
+      { ...stagedFacebookPage, pageId: "5566778899" },
+    ])
+    expect(connectedBadge("facebook")?.textContent).toContain("Connected")
+    const staged = container.querySelector<HTMLElement>('[data-testid="channel-row-fb-staged"]')
+    expect(staged).not.toBeNull()
+    expect(staged?.querySelector('[data-testid="channel-row-connected-badge"]')).toBeNull()
+    expect(
+      staged?.querySelector<HTMLElement>('[data-testid="channel-row-broken-badge"]')?.textContent,
+    ).toContain("App Review only")
+    expect(activeCount()).toContain("1 active")
   })
 
   it("does not call a switched-off page connected", async () => {
@@ -358,15 +406,15 @@ describe("Channel catalog — what the screen claims about a Meta channel", () =
     expect(hint).not.toContain("Page and its token")
   })
 
-  it("keeps Model A at one click and starts Instagram through the Facebook flow", async () => {
+  it("starts Facebook and Instagram through their matching OAuth flows", async () => {
     await renderCatalog([])
     // One click, straight from the card, for a tenant with nothing configured yet.
     expect(oauthLink("facebook")?.getAttribute("href"))
       .toBe("/api/v1/social/oauth/facebook/start?from=channels-facebook")
-    // Instagram Direct rides the LINKED Page's messages webhook, and only the facebook callback wires
-    // a ChannelConfig for it, so the Instagram card deliberately starts the facebook flow.
+    // Instagram Login is the review surface for instagram_business_* and must
+    // not be replaced by evidence from a Facebook Login consent screen.
     expect(oauthLink("instagram")?.getAttribute("href"))
-      .toBe("/api/v1/social/oauth/facebook/start?from=channels-instagram")
+      .toBe("/api/v1/social/oauth/instagram/start?from=channels-instagram")
     expect(connectedBadge("facebook")).toBeNull()
     expect(container.querySelector('[data-testid="channel-card-connected-badge"]')).toBeNull()
   })
@@ -435,6 +483,23 @@ describe("Channel form — what it tells the user about the same row", () => {
 
     await renderForm({ id: "fb", channelType: "facebook", configName: "Acme", pageId: "1122334455", isActive: true, hasAccessToken: true, settings: { inboxSubscribed: true }, claimedElsewhere: true })
     expect(stateText()).toBe("channelClaimedElsewhere.reason")
+  })
+
+  it("states a staged App Review row in the catalog's words, and never in the connected colour", async () => {
+    await renderForm({
+      id: "fb-staged",
+      channelType: "facebook",
+      configName: "Acme Page (App Review)",
+      pageId: "1122334455",
+      isActive: true,
+      hasAccessToken: true,
+      settings: { inboxSubscribed: false, appReviewOnly: true, subscriptionPending: true },
+    })
+    const state = container.querySelector<HTMLElement>('[data-testid="meta-connection-state"]')
+    expect(state?.textContent).toBe(appReviewPendingSentence)
+    expect(state?.textContent).not.toContain("Meta refused")
+    expect(state?.className).toContain("text-amber-700")
+    expect(state?.className).not.toContain("text-emerald-700")
   })
 
   it("holds a save whose account is claimed by another workspace on screen until the user acknowledges it", async () => {
@@ -532,7 +597,7 @@ describe("Meta one-click — checks with no executable surface", () => {
       join(process.cwd(), "src/app/api/v1/social/oauth/facebook/start/route.ts"),
       "utf8",
     )
-    expect(facebookStart).toContain("const usesSocialInbox = Boolean(returnKey) ||")
+    expect(facebookStart).toContain("Boolean(returnKey) || (await prisma.channelConfig.count({")
   })
 
   it("no longer sells step 3 as just save it", () => {

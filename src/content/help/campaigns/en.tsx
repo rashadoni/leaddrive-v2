@@ -37,7 +37,8 @@ export default function CampaignsHelpEn() {
           / <HelpKey>List</HelpKey>) and the blue <HelpKey>New Campaign</HelpKey> button. Beneath them
           are five status cards: <strong>Draft</strong>, <strong>Scheduled</strong>,{" "}
           <strong>Sending</strong>, <strong>Sent</strong>, and <strong>Cancelled</strong> — each
-          counting the campaigns in that status.
+          counting the campaigns in that status. Hover the ⓘ next to a card title to see what it
+          counts.
         </p>
         <p>
           In the <HelpKey>List</HelpKey> tab, a search box sits below the status cards, followed by the
@@ -48,11 +49,11 @@ export default function CampaignsHelpEn() {
         </p>
         <dl className="rounded-md border p-3">
           <HelpDef term="Draft">A campaign that hasn't been sent yet and can still be edited.</HelpDef>
-          <HelpDef term="Scheduled">A campaign set to send at a future date.</HelpDef>
+          <HelpDef term="Scheduled">A campaign with a send time. It goes out by itself at that time; until then it can still be edited or sent right away.</HelpDef>
           <HelpDef term="Sending">A campaign currently going out to recipients.</HelpDef>
           <HelpDef term="Sent">A finished campaign — from then on the card opens as a read-only summary.</HelpDef>
           <HelpDef term="Cancelled">A campaign that was stopped or cancelled.</HelpDef>
-          <HelpDef term="Type">Channel: <strong>Email</strong> (📧) or <strong>SMS</strong> (📱).</HelpDef>
+          <HelpDef term="Type">Channel: <strong>Email</strong>, <strong>SMS</strong>, <strong>WhatsApp</strong> or <strong>Telegram</strong>.</HelpDef>
           <HelpDef term="Recipients">The number of contacts/leads the campaign targets (shown on the card with a people icon).</HelpDef>
           <HelpDef term="A/B test">Testing two or more variants (subject, content, or send time) on a small audience to pick a winner.</HelpDef>
         </dl>
@@ -97,7 +98,9 @@ export default function CampaignsHelpEn() {
           </p>
           <HelpCallout kind="see" label="What you'll see">
             The template list shows "Loading..." until ready, then "— No template —" plus your
-            existing templates. Schedule send is a date-time picker; budget accepts numbers only.
+            existing templates. Schedule send is a date-time picker; budget accepts numbers only. On a
+            new campaign the date is only a note — the campaign stays a draft. To have it sent
+            automatically, open it and click <HelpKey>Schedule</HelpKey> on the Compose tab.
           </HelpCallout>
         </HelpStep>
         <HelpStep n={4}>
@@ -220,9 +223,15 @@ export default function CampaignsHelpEn() {
           <strong>Segments</strong>, <strong>Automation</strong>, and <strong>Templates</strong>.
         </p>
         <HelpCallout kind="see" label="What you'll see">
-          The KPI cards and funnel values are computed from your campaigns' actual sent / opened /
-          clicked totals. If nothing has been sent yet, these read near 0% and the "Top campaigns"
-          panel shows "No campaigns yet".
+          Every figure comes from your organization’s own records. Open and click rates count only
+          the campaigns whose channel records that step, so SMS sends do not lower the open rate.
+          Opens, clicks and bounces are recorded for email campaigns only; bounces come from the
+          email provider’s delivery reports. Where no record holds a figure — for example bounces
+          when no email campaign has been sent, or ROI when no won deal is linked to a campaign — the
+          card shows «—» and the reason. ROI is the same figure as on the Campaign ROI page: a number
+          only when the won deals and the budgets of sent campaigns are in one currency. “Top campaigns” are ranked
+          by clicks. The Segments, Automation and Templates panels count your real segments, journeys
+          and email templates, and say so when there are none.
         </HelpCallout>
       </HelpSection>
 

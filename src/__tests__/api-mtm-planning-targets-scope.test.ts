@@ -41,7 +41,7 @@ describe("A2: one eligibility scope for organizations", () => {
     // sends the agent to a manager over a typo; staying silent lets the screen
     // say the plain thing instead.
     const planner = readFileSync(PLANNER, "utf8")
-    expect(planner).toContain("const callerNarrowed = Boolean(search || organizationKind || objectType)")
+    expect(planner).toContain("const callerNarrowed = Boolean(targetId || search || organizationKind || objectType)")
     expect(planner).toContain("if (pageRows.length === 0 && !page && !callerNarrowed)")
     expect(planner).toContain("fieldEligibilityEmptyReason({")
     expect(planner).toContain("eligibility,")
@@ -62,7 +62,7 @@ describe("A2: one eligibility scope for organizations", () => {
     // at the customer-assigned phase, so explaining it there would tell an
     // agent "no assignments" moments before the second phase returns people.
     const planner = readFileSync(PLANNER, "utf8")
-    expect(planner).toContain("if (targets.length === 0 && nextPage === null && !Boolean(search))")
+    expect(planner).toContain("if (targets.length === 0 && nextPage === null && !Boolean(targetId || search))")
     expect(planner).toContain("eligibility: contactEligibility")
   })
 

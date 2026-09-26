@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { timingSafeEqual } from "crypto"
 import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
+import { noteDemoCallConnecting } from "@/lib/demo-center/call-prompt-match"
 
 export const dynamic = "force-dynamic"
 
@@ -69,8 +70,11 @@ export async function GET(request: NextRequest) {
   const source = await runWithTenant(organizationId, async () => {
     const call = await prisma.callLog.findFirst({
       where: { organizationId, providerCallId: callId },
-      select: { leadId: true },
+      select: { id: true, leadId: true, consentAudit: true },
     })
+    // Part of the PBX's connect burst: lets runtime-config give a demo call
+    // the demo's script (src/lib/demo-center/call-prompt-match.ts).
+    await noteDemoCallConnecting(organizationId, callId, call)
     if (!call?.leadId) return null
     const lead = await prisma.lead.findFirst({
       where: { id: call.leadId, organizationId },

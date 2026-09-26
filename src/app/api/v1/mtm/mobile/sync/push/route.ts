@@ -1,3 +1,4 @@
+import { routeTransitionActions, writeFieldSyncAudit } from "@/lib/mtm/field-sync-audit"
 import { NextResponse } from "next/server"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
@@ -16,6 +17,7 @@ import {
 import { calculateDistance } from "@/lib/geo-utils"
 import { MTM_CHECK_IN_ERROR, checkInConflict, type MtmCheckInErrorCode, type MtmCheckInErrorDetails } from "@/lib/mtm/check-in-errors"
 import { hasMtmCoordinates } from "@/lib/mtm/geo-coordinates"
+import { clampCheckInGeofenceRadius as geofenceRadius, createAlertOutOfZoneReader, mtmVisitPlaceSnapshot } from "@/lib/mtm/check-in-geofence"
 import { getMtmSettings } from "@/lib/mtm-settings"
 import { BrandPotentialCreateSchema, BrandPotentialEndSchema, VisitActionResultSchema } from "@/lib/mtm-validators"
 import { brandPotentialRequestHash, utcBrandPotentialDate } from "@/lib/mtm/brand-potential"
@@ -42,6 +44,7 @@ import {
   recordWorkforceAttendanceVerification,
   WorkforceAttendanceTrustError,
 } from "@/lib/workforce/attendance-trust"
+import { recordPreparedWorkforceLocationEvidence } from "@/lib/workforce/attendance-evidence-writer"
 import {
   assertWorkforceSnapshottedSegmentInTransaction,
   writeWorkforceSnapshotsIfReadyInTransaction,
@@ -91,6 +94,7 @@ import {
 } from "@/lib/mtm/mobile-hrm"
 import { recordMtmMobileV1SyncActivity } from "@/lib/mtm/mobile-sync-telemetry"
 import { evaluateWorkforceMobileWriteAccess } from "@/lib/workforce/mobile-write-fence"
+import { workforceHrmRequestSubmissionMatches } from "@/lib/workforce/hrm-request-idempotency"
 import {
   workforceAndroidMutationReleaseBlock,
   WORKFORCE_ANDROID_VERSION_CODE_HEADER,
@@ -207,11 +211,6 @@ function needsWorkforceMobileWriteFence(
 
 function validCoordinate(value: unknown, min: number, max: number): value is number {
   return typeof value === "number" && Number.isFinite(value) && value >= min && value <= max
-}
-
-function geofenceRadius(value: unknown): number {
-  const parsed = typeof value === "number" ? value : Number(value)
-  return Number.isFinite(parsed) && parsed >= 25 && parsed <= 10_000 ? parsed : 100
 }
 
 function operationDate(value: unknown): Date {
@@ -377,6 +376,9 @@ export const POST = withMobileRls(async (req, auth) => {
   const orgId = auth.orgId
   const agentId = auth.agentId
   const workdayAuditMetadata = workforceAuditRequestMetadata(req.headers)
+  const buildSha = req.headers.get("x-workforce-app-build")
+  const platform = req.headers.get("x-workforce-client-platform")
+  const deviceClass = req.headers.get("x-workforce-device-class")
   const attendanceCapabilities = {
     qrEnabled: auth.tenantCapabilities.attendanceQr === true,
     deviceTrustEnabled: auth.tenantCapabilities.attendanceDeviceTrust === true,
@@ -388,8 +390,11 @@ export const POST = withMobileRls(async (req, auth) => {
   recordMtmMobileV1SyncActivity({
     organizationId: orgId,
     agentId,
-    apkVersion: req.headers.get("x-field-apk-version"),
+    apkVersion: req.headers.get("x-workforce-app-version") ?? req.headers.get("x-field-apk-version"),
     endpoint: "POST /api/v1/mtm/mobile/sync/push",
+    ...(buildSha || platform || deviceClass
+      ? { diagnostics: { buildSha, platform, deviceClass } }
+      : {}),
   })
 
   let body: unknown
@@ -531,6 +536,10 @@ export const POST = withMobileRls(async (req, auth) => {
       workforceMobileWriteFenceUnavailable = true
     }
   }
+
+  // alertOutOfZone gates only the OUT_OF_ZONE alert row, never the refusal.
+  // Read lazily, once per request, the first time a check-in is out of zone.
+  const alertOutOfZoneEnabled = createAlertOutOfZoneReader(orgId)
 
   for (const op of operations) {
     // `op ?? {}`: a null/undefined array element must fail as a malformed op,
@@ -679,6 +688,7 @@ export const POST = withMobileRls(async (req, auth) => {
     // These fail the same way on every retry, cost no DB work, and are
     // deliberately not pinned ("error" results are retryable by design).
     let validationError: string | undefined
+    let validationServerData: object | undefined
     let nextAction: NextActionInput | null = null
     let visitActionInput: ReturnType<typeof VisitActionResultSchema.parse> | null = null
     let workdayInput: MtmWorkdayEventInput | null = null
@@ -785,6 +795,12 @@ export const POST = withMobileRls(async (req, auth) => {
         const parsed = parseMtmWorkdayEvent(data, operationId, workdayTimezone, receivedAt)
         workdayInput = parsed.input
         validationError = parsed.error ?? undefined
+        validationServerData = parsed.code
+          ? {
+              code: parsed.code,
+              ...(parsed.schemaSupport ? { schemaSupport: parsed.schemaSupport } : {}),
+            }
+          : undefined
       }
     } else if (entity === "commitments") {
       if (opType !== "create") {
@@ -862,7 +878,12 @@ export const POST = withMobileRls(async (req, auth) => {
       validationError = `Unsupported entity "${entity}"`
     }
     if (validationError) {
-      results.push({ operationId, status: "error", error: validationError })
+      results.push({
+        operationId,
+        status: "error",
+        error: validationError,
+        ...(validationServerData ? { serverData: validationServerData } : {}),
+      })
       continue
     }
     const workdayRequestHash = workdayInput
@@ -974,7 +995,7 @@ export const POST = withMobileRls(async (req, auth) => {
                   deletedAt: null,
                   AND: [customerMutationScopeForActor(visitActor, checkInAt)],
                 },
-                select: { id: true, latitude: true, longitude: true, geofenceRadius: true },
+                select: { id: true, name: true, latitude: true, longitude: true, geofenceRadius: true },
               }),
               tx.mtmVisit.findFirst({
                 where: { organizationId: orgId, agentId, status: "CHECKED_IN", deletedAt: null },
@@ -1046,7 +1067,7 @@ export const POST = withMobileRls(async (req, auth) => {
               if (distanceMeters != null && distanceMeters > geofenceRadius(radius)) {
                 const roundedDistance = Math.round(distanceMeters)
                 const allowedRadius = geofenceRadius(radius)
-                await tx.mtmAlert.create({
+                if (await alertOutOfZoneEnabled(tx)) await tx.mtmAlert.create({
                   data: {
                     organizationId: orgId,
                     agentId,
@@ -1129,6 +1150,7 @@ export const POST = withMobileRls(async (req, auth) => {
                     checkInAt,
                     checkInLat: data.checkInLat ?? null,
                     checkInLng: data.checkInLng ?? null,
+                    ...(await mtmVisitPlaceSnapshot(tx, orgId, customer)),
                     notes: data.notes ?? null,
                   },
                   select: { id: true, status: true, checkInAt: true, customerId: true, contactId: true, routeId: true, routePointId: true },
@@ -1141,26 +1163,32 @@ export const POST = withMobileRls(async (req, auth) => {
                   visitType: typeof data.visitType === "string" ? data.visitType : undefined,
                   at: visit.checkInAt,
                 })
-                if (forceOverrideMeta) {
-                  await tx.mtmAuditLog.create({
-                    data: {
-                      organizationId: orgId,
-                      agentId,
-                      action: "CHECK_IN_FORCED",
-                      entity: "visit",
-                      entityId: visit.id,
-                      metadataKind: "force_checkin",
-                      newData: {
-                        customerId,
-                        routeId: routePoint?.routeId ?? null,
-                        routePointId: routePoint?.id ?? null,
-                        actorRole: auth.role,
-                        forceOverride: true,
-                        ...forceOverrideMeta,
-                      },
-                    },
-                  })
-                }
+                // Activity journal: one row per accepted check-in, written with
+                // the visit and the operation pin (exactly once per operationId,
+                // see field-sync-audit.ts). A forced check-in is its own action.
+                await writeFieldSyncAudit(tx, [{
+                  organizationId: orgId,
+                  agentId,
+                  action: forceOverrideMeta ? "CHECK_IN_FORCED" : "CHECK_IN",
+                  operationId,
+                  source: "mobile_sync",
+                  visitId: visit.id,
+                  routeId: routePoint?.routeId ?? null,
+                  customerId,
+                  customerName: customer.name ?? null,
+                  occurredAt: visit.checkInAt,
+                  metadataKind: forceOverrideMeta ? "force_checkin" : "field_sync",
+                  ...(forceOverrideMeta
+                    ? {
+                        extra: {
+                          routePointId: routePoint?.id ?? null,
+                          actorRole: auth.role,
+                          forceOverride: true,
+                          ...forceOverrideMeta,
+                        },
+                      }
+                    : {}),
+                }])
                 if (routePoint) {
                   const participants = routePoint.route.assignments.filter((assignment) => assignment.agentId !== agentId)
                   if (participants.length > 0) {
@@ -1220,6 +1248,12 @@ export const POST = withMobileRls(async (req, auth) => {
                 opStatus = "conflict"
                 errorMsg = "Visit changed or is no longer owned by agent"
               } else {
+                const routeBefore = existing.routeId
+                  ? await tx.mtmRoute.findFirst({
+                      where: { id: existing.routeId, organizationId: orgId },
+                      select: { status: true },
+                    })
+                  : null
                 const completion = await completeMtmVisit(tx, {
                   organizationId: orgId,
                   visitId: data.id,
@@ -1240,6 +1274,33 @@ export const POST = withMobileRls(async (req, auth) => {
                   opStatus = "conflict"
                   errorMsg = "Visit not found or not owned by agent"
                 } else {
+                  if (!completion.idempotent) {
+                    const [customerRow, routeAfter] = await Promise.all([
+                      tx.mtmCustomer.findFirst({
+                        where: { id: existing.customerId, organizationId: orgId },
+                        select: { name: true },
+                      }),
+                      existing.routeId && routeBefore
+                        ? tx.mtmRoute.findFirst({ where: { id: existing.routeId, organizationId: orgId }, select: { status: true } })
+                        : Promise.resolve(null),
+                    ])
+                    const shared = {
+                      organizationId: orgId,
+                      agentId,
+                      operationId,
+                      source: "mobile_sync" as const,
+                      visitId: completion.visit.id,
+                      routeId: existing.routeId ?? null,
+                      customerId: existing.customerId,
+                      customerName: customerRow?.name ?? null,
+                      occurredAt: completion.visit.checkOutAt,
+                    }
+                    await writeFieldSyncAudit(tx, [
+                      { ...shared, action: "CHECK_OUT", metadataKind: "check_out" },
+                      ...routeTransitionActions(routeBefore?.status, routeAfter?.status)
+                        .map((action) => ({ ...shared, action })),
+                    ])
+                  }
                   serverId = completion.visit.id
                   serverData = completion.visit
                 }
@@ -2328,12 +2389,23 @@ export const POST = withMobileRls(async (req, auth) => {
               status: true,
               startDate: true,
               endDate: true,
+              correctionWorkdayId: true,
+              exceptionCaseId: true,
+              requestedStartAt: true,
+              requestedEndAt: true,
+              reason: true,
               submittedAt: true,
             },
           })
           if (existing) {
-            serverId = existing.id
-            serverData = { ...existing, idempotent: true }
+            if (!workforceHrmRequestSubmissionMatches(existing, hrmRequestCreateInput)) {
+              opStatus = "conflict"
+              errorMsg = "This request id was already used for different request details"
+              serverData = { code: "WORKFORCE_SELF_REQUEST_IDEMPOTENCY_MISMATCH" }
+            } else {
+              serverId = existing.id
+              serverData = { ...existing, idempotent: true }
+            }
           } else {
             const correctionWorkday = hrmRequestCreateInput.type === "TIME_CORRECTION"
               ? await tx.mtmAgentWorkday.findFirst({
@@ -2342,6 +2414,17 @@ export const POST = withMobileRls(async (req, auth) => {
                     organizationId: orgId,
                     agentId,
                     workDate: hrmRequestCreateInput.startDate,
+                  },
+                  select: { id: true },
+                })
+              : null
+            const exceptionCase = hrmRequestCreateInput.exceptionCaseId
+              ? await tx.workforceExceptionCase.findFirst({
+                  where: {
+                    id: hrmRequestCreateInput.exceptionCaseId,
+                    organizationId: orgId,
+                    agentId,
+                    workdayId: hrmRequestCreateInput.correctionWorkdayId ?? undefined,
                   },
                   select: { id: true },
                 })
@@ -2363,6 +2446,13 @@ export const POST = withMobileRls(async (req, auth) => {
               opStatus = "conflict"
               errorMsg = "Workday not found for time correction"
               serverData = { code: "MTM_HRM_WORKDAY_NOT_FOUND" }
+            } else if (hrmRequestCreateInput.exceptionCaseId && !exceptionCase) {
+              // An unavailable, foreign or reassigned case is deliberately
+              // indistinguishable to the mobile client; it cannot become an
+              // exception-ID oracle or a correction source for another user.
+              opStatus = "conflict"
+              errorMsg = "Selected Workforce exception is unavailable"
+              serverData = { code: "WORKFORCE_SELF_EXCEPTION_UNAVAILABLE" }
             } else if (overlap) {
               opStatus = "conflict"
               errorMsg = "An active HRM request already covers these dates"
@@ -2379,6 +2469,7 @@ export const POST = withMobileRls(async (req, auth) => {
                   startDate: hrmRequestCreateInput.startDate,
                   endDate: hrmRequestCreateInput.endDate,
                   correctionWorkdayId: hrmRequestCreateInput.correctionWorkdayId,
+                  exceptionCaseId: hrmRequestCreateInput.exceptionCaseId,
                   requestedStartAt: hrmRequestCreateInput.requestedStartAt,
                   requestedEndAt: hrmRequestCreateInput.requestedEndAt,
                   reason: hrmRequestCreateInput.reason,
@@ -2396,6 +2487,25 @@ export const POST = withMobileRls(async (req, auth) => {
                   requestedEndAt: true,
                   reason: true,
                   submittedAt: true,
+                },
+              })
+              await tx.mtmAuditLog.create({
+                data: {
+                  organizationId: orgId,
+                  agentId,
+                  action: "WORKFORCE_SELF_REQUEST_SUBMITTED",
+                  entity: "hrm_request",
+                  entityId: request.id,
+                  metadataKind: "workforce_self_request",
+                  newData: {
+                    type: request.type,
+                    startDate: hrmRequestCreateInput.startDateKey,
+                    endDate: hrmRequestCreateInput.endDateKey,
+                    correctionRequested: request.type === "TIME_CORRECTION",
+                    exceptionCaseLinked: hrmRequestCreateInput.exceptionCaseId !== null,
+                  },
+                  ipAddress: null,
+                  userAgent: null,
                 },
               })
               serverId = request.id
@@ -2424,13 +2534,42 @@ export const POST = withMobileRls(async (req, auth) => {
             errorMsg = "A decided HRM request cannot be cancelled"
             serverData = { code: "MTM_HRM_REQUEST_ALREADY_DECIDED", status: request.status }
           } else {
-            const cancelled = await tx.mtmHrmRequest.update({
-              where: { id: request.id },
+            const cancelled = await tx.mtmHrmRequest.updateMany({
+              where: { id: request.id, organizationId: orgId, agentId, status: "PENDING" },
               data: { status: "CANCELLED", cancelledAt: hrmRequestCancelInput.cancelledAt },
-              select: { id: true, status: true, cancelledAt: true, updatedAt: true },
             })
-            serverId = cancelled.id
-            serverData = cancelled
+            if (cancelled.count !== 1) {
+              opStatus = "conflict"
+              errorMsg = "HRM request changed before it could be cancelled"
+              serverData = { code: "WORKFORCE_SELF_REQUEST_CONCURRENT_CHANGE" }
+            } else {
+              const updated = await tx.mtmHrmRequest.findFirst({
+                where: { id: request.id, organizationId: orgId, agentId },
+                select: { id: true, status: true, cancelledAt: true, updatedAt: true },
+              })
+              if (!updated) {
+                opStatus = "conflict"
+                errorMsg = "HRM request changed before it could be cancelled"
+                serverData = { code: "WORKFORCE_SELF_REQUEST_CONCURRENT_CHANGE" }
+              } else {
+                await tx.mtmAuditLog.create({
+                  data: {
+                    organizationId: orgId,
+                    agentId,
+                    action: "WORKFORCE_SELF_REQUEST_CANCELLED",
+                    entity: "hrm_request",
+                    entityId: updated.id,
+                    metadataKind: "workforce_self_request",
+                    oldData: { status: "PENDING" },
+                    newData: { status: "CANCELLED" },
+                    ipAddress: null,
+                    userAgent: null,
+                  },
+                })
+                serverId = updated.id
+                serverData = updated
+              }
+            }
           }
 
         } else if (entity === "brandPotentials" && opType === "create" && brandPotentialCreateInput) {
@@ -2663,6 +2802,15 @@ export const POST = withMobileRls(async (req, auth) => {
                   workdayId: workday.id,
                   agentId,
                   segmentId: workdayInput.segmentId,
+                })
+              }
+              if (prepared) {
+                await recordPreparedWorkforceLocationEvidence(tx, {
+                  prepared,
+                  workdayEventId: event.id,
+                  workdayId: workday.id,
+                  occurredAt: workdayInput.occurredAt,
+                  principal: "mobile",
                 })
               }
               await writeWorkforceWorkdayAuditInTransaction(tx, {

@@ -21,6 +21,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
  *
  * Hence the form below is deliberately NOT mocked here: several checks assert that the banner and the
  * form print the same sentence about the same row, which is the property that was broken.
+ *
+ * Since 2026-09-21 the callback also names that row (`channelId`), and the page judges only the named
+ * row — see settings-channels-connect-oauth-return-row-ui.test.ts for why it no longer picks one itself.
  */
 
 const routeParams = { channel: "instagram" }
@@ -225,7 +228,7 @@ describe("Meta OAuth return banner", () => {
     it("congratulates a connect whose saved row really does deliver", async () => {
       await renderConnect(
         "instagram",
-        "stage=connect&mode=existing&connected=facebook&pages=1&ig=1",
+        "stage=connect&mode=existing&connected=facebook&pages=1&ig=1&channelId=ig-account",
         [wiredInstagramRow],
       )
       expect(tone()).toBe("success")
@@ -237,7 +240,7 @@ describe("Meta OAuth return banner", () => {
       // oauth/instagram/callback redirects with `connected=instagram&ig=1` and no `pages` at all.
       await renderConnect(
         "instagram",
-        "stage=connect&mode=existing&connected=instagram&ig=1",
+        "stage=connect&mode=existing&connected=instagram&ig=1&channelId=ig-account",
         [wiredInstagramRow],
       )
       expect(tone()).toBe("success")
@@ -246,7 +249,7 @@ describe("Meta OAuth return banner", () => {
     it("judges the Facebook card on Pages, not on Instagram accounts", async () => {
       await renderConnect(
         "facebook",
-        "stage=connect&mode=existing&connected=facebook&pages=1&ig=0",
+        "stage=connect&mode=existing&connected=facebook&pages=1&ig=0&channelId=fb-page",
         [wiredFacebookRow],
       )
       expect(tone()).toBe("success")
@@ -258,7 +261,7 @@ describe("Meta OAuth return banner", () => {
       // "Not delivering — Meta refused the subscription" in the form below, same row, same screen.
       await renderConnect(
         "facebook",
-        "stage=connect&mode=existing&connected=facebook&pages=1&ig=0",
+        "stage=connect&mode=existing&connected=facebook&pages=1&ig=0&channelId=fb-page",
         [{ ...wiredFacebookRow, settings: { inboxSubscribed: false } }],
       )
       expect(tone()).toBe("warning")
@@ -272,7 +275,7 @@ describe("Meta OAuth return banner", () => {
       // webhooks/facebook resolves inbound DMs with `isActive: true` — an off row is invisible to it.
       await renderConnect(
         "facebook",
-        "stage=connect&mode=existing&connected=facebook&pages=1&ig=0",
+        "stage=connect&mode=existing&connected=facebook&pages=1&ig=0&channelId=fb-page",
         [{ ...wiredFacebookRow, isActive: false }],
       )
       expect(tone()).toBe("warning")
@@ -283,7 +286,7 @@ describe("Meta OAuth return banner", () => {
     it("does not congratulate a row that carries no page token", async () => {
       await renderConnect(
         "facebook",
-        "stage=connect&mode=existing&connected=facebook&pages=1&ig=0",
+        "stage=connect&mode=existing&connected=facebook&pages=1&ig=0&channelId=fb-page",
         [{ ...wiredFacebookRow, pageId: null, hasAccessToken: false, settings: null }],
       )
       expect(tone()).toBe("warning")
@@ -302,7 +305,7 @@ describe("Meta OAuth return banner", () => {
       // and this banner said "Channel connected". The API now ships `claimedElsewhere` (the boolean only).
       await renderConnect(
         "instagram",
-        "stage=connect&mode=existing&connected=facebook&pages=1&ig=1",
+        "stage=connect&mode=existing&connected=facebook&pages=1&ig=1&channelId=ig-account",
         [{ ...wiredInstagramRow, claimedElsewhere: true }],
       )
       expect(tone()).toBe("warning")
@@ -316,11 +319,77 @@ describe("Meta OAuth return banner", () => {
       // nothing left to fix; the toggle is what they need.
       await renderConnect(
         "facebook",
-        "stage=connect&mode=existing&connected=facebook&pages=1&ig=0",
+        "stage=connect&mode=existing&connected=facebook&pages=1&ig=0&channelId=fb-page",
         [{ ...wiredFacebookRow, isActive: false }],
       )
       expect(bannerTitle()).toContain("not delivering")
       expect(bannerTitle()).not.toContain("still not connected")
+    })
+  })
+
+  describe("a staged App Review connect", () => {
+    // Since PR #334 the callback hands back the staged row it wired, so this is the screen a staged
+    // connect lands on — the one recorded for Meta App Review. The row is exactly what
+    // ensureInboxChannelForPage({ staged: true }) stores: Page and token, inboxSubscribed:false, and the
+    // two markers that say nobody asked Meta for the subscription. It used to read "Meta refused the
+    // message subscription — run Connect with Meta again", about a request that was never made.
+    const stagedFacebookRow: ApiChannel = {
+      ...wiredFacebookRow,
+      id: "fb-staged",
+      configName: "Acme Page (App Review)",
+      settings: { inboxSubscribed: false, appReviewOnly: true, subscriptionPending: true },
+    }
+    const stagedInstagramRow: ApiChannel = {
+      ...wiredInstagramRow,
+      id: "ig-staged",
+      configName: "Acme Page / @acme (App Review)",
+      settings: { inboxSubscribed: false, appReviewOnly: true, subscriptionPending: true },
+    }
+
+    it("says connected for App Review, subscription not requested — no refusal, no reconnect, no congratulations", async () => {
+      await renderConnect(
+        "facebook",
+        "stage=connect&mode=existing&connected=facebook&pages=1&ig=0&channelId=fb-staged",
+        [stagedFacebookRow],
+      )
+      expect(tone()).toBe("warning")
+      expect(bannerTitle()).toBe("Connected for App Review — message subscription not requested yet")
+      expect(bannerReason()).toMatch(/^Delivery not confirmed\. This channel is connected for App Review only/)
+      expect(bannerReason()).toContain("Subscribe this Page explicitly")
+      for (const text of [bannerTitle(), bannerReason()]) {
+        expect(text).not.toContain("refused")
+        expect(text).not.toContain("Run Connect with Meta again")
+        expect(text).not.toContain("Channel connected")
+      }
+      // Same row, same sentence, wherever the user looks.
+      expect(formState()).toBe(bannerReason())
+    })
+
+    it("says the same about the Instagram half of a staged Facebook-login connect", async () => {
+      await renderConnect(
+        "instagram",
+        "stage=connect&mode=existing&connected=facebook&pages=1&ig=1&channelId=ig-staged",
+        [stagedInstagramRow],
+      )
+      expect(tone()).toBe("warning")
+      expect(bannerTitle()).toBe("Connected for App Review — message subscription not requested yet")
+      // The subscribe endpoint refuses an Instagram row; the sentence points at the linked Page.
+      expect(bannerReason()).toContain("linked Facebook Page")
+      expect(formState()).toBe(bannerReason())
+    })
+
+    it("still reports a refusal once the explicit subscribe has asked Meta and been refused", async () => {
+      // api/v1/social/oauth/subscribe deletes the marker whatever Meta answers. After a refusal the row is
+      // staged but no longer pending, and the refusal wording is the true one again.
+      await renderConnect(
+        "facebook",
+        "stage=connect&mode=existing&connected=facebook&pages=1&ig=0&channelId=fb-staged",
+        [{ ...stagedFacebookRow, settings: { inboxSubscribed: false, appReviewOnly: true } }],
+      )
+      expect(tone()).toBe("warning")
+      expect(bannerTitle()).toBe("Connected, but not delivering yet")
+      expect(bannerReason()).toContain("Meta refused the message subscription")
+      expect(formState()).toBe(bannerReason())
     })
   })
 

@@ -28,12 +28,26 @@ vi.mock("@/lib/api-auth", () => ({
 }))
 
 import { GET } from "@/app/api/v1/mtm/activity/route"
-import { MAX_PAGE_LIMIT } from "@/app/api/v1/mtm/activity/_constants"
+import { activityPeriodStart, MAX_PAGE_LIMIT, VIEWER_READ_ACTION_SUFFIXES } from "@/app/api/v1/mtm/activity/_constants"
 import { prisma } from "@/lib/prisma"
+import { resetMtmFieldScopeMemo } from "@/lib/mtm/field-access"
 import { requireAuth } from "@/lib/api-auth"
 
 const ORG = "org-1"
-const AUTH = { orgId: ORG, userId: "manager-user", role: "manager", email: "manager@example.com", name: "Manager" }
+// The contract tests below run as a web admin (organization-wide scope); the
+// "field scope" block at the end pins what a manager and others see.
+const AUTH = { orgId: ORG, userId: "admin-user", role: "admin", email: "admin@example.com", name: "Admin" }
+const MANAGER_AUTH = { orgId: ORG, userId: "manager-user", role: "manager", email: "manager@example.com", name: "Manager" }
+
+/** A web manager whose MTM card is a MANAGER with one direct report, agent-1. */
+function linkManagerCard() {
+  vi.mocked(requireAuth).mockResolvedValue(MANAGER_AUTH as never)
+  vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({
+    id: "mgr-1", role: "MANAGER", canPlanOwnRoutes: true, canSelfPublishRoutes: false,
+  } as never)
+  vi.mocked(prisma.mtmAgent.findUnique).mockResolvedValue({ id: "mgr-1", teamId: null } as never)
+  vi.mocked(prisma.mtmAgent.findMany).mockResolvedValueOnce([{ id: "agent-1" }] as never)
+}
 const BOTH_PRODUCTS = {
   plan: "starter",
   addons: [],
@@ -47,11 +61,16 @@ function makeReq(url: string): NextRequest {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // Route tests reuse user ids with different cards; never serve a memoized actor.
+  resetMtmFieldScopeMemo()
   vi.mocked(requireAuth).mockResolvedValue(AUTH as never)
   // Default count to 0 unless a test overrides
   vi.mocked(prisma.mtmAuditLog.count).mockResolvedValue(0)
   vi.mocked(prisma.mtmAuditLog.findMany).mockResolvedValue([])
   vi.mocked(prisma.organization.findUnique).mockResolvedValue(BOTH_PRODUCTS as never)
+  vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue(null as never)
+  vi.mocked(prisma.mtmAgent.findUnique).mockResolvedValue(null as never)
+  vi.mocked(prisma.mtmAgent.findMany).mockResolvedValue([] as never)
 })
 
 describe("GET /api/v1/mtm/activity", () => {
@@ -241,6 +260,157 @@ describe("GET /api/v1/mtm/activity", () => {
       await GET(makeReq("/api/v1/mtm/activity"))
       const findArgs = vi.mocked(prisma.mtmAuditLog.findMany).mock.calls[0][0] as any
       expect(findArgs.orderBy).toEqual({ createdAt: "desc" })
+    })
+  })
+
+  describe("field scope (audit 2026-09-14)", () => {
+    it("limits a manager's feed and every counter to their agents", async () => {
+      linkManagerCard()
+      const res = await GET(makeReq("/api/v1/mtm/activity?period=all"))
+      expect(res.status).toBe(200)
+      const scoped = { in: ["agent-1", "mgr-1"] }
+      for (const [arg] of vi.mocked(prisma.mtmAuditLog.count).mock.calls) {
+        expect((arg as any).where.agentId).toEqual(scoped)
+      }
+      expect((vi.mocked(prisma.mtmAuditLog.findMany).mock.calls[0][0] as any).where.agentId).toEqual(scoped)
+    })
+
+    it("accepts an agent filter inside the scope", async () => {
+      linkManagerCard()
+      const res = await GET(makeReq("/api/v1/mtm/activity?agentId=agent-1"))
+      expect(res.status).toBe(200)
+      expect((vi.mocked(prisma.mtmAuditLog.findMany).mock.calls[0][0] as any).where.agentId).toBe("agent-1")
+    })
+
+    it("rejects an agent of another team", async () => {
+      linkManagerCard()
+      const res = await GET(makeReq("/api/v1/mtm/activity?agentId=agent-other-team"))
+      expect(res.status).toBe(403)
+      expect(await res.json()).toMatchObject({ code: "MTM_AGENT_OUT_OF_SCOPE" })
+      expect(prisma.mtmAuditLog.findMany).not.toHaveBeenCalled()
+    })
+
+    it("refuses a web manager without an MTM card instead of showing the company", async () => {
+      vi.mocked(requireAuth).mockResolvedValue(MANAGER_AUTH as never)
+      const res = await GET(makeReq("/api/v1/mtm/activity"))
+      expect(res.status).toBe(403)
+      expect(await res.json()).toMatchObject({ code: "MTM_FIELD_SCOPE_REQUIRED" })
+      expect(prisma.mtmAuditLog.count).not.toHaveBeenCalled()
+    })
+
+    it("keeps the admin feed organization-wide", async () => {
+      await GET(makeReq("/api/v1/mtm/activity"))
+      expect((vi.mocked(prisma.mtmAuditLog.findMany).mock.calls[0][0] as any).where.agentId).toBeUndefined()
+      expect(prisma.mtmAgent.findFirst).not.toHaveBeenCalled()
+    })
+  })
+})
+
+// ─── Prod 2026-09-14: a feed an office manager can read ──────────────────────
+describe("GET /api/v1/mtm/activity — manager feed (2026-09-14)", () => {
+  it("excludes viewer read events (*_READ, *_VIEW) from the feed and every counter", async () => {
+    await GET(makeReq("/api/v1/mtm/activity?period=7d"))
+    const wheres = [
+      ...vi.mocked(prisma.mtmAuditLog.count).mock.calls.map(([arg]) => (arg as any).where),
+      (vi.mocked(prisma.mtmAuditLog.findMany).mock.calls[0][0] as any).where,
+    ]
+    for (const where of wheres) {
+      expect(where.AND).toEqual(expect.arrayContaining([
+        { NOT: { action: { endsWith: "_READ" } } },
+        { NOT: { action: { endsWith: "_VIEW" } } },
+        { action: { notIn: ["ROUTE_TRAVEL_PREVIEW"] } },
+      ]))
+    }
+    // GPS_HISTORY_VIEW and WEEK_GPS_LATEST_READ — the two names seen on prod.
+    const excluded = (action: string) => VIEWER_READ_ACTION_SUFFIXES.some((suffix) => action.endsWith(suffix))
+    expect(excluded("GPS_HISTORY_VIEW")).toBe(true)
+    expect(excluded("WEEK_GPS_LATEST_READ")).toBe(true)
+    expect(excluded("CHECK_IN")).toBe(false)
+    expect(excluded("PHOTO_REVIEW")).toBe(false)
+  })
+
+  it("starts 'today' at the organization's midnight, not the server's", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    try {
+      // 00:30 on 15 September in Baku (UTC+4) is still 14 September in UTC.
+      vi.setSystemTime(new Date("2026-09-14T20:30:00.000Z"))
+      vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "timezone", value: "Asia/Baku" }] as never)
+      await GET(makeReq("/api/v1/mtm/activity?period=today"))
+      const where = (vi.mocked(prisma.mtmAuditLog.count).mock.calls[0][0] as any).where
+      expect(where.createdAt.gte.toISOString()).toBe("2026-09-14T20:00:00.000Z")
+    } finally {
+      vi.useRealTimers()
+      vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([] as never)
+    }
+  })
+
+  it("activityPeriodStart covers 7 and 30 local days and 'all'", () => {
+    const now = new Date("2026-09-14T10:00:00.000Z")
+    expect(activityPeriodStart("7d", now, "Asia/Baku")?.toISOString()).toBe("2026-09-07T20:00:00.000Z")
+    expect(activityPeriodStart("30d", now, "Asia/Baku")?.toISOString()).toBe("2026-08-15T20:00:00.000Z")
+    expect(activityPeriodStart("all", now, "Asia/Baku")).toBeNull()
+  })
+
+  it("names the customer and links the visit/route on each row", async () => {
+    vi.mocked(prisma.mtmAuditLog.findMany).mockResolvedValue([
+      { id: "l1", action: "CHECK_IN", entity: "visit", entityId: "v-1", newData: { customerName: "Aptek 24", routeId: "r-1" }, createdAt: new Date() },
+      { id: "l2", action: "CHECK_OUT", entity: "visit", entityId: "v-2", newData: { duration: 12 }, createdAt: new Date() },
+      { id: "l3", action: "CHECK_IN", entity: "visit", entityId: "v-3", newData: { customerId: "c-3" }, createdAt: new Date() },
+      { id: "l4", action: "ROUTE_COMPLETE", entity: "route", entityId: "r-9", newData: {}, createdAt: new Date() },
+    ] as never)
+    vi.mocked(prisma.mtmCustomer.findMany).mockResolvedValue([{ id: "c-3", name: "Klinika" }] as never)
+    vi.mocked(prisma.mtmVisit.findMany).mockResolvedValue([{ id: "v-2", customer: { name: "Zeytun" } }] as never)
+
+    const json = await (await GET(makeReq("/api/v1/mtm/activity"))).json()
+
+    expect(json.data.logs.map((log: any) => log.subject)).toEqual([
+      { customerName: "Aptek 24", visitId: "v-1", routeId: "r-1" },
+      { customerName: "Zeytun", visitId: "v-2", routeId: null },
+      { customerName: "Klinika", visitId: "v-3", routeId: null },
+      { customerName: null, visitId: null, routeId: "r-9" },
+    ])
+    expect((vi.mocked(prisma.mtmCustomer.findMany).mock.calls[0][0] as any).where.organizationId).toBe(ORG)
+    expect((vi.mocked(prisma.mtmVisit.findMany).mock.calls[0][0] as any).where.organizationId).toBe(ORG)
+    expect(json.data.timezone).toBe("Asia/Baku")
+  })
+
+  it("type=ROUTE filters route start/completion", async () => {
+    await GET(makeReq("/api/v1/mtm/activity?type=ROUTE"))
+    expect((vi.mocked(prisma.mtmAuditLog.findMany).mock.calls[0][0] as any).where.action).toEqual({ in: ["ROUTE_START", "ROUTE_COMPLETE"] })
+  })
+})
+
+/**
+ * Audit 2026-09-21: 96 rows, each «? · Действие · Система · Запись». The
+ * journal did not say who acted when the actor was in the office.
+ */
+describe("GET /api/v1/mtm/activity — who acted (2026-09-21)", () => {
+  it("names the office user from actorUserId, from a settings payload and from an assignment", async () => {
+    vi.mocked(prisma.mtmAuditLog.findMany).mockResolvedValue([
+      { id: "log-1", action: "CUSTOMER_UPDATE", entity: "customer", entityId: "cust-1", agentId: null, agent: null, actorUserId: "user-a", newData: { latitude: 1 }, oldData: null, createdAt: new Date() },
+      { id: "log-2", action: "SETTINGS_UPDATE", entity: "settings", entityId: null, agentId: null, agent: null, actorUserId: null, newData: { actor: { userId: "user-b", role: "admin" } }, oldData: null, createdAt: new Date() },
+      { id: "log-3", action: "FIELD_ASSIGNMENT_UPSERT", entity: "customer_assignment", entityId: "as-1", agentId: null, agent: null, actorUserId: null, newData: { assignedBy: "user-a" }, oldData: null, createdAt: new Date() },
+      { id: "log-4", action: "MESSAGE_BROADCAST", entity: "message_thread", entityId: "th-1", agentId: null, agent: null, actorUserId: null, newData: { recipientAgentIds: ["a", "b"] }, oldData: null, createdAt: new Date() },
+    ] as never)
+    vi.mocked(prisma.mtmCustomer.findMany).mockResolvedValue([{ id: "cust-1", name: "Zeytun Aptek" }] as never)
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      { id: "user-a", name: "Rashad Rahimov", email: "r@example.com" },
+      { id: "user-b", name: "", email: "office@example.com" },
+    ] as never)
+
+    const body = await (await GET(makeReq("/api/v1/mtm/activity?period=7d"))).json()
+    const logs = body.data.logs
+
+    expect(logs[0].actor).toEqual({ userId: "user-a", name: "Rashad Rahimov" })
+    // A customer edit is about the customer it names.
+    expect(logs[0].subject.customerName).toBe("Zeytun Aptek")
+    expect(logs[1].actor).toEqual({ userId: "user-b", name: "office@example.com" })
+    expect(logs[2].actor).toEqual({ userId: "user-a", name: "Rashad Rahimov" })
+    // Nobody recorded: no invented actor.
+    expect(logs[3].actor).toBeNull()
+    expect(prisma.user.findMany).toHaveBeenCalledWith({
+      where: { organizationId: ORG, id: { in: ["user-a", "user-b"] } },
+      select: { id: true, name: true, email: true },
     })
   })
 })

@@ -60,7 +60,7 @@ const ADDON_ROUTES: Record<string, readonly string[]> = {
   mtm: [
     "/mtm", "/mtm/map", "/mtm/routes", "/mtm/operations", "/mtm/visits", "/mtm/promotions", "/mtm/tasks",
     "/mtm/customers", "/mtm/photos", "/mtm/alerts",
-    "/mtm/agents", "/mtm/settings",
+    "/mtm/agents", "/mtm/products", "/mtm/settings",
   ],
   // VoIP is also addon-gated
   voip: ["/support/voip", "/voip/insights", "/settings/voip"],
@@ -120,7 +120,7 @@ const ENTERPRISE_MODULES = [
   "/settings/custom-domains", "/reports/builder",
   "/mtm", "/mtm/map", "/mtm/routes", "/mtm/operations", "/mtm/visits", "/mtm/promotions", "/mtm/tasks",
   "/mtm/customers", "/mtm/photos", "/mtm/alerts",
-  "/mtm/agents", "/mtm/settings",
+  "/mtm/agents", "/mtm/products", "/mtm/settings",
   "/ai-command-center",
 ] as const
 

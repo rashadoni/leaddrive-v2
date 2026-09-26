@@ -1,6 +1,6 @@
 import type { PrismaClient } from "@prisma/client"
 import { availableWorkdayActions } from "@/lib/mtm/operational-week"
-import type { MtmWorkdayAction } from "@/lib/mtm/workday"
+import { isMtmWorkdayReopenUndoEventKey, type MtmWorkdayAction } from "@/lib/mtm/workday"
 import {
   workforceAttendancePolicyManifest,
   WorkforceAttendancePolicyError,
@@ -424,6 +424,37 @@ async function plannedAssignment(
   }
 }
 
+/**
+ * The receipt for the employee's own last accepted action. Only the employee's
+ * own actions qualify. After a manager REOPEN the latest journal entry is not
+ * something the employee did, and presenting the FINISH before it would
+ * contradict the reopened (paused) day. A manager's undo of that reopen is a
+ * FINISH too, but not the employee's: the day simply reads as finished (the
+ * projection's COMPLETED status), with no receipt claiming they finished it.
+ */
+export function workforceEmployeeTodayServerOutcome(lastEvent: {
+  type: string
+  attendanceReviewState: string | null
+  serverReceivedAt: Date | null
+  appliedAt: Date | null
+  clientEventId?: string | null
+} | null): WorkforceEmployeeTodayServerOutcome {
+  if (!lastEvent || !lastEvent.serverReceivedAt || !lastEvent.appliedAt) return null
+  if (isMtmWorkdayReopenUndoEventKey(lastEvent.clientEventId)) return null
+  const action = lastEvent.type
+  if (action !== "START" && action !== "PAUSE" && action !== "RESUME" && action !== "FINISH") return null
+  return {
+    state: lastEvent.attendanceReviewState === "PENDING_REVIEW"
+      ? "PENDING_REVIEW"
+      : lastEvent.attendanceReviewState === "LEGACY_UNKNOWN" || lastEvent.attendanceReviewState == null
+        ? "LEGACY_APPLIED"
+        : "APPLIED",
+    action,
+    serverReceivedAt: lastEvent.serverReceivedAt.toISOString(),
+    appliedAt: lastEvent.appliedAt.toISOString(),
+  }
+}
+
 export async function loadWorkforceEmployeeToday(
   db: EmployeeTodayDb,
   input: {
@@ -467,24 +498,11 @@ export async function loadWorkforceEmployeeToday(
           attendanceReviewState: true,
           serverReceivedAt: true,
           appliedAt: true,
+          clientEventId: true,
         },
       })
     : null
-  const serverOutcome: WorkforceEmployeeTodayServerOutcome = lastEvent
-    && lastEvent.serverReceivedAt
-    && lastEvent.appliedAt
-    && (lastEvent.type === "START" || lastEvent.type === "PAUSE" || lastEvent.type === "RESUME" || lastEvent.type === "FINISH")
-    ? {
-        state: lastEvent.attendanceReviewState === "PENDING_REVIEW"
-          ? "PENDING_REVIEW"
-          : lastEvent.attendanceReviewState === "LEGACY_UNKNOWN" || lastEvent.attendanceReviewState == null
-            ? "LEGACY_APPLIED"
-            : "APPLIED",
-        action: lastEvent.type,
-        serverReceivedAt: lastEvent.serverReceivedAt.toISOString(),
-        appliedAt: lastEvent.appliedAt.toISOString(),
-      }
-    : null
+  const serverOutcome = workforceEmployeeTodayServerOutcome(lastEvent)
   return workforceEmployeeTodayProjection({
     status: input.status,
     previousOpen: input.previousOpen,

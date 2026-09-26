@@ -14,7 +14,7 @@ export type MobileConfigPayload = {
 
 export type ActiveContactDictionary = {
   id: string
-  kind: "PSYCHOTYPE" | "PRODUCT_CATEGORY" | "BRAND_CATEGORY" | "TASK_GROUP"
+  kind: "CLIENT_TYPE" | "PSYCHOTYPE" | "PRODUCT_CATEGORY" | "BRAND_CATEGORY" | "TASK_GROUP"
   version: number
   nameRu: string
   nameAz: string
@@ -31,6 +31,7 @@ export type ActiveContactDictionary = {
 }
 
 const CONTACT_DICTIONARY_KEYS: Record<ActiveContactDictionary["kind"], string> = {
+  CLIENT_TYPE: "clientType",
   PSYCHOTYPE: "psychotype",
   PRODUCT_CATEGORY: "productCategory",
   BRAND_CATEGORY: "brandCategory",

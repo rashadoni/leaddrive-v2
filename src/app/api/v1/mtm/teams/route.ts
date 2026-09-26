@@ -6,7 +6,7 @@
  * Optionally scoped by regionId query param for region-scoped dashboards.
  *
  * GET  — any authenticated caller may list teams.
- * POST — ADMIN or MANAGER only (mobile JWT); web admin panel unrestricted.
+ * POST — administrators only (web admin/superadmin or MTM ADMIN; see auth-gate.ts).
  */
 import { NextResponse } from "next/server"
 import { withRls } from "@/lib/with-rls"
@@ -40,9 +40,9 @@ export const GET = withRls(async (req, { orgId }) => {
   }
 })
 
-export const POST = withRls(async (req, { orgId }) => {
-
-  const forbidden = await assertMtmAdmin(req, orgId)
+export const POST = withRls(async (req, auth) => {
+  const { orgId } = auth
+  const forbidden = await assertMtmAdmin(req, auth)
   if (forbidden) return forbidden
 
   try {

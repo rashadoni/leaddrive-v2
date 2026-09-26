@@ -11,7 +11,10 @@ import { isAgentInWorkforceScope, type WorkforceActor } from "@/lib/workforce/ac
 import { workforceGranularAccessEnabled } from "@/lib/workforce/granular-access-rollout"
 import {
   replayWorkforceWorkdayFacts,
+  WORKFORCE_WORKDAY_JOURNAL_ORDER,
+  WORKFORCE_WORKDAY_JOURNAL_SELECT,
   workforceReplayMatchesWorkdayCorrectionFacts,
+  workforceWorkdayEventFact,
   WorkforceWorkdayFactsReplayError,
 } from "@/lib/workforce/workday-facts-replay"
 import {
@@ -259,8 +262,8 @@ export async function correctWorkforceTimeDirectly(
       const [events, corrections] = await Promise.all([
         tx.mtmAgentWorkdayEvent.findMany({
           where: { organizationId, agentId: initial.agentId, workdayId },
-          orderBy: [{ occurredAt: "asc" }, { id: "asc" }],
-          select: { id: true, type: true, occurredAt: true },
+          orderBy: [...WORKFORCE_WORKDAY_JOURNAL_ORDER],
+          select: WORKFORCE_WORKDAY_JOURNAL_SELECT,
         }),
         tx.workforceTimeCorrection.findMany({
           where: { organizationId, agentId: initial.agentId, workdayId },
@@ -272,11 +275,7 @@ export async function correctWorkforceTimeDirectly(
       try {
         replayed = replayWorkforceWorkdayFacts({
           workdayId,
-          events: events.map((event) => ({
-            id: event.id,
-            type: event.type as "START" | "PAUSE" | "RESUME" | "FINISH",
-            occurredAt: event.occurredAt.toISOString(),
-          })),
+          events: events.map(workforceWorkdayEventFact),
           corrections,
         })
       } catch (error) {
@@ -299,11 +298,7 @@ export async function correctWorkforceTimeDirectly(
       try {
         replayWorkforceWorkdayFacts({
           workdayId,
-          events: events.map((event) => ({
-            id: event.id,
-            type: event.type as "START" | "PAUSE" | "RESUME" | "FINISH",
-            occurredAt: event.occurredAt.toISOString(),
-          })),
+          events: events.map(workforceWorkdayEventFact),
           corrections: [...corrections, {
             id: "pending-direct-correction",
             beforeFacts: beforeWorkday,

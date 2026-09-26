@@ -17,6 +17,7 @@ const appEnvConsumers = [
   ".github/workflows/require-admin-2fa.yml",
   ".github/workflows/reset-brandprotection-social-monitoring.yml",
   ".github/workflows/seed-brandprotection.yml",
+  ".github/workflows/seed-demo-journey-clips.yml",
   ".github/workflows/set-openai-key.yml",
   ".github/workflows/set-social-app-secrets.yml",
   ".github/workflows/set-social-redirect-uris.yml",

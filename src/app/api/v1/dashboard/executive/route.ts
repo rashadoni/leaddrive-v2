@@ -6,6 +6,7 @@ import { generateRevenueForecast } from "@/lib/ai/predictive"
 import { decimalToNumber } from "@/lib/prisma-decimal"
 import { canonicalDealStage, resolveStageVocabulary } from "@/lib/deal-stage-normalization"
 import { wonStageNames, lostStageNames } from "@/lib/marketing-attribution/won-stages"
+import { rateOf, type CampaignAnalyticsRecord } from "@/lib/campaigns/analytics"
 
 export const GET = withRls(async (_req, { orgId }) => {
   try {
@@ -169,7 +170,7 @@ export const GET = withRls(async (_req, { orgId }) => {
         where: { organizationId: orgId },
         orderBy: { createdAt: "desc" },
         take: 4,
-        select: { id: true, name: true, status: true, totalSent: true, totalOpened: true, totalClicked: true, totalRecipients: true },
+        select: { id: true, name: true, type: true, status: true, totalSent: true, totalOpened: true, totalClicked: true, totalRecipients: true, createdAt: true },
       }),
       // Upcoming events
       prisma.event.findMany({
@@ -450,11 +451,35 @@ export const GET = withRls(async (_req, { orgId }) => {
           count30d: activityCount30d,
         },
         risks,
-        campaigns: (activeCampaigns as any[]).map((c: any) => ({
-          id: c.id, name: c.name, status: c.status || "draft", sent: c.totalSent || 0,
-          openRate: c.totalRecipients > 0 ? Math.round((c.totalOpened / c.totalRecipients) * 100) : 0,
-          clickRate: c.totalRecipients > 0 ? Math.round((c.totalClicked / c.totalRecipients) * 100) : 0,
-        })),
+        campaigns: (activeCampaigns as any[]).map((c: any) => {
+          /*
+           * Same rule as Campaigns → «Analitika» (src/lib/campaigns/analytics.ts):
+           * a rate over what was sent, and null where the channel does not
+           * record the step. Only email writes opens and clicks onto the
+           * campaign, so an SMS campaign has no open rate — «0%» would read as
+           * measured. The home cards print «—» for null.
+           */
+          const record: CampaignAnalyticsRecord = {
+            id: c.id,
+            name: c.name,
+            type: c.type,
+            status: c.status,
+            totalRecipients: c.totalRecipients || 0,
+            totalSent: c.totalSent || 0,
+            totalOpened: c.totalOpened || 0,
+            totalClicked: c.totalClicked || 0,
+            createdAt: new Date(c.createdAt).toISOString(),
+          }
+          const percent = (counter: "totalOpened" | "totalClicked") => {
+            const rate = rateOf([record], counter)
+            return rate ? Math.round(rate.percent * 10) / 10 : null
+          }
+          return {
+            id: c.id, name: c.name, type: c.type, status: c.status || "draft", sent: record.totalSent,
+            openRate: percent("totalOpened"),
+            clickRate: percent("totalClicked"),
+          }
+        }),
         events: (upcomingEvents as any[]).map((e: any) => ({
           id: e.id, name: e.name, date: e.startDate, type: e.type, registered: e.registeredCount || 0,
         })),

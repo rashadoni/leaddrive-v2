@@ -114,6 +114,8 @@ beforeEach(() => {
   vi.mocked(prisma.mtmSyncOperation.findFirst).mockResolvedValue(null)
   vi.mocked(prisma.mtmSyncOperation.create).mockResolvedValue({} as any)
   vi.mocked(prisma.mtmAgentWorkdayEvent.findFirst).mockResolvedValue(null)
+  vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue(null)
+  vi.mocked(prisma.mtmHrmRequest.updateMany).mockResolvedValue({ count: 1 } as never)
   vi.mocked(evaluateWorkforceMobileWriteAccess).mockResolvedValue({
     allowed: true,
     mode: "LEGACY_ALLOWED",
@@ -658,6 +660,36 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
     }
   })
 
+  it("isolates an unsupported Workforce schema with an additive upgrade response", async () => {
+    const response = await PushPOST(makePushReq({
+      operations: [{
+        operationId: "op-workday-unsupported-schema",
+        op: "create",
+        entity: "workdays",
+        data: {
+          action: "START",
+          id: "workday-unsupported-schema",
+          occurredAt: new Date().toISOString(),
+          schemaVersion: 5,
+        },
+        clientTimestamp: Date.now(),
+      }],
+    }))
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      results: [{
+        operationId: "op-workday-unsupported-schema",
+        status: "error",
+        serverData: {
+          code: "WORKFORCE_WORKDAY_SCHEMA_UNSUPPORTED",
+          schemaSupport: { min: 1, max: 4, action: "UPGRADE_CLIENT" },
+        },
+      }],
+    })
+    expect(prisma.mtmSyncOperation.create).not.toHaveBeenCalled()
+  })
+
   it("isolates a disabled route-field operation without writing it", async () => {
     // Capability checks are intentionally operation-scoped: an old client can
     // keep a workforce operation in the same outbox batch without losing it
@@ -886,8 +918,12 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
     // Both outcomes are pinned atomically despite the failed idempotency
     // pre-check, and both writers acquire the same per-agent slot lock.
     expect(vi.mocked(prisma.mtmSyncOperation.create)).toHaveBeenCalledTimes(2)
-    expect(vi.mocked(prisma.$executeRaw)).toHaveBeenCalledTimes(2)
-    const lockKeys = vi.mocked(prisma.$executeRaw).mock.calls.map((call: unknown[]) => call[1])
+    // Only the slot locks; the accepted check-in also opens and releases the
+    // activity-audit savepoint (field-sync-audit.ts), which carries no key.
+    const lockCalls = vi.mocked(prisma.$executeRaw).mock.calls
+      .filter((call: unknown[]) => !(call[0] as string[]).join("?").includes("field_sync_audit"))
+    expect(lockCalls).toHaveLength(2)
+    const lockKeys = lockCalls.map((call: unknown[]) => call[1])
     expect(lockKeys).toEqual([
       `mtm-active-visit:${ORG}:${AGENT_ID}`,
       `mtm-active-visit:${ORG}:${AGENT_ID}`,
@@ -1017,6 +1053,11 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
         contactId: "contact-1",
         routeId: "route-1",
         routePointId: "point-1",
+        // The pin and zone this visit is judged against later, whatever
+        // happens to the customer card (no setting stored → 100 m).
+        checkInCustomerLat: 40.4,
+        checkInCustomerLng: 49.8,
+        checkInGeofenceRadius: 100,
       }),
     }))
     expect(prisma.mtmRoute.updateMany).not.toHaveBeenCalled()
@@ -1151,6 +1192,47 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
     }))
   })
 
+  it("refuses an out-of-zone check-in without an alert when alertOutOfZone is off, and alerts when on", async () => {
+    for (const alertOutOfZone of [false, true]) {
+      vi.mocked(prisma.mtmAlert.create).mockClear()
+      vi.mocked(prisma.mtmVisit.create).mockClear()
+      vi.mocked(prisma.mtmRoutePoint.findFirst).mockResolvedValue({
+        id: "point-1",
+        routeId: "route-1",
+        customerId: "cust-1",
+        contactId: null,
+        route: { status: "PLANNED", assignments: [] },
+      } as any)
+      vi.mocked(prisma.mtmCustomer.findFirst).mockResolvedValue({
+        id: "cust-1", category: "B", objectType: "CLINIC", latitude: 40.4, longitude: 49.8, geofenceRadius: 50,
+      } as any)
+      vi.mocked(prisma.mtmSetting.findFirst).mockImplementation((async ({ where }: any) => (
+        where.key === "alertOutOfZone" ? { value: alertOutOfZone } : null
+      )) as never)
+
+      const response = await PushPOST(makePushReq({ operations: [{
+        operationId: `op-out-of-zone-${alertOutOfZone}`,
+        op: "create",
+        entity: "visits",
+        data: {
+          id: `field-visit-zone-${alertOutOfZone}`,
+          customerId: "cust-1",
+          routeId: "route-1",
+          routePointId: "point-1",
+          checkInLat: 41.0,
+          checkInLng: 50.5,
+        },
+        clientTimestamp: Date.now(),
+      }] }))
+      const body = await response.json()
+
+      expect(body.results[0]).toMatchObject({ status: "conflict", serverData: { code: "MTM_VISIT_OUT_OF_ZONE", geofenceRadius: 50 } })
+      expect(prisma.mtmVisit.create).not.toHaveBeenCalled()
+      expect(prisma.mtmAlert.create).toHaveBeenCalledTimes(alertOutOfZone ? 1 : 0)
+    }
+    vi.mocked(prisma.mtmSetting.findFirst).mockResolvedValue(null)
+  })
+
   it("rejects an ad-hoc contact outside the tenant customer before visit creation", async () => {
     vi.mocked(prisma.mtmContact.findFirst).mockResolvedValue(null)
 
@@ -1278,6 +1360,51 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
         newData: expect.objectContaining({ actorRole: "MANAGER", forceOverride: true }),
       }),
     })
+  })
+
+  it("gates only the alert of a forced out-of-zone check-in on alertOutOfZone", async () => {
+    for (const alertOutOfZone of [false, true]) {
+      vi.mocked(prisma.mtmAlert.create).mockClear()
+      vi.mocked(prisma.mtmVisit.create).mockClear()
+      vi.mocked(prisma.mtmAuditLog.create).mockClear()
+      vi.mocked(resolveMobileAuth).mockResolvedValue({ ...AUTH_CONTEXT, role: "MANAGER" } as never)
+      vi.mocked(prisma.mtmCustomer.findFirst).mockResolvedValue({ id: "cust-1", latitude: 40.4, longitude: 49.8, geofenceRadius: 50 } as never)
+      vi.mocked(prisma.mtmSetting.findFirst).mockImplementation((async ({ where }: any) => (
+        where.key === "alertOutOfZone" ? { value: alertOutOfZone } : null
+      )) as never)
+      vi.mocked(prisma.mtmVisit.create).mockResolvedValue({
+        id: `field-visit-force-${alertOutOfZone}`,
+        status: "CHECKED_IN",
+        checkInAt: new Date("2026-07-21T09:00:00.000Z"),
+        customerId: "cust-1",
+        contactId: null,
+        routeId: null,
+        routePointId: null,
+      } as never)
+
+      const response = await PushPOST(makePushReq({ operations: [{
+        operationId: `op-force-alert-${alertOutOfZone}`,
+        op: "create",
+        entity: "visits",
+        data: {
+          id: `field-visit-force-${alertOutOfZone}`,
+          customerId: "cust-1",
+          checkInAt: "2026-07-21T09:00:00.000Z",
+          checkInLat: 41.0,
+          checkInLng: 50.5,
+          force: true,
+        },
+        clientTimestamp: Date.now(),
+      }] }))
+      const body = await response.json()
+
+      // The forced check-in itself and its audit trail do not depend on the switch.
+      expect(body.results[0]).toMatchObject({ status: "ok", serverId: `field-visit-force-${alertOutOfZone}` })
+      expect(prisma.mtmVisit.create).toHaveBeenCalledTimes(1)
+      expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith({ data: expect.objectContaining({ action: "CHECK_IN_FORCED" }) })
+      expect(prisma.mtmAlert.create).toHaveBeenCalledTimes(alertOutOfZone ? 1 : 0)
+    }
+    vi.mocked(prisma.mtmSetting.findFirst).mockResolvedValue(null)
   })
 
   it("does not grant managers general field mutation capability", async () => {
@@ -1446,6 +1573,229 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
       }),
     }))
     expect(prisma.mtmVisit.create).not.toHaveBeenCalled()
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        action: "WORKFORCE_SELF_REQUEST_SUBMITTED",
+        entity: "hrm_request",
+        entityId: "hrm-hrm-only-1",
+        newData: {
+          type: "LEAVE",
+          startDate: "2026-07-20",
+          endDate: "2026-07-21",
+          correctionRequested: false,
+          exceptionCaseLinked: false,
+        },
+      }),
+    }))
+    expect(JSON.stringify(vi.mocked(prisma.mtmAuditLog.create).mock.calls)).not.toContain("Annual leave")
+  })
+
+  it("does not replay a mobile HR request when its client request id has different details", async () => {
+    vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue({
+      id: "hrm-existing-1",
+      clientRequestId: "hrm-client-0001",
+      type: "LEAVE",
+      status: "PENDING",
+      startDate: new Date("2026-07-20T00:00:00.000Z"),
+      endDate: new Date("2026-07-21T00:00:00.000Z"),
+      correctionWorkdayId: null,
+      requestedStartAt: null,
+      requestedEndAt: null,
+      reason: "Annual leave",
+      submittedAt: new Date("2026-07-14T05:00:00.000Z"),
+    } as never)
+
+    const response = await PushPOST(makePushReq({ operations: [{
+      operationId: "op-hrm-replayed-details",
+      op: "create",
+      entity: "hrmRequests",
+      data: {
+        id: "hrm-new-id-ignored",
+        clientRequestId: "hrm-client-0001",
+        type: "LEAVE",
+        startDate: "2026-07-20",
+        endDate: "2026-07-21",
+        reason: "Different leave details",
+        submittedAt: "2026-07-14T05:00:00.000Z",
+      },
+      clientTimestamp: Date.now(),
+    }] }))
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.results).toEqual([expect.objectContaining({
+      operationId: "op-hrm-replayed-details",
+      status: "conflict",
+      serverData: { code: "WORKFORCE_SELF_REQUEST_IDEMPOTENCY_MISMATCH" },
+    })])
+    expect(prisma.mtmHrmRequest.create).not.toHaveBeenCalled()
+    expect(prisma.mtmSyncOperation.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        operationId: "op-hrm-replayed-details",
+        status: "conflict",
+      }),
+    }))
+  })
+
+  it("links a mobile correction only to its exact own exception/workday pair", async () => {
+    vi.mocked(prisma.mtmHrmRequest.findFirst)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+    vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({ id: "workday-1" } as never)
+    vi.mocked(prisma.workforceExceptionCase.findFirst).mockResolvedValue({ id: "case-1" } as never)
+    vi.mocked(prisma.mtmHrmRequest.create).mockResolvedValue({
+      id: "correction-1",
+      clientRequestId: "correction-client-1",
+      type: "TIME_CORRECTION",
+      status: "PENDING",
+      startDate: new Date("2026-07-20T00:00:00.000Z"),
+      endDate: new Date("2026-07-20T00:00:00.000Z"),
+      correctionWorkdayId: "workday-1",
+      requestedStartAt: null,
+      requestedEndAt: new Date("2026-07-20T15:00:00.000Z"),
+      reason: "Forgot to finish shift",
+      submittedAt: new Date("2026-07-20T16:00:00.000Z"),
+    } as never)
+
+    const response = await PushPOST(makePushReq({ operations: [{
+      operationId: "op-own-exception-correction",
+      op: "create",
+      entity: "hrmRequests",
+      data: {
+        id: "correction-1",
+        clientRequestId: "correction-client-1",
+        type: "TIME_CORRECTION",
+        startDate: "2026-07-20",
+        endDate: "2026-07-20",
+        correctionWorkdayId: "workday-1",
+        exceptionCaseId: "case-1",
+        requestedEndAt: "2026-07-20T15:00:00.000Z",
+        reason: "Forgot to finish shift",
+        submittedAt: "2026-07-20T16:00:00.000Z",
+      },
+      clientTimestamp: Date.now(),
+    }] }))
+
+    expect(response.status).toBe(200)
+    expect(prisma.workforceExceptionCase.findFirst).toHaveBeenCalledWith({
+      where: { id: "case-1", organizationId: ORG, agentId: AGENT_ID, workdayId: "workday-1" },
+      select: { id: true },
+    })
+    expect(prisma.mtmHrmRequest.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ exceptionCaseId: "case-1" }),
+    }))
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        newData: expect.objectContaining({ exceptionCaseLinked: true }),
+      }),
+    }))
+  })
+
+  it("does not reveal or link an unavailable mobile exception source", async () => {
+    vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValueOnce(null)
+    vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({ id: "workday-1" } as never)
+    vi.mocked(prisma.workforceExceptionCase.findFirst).mockResolvedValue(null)
+
+    const response = await PushPOST(makePushReq({ operations: [{
+      operationId: "op-unavailable-exception-correction",
+      op: "create",
+      entity: "hrmRequests",
+      data: {
+        id: "correction-2",
+        clientRequestId: "correction-client-2",
+        type: "TIME_CORRECTION",
+        startDate: "2026-07-20",
+        endDate: "2026-07-20",
+        correctionWorkdayId: "workday-1",
+        exceptionCaseId: "case-not-owned",
+        requestedEndAt: "2026-07-20T15:00:00.000Z",
+        reason: "Forgot to finish shift",
+        submittedAt: "2026-07-20T16:00:00.000Z",
+      },
+      clientTimestamp: Date.now(),
+    }] }))
+    const body = await response.json()
+
+    expect(body.results).toEqual([expect.objectContaining({
+      status: "conflict",
+      serverData: { code: "WORKFORCE_SELF_EXCEPTION_UNAVAILABLE" },
+    })])
+    expect(prisma.mtmHrmRequest.create).not.toHaveBeenCalled()
+    expect(JSON.stringify(body)).not.toContain("case-not-owned")
+  })
+
+  it("cancels a mobile HR request conditionally and writes a metadata-only audit", async () => {
+    const cancelledAt = "2026-07-14T06:00:00.000Z"
+    vi.mocked(prisma.mtmHrmRequest.findFirst)
+      .mockResolvedValueOnce({ id: "hrm-cancel-1", status: "PENDING", cancelledAt: null } as never)
+      .mockResolvedValueOnce({
+        id: "hrm-cancel-1",
+        status: "CANCELLED",
+        cancelledAt: new Date(cancelledAt),
+        updatedAt: new Date(cancelledAt),
+      } as never)
+    vi.mocked(prisma.mtmHrmRequest.updateMany).mockResolvedValue({ count: 1 } as never)
+
+    const response = await PushPOST(makePushReq({ operations: [{
+      operationId: "op-hrm-cancel-conditional",
+      op: "update",
+      entity: "hrmRequests",
+      data: { id: "hrm-cancel-1", cancelledAt },
+      clientTimestamp: Date.now(),
+    }] }))
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.results).toEqual([expect.objectContaining({
+      operationId: "op-hrm-cancel-conditional",
+      status: "ok",
+      serverId: "hrm-cancel-1",
+    })])
+    expect(prisma.mtmHrmRequest.updateMany).toHaveBeenCalledWith({
+      where: { id: "hrm-cancel-1", organizationId: ORG, agentId: AGENT_ID, status: "PENDING" },
+      data: { status: "CANCELLED", cancelledAt: new Date(cancelledAt) },
+    })
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        action: "WORKFORCE_SELF_REQUEST_CANCELLED",
+        entity: "hrm_request",
+        entityId: "hrm-cancel-1",
+        oldData: { status: "PENDING" },
+        newData: { status: "CANCELLED" },
+      }),
+    }))
+  })
+
+  it("does not acknowledge or audit a mobile cancellation that loses the pending-row race", async () => {
+    vi.mocked(prisma.mtmHrmRequest.findFirst).mockResolvedValue({
+      id: "hrm-cancel-race-1",
+      status: "PENDING",
+      cancelledAt: null,
+    } as never)
+    vi.mocked(prisma.mtmHrmRequest.updateMany).mockResolvedValue({ count: 0 } as never)
+
+    const response = await PushPOST(makePushReq({ operations: [{
+      operationId: "op-hrm-cancel-race",
+      op: "update",
+      entity: "hrmRequests",
+      data: { id: "hrm-cancel-race-1", cancelledAt: "2026-07-14T06:00:00.000Z" },
+      clientTimestamp: Date.now(),
+    }] }))
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body.results).toEqual([expect.objectContaining({
+      operationId: "op-hrm-cancel-race",
+      status: "conflict",
+      serverData: { code: "WORKFORCE_SELF_REQUEST_CONCURRENT_CHANGE" },
+    })])
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+    expect(prisma.mtmSyncOperation.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        operationId: "op-hrm-cancel-race",
+        status: "conflict",
+      }),
+    }))
   })
 
   it("fences only Workforce operations in a mixed legacy batch without pinning the denied write", async () => {
@@ -3114,5 +3464,165 @@ describe("POST /api/v1/mtm/mobile/sync/push", () => {
     expect(prisma.mtmAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ action: "BRAND_POTENTIAL_END" }),
     }))
+  })
+})
+
+// ─── Activity journal rows from the sync path (prod 2026-09-14) ─────────────
+// /mtm/activity counted «Check-in 0, Check-out 0» for a week while visits were
+// being opened and closed from the phone: the sync path wrote no audit rows.
+describe("POST /api/v1/mtm/mobile/sync/push — activity audit rows", () => {
+  const auditCalls = () => vi.mocked(prisma.mtmAuditLog.create).mock.calls.map((call) => (call[0] as any).data)
+
+  it("writes one CHECK_IN row with customer name and visit id inside the operation's transaction", async () => {
+    vi.mocked(prisma.mtmCustomer.findFirst).mockResolvedValue({ id: "cust-1", name: "Aptek 24", latitude: 40.4, longitude: 49.8, geofenceRadius: null } as never)
+    vi.mocked(prisma.mtmVisit.create).mockResolvedValue({ id: "visit-audit-1", status: "CHECKED_IN", checkInAt: new Date(), customerId: "cust-1" } as any)
+
+    const res = await PushPOST(makePushReq({ operations: [{
+      operationId: "op-audit-checkin", op: "create", entity: "visits",
+      data: { customerId: "cust-1", checkInAt: new Date().toISOString() }, clientTimestamp: Date.now(),
+    }] }))
+    expect((await res.json()).results[0].status).toBe("ok")
+
+    expect(auditCalls()).toEqual([expect.objectContaining({
+      organizationId: ORG,
+      agentId: AGENT_ID,
+      action: "CHECK_IN",
+      entity: "visit",
+      entityId: "visit-audit-1",
+      newData: expect.objectContaining({ operationId: "op-audit-checkin", customerName: "Aptek 24", visitId: "visit-audit-1", source: "mobile_sync" }),
+    })])
+    // Same transaction as the pin: written after $transaction opened and
+    // before the idempotency row that commits it.
+    expect(prisma.$transaction).toHaveBeenCalled()
+    expect(vi.mocked(prisma.mtmAuditLog.create).mock.invocationCallOrder[0])
+      .toBeLessThan(vi.mocked(prisma.mtmSyncOperation.create).mock.invocationCallOrder[0])
+  })
+
+  it("a retried operationId replays from the pin and writes no second row", async () => {
+    vi.mocked(prisma.mtmSyncOperation.findMany).mockResolvedValue([{
+      operationId: "op-audit-retry", entity: "visits", status: "ok", result: { serverId: "visit-audit-1", serverData: {} },
+    }] as any)
+
+    const res = await PushPOST(makePushReq({ operations: [{
+      operationId: "op-audit-retry", op: "create", entity: "visits", data: { customerId: "cust-1" }, clientTimestamp: Date.now(),
+    }] }))
+    expect((await res.json()).results[0].status).toBe("ok")
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+
+  it("a duplicate in the same batch writes one row", async () => {
+    vi.mocked(prisma.mtmVisit.create).mockResolvedValue({ id: "visit-audit-2", status: "CHECKED_IN", checkInAt: new Date() } as any)
+    const op = { operationId: "op-audit-dup", op: "create", entity: "visits", data: { customerId: "cust-1" }, clientTimestamp: Date.now() }
+
+    await PushPOST(makePushReq({ operations: [op, op] }))
+
+    expect(auditCalls().filter((row) => row.action === "CHECK_IN")).toHaveLength(1)
+  })
+
+  it("a concurrent duplicate that loses the pin race commits no row of its own", async () => {
+    vi.mocked(prisma.mtmVisit.create).mockResolvedValue({ id: "visit-audit-3", status: "CHECKED_IN", checkInAt: new Date() } as any)
+    // The pin fails on the unique index → the whole transaction (audit row
+    // included) rolls back and the winner's stored result is replayed.
+    vi.mocked(prisma.mtmSyncOperation.create).mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError("dup", { code: "P2002", clientVersion: "test" }),
+    )
+    vi.mocked(prisma.mtmSyncOperation.findFirst).mockResolvedValue({
+      operationId: "op-audit-race", entity: "visits", status: "ok", result: { serverId: "visit-audit-3" },
+    } as any)
+
+    const res = await PushPOST(makePushReq({ operations: [{
+      operationId: "op-audit-race", op: "create", entity: "visits", data: { customerId: "cust-1" }, clientTimestamp: Date.now(),
+    }] }))
+    expect((await res.json()).results[0]).toMatchObject({ status: "ok", serverId: "visit-audit-3" })
+    // The only create happened inside the rolled-back transaction, never
+    // re-attempted outside it.
+    expect(prisma.mtmAuditLog.create).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(prisma.mtmAuditLog.create).mock.invocationCallOrder[0])
+      .toBeLessThan(vi.mocked(prisma.mtmSyncOperation.create).mock.invocationCallOrder[0])
+  })
+
+  it("an audit insert failure never fails the check-in: visit written, op pinned ok, savepoint rolled back", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    vi.mocked(prisma.mtmVisit.create).mockResolvedValue({ id: "visit-audit-fail", status: "CHECKED_IN", checkInAt: new Date() } as any)
+    vi.mocked(prisma.mtmAuditLog.create).mockRejectedValueOnce(new Error("audit insert failed"))
+
+    const res = await PushPOST(makePushReq({ operations: [{
+      operationId: "op-audit-fail", op: "create", entity: "visits", data: { customerId: "cust-1" }, clientTimestamp: Date.now(),
+    }] }))
+    consoleError.mockRestore()
+
+    expect((await res.json()).results[0]).toMatchObject({ status: "ok", serverId: "visit-audit-fail" })
+    expect(prisma.mtmVisit.create).toHaveBeenCalledTimes(1)
+    expect(prisma.mtmSyncOperation.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ operationId: "op-audit-fail", status: "ok" }),
+    }))
+    const sql = vi.mocked(prisma.$executeRaw).mock.calls
+      .map((call) => (call[0] as unknown as TemplateStringsArray).join("?"))
+      .filter((text) => text.includes("field_sync_audit"))
+    expect(sql).toEqual(["SAVEPOINT field_sync_audit", "ROLLBACK TO SAVEPOINT field_sync_audit", "RELEASE SAVEPOINT field_sync_audit"])
+  })
+
+  it("an offline check-in synced the next day is dated by its checkInAt", async () => {
+    const checkInAt = new Date(Date.now() - 20 * 60 * 60_000)
+    vi.mocked(prisma.mtmVisit.create).mockResolvedValue({ id: "visit-offline", status: "CHECKED_IN", checkInAt } as any)
+    await PushPOST(makePushReq({ operations: [{
+      operationId: "op-offline", op: "create", entity: "visits",
+      data: { customerId: "cust-1", checkInAt: checkInAt.toISOString() }, clientTimestamp: Date.now(),
+    }] }))
+    const row = auditCalls()[0]
+    expect(row.createdAt.toISOString()).toBe(checkInAt.toISOString())
+    expect(row.newData.occurredAt).toBe(checkInAt.toISOString())
+  })
+
+  it("a device clock in the future does not date the row ahead of now", async () => {
+    vi.mocked(prisma.mtmVisit.create).mockResolvedValue({ id: "visit-future", status: "CHECKED_IN", checkInAt: new Date("2099-01-01T00:00:00.000Z") } as any)
+    await PushPOST(makePushReq({ operations: [{
+      operationId: "op-future", op: "create", entity: "visits", data: { customerId: "cust-1" }, clientTimestamp: Date.now(),
+    }] }))
+    expect(auditCalls()[0].createdAt.getTime()).toBeLessThanOrEqual(Date.now())
+  })
+
+  it("a refused check-in (conflict) writes no activity row", async () => {
+    vi.mocked(prisma.mtmCustomer.findFirst).mockResolvedValue({ id: "cust-1", latitude: null, longitude: null, geofenceRadius: null } as never)
+    const res = await PushPOST(makePushReq({ operations: [{
+      operationId: "op-audit-refused", op: "create", entity: "visits", data: { customerId: "cust-1" }, clientTimestamp: Date.now(),
+    }] }))
+    expect((await res.json()).results[0].status).toBe("conflict")
+    expect(prisma.mtmAuditLog.create).not.toHaveBeenCalled()
+  })
+
+  it("check-out writes CHECK_OUT, and ROUTE_COMPLETE when that visit closed the route", async () => {
+    const checkInAt = new Date(Date.now() - 30 * 60_000)
+    vi.mocked(prisma.mtmVisit.findFirst)
+      // the sync guard's own read
+      .mockResolvedValueOnce({ id: "visit-co", status: "CHECKED_IN", customerId: "cust-1", routeId: "route-1", routePointId: "rp-1" } as never)
+      // completeMtmVisit readiness
+      .mockResolvedValueOnce({
+        id: "visit-co", agentId: AGENT_ID, status: "CHECKED_IN", checkInAt, checkOutAt: null, routeId: "route-1", routePointId: "rp-1",
+        requirementSnapshot: { requirements: [] }, actionResults: [], _count: { photos: 0 },
+      } as never)
+    vi.mocked(prisma.mtmVisit.update).mockResolvedValue({
+      id: "visit-co", agentId: AGENT_ID, status: "CHECKED_OUT", checkOutAt: new Date(), duration: 30, routeId: "route-1", routePointId: "rp-1",
+    } as never)
+    vi.mocked(prisma.mtmRoute.findFirst)
+      .mockResolvedValueOnce({ status: "IN_PROGRESS" } as never) // before
+      .mockResolvedValueOnce({ id: "route-1", totalPoints: 1, status: "IN_PROGRESS" } as never) // completeMtmVisit
+      .mockResolvedValueOnce({ status: "COMPLETED" } as never) // after
+    vi.mocked(prisma.mtmRoutePoint.count).mockResolvedValue(1 as never)
+    vi.mocked(prisma.mtmRoute.update).mockResolvedValue({} as never)
+    vi.mocked(prisma.mtmCustomer.findFirst).mockResolvedValue({ name: "Aptek 24" } as never)
+
+    const res = await PushPOST(makePushReq({ operations: [{
+      operationId: "op-audit-checkout", op: "update", entity: "visits",
+      data: { id: "visit-co", status: "CHECKED_OUT" }, clientTimestamp: Date.now(),
+    }] }))
+    expect((await res.json()).results[0].status).toBe("ok")
+
+    expect(auditCalls().map((row) => row.action)).toEqual(["CHECK_OUT", "ROUTE_COMPLETE"])
+    expect(auditCalls()[0]).toMatchObject({
+      entity: "visit", entityId: "visit-co",
+      newData: expect.objectContaining({ customerName: "Aptek 24", operationId: "op-audit-checkout", routeId: "route-1" }),
+    })
+    expect(auditCalls()[1]).toMatchObject({ entity: "route", entityId: "route-1" })
   })
 })

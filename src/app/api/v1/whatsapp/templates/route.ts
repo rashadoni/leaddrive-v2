@@ -84,9 +84,14 @@ export const POST = withRls(async (req, { orgId }) => {
     }
 
     const result = await createWhatsAppTemplateInMeta(orgId, parsed.data)
-    return NextResponse.json(result, { status: result.success ? 201 : 502 })
+    return NextResponse.json(result, { status: result.success ? 201 : META_FAILURE_STATUS })
   }
 
   const result = await syncTemplatesFromMeta(orgId)
-  return NextResponse.json(result, { status: result.success ? 200 : 502 })
+  return NextResponse.json(result, { status: result.success ? 200 : META_FAILURE_STATUS })
 })
+
+// Not 502: Cloudflare replaces 502/504 origin responses with its own HTML error
+// page, so the settings UI only ever saw "Unexpected token '<' … is not valid
+// JSON" instead of the Graph error message in `result.error`.
+const META_FAILURE_STATUS = 422

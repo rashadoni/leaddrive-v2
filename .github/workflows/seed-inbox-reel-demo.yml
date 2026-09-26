@@ -1,0 +1,81 @@
+name: Seed Omni-channel reel demo
+
+# Manually-triggered operator job: fills the DEMO tenant's Omni-channel Inbox
+# (fictional Azerbaijani conversations, agents, chatbot rules, 30 days of
+# analytics history) for the marketing reel — docs/omnichannel-reel-scenario.md.
+# Runs scripts/seeds/inbox-reel-demo.mjs ON THE SERVER with DATABASE_URL read
+# from /etc/leaddrive/app.env. The script owns only rows it tagged and refuses
+# any slug outside its allow-list, so it can never write into a customer tenant.
+# Re-run it right before a recording: the "night" thread moves to 02:14 today.
+
+on:
+  workflow_dispatch:
+    inputs:
+      slug:
+        description: "Demo tenant slug (allow-listed in the script)"
+        required: true
+        type: choice
+        default: "demo"
+        options: ["demo"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  seed:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup pinned production SSH
+        uses: ./.github/actions/setup-production-ssh
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          server-host: ${{ secrets.SERVER_HOST }}
+          known-hosts: ${{ secrets.SERVER_SSH_KNOWN_HOSTS }}
+
+      - name: Upload fresh seed to server
+        run: |
+          ssh -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "mkdir -p /opt/leaddrive-v2/.next/standalone/scripts/seeds"
+          scp -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
+            scripts/_rls.mjs \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/leaddrive-v2/.next/standalone/scripts/
+          scp -o ConnectTimeout=30 -i ~/.ssh/deploy_key \
+            scripts/seeds/inbox-reel-demo.mjs \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/leaddrive-v2/.next/standalone/scripts/seeds/inbox-reel-demo.mjs
+
+      - name: Run seed on server
+        env:
+          SEED_SLUG: ${{ inputs.slug || 'demo' }}
+        run: |
+          ssh -o ConnectTimeout=30 -o ServerAliveInterval=15 -i ~/.ssh/deploy_key \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "SEED_SLUG='$SEED_SLUG' bash -s" <<'REMOTE'
+          set -euo pipefail
+          APP_DIR="/opt/leaddrive-v2"
+          APP_ENV_FILE="${APP_ENV_FILE:-/etc/leaddrive/app.env}"
+          SEED="$APP_DIR/.next/standalone/scripts/seeds/inbox-reel-demo.mjs"
+          [ -f "$SEED" ] || { echo "FATAL: $SEED missing"; exit 1; }
+          [ -f "$APP_ENV_FILE" ] || { echo "FATAL: canonical app env missing"; exit 1; }
+          read_env() {
+            sed -n "s/^[[:space:]]*\(export[[:space:]]\+\)\?$1[[:space:]]*=[[:space:]]*//p" "$APP_ENV_FILE" \
+              | head -1 | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'\$/\1/"
+          }
+          DATABASE_URL="$(read_env DATABASE_URL)"
+          [ -n "$DATABASE_URL" ] || { echo "FATAL: DATABASE_URL not found in canonical app env"; exit 1; }
+          cd "$APP_DIR"
+          DATABASE_URL="$DATABASE_URL" CONFIRM_PROD=1 node "$SEED" --slug="$SEED_SLUG"
+          REMOTE
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

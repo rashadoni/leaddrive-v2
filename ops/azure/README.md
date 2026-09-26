@@ -1,6 +1,7 @@
 # LeadDrive delivery through Azure
 
-Repository: https://dev.azure.com/rashadrahimov/leaddrive-v2/_git/leaddrive-v2
+Repository: retired Azure DevOps repository identified by the project and
+repository GUIDs in `generate-definitions.py`; it is not a production source.
 
 This replaces GitHub Actions. Production sites and databases stay on their
 existing server. The Contabo CI host is a temporary bridge, not a completed
@@ -10,7 +11,8 @@ move of compute to Azure. Do not cancel that server while jobs use pool 12.
 
 1. Keep the current branch and uncommitted work. Commit only your task's files.
 2. Check the repository identity and Azure access. Add a separate `azure` remote
-   with the URL above if it is absent. Do not overwrite an unrelated remote.
+   only from verified current routing if it is absent. Do not overwrite an
+   unrelated remote.
 3. Push your feature branch to `azure`, not `main`. Use the existing migrated
    Azure draft PR if one matches; otherwise open an Azure draft PR.
 4. Finish targeted local checks, then mark the PR ready. Azure branch policies

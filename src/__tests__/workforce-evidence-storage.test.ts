@@ -3,6 +3,7 @@ import { decryptForTenantBound, resetMasterKekCache } from "@/lib/crypto/tenant-
 import { WorkforceEvidenceEnvelopeSchema } from "@/lib/workforce/evidence-envelope"
 import {
   appendWorkforceGeofenceAssessment,
+  appendWorkforceLocationQualityAssessment,
   listWorkforceEvidenceAssessmentReport,
   persistWorkforceAttendanceEvidence,
   purgeExpiredWorkforceEvidence,
@@ -83,6 +84,29 @@ describe("Workforce evidence storage", () => {
     })
     expect(db.workforceEvidenceAssessment.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.not.objectContaining({ rawEnvelopeCiphertext: expect.anything() }),
+    }))
+
+    await appendWorkforceLocationQualityAssessment(db, {
+      organizationId: orgId,
+      evidenceId: "evidence_1",
+      assessment: {
+        policyVersion: "workforce-location-evidence-v1",
+        status: "ELIGIBLE_FOR_GEOFENCE",
+        reasonCodes: ["LOCATION_READY_FOR_GEOFENCE"],
+        capturedAgeSeconds: 1,
+        reportedAccuracyMeters: 12,
+        provider: "GPS",
+      },
+      assessedAt: new Date("2026-08-30T09:01:00.000Z"),
+    })
+    expect(db.workforceEvidenceAssessment.create).toHaveBeenLastCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        kind: "LOCATION_QUALITY",
+        verdict: "ELIGIBLE",
+        geofenceRevisionId: null,
+        distanceMeters: null,
+        accuracyMeters: 12,
+      }),
     }))
   })
 

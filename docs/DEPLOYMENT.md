@@ -8,7 +8,11 @@
 - PM2 process: `leaddrive-v2`
 - Registered host: `13.140.132.245` (Contabo; physical processing region must
   be verified from the provider contract/panel before making a legal claim)
-- GitHub: `rashadrahimov/leaddrive-v2`, branch `main`
+- GitHub: `rashadoni/leaddrive-v2`, branch `main`
+
+The former repository `rashadrahimov/leaddrive-v2` and former Hetzner host
+`46.224.171.53` are permanently retired. They must not be used for Git, CI,
+deployment, inspection, recovery, or copied into new runbooks.
 
 > For multi-client deploy behavior see the rule block in `CLAUDE.md` ("Деплой — ВСЕГДА спрашивать куда") and `clients/registry.json`.
 
@@ -161,16 +165,15 @@ reset, or `systemctl enable` is not a recovery shortcut.
 The Actions run must prove `/api/v1/ping`, login assets, feature smokes, and
 that `/api/v1/public/build-info.artifactSha` equals the complete deployed
 commit SHA. Use `clients/registry.json` and the current workflow secrets for
-routing; the historical `leaddrive-prod` SSH alias may still resolve to the old
-host and is not deployment evidence.
+routing; an SSH alias or remembered address is never deployment evidence.
 
 The workflow accepts only `SERVER_HOST=13.140.132.245` and verifies it against
 the pre-pinned `SERVER_SSH_KNOWN_HOSTS` secret with strict host-key checking;
 runtime `ssh-keyscan`/TOFU is forbidden. During the approved deploy,
 `scripts/server-deploy.sh` atomically replaces only the exact legacy
-`SHARED_SERVER_IP=46.224.171.53` (or an absent/empty value) with the registered
-host, then proves the result before tenant provisioning can be activated. Any
-other configured target aborts the release.
+an absent/empty `SHARED_SERVER_IP` with the registered host, then proves the
+result before tenant provisioning can be activated. Any other configured
+target aborts the release; retired targets are never accepted or migrated.
 
 ## Build notes
 

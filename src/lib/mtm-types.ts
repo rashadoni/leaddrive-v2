@@ -424,7 +424,7 @@ export function clusterLiveMapViewportAgents(
  * locations endpoint. Union-typed so any typo in keys/maps below fails
  * compile rather than silently rendering the literal string at runtime.
  */
-export type MtmFieldStatus = "CHECKED_IN" | "ON_ROAD" | "LATE" | "OFFLINE"
+export type MtmFieldStatus = "CHECKED_IN" | "ON_ROAD" | "STOPPED" | "ROUTE_FINISHED" | "LATE" | "OFFLINE"
 
 /**
  * Single source of truth for MTM field-status → i18n label key mapping.
@@ -437,6 +437,8 @@ export type MtmFieldStatus = "CHECKED_IN" | "ON_ROAD" | "LATE" | "OFFLINE"
 export const FIELD_STATUS_LABEL_KEYS: Record<MtmFieldStatus, string> = {
   CHECKED_IN: "checkedIn",
   ON_ROAD: "onRoad",
+  STOPPED: "stopped",
+  ROUTE_FINISHED: "routeFinished",
   LATE: "late",
   OFFLINE: "offline",
 }

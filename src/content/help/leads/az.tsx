@@ -48,7 +48,7 @@ export default function leadsHelpAz() {
             Hər sətrin və Kanban kartının solundakı rəngli kvadratdır.
           </HelpDef>
           <HelpDef term="Bal">0–100 arası ədədi Da Vinci balı — dərəcənin və sıralamanın əsasıdır.</HelpDef>
-          <HelpDef term="Konversiya">Bu lidin sövdələşməyə çevrilmə ehtimalı (%), balından hesablanır.</HelpDef>
+          <HelpDef term="Konversiya">Bu lidin sövdələşməyə çevrilmə ehtimalı (%), Da Vinci Aİ-nin qiymətləndirdiyi kimi. «—» qiymət olmadığını bildirir: onu yalnız Da Vinci hesablaması verir, lidin istənilən dəyişikliyi isə balı ehtimalsız yenidən hesablayır.</HelpDef>
           <HelpDef term="Status">Lidin mərhələsi: Yeni → Əlaqə quruldu → Kvalifikasiya edildi → Çevrildi (və ya İtirildi).</HelpDef>
           <HelpDef term="Kateqoriya">Seqment etiketi: VIP, Partnyor, Prospekt, Adi, Qeyri-aktiv.</HelpDef>
           <HelpDef term="Mənbə">Lidin haradan gəldiyi: Veb sayt, Referans, Soyuq zəng, LinkedIn, Email.</HelpDef>

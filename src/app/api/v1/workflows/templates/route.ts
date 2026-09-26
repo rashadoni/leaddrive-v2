@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { WORKFLOW_TEMPLATES, getTemplateById } from "@/lib/workflow-templates"
 import { isSmsConfigured } from "@/lib/sms"
 import { withRlsAuth } from "@/lib/with-rls"
+import { sanitizeWorkflowActionConfig } from "@/lib/workflow-template"
 
 const applyTemplateSchema = z.object({
   templateId: z.string().min(1),
@@ -166,7 +167,9 @@ export const POST = withRlsAuth("settings", "write", async (req, { orgId, userId
         actions: {
           create: customized.map((a) => ({
             actionType: a.actionType,
-            actionConfig: a.actionConfig,
+            // Built-in templates are trusted, but `customizations` (subject/body)
+            // come from the request — sanitize before storing.
+            actionConfig: sanitizeWorkflowActionConfig(a.actionConfig),
             actionOrder: a.actionOrder,
           })),
         },

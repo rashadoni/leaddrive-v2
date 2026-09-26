@@ -230,7 +230,7 @@ because eleven of its findings were things tests could not see.
 | RUX-1008 | P0 | DONE | Unplanned visit reports every outcome (B1) | Closed in section 0.1 of the plan |
 | RUX-1009 | P0 | DONE | Distance to a point without coordinates (B2) | Closed in section 0.1 of the plan |
 | RUX-1010 | P0 | DONE | "Day finished at HH:MM" after End day (B3) | Closed in section 0.1 of the plan |
-| RUX-1011 | P0 | MERGED | Offline is detected and shown (B4) | Merged to `main` and in the APK; device acceptance not run (D1) |
+| RUX-1011 | P0 | DONE | Offline is detected and shown (B4) | Accepted on the phone 2026-09-14: offline chip within 5 s, synced on reconnect |
 | RUX-1012 | P0 | DONE | Day card carries the route status and opens (B5) | Accepted on the phone 2026-09-13/14; closed in section 0.1 of the plan |
 | RUX-1013 | P1 | DONE | Week as a strip of seven, one day open (B6) | Accepted on the phone 2026-09-13 (build56); closed in section 0.1 of the plan |
 | RUX-1014 | P1 | DONE | Today fits one screen (B7) | Accepted on the phone 2026-09-13/14; closed in section 0.1 of the plan |
@@ -245,8 +245,8 @@ because eleven of its findings were things tests could not see.
 | RUX-1023 | P1 | DONE | GPS map without the API-key watermark (B16) | Accepted on the phone 2026-09-13/14; closed in section 0.1 of the plan |
 | RUX-1024 | P2 | DONE | End-day confirmation in the app's own dialog (B17) | Accepted on the phone 2026-09-13 (build56); closed in section 0.1 of the plan |
 | RUX-1025 | P2 | DONE | Accessible names and readable tab captions (B18) | Accepted on the phone 2026-09-13 (build56); closed in section 0.1 of the plan |
-| RUX-1026 | P1 | MERGED | Tablet layout from 600 dp (B19) | Merged to `main` and in the APK; device acceptance not run (D1) |
-| RUX-1027 | P1 | MERGED | Sign-in above the fold (B20) | Merged to `main` and in the APK; device acceptance not run (D1) |
+| RUX-1026 | P1 | DONE | Tablet layout from 600 dp (B19) | Accepted on the phone in landscape 2026-09-14 (823 dp, two panes; rail captions fixed in mtm #25) |
+| RUX-1027 | P1 | DONE | Sign-in above the fold (B20) | Accepted on the phone 2026-09-14: fields and sign-in button above the fold |
 | RUX-1028 | P2 | DONE | Visit history opens from the screen that lists it (B21) | Accepted on the phone 2026-09-13 (build56); closed in section 0.1 of the plan |
 | RUX-1029 | P2 | DONE | Only a handset build becomes a release (B22) | Closed in section 0.1 of the plan |
 | RUX-1030 | P0 | DONE | No customer name in product copy (C1) | Closed in section 0.1 of the plan |
@@ -265,8 +265,8 @@ because eleven of its findings were things tests could not see.
 | RUX-1043 | P2 | DONE | Delete out of the primary menu (C14) | Closed in section 0.1 of the plan |
 | RUX-1044 | P1 | DONE | Tablet width 834 (C15) | Closed in section 0.1 of the plan; measured at 834 px on production 2026-09-13 |
 | RUX-1045 | P2 | DONE | Small things that add up (C16) | Closed in section 0.1 of the plan |
-| RUX-1046 | P1 | BLOCKED | Mobile end-to-end over adb (D1) | Waiting on the owner's adb tunnel to the phone |
-| RUX-1047 | P1 | BLOCKED | Web runs (D2) | AZ DOM pass on all 21 `/mtm/*` pages at 834 and 1470 found no `M0x` and no English day names (2026-09-13); the RUX evidence workflows need `MTM_EVIDENCE_*` secrets that were not moved to `rashadoni/leaddrive-v2`, and they write QA fixtures on production |
+| RUX-1046 | P1 | DONE | Mobile end-to-end over adb (D1) | Closed 2026-09-14 on the owner's phone; e2e-adb.sh and the device checklist in mtm #26 |
+| RUX-1047 | P1 | DONE | Web runs (D2) | Closed 2026-09-14 by the owner on the manual production runs (1470/834, AZ DOM pass on 21 pages); the automated RUX workflows were judged unnecessary |
 | RUX-1048 | P1 | DONE | Documents (D3) | This section, plus the check-in error contract already in `mtm-mobile-update-spec-2026-07-11.md` §2.4 |
 
 

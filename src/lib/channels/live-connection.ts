@@ -20,6 +20,18 @@
  * (and manually entered ones) carry no flag at all, and they must NOT be demoted to drafts on the
  * strength of a missing field. Only an explicit failure counts as a failure.
  *
+ * An explicit `false` has two causes, and only one of them is a failure. A STAGED connect (App Review,
+ * `?app=<id>`) deliberately asks Meta for nothing — `ensureInboxChannelForPage({ staged: true })` writes
+ * `inboxSubscribed: false` beside `appReviewOnly: true` and `subscriptionPending: true`, because
+ * subscribing a real Page is a separate, explicit act (`api/v1/social/oauth/subscribe`). Such a row reads
+ * `subscriptionPending`, not `needsReconnect`: nobody refused anything, and re-running Connect would only
+ * stage it again. It is still NOT live: LeadDrive never asked Meta to deliver, so it cannot vouch for a single
+ * DM (a Page subscribed by hand from Meta's side does deliver — the review Page did on 2026-09-21 — and this
+ * row has no way to see that; the explicit subscribe is how the row learns it). Both markers
+ * are required, so a row that was never staged keeps exactly the old meaning, and a marker left behind
+ * after someone actually asked Meta cannot relabel a refusal: the subscribe endpoint and every
+ * non-staged connect delete `subscriptionPending` when they ask.
+ *
  * Every other channel type keeps the historical meaning for facts (1) and (3) — a saved row is a
  * connection — because for them the row IS the credential set. Fact (2) is NOT Meta-specific and is
  * applied to every type: `webhooks/telegram`, `webhooks/whatsapp` and `webhooks/vk` all resolve the
@@ -44,7 +56,10 @@
  * it is always true, so this module can never return `needsReconnect` for Instagram. Instagram Direct
  * has no subscription of its own: an IG account id does not support `subscribed_apps`, so
  * `ensureInboxChannelForPage` hardcodes `{ success: true }` for IG (lib/social/inbox-channel.ts) and
- * writes `inboxSubscribed: true` unconditionally. IG DMs actually ride the `messages` subscription of
+ * writes `inboxSubscribed: true` on every non-staged connect. (A staged connect writes the staged
+ * markers on the IG row too, so it reads `subscriptionPending` — and keeps reading it after the linked
+ * Page is subscribed, because the subscribe endpoint writes the Page row only. That errs towards
+ * "unconfirmed", never towards a delivery nobody can see.) IG DMs actually ride the `messages` subscription of
  * the LINKED Facebook Page, which lives on a DIFFERENT ChannelConfig row. So the case this module
  * cannot see is: the linked Page's subscribe failed (missing `pages_messaging`) → the Page row
  * correctly reads `needsReconnect`, and the IG row beside it still reads `live` while not one DM can
@@ -75,9 +90,18 @@ export type ChannelConnectionInput = {
  * `paused`        — wired, but `isActive` is off, so the inbound resolver cannot see it.
  * `claimedElsewhere` — wired and active, but another workspace claimed this pageId first, so the webhook
  *                     delivers its DMs there. Only support can resolve it (the tenant cannot see who).
+ * `subscriptionPending` — wired and active, connected for App Review (staged), and its Meta message
+ *                     subscription was deliberately never requested. Delivery is unconfirmed until the Page
+ *                     is subscribed explicitly.
  * `needsReconnect`— wired and active, but the Meta webhook subscribe explicitly failed.
  */
-export type ChannelConnectionState = "live" | "draft" | "paused" | "claimedElsewhere" | "needsReconnect"
+export type ChannelConnectionState =
+  | "live"
+  | "draft"
+  | "paused"
+  | "claimedElsewhere"
+  | "subscriptionPending"
+  | "needsReconnect"
 
 /**
  * `settings.inboxSubscribed` as a tri-state: `true` / `false` / `undefined` (flag absent).
@@ -87,6 +111,18 @@ export function metaInboxSubscribedFlag(settings: unknown): boolean | undefined 
   if (!settings || typeof settings !== "object" || Array.isArray(settings)) return undefined
   const value = (settings as Record<string, unknown>).inboxSubscribed
   return typeof value === "boolean" ? value : undefined
+}
+
+/**
+ * True when a row's `inboxSubscribed: false` means "we deliberately did not ask" rather than "Meta refused":
+ * a staged (App Review) row still carrying the marker its staged connect wrote. Only real `true` booleans
+ * count, the same strictness as `isAppReviewOnly` in lib/social/tenant-meta-app (not imported: that module
+ * reads the database, and this one runs in the browser).
+ */
+export function metaSubscriptionDeferred(settings: unknown): boolean {
+  if (!settings || typeof settings !== "object" || Array.isArray(settings)) return false
+  const record = settings as Record<string, unknown>
+  return record.appReviewOnly === true && record.subscriptionPending === true
 }
 
 export function channelConnectionState(channel: ChannelConnectionInput): ChannelConnectionState {
@@ -103,7 +139,11 @@ export function channelConnectionState(channel: ChannelConnectionInput): Channel
   if (channel.isActive === false) return "paused"
   // Above needsReconnect: re-running OAuth cannot help while another workspace's claim wins the routing.
   if (channel.claimedElsewhere === true) return "claimedElsewhere"
-  if (metaInboxSubscribedFlag(channel.settings) === false) return "needsReconnect"
+  if (metaInboxSubscribedFlag(channel.settings) === false) {
+    // Keyed on the flag, not on the marker alone: `inboxSubscribed` records whether the Page IS subscribed,
+    // the marker only says why it is not. A staged row a later live connect did subscribe is live.
+    return metaSubscriptionDeferred(channel.settings) ? "subscriptionPending" : "needsReconnect"
+  }
   return "live"
 }
 

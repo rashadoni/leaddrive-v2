@@ -10,7 +10,27 @@
  * (per research); this is the best-known shape and is written fail-soft so a 4xx never crashes the
  * webhook. Confirm against a live token before relying on it in production.
  */
+import { redactOAuthProviderText } from "@/lib/oauth-redaction"
+
 const IG_GRAPH = "https://graph.instagram.com/v21.0"
+
+/**
+ * Everything logged from this module goes through here.
+ *
+ * Both calls below carry the Instagram-Login token as a URL query parameter — the shape Meta's own
+ * token endpoints require. That is tolerable while the value never leaves the process, but a thrown
+ * fetch error can carry the request URL in its message or `cause`, and this project ships errors to
+ * Sentry. An access token reaching an error tracker is a credential disclosure to a subprocessor,
+ * so the redactor runs on every log line here rather than on the ones that look risky: the next
+ * person to add a `console.error` should not have to notice this.
+ */
+function safeLogValue(value: unknown): string {
+  const text =
+    value instanceof Error
+      ? `${value.name}: ${value.message}${value.cause ? ` (cause: ${String(value.cause)})` : ""}`
+      : String(value)
+  return redactOAuthProviderText(text)
+}
 
 /**
  * Send an Instagram Direct reply via the Instagram-Login API. Returns true on a 2xx, false otherwise
@@ -32,12 +52,12 @@ export async function sendInstagramLoginMessage(
       }),
     })
     if (!res.ok) {
-      console.error(`[ig-login] send failed (${res.status}):`, await res.text())
+      console.error(`[ig-login] send failed (${res.status}):`, safeLogValue(await res.text()))
       return false
     }
     return true
   } catch (e) {
-    console.error("[ig-login] send error:", e)
+    console.error("[ig-login] send error:", safeLogValue(e))
     return false
   }
 }
@@ -55,7 +75,7 @@ export async function refreshInstagramLoginToken(
       `${IG_GRAPH.replace("/v21.0", "")}/refresh_access_token?grant_type=ig_refresh_token&access_token=${encodeURIComponent(igToken)}`,
     )
     if (!res.ok) {
-      console.error(`[ig-login] refresh failed (${res.status}):`, await res.text())
+      console.error(`[ig-login] refresh failed (${res.status}):`, safeLogValue(await res.text()))
       return null
     }
     const json = (await res.json()) as { access_token?: string; expires_in?: number }
@@ -65,7 +85,7 @@ export async function refreshInstagramLoginToken(
       expiresAt: json.expires_in ? Date.now() + json.expires_in * 1000 : null,
     }
   } catch (e) {
-    console.error("[ig-login] refresh error:", e)
+    console.error("[ig-login] refresh error:", safeLogValue(e))
     return null
   }
 }

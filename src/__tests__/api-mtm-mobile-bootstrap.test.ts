@@ -94,7 +94,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
           release: { platform: "ANDROID", status: "NOT_CONFIGURED", maySubmitNewWorkforceActions: true },
           wireSchemas: {
             bootstrapResponse: { current: 1, supported: [1] },
-            workdayRequest: { preferred: 3, supported: [1, 2, 3] },
+            workdayRequest: { preferred: 4, supported: [1, 2, 3, 4] },
             workdayResponse: { current: 1, supported: [1] },
             evidenceEnvelope: { preferred: 1, supported: [1] },
             siteTransitionRequest: { preferred: 1, supported: [1] },
@@ -422,6 +422,54 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
     })
   })
 
+  it("reports field contacts as enabled for a tenant that never configured the switch", async () => {
+    const json = await (await GET(request())).json()
+    expect(json.data.policies.fieldContactsEnabled).toBe(true)
+    expect(json.data.routeTargetTypes.map((target: { direction: string }) => target.direction)).toContain("DOCTOR")
+    // UI visibility only: the contact stream stays advertised either way.
+    expect(json.data.sync.streams).toContain("contacts")
+  })
+
+  it("reports field contacts as disabled once an administrator turns them off", async () => {
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([
+      { key: "fieldContactsEnabled", value: false },
+    ] as never)
+    const json = await (await GET(request())).json()
+    expect(json.data.policies.fieldContactsEnabled).toBe(false)
+    expect(json.data.policies).toMatchObject({ photoWatermark: false, canPlanOwnRoutes: true })
+    expect(json.data.sync.streams).toContain("contacts")
+    // Planning categories are independent from the full contacts directory.
+    const directions = json.data.routeTargetTypes.map((target: { direction: string }) => target.direction)
+    expect(directions).toContain("DOCTOR")
+    expect(directions).toContain("PHARMACY")
+  })
+
+  it("sends the organization's check-in zone as check-in enforces it", async () => {
+    expect((await (await GET(request())).json()).data.policies.checkInGeofenceRadiusMeters).toBe(100)
+
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "geofenceRadius", value: 250 }] as never)
+    expect((await (await GET(request())).json()).data.policies.checkInGeofenceRadiusMeters).toBe(250)
+
+    // Clamped like check-in: a stored 50000 is enforced as 10000.
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([{ key: "geofenceRadius", value: 50000 }] as never)
+    expect((await (await GET(request())).json()).data.policies.checkInGeofenceRadiusMeters).toBe(10000)
+  })
+
+  it("reports pharmacy promotions as enabled for a tenant that never configured the switch", async () => {
+    const json = await (await GET(request())).json()
+    expect(json.data.policies.pharmacyPromotionsEnabled).toBe(true)
+  })
+
+  it("reports pharmacy promotions as disabled once an administrator turns them off", async () => {
+    vi.mocked(prisma.mtmSetting.findMany).mockResolvedValue([
+      { key: "pharmacyPromotionsEnabled", value: false },
+    ] as never)
+    const json = await (await GET(request())).json()
+    expect(json.data.policies.pharmacyPromotionsEnabled).toBe(false)
+    // Independent of the contacts switch and of route planning.
+    expect(json.data.policies).toMatchObject({ fieldContactsEnabled: true, canPlanOwnRoutes: true })
+  })
+
   it("advertises enabled attendance add-ons without claiming an enforcement policy", async () => {
     vi.mocked(resolveMobileAuth).mockResolvedValue({
       ...mobileAuth("AGENT"),
@@ -446,6 +494,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
       definition: {
         attendance: {
           enforcementVersion: 1,
+          location: { requiredActions: ["START", "FINISH"] },
           qr: { requiredActions: ["START"] },
           deviceTrust: {
             requiredActions: ["START", "FINISH"],
@@ -463,6 +512,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
       status: "ACTIVE",
       enforcementVersion: 1,
       configVersion: `attendance-policy-1:4:${"a".repeat(64)}`,
+      locationRequiredActions: ["START", "FINISH"],
       qrRequiredActions: ["START"],
       deviceTrustRequiredActions: ["START", "FINISH"],
       biometricRequiredActions: [],
@@ -502,6 +552,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
       status: "INVALID",
       enforcementVersion: null,
       configVersion: `attendance-policy-invalid:1:${"b".repeat(64)}`,
+      locationRequiredActions: [],
       qrRequiredActions: [],
       deviceTrustRequiredActions: [],
       biometricRequiredActions: [],
@@ -542,6 +593,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
       status: "INVALID",
       enforcementVersion: null,
       configVersion: `attendance-policy-mismatch:2:${"c".repeat(64)}`,
+      locationRequiredActions: [],
       qrRequiredActions: [],
       deviceTrustRequiredActions: [],
       biometricRequiredActions: [],
@@ -582,6 +634,7 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
       status: "INVALID",
       enforcementVersion: null,
       configVersion: `attendance-policy-disabled:3:${"d".repeat(64)}`,
+      locationRequiredActions: [],
       qrRequiredActions: [],
       deviceTrustRequiredActions: [],
       biometricRequiredActions: [],
@@ -652,6 +705,33 @@ describe("GET /api/v1/mtm/mobile/bootstrap", () => {
         ]),
       }),
     }))
+  })
+
+  it("looks up today's shift by the stored date, not the tenant-midnight instant", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    // 18:30 in Asia/Baku (UTC+4) on 2026-09-15.
+    vi.setSystemTime(new Date("2026-09-15T14:30:00.000Z"))
+    try {
+      vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({
+        id: "workday-today",
+        workDate: new Date("2026-09-15T00:00:00.000Z"),
+        status: "COMPLETED",
+        startedAt: new Date("2026-09-15T05:00:00.000Z"),
+        pausedAt: null,
+        completedAt: new Date("2026-09-15T10:23:00.000Z"),
+      } as never)
+
+      const json = await (await GET(request())).json()
+
+      expect(json.data.workday).toMatchObject({ id: "workday-today", status: "COMPLETED" })
+      const where = vi.mocked(prisma.mtmAgentWorkday.findFirst).mock.calls.at(-1)?.[0]?.where as { OR: Array<{ workDate?: Date }> }
+      const byDate = where.OR.find((clause) => clause.workDate)
+      // workday.ts writes `${workDateKey}T00:00:00.000Z`; 2026-09-14T20:00Z
+      // would be read by the @db.Date column as the day before.
+      expect(byDate?.workDate?.toISOString()).toBe("2026-09-15T00:00:00.000Z")
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("advertises HRM-only mode without route UI data or route capability", async () => {

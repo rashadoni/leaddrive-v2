@@ -13,36 +13,45 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { createDateFormatter } from "@/lib/format-date"
 
 type Labels = { ru: string; az: string; en: string }
+type ClientTypeField = {
+  key: string
+  order: number
+  type: "TEXT" | "TEXTAREA" | "PHONE" | "EMAIL" | "NUMBER" | "DATE" | "SELECT"
+  required: boolean
+  labels: Labels
+  options?: Array<{ code: string; labels: Labels }>
+}
 
 export type GovernedContactDictionary = {
   id: string
-  kind: "PSYCHOTYPE" | "PRODUCT_CATEGORY" | "BRAND_CATEGORY"
+  kind: "CLIENT_TYPE" | "PSYCHOTYPE" | "PRODUCT_CATEGORY" | "BRAND_CATEGORY"
   version: number
   nameRu: string
   nameAz: string
   nameEn: string
   approvalReference: string | null
   signedAt: string | null
-  entries: Array<{ code: string; order: number; labels: Labels; description?: Labels }>
+  entries: Array<{ code: string; order: number; labels: Labels; description?: Labels; fields?: ClientTypeField[] }>
 }
 
 export type GovernedContactDictionaryAssignment = {
   id: string
   dictionaryId: string
-  kind: "PSYCHOTYPE" | "PRODUCT_CATEGORY" | "BRAND_CATEGORY"
+  kind: "CLIENT_TYPE" | "PSYCHOTYPE" | "PRODUCT_CATEGORY" | "BRAND_CATEGORY"
   entryCode: string
   effectiveFrom: string
   effectiveTo: string | null
   source: string
   valid: boolean
   issue: string | null
-  entry: { code: string; order: number; labels: Labels; description?: Labels } | null
+  entry: { code: string; order: number; labels: Labels; description?: Labels; fields?: ClientTypeField[] } | null
   dictionary: {
     id: string
     kind: string
@@ -96,6 +105,7 @@ function AssignmentBadge({
 export function MtmContactDictionaryAssignmentPanel({
   contactId,
   contactUpdatedAt,
+  categoryData,
   stateHash,
   dictionaries,
   assignments,
@@ -107,6 +117,7 @@ export function MtmContactDictionaryAssignmentPanel({
 }: {
   contactId: string
   contactUpdatedAt: string
+  categoryData: Record<string, unknown>
   stateHash: string
   dictionaries: GovernedContactDictionary[]
   assignments: GovernedContactDictionaryAssignment[]
@@ -120,6 +131,8 @@ export function MtmContactDictionaryAssignmentPanel({
   const locale = useLocale()
   const dateFormatter = useMemo(() => createDateFormatter(locale, { dateStyle: "medium" }), [locale])
   const [editOpen, setEditOpen] = useState(false)
+  const [clientTypeCode, setClientTypeCode] = useState("")
+  const [clientTypeValues, setClientTypeValues] = useState<Record<string, string>>({})
   const [psychotypeCode, setPsychotypeCode] = useState("")
   const [productCodes, setProductCodes] = useState<string[]>([])
   const [brandCodes, setBrandCodes] = useState<string[]>([])
@@ -132,6 +145,7 @@ export function MtmContactDictionaryAssignmentPanel({
   const current = assignments.filter((assignment) => assignment.effectiveTo === null)
   const historical = assignments.filter((assignment) => assignment.effectiveTo !== null)
   const dictionaryByKind = useMemo(() => new Map(dictionaries.map((dictionary) => [dictionary.kind, dictionary])), [dictionaries])
+  const clientTypeDictionary = dictionaryByKind.get("CLIENT_TYPE")
   const psychotypeDictionary = dictionaryByKind.get("PSYCHOTYPE")
   const productDictionary = dictionaryByKind.get("PRODUCT_CATEGORY")
   const brandDictionary = dictionaryByKind.get("BRAND_CATEGORY")
@@ -158,12 +172,16 @@ export function MtmContactDictionaryAssignmentPanel({
       }
     }
     addCodes(value.psychotype, true)
+    addCodes(value.clientType, true)
     addCodes(value.productCategories, false)
     addCodes(value.brandCategories, false)
     return labels.join(", ") || t("proposalClearsAll")
   }
 
   const openEditor = () => {
+    const clientType = currentByKind("CLIENT_TYPE").find((assignment) => assignment.dictionaryId === clientTypeDictionary?.id && assignment.valid)
+    setClientTypeCode(clientType?.entryCode ?? "")
+    setClientTypeValues(Object.fromEntries(Object.entries(categoryData ?? {}).map(([key, value]) => [key, value == null ? "" : String(value)])))
     const psychotype = currentByKind("PSYCHOTYPE").find((assignment) => assignment.dictionaryId === psychotypeDictionary?.id && assignment.valid)
     setPsychotypeCode(psychotype?.entryCode ?? "")
     setProductCodes(currentByKind("PRODUCT_CATEGORY")
@@ -184,6 +202,15 @@ export function MtmContactDictionaryAssignmentPanel({
   const assignmentPayload = () => ({
     expectedStateHash: stateHash,
     reason: reason.trim(),
+    clientType: clientTypeDictionary && clientTypeCode
+      ? {
+          dictionaryId: clientTypeDictionary.id,
+          code: clientTypeCode,
+          values: Object.fromEntries((clientTypeDictionary.entries.find((entry) => entry.code === clientTypeCode)?.fields ?? [])
+            .filter((field) => clientTypeValues[field.key] !== undefined && clientTypeValues[field.key] !== "")
+            .map((field) => [field.key, field.type === "NUMBER" ? Number(clientTypeValues[field.key]) : clientTypeValues[field.key]])),
+        }
+      : null,
     psychotype: psychotypeDictionary && psychotypeCode
       ? { dictionaryId: psychotypeDictionary.id, code: psychotypeCode }
       : null,
@@ -256,7 +283,7 @@ export function MtmContactDictionaryAssignmentPanel({
     }
   }
 
-  const renderAssignmentGroup = (kind: "PSYCHOTYPE" | "PRODUCT_CATEGORY" | "BRAND_CATEGORY") => {
+  const renderAssignmentGroup = (kind: "CLIENT_TYPE" | "PSYCHOTYPE" | "PRODUCT_CATEGORY" | "BRAND_CATEGORY") => {
     const rows = currentByKind(kind)
     return rows.length ? (
       <div className="flex flex-wrap gap-2">
@@ -283,8 +310,9 @@ export function MtmContactDictionaryAssignmentPanel({
         ) : null}
       </div>
 
-      <div className="grid border-t border-zinc-200 dark:border-zinc-700 lg:grid-cols-[0.8fr_1fr_1.2fr] lg:divide-x lg:divide-zinc-200 lg:dark:divide-zinc-700">
+      <div className="grid border-t border-zinc-200 dark:border-zinc-700 md:grid-cols-2 xl:grid-cols-4 md:divide-x md:divide-zinc-200 md:dark:divide-zinc-700">
         {([
+          ["CLIENT_TYPE", "clientType"],
           ["PSYCHOTYPE", "psychotype"],
           ["PRODUCT_CATEGORY", "productCategories"],
           ["BRAND_CATEGORY", "brandCategories"],
@@ -353,6 +381,34 @@ export function MtmContactDictionaryAssignmentPanel({
               <DialogDescription>{t("editDescription")}</DialogDescription>
             </DialogHeader>
 
+            <div className="grid gap-3 rounded-xl border border-zinc-200 p-3 dark:border-zinc-700">
+              <div className="grid gap-2">
+                <Label htmlFor="contact-client-type">{t("clientType")}</Label>
+                {clientTypeDictionary ? (
+                  <Select id="contact-client-type" className="min-h-11" value={clientTypeCode || "__none__"} onChange={(event) => {
+                    setClientTypeCode(event.target.value === "__none__" ? "" : event.target.value)
+                    setClientTypeValues({})
+                  }}>
+                    <option value="__none__">{t("none")}</option>
+                    {clientTypeDictionary.entries.map((entry) => <option key={entry.code} value={entry.code}>{localized(entry.labels, locale)}</option>)}
+                  </Select>
+                ) : <p className="text-sm text-amber-700 dark:text-amber-300">{t("dictionaryMissingHelp")}</p>}
+              </div>
+              {(clientTypeDictionary?.entries.find((entry) => entry.code === clientTypeCode)?.fields ?? [])
+                .slice().sort((left, right) => left.order - right.order)
+                .map((field) => {
+                  const label = localized(field.labels, locale)
+                  if (field.type === "TEXTAREA") {
+                    return <div key={field.key} className="grid gap-2"><Label htmlFor={`client-type-${field.key}`}>{label}{field.required ? " *" : ""}</Label><Textarea id={`client-type-${field.key}`} value={clientTypeValues[field.key] ?? ""} onChange={(event) => setClientTypeValues((currentValues) => ({ ...currentValues, [field.key]: event.target.value }))} required={field.required} /></div>
+                  }
+                  if (field.type === "SELECT") {
+                    return <div key={field.key} className="grid gap-2"><Label htmlFor={`client-type-${field.key}`}>{label}{field.required ? " *" : ""}</Label><Select id={`client-type-${field.key}`} className="min-h-11" value={clientTypeValues[field.key] ?? ""} onChange={(event) => setClientTypeValues((currentValues) => ({ ...currentValues, [field.key]: event.target.value }))} required={field.required}><option value="">{t("none")}</option>{field.options?.map((option) => <option key={option.code} value={option.code}>{localized(option.labels, locale)}</option>)}</Select></div>
+                  }
+                  const inputType = field.type === "PHONE" ? "tel" : field.type === "EMAIL" ? "email" : field.type === "NUMBER" ? "number" : field.type === "DATE" ? "date" : "text"
+                  return <div key={field.key} className="grid gap-2"><Label htmlFor={`client-type-${field.key}`}>{label}{field.required ? " *" : ""}</Label><Input id={`client-type-${field.key}`} type={inputType} value={clientTypeValues[field.key] ?? ""} onChange={(event) => setClientTypeValues((currentValues) => ({ ...currentValues, [field.key]: event.target.value }))} required={field.required} /></div>
+                })}
+            </div>
+
             <div className="grid gap-2">
               <Label htmlFor="contact-psychotype">{t("psychotype")}</Label>
               {psychotypeDictionary ? (
@@ -372,7 +428,7 @@ export function MtmContactDictionaryAssignmentPanel({
               <fieldset key={label} className="grid gap-3">
                 <legend className="text-sm font-medium">{t(label)}</legend>
                 {dictionary ? (
-                  <div className="grid max-h-52 gap-2 overflow-y-auto rounded-xl border border-zinc-200 p-3 dark:border-zinc-700 sm:grid-cols-2">
+                  <div className="grid gap-2 rounded-xl border border-zinc-200 p-3 dark:border-zinc-700 sm:grid-cols-2">
                     {dictionary.entries.map((entry) => (
                       <label key={entry.code} className="flex min-h-10 cursor-pointer items-start gap-2 rounded-lg px-2 py-2 hover:bg-muted/60">
                         <input

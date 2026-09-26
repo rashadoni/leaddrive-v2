@@ -10,18 +10,22 @@ import { workforceEnabledForMixedSurface } from "@/lib/workforce-capability"
 import {
   LOCATION_HISTORY_DISTANCE_FORMULA,
   LOCATION_HISTORY_MAX_OUTPUT_POINTS,
+  LOCATION_HISTORY_MAX_RANGE_DAYS,
   LOCATION_HISTORY_MAX_RAW_POINTS,
+  LOCATION_HISTORY_MAX_RAW_POINTS_RANGE,
   buildHistoryCsv,
   buildHistoryTimeline,
   calculateHistoryDistance,
   detectHistoryAnomalies,
   detectHistoryGaps,
+  type HistoryPauseInterval,
   detectHistoryStops,
   downsampleHistoryPoints,
   prepareHistoryPoints,
   type HistoryLocationPoint,
   type HistoryVisit,
 } from "@/lib/mtm/location-history"
+import { buildDayTrip } from "@/lib/mtm/day-trip"
 
 const TIME = /^\d{2}:\d{2}$/
 
@@ -108,13 +112,16 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
   if (!selectedAgent) return denied("MTM_GPS_AGENT_NOT_FOUND", 404)
 
   const date = searchParams.get("date") ?? ""
+  // Owner 2026-09-22: «where was he these days and his path» — a range of up
+  // to seven days. Without `toDate` the window is the single day, as before.
+  const toDate = searchParams.get("toDate") || date
   const fromTime = searchParams.get("from") ?? "00:00"
   const toTime = searchParams.get("to") ?? "23:59"
   const requestedTimezone = searchParams.get("timezone")
   if (requestedTimezone && requestedTimezone !== tenantTimezone) {
     return denied("MTM_GPS_TIMEZONE_FIXED", 409)
   }
-  if (!isDateKey(date) || !TIME.test(fromTime) || !TIME.test(toTime)) {
+  if (!isDateKey(date) || !isDateKey(toDate) || toDate < date || !TIME.test(fromTime) || !TIME.test(toTime)) {
     return denied("MTM_GPS_INVALID_RANGE", 400)
   }
 
@@ -122,13 +129,16 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
   let to: Date
   try {
     from = localDateTimeToUtc(`${date}T${fromTime}`, tenantTimezone)
-    to = localDateTimeToUtc(`${date}T${toTime}`, tenantTimezone)
+    to = localDateTimeToUtc(`${toDate}T${toTime}`, tenantTimezone)
   } catch {
     return denied("MTM_GPS_INVALID_RANGE", 400)
   }
   // Include the final minute selected in the time input.
   to = new Date(to.getTime() + 59_999)
-  if (to <= from || to.getTime() - from.getTime() > 26 * 60 * 60 * 1_000) {
+  const rangeDays = Math.round((Date.parse(`${toDate}T00:00:00.000Z`) - Date.parse(`${date}T00:00:00.000Z`)) / 86_400_000) + 1
+  const multiDay = rangeDays > 1
+  const rawLimit = multiDay ? LOCATION_HISTORY_MAX_RAW_POINTS_RANGE : LOCATION_HISTORY_MAX_RAW_POINTS
+  if (rangeDays > LOCATION_HISTORY_MAX_RANGE_DAYS || to <= from || to.getTime() - from.getTime() > (rangeDays * 24 + 2) * 60 * 60 * 1_000) {
     return denied("MTM_GPS_INVALID_RANGE", 400)
   }
 
@@ -153,7 +163,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         recordedAt: { gte: from, lte: to },
       },
       orderBy: [{ recordedAt: "asc" }, { id: "asc" }],
-      take: LOCATION_HISTORY_MAX_RAW_POINTS,
+      take: rawLimit,
       select: {
         id: true,
         latitude: true,
@@ -167,7 +177,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         ...(workforceEnabled ? { workdayId: true } : {}),
       },
     }),
-    workforceEnabled ? prisma.mtmAgentWorkday.findFirst({
+    workforceEnabled && !multiDay ? prisma.mtmAgentWorkday.findFirst({
       where: {
         organizationId: auth.orgId,
         agentId,
@@ -205,12 +215,20 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         checkOutAt: true,
         checkInLat: true,
         checkInLng: true,
+        // With the customer's radius these answer "was the visit recorded at
+        // the door" — the page used to print «confirmed» for every row.
+        checkOutLat: true,
+        checkOutLng: true,
+        checkInCustomerLat: true,
+        checkInCustomerLng: true,
+        checkInGeofenceRadius: true,
         customer: {
           select: {
             name: true,
             address: true,
             latitude: true,
             longitude: true,
+            geofenceRadius: true,
           },
         },
       },
@@ -218,7 +236,9 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     prisma.mtmRoute.findMany({
       where: {
         organizationId: auth.orgId,
-        date: new Date(`${date}T00:00:00.000Z`),
+        date: multiDay
+          ? { gte: new Date(`${date}T00:00:00.000Z`), lte: new Date(`${toDate}T00:00:00.000Z`) }
+          : new Date(`${date}T00:00:00.000Z`),
         deletedAt: null,
         OR: [
           { agentId },
@@ -269,6 +289,52 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     }),
   ])
 
+  // A workday is dated by the day it started. One opened the previous evening
+  // and still open (or closed during this day) has no row for the selected
+  // date, and the page said "no workday" while the live map showed it active
+  // (audit 2026-09-14). Look for such a carried-over workday only when the
+  // selected date has none; it is shown as a note and does not feed the
+  // timeline or the evidence pack, which stay tied to this date's own row.
+  const carriedOverCandidate = workforceEnabled && !workday && !multiDay
+    ? await prisma.mtmAgentWorkday.findFirst({
+      where: {
+        organizationId: auth.orgId,
+        agentId,
+        workDate: { lt: new Date(`${date}T00:00:00.000Z`) },
+        startedAt: { lte: to },
+        OR: [{ completedAt: null }, { completedAt: { gte: from } }],
+      },
+      orderBy: [{ startedAt: "desc" }, { id: "desc" }],
+      select: {
+        id: true,
+        status: true,
+        workDate: true,
+        startedAt: true,
+        completedAt: true,
+      },
+    }) ?? null
+    : null
+  // The query already requires it; re-checked so a workday closed before the
+  // window can never be reported as covering the date.
+  const carriedOverWorkday = carriedOverCandidate
+    && carriedOverCandidate.startedAt <= to
+    && (!carriedOverCandidate.completedAt || carriedOverCandidate.completedAt >= from)
+    ? carriedOverCandidate
+    : null
+
+  // A range lists each day's shift; the single-day card stays as it was.
+  const workdays = workforceEnabled && multiDay
+    ? await prisma.mtmAgentWorkday.findMany({
+      where: {
+        organizationId: auth.orgId,
+        agentId,
+        workDate: { gte: new Date(`${date}T00:00:00.000Z`), lte: new Date(`${toDate}T00:00:00.000Z`) },
+      },
+      orderBy: { workDate: "asc" },
+      select: { id: true, status: true, workDate: true, startedAt: true, completedAt: true },
+    })
+    : []
+
   const rawLocations: HistoryLocationPoint[] = rawLocationRows.map((row) => ({
     ...row,
     workdayId: workforceEnabled && "workdayId" in row
@@ -280,10 +346,39 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     rawLocations,
     maxAccuracyMeters,
   )
-  const rawTruncated = rawLocations.length === LOCATION_HISTORY_MAX_RAW_POINTS
+  const rawTruncated = rawLocations.length === rawLimit
   const distanceMeters = rawTruncated ? null : calculateHistoryDistance(prepared.points)
   const gapThresholdSeconds = Math.max(settings.offlineThresholdSeconds, settings.gpsInterval * 3)
-  const gaps = detectHistoryGaps(prepared.points, gapThresholdSeconds)
+  /**
+   * The workday's own PAUSE/RESUME events, so a break is not reported as a
+   * telemetry failure. The app stops tracking while the workday is on hold —
+   * the silence that follows is expected, and the day's card should say which
+   * silence was which.
+   */
+  const pauseEvents = workforceEnabled
+    ? await prisma.mtmAgentWorkdayEvent.findMany({
+      where: {
+        organizationId: auth.orgId,
+        agentId,
+        type: { in: ["PAUSE", "RESUME"] },
+        occurredAt: { gte: from, lte: to },
+      },
+      orderBy: { occurredAt: "asc" },
+      select: { type: true, occurredAt: true },
+    })
+    : []
+  const pauses: HistoryPauseInterval[] = []
+  for (const event of pauseEvents) {
+    if (event.type === "PAUSE") {
+      // A second PAUSE without a RESUME cannot open a second interval.
+      if (!pauses.length || pauses[pauses.length - 1].endedAt) {
+        pauses.push({ startedAt: event.occurredAt, endedAt: null })
+      }
+    } else if (pauses.length && !pauses[pauses.length - 1].endedAt) {
+      pauses[pauses.length - 1].endedAt = event.occurredAt
+    }
+  }
+  const gaps = detectHistoryGaps(prepared.points, gapThresholdSeconds, pauses)
   const stops = detectHistoryStops({
     points: prepared.points,
     visits: visits as HistoryVisit[],
@@ -316,6 +411,16 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     stops,
     gaps,
     anomalies,
+  })
+  // The day as legs: drove / stood / no signal. Counted on the full accepted
+  // track, not the downsampled map payload; withheld when the raw read was cut
+  // short, for the same reason the distance is.
+  const trip = rawTruncated ? null : buildDayTrip({
+    points: prepared.points,
+    stops,
+    visits: visits as HistoryVisit[],
+    gaps,
+    workday: workday ? { startedAt: workday.startedAt, completedAt: workday.completedAt } : null,
   })
   const points = downsampleHistoryPoints(prepared.points, outputLimit)
   const exportCsv = searchParams.get("format") === "csv"
@@ -350,7 +455,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     return new NextResponse(csv, {
       headers: {
         "content-type": "text/csv; charset=utf-8",
-        "content-disposition": `attachment; filename="mtm-day-${date}.csv"`,
+        "content-disposition": `attachment; filename="mtm-${multiDay ? `${date}_${toDate}` : `day-${date}`}.csv"`,
         "cache-control": "private, no-store",
       },
     })
@@ -360,7 +465,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
     success: true,
     data: {
       agent: selectedAgent,
-      range: { date, from: from.toISOString(), to: to.toISOString(), timezone: tenantTimezone },
+      range: { date, toDate, days: rangeDays, from: from.toISOString(), to: to.toISOString(), timezone: tenantTimezone },
       policy: {
         maxAccuracyMeters,
         stopRadiusMeters: policyStopRadiusMeters,
@@ -369,6 +474,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         distanceFormula: LOCATION_HISTORY_DISTANCE_FORMULA,
         impossibleSpeedKmh: 180,
         autoTrackingSupported: false,
+        geofenceRadiusMeters: settings.geofenceRadius,
       },
       capabilities: { workforce: workforceEnabled },
       quality: {
@@ -387,12 +493,16 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         lastPointAt: prepared.points.at(-1)?.recordedAt ?? null,
         stopCount: stops.length,
         visitCount: visits.length,
-        gapCount: gaps.length,
+        // Only unexplained silence: a pause is reported as a pause.
+        gapCount: gaps.filter((gap) => gap.reason === "TELEMETRY_GAP").length,
+        pausedGapCount: gaps.filter((gap) => gap.reason === "WORKDAY_PAUSED").length,
         anomalyCount: anomalies.length,
       },
       workday,
+      carriedOverWorkday,
+      workdays: workdays.map((row) => ({ ...row, workDate: row.workDate.toISOString().slice(0, 10) })),
       evidencePack: {
-        id: workday?.id ?? `day:${agentId}:${date}`,
+        id: workday?.id ?? (multiDay ? `range:${agentId}:${date}:${toDate}` : `day:${agentId}:${date}`),
         workdayId: workday?.id ?? null,
         routeIds: routes.map((route) => route.id),
         locationWorkdayIds: [...new Set(prepared.points.flatMap((point) => point.workdayId ? [point.workdayId] : []))],
@@ -410,6 +520,7 @@ export const GET = withRouteFieldRlsAuth("read", async (req, auth) => {
         })),
       })),
       timeline,
+      trip,
       visits: (visits as HistoryVisit[]).map((visit) => ({
         ...visit,
         confirmed: true,

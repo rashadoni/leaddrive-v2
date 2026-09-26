@@ -5,12 +5,15 @@ const dashboard = readFileSync("src/app/(dashboard)/mtm/page.tsx", "utf8")
 const analytics = readFileSync("src/app/(dashboard)/mtm/analytics/page.tsx", "utf8")
 
 describe("MTM legacy dashboard progressive disclosure", () => {
-  it("keeps the established dashboard closed after the operational week and loads it on demand", () => {
-    expect(dashboard.indexOf("<OperationalWeekHome")).toBeLessThan(dashboard.indexOf("<details"))
-    expect(dashboard).toContain("if (!legacyOpen) return")
-    expect(dashboard).toContain("onToggle={(event) => setLegacyOpen(event.currentTarget.open)}")
-    expect(dashboard).not.toMatch(/<details[^>]*\sopen(?:=|\s|>)/)
-    expect(dashboard.indexOf("<details")).toBeLessThan(dashboard.indexOf("kpiPlannedRoutes"))
+  it("no longer carries the legacy dashboard block on the Panel", () => {
+    // Prod audit 2026-09-14: the collapsed «Əvvəlki əməliyyat icmalı» showed
+    // avg visit time as route time, «0 saat» work time and all-time warnings
+    // as off-route. It is gone, together with its fetch.
+    expect(dashboard).toContain("<OperationalWeekHome")
+    expect(dashboard).not.toContain("<details")
+    expect(dashboard).not.toContain("/api/v1/mtm/dashboard")
+    expect(dashboard).not.toContain("kpiPlannedRoutes")
+    expect(dashboard).not.toContain("avgRouteTime")
     expect(dashboard).toContain("operational?.timezone")
   })
 

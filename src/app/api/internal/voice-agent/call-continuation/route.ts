@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { timingSafeEqual } from "crypto"
 import { prisma } from "@/lib/prisma"
 import { runWithTenant } from "@/lib/rls-context"
+import { noteDemoCallConnecting } from "@/lib/demo-center/call-prompt-match"
 import { CALLBACK_FRESHNESS_MS } from "@/lib/voice-agent/callback-decision"
 
 export const dynamic = "force-dynamic"
@@ -131,8 +132,12 @@ export async function GET(request: NextRequest) {
         continuationServedAt: true,
         leadId: true,
         callMode: true,
+        consentAudit: true,
       },
     })
+    // Part of the PBX's connect burst: lets runtime-config give a demo call
+    // the demo's script (src/lib/demo-center/call-prompt-match.ts).
+    await noteDemoCallConnecting(organizationId, callId, call)
     if (!call) return { continuation: null, conversation: null }
     // The written thread is available on every AI call, not only callbacks:
     // opening with "your number was in our system" to somebody who has been

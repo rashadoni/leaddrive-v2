@@ -29,9 +29,11 @@ import {
   type WorkforceShiftSnapshotForCalculation,
   type WorkforceTimesheetWorkday,
 } from "@/lib/workforce/timesheet-rehydration"
-import type {
-  WorkforceTimeCorrectionReplayFact,
-  WorkforceWorkdayEventFact,
+import {
+  WORKFORCE_WORKDAY_JOURNAL_ORDER,
+  WORKFORCE_WORKDAY_JOURNAL_SELECT,
+  workforceWorkdayEventFact,
+  type WorkforceTimeCorrectionReplayFact,
 } from "@/lib/workforce/workday-facts-replay"
 
 const WorkforceDateKey = z.string().refine(isDateKey, "must be YYYY-MM-DD")
@@ -106,9 +108,8 @@ class WorkforceTimesheetApprovalProblem extends Error {
   }
 }
 
-type WorkforceWorkdayEventRecord = Omit<WorkforceWorkdayEventFact, "occurredAt"> & {
+type WorkforceWorkdayEventRecord = Parameters<typeof workforceWorkdayEventFact>[0] & {
   workdayId: string
-  occurredAt: Date
 }
 
 type WorkforceCorrectionRecord = WorkforceTimeCorrectionReplayFact & { workdayId: string }
@@ -246,8 +247,8 @@ async function rebuildApprovalRows(
   const [events, corrections]: [WorkforceWorkdayEventRecord[], WorkforceCorrectionRecord[]] = await Promise.all([
     tx.mtmAgentWorkdayEvent.findMany({
       where: { organizationId: scope.organizationId, agentId: scope.agentId, workdayId: { in: workdayIds } },
-      orderBy: [{ workdayId: "asc" }, { occurredAt: "asc" }, { id: "asc" }],
-      select: { id: true, workdayId: true, type: true, occurredAt: true },
+      orderBy: [{ workdayId: "asc" }, ...WORKFORCE_WORKDAY_JOURNAL_ORDER],
+      select: { ...WORKFORCE_WORKDAY_JOURNAL_SELECT, workdayId: true },
     }),
     tx.workforceTimeCorrection.findMany({
       where: { organizationId: scope.organizationId, agentId: scope.agentId, workdayId: { in: workdayIds } },
@@ -269,11 +270,7 @@ async function rebuildApprovalRows(
         workday,
         policySnapshot,
         shiftSnapshot,
-        events: (eventsByWorkday.get(workday.id) ?? []).map((event) => ({
-          id: event.id,
-          type: event.type as "START" | "PAUSE" | "RESUME" | "FINISH",
-          occurredAt: event.occurredAt.toISOString(),
-        })),
+        events: (eventsByWorkday.get(workday.id) ?? []).map(workforceWorkdayEventFact),
         corrections: correctionsByWorkday.get(workday.id) ?? [],
       })
       return {

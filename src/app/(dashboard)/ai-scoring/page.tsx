@@ -9,6 +9,7 @@ import { Brain, RefreshCw, Loader2, Sparkles, ArrowUpDown, ArrowUp, ArrowDown } 
 import { cn } from "@/lib/utils"
 import { PageDescription } from "@/components/page-description"
 import { HelpButton } from "@/components/help/help-button"
+import { averageProbability, compareProbabilities } from "@/lib/leads/conversion-probability"
 
 interface ScoredLead {
   id: string
@@ -18,7 +19,8 @@ interface ScoredLead {
   status: string
   score: number
   grade: string
-  conversionProb: number
+  /** Da Vinci's own estimate; null when the model produced none. */
+  conversionProb: number | null
   reasoning: string | null
   lastScoredAt: string | null
   estimatedValue: number | null
@@ -104,7 +106,9 @@ export default function AILeadScoringPage() {
   const gradeCounts: Record<string, number> = { A: 0, B: 0, C: 0, D: 0, F: 0 }
   leads.forEach(l => { gradeCounts[l.grade] = (gradeCounts[l.grade] || 0) + 1 })
   const avgScore = leads.length > 0 ? Math.round(leads.reduce((s, l) => s + l.score, 0) / leads.length) : 0
-  const avgConversion = leads.length > 0 ? Math.round(leads.reduce((s, l) => s + l.conversionProb, 0) / leads.length) : 0
+  // Over the leads Da Vinci estimated, not all of them: a lead with no estimate
+  // used to count as its score × 0.85.
+  const avgConversion = averageProbability(leads.map((l) => l.conversionProb))
   const totalScored = leads.filter(l => l.lastScoredAt).length
 
   const sourceLabels: Record<string, string> = {
@@ -127,8 +131,8 @@ export default function AILeadScoringPage() {
       case "company_desc": return (b.companyName || "").localeCompare(a.companyName || "")
       case "source_asc": return (a.source || "").localeCompare(b.source || "")
       case "source_desc": return (b.source || "").localeCompare(a.source || "")
-      case "conversion_desc": return b.conversionProb - a.conversionProb
-      case "conversion_asc": return a.conversionProb - b.conversionProb
+      case "conversion_desc": return compareProbabilities(a.conversionProb, b.conversionProb, "desc")
+      case "conversion_asc": return compareProbabilities(a.conversionProb, b.conversionProb, "asc")
       default: return 0
     }
   })
@@ -190,10 +194,18 @@ export default function AILeadScoringPage() {
       </div>
 
       {/* Summary bar */}
-      <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-4 bg-muted/30 flex items-center gap-8 text-sm">
-        <span>{tl("avgScore")}: <strong className="text-primary">{avgScore}/100</strong></span>
-        <span>{tc("probability")}: <strong className="text-primary">{avgConversion}%</strong></span>
-        <span>{t("totalSessions")}: <strong className="text-primary">{totalScored}</strong></span>
+      <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-4 bg-muted/30 space-y-1 text-sm">
+        <div className="flex flex-wrap items-center gap-x-8 gap-y-1">
+          <span>{tl("avgScore")}: <strong className="text-primary">{avgScore}/100</strong></span>
+          <span data-testid="ai-scoring-probability">
+            {tc("probability")}: <strong className="text-primary">{avgConversion ? `${avgConversion.value}%` : "—"}</strong>{" "}
+            <span className="text-xs text-muted-foreground">
+              ({avgConversion ? tl("convProbBasis", { count: avgConversion.count, total: leads.length }) : tl("convProbNoEstimates")})
+            </span>
+          </span>
+          <span>{t("totalSessions")}: <strong className="text-primary">{totalScored}</strong></span>
+        </div>
+        <p className="text-xs text-muted-foreground">{tl("convProbLifetime")}</p>
       </div>
 
       {/* Lead table */}
@@ -253,9 +265,13 @@ export default function AILeadScoringPage() {
                   <td className="px-4 py-3 text-muted-foreground">{lead.companyName || "—"}</td>
                   <td className="px-4 py-3 text-muted-foreground">{lead.source ? (sourceLabels[lead.source] || lead.source) : "—"}</td>
                   <td className="px-4 py-3">
-                    <span className={cn("font-medium", lead.conversionProb >= 50 ? "text-green-600" : lead.conversionProb >= 30 ? "text-yellow-600" : "text-red-500")}>
-                      {lead.conversionProb}%
-                    </span>
+                    {lead.conversionProb == null ? (
+                      <span className="font-medium text-muted-foreground" title={tl("convProbNone")}>—</span>
+                    ) : (
+                      <span className={cn("font-medium", lead.conversionProb >= 50 ? "text-green-600" : lead.conversionProb >= 30 ? "text-yellow-600" : "text-red-500")}>
+                        {lead.conversionProb}%
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground max-w-[250px]">
                     {lead.reasoning ? (

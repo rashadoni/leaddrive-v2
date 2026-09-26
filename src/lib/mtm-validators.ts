@@ -2,15 +2,21 @@ import { z } from "zod"
 import { GovernedDoctorScoringDefinitionSchema } from "@/lib/mtm/professional-glossary"
 
 // Reusable primitives
-const optionalString = z.string().trim().min(1).max(500).optional().nullable()
-const longString = z.string().max(2000).optional().nullable()
+//
+// A web form posts every untouched input as "". Requiring at least one
+// character therefore refused an organization whose address, phone or contact
+// person had always been empty: the manager changed only the coordinates and
+// got "Validation failed" on three fields they never touched. An empty
+// optional field means "unknown", exactly like null — the same rule the
+// coordinate pair already follows below.
+const emptyStringAsNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value)
+const optionalString = z.preprocess(emptyStringAsNull, z.string().trim().min(1).max(500).optional().nullable())
+const longString = z.preprocess(emptyStringAsNull, z.string().max(2000).optional().nullable())
 // Coerce string-encoded numbers (common from form encoding / legacy clients) before range check.
 const latitude = z.coerce.number().finite().gte(-90).lte(90)
 const longitude = z.coerce.number().finite().gte(-180).lte(180)
-// Web forms post untouched inputs as "". Coercing "" to 0 is how customers
-// ended up at (0, 0) in the Gulf of Guinea (field UX audit 2026-09-05, M-02),
-// so an empty string is "unknown" here, exactly like null.
-const emptyStringAsNull = (value: unknown) => (typeof value === "string" && value.trim() === "" ? null : value)
+// Coercing "" to 0 is how customers ended up at (0, 0) in the Gulf of Guinea
+// (field UX audit 2026-09-05, M-02), so an empty string is "unknown" here too.
 const latitudeField = z.preprocess(emptyStringAsNull, latitude.optional().nullable())
 const longitudeField = z.preprocess(emptyStringAsNull, longitude.optional().nullable())
 
@@ -87,7 +93,9 @@ const CustomerCreateBaseSchema = z.object({
   phone: optionalString,
   contactPerson: optionalString,
   notes: longString,
-  geofenceRadius: z.number().int().positive().max(50_000).optional().nullable(), // F-22
+  // F-22. New writes stay inside what check-in enforces (25..10000 m);
+  // older stored values outside it are clamped to the nearest bound at check-in.
+  geofenceRadius: z.number().int().min(25).max(10_000).optional().nullable(),
 })
 export const CustomerCreateSchema = CustomerCreateBaseSchema.superRefine(validateCoordinatePair)
 export const CustomerUpdateSchema = CustomerCreateBaseSchema.partial().superRefine(validateCoordinatePair)
@@ -177,7 +185,7 @@ export const MtmContactVerificationStatus = z.enum(["UNVERIFIED", "VERIFIED", "R
 export const MtmContactConsentStatus = z.enum(["UNKNOWN", "GRANTED", "REVOKED"])
 export const MtmContactPreference = z.enum(["PHONE", "EMAIL", "WHATSAPP", "VIBER", "TELEGRAM", "DO_NOT_CONTACT"])
 
-export const ContactCreateSchema = z.object({
+const ContactFieldsSchema = z.object({
   externalCode: optionalString,
   firstName: z.string().trim().min(1).max(120),
   lastName: z.string().trim().min(1).max(120),
@@ -214,7 +222,27 @@ export const ContactCreateSchema = z.object({
   duplicateOfContactId: cuid.optional().nullable(),
   notes: longString,
 })
-export const ContactUpdateSchema = ContactCreateSchema.partial()
+
+export const ContactCreateSchema = ContactFieldsSchema.extend({
+  clientType: z.object({
+    dictionaryId: cuid,
+    code: z.string().trim().min(1).max(80).regex(/^[A-Z0-9][A-Z0-9_-]*$/),
+    values: z.record(z.string(), z.union([
+      z.string().max(2000),
+      z.number().finite(),
+      z.boolean(),
+      z.null(),
+    ])).refine((values) => Object.keys(values).length <= 50, "At most 50 client type values are allowed"),
+  }).strict().optional().nullable(),
+  primaryWorkplace: z.object({
+    customerId: cuid,
+    jobTitle: optionalString,
+    department: optionalString,
+    room: optionalString,
+    phone: optionalString,
+  }).optional(),
+})
+export const ContactUpdateSchema = ContactFieldsSchema.partial()
 export const ContactDirectUpdateSchema = ContactUpdateSchema.extend({
   expectedContactUpdatedAt: z.string().datetime({ offset: true }).optional(),
 })
@@ -253,6 +281,16 @@ const ContactDictionaryMultiSelectionSchema = z.object({
 export const ContactDictionaryAssignmentSetSchema = z.object({
   expectedStateHash: z.string().regex(/^[a-f0-9]{64}$/),
   reason: z.string().trim().min(3).max(1000),
+  clientType: z.object({
+    dictionaryId: cuid,
+    code: ContactDictionaryEntryCodeSchema,
+    values: z.record(z.string(), z.union([
+      z.string().max(2000),
+      z.number().finite(),
+      z.boolean(),
+      z.null(),
+    ])).refine((values) => Object.keys(values).length <= 50, "At most 50 client type values are allowed"),
+  }).strict().nullable().default(null),
   psychotype: z.object({
     dictionaryId: cuid,
     code: ContactDictionaryEntryCodeSchema,
@@ -542,6 +580,8 @@ export const RouteUpdateSchema = z.object({
   status: MtmRouteStatus.optional(),
   notes: longString,
   points: z.array(RoutePointInput).max(200).optional(),
+  /** Published edits only: a manager's reason to accept planning conflicts. */
+  overrideReason: z.string().trim().min(3).max(1000).optional(),
 }).superRefine((value, ctx) => {
   validateRouteOwnership(value, ctx, false)
   validateRoutePoints(value, ctx)
@@ -589,6 +629,18 @@ export const MtmMobileRouteCommandSchema = z.discriminatedUnion("command", [
   z.object({
     operationId: MobileRouteCommandOperationId,
     command: z.literal("UPDATE_DRAFT"),
+    routeId: cuid,
+    payload: z.object({
+      expectedVersion: z.number().int().positive(),
+      points: MobileRouteCommandPoints,
+    }).strict(),
+  }).strict(),
+  z.object({
+    operationId: MobileRouteCommandOperationId,
+    // Change a PLANNED or IN_PROGRESS route. Points use the UPDATE_DRAFT
+    // shape; the server keeps points whose target stays, so visits and
+    // change requests keep their stop.
+    command: z.literal("UPDATE_PUBLISHED"),
     routeId: cuid,
     payload: z.object({
       expectedVersion: z.number().int().positive(),
@@ -717,7 +769,7 @@ export const VisitUpdateSchema = z.object({
   checkOutAt: isoDate.optional(),
 })
 
-export const MtmVisitActionKey = z.enum(["PHOTO", "PRESENTATION", "STOCK_CHECK", "VISIT_NOTE", "CHECKLIST", "FEEDBACK", "NEXT_ACTION"])
+export const MtmVisitActionKey = z.enum(["PHOTO", "PRESENTATION", "STOCK_CHECK", "VISIT_NOTE", "CHECKLIST", "FEEDBACK", "NEXT_ACTION", "SIGNATURE"])
 export const MtmRequirementMode = z.enum(["REQUIRED", "OPTIONAL", "HIDDEN"])
 
 const VisitPolicyActionInput = z.object({
@@ -739,7 +791,7 @@ const VisitPolicyBaseSchema = z.object({
   effectiveFrom: isoDate,
   effectiveTo: isoDate.optional().nullable(),
   isActive: z.boolean().default(true),
-  actions: z.array(VisitPolicyActionInput).max(7),
+  actions: z.array(VisitPolicyActionInput).max(8),
 })
 
 function validateVisitPolicy(
@@ -764,6 +816,20 @@ export const VisitPolicyPreviewSchema = z.object({
   at: isoDate.optional(),
 })
 
+/**
+ * A finger-drawn signature, same shape as the contracts e-sign "drawn" payload:
+ * one SVG path in the pad's own pixel box. Path commands and numbers only, so
+ * it renders inertly as <path d>; capped so a scribble cannot bloat a visit.
+ */
+export const MtmSignatureEvidence = z.object({
+  method: z.literal("drawn"),
+  svgPath: z.string().min(8).max(120_000).regex(/^[MLQCZmlqcz0-9.,\s-]+$/, "Signature path contains unsupported characters"),
+  widthPx: z.number().int().min(50).max(4000),
+  heightPx: z.number().int().min(50).max(4000),
+  signerName: z.string().trim().max(120).optional().nullable(),
+  signedAt: isoDate.optional(),
+})
+
 export const VisitActionResultSchema = z.object({
   id: cuid.optional(),
   actionKey: MtmVisitActionKey,
@@ -774,6 +840,12 @@ export const VisitActionResultSchema = z.object({
     const reason = value.evidence?.reason
     if (typeof reason !== "string" || !reason.trim()) {
       ctx.addIssue({ code: "custom", path: ["evidence", "reason"], message: "A waiver reason is required" })
+    }
+  }
+  if (value.actionKey === "SIGNATURE" && value.status === "COMPLETED") {
+    const parsed = MtmSignatureEvidence.safeParse(value.evidence)
+    if (!parsed.success) {
+      ctx.addIssue({ code: "custom", path: ["evidence"], message: parsed.error.issues[0]?.message ?? "A drawn signature is required" })
     }
   }
 })

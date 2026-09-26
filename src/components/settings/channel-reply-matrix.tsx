@@ -38,6 +38,8 @@ type UiMode = "agent" | "ai_draft" | "ai"
  * any other channel stores it but its webhook doesn't act on it yet → shown disabled with a
  * "coming soon" badge so the control never reads as live when it isn't. NOTE: WhatsApp's AI
  * (Da Vinci) is default-ON, so the API reads an unset whatsapp channel as "ai" (not "agent").
+ * The API lists conversation channels only: Social Monitoring's settings rows, the Slack/Teams
+ * hooks and VoIP have screens of their own and never reach this matrix.
  *
  * Presentation (simplified 2026-07): a plain 3-way segmented control (Human / Draft / Auto)
  * per channel; the confidence + rollout knobs move to a muted second line, shown only when
@@ -48,7 +50,7 @@ const ENFORCED = new Set(["chatwoot", "facebook", "instagram", "telegram", "vkon
 const CHANNEL_LABEL: Record<string, string> = {
   chatwoot: "TikTok", tiktok: "TikTok", telegram: "Telegram", whatsapp: "WhatsApp",
   facebook: "Facebook", instagram: "Instagram", vkontakte: "VKontakte",
-  email: "Email", sms: "SMS", "web-chat": "Web Chat", voip: "VoIP",
+  email: "Email", sms: "SMS", "web-chat": "Web Chat",
 }
 
 const UI_MODES: UiMode[] = ["agent", "ai_draft", "ai"]

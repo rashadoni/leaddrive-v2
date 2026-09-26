@@ -66,7 +66,7 @@ export default function CrmDashboardHelpEn() {
           <HelpDef term="Deals">Active deals in the pipeline, with total won value as the sub-line.</HelpDef>
           <HelpDef term="Conversion">Pipeline conversion rate — won deals as a share of all deals.</HelpDef>
           <HelpDef term="Tickets">Open support tickets, flagging any that have breached SLA.</HelpDef>
-          <HelpDef term="Campaigns">Number of recent campaigns, with the latest open rate as the sub-line.</HelpDef>
+          <HelpDef term="Campaigns">Number of recent campaigns, with the latest campaign&apos;s open rate (opens out of messages sent) as the sub-line. Only email records opens and clicks, so an SMS, WhatsApp or Telegram campaign — or one that hasn&apos;t sent yet — shows «—» there: not measured, not zero.</HelpDef>
         </dl>
       </HelpSection>
 

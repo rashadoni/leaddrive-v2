@@ -17,6 +17,11 @@ export interface MtmRlsAuth {
   name: string
   agentId: string | null
   principal: "web" | "mobile"
+  /**
+   * The web branch's authentication provenance (`AuthResult.principalType`);
+   * absent for a mobile principal. Compare it to an exact value.
+   */
+  principalType?: "session" | "api_key"
   /** Present only for a mobile principal, from the revocation-time snapshot. */
   tenantCapabilities?: MobileTenantCapabilities
 }

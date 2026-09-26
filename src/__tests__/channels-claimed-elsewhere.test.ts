@@ -257,6 +257,63 @@ describe("claimed elsewhere — the 2026-09-11 @leaddrive.az table", () => {
   })
 })
 
+describe("claimed elsewhere — a row staged for App Review never outranks a live claim", () => {
+  // The same Instagram account on 2026-09-21, as stored on prod: LeadDrive Inc.'s old row and Brand
+  // Protection's row switched off on 09-11, Fanumsec's row live, and the review tenant's STAGED
+  // Instagram-Login row created that day. Being an IG-Login row, the staged one used to win step 1 on
+  // the IG-Login webhook — real customers' Direct would have gone to the review sandbox.
+  const stagedReview = row({
+    id: "cfg_leaddrive_ig_review",
+    organizationId: "org_leaddrive",
+    createdAt: new Date("2026-09-21T07:17:47Z"),
+    settings: { igLogin: true, appReviewOnly: true },
+  })
+  const table = () => [
+    { ...leaddrive, isActive: false },
+    { ...brandprotection, isActive: false },
+    brandprotectionFbApp,
+    fanumsec,
+    stagedReview,
+  ]
+
+  it("delivers @leaddrive.az Direct to Fanumsec on the IG-Login webhook, not to the review sandbox", async () => {
+    for (const fixture of bothOrders(table())) {
+      rows = fixture
+      expect(await deliveredTo("instagram", IG_ID)).toBe("org_fanumsec")
+    }
+  })
+
+  it("delivers to Fanumsec on the Facebook webhook as well", async () => {
+    for (const fixture of bothOrders(table())) {
+      rows = fixture
+      expect(await deliveredTo("facebook", IG_ID)).toBe("org_fanumsec")
+    }
+  })
+
+  it("tells the review tenant its staged card does not receive, and leaves Fanumsec unflagged", async () => {
+    for (const fixture of bothOrders(table())) {
+      rows = fixture
+      expect(await flaggedFor("org_leaddrive")).toEqual(["cfg_leaddrive_ig_review"])
+      expect(await flaggedFor("org_fanumsec")).toEqual([])
+    }
+  })
+
+  it("still ingests into a staged row that is the only claimant — a dedicated review test account", async () => {
+    rows = [stagedReview]
+    expect(await deliveredTo("instagram", IG_ID)).toBe("org_leaddrive")
+    expect(await deliveredTo("facebook", IG_ID)).toBe("org_leaddrive")
+  })
+
+  it("keeps a staged row behind a live one even when the live claim is NEWER", async () => {
+    const stagedOld = row({ id: "cfg_staged_old", organizationId: "org_review", createdAt: new Date("2026-01-01T00:00:00Z"), settings: { appReviewOnly: true } })
+    const liveNew = row({ id: "cfg_live_new", organizationId: "org_live", createdAt: new Date("2026-09-01T00:00:00Z") })
+    for (const fixture of bothOrders([stagedOld, liveNew])) {
+      rows = fixture
+      expect(await deliveredTo("facebook", IG_ID)).toBe("org_live")
+    }
+  })
+})
+
 describe("claimed elsewhere — ranking cases", () => {
   it("an inactive claim in another org, however old, is not a rival", async () => {
     const old = row({ id: "cfg_old", organizationId: "org_old", createdAt: new Date("2025-01-01T00:00:00Z"), isActive: false })

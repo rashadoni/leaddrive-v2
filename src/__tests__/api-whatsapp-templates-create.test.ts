@@ -126,4 +126,31 @@ describe("POST /api/v1/whatsapp/templates create", () => {
     expect(res.status).toBe(400)
     expect(global.fetch).not.toHaveBeenCalled()
   })
+
+  // Not 502: Cloudflare swaps 502/504 origin responses for its own HTML page,
+  // which is how the settings UI ended up showing "Unexpected token '<'"
+  // instead of the Graph error.
+  it("surfaces the Graph error as JSON with a non-5xx status when Meta rejects the template", async () => {
+    global.fetch = vi.fn(async () => (
+      new Response(JSON.stringify({ error: { message: "(#100) Missing whatsapp_business_management permission" } }), {
+        status: 403,
+        headers: { "Content-Type": "application/json" },
+      })
+    )) as typeof fetch
+
+    const res = await POST(req({
+      action: "create",
+      name: "campaign_update_az",
+      language: "az",
+      category: "MARKETING",
+      bodyText: "Salam! {{1}} kampaniyası haqqında yeniliklərimiz var.",
+      sampleValues: ["Yay təklifi"],
+    }))
+
+    expect(res.status).toBe(422)
+    const json = await res.json()
+    expect(json.success).toBe(false)
+    expect(json.error).toContain("whatsapp_business_management")
+    expect(prisma.whatsAppTemplate.upsert).not.toHaveBeenCalled()
+  })
 })

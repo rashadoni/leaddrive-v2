@@ -3,6 +3,15 @@
 import { useTranslations } from "next-intl"
 import { Megaphone } from "lucide-react"
 
+/**
+ * A campaign rate from GET /api/v1/dashboard/executive. null means the
+ * channel does not record the step (only email records opens and clicks) or
+ * nothing was sent yet — «—», never «0%».
+ */
+export function campaignRateLabel(rate: number | null | undefined): string {
+  return typeof rate === "number" ? `${rate}%` : "—"
+}
+
 export function CampaignStats({ campaigns }: { campaigns: any[] }) {
   const t = useTranslations("dashboard")
 
@@ -33,8 +42,8 @@ export function CampaignStats({ campaigns }: { campaigns: any[] }) {
               <div className="grid grid-cols-3 gap-1">
                 {[
                   { v: c.sent?.toLocaleString() || "0", l: t("sent") },
-                  { v: `${c.openRate || 0}%`, l: t("openRate") },
-                  { v: `${c.clickRate || 0}%`, l: t("clickRate") },
+                  { v: campaignRateLabel(c.openRate), l: t("openRate") },
+                  { v: campaignRateLabel(c.clickRate), l: t("clickRate") },
                 ].map((m) => (
                   <div key={m.l} className="text-center p-1 rounded bg-muted/50 border border-zinc-200 dark:border-zinc-700">
                     <div className="text-xs font-semibold">{m.v}</div>

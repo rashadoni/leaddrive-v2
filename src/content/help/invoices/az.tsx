@@ -48,8 +48,8 @@ export default function InvoicesHelpAz() {
           qrafiklər göstərilir.
         </p>
         <dl className="rounded-md border p-3">
-          <HelpDef term="Ümumi faktura">Bütün müştərilərə hesablanmış ümumi məbləğ.</HelpDef>
-          <HelpDef term="Ödənilib">Müştərilərdən faktiki alınmış ümumi məbləğ.</HelpDef>
+          <HelpDef term="Ümumi faktura">Verilmiş fakturalar üzrə müştərilərə hesablanmış məbləğ, hər valyuta ayrıca. Qaralamalar, ləğv edilən və geri qaytarılan fakturalar sayılmır.</HelpDef>
+          <HelpDef term="Ödənilib">Müştərilərin bu fakturalar üzrə ödədiyi məbləğ, hər valyuta ayrıca. Ödənilmiş kimi işarələnən faktura tam sayılır.</HelpDef>
           <HelpDef term="Gözləyir">Ödənilməmiş fakturalar — müştərilərin hələ borclu olduğu qalıq.</HelpDef>
           <HelpDef term="Gecikdirilmiş">Son ödəniş tarixi keçmiş, hələ ödənilməmiş fakturalar.</HelpDef>
           <HelpDef term="Status">Fakturanın halı: Qaralama → Göndərilib → Baxılıb → Ödənilib; ya da Qismən ödənilib, Gecikdirilmiş, Ləğv edilib, Geri qaytarılıb.</HelpDef>
@@ -73,7 +73,9 @@ export default function InvoicesHelpAz() {
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
             <strong>Ümumi faktura</strong>, <strong>Ödənilib</strong>, <strong>Gözləyir</strong> və{" "}
             <strong>Gecikdirilmiş</strong> kartları — hər biri öz ikonası, məbləği və üstündə dayananda
-            izah verən ipucu ilə. Məbləğlər iki onluqla, təşkilatın valyutası ilə göstərilir.
+            izah verən ipucu ilə. Hər kartda iri rəqəmlə ən böyük məbləğli valyuta göstərilir, tam
+            ədədlə; digər valyutalar altında sadalanır, məsələn «+ 900 $ · 1» (məbləğ · faktura sayı).
+            Müxtəlif valyutalarda məbləğlər heç vaxt toplanmır.
           </HelpCallout>
         </HelpStep>
         <HelpStep n={2}>
@@ -84,7 +86,10 @@ export default function InvoicesHelpAz() {
             Maliyyə kartlarının altında <strong>altı plitə</strong> peyda olur: <strong>Bu ay</strong>,{" "}
             <strong>Bu il</strong>, <strong>Göndərildi</strong>, <strong>Qaralamalar</strong>,{" "}
             <strong>Orta faktura</strong> və <strong>Qismən / Ləğv</strong>. Hər plitədə say və altında
-            qısa açıqlama olur (məsələn bu ayın məbləği, ümumidən neçəsinin göndərildiyi).
+            qısa açıqlama olur (məsələn bu ayın məbləği, ümumidən neçəsinin göndərildiyi).{" "}
+            <strong>Bu ay</strong> və <strong>Bu il</strong> yalnız verilmiş fakturaları sayır və
+            cəmləyir — qaralamalar <strong>Qaralamalar</strong> plitəsindədir — hər valyuta ayrıca;{" "}
+            <strong>Orta faktura</strong> da valyuta üzrədir.
           </HelpCallout>
         </HelpStep>
         <HelpStep n={3}>
@@ -93,11 +98,16 @@ export default function InvoicesHelpAz() {
             məbləğ sıfırdan böyükdürsə görünür).
           </p>
           <HelpCallout kind="see" label="Ekranda görəcəksiniz">
-            «Ödəniş progressi» başlığı, yanında ödənilən / yekun məbləğ və yaşıl faiz; altında dolu
-            zolaq; daha aşağıda rəngli nöqtələrlə say bölgüsü — <strong>Ödənilib</strong> (yaşıl),{" "}
+            «Ödəniş progressi» başlığı, yanında ən böyük məbləğli valyuta üçün ödənilən / fakturalanan
+            məbləğ və yaşıl faiz; altında dolu zolaq və hər digər valyuta üçün ayrıca sətir; daha aşağıda rəngli nöqtələrlə say bölgüsü — <strong>Ödənilib</strong> (yaşıl),{" "}
             <strong>Gözləyir</strong> (narıncı), <strong>Gecikdirilmiş</strong> (qırmızı) və{" "}
-            <strong>Qismən ödənilib</strong> (sarı). Daha aşağıda gəlir, ödəniş statusu və debitor borcu
-            kimi qrafiklər gəlir.
+            <strong>Qismən ödənilib</strong> (sarı). Daha aşağıda qrafiklər gəlir: aylar üzrə gəlir,
+            ödəniş statusu, debitor borcu, həftəlik yığım, avto-fakturalar və valyuta üzrə bölgü. Onlar
+            yalnız qeydlərdə olanı göstərir. Müxtəlif valyutalarda məbləğlər toplanmır: qrafik ən böyük
+            valyuta ilə gedir, digərləri yanında sadalanır. Həftəlik yığım fakturalara qeydə alınmış
+            ödənişləri ödəniş tarixinə görə sayır, ona görə də ödəniş qeydə alınmadan ödənilmiş kimi
+            işarələnən faktura sütunlara düşmür. Avto-fakturalar aktiv təkrarlanan faktura qaydalarınızdır,
+            ən yaxın işə düşən birinci. Qeyd yoxdursa, qrafik «—» göstərir və ya bunu yazır.
           </HelpCallout>
         </HelpStep>
         <HelpStep n={4}>

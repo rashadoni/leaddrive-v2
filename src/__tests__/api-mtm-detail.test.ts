@@ -112,6 +112,66 @@ describe("GET /api/v1/mtm/routes/[id]", () => {
     expect(json.success).toBe(true)
     expect(json.data.points[0].distanceMeters).toBe(150)
   })
+
+  it("reduces each stop's visits to a plan-versus-fact record without note text or signature drawing", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(prisma.mtmRoute.findFirst).mockResolvedValue({
+      id: "r1",
+      organizationId: ORG,
+      agentId: "a1",
+      status: "IN_PROGRESS",
+      date: new Date("2026-09-14T00:00:00.000Z"),
+      publishedVersion: 1,
+      assignments: [],
+      points: [{
+        id: "p1",
+        orderIndex: 0,
+        status: "VISITED",
+        plannedTime: new Date("2026-09-14T05:00:00.000Z"),
+        customer: { latitude: 40.4, longitude: 49.8, geofenceRadius: null },
+        visits: [{
+          id: "v1",
+          agentId: "a1",
+          status: "CHECKED_OUT",
+          checkInAt: new Date("2026-09-14T14:49:00.000Z"),
+          checkOutAt: new Date("2026-09-14T14:53:00.000Z"),
+          checkInLat: 40.47,
+          checkInLng: 49.86,
+          checkOutLat: 40.47,
+          checkOutLng: 49.86,
+          notes: "  private remark ",
+          resultNotes: null,
+          _count: { photos: 3 },
+          actionResults: [{ id: "sig-1" }],
+        }],
+      }],
+    } as any)
+
+    const res = await GET(makeReq("/api/v1/mtm/routes/r1"), params("r1"))
+    const json = await res.json()
+
+    const include = vi.mocked(prisma.mtmRoute.findFirst).mock.calls[0]?.[0] as any
+    expect(include.include.points.include.customer.select.geofenceRadius).toBe(true)
+    expect(include.include.points.include.visits.select.actionResults.where).toEqual({ actionKey: "SIGNATURE", status: "COMPLETED" })
+    expect(json.data.points[0].geofenceRadiusMeters).toBe(100)
+    expect(json.data.points[0].visits).toEqual([{
+      id: "v1",
+      status: "CHECKED_OUT",
+      checkInAt: "2026-09-14T14:49:00.000Z",
+      checkOutAt: "2026-09-14T14:53:00.000Z",
+      checkInLat: 40.47,
+      checkInLng: 49.86,
+      checkOutLat: 40.47,
+      checkOutLng: 49.86,
+      // The reader's own visit: coordinates shown, not redacted.
+      locationHidden: false,
+      photoCount: 3,
+      hasSignature: true,
+      hasNote: true,
+    }])
+    expect(JSON.stringify(json.data.points[0].visits)).not.toContain("private remark")
+    expect(JSON.stringify(json.data.points[0].visits)).not.toContain("sig-1")
+  })
 })
 
 describe("PUT /api/v1/mtm/routes/[id]", () => {
@@ -346,17 +406,17 @@ describe("PUT /api/v1/mtm/routes/[id]", () => {
     expect(prisma.mtmRoutePoint.createMany).not.toHaveBeenCalled()
   })
 
-  it("keeps a published route immutable even for an administrator", async () => {
+  it("keeps a finished route immutable even for an administrator", async () => {
     vi.mocked(prisma.mtmRoute.findFirst).mockResolvedValue({
       id: "r1",
       agentId: "a1",
       date: new Date("2026-04-10"),
-      status: "PLANNED",
+      status: "COMPLETED",
       version: 2,
       updatedAt: new Date("2026-04-09T12:00:00.000Z"),
       totalPoints: 1,
       assignments: [{ agentId: "a1", role: "PRIMARY" }],
-      points: [{ id: "p1", customerId: "c1", plannedTime: null, orderIndex: 0, status: "PENDING" }],
+      points: [{ id: "p1", customerId: "c1", plannedTime: null, orderIndex: 0, status: "VISITED" }],
     } as any)
 
     const res = await PUT(
@@ -372,7 +432,7 @@ describe("PUT /api/v1/mtm/routes/[id]", () => {
     expect(prisma.mtmRoutePoint.updateMany).not.toHaveBeenCalled()
   })
 
-  it("requires the change-request workflow for an in-progress route", async () => {
+  it("refuses to remove a visited stop from an in-progress route", async () => {
     vi.mocked(prisma.mtmRoute.findFirst).mockResolvedValue({
       id: "r1",
       agentId: "a1",
@@ -382,7 +442,7 @@ describe("PUT /api/v1/mtm/routes/[id]", () => {
       updatedAt: new Date("2026-04-09T12:00:00.000Z"),
       totalPoints: 1,
       assignments: [{ agentId: "a1", role: "PRIMARY" }],
-      points: [{ id: "p1", customerId: "c1", plannedTime: null, orderIndex: 0, status: "VISITED" }],
+      points: [{ id: "p1", customerId: "c1", contactId: null, plannedTime: null, orderIndex: 0, status: "VISITED" }],
     } as any)
 
     const res = await PUT(
@@ -392,8 +452,9 @@ describe("PUT /api/v1/mtm/routes/[id]", () => {
     const response = await res.json()
     expect({ status: res.status, response }).toMatchObject({
       status: 409,
-      response: { code: "ROUTE_PUBLISHED_IMMUTABLE" },
+      response: { code: "ROUTE_VISITED_POINTS_LOCKED", pointIds: ["p1"] },
     })
+    expect(prisma.mtmRoute.updateMany).not.toHaveBeenCalled()
   })
 
   it("rejects a stale draft update before replacing points", async () => {
@@ -524,6 +585,10 @@ describe("PUT /api/v1/mtm/visits/[id]", () => {
       routeId: null,
       routePointId: null,
     })
+    // Owner 2026-09-25: only the visit's own agent closes it — here from his
+    // own browser session (a web user linked to the agent card).
+    vi.mocked(requireAuth).mockResolvedValue({ orgId: ORG, userId: "agent-user", role: "manager", email: "a@t.com", name: "Agent" } as any)
+    vi.mocked(prisma.mtmAgent.findFirst).mockResolvedValue({ id: "a1", role: "AGENT", canPlanOwnRoutes: false, canSelfPublishRoutes: false } as any)
     const res = await PUT(
       makeJsonReq("/api/v1/mtm/visits/v1", {
         status: "CHECKED_OUT",
@@ -1017,6 +1082,39 @@ describe("POST /api/v1/mtm/mobile/location", () => {
 
     expect(res.status).toBe(200)
     expect(prisma.mtmAgentLocation.create).toHaveBeenCalled()
+  })
+
+  it("refuses a point from the gap of a day a manager reopened (it counts as a break)", async () => {
+    // FINISH 14:00, manager REOPEN at 14:30 (recorded at the 14:00 finish it
+    // reopens), agent not resumed yet: the row is PAUSED from 14:00, so a point
+    // captured at 14:10 is not work.
+    vi.mocked(resolveMobileAuth).mockResolvedValue(routeMobileAuth("a1") as any)
+    vi.mocked(prisma.mtmAgentLocation.findFirst).mockResolvedValue(null)
+    vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({
+      id: "workday-reopened",
+      status: "PAUSED",
+      startedAt: new Date("2026-07-14T05:00:00.000Z"),
+      completedAt: null,
+    } as never)
+    vi.mocked(prisma.mtmAgentWorkdayEvent.findMany).mockResolvedValue([
+      { type: "FINISH", occurredAt: new Date("2026-07-14T14:00:00.000Z"), appliedAt: new Date("2026-07-14T14:00:01.000Z") },
+      { type: "REOPEN", occurredAt: new Date("2026-07-14T14:00:00.000Z"), appliedAt: new Date("2026-07-14T14:30:00.000Z") },
+    ] as never)
+
+    const res = await POST(makeJsonReq("/api/v1/mtm/mobile/location", {
+      latitude: 40.4,
+      longitude: 49.8,
+      recordedAt: "2026-07-14T14:10:00.000Z",
+    }, "POST"))
+    const json = await res.json()
+
+    expect(res.status).toBe(409)
+    expect(json.code).toBe("MTM_LOCATION_WORKDAY_PAUSED")
+    expect(prisma.mtmAgentWorkdayEvent.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ type: { in: ["PAUSE", "RESUME", "FINISH", "REOPEN"] } }),
+      select: { type: true, occurredAt: true, appliedAt: true },
+    }))
+    expect(prisma.mtmAgentLocation.create).not.toHaveBeenCalled()
   })
 
   it("rechecks the workday window inside the coordinate write transaction", async () => {

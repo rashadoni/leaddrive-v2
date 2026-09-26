@@ -11,6 +11,7 @@ import { Bell, Save, Loader2 } from "lucide-react"
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
+import { PageHeader } from "@/components/page-header"
 
 interface NotifCategory {
   enabled: boolean
@@ -108,16 +109,17 @@ export default function FinanceNotificationsPage() {
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-6 max-w-3xl">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 data-tour-id="fin-notif-header" className="text-2xl font-bold tracking-tight flex items-center gap-2">{t("title")} <TourReplayButton tourId="financeNotifications" /><HelpButton slug="finance-notifications" variant="label" /></h1>
-          <p className="text-sm text-muted-foreground mt-1">{t("description")}</p>
-        </div>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-          {saved ? t("saved") : t("save")}
-        </Button>
-      </div>
+      <PageHeader
+        title={<>{t("title")} <TourReplayButton tourId="financeNotifications" /><HelpButton slug="finance-notifications" variant="label" /></>}
+        titleTourId="fin-notif-header"
+        description={<p className="text-sm text-muted-foreground mt-1">{t("description")}</p>}
+        actions={
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+            {saved ? t("saved") : t("save")}
+          </Button>
+        }
+      />
 
       {/* Recipient Email */}
       <Card>

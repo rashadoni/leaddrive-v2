@@ -56,6 +56,9 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   /cron-trigger\.sh \/api\/cron\/missed-inbound-reconciliation/ { next }
   /cron-trigger\.sh \/api\/cron\/mtm-cleanup/ { next }
   /cron-trigger\.sh \/api\/cron\/mtm-route-day-close/ { next }
+  /cron-trigger\.sh \/api\/cron\/demo-call-retention/ { next }
+  /cron-trigger\.sh \/api\/cron\/campaign-scheduled-send/ { next }
+  /cron-trigger\.sh \/api\/cron\/mtm-demo-pulse/ { next }
   { print }
 ' "$CURRENT" > "$CLEAN"
 
@@ -96,6 +99,10 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # noisy tenant turn a single cleanup into an unbounded job.  The endpoint
   # owns the PostgreSQL lease; cron is only the durable external heartbeat.
   printf '%s\n' "*/15 * * * * $TRIGGER /api/cron/mtm-cleanup >> $LOG 2>&1"
+  # A demo call's words are kept for 90 days — the AI agent says so in its
+  # first sentence, and the prospect agreed to exactly that. Daily is plenty
+  # for a 90-day promise; the endpoint touches only calls the demo placed.
+  printf '%s\n' "17 3 * * * $TRIGGER /api/cron/demo-call-retention >> $LOG 2>&1"
   # A route stays PLANNED/IN_PROGRESS until a person closes it, so an ordinary
   # interrupted day never ended: prod had fourteen August routes sitting in the
   # "in progress" list. This sweep retires days that are over to INCOMPLETE.
@@ -103,6 +110,16 @@ awk -v begin="$BEGIN_MARKER" -v end="$END_MARKER" -v social_disabled="$SOCIAL_DI
   # which no single UTC tick can hit for every tenant. The update is idempotent
   # and leased, so extra ticks cost one bounded query per tenant.
   printf '%s\n' "20 * * * * $TRIGGER /api/cron/mtm-route-day-close >> $LOG 2>&1"
+  # A campaign with status «scheduled» goes out when its scheduledAt comes.
+  # These are real messages to customers' contacts: each campaign is claimed
+  # with one conditional write before sending, so overlapping ticks or a manual
+  # send racing the cron still deliver it once. Every minute, because the
+  # promise to the user is "at the chosen time".
+  printf '%s\n' "* * * * * $TRIGGER /api/cron/campaign-scheduled-send >> $LOG 2>&1"
+  # The demo organization's field day (owner decision 2026-09-22). A no-op for
+  # every tenant without the hand-set `mtm-demo-pulse` flag; keyed writes make
+  # a repeated or late tick harmless, and the endpoint holds its own lease.
+  printf '%s\n' "*/10 * * * * $TRIGGER /api/cron/mtm-demo-pulse >> $LOG 2>&1"
   # The durable queue drain is required for user-started jobs and is safe to
   # run independently. Keep the legacy marker and all other social workers
   # behind their existing opt-in state. Retaining the marker also ensures an

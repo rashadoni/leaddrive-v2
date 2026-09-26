@@ -27,21 +27,20 @@ import {
   UserMinus,
   UserPlus,
   UserRound,
+  UserRoundPlus,
   UsersRound,
   X,
 } from "lucide-react"
 import { toast } from "sonner"
 import { PageDescription } from "@/components/page-description"
 import { HelpButton } from "@/components/help/help-button"
-import { useSession } from "next-auth/react"
-import { MtmWorkflowGuide } from "@/components/mtm/mtm-workflow-guide"
-import { mtmViewerKey } from "@/lib/mtm/viewer-key"
 import {
   ContactTransferDialog,
   type ContactTransferAgent,
 } from "@/components/mtm/contact-transfer-dialog"
 import { ContactTransferReceiptPanel } from "@/components/mtm/contact-transfer-receipt-panel"
 import { ContactAssignmentDialog } from "@/components/mtm/contact-assignment-dialog"
+import { MtmContactCreateDialog } from "@/components/mtm/contact-create-dialog"
 import {
   applyContactTransferReconciliation,
   loadContactTransferReceipt,
@@ -264,8 +263,6 @@ function statusVariant(status: string): "success" | "warning" | "outline" {
 
 export function MtmContactExplorer() {
   const t = useTranslations("mtmContactExplorer")
-  const tGuideCommon = useTranslations("mtmCommon")
-  const { data: guideSession } = useSession()
   const locale = useLocale()
   const router = useRouter()
   const pathname = usePathname()
@@ -290,6 +287,7 @@ export function MtmContactExplorer() {
   const [transferOpen, setTransferOpen] = useState(false)
   const [assignmentOpen, setAssignmentOpen] = useState(false)
   const [assignmentMode, setAssignmentMode] = useState<"ASSIGN" | "UNASSIGN">("ASSIGN")
+  const [createOpen, setCreateOpen] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const [advancedOpen, setAdvancedOpen] = useState(
     ADVANCED_FILTER_KEYS.some((key) => Boolean(initial.filters[key])),
@@ -655,24 +653,18 @@ export function MtmContactExplorer() {
           <PageDescription icon={UsersRound} title={t("title")} description={t("subtitle")} />
           <HelpButton slug="mtm-contacts" variant="label" />
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={refresh} disabled={loading}>
-          <RefreshCw className={`mr-1 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          {t("refresh")}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" size="sm" className="min-h-11" onClick={() => setCreateOpen(true)}>
+            <UserRoundPlus className="mr-1.5 h-4 w-4" />
+            {t("createClient")}
+          </Button>
+          <Button type="button" variant="outline" size="sm" className="min-h-11" onClick={refresh} disabled={loading}>
+            <RefreshCw className={`mr-1 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            {t("refresh")}
+          </Button>
+        </div>
       </div>
 
-      <MtmWorkflowGuide
-        dismissId="contacts-clarity-guide"
-        viewerKey={mtmViewerKey(guideSession)}
-        dismissLabel={tGuideCommon("hintDismiss")}
-        title={t("clarityGuide.title")}
-        description={t("clarityGuide.description")}
-        steps={[
-          { title: t("search"), icon: Search },
-          { title: t("workplace"), icon: Building2 },
-          { title: t("assignAction"), icon: UserPlus },
-        ]}
-      />
 
       {isRouteDoctorFlow && routeAssignmentHandoff ? (
         <section data-testid="mtm-route-assignment-handoff" className="flex flex-col gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -750,7 +742,7 @@ export function MtmContactExplorer() {
           <Filter className="h-4 w-4 text-muted-foreground" />
           <h2 className="text-sm font-semibold">{t("filters")}</h2>
         </div>
-        <form onSubmit={submitSearch} className="mt-3 grid gap-3 lg:grid-cols-[minmax(14rem,2fr)_repeat(4,minmax(9rem,1fr))]">
+        <form onSubmit={submitSearch} className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-[minmax(0,2fr)_repeat(4,minmax(0,1fr))]">
           <div>
             <Label htmlFor="mtm-contact-search" className="text-xs text-muted-foreground">{t("searchLabel")}</Label>
             <div className="mt-1.5 flex gap-2">
@@ -1131,6 +1123,14 @@ export function MtmContactExplorer() {
             toast.success(t("routeFlowReturningToRoute", { count: result.summary.changed }))
             router.push(routeAssignmentHandoff.returnTo)
           }
+        }}
+      />
+      <MtmContactCreateDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={() => {
+          setPage(1)
+          refresh()
         }}
       />
       <Dialog

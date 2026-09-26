@@ -33,7 +33,11 @@ export const GET = withRouteFieldRlsAuth("read", async (_req, auth, { params }: 
       where: historicalVisitCandidateWhere(actor, auth.orgId, { id }),
       include: {
         agent: { select: { id: true, name: true } },
-        customer: { select: { id: true, name: true } },
+        // Same customer facts as the list row this response replaces on the
+        // visits page: without them a focused row lost its address and GPS.
+        customer: {
+          select: { id: true, name: true, address: true, city: true, latitude: true, longitude: true, geofenceRadius: true },
+        },
         contact: { select: { id: true, displayName: true, type: true, specialtyName: true } },
         participants: {
           select: { agentId: true, role: true, joinedAt: true, leftAt: true },
@@ -157,6 +161,31 @@ export const PUT = withRouteFieldRlsAuth("write", async (req, auth, { params }: 
         return NextResponse.json({ error: "Visit target is invalid", code: "MTM_ROUTE_REFERENCE_INVALID", details: targetValidation }, { status: 400 })
       }
     }
+    /**
+     * Visits audit 2026-09-24. The office edit form sends the visit's status and
+     * its check-in point back with every save, and this route took both at face
+     * value: a completed visit could be set back to «on site» (its check-out and
+     * duration kept, the one-open-visit lock bypassed); closing an agent's open
+     * visit from the office wrote the check-in point as the GPS of the exit; and
+     * editing a completed visit went down the check-out path, answered
+     * «already completed» and saved nothing.
+     *
+     * The phone closes its own visit through this same route, with its own GPS,
+     * and repeats the call from its outbox — that path stays as it was.
+     *
+     * Owner decision 2026-09-25: «the office must not close an agent's visit
+     * for him» — the same rule as the workday (the worker closes it himself).
+     * Only the visit's own agent closes it and only his device sets its GPS;
+     * the office corrects the agent, the customer and the note.
+     */
+    if (body.status === "CHECKED_IN" && current.status !== "CHECKED_IN") {
+      return NextResponse.json({ error: "A closed visit cannot be reopened", code: "MTM_VISIT_REOPEN_FORBIDDEN" }, { status: 409 })
+    }
+    const ownVisit = Boolean(actor.agentId) && actor.agentId === current.agentId
+    if (body.status === "CHECKED_OUT" && current.status === "CHECKED_IN" && !ownVisit) {
+      return NextResponse.json({ error: "Only the visit's own agent closes it", code: "MTM_VISIT_CLOSE_BY_AGENT_ONLY" }, { status: 409 })
+    }
+
     const data: Prisma.MtmVisitUncheckedUpdateManyInput = {}
     if (body.agentId) data.agentId = body.agentId
     if (body.customerId) data.customerId = body.customerId
@@ -164,8 +193,9 @@ export const PUT = withRouteFieldRlsAuth("write", async (req, auth, { params }: 
     if (body.notes !== undefined) data.notes = body.notes ?? null
     if (body.status && body.status !== "CHECKED_OUT") data.status = body.status
 
-    // Handle check-out: save checkout GPS + auto-set checkOutAt + calculate duration
-    if (body.status === "CHECKED_OUT") {
+    // Handle check-out: save checkout GPS + auto-set checkOutAt + calculate duration.
+    // The agent's own check-out, or his phone repeating it from the outbox.
+    if (body.status === "CHECKED_OUT" && ownVisit) {
       const result = await prisma.$transaction((tx: Prisma.TransactionClient) => completeMtmVisit(tx, {
         organizationId: auth.orgId,
         visitId: id,
@@ -202,8 +232,9 @@ export const PUT = withRouteFieldRlsAuth("write", async (req, auth, { params }: 
         req,
       }).catch((e) => console.warn("[MTM/visits/[id] PUT] CHECK_OUT audit failed", e))
       return NextResponse.json({ success: true, data: result.visit, idempotent: result.idempotent })
-    } else {
-      // Non-checkout update: lat/lng goes to checkInLat/Lng
+    } else if (ownVisit && body.status !== "CHECKED_OUT") {
+      // The agent's own non-checkout update: lat/lng goes to checkInLat/Lng.
+      // The office never writes a visit's GPS.
       if (body.latitude != null) data.checkInLat = body.latitude
       if (body.longitude != null) data.checkInLng = body.longitude
     }

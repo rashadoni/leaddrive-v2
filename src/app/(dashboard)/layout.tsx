@@ -12,7 +12,8 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { CommandSearch } from "@/components/command-search"
 import { AppLauncher } from "@/components/app-launcher"
 import { LauncherPrefsProvider } from "@/contexts/launcher-prefs-context"
-import { isNavItemEnabled, orgFromSession, matchNavItem } from "@/lib/nav-items"
+import { isNavItemEnabled, matchNavItem } from "@/lib/nav-items"
+import { useNavOrgContext } from "@/hooks/use-mtm-org-settings"
 import { ModuleDisabled } from "@/components/module-disabled"
 import { AiAssistantPanel } from "@/components/ai-assistant-panel"
 import { VoiceOrb } from "@/components/ai/voice-orb"
@@ -58,7 +59,10 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   // The outbox sync wants the token rotation too: it re-runs when the token is
   // re-issued, which is what tells it the credentials it drains with are fresh.
   const outboxSessionKey = outboxSession ? `${sessionIdentity}:${session?.iat ?? ""}` : ""
-  const org = orgFromSession(user)
+  // Carries organization menu switches (e.g. field contacts). The page guard
+  // below uses isNavItemEnabled, which ignores them: a hidden page still opens
+  // by URL and explains itself instead of claiming the module is disabled.
+  const org = useNavOrgContext(user)
   const mtmSyncItem = matchNavItem("/mtm/promotions")
   const mtmSyncEnabled = Boolean(mtmSyncItem && isNavItemEnabled(org, mtmSyncItem))
 
@@ -149,6 +153,10 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           <LauncherPrefsProvider>
           <DashboardWallpaper />
           <div className="relative z-[2] flex h-screen min-w-0">
+            {/* Portal target for the voice control's status line: inside this
+                stacking context so in-place dialogs (z-[60]) still cover it.
+                See VoiceInlineStatus. Empty and zero-size; its child is fixed. */}
+            <div id="dashboard-voice-status-layer" />
             {/* sessionLoaded: while useSession() is still hydrating, the
                 sidebar shows a skeleton and the header shows shimmer
                 placeholders — rendering the menu from a default org context

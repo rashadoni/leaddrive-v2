@@ -773,6 +773,56 @@ describe("POST /api/v1/mtm/visits", () => {
     expect(prisma.mtmAlert.create).not.toHaveBeenCalled()
   })
 
+  it("clamps a too-small customer radius to 25 m like both sync paths", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(prisma.mtmCustomer.findFirst).mockResolvedValue({
+      id: "cust-1", name: "Customer A", category: "B", objectType: "OTHER", latitude: 40.41, longitude: 49.87, geofenceRadius: 5,
+    } as any)
+    vi.mocked(calculateDistance).mockReturnValue(20) // > 5 m raw, < 25 m clamped
+    vi.mocked(prisma.mtmVisit.create).mockResolvedValue({ id: "v-clamped" } as any)
+
+    const inside = await POST(makePostReq({ agentId: "agent-1", customerId: "cust-1", latitude: 40.4095, longitude: 49.868 }))
+    expect(inside.status).toBe(201)
+
+  })
+
+  it("refuses beyond the clamped small radius and reports it", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(prisma.mtmCustomer.findFirst).mockResolvedValue({
+      id: "cust-1", name: "Customer A", category: "B", objectType: "OTHER", latitude: 40.41, longitude: 49.87, geofenceRadius: 5,
+    } as any)
+    vi.mocked(prisma.mtmAlert.create).mockResolvedValue({} as any)
+    vi.mocked(calculateDistance).mockReturnValue(60)
+    const outside = await POST(makePostReq({ agentId: "agent-1", customerId: "cust-1", latitude: 40.4095, longitude: 49.868 }))
+    expect(outside.status).toBe(400)
+    expect(await outside.json()).toMatchObject({ code: "MTM_VISIT_OUT_OF_ZONE", geofenceRadius: 25 })
+  })
+
+  it("clamps a too-wide customer radius to 10 000 m instead of shrinking it to 100 m", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(prisma.mtmCustomer.findFirst).mockResolvedValue({
+      id: "cust-1", name: "Customer A", category: "B", objectType: "OTHER", latitude: 40.41, longitude: 49.87, geofenceRadius: 20_000,
+    } as any)
+    vi.mocked(prisma.mtmVisit.create).mockResolvedValue({ id: "v-wide" } as any)
+
+    vi.mocked(calculateDistance).mockReturnValue(5_000)
+    const inside = await POST(makePostReq({ agentId: "agent-1", customerId: "cust-1", latitude: 40.4095, longitude: 49.868 }))
+    expect(inside.status).toBe(201)
+
+  })
+
+  it("refuses beyond the clamped wide radius and reports it", async () => {
+    vi.mocked(getOrgId).mockResolvedValue(ORG)
+    vi.mocked(prisma.mtmCustomer.findFirst).mockResolvedValue({
+      id: "cust-1", name: "Customer A", category: "B", objectType: "OTHER", latitude: 40.41, longitude: 49.87, geofenceRadius: 20_000,
+    } as any)
+    vi.mocked(prisma.mtmAlert.create).mockResolvedValue({} as any)
+    vi.mocked(calculateDistance).mockReturnValue(15_000)
+    const outside = await POST(makePostReq({ agentId: "agent-1", customerId: "cust-1", latitude: 40.4095, longitude: 49.868 }))
+    expect(outside.status).toBe(400)
+    expect(await outside.json()).toMatchObject({ geofenceRadius: 10_000 })
+  })
+
   it("blocks visit when outside geofence and no force flag", async () => {
     vi.mocked(getOrgId).mockResolvedValue(ORG)
     vi.mocked(prisma.mtmCustomer.findFirst).mockResolvedValue({

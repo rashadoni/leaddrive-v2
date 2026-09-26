@@ -81,13 +81,17 @@ describe("lead qualification copy stays distinct from per-call outcomes", () => 
   })
 
   it("uses the same qualification meaning in runtime errors, audit history, and the AI guide", () => {
-    const leadRoute = readFileSync(
-      join(process.cwd(), "src/app/api/v1/leads/[id]/route.ts"),
+    const leadSchema = readFileSync(
+      join(process.cwd(), "src/lib/crm-commands/schemas/lead.ts"),
       "utf8",
     )
-    expect(leadRoute.includes('message: "A short lead qualification note is required"')).toBe(true)
-    expect(leadRoute.match(/Choose at least one compatible qualification signal/g)).toHaveLength(2)
-    expect(leadRoute.includes('error: "Only the assigned salesperson can update the lead qualification"')).toBe(true)
+    const leadCommand = readFileSync(
+      join(process.cwd(), "src/lib/crm-commands/lead/update-lead.ts"),
+      "utf8",
+    )
+    expect(leadSchema.includes('message: "A short lead qualification note is required"')).toBe(true)
+    expect(`${leadSchema}\n${leadCommand}`.match(/Choose at least one compatible qualification signal/g)).toHaveLength(2)
+    expect(leadCommand.includes('"Only the assigned salesperson can update the lead qualification"')).toBe(true)
 
     const inboxRoute = readFileSync(
       join(process.cwd(), "src/app/api/v1/inbox/conversations/[id]/route.ts"),

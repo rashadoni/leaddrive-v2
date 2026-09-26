@@ -187,3 +187,30 @@ describe("dashboard quick actions wiring", () => {
     expect(welcome).not.toContain('href="/leads?new=1"')
   })
 })
+
+describe("quick actions follow the MTM organization switches", () => {
+  const MTM_ORG: OrgNavContext = { plan: "enterprise", role: "admin", modules: { mtm: true, "route-field": true } }
+  const pinned = ["/mtm/contacts", "/mtm/promotions", "/mtm/visits"]
+  const hrefs = (org: OrgNavContext) => resolveQuickActions(pinned, org).map((action) => action.href)
+
+  it("keeps pinned contacts and promotions while the switches are on or unknown", () => {
+    expect(hrefs(MTM_ORG)).toEqual(pinned)
+    expect(hrefs({ ...MTM_ORG, orgSettings: { fieldContactsEnabled: true, pharmacyPromotionsEnabled: true } })).toEqual(pinned)
+  })
+
+  it.each([
+    ["fieldContactsEnabled", "/mtm/contacts"],
+    ["pharmacyPromotionsEnabled", "/mtm/promotions"],
+  ] as const)("drops the pinned action when %s is off", (key, href) => {
+    const shown = hrefs({ ...MTM_ORG, orgSettings: { [key]: false } })
+    expect(shown).not.toContain(href)
+    expect(shown).toContain("/mtm/visits")
+    expect(shown).toHaveLength(2)
+  })
+
+  it("the dashboard resolves quick actions with the switch-aware org context", () => {
+    const page = source("src/app/(dashboard)/dashboard/page.tsx")
+    expect(page).toContain("const navOrg = useNavOrgContext(session?.user)")
+    expect(page).toContain("resolveQuickActions(quickActionHrefs, navOrg)")
+  })
+})

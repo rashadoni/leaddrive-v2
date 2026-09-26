@@ -93,9 +93,8 @@ export default function mtmvisitsHelpEn() {
           </p>
           <HelpCallout kind="see" label="What you'll see">
             A «Log Visit» dialog opens. It contains side-by-side <strong>Agent *</strong> and{" "}
-            <strong>Customer *</strong> dropdowns, then side-by-side <strong>Latitude</strong> and{" "}
-            <strong>Longitude</strong> fields, and finally a <strong>Notes</strong> text area. (The status
-            selector only appears when editing an existing visit.)
+            <strong>Customer *</strong> dropdowns and a <strong>Notes</strong> text area. There are no coordinates
+            or status: the agent's phone records where the visit happened and closes it.
           </HelpCallout>
         </HelpStep>
         <HelpStep n={2}>
@@ -110,12 +109,11 @@ export default function mtmvisitsHelpEn() {
         </HelpStep>
         <HelpStep n={3}>
           <p>
-            Optionally enter <strong>Latitude</strong> and <strong>Longitude</strong> coordinates and a{" "}
-            <strong>Note</strong>.
+            Optionally add a <strong>note</strong>.
           </p>
           <HelpCallout kind="see" label="What you'll see">
-            The latitude and longitude fields accept numbers only (decimals allowed). These coordinates are
-            stored as the check-in location and later used to compute the <strong>GPS</strong> distance badge in the table.
+            A visit logged from the office has no GPS: only the agent's phone knows where a visit happened, so
+            the table shows no <strong>GPS</strong> distance for it.
           </HelpCallout>
         </HelpStep>
         <HelpStep n={4}>
@@ -137,10 +135,9 @@ export default function mtmvisitsHelpEn() {
             To change a visit, press the pencil-icon button (<HelpKey>Edit</HelpKey>) on that row.
           </p>
           <HelpCallout kind="see" label="What you'll see">
-            An «Edit Visit» dialog opens, pre-filled with the existing agent, customer, coordinates and notes.
-            Only in edit mode does an extra <strong>Status</strong> dropdown appear — use it to mark the visit
-            as <HelpKey>Checked In</HelpKey> or <HelpKey>Checked Out</HelpKey>. Confirm with{" "}
-            <HelpKey>Update</HelpKey>.
+            An «Edit Visit» dialog opens, pre-filled with the existing agent, customer and notes. There is no
+            status or coordinates: the agent closes the visit himself in the app, just like the workday.
+            Confirm with <HelpKey>Update</HelpKey>.
           </HelpCallout>
         </HelpStep>
         <HelpStep n={2}>
@@ -156,7 +153,7 @@ export default function mtmvisitsHelpEn() {
         <HelpCallout kind="warning">
           <p>
             Deletion can't be undone — the visit is removed from the log permanently. If you only need to fix
-            a wrong status or coordinates, use <HelpKey>Edit</HelpKey> instead of deleting.
+            the agent, customer or note, use <HelpKey>Edit</HelpKey> instead of deleting.
           </p>
         </HelpCallout>
       </HelpSection>

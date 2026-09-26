@@ -16,7 +16,7 @@
  */
 import { hasModule } from "@/lib/modules"
 import { getOrgModuleContext } from "@/lib/api-auth"
-import { readVoicePilotConfig } from "./config"
+import { readVoicePilotConfig, voiceWritesEnabled } from "./config"
 
 /**
  * Roles that may be granted voice at all. An admin ticking the box on a viewer
@@ -112,5 +112,27 @@ export async function checkVoicePilotAccess(auth: {
     return { ok: false, reason: "voice_provider_not_configured" }
   }
 
+  return { ok: true }
+}
+
+/**
+ * The gate every voice route that can end in a CRM mutation runs, on top of
+ * the pilot gate rather than instead of it.
+ *
+ * It exists as one function for the same reason the pilot gate does: a check
+ * that each route remembers to make is a check one route will eventually
+ * forget. Routes that cannot mutate anything — reading the active receipt,
+ * cancelling a draft — deliberately do NOT call it, so a draft prepared before
+ * the switch was thrown can still be dismissed rather than being stuck on
+ * screen with no way out.
+ */
+export async function checkVoiceWriteAccess(auth: {
+  orgId: string
+  userId: string
+  role: string
+}): Promise<VoiceGateResult> {
+  const gate = await checkVoicePilotAccess(auth)
+  if (!gate.ok) return gate
+  if (!voiceWritesEnabled()) return { ok: false, reason: "voice_writes_disabled" }
   return { ok: true }
 }

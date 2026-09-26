@@ -4,6 +4,7 @@ import { logAudit, prisma } from "@/lib/prisma"
 import { withRlsSessionAuth } from "@/lib/with-rls"
 import { isAdmin } from "@/lib/constants"
 import { readJsonRequestWithinLimit } from "@/lib/request-body-limit"
+import { dedicatedChannelTypeError, isDedicatedChannelType } from "@/lib/channels/dedicated-channel-types"
 
 /**
  * Per-channel reply routing settings — the data layer behind the "AI vs agent"
@@ -21,7 +22,19 @@ import { readJsonRequestWithinLimit } from "@/lib/request-body-limit"
  * replyMode (default "agent" = no AI); WhatsApp/Telegram/SMS/VK store it but their
  * webhooks don't act on it yet — a follow-up slice.
  *
- * GET   /api/v1/settings/channel-reply — list channels + their reply policy
+ * Only conversation channels have a reply policy. A row of a type that has a screen of its own
+ * (lib/channels/dedicated-channel-types) is not listed, and PATCH refuses it with 403. Decided
+ * per type, 2026-09-21:
+ *   social_monitoring  Social Monitoring's "Monitoring providers" and "Monitoring scenarios"
+ *                      rows. Nothing reads a reply policy there, and both of their writers
+ *                      replace `settings` whole on every save, so a policy set here showed in
+ *                      the matrix until that save, then vanished.
+ *   slack, teams       outbound notification hooks from Integrations: nothing comes in to answer.
+ *   voip               calls. The voice agent answers by the switches on the VoIP screen
+ *                      (voiceAgentEnabled / voiceAgentMode, api/v1/voip/config); no call or
+ *                      voice-agent path reads a reply policy from the row.
+ *
+ * GET   /api/v1/settings/channel-reply — list the conversation channels + their reply policy
  * PATCH /api/v1/settings/channel-reply — update one channel's reply policy (by configId)
  */
 
@@ -67,11 +80,13 @@ export const GET = withRlsSessionAuth(async (_req, auth) => {
   const denial = requireReplyPolicyAdmin(auth.role)
   if (denial) return denial
 
-  const channels = await prisma.channelConfig.findMany({
+  const rows = await prisma.channelConfig.findMany({
     where: { organizationId: auth.orgId },
     select: { id: true, channelType: true, configName: true, isActive: true, settings: true },
     orderBy: { channelType: "asc" },
   })
+  // Conversation channels only — see the header.
+  const channels = rows.filter((c: { channelType: string }) => !isDedicatedChannelType(c.channelType))
 
   return NextResponse.json({
     data: {
@@ -120,6 +135,10 @@ export const PATCH = withRlsSessionAuth(async (req, auth) => {
     select: { id: true, channelType: true, settings: true },
   })
   if (!cfg) return NextResponse.json({ error: "Channel not found" }, { status: 404 })
+  // Not a conversation channel (see the header): nothing would read the policy, and the row's own
+  // screen owns its settings.
+  const dedicatedError = dedicatedChannelTypeError(cfg.channelType)
+  if (dedicatedError) return NextResponse.json({ error: dedicatedError }, { status: 403 })
 
   // MERGE — preserve every existing settings key (auth/config), override only the
   // reply-policy fields that were sent.

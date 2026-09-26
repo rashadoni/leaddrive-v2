@@ -20,6 +20,22 @@ import { verifySvixSignature } from "@/lib/svix-verify"
 //   https://app.leaddrivecrm.org/api/v1/public/resend-webhook
 //   Events: email.delivered, email.bounced, email.complained, email.delivery_delayed
 //   Signing secret → paste into .env as RESEND_WEBHOOK_SECRET.
+//
+// Campaign counters:
+//   A campaign email's first «bounced» event adds one to Campaign.totalBounced
+//   (and CampaignVariant.totalBounced), its first «complained» event one to
+//   Campaign.totalSpam. «First» is decided by the database, not by us: both
+//   statuses are final, the log update only matches a row that is not yet in
+//   either, and only the request whose update matched increments. Svix
+//   redelivers an event until it gets a 2xx, so a retry — or two concurrent
+//   deliveries — must find the row already final and count nothing.
+//   Until 2026-09-21 nothing wrote these columns and the campaign page showed
+//   0 bounces for every campaign.
+
+// Once a log is here, a later event (a late «delivered», a retried «opened»)
+// must not move it out: that would hide the bounce and let a redelivered
+// bounce count twice.
+const FINAL_STATUSES = ["bounced", "complained"]
 
 type ResendEvent = {
   type?: string
@@ -96,7 +112,7 @@ export async function POST(req: NextRequest) {
     const log = await runWithRlsBypass(() =>
       prisma.emailLog.findFirst({
         where: { messageId: emailId },
-        select: { id: true, organizationId: true, toEmail: true },
+        select: { id: true, organizationId: true, toEmail: true, campaignId: true, variantId: true },
       })
     )
     if (!log) {
@@ -112,7 +128,23 @@ export async function POST(req: NextRequest) {
       data.errorMessage = event.data?.bounce?.message || type
     }
 
-    await prisma.emailLog.update({ where: { id: log.id }, data })
+    const moved = await prisma.emailLog.updateMany({
+      where: { id: log.id, status: { notIn: FINAL_STATUSES } },
+      data,
+    })
+
+    if (moved.count === 1 && log.campaignId && (status === "bounced" || status === "complained")) {
+      await prisma.campaign.updateMany({
+        where: { id: log.campaignId, organizationId: log.organizationId },
+        data: status === "bounced" ? { totalBounced: { increment: 1 } } : { totalSpam: { increment: 1 } },
+      })
+      if (status === "bounced" && log.variantId) {
+        await prisma.campaignVariant.updateMany({
+          where: { id: log.variantId, campaignId: log.campaignId },
+          data: { totalBounced: { increment: 1 } },
+        })
+      }
+    }
 
     // Auto-unsubscribe on hard bounce or complaint so we stop sending to this address.
     if (status === "bounced" || status === "complained") {

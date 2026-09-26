@@ -10,6 +10,7 @@ import { AnimatedGradientText } from "@/components/ui/animated-gradient-text"
 import { MagicCard } from "@/components/ui/magic-card"
 import { TypingAnimation } from "@/components/ui/typing-animation"
 import { AnimatedBeam } from "@/components/ui/animated-beam"
+import { PageHeader } from "@/components/page-header"
 import {
   Palette,
   Type,
@@ -64,22 +65,27 @@ export default function DesignCheckPage() {
   return (
     <div className="space-y-6 animate-fade-in-up">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+      <PageHeader
+        title={
+          <>
             <Sparkles className="size-6 text-accent" />
             {t("title")}
-          </h1>
+          </>
+        }
+        titleClassName="text-2xl font-bold text-foreground"
+        description={
           <p className="text-sm text-muted-foreground mt-1">
             {t("subtitle")}
           </p>
-        </div>
-        <div className="flex gap-2">
-          <Badge variant="secondary">Nano-Banana</Badge>
-          <Badge variant="secondary">UI UX Pro Max</Badge>
-          <Badge variant="secondary">21st.dev</Badge>
-        </div>
-      </div>
+        }
+        actions={
+          <>
+            <Badge variant="secondary">Nano-Banana</Badge>
+            <Badge variant="secondary">UI UX Pro Max</Badge>
+            <Badge variant="secondary">21st.dev</Badge>
+          </>
+        }
+      />
 
       <Tabs defaultValue="components" className="space-y-4">
         <TabsList>

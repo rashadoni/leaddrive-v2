@@ -12,13 +12,28 @@
  *     day as segments. A gap with no explanation reads as "the app lost me".
  *
  * The events are the record: START, PAUSE, RESUME, FINISH, each with the
- * moment it happened. This file turns them into closed intervals plus, when
- * the shift is paused right now, one open interval.
+ * moment it happened, plus REOPEN when a manager reopened today's finished
+ * shift. This file turns them into closed intervals plus, when the shift is
+ * paused right now, one open interval.
  */
+
+/**
+ * The event types that shape breaks. Callers that read the journal for this
+ * file must select exactly these: without REOPEN a reopened shift's gap
+ * between its first FINISH and RESUME would silently read as work.
+ */
+export const MTM_WORKDAY_PAUSE_EVENT_TYPES = ["PAUSE", "RESUME", "FINISH", "REOPEN"] as const
 
 export type MtmWorkdayPauseEvent = {
   type: string
   occurredAt: Date | string
+  /**
+   * When the server applied the event. Instants alone order the journal except
+   * around a REOPEN, which is recorded at the instant of the FINISH it reopens
+   * (as is a manager's undo FINISH); there application order decides. Rows
+   * without it sort first among events sharing an instant.
+   */
+  appliedAt?: Date | string | null
 }
 
 /** A break. `to === null` means it is still running. */
@@ -39,15 +54,30 @@ function toDate(value: Date | string): Date | null {
  *     break that started at the beginning of time;
  *   - FINISH closes an open pause: a shift finished from the paused state
  *     ends the break at the same moment, which is what `applyMtmWorkdayEvent`
- *     records in `totalPausedSeconds`.
+ *     records in `totalPausedSeconds`;
+ *   - REOPEN opens a break at its own instant, which is the instant of the
+ *     FINISH it reopens: the workday row counts that gap as pause when the
+ *     agent resumes. When that FINISH itself closed a break, the break simply
+ *     never ended, so it continues as one interval instead of two touching at
+ *     the finish moment. An undo FINISH at the same instant closes it again,
+ *     leaving the day's breaks exactly as they were before the reopen.
  */
 export function mtmWorkdayPauses(events: readonly MtmWorkdayPauseEvent[]): MtmWorkdayPause[] {
   const pauses: MtmWorkdayPause[] = []
   let open: Date | null = null
   const ordered = [...events]
-    .map((event) => ({ type: event.type, at: toDate(event.occurredAt) }))
-    .filter((event): event is { type: string; at: Date } => event.at !== null)
-    .sort((a, b) => a.at.getTime() - b.at.getTime())
+    .map((event, index) => ({
+      type: event.type,
+      at: toDate(event.occurredAt),
+      appliedAtMs: event.appliedAt == null ? Number.NEGATIVE_INFINITY : toDate(event.appliedAt)?.getTime() ?? Number.NEGATIVE_INFINITY,
+      index,
+    }))
+    .filter((event): event is { type: string; at: Date; appliedAtMs: number; index: number } => event.at !== null)
+    .sort((a, b) => (
+      a.at.getTime() - b.at.getTime()
+      || (a.appliedAtMs === b.appliedAtMs ? 0 : a.appliedAtMs < b.appliedAtMs ? -1 : 1)
+      || a.index - b.index
+    ))
 
   for (const event of ordered) {
     if (event.type === "PAUSE") {
@@ -58,6 +88,16 @@ export function mtmWorkdayPauses(events: readonly MtmWorkdayPauseEvent[]): MtmWo
         // but says nothing; keeping it would only add noise to the timeline.
         if (event.at.getTime() > open.getTime()) pauses.push({ from: open, to: event.at })
         open = null
+      }
+    } else if (event.type === "REOPEN") {
+      if (!open) {
+        const previous = pauses.at(-1)
+        if (previous?.to && previous.to.getTime() === event.at.getTime()) {
+          pauses.pop()
+          open = previous.from
+        } else {
+          open = event.at
+        }
       }
     }
   }

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
+import { useMtmApiError } from "@/components/mtm/use-mtm-api-error"
 import {
   AlertTriangle,
   CalendarDays,
@@ -24,6 +25,7 @@ import {
 import {
   coerceMtmRouteTargetTypes,
   routeTargetLabel,
+  routeTargetTypesForPlanning,
   type MtmRouteTargetDirection,
   type MtmRouteTargetType,
 } from "@/lib/mtm/route-target-types"
@@ -191,6 +193,7 @@ export function MtmRoutePlanningMatrix({
   onOpenDayPlanner?: (input: DayPlannerLaunch) => void
 }) {
   const t = useTranslations("mtmRoutesPage")
+  const explainError = useMtmApiError()
   const locale = useLocale()
   const coverageLocale = locale === "az" ? "az" : locale === "en" ? "en" : "ru"
   const headers = useMemo<Record<string, string>>(() => orgId ? { "x-organization-id": orgId } : {}, [orgId])
@@ -225,6 +228,7 @@ export function MtmRoutePlanningMatrix({
       fetch("/api/v1/mtm/agents?limit=200", { headers, signal: controller.signal }).then((response) => response.json()),
       fetch("/api/v1/mtm/settings", { headers, signal: controller.signal }).then((response) => response.json()),
     ]).then(([agentResult, settingsResult]) => {
+      if (!agentResult?.success) setError(explainError(agentResult))
       const rows = (agentResult.data?.agents ?? []) as Agent[]
       const visibleAgents = !canManageAssignments && selfAgentId
         ? rows.filter((agent) => agent.id === selfAgentId)
@@ -234,12 +238,16 @@ export function MtmRoutePlanningMatrix({
         if (current && visibleAgents.some((agent) => agent.id === current)) return current
         return visibleAgents.find((agent) => agent.id === preferredAgentId)?.id ?? visibleAgents[0]?.id ?? ""
       })
-      if (settingsResult.success) setTargetTypes(coerceMtmRouteTargetTypes(settingsResult.data?.routeTargetTypes))
+      if (settingsResult.success) {
+        setTargetTypes(routeTargetTypesForPlanning(
+          coerceMtmRouteTargetTypes(settingsResult.data?.routeTargetTypes),
+        ))
+      }
     }).catch((loadError: unknown) => {
       if ((loadError as { name?: string })?.name !== "AbortError") setError(t("matrixLoadFailed"))
     })
     return () => controller.abort()
-  }, [canManageAssignments, headers, preferredAgentId, selfAgentId, t])
+  }, [canManageAssignments, explainError, headers, preferredAgentId, selfAgentId, t])
 
   useEffect(() => {
     initializedIdentity.current = ""
@@ -451,7 +459,6 @@ export function MtmRoutePlanningMatrix({
 
                         <section aria-labelledby={`picker-${day.date}`}>
                           <h3 id={`picker-${day.date}`} className="font-semibold">{t("weekPlannerAddTitle")}</h3>
-                          <p className="mt-0.5 text-xs text-muted-foreground">{t("weekPlannerAddHint")}</p>
                           <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label={t("weekPlannerTargetType")}>
                             {enabledTargetTypes.map((target) => (
                               <Button

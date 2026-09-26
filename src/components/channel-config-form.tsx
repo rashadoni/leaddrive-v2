@@ -11,7 +11,7 @@ import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from "
 import { Check, Copy, Mail, Send, MessageSquare, Smartphone, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { emailIntakeRoutesFromSettings } from "@/lib/ticketing/email-intake"
-import { buildChannelPayload, type ChannelConfigFormData, type SmsProvider } from "@/lib/channels/channel-config-payload"
+import { buildChannelPayload, type ChannelConfigFormData, type ChannelFormType, type SmsProvider } from "@/lib/channels/channel-config-payload"
 import { channelConnectionState } from "@/lib/channels/live-connection"
 import { metaConnectionReason } from "@/lib/channels/connection-reason"
 
@@ -77,7 +77,9 @@ const channelTypes = [
   { value: "instagram", label: "Instagram", icon: MessageSquare },
   { value: "vkontakte", label: "VKontakte", icon: MessageSquare },
   { value: "chatwoot", label: "TikTok via Chatwoot", icon: MessageSquare },
-]
+  // Typed against the list the PUT route trusts: a type offered here but missing there would have its settings
+  // ignored on save (lib/channels/server-owned-settings).
+] satisfies ReadonlyArray<{ value: ChannelFormType; label: string; icon: typeof Mail }>
 
 const localCopy: Record<Loc, Record<string, string>> = {
   en: {
@@ -146,6 +148,10 @@ const localCopy: Record<Loc, Record<string, string>> = {
     metaAppSecretPlaceholder: "Meta app secret",
     metaVerifyTokenPlaceholder: "a-random-string-you-choose",
     metaVerifyTokenHint: "Any random string — it must match the Verify Token in your Meta app's Webhook config.",
+    metaAppReviewOnlyLabel: "Staging app (Meta App Review) — do not use for existing channels",
+    metaAppReviewOnlyHint: "Keeps this Meta app isolated: it is used only when a connection names it explicitly, so the channels already connected in this workspace keep running on the app they use today.",
+    metaLoginConfigLabel: "Facebook Login for Business — configuration ID",
+    metaLoginConfigHint: "Only for apps that use Facebook Login for Business. Meta replaced the permission list with a configuration, so leaving this empty makes the dialog refuse the request or return no Pages. Find it in your app under Facebook Login for Business → Configurations.",
     metaConnectFacebook: "Connect Facebook Page →",
     metaConnectInstagram: "Connect Instagram account →",
     metaOneClickTitle: "Connect with LeadDrive's Meta app",
@@ -161,6 +167,7 @@ const localCopy: Record<Loc, Record<string, string>> = {
     metaStateNew: "Not connected yet. Saving this form only creates the channel; messages start arriving after Connect with Meta finishes.",
     metaStatePaused: metaConnectionReason("en", "paused"),
     metaStateReconnect: metaConnectionReason("en", "needsReconnect"),
+    metaStateAppReview: metaConnectionReason("en", "subscriptionPending"),
     metaManualFallback: "Auto-filled after Connect. Enter manually only as a fallback:",
     metaPageIdLabel: "Page ID",
     metaPageIdPlaceholder: "Your Facebook Page ID",
@@ -231,6 +238,10 @@ const localCopy: Record<Loc, Record<string, string>> = {
     metaAppSecretPlaceholder: "секрет Meta-приложения",
     metaVerifyTokenPlaceholder: "любая-длинная-строка",
     metaVerifyTokenHint: "Любая строка — она должна совпадать с Verify Token в настройках webhook вашего Meta-приложения.",
+    metaAppReviewOnlyLabel: "Тестовое приложение (Meta App Review) — не использовать для существующих каналов",
+    metaAppReviewOnlyHint: "Изолирует это Meta-приложение: оно применяется, только когда подключение указывает его явно, поэтому уже подключённые каналы продолжают работать на прежнем приложении.",
+    metaLoginConfigLabel: "Facebook Login for Business — ID конфигурации",
+    metaLoginConfigHint: "Только для приложений на Facebook Login for Business. Meta заменила список разрешений конфигурацией, поэтому без неё диалог отклоняет запрос или возвращает пустой список страниц. Найти: в приложении → Facebook Login for Business → Конфигурации.",
     metaConnectFacebook: "Подключить Facebook Page →",
     metaConnectInstagram: "Подключить Instagram account →",
     metaOneClickTitle: "Подключение через приложение LeadDrive",
@@ -246,6 +257,7 @@ const localCopy: Record<Loc, Record<string, string>> = {
     metaStateNew: "Ещё не подключено. Сохранение формы только создаёт канал; сообщения пойдут после завершения «Подключить через Meta».",
     metaStatePaused: metaConnectionReason("ru", "paused"),
     metaStateReconnect: metaConnectionReason("ru", "needsReconnect"),
+    metaStateAppReview: metaConnectionReason("ru", "subscriptionPending"),
     metaManualFallback: "Заполняется автоматически после подключения. Вручную вводите только как резервный вариант:",
     metaPageIdLabel: "Page ID",
     metaPageIdPlaceholder: "ID вашей Facebook Page",
@@ -316,6 +328,10 @@ const localCopy: Record<Loc, Record<string, string>> = {
     metaAppSecretPlaceholder: "Meta tətbiq secret",
     metaVerifyTokenPlaceholder: "istənilən-uzun-sətir",
     metaVerifyTokenHint: "İstənilən sətir — Meta tətbiqin webhook konfiqurasiyasındakı Verify Token ilə eyni olmalıdır.",
+    metaAppReviewOnlyLabel: "Sınaq tətbiqi (Meta App Review) — mövcud kanallar üçün istifadə edilməsin",
+    metaAppReviewOnlyHint: "Bu Meta tətbiqini təcrid edir: yalnız bağlantı onu açıq şəkildə göstərəndə işlədilir, ona görə artıq qoşulmuş kanallar indiki tətbiqlə işləməyə davam edir.",
+    metaLoginConfigLabel: "Facebook Login for Business — konfiqurasiya ID-si",
+    metaLoginConfigHint: "Yalnız Facebook Login for Business istifadə edən tətbiqlər üçün. Meta icazə siyahısını konfiqurasiya ilə əvəz etdi, ona görə bu boş qalsa dialoq sorğunu rədd edir və ya heç bir səhifə qaytarmır. Tətbiqdə: Facebook Login for Business → Konfiqurasiyalar.",
     metaConnectFacebook: "Facebook Page qoş →",
     metaConnectInstagram: "Instagram account qoş →",
     metaOneClickTitle: "LeadDrive-ın Meta tətbiqi ilə qoşulma",
@@ -331,6 +347,7 @@ const localCopy: Record<Loc, Record<string, string>> = {
     metaStateNew: "Hələ qoşulmayıb. Bu formanı saxlamaq yalnız kanalı yaradır; mesajlar «Meta ilə qoş» tamamlandıqdan sonra gəlməyə başlayır.",
     metaStatePaused: metaConnectionReason("az", "paused"),
     metaStateReconnect: metaConnectionReason("az", "needsReconnect"),
+    metaStateAppReview: metaConnectionReason("az", "subscriptionPending"),
     metaManualFallback: "Qoşulmadan sonra avtomatik doldurulur. Manual yalnız fallback üçün yazın:",
     metaPageIdLabel: "Page ID",
     metaPageIdPlaceholder: "Facebook Page ID-niz",
@@ -853,6 +870,8 @@ export function ChannelConfigForm({
     verifyToken: "",
     displayName: "",
     igLogin: false,
+    appReviewOnly: false,
+    loginConfigId: "",
     chatwootBaseUrl: "",
     chatwootAccountId: "",
     chatwootWebhookSecret: "",
@@ -920,6 +939,8 @@ export function ChannelConfigForm({
         verifyToken: initialData?.verifyToken || "",
         displayName: initialData?.displayName || "",
         igLogin: normalizedSettings.igLogin === true,
+        appReviewOnly: normalizedSettings.appReviewOnly === true,
+        loginConfigId: asString(normalizedSettings.loginConfigId),
         chatwootBaseUrl: asString(normalizedSettings.baseUrl),
         chatwootAccountId: normalizedSettings.accountId != null ? String(normalizedSettings.accountId) : "",
         chatwootWebhookSecret: asString(normalizedSettings.webhookSecret),
@@ -1053,8 +1074,8 @@ export function ChannelConfigForm({
     && form.appId.trim() === (initialData?.appId || "").trim()
   const metaOAuthBlockedByOwnApp = declaresOwnMetaApp && !ownMetaAppIdSaved
   // Honest connection state, from the SAME predicate the catalog uses (lib/channels/live-connection):
-  // a saved row is not a connection, and neither is a wired row that is switched off or one whose Meta
-  // message subscription explicitly failed.
+  // a saved row is not a connection, and neither is a wired row that is switched off, one whose Meta
+  // message subscription explicitly failed, or a staged one whose subscription was never requested.
   const metaConnectionState = channelConnectionState({
     channelType: form.channelType,
     pageId: initialData?.pageId,
@@ -1065,8 +1086,9 @@ export function ChannelConfigForm({
   })
   const metaConnectionLive = isMetaChannel && isEdit && metaConnectionState === "live"
   // Each non-live state has a different fix, and the user cannot guess which one applies: an
-  // unfinished OAuth, a channel someone switched off, a subscription Meta refused, and an account another
-  // workspace connected first all look identical from the outside.
+  // unfinished OAuth, a channel someone switched off, a subscription Meta refused, a staged App Review
+  // connect that never asked for one, and an account another workspace connected first all look
+  // identical from the outside.
   const metaConnectionMessage = metaConnectionLive
     ? c.metaStateConnected.replace("{page}", initialData?.pageId || "")
     : !isEdit
@@ -1075,9 +1097,11 @@ export function ChannelConfigForm({
         ? c.metaStatePaused
         : metaConnectionState === "claimedElsewhere"
           ? ts("channelClaimedElsewhere.reason")
-          : metaConnectionState === "needsReconnect"
-            ? c.metaStateReconnect
-            : c.metaStateDraft
+          : metaConnectionState === "subscriptionPending"
+            ? c.metaStateAppReview
+            : metaConnectionState === "needsReconnect"
+              ? c.metaStateReconnect
+              : c.metaStateDraft
   const hasStoredChatwootWebhookSecret = form.channelType === "chatwoot" && isEdit && initialData?.hasWebhookSecret
   const credentialStateHint = (isStored?: boolean) => (isStored ? c.storedCredentialHint : c.missingCredentialHint)
   const moveToSetupStep = (index: number) => {
@@ -2046,7 +2070,20 @@ export function ChannelConfigForm({
                         // separate Instagram-Login app below.
                         const provider = form.igLogin ? "instagram" : "facebook"
                         const from = form.channelType === "instagram" ? "channels-instagram" : "channels-facebook"
-                        window.location.href = `/api/v1/social/oauth/${provider}/start?from=${from}`
+                        // A staged (App Review) row is deliberately invisible to the org-wide resolver,
+                        // so the connect MUST name it — `?app=<id>`. Without this the start route would
+                        // resolve some other row, or the shared env app, and the consent screen would
+                        // show an App ID the user did not stage.
+                        const pin = form.appReviewOnly && isEdit && initialData?.id
+                          ? `&app=${encodeURIComponent(initialData.id)}`
+                          : ""
+                        // The row Connect was pressed on. The callback returns the user to it (or to
+                        // the row the connect actually wired) instead of the page guessing one — on a
+                        // workspace with several customers' Pages the guess was someone else's channel.
+                        const origin = isEdit && initialData?.id
+                          ? `&channelId=${encodeURIComponent(initialData.id)}`
+                          : ""
+                        window.location.href = `/api/v1/social/oauth/${provider}/start?from=${from}${pin}${origin}`
                       }}
                       className="w-full rounded-lg bg-orange-500 py-2.5 text-sm font-medium text-white transition-colors hover:bg-orange-600"
                     >
@@ -2160,6 +2197,37 @@ export function ChannelConfigForm({
                           {credentialStateHint(hasStoredMetaVerifyToken)}
                         </p>
                       )}
+                    </div>
+                    {/* Isolation switch. Without it, a second Meta app entered in a workspace that
+                        already has live channels silently becomes the app EVERY Facebook/Instagram
+                        reconnect in that workspace runs through (the org-wide resolver takes the most
+                        recently updated row). Ticking this keeps the new app reachable only by the
+                        connection that names it. */}
+                    <div>
+                      <Label htmlFor="loginConfigId" className="text-sm font-medium">{c.metaLoginConfigLabel}</Label>
+                      <Input
+                        id="loginConfigId"
+                        value={form.loginConfigId}
+                        onChange={(e) => update("loginConfigId", e.target.value)}
+                        placeholder="1234567890123456"
+                        className="mt-1.5 font-mono text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">{c.metaLoginConfigHint}</p>
+                    </div>
+                    <div className="rounded-md border border-dashed p-3">
+                      <label htmlFor="appReviewOnly" className="flex items-start gap-2 cursor-pointer">
+                        <input
+                          id="appReviewOnly"
+                          type="checkbox"
+                          checked={form.appReviewOnly}
+                          onChange={(e) => update("appReviewOnly", e.target.checked)}
+                          className="mt-0.5"
+                        />
+                        <span className="text-sm font-medium">{c.metaAppReviewOnlyLabel}</span>
+                      </label>
+                      <p className="text-xs text-muted-foreground mt-1 ml-6">
+                        {c.metaAppReviewOnlyHint}
+                      </p>
                     </div>
                     {metaOAuthBlockedByOwnApp ? (
                       <p className="text-xs text-amber-700">

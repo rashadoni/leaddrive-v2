@@ -108,7 +108,7 @@ export default function MtmAnalyticsPage() {
       <ExplainableKpiDashboard orgId={orgId ? String(orgId) : undefined} />
 
       <details
-        className="group overflow-hidden rounded-lg border border-zinc-200 bg-card dark:border-zinc-700"
+        className="group border-t border-zinc-200 dark:border-zinc-700"
         onToggle={(event) => setLegacyOpen(event.currentTarget.open)}
       >
         <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset [&::-webkit-details-marker]:hidden">
@@ -119,7 +119,7 @@ export default function MtmAnalyticsPage() {
           <ChevronDown className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
         </summary>
 
-        <div className="space-y-4 border-t border-zinc-200 p-4 dark:border-zinc-700">
+        <div className="space-y-4 pb-4 pt-2">
           <div className="flex flex-wrap gap-1">
             {(["weekly", "monthly", "yearly"] as const).map(p => (
               <Button key={p} variant={period === p ? "default" : "outline"} size="sm" onClick={() => setPeriod(p)}>

@@ -45,7 +45,10 @@ vi.mock("@/lib/prisma", () => ({
   },
 }))
 vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: vi.fn(() => true) }))
-vi.mock("@/lib/ai/voice/gate", () => ({ checkVoicePilotAccess: vi.fn(async () => ({ ok: true })) }))
+vi.mock("@/lib/ai/voice/gate", () => ({
+  checkVoicePilotAccess: vi.fn(async () => ({ ok: true })),
+  checkVoiceWriteAccess: vi.fn(async () => ({ ok: true })),
+}))
 vi.mock("@/lib/api-auth", () => ({
   getOrgModuleContext: vi.fn(async () => ({ plan: "enterprise", addons: [], modules: { ai: true } })),
 }))
@@ -53,6 +56,8 @@ vi.mock("@/lib/ai/voice/read-access", () => ({ accessibleVoiceSectionKeys: vi.fn
 vi.mock("@/lib/ai/voice/config", () => ({
   MAX_SESSION_SECONDS: 3_600,
   readVoicePilotConfig: vi.fn(() => ({ geminiApiKey: "server-key" })),
+  // The mint reads the write switch and seals it into the token.
+  voiceWritesEnabled: vi.fn(() => true),
 }))
 vi.mock("@/lib/ai/voice/gemini-live", () => ({
   createGeminiLiveToken: deps.createGeminiLiveToken,

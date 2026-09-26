@@ -47,8 +47,8 @@ export default function InvoicesHelpEn() {
           table, while the <strong>Analytics</strong> tab shows extra tiles, a payment bar and charts.
         </p>
         <dl className="rounded-md border p-3">
-          <HelpDef term="Total Invoiced">The total amount billed to all customers.</HelpDef>
-          <HelpDef term="Paid">The total amount actually collected from customers.</HelpDef>
+          <HelpDef term="Total Invoiced">What issued invoices bill customers, per currency. Drafts, cancelled and refunded invoices are not counted.</HelpDef>
+          <HelpDef term="Paid">What customers have paid on those invoices, per currency. An invoice marked paid counts in full.</HelpDef>
           <HelpDef term="Outstanding">Unpaid invoices — the balance customers still owe.</HelpDef>
           <HelpDef term="Overdue">Unpaid invoices whose due date has passed.</HelpDef>
           <HelpDef term="Status">An invoice's state: Draft → Sent → Viewed → Paid; or Partially paid, Overdue, Cancelled, Refunded.</HelpDef>
@@ -71,7 +71,9 @@ export default function InvoicesHelpEn() {
           <HelpCallout kind="see" label="What you'll see">
             The <strong>Total Invoiced</strong>, <strong>Paid</strong>, <strong>Outstanding</strong> and{" "}
             <strong>Overdue</strong> cards — each with its own icon, an amount, and a hint on hover.
-            Amounts show two decimals in the organization's currency.
+            Each card shows the currency with the largest amount, in whole units; other currencies are
+            listed under it, like «+ 900 $ · 1» (amount · number of invoices). Amounts in different
+            currencies are never added together.
           </HelpCallout>
         </HelpStep>
         <HelpStep n={2}>
@@ -83,7 +85,9 @@ export default function InvoicesHelpEn() {
             <strong>This year</strong>, <strong>Sent</strong>, <strong>Drafts</strong>,{" "}
             <strong>Avg invoice</strong> and <strong>Partial / Cancel</strong>. Each tile shows a count
             with a short caption underneath (for example this month's amount, or how many of the total
-            were sent).
+            were sent). <strong>This month</strong> and <strong>This year</strong> count and add up issued
+            invoices only — drafts are in the <strong>Drafts</strong> tile — with each currency listed
+            separately, and <strong>Avg invoice</strong> is per currency too.
           </HelpCallout>
         </HelpStep>
         <HelpStep n={3}>
@@ -92,11 +96,16 @@ export default function InvoicesHelpEn() {
             invoiced amount is above zero).
           </p>
           <HelpCallout kind="see" label="What you'll see">
-            A "Payment progress" heading with the paid / total amount and a green percentage; a filled
-            bar below it; and further down a count breakdown with colored dots — <strong>Paid</strong>{" "}
+            A "Payment progress" heading with the paid / invoiced amount and a green percentage for the
+            currency with the most invoiced; a filled bar below it; a line for each other currency; and further down a count breakdown with colored dots — <strong>Paid</strong>{" "}
             (green), <strong>Waiting</strong> (orange), <strong>Overdue</strong> (red) and{" "}
-            <strong>Partially paid</strong> (yellow). Below that come charts for revenue, payment status
-            and debtor balances.
+            <strong>Partially paid</strong> (yellow). Below that come the charts: revenue by month,
+            payment status, receivables aging, weekly collection, auto-invoices and a breakdown by
+            currency. They show only what the records hold. Money in different currencies is never added
+            together: each chart leads with the largest currency and lists the others next to it. The
+            weekly collection counts payments recorded on invoices, by payment date, so an invoice marked
+            paid without a recorded payment is not in its bars. Auto-invoices are your active recurring
+            rules, soonest run first. Where no record can answer, a chart shows a dash or says so.
           </HelpCallout>
         </HelpStep>
         <HelpStep n={4}>

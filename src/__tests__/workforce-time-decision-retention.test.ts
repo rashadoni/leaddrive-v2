@@ -15,6 +15,7 @@ function db(activeLegalHolds = 0) {
     mtmHrmRequest: { count: vi.fn().mockResolvedValue(3) },
     workforceAttendanceException: { count: vi.fn().mockResolvedValue(4) },
     workforceTimeCorrection: { count: vi.fn().mockResolvedValue(5) },
+    workforceWorkdayReopen: { count: vi.fn().mockResolvedValue(9) },
     workforceTimesheetApproval: { count: vi.fn().mockResolvedValue(6) },
     workforceEvidenceAssessment: { count: vi.fn().mockResolvedValue(7) },
     mtmAuditLog: { count: vi.fn().mockResolvedValue(8) },
@@ -36,6 +37,7 @@ describe("Workforce one-year time/decision retention plan", () => {
         decidedRequests: 3,
         resolvedExceptions: 4,
         corrections: 5,
+        reopens: 9,
         approvals: 6,
         derivedAssessments: 7,
         workforceAudits: 8,
@@ -52,6 +54,18 @@ describe("Workforce one-year time/decision retention plan", () => {
       where: expect.objectContaining({ status: "RESOLVED" }),
     }))
     expect(retentionDb.mtmAgentWorkday.count).toHaveBeenCalledTimes(1)
+    // A manager reopen is a time decision like a correction: its ledger and
+    // its WORKDAY_REOPEN audit record age out on the same one-year clock.
+    expect(retentionDb.workforceWorkdayReopen.count).toHaveBeenCalledWith({
+      where: { organizationId, occurredAt: { lt: new Date("2026-08-30T12:00:00.000Z") } },
+    })
+    expect(retentionDb.mtmAuditLog.count).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        OR: expect.arrayContaining([
+          { action: { in: expect.arrayContaining(["WORKDAY_REOPEN", "WORKDAY_FINISH"]) } },
+        ]),
+      }),
+    })
   })
 
   it("fails closed on an active legal hold without reading retention candidates", async () => {
@@ -69,6 +83,7 @@ describe("Workforce one-year time/decision retention plan", () => {
     })
     expect(retentionDb.mtmAgentWorkday.count).not.toHaveBeenCalled()
     expect(retentionDb.workforceTimesheetApproval.count).not.toHaveBeenCalled()
+    expect(retentionDb.workforceWorkdayReopen.count).not.toHaveBeenCalled()
   })
 
   it("propagates an unavailable hold check instead of inventing a no-hold result", async () => {

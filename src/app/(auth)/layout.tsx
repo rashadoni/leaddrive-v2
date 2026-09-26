@@ -1,9 +1,10 @@
 import { headers } from "next/headers"
 import Link from "next/link"
-import { getTranslations } from "next-intl/server"
+import { getLocale, getTranslations } from "next-intl/server"
 import { getOrgSubdomain } from "@/lib/tenant-domain"
 import { prisma } from "@/lib/prisma"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { legalLocale } from "@/components/marketing/legal-document-nav"
 
 // Server component: before rendering the login form, resolve the subdomain and
 // confirm a tenant actually exists at it. Unknown {slug}.leaddrivecrm.org gets a
@@ -55,15 +56,19 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
 
 async function LegalLinks() {
   const t = await getTranslations("marketing")
+  const locale = legalLocale(await getLocale())
 
   return (
     <nav aria-label={t("footer.legal")} className="mt-4 flex justify-center">
-      <div className="flex gap-4 rounded-full bg-black/40 px-4 py-1.5 text-xs backdrop-blur-md">
-        <Link href="/legal/terms" className="text-white/90 hover:text-white">
+      <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 rounded-2xl bg-black/40 px-4 py-2 text-center text-xs backdrop-blur-md">
+        <Link href={`/legal/privacy?lang=${locale}`} className="text-white/90 hover:text-white">
+          {t("footer.privacy")}
+        </Link>
+        <Link href={`/legal/terms?lang=${locale}`} className="text-white/90 hover:text-white">
           {t("footer.terms")}
         </Link>
-        <Link href="/legal/privacy" className="text-white/90 hover:text-white">
-          {t("footer.privacy")}
+        <Link href={`/legal/data-deletion?lang=${locale}`} className="text-white/90 hover:text-white">
+          {t("footer.dataDeletion")}
         </Link>
       </div>
     </nav>

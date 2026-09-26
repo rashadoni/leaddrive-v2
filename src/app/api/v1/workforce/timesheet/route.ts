@@ -14,9 +14,11 @@ import {
   type WorkforceTimesheetWorkday,
 } from "@/lib/workforce/timesheet-rehydration"
 import { requireWorkforceTimesheetReadAccess } from "@/lib/workforce/timesheet-read-access"
-import type {
-  WorkforceTimeCorrectionReplayFact,
-  WorkforceWorkdayEventFact,
+import {
+  WORKFORCE_WORKDAY_JOURNAL_ORDER,
+  WORKFORCE_WORKDAY_JOURNAL_SELECT,
+  workforceWorkdayEventFact,
+  type WorkforceTimeCorrectionReplayFact,
 } from "@/lib/workforce/workday-facts-replay"
 
 type WorkforceDirectoryAgent = {
@@ -26,11 +28,10 @@ type WorkforceDirectoryAgent = {
   teamId: string | null
 }
 
-/** Prisma returns the canonical event instant as a Date; the replay service
+/** Prisma returns the canonical event instants as Dates; the replay service
  * deliberately receives the serialized UTC form below. */
-type WorkforceWorkdayEventRecord = Omit<WorkforceWorkdayEventFact, "occurredAt"> & {
+type WorkforceWorkdayEventRecord = Parameters<typeof workforceWorkdayEventFact>[0] & {
   workdayId: string
-  occurredAt: Date
 }
 type WorkforceCorrectionRecord = WorkforceTimeCorrectionReplayFact & { workdayId: string }
 
@@ -187,8 +188,8 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
       ? await Promise.all([
           prisma.mtmAgentWorkdayEvent.findMany({
             where: { organizationId: auth.orgId, workdayId: { in: snapshottedWorkdayIds } },
-            orderBy: [{ workdayId: "asc" }, { occurredAt: "asc" }, { id: "asc" }],
-            select: { id: true, workdayId: true, type: true, occurredAt: true },
+            orderBy: [{ workdayId: "asc" }, ...WORKFORCE_WORKDAY_JOURNAL_ORDER],
+            select: { ...WORKFORCE_WORKDAY_JOURNAL_SELECT, workdayId: true },
           }),
           prisma.workforceTimeCorrection.findMany({
             where: { organizationId: auth.orgId, workdayId: { in: snapshottedWorkdayIds } },
@@ -227,11 +228,7 @@ export const GET = withWorkforceSessionAuth("read", async (req: NextRequest, aut
           workday,
           policySnapshot,
           shiftSnapshot,
-          events: (eventsByWorkday.get(workday.id) ?? []).map((event) => ({
-            id: event.id,
-            type: event.type as "START" | "PAUSE" | "RESUME" | "FINISH",
-            occurredAt: event.occurredAt.toISOString(),
-          })),
+          events: (eventsByWorkday.get(workday.id) ?? []).map(workforceWorkdayEventFact),
           corrections: correctionsByWorkday.get(workday.id) ?? [],
         })
         return {

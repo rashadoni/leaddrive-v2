@@ -7,13 +7,49 @@ import { usePathname, useRouter } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
 import { Mic } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { VoiceInlineStatus } from "@/components/ai/voice-inline-status"
+import {
+  VoiceReceiptSurface,
+  VOICE_RECEIPT_CHANGED_EVENT,
+} from "@/components/ai/voice-receipt-surface"
+import { isVoiceProposeToolName, type VoiceProposeToolName } from "@/lib/ai/voice/propose-tools"
+import {
+  createVoiceToolBudget,
+  voiceToolBudgetMessage,
+  VOICE_TOOL_BUDGET,
+  type VoiceToolBudget,
+} from "@/lib/ai/voice/tool-budget"
 import { VOICE_TOOL_NAMES, type VoiceToolName } from "@/lib/ai/voice/read-tools"
+import {
+  createConfirmationGate,
+  VOICE_RECEIPT_COMMAND_EVENT,
+  VOICE_RECEIPT_OUTCOME_EVENT,
+  VOICE_RECEIPT_STATE_EVENT,
+  VOICE_RECORD_CHANGED_EVENT,
+  VOICE_DRAFT_SHOWN,
+  voiceOutcomeMessage,
+  type ConfirmationGate,
+  type VoiceReceiptCommandDetail,
+  type VoiceReceiptOutcomeDetail,
+  type VoiceReceiptStateDetail,
+  type VoiceRecordChangedDetail,
+} from "@/lib/ai/voice/voice-confirmation"
+import { voiceResultHref } from "@/lib/ai/voice/receipt-commit"
 import {
   diagnoseMicrophoneFailure,
   microphoneMessageKey,
   readMicrophoneEnvironment,
   type MicrophoneProblem,
 } from "@/lib/ai/voice/microphone-diagnosis"
+import {
+  microphoneProcessingTrace,
+  readMicrophoneProcessingSnapshot,
+} from "@/lib/ai/voice/microphone-processing"
+import {
+  DEFAULT_VOICE_AUDIO_MODE,
+  isVoiceAudioMode,
+  type VoiceAudioMode,
+} from "@/lib/ai/voice/audio-policy"
 import {
   isVoiceSection,
   voiceSectionFromLocation,
@@ -23,7 +59,7 @@ import {
   VOICE_SECTION_KEYS,
 } from "@/lib/ai/voice/sections"
 import { SECTION_FILTERS } from "@/lib/ai/voice/section-registry"
-import { recordRoute } from "@/lib/ai/voice/record-types"
+import { recordFromPath, recordRoute } from "@/lib/ai/voice/record-types"
 import { buildSectionInfo } from "@/lib/ai/voice/section-info"
 import {
   base64Pcm16ToFloat32,
@@ -66,6 +102,24 @@ const PLAYBACK_BUFFER_SECONDS = 30
 const GO_AWAY_SAFETY_MARGIN_MS = 500
 const LIVE_CONNECT_TIMEOUT_MS = 15_000
 
+const AUDIO_MODE_STORAGE_KEY = "leaddrive:voice-audio-mode"
+
+/**
+ * Where the user is, remembered per device rather than per account: the same
+ * person is at a desk on their laptop and in a café on their phone, and the
+ * microphone differs with them.
+ */
+function readStoredAudioMode(): VoiceAudioMode {
+  if (typeof window === "undefined") return DEFAULT_VOICE_AUDIO_MODE
+  try {
+    const stored = window.localStorage.getItem(AUDIO_MODE_STORAGE_KEY)
+    return isVoiceAudioMode(stored) ? stored : DEFAULT_VOICE_AUDIO_MODE
+  } catch {
+    // Private window or blocked site data.
+    return DEFAULT_VOICE_AUDIO_MODE
+  }
+}
+
 const TRACE_ARG_KEYS: Readonly<Record<string, readonly string[]>> = {
   navigate_to_section: ["section", "filter"],
   find_record: ["type", "query"],
@@ -73,6 +127,8 @@ const TRACE_ARG_KEYS: Readonly<Record<string, readonly string[]>> = {
   get_current_screen: [],
   voice_gemini_error: ["code"],
   voice_transcription: ["status"],
+  voice_audio_settings: [],
+  voice_audio_event: ["event"],
 }
 
 function traceArgumentKeys(tool: string, args: unknown): string[] {
@@ -95,6 +151,8 @@ type VoiceUiPhase = "listening" | "user_speaking" | "processing" | "responding"
 type SessionInfo = {
   voiceSessionId: string
   maxSessionSeconds: number
+  /** The server's per-conversation tool-call ceiling. */
+  maxToolCalls?: number
   heartbeatIntervalSeconds: number
   remainingSeconds: number
   firstName?: string
@@ -183,11 +241,40 @@ function ConsoleInner({
   const [active, setActive] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [phase, setPhase] = useState<VoiceUiPhase>("listening")
+  const [signalActive, setSignalActive] = useState(false)
   const [lastTranscript, setLastTranscript] = useState<string | null>(null)
   const [transcriptionWarning, setTranscriptionWarning] = useState(false)
   const [micSilent, setMicSilent] = useState(false)
+  const [audioMode, setAudioMode] = useState<VoiceAudioMode>(DEFAULT_VOICE_AUDIO_MODE)
+  // The token mint reads the ref, not the state: it runs inside the start
+  // sequence, where a state value captured at render time would be stale.
+  const modeRef = useRef<VoiceAudioMode>(DEFAULT_VOICE_AUDIO_MODE)
+  // The browser may decline the noise processing we ask for; we already read
+  // that back, and until now only wrote it to telemetry.
+  const [noiseSuppressionOff, setNoiseSuppressionOff] = useState(false)
+
+  // Read after mount: the stored value must not diverge between the server
+  // render and the first client render.
+  useEffect(() => {
+    const stored = readStoredAudioMode()
+    setAudioMode(stored)
+    modeRef.current = stored
+  }, [])
+
+  const chooseAudioMode = useCallback((next: VoiceAudioMode) => {
+    setAudioMode(next)
+    modeRef.current = next
+    try {
+      window.localStorage.setItem(AUDIO_MODE_STORAGE_KEY, next)
+    } catch {
+      // The choice still applies to this session.
+    }
+  }, [])
 
   const sessionRef = useRef<SessionInfo | null>(null)
+  // The receipt panel is positioned from the orb's own box, wherever the shell
+  // has put it (header slot or floating corner).
+  const orbControlRef = useRef<HTMLDivElement>(null)
   const liveSessionRef = useRef<GeminiLiveSession | null>(null)
   const credentialRef = useRef<TokenInfo | null>(null)
   const resumptionHandleRef = useRef<string | null>(null)
@@ -213,7 +300,10 @@ function ConsoleInner({
   const startedAtRef = useRef(0)
   const lastActivityRef = useRef(0)
   const failureStreakRef = useRef(0)
-  const speechActiveRef = useRef(false)
+  // Ceilings on how much the model may do in one breath. Counted here because
+  // this is where a runaway loop actually runs.
+  const toolBudgetRef = useRef<VoiceToolBudget>(createVoiceToolBudget())
+  const confirmedSpeechActiveRef = useRef(false)
   const responseWatchdogRef = useRef<number | null>(null)
   const utteranceWatchdogRef = useRef<number | null>(null)
   const nudgedRef = useRef(false)
@@ -224,8 +314,11 @@ function ConsoleInner({
   const cancelledToolCallsRef = useRef(new Set<string>())
   const flushPendingToolResponsesRef = useRef<(generation: number) => void>(() => {})
   const playbackActiveRef = useRef(false)
+  // Hears the user's own "да" to a receipt on screen. Decided here, from the
+  // microphone transcript — never by the model (see voice-confirmation.ts).
+  const confirmationGateRef = useRef<ConfirmationGate>(createConfirmationGate())
   const generationInProgressRef = useRef(false)
-  const executeToolRef = useRef<(name: string, args: unknown) => Promise<string>>(async () => UNAVAILABLE)
+  const executeToolRef = useRef<(name: string, args: unknown, toolCallId?: string) => Promise<string>>(async () => UNAVAILABLE)
 
   const trace = useCallback((tool: string, args: unknown, outcome: string) => {
     const current = sessionRef.current
@@ -244,6 +337,11 @@ function ConsoleInner({
     }).catch(() => {})
   }, [])
 
+  useEffect(() => {
+    if (!active) return
+    trace("voice_audio_event", { event: phase }, `phase_${phase}`)
+  }, [active, phase, trace])
+
   const callTool = useCallback(async (tool: VoiceToolName, filter: unknown): Promise<string> => {
     const current = sessionRef.current
     if (!current) return UNAVAILABLE
@@ -259,8 +357,20 @@ function ConsoleInner({
         signal: controller.signal,
       })
       if (!response.ok) {
-        if (generationRef.current === generation) failureStreakRef.current += 1
-        return UNAVAILABLE
+        // Only a server failure means the CRM is out of reach. A 4xx is the
+        // CRM answering — wrong arguments, a section this role cannot read,
+        // the conversation's tool budget spent — and counting it here ended
+        // the whole conversation after two model mistakes, with the message
+        // "lost the link to CRM data". The owner saw it as the microphone
+        // switching off when the assistant moved to another section, because
+        // that is exactly when it reads a page it has not seen yet.
+        if (response.status >= 500) {
+          if (generationRef.current === generation) failureStreakRef.current += 1
+          return UNAVAILABLE
+        }
+        const refusal = await response.json().catch(() => null) as { error?: string } | null
+        if (response.status === 409) return voiceToolBudgetMessage("session_exhausted")
+        return `REFUSED (${response.status}): ${refusal?.error ?? "the request was rejected"}. The CRM is reachable — correct the request or tell the user plainly what is not available.`
       }
       const body = await response.json()
       if (generationRef.current !== generation) return UNAVAILABLE
@@ -332,13 +442,90 @@ function ConsoleInner({
     return "OK: запись открыта на экране. Расскажи о ней и продолжай."
   }, [router, trace])
 
-  const executeTool = useCallback(async (name: string, args: unknown): Promise<string> => {
+  /**
+   * A proposal from the model becomes a receipt on screen — and nothing else.
+   *
+   * The model's arguments are forwarded verbatim; the server resolves every
+   * name inside the caller's tenant. The one thing the client contributes is
+   * `screen`, read from the browser's own location, which is how "change the
+   * phone" knows which lead is meant without the model naming an id.
+   *
+   * The string returned here goes back to the model as the tool result, so it
+   * says plainly that nothing has been saved — otherwise the assistant
+   * announces a task that does not exist yet.
+   */
+  const propose = useCallback(async (tool: VoiceProposeToolName, args: unknown, toolCallId?: string): Promise<string> => {
+    const current = sessionRef.current
+    if (!current) return "NO_SESSION: попроси пользователя снова включить микрофон."
+    const record = recordFromPath(pathname || "/")
+    // The same deadline every read call gets. Without it a hung proposal keeps
+    // the tool response outstanding and the conversation waits on it.
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), TOOL_TIMEOUT_MS)
+    try {
+      const response = await fetch("/api/v1/ai/voice/actions/propose", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          voiceSessionId: current.voiceSessionId,
+          tool,
+          args: (args ?? {}) as Record<string, unknown>,
+          ...(toolCallId ? { providerToolCallId: toolCallId } : {}),
+          ...(record ? { screen: { recordType: record.type, recordId: record.id } } : {}),
+        }),
+      })
+      const body = await response.json().catch(() => null) as
+        | { success?: boolean; needsClarification?: boolean; field?: string; candidates?: string[]; code?: string }
+        | null
+
+      if (body?.needsClarification) {
+        trace("propose", { tool, code: body.code }, "clarify")
+        const options = (body.candidates ?? []).join(", ")
+        return `NEEDS_CLARIFICATION (${body.code}): спроси пользователя, что имелось в виду в поле ${body.field}.${options ? ` Подходят: ${options}.` : " Совпадений нет."} Ничего не сохранено.`
+      }
+      if (!response.ok || body?.success !== true) {
+        trace("propose", { tool, code: body?.code }, "rejected")
+        return `REJECTED (${body?.code ?? response.status}): подготовить не удалось, ничего не сохранено. Объясни пользователя и попроси уточнить.`
+      }
+
+      trace("propose", { tool }, "ok")
+      // The receipt surface owns its own data; tell it to re-read rather than
+      // handing it a payload from here.
+      window.dispatchEvent(new CustomEvent(VOICE_RECEIPT_CHANGED_EVENT))
+      return VOICE_DRAFT_SHOWN
+    } catch {
+      trace("propose", { tool }, "error")
+      return "ERROR: не удалось подготовить черновик. Ничего не сохранено."
+    } finally {
+      window.clearTimeout(timeout)
+    }
+  }, [pathname, trace])
+
+  const executeTool = useCallback(async (name: string, args: unknown, toolCallId?: string): Promise<string> => {
+    // Navigation and screen context are free: they touch no data, cost nothing
+    // and are how the assistant keeps up with the user rather than working.
     if (name === "navigate_to_section") return navigate(args)
     if (name === "get_current_screen") return currentScreen()
     if (name === "open_record") return openRecord(args)
-    if ((VOICE_TOOL_NAMES as readonly string[]).includes(name)) return callTool(name as VoiceToolName, args)
+
+    if (isVoiceProposeToolName(name)) {
+      const verdict = toolBudgetRef.current.claim("propose")
+      if (!verdict.ok) {
+        trace("propose", { tool: name, code: verdict.reason }, "budget_exhausted")
+        return voiceToolBudgetMessage(verdict.reason)
+      }
+      return propose(name, args, toolCallId)
+    }
+
+    if ((VOICE_TOOL_NAMES as readonly string[]).includes(name)) {
+      const verdict = toolBudgetRef.current.claim("read")
+      if (!verdict.ok) return voiceToolBudgetMessage(verdict.reason)
+      return callTool(name as VoiceToolName, args)
+    }
     return "UNKNOWN_TOOL: this tool is not available."
-  }, [callTool, currentScreen, navigate, openRecord])
+  }, [callTool, currentScreen, navigate, openRecord, propose, trace])
   executeToolRef.current = executeTool
 
   const clearResponseWatchdog = useCallback(() => {
@@ -417,17 +604,20 @@ function ConsoleInner({
     }
     streamRef.current?.getTracks().forEach((track) => track.stop())
     streamRef.current = null
-    speechActiveRef.current = false
+    confirmedSpeechActiveRef.current = false
     nudgedRef.current = false
     transcriptDraftRef.current = ""
     handledToolCallsRef.current.clear()
+    toolBudgetRef.current = createVoiceToolBudget()
     inFlightToolCallsRef.current.clear()
     pendingToolResponsesRef.current.clear()
     cancelledToolCallsRef.current.clear()
     playbackActiveRef.current = false
+    confirmationGateRef.current = createConfirmationGate()
     generationInProgressRef.current = false
     setActive(false)
     setIsSpeaking(false)
+    setSignalActive(false)
     setPhase("listening")
     setLastTranscript(null)
     setTranscriptionWarning(false)
@@ -480,7 +670,7 @@ function ConsoleInner({
     clearUtteranceWatchdog()
     const generation = generationRef.current
     utteranceWatchdogRef.current = window.setTimeout(() => {
-      if (generationRef.current === generation && speechActiveRef.current) {
+      if (generationRef.current === generation && confirmedSpeechActiveRef.current) {
         void failConversation(t("noResponse"), "speech_timeout", "speech_timeout", generation)
       }
     }, MAX_UTTERANCE_MS * 2)
@@ -509,7 +699,7 @@ function ConsoleInner({
       const id = call.id ?? ""
       try {
         if (cancelledToolCallsRef.current.has(id)) return null
-        const output = await executeToolRef.current(call.name ?? "", call.args ?? {})
+        const output = await executeToolRef.current(call.name ?? "", call.args ?? {}, id || undefined)
         if (cancelledToolCallsRef.current.has(id) || generationRef.current !== generation) return null
         return geminiFunctionResponse(call, output)
       } finally {
@@ -579,22 +769,59 @@ function ConsoleInner({
 
     const transcript = geminiInputTranscript(message)
     if (transcript) {
+      const wasConfirmedSpeech = confirmedSpeechActiveRef.current
+      confirmationGateRef.current.userSpeech(transcript.text, Date.now())
       transcriptDraftRef.current = `${transcriptDraftRef.current}${transcript.text}`.slice(-TRANSCRIPT_PREVIEW_LIMIT)
       setTranscriptionWarning(false)
       if (transcript.finished) {
+        if (wasConfirmedSpeech) {
+          trace("voice_audio_event", { event: "provider_speech_finished" }, "provider_speech_finished")
+        }
+        confirmedSpeechActiveRef.current = false
+        clearUtteranceWatchdog()
         const text = transcriptDraftRef.current.trim()
         setLastTranscript(text ? text.slice(0, TRANSCRIPT_PREVIEW_LIMIT) : null)
         transcriptDraftRef.current = ""
+        if (lostSpeechDuringReconnectRef.current && !reconnectingRef.current && liveSessionRef.current) {
+          lostSpeechDuringReconnectRef.current = false
+          liveSessionRef.current.sendRealtimeInput({
+            text: "The connection briefly interrupted the user's speech. Apologize in the current language and ask them to repeat only their last sentence.",
+          })
+        }
+        if (!playbackActiveRef.current) {
+          setPhase("processing")
+          armResponseWatchdog()
+        }
+      } else {
+        if (!wasConfirmedSpeech) {
+          trace("voice_audio_event", { event: "provider_speech_started" }, "provider_speech_started")
+        }
+        confirmedSpeechActiveRef.current = true
+        armUtteranceWatchdog()
+        setLastTranscript(null)
+        if (!playbackActiveRef.current) setPhase("user_speaking")
       }
     }
 
     if (message.serverContent?.interrupted) {
+      trace("voice_audio_event", { event: "provider_interrupted" }, "provider_interrupted")
       audioPipelineRef.current?.playbackNode.port.postMessage({ type: "interrupt", generation })
       playbackActiveRef.current = false
+      confirmationGateRef.current.setAssistantSpeaking(false, Date.now())
       generationInProgressRef.current = false
       setIsSpeaking(false)
-      setPhase(speechActiveRef.current ? "user_speaking" : "listening")
-      clearResponseWatchdog()
+      if (transcript?.finished) {
+        confirmedSpeechActiveRef.current = false
+        clearUtteranceWatchdog()
+        setPhase("processing")
+        armResponseWatchdog()
+      } else {
+        confirmedSpeechActiveRef.current = true
+        armUtteranceWatchdog()
+        setLastTranscript(null)
+        setPhase("user_speaking")
+        clearResponseWatchdog()
+      }
     }
 
     let decodedParts: Float32Array[]
@@ -610,7 +837,10 @@ function ConsoleInner({
       return
     }
     if (decodedParts.length > 0) {
+      confirmedSpeechActiveRef.current = false
+      clearUtteranceWatchdog()
       playbackActiveRef.current = true
+      confirmationGateRef.current.setAssistantSpeaking(true, Date.now())
       generationInProgressRef.current = true
       nudgedRef.current = false
       setIsSpeaking(true)
@@ -626,6 +856,8 @@ function ConsoleInner({
 
     const calls = geminiFunctionCalls(message)
     if (calls.length > 0) {
+      confirmedSpeechActiveRef.current = false
+      clearUtteranceWatchdog()
       generationInProgressRef.current = true
       void runToolCalls(calls, generation)
     }
@@ -636,10 +868,28 @@ function ConsoleInner({
     }
 
     if (message.serverContent?.turnComplete) {
+      confirmedSpeechActiveRef.current = false
+      clearUtteranceWatchdog()
       generationInProgressRef.current = false
+      // The answer is finished, so the next one gets a fresh per-turn
+      // allowance. The session and proposal counts deliberately carry over.
+      toolBudgetRef.current.endTurn()
+      // The model has answered whatever the user just said, so that utterance
+      // is complete: the provider never marks it finished itself.
+      const decision = confirmationGateRef.current.assistantFinishedTurn(Date.now())
+      if (decision.action !== "ignore") {
+        trace("voice_audio_event", { event: `voice_${decision.action}` }, `voice_${decision.action}`)
+        window.dispatchEvent(new CustomEvent<VoiceReceiptCommandDetail>(VOICE_RECEIPT_COMMAND_EVENT, {
+          detail: { command: decision.action, receiptId: decision.receiptId },
+        }))
+      } else if (!["no_utterance", "no_receipt", "not_an_answer"].includes(decision.reason)) {
+        // A yes or no was heard and deliberately not acted on. Worth a trace:
+        // it is exactly what the owner will ask about after a test.
+        trace("voice_audio_event", { event: "voice_answer_ignored" }, `voice_ignored_${decision.reason}`)
+      }
       clearResponseWatchdog()
       nudgedRef.current = false
-      setPhase(speechActiveRef.current ? "user_speaking" : "listening")
+      setPhase("listening")
       tryDeferredReconnectRef.current()
     }
 
@@ -669,7 +919,16 @@ function ConsoleInner({
       }, Math.max(0, (remaining ?? TOOL_TIMEOUT_MS) - GO_AWAY_SAFETY_MARGIN_MS))
       tryDeferredReconnectRef.current()
     }
-  }, [armResponseWatchdog, clearResponseWatchdog, failConversation, runToolCalls, t])
+  }, [
+    armResponseWatchdog,
+    armUtteranceWatchdog,
+    clearResponseWatchdog,
+    clearUtteranceWatchdog,
+    failConversation,
+    runToolCalls,
+    t,
+    trace,
+  ])
 
   const prepareAudio = useCallback(async (
     stream: MediaStream,
@@ -704,7 +963,7 @@ function ConsoleInner({
       if (generationRef.current !== generation || !sessionRef.current) return
       if (event.data?.type === "audio" && event.data.samples instanceof Float32Array) {
         if (reconnectingRef.current) {
-          if (speechActiveRef.current) lostSpeechDuringReconnectRef.current = true
+          if (confirmedSpeechActiveRef.current) lostSpeechDuringReconnectRef.current = true
           return
         }
         try {
@@ -717,38 +976,26 @@ function ConsoleInner({
         } catch {
           // onerror/onclose owns terminal transport handling.
         }
-      } else if (event.data?.type === "activity") {
-        speechActiveRef.current = event.data.active === true
-        lastActivityRef.current = Date.now()
-        if (speechActiveRef.current) {
-          playbackNode.port.postMessage({ type: "interrupt", generation })
-          playbackActiveRef.current = false
-          setIsSpeaking(false)
-          clearResponseWatchdog()
-          armUtteranceWatchdog()
-          setLastTranscript(null)
-          setPhase("user_speaking")
-        } else {
-          clearUtteranceWatchdog()
-          if (lostSpeechDuringReconnectRef.current && !reconnectingRef.current && liveSessionRef.current) {
-            lostSpeechDuringReconnectRef.current = false
-            liveSessionRef.current.sendRealtimeInput({
-              text: "The connection briefly interrupted the user's speech. Apologize in the current language and ask them to repeat only their last sentence.",
-            })
-            setPhase("processing")
-            armResponseWatchdog()
-            return
-          }
-          setPhase("processing")
-          armResponseWatchdog()
-        }
+      } else if (event.data?.type === "signal_activity") {
+        // A local RMS threshold detects loud input, not speech. Music,
+        // ringtones, and office noise may all reach this path, so it is only a
+        // visual hint. Provider-confirmed transcript/interruption events own
+        // turn state, watchdogs, and playback interruption.
+        setSignalActive(event.data.active === true)
+        trace(
+          "voice_audio_event",
+          { event: event.data.active === true ? "local_signal_started" : "local_signal_finished" },
+          event.data.active === true ? "local_signal_started" : "local_signal_finished",
+        )
       }
     }
     playbackNode.port.onmessage = (event) => {
       if (generationRef.current !== generation || event.data?.generation !== generation) return
       if (event.data?.type === "drained") {
         playbackActiveRef.current = false
+        confirmationGateRef.current.setAssistantSpeaking(false, Date.now())
         setIsSpeaking(false)
+        trace("voice_audio_event", { event: "playback_drained" }, "playback_drained")
       }
       if (event.data?.type === "overflow") {
         // The playback buffer grows with the answer, so this now means ten
@@ -760,7 +1007,7 @@ function ConsoleInner({
     }
     playbackNode.port.postMessage({ type: "reset", generation })
     return { captureContext, playbackContext, captureNode, playbackNode, source, silentGain }
-  }, [armResponseWatchdog, armUtteranceWatchdog, clearResponseWatchdog, clearUtteranceWatchdog, failConversation, t, trace])
+  }, [trace])
 
   const connectGemini = useCallback(async (
     credential: TokenInfo,
@@ -845,7 +1092,7 @@ function ConsoleInner({
     if (pendingReconnectTimerRef.current !== null) window.clearTimeout(pendingReconnectTimerRef.current)
     pendingReconnectTimerRef.current = null
     reconnectAttemptsRef.current += 1
-    if (speechActiveRef.current) lostSpeechDuringReconnectRef.current = true
+    if (confirmedSpeechActiveRef.current) lostSpeechDuringReconnectRef.current = true
     clearResponseWatchdog()
     if (!playbackActiveRef.current) {
       setPhase("processing")
@@ -864,13 +1111,13 @@ function ConsoleInner({
         try { previous?.close() } catch { /* old socket is already closing */ }
       }
       setActive(true)
-      setPhase(speechActiveRef.current
+      setPhase(confirmedSpeechActiveRef.current
         ? "user_speaking"
         : playbackActiveRef.current
           ? "responding"
           : "listening")
       flushPendingToolResponsesRef.current(generation)
-      if (lostSpeechDuringReconnectRef.current && !speechActiveRef.current) {
+      if (lostSpeechDuringReconnectRef.current && !confirmedSpeechActiveRef.current) {
         lostSpeechDuringReconnectRef.current = false
         resumed.sendRealtimeInput({
           text: "The connection briefly interrupted the user's speech. Apologize in the current language and ask them to repeat only their last sentence.",
@@ -934,6 +1181,14 @@ function ConsoleInner({
         return
       }
       sessionRef.current = started
+      // The budget follows the server's own ceiling. A looser client budget
+      // never fires: the server refuses first, and that refusal used to end
+      // the conversation as "lost the link to CRM data".
+      toolBudgetRef.current = createVoiceToolBudget(
+        typeof started.maxToolCalls === "number" && started.maxToolCalls > 0
+          ? { ...VOICE_TOOL_BUDGET, callsPerSession: Math.min(VOICE_TOOL_BUDGET.callsPerSession, started.maxToolCalls) }
+          : VOICE_TOOL_BUDGET,
+      )
       setSession(started)
       startedAtRef.current = Date.now()
       lastActivityRef.current = Number.POSITIVE_INFINITY
@@ -960,6 +1215,15 @@ function ConsoleInner({
         return
       }
       streamRef.current = stream
+      const microphoneTrack = stream.getAudioTracks()[0]
+      if (microphoneTrack) {
+        const processing = readMicrophoneProcessingSnapshot(microphoneTrack)
+        trace("voice_audio_settings", {}, microphoneProcessingTrace(processing))
+        // Only "off" earns the warning. "unknown" is the common answer from
+        // browsers that do not report the setting back, and warning on it
+        // would cry wolf on every Safari session.
+        setNoiseSuppressionOff(processing.noiseSuppression.applied === "off")
+      }
       startMicMeter(stream)
 
       const credential = await withDeadline(async (signal) => {
@@ -967,7 +1231,9 @@ function ConsoleInner({
           method: "POST",
           credentials: "same-origin",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ voiceSessionId: started.voiceSessionId }),
+          // The mode is minted into the token, so it is fixed for the life of
+          // this session: the browser cannot raise its own privileges later.
+          body: JSON.stringify({ voiceSessionId: started.voiceSessionId, audioMode: modeRef.current }),
           signal,
         })
         const body = await response.json()
@@ -1029,7 +1295,7 @@ function ConsoleInner({
     } finally {
       if (generationRef.current === generation) setStarting(false)
     }
-  }, [armResponseWatchdog, connectGemini, locale, prepareAudio, startMicMeter, stop, t])
+  }, [armResponseWatchdog, connectGemini, locale, prepareAudio, startMicMeter, stop, t, trace])
 
   useEffect(() => {
     if (!session) return
@@ -1051,7 +1317,7 @@ function ConsoleInner({
       if (isCurrent()) void stop("max_duration", t("sessionLimit"))
     }, session.maxSessionSeconds * 1000)
     const idle = window.setInterval(() => {
-      if (!isCurrent() || speechActiveRef.current) return
+      if (!isCurrent() || confirmedSpeechActiveRef.current) return
       if (Date.now() - lastActivityRef.current >= IDLE_STOP_MS) void stop("idle", t("idleStopped"))
     }, IDLE_CHECK_MS)
     return () => {
@@ -1060,6 +1326,48 @@ function ConsoleInner({
       window.clearInterval(idle)
     }
   }, [session, stop, t])
+
+  // Owner, 2026-09-21: after a change or a creation the record opens, so the
+  // user sees whether everything is right. On the record's own page it is
+  // re-read instead — its data lives in the browser, a refresh would not reach it.
+  const showResultRef = useRef<(detail: VoiceReceiptOutcomeDetail) => void>(() => {})
+  useEffect(() => {
+    showResultRef.current = (detail) => {
+      const { entityType, entityId } = detail
+      if (detail.kind !== "succeeded" || !entityId) return
+      if (entityType !== "task" && entityType !== "lead" && entityType !== "deal") return
+      const href = voiceResultHref(entityType, entityId)
+      if (pathname === href) {
+        window.dispatchEvent(new CustomEvent<VoiceRecordChangedDetail>(VOICE_RECORD_CHANGED_EVENT, {
+          detail: { entityType, entityId },
+        }))
+      } else {
+        router.push(href)
+      }
+    }
+  }, [pathname, router])
+
+  // Voice confirmation: the receipt surface says which draft is waiting for an
+  // answer, and reports how it ended so the model can say it out loud.
+  useEffect(() => {
+    const onState = (event: Event) => {
+      const detail = (event as CustomEvent<VoiceReceiptStateDetail>).detail
+      confirmationGateRef.current.setPendingReceipt(detail?.receiptId ?? null, Date.now())
+    }
+    const onOutcome = (event: Event) => {
+      const detail = (event as CustomEvent<VoiceReceiptOutcomeDetail>).detail
+      if (detail) showResultRef.current(detail)
+      const live = liveSessionRef.current
+      if (!detail || !live || !sessionRef.current) return
+      try { live.sendRealtimeInput({ text: voiceOutcomeMessage(detail) }) } catch { /* socket closing */ }
+    }
+    window.addEventListener(VOICE_RECEIPT_STATE_EVENT, onState)
+    window.addEventListener(VOICE_RECEIPT_OUTCOME_EVENT, onOutcome)
+    return () => {
+      window.removeEventListener(VOICE_RECEIPT_STATE_EVENT, onState)
+      window.removeEventListener(VOICE_RECEIPT_OUTCOME_EVENT, onOutcome)
+    }
+  }, [])
 
   const armedOnce = useRef(false)
   useEffect(() => {
@@ -1089,6 +1397,7 @@ function ConsoleInner({
     }
   }, [closeMedia])
 
+  const hearingSignal = phase === "user_speaking" || (phase === "listening" && signalActive)
   const label = error
     ? error
     : starting
@@ -1097,7 +1406,7 @@ function ConsoleInner({
         ? notice ?? t("idle")
         : isSpeaking
           ? t("speaking")
-          : phase === "user_speaking"
+          : hearingSignal
             ? t("hearing")
             : phase === "processing" || phase === "responding"
               ? t("processing")
@@ -1112,17 +1421,19 @@ function ConsoleInner({
           ? "bg-muted-foreground/70 shadow-black/20"
           : isSpeaking
             ? "bg-primary shadow-primary/50"
-            : phase === "user_speaking"
+            : hearingSignal
               ? "bg-sky-500 shadow-sky-500/50"
               : phase === "processing" || phase === "responding"
                 ? "bg-amber-500 shadow-amber-500/40"
                 : "bg-emerald-500 shadow-emerald-500/50"
     const inline = Boolean(orbPortalTarget)
-    const showInlineMessage = Boolean(error || notice || micSilent || transcriptionWarning)
+    const showInlineMessage = Boolean(error || notice || micSilent || transcriptionWarning || noiseSuppressionOff)
     const orbControl = (
-      <div className={inline
-        ? "relative flex shrink-0 flex-col items-center"
-        : "fixed bottom-24 right-6 z-50 flex flex-col items-center gap-2"}
+      <div
+        ref={orbControlRef}
+        className={inline
+          ? "relative flex shrink-0 flex-col items-center"
+          : "fixed bottom-24 right-6 z-50 flex flex-col items-center gap-2"}
       >
         <button
           type="button"
@@ -1131,31 +1442,49 @@ function ConsoleInner({
           data-placement={inline ? "inline" : "floating"}
           aria-label={label}
           title={label}
-          className={`relative flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${inline ? "h-11 w-11" : "h-14 w-14"}`}
+          className={`relative flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${inline ? "h-9 w-9" : "h-14 w-14"}`}
         >
           {active && isSpeaking && <span className={`absolute inset-0 animate-ping rounded-full ${tone} opacity-40`} />}
           <span className={[
             "relative flex items-center justify-center rounded-full text-white shadow-lg transition-colors duration-300",
-            inline ? "h-11 w-11" : "h-14 w-14",
+            inline ? "h-9 w-9 shadow-sm" : "h-14 w-14",
             tone,
             !active && !starting ? "animate-[pulse_3s_ease-in-out_infinite]" : "",
             starting ? "animate-pulse" : "",
           ].join(" ")}>
-            <Mic className="h-5 w-5" />
+            <Mic className={inline ? "h-4 w-4" : "h-5 w-5"} />
           </span>
         </button>
-        {(error || notice || active || micSilent || transcriptionWarning) && (
-          <span className={`${inline
-            ? showInlineMessage
-              ? "absolute right-0 top-full z-20 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-md px-2 py-1 text-center text-[11px] leading-tight shadow-sm"
-              : "sr-only"
-            : "max-w-[16rem] rounded-md px-2 py-1 text-center text-[11px] leading-tight shadow-sm"} ${error ? "bg-destructive text-destructive-foreground" : "bg-background text-muted-foreground"}`} aria-live="polite">
-            <span className="block">{label}</span>
-            {!error && lastTranscript && <span data-sentry-mask className="mt-0.5 block max-w-[15rem] truncate text-foreground">{t("heard", { text: lastTranscript })}</span>}
-            {!error && micSilent && <span className="mt-0.5 block max-w-[15rem] text-amber-700 dark:text-amber-300">{t("micSilent")}</span>}
-            {!error && transcriptionWarning && <span className="mt-0.5 block max-w-[15rem] text-amber-700 dark:text-amber-300">{t("transcriptionUnavailable")}</span>}
-          </span>
-        )}
+        {(error || notice || active || micSilent || transcriptionWarning || noiseSuppressionOff) && (() => {
+          const tone = error ? "bg-destructive text-destructive-foreground" : "bg-background text-muted-foreground"
+          const statusText = (
+            <>
+              <span className="block">{label}</span>
+              {!error && lastTranscript && <span data-sentry-mask className="mt-0.5 block max-w-[15rem] truncate text-foreground">{t("heard", { text: lastTranscript })}</span>}
+              {!error && micSilent && <span className="mt-0.5 block max-w-[15rem] text-amber-700 dark:text-amber-300">{t("micSilent")}</span>}
+              {!error && noiseSuppressionOff && <span className="mt-0.5 block max-w-[15rem] text-amber-700 dark:text-amber-300">{t("noiseSuppressionOff")}</span>}
+              {!error && transcriptionWarning && <span className="mt-0.5 block max-w-[15rem] text-amber-700 dark:text-amber-300">{t("transcriptionUnavailable")}</span>}
+            </>
+          )
+          // In-flow placement: the visible line is portalled under the button
+          // (see VoiceInlineStatus); a quiet "listening" state stays sr-only.
+          if (inline && showInlineMessage) {
+            return (
+              <VoiceInlineStatus className={`w-64 max-w-[calc(100vw-2rem)] rounded-md px-2 py-1 text-center text-[11px] leading-tight shadow-sm ${tone}`}>
+                {statusText}
+              </VoiceInlineStatus>
+            )
+          }
+          return (
+            <span className={`${inline ? "sr-only" : "max-w-[16rem] rounded-md px-2 py-1 text-center text-[11px] leading-tight shadow-sm"} ${tone}`} aria-live="polite">
+              {statusText}
+            </span>
+          )
+        })()}
+        <VoiceReceiptSurface
+          voiceSessionId={session?.voiceSessionId ?? null}
+          anchorRef={orbControlRef}
+        />
       </div>
     )
     if (orbPortalTarget) return createPortal(orbControl, orbPortalTarget)
@@ -1170,7 +1499,7 @@ function ConsoleInner({
         active
           ? isSpeaking
             ? "border-primary bg-primary/10 animate-pulse"
-            : phase === "user_speaking"
+            : hearingSignal
               ? "border-sky-500 bg-sky-500/10"
               : phase === "processing" || phase === "responding"
                 ? "border-amber-500 bg-amber-500/10 animate-pulse"
@@ -1182,8 +1511,39 @@ function ConsoleInner({
       {lastTranscript && active && <p data-sentry-mask className="max-w-md text-center text-sm text-muted-foreground">{t("heard", { text: lastTranscript })}</p>}
       {micSilent && active && <p className="max-w-md text-center text-xs text-amber-700 dark:text-amber-300">{t("micSilent")}</p>}
       {transcriptionWarning && active && <p className="max-w-md text-center text-xs text-amber-700 dark:text-amber-300">{t("transcriptionUnavailable")}</p>}
+      {noiseSuppressionOff && active && <p className="max-w-md text-center text-xs text-amber-700 dark:text-amber-300">{t("noiseSuppressionOff")}</p>}
+
+      <fieldset className="flex flex-col items-center gap-2" data-testid="voice-audio-mode">
+        <legend className="sr-only">{t("audioMode.legend")}</legend>
+        <div className="inline-flex rounded-lg border p-0.5" role="radiogroup" aria-label={t("audioMode.legend")}>
+          {(["auto", "noisy"] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              role="radio"
+              aria-checked={audioMode === mode}
+              data-testid={`voice-audio-mode-${mode}`}
+              onClick={() => chooseAudioMode(mode)}
+              className={[
+                "h-11 rounded-md px-4 text-sm font-medium outline-none transition-colors",
+                "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                audioMode === mode
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              ].join(" ")}
+            >
+              {t(`audioMode.${mode}`)}
+            </button>
+          ))}
+        </div>
+        <p className="max-w-md text-center text-xs text-muted-foreground">
+          {t(`audioMode.${audioMode}Hint`)}
+          {active ? ` ${t("audioMode.restartNeeded")}` : ""}
+        </p>
+      </fieldset>
       {error && <p className="text-sm text-destructive">{error}</p>}
       {!error && notice && <p className="text-sm text-muted-foreground">{notice}</p>}
+      <VoiceReceiptSurface voiceSessionId={session?.voiceSessionId ?? null} />
       {!active ? (
         <Button onClick={() => void (starting || sessionRef.current ? stop("user") : start())} size="lg">
           {starting || sessionRef.current ? t("stop") : t("start")}

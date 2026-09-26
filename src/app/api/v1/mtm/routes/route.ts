@@ -61,7 +61,24 @@ const routeInclude = {
         select: { id: true, changeType: true, status: true },
       },
       customer: {
-        select: { id: true, name: true, address: true },
+        // `city` too: the assignable catalog shows a client without a street
+        // address by its city, and the field app falls back to it. Without it
+        // here a client saved into a route lost «Baku» and read «address not
+        // given» the moment the planner reloaded (phone, 2026-09-13).
+        //
+        // Coordinates and the geofence radius: the live map draws the agent's
+        // stops for today from this very list, and without them it silently
+        // drew nothing — selecting an agent only zoomed to the marker (prod
+        // audit 2026-09-14). The detail route already sent the pair.
+        select: { id: true, name: true, address: true, city: true, latitude: true, longitude: true, geofenceRadius: true },
+      },
+      // The fact behind each stop — when the agent checked in and out. Times
+      // only: no coordinates or agent identity, so a scoped reader of a shared
+      // route learns nothing about a co-participant beyond the stop's status.
+      visits: {
+        where: { deletedAt: null },
+        select: { id: true, status: true, checkInAt: true, checkOutAt: true },
+        orderBy: { checkInAt: "asc" as const },
       },
       contact: {
         select: { id: true, displayName: true, type: true, specialtyName: true, phone: true },

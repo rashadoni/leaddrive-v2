@@ -13,18 +13,22 @@ describe("MTM calendar-first planning UI contract", () => {
   const matrix = source("src/components/mtm/route-planning-matrix.tsx")
   const rangeClient = source("src/lib/mtm/route-range-client.ts")
 
-  it("opens on a role-named calendar, keeps team week primary, and groups secondary tools", () => {
-    expect(page).toContain('useState<RouteViewMode>("calendar")')
+  it("opens the calendar section on the team calendar and the routes section as a list", () => {
+    // Owner 2026-09-23: the calendar is its own section; routes open as a list.
+    expect(page).toContain('useState<RouteViewMode>(calendarSurface ? "calendar" : "list")')
+    const calendarPage = source("src/app/(dashboard)/mtm/calendar/page.tsx")
+    expect(calendarPage).toContain('<MtmRoutesWorkspace surface="calendar" />')
     expect(page).toContain('data-testid="mtm-routes-view-calendar"')
     expect(page).toContain('data-testid="mtm-routes-view-list"')
     expect(page).toContain('data-testid="mtm-routes-view-week"')
-    expect(page).toContain('capabilities.canReview ? <Button data-testid="mtm-routes-view-week"')
-    expect(page).toContain('capabilities.canReview ? "grid-cols-2" : "grid-cols-1"')
-    expect(page.indexOf('data-testid="mtm-routes-more-views-toggle"')).toBeLessThan(
+    expect(page).toContain('calendarSurface && capabilities.canReview ? <Button data-testid="mtm-routes-view-week"')
+    // Owner 2026-09-25: every view is its own tab in one row — no dropdown.
+    expect(page).toContain('data-testid="mtm-route-view-tabs"')
+    expect(page).not.toContain('data-testid="mtm-routes-more-views"')
+    expect(page.indexOf('data-testid="mtm-routes-view-week"')).toBeLessThan(
       page.indexOf('data-testid="mtm-routes-view-list"'),
     )
     expect(page).toContain('capabilities.canReview ? "viewTeamCalendar" : "viewMyCalendar"')
-    expect(page).toContain('capabilities.canReview ? "controlAndReports" : "routePlanningTools"')
     expect(page).toContain('t(capabilities.canReview ? "viewList" : "viewMyRoutes")')
     expect(page).toContain('t("excelExchange")')
     expect(page).not.toContain('t("moreViewsShort")')
@@ -63,12 +67,24 @@ describe("MTM calendar-first planning UI contract", () => {
     expect(page).not.toContain("routeDetailsRef.current?.scrollIntoView")
   })
 
-  it("offers an explicit accessible action on empty month and week cells", () => {
+  // Audit 2026-09-21: up to 119 dashed «+ Запланировать» blocks on one team
+  // week. The action stays on every empty cell, labelled for screen readers,
+  // but as a quiet «+» that appears on hover/focus and is always shown on touch.
+  it("offers a quiet accessible action on empty month and week cells", () => {
     expect(calendar).toContain('data-testid="mtm-route-calendar"')
-    expect(calendar).toContain("day.routes.length === 0")
     expect(calendar).toContain("onCreateRoute(key)")
+    expect(calendar.match(/data-testid="mtm-route-calendar-plan"/g)).toHaveLength(1)
+    expect(calendar).not.toContain("isCurrentMonth && day.routes.length > 0 ?")
     expect(week).toContain('data-testid="mtm-week-empty-cell-action"')
     expect(week).toContain("onCreateRoute({ date: dateKey(day), agentId: agent.id })")
+    expect(week).toContain("dayRoutes.length === 0 && canCreateForAgent ?")
+    expect(week).toContain('className="group space-y-1 border-r')
+    for (const source of [calendar, week]) {
+      expect(source).toContain("group-hover:opacity-100")
+      expect(source).toContain("[@media(hover:none)]:opacity-100")
+      expect(source).not.toContain('<Plus className="h-3.5 w-3.5" />{t("planRoute")}')
+      expect(source).not.toContain("border-dashed")
+    }
     expect(week).toContain('className="sticky left-0')
     expect(week).not.toContain("border-l-2")
   })

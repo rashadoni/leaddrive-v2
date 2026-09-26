@@ -20,6 +20,7 @@ import {
   WorkforceAttendanceTrustError,
   type WorkforceAttendanceCapabilities,
 } from "@/lib/workforce/attendance-trust"
+import { recordPreparedWorkforceLocationEvidence } from "@/lib/workforce/attendance-evidence-writer"
 import {
   evaluateWorkforceMobileWriteAccess,
   workforceMobileWriteFenceResponse,
@@ -209,7 +210,8 @@ export const POST = withWorkforceCompatAuth("write", async (req, auth) => {
   if (!input) {
     return NextResponse.json({
       error: parsed.error ?? "Invalid workday event",
-      code: "MTM_WEEK_WORKDAY_INVALID",
+      code: parsed.code ?? "MTM_WEEK_WORKDAY_INVALID",
+      ...(parsed.schemaSupport ? { schemaSupport: parsed.schemaSupport } : {}),
     }, { status: 400 })
   }
 
@@ -333,6 +335,15 @@ export const POST = withWorkforceCompatAuth("write", async (req, auth) => {
               workdayId: workday.id,
               agentId: actor.agentId!,
               segmentId: input.segmentId,
+            })
+          }
+          if (prepared) {
+            await recordPreparedWorkforceLocationEvidence(tx, {
+              prepared,
+              workdayEventId: event.id,
+              workdayId: workday.id,
+              occurredAt: input.occurredAt,
+              principal: auth.principal,
             })
           }
           await writeWorkforceWorkdayAuditInTransaction(tx, {

@@ -345,7 +345,7 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
     return (
       <div className="space-y-6" role="status" aria-live="polite">
         <div className="h-24 animate-pulse rounded-xl bg-muted/60 motion-reduce:animate-none" />
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(17rem,1fr)]">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(17rem,1fr)]">
           <div className="h-[34rem] animate-pulse rounded-xl bg-muted/45 motion-reduce:animate-none" />
           <div className="h-80 animate-pulse rounded-xl bg-muted/45 motion-reduce:animate-none" />
         </div>
@@ -488,9 +488,9 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
 
   return (
     <div data-testid="mtm-task-workspace" className="space-y-6 pb-24 print:pb-0 print:[&_a]:hidden print:[&_button]:hidden print:[&_form]:hidden print:[&_input]:hidden lg:pb-6">
-      <header className="border-y border-zinc-200 py-5 dark:border-zinc-700 print:border-t-0">
+      <header className="border-b border-zinc-200 pb-5 dark:border-zinc-700">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-          <div className="min-w-0 space-y-3">
+          <div className="min-w-0 flex-1 space-y-3">
             <Button asChild variant="ghost" className="-ml-4 min-h-11 w-fit print:hidden">
               <Link href={returnHref}><ArrowLeft className="h-4 w-4" />{t("backToTasks")}</Link>
             </Button>
@@ -500,13 +500,13 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
                 <Badge variant={PRIORITY_VARIANT[task.priority] || "outline"}>{t(`priorities.${task.priority}` as never)}</Badge>
                 <span className="text-xs text-muted-foreground">{t("version", { version: task.version })}</span>
               </div>
-              <h1 className="max-w-[34ch] text-2xl font-semibold tracking-tight sm:text-3xl">{task.title}</h1>
+              <h1 className="max-w-[34ch] break-words text-2xl font-semibold tracking-tight sm:text-3xl">{task.title}</h1>
               <p className="text-sm text-muted-foreground">
                 {task.agent?.name || t("unassigned")} · {t("updatedAt", { date: formatDateTime(task.updatedAt) })}
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2 print:hidden">
+          <div className="flex flex-wrap gap-2 print:hidden xl:shrink-0 xl:justify-end">
             <Button type="button" variant="outline" className="min-h-11" onClick={() => window.print()}>
               <Printer className="h-4 w-4" />{t("print")}
             </Button>
@@ -519,8 +519,13 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
         </div>
       </header>
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(17rem,1fr)] lg:items-start">
-        <main className="order-2 min-w-0 divide-y divide-zinc-200 print:order-1 print:[&_button]:hidden print:[&_form]:hidden print:[&_input]:hidden dark:divide-zinc-700 lg:order-1">
+      {/* Two columns from xl, not lg. At 1024–1279 px with the sidebar open
+          the content area is 704–960 px: the side column was pinned to its
+          17rem minimum and its forms, date-time inputs and nowrap buttons
+          were laid out against the right edge of <main>, which clips instead
+          of scrolling. Below xl the actions come first, as on a phone. */}
+      <div className="grid gap-8 xl:grid-cols-[minmax(0,2fr)_minmax(17rem,1fr)] xl:items-start">
+        <main className="order-2 min-w-0 divide-y divide-zinc-200 print:order-1 print:[&_button]:hidden print:[&_form]:hidden print:[&_input]:hidden dark:divide-zinc-700 xl:order-1">
           <section className="space-y-5 pb-8">
             <SectionHeading icon={ClipboardCheck} title={t("overview")} detail={t("overviewHint")} />
             <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
@@ -573,7 +578,7 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
             {task.customer ? (
               <div className="flex items-start gap-3 border-t border-zinc-200 pt-4 text-sm dark:border-zinc-700">
                 <Building2 className="mt-0.5 h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                <span>{task.customer.name}{place ? ` · ${place}` : ""}</span>
+                <span className="min-w-0 break-words">{task.customer.name}{place ? ` · ${place}` : ""}</span>
               </div>
             ) : null}
           </section>
@@ -592,7 +597,7 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
                   {recurrencePreview.length ? (
                     <ol className="grid gap-2 sm:grid-cols-2">
                       {recurrencePreview.map((occurrence, index) => (
-                        <li key={`${occurrence.dueDate || occurrence.scheduledStartAt}-${index}`} className="flex min-h-11 items-center gap-3 rounded-lg border border-zinc-200 px-3 text-sm dark:border-zinc-700">
+                        <li key={`${occurrence.dueDate || occurrence.scheduledStartAt}-${index}`} className="flex min-h-11 min-w-0 flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-zinc-200 px-3 py-1.5 text-sm dark:border-zinc-700">
                           <span className="tabular-nums text-muted-foreground">{index + 1}</span>
                           <span>{formatRecurrenceDateTime(occurrence.dueDate || occurrence.scheduledStartAt)}</span>
                           {occurrence.dstAdjusted ? (
@@ -631,7 +636,7 @@ export function MtmTaskWorkspace({ taskId }: { taskId: string }) {
           />
         </main>
 
-        <aside className="order-1 space-y-6 print:hidden lg:order-2 lg:sticky lg:top-20">
+        <aside className="order-1 min-w-0 space-y-6 print:hidden xl:order-2">
           <div id="task-primary-actions" className="scroll-mt-24 print:hidden">
             <MtmTaskActionsPanel
               task={task}

@@ -7,7 +7,7 @@ import { DEFAULT_CURRENCY } from "@/lib/constants"
 import { generateInvoiceNumber } from "@/lib/invoice-number"
 import { calculateItemTotal, calculateInvoiceTotals, calculateDueDate, calculateBalance } from "@/lib/invoice-calculations"
 import crypto from "crypto"
-import { normalizeInvoiceRow, normalizeInvoiceItemRow } from "@/lib/prisma-decimal"
+import { normalizeInvoiceRow, normalizeInvoiceItemRow, normalizeInvoicePaymentRow } from "@/lib/prisma-decimal"
 import {
   invoiceDiscountError,
   nonNegativeFinancialAmountSchema,
@@ -77,6 +77,9 @@ export const GET = withRls(async (req, { orgId }) => {
   const contractId = searchParams.get("contractId")
   const dateFrom = searchParams.get("dateFrom")
   const dateTo = searchParams.get("dateTo")
+  // The analytics tab asks for the recorded payments: they are the only record
+  // of how much came in and when. Other callers get the rows they always got.
+  const withPayments = searchParams.get("include") === "payments"
 
   try {
     const where: Record<string, unknown> = { organizationId: orgId }
@@ -103,10 +106,25 @@ export const GET = withRls(async (req, { orgId }) => {
       prisma.invoice.count({ where }),
     ])
 
+    const paymentsByInvoice = new Map<string, { amount: number; currency: string; paymentDate: Date }[]>()
+    if (withPayments && invoices.length > 0) {
+      const payments: { invoiceId: string; amount: Prisma.Decimal; currency: string; paymentDate: Date }[] = await prisma.invoicePayment.findMany({
+        where: { organizationId: orgId, invoiceId: { in: invoices.map((inv: { id: string }) => inv.id) } },
+        select: { invoiceId: true, amount: true, currency: true, paymentDate: true },
+        orderBy: { paymentDate: "asc" },
+      })
+      for (const { invoiceId, ...payment } of payments) {
+        const list = paymentsByInvoice.get(invoiceId) ?? []
+        list.push(normalizeInvoicePaymentRow(payment))
+        paymentsByInvoice.set(invoiceId, list)
+      }
+    }
+
     const normalizedInvoices = invoices.map(
       (inv: Prisma.InvoiceGetPayload<{ include: { company: { select: { id: true; name: true } }; items: true } }>) => ({
         ...normalizeInvoiceRow(inv),
         items: inv.items.map(normalizeInvoiceItemRow),
+        ...(withPayments ? { payments: paymentsByInvoice.get(inv.id) ?? [] } : {}),
       }),
     )
     return NextResponse.json({

@@ -14,6 +14,11 @@ import {
   type WorkforceAttendanceRequirements,
 } from "@/lib/workforce/attendance-policy"
 import {
+  assessWorkforceLocationEvidence,
+  type WorkforceLocationEvidenceAssessment,
+} from "@/lib/workforce/location-evidence-policy"
+import type { WorkforceEvidenceEnvelope } from "@/lib/workforce/evidence-envelope"
+import {
   resolveCurrentWorkforcePolicy,
   WorkforcePolicyResolutionError,
 } from "@/lib/workforce/policy-resolution"
@@ -49,6 +54,11 @@ export type WorkforceAttendanceEvidence = {
     enrollmentId: string
     signature: string
   }
+  location?: {
+    capturedAt: Date
+    provider: "FUSED" | "GPS" | "NETWORK" | "PASSIVE" | "UNKNOWN"
+    isMock: boolean
+  }
 }
 
 export type WorkforceAttendanceWorkday = {
@@ -81,6 +91,20 @@ export type PreparedWorkforceAttendanceVerification = {
   policyVersion: number
   policyDefinitionHash: string
   facts: PreparedVerificationFact[]
+  /**
+   * Kept in memory only until the just-created immutable event gives it a
+   * durable subject. The writer encrypts it and records a raw-free quality
+   * outcome in the same surrounding transaction.
+   */
+  locationEvidence?: {
+    capturedAt: Date
+    latitude: number
+    longitude: number
+    accuracy: number
+    provider: "FUSED" | "GPS" | "NETWORK" | "PASSIVE" | "UNKNOWN"
+    isMock: boolean
+    quality: WorkforceLocationEvidenceAssessment
+  }
 }
 
 export class WorkforceAttendanceTrustError extends Error {
@@ -95,6 +119,8 @@ export class WorkforceAttendanceTrustError extends Error {
       | "WORKFORCE_ATTENDANCE_DEVICE_REQUIRED"
       | "WORKFORCE_ATTENDANCE_DEVICE_UNAVAILABLE"
       | "WORKFORCE_ATTENDANCE_DEVICE_SIGNATURE_INVALID"
+      | "WORKFORCE_ATTENDANCE_LOCATION_REQUIRED"
+      | "WORKFORCE_ATTENDANCE_LOCATION_REVIEW_REQUIRED"
       | "WORKFORCE_ATTENDANCE_PROOF_REPLAY"
       | "WORKFORCE_ATTENDANCE_BIOMETRIC_MOBILE_REQUIRED",
     message: string = code,
@@ -125,11 +151,13 @@ function normalizedEvidence(value: WorkforceAttendanceEvidence | undefined): Wor
     ...(device && nonEmpty(device.enrollmentId, 100) && nonEmpty(device.signature, 8192)
       ? { device: { enrollmentId: device.enrollmentId.trim(), signature: device.signature.trim() } }
       : {}),
+    ...(value?.location ? { location: value.location } : {}),
   }
 }
 
 function required(requirements: WorkforceAttendanceRequirements, action: WorkforceAttendanceAction) {
   return {
+    location: requirements.locationRequiredActions.has(action),
     qr: requirements.qrRequiredActions.has(action),
     device: requirements.deviceTrustRequiredActions.has(action),
     biometric: requirements.biometricRequiredActions.has(action),
@@ -164,7 +192,10 @@ export async function prepareWorkforceAttendanceVerification(
     organizationId: string
     agentId: string
     workday: WorkforceAttendanceWorkday
-    event: Pick<MtmWorkdayEventInput, "action" | "workdayId" | "clientEventId" | "occurredAt">
+    event: Pick<
+      MtmWorkdayEventInput,
+      "action" | "workdayId" | "clientEventId" | "occurredAt" | "latitude" | "longitude" | "accuracy"
+    >
     evidence?: WorkforceAttendanceEvidence
     capabilities: WorkforceAttendanceCapabilities
     principal: WorkforceAttendancePrincipal
@@ -197,7 +228,7 @@ export async function prepareWorkforceAttendanceVerification(
   }
   const action = input.event.action as WorkforceAttendanceAction
   const needs = required(requirements, action)
-  if (!needs.qr && !needs.device) return null
+  if (!needs.location && !needs.qr && !needs.device) return null
 
   if (needs.qr && !input.capabilities.qrEnabled) {
     throw new WorkforceAttendanceTrustError(
@@ -223,6 +254,62 @@ export async function prepareWorkforceAttendanceVerification(
 
   const evidence = normalizedEvidence(input.evidence)
   const facts: PreparedVerificationFact[] = []
+  let locationEvidence: PreparedWorkforceAttendanceVerification["locationEvidence"]
+
+  if (needs.location) {
+    const location = evidence.location
+    if (
+      !location
+      || input.event.latitude == null
+      || input.event.longitude == null
+      || input.event.accuracy == null
+    ) {
+      throw new WorkforceAttendanceTrustError(
+        "WORKFORCE_ATTENDANCE_LOCATION_REQUIRED",
+        "A fresh action-time location sample is required",
+      )
+    }
+    const qualityEnvelope: WorkforceEvidenceEnvelope = {
+      schemaVersion: 1,
+      source: "LOCATION",
+      capturedAt: location.capturedAt,
+      operationReference: input.event.clientEventId.padEnd(16, "_"),
+      // This object is assessed in-memory only. It is never used as a durable
+      // session identifier or a substitute for the later encrypted envelope.
+      sessionReference: `attendance-action:${input.organizationId}:${input.agentId}`,
+      deviceReference: null,
+      app: {
+        platform: input.principal === "mobile" ? "ANDROID" : "WEB",
+        version: "transport-v4",
+        buildReference: "workforce-transport-v4",
+      },
+      location: {
+        availability: "AVAILABLE",
+        latitude: input.event.latitude,
+        longitude: input.event.longitude,
+        accuracyMeters: input.event.accuracy,
+        provider: location.provider,
+        isMock: location.isMock,
+      },
+      methodReference: null,
+    }
+    const locationAssessment = assessWorkforceLocationEvidence({ evidence: qualityEnvelope, now })
+    if (locationAssessment.status !== "ELIGIBLE_FOR_GEOFENCE") {
+      throw new WorkforceAttendanceTrustError(
+        "WORKFORCE_ATTENDANCE_LOCATION_REVIEW_REQUIRED",
+        "The current location sample needs reviewed fallback",
+      )
+    }
+    locationEvidence = {
+      capturedAt: location.capturedAt,
+      latitude: input.event.latitude,
+      longitude: input.event.longitude,
+      accuracy: input.event.accuracy,
+      provider: location.provider,
+      isMock: location.isMock,
+      quality: locationAssessment,
+    }
+  }
 
   if (needs.qr) {
     if (!evidence.qrToken) {
@@ -320,6 +407,18 @@ export async function prepareWorkforceAttendanceVerification(
       action,
       workdayId: input.event.workdayId,
       occurredAt: input.event.occurredAt,
+      ...(evidence.location
+        ? {
+          location: {
+            capturedAt: evidence.location.capturedAt,
+            latitude: input.event.latitude!,
+            longitude: input.event.longitude!,
+            accuracy: input.event.accuracy!,
+            provider: evidence.location.provider,
+            isMock: evidence.location.isMock,
+          },
+        }
+        : {}),
     })
     if (!verifyWorkforceDeviceSignature({
       publicKeySpkiBase64: enrollment.publicKeySpki,
@@ -345,6 +444,7 @@ export async function prepareWorkforceAttendanceVerification(
     policyVersion: policy.version,
     policyDefinitionHash: policy.definitionHash,
     facts,
+    ...(locationEvidence ? { locationEvidence } : {}),
   }
 }
 

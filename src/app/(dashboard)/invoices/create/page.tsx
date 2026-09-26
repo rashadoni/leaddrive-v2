@@ -13,7 +13,8 @@ import { Select } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Plus, Trash2, Save, Send, Package, ChevronDown, ChevronUp } from "lucide-react"
 import { toast } from "sonner"
-import { DEFAULT_CURRENCY, CURRENCY_SYMBOLS } from "@/lib/constants"
+import { CURRENCY_SYMBOLS } from "@/lib/constants"
+import { useCurrencyField } from "@/lib/use-org-default-currency"
 import { HelpButton } from "@/components/help/help-button"
 
 interface InvoiceItem {
@@ -97,7 +98,10 @@ export default function CreateInvoicePage() {
   const [taxRate] = useState(0.18)
 
   // Details
-  const [currency, setCurrency] = useState(DEFAULT_CURRENCY)
+  // The organisation's own currency (Invoice settings, else its base currency)
+  // — not DEFAULT_CURRENCY, which is "USD" in every browser. A picked deal's
+  // currency, or the user's choice, is never overwritten.
+  const { currency, setCurrency } = useCurrencyField()
   const [paymentTerms, setPaymentTerms] = useState("net30")
   const [issueDate, setIssueDate] = useState("")
   const [dueDate, setDueDate] = useState("")

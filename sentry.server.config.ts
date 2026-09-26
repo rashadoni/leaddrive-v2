@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/nextjs"
+import { scrubDemoTokens } from "./src/lib/demo-center/telemetry"
 
 Sentry.init({
   dsn: process.env.SENTRY_DSN,
@@ -10,4 +11,6 @@ Sentry.init({
 
   // Disable debug in production
   debug: false,
+  beforeSend: scrubDemoTokens,
+  beforeSendTransaction: scrubDemoTokens,
 })

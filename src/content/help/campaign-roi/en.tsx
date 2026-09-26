@@ -39,9 +39,9 @@ export default function CampaignroiHelpEn() {
           the list area shows "No campaigns to analyze" instead.
         </p>
         <dl className="rounded-md border p-3">
-          <HelpDef term="Revenue">Total revenue attributed to marketing campaigns (summed across all campaigns).</HelpDef>
-          <HelpDef term="Cost">Total spending on all campaigns — summed from each campaign's budget.</HelpDef>
-          <HelpDef term="ROI">Return on Investment = (Revenue − Cost) / Cost × 100%. Shown as a percentage.</HelpDef>
+          <HelpDef term="Revenue">The value of won deals linked to campaigns, kept per currency. Deals in different currencies are never added together: the largest currency is the big number, the others are listed under it (for example "+ 4 000 $ · 1").</HelpDef>
+          <HelpDef term="Cost">The budgets of the campaigns that have actually gone out, in manat (₼) — the currency the campaign screens show budgets in. The product does not record actual spend, so the budget you entered stands in for it. Drafts, scheduled and cancelled campaigns are not counted; the line under the card says how many campaigns went in.</HelpDef>
+          <HelpDef term="ROI">Return on Investment = (Revenue − Cost) / Cost × 100%. It is computed only when all the revenue is in the same currency as the cost — the product has no exchange rates, so revenue in dollars cannot be compared with a budget in manat. Otherwise the card shows "—" and the reason under it.</HelpDef>
           <HelpDef term="Campaigns">The count of campaigns included in the analysis (the fourth card).</HelpDef>
           <HelpDef term="Attributed revenue">Multi-touch split — each won deal's value is divided across every campaign that touched it, per the default model. "Revenue" instead credits only the campaign directly linked to the deal.</HelpDef>
           <HelpDef term="Conversion funnel">Recipients → Sent → Opened → Clicked → Deals → Won — bars showing how many people the campaign carried through each stage.</HelpDef>
@@ -63,8 +63,8 @@ export default function CampaignroiHelpEn() {
           <HelpCallout kind="see" label="What you'll see">
             While loading, a gray "skeleton" block appears briefly, then the four cards fill in. Each
             card has an "i" hint icon; hovering it reveals the formula and explanation (for ROI:
-            "(Revenue − Cost) / Cost × 100%"). Amounts are formatted with a dollar (<HelpKey>$</HelpKey>)
-            sign.
+            "(Revenue − Cost) / Cost × 100%"). Each amount carries the symbol of its own currency —
+            deal revenue in the deals' currency, cost in manat (<HelpKey>₼</HelpKey>).
           </HelpCallout>
         </HelpStep>
         <HelpStep n={2}>
@@ -74,7 +74,9 @@ export default function CampaignroiHelpEn() {
           </p>
           <HelpCallout kind="see" label="What you'll see">
             A green-bordered bar with a trend icon and a sentence like "Multi-touch attribution (model:
-            …) — $… attributed across campaigns, …% blended ROI." If no model exists the bar simply
+            …) — … attributed across campaigns; blended ROI: …". Attributed amounts are shares of won
+            deals, so they are grouped by the deals' currencies in the same way, and the blended ROI
+            follows the same same-currency rule. If no model exists the bar simply
             doesn't appear — that's normal, nothing is wrong.
           </HelpCallout>
         </HelpStep>
@@ -101,8 +103,10 @@ export default function CampaignroiHelpEn() {
             percentage on the right.
           </p>
           <HelpCallout kind="see" label="What you'll see">
-            Positive ROI is green, negative ROI is red; if the budget is zero, a "—" dash appears
-            instead of an ROI value. The chevron (down arrow) icon on the right signals the card can be
+            Positive ROI is green, negative ROI is red. When there is no ROI, a "—" dash appears with
+            the reason under it: no won deals, the campaign has not been sent yet (its budget is still
+            a plan, and the cost reads "—" with the planned budget next to it), no budget entered, or
+            revenue in a different currency from the budget. The chevron (down arrow) icon on the right signals the card can be
             expanded.
           </HelpCallout>
         </HelpStep>
@@ -156,7 +160,7 @@ export default function CampaignroiHelpEn() {
           </p>
           <HelpCallout kind="see" label="What you'll see">
             The table has <strong>Name</strong>, <strong>Stage</strong>, and <strong>Amount</strong>{" "}
-            columns; the heading shows the deal count in parentheses. The deal name is a link — click
+            columns (each amount in its deal's own currency); the heading shows the deal count in parentheses. The deal name is a link — click
             it (with the small icon beside it) to open that deal's page. If no deals are linked, a "No
             deals linked to this campaign" box appears instead.
           </HelpCallout>
@@ -165,8 +169,10 @@ export default function CampaignroiHelpEn() {
 
       <HelpCallout kind="tip">
         <p>
-          If you see a "—" dash in the ROI column, the campaign has no budget (cost) entered — ROI
-          can't be computed without a cost. Fill in the campaign's budget to get a real ROI. Keep the{" "}
+          If you see a "—" dash in the ROI column, read the line under it. "No budget entered" is
+          fixed by filling in the campaign's budget. "Revenue in $, budget in ₼" means the won deals are
+          in another currency than the budget — there is no exchange rate to convert them, so no ROI
+          is shown rather than a wrong one. Keep the{" "}
           <strong>Revenue</strong> vs <strong>Attributed</strong> distinction in mind: the first
           counts only the campaign directly linked to a deal, while the second splits the deal's value
           across every campaign that touched it.

@@ -32,6 +32,7 @@ import { requireAuth } from "@/lib/api-auth"
 import { getMobileAuth, resolveMobileAuth } from "@/lib/mobile-auth"
 import { prisma } from "@/lib/prisma"
 import { coveragePolicyHash } from "@/lib/mtm/coverage-policy"
+import { contactDictionaryHash } from "@/lib/mtm/contact-dictionary"
 
 const ORG = "org-1"
 const ADMIN_AUTH: AuthResult = {
@@ -136,6 +137,100 @@ describe("MTM contacts and organizations", () => {
       }),
     })
     expect(prisma.mtmAuditLog.create).toHaveBeenCalled()
+  })
+
+  it("creates the client and primary workplace as one contact write", async () => {
+    vi.mocked(prisma.mtmCustomer.findFirst).mockResolvedValue({ id: "customer-1" } as any)
+    vi.mocked(prisma.mtmContact.create).mockResolvedValue({
+      id: "contact-2",
+      organizationId: ORG,
+      firstName: "Aysel",
+      lastName: "Aliyeva",
+      displayName: "Aliyeva Aysel",
+      type: "DOCTOR",
+    } as any)
+
+    const response = await createContact(jsonRequest("/api/v1/mtm/contacts", "POST", {
+      firstName: "Aysel",
+      lastName: "Aliyeva",
+      type: "DOCTOR",
+      specialtyName: "Cardiologist",
+      primaryWorkplace: {
+        customerId: "customer-1",
+        jobTitle: "Doctor",
+        phone: "+994500000000",
+      },
+    }))
+
+    expect(response.status).toBe(201)
+    expect(prisma.mtmCustomer.findFirst).toHaveBeenCalledWith({
+      where: expect.objectContaining({ id: "customer-1", organizationId: ORG, deletedAt: null }),
+      select: { id: true },
+    })
+    expect(prisma.mtmContact.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        displayName: "Aliyeva Aysel",
+        workplaces: {
+          create: expect.objectContaining({
+            organizationId: ORG,
+            customerId: "customer-1",
+            isPrimary: true,
+            jobTitle: "Doctor",
+          }),
+        },
+      }),
+    })
+  })
+
+  it("creates a client with its governed category and category-specific fields", async () => {
+    const entries = [{
+      code: "DOCTOR",
+      order: 1,
+      labels: { ru: "Врач", az: "Həkim", en: "Doctor" },
+      fields: [
+        { key: "specialty", order: 1, type: "TEXT" as const, required: true, labels: { ru: "Специальность", az: "İxtisas", en: "Specialty" } },
+        { key: "clinic", order: 2, type: "TEXT" as const, required: true, labels: { ru: "Клиника", az: "Klinika", en: "Clinic" } },
+      ],
+    }]
+    vi.mocked(prisma.mtmContactDictionary.findMany).mockResolvedValue([{
+      id: "cm12345678901234567890123",
+      organizationId: ORG,
+      kind: "CLIENT_TYPE",
+      status: "ACTIVE",
+      entries,
+      entriesHash: contactDictionaryHash(entries),
+      approvalReference: "approved-1",
+      signedByUserId: "admin-user",
+      signedAt: new Date("2026-07-01T00:00:00.000Z"),
+      activatedAt: new Date("2026-07-01T00:00:00.000Z"),
+      retiredAt: null,
+    }] as any)
+    vi.mocked(prisma.mtmContact.create).mockResolvedValue({ id: "contact-category" } as any)
+
+    const response = await createContact(jsonRequest("/api/v1/mtm/contacts", "POST", {
+      firstName: "Leyla",
+      lastName: "Aliyeva",
+      clientType: {
+        dictionaryId: "cm12345678901234567890123",
+        code: "DOCTOR",
+        values: { specialty: "Cardiology", clinic: "Central Clinic" },
+      },
+    }))
+
+    expect(response.status).toBe(201)
+    expect(prisma.mtmContact.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        categoryData: { specialty: "Cardiology", clinic: "Central Clinic" },
+        dictionaryAssignments: {
+          create: expect.objectContaining({
+            dictionaryId: "cm12345678901234567890123",
+            kind: "CLIENT_TYPE",
+            entryCode: "DOCTOR",
+            source: "CONTACT_CREATE",
+          }),
+        },
+      }),
+    })
   })
 
   it("scopes an agent contact list instead of returning every tenant contact", async () => {

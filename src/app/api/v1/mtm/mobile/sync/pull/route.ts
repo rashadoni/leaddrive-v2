@@ -34,14 +34,20 @@ import { recordMtmMobileV1SyncActivity } from "@/lib/mtm/mobile-sync-telemetry"
  * Note: deleted[] contains IDs of records soft-deleted since `since` (M2-1d).
  */
 export const GET = withMobileRls(async (req, auth) => {
+  const buildSha = req.headers.get("x-workforce-app-build")
+  const platform = req.headers.get("x-workforce-client-platform")
+  const deviceClass = req.headers.get("x-workforce-device-class")
   // Authenticated activity is census evidence even if this particular legacy
   // request is later malformed or forbidden. The helper is best-effort and
   // cannot change the v1 response, cursor or any client-owned state.
   recordMtmMobileV1SyncActivity({
     organizationId: auth.orgId,
     agentId: auth.agentId,
-    apkVersion: req.headers.get("x-field-apk-version"),
+    apkVersion: req.headers.get("x-workforce-app-version") ?? req.headers.get("x-field-apk-version"),
     endpoint: "GET /api/v1/mtm/mobile/sync/pull",
+    ...(buildSha || platform || deviceClass
+      ? { diagnostics: { buildSha, platform, deviceClass } }
+      : {}),
   })
   const forbidden = requireMobileCapability(auth, "FIELD_EXECUTE")
   if (forbidden) return forbidden
@@ -494,6 +500,7 @@ export const GET = withMobileRls(async (req, auth) => {
                 addressDistrict: true,
                 addressStreet: true,
                 productCategory: true,
+                categoryData: true,
                 verificationStatus: true,
                 consentStatus: true,
                 contactPreference: true,

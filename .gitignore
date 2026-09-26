@@ -114,3 +114,12 @@ video/.tmp-guides/
 # общем /tmp. Один пропущенный `rm -rf` — и `git add -A` уносит в коммит
 # 561 бинарный файл кэша V8 (так и случилось в #56).
 .tmp-vitest/
+
+# Standalone Workforce Android client — build outputs, local SDK coordinates
+# and any signing material must never enter the web repository.
+apps/workforce-android/.gradle/
+apps/workforce-android/**/build/
+apps/workforce-android/local.properties
+apps/workforce-android/*.jks
+apps/workforce-android/*.keystore
+apps/workforce-android/keystore.properties

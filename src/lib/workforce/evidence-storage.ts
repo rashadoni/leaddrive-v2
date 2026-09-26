@@ -6,6 +6,7 @@ import {
   type WorkforceEvidenceEnvelope,
 } from "@/lib/workforce/evidence-envelope"
 import type { WorkforceGeofenceEvaluation } from "@/lib/workforce/geofence-evaluation"
+import type { WorkforceLocationEvidenceAssessment } from "@/lib/workforce/location-evidence-policy"
 
 const RAW_EVIDENCE_RETENTION_DAYS = 30
 const EVIDENCE_TABLE = "workforce_attendance_evidence"
@@ -15,15 +16,16 @@ type EvidenceSubject =
   | { workdayEventId: string; siteTransitionId?: never }
   | { siteTransitionId: string; workdayEventId?: never }
 
-type EvidenceDb = {
+/** Minimal transaction-capable delegate surface used by evidence writers. */
+export type WorkforceEvidenceStorageDb = {
   workforceAttendanceEvidence: {
-    create: (args: { data: Record<string, unknown>; select: { id: true; payloadHash: true } }) => Promise<{ id: string; payloadHash: string }>
-    findFirst: (args: { where: Record<string, unknown>; select: { id: true; payloadHash: true } }) => Promise<{ id: string; payloadHash: string } | null>
-    updateMany: (args: { where: Record<string, unknown>; data: Record<string, unknown> }) => Promise<{ count: number }>
+    create(args: { data: Record<string, unknown>; select: { id: true; payloadHash: true } }): Promise<{ id: string; payloadHash: string }>
+    findFirst(args: { where: Record<string, unknown>; select: { id: true; payloadHash: true } }): Promise<{ id: string; payloadHash: string } | null>
+    updateMany(args: { where: Record<string, unknown>; data: Record<string, unknown> }): Promise<{ count: number }>
   }
   workforceEvidenceAssessment: {
-    create: (args: { data: Record<string, unknown>; select: { id: true } }) => Promise<{ id: string }>
-    findMany: (args: Record<string, unknown>) => Promise<unknown[]>
+    create(args: { data: Record<string, unknown>; select: { id: true } }): Promise<{ id: string }>
+    findMany(args: Record<string, unknown>): Promise<unknown[]>
   }
 }
 
@@ -55,7 +57,7 @@ export function workforceRawEvidenceExpiry(capturedAt: Date): Date {
  * audit/report fields. The HMAC key must come from a server-only key provider.
  */
 export async function persistWorkforceAttendanceEvidence(
-  db: EvidenceDb,
+  db: WorkforceEvidenceStorageDb,
   input: {
     organizationId: string
     subject: EvidenceSubject
@@ -113,7 +115,7 @@ export async function persistWorkforceAttendanceEvidence(
 
 /** Appends a geometry verdict without copying raw coordinates or ciphertext. */
 export async function appendWorkforceGeofenceAssessment(
-  db: EvidenceDb,
+  db: WorkforceEvidenceStorageDb,
   input: {
     organizationId: string
     evidenceId: string
@@ -144,9 +146,51 @@ export async function appendWorkforceGeofenceAssessment(
   return { assessmentId: assessment.id }
 }
 
+/**
+ * Stores only the action-time quality outcome. It deliberately has no
+ * coordinates, geometry, attendance or disciplinary conclusion; a later
+ * snapshotted-site evaluator owns a separate GEOFENCE assessment.
+ */
+export async function appendWorkforceLocationQualityAssessment(
+  db: WorkforceEvidenceStorageDb,
+  input: {
+    organizationId: string
+    evidenceId: string
+    assessment: WorkforceLocationEvidenceAssessment
+    assessedAt?: Date
+  },
+): Promise<{ assessmentId: string }> {
+  const assessorVersion = input.assessment.policyVersion
+  if (!assessorVersion.trim() || assessorVersion.length > 64) {
+    throw new WorkforceEvidenceStorageError("WORKFORCE_EVIDENCE_ASSESSMENT_INVALID", "location policyVersion is invalid")
+  }
+  const assessedAt = validDate(input.assessedAt ?? new Date(), "assessedAt")
+  const verdict = input.assessment.status === "ELIGIBLE_FOR_GEOFENCE"
+    ? "ELIGIBLE"
+    : input.assessment.status === "REVIEW_REQUIRED"
+      ? "REVIEW_REQUIRED"
+      : "UNAVAILABLE"
+  const assessment = await db.workforceEvidenceAssessment.create({
+    data: {
+      organizationId: input.organizationId,
+      evidenceId: input.evidenceId,
+      kind: "LOCATION_QUALITY",
+      assessorVersion,
+      verdict,
+      reasonCodes: input.assessment.reasonCodes,
+      geofenceRevisionId: null,
+      distanceMeters: null,
+      accuracyMeters: input.assessment.reportedAccuracyMeters,
+      assessedAt,
+    },
+    select: { id: true },
+  })
+  return { assessmentId: assessment.id }
+}
+
 /** Removes only due raw ciphertext; the immutable receipt and assessments remain. */
 export async function purgeExpiredWorkforceEvidence(
-  db: EvidenceDb,
+  db: WorkforceEvidenceStorageDb,
   input: { organizationId: string; now?: Date },
 ): Promise<{ purged: number }> {
   const now = validDate(input.now ?? new Date(), "now")
@@ -163,7 +207,7 @@ export async function purgeExpiredWorkforceEvidence(
 
 /** A normal report projection deliberately omits encrypted/raw evidence fields. */
 export async function listWorkforceEvidenceAssessmentReport(
-  db: EvidenceDb,
+  db: WorkforceEvidenceStorageDb,
   organizationId: string,
 ): Promise<unknown[]> {
   return db.workforceEvidenceAssessment.findMany({

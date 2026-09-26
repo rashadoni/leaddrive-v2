@@ -6,7 +6,8 @@ import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
 import { Search, Building2, Users, Handshake, UserPlus, CheckSquare, FileText } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { accessibleNavItems, orgFromSession } from "@/lib/nav-items"
+import { accessibleNavItems } from "@/lib/nav-items"
+import { useNavOrgContext } from "@/hooks/use-mtm-org-settings"
 
 interface SearchItem {
   id: string
@@ -73,7 +74,7 @@ export function CommandSearch() {
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   // Org context for the nav permission gate — same builder the layout uses.
-  const org = useMemo(() => orgFromSession(session?.user), [session])
+  const org = useNavOrgContext(session?.user)
 
   // Page/module results — local, instant, matched from the first character.
   // Complements record search (which needs ≥2 chars + a debounced API call).

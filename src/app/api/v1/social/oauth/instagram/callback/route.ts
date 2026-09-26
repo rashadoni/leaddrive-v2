@@ -3,9 +3,15 @@ import crypto from "crypto"
 import { prisma } from "@/lib/prisma"
 import { getOrgId } from "@/lib/api-auth"
 import { runWithTenant } from "@/lib/rls-context"
-import { getTenantInstagramLoginApp } from "@/lib/social/tenant-meta-app"
+import { getTenantInstagramLoginApp, getPinnedMetaApp, isAppReviewOnly } from "@/lib/social/tenant-meta-app"
 import { redactOAuthProviderText } from "@/lib/oauth-redaction"
-import { normalizeOAuthReturnKey, oauthReturnUrl } from "@/lib/social/oauth-return"
+import {
+  normalizeOAuthReturnKey,
+  oauthReturnChannelType,
+  oauthReturnUrl,
+  pickOAuthReturnChannelId,
+} from "@/lib/social/oauth-return"
+import { resolveOAuthReturnChannel } from "@/lib/social/oauth-return-channel"
 
 const IG_TOKEN_URL = "https://api.instagram.com/oauth/access_token"
 const IG_GRAPH = "https://graph.instagram.com"
@@ -27,9 +33,9 @@ function publicUrl(req: NextRequest, path: string): URL {
   const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "app.leaddrivecrm.org"
   return new URL(path, `${proto}://${host}`)
 }
-function redirectError(req: NextRequest, code: string, ret?: string | null): NextResponse {
-  // `ret` omitted => /social-monitoring, exactly as before.
-  return NextResponse.redirect(publicUrl(req, oauthReturnUrl(ret, { error: code })))
+function redirectError(req: NextRequest, code: string, ret?: string | null, channelId?: string | null): NextResponse {
+  // `ret` omitted => /social-monitoring, exactly as before. `channelId` only once verified against the org.
+  return NextResponse.redirect(publicUrl(req, oauthReturnUrl(ret, { error: code }, channelId)))
 }
 
 function graphBearerInit(accessToken: string): RequestInit {
@@ -77,7 +83,14 @@ export async function GET(req: NextRequest) {
   } catch {
     return redirectError(req, "bad_signature")
   }
-  const payload = JSON.parse(payloadStr) as { orgId: string; state: string; ts: number; ret?: string }
+  const payload = JSON.parse(payloadStr) as {
+    orgId: string
+    state: string
+    ts: number
+    ret?: string
+    app?: string
+    channelId?: unknown
+  }
   // Trusted only from here on — the HMAC was just verified. Branches above keep the static default.
   const ret = normalizeOAuthReturnKey(payload.ret)
   if (Date.now() - payload.ts > 30 * 60 * 1000) return redirectError(req, "expired", ret)
@@ -99,11 +112,19 @@ export async function GET(req: NextRequest) {
   // Model B: use the SAME IG-Login app the start route used — the tenant's own appId/appSecret (resolved
   // by the signed-state orgId), with env fallback to LeadDrive's shared IG-Login app. appSecret is read
   // server-side only (token exchange below).
-  const tenantApp = await getTenantInstagramLoginApp(payload.orgId)
-  const appId = tenantApp?.appId || process.env.INSTAGRAM_APP_ID
-  const appSecret = tenantApp?.appSecret || process.env.INSTAGRAM_APP_SECRET
+  // A PINNED flow names its Instagram-Login app inside the signed state; honour that id rather than
+  // re-running the org-wide lookup, and fail closed rather than falling back to env (mirrors
+  // oauth/facebook/callback — same reasoning, same consequence if it were allowed to substitute).
+  const pinnedApp = payload.app ? await getPinnedMetaApp(payload.orgId, payload.app, "instagram-login") : null
+  if (payload.app && !pinnedApp) return redirectError(req, "not_configured", ret)
+  // The row the connect was started from, re-checked against the org and the card's type (mirrors
+  // oauth/facebook/callback). Failed connects return to it; a successful one returns to the row below.
+  const originChannelId = await resolveOAuthReturnChannel(payload.orgId, ret, payload.channelId)
+  const tenantApp = pinnedApp ? null : await getTenantInstagramLoginApp(payload.orgId)
+  const appId = pinnedApp?.appId || tenantApp?.appId || process.env.INSTAGRAM_APP_ID
+  const appSecret = pinnedApp?.appSecret || tenantApp?.appSecret || process.env.INSTAGRAM_APP_SECRET
   const redirectUri = process.env.INSTAGRAM_REDIRECT_URI
-  if (!appId || !appSecret || !redirectUri) return redirectError(req, "not_configured", ret)
+  if (!appId || !appSecret || !redirectUri) return redirectError(req, "not_configured", ret, originChannelId)
 
   // 1) short-lived Instagram User token (form-encoded POST)
   const form = new URLSearchParams()
@@ -115,14 +136,14 @@ export async function GET(req: NextRequest) {
   const shortRes = await fetch(IG_TOKEN_URL, { method: "POST", body: form })
   if (!shortRes.ok) {
     console.error("[instagram-oauth] short token failed:", await redactedProviderText(shortRes))
-    return redirectError(req, "token_exchange_failed", ret)
+    return redirectError(req, "token_exchange_failed", ret, originChannelId)
   }
   const shortJson = await shortRes.json() as ShortTokenJson
   const short = shortJson.access_token || shortJson.data?.[0]?.access_token
   const shortUserId = String(shortJson.user_id ?? shortJson.data?.[0]?.user_id ?? "")
   if (!short) {
     console.error("[instagram-oauth] no short token in response:", JSON.stringify(shortJson))
-    return redirectError(req, "token_exchange_failed", ret)
+    return redirectError(req, "token_exchange_failed", ret, originChannelId)
   }
 
   // 2) long-lived token (~60 days)
@@ -131,11 +152,11 @@ export async function GET(req: NextRequest) {
   )
   if (!longRes.ok) {
     console.error("[instagram-oauth] long token failed:", await redactedProviderText(longRes))
-    return redirectError(req, "long_token_failed", ret)
+    return redirectError(req, "long_token_failed", ret, originChannelId)
   }
   const longJson = await longRes.json() as LongTokenJson
   const longToken = longJson.access_token
-  if (!longToken) return redirectError(req, "long_token_failed", ret)
+  if (!longToken) return redirectError(req, "long_token_failed", ret, originChannelId)
   const expiresAt = longJson.expires_in ? Date.now() + longJson.expires_in * 1000 : null
 
   // 3) IG user profile (id + username)
@@ -151,33 +172,52 @@ export async function GET(req: NextRequest) {
   } catch {
     /* non-fatal — fall back to the id from the token exchange */
   }
-  if (!userId) return redirectError(req, "no_ig_user", ret)
+  if (!userId) return redirectError(req, "no_ig_user", ret, originChannelId)
 
   const displayName = username ? `@${username}` : `Instagram ${userId}`
 
   // 4) ChannelConfig(instagram) holding the IG-Login token. Keyed on (org, instagram, pageId=igUserId).
   //    settings.igLogin marks this as the Instagram-Login (Path B) row; the token is stored raw in
   //    apiKey to match the existing ChannelConfig send-path convention (see inbox-channel.ts).
-  const existing = await prisma.channelConfig.findFirst({
+  // A STAGED (pinned) connect must not read-modify-write a row that already exists: the update below
+  // overwrites `apiKey` and forces `isActive: true`, so staging the app under review against an
+  // account whose row somebody deliberately switched off would silently turn it back on. In staged
+  // mode only a row that is itself staged may be updated; otherwise a separate staged row is created
+  // and the existing one is left exactly as it stands.
+  const staged = Boolean(pinnedApp)
+  const candidates = await prisma.channelConfig.findMany({
     where: { organizationId: payload.orgId, channelType: "instagram", pageId: userId },
     select: { id: true, settings: true },
+    orderBy: { createdAt: "asc" },
   })
+  const existing = staged
+    ? candidates.find((c: { id: string; settings: unknown }) => isAppReviewOnly(c.settings)) || null
+    : candidates[0] || null
+  if (staged && !existing && candidates.length > 0) {
+    console.warn(
+      `[instagram-oauth] staged connect for IG ${userId}: ${candidates.length} existing row(s) left untouched`,
+    )
+  }
   const prevSettings =
     existing?.settings && typeof existing.settings === "object" && !Array.isArray(existing.settings)
       ? (existing.settings as Record<string, unknown>)
       : {}
-  const settings = { ...prevSettings, igLogin: true, tokenExpiresAt: expiresAt, username }
+  const settings: Record<string, unknown> = { ...prevSettings, igLogin: true, tokenExpiresAt: expiresAt, username }
+  if (staged) settings.appReviewOnly = true
+  // The one row this round trip wired — handed back to the channel card so it opens this account.
+  let wiredChannelId: string
   if (existing) {
     await prisma.channelConfig.update({
       where: { id: existing.id },
       data: { apiKey: longToken, isActive: true, settings },
     })
+    wiredChannelId = existing.id
   } else {
-    await prisma.channelConfig.create({
+    const row = await prisma.channelConfig.create({
       data: {
         organizationId: payload.orgId,
         channelType: "instagram",
-        configName: displayName,
+        configName: staged ? `${displayName} (App Review)` : displayName,
         pageId: userId,
         apiKey: longToken,
         // appId/appSecret are env-global for the single IG-Login app (read from env by the webhook +
@@ -185,7 +225,9 @@ export async function GET(req: NextRequest) {
         isActive: true,
         settings,
       },
+      select: { id: true },
     })
+    wiredChannelId = row.id
   }
 
   // 5) Intentionally NO SocialAccount(instagram) row. Social Monitoring's poll-all cron iterates
@@ -195,7 +237,14 @@ export async function GET(req: NextRequest) {
   //    IG comments/mentions stay on the Facebook-Login SocialAccount (created by the FB OAuth callback).
   //    (Architect review 2026-06-08 — fix-before-build.)
 
-  const res = NextResponse.redirect(publicUrl(req, oauthReturnUrl(ret, { connected: "instagram", ig: "1" })))
+  // The row is an `instagram` ChannelConfig, so only the Instagram card may be handed it; a Facebook
+  // card return falls back to its own origin row (pickOAuthReturnChannelId, rule 3).
+  const wiredForReturnCard = oauthReturnChannelType(ret) === "instagram" ? [wiredChannelId] : []
+  const res = NextResponse.redirect(publicUrl(req, oauthReturnUrl(
+    ret,
+    { connected: "instagram", ig: "1" },
+    pickOAuthReturnChannelId(originChannelId, wiredForReturnCard),
+  )))
   res.cookies.delete("ld_ig_oauth")
   return res
   })

@@ -15,6 +15,8 @@ vi.mock("@/lib/prisma", () => ({
     webhook: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
     auditLog: { findMany: vi.fn(), count: vi.fn(), create: vi.fn() },
     channelConfig: { findMany: vi.fn(), create: vi.fn(), findFirst: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn() },
+    channelConnection: { updateMany: vi.fn() },
+    socialAccount: { updateMany: vi.fn() },
     currency: { findMany: vi.fn(), create: vi.fn(), findFirst: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn() },
     company: { findMany: vi.fn() },
     contact: { findMany: vi.fn() },
@@ -22,6 +24,7 @@ vi.mock("@/lib/prisma", () => ({
     lead: { findMany: vi.fn() },
     task: { findMany: vi.fn() },
     organization: { findUnique: vi.fn() },
+    demoRequest: { create: vi.fn() },
   },
 }))
 
@@ -72,7 +75,6 @@ import { GET as orgPlanGET } from "@/app/api/v1/organization/plan/route"
 
 import { prisma } from "@/lib/prisma"
 import { getOrgId, getSession, requireAuth, requireSessionAuth } from "@/lib/api-auth"
-import { sendEmail } from "@/lib/email"
 
 /* ── helpers ─────────────────────────────────────────────── */
 
@@ -458,7 +460,48 @@ describe("Channels", () => {
     expect(json.data.deleted).toBe("ch1")
   })
 
+  it("DELETE disconnects Meta channels and clears locally stored credentials", async () => {
+    vi.mocked(prisma.channelConfig.findFirst).mockResolvedValue({
+      id: "ig_1",
+      channelType: "instagram",
+      pageId: "ig-account-1",
+    } as any)
+    vi.mocked(prisma.channelConfig.updateMany).mockResolvedValue({ count: 1 } as any)
+    vi.mocked(prisma.channelConnection.updateMany).mockResolvedValue({ count: 1 } as any)
+    vi.mocked(prisma.socialAccount.updateMany).mockResolvedValue({ count: 1 } as any)
+
+    const res = await channelsDELETE(req("/api/v1/channels/ig_1", { method: "DELETE" }), params("ig_1"))
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(json.data.disconnected).toBe("ig_1")
+    expect(prisma.channelConfig.updateMany).toHaveBeenCalledWith({
+      where: { id: "ig_1", organizationId: "org-1" },
+      data: expect.objectContaining({
+        isActive: false,
+        apiKey: null,
+        accessToken: null,
+        appSecret: null,
+        verifyToken: null,
+      }),
+    })
+    expect(prisma.channelConfig.deleteMany).not.toHaveBeenCalled()
+    expect(prisma.socialAccount.updateMany).toHaveBeenCalledWith({
+      where: {
+        organizationId: "org-1",
+        platform: "instagram",
+        handle: "ig-account-1",
+      },
+      data: {
+        isActive: false,
+        accessToken: null,
+        tokenExpiresAt: null,
+      },
+    })
+  })
+
   it("DELETE returns 404 for missing channel", async () => {
+    vi.mocked(prisma.channelConfig.findFirst).mockResolvedValue(null)
     vi.mocked(prisma.channelConfig.deleteMany).mockResolvedValue({ count: 0 } as any)
 
     const res = await channelsDELETE(req("/api/v1/channels/nope", { method: "DELETE" }), params("nope"))
@@ -495,10 +538,21 @@ describe("Search", () => {
 
 describe("Demo Request", () => {
   it("POST succeeds with valid fields", async () => {
+    vi.mocked(prisma.demoRequest.create).mockResolvedValue({
+      id: "demo-request-1",
+      name: "John",
+      company: "Acme",
+      jobTitle: null,
+      email: "j@acme.com",
+      phone: null,
+      message: null,
+      requestedModules: [],
+    } as never)
+
     const res = await demoRequestPOST(
       new Request("http://localhost:3000/api/v1/demo-request", {
         method: "POST",
-        body: JSON.stringify({ name: "John", company: "Acme", email: "j@acme.com" }),
+        body: JSON.stringify({ name: "John", company: "Acme", email: "j@acme.com", consent: true }),
         headers: { "Content-Type": "application/json" },
       })
     )

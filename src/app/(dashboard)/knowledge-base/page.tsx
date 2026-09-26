@@ -60,6 +60,7 @@ function getContentPreview(content?: string): string {
 import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
+import { PageHeader } from "@/components/page-header"
 
 export default function KnowledgeBasePage() {
   const { data: session } = useSession()
@@ -191,20 +192,20 @@ export default function KnowledgeBasePage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">{t("title")} <TourReplayButton tourId="knowledgeBase" /> <HelpButton slug="knowledge-base" variant="label" /></h1>
-          <p className="text-sm text-muted-foreground">{total} {t("articles")} · {published} {t("publishedArticles")} · {totalViews} {t("views")}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setShowCatManager(true)} data-tour-id="kb-categories">
-            <Settings2 className="h-4 w-4 mr-1" /> {t("manageCategories") || "Categories"}
-          </Button>
-          <Button onClick={() => { setEditData(undefined); setShowForm(true) }} size="sm" data-tour-id="kb-new">
-            <Plus className="h-4 w-4 mr-1" /> {t("newArticle")}
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title={<>{t("title")} <TourReplayButton tourId="knowledgeBase" /> <HelpButton slug="knowledge-base" variant="label" /></>}
+        description={<p className="text-sm text-muted-foreground">{total} {t("articles")} · {published} {t("publishedArticles")} · {totalViews} {t("views")}</p>}
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={() => setShowCatManager(true)} data-tour-id="kb-categories">
+              <Settings2 className="h-4 w-4 mr-1" /> {t("manageCategories") || "Categories"}
+            </Button>
+            <Button onClick={() => { setEditData(undefined); setShowForm(true) }} size="sm" data-tour-id="kb-new">
+              <Plus className="h-4 w-4 mr-1" /> {t("newArticle")}
+            </Button>
+          </>
+        }
+      />
 
       <DidYouKnow page="knowledge-base" className="mb-4" />
 

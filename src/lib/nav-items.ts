@@ -27,7 +27,7 @@ import {
   CreditCard, BellRing, Lock,
   // Phase 7 Industry Cloud icons
   HeartPulse, Umbrella, Landmark, Tv2, Flame,
-  ClipboardPlus, FileBadge, FileCheck, Radio,
+  ClipboardPlus, FileBadge, FileCheck, Radio, PackageOpen,
 } from "lucide-react"
 
 export interface NavItem {
@@ -88,7 +88,18 @@ export interface NavItem {
    * endpoint that correctly returns 403.
    */
   allowedRoles?: readonly Role[]
+  /**
+   * Organization-level visibility switch (MTM settings). Unlike `module` it
+   * is not an entitlement: the page stays reachable by URL and explains the
+   * switch, so `isNavItemEnabled` (the page guard) ignores it and only
+   * `accessibleNavItems` (menus) applies it. Unknown = shown.
+   */
+  orgSetting?: NavOrgSettingKey
 }
+
+/** MTM settings keys that hide a menu surface when explicitly false. */
+export const NAV_ORG_SETTING_KEYS = ["fieldContactsEnabled", "pharmacyPromotionsEnabled"] as const
+export type NavOrgSettingKey = (typeof NAV_ORG_SETTING_KEYS)[number]
 
 export type SupportNavSection = "work" | "team" | "rules"
 
@@ -103,6 +114,11 @@ export interface OrgNavContext {
   addons?: string[]
   modules?: Record<string, boolean>
   role?: string
+  /**
+   * Organization switches read after login. Absent while loading or when the
+   * tenant has no MTM — every switch then counts as ON, the historical menu.
+   */
+  orgSettings?: Partial<Record<NavOrgSettingKey, boolean>>
 }
 
 /**
@@ -281,15 +297,17 @@ export const navItems: NavItem[] = [
   { module: "mtm", tenantCapability: "route-field", href: "/mtm", icon: MapPin, tKey: "mtmDashboard", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/map", icon: MapPin, tKey: "mtmMap", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/routes", icon: Route, tKey: "mtmRoutes", group: "Route & Field" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/calendar", icon: CalendarDays, tKey: "mtmCalendar", group: "Route & Field" },
   { module: "mtm", href: "/mtm/operations", icon: Radio, tKey: "mtmOperations", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/visits", icon: CheckSquare, tKey: "mtmVisits", group: "Route & Field" },
-  { module: "mtm", href: "/mtm/promotions", icon: FileBadge, tKey: "mtmPromotions", group: "Route & Field" },
+  { module: "mtm", href: "/mtm/promotions", icon: FileBadge, tKey: "mtmPromotions", group: "Route & Field", orgSetting: "pharmacyPromotionsEnabled" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/tasks", icon: ClipboardList, tKey: "mtmTasks", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/customers", icon: Building2, tKey: "mtmCustomers", group: "Route & Field" },
-  { module: "mtm", tenantCapability: "route-field", href: "/mtm/contacts", icon: Users, tKey: "mtmContacts", group: "Route & Field" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/contacts", icon: Users, tKey: "mtmContacts", group: "Route & Field", orgSetting: "fieldContactsEnabled" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/photos", icon: Camera, tKey: "mtmPhotos", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/alerts", icon: AlertTriangle, tKey: "mtmAlerts", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/agents", icon: UserCog, tKey: "mtmAgents", group: "Route & Field" },
+  { module: "mtm", tenantCapability: "route-field", href: "/mtm/products", icon: PackageOpen, tKey: "mtmProducts", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/analytics", icon: BarChart3, tKey: "mtmAnalytics", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/leaderboard", icon: Trophy, tKey: "mtmLeaderboard", group: "Route & Field" },
   { module: "mtm", tenantCapability: "route-field", href: "/mtm/activity", icon: Activity, tKey: "mtmActivity", group: "Route & Field" },
@@ -468,6 +486,11 @@ export function isNavItemEnabled(
   return moduleEnabled && featureEnabled && addonEnabled && capabilityEnabled
 }
 
+/** Only an explicit false hides: a missing or still-loading setting keeps the item. */
+export function isNavItemOrgSettingEnabled(org: OrgNavContext, item: NavItem): boolean {
+  return !item.orgSetting || org.orgSettings?.[item.orgSetting] !== false
+}
+
 export function accessibleNavItems(org: OrgNavContext): NavItem[] {
   const showAll = org.role === "superadmin"
   // Роль-гейт для под-поверхностей с более строгой границей, чем у модуля
@@ -477,7 +500,7 @@ export function accessibleNavItems(org: OrgNavContext): NavItem[] {
     (!i.permissionScope || checkPermission((org.role as Role) || "viewer", i.permissionScope, "read"))
     && (!i.allowedRoles || i.allowedRoles.includes((org.role as Role) || "viewer"))
   return navItems.filter((item) =>
-    isNavItemEnabled(org, item, { ignoreModuleGate: showAll }) && roleAllowed(item)
+    isNavItemEnabled(org, item, { ignoreModuleGate: showAll }) && roleAllowed(item) && isNavItemOrgSettingEnabled(org, item)
   )
 }
 

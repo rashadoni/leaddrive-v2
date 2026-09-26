@@ -54,6 +54,8 @@ import {
   channelIsLiveConnection,
   type ChannelConnectionState,
 } from "@/lib/channels/live-connection"
+import { metaConnectionReason, metaSubscriptionPendingLabels } from "@/lib/channels/connection-reason"
+import { isDedicatedChannelType } from "@/lib/channels/dedicated-channel-types"
 
 interface ChannelConfig {
   id: string
@@ -137,6 +139,7 @@ const copy = {
     notConnected: "Open setup",
     configure: "Configure",
     configureConnected: "Edit setup",
+    openVoipSettings: "Open VoIP settings",
     openGuide: "Open guide",
     callingReadinessBadge: "Readiness checklist",
     comingSoon: "Roadmap",
@@ -152,6 +155,7 @@ const copy = {
     cardNextStep: "Next step",
     cardVerify: "Verify",
     cardConnectedHint: "Saved in LeadDrive. Edit credentials or send a controlled test before automation.",
+    cardVoipSettingsHint: "Managed in VoIP settings. Change the provider, its credentials or the on/off switch there.",
     cardDraftBadge: "Draft",
     cardDraftStatus: "Connection not finished",
     cardDraftHint: "The channel row is saved, but Meta has not returned a Page yet, so no message will arrive. Finish Connect with Meta.",
@@ -161,6 +165,11 @@ const copy = {
     cardReconnectBadge: "Reconnect needed",
     cardReconnectStatus: "Meta is not delivering messages",
     cardReconnectHint: "Meta refused the message subscription for this Page — usually a missing messaging permission — so DMs never reach Inbox. Run Connect with Meta again and approve every permission it asks for.",
+    // A staged App Review row that never asked Meta for its subscription. All three strings come from
+    // lib/channels/connection-reason, so the card, the form and the return banner cannot drift apart.
+    cardAppReviewBadge: metaSubscriptionPendingLabels("en").badge,
+    cardAppReviewStatus: metaSubscriptionPendingLabels("en").title,
+    cardAppReviewHint: metaConnectionReason("en", "subscriptionPending"),
     cardNewHint: "Open the guided setup. It shows what to prepare, what to paste, and how to test delivery.",
     cardRoadmapHint: "This provider is visible for planning, but connection is not enabled yet.",
     catalogFlowTitle: "How channel setup works",
@@ -301,6 +310,7 @@ const copy = {
     notConnected: "Открыть настройку",
     configure: "Настроить",
     configureConnected: "Изменить настройку",
+    openVoipSettings: "Открыть настройки VoIP",
     openGuide: "Открыть инструкцию",
     callingReadinessBadge: "Чеклист готовности",
     comingSoon: "В разработке",
@@ -316,6 +326,7 @@ const copy = {
     cardNextStep: "Следующий шаг",
     cardVerify: "Проверка",
     cardConnectedHint: "Канал сохранён в LeadDrive. Измените ключи или отправьте контролируемый тест перед автоматизацией.",
+    cardVoipSettingsHint: "Управляется в настройках VoIP. Провайдера, его ключи и переключатель звонков меняют там.",
     cardDraftBadge: "Черновик",
     cardDraftStatus: "Подключение не завершено",
     cardDraftHint: "Запись канала сохранена, но Meta ещё не вернула страницу, поэтому сообщения приходить не будут. Завершите «Подключить через Meta».",
@@ -325,6 +336,9 @@ const copy = {
     cardReconnectBadge: "Нужно переподключить",
     cardReconnectStatus: "Meta не доставляет сообщения",
     cardReconnectHint: "Meta отказала в подписке на сообщения этой страницы — обычно из-за не выданного разрешения на переписку — поэтому входящие не доходят до Inbox. Запустите «Подключить через Meta» ещё раз и подтвердите все запрошенные разрешения.",
+    cardAppReviewBadge: metaSubscriptionPendingLabels("ru").badge,
+    cardAppReviewStatus: metaSubscriptionPendingLabels("ru").title,
+    cardAppReviewHint: metaConnectionReason("ru", "subscriptionPending"),
     cardNewHint: "Откройте пошаговую настройку. Она покажет, что подготовить, какие ключи вставить и как проверить доставку.",
     cardRoadmapHint: "Провайдер показан для планирования, но подключение ещё не включено.",
     catalogFlowTitle: "Как работает подключение канала",
@@ -465,6 +479,7 @@ const copy = {
     notConnected: "Qurulmanı aç",
     configure: "Tənzimlə",
     configureConnected: "Qurulmanı dəyiş",
+    openVoipSettings: "VoIP parametrlərini aç",
     openGuide: "Təlimatı aç",
     callingReadinessBadge: "Hazırlıq checklist-i",
     comingSoon: "Planlaşdırılır",
@@ -480,6 +495,7 @@ const copy = {
     cardNextStep: "Növbəti addım",
     cardVerify: "Yoxlama",
     cardConnectedHint: "Kanal LeadDrive-da saxlanılıb. Avtomatizasiyadan əvvəl açarları dəyişin və ya kontrollu test göndərin.",
+    cardVoipSettingsHint: "VoIP parametrlərində idarə olunur. Provayderi və onun açarlarını orada dəyişin, zəngləri də orada yandırıb-söndürün.",
     cardDraftBadge: "Qaralama",
     cardDraftStatus: "Qoşulma tamamlanmayıb",
     cardDraftHint: "Kanal qeydi saxlanılıb, amma Meta hələ səhifə qaytarmayıb, ona görə mesaj gəlməyəcək. «Meta ilə qoş» addımını tamamlayın.",
@@ -489,6 +505,9 @@ const copy = {
     cardReconnectBadge: "Yenidən qoşulmalıdır",
     cardReconnectStatus: "Meta mesajları çatdırmır",
     cardReconnectHint: "Meta bu səhifə üçün mesaj abunəliyini rədd edib — adətən yazışma icazəsi verilmədiyinə görə — ona görə DM-lər Inbox-a çatmır. «Meta ilə qoş» addımını yenidən işə salın və istənilən bütün icazələri təsdiqləyin.",
+    cardAppReviewBadge: metaSubscriptionPendingLabels("az").badge,
+    cardAppReviewStatus: metaSubscriptionPendingLabels("az").title,
+    cardAppReviewHint: metaConnectionReason("az", "subscriptionPending"),
     cardNewHint: "Addım-addım qurulmanı açın. Nə hazırlamaq, hansı açarları yazmaq və çatdırılmanı necə yoxlamaq göstərilir.",
     cardRoadmapHint: "Provayder planlama üçün görünür, amma qoşulma hələ aktiv deyil.",
     catalogFlowTitle: "Kanal qoşulması necə işləyir",
@@ -670,10 +689,10 @@ const catalogCards = (c: (typeof copy)[LocaleKey]): CatalogCard[] => [
     icon: AtSign,
     logo: "◎",
     accent: "from-orange-500/18 via-stone-500/8 to-transparent border-orange-400/20",
-    // Instagram Direct rides the LINKED Facebook Page's messages webhook, and only the facebook
-    // callback creates a ChannelConfig for it — instagram/start would finish "successfully" and leave
-    // the card grey. (INSTAGRAM_APP_ID is also unset in production.)
-    oauthStart: "/api/v1/social/oauth/facebook/start?from=channels-instagram",
+    // Meta App Review evaluates Instagram Login separately from Facebook
+    // Login. Keep the catalog action on the flow that requests the declared
+    // instagram_business_* permissions.
+    oauthStart: "/api/v1/social/oauth/instagram/start?from=channels-instagram",
     action: { type: "form", channelType: "instagram", presetName: "Instagram Direct" },
   },
   {
@@ -1448,12 +1467,16 @@ function channelLabel(channel: ChannelConfig) {
  * (needsReconnect → re-run OAuth and grant the messaging permission). Labelling all three "Draft"
  * would send two of the three users to the wrong fix. A fourth, claimedElsewhere, has no fix the user can
  * apply at all: another workspace connected the same account first and the webhook routes to it, so the
- * copy sends them to support instead of to a button.
+ * copy sends them to support instead of to a button. A fifth, subscriptionPending, is not a failure: a
+ * staged App Review connect deliberately asks Meta for nothing, so the row says "connected for App
+ * Review, message subscription not requested yet" instead of claiming a refusal and sending the user back
+ * through OAuth.
  */
 function cardBrokenBadge(c: (typeof copy)[LocaleKey], state: ChannelConnectionState, claimed: ClaimedElsewhereCopy) {
   if (state === "draft") return c.cardDraftBadge
   if (state === "paused") return c.cardPausedBadge
   if (state === "claimedElsewhere") return claimed.badge
+  if (state === "subscriptionPending") return c.cardAppReviewBadge
   if (state === "needsReconnect") return c.cardReconnectBadge
   return null
 }
@@ -1462,6 +1485,7 @@ function cardBrokenStatus(c: (typeof copy)[LocaleKey], state: ChannelConnectionS
   if (state === "draft") return c.cardDraftStatus
   if (state === "paused") return c.cardPausedStatus
   if (state === "claimedElsewhere") return claimed.status
+  if (state === "subscriptionPending") return c.cardAppReviewStatus
   if (state === "needsReconnect") return c.cardReconnectStatus
   return null
 }
@@ -1470,6 +1494,7 @@ function cardBrokenHint(c: (typeof copy)[LocaleKey], state: ChannelConnectionSta
   if (state === "draft") return c.cardDraftHint
   if (state === "paused") return c.cardPausedHint
   if (state === "claimedElsewhere") return claimed.hint
+  if (state === "subscriptionPending") return c.cardAppReviewHint
   if (state === "needsReconnect") return c.cardReconnectHint
   return null
 }
@@ -1493,6 +1518,7 @@ export default function ChannelsPage() {
 function ChannelsPageInner() {
   const { data: session } = useSession()
   const t = useTranslations("settings")
+  const tc = useTranslations("common")
   const locale = normalizeLocale(useLocale())
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -1562,13 +1588,21 @@ function ChannelsPageInner() {
     router.replace("/settings/channels")
   }, [cards, router, searchParams])
 
+  // The confirm dialog shows what this throws and stays open. It used to refetch whatever the answer was, so a refused
+  // delete — every press of the trash on a VoIP card met a 403 — closed the dialog and left the row with nothing on
+  // screen saying why. A 403 carries its reason in `message` next to a bare "Forbidden" in `error`, so `message` goes
+  // first; an answer without either (a proxy's HTML error page) still needs words, or the dialog's alert stays empty.
   const handleDelete = async () => {
     if (!deleteId) return
-    await fetch(`/api/v1/channels/${deleteId}`, {
+    const res = await fetch(`/api/v1/channels/${deleteId}`, {
       method: "DELETE",
       headers: orgId ? { "x-organization-id": String(orgId) } : {} as Record<string, string>,
     })
     fetchChannels()
+    if (res.ok) return
+    const body = (await res.json().catch(() => null)) as { error?: unknown; message?: unknown } | null
+    const reason = [body?.message, body?.error].find((value): value is string => typeof value === "string" && value.trim() !== "")
+    throw new Error(reason || tc("errorDeleteFailed"))
   }
 
   const sendTestWhatsApp = async () => {
@@ -1686,7 +1720,13 @@ function ChannelsPageInner() {
       card.channelType || "",
     ].join(" ").toLowerCase().includes(q)
   })
-  const unmatchedChannels = channels.filter((channel) => {
+  // A row that belongs to its own screen (lib/channels/dedicated-channel-types) is listed only where a card shows it —
+  // VoIP's. Social Monitoring's settings rows and the Slack/Teams notification hooks have no card and are not channels:
+  // "Other connected channels" used to offer them the channel form's Edit and a Delete, and the "active" count below
+  // counted them. They are managed on their own screens, and the channels API refuses to edit or delete them.
+  const listedChannels = channels.filter((channel) =>
+    connectedByCard.primaryIds.has(channel.id) || !isDedicatedChannelType(channel.channelType))
+  const unmatchedChannels = listedChannels.filter((channel) => {
     if (activeTab !== "all") return false
     if (connectedByCard.primaryIds.has(channel.id)) return false
     if (!q) return true
@@ -1703,7 +1743,7 @@ function ChannelsPageInner() {
   // empty Meta row is created with isActive=true, so counting isActive alone counted drafts as wins.
   // The isActive term is now implied by the predicate for every type; it stays as a cheap guard for
   // callers that hand us a row with the column unselected.
-  const activeCount = channels.filter((cn) => cn.isActive && channelIsLiveConnection(cn)).length
+  const activeCount = listedChannels.filter((cn) => cn.isActive && channelIsLiveConnection(cn)).length
   const availableCount = cards.filter(card => card.action.type !== "disabled").length
   const ConnectIcon = connectCard?.icon
   const connectTutorial = useMemo(
@@ -2281,6 +2321,15 @@ function ChannelsPageInner() {
                       const brokenStatus = connectionState ? cardBrokenStatus(c, connectionState, claimedCopy) : null
                       const brokenHint = connectionState ? cardBrokenHint(c, connectionState, claimedCopy) : null
                       const guideHref = guideHrefForCard(card)
+                      // A row whose type has its own screen (lib/channels/dedicated-channel-types) is changed and switched
+                      // off there: the channels API refuses to edit or delete it. Of those rows only VoIP's reach a card —
+                      // the catalog lists the others nowhere — and every VoIP card links to /settings/voip, hence the VoIP
+                      // copy. The card used to offer Edit, which opened the channel form whose save is refused, and a trash
+                      // whose DELETE always came back 403.
+                      const ownScreenHref =
+                        connected && isDedicatedChannelType(connected.channelType) && card.action.type === "link"
+                          ? card.action.href
+                          : null
                       const Icon = card.icon
                       return (
                         <article
@@ -2376,18 +2425,32 @@ function ChannelsPageInner() {
                               </div>
                               <div className="rounded-lg bg-zinc-50 px-3 py-2 text-xs leading-5 text-zinc-600">
                                 <span className="font-semibold text-zinc-800">{connectionLive ? c.cardVerify : c.cardNextStep}: </span>
-                                {connectionLive
-                                  ? c.cardConnectedHint
-                                  : connectionBroken && brokenHint
-                                    ? brokenHint
-                                    : card.action.type === "disabled"
-                                      ? c.cardRoadmapHint
-                                      : c.cardNewHint}
+                                {ownScreenHref
+                                  ? c.cardVoipSettingsHint
+                                  : connectionLive
+                                    ? c.cardConnectedHint
+                                    : connectionBroken && brokenHint
+                                      ? brokenHint
+                                      : card.action.type === "disabled"
+                                        ? c.cardRoadmapHint
+                                        : c.cardNewHint}
                               </div>
                             </div>
 
                             <div className="mt-auto flex items-center justify-between gap-2 border-t border-zinc-200 pt-4">
-                              {connected && (connectionLive || !card.oauthStart) ? (
+                              {ownScreenHref ? (
+                                <Button
+                                  asChild
+                                  size="sm"
+                                  variant="secondary"
+                                  className="h-9 flex-1 justify-center gap-2 border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+                                >
+                                  <Link href={ownScreenHref} aria-label={`${c.openVoipSettings}: ${card.title}`}>
+                                    <Workflow className="h-4 w-4" />
+                                    {c.openVoipSettings}
+                                  </Link>
+                                </Button>
+                              ) : connected && (connectionLive || !card.oauthStart) ? (
                                 <>
                                   <Button
                                     size="sm"
@@ -2969,7 +3032,10 @@ function ChannelsPageInner() {
         </DialogContent>
       </Dialog>
 
+      {/* Keyed by the row: the dialog keeps its last refusal in its own state, and without a fresh instance per row the
+          next delete would open under the previous row's reason. */}
       <DeleteConfirmDialog
+        key={deleteId ?? "closed"}
         open={!!deleteId}
         onOpenChange={(open) => { if (!open) setDeleteId(null) }}
         onConfirm={handleDelete}

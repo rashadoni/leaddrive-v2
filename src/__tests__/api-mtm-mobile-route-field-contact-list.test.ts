@@ -225,6 +225,26 @@ describe("GET /api/v2/mtm/mobile/route-field/contacts", () => {
     expect(prisma.mtmContact.findMany).toHaveBeenCalledTimes(callsBeforeForeignPage)
   })
 
+  it("filters by client category and binds that filter to the page token", async () => {
+    const first = contact("contact-a", "Dr. Alpha")
+    const second = contact("contact-b", "Dr. Bravo")
+    vi.mocked(prisma.mtmContact.findMany).mockResolvedValue([first, second] as never)
+
+    const firstResponse = await list("?limit=1&type=DOCTOR")
+    const firstPayload = await firstResponse.json()
+    expect(firstResponse.status).toBe(200)
+    const args = vi.mocked(prisma.mtmContact.findMany).mock.calls[0][0] as { where: { AND: unknown[] } }
+    expect(args.where.AND).toContainEqual({ type: "DOCTOR" })
+
+    const wrongTypePage = await list(`?limit=1&type=PHARMACIST&page=${encodeURIComponent(firstPayload.data.nextPage)}`)
+    expect(wrongTypePage.status).toBe(400)
+    expect(await wrongTypePage.json()).toMatchObject({ code: "MTM_ROUTE_FIELD_CONTACT_PAGE_INVALID" })
+
+    const invalid = await list("?type=CLINIC")
+    expect(invalid.status).toBe(400)
+    expect(await invalid.json()).toMatchObject({ code: "MTM_ROUTE_FIELD_CONTACT_TYPE_INVALID" })
+  })
+
   it("rejects malformed page and overlong search before the list query", async () => {
     const malformed = await list("?page=not-a-cursor")
     expect(malformed.status).toBe(400)

@@ -29,12 +29,16 @@ describe("task due date (field UX audit C11)", () => {
     expect(mtmTaskDueHasMeaningfulTime(instant, "UTC")).toBe(true)
   })
 
-  it("counts statuses from the same filtered set as the total", () => {
+  it("counts every status chip from the server over the same filters as the list", () => {
     // The page used to show a server-wide "Всего: 137" next to status counts
     // taken from the rows of the current page only. Neither number was wrong;
-    // together they lied.
+    // together they lied. Since 2026-09-24 the status is picked by chips; each
+    // chip counts its bucket over the same filters minus the status itself, so
+    // the list total is the number on the pressed chip.
     const route = readFileSync("src/app/api/v1/mtm/tasks/route.ts", "utf8")
-    expect(route).toContain('prisma.mtmTask.groupBy({ by: ["status"], where, _count: { _all: true } })')
-    expect(route).toContain("summary: Object.fromEntries(statusCounts.map((row) => [row.status, row._count._all]))")
+    expect(route).toContain('prisma.mtmTask.groupBy({ by: ["status"], where: chipWhere, _count: { _all: true } })')
+    expect(route).toContain("const chipWhere = { ...where, AND: [scopeWhere, ...(agentId ? [{ agentId }] : [])], status: undefined }")
+    expect(route).toContain("OVERDUE: overdueCount,")
+    expect(route).toContain("OPEN: (byStatus.PENDING ?? 0) + (byStatus.IN_PROGRESS ?? 0) + (byStatus.OVERDUE ?? 0),")
   })
 })

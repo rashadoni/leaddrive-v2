@@ -34,6 +34,7 @@ import { useAutoTour } from "@/components/tour/tour-provider"
 import { TourReplayButton } from "@/components/tour/tour-replay-button"
 import { HelpButton } from "@/components/help/help-button"
 import { STAGE_COLORS } from "@/lib/constants"
+import { VOICE_RECORD_CHANGED_EVENT, type VoiceRecordChangedDetail } from "@/lib/ai/voice/voice-confirmation"
 
 const FALLBACK_STAGE_STYLES = [
   { key: "LEAD",        color: STAGE_COLORS.LEAD,        bg: "bg-indigo-500" },
@@ -387,6 +388,17 @@ export default function DealDetailPage() {
   }
 
   useEffect(() => { if (session) { fetchDeal(); fetchCounts() } }, [session, id])
+  // A voice edit to THIS deal was just saved: show the new values, so the
+  // user can see on the card whether everything is right.
+  useEffect(() => {
+    const onChanged = (event: Event) => {
+      const detail = (event as CustomEvent<VoiceRecordChangedDetail>).detail
+      if (detail?.entityType === "deal" && detail.entityId === id) void fetchDeal()
+    }
+    window.addEventListener(VOICE_RECORD_CHANGED_EVENT, onChanged)
+    return () => window.removeEventListener(VOICE_RECORD_CHANGED_EVENT, onChanged)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, orgId])
   useEffect(() => { if (session) fetchActivityCounts() }, [session, id, timelineKey])
   useEffect(() => { if (deal?.pipelineId) fetchPipelineStages(deal.pipelineId) }, [deal?.pipelineId])
 
