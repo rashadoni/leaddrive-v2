@@ -12545,6 +12545,8 @@
     }
   },
   "mtmAgentPeriod": {
+    "storyTotals": "в пути всего {duration}, {distance} · других стоянок: {stops}",
+    "openSince": "открыта с {date}",
     "agent": "Сотрудник",
     "chooseAgent": "— Выберите сотрудника —",
     "chooseAgentHint": "Выберите сотрудника, чтобы увидеть его работу за период.",
@@ -12572,6 +12574,8 @@
       "status": "Итог"
     },
     "statuses": {
+      "SHIFT_OPEN": "Смена не закрыта",
+      "GPS_ONLY": "Без смены, GPS есть",
       "FULL": "Полностью",
       "PARTIAL": "{count, plural, one {Осталась # точка} few {Осталось # точки} many {Осталось # точек} other {Осталось # точки}}",
       "NOT_WORKED": "Не работал",

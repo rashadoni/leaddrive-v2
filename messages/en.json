@@ -12545,6 +12545,8 @@
     }
   },
   "mtmAgentPeriod": {
+    "storyTotals": "on the road in total {duration}, {distance} · other stops: {stops}",
+    "openSince": "open since {date}",
     "agent": "Employee",
     "chooseAgent": "— Choose an employee —",
     "chooseAgentHint": "Choose an employee to see their work over the period.",
@@ -12572,6 +12574,8 @@
       "status": "Result"
     },
     "statuses": {
+      "SHIFT_OPEN": "Shift left open",
+      "GPS_ONLY": "No shift, GPS moving",
       "FULL": "Complete",
       "PARTIAL": "{count, plural, one {# stop left} other {# stops left}}",
       "NOT_WORKED": "Did not work",

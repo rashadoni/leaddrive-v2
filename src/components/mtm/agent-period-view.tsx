@@ -56,6 +56,31 @@ const STATUS_TONE: Record<AgentPeriodDayStatus, string> = {
   UNPLANNED: "bg-muted text-muted-foreground",
   DAY_OFF: "bg-transparent text-muted-foreground",
   UPCOMING: "bg-transparent text-muted-foreground",
+  SHIFT_OPEN: "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300",
+  GPS_ONLY: "bg-muted text-muted-foreground",
+}
+
+/** A silence or break shorter than this is part of the day, not a line in its story. */
+const STORY_GAP_SECONDS = 30 * 60
+
+/**
+ * Prod 2026-09-26: on a real phone the day unfolded into a wall of «stop
+ * 3 min → on the road 2 min, 240 m → …». The story keeps what a manager asks:
+ * when it began, each customer with times, long silences, when it ended; the
+ * driving is one total. Every leg stays on the map.
+ */
+export function dayStory(entries: readonly TripEntry[]) {
+  const lines = entries.filter((entry) =>
+    entry.kind === "START" || entry.kind === "END"
+    || (entry.kind === "STAY" && entry.visit)
+    || (entry.kind === "GAP" && (entry.durationSeconds ?? 0) >= STORY_GAP_SECONDS))
+  const moves = entries.filter((entry) => entry.kind === "MOVE")
+  return {
+    lines,
+    drivingSeconds: moves.reduce((sum, entry) => sum + (entry.durationSeconds ?? 0), 0),
+    drivingMeters: moves.reduce((sum, entry) => sum + (entry.distanceMeters ?? 0), 0),
+    otherStops: entries.filter((entry) => entry.kind === "STAY" && !entry.visit).length,
+  }
 }
 
 export function MtmAgentPeriodView({ timezone, initialAgentId }: { timezone: string; initialAgentId?: string | null }) {
@@ -203,7 +228,9 @@ export function MtmAgentPeriodView({ timezone, initialAgentId }: { timezone: str
                   <Fragment key={day.date}>
                     <tr className={`cursor-pointer transition-colors hover:bg-muted/40 ${open ? "bg-muted/40" : ""} ${quiet ? "text-muted-foreground" : ""}`} onClick={() => toggleDay(day.date)} aria-expanded={open}>
                       <td className="px-2 py-2.5"><span className="inline-flex items-center gap-1">{open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}{dayTitle(day.date)}</span></td>
-                      <td className="px-2 py-2.5 tabular-nums">{day.workday ? `${clock(day.workday.startedAt)}–${day.workday.completedAt ? clock(day.workday.completedAt) : t("open")}` : "—"}</td>
+                      <td className="px-2 py-2.5 tabular-nums">{!day.workday ? "—"
+                        : day.workday.carriedOver ? t("openSince", { date: formatInTimezone(day.workday.startedAt, timezone, { day: "numeric", month: "short" }, locale) })
+                          : `${clock(day.workday.startedAt)}–${day.workday.completedAt ? clock(day.workday.completedAt) : t("open")}`}</td>
                       <td className="px-2 py-2.5 tabular-nums">{day.planned ? `${day.visits} / ${day.planned}` : day.visits || "—"}</td>
                       <td className="px-2 py-2.5 tabular-nums">{day.distanceMeters ? km(day.distanceMeters) : "—"}</td>
                       <td className="px-2 py-2.5"><span className={`rounded-md px-2 py-0.5 text-xs font-medium ${STATUS_TONE[day.status]}`}>{t(`statuses.${day.status}`, { count: day.remaining })}</span></td>
@@ -214,9 +241,17 @@ export function MtmAgentPeriodView({ timezone, initialAgentId }: { timezone: str
                           {!trip ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-label={t("loading")} />
                             : trip === "none" ? t("noTrack")
                               : trip === "error" ? t("loadFailed")
-                                : trip.map((entry, index) => (
-                                  <Fragment key={index}>{index ? " → " : ""}<span className={entry.kind === "STAY" && entry.visit ? "text-foreground" : ""}>{tripText(entry)}</span></Fragment>
-                                ))}
+                                : (() => {
+                                  const story = dayStory(trip)
+                                  return (
+                                    <>
+                                      {story.lines.map((entry, index) => (
+                                        <Fragment key={index}>{index ? " → " : ""}<span className={entry.kind === "STAY" ? "text-foreground" : ""}>{tripText(entry)}</span></Fragment>
+                                      ))}
+                                      <span className="block text-xs">{t("storyTotals", { duration: duration(story.drivingSeconds), distance: km(story.drivingMeters), stops: story.otherStops })}</span>
+                                    </>
+                                  )
+                                })()}
                           {" "}
                           <Link href={`/mtm/map?mode=history&agentId=${encodeURIComponent(agentId)}&date=${day.date}`} className="ml-2 inline-flex items-center gap-1 whitespace-nowrap text-primary hover:underline" onClick={(event) => event.stopPropagation()}>
                             <MapPinned className="h-4 w-4" />{t("openOnMap")}
