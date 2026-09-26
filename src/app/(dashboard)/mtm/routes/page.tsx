@@ -13,7 +13,6 @@ import type { WorkCalendarOverride } from "@/lib/mtm/work-calendar"
 import { MtmRouteWeekPlan } from "@/components/mtm/route-week-plan"
 import { MtmRoutePlanningMatrix } from "@/components/mtm/route-planning-matrix"
 import { MtmRouteApprovalQueue } from "@/components/mtm/route-approval-queue"
-import { MtmRouteNeedsAttention } from "@/components/mtm/route-needs-attention"
 import { MtmRouteTravelPanel } from "@/components/mtm/route-travel-panel"
 import { MtmCustomerCreateRequestPanel } from "@/components/mtm/customer-create-request-panel"
 import { MtmCustomerRequestQueue } from "@/components/mtm/customer-request-queue"
@@ -176,6 +175,10 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
   const [calendarError, setCalendarError] = useState(false)
   const [calendarRefreshVersion, setCalendarRefreshVersion] = useState(0)
   const [approvalRefreshVersion, setApprovalRefreshVersion] = useState(0)
+  // Routes audit 2026-09-26, «Согласования»: with nothing pending the tab
+  // showed three blocks each saying «nothing» — the first titled «Требует
+  // внимания» — and with something pending the tab itself did not say so.
+  const [approvalCounts, setApprovalCounts] = useState<{ routeChanges: number; customerRequests: number } | null>(null)
   const [removalPointId, setRemovalPointId] = useState<string | null>(null)
   const [removalReason, setRemovalReason] = useState("")
   const [requestingRemoval, setRequestingRemoval] = useState(false)
@@ -385,6 +388,22 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
       setRoutesLoadingMore(false)
     }
   }
+
+  useEffect(() => {
+    if (!capabilities.canReview) return
+    const controller = new AbortController()
+    fetch("/api/v1/mtm/routes/needs-attention", { headers: orgId ? { "x-organization-id": String(orgId) } : {}, signal: controller.signal })
+      .then((response) => response.json().then((result) => ({ ok: response.ok, result })))
+      .then(({ ok, result }) => {
+        const categories = result?.data?.categories
+        // Unknown is not «nothing to approve»: the queues then load on their own.
+        setApprovalCounts(ok && categories ? { routeChanges: Number(categories.routeChanges?.count) || 0, customerRequests: Number(categories.customerRequests?.count) || 0 } : null)
+      })
+      .catch((error: unknown) => {
+        if ((error as { name?: string })?.name !== "AbortError") setApprovalCounts(null)
+      })
+    return () => controller.abort()
+  }, [approvalRefreshVersion, capabilities.canReview, orgId])
 
   const refreshRoutes = useCallback(async () => {
     const result = await fetchRoutes()
@@ -598,6 +617,7 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
   }, [routes, selectedRouteId])
 
   const todayKey = mtmCalendarDayKey(new Date())
+  const approvalTotal = approvalCounts ? approvalCounts.routeChanges + approvalCounts.customerRequests : 0
   const filtered = routes.filter(r => {
     if (activeFilter !== "all" && r.status !== activeFilter) return false
     if (search) {
@@ -885,7 +905,7 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
               <Button data-testid="mtm-routes-view-matrix" aria-pressed={viewMode === "matrix"} variant={viewMode === "matrix" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("matrix")}><TableProperties className="mr-1 h-4 w-4" />{t("viewMatrix")}</Button>
               {/* Owner 2026-09-25: one agent over any period, not only a week. */}
               <Button data-testid="mtm-routes-view-agent" aria-pressed={viewMode === "agent"} variant={viewMode === "agent" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("agent")}><UserRound className="mr-1 h-4 w-4" />{t("viewAgentPeriod")}</Button>
-              {capabilities.canReview ? <Button data-testid="mtm-routes-view-approvals" aria-pressed={viewMode === "approvals"} variant={viewMode === "approvals" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("approvals")}><ClipboardCheck className="mr-1 h-4 w-4" />{t("viewApprovals")}</Button> : null}
+              {capabilities.canReview ? <Button data-testid="mtm-routes-view-approvals" aria-pressed={viewMode === "approvals"} variant={viewMode === "approvals" ? "default" : "ghost"} size="sm" className="min-h-10 whitespace-nowrap rounded-lg px-3" onClick={() => setViewMode("approvals")}><ClipboardCheck className="mr-1 h-4 w-4" />{t("viewApprovals")}{approvalTotal > 0 ? <span data-testid="mtm-routes-approvals-count" className="ml-1.5 min-w-5 rounded-full bg-amber-500 px-1.5 text-center text-[11px] font-semibold leading-5 text-white">{approvalTotal}</span> : null}</Button> : null}
             </div>
           </nav>
           <div className="flex shrink-0 items-center justify-end gap-2">
@@ -1226,11 +1246,18 @@ export function MtmRoutesWorkspace({ surface = "routes" }: { surface?: "routes" 
       ) : viewMode === "agent" ? (
         <MtmAgentPeriodView timezone={timezone} initialAgentId={capabilities.canReview ? null : capabilities.actorAgentId} />
       ) : viewMode === "approvals" ? (
-        <div className="space-y-4">
-          <MtmRouteNeedsAttention orgId={orgId ? String(orgId) : undefined} active refreshVersion={approvalRefreshVersion} />
-          <MtmRouteApprovalQueue orgId={orgId ? String(orgId) : undefined} active onChanged={refreshApprovalViews} />
-          <MtmCustomerRequestQueue orgId={orgId ? String(orgId) : undefined} active onChanged={refreshApprovalViews} />
-        </div>
+        approvalCounts && approvalTotal === 0 ? (
+          <div data-testid="mtm-approvals-empty" role="status" className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-card px-4 py-4 text-sm dark:border-zinc-700">
+            <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+            {t("needsAttentionClearDescription")}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Only the queue that has something in it; both while the count is unknown. */}
+            {!approvalCounts || approvalCounts.routeChanges > 0 ? <MtmRouteApprovalQueue orgId={orgId ? String(orgId) : undefined} active onChanged={refreshApprovalViews} /> : null}
+            {!approvalCounts || approvalCounts.customerRequests > 0 ? <MtmCustomerRequestQueue orgId={orgId ? String(orgId) : undefined} active onChanged={refreshApprovalViews} /> : null}
+          </div>
+        )
       ) : (
         <MtmRouteCalendar
           routes={calendarRoutes}

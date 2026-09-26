@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { AlertCircle, Check, ClipboardCheck, HelpCircle, MapPin, X } from "lucide-react"
 import { toast } from "sonner"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { formatDateTime } from "@/lib/format-date"
@@ -96,8 +97,8 @@ export function MtmRouteApprovalQueue({ orgId, active, onChanged }: RouteApprova
         <div className="flex items-center gap-2">
           <ClipboardCheck className="h-4 w-4 text-primary" />
           <h2 className="text-sm font-semibold">{t("approvalQueue")}</h2>
+          {!loading && requests.length > 0 ? <Badge variant="warning">{t("pendingApprovalsCount", { count: requests.length })}</Badge> : null}
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">{t("approvalQueueSubtitle")}</p>
       </div>
 
       {loading ? <div className="h-32 animate-pulse bg-muted/30" /> : null}
