@@ -1277,13 +1277,13 @@ describe("POST /api/v1/mtm/week/workday", () => {
       action: "START",
       id: "workday-unsupported-schema",
       occurredAt: "2026-07-15T08:00:00.000Z",
-      schemaVersion: 5,
+      schemaVersion: 6,
     }))
 
     expect(response.status).toBe(400)
     await expect(response.json()).resolves.toMatchObject({
       code: "WORKFORCE_WORKDAY_SCHEMA_UNSUPPORTED",
-      schemaSupport: { min: 1, max: 4, action: "UPGRADE_CLIENT" },
+      schemaSupport: { min: 1, max: 5, action: "UPGRADE_CLIENT" },
     })
     expect(prisma.$transaction).not.toHaveBeenCalled()
   })

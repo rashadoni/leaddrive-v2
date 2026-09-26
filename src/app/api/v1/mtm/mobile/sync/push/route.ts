@@ -40,6 +40,7 @@ import {
   type MtmWorkdayEventInput,
 } from "@/lib/mtm/workday"
 import {
+  preflightWorkforceAttendancePlayIntegrity,
   prepareWorkforceAttendanceVerification,
   recordWorkforceAttendanceVerification,
   WorkforceAttendanceTrustError,
@@ -895,6 +896,16 @@ export const POST = withMobileRls(async (req, auth) => {
     // context flagged inTx, a stray `prisma.*` call would run on a pool
     // connection without app.org_id and fail closed.
     try {
+      const playIntegrityPreflight = workdayInput
+        ? await preflightWorkforceAttendancePlayIntegrity(prisma, {
+            organizationId: orgId,
+            agentId,
+            event: workdayInput,
+            evidence: workdayInput.attendance,
+            capabilities: attendanceCapabilities,
+            principal: "mobile",
+          })
+        : null
       const out = await prisma.$transaction(async (tx: Prisma.TransactionClient): Promise<OpOutcome> => {
         // A prior preflight may have allowed this operation just before an
         // administrator freezes the tenant or removes a cohort. Re-read while
@@ -2784,6 +2795,7 @@ export const POST = withMobileRls(async (req, auth) => {
                 evidence: workdayInput.attendance,
                 capabilities: attendanceCapabilities,
                 principal: "mobile",
+                playIntegrityPreflight: playIntegrityPreflight ?? undefined,
               })
               if (prepared) {
                 await recordWorkforceAttendanceVerification(tx, prepared, event.id)

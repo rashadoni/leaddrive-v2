@@ -18,13 +18,21 @@ no `toString`, SavedState, Room, SharedPreferences, log or encrypted-outbox
 path. Server QR nonce/action/tenant/expiry validation remains authoritative;
 a phone cannot revoke a request already handed to transport before logout.
 
+The callback now returns a one-use `WorkforceEphemeralQrToken`, rather than a
+raw string exposed to the UI or repository API. Only
+`WorkforceApiClient.newTodayOperation` can consume that object while it builds
+the immediate action envelope. A second use is rejected, so a retry,
+device-signature failure or duplicate callback requires a fresh station scan.
+The raw value still exists only for that immediate envelope and remains
+outbox-ineligible.
+
 ## Verification
 
 Passed in this worktree:
 
 ```text
 vitest: workforce-android-foundation
-17 tests passed
+source contract passed
 git diff --check passed
 ```
 

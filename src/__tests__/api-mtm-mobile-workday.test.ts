@@ -70,7 +70,8 @@ describe("GET /api/v1/mtm/mobile/workday", () => {
     const response = await GET(request())
 
     expect(response.status).toBe(403)
-    await expect(response.json()).resolves.toMatchObject({
+    const json = await response.json()
+    expect(json).toMatchObject({
       code: "TENANT_CAPABILITY_DISABLED",
       capabilityId: "workforce-hrm",
     })
@@ -156,6 +157,7 @@ describe("GET /api/v1/mtm/mobile/workday", () => {
     expect(json.data.workday.schedule.segment).not.toHaveProperty("siteId")
     expect(json.data.workday.schedule.segment).not.toHaveProperty("addressLabel")
     expect(json.data.workday.schedule.segment).not.toHaveProperty("geofenceRevision")
+    expect(json.data.workday.schedule.segment).not.toHaveProperty("startsAt")
     const firstQuery = vi.mocked(prisma.mtmAgentWorkday.findFirst).mock.calls[0]?.[0] as unknown as {
       where: { organizationId: string; agentId: string; workDate: Date }
       select: Record<string, unknown>
@@ -201,5 +203,53 @@ describe("GET /api/v1/mtm/mobile/workday", () => {
     await expect(response.json()).resolves.toMatchObject({
       data: { workday: { schedule: { segment: null } } },
     })
+  })
+
+  it("returns one immutable next-segment instant without leaking schedule identifiers", async () => {
+    vi.mocked(prisma.mtmAgentWorkday.findFirst).mockResolvedValue({
+      id: "workday-1",
+      workDate: new Date("2026-07-15T00:00:00.000Z"),
+      status: "STARTED",
+      startedAt: new Date("2026-07-15T05:00:00.000Z"),
+      pausedAt: null,
+      completedAt: null,
+      totalPausedSeconds: 0,
+      workforceShiftSnapshot: {
+        timezone: "Asia/Baku",
+        plannedStartAt: new Date("2026-07-15T05:00:00.000Z"),
+        plannedEndAt: new Date("2026-07-15T14:00:00.000Z"),
+      },
+      workforceWorkdayScheduleSnapshot: {
+        segments: [
+          { id: "segment-current", mode: "REMOTE", siteId: null, startTime: "09:00", endTime: "12:00" },
+          { id: "segment-next", mode: "SITE", siteId: "site-1", startTime: "12:30", endTime: "18:00" },
+        ],
+        sites: [{ id: "site-1", name: "Baku HQ", addressLabel: "Private office address" }],
+      },
+    } as never)
+
+    const response = await GET(request("?date=2026-07-15"))
+
+    const json = await response.json()
+    expect(json).toMatchObject({
+      data: {
+        workday: {
+          schedule: {
+            segment: {
+              state: "NEXT",
+              mode: "SITE",
+              startTime: "12:30",
+              endTime: "18:00",
+              siteName: "Baku HQ",
+              startsAt: "2026-07-15T08:30:00.000Z",
+            },
+          },
+        },
+      },
+    })
+    expect(json.data.workday.schedule.segment).not.toHaveProperty("id")
+    expect(json.data.workday.schedule.segment).not.toHaveProperty("siteId")
+    expect(json.data.workday.schedule.segment).not.toHaveProperty("addressLabel")
+    expect(json.data.workday.schedule.segment).not.toHaveProperty("geofenceRevision")
   })
 })

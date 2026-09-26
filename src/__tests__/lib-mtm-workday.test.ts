@@ -257,7 +257,7 @@ describe("MTM mobile workday", () => {
     }
 
     const unsupported = parseMtmWorkdayEvent(
-      { ...base, schemaVersion: 5 },
+      { ...base, schemaVersion: 6 },
       "event-unsupported-schema",
       "Asia/Baku",
       now,
@@ -266,7 +266,7 @@ describe("MTM mobile workday", () => {
     expect(unsupported.error).toContain("Unsupported Workforce workday schemaVersion")
     expect(unsupported).toMatchObject({
       code: "WORKFORCE_WORKDAY_SCHEMA_UNSUPPORTED",
-      schemaSupport: { min: 1, max: 4, action: "UPGRADE_CLIENT" },
+      schemaSupport: { min: 1, max: 5, action: "UPGRADE_CLIENT" },
     })
   })
 
@@ -308,6 +308,29 @@ describe("MTM mobile workday", () => {
     const incomplete = parseMtmWorkdayEvent({ ...payload, accuracy: undefined }, "event-location-incomplete", "Asia/Baku", new Date("2026-07-15T08:00:00.000Z"))
     expect(incomplete.input).toBeNull()
     expect(incomplete.error).toContain("requires latitude, longitude and accuracy")
+  })
+
+  it("accepts a v5 Play Integrity transport token only as transient hashed evidence", () => {
+    const payload = {
+      action: "START",
+      id: "workday-1",
+      schemaVersion: 5,
+      occurredAt: "2026-07-15T08:00:00.000Z",
+      claimedAt: "2026-07-15T08:00:00.000Z",
+      capturedAt: "2026-07-15T08:00:00.000Z",
+      queuedAt: "2026-07-15T08:00:00.000Z",
+      attendance: { playIntegrity: { token: "opaque-standard-api-token" } },
+    }
+    const parsed = parseMtmWorkdayEvent(payload, "event-integrity-v5", "Asia/Baku", new Date("2026-07-15T08:00:00.000Z"))
+    expect(parsed.error).toBeNull()
+    expect(parsed.input?.attendance?.playIntegrityToken).toBe("opaque-standard-api-token")
+    expect(mtmWorkdayRequestHash(SCOPE, parsed.input!)).not.toBe(mtmWorkdayRequestHash(SCOPE, {
+      ...parsed.input!,
+      attendance: { ...parsed.input!.attendance, playIntegrityToken: "different-opaque-standard-api-token" },
+    }))
+    const legacy = parseMtmWorkdayEvent({ ...payload, schemaVersion: 4 }, "event-integrity-legacy", "Asia/Baku", new Date("2026-07-15T08:00:00.000Z"))
+    expect(legacy.input).toBeNull()
+    expect(legacy.error).toContain("requires Workforce workday schemaVersion 5")
   })
 
   it("binds a C1 replay to actor, evidence references and provenance instead of only visible event fields", () => {
