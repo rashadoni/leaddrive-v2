@@ -13202,7 +13202,10 @@
       "fri": "C.",
       "sat": "Ş."
     },
-    "calendarMore": "+daha {n}",
+    "calendarDayVisited": "{planned} nöqtədən {visited} yerinə yetirilib",
+    "calendarDayStops": "{count} nöqtə",
+    "calendarDayMissed": "{count} marşrut natamam",
+    "calendarDayDrafts": "{count} qaralama",
     "weekAgentSearch": "Əməkdaş tapın",
     "weekAgentsHidden": "Gizlədilən sətir: {count} — axtarış və ya QA hesabları",
     "weekTeamFilter": "Komandaya görə süzgəc",
