@@ -40,11 +40,17 @@ commits, verification, and user-facing status.
 file on anything about how a change reaches production.** Four layers, in short:
 
 1. `main` accepts pull requests only. No direct push.
-2. Every pull request passes six required contexts on `main`: the five GitHub
-   Actions checks `pr-scope`, `static-checks`, `typecheck`, `runner-policy`,
-   `scan`, plus `agent-review`, published for the exact PR head SHA by an agent
-   that did not author the change. Self-review does not count. Do not replace
-   this with a workflow that reports green when no reviewer ran.
+2. Every pull request passes the checks GitHub itself runs, all required on
+   `main`: `pr-scope`, `static-checks`, `typecheck`, `runner-policy`, `scan`.
+   The `agent-review` check was retired on 2026-09-11 by the owner: without an
+   `ANTHROPIC_API_KEY` it reported green on every PR by design, and it was the
+   only required context, so tests and typecheck were not required at all.
+   On 2026-09-26 it was restored as an "independent exact-SHA review by another
+   agent" (#439/#440); nobody published it, it blocked every PR, and the owner
+   removed it again the same day: "remove it so it does not pop up for other
+   sessions". Do not bring it back in any form — neither a paid AI reviewer in
+   CI nor a status another session has to publish. If you find `agent-review`
+   among the required contexts, remove it (standing owner authorization).
 3. Production deploys only from `main`, with the atomic swap, health check and
    rollback that already exist.
 4. Before merging anything a user will see, show the owner a short plain-language
@@ -112,7 +118,7 @@ Report the outcome, not each step. "Merged #1102, deployed, /api/v1/ping ok"
 is the whole update the owner wants.
 
 That authorization now runs through `docs/DELIVERY-ARCHITECTURE.md`: carry the
-change yourself, but merge only once all six required contexts are green, and
+change yourself, but merge only once the five required checks are green, and
 for anything a user will see, get the owner's go-ahead on the short list first.
 Neither step is a request for permission to work — they are part of the work.
 
